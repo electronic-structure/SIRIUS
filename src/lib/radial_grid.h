@@ -8,6 +8,7 @@ namespace sirius {
 
 enum radial_grid_type {linear_grid, exponential_grid, linear_exponential_grid};
 
+/// \brief radial grid for a muffin-tin or isolated atom
 class radial_grid
 {
     private:
