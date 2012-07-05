@@ -84,6 +84,26 @@ class spline
                     g[i + 1] = g[i] + (((a(3, i) * dx / 4 + a(2,i) / 3) * dx + a(1, i) / 2) * dx + a(0, i)) * dx;
                 }
             }
+            else
+            {
+                for (int i = 0; i < n - 1; i++)
+                {
+                    double x0 = (*r)[i];
+                    double x1 = (*r)[i + 1];
+                    double a0 = a(0, i);
+                    double a1 = a(1, i);
+                    double a2 = a(2, i);
+                    double a3 = a(3, i);
+
+                    // obtained with the following Mathematica code:
+                    //   FullSimplify[Integrate[x^(m)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],Assumptions->{m>=0,Element[{x0,x1},Reals],x1>x0>0}]
+                    g[i + 1] = g[i] + (pow(x0, 1 + m) * (-(a0 * (2 + m) * (3 + m) * (4 + m)) + 
+                        x0 * (a1 * (3 + m) * (4 + m) - 2 * a2 * (4 + m) * x0 + 6 * a3 * pow(x0, 2)))) / ((1 + m) * (2 + m) * (3 + m) * (4 + m)) + 
+                        pow(x1, 1 + m) * ((a0 - x0 * (a1 + x0 * (-a2 + a3 * x0))) / (1 + m) + ((a1 + x0 * (-2 * a2 + 3 * a3 * x0)) * x1) / (2 + m) + 
+                        ((a2 - 3 * a3 * x0) * pow(x1, 2)) / (3 + m) + (a3 * pow(x1, 3))/(4 + m));
+                }
+            
+            }
             
             return g[n - 1];
         }
