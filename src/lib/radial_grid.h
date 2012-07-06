@@ -12,6 +12,9 @@ enum radial_grid_type {linear_grid, exponential_grid, linear_exponential_grid};
 class radial_grid
 {
     private:
+        
+        /// number of muffin-tin points
+        int nrmt_;
 
         /// starting point
         double r0;
@@ -21,9 +24,6 @@ class radial_grid
 
         /// maximum effective infinity point
         double rinf;
-
-        /// number of muffin-tin points
-        int nrmt_;
 
         /// list of radial points
         std::vector<double> r;
@@ -74,21 +74,27 @@ class radial_grid
                 }
             }
             
-            for (int i = 0; i < r.size() - 1; i++)
+            for (int i = 0; i < (int)r.size() - 1; i++)
             {
                 double d = r[i + 1] - r[i];
                 dr.push_back(d); 
             }
         }
+
+        radial_grid(const radial_grid& src);
+
+        radial_grid& operator=(const radial_grid& src);
         
     public:
 
-        radial_grid(radial_grid_type grid_type, int nrmt_, double r0, double rmt, double rinf) : nrmt_(nrmt_), r0(r0), rmt(rmt), rinf(rinf), grid_type(grid_type)
+        radial_grid(radial_grid_type grid_type, int nrmt_, double r0, double rmt, double rinf) : nrmt_(nrmt_), 
+            r0(r0), rmt(rmt), rinf(rinf), grid_type(grid_type)
         {
             init();
         }
 
-        radial_grid(radial_grid_type grid_type, int nrmt_, double r0, double rmt) : nrmt_(nrmt_), r0(r0), rmt(rmt), rinf(rmt), grid_type(grid_type)
+        radial_grid(radial_grid_type grid_type, int nrmt_, double r0, double rmt) : nrmt_(nrmt_), 
+            r0(r0), rmt(rmt), rinf(rmt), grid_type(grid_type)
         {
             init();
         }
