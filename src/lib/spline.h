@@ -13,162 +13,163 @@ class spline
 {
     private:
         
-        void init()
-        {
-            y.resize(n);
-            memset(&y[0], 0, n * sizeof(double));
-            
-            a.set_dimensions(4, n - 1);
-            a.allocate();
-            a.zero();
-        }
-    
         /// number of interpolating points
-        int n;
+        int number_of_points;
     
-        /// polynomial coefficients
-        mdarray<double,2> a;
-        
         /// radial grid
         sirius::radial_grid& r;
         
-        //sirius::radial_grid& rr1;
+        std::vector<double> a;
+        std::vector<double> b;
+        std::vector<double> c;
+        std::vector<double> d;
 
-        /// original data values
-        std::vector<double> y;
+        void init();
         
     public:
     
-        spline(int n, sirius::radial_grid& r) : n(n), r(r)
+        spline(int number_of_points, sirius::radial_grid& r) : number_of_points(number_of_points), r(r)
         {
             init();
         }
         
-        spline(int n, sirius::radial_grid& r, double *y_) : n(n), r(r)
+        spline(int number_of_points, sirius::radial_grid& r, std::vector<double>& y) : number_of_points(number_of_points), r(r)
         {
             init();
-            interpolate(y_);
+            interpolate(y);
         }
         
-        void interpolate(double *y_)
-        {
-            std::vector<double> d(n);
-            std::vector<double> dl(n - 1);
-            std::vector<double> du(n - 1);
-            std::vector<double> m(n);
-            std::vector<double> dy(n - 1);
-
-            y.resize(n);
-            memcpy(&y[0], y_, n * sizeof(double));
-            
-            for (int i = 0; i < n - 1; i++) 
-            {
-                dy[i] = (y[i + 1] - y[i]) / r.h(i);
-            }
-            
-            // setup "B" vector of AX=B equation
-            for (int i = 0; i < n - 2; i++)
-            {
-                m[i + 1] = 6 * (dy[i + 1] - dy[i]);
-            }
-            m[0] = -m[1];
-            m[n - 1] = -m[n - 2];
-            
-            // main diagonal of "A" matrix
-            for (int i = 0; i < n - 2; i++)
-            {
-                d[i + 1] = 2 * (r.h(i) + r.h(i + 1));
-            }
-            d[0] = (r.h(1) / r.h(0)) * r.h(1) - r.h(0);
-            d[n - 1] = (r.h(n - 3) / r.h(n - 2)) * r.h(n - 3) - r.h(n - 2);
-            
-            // subdiagonals of "A" matrix
-            for (int i = 0; i < n - 1; i++)
-            {
-                du[i] = r.h(i);
-                dl[i] = r.h(i);
-            }
-            du[0] = -(r.h(1) * (1 + r.h(1) / r.h(0)) + d[1]);
-            dl[n - 2] = -(r.h(n - 3) * (1 + r.h(n - 3) / r.h(n - 2)) + d[n - 2]); 
-
-            // solve tridiagonal system
-            int info = dgtsv(n, 1, &dl[0], &d[0], &du[0], &m[0], n);
-            if (info)
-            {
-                std::cout << std::endl << "Error: dgtsv returned " << info << std::endl;
-                stop();
-            }
-
-            a.set_dimensions(4, n - 1);
-            a.allocate();
-            a.zero();
-
-            for (int i = 0; i < n - 1; i++)
-            {
-                a(0, i) = y[i];
-                a(2, i) = m[i] / 2.0;
-                double t = (m[i + 1] - m[i]) / 6.0;
-                a(1, i) = dy[i] - (a(2, i) + t) * r.h(i);
-                a(3, i) = t / r.h(i);
-            }
-        }
-
-        double integrate(int m = 0)
-        {
-            std::vector<double> g(n);
-            
-            if (m == 0)
-            {
-                for (int i = 0; i < n - 1; i++)
-                {
-                    double dx = r.h(i);
-                    g[i + 1] = g[i] + (((a(3, i) * dx / 4 + a(2,i) / 3) * dx + a(1, i) / 2) * dx + a(0, i)) * dx;
-                }
-            }
-            else
-            {
-                for (int i = 0; i < n - 1; i++)
-                {
-                    double x0 = r[i];
-                    double x1 = r[i + 1];
-                    double a0 = a(0, i);
-                    double a1 = a(1, i);
-                    double a2 = a(2, i);
-                    double a3 = a(3, i);
-
-                    // obtained with the following Mathematica code:
-                    //   FullSimplify[Integrate[x^(m)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],Assumptions->{m>=0,Element[{x0,x1},Reals],x1>x0>0}]
-                    g[i + 1] = g[i] + (pow(x0, 1 + m) * (-(a0 * (2 + m) * (3 + m) * (4 + m)) + 
-                        x0 * (a1 * (3 + m) * (4 + m) - 2 * a2 * (4 + m) * x0 + 6 * a3 * pow(x0, 2)))) / ((1 + m) * (2 + m) * (3 + m) * (4 + m)) + 
-                        pow(x1, 1 + m) * ((a0 - x0 * (a1 + x0 * (-a2 + a3 * x0))) / (1 + m) + ((a1 + x0 * (-2 * a2 + 3 * a3 * x0)) * x1) / (2 + m) + 
-                        ((a2 - 3 * a3 * x0) * pow(x1, 2)) / (3 + m) + (a3 * pow(x1, 3))/(4 + m));
-                }
-            }
-            
-            return g[n - 1];
-        }
+        void interpolate(std::vector<double>& y);
         
+        double integrate(int m = 0);
+                
         double operator()(double x)
         {
             int i;
-            for (i = 0; i < n; i++) 
+            for (i = 0; i < number_of_points; i++) 
             {
                 if (x >= r[i] && x < r[i + 1]) break;
             }
             double t = (x - r[i]);
-            return a(0, i) + t * (a(1,i) + t * (a(2, i) + t * a(3, i)));
+            return a[i] + t * (b[i] + t * (c[i] + t * d[i]));
         }
 
         double operator()(const int i, double dx)
         {
-            return a(0, i) + dx * (a(1,i) + dx * (a(2, i) + dx * a(3, i)));
+            return a[i] + dx * (b[i] + dx * (c[i] + dx * d[i]));
         }
         
         double operator[](const int i)
         {
-            return y[i];
+            return a[i];
         }
 };
+
+void spline::init()
+{
+    a.resize(number_of_points);
+    memset(&a[0], 0, number_of_points * sizeof(double));
+    
+    b.resize(number_of_points - 1);
+    memset(&b[0], 0, (number_of_points - 1) * sizeof(double));
+    
+    c.resize(number_of_points - 1);
+    memset(&c[0], 0, (number_of_points - 1) * sizeof(double));
+    
+    d.resize(number_of_points - 1);
+    memset(&d[0], 0, (number_of_points - 1) * sizeof(double));
+}
+
+void spline::interpolate(std::vector<double>& y)
+{
+    std::vector<double> diag_main(number_of_points);
+    std::vector<double> diag_lower(number_of_points - 1);
+    std::vector<double> diag_upper(number_of_points - 1);
+    std::vector<double> m(number_of_points);
+    std::vector<double> dy(number_of_points - 1);
+    
+    // copy original function to "a" coefficients
+    a = y;
+
+    // derivative of y
+    for (int i = 0; i < number_of_points - 1; i++) 
+        dy[i] = (y[i + 1] - y[i]) / r.dr(i);
+    
+    // setup "B" vector of AX=B equation
+    for (int i = 0; i < number_of_points - 2; i++) 
+        m[i + 1] = 6 * (dy[i + 1] - dy[i]);
+    m[0] = -m[1];
+    m[number_of_points - 1] = -m[number_of_points - 2];
+    
+    // main diagonal of "A" matrix
+    for (int i = 0; i < number_of_points - 2; i++)
+        diag_main[i + 1] = 2 * (r.dr(i) + r.dr(i + 1));
+    diag_main[0] = (r.dr(1) / r.dr(0)) * r.dr(1) - r.dr(0);
+    diag_main[number_of_points - 1] = (r.dr(number_of_points - 3) / r.dr(number_of_points - 2)) * r.dr(number_of_points - 3) - r.dr(number_of_points - 2);
+    
+    // subdiagonals of "A" matrix
+    for (int i = 0; i < number_of_points - 1; i++)
+    {
+        diag_upper[i] = r.dr(i);
+        diag_lower[i] = r.dr(i);
+    }
+    diag_upper[0] = -(r.dr(1) * (1 + r.dr(1) / r.dr(0)) + diag_main[1]);
+    diag_lower[number_of_points - 2] = -(r.dr(number_of_points - 3) * (1 + r.dr(number_of_points - 3) / r.dr(number_of_points - 2)) + diag_main[number_of_points - 2]); 
+
+    // solve tridiagonal system
+    int info = dgtsv(number_of_points, 1, &diag_lower[0], &diag_main[0], &diag_upper[0], &m[0], number_of_points);
+    if (info)
+    {
+        stop(std::cout << "dgtsv returned " << info);
+    }
+    
+    b.resize(number_of_points - 1);
+    c.resize(number_of_points - 1);
+    d.resize(number_of_points - 1);
+
+    for (int i = 0; i < number_of_points - 1; i++)
+    {
+        c[i] = m[i] / 2.0;
+        double t = (m[i + 1] - m[i]) / 6.0;
+        b[i] = dy[i] - (c[i] + t) * r.dr(i);
+        d[i] = t / r.dr(i);
+    }
+}
+
+double spline::integrate(int m)
+{
+    std::vector<double> g(number_of_points, 0.0);
+    
+    if (m == 0)
+    {
+        for (int i = 0; i < number_of_points - 1; i++)
+        {
+            double dx = r.dr(i);
+            g[i + 1] = g[i] + (((d[i] * dx / 4 + c[i] / 3) * dx + b[i] / 2) * dx + a[i]) * dx;
+        }
+    }
+    else
+    {
+        for (int i = 0; i < number_of_points - 1; i++)
+        {
+            double x0 = r[i];
+            double x1 = r[i + 1];
+            double a0 = a[i];
+            double a1 = b[i];
+            double a2 = c[i];
+            double a3 = d[i];
+
+            // obtained with the following Mathematica code:
+            //   FullSimplify[Integrate[x^(m)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],Assumptions->{m>=0,Element[{x0,x1},Reals],x1>x0>0}]
+            g[i + 1] = g[i] + (pow(x0, 1 + m) * (-(a0 * (2 + m) * (3 + m) * (4 + m)) + 
+                x0 * (a1 * (3 + m) * (4 + m) - 2 * a2 * (4 + m) * x0 + 6 * a3 * pow(x0, 2)))) / ((1 + m) * (2 + m) * (3 + m) * (4 + m)) + 
+                pow(x1, 1 + m) * ((a0 - x0 * (a1 + x0 * (-a2 + a3 * x0))) / (1 + m) + ((a1 + x0 * (-2 * a2 + 3 * a3 * x0)) * x1) / (2 + m) + 
+                ((a2 - 3 * a3 * x0) * pow(x1, 2)) / (3 + m) + (a3 * pow(x1, 3))/(4 + m));
+        }
+    }
+    
+    return g[number_of_points - 1];
+}
 
 };
 
