@@ -1,9 +1,7 @@
 #ifndef __RADIAL_SOLVER_H__
 #define __RADIAL_SOLVER_H__
 
-#include "constants.h"
-#include "spline.h"
-#include "radial_grid.h"
+#include "sirius.h"
 
 /*! \brief solves a scalar relativistic equation
     
@@ -34,34 +32,9 @@ class radial_solver
         {
             enu_tolerance = 1e-10;
         }
-
-        /*void solve(int nr, int l, double enu, double zn, int m, sirius::radial_grid& r, double *v, double *p, double *hp)
-        {
-            std::vector<double> ve(nr);
-            for (int i = 0; i < nr; i++)
-            {
-                ve[i] = v[i] - zn / r[i];
-            }
-            sirius::spline ve_spline(nr, r, ve);
-
-            std::vector<double> q(nr);
-            std::vector<double> mp(nr, 0.0);
-
-            sirius::spline mp_spline(nr, r);
-            
-            for (int j = 0; j <= m; j++)
-            {
-                if (j)
-                {
-                    for (int i = 0; i < nr; i++)
-                    {
-                        mp[i] = j * p[i];
-                    }
-                }
-                mp_spline.interpolate(mp);
-                integrate(nr, l, enu, zn, r, ve_spline, mp_spline, p, &q[0]);
-            }
-        }*/
+        
+        void solve_in_mt(int l, double enu, int m, std::vector<double>& v, std::vector<double>& p, 
+                         std::vector<double>& hp);
 
         void bound_state(int n, int l, double& enu, std::vector<double>& v, std::vector<double>& p);
 
@@ -87,7 +60,7 @@ int radial_solver::integrate(int nr, int l, double enu, sirius::spline& ve, siri
 
     // TODO: check r->0 asymptotic
     p[0] = pow(r[0], l + 1) * exp(zn * r[0] / (l + 1));
-    q[0] = (0.5 / m2) * p[0] * (l / r[0] + zn / (l + 1));
+    q[0] = 0.0; //(0.5 / m2) * p[0] * (l / r[0] + zn / (l + 1));
 
     double p2 = p[0];
     double q2 = q[0];
@@ -193,9 +166,7 @@ void radial_solver::bound_state(int n, int l, double& enu, std::vector<double>& 
     }
     
     if (fabs(denu) >= enu_tolerance) 
-    {
         stop(std::cout << "enu is not converged");
-    }
 
     // search for the turning point
     int idxtp = r.size() - 1;
@@ -212,7 +183,7 @@ void radial_solver::bound_state(int n, int l, double& enu, std::vector<double>& 
     double t1 = 1e100;
     for (int i = idxtp; i < r.size(); i++)
     {
-        if (fabs(p[i]) < t1)
+        if ((fabs(p[i]) < t1) && (p[i - 1] * p[i] > 0))
             t1 = fabs(p[i]);
         else
         {
@@ -228,18 +199,53 @@ void radial_solver::bound_state(int n, int l, double& enu, std::vector<double>& 
     sirius::spline rho_spline(r.size(), r, rho);
 
     double norm = rho_spline.integrate();
+    
     for (int i = 0; i < r.size(); i++)
         p[i] /= sqrt(norm);
 
     // count number of nodes
     int nn = 0;
     for (int i = 0; i < r.size() - 1; i++)
-    {
-      if (p[i] * p[i + 1] < 0.0) nn++;
-    }
+        if (p[i] * p[i + 1] < 0.0) nn++;
 
     if (nn != (n - l - 1))
-        stop(std::cout << "wrong number of nodes");
+    {
+        std::ofstream fout("bound_state.dat");
+        for (int i =0; i < r.size(); i++)
+        {
+            fout << r[i] << " " << p[i] << std::endl;
+        }
+        fout.close();
+        stop(std::cout << "wrong number of nodes : " << nn << " instead of " << (n - l - 1));
+    }
 }
+
+void radial_solver::solve_in_mt(int l, double enu, int m, std::vector<double>& v, std::vector<double>& p, std::vector<double>& hp)
+{
+    std::vector<double> ve(r.mt_nr());
+    for (int i = 0; i < r.mt_nr(); i++)
+        ve[i] = v[i] - zn / r[i];
+    
+    sirius::spline ve_spline(r.mt_nr(), r, ve);
+
+    std::vector<double> q;
+    std::vector<double> mp(r.mt_nr(), 0.0);
+
+    sirius::spline mp_spline(r.mt_nr(), r);
+    
+    for (int j = 0; j <= m; j++)
+    {
+        if (j)
+        {
+            for (int i = 0; i < r.mt_nr(); i++)
+                mp[i] = j * p[i];
+            
+            mp_spline.interpolate(mp);
+        }
+        
+        integrate(r.mt_nr(), l, enu, ve_spline, mp_spline, p, q);
+    }
+}
+
 
 #endif // __RADIAL_SOLVER_H__
