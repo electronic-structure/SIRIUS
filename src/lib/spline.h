@@ -1,11 +1,6 @@
 #ifndef __SPLINE_H__
 #define __SPLINE_H__
 
-#include "mdarray.h"
-#include "radial_grid.h"
-#include "sirius.h"
-#include "linalg.h"
-
 namespace sirius {
 
 /// \brief cubic spline with a not-a-knot boundary conditions

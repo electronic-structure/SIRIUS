@@ -11,6 +11,8 @@
     \f}
 */
 
+namespace sirius {
+
 class radial_solver
 {
     private:
@@ -247,5 +249,6 @@ void radial_solver::solve_in_mt(int l, double enu, int m, std::vector<double>& v
     }
 }
 
+};
 
 #endif // __RADIAL_SOLVER_H__

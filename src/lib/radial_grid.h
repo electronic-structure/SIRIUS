@@ -1,9 +1,9 @@
 #ifndef __RADIAL_GRID_H__
 #define __RADIAL_GRID_H__
 
-#include <cmath>
-#include <vector>
-#include "sirius.h"
+//#include <cmath>
+//#include <vector>
+//#include "sirius.h"
 
 namespace sirius {
 
