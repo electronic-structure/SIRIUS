@@ -9,6 +9,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <cmath>
+#include <assert.h>
 #include "config.h"
 #include "mdarray.h"
 #include "linalg.h"

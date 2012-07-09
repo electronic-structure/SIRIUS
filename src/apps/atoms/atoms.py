@@ -2,6 +2,9 @@ s1 = '''
 #include <vector>
 #include <string>
 #include <string.h>
+#include <iostream>
+#include "../../lib/sirius.h"
+#include <xc.h>
 
 struct atomic_level_nlk 
 {
@@ -29,6 +32,84 @@ struct atom
 };
 
 std::vector<atom> atoms(104); 
+
+void atom_configuration();
+
+void potxc(std::vector<double>& rho, std::vector<double>& vxc, std::vector<double>& exc)
+{
+    vxc.resize(rho.size());
+    memset(&vxc[0], 0, vxc.size() * sizeof(double)); 
+    exc.resize(rho.size());
+    memset(&exc[0], 0, exc.size() * sizeof(double));
+
+    std::vector<double> tmp(rho.size());
+
+    int xc_id[2] = {1, 7};
+    xc_func_type func;
+    
+    for (int i = 0; i < 2; i++)
+    {
+        if(xc_func_init(&func, xc_id[i], XC_UNPOLARIZED) != 0)
+            stop(std::cout << "Functional is not found");
+       
+        xc_lda_vxc(&func, rho.size(), &rho[0], &tmp[0]);
+
+        for (int j = 0; j < (int)rho.size(); j++)
+            vxc[j] += tmp[j];
+
+        xc_lda_exc(&func, rho.size(), &rho[0], &tmp[0]);
+
+        for (int j = 0; j < (int)rho.size(); j++)
+            exc[j] += tmp[j];
+      
+        xc_func_end(&func);
+    }
+}
+
+
+void solve_atom(atom& a)
+{
+    sirius::radial_grid r(sirius::exponential_grid, 30000, 1e-8, 100.0);
+    
+    sirius::radial_solver solver(false, -1.0 * a.zn, r);
+
+    std::vector<double> v(r.size(), 0.0);
+    for (int i = 0; i < r.size(); i++)
+        v[i] = -1.0 * a.zn / r[i];
+    
+    std::vector<double> p;
+
+    std::vector<double> rho(r.size());
+
+    memset(&rho[0], 0, rho.size() * sizeof(double));
+
+    for (int ist = 0; ist < a.nl_list.size(); ist++)
+    {
+        double enu = -0.5;
+        solver.bound_state(a.nl_list[ist].n, a.nl_list[ist].l, enu, v, p);
+
+        for (int i = 0; i < r.size(); i++)
+            rho[i] += a.nl_list[ist].occupancy * pow(y00 * p[i] / r[i], 2);
+    }
+
+    sirius::spline rho_spline(r.size(), r, rho);
+    
+    std::cout << "number of electrons : " << fourpi * rho_spline.integrate(2) << std::endl;
+}
+
+int main(int argn, char **argv)
+{
+    atom_configuration();
+    
+    for (int i = 0; i < atoms.size(); i++)
+    {
+        std::cout << " i = " << i << " atom : " << atoms[i].symbol << std::endl;
+        solve_atom(atoms[i]);
+    }
+    
+
+
+}
 
 void atom_configuration() 
 {

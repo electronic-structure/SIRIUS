@@ -37,6 +37,8 @@ class spline
         void interpolate(std::vector<double>& y);
         
         double integrate(int m = 0);
+        
+        double integrate(std::vector<double>& g, int m = 0);
                 
         double operator()(double x)
         {
@@ -131,9 +133,10 @@ void spline::interpolate(std::vector<double>& y)
     }
 }
 
-double spline::integrate(int m)
+double spline::integrate(std::vector<double>& g, int m)
 {
-    std::vector<double> g(number_of_points, 0.0);
+    g.resize(number_of_points);
+    memset(&g[0], 0, number_of_points * sizeof(double));
     
     if (m == 0)
     {
@@ -164,6 +167,13 @@ double spline::integrate(int m)
     }
     
     return g[number_of_points - 1];
+}
+
+double spline::integrate(int m)
+{
+    std::vector<double> g(number_of_points);
+    
+    return integrate(g, m);
 }
 
 };
