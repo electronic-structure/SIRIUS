@@ -34,11 +34,27 @@ class spline
             interpolate(y);
         }
         
-        void interpolate(std::vector<double>& y);
+        void interpolate(std::vector<double>& y)
+        {
+            memcpy(&a[0], &y[0], number_of_points * sizeof(double));
+            interpolate();
+        }
+        
+        void interpolate();
         
         double integrate(int m = 0);
         
         double integrate(std::vector<double>& g, int m = 0);
+        
+        std::vector<double>& data_points()
+        {
+            return a;
+        }
+        
+        inline int size()
+        {
+            return number_of_points;
+        }
                 
         double operator()(double x)
         {
@@ -56,7 +72,7 @@ class spline
             return a[i] + dx * (b[i] + dx * (c[i] + dx * d[i]));
         }
         
-        double operator[](const int i)
+        double& operator[](const int i)
         {
             return a[i];
         }
@@ -77,7 +93,7 @@ void spline::init()
     memset(&d[0], 0, (number_of_points - 1) * sizeof(double));
 }
 
-void spline::interpolate(std::vector<double>& y)
+void spline::interpolate()
 {
     std::vector<double> diag_main(number_of_points);
     std::vector<double> diag_lower(number_of_points - 1);
@@ -86,11 +102,11 @@ void spline::interpolate(std::vector<double>& y)
     std::vector<double> dy(number_of_points - 1);
     
     // copy original function to "a" coefficients
-    a = y;
+    //a = y;
 
     // derivative of y
     for (int i = 0; i < number_of_points - 1; i++) 
-        dy[i] = (y[i + 1] - y[i]) / r.dr(i);
+        dy[i] = (a[i + 1] - a[i]) / r.dr(i);
     
     // setup "B" vector of AX=B equation
     for (int i = 0; i < number_of_points - 2; i++) 
@@ -116,9 +132,7 @@ void spline::interpolate(std::vector<double>& y)
     // solve tridiagonal system
     int info = dgtsv(number_of_points, 1, &diag_lower[0], &diag_main[0], &diag_upper[0], &m[0], number_of_points);
     if (info)
-    {
         stop(std::cout << "dgtsv returned " << info);
-    }
     
     b.resize(number_of_points - 1);
     c.resize(number_of_points - 1);

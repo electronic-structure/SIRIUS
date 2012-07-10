@@ -29,6 +29,7 @@ struct atom
     double mass;
     std::vector<atomic_level_nlk> nlk_list;
     std::vector<atomic_level_nl> nl_list;
+    double NIST_LDA_Etot;
 };
 
 std::vector<atom> atoms(104); 
@@ -69,32 +70,120 @@ void potxc(std::vector<double>& rho, std::vector<double>& vxc, std::vector<doubl
 
 void solve_atom(atom& a)
 {
-    sirius::radial_grid r(sirius::exponential_grid, 30000, 1e-8, 100.0);
+    sirius::radial_grid r(sirius::exponential_grid, 4000, 1e-8, 30.0);
     
     sirius::radial_solver solver(false, -1.0 * a.zn, r);
 
-    std::vector<double> v(r.size(), 0.0);
+    std::vector<double> veff(r.size());
+    std::vector<double> vnuc(r.size());
     for (int i = 0; i < r.size(); i++)
-        v[i] = -1.0 * a.zn / r[i];
-    
-    std::vector<double> p;
-
-    std::vector<double> rho(r.size());
-
-    memset(&rho[0], 0, rho.size() * sizeof(double));
-
-    for (int ist = 0; ist < a.nl_list.size(); ist++)
     {
-        double enu = -0.5;
-        solver.bound_state(a.nl_list[ist].n, a.nl_list[ist].l, enu, v, p);
+        vnuc[i] = -1.0 * a.zn / r[i];
+        veff[i] = vnuc[i];
+    }
+    
+    sirius::spline rho(r.size(), r);
+    
+    sirius::spline f(r.size(), r);
+    
+    std::vector<double> vh(r.size());
+    std::vector<double> vxc;
+    std::vector<double> exc;
+    std::vector<double> g1;
+    std::vector<double> g2;
+    std::vector<double> p;
+    std::vector<double> rho_old;
+    
+    std::vector<double> enu(a.nl_list.size());
+    
+    double energy_tot = 1e100;
+    double energy_tot_old;
+    double charge_rms;
+    double energy_diff;
+    
+    double beta = 0.5;
+
+    for (int iter = 0; iter < 100; iter++)
+    {
+        rho_old = rho.data_points();
+        
+        memset(&rho[0], 0, rho.size() * sizeof(double));
+
+        for (int ist = 0; ist < a.nl_list.size(); ist++)
+        {
+            enu[ist] = -1.0 * a.zn / 2 / pow(a.nl_list[ist].n, 2);
+
+            solver.bound_state(a.nl_list[ist].n, a.nl_list[ist].l, enu[ist], veff, p);
+            
+            for (int i = 0; i < r.size(); i++)
+                rho[i] += a.nl_list[ist].occupancy * pow(y00 * p[i] / r[i], 2);
+        }
+        
+        charge_rms = 0.0;
+        for (int i = 0; i < r.size(); i++)
+            charge_rms += pow(rho[i] - rho_old[i], 2);
+        charge_rms = sqrt(charge_rms / r.size());
+        
+        rho.interpolate();
+        
+        //std::cout << "number of electrons : " << fourpi * rho.integrate(2) << std::endl;
+
+        rho.integrate(g2, 2);
+        double t1 = rho.integrate(g1, 1);
 
         for (int i = 0; i < r.size(); i++)
-            rho[i] += a.nl_list[ist].occupancy * pow(y00 * p[i] / r[i], 2);
-    }
+            vh[i] = fourpi * (g2[i] / r[i] + t1 - g1[i]);
 
-    sirius::spline rho_spline(r.size(), r, rho);
+        potxc(rho.data_points(), vxc, exc);
+
+        for (int i = 0; i < r.size(); i++)
+            veff[i] = (1 - beta) * veff[i] + beta * (vnuc[i] + vh[i] + vxc[i]);
+        
+        // kinetic energy
+        for (int i = 0; i < r.size(); i++)
+            f[i] = veff[i] * rho[i];
+        f.interpolate();
+        
+        double eval_sum = 0.0;
+        for (int ist = 0; ist < a.nl_list.size(); ist++)
+            eval_sum += a.nl_list[ist].occupancy * enu[ist];
+
+        double energy_kin = eval_sum - fourpi * f.integrate(2);
+
+        // xc energy
+        for (int i = 0; i < r.size(); i++)
+            f[i] = exc[i] * rho[i];
+        f.interpolate();
+        double energy_xc = fourpi * f.integrate(2); 
+        
+        // electron-nuclear energy
+        for (int i = 0; i < r.size(); i++)
+            f[i] = vnuc[i] * rho[i];
+        f.interpolate();
+        double energy_enuc = fourpi * f.integrate(2); 
+
+        // Coulomb energy
+        for (int i = 0; i < r.size(); i++)
+            f[i] = vh[i] * rho[i];
+        f.interpolate();
+        double energy_coul = 0.5 * fourpi * f.integrate(2);
+        
+        energy_tot_old = energy_tot;
+
+        energy_tot = energy_kin + energy_xc + energy_coul + energy_enuc; 
+        
+        energy_diff = fabs(energy_tot - energy_tot_old);
+        
+        if (energy_diff < 1e-7 && charge_rms < 1e-7) break;
+    }
     
-    std::cout << "number of electrons : " << fourpi * rho_spline.integrate(2) << std::endl;
+    
+    std::cout << " atom : " << a.symbol << "    Z : " << a.zn << std::endl;
+    std::cout << " =================== " << std::endl;
+    std::cout << "total energy : " << energy_tot 
+              << ",  convergence (charge, energy) : " << charge_rms << " " << energy_diff 
+              << ",  difference with NIST : " << fabs(energy_tot - a.NIST_LDA_Etot) << std::endl;
+    std::cout << std::endl;
 }
 
 int main(int argn, char **argv)
@@ -103,7 +192,6 @@ int main(int argn, char **argv)
     
     for (int i = 0; i < atoms.size(); i++)
     {
-        std::cout << " i = " << i << " atom : " << atoms[i].symbol << std::endl;
         solve_atom(atoms[i]);
     }
     
@@ -126,9 +214,12 @@ while 1:
     if not line: break
     if line.find("atom") == 0:
         fout.write("\n");
+        
         line = fin.readline() # atomic number
         s1 = line.split()
         zn = int(s1[0])
+        fout.write("    atoms[" + str(zn - 1) + "].zn = " + str(zn) + "; \n")
+        
         line = fin.readline() # symbol and name
         line = line.replace("'", " ")
         s1 = line.split()
@@ -170,6 +261,14 @@ while 1:
         fout.write("            } \n")    
         fout.write("        } \n")
         fout.write("    } \n")
+        
+        line = fin.readline() # NIST LDA Etot
+        line = line.strip()
+        if  (line != ""):
+            s1 = line.split()
+            fout.write("    atoms[" + str(zn - 1) + "].NIST_LDA_Etot = " + s1[0] + "; \n")
+        else:
+            fout.write("    atoms[" + str(zn - 1) + "].NIST_LDA_Etot = 0.0; \n")
 
 
 fout.write("}\n")    
