@@ -1,6 +1,8 @@
 #ifndef __CONSTANTS_H__
 #define __CONSTANTS_H__
 
+#include "atomic_conf.h"
+
 const int blas_worker = 1;
 const int lapack_worker = 2;
 const int cublas_worker = 3;

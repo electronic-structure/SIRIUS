@@ -62,7 +62,7 @@ int radial_solver::integrate(int nr, int l, double enu, sirius::spline& ve, siri
 
     // TODO: check r->0 asymptotic
     p[0] = pow(r[0], l + 1) * exp(zn * r[0] / (l + 1));
-    q[0] = 0.0; //(0.5 / m2) * p[0] * (l / r[0] + zn / (l + 1));
+    q[0] = 0; // (0.5 / m2) * p[0] * (l / r[0] + zn / (l + 1));
 
     double p2 = p[0];
     double q2 = q[0];

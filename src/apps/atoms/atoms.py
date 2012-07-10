@@ -34,7 +34,7 @@ struct atom
 
 std::vector<atom> atoms(104); 
 
-void atom_configuration();
+void init_atom_configuration();
 
 void potxc(std::vector<double>& rho, std::vector<double>& vxc, std::vector<double>& exc)
 {
@@ -70,7 +70,7 @@ void potxc(std::vector<double>& rho, std::vector<double>& vxc, std::vector<doubl
 
 void solve_atom(atom& a)
 {
-    sirius::radial_grid r(sirius::exponential_grid, 4000, 1e-8, 30.0);
+    sirius::radial_grid r(sirius::exponential_grid, 2000, 1e-6 / a.zn, 20.0);
     
     sirius::radial_solver solver(false, -1.0 * a.zn, r);
 
@@ -83,6 +83,7 @@ void solve_atom(atom& a)
     }
     
     sirius::spline rho(r.size(), r);
+    sirius::spline rho_core(r.size(), r);
     
     sirius::spline f(r.size(), r);
     
@@ -102,14 +103,18 @@ void solve_atom(atom& a)
     double energy_diff;
     
     double beta = 0.5;
+    
+    double ecore_cutoff = -3.0;
 
     for (int iter = 0; iter < 100; iter++)
     {
         rho_old = rho.data_points();
         
         memset(&rho[0], 0, rho.size() * sizeof(double));
+        
+        memset(&rho_core[0], 0, rho_core.size() * sizeof(double));
 
-        for (int ist = 0; ist < a.nl_list.size(); ist++)
+        for (int ist = 0; ist < (int)a.nl_list.size(); ist++)
         {
             enu[ist] = -1.0 * a.zn / 2 / pow(a.nl_list[ist].n, 2);
 
@@ -117,6 +122,12 @@ void solve_atom(atom& a)
             
             for (int i = 0; i < r.size(); i++)
                 rho[i] += a.nl_list[ist].occupancy * pow(y00 * p[i] / r[i], 2);
+            
+            if (enu[ist] < ecore_cutoff) 
+                for (int i = 0; i < r.size(); i++)
+                    rho_core[i] += a.nl_list[ist].occupancy * pow(y00 * p[i] / r[i], 2);
+                  
+            
         }
         
         charge_rms = 0.0;
@@ -145,7 +156,7 @@ void solve_atom(atom& a)
         f.interpolate();
         
         double eval_sum = 0.0;
-        for (int ist = 0; ist < a.nl_list.size(); ist++)
+        for (int ist = 0; ist < (int)a.nl_list.size(); ist++)
             eval_sum += a.nl_list[ist].occupancy * enu[ist];
 
         double energy_kin = eval_sum - fourpi * f.integrate(2);
@@ -177,29 +188,150 @@ void solve_atom(atom& a)
         if (energy_diff < 1e-7 && charge_rms < 1e-7) break;
     }
     
+    rho_core.interpolate();
+    
+    double ncore = fourpi * rho_core.integrate(g2, 2);
+    
+    double core_radius = 1.0;
+    if (ncore > 1.0)
+    {
+        for (int i = 0; i < r.size(); i++)
+            if (fabs(ncore - fourpi * g2[i]) < 0.001 * ncore) 
+            {
+                core_radius = r[i];
+                break;
+            }
+    }
     
     std::cout << " atom : " << a.symbol << "    Z : " << a.zn << std::endl;
     std::cout << " =================== " << std::endl;
-    std::cout << "total energy : " << energy_tot 
-              << ",  convergence (charge, energy) : " << charge_rms << " " << energy_diff 
-              << ",  difference with NIST : " << fabs(energy_tot - a.NIST_LDA_Etot) << std::endl;
+    std::cout << " convergence (charge, energy) : " << charge_rms << " " << energy_diff << std::endl;
+    std::cout << " total energy : " << energy_tot << ", NIST value : " <<  a.NIST_LDA_Etot 
+              << ", difference : " << fabs(energy_tot - a.NIST_LDA_Etot) << std::endl;
+    std::cout << " number of core electrons : " <<  ncore << std::endl;
+    std::cout << " muffin-tin radius : " <<  core_radius << std::endl;
     std::cout << std::endl;
+    
+    std::string fname = a.symbol + std::string(".json");
+    std::ofstream fout(fname.c_str());
+    fout << "{" << std::endl;
+    fout << "  \\"name\\"   : \\"" << a.name << "\\"," << std::endl;
+    fout << "  \\"symbol\\" : \\"" << a.symbol << "\\"," << std::endl;
+    fout << "  \\"number\\" : " << a.zn << "," << std::endl;
+    fout << "  \\"mass\\"   : " << a.mass << "," << std::endl;
+    fout << "  \\"rmin\\"   : " << r[0] << "," << std::endl;
+    fout << "  \\"rmax\\"   : " << r[r.size() - 1] << "," << std::endl;
+    fout << "  \\"rmt\\"    : " << core_radius << "," << std::endl;
+    fout << "  \\"nrmt\\"   : " <<  800 << "," << std::endl;
+    
+    std::vector<atomic_level_nl> core;
+    std::vector<atomic_level_nl> valence;
+    for (int ist = 0; ist < (int)a.nl_list.size(); ist++)
+    {
+        if (enu[ist] < ecore_cutoff)
+        {
+            /*for (int jst = 0; jst < (int)a.nlk_list.size(); jst++)
+            {
+                if ((a.nlk_list[jst].n == a.nl_list[ist].n) && (a.nlk_list[jst].l == a.nl_list[ist].l)) 
+                    core.push_back(a.nlk_list[jst]);
+            }*/
+            core.push_back(a.nl_list[ist]);
+        }
+        else
+            valence.push_back(a.nl_list[ist]);
+        
+    }
+    
+    /*fout << "  \\"core\\"   : [";
+    for (int i = 0; i < (int)core.size(); i++)
+    {
+        if (i) fout << ",";
+        fout << std::endl << "    {\\"n\\" : " << core[i].n << ", \\"l\\" : " << core[i].l << ", \\"k\\" : " << core[i].k 
+             << ", \\"occupancy\\" : " << core[i].occupancy << "}";
+    }
+    fout << "]," << std::endl; */
+    
+    std::string symb[] = {"s", "p", "d", "f"};
+    std::string core_str;
+    for (int i = 0; i < (int)core.size(); i++)
+    {
+        std::stringstream ss;
+        ss << core[i].n;
+        core_str += (ss.str() + symb[core[i].l]);
+    }
+    fout << "  \\"core\\"   : \\"" << core_str << "\\", " << std::endl;
+    
+    fout << "  \\"valence\\" : [" << std::endl;
+    fout << "    {\\"l\\" : -1, \\"basis\\" : [{\\"enu\\" : 0.15, \\"dme\\" : 0, \\"auto\\" : false}]}";
+    
+    int lmax = 0;
+    for (int i = 0; i < (int)valence.size(); i++)
+        lmax = std::max(lmax, valence[i].l); 
+    lmax = std::min(lmax + 1, 4);
+    for (int l = 0; l <= lmax; l++)
+    {
+        int n = l + 1;
+        
+        for (int i = 0; i < (int)core.size(); i++)
+            if (core[i].l == l)
+                n = core[i].n + 1;
+        
+        for (int i = 0; i < (int)valence.size(); i++)
+            if (valence[i].l == l) 
+                n = valence[i].n;
+               
+        fout << "," << std::endl 
+             << "    {\\"l\\" : " << l << ", \\"n\\" : " << n << ", \\"basis\\" : [{\\"enu\\" : 0.15, \\"dme\\" : 0, \\"auto\\" : true}]}";
+    }
+    fout << "]," << std::endl;
+    
+    fout.close();
+    
 }
 
 int main(int argn, char **argv)
 {
-    atom_configuration();
+    init_atom_configuration();
     
-    for (int i = 0; i < atoms.size(); i++)
+    for (int i = 0; i < (int)atoms.size(); i++)
     {
-        solve_atom(atoms[i]);
+        for (int ist = 0; ist < (int)atoms[i].nlk_list.size(); ist++)
+        {
+            if ((atomic_conf[i][ist][0] != atoms[i].nlk_list[ist].n) ||
+                (atomic_conf[i][ist][1] != atoms[i].nlk_list[ist].l) ||
+                (atomic_conf[i][ist][2] != atoms[i].nlk_list[ist].k) ||
+                (atomic_conf[i][ist][3] != atoms[i].nlk_list[ist].occupancy)) 
+                stop(std::cout << "wrong atomic_conf array");
+        }
+        solve_atom(atoms[i]); 
     }
     
-
-
+    std::ofstream fout("atomic_conf.h");
+    fout << "const int atomic_conf[104][28][4] = " << std::endl;
+    fout << "{" << std::endl;
+    for (int iat = 0; iat < (int)atoms.size(); iat++)
+    {
+        if (iat) fout << ", " << std::endl;
+        fout << "   {";
+        for (int ist = 0; ist < (int)atoms[iat].nlk_list.size(); ist++)
+        {
+            if (ist) fout << ", ";
+            fout << "{" << atoms[iat].nlk_list[ist].n << ", " 
+                        << atoms[iat].nlk_list[ist].l << ", "
+                        << atoms[iat].nlk_list[ist].k << ", "
+                        << atoms[iat].nlk_list[ist].occupancy << "}";
+        }
+        for (int ist = atoms[iat].nlk_list.size(); ist < 28; ist++)
+        {
+            fout << ", {-1, -1, -1, -1}";
+        }
+        fout << "}";
+    }
+    fout << std::endl << "};" << std::endl;
+    fout.close();
 }
 
-void atom_configuration() 
+void init_atom_configuration() 
 {
     int nl_occ[7][4];
     atomic_level_nlk nlk;
