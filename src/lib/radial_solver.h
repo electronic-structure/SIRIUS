@@ -1,8 +1,6 @@
 #ifndef __RADIAL_SOLVER_H__
 #define __RADIAL_SOLVER_H__
 
-#include "sirius.h"
-
 /*! \brief solves a scalar relativistic equation
     
     \f{eqnarray*}{

@@ -2,7 +2,6 @@
 #define __LINALG_CPU_H__
 
 #include <stdint.h>
-#include <complex>
 #include "config.h"
 
 extern "C" void FORTRAN(zgemm)(const char *transa, const char *transb, int32_t *m, int32_t *n, 

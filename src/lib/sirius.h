@@ -11,10 +11,12 @@
 #include <cmath>
 #include <assert.h>
 #include "config.h"
+#include "constants.h"
 #include "mdarray.h"
 #include "linalg.h"
 #include "radial_grid.h"
 #include "spline.h"
 #include "radial_solver.h"
+#include "json_tree.h"
 
 #endif // __SIRIUS_H__

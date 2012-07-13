@@ -215,14 +215,14 @@ void solve_atom(atom& a)
     std::string fname = a.symbol + std::string(".json");
     std::ofstream fout(fname.c_str());
     fout << "{" << std::endl;
-    fout << "  \\"name\\"   : \\"" << a.name << "\\"," << std::endl;
-    fout << "  \\"symbol\\" : \\"" << a.symbol << "\\"," << std::endl;
-    fout << "  \\"number\\" : " << a.zn << "," << std::endl;
-    fout << "  \\"mass\\"   : " << a.mass << "," << std::endl;
-    fout << "  \\"rmin\\"   : " << r[0] << "," << std::endl;
-    fout << "  \\"rmax\\"   : " << r[r.size() - 1] << "," << std::endl;
-    fout << "  \\"rmt\\"    : " << core_radius << "," << std::endl;
-    fout << "  \\"nrmt\\"   : " <<  800 << "," << std::endl;
+    fout << "  \\"name\\"    : \\"" << a.name << "\\"," << std::endl;
+    fout << "  \\"symbol\\"  : \\"" << a.symbol << "\\"," << std::endl;
+    fout << "  \\"number\\"  : " << a.zn << "," << std::endl;
+    fout << "  \\"mass\\"    : " << a.mass << "," << std::endl;
+    fout << "  \\"rmin\\"    : " << r[0] << "," << std::endl;
+    fout << "  \\"rmax\\"    : " << r[r.size() - 1] << "," << std::endl;
+    fout << "  \\"rmt\\"     : " << core_radius << "," << std::endl;
+    fout << "  \\"nrmt\\"    : " <<  800 << "," << std::endl;
     
     std::vector<atomic_level_nl> core;
     std::vector<atomic_level_nl> valence;
@@ -242,7 +242,7 @@ void solve_atom(atom& a)
         
     }
     
-    /*fout << "  \\"core\\"   : [";
+    /*fout << "  \\"core\\"    : [";
     for (int i = 0; i < (int)core.size(); i++)
     {
         if (i) fout << ",";
@@ -259,7 +259,7 @@ void solve_atom(atom& a)
         ss << core[i].n;
         core_str += (ss.str() + symb[core[i].l]);
     }
-    fout << "  \\"core\\"   : \\"" << core_str << "\\", " << std::endl;
+    fout << "  \\"core\\"    : \\"" << core_str << "\\", " << std::endl;
     
     fout << "  \\"valence\\" : [" << std::endl;
     fout << "    {\\"l\\" : -1, \\"basis\\" : [{\\"enu\\" : 0.15, \\"dme\\" : 0, \\"auto\\" : false}]}";
@@ -285,6 +285,16 @@ void solve_atom(atom& a)
     }
     fout << "]," << std::endl;
     
+    fout << "  \\"lo\\"      : [";
+    for (int i = 0; i < (int)valence.size(); i++)
+    {
+        if (i) fout << ",";
+        fout << std::endl;
+        fout << "    {\\"l\\" : " << valence[i].l << ", \\"n\\" : " << valence[i].n
+             << ", \\"basis\\" : [{\\"enu\\" : 0.15, \\"dme\\" : 0, \\"auto\\" : true}, {\\"enu\\" : 0.15, \\"dme\\" : 1, \\"auto\\" : true}]}";
+    }
+    fout << "]" << std::endl;
+    fout<< "}" << std::endl;
     fout.close();
     
 }
@@ -328,6 +338,16 @@ int main(int argn, char **argv)
         fout << "}";
     }
     fout << std::endl << "};" << std::endl;
+    fout.close();
+    
+    fout.open("atomic_symb.h");
+    fout << "const std::string atomic_symb[104] = {";
+    for (int iat = 0; iat < (int)atoms.size(); iat++)
+    {
+        if (iat) fout << ", ";
+        fout << "\\"" << atoms[iat].symbol << "\\"";
+    }
+    fout << "};" << std::endl;
     fout.close();
 }
 

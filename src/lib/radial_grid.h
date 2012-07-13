@@ -1,10 +1,6 @@
 #ifndef __RADIAL_GRID_H__
 #define __RADIAL_GRID_H__
 
-//#include <cmath>
-//#include <vector>
-//#include "sirius.h"
-
 namespace sirius {
 
 enum radial_grid_type {linear_grid, exponential_grid, linear_exponential_grid};
