@@ -70,9 +70,9 @@ void potxc(std::vector<double>& rho, std::vector<double>& vxc, std::vector<doubl
 
 void solve_atom(atom& a)
 {
-    sirius::radial_grid r(sirius::exponential_grid, 2000, 1e-6 / a.zn, 20.0);
+    sirius::RadialGrid r(sirius::exponential_grid, 2000, 1e-6 / a.zn, 20.0);
     
-    sirius::radial_solver solver(false, -1.0 * a.zn, r);
+    sirius::RadialSolver solver(false, -1.0 * a.zn, r);
 
     std::vector<double> veff(r.size());
     std::vector<double> vnuc(r.size());
@@ -82,10 +82,10 @@ void solve_atom(atom& a)
         veff[i] = vnuc[i];
     }
     
-    sirius::spline rho(r.size(), r);
-    sirius::spline rho_core(r.size(), r);
+    sirius::Spline rho(r.size(), r);
+    sirius::Spline rho_core(r.size(), r);
     
-    sirius::spline f(r.size(), r);
+    sirius::Spline f(r.size(), r);
     
     std::vector<double> vh(r.size());
     std::vector<double> vxc;
@@ -118,7 +118,7 @@ void solve_atom(atom& a)
         {
             enu[ist] = -1.0 * a.zn / 2 / pow(a.nl_list[ist].n, 2);
 
-            solver.bound_state(a.nl_list[ist].n, a.nl_list[ist].l, enu[ist], veff, p);
+            solver.bound_state(a.nl_list[ist].n, a.nl_list[ist].l, veff, enu[ist], p);
             
             for (int i = 0; i < r.size(); i++)
                 rho[i] += a.nl_list[ist].occupancy * pow(y00 * p[i] / r[i], 2);
