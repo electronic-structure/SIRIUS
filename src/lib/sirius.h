@@ -18,5 +18,8 @@
 #include "spline.h"
 #include "radial_solver.h"
 #include "json_tree.h"
+#include "atom_type.h"
+//#include "site.h"
+//#include "global.h"
 
 #endif // __SIRIUS_H__

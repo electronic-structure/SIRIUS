@@ -4,7 +4,7 @@ include ../../make.inc
 
 NVCC = nvcc
 
-OBJ = linalg_cpu.o jsoncpp.o
+OBJ = linalg_cpu.o json.o sirius.o
       
 ifneq (,$(findstring D_GPU_,$(CPP_OPT)))
 	OBJ := $(OBJ) gpu_interface.o

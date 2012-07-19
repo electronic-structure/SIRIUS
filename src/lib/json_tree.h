@@ -1,14 +1,11 @@
 #ifndef __JSON_TREE_H__
 #define __JSON_TREE_H__
 
-#include <stdlib.h>
 #include <string>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include "json.h"
-
-enum json_error_handling {ignore, warn, die};
 
 template<typename T> class json_value_parser 
 {
@@ -93,39 +90,45 @@ template<> json_value_parser<std::string>::json_value_parser(const Json::Value& 
         data_ = value.asString();
 }
 
-class json_tree 
+class JsonTree 
 {
     private:
         
         Json::Value node;
         
-        json_error_handling on_invalid_value;
-         
-        json_error_handling on_empty_value;
+        std::string path;
+        
+        template <typename T> inline bool parse_value(T& val)
+        {
+            json_value_parser<T> v(node);
+            if (v.is_empty() || (!v.is_valid())) 
+                return false;
+            else
+            {
+                val = v.data();
+                return true;
+            }
+
+        }
         
     public:
     
-        json_tree() : node(0)  
-        {
-            on_invalid_value = die;
-            on_empty_value = warn;
-        }
-
-        json_tree(Json::Value node, 
-                  json_error_handling on_invalid_value = die, 
-                  json_error_handling on_empty_value = warn) : node(node), 
-                                                               on_invalid_value(on_invalid_value), 
-                                                               on_empty_value(on_empty_value) 
+        JsonTree() : node(0)  
         {
         }
 
-        json_tree(const std::string& fname) : on_invalid_value(die),
-                                              on_empty_value(warn)
+        JsonTree(Json::Value node, 
+                 std::string& path) : node(node),
+                                      path(path)  
+        {
+        }
+
+        JsonTree(const std::string& fname) 
         {
             parse(fname);
         }
         
-        ~json_tree() 
+        ~JsonTree() 
         {
         };
     
@@ -148,55 +151,54 @@ class json_tree
             return node.size();
         }
     
-        inline json_tree operator [] (const char *key) const 
+        inline JsonTree operator [] (const char *key) const 
         {
-            return json_tree(node[key], on_invalid_value, on_empty_value);
+            std::string new_path = path + std::string("/") + std::string(key);
+            return JsonTree(node[key], new_path);
         }
     
-        inline json_tree operator [] (const int key) const 
+        inline JsonTree operator [] (const int key) const 
         {
-            return json_tree(node[(Json::UInt)key], on_invalid_value, on_empty_value);
+            std::stringstream s;
+            s << key;
+            std::string new_path = path + std::string("/") + s.str();
+            return JsonTree(node[(Json::UInt)key], new_path);
         }
 
-        template <typename T> inline void operator >> (T &var)
+        template <typename T> inline T get()
         {
-            json_value_parser<T> v(node);
-            
-            if (v.is_empty()) 
-            {
-                std::string err_msg = "null value of type " + v.type_name();
-                switch(on_empty_value)
-                {
-                    case ignore:
-                        break;
-                        
-                    case warn:
-                        throw(std::logic_error(err_msg));
-                    
-                    case die:
-                        stop(std::cout << err_msg);
-
-                }
-            }
-
-            if (!v.is_valid()) 
-            {
-                std::string err_msg = "invalid value of type " + v.type_name();
-                switch(on_invalid_value)
-                {
-                    case ignore:
-                        break;
-                        
-                    case warn:
-                        throw(std::logic_error(err_msg));
-
-                    case die:
-                        stop(std::cout << err_msg);
-                }
-            }
-
-            var = v.data();
+            T val;
+            if (parse_value(val)) 
+                return val;
+            else
+                stop(std::cout << "null or invalid value" << std::endl << "path : " << path);
         }
+        
+        template <typename T> inline T get(T& default_val)
+        {
+            T val;
+            if (parse_value(val)) 
+                return val;
+            else
+                return default_val;
+        }
+        
+        template <typename T> inline T get(T default_val)
+        {
+            T val;
+            if (parse_value(val)) 
+                return val;
+            else
+                return default_val;
+        }
+        
+
+        template <typename T> inline void operator >> (T& val)
+        {
+            if (!parse_value(val)) 
+                stop(std::cout << "null or invalid value" << std::endl << "path : " << path);
+        }
+        
 };
 
 #endif // __JSON_TREE_H__
