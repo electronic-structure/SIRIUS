@@ -5,7 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
-#include "json.h"
+#include "../libjson/libjson.h"
 
 template<typename T> class json_value_parser 
 {
@@ -15,20 +15,12 @@ template<typename T> class json_value_parser
         
         bool is_valid_;
         
-        bool is_empty_;
-        
-        T data_;
-    
     public:
         
-        json_value_parser(const Json::Value& value);
+        json_value_parser(const JSONNode& value, 
+                          T& val);
         
-        inline T data()
-        {
-            return data_;
-        }
-
-        std::string& type_name()
+        const std::string& type_name()
         {
             return type_name_;
         }
@@ -37,87 +29,80 @@ template<typename T> class json_value_parser
         {
             return is_valid_;
         }
-        
-        inline bool is_empty()
-        {
-            return is_empty_;
-        }
 };
 
-template<> json_value_parser<int>::json_value_parser(const Json::Value& value) 
+template<> json_value_parser<int>::json_value_parser(const JSONNode& value, 
+                                                     int& data) : type_name_("int"), 
+                                                                  is_valid_(true)
 {
-    type_name_ = "int";
-    is_empty_ = value.empty();
-    is_valid_ = value.isIntegral();
+    if (value.type() != JSON_NUMBER) 
+        is_valid_ = false;
+    
     if (is_valid_) 
-        data_ = value.asInt();
+        data = value.as_int();
 }
 
-template<> json_value_parser<double>::json_value_parser(const Json::Value& value) 
+template<> json_value_parser<double>::json_value_parser(const JSONNode& value, 
+                                                        double& data) : type_name_("double"), 
+                                                                        is_valid_(true)
 {
-    type_name_ = "double";
-    is_empty_ = value.empty();
-    is_valid_ = value.isNumeric();
+    if (value.type() != JSON_NUMBER)
+        is_valid_ = false;
+        
     if (is_valid_) 
-        data_ = value.asDouble();
+        data = value.as_float();
 }
 
-template<> json_value_parser< std::vector<double> >::json_value_parser(const Json::Value& value) 
+template<> json_value_parser< std::vector<double> >::json_value_parser(const JSONNode& value, 
+                                                                       std::vector<double>& data) : type_name_("vector<double>"), 
+                                                                                                    is_valid_(true)
 {
-    type_name_ = "vector<double>";
-    is_empty_ = value.empty();
-    is_valid_ = value.isArray();
+    if (value.type() != JSON_ARRAY) 
+        is_valid_ = false;
+    
     if (is_valid_) 
     {
-        data_.clear();
-        for (int i = 0; i < (int)value.size(); i++) 
+        data.clear();
+        for (int i = 0; i < (int)value.size(); i++)
         {
-            json_value_parser<double> t(value[i]);
-            is_empty_ = is_empty_ && t.is_empty();
-            is_valid_ = is_valid_ && t.is_valid();
+            double t;
+            json_value_parser<double> v(value[i], t);
+            is_valid_ = is_valid_ && v.is_valid();
             if (is_valid_) 
-                data_.push_back(t.data());
+                data.push_back(t);
         }
     }
 }
 
-template<> json_value_parser<std::string>::json_value_parser(const Json::Value& value) 
+template<> json_value_parser<std::string>::json_value_parser(const JSONNode& value, 
+                                                             std::string& data) : type_name_("string"), 
+                                                                                  is_valid_(true)
 {
-    type_name_ = "string";
-    is_empty_ = value.empty();
-    is_valid_ = value.isString();
+    if (value.type() != JSON_STRING)
+        is_valid_ = false;
+        
     if (is_valid_) 
-        data_ = value.asString();
+        data = value.as_string();
 }
 
 class JsonTree 
 {
     private:
         
-        Json::Value node;
+        JSONNode node;
         
         std::string path;
         
         template <typename T> inline bool parse_value(T& val)
         {
-            json_value_parser<T> v(node);
-            if (v.is_empty() || (!v.is_valid())) 
-                return false;
-            else
-            {
-                val = v.data();
-                return true;
-            }
-
+            json_value_parser<T> v(node, val);
+            return v.is_valid();
         }
         
     public:
     
-        JsonTree() : node(0)  
-        {
-        }
 
-        JsonTree(Json::Value node, 
+        JsonTree(JSONNode& node, 
                  std::string& path) : node(node),
                                       path(path)  
         {
@@ -134,27 +119,38 @@ class JsonTree
     
         void parse(const std::string& fname)
         {
-            Json::Reader reader;
-            Json::Value root;
-            std::ifstream in(fname.c_str());
+            std::ifstream ifs;
+            ifs.open(fname.c_str(), std::ios::binary);
+            ifs.seekg(0, std::ios::end);
+            int length = ifs.tellg();
+            ifs.seekg(0, std::ios::beg);
             
-            if (!reader.parse(in, root)) 
-            {
-                stop(std::cout << "Error parsing " << fname << std::endl << 
-                     reader.getFormatedErrorMessages() << std::endl);
-            }
-            node = root;
+            std::string buffer(length, ' ');
+            ifs.read(&buffer[0], length);
+            ifs.close();
+
+            node = libjson::parse(buffer);
         }
 
-        inline int size() 
+        /*inline int size() 
         {
             return node.size();
-        }
+        }*/
     
-        inline JsonTree operator [] (const char *key) const 
+        inline JsonTree operator [] (const char *key_) const 
         {
-            std::string new_path = path + std::string("/") + std::string(key);
-            return JsonTree(node[key], new_path);
+            std::string key(key_);
+            std::string new_path = path + std::string("/") + key;
+            JSONNode n;
+            try
+            {
+                n = node.at(key);
+            }
+            catch (const std::out_of_range& e)
+            {
+
+            }
+            return JsonTree(n, new_path);
         }
     
         inline JsonTree operator [] (const int key) const 
@@ -162,7 +158,16 @@ class JsonTree
             std::stringstream s;
             s << key;
             std::string new_path = path + std::string("/") + s.str();
-            return JsonTree(node[(Json::UInt)key], new_path);
+            JSONNode n;
+            try
+            {
+                n = node.at(key);
+            }
+            catch (const std::out_of_range& e)
+            {
+
+            }
+            return JsonTree(n, new_path);
         }
 
         template <typename T> inline T get()
@@ -173,7 +178,7 @@ class JsonTree
             else
                 stop(std::cout << "null or invalid value" << std::endl << "path : " << path);
         }
-        
+                
         template <typename T> inline T get(T& default_val)
         {
             T val;
@@ -192,13 +197,11 @@ class JsonTree
                 return default_val;
         }
         
-
         template <typename T> inline void operator >> (T& val)
         {
             if (!parse_value(val)) 
                 stop(std::cout << "null or invalid value" << std::endl << "path : " << path);
         }
-        
-};
+}; 
 
 #endif // __JSON_TREE_H__
