@@ -123,7 +123,7 @@ class RadialGrid
             
             if (infinity_ == mt_radius_ && mt_num_points() != size())
             {
-                stop(std::cout << "Rradial grid is wrong");
+                stop(std::cout << "radial grid is wrong");
             }
         }
 
@@ -152,15 +152,15 @@ class RadialGrid
             switch(grid_type_)
             {
                 case linear_grid:
-                    std::cout << "Linear grid" << std::endl;
+                    std::cout << "linear grid" << std::endl;
                     break;
                     
                 case exponential_grid:
-                    std::cout << "Exponential grid" << std::endl;
+                    std::cout << "exponential grid" << std::endl;
                     break;
                     
                 case linear_exponential_grid:
-                    std::cout << "Linear exponential grid" << std::endl;
+                    std::cout << "linear exponential grid" << std::endl;
                     break;
             }
             std::cout << "  number of muffin-tin points : " << mt_num_points() << std::endl;
