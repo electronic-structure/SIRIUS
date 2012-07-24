@@ -271,7 +271,7 @@ class AtomType
                           << "  auto : " << apw_default_l_.radial_solution_descriptors[order].auto_enu << std::endl;
 
             std::cout << "APW basis for specific l" << std::endl;
-            for (int j = 0; j < apw_specific_l_.size(); j++)
+            for (int j = 0; j < (int)apw_specific_l_.size(); j++)
             {
                 std::cout << "l : " << apw_specific_l_[j].l << std::endl;
                 for (int order = 0; order < (int)apw_specific_l_[j].radial_solution_descriptors.size(); order++)
@@ -282,7 +282,7 @@ class AtomType
             }
 
             std::cout << "local orbitals" << std::endl;
-            for (int j = 0; j < lo_descriptors_.size(); j++)
+            for (int j = 0; j < (int)lo_descriptors_.size(); j++)
             {
                 std::cout << "l : " << lo_descriptors_[j].l << std::endl;
                 for (int order = 0; order < (int)lo_descriptors_[j].radial_solution_descriptors.size(); order++)

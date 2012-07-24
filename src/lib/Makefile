@@ -4,11 +4,13 @@ include ../../make.inc
 
 NVCC = nvcc
 
-SRC = ../libjson/Source/internalJSONNode.cpp ../libjson/Source/JSONAllocator.cpp ../libjson/Source/JSON_Base64.cpp \
-      ../libjson/Source/JSONChildren.cpp ../libjson/Source/JSONDebug.cpp ../libjson/Source/JSONIterators.cpp \
-      ../libjson/Source/JSONMemory.cpp ../libjson/Source/JSONNode.cpp ../libjson/Source/JSONNode_Mutex.cpp \
-      ../libjson/Source/JSONPreparse.cpp ../libjson/Source/JSONStream.cpp ../libjson/Source/JSONValidator.cpp \
-      ../libjson/Source/JSONWorker.cpp ../libjson/Source/JSONWriter.cpp ../libjson/Source/libjson.cpp \
+SRC = ../libjson/_internal/Source/internalJSONNode.cpp ../libjson/_internal/Source/JSONAllocator.cpp \
+      ../libjson/_internal/Source/JSONChildren.cpp ../libjson/_internal/Source/JSONDebug.cpp \
+      ../libjson/_internal/Source/JSONIterators.cpp ../libjson/_internal/Source/JSONMemory.cpp \
+      ../libjson/_internal/Source/JSONNode.cpp ../libjson/_internal/Source/JSONNode_Mutex.cpp \
+      ../libjson/_internal/Source/JSONPreparse.cpp ../libjson/_internal/Source/JSONStream.cpp \
+      ../libjson/_internal/Source/JSONValidator.cpp ../libjson/_internal/Source/JSONWorker.cpp \
+      ../libjson/_internal/Source/JSONWriter.cpp ../libjson/_internal/Source/libjson.cpp \
       linalg_cpu.cpp sirius.cpp
       
 OBJ = $(SRC:.cpp=.o) 
