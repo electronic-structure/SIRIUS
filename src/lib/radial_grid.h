@@ -10,26 +10,26 @@ class RadialGrid
 {
     private:
         
-        /// starting point
-        double r0;
+        /// starting (zero) point
+        double origin_;
         
         /// infinity point
-        double rinf;
+        double infinity_;
 
         /// muffin-tin radius
-        double mt_radius; 
+        double mt_radius_; 
         
         /// number of muffin-tin radial points
-        int mt_nr_;
+        int mt_num_points_;
 
         /// list of radial points
-        std::vector<double> r;
+        std::vector<double> points_;
         
         /// intervals between points
-        std::vector<double> dr_;
+        std::vector<double> deltas_;
         
         /// type of radial grid
-        radial_grid_type grid_type;
+        radial_grid_type grid_type_;
         
         // forbid copy constructor
         RadialGrid(const RadialGrid& src);
@@ -37,115 +37,119 @@ class RadialGrid
         // forbid '=' operator
         RadialGrid& operator=(const RadialGrid& src);
         
-        void init()
-        {
-            if (grid_type == linear_grid)
-            {
-                double x = r0;
-                double dx = (mt_radius - r0) / (mt_nr_ - 1);
-                int i = 1;
-                
-                while (x <= rinf + 1e-10)
-                {
-                   r.push_back(x);
-                   x = r0 + dx * (i++);
-                }
-            }
-            
-            if (grid_type == exponential_grid)
-            {
-                double x = r0;
-                int i = 1;
-                
-                while (x <= rinf + 1e-10)
-                {
-                    r.push_back(x);
-                    x = r0 * pow((mt_radius / r0), double(i++) / (mt_nr_ - 1));
-                }
-            }
-            
-            if (grid_type == linear_exponential_grid)
-            {
-                double x = r0;
-                double b = log(mt_radius + 1 - r0);
-                int i = 1;
-                
-                while (x <= rinf + 1e-10)
-                {
-                    r.push_back(x);
-                    x = r0 + exp(b * (i++) / double (mt_nr_ - 1)) - 1.0;
-                }
-            }
-            
-            for (int i = 0; i < (int)r.size() - 1; i++)
-            {
-                double d = r[i + 1] - r[i];
-                dr_.push_back(d); 
-            }
-            
-            if (rinf == mt_radius && mt_nr() != size())
-            {
-                stop(std::cout << "Rradial grid is wrong");
-            }
-        }
-
-
     public:
 
-        RadialGrid(radial_grid_type grid_type, 
-                   int mt_nr, 
-                   double r0, 
-                   double mt_radius, 
-                   double rinf) : r0(r0), 
-                                  rinf(rinf),
-                                  mt_radius(mt_radius), 
-                                  mt_nr_(mt_nr), 
-                                  grid_type(grid_type)
-        {
-            init();
-        }
-        
-        RadialGrid(radial_grid_type grid_type, 
-                   int mt_nr, 
-                   double r0, 
-                   double mt_radius) : r0(r0), 
-                                       rinf(mt_radius),
-                                       mt_radius(mt_radius), 
-                                       mt_nr_(mt_nr), 
-                                       grid_type(grid_type)
-
-        {
-            init();
-        }
-        
         RadialGrid()
         {
         
         }
 
+        RadialGrid(radial_grid_type grid_type, 
+                   int mt_num_points, 
+                   double origin, 
+                   double mt_radius, 
+                   double infinity) 
+        {
+            init(grid_type, mt_num_points, origin, mt_radius, infinity);
+        }
+        
+        RadialGrid(radial_grid_type grid_type, 
+                   int mt_num_points, 
+                   double origin, 
+                   double mt_radius) 
+        {
+            init(grid_type, mt_num_points, origin, mt_radius, mt_radius);
+        }
+        
+        void init(radial_grid_type grid_type, 
+                  int _mt_num_points, 
+                  double origin, 
+                  double mt_radius, 
+                  double infinity)
+        {
+            grid_type_ = grid_type;
+            mt_num_points_ = _mt_num_points;
+            origin_ = origin;
+            mt_radius_ = mt_radius;
+            infinity_ = infinity;
+        
+            points_.clear();
+            deltas_.clear();
+
+            double tol = 1e-10;
+
+            if (grid_type_ == linear_grid)
+            {
+                double x = origin_;
+                double dx = (mt_radius_ - origin_) / (mt_num_points_ - 1);
+                
+                while (x <= infinity_ + tol)
+                {
+                   points_.push_back(x);
+                   x += dx;
+                }
+            }
+            
+            if (grid_type_ == exponential_grid)
+            {
+                double x = origin_;
+                int i = 1;
+                
+                while (x <= infinity_ + tol)
+                {
+                    points_.push_back(x);
+                    x = origin_ * pow((mt_radius_ / origin_), double(i++) / (mt_num_points_ - 1));
+                }
+            }
+            
+            if (grid_type_ == linear_exponential_grid)
+            {
+                double x = origin_;
+                double b = log(mt_radius_ + 1 - origin_);
+                int i = 1;
+                
+                while (x <= infinity_ + tol)
+                {
+                    points_.push_back(x);
+                    x = origin_ + exp(b * (i++) / double (mt_num_points_ - 1)) - 1.0;
+                }
+            }
+            
+            for (int i = 0; i < (int)points_.size() - 1; i++)
+            {
+                double d = points_[i + 1] - points_[i];
+                deltas_.push_back(d); 
+            }
+            
+            if (infinity_ == mt_radius_ && mt_num_points() != size())
+            {
+                stop(std::cout << "Rradial grid is wrong");
+            }
+        }
+
         inline double operator [](const int i)
         {
-            return r[i];
+            return points_[i];
         }
         
         inline double dr(const int i)
         {
-            return dr_[i];
+            return deltas_[i];
         }
         
-        inline int mt_nr()
+        inline int mt_num_points()
         {
-            return mt_nr_;
+            return mt_num_points_;
         }
         
         inline int size()
         {
-            return r.size();
+            return points_.size();
         }
-        
+                
         void print_info()
         {
-            switch(grid_type)
+            switch(grid_type_)
             {
                 case linear_grid:
                     std::cout << "Linear grid" << std::endl;
@@ -159,11 +163,11 @@ class RadialGrid
                     std::cout << "Linear exponential grid" << std::endl;
                     break;
             }
-            std::cout << "  number of muffin-tin points : " << mt_nr() << std::endl;
-            std::cout << "  total number of points : " << size() << std::endl;
-            std::cout << "  starting point : " << r[0] << std::endl;
-            std::cout << "  muffin-tin point : " << r[mt_nr() - 1] << std::endl;
-            std::cout << "  effective infinity point : " << r[size() - 1] << std::endl;
+            std::cout << "  number of muffin-tin points : " << mt_num_points() << std::endl;
+            std::cout << "  total number of points      : " << size() << std::endl;
+            std::cout << "  starting point              : " << points_[0] << std::endl;
+            std::cout << "  muffin-tin point            : " << points_[mt_num_points() - 1] << std::endl;
+            std::cout << "  effective infinity point    : " << points_[size() - 1] << std::endl;
         }
 };
 

@@ -31,6 +31,18 @@ template<typename T> class json_value_parser
         }
 };
 
+template<> json_value_parser<bool>::json_value_parser(const JSONNode& value, 
+                                                      bool& data) : type_name_("bool"), 
+                                                                    is_valid_(true)
+{
+    if (value.type() != JSON_BOOL) 
+        is_valid_ = false;
+    
+    if (is_valid_) 
+        data = value.as_bool();
+}
+
+
 template<> json_value_parser<int>::json_value_parser(const JSONNode& value, 
                                                      int& data) : type_name_("int"), 
                                                                   is_valid_(true)
@@ -121,6 +133,10 @@ class JsonTree
         {
             std::ifstream ifs;
             ifs.open(fname.c_str(), std::ios::binary);
+            if (ifs.fail())
+            {
+                stop(std::cout << "error opening " << fname << std::endl);  
+            }
             ifs.seekg(0, std::ios::end);
             int length = ifs.tellg();
             ifs.seekg(0, std::ios::beg);
@@ -132,10 +148,13 @@ class JsonTree
             node = libjson::parse(buffer);
         }
 
-        /*inline int size() 
+        inline int size() 
         {
-            return node.size();
-        }*/
+            if ((node.type() == JSON_ARRAY) || (node.type() ==  JSON_NODE))
+                return node.size();
+            else
+                return 0;
+        }
     
         inline JsonTree operator [] (const char *key_) const 
         {

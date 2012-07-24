@@ -2,12 +2,16 @@
 
 int main(int argn, char **argv)
 {
-    JsonTree parser(std::string("H.json"));
+    sirius::AtomType atom_type(std::string("Si"));
+
+    atom_type.print_info();
+
+    //JsonTree parser(std::string("H.json"));
     
     //std::vector<double> array = parser["array"].get< std::vector<double> >();
     
-    std::string s = parser["str"].get<std::string>();
-    std::cout << s << std::endl;
+    //std::string s = parser["str"].get<std::string>();
+    //std::cout << s << std::endl;
     //double mass = parser["mass1"].get<double>();
     //int l = parser["valence"][0]["l1"] >> l;
     //parser["mass"] >> mass;

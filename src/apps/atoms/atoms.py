@@ -6,29 +6,14 @@ s1 = '''
 #include "../../lib/sirius.h"
 #include <xc.h>
 
-struct atomic_level_nlk 
-{
-    int n;
-    int l;
-    int k;
-    int occupancy;
-};
-
-struct atomic_level_nl
-{
-    int n;
-    int l;
-    int occupancy;
-};
-
 struct atom
 {
     std::string symbol;
     std::string name;
     int zn;
     double mass;
-    std::vector<atomic_level_nlk> nlk_list;
-    std::vector<atomic_level_nl> nl_list;
+    std::vector<sirius::atomic_level_nlk> nlk_list;
+    std::vector<sirius::atomic_level_nl> nl_list;
     double NIST_LDA_Etot;
 };
 
@@ -224,8 +209,8 @@ void solve_atom(atom& a)
     fout << "  \\"rmt\\"     : " << core_radius << "," << std::endl;
     fout << "  \\"nrmt\\"    : " <<  800 << "," << std::endl;
     
-    std::vector<atomic_level_nl> core;
-    std::vector<atomic_level_nl> valence;
+    std::vector<sirius::atomic_level_nl> core;
+    std::vector<sirius::atomic_level_nl> valence;
     for (int ist = 0; ist < (int)a.nl_list.size(); ist++)
     {
         if (enu[ist] < ecore_cutoff)
@@ -354,8 +339,8 @@ int main(int argn, char **argv)
 void init_atom_configuration() 
 {
     int nl_occ[7][4];
-    atomic_level_nlk nlk;
-    atomic_level_nl nl;
+    sirius::atomic_level_nlk nlk;
+    sirius::atomic_level_nl nl;
 '''
 fout = open("atoms.cpp", "w")
 fout.write(s1)
