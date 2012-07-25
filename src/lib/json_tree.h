@@ -1,10 +1,13 @@
 #ifndef __JSON_TREE_H__
 #define __JSON_TREE_H__
 
+#include <stdlib.h>
 #include <string>
-#include <fstream>
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <stdexcept>
+#include <vector>
 #include "../libjson/libjson.h"
 
 template<typename T> class json_value_parser 
@@ -30,72 +33,6 @@ template<typename T> class json_value_parser
             return is_valid_;
         }
 };
-
-template<> json_value_parser<bool>::json_value_parser(const JSONNode& value, 
-                                                      bool& data) : type_name_("bool"), 
-                                                                    is_valid_(true)
-{
-    if (value.type() != JSON_BOOL) 
-        is_valid_ = false;
-    
-    if (is_valid_) 
-        data = value.as_bool();
-}
-
-
-template<> json_value_parser<int>::json_value_parser(const JSONNode& value, 
-                                                     int& data) : type_name_("int"), 
-                                                                  is_valid_(true)
-{
-    if (value.type() != JSON_NUMBER) 
-        is_valid_ = false;
-    
-    if (is_valid_) 
-        data = value.as_int();
-}
-
-template<> json_value_parser<double>::json_value_parser(const JSONNode& value, 
-                                                        double& data) : type_name_("double"), 
-                                                                        is_valid_(true)
-{
-    if (value.type() != JSON_NUMBER)
-        is_valid_ = false;
-        
-    if (is_valid_) 
-        data = value.as_float();
-}
-
-template<> json_value_parser< std::vector<double> >::json_value_parser(const JSONNode& value, 
-                                                                       std::vector<double>& data) : type_name_("vector<double>"), 
-                                                                                                    is_valid_(true)
-{
-    if (value.type() != JSON_ARRAY) 
-        is_valid_ = false;
-    
-    if (is_valid_) 
-    {
-        data.clear();
-        for (int i = 0; i < (int)value.size(); i++)
-        {
-            double t;
-            json_value_parser<double> v(value[i], t);
-            is_valid_ = is_valid_ && v.is_valid();
-            if (is_valid_) 
-                data.push_back(t);
-        }
-    }
-}
-
-template<> json_value_parser<std::string>::json_value_parser(const JSONNode& value, 
-                                                             std::string& data) : type_name_("string"), 
-                                                                                  is_valid_(true)
-{
-    if (value.type() != JSON_STRING)
-        is_valid_ = false;
-        
-    if (is_valid_) 
-        data = value.as_string();
-}
 
 class JsonTree 
 {
@@ -135,7 +72,8 @@ class JsonTree
             ifs.open(fname.c_str(), std::ios::binary);
             if (ifs.fail())
             {
-                stop(std::cout << "error opening " << fname << std::endl);  
+                std::cout << "error opening " << fname << std::endl;
+                exit(0);
             }
             ifs.seekg(0, std::ios::end);
             int length = ifs.tellg();
@@ -195,7 +133,10 @@ class JsonTree
             if (parse_value(val)) 
                 return val;
             else
-                stop(std::cout << "null or invalid value" << std::endl << "path : " << path);
+            {
+                std::cout << "null or invalid value" << std::endl << "path : " << path << std::endl;
+                exit(0);
+            }
         }
                 
         template <typename T> inline T get(T& default_val)
@@ -218,8 +159,11 @@ class JsonTree
         
         template <typename T> inline void operator >> (T& val)
         {
-            if (!parse_value(val)) 
-                stop(std::cout << "null or invalid value" << std::endl << "path : " << path);
+            if (!parse_value(val))
+            { 
+                std::cout << "null or invalid value" << std::endl << "path : " << path << std::endl;
+                exit(0);
+            }
         }
 }; 
 

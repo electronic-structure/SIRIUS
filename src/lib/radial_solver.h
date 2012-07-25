@@ -139,10 +139,9 @@ class RadialSolver
             
             sirius::Spline ve_spline(radial_grid.mt_num_points(), radial_grid, ve);
 
-            std::vector<double> q;
-            //std::vector<double> mp(radial_grid.mt_num_points(), 0.0);
-
             sirius::Spline mp_spline(radial_grid.mt_num_points(), radial_grid);
+
+            std::vector<double> q;
             
             for (int j = 0; j <= m; j++)
             {

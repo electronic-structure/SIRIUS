@@ -276,7 +276,7 @@ class AtomType
             radial_grid_.print_info();
         }
 };
-    
+
 };
 
 #endif // __ATOM_TYPE_H__
