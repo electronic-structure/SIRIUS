@@ -52,7 +52,7 @@ struct radial_solution_descriptor
 };
 
 /// collection of radial solutions for a given angular momentum quantum number l
-class radial_l_solutions_descriptor
+/*class radial_l_solutions_descriptor
 {
     public:
 
@@ -69,7 +69,10 @@ class radial_l_solutions_descriptor
 
         /// list of radial solution descriptors
         std::vector<radial_solution_descriptor> radial_solution_descriptors;
-};
+};*/
+
+/// set of radial solution descriptors, used to construct augmented waves or local orbitals
+typedef std::vector<radial_solution_descriptor> radial_solution_descriptor_set;
 
 class AtomType
 {
@@ -94,17 +97,17 @@ class AtomType
         /// list of core levels
         std::vector<atomic_level_nlk> core_;
         
-        /// default APW configuration
-        radial_l_solutions_descriptor apw_default_l_;
+        /// default augmented wave configuration
+        radial_solution_descriptor_set aw_default_l_;
         
-        /// APW configuration for specific l
-        std::vector<radial_l_solutions_descriptor> apw_specific_l_;
+        /// augmented wave configuration for specific l
+        std::vector<radial_solution_descriptor_set> aw_specific_l_;
 
-        /// list of radial descriptors used to construct apw functions 
-        std::vector<radial_l_solutions_descriptor> apw_descriptors_;
+        /// list of radial descriptor sets used to construct augmented waves 
+        std::vector<radial_solution_descriptor_set> aw_descriptors_;
         
-        /// list of radial descriptors used to construct local orbitals
-        std::vector<radial_l_solutions_descriptor> lo_descriptors_;
+        /// list of radial descriptor sets used to construct local orbitals
+        std::vector<radial_solution_descriptor_set> lo_descriptors_;
        
         /// radial grid
         RadialGrid radial_grid_;
@@ -163,7 +166,7 @@ class AtomType
                             break;
 
                         default:
-                            stop(std::cout << "wrong angular momentum quantum number : " << c2);
+                            stop(std::cout << "wrong angular momentum label : " << c2);
                     }
 
                     atomic_level_nlk level;
@@ -183,7 +186,7 @@ class AtomType
             }
             
             radial_solution_descriptor rsd;
-            radial_l_solutions_descriptor rlsd;
+            radial_solution_descriptor_set rsd_set;
 
             for (int j = 0; j < parser["valence"].size(); j++)
             {
@@ -197,23 +200,22 @@ class AtomType
                         parser["valence"][j]["basis"][order]["enu"] >> rsd.enu;
                         parser["valence"][j]["basis"][order]["dme"] >> rsd.dme;
                         parser["valence"][j]["basis"][order]["auto"] >> rsd.auto_enu;
-                        apw_default_l_.radial_solution_descriptors.push_back(rsd);
+                        aw_default_l_.push_back(rsd);
                     }
                 }
                 else
                 {
                     rsd.l = l;
                     rsd.n = parser["valence"][j]["n"].get<int>();
-                    rlsd.radial_solution_descriptors.clear();
-                    rlsd.l = l;
+                    rsd_set.clear();
                     for (int order = 0; order < parser["valence"][j]["basis"].size(); order++)
                     {
                         parser["valence"][j]["basis"][order]["enu"] >> rsd.enu;
                         parser["valence"][j]["basis"][order]["dme"] >> rsd.dme;
                         parser["valence"][j]["basis"][order]["auto"] >> rsd.auto_enu;
-                        rlsd.radial_solution_descriptors.push_back(rsd);
+                        rsd_set.push_back(rsd);
                     }
-                    apw_specific_l_.push_back(rlsd);
+                    aw_specific_l_.push_back(rsd_set);
                 }
             }
 
@@ -221,16 +223,15 @@ class AtomType
             {
                 rsd.l = parser["lo"][j]["l"].get<int>();
                 rsd.n = parser["lo"][j]["n"].get<int>();
-                rlsd.radial_solution_descriptors.clear();
-                rlsd.l = rsd.l;
+                rsd_set.clear();
                 for (int order = 0; order < parser["lo"][j]["basis"].size(); order++)
                 {
                     parser["lo"][j]["basis"][order]["enu"] >> rsd.enu;
                     parser["lo"][j]["basis"][order]["dme"] >> rsd.dme;
                     parser["lo"][j]["basis"][order]["auto"] >> rsd.auto_enu;
-                    rlsd.radial_solution_descriptors.push_back(rsd);
+                    rsd_set.push_back(rsd);
                 }
-                lo_descriptors_.push_back(rlsd);
+                lo_descriptors_.push_back(rsd_set);
             }
         }
     
@@ -241,12 +242,12 @@ class AtomType
             read_input();
         }
 
-        void rebuild_apw_descriptors(int lmax)
+        void rebuild_aw_descriptors(int lmax)
         {
-            apw_descriptors_.clear();
+            aw_descriptors_.clear();
             for (int l = 0; l <= lmax; l++)
             {
-                apw_descriptors_.push_back(apw_default_l_);
+                aw_descriptors_.push_back(aw_default_l_);
 
             }
         }
@@ -264,37 +265,36 @@ class AtomType
             for (int i = 0; i < (int)core_.size(); i++)
                 std::cout << "  " << core_[i].n << " " << core_[i].l << " " << core_[i].k << " " << core_[i].occupancy << std::endl;
             
-            std::cout << "default APW basis" << std::endl;
-            for (int order = 0; order < (int)apw_default_l_.radial_solution_descriptors.size(); order++)
-                std::cout << "  enu : " << apw_default_l_.radial_solution_descriptors[order].enu 
-                          << "  dme : " << apw_default_l_.radial_solution_descriptors[order].dme
-                          << "  auto : " << apw_default_l_.radial_solution_descriptors[order].auto_enu << std::endl;
+            std::cout << "default augmented wave basis" << std::endl;
+            for (int order = 0; order < (int)aw_default_l_.size(); order++)
+                std::cout << "  enu : " << aw_default_l_[order].enu 
+                          << "  dme : " << aw_default_l_[order].dme
+                          << "  auto : " << aw_default_l_[order].auto_enu << std::endl;
 
-            std::cout << "APW basis for specific l" << std::endl;
-            for (int j = 0; j < (int)apw_specific_l_.size(); j++)
+            std::cout << "augmented wave basis for specific l" << std::endl;
+            for (int j = 0; j < (int)aw_specific_l_.size(); j++)
             {
-                std::cout << "l : " << apw_specific_l_[j].l << std::endl;
-                for (int order = 0; order < (int)apw_specific_l_[j].radial_solution_descriptors.size(); order++)
-                    std::cout << "  n : " << apw_specific_l_[j].radial_solution_descriptors[order].n
-                              << "  enu : " << apw_specific_l_[j].radial_solution_descriptors[order].enu 
-                              << "  dme : " << apw_specific_l_[j].radial_solution_descriptors[order].dme
-                              << "  auto : " << apw_specific_l_[j].radial_solution_descriptors[order].auto_enu << std::endl;
+                for (int order = 0; order < (int)aw_specific_l_[j].size(); order++)
+                    std::cout << "  n : " << aw_specific_l_[j][order].n
+                              << "  l : " << aw_specific_l_[j][order].l
+                              << "  enu : " << aw_specific_l_[j][order].enu 
+                              << "  dme : " << aw_specific_l_[j][order].dme
+                              << "  auto : " << aw_specific_l_[j][order].auto_enu << std::endl;
             }
 
             std::cout << "local orbitals" << std::endl;
             for (int j = 0; j < (int)lo_descriptors_.size(); j++)
             {
-                std::cout << "l : " << lo_descriptors_[j].l << std::endl;
-                for (int order = 0; order < (int)lo_descriptors_[j].radial_solution_descriptors.size(); order++)
-                    std::cout << "  n : " << lo_descriptors_[j].radial_solution_descriptors[order].n
-                              << "  enu : " << lo_descriptors_[j].radial_solution_descriptors[order].enu
-                              << "  dme : " << lo_descriptors_[j].radial_solution_descriptors[order].dme
-                              << "  auto : " << lo_descriptors_[j].radial_solution_descriptors[order].auto_enu << std::endl;
+                for (int order = 0; order < (int)lo_descriptors_[j].size(); order++)
+                    std::cout << "  n : " << lo_descriptors_[j][order].n
+                              << "  l : " << lo_descriptors_[j][order].l
+                              << "  enu : " << lo_descriptors_[j][order].enu
+                              << "  dme : " << lo_descriptors_[j][order].dme
+                              << "  auto : " << lo_descriptors_[j][order].auto_enu << std::endl;
             }
 
             radial_grid_.print_info();
         }
-
 };
     
 };
