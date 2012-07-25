@@ -51,26 +51,6 @@ struct radial_solution_descriptor
     bool auto_enu;
 };
 
-/// collection of radial solutions for a given angular momentum quantum number l
-/*class radial_l_solutions_descriptor
-{
-    public:
-
-        radial_l_solutions_descriptor()
-        {
-        }
-        
-        radial_l_solutions_descriptor(int l) : l(l)
-        {
-        }
-    
-        /// angular momentum quantum number
-        int l;
-
-        /// list of radial solution descriptors
-        std::vector<radial_solution_descriptor> radial_solution_descriptors;
-};*/
-
 /// set of radial solution descriptors, used to construct augmented waves or local orbitals
 typedef std::vector<radial_solution_descriptor> radial_solution_descriptor_set;
 
