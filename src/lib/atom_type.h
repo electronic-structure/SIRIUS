@@ -221,6 +221,11 @@ class AtomType
         {
             read_input();
         }
+        
+        const std::string& label()
+        {
+            return label_;
+        }
 
         void rebuild_aw_descriptors(int lmax)
         {

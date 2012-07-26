@@ -11,7 +11,7 @@ SRC = ../libjson/_internal/Source/internalJSONNode.cpp ../libjson/_internal/Sour
       ../libjson/_internal/Source/JSONPreparse.cpp ../libjson/_internal/Source/JSONStream.cpp \
       ../libjson/_internal/Source/JSONValidator.cpp ../libjson/_internal/Source/JSONWorker.cpp \
       ../libjson/_internal/Source/JSONWriter.cpp ../libjson/_internal/Source/libjson.cpp \
-      linalg_cpu.cpp json_tree.cpp sirius.cpp global.cpp
+      linalg_cpu.cpp json_tree.cpp sirius.cpp global.cpp error_handling.cpp
       
 OBJ = $(SRC:.cpp=.o) 
       

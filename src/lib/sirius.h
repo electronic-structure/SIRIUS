@@ -8,11 +8,14 @@
 #include <stdio.h>
 
 #include <vector>
+#include <map>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <stdexcept>
 #include <cmath>
 
+#include "error_handling.h"
 #include "config.h"
 #include "constants.h"
 #include "mdarray.h"

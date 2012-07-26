@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <vector>
 #include "../libjson/libjson.h"
+#include "error_handling.h"
 
 template<typename T> class json_value_parser 
 {
@@ -72,8 +73,9 @@ class JsonTree
             ifs.open(fname.c_str(), std::ios::binary);
             if (ifs.fail())
             {
-                std::cout << "error opening " << fname << std::endl;
-                exit(0);
+                std::stringstream s;
+                s << "fail to open " << fname;
+                error(__FILE__, __LINE__, s.str().c_str());
             }
             ifs.seekg(0, std::ios::end);
             int length = ifs.tellg();
