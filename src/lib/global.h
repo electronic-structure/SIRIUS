@@ -10,16 +10,9 @@ class global
         
         /// unique mapping between label and atom type
         std::map<std::string, AtomType*> atom_type_by_label_;
-    
-        /*std::vector<Atom*> atoms;
-        
-        std::map<std::string, Atom*> atom_by_label_;
-    
-        std::vector<Site*> sites;
-        
-        std::vector<NonequivalentSite*> nonequivalent_sites;
-        
-        int number_of_nonequivalent_sites_;*/
+   
+        /// list of atoms
+        std::vector<Atom*> atoms_;
         
         /// Bravais lattice vectors in row order
         double lattice_vectors_[3][3];
@@ -29,13 +22,80 @@ class global
         
         /// vectors of the reciprocal lattice in row order (inverse Bravais lattice vectors scaled by 2*Pi)
         double reciprocal_lattice_vectors_[3][3];
-        
-        
+       
+        /// spglib structure which holds symmetry information
+        SpglibDataset* spg_dataset;
+
+        void get_symmetry()
+        {
+            if (spg_dataset)
+            {
+                spg_free_dataset(spg_dataset);
+                spg_dataset = NULL;
+            }
+            
+            double lattice[3][3];
+
+            for (int i = 0; i < 3; i++)
+                for (int j = 0; j < 3; j++) 
+                    lattice[i][j] = lattice_vectors_[j][i];
+
+            mdarray<double,2> positions(NULL, 3, atoms_.size());
+            positions.allocate();
+            
+            std::vector<int> types(atoms_.size());
+
+            for (int i = 0; i < (int)atoms_.size(); i++)
+            {
+                atoms_[i]->position(&positions(0, i));
+                types[i] = atoms_[i]->atom_type_id();
+            }
+            spg_dataset = spg_get_dataset(lattice, (double(*)[3])&positions(0, 0), &types[0], atoms_.size(), 1e-5);
+
+            if (spg_dataset->spacegroup_number == 0)
+            {
+                std::stringstream s;
+                s << "spg_get_dataset() returned 0 for the space group";
+                error(__FILE__, __LINE__, s.str().c_str());
+            }
+
+            if (spg_dataset->n_atoms != atoms_.size())
+            {   
+                std::stringstream s;
+                s << "wrong number of atoms";
+                error(__FILE__, __LINE__, s.str().c_str());
+            }
+
+            std::vector<int> eqatom(atoms_.size(), -1);
+            //std::vector<int> atom_class_id;
+
+            int atom_class_id = -1;
+            for (int i = 0; i < (int)atoms_.size(); i++)
+            {
+                if (eqatom[i] == -1)
+                {
+                    atom_class_id++;
+                    for (int j = 0; j < (int)atoms_.size(); j++)
+                    {
+                        if (spg_dataset->equivalent_atoms[j] == spg_dataset->equivalent_atoms[i])
+                        {
+                            eqatom[j] = atom_class_id;
+                        }
+                    }
+                }
+            }
+
+            for (int i = 0; i < (int)atoms_.size(); i++)
+            {
+                std::cout << "atom : " << i << "  class : " << eqatom[i] << std::endl;
+            }
+
+        }
         
         
     public:
     
-        global()
+        global() : spg_dataset(NULL)
         {
             assert(sizeof(int4) == 4);
             assert(sizeof(real8) == 8);
@@ -54,7 +114,10 @@ class global
                 printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors_[i][0], 
                                                                      reciprocal_lattice_vectors_[i][1], 
                                                                      reciprocal_lattice_vectors_[i][2]);
-         }
+            std::cout << "number of atom types : " << atom_type_by_id_.size() << std::endl;
+            std::cout << "number of atoms : " << atoms_.size() << std::endl;
+            
+        }
         
         void set_lattice_vectors(double* a1, 
                                  double* a2, 
@@ -97,7 +160,8 @@ class global
                     reciprocal_lattice_vectors_[i][j] = twopi * inverse_lattice_vectors_[j][i];
         }
 
-        void add_atom_type(int atom_type_id, const std::string& label)
+        void add_atom_type(int atom_type_id, 
+                           const std::string& label)
         {
             if (atom_type_by_label_.count(label) == 0)
                 atom_type_by_label_[label] = new AtomType(label);
@@ -114,6 +178,54 @@ class global
             }
                 
             atom_type_by_id_.push_back(atom_type_by_label_[label]);
+        }
+        
+        void add_atom(int atom_type_id, 
+                      double* position, 
+                      double* vector_field)
+        {
+            double eps = 1e-10;
+            double pos[3];
+
+            if (atom_type_id < 0 || atom_type_id >= (int)atom_type_by_id_.size())
+            {
+                std::stringstream s;
+                s << "atom_type_id=" << atom_type_id << " is out of bounds";
+                error(__FILE__, __LINE__, s.str().c_str());
+            }
+
+            for (int i = 0; i < (int)atoms_.size(); i++)
+            {
+                atoms_[i]->position(pos);
+                if (fabs(pos[0] - position[0]) < eps &&
+                    fabs(pos[1] - position[1]) < eps &&
+                    fabs(pos[2] - position[2]) < eps)
+                {
+                    std::stringstream s;
+                    s << "atom with the same position is already added" << std::endl
+                      << "  position : " << position[0] << " " << position[1] << " " << position[2];
+                    error(__FILE__, __LINE__, s.str().c_str());
+                }
+            }
+
+            atoms_.push_back(new Atom(atom_type_id, atom_type_by_id_[atom_type_id], position, vector_field));
+        }
+        
+        void initialize()
+        {
+            get_symmetry();
+
+            /*std::cout << spglib_dataset->spacegroup_number << std::endl;
+            std::cout << spglib_dataset->international_symbol << std::endl;
+            std::cout << spglib_dataset->n_atoms << std::endl;
+            std::cout << spglib_dataset->n_operations << std::endl;
+            std::cout << spglib_dataset->equivalent_atoms << std::endl;
+            
+            for (int i = 0; i < (int)atoms_.size(); i++)
+            {
+                std::cout << " atom : " << i << " equiv : " << spglib_dataset->equivalent_atoms[i] << std::endl;
+            }*/
+        
         }
 
 

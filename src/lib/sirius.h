@@ -15,6 +15,10 @@
 #include <stdexcept>
 #include <cmath>
 
+extern "C" {
+#include <spglib.h>
+}
+
 #include "error_handling.h"
 #include "config.h"
 #include "constants.h"
@@ -25,7 +29,7 @@
 #include "radial_solver.h"
 #include "json_tree.h"
 #include "atom_type.h"
-//#include "site.h"
+#include "atom.h"
 #include "global.h"
 
 #endif // __SIRIUS_H__

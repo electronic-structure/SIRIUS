@@ -43,9 +43,12 @@ class JsonTree
         
         std::string path;
         
-        template <typename T> inline bool parse_value(T& val)
+        std::string fname_;
+        
+        template <typename T> inline bool parse_value(T& val, std::string& type_name)
         {
             json_value_parser<T> v(node, val);
+            type_name = v.type_name();
             return v.is_valid();
         }
         
@@ -53,12 +56,14 @@ class JsonTree
     
 
         JsonTree(JSONNode& node, 
-                 std::string& path) : node(node),
-                                      path(path)  
+                 std::string& path,
+                 const std::string& fname_) : node(node),
+                                              path(path),
+                                              fname_(fname_)
         {
         }
 
-        JsonTree(const std::string& fname) 
+        JsonTree(const std::string& fname) : fname_(fname)
         {
             parse(fname);
         }
@@ -109,7 +114,7 @@ class JsonTree
             {
 
             }
-            return JsonTree(n, new_path);
+            return JsonTree(n, new_path, fname_);
         }
     
         inline JsonTree operator [] (const int key) const 
@@ -126,25 +131,32 @@ class JsonTree
             {
 
             }
-            return JsonTree(n, new_path);
+            return JsonTree(n, new_path, fname_);
         }
 
         template <typename T> inline T get()
         {
             T val;
-            if (parse_value(val)) 
-                return val;
-            else
+            std::string type_name;
+            
+            if (!parse_value(val, type_name))
             {
-                std::cout << "null or invalid value" << std::endl << "path : " << path << std::endl;
-                exit(0);
+                std::stringstream s;
+                s << "null or invalid value of type " << type_name << std::endl 
+                  << "file : " << fname_ << std::endl
+                  << "path : " << path;
+                error(__FILE__, __LINE__, s.str().c_str());
             }
+
+            return val;
         }
                 
         template <typename T> inline T get(T& default_val)
         {
             T val;
-            if (parse_value(val)) 
+            std::string type_name;
+            
+            if (parse_value(val, type_name)) 
                 return val;
             else
                 return default_val;
@@ -153,7 +165,9 @@ class JsonTree
         template <typename T> inline T get(T default_val)
         {
             T val;
-            if (parse_value(val)) 
+            std::string type_name;
+            
+            if (parse_value(val, type_name)) 
                 return val;
             else
                 return default_val;
@@ -161,10 +175,15 @@ class JsonTree
         
         template <typename T> inline void operator >> (T& val)
         {
-            if (!parse_value(val))
+            std::string type_name;
+            
+            if (!parse_value(val, type_name))
             { 
-                std::cout << "null or invalid value" << std::endl << "path : " << path << std::endl;
-                exit(0);
+                std::stringstream s;
+                s << "null or invalid value of type " << type_name << std::endl 
+                  << "file : " << fname_ << std::endl
+                  << "path : " << path;
+                error(__FILE__, __LINE__, s.str().c_str());
             }
         }
 }; 
