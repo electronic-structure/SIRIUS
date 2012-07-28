@@ -5,11 +5,11 @@ class global
 {
     private:
 
-        /// list of atom types with possibly identical items
-        std::vector<AtomType*> atom_type_by_id_;
-        
-        /// unique mapping between label and atom type
-        std::map<std::string, AtomType*> atom_type_by_label_;
+        /// list of atom classes
+        std::vector<AtomSymmetryClass*> atom_symmetry_class_by_id_;
+
+        /// unique mapping between atom type id and atom type
+        std::map<int, AtomType*> atom_type_by_id_;
    
         /// list of atoms
         std::vector<Atom*> atoms_;
@@ -28,11 +28,13 @@ class global
 
         void get_symmetry()
         {
-            if (spg_dataset)
-            {
-                spg_free_dataset(spg_dataset);
-                spg_dataset = NULL;
-            }
+            if (spg_dataset) 
+                error(__FILE__, __LINE__, "spg_dataset is already allocated");
+                //spg_free_dataset(spg_dataset);
+                //spg_dataset = NULL;
+
+            if (atom_symmetry_class_by_id_.size() != 0)
+                error(__FILE__, __LINE__, "atom_symmetry_class_by_id_ list is not empty");
             
             double lattice[3][3];
 
@@ -47,49 +49,37 @@ class global
 
             for (int i = 0; i < (int)atoms_.size(); i++)
             {
-                atoms_[i]->position(&positions(0, i));
-                types[i] = atoms_[i]->atom_type_id();
+                atoms_[i]->get_position(&positions(0, i));
+                types[i] = atoms_[i]->type_id();
             }
             spg_dataset = spg_get_dataset(lattice, (double(*)[3])&positions(0, 0), &types[0], atoms_.size(), 1e-5);
 
             if (spg_dataset->spacegroup_number == 0)
-            {
-                std::stringstream s;
-                s << "spg_get_dataset() returned 0 for the space group";
-                error(__FILE__, __LINE__, s.str().c_str());
-            }
+                error(__FILE__, __LINE__, "spg_get_dataset() returned 0 for the space group");
 
-            if (spg_dataset->n_atoms != atoms_.size())
-            {   
-                std::stringstream s;
-                s << "wrong number of atoms";
-                error(__FILE__, __LINE__, s.str().c_str());
-            }
+            if (spg_dataset->n_atoms != (int)atoms_.size())
+                error(__FILE__, __LINE__, "wrong number of atoms");
 
-            std::vector<int> eqatom(atoms_.size(), -1);
-            //std::vector<int> atom_class_id;
-
+            AtomSymmetryClass* atom_symmetry_class;
+            
             int atom_class_id = -1;
+
             for (int i = 0; i < (int)atoms_.size(); i++)
             {
-                if (eqatom[i] == -1)
+                if (atoms_[i]->symmetry_class_id() == -1) // if class id is not assigned to this atom
                 {
-                    atom_class_id++;
-                    for (int j = 0; j < (int)atoms_.size(); j++)
-                    {
-                        if (spg_dataset->equivalent_atoms[j] == spg_dataset->equivalent_atoms[i])
+                    atom_class_id++; // take next id 
+                    atom_symmetry_class = new AtomSymmetryClass(atom_class_id, atoms_[i]->type());
+                    atom_symmetry_class_by_id_.push_back(atom_symmetry_class);
+
+                    for (int j = 0; j < (int)atoms_.size(); j++) // scan all atoms
+                        if (spg_dataset->equivalent_atoms[j] == spg_dataset->equivalent_atoms[i]) // assign new class id for all equivalent atoms
                         {
-                            eqatom[j] = atom_class_id;
+                            atom_symmetry_class->add_atom_id(j);
+                            atoms_[j]->set_symmetry_class(atom_symmetry_class);
                         }
-                    }
                 }
             }
-
-            for (int i = 0; i < (int)atoms_.size(); i++)
-            {
-                std::cout << "atom : " << i << "  class : " << eqatom[i] << std::endl;
-            }
-
         }
         
         
@@ -116,6 +106,13 @@ class global
                                                                      reciprocal_lattice_vectors_[i][2]);
             std::cout << "number of atom types : " << atom_type_by_id_.size() << std::endl;
             std::cout << "number of atoms : " << atoms_.size() << std::endl;
+            std::cout << "number of symmetry classes : " << atom_symmetry_class_by_id_.size() << std::endl;
+
+            for (int i = 0; i < (int)atoms_.size(); i++)
+            {
+                printf("%i  %i  %i \n", i, atoms_[i]->type_id(), atoms_[i]->symmetry_class_id()); 
+           
+            }
             
         }
         
@@ -159,25 +156,21 @@ class global
                 for (int j = 0; j < 3; j++)
                     reciprocal_lattice_vectors_[i][j] = twopi * inverse_lattice_vectors_[j][i];
         }
-
+        
+        /*! 
+            \brief Add new atom type to the collection of atom types.. 
+        */
         void add_atom_type(int atom_type_id, 
                            const std::string& label)
         {
-            if (atom_type_by_label_.count(label) == 0)
-                atom_type_by_label_[label] = new AtomType(label);
-                
-            if (atom_type_id != (int)atom_type_by_id_.size())
-            {
+            if (atom_type_by_id_.count(atom_type_id) != 0) 
+            {   
                 std::stringstream s;
-                s << "index of atom type doesn't match provided atom type id" << std::endl
-                  << "  atom_type_id : " << atom_type_id << std::endl
-                  << "  label : " << label << std::endl 
-                  << "  size of atom_type_by_id_ list : " << atom_type_by_id_.size();
-                
+                s << "atom type with id " << atom_type_id << " is already in list";
                 error(__FILE__, __LINE__, s.str().c_str());
             }
                 
-            atom_type_by_id_.push_back(atom_type_by_label_[label]);
+            atom_type_by_id_[atom_type_id] = new AtomType(atom_type_id, label);
         }
         
         void add_atom(int atom_type_id, 
@@ -186,34 +179,40 @@ class global
         {
             double eps = 1e-10;
             double pos[3];
-
-            if (atom_type_id < 0 || atom_type_id >= (int)atom_type_by_id_.size())
+            
+            if (atom_type_by_id_.count(atom_type_id) == 0)
             {
                 std::stringstream s;
-                s << "atom_type_id=" << atom_type_id << " is out of bounds";
+                s << "atom type with id " << atom_type_id << " is not found";
                 error(__FILE__, __LINE__, s.str().c_str());
             }
-
+ 
             for (int i = 0; i < (int)atoms_.size(); i++)
             {
-                atoms_[i]->position(pos);
+                atoms_[i]->get_position(pos);
                 if (fabs(pos[0] - position[0]) < eps &&
                     fabs(pos[1] - position[1]) < eps &&
                     fabs(pos[2] - position[2]) < eps)
                 {
                     std::stringstream s;
-                    s << "atom with the same position is already added" << std::endl
+                    s << "atom with the same position is already in list" << std::endl
                       << "  position : " << position[0] << " " << position[1] << " " << position[2];
+                    
                     error(__FILE__, __LINE__, s.str().c_str());
                 }
             }
 
-            atoms_.push_back(new Atom(atom_type_id, atom_type_by_id_[atom_type_id], position, vector_field));
+            atoms_.push_back(new Atom(atom_type_by_id_[atom_type_id], position, vector_field));
         }
         
         void initialize()
         {
             get_symmetry();
+
+
+
+
+
 
             /*std::cout << spglib_dataset->spacegroup_number << std::endl;
             std::cout << spglib_dataset->international_symbol << std::endl;

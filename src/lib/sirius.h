@@ -29,6 +29,7 @@ extern "C" {
 #include "radial_solver.h"
 #include "json_tree.h"
 #include "atom_type.h"
+#include "atom_symmetry_class.h"
 #include "atom.h"
 #include "global.h"
 

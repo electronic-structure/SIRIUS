@@ -7,11 +7,9 @@ class Atom
 {
     private:
     
-        int atom_type_id_;
-        
-        int atom_class_id_;
+        AtomType* type_;
 
-        AtomType* atom_type_;
+        AtomSymmetryClass* symmetry_class_;
         
         double position_[3];
         
@@ -20,12 +18,13 @@ class Atom
     
     public:
     
-        Atom(int atom_type_id_,
-             AtomType* atom_type_,
+        Atom(AtomType* _type,
              double* _position, 
-             double* _vector_field) : atom_type_id_(atom_type_id_),
-                                      atom_type_(atom_type_)
+             double* _vector_field) : type_(_type),
+                                      symmetry_class_(NULL)
         {
+            assert(_type != NULL);
+                
             for (int i = 0; i < 3; i++)
             {
                 position_[i] = _position[i];
@@ -33,17 +32,34 @@ class Atom
             }
         }
 
-        inline int atom_type_id()
+        inline AtomType* type()
         {
-            return atom_type_id_;
+            return type_;
         }
 
-        void position(double* pos)
+        inline int type_id()
+        {
+            return type_->id();
+        }
+
+        inline void get_position(double* _position)
         {
             for (int i = 0; i < 3; i++)
-                pos[i] = position_[i];
+                _position[i] = position_[i];
         }
 
+        inline int symmetry_class_id()
+        {
+            if (symmetry_class_) 
+                return symmetry_class_->id();
+            else
+                return -1;
+        }
+
+        inline void set_symmetry_class(AtomSymmetryClass* _symmetry_class)
+        {
+            symmetry_class_ = _symmetry_class;
+        }
 };
 
 };

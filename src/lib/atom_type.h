@@ -58,6 +58,8 @@ class AtomType
 {
     private:
     
+        int id_;
+    
         std::string label_;
         std::string symbol_;
         std::string name_;
@@ -217,7 +219,9 @@ class AtomType
     
     public:
 
-        AtomType(const std::string& label) : label_(label)
+        AtomType(int id_, 
+                 const std::string& label) : id_(id_),
+                                             label_(label)
         {
             read_input();
         }
@@ -225,6 +229,11 @@ class AtomType
         const std::string& label()
         {
             return label_;
+        }
+        
+        inline int id()
+        {
+            return id_;
         }
 
         void rebuild_aw_descriptors(int lmax)
