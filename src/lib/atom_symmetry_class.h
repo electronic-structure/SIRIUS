@@ -33,6 +33,16 @@ class AtomSymmetryClass
         {
             atom_id_.push_back(_atom_id);
         }
+        
+        inline int num_atoms()
+        {
+            return atom_id_.size();
+        }
+
+        inline int atom_id(int idx)
+        {
+            return atom_id_[idx];
+        }
 };
 
 };

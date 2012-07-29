@@ -93,27 +93,52 @@ class global
 
         void print_info()
         {
-            std::cout << "lattice vectors" << std::endl;
+            printf("\n");
+            printf("SIRIUS v0.1\n");
+            printf("\n");
+
+            printf("lattice vectors\n");
             for (int i = 0; i < 3; i++)
                 printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors_[i][0], 
                                                                      lattice_vectors_[i][1], 
-                                                                     lattice_vectors_[i][2]);
-            
-            std::cout << "reciprocal lattice vectors" << std::endl;
+                                                                     lattice_vectors_[i][2]); 
+            printf("reciprocal lattice vectors\n");
             for (int i = 0; i < 3; i++)
                 printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors_[i][0], 
                                                                      reciprocal_lattice_vectors_[i][1], 
                                                                      reciprocal_lattice_vectors_[i][2]);
-            std::cout << "number of atom types : " << atom_type_by_id_.size() << std::endl;
-            std::cout << "number of atoms : " << atoms_.size() << std::endl;
-            std::cout << "number of symmetry classes : " << atom_symmetry_class_by_id_.size() << std::endl;
+            std::map<int, AtomType*>::iterator it;    
+            printf("\n"); 
+            printf("number of atom types : %i\n", (int)atom_type_by_id_.size());
+            for (it = atom_type_by_id_.begin(); it != atom_type_by_id_.end(); it++)
+                printf("type id : %i   symbol : %s   label : %s\n", (*it).first, (*it).second->symbol().c_str(), (*it).second->label().c_str()); 
+                
+            printf("number of atoms : %i\n", (int)atoms_.size());
+            printf("number of symmetry classes : %i\n", (int)atom_symmetry_class_by_id_.size());
 
+            printf("\n"); 
+            printf("atom id    type id    class id\n");
+            printf("------------------------------\n");
             for (int i = 0; i < (int)atoms_.size(); i++)
             {
-                printf("%i  %i  %i \n", i, atoms_[i]->type_id(), atoms_[i]->symmetry_class_id()); 
+                printf("%6i     %6i      %6i\n", i, atoms_[i]->type_id(), atoms_[i]->symmetry_class_id()); 
            
             }
-            
+
+            printf("\n");
+            for (int ic = 0; ic < (int)atom_symmetry_class_by_id_.size(); ic++)
+            {
+                printf("class id : %i   atom id : ", ic);
+                for (int i = 0; i < atom_symmetry_class_by_id_[ic]->num_atoms(); i++)
+                    printf("%i ", atom_symmetry_class_by_id_[ic]->atom_id(i));  
+                printf("\n");
+            }
+
+            printf("\n");
+            printf("space group number   : %i\n", spg_dataset->spacegroup_number);
+            printf("international symbol : %s\n", spg_dataset->international_symbol);
+            printf("Hall symbol          : %s\n", spg_dataset->hall_symbol);
+            printf("number of operations : %i\n", spg_dataset->n_operations);
         }
         
         void set_lattice_vectors(double* a1, 
@@ -208,59 +233,7 @@ class global
         void initialize()
         {
             get_symmetry();
-
-
-
-
-
-
-            /*std::cout << spglib_dataset->spacegroup_number << std::endl;
-            std::cout << spglib_dataset->international_symbol << std::endl;
-            std::cout << spglib_dataset->n_atoms << std::endl;
-            std::cout << spglib_dataset->n_operations << std::endl;
-            std::cout << spglib_dataset->equivalent_atoms << std::endl;
-            
-            for (int i = 0; i < (int)atoms_.size(); i++)
-            {
-                std::cout << " atom : " << i << " equiv : " << spglib_dataset->equivalent_atoms[i] << std::endl;
-            }*/
-        
         }
-
-
-
-        
-        /*AtomType& get_atom_type(std::string& label)
-        {
-            if (atom_by_label_.count(label) == 0)
-            {
-                Atom* atom = new Atom(label);
-                atoms.push_back(atom);
-                atom_by_label_[label] = atom;
-                return (*atom);
-            }
-            else
-                return (*atom_by_label_[label]);
-        }
-         
-
-        void set_atom(std::string& label, 
-                      std::vector<double>& position, 
-                      std::vector<double>& vector_field,
-                      int equivalence_id)
-        {
-            assert(position.size() == 3);
-            assert(vector_field.size() == 3);
-            
-            AtomType& atom_type = get_atom_type(label);
-            
-            Site* site = new Site(atom);
-        
-        
-        
-        }*/
-
-
 };
 
 };

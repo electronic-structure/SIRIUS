@@ -230,6 +230,11 @@ class AtomType
         {
             return label_;
         }
+
+        const std::string& symbol()
+        { 
+            return symbol_;
+        }
         
         inline int id()
         {
