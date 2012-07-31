@@ -92,7 +92,11 @@ class Spline
             // solve tridiagonal system
             int info = dgtsv(num_points, 1, &diag_lower[0], &diag_main[0], &diag_upper[0], &m[0], num_points);
             if (info)
-                stop(std::cout << "dgtsv returned " << info);
+            {
+                std::stringstream s;
+                s << "dgtsv returned " << info;
+                error(__FILE__, __LINE__, s);
+            }
             
             b.resize(num_points - 1);
             c.resize(num_points - 1);

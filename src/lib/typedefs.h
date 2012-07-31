@@ -14,4 +14,6 @@ enum spin_block {nm, uu, ud, dd};
 
 enum implementation {cpu, gpu};
 
+//enum fft_implementation {gsl, fftw};
+
 #endif // __TYPEDEFS_H__

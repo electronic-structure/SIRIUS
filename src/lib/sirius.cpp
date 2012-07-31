@@ -26,3 +26,8 @@ extern "C" void FORTRAN(sirius_initialize)()
     sirius_global.initialize();
 }
 
+extern "C" void FORTRAN(sirius_clear)()
+{
+    sirius_global.clear();
+}
+

@@ -15,4 +15,11 @@ const bool check_spinor_wf = false;
 
 //const diagonalization lapw_diag = second_variational; 
 
+/*#ifdef _FFTW_
+const fft_implementation fft_impl = fftw;
+#else
+const fft_implementation fft_impl = gsl;
+#endif
+*/
+
 #endif // __CONFIG_H__

@@ -11,6 +11,7 @@ class Atom
 
         AtomSymmetryClass* symmetry_class_;
         
+        /// position in fractional coordinates
         double position_[3];
         
         double vector_field_[3];

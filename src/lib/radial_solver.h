@@ -1,6 +1,8 @@
 #ifndef __RADIAL_SOLVER_H__
 #define __RADIAL_SOLVER_H__
 
+namespace sirius {
+
 /*! \brief solves a scalar relativistic equation
     
     \f{eqnarray*}{
@@ -8,9 +10,6 @@
        Q' &=& (V - E + \frac{\ell(\ell + 1)}{2 M r^2}) P - \frac{Q}{r}
     \f}
 */
-
-namespace sirius {
-
 class RadialSolver
 {
     private:
@@ -200,7 +199,7 @@ class RadialSolver
             }
             
             if (fabs(denu) >= enu_tolerance) 
-                stop(std::cout << "enu is not converged");
+                error(__FILE__, __LINE__, "enu is not converged");
 
             // search for the turning point
             int idxtp = radial_grid.size() - 1;
@@ -242,13 +241,15 @@ class RadialSolver
 
             if (nn != (n - l - 1))
             {
-                std::ofstream fout("bound_state.dat");
+                /*std::ofstream fout("bound_state.dat");
                 for (int i =0; i < radial_grid.size(); i++)
                 {
                     fout << radial_grid[i] << " " << p[i] << std::endl;
                 }
-                fout.close();
-                stop(std::cout << "wrong number of nodes : " << nn << " instead of " << (n - l - 1));
+                fout.close();*/
+                std::stringstream s;
+                s << "wrong number of nodes : " << nn << " instead of " << (n - l - 1);
+                error(__FILE__, __LINE__, s);
             }
         }
 

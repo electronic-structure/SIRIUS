@@ -122,9 +122,7 @@ class RadialGrid
             }
             
             if (infinity_ == mt_radius_ && mt_num_points() != size())
-            {
-                stop(std::cout << "radial grid is wrong");
-            }
+                error(__FILE__, __LINE__, "radial grid is wrong");
         }
 
         inline double operator [](const int i)

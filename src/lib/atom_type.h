@@ -112,8 +112,10 @@ class AtomType
             if (int size = core_str.size())
             {
                 if (size % 2)
-                    stop(std::cout << "wrong core configuration string : " << core_str);
-                
+                {
+                    std::string s = std::string("wrong core configuration string : ") + core_str;
+                    error(__FILE__, __LINE__, s);
+                }
                 int j = 0;
                 while (j < size)
                 {
@@ -127,7 +129,10 @@ class AtomType
                     iss >> n;
                     
                     if (n <= 0 || iss.fail())
-                        stop(std::cout << "wrong principal quantum number : " << c1);
+                    {
+                        std::string s = std::string("wrong principal quantum number : " ) + std::string(1, c1);
+                        error(__FILE__, __LINE__, s);
+                    }
                     
                     switch(c2)
                     {
@@ -148,7 +153,8 @@ class AtomType
                             break;
 
                         default:
-                            stop(std::cout << "wrong angular momentum label : " << c2);
+                            std::string s = std::string("wrong angular momentum label : " ) + std::string(1, c2);
+                            error(__FILE__, __LINE__, s);
                     }
 
                     atomic_level_nlk level;
@@ -245,10 +251,7 @@ class AtomType
         {
             aw_descriptors_.clear();
             for (int l = 0; l <= lmax; l++)
-            {
                 aw_descriptors_.push_back(aw_default_l_);
-
-            }
         }
 
         void print_info()
