@@ -30,7 +30,7 @@ class sirius_unit_cell
 
         void get_symmetry()
         {
-            Timer t("sirius::sirius_geometry::get_symmetry");
+            Timer t("sirius::sirius_unit_cell::get_symmetry");
             
             if (spg_dataset_) 
                 error(__FILE__, __LINE__, "spg_dataset is already allocated");
@@ -95,7 +95,6 @@ class sirius_unit_cell
             assert(sizeof(real8) == 8);
         }
 
-       
         void set_lattice_vectors(double* a1, 
                                  double* a2, 
                                  double* a3)
@@ -139,7 +138,8 @@ class sirius_unit_cell
         /*! 
             \brief Get fractional coordinates by Cartesian coordinates. 
         */
-        void get_fractional_coordinates(double* cart_coord, double* frac_coord)
+        void get_fractional_coordinates(double* cart_coord, 
+                                        double* frac_coord)
         {
             for (int l = 0; l < 3; l++)
             {
@@ -153,7 +153,8 @@ class sirius_unit_cell
             \brief Get Cartesian coordinates by fractional coordinates. 
         */
         template <typename T>
-        void get_cartesian_coordinates(T* frac_coord, double* cart_coord)
+        void get_cartesian_coordinates(T* frac_coord, 
+                                       double* cart_coord)
         {
             for (int x = 0; x < 3; x++)
             {
@@ -166,7 +167,8 @@ class sirius_unit_cell
         /*! 
             \brief Get reciprocal fractional coordinates by reciprocal Cartesian coordinates. 
         */
-        void get_reciprocal_fractional_coordinates(double* cart_coord, double* frac_coord)
+        void get_reciprocal_fractional_coordinates(double* cart_coord, 
+                                                   double* frac_coord)
         {
             for (int l = 0; l < 3; l++)
             {
@@ -177,7 +179,8 @@ class sirius_unit_cell
         }
         
         template <typename T>
-        void get_reciprocal_cartesian_coordinates(T* frac_coord, double* cart_coord)
+        void get_reciprocal_cartesian_coordinates(T* frac_coord, 
+                                                  double* cart_coord)
         {
             for (int x = 0; x < 3; x++)
             {
