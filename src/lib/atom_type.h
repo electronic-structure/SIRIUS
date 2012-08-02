@@ -103,7 +103,7 @@ class AtomType
             parser["mass"] >> mass_;
             parser["number"] >> zn_;
             double origin = parser["rmin"].get<double>();
-            double infinity= parser["rmax"].get<double>();
+            double infinity = parser["rmax"].get<double>();
             parser["rmt"] >> mt_radius_;
             parser["nrmt"] >> mt_num_points_;
             radial_grid_.init(exponential_grid, mt_num_points_, origin, mt_radius_, infinity); 
@@ -245,6 +245,11 @@ class AtomType
         inline int id()
         {
             return id_;
+        }
+        
+        inline double mt_radius()
+        {
+            return mt_radius_;
         }
 
         void rebuild_aw_descriptors(int lmax)

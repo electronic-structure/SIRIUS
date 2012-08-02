@@ -1,28 +1,39 @@
+#
+# C++ compiler
+#
 CXX = g++-mp-4.4
 
-CPP_OPT = 
+#
+#  Initial compiler options typically include optimization / warning switches and a preprocessor directive
+#  which controls the debug
+#
+CXX_OPT = -O3 -Wall
 
-CXX_OPT = -O3 -Wall $(CPP_OPT)
+#
+#  Initial list of libraries
+#
+LIBS = -lstdc++
 
-LINK_OPT = $(LIBS) -lstdc++
+#
+#  Provide the full list of libraries for the linker.
+#
+LINK_OPT = $(LIBS)
 
-LIBS = $(LAPACK_LIB) $(XC_LIB) $(SPG_LIB) $(GSL_LIB) $(FFTW_LIB)
+#  Lapack / BLAS
+LIBS := $(LIBS) -llapack -lblas
 
-LAPACK_LIB = -llapack -lblas
-
-# libxc
+#  libxc
 CXX_OPT := $(CXX_OPT) -I/Users/anton/src/libxc-1.2.0/src
-XC_LIB = /Users/anton/src/libxc-1.2.0/src/.libs/libxc.a 
+LIBS := $(LIBS) /Users/anton/src/libxc-1.2.0/src/.libs/libxc.a 
 
-# spglib
+#  spglib
 CXX_OPT := $(CXX_OPT) -I/Users/anton/src/sirius-project/spglib-1.2.2/src
-SPG_LIB = /Users/anton/src/sirius-project/spglib-1.2.2/src/.libs/libsymspg.a
-SPG_LIB_PATH = /Users/anton/src/sirius-project/spglib-1.2.2/src/.libs
+LIBS := $(LIBS) /Users/anton/src/sirius-project/spglib-1.2.2/src/.libs/libsymspg.a
 
-# GNU scientific library
+#  GNU scientific library
 CXX_OPT := $(CXX_OPT) -I/Users/anton/src/sirius-project/gsl-1.15
-GSL_LIB = /Users/anton/src/sirius-project/gsl-1.15/.libs/libgsl.a
+LIBS := $(LIBS) /Users/anton/src/sirius-project/gsl-1.15/.libs/libgsl.a
 
-# FFTW
+#  FFTW
 CXX_OPT := $(CXX_OPT) -D_FFTW_ 
-FFTW_LIB = /opt/local/lib/libfftw3.a
+LIBS := $(LIBS) /opt/local/lib/libfftw3.a

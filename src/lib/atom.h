@@ -48,6 +48,11 @@ class Atom
             for (int i = 0; i < 3; i++)
                 _position[i] = position_[i];
         }
+        
+        inline double* position()
+        {
+            return position_;
+        }
 
         inline int symmetry_class_id()
         {

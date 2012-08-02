@@ -30,3 +30,9 @@ all: $(OBJ)
 
 clean:
 	rm $(OBJ) *.a
+
+depend: $(SRC)
+	rm -f ./.depend
+	$(CXX) $(CXX_OPT) -MM $^ >> ./.depend
+
+include .depend
