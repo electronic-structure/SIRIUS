@@ -15,31 +15,28 @@ inline int compare_doubles(const void* a, const void* b)
 
 struct nearest_neighbour_descriptor
 {
-    /// id of neighbouring atom
+    /// id of neighbour atom
     int atom_id;
 
-    /// translation vector
+    /// translation along each lattice vector
     int translation[3];
 
-    /// distance
+    /// distance from the central atom
     double distance;
 };
 
-class Global 
+class global_base
 {
-    private:
+    protected:
+    
+        /// unique mapping between atom type id and atom type
+        std::map<int,AtomType*> atom_type_by_id_;
 
         /// list of atom classes
         std::vector<AtomSymmetryClass*> atom_symmetry_class_by_id_;
 
-        /// unique mapping between atom type id and atom type
-        std::map<int, AtomType*> atom_type_by_id_;
-   
         /// list of atoms
         std::vector<Atom*> atoms_;
-
-        /// list of nearest neighbours for each atom
-        std::vector< std::vector<nearest_neighbour_descriptor> > nearest_neighbours_;
 
         /// Bravais lattice vectors in row order
         double lattice_vectors_[3][3];
@@ -52,24 +49,6 @@ class Global
        
         /// spglib structure with symmetry information
         SpglibDataset* spg_dataset_;
-
-        /// plane wave cutoff radius (in inverse a.u. of length)
-        double pw_cutoff_;
-        
-        /// fft wrapper
-        FFT3D fft_;
-
-        /// list of G-vector fractional coordinates
-        mdarray<int,2> gvec_;
-
-        /// number of G-vectors within plane wave cutoff
-        int num_gvec_;
-
-        /// mapping between linear G-vector index and G-vector coordinates
-        mdarray<int,3> index_by_gvec_;
-
-        /// mapping betwee linear G-vector index and position in FFT buffer
-        std::vector<int> fft_index_;
 
         void get_symmetry()
         {
@@ -127,176 +106,17 @@ class Global
             }
         }
 
-        void find_nearest_neighbours()
-        {
-            Timer t("find_nearest_neighbours");
-
-            int max_frac_coord[] = {0, 0, 0};
-            double frac_coord[3];
-            for (int i = 0; i < 3; i++)
-            {
-                double cart_coord[] = {0.0, 0.0, 0.0};
-                cart_coord[i] = 15.0; // radius of nearest neighbours cluster
-                get_fractional_coordinates(cart_coord, frac_coord);
-                for (int i = 0; i < 3; i++)
-                    max_frac_coord[i] = std::max(max_frac_coord[i], abs(int(frac_coord[i])) + 1);
-            }
-           
-            nearest_neighbours_.resize(atoms_.size());
-            for (int ia = 0; ia < (int)atoms_.size(); ia++)
-            {
-                double iapos[3];
-                get_cartesian_coordinates(atoms_[ia]->position(), iapos);
-                
-                std::vector<nearest_neighbour_descriptor> nn;
-                std::vector<double> dist;
-
-                for (int i0 = -max_frac_coord[0]; i0 <= max_frac_coord[0]; i0++)
-                    for (int i1 = -max_frac_coord[1]; i1 <= max_frac_coord[1]; i1++)
-                        for (int i2 = -max_frac_coord[2]; i2 <= max_frac_coord[2]; i2++)
-                        {
-                            nearest_neighbour_descriptor nnd;
-                            nnd.translation[0] = i0;
-                            nnd.translation[1] = i1;
-                            nnd.translation[2] = i2;
-                            
-                            double vt[3];
-                            get_cartesian_coordinates(nnd.translation, vt);
-                            
-                            for (int ja = 0; ja < (int)atoms_.size(); ja++)
-                            {
-                                nnd.atom_id = ja;
-
-                                double japos[3];
-                                get_cartesian_coordinates(atoms_[ja]->position(), japos);
-
-                                double v[3];
-                                for (int x = 0; x < 3; x++)
-                                    v[x] = japos[x] + vt[x] - iapos[x];
-
-                                nnd.distance = vector_length(v);
-                                
-                                dist.push_back(nnd.distance);
-                                nn.push_back(nnd);
-                            }
-
-                        }
-                
-                std::vector<size_t> reorder(dist.size());
-                gsl_heapsort_index(&reorder[0], &dist[0], dist.size(), sizeof(double), compare_doubles);
-                nearest_neighbours_[ia].resize(nn.size());
-                for (int i = 0; i < (int)nn.size(); i++)
-                    nearest_neighbours_[ia][i] = nn[reorder[i]];
-            }
-        }
-
-        void find_mt_radii()
-        {
-            std::map<int,double> dr_by_type_id;
-            
-            std::map<int, AtomType*>::iterator it;
-            
-            // initialize delta R to huge value
-            for (it = atom_type_by_id_.begin(); it != atom_type_by_id_.end(); it++)
-            {
-                if (dr_by_type_id.count((*it).first) == 0)
-                    dr_by_type_id[(*it).first] = 1e10;
-            }
-             
-            for (int ia = 0; ia < (int)atoms_.size(); ia++)
-            {
-                int ja = nearest_neighbours_[ia][1].atom_id;
-                double dist = nearest_neighbours_[ia][1].distance;
-                
-                // take 95% of remaining distance and assign equal halves to both atoms
-                double dr = 0.95 * (dist - atoms_[ia]->type()->mt_radius() - atoms_[ja]->type()->mt_radius()) / 2;
-                
-                if (dr < 0.0)
-                    error(__FILE__, __LINE__, "muffin-tin spheres overlap");
-                
-                // take minimal delta R for the given atom type
-                dr_by_type_id[atoms_[ia]->type_id()] = std::min(dr, dr_by_type_id[atoms_[ia]->type_id()]);
-                dr_by_type_id[atoms_[ja]->type_id()] = std::min(dr, dr_by_type_id[atoms_[ja]->type_id()]);
-            }
-            
-            for (int i = 0; i < (int)atoms_.size(); i++)
-            {
-                std::cout << "atom : " << i << " new r : " << atoms_[i]->type()->mt_radius() + dr_by_type_id[atoms_[i]->type_id()] << std::endl;
-            }
-
-        }
     
         
     public:
     
-        Global() : spg_dataset_(NULL),
-                   pw_cutoff_(pw_cutoff_default),
-                   num_gvec_(0)
+        global_base() : spg_dataset_(NULL)
         {
             assert(sizeof(int4) == 4);
             assert(sizeof(real8) == 8);
         }
 
-        void print_info()
-        {
-            printf("\n");
-            printf("SIRIUS v0.1\n");
-            printf("\n");
-
-            printf("lattice vectors\n");
-            for (int i = 0; i < 3; i++)
-                printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors_[i][0], 
-                                                                     lattice_vectors_[i][1], 
-                                                                     lattice_vectors_[i][2]); 
-            printf("reciprocal lattice vectors\n");
-            for (int i = 0; i < 3; i++)
-                printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors_[i][0], 
-                                                                     reciprocal_lattice_vectors_[i][1], 
-                                                                     reciprocal_lattice_vectors_[i][2]);
-            std::map<int, AtomType*>::iterator it;    
-            printf("\n"); 
-            printf("number of atom types : %i\n", (int)atom_type_by_id_.size());
-            for (it = atom_type_by_id_.begin(); it != atom_type_by_id_.end(); it++)
-                printf("type id : %i   symbol : %s   label : %s   mt_radius : %f\n", (*it).first, 
-                                                                                     (*it).second->symbol().c_str(), 
-                                                                                     (*it).second->label().c_str(),
-                                                                                     (*it).second->mt_radius()); 
-                
-            printf("number of atoms : %i\n", (int)atoms_.size());
-            printf("number of symmetry classes : %i\n", (int)atom_symmetry_class_by_id_.size());
-
-            printf("\n"); 
-            printf("atom id    type id    class id\n");
-            printf("------------------------------\n");
-            for (int i = 0; i < (int)atoms_.size(); i++)
-            {
-                printf("%6i     %6i      %6i\n", i, atoms_[i]->type_id(), atoms_[i]->symmetry_class_id()); 
-           
-            }
-
-            printf("\n");
-            for (int ic = 0; ic < (int)atom_symmetry_class_by_id_.size(); ic++)
-            {
-                printf("class id : %i   atom id : ", ic);
-                for (int i = 0; i < atom_symmetry_class_by_id_[ic]->num_atoms(); i++)
-                    printf("%i ", atom_symmetry_class_by_id_[ic]->atom_id(i));  
-                printf("\n");
-            }
-
-            printf("\n");
-            printf("space group number   : %i\n", spg_dataset_->spacegroup_number);
-            printf("international symbol : %s\n", spg_dataset_->international_symbol);
-            printf("Hall symbol          : %s\n", spg_dataset_->hall_symbol);
-            printf("number of operations : %i\n", spg_dataset_->n_operations);
-            
-            printf("\n");
-            printf("plane wave cutoff : %f\n", pw_cutoff_);
-            printf("FFT grid size : %i %i %i   total : %i\n", fft_.size(0), fft_.size(1), fft_.size(2), fft_.size());
-            
-            printf("\n");
-            Timer::print();
-        }
-        
+       
         void set_lattice_vectors(double* a1, 
                                  double* a2, 
                                  double* a3)
@@ -437,6 +257,171 @@ class Global
             atoms_.push_back(new Atom(atom_type_by_id_[atom_type_id], position, vector_field));
         }
 
+       
+
+        void clear()
+        {
+            if (spg_dataset_)
+            {
+                spg_free_dataset(spg_dataset_);
+                spg_dataset_ = NULL;
+            }
+            
+            // delete atom types
+            std::map<int,AtomType*>::iterator it;    
+            for (it = atom_type_by_id_.begin(); it != atom_type_by_id_.end(); it++)
+                delete (*it).second;
+            atom_type_by_id_.clear();
+
+            // delete atom classes
+            for (int i = 0; i < (int)atom_symmetry_class_by_id_.size(); i++)
+                delete atom_symmetry_class_by_id_[i];
+            atom_symmetry_class_by_id_.clear();
+
+            // delete atoms
+            for (int i = 0; i < (int)atoms_.size(); i++)
+                delete atoms_[i];
+            atoms_.clear();
+        }
+};
+
+class global_geometry : public global_base
+{
+    protected:
+    
+        /// list of nearest neighbours for each atom
+        std::vector< std::vector<nearest_neighbour_descriptor> > nearest_neighbours_;
+
+    public:
+    
+        void find_nearest_neighbours()
+        {
+            Timer t("find_nearest_neighbours");
+
+            int max_frac_coord[] = {0, 0, 0};
+            double frac_coord[3];
+            for (int i = 0; i < 3; i++)
+            {
+                double cart_coord[] = {0.0, 0.0, 0.0};
+                cart_coord[i] = 15.0; // radius of nearest neighbours cluster
+                get_fractional_coordinates(cart_coord, frac_coord);
+                for (int i = 0; i < 3; i++)
+                    max_frac_coord[i] = std::max(max_frac_coord[i], abs(int(frac_coord[i])) + 1);
+            }
+           
+            nearest_neighbours_.resize(atoms_.size());
+            for (int ia = 0; ia < (int)atoms_.size(); ia++)
+            {
+                double iapos[3];
+                get_cartesian_coordinates(atoms_[ia]->position(), iapos);
+                
+                std::vector<nearest_neighbour_descriptor> nn;
+                std::vector<double> dist;
+
+                for (int i0 = -max_frac_coord[0]; i0 <= max_frac_coord[0]; i0++)
+                    for (int i1 = -max_frac_coord[1]; i1 <= max_frac_coord[1]; i1++)
+                        for (int i2 = -max_frac_coord[2]; i2 <= max_frac_coord[2]; i2++)
+                        {
+                            nearest_neighbour_descriptor nnd;
+                            nnd.translation[0] = i0;
+                            nnd.translation[1] = i1;
+                            nnd.translation[2] = i2;
+                            
+                            double vt[3];
+                            get_cartesian_coordinates(nnd.translation, vt);
+                            
+                            for (int ja = 0; ja < (int)atoms_.size(); ja++)
+                            {
+                                nnd.atom_id = ja;
+
+                                double japos[3];
+                                get_cartesian_coordinates(atoms_[ja]->position(), japos);
+
+                                double v[3];
+                                for (int x = 0; x < 3; x++)
+                                    v[x] = japos[x] + vt[x] - iapos[x];
+
+                                nnd.distance = vector_length(v);
+                                
+                                dist.push_back(nnd.distance);
+                                nn.push_back(nnd);
+                            }
+
+                        }
+                
+                std::vector<size_t> reorder(dist.size());
+                gsl_heapsort_index(&reorder[0], &dist[0], dist.size(), sizeof(double), compare_doubles);
+                nearest_neighbours_[ia].resize(nn.size());
+                for (int i = 0; i < (int)nn.size(); i++)
+                    nearest_neighbours_[ia][i] = nn[reorder[i]];
+            }
+        }
+
+        void find_mt_radii()
+        {
+            std::map<int,double> dr_by_type_id;
+            
+            std::map<int,AtomType*>::iterator it;
+            
+            // initialize delta R to huge value
+            for (it = atom_type_by_id_.begin(); it != atom_type_by_id_.end(); it++)
+            {
+                if (dr_by_type_id.count((*it).first) == 0)
+                    dr_by_type_id[(*it).first] = 1e10;
+            }
+             
+            for (int ia = 0; ia < (int)atoms_.size(); ia++)
+            {
+                int ja = nearest_neighbours_[ia][1].atom_id;
+                double dist = nearest_neighbours_[ia][1].distance;
+                
+                // take 95% of remaining distance and assign equal halves to both atoms
+                double dr = 0.95 * (dist - atoms_[ia]->type()->mt_radius() - atoms_[ja]->type()->mt_radius()) / 2;
+                
+                if (dr < 0.0)
+                    error(__FILE__, __LINE__, "muffin-tin spheres overlap");
+                
+                // take minimal delta R for the given atom type
+                dr_by_type_id[atoms_[ia]->type_id()] = std::min(dr, dr_by_type_id[atoms_[ia]->type_id()]);
+                dr_by_type_id[atoms_[ja]->type_id()] = std::min(dr, dr_by_type_id[atoms_[ja]->type_id()]);
+            }
+            
+            for (int i = 0; i < (int)atoms_.size(); i++)
+            {
+                std::cout << "atom : " << i << " new r : " << atoms_[i]->type()->mt_radius() + dr_by_type_id[atoms_[i]->type_id()] << std::endl;
+            }
+        }
+};
+
+class global_fft : public global_geometry
+{
+    protected:
+        
+        /// plane wave cutoff radius (in inverse a.u. of length)
+        double pw_cutoff_;
+        
+        /// fft wrapper
+        FFT3D fft_;
+
+        /// list of G-vector fractional coordinates
+        mdarray<int,2> gvec_;
+
+        /// number of G-vectors within plane wave cutoff
+        int num_gvec_;
+
+        /// mapping between linear G-vector index and G-vector coordinates
+        mdarray<int,3> index_by_gvec_;
+
+        /// mapping betwee linear G-vector index and position in FFT buffer
+        std::vector<int> fft_index_;
+
+    public:
+    
+        global_fft() : pw_cutoff_(pw_cutoff_default),
+                       num_gvec_(0)
+        {
+        }
+  
         void set_pw_cutoff(double _pw_cutoff)
         {
             pw_cutoff_ = _pw_cutoff;
@@ -531,7 +516,14 @@ class Global
         {
             return fft_index_[ig];
         }
-        
+ 
+
+};
+
+class Global : public global_fft
+{
+    public:
+    
         void initialize()
         {
             get_symmetry();
@@ -540,29 +532,64 @@ class Global
             find_mt_radii();
         }
 
-        void clear()
+        void print_info()
         {
-            if (spg_dataset_)
-            {
-                spg_free_dataset(spg_dataset_);
-                spg_dataset_ = NULL;
-            }
-            
-            // delete atom types
-            std::map<int, AtomType*>::iterator it;    
+            printf("\n");
+            printf("SIRIUS v0.1\n");
+            printf("\n");
+
+            printf("lattice vectors\n");
+            for (int i = 0; i < 3; i++)
+                printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors_[i][0], 
+                                                                     lattice_vectors_[i][1], 
+                                                                     lattice_vectors_[i][2]); 
+            printf("reciprocal lattice vectors\n");
+            for (int i = 0; i < 3; i++)
+                printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors_[i][0], 
+                                                                     reciprocal_lattice_vectors_[i][1], 
+                                                                     reciprocal_lattice_vectors_[i][2]);
+            std::map<int,AtomType*>::iterator it;    
+            printf("\n"); 
+            printf("number of atom types : %i\n", (int)atom_type_by_id_.size());
             for (it = atom_type_by_id_.begin(); it != atom_type_by_id_.end(); it++)
-                delete (*it).second;
-            atom_type_by_id_.clear();
+                printf("type id : %i   symbol : %s   label : %s   mt_radius : %f\n", (*it).first, 
+                                                                                     (*it).second->symbol().c_str(), 
+                                                                                     (*it).second->label().c_str(),
+                                                                                     (*it).second->mt_radius()); 
+                
+            printf("number of atoms : %i\n", (int)atoms_.size());
+            printf("number of symmetry classes : %i\n", (int)atom_symmetry_class_by_id_.size());
 
-            // delete atom classes
-            for (int i = 0; i < (int)atom_symmetry_class_by_id_.size(); i++)
-                delete atom_symmetry_class_by_id_[i];
-            atom_symmetry_class_by_id_.clear();
-
-            // delete atoms
+            printf("\n"); 
+            printf("atom id    type id    class id\n");
+            printf("------------------------------\n");
             for (int i = 0; i < (int)atoms_.size(); i++)
-                delete atoms_[i];
-            atoms_.clear();
+            {
+                printf("%6i     %6i      %6i\n", i, atoms_[i]->type_id(), atoms_[i]->symmetry_class_id()); 
+           
+            }
+
+            printf("\n");
+            for (int ic = 0; ic < (int)atom_symmetry_class_by_id_.size(); ic++)
+            {
+                printf("class id : %i   atom id : ", ic);
+                for (int i = 0; i < atom_symmetry_class_by_id_[ic]->num_atoms(); i++)
+                    printf("%i ", atom_symmetry_class_by_id_[ic]->atom_id(i));  
+                printf("\n");
+            }
+
+            printf("\n");
+            printf("space group number   : %i\n", spg_dataset_->spacegroup_number);
+            printf("international symbol : %s\n", spg_dataset_->international_symbol);
+            printf("Hall symbol          : %s\n", spg_dataset_->hall_symbol);
+            printf("number of operations : %i\n", spg_dataset_->n_operations);
+            
+            printf("\n");
+            printf("plane wave cutoff : %f\n", pw_cutoff_);
+            printf("FFT grid size : %i %i %i   total : %i\n", fft_.size(0), fft_.size(1), fft_.size(2), fft_.size());
+            
+            printf("\n");
+            Timer::print();
         }
 };
 
