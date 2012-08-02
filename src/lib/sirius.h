@@ -39,7 +39,7 @@ extern "C" {
 #include "atom_symmetry_class.h"
 #include "atom.h"
 #include "fft3d.h"
-#include "sirius_geometry.h"
+#include "sirius_unit_cell.h"
 #include "global.h"
 
 #endif // __SIRIUS_H__

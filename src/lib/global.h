@@ -25,6 +25,7 @@ struct nearest_neighbour_descriptor
     double distance;
 };
 
+#if 0
 class global_base
 {
     protected:
@@ -284,8 +285,9 @@ class global_base
             atoms_.clear();
         }
 };
+#endif
 
-class global_geometry : public global_base
+class global_geometry : public sirius_unit_cell
 {
     protected:
     

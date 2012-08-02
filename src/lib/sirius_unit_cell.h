@@ -1,6 +1,6 @@
 namespace sirius {
 
-class sirius_geometry
+class sirius_unit_cell
 {
     protected:
     
@@ -89,7 +89,7 @@ class sirius_geometry
 
     public:
     
-        sirius_geometry() : spg_dataset_(NULL)
+        sirius_unit_cell() : spg_dataset_(NULL)
         {
             assert(sizeof(int4) == 4);
             assert(sizeof(real8) == 8);
@@ -185,6 +185,11 @@ class sirius_geometry
                 for (int l = 0; l < 3; l++)
                     cart_coord[x] += reciprocal_lattice_vectors_[l][x] * frac_coord[l];
             }
+        }
+        
+        inline double omega()
+        {
+            return omega_;
         }
 
         /*! 
