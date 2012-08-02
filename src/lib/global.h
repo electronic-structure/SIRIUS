@@ -3,6 +3,16 @@
 
 namespace sirius {
 
+inline int compare_doubles(const void* a, const void* b)
+{
+    if (*(double*)a > *(double*)b)
+        return 1;
+    else if (*(double*)a < *(double*)b)
+        return -1;
+    else
+        return 0;
+}
+
 class Global 
 {
     private:
@@ -33,6 +43,18 @@ class Global
         
         /// fft wrapper
         FFT3D fft_;
+
+        /// list of G-vector fractional coordinates
+        mdarray<int,2> gvec_;
+
+        /// number of G-vectors within plane wave cutoff
+        int  num_gvec_;
+
+        /// mapping between linear G-vector index and it's coordinates
+        mdarray<int,3> index_by_gvec_;
+
+        /// mapping betwee linear G-vector index and position in FFT buffer
+        std::vector<int> fft_index_;
 
         void get_symmetry()
         {
@@ -94,7 +116,8 @@ class Global
     public:
     
         Global() : spg_dataset_(NULL),
-                   pw_cutoff_(pw_cutoff_default)
+                   pw_cutoff_(pw_cutoff_default),
+                   num_gvec_(0)
         {
             assert(sizeof(int4) == 4);
             assert(sizeof(real8) == 8);
@@ -207,6 +230,16 @@ class Global
             }
         }
 
+        void get_cartesian_coordinates(double* frac_coord, double* cart_coord)
+        {
+            for (int x = 0; x < 3; x++)
+            {
+                cart_coord[x] = 0.0;
+                for (int l = 0; l < 3; l++)
+                    cart_coord[x] += lattice_vectors_[l][x] * frac_coord[l];
+            }
+        }
+
         /*! 
             \brief Get reciprocal fractional coordinates by reciprocal Cartesian coordinates. 
         */
@@ -278,6 +311,11 @@ class Global
             atoms_.push_back(new Atom(atom_type_by_id_[atom_type_id], position, vector_field));
         }
 
+        void set_pw_cutoff(double _pw_cutoff)
+        {
+            pw_cutoff_ = _pw_cutoff;
+        }
+
         void init_fft_grid()
         {
             int max_frac_coord[] = {0, 0, 0};
@@ -292,40 +330,78 @@ class Global
                     max_frac_coord[i] = std::max(max_frac_coord[i], 2 * abs(int(frac_coord[i])) + 1);
             }
             
-            fft_.set_grid_size(max_frac_coord);
-            fft_.init();
+            fft_.init(max_frac_coord);
             
-            mdarray<int,3> index_by_reciprocal_coordinates_;
-            
-            index_by_reciprocal_coordinates_.set_dimensions(dimension(fft_.grid_limits(0, 0), fft_.grid_limits(0, 1)),
-                                                            dimension(fft_.grid_limits(1, 0), fft_.grid_limits(1, 1)),
-                                                            dimension(fft_.grid_limits(2, 0), fft_.grid_limits(2, 1)));
-            index_by_reciprocal_coordinates_.allocate();
+            mdarray<int,2> gvec(NULL, 3, fft_.size());
+            gvec.allocate();
+            std::vector<double> length(fft_.size());
 
-            std::vector<double> length;
             int ig = 0;
             for (int i = fft_.grid_limits(0, 0); i <= fft_.grid_limits(0, 1); i++)
                 for (int j = fft_.grid_limits(1, 0); j <= fft_.grid_limits(1, 1); j++)
                     for (int k = fft_.grid_limits(2, 0); k <= fft_.grid_limits(2, 1); k++)
                     {
-                        index_by_reciprocal_coordinates_(i, j, k) = ig++;
+                        gvec(0, ig) = i;
+                        gvec(1, ig) = j;
+                        gvec(2, ig) = k;
+
                         int fracc[] = {i, j, k};
                         double cartc[3];
                         get_reciprocal_cartesian_coordinates(fracc, cartc);
-                        length.push_back(vector_length(cartc));
+                        length[ig] = vector_length(cartc);
+                        ig++;
                     }
 
             std::vector<size_t> reorder(fft_.size());
             gsl_heapsort_index(&reorder[0], &length[0], fft_.size(), sizeof(double), compare_doubles);
-            
-            /*for (int i = 0; i < fft_.size(); i++)
-                std::cout << length[reorder[i]] << std::endl;*/
+           
+            gvec_.set_dimensions(3, fft_.size());
+            gvec_.allocate();
 
+            num_gvec_ = 0;
+            for (int i = 0; i < fft_.size(); i++)
+            {
+                for (int j = 0; j < 3; j++)
+                    gvec_(j, i) = gvec(j, reorder[i]);
+                
+                if (length[reorder[i]] <= pw_cutoff_)
+                    num_gvec_++;
+            }
+
+            index_by_gvec_.set_dimensions(dimension(fft_.grid_limits(0, 0), fft_.grid_limits(0, 1)),
+                                          dimension(fft_.grid_limits(1, 0), fft_.grid_limits(1, 1)),
+                                          dimension(fft_.grid_limits(2, 0), fft_.grid_limits(2, 1)));
+            index_by_gvec_.allocate();
+
+            fft_index_.resize(fft_.size());
+
+            for (int ig = 0; ig < fft_.size(); ig++)
+            {
+                int i0 = gvec_(0, ig);
+                int i1 = gvec_(1, ig);
+                int i2 = gvec_(2, ig);
+
+                // mapping from G-vector to it's index
+                index_by_gvec_(i0, i1, i2) = ig;
+
+                // mapping of FFT buffer linear index
+                fft_index_[ig] = fft_.index(i0, i1, i2);
+           }
         }
         
         inline FFT3D& fft()
         {
             return fft_;
+        }
+
+        inline int index_by_gvec(int i0, int i1, int i2)
+        {
+            return index_by_gvec_(i0, i1, i2);
+        }
+
+        inline int fft_index(int ig)
+        {
+            return fft_index_[ig];
         }
         
         void initialize()

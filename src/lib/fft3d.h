@@ -1,3 +1,6 @@
+#ifndef __FFT3D_H__
+#define __FFT3D_H__
+
 #include "fft3d_base.h"
 
 namespace sirius
@@ -19,29 +22,41 @@ class FFT3D : public FFT3D_base
     
     public:
 
-        void init()
+        void init(int* n)
         {
+            FFT3D_base::init(n);
+            
+            clear();
+            
             fftw_input_buffer.resize(size());
             fftw_output_buffer.resize(size());
-            plan_backward = fftw_plan_dft_3d(size(0), size(1), size(2), (fftw_complex*)&fftw_input_buffer[0], 
-                (fftw_complex*)&fftw_output_buffer[0], 1, FFTW_ESTIMATE);
-            plan_forward = fftw_plan_dft_3d(size(0), size(1), size(2), (fftw_complex*)&fftw_input_buffer[0], 
-                (fftw_complex*)&fftw_output_buffer[0], -1, FFTW_ESTIMATE);
+            plan_backward = fftw_plan_dft_3d(size(2), size(1), size(0), (fftw_complex*)&fftw_input_buffer[0], 
+                (fftw_complex*)&fftw_output_buffer[0], 1, FFTW_MEASURE);
+            plan_forward = fftw_plan_dft_3d(size(2), size(1), size(0), (fftw_complex*)&fftw_input_buffer[0], 
+                (fftw_complex*)&fftw_output_buffer[0], -1, FFTW_MEASURE);
         }
         
-        void transform(double* data_, int direction)
+        void clear()
         {
+            fftw_destroy_plan(plan_backward);
+            fftw_destroy_plan(plan_forward);
+        }
+        
+        void transform(complex16* zdata_, int direction)
+        {
+            double* data_ = (double*)zdata_;
+            
             if (direction == 1)
             {
-                memcpy(&fftw_input_buffer[0], data_, size() * sizeof(double) * 2);
+                memcpy(&fftw_input_buffer[0], zdata_, size() * sizeof(complex16));
                 fftw_execute(plan_backward);
-                memcpy(data_, &fftw_output_buffer[0], size() * sizeof(double) * 2);
+                memcpy(zdata_, &fftw_output_buffer[0], size() * sizeof(complex16));
             }
             if (direction == -1)
             {
-                memcpy(&fftw_input_buffer[0], data_, size() * sizeof(double) * 2);
+                memcpy(&fftw_input_buffer[0], zdata_, size() * sizeof(complex16));
                 fftw_execute(plan_forward);
-                memcpy(data_, &fftw_output_buffer[0], size() * sizeof(double) * 2);
+                memcpy(zdata_, &fftw_output_buffer[0], size() * sizeof(complex16));
                 
                 double norm = 1.0 / size();
                 for (int i = 0; i < 2 * size(); i++)
@@ -61,17 +76,35 @@ class FFT3D : public FFT3D_base
         
     public:
 
-        void init()
+        void init(int* n)
         {
+            FFT3D_base::init(n);
+            
+            clear();
+            
             for (int i = 0; i < 3; i++) 
+            {
                 wavetable_.push_back(gsl_fft_complex_wavetable_alloc((int)grid_size_[i]));
-                
-            for (int i = 0; i < 3; i++)
                 workspace_.push_back(gsl_fft_complex_workspace_alloc((int)grid_size_[i]));
+            }
         }
         
-        void transform(double* data_, int direction)
+        void clear()
         {
+            for (int i = 0; i < (int)wavetable_.size(); i++)
+            {
+                gsl_fft_complex_wavetable_free(wavetable_[i]);
+                gsl_fft_complex_workspace_free(workspace_[i]);
+            }
+            
+            wavetable_.clear();
+            workspace_.clear();
+        }
+        
+        void transform(complex16* zdata_, int direction)
+        {
+            double* data_ = (double*)zdata_;
+
             mdarray<double,4> data(data_, 2, grid_size_[0], grid_size_[1], grid_size_[2]);
             
             gsl_fft_direction sign;
@@ -115,4 +148,4 @@ class FFT3D : public FFT3D_base
 
 };
 
-
+#endif // __FFT3D_H__

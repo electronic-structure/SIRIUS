@@ -103,9 +103,9 @@ class JsonTree
         
         template <typename T> inline bool parse_value(T& val, std::string& type_name)
         {
-            json_value_parser<T> v(node, val);
-            type_name = v.type_name();
-            return v.is_valid();
+            json_value_parser<T> jvp(node, val);
+            type_name = jvp.type_name();
+            return jvp.is_valid();
         }
         
     public:

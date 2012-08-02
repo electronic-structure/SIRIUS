@@ -4,7 +4,7 @@ CPP_OPT =
 
 CXX_OPT = -O3 -Wall $(CPP_OPT)
 
-LINK_OPT = -lstdc++ $(LIBS)
+LINK_OPT = $(LIBS) -lstdc++
 
 LIBS = $(LAPACK_LIB) $(XC_LIB) $(SPG_LIB) $(GSL_LIB) $(FFTW_LIB)
 
@@ -24,5 +24,5 @@ CXX_OPT := $(CXX_OPT) -I/Users/anton/src/sirius-project/gsl-1.15
 GSL_LIB = /Users/anton/src/sirius-project/gsl-1.15/.libs/libgsl.a
 
 # FFTW
-#CXX_OPT := $(CXX_OPT) -D_FFTW_ 
-#FFTW_LIB = /opt/local/lib/libfftw3.a
+CXX_OPT := $(CXX_OPT) -D_FFTW_ 
+FFTW_LIB = /opt/local/lib/libfftw3.a

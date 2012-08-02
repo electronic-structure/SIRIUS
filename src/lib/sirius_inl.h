@@ -1,15 +1,10 @@
-
-inline double vector_length(double* vec)
+inline double vector_length(double* v)
 {
-    return sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
+    return sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
 }
 
-inline int compare_doubles(const void* a, const void* b)
+inline double vector_scalar_product(double* a, double* b)
 {
-    if (*(double*)a > *(double*)b)
-        return 1;
-    else if (*(double*)a < *(double*)b)
-        return -1;
-    else
-        return 0;
+    return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
 }
+
