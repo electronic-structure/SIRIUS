@@ -7,10 +7,8 @@ class SiriusGlobal : public sirius_gvec
         void initialize()
         {
             sirius_unit_cell::init();
+            sirius_geometry::init();
             init_fft_grid();
-            find_nearest_neighbours(15.0);
-            find_mt_radii();
-            check_mt_overlap(true);
         }
         
         void clear()
@@ -24,42 +22,41 @@ class SiriusGlobal : public sirius_gvec
             printf("SIRIUS v0.2\n");
             printf("\n");
 
-            /*printf("lattice vectors\n");
+            printf("lattice vectors\n");
             for (int i = 0; i < 3; i++)
-                printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors_[i][0], 
-                                                                     lattice_vectors_[i][1], 
-                                                                     lattice_vectors_[i][2]); 
+                printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors(i, 0), 
+                                                                     lattice_vectors(i, 1), 
+                                                                     lattice_vectors(i, 2)); 
             printf("reciprocal lattice vectors\n");
             for (int i = 0; i < 3; i++)
-                printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors_[i][0], 
-                                                                     reciprocal_lattice_vectors_[i][1], 
-                                                                    reciprocal_lattice_vectors_[i][2]);
-            */
-            //std::map<int,AtomType*>::iterator it;    
+                printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors(i, 0), 
+                                                                     reciprocal_lattice_vectors(i, 1), 
+                                                                     reciprocal_lattice_vectors(i, 2));
+            
             printf("\n"); 
             printf("number of atom types : %i\n", num_atom_types());
             for (int i = 0; i < num_atom_types(); i++)
             {
                 int id = atom_type_id(i);
-                printf("type id : %i   symbol : %s   label : %s   mt_radius : %f\n", id,
-                                                                                     atom_type_by_id(id)->symbol().c_str(), 
-                                                                                     atom_type_by_id(id)->label().c_str(),
-                                                                                     atom_type_by_id(id)->mt_radius()); 
+                printf("type id : %i   symbol : %2s   label : %2s   mt_radius : %10.6f\n", id,
+                                                                                           atom_type_by_id(id)->symbol().c_str(), 
+                                                                                           atom_type_by_id(id)->label().c_str(),
+                                                                                           atom_type_by_id(id)->mt_radius()); 
             }
 
-            /*printf("number of atoms : %i\n", (int)atoms_.size());
-            printf("number of symmetry classes : %i\n", (int)atom_symmetry_class_by_id_.size());
+            printf("number of atoms : %i\n", num_atoms());
+            printf("number of symmetry classes : %i\n", num_symmetry_classes());
 
             printf("\n"); 
             printf("atom id    type id    class id\n");
             printf("------------------------------\n");
-            for (int i = 0; i < (int)atoms_.size(); i++)
+            for (int i = 0; i < num_atoms(); i++)
             {
-                printf("%6i     %6i      %6i\n", i, atoms_[i]->type_id(), atoms_[i]->symmetry_class_id()); 
+                printf("%6i     %6i      %6i\n", i, atom(i)->type_id(), atom(i)->symmetry_class_id()); 
            
             }
 
-            printf("\n");
+            /*printf("\n");
             for (int ic = 0; ic < (int)atom_symmetry_class_by_id_.size(); ic++)
             {
                 printf("class id : %i   atom id : ", ic);

@@ -19,6 +19,18 @@ class sirius_geometry : public sirius_unit_cell
         /// list of nearest neighbours for each atom
         std::vector< std::vector<nearest_neighbour_descriptor> > nearest_neighbours_;
 
+    protected:
+        
+        void init()
+        {
+            find_nearest_neighbours(15.0);
+            
+            if (check_mt_overlap(false))
+                find_mt_radii();
+            
+            check_mt_overlap(true);
+        }
+
     public:
     
         void find_nearest_neighbours(double cluster_radius)
@@ -125,7 +137,7 @@ class sirius_geometry : public sirius_unit_cell
             for (int i = 0; i < num_atom_types(); i++)
             {
                 int id = atom_type_id(i);
-                atom_type_by_id(id)->set_mt_radius(rmt[i]);
+                atom_type_by_id(id)->set_mt_radius(std::min(rmt[i], 3.0));
             }
         }
 

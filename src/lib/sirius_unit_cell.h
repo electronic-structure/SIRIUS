@@ -110,7 +110,7 @@ class sirius_unit_cell
                 error(__FILE__, __LINE__, "atom_type_id_ list is not empty");
 
             int idx = 0;
-            for (std::map<int,AtomType*>::iterator it = atom_type_by_id_.begin(); it != atom_type_by_id_.end(); it++)
+            for (std::map<int, AtomType*>::iterator it = atom_type_by_id_.begin(); it != atom_type_by_id_.end(); it++)
             {
                 atom_type_id_.push_back(it->first);
                 atom_type_index_by_id_[it->first] = idx++;
@@ -126,9 +126,8 @@ class sirius_unit_cell
             }
             
             // delete atom types
-            std::map<int,AtomType*>::iterator it;    
-            for (it = atom_type_by_id_.begin(); it != atom_type_by_id_.end(); it++)
-                delete (*it).second;
+            for (std::map<int, AtomType*>::iterator it = atom_type_by_id_.begin(); it != atom_type_by_id_.end(); it++)
+                delete it->second;
             atom_type_by_id_.clear();
             atom_type_id_.clear();
             atom_type_index_by_id_.clear();
@@ -197,6 +196,16 @@ class sirius_unit_cell
             for (int l = 0; l < 3; l++)
                 for (int x = 0; x < 3; x++)
                     reciprocal_lattice_vectors_[l][x] = twopi * inverse_lattice_vectors_[x][l];
+        }
+        
+        inline double lattice_vectors(int l, int x)
+        {
+            return lattice_vectors_[l][x];
+        }
+        
+        inline double reciprocal_lattice_vectors(int l, int x)
+        {
+            return reciprocal_lattice_vectors_[l][x];
         }
 
         /*! 
@@ -327,6 +336,11 @@ class sirius_unit_cell
         inline AtomType* atom_type_by_id(int id)
         {
             return atom_type_by_id_[id];
+        }
+        
+        inline int num_symmetry_classes()
+        {
+            return atom_symmetry_class_by_id_.size();
         }
 };
 
