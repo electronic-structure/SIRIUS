@@ -23,7 +23,7 @@ class sirius_geometry : public sirius_unit_cell
     
         void find_nearest_neighbours()
         {
-            Timer t("find_nearest_neighbours");
+            Timer t("sirius::sirius_geometry::find_nearest_neighbours");
 
             int max_frac_coord[] = {0, 0, 0};
             double frac_coord[3];

@@ -127,4 +127,3 @@ class sirius_gvec : public sirius_geometry
 };
 
 };
-

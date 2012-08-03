@@ -30,7 +30,7 @@ extern "C" {
 #include "constants.h"
 #include "mdarray.h"
 #include "linalg.h"
-#include "sirius_inl.h"
+#include "global_inl.h"
 #include "radial_grid.h"
 #include "spline.h"
 #include "radial_solver.h"
@@ -42,6 +42,8 @@ extern "C" {
 #include "sirius_unit_cell.h"
 #include "sirius_geometry.h"
 #include "sirius_gvec.h"
-#include "global.h"
+#include "sirius_global.h"
+
+sirius::SiriusGlobal sirius_global;
 
 #endif // __SIRIUS_H__
