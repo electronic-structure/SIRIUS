@@ -14,14 +14,14 @@ struct nearest_neighbour_descriptor
 
 class sirius_geometry : public sirius_unit_cell
 {
-    protected:
+    private:
     
         /// list of nearest neighbours for each atom
         std::vector< std::vector<nearest_neighbour_descriptor> > nearest_neighbours_;
 
     public:
     
-        void find_nearest_neighbours()
+        void find_nearest_neighbours(double cluster_radius)
         {
             Timer t("sirius::sirius_geometry::find_nearest_neighbours");
 
@@ -30,17 +30,18 @@ class sirius_geometry : public sirius_unit_cell
             for (int i = 0; i < 3; i++)
             {
                 double cart_coord[] = {0.0, 0.0, 0.0};
-                cart_coord[i] = 15.0; // radius of nearest neighbours cluster
-                get_fractional_coordinates(cart_coord, frac_coord);
+                cart_coord[i] = cluster_radius; // radius of nearest neighbours cluster
+                get_coordinates<fractional, direct>(cart_coord, frac_coord);
                 for (int i = 0; i < 3; i++)
                     max_frac_coord[i] = std::max(max_frac_coord[i], abs(int(frac_coord[i])) + 1);
             }
            
-            nearest_neighbours_.resize(atoms_.size());
-            for (int ia = 0; ia < (int)atoms_.size(); ia++)
+            nearest_neighbours_.clear();
+            nearest_neighbours_.resize(num_atoms());
+            for (int ia = 0; ia < num_atoms(); ia++)
             {
                 double iapos[3];
-                get_cartesian_coordinates(atoms_[ia]->position(), iapos);
+                get_coordinates<cartesian, direct>(atom(ia)->position(), iapos);
                 
                 std::vector<nearest_neighbour_descriptor> nn;
                 std::vector<double> dist;
@@ -55,14 +56,14 @@ class sirius_geometry : public sirius_unit_cell
                             nnd.translation[2] = i2;
                             
                             double vt[3];
-                            get_cartesian_coordinates(nnd.translation, vt);
+                            get_coordinates<cartesian, direct>(nnd.translation, vt);
                             
-                            for (int ja = 0; ja < (int)atoms_.size(); ja++)
+                            for (int ja = 0; ja < num_atoms(); ja++)
                             {
                                 nnd.atom_id = ja;
 
                                 double japos[3];
-                                get_cartesian_coordinates(atoms_[ja]->position(), japos);
+                                get_coordinates<cartesian, direct>(atom(ja)->position(), japos);
 
                                 double v[3];
                                 for (int x = 0; x < 3; x++)
@@ -84,39 +85,84 @@ class sirius_geometry : public sirius_unit_cell
             }
         }
 
+        /*! 
+            \brief Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
+                   
+                   In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
+                   bethween closest atoms. Initial values of the muffin-tin radii (provided in the input file) 
+                   are ignored.
+        */
         void find_mt_radii()
         {
-            std::map<int,double> dr_by_type_id;
-            
-            std::map<int,AtomType*>::iterator it;
-            
-            // initialize delta R to huge value
-            for (it = atom_type_by_id_.begin(); it != atom_type_by_id_.end(); it++)
-            {
-                if (dr_by_type_id.count((*it).first) == 0)
-                    dr_by_type_id[(*it).first] = 1e10;
-            }
+            if (nearest_neighbours_.size() == 0)                 
+                error(__FILE__, __LINE__, "array of nearest neighbours is empty");
+
+            // initialize Rmt to huge value
+            std::vector<double> rmt(num_atom_types(), 1e10);
              
-            for (int ia = 0; ia < (int)atoms_.size(); ia++)
+            for (int ia = 0; ia < num_atoms(); ia++)
             {
+                int id1 = atom(ia)->type_id();
+                if (nearest_neighbours_[ia].size() <= 1) // first atom is always the central one itself
+                {
+                    std::stringstream s;
+                    s << "array of nearest neighbours for atom " << ia << " is empty";
+                    error(__FILE__, __LINE__, s);
+                }
+
+                int ja = nearest_neighbours_[ia][1].atom_id;
+                int id2 = atom(ja)->type_id();
+                double dist = nearest_neighbours_[ia][1].distance;
+                
+                // take a little bit smaller value than half a distance
+                double r = 0.95 * (dist / 2);
+
+                // take minimal R for the given atom type
+                rmt[atom_type_index_by_id(id1)] = std::min(r, rmt[atom_type_index_by_id(id1)]);
+                rmt[atom_type_index_by_id(id2)] = std::min(r, rmt[atom_type_index_by_id(id2)]);
+            }
+
+            for (int i = 0; i < num_atom_types(); i++)
+            {
+                int id = atom_type_id(i);
+                atom_type_by_id(id)->set_mt_radius(rmt[i]);
+            }
+        }
+
+        bool check_mt_overlap(bool stop_if_overlap)
+        {
+            if (nearest_neighbours_.size() == 0)
+                error(__FILE__, __LINE__, "array of nearest neighbours is empty");
+
+            for (int ia = 0; ia < num_atoms(); ia++)
+            {
+                if (nearest_neighbours_[ia].size() <= 1) // first atom is always the central one itself
+                {
+                    std::stringstream s;
+                    s << "array of nearest neighbours for atom " << ia << " is empty";
+                    error(__FILE__, __LINE__, s);
+                }
+
                 int ja = nearest_neighbours_[ia][1].atom_id;
                 double dist = nearest_neighbours_[ia][1].distance;
                 
-                // take 95% of remaining distance and assign equal halves to both atoms
-                double dr = 0.95 * (dist - atoms_[ia]->type()->mt_radius() - atoms_[ja]->type()->mt_radius()) / 2;
-                
-                if (dr < 0.0)
-                    error(__FILE__, __LINE__, "muffin-tin spheres overlap");
-                
-                // take minimal delta R for the given atom type
-                dr_by_type_id[atoms_[ia]->type_id()] = std::min(dr, dr_by_type_id[atoms_[ia]->type_id()]);
-                dr_by_type_id[atoms_[ja]->type_id()] = std::min(dr, dr_by_type_id[atoms_[ja]->type_id()]);
+                if ((atom(ia)->type()->mt_radius() + atom(ja)->type()->mt_radius()) > dist)
+                {
+                    if (stop_if_overlap)
+                    {
+                        std::stringstream s;
+                        s << "overlaping muffin-tin spheres for atoms " << ia << " and " << ja << std::endl
+                          << "  radius of atom " << ia << " : " << atom(ia)->type()->mt_radius() << std::endl
+                          << "  radius of atom " << ja << " : " << atom(ja)->type()->mt_radius() << std::endl
+                          << "  distance : " << dist;
+                        error(__FILE__, __LINE__, s);
+                    }
+                    
+                    return true;
+                }
             }
             
-            for (int i = 0; i < (int)atoms_.size(); i++)
-            {
-                std::cout << "atom : " << i << " new r : " << atoms_[i]->type()->mt_radius() + dr_by_type_id[atoms_[i]->type_id()] << std::endl;
-            }
+            return false;
         }
 };
 

@@ -251,6 +251,11 @@ class AtomType
         {
             return mt_radius_;
         }
+        
+        inline void set_mt_radius(double _mt_radius)
+        {
+            mt_radius_ = _mt_radius;
+        }
 
         void rebuild_aw_descriptors(int lmax)
         {

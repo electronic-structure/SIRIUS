@@ -46,7 +46,7 @@ class sirius_gvec : public sirius_geometry
             {
                 double cart_coord[] = {0.0, 0.0, 0.0};
                 cart_coord[i] = pw_cutoff_;
-                get_reciprocal_fractional_coordinates(cart_coord, frac_coord);
+                get_coordinates<fractional, reciprocal>(cart_coord, frac_coord);
                 for (int i = 0; i < 3; i++)
                     max_frac_coord[i] = std::max(max_frac_coord[i], 2 * abs(int(frac_coord[i])) + 1);
             }
@@ -68,7 +68,7 @@ class sirius_gvec : public sirius_geometry
 
                         int fracc[] = {i, j, k};
                         double cartc[3];
-                        get_reciprocal_cartesian_coordinates(fracc, cartc);
+                        get_coordinates<cartesian,reciprocal>(fracc, cartc);
                         length[ig] = vector_length(cartc);
                         ig++;
                     }

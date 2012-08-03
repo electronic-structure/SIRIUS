@@ -2,17 +2,23 @@ namespace sirius {
 
 class sirius_unit_cell
 {
-    protected:
-    
+    private:
+        
         /// unique mapping between atom type id and atom type
-        std::map<int,AtomType*> atom_type_by_id_;
+        std::map<int, AtomType*> atom_type_by_id_;
 
+        /// list of atom type IDs
+        std::vector<int> atom_type_id_;
+
+        /// mapping between atom type id and and ordered index in the range [0, Ntypes - 1]
+        std::map<int, int> atom_type_index_by_id_;
+         
         /// list of atom classes
         std::vector<AtomSymmetryClass*> atom_symmetry_class_by_id_;
-
+        
         /// list of atoms
         std::vector<Atom*> atoms_;
-
+       
         /// Bravais lattice vectors in row order
         double lattice_vectors_[3][3];
         
@@ -27,7 +33,14 @@ class sirius_unit_cell
        
         /// spglib structure with symmetry information
         SpglibDataset* spg_dataset_;
-
+    
+        /*! 
+            \brief Get crystal symmetries and equivalent atoms.
+            
+            Makes a call to spglib providing the basic unit cell information: lattice vectors and atomic types 
+            and positions. Gets back symmetry operations and a table of equivalent atoms. The table of equivalent 
+            atoms is then used to make a list of atom symmetry classes and related data.
+        */
         void get_symmetry()
         {
             Timer t("sirius::sirius_unit_cell::get_symmetry");
@@ -86,7 +99,51 @@ class sirius_unit_cell
                 }
             }
         }
+        
+    protected:
+       
+        void init()
+        {
+            get_symmetry();
+            
+            if (atom_type_id_.size() != 0)
+                error(__FILE__, __LINE__, "atom_type_id_ list is not empty");
 
+            int idx = 0;
+            for (std::map<int,AtomType*>::iterator it = atom_type_by_id_.begin(); it != atom_type_by_id_.end(); it++)
+            {
+                atom_type_id_.push_back(it->first);
+                atom_type_index_by_id_[it->first] = idx++;
+            }
+        }
+
+        void clear()
+        {
+            if (spg_dataset_)
+            {
+                spg_free_dataset(spg_dataset_);
+                spg_dataset_ = NULL;
+            }
+            
+            // delete atom types
+            std::map<int,AtomType*>::iterator it;    
+            for (it = atom_type_by_id_.begin(); it != atom_type_by_id_.end(); it++)
+                delete (*it).second;
+            atom_type_by_id_.clear();
+            atom_type_id_.clear();
+            atom_type_index_by_id_.clear();
+
+            // delete atom classes
+            for (int i = 0; i < (int)atom_symmetry_class_by_id_.size(); i++)
+                delete atom_symmetry_class_by_id_[i];
+            atom_symmetry_class_by_id_.clear();
+
+            // delete atoms
+            for (int i = 0; i < (int)atoms_.size(); i++)
+                delete atoms_[i];
+            atoms_.clear();
+        }
+        
     public:
     
         sirius_unit_cell() : spg_dataset_(NULL)
@@ -94,7 +151,14 @@ class sirius_unit_cell
             assert(sizeof(int4) == 4);
             assert(sizeof(real8) == 8);
         }
+        
+        /*!
+            \brief Set lattice vectors.
 
+            Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and 
+            unit cell volume.
+
+        */
         void set_lattice_vectors(double* a1, 
                                  double* a2, 
                                  double* a3)
@@ -136,60 +200,50 @@ class sirius_unit_cell
         }
 
         /*! 
-            \brief Get fractional coordinates by Cartesian coordinates. 
+            \brief Convert coordinates (fractional <-> Cartesian) of direct or reciprocal lattices
         */
-        void get_fractional_coordinates(double* cart_coord, 
-                                        double* frac_coord)
+        template<coordinates_type cT, lattice_type lT, typename T>
+        void get_coordinates(T* a, 
+                             double* b)
         {
-            for (int l = 0; l < 3; l++)
+            b[0] = b[1] = b[2] = 0.0;
+            
+            if (lT == direct)
             {
-                frac_coord[l] = 0.0;
-                for (int x = 0; x < 3; x++)
-                    frac_coord[l] += cart_coord[x] * inverse_lattice_vectors_[x][l];
+                if (cT == fractional)
+                {    
+                    for (int l = 0; l < 3; l++)
+                        for (int x = 0; x < 3; x++)
+                            b[l] += a[x] * inverse_lattice_vectors_[x][l];
+                }
+
+                if (cT == cartesian)
+                {
+                    for (int x = 0; x < 3; x++)
+                        for (int l = 0; l < 3; l++)
+                            b[x] += a[l] * lattice_vectors_[l][x];
+                }
             }
-        }
-        
-        /*! 
-            \brief Get Cartesian coordinates by fractional coordinates. 
-        */
-        template <typename T>
-        void get_cartesian_coordinates(T* frac_coord, 
-                                       double* cart_coord)
-        {
-            for (int x = 0; x < 3; x++)
+
+            if (lT == reciprocal)
             {
-                cart_coord[x] = 0.0;
-                for (int l = 0; l < 3; l++)
-                    cart_coord[x] += lattice_vectors_[l][x] * frac_coord[l];
+                if (cT == fractional)
+                {
+                    for (int l = 0; l < 3; l++)
+                        for (int x = 0; x < 3; x++)
+                            b[l] += lattice_vectors_[l][x] * a[x] / twopi;
+                }
+
+                if (cT == cartesian)
+                {
+                    for (int x = 0; x < 3; x++)
+                        for (int l = 0; l < 3; l++)
+                            b[x] += a[l] * reciprocal_lattice_vectors_[l][x];
+                }
             }
         }
 
-        /*! 
-            \brief Get reciprocal fractional coordinates by reciprocal Cartesian coordinates. 
-        */
-        void get_reciprocal_fractional_coordinates(double* cart_coord, 
-                                                   double* frac_coord)
-        {
-            for (int l = 0; l < 3; l++)
-            {
-                frac_coord[l] = 0.0;
-                for (int x = 0; x < 3; x++)
-                    frac_coord[l] += lattice_vectors_[l][x] * cart_coord[x] / twopi;
-            }
-        }
-        
-        template <typename T>
-        void get_reciprocal_cartesian_coordinates(T* frac_coord, 
-                                                  double* cart_coord)
-        {
-            for (int x = 0; x < 3; x++)
-            {
-                cart_coord[x] = 0.0;
-                for (int l = 0; l < 3; l++)
-                    cart_coord[x] += reciprocal_lattice_vectors_[l][x] * frac_coord[l];
-            }
-        }
-        
+        /// return unit cell volume
         inline double omega()
         {
             return omega_;
@@ -243,29 +297,36 @@ class sirius_unit_cell
             atoms_.push_back(new Atom(atom_type_by_id_[atom_type_id], position, vector_field));
         }
 
-        void clear()
+        inline int num_atoms()
         {
-            if (spg_dataset_)
-            {
-                spg_free_dataset(spg_dataset_);
-                spg_dataset_ = NULL;
-            }
-            
-            // delete atom types
-            std::map<int,AtomType*>::iterator it;    
-            for (it = atom_type_by_id_.begin(); it != atom_type_by_id_.end(); it++)
-                delete (*it).second;
-            atom_type_by_id_.clear();
+            return atoms_.size();
+        }
 
-            // delete atom classes
-            for (int i = 0; i < (int)atom_symmetry_class_by_id_.size(); i++)
-                delete atom_symmetry_class_by_id_[i];
-            atom_symmetry_class_by_id_.clear();
+        inline Atom* atom(int id)
+        {
+            return atoms_[id];
+        }
 
-            // delete atoms
-            for (int i = 0; i < (int)atoms_.size(); i++)
-                delete atoms_[i];
-            atoms_.clear();
+        inline int num_atom_types()
+        {
+            assert(atom_type_id_.size() == atom_type_by_id_.size());
+
+            return atom_type_id_.size();
+        }
+
+        inline int atom_type_id(int idx)
+        {
+            return atom_type_id_[idx];
+        }
+
+        inline int atom_type_index_by_id(int id)
+        {
+            return atom_type_index_by_id_[id];
+        }
+
+        inline AtomType* atom_type_by_id(int id)
+        {
+            return atom_type_by_id_[id];
         }
 };
 
