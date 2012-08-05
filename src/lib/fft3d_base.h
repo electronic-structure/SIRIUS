@@ -14,9 +14,6 @@ class FFT3D_base
         /// reciprocal space range
         int grid_limits_[3][2];
 
-        /// linear index in FFT buffer
-        mdarray<int,3> index_;
-
         /*!
             \brief Find smallest optimal grid size starting from n.
         */
@@ -47,38 +44,11 @@ class FFT3D_base
             }
         }
 
-        /*!
-            \brief Build a mapping between reciprocal domain and linear index in FFT buffer 
-        */ 
-        void build_fft_index()
-        {
-            index_.set_dimensions(dimension(grid_limits_[0][0], grid_limits_[0][1]),
-                                  dimension(grid_limits_[1][0], grid_limits_[1][1]),
-                                  dimension(grid_limits_[2][0], grid_limits_[2][1]));
-            index_.allocate();
-            for (int i = grid_limits_[0][0]; i <= grid_limits_[0][1]; i++)
-                for (int j = grid_limits_[1][0]; j <= grid_limits_[1][1]; j++)
-                    for (int k = grid_limits_[2][0]; k <= grid_limits_[2][1]; k++)
-                    {
-                        int i0 = i;
-                        int i1 = j;
-                        int i2 = k;
-
-                        if (i0 < 0) i0 += grid_size_[0];
-                        if (i1 < 0) i1 += grid_size_[1];
-                        if (i2 < 0) i2 += grid_size_[2];
-
-                        index_(i, j, k) = i0 + i1 * grid_size_[0] + i2 * grid_size_[0] * grid_size_[1];
-                    }
-        }
-
- 
     public:
 
         void init(int* n)
         {
             set_grid_size(n);
-            build_fft_index();
         }
 
         inline int grid_limits(int d, int i)
@@ -98,7 +68,11 @@ class FFT3D_base
 
         inline int index(int i0, int i1, int i2)
         {
-            return index_(i0, i1, i2);
+            if (i0 < 0) i0 += grid_size_[0];
+            if (i1 < 0) i1 += grid_size_[1];
+            if (i2 < 0) i2 += grid_size_[2];
+
+            return (i0 + i1 * grid_size_[0] + i2 * grid_size_[0] * grid_size_[1]);
         }
 };
 

@@ -3,7 +3,7 @@ namespace sirius {
 
 class sirius_gvec : public sirius_geometry
 {
-    protected:
+    private:
         
         /// plane wave cutoff radius (in inverse a.u. of length)
         double pw_cutoff_;
@@ -22,6 +22,7 @@ class sirius_gvec : public sirius_geometry
 
         /// mapping betwee linear G-vector index and position in FFT buffer
         std::vector<int> fft_index_;
+        
 
     public:
     
@@ -35,9 +36,9 @@ class sirius_gvec : public sirius_geometry
             pw_cutoff_ = _pw_cutoff;
         }
 
-        void init_fft_grid()
+        void init()
         {
-            Timer t("init_fft_grid");
+            Timer t("sirius::sirius_gvec::init");
             
             int max_frac_coord[] = {0, 0, 0};
             double frac_coord[3];

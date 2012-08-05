@@ -100,7 +100,13 @@ class sirius_unit_cell
             }
         }
         
-    protected:
+    public:
+    
+        sirius_unit_cell() : spg_dataset_(NULL)
+        {
+            assert(sizeof(int4) == 4);
+            assert(sizeof(real8) == 8);
+        }
        
         void init()
         {
@@ -142,13 +148,48 @@ class sirius_unit_cell
                 delete atoms_[i];
             atoms_.clear();
         }
-        
-    public:
-    
-        sirius_unit_cell() : spg_dataset_(NULL)
+
+        void print_info()
         {
-            assert(sizeof(int4) == 4);
-            assert(sizeof(real8) == 8);
+            printf("lattice vectors\n");
+            for (int i = 0; i < 3; i++)
+                printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors(i, 0), 
+                                                                     lattice_vectors(i, 1), 
+                                                                     lattice_vectors(i, 2)); 
+            printf("reciprocal lattice vectors\n");
+            for (int i = 0; i < 3; i++)
+                printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors(i, 0), 
+                                                                     reciprocal_lattice_vectors(i, 1), 
+                                                                     reciprocal_lattice_vectors(i, 2));
+            
+            printf("\n"); 
+            printf("number of atom types : %i\n", num_atom_types());
+            for (int i = 0; i < num_atom_types(); i++)
+            {
+                int id = atom_type_id(i);
+                printf("type id : %i   symbol : %2s   label : %2s   mt_radius : %10.6f\n", id,
+                                                                                           atom_type_by_id(id)->symbol().c_str(), 
+                                                                                           atom_type_by_id(id)->label().c_str(),
+                                                                                           atom_type_by_id(id)->mt_radius()); 
+            }
+
+            printf("number of atoms : %i\n", num_atoms());
+            printf("number of symmetry classes : %i\n", num_symmetry_classes());
+
+            printf("\n"); 
+            printf("atom id    type id    class id\n");
+            printf("------------------------------\n");
+            for (int i = 0; i < num_atoms(); i++)
+                printf("%6i     %6i      %6i\n", i, atom(i)->type_id(), atom(i)->symmetry_class_id()); 
+           
+            printf("\n");
+            for (int ic = 0; ic < num_symmetry_classes(); ic++)
+            {
+                printf("class id : %i   atom id : ", ic);
+                for (int i = 0; i < atom_symmetry_class_by_id(ic)->num_atoms(); i++)
+                    printf("%i ", atom_symmetry_class_by_id(ic)->atom_id(i));  
+                printf("\n");
+            }
         }
         
         /*!
@@ -341,6 +382,11 @@ class sirius_unit_cell
         inline int num_symmetry_classes()
         {
             return atom_symmetry_class_by_id_.size();
+        }
+        
+        inline AtomSymmetryClass* atom_symmetry_class_by_id(int id)
+        {
+            return atom_symmetry_class_by_id_[id];
         }
 };
 

@@ -9,8 +9,9 @@ void test1()
     double a3[] = {1, 7, 35};
     sirius_global.set_lattice_vectors(a1, a2, a3);
     sirius_global.set_pw_cutoff(20.0);
-    sirius_global.init_fft_grid();
-
+    //sirius_global.init_fft_grid();
+    sirius_global.sirius_gvec::init();
+    
     std::cout << "grid size : " << sirius_global.fft().size() << std::endl;
     std::cout << "dimensions : " << sirius_global.fft().size(0) << " " 
                                  << sirius_global.fft().size(1) << " " 
@@ -46,7 +47,7 @@ void test2()
     double a3[] = {-9, -11, 10};
     sirius_global.set_lattice_vectors(a1, a2, a3);
     sirius_global.set_pw_cutoff(10.0);
-    sirius_global.init_fft_grid();
+    sirius_global.sirius_gvec::init();
 
     std::cout << "grid size : " << sirius_global.fft().size() << std::endl;
     
@@ -63,7 +64,7 @@ void test2()
 
                 double gv[3];
                 int fgv[] = {i0, i1, i2};
-                sirius_global.get_reciprocal_cartesian_coordinates(fgv, gv);
+                sirius_global.get_coordinates<cartesian, reciprocal>(fgv, gv);
 
                 mdarray<complex16,3> fft2(&fft1[0], sirius_global.fft().size(0), sirius_global.fft().size(1), sirius_global.fft().size(2));
                 for (int j0 = 0; j0 < sirius_global.fft().size(0); j0++)
@@ -74,7 +75,7 @@ void test2()
                                             double(j1) / sirius_global.fft().size(1), 
                                             double(j2) / sirius_global.fft().size(2)};
                             double rv[3];
-                            sirius_global.get_cartesian_coordinates(frv, rv);
+                            sirius_global.get_coordinates<cartesian, direct>(frv, rv);
                             d += abs(fft2(j0, j1, j2) - exp(complex16(0.0, vector_scalar_product(rv, gv))));
                         }
             }

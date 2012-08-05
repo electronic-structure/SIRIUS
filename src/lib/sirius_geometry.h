@@ -18,85 +18,7 @@ class sirius_geometry : public sirius_unit_cell
     
         /// list of nearest neighbours for each atom
         std::vector< std::vector<nearest_neighbour_descriptor> > nearest_neighbours_;
-
-    protected:
         
-        void init()
-        {
-            find_nearest_neighbours(15.0);
-            
-            if (check_mt_overlap(false))
-                find_mt_radii();
-            
-            check_mt_overlap(true);
-        }
-
-    public:
-    
-        void find_nearest_neighbours(double cluster_radius)
-        {
-            Timer t("sirius::sirius_geometry::find_nearest_neighbours");
-
-            int max_frac_coord[] = {0, 0, 0};
-            double frac_coord[3];
-            for (int i = 0; i < 3; i++)
-            {
-                double cart_coord[] = {0.0, 0.0, 0.0};
-                cart_coord[i] = cluster_radius; // radius of nearest neighbours cluster
-                get_coordinates<fractional, direct>(cart_coord, frac_coord);
-                for (int i = 0; i < 3; i++)
-                    max_frac_coord[i] = std::max(max_frac_coord[i], abs(int(frac_coord[i])) + 1);
-            }
-           
-            nearest_neighbours_.clear();
-            nearest_neighbours_.resize(num_atoms());
-            for (int ia = 0; ia < num_atoms(); ia++)
-            {
-                double iapos[3];
-                get_coordinates<cartesian, direct>(atom(ia)->position(), iapos);
-                
-                std::vector<nearest_neighbour_descriptor> nn;
-                std::vector<double> dist;
-
-                for (int i0 = -max_frac_coord[0]; i0 <= max_frac_coord[0]; i0++)
-                    for (int i1 = -max_frac_coord[1]; i1 <= max_frac_coord[1]; i1++)
-                        for (int i2 = -max_frac_coord[2]; i2 <= max_frac_coord[2]; i2++)
-                        {
-                            nearest_neighbour_descriptor nnd;
-                            nnd.translation[0] = i0;
-                            nnd.translation[1] = i1;
-                            nnd.translation[2] = i2;
-                            
-                            double vt[3];
-                            get_coordinates<cartesian, direct>(nnd.translation, vt);
-                            
-                            for (int ja = 0; ja < num_atoms(); ja++)
-                            {
-                                nnd.atom_id = ja;
-
-                                double japos[3];
-                                get_coordinates<cartesian, direct>(atom(ja)->position(), japos);
-
-                                double v[3];
-                                for (int x = 0; x < 3; x++)
-                                    v[x] = japos[x] + vt[x] - iapos[x];
-
-                                nnd.distance = vector_length(v);
-                                
-                                dist.push_back(nnd.distance);
-                                nn.push_back(nnd);
-                            }
-
-                        }
-                
-                std::vector<size_t> reorder(dist.size());
-                gsl_heapsort_index(&reorder[0], &dist[0], dist.size(), sizeof(double), compare_doubles);
-                nearest_neighbours_[ia].resize(nn.size());
-                for (int i = 0; i < (int)nn.size(); i++)
-                    nearest_neighbours_[ia][i] = nn[reorder[i]];
-            }
-        }
-
         /*! 
             \brief Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
                    
@@ -175,6 +97,82 @@ class sirius_geometry : public sirius_unit_cell
             }
             
             return false;
+        }
+
+    public:
+        
+        void init()
+        {
+            find_nearest_neighbours(15.0);
+            
+            if (check_mt_overlap(false))
+                find_mt_radii();
+            
+            check_mt_overlap(true);
+        }
+
+        void find_nearest_neighbours(double cluster_radius)
+        {
+            Timer t("sirius::sirius_geometry::find_nearest_neighbours");
+
+            int max_frac_coord[] = {0, 0, 0};
+            double frac_coord[3];
+            for (int i = 0; i < 3; i++)
+            {
+                double cart_coord[] = {0.0, 0.0, 0.0};
+                cart_coord[i] = cluster_radius; // radius of nearest neighbours cluster
+                get_coordinates<fractional, direct>(cart_coord, frac_coord);
+                for (int i = 0; i < 3; i++)
+                    max_frac_coord[i] = std::max(max_frac_coord[i], abs(int(frac_coord[i])) + 1);
+            }
+           
+            nearest_neighbours_.clear();
+            nearest_neighbours_.resize(num_atoms());
+            for (int ia = 0; ia < num_atoms(); ia++)
+            {
+                double iapos[3];
+                get_coordinates<cartesian, direct>(atom(ia)->position(), iapos);
+                
+                std::vector<nearest_neighbour_descriptor> nn;
+                std::vector<double> dist;
+
+                for (int i0 = -max_frac_coord[0]; i0 <= max_frac_coord[0]; i0++)
+                    for (int i1 = -max_frac_coord[1]; i1 <= max_frac_coord[1]; i1++)
+                        for (int i2 = -max_frac_coord[2]; i2 <= max_frac_coord[2]; i2++)
+                        {
+                            nearest_neighbour_descriptor nnd;
+                            nnd.translation[0] = i0;
+                            nnd.translation[1] = i1;
+                            nnd.translation[2] = i2;
+                            
+                            double vt[3];
+                            get_coordinates<cartesian, direct>(nnd.translation, vt);
+                            
+                            for (int ja = 0; ja < num_atoms(); ja++)
+                            {
+                                nnd.atom_id = ja;
+
+                                double japos[3];
+                                get_coordinates<cartesian, direct>(atom(ja)->position(), japos);
+
+                                double v[3];
+                                for (int x = 0; x < 3; x++)
+                                    v[x] = japos[x] + vt[x] - iapos[x];
+
+                                nnd.distance = vector_length(v);
+                                
+                                dist.push_back(nnd.distance);
+                                nn.push_back(nnd);
+                            }
+
+                        }
+                
+                std::vector<size_t> reorder(dist.size());
+                gsl_heapsort_index(&reorder[0], &dist[0], dist.size(), sizeof(double), compare_doubles);
+                nearest_neighbours_[ia].resize(nn.size());
+                for (int i = 0; i < (int)nn.size(); i++)
+                    nearest_neighbours_[ia][i] = nn[reorder[i]];
+            }
         }
 };
 
