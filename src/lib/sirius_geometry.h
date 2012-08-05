@@ -58,7 +58,7 @@ class sirius_geometry : public sirius_unit_cell
 
             for (int i = 0; i < num_atom_types(); i++)
             {
-                int id = atom_type_id(i);
+                int id = atom_type(i)->id();
                 atom_type_by_id(id)->set_mt_radius(std::min(rmt[i], 3.0));
             }
         }

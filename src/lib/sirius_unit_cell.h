@@ -4,17 +4,14 @@ class sirius_unit_cell
 {
     private:
         
-        /// unique mapping between atom type id and atom type
-        std::map<int, AtomType*> atom_type_by_id_;
-
-        /// list of atom type IDs
-        std::vector<int> atom_type_id_;
-
-        /// mapping between atom type id and and ordered index in the range [0, Ntypes - 1]
+        /// mapping between atom type id and an ordered index in the range [0, N_{types} - 1]
         std::map<int, int> atom_type_index_by_id_;
          
+        /// list of atom types
+        std::vector<AtomType*> atom_types_;
+
         /// list of atom classes
-        std::vector<AtomSymmetryClass*> atom_symmetry_class_by_id_;
+        std::vector<AtomSymmetryClass*> atom_symmetry_classes_;
         
         /// list of atoms
         std::vector<Atom*> atoms_;
@@ -48,7 +45,7 @@ class sirius_unit_cell
             if (spg_dataset_) 
                 error(__FILE__, __LINE__, "spg_dataset is already allocated");
                 
-            if (atom_symmetry_class_by_id_.size() != 0)
+            if (atom_symmetry_classes_.size() != 0)
                 error(__FILE__, __LINE__, "atom_symmetry_class_by_id_ list is not empty");
             
             if (atoms_.size() == 0)
@@ -88,7 +85,7 @@ class sirius_unit_cell
                 {
                     atom_class_id++; // take next id 
                     atom_symmetry_class = new AtomSymmetryClass(atom_class_id, atoms_[i]->type());
-                    atom_symmetry_class_by_id_.push_back(atom_symmetry_class);
+                    atom_symmetry_classes_.push_back(atom_symmetry_class);
 
                     for (int j = 0; j < (int)atoms_.size(); j++) // scan all atoms
                         if (spg_dataset_->equivalent_atoms[j] == spg_dataset_->equivalent_atoms[i]) // assign new class id for all equivalent atoms
@@ -111,16 +108,6 @@ class sirius_unit_cell
         void init()
         {
             get_symmetry();
-            
-            if (atom_type_id_.size() != 0)
-                error(__FILE__, __LINE__, "atom_type_id_ list is not empty");
-
-            int idx = 0;
-            for (std::map<int, AtomType*>::iterator it = atom_type_by_id_.begin(); it != atom_type_by_id_.end(); it++)
-            {
-                atom_type_id_.push_back(it->first);
-                atom_type_index_by_id_[it->first] = idx++;
-            }
         }
 
         void clear()
@@ -132,16 +119,15 @@ class sirius_unit_cell
             }
             
             // delete atom types
-            for (std::map<int, AtomType*>::iterator it = atom_type_by_id_.begin(); it != atom_type_by_id_.end(); it++)
-                delete it->second;
-            atom_type_by_id_.clear();
-            atom_type_id_.clear();
+            for (int i = 0; i < (int)atom_types_.size(); i++)
+                delete atom_types_[i];
+            atom_types_.clear();
             atom_type_index_by_id_.clear();
 
             // delete atom classes
-            for (int i = 0; i < (int)atom_symmetry_class_by_id_.size(); i++)
-                delete atom_symmetry_class_by_id_[i];
-            atom_symmetry_class_by_id_.clear();
+            for (int i = 0; i < (int)atom_symmetry_classes_.size(); i++)
+                delete atom_symmetry_classes_[i];
+            atom_symmetry_classes_.clear();
 
             // delete atoms
             for (int i = 0; i < (int)atoms_.size(); i++)
@@ -166,11 +152,11 @@ class sirius_unit_cell
             printf("number of atom types : %i\n", num_atom_types());
             for (int i = 0; i < num_atom_types(); i++)
             {
-                int id = atom_type_id(i);
+                int id = atom_type(i)->id();
                 printf("type id : %i   symbol : %2s   label : %2s   mt_radius : %10.6f\n", id,
-                                                                                           atom_type_by_id(id)->symbol().c_str(), 
-                                                                                           atom_type_by_id(id)->label().c_str(),
-                                                                                           atom_type_by_id(id)->mt_radius()); 
+                                                                                           atom_type(i)->symbol().c_str(), 
+                                                                                           atom_type(i)->label().c_str(),
+                                                                                           atom_type(i)->mt_radius()); 
             }
 
             printf("number of atoms : %i\n", num_atoms());
@@ -186,8 +172,8 @@ class sirius_unit_cell
             for (int ic = 0; ic < num_symmetry_classes(); ic++)
             {
                 printf("class id : %i   atom id : ", ic);
-                for (int i = 0; i < atom_symmetry_class_by_id(ic)->num_atoms(); i++)
-                    printf("%i ", atom_symmetry_class_by_id(ic)->atom_id(i));  
+                for (int i = 0; i < atom_symmetry_class(ic)->num_atoms(); i++)
+                    printf("%i ", atom_symmetry_class(ic)->atom_id(i));  
                 printf("\n");
             }
         }
@@ -293,26 +279,28 @@ class sirius_unit_cell
             }
         }
 
-        /// return unit cell volume
+        /*!
+            \brief Unit cell volume.
+        */
         inline double omega()
         {
             return omega_;
         }
 
         /*! 
-            \brief Add new atom type to the collection of atom types.. 
+            \brief Add new atom type to the list of atom types.
         */
         void add_atom_type(int atom_type_id, 
                            const std::string& label)
         {
-            if (atom_type_by_id_.count(atom_type_id) != 0) 
+            if (atom_type_index_by_id_.count(atom_type_id) != 0) 
             {   
                 std::stringstream s;
                 s << "atom type with id " << atom_type_id << " is already in list";
                 error(__FILE__, __LINE__, s);
             }
-                
-            atom_type_by_id_[atom_type_id] = new AtomType(atom_type_id, label);
+            atom_types_.push_back(new AtomType(atom_type_id, label));
+            atom_type_index_by_id_[atom_type_id] = atom_types_.size() - 1;
         }
         
         void add_atom(int atom_type_id, 
@@ -322,7 +310,7 @@ class sirius_unit_cell
             double eps = 1e-10;
             double pos[3];
             
-            if (atom_type_by_id_.count(atom_type_id) == 0)
+            if (atom_type_index_by_id_.count(atom_type_id) == 0)
             {
                 std::stringstream s;
                 s << "atom type with id " << atom_type_id << " is not found";
@@ -331,7 +319,7 @@ class sirius_unit_cell
  
             for (int i = 0; i < (int)atoms_.size(); i++)
             {
-                atoms_[i]->get_position(pos);
+                atom(i)->get_position(pos);
                 if (fabs(pos[0] - position[0]) < eps &&
                     fabs(pos[1] - position[1]) < eps &&
                     fabs(pos[2] - position[2]) < eps)
@@ -344,49 +332,73 @@ class sirius_unit_cell
                 }
             }
 
-            atoms_.push_back(new Atom(atom_type_by_id_[atom_type_id], position, vector_field));
+            atoms_.push_back(new Atom(atom_type_by_id(atom_type_id), position, vector_field));
         }
 
+        /*!
+            \brief Number of atoms in the unit cell.
+        */
         inline int num_atoms()
         {
             return atoms_.size();
         }
-
+        
+        /*!
+            \brief Pointer to atom by atom id.
+        */
         inline Atom* atom(int id)
         {
             return atoms_[id];
         }
-
+        
+        /*! 
+            \brief Number of atom types.
+        */
         inline int num_atom_types()
         {
-            assert(atom_type_id_.size() == atom_type_by_id_.size());
+            assert(atom_types_.size() == atom_type_index_by_id_.size());
 
-            return atom_type_id_.size();
+            return atom_types_.size();
         }
 
-        inline int atom_type_id(int idx)
-        {
-            return atom_type_id_[idx];
-        }
-
+        /*!
+            \brief Atom type index by atom type id.
+        */
         inline int atom_type_index_by_id(int id)
         {
             return atom_type_index_by_id_[id];
         }
-
+        
+        /*!
+            \brief Pointer to atom type by type id
+        */
         inline AtomType* atom_type_by_id(int id)
         {
-            return atom_type_by_id_[id];
+            return atom_types_[atom_type_index_by_id(id)];
         }
-        
+ 
+        /*!
+            \brief Pointer to atom type by type index (not(!) by atom type id)
+        */
+        inline AtomType* atom_type(int idx)
+        {
+            return atom_types_[idx];
+        }
+       
+        /*!
+            \brief Number of symmetry classes.
+        */
         inline int num_symmetry_classes()
         {
-            return atom_symmetry_class_by_id_.size();
+            return atom_symmetry_classes_.size();
         }
-        
-        inline AtomSymmetryClass* atom_symmetry_class_by_id(int id)
+       
+        /*! 
+            \brief Pointer to symmetry class by class id.
+        */
+        inline AtomSymmetryClass* atom_symmetry_class(int id)
         {
-            return atom_symmetry_class_by_id_[id];
+            return atom_symmetry_classes_[id];
         }
 };
 

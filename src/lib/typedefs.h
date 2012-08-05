@@ -14,7 +14,7 @@ enum spin_block {nm, uu, ud, dd};
 
 enum implementation {cpu, gpu};
 
-enum lattice_type {reciprocal, direct};
+enum lattice_type {direct, reciprocal};
 
 enum coordinates_type {cartesian, fractional};
 
