@@ -176,7 +176,13 @@ class sirius_unit_cell
                     printf("%i ", atom_symmetry_class(ic)->atom_id(i));  
                 printf("\n");
             }
-        }
+
+            printf("\n");
+            printf("space group number   : %i\n", spg_dataset_->spacegroup_number);
+            printf("international symbol : %s\n", spg_dataset_->international_symbol);
+            printf("Hall symbol          : %s\n", spg_dataset_->hall_symbol);
+            printf("number of operations : %i\n", spg_dataset_->n_operations);
+         }
         
         /*!
             \brief Set lattice vectors.
@@ -198,14 +204,16 @@ class sirius_unit_cell
             double a[3][3];
             memcpy(&a[0][0], &lattice_vectors_[0][0], 9 * sizeof(double));
             
-            omega_ = a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]) + 
-                     a[0][1] * (a[1][2] * a[2][0] - a[1][0] * a[2][2]) + 
-                     a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]);
+            double t1 = a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]) + 
+                        a[0][1] * (a[1][2] * a[2][0] - a[1][0] * a[2][2]) + 
+                        a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]);
             
-            if (fabs(omega_) < 1e-20)
+            omega_ = fabs(t1);
+            
+            if (omega_ < 1e-20)
                 error(__FILE__, __LINE__, "lattice vectors are linearly dependent");
             
-            double t1 = 1.0 / omega_;
+            t1 = 1.0 / t1;
 
             double b[3][3];
             b[0][0] = t1 * (a[1][1] * a[2][2] - a[1][2] * a[2][1]);
@@ -225,11 +233,17 @@ class sirius_unit_cell
                     reciprocal_lattice_vectors_[l][x] = twopi * inverse_lattice_vectors_[x][l];
         }
         
+        /*!
+            \brief Get x coordinate of lattice vector l
+         */
         inline double lattice_vectors(int l, int x)
         {
             return lattice_vectors_[l][x];
         }
         
+        /*!
+            \brief Get x coordinate of reciprocal lattice vector l
+         */
         inline double reciprocal_lattice_vectors(int l, int x)
         {
             return reciprocal_lattice_vectors_[l][x];

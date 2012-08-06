@@ -42,6 +42,7 @@ extern "C" {
 #include "sirius_unit_cell.h"
 #include "sirius_geometry.h"
 #include "sirius_gvec.h"
+#include "sirius_step_func.h"
 #include "sirius_global.h"
 
 sirius::SiriusGlobal sirius_global;

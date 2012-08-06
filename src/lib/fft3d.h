@@ -63,6 +63,29 @@ class FFT3D : public FFT3D_base
                     data_[i] *= norm;
             }
         }
+
+        void transform(complex16* data_in, double* data_out, int direction)
+        {
+            if (direction == 1)
+            {
+                memcpy(&fftw_input_buffer[0], data_in, size() * sizeof(complex16));
+                fftw_execute(plan_backward);
+                for (int i = 0; i < size(); i++)
+                    data_out[i] = real(fftw_output_buffer[i]);
+
+            }
+            if (direction == -1)
+            {
+                memcpy(&fftw_input_buffer[0], data_in, size() * sizeof(complex16));
+                fftw_execute(plan_forward);
+                /*memcpy(zdata_, &fftw_output_buffer[0], size() * sizeof(complex16));
+                
+                double norm = 1.0 / size();
+                double* data_ = (double*)zdata_;
+                for (int i = 0; i < 2 * size(); i++)
+                    data_[i] *= norm;*/
+            }
+        }
 };
 
 #else

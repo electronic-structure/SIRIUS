@@ -174,6 +174,42 @@ class sirius_geometry : public sirius_unit_cell
                     nearest_neighbours_[ia][i] = nn[reorder[i]];
             }
         }
+
+        template <lattice_type Tl>
+        void find_translation_limits(double radius, int* limits)
+        {
+            limits[0] = limits[1] = limits[2] = 0;
+
+            int n = 0;
+            while(true)
+            {
+                bool found = false;
+                for (int i0 = -n; i0 <= n; i0++)
+                    for (int i1 = -n; i1 <= n; i1++)
+                        for (int i2 = -n; i2 <= n; i2++)
+                            if (abs(i0) == n || abs(i1) == n || abs(i2) == n)
+                            {
+                                int vgf[] = {i0, i1, i2};
+                                double vgc[3];
+                                get_coordinates<cartesian, Tl>(vgf, vgc);
+                                double len = vector_length(vgc);
+                                if (len <= radius)
+                                {
+                                    found = true;
+                                    for (int j = 0; j < 3; j++)
+                                        limits[j] = std::max(2 * abs(vgf[j]) + 1, limits[j]);
+                                }
+                            }
+
+                if (found) n++;
+                else return;
+            }
+        }
+
+        bool is_point_in_mt()
+        {
+            return true;
+        }
 };
 
 };

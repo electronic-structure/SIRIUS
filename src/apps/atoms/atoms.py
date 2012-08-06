@@ -36,7 +36,7 @@ void potxc(std::vector<double>& rho, std::vector<double>& vxc, std::vector<doubl
     for (int i = 0; i < 2; i++)
     {
         if(xc_func_init(&func, xc_id[i], XC_UNPOLARIZED) != 0)
-            stop(std::cout << "Functional is not found");
+            error(__FILE__, __LINE__, "Functional is not found");
        
         xc_lda_vxc(&func, rho.size(), &rho[0], &tmp[0]);
 
@@ -296,7 +296,7 @@ int main(int argn, char **argv)
                 (atomic_conf[i][ist][1] != atoms[i].nlk_list[ist].l) ||
                 (atomic_conf[i][ist][2] != atoms[i].nlk_list[ist].k) ||
                 (atomic_conf[i][ist][3] != atoms[i].nlk_list[ist].occupancy)) 
-                stop(std::cout << "wrong atomic_conf array");
+                error(__FILE__, __LINE__, "wrong atomic_conf array");
         }
         solve_atom(atoms[i]); 
     }

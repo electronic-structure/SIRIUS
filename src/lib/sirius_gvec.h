@@ -40,17 +40,8 @@ class sirius_gvec : public sirius_geometry
         {
             Timer t("sirius::sirius_gvec::init");
             
-            int max_frac_coord[] = {0, 0, 0};
-            double frac_coord[3];
-            // try three directions
-            for (int i = 0; i < 3; i++)
-            {
-                double cart_coord[] = {0.0, 0.0, 0.0};
-                cart_coord[i] = pw_cutoff_;
-                get_coordinates<fractional, reciprocal>(cart_coord, frac_coord);
-                for (int i = 0; i < 3; i++)
-                    max_frac_coord[i] = std::max(max_frac_coord[i], 2 * abs(int(frac_coord[i])) + 1);
-            }
+            int max_frac_coord[3];
+            find_translation_limits<reciprocal>(pw_cutoff(), max_frac_coord);
             
             fft_.init(max_frac_coord);
             
@@ -110,6 +101,17 @@ class sirius_gvec : public sirius_geometry
                 fft_index_[ig] = fft_.index(i0, i1, i2);
            }
         }
+
+        void print_info()
+        {
+            printf("\n");
+            printf("plane wave cutoff : %f\n", pw_cutoff_);
+            printf("number of G-vectors within the cutoff : %i\n", num_gvec_);
+            printf("FFT grid size : %i %i %i   total : %i\n", fft_.size(0), fft_.size(1), fft_.size(2), fft_.size());
+            printf("FFT grid limits : %i %i   %i %i   %i %i\n", fft_.grid_limits(0, 0), fft_.grid_limits(0, 1),
+                                                                fft_.grid_limits(1, 0), fft_.grid_limits(1, 1),
+                                                                fft_.grid_limits(2, 0), fft_.grid_limits(2, 1));
+        }
         
         inline FFT3D& fft()
         {
@@ -124,6 +126,16 @@ class sirius_gvec : public sirius_geometry
         inline int fft_index(int ig)
         {
             return fft_index_[ig];
+        }
+        
+        inline int* gvec(int ig)
+        {
+            return &gvec_(0, ig);
+        }
+        
+        inline double pw_cutoff()
+        {
+            return pw_cutoff_;
         }
 };
 
