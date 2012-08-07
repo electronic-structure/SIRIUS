@@ -1,10 +1,5 @@
 s1 = '''
-#include <vector>
-#include <string>
-#include <string.h>
-#include <iostream>
 #include "../../lib/sirius.h"
-#include <xc.h>
 
 struct atom
 {
