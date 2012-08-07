@@ -56,7 +56,7 @@ class RadialSolver
 
             double pk[4];
             double qk[4];
-
+            
             for (int i = 0; i < nr - 1; i++)
             {
                 double x0 = x2;
@@ -65,7 +65,7 @@ class RadialSolver
                 double h1 = h / 2;
 
                 double x1 = x0 + h1;
-                double invx1 = 1.0 / x1;
+                double x1inv = 1.0 / x1;
                 double p0 = p2;
                 double q0 = q2;
                 double m0 = m2;
@@ -76,7 +76,7 @@ class RadialSolver
                 double mp0 = mp2;
                 mp2 = mp[i + 1];
                 double mp1 = mp(i, h1);
-                double v1 = ve(i, h1) + zn * invx1;
+                double v1 = ve(i, h1) + zn * x1inv;
                 double m1 = 1 - (v1 - enu0) * alpha2;
                 m2 = 1 - (v2 - enu0) * alpha2;
                 
@@ -86,12 +86,12 @@ class RadialSolver
 
                 double vl1 = ll2 / m1 / pow(x1, 2);
                 // k1 = F(Y(x) + k0 * h/2, x + h/2)
-                pk[1] = 2 * m1 * (q0 + qk[0] * h1) + (p0 + pk[0] * h1) * invx1;
-                qk[1] = (v1 - enu + vl1) * (p0 + pk[0] * h1) - (q0 + qk[0] * h1) * invx1 - mp1;
+                pk[1] = 2 * m1 * (q0 + qk[0] * h1) + (p0 + pk[0] * h1) * x1inv;
+                qk[1] = (v1 - enu + vl1) * (p0 + pk[0] * h1) - (q0 + qk[0] * h1) * x1inv - mp1;
 
                 // k2 = F(Y(x) + k1 * h/2, x + h/2)
-                pk[2] = 2 * m1 * (q0 + qk[1] * h1) + (p0 + pk[1] * h1) * invx1; 
-                qk[2] = (v1 - enu + vl1) * (p0 + pk[1] * h1) - (q0 + qk[1] * h1) * invx1 - mp1;
+                pk[2] = 2 * m1 * (q0 + qk[1] * h1) + (p0 + pk[1] * h1) * x1inv; 
+                qk[2] = (v1 - enu + vl1) * (p0 + pk[1] * h1) - (q0 + qk[1] * h1) * x1inv - mp1;
 
                 vl2 = ll2 / m2 / pow(x2, 2);
                 // k3 = F(Y(x) + k2 * h, x + h)
@@ -99,8 +99,8 @@ class RadialSolver
                 qk[3] = (v2 - enu + vl2) * (p0 + pk[2] * h) - (q0 + qk[2] * h) / x2 - mp2;
                 
                 // Y(x + h) = Y(x) + h * (k0 + 2 * k1 + 2 * k2 + k3) / 6
-                p2 = p0 + (pk[0] + 2 * pk[1] + 2 * pk[2] + pk[3]) * h / 6.0;
-                q2 = q0 + (qk[0] + 2 * qk[1] + 2 * qk[2] + qk[3]) * h / 6.0;
+                p2 = p0 + (pk[0] + 2 * (pk[1] + pk[2]) + pk[3]) * h / 6.0;
+                q2 = q0 + (qk[0] + 2 * (qk[1] + qk[2]) + qk[3]) * h / 6.0;
                 
                 p[i + 1] = p2;
                 q[i + 1] = q2;
@@ -108,9 +108,7 @@ class RadialSolver
 
             int nn = 0;
             for (int i = 0; i < nr - 1; i++)
-            {
                 if (p[i] * p[i + 1] < 0.0) nn++;
-            }
 
             return nn;
         }
@@ -168,8 +166,6 @@ class RadialSolver
                          double& enu, 
                          std::vector<double>& p)
         {
-            Timer t("sirius::RadialSolver::bound_state");
-            
             std::vector<double> ve(radial_grid.size());
             for (int i = 0; i < radial_grid.size(); i++)
                 ve[i] = v[i] - zn / radial_grid[i];

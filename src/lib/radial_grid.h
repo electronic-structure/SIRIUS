@@ -34,7 +34,7 @@ class RadialGrid
         // forbid copy constructor
         RadialGrid(const RadialGrid& src);
 
-        // forbid '=' operator
+        // forbid assignment operator
         RadialGrid& operator=(const RadialGrid& src);
         
     public:

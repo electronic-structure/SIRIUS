@@ -1,235 +1,82 @@
 s1 = '''
 #include "../../lib/sirius.h"
 
-struct atom
+class atom : public sirius::AtomType
 {
-    std::string symbol;
-    std::string name;
-    int zn;
-    double mass;
-    std::vector<sirius::atomic_level_nlk> nlk_list;
-    std::vector<sirius::atomic_level_nl> nl_list;
-    double NIST_LDA_Etot;
+    public:
+    
+        std::vector<sirius::atomic_level> levels_nlk_;
+        
+        double NIST_LDA_Etot;
+    
+        atom(const char* _symbol, 
+             const char* _name, 
+             int _zn, 
+             double _mass, 
+             std::vector<sirius::atomic_level>& _levels_nl,
+             std::vector<sirius::atomic_level>& _levels_nlk) : AtomType(_symbol, _name, _zn, _mass, _levels_nl),
+                                                               levels_nlk_(_levels_nlk),
+                                                               NIST_LDA_Etot(0.0)
+        {
+        }
+        
+        inline int num_levels_nlk()
+        {
+            return levels_nlk_.size();
+        }    
+        
+        inline sirius::atomic_level& level_nlk(int idx)
+        {
+            return levels_nlk_[idx];
+        }
 };
 
-std::vector<atom> atoms(104); 
+std::vector<atom*> atoms; 
 
 void init_atom_configuration();
 
-void potxc(std::vector<double>& rho, std::vector<double>& vxc, std::vector<double>& exc)
+void solve_atom(atom* a)
 {
-    vxc.resize(rho.size());
-    memset(&vxc[0], 0, vxc.size() * sizeof(double)); 
-    exc.resize(rho.size());
-    memset(&exc[0], 0, exc.size() * sizeof(double));
-
-    std::vector<double> tmp(rho.size());
-
-    int xc_id[2] = {1, 7};
-    xc_func_type func;
+    std::vector<double> enu;
     
-    for (int i = 0; i < 2; i++)
-    {
-        if(xc_func_init(&func, xc_id[i], XC_UNPOLARIZED) != 0)
-            error(__FILE__, __LINE__, "Functional is not found");
-       
-        xc_lda_vxc(&func, rho.size(), &rho[0], &tmp[0]);
-
-        for (int j = 0; j < (int)rho.size(); j++)
-            vxc[j] += tmp[j];
-
-        xc_lda_exc(&func, rho.size(), &rho[0], &tmp[0]);
-
-        for (int j = 0; j < (int)rho.size(); j++)
-            exc[j] += tmp[j];
-      
-        xc_func_end(&func);
-    }
-}
-
-
-void solve_atom(atom& a)
-{
-    sirius::RadialGrid r(sirius::exponential_grid, 2000, 1e-6 / a.zn, 20.0);
-    
-    sirius::RadialSolver solver(false, -1.0 * a.zn, r);
-
-    std::vector<double> veff(r.size());
-    std::vector<double> vnuc(r.size());
-    for (int i = 0; i < r.size(); i++)
-    {
-        vnuc[i] = -1.0 * a.zn / r[i];
-        veff[i] = vnuc[i];
-    }
-    
-    sirius::Spline rho(r.size(), r);
-    sirius::Spline rho_core(r.size(), r);
-    
-    sirius::Spline f(r.size(), r);
-    
-    std::vector<double> vh(r.size());
-    std::vector<double> vxc;
-    std::vector<double> exc;
-    std::vector<double> g1;
-    std::vector<double> g2;
-    std::vector<double> p;
-    std::vector<double> rho_old;
-    
-    std::vector<double> enu(a.nl_list.size());
-    
-    double energy_tot = 1e100;
-    double energy_tot_old;
-    double charge_rms;
-    double energy_diff;
-    
-    double beta = 0.5;
+    double energy_tot = a->solve_free_atom(1e-10, 1e-7, 1e-7, enu);
     
     double ecore_cutoff = -3.0;
-
-    for (int iter = 0; iter < 100; iter++)
-    {
-        rho_old = rho.data_points();
-        
-        memset(&rho[0], 0, rho.size() * sizeof(double));
-        
-        memset(&rho_core[0], 0, rho_core.size() * sizeof(double));
-
-        for (int ist = 0; ist < (int)a.nl_list.size(); ist++)
-        {
-            enu[ist] = -1.0 * a.zn / 2 / pow(a.nl_list[ist].n, 2);
-
-            solver.bound_state(a.nl_list[ist].n, a.nl_list[ist].l, veff, enu[ist], p);
-            
-            for (int i = 0; i < r.size(); i++)
-                rho[i] += a.nl_list[ist].occupancy * pow(y00 * p[i] / r[i], 2);
-            
-            if (enu[ist] < ecore_cutoff) 
-                for (int i = 0; i < r.size(); i++)
-                    rho_core[i] += a.nl_list[ist].occupancy * pow(y00 * p[i] / r[i], 2);
-                  
-            
-        }
-        
-        charge_rms = 0.0;
-        for (int i = 0; i < r.size(); i++)
-            charge_rms += pow(rho[i] - rho_old[i], 2);
-        charge_rms = sqrt(charge_rms / r.size());
-        
-        rho.interpolate();
-        
-        //std::cout << "number of electrons : " << fourpi * rho.integrate(2) << std::endl;
-
-        rho.integrate(g2, 2);
-        double t1 = rho.integrate(g1, 1);
-
-        for (int i = 0; i < r.size(); i++)
-            vh[i] = fourpi * (g2[i] / r[i] + t1 - g1[i]);
-
-        potxc(rho.data_points(), vxc, exc);
-
-        for (int i = 0; i < r.size(); i++)
-            veff[i] = (1 - beta) * veff[i] + beta * (vnuc[i] + vh[i] + vxc[i]);
-        
-        // kinetic energy
-        for (int i = 0; i < r.size(); i++)
-            f[i] = veff[i] * rho[i];
-        f.interpolate();
-        
-        double eval_sum = 0.0;
-        for (int ist = 0; ist < (int)a.nl_list.size(); ist++)
-            eval_sum += a.nl_list[ist].occupancy * enu[ist];
-
-        double energy_kin = eval_sum - fourpi * f.integrate(2);
-
-        // xc energy
-        for (int i = 0; i < r.size(); i++)
-            f[i] = exc[i] * rho[i];
-        f.interpolate();
-        double energy_xc = fourpi * f.integrate(2); 
-        
-        // electron-nuclear energy
-        for (int i = 0; i < r.size(); i++)
-            f[i] = vnuc[i] * rho[i];
-        f.interpolate();
-        double energy_enuc = fourpi * f.integrate(2); 
-
-        // Coulomb energy
-        for (int i = 0; i < r.size(); i++)
-            f[i] = vh[i] * rho[i];
-        f.interpolate();
-        double energy_coul = 0.5 * fourpi * f.integrate(2);
-        
-        energy_tot_old = energy_tot;
-
-        energy_tot = energy_kin + energy_xc + energy_coul + energy_enuc; 
-        
-        energy_diff = fabs(energy_tot - energy_tot_old);
-        
-        if (energy_diff < 1e-7 && charge_rms < 1e-7) break;
-    }
     
-    rho_core.interpolate();
-    
-    double ncore = fourpi * rho_core.integrate(g2, 2);
-    
-    double core_radius = 1.0;
-    if (ncore > 1.0)
-    {
-        for (int i = 0; i < r.size(); i++)
-            if (fabs(ncore - fourpi * g2[i]) < 0.001 * ncore) 
-            {
-                core_radius = r[i];
-                break;
-            }
-    }
-    
-    std::cout << " atom : " << a.symbol << "    Z : " << a.zn << std::endl;
+    int ncore = 0;
+    for (int ist = 0; ist < (int)a->num_levels_nl(); ist++)
+        if (enu[ist] < ecore_cutoff)
+            ncore += a->level_nl(ist).occupancy;
+
+    std::cout << " atom : " << a->symbol() << "    Z : " << a->zn() << std::endl;
     std::cout << " =================== " << std::endl;
-    std::cout << " convergence (charge, energy) : " << charge_rms << " " << energy_diff << std::endl;
-    std::cout << " total energy : " << energy_tot << ", NIST value : " <<  a.NIST_LDA_Etot 
-              << ", difference : " << fabs(energy_tot - a.NIST_LDA_Etot) << std::endl;
+    std::cout << " total energy : " << energy_tot << ", NIST value : " <<  a->NIST_LDA_Etot 
+              << ", difference : " << fabs(energy_tot - a->NIST_LDA_Etot) << std::endl;
     std::cout << " number of core electrons : " <<  ncore << std::endl;
-    std::cout << " muffin-tin radius : " <<  core_radius << std::endl;
     std::cout << std::endl;
     
-    std::string fname = a.symbol + std::string(".json");
+    std::string fname = a->symbol() + std::string(".json");
     std::ofstream fout(fname.c_str());
     fout << "{" << std::endl;
-    fout << "  \\"name\\"    : \\"" << a.name << "\\"," << std::endl;
-    fout << "  \\"symbol\\"  : \\"" << a.symbol << "\\"," << std::endl;
-    fout << "  \\"number\\"  : " << a.zn << "," << std::endl;
-    fout << "  \\"mass\\"    : " << a.mass << "," << std::endl;
-    fout << "  \\"rmin\\"    : " << r[0] << "," << std::endl;
-    fout << "  \\"rmax\\"    : " << r[r.size() - 1] << "," << std::endl;
-    fout << "  \\"rmt\\"     : " << core_radius << "," << std::endl;
-    fout << "  \\"nrmt\\"    : " <<  800 << "," << std::endl;
+    fout << "  \\"name\\"    : \\"" << a->name() << "\\"," << std::endl;
+    fout << "  \\"symbol\\"  : \\"" << a->symbol() << "\\"," << std::endl;
+    fout << "  \\"number\\"  : " << a->zn() << "," << std::endl;
+    fout << "  \\"mass\\"    : " << a->mass() << "," << std::endl;
+    fout << "  \\"rmin\\"    : " << a->radial_grid()[0] << "," << std::endl;
+    fout << "  \\"rmax\\"    : " << a->radial_grid()[a->radial_grid().size() - 1] << "," << std::endl;
+    fout << "  \\"rmt\\"     : " << a->mt_radius() << "," << std::endl;
+    fout << "  \\"nrmt\\"    : " << a->num_mt_points() << "," << std::endl;
     
-    std::vector<sirius::atomic_level_nl> core;
-    std::vector<sirius::atomic_level_nl> valence;
-    for (int ist = 0; ist < (int)a.nl_list.size(); ist++)
+    std::vector<sirius::atomic_level> core;
+    std::vector<sirius::atomic_level> valence;
+    for (int ist = 0; ist < (int)a->num_levels_nl(); ist++)
     {
         if (enu[ist] < ecore_cutoff)
-        {
-            /*for (int jst = 0; jst < (int)a.nlk_list.size(); jst++)
-            {
-                if ((a.nlk_list[jst].n == a.nl_list[ist].n) && (a.nlk_list[jst].l == a.nl_list[ist].l)) 
-                    core.push_back(a.nlk_list[jst]);
-            }*/
-            core.push_back(a.nl_list[ist]);
-        }
+            core.push_back(a->level_nl(ist));
         else
-            valence.push_back(a.nl_list[ist]);
+            valence.push_back(a->level_nl(ist));
         
     }
-    
-    /*fout << "  \\"core\\"    : [";
-    for (int i = 0; i < (int)core.size(); i++)
-    {
-        if (i) fout << ",";
-        fout << std::endl << "    {\\"n\\" : " << core[i].n << ", \\"l\\" : " << core[i].l << ", \\"k\\" : " << core[i].k 
-             << ", \\"occupancy\\" : " << core[i].occupancy << "}";
-    }
-    fout << "]," << std::endl; */
     
     std::string symb[] = {"s", "p", "d", "f"};
     std::string core_str;
@@ -281,40 +128,30 @@ void solve_atom(atom& a)
 
 int main(int argn, char **argv)
 {
+    sirius::Timer* t = new sirius::Timer("main");
+    
     init_atom_configuration();
     
-    for (int i = 0; i < (int)atoms.size(); i++)
-    {
-        for (int ist = 0; ist < (int)atoms[i].nlk_list.size(); ist++)
-        {
-            if ((atomic_conf[i][ist][0] != atoms[i].nlk_list[ist].n) ||
-                (atomic_conf[i][ist][1] != atoms[i].nlk_list[ist].l) ||
-                (atomic_conf[i][ist][2] != atoms[i].nlk_list[ist].k) ||
-                (atomic_conf[i][ist][3] != atoms[i].nlk_list[ist].occupancy)) 
-                error(__FILE__, __LINE__, "wrong atomic_conf array");
-        }
+    for (int i = 102; i < (int)atoms.size(); i++)
         solve_atom(atoms[i]); 
-    }
     
-    std::ofstream fout("atomic_conf.h");
+    /*std::ofstream fout("atomic_conf.h");
     fout << "const int atomic_conf[104][28][4] = " << std::endl;
     fout << "{" << std::endl;
     for (int iat = 0; iat < (int)atoms.size(); iat++)
     {
         if (iat) fout << ", " << std::endl;
         fout << "   {";
-        for (int ist = 0; ist < (int)atoms[iat].nlk_list.size(); ist++)
+        for (int ist = 0; ist < (int)atoms[iat]->levels_nlk().size(); ist++)
         {
             if (ist) fout << ", ";
-            fout << "{" << atoms[iat].nlk_list[ist].n << ", " 
-                        << atoms[iat].nlk_list[ist].l << ", "
-                        << atoms[iat].nlk_list[ist].k << ", "
-                        << atoms[iat].nlk_list[ist].occupancy << "}";
+            fout << "{" << atoms[iat]->levels_nlk()[ist].n << ", " 
+                        << atoms[iat]->levels_nlk()[ist].l << ", "
+                        << atoms[iat]->levels_nlk()[ist].k << ", "
+                        << atoms[iat]->levels_nlk()[ist].occupancy << "}";
         }
-        for (int ist = atoms[iat].nlk_list.size(); ist < 28; ist++)
-        {
+        for (int ist = atoms[iat]->levels_nlk().size(); ist < 28; ist++)
             fout << ", {-1, -1, -1, -1}";
-        }
         fout << "}";
     }
     fout << std::endl << "};" << std::endl;
@@ -325,17 +162,24 @@ int main(int argn, char **argv)
     for (int iat = 0; iat < (int)atoms.size(); iat++)
     {
         if (iat) fout << ", ";
-        fout << "\\"" << atoms[iat].symbol << "\\"";
+        fout << "\\"" << atoms[iat]->symbol() << "\\"";
     }
     fout << "};" << std::endl;
-    fout.close();
+    fout.close();*/
+    
+    delete t;
+    sirius::Timer::print();
 }
 
 void init_atom_configuration() 
 {
     int nl_occ[7][4];
-    sirius::atomic_level_nlk nlk;
-    sirius::atomic_level_nl nl;
+    sirius::atomic_level nlk;
+    sirius::atomic_level nl;
+    std::vector<sirius::atomic_level> levels_nl;
+    std::vector<sirius::atomic_level> levels_nlk;
+    
+    atom* a;
 '''
 fout = open("atoms.cpp", "w")
 fout.write(s1)
@@ -347,23 +191,25 @@ while 1:
     if line.find("atom") == 0:
         fout.write("\n");
         
-        line = fin.readline() # atomic number
+        line = fin.readline()
         s1 = line.split()
-        zn = int(s1[0])
-        fout.write("    atoms[" + str(zn - 1) + "].zn = " + str(zn) + "; \n")
-        
+        zn = s1[0]
         line = fin.readline() # symbol and name
         line = line.replace("'", " ")
         s1 = line.split()
-        fout.write("    atoms[" + str(zn - 1) + "].symbol = \"" + s1[0] + "\"; \n")
-        fout.write("    atoms[" + str(zn - 1) + "].name = \"" + s1[1] + "\"; \n")
-        line = fin.readline() # mass
+        symbol = s1[0]
+        name = s1[1]
+        line = fin.readline()
         s1 = line.split()
-        fout.write("    atoms[" + str(zn - 1) + "].mass = " + s1[0] + "; \n")
+        mass = s1[0] # mass
+        
         line = fin.readline() # Rmt
         line = fin.readline() # number of states
         s1 = line.split()
         nst = int(s1[0])
+        
+        fout.write("    levels_nl.clear(); \n");
+        fout.write("    levels_nlk.clear(); \n");
         fout.write("    memset(&nl_occ[0][0], 0, 28 * sizeof(int)); \n")
 
         for i in range(nst):
@@ -377,7 +223,7 @@ while 1:
             fout.write("    nlk.l = " + str(l) + ";\n")
             fout.write("    nlk.k = " + str(k) + ";\n")
             fout.write("    nlk.occupancy = " + str(occ) + ";\n")
-            fout.write("    atoms[" + str(zn - 1) + "].nlk_list.push_back(nlk);\n")
+            fout.write("    levels_nlk.push_back(nlk);\n")
             fout.write("    nl_occ[" + str(n - 1) + "][" + str(l) + "] += " + str(occ) + "; \n")
             
         fout.write("    for (int n = 0; n < 7; n++) \n")
@@ -389,18 +235,20 @@ while 1:
         fout.write("                nl.n = n + 1; \n")
         fout.write("                nl.l = l; \n")
         fout.write("                nl.occupancy = nl_occ[n][l]; \n")
-        fout.write("                atoms[" + str(zn - 1) + "].nl_list.push_back(nl);\n")
+        fout.write("                levels_nl.push_back(nl);\n")
         fout.write("            } \n")    
         fout.write("        } \n")
         fout.write("    } \n")
         
+        fout.write("    a = new atom(\"" + symbol + "\", \"" + name + "\", " + zn + ", " + mass + ", " + "levels_nl, levels_nlk);\n")
         line = fin.readline() # NIST LDA Etot
         line = line.strip()
         if  (line != ""):
             s1 = line.split()
-            fout.write("    atoms[" + str(zn - 1) + "].NIST_LDA_Etot = " + s1[0] + "; \n")
-        else:
-            fout.write("    atoms[" + str(zn - 1) + "].NIST_LDA_Etot = 0.0; \n")
+            fout.write("    a->NIST_LDA_Etot = " + s1[0] + "; \n")
+        
+        fout.write("    atoms.push_back(a);\n")
+        
 
 
 fout.write("}\n")    

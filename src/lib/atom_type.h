@@ -3,21 +3,8 @@
 
 namespace sirius {
 
-/// describes single atomic level of the radial Schroedinger equation
-struct atomic_level_nl
-{
-    /// principal quantum number
-    int n;
-
-    /// angular momentum quantum number
-    int l;
-    
-    /// level occupancy
-    int occupancy;
-};
-
-/// describes single atomic level of the radial Dirac equation
-struct atomic_level_nlk 
+/// describes single atomic level
+struct atomic_level
 {
     /// principal quantum number
     int n;
@@ -91,11 +78,8 @@ class AtomType
         /// radial grid
         RadialGrid radial_grid_;
 
-        /// list of core levels
-        //std::vector<atomic_level_nl> core_;
-
         /// list of atomic levels 
-        std::vector<atomic_level_nl> levels_nl_;
+        std::vector<atomic_level> levels_nl_;
 
         /// number of core levels
         int num_core_levels_nl_;
@@ -118,6 +102,12 @@ class AtomType
         /// list of radial descriptor sets used to construct local orbitals
         std::vector<radial_solution_descriptor_set> lo_descriptors_;
        
+        // forbid copy constructor
+        AtomType(const AtomType& src);
+        
+        // forbid assignment operator
+        AtomType& operator=(const AtomType& src);
+        
         void read_input()
         {
             std::string fname = label_ + std::string(".json");
@@ -180,9 +170,10 @@ class AtomType
                             error(__FILE__, __LINE__, s);
                     }
 
-                    atomic_level_nl level;
+                    atomic_level level;
                     level.n = n;
                     level.l = l;
+                    level.k = -1;
                     level.occupancy = 2 * (2 * l + 1);
                     levels_nl_.push_back(level);
                 }
@@ -241,6 +232,22 @@ class AtomType
         }
     
     public:
+        
+        AtomType(const char* _symbol, 
+                 const char* _name, 
+                 int _zn, 
+                 double _mass, 
+                 std::vector<atomic_level>& _levels) : symbol_(std::string(_symbol)),
+                                                       name_(std::string(_name)),
+                                                       zn_(_zn),
+                                                       mass_(_mass),
+                                                       mt_radius_(2.0),
+                                                       num_mt_points_(1000),
+                                                       levels_nl_(_levels)
+                                                         
+        {
+            radial_grid_.init(exponential_grid, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0); 
+        }
 
         AtomType(int id_, 
                  const std::string& label) : id_(id_),
@@ -250,7 +257,7 @@ class AtomType
             {
                 read_input();
                 
-                atomic_level_nl level;
+                atomic_level level;
                 
                 int nl_occ[7][4];
                 memset(&nl_occ[0][0], 0, 28 * sizeof(int));
@@ -287,6 +294,66 @@ class AtomType
             }
         }
 
+        
+        const std::string& label()
+        {
+            return label_;
+        }
+
+        inline int id()
+        {
+            return id_;
+        }
+        
+        inline int zn()
+        {
+            return zn_;
+        }
+        
+        const std::string& symbol()
+        { 
+            return symbol_;
+        }
+
+        const std::string& name()
+        { 
+            return name_;
+        }
+        
+        inline double mass()
+        {
+            return mass_;
+        }
+        
+        inline double mt_radius()
+        {
+            return mt_radius_;
+        }
+        
+        inline void set_mt_radius(double _mt_radius)
+        {
+            mt_radius_ = _mt_radius;
+        }
+        
+        inline int num_mt_points()
+        {
+            return num_mt_points_;
+        }
+        
+        inline RadialGrid& radial_grid()
+        {
+            return radial_grid_;
+        }
+        
+        inline int num_levels_nl()
+        {
+            return levels_nl_.size();
+        }    
+        inline atomic_level& level_nl(int idx)
+        {
+            return levels_nl_[idx];
+        }
+        
         void init(int lmax)
         {
             radial_grid_.init(exponential_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
@@ -299,32 +366,8 @@ class AtomType
 
             num_valence_electrons_ = zn_ - num_core_electrons_;
             
-            solve_free_atom(1e-8, 1e-5, 1e-5);
-        }
-        
-        const std::string& label()
-        {
-            return label_;
-        }
-
-        const std::string& symbol()
-        { 
-            return symbol_;
-        }
-        
-        inline int id()
-        {
-            return id_;
-        }
-        
-        inline double mt_radius()
-        {
-            return mt_radius_;
-        }
-        
-        inline void set_mt_radius(double _mt_radius)
-        {
-            mt_radius_ = _mt_radius;
+            std::vector<double> enu;
+            solve_free_atom(1e-8, 1e-5, 1e-5, enu);
         }
 
         void rebuild_aw_descriptors(int lmax)
@@ -334,7 +377,7 @@ class AtomType
                 aw_descriptors_.push_back(aw_default_l_);
         }
 
-        void solve_free_atom(double solver_tol, double energy_tol, double charge_tol)
+        double solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
         {
             Timer t("sirius::AtomType::solve_free_atom");
             
@@ -359,10 +402,9 @@ class AtomType
             std::vector<double> exc(radial_grid_.size());
             std::vector<double> g1;
             std::vector<double> g2;
-            std::vector<double> p;
             std::vector<double> rho_old;
     
-            std::vector<double> enu(levels_nl_.size());
+            enu.resize(levels_nl_.size());
     
             double energy_tot = 0.0;
             double energy_tot_old;
@@ -381,14 +423,26 @@ class AtomType
                 rho_old = rho.data_points();
                 
                 memset(&rho[0], 0, rho.size() * sizeof(double));
+                #pragma omp parallel default(shared)
+                {
+                std::vector<double> rho_t(rho.size());
+                memset(&rho_t[0], 0, rho.size() * sizeof(double));
+                std::vector<double> p;
                 
+                #pragma omp for
                 for (int ist = 0; ist < (int)levels_nl_.size(); ist++)
                 {
                     solver.bound_state(levels_nl_[ist].n, levels_nl_[ist].l, veff, enu[ist], p);
                     
                     for (int i = 0; i < radial_grid_.size(); i++)
-                        rho[i] += levels_nl_[ist].occupancy * pow(y00 * p[i] / radial_grid_[i], 2);
+                        rho_t[i] += levels_nl_[ist].occupancy * pow(y00 * p[i] / radial_grid_[i], 2);
                 }
+
+                #pragma omp critical
+                for (int i = 0; i < rho.size(); i++)
+                    rho[i] += rho_t[i];
+
+                } // omp parallel
                 
                 charge_rms = 0.0;
                 for (int i = 0; i < radial_grid_.size(); i++)
@@ -458,15 +512,18 @@ class AtomType
             {
                 printf("energy_diff : %18.10f   charge_rms : %18.10f   beta : %18.10f\n", energy_diff, charge_rms, beta);
                 std::stringstream s;
-                s << "atom is not converged " << symbol_ << " is not converged" << std::endl
+                s << "atom " << symbol_ << " is not converged" << std::endl
                   << "  energy difference : " << energy_diff << std::endl
                   << "  charge difference : " << charge_rms;
                 error(__FILE__, __LINE__, s);
             }
+            
+            return energy_tot;
         }
 
         void print_info()
         {
+            printf("\n");
             std::cout << "name          : " << name_ << std::endl;
             std::cout << "symbol        : " << symbol_ << std::endl;
             std::cout << "zn            : " << zn_ << std::endl;
