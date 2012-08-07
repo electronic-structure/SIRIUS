@@ -57,11 +57,17 @@ typedef std::vector<radial_solution_descriptor> radial_solution_descriptor_set;
 class AtomType
 {
     private:
-    
+        
+        /// unique id of atom type
         int id_;
     
+        /// label of the input file
         std::string label_;
+
+        /// chemical element symbol
         std::string symbol_;
+
+        /// chemical element name
         std::string name_;
         
         /// nucleus charge
@@ -74,10 +80,31 @@ class AtomType
         double mt_radius_;
 
         /// number of muffin-tin points
-        int mt_num_points_;
+        int num_mt_points_;
+        
+        /// beginning of the radial grid
+        double radial_grid_origin_;
+        
+        /// effective infinity distance
+        double radial_grid_infinity_;
+        
+        /// radial grid
+        RadialGrid radial_grid_;
 
         /// list of core levels
-        std::vector<atomic_level_nlk> core_;
+        //std::vector<atomic_level_nl> core_;
+
+        /// list of atomic levels 
+        std::vector<atomic_level_nl> levels_nl_;
+
+        /// number of core levels
+        int num_core_levels_nl_;
+
+        /// number of core electrons
+        int num_core_electrons_;
+
+        /// number of valence electrons
+        int num_valence_electrons_;
         
         /// default augmented wave configuration
         radial_solution_descriptor_set aw_default_l_;
@@ -91,9 +118,6 @@ class AtomType
         /// list of radial descriptor sets used to construct local orbitals
         std::vector<radial_solution_descriptor_set> lo_descriptors_;
        
-        /// radial grid
-        RadialGrid radial_grid_;
-
         void read_input()
         {
             std::string fname = label_ + std::string(".json");
@@ -102,11 +126,10 @@ class AtomType
             parser["symbol"] >> symbol_;
             parser["mass"] >> mass_;
             parser["number"] >> zn_;
-            double origin = parser["rmin"].get<double>();
-            double infinity = parser["rmax"].get<double>();
+            parser["rmin"] >> radial_grid_origin_;
+            parser["rmax"] >> radial_grid_infinity_;
             parser["rmt"] >> mt_radius_;
-            parser["nrmt"] >> mt_num_points_;
-            radial_grid_.init(exponential_grid, mt_num_points_, origin, mt_radius_, infinity); 
+            parser["nrmt"] >> num_mt_points_;
             std::string core_str;
             parser["core"] >> core_str;
             if (int size = core_str.size())
@@ -157,21 +180,15 @@ class AtomType
                             error(__FILE__, __LINE__, s);
                     }
 
-                    atomic_level_nlk level;
-                    for (int i = 0; i < 28; i++)
-                    {
-                        if (atomic_conf[zn_ - 1][i][0] == n && atomic_conf[zn_ - 1][i][1] == l)
-                        {
-                            level.n = n;
-                            level.l = l;
-                            level.k = atomic_conf[zn_ - 1][i][2];
-                            level.occupancy = atomic_conf[zn_ - 1][i][3];
-                            core_.push_back(level);
-                        }
-                    }
+                    atomic_level_nl level;
+                    level.n = n;
+                    level.l = l;
+                    level.occupancy = 2 * (2 * l + 1);
+                    levels_nl_.push_back(level);
                 }
 
             }
+            num_core_levels_nl_ = levels_nl_.size();
             
             radial_solution_descriptor rsd;
             radial_solution_descriptor_set rsd_set;
@@ -229,7 +246,60 @@ class AtomType
                  const std::string& label) : id_(id_),
                                              label_(label)
         {
-            read_input();
+            if (label.size() != 0)
+            {
+                read_input();
+                
+                atomic_level_nl level;
+                
+                int nl_occ[7][4];
+                memset(&nl_occ[0][0], 0, 28 * sizeof(int));
+
+                for (int ist = 0; ist < 28; ist++)
+                {
+                    int n = atomic_conf[zn_][ist][0];
+                    int l = atomic_conf[zn_][ist][1];
+
+                    if (n != -1)
+                        nl_occ[n - 1][l] += atomic_conf[zn_ - 1][ist][3];
+                }
+
+                for (int n = 0; n < 7; n++)
+                    for (int l = 0; l < 4; l++)
+                    {
+                        level.n = n + 1;
+                        level.l = l;
+                        if ((level.occupancy = nl_occ[n][l]))
+                        {
+                            bool found = false;
+                            for (int ist = 0; ist < (int)levels_nl_.size(); ist++)
+                            {
+                                if (levels_nl_[ist].n == level.n && levels_nl_[ist].l == level.l)
+                                {
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (!found)
+                                levels_nl_.push_back(level);
+                        }
+                    }
+            }
+        }
+
+        void init(int lmax)
+        {
+            radial_grid_.init(exponential_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
+            
+            rebuild_aw_descriptors(lmax);
+
+            num_core_electrons_ = 0;
+            for (int i = 0; i < num_core_levels_nl_; i++)
+                num_core_electrons_ += levels_nl_[i].occupancy;
+
+            num_valence_electrons_ = zn_ - num_core_electrons_;
+            
+            solve_free_atom(1e-8, 1e-5, 1e-5);
         }
         
         const std::string& label()
@@ -264,6 +334,137 @@ class AtomType
                 aw_descriptors_.push_back(aw_default_l_);
         }
 
+        void solve_free_atom(double solver_tol, double energy_tol, double charge_tol)
+        {
+            Timer t("sirius::AtomType::solve_free_atom");
+            
+            RadialSolver solver(false, -1.0 * zn_, radial_grid_);
+            
+            solver.set_tolerance(solver_tol);
+            
+            std::vector<double> veff(radial_grid_.size());
+            std::vector<double> vnuc(radial_grid_.size());
+            for (int i = 0; i < radial_grid_.size(); i++)
+            {
+                vnuc[i] = -1.0 * zn_ / radial_grid_[i];
+                veff[i] = vnuc[i];
+            }
+    
+            Spline rho(radial_grid_.size(), radial_grid_);
+    
+            Spline f(radial_grid_.size(), radial_grid_);
+    
+            std::vector<double> vh(radial_grid_.size());
+            std::vector<double> vxc(radial_grid_.size());
+            std::vector<double> exc(radial_grid_.size());
+            std::vector<double> g1;
+            std::vector<double> g2;
+            std::vector<double> p;
+            std::vector<double> rho_old;
+    
+            std::vector<double> enu(levels_nl_.size());
+    
+            double energy_tot = 0.0;
+            double energy_tot_old;
+            double charge_rms;
+            double energy_diff;
+    
+            double beta = 0.9;
+            
+            bool converged = false;
+            
+            for (int ist = 0; ist < (int)levels_nl_.size(); ist++)
+                enu[ist] = -1.0 * zn_ / 2 / pow(levels_nl_[ist].n, 2);
+            
+            for (int iter = 0; iter < 100; iter++)
+            {
+                rho_old = rho.data_points();
+                
+                memset(&rho[0], 0, rho.size() * sizeof(double));
+                
+                for (int ist = 0; ist < (int)levels_nl_.size(); ist++)
+                {
+                    solver.bound_state(levels_nl_[ist].n, levels_nl_[ist].l, veff, enu[ist], p);
+                    
+                    for (int i = 0; i < radial_grid_.size(); i++)
+                        rho[i] += levels_nl_[ist].occupancy * pow(y00 * p[i] / radial_grid_[i], 2);
+                }
+                
+                charge_rms = 0.0;
+                for (int i = 0; i < radial_grid_.size(); i++)
+                    charge_rms += pow(rho[i] - rho_old[i], 2);
+                charge_rms = sqrt(charge_rms / radial_grid_.size());
+                
+                rho.interpolate();
+                
+                // compute Hartree potential
+                rho.integrate(g2, 2);
+                double t1 = rho.integrate(g1, 1);
+
+                for (int i = 0; i < radial_grid_.size(); i++)
+                    vh[i] = fourpi * (g2[i] / radial_grid_[i] + t1 - g1[i]);
+                
+                // compute XC potential and energy
+                xc_potential::get(rho.size(), &rho[0], &vxc[0], &exc[0]);
+
+                for (int i = 0; i < radial_grid_.size(); i++)
+                    veff[i] = (1 - beta) * veff[i] + beta * (vnuc[i] + vh[i] + vxc[i]);
+                
+                // kinetic energy
+                for (int i = 0; i < radial_grid_.size(); i++)
+                    f[i] = veff[i] * rho[i];
+                f.interpolate();
+                
+                double eval_sum = 0.0;
+                for (int ist = 0; ist < (int)levels_nl_.size(); ist++)
+                    eval_sum += levels_nl_[ist].occupancy * enu[ist];
+
+                double energy_kin = eval_sum - fourpi * f.integrate(2);
+
+                // xc energy
+                for (int i = 0; i < radial_grid_.size(); i++)
+                    f[i] = exc[i] * rho[i];
+                f.interpolate();
+                double energy_xc = fourpi * f.integrate(2); 
+                
+                // electron-nuclear energy
+                for (int i = 0; i < radial_grid_.size(); i++)
+                    f[i] = vnuc[i] * rho[i];
+                f.interpolate();
+                double energy_enuc = fourpi * f.integrate(2); 
+
+                // Coulomb energy
+                for (int i = 0; i < radial_grid_.size(); i++)
+                    f[i] = vh[i] * rho[i];
+                f.interpolate();
+                double energy_coul = 0.5 * fourpi * f.integrate(2);
+                
+                energy_tot_old = energy_tot;
+
+                energy_tot = energy_kin + energy_xc + energy_coul + energy_enuc; 
+                
+                energy_diff = fabs(energy_tot - energy_tot_old);
+                
+                if (energy_diff < energy_tol && charge_rms < charge_tol) 
+                { 
+                    converged = true;
+                    break;
+                }
+                
+                beta *= 0.95;
+            }
+            
+            if (!converged)
+            {
+                printf("energy_diff : %18.10f   charge_rms : %18.10f   beta : %18.10f\n", energy_diff, charge_rms, beta);
+                std::stringstream s;
+                s << "atom is not converged " << symbol_ << " is not converged" << std::endl
+                  << "  energy difference : " << energy_diff << std::endl
+                  << "  charge difference : " << charge_rms;
+                error(__FILE__, __LINE__, s);
+            }
+        }
+
         void print_info()
         {
             std::cout << "name          : " << name_ << std::endl;
@@ -271,11 +472,14 @@ class AtomType
             std::cout << "zn            : " << zn_ << std::endl;
             std::cout << "mass          : " << mass_ << std::endl;
             std::cout << "mt_radius     : " << mt_radius_ << std::endl;
-            std::cout << "mt_num_points : " << mt_num_points_ << std::endl;
+            std::cout << "num_mt_points : " << num_mt_points_ << std::endl;
             
-            std::cout << "core levels (n,l,k,occupancy) " << std::endl;
-            for (int i = 0; i < (int)core_.size(); i++)
-                std::cout << "  " << core_[i].n << " " << core_[i].l << " " << core_[i].k << " " << core_[i].occupancy << std::endl;
+            printf("number of core electrons : %i\n", num_core_electrons_);
+            printf("number of valence electrons : %i\n", num_valence_electrons_);
+            
+            std::cout << "core levels (n,l,occupancy) " << std::endl;
+            for (int i = 0; i < num_core_levels_nl_; i++)
+                std::cout << "  " << levels_nl_[i].n << " " << levels_nl_[i].l << " " << levels_nl_[i].occupancy << std::endl;
             
             std::cout << "default augmented wave basis" << std::endl;
             for (int order = 0; order < (int)aw_default_l_.size(); order++)

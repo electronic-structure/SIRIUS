@@ -11,7 +11,7 @@ class sirius_step_func : public sirius_gvec
         /// step function on the real-space grid
         std::vector<double> step_func_;
         
-        /// volume of muffin tin pheres
+        /// volume of muffin tin spheres
         double volume_mt_;
         
         /// volume of interstitial region

@@ -10,6 +10,9 @@ class SiriusGlobal : public sirius_step_func
             sirius_geometry::init();
             sirius_gvec::init();
             sirius_step_func::init();
+            
+            for (int i = 0; i < num_atom_types(); i++)
+                 atom_type(i)->init(8);
         }
         
         void clear()
@@ -25,6 +28,10 @@ class SiriusGlobal : public sirius_step_func
 
             sirius_unit_cell::print_info();
             sirius_gvec::print_info();
+
+            printf("\n");
+            for (int i = 0; i < num_atom_types(); i++)
+                atom_type(i)->print_info();
 
             printf("\n");
             Timer::print();

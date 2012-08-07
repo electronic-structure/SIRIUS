@@ -63,7 +63,7 @@ class sirius_geometry : public sirius_unit_cell
             }
         }
 
-        bool check_mt_overlap(bool stop_if_overlap)
+        bool check_mt_overlap(int& _ia, int& _ja)
         {
             if (nearest_neighbours_.size() == 0)
                 error(__FILE__, __LINE__, "array of nearest neighbours is empty");
@@ -82,16 +82,8 @@ class sirius_geometry : public sirius_unit_cell
                 
                 if ((atom(ia)->type()->mt_radius() + atom(ja)->type()->mt_radius()) > dist)
                 {
-                    if (stop_if_overlap)
-                    {
-                        std::stringstream s;
-                        s << "overlaping muffin-tin spheres for atoms " << ia << " and " << ja << std::endl
-                          << "  radius of atom " << ia << " : " << atom(ia)->type()->mt_radius() << std::endl
-                          << "  radius of atom " << ja << " : " << atom(ja)->type()->mt_radius() << std::endl
-                          << "  distance : " << dist;
-                        error(__FILE__, __LINE__, s);
-                    }
-                    
+                    _ia = ia;
+                    _ja = ja;
                     return true;
                 }
             }
@@ -105,10 +97,19 @@ class sirius_geometry : public sirius_unit_cell
         {
             find_nearest_neighbours(15.0);
             
-            if (check_mt_overlap(false))
+            int ia, ja;
+
+            if (check_mt_overlap(ia, ja))
                 find_mt_radii();
             
-            check_mt_overlap(true);
+            if (check_mt_overlap(ia, ja))
+            {
+                std::stringstream s;
+                s << "overlaping muffin-tin spheres for atoms " << ia << " and " << ja << std::endl
+                  << "  radius of atom " << ia << " : " << atom(ia)->type()->mt_radius() << std::endl
+                  << "  radius of atom " << ja << " : " << atom(ja)->type()->mt_radius();
+                error(__FILE__, __LINE__, s);
+            }
         }
 
         void find_nearest_neighbours(double cluster_radius)

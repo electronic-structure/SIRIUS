@@ -22,6 +22,7 @@ extern "C" {
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_fft_complex.h>
 #include <gsl/gsl_heapsort.h>
+#include <xc.h>
 #include "../libjson/libjson.h"
      
 #include "error_handling.h"
@@ -35,6 +36,7 @@ extern "C" {
 #include "spline.h"
 #include "radial_solver.h"
 #include "json_tree.h"
+#include "xc_potential.h"
 #include "atom_type.h"
 #include "atom_symmetry_class.h"
 #include "atom.h"
