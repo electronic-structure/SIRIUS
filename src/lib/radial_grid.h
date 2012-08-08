@@ -25,6 +25,9 @@ class RadialGrid
         /// list of radial points
         std::vector<double> points_;
         
+        /// list of 1/r
+        std::vector<double> points_inv_;
+        
         /// intervals between points
         std::vector<double> deltas_;
         
@@ -75,6 +78,7 @@ class RadialGrid
         
             points_.clear();
             deltas_.clear();
+            points_inv_.clear();
 
             double tol = 1e-10;
 
@@ -123,6 +127,10 @@ class RadialGrid
             
             if (infinity_ == mt_radius_ && mt_num_points() != size())
                 error(__FILE__, __LINE__, "radial grid is wrong");
+
+            points_inv_.resize(points_.size());
+            for (int i = 0; i < (int)points_.size(); i++)
+                points_inv_[i] = 1.0 / points_[i];
         }
 
         inline double operator [](const int i)
@@ -133,6 +141,11 @@ class RadialGrid
         inline double dr(const int i)
         {
             return deltas_[i];
+        }
+
+        inline double rinv(const int i)
+        {
+            return points_inv_[i];
         }
         
         inline int mt_num_points()

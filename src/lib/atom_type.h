@@ -242,11 +242,11 @@ class AtomType
                                                        zn_(_zn),
                                                        mass_(_mass),
                                                        mt_radius_(2.0),
-                                                       num_mt_points_(1000),
+                                                       num_mt_points_(2000),
                                                        levels_nl_(_levels)
                                                          
         {
-            radial_grid_.init(exponential_grid, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0); 
+            radial_grid_.init(exponential_grid, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
         }
 
         AtomType(int id_, 
@@ -291,6 +291,12 @@ class AtomType
                                 levels_nl_.push_back(level);
                         }
                     }
+
+                    num_core_electrons_ = 0;
+                    for (int i = 0; i < num_core_levels_nl_; i++)
+                        num_core_electrons_ += levels_nl_[i].occupancy;
+
+                    num_valence_electrons_ = zn_ - num_core_electrons_;
             }
         }
 
@@ -349,9 +355,20 @@ class AtomType
         {
             return levels_nl_.size();
         }    
+        
         inline atomic_level& level_nl(int idx)
         {
             return levels_nl_[idx];
+        }
+        
+        inline int num_core_electrons()
+        {
+            return num_core_electrons_;
+        }
+        
+        inline int num_valence_electrons()
+        {
+            return num_valence_electrons_;
         }
         
         void init(int lmax)
@@ -359,15 +376,9 @@ class AtomType
             radial_grid_.init(exponential_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
             
             rebuild_aw_descriptors(lmax);
-
-            num_core_electrons_ = 0;
-            for (int i = 0; i < num_core_levels_nl_; i++)
-                num_core_electrons_ += levels_nl_[i].occupancy;
-
-            num_valence_electrons_ = zn_ - num_core_electrons_;
             
-            std::vector<double> enu;
-            solve_free_atom(1e-8, 1e-5, 1e-5, enu);
+            //std::vector<double> enu;
+            //solve_free_atom(1e-8, 1e-5, 1e-5, enu);
         }
 
         void rebuild_aw_descriptors(int lmax)
@@ -425,24 +436,23 @@ class AtomType
                 memset(&rho[0], 0, rho.size() * sizeof(double));
                 #pragma omp parallel default(shared)
                 {
-                std::vector<double> rho_t(rho.size());
-                memset(&rho_t[0], 0, rho.size() * sizeof(double));
-                std::vector<double> p;
+                    std::vector<double> rho_t(rho.size());
+                    memset(&rho_t[0], 0, rho.size() * sizeof(double));
+                    std::vector<double> p;
                 
-                #pragma omp for
-                for (int ist = 0; ist < (int)levels_nl_.size(); ist++)
-                {
-                    solver.bound_state(levels_nl_[ist].n, levels_nl_[ist].l, veff, enu[ist], p);
+                    #pragma omp for
+                    for (int ist = 0; ist < (int)levels_nl_.size(); ist++)
+                    {
+                        solver.bound_state(levels_nl_[ist].n, levels_nl_[ist].l, veff, enu[ist], p);
                     
-                    for (int i = 0; i < radial_grid_.size(); i++)
-                        rho_t[i] += levels_nl_[ist].occupancy * pow(y00 * p[i] / radial_grid_[i], 2);
-                }
+                        for (int i = 0; i < radial_grid_.size(); i++)
+                            rho_t[i] += levels_nl_[ist].occupancy * pow(y00 * p[i] / radial_grid_[i], 2);
+                    }
 
-                #pragma omp critical
-                for (int i = 0; i < rho.size(); i++)
-                    rho[i] += rho_t[i];
-
-                } // omp parallel
+                    #pragma omp critical
+                    for (int i = 0; i < rho.size(); i++)
+                        rho[i] += rho_t[i];
+                } 
                 
                 charge_rms = 0.0;
                 for (int i = 0; i < radial_grid_.size(); i++)
@@ -505,7 +515,7 @@ class AtomType
                     break;
                 }
                 
-                beta *= 0.95;
+                beta = std::max(beta * 0.95, 0.01);
             }
             
             if (!converged)

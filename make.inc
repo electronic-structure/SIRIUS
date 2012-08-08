@@ -7,7 +7,7 @@ CXX = g++-mp-4.7
 #  Initial compiler options typically include optimization / warning switches and a preprocessor directive
 #  which controls the debug
 #
-CXX_OPT = -O3 -Wall
+CXX_OPT = -O3 -Wall -fopenmp
 
 #
 #  Initial list of libraries

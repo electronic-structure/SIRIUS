@@ -39,6 +39,7 @@ class RadialSolver
             double ll2 = 0.5 * l * (l + 1);
 
             double x2 = radial_grid[0];
+            double x2inv = radial_grid.rinv(0);
             double v2 = ve[0] + zn / x2;
             double m2 = 1 - (v2 - enu0) * alpha2;
 
@@ -54,6 +55,8 @@ class RadialSolver
             double mp2 = mp[0];
             double vl2 = ll2 / m2 / pow(x2, 2);
 
+            double v2enuvl2 = (v2 - enu + vl2);
+
             double pk[4];
             double qk[4];
             
@@ -61,6 +64,8 @@ class RadialSolver
             {
                 double x0 = x2;
                 x2 = radial_grid[i + 1];
+                double x0inv = x2inv;
+                x2inv = radial_grid.rinv(i + 1);
                 double h = radial_grid.dr(i);
                 double h1 = h / 2;
 
@@ -69,9 +74,7 @@ class RadialSolver
                 double p0 = p2;
                 double q0 = q2;
                 double m0 = m2;
-                double vl0 = vl2;
-                double v0 = v2;
-                v2 = ve[i + 1] + zn / x2;
+                v2 = ve[i + 1] + zn * x2inv;
 
                 double mp0 = mp2;
                 mp2 = mp[i + 1];
@@ -79,24 +82,30 @@ class RadialSolver
                 double v1 = ve(i, h1) + zn * x1inv;
                 double m1 = 1 - (v1 - enu0) * alpha2;
                 m2 = 1 - (v2 - enu0) * alpha2;
+                vl2 = ll2 / m2 / pow(x2, 2);
+                
+                double v0enuvl0 = v2enuvl2;
+                v2enuvl2 = (v2 - enu + vl2);
+                
+                double vl1 = ll2 / m1 / pow(x1, 2);
+
+                double v1enuvl1 = (v1 - enu + vl1);
                 
                 // k0 = F(Y(x), x)
-                pk[0] = 2 * m0 * q0 + p0 / x0;
-                qk[0] = (v0 - enu + vl0) * p0 - q0 / x0 - mp0;
+                pk[0] = 2 * m0 * q0 + p0 * x0inv;
+                qk[0] = v0enuvl0 * p0 - q0 * x0inv - mp0;
 
-                double vl1 = ll2 / m1 / pow(x1, 2);
                 // k1 = F(Y(x) + k0 * h/2, x + h/2)
                 pk[1] = 2 * m1 * (q0 + qk[0] * h1) + (p0 + pk[0] * h1) * x1inv;
-                qk[1] = (v1 - enu + vl1) * (p0 + pk[0] * h1) - (q0 + qk[0] * h1) * x1inv - mp1;
+                qk[1] = v1enuvl1 * (p0 + pk[0] * h1) - (q0 + qk[0] * h1) * x1inv - mp1;
 
                 // k2 = F(Y(x) + k1 * h/2, x + h/2)
                 pk[2] = 2 * m1 * (q0 + qk[1] * h1) + (p0 + pk[1] * h1) * x1inv; 
-                qk[2] = (v1 - enu + vl1) * (p0 + pk[1] * h1) - (q0 + qk[1] * h1) * x1inv - mp1;
+                qk[2] = v1enuvl1 * (p0 + pk[1] * h1) - (q0 + qk[1] * h1) * x1inv - mp1;
 
-                vl2 = ll2 / m2 / pow(x2, 2);
                 // k3 = F(Y(x) + k2 * h, x + h)
-                pk[3] = 2 * m2 * (q0 + qk[2] * h) + (p0 + pk[2] * h) / x2; 
-                qk[3] = (v2 - enu + vl2) * (p0 + pk[2] * h) - (q0 + qk[2] * h) / x2 - mp2;
+                pk[3] = 2 * m2 * (q0 + qk[2] * h) + (p0 + pk[2] * h) * x2inv; 
+                qk[3] = v2enuvl2 * (p0 + pk[2] * h) - (q0 + qk[2] * h) * x2inv - mp2;
                 
                 // Y(x + h) = Y(x) + h * (k0 + 2 * k1 + 2 * k2 + k3) / 6
                 p2 = p0 + (pk[0] + 2 * (pk[1] + pk[2]) + pk[3]) * h / 6.0;

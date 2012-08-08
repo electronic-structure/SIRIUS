@@ -30,6 +30,18 @@ class sirius_unit_cell
        
         /// spglib structure with symmetry information
         SpglibDataset* spg_dataset_;
+        
+        /// total nuclear charge
+        int total_nuclear_charge_;
+        
+        /// total number of core electrons
+        int num_core_electrons_;
+        
+        /// total number of valence electrons
+        int num_valence_electrons_;
+
+        /// total number of electrons
+        int num_electrons_;
     
         /*! 
             \brief Get crystal symmetries and equivalent atoms.
@@ -108,6 +120,17 @@ class sirius_unit_cell
         void init()
         {
             get_symmetry();
+            total_nuclear_charge_ = 0;
+            num_core_electrons_ = 0;
+            num_valence_electrons_ = 0;
+
+            for (int i = 0; i < num_atoms(); i++)
+            {
+                total_nuclear_charge_ += atom(i)->type()->zn();
+                num_core_electrons_ += atom(i)->type()->num_core_electrons();
+                num_valence_electrons_ += atom(i)->type()->num_valence_electrons();
+            }
+            num_electrons_ = num_core_electrons_ + num_valence_electrons_;
         }
 
         void clear()
@@ -182,6 +205,12 @@ class sirius_unit_cell
             printf("international symbol : %s\n", spg_dataset_->international_symbol);
             printf("Hall symbol          : %s\n", spg_dataset_->hall_symbol);
             printf("number of operations : %i\n", spg_dataset_->n_operations);
+            
+            printf("\n");
+            printf("total nuclear charge        : %i\n", total_nuclear_charge_);
+            printf("number of core electrons    : %i\n", num_core_electrons_);
+            printf("number of valence electrons : %i\n", num_valence_electrons_);
+            printf("total number of electrons   : %i\n", num_electrons_);
          }
         
         /*!

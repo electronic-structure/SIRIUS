@@ -39,7 +39,7 @@ void solve_atom(atom* a)
 {
     std::vector<double> enu;
     
-    double energy_tot = a->solve_free_atom(1e-10, 1e-7, 1e-7, enu);
+    double energy_tot = a->solve_free_atom(1e-10, 1e-7, 1e-6, enu);
     
     double ecore_cutoff = -3.0;
     
@@ -128,11 +128,9 @@ void solve_atom(atom* a)
 
 int main(int argn, char **argv)
 {
-    sirius::Timer* t = new sirius::Timer("main");
-    
     init_atom_configuration();
     
-    for (int i = 102; i < (int)atoms.size(); i++)
+    for (int i = 0; i < (int)atoms.size(); i++)
         solve_atom(atoms[i]); 
     
     /*std::ofstream fout("atomic_conf.h");
@@ -167,7 +165,6 @@ int main(int argn, char **argv)
     fout << "};" << std::endl;
     fout.close();*/
     
-    delete t;
     sirius::Timer::print();
 }
 
