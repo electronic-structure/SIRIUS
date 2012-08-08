@@ -44,7 +44,7 @@ extern "C" {
 #include "unit_cell.h"
 #include "geometry.h"
 #include "reciprocal_lattice.h"
-#include "step_func.h"
+#include "step_function.h"
 #include "global.h"
 #include "density.h"
 

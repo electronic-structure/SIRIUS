@@ -35,4 +35,4 @@ depend: $(SRC)
 	rm -f ./.depend
 	$(CXX) $(CXX_OPT) -MM $^ >> ./.depend
 
-#include .depend
+include .depend

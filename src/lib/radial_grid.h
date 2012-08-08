@@ -132,6 +132,11 @@ class RadialGrid
             for (int i = 0; i < (int)points_.size(); i++)
                 points_inv_[i] = 1.0 / points_[i];
         }
+        
+        inline double* get_ptr()
+        {
+            return &points_[0];
+        }
 
         inline double operator [](const int i)
         {

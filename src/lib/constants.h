@@ -15,5 +15,11 @@ const double y00 = 0.28209479177387814347;
 
 const double pw_cutoff_default = 12.0; 
 
+const int lmax_apw_default = 8;
+
+const int lmax_rho_default = 7;
+
+const int lmax_pot_default = 7;
+
 #endif // __CONSTANTS_H__
 

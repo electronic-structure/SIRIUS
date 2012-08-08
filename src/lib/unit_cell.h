@@ -443,6 +443,11 @@ class unit_cell
         {
             return atom_symmetry_classes_[id];
         }
+        
+        inline double num_electrons()
+        {
+            return num_electrons_;
+        }
 };
 
 };

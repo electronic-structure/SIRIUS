@@ -101,6 +101,9 @@ class AtomType
         
         /// list of radial descriptor sets used to construct local orbitals
         std::vector<radial_solution_descriptor_set> lo_descriptors_;
+        
+        /// density of a free atom
+        std::vector<double> free_atom_density_;
        
         // forbid copy constructor
         AtomType(const AtomType& src);
@@ -371,14 +374,16 @@ class AtomType
             return num_valence_electrons_;
         }
         
+        inline double free_atom_density(const int idx)
+        {
+            return free_atom_density_[idx];
+        }
+        
         void init(int lmax)
         {
             radial_grid_.init(exponential_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
             
             rebuild_aw_descriptors(lmax);
-            
-            //std::vector<double> enu;
-            //solve_free_atom(1e-8, 1e-5, 1e-5, enu);
         }
 
         void rebuild_aw_descriptors(int lmax)
@@ -527,6 +532,8 @@ class AtomType
                   << "  charge difference : " << charge_rms;
                 error(__FILE__, __LINE__, s);
             }
+            
+            free_atom_density_ = rho.data_points();
             
             return energy_tot;
         }

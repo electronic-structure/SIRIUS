@@ -47,7 +47,6 @@ class Spline
         
         void interpolate(std::vector<double>& y)
         {
-            //memcpy(&a[0], &y[0], number_of_points * sizeof(double));
             a = y;
             interpolate();
         }
@@ -116,6 +115,15 @@ class Spline
             std::vector<double> g(num_points);
     
             return integrate(g, m);
+        }
+        
+        double integrate(int n, int m)
+        {
+            std::vector<double> g(num_points);
+    
+            integrate(g, m);
+
+            return g[n];
         }
 
         double integrate(std::vector<double>& g, int m = 0)
