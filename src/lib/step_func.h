@@ -1,7 +1,7 @@
 
 namespace sirius {
 
-class sirius_step_func : public sirius_gvec
+class step_func : public reciprocal_lattice
 {
     private:
     

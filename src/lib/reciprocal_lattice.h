@@ -1,14 +1,14 @@
 
 namespace sirius {
 
-class sirius_gvec : public sirius_geometry
+class reciprocal_lattice : public geometry
 {
     private:
         
         /// plane wave cutoff radius (in inverse a.u. of length)
         double pw_cutoff_;
         
-        /// fft wrapper
+        /// FFT wrapper
         FFT3D fft_;
 
         /// list of G-vector fractional coordinates
@@ -26,8 +26,8 @@ class sirius_gvec : public sirius_geometry
 
     public:
     
-        sirius_gvec() : pw_cutoff_(pw_cutoff_default),
-                        num_gvec_(0)
+        reciprocal_lattice() : pw_cutoff_(pw_cutoff_default),
+                               num_gvec_(0)
         {
         }
   
@@ -38,7 +38,7 @@ class sirius_gvec : public sirius_geometry
 
         void init()
         {
-            Timer t("sirius::sirius_gvec::init");
+            Timer t("sirius::reciprocal_lattice::init");
             
             int max_frac_coord[3];
             find_translation_limits<reciprocal>(pw_cutoff(), max_frac_coord);

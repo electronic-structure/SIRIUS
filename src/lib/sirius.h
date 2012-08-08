@@ -41,12 +41,11 @@ extern "C" {
 #include "atom_symmetry_class.h"
 #include "atom.h"
 #include "fft3d.h"
-#include "sirius_unit_cell.h"
-#include "sirius_geometry.h"
-#include "sirius_gvec.h"
-#include "sirius_step_func.h"
-#include "sirius_global.h"
-
-sirius::SiriusGlobal sirius_global;
+#include "unit_cell.h"
+#include "geometry.h"
+#include "reciprocal_lattice.h"
+#include "step_func.h"
+#include "global.h"
+#include "density.h"
 
 #endif // __SIRIUS_H__

@@ -1,6 +1,6 @@
 namespace sirius {
 
-class sirius_unit_cell
+class unit_cell
 {
     private:
         
@@ -52,7 +52,7 @@ class sirius_unit_cell
         */
         void get_symmetry()
         {
-            Timer t("sirius::sirius_unit_cell::get_symmetry");
+            Timer t("sirius::unit_cell::get_symmetry");
             
             if (spg_dataset_) 
                 error(__FILE__, __LINE__, "spg_dataset is already allocated");
@@ -111,7 +111,7 @@ class sirius_unit_cell
         
     public:
     
-        sirius_unit_cell() : spg_dataset_(NULL)
+        unit_cell() : spg_dataset_(NULL)
         {
             assert(sizeof(int4) == 4);
             assert(sizeof(real8) == 8);

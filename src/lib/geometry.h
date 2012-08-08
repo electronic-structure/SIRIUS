@@ -12,7 +12,7 @@ struct nearest_neighbour_descriptor
     double distance;
 };
 
-class sirius_geometry : public sirius_unit_cell
+class geometry : public unit_cell
 {
     private:
     
@@ -114,7 +114,7 @@ class sirius_geometry : public sirius_unit_cell
 
         void find_nearest_neighbours(double cluster_radius)
         {
-            Timer t("sirius::sirius_geometry::find_nearest_neighbours");
+            Timer t("sirius::geometry::find_nearest_neighbours");
 
             int max_frac_coord[] = {0, 0, 0};
             double frac_coord[3];
