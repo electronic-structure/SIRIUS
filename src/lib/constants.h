@@ -7,6 +7,8 @@
 // NIST value for the inverse fine structure (http://physics.nist.gov/cuu/Constants/index.html)
 const double speed_of_light = 137.035999074; 
 
+const double pi = 3.1415926535897932385;
+
 const double twopi = 6.2831853071795864769;
 
 const double fourpi = 12.566370614359172954;

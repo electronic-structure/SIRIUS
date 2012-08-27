@@ -76,7 +76,7 @@ class Global : public step_function
         {
             return max_num_mt_points_;
         }
-     
+
         void initialize()
         {
             unit_cell::init();

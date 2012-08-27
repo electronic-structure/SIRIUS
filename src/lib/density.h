@@ -3,7 +3,8 @@ namespace sirius
 
 class Density
 {
-    private:
+    //private:
+    public:
         mdarray<double,3> charge_density_mt_;
         mdarray<double,1> charge_density_it_;
         

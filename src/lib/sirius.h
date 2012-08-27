@@ -22,6 +22,7 @@ extern "C" {
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_fft_complex.h>
 #include <gsl/gsl_heapsort.h>
+#include <gsl/gsl_sf_legendre.h>
 #include <xc.h>
 #include "../libjson/libjson.h"
      
@@ -47,5 +48,6 @@ extern "C" {
 #include "step_function.h"
 #include "global.h"
 #include "density.h"
+#include "potential.h"
 
 #endif // __SIRIUS_H__

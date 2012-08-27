@@ -99,7 +99,7 @@ class reciprocal_lattice : public geometry
 
                 // mapping of FFT buffer linear index
                 fft_index_[ig] = fft_.index(i0, i1, i2);
-           }
+            }
         }
 
         void print_info()
@@ -136,6 +136,11 @@ class reciprocal_lattice : public geometry
         inline double pw_cutoff()
         {
             return pw_cutoff_;
+        }
+        
+        inline int num_gvec()
+        {
+            return num_gvec_;
         }
 };
 
