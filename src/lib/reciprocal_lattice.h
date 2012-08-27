@@ -17,6 +17,12 @@ class reciprocal_lattice : public geometry
         /// number of G-vectors within plane wave cutoff
         int num_gvec_;
 
+        /// length of G-vectors belonging to the same shell
+        std::vector<double> gvec_shell_len_;
+
+        /// mapping between G-vector and shell
+        std::vector<int> gvec_shell_;
+
         /// mapping between linear G-vector index and G-vector coordinates
         mdarray<int,3> index_by_gvec_;
 
@@ -99,6 +105,21 @@ class reciprocal_lattice : public geometry
 
                 // mapping of FFT buffer linear index
                 fft_index_[ig] = fft_.index(i0, i1, i2);
+            }
+
+            // find G-shells
+            gvec_shell_.resize(num_gvec_);
+            gvec_shell_len_.clear();
+            for (int ig = 0; ig < num_gvec_; ig++)
+            {
+                double cartc[3];
+                get_coordinates<cartesian,reciprocal>(&gvec_(0, ig), cartc);
+                double t = vector_length(cartc);
+
+                if (gvec_shell_len_.empty() || fabs(t - gvec_shell_len_.back()) > 1e-8)
+                    gvec_shell_len_.push_back(t);
+                 
+                gvec_shell_[ig] = gvec_shell_len_.size() - 1;
             }
         }
 
