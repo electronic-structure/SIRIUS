@@ -2,6 +2,7 @@
 # C++ compiler
 #
 CXX = g++-mp-4.7
+#CXX = clang++-mp-3.1
 
 #
 #  Initial compiler options typically include optimization / warning switches and a preprocessor directive

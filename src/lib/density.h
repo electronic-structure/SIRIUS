@@ -7,6 +7,7 @@ class Density
     public:
         mdarray<double,3> charge_density_mt_;
         mdarray<double,1> charge_density_it_;
+        mdarray<complex16,1> charge_density_pw_;
         
         mdarray<double,3> magnetization_density_mt_;
         mdarray<double,2> magnetization_density_it_;
@@ -21,6 +22,8 @@ class Density
             charge_density_mt_.allocate();
             charge_density_it_.set_dimensions(global.fft().size());
             charge_density_it_.allocate();
+            charge_density_pw_.set_dimensions(global.fft().size());
+            charge_density_pw_.allocate();
         }
         
         void get_density(double* _rhomt, double* _rhoir)
@@ -44,6 +47,7 @@ class Density
                 {
                     rho[i] = global.atom(ia)->type()->free_atom_density(i);
                     charge_density_mt_(0, i, ia) = rho[i] / y00; 
+                    //charge_density_mt_(1, i, ia) = rho[i] / y00; 
                 }
                 rho.interpolate();
                 charge_in_mt += fourpi * rho.integrate(global.atom(ia)->type()->num_mt_points() - 1, 2);
@@ -51,6 +55,8 @@ class Density
             
             for (int i = 0; i < global.fft().size(); i++)
                 charge_density_it_(i) = (global.num_electrons() - charge_in_mt) / global.volume_it();
+                
+            global.fft().transform(&charge_density_it_(0), &charge_density_pw_(0));
         }
 
 

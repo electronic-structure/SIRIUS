@@ -23,6 +23,7 @@ extern "C" {
 #include <gsl/gsl_fft_complex.h>
 #include <gsl/gsl_heapsort.h>
 #include <gsl/gsl_sf_legendre.h>
+#include <gsl/gsl_sf_bessel.h>
 #include <xc.h>
 #include "../libjson/libjson.h"
      

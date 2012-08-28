@@ -71,8 +71,8 @@ extern "C" void FORTRAN(sirius_get_num_grid_points)(int4* num_grid_points)
 
 extern "C" void FORTRAN(sirius_initial_density)()
 {
-    //sirius::density.initial_density();
-    //sirius::potential.poisson();
+    sirius::density.initial_density();
+    sirius::potential.poisson();
 }
 
 extern "C" void FORTRAN(sirius_get_density)(real8* rhomt, real8* rhoir)

@@ -64,27 +64,31 @@ class FFT3D : public FFT3D_base
             }
         }
 
-        void transform(complex16* data_in, double* data_out, int direction)
+        /*!
+            \brief Backward transform complex coefficients into a real function
+        */
+        void transform(complex16* data_in, double* data_out)
         {
-            if (direction == 1)
-            {
-                memcpy(&fftw_input_buffer[0], data_in, size() * sizeof(complex16));
-                fftw_execute(plan_backward);
-                for (int i = 0; i < size(); i++)
-                    data_out[i] = real(fftw_output_buffer[i]);
+            memcpy(&fftw_input_buffer[0], data_in, size() * sizeof(complex16));
+            fftw_execute(plan_backward);
+            for (int i = 0; i < size(); i++)
+                data_out[i] = real(fftw_output_buffer[i]);
+        }
+        
+        /*!
+            \brief Forward transform real function to get complex coefficients
+        */
+        void transform(double* data_in, complex16* data_out)
+        {
+            for (int i = 0; i < size(); i++)
+                fftw_input_buffer[i] = data_in[i];
+            fftw_execute(plan_forward);
+            memcpy(data_out, &fftw_output_buffer[0], size() * sizeof(complex16));
 
-            }
-            if (direction == -1)
-            {
-                memcpy(&fftw_input_buffer[0], data_in, size() * sizeof(complex16));
-                fftw_execute(plan_forward);
-                /*memcpy(zdata_, &fftw_output_buffer[0], size() * sizeof(complex16));
-                
-                double norm = 1.0 / size();
-                double* data_ = (double*)zdata_;
-                for (int i = 0; i < 2 * size(); i++)
-                    data_[i] *= norm;*/
-            }
+            double norm = 1.0 / size();
+            double* data_ = (double*)data_out;
+            for (int i = 0; i < 2 * size(); i++)
+                data_[i] *= norm;
         }
 };
 

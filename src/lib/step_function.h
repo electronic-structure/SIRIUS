@@ -68,7 +68,7 @@ class step_function : public reciprocal_lattice
                 step_function_pw_[ig] /= omega(); // normalization volume of Fourier transform
             }
             
-            fft().transform(&step_function_pw_[0], &step_function_[0], 1);
+            fft().transform(&step_function_pw_[0], &step_function_[0]);
             
             volume_mt_ = 0.0;
             for (int ia = 0; ia < num_atoms(); ia++)

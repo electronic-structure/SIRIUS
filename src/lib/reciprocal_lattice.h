@@ -126,8 +126,9 @@ class reciprocal_lattice : public geometry
         void print_info()
         {
             printf("\n");
-            printf("plane wave cutoff : %f\n", pw_cutoff_);
-            printf("number of G-vectors within the cutoff : %i\n", num_gvec_);
+            printf("plane wave cutoff : %f\n", pw_cutoff());
+            printf("number of G-vectors within the cutoff : %i\n", num_gvec());
+            printf("number of G-shells : %i\n", num_gvec_shells());
             printf("FFT grid size : %i %i %i   total : %i\n", fft_.size(0), fft_.size(1), fft_.size(2), fft_.size());
             printf("FFT grid limits : %i %i   %i %i   %i %i\n", fft_.grid_limits(0, 0), fft_.grid_limits(0, 1),
                                                                 fft_.grid_limits(1, 0), fft_.grid_limits(1, 1),
@@ -162,6 +163,21 @@ class reciprocal_lattice : public geometry
         inline int num_gvec()
         {
             return num_gvec_;
+        }
+
+        inline int num_gvec_shells()
+        {
+            return gvec_shell_len_.size();
+        }
+        
+        inline double gvec_shell_len(int igs)
+        {
+            return gvec_shell_len_[igs];
+        }
+        
+        inline int gvec_shell(int ig)
+        {
+            return gvec_shell_[ig];
         }
 };
 
