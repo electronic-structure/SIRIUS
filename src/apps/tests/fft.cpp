@@ -11,7 +11,6 @@ void test1()
     double a3[] = {1, 7, 35};
     sirius::global.set_lattice_vectors(a1, a2, a3);
     sirius::global.set_pw_cutoff(20.0);
-    //global.init_fft_grid();
     sirius::global.reciprocal_lattice::init();
     
     std::cout << "grid size : " << global.fft().size() << std::endl;

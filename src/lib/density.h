@@ -22,7 +22,7 @@ class Density
             charge_density_mt_.allocate();
             charge_density_it_.set_dimensions(global.fft().size());
             charge_density_it_.allocate();
-            charge_density_pw_.set_dimensions(global.fft().size());
+            charge_density_pw_.set_dimensions(global.num_gvec());
             charge_density_pw_.allocate();
         }
         
@@ -47,7 +47,7 @@ class Density
                 {
                     rho[i] = global.atom(ia)->type()->free_atom_density(i);
                     charge_density_mt_(0, i, ia) = rho[i] / y00; 
-                    //charge_density_mt_(1, i, ia) = rho[i] / y00; 
+                    charge_density_mt_(1, i, ia) = rho[i] / y00; // TODO: remove later after tests
                 }
                 rho.interpolate();
                 charge_in_mt += fourpi * rho.integrate(global.atom(ia)->type()->num_mt_points() - 1, 2);
@@ -56,7 +56,9 @@ class Density
             for (int i = 0; i < global.fft().size(); i++)
                 charge_density_it_(i) = (global.num_electrons() - charge_in_mt) / global.volume_it();
                 
-            global.fft().transform(&charge_density_it_(0), &charge_density_pw_(0));
+            global.fft().transform(&charge_density_it_(0), NULL);
+            
+            global.fft().input_buffer(5) = zi;
         }
 
 

@@ -46,28 +46,19 @@ class step_function : public reciprocal_lattice
             
             step_function_pw_[0] = omega();
 
-            for (int ig = 0; ig < fft().size(); ig++)
+            for (int ia = 0; ia < num_atoms(); ia++)
             {
-                double vg[3];
-                get_coordinates<cartesian,reciprocal>(gvec(ig), vg);
-                double vglen = vector_length(vg);
-                
-                for (int ia = 0; ia < num_atoms(); ia++)
+                double R = atom(ia)->type()->mt_radius();
+
+                step_function_pw_[0] -= fourpi * conj(gvec_phase_factor(0, ia)) * pow(R, 3) / 3.0;
+                for (int ig = 1; ig < fft().size(); ig++)
                 {
-                    complex16 zt = fourpi * exp(complex16(0.0, -twopi * scalar_product(gvec(ig), atom(ia)->position())));
-                    
-                    if (ig == 0)
-                        step_function_pw_[ig] -= zt * pow(atom(ia)->type()->mt_radius(), 3) / 3.0; 
-                    else
-                    {
-                        double gr = vglen * atom(ia)->type()->mt_radius();
-                        step_function_pw_[ig] -= zt * (sin(gr) - gr * cos(gr)) / pow(vglen, 3);
-                    }
+                    double g = gvec_shell_len(gvec_shell(ig));
+                    double gR = g * R;
+                    step_function_pw_[ig] -= fourpi * conj(gvec_phase_factor(ig, ia)) * (sin(gR) - gR * cos(gR)) / pow(g, 3);
                 }
-                
-                step_function_pw_[ig] /= omega(); // normalization volume of Fourier transform
             }
-            
+
             fft().transform(&step_function_pw_[0], &step_function_[0]);
             
             volume_mt_ = 0.0;

@@ -28,7 +28,9 @@ class reciprocal_lattice : public geometry
 
         /// mapping betwee linear G-vector index and position in FFT buffer
         std::vector<int> fft_index_;
-        
+
+        /// phase factors e^{i G r_{\alpha})
+        mdarray<complex16,2> gvec_phase_factor_; 
 
     public:
     
@@ -121,6 +123,18 @@ class reciprocal_lattice : public geometry
                  
                 gvec_shell_[ig] = gvec_shell_len_.size() - 1;
             }
+
+            // compute phase factors
+            if (num_atoms())
+            {
+                gvec_phase_factor_.set_dimensions(fft_.size(), num_atoms());
+                gvec_phase_factor_.allocate();
+
+                // TODO: parallelize
+                for (int ia = 0; ia < num_atoms(); ia++)
+                    for (int ig = 0; ig < fft().size(); ig++)
+                        gvec_phase_factor_(ig, ia) = exp(complex16(0.0, twopi * scalar_product(&gvec_(0, ig), atom(ia)->position())));
+            }
         }
 
         void print_info()
@@ -178,6 +192,11 @@ class reciprocal_lattice : public geometry
         inline int gvec_shell(int ig)
         {
             return gvec_shell_[ig];
+        }
+
+        inline complex16 gvec_phase_factor(int ig, int ia)
+        {
+            return gvec_phase_factor_(ig, ia);
         }
 };
 

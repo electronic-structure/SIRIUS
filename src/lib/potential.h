@@ -21,6 +21,8 @@ class Potential
         mdarray<double,3> sbessel_mom_;
 
         mdarray<double,3> sbessel_pseudo_prod_;
+        
+        mdarray<double,3> hartree_potential_mt_;
 
     public:
 
@@ -107,6 +109,11 @@ class Potential
                     }
                 }
             } 
+
+            hartree_potential_mt_.set_dimensions(global.lmmax_pot(), global.max_num_mt_points(), global.num_atoms());
+            hartree_potential_mt_.allocate();
+
+            hartree_potential_mt_.zero();
         }
         
         /*! 
@@ -178,7 +185,7 @@ class Potential
                 
                 for (int ig = 0; ig < global.num_gvec(); ig++)
                 {
-                    complex16 zt = fourpi * exp(complex16(0.0, twopi * scalar_product(global.gvec(ig), global.atom(ia)->position())));
+                    complex16 zt = fourpi * global.gvec_phase_factor(ig, ia);
 
                     for (int lm = 0; lm < lmmax_pseudo_; lm++)
                     {
@@ -210,7 +217,7 @@ class Potential
                 
                 for (int ig = 0; ig < global.num_gvec(); ig++)
                 {
-                    complex16 zt = fourpi * exp(complex16(0.0, -twopi * scalar_product(global.gvec(ig), global.atom(ia)->position())));
+                    complex16 zt = fourpi * conj(global.gvec_phase_factor(ig, ia));
 
                     for (int lm = 0; lm < lmmax_pseudo_; lm++)
                     {
@@ -235,7 +242,7 @@ class Potential
                 
                 for (int ig = 0; ig < global.num_gvec(); ig++)
                 {
-                    complex16 zt = fourpi * exp(complex16(0.0, twopi * scalar_product(global.gvec(ig), global.atom(ia)->position())));
+                    complex16 zt = fourpi * global.gvec_phase_factor(ig, ia);
 
                     for (int lm = 0; lm < lmmax_pseudo_; lm++)
                     {
@@ -246,7 +253,7 @@ class Potential
                 }
             }
 
-           for (int lm = 0; lm < lmmax; lm++)
+            for (int lm = 0; lm < lmmax; lm++)
             {
                 double q1 = 0.0;
                 double q2 = 0.0;
@@ -256,14 +263,54 @@ class Potential
                 printf("lm=%i   qmt=%18.12f   qit=%18.12f \n", lm, q1, q2);
             }
 
-
-
-
+            
+            
+            // compute MT part of the potential
+            lmmax = std::min(global.lmmax_pot(), global.lmmax_rho());
+            
+            for (int ia = 0; ia < global.num_atoms(); ia++)
+            {
+                double R = global.atom(ia)->type()->mt_radius();
+                int np = global.atom(ia)->type()->num_mt_points();
                 
-                        
-            
-            
-            
+                std::vector<double> g1;
+                std::vector<double> g2;
+   
+                Spline rholm(np, global.atom(ia)->type()->radial_grid());
+
+                for (int lm = 0; lm < lmmax; lm++)
+                {
+                    int l = l_by_lm(lm);
+
+                    for (int ix = 0; ix < np; ix++)
+                        rholm[ix] = density.charge_density_mt_(lm, ix, ia);
+                    rholm.interpolate();
+
+                    rholm.integrate(g1, l + 2);
+                    rholm.integrate(g2, 1 - l);
+
+                    for (int ix = 0; ix < np; ix++)
+                    {
+                        double r = global.atom(ia)->type()->radial_grid()[ix];
+
+                        double vlm = (1.0 - pow(r / R, 2 * l + 1)) * g1[ix] / pow(r, l + 1) +
+                                     (g2[np - 1] - g2[ix]) * pow(r, l) - 
+                                     (g1[np - 1] - g1[ix]) * pow(r, l) / pow(R, 2 * l + 1);
+
+                        hartree_potential_mt_(lm, ix, ia) = fourpi * vlm / (2 * l + 1);
+                    }
+                }
+                
+                // nuclear potential
+                for (int ix = 0; ix < np; ix++)
+                {
+                    double r = global.atom(ia)->type()->radial_grid()[ix];
+                    hartree_potential_mt_(0, ix, ia) -= fourpi * y00 * global.atom(ia)->type()->zn() * (1.0 / r - 1.0 / R);
+                }
+
+            }
+
+            //complex16* fft_buf = global.fft().
             
         
         }
