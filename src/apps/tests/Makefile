@@ -10,6 +10,7 @@ all:
 	$(CXX) $(CXX_OPT) $(INCLUDE_PATH) $(LINK_OPT) $(LIB_SIRIUS) $(LIBS) hydrogen.cpp -o hydrogen
 	$(CXX) $(CXX_OPT) $(INCLUDE_PATH) $(LINK_OPT) $(LIB_SIRIUS) $(LIBS) read_atom.cpp -o read_atom
 	$(CXX) $(CXX_OPT) $(INCLUDE_PATH) $(LINK_OPT) $(LIB_SIRIUS) $(LIBS) fft.cpp -o fft
+	$(CXX) $(CXX_OPT) $(INCLUDE_PATH) $(LINK_OPT) $(LIB_SIRIUS) $(LIBS) spline.cpp -o spline
 
 clean:
 	rm *.o *.a
