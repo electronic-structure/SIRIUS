@@ -92,7 +92,7 @@ class FFT3D : public FFT3D_base
             if (data_out) memcpy(data_out, &fftw_output_buffer[0], size() * sizeof(complex16));
         }
         
-        inline complex16& output_buffer(int idx)
+        /*inline complex16& output_buffer(int idx)
         {
             return fftw_output_buffer[idx];
         }
@@ -100,6 +100,11 @@ class FFT3D : public FFT3D_base
         inline complex16& input_buffer(int idx)
         {
             return fftw_input_buffer[idx];
+        }*/
+        
+        inline complex16* output_buffer_ptr()
+        {
+            return &fftw_output_buffer[0];
         }
 };
 

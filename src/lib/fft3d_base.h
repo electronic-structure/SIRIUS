@@ -4,6 +4,20 @@
 namespace sirius
 {
 
+/*!
+    \brief Basic FFT functions
+
+    FFT convention:
+    \f[
+        f({\bf r}) = \sum_{{\bf G}} e^{i{\bf G}{\bf r}} f({\bf G})
+    \f]
+
+    \f[
+        f({\bf G}) = \frac{1}{\Omega} \int e^{-i{\bf G}{\bf r}} f({\bf r}) d {\bf r} = \frac{1}{N} \sum_{{\bf r}_j} e^{-i{\bf G}{\bf r}_j} f({\bf r}_j)
+    \f]
+ 
+*/
+
 class FFT3D_base
 {    
     protected:

@@ -44,18 +44,25 @@ class step_function : public reciprocal_lattice
             
             memset(&step_function_pw_[0], 0, fft().size() * sizeof(complex16));
             
-            step_function_pw_[0] = omega();
+            step_function_pw_[0] = 1.0;
+            
+            double fpo = fourpi / omega();
 
-            for (int ia = 0; ia < num_atoms(); ia++)
+            for (int ig = 0; ig < fft().size(); ig++)
             {
-                double R = atom(ia)->type()->mt_radius();
-
-                step_function_pw_[0] -= fourpi * conj(gvec_phase_factor(0, ia)) * pow(R, 3) / 3.0;
-                for (int ig = 1; ig < fft().size(); ig++)
+                double vg[3];
+                get_coordinates<cartesian,reciprocal>(gvec(ig), vg);
+                double g = vector_length(vg);
+                
+                for (int ia = 0; ia < num_atoms(); ia++)
                 {
-                    double g = gvec_shell_len(gvec_shell(ig));
+                    double R = atom(ia)->type()->mt_radius();
                     double gR = g * R;
-                    step_function_pw_[ig] -= fourpi * conj(gvec_phase_factor(ig, ia)) * (sin(gR) - gR * cos(gR)) / pow(g, 3);
+
+                    if (ig == 0)
+                        step_function_pw_[ig] -= fpo * conj(gvec_phase_factor(ig, ia)) * pow(R, 3) / 3.0;
+                    else
+                        step_function_pw_[ig] -= fpo * conj(gvec_phase_factor(ig, ia)) * (sin(gR) - gR * cos(gR)) / pow(g, 3);
                 }
             }
 
@@ -69,7 +76,7 @@ class step_function : public reciprocal_lattice
             double vit = 0.0;
             for (int i = 0; i < fft().size(); i++)
                 vit += step_function_[i] * omega() / fft().size();
-                
+            
             if (fabs(vit - volume_it_) > 1e-8)
             {
                 std::stringstream s;

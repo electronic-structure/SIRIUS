@@ -55,10 +55,14 @@ class Density
             
             for (int i = 0; i < global.fft().size(); i++)
                 charge_density_it_(i) = (global.num_electrons() - charge_in_mt) / global.volume_it();
-                
-            global.fft().transform(&charge_density_it_(0), NULL);
             
-            global.fft().input_buffer(5) = zi;
+            std::cout << "initial density in IT : " << charge_density_it_(0) << std::endl;
+             
+            global.fft().transform(&charge_density_it_(0), NULL);
+
+            complex16* fft_buf = global.fft().output_buffer_ptr();
+            for (int ig = 0; ig < global.num_gvec(); ig++)
+                charge_density_pw_(ig) = fft_buf[global.fft_index(ig)];
         }
 
 

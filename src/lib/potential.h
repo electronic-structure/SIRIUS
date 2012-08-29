@@ -33,7 +33,6 @@ class Potential
             lmax_pseudo_ = 10;
             lmmax_pseudo_ = (lmax_pseudo_ + 1) * (lmax_pseudo_ + 1);
 
-
             // compute moments of pseudodensity
             pseudo_mom_.set_dimensions(lmax_pseudo_ + 1, global.num_atom_types());
             pseudo_mom_.allocate();
