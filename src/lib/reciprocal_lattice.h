@@ -191,6 +191,7 @@ class reciprocal_lattice : public geometry
         
         inline int gvec_shell(int ig)
         {
+            assert(ig >= 0 && ig < (int)gvec_shell_.size());
             return gvec_shell_[ig];
         }
 

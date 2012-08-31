@@ -23,6 +23,9 @@ class Potential
         mdarray<double,3> sbessel_pseudo_prod_;
         
         mdarray<double,3> hartree_potential_mt_;
+        mdarray<double,1> hartree_potential_it_;
+        mdarray<double,1> hartree_potential_pw_;
+        
 
     public:
 
@@ -146,6 +149,9 @@ class Potential
         void poisson()
         {
             Timer t("sirius::Potential::poisson");
+
+            // convert to Ylm expansion
+            density.charge_density_.convert_to_ylm();
             
             mdarray<double,2> qmt(NULL, global.lmmax_rho(), global.num_atoms());
             qmt.allocate();
@@ -157,7 +163,7 @@ class Potential
                 for (int lm = 0; lm < global.lmmax_rho(); lm++)
                 {
                     for (int i = 0; i < global.atom(ia)->type()->num_mt_points(); i++)
-                        s[i] = density.charge_density_mt_(lm, i, ia);
+                        s[i] = density.charge_density_.fylm(lm, i, ia);
                     s.interpolate();
 
                     qmt(lm, ia) = s.integrate(l_by_lm(lm) + 2);
@@ -263,7 +269,7 @@ class Potential
             }
 
             
-            
+#ifdef 0            
             // compute MT part of the potential
             lmmax = std::min(global.lmmax_pot(), global.lmmax_rho());
             
@@ -282,7 +288,7 @@ class Potential
                     int l = l_by_lm(lm);
 
                     for (int ix = 0; ix < np; ix++)
-                        rholm[ix] = density.charge_density_mt_(lm, ix, ia);
+                        rholm[ix] = density.charge_density_.fylm(lm, ix, ia);
                     rholm.interpolate();
 
                     rholm.integrate(g1, l + 2);
@@ -310,7 +316,7 @@ class Potential
             }
 
             //complex16* fft_buf = global.fft().
-            
+#endif            
         
         }
         

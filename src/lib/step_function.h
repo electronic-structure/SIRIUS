@@ -46,7 +46,7 @@ class step_function : public reciprocal_lattice
             
             step_function_pw_[0] = 1.0;
             
-            double fpo = fourpi / omega();
+            double fourpi_omega = fourpi / omega();
 
             for (int ig = 0; ig < fft().size(); ig++)
             {
@@ -60,9 +60,9 @@ class step_function : public reciprocal_lattice
                     double gR = g * R;
 
                     if (ig == 0)
-                        step_function_pw_[ig] -= fpo * conj(gvec_phase_factor(ig, ia)) * pow(R, 3) / 3.0;
+                        step_function_pw_[ig] -= fourpi_omega * conj(gvec_phase_factor(ig, ia)) * pow(R, 3) / 3.0;
                     else
-                        step_function_pw_[ig] -= fpo * conj(gvec_phase_factor(ig, ia)) * (sin(gR) - gR * cos(gR)) / pow(g, 3);
+                        step_function_pw_[ig] -= fourpi_omega * conj(gvec_phase_factor(ig, ia)) * (sin(gR) - gR * cos(gR)) / pow(g, 3);
                 }
             }
 

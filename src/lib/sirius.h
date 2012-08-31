@@ -48,6 +48,7 @@ extern "C" {
 #include "reciprocal_lattice.h"
 #include "step_function.h"
 #include "global.h"
+#include "periodic_function.h"
 #include "density.h"
 #include "potential.h"
 

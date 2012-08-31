@@ -86,3 +86,69 @@ inline void spherical_harmonics(int lmax, double theta, double phi, complex16* y
     }
 }
 
+/*!
+    \brief Compute element of the transformation matrix from complex to real spherical harmonics. 
+
+    Real spherical harmonic can be written as a linear combination of complex harmonics:
+    \f[
+        R_{\ell m}(\theta, \phi) = \sum_{m'} a^{\ell}_{m' m}Y_{\ell m'}(\theta, \phi)
+    \f]
+    so 
+    \f[
+        a^{\ell}_{m' m} = \langle Y_{\ell m'} | R_{\ell m} \rangle
+    \f]
+    which gives the name for the function.
+
+    Transformation from real to complex spherical harmonics is conjugate transpose.
+
+    Mathematica code:
+    \verbatim
+    b[m1_, m2_] := 
+     If[m1 == 0, 1, 
+     If[m1 < 0 && m2 < 0, -I/Sqrt[2], 
+     If[m1 > 0 && m2 < 0, (-1)^m1*I/Sqrt[2], 
+     If[m1 < 0 && m2 > 0, (-1)^m2/Sqrt[2], 
+     If[m1 > 0 && m2 > 0, 1/Sqrt[2]]]]]]
+    
+    a[m1_, m2_] := If[Abs[m1] == Abs[m2], b[m1, m2], 0]
+    
+    R[l_, m_, t_, p_] := Sum[a[m1, m]*SphericalHarmonicY[l, m1, t, p], {m1, -l, l}]
+    \endverbatim
+*/
+inline complex16 ylm_dot_rlm(int l, int m1, int m2)
+{
+    assert(l >= 0 && abs(m1) <= l && abs(m2) <= l);
+
+    if (abs(m1) != abs(m2)) return complex16(0.0, 0.0);
+
+    if (m1 == 0) return complex16(1.0, 0.0);
+
+    if (m1 < 0)
+    {
+        if (m2 < 0) return -zi / sqrt(2.0);
+        else return pow(-1.0, m2) / sqrt(2.0);
+    }
+    else
+    {
+        if (m2 < 0) return pow(-1.0, m1) * zi / sqrt(2.0);
+        else return complex16(1.0 / sqrt(2.0), 0.0);
+    }
+}
+
+template <typename T>
+inline void convert_frlm_to_fylm(int lmax, T* frlm, complex16* fylm)
+{
+    int lmmax = (lmax + 1) * (lmax + 1);
+
+    memset(fylm, 0, lmmax * sizeof(complex16));
+
+    int lm = 0;
+    for (int l = 0; l <= lmax; l++)
+        for (int m = -l; m <= l; m++)
+        {
+            if (m == 0) fylm[lm] = frlm[lm];
+            else fylm[lm] = ylm_dot_rlm(l, m, m) * frlm[lm] + ylm_dot_rlm(l, m, -m) * frlm[lm_by_l_m(l, -m)];
+            lm++;
+        }
+}
+

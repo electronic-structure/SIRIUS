@@ -43,10 +43,10 @@ class Atom
             return type_->id();
         }
 
-        inline void get_position(double* _position)
+        inline void get_position(double* position__)
         {
             for (int i = 0; i < 3; i++)
-                _position[i] = position_[i];
+                position__[i] = position_[i];
         }
         
         inline double* position()

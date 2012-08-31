@@ -11,6 +11,8 @@ class Density
         
         mdarray<double,3> magnetization_density_mt_;
         mdarray<double,2> magnetization_density_it_;
+
+        PeriodicFunction<double> charge_density_;
         
     
         
@@ -24,6 +26,9 @@ class Density
             charge_density_it_.allocate();
             charge_density_pw_.set_dimensions(global.num_gvec());
             charge_density_pw_.allocate();
+            
+            charge_density_.allocate(global.lmax_rho(), global.max_num_mt_points(), global.num_atoms(), 
+                                     global.fft().size(), global.num_gvec());
         }
         
         void get_density(double* _rhomt, double* _rhoir)
@@ -38,26 +43,29 @@ class Density
             for (int i = 0; i < global.num_atom_types(); i++)
                 global.atom_type(i)->solve_free_atom(1e-8, 1e-5, 1e-4, enu);
 
+            charge_density_.zero();
+
             charge_density_mt_.zero();
-            double charge_in_mt = 0.0;
+            double mt_charge = 0.0;
             for (int ia = 0; ia < global.num_atoms(); ia++)
             {
-                Spline rho(global.atom(ia)->type()->num_mt_points(), global.atom(ia)->type()->radial_grid());
-                for (int i = 0; i < global.atom(ia)->type()->num_mt_points(); i++)
+                int nmtp = global.atom(ia)->type()->num_mt_points();
+                Spline rho(nmtp, global.atom(ia)->type()->radial_grid());
+                for (int ir = 0; ir < nmtp; ir++)
                 {
-                    rho[i] = global.atom(ia)->type()->free_atom_density(i);
-                    charge_density_mt_(0, i, ia) = rho[i] / y00; 
-                    charge_density_mt_(1, i, ia) = rho[i] / y00; // TODO: remove later after tests
+                    rho[ir] = global.atom(ia)->type()->free_atom_density(ir);
+                    charge_density_mt_(0, ir, ia) = rho[ir] / y00; 
+                    charge_density_mt_(1, ir, ia) = rho[ir] / y00; // TODO: remove later after tests
+                    charge_density_.frlm(0, ir, ia) = rho[ir] / y00;
+                    charge_density_.frlm(1, ir, ia) = rho[ir] / y00;
                 }
                 rho.interpolate();
-                charge_in_mt += fourpi * rho.integrate(global.atom(ia)->type()->num_mt_points() - 1, 2);
+                mt_charge += fourpi * rho.integrate(nmtp - 1, 2);
             }
             
             for (int i = 0; i < global.fft().size(); i++)
-                charge_density_it_(i) = (global.num_electrons() - charge_in_mt) / global.volume_it();
+                charge_density_it_(i) = (global.num_electrons() - mt_charge) / global.volume_it();
             
-            std::cout << "initial density in IT : " << charge_density_it_(0) << std::endl;
-             
             global.fft().transform(&charge_density_it_(0), NULL);
 
             complex16* fft_buf = global.fft().output_buffer_ptr();
