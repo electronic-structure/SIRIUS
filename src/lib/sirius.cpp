@@ -24,8 +24,8 @@ extern "C" void FORTRAN(sirius_print_info)()
 extern "C" void FORTRAN(sirius_initialize)()
 {
     sirius::global.initialize();
-    sirius::density.initialize();
-    sirius::potential.init();
+    //sirius::density.initialize();
+    //sirius::potential.init();
 }
 
 extern "C" void FORTRAN(sirius_clear)()

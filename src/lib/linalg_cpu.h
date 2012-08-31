@@ -46,7 +46,14 @@ extern "C" void FORTRAN(dptsv)(int32_t *n, int32_t *nrhs, double *d, double *e, 
 extern "C" void FORTRAN(dgtsv)(int32_t *n, int32_t *nrhs, double *dl, double *d, double *du, double *b, 
                                int32_t *ldb, int32_t *info);
 
-int dgtsv(int n, int nrhs, double *dl, double *d, double *du, double *b, int ldb);
+//int dgtsv(int n, int nrhs, double *dl, double *d, double *du, double *b, int ldb);
+
+extern "C" void FORTRAN(zgtsv)(int32_t *n, int32_t *nrhs, complex16* dl, complex16* d, complex16* du, complex16* b, 
+                               int32_t *ldb, int32_t *info);
+
+//int zgtsv(int n, int nrhs, complex16* dl, complex16* d, complex16* du, complex16* b, int ldb);
+
+template<typename T> int gtsv(int n, int nrhs, T* dl, T* d, T* du, T* b, int ldb);
 
 #endif // __LINALG_CPU_H__
 

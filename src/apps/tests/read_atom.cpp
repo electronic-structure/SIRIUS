@@ -3,6 +3,7 @@
 int main(int argn, char **argv)
 {
     sirius::AtomType atom_type(1, std::string("Si"));
+    atom_type.init(10);
 
     atom_type.print_info();
 

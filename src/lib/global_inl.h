@@ -66,7 +66,6 @@ inline void spherical_harmonics(int lmax, double theta, double phi, complex16* y
 {
     double x = cos(theta);
     std::vector<double> result_array(lmax + 1);
-    //std::vector<complex16> expimphi(lmax + 1);
 
     for (int m = 0; m <= lmax; m++)
     {
@@ -74,10 +73,9 @@ inline void spherical_harmonics(int lmax, double theta, double phi, complex16* y
         
         gsl_sf_legendre_sphPlm_array(lmax, m, x, &result_array[0]);
 
-        int i = 0;
         for (int l = m; l <= lmax; l++)
         {
-            ylm[lm_by_l_m(l, m)] = result_array[i++] * z;
+            ylm[lm_by_l_m(l, m)] = result_array[l - m] * z;
             if (m % 2) 
                 ylm[lm_by_l_m(l, -m)] = -conj(ylm[lm_by_l_m(l, m)]);
             else

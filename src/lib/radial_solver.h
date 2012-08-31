@@ -25,8 +25,8 @@ class RadialSolver
         int integrate(int nr, 
                       int l, 
                       double enu, 
-                      sirius::Spline& ve, 
-                      sirius::Spline& mp, 
+                      sirius::Spline<double>& ve, 
+                      sirius::Spline<double>& mp, 
                       std::vector<double>& p, 
                       std::vector<double>& q)
         {
@@ -149,9 +149,9 @@ class RadialSolver
             for (int i = 0; i < radial_grid.mt_num_points(); i++)
                 ve[i] = v[i] - zn / radial_grid[i];
             
-            sirius::Spline ve_spline(radial_grid.mt_num_points(), radial_grid, ve);
+            sirius::Spline<double> ve_spline(radial_grid.mt_num_points(), radial_grid, ve);
 
-            sirius::Spline mp_spline(radial_grid.mt_num_points(), radial_grid);
+            sirius::Spline<double> mp_spline(radial_grid.mt_num_points(), radial_grid);
 
             std::vector<double> q;
             
@@ -179,8 +179,8 @@ class RadialSolver
             for (int i = 0; i < radial_grid.size(); i++)
                 ve[i] = v[i] - zn / radial_grid[i];
             
-            sirius::Spline ve_spline(radial_grid.size(), radial_grid, ve);
-            sirius::Spline mp_spline(radial_grid.size(), radial_grid);
+            sirius::Spline<double> ve_spline(radial_grid.size(), radial_grid, ve);
+            sirius::Spline<double> mp_spline(radial_grid.size(), radial_grid);
             
             std::vector<double> q;
             
@@ -242,7 +242,7 @@ class RadialSolver
             for (int i = 0; i < radial_grid.size(); i++)
                 rho[i] = p[i] * p[i];
 
-            double norm = sirius::Spline(radial_grid.size(), radial_grid, rho).integrate();
+            double norm = sirius::Spline<double>(radial_grid.size(), radial_grid, rho).integrate();
             
             for (int i = 0; i < radial_grid.size(); i++)
                 p[i] /= sqrt(norm);

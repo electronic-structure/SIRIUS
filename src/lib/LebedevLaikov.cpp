@@ -48,10 +48,6 @@ chvd
 #include <stdio.h>
 #include <stdlib.h>
 
-
-#define Pi 3.14159265358979323846
-#define NMAX 65
-#define MMAX ((NMAX*2+3)*(NMAX*2+3)/3)
 /*
 ** Lebedev_Laikov_npoint
 **
@@ -60,23 +56,6 @@ chvd
 ** return value : number of points in sought Lebedev-Laikov grid.
 **
 */
-
-
-void getangle(double x, double y, double z, double &a, double &b)
-{
-  double ang_x, fact;
-  b=acos(z);
-
-  fact=sqrt(x*x+y*y);
-  if(fact > 0) ang_x = acos(x/fact);
-  else ang_x = acos(x);
-  
-  if(y < 0) ang_x = -ang_x;
-  a=ang_x;
-
-  a *= 180.0/Pi;
-  b *= 180.0/Pi;
-}
 
 int Lebedev_Laikov_npoint(int lvalue)
 {
@@ -1659,71 +1638,5 @@ int Lebedev_Laikov_sphere (int N, double *X, double *Y, double *Z, double *W)
 #undef A
 #undef B
 
-
-
-
-int main ()
-{
-  int i, j, k, m, M, N;
-  static int NW[NMAX+1] = {
-       0,   6,  14,  26,  38,  50,  74,  86, 110, 146, 170, 194, 230, 266, 302,
-     350, 386, 434, 482, 530, 590, 650, 698, 770, 830, 890, 974,1046,1118,1202,
-    1274,1358,1454,1538,1622,1730,1814,1910,2030,2126,2222,2354,2450,2558,2702,
-    2810,2930,3074,3182,3314,3470,3590,3722,3890,4010,4154,4334,4466,4610,4802,
-    4934,5090,5294,5438,5606,5810
-  };
-  static int LMAXW[NMAX+1] = {
-       0,   3,  5,  7,  9,  11,  13,  15, 17, 19, 21, 23, 25, 27, 29, 
-     31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53,55,57,59,
-    61,63,65,67,69,71,73,75,77,79,81,83,85,87,89,
-    91,93,95,97,99,101,103,105,107,109,111,113,115,117,119,
-    121,123,125,127,129,131
-  };
-  static double x[MMAX], y[MMAX], z[MMAX], w[MMAX], alpha[MMAX],beta[MMAX];
-  static double xn[MMAX*(NMAX+1)], yn[MMAX*(NMAX+1)], zn[MMAX*(NMAX+1)];
-  static double s[NMAX+2];
-  double S, S0, r, rmax;
-  for (N = 1; N <= NMAX; N++) {
-    M = NW[N];
-    if (Lebedev_Laikov_sphere (M, x, y, z, w) == 0) continue;
-    s[0] = 1.0;
-    for (k = 1; k <= N+1; k++) {
-      s[k] = (2.0*k-1.0)*s[k-1];
-    }
-    for (m = 0; m < M; m++) {
-      xn[m*(N+1)] = 1.0;
-      yn[m*(N+1)] = 1.0;
-      zn[m*(N+1)] = 1.0;
-      for (k = 1; k <= N; k++) {
-        xn[k+m*(N+1)] = xn[k-1+m*(N+1)]*x[m]*x[m];
-        yn[k+m*(N+1)] = yn[k-1+m*(N+1)]*y[m]*y[m];
-        zn[k+m*(N+1)] = zn[k-1+m*(N+1)]*z[m]*z[m];
-      }
-    }
-    rmax = 0.0;
-    for (i = 0; i <= N; i++) {
-      for (j = 0; j <= N-i; j++) {
-        k = N-i-j;
-        for (S = 0.0, m = 0; m < M; m++) {
-          S += w[m]*xn[i+m*(N+1)]*yn[j+m*(N+1)]*zn[k+m*(N+1)];
-        }
-        S0 = s[i]*s[j]*s[k]/s[1+i+j+k];
-        r = fabs ((S-S0)/S0);
-        if (r > rmax) rmax = r;
-       #if 0
-        printf (" %2d %2d %2d  %20.15lf  %20.15lf\n", i, j, k, S0, r);
-       #endif
-      }
-    }
-    printf (" M = %4d,  LMAXW = %4d,  rmax = %8.1e\n", M, LMAXW[N], rmax);
-    for (m = 0; m < M; m++) {
-      getangle(x[m],y[m],z[m],alpha[m], beta[m]);
-      //printf (" %2d %20.15lf  %20.15lf  %20.15lf  %20.15lf\n", (m+1), x[m], y[m], z[m], w[m] );
-      //printf (" %2d %20.15lf  %20.15lf  %20.15lf\n", (m+1), alpha[m], beta[m], w[m] );
-      printf ("%20.15lf  %20.15lf  %20.15lf\n", alpha[m], beta[m], w[m] );
-    }
-  }
-  return 0;
-}
 
 

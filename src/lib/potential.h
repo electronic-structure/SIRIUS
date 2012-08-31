@@ -21,11 +21,10 @@ class Potential
         mdarray<double,3> sbessel_mom_;
 
         mdarray<double,3> sbessel_pseudo_prod_;
+
+        mdarray<double,3> sbessel_mt_;
         
-        mdarray<double,3> hartree_potential_mt_;
-        mdarray<double,1> hartree_potential_it_;
-        mdarray<double,1> hartree_potential_pw_;
-        
+        PeriodicFunction<double> hartree_potential_;
 
     public:
 
@@ -42,10 +41,11 @@ class Potential
 
             for (int iat = 0; iat < global.num_atom_types(); iat++)
             { 
-                Spline s(global.atom_type(iat)->num_mt_points(), global.atom_type(iat)->radial_grid()); 
+                int nmtp = global.atom_type(iat)->num_mt_points();
+                Spline<double> s(nmtp, global.atom_type(iat)->radial_grid()); 
                 
-                for (int j = 0; j < global.atom_type(iat)->num_mt_points(); j++)
-                    s[j] = 1.0 + cos(pi * global.atom_type(iat)->radial_grid()[j] / global.atom_type(iat)->mt_radius());
+                for (int ir = 0; ir < nmtp; ir++)
+                    s[ir] = 1.0 + cos(pi * global.atom_type(iat)->radial_grid()[ir] / global.atom_type(iat)->mt_radius());
                 s.interpolate();
 
                 for (int l = 0; l <= lmax_pseudo_; l++)
@@ -80,29 +80,35 @@ class Potential
                 spherical_coordinates(cartc, spc);
                 spherical_harmonics(lmax_pseudo_, spc[1], spc[2], &ylm_gvec_(0, ig));
             }
-
+            
+            // compute product of spherical Bessel functions with pseudocharge density
+            sbessel_pseudo_prod_.set_dimensions(lmax_pseudo_ + 1, global.num_atom_types(), global.num_gvec_shells());
+            sbessel_pseudo_prod_.allocate();
+            
+            sbessel_mt_.set_dimensions(lmax_pseudo_ + 1, global.num_atom_types(), global.num_gvec_shells());
+            sbessel_mt_.allocate();
 
             mdarray<double,2> jl(NULL, lmax_pseudo_ + 1, global.max_num_mt_points());
             jl.allocate();
 
-            // compute product of spherical Bessel functions with pseudocharge density
-            sbessel_pseudo_prod_.set_dimensions(lmax_pseudo_ + 1, global.num_atom_types(), global.num_gvec_shells());
-            sbessel_pseudo_prod_.allocate();
-
             for (int iat = 0; iat < global.num_atom_types(); iat++)
-            { 
-                Spline s(global.atom_type(iat)->num_mt_points(), global.atom_type(iat)->radial_grid()); 
+            {
+                int nmtp = global.atom_type(iat)->num_mt_points();
+                Spline<double> s(nmtp, global.atom_type(iat)->radial_grid()); 
 
                 for (int igs = 0; igs < global.num_gvec_shells(); igs++)
                 {
                     // compute spherical Bessel functions
-                    for (int j = 0; j < global.atom_type(iat)->num_mt_points(); j++)
-                        gsl_sf_bessel_jl_array(lmax_pseudo_, global.gvec_shell_len(igs) * global.atom_type(iat)->radial_grid()[j], &jl(0, j));
+                    for (int ir = 0; ir < nmtp; ir++)
+                        gsl_sf_bessel_jl_array(lmax_pseudo_, global.gvec_shell_len(igs) * global.atom_type(iat)->radial_grid()[ir], &jl(0, ir));
                 
                     for (int l = 0; l <= lmax_pseudo_; l++)
                     {
-                        for (int j = 0; j < global.atom_type(iat)->num_mt_points(); j++)
-                            s[j] = jl(l, j) * (1.0 + cos(pi * global.atom_type(iat)->radial_grid()[j] / global.atom_type(iat)->mt_radius()));
+                        // save value of the Bessel function at the MT boundary
+                        sbessel_mt_(l, iat, igs) = jl(l, nmtp - 1);
+
+                        for (int ir = 0; ir < nmtp; ir++)
+                            s[ir] = jl(l, ir) * (1.0 + cos(pi * global.atom_type(iat)->radial_grid()[ir] / global.atom_type(iat)->mt_radius()));
                         s.interpolate();
 
                         sbessel_pseudo_prod_(l, iat, igs) = s.integrate(2);
@@ -112,10 +118,13 @@ class Potential
                 }
             } 
 
-            hartree_potential_mt_.set_dimensions(global.lmmax_pot(), global.max_num_mt_points(), global.num_atoms());
-            hartree_potential_mt_.allocate();
+            hartree_potential_.allocate(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
+                                        global.fft().size(), global.num_gvec());
+            hartree_potential_.allocate_fylm();
 
-            hartree_potential_mt_.zero();
+            
+            std::cout << "number of LL points : " << Lebedev_Laikov_npoint(global.lmax_pot()) << std::endl;
+            //exit(0);
         }
         
         /*! 
@@ -150,20 +159,24 @@ class Potential
         {
             Timer t("sirius::Potential::poisson");
 
+            hartree_potential_.zero();
+
+
             // convert to Ylm expansion
-            density.charge_density_.convert_to_ylm();
+            density.charge_density().convert_to_ylm();
             
-            mdarray<double,2> qmt(NULL, global.lmmax_rho(), global.num_atoms());
+            mdarray<complex16,2> qmt(NULL, global.lmmax_rho(), global.num_atoms());
             qmt.allocate();
 
             // compute MT multipole moments
             for (int ia = 0; ia < global.num_atoms(); ia++)
             {
-                Spline s(global.atom(ia)->type()->num_mt_points(), global.atom(ia)->type()->radial_grid());
+                int nmtp = global.atom(ia)->type()->num_mt_points(); 
+                Spline<complex16> s(nmtp, global.atom(ia)->type()->radial_grid());
                 for (int lm = 0; lm < global.lmmax_rho(); lm++)
                 {
-                    for (int i = 0; i < global.atom(ia)->type()->num_mt_points(); i++)
-                        s[i] = density.charge_density_.fylm(lm, i, ia);
+                    for (int ir = 0; ir < nmtp; ir++)
+                        s[ir] = density.charge_density().fylm(lm, ir, ia);
                     s.interpolate();
 
                     qmt(lm, ia) = s.integrate(l_by_lm(lm) + 2);
@@ -176,7 +189,7 @@ class Potential
             }
             
             // compute multipoles of interstitial density in MT region
-            mdarray<double,2> qit(NULL, lmmax_pseudo_, global.num_atoms());
+            mdarray<complex16,2> qit(NULL, lmmax_pseudo_, global.num_atoms());
             qit.allocate();
             qit.zero();
 
@@ -196,7 +209,7 @@ class Potential
                     {
                         int l = l_by_lm(lm);
 
-                        qit(lm, ia) += real(density.charge_density_pw_(ig) * zt * zil[l] * conj(ylm_gvec_(lm, ig)) * sbessel_mom_(l, iat, global.gvec_shell(ig)));
+                        qit(lm, ia) += density.charge_density().fpw(ig) * zt * zil[l] * conj(ylm_gvec_(lm, ig)) * sbessel_mom_(l, iat, global.gvec_shell(ig));
                     }
                 }
             }
@@ -205,15 +218,18 @@ class Potential
 
             for (int lm = 0; lm < lmmax; lm++)
             {
-                double q1 = 0.0;
-                double q2 = 0.0;
+                complex16 q1 = 0.0;
+                complex16 q2 = 0.0;
                 if (lm < global.lmmax_rho()) q1 = qmt(lm, 0);
                 if (lm < lmmax_pseudo_) q2 = qit(lm, 0);
 
-                printf("lm=%i   qmt=%18.12f   qit=%18.12f \n", lm, q1, q2);
+                printf("lm=%i   qmt=%18.12f %18.12f   qit=%18.12f %18.12f \n", lm, real(q1), imag(q1), real(q2), imag(q2));
             }
             
-            std::cout << "rho(0) = " << density.charge_density_pw_(0) << std::endl;
+            std::cout << "rho(0) = " << density.charge_density().fpw(0) << std::endl;
+
+            std::vector<complex16> pseudo_pw(global.num_gvec());
+            memcpy(&pseudo_pw[0], &density.charge_density().fpw(0), global.num_gvec() * sizeof(complex16));
 
             // add contribution from pseudocharge density
             for (int ia = 0; ia < global.num_atoms(); ia++)
@@ -228,17 +244,16 @@ class Potential
                     {
                         int l = l_by_lm(lm);
 
-                        double q1 = 0.0;
+                        complex16 q1 = 0.0;
                         if (lm < global.lmmax_rho()) q1 = qmt(lm, ia);
 
-                        density.charge_density_pw_(ig) += zt * conj(zil[l]) * ylm_gvec_(lm, ig) * 
-                            sbessel_pseudo_prod_(l, iat, global.gvec_shell(ig)) * (q1 - qit(lm, ia)) / pseudo_mom_(l, iat) / global.omega();
+                        pseudo_pw[ig] += zt * conj(zil[l]) * ylm_gvec_(lm, ig) * sbessel_pseudo_prod_(l, iat, global.gvec_shell(ig)) * 
+                            (q1 - qit(lm, ia)) / pseudo_mom_(l, iat) / global.omega();
                     }
                 }
             }
 
-            std::cout << "rho(0) = " << density.charge_density_pw_(0) << std::endl;
-
+            std::cout << "rho(0) = " << pseudo_pw[0] << std::endl;
 
             qit.zero();
             for (int ia = 0; ia < global.num_atoms(); ia++)
@@ -253,70 +268,108 @@ class Potential
                     {
                         int l = l_by_lm(lm);
 
-                        qit(lm, ia) += real(density.charge_density_pw_(ig) * zt * zil[l] * conj(ylm_gvec_(lm, ig)) * sbessel_mom_(l, iat, global.gvec_shell(ig)));
+                        qit(lm, ia) += pseudo_pw[ig] * zt * zil[l] * conj(ylm_gvec_(lm, ig)) * sbessel_mom_(l, iat, global.gvec_shell(ig));
                     }
                 }
             }
-
+            
             for (int lm = 0; lm < lmmax; lm++)
             {
-                double q1 = 0.0;
-                double q2 = 0.0;
+                complex16 q1 = 0.0;
+                complex16 q2 = 0.0;
                 if (lm < global.lmmax_rho()) q1 = qmt(lm, 0);
                 if (lm < lmmax_pseudo_) q2 = qit(lm, 0);
 
-                printf("lm=%i   qmt=%18.12f   qit=%18.12f \n", lm, q1, q2);
+                printf("lm=%i   qmt=%18.12f %18.12f   qit=%18.12f %18.12f \n", lm, real(q1), imag(q1), real(q2), imag(q2));
             }
-
+ 
             
-#ifdef 0            
             // compute MT part of the potential
             lmmax = std::min(global.lmmax_pot(), global.lmmax_rho());
             
             for (int ia = 0; ia < global.num_atoms(); ia++)
             {
                 double R = global.atom(ia)->type()->mt_radius();
-                int np = global.atom(ia)->type()->num_mt_points();
+                int nmtp = global.atom(ia)->type()->num_mt_points();
                 
-                std::vector<double> g1;
-                std::vector<double> g2;
+                std::vector<complex16> g1;
+                std::vector<complex16> g2;
    
-                Spline rholm(np, global.atom(ia)->type()->radial_grid());
+                Spline<complex16> rholm(nmtp, global.atom(ia)->type()->radial_grid());
 
                 for (int lm = 0; lm < lmmax; lm++)
                 {
                     int l = l_by_lm(lm);
 
-                    for (int ix = 0; ix < np; ix++)
-                        rholm[ix] = density.charge_density_.fylm(lm, ix, ia);
+                    for (int ir = 0; ir < nmtp; ir++)
+                        rholm[ir] = density.charge_density().fylm(lm, ir, ia);
                     rholm.interpolate();
 
                     rholm.integrate(g1, l + 2);
                     rholm.integrate(g2, 1 - l);
 
-                    for (int ix = 0; ix < np; ix++)
+                    for (int ir = 0; ir < nmtp; ir++)
                     {
-                        double r = global.atom(ia)->type()->radial_grid()[ix];
+                        double r = global.atom(ia)->type()->radial_grid()[ir];
 
-                        double vlm = (1.0 - pow(r / R, 2 * l + 1)) * g1[ix] / pow(r, l + 1) +
-                                     (g2[np - 1] - g2[ix]) * pow(r, l) - 
-                                     (g1[np - 1] - g1[ix]) * pow(r, l) / pow(R, 2 * l + 1);
+                        complex16 vlm = (1.0 - pow(r / R, 2 * l + 1)) * g1[ir] / pow(r, l + 1) +
+                                        (g2[nmtp - 1] - g2[ir]) * pow(r, l) - 
+                                        (g1[nmtp - 1] - g1[ir]) * pow(r, l) / pow(R, 2 * l + 1);
 
-                        hartree_potential_mt_(lm, ix, ia) = fourpi * vlm / (2 * l + 1);
+                        hartree_potential_.fylm(lm, ir, ia) = fourpi * vlm / double(2 * l + 1);
                     }
                 }
                 
                 // nuclear potential
-                for (int ix = 0; ix < np; ix++)
+                for (int ir = 0; ir < nmtp; ir++)
                 {
-                    double r = global.atom(ia)->type()->radial_grid()[ix];
-                    hartree_potential_mt_(0, ix, ia) -= fourpi * y00 * global.atom(ia)->type()->zn() * (1.0 / r - 1.0 / R);
+                    double r = global.atom(ia)->type()->radial_grid()[ir];
+                    hartree_potential_.fylm(0, ir, ia) -= fourpi * y00 * global.atom(ia)->type()->zn() * (1.0 / r - 1.0 / R);
                 }
 
             }
 
+            // compute pw coefficients of Hartree potential
+            pseudo_pw[0] = 0.0;
+            for (int ig = 1; ig < global.num_gvec(); ig++)
+                pseudo_pw[ig] *= fourpi / pow(global.gvec_shell_len(global.gvec_shell(ig)), 2);
+
+            // compute V_lm at the MT boundary
+            mdarray<complex16,2> vmtlm(NULL, global.lmmax_pot(), global.num_atoms());
+            vmtlm.allocate();
+            vmtlm.zero();
+            
+            for (int ia = 0; ia < global.num_atoms(); ia++)
+            {
+                int iat = global.atom_type_index_by_id(global.atom(ia)->type_id());
+
+                for (int ig = 0; ig < global.num_gvec(); ig++)
+                {
+                    complex16 zt = fourpi * global.gvec_phase_factor(ig, ia);
+
+                    for (int lm = 0; lm < global.lmmax_pot(); lm++)
+                    {
+                        int l = l_by_lm(lm);
+                        vmtlm(lm, ia) += zt * zil[l] * sbessel_mt_(l, iat, global.gvec_shell(ig)) * conj(ylm_gvec_(lm, ig)) * pseudo_pw[ig];
+                    }
+                }
+            }
+
+            // add boundary condition
+            for (int ia = 0; ia < global.num_atoms(); ia++)
+            {
+                double R = global.atom(ia)->type()->mt_radius();
+
+                for (int lm = 0; lm < global.lmmax_pot(); lm++)
+                {
+                    int l = l_by_lm(lm);
+
+                    for (int ir = 0; ir < global.atom(ia)->type()->num_mt_points(); ir++)
+                        hartree_potential_.fylm(lm, ir, ia) += vmtlm(lm, ia) * pow(global.atom(ia)->type()->radial_grid()[ir] / R, l);
+                }
+            }
+
             //complex16* fft_buf = global.fft().
-#endif            
         
         }
         

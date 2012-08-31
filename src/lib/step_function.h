@@ -53,16 +53,25 @@ class step_function : public reciprocal_lattice
                 double vg[3];
                 get_coordinates<cartesian,reciprocal>(gvec(ig), vg);
                 double g = vector_length(vg);
-                
+                double g3inv = 1.0 / pow(g, 3);
+               
+                double gRprev = -1.0;
+                double sin_cos_gR;
                 for (int ia = 0; ia < num_atoms(); ia++)
                 {
                     double R = atom(ia)->type()->mt_radius();
                     double gR = g * R;
 
+                    if (fabs(gRprev - gR) > 1e-10)
+                    {
+                        gRprev = gR;
+                        sin_cos_gR = (sin(gR) - gR * cos(gR)) * g3inv;
+                    }
+
                     if (ig == 0)
                         step_function_pw_[ig] -= fourpi_omega * conj(gvec_phase_factor(ig, ia)) * pow(R, 3) / 3.0;
                     else
-                        step_function_pw_[ig] -= fourpi_omega * conj(gvec_phase_factor(ig, ia)) * (sin(gR) - gR * cos(gR)) / pow(g, 3);
+                        step_function_pw_[ig] -= fourpi_omega * conj(gvec_phase_factor(ig, ia)) * sin_cos_gR;
                 }
             }
 

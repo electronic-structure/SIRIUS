@@ -26,7 +26,8 @@ extern "C" {
 #include <gsl/gsl_sf_bessel.h>
 #include <xc.h>
 #include "../libjson/libjson.h"
-     
+#include "LebedevLaikov.h"
+
 #include "error_handling.h"
 #include "timer.h"
 #include "config.h"

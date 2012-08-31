@@ -88,6 +88,11 @@ class reciprocal_lattice : public geometry
                 if (length[reorder[i]] <= pw_cutoff_)
                     num_gvec_++;
             }
+            
+            // clean temporary arrays
+            gvec.deallocate();
+            length.clear();
+            reorder.clear();
 
             index_by_gvec_.set_dimensions(dimension(fft_.grid_limits(0, 0), fft_.grid_limits(0, 1)),
                                           dimension(fft_.grid_limits(1, 0), fft_.grid_limits(1, 1)),
@@ -131,9 +136,15 @@ class reciprocal_lattice : public geometry
                 gvec_phase_factor_.allocate();
 
                 // TODO: parallelize
+                std::map<double,complex16> phase;
                 for (int ia = 0; ia < num_atoms(); ia++)
                     for (int ig = 0; ig < fft().size(); ig++)
-                        gvec_phase_factor_(ig, ia) = exp(complex16(0.0, twopi * scalar_product(&gvec_(0, ig), atom(ia)->position())));
+                    {
+                        double t = scalar_product(&gvec_(0, ig), atom(ia)->position());
+                        t -= floor(t);
+                        if (!phase.count(t)) phase[t] = exp(complex16(0.0, twopi * t));
+                        gvec_phase_factor_(ig, ia) = phase[t]; //exp(complex16(0.0, twopi * scalar_product(&gvec_(0, ig), atom(ia)->position())));
+                    }
             }
         }
 

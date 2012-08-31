@@ -3,7 +3,7 @@
 void test1(double x0, double x1, int m, double exact_result)
 {
     sirius::RadialGrid r(sirius::exponential_grid, 5000, x0, x1);
-    sirius::Spline s(5000, r);
+    sirius::Spline<double> s(5000, r);
     
     for (int i = 0; i < 5000; i++)
         s[i] = sin(r[i]);

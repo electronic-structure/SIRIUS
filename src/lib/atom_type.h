@@ -409,9 +409,9 @@ class AtomType
                 veff[i] = vnuc[i];
             }
     
-            Spline rho(radial_grid_.size(), radial_grid_);
+            Spline<double> rho(radial_grid_.size(), radial_grid_);
     
-            Spline f(radial_grid_.size(), radial_grid_);
+            Spline<double> f(radial_grid_.size(), radial_grid_);
     
             std::vector<double> vh(radial_grid_.size());
             std::vector<double> vxc(radial_grid_.size());

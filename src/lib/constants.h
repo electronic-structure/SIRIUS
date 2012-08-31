@@ -15,7 +15,7 @@ const double fourpi = 12.566370614359172954;
 
 const double y00 = 0.28209479177387814347;
 
-const double pw_cutoff_default = 12.0; 
+const double pw_cutoff_default = 10.0; 
 
 const int lmax_apw_default = 8;
 
