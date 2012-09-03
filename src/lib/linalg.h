@@ -113,5 +113,13 @@ void zgemv(int transa, int32_t m, int32_t n, complex16 alpha, complex16 *a, int3
     }
 }
 
+void dgemm(int transa, int transb, int4 m, int4 n, int4 k, real8 alpha, real8* a, int4 lda, real8* b, 
+           int4 ldb, real8 beta, real8* c, int4 ldc)
+{
+    const char *trans[] = {"N", "T", "C"};
+
+    FORTRAN(dgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int4)1, (int4)1);
+}
+
 #endif // __LINALG_H__
 

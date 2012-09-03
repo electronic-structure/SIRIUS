@@ -38,6 +38,7 @@ extern "C" {
 #include "radial_grid.h"
 #include "spline.h"
 #include "radial_solver.h"
+#include "sht.h"
 #include "json_tree.h"
 #include "xc_potential.h"
 #include "atom_type.h"

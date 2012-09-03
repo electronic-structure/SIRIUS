@@ -25,12 +25,21 @@ class Potential
         mdarray<double,3> sbessel_mt_;
         
         PeriodicFunction<double> hartree_potential_;
+        
+        PeriodicFunction<double> xc_potential_;
+        
+        PeriodicFunction<double> xc_energy_density_;
+
+        SHT sht_;
 
     public:
 
         void init()
         {
             Timer t("sirius::Potential::init");
+            
+            SHT sht;
+            sht.set_lmax(global.lmax_pot());
 
             lmax_pseudo_ = 10;
             lmmax_pseudo_ = (lmax_pseudo_ + 1) * (lmax_pseudo_ + 1);
@@ -77,8 +86,8 @@ class Potential
                 double cartc[3];
                 double spc[3];
                 global.get_coordinates<cartesian,reciprocal>(global.gvec(ig), cartc);
-                spherical_coordinates(cartc, spc);
-                spherical_harmonics(lmax_pseudo_, spc[1], spc[2], &ylm_gvec_(0, ig));
+                SHT::spherical_coordinates(cartc, spc);
+                SHT::spherical_harmonics(lmax_pseudo_, spc[1], spc[2], &ylm_gvec_(0, ig));
             }
             
             // compute product of spherical Bessel functions with pseudocharge density
@@ -121,11 +130,16 @@ class Potential
             hartree_potential_.allocate(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
                                         global.fft().size(), global.num_gvec());
             hartree_potential_.allocate_fylm();
-
             
-            std::cout << "number of LL points : " << Lebedev_Laikov_npoint(global.lmax_pot()) << std::endl;
-            //exit(0);
+            xc_potential_.allocate(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
+                                   global.fft().size(), global.num_gvec());
+            
+            xc_energy_density_.allocate(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
+                                        global.fft().size(), global.num_gvec());
+ 
+            sht_.set_lmax(std::max(global.lmax_rho(), global.lmax_pot()));
         }
+
         
         /*! 
             \brief Poisson solver
@@ -332,7 +346,7 @@ class Potential
             // compute pw coefficients of Hartree potential
             pseudo_pw[0] = 0.0;
             for (int ig = 1; ig < global.num_gvec(); ig++)
-                pseudo_pw[ig] *= fourpi / pow(global.gvec_shell_len(global.gvec_shell(ig)), 2);
+                hartree_potential_.fpw(ig) = pseudo_pw[ig] * fourpi / pow(global.gvec_shell_len(global.gvec_shell(ig)), 2);
 
             // compute V_lm at the MT boundary
             mdarray<complex16,2> vmtlm(NULL, global.lmmax_pot(), global.num_atoms());
@@ -350,7 +364,7 @@ class Potential
                     for (int lm = 0; lm < global.lmmax_pot(); lm++)
                     {
                         int l = l_by_lm(lm);
-                        vmtlm(lm, ia) += zt * zil[l] * sbessel_mt_(l, iat, global.gvec_shell(ig)) * conj(ylm_gvec_(lm, ig)) * pseudo_pw[ig];
+                        vmtlm(lm, ia) += zt * zil[l] * sbessel_mt_(l, iat, global.gvec_shell(ig)) * conj(ylm_gvec_(lm, ig)) * hartree_potential_.fpw(ig);
                     }
                 }
             }
@@ -368,9 +382,38 @@ class Potential
                         hartree_potential_.fylm(lm, ir, ia) += vmtlm(lm, ia) * pow(global.atom(ia)->type()->radial_grid()[ir] / R, l);
                 }
             }
+            
+            hartree_potential_.convert_to_rlm();
 
             //complex16* fft_buf = global.fft().
         
+        }
+
+        void xc()
+        {
+            mdarray<double,2> rhotp(NULL, sht_.num_points(), global.max_num_mt_points());
+            rhotp.allocate();
+
+            mdarray<double,2> vxctp(NULL, sht_.num_points(), global.max_num_mt_points());
+            vxctp.allocate();
+            
+            mdarray<double,2> exctp(NULL, sht_.num_points(), global.max_num_mt_points());
+            exctp.allocate();
+
+            for (int ia = 0; ia < global.num_atoms(); ia++)
+            {
+                int nmtp = global.atom(ia)->type()->num_mt_points();
+
+                sht_.rlm_backward_transform(&density.charge_density().frlm(0, 0, ia), global.lmmax_rho(), nmtp, &rhotp(0, 0));
+                
+                xc_potential::get(sht_.num_points() * nmtp, &rhotp(0, 0), &vxctp(0, 0), &exctp(0, 0));
+
+                sht_.rlm_forward_transform(&vxctp(0, 0), global.lmmax_rho(), nmtp, &xc_potential_.frlm(0, 0, ia));
+                
+                sht_.rlm_forward_transform(&exctp(0, 0), global.lmmax_rho(), nmtp, &xc_energy_density_.frlm(0, 0, ia));
+            }
+
+            xc_potential::get(global.fft().size(), &density.charge_density().fit(0), &xc_potential_.fit(0), &xc_energy_density_.fit(0));
         }
         
 
