@@ -81,11 +81,14 @@ template <typename T, int ND> class mdarray_base
             }
         }
  
-        inline int size()
+        inline size_t size()
         {
-            int n = 1;
-            for (int i = 0; i < ND; i++) n *= d[i].size();
-            return n;
+            size_t size_ = 1;
+
+            for (int i = 0; i < ND; i++) 
+                size_ *= d[i].size();
+
+            return size_;
         }
 
         inline int size(int i)
@@ -98,7 +101,7 @@ template <typename T, int ND> class mdarray_base
         {
             deallocate();
             
-            int sz = size();
+            size_t sz = size();
             if (sz == 0) throw std::runtime_error("can't allocate a zero size array");
              
             mdarray_ptr = new T[sz];

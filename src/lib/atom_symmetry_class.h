@@ -14,6 +14,8 @@ class AtomSymmetryClass
         std::vector<int> atom_id_;
         
         AtomType* atom_type_;
+
+        std::vector<double> spherical_potential_;
         
     public:
     
@@ -42,6 +44,11 @@ class AtomSymmetryClass
         inline int atom_id(int idx)
         {
             return atom_id_[idx];
+        }
+
+        void set_spherical_potential(std::vector<double>& veff)
+        {
+            spherical_potential_ = veff;
         }
 };
 

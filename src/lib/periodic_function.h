@@ -2,27 +2,72 @@
 namespace sirius
 {
 
-enum data_type {real_data_type, complex_data_type};
+//enum data_type {real_data_type, complex_data_type};
 
-template <typename T> class data_type_wrapper 
+template <typename T> class data_type_wrapper;
+
+template<> class data_type_wrapper<double>
 {
-    public:
-    
-        data_type_wrapper();
+    private:
         data_type type_;
-
+    public:
+        typedef std::complex<double> complex_type_;
+        inline bool real() 
+        {
+            return true;
+        }
+        data_type_wrapper() : type_(real_data_type) {}
         inline data_type operator()(void)
         {
             return type_;
         }
 };
 
-template<> data_type_wrapper<double>::data_type_wrapper() : type_(real_data_type) {}
-template<> data_type_wrapper<complex16>::data_type_wrapper() : type_(complex_data_type) {}
+template<> class data_type_wrapper<float>
+{
+    private:
+        data_type type_;
+    public:
+        typedef std::complex<float> complex_type_;
+        data_type_wrapper() : type_(real_data_type) {}
+        inline data_type operator()(void)
+        {
+            return type_;
+        }
+};
+
+template<> class data_type_wrapper< std::complex<double> >
+{
+    private:
+        data_type type_;
+    public:
+        typedef std::complex<double> complex_type_;
+        data_type_wrapper() : type_(complex_data_type) {}
+        inline data_type operator()(void)
+        {
+            return type_;
+        }
+};
+
+template<> class data_type_wrapper< std::complex<float> >
+{
+    private:
+        data_type type_;
+    public:
+        typedef std::complex<float> complex_type_;
+        data_type_wrapper() : type_(complex_data_type) {}
+        inline data_type operator()(void)
+        {
+            return type_;
+        }
+};
+
 
 template<typename T> class PeriodicFunction
-{
-    public:
+{  
+    private:
+        
+        typedef typename data_type_wrapper<T>::complex_type_ complex_type_; 
         
         data_type_wrapper<T> data_type_;
         
@@ -41,13 +86,15 @@ template<typename T> class PeriodicFunction
         mdarray<T,3> frlm_;
         
         /// complex spherical harmonic expansion coefficients
-        mdarray<complex16,3> fylm_;
+        mdarray<complex_type_, 3> fylm_;
         
         /// interstitial values defined on the FFT grid
         mdarray<T,1> fit_;
         
         /// plane-wave expansion coefficients
         mdarray<complex16,1> fpw_;
+    
+    public:
 
         void convert_to_ylm()
         {
@@ -137,6 +184,10 @@ template<typename T> class PeriodicFunction
         inline complex16& fpw(int ig)
         {
             return fpw_(ig);
+        }
+
+        inline void add(PeriodicFunction<T>& f)
+        {
         }
 
 };

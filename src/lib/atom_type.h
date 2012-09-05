@@ -398,7 +398,20 @@ class AtomType
         {
             aw_descriptors_.clear();
             for (int l = 0; l <= lmax; l++)
+            {
                 aw_descriptors_.push_back(aw_default_l_);
+                for (int ord = 0; ord < (int)aw_descriptors_[l].size(); ord++)
+                {
+                    aw_descriptors_[l][ord].n = l + 1;
+                    aw_descriptors_[l][ord].l = l;
+                }
+            }
+
+            for (int i = 0; i < (int)aw_specific_l_.size(); i++)
+            {
+                int l = aw_specific_l_[i][0].l;
+                aw_descriptors_[l] = aw_specific_l_[i];
+            }
         }
 
         double solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
@@ -580,6 +593,17 @@ class AtomType
                               << "  enu : " << aw_specific_l_[j][order].enu 
                               << "  dme : " << aw_specific_l_[j][order].dme
                               << "  auto : " << aw_specific_l_[j][order].auto_enu << std::endl;
+            }
+
+            printf("augmented wave basis\n");
+            for (int j = 0; j < (int)aw_descriptors_.size(); j++)
+            {
+                printf("n : %i   l : %i   ", aw_descriptors_[j][0].n, aw_descriptors_[j][0].l);
+                for (int order = 0; order < (int)aw_descriptors_[j].size(); order++)
+                    printf("{enu %f, dme %i, auto %i} ", aw_descriptors_[j][order].enu, 
+                                                         aw_descriptors_[j][order].dme, 
+                                                         aw_descriptors_[j][order].auto_enu);
+                printf("\n");
             }
 
             std::cout << "local orbitals" << std::endl;

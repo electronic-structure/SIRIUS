@@ -53,5 +53,6 @@ extern "C" {
 #include "periodic_function.h"
 #include "density.h"
 #include "potential.h"
+#include "band.h"
 
 #endif // __SIRIUS_H__

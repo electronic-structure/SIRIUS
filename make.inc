@@ -8,7 +8,7 @@ CXX = g++-mp-4.7
 #  Initial compiler options typically include optimization / warning switches and a preprocessor directive
 #  which controls the debug
 #
-CXX_OPT = -O0 -g -Wall -fopenmp
+CXX_OPT = -O0 -g -Wall -fopenmp -Wno-cpp -Wno-reorder
 #CXX_OPT = -O2 -g -Wall -fopenmp -DNDEBUG
 
 #
