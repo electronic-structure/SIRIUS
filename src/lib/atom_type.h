@@ -104,6 +104,9 @@ class AtomType
         
         /// density of a free atom
         std::vector<double> free_atom_density_;
+        
+        /// potential of a free atom
+        std::vector<double> free_atom_potential_;
        
         // forbid copy constructor
         AtomType(const AtomType& src);
@@ -379,6 +382,11 @@ class AtomType
             return free_atom_density_[idx];
         }
         
+        inline double free_atom_potential(const int idx)
+        {
+            return free_atom_potential_[idx];
+        }
+        
         void init(int lmax)
         {
             radial_grid_.init(exponential_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
@@ -534,6 +542,8 @@ class AtomType
             }
             
             free_atom_density_ = rho.data_points();
+            
+            free_atom_potential_ = veff;
             
             return energy_tot;
         }

@@ -32,6 +32,11 @@ class Potential
 
         SHT sht_;
 
+        double pseudo_density_l(int l, double x)
+        {
+            return (1.0 + cos(2 * pi * (x - 0.5))) * exp(-l * x);
+        }
+
     public:
 
         void init()
@@ -41,8 +46,8 @@ class Potential
             SHT sht;
             sht.set_lmax(global.lmax_pot());
 
-            lmax_pseudo_ = 10;
-            lmmax_pseudo_ = (lmax_pseudo_ + 1) * (lmax_pseudo_ + 1);
+            lmax_pseudo_ = global.lmax_rho();
+            lmmax_pseudo_ = global.lmmax_rho(); //(lmax_pseudo_ + 1) * (lmax_pseudo_ + 1);
 
             // compute moments of pseudodensity
             pseudo_mom_.set_dimensions(lmax_pseudo_ + 1, global.num_atom_types());
@@ -53,12 +58,14 @@ class Potential
                 int nmtp = global.atom_type(iat)->num_mt_points();
                 Spline<double> s(nmtp, global.atom_type(iat)->radial_grid()); 
                 
-                for (int ir = 0; ir < nmtp; ir++)
-                    s[ir] = 1.0 + cos(pi * global.atom_type(iat)->radial_grid()[ir] / global.atom_type(iat)->mt_radius());
-                s.interpolate();
-
                 for (int l = 0; l <= lmax_pseudo_; l++)
+                {
+                    for (int ir = 0; ir < nmtp; ir++)
+                        s[ir] = pseudo_density_l(l, global.atom_type(iat)->radial_grid()[ir] / global.atom_type(iat)->mt_radius());
+                    s.interpolate();
+
                     pseudo_mom_(l, iat) = s.integrate(2 + l);
+                }
             }
 
             // compute moments of spherical Bessel functions 
@@ -117,15 +124,22 @@ class Potential
                         sbessel_mt_(l, iat, igs) = jl(l, nmtp - 1);
 
                         for (int ir = 0; ir < nmtp; ir++)
-                            s[ir] = jl(l, ir) * (1.0 + cos(pi * global.atom_type(iat)->radial_grid()[ir] / global.atom_type(iat)->mt_radius()));
+                            s[ir] = jl(l, ir) * pseudo_density_l(l, global.atom_type(iat)->radial_grid()[ir] / global.atom_type(iat)->mt_radius());
                         s.interpolate();
 
                         sbessel_pseudo_prod_(l, iat, igs) = s.integrate(2);
-
-                        //printf("l,iat,|G| = %i  %i  %18.12f   prod = %18.12f\n", l, iat, global.gvec_shell_len(igs), sbessel_pseudo_prod_(l, iat, igs));
                     }
                 }
-            } 
+            }
+
+            std::ofstream out("sbessel_pseudo_prod.dat");
+            for (int l = 0; l <= lmax_pseudo_; l++)
+            {
+                for (int igs = 0; igs < global.num_gvec_shells(); igs++)
+                    out << global.gvec_shell_len(igs) << " " << sbessel_pseudo_prod_(l, 0, igs) << std::endl;
+                out << std::endl;
+            }
+            out.close();
 
             hartree_potential_.allocate(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
                                         global.fft().size(), global.num_gvec());
@@ -175,13 +189,67 @@ class Potential
 
             hartree_potential_.zero();
 
-
             // convert to Ylm expansion
             density.charge_density().convert_to_ylm();
-            
+           
+            // true multipole moments
             mdarray<complex16,2> qmt(NULL, global.lmmax_rho(), global.num_atoms());
             qmt.allocate();
+            
+            
+            //lmmax = std::max(global.lmmax_pot(), global.lmmax_rho());
+            
+            // compute MT part of the potential and MT multipole moments
+            for (int ia = 0; ia < global.num_atoms(); ia++)
+            {
+                double R = global.atom(ia)->type()->mt_radius();
+                int nmtp = global.atom(ia)->type()->num_mt_points();
+                
+                std::vector<complex16> g1;
+                std::vector<complex16> g2;
+   
+                Spline<complex16> rholm(nmtp, global.atom(ia)->type()->radial_grid());
 
+                for (int lm = 0; lm < global.lmmax_rho(); lm++)
+                {
+                    int l = l_by_lm(lm);
+
+                    for (int ir = 0; ir < nmtp; ir++)
+                        rholm[ir] = density.charge_density().fylm(lm, ir, ia);
+                    rholm.interpolate();
+
+                    // save multipole moment
+                    qmt(lm, ia) = rholm.integrate(g1, l + 2);
+                    
+                    if (lm < global.lmmax_pot())
+                    {
+                        rholm.integrate(g2, 1 - l);
+                        
+                        for (int ir = 0; ir < nmtp; ir++)
+                        {
+                            double r = global.atom(ia)->type()->radial_grid()[ir];
+
+                            complex16 vlm = (1.0 - pow(r / R, 2 * l + 1)) * g1[ir] / pow(r, l + 1) +
+                                            (g2[nmtp - 1] - g2[ir]) * pow(r, l) - 
+                                            (g1[nmtp - 1] - g1[ir]) * pow(r, l) / pow(R, 2 * l + 1);
+
+                            hartree_potential_.fylm(lm, ir, ia) = fourpi * vlm / double(2 * l + 1);
+                        }
+                    }
+                }
+                
+                // nuclear potential
+                for (int ir = 0; ir < nmtp; ir++)
+                {
+                    double r = global.atom(ia)->type()->radial_grid()[ir];
+                    hartree_potential_.fylm(0, ir, ia) -= fourpi * y00 * global.atom(ia)->type()->zn() * (1.0 / r - 1.0 / R);
+                }
+
+                // nuclear multipole moment
+                qmt(0, ia) -= global.atom(ia)->type()->zn() * y00;
+            }
+
+#if 0
             // compute MT multipole moments
             for (int ia = 0; ia < global.num_atoms(); ia++)
             {
@@ -201,14 +269,15 @@ class Potential
                     //printf("lm=%i   mom=%f\n", lm, qmt(lm, ia));
                 }
             }
-            
+#endif
+
             // compute multipoles of interstitial density in MT region
-            mdarray<complex16,2> qit(NULL, lmmax_pseudo_, global.num_atoms());
+            mdarray<complex16,2> qit(NULL, global.lmmax_rho(), global.num_atoms());
             qit.allocate();
             qit.zero();
 
-            std::vector<complex16> zil(lmax_pseudo_ + 1);
-            for (int l = 0; l <= lmax_pseudo_; l++)
+            std::vector<complex16> zil(global.lmax_rho() + 1);
+            for (int l = 0; l <= global.lmax_rho(); l++)
                 zil[l] = pow(zi, l);
 
             for (int ia = 0; ia < global.num_atoms(); ia++)
@@ -219,7 +288,7 @@ class Potential
                 {
                     complex16 zt = fourpi * global.gvec_phase_factor(ig, ia);
 
-                    for (int lm = 0; lm < lmmax_pseudo_; lm++)
+                    for (int lm = 0; lm < global.lmmax_rho(); lm++)
                     {
                         int l = l_by_lm(lm);
 
@@ -228,14 +297,10 @@ class Potential
                 }
             }
 
-            int lmmax = std::max(global.lmmax_rho(), lmmax_pseudo_);
-
-            for (int lm = 0; lm < lmmax; lm++)
+            for (int lm = 0; lm < global.lmmax_rho(); lm++)
             {
-                complex16 q1 = 0.0;
-                complex16 q2 = 0.0;
-                if (lm < global.lmmax_rho()) q1 = qmt(lm, 0);
-                if (lm < lmmax_pseudo_) q2 = qit(lm, 0);
+                complex16 q1 = qmt(lm, 0);
+                complex16 q2 = qit(lm, 0);
 
                 printf("lm=%i   qmt=%18.12f %18.12f   qit=%18.12f %18.12f \n", lm, real(q1), imag(q1), real(q2), imag(q2));
             }
@@ -287,17 +352,15 @@ class Potential
                 }
             }
             
-            for (int lm = 0; lm < lmmax; lm++)
+            for (int lm = 0; lm < global.lmmax_rho(); lm++)
             {
-                complex16 q1 = 0.0;
-                complex16 q2 = 0.0;
-                if (lm < global.lmmax_rho()) q1 = qmt(lm, 0);
-                if (lm < lmmax_pseudo_) q2 = qit(lm, 0);
+                complex16 q1 = qmt(lm, 0);
+                complex16 q2 = qit(lm, 0);
 
                 printf("lm=%i   qmt=%18.12f %18.12f   qit=%18.12f %18.12f \n", lm, real(q1), imag(q1), real(q2), imag(q2));
             }
  
-            
+#if 0            
             // compute MT part of the potential
             lmmax = std::min(global.lmmax_pot(), global.lmmax_rho());
             
@@ -342,7 +405,7 @@ class Potential
                 }
 
             }
-
+#endif
             // compute pw coefficients of Hartree potential
             pseudo_pw[0] = 0.0;
             for (int ig = 1; ig < global.num_gvec(); ig++)
@@ -414,6 +477,33 @@ class Potential
             }
 
             xc_potential::get(global.fft().size(), &density.charge_density().fit(0), &xc_potential_.fit(0), &xc_energy_density_.fit(0));
+        }
+
+        void effective_potential()
+        {
+            hartree_potential_.zero();
+            //xc_potential_.zero();
+            //xc_energy_density_.zero();
+            
+            poisson();
+            xc();
+
+            std::ofstream out("pot.dat");
+
+            int nmtp = global.atom(0)->type()->num_mt_points();
+            for (int ir = 0; ir < nmtp; ir++)
+                out << global.atom(0)->type()->radial_grid()[ir] << " " << global.atom(0)->type()->free_atom_potential(ir) / y00 << std::endl; 
+            
+            out << std::endl;
+
+            for (int lm = 0; lm < global.lmmax_pot(); lm++)
+            {
+                for (int ir = 0; ir < nmtp; ir++)
+                    out << global.atom(0)->type()->radial_grid()[ir] << " " << hartree_potential_.frlm(lm, ir, 0) + xc_potential_.frlm(lm, ir, 0) << std::endl;
+                out << std::endl;
+            }
+            
+            out.close();
         }
         
 
