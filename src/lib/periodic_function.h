@@ -2,67 +2,70 @@
 namespace sirius
 {
 
-//enum data_type {real_data_type, complex_data_type};
+const int add_rlm = 1 << 0;
+const int add_ylm = 1 << 1;
+const int add_pw = 1 << 2;
+const int add_it = 1 << 3;
 
 template <typename T> class data_type_wrapper;
 
 template<> class data_type_wrapper<double>
 {
-    private:
-        data_type type_;
     public:
         typedef std::complex<double> complex_type_;
         inline bool real() 
         {
             return true;
         }
-        data_type_wrapper() : type_(real_data_type) {}
-        inline data_type operator()(void)
-        {
-            return type_;
-        }
 };
 
 template<> class data_type_wrapper<float>
 {
-    private:
-        data_type type_;
     public:
         typedef std::complex<float> complex_type_;
-        data_type_wrapper() : type_(real_data_type) {}
-        inline data_type operator()(void)
+        inline bool real() 
         {
-            return type_;
+            return true;
         }
 };
 
 template<> class data_type_wrapper< std::complex<double> >
 {
-    private:
-        data_type type_;
     public:
         typedef std::complex<double> complex_type_;
-        data_type_wrapper() : type_(complex_data_type) {}
-        inline data_type operator()(void)
+        inline bool real() 
         {
-            return type_;
+            return false;
         }
 };
 
 template<> class data_type_wrapper< std::complex<float> >
 {
-    private:
-        data_type type_;
     public:
         typedef std::complex<float> complex_type_;
-        data_type_wrapper() : type_(complex_data_type) {}
-        inline data_type operator()(void)
+        inline bool real() 
         {
-            return type_;
+            return false;
         }
 };
 
+/*!
+    \brief Representation of the periodical function on the muffin-tin geometry
 
+    Inside each muffin-tin the spherical expansion is used:
+    \f[
+        f({\bf r}) = \sum_{\ell m} f_{\ell m}(r) Y_{\ell m}(\hat {\bf r})
+    \f]
+    or
+    \f[
+        f({\bf r}) = \sum_{\ell m} f_{\ell m}(r) R_{\ell m}(\hat {\bf r})
+    \f]
+    In the interstitial region function is stored on the real-space grid or as a Fourier series:
+    \f[
+        f({\bf r}) = \sum_{{\bf G}} f({\bf G}) e^{i{\bf G}{\bf r}}
+    \f]
+ 
+*/
 template<typename T> class PeriodicFunction
 {  
     private:
@@ -83,42 +86,48 @@ template<typename T> class PeriodicFunction
         int num_it_points_;
 
         /// real spherical harmonic expansion coefficients
-        mdarray<T,3> frlm_;
+        mdarray<T,3> f_rlm_;
         
         /// complex spherical harmonic expansion coefficients
-        mdarray<complex_type_, 3> fylm_;
+        mdarray<complex_type_,3> f_ylm_;
         
         /// interstitial values defined on the FFT grid
-        mdarray<T,1> fit_;
+        mdarray<T,1> f_it_;
         
         /// plane-wave expansion coefficients
-        mdarray<complex16,1> fpw_;
+        mdarray<complex_type_,1> f_pw_;
     
     public:
 
         void convert_to_ylm()
         {
-            if (!frlm_.get_ptr()) error(__FILE__, __LINE__, "frlm array is empty");
+            // check source
+            if (!f_rlm_.get_ptr()) error(__FILE__, __LINE__, "f_rlm array is empty");
+            
+            // allocate target
+            if (!f_ylm_.get_ptr()) f_ylm_.allocate();
 
-            fylm_.allocate();
-            fylm_.zero();
+            f_ylm_.zero();
 
             for (int ia = 0; ia < num_atoms_; ia++)
-                for (int ir = 0; ir < frlm_.size(1); ir++)
-                    SHT::convert_frlm_to_fylm(lmax_, &frlm_(0, ir, ia), &fylm_(0, ir, ia));      
+                for (int ir = 0; ir < f_rlm_.size(1); ir++)
+                    SHT::convert_frlm_to_fylm(lmax_, &f_rlm_(0, ir, ia), &f_ylm_(0, ir, ia));      
 
         }
         
         void convert_to_rlm()
         {
-            if (!fylm_.get_ptr()) error(__FILE__, __LINE__, "fylm array is empty");
+            // check source  
+            if (!f_ylm_.get_ptr()) error(__FILE__, __LINE__, "f_ylm array is empty");
 
-            frlm_.allocate();
-            frlm_.zero();
+            // allocate target
+            if (!f_rlm_.get_ptr()) f_rlm_.allocate();
+            
+            f_rlm_.zero();
 
             for (int ia = 0; ia < num_atoms_; ia++)
-                for (int ir = 0; ir < frlm_.size(1); ir++)
-                    SHT::convert_fylm_to_frlm(lmax_, &fylm_(0, ir, ia), &frlm_(0, ir, ia));      
+                for (int ir = 0; ir < f_rlm_.size(1); ir++)
+                    SHT::convert_fylm_to_frlm(lmax_, &f_ylm_(0, ir, ia), &f_rlm_(0, ir, ia));      
 
         }
 
@@ -131,62 +140,119 @@ template<typename T> class PeriodicFunction
             num_it_points_ = num_it_points__;
             num_gvec_ = num_gvec__;
 
-            frlm_.set_dimensions(lmmax_, max_num_mt_points__, num_atoms__);
-            fylm_.set_dimensions(lmmax_, max_num_mt_points__, num_atoms__);
+            f_rlm_.set_dimensions(lmmax_, max_num_mt_points__, num_atoms__);
+            f_ylm_.set_dimensions(lmmax_, max_num_mt_points__, num_atoms__);
             
-            if (data_type_() == real_data_type) frlm_.allocate();
-            if (data_type_() == complex_data_type) fylm_.allocate();
+            if (data_type_.real()) f_rlm_.allocate();
+            else f_ylm_.allocate();
 
-            fit_.set_dimensions(num_it_points__);
-            fit_.allocate();
+            f_it_.set_dimensions(num_it_points__);
+            f_it_.allocate();
 
-            fpw_.set_dimensions(num_gvec__);
-            fpw_.allocate();
+            f_pw_.set_dimensions(num_gvec__);
+            f_pw_.allocate();
         }
 
-        void allocate_fylm()
+        void deallocate()
         {
-            fylm_.allocate();
+            f_rlm_.deallocate();
+            f_ylm_.deallocate();
+            f_it_.deallocate();
+            f_pw_.deallocate();
         }
 
-        void deallocate_fylm()
+        void allocate_ylm()
         {
-            fylm_.deallocate();
+            f_ylm_.allocate();
+        }
+
+        void deallocate_ylm()
+        {
+            f_ylm_.deallocate();
         }
 
         void zero()
         {
-            if (frlm_.get_ptr()) frlm_.zero();
-            if (fylm_.get_ptr()) fylm_.zero();
-            if (fit_.get_ptr()) fit_.zero();
-            if (fpw_.get_ptr()) fpw_.zero();
+            if (f_rlm_.get_ptr()) f_rlm_.zero();
+            if (f_ylm_.get_ptr()) f_ylm_.zero();
+            if (f_it_.get_ptr()) f_it_.zero();
+            if (f_pw_.get_ptr()) f_pw_.zero();
         }
         
-        inline T& frlm(int lm, int ir, int ia)
+        inline T& f_rlm(int lm, int ir, int ia)
         {
-            assert(frlm_.get_ptr());
+            assert(f_rlm_.get_ptr());
 
-            return frlm_(lm, ir, ia);
+            return f_rlm_(lm, ir, ia);
         }
         
-        inline complex16& fylm(int lm, int ir, int ia)
+        inline complex_type_& f_ylm(int lm, int ir, int ia)
         {
-            assert(fylm_.get_ptr());
+            assert(f_ylm_.get_ptr());
 
-            return fylm_(lm, ir, ia);
+            return f_ylm_(lm, ir, ia);
         }
 
-        inline T& fit(int ir)
+        inline T& f_it(int ir)
         {
-            return fit_(ir);
+            return f_it_(ir);
         }
 
-        inline complex16& fpw(int ig)
+        inline complex_type_& f_pw(int ig)
         {
-            return fpw_(ig);
+            return f_pw_(ig);
         }
 
-        inline void add(PeriodicFunction<T>& f)
+        inline void add(PeriodicFunction<T>& rhs, int flg)
+        {
+            assert(lmax_ == rhs.lmax_);
+            assert(max_num_mt_points_ == rhs.max_num_mt_points_);
+            assert(num_atoms_ == rhs.num_atoms_);
+            assert(num_gvec_ == rhs.num_gvec_);
+            assert(num_it_points_ == rhs.num_it_points_);
+
+            if (flg & add_rlm)
+            {
+                assert(f_rlm_.get_ptr());
+                assert(rhs.f_rlm_.get_ptr());
+           
+                for (int ia = 0; ia < num_atoms_; ia++)
+                    for (int ir = 0; ir < max_num_mt_points_; ir++)
+                        for (int lm = 0; lm < lmmax_; lm++)
+                            f_rlm_(lm, ir, ia) += rhs.f_rlm_(lm, ir, ia);
+            }
+
+            if (flg & add_ylm)
+            {
+                assert(f_ylm_.get_ptr());
+                assert(rhs.f_ylm_.get_ptr());
+           
+                for (int ia = 0; ia < num_atoms_; ia++)
+                    for (int ir = 0; ir < max_num_mt_points_; ir++)
+                        for (int lm = 0; lm < lmmax_; lm++)
+                            f_ylm_(lm, ir, ia) += rhs.f_ylm_(lm, ir, ia);
+            } 
+
+            if (flg & add_pw)
+            {
+                assert(f_pw_.get_ptr());
+                assert(rhs.f_pw_.get_ptr());
+                
+                for (int ig = 0; ig < num_gvec_; ig++)
+                    f_pw_(ig) += rhs.f_pw_(ig);
+            }
+
+            if (flg & add_it)
+            {
+                assert(f_it_.get_ptr());
+                assert(rhs.f_it_.get_ptr());
+                
+                for (int ir = 0; ir < num_it_points_; ir++)
+                    f_it_(ir) += rhs.f_it_(ir);
+            }
+        }
+
+        inline void inner(const PeriodicFunction<T>& f)
         {
         }
 

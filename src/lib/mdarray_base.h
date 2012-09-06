@@ -53,9 +53,9 @@ template <typename T, int ND> class mdarray_base
 {
     public:
     
-        mdarray_base() : mdarray_ptr(0), 
+        mdarray_base() : mdarray_ptr(NULL), 
                          allocated(false), 
-                         mdarray_ptr_device(0), 
+                         mdarray_ptr_device(NULL), 
                          allocated_on_device(false) 
         { 
         }
@@ -113,6 +113,7 @@ template <typename T, int ND> class mdarray_base
             if (allocated)
             {
                 delete[] mdarray_ptr;
+                mdarray_ptr = NULL;
                 allocated = false;
             }
         }

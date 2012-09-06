@@ -600,9 +600,9 @@ class AtomType
             {
                 printf("n : %i   l : %i   ", aw_descriptors_[j][0].n, aw_descriptors_[j][0].l);
                 for (int order = 0; order < (int)aw_descriptors_[j].size(); order++)
-                    printf("{enu %f, dme %i, auto %i} ", aw_descriptors_[j][order].enu, 
-                                                         aw_descriptors_[j][order].dme, 
-                                                         aw_descriptors_[j][order].auto_enu);
+                    printf("{enu %f dme %i auto %i} ", aw_descriptors_[j][order].enu, 
+                                                       aw_descriptors_[j][order].dme, 
+                                                       aw_descriptors_[j][order].auto_enu);
                 printf("\n");
             }
 

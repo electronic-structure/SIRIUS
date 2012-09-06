@@ -3,6 +3,15 @@
 
 namespace sirius {
 
+struct radial_solution
+{
+    radial_solution_descriptor rsd;
+
+    std::vector<double> u;
+};
+
+typedef std::vector<radial_solution> radial_solution_set;
+
 class AtomSymmetryClass
 {
     private:
