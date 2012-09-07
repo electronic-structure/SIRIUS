@@ -183,7 +183,7 @@ class unit_cell
             }
 
             printf("number of atoms : %i\n", num_atoms());
-            printf("number of symmetry classes : %i\n", num_symmetry_classes());
+            printf("number of symmetry classes : %i\n", num_atom_symmetry_classes());
 
             printf("\n"); 
             printf("atom id    type id    class id\n");
@@ -192,7 +192,7 @@ class unit_cell
                 printf("%6i     %6i      %6i\n", i, atom(i)->type_id(), atom(i)->symmetry_class_id()); 
            
             printf("\n");
-            for (int ic = 0; ic < num_symmetry_classes(); ic++)
+            for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
             {
                 printf("class id : %i   atom id : ", ic);
                 for (int i = 0; i < atom_symmetry_class(ic)->num_atoms(); i++)
@@ -429,9 +429,9 @@ class unit_cell
         }
        
         /*!
-            \brief Number of symmetry classes.
+            \brief Number of atom symmetry classes.
         */
-        inline int num_symmetry_classes()
+        inline int num_atom_symmetry_classes()
         {
             return atom_symmetry_classes_.size();
         }

@@ -60,11 +60,25 @@ template<> int gtsv<double>(int n, int nrhs, double *dl, double *d, double *du, 
 
 template<> int gtsv<complex16>(int n, int nrhs, complex16* dl, complex16* d, complex16* du, complex16* b, int ldb)
 {
-    int info;                   
+    int4 info;                   
 
     FORTRAN(zgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
             
     return info;                
+}
+
+extern "C" void FORTRAN(dgesv)(int4* n, int4* nrhs, real8* a, int4* lda, int4* ipiv, real8* b, int4* ldb, int4* info);
+
+template <typename T> int gesv(int4 n, int4 nrhs, T* a, int4 lda, T* b, int4 ldb);
+
+template<> int gesv<real8>(int4 n, int4 nrhs, real8* a, int4 lda, real8* b, int4 ldb)
+{
+    int4 info;
+    std::vector<int4> ipiv(n);
+
+    FORTRAN(dgesv)(&n, &nrhs, a, &lda, &ipiv[0], b, &ldb, &info);
+
+    return info;
 }
 
 extern "C" void FORTRAN(dgemm)(const char* transa, const char* transb, int4* m, int4* n, int4* k, real8* alpha, real8* a,

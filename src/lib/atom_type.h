@@ -619,6 +619,26 @@ class AtomType
 
             radial_grid_.print_info();
         }
+
+        inline int num_aw_descriptors()
+        {
+            return aw_descriptors_.size();
+        }
+
+        inline radial_solution_descriptor_set& aw_descriptor(int idx)
+        {
+            return aw_descriptors_[idx];
+        }
+        
+        inline int num_lo_descriptors()
+        {
+            return lo_descriptors_.size();
+        }
+
+        inline radial_solution_descriptor_set& lo_descriptor(int idx)
+        {
+            return lo_descriptors_[idx];
+        }
 };
 
 };

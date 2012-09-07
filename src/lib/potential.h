@@ -129,7 +129,7 @@ class Potential
                     }
                 }
             }
-
+#if 0
             std::ofstream out("sbessel_pseudo_prod.dat");
             for (int l = 0; l <= global.lmax_rho(); l++)
             {
@@ -138,7 +138,7 @@ class Potential
                 out << std::endl;
             }
             out.close();
-
+#endif
             effective_potential_.allocate(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
                                           global.fft().size(), global.num_gvec());
 
@@ -442,7 +442,7 @@ class Potential
             
             xc_energy_density_.deallocate();
             
-            
+#if 0            
             std::ofstream out("pot.dat");
 
             int nmtp = global.atom(0)->type()->num_mt_points();
@@ -459,6 +459,7 @@ class Potential
             }
             
             out.close();
+#endif
         }
 
         inline PeriodicFunction<double>& effective_potential()

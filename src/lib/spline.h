@@ -266,6 +266,29 @@ template <typename T> class Spline
         {
             return a[i];
         }
+
+        inline T deriv(const int dm, const int i, const double dx)
+        {
+            switch (dm)
+            {
+                case 0:
+                    return a[i] + dx * (b[i] + dx * (c[i] + dx * d[i]));
+                    break;
+                case 1:
+                    return b[i] + dx * (2 * c[i] + 3 * dx * d[i]);
+                    break;
+                case 2:
+                    return 2 * c[i] + 6 * dx * d[i];
+                    break;
+                case 3:
+                    return 6 * d[i];
+                    break;
+                default:
+                    error(__FILE__, __LINE__, "wrong order of derivative");
+                    return 0.0;
+                    break;
+            }
+        }
 };
 
 };

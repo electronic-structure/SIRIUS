@@ -9,7 +9,7 @@ class Band
         void radial()
         {
             // save spherical part of potential
-            for (int ic = 0; ic < global.num_symmetry_classes(); ic++)
+            for (int ic = 0; ic < global.num_atom_symmetry_classes(); ic++)
             {
                int ia = global.atom_symmetry_class(ic)->atom_id(0);
                int nmtp = global.atom(ia)->type()->num_mt_points();
@@ -28,6 +28,8 @@ class Band
 
         void find_enu()
         {
+            for (int ic = 0; ic < global.num_atom_symmetry_classes(); ic++)
+                global.atom_symmetry_class(ic)->generate_radial_functions();
 
 
         }
