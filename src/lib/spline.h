@@ -289,6 +289,14 @@ template <typename T> class Spline
                     break;
             }
         }
+
+        inline T deriv(const int dm, const int i)
+        {
+            if (i == num_points - 1) return deriv(dm, i - 1, radial_grid.dr(i - 1));
+            else return deriv(dm, i, 0.0);
+            //if (i == 0) return deriv(dm, 0, 0.0);
+            //else return deriv(dm, i - 1, radial_grid.dr(i));
+        }
 };
 
 };

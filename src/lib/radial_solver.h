@@ -167,6 +167,16 @@ class RadialSolver
                 
                 integrate(radial_grid.mt_num_points(), l, enu, ve_spline, mp_spline, p, q);
             }
+
+            hp.resize(radial_grid.mt_num_points());
+            double alph2 = 0.0;
+            if (relativistic) alph2 = pow((1.0 / speed_of_light), 2);
+            Spline<double> sq(radial_grid.mt_num_points(), radial_grid, q);
+            for (int i = 0; i < radial_grid.mt_num_points(); i++)
+            {
+                double t1 = 2.0 - v[i] * alph2;
+                hp[i] = (double(l * (l + 1)) / t1 / pow(radial_grid[i], 2.0) + v[i]) * p[i] - q[i] / radial_grid[i] - sq.deriv(1, i);
+            }
         }
 
         void bound_state(int n, 

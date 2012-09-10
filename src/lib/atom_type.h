@@ -107,6 +107,9 @@ class AtomType
         
         /// potential of a free atom
         std::vector<double> free_atom_potential_;
+
+        /// maximum number of aw radial functions across angular momentums
+        int max_aw_order_;
        
         // forbid copy constructor
         AtomType(const AtomType& src);
@@ -392,6 +395,10 @@ class AtomType
             radial_grid_.init(exponential_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
             
             rebuild_aw_descriptors(lmax);
+
+            max_aw_order_ = 0;
+            for (int l = 0; l <= lmax; l++)
+                max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
         }
 
         void rebuild_aw_descriptors(int lmax)
@@ -605,6 +612,7 @@ class AtomType
                                                        aw_descriptors_[j][order].auto_enu);
                 printf("\n");
             }
+            printf("maximum order of aw : %i\n", max_aw_order_);
 
             std::cout << "local orbitals" << std::endl;
             for (int j = 0; j < (int)lo_descriptors_.size(); j++)
@@ -638,6 +646,11 @@ class AtomType
         inline radial_solution_descriptor_set& lo_descriptor(int idx)
         {
             return lo_descriptors_[idx];
+        }
+
+        inline int max_aw_order()
+        {
+            return max_aw_order_;
         }
 };
 

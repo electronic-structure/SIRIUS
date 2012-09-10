@@ -19,8 +19,6 @@ class AtomSymmetryClass
         
         int id_;
 
-        mdarray<double,3> radial_integrals;
-        
         std::vector<int> atom_id_;
         
         AtomType* atom_type_;
@@ -35,7 +33,9 @@ class AtomSymmetryClass
 
         mdarray<double,3> lo_radial_functions_;
 
-        //mdarray<double,2> radial_functions_;
+        mdarray<double,4> aw_radial_functions_;
+
+        mdarray<double,2> aw_surface_derivatives_;
         
     public:
     
@@ -74,6 +74,12 @@ class AtomSymmetryClass
                 
                 lo_radial_solutions_.push_back(rss);
             }
+
+            aw_radial_functions_.set_dimensions(atom_type_->num_mt_points(), atom_type_->max_aw_order(), aw_radial_solutions_.size(), 2);
+            aw_radial_functions_.allocate();
+
+            aw_surface_derivatives_.set_dimensions(atom_type_->max_aw_order(), aw_radial_solutions_.size());
+            aw_surface_derivatives_.allocate();
 
             lo_radial_functions_.set_dimensions(atom_type_->num_mt_points(), lo_radial_solutions_.size(), 2);
             lo_radial_functions_.allocate();
@@ -134,9 +140,97 @@ class AtomSymmetryClass
 #endif
         }
 
+        void generate_aw_radial_functions()
+        {
+            int nmtp = atom_type_->num_mt_points();
+            Spline<double> s(nmtp, atom_type_->radial_grid());
+            RadialSolver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
+            
+            for (int i = 0; i < (int)aw_radial_solutions_.size(); i++)
+            {
+                for (int order = 0; order < (int)aw_radial_solutions_[i].size(); order++)
+                {
+                    // find linearization energies
+                    if (aw_radial_solutions_[i][order].rsd.auto_enu)
+                    {
+                        std::vector<double> p;
+                        solver.bound_state(aw_radial_solutions_[i][order].rsd.n, aw_radial_solutions_[i][order].rsd.l, 
+                                           spherical_potential_, aw_radial_solutions_[i][order].rsd.enu, p);
+                    }
+
+                    solver.solve_in_mt(aw_radial_solutions_[i][order].rsd.l, aw_radial_solutions_[i][order].rsd.enu, 
+                                       aw_radial_solutions_[i][order].rsd.dme, spherical_potential_, 
+                                       aw_radial_solutions_[i][order].p, aw_radial_solutions_[i][order].hp);
+                    // normalize
+                    for (int ir = 0; ir < nmtp; ir++)
+                        s[ir] = aw_radial_solutions_[i][order].p[ir] * aw_radial_solutions_[i][order].p[ir];
+                    s.interpolate();
+                    double norm = s.integrate(0);
+                    norm = 1.0 / sqrt(norm);
+
+                    for (int ir = 0; ir < nmtp; ir++)
+                    {
+                        aw_radial_functions_(ir, order, i, 0) = aw_radial_solutions_[i][order].p[ir] * norm;
+                        aw_radial_functions_(ir, order, i, 1) = aw_radial_solutions_[i][order].hp[ir] * norm;
+                    }
+                    
+                    // orthogonalize
+                    for (int order1 = 0; order1 < order - 1; order1++)
+                    {
+                        for (int ir = 0; ir < nmtp; ir++)
+                            s[ir] = aw_radial_functions_(ir, order, i, 0) * aw_radial_functions_(ir, order1, i, 0);
+                        s.interpolate();
+                        double t1 = s.integrate(0);
+                        
+                        for (int ir = 0; ir < nmtp; ir++)
+                            aw_radial_functions_(ir, order, i, 0) -= aw_radial_functions_(ir, order1, i, 0) * t1;
+                    }
+                        
+                    // normalize again
+                    for (int ir = 0; ir < nmtp; ir++)
+                        s[ir] = aw_radial_functions_(ir, order, i, 0) * aw_radial_functions_(ir, order, i, 0);
+                    s.interpolate();
+                    norm = s.integrate(0);
+
+                    if (fabs(norm) < 1e-12)
+                    {
+                        error(__FILE__, __LINE__, "aw radial functions are linearly dependent");
+                    }
+
+                    norm = 1.0 / sqrt(norm);
+
+                    for (int ir = 0; ir < nmtp; ir++)
+                    {
+                        aw_radial_functions_(ir, order, i, 0) *= norm;
+                    }
+
+                    // radial derivative
+                    double rderiv = (aw_radial_functions_(nmtp - 1, order, i, 0) - 
+                                     aw_radial_functions_(nmtp - 2, order, i, 0)) / atom_type_->radial_grid().dr(nmtp - 2);
+                    double R = atom_type_->mt_radius();
+
+                    aw_surface_derivatives_(order, i) = (rderiv - aw_radial_functions_(nmtp - 1, order, i, 0) / R) / R;
+                    
+                    // divide by r
+                    for (int ir = 0; ir < nmtp; ir++)
+                    {
+                        aw_radial_functions_(ir, order, i, 0) /= atom_type_->radial_grid()[ir];
+                    }
+                }
+            }
+        }
+
+        void generate_lo_radial_functions()
+        {
+
+        }
+
         void generate_radial_functions()
         {
+            generate_aw_radial_functions();
+
             RadialSolver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
+            int nmtp = atom_type_->num_mt_points();
 
             std::vector<double> p;
 
@@ -166,9 +260,78 @@ class AtomSymmetryClass
                                        lo_radial_solutions_[i][order].p, lo_radial_solutions_[i][order].hp);
                 }
 
-            // generate local orbitals
-            int nmtp = atom_type_->num_mt_points();
             Spline<double> s(nmtp, atom_type_->radial_grid());
+            // generate augmented wave functions
+            for (int i = 0; i < (int)aw_radial_solutions_.size(); i++)
+            {
+                for (int order = 0; order < (int)aw_radial_solutions_[i].size(); order++)
+                {
+                    // normalize radial solutions
+                    for (int ir = 0; ir < nmtp; ir++)
+                        s[ir] = aw_radial_solutions_[i][order].p[ir] * aw_radial_solutions_[i][order].p[ir];
+                    s.interpolate();
+                    double norm = s.integrate(0);
+                    norm = 1.0 / sqrt(norm);
+
+                    for (int ir = 0; ir < nmtp; ir++)
+                    {
+                        aw_radial_functions_(ir, order, i, 0) = aw_radial_solutions_[i][order].p[ir] * norm;
+                        aw_radial_functions_(ir, order, i, 1) = aw_radial_solutions_[i][order].hp[ir] * norm;
+                    }
+
+                    for (int order1 = 0; order1 < order - 1; order1++)
+                    {
+                        assert(order == 0 && order1 == 0);
+
+                        for (int ir = 0; ir < nmtp; ir++)
+                            s[ir] = aw_radial_functions_(ir, order, i, 0) * aw_radial_functions_(ir, order1, i, 0);
+                        s.interpolate();
+                        double t1 = s.integrate(0);
+                        
+                        for (int ir = 0; ir < nmtp; ir++)
+                            aw_radial_functions_(ir, order, i, 0) -= aw_radial_functions_(ir, order1, i, 0) * t1;
+                    }
+                        
+                    // normalize radial solutions
+                    for (int ir = 0; ir < nmtp; ir++)
+                        s[ir] = aw_radial_functions_(ir, order, i, 0) * aw_radial_functions_(ir, order, i, 0);
+                    s.interpolate();
+                    norm = s.integrate(0);
+
+                    if (fabs(norm) < 1e-12)
+                    {
+                        error(__FILE__, __LINE__, "aw radial functions are linearly dependent");
+                    }
+
+                    norm = 1.0 / sqrt(norm);
+
+                    for (int ir = 0; ir < nmtp; ir++)
+                    {
+                        aw_radial_functions_(ir, order, i, 0) *= norm;
+                        //aw_radial_solutions_[i][order].p[ir] *= norm;
+                        //lo_radial_solutions_[i][order].hp[ir] *= norm;
+                    }
+
+                    // radial derivative
+                    double rderiv = (aw_radial_functions_(nmtp - 1, order, i, 0) - 
+                                     aw_radial_functions_(nmtp - 2, order, i, 0)) / atom_type_->radial_grid().dr(nmtp - 2);
+                    double R = atom_type_->mt_radius();
+
+                    aw_surface_derivatives_(order, i) = (rderiv - aw_radial_functions_(nmtp - 1, order, i, 0) / R) / R;
+                    for (int ir = 0; ir < nmtp; ir++)
+                    {
+                        aw_radial_functions_(ir, order, i, 0) /= atom_type_->radial_grid()[ir];
+                    }
+                     
+
+
+
+                } // order
+            }
+
+
+            // generate local orbitals
+            lo_radial_functions_.zero();
             double a[4][4];
 
             for (int i = 0; i < (int)lo_radial_solutions_.size(); i++)
@@ -196,7 +359,7 @@ class AtomSymmetryClass
                     s.interpolate();
 
                     for (int dm = 0; dm < (int)lo_radial_solutions_[i].size(); dm++)
-                        a[order][dm] = s.deriv(dm, nmtp - 1, atom_type_->radial_grid().dr(nmtp - 1));
+                        a[order][dm] = s.deriv(dm, nmtp - 1);
                 }
                 double b[] = {0.0, 0.0, 0.0, 0.0};
                 b[lo_radial_solutions_[i].size() - 1] = 1.0;
@@ -209,13 +372,33 @@ class AtomSymmetryClass
                     s << "gesv returned " << info;
                     error(__FILE__, __LINE__, s);
                 }
+
+                for (int order = 0; order < (int)lo_radial_solutions_[i].size(); order++)
+                    for (int ir = 0; ir < nmtp; ir++)
+                        lo_radial_functions_(ir, i, 0) += b[order] * lo_radial_solutions_[i][order].p[ir];
+
+                for (int ir = 0; ir < nmtp; ir++)
+                    s[ir] = lo_radial_functions_(ir, i, 0) * lo_radial_functions_(ir, i, 0);
+                s.interpolate();
+                double norm = s.integrate(0);
+                norm = 1.0 / sqrt(norm);
+
+                for (int ir = 0; ir < nmtp; ir++)
+                    lo_radial_functions_(ir, i, 0) *= (norm / atom_type_->radial_grid()[ir]);
+
+                /*std::ofstream out("lo.dat");
+                for (int ir = 0; ir < nmtp; ir++)
+                   out << atom_type_->radial_grid()[ir] << " " << lo_radial_functions_(ir, i, 0) << std::endl;
+                out.close();*/
+
+                if (fabs(lo_radial_functions_(nmtp - 1, i, 0)) > 1e-10)
+                {
+                    std::stringstream s;
+                    s << "local orbital is not zero at MT boundary" << std::endl 
+                      << "  value : " << lo_radial_functions_(nmtp - 1, i, 0);
+                    error(__FILE__, __LINE__, s);
+                }
             }
-
-
-
-             
-
-
 
             print_enu();
         }
