@@ -22,16 +22,11 @@ class Band
                global.atom_symmetry_class(ic)->set_spherical_potential(veff);
             }
 
-            find_enu();
-
-        }
-
-        void find_enu()
-        {
             for (int ic = 0; ic < global.num_atom_symmetry_classes(); ic++)
                 global.atom_symmetry_class(ic)->generate_radial_functions();
 
-
+            for (int ia = 0; ia < global.num_atoms(); ia++)
+                global.atom(ia)->generate_radial_integrals(global.lmax_pot(), &potential.effective_potential().f_rlm(0, 0, ia));
         }
 
 };

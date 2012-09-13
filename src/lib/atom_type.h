@@ -41,6 +41,164 @@ struct radial_solution_descriptor
 /// set of radial solution descriptors, used to construct augmented waves or local orbitals
 typedef std::vector<radial_solution_descriptor> radial_solution_descriptor_set;
 
+class radial_functions_index
+{
+    public:
+
+        class radial_function_index_descriptor
+        {
+            private:
+
+                int l_;
+
+                int order_;
+
+                int idxlo_;
+
+            public:
+
+                radial_function_index_descriptor(int l__, int order__, int idxlo__ =  -1) : l_(l__), order_(order__), idxlo_(idxlo__)
+                {
+                    assert(l_ >= 0);
+                    assert(order_ >= 0);
+                }
+
+                inline int l()
+                {
+                    return l_;
+                }
+
+                inline int order()
+                {
+                    return order_;
+                }
+
+                inline int idxlo()
+                {
+                    return idxlo_;
+                }
+        };
+
+    private: 
+
+        std::vector<radial_function_index_descriptor> radial_function_index_descriptors_;
+
+        mdarray<int,2> index_by_l_order_;
+    
+    public:
+
+        void init(const int lmax,
+                  const std::vector<radial_solution_descriptor_set>& aw_descriptors, 
+                  const std::vector<radial_solution_descriptor_set>& lo_descriptors)
+        {
+            assert((int)aw_descriptors.size() == lmax + 1);
+
+            std::vector<int> num_rf(lmax + 1, 0);
+
+            radial_function_index_descriptors_.clear();
+
+            for (int l = 0; l <= lmax; l++)
+            {
+                num_rf[l] = aw_descriptors[l].size();
+                for (int order = 0; order < (int)aw_descriptors[l].size(); order++)
+                   radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, order));
+            }
+
+            for (int idxlo = 0; idxlo < (int)lo_descriptors.size(); idxlo++)
+            {
+                int l = lo_descriptors[idxlo][0].l;
+                radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, num_rf[l], idxlo));
+                num_rf[l]++;
+            }
+
+            int max_num_rf = 0;
+            for (int l = 0; l <= lmax; l++)
+                max_num_rf = std::max(max_num_rf, num_rf[l]);
+
+            index_by_l_order_.set_dimensions(lmax + 1, max_num_rf);
+            index_by_l_order_.allocate();
+
+            for (int i = 0; i < (int)radial_function_index_descriptors_.size(); i++)
+            {
+                int l = radial_function_index_descriptors_[i].l();
+                int order = radial_function_index_descriptors_[i].order();
+                index_by_l_order_(l, order) = i;
+            }
+        }
+
+        inline int size()
+        {
+            return radial_function_index_descriptors_.size();
+        }
+
+        inline radial_function_index_descriptor& operator[](int i)
+        {
+            return radial_function_index_descriptors_[i];
+        }
+
+        inline int index_by_l_order(int l, int order)
+        {
+            return index_by_l_order_(l, order);
+        }
+};
+
+class basis_functions_index
+{
+    private:
+
+        class basis_function_index_descriptor
+        {
+            private:
+
+                int l_;
+
+                int m_;
+
+                int lm_;
+
+                int order_;
+
+                int idxlo_;
+
+                int idxrf_;
+            
+            public:
+
+                basis_function_index_descriptor(int l__, int m__, int order__, int idxlo__, int idxrf__) : l_(l__), m_(m__), order_(order__), 
+                                                                                                           idxlo_(idxlo__), idxrf_(idxrf__) 
+                {
+                    lm_ = lm_by_l_m(l_, m_);
+                }
+        };
+
+
+    public:
+
+       std::vector<basis_function_index_descriptor> basis_function_index_descriptors_; 
+
+       void init(radial_functions_index& indexr)
+       {
+           basis_function_index_descriptors_.clear();
+
+           for (int idxrf = 0; idxrf < indexr.size(); idxrf++)
+           {
+               int l = indexr[idxrf].l();
+               int order = indexr[idxrf].order();
+               int idxlo = indexr[idxrf].idxlo();
+               for (int m = -l; m <= l; m++)
+                   basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, m, order, idxlo, idxrf));
+           }
+       }
+
+       inline int size()
+       {
+           return basis_function_index_descriptors_.size();
+       }
+
+};
+
+
+
 class AtomType
 {
     private:
@@ -110,6 +268,10 @@ class AtomType
 
         /// maximum number of aw radial functions across angular momentums
         int max_aw_order_;
+
+        radial_functions_index indexr_;
+        
+        basis_functions_index indexb_;
        
         // forbid copy constructor
         AtomType(const AtomType& src);
@@ -240,6 +402,26 @@ class AtomType
             }
         }
     
+        void rebuild_aw_descriptors(int lmax)
+        {
+            aw_descriptors_.clear();
+            for (int l = 0; l <= lmax; l++)
+            {
+                aw_descriptors_.push_back(aw_default_l_);
+                for (int ord = 0; ord < (int)aw_descriptors_[l].size(); ord++)
+                {
+                    aw_descriptors_[l][ord].n = l + 1;
+                    aw_descriptors_[l][ord].l = l;
+                }
+            }
+
+            for (int i = 0; i < (int)aw_specific_l_.size(); i++)
+            {
+                int l = aw_specific_l_[i][0].l;
+                aw_descriptors_[l] = aw_specific_l_[i];
+            }
+        }
+
     public:
         
         AtomType(const char* _symbol, 
@@ -309,7 +491,6 @@ class AtomType
             }
         }
 
-        
         const std::string& label()
         {
             return label_;
@@ -399,26 +580,9 @@ class AtomType
             max_aw_order_ = 0;
             for (int l = 0; l <= lmax; l++)
                 max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
-        }
 
-        void rebuild_aw_descriptors(int lmax)
-        {
-            aw_descriptors_.clear();
-            for (int l = 0; l <= lmax; l++)
-            {
-                aw_descriptors_.push_back(aw_default_l_);
-                for (int ord = 0; ord < (int)aw_descriptors_[l].size(); ord++)
-                {
-                    aw_descriptors_[l][ord].n = l + 1;
-                    aw_descriptors_[l][ord].l = l;
-                }
-            }
-
-            for (int i = 0; i < (int)aw_specific_l_.size(); i++)
-            {
-                int l = aw_specific_l_[i][0].l;
-                aw_descriptors_[l] = aw_specific_l_[i];
-            }
+            indexr_.init(lmax, aw_descriptors_, lo_descriptors_);
+            indexb_.init(indexr_);
         }
 
         double solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
@@ -625,6 +789,9 @@ class AtomType
                               << "  auto : " << lo_descriptors_[j][order].auto_enu << std::endl;
             }
 
+            printf("total number of radial functions : %i\n", indexr_.size());
+            printf("total number of basis functions : %i\n", indexb_.size());
+
             radial_grid_.print_info();
         }
 
@@ -651,6 +818,21 @@ class AtomType
         inline int max_aw_order()
         {
             return max_aw_order_;
+        }
+
+        inline radial_functions_index& indexr()
+        {
+            return indexr_;
+        }
+        
+        inline radial_functions_index::radial_function_index_descriptor& indexr(int i)
+        {
+            return indexr_[i];
+        }
+
+        inline basis_functions_index& indexb()
+        {
+            return indexb_;
         }
 };
 

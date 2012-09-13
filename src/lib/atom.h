@@ -66,6 +66,30 @@ class Atom
         {
             symmetry_class_ = _symmetry_class;
         }
+
+        /*!
+            \brief Generate radial integrals used to setup Hamiltonian and overlap matrices
+
+            Hamiltonian operator has the following representation inside muffin-tins:
+            \f[
+                \hat H=-\frac{1}{2}\nabla^2 + \sum_{\ell m} V_{\ell m}(r) R_{\ell m}(\hat {\bf r}) =
+                  \underbrace{-\frac{1}{2} \nabla^2+V_{00}(r)R_{00}}_{H_{s}(r)} +\sum_{\ell=1} \sum_{m=-\ell}^{\ell} 
+                   V_{\ell m}(r) R_{\ell m}(\hat {\bf r}) = \sum_{\ell m} \widetilde V_{\ell m}(r) R_{\ell m}(\hat {\bf r})
+            \f]
+            where
+            \f[
+                \widetilde V_{\ell m}(r)=\left\{ \begin{array}{ll} 
+                  \frac{H_{s}(r)}{R_{00}} & \ell = 0 \\ 
+                  V_{\ell m}(r) & \ell > 0 \end{array} \right.
+            \f]
+        */
+        void generate_radial_integrals(double lmax, double* veff_)
+        {
+            int lmmax = lmmax_by_lmax(lmax);
+            mdarray<double,2> veff(veff_, lmmax, type_->num_mt_points());  
+
+
+        }
 };
 
 };

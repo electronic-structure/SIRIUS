@@ -90,10 +90,9 @@ class Global : public step_function
                  atom_type(i)->init(lmax_apw());
                  max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(i)->num_mt_points());
             }
+
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
-            {
                 atom_symmetry_class(ic)->init();
-            }
 
             assert(num_atoms() != 0);
             assert(num_atom_types() != 0);
