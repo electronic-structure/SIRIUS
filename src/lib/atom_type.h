@@ -45,38 +45,19 @@ class radial_functions_index
 {
     public:
 
-        class radial_function_index_descriptor
+        struct radial_function_index_descriptor
         {
-            private:
+            int l;
 
-                int l_;
+            int order;
 
-                int order_;
+            int idxlo;
 
-                int idxlo_;
-
-            public:
-
-                radial_function_index_descriptor(int l__, int order__, int idxlo__ =  -1) : l_(l__), order_(order__), idxlo_(idxlo__)
-                {
-                    assert(l_ >= 0);
-                    assert(order_ >= 0);
-                }
-
-                inline int l()
-                {
-                    return l_;
-                }
-
-                inline int order()
-                {
-                    return order_;
-                }
-
-                inline int idxlo()
-                {
-                    return idxlo_;
-                }
+            radial_function_index_descriptor(int l, int order, int idxlo =  -1) : l(l), order(order), idxlo(idxlo)
+            {
+                assert(l >= 0);
+                assert(order >= 0);
+            }
         };
 
     private: 
@@ -84,6 +65,8 @@ class radial_functions_index
         std::vector<radial_function_index_descriptor> radial_function_index_descriptors_;
 
         mdarray<int,2> index_by_l_order_;
+
+        mdarray<int,1> index_by_idxlo_;
     
     public:
 
@@ -118,11 +101,16 @@ class radial_functions_index
             index_by_l_order_.set_dimensions(lmax + 1, max_num_rf);
             index_by_l_order_.allocate();
 
+            index_by_idxlo_.set_dimensions(lo_descriptors.size());
+            index_by_idxlo_.allocate();
+
             for (int i = 0; i < (int)radial_function_index_descriptors_.size(); i++)
             {
-                int l = radial_function_index_descriptors_[i].l();
-                int order = radial_function_index_descriptors_[i].order();
+                int l = radial_function_index_descriptors_[i].l;
+                int order = radial_function_index_descriptors_[i].order;
+                int idxlo = radial_function_index_descriptors_[i].idxlo;
                 index_by_l_order_(l, order) = i;
+                if (idxlo >= 0) index_by_idxlo_(idxlo) = i; 
             }
         }
 
@@ -139,6 +127,11 @@ class radial_functions_index
         inline int index_by_l_order(int l, int order)
         {
             return index_by_l_order_(l, order);
+        }
+
+        inline int index_by_idxlo(int idxlo)
+        {
+            return index_by_idxlo_(idxlo);
         }
 };
 
@@ -182,9 +175,9 @@ class basis_functions_index
 
            for (int idxrf = 0; idxrf < indexr.size(); idxrf++)
            {
-               int l = indexr[idxrf].l();
-               int order = indexr[idxrf].order();
-               int idxlo = indexr[idxrf].idxlo();
+               int l = indexr[idxrf].l;
+               int order = indexr[idxrf].order;
+               int idxlo = indexr[idxrf].idxlo;
                for (int m = -l; m <= l; m++)
                    basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, m, order, idxlo, idxrf));
            }
@@ -539,6 +532,11 @@ class AtomType
         inline RadialGrid& radial_grid()
         {
             return radial_grid_;
+        }
+        
+        inline double radial_grid(int ir)
+        {
+            return radial_grid_[ir];
         }
         
         inline int num_levels_nl()

@@ -134,14 +134,37 @@ template <typename T> class Spline
             
             if (m == 0)
             {
+                double t = 1.0 / 3.0;
                 for (int i = 0; i < num_points - 1; i++)
                 {
                     double dx = radial_grid.dr(i);
-                    g[i + 1] = g[i] + (((d[i] * dx / 4.0 + c[i] / 3.0) * dx + b[i] / 2.0) * dx + a[i]) * dx;
+                    g[i + 1] = g[i] + (((d[i] * dx * 0.25 + c[i] * t) * dx + b[i] * 0.5) * dx + a[i]) * dx;
                 }
             }
             
-            if (m > 0 || m < -4)
+            if (m == 2)
+            {
+                for (int i = 0; i < num_points - 1; i++)
+                {
+                    double x0 = radial_grid[i];
+                    double x1 = radial_grid[i + 1];
+                    double dx = radial_grid.dr(i);
+                    T a0 = a[i];
+                    T a1 = b[i];
+                    T a2 = c[i];
+                    T a3 = d[i];
+
+                    T x0_2 = x0 * x0;
+                    T x0_3 = x0_2 * x0;
+                    T x1_2 = x1 * x1;
+                    T x1_3 = x1_2 * x1;
+
+                    g[i + 1] = g[i] + (20.0 * a0 * (x1_3 - x0_3) + 5.0 * a1 * (x0 * x0_3 + x1_3 * (3.0 * dx - x0)) - dx * dx * dx * 
+                        (-2.0 * a2 * (x0_2 + 3.0 * x0 * x1 + 6.0 * x1_2) - a3 * dx * (x0_2 + 4.0 * x0 * x1 + 10.0 * x1_2))) / 60.0;
+                }
+            }
+            
+            if ((m > 0 && m != 2) || m < -4)
             {
                 for (int i = 0; i < num_points - 1; i++)
                 {

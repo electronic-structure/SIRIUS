@@ -94,6 +94,9 @@ class Global : public step_function
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
                 atom_symmetry_class(ic)->init();
 
+            for (int ia = 0; ia < num_atoms(); ia++)
+                atom(ia)->init(lmax_pot());
+
             assert(num_atoms() != 0);
             assert(num_atom_types() != 0);
             assert(num_atom_symmetry_classes() != 0);
