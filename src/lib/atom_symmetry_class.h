@@ -306,7 +306,7 @@ class AtomSymmetryClass
             print_enu();
         }
 
-        inline double& radial_function(int ir, int idx, int n)
+        inline double radial_function(int ir, int idx, int n)
         {
             return radial_functions_(ir, idx, n);
         }
@@ -328,6 +328,25 @@ class AtomSymmetryClass
                     radial_solution_descriptor& rsd = atom_type_->lo_descriptor(idxlo)[order];
                     printf("n = %i   l = %i   order = %i   enu = %f\n", rsd.n, rsd.l, order, rsd.enu);
                 }
+         }
+
+         /*!
+             \brief Compute m-th order radial derivative at the MT surface
+         */
+         double aw_surface_dm(int l, int order, int dm)
+         {
+             assert(dm <= 1);
+
+             if (dm == 0)
+             {
+                 int idxrf = atom_type_->indexr().index_by_l_order(l, order);
+                 return radial_function(atom_type_->num_mt_points() - 1, idxrf, 0);
+             } 
+             else if (dm == 1)
+             {
+                 return aw_surface_derivatives_(order, l);
+             }
+             else return 0.0;
          }
 };
 

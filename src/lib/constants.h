@@ -17,6 +17,8 @@ const double y00 = 0.28209479177387814347;
 
 const double pw_cutoff_default = 10.0; 
 
+const double aw_cutoff_default = 7.0;
+
 const int lmax_apw_default = 8;
 
 const int lmax_rho_default = 7;

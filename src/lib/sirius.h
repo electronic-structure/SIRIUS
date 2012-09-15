@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <map>
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -50,6 +51,7 @@ extern "C" {
 #include "reciprocal_lattice.h"
 #include "step_function.h"
 #include "global.h"
+#include "kpoint.h"
 #include "periodic_function.h"
 #include "density.h"
 #include "potential.h"

@@ -67,6 +67,12 @@ class radial_functions_index
         mdarray<int,2> index_by_l_order_;
 
         mdarray<int,1> index_by_idxlo_;
+
+        /// number of radial functions for each angular momentum quantum number
+        std::vector<int> num_rf_;
+
+        // maximum number of radial functions across all angular momentums
+        int max_num_rf_;
     
     public:
 
@@ -76,13 +82,16 @@ class radial_functions_index
         {
             assert((int)aw_descriptors.size() == lmax + 1);
 
-            std::vector<int> num_rf(lmax + 1, 0);
+            num_rf_ = std::vector<int>(lmax + 1, 0);
+            max_num_rf_ = 0;
 
             radial_function_index_descriptors_.clear();
 
             for (int l = 0; l <= lmax; l++)
             {
-                num_rf[l] = aw_descriptors[l].size();
+                assert(aw_descriptors[l].size() <= 2);
+
+                num_rf_[l] = aw_descriptors[l].size();
                 for (int order = 0; order < (int)aw_descriptors[l].size(); order++)
                    radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, order));
             }
@@ -90,15 +99,14 @@ class radial_functions_index
             for (int idxlo = 0; idxlo < (int)lo_descriptors.size(); idxlo++)
             {
                 int l = lo_descriptors[idxlo][0].l;
-                radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, num_rf[l], idxlo));
-                num_rf[l]++;
+                radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, num_rf_[l], idxlo));
+                num_rf_[l]++;
             }
 
-            int max_num_rf = 0;
             for (int l = 0; l <= lmax; l++)
-                max_num_rf = std::max(max_num_rf, num_rf[l]);
+                max_num_rf_ = std::max(max_num_rf_, num_rf_[l]);
 
-            index_by_l_order_.set_dimensions(lmax + 1, max_num_rf);
+            index_by_l_order_.set_dimensions(lmax + 1, max_num_rf_);
             index_by_l_order_.allocate();
 
             index_by_idxlo_.set_dimensions(lo_descriptors.size());
@@ -132,6 +140,17 @@ class radial_functions_index
         inline int index_by_idxlo(int idxlo)
         {
             return index_by_idxlo_(idxlo);
+        }
+
+        inline int num_rf(int l)
+        {
+            assert(l >= 0 && l < (int)num_rf_.size());
+            return num_rf_[l];
+        }
+
+        inline int max_num_rf()
+        {
+            return max_num_rf_;
         }
 };
 
@@ -578,6 +597,9 @@ class AtomType
             max_aw_order_ = 0;
             for (int l = 0; l <= lmax; l++)
                 max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
+            
+            if (max_aw_order_ > 2)
+                error(__FILE__, __LINE__, "maximum aw order is > 2");
 
             indexr_.init(lmax, aw_descriptors_, lo_descriptors_);
             indexb_.init(indexr_);
@@ -788,8 +810,8 @@ class AtomType
             }
 
             printf("total number of radial functions : %i\n", indexr_.size());
+            printf("maximum number of radial functions : %i\n", indexr_.max_num_rf());
             printf("total number of basis functions : %i\n", indexb_.size());
-
             radial_grid_.print_info();
         }
 

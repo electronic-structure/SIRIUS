@@ -13,8 +13,14 @@ class Global : public step_function
         /// maximum l for potential
         int lmax_pot_;
         
+        /// cutoff for augmented-wave functions
+        double aw_cutoff_;
+        
         /// maximum number of muffin-tin points across all atom types
         int max_num_mt_points_;
+        
+        /// minimum muffin-tin radius
+        double min_mt_radius_;
         
         /// number of magnetic field components
         //int nmag;
@@ -23,7 +29,8 @@ class Global : public step_function
     
         Global() : lmax_apw_(lmax_apw_default),
                    lmax_rho_(lmax_rho_default),
-                   lmax_pot_(lmax_pot_default)
+                   lmax_pot_(lmax_pot_default),
+                   aw_cutoff_(aw_cutoff_default)
         {
         }
 
@@ -77,6 +84,16 @@ class Global : public step_function
             return max_num_mt_points_;
         }
 
+        inline double aw_cutoff()
+        {
+            return aw_cutoff_;
+        }
+
+        inline double min_mt_radius()
+        {
+            return min_mt_radius_;
+        }
+
         void initialize()
         {
             unit_cell::init();
@@ -85,10 +102,13 @@ class Global : public step_function
             step_function::init();
            
             max_num_mt_points_ = 0;
+            min_mt_radius_ = 1e100;
+            
             for (int i = 0; i < num_atom_types(); i++)
             {
                  atom_type(i)->init(lmax_apw());
                  max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(i)->num_mt_points());
+                 min_mt_radius_ = std::min(min_mt_radius_, atom_type(i)->mt_radius());
             }
 
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)

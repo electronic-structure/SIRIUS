@@ -26,6 +26,12 @@ template <typename T> class mdarray<T,1> : public mdarray_base_impl<T,1>
             set_dimensions(d0);
             this->set_ptr(data_ptr);
         }
+        
+        mdarray(const dimension& d0)
+        {
+            set_dimensions(d0);
+            this->allocate();
+        }
 
         void set_dimensions(const dimension& d0)
         {
@@ -57,6 +63,12 @@ template <typename T> class mdarray<T,2> : public mdarray_base_impl<T,2>
         {
             set_dimensions(d0, d1);
             this->set_ptr(data_ptr);
+        }
+        
+        mdarray(const dimension& d0, const dimension& d1)
+        {
+            set_dimensions(d0, d1);
+            this->allocate();
         }
         
         void set_dimensions(const dimension& d0, const dimension& d1)
@@ -91,6 +103,12 @@ template <typename T> class mdarray<T,3> : public mdarray_base_impl<T,3>
         {
             set_dimensions(d0, d1, d2);
             this->set_ptr(data_ptr);
+        }
+        
+        mdarray(const dimension& d0, const dimension& d1, const dimension& d2)
+        {
+            set_dimensions(d0, d1, d2);
+            this->allocate();
         }
         
         void set_dimensions(const dimension& d0, const dimension& d1, const dimension& d2)
