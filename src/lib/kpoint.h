@@ -18,7 +18,7 @@ class kpoint
 
             double gk_cutoff = global.aw_cutoff() / global.min_mt_radius();
 
-            std::vector< std::pair<double, int> > gklen;
+            std::vector< std::pair<double, int> > gkmap;
 
             // find G-vectors for which |G+k| < cutoff
             for (int ig = 0; ig < global.num_gvec(); ig++)
@@ -29,23 +29,23 @@ class kpoint
 
                 double v[3];
                 global.get_coordinates<cartesian,reciprocal>(vgk, v);
-                double len = vector_length(v);
+                double gklen = vector_length(v);
 
-                if (len < gk_cutoff) gklen.push_back(std::pair<double,int>(len, ig));
+                if (gklen < gk_cutoff) gkmap.push_back(std::pair<double,int>(gklen, ig));
             }
 
-            std::sort(gklen.begin(), gklen.end());
+            std::sort(gkmap.begin(), gkmap.end());
 
-            gkvec_.set_dimensions(3, gklen.size());
+            gkvec_.set_dimensions(3, gkmap.size());
             gkvec_.allocate();
 
-            idxg_.resize(gklen.size());
+            idxg_.resize(gkmap.size());
 
-            for (int ig = 0; ig < (int)gklen.size(); ig++)
+            for (int ig = 0; ig < (int)gkmap.size(); ig++)
             {
-                idxg_[ig] = gklen[ig].second;
+                idxg_[ig] = gkmap[ig].second;
                 for (int x = 0; x < 3; x++)
-                    gkvec_(x, ig) = global.gvec(gklen[ig].second)[x] + vk[x];
+                    gkvec_(x, ig) = global.gvec(gkmap[ig].second)[x] + vk[x];
             }
         }
 
@@ -123,11 +123,15 @@ class kpoint
 
         inline int num_gkvec()
         {
-            return idxg_.size();
+            assert(gkvec_.size(1) == (int)idxg_.size());
+
+            return gkvec_.size(1);
         }
 
         inline double* gkvec(int ig)
         {
+            assert(ig >= 0 && ig < gkvec_.size(1));
+
             return &gkvec_(0, ig);
         }
 
