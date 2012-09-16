@@ -53,13 +53,9 @@ class kpoint
         {
             Timer t("sirius::kpoint::generate_matching_coefficients");
 
-            std::vector<double> gklen(num_gkvec());
+            std::vector<complex16> ylmgk(global.lmmax_apw());
             
-            mdarray<complex16,2> ylmgk(NULL, global.lmmax_apw(), num_gkvec());
-            ylmgk.allocate();
-            
-            mdarray<double,3> jl(NULL, global.lmax_apw() + 2, 2, num_gkvec());
-            jl.allocate();
+            mdarray<double,2> jl(global.lmax_apw() + 2, 2);
             
             std::vector<complex16> zil(global.lmax_apw() + 1);
             for (int l = 0; l <= global.lmax_apw(); l++)
@@ -74,8 +70,7 @@ class kpoint
                 double vs[3];
                 global.get_coordinates<cartesian,reciprocal>(gkvec(ig), v);
                 SHT::spherical_coordinates(v, vs);
-                SHT::spherical_harmonics(global.lmax_apw(), vs[1], vs[2], &ylmgk(0, ig));
-                gklen[ig] = vs[0];
+                SHT::spherical_harmonics(global.lmax_apw(), vs[1], vs[2], &ylmgk[0]);
 
                 for (int ia = 0; ia < global.num_atoms(); ia++)
                 {
@@ -84,13 +79,13 @@ class kpoint
                     assert(global.atom(ia)->type()->max_aw_order() <= 2);
 
                     double R = global.atom(ia)->type()->mt_radius();
-                    double t = R * vs[0]; // |G+k|*R
+                    double gkR = vs[0] * R; // |G+k|*R
 
                     // generate spherical Bessel functions
-                    gsl_sf_bessel_jl_array(global.lmax_apw() + 1, t, &jl(0, 0, ig));
+                    gsl_sf_bessel_jl_array(global.lmax_apw() + 1, gkR, &jl(0, 0));
                     // Bessel function derivative: f_{{n}}^{{\prime}}(z)=-f_{{n+1}}(z)+(n/z)f_{{n}}(z)
                     for (int l = 0; l <= global.lmax_apw(); l++)
-                        jl(l, 1, ig) = -jl(l + 1, 0, ig) + (l / R) * jl(l, 0, ig);
+                        jl(l, 1) = -jl(l + 1, 0) + (l / R) * jl(l, 0);
 
                     for (int l = 0; l <= global.lmax_apw(); l++)
                     {
@@ -105,8 +100,8 @@ class kpoint
                         
                         for (int m = -l; m <= l; m++)
                             for (int order = 0; order < num_aw; order++)
-                                b(order, m + l) = (fourpi / sqrt(global.omega())) * zil[l] * jl(l, order, ig) * phase_factor * 
-                                    conj(ylmgk(lm_by_l_m(l, m), ig)) * pow(t, order); 
+                                b(order, m + l) = (fourpi / sqrt(global.omega())) * zil[l] * jl(l, order) * phase_factor * 
+                                    conj(ylmgk[lm_by_l_m(l, m)]) * pow(gkR, order); 
                         
                         int info = gesv<complex16>(num_aw, 2 * l + 1, &a[0][0], 2, &b(0, 0), 2);
 
@@ -116,6 +111,11 @@ class kpoint
                             s << "gtsv returned " << info;
                             error(__FILE__, __LINE__, s);
                         }
+
+                        /*for (int order = 0; order < num_aw; order++)
+                            for (int m = -l; m <= l; m++)
+                                matching_coefficients(ig, global.atom(ia)->offset_aw() + global.atom(ia)->type().indexb().index_by_l_m_order(l, m, order)) = 
+                                    b(order, l + m);*/
                     }
                 }
             }
