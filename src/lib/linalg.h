@@ -8,6 +8,30 @@
 #include "linalg_cpu.h"
 #include "linalg_gpu.h"
 
+
+template<implementation impl, typename T> 
+void gemm(int transa, int transb, int4 m, int4 n, int4 k, T alpha, T* a, int4 lda, 
+          T* b, int4 ldb, T beta, T* c, int4 ldc);
+
+template<> void gemm<cpu,real8>(int transa, int transb, int4 m, int4 n, int4 k, real8 alpha, real8* a, int4 lda, 
+     real8* b, int4 ldb, real8 beta, real8* c, int4 ldc)
+{
+    const char *trans[] = {"N", "T", "C"};
+
+    FORTRAN(dgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int4)1, (int4)1);
+}
+
+template<> void gemm<cpu,complex16>(int transa, int transb, int4 m, int4 n, int4 k, complex16 alpha, complex16* a, int4 lda, 
+     complex16* b, int4 ldb, complex16 beta, complex16* c, int4 ldc)
+{
+    const char *trans[] = {"N", "T", "C"};
+
+    FORTRAN(zgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int4)1, (int4)1);
+}
+
+
+
+/*
 template<implementation impl> 
 void zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, complex16 alpha, 
            complex16 *a, int32_t lda, complex16 *b, int32_t ldb, complex16 beta, 
@@ -113,13 +137,14 @@ void zgemv(int transa, int32_t m, int32_t n, complex16 alpha, complex16 *a, int3
     }
 }
 
-void dgemm(int transa, int transb, int4 m, int4 n, int4 k, real8 alpha, real8* a, int4 lda, real8* b, 
+*/
+/*void dgemm(int transa, int transb, int4 m, int4 n, int4 k, real8 alpha, real8* a, int4 lda, real8* b, 
            int4 ldb, real8 beta, real8* c, int4 ldc)
 {
     const char *trans[] = {"N", "T", "C"};
 
     FORTRAN(dgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int4)1, (int4)1);
-}
+}*/
 
 #endif // __LINALG_H__
 

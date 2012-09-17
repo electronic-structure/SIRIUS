@@ -16,7 +16,6 @@ class SHT
 
         std::vector<double> w_;
 
-
         /// backward transformation from Ylm to spherical coordinates
         mdarray<complex16,2> ylm_backward_;
         
@@ -155,7 +154,7 @@ class SHT
         {
             assert(lmmax <= lmmax_);
 
-            dgemm(1, 0, num_points_, ncol, lmmax, 1.0, &rlm_backward_(0, 0), lmmax_, flm, lmmax, 0.0, ftp, num_points_);
+            gemm<cpu>(1, 0, num_points_, ncol, lmmax, 1.0, &rlm_backward_(0, 0), lmmax_, flm, lmmax, 0.0, ftp, num_points_);
         }
 
    
@@ -166,7 +165,7 @@ class SHT
         {
             assert(lmmax <= lmmax_);
             
-            dgemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, ftp, num_points_, 0.0, flm, lmmax);
+            gemm<cpu>(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, ftp, num_points_, 0.0, flm, lmmax);
         }
 
         /*!
@@ -345,11 +344,35 @@ class SHT
             return num_points_;
         }
 
+        static inline double gaunt(int l1, int l2, int l3, int m1, int m2, int m3)
+        {
+            assert(l1 >= 0);
+            assert(l2 >= 0);
+            assert(l3 >= 0);
+            assert(m1 >= -l1 && m1 <= l1);
+            assert(m2 >= -l2 && m2 <= l2);
+            assert(m3 >= -l3 && m3 <= l3);
 
+            return pow(-1.0, abs(m1)) * sqrt(double(2 * l1 + 1) * double(2 * l2 + 1) * double(2 * l3 + 1) / fourpi) * 
+                   gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 0, 0, 0) *
+                   gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, -2 * m1, 2 * m2, 2 * m3);
+        }
 
+        static inline complex16 complex_gaunt(int l1, int l2, int l3, int m1, int m2, int m3)
+        {
+            assert(l1 >= 0);
+            assert(l2 >= 0);
+            assert(l3 >= 0);
+            assert(m1 >= -l1 && m1 <= l1);
+            assert(m2 >= -l2 && m2 <= l2);
+            assert(m3 >= -l3 && m3 <= l3);
 
-
-
+            if (m2 == 0) return complex16(gaunt(l1, l2, l3, m1, m2, m3), 0.0);
+            else 
+            {
+                return ylm_dot_rlm(l2, m2, m2) *  gaunt(l1, l2, l3, m1, m2, m3) +  ylm_dot_rlm(l2, -m2, m2) *  gaunt(l1, l2, l3, m1, -m2, m3);
+            }
+        }
 };
 
 };

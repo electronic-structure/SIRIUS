@@ -210,6 +210,14 @@ class reciprocal_lattice : public geometry
         {
             return gvec_phase_factor_(ig, ia);
         }
+
+        /// return global index of G1-G2 vector
+        inline int index_g12(int ig1, int ig2)
+        {
+            return index_by_gvec_(gvec_(0, ig1) - gvec_(0, ig2),
+                                  gvec_(1, ig1) - gvec_(1, ig2),
+                                  gvec_(2, ig1) - gvec_(2, ig2));
+        }
 };
 
 };

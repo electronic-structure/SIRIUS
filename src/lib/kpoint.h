@@ -7,7 +7,10 @@ class kpoint
 
         mdarray<double,2> gkvec_;
 
+        /// global index (in the range [0, num_gvec() - 1]) of G-vector by the index of G+k vector in the range [0, num_gkvec() - 1]
         std::vector<int> idxg_;
+
+        mdarray<complex16,2> matching_coefficients_;
 
     public:
 
@@ -31,7 +34,7 @@ class kpoint
                 global.get_coordinates<cartesian,reciprocal>(vgk, v);
                 double gklen = vector_length(v);
 
-                if (gklen < gk_cutoff) gkmap.push_back(std::pair<double,int>(gklen, ig));
+                if (gklen <= gk_cutoff) gkmap.push_back(std::pair<double,int>(gklen, ig));
             }
 
             std::sort(gkmap.begin(), gkmap.end());
@@ -60,10 +63,14 @@ class kpoint
             std::vector<complex16> zil(global.lmax_apw() + 1);
             for (int l = 0; l <= global.lmax_apw(); l++)
                 zil[l] = pow(zi, l);
-       
+      
+            matching_coefficients_.set_dimensions(num_gkvec(), global.num_aw());
+            matching_coefficients_.allocate();
+
             // TODO: check if spherical harmonic generation is slowing things: then it can be cached
             // TODO: number of Bessel functions can be considerably decreased (G+k shells, atom types)
-            // TOTO[?]: G+k shells
+            // TODO[?]: G+k shells
+            // TODO: check leading dimension of matching coefficients
             for (int ig = 0; ig < num_gkvec(); ig++)
             {
                 double v[3];
@@ -112,10 +119,10 @@ class kpoint
                             error(__FILE__, __LINE__, s);
                         }
 
-                        /*for (int order = 0; order < num_aw; order++)
+                        for (int order = 0; order < num_aw; order++)
                             for (int m = -l; m <= l; m++)
-                                matching_coefficients(ig, global.atom(ia)->offset_aw() + global.atom(ia)->type().indexb().index_by_l_m_order(l, m, order)) = 
-                                    b(order, l + m);*/
+                                matching_coefficients_(ig, global.atom(ia)->offset_aw() + global.atom(ia)->type()->indexb_by_l_m_order(l, m, order)) = 
+                                    conj(b(order, l + m)); // it is more convenient to store conjugated coefficients
                     }
                 }
             }
@@ -133,6 +140,18 @@ class kpoint
             assert(ig >= 0 && ig < gkvec_.size(1));
 
             return &gkvec_(0, ig);
+        }
+
+        inline int gvec_index(int ig)
+        {
+            assert(ig >= 0 && ig < (int)idxg_.size());
+            
+            return idxg_[ig];
+        }
+
+        inline complex16& matching_coefficient(int ig, int i)
+        {
+            return matching_coefficients_(ig, i);
         }
 
 };

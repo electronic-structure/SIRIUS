@@ -94,6 +94,11 @@ class step_function : public reciprocal_lattice
                 error(__FILE__, __LINE__, s);
             }
         }
+
+        inline complex16& step_function_pw(int ig)
+        {
+            return step_function_pw_[ig];
+        }
 };
 
 };

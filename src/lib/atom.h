@@ -18,6 +18,8 @@ class Atom
 
         mdarray<double,3> h_radial_integrals_;
         mdarray<double,3> o_radial_integrals_;
+
+        int offset_aw_;
     
     public:
     
@@ -74,10 +76,13 @@ class Atom
             symmetry_class_ = symmetry_class__;
         }
 
-        void init(int lmax)
+        void init(int lmax, int offset_aw__)
         {
             assert(symmetry_class());
+            assert(lmax >= 0);
+            assert(offset_aw__ >= 0);
             
+            offset_aw_ = offset_aw__;
             int lmmax = lmmax_by_lmax(lmax);
 
             h_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size());
@@ -154,6 +159,16 @@ class Atom
                         o_radial_integrals_(l, order1, order2) = s.integrate(2);
                     }
                 }
+        }
+
+        inline int offset_aw()
+        {
+            return offset_aw_;  
+        }
+
+        inline double h_radial_integral(int lm, int idxrf1, int idxrf2)
+        {
+            return h_radial_integrals_(lm, idxrf1, idxrf2);
         }
 };
 

@@ -381,8 +381,15 @@ class Potential
 
             density.charge_density().deallocate_ylm();
 
-            //complex16* fft_buf = global.fft().
-        
+            global.fft().zero();
+
+            for (int ig = 0; ig < global.num_gvec(); ig++)
+                global.fft().input_buffer(global.fft_index(ig)) = hartree_potential_.f_pw(ig);
+
+            global.fft().backward();
+
+            for (int ir = 0; ir < global.fft().size(); ir++)
+                hartree_potential_.f_it(ir) = global.fft().output_buffer(ir);
         }
 
         void xc()

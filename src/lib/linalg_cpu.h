@@ -4,15 +4,24 @@
 #include <stdint.h>
 #include "config.h"
 
+/*
+    matrix-matrix operations
+*/
 extern "C" void FORTRAN(zgemm)(const char* transa, const char* transb, int4* m, int4* n, int4* k, 
                                complex16* alpha, complex16* a, int4* lda, complex16* b, int4* ldb, 
                                complex16* beta, complex16* c, int4* ldc, int4 transalen, int4 transblen);
+extern "C" void FORTRAN(dgemm)(const char* transa, const char* transb, int4* m, int4* n, int4* k, 
+                               real8* alpha, real8* a, int4* lda, real8* b, int4* ldb, 
+                               real8* beta,real8* c, int4* ldc, int4 transalen, int4 transblen);
 
 extern "C" void FORTRAN(zhemm)(const char *side, const char *uplo, int32_t *m, int32_t *n, 
                                complex16 *alpha, complex16 *a, int32_t *lda, complex16 *b,
                                int32_t *ldb, complex16 *beta, complex16 *c, int32_t *ldc,
                                int32_t sidelen, int32_t uplolen);
-    
+
+/*
+    eigen-value problem
+*/
 extern "C" void FORTRAN(zhegvx)(int32_t *itype, const char *jobz, const char *range, 
                                 const char *uplo, int32_t *n, complex16 *a, int32_t *lda,
                                 complex16 *b, int32_t *ldb, double *vl, double *vu, int32_t *il,
@@ -92,9 +101,6 @@ template<> int gesv<complex16>(int4 n, int4 nrhs, complex16* a, int4 lda, comple
 
     return info;
 }
-
-extern "C" void FORTRAN(dgemm)(const char* transa, const char* transb, int4* m, int4* n, int4* k, real8* alpha, real8* a,
-                               int4* lda, real8* b, int4* ldb, real8* beta, real8* c, int4* ldc, int4 transalen, int4 transblen);
 
 #endif // __LINALG_CPU_H__
 

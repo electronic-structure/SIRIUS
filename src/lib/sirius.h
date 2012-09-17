@@ -25,6 +25,7 @@ extern "C" {
 #include <gsl/gsl_heapsort.h>
 #include <gsl/gsl_sf_legendre.h>
 #include <gsl/gsl_sf_bessel.h>
+#include <gsl/gsl_sf_coupling.h>
 #include <xc.h>
 #include "../libjson/libjson.h"
 #include "LebedevLaikov.h"
@@ -50,9 +51,9 @@ extern "C" {
 #include "geometry.h"
 #include "reciprocal_lattice.h"
 #include "step_function.h"
+#include "periodic_function.h"
 #include "global.h"
 #include "kpoint.h"
-#include "periodic_function.h"
 #include "density.h"
 #include "potential.h"
 #include "band.h"

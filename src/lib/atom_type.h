@@ -53,7 +53,11 @@ class radial_functions_index
 
             int idxlo;
 
-            radial_function_index_descriptor(int l, int order, int idxlo =  -1) : l(l), order(order), idxlo(idxlo)
+            radial_function_index_descriptor(int l, 
+                                             int order, 
+                                             int idxlo =  -1) : l(l), 
+                                                                order(order), 
+                                                                idxlo(idxlo)
             {
                 assert(l >= 0);
                 assert(order >= 0);
@@ -129,6 +133,8 @@ class radial_functions_index
 
         inline radial_function_index_descriptor& operator[](int i)
         {
+            assert(i >= 0 && i < (int)radial_function_index_descriptors_.size());
+
             return radial_function_index_descriptors_[i];
         }
 
@@ -142,12 +148,19 @@ class radial_functions_index
             return index_by_idxlo_(idxlo);
         }
 
+        /*!
+            \brief Number of radial functions for a given orbital quantum number.
+        */
         inline int num_rf(int l)
         {
             assert(l >= 0 && l < (int)num_rf_.size());
+            
             return num_rf_[l];
         }
 
+        /*!
+            \brief Maximum number of radial functions for one orbital quantum number.
+        */
         inline int max_num_rf()
         {
             return max_num_rf_;
@@ -156,39 +169,57 @@ class radial_functions_index
 
 class basis_functions_index
 {
-    private:
+    public: 
 
-        class basis_function_index_descriptor
+        struct basis_function_index_descriptor
         {
-            private:
+            int l;
 
-                int l_;
+            int m;
 
-                int m_;
+            int lm;
 
-                int lm_;
+            int order;
 
-                int order_;
+            int idxlo;
 
-                int idxlo_;
-
-                int idxrf_;
+            int idxrf;
             
-            public:
+            basis_function_index_descriptor(int l, 
+                                            int m, 
+                                            int order, 
+                                            int idxlo, 
+                                            int idxrf) : l(l), 
+                                                         m(m), 
+                                                         order(order), 
+                                                         idxlo(idxlo), 
+                                                         idxrf(idxrf) 
+            {
+                assert(l >= 0);
+                assert(m >= -l && m <= l);
+                assert(order >= 0);
+                assert(idxrf >= 0);
 
-                basis_function_index_descriptor(int l__, int m__, int order__, int idxlo__, int idxrf__) : l_(l__), m_(m__), order_(order__), 
-                                                                                                           idxlo_(idxlo__), idxrf_(idxrf__) 
-                {
-                    lm_ = lm_by_l_m(l_, m_);
-                }
+                lm = lm_by_l_m(l, m);
+            }
         };
 
+    private:
+
+       std::vector<basis_function_index_descriptor> basis_function_index_descriptors_; 
+       
+       mdarray<int,2> index_by_lm_order_;
+       
+       /// number of augmented wave basis functions
+       int num_aw_;
+       
+       /// number of local orbital basis functions
+       int num_lo_;
 
     public:
 
-       std::vector<basis_function_index_descriptor> basis_function_index_descriptors_; 
-
-       void init(radial_functions_index& indexr)
+       void init(const int lmax,
+                 radial_functions_index& indexr)
        {
            basis_function_index_descriptors_.clear();
 
@@ -200,16 +231,58 @@ class basis_functions_index
                for (int m = -l; m <= l; m++)
                    basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, m, order, idxlo, idxrf));
            }
-       }
+
+           index_by_lm_order_.set_dimensions(lmmax_by_lmax(lmax), indexr.max_num_rf());
+           index_by_lm_order_.allocate();
+
+           for (int i = 0; i < (int)basis_function_index_descriptors_.size(); i++)
+           {
+               int lm = basis_function_index_descriptors_[i].lm;
+               int order = basis_function_index_descriptors_[i].order;
+               index_by_lm_order_(lm, order) = i;
+               
+               // get number of aw basis functions
+               if (basis_function_index_descriptors_[i].idxlo < 0) num_aw_ = i + 1;
+           }
+
+           num_lo_ = basis_function_index_descriptors_.size() - num_aw_;
+
+           assert(num_aw_ > 0);
+           assert(num_lo_ >= 0);
+        }
 
        inline int size()
        {
            return basis_function_index_descriptors_.size();
        }
 
+       inline int num_aw()
+       {
+           return num_aw_;
+       }
+
+       inline int num_lo()
+       {
+           return num_lo_;
+       }
+
+       inline int index_by_l_m_order(int l, int m, int order)
+       {
+           return index_by_lm_order_(lm_by_l_m(l, m), order);
+       }
+       
+       inline int index_by_lm_order(int lm, int order)
+       {
+           return index_by_lm_order_(lm, order);
+       }
+       
+       inline basis_function_index_descriptor& operator[](int i)
+       {
+           assert(i >= 0 && i < (int)basis_function_index_descriptors_.size());
+
+           return basis_function_index_descriptors_[i];
+       }
 };
-
-
 
 class AtomType
 {
@@ -602,7 +675,7 @@ class AtomType
                 error(__FILE__, __LINE__, "maximum aw order is > 2");
 
             indexr_.init(lmax, aw_descriptors_, lo_descriptors_);
-            indexb_.init(indexr_);
+            indexb_.init(lmax, indexr_);
         }
 
         double solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
@@ -809,10 +882,12 @@ class AtomType
                               << "  auto : " << lo_descriptors_[j][order].auto_enu << std::endl;
             }
 
-            printf("total number of radial functions : %i\n", indexr_.size());
-            printf("maximum number of radial functions : %i\n", indexr_.max_num_rf());
-            printf("total number of basis functions : %i\n", indexb_.size());
-            radial_grid_.print_info();
+            printf("total number of radial functions : %i\n", indexr().size());
+            printf("maximum number of radial functions per orbital quantum number: %i\n", indexr().max_num_rf());
+            printf("total number of basis functions : %i\n", indexb().size());
+            printf("number of aw basis functions : %i\n", indexb().num_aw());
+            printf("number of lo basis functions : %i\n", indexb().num_lo());
+            radial_grid().print_info();
         }
 
         inline int num_aw_descriptors()
@@ -847,12 +922,31 @@ class AtomType
         
         inline radial_functions_index::radial_function_index_descriptor& indexr(int i)
         {
+            assert(i >= 0 && i < (int)indexr_.size());
+
             return indexr_[i];
         }
 
         inline basis_functions_index& indexb()
         {
             return indexb_;
+        }
+
+        inline basis_functions_index::basis_function_index_descriptor& indexb(int i)
+        {
+            assert(i >= 0 && i < (int)indexb_.size());
+            
+            return indexb_[i];
+        }
+
+        inline int indexb_by_l_m_order(int l, int m, int order)
+        {
+            return indexb_.index_by_l_m_order(l, m, order);
+        }
+        
+        inline int indexb_by_lm_order(int lm, int order)
+        {
+            return indexb_.index_by_lm_order(lm, order);
         }
 };
 

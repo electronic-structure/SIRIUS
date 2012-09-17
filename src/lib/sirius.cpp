@@ -75,9 +75,10 @@ extern "C" void FORTRAN(sirius_initial_density)()
     sirius::potential.generate_effective_potential();
     sirius::band.radial();
 
-    double v[] = {0.1, 0.2, 0.3}; 
+    double v[] = {0.0, 0.0, 0.0}; 
     sirius::kpoint k(v);
     k.generate_matching_coefficients();
+    std::cout << k.num_gkvec() << std::endl;
 }
 
 extern "C" void FORTRAN(sirius_get_density)(real8* rhomt, real8* rhoir)
