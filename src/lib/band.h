@@ -2,6 +2,34 @@
 namespace sirius
 {
 
+void write_h_o(mdarray<complex16,2>& h, mdarray<complex16,2>& o)
+{
+    std::ofstream out;
+    out.open("h_sirius.txt");
+    out << h.size(0) << std::endl;
+    out.precision(16); 
+    for (int i = 0; i < h.size(0); i++)
+    {
+        for (int j = 0; j <= i; j++)
+        {
+            out << real(h(j, i)) << " " << imag(h(j, i)) << std::endl;
+        }
+    }
+    out.close();
+    
+    out.open("o_sirius.txt");
+    out << h.size(0) << std::endl;
+    out.precision(16); 
+    for (int i = 0; i < h.size(0); i++)
+    {
+        for (int j = 0; j <= i; j++)
+        {
+            out << real(o(j, i)) << " " << imag(o(j, i)) << std::endl;
+        }
+    }
+    out.close();
+}
+
 class Band
 {
     public:
@@ -180,7 +208,7 @@ class Band
         }
 
         template <spin_block sblock> 
-        void set_h(kpoint& kp, mdarray<complex16,2> h)
+        void set_h(kpoint& kp, mdarray<complex16,2>& h)
         {
             Timer t("sirius::Band::set_h");
 
@@ -228,10 +256,73 @@ class Band
             }
             delete t1;
         }
+        
+        void set_o(kpoint& kp, mdarray<complex16,2>& o)
+        {
+            Timer t("sirius::Band::set_o");
+        
+            gemm<cpu>(0, 2, kp.num_gkvec(), kp.num_gkvec(), global.num_aw(), complex16(1.0, 0.0), &kp.matching_coefficient(0, 0), 
+                kp.num_gkvec(), &kp.matching_coefficient(0, 0), kp.num_gkvec(), complex16(0.0, 0.0), &o(0, 0), o.size(0)); 
+            
+            /*for (int ia = 0; ias < (int)lapw_global.atoms.size(); ias++)
+            {
+                Atom *atom = lapw_global.atoms[ias];
+                Species *species = atom->species;
+                
+                int lo_index_offset = species->index.apw_size();
+        
+                for (int j2 = 0; j2 < species->index.lo_size(); j2++) // loop over columns (local-orbital block) 
+                {
+                    int l2 = species->index[lo_index_offset + j2].l;
+                    int lm2 = species->index[lo_index_offset + j2].lm;
+                    int order2 = species->index[lo_index_offset + j2].order;
+                    
+                    // apw-lo block 
+                    for (int io1 = 0; io1 < (int)species->apw_descriptors[l2].radial_solution_descriptors.size(); io1++)
+                        for (int ig = 0; ig < ks->ngk; ig++)
+                            o(ig, ks->ngk + atom->offset_lo + j2) += lapw_runtime.ovlprad(l2, io1, order2, ias) * ks->apwalm(ig, atom->offset_apw + species->index(lm2, io1)); 
+        
+                    // lo-lo block
+                    for (int j1 = 0; j1 <= j2; j1++)
+                    {
+                        int lm1 = species->index[lo_index_offset + j1].lm;
+                        int order1 = species->index[lo_index_offset + j1].order;
+                        if (lm1 == lm2) 
+                            o(ks->ngk + atom->offset_lo + j1, ks->ngk + atom->offset_lo + j2) += lapw_runtime.ovlprad(l2, order1, order2, ias);
+                    }
+                }
+            }*/
+            
+            for (int ig2 = 0; ig2 < kp.num_gkvec(); ig2++) // loop over columns
+                for (int ig1 = 0; ig1 <= ig2; ig1++) // for each column loop over rows
+                    o(ig1, ig2) += global.step_function_pw(global.index_g12(kp.gvec_index(ig1), kp.gvec_index(ig2)));
+        }
 
         void find_eigen_states(kpoint& kp)
         {
 
+            mdarray<complex16,2> h(kp.num_fv(), kp.num_fv());
+            mdarray<complex16,2> o(kp.num_fv(), kp.num_fv());
+
+            set_h<nm>(kp, h);
+            set_o(kp, o);
+            
+            write_h_o(h, o);
+
+            kp.allocate_evecfv();
+            Timer *t1 = new Timer("sirius::band::find_eigen_states::hegv<impl>");
+            int info = hegvx<cpu>(kp.num_fv(), global.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), kp.evalfv(), kp.evecfv(), kp.num_fv());
+            delete t1;
+
+            if (info)
+            {
+                std::stringstream s;
+                s << "hegvx returned " << info;
+                error(__FILE__, __LINE__, s);
+            }
+
+            for (int i = 0; i < global.num_fv_states(); i++)
+                std::cout << "i = " << i << "  e = " << kp.evalfv(i) << std::endl;
 
         }
 

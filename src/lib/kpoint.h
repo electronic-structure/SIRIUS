@@ -12,6 +12,10 @@ class kpoint
 
         mdarray<complex16,2> matching_coefficients_;
 
+        std::vector<double> evalfv_;
+
+        mdarray<complex16,2> evecfv_;
+
     public:
 
         kpoint(double* vk)
@@ -50,6 +54,9 @@ class kpoint
                 for (int x = 0; x < 3; x++)
                     gkvec_(x, ig) = global.gvec(gkmap[ig].second)[x] + vk[x];
             }
+            
+            evalfv_.resize(global.num_fv_states());
+            evecfv_.set_dimensions(num_fv(), global.num_fv_states());
         }
 
         void generate_matching_coefficients()
@@ -126,6 +133,10 @@ class kpoint
                     }
                 }
             }
+                  
+            /*for (int j = 0; j < global.atom(0)->type()->indexb().num_aw(); j++)
+              for (int ig = 0; ig < num_gkvec(); ig++)
+                std::cout << "j,ig="<<j<<","<<ig<<"  apw=" << real(matching_coefficients_(ig,j)) << " " << imag(matching_coefficients_(ig,j)) << std::endl;*/
         }
 
         inline int num_gkvec()
@@ -142,7 +153,7 @@ class kpoint
             return &gkvec_(0, ig);
         }
 
-        inline int gvec_index(int ig)
+        inline int gvec_index(int ig) // TODO: rename idxg_
         {
             assert(ig >= 0 && ig < (int)idxg_.size());
             
@@ -152,6 +163,31 @@ class kpoint
         inline complex16& matching_coefficient(int ig, int i)
         {
             return matching_coefficients_(ig, i);
+        }
+
+        inline int num_fv()
+        {
+            return num_gkvec() + global.num_lo();
+        }
+
+        inline double* evalfv()
+        {
+            return &evalfv_[0];
+        }
+
+        inline double evalfv(int j)
+        {
+            return evalfv_[j];
+        }
+
+        inline complex16* evecfv()
+        {
+            return &evecfv_(0, 0);
+        }
+
+        inline void allocate_evecfv()
+        {
+            evecfv_.allocate();
         }
 
 };

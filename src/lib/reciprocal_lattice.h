@@ -39,9 +39,9 @@ class reciprocal_lattice : public geometry
         {
         }
   
-        void set_pw_cutoff(double _pw_cutoff)
+        void set_pw_cutoff(double pw_cutoff__)
         {
-            pw_cutoff_ = _pw_cutoff;
+            pw_cutoff_ = pw_cutoff__;
         }
 
         void init()
@@ -173,6 +173,11 @@ class reciprocal_lattice : public geometry
         inline int fft_index(int ig)
         {
             return fft_index_[ig];
+        }
+
+        inline int* fft_index()
+        {
+            return &fft_index_[0];
         }
         
         inline int* gvec(int ig)

@@ -79,6 +79,7 @@ extern "C" void FORTRAN(sirius_initial_density)()
     sirius::kpoint k(v);
     k.generate_matching_coefficients();
     std::cout << k.num_gkvec() << std::endl;
+    sirius::band.find_eigen_states(k);
 }
 
 extern "C" void FORTRAN(sirius_get_density)(real8* rhomt, real8* rhoir)
@@ -91,4 +92,13 @@ extern "C" void FORTRAN(sirius_get_step_function)(real8* step_function)
     sirius::global.get_step_function(step_function);
 }
 
+extern "C" void FORTRAN(sirius_set_pw_cutoff)(real8* pw_cutoff)
+{
+    sirius::global.set_pw_cutoff(*pw_cutoff);
+}
+
+extern "C" void FORTRAN(sirius_set_aw_cutoff)(real8* aw_cutoff)
+{
+    sirius::global.set_aw_cutoff(*aw_cutoff);
+}
 

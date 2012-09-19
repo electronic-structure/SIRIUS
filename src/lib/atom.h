@@ -142,6 +142,9 @@ class Atom
                         s.interpolate();
                         h_radial_integrals_(lm, i1, i2) = s.integrate(2);
                     }
+
+                    //for (int lm = 0; lm < lmmax; lm++)
+                    //    std::cout << "io1,io2,lm=" << i1 << "," << i2 <<"," << lm <<"  hrad=" <<h_radial_integrals_(lm,i1,i2) << std::endl;
                 }
 
             o_radial_integrals_.zero();
@@ -166,7 +169,7 @@ class Atom
             return offset_aw_;  
         }
 
-        inline double h_radial_integral(int lm, int idxrf1, int idxrf2)
+        inline double& h_radial_integral(int lm, int idxrf1, int idxrf2)
         {
             return h_radial_integrals_(lm, idxrf1, idxrf2);
         }

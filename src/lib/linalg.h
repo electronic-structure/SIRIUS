@@ -14,7 +14,7 @@ void gemm(int transa, int transb, int4 m, int4 n, int4 k, T alpha, T* a, int4 ld
           T* b, int4 ldb, T beta, T* c, int4 ldc);
 
 template<> void gemm<cpu,real8>(int transa, int transb, int4 m, int4 n, int4 k, real8 alpha, real8* a, int4 lda, 
-     real8* b, int4 ldb, real8 beta, real8* c, int4 ldc)
+                                real8* b, int4 ldb, real8 beta, real8* c, int4 ldc)
 {
     const char *trans[] = {"N", "T", "C"};
 
@@ -22,13 +22,41 @@ template<> void gemm<cpu,real8>(int transa, int transb, int4 m, int4 n, int4 k, 
 }
 
 template<> void gemm<cpu,complex16>(int transa, int transb, int4 m, int4 n, int4 k, complex16 alpha, complex16* a, int4 lda, 
-     complex16* b, int4 ldb, complex16 beta, complex16* c, int4 ldc)
+                                    complex16* b, int4 ldb, complex16 beta, complex16* c, int4 ldc)
 {
     const char *trans[] = {"N", "T", "C"};
 
     FORTRAN(zgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int4)1, (int4)1);
 }
 
+template<implementation impl, typename T>
+int hegvx(int4 n, int4 nv, real8 abstol, T* a, T* b, real8* eval, T* z, int4 ldz);
+
+template<> int hegvx<cpu,complex16>(int4 n, int4 nv, real8 abstol, complex16* a, complex16* b,
+                                    real8* eval, complex16* z, int4 ldz)
+{
+   int4 ispec = 1;
+   int4 n1 = -1;
+   int4 nb = FORTRAN(ilaenv)(&ispec, "ZHETRD", "U",  &n, &n1, &n1, &n1, (int4)6, (int4)1);
+   int4 lwork = (nb + 1) * n;
+   std::vector<int4> iwork(5 * n);
+   std::vector<int4> ifail(n);
+   std::vector<real8> w(n);
+   std::vector<real8> rwork(7 * n);
+   std::vector< complex16 > work(lwork);
+   n1 = 1;
+   real8 vl = 0.0;
+   real8 vu = 0.0;
+   int4 m;
+   int4 info;
+   FORTRAN(zhegvx)(&n1, "V", "I", "U", &n, a, &n, b, &n, &vl, &vu, &n1, 
+       &nv, &abstol, &m, &w[0], z, &ldz, &work[0], &lwork, &rwork[0], 
+       &iwork[0], &ifail[0], &info, (int4)1, (int4)1, (int4)1);
+
+   memcpy(eval, &w[0], nv * sizeof(real8));
+
+   return info;
+}
 
 
 /*

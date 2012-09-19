@@ -6,7 +6,7 @@
 namespace sirius
 {
 
-#ifdef _FFTW_
+//#ifdef _FFTW_
 
 class FFT3D : public FFT3D_base
 {
@@ -106,11 +106,57 @@ class FFT3D : public FFT3D_base
         {
             return &fftw_output_buffer[0];
         }
+
+        inline void zero()
+        {
+            memset(&fftw_input_buffer[0], 0, size() * sizeof(complex16));
+        }
+
+        template<typename T>
+        inline void input(int n, int* map, T* data)
+        {
+            zero();
+
+            for (int i = 0; i < n; i++)
+                fftw_input_buffer[map[i]] = data[i];
+        }
+
+        inline void input(double* data)
+        {
+            for (int i = 0; i < size(); i++)
+                fftw_input_buffer[i] = data[i];
+        }
+
+        inline void backward()
+        {    
+            fftw_execute(plan_backward);
+        }
+        
+        inline void forward()
+        {    
+            fftw_execute(plan_forward);
+            double norm = 1.0 / size();
+            for (int i = 0; i < size(); i++)
+                fftw_output_buffer[i] *= norm;
+        }
+
+        inline void output(double* data)
+        {
+            for (int i = 0; i < size(); i++)
+                data[i] = real(fftw_output_buffer[i]);
+        }
+        
+        inline void output(int n, int* map, complex16* data)
+        {
+            for (int i = 0; i < n; i++)
+                data[i] = fftw_output_buffer[map[i]];
+        }
+
 };
 
-#else
+//#else
 
-class FFT3D : public FFT3D_base
+/*class FFT3D : public FFT3D_base
 {    
     private:
     
@@ -186,8 +232,8 @@ class FFT3D : public FFT3D_base
             }
         }
 };
-
-#endif
+*/
+//#endif
 
 };
 

@@ -1,6 +1,6 @@
 namespace sirius {
 
-class Global : public step_function
+class Global : public StepFunction
 {
     private:
     
@@ -27,6 +27,12 @@ class Global : public step_function
 
         /// total number of augmented wave basis functions
         int num_aw_;
+
+        /// total number of local orbital basis functions
+        int num_lo_;
+
+        /// number of first-variational states
+        int num_fv_states_;
 
         //mdarray<complex16,3> complex_gaunt_;
         mdarray<std::vector< std::pair<int,complex16> >,2> complex_gaunt_packed_;
@@ -95,6 +101,11 @@ class Global : public step_function
             return aw_cutoff_;
         }
 
+        inline void set_aw_cutoff(double aw_cutoff__)
+        {
+            aw_cutoff_ = aw_cutoff__;
+        }
+
         inline double min_mt_radius()
         {
             return min_mt_radius_;
@@ -105,12 +116,22 @@ class Global : public step_function
             return num_aw_;
         }
 
+        inline int num_lo()
+        {
+            return num_lo_;
+        }
+
+        inline int num_fv_states()
+        {
+            return num_fv_states_;
+        }
+
         void initialize()
         {
             unit_cell::init();
             geometry::init();
             reciprocal_lattice::init();
-            step_function::init();
+            StepFunction::init();
            
             max_num_mt_points_ = 0;
             min_mt_radius_ = 1e100;
@@ -126,10 +147,12 @@ class Global : public step_function
                 atom_symmetry_class(ic)->init();
 
             num_aw_ = 0;
+            num_lo_ = 0;
             for (int ia = 0; ia < num_atoms(); ia++)
             {
                 atom(ia)->init(lmax_pot(), num_aw_);
                 num_aw_ += atom(ia)->type()->indexb().num_aw();
+                num_lo_ += atom(ia)->type()->indexb().num_lo();
             }
 
             //complex_gaunt_.set_dimensions(lmmax_pot(), lmmax_apw(), lmmax_apw());
@@ -160,6 +183,8 @@ class Global : public step_function
             assert(num_atoms() != 0);
             assert(num_atom_types() != 0);
             assert(num_atom_symmetry_classes() != 0);
+
+            num_fv_states_ = int(num_electrons() / 2.0) + 10;
         }
         
         void clear()
@@ -191,10 +216,7 @@ class Global : public step_function
         inline void sum_L3_complex_gaunt(int lm1, int lm2, T* v, complex16& zsum)
         {
             for (int k = 0; k < (int)complex_gaunt_packed_(lm1, lm2).size(); k++)
-            {
-                int lm3 = complex_gaunt_packed_(lm1, lm2)[k].first;
                 zsum += complex_gaunt_packed_(lm1, lm2)[k].second * v[complex_gaunt_packed_(lm1, lm2)[k].first];
-            }
         }
 };
 

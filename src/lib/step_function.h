@@ -1,7 +1,7 @@
 
 namespace sirius {
 
-class step_function : public reciprocal_lattice
+class StepFunction : public reciprocal_lattice
 {
     private:
     
@@ -75,7 +75,9 @@ class step_function : public reciprocal_lattice
                 }
             }
 
-            fft().transform(&step_function_pw_[0], &step_function_[0]);
+            fft().input(fft().size(), fft_index(), &step_function_pw_[0]);
+            fft().backward();
+            fft().output(&step_function_[0]);
             
             volume_mt_ = 0.0;
             for (int ia = 0; ia < num_atoms(); ia++)
@@ -98,6 +100,11 @@ class step_function : public reciprocal_lattice
         inline complex16& step_function_pw(int ig)
         {
             return step_function_pw_[ig];
+        }
+
+        inline double& step_function(int ir)
+        {
+            return step_function_[ir];
         }
 };
 

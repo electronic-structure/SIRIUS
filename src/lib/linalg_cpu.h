@@ -22,13 +22,11 @@ extern "C" void FORTRAN(zhemm)(const char *side, const char *uplo, int32_t *m, i
 /*
     eigen-value problem
 */
-extern "C" void FORTRAN(zhegvx)(int32_t *itype, const char *jobz, const char *range, 
-                                const char *uplo, int32_t *n, complex16 *a, int32_t *lda,
-                                complex16 *b, int32_t *ldb, double *vl, double *vu, int32_t *il,
-                                int32_t *iu, double *abstol, int32_t *m, double *w, complex16 *z,
-                                int32_t *ldz, complex16 *work, int32_t *lwork, double *rwork,
-                                int32_t *iwork, int32_t *ifail, int32_t *info, int32_t jobzlen,
-                                int32_t rangelen, int32_t uplolen);
+extern "C" void FORTRAN(zhegvx)(int4* itype, const char* jobz, const char* range, const char* uplo, 
+                                int4* n, complex16* a, int4* lda, complex16* b, int4* ldb, real8* vl, 
+                                real8* vu, int4* il, int4* iu, real8* abstol, int4* m, real8* w, complex16* z,
+                                int4* ldz, complex16* work, int4* lwork, real8* rwork, int4* iwork, int4* ifail, 
+                                int4* info, int4 jobzlen, int4 rangelen, int4 uplolen);
 
 extern "C" int32_t FORTRAN(ilaenv)(int32_t *ispec, const char *name, const char *opts, int32_t *n1,
                                    int32_t *n2, int32_t *n3, int32_t *n4, int32_t namelen, 

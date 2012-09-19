@@ -50,11 +50,9 @@ class Density
             for (int i = 0; i < global.fft().size(); i++)
                 charge_density_.f_it(i) = (global.num_electrons() - mt_charge) / global.volume_it();
             
-            global.fft().transform(&charge_density_.f_it(0), NULL);
-
-            complex16* fft_buf = global.fft().output_buffer_ptr();
-            for (int ig = 0; ig < global.num_gvec(); ig++)
-                charge_density_.f_pw(ig) = fft_buf[global.fft_index(ig)];
+            global.fft().input(charge_density_.f_it());
+            global.fft().forward();
+            global.fft().output(global.num_gvec(), global.fft_index(), charge_density_.f_pw());
         }
 
         inline PeriodicFunction<double>& charge_density()

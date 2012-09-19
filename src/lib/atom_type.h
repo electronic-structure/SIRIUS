@@ -113,8 +113,11 @@ class radial_functions_index
             index_by_l_order_.set_dimensions(lmax + 1, max_num_rf_);
             index_by_l_order_.allocate();
 
-            index_by_idxlo_.set_dimensions(lo_descriptors.size());
-            index_by_idxlo_.allocate();
+            if (lo_descriptors.size())
+            {
+                index_by_idxlo_.set_dimensions(lo_descriptors.size());
+                index_by_idxlo_.allocate();
+            }
 
             for (int i = 0; i < (int)radial_function_index_descriptors_.size(); i++)
             {
