@@ -218,6 +218,130 @@ class Band
 
             gemm<cpu>(0, 2, kp.num_gkvec(), kp.num_gkvec(), global.num_aw(), complex16(1.0, 0.0), &hapw(0, 0), hapw.size(0), 
                 &kp.matching_coefficient(0, 0), kp.num_gkvec(), complex16(0.0, 0.0), &h(0, 0), h.size(0));
+
+            #pragma omp parallel default(shared)
+            {
+                std::vector<double> v1(global.lmmax_pot());
+                std::vector<complex16> v2(global.lmmax_pot());
+                #pragma omp for
+                for (int ia = 0; ia < global.num_atoms(); ia++)
+                {
+                    Atom* atom = global.atom(ia);
+                    AtomType* type = atom->type();
+            
+                    int lo_index_offset = type->indexb().num_aw();
+                    
+                    for (int j2 = 0; j2 < type->indexb().num_lo(); j2++) // loop over columns (local-orbital block) 
+                    {
+                        int lm2 = type->indexb(lo_index_offset + j2).lm;
+                        int idxrf2 = type->indexb(lo_index_offset + j2).idxrf;
+                        
+                        // apw-lo block
+                        for (int j1 = 0; j1 < type->indexb().num_aw(); j1++) // loop over rows
+                        {
+                            int lm1 = type->indexb(j1).lm;
+                            int idxrf1 = type->indexb(j1).idxrf;
+                            
+                            complex16 zsum(0, 0);
+                            
+                            if (sblock == nm)
+                                global.sum_L3_complex_gaunt(lm1, lm2, &atom->h_radial_integral(0, idxrf2, idxrf1), zsum);
+        
+                            /*if (sblock == uu)
+                            {
+                                for (int lm3 = 0; lm3 < lapw_global.lmmaxvr; lm3++) 
+                                    v1[lm3] = lapw_runtime.hmltrad(lm3, idxrf2, idxrf1, ias) + lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 0);
+                                L3_sum_gntyry(lm1, lm2, &v1[0], zsum);
+                            }
+                            
+                            if (sblock == dd)
+                            {
+                                for (int lm3 = 0; lm3 < lapw_global.lmmaxvr; lm3++) 
+                                    v1[lm3] = lapw_runtime.hmltrad(lm3, idxrf2, idxrf1, ias) - lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 0);
+                                L3_sum_gntyry(lm1, lm2, &v1[0], zsum);
+                            }
+                            
+                            if (sblock == ud)
+                            {
+                                for (int lm3 = 0; lm3 < lapw_global.lmmaxvr; lm3++) 
+                                    v2[lm3] = complex16(lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 1), -lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 2));
+                                L3_sum_gntyry(lm1, lm2, &v2[0], zsum);
+                            }*/
+                
+                            if (abs(zsum) > 1e-14)
+                                for (int ig = 0; ig < kp.num_gkvec(); ig++)
+                                    h(ig, kp.num_gkvec() + atom->offset_lo() + j2) += zsum * kp.matching_coefficient(ig, atom->offset_aw() + j1);
+                        }
+                        
+                        int j1_last = j2;
+                        if (sblock == ud) j1_last = type->indexb().num_lo() - 1;
+                        
+                        // lo-lo block 
+                        for (int j1 = 0; j1 <= j1_last; j1++)
+                        {
+                            int lm1 = type->indexb(lo_index_offset + j1).lm;
+                            int idxrf1 = type->indexb(lo_index_offset + j1).idxrf;
+                            
+                            complex16 zsum(0.0, 0.0);
+        
+                            if (sblock == nm)
+                                global.sum_L3_complex_gaunt(lm1, lm2, &atom->h_radial_integral(0, idxrf1, idxrf2), zsum);
+        
+                            /*if (sblock == uu)
+                            {
+                                for (int lm3 = 0; lm3 < lapw_global.lmmaxvr; lm3++) 
+                                    v1[lm3] = lapw_runtime.hmltrad(lm3, idxrf1, idxrf2, ias) + lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 0);
+                                L3_sum_gntyry(lm1, lm2, &v1[0], zsum);
+                            }
+                            
+                            if (sblock == dd)
+                            {
+                                for (int lm3 = 0; lm3 < lapw_global.lmmaxvr; lm3++) 
+                                    v1[lm3] = lapw_runtime.hmltrad(lm3, idxrf1, idxrf2, ias) - lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 0);
+                                L3_sum_gntyry(lm1, lm2, &v1[0], zsum);
+                            }
+                            
+                            if (sblock == ud)
+                            {
+                                for (int lm3 = 0; lm3 < lapw_global.lmmaxvr; lm3++) 
+                                    v2[lm3] = complex16(lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 1), -lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 2));
+                                L3_sum_gntyry(lm1, lm2, &v2[0], zsum);
+                            }*/
+        
+                            h(kp.num_gkvec() + atom->offset_lo() + j1, kp.num_gkvec() + atom->offset_lo() + j2) += zsum;
+                        }
+                    }
+        
+                    /*if (sblock == ud)
+                    {
+                        for (int j2 = 0; j2 < species->index.apw_size(); j2++)
+                        {
+                            int lm2 = species->index[j2].lm;
+                            int idxrf2 = species->index[j2].idxrf;
+                            
+                            for (int j1 = 0; j1 < species->index.lo_size(); j1++)
+                            {
+                                int lm1 = species->index[lo_index_offset + j1].lm;
+                                int idxrf1 = species->index[lo_index_offset + j1].idxrf;
+                                
+                                complex16 zsum(0, 0);
+                                
+                                for (int lm3 = 0; lm3 < lapw_global.lmmaxvr; lm3++) 
+                                    v2[lm3] = complex16(lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 1), -lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 2));
+                                L3_sum_gntyry(lm1, lm2, &v2[0], zsum);
+                                
+                                if (abs(zsum) > 1e-14)
+                                    for (int ig = 0; ig < ks->ngk; ig++)
+                                        h(ks->ngk + atom->offset_lo + j1, ig) += zsum * conj(ks->apwalm(ig, atom->offset_apw + j2));
+                            }
+                        }
+                    }*/
+                } 
+            }
+
+
+
+
             
             Timer *t1 = new Timer("sirius::Band::set_h::it");
             for (int ig2 = 0; ig2 < kp.num_gkvec(); ig2++) // loop over columns
@@ -264,34 +388,34 @@ class Band
             gemm<cpu>(0, 2, kp.num_gkvec(), kp.num_gkvec(), global.num_aw(), complex16(1.0, 0.0), &kp.matching_coefficient(0, 0), 
                 kp.num_gkvec(), &kp.matching_coefficient(0, 0), kp.num_gkvec(), complex16(0.0, 0.0), &o(0, 0), o.size(0)); 
             
-            /*for (int ia = 0; ias < (int)lapw_global.atoms.size(); ias++)
+            for (int ia = 0; ia < global.num_atoms(); ia++)
             {
-                Atom *atom = lapw_global.atoms[ias];
-                Species *species = atom->species;
+                Atom* atom = global.atom(ia);
+                AtomType* type = atom->type();
                 
-                int lo_index_offset = species->index.apw_size();
+                int lo_index_offset = type->indexb().num_aw();
         
-                for (int j2 = 0; j2 < species->index.lo_size(); j2++) // loop over columns (local-orbital block) 
+                for (int j2 = 0; j2 < type->indexb().num_lo(); j2++) // loop over columns (local-orbital block) 
                 {
-                    int l2 = species->index[lo_index_offset + j2].l;
-                    int lm2 = species->index[lo_index_offset + j2].lm;
-                    int order2 = species->index[lo_index_offset + j2].order;
+                    int l2 = type->indexb(lo_index_offset + j2).l;
+                    int lm2 = type->indexb(lo_index_offset + j2).lm;
+                    int order2 = type->indexb(lo_index_offset + j2).order;
                     
                     // apw-lo block 
-                    for (int io1 = 0; io1 < (int)species->apw_descriptors[l2].radial_solution_descriptors.size(); io1++)
-                        for (int ig = 0; ig < ks->ngk; ig++)
-                            o(ig, ks->ngk + atom->offset_lo + j2) += lapw_runtime.ovlprad(l2, io1, order2, ias) * ks->apwalm(ig, atom->offset_apw + species->index(lm2, io1)); 
-        
+                    for (int order1 = 0; order1 < (int)type->aw_descriptor(l2).size(); order1++)
+                        for (int ig = 0; ig < kp.num_gkvec(); ig++)
+                            o(ig, kp.num_gkvec() + atom->offset_lo() + j2) += atom->o_radial_integral(l2, order1, order2) * kp.matching_coefficient(ig, atom->offset_aw() + type->indexb_by_lm_order(lm2, order1));
+
                     // lo-lo block
                     for (int j1 = 0; j1 <= j2; j1++)
                     {
-                        int lm1 = species->index[lo_index_offset + j1].lm;
-                        int order1 = species->index[lo_index_offset + j1].order;
+                        int lm1 = type->indexb(lo_index_offset + j1).lm;
+                        int order1 = type->indexb(lo_index_offset + j1).order;
                         if (lm1 == lm2) 
-                            o(ks->ngk + atom->offset_lo + j1, ks->ngk + atom->offset_lo + j2) += lapw_runtime.ovlprad(l2, order1, order2, ias);
+                            o(kp.num_gkvec() + atom->offset_lo() + j1, kp.num_gkvec() + atom->offset_lo() + j2) += atom->o_radial_integral(l2, order1, order2);
                     }
                 }
-            }*/
+            }
             
             for (int ig2 = 0; ig2 < kp.num_gkvec(); ig2++) // loop over columns
                 for (int ig1 = 0; ig1 <= ig2; ig1++) // for each column loop over rows

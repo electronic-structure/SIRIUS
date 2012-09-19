@@ -133,10 +133,6 @@ class kpoint
                     }
                 }
             }
-                  
-            /*for (int j = 0; j < global.atom(0)->type()->indexb().num_aw(); j++)
-              for (int ig = 0; ig < num_gkvec(); ig++)
-                std::cout << "j,ig="<<j<<","<<ig<<"  apw=" << real(matching_coefficients_(ig,j)) << " " << imag(matching_coefficients_(ig,j)) << std::endl;*/
         }
 
         inline int num_gkvec()

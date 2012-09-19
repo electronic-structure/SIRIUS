@@ -150,7 +150,7 @@ class Global : public StepFunction
             num_lo_ = 0;
             for (int ia = 0; ia < num_atoms(); ia++)
             {
-                atom(ia)->init(lmax_pot(), num_aw_);
+                atom(ia)->init(lmax_pot(), num_aw_, num_lo_);
                 num_aw_ += atom(ia)->type()->indexb().num_aw();
                 num_lo_ += atom(ia)->type()->indexb().num_lo();
             }
@@ -206,7 +206,8 @@ class Global : public StepFunction
                 atom_type(i)->print_info();
 
             printf("\n");
-            printf("total number of aw basis functions : %i\n", num_aw_);
+            printf("total number of aw muffin-tin basis functions : %i\n", num_aw_);
+            printf("total number of lo basis functions : %i\n", num_lo_);
 
             printf("\n");
             Timer::print();
