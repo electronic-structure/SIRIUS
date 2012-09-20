@@ -342,19 +342,27 @@ class AtomSymmetryClass
             
             o_radial_integrals_.zero();
             for (int l = 0; l < atom_type_->num_aw_descriptors(); l++)
-                for (int order1 = 0; order1 < atom_type_->indexr().num_rf(l); order1++)
+            {
+                int nrf = atom_type_->indexr().num_rf(l);
+
+                for (int order1 = 0; order1 < nrf; order1++)
                 {
                     int idxrf1 = atom_type_->indexr().index_by_l_order(l, order1);
-                    for (int order2 = 0; order2 < atom_type_->indexr().num_rf(l); order2++)
+                    for (int order2 = 0; order2 < nrf; order2++)
                     {
                         int idxrf2 = atom_type_->indexr().index_by_l_order(l, order2);
-                        
-                        for (int ir = 0; ir < nmtp; ir++)
-                            s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
-                        s.interpolate();
-                        o_radial_integrals_(l, order1, order2) = s.integrate(2);
+
+                        if (order1 == order2) o_radial_integrals_(l, order1, order2) = 1.0;
+                        else
+                        {
+                            for (int ir = 0; ir < nmtp; ir++)
+                                s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
+                            s.interpolate();
+                            o_radial_integrals_(l, order1, order2) = s.integrate(2);
+                        }
                     }
                 }
+            }
         }
 
         inline double radial_function(int ir, int idx)

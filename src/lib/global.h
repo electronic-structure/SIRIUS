@@ -40,6 +40,10 @@ class Global : public StepFunction
         //mdarray<complex16,3> complex_gaunt_;
         mdarray<std::vector< std::pair<int,complex16> >,2> complex_gaunt_packed_;
         
+        PeriodicFunction<double> charge_density_;
+        
+        PeriodicFunction<double> effective_potential_;
+
     public:
     
         Global() : lmax_apw_(lmax_apw_default),
@@ -145,6 +149,16 @@ class Global : public StepFunction
         inline int num_fv_states()
         {
             return num_fv_states_;
+        }
+        
+        inline PeriodicFunction<double>& charge_density()
+        {
+            return charge_density_;
+        }
+        
+        inline PeriodicFunction<double>& effective_potential()
+        {
+            return effective_potential_;
         }
 
         void initialize()

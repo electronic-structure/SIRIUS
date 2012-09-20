@@ -131,19 +131,21 @@ class Atom
             
             h_radial_integrals_.zero();
 
-            // TODO: check if integration with explicit r^2 is faster
-            for (int i1 = 0; i1 < type()->indexr().size(); i1++)
-                for (int i2 = 0; i2 < type()->indexr().size(); i2++)
+            for (int i2 = 0; i2 < type()->indexr().size(); i2++)
+                for (int i1 = 0; i1 < type()->indexr().size(); i1++)
                 {
                     h_radial_integrals_(0, i1, i2) = symmetry_class()->h_spherical_integral(i1, i2);
 
-                    // non-spherical terms
-                    for (int lm = 1; lm < lmmax; lm++)
+                    if (i1 <= i2)
                     {
-                        for (int ir = 0; ir < nmtp; ir++)
-                            s[ir] = symmetry_class()->radial_function(ir, i1) * symmetry_class()->radial_function(ir, i2) * veff(lm, ir);
-                        s.interpolate();
-                        h_radial_integrals_(lm, i1, i2) = s.integrate(2);
+                        // non-spherical terms
+                        for (int lm = 1; lm < lmmax; lm++)
+                        {
+                            for (int ir = 0; ir < nmtp; ir++)
+                                s[ir] = symmetry_class()->radial_function(ir, i1) * symmetry_class()->radial_function(ir, i2) * veff(lm, ir);
+                            s.interpolate();
+                            h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = s.integrate(2);
+                        }
                     }
                 }
         }

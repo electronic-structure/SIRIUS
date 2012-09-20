@@ -61,6 +61,11 @@ class FFT3D : public FFT3D_base
             for (int i = 0; i < size(); i++)
                 fftw_input_buffer[i] = data[i];
         }
+        
+        inline void input(complex16* data)
+        {
+            memcpy(&fftw_input_buffer[0], data, size() * sizeof(complex16));
+        }
 
         inline void backward()
         {    
@@ -96,6 +101,11 @@ class FFT3D : public FFT3D_base
         {
             for (int i = 0; i < size(); i++)
                 data[i] = real(fftw_output_buffer[i]);
+        }
+        
+        inline void output(complex16* data)
+        {
+            memcpy(data, &fftw_output_buffer[0], size() * sizeof(complex16));
         }
         
         inline void output(int n, int* map, complex16* data)

@@ -45,7 +45,7 @@ class Band
                std::vector<double> veff(nmtp);
                
                for (int ir = 0; ir < nmtp; ir++)
-                   veff[ir] = y00 * potential.effective_potential().f_rlm(0, ir, ia);
+                   veff[ir] = y00 * global.effective_potential().f_rlm(0, ir, ia);
 
                global.atom_symmetry_class(ic)->set_spherical_potential(veff);
             }
@@ -57,7 +57,7 @@ class Band
             }
 
             for (int ia = 0; ia < global.num_atoms(); ia++)
-                global.atom(ia)->generate_radial_integrals(global.lmax_pot(), &potential.effective_potential().f_rlm(0, 0, ia));
+                global.atom(ia)->generate_radial_integrals(global.lmax_pot(), &global.effective_potential().f_rlm(0, 0, ia));
         }
         
         /*! \brief Apply the muffin-tin part of the first-variational Hamiltonian to the
@@ -370,7 +370,7 @@ class Band
                     double t1 = 0.5 * scalar_product(v1c, v2c);
                                        
                     if (sblock == nm)
-                        h(ig1, ig2) += (potential.effective_potential().f_pw(ig) + t1 * global.step_function_pw(ig));
+                        h(ig1, ig2) += (global.effective_potential().f_pw(ig) + t1 * global.step_function_pw(ig));
                     
                     /*if (sblock == uu)
                         h(j1, j2) += (lapw_runtime.veffig(ig) + t1 * lapw_global.cfunig[ig] + lapw_runtime.beffig(ig, 0));
@@ -454,6 +454,11 @@ class Band
 
             for (int i = 0; i < global.num_fv_states(); i++)
                 std::cout << "i = " << i << "  e = " << kp.evalfv(i) << std::endl;
+            
+            kp.generate_scalar_wave_functions();
+
+            for (int i = 0; i < 3; i++)
+                kp.test_scalar_wave_functions(i);
 
         }
 

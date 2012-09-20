@@ -55,8 +55,6 @@ class Potential
         
         PeriodicFunction<double> xc_energy_density_;
         
-        PeriodicFunction<double> effective_potential_;
-
         SHT sht_;
 
         int pseudo_density_order;
@@ -108,8 +106,8 @@ class Potential
                 SHT::spherical_harmonics(lmax, spc[1], spc[2], &ylm_gvec_(0, ig));
             }
             
-            effective_potential_.allocate(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
-                                          global.fft().size(), global.num_gvec());
+            global.effective_potential().allocate(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
+                                                  global.fft().size(), global.num_gvec());
 
             sht_.set_lmax(lmax);
         }
@@ -160,7 +158,7 @@ class Potential
             Timer t("sirius::Potential::poisson");
 
             // convert to Ylm expansion
-            density.charge_density().convert_to_ylm();
+            global.charge_density().convert_to_ylm();
            
             // true multipole moments
             mdarray<complex16,2> qmt(NULL, global.lmmax_rho(), global.num_atoms());
@@ -182,7 +180,7 @@ class Potential
                     int l = l_by_lm(lm);
 
                     for (int ir = 0; ir < nmtp; ir++)
-                        rholm[ir] = density.charge_density().f_ylm(lm, ir, ia);
+                        rholm[ir] = global.charge_density().f_ylm(lm, ir, ia);
                     rholm.interpolate();
 
                     // save multipole moment
@@ -231,7 +229,7 @@ class Potential
                 
                 for (int ig = 0; ig < global.num_gvec(); ig++)
                 {
-                    complex16 zt = fourpi * global.gvec_phase_factor(ig, ia) * density.charge_density().f_pw(ig);
+                    complex16 zt = fourpi * global.gvec_phase_factor(ig, ia) * global.charge_density().f_pw(ig);
 
                     for (int lm = 0; lm < global.lmmax_rho(); lm++)
                     {
@@ -250,10 +248,10 @@ class Potential
                 printf("lm=%i   qmt=%18.12f %18.12f   qit=%18.12f %18.12f \n", lm, real(q1), imag(q1), real(q2), imag(q2));
             }
             
-            std::cout << "rho(0) = " << density.charge_density().f_pw(0) << std::endl;
+            std::cout << "rho(0) = " << global.charge_density().f_pw(0) << std::endl;
 
             std::vector<complex16> pseudo_pw(global.num_gvec());
-            memcpy(&pseudo_pw[0], density.charge_density().f_pw(), global.num_gvec() * sizeof(complex16));
+            memcpy(&pseudo_pw[0], global.charge_density().f_pw(), global.num_gvec() * sizeof(complex16));
 
             // add contribution from pseudocharge density
             // 
@@ -378,7 +376,7 @@ class Potential
             
             hartree_potential_.convert_to_rlm();
 
-            density.charge_density().deallocate_ylm();
+            global.charge_density().deallocate_ylm();
 
             global.fft().input(global.num_gvec(), global.fft_index(), hartree_potential_.f_pw());
             global.fft().backward();
@@ -397,7 +395,7 @@ class Potential
             {
                 int nmtp = global.atom(ia)->type()->num_mt_points();
 
-                sht_.rlm_backward_transform(&density.charge_density().f_rlm(0, 0, ia), global.lmmax_rho(), nmtp, &rhotp(0, 0));
+                sht_.rlm_backward_transform(&global.charge_density().f_rlm(0, 0, ia), global.lmmax_rho(), nmtp, &rhotp(0, 0));
                 
                 xc_potential::get(sht_.num_points() * nmtp, &rhotp(0, 0), &vxctp(0, 0), &exctp(0, 0));
 
@@ -406,12 +404,12 @@ class Potential
                 sht_.rlm_forward_transform(&exctp(0, 0), global.lmmax_rho(), nmtp, &xc_energy_density_.f_rlm(0, 0, ia));
             }
 
-            xc_potential::get(global.fft().size(), density.charge_density().f_it(), xc_potential_.f_it(), xc_energy_density_.f_it());
+            xc_potential::get(global.fft().size(), global.charge_density().f_it(), xc_potential_.f_it(), xc_energy_density_.f_it());
         }
 
         void generate_effective_potential()
         {
-            effective_potential_.zero();
+            global.effective_potential().zero();
             
             // generate and add Hartree potential
             hartree_potential_.allocate(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
@@ -420,7 +418,7 @@ class Potential
 
             poisson();
             
-            effective_potential_.add(hartree_potential_, add_rlm | add_it);
+            global.effective_potential().add(hartree_potential_, add_rlm | add_it);
 
             hartree_potential_.deallocate();
 
@@ -433,18 +431,18 @@ class Potential
 
             xc();
             
-            effective_potential_.add(xc_potential_, add_rlm | add_it);
+            global.effective_potential().add(xc_potential_, add_rlm | add_it);
             
             xc_potential_.deallocate();
             
             xc_energy_density_.deallocate();
 
             for (int ir = 0; ir < global.fft().size(); ir++)
-                 effective_potential_.f_it(ir) *= global.step_function(ir);
+                 global.effective_potential().f_it(ir) *= global.step_function(ir);
 
-            global.fft().input(effective_potential_.f_it());
+            global.fft().input(global.effective_potential().f_it());
             global.fft().forward();
-            global.fft().output(global.num_gvec(), global.fft_index(), effective_potential_.f_pw());
+            global.fft().output(global.num_gvec(), global.fft_index(), global.effective_potential().f_pw());
 
 #if 0            
             std::ofstream out("pot.dat");
@@ -464,11 +462,6 @@ class Potential
             
             out.close();
 #endif
-        }
-
-        inline PeriodicFunction<double>& effective_potential()
-        {
-            return effective_potential_;
         }
 };
 

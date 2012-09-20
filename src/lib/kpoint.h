@@ -195,6 +195,105 @@ class kpoint
             }
         }
         
+        void test_scalar_wave_functions(int use_fft)
+        {
+            std::vector<complex16> v1;
+            std::vector<complex16> v2;
+            
+            if (use_fft == 0) 
+            {
+                v1.resize(num_gkvec());
+                v2.resize(global.fft().size());
+            }
+            
+            if (use_fft == 1) 
+            {
+                v1.resize(global.fft().size());
+                v2.resize(global.fft().size());
+            }
+            
+            double maxerr = 0;
+        
+            for (int j1 = 0; j1 < global.num_fv_states(); j1++)
+            {
+                if (use_fft == 0)
+                {
+                    global.fft().input(num_gkvec(), &fft_index_[0], &scalar_wave_functions_(global.mt_basis_size(), j1));
+                    global.fft().transform(1);
+                    global.fft().output(&v2[0]);
+
+                    for (int ir = 0; ir < global.fft().size(); ir++)
+                        v2[ir] *= global.step_function(ir);
+                    
+                    global.fft().input(&v2[0]);
+                    global.fft().transform(-1);
+                    global.fft().output(num_gkvec(), &fft_index_[0], &v1[0]); 
+                }
+                
+                if (use_fft == 1)
+                {
+                    global.fft().input(num_gkvec(), &fft_index_[0], &scalar_wave_functions_(global.mt_basis_size(), j1));
+                    global.fft().transform(1);
+                    global.fft().output(&v1[0]);
+                }
+               
+                for (int j2 = 0; j2 < global.num_fv_states(); j2++)
+                {
+                    complex16 zsum(0.0, 0.0);
+                    for (int ia = 0; ia < global.num_atoms(); ia++)
+                    {
+                        int offset_wf = global.atom(ia)->offset_wf();
+                        AtomType* type = global.atom(ia)->type();
+                        AtomSymmetryClass* symmetry_class = global.atom(ia)->symmetry_class();
+        
+                        for (int l = 0; l <= global.lmax_apw(); l++)
+                        {
+                            int ordmax = type->indexr().num_rf(l);
+                            for (int io1 = 0; io1 < ordmax; io1++)
+                                for (int io2 = 0; io2 < ordmax; io2++)
+                                    for (int m = -l; m <= l; m++)
+                                        zsum += conj(scalar_wave_functions_(offset_wf + type->indexb_by_l_m_order(l, m, io1), j1)) *
+                                                     scalar_wave_functions_(offset_wf + type->indexb_by_l_m_order(l, m, io2), j2) * 
+                                                     symmetry_class->o_radial_integral(l, io1, io2);
+                        }
+                    }
+                    
+                    if (use_fft == 0)
+                    {
+                       for (int ig = 0; ig < num_gkvec(); ig++)
+                           zsum += conj(v1[ig]) * scalar_wave_functions_(global.mt_basis_size() + ig, j2);
+                    }
+                   
+                    if (use_fft == 1)
+                    {
+                        global.fft().input(num_gkvec(), &fft_index_[0], &scalar_wave_functions_(global.mt_basis_size(), j2));
+                        global.fft().transform(1);
+                        global.fft().output(&v2[0]);
+        
+                        for (int ir = 0; ir < global.fft().size(); ir++)
+                            zsum += conj(v1[ir]) * v2[ir] * global.step_function(ir) / double(global.fft().size());
+                    }
+                    
+                    if (use_fft == 2) 
+                    {
+                        for (int ig1 = 0; ig1 < num_gkvec(); ig1++)
+                        {
+                            for (int ig2 = 0; ig2 < num_gkvec(); ig2++)
+                            {
+                                int ig3 = global.index_g12(gvec_index(ig1), gvec_index(ig2));
+                                zsum += conj(scalar_wave_functions_(global.mt_basis_size() + ig1, j1)) * 
+                                    scalar_wave_functions_(global.mt_basis_size() + ig2, j2) * global.step_function_pw(ig3);
+                            }
+                       }
+                   }
+       
+                   zsum = (j1 == j2) ? zsum - complex16(1.0, 0.0) : zsum;
+                   maxerr = std::max(maxerr, abs(zsum));
+                }
+            }
+            std :: cout << "maximum error = " << maxerr << std::endl;
+        }
+                
         inline int num_gkvec()
         {
             assert(gkvec_.size(1) == (int)gvec_index_.size());
