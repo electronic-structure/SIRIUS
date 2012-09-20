@@ -13,14 +13,20 @@ class Atom
         
         /// position in fractional coordinates
         double position_[3];
-        
+       
         double vector_field_[3];
 
+        /// radial integrals of the Hamiltonian 
         mdarray<double,3> h_radial_integrals_;
-        mdarray<double,3> o_radial_integrals_;
 
+        /// offset in the array of matching coefficients and in the array of wave-functions
         int offset_aw_;
+
+        /// offset in the block of local orbitals in Hamiltonian and overlap matrices and in the array of wave-functions
         int offset_lo_;
+
+        /// offset in the wave-function array 
+        int offset_wf_;
     
     public:
     
@@ -29,7 +35,8 @@ class Atom
              double* vector_field__) : type_(type__),
                                        symmetry_class_(NULL),
                                        offset_aw_(-1),
-                                       offset_lo_(-1)
+                                       offset_lo_(-1),
+                                       offset_wf_(-1)
         {
             assert(type__);
                 
@@ -79,7 +86,7 @@ class Atom
             symmetry_class_ = symmetry_class__;
         }
 
-        void init(int lmax, int offset_aw__, int offset_lo__)
+        void init(int lmax, int offset_aw__, int offset_lo__, int offset_wf__)
         {
             assert(symmetry_class());
             assert(lmax >= 0);
@@ -87,14 +94,12 @@ class Atom
             
             offset_aw_ = offset_aw__;
             offset_lo_ = offset_lo__;
+            offset_wf_ = offset_wf__;
 
             int lmmax = lmmax_by_lmax(lmax);
 
             h_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size());
             h_radial_integrals_.allocate();
-
-            o_radial_integrals_.set_dimensions(type()->num_aw_descriptors(), type()->indexr().max_num_rf(), type()->indexr().max_num_rf());
-            o_radial_integrals_.allocate();
         }
 
         /*!
@@ -130,41 +135,15 @@ class Atom
             for (int i1 = 0; i1 < type()->indexr().size(); i1++)
                 for (int i2 = 0; i2 < type()->indexr().size(); i2++)
                 {
-                    // for spherical part of potential integrals are diagonal in l
-                    if (type()->indexr(i1).l == type()->indexr(i2).l)
-                    {
-                        for (int ir = 0; ir < nmtp; ir++)
-                            s[ir] = symmetry_class()->radial_function(ir, i1, 0) * symmetry_class()->radial_function(ir, i2, 1);
-                        s.interpolate();
-                        h_radial_integrals_(0, i1, i2) = s.integrate(2) / y00;
-                    }
-                    
+                    h_radial_integrals_(0, i1, i2) = symmetry_class()->h_spherical_integral(i1, i2);
+
                     // non-spherical terms
                     for (int lm = 1; lm < lmmax; lm++)
                     {
                         for (int ir = 0; ir < nmtp; ir++)
-                            s[ir] = symmetry_class()->radial_function(ir, i1, 0) * symmetry_class()->radial_function(ir, i2, 0) * veff(lm, ir);
+                            s[ir] = symmetry_class()->radial_function(ir, i1) * symmetry_class()->radial_function(ir, i2) * veff(lm, ir);
                         s.interpolate();
                         h_radial_integrals_(lm, i1, i2) = s.integrate(2);
-                    }
-
-                    //for (int lm = 0; lm < lmmax; lm++)
-                    //    std::cout << "io1,io2,lm=" << i1 << "," << i2 <<"," << lm <<"  hrad=" <<h_radial_integrals_(lm,i1,i2) << std::endl;
-                }
-
-            o_radial_integrals_.zero();
-            for (int l = 0; l < type()->num_aw_descriptors(); l++)
-                for (int order1 = 0; order1 < type()->indexr().num_rf(l); order1++)
-                {
-                    int idxrf1 = type()->indexr().index_by_l_order(l, order1);
-                    for (int order2 = 0; order2 < type()->indexr().num_rf(l); order2++)
-                    {
-                        int idxrf2 = type()->indexr().index_by_l_order(l, order2);
-                        
-                        for (int ir = 0; ir < nmtp; ir++)
-                            s[ir] = symmetry_class()->radial_function(ir, idxrf1, 0) * symmetry_class()->radial_function(ir, idxrf2, 0);
-                        s.interpolate();
-                        o_radial_integrals_(l, order1, order2) = s.integrate(2);
                     }
                 }
         }
@@ -182,15 +161,22 @@ class Atom
 
             return offset_lo_;  
         }
+        
+        inline int offset_wf()
+        {
+            assert(offset_wf_ >= 0);
 
-        inline double& h_radial_integral(int lm, int idxrf1, int idxrf2)
+            return offset_wf_;  
+        }
+
+        inline double h_radial_integral(int lm, int idxrf1, int idxrf2)
         {
             return h_radial_integrals_(lm, idxrf1, idxrf2);
         }
         
-        inline double& o_radial_integral(int l, int order1, int order2)
+        inline double* h_radial_integral(int idxrf1, int idxrf2)
         {
-            return o_radial_integrals_(l, order1, order2);
+            return &h_radial_integrals_(0, idxrf1, idxrf2);
         }
 };
 

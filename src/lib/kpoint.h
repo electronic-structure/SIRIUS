@@ -8,13 +8,17 @@ class kpoint
         mdarray<double,2> gkvec_;
 
         /// global index (in the range [0, num_gvec() - 1]) of G-vector by the index of G+k vector in the range [0, num_gkvec() - 1]
-        std::vector<int> idxg_;
+        std::vector<int> gvec_index_;
 
         mdarray<complex16,2> matching_coefficients_;
 
         std::vector<double> evalfv_;
 
         mdarray<complex16,2> evecfv_;
+
+        std::vector<int> fft_index_;
+        
+        mdarray<complex16,2> scalar_wave_functions_;
 
     public:
 
@@ -46,17 +50,21 @@ class kpoint
             gkvec_.set_dimensions(3, gkmap.size());
             gkvec_.allocate();
 
-            idxg_.resize(gkmap.size());
+            gvec_index_.resize(gkmap.size());
 
             for (int ig = 0; ig < (int)gkmap.size(); ig++)
             {
-                idxg_[ig] = gkmap[ig].second;
+                gvec_index_[ig] = gkmap[ig].second;
                 for (int x = 0; x < 3; x++)
                     gkvec_(x, ig) = global.gvec(gkmap[ig].second)[x] + vk[x];
             }
+
+            fft_index_.resize(num_gkvec());
+            for (int ig = 0; ig < num_gkvec(); ig++)
+                fft_index_[ig] = global.fft_index(gvec_index_[ig]);
             
             evalfv_.resize(global.num_fv_states());
-            evecfv_.set_dimensions(num_fv(), global.num_fv_states());
+            evecfv_.set_dimensions(fv_basis_size(), global.num_fv_states());
         }
 
         void generate_matching_coefficients()
@@ -71,7 +79,7 @@ class kpoint
             for (int l = 0; l <= global.lmax_apw(); l++)
                 zil[l] = pow(zi, l);
       
-            matching_coefficients_.set_dimensions(num_gkvec(), global.num_aw());
+            matching_coefficients_.set_dimensions(num_gkvec(), global.mt_aw_basis_size());
             matching_coefficients_.allocate();
 
             // TODO: check if spherical harmonic generation is slowing things: then it can be cached
@@ -134,10 +142,62 @@ class kpoint
                 }
             }
         }
+        
+        inline void move_apw_blocks(complex16 *wf)
+        {
+            for (int ia = global.num_atoms() - 1; ia > 0; ia--)
+            {
+                int final_block_offset = global.atom(ia)->offset_wf();
+                int initial_block_offset = global.atom(ia)->offset_aw();
+                int block_size = global.atom(ia)->type()->mt_aw_basis_size();
+        
+                memmove(&wf[final_block_offset], &wf[initial_block_offset], block_size * sizeof(complex16));
+            }
+        }
+        
+        inline void copy_lo_blocks(complex16 *wf, complex16 *evec)
+        {
+            for (int ia = 0; ia < global.num_atoms(); ia++)
+            {
+                int final_block_offset = global.atom(ia)->offset_wf() + global.atom(ia)->type()->mt_aw_basis_size();
+                int initial_block_offset = global.atom(ia)->offset_lo();
+                int block_size = global.atom(ia)->type()->mt_lo_basis_size();
+                
+                if (block_size > 0)
+                    memcpy(&wf[final_block_offset], &evec[initial_block_offset], block_size * sizeof(complex16));
+            }
+        }
+        
+        inline void copy_pw_block(int ngk, complex16 *wf, complex16 *evec)
+        {
+            memcpy(wf, evec, ngk * sizeof(complex16));
+        }
 
+        void generate_scalar_wave_functions()
+        {
+            Timer t("sirius::kpoint::generate_scalar_wave_functions");
+            
+            scalar_wave_functions_.set_dimensions(wf_size(), global.num_fv_states());
+            scalar_wave_functions_.allocate();
+            
+            gemm<cpu>(2, 0, global.mt_aw_basis_size(), global.num_fv_states(), num_gkvec(), complex16(1.0, 0.0), 
+                &matching_coefficients_(0, 0), num_gkvec(), &evecfv_(0, 0), fv_basis_size(), 
+                complex16(0.0, 0.0), &scalar_wave_functions_(0, 0), wf_size());
+            
+            for (int j = 0; j < global.num_fv_states(); j++)
+            {
+                move_apw_blocks(&scalar_wave_functions_(0, j));
+        
+                if (global.mt_lo_basis_size() > 0) 
+                    copy_lo_blocks(&scalar_wave_functions_(0, j), &evecfv_(num_gkvec(), j));
+        
+                copy_pw_block(num_gkvec(), &scalar_wave_functions_(global.mt_basis_size(), j), &evecfv_(0, j));
+            }
+        }
+        
         inline int num_gkvec()
         {
-            assert(gkvec_.size(1) == (int)idxg_.size());
+            assert(gkvec_.size(1) == (int)gvec_index_.size());
 
             return gkvec_.size(1);
         }
@@ -149,11 +209,11 @@ class kpoint
             return &gkvec_(0, ig);
         }
 
-        inline int gvec_index(int ig) // TODO: rename idxg_
+        inline int gvec_index(int ig) 
         {
-            assert(ig >= 0 && ig < (int)idxg_.size());
+            assert(ig >= 0 && ig < (int)gvec_index_.size());
             
-            return idxg_[ig];
+            return gvec_index_[ig];
         }
 
         inline complex16& matching_coefficient(int ig, int i)
@@ -161,9 +221,25 @@ class kpoint
             return matching_coefficients_(ig, i);
         }
 
-        inline int num_fv()
+        /*!
+            \brief First-variational basis size
+            
+            Total number of first-variational functions equals to the sum of the number of augmented 
+            plane waves and the number of local orbitals. Number of first-variational functions controls 
+            the size of the firt-variational Hamiltonian and overlap matrices and the size of the 
+            first-variational eigen-vectors.
+        */
+        inline int fv_basis_size()
         {
-            return num_gkvec() + global.num_lo();
+            return num_gkvec() + global.mt_lo_basis_size();
+        }
+        
+        /*!
+            \brief Total size of the scalar wave-function.
+        */
+        inline int wf_size()
+        {
+            return (global.mt_basis_size() + num_gkvec());
         }
 
         inline double* evalfv()

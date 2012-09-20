@@ -22,14 +22,17 @@ class Global : public StepFunction
         /// minimum muffin-tin radius
         double min_mt_radius_;
         
-        /// number of magnetic field components
+        // number of magnetic field components
         //int nmag;
+        
+        /// total number of MT basis functions
+        int mt_basis_size_;
 
-        /// total number of augmented wave basis functions
-        int num_aw_;
+        /// total number of augmented wave basis functions in the MT (= number of matching coefficients for each plane-wave)
+        int mt_aw_basis_size_;
 
         /// total number of local orbital basis functions
-        int num_lo_;
+        int mt_lo_basis_size_;
 
         /// number of first-variational states
         int num_fv_states_;
@@ -46,19 +49,19 @@ class Global : public StepFunction
         {
         }
 
-        void set_lmax_apw(int _lmax_apw)
+        void set_lmax_apw(int lmax_apw__)
         {
-            lmax_apw_ = _lmax_apw;
+            lmax_apw_ = lmax_apw__;
         }
 
-        void set_lmax_rho(int _lmax_rho)
+        void set_lmax_rho(int lmax_rho__)
         {
-            lmax_rho_ = _lmax_rho;
+            lmax_rho_ = lmax_rho__;
         }
 
-        void set_lmax_pot(int _lmax_pot)
+        void set_lmax_pot(int lmax_pot__)
         {
-            lmax_pot_ = _lmax_pot;
+            lmax_pot_ = lmax_pot__;
         }
 
         inline int lmax_apw()
@@ -68,7 +71,7 @@ class Global : public StepFunction
 
         inline int lmmax_apw()
         {
-            return (lmax_apw_ + 1) * (lmax_apw_ + 1);
+            return lmmax_by_lmax(lmax_apw_);
         }
         
         inline int lmax_rho()
@@ -78,7 +81,7 @@ class Global : public StepFunction
 
         inline int lmmax_rho()
         {
-            return (lmax_rho_ + 1) * (lmax_rho_ + 1);
+            return lmmax_by_lmax(lmax_rho_);
         }
         
         inline int lmax_pot()
@@ -88,7 +91,7 @@ class Global : public StepFunction
 
         inline int lmmax_pot()
         {
-            return (lmax_pot_ + 1) * (lmax_pot_ + 1);
+            return lmmax_by_lmax(lmax_pot_);
         }
 
         inline int max_num_mt_points()
@@ -111,14 +114,32 @@ class Global : public StepFunction
             return min_mt_radius_;
         }
 
-        inline int num_aw()
+        /*!
+            \brief Total number of the augmented radial basis functions
+        */
+        inline int mt_aw_basis_size()
         {
-            return num_aw_;
+            return mt_aw_basis_size_;
         }
 
-        inline int num_lo()
+        /*!
+            \brief Total number of local orbital basis functions
+        */
+        inline int mt_lo_basis_size()
         {
-            return num_lo_;
+            return mt_lo_basis_size_;
+        }
+
+        /*!
+            \brief Total number of the muffin-tin basis functions.
+
+            Total number of MT basis functions equals to the sum of the total number of augmented radial 
+            basis functions and the total number of local orbital basis functions across all atoms. It controls 
+            the size of the first- and second-variational wave functions.
+        */
+        inline int mt_basis_size()
+        {
+            return mt_basis_size_;
         }
 
         inline int num_fv_states()
@@ -146,17 +167,18 @@ class Global : public StepFunction
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
                 atom_symmetry_class(ic)->init();
 
-            num_aw_ = 0;
-            num_lo_ = 0;
+            mt_basis_size_ = 0;
+            mt_aw_basis_size_ = 0;
+            mt_lo_basis_size_ = 0;
             for (int ia = 0; ia < num_atoms(); ia++)
             {
-                atom(ia)->init(lmax_pot(), num_aw_, num_lo_);
-                num_aw_ += atom(ia)->type()->indexb().num_aw();
-                num_lo_ += atom(ia)->type()->indexb().num_lo();
+                atom(ia)->init(lmax_pot(), mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
+                mt_aw_basis_size_ += atom(ia)->type()->mt_aw_basis_size();
+                mt_lo_basis_size_ += atom(ia)->type()->mt_lo_basis_size();
+                mt_basis_size_ += atom(ia)->type()->mt_basis_size();
             }
 
-            //complex_gaunt_.set_dimensions(lmmax_pot(), lmmax_apw(), lmmax_apw());
-            //complex_gaunt_.allocate();
+            assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
 
             complex_gaunt_packed_.set_dimensions(lmmax_apw(), lmmax_apw());
             complex_gaunt_packed_.allocate();
@@ -174,7 +196,6 @@ class Global : public StepFunction
                     {
                         int lm3 = lm_by_l_m(l3, m3);
                         complex16 z = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
-                        //complex_gaunt_(lm_by_l_m(l3, m3), lm_by_l_m(l1, m1), lm_by_l_m(l2, m2)) = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
                         if (abs(z) > 1e-12) complex_gaunt_packed_(lm1, lm2).push_back(std::pair<int,complex16>(lm3, z));
                     }
                 }
@@ -206,8 +227,8 @@ class Global : public StepFunction
                 atom_type(i)->print_info();
 
             printf("\n");
-            printf("total number of aw muffin-tin basis functions : %i\n", num_aw_);
-            printf("total number of lo basis functions : %i\n", num_lo_);
+            printf("total number of aw muffin-tin basis functions : %i\n", mt_aw_basis_size());
+            printf("total number of lo basis functions : %i\n", mt_lo_basis_size());
 
             printf("\n");
             Timer::print();

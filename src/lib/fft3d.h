@@ -42,71 +42,6 @@ class FFT3D : public FFT3D_base
             fftw_destroy_plan(plan_forward);
         }
         
-        void transform(complex16* zdata_, int direction)
-        {
-            double* data_ = (double*)zdata_;
-            
-            if (direction == 1)
-            {
-                memcpy(&fftw_input_buffer[0], zdata_, size() * sizeof(complex16));
-                fftw_execute(plan_backward);
-                memcpy(zdata_, &fftw_output_buffer[0], size() * sizeof(complex16));
-            }
-            if (direction == -1)
-            {
-                memcpy(&fftw_input_buffer[0], zdata_, size() * sizeof(complex16));
-                fftw_execute(plan_forward);
-                memcpy(zdata_, &fftw_output_buffer[0], size() * sizeof(complex16));
-                
-                double norm = 1.0 / size();
-                for (int i = 0; i < 2 * size(); i++)
-                    data_[i] *= norm;
-            }
-        }
-
-        /*!
-            \brief Backward transform complex coefficients into a real function
-        */
-        void transform(complex16* data_in, double* data_out)
-        {
-            memcpy(&fftw_input_buffer[0], data_in, size() * sizeof(complex16));
-            fftw_execute(plan_backward);
-            for (int i = 0; i < size(); i++)
-                data_out[i] = real(fftw_output_buffer[i]);
-        }
-        
-        /*!
-            \brief Forward transform real function to get complex coefficients
-        */
-        void transform(double* data_in, complex16* data_out)
-        {
-            for (int i = 0; i < size(); i++)
-                fftw_input_buffer[i] = data_in[i];
-            fftw_execute(plan_forward);
-            
-            double norm = 1.0 / size();
-            double* data_ = (double*)&fftw_output_buffer[0];
-            for (int i = 0; i < 2 * size(); i++)
-                data_[i] *= norm;
-            
-            if (data_out) memcpy(data_out, &fftw_output_buffer[0], size() * sizeof(complex16));
-        }
-        
-        /*inline complex16& output_buffer(int idx)
-        {
-            return fftw_output_buffer[idx];
-        }
-        
-        inline complex16& input_buffer(int idx)
-        {
-            return fftw_input_buffer[idx];
-        }*/
-        
-        inline complex16* output_buffer_ptr()
-        {
-            return &fftw_output_buffer[0];
-        }
-
         inline void zero()
         {
             memset(&fftw_input_buffer[0], 0, size() * sizeof(complex16));
@@ -138,6 +73,23 @@ class FFT3D : public FFT3D_base
             double norm = 1.0 / size();
             for (int i = 0; i < size(); i++)
                 fftw_output_buffer[i] *= norm;
+        }
+
+        inline void transform(int direction)
+        {
+            switch(direction)
+            {
+                case 1:
+                    backward();
+                    break;
+
+                case -1:
+                    forward();
+                    break;
+
+                default:
+                    error(__FILE__, __LINE__, "wrong FFT direction");
+            }
         }
 
         inline void output(double* data)

@@ -209,82 +209,90 @@ class basis_functions_index
 
     private:
 
-       std::vector<basis_function_index_descriptor> basis_function_index_descriptors_; 
+        std::vector<basis_function_index_descriptor> basis_function_index_descriptors_; 
        
-       mdarray<int,2> index_by_lm_order_;
+        mdarray<int,2> index_by_lm_order_;
        
-       /// number of augmented wave basis functions
-       int num_aw_;
+        /// number of augmented wave basis functions
+        int size_aw_;
        
-       /// number of local orbital basis functions
-       int num_lo_;
+        /// number of local orbital basis functions
+        int size_lo_;
 
     public:
 
-       void init(const int lmax,
+        basis_functions_index() : size_aw_(-1),
+                                  size_lo_(-1)
+        {
+        }
+        
+        void init(const int lmax,
                  radial_functions_index& indexr)
-       {
-           basis_function_index_descriptors_.clear();
+        {
+            basis_function_index_descriptors_.clear();
 
-           for (int idxrf = 0; idxrf < indexr.size(); idxrf++)
-           {
-               int l = indexr[idxrf].l;
-               int order = indexr[idxrf].order;
-               int idxlo = indexr[idxrf].idxlo;
-               for (int m = -l; m <= l; m++)
-                   basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, m, order, idxlo, idxrf));
-           }
+            for (int idxrf = 0; idxrf < indexr.size(); idxrf++)
+            {
+                int l = indexr[idxrf].l;
+                int order = indexr[idxrf].order;
+                int idxlo = indexr[idxrf].idxlo;
+                for (int m = -l; m <= l; m++)
+                    basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, m, order, idxlo, idxrf));
+            }
 
-           index_by_lm_order_.set_dimensions(lmmax_by_lmax(lmax), indexr.max_num_rf());
-           index_by_lm_order_.allocate();
+            index_by_lm_order_.set_dimensions(lmmax_by_lmax(lmax), indexr.max_num_rf());
+            index_by_lm_order_.allocate();
 
-           for (int i = 0; i < (int)basis_function_index_descriptors_.size(); i++)
-           {
-               int lm = basis_function_index_descriptors_[i].lm;
-               int order = basis_function_index_descriptors_[i].order;
-               index_by_lm_order_(lm, order) = i;
+            for (int i = 0; i < (int)basis_function_index_descriptors_.size(); i++)
+            {
+                int lm = basis_function_index_descriptors_[i].lm;
+                int order = basis_function_index_descriptors_[i].order;
+                index_by_lm_order_(lm, order) = i;
                
-               // get number of aw basis functions
-               if (basis_function_index_descriptors_[i].idxlo < 0) num_aw_ = i + 1;
-           }
+                // get number of aw basis functions
+                if (basis_function_index_descriptors_[i].idxlo < 0) size_aw_ = i + 1;
+            }
 
-           num_lo_ = basis_function_index_descriptors_.size() - num_aw_;
+            size_lo_ = basis_function_index_descriptors_.size() - size_aw_;
 
-           assert(num_aw_ > 0);
-           assert(num_lo_ >= 0);
+            assert(size_aw_ > 0);
+            assert(size_lo_ >= 0);
+        } 
+
+        /*! 
+            \brief Return total number of MT basis functions.
+        */
+        inline int size()
+        {
+            return basis_function_index_descriptors_.size();
         }
 
-       inline int size()
-       {
-           return basis_function_index_descriptors_.size();
-       }
+        inline int size_aw()
+        {
+            return size_aw_;
+        }
 
-       inline int num_aw()
-       {
-           return num_aw_;
-       }
+        inline int size_lo()
+        {
+            return size_lo_;
+        }
+        
+        inline int index_by_l_m_order(int l, int m, int order)
+        {
+            return index_by_lm_order_(lm_by_l_m(l, m), order);
+        }
+        
+        inline int index_by_lm_order(int lm, int order)
+        {
+            return index_by_lm_order_(lm, order);
+        }
+        
+        inline basis_function_index_descriptor& operator[](int i)
+        {
+            assert(i >= 0 && i < (int)basis_function_index_descriptors_.size());
 
-       inline int num_lo()
-       {
-           return num_lo_;
-       }
-
-       inline int index_by_l_m_order(int l, int m, int order)
-       {
-           return index_by_lm_order_(lm_by_l_m(l, m), order);
-       }
-       
-       inline int index_by_lm_order(int lm, int order)
-       {
-           return index_by_lm_order_(lm, order);
-       }
-       
-       inline basis_function_index_descriptor& operator[](int i)
-       {
-           assert(i >= 0 && i < (int)basis_function_index_descriptors_.size());
-
-           return basis_function_index_descriptors_[i];
-       }
+            return basis_function_index_descriptors_[i];
+        }
 };
 
 class AtomType
@@ -578,91 +586,6 @@ class AtomType
                     num_valence_electrons_ = zn_ - num_core_electrons_;
             }
         }
-
-        const std::string& label()
-        {
-            return label_;
-        }
-
-        inline int id()
-        {
-            return id_;
-        }
-        
-        inline int zn()
-        {
-            return zn_;
-        }
-        
-        const std::string& symbol()
-        { 
-            return symbol_;
-        }
-
-        const std::string& name()
-        { 
-            return name_;
-        }
-        
-        inline double mass()
-        {
-            return mass_;
-        }
-        
-        inline double mt_radius()
-        {
-            return mt_radius_;
-        }
-        
-        inline void set_mt_radius(double _mt_radius)
-        {
-            mt_radius_ = _mt_radius;
-        }
-        
-        inline int num_mt_points()
-        {
-            return num_mt_points_;
-        }
-        
-        inline RadialGrid& radial_grid()
-        {
-            return radial_grid_;
-        }
-        
-        inline double radial_grid(int ir)
-        {
-            return radial_grid_[ir];
-        }
-        
-        inline int num_levels_nl()
-        {
-            return levels_nl_.size();
-        }    
-        
-        inline atomic_level& level_nl(int idx)
-        {
-            return levels_nl_[idx];
-        }
-        
-        inline int num_core_electrons()
-        {
-            return num_core_electrons_;
-        }
-        
-        inline int num_valence_electrons()
-        {
-            return num_valence_electrons_;
-        }
-        
-        inline double free_atom_density(const int idx)
-        {
-            return free_atom_density_[idx];
-        }
-        
-        inline double free_atom_potential(const int idx)
-        {
-            return free_atom_potential_[idx];
-        }
         
         void init(int lmax)
         {
@@ -888,11 +811,96 @@ class AtomType
             printf("total number of radial functions : %i\n", indexr().size());
             printf("maximum number of radial functions per orbital quantum number: %i\n", indexr().max_num_rf());
             printf("total number of basis functions : %i\n", indexb().size());
-            printf("number of aw basis functions : %i\n", indexb().num_aw());
-            printf("number of lo basis functions : %i\n", indexb().num_lo());
+            printf("number of aw basis functions : %i\n", indexb().size_aw());
+            printf("number of lo basis functions : %i\n", indexb().size_lo());
             radial_grid().print_info();
         }
+        
+        const std::string& label()
+        {
+            return label_;
+        }
 
+        inline int id()
+        {
+            return id_;
+        }
+        
+        inline int zn()
+        {
+            return zn_;
+        }
+        
+        const std::string& symbol()
+        { 
+            return symbol_;
+        }
+
+        const std::string& name()
+        { 
+            return name_;
+        }
+        
+        inline double mass()
+        {
+            return mass_;
+        }
+        
+        inline double mt_radius()
+        {
+            return mt_radius_;
+        }
+        
+        inline void set_mt_radius(double mt_radius__)
+        {
+            mt_radius_ = mt_radius__;
+        }
+        
+        inline int num_mt_points()
+        {
+            return num_mt_points_;
+        }
+        
+        inline RadialGrid& radial_grid()
+        {
+            return radial_grid_;
+        }
+        
+        inline double radial_grid(int ir)
+        {
+            return radial_grid_[ir];
+        }
+        
+        inline int num_levels_nl()
+        {
+            return levels_nl_.size();
+        }    
+        
+        inline atomic_level& level_nl(int idx)
+        {
+            return levels_nl_[idx];
+        }
+        
+        inline int num_core_electrons()
+        {
+            return num_core_electrons_;
+        }
+        
+        inline int num_valence_electrons()
+        {
+            return num_valence_electrons_;
+        }
+        
+        inline double free_atom_density(const int idx)
+        {
+            return free_atom_density_[idx];
+        }
+        
+        inline double free_atom_potential(const int idx)
+        {
+            return free_atom_potential_[idx];
+        }
+        
         inline int num_aw_descriptors()
         {
             return aw_descriptors_.size();
@@ -950,6 +958,21 @@ class AtomType
         inline int indexb_by_lm_order(int lm, int order)
         {
             return indexb_.index_by_lm_order(lm, order);
+        }
+
+        inline int mt_aw_basis_size()
+        {
+            return indexb_.size_aw();
+        }
+        
+        inline int mt_lo_basis_size()
+        {
+            return indexb_.size_lo();
+        }
+
+        inline int mt_basis_size()
+        {
+            return indexb_.size();
         }
 };
 

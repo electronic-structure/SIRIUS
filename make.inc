@@ -36,6 +36,5 @@ LIBS := $(LIBS) /Users/anton/src/sirius-project/spglib-1.2.2/src/.libs/libsymspg
 CXX_OPT := $(CXX_OPT) -I/Users/anton/src/sirius-project/gsl-1.15
 LIBS := $(LIBS) /Users/anton/src/sirius-project/gsl-1.15/.libs/libgsl.a
 
-#  FFTW
-CXX_OPT := $(CXX_OPT) -D_FFTW_ 
+#  FFTW 
 LIBS := $(LIBS) /opt/local/lib/libfftw3.a

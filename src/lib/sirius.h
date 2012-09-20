@@ -14,12 +14,10 @@
 #include <stdexcept>
 #include <cmath>
 
-#ifdef _FFTW_
-#include <fftw3.h>
-#endif 
 extern "C" {
 #include <spglib.h>
 }
+#include <fftw3.h>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_fft_complex.h>
 #include <gsl/gsl_heapsort.h>

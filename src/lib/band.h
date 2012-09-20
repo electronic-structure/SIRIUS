@@ -51,7 +51,10 @@ class Band
             }
 
             for (int ic = 0; ic < global.num_atom_symmetry_classes(); ic++)
+            {
                 global.atom_symmetry_class(ic)->generate_radial_functions();
+                global.atom_symmetry_class(ic)->generate_radial_integrals();
+            }
 
             for (int ia = 0; ia < global.num_atoms(); ia++)
                 global.atom(ia)->generate_radial_integrals(global.lmax_pot(), &potential.effective_potential().f_rlm(0, 0, ia));
@@ -86,14 +89,14 @@ class Band
                     Atom* atom = global.atom(ia);
                     AtomType* type = atom->type();
 
-                    for (int j2 = 0; j2 < type->indexb().num_aw(); j2++)
+                    for (int j2 = 0; j2 < type->mt_aw_basis_size(); j2++)
                     {
                         memset(&zv[0], 0, kp.num_gkvec() * sizeof(complex16));
 
                         int lm2 = type->indexb(j2).lm;
                         int idxrf2 = type->indexb(j2).idxrf;
 
-                        for (int j1 = 0; j1 < type->indexb().num_aw(); j1++)
+                        for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++)
                         {
                             int lm1 = type->indexb(j1).lm;
                             int idxrf1 = type->indexb(j1).idxrf;
@@ -101,7 +104,7 @@ class Band
                             complex16 zsum(0.0, 0.0);
                             
                             if (sblock == nm)
-                                global.sum_L3_complex_gaunt(lm1, lm2, &atom->h_radial_integral(0, idxrf1, idxrf2), zsum);
+                                global.sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf1, idxrf2), zsum);
                             
                             if (abs(zsum) > 1e-14) 
                                 for (int ig = 0; ig < kp.num_gkvec(); ig++) 
@@ -212,12 +215,13 @@ class Band
         {
             Timer t("sirius::Band::set_h");
 
-            mdarray<complex16,2> hapw(kp.num_gkvec(), global.num_aw());
+            mdarray<complex16,2> hapw(kp.num_gkvec(), global.mt_aw_basis_size());
 
             apply_hmt_to_apw<sblock>(kp, hapw);
 
-            gemm<cpu>(0, 2, kp.num_gkvec(), kp.num_gkvec(), global.num_aw(), complex16(1.0, 0.0), &hapw(0, 0), hapw.size(0), 
-                &kp.matching_coefficient(0, 0), kp.num_gkvec(), complex16(0.0, 0.0), &h(0, 0), h.size(0));
+            gemm<cpu>(0, 2, kp.num_gkvec(), kp.num_gkvec(), global.mt_aw_basis_size(), complex16(1.0, 0.0), 
+                &hapw(0, 0), hapw.size(0), &kp.matching_coefficient(0, 0), kp.num_gkvec(), complex16(0.0, 0.0), 
+                &h(0, 0), h.size(0));
 
             #pragma omp parallel default(shared)
             {
@@ -229,15 +233,15 @@ class Band
                     Atom* atom = global.atom(ia);
                     AtomType* type = atom->type();
             
-                    int lo_index_offset = type->indexb().num_aw();
+                    int lo_index_offset = type->mt_aw_basis_size();
                     
-                    for (int j2 = 0; j2 < type->indexb().num_lo(); j2++) // loop over columns (local-orbital block) 
+                    for (int j2 = 0; j2 < type->mt_lo_basis_size(); j2++) // loop over columns (local-orbital block) 
                     {
                         int lm2 = type->indexb(lo_index_offset + j2).lm;
                         int idxrf2 = type->indexb(lo_index_offset + j2).idxrf;
                         
                         // apw-lo block
-                        for (int j1 = 0; j1 < type->indexb().num_aw(); j1++) // loop over rows
+                        for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++) // loop over rows
                         {
                             int lm1 = type->indexb(j1).lm;
                             int idxrf1 = type->indexb(j1).idxrf;
@@ -245,7 +249,7 @@ class Band
                             complex16 zsum(0, 0);
                             
                             if (sblock == nm)
-                                global.sum_L3_complex_gaunt(lm1, lm2, &atom->h_radial_integral(0, idxrf2, idxrf1), zsum);
+                                global.sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf2, idxrf1), zsum);
         
                             /*if (sblock == uu)
                             {
@@ -274,7 +278,7 @@ class Band
                         }
                         
                         int j1_last = j2;
-                        if (sblock == ud) j1_last = type->indexb().num_lo() - 1;
+                        if (sblock == ud) j1_last = type->mt_lo_basis_size() - 1;
                         
                         // lo-lo block 
                         for (int j1 = 0; j1 <= j1_last; j1++)
@@ -285,7 +289,7 @@ class Band
                             complex16 zsum(0.0, 0.0);
         
                             if (sblock == nm)
-                                global.sum_L3_complex_gaunt(lm1, lm2, &atom->h_radial_integral(0, idxrf1, idxrf2), zsum);
+                                global.sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf1, idxrf2), zsum);
         
                             /*if (sblock == uu)
                             {
@@ -385,17 +389,18 @@ class Band
         {
             Timer t("sirius::Band::set_o");
         
-            gemm<cpu>(0, 2, kp.num_gkvec(), kp.num_gkvec(), global.num_aw(), complex16(1.0, 0.0), &kp.matching_coefficient(0, 0), 
-                kp.num_gkvec(), &kp.matching_coefficient(0, 0), kp.num_gkvec(), complex16(0.0, 0.0), &o(0, 0), o.size(0)); 
+            gemm<cpu>(0, 2, kp.num_gkvec(), kp.num_gkvec(), global.mt_aw_basis_size(), complex16(1.0, 0.0), 
+                &kp.matching_coefficient(0, 0), kp.num_gkvec(), &kp.matching_coefficient(0, 0), kp.num_gkvec(), 
+                complex16(0.0, 0.0), &o(0, 0), o.size(0)); 
             
             for (int ia = 0; ia < global.num_atoms(); ia++)
             {
                 Atom* atom = global.atom(ia);
                 AtomType* type = atom->type();
                 
-                int lo_index_offset = type->indexb().num_aw();
+                int lo_index_offset = type->mt_aw_basis_size();
         
-                for (int j2 = 0; j2 < type->indexb().num_lo(); j2++) // loop over columns (local-orbital block) 
+                for (int j2 = 0; j2 < type->mt_lo_basis_size(); j2++) // loop over columns (local-orbital block) 
                 {
                     int l2 = type->indexb(lo_index_offset + j2).l;
                     int lm2 = type->indexb(lo_index_offset + j2).lm;
@@ -404,7 +409,8 @@ class Band
                     // apw-lo block 
                     for (int order1 = 0; order1 < (int)type->aw_descriptor(l2).size(); order1++)
                         for (int ig = 0; ig < kp.num_gkvec(); ig++)
-                            o(ig, kp.num_gkvec() + atom->offset_lo() + j2) += atom->o_radial_integral(l2, order1, order2) * kp.matching_coefficient(ig, atom->offset_aw() + type->indexb_by_lm_order(lm2, order1));
+                            o(ig, kp.num_gkvec() + atom->offset_lo() + j2) += atom->symmetry_class()->o_radial_integral(l2, order1, order2) * 
+                                kp.matching_coefficient(ig, atom->offset_aw() + type->indexb_by_lm_order(lm2, order1));
 
                     // lo-lo block
                     for (int j1 = 0; j1 <= j2; j1++)
@@ -412,7 +418,8 @@ class Band
                         int lm1 = type->indexb(lo_index_offset + j1).lm;
                         int order1 = type->indexb(lo_index_offset + j1).order;
                         if (lm1 == lm2) 
-                            o(kp.num_gkvec() + atom->offset_lo() + j1, kp.num_gkvec() + atom->offset_lo() + j2) += atom->o_radial_integral(l2, order1, order2);
+                            o(kp.num_gkvec() + atom->offset_lo() + j1, kp.num_gkvec() + atom->offset_lo() + j2) += 
+                                atom->symmetry_class()->o_radial_integral(l2, order1, order2);
                     }
                 }
             }
@@ -425,8 +432,8 @@ class Band
         void find_eigen_states(kpoint& kp)
         {
 
-            mdarray<complex16,2> h(kp.num_fv(), kp.num_fv());
-            mdarray<complex16,2> o(kp.num_fv(), kp.num_fv());
+            mdarray<complex16,2> h(kp.fv_basis_size(), kp.fv_basis_size());
+            mdarray<complex16,2> o(kp.fv_basis_size(), kp.fv_basis_size());
 
             set_h<nm>(kp, h);
             set_o(kp, o);
@@ -435,7 +442,7 @@ class Band
 
             kp.allocate_evecfv();
             Timer *t1 = new Timer("sirius::band::find_eigen_states::hegv<impl>");
-            int info = hegvx<cpu>(kp.num_fv(), global.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), kp.evalfv(), kp.evecfv(), kp.num_fv());
+            int info = hegvx<cpu>(kp.fv_basis_size(), global.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), kp.evalfv(), kp.evecfv(), kp.fv_basis_size());
             delete t1;
 
             if (info)

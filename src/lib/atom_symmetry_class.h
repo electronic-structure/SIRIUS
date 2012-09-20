@@ -11,9 +11,10 @@
      idxlo - index of local orbital \n
      idxrf - index of radial function \n
      ia - index of atom \n
-     iac - index of atom class \n
+     ic - index of atom class \n
      iat - index of atom type \n
      ir - index of r-point \n
+     ig - index of G-vector \n
 */
 
 namespace sirius {
@@ -39,6 +40,12 @@ class AtomSymmetryClass
         
         /// surface derivatives of aw radial functions
         mdarray<double,2> aw_surface_derivatives_;
+
+        /// spherical part of radial integral
+        mdarray<double,2> h_spherical_integrals_;
+
+        /// overlap integrals
+        mdarray<double,3> o_radial_integrals_;
         
         void generate_aw_radial_functions()
         {
@@ -239,6 +246,12 @@ class AtomSymmetryClass
 
             radial_functions_.set_dimensions(atom_type_->num_mt_points(), atom_type_->indexr().size(), 2);
             radial_functions_.allocate();
+
+            h_spherical_integrals_.set_dimensions(atom_type_->indexr().size(), atom_type_->indexr().size());
+            h_spherical_integrals_.allocate();
+            
+            o_radial_integrals_.set_dimensions(atom_type_->num_aw_descriptors(), atom_type_->indexr().max_num_rf(), atom_type_->indexr().max_num_rf());
+            o_radial_integrals_.allocate();
         }
 
         inline int id()
@@ -306,9 +319,57 @@ class AtomSymmetryClass
             print_enu();
         }
 
-        inline double radial_function(int ir, int idx, int n)
+        void generate_radial_integrals()
         {
-            return radial_functions_(ir, idx, n);
+            Timer t("sirius::AtomSymmetryClass::generate_radial_integrals");
+
+            int nmtp = atom_type_->num_mt_points();
+            Spline<double> s(nmtp, atom_type_->radial_grid()); 
+
+            h_spherical_integrals_.zero();
+            for (int i1 = 0; i1 < atom_type_->indexr().size(); i1++)
+                for (int i2 = 0; i2 < atom_type_->indexr().size(); i2++)
+                {
+                    // for spherical part of potential integrals are diagonal in l
+                    if (atom_type_->indexr(i1).l == atom_type_->indexr(i2).l)
+                    {
+                        for (int ir = 0; ir < nmtp; ir++)
+                            s[ir] = radial_functions_(ir, i1, 0) * radial_functions_(ir, i2, 1);
+                        s.interpolate();
+                        h_spherical_integrals_(i1, i2) = s.integrate(2) / y00;
+                    }
+                }
+            
+            o_radial_integrals_.zero();
+            for (int l = 0; l < atom_type_->num_aw_descriptors(); l++)
+                for (int order1 = 0; order1 < atom_type_->indexr().num_rf(l); order1++)
+                {
+                    int idxrf1 = atom_type_->indexr().index_by_l_order(l, order1);
+                    for (int order2 = 0; order2 < atom_type_->indexr().num_rf(l); order2++)
+                    {
+                        int idxrf2 = atom_type_->indexr().index_by_l_order(l, order2);
+                        
+                        for (int ir = 0; ir < nmtp; ir++)
+                            s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
+                        s.interpolate();
+                        o_radial_integrals_(l, order1, order2) = s.integrate(2);
+                    }
+                }
+        }
+
+        inline double radial_function(int ir, int idx)
+        {
+            return radial_functions_(ir, idx, 0);
+        }
+
+        inline double h_spherical_integral(int i1, int i2)
+        {
+            return h_spherical_integrals_(i1, i2);
+        }
+
+        inline double o_radial_integral(int l, int order1, int order2)
+        {
+            return o_radial_integrals_(l, order1, order2);
         }
 
         void print_enu()
@@ -340,7 +401,7 @@ class AtomSymmetryClass
              if (dm == 0)
              {
                  int idxrf = atom_type_->indexr().index_by_l_order(l, order);
-                 return radial_function(atom_type_->num_mt_points() - 1, idxrf, 0);
+                 return radial_functions_(atom_type_->num_mt_points() - 1, idxrf, 0);
              } 
              else if (dm == 1)
              {
