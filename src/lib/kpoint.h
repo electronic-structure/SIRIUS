@@ -1,7 +1,7 @@
 namespace sirius
 {
 
-class kpoint
+class kpoint_data_set
 {
     private:
 
@@ -20,9 +20,11 @@ class kpoint
         
         mdarray<complex16,2> scalar_wave_functions_;
 
+        std::vector<double> band_occupancies_;
+
     public:
 
-        kpoint(double* vk)
+        kpoint_data_set(double* vk)
         {
             if (global.aw_cutoff() > double(global.lmax_apw()))
                 error(__FILE__, __LINE__, "aw cutoff is too large for a given lmax");
@@ -69,7 +71,7 @@ class kpoint
 
         void generate_matching_coefficients()
         {
-            Timer t("sirius::kpoint::generate_matching_coefficients");
+            Timer t("sirius::kpoint_data_set::generate_matching_coefficients");
 
             std::vector<complex16> ylmgk(global.lmmax_apw());
             
@@ -175,7 +177,7 @@ class kpoint
 
         void generate_scalar_wave_functions()
         {
-            Timer t("sirius::kpoint::generate_scalar_wave_functions");
+            Timer t("sirius::kpoint_data_set::generate_scalar_wave_functions");
             
             scalar_wave_functions_.set_dimensions(wf_size(), global.num_fv_states());
             scalar_wave_functions_.allocate();

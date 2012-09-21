@@ -43,13 +43,23 @@ class Global : public StepFunction
         PeriodicFunction<double> charge_density_;
         
         PeriodicFunction<double> effective_potential_;
+        
+        /// number of spin componensts (1 or 2)
+        int num_spins_;
+
+        /// number of components of density matrix (1, 2 or 4)
+        int num_dmat_;
+
+        std::vector<kpoint*> kpoints_;
 
     public:
     
         Global() : lmax_apw_(lmax_apw_default),
                    lmax_rho_(lmax_rho_default),
                    lmax_pot_(lmax_pot_default),
-                   aw_cutoff_(aw_cutoff_default)
+                   aw_cutoff_(aw_cutoff_default),
+                   num_spins_(1),
+                   num_dmat_(1)
         {
         }
 
@@ -159,6 +169,16 @@ class Global : public StepFunction
         inline PeriodicFunction<double>& effective_potential()
         {
             return effective_potential_;
+        }
+
+        inline kpoint* kpoint(int ik)
+        {
+            return kpoints_[ik];
+        }
+
+        inline int num_kpoints()
+        {
+            return kpoints_.size();
         }
 
         void initialize()

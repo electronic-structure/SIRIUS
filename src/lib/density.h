@@ -3,6 +3,17 @@ namespace sirius
 
 class Density
 {
+    private:
+        
+        mdarray<double,4> mt_density_;
+        
+        mdarray<double,2> it_density_;
+
+        void add_k_contribution(kpoint& kp)
+        {
+
+        }
+
     public:
     
         void initialize()
@@ -48,6 +59,17 @@ class Density
             global.fft().input(global.charge_density().f_it());
             global.fft().forward();
             global.fft().output(global.num_gvec(), global.fft_index(), global.charge_density().f_pw());
+        }
+
+        void generate()
+        {
+            band.radial();
+
+            for (int ik = 0; ik < global.num_kpoints(); ik++)
+            {
+                band.find_eigen_states(*global.kpoint(ik));
+                add_k_contribution(*global.kpoint(ik));
+            }
         }
 
 
