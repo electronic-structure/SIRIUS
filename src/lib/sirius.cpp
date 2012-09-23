@@ -72,14 +72,14 @@ extern "C" void FORTRAN(sirius_get_num_grid_points)(int4* num_grid_points)
 extern "C" void FORTRAN(sirius_initial_density)()
 {
     sirius::density.initial_density();
-    sirius::potential.generate_effective_potential();
+    /*sirius::potential.generate_effective_potential();
     sirius::band.radial();
 
     double v[] = {0.0, 0.0, 0.0}; 
     sirius::kpoint k(v);
     k.generate_matching_coefficients();
     std::cout << k.num_gkvec() << std::endl;
-    sirius::band.find_eigen_states(k);
+    sirius::band.find_eigen_states(k);*/
 }
 
 extern "C" void FORTRAN(sirius_get_density)(real8* rhomt, real8* rhoir)

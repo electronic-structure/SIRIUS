@@ -5,12 +5,173 @@ class Density
 {
     private:
         
-        mdarray<double,4> mt_density_;
+        mdarray<double,5> mt_density_;
         
         mdarray<double,2> it_density_;
+        
+        std::vector<kpoint_data_set*> kpoints_;
 
-        void add_k_contribution(kpoint& kp)
+        std::vector< std::pair<int,int> > dmat_spins_;
+
+        mdarray<complex16,3> complex_gaunt_;
+
+        template <int num_dmat> void reduce_zdens(int ia, mdarray<complex16,3>& zdens)
         {
+            AtomType* type = global.atom(ia)->type();
+            int mt_basis_size = type->mt_basis_size();
+
+            for (int lm3 = 0; lm3 < global.lmmax_rho(); lm3++)
+            {
+                int l3 = l_by_lm(lm3);
+                
+                for (int j2 = 0; j2 < mt_basis_size; j2++)
+                {
+                    int l2 = type->indexb(j2).l;
+                    int lm2 = type->indexb(j2).lm;
+                    int idxrf2 = type->indexb(j2).idxrf;
+        
+                    int j1 = 0;
+
+                    // compute only upper triangular block and later use the symmetry properties of the density matrix
+                    for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
+                    {
+                        int l1 = type->indexr(idxrf1).l;
+                        
+                        if ((l1 + l2 + l3) % 2 == 0)
+                        {
+                            for (int lm1 = lm_by_l_m(l1, -l1); lm1 <= lm_by_l_m(l1, l1); lm1++, j1++) 
+                            {
+                            
+                                mt_density_(idxrf1, idxrf2, lm3, ia, 0) += real(zdens(j1, j2, 0) * complex_gaunt_(lm1, lm2, lm3));
+
+                                if (num_dmat == 2 || num_dmat == 4)
+                                    mt_density_(idxrf1, idxrf2, lm3, ia, 1) += real(zdens(j1, j2, 1) * complex_gaunt_(lm1, lm2, lm3));
+
+                                if (num_dmat == 4)
+                                {
+                                    mt_density_(idxrf1, idxrf2, lm3, ia, 2) += 2.0 * real(zdens(j1, j2, 2) * complex_gaunt_(lm1, lm2, lm3));
+                                    mt_density_(idxrf1, idxrf2, lm3, ia, 3) -= 2.0 * imag(zdens(j1, j2, 2) * complex_gaunt_(lm1, lm2, lm3));
+                                }
+                            }
+                        } 
+                        else
+                            j1 += (2 * l1 + 1);
+                    }
+                } // j2
+            } // lm3
+        }
+
+        void add_k_contribution(kpoint_data_set& kp)
+        {
+            Timer t("sirius::Density::add_k_contribution");
+            
+            std::vector< std::pair<int,double> > bands;
+            for (int j = 0; j < global.num_states(); j++)
+            {
+                double wo = kp.occupancy(j) * kp.weight();
+                if (wo > 1e-14)
+                    bands.push_back(std::pair<int,double>(j, wo));
+            }
+           
+            // if we have ud and du spin blocks, don't compute one of them (du in this implementation)
+            // because density matrix is symmetric
+            int num_zdmat = (global.num_dmat() == 4) ? 3 : global.num_dmat();
+
+            mdarray<complex16,3> zdens(global.max_mt_basis_size(), global.max_mt_basis_size(), num_zdmat);
+            mdarray<complex16,3> wf1(global.max_mt_basis_size(), bands.size(), global.num_spins());
+            mdarray<complex16,3> wf2(global.max_mt_basis_size(), bands.size(), global.num_spins());
+        
+            for (int ia = 0; ia < global.num_atoms(); ia++)
+            {
+                Timer* t1 = new Timer("sirius::Density::add_k_contribution:zdens");
+                
+                int offset_wf = global.atom(ia)->offset_aw();
+                int mt_basis_size = global.atom(ia)->type()->mt_basis_size();
+                
+                for (int i = 0; i < (int)bands.size(); i++)
+                    for (int ispn = 0; ispn < global.num_spins(); ispn++)
+                    {
+                        memcpy(&wf1(0, i, ispn), &kp.spinor_wave_function(offset_wf, ispn, bands[i].first), mt_basis_size * sizeof(complex16));
+                        for (int j = 0; j < mt_basis_size; j++) 
+                            wf2(j, i, ispn) = wf1(j, i, ispn) * bands[i].second;
+                    }
+
+                for (int j = 0; j < num_zdmat; j++)
+                    gemm<cpu>(0, 2, mt_basis_size, mt_basis_size, bands.size(), complex16(1.0, 0.0), 
+                        &wf1(0, 0, dmat_spins_[j].first), global.max_mt_basis_size(), 
+                        &wf2(0, 0, dmat_spins_[j].second), global.max_mt_basis_size(),complex16(0.0, 0.0), 
+                        &zdens(0, 0, j), global.max_mt_basis_size());
+
+                delete t1;
+
+                Timer* t2 = new Timer("sirius::Density::add_k_contribution:densmt");
+
+                switch(global.num_dmat())
+                {
+                    case 1:
+                        reduce_zdens<1>(ia, zdens);
+                        break;
+
+                    case 2:
+                        reduce_zdens<2>(ia, zdens);
+                        break;
+
+                    case 4:
+                        reduce_zdens<4>(ia, zdens);
+                        break;
+
+                    default:
+                        error(__FILE__, __LINE__, "wrong number of density matrix components");
+                }
+
+                delete t2;
+            } // ia
+        
+            
+            Timer* t3 = new Timer("sirius::Density::add_k_contribution:densit"); 
+            mdarray<double,2> densit_tmp(global.fft().size(), global.num_dmat());
+            densit_tmp.zero();
+            mdarray<complex16,2> wfit(global.fft().size(), global.num_spins());
+
+            for (int i = 0; i < (int)bands.size(); i++)
+            {
+                for (int ispn = 0; ispn < global.num_spins(); ispn++)
+                {
+                    global.fft().input(kp.num_gkvec(), kp.fft_index(), &kp.spinor_wave_function(global.mt_basis_size(), ispn, bands[i].first));
+                    global.fft().transform(1);
+                    global.fft().output(&wfit(0, ispn));
+                }
+                
+                double w = bands[i].second / global.omega();
+                
+                switch(global.num_dmat())
+                {
+                    case 4:
+                        for (int ir = 0; ir < global.fft().size(); ir++)
+                        {
+                            complex16 z = wfit(ir, 0) * conj(wfit(ir, 1)) * w;
+                            densit_tmp(ir, 2) += 2.0 * real(z);
+                            densit_tmp(ir, 3) -= 2.0 * imag(z);
+                        }
+                    case 2:
+                        for (int ir = 0; ir < global.fft().size(); ir++)
+                            densit_tmp(ir, 1) += real(wfit(ir, 1) * conj(wfit(ir, 1))) * w;
+                    case 1:
+                        for (int ir = 0; ir < global.fft().size(); ir++)
+                            densit_tmp(ir, 0) += real(wfit(ir, 0) * conj(wfit(ir, 0))) * w;
+                }
+            }
+             
+            delete t3;
+
+            /*if (lapw_global.ldapu)
+            {
+                t1 = new timer("lapw_density:dmatu");
+                
+                lapw_gen_dmatu(ks, zdens);
+                
+                delete t1;
+            }*/
 
         }
 
@@ -20,6 +181,31 @@ class Density
         {
             global.charge_density().allocate(global.lmax_rho(), global.max_num_mt_points(), global.num_atoms(), 
                                              global.fft().size(), global.num_gvec());
+            dmat_spins_.clear();
+            dmat_spins_.push_back(std::pair<int,int>(0, 0));
+            dmat_spins_.push_back(std::pair<int,int>(1, 1));
+            dmat_spins_.push_back(std::pair<int,int>(0, 1));
+            dmat_spins_.push_back(std::pair<int,int>(1, 0));
+            
+            complex_gaunt_.set_dimensions(global.lmmax_apw(), global.lmmax_apw(), global.lmmax_rho());
+            complex_gaunt_.allocate();
+
+            for (int l1 = 0; l1 <= global.lmax_apw(); l1++) 
+            for (int m1 = -l1; m1 <= l1; m1++)
+            {
+                int lm1 = lm_by_l_m(l1, m1);
+                for (int l2 = 0; l2 <= global.lmax_apw(); l2++)
+                for (int m2 = -l2; m2 <= l2; m2++)
+                {
+                    int lm2 = lm_by_l_m(l2, m2);
+                    for (int l3 = 0; l3 <= global.lmax_pot(); l3++)
+                    for (int m3 = -l3; m3 <= l3; m3++)
+                    {
+                        int lm3 = lm_by_l_m(l3, m3);
+                        complex_gaunt_(lm1, lm2, lm3) = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
+                    }
+                }
+            }
         }
         
         void get_density(double* _rhomt, double* _rhoir)
@@ -65,15 +251,25 @@ class Density
         {
             band.radial();
 
-            for (int ik = 0; ik < global.num_kpoints(); ik++)
+            mt_density_.zero();
+            it_density_.zero();
+
+            for (int ik = 0; ik < num_kpoints(); ik++)
             {
-                band.find_eigen_states(*global.kpoint(ik));
-                add_k_contribution(*global.kpoint(ik));
+                band.find_eigen_states(*kpoint(ik));
+                add_k_contribution(*kpoint(ik));
             }
         }
 
+        inline kpoint_data_set* kpoint(int ik)
+        {
+            return kpoints_[ik];
+        }
 
-
+        inline int num_kpoints()
+        {
+            return kpoints_.size();
+        }
 };
 
 Density density;

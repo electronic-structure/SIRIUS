@@ -75,7 +75,7 @@ class Band
             \f] 
         */
         template <spin_block sblock>
-        void apply_hmt_to_apw(kpoint& kp, mdarray<complex16,2>& hapw)
+        void apply_hmt_to_apw(kpoint_data_set& kp, mdarray<complex16,2>& hapw)
         {
             Timer t("sirius::Band::apply_hmt_to_apw");
            
@@ -211,7 +211,7 @@ class Band
         }
 
         template <spin_block sblock> 
-        void set_h(kpoint& kp, mdarray<complex16,2>& h)
+        void set_h(kpoint_data_set& kp, mdarray<complex16,2>& h)
         {
             Timer t("sirius::Band::set_h");
 
@@ -385,7 +385,7 @@ class Band
             delete t1;
         }
         
-        void set_o(kpoint& kp, mdarray<complex16,2>& o)
+        void set_o(kpoint_data_set& kp, mdarray<complex16,2>& o)
         {
             Timer t("sirius::Band::set_o");
         
@@ -429,7 +429,7 @@ class Band
                     o(ig1, ig2) += global.step_function_pw(global.index_g12(kp.gvec_index(ig1), kp.gvec_index(ig2)));
         }
 
-        void find_eigen_states(kpoint& kp)
+        void find_eigen_states(kpoint_data_set& kp)
         {
 
             mdarray<complex16,2> h(kp.fv_basis_size(), kp.fv_basis_size());

@@ -51,9 +51,9 @@ extern "C" {
 #include "step_function.h"
 #include "periodic_function.h"
 #include "global.h"
-#include "kpoint.h"
+#include "kpoint_data_set.h"
+#include "band.h"
 #include "density.h"
 #include "potential.h"
-#include "band.h"
 
 #endif // __SIRIUS_H__

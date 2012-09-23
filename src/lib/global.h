@@ -22,11 +22,11 @@ class Global : public StepFunction
         /// minimum muffin-tin radius
         double min_mt_radius_;
         
-        // number of magnetic field components
-        //int nmag;
-        
         /// total number of MT basis functions
         int mt_basis_size_;
+        
+        /// maximum number of MT basis functions across all atoms
+        int max_mt_basis_size_;
 
         /// total number of augmented wave basis functions in the MT (= number of matching coefficients for each plane-wave)
         int mt_aw_basis_size_;
@@ -36,6 +36,9 @@ class Global : public StepFunction
 
         /// number of first-variational states
         int num_fv_states_;
+
+        /// number of spinor states
+        int num_states_;
 
         //mdarray<complex16,3> complex_gaunt_;
         mdarray<std::vector< std::pair<int,complex16> >,2> complex_gaunt_packed_;
@@ -49,8 +52,6 @@ class Global : public StepFunction
 
         /// number of components of density matrix (1, 2 or 4)
         int num_dmat_;
-
-        std::vector<kpoint*> kpoints_;
 
     public:
     
@@ -155,10 +156,20 @@ class Global : public StepFunction
         {
             return mt_basis_size_;
         }
+        
+        inline int max_mt_basis_size()
+        {
+            return max_mt_basis_size_;
+        }
 
         inline int num_fv_states()
         {
             return num_fv_states_;
+        }
+
+        inline int num_states()
+        {
+            return num_states_;
         }
         
         inline PeriodicFunction<double>& charge_density()
@@ -171,16 +182,16 @@ class Global : public StepFunction
             return effective_potential_;
         }
 
-        inline kpoint* kpoint(int ik)
+        inline int num_spins()
         {
-            return kpoints_[ik];
+            return num_spins_;
         }
 
-        inline int num_kpoints()
+        inline int num_dmat()
         {
-            return kpoints_.size();
+            return num_dmat_;
         }
-
+        
         void initialize()
         {
             unit_cell::init();
@@ -202,6 +213,7 @@ class Global : public StepFunction
                 atom_symmetry_class(ic)->init();
 
             mt_basis_size_ = 0;
+            max_mt_basis_size_ = 0;
             mt_aw_basis_size_ = 0;
             mt_lo_basis_size_ = 0;
             for (int ia = 0; ia < num_atoms(); ia++)
@@ -210,6 +222,7 @@ class Global : public StepFunction
                 mt_aw_basis_size_ += atom(ia)->type()->mt_aw_basis_size();
                 mt_lo_basis_size_ += atom(ia)->type()->mt_lo_basis_size();
                 mt_basis_size_ += atom(ia)->type()->mt_basis_size();
+                max_mt_basis_size_ = std::max(max_mt_basis_size_, atom(ia)->type()->mt_basis_size());
             }
 
             assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);

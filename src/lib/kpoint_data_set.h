@@ -20,7 +20,11 @@ class kpoint_data_set
         
         mdarray<complex16,2> scalar_wave_functions_;
 
-        std::vector<double> band_occupancies_;
+        mdarray<complex16,3> spinor_wave_functions_;
+
+        std::vector<double> occupancies_;
+
+        double weight_;
 
     public:
 
@@ -363,6 +367,25 @@ class kpoint_data_set
             evecfv_.allocate();
         }
 
+        inline double occupancy(int j)
+        {
+            return occupancies_[j];
+        }
+
+        inline double weight()
+        {
+            return weight_;
+        }
+
+        inline complex16& spinor_wave_function(int idxwf, int ispn, int j)
+        {
+            return spinor_wave_functions_(idxwf, ispn, j);
+        }
+
+        inline int* fft_index()
+        {
+            return &fft_index_[0];
+        }
 };
 
 };
