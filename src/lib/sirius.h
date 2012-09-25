@@ -28,6 +28,7 @@ extern "C" {
 #include "../libjson/libjson.h"
 #include "LebedevLaikov.h"
 
+#include "version.h"
 #include "error_handling.h"
 #include "timer.h"
 #include "config.h"

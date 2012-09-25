@@ -25,8 +25,12 @@ endif
 .cu.o:
 	$(NVCC) -DADD_ -I/project/s299/magma/magma-1.1_my-xk6-gcc-4.6.2-libsci/include -c $<
 
-all: $(OBJ)
+all: log $(OBJ)
 	ar -r libsirius.a $(OBJ)
+
+log:
+	@echo "const char* git_hash = \"$(shell git rev-parse HEAD)\";" > version.h 
+	@echo "const char* build_date = \"$(shell date)\";" >> version.h 
 
 clean:
 	rm $(OBJ) *.a

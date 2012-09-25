@@ -2,10 +2,10 @@
 namespace sirius
 {
 
-const int add_rlm = 1 << 0;
-const int add_ylm = 1 << 1;
-const int add_pw = 1 << 2;
-const int add_it = 1 << 3;
+const int rlm_component = 1 << 0;
+const int ylm_component = 1 << 1;
+const int pw_component = 1 << 2;
+const int it_component = 1 << 3;
 
 template <typename T> class data_type_wrapper;
 
@@ -131,7 +131,7 @@ template<typename T> class PeriodicFunction
 
         }
 
-        void allocate(int lmax__, int max_num_mt_points__, int num_atoms__, int num_it_points__, int num_gvec__)
+        void set_dimensions(int lmax__, int max_num_mt_points__, int num_atoms__, int num_it_points__, int num_gvec__)
         {
             lmax_ = lmax__;
             lmmax_ = (lmax_ + 1) * (lmax_ + 1);
@@ -142,15 +142,42 @@ template<typename T> class PeriodicFunction
 
             f_rlm_.set_dimensions(lmmax_, max_num_mt_points__, num_atoms__);
             f_ylm_.set_dimensions(lmmax_, max_num_mt_points__, num_atoms__);
-            
-            if (data_type_.real()) f_rlm_.allocate();
-            else f_ylm_.allocate();
-
             f_it_.set_dimensions(num_it_points__);
-            f_it_.allocate();
-
             f_pw_.set_dimensions(num_gvec__);
-            f_pw_.allocate();
+            
+            /*if (data_type_.real()) f_rlm_.allocate();
+            else f_ylm_.allocate();
+            
+            f_it_.allocate();
+            f_pw_.allocate();*/
+        }
+
+        void allocate(int flags = rlm_component | ylm_component | pw_component | it_component)
+        {
+            if (flags & rlm_component) f_rlm_.allocate();
+            if (flags & ylm_component) f_ylm_.allocate();
+            if (flags & pw_component) f_pw_.allocate();
+            if (flags & it_component) f_it_.allocate();
+        }
+
+        void set_rlm_ptr(T* f_rlm__)
+        {
+            f_rlm_.set_ptr(f_rlm__);
+        }
+        
+        void set_ylm_ptr(T* f_ylm__)
+        {
+            f_ylm_.set_ptr(f_ylm__);
+        }
+        
+        void set_pw_ptr(T* f_pw__)
+        {
+            f_pw_.set_ptr(f_pw__);
+        }
+
+        void set_it_ptr(T* f_it__)
+        {
+            f_it_.set_ptr(f_it__);
         }
 
         void deallocate()
@@ -221,7 +248,7 @@ template<typename T> class PeriodicFunction
             assert(num_gvec_ == rhs.num_gvec_);
             assert(num_it_points_ == rhs.num_it_points_);
 
-            if (flg & add_rlm)
+            if (flg & rlm_component)
             {
                 assert(f_rlm_.get_ptr());
                 assert(rhs.f_rlm_.get_ptr());
@@ -232,7 +259,7 @@ template<typename T> class PeriodicFunction
                             f_rlm_(lm, ir, ia) += rhs.f_rlm_(lm, ir, ia);
             }
 
-            if (flg & add_ylm)
+            if (flg & ylm_component)
             {
                 assert(f_ylm_.get_ptr());
                 assert(rhs.f_ylm_.get_ptr());
@@ -243,7 +270,7 @@ template<typename T> class PeriodicFunction
                             f_ylm_(lm, ir, ia) += rhs.f_ylm_(lm, ir, ia);
             } 
 
-            if (flg & add_pw)
+            if (flg & pw_component)
             {
                 assert(f_pw_.get_ptr());
                 assert(rhs.f_pw_.get_ptr());
@@ -252,7 +279,7 @@ template<typename T> class PeriodicFunction
                     f_pw_(ig) += rhs.f_pw_(ig);
             }
 
-            if (flg & add_it)
+            if (flg & it_component)
             {
                 assert(f_it_.get_ptr());
                 assert(rhs.f_it_.get_ptr());

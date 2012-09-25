@@ -160,6 +160,11 @@ class unit_cell
 
         void print_info()
         {
+            printf("\n");
+            printf("Unit cell\n");
+            for (int i = 0; i < 80; i++) printf("-");
+            printf("\n");
+            
             printf("lattice vectors\n");
             for (int i = 0; i < 3; i++)
                 printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors(i, 0), 
@@ -444,9 +449,14 @@ class unit_cell
             return atom_symmetry_classes_[id];
         }
         
-        inline double num_electrons()
+        inline int num_electrons()
         {
             return num_electrons_;
+        }
+
+        inline int num_valence_electrons()
+        {
+            return num_valence_electrons_;
         }
 };
 

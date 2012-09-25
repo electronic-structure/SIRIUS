@@ -61,9 +61,15 @@ class Potential
 
     public:
         
-        void init()
+        void set_effective_potential_ptr(double* veffmt, double* veffir)
         {
-            Timer t("sirius::Potential::init");
+            global.effective_potential().set_rlm_ptr(veffmt);
+            global.effective_potential().set_it_ptr(veffir);
+        }
+         
+        void initialize()
+        {
+            Timer t("sirius::Potential::initialize");
             
             int lmax = std::max(global.lmax_rho(), global.lmax_pot());
 
@@ -75,7 +81,8 @@ class Potential
 
             for (int iat = 0; iat < global.num_atom_types(); iat++)
                 for (int igs = 0; igs < global.num_gvec_shells(); igs++)
-                    gsl_sf_bessel_jl_array(lmax + pseudo_density_order + 1, global.gvec_shell_len(igs) * global.atom_type(iat)->mt_radius(), &sbessel_mt_(0, iat, igs));
+                    gsl_sf_bessel_jl_array(lmax + pseudo_density_order + 1, global.gvec_shell_len(igs) * global.atom_type(iat)->mt_radius(), 
+                                           &sbessel_mt_(0, iat, igs));
 
             // compute moments of spherical Bessel functions 
             // 
@@ -90,7 +97,8 @@ class Potential
                 sbessel_mom_(0, iat, 0) = pow(global.atom_type(iat)->mt_radius(), 3) / 3.0; // for |G|=0
                 for (int igs = 1; igs < global.num_gvec_shells(); igs++)
                     for (int l = 0; l <= global.lmax_rho(); l++)
-                        sbessel_mom_(l, iat, igs) = pow(global.atom_type(iat)->mt_radius(), 2 + l) * sbessel_mt_(l + 1, iat, igs) / global.gvec_shell_len(igs);
+                        sbessel_mom_(l, iat, igs) = pow(global.atom_type(iat)->mt_radius(), 2 + l) * sbessel_mt_(l + 1, iat, igs) / 
+                                                                                                     global.gvec_shell_len(igs);
             }
             
             // compute spherical harmonics of G-vectors
@@ -106,8 +114,9 @@ class Potential
                 SHT::spherical_harmonics(lmax, spc[1], spc[2], &ylm_gvec_(0, ig));
             }
             
-            global.effective_potential().allocate(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
-                                                  global.fft().size(), global.num_gvec());
+            global.effective_potential().set_dimensions(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
+                                                        global.fft().size(), global.num_gvec());
+            global.effective_potential().allocate(pw_component);
 
             sht_.set_lmax(lmax);
         }
@@ -409,40 +418,37 @@ class Potential
 
         void generate_effective_potential()
         {
+            density.total_charge();
+
             global.effective_potential().zero();
             
             // generate and add Hartree potential
-            hartree_potential_.allocate(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
-                                        global.fft().size(), global.num_gvec());
-            hartree_potential_.allocate_ylm();
+            hartree_potential_.set_dimensions(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
+                                              global.fft().size(), global.num_gvec());
+            hartree_potential_.allocate();
 
             poisson();
             
-            global.effective_potential().add(hartree_potential_, add_rlm | add_it);
+            global.effective_potential().add(hartree_potential_, rlm_component | it_component);
 
             hartree_potential_.deallocate();
 
             // generate and add XC potential
-            xc_potential_.allocate(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
-                                   global.fft().size(), global.num_gvec());
+            xc_potential_.set_dimensions(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
+                                         global.fft().size(), global.num_gvec());
+            xc_potential_.allocate(rlm_component | it_component);
             
-            xc_energy_density_.allocate(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
-                                        global.fft().size(), global.num_gvec());
+            xc_energy_density_.set_dimensions(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
+                                              global.fft().size(), global.num_gvec());
+            xc_energy_density_.allocate(rlm_component | it_component);
 
             xc();
             
-            global.effective_potential().add(xc_potential_, add_rlm | add_it);
+            global.effective_potential().add(xc_potential_, rlm_component | it_component);
             
             xc_potential_.deallocate();
             
             xc_energy_density_.deallocate();
-
-            for (int ir = 0; ir < global.fft().size(); ir++)
-                 global.effective_potential().f_it(ir) *= global.step_function(ir);
-
-            global.fft().input(global.effective_potential().f_it());
-            global.fft().forward();
-            global.fft().output(global.num_gvec(), global.fft_index(), global.effective_potential().f_pw());
 
 #if 0            
             std::ofstream out("pot.dat");

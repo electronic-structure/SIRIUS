@@ -11,6 +11,8 @@ class Density
         
         std::vector<kpoint_data_set*> kpoints_;
 
+        std::map<int,int>kpoint_index_by_id_;
+
         std::vector< std::pair<int,int> > dmat_spins_;
 
         mdarray<complex16,3> complex_gaunt_;
@@ -41,8 +43,18 @@ class Density
                         {
                             for (int lm1 = lm_by_l_m(l1, -l1); lm1 <= lm_by_l_m(l1, l1); lm1++, j1++) 
                             {
+                                switch(num_dmat)
+                                {
+                                    case 4:
+                                        mt_density_(idxrf1, idxrf2, lm3, ia, 2) += 2.0 * real(zdens(j1, j2, 2) * complex_gaunt_(lm1, lm2, lm3));
+                                        mt_density_(idxrf1, idxrf2, lm3, ia, 3) -= 2.0 * imag(zdens(j1, j2, 2) * complex_gaunt_(lm1, lm2, lm3));
+                                    case 2:
+                                        mt_density_(idxrf1, idxrf2, lm3, ia, 1) += real(zdens(j1, j2, 1) * complex_gaunt_(lm1, lm2, lm3));
+                                    case 1:
+                                        mt_density_(idxrf1, idxrf2, lm3, ia, 0) += real(zdens(j1, j2, 0) * complex_gaunt_(lm1, lm2, lm3));
+                                }
                             
-                                mt_density_(idxrf1, idxrf2, lm3, ia, 0) += real(zdens(j1, j2, 0) * complex_gaunt_(lm1, lm2, lm3));
+                                /*mt_density_(idxrf1, idxrf2, lm3, ia, 0) += real(zdens(j1, j2, 0) * complex_gaunt_(lm1, lm2, lm3));
 
                                 if (num_dmat == 2 || num_dmat == 4)
                                     mt_density_(idxrf1, idxrf2, lm3, ia, 1) += real(zdens(j1, j2, 1) * complex_gaunt_(lm1, lm2, lm3));
@@ -51,7 +63,7 @@ class Density
                                 {
                                     mt_density_(idxrf1, idxrf2, lm3, ia, 2) += 2.0 * real(zdens(j1, j2, 2) * complex_gaunt_(lm1, lm2, lm3));
                                     mt_density_(idxrf1, idxrf2, lm3, ia, 3) -= 2.0 * imag(zdens(j1, j2, 2) * complex_gaunt_(lm1, lm2, lm3));
-                                }
+                                }*/
                             }
                         } 
                         else
@@ -164,23 +176,25 @@ class Density
              
             delete t3;
 
-            /*if (lapw_global.ldapu)
-            {
-                t1 = new timer("lapw_density:dmatu");
-                
-                lapw_gen_dmatu(ks, zdens);
-                
-                delete t1;
-            }*/
+            // densit = densit_tmp
 
         }
 
     public:
+        
+        void set_charge_density_ptr(double* rhomt, double* rhoir)
+        {
+            global.charge_density().set_rlm_ptr(rhomt);
+            global.charge_density().set_it_ptr(rhoir);
+        }
     
         void initialize()
         {
-            global.charge_density().allocate(global.lmax_rho(), global.max_num_mt_points(), global.num_atoms(), 
-                                             global.fft().size(), global.num_gvec());
+            global.charge_density().set_dimensions(global.lmax_rho(), global.max_num_mt_points(), global.num_atoms(), 
+                                                   global.fft().size(), global.num_gvec());
+
+            global.charge_density().allocate(pw_component);
+
             dmat_spins_.clear();
             dmat_spins_.push_back(std::pair<int,int>(0, 0));
             dmat_spins_.push_back(std::pair<int,int>(1, 1));
@@ -206,14 +220,11 @@ class Density
                     }
                 }
             }
+
+            kpoints_.clear();
+            kpoint_index_by_id_.clear();
         }
         
-        void get_density(double* _rhomt, double* _rhoir)
-        {
-            memcpy(_rhomt, &global.charge_density().f_rlm(0, 0, 0), global.lmmax_rho() * global.max_num_mt_points() * global.num_atoms() * sizeof(double)); 
-            memcpy(_rhoir, &global.charge_density().f_it(0), global.fft().size() * sizeof(double)); 
-        }
-    
         void initial_density()
         {
             std::vector<double> enu;
@@ -247,10 +258,61 @@ class Density
             global.fft().output(global.num_gvec(), global.fft_index(), global.charge_density().f_pw());
         }
 
+        void total_charge(void)
+        {
+            double charge = 0.0;
+
+            for (int ia = 0; ia < global.num_atoms(); ia++)
+            {
+                int nmtp = global.atom(ia)->type()->num_mt_points();
+                Spline<double> rho(nmtp, global.atom(ia)->type()->radial_grid());
+                for (int ir = 0; ir < nmtp; ir++)
+                    rho[ir] = global.charge_density().f_rlm(0, ir, ia);
+                rho.interpolate();
+                charge += rho.integrate(2) * fourpi * y00;
+            }
+
+            double dv = global.omega() / global.fft().size();
+            for (int ir = 0; ir < global.fft().size(); ir++)
+                charge += global.charge_density().f_it(ir) * global.step_function(ir) * dv;
+
+            if (fabs(charge - global.num_electrons()) > 1e-10)
+            {
+                std::stringstream s;
+                s << "Wrong nuber of electrons " << charge;
+                error(__FILE__, __LINE__, s);
+            }
+        }
+
         void generate()
         {
+            double wt = 0.0;
+            double ot = 0.0;
+            for (int ik = 0; ik < (int)kpoints_.size(); ik++)
+            {
+                wt += kpoints_[ik]->weight();
+                for (int j = 0; j < global.num_states(); j++)
+                    ot += kpoints_[ik]->weight() * kpoints_[ik]->occupancy(j);
+            }
+
+            if (fabs(wt - 1.0) > 1e-12)
+                error(__FILE__, __LINE__, "kpoint weights don't sum to one");
+
+            if (fabs(ot - global.num_valence_electrons()) > 1e-12)
+                error(__FILE__, __LINE__, "wrong occupancies");
+
+            // generate radial functions and integrals
             band.radial();
 
+            // generate plane-wave coefficients of the potential in the interstitial region
+            for (int ir = 0; ir < global.fft().size(); ir++)
+                 global.effective_potential().f_it(ir) *= global.step_function(ir);
+
+            global.fft().input(global.effective_potential().f_it());
+            global.fft().forward();
+            global.fft().output(global.num_gvec(), global.fft_index(), global.effective_potential().f_pw());
+
+            // zero the density matrices
             mt_density_.zero();
             it_density_.zero();
 
@@ -261,6 +323,40 @@ class Density
             }
         }
 
+        void add_kpoint(int kpoint_id, double* vk, double weight)
+        {
+            if (kpoint_index_by_id_.count(kpoint_id))
+                error(__FILE__, __LINE__, "kpoint is already in list");
+
+            kpoints_.push_back(new kpoint_data_set(vk, weight));
+            kpoint_index_by_id_[kpoint_id] = kpoints_.size();
+
+            std::vector<double> initial_occupancies(global.num_states(), 0.0);
+
+            // in case of non-magnetic, or magnetic non-collinear case occupy first N bands
+            if (global.num_dmat() == 1 || global.num_dmat() == 4)
+            {
+                int m = global.num_valence_electrons() / global.max_occupancy();
+                for (int i = 0; i < m; i++)
+                    initial_occupancies[i] = double(global.max_occupancy());
+                initial_occupancies[m] = double(global.num_valence_electrons() % global.max_occupancy());
+            }
+            else // otherwise occupy up and down bands
+            {
+                int m = global.num_valence_electrons() / 2;
+                for (int i = 0; i < m; i++)
+                    initial_occupancies[i] = initial_occupancies[i + global.num_fv_states()] = 1.0;
+                initial_occupancies[m] = initial_occupancies[m + global.num_fv_states()] = 0.5 * global.num_valence_electrons() - double(m);
+            }
+
+            kpoints_.back()->set_occupancies(&initial_occupancies[0]);
+        }
+
+        void set_occupancies(int kpoint_id, double* occupancies)
+        {
+            kpoints_[kpoint_index_by_id_[kpoint_id]]->set_occupancies(occupancies);
+        }
+
         inline kpoint_data_set* kpoint(int ik)
         {
             return kpoints_[ik];
@@ -269,6 +365,20 @@ class Density
         inline int num_kpoints()
         {
             return kpoints_.size();
+        }
+
+        void print_info()
+        {
+            printf("\n");
+            printf("Density\n");
+            for (int i = 0; i < 80; i++) printf("-");
+            printf("\n");
+            printf("number of k-points : %i\n", (int)kpoints_.size());
+            for (int ik = 0; ik < (int)kpoints_.size(); ik++)
+                printf("ik=%4i    vk=%12.6f %12.6f %12.6f    weight=%12.6f\n", ik, kpoints_[ik]->vk()[0], 
+                                                                                   kpoints_[ik]->vk()[1], 
+                                                                                   kpoints_[ik]->vk()[2], 
+                                                                                   kpoints_[ik]->weight());
         }
 };
 

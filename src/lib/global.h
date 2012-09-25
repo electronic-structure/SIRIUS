@@ -191,6 +191,11 @@ class Global : public StepFunction
         {
             return num_dmat_;
         }
+
+        inline int max_occupancy()
+        {
+            return (2 / num_spins_);
+        }
         
         void initialize()
         {
@@ -253,6 +258,7 @@ class Global : public StepFunction
             assert(num_atom_symmetry_classes() != 0);
 
             num_fv_states_ = int(num_electrons() / 2.0) + 10;
+            num_states_ = num_fv_states_ * num_spins_;
         }
         
         void clear()
@@ -264,7 +270,8 @@ class Global : public StepFunction
         {
             printf("\n");
             printf("SIRIUS v0.3\n");
-            printf("\n");
+            printf("git hash : %s\n", git_hash);
+            printf("build date : %s\n", build_date);
 
             unit_cell::print_info();
             reciprocal_lattice::print_info();
@@ -276,9 +283,6 @@ class Global : public StepFunction
             printf("\n");
             printf("total number of aw muffin-tin basis functions : %i\n", mt_aw_basis_size());
             printf("total number of lo basis functions : %i\n", mt_lo_basis_size());
-
-            printf("\n");
-            Timer::print();
         }
         
         template <typename T>

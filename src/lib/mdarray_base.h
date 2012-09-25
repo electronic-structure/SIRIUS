@@ -104,8 +104,11 @@ template <typename T, int ND> class mdarray_base
             size_t sz = size();
             if (sz == 0) throw std::runtime_error("can't allocate a zero size array");
              
-            mdarray_ptr = new T[sz];
-            allocated = true;
+            if (!mdarray_ptr) 
+            {
+                mdarray_ptr = new T[sz];
+                allocated = true;
+            }
         }
 
         void deallocate()

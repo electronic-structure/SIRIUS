@@ -26,23 +26,25 @@ class kpoint_data_set
 
         double weight_;
 
+        double vk_[3];
+
     public:
 
-        kpoint_data_set(double* vk)
+        kpoint_data_set(double* vk__, double weight__)
         {
             if (global.aw_cutoff() > double(global.lmax_apw()))
                 error(__FILE__, __LINE__, "aw cutoff is too large for a given lmax");
 
             double gk_cutoff = global.aw_cutoff() / global.min_mt_radius();
 
-            std::vector< std::pair<double, int> > gkmap;
+            std::vector< std::pair<double,int> > gkmap;
 
             // find G-vectors for which |G+k| < cutoff
             for (int ig = 0; ig < global.num_gvec(); ig++)
             {
                 double vgk[3];
                 for (int x = 0; x < 3; x++)
-                    vgk[x] = global.gvec(ig)[x] + vk[x];
+                    vgk[x] = global.gvec(ig)[x] + vk__[x];
 
                 double v[3];
                 global.get_coordinates<cartesian,reciprocal>(vgk, v);
@@ -62,7 +64,7 @@ class kpoint_data_set
             {
                 gvec_index_[ig] = gkmap[ig].second;
                 for (int x = 0; x < 3; x++)
-                    gkvec_(x, ig) = global.gvec(gkmap[ig].second)[x] + vk[x];
+                    gkvec_(x, ig) = global.gvec(gkmap[ig].second)[x] + vk__[x];
             }
 
             fft_index_.resize(num_gkvec());
@@ -71,6 +73,11 @@ class kpoint_data_set
             
             evalfv_.resize(global.num_fv_states());
             evecfv_.set_dimensions(fv_basis_size(), global.num_fv_states());
+
+            weight_ = weight__;
+            for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
+
+            occupancies_.resize(global.num_states());
         }
 
         void generate_matching_coefficients()
@@ -367,6 +374,11 @@ class kpoint_data_set
             evecfv_.allocate();
         }
 
+        inline void set_occupancies(double* occupancies)
+        {
+            memcpy(&occupancies_[0], occupancies, global.num_states() * sizeof(double));
+        }
+
         inline double occupancy(int j)
         {
             return occupancies_[j];
@@ -385,6 +397,11 @@ class kpoint_data_set
         inline int* fft_index()
         {
             return &fft_index_[0];
+        }
+
+        inline double* vk()
+        {
+            return vk_;
         }
 };
 

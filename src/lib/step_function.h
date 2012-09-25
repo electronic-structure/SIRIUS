@@ -29,10 +29,10 @@ class StepFunction : public reciprocal_lattice
             return volume_it_;
         }
         
-        inline void get_step_function(double* ptr)
+        /*inline void get_step_function(double* ptr)
         {
             memcpy(ptr, &step_function_[0], fft().size() * sizeof(double));
-        }
+        }*/
 
         //TODO: candidate for parallelization 
         void init()
@@ -53,7 +53,7 @@ class StepFunction : public reciprocal_lattice
                 double vg[3];
                 get_coordinates<cartesian,reciprocal>(gvec(ig), vg);
                 double g = vector_length(vg);
-                double g3inv = 1.0 / pow(g, 3);
+                double g3inv = (ig) ? 1.0 / pow(g, 3) : 0.0;
                
                 double gRprev = -1.0;
                 double sin_cos_gR;
@@ -105,6 +105,11 @@ class StepFunction : public reciprocal_lattice
         inline double& step_function(int ir)
         {
             return step_function_[ir];
+        }
+
+        inline double* step_function()
+        {
+            return &step_function_[0];
         }
 };
 

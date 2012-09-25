@@ -170,6 +170,11 @@ class reciprocal_lattice : public geometry
             return index_by_gvec_(i0, i1, i2);
         }
 
+        inline int* index_by_gvec()
+        {
+            return index_by_gvec_.get_ptr();
+        }
+
         inline int fft_index(int ig)
         {
             return fft_index_[ig];
