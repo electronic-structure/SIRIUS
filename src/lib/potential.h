@@ -418,8 +418,12 @@ class Potential
 
         void generate_effective_potential()
         {
-            density.total_charge();
+            //density.total_charge();
 
+            global.fft().input(global.charge_density().f_it());
+            global.fft().forward();
+            global.fft().output(global.num_gvec(), global.fft_index(), global.charge_density().f_pw());
+            
             global.effective_potential().zero();
             
             // generate and add Hartree potential

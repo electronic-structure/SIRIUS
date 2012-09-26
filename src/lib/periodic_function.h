@@ -144,12 +144,6 @@ template<typename T> class PeriodicFunction
             f_ylm_.set_dimensions(lmmax_, max_num_mt_points__, num_atoms__);
             f_it_.set_dimensions(num_it_points__);
             f_pw_.set_dimensions(num_gvec__);
-            
-            /*if (data_type_.real()) f_rlm_.allocate();
-            else f_ylm_.allocate();
-            
-            f_it_.allocate();
-            f_pw_.allocate();*/
         }
 
         void allocate(int flags = rlm_component | ylm_component | pw_component | it_component)
@@ -165,15 +159,15 @@ template<typename T> class PeriodicFunction
             f_rlm_.set_ptr(f_rlm__);
         }
         
-        void set_ylm_ptr(T* f_ylm__)
+        /*void set_ylm_ptr(T* f_ylm__)
         {
             f_ylm_.set_ptr(f_ylm__);
-        }
+        }*/
         
-        void set_pw_ptr(T* f_pw__)
+        /*void set_pw_ptr(T* f_pw__)
         {
             f_pw_.set_ptr(f_pw__);
-        }
+        }*/
 
         void set_it_ptr(T* f_it__)
         {

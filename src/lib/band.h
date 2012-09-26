@@ -57,7 +57,8 @@ class Band
             }
 
             for (int ia = 0; ia < global.num_atoms(); ia++)
-                global.atom(ia)->generate_radial_integrals(global.lmax_pot(), &global.effective_potential().f_rlm(0, 0, ia));
+                global.atom(ia)->generate_radial_integrals(global.lmax_pot(), 
+                                                           &global.effective_potential().f_rlm(0, 0, ia));
         }
         
         /*! \brief Apply the muffin-tin part of the first-variational Hamiltonian to the
@@ -431,6 +432,7 @@ class Band
 
         void find_eigen_states(kpoint_data_set& kp)
         {
+            kp.generate_matching_coefficients();
 
             mdarray<complex16,2> h(kp.fv_basis_size(), kp.fv_basis_size());
             mdarray<complex16,2> o(kp.fv_basis_size(), kp.fv_basis_size());

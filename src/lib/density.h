@@ -5,9 +5,7 @@ class Density
 {
     private:
         
-        mdarray<double,5> mt_density_;
-        
-        //mdarray<double,2> it_density_;
+        mdarray<double,5> mt_density_matrix_;
         
         std::vector<kpoint_data_set*> kpoints_;
 
@@ -43,15 +41,17 @@ class Density
                         {
                             for (int lm1 = lm_by_l_m(l1, -l1); lm1 <= lm_by_l_m(l1, l1); lm1++, j1++) 
                             {
+                                complex16 gc = complex_gaunt_(lm1, lm2, lm3);
+
                                 switch(num_dmat)
                                 {
                                     case 4:
-                                        mt_density_(idxrf1, idxrf2, lm3, ia, 2) += 2.0 * real(zdens(j1, j2, 2) * complex_gaunt_(lm1, lm2, lm3));
-                                        mt_density_(idxrf1, idxrf2, lm3, ia, 3) -= 2.0 * imag(zdens(j1, j2, 2) * complex_gaunt_(lm1, lm2, lm3));
+                                        mt_density_matrix_(idxrf1, idxrf2, lm3, ia, 2) += 2.0 * real(zdens(j1, j2, 2) * gc); 
+                                        mt_density_matrix_(idxrf1, idxrf2, lm3, ia, 3) -= 2.0 * imag(zdens(j1, j2, 2) * gc);
                                     case 2:
-                                        mt_density_(idxrf1, idxrf2, lm3, ia, 1) += real(zdens(j1, j2, 1) * complex_gaunt_(lm1, lm2, lm3));
+                                        mt_density_matrix_(idxrf1, idxrf2, lm3, ia, 1) += real(zdens(j1, j2, 1) * gc);
                                     case 1:
-                                        mt_density_(idxrf1, idxrf2, lm3, ia, 0) += real(zdens(j1, j2, 0) * complex_gaunt_(lm1, lm2, lm3));
+                                        mt_density_matrix_(idxrf1, idxrf2, lm3, ia, 0) += real(zdens(j1, j2, 0) * gc);
                                 }
                             
                                 /*mt_density_(idxrf1, idxrf2, lm3, ia, 0) += real(zdens(j1, j2, 0) * complex_gaunt_(lm1, lm2, lm3));
@@ -92,10 +92,12 @@ class Density
             mdarray<complex16,3> zdens(global.max_mt_basis_size(), global.max_mt_basis_size(), num_zdmat);
             mdarray<complex16,3> wf1(global.max_mt_basis_size(), bands.size(), global.num_spins());
             mdarray<complex16,3> wf2(global.max_mt_basis_size(), bands.size(), global.num_spins());
-        
+       
+            Timer t1("sirius::Density::add_k_contribution:zdens", false);
+            Timer t2("sirius::Density::add_k_contribution:reduce_zdens", false);
             for (int ia = 0; ia < global.num_atoms(); ia++)
             {
-                Timer* t1 = new Timer("sirius::Density::add_k_contribution:zdens");
+                t1.start();
                 
                 int offset_wf = global.atom(ia)->offset_aw();
                 int mt_basis_size = global.atom(ia)->type()->mt_basis_size();
@@ -103,7 +105,8 @@ class Density
                 for (int i = 0; i < (int)bands.size(); i++)
                     for (int ispn = 0; ispn < global.num_spins(); ispn++)
                     {
-                        memcpy(&wf1(0, i, ispn), &kp.spinor_wave_function(offset_wf, ispn, bands[i].first), mt_basis_size * sizeof(complex16));
+                        memcpy(&wf1(0, i, ispn), &kp.spinor_wave_function(offset_wf, ispn, bands[i].first), 
+                               mt_basis_size * sizeof(complex16));
                         for (int j = 0; j < mt_basis_size; j++) 
                             wf2(j, i, ispn) = wf1(j, i, ispn) * bands[i].second;
                     }
@@ -113,11 +116,11 @@ class Density
                         &wf1(0, 0, dmat_spins_[j].first), global.max_mt_basis_size(), 
                         &wf2(0, 0, dmat_spins_[j].second), global.max_mt_basis_size(),complex16(0.0, 0.0), 
                         &zdens(0, 0, j), global.max_mt_basis_size());
+                
+                t1.stop();
 
-                delete t1;
-
-                Timer* t2 = new Timer("sirius::Density::add_k_contribution:densmt");
-
+                t2.start();
+                
                 switch(global.num_dmat())
                 {
                     case 1:
@@ -135,12 +138,13 @@ class Density
                     default:
                         error(__FILE__, __LINE__, "wrong number of density matrix components");
                 }
+                
+                t2.stop();
 
-                delete t2;
             } // ia
         
             
-            Timer* t3 = new Timer("sirius::Density::add_k_contribution:densit"); 
+            Timer t3("sirius::Density::add_k_contribution:it");
             mdarray<double,2> it_density(global.fft().size(), global.num_dmat());
             it_density.zero();
             
@@ -150,7 +154,8 @@ class Density
             {
                 for (int ispn = 0; ispn < global.num_spins(); ispn++)
                 {
-                    global.fft().input(kp.num_gkvec(), kp.fft_index(), &kp.spinor_wave_function(global.mt_basis_size(), ispn, bands[i].first));
+                    global.fft().input(kp.num_gkvec(), kp.fft_index(), 
+                                       &kp.spinor_wave_function(global.mt_basis_size(), ispn, bands[i].first));
                     global.fft().transform(1);
                     global.fft().output(&wfit(0, ispn));
                 }
@@ -175,10 +180,11 @@ class Density
                 }
             }
              
-            delete t3;
-
-
-        }
+            t3.stop();
+            
+            for (int ir = 0; ir < global.fft().size(); ir++)
+                global.charge_density().f_it(ir) += it_density(ir, 0);
+       }
 
     public:
         
@@ -186,6 +192,8 @@ class Density
         {
             global.charge_density().set_rlm_ptr(rhomt);
             global.charge_density().set_it_ptr(rhoir);
+            global.charge_density().zero();
+            //error(__FILE__, __LINE__, "stop execution");
         }
     
         void initialize()
@@ -223,9 +231,9 @@ class Density
                 }
             }
 
-            mt_density_.set_dimensions(global.max_mt_radial_basis_size(), global.max_mt_radial_basis_size(), 
-                                       global.lmmax_rho(), global.num_atoms(), global.num_dmat());
-            mt_density_.allocate();
+            mt_density_matrix_.set_dimensions(global.max_mt_radial_basis_size(), global.max_mt_radial_basis_size(), 
+                                              global.lmmax_rho(), global.num_atoms(), global.num_dmat());
+            mt_density_matrix_.allocate();
         }
 
         void clear()
@@ -264,10 +272,6 @@ class Density
             // distribute remaining charge
             for (int i = 0; i < global.fft().size(); i++)
                 global.charge_density().f_it(i) = (global.num_electrons() - mt_charge) / global.volume_it();
-            
-            global.fft().input(global.charge_density().f_it());
-            global.fft().forward();
-            global.fft().output(global.num_gvec(), global.fft_index(), global.charge_density().f_pw());
         }
 
         void total_charge(void)
@@ -298,6 +302,8 @@ class Density
 
         void generate()
         {
+            Timer t("sirius::Density::generate");
+            
             double wt = 0.0;
             double ot = 0.0;
             for (int ik = 0; ik < (int)kpoints_.size(); ik++)
@@ -324,16 +330,44 @@ class Density
             global.fft().forward();
             global.fft().output(global.num_gvec(), global.fft_index(), global.effective_potential().f_pw());
 
-            // zero density matrix
-            mt_density_.zero();
-            //it_density_.zero();
+            // zero auxiliary density matrix
+            mt_density_matrix_.zero();
+
+            // zero density
+            global.charge_density().zero();
 
             for (int ik = 0; ik < num_kpoints(); ik++)
             {
-                kpoint(ik)->generate_matching_coefficients();
+                // solve secular equatiion and generate wave functions
                 band.find_eigen_states(*kpoint(ik));
+                // add to charge density and magnetization
                 add_k_contribution(*kpoint(ik));
             }
+
+            
+            Timer t1("sirius::Density::generate:convert_mt");
+            for (int ia = 0; ia < global.num_atoms(); ia++)
+            {
+                for (int lm = 0; lm < global.lmmax_rho(); lm++)
+                {
+                    for (int i = 0; i < global.num_dmat(); i++)
+                        for (int idxrf = 0; idxrf < global.atom(ia)->type()->mt_radial_basis_size(); idxrf++)
+                            mt_density_matrix_(idxrf, idxrf, lm, ia, i) *= 0.5; 
+                    
+                    for (int idxrf2 = 0; idxrf2 < global.atom(ia)->type()->mt_radial_basis_size(); idxrf2++)
+                    {
+                        for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
+                        {
+                            for (int ir = 0; ir < global.atom(ia)->type()->num_mt_points(); ir++)
+                                global.charge_density().f_rlm(lm, ir, ia) += 
+                                    2 * mt_density_matrix_(idxrf1, idxrf2, lm, ia, 0) * 
+                                    global.atom(ia)->symmetry_class()->radial_function(ir, idxrf1) * 
+                                    global.atom(ia)->symmetry_class()->radial_function(ir, idxrf2);
+                        }
+                    }
+                }
+            }
+            t1.stop();
         }
 
         void add_kpoint(int kpoint_id, double* vk, double weight)
