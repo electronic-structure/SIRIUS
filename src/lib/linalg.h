@@ -49,9 +49,10 @@ template<> int hegvx<cpu,complex16>(int4 n, int4 nv, real8 abstol, complex16* a,
    real8 vu = 0.0;
    int4 m;
    int4 info;
+   std::cout << "nv="<<nv<<std::endl;
    FORTRAN(zhegvx)(&n1, "V", "I", "U", &n, a, &n, b, &n, &vl, &vu, &n1, 
-       &nv, &abstol, &m, &w[0], z, &ldz, &work[0], &lwork, &rwork[0], 
-       &iwork[0], &ifail[0], &info, (int4)1, (int4)1, (int4)1);
+                   &nv, &abstol, &m, &w[0], z, &ldz, &work[0], &lwork, &rwork[0], 
+                   &iwork[0], &ifail[0], &info, (int4)1, (int4)1, (int4)1);
 
    memcpy(eval, &w[0], nv * sizeof(real8));
 

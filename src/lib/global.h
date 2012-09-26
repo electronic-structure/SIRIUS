@@ -28,6 +28,9 @@ class Global : public StepFunction
         /// maximum number of MT basis functions across all atoms
         int max_mt_basis_size_;
 
+        /// maximum number of MT radial basis functions across all atoms
+        int max_mt_radial_basis_size_;
+
         /// total number of augmented wave basis functions in the MT (= number of matching coefficients for each plane-wave)
         int mt_aw_basis_size_;
 
@@ -162,6 +165,11 @@ class Global : public StepFunction
             return max_mt_basis_size_;
         }
 
+        inline int max_mt_radial_basis_size()
+        {
+            return max_mt_radial_basis_size_;
+        }
+
         inline int num_fv_states()
         {
             return num_fv_states_;
@@ -218,9 +226,10 @@ class Global : public StepFunction
                 atom_symmetry_class(ic)->init();
 
             mt_basis_size_ = 0;
-            max_mt_basis_size_ = 0;
             mt_aw_basis_size_ = 0;
             mt_lo_basis_size_ = 0;
+            max_mt_basis_size_ = 0;
+            max_mt_radial_basis_size_ = 0;
             for (int ia = 0; ia < num_atoms(); ia++)
             {
                 atom(ia)->init(lmax_pot(), mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
@@ -228,6 +237,7 @@ class Global : public StepFunction
                 mt_lo_basis_size_ += atom(ia)->type()->mt_lo_basis_size();
                 mt_basis_size_ += atom(ia)->type()->mt_basis_size();
                 max_mt_basis_size_ = std::max(max_mt_basis_size_, atom(ia)->type()->mt_basis_size());
+                max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom(ia)->type()->mt_radial_basis_size());
             }
 
             assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);

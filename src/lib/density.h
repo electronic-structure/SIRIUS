@@ -7,7 +7,7 @@ class Density
         
         mdarray<double,5> mt_density_;
         
-        mdarray<double,2> it_density_;
+        //mdarray<double,2> it_density_;
         
         std::vector<kpoint_data_set*> kpoints_;
 
@@ -141,8 +141,9 @@ class Density
         
             
             Timer* t3 = new Timer("sirius::Density::add_k_contribution:densit"); 
-            mdarray<double,2> densit_tmp(global.fft().size(), global.num_dmat());
-            densit_tmp.zero();
+            mdarray<double,2> it_density(global.fft().size(), global.num_dmat());
+            it_density.zero();
+            
             mdarray<complex16,2> wfit(global.fft().size(), global.num_spins());
 
             for (int i = 0; i < (int)bands.size(); i++)
@@ -162,21 +163,20 @@ class Density
                         for (int ir = 0; ir < global.fft().size(); ir++)
                         {
                             complex16 z = wfit(ir, 0) * conj(wfit(ir, 1)) * w;
-                            densit_tmp(ir, 2) += 2.0 * real(z);
-                            densit_tmp(ir, 3) -= 2.0 * imag(z);
+                            it_density(ir, 2) += 2.0 * real(z);
+                            it_density(ir, 3) -= 2.0 * imag(z);
                         }
                     case 2:
                         for (int ir = 0; ir < global.fft().size(); ir++)
-                            densit_tmp(ir, 1) += real(wfit(ir, 1) * conj(wfit(ir, 1))) * w;
+                            it_density(ir, 1) += real(wfit(ir, 1) * conj(wfit(ir, 1))) * w;
                     case 1:
                         for (int ir = 0; ir < global.fft().size(); ir++)
-                            densit_tmp(ir, 0) += real(wfit(ir, 0) * conj(wfit(ir, 0))) * w;
+                            it_density(ir, 0) += real(wfit(ir, 0) * conj(wfit(ir, 0))) * w;
                 }
             }
              
             delete t3;
 
-            // densit = densit_tmp
 
         }
 
@@ -190,6 +190,8 @@ class Density
     
         void initialize()
         {
+            clear();
+
             global.charge_density().set_dimensions(global.lmax_rho(), global.max_num_mt_points(), global.num_atoms(), 
                                                    global.fft().size(), global.num_gvec());
 
@@ -221,6 +223,16 @@ class Density
                 }
             }
 
+            mt_density_.set_dimensions(global.max_mt_radial_basis_size(), global.max_mt_radial_basis_size(), 
+                                       global.lmmax_rho(), global.num_atoms(), global.num_dmat());
+            mt_density_.allocate();
+        }
+
+        void clear()
+        {
+            for (int ik = 0; ik < (int)kpoints_.size(); ik++)
+                delete kpoints_[ik];
+            
             kpoints_.clear();
             kpoint_index_by_id_.clear();
         }
@@ -312,12 +324,13 @@ class Density
             global.fft().forward();
             global.fft().output(global.num_gvec(), global.fft_index(), global.effective_potential().f_pw());
 
-            // zero the density matrices
+            // zero density matrix
             mt_density_.zero();
-            it_density_.zero();
+            //it_density_.zero();
 
             for (int ik = 0; ik < num_kpoints(); ik++)
             {
+                kpoint(ik)->generate_matching_coefficients();
                 band.find_eigen_states(*kpoint(ik));
                 add_k_contribution(*kpoint(ik));
             }

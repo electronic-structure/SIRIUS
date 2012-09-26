@@ -974,6 +974,11 @@ class AtomType
         {
             return indexb_.size();
         }
+
+        inline int mt_radial_basis_size()
+        {
+            return indexr_.size();
+        }
 };
 
 };

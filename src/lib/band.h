@@ -434,15 +434,19 @@ class Band
 
             mdarray<complex16,2> h(kp.fv_basis_size(), kp.fv_basis_size());
             mdarray<complex16,2> o(kp.fv_basis_size(), kp.fv_basis_size());
+            h.zero();
+            o.zero();
 
             set_h<nm>(kp, h);
             set_o(kp, o);
             
-            write_h_o(h, o);
-
+            //write_h_o(h, o);
+            assert(kp.fv_basis_size() > global.num_fv_states());
+            
             kp.allocate_evecfv();
             Timer *t1 = new Timer("sirius::band::find_eigen_states::hegv<impl>");
-            int info = hegvx<cpu>(kp.fv_basis_size(), global.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), kp.evalfv(), kp.evecfv(), kp.fv_basis_size());
+            int info = hegvx<cpu>(kp.fv_basis_size(), global.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), kp.evalfv(), 
+                                  kp.evecfv(), kp.fv_basis_size());
             delete t1;
 
             if (info)
@@ -459,6 +463,11 @@ class Band
 
             for (int i = 0; i < 3; i++)
                 kp.test_scalar_wave_functions(i);
+
+            //if (global.num_spins() == 1)
+            
+            
+            kp.generate_spinor_wave_functions(-1);
 
         }
 

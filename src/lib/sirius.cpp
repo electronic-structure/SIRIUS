@@ -145,6 +145,11 @@ void FORTRAN(sirius_generate_effective_potential)(void)
     sirius::potential.generate_effective_potential();
 }
 
+void FORTRAN(sirius_generate_density)(void)
+{
+    sirius::density.generate();
+}
+
 /*extern "C" void FORTRAN(sirius_get_density)(real8* rhomt, real8* rhoir)
 {
     sirius::density.get_density(rhomt, rhoir);

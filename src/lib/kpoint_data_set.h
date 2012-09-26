@@ -7,7 +7,7 @@ class kpoint_data_set
 
         mdarray<double,2> gkvec_;
 
-        /// global index (in the range [0, num_gvec() - 1]) of G-vector by the index of G+k vector in the range [0, num_gkvec() - 1]
+        /// global index (in the range [0, N_G - 1]) of G-vector by the index of G+k vector in the range [0, N_Gk - 1]
         std::vector<int> gvec_index_;
 
         mdarray<complex16,2> matching_coefficients_;
@@ -15,6 +15,8 @@ class kpoint_data_set
         std::vector<double> evalfv_;
 
         mdarray<complex16,2> evecfv_;
+        
+        mdarray<complex16,2> evecsv_;
 
         std::vector<int> fft_index_;
         
@@ -98,7 +100,6 @@ class kpoint_data_set
             // TODO: check if spherical harmonic generation is slowing things: then it can be cached
             // TODO: number of Bessel functions can be considerably decreased (G+k shells, atom types)
             // TODO[?]: G+k shells
-            // TODO: check leading dimension of matching coefficients
             for (int ig = 0; ig < num_gkvec(); ig++)
             {
                 double v[3];
@@ -109,7 +110,8 @@ class kpoint_data_set
 
                 for (int ia = 0; ia < global.num_atoms(); ia++)
                 {
-                    complex16 phase_factor = exp(complex16(0.0, twopi * scalar_product(gkvec(ig), global.atom(ia)->position())));
+                    complex16 phase_factor = exp(complex16(0.0, twopi * scalar_product(gkvec(ig), 
+                                                                                       global.atom(ia)->position())));
 
                     assert(global.atom(ia)->type()->max_aw_order() <= 2);
 
@@ -131,13 +133,18 @@ class kpoint_data_set
 
                         for (int order = 0; order < num_aw; order++)
                             for (int order1 = 0; order1 < num_aw; order1++)
-                                a[order][order1] = complex16(global.atom(ia)->symmetry_class()->aw_surface_dm(l, order, order1), 0.0);
+                                a[order][order1] = complex16(global.atom(ia)->symmetry_class()->
+                                    aw_surface_dm(l, order, order1), 0.0);
                         
                         for (int m = -l; m <= l; m++)
                             for (int order = 0; order < num_aw; order++)
-                                b(order, m + l) = (fourpi / sqrt(global.omega())) * zil[l] * jl(l, order) * phase_factor * 
-                                    conj(ylmgk[lm_by_l_m(l, m)]) * pow(gkR, order); 
+                                b(order, m + l) = (fourpi / sqrt(global.omega())) * zil[l] * jl(l, order) * 
+                                    phase_factor * conj(ylmgk[lm_by_l_m(l, m)]) * pow(gkR, order); 
                         
+                        double det = (num_aw == 1) ? abs(a[0][0]) : abs(a[0][0] * a[1][1] - a[0][1] * a [1][0]);
+                        if (det  < 1e-8)
+                            error(__FILE__, __LINE__, "ill defined linear equation problem");
+                          
                         int info = gesv<complex16>(num_aw, 2 * l + 1, &a[0][0], 2, &b(0, 0), 2);
 
                         if (info)
@@ -149,7 +156,8 @@ class kpoint_data_set
 
                         for (int order = 0; order < num_aw; order++)
                             for (int m = -l; m <= l; m++)
-                                matching_coefficients_(ig, global.atom(ia)->offset_aw() + global.atom(ia)->type()->indexb_by_l_m_order(l, m, order)) = 
+                                matching_coefficients_(ig, global.atom(ia)->offset_aw() + 
+                                                           global.atom(ia)->type()->indexb_by_l_m_order(l, m, order)) = 
                                     conj(b(order, l + m)); // it is more convenient to store conjugated coefficients
                     }
                 }
@@ -206,6 +214,27 @@ class kpoint_data_set
         
                 copy_pw_block(num_gkvec(), &scalar_wave_functions_(global.mt_basis_size(), j), &evecfv_(0, j));
             }
+        }
+
+        void generate_spinor_wave_functions(int flag)
+        {
+            Timer t("sirius::kpoint_data_set::generate_spinor_wave_functions");
+
+            spinor_wave_functions_.set_dimensions(wf_size(), global.num_spins(), global.num_states());
+            
+            if (flag == -1)
+            {
+                spinor_wave_functions_.set_ptr(scalar_wave_functions_.get_ptr());
+                return;
+            }
+
+            spinor_wave_functions_.allocate();
+            
+            for (int ispn = 0; ispn < global.num_spins(); ispn++)
+                gemm<cpu>(0, 0, wf_size(),  global.num_states(), global.num_fv_states(), complex16(1.0, 0.0), 
+                          &scalar_wave_functions_(0, 0), wf_size(), &evecsv_(ispn * global.num_fv_states(), 0), 
+                          global.num_states(), complex16(0.0, 0.0), &spinor_wave_functions_(0, ispn, 0), 
+                          wf_size() * global.num_spins());
         }
         
         void test_scalar_wave_functions(int use_fft)
@@ -265,8 +294,10 @@ class kpoint_data_set
                             for (int io1 = 0; io1 < ordmax; io1++)
                                 for (int io2 = 0; io2 < ordmax; io2++)
                                     for (int m = -l; m <= l; m++)
-                                        zsum += conj(scalar_wave_functions_(offset_wf + type->indexb_by_l_m_order(l, m, io1), j1)) *
-                                                     scalar_wave_functions_(offset_wf + type->indexb_by_l_m_order(l, m, io2), j2) * 
+                                        zsum += conj(scalar_wave_functions_(offset_wf + 
+                                                                            type->indexb_by_l_m_order(l, m, io1), j1)) *
+                                                     scalar_wave_functions_(offset_wf + 
+                                                                            type->indexb_by_l_m_order(l, m, io2), j2) * 
                                                      symmetry_class->o_radial_integral(l, io1, io2);
                         }
                     }
@@ -279,7 +310,8 @@ class kpoint_data_set
                    
                     if (use_fft == 1)
                     {
-                        global.fft().input(num_gkvec(), &fft_index_[0], &scalar_wave_functions_(global.mt_basis_size(), j2));
+                        global.fft().input(num_gkvec(), &fft_index_[0], 
+                                           &scalar_wave_functions_(global.mt_basis_size(), j2));
                         global.fft().transform(1);
                         global.fft().output(&v2[0]);
         
@@ -295,7 +327,8 @@ class kpoint_data_set
                             {
                                 int ig3 = global.index_g12(gvec_index(ig1), gvec_index(ig2));
                                 zsum += conj(scalar_wave_functions_(global.mt_basis_size() + ig1, j1)) * 
-                                    scalar_wave_functions_(global.mt_basis_size() + ig2, j2) * global.step_function_pw(ig3);
+                                             scalar_wave_functions_(global.mt_basis_size() + ig2, j2) * 
+                                        global.step_function_pw(ig3);
                             }
                        }
                    }

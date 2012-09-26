@@ -313,6 +313,8 @@ class AtomSymmetryClass
         {
             Timer t("sirius::AtomSymmetryClass::generate_radial_functions");
 
+            radial_functions_.zero();
+
             generate_aw_radial_functions();
             generate_lo_radial_functions();
 
