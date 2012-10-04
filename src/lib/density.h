@@ -274,7 +274,7 @@ class Density
                 global.charge_density().f_it(i) = (global.num_electrons() - mt_charge) / global.volume_it();
         }
 
-        void total_charge(void)
+        double total_charge(void)
         {
             double charge = 0.0;
 
@@ -292,12 +292,13 @@ class Density
             for (int ir = 0; ir < global.fft().size(); ir++)
                 charge += global.charge_density().f_it(ir) * global.step_function(ir) * dv;
 
-            if (fabs(charge - global.num_electrons()) > 1e-10)
+            /*if (fabs(charge - global.num_electrons()) > 1e-10)
             {
                 std::stringstream s;
                 s << "Wrong nuber of electrons " << charge;
                 error(__FILE__, __LINE__, s);
-            }
+            }*/
+            return charge;
         }
 
         void generate()
@@ -336,6 +337,9 @@ class Density
             // zero density
             global.charge_density().zero();
 
+            //
+            // Main loop over k-points
+            //
             for (int ik = 0; ik < num_kpoints(); ik++)
             {
                 // solve secular equatiion and generate wave functions
@@ -367,6 +371,8 @@ class Density
                 }
             }
             t1.stop();
+            
+            printf("Total charge : %f\n", total_charge());
         }
 
         void add_kpoint(int kpoint_id, double* vk, double weight)

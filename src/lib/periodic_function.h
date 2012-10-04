@@ -182,10 +182,10 @@ template<typename T> class PeriodicFunction
             f_pw_.deallocate();
         }
 
-        void allocate_ylm()
+        /*void allocate_ylm()
         {
             f_ylm_.allocate();
-        }
+        }*/
 
         void deallocate_ylm()
         {
@@ -221,7 +221,7 @@ template<typename T> class PeriodicFunction
         
         inline T* f_it()
         {
-            return &f_it_(0);
+            return f_it_.get_ptr();
         }
 
         inline complex_type_& f_pw(int ig)
@@ -231,7 +231,7 @@ template<typename T> class PeriodicFunction
 
         inline complex_type_* f_pw()
         {
-            return &f_pw_(0);
+            return f_pw_.get_ptr();
         }
         
         inline complex_type_* f_ylm()
