@@ -389,24 +389,24 @@ class Band
         void set_o(kpoint_data_set& kp, mdarray<complex16,2>& o)
         {
             Timer t("sirius::Band::set_o");
-        
+
             gemm<cpu>(0, 2, kp.num_gkvec(), kp.num_gkvec(), global.mt_aw_basis_size(), complex16(1.0, 0.0), 
                 &kp.matching_coefficient(0, 0), kp.num_gkvec(), &kp.matching_coefficient(0, 0), kp.num_gkvec(), 
                 complex16(0.0, 0.0), &o(0, 0), o.size(0)); 
-            
+
             for (int ia = 0; ia < global.num_atoms(); ia++)
             {
                 Atom* atom = global.atom(ia);
                 AtomType* type = atom->type();
-                
+
                 int lo_index_offset = type->mt_aw_basis_size();
-        
+
                 for (int j2 = 0; j2 < type->mt_lo_basis_size(); j2++) // loop over columns (local-orbital block) 
                 {
                     int l2 = type->indexb(lo_index_offset + j2).l;
                     int lm2 = type->indexb(lo_index_offset + j2).lm;
                     int order2 = type->indexb(lo_index_offset + j2).order;
-                    
+
                     // apw-lo block 
                     for (int order1 = 0; order1 < (int)type->aw_descriptor(l2).size(); order1++)
                         for (int ig = 0; ig < kp.num_gkvec(); ig++)
@@ -436,15 +436,16 @@ class Band
 
             mdarray<complex16,2> h(kp.fv_basis_size(), kp.fv_basis_size());
             mdarray<complex16,2> o(kp.fv_basis_size(), kp.fv_basis_size());
-            h.zero();
-            o.zero();
 
-            set_h<nm>(kp, h);
+            o.zero();
             set_o(kp, o);
-            
+
+            h.zero();
+            set_h<nm>(kp, h);
+
             //write_h_o(h, o);
             assert(kp.fv_basis_size() > global.num_fv_states());
-            
+
             kp.allocate_evecfv();
             Timer *t1 = new Timer("sirius::band::find_eigen_states::hegv<impl>");
             int info = hegvx<cpu>(kp.fv_basis_size(), global.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), kp.evalfv(), 

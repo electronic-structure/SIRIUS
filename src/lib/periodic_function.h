@@ -234,6 +234,11 @@ template<typename T> class PeriodicFunction
             return &f_pw_(0);
         }
         
+        inline complex_type_* f_ylm()
+        {
+            return f_ylm_.get_ptr();
+        }
+        
         inline void add(PeriodicFunction<T>& rhs, int flg)
         {
             assert(lmax_ == rhs.lmax_);

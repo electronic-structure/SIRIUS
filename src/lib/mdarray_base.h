@@ -54,7 +54,7 @@ template <typename T, int ND> class mdarray_base
     public:
     
         mdarray_base() : mdarray_ptr(NULL), 
-                         allocated(false), 
+                         allocated_(false), 
                          mdarray_ptr_device(NULL), 
                          allocated_on_device(false) 
         { 
@@ -107,17 +107,17 @@ template <typename T, int ND> class mdarray_base
             if (!mdarray_ptr) 
             {
                 mdarray_ptr = new T[sz];
-                allocated = true;
+                allocated_ = true;
             }
         }
 
         void deallocate()
         {
-            if (allocated)
+            if (allocated_)
             {
                 delete[] mdarray_ptr;
                 mdarray_ptr = NULL;
-                allocated = false;
+                allocated_ = false;
             }
         }
         
@@ -137,6 +137,22 @@ template <typename T, int ND> class mdarray_base
             return mdarray_ptr;
         }
         
+        bool allocated()
+        {
+            return allocated_;
+        }
+
+        unsigned int hash()
+        {
+            unsigned int h = 5381;
+
+            for(size_t i = 0; i < size() * sizeof(T); i++)
+                h = ((h << 5) + h) + ((unsigned char*)mdarray_ptr)[i];
+
+            return h;
+        }
+
+        
         /*void copy_members(const mdarray_base<impl,T,ND>& src) 
         {
             for (int i = 0; i < ND; i++) 
@@ -148,11 +164,16 @@ template <typename T, int ND> class mdarray_base
  
     protected:
     
-        T *mdarray_ptr;
-        bool allocated;
-        T *mdarray_ptr_device;  
+        T* mdarray_ptr;
+        
+        bool allocated_;
+        
+        T* mdarray_ptr_device;  
+        
         bool allocated_on_device;
+        
         dimension d[ND];
+        
         int offset[ND];
 
     private:

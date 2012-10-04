@@ -344,7 +344,6 @@ class Density
                 add_k_contribution(*kpoint(ik));
             }
 
-            
             Timer t1("sirius::Density::generate:convert_mt");
             for (int ia = 0; ia < global.num_atoms(); ia++)
             {
@@ -393,7 +392,8 @@ class Density
                 int m = global.num_valence_electrons() / 2;
                 for (int i = 0; i < m; i++)
                     initial_occupancies[i] = initial_occupancies[i + global.num_fv_states()] = 1.0;
-                initial_occupancies[m] = initial_occupancies[m + global.num_fv_states()] = 0.5 * global.num_valence_electrons() - double(m);
+                initial_occupancies[m] = initial_occupancies[m + global.num_fv_states()] = 
+                    0.5 * global.num_valence_electrons() - double(m);
             }
 
             kpoints_.back()->set_occupancies(&initial_occupancies[0]);

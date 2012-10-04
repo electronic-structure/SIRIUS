@@ -282,6 +282,14 @@ class Global : public StepFunction
             printf("SIRIUS v0.3\n");
             printf("git hash : %s\n", git_hash);
             printf("build date : %s\n", build_date);
+            int num_threads = 1;
+            #pragma omp parallel default(shared)
+            {
+                if (omp_get_thread_num() == 0)
+                    num_threads = omp_get_num_threads();
+            }
+            printf("\n");
+            printf("number of OMP threads : %i\n", num_threads); 
 
             unit_cell::print_info();
             reciprocal_lattice::print_info();
