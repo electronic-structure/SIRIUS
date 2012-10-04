@@ -28,6 +28,7 @@ endif
 all: log $(OBJ)
 	ar -r libsirius.a $(OBJ)
 
+# TODO: platform-independent python script
 log:
 	@echo "const char* git_hash = \"$(shell git rev-parse HEAD)\";" > version.h 
 	@echo "const char* build_date = \"$(shell date)\";" >> version.h 
