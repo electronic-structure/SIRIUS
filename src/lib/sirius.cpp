@@ -70,9 +70,9 @@ void FORTRAN(sirius_get_num_grid_points)(int4* num_grid_points)
     *num_grid_points = sirius::global.fft().size();
 }
 
-void FORTRAN(sirius_get_num_states)(int* num_states)
+void FORTRAN(sirius_get_num_bands)(int4* num_bands)
 {
-    *num_states = sirius::global.num_states();
+    *num_bands = sirius::global.num_bands();
 }
 
 void FORTRAN(sirius_get_num_gvec)(int4* num_gvec)
@@ -168,9 +168,14 @@ void FORTRAN(sirius_add_kpoint)(int4* kpoint_id, real8* vk, real8* weight)
     sirius::density.add_kpoint(*kpoint_id, vk, *weight);
 }
 
-void FORTRAN(sirius_set_occupancies)(int4* kpoint_id, real8* occupancies)
+void FORTRAN(sirius_set_band_occupancies)(int4* kpoint_id, real8* band_occupancies)
 {
-    sirius::density.set_occupancies(*kpoint_id, occupancies);
+    sirius::density.set_band_occupancies(*kpoint_id, band_occupancies);
+}
+
+void FORTRAN(sirius_get_band_energies)(int4* kpoint_id, real8* band_energies)
+{
+    sirius::density.get_band_energies(*kpoint_id, band_energies);
 }
 
 /*

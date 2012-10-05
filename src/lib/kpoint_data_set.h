@@ -24,7 +24,9 @@ class kpoint_data_set
 
         mdarray<complex16,3> spinor_wave_functions_;
 
-        std::vector<double> occupancies_;
+        std::vector<double> band_occupancies_;
+
+        std::vector<double> band_energies_; 
 
         double weight_;
 
@@ -38,6 +40,9 @@ class kpoint_data_set
                 error(__FILE__, __LINE__, "aw cutoff is too large for a given lmax");
 
             double gk_cutoff = global.aw_cutoff() / global.min_mt_radius();
+            
+            if (gk_cutoff * 2 > global.pw_cutoff())
+                error(__FILE__, __LINE__, "aw cutoff is too large for a given plane-wave cutoff");
 
             std::vector< std::pair<double,int> > gkmap;
 
@@ -73,14 +78,13 @@ class kpoint_data_set
             for (int ig = 0; ig < num_gkvec(); ig++)
                 fft_index_[ig] = global.fft_index(gvec_index_[ig]);
             
-            evalfv_.resize(global.num_fv_states());
-            evecfv_.set_dimensions(fv_basis_size(), global.num_fv_states());
+            //evalfv_.resize(global.num_fv_states());
+            //evecfv_.set_dimensions(fv_basis_size(), global.num_fv_states());
 
             weight_ = weight__;
             for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
 
-            occupancies_.resize(global.num_states());
-        }
+       }
 
         void generate_matching_coefficients()
         {
@@ -220,20 +224,21 @@ class kpoint_data_set
         {
             Timer t("sirius::kpoint_data_set::generate_spinor_wave_functions");
 
-            spinor_wave_functions_.set_dimensions(wf_size(), global.num_spins(), global.num_states());
+            spinor_wave_functions_.set_dimensions(wf_size(), global.num_spins(), global.num_bands());
             
             if (flag == -1)
             {
                 spinor_wave_functions_.set_ptr(scalar_wave_functions_.get_ptr());
+                memcpy(&band_energies_[0], evalfv(), global.num_bands() * sizeof(double));
                 return;
             }
 
             spinor_wave_functions_.allocate();
             
             for (int ispn = 0; ispn < global.num_spins(); ispn++)
-                gemm<cpu>(0, 0, wf_size(),  global.num_states(), global.num_fv_states(), complex16(1.0, 0.0), 
+                gemm<cpu>(0, 0, wf_size(),  global.num_bands(), global.num_fv_states(), complex16(1.0, 0.0), 
                           &scalar_wave_functions_(0, 0), wf_size(), &evecsv_(ispn * global.num_fv_states(), 0), 
-                          global.num_states(), complex16(0.0, 0.0), &spinor_wave_functions_(0, ispn, 0), 
+                          global.num_bands(), complex16(0.0, 0.0), &spinor_wave_functions_(0, ispn, 0), 
                           wf_size() * global.num_spins());
         }
         
@@ -402,19 +407,30 @@ class kpoint_data_set
             return &evecfv_(0, 0);
         }
 
-        inline void allocate_evecfv()
+        inline void allocate()
         {
+            evalfv_.resize(global.num_fv_states());
+            
+            evecfv_.set_dimensions(fv_basis_size(), global.num_fv_states());
             evecfv_.allocate();
+            
+            band_occupancies_.resize(global.num_bands());
+            band_energies_.resize(global.num_bands());
         }
 
-        inline void set_occupancies(double* occupancies)
+        inline void set_band_occupancies(double* band_occupancies)
         {
-            memcpy(&occupancies_[0], occupancies, global.num_states() * sizeof(double));
+            memcpy(&band_occupancies_[0], band_occupancies, global.num_bands() * sizeof(double));
         }
 
-        inline double occupancy(int j)
+        inline void get_band_energies(double* band_energies)
         {
-            return occupancies_[j];
+            memcpy(band_energies, &band_energies_[0], global.num_bands() * sizeof(double));
+        }
+
+        inline double band_occupancy(int j)
+        {
+            return band_occupancies_[j];
         }
 
         inline double weight()

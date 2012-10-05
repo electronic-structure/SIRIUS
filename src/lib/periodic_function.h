@@ -104,11 +104,9 @@ template<typename T> class PeriodicFunction
             // check source
             if (!f_rlm_.get_ptr()) error(__FILE__, __LINE__, "f_rlm array is empty");
             
-            // allocate target
-            if (!f_ylm_.get_ptr()) f_ylm_.allocate();
-
-            f_ylm_.zero();
-
+            // check target
+            if (!f_ylm_.get_ptr()) error(__FILE__, __LINE__, "f_ylm array is empty");
+            
             for (int ia = 0; ia < num_atoms_; ia++)
                 for (int ir = 0; ir < f_rlm_.size(1); ir++)
                     SHT::convert_frlm_to_fylm(lmax_, &f_rlm_(0, ir, ia), &f_ylm_(0, ir, ia));      
@@ -120,11 +118,9 @@ template<typename T> class PeriodicFunction
             // check source  
             if (!f_ylm_.get_ptr()) error(__FILE__, __LINE__, "f_ylm array is empty");
 
-            // allocate target
-            if (!f_rlm_.get_ptr()) f_rlm_.allocate();
+            // check target
+            if (!f_rlm_.get_ptr()) error(__FILE__, __LINE__, "f_rlm array is empty");
             
-            f_rlm_.zero();
-
             for (int ia = 0; ia < num_atoms_; ia++)
                 for (int ir = 0; ir < f_rlm_.size(1); ir++)
                     SHT::convert_fylm_to_frlm(lmax_, &f_ylm_(0, ir, ia), &f_rlm_(0, ir, ia));      
@@ -159,37 +155,17 @@ template<typename T> class PeriodicFunction
             f_rlm_.set_ptr(f_rlm__);
         }
         
-        /*void set_ylm_ptr(T* f_ylm__)
-        {
-            f_ylm_.set_ptr(f_ylm__);
-        }*/
-        
-        /*void set_pw_ptr(T* f_pw__)
-        {
-            f_pw_.set_ptr(f_pw__);
-        }*/
-
         void set_it_ptr(T* f_it__)
         {
             f_it_.set_ptr(f_it__);
         }
 
-        void deallocate()
+        void deallocate(int flags = rlm_component | ylm_component | pw_component | it_component)
         {
-            f_rlm_.deallocate();
-            f_ylm_.deallocate();
-            f_it_.deallocate();
-            f_pw_.deallocate();
-        }
-
-        /*void allocate_ylm()
-        {
-            f_ylm_.allocate();
-        }*/
-
-        void deallocate_ylm()
-        {
-            f_ylm_.deallocate();
+            if (flags & rlm_component) f_rlm_.deallocate();
+            if (flags & ylm_component) f_ylm_.deallocate();
+            if (flags & pw_component) f_pw_.deallocate();
+            if (flags & it_component) f_it_.deallocate();
         }
 
         void zero()
@@ -216,28 +192,33 @@ template<typename T> class PeriodicFunction
 
         inline T& f_it(int ir)
         {
+            assert(f_it_.get_ptr());
+
             return f_it_(ir);
         }
         
+        inline complex_type_& f_pw(int ig)
+        {
+            assert(f_pw_.get_ptr());
+
+            return f_pw_(ig);
+        }
+       
+        inline complex_type_* f_ylm()
+        {
+            return f_ylm_.get_ptr();
+        }
+        
+        inline complex_type_* f_pw()
+        {
+            return f_pw_.get_ptr();
+        }
+ 
         inline T* f_it()
         {
             return f_it_.get_ptr();
         }
 
-        inline complex_type_& f_pw(int ig)
-        {
-            return f_pw_(ig);
-        }
-
-        inline complex_type_* f_pw()
-        {
-            return f_pw_.get_ptr();
-        }
-        
-        inline complex_type_* f_ylm()
-        {
-            return f_ylm_.get_ptr();
-        }
         
         inline void add(PeriodicFunction<T>& rhs, int flg)
         {

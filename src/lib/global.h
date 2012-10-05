@@ -40,8 +40,8 @@ class Global : public StepFunction
         /// number of first-variational states
         int num_fv_states_;
 
-        /// number of spinor states
-        int num_states_;
+        /// number of bands (= number of spinor states)
+        int num_bands_;
 
         //mdarray<complex16,3> complex_gaunt_;
         mdarray<std::vector< std::pair<int,complex16> >,2> complex_gaunt_packed_;
@@ -175,9 +175,9 @@ class Global : public StepFunction
             return num_fv_states_;
         }
 
-        inline int num_states()
+        inline int num_bands()
         {
-            return num_states_;
+            return num_bands_;
         }
         
         inline PeriodicFunction<double>& charge_density()
@@ -268,7 +268,7 @@ class Global : public StepFunction
             assert(num_atom_symmetry_classes() != 0);
 
             num_fv_states_ = int(num_electrons() / 2.0) + 10;
-            num_states_ = num_fv_states_ * num_spins_;
+            num_bands_ = num_fv_states_ * num_spins_;
         }
         
         void clear()

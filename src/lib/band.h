@@ -36,6 +36,8 @@ class Band
 
         void radial()
         {
+            Timer t("sirius::Band::radial");
+
             // save spherical part of the potential
             for (int ic = 0; ic < global.num_atom_symmetry_classes(); ic++)
             {
@@ -432,6 +434,8 @@ class Band
 
         void find_eigen_states(kpoint_data_set& kp)
         {
+            Timer t("sirius::Band::find_eigen_states");
+            
             kp.generate_matching_coefficients();
 
             mdarray<complex16,2> h(kp.fv_basis_size(), kp.fv_basis_size());
@@ -446,7 +450,7 @@ class Band
             //write_h_o(h, o);
             assert(kp.fv_basis_size() > global.num_fv_states());
 
-            kp.allocate_evecfv();
+            kp.allocate();
             Timer *t1 = new Timer("sirius::band::find_eigen_states::hegv<impl>");
             int info = hegvx<cpu>(kp.fv_basis_size(), global.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), kp.evalfv(), 
                                   kp.evecfv(), kp.fv_basis_size());
@@ -459,13 +463,13 @@ class Band
                 error(__FILE__, __LINE__, s);
             }
 
-            for (int i = 0; i < global.num_fv_states(); i++)
-                std::cout << "i = " << i << "  e = " << kp.evalfv(i) << std::endl;
+            //for (int i = 0; i < global.num_fv_states(); i++)
+            //    std::cout << "i = " << i << "  e = " << kp.evalfv(i) << std::endl;
             
             kp.generate_scalar_wave_functions();
 
-            for (int i = 0; i < 3; i++)
-                kp.test_scalar_wave_functions(i);
+            //for (int i = 0; i < 3; i++)
+            //    kp.test_scalar_wave_functions(i);
 
             //if (global.num_spins() == 1)
             

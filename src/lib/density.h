@@ -78,9 +78,9 @@ class Density
             Timer t("sirius::Density::add_k_contribution");
             
             std::vector< std::pair<int,double> > bands;
-            for (int j = 0; j < global.num_states(); j++)
+            for (int j = 0; j < global.num_bands(); j++)
             {
-                double wo = kp.occupancy(j) * kp.weight();
+                double wo = kp.band_occupancy(j) * kp.weight();
                 if (wo > 1e-14)
                     bands.push_back(std::pair<int,double>(j, wo));
             }
@@ -193,7 +193,6 @@ class Density
             global.charge_density().set_rlm_ptr(rhomt);
             global.charge_density().set_it_ptr(rhoir);
             global.charge_density().zero();
-            //error(__FILE__, __LINE__, "stop execution");
         }
     
         void initialize()
@@ -310,8 +309,8 @@ class Density
             for (int ik = 0; ik < (int)kpoints_.size(); ik++)
             {
                 wt += kpoints_[ik]->weight();
-                for (int j = 0; j < global.num_states(); j++)
-                    ot += kpoints_[ik]->weight() * kpoints_[ik]->occupancy(j);
+                for (int j = 0; j < global.num_bands(); j++)
+                    ot += kpoints_[ik]->weight() * kpoints_[ik]->band_occupancy(j);
             }
 
             if (fabs(wt - 1.0) > 1e-12)
@@ -383,7 +382,7 @@ class Density
             kpoints_.push_back(new kpoint_data_set(vk, weight));
             kpoint_index_by_id_[kpoint_id] = kpoints_.size();
 
-            std::vector<double> initial_occupancies(global.num_states(), 0.0);
+            std::vector<double> initial_occupancies(global.num_bands(), 0.0);
 
             // in case of non-magnetic, or magnetic non-collinear case occupy first N bands
             if (global.num_dmat() == 1 || global.num_dmat() == 4)
@@ -402,12 +401,17 @@ class Density
                     0.5 * global.num_valence_electrons() - double(m);
             }
 
-            kpoints_.back()->set_occupancies(&initial_occupancies[0]);
+            kpoints_.back()->set_band_occupancies(&initial_occupancies[0]);
         }
 
-        void set_occupancies(int kpoint_id, double* occupancies)
+        void set_band_occupancies(int kpoint_id, double* band_occupancies)
         {
-            kpoints_[kpoint_index_by_id_[kpoint_id]]->set_occupancies(occupancies);
+            kpoints_[kpoint_index_by_id_[kpoint_id]]->set_band_occupancies(band_occupancies);
+        }
+
+        void get_band_energies(int kpoint_id, double* band_energies)
+        {
+            kpoints_[kpoint_index_by_id_[kpoint_id]]->get_band_energies(band_energies);
         }
 
         inline kpoint_data_set* kpoint(int ik)

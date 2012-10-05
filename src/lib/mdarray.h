@@ -21,7 +21,7 @@ template <typename T> class mdarray<T,1> : public mdarray_base_impl<T,1>
         {
         }
 
-        mdarray(T *data_ptr, const dimension& d0)
+        mdarray(T* data_ptr, const dimension& d0)
         {
             set_dimensions(d0);
             this->set_ptr(data_ptr);
@@ -59,7 +59,7 @@ template <typename T> class mdarray<T,2> : public mdarray_base_impl<T,2>
         {
         }
 
-        mdarray(T *data_ptr, const dimension& d0, const dimension& d1)
+        mdarray(T* data_ptr, const dimension& d0, const dimension& d1)
         {
             set_dimensions(d0, d1);
             this->set_ptr(data_ptr);
@@ -99,7 +99,7 @@ template <typename T> class mdarray<T,3> : public mdarray_base_impl<T,3>
         {
         }
 
-        mdarray(T *data_ptr, const dimension& d0, const dimension& d1, const dimension& d2)
+        mdarray(T* data_ptr, const dimension& d0, const dimension& d1, const dimension& d2)
         {
             set_dimensions(d0, d1, d2);
             this->set_ptr(data_ptr);
@@ -141,7 +141,7 @@ template <typename T> class mdarray<T,4> : public mdarray_base_impl<T,4>
         {
         }
 
-        mdarray(T *data_ptr, const dimension& d0, const dimension& d1, const dimension& d2, const dimension& d3)
+        mdarray(T* data_ptr, const dimension& d0, const dimension& d1, const dimension& d2, const dimension& d3)
         {
             set_dimensions(d0, d1, d2, d3);
             this->set_ptr(data_ptr);
@@ -179,7 +179,7 @@ template <typename T> class mdarray<T,5> : public mdarray_base_impl<T,5>
         {
         }
 
-        mdarray(T *data_ptr, const dimension& d0, const dimension& d1, const dimension& d2, const dimension& d3, const dimension& d4)
+        mdarray(T* data_ptr, const dimension& d0, const dimension& d1, const dimension& d2, const dimension& d3, const dimension& d4)
         {
             set_dimensions(d0, d1, d2, d3, d4);
             this->set_ptr(data_ptr);
@@ -219,7 +219,7 @@ template <typename T> class mdarray<T,6> : public mdarray_base_impl<T,6>
         {
         }
 
-        mdarray(T *data_ptr, const dimension& d0, const dimension& d1, const dimension& d2, const dimension& d3, const dimension& d4, const dimension& d5)
+        mdarray(T* data_ptr, const dimension& d0, const dimension& d1, const dimension& d2, const dimension& d3, const dimension& d4, const dimension& d5)
         {
             set_dimensions(d0, d1, d2, d3, d4, d5);
             this->set_ptr(data_ptr);

@@ -127,7 +127,7 @@ template <typename T, int ND> class mdarray_base
             memset(mdarray_ptr, 0, size() * sizeof(T));
         }
         
-        void set_ptr(T *ptr)
+        void set_ptr(T* ptr)
         {
             mdarray_ptr = ptr;
         }

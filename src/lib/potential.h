@@ -167,6 +167,7 @@ class Potential
             Timer t("sirius::Potential::poisson");
 
             // convert to Ylm expansion
+            global.charge_density().allocate(ylm_component);
             global.charge_density().convert_to_ylm();
            
             // true multipole moments
@@ -385,11 +386,11 @@ class Potential
             
             hartree_potential_.convert_to_rlm();
 
-            global.charge_density().deallocate_ylm();
-
             global.fft().input(global.num_gvec(), global.fft_index(), hartree_potential_.f_pw());
             global.fft().backward();
             global.fft().output(hartree_potential_.f_it());
+            
+            global.charge_density().deallocate(ylm_component);
         }
 
         void xc()
