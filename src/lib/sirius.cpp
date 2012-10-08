@@ -46,6 +46,11 @@ void FORTRAN(sirius_set_effective_potential_ptr)(real8* veffmt, real8* veffir)
     sirius::potential.set_effective_potential_ptr(veffmt, veffir);
 }
 
+void FORTRAN(sirius_set_equivalent_atoms)(int4* equivalent_atoms)
+{
+    sirius::global.set_equivalent_atoms(equivalent_atoms);
+}
+
 /*
     primitive get functions
 */
@@ -163,17 +168,17 @@ extern "C" void FORTRAN(sirius_get_step_function)(real8* step_function)
 }
 #endif
 
-void FORTRAN(sirius_add_kpoint)(int4* kpoint_id, real8* vk, real8* weight)
+void FORTRAN(sirius_density_add_kpoint)(int4* kpoint_id, real8* vk, real8* weight)
 {
     sirius::density.add_kpoint(*kpoint_id, vk, *weight);
 }
 
-void FORTRAN(sirius_set_band_occupancies)(int4* kpoint_id, real8* band_occupancies)
+void FORTRAN(sirius_density_set_band_occupancies)(int4* kpoint_id, real8* band_occupancies)
 {
     sirius::density.set_band_occupancies(*kpoint_id, band_occupancies);
 }
 
-void FORTRAN(sirius_get_band_energies)(int4* kpoint_id, real8* band_energies)
+void FORTRAN(sirius_density_get_band_energies)(int4* kpoint_id, real8* band_energies)
 {
     sirius::density.get_band_energies(*kpoint_id, band_energies);
 }

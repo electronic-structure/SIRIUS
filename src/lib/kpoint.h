@@ -1,7 +1,7 @@
 namespace sirius
 {
 
-class kpoint_data_set
+class kpoint
 {
     private:
 
@@ -34,7 +34,7 @@ class kpoint_data_set
 
     public:
 
-        kpoint_data_set(double* vk__, double weight__)
+        kpoint(double* vk__, double weight__)
         {
             if (global.aw_cutoff() > double(global.lmax_apw()))
                 error(__FILE__, __LINE__, "aw cutoff is too large for a given lmax");
@@ -78,13 +78,9 @@ class kpoint_data_set
             for (int ig = 0; ig < num_gkvec(); ig++)
                 fft_index_[ig] = global.fft_index(gvec_index_[ig]);
             
-            //evalfv_.resize(global.num_fv_states());
-            //evecfv_.set_dimensions(fv_basis_size(), global.num_fv_states());
-
             weight_ = weight__;
             for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
-
-       }
+        }
 
         void generate_matching_coefficients()
         {
@@ -163,6 +159,8 @@ class kpoint_data_set
                                 matching_coefficients_(ig, global.atom(ia)->offset_aw() + 
                                                            global.atom(ia)->type()->indexb_by_l_m_order(l, m, order)) = 
                                     conj(b(order, l + m)); // it is more convenient to store conjugated coefficients
+                                                           // because then the overlap matrix is set with single
+                                                           // matrix-matrix multiplication without further conjugation 
                     }
                 }
             }
@@ -229,7 +227,8 @@ class kpoint_data_set
             if (flag == -1)
             {
                 spinor_wave_functions_.set_ptr(scalar_wave_functions_.get_ptr());
-                memcpy(&band_energies_[0], evalfv(), global.num_bands() * sizeof(double));
+                band_energies_.resize(global.num_bands());
+                memcpy(&band_energies_[0], &evalfv_[0], global.num_bands() * sizeof(double));
                 return;
             }
 
@@ -241,6 +240,56 @@ class kpoint_data_set
                           global.num_bands(), complex16(0.0, 0.0), &spinor_wave_functions_(0, ispn, 0), 
                           wf_size() * global.num_spins());
         }
+
+        void find_eigen_states()
+        {
+            assert(fv_basis_size() > global.num_fv_states());
+            
+            Timer t("sirius::kpoint::find_eigen_states");
+            
+            evalfv_.resize(global.num_fv_states());
+            evecfv_.set_dimensions(fv_basis_size(), global.num_fv_states());
+            evecfv_.allocate();
+            
+
+            generate_matching_coefficients();
+
+            mdarray<complex16,2> h(fv_basis_size(), fv_basis_size());
+            mdarray<complex16,2> o(fv_basis_size(), fv_basis_size());
+
+            o.zero();
+            band.set_o(num_gkvec(), matching_coefficients_, &gvec_index_[0], o);
+
+            h.zero();
+            band.set_h<nm>(num_gkvec(), matching_coefficients_, gkvec_, &gvec_index_[0], h);
+
+            //write_h_o(h, o);
+            
+            Timer *t1 = new Timer("sirius::kpoint::find_eigen_states::hegv<impl>");
+            int info = hegvx<cpu>(fv_basis_size(), global.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), &evalfv_[0], 
+                                  &evecfv_(0, 0), fv_basis_size());
+            delete t1;
+
+            if (info)
+            {
+                std::stringstream s;
+                s << "hegvx returned " << info;
+                error(__FILE__, __LINE__, s);
+            }
+
+            generate_scalar_wave_functions();
+
+            //for (int i = 0; i < 3; i++)
+            //    kp.test_scalar_wave_functions(i);
+
+            generate_spinor_wave_functions(-1);
+
+
+        }
+
+
+
+
         
         void test_scalar_wave_functions(int use_fft)
         {
@@ -392,39 +441,16 @@ class kpoint_data_set
             return (global.mt_basis_size() + num_gkvec());
         }
 
-        inline double* evalfv()
-        {
-            return &evalfv_[0];
-        }
-
-        inline double evalfv(int j)
-        {
-            return evalfv_[j];
-        }
-
-        inline complex16* evecfv()
-        {
-            return &evecfv_(0, 0);
-        }
-
-        inline void allocate()
-        {
-            evalfv_.resize(global.num_fv_states());
-            
-            evecfv_.set_dimensions(fv_basis_size(), global.num_fv_states());
-            evecfv_.allocate();
-            
-            band_occupancies_.resize(global.num_bands());
-            band_energies_.resize(global.num_bands());
-        }
-
         inline void set_band_occupancies(double* band_occupancies)
         {
+            band_occupancies_.resize(global.num_bands());
             memcpy(&band_occupancies_[0], band_occupancies, global.num_bands() * sizeof(double));
         }
 
         inline void get_band_energies(double* band_energies)
         {
+            assert((int)band_energies_.size() == global.num_bands());
+            
             memcpy(band_energies, &band_energies_[0], global.num_bands() * sizeof(double));
         }
 

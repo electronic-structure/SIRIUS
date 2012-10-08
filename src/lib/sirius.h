@@ -53,8 +53,9 @@ extern "C" {
 #include "step_function.h"
 #include "periodic_function.h"
 #include "global.h"
-#include "kpoint_data_set.h"
 #include "band.h"
+#include "kpoint.h"
+#include "kpoint_set.h"
 #include "density.h"
 #include "potential.h"
 

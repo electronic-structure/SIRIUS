@@ -7,13 +7,11 @@ class Density
         
         mdarray<double,5> mt_density_matrix_;
         
-        std::vector<kpoint_data_set*> kpoints_;
-
-        std::map<int,int>kpoint_index_by_id_;
-
         std::vector< std::pair<int,int> > dmat_spins_;
 
         mdarray<complex16,3> complex_gaunt_;
+
+        kpoint_set kpoint_set_;
 
         template <int num_dmat> void reduce_zdens(int ia, mdarray<complex16,3>& zdens)
         {
@@ -73,7 +71,7 @@ class Density
             } // lm3
         }
 
-        void add_k_contribution(kpoint_data_set& kp)
+        void add_k_contribution(kpoint& kp)
         {
             Timer t("sirius::Density::add_k_contribution");
             
@@ -197,7 +195,7 @@ class Density
     
         void initialize()
         {
-            clear();
+            kpoint_set_.clear();
 
             global.charge_density().set_dimensions(global.lmax_rho(), global.max_num_mt_points(), global.num_atoms(), 
                                                    global.fft().size(), global.num_gvec());
@@ -235,15 +233,7 @@ class Density
             mt_density_matrix_.allocate();
         }
 
-        void clear()
-        {
-            for (int ik = 0; ik < (int)kpoints_.size(); ik++)
-                delete kpoints_[ik];
-            
-            kpoints_.clear();
-            kpoint_index_by_id_.clear();
-        }
-        
+       
         void initial_density()
         {
             std::vector<double> enu;
@@ -306,11 +296,11 @@ class Density
             
             double wt = 0.0;
             double ot = 0.0;
-            for (int ik = 0; ik < (int)kpoints_.size(); ik++)
+            for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
             {
-                wt += kpoints_[ik]->weight();
+                wt += kpoint_set_[ik]->weight();
                 for (int j = 0; j < global.num_bands(); j++)
-                    ot += kpoints_[ik]->weight() * kpoints_[ik]->band_occupancy(j);
+                    ot += kpoint_set_[ik]->weight() * kpoint_set_[ik]->band_occupancy(j);
             }
 
             if (fabs(wt - 1.0) > 1e-12)
@@ -339,12 +329,12 @@ class Density
             //
             // Main loop over k-points
             //
-            for (int ik = 0; ik < num_kpoints(); ik++)
+            for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
             {
                 // solve secular equatiion and generate wave functions
-                band.find_eigen_states(*kpoint(ik));
+                kpoint_set_[ik]->find_eigen_states();
                 // add to charge density and magnetization
-                add_k_contribution(*kpoint(ik));
+                add_k_contribution(*kpoint_set_[ik]);
             }
 
             Timer t1("sirius::Density::generate:convert_mt");
@@ -376,52 +366,17 @@ class Density
 
         void add_kpoint(int kpoint_id, double* vk, double weight)
         {
-            if (kpoint_index_by_id_.count(kpoint_id))
-                error(__FILE__, __LINE__, "kpoint is already in list");
-
-            kpoints_.push_back(new kpoint_data_set(vk, weight));
-            kpoint_index_by_id_[kpoint_id] = kpoints_.size();
-
-            std::vector<double> initial_occupancies(global.num_bands(), 0.0);
-
-            // in case of non-magnetic, or magnetic non-collinear case occupy first N bands
-            if (global.num_dmat() == 1 || global.num_dmat() == 4)
-            {
-                int m = global.num_valence_electrons() / global.max_occupancy();
-                for (int i = 0; i < m; i++)
-                    initial_occupancies[i] = double(global.max_occupancy());
-                initial_occupancies[m] = double(global.num_valence_electrons() % global.max_occupancy());
-            }
-            else // otherwise occupy up and down bands
-            {
-                int m = global.num_valence_electrons() / 2;
-                for (int i = 0; i < m; i++)
-                    initial_occupancies[i] = initial_occupancies[i + global.num_fv_states()] = 1.0;
-                initial_occupancies[m] = initial_occupancies[m + global.num_fv_states()] = 
-                    0.5 * global.num_valence_electrons() - double(m);
-            }
-
-            kpoints_.back()->set_band_occupancies(&initial_occupancies[0]);
+            kpoint_set_.add_kpoint(kpoint_id, vk, weight);
         }
 
         void set_band_occupancies(int kpoint_id, double* band_occupancies)
         {
-            kpoints_[kpoint_index_by_id_[kpoint_id]]->set_band_occupancies(band_occupancies);
+            kpoint_set_.kpoint_by_id(kpoint_id)->set_band_occupancies(band_occupancies);
         }
 
         void get_band_energies(int kpoint_id, double* band_energies)
         {
-            kpoints_[kpoint_index_by_id_[kpoint_id]]->get_band_energies(band_energies);
-        }
-
-        inline kpoint_data_set* kpoint(int ik)
-        {
-            return kpoints_[ik];
-        }
-
-        inline int num_kpoints()
-        {
-            return kpoints_.size();
+            kpoint_set_.kpoint_by_id(kpoint_id)->get_band_energies(band_energies);
         }
 
         void print_info()
@@ -430,12 +385,12 @@ class Density
             printf("Density\n");
             for (int i = 0; i < 80; i++) printf("-");
             printf("\n");
-            printf("number of k-points : %i\n", (int)kpoints_.size());
-            for (int ik = 0; ik < (int)kpoints_.size(); ik++)
-                printf("ik=%4i    vk=%12.6f %12.6f %12.6f    weight=%12.6f\n", ik, kpoints_[ik]->vk()[0], 
-                                                                                   kpoints_[ik]->vk()[1], 
-                                                                                   kpoints_[ik]->vk()[2], 
-                                                                                   kpoints_[ik]->weight());
+            printf("number of k-points : %i\n", kpoint_set_.num_kpoints());
+            for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
+                printf("ik=%4i    vk=%12.6f %12.6f %12.6f    weight=%12.6f\n", ik, kpoint_set_[ik]->vk()[0], 
+                                                                                   kpoint_set_[ik]->vk()[1], 
+                                                                                   kpoint_set_[ik]->vk()[2], 
+                                                                                   kpoint_set_[ik]->weight());
         }
 };
 

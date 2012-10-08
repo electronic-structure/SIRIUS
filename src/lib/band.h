@@ -2,7 +2,7 @@
 namespace sirius
 {
 
-void write_h_o(mdarray<complex16,2>& h, mdarray<complex16,2>& o)
+/*void write_h_o(mdarray<complex16,2>& h, mdarray<complex16,2>& o)
 {
     std::ofstream out;
     out.open("h_sirius.txt");
@@ -28,7 +28,7 @@ void write_h_o(mdarray<complex16,2>& h, mdarray<complex16,2>& o)
         }
     }
     out.close();
-}
+}*/
 
 class Band
 {
@@ -78,13 +78,13 @@ class Band
             \f] 
         */
         template <spin_block sblock>
-        void apply_hmt_to_apw(kpoint_data_set& kp, mdarray<complex16,2>& hapw)
+        void apply_hmt_to_apw(int num_gkvec, mdarray<complex16,2>& apw, mdarray<complex16,2>& hapw)
         {
             Timer t("sirius::Band::apply_hmt_to_apw");
            
             #pragma omp parallel default(shared)
             {
-                std::vector<complex16> zv(kp.num_gkvec());
+                std::vector<complex16> zv(num_gkvec);
                 
                 #pragma omp for
                 for (int ia = 0; ia < global.num_atoms(); ia++)
@@ -94,7 +94,7 @@ class Band
 
                     for (int j2 = 0; j2 < type->mt_aw_basis_size(); j2++)
                     {
-                        memset(&zv[0], 0, kp.num_gkvec() * sizeof(complex16));
+                        memset(&zv[0], 0, num_gkvec * sizeof(complex16));
 
                         int lm2 = type->indexb(j2).lm;
                         int idxrf2 = type->indexb(j2).idxrf;
@@ -110,8 +110,8 @@ class Band
                                 global.sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf1, idxrf2), zsum);
                             
                             if (abs(zsum) > 1e-14) 
-                                for (int ig = 0; ig < kp.num_gkvec(); ig++) 
-                                    zv[ig] += zsum * kp.matching_coefficient(ig, atom->offset_aw() + j1); 
+                                for (int ig = 0; ig < num_gkvec; ig++) 
+                                    zv[ig] += zsum * apw(ig, atom->offset_aw() + j1); 
                         } // j1
                          
                         if (sblock != ud)
@@ -124,12 +124,12 @@ class Band
                                 double t1 = 0.5 * pow(type->mt_radius(), 2) * atom->symmetry_class()->aw_surface_dm(l2, order1, 0) * 
                                     atom->symmetry_class()->aw_surface_dm(l2, order2, 1);
                                 
-                                for (int ig = 0; ig < kp.num_gkvec(); ig++) 
-                                    zv[ig] += t1 * kp.matching_coefficient(ig, atom->offset_aw() + type->indexb_by_lm_order(lm2, order1));
+                                for (int ig = 0; ig < num_gkvec; ig++) 
+                                    zv[ig] += t1 * apw(ig, atom->offset_aw() + type->indexb_by_lm_order(lm2, order1));
                             }
                         }
 
-                        memcpy(&hapw(0, atom->offset_aw() + j2), &zv[0], kp.num_gkvec() * sizeof(complex16));
+                        memcpy(&hapw(0, atom->offset_aw() + j2), &zv[0], num_gkvec * sizeof(complex16));
 
                     } // j2
                 }
@@ -214,17 +214,17 @@ class Band
         }
 
         template <spin_block sblock> 
-        void set_h(kpoint_data_set& kp, mdarray<complex16,2>& h)
+        void set_h(int num_gkvec, mdarray<complex16,2>& apw, mdarray<double,2>& gkvec, int* gvec_index, 
+                   mdarray<complex16,2>& h)
         {
             Timer t("sirius::Band::set_h");
 
-            mdarray<complex16,2> hapw(kp.num_gkvec(), global.mt_aw_basis_size());
+            mdarray<complex16,2> hapw(num_gkvec, global.mt_aw_basis_size());
 
-            apply_hmt_to_apw<sblock>(kp, hapw);
+            apply_hmt_to_apw<sblock>(num_gkvec, apw, hapw);
 
-            gemm<cpu>(0, 2, kp.num_gkvec(), kp.num_gkvec(), global.mt_aw_basis_size(), complex16(1.0, 0.0), 
-                &hapw(0, 0), hapw.size(0), &kp.matching_coefficient(0, 0), kp.num_gkvec(), complex16(0.0, 0.0), 
-                &h(0, 0), h.size(0));
+            gemm<cpu>(0, 2, num_gkvec, num_gkvec, global.mt_aw_basis_size(), complex16(1.0, 0.0), 
+                &hapw(0, 0), num_gkvec, &apw(0, 0), num_gkvec, complex16(0.0, 0.0), &h(0, 0), h.size(0));
 
             #pragma omp parallel default(shared)
             {
@@ -276,8 +276,8 @@ class Band
                             }*/
                 
                             if (abs(zsum) > 1e-14)
-                                for (int ig = 0; ig < kp.num_gkvec(); ig++)
-                                    h(ig, kp.num_gkvec() + atom->offset_lo() + j2) += zsum * kp.matching_coefficient(ig, atom->offset_aw() + j1);
+                                for (int ig = 0; ig < num_gkvec; ig++)
+                                    h(ig, num_gkvec + atom->offset_lo() + j2) += zsum * apw(ig, atom->offset_aw() + j1);
                         }
                         
                         int j1_last = j2;
@@ -315,7 +315,7 @@ class Band
                                 L3_sum_gntyry(lm1, lm2, &v2[0], zsum);
                             }*/
         
-                            h(kp.num_gkvec() + atom->offset_lo() + j1, kp.num_gkvec() + atom->offset_lo() + j2) += zsum;
+                            h(num_gkvec + atom->offset_lo() + j1, num_gkvec + atom->offset_lo() + j2) += zsum;
                         }
                     }
         
@@ -351,23 +351,23 @@ class Band
 
             
             Timer *t1 = new Timer("sirius::Band::set_h::it");
-            for (int ig2 = 0; ig2 < kp.num_gkvec(); ig2++) // loop over columns
+            for (int ig2 = 0; ig2 < num_gkvec; ig2++) // loop over columns
             {
                 int g1_last = ig2;
-                if (sblock == ud) g1_last = kp.num_gkvec() - 1;
+                if (sblock == ud) g1_last = num_gkvec - 1;
                 
                 // TODO: optimize scalar product if it takes time
                 double v2[3];
                 double v2c[3];
-                for (int x = 0; x < 3; x++) v2[x] = kp.gkvec(ig2)[x];
+                for (int x = 0; x < 3; x++) v2[x] = gkvec(x, ig2);
                 global.get_coordinates<cartesian,reciprocal>(v2, v2c);
                 
                 for (int ig1 = 0; ig1 <= g1_last; ig1++) // for each column loop over rows
                 {
-                    int ig = global.index_g12(kp.gvec_index(ig1), kp.gvec_index(ig2));
+                    int ig = global.index_g12(gvec_index[ig1], gvec_index[ig2]);
                     double v1[3];
                     double v1c[3];
-                    for (int x = 0; x < 3; x++) v1[x] = kp.gkvec(ig1)[x];
+                    for (int x = 0; x < 3; x++) v1[x] = gkvec(x, ig1);
                     global.get_coordinates<cartesian,reciprocal>(v1, v1c);
                     
                     double t1 = 0.5 * scalar_product(v1c, v2c);
@@ -388,13 +388,12 @@ class Band
             delete t1;
         }
         
-        void set_o(kpoint_data_set& kp, mdarray<complex16,2>& o)
+        void set_o(int num_gkvec, mdarray<complex16,2>& apw, int* gvec_index, mdarray<complex16,2>& o)
         {
             Timer t("sirius::Band::set_o");
 
-            gemm<cpu>(0, 2, kp.num_gkvec(), kp.num_gkvec(), global.mt_aw_basis_size(), complex16(1.0, 0.0), 
-                &kp.matching_coefficient(0, 0), kp.num_gkvec(), &kp.matching_coefficient(0, 0), kp.num_gkvec(), 
-                complex16(0.0, 0.0), &o(0, 0), o.size(0)); 
+            gemm<cpu>(0, 2, num_gkvec, num_gkvec, global.mt_aw_basis_size(), complex16(1.0, 0.0), 
+                &apw(0, 0), num_gkvec, &apw(0, 0), num_gkvec, complex16(0.0, 0.0), &o(0, 0), o.size(0)); 
 
             for (int ia = 0; ia < global.num_atoms(); ia++)
             {
@@ -411,9 +410,9 @@ class Band
 
                     // apw-lo block 
                     for (int order1 = 0; order1 < (int)type->aw_descriptor(l2).size(); order1++)
-                        for (int ig = 0; ig < kp.num_gkvec(); ig++)
-                            o(ig, kp.num_gkvec() + atom->offset_lo() + j2) += atom->symmetry_class()->o_radial_integral(l2, order1, order2) * 
-                                kp.matching_coefficient(ig, atom->offset_aw() + type->indexb_by_lm_order(lm2, order1));
+                        for (int ig = 0; ig < num_gkvec; ig++)
+                            o(ig, num_gkvec + atom->offset_lo() + j2) += atom->symmetry_class()->o_radial_integral(l2, order1, order2) * 
+                                apw(ig, atom->offset_aw() + type->indexb_by_lm_order(lm2, order1));
 
                     // lo-lo block
                     for (int j1 = 0; j1 <= j2; j1++)
@@ -421,18 +420,18 @@ class Band
                         int lm1 = type->indexb(lo_index_offset + j1).lm;
                         int order1 = type->indexb(lo_index_offset + j1).order;
                         if (lm1 == lm2) 
-                            o(kp.num_gkvec() + atom->offset_lo() + j1, kp.num_gkvec() + atom->offset_lo() + j2) += 
+                            o(num_gkvec + atom->offset_lo() + j1, num_gkvec + atom->offset_lo() + j2) += 
                                 atom->symmetry_class()->o_radial_integral(l2, order1, order2);
                     }
                 }
             }
             
-            for (int ig2 = 0; ig2 < kp.num_gkvec(); ig2++) // loop over columns
+            for (int ig2 = 0; ig2 < num_gkvec; ig2++) // loop over columns
                 for (int ig1 = 0; ig1 <= ig2; ig1++) // for each column loop over rows
-                    o(ig1, ig2) += global.step_function_pw(global.index_g12(kp.gvec_index(ig1), kp.gvec_index(ig2)));
+                    o(ig1, ig2) += global.step_function_pw(global.index_g12(gvec_index[ig1], gvec_index[ig2]));
         }
 
-        void find_eigen_states(kpoint_data_set& kp)
+        /*void find_eigen_states(kpoint& kp)
         {
             Timer t("sirius::Band::find_eigen_states");
             
@@ -476,7 +475,7 @@ class Band
             
             kp.generate_spinor_wave_functions(-1);
 
-        }
+        }*/
 
 };
 

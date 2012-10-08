@@ -42,6 +42,8 @@ class unit_cell
 
         /// total number of electrons
         int num_electrons_;
+
+        std::vector<int> equivalent_atoms_;
     
         /*! 
             \brief Get crystal symmetries and equivalent atoms.
@@ -60,7 +62,7 @@ class unit_cell
             if (atom_symmetry_classes_.size() != 0)
                 error(__FILE__, __LINE__, "atom_symmetry_class_by_id_ list is not empty");
             
-            if (atoms_.size() == 0)
+            if (num_atoms() == 0)
                 error(__FILE__, __LINE__, "atoms_ list is empty");
 
             double lattice[3][3];
@@ -69,29 +71,28 @@ class unit_cell
                 for (int j = 0; j < 3; j++) 
                     lattice[i][j] = lattice_vectors_[j][i];
 
-            mdarray<double,2> positions(NULL, 3, atoms_.size());
-            positions.allocate();
+            mdarray<double,2> positions(3, num_atoms());
             
-            std::vector<int> types(atoms_.size());
+            std::vector<int> types(num_atoms());
 
-            for (int i = 0; i < (int)atoms_.size(); i++)
+            for (int i = 0; i < num_atoms(); i++)
             {
                 atoms_[i]->get_position(&positions(0, i));
                 types[i] = atoms_[i]->type_id();
             }
-            spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions(0, 0), &types[0], atoms_.size(), 1e-5);
+            spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions(0, 0), &types[0], num_atoms(), 1e-5);
 
             if (spg_dataset_->spacegroup_number == 0)
                 error(__FILE__, __LINE__, "spg_get_dataset() returned 0 for the space group");
 
-            if (spg_dataset_->n_atoms != (int)atoms_.size())
+            if (spg_dataset_->n_atoms != num_atoms())
                 error(__FILE__, __LINE__, "wrong number of atoms");
 
             AtomSymmetryClass* atom_symmetry_class;
             
             int atom_class_id = -1;
 
-            for (int i = 0; i < (int)atoms_.size(); i++)
+            for (int i = 0; i < num_atoms(); i++)
             {
                 if (atoms_[i]->symmetry_class_id() == -1) // if class id is not assigned to this atom
                 {
@@ -99,12 +100,17 @@ class unit_cell
                     atom_symmetry_class = new AtomSymmetryClass(atom_class_id, atoms_[i]->type());
                     atom_symmetry_classes_.push_back(atom_symmetry_class);
 
-                    for (int j = 0; j < (int)atoms_.size(); j++) // scan all atoms
-                        if (spg_dataset_->equivalent_atoms[j] == spg_dataset_->equivalent_atoms[i]) // assign new class id for all equivalent atoms
+                    for (int j = 0; j < num_atoms(); j++) // scan all atoms
+                    {
+                        bool is_equal = (equivalent_atoms_.size()) ? (equivalent_atoms_[j] == equivalent_atoms_[i]) :  
+                                        (spg_dataset_->equivalent_atoms[j] == spg_dataset_->equivalent_atoms[i]);
+                        
+                        if (is_equal) // assign new class id for all equivalent atoms
                         {
                             atom_symmetry_class->add_atom_id(j);
                             atoms_[j]->set_symmetry_class(atom_symmetry_class);
                         }
+                    }
                 }
             }
         }
@@ -153,9 +159,17 @@ class unit_cell
             atom_symmetry_classes_.clear();
 
             // delete atoms
-            for (int i = 0; i < (int)atoms_.size(); i++)
+            for (int i = 0; i < num_atoms(); i++)
                 delete atoms_[i];
             atoms_.clear();
+
+            equivalent_atoms_.clear();
+        }
+
+        void set_equivalent_atoms(int* equivalent_atoms__)
+        {
+            equivalent_atoms_.resize(num_atoms());
+            memcpy(&equivalent_atoms_[0], equivalent_atoms__, num_atoms() * sizeof(int));
         }
 
         void print_info()
@@ -365,7 +379,7 @@ class unit_cell
                 error(__FILE__, __LINE__, s);
             }
  
-            for (int i = 0; i < (int)atoms_.size(); i++)
+            for (int i = 0; i < num_atoms(); i++)
             {
                 atom(i)->get_position(pos);
                 if (fabs(pos[0] - position[0]) < eps &&
@@ -383,13 +397,6 @@ class unit_cell
             atoms_.push_back(new Atom(atom_type_by_id(atom_type_id), position, vector_field));
         }
 
-        /*!
-            \brief Number of atoms in the unit cell.
-        */
-        inline int num_atoms()
-        {
-            return atoms_.size();
-        }
         
         /*!
             \brief Pointer to atom by atom id.
@@ -457,6 +464,14 @@ class unit_cell
         inline int num_valence_electrons()
         {
             return num_valence_electrons_;
+        }
+        
+        /*!
+            \brief Number of atoms in the unit cell.
+        */
+        inline int num_atoms()
+        {
+            return atoms_.size();
         }
 };
 
