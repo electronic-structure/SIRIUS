@@ -43,9 +43,6 @@ class Global : public StepFunction
         /// number of bands (= number of spinor states)
         int num_bands_;
 
-        //mdarray<complex16,3> complex_gaunt_;
-        mdarray<std::vector< std::pair<int,complex16> >,2> complex_gaunt_packed_;
-        
         PeriodicFunction<double> charge_density_;
         
         PeriodicFunction<double> effective_potential_;
@@ -192,17 +189,21 @@ class Global : public StepFunction
 
         inline int num_spins()
         {
+            assert(num_spins_ == 1 || num_spins_ == 2);
+            
             return num_spins_;
         }
 
         inline int num_dmat()
         {
+            assert(num_dmat_ == 1 || num_dmat_ == 2 || num_dmat_ == 4);
+            
             return num_dmat_;
         }
 
         inline int max_occupancy()
         {
-            return (2 / num_spins_);
+            return (2 / num_spins());
         }
         
         void initialize()
@@ -241,28 +242,6 @@ class Global : public StepFunction
             }
 
             assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
-
-            complex_gaunt_packed_.set_dimensions(lmmax_apw(), lmmax_apw());
-            complex_gaunt_packed_.allocate();
-
-            for (int l1 = 0; l1 <= lmax_apw(); l1++) 
-            for (int m1 = -l1; m1 <= l1; m1++)
-            {
-                int lm1 = lm_by_l_m(l1, m1);
-                for (int l2 = 0; l2 <= lmax_apw(); l2++)
-                for (int m2 = -l2; m2 <= l2; m2++)
-                {
-                    int lm2 = lm_by_l_m(l2, m2);
-                    for (int l3 = 0; l3 <= lmax_pot(); l3++)
-                    for (int m3 = -l3; m3 <= l3; m3++)
-                    {
-                        int lm3 = lm_by_l_m(l3, m3);
-                        complex16 z = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
-                        if (abs(z) > 1e-12) complex_gaunt_packed_(lm1, lm2).push_back(std::pair<int,complex16>(lm3, z));
-                    }
-                }
-            }
-                         
             assert(num_atoms() != 0);
             assert(num_atom_types() != 0);
             assert(num_atom_symmetry_classes() != 0);
@@ -303,11 +282,23 @@ class Global : public StepFunction
             printf("total number of lo basis functions : %i\n", mt_lo_basis_size());
         }
         
-        template <typename T>
-        inline void sum_L3_complex_gaunt(int lm1, int lm2, T* v, complex16& zsum)
+        void generate_radial_functions()
         {
-            for (int k = 0; k < (int)complex_gaunt_packed_(lm1, lm2).size(); k++)
-                zsum += complex_gaunt_packed_(lm1, lm2)[k].second * v[complex_gaunt_packed_(lm1, lm2)[k].first];
+            Timer t("sirius::global::generate_radial_functions");
+            
+            for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
+                atom_symmetry_class(ic)->generate_radial_functions();
+        }
+
+        void generate_radial_integrals()
+        {
+            Timer t("sirius::global::generate_radial_integrals");
+            
+            for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
+                atom_symmetry_class(ic)->generate_radial_integrals();
+
+            for (int ia = 0; ia < num_atoms(); ia++)
+                atom(ia)->generate_radial_integrals(lmax_pot(), &effective_potential().f_rlm(0, 0, ia));
         }
 };
 

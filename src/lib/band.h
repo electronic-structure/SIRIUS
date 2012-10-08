@@ -32,35 +32,43 @@ namespace sirius
 
 class Band
 {
+    private:
+
+        mdarray<std::vector< std::pair<int,complex16> >,2> complex_gaunt_packed_;
+        
+        template <typename T>
+        inline void sum_L3_complex_gaunt(int lm1, int lm2, T* v, complex16& zsum)
+        {
+            for (int k = 0; k < (int)complex_gaunt_packed_(lm1, lm2).size(); k++)
+                zsum += complex_gaunt_packed_(lm1, lm2)[k].second * v[complex_gaunt_packed_(lm1, lm2)[k].first];
+        }
+
+
     public:
 
-        void radial()
+        void initialize()
         {
-            Timer t("sirius::Band::radial");
+            complex_gaunt_packed_.set_dimensions(global.lmmax_apw(), global.lmmax_apw());
+            complex_gaunt_packed_.allocate();
 
-            // save spherical part of the potential
-            for (int ic = 0; ic < global.num_atom_symmetry_classes(); ic++)
+            for (int l1 = 0; l1 <= global.lmax_apw(); l1++) 
+            for (int m1 = -l1; m1 <= l1; m1++)
             {
-               int ia = global.atom_symmetry_class(ic)->atom_id(0);
-               int nmtp = global.atom(ia)->type()->num_mt_points();
-               
-               std::vector<double> veff(nmtp);
-               
-               for (int ir = 0; ir < nmtp; ir++)
-                   veff[ir] = y00 * global.effective_potential().f_rlm(0, ir, ia);
-
-               global.atom_symmetry_class(ic)->set_spherical_potential(veff);
+                int lm1 = lm_by_l_m(l1, m1);
+                for (int l2 = 0; l2 <= global.lmax_apw(); l2++)
+                for (int m2 = -l2; m2 <= l2; m2++)
+                {
+                    int lm2 = lm_by_l_m(l2, m2);
+                    for (int l3 = 0; l3 <= global.lmax_pot(); l3++)
+                    for (int m3 = -l3; m3 <= l3; m3++)
+                    {
+                        int lm3 = lm_by_l_m(l3, m3);
+                        complex16 z = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
+                        if (abs(z) > 1e-12) complex_gaunt_packed_(lm1, lm2).push_back(std::pair<int,complex16>(lm3, z));
+                    }
+                }
             }
-
-            for (int ic = 0; ic < global.num_atom_symmetry_classes(); ic++)
-            {
-                global.atom_symmetry_class(ic)->generate_radial_functions();
-                global.atom_symmetry_class(ic)->generate_radial_integrals();
-            }
-
-            for (int ia = 0; ia < global.num_atoms(); ia++)
-                global.atom(ia)->generate_radial_integrals(global.lmax_pot(), 
-                                                           &global.effective_potential().f_rlm(0, 0, ia));
+ 
         }
         
         /*! \brief Apply the muffin-tin part of the first-variational Hamiltonian to the
@@ -107,7 +115,7 @@ class Band
                             complex16 zsum(0.0, 0.0);
                             
                             if (sblock == nm)
-                                global.sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf1, idxrf2), zsum);
+                                sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf1, idxrf2), zsum);
                             
                             if (abs(zsum) > 1e-14) 
                                 for (int ig = 0; ig < num_gkvec; ig++) 
@@ -252,7 +260,7 @@ class Band
                             complex16 zsum(0, 0);
                             
                             if (sblock == nm)
-                                global.sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf2, idxrf1), zsum);
+                                sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf2, idxrf1), zsum);
         
                             /*if (sblock == uu)
                             {
@@ -292,7 +300,7 @@ class Band
                             complex16 zsum(0.0, 0.0);
         
                             if (sblock == nm)
-                                global.sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf1, idxrf2), zsum);
+                                sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf1, idxrf2), zsum);
         
                             /*if (sblock == uu)
                             {
@@ -430,53 +438,6 @@ class Band
                 for (int ig1 = 0; ig1 <= ig2; ig1++) // for each column loop over rows
                     o(ig1, ig2) += global.step_function_pw(global.index_g12(gvec_index[ig1], gvec_index[ig2]));
         }
-
-        /*void find_eigen_states(kpoint& kp)
-        {
-            Timer t("sirius::Band::find_eigen_states");
-            
-            kp.generate_matching_coefficients();
-
-            mdarray<complex16,2> h(kp.fv_basis_size(), kp.fv_basis_size());
-            mdarray<complex16,2> o(kp.fv_basis_size(), kp.fv_basis_size());
-
-            o.zero();
-            set_o(kp, o);
-
-            h.zero();
-            set_h<nm>(kp, h);
-
-            //write_h_o(h, o);
-            assert(kp.fv_basis_size() > global.num_fv_states());
-
-            kp.allocate();
-            Timer *t1 = new Timer("sirius::band::find_eigen_states::hegv<impl>");
-            int info = hegvx<cpu>(kp.fv_basis_size(), global.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), kp.evalfv(), 
-                                  kp.evecfv(), kp.fv_basis_size());
-            delete t1;
-
-            if (info)
-            {
-                std::stringstream s;
-                s << "hegvx returned " << info;
-                error(__FILE__, __LINE__, s);
-            }
-
-            //for (int i = 0; i < global.num_fv_states(); i++)
-            //    std::cout << "i = " << i << "  e = " << kp.evalfv(i) << std::endl;
-            
-            kp.generate_scalar_wave_functions();
-
-            //for (int i = 0; i < 3; i++)
-            //    kp.test_scalar_wave_functions(i);
-
-            //if (global.num_spins() == 1)
-            
-            
-            kp.generate_spinor_wave_functions(-1);
-
-        }*/
-
 };
 
 Band band;

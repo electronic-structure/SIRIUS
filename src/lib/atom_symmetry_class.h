@@ -318,7 +318,7 @@ class AtomSymmetryClass
             generate_aw_radial_functions();
             generate_lo_radial_functions();
 
-            print_enu();
+            //print_enu();
         }
 
         void generate_radial_integrals()

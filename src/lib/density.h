@@ -121,18 +121,18 @@ class Density
                 
                 switch(global.num_dmat())
                 {
-                    case 1:
-                        reduce_zdens<1>(ia, zdens);
+                    case 4:
+                        reduce_zdens<4>(ia, zdens);
                         break;
 
                     case 2:
                         reduce_zdens<2>(ia, zdens);
                         break;
-
-                    case 4:
-                        reduce_zdens<4>(ia, zdens);
+                        
+                    case 1:
+                        reduce_zdens<1>(ia, zdens);
                         break;
-
+                        
                     default:
                         error(__FILE__, __LINE__, "wrong number of density matrix components");
                 }
@@ -310,7 +310,11 @@ class Density
                 error(__FILE__, __LINE__, "wrong occupancies");
 
             // generate radial functions and integrals
-            band.radial();
+            //band.radial();
+
+            potential.set_spherical_potential();
+            global.generate_radial_functions();
+            global.generate_radial_integrals();
 
             // generate plane-wave coefficients of the potential in the interstitial region
             for (int ir = 0; ir < global.fft().size(); ir++)

@@ -56,7 +56,7 @@ extern "C" {
 #include "band.h"
 #include "kpoint.h"
 #include "kpoint_set.h"
-#include "density.h"
 #include "potential.h"
+#include "density.h"
 
 #endif // __SIRIUS_H__
