@@ -876,6 +876,11 @@ class AtomType
             return levels_nl_.size();
         }    
         
+        inline int num_core_levels_nl()
+        {
+            return num_core_levels_nl_;
+        }    
+        
         inline atomic_level& level_nl(int idx)
         {
             return levels_nl_[idx];

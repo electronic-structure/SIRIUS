@@ -114,6 +114,21 @@ void FORTRAN(sirius_get_index_by_gvec)(int4* index_by_gvec)
     for (int i = 0; i < sirius::global.fft().size(); i++) index_by_gvec[i]++;
 }
 
+void FORTRAN(sirius_get_num_electrons)(real8* num_electrons)
+{
+    *num_electrons = sirius::global.num_electrons();
+}
+
+void FORTRAN(sirius_get_num_valence_electrons)(real8* num_valence_electrons)
+{
+    *num_valence_electrons = sirius::global.num_valence_electrons();
+}
+
+void FORTRAN(sirius_get_num_core_electrons)(real8* num_core_electrons)
+{
+    *num_core_electrons = sirius::global.num_core_electrons();
+}
+
 void FORTRAN(sirius_add_atom_type)(int4* atom_type_id, char* _label, int4 label_len)
 {
     std::string label(_label, label_len);

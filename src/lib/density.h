@@ -97,7 +97,7 @@ class Density
             {
                 t1.start();
                 
-                int offset_wf = global.atom(ia)->offset_aw();
+                int offset_wf = global.atom(ia)->offset_wf();
                 int mt_basis_size = global.atom(ia)->type()->mt_basis_size();
                 
                 for (int i = 0; i < (int)bands.size(); i++)
@@ -123,18 +123,10 @@ class Density
                 {
                     case 4:
                         reduce_zdens<4>(ia, zdens);
-                        break;
-
                     case 2:
                         reduce_zdens<2>(ia, zdens);
-                        break;
-                        
                     case 1:
                         reduce_zdens<1>(ia, zdens);
-                        break;
-                        
-                    default:
-                        error(__FILE__, __LINE__, "wrong number of density matrix components");
                 }
                 
                 t2.stop();
@@ -276,10 +268,13 @@ class Density
                 rho.interpolate();
                 charge += rho.integrate(2) * fourpi * y00;
             }
+            //std::cout << "MT charge " << charge << std::endl;
 
             double dv = global.omega() / global.fft().size();
             for (int ir = 0; ir < global.fft().size(); ir++)
                 charge += global.charge_density().f_it(ir) * global.step_function(ir) * dv;
+            
+            //std::cout << "Total charge " << charge << std::endl;
 
             /*if (fabs(charge - global.num_electrons()) > 1e-10)
             {
@@ -306,12 +301,17 @@ class Density
             if (fabs(wt - 1.0) > 1e-12)
                 error(__FILE__, __LINE__, "kpoint weights don't sum to one");
 
-            if (fabs(ot - global.num_valence_electrons()) > 1e-12)
-                error(__FILE__, __LINE__, "wrong occupancies");
+            if (fabs(ot - global.num_valence_electrons()) > 1e-4)
+            {
+                std::stringstream s;
+                s << "wrong occupancies" << std::endl
+                  << "  computed : " << ot << std::endl
+                  << "  required : " << global.num_valence_electrons() << std::endl
+                  << " difference : " << fabs(ot - global.num_valence_electrons());
+                error(__FILE__, __LINE__, s);
+            }
 
             // generate radial functions and integrals
-            //band.radial();
-
             potential.set_spherical_potential();
             global.generate_radial_functions();
             global.generate_radial_integrals();
@@ -364,8 +364,23 @@ class Density
                 }
             }
             t1.stop();
-            
+#if 0
+            // add core contribution
+            for (int ic = 0; ic < global.num_atom_symmetry_classes(); ic++)
+            {
+                int nmtp = global.atom_symmetry_class(ic)->atom_type()->num_mt_points();
+                global.atom_symmetry_class(ic)->generate_core_charge_density();
+                for (int i = 0; i < global.atom_symmetry_class(ic)->num_atoms(); i++)
+                {
+                    int ia = global.atom_symmetry_class(ic)->atom_id(i);
+                    for (int ir = 0; ir < nmtp; ir++)
+                        global.charge_density().f_rlm(0, ir, ia) +=
+                            global.atom_symmetry_class(ic)->core_charge_density(ir) / y00;
+                }
+            }
+#endif
             printf("Total charge : %f\n", total_charge());
+            exit(0);
         }
 
         void add_kpoint(int kpoint_id, double* vk, double weight)

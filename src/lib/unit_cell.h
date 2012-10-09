@@ -466,6 +466,11 @@ class unit_cell
             return num_valence_electrons_;
         }
         
+        inline int num_core_electrons()
+        {
+            return num_core_electrons_;
+        }
+        
         /*!
             \brief Number of atoms in the unit cell.
         */

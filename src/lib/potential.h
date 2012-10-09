@@ -250,15 +250,15 @@ class Potential
                 }
             }
 
-            for (int lm = 0; lm < global.lmmax_rho(); lm++)
+            /*for (int lm = 0; lm < global.lmmax_rho(); lm++)
             {
                 complex16 q1 = qmt(lm, 0);
                 complex16 q2 = qit(lm, 0);
 
                 printf("lm=%i   qmt=%18.12f %18.12f   qit=%18.12f %18.12f \n", lm, real(q1), imag(q1), real(q2), imag(q2));
-            }
+            }*/
             
-            std::cout << "rho(0) = " << global.charge_density().f_pw(0) << std::endl;
+            //std::cout << "rho(0) = " << global.charge_density().f_pw(0) << std::endl;
 
             std::vector<complex16> pseudo_pw(global.num_gvec());
             memcpy(&pseudo_pw[0], global.charge_density().f_pw(), global.num_gvec() * sizeof(complex16));
@@ -306,7 +306,7 @@ class Potential
                 }
             }
 
-            std::cout << "rho(0) = " << pseudo_pw[0] << std::endl;
+            //std::cout << "rho(0) = " << pseudo_pw[0] << std::endl;
 
             qit.zero();
             for (int ia = 0; ia < global.num_atoms(); ia++)
@@ -326,7 +326,7 @@ class Potential
                 }
             }
            
-            for (int lm = 0; lm < global.lmmax_rho(); lm++)
+            /*for (int lm = 0; lm < global.lmmax_rho(); lm++)
             {
                 complex16 q1 = qmt(lm, 0);
                 complex16 q2 = qit(lm, 0);
@@ -338,7 +338,7 @@ class Potential
             for (int ia = 0; ia < global.num_atoms(); ia++)
                 for (int lm = 0; lm < global.lmmax_rho(); lm++)
                     d += abs(qmt(lm, ia) - qit(lm, ia));
-            std::cout << "total q diff : " << d << std::endl;
+            std::cout << "total q diff : " << d << std::endl;*/
 
 
  

@@ -279,8 +279,8 @@ class kpoint
 
             generate_scalar_wave_functions();
 
-            //for (int i = 0; i < 3; i++)
-            //    kp.test_scalar_wave_functions(i);
+            /*for (int i = 0; i < 3; i++)
+                test_scalar_wave_functions(i);*/
 
             generate_spinor_wave_functions(-1);
 

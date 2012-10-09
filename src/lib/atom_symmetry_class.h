@@ -46,6 +46,8 @@ class AtomSymmetryClass
 
         /// overlap integrals
         mdarray<double,3> o_radial_integrals_;
+
+        std::vector<double> core_charge_density_;
         
         void generate_aw_radial_functions()
         {
@@ -399,25 +401,87 @@ class AtomSymmetryClass
                     radial_solution_descriptor& rsd = atom_type_->lo_descriptor(idxlo)[order];
                     printf("n = %i   l = %i   order = %i   enu = %f\n", rsd.n, rsd.l, order, rsd.enu);
                 }
+        }
+
+        /*!
+            \brief Compute m-th order radial derivative at the MT surface
+        */
+        double aw_surface_dm(int l, int order, int dm)
+        {
+            assert(dm <= 1);
+
+            if (dm == 0)
+            {
+                int idxrf = atom_type_->indexr().index_by_l_order(l, order);
+                return radial_functions_(atom_type_->num_mt_points() - 1, idxrf, 0);
+            } 
+            else if (dm == 1)
+            {
+                return aw_surface_derivatives_(order, l);
+            }
+            else return 0.0;
+        }
+
+        void generate_core_charge_density()
+        {
+            if (atom_type_->num_core_electrons() == 0)
+            {
+                core_charge_density_.resize(atom_type_->radial_grid().size());
+                memset(&core_charge_density_[0], 0, atom_type_->radial_grid().size() * sizeof(double));
+                return;
+            }
+            
+            RadialSolver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
+            
+            Spline<double> rho(atom_type_->radial_grid().size(), atom_type_->radial_grid());
+            
+            std::vector<double> enu_core(atom_type_->num_core_levels_nl());
+    
+            for (int ist = 0; ist < atom_type_->num_core_levels_nl(); ist++)
+                enu_core[ist] = -1.0 * atom_type_->zn() / 2 / pow(atom_type_->level_nl(ist).n, 2);
+            
+            memset(&rho[0], 0, rho.size() * sizeof(double));
+            #pragma omp parallel default(shared)
+            {
+                std::vector<double> rho_t(rho.size());
+                memset(&rho_t[0], 0, rho.size() * sizeof(double));
+                std::vector<double> p;
+                
+                #pragma omp for
+                for (int ist = 0; ist < atom_type_->num_core_levels_nl(); ist++)
+                {
+                    solver.bound_state(atom_type_->level_nl(ist).n, atom_type_->level_nl(ist).l, spherical_potential_, 
+                                       enu_core[ist], p);
+                
+                    for (int i = 0; i < atom_type_->radial_grid().size(); i++)
+                        rho_t[i] += atom_type_->level_nl(ist).occupancy * pow(y00 * p[i] / atom_type_->radial_grid(i), 2);
+                }
+
+                #pragma omp critical
+                for (int i = 0; i < rho.size(); i++)
+                    rho[i] += rho_t[i];
+            } 
+                
+            core_charge_density_ = rho.data_points();
+            rho.interpolate();
+
+            Spline<double> rho_mt(atom_type_->num_mt_points(), atom_type_->radial_grid());
+            rho_mt.interpolate(core_charge_density_);
+
+            printf("Core leakage : %f \n", fourpi * (rho.integrate(2) - rho_mt.integrate(2)));
+
          }
 
-         /*!
-             \brief Compute m-th order radial derivative at the MT surface
-         */
-         double aw_surface_dm(int l, int order, int dm)
+         double core_charge_density(int ir)
          {
-             assert(dm <= 1);
+             assert(ir >= 0 && ir < core_charge_density_.size());
 
-             if (dm == 0)
-             {
-                 int idxrf = atom_type_->indexr().index_by_l_order(l, order);
-                 return radial_functions_(atom_type_->num_mt_points() - 1, idxrf, 0);
-             } 
-             else if (dm == 1)
-             {
-                 return aw_surface_derivatives_(order, l);
-             }
-             else return 0.0;
+             return core_charge_density_[ir];
+         }
+
+         inline AtomType* atom_type()
+         {
+             return atom_type_;
          }
 };
 
