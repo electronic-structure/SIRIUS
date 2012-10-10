@@ -45,7 +45,11 @@ class Global : public StepFunction
 
         PeriodicFunction<double> charge_density_;
         
+        PeriodicFunction<double> magnetization_[3];
+        
         PeriodicFunction<double> effective_potential_;
+        
+        PeriodicFunction<double> effective_magnetic_field_[3];
         
         /// number of spin componensts (1 or 2)
         int num_spins_;
@@ -77,6 +81,16 @@ class Global : public StepFunction
         void set_lmax_pot(int lmax_pot__)
         {
             lmax_pot_ = lmax_pot__;
+        }
+
+        void set_num_spins(int num_spins__)
+        {
+            num_spins_ = num_spins__;
+        }
+
+        void set_num_dmat(int num_dmat__)
+        {
+            num_dmat_ = num_dmat__;
         }
 
         inline int lmax_apw()
@@ -182,6 +196,13 @@ class Global : public StepFunction
             return charge_density_;
         }
         
+        inline PeriodicFunction<double>& magnetization(int i)
+        {
+            assert(i >= 0 && i < 3);
+
+            return magnetization_[i];
+        }
+        
         inline PeriodicFunction<double>& effective_potential()
         {
             return effective_potential_;
@@ -249,7 +270,7 @@ class Global : public StepFunction
             num_fv_states_ = int(num_electrons() / 2.0) + 10;
             num_bands_ = num_fv_states_ * num_spins_;
         }
-        
+
         void clear()
         {
             unit_cell::clear();
@@ -299,6 +320,14 @@ class Global : public StepFunction
 
             for (int ia = 0; ia < num_atoms(); ia++)
                 atom(ia)->generate_radial_integrals(lmax_pot(), &effective_potential().f_rlm(0, 0, ia));
+        }
+
+        void zero_density()
+        {
+            charge_density().zero();
+            if (num_spins() == 2)
+                for (int i = 0; i < num_dmat() - 1; i++)
+                    magnetization(i).zero();
         }
 };
 

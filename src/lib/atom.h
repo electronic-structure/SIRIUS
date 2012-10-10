@@ -72,6 +72,11 @@ class Atom
         {
             return position_;
         }
+        
+        inline double* vector_field()
+        {
+            return vector_field_;
+        }
 
         inline int symmetry_class_id()
         {

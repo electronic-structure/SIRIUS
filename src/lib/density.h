@@ -181,6 +181,23 @@ class Density
             global.charge_density().set_it_ptr(rhoir);
             global.charge_density().zero();
         }
+        
+        void set_magnetization_ptr(double* magmt, double* magir)
+        {
+            assert(global.num_spins() == 2);
+
+            // set temporary array wrapper
+            mdarray<double,4> magmt_tmp(magmt, global.lmmax_rho(), global.max_num_mt_points(), global.num_atoms(),
+                                        global.num_dmat() - 1);
+            mdarray<double,2> magir_tmp(magir, global.fft().size(), global.num_dmat() - 1);
+            
+            for (int i = 0; i < global.num_dmat() - 1; i++)
+            {
+                global.magnetization(i).set_rlm_ptr(&magmt_tmp(0, 0, 0, i));
+                global.magnetization(i).set_it_ptr(&magir_tmp(0, i));
+                global.magnetization(i).zero();
+            }
+        }
     
         void initialize()
         {
@@ -190,6 +207,15 @@ class Density
                                                    global.fft().size(), global.num_gvec());
 
             global.charge_density().allocate(pw_component);
+
+            if (global.num_spins() == 2)
+                for (int i = 0; i < global.num_dmat() - 1; i++)
+                {
+                    global.magnetization(i).set_dimensions(global.lmax_rho(), global.max_num_mt_points(), global.num_atoms(), 
+                                                           global.fft().size(), global.num_gvec());
+
+                    global.magnetization(i).allocate(pw_component);
+                }
 
             dmat_spins_.clear();
             dmat_spins_.push_back(std::pair<int,int>(0, 0));
@@ -224,11 +250,14 @@ class Density
             for (int i = 0; i < global.num_atom_types(); i++)
                 global.atom_type(i)->solve_free_atom(1e-8, 1e-5, 1e-4, enu);
 
-            global.charge_density().zero();
-
+            global.zero_density();
+            
             double mt_charge = 0.0;
             for (int ia = 0; ia < global.num_atoms(); ia++)
             {
+                double* v = global.atom(ia)->vector_field();
+                double len = vector_length(v);
+
                 int nmtp = global.atom(ia)->type()->num_mt_points();
                 Spline<double> rho(nmtp, global.atom(ia)->type()->radial_grid());
                 for (int ir = 0; ir < nmtp; ir++)
@@ -240,6 +269,19 @@ class Density
 
                 // add charge of the MT sphere
                 mt_charge += fourpi * rho.integrate(nmtp - 1, 2);
+
+                if (len > 1e-8)
+                {
+                    if (global.num_dmat() == 2)
+                        for (int ir = 0; ir < nmtp; ir++)
+                            global.magnetization(0).f_rlm(0, ir, ia) = global.charge_density().f_rlm(0, ir, ia) * 
+                                                                       v[2] / len;
+                    if (global.num_dmat() == 4)
+                        for (int i = 0; i < 3; i++)
+                            for (int ir = 0; ir < nmtp; ir++)
+                                global.magnetization(i).f_rlm(0, ir, ia) = global.charge_density().f_rlm(0, ir, ia) * 
+                                                                           v[i] / len;
+                }
             }
             
             // distribute remaining charge

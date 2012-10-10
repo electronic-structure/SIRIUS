@@ -358,7 +358,7 @@ class Band
 
 
             
-            Timer *t1 = new Timer("sirius::Band::set_h::it");
+            Timer *t1 = new Timer("sirius::Band::set_h:it");
             for (int ig2 = 0; ig2 < num_gkvec; ig2++) // loop over columns
             {
                 int g1_last = ig2;

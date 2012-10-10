@@ -41,6 +41,11 @@ void FORTRAN(sirius_set_charge_density_ptr)(real8* rhomt, real8* rhoit)
     sirius::density.set_charge_density_ptr(rhomt, rhoit);
 }
 
+void FORTRAN(sirius_set_magnetization_ptr)(real8* magmt, real8* magit)
+{
+    sirius::density.set_magnetization_ptr(magmt, magit);
+}
+
 void FORTRAN(sirius_set_effective_potential_ptr)(real8* veffmt, real8* veffir)
 {
     sirius::potential.set_effective_potential_ptr(veffmt, veffir);
@@ -49,6 +54,16 @@ void FORTRAN(sirius_set_effective_potential_ptr)(real8* veffmt, real8* veffir)
 void FORTRAN(sirius_set_equivalent_atoms)(int4* equivalent_atoms)
 {
     sirius::global.set_equivalent_atoms(equivalent_atoms);
+}
+
+void FORTRAN(sirius_set_num_spins)(int4* num_spins)
+{
+    sirius::global.set_num_spins(*num_spins);
+}
+
+void FORTRAN(sirius_set_num_dmat)(int4* num_dmat)
+{
+    sirius::global.set_num_dmat(*num_dmat);
 }
 
 /*
