@@ -129,30 +129,34 @@ class Atom
 
             h_radial_integrals_.zero();
             
+            // copy spherical integrals
+            for (int i2 = 0; i2 < type()->indexr().size(); i2++)
+                for (int i1 = 0; i1 < type()->indexr().size(); i1++)
+                    h_radial_integrals_(0, i1, i2) = symmetry_class()->h_spherical_integral(i1, i2);
+
             #pragma omp parallel default(shared)
             {
                 Spline<double> s(nmtp, type()->radial_grid());
+                std::vector<double> v(nmtp);
 
-                for (int i2 = 0; i2 < type()->indexr().size(); i2++)
-                    for (int i1 = 0; i1 < type()->indexr().size(); i1++)
+                #pragma omp for
+                for (int lm = 1; lm < lmmax; lm++)
+                {
+                    for (int i2 = 0; i2 < type()->indexr().size(); i2++)
                     {
-                        #pragma omp master
-                        h_radial_integrals_(0, i1, i2) = symmetry_class()->h_spherical_integral(i1, i2);
-
-                        if (i1 <= i2)
+                        for (int ir = 0; ir < nmtp; ir++)
+                            v[ir] = symmetry_class()->radial_function(ir, i2) * veff(lm, ir);
+                        
+                        for (int i1 = 0; i1 <= i2; i1++)
                         {
-                            // non-spherical terms
-                            #pragma omp for
-                            for (int lm = 1; lm < lmmax; lm++)
-                            {
-                                for (int ir = 0; ir < nmtp; ir++)
-                                    s[ir] = symmetry_class()->radial_function(ir, i1) * 
-                                            symmetry_class()->radial_function(ir, i2) * veff(lm, ir);
-                                s.interpolate();
-                                h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = s.integrate(2);
-                            }
+                            for (int ir = 0; ir < nmtp; ir++)
+                                s[ir] = symmetry_class()->radial_function(ir, i1) * v[ir];
+                            
+                            s.interpolate();
+                            h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = s.integrate(2);
                         }
                     }
+                }
             }
         }
 
