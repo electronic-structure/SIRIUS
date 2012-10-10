@@ -9,7 +9,7 @@ CXX = g++-mp-4.7
 #
 #CXX_OPT = -O0 -g -Wall -fopenmp -Wno-cpp -Wno-reorder
 #CXX_OPT = -O0 -g -Wall -Wno-cpp -Wno-reorder
-CXX_OPT = -O3 -Wall -fopenmp -DNDEBUG
+CXX_OPT = -O2 -g -Wall -fopenmp -DNDEBUG
 
 #
 #  Initial list of libraries

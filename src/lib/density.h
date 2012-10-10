@@ -321,23 +321,32 @@ class Density
             Timer t1("sirius::Density::generate:convert_mt");
             for (int ia = 0; ia < global.num_atoms(); ia++)
             {
+                int nmtp = global.atom(ia)->type()->num_mt_points();
+                mdarray<double,2> v(nmtp, global.num_dmat());
+
                 for (int lm = 0; lm < global.lmmax_rho(); lm++)
                 {
                     for (int i = 0; i < global.num_dmat(); i++)
                         for (int idxrf = 0; idxrf < global.atom(ia)->type()->mt_radial_basis_size(); idxrf++)
                             mt_density_matrix(idxrf, idxrf, lm, ia, i) *= 0.5; 
-                    
-                    for (int idxrf2 = 0; idxrf2 < global.atom(ia)->type()->mt_radial_basis_size(); idxrf2++)
-                    {
-                        for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
+
+                    v.zero();
+
+                    for (int j = 0; j < global.num_dmat(); j++)
+                        for (int idxrf2 = 0; idxrf2 < global.atom(ia)->type()->mt_radial_basis_size(); idxrf2++)
                         {
-                            for (int ir = 0; ir < global.atom(ia)->type()->num_mt_points(); ir++)
-                                global.charge_density().f_rlm(lm, ir, ia) += 
-                                    2 * mt_density_matrix(idxrf1, idxrf2, lm, ia, 0) * 
-                                    global.atom(ia)->symmetry_class()->radial_function(ir, idxrf1) * 
-                                    global.atom(ia)->symmetry_class()->radial_function(ir, idxrf2);
+                            for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
+                            {
+                                for (int ir = 0; ir < global.atom(ia)->type()->num_mt_points(); ir++)
+                                    v(ir, j) += 2 * mt_density_matrix(idxrf1, idxrf2, lm, ia, 0) * 
+                                                global.atom(ia)->symmetry_class()->radial_function(ir, idxrf1) * 
+                                                global.atom(ia)->symmetry_class()->radial_function(ir, idxrf2);
+                            }
                         }
-                    }
+
+                    if (global.num_spins() == 1)
+                        for (int ir = 0; ir < nmtp; ir++)
+                            global.charge_density().f_rlm(lm, ir, ia) = v(ir, 0);
                 }
             }
             t1.stop();
@@ -382,10 +391,9 @@ class Density
             printf("\n");
             printf("number of k-points : %i\n", kpoint_set_.num_kpoints());
             for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
-                printf("ik=%4i    vk=%12.6f %12.6f %12.6f    weight=%12.6f\n", ik, kpoint_set_[ik]->vk()[0], 
-                                                                                   kpoint_set_[ik]->vk()[1], 
-                                                                                   kpoint_set_[ik]->vk()[2], 
-                                                                                   kpoint_set_[ik]->weight());
+                printf("ik=%4i    vk=%12.6f %12.6f %12.6f    weight=%12.6f   num_gkvec=%6i\n", 
+                       ik, kpoint_set_[ik]->vk()[0], kpoint_set_[ik]->vk()[1], kpoint_set_[ik]->vk()[2], 
+                       kpoint_set_[ik]->weight(), kpoint_set_[ik]->num_gkvec());
         }
 };
 

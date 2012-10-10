@@ -75,8 +75,9 @@ class Timer
         //static void print(std::string tname);
 };
 
-std::map<std::string, double> Timer::timers_;
-std::map<std::string, int> Timer::tcount_;
+std::map<std::string,double> Timer::timers_;
+std::map<std::string,int> Timer::tcount_;
+std::map<std::string,Timer*> ftimers;
 
 };
 

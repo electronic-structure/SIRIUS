@@ -217,4 +217,16 @@ void FORTRAN(sirius_print_timers)(void)
     sirius::Timer::print();
 }   
 
+void FORTRAN(sirius_timer_start)(char* name_, int4 name_len)
+{
+    std::string name(name_, name_len);
+    sirius::ftimers[name] = new sirius::Timer(name);
+}
+
+void FORTRAN(sirius_timer_stop)(char* name_, int4 name_len)
+{
+    std::string name(name_, name_len);
+    if (sirius::ftimers.count(name)) delete sirius::ftimers[name];
+}
+
 }

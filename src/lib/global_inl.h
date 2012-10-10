@@ -19,6 +19,11 @@ inline int compare_doubles(const void* a, const void* b)
         return 0;
 }
 
+inline int lmmax_by_lmax(int lmax)
+{
+    return (lmax + 1) * (lmax + 1);
+}
+
 inline int lm_by_l_m(int l, int m)
 {
     return (l * l + l + m);
@@ -26,10 +31,20 @@ inline int lm_by_l_m(int l, int m)
 
 inline int l_by_lm(int lm)
 {
-    return int(sqrt(double(lm)));
+    static std::vector<int> l_values;
+    static const int lmax = 50;
+    
+    if (!l_values.size())
+    {
+        l_values.resize(lmmax_by_lmax(lmax));
+                
+        int lm = 0;
+        for (int l = 0; l <= lmax; l++)
+            for (int m = -l; m <= l; m++, lm++)
+                l_values[lm] = l;
+    }
+    assert(lm < lmmax_by_lmax(lmax));
+    
+    return l_values[lm];
 }
 
-inline int lmmax_by_lmax(int lmax)
-{
-    return (lmax + 1) * (lmax + 1);
-}
