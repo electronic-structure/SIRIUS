@@ -174,6 +174,7 @@ class Potential
             mdarray<complex16,2> qmt(NULL, global.lmmax_rho(), global.num_atoms());
             qmt.allocate();
             
+            Timer *t1 = new Timer("sirius::Potential::poisson:vmt");
             // compute MT part of the potential and MT multipole moments
             for (int ia = 0; ia < global.num_atoms(); ia++)
             {
@@ -223,7 +224,9 @@ class Potential
                 // nuclear multipole moment
                 qmt(0, ia) -= global.atom(ia)->type()->zn() * y00;
             }
+            delete t1;
 
+            Timer *t2 = new Timer("sirius::Potential::poisson:qit");
             // compute multipoles of interstitial density in MT region
             mdarray<complex16,2> qit(NULL, global.lmmax_rho(), global.num_atoms());
             qit.allocate();
@@ -249,6 +252,7 @@ class Potential
                     }
                 }
             }
+            delete t2;
 
             /*for (int lm = 0; lm < global.lmmax_rho(); lm++)
             {
@@ -263,6 +267,7 @@ class Potential
             std::vector<complex16> pseudo_pw(global.num_gvec());
             memcpy(&pseudo_pw[0], global.charge_density().f_pw(), global.num_gvec() * sizeof(complex16));
 
+            Timer *t3 = new Timer("sirius::Potential::poisson:pw");
             // add contribution from pseudocharge density
             // 
             // The following term is added to the plane-wave coefficients of the charge density:
@@ -298,16 +303,19 @@ class Potential
                             // (2^(1/2+n) Sqrt[\[Pi]] R^-l (a R)^(-(3/2)-n) BesselJ[3/2+l+n,a R] Gamma[5/2+l+n])/Gamma[3/2+l]
                             // and BesselJ is expressed in terms of SphericalBesselJ
                             pseudo_pw[ig] += zt * conj(zil[l]) * ylm_gvec_(lm, ig) * (qmt(lm, ia) - qit(lm, ia)) * Rl[l] * 
-                                sbessel_mt_(l + pseudo_density_order + 1, iat, global.gvec_shell(ig)) * gamma_factors[l][pseudo_density_order];
+                                sbessel_mt_(l + pseudo_density_order + 1, iat, global.gvec_shell(ig)) * 
+                                gamma_factors[l][pseudo_density_order];
                         }
                     }
                     else // for |G|=0
                         pseudo_pw[ig] += zt * y00 * (qmt(0, ia) - qit(0, ia));
                 }
             }
+            delete t3;
 
             //std::cout << "rho(0) = " << pseudo_pw[0] << std::endl;
-
+#if 0
+            Timer *t4 = new Timer("sirius::Potential::poisson:qit");
             qit.zero();
             for (int ia = 0; ia < global.num_atoms(); ia++)
             {
@@ -321,10 +329,12 @@ class Potential
                     {
                         int l = l_by_lm(lm);
 
-                        qit(lm, ia) += pseudo_pw[ig] * zt * zil[l] * conj(ylm_gvec_(lm, ig)) * sbessel_mom_(l, iat, global.gvec_shell(ig));
+                        qit(lm, ia) += pseudo_pw[ig] * zt * zil[l] * conj(ylm_gvec_(lm, ig)) * 
+                                       sbessel_mom_(l, iat, global.gvec_shell(ig));
                     }
                 }
             }
+            delete t4;
            
             /*for (int lm = 0; lm < global.lmmax_rho(); lm++)
             {
@@ -339,7 +349,7 @@ class Potential
                 for (int lm = 0; lm < global.lmmax_rho(); lm++)
                     d += abs(qmt(lm, ia) - qit(lm, ia));
             std::cout << "total q diff : " << d << std::endl;*/
-
+#endif
 
  
             // compute pw coefficients of Hartree potential
@@ -347,6 +357,8 @@ class Potential
             hartree_potential_.f_pw(0) = 0.0;
             for (int ig = 1; ig < global.num_gvec(); ig++)
                 hartree_potential_.f_pw(ig) = pseudo_pw[ig] * fourpi / pow(global.gvec_shell_len(global.gvec_shell(ig)), 2);
+
+            Timer *t5 = new Timer("sirius::Potential::poisson:bc");
 
             // compute V_lm at the MT boundary
             mdarray<complex16,2> vmtlm(NULL, global.lmmax_pot(), global.num_atoms());
@@ -383,6 +395,8 @@ class Potential
                         hartree_potential_.f_ylm(lm, ir, ia) += vmtlm(lm, ia) * pow(global.atom(ia)->type()->radial_grid()[ir] / R, l);
                 }
             }
+
+            delete t5;
             
             hartree_potential_.convert_to_rlm();
 

@@ -123,45 +123,54 @@ class Density
         
             
             Timer t3("sirius::Density::add_k_contribution:it");
-            mdarray<double,2> it_density(global.fft().size(), global.num_dmat());
-            it_density.zero();
             
-            mdarray<complex16,2> wfit(global.fft().size(), global.num_spins());
-
-            for (int i = 0; i < (int)bands.size(); i++)
+            #pragma omp parallel default(shared)
             {
-                for (int ispn = 0; ispn < global.num_spins(); ispn++)
-                {
-                    global.fft().input(kp->num_gkvec(), kp->fft_index(), 
-                                       &kp->spinor_wave_function(global.mt_basis_size(), ispn, bands[i].first));
-                    global.fft().transform(1);
-                    global.fft().output(&wfit(0, ispn));
-                }
+                int thread_id = omp_get_thread_num();
+
+                mdarray<double,2> it_density(global.fft().size(), global.num_dmat());
+                it_density.zero();
                 
-                double w = bands[i].second / global.omega();
-                
-                switch(global.num_dmat())
+                mdarray<complex16,2> wfit(global.fft().size(), global.num_spins());
+
+                #pragma omp for
+                for (int i = 0; i < (int)bands.size(); i++)
                 {
-                    case 4:
-                        for (int ir = 0; ir < global.fft().size(); ir++)
-                        {
-                            complex16 z = wfit(ir, 0) * conj(wfit(ir, 1)) * w;
-                            it_density(ir, 2) += 2.0 * real(z);
-                            it_density(ir, 3) -= 2.0 * imag(z);
-                        }
-                    case 2:
-                        for (int ir = 0; ir < global.fft().size(); ir++)
-                            it_density(ir, 1) += real(wfit(ir, 1) * conj(wfit(ir, 1))) * w;
-                    case 1:
-                        for (int ir = 0; ir < global.fft().size(); ir++)
-                            it_density(ir, 0) += real(wfit(ir, 0) * conj(wfit(ir, 0))) * w;
+                    for (int ispn = 0; ispn < global.num_spins(); ispn++)
+                    {
+                        global.fft().input(kp->num_gkvec(), kp->fft_index(), 
+                                           &kp->spinor_wave_function(global.mt_basis_size(), ispn, bands[i].first),
+                                           thread_id);
+                        global.fft().transform(1, thread_id);
+                        global.fft().output(&wfit(0, ispn), thread_id);
+                    }
+                    
+                    double w = bands[i].second / global.omega();
+                    
+                    switch(global.num_dmat())
+                    {
+                        case 4:
+                            for (int ir = 0; ir < global.fft().size(); ir++)
+                            {
+                                complex16 z = wfit(ir, 0) * conj(wfit(ir, 1)) * w;
+                                it_density(ir, 2) += 2.0 * real(z);
+                                it_density(ir, 3) -= 2.0 * imag(z);
+                            }
+                        case 2:
+                            for (int ir = 0; ir < global.fft().size(); ir++)
+                                it_density(ir, 1) += real(wfit(ir, 1) * conj(wfit(ir, 1))) * w;
+                        case 1:
+                            for (int ir = 0; ir < global.fft().size(); ir++)
+                                it_density(ir, 0) += real(wfit(ir, 0) * conj(wfit(ir, 0))) * w;
+                    }
                 }
+                 
+                #pragma omp critical
+                for (int ir = 0; ir < global.fft().size(); ir++)
+                    global.charge_density().f_it(ir) += it_density(ir, 0);
             }
-             
-            t3.stop();
             
-            for (int ir = 0; ir < global.fft().size(); ir++)
-                global.charge_density().f_it(ir) += it_density(ir, 0);
+            t3.stop();
        }
 
     public:
