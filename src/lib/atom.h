@@ -113,8 +113,8 @@ class Atom
             \f]
             where
             \f[
-                \widetilde V_{\ell m}(r)=\left\{ \begin{array}{ll} 
-                  \frac{H_{s}(r)}{R_{00}} & \ell = 0 \\ 
+                \widetilde V_{\ell m}(r)=\left\{ \begin{array}{ll}
+                  \frac{H_{s}(r)}{R_{00}} & \ell = 0 \\
                   V_{\ell m}(r) & \ell > 0 \end{array} \right.
             \f]
         */
@@ -127,27 +127,33 @@ class Atom
 
             mdarray<double,2> veff(veff_, lmmax, nmtp);
 
-            Spline<double> s(nmtp, type()->radial_grid());
-            
             h_radial_integrals_.zero();
+            
+            #pragma omp parallel default(shared)
+            {
+                Spline<double> s(nmtp, type()->radial_grid());
 
-            for (int i2 = 0; i2 < type()->indexr().size(); i2++)
-                for (int i1 = 0; i1 < type()->indexr().size(); i1++)
-                {
-                    h_radial_integrals_(0, i1, i2) = symmetry_class()->h_spherical_integral(i1, i2);
-
-                    if (i1 <= i2)
+                for (int i2 = 0; i2 < type()->indexr().size(); i2++)
+                    for (int i1 = 0; i1 < type()->indexr().size(); i1++)
                     {
-                        // non-spherical terms
-                        for (int lm = 1; lm < lmmax; lm++)
+                        #pragma omp master
+                        h_radial_integrals_(0, i1, i2) = symmetry_class()->h_spherical_integral(i1, i2);
+
+                        if (i1 <= i2)
                         {
-                            for (int ir = 0; ir < nmtp; ir++)
-                                s[ir] = symmetry_class()->radial_function(ir, i1) * symmetry_class()->radial_function(ir, i2) * veff(lm, ir);
-                            s.interpolate();
-                            h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = s.integrate(2);
+                            // non-spherical terms
+                            #pragma omp for
+                            for (int lm = 1; lm < lmmax; lm++)
+                            {
+                                for (int ir = 0; ir < nmtp; ir++)
+                                    s[ir] = symmetry_class()->radial_function(ir, i1) * 
+                                            symmetry_class()->radial_function(ir, i2) * veff(lm, ir);
+                                s.interpolate();
+                                h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = s.integrate(2);
+                            }
                         }
                     }
-                }
+            }
         }
 
         inline int offset_aw()

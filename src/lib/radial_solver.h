@@ -110,7 +110,10 @@ class RadialSolver
                 // Y(x + h) = Y(x) + h * (k0 + 2 * k1 + 2 * k2 + k3) / 6
                 p2 = p0 + (pk[0] + 2 * (pk[1] + pk[2]) + pk[3]) * h / 6.0;
                 q2 = q0 + (qk[0] + 2 * (qk[1] + qk[2]) + qk[3]) * h / 6.0;
-                
+               
+                p2 = std::max(std::min(1e10, p2), -1e10);
+                q2 = std::max(std::min(1e10, q2), -1e10);
+               
                 p[i + 1] = p2;
                 q[i + 1] = q2;
             }

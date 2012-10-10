@@ -147,6 +147,12 @@ template <typename T> class mdarray<T,4> : public mdarray_base_impl<T,4>
             this->set_ptr(data_ptr);
         }
         
+        mdarray(const dimension& d0, const dimension& d1, const dimension& d2, const dimension& d3)
+        {
+            set_dimensions(d0, d1, d2, d3);
+            this->allocate();
+        }
+         
         void set_dimensions(const dimension& d0, const dimension& d1, const dimension& d2, const dimension& d3)
         {
             std::vector<dimension> vd;
@@ -183,6 +189,12 @@ template <typename T> class mdarray<T,5> : public mdarray_base_impl<T,5>
         {
             set_dimensions(d0, d1, d2, d3, d4);
             this->set_ptr(data_ptr);
+        }
+        
+        mdarray(const dimension& d0, const dimension& d1, const dimension& d2, const dimension& d3, const dimension& d4)
+        {
+            set_dimensions(d0, d1, d2, d3, d4);
+            this->allocate();
         }
         
         void set_dimensions(const dimension& d0, const dimension& d1, const dimension& d2, const dimension& d3, const dimension& d4)

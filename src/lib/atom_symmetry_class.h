@@ -474,7 +474,7 @@ class AtomSymmetryClass
 
          double core_charge_density(int ir)
          {
-             assert(ir >= 0 && ir < core_charge_density_.size());
+             assert(ir >= 0 && ir < (int)core_charge_density_.size());
 
              return core_charge_density_[ir];
          }
