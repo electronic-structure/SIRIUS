@@ -429,6 +429,11 @@ class Potential
             }
 
             xc_potential::get(global.fft().size(), global.charge_density().f_it(), xc_potential_.f_it(), xc_energy_density_.f_it());
+            
+            if (global.num_spins() == 2)
+            {
+            
+            }
         }
 
         void generate_effective_potential()
