@@ -66,9 +66,9 @@ void FORTRAN(sirius_set_num_spins)(int4* num_spins)
     sirius::global.set_num_spins(*num_spins);
 }
 
-void FORTRAN(sirius_set_num_dmat)(int4* num_dmat)
+void FORTRAN(sirius_set_num_mag_dims)(int4* num_mag_dims)
 {
-    sirius::global.set_num_dmat(*num_dmat);
+    sirius::global.set_num_mag_dims(*num_mag_dims);
 }
 
 /*

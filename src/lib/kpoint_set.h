@@ -23,7 +23,7 @@ class kpoint_set
             std::vector<double> initial_occupancies(global.num_bands(), 0.0);
 
             // in case of non-magnetic, or magnetic non-collinear case occupy first N bands
-            if (global.num_dmat() == 1 || global.num_dmat() == 4)
+            if (global.num_mag_dims() == 0 || global.num_mag_dims() == 3)
             {
                 int m = global.num_valence_electrons() / global.max_occupancy();
                 for (int i = 0; i < m; i++)

@@ -73,7 +73,7 @@ class Density
            
             // if we have ud and du spin blocks, don't compute one of them (du in this implementation)
             // because density matrix is symmetric
-            int num_zdmat = (global.num_dmat() == 4) ? 3 : global.num_dmat();
+            int num_zdmat = (global.num_mag_dims() == 3) ? 3 : (global.num_mag_dims() + 1);
 
             mdarray<complex16,3> zdens(global.max_mt_basis_size(), global.max_mt_basis_size(), num_zdmat);
             mdarray<complex16,3> wf1(global.max_mt_basis_size(), bands.size(), global.num_spins());
@@ -107,13 +107,13 @@ class Density
 
                 t2.start();
                 
-                switch(global.num_dmat())
+                switch(global.num_mag_dims())
                 {
-                    case 4:
+                    case 3:
                         reduce_zdens<4>(ia, zdens, mt_density_matrix);
-                    case 2:
-                        reduce_zdens<2>(ia, zdens, mt_density_matrix);
                     case 1:
+                        reduce_zdens<2>(ia, zdens, mt_density_matrix);
+                    case 0:
                         reduce_zdens<1>(ia, zdens, mt_density_matrix);
                 }
                 
@@ -128,7 +128,7 @@ class Density
             {
                 int thread_id = omp_get_thread_num();
 
-                mdarray<double,2> it_density(global.fft().size(), global.num_dmat());
+                mdarray<double,2> it_density(global.fft().size(), global.num_mag_dims() + 1);
                 it_density.zero();
                 
                 mdarray<complex16,2> wfit(global.fft().size(), global.num_spins());
@@ -147,19 +147,19 @@ class Density
                     
                     double w = bands[i].second / global.omega();
                     
-                    switch(global.num_dmat())
+                    switch(global.num_mag_dims())
                     {
-                        case 4:
+                        case 3:
                             for (int ir = 0; ir < global.fft().size(); ir++)
                             {
                                 complex16 z = wfit(ir, 0) * conj(wfit(ir, 1)) * w;
                                 it_density(ir, 2) += 2.0 * real(z);
                                 it_density(ir, 3) -= 2.0 * imag(z);
                             }
-                        case 2:
+                        case 1:
                             for (int ir = 0; ir < global.fft().size(); ir++)
                                 it_density(ir, 1) += real(wfit(ir, 1) * conj(wfit(ir, 1))) * w;
-                        case 1:
+                        case 0:
                             for (int ir = 0; ir < global.fft().size(); ir++)
                                 it_density(ir, 0) += real(wfit(ir, 0) * conj(wfit(ir, 0))) * w;
                     }
@@ -188,17 +188,17 @@ class Density
 
             // set temporary array wrapper
             mdarray<double,4> magmt_tmp(magmt, global.lmmax_rho(), global.max_num_mt_points(), global.num_atoms(),
-                                        global.num_dmat() - 1);
-            mdarray<double,2> magir_tmp(magir, global.fft().size(), global.num_dmat() - 1);
+                                        global.num_mag_dims());
+            mdarray<double,2> magir_tmp(magir, global.fft().size(), global.num_mag_dims());
             
-            if (global.num_dmat() == 2)
+            if (global.num_mag_dims() == 1)
             {
                 // z component is the first and only one
                 global.magnetization(0).set_rlm_ptr(&magmt_tmp(0, 0, 0, 0));
                 global.magnetization(0).set_it_ptr(&magir_tmp(0, 0));
             }
 
-            if (global.num_dmat() == 4)
+            if (global.num_mag_dims() == 3)
             {
                 // z component is the first
                 global.magnetization(0).set_rlm_ptr(&magmt_tmp(0, 0, 0, 2));
@@ -221,14 +221,13 @@ class Density
 
             global.charge_density().allocate(pw_component);
 
-            if (global.num_spins() == 2)
-                for (int i = 0; i < global.num_dmat() - 1; i++)
-                {
-                    global.magnetization(i).set_dimensions(global.lmax_rho(), global.max_num_mt_points(), global.num_atoms(), 
-                                                           global.fft().size(), global.num_gvec());
+            for (int i = 0; i < global.num_mag_dims(); i++)
+            {
+                global.magnetization(i).set_dimensions(global.lmax_rho(), global.max_num_mt_points(), global.num_atoms(), 
+                                                       global.fft().size(), global.num_gvec());
 
-                    global.magnetization(i).allocate(pw_component);
-                }
+                global.magnetization(i).allocate(pw_component);
+            }
 
             dmat_spins_.clear();
             dmat_spins_.push_back(std::pair<int,int>(0, 0));
@@ -260,7 +259,7 @@ class Density
         void zero()
         {
             global.charge_density().zero();
-            for (int i = 0; i < global.num_dmat() - 1; i++)
+            for (int i = 0; i < global.num_mag_dims(); i++)
                 global.magnetization(i).zero();
         }
       
@@ -292,15 +291,19 @@ class Density
 
                 if (len > 1e-8)
                 {
-                    if (global.num_dmat() == 2)
+                    if (global.num_mag_dims())
                         for (int ir = 0; ir < nmtp; ir++)
                             global.magnetization(0).f_rlm(0, ir, ia) = global.charge_density().f_rlm(0, ir, ia) * 
                                                                        v[2] / len;
-                    if (global.num_dmat() == 4)
-                        for (int i = 0; i < 3; i++)
-                            for (int ir = 0; ir < nmtp; ir++)
-                                global.magnetization(i).f_rlm(0, ir, ia) = global.charge_density().f_rlm(0, ir, ia) * 
-                                                                           v[i] / len;
+                    if (global.num_mag_dims() == 3)
+                    {
+                        for (int ir = 0; ir < nmtp; ir++)
+                            global.magnetization(1).f_rlm(0, ir, ia) = global.charge_density().f_rlm(0, ir, ia) * 
+                                                                       v[0] / len;
+                        for (int ir = 0; ir < nmtp; ir++)
+                            global.magnetization(2).f_rlm(0, ir, ia) = global.charge_density().f_rlm(0, ir, ia) * 
+                                                                       v[1] / len;
+                    }
                 }
             }
             
@@ -372,7 +375,7 @@ class Density
             // auxiliary density matrix
             mdarray<double,5> mt_density_matrix(global.max_mt_radial_basis_size(), 
                                                 global.max_mt_radial_basis_size(), 
-                                                global.lmmax_rho(), global.num_atoms(), global.num_dmat());
+                                                global.lmmax_rho(), global.num_atoms(), global.num_mag_dims() + 1);
             mt_density_matrix.zero();
             
             // zero density
@@ -393,17 +396,17 @@ class Density
             for (int ia = 0; ia < global.num_atoms(); ia++)
             {
                 int nmtp = global.atom(ia)->type()->num_mt_points();
-                mdarray<double,2> v(nmtp, global.num_dmat());
+                mdarray<double,2> v(nmtp, global.num_mag_dims() + 1);
 
                 for (int lm = 0; lm < global.lmmax_rho(); lm++)
                 {
-                    for (int i = 0; i < global.num_dmat(); i++)
+                    for (int i = 0; i < global.num_mag_dims() + 1; i++)
                         for (int idxrf = 0; idxrf < global.atom(ia)->type()->mt_radial_basis_size(); idxrf++)
                             mt_density_matrix(idxrf, idxrf, lm, ia, i) *= 0.5; 
 
                     v.zero();
 
-                    for (int j = 0; j < global.num_dmat(); j++)
+                    for (int j = 0; j < global.num_mag_dims() + 1; j++)
                         for (int idxrf2 = 0; idxrf2 < global.atom(ia)->type()->mt_radial_basis_size(); idxrf2++)
                         {
                             for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)

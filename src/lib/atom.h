@@ -94,7 +94,7 @@ class Atom
             symmetry_class_ = symmetry_class__;
         }
 
-        void init(int lmax, int offset_aw__, int offset_lo__, int offset_wf__)
+        void init(int lmax, int num_mag_dims, int offset_aw__, int offset_lo__, int offset_wf__)
         {
             assert(symmetry_class());
             assert(lmax >= 0);
@@ -108,7 +108,13 @@ class Atom
 
             h_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size());
             h_radial_integrals_.allocate();
-        }
+            
+            if (num_mag_dims)
+            {
+                b_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size(), num_mag_dims);
+                b_radial_integrals_.allocate();
+            }
+         }
 
         /*!
             \brief Generate radial integrals used to setup Hamiltonian and overlap matrices

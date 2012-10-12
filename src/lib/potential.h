@@ -75,17 +75,17 @@ class Potential
 
             // set temporary array wrapper
             mdarray<double,4> beffmt_tmp(beffmt, global.lmmax_rho(), global.max_num_mt_points(), global.num_atoms(),
-                                         global.num_dmat() - 1);
-            mdarray<double,2> beffir_tmp(beffir, global.fft().size(), global.num_dmat() - 1);
+                                         global.num_mag_dims());
+            mdarray<double,2> beffir_tmp(beffir, global.fft().size(), global.num_mag_dims());
             
-            if (global.num_dmat() == 2)
+            if (global.num_mag_dims() == 1)
             {
                 // z
                 global.effective_magnetic_field(0).set_rlm_ptr(&beffmt_tmp(0, 0, 0, 0));
                 global.effective_magnetic_field(0).set_it_ptr(&beffir_tmp(0, 0));
             }
             
-            if (global.num_dmat() == 4)
+            if (global.num_mag_dims() == 3)
             {
                 // z
                 global.effective_magnetic_field(0).set_rlm_ptr(&beffmt_tmp(0, 0, 0, 2));
@@ -150,7 +150,7 @@ class Potential
                                                         global.fft().size(), global.num_gvec());
             global.effective_potential().allocate(pw_component);
 
-            for (int j = 0; j < global.num_dmat() - 1; j++)
+            for (int j = 0; j < global.num_mag_dims(); j++)
             {
                 global.effective_magnetic_field(j).set_dimensions(global.lmax_pot(), global.max_num_mt_points(), 
                                                                   global.num_atoms(), global.fft().size(), 
@@ -457,9 +457,9 @@ class Potential
             mdarray<double,2> vxctp(sht_.num_points(), global.max_num_mt_points());
             mdarray<double,2> exctp(sht_.num_points(), global.max_num_mt_points());
             
-            mdarray<double,3> vecmagtp(NULL, sht_.num_points(), global.max_num_mt_points(), global.num_dmat() - 1);
+            mdarray<double,3> vecmagtp(NULL, sht_.num_points(), global.max_num_mt_points(), global.num_mag_dims());
             mdarray<double,2> magtp(NULL, sht_.num_points(), global.max_num_mt_points());
-            mdarray<double,3> vecbxctp(NULL, sht_.num_points(), global.max_num_mt_points(), global.num_dmat() - 1);
+            mdarray<double,3> vecbxctp(NULL, sht_.num_points(), global.max_num_mt_points(), global.num_mag_dims());
             mdarray<double,2> bxctp(NULL, sht_.num_points(), global.max_num_mt_points());
             if (global.num_spins() == 2) 
             {
@@ -477,7 +477,7 @@ class Potential
                                             &rhotp(0, 0));
                 if (global.num_spins() == 2)
                 {
-                    for (int j = 0; j < global.num_dmat() - 1; j++)
+                    for (int j = 0; j < global.num_mag_dims(); j++)
                         sht_.rlm_backward_transform(&global.magnetization(j).f_rlm(0, 0, ia), global.lmmax_rho(), nmtp,
                                                     &vecmagtp(0, 0, j));
                     
@@ -485,7 +485,7 @@ class Potential
                         for (int itp = 0; itp < sht_.num_points(); itp++)
                         {
                             double t = 0.0;
-                            for (int j = 0; j < global.num_dmat() - 1; j++)
+                            for (int j = 0; j < global.num_mag_dims(); j++)
                                 t += vecmagtp(itp, ir, j) *  vecmagtp(itp, ir, j);
                             magtp(itp, ir) = sqrt(t);
                         }
@@ -505,10 +505,10 @@ class Potential
                     for (int ir = 0; ir < nmtp; ir++)
                         for (int itp = 0; itp < sht_.num_points(); itp++)
                             if (magtp(itp, ir) > 1e-8)
-                                for (int j = 0; j < global.num_dmat() - 1; j++)
+                                for (int j = 0; j < global.num_mag_dims(); j++)
                                     vecbxctp(itp, ir, j) = bxctp(itp, ir) * vecmagtp(itp, ir, j) / magtp(itp, ir);
                     
-                    for (int j = 0; j < global.num_dmat() - 1; j++)
+                    for (int j = 0; j < global.num_mag_dims(); j++)
                         sht_.rlm_forward_transform(&vecbxctp(0, 0, j), global.lmmax_rho(), nmtp,
                                                    &xc_magnetic_field_[j].f_rlm(0, 0, ia));
                 }
@@ -525,7 +525,7 @@ class Potential
                 for (int ir = 0; ir < global.fft().size(); ir++)
                 {
                     double t = 0.0;
-                    for (int j = 0; j < global.num_dmat() - 1; j++)
+                    for (int j = 0; j < global.num_mag_dims(); j++)
                         t += global.magnetization(j).f_it(ir) * global.magnetization(j).f_it(ir);
                     magit[ir] = sqrt(t);
                 }
@@ -534,7 +534,7 @@ class Potential
                 
                 for (int ir = 0; ir < global.fft().size(); ir++)
                     if (magit[ir] > 1e-8)
-                        for (int j = 0; j < global.num_dmat() - 1; j++)
+                        for (int j = 0; j < global.num_mag_dims(); j++)
                             xc_magnetic_field_[j].f_it(ir) = bxcit[ir] * global.magnetization(j).f_it(ir) / magit[ir];
             }
         }
@@ -546,7 +546,7 @@ class Potential
             global.fft().output(global.num_gvec(), global.fft_index(), global.charge_density().f_pw());
             
             global.effective_potential().zero();
-            for (int j = 0; j < global.num_dmat() - 1; j++)
+            for (int j = 0; j < global.num_mag_dims(); j++)
                global.effective_magnetic_field(j).zero();
             
             // generate and add Hartree potential
@@ -568,7 +568,7 @@ class Potential
             xc_potential_.allocate(rlm_component | it_component);
             xc_potential_.zero();
             
-            for (int j = 0; j < global.num_dmat() - 1; j++)
+            for (int j = 0; j < global.num_mag_dims(); j++)
             {
                 xc_magnetic_field_[j].set_dimensions(global.lmax_pot(), global.max_num_mt_points(),
                                                      global.num_atoms(), global.fft().size(), global.num_gvec());
@@ -586,7 +586,7 @@ class Potential
             global.effective_potential().add(xc_potential_, rlm_component | it_component);
             xc_potential_.deallocate();
 
-            for (int j = 0; j < global.num_dmat() - 1; j++)
+            for (int j = 0; j < global.num_mag_dims(); j++)
             {
                 global.effective_magnetic_field(j).add(xc_magnetic_field_[j], rlm_component | it_component);
                 xc_magnetic_field_[j].deallocate();

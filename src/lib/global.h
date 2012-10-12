@@ -54,8 +54,8 @@ class Global : public StepFunction
         /// number of spin componensts (1 or 2)
         int num_spins_;
 
-        /// number of components of density matrix (1, 2 or 4)
-        int num_dmat_;
+        /// number of dimensions of the magnetization and effective magnetic field (0, 1 or 3)
+        int num_mag_dims_;
 
     public:
     
@@ -64,7 +64,7 @@ class Global : public StepFunction
                    lmax_pot_(lmax_pot_default),
                    aw_cutoff_(aw_cutoff_default),
                    num_spins_(1),
-                   num_dmat_(1)
+                   num_mag_dims_(0)
         {
         }
 
@@ -88,9 +88,9 @@ class Global : public StepFunction
             num_spins_ = num_spins__;
         }
 
-        void set_num_dmat(int num_dmat__)
+        void set_num_mag_dims(int num_mag_dims__)
         {
-            num_dmat_ = num_dmat__;
+            num_mag_dims_ = num_mag_dims__;
         }
 
         inline int lmax_apw()
@@ -221,11 +221,11 @@ class Global : public StepFunction
             return num_spins_;
         }
 
-        inline int num_dmat()
+        inline int num_mag_dims()
         {
-            assert(num_dmat_ == 1 || num_dmat_ == 2 || num_dmat_ == 4);
+            assert(num_mag_dims_ == 0 || num_mag_dims_ == 1 || num_mag_dims_ == 3);
             
-            return num_dmat_;
+            return num_mag_dims_;
         }
 
         inline int max_occupancy()
@@ -260,7 +260,7 @@ class Global : public StepFunction
             max_mt_radial_basis_size_ = 0;
             for (int ia = 0; ia < num_atoms(); ia++)
             {
-                atom(ia)->init(lmax_pot(), mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
+                atom(ia)->init(lmax_pot(), num_mag_dims_, mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
                 mt_aw_basis_size_ += atom(ia)->type()->mt_aw_basis_size();
                 mt_lo_basis_size_ += atom(ia)->type()->mt_lo_basis_size();
                 mt_basis_size_ += atom(ia)->type()->mt_basis_size();

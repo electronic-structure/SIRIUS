@@ -450,7 +450,7 @@ class Band
             complex16 zone = complex16(1.0, 0.0);
             complex16 zi = complex16(0.0, 1.0);
 
-            mdarray<complex16,3> zm(global.max_mt_basis_size(), global.max_mt_basis_size(), global.num_dmat() - 1);
+            mdarray<complex16,3> zm(global.max_mt_basis_size(), global.max_mt_basis_size(), global.num_mag_dims());
                     
             for (int ia = 0; ia < global.num_atoms(); ia++)
             {
@@ -464,7 +464,7 @@ class Band
                     int lm2 = global.atom(ia)->type()->indexb(j2).lm;
                     int idxrf2 = global.atom(ia)->type()->indexb(j2).idxrf;
                     
-                    for (int i = 0; i < global.num_dmat() - 1; i++)
+                    for (int i = 0; i < global.num_mag_dims(); i++)
                     {
                         for (int j1 = 0; j1 <= j2; j1++)
                         {
@@ -481,9 +481,9 @@ class Band
                           &scalar_wf(offset, 0), scalar_wf_size, zzero, &bwf(offset, 0, 0), scalar_wf_size);
                 
                 // compute bwf = (B_x - iB_y)|wf_j>
-                if (global.num_dmat() == 4)
+                if (global.num_mag_dims() == 3)
                 {
-                    // use first (z) component of zm matrix to store (Bx - iBy)
+                    // reuse first (z) component of zm matrix to store (Bx - iBy)
                     for (int j2 = 0; j2 < mt_basis_size; j2++)
                     {
                         for (int j1 = 0; j1 <= j2; j1++)
@@ -521,7 +521,7 @@ class Band
                     global.fft().transform(-1, thread_id);
                     global.fft().output(num_gkvec, fft_index, &bwf(global.mt_basis_size(), i, 0), thread_id); 
 
-                    if (global.num_dmat() == 4)
+                    if (global.num_mag_dims() == 3)
                     {
                         for (int ir = 0; ir < global.fft().size(); ir++)
                             bwfit[ir] = wfit[ir] * (global.effective_magnetic_field(1).f_it(ir) - 
@@ -547,7 +547,7 @@ class Band
         {
             Timer t("sirius::Band::set_sv_h");
 
-            int nhwf = (global.num_dmat() == 4) ? 3 : global.num_dmat();
+            int nhwf = (global.num_mag_dims() == 3) ? 3 : (global.num_mag_dims() + 1);
 
             // product of the second-variational hamiltonian and a wave-function
             mdarray<complex16,3> hwf(scalar_wf_size, global.num_fv_states(), nhwf);
@@ -582,7 +582,7 @@ class Band
                           &h(global.num_fv_states(), global.num_fv_states()), global.num_bands());
 
             // compute <wf_i | (h * wf_j)> for up-dn block
-            if (global.num_dmat() == 4)
+            if (global.num_mag_dims() == 3)
                 gemm<cpu>(2, 0, global.num_fv_states(), global.num_fv_states(), scalar_wf_size, complex16(1.0, 0.0), 
                           &scalar_wf(0, 0), scalar_wf_size, &hwf(0, 0, 2), scalar_wf_size, complex16(0.0, 0.0), 
                           &h(0, global.num_fv_states()), global.num_bands());
