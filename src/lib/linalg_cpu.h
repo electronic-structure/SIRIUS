@@ -10,14 +10,15 @@
 extern "C" void FORTRAN(zgemm)(const char* transa, const char* transb, int4* m, int4* n, int4* k, 
                                complex16* alpha, complex16* a, int4* lda, complex16* b, int4* ldb, 
                                complex16* beta, complex16* c, int4* ldc, int4 transalen, int4 transblen);
+
 extern "C" void FORTRAN(dgemm)(const char* transa, const char* transb, int4* m, int4* n, int4* k, 
                                real8* alpha, real8* a, int4* lda, real8* b, int4* ldb, 
                                real8* beta,real8* c, int4* ldc, int4 transalen, int4 transblen);
 
-extern "C" void FORTRAN(zhemm)(const char *side, const char *uplo, int32_t *m, int32_t *n, 
-                               complex16 *alpha, complex16 *a, int32_t *lda, complex16 *b,
-                               int32_t *ldb, complex16 *beta, complex16 *c, int32_t *ldc,
-                               int32_t sidelen, int32_t uplolen);
+extern "C" void FORTRAN(zhemm)(const char *side, const char *uplo, int4* m, int4* n, 
+                               complex16* alpha, complex16* a, int4* lda, complex16* b,
+                               int4* ldb, complex16* beta, complex16* c, int4* ldc,
+                               int4 sidelen, int4 uplolen);
 
 /*
     eigen-value problem

@@ -262,7 +262,7 @@ class Potential
 
             std::vector<complex16> zil(global.lmax_rho() + 1);
             for (int l = 0; l <= global.lmax_rho(); l++)
-                zil[l] = pow(zi, l);
+                zil[l] = pow(data_type_wrapper<complex16>::zi(), l);
 
             for (int ia = 0; ia < global.num_atoms(); ia++)
             {

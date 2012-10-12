@@ -92,7 +92,7 @@ class kpoint
             
             std::vector<complex16> zil(global.lmax_apw() + 1);
             for (int l = 0; l <= global.lmax_apw(); l++)
-                zil[l] = pow(zi, l);
+                zil[l] = pow(data_type_wrapper<complex16>::zi(), l);
       
             matching_coefficients_.set_dimensions(num_gkvec(), global.mt_aw_basis_size());
             matching_coefficients_.allocate();

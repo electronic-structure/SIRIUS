@@ -25,7 +25,7 @@ const int lmax_rho_default = 7;
 
 const int lmax_pot_default = 7;
 
-const complex16 zi(0.0, 1.0);
+//const complex16 zi(0.0, 1.0);
 
 #endif // __CONSTANTS_H__
 

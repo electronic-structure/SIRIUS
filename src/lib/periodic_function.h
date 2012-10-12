@@ -7,6 +7,7 @@ const int ylm_component = 1 << 1;
 const int pw_component = 1 << 2;
 const int it_component = 1 << 3;
 
+#if 0
 template <typename T> class data_type_wrapper;
 
 template<> class data_type_wrapper<double>
@@ -48,6 +49,7 @@ template<> class data_type_wrapper< std::complex<float> >
             return false;
         }
 };
+#endif
 
 /*!
     \brief Representation of the periodical function on the muffin-tin geometry

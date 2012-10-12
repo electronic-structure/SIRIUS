@@ -8,26 +8,47 @@
 #include "linalg_cpu.h"
 #include "linalg_gpu.h"
 
-
+//
+// gemm
+//
 template<implementation impl, typename T> 
-void gemm(int transa, int transb, int4 m, int4 n, int4 k, T alpha, T* a, int4 lda, 
-          T* b, int4 ldb, T beta, T* c, int4 ldc);
+void gemm(int transa, int transb, int4 m, int4 n, int4 k, T alpha, T* a, int4 lda, T* b, int4 ldb, T beta, 
+          T* c, int4 ldc);
 
-template<> void gemm<cpu,real8>(int transa, int transb, int4 m, int4 n, int4 k, real8 alpha, real8* a, int4 lda, 
-                                real8* b, int4 ldb, real8 beta, real8* c, int4 ldc)
+template<> void gemm<cpu,real8>(int transa, int transb, int4 m, int4 n, int4 k, real8 alpha, real8* a, 
+                                int4 lda, real8* b, int4 ldb, real8 beta, real8* c, int4 ldc)
 {
     const char *trans[] = {"N", "T", "C"};
 
-    FORTRAN(dgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int4)1, (int4)1);
+    FORTRAN(dgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, 
+                   c, &ldc, (int4)1, (int4)1);
 }
 
-template<> void gemm<cpu,complex16>(int transa, int transb, int4 m, int4 n, int4 k, complex16 alpha, complex16* a, int4 lda, 
+template<> void gemm<cpu,complex16>(int transa, int transb, int4 m, int4 n, int4 k, complex16 alpha, complex16* a, 
+                                    int4 lda, complex16* b, int4 ldb, complex16 beta, complex16* c, int4 ldc)
+{
+    const char *trans[] = {"N", "T", "C"};
+
+    FORTRAN(zgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, 
+                   c, &ldc, (int4)1, (int4)1);
+}
+
+//
+// hemm
+//
+template<implementation impl, typename T> 
+void hemm(int side, int uplo, int4 m, int4 n, T alpha, T* a, int4 lda, T* b, int4 ldb, T beta, T* c, int4 ldc);
+
+template<> void hemm<cpu,complex16>(int side, int uplo, int4 m, int4 n, complex16 alpha, complex16* a, int4 lda, 
                                     complex16* b, int4 ldb, complex16 beta, complex16* c, int4 ldc)
-{
-    const char *trans[] = {"N", "T", "C"};
 
-    FORTRAN(zgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int4)1, (int4)1);
+{
+    const char *sidestr[] = {"L", "R"};
+    const char *uplostr[] = {"U", "L"};
+    FORTRAN(zhemm)(sidestr[side], uplostr[uplo], &m, &n, &alpha, a, &lda, b, &ldb, &beta, 
+                   c, &ldc, (int4)1, (int4)1);
 }
+
 
 template<implementation impl, typename T>
 int hegvx(int4 n, int4 nv, real8 abstol, T* a, T* b, real8* eval, T* z, int4 ldz);
