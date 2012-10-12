@@ -18,6 +18,9 @@ class Atom
 
         /// radial integrals of the Hamiltonian 
         mdarray<double,3> h_radial_integrals_;
+        
+        /// radial integrals of the effective magnetic field
+        mdarray<double,4> b_radial_integrals_;
 
         /// offset in the array of matching coefficients and in the array of wave-functions
         int offset_aw_;
@@ -194,6 +197,11 @@ class Atom
         inline double* h_radial_integral(int idxrf1, int idxrf2)
         {
             return &h_radial_integrals_(0, idxrf1, idxrf2);
+        }
+        
+        inline double* b_radial_integral(int idxrf1, int idxrf2, int x)
+        {
+            return &b_radial_integrals_(0, idxrf1, idxrf2, x);
         }
 };
 

@@ -78,11 +78,24 @@ class Potential
                                          global.num_dmat() - 1);
             mdarray<double,2> beffir_tmp(beffir, global.fft().size(), global.num_dmat() - 1);
             
-            for (int i = 0; i < global.num_dmat() - 1; i++)
+            if (global.num_dmat() == 2)
             {
-                global.effective_magnetic_field(i).set_rlm_ptr(&beffmt_tmp(0, 0, 0, i));
-                global.effective_magnetic_field(i).set_it_ptr(&beffir_tmp(0, i));
-                global.effective_magnetic_field(i).zero();
+                // z
+                global.effective_magnetic_field(0).set_rlm_ptr(&beffmt_tmp(0, 0, 0, 0));
+                global.effective_magnetic_field(0).set_it_ptr(&beffir_tmp(0, 0));
+            }
+            
+            if (global.num_dmat() == 4)
+            {
+                // z
+                global.effective_magnetic_field(0).set_rlm_ptr(&beffmt_tmp(0, 0, 0, 2));
+                global.effective_magnetic_field(0).set_it_ptr(&beffir_tmp(0, 2));
+                // x
+                global.effective_magnetic_field(1).set_rlm_ptr(&beffmt_tmp(0, 0, 0, 0));
+                global.effective_magnetic_field(1).set_it_ptr(&beffir_tmp(0, 0));
+                // y
+                global.effective_magnetic_field(2).set_rlm_ptr(&beffmt_tmp(0, 0, 0, 1));
+                global.effective_magnetic_field(2).set_it_ptr(&beffir_tmp(0, 1));
             }
         }
          
@@ -519,7 +532,6 @@ class Potential
                 xc_potential::get(global.fft().size(), global.charge_density().f_it(), &magit[0], xc_potential_.f_it(),
                                   &bxcit[0], xc_energy_density_.f_it());
                 
-
                 for (int ir = 0; ir < global.fft().size(); ir++)
                     if (magit[ir] > 1e-8)
                         for (int j = 0; j < global.num_dmat() - 1; j++)

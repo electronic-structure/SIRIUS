@@ -419,7 +419,8 @@ class Band
                     // apw-lo block 
                     for (int order1 = 0; order1 < (int)type->aw_descriptor(l2).size(); order1++)
                         for (int ig = 0; ig < num_gkvec; ig++)
-                            o(ig, num_gkvec + atom->offset_lo() + j2) += atom->symmetry_class()->o_radial_integral(l2, order1, order2) * 
+                            o(ig, num_gkvec + atom->offset_lo() + j2) += 
+                                atom->symmetry_class()->o_radial_integral(l2, order1, order2) * 
                                 apw(ig, atom->offset_aw() + type->indexb_by_lm_order(lm2, order1));
 
                     // lo-lo block
@@ -440,9 +441,14 @@ class Band
         }
 
         // bwf must be zero on input
-        void apply_magnetic_field(mdarray<complex16,2>& scalar_wf, int scalar_wf_size, mdarray<complex16,3>& bwf)
+        void apply_magnetic_field(mdarray<complex16,2>& scalar_wf, int scalar_wf_size, int num_gkvec, int* fft_index, 
+                                  mdarray<complex16,3>& bwf)
         {
             Timer t("sirius::Band::apply_magnetic_field");
+
+            complex16 zzero = complex16(0.0, 0.0);
+            complex16 zone = complex16(1.0, 0.0);
+            complex16 zi = complex16(0.0, 1.0);
 
             mdarray<complex16,3> zm(global.max_mt_basis_size(), global.max_mt_basis_size(), global.num_dmat() - 1);
                     
@@ -465,14 +471,14 @@ class Band
                             int lm1 = global.atom(ia)->type()->indexb(j1).lm;
                             int idxrf1 = global.atom(ia)->type()->indexb(j1).idxrf;
 
-                            sum_L3_complex_gaunt(lm1, lm2, global.atom(ia)->b_radial_integral(idxrf1, idxrf2, i), zm(j1, j2, i));
+                            sum_L3_complex_gaunt(lm1, lm2, global.atom(ia)->b_radial_integral(idxrf1, idxrf2, i), 
+                                                 zm(j1, j2, i));
                         }
                     }
                 }
                 // compute bwf = B_z*|wf_j>
-                hemm<cpu>(0, 0, mt_basis_size, global.num_fv_states(), complex16(1.0, 0.0), &zm(0, 0, 0),
-                          global.max_mt_basis_size(), &scalar_wf(offset, 0), scalar_wf_size, zzero, &bwf(offset, 0, 0),
-                          scalar_wf_size);
+                hemm<cpu>(0, 0, mt_basis_size, global.num_fv_states(), zone, &zm(0, 0, 0), global.max_mt_basis_size(), 
+                          &scalar_wf(offset, 0), scalar_wf_size, zzero, &bwf(offset, 0, 0), scalar_wf_size);
                 
                 // compute bwf = (B_x - iB_y)|wf_j>
                 if (global.num_dmat() == 4)
@@ -481,62 +487,63 @@ class Band
                     for (int j2 = 0; j2 < mt_basis_size; j2++)
                     {
                         for (int j1 = 0; j1 <= j2; j1++)
-                            zm(j1, j2, 0) = zm(j1, j2, 1) - complex16(0.0, 1.0) * zm(j1, j2, 2);
+                            zm(j1, j2, 0) = zm(j1, j2, 1) - zi * zm(j1, j2, 2);
                         
                         for (int j1 = j2 + 1; j1 < mt_basis_size; j1++)
-                            zm(j1, j2, 0) = conj(zm(j2, j1, 1)) - complex16(0.0, 1.0) * conj(zm(j2, j1, 2));
+                            zm(j1, j2, 0) = conj(zm(j2, j1, 1)) - zi * conj(zm(j2, j1, 2));
                     }
                       
-                    gemm<cpu>(0, 0, mt_basis_size, global.num_fv_states(), mt_basis_size, complex16(1.0, 0.0), 
-                              &zm(0, 0, 0), global.max_mt_basis_size(), &scalar_wf(offset, 0), scalar_wf_size, 
-                              complex16(0.0, 0.0), &bwf(offset, 0, 2), scalar_wf_size);
+                    gemm<cpu>(0, 0, mt_basis_size, global.num_fv_states(), mt_basis_size, zone, &zm(0, 0, 0), 
+                              global.max_mt_basis_size(), &scalar_wf(offset, 0), scalar_wf_size, zzero, 
+                              &bwf(offset, 0, 2), scalar_wf_size);
                 }
             }
-        
-            timer *t1 = new timer("lapw_set_sv:apply_magnetic_field:it");
+            
+            Timer *t1 = new Timer("sirius::Band::apply_magnetic_field:it");
             #pragma omp parallel default(shared)
             {        
-                std::vector<complex16> wfr(lapw_global.ngrtot);
-                std::vector<complex16> zfft(lapw_global.ngrtot);
+                int thread_id = omp_get_thread_num();
+                
+                std::vector<complex16> wfit(global.fft().size());
+                std::vector<complex16> bwfit(global.fft().size());
                 
                 #pragma omp for
-                for (int i = 0; i < lapw_global.nstfv; i++)
+                for (int i = 0; i < global.num_fv_states(); i++)
                 {
-                    memset(&wfr[0], 0, lapw_global.ngrtot * sizeof(complex16));
-                    for (int ig = 0; ig < ks->ngk; ig++) 
-                        wfr[ks->idxgfft[ig]] = ks->scalar_wave_functions(lapw_global.size_wfmt + ig, i);
+                    global.fft().input(num_gkvec, fft_index, &scalar_wf(global.mt_basis_size(), i), thread_id);
+                    global.fft().transform(1, thread_id);
+                    global.fft().output(&wfit[0], thread_id);
                                                 
-                    lapw_fft(1, &wfr[0]);
-                               
-                    for (int ir = 0; ir < lapw_global.ngrtot; ir++)
-                        zfft[ir] = wfr[ir] * lapw_runtime.beffir(ir, 0) * lapw_global.cfunir[ir];
-                                                                       
-                    lapw_fft(-1, &zfft[0]);
+                    for (int ir = 0; ir < global.fft().size(); ir++)
+                        bwfit[ir] = wfit[ir] * global.effective_magnetic_field(0).f_it(ir) * global.step_function(ir);
                     
-                    for (int ig = 0; ig < ks->ngk; ig++) 
-                        hwf(lapw_global.size_wfmt + ig, i, 0) += zfft[ks->idxgfft[ig]];
-            
-                    if (lapw_global.ndmag == 3)
+                    global.fft().input(&bwfit[0], thread_id);
+                    global.fft().transform(-1, thread_id);
+                    global.fft().output(num_gkvec, fft_index, &bwf(global.mt_basis_size(), i, 0), thread_id); 
+
+                    if (global.num_dmat() == 4)
                     {
-                        for (int ir = 0; ir < lapw_global.ngrtot; ir++)
-                            zfft[ir] = wfr[ir] * (lapw_runtime.beffir(ir, 1) - zi * lapw_runtime.beffir(ir, 2)) * lapw_global.cfunir[ir];
-                                                                           
-                        lapw_fft(-1, &zfft[0]);
+                        for (int ir = 0; ir < global.fft().size(); ir++)
+                            bwfit[ir] = wfit[ir] * (global.effective_magnetic_field(1).f_it(ir) - 
+                                                    zi * global.effective_magnetic_field(2).f_it(ir)) * 
+                                                    global.step_function(ir);
                         
-                        for (int ig = 0; ig < ks->ngk; ig++) 
-                            hwf(lapw_global.size_wfmt + ig, i, 2) += zfft[ks->idxgfft[ig]];
+                        global.fft().input(&bwfit[0], thread_id);
+                        global.fft().transform(-1, thread_id);
+                        global.fft().output(num_gkvec, fft_index, &bwf(global.mt_basis_size(), i, 2), thread_id); 
                     }
                 }
             }
             delete t1;
-        
+            
             // copy -B_z|wf> TODO: this implementation assumes that hwf was zero on input!!!
-            for (int i = 0; i < lapw_global.nstfv; i++)
-                for (int j = 0; j < ks->wave_function_size; j++)
-                    hwf(j, i, 1) = -hwf(j, i, 0);
+            for (int i = 0; i < global.num_fv_states(); i++)
+                for (int j = 0; j < scalar_wf_size; j++)
+                    bwf(j, i, 1) = -bwf(j, i, 0);
         }
         
-        void set_sv_h(mdarray<complex16,2> scalar_wf, int scalar_wf_size, double* evalfv, mdarray<complex16,2>& h)
+        void set_sv_h(mdarray<complex16,2> scalar_wf, int scalar_wf_size, int num_gkvec, int* fft_index, double* evalfv, 
+                      mdarray<complex16,2>& h)
         {
             Timer t("sirius::Band::set_sv_h");
 
@@ -548,7 +555,7 @@ class Band
 
             // compute product of magnetic field and wave-function 
             if (global.num_spins() == 2)
-                apply_magnetic_field(scalar_wf, scalar_wf_size, hwf);
+                apply_magnetic_field(scalar_wf, scalar_wf_size, num_gkvec, fft_index, hwf);
 
 #if 0
             if (lapw_global.ldapu)

@@ -327,14 +327,6 @@ class Global : public StepFunction
             for (int ia = 0; ia < num_atoms(); ia++)
                 atom(ia)->generate_radial_integrals(lmax_pot(), &effective_potential().f_rlm(0, 0, ia));
         }
-
-        void zero_density()
-        {
-            charge_density().zero();
-            if (num_spins() == 2)
-                for (int i = 0; i < num_dmat() - 1; i++)
-                    magnetization(i).zero();
-        }
 };
 
 Global global;

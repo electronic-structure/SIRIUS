@@ -191,11 +191,24 @@ class Density
                                         global.num_dmat() - 1);
             mdarray<double,2> magir_tmp(magir, global.fft().size(), global.num_dmat() - 1);
             
-            for (int i = 0; i < global.num_dmat() - 1; i++)
+            if (global.num_dmat() == 2)
             {
-                global.magnetization(i).set_rlm_ptr(&magmt_tmp(0, 0, 0, i));
-                global.magnetization(i).set_it_ptr(&magir_tmp(0, i));
-                global.magnetization(i).zero();
+                // z component is the first and only one
+                global.magnetization(0).set_rlm_ptr(&magmt_tmp(0, 0, 0, 0));
+                global.magnetization(0).set_it_ptr(&magir_tmp(0, 0));
+            }
+
+            if (global.num_dmat() == 4)
+            {
+                // z component is the first
+                global.magnetization(0).set_rlm_ptr(&magmt_tmp(0, 0, 0, 2));
+                global.magnetization(0).set_it_ptr(&magir_tmp(0, 2));
+                // x component is the second
+                global.magnetization(1).set_rlm_ptr(&magmt_tmp(0, 0, 0, 0));
+                global.magnetization(1).set_it_ptr(&magir_tmp(0, 0));
+                // y component is the third
+                global.magnetization(2).set_rlm_ptr(&magmt_tmp(0, 0, 0, 1));
+                global.magnetization(2).set_it_ptr(&magir_tmp(0, 1));
             }
         }
     
@@ -243,14 +256,21 @@ class Density
                 }
             }
         }
-       
+        
+        void zero()
+        {
+            global.charge_density().zero();
+            for (int i = 0; i < global.num_dmat() - 1; i++)
+                global.magnetization(i).zero();
+        }
+      
         void initial_density()
         {
             std::vector<double> enu;
             for (int i = 0; i < global.num_atom_types(); i++)
                 global.atom_type(i)->solve_free_atom(1e-8, 1e-5, 1e-4, enu);
 
-            global.zero_density();
+            zero();
             
             double mt_charge = 0.0;
             for (int ia = 0; ia < global.num_atoms(); ia++)
