@@ -53,6 +53,8 @@ class Potential
         
         PeriodicFunction<double> xc_potential_;
         
+        PeriodicFunction<double> xc_magnetic_field_[3];
+        
         PeriodicFunction<double> xc_energy_density_;
         
         SHT sht_;
@@ -65,6 +67,23 @@ class Potential
         {
             global.effective_potential().set_rlm_ptr(veffmt);
             global.effective_potential().set_it_ptr(veffir);
+        }
+        
+        void set_effective_magnetic_field_ptr(double* beffmt, double* beffir)
+        {
+            assert(global.num_spins() == 2);
+
+            // set temporary array wrapper
+            mdarray<double,4> beffmt_tmp(beffmt, global.lmmax_rho(), global.max_num_mt_points(), global.num_atoms(),
+                                         global.num_dmat() - 1);
+            mdarray<double,2> beffir_tmp(beffir, global.fft().size(), global.num_dmat() - 1);
+            
+            for (int i = 0; i < global.num_dmat() - 1; i++)
+            {
+                global.effective_magnetic_field(i).set_rlm_ptr(&beffmt_tmp(0, 0, 0, i));
+                global.effective_magnetic_field(i).set_it_ptr(&beffir_tmp(0, i));
+                global.effective_magnetic_field(i).zero();
+            }
         }
          
         void initialize()
@@ -118,6 +137,14 @@ class Potential
                                                         global.fft().size(), global.num_gvec());
             global.effective_potential().allocate(pw_component);
 
+            for (int j = 0; j < global.num_dmat() - 1; j++)
+            {
+                global.effective_magnetic_field(j).set_dimensions(global.lmax_pot(), global.max_num_mt_points(), 
+                                                                  global.num_atoms(), global.fft().size(), 
+                                                                  global.num_gvec());
+                global.effective_magnetic_field(j).allocate(pw_component);
+            }
+
             sht_.set_lmax(lmax);
         }
 
@@ -146,7 +173,8 @@ class Potential
 
             General solution to the Poisson equation with spherical boundary condition:
             \f[
-                V({\bf x}) = \int \rho({\bf x'})G({\bf x},{\bf x'}) d{\bf x'} - \frac{1}{4 \pi} \int_{S} V({\bf x'}) \frac{\partial G}{\partial n'} d{\bf S'}
+                V({\bf x}) = \int \rho({\bf x'})G({\bf x},{\bf x'}) d{\bf x'} - \frac{1}{4 \pi} \int_{S} V({\bf x'}) 
+                              \frac{\partial G}{\partial n'} d{\bf S'}
             \f]
 
             Green's function for a sphere
@@ -377,7 +405,8 @@ class Potential
                     {
                         int l = l_by_lm(lm);
 
-                        vmtlm(lm, ia) += zt * zil[l] * sbessel_mt_(l, iat, global.gvec_shell(ig)) * conj(ylm_gvec_(lm, ig));
+                        vmtlm(lm, ia) += zt * zil[l] * sbessel_mt_(l, iat, global.gvec_shell(ig)) * 
+                                         conj(ylm_gvec_(lm, ig));
                     }
                 }
             }
@@ -392,7 +421,8 @@ class Potential
                     int l = l_by_lm(lm);
 
                     for (int ir = 0; ir < global.atom(ia)->type()->num_mt_points(); ir++)
-                        hartree_potential_.f_ylm(lm, ir, ia) += vmtlm(lm, ia) * pow(global.atom(ia)->type()->radial_grid()[ir] / R, l);
+                        hartree_potential_.f_ylm(lm, ir, ia) += vmtlm(lm, ia) * 
+                                                                pow(global.atom(ia)->type()->radial_grid()[ir] / R, l);
                 }
             }
 
@@ -407,49 +437,112 @@ class Potential
             global.charge_density().deallocate(ylm_component);
         }
 
+        //TODO: check for negative values of rho or mag (probalbly in xc interface)
         void xc()
         {
             mdarray<double,2> rhotp(sht_.num_points(), global.max_num_mt_points());
-
             mdarray<double,2> vxctp(sht_.num_points(), global.max_num_mt_points());
-            
             mdarray<double,2> exctp(sht_.num_points(), global.max_num_mt_points());
+            
+            mdarray<double,3> vecmagtp(NULL, sht_.num_points(), global.max_num_mt_points(), global.num_dmat() - 1);
+            mdarray<double,2> magtp(NULL, sht_.num_points(), global.max_num_mt_points());
+            mdarray<double,3> vecbxctp(NULL, sht_.num_points(), global.max_num_mt_points(), global.num_dmat() - 1);
+            mdarray<double,2> bxctp(NULL, sht_.num_points(), global.max_num_mt_points());
+            if (global.num_spins() == 2) 
+            {
+                vecmagtp.allocate();
+                magtp.allocate();
+                vecbxctp.allocate();
+                bxctp.allocate();
+            }
 
             for (int ia = 0; ia < global.num_atoms(); ia++)
             {
                 int nmtp = global.atom(ia)->type()->num_mt_points();
 
-                sht_.rlm_backward_transform(&global.charge_density().f_rlm(0, 0, ia), global.lmmax_rho(), nmtp, &rhotp(0, 0));
-                
-                xc_potential::get(sht_.num_points() * nmtp, &rhotp(0, 0), &vxctp(0, 0), &exctp(0, 0));
+                sht_.rlm_backward_transform(&global.charge_density().f_rlm(0, 0, ia), global.lmmax_rho(), nmtp, 
+                                            &rhotp(0, 0));
+                if (global.num_spins() == 2)
+                {
+                    for (int j = 0; j < global.num_dmat() - 1; j++)
+                        sht_.rlm_backward_transform(&global.magnetization(j).f_rlm(0, 0, ia), global.lmmax_rho(), nmtp,
+                                                    &vecmagtp(0, 0, j));
+                    
+                    for (int ir = 0; ir < nmtp; ir++)
+                        for (int itp = 0; itp < sht_.num_points(); itp++)
+                        {
+                            double t = 0.0;
+                            for (int j = 0; j < global.num_dmat() - 1; j++)
+                                t += vecmagtp(itp, ir, j) *  vecmagtp(itp, ir, j);
+                            magtp(itp, ir) = sqrt(t);
+                        }
+                }
+                if (global.num_spins() == 1) 
+                    xc_potential::get(sht_.num_points() * nmtp, &rhotp(0, 0), &vxctp(0, 0), &exctp(0, 0));
+                else
+                    xc_potential::get(sht_.num_points() * nmtp, &rhotp(0, 0), &magtp(0, 0), &vxctp(0, 0), 
+                                      &bxctp(0, 0), &exctp(0, 0));
 
                 sht_.rlm_forward_transform(&vxctp(0, 0), global.lmmax_rho(), nmtp, &xc_potential_.f_rlm(0, 0, ia));
-                
                 sht_.rlm_forward_transform(&exctp(0, 0), global.lmmax_rho(), nmtp, &xc_energy_density_.f_rlm(0, 0, ia));
+
+                if (global.num_spins() == 2)
+                {
+                    vecbxctp.zero();
+                    for (int ir = 0; ir < nmtp; ir++)
+                        for (int itp = 0; itp < sht_.num_points(); itp++)
+                            if (magtp(itp, ir) > 1e-8)
+                                for (int j = 0; j < global.num_dmat() - 1; j++)
+                                    vecbxctp(itp, ir, j) = bxctp(itp, ir) * vecmagtp(itp, ir, j) / magtp(itp, ir);
+                    
+                    for (int j = 0; j < global.num_dmat() - 1; j++)
+                        sht_.rlm_forward_transform(&vecbxctp(0, 0, j), global.lmmax_rho(), nmtp,
+                                                   &xc_magnetic_field_[j].f_rlm(0, 0, ia));
+                }
             }
 
-            xc_potential::get(global.fft().size(), global.charge_density().f_it(), xc_potential_.f_it(), xc_energy_density_.f_it());
-            
-            if (global.num_spins() == 2)
+            if (global.num_spins() == 1)
+                xc_potential::get(global.fft().size(), global.charge_density().f_it(), xc_potential_.f_it(), 
+                                  xc_energy_density_.f_it());
+            else
             {
-            
+                std::vector<double> magit(global.fft().size());
+                std::vector<double> bxcit(global.fft().size());
+
+                for (int ir = 0; ir < global.fft().size(); ir++)
+                {
+                    double t = 0.0;
+                    for (int j = 0; j < global.num_dmat() - 1; j++)
+                        t += global.magnetization(j).f_it(ir) * global.magnetization(j).f_it(ir);
+                    magit[ir] = sqrt(t);
+                }
+                xc_potential::get(global.fft().size(), global.charge_density().f_it(), &magit[0], xc_potential_.f_it(),
+                                  &bxcit[0], xc_energy_density_.f_it());
+                
+
+                for (int ir = 0; ir < global.fft().size(); ir++)
+                    if (magit[ir] > 1e-8)
+                        for (int j = 0; j < global.num_dmat() - 1; j++)
+                            xc_magnetic_field_[j].f_it(ir) = bxcit[ir] * global.magnetization(j).f_it(ir) / magit[ir];
             }
         }
 
         void generate_effective_potential()
         {
-            //density.total_charge();
-
             global.fft().input(global.charge_density().f_it());
             global.fft().forward();
             global.fft().output(global.num_gvec(), global.fft_index(), global.charge_density().f_pw());
             
             global.effective_potential().zero();
+            for (int j = 0; j < global.num_dmat() - 1; j++)
+               global.effective_magnetic_field(j).zero();
             
             // generate and add Hartree potential
             hartree_potential_.set_dimensions(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
                                               global.fft().size(), global.num_gvec());
             hartree_potential_.allocate();
+
+            // TODO: convert density to Ylm here. Poisson solver should work with complex density
 
             poisson();
             
@@ -461,16 +554,31 @@ class Potential
             xc_potential_.set_dimensions(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
                                          global.fft().size(), global.num_gvec());
             xc_potential_.allocate(rlm_component | it_component);
+            xc_potential_.zero();
             
+            for (int j = 0; j < global.num_dmat() - 1; j++)
+            {
+                xc_magnetic_field_[j].set_dimensions(global.lmax_pot(), global.max_num_mt_points(),
+                                                     global.num_atoms(), global.fft().size(), global.num_gvec());
+                xc_magnetic_field_[j].allocate(rlm_component | it_component); 
+                xc_magnetic_field_[j].zero();
+            }
+         
             xc_energy_density_.set_dimensions(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
                                               global.fft().size(), global.num_gvec());
             xc_energy_density_.allocate(rlm_component | it_component);
 
+
             xc();
             
             global.effective_potential().add(xc_potential_, rlm_component | it_component);
-            
             xc_potential_.deallocate();
+
+            for (int j = 0; j < global.num_dmat() - 1; j++)
+            {
+                global.effective_magnetic_field(j).add(xc_magnetic_field_[j], rlm_component | it_component);
+                xc_magnetic_field_[j].deallocate();
+            }
             
             xc_energy_density_.deallocate();
 

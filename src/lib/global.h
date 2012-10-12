@@ -207,6 +207,12 @@ class Global : public StepFunction
         {
             return effective_potential_;
         }
+        
+        inline PeriodicFunction<double>& effective_magnetic_field(int i)
+        {
+            assert(i >= 0 && i < 3);
+            return effective_magnetic_field_[i];
+        }
 
         inline int num_spins()
         {

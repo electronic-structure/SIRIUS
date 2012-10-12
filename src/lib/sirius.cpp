@@ -51,6 +51,11 @@ void FORTRAN(sirius_set_effective_potential_ptr)(real8* veffmt, real8* veffir)
     sirius::potential.set_effective_potential_ptr(veffmt, veffir);
 }
 
+void FORTRAN(sirius_set_effective_magnetic_field_ptr)(real8* beffmt, real8* beffir)
+{
+    sirius::potential.set_effective_magnetic_field_ptr(beffmt, beffir);
+}
+
 void FORTRAN(sirius_set_equivalent_atoms)(int4* equivalent_atoms)
 {
     sirius::global.set_equivalent_atoms(equivalent_atoms);
