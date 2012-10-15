@@ -42,7 +42,11 @@ const double gamma_factors[31][11] = {
 class Potential 
 {
     private:
-
+        
+        PeriodicFunction<double> effective_potential_;
+        
+        PeriodicFunction<double> effective_magnetic_field_[3];
+ 
         mdarray<complex16,2> ylm_gvec_;
 
         mdarray<double,3> sbessel_mom_;
@@ -633,6 +637,6 @@ class Potential
         }
 };
 
-Potential potential;
+Potential potential(&global);
 
 };

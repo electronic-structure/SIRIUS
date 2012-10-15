@@ -42,15 +42,7 @@ class Global : public StepFunction
 
         /// number of bands (= number of spinor states)
         int num_bands_;
-
-        PeriodicFunction<double> charge_density_;
-        
-        PeriodicFunction<double> magnetization_[3];
-        
-        PeriodicFunction<double> effective_potential_;
-        
-        PeriodicFunction<double> effective_magnetic_field_[3];
-        
+       
         /// number of spin componensts (1 or 2)
         int num_spins_;
 
@@ -191,7 +183,7 @@ class Global : public StepFunction
             return num_bands_;
         }
         
-        inline PeriodicFunction<double>& charge_density()
+        /*inline PeriodicFunction<double>& charge_density()
         {
             return charge_density_;
         }
@@ -201,9 +193,9 @@ class Global : public StepFunction
             assert(i >= 0 && i < 3);
 
             return magnetization_[i];
-        }
+        }*/
         
-        inline PeriodicFunction<double>& effective_potential()
+        /*inline PeriodicFunction<double>& effective_potential()
         {
             return effective_potential_;
         }
@@ -212,7 +204,7 @@ class Global : public StepFunction
         {
             assert(i >= 0 && i < 3);
             return effective_magnetic_field_[i];
-        }
+        }*/
 
         inline int num_spins()
         {
@@ -309,7 +301,7 @@ class Global : public StepFunction
             printf("total number of lo basis functions : %i\n", mt_lo_basis_size());
         }
         
-        void generate_radial_functions()
+        /*void generate_radial_functions()
         {
             Timer t("sirius::global::generate_radial_functions");
             
@@ -332,7 +324,7 @@ class Global : public StepFunction
                     beff[i] = &effective_magnetic_field(i).f_rlm(0, 0, ia);
                 atom(ia)->generate_radial_integrals(lmax_pot(), veff, beff);
             }
-        }
+        }*/
 };
 
 Global global;

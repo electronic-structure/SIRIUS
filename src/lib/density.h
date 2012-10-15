@@ -5,6 +5,10 @@ class Density
 {
     private:
         
+        PeriodicFunction<double>* charge_density_;
+        
+        PeriodicFunction<double>* magnetization_[3];
+        
         std::vector< std::pair<int,int> > dmat_spins_;
 
         mdarray<complex16,3> complex_gaunt_;

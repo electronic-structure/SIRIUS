@@ -1,5 +1,6 @@
 #include "sirius.h"
 
+#if 0 
 extern "C" 
 {
 
@@ -253,5 +254,5 @@ void FORTRAN(sirius_timer_stop)(char* name_, int4 name_len)
     std::string name(name_, name_len);
     if (sirius::ftimers.count(name)) delete sirius::ftimers[name];
 }
-
 }
+#endif

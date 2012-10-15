@@ -12,31 +12,31 @@ class kpoint_set
 
     public:
         
-        void add_kpoint(int kpoint_id, double* vk, double weight)
+        void add_kpoint(int kpoint_id, double* vk, double weight, Global* parameters)
         {
             if (kpoint_index_by_id_.count(kpoint_id))
                 error(__FILE__, __LINE__, "kpoint is already in list");
 
-            kpoints_.push_back(new kpoint(vk, weight));
+            kpoints_.push_back(new kpoint(parameters, vk, weight));
             kpoint_index_by_id_[kpoint_id] = kpoints_.size() - 1;
 
-            std::vector<double> initial_occupancies(global.num_bands(), 0.0);
+            std::vector<double> initial_occupancies(parameters->num_bands(), 0.0);
 
             // in case of non-magnetic, or magnetic non-collinear case occupy first N bands
-            if (global.num_mag_dims() == 0 || global.num_mag_dims() == 3)
+            if (parameters->num_mag_dims() == 0 || parameters->num_mag_dims() == 3)
             {
-                int m = global.num_valence_electrons() / global.max_occupancy();
+                int m = parameters->num_valence_electrons() / parameters->max_occupancy();
                 for (int i = 0; i < m; i++)
-                    initial_occupancies[i] = double(global.max_occupancy());
-                initial_occupancies[m] = double(global.num_valence_electrons() % global.max_occupancy());
+                    initial_occupancies[i] = double(parameters->max_occupancy());
+                initial_occupancies[m] = double(parameters->num_valence_electrons() % parameters->max_occupancy());
             }
             else // otherwise occupy up and down bands
             {
-                int m = global.num_valence_electrons() / 2;
+                int m = parameters->num_valence_electrons() / 2;
                 for (int i = 0; i < m; i++)
-                    initial_occupancies[i] = initial_occupancies[i + global.num_fv_states()] = 1.0;
-                initial_occupancies[m] = initial_occupancies[m + global.num_fv_states()] = 
-                    0.5 * global.num_valence_electrons() - double(m);
+                    initial_occupancies[i] = initial_occupancies[i + parameters->num_fv_states()] = 1.0;
+                initial_occupancies[m] = initial_occupancies[m + parameters->num_fv_states()] = 
+                    0.5 * parameters->num_valence_electrons() - double(m);
             }
 
             kpoints_.back()->set_band_occupancies(&initial_occupancies[0]);

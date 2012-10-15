@@ -7,49 +7,6 @@ const int ylm_component = 1 << 1;
 const int pw_component = 1 << 2;
 const int it_component = 1 << 3;
 
-#if 0
-template <typename T> class data_type_wrapper;
-
-template<> class data_type_wrapper<double>
-{
-    public:
-        typedef std::complex<double> complex_type_;
-        inline bool real() 
-        {
-            return true;
-        }
-};
-
-template<> class data_type_wrapper<float>
-{
-    public:
-        typedef std::complex<float> complex_type_;
-        inline bool real() 
-        {
-            return true;
-        }
-};
-
-template<> class data_type_wrapper< std::complex<double> >
-{
-    public:
-        typedef std::complex<double> complex_type_;
-        inline bool real() 
-        {
-            return false;
-        }
-};
-
-template<> class data_type_wrapper< std::complex<float> >
-{
-    public:
-        typedef std::complex<float> complex_type_;
-        inline bool real() 
-        {
-            return false;
-        }
-};
-#endif
 
 /*!
     \brief Representation of the periodical function on the muffin-tin geometry
@@ -98,8 +55,14 @@ template<typename T> class PeriodicFunction
         
         /// plane-wave expansion coefficients
         mdarray<complex_type_,1> f_pw_;
+
+        Global parameters_;
     
     public:
+
+        PeriodicFunction(Global& parameters__) : parameters_(parameters__)
+        {
+        }
 
         void convert_to_ylm()
         {

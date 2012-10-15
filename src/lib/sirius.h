@@ -30,6 +30,9 @@ extern "C" {
 #include "../libjson/libjson.h"
 #include "LebedevLaikov.h"
 
+//
+// low-level stuff
+//
 #include "version.h"
 #include "error_handling.h"
 #include "timer.h"
@@ -45,6 +48,10 @@ extern "C" {
 #include "json_tree.h"
 #include "xc_potential.h"
 #include "atom_type.h"
+
+//
+// stack of classes for Global class
+//
 #include "atom_symmetry_class.h"
 #include "atom.h"
 #include "fft3d.h"
@@ -52,12 +59,16 @@ extern "C" {
 #include "geometry.h"
 #include "reciprocal_lattice.h"
 #include "step_function.h"
-#include "periodic_function.h"
 #include "global.h"
+
+//
+// main classes
+//
+#include "periodic_function.h"
 #include "band.h"
 #include "kpoint.h"
 #include "kpoint_set.h"
 #include "potential.h"
-#include "density.h"
+/*#include "density.h"*/
 
 #endif // __SIRIUS_H__
