@@ -583,7 +583,6 @@ class Potential
                                               global.fft().size(), global.num_gvec());
             xc_energy_density_.allocate(rlm_component | it_component);
 
-
             xc();
             
             global.effective_potential().add(xc_potential_, rlm_component | it_component);

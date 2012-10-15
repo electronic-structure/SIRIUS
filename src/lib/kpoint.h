@@ -297,7 +297,7 @@ class kpoint
                 }
                 else
                 {
-                    //int info = zheev<cpu>(lapw_global.nstsv, &ks->evecsv(0, 0), ks->evecsv.size(0), &ks->evalsv[0]);
+                    int info = heev<cpu>(global.num_bands(), &evecsv_(0, 0), global.num_bands(), &band_energies_[0]);
                 }
                 
                 generate_spinor_wave_functions(1);

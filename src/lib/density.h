@@ -332,6 +332,8 @@ class Density
             // distribute remaining charge
             for (int i = 0; i < global.fft().size(); i++)
                 global.charge_density().f_it(i) = (global.num_electrons() - mt_charge) / global.volume_it();
+
+            total_charge();
         }
 
         double total_charge(std::vector<double>& mt_charges, double& it_charge, mdarray<double,2>& mt_moments)
