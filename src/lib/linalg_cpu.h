@@ -33,20 +33,16 @@ extern "C" int32_t FORTRAN(ilaenv)(int32_t *ispec, const char *name, const char 
                                    int32_t *n2, int32_t *n3, int32_t *n4, int32_t namelen, 
                                    int32_t optslen);
 
-extern "C" void FORTRAN(zheev)(const char *jobz, const char *uplo, int32_t *n, complex16 *a,
-                               int32_t *lda, double *w, double *work, int32_t *lwork, double *rwork,
-                               int32_t *info, int32_t jobzlen, int32_t uplolen);
-
-extern "C" void FORTRAN(zcopy)(int32_t *n, complex16 *zx, int32_t *incx, complex16 *zy, int32_t *incy);
-
-void zcopy(int32_t n, complex16 *zx, int32_t incx, complex16 *zy, int32_t incy);
+extern "C" void FORTRAN(zheev)(const char* jobz, const char* uplo, int4* n, complex16* a,
+                               int4* lda, real8* w, real8* work, int4* lwork, real8* rwork,
+                               int4* info, int4 jobzlen, int4 uplolen);
 
 
-extern "C" void FORTRAN(zgemv)(const char *transa, int32_t *m, int32_t *n, complex16 *alpha, complex16 *a,
+/*extern "C" void FORTRAN(zgemv)(const char *transa, int32_t *m, int32_t *n, complex16 *alpha, complex16 *a,
                                int32_t *lda, complex16 *x, int32_t *incx, complex16 *beta, complex16 *y,
                                int32_t *incy, int32_t translen);
 
-
+*/
 extern "C" void FORTRAN(dptsv)(int32_t *n, int32_t *nrhs, real8* d, real8* *e, real8* b, int32_t *ldb, int32_t *info);
 
 extern "C" void FORTRAN(dgtsv)(int32_t *n, int32_t *nrhs, double *dl, double *d, double *du, double *b, 

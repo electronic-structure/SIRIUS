@@ -200,12 +200,12 @@ class kpoint
         {
             Timer t("sirius::kpoint_data_set::generate_scalar_wave_functions");
             
-            scalar_wave_functions_.set_dimensions(wf_size(), global.num_fv_states());
+            scalar_wave_functions_.set_dimensions(scalar_wf_size(), global.num_fv_states());
             scalar_wave_functions_.allocate();
             
             gemm<cpu>(2, 0, global.mt_aw_basis_size(), global.num_fv_states(), num_gkvec(), complex16(1.0, 0.0), 
                 &matching_coefficients_(0, 0), num_gkvec(), &evecfv_(0, 0), fv_basis_size(), 
-                complex16(0.0, 0.0), &scalar_wave_functions_(0, 0), wf_size());
+                complex16(0.0, 0.0), &scalar_wave_functions_(0, 0), scalar_wf_size());
             
             for (int j = 0; j < global.num_fv_states(); j++)
             {
@@ -222,12 +222,11 @@ class kpoint
         {
             Timer t("sirius::kpoint_data_set::generate_spinor_wave_functions");
 
-            spinor_wave_functions_.set_dimensions(wf_size(), global.num_spins(), global.num_bands());
+            spinor_wave_functions_.set_dimensions(scalar_wf_size(), global.num_spins(), global.num_bands());
             
             if (flag == -1)
             {
                 spinor_wave_functions_.set_ptr(scalar_wave_functions_.get_ptr());
-                band_energies_.resize(global.num_bands());
                 memcpy(&band_energies_[0], &evalfv_[0], global.num_bands() * sizeof(double));
                 return;
             }
@@ -235,10 +234,10 @@ class kpoint
             spinor_wave_functions_.allocate();
             
             for (int ispn = 0; ispn < global.num_spins(); ispn++)
-                gemm<cpu>(0, 0, wf_size(),  global.num_bands(), global.num_fv_states(), complex16(1.0, 0.0), 
-                          &scalar_wave_functions_(0, 0), wf_size(), &evecsv_(ispn * global.num_fv_states(), 0), 
+                gemm<cpu>(0, 0, scalar_wf_size(),  global.num_bands(), global.num_fv_states(), complex16(1.0, 0.0), 
+                          &scalar_wave_functions_(0, 0), scalar_wf_size(), &evecsv_(ispn * global.num_fv_states(), 0), 
                           global.num_bands(), complex16(0.0, 0.0), &spinor_wave_functions_(0, ispn, 0), 
-                          wf_size() * global.num_spins());
+                          scalar_wf_size() * global.num_spins());
         }
 
         void find_eigen_states()
@@ -278,19 +277,39 @@ class kpoint
             }
 
             generate_scalar_wave_functions();
-
+            
             /*for (int i = 0; i < 3; i++)
                 test_scalar_wave_functions(i);*/
 
-            generate_spinor_wave_functions(-1);
+            evecsv_.set_dimensions(global.num_bands(), global.num_bands());
+            evecsv_.allocate();
+            band_energies_.resize(global.num_bands());
+            
+            if (global.num_spins() == 2)
+            {
+                band.set_sv_h(scalar_wave_functions_, scalar_wf_size(), num_gkvec(), fft_index(), &evalfv_[0], evecsv_);
+                if (global.num_mag_dims() == 1)
+                {
+                    int info;
+                    info = heev<cpu>(global.num_fv_states(), &evecsv_(0, 0), global.num_bands(), &band_energies_[0]);
+                    info = heev<cpu>(global.num_fv_states(), &evecsv_(global.num_fv_states(), global.num_fv_states()),
+                                     global.num_bands(), &band_energies_[global.num_fv_states()]);
+                }
+                else
+                {
+                    //int info = zheev<cpu>(lapw_global.nstsv, &ks->evecsv(0, 0), ks->evecsv.size(0), &ks->evalsv[0]);
+                }
+                
+                generate_spinor_wave_functions(1);
+            }
+            else
+                generate_spinor_wave_functions(-1);
 
+            /*for (int i = 0; i < 3; i++)
+                test_spinor_wave_functions(i);*/
 
         }
 
-
-
-
-        
         void test_scalar_wave_functions(int use_fft)
         {
             std::vector<complex16> v1;
@@ -393,6 +412,128 @@ class kpoint
             }
             std :: cout << "maximum error = " << maxerr << std::endl;
         }
+        
+        void test_spinor_wave_functions(int use_fft)
+        {
+            std::vector<complex16> v1[2];
+            std::vector<complex16> v2;
+
+            if (use_fft == 0 || use_fft == 1)
+                v2.resize(global.fft().size());
+            
+            if (use_fft == 0) 
+                for (int ispn = 0; ispn < global.num_spins(); ispn++)
+                    v1[ispn].resize(num_gkvec());
+            
+            if (use_fft == 1) 
+                for (int ispn = 0; ispn < global.num_spins(); ispn++)
+                    v1[ispn].resize(global.fft().size());
+            
+            double maxerr = 0;
+        
+            for (int j1 = 0; j1 < global.num_bands(); j1++)
+            {
+                if (use_fft == 0)
+                {
+                    for (int ispn = 0; ispn < global.num_spins(); ispn++)
+                    {
+                        global.fft().input(num_gkvec(), &fft_index_[0], 
+                                           &spinor_wave_functions_(global.mt_basis_size(), ispn, j1));
+                        global.fft().transform(1);
+                        global.fft().output(&v2[0]);
+
+                        for (int ir = 0; ir < global.fft().size(); ir++)
+                            v2[ir] *= global.step_function(ir);
+                        
+                        global.fft().input(&v2[0]);
+                        global.fft().transform(-1);
+                        global.fft().output(num_gkvec(), &fft_index_[0], &v1[ispn][0]); 
+                    }
+                }
+                
+                if (use_fft == 1)
+                {
+                    for (int ispn = 0; ispn < global.num_spins(); ispn++)
+                    {
+                        global.fft().input(num_gkvec(), &fft_index_[0], 
+                                           &spinor_wave_functions_(global.mt_basis_size(), ispn, j1));
+                        global.fft().transform(1);
+                        global.fft().output(&v1[ispn][0]);
+                    }
+                }
+               
+                for (int j2 = 0; j2 < global.num_bands(); j2++)
+                {
+                    complex16 zsum(0.0, 0.0);
+                    for (int ispn = 0; ispn < global.num_spins(); ispn++)
+                    {
+                        for (int ia = 0; ia < global.num_atoms(); ia++)
+                        {
+                            int offset_wf = global.atom(ia)->offset_wf();
+                            AtomType* type = global.atom(ia)->type();
+                            AtomSymmetryClass* symmetry_class = global.atom(ia)->symmetry_class();
+        
+                            for (int l = 0; l <= global.lmax_apw(); l++)
+                            {
+                                int ordmax = type->indexr().num_rf(l);
+                                for (int io1 = 0; io1 < ordmax; io1++)
+                                    for (int io2 = 0; io2 < ordmax; io2++)
+                                        for (int m = -l; m <= l; m++)
+                                            zsum += conj(spinor_wave_functions_(offset_wf + 
+                                                                                type->indexb_by_l_m_order(l, m, io1),
+                                                                                ispn, j1)) *
+                                                         spinor_wave_functions_(offset_wf + 
+                                                                                type->indexb_by_l_m_order(l, m, io2), 
+                                                                                ispn, j2) * 
+                                                         symmetry_class->o_radial_integral(l, io1, io2);
+                            }
+                        }
+                    }
+                    
+                    if (use_fft == 0)
+                    {
+                       for (int ispn = 0; ispn < global.num_spins(); ispn++)
+                       {
+                           for (int ig = 0; ig < num_gkvec(); ig++)
+                               zsum += conj(v1[ispn][ig]) * spinor_wave_functions_(global.mt_basis_size() + ig, ispn, j2);
+                       }
+                    }
+                   
+                    if (use_fft == 1)
+                    {
+                        for (int ispn = 0; ispn < global.num_spins(); ispn++)
+                        {
+                            global.fft().input(num_gkvec(), &fft_index_[0], 
+                                               &spinor_wave_functions_(global.mt_basis_size(), ispn, j2));
+                            global.fft().transform(1);
+                            global.fft().output(&v2[0]);
+        
+                            for (int ir = 0; ir < global.fft().size(); ir++)
+                                zsum += conj(v1[ispn][ir]) * v2[ir] * global.step_function(ir) / double(global.fft().size());
+                        }
+                    }
+                    
+                    if (use_fft == 2) 
+                    {
+                        for (int ig1 = 0; ig1 < num_gkvec(); ig1++)
+                        {
+                            for (int ig2 = 0; ig2 < num_gkvec(); ig2++)
+                            {
+                                int ig3 = global.index_g12(gvec_index(ig1), gvec_index(ig2));
+                                for (int ispn = 0; ispn < global.num_spins(); ispn++)
+                                    zsum += conj(spinor_wave_functions_(global.mt_basis_size() + ig1, ispn, j1)) * 
+                                                 spinor_wave_functions_(global.mt_basis_size() + ig2, ispn, j2) * 
+                                            global.step_function_pw(ig3);
+                            }
+                       }
+                   }
+       
+                   zsum = (j1 == j2) ? zsum - complex16(1.0, 0.0) : zsum;
+                   maxerr = std::max(maxerr, abs(zsum));
+                }
+            }
+            std :: cout << "maximum error = " << maxerr << std::endl;
+        }
                 
         inline int num_gkvec()
         {
@@ -430,13 +571,13 @@ class kpoint
         */
         inline int fv_basis_size()
         {
-            return num_gkvec() + global.mt_lo_basis_size();
+            return (num_gkvec() + global.mt_lo_basis_size());
         }
         
         /*!
             \brief Total size of the scalar wave-function.
         */
-        inline int wf_size()
+        inline int scalar_wf_size()
         {
             return (global.mt_basis_size() + num_gkvec());
         }

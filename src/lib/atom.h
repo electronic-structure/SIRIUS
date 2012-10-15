@@ -22,6 +22,9 @@ class Atom
         /// radial integrals of the effective magnetic field
         mdarray<double,4> b_radial_integrals_;
 
+        /// number of magnetic dimensions
+        int num_mag_dims_;
+
         /// offset in the array of matching coefficients and in the array of wave-functions
         int offset_aw_;
 
@@ -94,7 +97,7 @@ class Atom
             symmetry_class_ = symmetry_class__;
         }
 
-        void init(int lmax, int num_mag_dims, int offset_aw__, int offset_lo__, int offset_wf__)
+        void init(int lmax, int num_mag_dims__, int offset_aw__, int offset_lo__, int offset_wf__)
         {
             assert(symmetry_class());
             assert(lmax >= 0);
@@ -104,14 +107,17 @@ class Atom
             offset_lo_ = offset_lo__;
             offset_wf_ = offset_wf__;
 
+            num_mag_dims_ = num_mag_dims__;
+
             int lmmax = lmmax_by_lmax(lmax);
 
             h_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size());
             h_radial_integrals_.allocate();
             
-            if (num_mag_dims)
+            if (num_mag_dims_)
             {
-                b_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size(), num_mag_dims);
+                b_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size(),
+                                                   num_mag_dims_);
                 b_radial_integrals_.allocate();
             }
          }
@@ -132,7 +138,7 @@ class Atom
                   V_{\ell m}(r) & \ell > 0 \end{array} \right.
             \f]
         */
-        void generate_radial_integrals(double lmax, double* veff_)
+        void generate_radial_integrals(double lmax, double* veff_, double** beff_)
         {
             Timer t("sirius::Atom::generate_radial_integrals");
             
@@ -140,8 +146,18 @@ class Atom
             int nmtp = type()->num_mt_points();
 
             mdarray<double,2> veff(veff_, lmmax, nmtp);
+            mdarray<double,2> beff[3];
 
             h_radial_integrals_.zero();
+            if (num_mag_dims_) 
+            {
+                b_radial_integrals_.zero();
+                for (int i = 0; i < num_mag_dims_; i++)
+                {
+                    beff[i].set_dimensions(lmmax, nmtp);
+                    beff[i].set_ptr(beff_[i]);
+                }
+            }
             
             // copy spherical integrals
             for (int i2 = 0; i2 < type()->indexr().size(); i2++)
@@ -172,6 +188,32 @@ class Atom
                     }
                 }
             }
+
+            for (int j = 0; j < num_mag_dims_; j++)
+              #pragma omp parallel default(shared)
+              {
+                  Spline<double> s(nmtp, type()->radial_grid());
+                  std::vector<double> v(nmtp);
+
+                  #pragma omp for
+                  for (int lm = 0; lm < lmmax; lm++)
+                  {
+                      for (int i2 = 0; i2 < type()->indexr().size(); i2++)
+                      {
+                          for (int ir = 0; ir < nmtp; ir++)
+                              v[ir] = symmetry_class()->radial_function(ir, i2) * beff[j](lm, ir);
+                          
+                          for (int i1 = 0; i1 <= i2; i1++)
+                          {
+                              for (int ir = 0; ir < nmtp; ir++)
+                                  s[ir] = symmetry_class()->radial_function(ir, i1) * v[ir];
+                              
+                              s.interpolate();
+                              b_radial_integrals_(lm, i1, i2, j) = b_radial_integrals_(lm, i2, i1, j) = s.integrate(2);
+                          }
+                      }
+                  }
+              }
         }
 
         inline int offset_aw()

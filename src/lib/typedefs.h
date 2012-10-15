@@ -18,12 +18,16 @@ enum lattice_type {direct, reciprocal};
 
 enum coordinates_type {cartesian, fractional};
 
+//
+// wrapper for basis data types
+//
 template <typename T> class data_type_wrapper;
 
 template<> class data_type_wrapper<double>
 {
     public:
         typedef std::complex<double> complex_type_;
+        typedef double real_type_;
         inline bool real() 
         {
             return true;
@@ -48,6 +52,7 @@ template<> class data_type_wrapper<float>
 {
     public:
         typedef std::complex<float> complex_type_;
+        typedef float real_type_;
         inline bool real() 
         {
             return true;
@@ -58,6 +63,7 @@ template<> class data_type_wrapper< std::complex<double> >
 {
     public:
         typedef std::complex<double> complex_type_;
+        typedef double real_type_;
         
         static inline bool real() 
         {
@@ -74,6 +80,7 @@ template<> class data_type_wrapper< std::complex<float> >
 {
     public:
         typedef std::complex<float> complex_type_;
+        typedef float real_type_;
         inline bool real() 
         {
             return false;

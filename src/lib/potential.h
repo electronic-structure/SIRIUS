@@ -450,7 +450,6 @@ class Potential
             global.charge_density().deallocate(ylm_component);
         }
 
-        //TODO: check for negative values of rho or mag (probalbly in xc interface)
         void xc()
         {
             mdarray<double,2> rhotp(sht_.num_points(), global.max_num_mt_points());
@@ -541,6 +540,7 @@ class Potential
 
         void generate_effective_potential()
         {
+
             global.fft().input(global.charge_density().f_it());
             global.fft().forward();
             global.fft().output(global.num_gvec(), global.fft_index(), global.charge_density().f_pw());
@@ -594,24 +594,24 @@ class Potential
             
             xc_energy_density_.deallocate();
 
-#if 0            
+//#if 0            
             std::ofstream out("pot.dat");
 
             int nmtp = global.atom(0)->type()->num_mt_points();
-            for (int ir = 0; ir < nmtp; ir++)
+            /*for (int ir = 0; ir < nmtp; ir++)
                 out << global.atom(0)->type()->radial_grid()[ir] << " " << global.atom(0)->type()->free_atom_potential(ir) / y00 << std::endl; 
             
-            out << std::endl;
+            out << std::endl;*/
 
             for (int lm = 0; lm < global.lmmax_pot(); lm++)
             {
                 for (int ir = 0; ir < nmtp; ir++)
-                    out << global.atom(0)->type()->radial_grid()[ir] << " " << effective_potential_.f_rlm(lm, ir, 0) << std::endl;
+                    out << global.atom(0)->type()->radial_grid()[ir] << " " << global.effective_potential().f_rlm(lm, ir, 0) << std::endl;
                 out << std::endl;
             }
             
             out.close();
-#endif
+//#endif
         }
         
         void set_spherical_potential()

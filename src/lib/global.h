@@ -325,7 +325,13 @@ class Global : public StepFunction
                 atom_symmetry_class(ic)->generate_radial_integrals();
 
             for (int ia = 0; ia < num_atoms(); ia++)
-                atom(ia)->generate_radial_integrals(lmax_pot(), &effective_potential().f_rlm(0, 0, ia));
+            {
+                double* veff = &effective_potential().f_rlm(0, 0, ia);
+                double* beff[3];
+                for (int i = 0; i < num_mag_dims(); i++)
+                    beff[i] = &effective_magnetic_field(i).f_rlm(0, 0, ia);
+                atom(ia)->generate_radial_integrals(lmax_pot(), veff, beff);
+            }
         }
 };
 

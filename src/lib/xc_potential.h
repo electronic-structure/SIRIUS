@@ -43,6 +43,11 @@ class xc_potential
     
             std::vector<double> vxc_tmp(size);
             std::vector<double> exc_tmp(size);
+
+            // check rho
+            for (int i = 0; i < size; i++)
+                if (rho[i] < 0.0)
+                    error(__FILE__, __LINE__, "rho is negative");
             
             for (int i = 0; i < 2; i++)
             {
@@ -72,6 +77,21 @@ class xc_potential
             {
                 rhoud[2 * i] = 0.5 * (rho[i] + mag[i]);
                 rhoud[2 * i + 1] = 0.5 * (rho[i] - mag[i]);
+
+                if (rhoud[2 * i] < 0.0)
+                    error(__FILE__, __LINE__, "rho_up is negative");
+
+                if (rhoud[2 * i + 1] < 0.0)
+                {
+                    if (fabs(rhoud[2 * i + 1]) > 1e-9)
+                    {
+                        std::stringstream s;
+                        s << "rho_dn is negative : " << rhoud[2 * i + 1];
+                        error(__FILE__, __LINE__, s);
+                    }
+                    else
+                        rhoud[2 * i + 1] = 0.0;
+                }
             }
 
             std::vector<double> vxc_tmp(size * 2);

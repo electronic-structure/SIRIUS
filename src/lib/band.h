@@ -536,13 +536,13 @@ class Band
             }
             delete t1;
             
-            // copy -B_z|wf> TODO: this implementation assumes that hwf was zero on input!!!
+            // copy -B_z|wf> TODO: this implementation assumes that bwf was zero on input!!!
             for (int i = 0; i < global.num_fv_states(); i++)
                 for (int j = 0; j < scalar_wf_size; j++)
                     bwf(j, i, 1) = -bwf(j, i, 0);
         }
         
-        void set_sv_h(mdarray<complex16,2> scalar_wf, int scalar_wf_size, int num_gkvec, int* fft_index, double* evalfv, 
+        void set_sv_h(mdarray<complex16,2>& scalar_wf, int scalar_wf_size, int num_gkvec, int* fft_index, double* evalfv, 
                       mdarray<complex16,2>& h)
         {
             Timer t("sirius::Band::set_sv_h");
@@ -569,22 +569,25 @@ class Band
             {
                apply_so_correction(ks, hwf);
             }
-#endif            
+#endif      
+            complex16 zzero(0.0, 0.0);
+            complex16 zone(1.0, 0.0);
+
             // compute <wf_i | (h * wf_j)> for up-up block
-            gemm<cpu>(2, 0, global.num_fv_states(), global.num_fv_states(), scalar_wf_size, complex16(1.0, 0.0), 
-                      &scalar_wf(0, 0), scalar_wf_size, &hwf(0, 0, 0), scalar_wf_size, complex16(0.0, 0.0), 
+            gemm<cpu>(2, 0, global.num_fv_states(), global.num_fv_states(), scalar_wf_size, zone, 
+                      &scalar_wf(0, 0), scalar_wf_size, &hwf(0, 0, 0), scalar_wf_size, zzero, 
                       &h(0, 0), global.num_bands());
                 
             // compute <wf_i | (h * wf_j)> for dn-dn block
             if (global.num_spins() == 2)
-                gemm<cpu>(2, 0, global.num_fv_states(), global.num_fv_states(), scalar_wf_size, complex16(1.0, 0.0), 
-                          &scalar_wf(0, 0), scalar_wf_size, &hwf(0, 0, 1), scalar_wf_size, complex16(0.0, 0.0), 
+                gemm<cpu>(2, 0, global.num_fv_states(), global.num_fv_states(), scalar_wf_size, zone, 
+                          &scalar_wf(0, 0), scalar_wf_size, &hwf(0, 0, 1), scalar_wf_size, zzero, 
                           &h(global.num_fv_states(), global.num_fv_states()), global.num_bands());
 
             // compute <wf_i | (h * wf_j)> for up-dn block
             if (global.num_mag_dims() == 3)
-                gemm<cpu>(2, 0, global.num_fv_states(), global.num_fv_states(), scalar_wf_size, complex16(1.0, 0.0), 
-                          &scalar_wf(0, 0), scalar_wf_size, &hwf(0, 0, 2), scalar_wf_size, complex16(0.0, 0.0), 
+                gemm<cpu>(2, 0, global.num_fv_states(), global.num_fv_states(), scalar_wf_size, zone, 
+                          &scalar_wf(0, 0), scalar_wf_size, &hwf(0, 0, 2), scalar_wf_size, zzero, 
                           &h(0, global.num_fv_states()), global.num_bands());
 
             for (int ispn = 0, i = 0; ispn < global.num_spins(); ispn++)

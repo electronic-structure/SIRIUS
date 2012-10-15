@@ -225,7 +225,11 @@ class RadialSolver
             }
             
             if (fabs(denu) >= enu_tolerance) 
-                error(__FILE__, __LINE__, "enu is not converged");
+            {
+                std::stringstream s;
+                s << "enu is not converged for n = " << n << " and l = " << l; 
+                error(__FILE__, __LINE__, s);
+            }
 
             // search for the turning point
             int idxtp = radial_grid.size() - 1;
