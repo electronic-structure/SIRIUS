@@ -200,7 +200,6 @@ class Density
         {
             global.charge_density().set_rlm_ptr(rhomt);
             global.charge_density().set_it_ptr(rhoir);
-            global.charge_density().zero();
         }
         
         void set_magnetization_ptr(double* magmt, double* magir)
@@ -286,6 +285,8 @@ class Density
       
         void initial_density()
         {
+            zero();
+            
             std::vector<double> enu;
             for (int i = 0; i < global.num_atom_types(); i++)
                 global.atom_type(i)->solve_free_atom(1e-8, 1e-5, 1e-4, enu);
@@ -314,15 +315,15 @@ class Density
                 {
                     if (global.num_mag_dims())
                         for (int ir = 0; ir < nmtp; ir++)
-                            global.magnetization(0).f_rlm(0, ir, ia) = global.charge_density().f_rlm(0, ir, ia) * 
+                            global.magnetization(0).f_rlm(0, ir, ia) = 0.1 * global.charge_density().f_rlm(0, ir, ia) * 
                                                                        v[2] / len;
                     if (global.num_mag_dims() == 3)
                     {
                         for (int ir = 0; ir < nmtp; ir++)
-                            global.magnetization(1).f_rlm(0, ir, ia) = global.charge_density().f_rlm(0, ir, ia) * 
+                            global.magnetization(1).f_rlm(0, ir, ia) = 0.1 * global.charge_density().f_rlm(0, ir, ia) * 
                                                                        v[0] / len;
                         for (int ir = 0; ir < nmtp; ir++)
-                            global.magnetization(2).f_rlm(0, ir, ia) = global.charge_density().f_rlm(0, ir, ia) * 
+                            global.magnetization(2).f_rlm(0, ir, ia) = 0.1 * global.charge_density().f_rlm(0, ir, ia) * 
                                                                        v[1] / len;
                     }
                 }
@@ -436,8 +437,8 @@ class Density
                                                 global.lmmax_rho(), global.num_atoms(), global.num_mag_dims() + 1);
             mt_density_matrix.zero();
             
-            // zero density
-            global.charge_density().zero();
+            // zero density and magnetization
+            zero();
 
             //
             // Main loop over k-points
@@ -513,7 +514,7 @@ class Density
                 }
             }
             
-            printf("Total charge : %f\n", total_charge());
+            //printf("Total charge : %f\n", total_charge());
         }
 
         void add_kpoint(int kpoint_id, double* vk, double weight)

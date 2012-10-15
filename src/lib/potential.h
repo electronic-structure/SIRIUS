@@ -452,6 +452,8 @@ class Potential
 
         void xc()
         {
+            Timer t("sirius::Potential::xc");
+            
             mdarray<double,2> rhotp(sht_.num_points(), global.max_num_mt_points());
             mdarray<double,2> vxctp(sht_.num_points(), global.max_num_mt_points());
             mdarray<double,2> exctp(sht_.num_points(), global.max_num_mt_points());
@@ -512,7 +514,7 @@ class Potential
                                                    &xc_magnetic_field_[j].f_rlm(0, 0, ia));
                 }
             }
-
+            
             if (global.num_spins() == 1)
                 xc_potential::get(global.fft().size(), global.charge_density().f_it(), xc_potential_.f_it(), 
                                   xc_energy_density_.f_it());
@@ -540,6 +542,7 @@ class Potential
 
         void generate_effective_potential()
         {
+            Timer t("sirius::Potential::generate");
 
             global.fft().input(global.charge_density().f_it());
             global.fft().forward();
@@ -547,7 +550,7 @@ class Potential
             
             global.effective_potential().zero();
             for (int j = 0; j < global.num_mag_dims(); j++)
-               global.effective_magnetic_field(j).zero();
+                global.effective_magnetic_field(j).zero();
             
             // generate and add Hartree potential
             hartree_potential_.set_dimensions(global.lmax_pot(), global.max_num_mt_points(), global.num_atoms(),
@@ -594,7 +597,7 @@ class Potential
             
             xc_energy_density_.deallocate();
 
-//#if 0            
+#if 0            
             std::ofstream out("pot.dat");
 
             int nmtp = global.atom(0)->type()->num_mt_points();
@@ -611,7 +614,7 @@ class Potential
             }
             
             out.close();
-//#endif
+#endif
         }
         
         void set_spherical_potential()

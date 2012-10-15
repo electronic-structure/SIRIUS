@@ -7,6 +7,7 @@ void error(const char* file_name, int line_number, const char* message)
     printf("Fatal error at line %i of file %s \n", line_number, file_name);
     printf("\n");
     printf("%s\n", message);
+    raise(SIGTERM);
     exit(0);
 }
 

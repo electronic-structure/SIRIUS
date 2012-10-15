@@ -41,7 +41,7 @@ class SHT
             lmmax_ = (lmax_ + 1) * (lmax_ + 1);
 
             num_points_ = Lebedev_Laikov_npoint(2 * lmax_);
-
+            
             std::vector<double> x(num_points_);
             std::vector<double> y(num_points_);
             std::vector<double> z(num_points_);

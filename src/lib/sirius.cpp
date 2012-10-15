@@ -219,6 +219,11 @@ void FORTRAN(sirius_density_get_band_energies)(int4* kpoint_id, real8* band_ener
     sirius::density.get_band_energies(*kpoint_id, band_energies);
 }
 
+void FORTRAN(sirius_density_integrate)(void)
+{
+    sirius::density.total_charge();
+}
+
 /*
     print info
 */

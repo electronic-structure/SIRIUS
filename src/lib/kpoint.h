@@ -306,7 +306,7 @@ class kpoint
                 generate_spinor_wave_functions(-1);
 
             /*for (int i = 0; i < 3; i++)
-                test_spinor_wave_functions(i);*/
+                test_spinor_wave_functions(i); */
 
         }
 
