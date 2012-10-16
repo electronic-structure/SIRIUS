@@ -26,23 +26,26 @@ const int it_component = 1 << 3;
  
 */
 template<typename T> class PeriodicFunction
-{  
+{ 
+    protected:
+
+        PeriodicFunction(const PeriodicFunction<T>& src);
+
+        PeriodicFunction<T>& operator=(const PeriodicFunction<T>& src);
+
     private:
+        
+        Global& parameters_;
         
         typedef typename data_type_wrapper<T>::complex_type_ complex_type_; 
         
         data_type_wrapper<T> data_type_;
         
+        /// maximum angular momentum quantum number
         int lmax_;
+
+        /// maxim number of Ylm or Rlm components
         int lmmax_;
-
-        int max_num_mt_points_;
-
-        int num_atoms_;
-
-        int num_gvec_;
-
-        int num_it_points_;
 
         /// real spherical harmonic expansion coefficients
         mdarray<T,3> f_rlm_;
@@ -56,13 +59,18 @@ template<typename T> class PeriodicFunction
         /// plane-wave expansion coefficients
         mdarray<complex_type_,1> f_pw_;
 
-        Global parameters_;
-    
     public:
 
-        PeriodicFunction(Global& parameters__) : parameters_(parameters__)
+        PeriodicFunction(Global& parameters__, int lmax__) : parameters_(parameters__), 
+                                                             lmax_(lmax__)
         {
-        }
+            lmmax_ = lmmax_by_lmax(lmax_);
+            
+            f_rlm_.set_dimensions(lmmax_, parameters_.max_num_mt_points(), parameters_.num_atoms());
+            f_ylm_.set_dimensions(lmmax_, parameters_.max_num_mt_points(), parameters_.num_atoms());
+            f_it_.set_dimensions(parameters_.fft().size());
+            f_pw_.set_dimensions(parameters_.num_gvec());
+         }
 
         void convert_to_ylm()
         {
@@ -72,8 +80,8 @@ template<typename T> class PeriodicFunction
             // check target
             if (!f_ylm_.get_ptr()) error(__FILE__, __LINE__, "f_ylm array is empty");
             
-            for (int ia = 0; ia < num_atoms_; ia++)
-                for (int ir = 0; ir < f_rlm_.size(1); ir++)
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
                     SHT::convert_frlm_to_fylm(lmax_, &f_rlm_(0, ir, ia), &f_ylm_(0, ir, ia));      
 
         }
@@ -86,27 +94,12 @@ template<typename T> class PeriodicFunction
             // check target
             if (!f_rlm_.get_ptr()) error(__FILE__, __LINE__, "f_rlm array is empty");
             
-            for (int ia = 0; ia < num_atoms_; ia++)
-                for (int ir = 0; ir < f_rlm_.size(1); ir++)
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
                     SHT::convert_fylm_to_frlm(lmax_, &f_ylm_(0, ir, ia), &f_rlm_(0, ir, ia));      
 
         }
-
-        void set_dimensions(int lmax__, int max_num_mt_points__, int num_atoms__, int num_it_points__, int num_gvec__)
-        {
-            lmax_ = lmax__;
-            lmmax_ = (lmax_ + 1) * (lmax_ + 1);
-            max_num_mt_points_ = max_num_mt_points__;
-            num_atoms_ = num_atoms__;
-            num_it_points_ = num_it_points__;
-            num_gvec_ = num_gvec__;
-
-            f_rlm_.set_dimensions(lmmax_, max_num_mt_points__, num_atoms__);
-            f_ylm_.set_dimensions(lmmax_, max_num_mt_points__, num_atoms__);
-            f_it_.set_dimensions(num_it_points__);
-            f_pw_.set_dimensions(num_gvec__);
-        }
-
+        
         void allocate(int flags = rlm_component | ylm_component | pw_component | it_component)
         {
             if (flags & rlm_component) f_rlm_.allocate();
@@ -185,59 +178,58 @@ template<typename T> class PeriodicFunction
         }
 
         
-        inline void add(PeriodicFunction<T>& rhs, int flg)
+        inline void add(PeriodicFunction<T>* rhs, int flg)
         {
-            assert(lmax_ == rhs.lmax_);
-            assert(max_num_mt_points_ == rhs.max_num_mt_points_);
-            assert(num_atoms_ == rhs.num_atoms_);
-            assert(num_gvec_ == rhs.num_gvec_);
-            assert(num_it_points_ == rhs.num_it_points_);
+            assert(lmax_ == rhs->lmax_);
+            assert(parameters_.max_num_mt_points() == rhs->parameters_.max_num_mt_points());
+            assert(parameters_.num_atoms() == rhs->parameters_.num_atoms());
+            assert(parameters_.num_gvec() == rhs->parameters_.num_gvec());
+            assert(parameters_.fft().size() == rhs->parameters_.fft().size());
 
             if (flg & rlm_component)
             {
                 assert(f_rlm_.get_ptr());
-                assert(rhs.f_rlm_.get_ptr());
+                assert(rhs->f_rlm_.get_ptr());
            
-                for (int ia = 0; ia < num_atoms_; ia++)
-                    for (int ir = 0; ir < max_num_mt_points_; ir++)
+                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                    for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
                         for (int lm = 0; lm < lmmax_; lm++)
-                            f_rlm_(lm, ir, ia) += rhs.f_rlm_(lm, ir, ia);
+                            f_rlm_(lm, ir, ia) += rhs->f_rlm_(lm, ir, ia);
             }
 
             if (flg & ylm_component)
             {
                 assert(f_ylm_.get_ptr());
-                assert(rhs.f_ylm_.get_ptr());
+                assert(rhs->f_ylm_.get_ptr());
            
-                for (int ia = 0; ia < num_atoms_; ia++)
-                    for (int ir = 0; ir < max_num_mt_points_; ir++)
+                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                    for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
                         for (int lm = 0; lm < lmmax_; lm++)
-                            f_ylm_(lm, ir, ia) += rhs.f_ylm_(lm, ir, ia);
+                            f_ylm_(lm, ir, ia) += rhs->f_ylm_(lm, ir, ia);
             } 
 
             if (flg & pw_component)
             {
                 assert(f_pw_.get_ptr());
-                assert(rhs.f_pw_.get_ptr());
+                assert(rhs->f_pw_.get_ptr());
                 
-                for (int ig = 0; ig < num_gvec_; ig++)
-                    f_pw_(ig) += rhs.f_pw_(ig);
+                for (int ig = 0; ig < parameters_.num_gvec(); ig++)
+                    f_pw_(ig) += rhs->f_pw_(ig);
             }
 
             if (flg & it_component)
             {
                 assert(f_it_.get_ptr());
-                assert(rhs.f_it_.get_ptr());
+                assert(rhs->f_it_.get_ptr());
                 
-                for (int ir = 0; ir < num_it_points_; ir++)
-                    f_it_(ir) += rhs.f_it_(ir);
+                for (int ir = 0; ir < parameters_.fft().size(); ir++)
+                    f_it_(ir) += rhs->f_it_(ir);
             }
         }
 
         inline void inner(const PeriodicFunction<T>& f)
         {
         }
-
 };
 
 };

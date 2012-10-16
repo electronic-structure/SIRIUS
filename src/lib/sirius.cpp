@@ -164,13 +164,24 @@ void FORTRAN(sirius_add_atom)(int4* atom_type_id, real8* position, real8* vector
 /*
     main functions
 */
-void FORTRAN(sirius_initialize)(void)
+void FORTRAN(sirius_global_initialize)(void)
 {
     sirius::global.initialize();
-    sirius::band.initialize();
-    sirius::density.initialize();
-    sirius::potential.initialize();
+    //sirius::band.initialize();
+    //sirius::density.initialize();
+    //sirius::potential.initialize();
 }
+
+void FORTRAN(sirius_band_initialize)(void)
+{
+    sirius::band = new sirius::Band(global);
+}
+
+void FORTRAN(sirius_potential_initialize)(void)
+{
+    sirius::potential = new sirius::Potential(global);
+}
+
 
 void FORTRAN(sirius_clear)(void)
 {

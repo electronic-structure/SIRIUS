@@ -76,7 +76,7 @@ class StepFunction : public reciprocal_lattice
             }
 
             fft().input(fft().size(), fft_index(), &step_function_pw_[0]);
-            fft().backward();
+            fft().transform(1);
             fft().output(&step_function_[0]);
             
             volume_mt_ = 0.0;
