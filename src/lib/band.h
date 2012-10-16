@@ -448,7 +448,7 @@ class Band
 
         // bwf must be zero on input
         void apply_magnetic_field(mdarray<complex16,2>& scalar_wf, int scalar_wf_size, int num_gkvec, int* fft_index, 
-                                  PeriodicFunction<double>* effective_magnetic_field, mdarray<complex16,3>& bwf)
+                                  PeriodicFunction<double>* effective_magnetic_field[3], mdarray<complex16,3>& bwf)
         {
             Timer t("sirius::Band::apply_magnetic_field");
 
@@ -523,7 +523,7 @@ class Band
                     parameters_.fft().output(&wfit[0], thread_id);
                                                 
                     for (int ir = 0; ir < parameters_.fft().size(); ir++)
-                        bwfit[ir] = wfit[ir] * effective_magnetic_field[0].f_it(ir) * parameters_.step_function(ir);
+                        bwfit[ir] = wfit[ir] * effective_magnetic_field[0]->f_it(ir) * parameters_.step_function(ir);
                     
                     parameters_.fft().input(&bwfit[0], thread_id);
                     parameters_.fft().transform(-1, thread_id);
@@ -532,8 +532,8 @@ class Band
                     if (parameters_.num_mag_dims() == 3)
                     {
                         for (int ir = 0; ir < parameters_.fft().size(); ir++)
-                            bwfit[ir] = wfit[ir] * (effective_magnetic_field[1].f_it(ir) - 
-                                                    zi * effective_magnetic_field[2].f_it(ir)) * 
+                            bwfit[ir] = wfit[ir] * (effective_magnetic_field[1]->f_it(ir) - 
+                                                    zi * effective_magnetic_field[2]->f_it(ir)) * 
                                                     parameters_.step_function(ir);
                         
                         parameters_.fft().input(&bwfit[0], thread_id);
@@ -552,7 +552,7 @@ class Band
         }
         
         void set_sv_h(mdarray<complex16,2>& scalar_wf, int scalar_wf_size, int num_gkvec, int* fft_index, 
-                      double* evalfv, PeriodicFunction<double>* effective_magnetic_field, mdarray<complex16,2>& h)
+                      double* evalfv, PeriodicFunction<double>* effective_magnetic_field[3], mdarray<complex16,2>& h)
         {
             Timer t("sirius::Band::set_sv_h");
 

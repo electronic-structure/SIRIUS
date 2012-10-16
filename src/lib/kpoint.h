@@ -247,7 +247,7 @@ class kpoint
         }
 
         void find_eigen_states(Band* band, PeriodicFunction<double>* effective_potential, 
-                               PeriodicFunction<double>* effective_magnetic_field)
+                               PeriodicFunction<double>* effective_magnetic_field[3])
         {
             assert(fv_basis_size() > parameters_.num_fv_states());
             

@@ -1,6 +1,5 @@
 #include "sirius.h"
 
-#if 0 
 extern "C" 
 {
 
@@ -39,22 +38,22 @@ void FORTRAN(sirius_set_aw_cutoff)(real8* aw_cutoff)
 
 void FORTRAN(sirius_set_charge_density_ptr)(real8* rhomt, real8* rhoit)
 {
-    sirius::density.set_charge_density_ptr(rhomt, rhoit);
+    sirius::density->set_charge_density_ptr(rhomt, rhoit);
 }
 
 void FORTRAN(sirius_set_magnetization_ptr)(real8* magmt, real8* magit)
 {
-    sirius::density.set_magnetization_ptr(magmt, magit);
+    sirius::density->set_magnetization_ptr(magmt, magit);
 }
 
 void FORTRAN(sirius_set_effective_potential_ptr)(real8* veffmt, real8* veffir)
 {
-    sirius::potential.set_effective_potential_ptr(veffmt, veffir);
+    sirius::potential->set_effective_potential_ptr(veffmt, veffir);
 }
 
 void FORTRAN(sirius_set_effective_magnetic_field_ptr)(real8* beffmt, real8* beffir)
 {
-    sirius::potential.set_effective_magnetic_field_ptr(beffmt, beffir);
+    sirius::potential->set_effective_magnetic_field_ptr(beffmt, beffir);
 }
 
 void FORTRAN(sirius_set_equivalent_atoms)(int4* equivalent_atoms)
@@ -174,14 +173,18 @@ void FORTRAN(sirius_global_initialize)(void)
 
 void FORTRAN(sirius_band_initialize)(void)
 {
-    sirius::band = new sirius::Band(global);
+    sirius::band = new sirius::Band(sirius::global);
 }
 
 void FORTRAN(sirius_potential_initialize)(void)
 {
-    sirius::potential = new sirius::Potential(global);
+    sirius::potential = new sirius::Potential(sirius::global);
 }
 
+void FORTRAN(sirius_density_initialize)(void)
+{
+    sirius::density = new sirius::Density(sirius::global);
+}
 
 void FORTRAN(sirius_clear)(void)
 {
@@ -190,17 +193,17 @@ void FORTRAN(sirius_clear)(void)
 
 void FORTRAN(sirius_initial_density)(void)
 {
-    sirius::density.initial_density();
+    sirius::density->initial_density();
 }
 
 void FORTRAN(sirius_generate_effective_potential)(void)
 {
-    sirius::potential.generate_effective_potential();
+    sirius::potential->generate_effective_potential(sirius::density->rho(), sirius::density->magnetization());
 }
 
 void FORTRAN(sirius_generate_density)(void)
 {
-    sirius::density.generate();
+    sirius::density->generate();
 }
 
 /*extern "C" void FORTRAN(sirius_get_density)(real8* rhomt, real8* rhoir)
@@ -218,22 +221,22 @@ extern "C" void FORTRAN(sirius_get_step_function)(real8* step_function)
 
 void FORTRAN(sirius_density_add_kpoint)(int4* kpoint_id, real8* vk, real8* weight)
 {
-    sirius::density.add_kpoint(*kpoint_id, vk, *weight);
+    sirius::density->add_kpoint(*kpoint_id, vk, *weight);
 }
 
 void FORTRAN(sirius_density_set_band_occupancies)(int4* kpoint_id, real8* band_occupancies)
 {
-    sirius::density.set_band_occupancies(*kpoint_id, band_occupancies);
+    sirius::density->set_band_occupancies(*kpoint_id, band_occupancies);
 }
 
 void FORTRAN(sirius_density_get_band_energies)(int4* kpoint_id, real8* band_energies)
 {
-    sirius::density.get_band_energies(*kpoint_id, band_energies);
+    sirius::density->get_band_energies(*kpoint_id, band_energies);
 }
 
 void FORTRAN(sirius_density_integrate)(void)
 {
-    sirius::density.total_charge();
+    sirius::density->total_charge();
 }
 
 /*
@@ -242,7 +245,7 @@ void FORTRAN(sirius_density_integrate)(void)
 void FORTRAN(sirius_print_info)(void)
 {
     sirius::global.print_info();
-    sirius::density.print_info();
+    sirius::density->print_info();
 }
 
 void FORTRAN(sirius_print_timers)(void)
@@ -265,5 +268,5 @@ void FORTRAN(sirius_timer_stop)(char* name_, int4 name_len)
     std::string name(name_, name_len);
     if (sirius::ftimers.count(name)) delete sirius::ftimers[name];
 }
+
 }
-#endif

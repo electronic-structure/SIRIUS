@@ -183,29 +183,6 @@ class Global : public StepFunction
             return num_bands_;
         }
         
-        /*inline PeriodicFunction<double>& charge_density()
-        {
-            return charge_density_;
-        }
-        
-        inline PeriodicFunction<double>& magnetization(int i)
-        {
-            assert(i >= 0 && i < 3);
-
-            return magnetization_[i];
-        }*/
-        
-        /*inline PeriodicFunction<double>& effective_potential()
-        {
-            return effective_potential_;
-        }
-        
-        inline PeriodicFunction<double>& effective_magnetic_field(int i)
-        {
-            assert(i >= 0 && i < 3);
-            return effective_magnetic_field_[i];
-        }*/
-
         inline int num_spins()
         {
             assert(num_spins_ == 1 || num_spins_ == 2);
@@ -277,7 +254,7 @@ class Global : public StepFunction
         void print_info()
         {
             printf("\n");
-            printf("SIRIUS v0.3\n");
+            printf("SIRIUS v0.4\n");
             printf("git hash : %s\n", git_hash);
             printf("build date : %s\n", build_date);
             int num_threads = 1;
@@ -301,30 +278,24 @@ class Global : public StepFunction
             printf("total number of lo basis functions : %i\n", mt_lo_basis_size());
         }
         
-        /*void generate_radial_functions()
+        void generate_radial_functions()
         {
-            Timer t("sirius::global::generate_radial_functions");
+            Timer t("sirius::Global::generate_radial_functions");
             
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
                 atom_symmetry_class(ic)->generate_radial_functions();
         }
-
+        
         void generate_radial_integrals()
         {
-            Timer t("sirius::global::generate_radial_integrals");
+            Timer t("sirius::Global::generate_radial_integrals");
             
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
                 atom_symmetry_class(ic)->generate_radial_integrals();
 
             for (int ia = 0; ia < num_atoms(); ia++)
-            {
-                double* veff = &effective_potential().f_rlm(0, 0, ia);
-                double* beff[3];
-                for (int i = 0; i < num_mag_dims(); i++)
-                    beff[i] = &effective_magnetic_field(i).f_rlm(0, 0, ia);
-                atom(ia)->generate_radial_integrals(lmax_pot(), veff, beff);
-            }
-        }*/
+                atom(ia)->generate_radial_integrals();
+        }
 };
 
 Global global;

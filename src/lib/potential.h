@@ -607,6 +607,9 @@ class Potential
             
             delete xc_energy_density;
 
+            // set new spherical part of the potential
+            set_spherical_potential();
+
 #if 0            
             std::ofstream out("pot.dat");
 
@@ -641,6 +644,35 @@ class Potential
 
                parameters_.atom_symmetry_class(ic)->set_spherical_potential(veff);
             }
+        }
+
+        void set_nonspherical_potential()
+        {
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                double* veff = &effective_potential_->f_rlm(0, 0, ia);
+                
+                double* beff[3];
+                for (int i = 0; i < parameters_.num_mag_dims(); i++)
+                    beff[i] = &effective_magnetic_field_[i]->f_rlm(0, 0, ia);
+                
+                parameters_.atom(ia)->set_nonspherical_potential(veff, beff);
+            }
+        }
+
+        PeriodicFunction<double>* effective_potential()
+        {
+            return effective_potential_;
+        }
+
+        PeriodicFunction<double>** effective_magnetic_field()
+        {
+            return effective_magnetic_field_;
+        }
+        
+        PeriodicFunction<double>* effective_magnetic_field(int i)
+        {
+            return effective_magnetic_field_[i];
         }
 };
 
