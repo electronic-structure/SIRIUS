@@ -464,7 +464,6 @@ class Potential
 
                 sht_.rlm_backward_transform(&rho->f_rlm(0, 0, ia), parameters_.lmmax_rho(), nmtp, &rhotp(0, 0));
 
-                   
                 if (parameters_.num_spins() == 2)
                 {
                     for (int j = 0; j < parameters_.num_mag_dims(); j++)
@@ -499,6 +498,10 @@ class Potential
                             if (magtp(itp, ir) > 1e-8)
                                 for (int j = 0; j < parameters_.num_mag_dims(); j++)
                                     vecbxctp(itp, ir, j) = bxctp(itp, ir) * vecmagtp(itp, ir, j) / magtp(itp, ir);
+                            else
+                                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                                    vecbxctp(itp, ir, j) = 0.0;
+                                
                     
                     for (int j = 0; j < parameters_.num_mag_dims(); j++)
                         sht_.rlm_forward_transform(&vecbxctp(0, 0, j), parameters_.lmmax_rho(), nmtp,
@@ -528,6 +531,9 @@ class Potential
                     if (magit[ir] > 1e-8)
                         for (int j = 0; j < parameters_.num_mag_dims(); j++)
                             xc_magnetic_field[j]->f_it(ir) = bxcit[ir] * magnetization[j]->f_it(ir) / magit[ir];
+                    else
+                        for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                            xc_magnetic_field[j]->f_it(ir) = 0.0;
             }
         }
 
@@ -541,7 +547,7 @@ class Potential
         void generate_effective_potential(PeriodicFunction<double>* rho, PeriodicFunction<double>* magnetization[3])
         {
             Timer t("sirius::Potential::generate");
-
+            
             // zero effective potential and magnetic field
             zero();
 
@@ -606,10 +612,7 @@ class Potential
             }
             
             delete xc_energy_density;
-
-            // set new spherical part of the potential
-            set_spherical_potential();
-
+            
 #if 0            
             std::ofstream out("pot.dat");
 

@@ -322,13 +322,14 @@ class Density
                 {
                     if (parameters_.num_mag_dims())
                         for (int ir = 0; ir < nmtp; ir++)
-                            magnetization_[0]->f_rlm(0, ir, ia) = 0.1 * rho_->f_rlm(0, ir, ia) * v[2] / len;
+                            magnetization_[0]->f_rlm(0, ir, ia) = 0.2 * rho_->f_rlm(0, ir, ia) * v[2] / len;
+
                     if (parameters_.num_mag_dims() == 3)
                     {
                         for (int ir = 0; ir < nmtp; ir++)
-                            magnetization_[1]->f_rlm(0, ir, ia) = 0.1 * rho_->f_rlm(0, ir, ia) * v[0] / len;
+                            magnetization_[1]->f_rlm(0, ir, ia) = 0.2 * rho_->f_rlm(0, ir, ia) * v[0] / len;
                         for (int ir = 0; ir < nmtp; ir++)
-                            magnetization_[2]->f_rlm(0, ir, ia) = 0.1 * rho_->f_rlm(0, ir, ia) * v[1] / len;
+                            magnetization_[2]->f_rlm(0, ir, ia) = 0.2 * rho_->f_rlm(0, ir, ia) * v[1] / len;
                     }
                 }
             }
@@ -336,66 +337,74 @@ class Density
             // distribute remaining charge
             for (int i = 0; i < parameters_.fft().size(); i++)
                 rho_->f_it(i) = (parameters_.num_electrons() - mt_charge) / parameters_.volume_it();
-
-            total_charge();
         }
 
-        double total_charge(std::vector<double>& mt_charges, double& it_charge, mdarray<double,2>& mt_moments)
+        void integrate()
         {
-            it_charge = 0.0;
-            double dv = parameters_.omega() / parameters_.fft().size();
-            for (int ir = 0; ir < parameters_.fft().size(); ir++)
-                it_charge += rho_->f_it(ir) * parameters_.step_function(ir) * dv;
-            
-            double charge = it_charge;
+            printf("\n");
+            printf("Charges and magnetic moments\n");
+            for (int i = 0; i < 80; i++) printf("-");
+            printf("\n"); 
 
-            if (parameters_.num_mag_dims()) mt_moments.zero();
-
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            {
-                int nmtp = parameters_.atom(ia)->type()->num_mt_points();
-                Spline<double> rho(nmtp, parameters_.atom(ia)->type()->radial_grid());
-                for (int ir = 0; ir < nmtp; ir++)
-                    rho[ir] = rho_->f_rlm(0, ir, ia);
-                rho.interpolate();
-                mt_charges[ia] = rho.integrate(2) * fourpi * y00;
-                charge += mt_charges[ia];
-
-                Spline<double> s(nmtp, parameters_.atom(ia)->type()->radial_grid());
-                for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                {
-                    for (int ir = 0; ir < nmtp; ir++)
-                        s[ir] = magnetization_[j]->f_rlm(0, ir, ia);
-                    s.interpolate();
-                    mt_moments(j, ia) = s.integrate(2) * fourpi * y00;
-                }
-            }
-            
-            return charge;
-        }
-
-        double total_charge(void)
-        {
-            std::vector<double> mt_charges(parameters_.num_atoms());
-            mdarray<double,2> mt_moments(parameters_.num_mag_dims(), parameters_.num_atoms());
-
+            double total_charge;
             double it_charge;
+            std::vector<double> mt_charge;
 
-            double tot_charge = total_charge(mt_charges, it_charge, mt_moments);
+            double total_magnetization[3];
+            double it_magnetization[3];
+            std::vector<double> mt_magnetization[3];
 
+            total_charge = rho_->integrate(rlm_component | it_component, mt_charge, it_charge);
+            for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                total_magnetization[j] = magnetization_[j]->integrate(rlm_component | it_component, 
+                                                                      mt_magnetization[j], it_magnetization[j]);
+            printf("muffin-tin\n");
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
-                printf(" atom : %i   charge : %f", ia, mt_charges[ia]);
+                printf("atom : %4i   charge : %8.4f", ia, mt_charge[ia]);
                 if (parameters_.num_mag_dims())
                 {
-                    printf("   moment :");
-                    for (int j = 0; j < parameters_.num_mag_dims(); j++) printf(" %f", mt_moments(j, ia));
+                    double v[] = {0, 0, 0};
+                    v[2] = mt_magnetization[0][ia];
+                    if (parameters_.num_mag_dims() == 3)
+                    {
+                        v[0] = mt_magnetization[1][ia];
+                        v[1] = mt_magnetization[2][ia];
+                    }
+                    printf("   moment : (%8.4f %8.4f %8.4f)   |moment| : %8.4f", v[0], v[1], v[2], vector_length(v));
                 }
                 printf("\n");
             }
-            printf("interstitial charge : %f\n", it_charge);
-
-            return tot_charge;
+            
+            printf("interstitial\n");
+            printf("              charge : %8.4f", it_charge);
+            if (parameters_.num_mag_dims())
+            {
+                double v[] = {0, 0, 0};
+                v[2] = it_magnetization[0];
+                if (parameters_.num_mag_dims() == 3)
+                {
+                    v[0] = it_magnetization[1];
+                    v[1] = it_magnetization[2];
+                }
+                printf("   moment : (%8.4f %8.4f %8.4f)   |moment| : %8.4f", v[0], v[1], v[2], vector_length(v));
+            }
+            printf("\n");
+            
+            printf("total\n");
+            printf("              charge : %8.4f", total_charge);
+            if (parameters_.num_mag_dims())
+            {
+                double v[] = {0, 0, 0};
+                v[2] = total_magnetization[0];
+                if (parameters_.num_mag_dims() == 3)
+                {
+                    v[0] = total_magnetization[1];
+                    v[1] = total_magnetization[2];
+                }
+                printf("   moment : (%8.4f %8.4f %8.4f)   |moment| : %8.4f", v[0], v[1], v[2], vector_length(v));
+            }
+            printf("\n");
         }
 
         void generate()
@@ -524,7 +533,7 @@ class Density
                 }
             }
             
-            //printf("Total charge : %f\n", total_charge());
+            //printf("Total charge : %f\n", rho_->integrate(rlm_component | it_component));
         }
 
         void add_kpoint(int kpoint_id, double* vk, double weight)
@@ -563,6 +572,11 @@ class Density
         PeriodicFunction<double>** magnetization()
         {
             return magnetization_;
+        }
+
+        PeriodicFunction<double>* magnetization(int i)
+        {
+            return magnetization_[i];
         }
 };
 

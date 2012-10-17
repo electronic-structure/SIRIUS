@@ -107,7 +107,7 @@ class Atom
         void init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_lo__, int offset_wf__)
         {
             assert(symmetry_class());
-            assert(lmax_pot_ >= 0);
+            assert(lmax_pot__ >= 0);
             assert(offset_aw__ >= 0);
             
             offset_aw_ = offset_aw__;

@@ -230,6 +230,47 @@ template<typename T> class PeriodicFunction
         inline void inner(const PeriodicFunction<T>& f)
         {
         }
+
+        T integrate(int flg, std::vector<T>& mt_val, T& it_val)
+        {
+            it_val = 0;
+            mt_val.resize(parameters_.num_atoms());
+            memset(&mt_val[0], 0, parameters_.num_atoms() * sizeof(T));
+
+            if (flg & it_component)
+            {
+                double dv = parameters_.omega() / parameters_.fft().size();
+                for (int ir = 0; ir < parameters_.fft().size(); ir++)
+                    it_val += f_it_(ir) * parameters_.step_function(ir) * dv;
+            }
+
+            if (flg & rlm_component)
+            {
+                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                {
+                    int nmtp = parameters_.atom(ia)->type()->num_mt_points();
+                    Spline<T> s(nmtp, parameters_.atom(ia)->type()->radial_grid());
+                    for (int ir = 0; ir < nmtp; ir++)
+                        s[ir] = f_rlm_(0, ir, ia);
+                    s.interpolate();
+                    mt_val[ia] = s.integrate(2) * fourpi * y00;
+                }
+            }
+
+            T total = it_val;
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                total += mt_val[ia];
+
+            return total;
+        }
+
+        T integrate(int flg)
+        {
+            std::vector<T> mt_val;
+            T it_val;
+
+            return integrate(flg, mt_val, it_val);
+        }
 };
 
 };

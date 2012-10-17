@@ -1,10 +1,8 @@
 #ifndef _MDARRAY_BASE_H_
 #define _MDARRAY_BASE_H_
 
-#include <iostream>
-#include <vector>
-#include <stdexcept>
-#include <cstring>
+//#include <vector>
+//#include <cstring>
 #include <assert.h>
 
 class dimension 
