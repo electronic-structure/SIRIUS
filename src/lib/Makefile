@@ -43,4 +43,6 @@ depend: $(SRC)
 showlibs:
 	@echo $(LIBS) $(shell pwd)/libsirius.a 
 
+ifneq ($(wildcard .depend),)
 include .depend
+endif
