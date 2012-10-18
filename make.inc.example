@@ -1,0 +1,42 @@
+#
+# C++ compiler
+#
+CXX = g++-mp-4.7
+
+#
+#  Initial compiler options typically include optimization / warning switches and a preprocessor 
+#  directive which controls the assert() debugging macros. It is generally a good idea to NOT
+#  include -DNDEBUG option during the initial test runs to keep track of the correctness of indexes 
+#  and major vaiables for the price of some slowdown
+#
+#CXX_OPT = -O3 -Wall -fopenmp -Wno-cpp -Wno-reorder -DNDEBUG
+CXX_OPT = -O3 -Wall -fopenmp -DNDEBUG
+
+#
+#  Initial list of libraries which are required to link a binary on the given platform
+#
+LIBS = -lstdc++
+
+#
+#  Provide the remaining necessary libraries for the linker
+#
+LINK_OPT = $(LIBS)
+
+#  Lapack / BLAS
+LIBS := $(LIBS) -llapack -lblas
+
+#  libxc
+CXX_OPT := $(CXX_OPT) -I/path/to/libxc-version-x.y.z-folder/src
+LIBS := $(LIBS) /path/to/libxc-version-x.y.z-folder/src/.libs/libxc.a 
+
+#  spglib
+CXX_OPT := $(CXX_OPT) -I/path/to/spglib-version-x.y.z-folder/src
+LIBS := $(LIBS) /path/to/spglib-version-x.y.z-folder/src/.libs/libsymspg.a
+
+#  GNU scientific library
+CXX_OPT := $(CXX_OPT) -I/path/to/gsl-version-x.y-folder
+LIBS := $(LIBS) /path/to/gsl-version-x.y-folder/.libs/libgsl.a
+
+#  FFTW 
+CXX_OPT := $(CXX_OPT) -I/path/to/fft-version-x.y.z-folder/api
+LIBS := $(LIBS) /path/to/fft-version-x.y.z-folder/.libs/libfftw3.a

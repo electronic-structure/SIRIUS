@@ -603,6 +603,10 @@ class Potential
             xc(rho, magnetization, xc_potential, xc_magnetic_field, xc_energy_density);
             
             effective_potential_->add(xc_potential, rlm_component | it_component);
+            
+            printf("Vxc : %f\n", rho->inner(xc_potential, rlm_component | it_component));
+            printf("Exc : %f\n", rho->inner(xc_energy_density, rlm_component | it_component));
+        
             delete xc_potential;
 
             for (int j = 0; j < parameters_.num_mag_dims(); j++)

@@ -40,4 +40,7 @@ depend: $(SRC)
 	rm -f ./.depend
 	$(CXX) $(CXX_OPT) -MM $^ >> ./.depend
 
+showlibs:
+	@echo $(LIBS) $(shell pwd)/libsirius.a 
+
 include .depend

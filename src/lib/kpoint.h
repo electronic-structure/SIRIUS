@@ -298,14 +298,37 @@ class kpoint
                 if (parameters_.num_mag_dims() == 1)
                 {
                     int info;
-                    info = heev<cpu>(parameters_.num_fv_states(), &evecsv_(0, 0), parameters_.num_bands(), &band_energies_[0]);
-                    info = heev<cpu>(parameters_.num_fv_states(), &evecsv_(parameters_.num_fv_states(), parameters_.num_fv_states()),
-                                     parameters_.num_bands(), &band_energies_[parameters_.num_fv_states()]);
+                    
+                    info = heev<cpu>(parameters_.num_fv_states(), &evecsv_(0, 0), parameters_.num_bands(), 
+                                     &band_energies_[0]);
+                    if (info)
+                    {
+                        std::stringstream s;
+                        s << "heev returned " << info;
+                        error(__FILE__, __LINE__, s);
+                    }
+
+                    info = heev<cpu>(parameters_.num_fv_states(), &evecsv_(parameters_.num_fv_states(), 
+                                     parameters_.num_fv_states()), parameters_.num_bands(), 
+                                     &band_energies_[parameters_.num_fv_states()]);
+                    if (info)
+                    {
+                        std::stringstream s;
+                        s << "heev returned " << info;
+                        error(__FILE__, __LINE__, s);
+                    }
                 }
                 else
                 {
-                    int info = heev<cpu>(parameters_.num_bands(), &evecsv_(0, 0), parameters_.num_bands(), &band_energies_[0]);
-                }
+                    int info = heev<cpu>(parameters_.num_bands(), &evecsv_(0, 0), parameters_.num_bands(),
+                                         &band_energies_[0]);
+                    if (info)
+                    {
+                        std::stringstream s;
+                        s << "heev returned " << info;
+                        error(__FILE__, __LINE__, s);
+                    }
+                 }
                 
                 generate_spinor_wave_functions(1);
             }

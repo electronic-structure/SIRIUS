@@ -1,8 +1,6 @@
 #ifndef _MDARRAY_BASE_H_
 #define _MDARRAY_BASE_H_
 
-//#include <vector>
-//#include <cstring>
 #include <assert.h>
 
 class dimension 
@@ -100,9 +98,8 @@ template <typename T, int ND> class mdarray_base
             deallocate();
             
             size_t sz = size();
-            if (sz == 0) throw std::runtime_error("can't allocate a zero size array");
              
-            if (!mdarray_ptr) 
+            if (sz && (!mdarray_ptr)) 
             {
                 mdarray_ptr = new T[sz];
                 allocated_ = true;

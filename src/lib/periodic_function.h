@@ -7,6 +7,13 @@ const int ylm_component = 1 << 1;
 const int pw_component = 1 << 2;
 const int it_component = 1 << 3;
 
+template <typename T, typename U> class coupled_type_wrapper;
+
+template <typename T> class coupled_type_wrapper<T,T>
+{
+    public:
+        typedef T coupled_t;
+};
 
 /*!
     \brief Representation of the periodical function on the muffin-tin geometry
@@ -227,8 +234,42 @@ template<typename T> class PeriodicFunction
             }
         }
 
-        inline void inner(const PeriodicFunction<T>& f)
+        /*! 
+            \brief Computes the inner product <f|g>, where f is "this" and g is the argument
+        */
+        template <typename U>
+        inline typename coupled_type_wrapper<T,U>::coupled_t inner(PeriodicFunction<U>* g, int flg)
         {
+            // put asserts here
+
+            int lmmax = std::min(lmmax_, g->lmmax_);
+
+            T result = 0;
+
+            if (flg & it_component)
+            {
+                for (int ir = 0; ir < parameters_.fft().size(); ir++)
+                    result += data_type_wrapper<T>::conjugate(f_it_(ir)) * g->f_it(ir) * parameters_.step_function(ir);
+                result *= (parameters_.omega() / parameters_.fft().size());
+            }
+
+            if (flg & rlm_component)
+            {
+                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                {
+                    int nmtp = parameters_.atom(ia)->type()->num_mt_points();
+                    Spline<T> s(nmtp, parameters_.atom(ia)->type()->radial_grid());
+                   
+                    for (int ir = 0; ir < nmtp; ir++)
+                        for (int lm = 0; lm < lmmax; lm++)
+                            s[ir] += data_type_wrapper<T>::conjugate(f_rlm_(lm, ir, ia)) * g->f_rlm_(lm, ir, ia);
+                    s.interpolate();
+                    
+                    result += s.integrate(2);
+                }
+            }
+
+            return result;
         }
 
         T integrate(int flg, std::vector<T>& mt_val, T& it_val)

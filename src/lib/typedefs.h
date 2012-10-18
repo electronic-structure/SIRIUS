@@ -10,7 +10,7 @@ typedef double real8;
 
 typedef int32_t int4;
 
-enum spin_block {nm, uu, ud, dd};
+enum spin_block {nm, uu, ud, dd}; // add _t to type names
 
 enum implementation {cpu, gpu};
 
@@ -21,7 +21,7 @@ enum coordinates_type {cartesian, fractional};
 //
 // wrapper for basis data types
 //
-template <typename T> class data_type_wrapper;
+template <typename T> class data_type_wrapper; // rename to primitive_type_wrapper
 
 template<> class data_type_wrapper<double>
 {
@@ -45,6 +45,11 @@ template<> class data_type_wrapper<double>
         inline complex_type_ zi()
         {
             return complex_type_(0.0, 1.0);
+        }
+
+        static inline double conjugate(double& v)
+        {
+            return v;
         }
 };
 
