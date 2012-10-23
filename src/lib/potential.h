@@ -148,7 +148,7 @@ class Potential
             assert(parameters_.num_spins() == 2);
 
             // set temporary array wrapper
-            mdarray<double,4> beffmt_tmp(beffmt, parameters_.lmmax_rho(), parameters_.max_num_mt_points(), 
+            mdarray<double,4> beffmt_tmp(beffmt, parameters_.lmmax_pot(), parameters_.max_num_mt_points(), 
                                          parameters_.num_atoms(), parameters_.num_mag_dims());
             mdarray<double,2> beffir_tmp(beffir, parameters_.fft().size(), parameters_.num_mag_dims());
             
@@ -450,14 +450,6 @@ class Potential
             mdarray<double,3> vecbxctp(sht_.num_points(), parameters_.max_num_mt_points(), parameters_.num_mag_dims());
             mdarray<double,2> bxctp(sht_.num_points(), parameters_.max_num_mt_points());
 
-            /*if (parameters_.num_spins() == 2) 
-            {
-                vecmagtp.allocate();
-                magtp.allocate();
-                vecbxctp.allocate();
-                bxctp.allocate();
-            }*/
-
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
                 int nmtp = parameters_.atom(ia)->type()->num_mt_points();
@@ -485,9 +477,9 @@ class Potential
                     xc_potential::get(sht_.num_points() * nmtp, &rhotp(0, 0), &magtp(0, 0), &vxctp(0, 0), 
                                       &bxctp(0, 0), &exctp(0, 0));
 
-                sht_.rlm_forward_transform(&vxctp(0, 0), parameters_.lmmax_rho(), nmtp, 
+                sht_.rlm_forward_transform(&vxctp(0, 0), parameters_.lmmax_pot(), nmtp, 
                                            &xc_potential->f_rlm(0, 0, ia));
-                sht_.rlm_forward_transform(&exctp(0, 0), parameters_.lmmax_rho(), nmtp, 
+                sht_.rlm_forward_transform(&exctp(0, 0), parameters_.lmmax_pot(), nmtp, 
                                            &xc_energy_density->f_rlm(0, 0, ia));
 
                 if (parameters_.num_spins() == 2)
@@ -504,7 +496,7 @@ class Potential
                                 
                     
                     for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                        sht_.rlm_forward_transform(&vecbxctp(0, 0, j), parameters_.lmmax_rho(), nmtp,
+                        sht_.rlm_forward_transform(&vecbxctp(0, 0, j), parameters_.lmmax_pot(), nmtp,
                                                    &xc_magnetic_field[j]->f_rlm(0, 0, ia));
                 }
             }
@@ -635,6 +627,14 @@ class Potential
             
             out.close();
 #endif
+           
+            hdf5_tree fout("sirius.h5", true);
+            fout.create_node("effective_potential");
+            fout["effective_potential"].write("f_rlm", intvec(parameters_.lmmax_pot(), 
+                                                              parameters_.max_num_mt_points(),
+                                                              parameters_.num_atoms()), 
+                                              effective_potential_->f_rlm());
+            
         }
         
         void set_spherical_potential()

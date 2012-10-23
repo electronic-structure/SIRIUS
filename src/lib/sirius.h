@@ -39,6 +39,7 @@ extern "C" {
 #include "config.h"
 #include "constants.h"
 #include "mdarray.h"
+#include "intvec.h"
 #include "linalg.h"
 #include "global_inl.h"
 #include "radial_grid.h"

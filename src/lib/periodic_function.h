@@ -172,6 +172,11 @@ template<typename T> class PeriodicFunction
             return f_ylm_.get_ptr();
         }
         
+        inline T* f_rlm()
+        {
+            return f_rlm_.get_ptr();
+        }
+        
         inline complex_t* f_pw()
         {
             return f_pw_.get_ptr();
@@ -309,6 +314,11 @@ template<typename T> class PeriodicFunction
             T it_val;
 
             return integrate(flg, mt_val, it_val);
+        }
+
+        void hdf5_write(hdf5_tree& node)
+        {
+
         }
 };
 

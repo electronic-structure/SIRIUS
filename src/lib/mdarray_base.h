@@ -93,6 +93,14 @@ template <typename T, int ND> class mdarray_base
            return d[i].size();
         }
 
+        inline std::vector<int> dimensions()
+        {
+            std::vector<int> vd(ND);
+            for (int i = 0; i < ND; i++)
+                vd[i] = d[i].size();
+            return vd;
+        }
+
         void allocate()
         {
             deallocate();

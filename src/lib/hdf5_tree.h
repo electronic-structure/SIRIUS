@@ -11,6 +11,8 @@ class hdf5_tree
         
         hid_t file_id_;
         
+        bool root_node_;
+        
     public:
 
         bool static file_exists(const std::string& file_name__)
@@ -21,12 +23,14 @@ class hdf5_tree
         }
     
         hdf5_tree(const std::string& file_name__, bool truncate = false) : file_name_(file_name__), 
-                                                                           file_id_(-1)
+                                                                           file_id_(-1),
+                                                                           root_node_(true)
         {
             if (H5open() < 0)
                 error(__FILE__, __LINE__, "error in H5open()");
             
-            H5Eset_auto(H5E_DEFAULT, NULL, NULL);
+            if (hdf5_trace_errors)
+                H5Eset_auto(H5E_DEFAULT, NULL, NULL);
             
             if (truncate)
             {
@@ -58,16 +62,17 @@ class hdf5_tree
             path_ = "/";
         }
 
-        ~hdf5_tree()
+        hdf5_tree(hid_t file_id__, const std::string& path__) : path_(path__),
+                                                                file_id_(file_id__),
+                                                                root_node_(false)
         {
-            if (file_id_ >= 0 && path_.length() == 1)
-                if (H5Fclose(file_id_) < 0)
-                    error(__FILE__, __LINE__, "error in H5Fclose()");
         }
 
-        hdf5_tree(hid_t file_id__, const std::string& path__) : path_(path__),
-                                                                file_id_(file_id__)
+        ~hdf5_tree()
         {
+            if (file_id_ >= 0 && root_node_)
+                if (H5Fclose(file_id_) < 0)
+                    error(__FILE__, __LINE__, "error in H5Fclose()");
         }
 
         void create_node(const std::string& name)
@@ -93,40 +98,55 @@ class hdf5_tree
             if (H5Gclose(group_id) < 0)
                 error(__FILE__, __LINE__, "error in H5Gclose()");
         }
+        
+        template <typename T>
+        void write(const std::string& name, const std::vector<int>& dims, T* data)
+        {
+            // open the group
+            hid_t group_id = H5Gopen(file_id_, path_.c_str(), H5P_DEFAULT);
+            if (group_id < 0)
+                error(__FILE__, __LINE__, "error in H5Gopen()");
+            
+            // prepare a dataspace
+            std::vector<hsize_t> current_dims(dims.size());
+            for (int i = 0; i < (int)dims.size(); i++)
+                current_dims[dims.size() - i - 1] = dims[i];
+
+            hid_t dataspace_id = H5Screate_simple(dims.size(), &current_dims[0], NULL);
+            if (dataspace_id < 0)
+                error(__FILE__, __LINE__, "error in H5Screate_simple()");
+
+            // creade a dataset
+            hid_t dataset_id = H5Dcreate(group_id, name.c_str(), primitive_type_wrapper<T>::hdf5_type_id(), 
+                                         dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            if (dataset_id < 0)
+                error(__FILE__, __LINE__, "error in H5Dcreate()");
+
+            // write data
+            if (H5Dwrite(dataset_id, H5T_NATIVE_DOUBLE, dataspace_id, H5S_ALL, H5P_DEFAULT, data) < 0)
+                error(__FILE__, __LINE__, "error in H5Dwrite()");
+
+            // close dataset
+            if (H5Dclose(dataset_id) < 0)
+                error(__FILE__, __LINE__, "error in H5Dclose()");
+            
+            // close dataspace
+            if (H5Sclose(dataspace_id) < 0)
+                error(__FILE__, __LINE__, "error in H5Sclose()");
+            
+            // close group
+            if (H5Gclose(group_id) < 0)
+                error(__FILE__, __LINE__, "error in H5Gclose()");
+        }
 
         template <typename T, int N>
         void write(const std::string& name, mdarray<T,N>& data)
         {
-            hid_t group_id = H5Gopen(file_id_, path_.c_str(), H5P_DEFAULT);
-            if (group_id < 0)
-                error(__FILE__, __LINE__, "error in H5Gopen()");
-
-            hsize_t current_dims[N];
+            std::vector<int> dims(N);
             for (int i = 0; i < N; i++)
-                current_dims[N - i - 1] = data.size(i);
+                dims[i] = data.size(i);
 
-            hid_t dataspace_id = H5Screate_simple(N, current_dims, NULL);
-            if (dataspace_id < 0)
-                error(__FILE__, __LINE__, "error in H5Screate_simple()");
-
-            hid_t dataset_id = H5Dcreate(group_id, name.c_str(), primitive_type_wrapper<T>::hdf5_type_id(), dataspace_id, H5P_DEFAULT, 
-                                         H5P_DEFAULT, H5P_DEFAULT);
-            if (dataset_id < 0)
-                error(__FILE__, __LINE__, "error in H5Dcreate()");
-
-
-            if (H5Dwrite(dataset_id, H5T_NATIVE_DOUBLE, dataspace_id, H5S_ALL, H5P_DEFAULT, data.get_ptr()) < 0)
-                error(__FILE__, __LINE__, "error in H5Dwrite()");
-
-
-            if (H5Dclose(dataset_id) < 0)
-                error(__FILE__, __LINE__, "error in H5Dclose()");
-
-            if (H5Sclose(dataspace_id) < 0)
-                error(__FILE__, __LINE__, "error in H5Sclose()");
-
-            if (H5Gclose(group_id) < 0)
-                error(__FILE__, __LINE__, "error in H5Gclose()");
+            write(name, dims, data.get_ptr());
         }
 
         template <typename T, int N>
@@ -166,16 +186,9 @@ class hdf5_tree
         hdf5_tree operator[](const std::string& path__)
         {
             std::string new_path = path_ + "/" + path__;
-            // try to open a group
-            hid_t group_id = H5Gopen(file_id_, new_path.c_str(), H5P_DEFAULT);
-            
-            if (group_id < 0)
-                error(__FILE__, __LINE__, "error in H5Gopen()");
-
             return hdf5_tree(file_id_, new_path);
         }
 };
 
 };
-
 
