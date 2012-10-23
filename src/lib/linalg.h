@@ -53,7 +53,7 @@ template<> void hemm<cpu,complex16>(int side, int uplo, int4 m, int4 n, complex1
 // heev
 //
 template<implementation impl, typename T> 
-int heev(int4 n, T* a, int4 lda, typename data_type_wrapper<T>::real_type_* eval);
+int heev(int4 n, T* a, int4 lda, typename primitive_type_wrapper<T>::real_t* eval);
 
 template<> int heev<cpu,complex16>(int4 n, complex16* a, int4 lda, double* eval)
 {
@@ -73,7 +73,7 @@ template<> int heev<cpu,complex16>(int4 n, complex16* a, int4 lda, double* eval)
 // hegvx
 //
 template<implementation impl, typename T>
-int hegvx(int4 n, int4 nv, real8 abstol, T* a, T* b, typename data_type_wrapper<T>::real_type_* eval, T* z, int4 ldz);
+int hegvx(int4 n, int4 nv, real8 abstol, T* a, T* b, typename primitive_type_wrapper<T>::real_t* eval, T* z, int4 ldz);
 
 template<> int hegvx<cpu,complex16>(int4 n, int4 nv, real8 abstol, complex16* a, complex16* b,
                                     real8* eval, complex16* z, int4 ldz)

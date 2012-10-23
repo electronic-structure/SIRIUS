@@ -26,6 +26,7 @@ extern "C" {
 #include <gsl/gsl_sf_bessel.h>
 #include <gsl/gsl_sf_coupling.h>
 #include <xc.h>
+#include <hdf5.h>
 #include "../libjson/libjson.h"
 #include "LebedevLaikov.h"
 
@@ -45,12 +46,13 @@ extern "C" {
 #include "radial_solver.h"
 #include "sht.h"
 #include "json_tree.h"
+#include "hdf5_tree.h" 
 #include "xc_potential.h"
-#include "atom_type.h"
 
 //
 // stack of classes for Global class
 //
+#include "atom_type.h"
 #include "atom_symmetry_class.h"
 #include "atom.h"
 #include "fft3d.h"

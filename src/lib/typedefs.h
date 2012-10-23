@@ -18,33 +18,20 @@ enum lattice_type {direct, reciprocal};
 
 enum coordinates_type {cartesian, fractional};
 
-//
-// wrapper for basis data types
-//
-template <typename T> class data_type_wrapper; // rename to primitive_type_wrapper
+/*! 
+    \brief Wrapper for primitive data types
+*/
+template <typename T> class primitive_type_wrapper;
 
-template<> class data_type_wrapper<double>
+template<> class primitive_type_wrapper<double>
 {
     public:
-        typedef std::complex<double> complex_type_;
-        typedef double real_type_;
-        inline bool real() 
-        {
-            return true;
-        }
-        inline complex_type_ zone()
-        {
-            return complex_type_(1.0, 0.0);
-        }
+        typedef std::complex<double> complex_t;
+        typedef double real_t;
         
-        inline complex_type_ zzero()
+        static hid_t hdf5_type_id()
         {
-            return complex_type_(0.0, 0.0);
-        }
-
-        inline complex_type_ zi()
-        {
-            return complex_type_(0.0, 1.0);
+            return H5T_NATIVE_DOUBLE;
         }
 
         static inline double conjugate(double& v)
@@ -53,43 +40,25 @@ template<> class data_type_wrapper<double>
         }
 };
 
-template<> class data_type_wrapper<float>
+template<> class primitive_type_wrapper<float>
 {
     public:
-        typedef std::complex<float> complex_type_;
-        typedef float real_type_;
-        inline bool real() 
-        {
-            return true;
-        }
+        typedef std::complex<float> complex_t;
+        typedef float real_t;
 };
 
-template<> class data_type_wrapper< std::complex<double> >
+template<> class primitive_type_wrapper< std::complex<double> >
 {
     public:
-        typedef std::complex<double> complex_type_;
-        typedef double real_type_;
-        
-        static inline bool real() 
-        {
-            return false;
-        }
-
-        static inline complex_type_ zi()
-        {
-            return complex_type_(0.0, 1.0);
-        }
+        typedef std::complex<double> complex_t;
+        typedef double real_t;
 };
 
-template<> class data_type_wrapper< std::complex<float> >
+template<> class primitive_type_wrapper< std::complex<float> >
 {
     public:
-        typedef std::complex<float> complex_type_;
-        typedef float real_type_;
-        inline bool real() 
-        {
-            return false;
-        }
+        typedef std::complex<float> complex_t;
+        typedef float real_t;
 };
 
 #endif // __TYPEDEFS_H__

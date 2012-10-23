@@ -44,9 +44,7 @@ template<typename T> class PeriodicFunction
         
         Global& parameters_;
         
-        typedef typename data_type_wrapper<T>::complex_type_ complex_type_; 
-        
-        data_type_wrapper<T> data_type_;
+        typedef typename primitive_type_wrapper<T>::complex_t complex_t; 
         
         /// maximum angular momentum quantum number
         int lmax_;
@@ -58,13 +56,13 @@ template<typename T> class PeriodicFunction
         mdarray<T,3> f_rlm_;
         
         /// complex spherical harmonic expansion coefficients
-        mdarray<complex_type_,3> f_ylm_;
+        mdarray<complex_t,3> f_ylm_;
         
         /// interstitial values defined on the FFT grid
         mdarray<T,1> f_it_;
         
         /// plane-wave expansion coefficients
-        mdarray<complex_type_,1> f_pw_;
+        mdarray<complex_t,1> f_pw_;
 
     public:
 
@@ -148,7 +146,7 @@ template<typename T> class PeriodicFunction
             return f_rlm_(lm, ir, ia);
         }
         
-        inline complex_type_& f_ylm(int lm, int ir, int ia)
+        inline complex_t& f_ylm(int lm, int ir, int ia)
         {
             assert(f_ylm_.get_ptr());
 
@@ -162,19 +160,19 @@ template<typename T> class PeriodicFunction
             return f_it_(ir);
         }
         
-        inline complex_type_& f_pw(int ig)
+        inline complex_t& f_pw(int ig)
         {
             assert(f_pw_.get_ptr());
 
             return f_pw_(ig);
         }
        
-        inline complex_type_* f_ylm()
+        inline complex_t* f_ylm()
         {
             return f_ylm_.get_ptr();
         }
         
-        inline complex_type_* f_pw()
+        inline complex_t* f_pw()
         {
             return f_pw_.get_ptr();
         }
@@ -249,7 +247,7 @@ template<typename T> class PeriodicFunction
             if (flg & it_component)
             {
                 for (int ir = 0; ir < parameters_.fft().size(); ir++)
-                    result += data_type_wrapper<T>::conjugate(f_it_(ir)) * g->f_it(ir) * parameters_.step_function(ir);
+                    result += primitive_type_wrapper<T>::conjugate(f_it_(ir)) * g->f_it(ir) * parameters_.step_function(ir);
                 result *= (parameters_.omega() / parameters_.fft().size());
             }
 
@@ -262,7 +260,7 @@ template<typename T> class PeriodicFunction
                    
                     for (int ir = 0; ir < nmtp; ir++)
                         for (int lm = 0; lm < lmmax; lm++)
-                            s[ir] += data_type_wrapper<T>::conjugate(f_rlm_(lm, ir, ia)) * g->f_rlm_(lm, ir, ia);
+                            s[ir] += primitive_type_wrapper<T>::conjugate(f_rlm_(lm, ir, ia)) * g->f_rlm_(lm, ir, ia);
                     s.interpolate();
                     
                     result += s.integrate(2);

@@ -298,12 +298,12 @@ class SHT
             if (m1 < 0)
             {
                 //if (m2 < 0) return -zi / sqrt(2.0);
-                if (m2 < 0) return -data_type_wrapper<complex16>::zi() / sqrt(2.0);
+                if (m2 < 0) return -complex16(0.0, 1.0) / sqrt(2.0);
                 else return pow(-1.0, m2) / sqrt(2.0);
             }
             else
             {
-                if (m2 < 0) return pow(-1.0, m1) * data_type_wrapper<complex16>::zi() / sqrt(2.0);
+                if (m2 < 0) return pow(-1.0, m1) * complex16(0.0, 1.0) / sqrt(2.0);
                 else return complex16(1.0 / sqrt(2.0), 0.0);
             }
         }
