@@ -48,6 +48,8 @@ class Global : public StepFunction
 
         /// number of dimensions of the magnetization and effective magnetic field (0, 1 or 3)
         int num_mag_dims_;
+        
+        run_time_info rti_;
 
     public:
     
@@ -200,6 +202,11 @@ class Global : public StepFunction
         inline int max_occupancy()
         {
             return (2 / num_spins());
+        }
+        
+        inline run_time_info& rti()
+        {
+            return rti_;
         }
         
         void initialize()

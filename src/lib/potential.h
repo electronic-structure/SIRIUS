@@ -59,13 +59,10 @@ class Potential
 
         int pseudo_density_order;
 
-        bool check_pseudo_density;
-
     public:
 
         Potential(Global& parameters__) : parameters_(parameters__), 
-                                          pseudo_density_order(9),
-                                          check_pseudo_density(true)
+                                          pseudo_density_order(9)
         {
             initialize();
         }
@@ -351,7 +348,7 @@ class Potential
             delete t3;
 
             
-            if (check_pseudo_density)
+            if (check_pseudo_charge)
             {
                 Timer *t4 = new Timer("sirius::Potential::poisson:qit");
                 qit.zero();
@@ -379,7 +376,7 @@ class Potential
                     for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
                         d += abs(qmt(lm, ia) - qit(lm, ia));
 
-                printf("Total pseudo charge error : %f\n", d);
+                parameters_.rti().pseudo_charge_error = d;
             }
  
             // compute pw coefficients of Hartree potential
@@ -596,6 +593,7 @@ class Potential
             
             effective_potential_->add(xc_potential, rlm_component | it_component);
             
+            
             printf("Vxc : %f\n", rho->inner(xc_potential, rlm_component | it_component));
             printf("Exc : %f\n", rho->inner(xc_energy_density, rlm_component | it_component));
         
@@ -630,6 +628,12 @@ class Potential
            
             hdf5_tree fout("sirius.h5", true);
             effective_potential_->hdf5_write(fout.create_node("effective_potential"));
+        }
+
+        void hdf5_read()
+        {
+            hdf5_tree fout("sirius.h5");
+            effective_potential_->hdf5_read(fout["effective_potential"]);
         }
         
         void set_spherical_potential()

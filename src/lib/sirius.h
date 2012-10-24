@@ -49,7 +49,7 @@ extern "C" {
 #include "json_tree.h"
 #include "hdf5_tree.h" 
 #include "xc_potential.h"
-
+#include "run_time_info.h"
 //
 // stack of classes for Global class
 //

@@ -323,6 +323,12 @@ template<typename T> class PeriodicFunction
             h5f.write("f_rlm", f_rlm_);
             h5f.write("f_it", f_it_);
         }
+
+        void hdf5_read(hdf5_tree h5f)
+        {
+            h5f.read("f_rlm", f_rlm_);
+            h5f.read("f_it", f_it_);
+        }
 };
 
 };

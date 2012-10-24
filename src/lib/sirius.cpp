@@ -166,9 +166,6 @@ void FORTRAN(sirius_add_atom)(int4* atom_type_id, real8* position, real8* vector
 void FORTRAN(sirius_global_initialize)(void)
 {
     sirius::global.initialize();
-    //sirius::band.initialize();
-    //sirius::density.initialize();
-    //sirius::potential.initialize();
 }
 
 void FORTRAN(sirius_band_initialize)(void)
@@ -206,10 +203,6 @@ void FORTRAN(sirius_generate_density)(void)
     sirius::density->generate();
 }
 
-/*extern "C" void FORTRAN(sirius_get_density)(real8* rhomt, real8* rhoir)
-{
-    sirius::density.get_density(rhomt, rhoir);
-}*/
 
 #if 0
 extern "C" void FORTRAN(sirius_get_step_function)(real8* step_function)
@@ -267,6 +260,36 @@ void FORTRAN(sirius_timer_stop)(char* name_, int4 name_len)
 {
     std::string name(name_, name_len);
     if (sirius::ftimers.count(name)) delete sirius::ftimers[name];
+}
+
+void FORTRAN(sirius_potential_hdf5_read)()
+{
+    sirius::potential->hdf5_read();
+}
+
+void FORTRAN(sirius_band)(real8* vk, real8* band_energies)
+{
+    static bool init = false;
+    
+    if (!init)
+    {
+        std::vector<double> enu;
+        for (int i = 0; i < sirius::global.num_atom_types(); i++)
+            sirius::global.atom_type(i)->solve_free_atom(1e-8, 1e-5, 1e-4, enu);
+
+        sirius::potential->set_spherical_potential();
+        sirius::potential->set_nonspherical_potential();
+        sirius::global.generate_radial_functions();
+        sirius::global.generate_radial_integrals();
+        init = true;
+    }
+    
+    sirius::kpoint kp(sirius::global, vk, 0.0);
+
+    kp.find_eigen_states(sirius::band, sirius::potential->effective_potential(),
+                         sirius::potential->effective_magnetic_field());
+                         
+    kp.get_band_energies(band_energies);
 }
 
 }
