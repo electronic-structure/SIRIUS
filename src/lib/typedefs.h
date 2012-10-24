@@ -61,4 +61,14 @@ template<> class primitive_type_wrapper< std::complex<float> >
         typedef float real_t;
 };
 
+template<> class primitive_type_wrapper<int>
+{
+    public:
+        static hid_t hdf5_type_id()
+        {
+            return H5T_NATIVE_INT;
+        }
+};
+
+
 #endif // __TYPEDEFS_H__

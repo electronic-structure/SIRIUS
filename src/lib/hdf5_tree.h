@@ -5,7 +5,73 @@ namespace sirius
 class hdf5_tree
 {
     private:
-    
+
+        class hdf5_group
+        {
+            public:
+                
+                hid_t id;
+                
+                hdf5_group(hid_t file_id, const std::string path)
+                {
+                    id = H5Gopen(file_id, path.c_str(), H5P_DEFAULT);
+                    if (id < 0)
+                        error(__FILE__, __LINE__, "error in H5Gopen()");
+                }
+
+                ~hdf5_group()
+                {            
+                    if (H5Gclose(id) < 0)
+                        error(__FILE__, __LINE__, "error in H5Gclose()");
+                }
+        };
+
+        class hdf5_dataspace
+        {
+            public:
+                
+                hid_t id;
+
+                hdf5_dataspace(const std::vector<int> dims)
+                {
+                    std::vector<hsize_t> current_dims(dims.size());
+                    for (int i = 0; i < (int)dims.size(); i++)
+                        current_dims[dims.size() - i - 1] = dims[i];
+
+                    id = H5Screate_simple(dims.size(), &current_dims[0], NULL);
+                    
+                    if (id < 0)
+                        error(__FILE__, __LINE__, "error in H5Screate_simple()");
+                }
+
+                ~hdf5_dataspace()
+                {
+                    if (H5Sclose(id) < 0)
+                        error(__FILE__, __LINE__, "error in H5Sclose()");
+                }
+        };
+
+        class hdf5_dataset
+        {
+            public:
+
+                hid_t id;
+                
+                hdf5_dataset(hid_t group_id, const std::string& name)
+                {
+                    id = H5Dopen(group_id, name.c_str(), H5P_DEFAULT);
+                    if (id < 0)
+                        error(__FILE__, __LINE__, "error in H5Dopen()");
+                }
+
+                ~hdf5_dataset()
+                {
+                    if (H5Dclose(id) < 0)
+                        error(__FILE__, __LINE__, "error in H5Dclose()");
+                }
+        };
+
+
         std::string file_name_;
         std::string path_;
         
@@ -70,20 +136,18 @@ class hdf5_tree
 
         ~hdf5_tree()
         {
-            if (file_id_ >= 0 && root_node_)
+            if (root_node_)
                 if (H5Fclose(file_id_) < 0)
                     error(__FILE__, __LINE__, "error in H5Fclose()");
         }
 
-        void create_node(const std::string& name)
+        hdf5_tree create_node(const std::string& name)
         {
             // try to open a group
-            hid_t group_id = H5Gopen(file_id_, path_.c_str(), H5P_DEFAULT);
-            if (group_id < 0)
-                error(__FILE__, __LINE__, "error in H5Gopen()");
+            hdf5_group group(file_id_, path_);
             
             // try to create a new group
-            hid_t new_group_id = H5Gcreate(group_id, name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            hid_t new_group_id = H5Gcreate(group.id, name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             if (new_group_id < 0)
             {
                 std::stringstream s;
@@ -94,49 +158,40 @@ class hdf5_tree
             }
             else if (H5Gclose(new_group_id) < 0)
                 error(__FILE__, __LINE__, "error in H5Gclose()");
-            
-            if (H5Gclose(group_id) < 0)
-                error(__FILE__, __LINE__, "error in H5Gclose()");
+                
+            return (*this)[name];
         }
         
         template <typename T>
-        void write(const std::string& name, const std::vector<int>& dims, T* data)
+        void write(const std::string& name, T* data, const std::vector<int>& dims)
         {
-            // open the group
-            hid_t group_id = H5Gopen(file_id_, path_.c_str(), H5P_DEFAULT);
-            if (group_id < 0)
-                error(__FILE__, __LINE__, "error in H5Gopen()");
+            // open group
+            hdf5_group group(file_id_, path_);
+
+            hdf5_dataspace dataspace(dims);
             
-            // prepare a dataspace
-            std::vector<hsize_t> current_dims(dims.size());
-            for (int i = 0; i < (int)dims.size(); i++)
-                current_dims[dims.size() - i - 1] = dims[i];
-
-            hid_t dataspace_id = H5Screate_simple(dims.size(), &current_dims[0], NULL);
-            if (dataspace_id < 0)
-                error(__FILE__, __LINE__, "error in H5Screate_simple()");
-
-            // creade a dataset
-            hid_t dataset_id = H5Dcreate(group_id, name.c_str(), primitive_type_wrapper<T>::hdf5_type_id(), 
-                                         dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            // creade dataset
+            hid_t dataset_id = H5Dcreate(group.id, name.c_str(), primitive_type_wrapper<T>::hdf5_type_id(), 
+                                         dataspace.id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             if (dataset_id < 0)
                 error(__FILE__, __LINE__, "error in H5Dcreate()");
 
             // write data
-            if (H5Dwrite(dataset_id, H5T_NATIVE_DOUBLE, dataspace_id, H5S_ALL, H5P_DEFAULT, data) < 0)
+            if (H5Dwrite(dataset_id, primitive_type_wrapper<T>::hdf5_type_id(), dataspace.id, H5S_ALL, 
+                         H5P_DEFAULT, data) < 0)
                 error(__FILE__, __LINE__, "error in H5Dwrite()");
 
             // close dataset
             if (H5Dclose(dataset_id) < 0)
                 error(__FILE__, __LINE__, "error in H5Dclose()");
-            
-            // close dataspace
-            if (H5Sclose(dataspace_id) < 0)
-                error(__FILE__, __LINE__, "error in H5Sclose()");
-            
-            // close group
-            if (H5Gclose(group_id) < 0)
-                error(__FILE__, __LINE__, "error in H5Gclose()");
+        }
+
+        template <typename T>
+        void write(const std::string& name, T* data, int size = 1)
+        {
+            std::vector<int> dims(1);
+            dims[0] = size;
+            write(name, data, dims);
         }
 
         template <typename T, int N>
@@ -146,41 +201,32 @@ class hdf5_tree
             for (int i = 0; i < N; i++)
                 dims[i] = data.size(i);
 
-            write(name, dims, data.get_ptr());
+            write(name, data.get_ptr(), dims);
+        }
+
+        template<typename T>
+        void read(const std::string& name, T* data, const std::vector<int>& dims)
+        {
+            hdf5_group group(file_id_, path_);
+
+            hdf5_dataspace dataspace(dims);
+
+            hdf5_dataset dataset(group.id, name);
+
+            if (H5Dread(dataset.id, primitive_type_wrapper<T>::hdf5_type_id(), dataspace.id, H5S_ALL, 
+                        H5P_DEFAULT, data) < 0)
+                error(__FILE__, __LINE__, "error in H5Dread()");
         }
 
         template <typename T, int N>
         void read(const std::string& name, mdarray<T,N>& data)
         {
-            hid_t group_id = H5Gopen(file_id_, path_.c_str(), H5P_DEFAULT);
-            if (group_id < 0)
-                error(__FILE__, __LINE__, "error in H5Gopen()");
-
-            hid_t dataset_id = H5Dopen(group_id, name.c_str(), H5P_DEFAULT);
-            if (dataset_id < 0)
-                error(__FILE__, __LINE__, "error in H5Dopen()");
-            
-            hsize_t current_dims[N];
+            std::vector<int> dims(N);
             for (int i = 0; i < N; i++)
-                current_dims[N - i - 1] = data.size(i);
+                dims[i] = data.size(i);
 
-            hid_t dataspace_id = H5Screate_simple(N, current_dims, NULL);
-            if (dataspace_id < 0)
-                error(__FILE__, __LINE__, "error in H5Screate_simple()");
+            read(name, data.get_ptr(), dims);
 
-
-            if (H5Dread(dataset_id, H5T_NATIVE_DOUBLE, dataspace_id, H5S_ALL, H5P_DEFAULT, data.get_ptr()) < 0)
-                error(__FILE__, __LINE__, "error in H5Dread()");
-
-
-            if (H5Dclose(dataset_id) < 0)
-                error(__FILE__, __LINE__, "error in H5Dclose()");
-
-            if (H5Sclose(dataspace_id) < 0)
-                error(__FILE__, __LINE__, "error in H5Sclose()");
-
-            if (H5Gclose(group_id) < 0)
-                error(__FILE__, __LINE__, "error in H5Gclose()");
         }
 
         hdf5_tree operator[](const std::string& path__)

@@ -316,9 +316,12 @@ template<typename T> class PeriodicFunction
             return integrate(flg, mt_val, it_val);
         }
 
-        void hdf5_write(hdf5_tree& node)
+        void hdf5_write(hdf5_tree h5f)
         {
-
+            h5f.write("lmax", &lmax_); 
+            h5f.write("lmmax", &lmmax_); 
+            h5f.write("f_rlm", f_rlm_);
+            h5f.write("f_it", f_it_);
         }
 };
 

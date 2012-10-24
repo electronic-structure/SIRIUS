@@ -629,12 +629,7 @@ class Potential
 #endif
            
             hdf5_tree fout("sirius.h5", true);
-            fout.create_node("effective_potential");
-            fout["effective_potential"].write("f_rlm", intvec(parameters_.lmmax_pot(), 
-                                                              parameters_.max_num_mt_points(),
-                                                              parameters_.num_atoms()), 
-                                              effective_potential_->f_rlm());
-            
+            effective_potential_->hdf5_write(fout.create_node("effective_potential"));
         }
         
         void set_spherical_potential()
