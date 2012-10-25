@@ -45,37 +45,6 @@ class Band
                 zsum += complex_gaunt_packed_(lm1, lm2)[k].second * v[complex_gaunt_packed_(lm1, lm2)[k].first];
         }
 
-    public:
-    
-        Band(Global& parameters__) : parameters_(parameters__)
-        {
-            initialize();
-        }
-
-        void initialize()
-        {
-            complex_gaunt_packed_.set_dimensions(parameters_.lmmax_apw(), parameters_.lmmax_apw());
-            complex_gaunt_packed_.allocate();
-
-            for (int l1 = 0; l1 <= parameters_.lmax_apw(); l1++) 
-            for (int m1 = -l1; m1 <= l1; m1++)
-            {
-                int lm1 = lm_by_l_m(l1, m1);
-                for (int l2 = 0; l2 <= parameters_.lmax_apw(); l2++)
-                for (int m2 = -l2; m2 <= l2; m2++)
-                {
-                    int lm2 = lm_by_l_m(l2, m2);
-                    for (int l3 = 0; l3 <= parameters_.lmax_pot(); l3++)
-                    for (int m3 = -l3; m3 <= l3; m3++)
-                    {
-                        int lm3 = lm_by_l_m(l3, m3);
-                        complex16 z = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
-                        if (abs(z) > 1e-12) complex_gaunt_packed_(lm1, lm2).push_back(std::pair<int,complex16>(lm3, z));
-                    }
-                }
-            }
-        }
-        
         /*! \brief Apply the muffin-tin part of the first-variational Hamiltonian to the
                    apw basis function
             
@@ -360,9 +329,6 @@ class Band
                 } 
             }
 
-
-
-
             
             Timer *t1 = new Timer("sirius::Band::set_h:it");
             for (int ig2 = 0; ig2 < num_gkvec; ig2++) // loop over columns
@@ -445,7 +411,7 @@ class Band
                 for (int ig1 = 0; ig1 <= ig2; ig1++) // for each column loop over rows
                     o(ig1, ig2) += parameters_.step_function_pw(parameters_.index_g12(gvec_index[ig1], gvec_index[ig2]));
         }
-
+        
         // bwf must be zero on input
         void apply_magnetic_field(mdarray<complex16,2>& scalar_wf, int scalar_wf_size, int num_gkvec, int* fft_index, 
                                   PeriodicFunction<double>* effective_magnetic_field[3], mdarray<complex16,3>& bwf)
@@ -602,6 +568,132 @@ class Band
             for (int ispn = 0, i = 0; ispn < parameters_.num_spins(); ispn++)
                 for (int ist = 0; ist < parameters_.num_fv_states(); ist++, i++)
                     h(i, i) += evalfv[ist];
+        }
+
+    public:
+    
+        Band(Global& parameters__) : parameters_(parameters__)
+        {
+            initialize();
+        }
+
+        void initialize()
+        {
+            complex_gaunt_packed_.set_dimensions(parameters_.lmmax_apw(), parameters_.lmmax_apw());
+            complex_gaunt_packed_.allocate();
+
+            for (int l1 = 0; l1 <= parameters_.lmax_apw(); l1++) 
+            for (int m1 = -l1; m1 <= l1; m1++)
+            {
+                int lm1 = lm_by_l_m(l1, m1);
+                for (int l2 = 0; l2 <= parameters_.lmax_apw(); l2++)
+                for (int m2 = -l2; m2 <= l2; m2++)
+                {
+                    int lm2 = lm_by_l_m(l2, m2);
+                    for (int l3 = 0; l3 <= parameters_.lmax_pot(); l3++)
+                    for (int m3 = -l3; m3 <= l3; m3++)
+                    {
+                        int lm3 = lm_by_l_m(l3, m3);
+                        complex16 z = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
+                        if (abs(z) > 1e-12) complex_gaunt_packed_(lm1, lm2).push_back(std::pair<int,complex16>(lm3, z));
+                    }
+                }
+            }
+        }
+        
+        void solve_fv(Global& parameters,
+                      int fv_basis_size, 
+                      int num_gkvec, 
+                      int* gvec_index, 
+                      mdarray<double,2>& gkvec,
+                      mdarray<complex16,2>& matching_coefficients, 
+                      PeriodicFunction<double>* effective_potential, 
+                      PeriodicFunction<double>* effective_magnetic_field[3], 
+                      mdarray<complex16,2>& evecfv, 
+                      double* evalfv)
+        {
+            if (&parameters != &parameters_)
+                error(__FILE__, __LINE__, "different set of parameters");
+
+            Timer t("sirius::Band::solve_fv");
+            
+            mdarray<complex16,2> h(fv_basis_size, fv_basis_size);
+            mdarray<complex16,2> o(fv_basis_size, fv_basis_size);
+
+            o.zero();
+            set_fv_o(num_gkvec, matching_coefficients, gvec_index, o);
+
+            h.zero();
+            set_fv_h<nm>(num_gkvec, matching_coefficients, gkvec, gvec_index, effective_potential, h);
+
+            Timer *t1 = new Timer("sirius::Band::solve_fv:hegv<impl>");
+            int info = hegvx<cpu>(fv_basis_size, parameters.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), evalfv, 
+                                  &evecfv(0, 0), fv_basis_size);
+            delete t1;
+
+            if (info)
+            {
+                std::stringstream s;
+                s << "hegvx returned " << info;
+                error(__FILE__, __LINE__, s);
+            }
+        }
+
+        void solve_sv(Global& parameters,
+                      int scalar_wf_size, 
+                      int num_gkvec,
+                      int* fft_index, 
+                      double* evalfv, 
+                      mdarray<complex16,2>& scalar_wave_functions, 
+                      PeriodicFunction<double>* effective_magnetic_field[3],
+                      double* band_energies,
+                      mdarray<complex16,2>& evecsv)
+
+        {
+            if (&parameters != &parameters_)
+                error(__FILE__, __LINE__, "different set of parameters");
+
+            Timer t("sirius::Band::solve_sv");
+            
+            set_sv_h(scalar_wave_functions, scalar_wf_size, num_gkvec, fft_index, evalfv, effective_magnetic_field, 
+                     evecsv);
+            
+            if (parameters.num_mag_dims() == 1)
+            {
+                int info;                    
+                                           
+                info = heev<cpu>(parameters.num_fv_states(), 
+                                 &evecsv(0, 0), 
+                                 parameters.num_bands(), band_energies);
+                if (info)
+                {                            
+                    std::stringstream s;
+                    s << "heev returned" << info;
+                    error(__FILE__, __LINE__, s);
+                }
+                
+                info = heev<cpu>(parameters.num_fv_states(), 
+                                 &evecsv(parameters_.num_fv_states(), parameters.num_fv_states()), 
+                                 parameters.num_bands(), &band_energies[parameters.num_fv_states()]);
+                if (info)
+                {
+                    std::stringstream s;
+                    s << "heev returned" << info;
+                    error(__FILE__, __LINE__, s);
+                }
+            }                                
+            else                             
+            {                                
+                int info = heev<cpu>(parameters.num_bands(), 
+                                     &evecsv(0, 0), 
+                                     parameters_.num_bands(), band_energies);
+                if (info)
+                {
+                    std::stringstream s;
+                    s << "heev returned" << info;
+                    error(__FILE__, __LINE__, s);
+                }
+            }
         }
 };
 

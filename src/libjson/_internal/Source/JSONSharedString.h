@@ -177,9 +177,9 @@ public:
 		return std_begin() + len;
 	}
 	
-	inline json_shared_string(void) : offset(0), len(0), _str(new(json_malloc<json_shared_string_internal>(1)) json_shared_string_internal(json_global(EMPTY_JSON_STRING))) {}
+	inline json_shared_string(void) : _str(new(json_malloc<json_shared_string_internal>(1)) json_shared_string_internal(json_global(EMPTY_JSON_STRING))), offset(0), len(0) {}
 	
-	inline json_shared_string(const json_string & str) : offset(0), len(str.length()), _str(new(json_malloc<json_shared_string_internal>(1)) json_shared_string_internal(str)) {}
+	inline json_shared_string(const json_string & str) : _str(new(json_malloc<json_shared_string_internal>(1)) json_shared_string_internal(str)), offset(0), len(str.length()) {}
 	
 	inline json_shared_string(const json_shared_string & str, size_t _offset, size_t _len) : _str(str._str), offset(str.offset + _offset), len(_len) {
 		++_str -> refCount;

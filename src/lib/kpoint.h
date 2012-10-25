@@ -34,60 +34,6 @@ class kpoint
 
         double vk_[3];
 
-    public:
-
-        kpoint(Global& parameters__, double* vk__, double weight__) : parameters_(parameters__), weight_(weight__)
-        {
-            for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
-
-            initialize();
-        }
-
-        void initialize()
-        {
-            if (parameters_.aw_cutoff() > double(parameters_.lmax_apw()))
-                error(__FILE__, __LINE__, "aw cutoff is too large for a given lmax");
-
-            double gk_cutoff = parameters_.aw_cutoff() / parameters_.min_mt_radius();
-            
-            if (gk_cutoff * 2 > parameters_.pw_cutoff())
-                error(__FILE__, __LINE__, "aw cutoff is too large for a given plane-wave cutoff");
-
-            std::vector< std::pair<double,int> > gkmap;
-
-            // find G-vectors for which |G+k| < cutoff
-            for (int ig = 0; ig < parameters_.num_gvec(); ig++)
-            {
-                double vgk[3];
-                for (int x = 0; x < 3; x++)
-                    vgk[x] = parameters_.gvec(ig)[x] + vk_[x];
-
-                double v[3];
-                parameters_.get_coordinates<cartesian,reciprocal>(vgk, v);
-                double gklen = vector_length(v);
-
-                if (gklen <= gk_cutoff) gkmap.push_back(std::pair<double,int>(gklen, ig));
-            }
-
-            std::sort(gkmap.begin(), gkmap.end());
-
-            gkvec_.set_dimensions(3, gkmap.size());
-            gkvec_.allocate();
-
-            gvec_index_.resize(gkmap.size());
-
-            for (int ig = 0; ig < (int)gkmap.size(); ig++)
-            {
-                gvec_index_[ig] = gkmap[ig].second;
-                for (int x = 0; x < 3; x++)
-                    gkvec_(x, ig) = parameters_.gvec(gkmap[ig].second)[x] + vk_[x];
-            }
-
-            fft_index_.resize(num_gkvec());
-            for (int ig = 0; ig < num_gkvec(); ig++)
-                fft_index_[ig] = parameters_.fft_index(gvec_index_[ig]);
-        }
-
         void generate_matching_coefficients()
         {
             Timer t("sirius::kpoint_data_set::generate_matching_coefficients");
@@ -246,6 +192,60 @@ class kpoint
                           scalar_wf_size() * parameters_.num_spins());
         }
 
+    public:
+
+        kpoint(Global& parameters__, double* vk__, double weight__) : parameters_(parameters__), weight_(weight__)
+        {
+            for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
+
+            initialize();
+        }
+
+        void initialize()
+        {
+            if (parameters_.aw_cutoff() > double(parameters_.lmax_apw()))
+                error(__FILE__, __LINE__, "aw cutoff is too large for a given lmax");
+
+            double gk_cutoff = parameters_.aw_cutoff() / parameters_.min_mt_radius();
+            
+            if (gk_cutoff * 2 > parameters_.pw_cutoff())
+                error(__FILE__, __LINE__, "aw cutoff is too large for a given plane-wave cutoff");
+
+            std::vector< std::pair<double,int> > gkmap;
+
+            // find G-vectors for which |G+k| < cutoff
+            for (int ig = 0; ig < parameters_.num_gvec(); ig++)
+            {
+                double vgk[3];
+                for (int x = 0; x < 3; x++)
+                    vgk[x] = parameters_.gvec(ig)[x] + vk_[x];
+
+                double v[3];
+                parameters_.get_coordinates<cartesian,reciprocal>(vgk, v);
+                double gklen = vector_length(v);
+
+                if (gklen <= gk_cutoff) gkmap.push_back(std::pair<double,int>(gklen, ig));
+            }
+
+            std::sort(gkmap.begin(), gkmap.end());
+
+            gkvec_.set_dimensions(3, gkmap.size());
+            gkvec_.allocate();
+
+            gvec_index_.resize(gkmap.size());
+
+            for (int ig = 0; ig < (int)gkmap.size(); ig++)
+            {
+                gvec_index_[ig] = gkmap[ig].second;
+                for (int x = 0; x < 3; x++)
+                    gkvec_(x, ig) = parameters_.gvec(gkmap[ig].second)[x] + vk_[x];
+            }
+
+            fft_index_.resize(num_gkvec());
+            for (int ig = 0; ig < num_gkvec(); ig++)
+                fft_index_[ig] = parameters_.fft_index(gvec_index_[ig]);
+        }
+
         void find_eigen_states(Band* band, PeriodicFunction<double>* effective_potential, 
                                PeriodicFunction<double>* effective_magnetic_field[3])
         {
@@ -259,28 +259,9 @@ class kpoint
 
             generate_matching_coefficients();
 
-            mdarray<complex16,2> h(fv_basis_size(), fv_basis_size());
-            mdarray<complex16,2> o(fv_basis_size(), fv_basis_size());
-
-            o.zero();
-            band->set_fv_o(num_gkvec(), matching_coefficients_, &gvec_index_[0], o);
-
-            h.zero();
-            band->set_fv_h<nm>(num_gkvec(), matching_coefficients_, gkvec_, &gvec_index_[0], effective_potential, h);
-
-            //write_h_o(h, o);
-            
-            Timer *t1 = new Timer("sirius::kpoint::find_eigen_states::hegv<impl>");
-            int info = hegvx<cpu>(fv_basis_size(), parameters_.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), &evalfv_[0], 
-                                  &evecfv_(0, 0), fv_basis_size());
-            delete t1;
-
-            if (info)
-            {
-                std::stringstream s;
-                s << "hegvx returned " << info;
-                error(__FILE__, __LINE__, s);
-            }
+            band->solve_fv(parameters_, fv_basis_size(), num_gkvec(), &gvec_index_[0], gkvec_, 
+                           matching_coefficients_, effective_potential, effective_magnetic_field, evecfv_,
+                           &evalfv_[0]);
 
             generate_scalar_wave_functions();
             
@@ -293,43 +274,10 @@ class kpoint
             
             if (parameters_.num_spins() == 2)
             {
-                band->set_sv_h(scalar_wave_functions_, scalar_wf_size(), num_gkvec(), fft_index(), &evalfv_[0], 
-                              effective_magnetic_field, evecsv_);
-                if (parameters_.num_mag_dims() == 1)
-                {
-                    int info;
-                    
-                    info = heev<cpu>(parameters_.num_fv_states(), &evecsv_(0, 0), parameters_.num_bands(), 
-                                     &band_energies_[0]);
-                    if (info)
-                    {
-                        std::stringstream s;
-                        s << "heev returned " << info;
-                        error(__FILE__, __LINE__, s);
-                    }
+                band->solve_sv(parameters_, scalar_wf_size(), num_gkvec(), fft_index(), &evalfv_[0], 
+                               scalar_wave_functions_, effective_magnetic_field, &band_energies_[0],
+                               evecsv_);
 
-                    info = heev<cpu>(parameters_.num_fv_states(), &evecsv_(parameters_.num_fv_states(), 
-                                     parameters_.num_fv_states()), parameters_.num_bands(), 
-                                     &band_energies_[parameters_.num_fv_states()]);
-                    if (info)
-                    {
-                        std::stringstream s;
-                        s << "heev returned " << info;
-                        error(__FILE__, __LINE__, s);
-                    }
-                }
-                else
-                {
-                    int info = heev<cpu>(parameters_.num_bands(), &evecsv_(0, 0), parameters_.num_bands(),
-                                         &band_energies_[0]);
-                    if (info)
-                    {
-                        std::stringstream s;
-                        s << "heev returned " << info;
-                        error(__FILE__, __LINE__, s);
-                    }
-                 }
-                
                 generate_spinor_wave_functions(1);
             }
             else
@@ -337,7 +285,6 @@ class kpoint
 
             /*for (int i = 0; i < 3; i++)
                 test_spinor_wave_functions(i); */
-
         }
 
         void test_scalar_wave_functions(int use_fft)
@@ -363,7 +310,8 @@ class kpoint
             {
                 if (use_fft == 0)
                 {
-                    parameters_.fft().input(num_gkvec(), &fft_index_[0], &scalar_wave_functions_(parameters_.mt_basis_size(), j1));
+                    parameters_.fft().input(num_gkvec(), &fft_index_[0], 
+                                            &scalar_wave_functions_(parameters_.mt_basis_size(), j1));
                     parameters_.fft().transform(1);
                     parameters_.fft().output(&v2[0]);
 
@@ -377,7 +325,8 @@ class kpoint
                 
                 if (use_fft == 1)
                 {
-                    parameters_.fft().input(num_gkvec(), &fft_index_[0], &scalar_wave_functions_(parameters_.mt_basis_size(), j1));
+                    parameters_.fft().input(num_gkvec(), &fft_index_[0], 
+                                            &scalar_wave_functions_(parameters_.mt_basis_size(), j1));
                     parameters_.fft().transform(1);
                     parameters_.fft().output(&v1[0]);
                 }

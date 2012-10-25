@@ -47,7 +47,14 @@ class AtomSymmetryClass
         /// overlap integrals
         mdarray<double,3> o_radial_integrals_;
 
+        /// core charge density
         std::vector<double> core_charge_density_;
+
+        /// core eigen-value sum
+        double core_eval_sum_;
+
+        /// core leakage
+        double core_leakage_;
         
         void generate_aw_radial_functions()
         {
@@ -468,7 +475,11 @@ class AtomSymmetryClass
             Spline<double> rho_mt(atom_type_->num_mt_points(), atom_type_->radial_grid());
             rho_mt.interpolate(core_charge_density_);
 
-            printf("Core leakage : %f \n", fourpi * (rho.integrate(2) - rho_mt.integrate(2)));
+            core_leakage_ = fourpi * (rho.integrate(2) - rho_mt.integrate(2));
+
+            core_eval_sum_ = 0.0;
+            for (int ist = 0; ist < atom_type_->num_core_levels_nl(); ist++)
+                core_eval_sum_ += enu_core[ist] * atom_type_->level_nl(ist).occupancy;
 
          }
 
@@ -482,6 +493,16 @@ class AtomSymmetryClass
          inline AtomType* atom_type()
          {
              return atom_type_;
+         }
+
+         inline double core_eval_sum()
+         {
+             return core_eval_sum_;
+         }
+
+         inline double core_leakage()
+         {
+             return core_leakage_;
          }
 };
 

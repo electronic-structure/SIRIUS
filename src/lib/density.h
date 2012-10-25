@@ -532,8 +532,8 @@ class Density
                         rho_->f_rlm(0, ir, ia) += parameters_.atom_symmetry_class(ic)->core_charge_density(ir) / y00;
                 }
             }
-            
-            //printf("Total charge : %f\n", rho_->integrate(rlm_component | it_component));
+
+            parameters_.rti().total_charge_ibz = rho_->integrate(rlm_component | it_component);
         }
 
         void add_kpoint(int kpoint_id, double* vk, double weight)

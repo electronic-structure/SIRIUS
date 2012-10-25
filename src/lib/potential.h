@@ -564,7 +564,9 @@ class Potential
             // add Hartree potential to the total potential
             effective_potential_->add(hartree_potential, rlm_component | it_component);
 
-            //hartree_potential_->deallocate();
+            // compute <rho | V_H>
+            parameters_.rti().energy_vha = rho->inner(hartree_potential, rlm_component | it_component);
+
             delete hartree_potential;
 
             rho->deallocate(ylm_component);
@@ -592,11 +594,15 @@ class Potential
             xc(rho, magnetization, xc_potential, xc_magnetic_field, xc_energy_density);
             
             effective_potential_->add(xc_potential, rlm_component | it_component);
-            
-            
-            printf("Vxc : %f\n", rho->inner(xc_potential, rlm_component | it_component));
-            printf("Exc : %f\n", rho->inner(xc_energy_density, rlm_component | it_component));
-        
+
+            parameters_.rti().energy_vxc = rho->inner(xc_potential, rlm_component | it_component);
+            parameters_.rti().energy_exc = rho->inner(xc_energy_density, rlm_component | it_component);
+
+            double ebxc = 0.0;
+            for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                ebxc += magnetization[j]->inner(xc_magnetic_field[j], rlm_component | it_component);
+            parameters_.rti().energy_bxc = ebxc;
+
             delete xc_potential;
 
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
