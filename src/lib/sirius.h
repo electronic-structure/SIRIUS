@@ -48,8 +48,9 @@ extern "C" {
 #include "sht.h"
 #include "json_tree.h"
 #include "hdf5_tree.h" 
-#include "xc_potential.h"
+#include "libxc_interface.h"
 #include "run_time_info.h"
+
 //
 // stack of classes for Global class
 //

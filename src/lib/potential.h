@@ -71,7 +71,7 @@ class Potential
         {
             delete effective_potential_; // TODO: check for memory leak
         }
-        
+
         void initialize()
         {
             Timer t("sirius::Potential::initialize");
@@ -469,10 +469,10 @@ class Potential
                 }
                 
                 if (parameters_.num_spins() == 1) 
-                    xc_potential::get(sht_.num_points() * nmtp, &rhotp(0, 0), &vxctp(0, 0), &exctp(0, 0));
+                    libxc_interface::getxc(sht_.num_points() * nmtp, &rhotp(0, 0), &vxctp(0, 0), &exctp(0, 0));
                 else
-                    xc_potential::get(sht_.num_points() * nmtp, &rhotp(0, 0), &magtp(0, 0), &vxctp(0, 0), 
-                                      &bxctp(0, 0), &exctp(0, 0));
+                    libxc_interface::getxc(sht_.num_points() * nmtp, &rhotp(0, 0), &magtp(0, 0), &vxctp(0, 0), 
+                                           &bxctp(0, 0), &exctp(0, 0));
 
                 sht_.rlm_forward_transform(&vxctp(0, 0), parameters_.lmmax_pot(), nmtp, 
                                            &xc_potential->f_rlm(0, 0, ia));
@@ -499,8 +499,8 @@ class Potential
             }
             
             if (parameters_.num_spins() == 1)
-                xc_potential::get(parameters_.fft().size(), rho->f_it(), xc_potential->f_it(), 
-                                  xc_energy_density->f_it());
+                libxc_interface::getxc(parameters_.fft().size(), rho->f_it(), xc_potential->f_it(), 
+                                       xc_energy_density->f_it());
             else
             {
                 std::vector<double> magit(parameters_.fft().size());
@@ -513,8 +513,8 @@ class Potential
                         t += magnetization[j]->f_it(ir) * magnetization[j]->f_it(ir);
                     magit[ir] = sqrt(t);
                 }
-                xc_potential::get(parameters_.fft().size(), rho->f_it(), &magit[0], xc_potential->f_it(),
-                                  &bxcit[0], xc_energy_density->f_it());
+                libxc_interface::getxc(parameters_.fft().size(), rho->f_it(), &magit[0], xc_potential->f_it(), 
+                                       &bxcit[0], xc_energy_density->f_it());
                 
                 for (int ir = 0; ir < parameters_.fft().size(); ir++)
                     if (magit[ir] > 1e-8)

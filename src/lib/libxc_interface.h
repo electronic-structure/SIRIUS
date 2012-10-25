@@ -1,44 +1,16 @@
 namespace sirius
 {
 
-class xc_potential
+class libxc_interface
 {
     public:
         
-        /*static void get(int size, double* rho, double* vxc, double* exc)
-        {
-            std::vector<double> tmp(size);
-            memset(vxc, 0, size * sizeof(double)); 
-            memset(exc, 0, size * sizeof(double));
-
-            int xc_id[] = {1, 7};
-            xc_func_type func;
-    
-            for (int i = 0; i < 2; i++)
-            {
-                if(xc_func_init(&func, xc_id[i], XC_UNPOLARIZED) != 0)
-                    error(__FILE__, __LINE__, "functional is not found");
-       
-                xc_lda_vxc(&func, size, rho, &tmp[0]);
-
-                for (int j = 0; j < size; j++)
-                    vxc[j] += tmp[j];
-
-                xc_lda_exc(&func, size, rho, &tmp[0]);
-
-                for (int j = 0; j < size; j++)
-                    exc[j] += tmp[j];
-      
-                xc_func_end(&func);
-            }
-        }*/
-
-        static void get(int size, double* rho, double* vxc, double* exc)
+       static void getxc(int size, double* rho, double* vxc, double* exc)
         {
             memset(vxc, 0, size * sizeof(double)); 
             memset(exc, 0, size * sizeof(double));
 
-            int xc_id[] = {1, 7};
+            int xc_id[] = {XC_LDA_X, XC_LDA_C_VWN};
             xc_func_type func;
     
             std::vector<double> vxc_tmp(size);
@@ -66,7 +38,7 @@ class xc_potential
             }
         }
 
-        static void get(int size, double* rho, double* mag, double* vxc, double* bxc, double* exc)
+        static void getxc(int size, double* rho, double* mag, double* vxc, double* bxc, double* exc)
         {
             memset(vxc, 0, size * sizeof(double)); 
             memset(bxc, 0, size * sizeof(double)); 
@@ -98,7 +70,7 @@ class xc_potential
             std::vector<double> vxc_tmp(size * 2);
             std::vector<double> exc_tmp(size);
             
-            int xc_id[] = {1, 7};
+            int xc_id[] = {XC_LDA_X, XC_LDA_C_VWN};
             xc_func_type func;
     
             for (int i = 0; i < 2; i++)

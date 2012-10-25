@@ -685,7 +685,7 @@ class AtomType
                     vh[i] = fourpi * (g2[i] / radial_grid_[i] + t1 - g1[i]);
                 
                 // compute XC potential and energy
-                xc_potential::get(rho.size(), &rho[0], &vxc[0], &exc[0]);
+                libxc_interface::getxc(rho.size(), &rho[0], &vxc[0], &exc[0]);
 
                 for (int i = 0; i < radial_grid_.size(); i++)
                     veff[i] = (1 - beta) * veff[i] + beta * (vnuc[i] + vh[i] + vxc[i]);
