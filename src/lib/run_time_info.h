@@ -26,7 +26,14 @@ class run_time_info
         double eval_sum;
         
         std::vector<double> core_leakage;
-        
+
+        std::vector<double> mt_charge;
+        double it_charge;
+        double total_charge;
+
+        std::vector<double> mt_magnetization[3];
+        double it_magnetization[3];
+        double total_magnetization[3];
 
 
 };

@@ -338,6 +338,74 @@ class Global : public StepFunction
 
         void print_rti()
         {
+            double total_core_leakage = 0.0;
+
+            printf("\n");
+            printf("Charges and magnetic moments\n");
+            for (int i = 0; i < 80; i++) printf("-");
+            printf("\n"); 
+            printf("atom      charge    core leakage");
+            if (num_mag_dims())
+                printf("              moment              |moment|");
+            printf("\n");
+            for (int i = 0; i < 80; i++) printf("-");
+            printf("\n"); 
+
+            for (int ia = 0; ia < num_atoms(); ia++)
+            {
+                double core_leakage = atom(ia)->symmetry_class()->core_leakage();
+                total_core_leakage += core_leakage;
+                printf("%4i  %10.6f  %10.8e", ia, rti().mt_charge[ia], core_leakage);
+                if (num_mag_dims())
+                {
+                    double v[] = {0, 0, 0};
+                    v[2] = rti().mt_magnetization[0][ia];
+                    if (num_mag_dims() == 3)
+                    {
+                        v[0] = rti().mt_magnetization[1][ia];
+                        v[1] = rti().mt_magnetization[2][ia];
+                    }
+                    printf("  (%8.4f %8.4f %8.4f)  %10.6f", v[0], v[1], v[2], vector_length(v));
+                }
+                printf("\n");
+            }
+            
+            printf("\n");
+            printf("interstitial charge   : %10.6f\n", rti().it_charge);
+            if (num_mag_dims())
+            {
+                double v[] = {0, 0, 0};
+                v[2] = rti().it_magnetization[0];
+                if (num_mag_dims() == 3)
+                {
+                    v[0] = rti().it_magnetization[1];
+                    v[1] = rti().it_magnetization[2];
+                }
+                printf("interstitial moment   : (%8.4f %8.4f %8.4f)\n", v[0], v[1], v[2]);
+                printf("interstitial |moment| : %10.6f\n", vector_length(v));
+            }
+            
+            printf("\n");
+            printf("total charge          : %10.6f\n", rti().total_charge);
+            printf("total core leakage    : %10.8e\n", total_core_leakage);
+            if (num_mag_dims())
+            {
+                double v[] = {0, 0, 0};
+                v[2] = rti().total_magnetization[0];
+                if (num_mag_dims() == 3)
+                {
+                    v[0] = rti().total_magnetization[1];
+                    v[1] = rti().total_magnetization[2];
+                }
+                printf("total moment          : (%8.4f %8.4f %8.4f)\n", v[0], v[1], v[2]);
+                printf("total |moment|        : %10.6f\n", vector_length(v));
+            }
+            
+            printf("\n");
+            printf("Energy\n");
+            for (int i = 0; i < 80; i++) printf("-");
+            printf("\n"); 
+
             double energy_kin = rti().eval_sum - rti().energy_veff;
             
             printf("kinetic energy   : %18.8f\n", energy_kin);

@@ -341,71 +341,16 @@ class Density
 
         void integrate()
         {
-            printf("\n");
-            printf("Charges and magnetic moments\n");
-            for (int i = 0; i < 80; i++) printf("-");
-            printf("\n"); 
+            parameters_.rti().total_charge = rho_->integrate(rlm_component | it_component, 
+                                                             parameters_.rti().mt_charge, 
+                                                             parameters_.rti().it_charge); 
 
-            double total_charge;
-            double it_charge;
-            std::vector<double> mt_charge;
-
-            double total_magnetization[3];
-            double it_magnetization[3];
-            std::vector<double> mt_magnetization[3];
-
-            total_charge = rho_->integrate(rlm_component | it_component, mt_charge, it_charge);
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                total_magnetization[j] = magnetization_[j]->integrate(rlm_component | it_component, 
-                                                                      mt_magnetization[j], it_magnetization[j]);
-            printf("muffin-tin\n");
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            {
-                printf("atom : %4i   charge : %8.4f", ia, mt_charge[ia]);
-                if (parameters_.num_mag_dims())
-                {
-                    double v[] = {0, 0, 0};
-                    v[2] = mt_magnetization[0][ia];
-                    if (parameters_.num_mag_dims() == 3)
-                    {
-                        v[0] = mt_magnetization[1][ia];
-                        v[1] = mt_magnetization[2][ia];
-                    }
-                    printf("   moment : (%8.4f %8.4f %8.4f)   |moment| : %8.4f", v[0], v[1], v[2], vector_length(v));
-                }
-                printf("\n");
-            }
-            
-            printf("interstitial\n");
-            printf("              charge : %8.4f", it_charge);
-            if (parameters_.num_mag_dims())
-            {
-                double v[] = {0, 0, 0};
-                v[2] = it_magnetization[0];
-                if (parameters_.num_mag_dims() == 3)
-                {
-                    v[0] = it_magnetization[1];
-                    v[1] = it_magnetization[2];
-                }
-                printf("   moment : (%8.4f %8.4f %8.4f)   |moment| : %8.4f", v[0], v[1], v[2], vector_length(v));
-            }
-            printf("\n");
-            
-            printf("total\n");
-            printf("              charge : %8.4f", total_charge);
-            if (parameters_.num_mag_dims())
-            {
-                double v[] = {0, 0, 0};
-                v[2] = total_magnetization[0];
-                if (parameters_.num_mag_dims() == 3)
-                {
-                    v[0] = total_magnetization[1];
-                    v[1] = total_magnetization[2];
-                }
-                printf("   moment : (%8.4f %8.4f %8.4f)   |moment| : %8.4f", v[0], v[1], v[2], vector_length(v));
-            }
-            printf("\n");
-        }
+                parameters_.rti().total_magnetization[j] = 
+                    magnetization_[j]->integrate(rlm_component | it_component, 
+                                                 parameters_.rti().mt_magnetization[j], 
+                                                 parameters_.rti().it_magnetization[j]);
+       }
 
         void generate()
         {
