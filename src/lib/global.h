@@ -336,6 +336,7 @@ class Global : public StepFunction
             return energy_kin + rti().energy_exc + 0.5 * rti().energy_vha + rti().energy_enuc;
         }
 
+        /// Print run-time information.
         void print_rti()
         {
             double total_core_leakage = 0.0;
