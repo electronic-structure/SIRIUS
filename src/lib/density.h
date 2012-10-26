@@ -534,6 +534,21 @@ class Density
             }
 
             parameters_.rti().total_charge_ibz = rho_->integrate(rlm_component | it_component);
+
+            // compute eigen-value sums
+            double eval_sum = 0.0;
+            for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
+                eval_sum += parameters_.atom_symmetry_class(ic)->core_eval_sum() *
+                            parameters_.atom_symmetry_class(ic)->num_atoms();
+            
+            for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
+            {
+                double wk = kpoint_set_[ik]->weight();
+                for (int j = 0; j < parameters_.num_bands(); j++)
+                    eval_sum += wk * kpoint_set_[ik]->band_energy(j) * kpoint_set_[ik]->band_occupancy(j);
+            }
+            
+            parameters_.rti().eval_sum = eval_sum;
         }
 
         void add_kpoint(int kpoint_id, double* vk, double weight)

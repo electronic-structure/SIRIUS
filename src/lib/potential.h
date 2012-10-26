@@ -567,6 +567,17 @@ class Potential
             // compute <rho | V_H>
             parameters_.rti().energy_vha = rho->inner(hartree_potential, rlm_component | it_component);
 
+            // compute Eenuc
+            double enuc = 0.0;
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                int zn = parameters_.atom(ia)->type()->zn();
+                double r0 = parameters_.atom(ia)->type()->radial_grid(0);
+                enuc -= 0.5 * zn * (hartree_potential->f_rlm(0, 0, ia) * y00 + zn / r0);
+            }
+            parameters_.rti().energy_enuc = enuc;
+
+
             delete hartree_potential;
 
             rho->deallocate(ylm_component);
@@ -595,6 +606,7 @@ class Potential
             
             effective_potential_->add(xc_potential, rlm_component | it_component);
 
+            parameters_.rti().energy_veff = rho->inner(effective_potential_, rlm_component | it_component);
             parameters_.rti().energy_vxc = rho->inner(xc_potential, rlm_component | it_component);
             parameters_.rti().energy_exc = rho->inner(xc_energy_density, rlm_component | it_component);
 

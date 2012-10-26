@@ -578,6 +578,11 @@ class kpoint
         {
             return band_occupancies_[j];
         }
+        
+        inline double band_energy(int j)
+        {
+            return band_energies_[j];
+        }
 
         inline double weight()
         {

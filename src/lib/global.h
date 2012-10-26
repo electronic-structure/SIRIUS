@@ -303,6 +303,35 @@ class Global : public StepFunction
             for (int ia = 0; ia < num_atoms(); ia++)
                 atom(ia)->generate_radial_integrals();
         }
+
+        /// Get the total energy of the electronic subsystem.
+
+        /** From the definition of the density functional we have
+
+            \f{eqnarray*}{
+                E[\rho] = T[\rho] + E^{H}[\rho] + E^{XC}[\rho] + E^{ext}[\rho]
+            \f}
+            where \f$ T[\rho] \f$ is the kinetic energy, \f$ E^{H}[\rho] \f$ - electrostatic energy of
+            electron-electron density interaction, \f$ E^{XC}[\rho] \f$ - exchange-correlation energy
+            and \f$ E^{ext}[\rho] \f$ - energy in the external field of nuclei.
+            Electrostatic and external field energies are grouped in the following way:
+            \f[
+                \frac{1}{2} \int \int \frac{\rho({\bf r})\rho({\bf r'}) d{\bf r} d{\bf r'}}{|{\bf r} - {\bf r'}|} + 
+                    \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r} = \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} + 
+                    \frac{1}{2} \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r}
+            \f]
+            Here \f$ V^{H}({\bf r}) \f$ is the total (electron + nuclei) electrostatic potential returned by the 
+            poisson solver. Next we transform the remaining term:
+            \f[
+                \frac{1}{2} \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r} = 
+                \frac{1}{2} \int \int \frac{\rho({\bf r})\rho^{nuc}({\bf r'}) d{\bf r} d{\bf r'}}{|{\bf r} - {\bf r'}|} = 
+                \frac{1}{2} \int V^{H,el}({\bf r}) \rho^{nuc}({\bf r}) d{\bf r}
+            \f]
+        */
+        double total_energy()
+        {
+
+        }
 };
 
 Global global;
