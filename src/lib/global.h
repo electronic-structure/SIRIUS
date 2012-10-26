@@ -331,7 +331,19 @@ class Global : public StepFunction
         */
         double total_energy()
         {
+            double energy_kin = rti().eval_sum - rti().energy_veff;
 
+            return energy_kin + rti().energy_exc + 0.5 * rti().energy_vha + rti().energy_enuc;
+        }
+
+        void print_rti()
+        {
+            double energy_kin = rti().eval_sum - rti().energy_veff;
+            
+            printf("kinetic energy   : %18.8f\n", energy_kin);
+            printf("<rho|V^{XC}>     : %18.8f\n", rti().energy_exc);
+            printf("<rho|V^{H}>      : %18.8f\n", rti().energy_vha);
+            printf("Total energy     : %18.8f\n", total_energy());
         }
 };
 

@@ -533,7 +533,8 @@ class Density
                 }
             }
 
-            parameters_.rti().total_charge_ibz = rho_->integrate(rlm_component | it_component);
+            if (fabs(rho_->integrate(rlm_component | it_component) - parameters_.num_electrons()) > 1e-5)
+                error(__FILE__, __LINE__, "wrong charge density");
 
             // compute eigen-value sums
             double eval_sum = 0.0;

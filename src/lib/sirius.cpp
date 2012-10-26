@@ -294,18 +294,7 @@ void FORTRAN(sirius_band)(real8* vk, real8* band_energies)
 
 void FORTRAN(sirius_print_rti)(void)
 {
-    double energy_kin = sirius::global.rti().eval_sum - sirius::global.rti().energy_veff;
-
-    printf("kinetic energy : %18.8f\n", energy_kin);
-    printf("XC energy : %18.8f\n", sirius::global.rti().energy_exc);
-    printf("Coulomb energy : %18.8f\n", sirius::global.rti().energy_vha * 0.5);
-
-    double total_energy = energy_kin + sirius::global.rti().energy_exc + 0.5 * sirius::global.rti().energy_vha + 
-                          sirius::global.rti().energy_enuc;
-
-    printf("Total energy : %18.8f\n", total_energy);
-
-
+    sirius::global.print_rti();
 }
 
 }

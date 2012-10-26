@@ -27,8 +27,6 @@ class run_time_info
         
         std::vector<double> core_leakage;
         
-        double total_charge_ibz;
-
 
 
 };
