@@ -29,7 +29,7 @@ class reciprocal_lattice : public geometry
         /// mapping betwee linear G-vector index and position in FFT buffer
         std::vector<int> fft_index_;
 
-        /// phase factors e^{i G r_{alpha})
+        /// phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
         mdarray<complex16,2> gvec_phase_factor_; 
 
     public:

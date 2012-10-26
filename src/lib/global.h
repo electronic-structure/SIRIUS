@@ -306,14 +306,15 @@ class Global : public StepFunction
 
         /// Get the total energy of the electronic subsystem.
 
-        /** From the definition of the density functional we have
-
-            \f{eqnarray*}{
+        /** From the definition of the density functional we have:
+            
+            \f[
                 E[\rho] = T[\rho] + E^{H}[\rho] + E^{XC}[\rho] + E^{ext}[\rho]
-            \f}
+            \f]
             where \f$ T[\rho] \f$ is the kinetic energy, \f$ E^{H}[\rho] \f$ - electrostatic energy of
             electron-electron density interaction, \f$ E^{XC}[\rho] \f$ - exchange-correlation energy
             and \f$ E^{ext}[\rho] \f$ - energy in the external field of nuclei.
+            
             Electrostatic and external field energies are grouped in the following way:
             \f[
                 \frac{1}{2} \int \int \frac{\rho({\bf r})\rho({\bf r'}) d{\bf r} d{\bf r'}}{|{\bf r} - {\bf r'}|} + 

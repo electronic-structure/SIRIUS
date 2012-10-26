@@ -45,10 +45,9 @@ class Band
                 zsum += complex_gaunt_packed_(lm1, lm2)[k].second * v[complex_gaunt_packed_(lm1, lm2)[k].first];
         }
 
-        /*! \brief Apply the muffin-tin part of the first-variational Hamiltonian to the
-                   apw basis function
-            
-            The following vector is computed:
+        /// Apply the muffin-tin part of the first-variational Hamiltonian to the apw basis function
+        
+        /** The following vector is computed:
             \f[
               b_{L_2 \nu_2}^{\alpha}({\bf G'}) = \sum_{L_1 \nu_1} \sum_{L_3} 
                 a_{L_1\nu_1}^{\alpha*}({\bf G'}) 
