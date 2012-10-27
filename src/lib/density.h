@@ -6,6 +6,12 @@ class Density
     private:
 
         Global& parameters_;
+
+        Band* band_;
+
+        Potential* potential_;
+
+        int allocate_f_;
         
         PeriodicFunction<double>* rho_;
         
@@ -148,8 +154,9 @@ class Density
                     for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
                     {
                         parameters_.fft().input(kp->num_gkvec(), kp->fft_index(), 
-                                           &kp->spinor_wave_function(parameters_.mt_basis_size(), ispn, bands[i].first),
-                                           thread_id);
+                                                &kp->spinor_wave_function(parameters_.mt_basis_size(), ispn, 
+                                                                          bands[i].first),
+                                                thread_id);
                         parameters_.fft().transform(1, thread_id);
                         parameters_.fft().output(&wfit(0, ispn), thread_id);
                     }
@@ -202,7 +209,13 @@ class Density
 
     public:
 
-        Density(Global& parameters__) : parameters_(parameters__)
+        Density(Global& parameters__, 
+                Band* band__, 
+                Potential* potential__, 
+                int allocate_f__ = pw_component) : parameters_(parameters__),
+                                                   band_(band__),
+                                                   potential_(potential__),
+                                                   allocate_f_(allocate_f__)
         {
             initialize();
         }
@@ -248,12 +261,12 @@ class Density
             kpoint_set_.clear();
 
             rho_ = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
-            rho_->allocate(pw_component);
+            rho_->allocate(allocate_f_);
 
             for (int i = 0; i < parameters_.num_mag_dims(); i++)
             {
                 magnetization_[i] = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
-                magnetization_[i]->allocate(pw_component);
+                magnetization_[i]->allocate(allocate_f_);
             }
 
             dmat_spins_.clear();
@@ -379,21 +392,21 @@ class Density
             }
 
             // generate radial functions
-            potential->set_spherical_potential();
+            potential_->set_spherical_potential();
             parameters_.generate_radial_functions();
             
             // generate radial integrals
-            potential->set_nonspherical_potential();
+            potential_->set_nonspherical_potential();
             parameters_.generate_radial_integrals();
 
             // generate plane-wave coefficients of the potential in the interstitial region
             for (int ir = 0; ir < parameters_.fft().size(); ir++)
-                 potential->effective_potential()->f_it(ir) *= parameters_.step_function(ir);
+                 potential_->effective_potential()->f_it(ir) *= parameters_.step_function(ir);
 
-            parameters_.fft().input(potential->effective_potential()->f_it());
+            parameters_.fft().input(potential_->effective_potential()->f_it());
             parameters_.fft().transform(-1);
             parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), 
-                                     potential->effective_potential()->f_pw());
+                                     potential_->effective_potential()->f_pw());
 
             // auxiliary density matrix
             mdarray<double,5> mt_density_matrix(parameters_.max_mt_radial_basis_size(), 
@@ -410,8 +423,8 @@ class Density
             for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
             {
                 // solve secular equatiion and generate wave functions
-                kpoint_set_[ik]->find_eigen_states(band, potential->effective_potential(),
-                                                   potential->effective_magnetic_field());
+                kpoint_set_[ik]->find_eigen_states(band_, potential_->effective_potential(),
+                                                   potential_->effective_magnetic_field());
                 // add to charge density and magnetization
                 add_k_contribution(kpoint_set_[ik], mt_density_matrix);
             }
@@ -480,6 +493,10 @@ class Density
 
             if (fabs(rho_->integrate(rlm_component | it_component) - parameters_.num_electrons()) > 1e-5)
                 error(__FILE__, __LINE__, "wrong charge density");
+                
+/*            std::cout << "m=" << magnetization_[0]->integrate(rlm_component | it_component) << " " << 
+                                 magnetization_[1]->integrate(rlm_component | it_component) << " " << 
+                                 magnetization_[2]->integrate(rlm_component | it_component) << " " << std::endl;*/
 
             // compute eigen-value sums
             double eval_sum = 0.0;

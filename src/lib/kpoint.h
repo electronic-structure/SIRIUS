@@ -250,6 +250,7 @@ class kpoint
                                PeriodicFunction<double>* effective_magnetic_field[3])
         {
             assert(fv_basis_size() > parameters_.num_fv_states());
+            assert(band != NULL);
             
             Timer t("sirius::kpoint::find_eigen_states");
             

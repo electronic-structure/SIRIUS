@@ -89,7 +89,16 @@ class libxc_interface
 
                 xc_func_end(&func);
             }
-        }
+
+            for (int i = 0; i < size; i++)
+            {
+                if (vxc[i] > 0.0)
+                    error(__FILE__, __LINE__, "vxc > 0");
+                
+                if (bxc[i] > 0.0)
+                    error(__FILE__, __LINE__, "bxc > 0");
+            }
+         }
 };
 
 };

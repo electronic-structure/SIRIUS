@@ -16,23 +16,8 @@ class StepFunction : public reciprocal_lattice
         
         /// volume of interstitial region
         double volume_it_;
-    
-    public:
 
-        inline double volume_mt()
-        {
-            return volume_mt_;
-        }
-
-        inline double volume_it()
-        {
-            return volume_it_;
-        }
-        
-        /*inline void get_step_function(double* ptr)
-        {
-            memcpy(ptr, &step_function_[0], fft().size() * sizeof(double));
-        }*/
+    protected:
 
         //TODO: candidate for parallelization 
         void init()
@@ -97,7 +82,24 @@ class StepFunction : public reciprocal_lattice
             }
         }
 
-        inline complex16& step_function_pw(int ig)
+     public:
+
+        inline double volume_mt()
+        {
+            return volume_mt_;
+        }
+
+        inline double volume_it()
+        {
+            return volume_it_;
+        }
+        
+        /*inline void get_step_function(double* ptr)
+        {
+            memcpy(ptr, &step_function_[0], fft().size() * sizeof(double));
+        }*/
+
+       inline complex16& step_function_pw(int ig)
         {
             return step_function_pw_[ig];
         }

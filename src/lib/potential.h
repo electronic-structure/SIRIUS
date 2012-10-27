@@ -44,6 +44,8 @@ class Potential
     private:
         
         Global& parameters_;
+
+        int allocate_f_;
         
         PeriodicFunction<double>* effective_potential_;
         
@@ -61,8 +63,9 @@ class Potential
 
     public:
 
-        Potential(Global& parameters__) : parameters_(parameters__), 
-                                          pseudo_density_order(9)
+        Potential(Global& parameters__, int allocate_f__ = pw_component) : parameters_(parameters__),
+                                                                           allocate_f_(allocate_f__),
+                                                                           pseudo_density_order(9)
         {
             initialize();
         }
@@ -122,12 +125,12 @@ class Potential
             }
             
             effective_potential_ = new PeriodicFunction<double>(parameters_, parameters_.lmax_pot());
-            effective_potential_->allocate(pw_component);
+            effective_potential_->allocate(allocate_f_);
 
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
             {
                 effective_magnetic_field_[j] = new PeriodicFunction<double>(parameters_, parameters_.lmax_pot());
-                effective_magnetic_field_[j]->allocate(pw_component);
+                effective_magnetic_field_[j]->allocate(allocate_f_);
             }
 
             sht_.set_lmax(lmax);
@@ -643,6 +646,21 @@ class Potential
             
             out.close();
 #endif
+
+            for (int j = 0; j < parameters_.num_mag_dims(); j++)
+            {
+                std::vector<double> mti;
+                double iti;
+                double tot;
+                tot = effective_magnetic_field_[j]->integrate(rlm_component | it_component, mti, iti);
+                std::cout << "B total = " << tot << " mt = " << mti[0] << " it = " << iti << std::endl;
+                
+                tot = magnetization[j]->integrate(rlm_component | it_component, mti, iti);
+                std::cout << "M total = " << tot << " mt = " << mti[0] << " it = " << iti << std::endl;
+            }
+
+
+
            
             hdf5_tree fout("sirius.h5", true);
             effective_potential_->hdf5_write(fout.create_node("effective_potential"));
@@ -697,6 +715,11 @@ class Potential
         PeriodicFunction<double>* effective_magnetic_field(int i)
         {
             return effective_magnetic_field_[i];
+        }
+        
+        void initial_effective_magnetic_field()
+        {
+        
         }
 };
 
