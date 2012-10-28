@@ -716,11 +716,6 @@ class Potential
         {
             return effective_magnetic_field_[i];
         }
-        
-        void initial_effective_magnetic_field()
-        {
-        
-        }
 };
 
 Potential* potential = NULL;

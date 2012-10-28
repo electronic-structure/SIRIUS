@@ -42,7 +42,6 @@ int main(int argn, char** argv)
     density->initial_density();
     
     potential->generate_effective_potential(density->rho(), density->magnetization());
-    potential->initial_effective_magnetic_field();
     
     density->generate();
 
