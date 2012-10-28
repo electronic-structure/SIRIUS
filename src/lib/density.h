@@ -363,7 +363,49 @@ class Density
                     magnetization_[j]->integrate(rlm_component | it_component, 
                                                  parameters_.rti().mt_magnetization[j], 
                                                  parameters_.rti().it_magnetization[j]);
-       }
+        }
+
+        void find_eigen_states()
+        {
+            // generate radial functions
+            potential_->set_spherical_potential();
+            parameters_.generate_radial_functions();
+            
+            // generate radial integrals
+            potential_->set_nonspherical_potential();
+            parameters_.generate_radial_integrals();
+
+            // generate plane-wave coefficients of the potential in the interstitial region
+            for (int ir = 0; ir < parameters_.fft().size(); ir++)
+                 potential_->effective_potential()->f_it(ir) *= parameters_.step_function(ir);
+
+            parameters_.fft().input(potential_->effective_potential()->f_it());
+            parameters_.fft().transform(-1);
+            parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), 
+                                     potential_->effective_potential()->f_pw());
+
+            for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
+            {
+                // solve secular equatiion and generate wave functions
+                kpoint_set_[ik]->find_eigen_states(band_, potential_->effective_potential(),
+                                                   potential_->effective_magnetic_field());
+            }
+
+            // compute eigen-value sums
+            double eval_sum = 0.0;
+            for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
+                eval_sum += parameters_.atom_symmetry_class(ic)->core_eval_sum() *
+                            parameters_.atom_symmetry_class(ic)->num_atoms();
+            
+            for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
+            {
+                double wk = kpoint_set_[ik]->weight();
+                for (int j = 0; j < parameters_.num_bands(); j++)
+                    eval_sum += wk * kpoint_set_[ik]->band_energy(j) * kpoint_set_[ik]->band_occupancy(j);
+            }
+            
+            parameters_.rti().eval_sum = eval_sum;
+        }
 
         void generate()
         {
