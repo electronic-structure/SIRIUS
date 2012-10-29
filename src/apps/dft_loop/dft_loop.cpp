@@ -25,7 +25,7 @@ int main(int argn, char** argv)
     
     sirius::Density* density = new sirius::Density(global, band, potential, sirius::rlm_component | sirius::it_component | sirius::pw_component);
     
-    int ngridk[] = {4, 4, 4};
+    int ngridk[] = {2,2,2};
     int numkp = ngridk[0] * ngridk[1] * ngridk[2];
     int ik = 0;
     for (int i0 = 0; i0 < ngridk[0]; i0++) 
@@ -42,9 +42,13 @@ int main(int argn, char** argv)
     density->initial_density();
     
     potential->generate_effective_potential(density->rho(), density->magnetization());
-    
-    density->generate();
 
+    density->find_eigen_states();
+    density->find_band_occupancies();
+    density->generate();
+    
+    potential->generate_effective_potential(density->rho(), density->magnetization());
+    
 
 
     sirius::Timer::print();

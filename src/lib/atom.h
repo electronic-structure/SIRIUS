@@ -259,6 +259,11 @@ class Atom
         {
             return &b_radial_integrals_(0, idxrf1, idxrf2, x);
         }
+        
+        inline int num_mt_points()
+        {
+            return type_->num_mt_points();
+        }
 };
 
 };

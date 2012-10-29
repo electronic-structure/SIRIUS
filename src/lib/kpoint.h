@@ -604,6 +604,36 @@ class kpoint
         {
             return vk_;
         }
+
+        PeriodicFunction<complex16>* spinor_wave_function_component(int ispn, int j)
+        {
+            PeriodicFunction<complex16>* func = new PeriodicFunction<complex16>(parameters_, parameters_.lmax_apw());
+            func->allocate(ylm_component | it_component);
+            func->zero();
+
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                for (int i = 0; i < parameters_.atom(ia)->type()->mt_basis_size(); i++)
+                {
+                    int lm = parameters_.atom(ia)->type()->indexb(i).lm;
+                    int idxrf = parameters_.atom(ia)->type()->indexb(i).idxrf;
+                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                        func->f_ylm(lm, ir, ia) += 
+                            spinor_wave_functions_(parameters_.atom(ia)->offset_wf() + i, ispn, j) * 
+                            parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+                }
+            }
+
+            parameters_.fft().input(num_gkvec(), &fft_index_[0], 
+                                    &spinor_wave_functions_(parameters_.mt_basis_size(), ispn, j));
+            parameters_.fft().transform(1);
+            parameters_.fft().output(func->f_it());
+
+            for (int i = 0; i < parameters_.fft().size(); i++)
+                func->f_it(i) /= sqrt(parameters_.omega());
+            
+            return func;
+        }
 };
 
 };

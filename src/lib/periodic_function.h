@@ -7,13 +7,13 @@ const int ylm_component = 1 << 1;
 const int pw_component = 1 << 2;
 const int it_component = 1 << 3;
 
-template <typename T, typename U> class coupled_type_wrapper;
+/*template <typename T, typename U> class coupled_type_wrapper;
 
 template <typename T> class coupled_type_wrapper<T,T>
 {
     public:
         typedef T coupled_t;
-};
+};*/
 
 /*!
     \brief Representation of the periodical function on the muffin-tin geometry
@@ -240,8 +240,7 @@ template<typename T> class PeriodicFunction
         /*! 
             \brief Computes the inner product <f|g>, where f is "this" and g is the argument
         */
-        template <typename U>
-        inline typename coupled_type_wrapper<T,U>::coupled_t inner(PeriodicFunction<U>* g, int flg)
+        template <int flg> inline T inner(PeriodicFunction<T>* g)
         {
             // put asserts here
 
@@ -269,6 +268,22 @@ template<typename T> class PeriodicFunction
                     s.interpolate();
                     
                     result += s.integrate(2);
+                }
+            }
+            
+            if (flg & ylm_component)
+            {
+                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                {
+                    int nmtp = parameters_.atom(ia)->type()->num_mt_points();
+                    Spline<complex_t> s(nmtp, parameters_.atom(ia)->type()->radial_grid());
+                   
+                    for (int ir = 0; ir < nmtp; ir++)
+                        for (int lm = 0; lm < lmmax; lm++)
+                            s[ir] += primitive_type_wrapper<T>::conjugate(f_ylm_(lm, ir, ia)) * g->f_ylm_(lm, ir, ia);
+                    s.interpolate();
+                    
+                    result += primitive_type_wrapper<T>::sift(s.integrate(2));
                 }
             }
 

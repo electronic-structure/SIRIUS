@@ -33,10 +33,20 @@ template<> class primitive_type_wrapper<double>
         {
             return H5T_NATIVE_DOUBLE;
         }
-
+        
         static inline double conjugate(double& v)
         {
             return v;
+        }
+
+        static inline std::complex<double> conjugate(std::complex<double>& v)
+        {
+            return conj(v);
+        }
+        
+        static inline double sift(std::complex<double> v)
+        {
+            return real(v);
         }
 };
 
@@ -52,6 +62,16 @@ template<> class primitive_type_wrapper< std::complex<double> >
     public:
         typedef std::complex<double> complex_t;
         typedef double real_t;
+        
+        static inline std::complex<double> conjugate(std::complex<double>& v)
+        {
+            return conj(v);
+        }
+        
+        static inline std::complex<double> sift(std::complex<double> v)
+        {
+            return v;
+        }
 };
 
 template<> class primitive_type_wrapper< std::complex<float> >

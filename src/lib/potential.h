@@ -568,7 +568,7 @@ class Potential
             effective_potential_->add(hartree_potential, rlm_component | it_component);
 
             // compute <rho | V_H>
-            parameters_.rti().energy_vha = rho->inner(hartree_potential, rlm_component | it_component);
+            parameters_.rti().energy_vha = rho->inner<rlm_component | it_component>(hartree_potential);
 
             // compute Eenuc
             double enuc = 0.0;
@@ -609,13 +609,13 @@ class Potential
             
             effective_potential_->add(xc_potential, rlm_component | it_component);
 
-            parameters_.rti().energy_veff = rho->inner(effective_potential_, rlm_component | it_component);
-            parameters_.rti().energy_vxc = rho->inner(xc_potential, rlm_component | it_component);
-            parameters_.rti().energy_exc = rho->inner(xc_energy_density, rlm_component | it_component);
+            parameters_.rti().energy_veff = rho->inner<rlm_component | it_component>(effective_potential_);
+            parameters_.rti().energy_vxc = rho->inner<rlm_component | it_component>(xc_potential);
+            parameters_.rti().energy_exc = rho->inner<rlm_component | it_component>(xc_energy_density);
 
             double ebxc = 0.0;
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                ebxc += magnetization[j]->inner(xc_magnetic_field[j], rlm_component | it_component);
+                ebxc += magnetization[j]->inner<rlm_component | it_component>(xc_magnetic_field[j]);
             parameters_.rti().energy_bxc = ebxc;
 
             delete xc_potential;

@@ -48,3 +48,8 @@ inline int l_by_lm(int lm)
     return l_values[lm];
 }
 
+double fermi_dirac_distribution(double e)
+{
+    double kT = 0.001;
+    return (1.0 / (exp(e / kT) + 1.0));
+}

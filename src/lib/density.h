@@ -82,6 +82,7 @@ class Density
                 if (wo > 1e-14)
                     bands.push_back(std::pair<int,double>(j, wo));
             }
+            if (bands.size() == 0) return;
            
             // if we have ud and du spin blocks, don't compute one of them (du in this implementation)
             // because density matrix is symmetric
@@ -205,6 +206,53 @@ class Density
             }
             
             t3.stop();
+
+#if 0
+            std::vector< std::pair< PeriodicFunction<complex16>*, PeriodicFunction<complex16>* > > wfs;
+
+            for (int i = 0; i < (int)bands.size(); i++)
+            {
+                std::pair< PeriodicFunction<complex16>*, PeriodicFunction<complex16>* > wf;
+                wf.first = kp->spinor_wave_function_component(0, bands[i].first);
+                wf.second= kp->spinor_wave_function_component(1, bands[i].first);
+                wfs.push_back(wf);
+            }
+            
+            static double mom = 0.0;
+            
+            double mom_k = 0.0;
+
+            for (int i = 0; i < (int)wfs.size(); i++)
+            {
+                /*std::cout << "<wf_i|wf_i> = " << wfs[i].first->inner<ylm_component | it_component>(wfs[i].first) +
+                                                 wfs[i].second->inner<ylm_component | it_component>(wfs[i].second) <<
+                                                 std::endl;
+                mom += bands[i].second * real(wfs[i].first->inner<ylm_component | it_component>(wfs[i].first) -
+                                                 wfs[i].second->inner<ylm_component | it_component>(wfs[i].second));*/
+                
+                double rhoup = real(wfs[i].first->inner<it_component>(wfs[i].first));
+                double rhodn = real(wfs[i].second->inner<it_component>(wfs[i].second));
+
+                double m = rhoup - rhodn;
+
+                std::cout << "band " << bands[i].first << "  energy = " << kp->band_energy(bands[i].first) << 
+                             "   rho(u,d) = " << rhoup << "    " << rhodn << " m_i = " << m * bands[i].second << std::endl;
+
+ 
+                mom += bands[i].second * m;
+                
+                mom_k += bands[i].second * m;
+            }
+
+            std::cout << "mom_k = " << mom_k << std::endl;
+            std::cout << "mom   = " << mom << std::endl;
+
+
+
+#endif
+
+
+
        }
 
     public:
@@ -365,8 +413,58 @@ class Density
                                                  parameters_.rti().it_magnetization[j]);
         }
 
+      
+
+        void find_band_occupancies()
+        {
+            double ef = 0.15;
+
+            double de = 0.1;
+
+            int s = 1;
+            int sp;
+
+            while (fabs(de) > 1e-10)
+            {
+                double ne = 0.0;
+                for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
+                {
+                    double wkmo = kpoint_set_[ik]->weight() * parameters_.max_occupancy();
+                    for (int j = 0; j < parameters_.num_bands(); j++)
+                        ne += fermi_dirac_distribution(kpoint_set_[ik]->band_energy(j) - ef) * wkmo;
+                }
+                
+                sp = s;
+
+                s = (ne > parameters_.num_valence_electrons()) ? -1 : 1;
+
+                de = s * fabs(de);
+
+                if (s != sp)
+                    de *= 0.5;
+                else
+                    de *= 1.25;
+
+                ef += de;
+            }
+
+            std::cout << "Efermi = " << ef << std::endl;
+            
+            std::vector<double> bnd_occ(parameters_.num_bands());
+
+            for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
+            {
+                for (int j = 0; j < parameters_.num_bands(); j++)
+                    bnd_occ[j] = fermi_dirac_distribution(kpoint_set_[ik]->band_energy(j) - ef);
+                kpoint_set_[ik]->set_band_occupancies(&bnd_occ[0]);
+            }
+
+        }
+
         void find_eigen_states()
         {
+            Timer t("sirius::Density::find_eigen_states");
+
             // generate radial functions
             potential_->set_spherical_potential();
             parameters_.generate_radial_functions();
@@ -423,7 +521,7 @@ class Density
             if (fabs(wt - 1.0) > 1e-12)
                 error(__FILE__, __LINE__, "kpoint weights don't sum to one");
 
-            if (fabs(ot - parameters_.num_valence_electrons()) > 1e-4)
+            if (fabs(ot - parameters_.num_valence_electrons()) > 1e-8)
             {
                 std::stringstream s;
                 s << "wrong occupancies" << std::endl
@@ -432,23 +530,6 @@ class Density
                   << " difference : " << fabs(ot - parameters_.num_valence_electrons());
                 error(__FILE__, __LINE__, s);
             }
-
-            // generate radial functions
-            potential_->set_spherical_potential();
-            parameters_.generate_radial_functions();
-            
-            // generate radial integrals
-            potential_->set_nonspherical_potential();
-            parameters_.generate_radial_integrals();
-
-            // generate plane-wave coefficients of the potential in the interstitial region
-            for (int ir = 0; ir < parameters_.fft().size(); ir++)
-                 potential_->effective_potential()->f_it(ir) *= parameters_.step_function(ir);
-
-            parameters_.fft().input(potential_->effective_potential()->f_it());
-            parameters_.fft().transform(-1);
-            parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), 
-                                     potential_->effective_potential()->f_pw());
 
             // auxiliary density matrix
             mdarray<double,5> mt_density_matrix(parameters_.max_mt_radial_basis_size(), 
@@ -459,14 +540,8 @@ class Density
             // zero density and magnetization
             zero();
 
-            //
-            // Main loop over k-points
-            //
             for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
             {
-                // solve secular equatiion and generate wave functions
-                kpoint_set_[ik]->find_eigen_states(band_, potential_->effective_potential(),
-                                                   potential_->effective_magnetic_field());
                 // add to charge density and magnetization
                 add_k_contribution(kpoint_set_[ik], mt_density_matrix);
             }
@@ -533,27 +608,25 @@ class Density
                 }
             }
 
-            if (fabs(rho_->integrate(rlm_component | it_component) - parameters_.num_electrons()) > 1e-5)
-                error(__FILE__, __LINE__, "wrong charge density");
-                
-/*            std::cout << "m=" << magnetization_[0]->integrate(rlm_component | it_component) << " " << 
-                                 magnetization_[1]->integrate(rlm_component | it_component) << " " << 
-                                 magnetization_[2]->integrate(rlm_component | it_component) << " " << std::endl;*/
-
-            // compute eigen-value sums
-            double eval_sum = 0.0;
-            for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
-                eval_sum += parameters_.atom_symmetry_class(ic)->core_eval_sum() *
-                            parameters_.atom_symmetry_class(ic)->num_atoms();
-            
-            for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
+            double nel = rho_->integrate(rlm_component | it_component);
+            if (fabs(nel - parameters_.num_electrons()) > 1e-5)
             {
-                double wk = kpoint_set_[ik]->weight();
-                for (int j = 0; j < parameters_.num_bands(); j++)
-                    eval_sum += wk * kpoint_set_[ik]->band_energy(j) * kpoint_set_[ik]->band_occupancy(j);
+                std::stringstream s;
+                s << "wrong charge density after k-point summation" << std::endl
+                  << "obtained value : " << nel << std::endl 
+                  << "target value : " << parameters_.num_electrons();
+                error(__FILE__, __LINE__, s);
             }
-            
-            parameters_.rti().eval_sum = eval_sum;
+                
+            for (int j = 0; j < parameters_.num_mag_dims(); j++)
+            {
+                std::vector<double> mti;
+                double iti;
+                double tot;
+                
+                tot = magnetization_[j]->integrate(rlm_component | it_component, mti, iti);
+                std::cout << "M total = " << tot << " mt = " << mti[0] << " it = " << iti << std::endl;
+            }
         }
 
         void add_kpoint(int kpoint_id, double* vk, double weight)
