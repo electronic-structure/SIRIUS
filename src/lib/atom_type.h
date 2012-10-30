@@ -4,7 +4,7 @@
 namespace sirius {
 
 /// describes single atomic level
-struct atomic_level
+struct atomic_level_descriptor
 {
     /// principal quantum number
     int n;
@@ -333,10 +333,10 @@ class AtomType
         RadialGrid radial_grid_;
 
         /// list of atomic levels 
-        std::vector<atomic_level> levels_nl_;
+        std::vector<atomic_level_descriptor> atomic_levels_;
 
         /// number of core levels
-        int num_core_levels_nl_;
+        int num_core_levels_;
 
         /// number of core electrons
         int num_core_electrons_;
@@ -437,16 +437,20 @@ class AtomType
                             error(__FILE__, __LINE__, s);
                     }
 
-                    atomic_level level;
-                    level.n = n;
-                    level.l = l;
-                    level.k = -1;
-                    level.occupancy = 2 * (2 * l + 1);
-                    levels_nl_.push_back(level);
+                    atomic_level_descriptor level;
+                    if (!full_relativistic_core)
+                    {
+                        level.n = n;
+                        level.l = l;
+                        level.k = -1;
+                        level.occupancy = 2 * (2 * l + 1);
+                        atomic_levels_.push_back(level);
+                    }
+                    //TODO: add nlk levels here
                 }
 
             }
-            num_core_levels_nl_ = levels_nl_.size();
+            num_core_levels_ = atomic_levels_.size();
             
             radial_solution_descriptor rsd;
             radial_solution_descriptor_set rsd_set;
@@ -520,71 +524,79 @@ class AtomType
 
     public:
         
-        AtomType(const char* _symbol, 
-                 const char* _name, 
-                 int _zn, 
-                 double _mass, 
-                 std::vector<atomic_level>& _levels) : symbol_(std::string(_symbol)),
-                                                       name_(std::string(_name)),
-                                                       zn_(_zn),
-                                                       mass_(_mass),
-                                                       mt_radius_(2.0),
-                                                       num_mt_points_(2000),
-                                                       levels_nl_(_levels)
+        AtomType(const char* symbol__, 
+                 const char* name__, 
+                 int zn__, 
+                 double mass__, 
+                 std::vector<atomic_level_descriptor>& levels__) : symbol_(std::string(symbol__)),
+                                                                   name_(std::string(name__)),
+                                                                   zn_(zn__),
+                                                                   mass_(mass__),
+                                                                   mt_radius_(2.0),
+                                                                   num_mt_points_(2000),
+                                                                   atomic_levels_(levels__)
                                                          
         {
             radial_grid_.init(exponential_grid, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
         }
 
-        AtomType(int id_, 
-                 const std::string& label) : id_(id_),
-                                             label_(label)
+        AtomType(int id__, 
+                 const std::string& label__) : id_(id__),
+                                               label_(label__)
         {
-            if (label.size() != 0)
+            if (label_.size() == 0)
+                error(__FILE__, __LINE__, "empty atom label");
+
+            read_input();
+           
+            // add valence levels to the list of core levels
+            atomic_level_descriptor level;
+            
+            int nl_occ[7][4];
+            memset(&nl_occ[0][0], 0, 28 * sizeof(int));
+
+            // scan the list of atomic levels and get the occupancy of (n,l) shell which is 2 * (2 * l + 1)
+            for (int ist = 0; ist < 28; ist++)
             {
-                read_input();
-                
-                atomic_level level;
-                
-                int nl_occ[7][4];
-                memset(&nl_occ[0][0], 0, 28 * sizeof(int));
+                int n = atomic_conf[zn_ - 1][ist][0];
+                int l = atomic_conf[zn_ - 1][ist][1];
 
-                for (int ist = 0; ist < 28; ist++)
+                if (n != -1)
+                    nl_occ[n - 1][l] += atomic_conf[zn_ - 1][ist][3];
+            }
+
+            // scan all levels of the atom
+            for (int n = 0; n < 7; n++)
+                for (int l = 0; l < 4; l++)
                 {
-                    int n = atomic_conf[zn_][ist][0];
-                    int l = atomic_conf[zn_][ist][1];
+                    level.n = n + 1;
+                    level.l = l;
+                    level.k = -1;
+                    level.occupancy = nl_occ[n][l];
 
-                    if (n != -1)
-                        nl_occ[n - 1][l] += atomic_conf[zn_ - 1][ist][3];
+                    if (level.occupancy)
+                    {
+                        // check if this is not a core level
+                        bool found = false;
+                        for (int ist = 0; ist < (int)atomic_levels_.size(); ist++)
+                        {
+                            if (atomic_levels_[ist].n == level.n && atomic_levels_[ist].l == level.l)
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+                        // add a valence level
+                        if (!found)
+                            atomic_levels_.push_back(level);
+                    }
                 }
 
-                for (int n = 0; n < 7; n++)
-                    for (int l = 0; l < 4; l++)
-                    {
-                        level.n = n + 1;
-                        level.l = l;
-                        if ((level.occupancy = nl_occ[n][l]))
-                        {
-                            bool found = false;
-                            for (int ist = 0; ist < (int)levels_nl_.size(); ist++)
-                            {
-                                if (levels_nl_[ist].n == level.n && levels_nl_[ist].l == level.l)
-                                {
-                                    found = true;
-                                    break;
-                                }
-                            }
-                            if (!found)
-                                levels_nl_.push_back(level);
-                        }
-                    }
+            num_core_electrons_ = 0;
+            for (int i = 0; i < num_core_levels_; i++)
+                num_core_electrons_ += atomic_levels_[i].occupancy;
 
-                    num_core_electrons_ = 0;
-                    for (int i = 0; i < num_core_levels_nl_; i++)
-                        num_core_electrons_ += levels_nl_[i].occupancy;
-
-                    num_valence_electrons_ = zn_ - num_core_electrons_;
-            }
+            num_valence_electrons_ = zn_ - num_core_electrons_;
         }
         
         void init(int lmax)
@@ -631,7 +643,7 @@ class AtomType
             std::vector<double> g2;
             std::vector<double> rho_old;
     
-            enu.resize(levels_nl_.size());
+            enu.resize(atomic_levels_.size());
     
             double energy_tot = 0.0;
             double energy_tot_old;
@@ -642,8 +654,8 @@ class AtomType
             
             bool converged = false;
             
-            for (int ist = 0; ist < (int)levels_nl_.size(); ist++)
-                enu[ist] = -1.0 * zn_ / 2 / pow(levels_nl_[ist].n, 2);
+            for (int ist = 0; ist < (int)atomic_levels_.size(); ist++)
+                enu[ist] = -1.0 * zn_ / 2 / pow(atomic_levels_[ist].n, 2);
             
             for (int iter = 0; iter < 100; iter++)
             {
@@ -657,12 +669,12 @@ class AtomType
                     std::vector<double> p;
                 
                     #pragma omp for
-                    for (int ist = 0; ist < (int)levels_nl_.size(); ist++)
+                    for (int ist = 0; ist < (int)atomic_levels_.size(); ist++)
                     {
-                        solver.bound_state(levels_nl_[ist].n, levels_nl_[ist].l, veff, enu[ist], p);
+                        solver.bound_state(atomic_levels_[ist].n, atomic_levels_[ist].l, veff, enu[ist], p);
                     
                         for (int i = 0; i < radial_grid_.size(); i++)
-                            rho_t[i] += levels_nl_[ist].occupancy * pow(y00 * p[i] / radial_grid_[i], 2);
+                            rho_t[i] += atomic_levels_[ist].occupancy * pow(y00 * p[i] / radial_grid_[i], 2);
                     }
 
                     #pragma omp critical
@@ -696,8 +708,8 @@ class AtomType
                 f.interpolate();
                 
                 double eval_sum = 0.0;
-                for (int ist = 0; ist < (int)levels_nl_.size(); ist++)
-                    eval_sum += levels_nl_[ist].occupancy * enu[ist];
+                for (int ist = 0; ist < (int)atomic_levels_.size(); ist++)
+                    eval_sum += atomic_levels_[ist].occupancy * enu[ist];
 
                 double energy_kin = eval_sum - fourpi * f.integrate(2);
 
@@ -763,14 +775,16 @@ class AtomType
             
             printf("number of core electrons : %i\n", num_core_electrons_);
             printf("number of valence electrons : %i\n", num_valence_electrons_);
- 
-            std::cout << "core levels (n,l,occupancy) " << std::endl;
-            for (int i = 0; i < num_core_levels_nl_; i++)
-                std::cout << "  " << levels_nl_[i].n << " " << levels_nl_[i].l << " " << levels_nl_[i].occupancy << std::endl;
-            
-            std::cout << "levels (n,l,occupancy) " << std::endl;
-            for (int i = 0; i < (int)levels_nl_.size(); i++)
-                std::cout << "  " << levels_nl_[i].n << " " << levels_nl_[i].l << " " << levels_nl_[i].occupancy << std::endl;
+
+            printf("atomic levels (n, l, k, occupancy)\n");
+            printf("core\n");
+            for (int i = 0; i < num_core_levels_; i++)
+                printf("%i  %i  %i  %i\n", atomic_levels_[i].n, atomic_levels_[i].l, atomic_levels_[i].k,
+                                           atomic_levels_[i].occupancy);
+            printf("valence\n");
+            for (int i = num_core_levels_; i < (int)atomic_levels_.size(); i++)
+                printf("%i  %i  %i  %i\n", atomic_levels_[i].n, atomic_levels_[i].l, atomic_levels_[i].k,
+                                           atomic_levels_[i].occupancy);
             
             std::cout << "default augmented wave basis" << std::endl;
             for (int order = 0; order < (int)aw_default_l_.size(); order++)
@@ -875,19 +889,19 @@ class AtomType
             return radial_grid_[ir];
         }
         
-        inline int num_levels_nl()
+        inline int num_atomic_levels()
         {
-            return levels_nl_.size();
+            return atomic_levels_.size();
         }    
         
-        inline int num_core_levels_nl()
+        inline int num_core_levels()
         {
-            return num_core_levels_nl_;
+            return num_core_levels_;
         }    
         
-        inline atomic_level& level_nl(int idx)
+        inline atomic_level_descriptor& atomic_level(int idx)
         {
-            return levels_nl_[idx];
+            return atomic_levels_[idx];
         }
         
         inline int num_core_electrons()

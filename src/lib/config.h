@@ -15,6 +15,8 @@ const bool hdf5_trace_errors = false;
 
 const bool check_pseudo_charge = true;
 
+const bool full_relativistic_core = false;
+
 //const implementation lapw_impl = cpu;
 
 //const diagonalization lapw_diag = second_variational; 

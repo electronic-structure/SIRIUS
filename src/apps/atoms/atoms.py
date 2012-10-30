@@ -5,7 +5,7 @@ class atom : public sirius::AtomType
 {
     public:
     
-        std::vector<sirius::atomic_level> levels_nlk_;
+        std::vector<sirius::atomic_level_descriptor> levels_nlk_;
         
         double NIST_LDA_Etot;
     
@@ -13,10 +13,10 @@ class atom : public sirius::AtomType
              const char* _name, 
              int _zn, 
              double _mass, 
-             std::vector<sirius::atomic_level>& _levels_nl,
-             std::vector<sirius::atomic_level>& _levels_nlk) : AtomType(_symbol, _name, _zn, _mass, _levels_nl),
-                                                               levels_nlk_(_levels_nlk),
-                                                               NIST_LDA_Etot(0.0)
+             std::vector<sirius::atomic_level_descriptor>& _levels_nl,
+             std::vector<sirius::atomic_level_descriptor>& _levels_nlk) : AtomType(_symbol, _name, _zn, _mass, _levels_nl),
+                                                                          levels_nlk_(_levels_nlk),
+                                                                          NIST_LDA_Etot(0.0)
         {
         }
         
@@ -25,7 +25,7 @@ class atom : public sirius::AtomType
             return levels_nlk_.size();
         }    
         
-        inline sirius::atomic_level& level_nlk(int idx)
+        inline sirius::atomic_level_descriptor& level_nlk(int idx)
         {
             return levels_nlk_[idx];
         }
@@ -44,9 +44,9 @@ void solve_atom(atom* a)
     double ecore_cutoff = -4.0;
     
     int ncore = 0;
-    for (int ist = 0; ist < (int)a->num_levels_nl(); ist++)
+    for (int ist = 0; ist < (int)a->num_atomic_levels(); ist++)
         if (enu[ist] < ecore_cutoff)
-            ncore += a->level_nl(ist).occupancy;
+            ncore += a->atomic_level(ist).occupancy;
 
     std::cout << " atom : " << a->symbol() << "    Z : " << a->zn() << std::endl;
     std::cout << " =================== " << std::endl;
@@ -67,14 +67,14 @@ void solve_atom(atom* a)
     fout << "  \\"rmt\\"     : " << a->mt_radius() << "," << std::endl;
     fout << "  \\"nrmt\\"    : " << a->num_mt_points() << "," << std::endl;
     
-    std::vector<sirius::atomic_level> core;
-    std::vector<sirius::atomic_level> valence;
-    for (int ist = 0; ist < (int)a->num_levels_nl(); ist++)
+    std::vector<sirius::atomic_level_descriptor> core;
+    std::vector<sirius::atomic_level_descriptor> valence;
+    for (int ist = 0; ist < (int)a->num_atomic_levels(); ist++)
     {
         if (enu[ist] < ecore_cutoff)
-            core.push_back(a->level_nl(ist));
+            core.push_back(a->atomic_level(ist));
         else
-            valence.push_back(a->level_nl(ist));
+            valence.push_back(a->atomic_level(ist));
         
     }
     
@@ -171,10 +171,10 @@ int main(int argn, char **argv)
 void init_atom_configuration() 
 {
     int nl_occ[7][4];
-    sirius::atomic_level nlk;
-    sirius::atomic_level nl;
-    std::vector<sirius::atomic_level> levels_nl;
-    std::vector<sirius::atomic_level> levels_nlk;
+    sirius::atomic_level_descriptor nlk;
+    sirius::atomic_level_descriptor nl;
+    std::vector<sirius::atomic_level_descriptor> levels_nl;
+    std::vector<sirius::atomic_level_descriptor> levels_nlk;
     
     atom* a;
 '''
