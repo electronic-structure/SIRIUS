@@ -23,7 +23,7 @@ class geometry : public unit_cell
             \brief Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
                    
                    In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
-                   bethween closest atoms. Initial values of the muffin-tin radii (provided in the input file) 
+                   bethween nearest atoms. Initial values of the muffin-tin radii (provided in the input file) 
                    are ignored.
         */
         void find_mt_radii()
@@ -207,8 +207,44 @@ class geometry : public unit_cell
             }
         }
 
-        bool is_point_in_mt()
+        template <lattice_type Tl>
+        void reduce_coordinates(double vc[3], int ntr[3], double vf[3])
         {
+            get_coordinates<fractional, Tl>(vc, vf);
+            for (int i = 0; i < 3; i++)
+            {
+                ntr[i] = (int)floor(vf[i]);
+                vf[i] -= (double)ntr[i];
+                if (vf[i] < 0.0 || vf[i] >= 1.0)
+                    error(__FILE__, __LINE__, "wrong fractional coordinates");
+            }
+        }
+
+        bool is_point_in_mt(double vc[3])
+        {
+            int ntr[3];
+            double vf[3];
+            // reduce coordinates to the primitive unit cell
+            reduce_coordinates<direct>(vc, ntr, vf);
+
+            //double vc1[3];
+            // get Cartesian coordinates of the reduced vector
+            //get_coordinates<cartesian, direct>(vf, vc1);
+
+            for (int ia = 0; ia < num_atoms(); ia++)
+            {
+                for (int i0 = -1; i0 <= 1; i0++)
+                    for (int i1 = -1; i1 <= 1; i1++)
+                        for (int i2 = -1; i2 <= 1; i2++)
+                        {
+                            // atom position
+                            double posf[] = {double(i0), double(i1), double(i2)};
+                            for (int i = 0; i < 3; i++) posf[i] += atom(ia)->position(i);
+                        }
+            }
+
+
+            
             return true;
         }
 };

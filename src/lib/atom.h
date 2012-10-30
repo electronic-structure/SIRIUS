@@ -75,7 +75,7 @@ class Atom
             return type_->id();
         }
 
-        inline void get_position(double* position__)
+        inline void get_position(double position__[3])
         {
             for (int i = 0; i < 3; i++)
                 position__[i] = position_[i];
@@ -84,6 +84,11 @@ class Atom
         inline double* position()
         {
             return position_;
+        }
+        
+        inline double position(int i)
+        {
+            return position_[i];
         }
         
         inline double* vector_field()

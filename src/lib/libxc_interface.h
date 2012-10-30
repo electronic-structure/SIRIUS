@@ -19,7 +19,11 @@ class libxc_interface
             // check rho
             for (int i = 0; i < size; i++)
                 if (rho[i] < 0.0)
-                    error(__FILE__, __LINE__, "rho is negative");
+                {
+                    std::stringstream s;
+                    s << "rho is negative : " << rho[i];
+                    error(__FILE__, __LINE__, s);
+                }
             
             for (int i = 0; i < 2; i++)
             {
@@ -96,7 +100,16 @@ class libxc_interface
                     error(__FILE__, __LINE__, "vxc > 0");
                 
                 if (bxc[i] > 0.0)
-                    error(__FILE__, __LINE__, "bxc > 0");
+                {
+                    if (fabs(bxc[i]) > 1e-9)
+                    {
+                        std::stringstream s;
+                        s << "bxc is negative : " << bxc[i];
+                        error(__FILE__, __LINE__, s);
+                    }
+                    else
+                        bxc[i] = 0.0;
+                }
             }
          }
 };

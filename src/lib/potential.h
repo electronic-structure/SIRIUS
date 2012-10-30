@@ -381,6 +381,10 @@ class Potential
 
                 parameters_.rti().pseudo_charge_error = d;
             }
+            else
+            {
+                parameters_.rti().pseudo_charge_error = 0.0;
+            }
  
             // compute pw coefficients of Hartree potential
             pseudo_pw[0] = 0.0;
@@ -569,6 +573,8 @@ class Potential
 
             // compute <rho | V_H>
             parameters_.rti().energy_vha = rho->inner<rlm_component | it_component>(hartree_potential);
+            
+            //std::cout << "energy_vha = " << parameters_.rti().energy_vha  << std::endl;
 
             // compute Eenuc
             double enuc = 0.0;
@@ -647,6 +653,7 @@ class Potential
             out.close();
 #endif
 
+#if 0
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
             {
                 std::vector<double> mti;
@@ -658,9 +665,7 @@ class Potential
                 tot = magnetization[j]->integrate(rlm_component | it_component, mti, iti);
                 std::cout << "M total = " << tot << " mt = " << mti[0] << " it = " << iti << std::endl;
             }
-
-
-
+#endif
            
             hdf5_tree fout("sirius.h5", true);
             effective_potential_->hdf5_write(fout.create_node("effective_potential"));

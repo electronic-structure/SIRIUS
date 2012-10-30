@@ -34,6 +34,8 @@ class run_time_info
         std::vector<double> mt_magnetization[3];
         double it_magnetization[3];
         double total_magnetization[3];
+        
+        double energy_fermi;
 
 
 };

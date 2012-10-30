@@ -763,9 +763,13 @@ class AtomType
             
             printf("number of core electrons : %i\n", num_core_electrons_);
             printf("number of valence electrons : %i\n", num_valence_electrons_);
-            
+ 
             std::cout << "core levels (n,l,occupancy) " << std::endl;
             for (int i = 0; i < num_core_levels_nl_; i++)
+                std::cout << "  " << levels_nl_[i].n << " " << levels_nl_[i].l << " " << levels_nl_[i].occupancy << std::endl;
+            
+            std::cout << "levels (n,l,occupancy) " << std::endl;
+            for (int i = 0; i < (int)levels_nl_.size(); i++)
                 std::cout << "  " << levels_nl_[i].n << " " << levels_nl_[i].l << " " << levels_nl_[i].occupancy << std::endl;
             
             std::cout << "default augmented wave basis" << std::endl;

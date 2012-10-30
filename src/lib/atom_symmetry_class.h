@@ -327,7 +327,7 @@ class AtomSymmetryClass
             generate_aw_radial_functions();
             generate_lo_radial_functions();
 
-            //print_enu();
+            print_enu();
         }
 
         void generate_radial_integrals()
@@ -435,6 +435,7 @@ class AtomSymmetryClass
             {
                 core_charge_density_.resize(atom_type_->radial_grid().size());
                 memset(&core_charge_density_[0], 0, atom_type_->radial_grid().size() * sizeof(double));
+                core_leakage_ = 0.0;
                 return;
             }
             

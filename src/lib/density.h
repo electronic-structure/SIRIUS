@@ -447,8 +447,8 @@ class Density
 
                 ef += de;
             }
-
-            std::cout << "Efermi = " << ef << std::endl;
+            
+            parameters_.rti().energy_fermi = ef;
             
             std::vector<double> bnd_occ(parameters_.num_bands());
 
@@ -617,7 +617,7 @@ class Density
                   << "target value : " << parameters_.num_electrons();
                 error(__FILE__, __LINE__, s);
             }
-                
+#if 0                
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
             {
                 std::vector<double> mti;
@@ -627,6 +627,7 @@ class Density
                 tot = magnetization_[j]->integrate(rlm_component | it_component, mti, iti);
                 std::cout << "M total = " << tot << " mt = " << mti[0] << " it = " << iti << std::endl;
             }
+#endif
         }
 
         void add_kpoint(int kpoint_id, double* vk, double weight)
@@ -642,6 +643,11 @@ class Density
         void get_band_energies(int kpoint_id, double* band_energies)
         {
             kpoint_set_.kpoint_by_id(kpoint_id)->get_band_energies(band_energies);
+        }
+        
+        void get_band_occupancies(int kpoint_id, double* band_occupancies)
+        {
+            kpoint_set_.kpoint_by_id(kpoint_id)->get_band_occupancies(band_occupancies);
         }
 
         void print_info()

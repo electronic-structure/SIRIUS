@@ -203,6 +203,17 @@ void FORTRAN(sirius_generate_density)(void)
     sirius::density->generate();
 }
 
+void FORTRAN(sirius_density_find_eigen_states)(void)
+{
+    sirius::density->find_eigen_states();
+}
+
+void FORTRAN(sirius_density_find_band_occupancies)(void)
+{
+    sirius::density->find_band_occupancies();
+}
+
+
 
 #if 0
 extern "C" void FORTRAN(sirius_get_step_function)(real8* step_function)
@@ -226,6 +237,12 @@ void FORTRAN(sirius_density_get_band_energies)(int4* kpoint_id, real8* band_ener
 {
     sirius::density->get_band_energies(*kpoint_id, band_energies);
 }
+
+void FORTRAN(sirius_density_get_band_occupancies)(int4* kpoint_id, real8* band_occupancies)
+{
+    sirius::density->get_band_occupancies(*kpoint_id, band_occupancies);
+}
+
 
 void FORTRAN(sirius_density_integrate)(void)
 {
@@ -281,6 +298,15 @@ void FORTRAN(sirius_band)(real8* vk, real8* band_energies)
         sirius::potential->set_nonspherical_potential();
         sirius::global.generate_radial_functions();
         sirius::global.generate_radial_integrals();
+        // generate plane-wave coefficients of the potential in the interstitial region
+        
+        for (int ir = 0; ir < sirius::global.fft().size(); ir++)
+             sirius::potential->effective_potential()->f_it(ir) *= sirius::global.step_function(ir);
+
+        sirius::global.fft().input(sirius::potential->effective_potential()->f_it());
+        sirius::global.fft().transform(-1);
+        sirius::global.fft().output(sirius::global.num_gvec(), sirius::global.fft_index(), 
+                                    sirius::potential->effective_potential()->f_pw());
         init = true;
     }
     

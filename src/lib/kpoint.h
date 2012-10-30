@@ -575,6 +575,13 @@ class kpoint
             memcpy(band_energies, &band_energies_[0], parameters_.num_bands() * sizeof(double));
         }
 
+        inline void get_band_occupancies(double* band_occupancies)
+        {
+            assert((int)band_occupancies_.size() == parameters_.num_bands());
+            
+            memcpy(band_occupancies, &band_occupancies_[0], parameters_.num_bands() * sizeof(double));
+        }
+
         inline double band_occupancy(int j)
         {
             return band_occupancies_[j];
