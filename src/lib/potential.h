@@ -65,7 +65,7 @@ class Potential
 
         Potential(Global& parameters__, int allocate_f__ = pw_component) : parameters_(parameters__),
                                                                            allocate_f_(allocate_f__),
-                                                                           pseudo_density_order(9)
+                                                                           pseudo_density_order(10)
         {
             initialize();
         }
@@ -669,12 +669,19 @@ class Potential
            
             hdf5_tree fout("sirius.h5", true);
             effective_potential_->hdf5_write(fout.create_node("effective_potential"));
+            fout.create_node("effective_magnetic_field");
+            for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                effective_magnetic_field_[j]->hdf5_write(fout["effective_magnetic_field"].create_node(j));
+
+ 
         }
 
         void hdf5_read()
         {
             hdf5_tree fout("sirius.h5");
             effective_potential_->hdf5_read(fout["effective_potential"]);
+            for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                effective_magnetic_field_[j]->hdf5_read(fout["effective_magnetic_field"][j]);
         }
         
         void set_spherical_potential()

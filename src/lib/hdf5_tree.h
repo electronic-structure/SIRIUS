@@ -141,6 +141,13 @@ class hdf5_tree
                     error(__FILE__, __LINE__, "error in H5Fclose()");
         }
 
+        hdf5_tree create_node(int idx)
+        {
+            std::stringstream s;
+            s << idx;
+            return create_node(s.str());
+        }
+
         hdf5_tree create_node(const std::string& name)
         {
             // try to open a group
@@ -232,6 +239,14 @@ class hdf5_tree
         hdf5_tree operator[](const std::string& path__)
         {
             std::string new_path = path_ + "/" + path__;
+            return hdf5_tree(file_id_, new_path);
+        }
+        
+        hdf5_tree operator[](int idx)
+        {
+            std::stringstream s;
+            s << idx;
+            std::string new_path = path_ + "/" + s.str();
             return hdf5_tree(file_id_, new_path);
         }
 };
