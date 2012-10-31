@@ -144,10 +144,9 @@ class Atom
                 beff_[j].set_ptr(beff__[j]);
         }
 
-        /*!
-            \brief Generate radial integrals used to setup Hamiltonian and overlap matrices
+        /// Generate radial Hamiltonian and effective magnetic field integrals
 
-            Hamiltonian operator has the following representation inside muffin-tins:
+        /** Hamiltonian operator has the following representation inside muffin-tins:
             \f[
                 \hat H=-\frac{1}{2}\nabla^2 + \sum_{\ell m} V_{\ell m}(r) R_{\ell m}(\hat {\bf r}) =
                   \underbrace{-\frac{1}{2} \nabla^2+V_{00}(r)R_{00}}_{H_{s}(r)} +\sum_{\ell=1} \sum_{m=-\ell}^{\ell} 
@@ -159,7 +158,7 @@ class Atom
                   \frac{H_{s}(r)}{R_{00}} & \ell = 0 \\
                   V_{\ell m}(r) & \ell > 0 \end{array} \right.
             \f]
-        */
+       */
         void generate_radial_integrals()
         {
             Timer t("sirius::Atom::generate_radial_integrals");
@@ -227,7 +226,7 @@ class Atom
                     }
                 }
             }
-        }
+       }
 
         inline int offset_aw()
         {

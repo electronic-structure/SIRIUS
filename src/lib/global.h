@@ -48,7 +48,11 @@ class Global : public StepFunction
 
         /// number of dimensions of the magnetization and effective magnetic field (0, 1 or 3)
         int num_mag_dims_;
-        
+
+        /// true if spin-orbit interaction is considered
+        bool spin_orbit_;
+       
+        /// run-time information (energies, charges, etc.)
         run_time_info rti_;
 
     public:
@@ -58,7 +62,8 @@ class Global : public StepFunction
                    lmax_pot_(lmax_pot_default),
                    aw_cutoff_(aw_cutoff_default),
                    num_spins_(1),
-                   num_mag_dims_(0)
+                   num_mag_dims_(0),
+                   spin_orbit_(true)
         {
         }
 
@@ -207,6 +212,11 @@ class Global : public StepFunction
         inline run_time_info& rti()
         {
             return rti_;
+        }
+        
+        inline bool spin_orbit()
+        {
+            return spin_orbit_;
         }
         
         void initialize()

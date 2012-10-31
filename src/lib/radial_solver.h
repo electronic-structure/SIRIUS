@@ -16,6 +16,7 @@ class RadialSolver
 
         bool relativistic;
         
+        /// negative charge of the nucleus
         double zn;
         
         sirius::RadialGrid& radial_grid;

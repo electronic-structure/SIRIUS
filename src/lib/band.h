@@ -515,6 +515,48 @@ class Band
                 for (int j = 0; j < scalar_wf_size; j++)
                     bwf(j, i, 1) = -bwf(j, i, 0);
         }
+
+        /// Apply SO correction to the scalar wave functions
+        void apply_so_correction(mdarray<complex16,2>& scalar_wf, mdarray<complex16,3>& hwf)
+        {
+            Timer t("sirius::Band::apply_so_correction");
+
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                AtomType* type = parameters_.atom(ia)->type();
+
+                int offset = parameters_.atom(ia)->offset_wf();
+
+                for (int l = 0; l <= parameters_.lmax_apw(); l++)
+                {
+                    int nrf = type->indexr().num_rf(l);
+
+                    for (int order1 = 0; order1 < nrf; order1++)
+                    {
+                        for (int order2 = 0; order2 < nrf; order2++)
+                        {
+                            double sori = parameters_.atom(ia)->symmetry_class()->so_radial_integral(l, order1, order2);
+                            
+                            for (int m = -l; m <= l; m++)
+                            {
+                                int idx1 = type->indexb_by_l_m_order(l, m, order1);
+                                int idx2 = type->indexb_by_l_m_order(l, m, order2);
+                                int idx3 = (m + l != 0) ? type->indexb_by_l_m_order(l, m - 1, order2) : 0;
+
+                                for (int ist = 0; ist < parameters_.num_fv_states(); ist++)
+                                {
+                                    complex16 z1 = scalar_wf(offset + idx2, ist) * double(m) * sori;
+                                    hwf(offset + idx1, ist, 0) += z1;
+                                    hwf(offset + idx1, ist, 1) -= z1;
+                                    if (m + l) hwf(offset + idx1, ist, 2) += scalar_wf(offset + idx3, ist) * sori * 
+                                                                             sqrt(double((l + m) * (l - m + 1)));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         
         void set_sv_h(mdarray<complex16,2>& scalar_wf, int scalar_wf_size, int num_gkvec, int* fft_index, 
                       double* evalfv, PeriodicFunction<double>* effective_magnetic_field[3], mdarray<complex16,2>& h)
@@ -538,12 +580,10 @@ class Band
                 if (lapw_parameters_.ndmag != 0) apply_u_correction<dd>(ks, hwf);
                 if (lapw_parameters_.ndmag == 3) apply_u_correction<ud>(ks, hwf);
             }
+#endif
+            if (parameters_.spin_orbit())
+                apply_so_correction(scalar_wf, hwf);
 
-            if (lapw_parameters_.spinorb)
-            {
-               apply_so_correction(ks, hwf);
-            }
-#endif      
             complex16 zzero(0.0, 0.0);
             complex16 zone(1.0, 0.0);
 
@@ -569,14 +609,7 @@ class Band
                     h(i, i) += evalfv[ist];
         }
 
-    public:
-    
-        Band(Global& parameters__) : parameters_(parameters__)
-        {
-            initialize();
-        }
-
-        void initialize()
+        void init()
         {
             complex_gaunt_packed_.set_dimensions(parameters_.lmmax_apw(), parameters_.lmmax_apw());
             complex_gaunt_packed_.allocate();
@@ -599,7 +632,16 @@ class Band
                 }
             }
         }
+ 
+    public:
         
+        /// Constructor
+        Band(Global& parameters__) : parameters_(parameters__)
+        {
+            init();
+        }
+
+       
         void solve_fv(Global& parameters,
                       int fv_basis_size, 
                       int num_gkvec, 
