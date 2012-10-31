@@ -214,7 +214,7 @@ class geometry : public unit_cell
             for (int i = 0; i < 3; i++)
             {
                 ntr[i] = (int)floor(vf[i]);
-                vf[i] -= (double)ntr[i];
+                vf[i] -= ntr[i];
                 if (vf[i] < 0.0 || vf[i] >= 1.0)
                     error(__FILE__, __LINE__, "wrong fractional coordinates");
             }
@@ -240,6 +240,22 @@ class geometry : public unit_cell
                             // atom position
                             double posf[] = {double(i0), double(i1), double(i2)};
                             for (int i = 0; i < 3; i++) posf[i] += atom(ia)->position(i);
+                            
+                            // vector connecting center of atom and reduced point
+                            double vf1[3];
+                            for (int i = 0; i < 3; i++) vf1[3] = vf[i] - posf[i];
+                            
+                            // convert to Cartesian coordinates
+                            double vc1[3];
+                            get_coordinates<cartesian, direct>(vf1, vc1);
+
+                            double r = vector_length(vc1);
+
+                            if (r <= atom(ia)->type()->mt_radius())
+                            {
+
+                            }
+
                         }
             }
 

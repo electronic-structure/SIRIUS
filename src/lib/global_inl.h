@@ -1,10 +1,10 @@
-inline double vector_length(double* v)
+inline double vector_length(double v[3])
 {
     return sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
 }
 
 template <typename Ta, typename Tb>
-inline double scalar_product(Ta* a, Tb* b)
+inline double scalar_product(Ta a[3], Tb b[3])
 {
     return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
 }
