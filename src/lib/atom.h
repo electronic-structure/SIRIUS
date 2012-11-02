@@ -7,13 +7,16 @@ class Atom
 {
     private:
     
+        /// type of the given atom
         AtomType* type_;
 
+        /// symmetry class of the given atom
         AtomSymmetryClass* symmetry_class_;
         
         /// position in fractional coordinates
         double position_[3];
        
+        /// vector field associated with the current site
         double vector_field_[3];
 
         /// MT potential
@@ -34,17 +37,21 @@ class Atom
         /// maximum l for potential and magnetic field 
         int lmax_pot_;
 
-        /// offset in the array of matching coefficients and in the array of wave-functions
+        /// offset in the array of matching coefficients
         int offset_aw_;
 
-        /// offset in the block of local orbitals in Hamiltonian and overlap matrices and in the array of wave-functions
+        /// offset in the block of local orbitals of the Hamiltonian and overlap matrices and in the eigen-vectors
         int offset_lo_;
 
         /// offset in the wave-function array 
         int offset_wf_;
+
+        /// unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method
+        mdarray<double,4> occupation_matrix_;
     
     public:
     
+        /// Constructor
         Atom(AtomType* type__, double* position__, double* vector_field__) : type_(type__),
                                                                              symmetry_class_(NULL),
                                                                              offset_aw_(-1),
@@ -134,6 +141,9 @@ class Atom
             
             for (int j = 0; j < num_mag_dims_; j++)
                 beff_[j].set_dimensions(lmmax, type()->num_mt_points());
+
+            occupation_matrix_.set_dimensions(16, 16, 2, 2);
+            occupation_matrix_.allocate();
         }
 
         void set_nonspherical_potential(double* veff__, double** beff__)
@@ -249,11 +259,6 @@ class Atom
             return offset_wf_;  
         }
 
-        inline double h_radial_integral(int lm, int idxrf1, int idxrf2)
-        {
-            return h_radial_integrals_(lm, idxrf1, idxrf2);
-        }
-        
         inline double* h_radial_integral(int idxrf1, int idxrf2)
         {
             return &h_radial_integrals_(0, idxrf1, idxrf2);

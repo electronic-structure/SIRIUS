@@ -70,10 +70,20 @@ class Density
                 } // j2
             } // lm3
         }
+        
+        /// Add k-point contribution to the density matrix
 
-        void add_k_contribution(kpoint* kp, mdarray<double,5>& mt_density_matrix)
+        /** In case of LDA+U the occupation matrix is also computed. It has the following expression:
+            \f[
+                n_{\ell,mm'}^{\sigma \sigma'} = \sum_{i {\bf k}}^{occ} \int_{0}^{R_{MT}} r^2 dr 
+                          \Psi_{\ell m}^{i{\bf k}\sigma *}({\bf r}) \Psi_{\ell m'}^{i{\bf k}\sigma'}({\bf r})
+            \f]
+        */
+        void add_kpoint_contribution(kpoint* kp, 
+                                     mdarray<double,5>& mt_density_matrix, 
+                                     mdarray<complex16,5>& occupation_matrix)
         {
-            Timer t("sirius::Density::add_k_contribution");
+            Timer t("sirius::Density::add_kpoint_contribution");
             
             std::vector< std::pair<int,double> > bands;
             for (int j = 0; j < parameters_.num_bands(); j++)
@@ -92,8 +102,9 @@ class Density
             mdarray<complex16,3> wf1(parameters_.max_mt_basis_size(), bands.size(), parameters_.num_spins());
             mdarray<complex16,3> wf2(parameters_.max_mt_basis_size(), bands.size(), parameters_.num_spins());
        
-            Timer t1("sirius::Density::add_k_contribution:zdens", false);
-            Timer t2("sirius::Density::add_k_contribution:reduce_zdens", false);
+            Timer t1("sirius::Density::add_kpoint_contribution:zdens", false);
+            Timer t2("sirius::Density::add_kpoint_contribution:reduce_zdens", false);
+            Timer t4("sirius::Density::add_kpoint_contribution:om", false);
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
                 t1.start();
@@ -135,10 +146,39 @@ class Density
                 
                 t2.stop();
 
+                if (true)
+                {
+                    t4.start();
+                    
+                    AtomType* type = parameters_.atom(ia)->type();
+                    
+                    for (int l = 0; l <= 3; l++)
+                    {
+                        int num_rf = type->indexr().num_rf(l);
+
+                        for (int j = 0; j < num_zdmat; j++)
+                        {
+                            for (int order2 = 0; order2 < num_rf; order2++)
+                            for (int lm2 = lm_by_l_m(l, -l); lm2 <= lm_by_l_m(l, l); lm2++)
+                            {
+                                for (int order1 = 0; order1 < num_rf; order1++)
+                                for (int lm1 = lm_by_l_m(l, -l); lm1 <= lm_by_l_m(l, l); lm1++)
+                                {
+                                    occupation_matrix(lm1, lm2, dmat_spins_[j].first, dmat_spins_[j].second, ia) +=
+                                        zdens(type->indexb_by_lm_order(lm1, order1),
+                                              type->indexb_by_lm_order(lm2, order2), j) *
+                                        parameters_.atom(ia)->symmetry_class()->o_radial_integral(l, order1, order2);
+                                }
+                            }
+                        }
+                    }
+                    t4.stop();
+                }
+
             } // ia
         
             
-            Timer t3("sirius::Density::add_k_contribution:it");
+            Timer t3("sirius::Density::add_kpoint_contribution:it");
             
             #pragma omp parallel default(shared)
             {
@@ -321,7 +361,6 @@ class Density
             dmat_spins_.push_back(std::pair<int,int>(0, 0));
             dmat_spins_.push_back(std::pair<int,int>(1, 1));
             dmat_spins_.push_back(std::pair<int,int>(0, 1));
-            dmat_spins_.push_back(std::pair<int,int>(1, 0));
             
             complex_gaunt_.set_dimensions(parameters_.lmmax_apw(), parameters_.lmmax_apw(), parameters_.lmmax_rho());
             complex_gaunt_.allocate();
@@ -540,10 +579,21 @@ class Density
             // zero density and magnetization
             zero();
 
+            mdarray<complex16,5> occupation_matrix(16, 16, 2, 2, parameters_.num_atoms()); 
+            occupation_matrix.zero();
+
             for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
             {
                 // add to charge density and magnetization
-                add_k_contribution(kpoint_set_[ik], mt_density_matrix);
+                add_kpoint_contribution(kpoint_set_[ik], mt_density_matrix, occupation_matrix);
+            }
+
+            // restore the du block of occupation matrix
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                for (int lm1 = 0; lm1 < 16; lm1++)
+                    for (int lm2 = 0; lm2 < 16; lm2++)
+                        occupation_matrix(lm2, lm1, 1, 0, ia) = conj(occupation_matrix(lm1, lm2, 0, 1, ia));
             }
 
             Timer t1("sirius::Density::generate:convert_mt");
