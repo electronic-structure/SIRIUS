@@ -47,7 +47,7 @@ class Atom
         int offset_wf_;
 
         /// unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method
-        mdarray<double,4> occupation_matrix_;
+        mdarray<complex16,4> occupation_matrix_;
     
     public:
     
@@ -272,6 +272,11 @@ class Atom
         inline int num_mt_points()
         {
             return type_->num_mt_points();
+        }
+
+        inline void set_occupation_matrix(const complex16* source)
+        {
+            memcpy(occupation_matrix_.get_ptr(), source, 16 * 16 * 2 * 2 * sizeof(complex16));
         }
 };
 

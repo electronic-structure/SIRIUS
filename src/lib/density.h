@@ -319,8 +319,8 @@ class Density
             assert(parameters_.num_spins() == 2);
 
             // set temporary array wrapper
-            mdarray<double,4> magmt_tmp(magmt, parameters_.lmmax_rho(), parameters_.max_num_mt_points(), parameters_.num_atoms(),
-                                        parameters_.num_mag_dims());
+            mdarray<double,4> magmt_tmp(magmt, parameters_.lmmax_rho(), parameters_.max_num_mt_points(), 
+                                        parameters_.num_atoms(), parameters_.num_mag_dims());
             mdarray<double,2> magir_tmp(magir, parameters_.fft().size(), parameters_.num_mag_dims());
             
             if (parameters_.num_mag_dims() == 1)
@@ -543,7 +543,8 @@ class Density
             
             parameters_.rti().eval_sum = eval_sum;
         }
-
+        
+        /// Generate charge density and magnetization
         void generate()
         {
             Timer t("sirius::Density::generate");
@@ -570,15 +571,16 @@ class Density
                 error(__FILE__, __LINE__, s);
             }
 
-            // auxiliary density matrix
-            mdarray<double,5> mt_density_matrix(parameters_.max_mt_radial_basis_size(), 
-                                                parameters_.max_mt_radial_basis_size(), 
-                                                parameters_.lmmax_rho(), parameters_.num_atoms(), parameters_.num_mag_dims() + 1);
-            mt_density_matrix.zero();
-            
             // zero density and magnetization
             zero();
 
+            // auxiliary density matrix
+            mdarray<double,5> mt_density_matrix(parameters_.max_mt_radial_basis_size(), 
+                                                parameters_.max_mt_radial_basis_size(), 
+                                                parameters_.lmmax_rho(), parameters_.num_atoms(), 
+                                                parameters_.num_mag_dims() + 1);
+            mt_density_matrix.zero();
+            
             mdarray<complex16,5> occupation_matrix(16, 16, 2, 2, parameters_.num_atoms()); 
             occupation_matrix.zero();
 
@@ -594,6 +596,8 @@ class Density
                 for (int lm1 = 0; lm1 < 16; lm1++)
                     for (int lm2 = 0; lm2 < 16; lm2++)
                         occupation_matrix(lm2, lm1, 1, 0, ia) = conj(occupation_matrix(lm1, lm2, 0, 1, ia));
+
+                parameters_.atom(ia)->set_occupation_matrix(&occupation_matrix(0, 0, 0, 0, ia));
             }
 
             Timer t1("sirius::Density::generate:convert_mt");
