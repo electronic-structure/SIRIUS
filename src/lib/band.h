@@ -406,6 +406,7 @@ class Band
                 }
             }
             
+            Timer t1("sirius::Band::set_o:it");
             for (int ig2 = 0; ig2 < num_gkvec; ig2++) // loop over columns
                 for (int ig1 = 0; ig1 <= ig2; ig1++) // for each column loop over rows
                     o(ig1, ig2) += parameters_.step_function_pw(parameters_.index_g12(gvec_index[ig1], gvec_index[ig2]));
@@ -449,8 +450,9 @@ class Band
                     }
                 }
                 // compute bwf = B_z*|wf_j>
-                hemm<cpu>(0, 0, mt_basis_size, parameters_.num_fv_states(), zone, &zm(0, 0, 0), parameters_.max_mt_basis_size(), 
-                          &scalar_wf(offset, 0), scalar_wf_size, zzero, &bwf(offset, 0, 0), scalar_wf_size);
+                hemm<cpu>(0, 0, mt_basis_size, parameters_.num_fv_states(), zone, &zm(0, 0, 0), 
+                          parameters_.max_mt_basis_size(), &scalar_wf(offset, 0), scalar_wf_size, zzero, 
+                          &bwf(offset, 0, 0), scalar_wf_size);
                 
                 // compute bwf = (B_x - iB_y)|wf_j>
                 if (parameters_.num_mag_dims() == 3)
@@ -627,14 +629,14 @@ class Band
             if (parameters_.num_spins() == 2)
                 apply_magnetic_field(scalar_wf, scalar_wf_size, num_gkvec, fft_index, effective_magnetic_field, hwf);
 
-            if (true)
+            if (parameters_.uj_correction())
             {
                 apply_uj_correction<uu>(scalar_wf, hwf);
                 if (parameters_.num_mag_dims() != 0) apply_uj_correction<dd>(scalar_wf, hwf);
                 if (parameters_.num_mag_dims() == 3) apply_uj_correction<ud>(scalar_wf, hwf);
             }
 
-            if (parameters_.spin_orbit())
+            if (parameters_.so_correction())
                 apply_so_correction(scalar_wf, hwf);
 
             complex16 zzero(0.0, 0.0);

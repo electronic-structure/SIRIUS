@@ -29,6 +29,8 @@ class run_time_info
             core_eval_sum = 0;
             
             valence_eval_sum = 0;
+
+            band_gap = 0.0;
         }
 
         double pseudo_charge_error;
@@ -61,7 +63,7 @@ class run_time_info
         
         double energy_fermi;
 
-
+        double band_gap;
 };
 
 

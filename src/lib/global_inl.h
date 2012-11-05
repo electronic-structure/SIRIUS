@@ -51,7 +51,7 @@ inline int l_by_lm(int lm)
 double fermi_dirac_distribution(double e)
 {
     double kT = 0.01;
-    if (e > 10 * kT) return 0.0;
-    if (e < -10 * kT) return 1.0;
+    if (e > 100 * kT) return 0.0;
+    if (e < -100 * kT) return 1.0;
     return (1.0 / (exp(e / kT) + 1.0));
 }

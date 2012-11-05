@@ -49,9 +49,12 @@ class Global : public StepFunction
         /// number of dimensions of the magnetization and effective magnetic field (0, 1 or 3)
         int num_mag_dims_;
 
-        /// true if spin-orbit interaction is considered
-        bool spin_orbit_;
+        /// true if spin-orbit correction is applied
+        bool so_correction_;
        
+        /// true if UJ correction is applied
+        bool uj_correction_;
+
         /// run-time information (energies, charges, etc.)
         run_time_info rti_;
 
@@ -63,7 +66,8 @@ class Global : public StepFunction
                    aw_cutoff_(aw_cutoff_default),
                    num_spins_(1),
                    num_mag_dims_(0),
-                   spin_orbit_(false)
+                   so_correction_(false),
+                   uj_correction_(false)
         {
         }
 
@@ -214,9 +218,24 @@ class Global : public StepFunction
             return rti_;
         }
         
-        inline bool spin_orbit()
+        inline void set_so_correction(bool so_correction__)
         {
-            return spin_orbit_;
+            so_correction_ = so_correction__; 
+        }
+
+        inline void set_uj_correction(bool uj_correction__)
+        {
+            uj_correction_ = uj_correction__; 
+        }
+
+        inline bool so_correction()
+        {
+            return so_correction_;
+        }
+        
+        inline bool uj_correction()
+        {
+            return uj_correction_;
         }
         
         void initialize()
@@ -271,7 +290,7 @@ class Global : public StepFunction
         void print_info()
         {
             printf("\n");
-            printf("SIRIUS v0.4\n");
+            printf("sirius v0.4\n");
             printf("git hash : %s\n", git_hash);
             printf("build date : %s\n", build_date);
             int num_threads = 1;
@@ -281,7 +300,7 @@ class Global : public StepFunction
                     num_threads = omp_get_num_threads();
             }
             printf("\n");
-            printf("number of OMP threads : %i\n", num_threads); 
+            printf("number of omp threads : %i\n", num_threads); 
 
             unit_cell::print_info();
             reciprocal_lattice::print_info();
@@ -297,7 +316,7 @@ class Global : public StepFunction
         
         void generate_radial_functions()
         {
-            Timer t("sirius::Global::generate_radial_functions");
+            Timer t("sirius::global::generate_radial_functions");
             
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
                 atom_symmetry_class(ic)->generate_radial_functions();
@@ -305,7 +324,7 @@ class Global : public StepFunction
         
         void generate_radial_integrals()
         {
-            Timer t("sirius::Global::generate_radial_integrals");
+            Timer t("sirius::global::generate_radial_integrals");
             
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
                 atom_symmetry_class(ic)->generate_radial_integrals();
@@ -314,29 +333,29 @@ class Global : public StepFunction
                 atom(ia)->generate_radial_integrals();
         }
 
-        /// Get the total energy of the electronic subsystem.
+        /// get the total energy of the electronic subsystem.
 
-        /** From the definition of the density functional we have:
+        /** from the definition of the density functional we have:
             
             \f[
-                E[\rho] = T[\rho] + E^{H}[\rho] + E^{XC}[\rho] + E^{ext}[\rho]
+                e[\rho] = t[\rho] + e^{h}[\rho] + e^{xc}[\rho] + e^{ext}[\rho]
             \f]
-            where \f$ T[\rho] \f$ is the kinetic energy, \f$ E^{H}[\rho] \f$ - electrostatic energy of
-            electron-electron density interaction, \f$ E^{XC}[\rho] \f$ - exchange-correlation energy
-            and \f$ E^{ext}[\rho] \f$ - energy in the external field of nuclei.
+            where \f$ t[\rho] \f$ is the kinetic energy, \f$ e^{h}[\rho] \f$ - electrostatic energy of
+            electron-electron density interaction, \f$ e^{xc}[\rho] \f$ - exchange-correlation energy
+            and \f$ e^{ext}[\rho] \f$ - energy in the external field of nuclei.
             
-            Electrostatic and external field energies are grouped in the following way:
+            electrostatic and external field energies are grouped in the following way:
             \f[
                 \frac{1}{2} \int \int \frac{\rho({\bf r})\rho({\bf r'}) d{\bf r} d{\bf r'}}{|{\bf r} - {\bf r'}|} + 
-                    \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r} = \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} + 
-                    \frac{1}{2} \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r}
+                    \int \rho({\bf r}) v^{nuc}({\bf r}) d{\bf r} = \frac{1}{2} \int v^{h}({\bf r})\rho({\bf r})d{\bf r} + 
+                    \frac{1}{2} \int \rho({\bf r}) v^{nuc}({\bf r}) d{\bf r}
             \f]
-            Here \f$ V^{H}({\bf r}) \f$ is the total (electron + nuclei) electrostatic potential returned by the 
-            poisson solver. Next we transform the remaining term:
+            here \f$ v^{h}({\bf r}) \f$ is the total (electron + nuclei) electrostatic potential returned by the 
+            poisson solver. next we transform the remaining term:
             \f[
-                \frac{1}{2} \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r} = 
+                \frac{1}{2} \int \rho({\bf r}) v^{nuc}({\bf r}) d{\bf r} = 
                 \frac{1}{2} \int \int \frac{\rho({\bf r})\rho^{nuc}({\bf r'}) d{\bf r} d{\bf r'}}{|{\bf r} - {\bf r'}|} = 
-                \frac{1}{2} \int V^{H,el}({\bf r}) \rho^{nuc}({\bf r}) d{\bf r}
+                \frac{1}{2} \int v^{h,el}({\bf r}) \rho^{nuc}({\bf r}) d{\bf r}
             \f]
         */
         double total_energy()
@@ -349,13 +368,13 @@ class Global : public StepFunction
             return rti().core_eval_sum +rti().valence_eval_sum - rti().energy_veff - rti().energy_bxc; 
         }
 
-        /// Print run-time information.
+        /// print run-time information.
         void print_rti()
         {
             double total_core_leakage = 0.0;
 
             printf("\n");
-            printf("Charges and magnetic moments\n");
+            printf("charges and magnetic moments\n");
             for (int i = 0; i < 80; i++) printf("-");
             printf("\n"); 
             printf("atom      charge    core leakage");
@@ -417,16 +436,19 @@ class Global : public StepFunction
             printf("pseudo charge error : %18.12f\n", rti().pseudo_charge_error);
             
             printf("\n");
-            printf("Energy\n");
+            printf("energy\n");
             for (int i = 0; i < 80; i++) printf("-");
             printf("\n"); 
 
             printf("kinetic energy   : %18.8f\n", kinetic_energy());
-            printf("<rho|V^{XC}>     : %18.8f\n", rti().energy_vxc);
-            printf("<rho|E^{XC}>     : %18.8f\n", rti().energy_exc);
-            printf("<mag|B^{XC}>     : %18.8f\n", rti().energy_bxc);
-            printf("<rho|V^{H}>      : %18.8f\n", rti().energy_vha);
-            printf("Total energy     : %18.8f\n", total_energy());
+            printf("<rho|v^{xc}>     : %18.8f\n", rti().energy_vxc);
+            printf("<rho|e^{xc}>     : %18.8f\n", rti().energy_exc);
+            printf("<mag|b^{xc}>     : %18.8f\n", rti().energy_bxc);
+            printf("<rho|v^{h}>      : %18.8f\n", rti().energy_vha);
+            printf("total energy     : %18.8f\n", total_energy());
+
+            printf("\n");
+            printf("band gap (eV) : %18.8f\n", rti().band_gap * ha2ev);
         }
 };
 

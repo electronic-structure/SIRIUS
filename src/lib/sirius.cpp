@@ -335,4 +335,20 @@ void FORTRAN(sirius_set_uj_correction_matrix)(int4* atom_id, int4* l, complex16*
     sirius::global.atom(ia)->set_uj_correction_matrix(*l, uj_correction_matrix);
 }
 
+void FORTRAN(sirius_set_so_correction)(int4* so_correction)
+{
+    if (*so_correction != 0) 
+        sirius::global.set_so_correction(true);
+    else
+        sirius::global.set_so_correction(false);
+}
+
+void FORTRAN(sirius_set_uj_correction)(int4* uj_correction)
+{
+    if (*uj_correction != 0)
+        sirius::global.set_uj_correction(true);
+    else
+        sirius::global.set_uj_correction(false);
+}
+
 } // extern "C"

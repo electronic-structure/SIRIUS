@@ -15,6 +15,8 @@ const double fourpi = 12.566370614359172954;
 
 const double y00 = 0.28209479177387814347;
 
+const double ha2ev = 27.21138505;
+
 const double pw_cutoff_default = 16.0; 
 
 const double aw_cutoff_default = 7.0;

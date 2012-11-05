@@ -146,7 +146,7 @@ class Density
                 
                 t2.stop();
 
-                if (true)
+                if (parameters_.uj_correction())
                 {
                     t4.start();
                     
@@ -463,9 +463,11 @@ class Density
             int s = 1;
             int sp;
 
-            while (fabs(de) > 1e-10)
+            double ne = 0.0;
+
+            while (fabs(ne - parameters_.num_valence_electrons()) > 1e-10)
             {
-                double ne = 0.0;
+                ne = 0.0;
                 for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
                 {
                     double wkmo = kpoint_set_[ik]->weight() * parameters_.max_occupancy();
@@ -498,6 +500,37 @@ class Density
                 kpoint_set_[ik]->set_band_occupancies(&bnd_occ[0]);
             }
 
+            double gap = 0.0;
+            if (parameters_.num_spins() == 2 || parameters_.num_valence_electrons() % 2 == 0)
+            {
+                // find band gap
+                std::vector< std::pair<double, double> > eband;
+                std::pair<double, double> eminmax;
+
+                for (int j = 0; j < parameters_.num_bands(); j++)
+                {
+                    eminmax.first = 1e10;
+                    eminmax.second = -1e10;
+
+                    for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
+                    {
+                        eminmax.first = std::min(eminmax.first, kpoint_set_[ik]->band_energy(j));
+                        eminmax.second = std::max(eminmax.second, kpoint_set_[ik]->band_energy(j));
+                    }
+
+                    eband.push_back(eminmax);
+                }
+                
+                std::sort(eband.begin(), eband.end());
+
+                int ist = parameters_.num_valence_electrons();
+                if (parameters_.num_spins() == 1) ist /= 2; 
+
+                if (eband[ist].first > eband[ist - 1].second)
+                    gap = eband[ist].first - eband[ist - 1].second;
+
+                parameters_.rti().band_gap = gap;
+            }
         }
 
         void find_eigen_states()
