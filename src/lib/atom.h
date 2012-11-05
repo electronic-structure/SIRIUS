@@ -48,6 +48,15 @@ class Atom
 
         /// unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method
         mdarray<complex16,4> occupation_matrix_;
+        
+        /// U,J correction matrix of the L(S)DA+U method
+        mdarray<complex16,4> uj_correction_matrix_;
+
+        /// true if UJ correction is applied for the current atom
+        bool apply_uj_correction_;
+
+        /// orbital quantum number for UJ correction
+        int uj_correction_l_;
     
     public:
     
@@ -56,7 +65,9 @@ class Atom
                                                                              symmetry_class_(NULL),
                                                                              offset_aw_(-1),
                                                                              offset_lo_(-1),
-                                                                             offset_wf_(-1)
+                                                                             offset_wf_(-1),
+                                                                             apply_uj_correction_(false),
+                                                                             uj_correction_l_(-1)
         {
             assert(type__);
                 
@@ -144,6 +155,9 @@ class Atom
 
             occupation_matrix_.set_dimensions(16, 16, 2, 2);
             occupation_matrix_.allocate();
+            
+            uj_correction_matrix_.set_dimensions(16, 16, 2, 2);
+            uj_correction_matrix_.allocate();
         }
 
         void set_nonspherical_potential(double* veff__, double** beff__)
@@ -277,6 +291,34 @@ class Atom
         inline void set_occupation_matrix(const complex16* source)
         {
             memcpy(occupation_matrix_.get_ptr(), source, 16 * 16 * 2 * 2 * sizeof(complex16));
+            apply_uj_correction_ = false;
+        }
+        
+        inline void get_occupation_matrix(complex16* destination)
+        {
+            memcpy(destination, occupation_matrix_.get_ptr(), 16 * 16 * 2 * 2 * sizeof(complex16));
+        }
+
+        inline void set_uj_correction_matrix(const int l, const complex16* source)
+        {
+            uj_correction_l_ = l;
+            memcpy(uj_correction_matrix_.get_ptr(), source, 16 * 16 * 2 * 2 * sizeof(complex16));
+            apply_uj_correction_ = true;
+        }
+
+        inline bool apply_uj_correction()
+        {
+            return apply_uj_correction_;
+        }
+
+        inline int uj_correction_l()
+        {
+            return uj_correction_l_;
+        }
+
+        inline complex16 uj_correction_matrix(int lm1, int lm2, int ispn1, int ispn2)
+        {
+             return uj_correction_matrix_(lm1, lm2, ispn1, ispn2);
         }
 };
 

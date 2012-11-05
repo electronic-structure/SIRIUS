@@ -63,7 +63,7 @@ class Global : public StepFunction
                    aw_cutoff_(aw_cutoff_default),
                    num_spins_(1),
                    num_mag_dims_(0),
-                   spin_orbit_(true)
+                   spin_orbit_(false)
         {
         }
 
@@ -341,9 +341,12 @@ class Global : public StepFunction
         */
         double total_energy()
         {
-            double energy_kin = rti().eval_sum - rti().energy_veff - rti().energy_bxc; 
-
-            return energy_kin + rti().energy_exc + 0.5 * rti().energy_vha + rti().energy_enuc;
+            return kinetic_energy() + rti().energy_exc + 0.5 * rti().energy_vha + rti().energy_enuc;
+        }
+        
+        inline double kinetic_energy()
+        {
+            return rti().core_eval_sum +rti().valence_eval_sum - rti().energy_veff - rti().energy_bxc; 
         }
 
         /// Print run-time information.
@@ -418,9 +421,7 @@ class Global : public StepFunction
             for (int i = 0; i < 80; i++) printf("-");
             printf("\n"); 
 
-            double energy_kin = rti().eval_sum - rti().energy_veff;
-            
-            printf("kinetic energy   : %18.8f\n", energy_kin);
+            printf("kinetic energy   : %18.8f\n", kinetic_energy());
             printf("<rho|V^{XC}>     : %18.8f\n", rti().energy_vxc);
             printf("<rho|E^{XC}>     : %18.8f\n", rti().energy_exc);
             printf("<mag|B^{XC}>     : %18.8f\n", rti().energy_bxc);

@@ -5,6 +5,32 @@ class run_time_info
 {
     public:
 
+        run_time_info()
+        {
+            zero();
+        }
+
+        void zero()
+        {
+            pseudo_charge_error = 0;
+    
+            energy_veff = 0;
+            
+            energy_vha = 0;
+            
+            energy_vxc = 0;
+            
+            energy_bxc = 0;
+    
+            energy_exc = 0;
+    
+            energy_enuc = 0;
+            
+            core_eval_sum = 0;
+            
+            valence_eval_sum = 0;
+        }
+
         double pseudo_charge_error;
 
         double energy_veff;
@@ -23,8 +49,6 @@ class run_time_info
         
         double valence_eval_sum;
 
-        double eval_sum;
-        
         std::vector<double> core_leakage;
 
         std::vector<double> mt_charge;

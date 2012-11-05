@@ -557,6 +557,60 @@ class Band
                 }
             }
         }
+
+        /// Apply UJ correction to scalar wave functions
+        template <spin_block sblock>
+        void apply_uj_correction(mdarray<complex16,2>& scalar_wf, mdarray<complex16,3>& hwf)
+        {
+            Timer t("sirius::Band::apply_uj_correction");
+
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                if (parameters_.atom(ia)->apply_uj_correction())
+                {
+                    AtomType* type = parameters_.atom(ia)->type();
+
+                    int offset = parameters_.atom(ia)->offset_wf();
+
+                    int l = parameters_.atom(ia)->uj_correction_l();
+
+                    int nrf = type->indexr().num_rf(l);
+
+                    for (int order2 = 0; order2 < nrf; order2++)
+                    {
+                        for (int lm2 = lm_by_l_m(l, -l); lm2 <= lm_by_l_m(l, l); lm2++)
+                        {
+                            int idx2 = type->indexb_by_lm_order(lm2, order2);
+                            for (int order1 = 0; order1 < nrf; order1++)
+                            {
+                                double ori = parameters_.atom(ia)->symmetry_class()->o_radial_integral(l, order2, order1);
+                                
+                                for (int ist = 0; ist < parameters_.num_fv_states(); ist++)
+                                {
+                                    for (int lm1 = lm_by_l_m(l, -l); lm1 <= lm_by_l_m(l, l); lm1++)
+                                    {
+                                        int idx1 = type->indexb_by_lm_order(lm1, order1);
+                                        complex16 z1 = scalar_wf(offset + idx1, ist) * ori;
+
+                                        if (sblock == uu)
+                                            hwf(offset + idx2, ist, 0) += z1 * 
+                                                parameters_.atom(ia)->uj_correction_matrix(lm2, lm1, 0, 0);
+
+                                        if (sblock == dd)
+                                            hwf(offset + idx2, ist, 1) += z1 *
+                                                parameters_.atom(ia)->uj_correction_matrix(lm2, lm1, 1, 1);
+
+                                        if (sblock == ud)
+                                            hwf(offset + idx2, ist, 2) += z1 *
+                                                parameters_.atom(ia)->uj_correction_matrix(lm2, lm1, 0, 1);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         
         void set_sv_h(mdarray<complex16,2>& scalar_wf, int scalar_wf_size, int num_gkvec, int* fft_index, 
                       double* evalfv, PeriodicFunction<double>* effective_magnetic_field[3], mdarray<complex16,2>& h)
@@ -573,14 +627,13 @@ class Band
             if (parameters_.num_spins() == 2)
                 apply_magnetic_field(scalar_wf, scalar_wf_size, num_gkvec, fft_index, effective_magnetic_field, hwf);
 
-#if 0
-            if (lapw_parameters_.ldapu)
+            if (true)
             {
-                apply_u_correction<uu>(ks, hwf);
-                if (lapw_parameters_.ndmag != 0) apply_u_correction<dd>(ks, hwf);
-                if (lapw_parameters_.ndmag == 3) apply_u_correction<ud>(ks, hwf);
+                apply_uj_correction<uu>(scalar_wf, hwf);
+                if (parameters_.num_mag_dims() != 0) apply_uj_correction<dd>(scalar_wf, hwf);
+                if (parameters_.num_mag_dims() == 3) apply_uj_correction<ud>(scalar_wf, hwf);
             }
-#endif
+
             if (parameters_.spin_orbit())
                 apply_so_correction(scalar_wf, hwf);
 

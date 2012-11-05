@@ -323,4 +323,16 @@ void FORTRAN(sirius_print_rti)(void)
     sirius::global.print_rti();
 }
 
+void FORTRAN(sirius_get_occupation_matrix)(int4* atom_id, complex16* occupation_matrix)
+{
+    int ia = *atom_id - 1;
+    sirius::global.atom(ia)->get_occupation_matrix(occupation_matrix);
 }
+
+void FORTRAN(sirius_set_uj_correction_matrix)(int4* atom_id, int4* l, complex16* uj_correction_matrix)
+{
+    int ia = *atom_id - 1;
+    sirius::global.atom(ia)->set_uj_correction_matrix(*l, uj_correction_matrix);
+}
+
+} // extern "C"

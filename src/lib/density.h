@@ -530,10 +530,6 @@ class Density
 
             // compute eigen-value sums
             double eval_sum = 0.0;
-            for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
-                eval_sum += parameters_.atom_symmetry_class(ic)->core_eval_sum() *
-                            parameters_.atom_symmetry_class(ic)->num_atoms();
-            
             for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
             {
                 double wk = kpoint_set_[ik]->weight();
@@ -541,10 +537,10 @@ class Density
                     eval_sum += wk * kpoint_set_[ik]->band_energy(j) * kpoint_set_[ik]->band_occupancy(j);
             }
             
-            parameters_.rti().eval_sum = eval_sum;
+            parameters_.rti().valence_eval_sum = eval_sum;
         }
         
-        /// Generate charge density and magnetization
+        /// Generate charge density and magnetization from the wave functions
         void generate()
         {
             Timer t("sirius::Density::generate");
@@ -650,10 +646,16 @@ class Density
             t1.stop();
             
             // add core contribution
+            double eval_sum = 0.0;
             for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
             {
                 int nmtp = parameters_.atom_symmetry_class(ic)->atom_type()->num_mt_points();
+                
                 parameters_.atom_symmetry_class(ic)->generate_core_charge_density();
+                
+                eval_sum += parameters_.atom_symmetry_class(ic)->core_eval_sum() *
+                            parameters_.atom_symmetry_class(ic)->num_atoms();
+
                 for (int i = 0; i < parameters_.atom_symmetry_class(ic)->num_atoms(); i++)
                 {
                     int ia = parameters_.atom_symmetry_class(ic)->atom_id(i);
@@ -661,6 +663,7 @@ class Density
                         rho_->f_rlm(0, ir, ia) += parameters_.atom_symmetry_class(ic)->core_charge_density(ir) / y00;
                 }
             }
+            parameters_.rti().core_eval_sum = eval_sum;
 
             double nel = rho_->integrate(rlm_component | it_component);
             if (fabs(nel - parameters_.num_electrons()) > 1e-5)

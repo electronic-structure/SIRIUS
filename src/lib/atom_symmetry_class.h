@@ -337,7 +337,7 @@ class AtomSymmetryClass
             generate_aw_radial_functions();
             generate_lo_radial_functions();
 
-            print_enu();
+            //print_enu();
         }
 
         /// Generate radial overlap and SO integrals
@@ -510,7 +510,7 @@ class AtomSymmetryClass
                 return;
             }
             
-            RadialSolver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
+            RadialSolver solver(true, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
             
             Spline<double> rho(atom_type_->radial_grid().size(), atom_type_->radial_grid());
             
