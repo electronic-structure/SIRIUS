@@ -266,8 +266,9 @@ class kpoint
 
             generate_scalar_wave_functions();
             
-            /*for (int i = 0; i < 3; i++)
-                test_scalar_wave_functions(i);*/
+            if (test_scalar_wf)
+                for (int i = 0; i < 3; i++)
+                    test_scalar_wave_functions(i);
 
             evecsv_.set_dimensions(parameters_.num_bands(), parameters_.num_bands());
             evecsv_.allocate();

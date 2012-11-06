@@ -68,11 +68,11 @@ class Timer
         {
             std::map<std::string, double>::iterator it;
             for (it = timers_.begin(); it != timers_.end(); it++)
-                printf("%-60s : %10.4f (total)   %10.4f (average)\n", it->first.c_str(), it->second, 
-                                                                      it->second/tcount_[it->first]);
+            {
+                double avg = (tcount_[it->first] == 0) ? 0.0 : it->second/tcount_[it->first];
+                printf("%-60s : %10.4f (total)   %10.4f (average)\n", it->first.c_str(), it->second, avg);
+            }
         }
- 
-        //static void print(std::string tname);
 };
 
 std::map<std::string,double> Timer::timers_;

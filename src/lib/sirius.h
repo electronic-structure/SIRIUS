@@ -25,6 +25,7 @@ extern "C" {
 #include <gsl/gsl_sf_legendre.h>
 #include <gsl/gsl_sf_bessel.h>
 #include <gsl/gsl_sf_coupling.h>
+#include <gsl/gsl_sf_erf.h>
 #include <xc.h>
 #include <hdf5.h>
 #include "../libjson/libjson.h"

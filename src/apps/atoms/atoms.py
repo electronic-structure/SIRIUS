@@ -41,7 +41,7 @@ void solve_atom(atom* a)
     
     double energy_tot = a->solve_free_atom(1e-10, 1e-7, 1e-6, enu);
     
-    double ecore_cutoff = -4.0;
+    double ecore_cutoff = -10.0;
     
     int ncore = 0;
     for (int ist = 0; ist < (int)a->num_atomic_levels(); ist++)

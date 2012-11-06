@@ -449,11 +449,11 @@ class Global : public StepFunction
 
             printf("\n");
             printf("band gap (eV) : %18.8f\n", rti().band_gap * ha2ev);
+            printf("Efermi        : %18.8f\n", rti().energy_fermi);
         }
 };
 
 Global global;
 
 };
-
 

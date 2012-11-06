@@ -1,14 +1,20 @@
 #ifndef __ERROR_HANDLING_H__
 #define __ERROR_HANDLING_H__
 
-void error(const char* file_name, int line_number, const char* message)
+void error(const char* file_name, int line_number, const char* message, bool fatal = true)
 {
     printf("\n");
-    printf("Fatal error at line %i of file %s \n", line_number, file_name);
+    if (fatal)
+        printf("Fatal error at line %i of file %s \n", line_number, file_name);
+    else
+        printf("Warning at line %i of file %s \n", line_number, file_name);
     printf("\n");
     printf("%s\n", message);
-    raise(SIGTERM);
-    exit(0);
+    if (fatal) 
+    {
+        raise(SIGTERM);
+        exit(0);
+    }
 }
 
 void error(const char* file_name, int line_number, const std::string& message)
@@ -19,6 +25,11 @@ void error(const char* file_name, int line_number, const std::string& message)
 void error(const char* file_name, int line_number, const std::stringstream& message)
 {
     error(file_name, line_number, message.str().c_str());
+}
+
+void warning(const char* file_name, int line_number, const std::stringstream& message)
+{
+    error(file_name, line_number, message.str().c_str(), false);
 }
 
 #endif // __ERROR_HANDLING_H__

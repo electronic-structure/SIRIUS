@@ -7,9 +7,9 @@
 
 const bool check_evecfv = false;
 
-const bool check_scalar_wf = false;
+const bool test_scalar_wf = false;
 
-const bool check_spinor_wf = false;
+const bool test_spinor_wf = false;
 
 const bool hdf5_trace_errors = false;
 

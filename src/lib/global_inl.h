@@ -55,3 +55,11 @@ double fermi_dirac_distribution(double e)
     if (e < -100 * kT) return 1.0;
     return (1.0 / (exp(e / kT) + 1.0));
 }
+
+double gaussian_smearing(double e)
+{
+    double delta = 0.01;
+
+    return 0.5 * (1 - gsl_sf_erf(e / delta));
+}
+

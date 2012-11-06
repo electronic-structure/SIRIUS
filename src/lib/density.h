@@ -174,7 +174,6 @@ class Density
                     }
                     t4.stop();
                 }
-
             } // ia
         
             
@@ -472,7 +471,7 @@ class Density
                 {
                     double wkmo = kpoint_set_[ik]->weight() * parameters_.max_occupancy();
                     for (int j = 0; j < parameters_.num_bands(); j++)
-                        ne += fermi_dirac_distribution(kpoint_set_[ik]->band_energy(j) - ef) * wkmo;
+                        ne += gaussian_smearing(kpoint_set_[ik]->band_energy(j) - ef) * wkmo;
                 }
                 
                 sp = s;
@@ -488,7 +487,7 @@ class Density
 
                 ef += de;
             }
-            
+
             parameters_.rti().energy_fermi = ef;
             
             std::vector<double> bnd_occ(parameters_.num_bands());
@@ -496,7 +495,8 @@ class Density
             for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
             {
                 for (int j = 0; j < parameters_.num_bands(); j++)
-                    bnd_occ[j] = fermi_dirac_distribution(kpoint_set_[ik]->band_energy(j) - ef);
+                    bnd_occ[j] = gaussian_smearing(kpoint_set_[ik]->band_energy(j) - ef) * 
+                                 parameters_.max_occupancy();
                 kpoint_set_[ik]->set_band_occupancies(&bnd_occ[0]);
             }
 
@@ -685,7 +685,7 @@ class Density
                 int nmtp = parameters_.atom_symmetry_class(ic)->atom_type()->num_mt_points();
                 
                 parameters_.atom_symmetry_class(ic)->generate_core_charge_density();
-                
+
                 eval_sum += parameters_.atom_symmetry_class(ic)->core_eval_sum() *
                             parameters_.atom_symmetry_class(ic)->num_atoms();
 
@@ -704,8 +704,9 @@ class Density
                 std::stringstream s;
                 s << "wrong charge density after k-point summation" << std::endl
                   << "obtained value : " << nel << std::endl 
-                  << "target value : " << parameters_.num_electrons();
-                error(__FILE__, __LINE__, s);
+                  << "target value : " << parameters_.num_electrons() << std::endl
+                  << "difference : " << fabs(nel - parameters_.num_electrons()); 
+                warning(__FILE__, __LINE__, s);
             }
 #if 0                
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
