@@ -290,7 +290,7 @@ class Global : public StepFunction
         void print_info()
         {
             printf("\n");
-            printf("sirius v0.4\n");
+            printf("SIRIUS v0.4\n");
             printf("git hash : %s\n", git_hash);
             printf("build date : %s\n", build_date);
             int num_threads = 1;
@@ -300,7 +300,7 @@ class Global : public StepFunction
                     num_threads = omp_get_num_threads();
             }
             printf("\n");
-            printf("number of omp threads : %i\n", num_threads); 
+            printf("number of OMP threads : %i\n", num_threads); 
 
             unit_cell::print_info();
             reciprocal_lattice::print_info();
@@ -316,7 +316,7 @@ class Global : public StepFunction
         
         void generate_radial_functions()
         {
-            Timer t("sirius::global::generate_radial_functions");
+            Timer t("sirius::Global::generate_radial_functions");
             
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
                 atom_symmetry_class(ic)->generate_radial_functions();
@@ -324,7 +324,7 @@ class Global : public StepFunction
         
         void generate_radial_integrals()
         {
-            Timer t("sirius::global::generate_radial_integrals");
+            Timer t("sirius::Global::generate_radial_integrals");
             
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
                 atom_symmetry_class(ic)->generate_radial_integrals();
@@ -333,29 +333,29 @@ class Global : public StepFunction
                 atom(ia)->generate_radial_integrals();
         }
 
-        /// get the total energy of the electronic subsystem.
+        /// Get the total energy of the electronic subsystem.
 
-        /** from the definition of the density functional we have:
+        /** From the definition of the density functional we have:
             
             \f[
-                e[\rho] = t[\rho] + e^{h}[\rho] + e^{xc}[\rho] + e^{ext}[\rho]
+                E[\rho] = T[\rho] + E^{H}[\rho] + E^{XC}[\rho] + E^{ext}[\rho]
             \f]
-            where \f$ t[\rho] \f$ is the kinetic energy, \f$ e^{h}[\rho] \f$ - electrostatic energy of
-            electron-electron density interaction, \f$ e^{xc}[\rho] \f$ - exchange-correlation energy
-            and \f$ e^{ext}[\rho] \f$ - energy in the external field of nuclei.
+            where \f$ T[\rho] \f$ is the kinetic energy, \f$ E^{H}[\rho] \f$ - electrostatic energy of
+            electron-electron density interaction, \f$ E^{XC}[\rho] \f$ - exchange-correlation energy
+            and \f$ E^{ext}[\rho] \f$ - energy in the external field of nuclei.
             
-            electrostatic and external field energies are grouped in the following way:
+            Electrostatic and external field energies are grouped in the following way:
             \f[
                 \frac{1}{2} \int \int \frac{\rho({\bf r})\rho({\bf r'}) d{\bf r} d{\bf r'}}{|{\bf r} - {\bf r'}|} + 
-                    \int \rho({\bf r}) v^{nuc}({\bf r}) d{\bf r} = \frac{1}{2} \int v^{h}({\bf r})\rho({\bf r})d{\bf r} + 
-                    \frac{1}{2} \int \rho({\bf r}) v^{nuc}({\bf r}) d{\bf r}
+                    \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r} = \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} + 
+                    \frac{1}{2} \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r}
             \f]
-            here \f$ v^{h}({\bf r}) \f$ is the total (electron + nuclei) electrostatic potential returned by the 
-            poisson solver. next we transform the remaining term:
+            Here \f$ V^{H}({\bf r}) \f$ is the total (electron + nuclei) electrostatic potential returned by the 
+            poisson solver. Next we transform the remaining term:
             \f[
-                \frac{1}{2} \int \rho({\bf r}) v^{nuc}({\bf r}) d{\bf r} = 
+                \frac{1}{2} \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r} = 
                 \frac{1}{2} \int \int \frac{\rho({\bf r})\rho^{nuc}({\bf r'}) d{\bf r} d{\bf r'}}{|{\bf r} - {\bf r'}|} = 
-                \frac{1}{2} \int v^{h,el}({\bf r}) \rho^{nuc}({\bf r}) d{\bf r}
+                \frac{1}{2} \int V^{H,el}({\bf r}) \rho^{nuc}({\bf r}) d{\bf r}
             \f]
         */
         double total_energy()
@@ -368,13 +368,13 @@ class Global : public StepFunction
             return rti().core_eval_sum +rti().valence_eval_sum - rti().energy_veff - rti().energy_bxc; 
         }
 
-        /// print run-time information.
+        /// Print run-time information.
         void print_rti()
         {
             double total_core_leakage = 0.0;
 
             printf("\n");
-            printf("charges and magnetic moments\n");
+            printf("Charges and magnetic moments\n");
             for (int i = 0; i < 80; i++) printf("-");
             printf("\n"); 
             printf("atom      charge    core leakage");
@@ -436,16 +436,16 @@ class Global : public StepFunction
             printf("pseudo charge error : %18.12f\n", rti().pseudo_charge_error);
             
             printf("\n");
-            printf("energy\n");
+            printf("Energy\n");
             for (int i = 0; i < 80; i++) printf("-");
             printf("\n"); 
 
             printf("kinetic energy   : %18.8f\n", kinetic_energy());
-            printf("<rho|v^{xc}>     : %18.8f\n", rti().energy_vxc);
-            printf("<rho|e^{xc}>     : %18.8f\n", rti().energy_exc);
-            printf("<mag|b^{xc}>     : %18.8f\n", rti().energy_bxc);
-            printf("<rho|v^{h}>      : %18.8f\n", rti().energy_vha);
-            printf("total energy     : %18.8f\n", total_energy());
+            printf("<rho|V^{XC}>     : %18.8f\n", rti().energy_vxc);
+            printf("<rho|E^{XC}>     : %18.8f\n", rti().energy_exc);
+            printf("<mag|B^{XC}>     : %18.8f\n", rti().energy_bxc);
+            printf("<rho|V^{H}>      : %18.8f\n", rti().energy_vha);
+            printf("Total energy     : %18.8f\n", total_energy());
 
             printf("\n");
             printf("band gap (eV) : %18.8f\n", rti().band_gap * ha2ev);
