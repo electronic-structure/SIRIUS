@@ -58,6 +58,11 @@ class Global : public StepFunction
         /// run-time information (energies, charges, etc.)
         run_time_info rti_;
 
+        /// all available MPI ranks
+        MPIWorld mpi_world_;
+
+        MPIGrid mpi_grid_;
+
     public:
     
         Global() : lmax_apw_(lmax_apw_default),
@@ -67,7 +72,8 @@ class Global : public StepFunction
                    num_spins_(1),
                    num_mag_dims_(0),
                    so_correction_(false),
-                   uj_correction_(false)
+                   uj_correction_(false),
+                   mpi_grid_(mpi_world_)
         {
         }
 
@@ -237,8 +243,13 @@ class Global : public StepFunction
         {
             return uj_correction_;
         }
+
+        MPIWorld& mpi_world()
+        {
+            return mpi_world_;
+        }
         
-        void initialize()
+        void initialize(int init_mpi)
         {
             unit_cell::init();
             geometry::init();
@@ -280,6 +291,9 @@ class Global : public StepFunction
 
             num_fv_states_ = int(num_electrons() / 2.0) + 10;
             num_bands_ = num_fv_states_ * num_spins_;
+
+            mpi_world_.initialize(init_mpi);
+            mpi_grid_.initialize(intvec(2, 2));
         }
 
         void clear()
@@ -289,6 +303,8 @@ class Global : public StepFunction
 
         void print_info()
         {
+            if (mpi_world_.rank()) return;
+
             printf("\n");
             printf("SIRIUS v0.4\n");
             printf("git hash : %s\n", git_hash);
@@ -300,6 +316,7 @@ class Global : public StepFunction
                     num_threads = omp_get_num_threads();
             }
             printf("\n");
+            printf("number of MPI ranks   : %i\n", mpi_world_.size());
             printf("number of OMP threads : %i\n", num_threads); 
 
             unit_cell::print_info();
@@ -371,6 +388,8 @@ class Global : public StepFunction
         /// Print run-time information.
         void print_rti()
         {
+            if (mpi_world_.rank()) return;
+
             double total_core_leakage = 0.0;
 
             printf("\n");

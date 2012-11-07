@@ -132,6 +132,7 @@ class reciprocal_lattice : public geometry
             // compute phase factors
             if (num_atoms())
             {
+                Timer t1("sirius::reciprocal_lattice::init:pf");
                 gvec_phase_factor_.set_dimensions(fft_.size(), num_atoms());
                 gvec_phase_factor_.allocate();
 
@@ -143,8 +144,8 @@ class reciprocal_lattice : public geometry
                         double t = scalar_product(&gvec_(0, ig), atom(ia)->position());
                         t -= floor(t);
                         if (!phase.count(t)) phase[t] = exp(complex16(0.0, twopi * t));
-                        gvec_phase_factor_(ig, ia) = phase[t]; //exp(complex16(0.0, twopi * scalar_product(&gvec_(0, ig), atom(ia)->position())));
-                    }
+                        //exp(complex16(0.0, twopi * scalar_product(&gvec_(0, ig), atom(ia)->position())));
+                        gvec_phase_factor_(ig, ia) = phase[t];                     }
             }
         }
 

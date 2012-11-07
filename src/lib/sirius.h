@@ -27,6 +27,9 @@ extern "C" {
 #include <gsl/gsl_sf_coupling.h>
 #include <gsl/gsl_sf_erf.h>
 #include <xc.h>
+// libxc should do that
+#undef FLOAT
+#include <mpi.h>
 #include <hdf5.h>
 #include "../libjson/libjson.h"
 #include "LebedevLaikov.h"
@@ -51,6 +54,8 @@ extern "C" {
 #include "hdf5_tree.h" 
 #include "libxc_interface.h"
 #include "run_time_info.h"
+#include "mpi_world.h"
+#include "mpi_grid.h"
 
 //
 // stack of classes for Global class

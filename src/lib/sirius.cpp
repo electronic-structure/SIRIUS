@@ -163,9 +163,9 @@ void FORTRAN(sirius_add_atom)(int4* atom_type_id, real8* position, real8* vector
 /*
     main functions
 */
-void FORTRAN(sirius_global_initialize)(void)
+void FORTRAN(sirius_global_initialize)(int4* init_mpi)
 {
-    sirius::global.initialize();
+    sirius::global.initialize(*init_mpi);
 }
 
 void FORTRAN(sirius_band_initialize)(void)

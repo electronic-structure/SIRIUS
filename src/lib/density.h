@@ -464,7 +464,7 @@ class Density
 
             double ne = 0.0;
 
-            while (fabs(ne - parameters_.num_valence_electrons()) > 1e-10)
+            while (fabs(ne - parameters_.num_valence_electrons()) > 1e-11)
             {
                 ne = 0.0;
                 for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
@@ -743,6 +743,8 @@ class Density
 
         void print_info()
         {
+            if (parameters_.mpi_world().rank()) return;
+
             printf("\n");
             printf("Density\n");
             for (int i = 0; i < 80; i++) printf("-");

@@ -574,8 +574,6 @@ class Potential
             // compute <rho | V_H>
             parameters_.rti().energy_vha = rho->inner<rlm_component | it_component>(hartree_potential);
             
-            //std::cout << "energy_vha = " << parameters_.rti().energy_vha  << std::endl;
-
             // compute Eenuc
             double enuc = 0.0;
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
@@ -667,11 +665,14 @@ class Potential
             }
 #endif
            
-            hdf5_tree fout("sirius.h5", true);
-            effective_potential_->hdf5_write(fout.create_node("effective_potential"));
-            fout.create_node("effective_magnetic_field");
-            for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                effective_magnetic_field_[j]->hdf5_write(fout["effective_magnetic_field"].create_node(j));
+            if (parameters_.mpi_world().rank() == 0)
+            {
+                hdf5_tree fout("sirius.h5", true);
+                effective_potential_->hdf5_write(fout.create_node("effective_potential"));
+                fout.create_node("effective_magnetic_field");
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                    effective_magnetic_field_[j]->hdf5_write(fout["effective_magnetic_field"].create_node(j));
+            }
 
  
         }
