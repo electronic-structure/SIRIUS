@@ -402,8 +402,8 @@ class AtomType
                     char c1 = core_str[j++];
                     char c2 = core_str[j++];
                     
-                    int n;
-                    int l;
+                    int n = -1;
+                    int l = -1;
                     
                     std::istringstream iss(std::string(1, c1));
                     iss >> n;

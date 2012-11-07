@@ -14,9 +14,6 @@ class MPIGrid
         /// coordinates of the MPI rank in the grid
         std::vector<int> coordinates_;
 
-        /// total number of communicators
-        int num_comm_;
-
         /// base grid communicator
         MPI_Comm base_grid_communicator_;
 
@@ -50,23 +47,69 @@ class MPIGrid
                 error(__FILE__, __LINE__, s);
             }
 
-            num_comm_ = pow(2, dimensions_.size());
+            // total number of communicators
+            int num_comm = pow(2, dimensions_.size());
 
             base_grid_communicator_ = MPI_COMM_NULL;
 
-            communicators_ = std::vector<MPI_Comm>(num_comm_, MPI_COMM_NULL);
+            communicators_ = std::vector<MPI_Comm>(num_comm, MPI_COMM_NULL);
 
             coordinates_ = std::vector<int>(dimensions_.size(), -1);
 
-            communicator_size_ = std::vector<int>(num_comm_, 0);
+            communicator_size_ = std::vector<int>(num_comm, 0);
 
-            communicator_root_ = std::vector<bool>(num_comm_, false);
+            communicator_root_ = std::vector<bool>(num_comm, false);
 
             std::vector<int> periods(dimensions_.size(), 0);
+
             // communicator of the entire grid
             MPI_Cart_create(MPI_COMM_WORLD, dimensions_.size(), &dimensions_[0], &periods[0], 0, 
                             &base_grid_communicator_);
+#if 0
+            if (in_grid()) 
+            {
+                // get coordinates
+                MPI_Cart_get(base_grid_communicator_, dimensions_.size(), &dimensions_[0], &periods[0], 
+                             &coordinates_[0]);
 
+                // get all possible communicators
+                for (int i = 0; i < num_comm; i++) 
+                {
+                    bool is_root = true;
+                    int comm_size = 1;
+                    std::vector<int> flg(dimensions_.size(), 0);
+
+                    for (int j = 0; j < dimensions_.size(); j++) 
+                    {
+                        if (i & (1<<j)) 
+                        {
+                            flg[j] = 1;
+                            is_root = is_root && (coordinates_[j] == 0);
+                            comm_size *= dimensions_[j];
+                        }
+                    }
+
+                    communicator_root_[i] = is_root;
+
+                    communicator_size_[i] = comm_size;
+
+                    // subcommunicators
+                    MPI_Cart_sub(base_grid_communicator_, &flg[0], &communicators_[i]);
+
+                    // double check the size
+                    MPI_Comm_size(communicators_[i], &comm_size);
+
+                    if (comm_size != communicator_size_[i]) 
+                    {
+                      std::stringstream s;
+                      s << "Communicator sizes don't match." << endl;
+                      cout << "  computed size : " << communicator_size[i] << endl;
+                      cout << "  MPI_Comm_size : " << comm_size << endl;
+                      Stop;
+                    }
+                }
+            }
+#endif
         }
 
         int size()

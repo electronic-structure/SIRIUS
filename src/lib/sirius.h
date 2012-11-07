@@ -6,6 +6,7 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <omp.h>
+#include <stdint.h>
 
 #include <vector>
 #include <map>
@@ -14,6 +15,7 @@
 #include <fstream>
 #include <sstream>
 #include <cmath>
+#include <complex>
 
 extern "C" {
 #include <spglib.h>
@@ -31,8 +33,13 @@ extern "C" {
 #undef FLOAT
 #include <mpi.h>
 #include <hdf5.h>
+
+#include "typedefs.h"
+#include "config.h"
+
 #include "../libjson/libjson.h"
 #include "LebedevLaikov.h"
+#include "mpi_world.h"
 
 //
 // low-level stuff
@@ -40,7 +47,6 @@ extern "C" {
 #include "version.h"
 #include "error_handling.h"
 #include "timer.h"
-#include "config.h"
 #include "constants.h"
 #include "mdarray.h"
 #include "intvec.h"
@@ -54,7 +60,6 @@ extern "C" {
 #include "hdf5_tree.h" 
 #include "libxc_interface.h"
 #include "run_time_info.h"
-#include "mpi_world.h"
 #include "mpi_grid.h"
 
 //

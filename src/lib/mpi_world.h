@@ -13,9 +13,9 @@ class MPIWorld
 
     public:
         
-        void initialize(int init_mpi)
+        void initialize()
         {
-            if (init_mpi) MPI_Init(NULL, NULL);
+            if (call_mpi_init) MPI_Init(NULL, NULL);
             MPI_Comm_size(MPI_COMM_WORLD, &size_);
             MPI_Comm_rank(MPI_COMM_WORLD, &rank_);
         }
@@ -29,6 +29,13 @@ class MPIWorld
         {
             return rank_;
         }
+        
+        void abort()
+        {
+            MPI_Abort(MPI_COMM_WORLD, -1);
+        }
 };
+
+MPIWorld mpi_world;
 
 };

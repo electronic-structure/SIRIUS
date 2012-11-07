@@ -249,7 +249,7 @@ class Global : public StepFunction
             return mpi_world_;
         }
         
-        void initialize(int init_mpi)
+        void initialize()
         {
             unit_cell::init();
             geometry::init();
@@ -292,7 +292,7 @@ class Global : public StepFunction
             num_fv_states_ = int(num_electrons() / 2.0) + 10;
             num_bands_ = num_fv_states_ * num_spins_;
 
-            mpi_world_.initialize(init_mpi);
+            mpi_world_.initialize();
             mpi_grid_.initialize(intvec(2, 2));
         }
 
