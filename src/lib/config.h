@@ -1,8 +1,6 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-//#include "typedefs.h"
-
 #define FORTRAN(x) x##_
 
 const bool check_evecfv = false;

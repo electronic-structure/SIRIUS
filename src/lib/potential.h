@@ -665,7 +665,7 @@ class Potential
             }
 #endif
            
-            if (parameters_.mpi_world().rank() == 0)
+            if (parameters_.mpi_grid().root())
             {
                 hdf5_tree fout("sirius.h5", true);
                 effective_potential_->hdf5_write(fout.create_node("effective_potential"));

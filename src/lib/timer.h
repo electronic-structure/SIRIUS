@@ -44,7 +44,7 @@ class Timer
         void start()
         {
             if (active_)
-                error(__FILE__, __LINE__, "timer is already running");
+                error(__FILE__, __LINE__, "timer is already running", fatal_err);
 
             gettimeofday(&starting_time_, NULL);
             active_ = true;
@@ -53,7 +53,7 @@ class Timer
         void stop()
         {
             if (!active_)
-                error(__FILE__, __LINE__, "timer was not running");
+                error(__FILE__, __LINE__, "timer was not running", fatal_err);
 
             timeval end;
             gettimeofday(&end, NULL);
@@ -73,6 +73,22 @@ class Timer
                 printf("%-60s : %10.4f (total)   %10.4f (average)\n", it->first.c_str(), it->second, avg);
             }
         }
+
+        static void delay(double dsec)
+        {
+            timeval t1;
+            timeval t2;
+            double d;
+
+            gettimeofday(&t1, NULL);
+            do
+            {
+                gettimeofday(&t2, NULL);
+                d = double(t2.tv_sec - t1.tv_sec) + double(t2.tv_usec - t1.tv_usec) / 1e6;
+            } while (d < dsec);
+        }
+
+
 };
 
 std::map<std::string,double> Timer::timers_;

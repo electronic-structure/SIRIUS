@@ -58,9 +58,6 @@ class Global : public StepFunction
         /// run-time information (energies, charges, etc.)
         run_time_info rti_;
 
-        /// all available MPI ranks
-        MPIWorld mpi_world_;
-
         MPIGrid mpi_grid_;
 
     public:
@@ -72,8 +69,7 @@ class Global : public StepFunction
                    num_spins_(1),
                    num_mag_dims_(0),
                    so_correction_(false),
-                   uj_correction_(false),
-                   mpi_grid_(mpi_world_)
+                   uj_correction_(false)
         {
         }
 
@@ -244,9 +240,9 @@ class Global : public StepFunction
             return uj_correction_;
         }
 
-        MPIWorld& mpi_world()
+        MPIGrid& mpi_grid()
         {
-            return mpi_world_;
+            return mpi_grid_;
         }
         
         void initialize()
@@ -292,8 +288,12 @@ class Global : public StepFunction
             num_fv_states_ = int(num_electrons() / 2.0) + 10;
             num_bands_ = num_fv_states_ * num_spins_;
 
-            mpi_world_.initialize();
+            MPIWorld::initialize();
             mpi_grid_.initialize(intvec(2, 2));
+            mpi_grid_.finalize();
+            mpi_grid_.initialize(intvec(4, 1));
+            mpi_grid_.finalize();
+            mpi_grid_.initialize(intvec(4, 1, 1));
         }
 
         void clear()
@@ -303,32 +303,33 @@ class Global : public StepFunction
 
         void print_info()
         {
-            if (mpi_world_.rank()) return;
-
-            printf("\n");
-            printf("SIRIUS v0.4\n");
-            printf("git hash : %s\n", git_hash);
-            printf("build date : %s\n", build_date);
-            int num_threads = 1;
-            #pragma omp parallel default(shared)
+            if (MPIWorld::verbose())
             {
-                if (omp_get_thread_num() == 0)
-                    num_threads = omp_get_num_threads();
+                printf("\n");
+                printf("SIRIUS v0.4\n");
+                printf("git hash : %s\n", git_hash);
+                printf("build date : %s\n", build_date);
+                int num_threads = 1;
+                #pragma omp parallel default(shared)
+                {
+                    if (omp_get_thread_num() == 0)
+                        num_threads = omp_get_num_threads();
+                }
+                printf("\n");
+                printf("number of MPI ranks   : %i\n", MPIWorld::size());
+                printf("number of OMP threads : %i\n", num_threads); 
+
+                unit_cell::print_info();
+                reciprocal_lattice::print_info();
+
+                printf("\n");
+                for (int i = 0; i < num_atom_types(); i++)
+                    atom_type(i)->print_info();
+
+                printf("\n");
+                printf("total number of aw muffin-tin basis functions : %i\n", mt_aw_basis_size());
+                printf("total number of lo basis functions : %i\n", mt_lo_basis_size());
             }
-            printf("\n");
-            printf("number of MPI ranks   : %i\n", mpi_world_.size());
-            printf("number of OMP threads : %i\n", num_threads); 
-
-            unit_cell::print_info();
-            reciprocal_lattice::print_info();
-
-            printf("\n");
-            for (int i = 0; i < num_atom_types(); i++)
-                atom_type(i)->print_info();
-
-            printf("\n");
-            printf("total number of aw muffin-tin basis functions : %i\n", mt_aw_basis_size());
-            printf("total number of lo basis functions : %i\n", mt_lo_basis_size());
         }
         
         void generate_radial_functions()
@@ -388,87 +389,88 @@ class Global : public StepFunction
         /// Print run-time information.
         void print_rti()
         {
-            if (mpi_world_.rank()) return;
-
-            double total_core_leakage = 0.0;
-
-            printf("\n");
-            printf("Charges and magnetic moments\n");
-            for (int i = 0; i < 80; i++) printf("-");
-            printf("\n"); 
-            printf("atom      charge    core leakage");
-            if (num_mag_dims())
-                printf("              moment              |moment|");
-            printf("\n");
-            for (int i = 0; i < 80; i++) printf("-");
-            printf("\n"); 
-
-            for (int ia = 0; ia < num_atoms(); ia++)
+            if (MPIWorld::verbose())
             {
-                double core_leakage = atom(ia)->symmetry_class()->core_leakage();
-                total_core_leakage += core_leakage;
-                printf("%4i  %10.6f  %10.8e", ia, rti().mt_charge[ia], core_leakage);
+                double total_core_leakage = 0.0;
+
+                printf("\n");
+                printf("Charges and magnetic moments\n");
+                for (int i = 0; i < 80; i++) printf("-");
+                printf("\n"); 
+                printf("atom      charge    core leakage");
+                if (num_mag_dims())
+                    printf("              moment              |moment|");
+                printf("\n");
+                for (int i = 0; i < 80; i++) printf("-");
+                printf("\n"); 
+
+                for (int ia = 0; ia < num_atoms(); ia++)
+                {
+                    double core_leakage = atom(ia)->symmetry_class()->core_leakage();
+                    total_core_leakage += core_leakage;
+                    printf("%4i  %10.6f  %10.8e", ia, rti().mt_charge[ia], core_leakage);
+                    if (num_mag_dims())
+                    {
+                        double v[] = {0, 0, 0};
+                        v[2] = rti().mt_magnetization[0][ia];
+                        if (num_mag_dims() == 3)
+                        {
+                            v[0] = rti().mt_magnetization[1][ia];
+                            v[1] = rti().mt_magnetization[2][ia];
+                        }
+                        printf("  (%8.4f %8.4f %8.4f)  %10.6f", v[0], v[1], v[2], vector_length(v));
+                    }
+                    printf("\n");
+                }
+                
+                printf("\n");
+                printf("interstitial charge   : %10.6f\n", rti().it_charge);
                 if (num_mag_dims())
                 {
                     double v[] = {0, 0, 0};
-                    v[2] = rti().mt_magnetization[0][ia];
+                    v[2] = rti().it_magnetization[0];
                     if (num_mag_dims() == 3)
                     {
-                        v[0] = rti().mt_magnetization[1][ia];
-                        v[1] = rti().mt_magnetization[2][ia];
+                        v[0] = rti().it_magnetization[1];
+                        v[1] = rti().it_magnetization[2];
                     }
-                    printf("  (%8.4f %8.4f %8.4f)  %10.6f", v[0], v[1], v[2], vector_length(v));
+                    printf("interstitial moment   : (%8.4f %8.4f %8.4f)\n", v[0], v[1], v[2]);
+                    printf("interstitial |moment| : %10.6f\n", vector_length(v));
                 }
+                
                 printf("\n");
-            }
-            
-            printf("\n");
-            printf("interstitial charge   : %10.6f\n", rti().it_charge);
-            if (num_mag_dims())
-            {
-                double v[] = {0, 0, 0};
-                v[2] = rti().it_magnetization[0];
-                if (num_mag_dims() == 3)
+                printf("total charge          : %10.6f\n", rti().total_charge);
+                printf("total core leakage    : %10.8e\n", total_core_leakage);
+                if (num_mag_dims())
                 {
-                    v[0] = rti().it_magnetization[1];
-                    v[1] = rti().it_magnetization[2];
+                    double v[] = {0, 0, 0};
+                    v[2] = rti().total_magnetization[0];
+                    if (num_mag_dims() == 3)
+                    {
+                        v[0] = rti().total_magnetization[1];
+                        v[1] = rti().total_magnetization[2];
+                    }
+                    printf("total moment          : (%8.4f %8.4f %8.4f)\n", v[0], v[1], v[2]);
+                    printf("total |moment|        : %10.6f\n", vector_length(v));
                 }
-                printf("interstitial moment   : (%8.4f %8.4f %8.4f)\n", v[0], v[1], v[2]);
-                printf("interstitial |moment| : %10.6f\n", vector_length(v));
-            }
-            
-            printf("\n");
-            printf("total charge          : %10.6f\n", rti().total_charge);
-            printf("total core leakage    : %10.8e\n", total_core_leakage);
-            if (num_mag_dims())
-            {
-                double v[] = {0, 0, 0};
-                v[2] = rti().total_magnetization[0];
-                if (num_mag_dims() == 3)
-                {
-                    v[0] = rti().total_magnetization[1];
-                    v[1] = rti().total_magnetization[2];
-                }
-                printf("total moment          : (%8.4f %8.4f %8.4f)\n", v[0], v[1], v[2]);
-                printf("total |moment|        : %10.6f\n", vector_length(v));
-            }
-            printf("pseudo charge error : %18.12f\n", rti().pseudo_charge_error);
-            
-            printf("\n");
-            printf("Energy\n");
-            for (int i = 0; i < 80; i++) printf("-");
-            printf("\n"); 
+                printf("pseudo charge error : %18.12f\n", rti().pseudo_charge_error);
+                
+                printf("\n");
+                printf("Energy\n");
+                for (int i = 0; i < 80; i++) printf("-");
+                printf("\n"); 
 
-            printf("kinetic energy   : %18.8f\n", kinetic_energy());
-            printf("<rho|V^{XC}>     : %18.8f\n", rti().energy_vxc);
-            printf("<rho|E^{XC}>     : %18.8f\n", rti().energy_exc);
-            printf("<mag|B^{XC}>     : %18.8f\n", rti().energy_bxc);
-            printf("<rho|V^{H}>      : %18.8f\n", rti().energy_vha);
-            printf("Total energy     : %18.8f\n", total_energy());
+                printf("kinetic energy   : %18.8f\n", kinetic_energy());
+                printf("<rho|V^{XC}>     : %18.8f\n", rti().energy_vxc);
+                printf("<rho|E^{XC}>     : %18.8f\n", rti().energy_exc);
+                printf("<mag|B^{XC}>     : %18.8f\n", rti().energy_bxc);
+                printf("<rho|V^{H}>      : %18.8f\n", rti().energy_vha);
+                printf("Total energy     : %18.8f\n", total_energy());
 
-            printf("\n");
-            printf("band gap (eV) : %18.8f\n", rti().band_gap * ha2ev);
-            printf("Efermi        : %18.8f\n", rti().energy_fermi);
+                printf("\n");
+                printf("band gap (eV) : %18.8f\n", rti().band_gap * ha2ev);
+                printf("Efermi        : %18.8f\n", rti().energy_fermi);
+            }
         }
 };
 

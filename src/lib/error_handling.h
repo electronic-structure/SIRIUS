@@ -9,34 +9,49 @@
 
     Examples:
 
-        error(__FILE__, __LINE__, message, global_error | fatal_error); // fatal global error (default) 
+        error(__FILE__, __LINE__, message, global_msg | fatal_err); // fatal global error (default) 
 
-        error(__FILE__, __LINE__, message, global_error); // global non-fatal (warning) message 
+        error(__FILE__, __LINE__, message, global_msg); // global non-fatal (warning) message 
 
 */
 
-const int global_error = 1 << 0;
-const int fatal_error = 1 << 1;
+const int global_msg = 1 << 0;
+const int fatal_err = 1 << 1;
 
-const int default_error_flags = global_error | fatal_error;
-const int default_warning_flags = global_error;
+const int default_error_flags = global_msg | fatal_err;
+const int default_warning_flags = global_msg;
 
 void error(const char* file_name, int line_number, const char* message, int flags = default_error_flags)
 {
-    bool verbose = (flags & global_error) ? (sirius::mpi_world.rank() == 0) : true;
+    bool verbose = (flags & global_msg) ? (MPIWorld::verbose()) : true;
     char header[1024];
 
-    if (flags & fatal_error)
-        sprintf(header, "\n=== Fatal error at line %i of file %s", line_number, file_name);
+    if (flags & fatal_err)
+        sprintf(header, "\n=== Fatal error at line %i of file %s\n=== MPI rank: %i", 
+                line_number, file_name, MPIWorld::rank());
     else
-        sprintf(header, "\n=== Warning at line %i of file %s", line_number, file_name);
+        sprintf(header, "\n=== Warning at line %i of file %s\n=== MPI rank: %i", 
+                line_number, file_name, MPIWorld::rank());
     
     if (verbose)
         printf("%s\n%s\n\n", header, message);
 
-    if (flags & fatal_error) 
+    if (flags & fatal_err) 
     {
-        sirius::mpi_world.abort();
+        // give writing ranks some time to flush the output buffer 
+        double delay_time = 0.3;
+        timeval t1;
+        timeval t2;
+        double d;
+
+        gettimeofday(&t1, NULL);
+        do
+        {
+          gettimeofday(&t2, NULL);
+          d = double(t2.tv_sec - t1.tv_sec) + double(t2.tv_usec - t1.tv_usec) / 1e6;
+        } while (d < delay_time);
+ 
+        MPIWorld::abort();
         // raise(SIGTERM);
         // exit(0);
     }

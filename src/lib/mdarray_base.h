@@ -3,6 +3,7 @@
 
 #include <assert.h>
 
+// TODO: size_t for all offset- and size-related variables
 class dimension 
 {
     public:

@@ -743,17 +743,18 @@ class Density
 
         void print_info()
         {
-            if (parameters_.mpi_world().rank()) return;
-
-            printf("\n");
-            printf("Density\n");
-            for (int i = 0; i < 80; i++) printf("-");
-            printf("\n");
-            printf("number of k-points : %i\n", kpoint_set_.num_kpoints());
-            for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
-                printf("ik=%4i    vk=%12.6f %12.6f %12.6f    weight=%12.6f   num_gkvec=%6i\n", 
-                       ik, kpoint_set_[ik]->vk()[0], kpoint_set_[ik]->vk()[1], kpoint_set_[ik]->vk()[2], 
-                       kpoint_set_[ik]->weight(), kpoint_set_[ik]->num_gkvec());
+            if (MPIWorld::verbose())
+            {
+                printf("\n");
+                printf("Density\n");
+                for (int i = 0; i < 80; i++) printf("-");
+                printf("\n");
+                printf("number of k-points : %i\n", kpoint_set_.num_kpoints());
+                for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
+                    printf("ik=%4i    vk=%12.6f %12.6f %12.6f    weight=%12.6f   num_gkvec=%6i\n", 
+                           ik, kpoint_set_[ik]->vk()[0], kpoint_set_[ik]->vk()[1], kpoint_set_[ik]->vk()[2], 
+                           kpoint_set_[ik]->weight(), kpoint_set_[ik]->num_gkvec());
+            }
         }
 
         PeriodicFunction<double>* rho()
