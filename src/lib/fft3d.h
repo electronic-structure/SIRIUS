@@ -39,8 +39,6 @@ class FFT3D : public FFT3D_base
         {
             FFT3D_base::init(n);
             
-            clear();
-            
             int num_threads_ = 1;
             #pragma omp parallel default(shared)
             {
@@ -75,6 +73,10 @@ class FFT3D : public FFT3D_base
                 fftw_destroy_plan(plan_backward_[i]);
                 fftw_destroy_plan(plan_forward_[i]);
             }
+            plan_backward_.clear();
+            plan_forward_.clear();
+            fftw_input_buffer_.deallocate();
+            fftw_output_buffer_.deallocate();
         }
         
         inline void zero(int thread_id = 0)

@@ -203,6 +203,8 @@ class kpoint
 
         void initialize()
         {
+            Timer t("sirius::kpoint::initialize");
+
             if (parameters_.aw_cutoff() > double(parameters_.lmax_apw()))
                 error(__FILE__, __LINE__, "aw cutoff is too large for a given lmax");
 

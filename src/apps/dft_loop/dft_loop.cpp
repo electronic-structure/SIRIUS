@@ -2,9 +2,9 @@
 
 int main(int argn, char** argv)
 {
-    sirius::Global global;
+//    sirius::Global global;
 
-    double a1[] = {2.708, 2.708, -2.708};
+/*    double a1[] = {2.708, 2.708, -2.708};
     double a2[] = {2.708, -2.708, 2.708};
     double a3[] = {-2.708, 2.708, 2.708};
                 
@@ -20,12 +20,15 @@ int main(int argn, char** argv)
     
     global.print_info();
     
-    sirius::Potential* potential = new sirius::Potential(global, sirius::rlm_component | sirius::it_component | sirius::pw_component);
+    sirius::Potential* potential = 
+        new sirius::Potential(global, sirius::rlm_component | sirius::it_component | sirius::pw_component);
+    
     sirius::Band* band = new sirius::Band(global);
     
-    sirius::Density* density = new sirius::Density(global, band, potential, sirius::rlm_component | sirius::it_component | sirius::pw_component);
+    sirius::Density* density = 
+        new sirius::Density(global, band, potential, sirius::rlm_component | sirius::it_component | sirius::pw_component);
     
-    int ngridk[] = {2,2,2};
+    int ngridk[] = {1, 1, 1};
     int numkp = ngridk[0] * ngridk[1] * ngridk[2];
     int ik = 0;
     for (int i0 = 0; i0 < ngridk[0]; i0++) 
@@ -38,7 +41,6 @@ int main(int argn, char** argv)
             }
     density->print_info();
     
-    
     density->initial_density();
     
     potential->generate_effective_potential(density->rho(), density->magnetization());
@@ -48,9 +50,12 @@ int main(int argn, char** argv)
     density->generate();
     
     potential->generate_effective_potential(density->rho(), density->magnetization());
-    
 
+    delete density;
+    delete potential;
+    delete band;
 
     sirius::Timer::print();
+    */
 
 }

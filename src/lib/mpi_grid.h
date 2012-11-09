@@ -33,6 +33,10 @@ class splindex
             if (dimensions__.size() != coordinates__.size())
                 error(__FILE__, __LINE__, "empty sizes don't match");
 
+            for (int i = 0; i < (int)dimensions_.size(); i++)
+                if (coordinates_[i] >= dimensions_[i])
+                    error(__FILE__, __LINE__, "bad coordinates");
+
             num_ranks_ = 1;
             for (int i = 0; i < (int)dimensions_.size(); i++)
                 num_ranks_ *= dimensions_[i];
@@ -45,38 +49,57 @@ class splindex
                 offset_[i] = n;
             }
 
-            rank_id_ = coordinates_[0];
-            for (int i = 1; i < (int)dimensions_.size(); i++) 
-                rank_id_ += offset_[i] * coordinates_[i];
+            bool out_of_grid = false;
+            for (int i = 0; i < (int)dimensions_.size(); i++)
+                if (coordinates_[i] < 0) out_of_grid = true;
             
-            // special case for index_size = 0 here
-
-            // minimum size
-            int n1 = index_size_ / num_ranks_;
-
-            // first n2 ranks have one more index element
-            int n2 = index_size_ % num_ranks_;
-
-            if (rank_id_ < n2)
+            if (out_of_grid)
             {
-                local_index_size_ = n1 + 1;
-                global_index_offset_ = (n1 + 1) * rank_id_;
+                rank_id_ = -1;
+                local_index_size_ = -1;
+                global_index_offset_ = -1;
             }
             else
-            {   
-                local_index_size_ = n1;
-                global_index_offset_ = (n1 + 1) * n2 + n1 * (rank_id_ - n2);
+            {
+                rank_id_ = coordinates_[0];
+                for (int i = 1; i < (int)dimensions_.size(); i++) 
+                    rank_id_ += offset_[i] * coordinates_[i];
+                
+                if (index_size_ == 0)
+                    error(__FILE__, __LINE__, "need to think what to do with zero index size");
+
+                // minimum size
+                int n1 = index_size_ / num_ranks_;
+
+                // first n2 ranks have one more index element
+                int n2 = index_size_ % num_ranks_;
+
+                if (rank_id_ < n2)
+                {
+                    local_index_size_ = n1 + 1;
+                    global_index_offset_ = (n1 + 1) * rank_id_;
+                }
+                else
+                {   
+                    local_index_size_ = n1;
+                    global_index_offset_ = (n1 > 0) ? (n1 + 1) * n2 + n1 * (rank_id_ - n2) : -1;
+                }
             }
         }
 
-        int begin()
+        inline int begin()
         {
             return global_index_offset_;
         }
 
-        int end()
+        inline int end()
         {
             return (global_index_offset_ + local_index_size_ - 1);
+        }
+
+        inline int local_index_size()
+        {
+            return local_index_size_;
         }
 };
 
@@ -227,5 +250,11 @@ class MPIGrid
         inline bool root(int directions = 0xFF)
         {
             return communicator_root_[valid_directions(directions)];
+        }
+
+        inline splindex split_index(int directions)
+        {
+            int valid_dir = valid_directions(directions);
+
         }
 };

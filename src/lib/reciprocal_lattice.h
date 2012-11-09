@@ -149,6 +149,17 @@ class reciprocal_lattice : public geometry
             }
         }
 
+        void clear()
+        {
+            fft_.clear();
+            gvec_.deallocate();
+            gvec_shell_len_.clear();
+            gvec_shell_.clear();
+            index_by_gvec_.deallocate();
+            fft_index_.clear();
+            gvec_phase_factor_.deallocate();
+        }
+
         void print_info()
         {
             printf("\n");

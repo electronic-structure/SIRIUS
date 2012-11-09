@@ -425,7 +425,7 @@ class AtomSymmetryClass
                                 double M = 1.0 - 2 * soc * spherical_potential_[ir];
                                 // first part <f| dVe / dr |f'>
                                 s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0) * 
-                                        soc * ve.deriv(1, ir, 0.0) / pow(M, 2);
+                                        soc * ve.deriv(1, ir) / pow(M, 2);
 
                                 // second part <f| d(z/r) / dr |f'>
                                 s1[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0) *

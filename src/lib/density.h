@@ -556,7 +556,7 @@ class Density
 
             for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
             {
-                // solve secular equatiion and generate wave functions
+                // solve secular equation and generate wave functions
                 kpoint_set_[ik]->find_eigen_states(band_, potential_->effective_potential(),
                                                    potential_->effective_magnetic_field());
             }

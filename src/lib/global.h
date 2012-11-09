@@ -72,6 +72,11 @@ class Global : public StepFunction
                    uj_correction_(false)
         {
         }
+            
+        ~Global()
+        {
+            clear();
+        }
 
         void set_lmax_apw(int lmax_apw__)
         {
@@ -289,16 +294,18 @@ class Global : public StepFunction
             num_bands_ = num_fv_states_ * num_spins_;
 
             MPIWorld::initialize();
-            mpi_grid_.initialize(intvec(2, 2));
+            mpi_grid_.initialize(intvec(MPIWorld::size()));
+            /*
             mpi_grid_.finalize();
             mpi_grid_.initialize(intvec(4, 1));
             mpi_grid_.finalize();
-            mpi_grid_.initialize(intvec(4, 1, 1));
+            mpi_grid_.initialize(intvec(4, 1, 1));*/
         }
 
         void clear()
         {
             unit_cell::clear();
+            reciprocal_lattice::clear();
         }
 
         void print_info()
