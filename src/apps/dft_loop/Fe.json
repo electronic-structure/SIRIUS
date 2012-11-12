@@ -1,0 +1,23 @@
+{
+  "name"    : "iron",
+  "symbol"  : "Fe",
+  "number"  : 26,
+  "mass"    : 55.845,
+  "rmin"    : 3.84615e-08,
+  "rmax"    : 26.3275,
+  "rmt"     : 2.0,
+  "nrmt"    : 2000,
+  "core"    : "1s2s2p", 
+  "valence" : [
+    {"l" : -1, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : false}]},
+    {"l" : 0, "n" : 4, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]},
+    {"l" : 1, "n" : 3, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]},
+    {"l" : 2, "n" : 3, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]},
+    {"l" : 3, "n" : 4, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]}],
+  "lo"      : [
+    {"l" : 0, "n" : 3, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}, {"enu" : 0.15, "dme" : 1, "auto" : true}]},
+    {"l" : 1, "n" : 3, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}, {"enu" : 0.15, "dme" : 1, "auto" : true}]},
+    {"l" : 2, "n" : 3, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}, {"enu" : 0.15, "dme" : 1, "auto" : true}]},
+    {"l" : 3, "n" : 4, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}, {"enu" : 0.15, "dme" : 1, "auto" : true}]},
+    {"l" : 0, "n" : 4, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}, {"enu" : 0.15, "dme" : 1, "auto" : true}]}]
+}
