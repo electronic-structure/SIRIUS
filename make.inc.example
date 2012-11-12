@@ -20,7 +20,6 @@ LIBS = -lstdc++
 #
 #  Provide the remaining necessary libraries for the linker
 #
-LINK_OPT = $(LIBS)
 
 #  Lapack / BLAS
 LIBS := $(LIBS) -llapack -lblas
@@ -40,3 +39,7 @@ LIBS := $(LIBS) /path/to/gsl-version-x.y-folder/.libs/libgsl.a
 #  FFTW 
 CXX_OPT := $(CXX_OPT) -I/path/to/fft-version-x.y.z-folder/api
 LIBS := $(LIBS) /path/to/fft-version-x.y.z-folder/.libs/libfftw3.a
+
+#  HDF5
+CXX_OPT := $(CXX_OPT) -I/path/to/hdf5-x.y.z/src
+LIBS := $(LIBS) /path/to/hdf5-x.y.z/src/.libs/libhdf5.a -lz
