@@ -19,13 +19,11 @@ class geometry : public unit_cell
         /// list of nearest neighbours for each atom
         std::vector< std::vector<nearest_neighbour_descriptor> > nearest_neighbours_;
         
-        /*! 
-            \brief Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
-                   
-                   In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
-                   bethween nearest atoms. Initial values of the muffin-tin radii (provided in the input file) 
-                   are ignored.
-        */
+        /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
+        
+        /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
+            bethween nearest atoms. Initial values of the muffin-tin radii (provided in the input file) 
+            are ignored. */
         void find_mt_radii()
         {
             if (nearest_neighbours_.size() == 0)                 

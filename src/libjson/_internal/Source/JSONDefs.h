@@ -143,23 +143,23 @@ typedef void (*json_free_t)(void *);
     typedef void * (*json_realloc_t)(void *, unsigned long);
 #endif
 
-#ifdef JSON_DEBUG
-    #ifdef NDEBUG
-	   #ifdef __GNUC__
-		  #warning, Have JSON_DEBUG on in a release build
-	   #else
-		  #error, Have JSON_DEBUG on in a release build
-	   #endif
-    #endif
-#else
-	#ifndef NDEBUG
-	   #ifdef __GNUC__
-		  #warning, Release build of libjson, but NDEBUG is not on
-	   #else
-		  #error, Release build of libjson, but NDEBUG is not on
-	   #endif
-	#endif
-#endif
+//#ifdef JSON_DEBUG
+//    #ifdef NDEBUG
+//	   #ifdef __GNUC__
+//		  #warning, Have JSON_DEBUG on in a release build
+//	   #else
+//		  #error, Have JSON_DEBUG on in a release build
+//	   #endif
+//    #endif
+//#else
+//	#ifndef NDEBUG
+//	   #ifdef __GNUC__
+//		  #warning, Release build of libjson, but NDEBUG is not on
+//	   #else
+//		  #error, Release build of libjson, but NDEBUG is not on
+//	   #endif
+//	#endif
+//#endif
 
 #ifdef JSON_UNIT_TEST
     #define JSON_PRIVATE public:

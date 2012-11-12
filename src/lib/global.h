@@ -1,5 +1,10 @@
 namespace sirius {
 
+/** \file global.h
+    \brief Global variables 
+*/
+
+/// Global variables
 class Global : public StepFunction
 {
     private:
@@ -474,8 +479,7 @@ class Global : public StepFunction
         }
 };
 
-//Global global;
-
+/// global variables used by Fortran code
 Global& static_global(void)
 {
     static sirius::Global global;

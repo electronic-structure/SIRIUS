@@ -35,7 +35,6 @@ class FFT3D : public FFT3D_base
 
         void init(int* n)
         {
-            std::cout << "num thread=" << Platform::num_threads() <<std::endl;
             FFT3D_base::init(n);
             
             fftw_input_buffer_.set_dimensions(size(), Platform::num_threads());

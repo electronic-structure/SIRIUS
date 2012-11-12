@@ -19,7 +19,8 @@ class unit_cell
         /// Bravais lattice vectors in row order
         double lattice_vectors_[3][3];
         
-        /// inverse Bravais lattice vectors in column order (used to find fractional coordinates by Cartesian coordinates)
+        /// inverse Bravais lattice vectors in column order 
+        /** This matrix is used to find fractional coordinates by Cartesian coordinates */
         double inverse_lattice_vectors_[3][3];
         
         /// vectors of the reciprocal lattice in row order (inverse Bravais lattice vectors scaled by 2*Pi)
@@ -43,6 +44,7 @@ class unit_cell
         /// total number of electrons
         int num_electrons_;
 
+        /// list of equivalent atoms, provided externally
         std::vector<int> equivalent_atoms_;
     
         /*! 
@@ -60,10 +62,10 @@ class unit_cell
                 error(__FILE__, __LINE__, "spg_dataset is already allocated");
                 
             if (atom_symmetry_classes_.size() != 0)
-                error(__FILE__, __LINE__, "atom_symmetry_class_by_id_ list is not empty");
+                error(__FILE__, __LINE__, "atom_symmetry_classes_ list is not empty");
             
             if (num_atoms() == 0)
-                error(__FILE__, __LINE__, "atoms_ list is empty");
+                error(__FILE__, __LINE__, "no atoms");
 
             double lattice[3][3];
 

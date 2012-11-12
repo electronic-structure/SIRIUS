@@ -1,10 +1,22 @@
 #include "sirius.h"
 
+/** \file sirius.cpp
+    \brief Fortran API
+*/
+
 extern "C" 
 {
 
 /*
     primitive set functions
+*/
+
+/// set lattice vectors
+
+/** Fortran example:
+    \code{.F90}
+        call sirius_set_lattice_vectors(avec(1,1), avec(1,2), avec(1,3))
+    \endcode
 */
 void FORTRAN(sirius_set_lattice_vectors)(real8* a1, real8* a2, real8* a3)
 {
@@ -163,6 +175,11 @@ void FORTRAN(sirius_add_atom)(int4* atom_type_id, real8* position, real8* vector
 /*
     main functions
 */
+void FORTRAN(sirius_platform_initialize)(void)
+{
+    Platform::initialize();
+}
+
 void FORTRAN(sirius_global_initialize)()
 {
     sirius::static_global().initialize();

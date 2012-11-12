@@ -11,7 +11,7 @@ SRC = ../libjson/_internal/Source/internalJSONNode.cpp ../libjson/_internal/Sour
       ../libjson/_internal/Source/JSONPreparse.cpp ../libjson/_internal/Source/JSONStream.cpp \
       ../libjson/_internal/Source/JSONValidator.cpp ../libjson/_internal/Source/JSONWorker.cpp \
       ../libjson/_internal/Source/JSONWriter.cpp ../libjson/_internal/Source/libjson.cpp \
-      sirius.cpp LebedevLaikov.cpp
+      ./LebedevLaikov.cpp
       
 OBJ = $(SRC:.cpp=.o) 
       
@@ -25,8 +25,9 @@ endif
 .cu.o:
 	$(NVCC) -DADD_ -I/project/s299/magma/magma-1.1_my-xk6-gcc-4.6.2-libsci/include -c $<
 
-all: log $(OBJ)
+all: log $(OBJ) sirius.o
 	ar -r libsirius.a $(OBJ)
+	ar -r libsirius_f.a $(OBJ) sirius.o
 
 # TODO: platform-independent python script
 log:
