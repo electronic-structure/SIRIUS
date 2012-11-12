@@ -16,19 +16,16 @@ int main(int argn, char** argv)
     double vf[] = {0, 0, 1};
     global.add_atom_type(0, "Fe");
     global.add_atom(0, pos, vf);
+
     global.initialize();
     
-    /*global.print_info();*/
+    global.print_info();
     
     sirius::Potential* potential = 
         new sirius::Potential(global, sirius::rlm_component | sirius::it_component | sirius::pw_component);
         
-    delete potential;
-    
-    /*sirius::Band* band = new sirius::Band(global);
-    
     sirius::Density* density = 
-        new sirius::Density(global, band, potential, sirius::rlm_component | sirius::it_component | sirius::pw_component);
+        new sirius::Density(global, potential, sirius::rlm_component | sirius::it_component | sirius::pw_component);
     
     int ngridk[] = {1, 1, 1};
     int numkp = ngridk[0] * ngridk[1] * ngridk[2];
@@ -55,9 +52,6 @@ int main(int argn, char** argv)
 
     delete density;
     delete potential;
-    delete band;
 
     sirius::Timer::print();
-    */
-
 }

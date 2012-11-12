@@ -59,7 +59,7 @@ class Global : public StepFunction
         run_time_info rti_;
 
         MPIGrid mpi_grid_;
-
+        
     public:
     
         Global() : lmax_apw_(lmax_apw_default),
@@ -71,6 +71,8 @@ class Global : public StepFunction
                    so_correction_(false),
                    uj_correction_(false)
         {
+            MPIWorld::initialize();
+            Platform::initialize();
         }
             
         ~Global()
@@ -293,7 +295,6 @@ class Global : public StepFunction
             num_fv_states_ = int(num_electrons() / 2.0) + 10;
             num_bands_ = num_fv_states_ * num_spins_;
 
-            MPIWorld::initialize();
             mpi_grid_.initialize(intvec(MPIWorld::size()));
             /*
             mpi_grid_.finalize();
@@ -316,15 +317,9 @@ class Global : public StepFunction
                 printf("SIRIUS v0.4\n");
                 printf("git hash : %s\n", git_hash);
                 printf("build date : %s\n", build_date);
-                int num_threads = 1;
-                #pragma omp parallel default(shared)
-                {
-                    if (omp_get_thread_num() == 0)
-                        num_threads = omp_get_num_threads();
-                }
                 printf("\n");
                 printf("number of MPI ranks   : %i\n", MPIWorld::size());
-                printf("number of OMP threads : %i\n", num_threads); 
+                printf("number of OMP threads : %i\n", Platform::num_threads()); 
 
                 unit_cell::print_info();
                 reciprocal_lattice::print_info();

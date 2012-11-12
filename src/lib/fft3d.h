@@ -18,8 +18,6 @@ class FFT3D : public FFT3D_base
         
         mdarray<complex16,2> fftw_output_buffer_;
 
-        int num_threads_;
-        
         inline void backward(int thread_id = 0)
         {    
             fftw_execute(plan_backward_[thread_id]);
@@ -37,20 +35,19 @@ class FFT3D : public FFT3D_base
 
         void init(int* n)
         {
+            std::cout << "num thread=" << Platform::num_threads() <<std::endl;
             FFT3D_base::init(n);
             
-            num_threads_ = omp_get_num_threads();
-
-            fftw_input_buffer_.set_dimensions(size(), num_threads_);
+            fftw_input_buffer_.set_dimensions(size(), Platform::num_threads());
             fftw_input_buffer_.allocate();
 
-            fftw_output_buffer_.set_dimensions(size(), num_threads_);
+            fftw_output_buffer_.set_dimensions(size(), Platform::num_threads());
             fftw_output_buffer_.allocate();
  
-            plan_backward_.resize(num_threads_);
-            plan_forward_.resize(num_threads_);
+            plan_backward_.resize(Platform::num_threads());
+            plan_forward_.resize(Platform::num_threads());
 
-            for (int i = 0; i < num_threads_; i++)
+            for (int i = 0; i < Platform::num_threads(); i++)
             {
                 plan_backward_[i] = fftw_plan_dft_3d(size(2), size(1), size(0), 
                                                      (fftw_complex*)&fftw_input_buffer_(0, i), 
@@ -63,7 +60,7 @@ class FFT3D : public FFT3D_base
         
         void clear()
         {
-            for (int i = 0; i < num_threads_; i++)
+            for (int i = 0; i < Platform::num_threads(); i++)
             {
                 fftw_destroy_plan(plan_backward_[i]);
                 fftw_destroy_plan(plan_forward_[i]);

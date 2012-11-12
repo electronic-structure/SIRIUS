@@ -3,6 +3,15 @@
 extern "C" 
 {
 
+sirius::Global& sirius_global(void)
+{
+    static sirius::Global global;
+    return global;
+}
+
+
+
+
 /*
     primitive set functions
 */
