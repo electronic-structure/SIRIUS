@@ -73,6 +73,8 @@ class Potential
         ~Potential()
         {
             delete effective_potential_; // TODO: check for memory leak
+            for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                delete effective_magnetic_field_[j];
         }
 
         void initialize()

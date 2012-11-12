@@ -180,7 +180,7 @@ void FORTRAN(sirius_potential_initialize)(void)
 
 void FORTRAN(sirius_density_initialize)(void)
 {
-    sirius::density = new sirius::Density(sirius::global, sirius::band, sirius::potential);
+    sirius::density = new sirius::Density(sirius::global, sirius::potential);
 }
 
 void FORTRAN(sirius_clear)(void)

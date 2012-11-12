@@ -77,6 +77,7 @@ class FFT3D : public FFT3D_base
             plan_forward_.clear();
             fftw_input_buffer_.deallocate();
             fftw_output_buffer_.deallocate();
+            fftw_cleanup();
         }
         
         inline void zero(int thread_id = 0)

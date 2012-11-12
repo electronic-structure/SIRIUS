@@ -297,14 +297,53 @@ class Density
     public:
 
         Density(Global& parameters__, 
-                Band* band__, 
                 Potential* potential__, 
                 int allocate_f__ = pw_component) : parameters_(parameters__),
-                                                   band_(band__),
                                                    potential_(potential__),
                                                    allocate_f_(allocate_f__)
         {
-            initialize();
+            kpoint_set_.clear();
+
+            rho_ = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
+            rho_->allocate(allocate_f_);
+
+            for (int i = 0; i < parameters_.num_mag_dims(); i++)
+            {
+                magnetization_[i] = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
+                magnetization_[i]->allocate(allocate_f_);
+            }
+
+            dmat_spins_.clear();
+            dmat_spins_.push_back(std::pair<int,int>(0, 0));
+            dmat_spins_.push_back(std::pair<int,int>(1, 1));
+            dmat_spins_.push_back(std::pair<int,int>(0, 1));
+            
+            complex_gaunt_.set_dimensions(parameters_.lmmax_apw(), parameters_.lmmax_apw(), parameters_.lmmax_rho());
+            complex_gaunt_.allocate();
+
+            for (int l1 = 0; l1 <= parameters_.lmax_apw(); l1++) 
+            for (int m1 = -l1; m1 <= l1; m1++)
+            {
+                int lm1 = lm_by_l_m(l1, m1);
+                for (int l2 = 0; l2 <= parameters_.lmax_apw(); l2++)
+                for (int m2 = -l2; m2 <= l2; m2++)
+                {
+                    int lm2 = lm_by_l_m(l2, m2);
+                    for (int l3 = 0; l3 <= parameters_.lmax_pot(); l3++)
+                    for (int m3 = -l3; m3 <= l3; m3++)
+                    {
+                        int lm3 = lm_by_l_m(l3, m3);
+                        complex_gaunt_(lm1, lm2, lm3) = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
+                    }
+                }
+            }
+
+            band_ = new Band(parameters_);
+        }
+
+        ~Density()
+        {
+            delete band_;
         }
         
         void set_charge_density_ptr(double* rhomt, double* rhoir)
@@ -343,45 +382,6 @@ class Density
             }
         }
     
-        void initialize()
-        {
-            kpoint_set_.clear();
-
-            rho_ = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
-            rho_->allocate(allocate_f_);
-
-            for (int i = 0; i < parameters_.num_mag_dims(); i++)
-            {
-                magnetization_[i] = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
-                magnetization_[i]->allocate(allocate_f_);
-            }
-
-            dmat_spins_.clear();
-            dmat_spins_.push_back(std::pair<int,int>(0, 0));
-            dmat_spins_.push_back(std::pair<int,int>(1, 1));
-            dmat_spins_.push_back(std::pair<int,int>(0, 1));
-            
-            complex_gaunt_.set_dimensions(parameters_.lmmax_apw(), parameters_.lmmax_apw(), parameters_.lmmax_rho());
-            complex_gaunt_.allocate();
-
-            for (int l1 = 0; l1 <= parameters_.lmax_apw(); l1++) 
-            for (int m1 = -l1; m1 <= l1; m1++)
-            {
-                int lm1 = lm_by_l_m(l1, m1);
-                for (int l2 = 0; l2 <= parameters_.lmax_apw(); l2++)
-                for (int m2 = -l2; m2 <= l2; m2++)
-                {
-                    int lm2 = lm_by_l_m(l2, m2);
-                    for (int l3 = 0; l3 <= parameters_.lmax_pot(); l3++)
-                    for (int m3 = -l3; m3 <= l3; m3++)
-                    {
-                        int lm3 = lm_by_l_m(l3, m3);
-                        complex_gaunt_(lm1, lm2, lm3) = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
-                    }
-                }
-            }
-        }
-        
         void zero()
         {
             rho_->zero();

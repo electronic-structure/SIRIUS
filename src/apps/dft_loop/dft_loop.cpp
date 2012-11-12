@@ -2,9 +2,9 @@
 
 int main(int argn, char** argv)
 {
-//    sirius::Global global;
+    sirius::Global global;
 
-/*    double a1[] = {2.708, 2.708, -2.708};
+    double a1[] = {2.708, 2.708, -2.708};
     double a2[] = {2.708, -2.708, 2.708};
     double a3[] = {-2.708, 2.708, 2.708};
                 
@@ -18,12 +18,14 @@ int main(int argn, char** argv)
     global.add_atom(0, pos, vf);
     global.initialize();
     
-    global.print_info();
+    /*global.print_info();*/
     
     sirius::Potential* potential = 
         new sirius::Potential(global, sirius::rlm_component | sirius::it_component | sirius::pw_component);
+        
+    delete potential;
     
-    sirius::Band* band = new sirius::Band(global);
+    /*sirius::Band* band = new sirius::Band(global);
     
     sirius::Density* density = 
         new sirius::Density(global, band, potential, sirius::rlm_component | sirius::it_component | sirius::pw_component);
