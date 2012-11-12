@@ -39,12 +39,7 @@ class FFT3D : public FFT3D_base
         {
             FFT3D_base::init(n);
             
-            int num_threads_ = 1;
-            #pragma omp parallel default(shared)
-            {
-                if (omp_get_thread_num() == 0)
-                    num_threads_ = omp_get_num_threads();
-            }
+            num_threads_ = omp_get_num_threads();
 
             fftw_input_buffer_.set_dimensions(size(), num_threads_);
             fftw_input_buffer_.allocate();
