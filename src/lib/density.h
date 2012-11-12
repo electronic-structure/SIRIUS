@@ -345,7 +345,7 @@ class Density
         {
             delete band_;
             delete rho_;
-            for (int i = 0; i < parameters_.num_mag_dims(); i++)
+            for (int j = 0; j < parameters_.num_mag_dims(); j++)
                 delete magnetization_[j];
         }
         
