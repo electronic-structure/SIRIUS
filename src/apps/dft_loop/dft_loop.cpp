@@ -2,6 +2,8 @@
 
 int main(int argn, char** argv)
 {
+    Platform::initialize();
+    
     sirius::Global global;
 
     double a1[] = {2.708, 2.708, -2.708};

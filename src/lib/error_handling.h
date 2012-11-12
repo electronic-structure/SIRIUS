@@ -23,15 +23,15 @@ const int default_warning_flags = global_msg;
 
 void error(const char* file_name, int line_number, const char* message, int flags = default_error_flags)
 {
-    bool verbose = (flags & global_msg) ? (MPIWorld::verbose()) : true;
+    bool verbose = (flags & global_msg) ? (Platform::verbose()) : true;
     char header[1024];
 
     if (flags & fatal_err)
         sprintf(header, "\n=== Fatal error at line %i of file %s\n=== MPI rank: %i", 
-                line_number, file_name, MPIWorld::rank());
+                line_number, file_name, Platform::mpi_rank());
     else
         sprintf(header, "\n=== Warning at line %i of file %s\n=== MPI rank: %i", 
-                line_number, file_name, MPIWorld::rank());
+                line_number, file_name, Platform::mpi_rank());
     
     if (verbose)
         printf("%s\n%s\n\n", header, message);
@@ -51,7 +51,7 @@ void error(const char* file_name, int line_number, const char* message, int flag
           d = double(t2.tv_sec - t1.tv_sec) + double(t2.tv_usec - t1.tv_usec) / 1e6;
         } while (d < delay_time);
  
-        MPIWorld::abort();
+        Platform::abort();
         // raise(SIGTERM);
         // exit(0);
     }

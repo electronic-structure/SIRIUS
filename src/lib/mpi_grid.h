@@ -119,9 +119,10 @@ class MPIGrid
 
         /// grid communicators
 
-        /** Grid comminicators are built for all possible combinations of directions, i.e. 001, 010, 011, etc.
-            First communicator is the trivial "self" communicator (it is not created because it's not used); the last 
-            communicator handles the entire grid.
+        /** Grid comminicators are built for all possible combinations of 
+            directions, i.e. 001, 010, 011, etc. First communicator is the 
+            trivial "self" communicator (it is not created because it's not 
+            used); the last communicator handles the entire grid.
         */
         std::vector<MPI_Comm> communicators_;
 
@@ -143,7 +144,7 @@ class MPIGrid
         {
             dimensions_ = dimensions__;
 
-            if (MPIWorld::size() < size())
+            if (Platform::num_mpi_ranks() < size())
             {
                 std::stringstream s;
                 s << "Not enough processors to build a grid";
@@ -200,7 +201,7 @@ class MPIGrid
                 }
                 
                 // root of the grig can print
-                MPIWorld::set_verbose(root());
+                Platform::set_verbose(root());
 
                 // double check the size of communicators
                 for (int i = 1; i < num_comm; i++)

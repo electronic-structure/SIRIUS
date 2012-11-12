@@ -71,8 +71,6 @@ class Global : public StepFunction
                    so_correction_(false),
                    uj_correction_(false)
         {
-            MPIWorld::initialize();
-            Platform::initialize();
         }
             
         ~Global()
@@ -295,7 +293,7 @@ class Global : public StepFunction
             num_fv_states_ = int(num_electrons() / 2.0) + 10;
             num_bands_ = num_fv_states_ * num_spins_;
 
-            mpi_grid_.initialize(intvec(MPIWorld::size()));
+            mpi_grid_.initialize(intvec(Platform::num_mpi_ranks()));
             /*
             mpi_grid_.finalize();
             mpi_grid_.initialize(intvec(4, 1));
@@ -311,14 +309,14 @@ class Global : public StepFunction
 
         void print_info()
         {
-            if (MPIWorld::verbose())
+            if (Platform::verbose())
             {
                 printf("\n");
                 printf("SIRIUS v0.4\n");
                 printf("git hash : %s\n", git_hash);
                 printf("build date : %s\n", build_date);
                 printf("\n");
-                printf("number of MPI ranks   : %i\n", MPIWorld::size());
+                printf("number of MPI ranks   : %i\n", Platform::num_mpi_ranks());
                 printf("number of OMP threads : %i\n", Platform::num_threads()); 
 
                 unit_cell::print_info();
@@ -391,7 +389,7 @@ class Global : public StepFunction
         /// Print run-time information.
         void print_rti()
         {
-            if (MPIWorld::verbose())
+            if (Platform::verbose())
             {
                 double total_core_leakage = 0.0;
 
@@ -476,7 +474,13 @@ class Global : public StepFunction
         }
 };
 
-Global global;
+//Global global;
+
+Global& static_global(void)
+{
+    static sirius::Global global;
+    return global;
+}
 
 };
 

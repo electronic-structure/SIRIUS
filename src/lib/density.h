@@ -746,7 +746,7 @@ class Density
 
         void print_info()
         {
-            if (MPIWorld::verbose())
+            if (Platform::verbose())
             {
                 printf("\n");
                 printf("Density\n");
