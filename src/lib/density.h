@@ -344,6 +344,9 @@ class Density
         ~Density()
         {
             delete band_;
+            delete rho_;
+            for (int i = 0; i < parameters_.num_mag_dims(); i++)
+                delete magnetization_[j];
         }
         
         void set_charge_density_ptr(double* rhomt, double* rhoir)
