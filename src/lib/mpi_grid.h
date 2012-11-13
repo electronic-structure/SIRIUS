@@ -253,9 +253,9 @@ class MPIGrid
             return communicator_root_[valid_directions(directions)];
         }
 
-        inline splindex split_index(int directions)
+        /*inline splindex split_index(int directions)
         {
             int valid_dir = valid_directions(directions);
 
-        }
+        }*/
 };

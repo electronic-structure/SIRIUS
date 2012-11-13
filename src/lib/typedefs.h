@@ -69,6 +69,16 @@ template<> class primitive_type_wrapper< std::complex<double> >
         {
             return v;
         }
+        
+        static MPI_Datatype mpi_type_id()
+        {
+            return MPI_DOUBLE;
+        }
+
+        static bool is_complex()
+        {
+            return true;
+        }
 };
 
 template<> class primitive_type_wrapper< std::complex<float> >

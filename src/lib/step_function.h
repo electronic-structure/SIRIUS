@@ -19,7 +19,6 @@ class StepFunction : public reciprocal_lattice
 
     protected:
 
-        //TODO: candidate for parallelization 
         void init()
         {
             Timer t("sirius::sirius_step_func::init");
@@ -29,36 +28,47 @@ class StepFunction : public reciprocal_lattice
             
             memset(&step_function_pw_[0], 0, fft().size() * sizeof(complex16));
             
-            step_function_pw_[0] = 1.0;
+            splindex spl_fft_size(fft().size(), intvec(Platform::num_mpi_ranks()), intvec(Platform::mpi_rank()));
             
             double fourpi_omega = fourpi / omega();
 
-            for (int ig = 0; ig < fft().size(); ig++)
+            #pragma omp parallel for default(shared)
+            for (int ig = spl_fft_size.begin(); ig <= spl_fft_size.end(); ig++)
             {
                 double vg[3];
-                get_coordinates<cartesian,reciprocal>(gvec(ig), vg);
+                get_coordinates<cartesian, reciprocal>(gvec(ig), vg);
+
                 double g = vector_length(vg);
                 double g3inv = (ig) ? 1.0 / pow(g, 3) : 0.0;
-               
+
                 double gRprev = -1.0;
                 double sin_cos_gR;
+                
+                complex16 zt(0.0, 0.0);
+
                 for (int ia = 0; ia < num_atoms(); ia++)
-                {
+                {            
                     double R = atom(ia)->type()->mt_radius();
                     double gR = g * R;
 
-                    if (fabs(gRprev - gR) > 1e-10)
+                    if (gRprev != gR)
                     {
                         gRprev = gR;
                         sin_cos_gR = (sin(gR) - gR * cos(gR)) * g3inv;
                     }
 
                     if (ig == 0)
-                        step_function_pw_[ig] -= fourpi_omega * conj(gvec_phase_factor(ig, ia)) * pow(R, 3) / 3.0;
+                        zt += conj(gvec_phase_factor(ig, ia)) * pow(R, 3) / 3.0;
+                        //step_function_pw_[ig] -= fourpi_omega * conj(gvec_phase_factor(ig, ia)) * pow(R, 3) / 3.0;
                     else
-                        step_function_pw_[ig] -= fourpi_omega * conj(gvec_phase_factor(ig, ia)) * sin_cos_gR;
+                        zt += conj(gvec_phase_factor(ig, ia)) * sin_cos_gR;
+                        //step_function_pw_[ig] -= fourpi_omega * conj(gvec_phase_factor(ig, ia)) * sin_cos_gR;
                 }
+                step_function_pw_[ig] -= zt * fourpi_omega;
             }
+            Platform::allreduce(&step_function_pw_[0], fft().size());
+            
+            step_function_pw_[0] += 1.0;
 
             fft().input(fft().size(), fft_index(), &step_function_pw_[0]);
             fft().transform(1);

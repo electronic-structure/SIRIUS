@@ -55,6 +55,15 @@ class Platform
         {
             verbose_ = verbose__;
         }
+       
+        /// Perform the in-place (the output buffer is used as the input buffer) reduction 
+        template<typename T>
+        static void allreduce(T* data, int N = 1)
+        {
+            int m = (primitive_type_wrapper<T>::is_complex()) ? 2 : 1;
+            MPI_Allreduce(MPI_IN_PLACE, data, N * m, primitive_type_wrapper<T>::mpi_type_id(), 
+                          MPI_SUM, MPI_COMM_WORLD);
+        }
 };
 
 bool Platform::verbose_ = false;

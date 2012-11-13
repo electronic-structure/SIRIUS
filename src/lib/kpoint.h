@@ -214,7 +214,7 @@ class kpoint
             if (gk_cutoff * 2 > parameters_.pw_cutoff())
                 error(__FILE__, __LINE__, "aw cutoff is too large for a given plane-wave cutoff");
 
-            std::vector< std::pair<double,int> > gkmap;
+            std::vector< std::pair<double, int> > gkmap;
 
             // find G-vectors for which |G+k| < cutoff
             for (int ig = 0; ig < parameters_.num_gvec(); ig++)
