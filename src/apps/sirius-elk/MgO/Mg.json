@@ -1,0 +1,20 @@
+{
+  "name"    : "magnesium",
+  "symbol"  : "Mg",
+  "number"  : 12,
+  "mass"    : 24.305,
+  "rmin"    : 8.33333e-08,
+  "rmax"    : 22.9414,
+  "rmt"     : 2,
+  "nrmt"    : 2000,
+  "core"    : "1s", 
+  "valence" : [
+    {"l" : -1, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : false}]},
+    {"l" : 0, "n" : 3, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]},
+    {"l" : 1, "n" : 2, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]},
+    {"l" : 2, "n" : 3, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]}],
+  "lo"      : [
+    {"l" : 0, "n" : 2, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}, {"enu" : 0.15, "dme" : 1, "auto" : true}]},
+    {"l" : 1, "n" : 2, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}, {"enu" : 0.15, "dme" : 1, "auto" : true}]},
+    {"l" : 0, "n" : 3, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}, {"enu" : 0.15, "dme" : 1, "auto" : true}]}]
+}

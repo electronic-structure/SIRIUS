@@ -80,7 +80,6 @@ class Global : public StepFunction
             
         ~Global()
         {
-            clear();
         }
 
         void set_lmax_apw(int lmax_apw__)
@@ -255,6 +254,7 @@ class Global : public StepFunction
             return mpi_grid_;
         }
         
+        /// Initialize the global variables
         void initialize()
         {
             unit_cell::init();
@@ -306,6 +306,7 @@ class Global : public StepFunction
             mpi_grid_.initialize(intvec(4, 1, 1));*/
         }
 
+        /// Clear global variables
         void clear()
         {
             unit_cell::clear();

@@ -32,17 +32,7 @@ class reciprocal_lattice : public geometry
         /// phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
         mdarray<complex16,2> gvec_phase_factor_; 
 
-    public:
-    
-        reciprocal_lattice() : pw_cutoff_(pw_cutoff_default),
-                               num_gvec_(0)
-        {
-        }
-  
-        void set_pw_cutoff(double pw_cutoff__)
-        {
-            pw_cutoff_ = pw_cutoff__;
-        }
+    protected:
 
         void init()
         {
@@ -58,21 +48,22 @@ class reciprocal_lattice : public geometry
             std::vector<double> length(fft_.size());
 
             int ig = 0;
-            for (int i = fft_.grid_limits(0, 0); i <= fft_.grid_limits(0, 1); i++)
-                for (int j = fft_.grid_limits(1, 0); j <= fft_.grid_limits(1, 1); j++)
-                    for (int k = fft_.grid_limits(2, 0); k <= fft_.grid_limits(2, 1); k++)
+            for (int i0 = fft_.grid_limits(0, 0); i0 <= fft_.grid_limits(0, 1); i0++)
+                for (int i1 = fft_.grid_limits(1, 0); i1 <= fft_.grid_limits(1, 1); i1++)
+                    for (int i2 = fft_.grid_limits(2, 0); i2 <= fft_.grid_limits(2, 1); i2++)
                     {
-                        gvec(0, ig) = i;
-                        gvec(1, ig) = j;
-                        gvec(2, ig) = k;
+                        gvec(0, ig) = i0;
+                        gvec(1, ig) = i1;
+                        gvec(2, ig) = i2;
 
-                        int fracc[] = {i, j, k};
+                        int fracc[] = {i0, i1, i2};
                         double cartc[3];
-                        get_coordinates<cartesian,reciprocal>(fracc, cartc);
+                        get_coordinates<cartesian, reciprocal>(fracc, cartc);
                         length[ig] = vector_length(cartc);
                         ig++;
                     }
 
+            //TODO: change to STL sort
             std::vector<size_t> reorder(fft_.size());
             gsl_heapsort_index(&reorder[0], &length[0], fft_.size(), sizeof(double), compare_doubles);
            
@@ -158,6 +149,18 @@ class reciprocal_lattice : public geometry
             index_by_gvec_.deallocate();
             fft_index_.clear();
             gvec_phase_factor_.deallocate();
+        }
+
+    public:
+    
+        reciprocal_lattice() : pw_cutoff_(pw_cutoff_default),
+                               num_gvec_(0)
+        {
+        }
+  
+        void set_pw_cutoff(double pw_cutoff__)
+        {
+            pw_cutoff_ = pw_cutoff__;
         }
 
         void print_info()

@@ -194,7 +194,8 @@ class kpoint
 
     public:
 
-        kpoint(Global& parameters__, double* vk__, double weight__) : parameters_(parameters__), weight_(weight__)
+        kpoint(Global& parameters__, double* vk__, double weight__) : parameters_(parameters__), 
+                                                                      weight_(weight__)
         {
             for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
 

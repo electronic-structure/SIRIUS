@@ -296,6 +296,7 @@ class Density
 
     public:
 
+        /// Constructor
         Density(Global& parameters__, 
                 Potential* potential__, 
                 int allocate_f__ = pw_component) : parameters_(parameters__),
@@ -341,6 +342,7 @@ class Density
             band_ = new Band(parameters_);
         }
 
+        /// Destructor
         ~Density()
         {
             delete band_;
@@ -385,6 +387,7 @@ class Density
             }
         }
     
+        /// Zero density and magnetization
         void zero()
         {
             rho_->zero();
@@ -467,7 +470,7 @@ class Density
 
             double ne = 0.0;
 
-            while (fabs(ne - parameters_.num_valence_electrons()) > 1e-11)
+            while(true)
             {
                 ne = 0.0;
                 for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
@@ -476,20 +479,19 @@ class Density
                     for (int j = 0; j < parameters_.num_bands(); j++)
                         ne += gaussian_smearing(kpoint_set_[ik]->band_energy(j) - ef) * wkmo;
                 }
-                
-                sp = s;
 
+                if (fabs(ne - parameters_.num_valence_electrons()) < 1e-11)
+                    break;
+ 
+                sp = s;
                 s = (ne > parameters_.num_valence_electrons()) ? -1 : 1;
 
                 de = s * fabs(de);
 
-                if (s != sp)
-                    de *= 0.5;
-                else
-                    de *= 1.25;
-
+                (s != sp) ? de *= 0.5 : de *= 1.25; 
+                
                 ef += de;
-            }
+            } 
 
             parameters_.rti().energy_fermi = ef;
             
@@ -500,6 +502,7 @@ class Density
                 for (int j = 0; j < parameters_.num_bands(); j++)
                     bnd_occ[j] = gaussian_smearing(kpoint_set_[ik]->band_energy(j) - ef) * 
                                  parameters_.max_occupancy();
+
                 kpoint_set_[ik]->set_band_occupancies(&bnd_occ[0]);
             }
 
@@ -683,6 +686,7 @@ class Density
             
             // add core contribution
             double eval_sum = 0.0;
+            double core_leakage = 0.0;
             for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
             {
                 int nmtp = parameters_.atom_symmetry_class(ic)->atom_type()->num_mt_points();
@@ -691,6 +695,9 @@ class Density
 
                 eval_sum += parameters_.atom_symmetry_class(ic)->core_eval_sum() *
                             parameters_.atom_symmetry_class(ic)->num_atoms();
+                
+                core_leakage += parameters_.atom_symmetry_class(ic)->core_leakage() * 
+                                parameters_.atom_symmetry_class(ic)->num_atoms();
 
                 for (int i = 0; i < parameters_.atom_symmetry_class(ic)->num_atoms(); i++)
                 {
@@ -708,7 +715,8 @@ class Density
                 s << "wrong charge density after k-point summation" << std::endl
                   << "obtained value : " << nel << std::endl 
                   << "target value : " << parameters_.num_electrons() << std::endl
-                  << "difference : " << fabs(nel - parameters_.num_electrons()); 
+                  << "difference : " << fabs(nel - parameters_.num_electrons()) << std::endl
+                  << "core leakage : " << core_leakage;
                 warning(__FILE__, __LINE__, s);
             }
 #if 0                

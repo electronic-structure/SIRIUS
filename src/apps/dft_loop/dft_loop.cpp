@@ -54,6 +54,10 @@ int main(int argn, char** argv)
 
     delete density;
     delete potential;
+    
+    global.clear();
 
     sirius::Timer::print();
+    
+    sirius::static_global();
 }

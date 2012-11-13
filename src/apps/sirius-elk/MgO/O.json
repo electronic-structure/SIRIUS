@@ -1,0 +1,19 @@
+{
+  "name"    : "oxygen",
+  "symbol"  : "O",
+  "number"  : 8,
+  "mass"    : 15.9994,
+  "rmin"    : 1.25e-07,
+  "rmax"    : 21.8244,
+  "rmt"     : 2,
+  "nrmt"    : 2000,
+  "core"    : "1s", 
+  "valence" : [
+    {"l" : -1, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : false}]},
+    {"l" : 0, "n" : 2, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]},
+    {"l" : 1, "n" : 2, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]},
+    {"l" : 2, "n" : 3, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]}],
+  "lo"      : [
+    {"l" : 0, "n" : 2, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}, {"enu" : 0.15, "dme" : 1, "auto" : true}]},
+    {"l" : 1, "n" : 2, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}, {"enu" : 0.15, "dme" : 1, "auto" : true}]}]
+}
