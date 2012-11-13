@@ -270,7 +270,7 @@ class reciprocal_lattice : public geometry
         }
 
         /// length of G-vector
-        inline int gvec_len(int ig)
+        inline double gvec_len(int ig)
         {
             assert(ig >= 0 && ig < (int)gvec_shell_.size());
             return gvec_shell_len_[gvec_shell_[ig]];
