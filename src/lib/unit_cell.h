@@ -364,7 +364,7 @@ class unit_cell
                 error(__FILE__, __LINE__, s);
             }
             atom_types_.push_back(new AtomType(atom_type_id, label));
-            atom_type_index_by_id_[atom_type_id] = atom_types_.size() - 1;
+            atom_type_index_by_id_[atom_type_id] = (int)atom_types_.size() - 1;
         }
         
         void add_atom(int atom_type_id, 
@@ -415,7 +415,7 @@ class unit_cell
         {
             assert(atom_types_.size() == atom_type_index_by_id_.size());
 
-            return atom_types_.size();
+            return (int)atom_types_.size();
         }
 
         /*!
@@ -447,7 +447,7 @@ class unit_cell
         */
         inline int num_atom_symmetry_classes()
         {
-            return atom_symmetry_classes_.size();
+            return (int)atom_symmetry_classes_.size();
         }
        
         /*! 
@@ -478,7 +478,7 @@ class unit_cell
         */
         inline int num_atoms()
         {
-            return atoms_.size();
+            return (int)atoms_.size();
         }
 };
 

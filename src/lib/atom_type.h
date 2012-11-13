@@ -95,7 +95,7 @@ class radial_functions_index
             {
                 assert(aw_descriptors[l].size() <= 2);
 
-                num_rf_[l] = aw_descriptors[l].size();
+                num_rf_[l] = (int)aw_descriptors[l].size();
                 for (int order = 0; order < (int)aw_descriptors[l].size(); order++)
                    radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, order));
             }
@@ -115,7 +115,7 @@ class radial_functions_index
 
             if (lo_descriptors.size())
             {
-                index_by_idxlo_.set_dimensions(lo_descriptors.size());
+                index_by_idxlo_.set_dimensions((int)lo_descriptors.size());
                 index_by_idxlo_.allocate();
             }
 
@@ -131,7 +131,7 @@ class radial_functions_index
 
         inline int size()
         {
-            return radial_function_index_descriptors_.size();
+            return (int)radial_function_index_descriptors_.size();
         }
 
         inline radial_function_index_descriptor& operator[](int i)
@@ -253,7 +253,7 @@ class basis_functions_index
                 if (basis_function_index_descriptors_[i].idxlo < 0) size_aw_ = i + 1;
             }
 
-            size_lo_ = basis_function_index_descriptors_.size() - size_aw_;
+            size_lo_ = (int)basis_function_index_descriptors_.size() - size_aw_;
 
             assert(size_aw_ > 0);
             assert(size_lo_ >= 0);
@@ -264,7 +264,7 @@ class basis_functions_index
         */
         inline int size()
         {
-            return basis_function_index_descriptors_.size();
+            return (int)basis_function_index_descriptors_.size();
         }
 
         inline int size_aw()
@@ -389,7 +389,7 @@ class AtomType
             parser["nrmt"] >> num_mt_points_;
             std::string core_str;
             parser["core"] >> core_str;
-            if (int size = core_str.size())
+            if (int size = (int)core_str.size())
             {
                 if (size % 2)
                 {
@@ -450,7 +450,7 @@ class AtomType
                 }
 
             }
-            num_core_levels_ = atomic_levels_.size();
+            num_core_levels_ = (int)atomic_levels_.size();
             
             radial_solution_descriptor rsd;
             radial_solution_descriptor_set rsd_set;
@@ -891,7 +891,7 @@ class AtomType
         
         inline int num_atomic_levels()
         {
-            return atomic_levels_.size();
+            return (int)atomic_levels_.size();
         }    
         
         inline int num_core_levels()
@@ -926,7 +926,7 @@ class AtomType
         
         inline int num_aw_descriptors()
         {
-            return aw_descriptors_.size();
+            return (int)aw_descriptors_.size();
         }
 
         inline radial_solution_descriptor_set& aw_descriptor(int idx)
@@ -936,7 +936,7 @@ class AtomType
         
         inline int num_lo_descriptors()
         {
-            return lo_descriptors_.size();
+            return (int)lo_descriptors_.size();
         }
 
         inline radial_solution_descriptor_set& lo_descriptor(int idx)

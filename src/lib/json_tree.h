@@ -45,7 +45,7 @@ template<> json_value_parser<int>::json_value_parser(const JSONNode& value,
         is_valid_ = false;
     
     if (is_valid_) 
-        data = value.as_int();
+        data = (int)value.as_int();
 }
 
 template<> json_value_parser<double>::json_value_parser(const JSONNode& value, 
@@ -139,7 +139,7 @@ class JsonTree
                 error(__FILE__, __LINE__, s);
             }
             ifs.seekg(0, std::ios::end);
-            int length = ifs.tellg();
+            std::streamoff length = ifs.tellg();
             ifs.seekg(0, std::ios::beg);
             
             std::string buffer(length, ' ');

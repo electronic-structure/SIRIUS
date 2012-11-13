@@ -198,7 +198,7 @@ class AtomSymmetryClass
                 double b[] = {0.0, 0.0, 0.0, 0.0};
                 b[atom_type_->lo_descriptor(idxlo).size() - 1] = 1.0;
 
-                int info = gesv<double>(atom_type_->lo_descriptor(idxlo).size(), 1, &a[0][0], 4, b, 4);
+                int info = gesv<double>((int)atom_type_->lo_descriptor(idxlo).size(), 1, &a[0][0], 4, b, 4);
 
                 if (info) 
                 {
@@ -284,7 +284,7 @@ class AtomSymmetryClass
         
         inline int num_atoms()
         {
-            return atom_id_.size();
+            return (int)atom_id_.size();
         }
 
         inline int atom_id(int idx)

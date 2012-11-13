@@ -154,13 +154,13 @@ class MPIGrid
             // communicator of the entire grid
             base_grid_communicator_ = MPI_COMM_NULL;
             std::vector<int> periods(dimensions_.size(), 0);
-            MPI_Cart_create(MPI_COMM_WORLD, dimensions_.size(), &dimensions_[0], &periods[0], 0, 
+            MPI_Cart_create(MPI_COMM_WORLD, (int)dimensions_.size(), &dimensions_[0], &periods[0], 0, 
                             &base_grid_communicator_);
 
             if (in_grid()) 
             {
                 // total number of communicators
-                int num_comm = pow(2, dimensions_.size());
+                int num_comm = 1 << dimensions_.size();
 
                 communicators_ = std::vector<MPI_Comm>(num_comm, MPI_COMM_NULL);
 
@@ -171,7 +171,7 @@ class MPIGrid
                 communicator_root_ = std::vector<bool>(num_comm, false);
 
                 // get coordinates
-                MPI_Cart_get(base_grid_communicator_, dimensions_.size(), &dimensions_[0], &periods[0], 
+                MPI_Cart_get(base_grid_communicator_, (int)dimensions_.size(), &dimensions_[0], &periods[0], 
                              &coordinates_[0]);
 
                 // get all possible communicators

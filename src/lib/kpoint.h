@@ -78,7 +78,7 @@ class kpoint
 
                     for (int l = 0; l <= parameters_.lmax_apw(); l++)
                     {
-                        int num_aw = parameters_.atom(ia)->type()->aw_descriptor(l).size();
+                        int num_aw = (int)parameters_.atom(ia)->type()->aw_descriptor(l).size();
 
                         complex16 a[2][2];
                         mdarray<complex16,2> b(2, 2 * parameters_.lmax_apw() + 1);
@@ -232,7 +232,7 @@ class kpoint
 
             std::sort(gkmap.begin(), gkmap.end());
 
-            gkvec_.set_dimensions(3, gkmap.size());
+            gkvec_.set_dimensions(3, (int)gkmap.size());
             gkvec_.allocate();
 
             gvec_index_.resize(gkmap.size());

@@ -160,7 +160,7 @@ class RadialGrid
         
         inline int size()
         {
-            return points_.size();
+            return (int)points_.size();
         }
                 
         void print_info()

@@ -117,7 +117,7 @@ class reciprocal_lattice : public geometry
                 if (gvec_shell_len_.empty() || fabs(t - gvec_shell_len_.back()) > 1e-8)
                     gvec_shell_len_.push_back(t);
                  
-                gvec_shell_[ig] = gvec_shell_len_.size() - 1;
+                gvec_shell_[ig] = (int)gvec_shell_len_.size() - 1;
             }
 #if 0
             // compute phase factors
@@ -254,7 +254,7 @@ class reciprocal_lattice : public geometry
 
         inline int num_gvec_shells()
         {
-            return gvec_shell_len_.size();
+            return (int)gvec_shell_len_.size();
         }
         
         inline double gvec_shell_len(int igs)

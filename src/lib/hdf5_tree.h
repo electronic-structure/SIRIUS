@@ -38,7 +38,7 @@ class hdf5_tree
                     for (int i = 0; i < (int)dims.size(); i++)
                         current_dims[dims.size() - i - 1] = dims[i];
 
-                    id = H5Screate_simple(dims.size(), &current_dims[0], NULL);
+                    id = H5Screate_simple((int)dims.size(), &current_dims[0], NULL);
                     
                     if (id < 0)
                         error(__FILE__, __LINE__, "error in H5Screate_simple()");

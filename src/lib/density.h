@@ -99,8 +99,8 @@ class Density
             int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
 
             mdarray<complex16,3> zdens(parameters_.max_mt_basis_size(), parameters_.max_mt_basis_size(), num_zdmat);
-            mdarray<complex16,3> wf1(parameters_.max_mt_basis_size(), bands.size(), parameters_.num_spins());
-            mdarray<complex16,3> wf2(parameters_.max_mt_basis_size(), bands.size(), parameters_.num_spins());
+            mdarray<complex16,3> wf1(parameters_.max_mt_basis_size(), (int)bands.size(), parameters_.num_spins());
+            mdarray<complex16,3> wf2(parameters_.max_mt_basis_size(), (int)bands.size(), parameters_.num_spins());
        
             Timer t1("sirius::Density::add_kpoint_contribution:zdens", false);
             Timer t2("sirius::Density::add_kpoint_contribution:reduce_zdens", false);
@@ -122,7 +122,7 @@ class Density
                     }
 
                 for (int j = 0; j < num_zdmat; j++)
-                    gemm<cpu>(0, 2, mt_basis_size, mt_basis_size, bands.size(), complex16(1.0, 0.0), 
+                    gemm<cpu>(0, 2, mt_basis_size, mt_basis_size, (int)bands.size(), complex16(1.0, 0.0), 
                               &wf1(0, 0, dmat_spins_[j].first), parameters_.max_mt_basis_size(), 
                               &wf2(0, 0, dmat_spins_[j].second), parameters_.max_mt_basis_size(),complex16(0.0, 0.0), 
                               &zdens(0, 0, j), parameters_.max_mt_basis_size());

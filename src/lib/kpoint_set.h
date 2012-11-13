@@ -18,7 +18,7 @@ class kpoint_set
                 error(__FILE__, __LINE__, "kpoint is already in list");
 
             kpoints_.push_back(new kpoint(parameters, vk, weight));
-            kpoint_index_by_id_[kpoint_id] = kpoints_.size() - 1;
+            kpoint_index_by_id_[kpoint_id] = (int)kpoints_.size() - 1;
 
             std::vector<double> initial_occupancies(parameters.num_bands(), 0.0);
 
@@ -69,7 +69,7 @@ class kpoint_set
         
         inline int num_kpoints()
         {
-            return kpoints_.size();
+            return (int)kpoints_.size();
         }
 };
 
