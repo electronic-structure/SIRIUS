@@ -160,7 +160,7 @@ class Atom
             uj_correction_matrix_.allocate();
         }
 
-        void set_nonspherical_potential(double* veff__, double** beff__)
+        void set_nonspherical_potential(double* veff__, double* beff__[3])
         {
             veff_.set_ptr(veff__);
             
