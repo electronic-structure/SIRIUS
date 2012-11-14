@@ -709,7 +709,7 @@ class Potential
             {
                 double* veff = &effective_potential_->f_rlm(0, 0, ia);
                 
-                double* beff[3];
+                double* beff[] = {NULL, NULL, NULL};
                 for (int i = 0; i < parameters_.num_mag_dims(); i++)
                     beff[i] = &effective_magnetic_field_[i]->f_rlm(0, 0, ia);
                 
