@@ -63,7 +63,7 @@ class Global : public StepFunction
         /// run-time information (energies, charges, etc.)
         run_time_info rti_;
 
-        MPIGrid mpi_grid_;
+        //MPIGrid mpi_grid_;
         
     public:
     
@@ -249,10 +249,10 @@ class Global : public StepFunction
             return uj_correction_;
         }
 
-        MPIGrid& mpi_grid()
+        /*MPIGrid& mpi_grid()
         {
             return mpi_grid_;
-        }
+        }*/
         
         /// Initialize the global variables
         void initialize()
@@ -298,7 +298,7 @@ class Global : public StepFunction
             num_fv_states_ = int(num_electrons() / 2.0) + 10;
             num_bands_ = num_fv_states_ * num_spins_;
 
-            mpi_grid_.initialize(intvec(Platform::num_mpi_ranks()));
+            //mpi_grid_.initialize(intvec(Platform::num_mpi_ranks()));
             /*
             mpi_grid_.finalize();
             mpi_grid_.initialize(intvec(4, 1));

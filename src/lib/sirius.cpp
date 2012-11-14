@@ -195,9 +195,10 @@ void FORTRAN(sirius_potential_initialize)(void)
     sirius::potential = new sirius::Potential(sirius::static_global());
 }
 
-void FORTRAN(sirius_density_initialize)(void)
+void FORTRAN(sirius_density_initialize)(int4* num_kpoints, double* kpoints_, double* kpoint_weights)
 {
-    sirius::density = new sirius::Density(sirius::static_global(), sirius::potential);
+    mdarray<double, 2> kpoints(kpoints_, 3, *num_kpoints); 
+    sirius::density = new sirius::Density(sirius::static_global(), sirius::potential, kpoints, kpoint_weights);
 }
 
 void FORTRAN(sirius_clear)(void)
@@ -240,26 +241,23 @@ extern "C" void FORTRAN(sirius_get_step_function)(real8* step_function)
 }
 #endif
 
-void FORTRAN(sirius_density_add_kpoint)(int4* kpoint_id, real8* vk, real8* weight)
+void FORTRAN(sirius_density_set_band_occupancies)(int4* ik_, real8* band_occupancies)
 {
-    sirius::density->add_kpoint(*kpoint_id, vk, *weight);
+    int ik = *ik_ - 1;
+    sirius::density->set_band_occupancies(ik, band_occupancies);
 }
 
-void FORTRAN(sirius_density_set_band_occupancies)(int4* kpoint_id, real8* band_occupancies)
+void FORTRAN(sirius_density_get_band_energies)(int4* ik_, real8* band_energies)
 {
-    sirius::density->set_band_occupancies(*kpoint_id, band_occupancies);
+    int ik = *ik_ - 1;
+    sirius::density->get_band_energies(ik, band_energies);
 }
 
-void FORTRAN(sirius_density_get_band_energies)(int4* kpoint_id, real8* band_energies)
+void FORTRAN(sirius_density_get_band_occupancies)(int4* ik_, real8* band_occupancies)
 {
-    sirius::density->get_band_energies(*kpoint_id, band_energies);
+    int ik = *ik_ - 1;
+    sirius::density->get_band_occupancies(ik, band_occupancies);
 }
-
-void FORTRAN(sirius_density_get_band_occupancies)(int4* kpoint_id, real8* band_occupancies)
-{
-    sirius::density->get_band_occupancies(*kpoint_id, band_occupancies);
-}
-
 
 void FORTRAN(sirius_density_integrate)(void)
 {
@@ -277,11 +275,7 @@ void FORTRAN(sirius_print_info)(void)
 
 void FORTRAN(sirius_print_timers)(void)
 {
-    printf("\n");
-    printf("Timers\n");
-    for (int i = 0; i < 80; i++) printf("-");
-    printf("\n");
-    sirius::Timer::print();
+   sirius::Timer::print();
 }   
 
 void FORTRAN(sirius_timer_start)(char* name_, int4 name_len)

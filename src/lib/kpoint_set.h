@@ -8,17 +8,21 @@ class kpoint_set
     
         std::vector<kpoint*> kpoints_;
         
-        std::map<int,int> kpoint_index_by_id_;
-
     public:
         
-        void add_kpoint(int kpoint_id, double* vk, double weight, Global& parameters)
+        void add_kpoint(double* vk, double weight, Global& parameters)
         {
-            if (kpoint_index_by_id_.count(kpoint_id))
-                error(__FILE__, __LINE__, "kpoint is already in list");
+            for (int ik = 0; ik < (int)kpoints_.size(); ik++)
+            {
+                double t[3];
+                for (int x = 0; x < 3; x++) 
+                    t[x] = vk[x] - kpoints_[ik]->vk()[x];
+
+                if (vector_length(t) < 1e-10)
+                    error(__FILE__, __LINE__, "kpoint is already in list");
+            }
 
             kpoints_.push_back(new kpoint(parameters, vk, weight));
-            kpoint_index_by_id_[kpoint_id] = (int)kpoints_.size() - 1;
 
             std::vector<double> initial_occupancies(parameters.num_bands(), 0.0);
 
@@ -50,27 +54,34 @@ class kpoint_set
             return kpoints_[i];
         }
 
-        inline kpoint* kpoint_by_id(int id)
-        {
-            assert(kpoint_index_by_id_.count(id) == 1);
-            assert(kpoint_index_by_id_[id] >= 0 && kpoint_index_by_id_[id] < (int)kpoints_.size());
-            
-            return kpoints_[kpoint_index_by_id_[id]];
-        }
-        
         void clear()
         {
             for (int ik = 0; ik < (int)kpoints_.size(); ik++)
                 delete kpoints_[ik];
             
             kpoints_.clear();
-            kpoint_index_by_id_.clear();
         }
         
         inline int num_kpoints()
         {
             return (int)kpoints_.size();
         }
+
+        void sync_band_energies(int num_bands, splindex& spl_num_kpoints)
+        {
+            mdarray<double, 2> band_energies(num_bands, num_kpoints());
+            band_energies.zero();
+
+            for (int ik = spl_num_kpoints.begin(); ik <= spl_num_kpoints.end(); ik++)
+                kpoints_[ik]->get_band_energies(&band_energies(0, ik));
+
+            Platform::allreduce(&band_energies(0, 0), num_bands * num_kpoints());
+
+            for (int ik = 0; ik < num_kpoints(); ik++)
+                kpoints_[ik]->set_band_energies(&band_energies(0, ik));
+        }
+
+
 };
 
 };

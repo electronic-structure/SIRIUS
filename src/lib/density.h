@@ -22,6 +22,10 @@ class Density
         mdarray<complex16,3> complex_gaunt_;
 
         kpoint_set kpoint_set_;
+        
+        MPIGrid mpi_grid_;
+
+        splindex spl_num_kpoints_;
 
         template <int num_mag_dims> 
         void reduce_zdens(int ia, mdarray<complex16,3>& zdens, mdarray<double,5>& mt_density_matrix)
@@ -298,13 +302,13 @@ class Density
 
         /// Constructor
         Density(Global& parameters__, 
-                Potential* potential__, 
+                Potential* potential__,
+                mdarray<double, 2>& kpoints__,
+                double* kpoint_weights__,
                 int allocate_f__ = pw_component) : parameters_(parameters__),
                                                    potential_(potential__),
                                                    allocate_f_(allocate_f__)
         {
-            kpoint_set_.clear();
-
             rho_ = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
             rho_->allocate(allocate_f_);
 
@@ -340,6 +344,15 @@ class Density
             }
 
             band_ = new Band(parameters_);
+            
+            kpoint_set_.clear();
+            for (int ik = 0; ik < kpoints__.size(1); ik++)
+                kpoint_set_.add_kpoint(&kpoints__(0, ik), kpoint_weights__[ik], parameters_);
+
+            mpi_grid_.initialize(intvec(std::min(Platform::num_mpi_ranks(), kpoint_set_.num_kpoints()), 1));
+
+            // distribute k-points along the 1-st direction of the MPI grid
+            spl_num_kpoints_ = mpi_grid_.split_index(1 << 0, kpoint_set_.num_kpoints());
         }
 
         /// Destructor
@@ -457,10 +470,10 @@ class Density
                                                  parameters_.rti().it_magnetization[j]);
         }
 
-      
-
         void find_band_occupancies()
         {
+            Timer t("sirius::Density::find_band_occupancies");
+
             double ef = 0.15;
 
             double de = 0.1;
@@ -560,12 +573,15 @@ class Density
             parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), 
                                      potential_->effective_potential()->f_pw());
 
-            for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
+            for (int ik = spl_num_kpoints_.begin(); ik <= spl_num_kpoints_.end(); ik++)
             {
                 // solve secular equation and generate wave functions
                 kpoint_set_[ik]->find_eigen_states(band_, potential_->effective_potential(),
                                                    potential_->effective_magnetic_field());
             }
+
+            // synchronize eigen-values
+            kpoint_set_.sync_band_energies(parameters_.num_bands(), spl_num_kpoints_);
 
             // compute eigen-value sums
             double eval_sum = 0.0;
@@ -602,7 +618,7 @@ class Density
                 s << "wrong occupancies" << std::endl
                   << "  computed : " << ot << std::endl
                   << "  required : " << parameters_.num_valence_electrons() << std::endl
-                  << " difference : " << fabs(ot - parameters_.num_valence_electrons());
+                  << "  difference : " << fabs(ot - parameters_.num_valence_electrons());
                 error(__FILE__, __LINE__, s);
             }
 
@@ -610,20 +626,31 @@ class Density
             zero();
 
             // auxiliary density matrix
-            mdarray<double,5> mt_density_matrix(parameters_.max_mt_radial_basis_size(), 
-                                                parameters_.max_mt_radial_basis_size(), 
-                                                parameters_.lmmax_rho(), parameters_.num_atoms(), 
-                                                parameters_.num_mag_dims() + 1);
+            mdarray<double, 5> mt_density_matrix(parameters_.max_mt_radial_basis_size(), 
+                                                 parameters_.max_mt_radial_basis_size(), 
+                                                 parameters_.lmmax_rho(), 
+                                                 parameters_.num_atoms(), 
+                                                 parameters_.num_mag_dims() + 1);
             mt_density_matrix.zero();
             
-            mdarray<complex16,5> occupation_matrix(16, 16, 2, 2, parameters_.num_atoms()); 
+            mdarray<complex16, 5> occupation_matrix(16, 16, 2, 2, parameters_.num_atoms()); 
             occupation_matrix.zero();
 
-            for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
-            {
-                // add to charge density and magnetization
+            // add to charge density and magnetization
+            for (int ik = spl_num_kpoints_.begin(); ik <= spl_num_kpoints_.end(); ik++)
                 add_kpoint_contribution(kpoint_set_[ik], mt_density_matrix, occupation_matrix);
-            }
+            
+            // reduce arrays
+            for (int j = 0; j < parameters_.num_mag_dims() + 1; j++)
+                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                    Platform::allreduce(&mt_density_matrix(0, 0, 0, ia, j), 
+                                        parameters_.max_mt_radial_basis_size() * 
+                                        parameters_.max_mt_radial_basis_size() * 
+                                        parameters_.lmmax_rho());
+           
+            Platform::allreduce(&rho_->f_it(0), parameters_.fft().size()); 
+            for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                Platform::allreduce(&magnetization_[j]->f_it(0), parameters_.fft().size()); 
 
             // restore the du block of occupation matrix
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
@@ -732,24 +759,19 @@ class Density
 #endif
         }
 
-        void add_kpoint(int kpoint_id, double* vk, double weight)
+        void set_band_occupancies(int ik, double* band_occupancies)
         {
-            kpoint_set_.add_kpoint(kpoint_id, vk, weight, parameters_);
+            kpoint_set_[ik]->set_band_occupancies(band_occupancies);
         }
 
-        void set_band_occupancies(int kpoint_id, double* band_occupancies)
+        void get_band_energies(int ik, double* band_energies)
         {
-            kpoint_set_.kpoint_by_id(kpoint_id)->set_band_occupancies(band_occupancies);
-        }
-
-        void get_band_energies(int kpoint_id, double* band_energies)
-        {
-            kpoint_set_.kpoint_by_id(kpoint_id)->get_band_energies(band_energies);
+            kpoint_set_[ik]->get_band_energies(band_energies);
         }
         
-        void get_band_occupancies(int kpoint_id, double* band_occupancies)
+        void get_band_occupancies(int ik, double* band_occupancies)
         {
-            kpoint_set_.kpoint_by_id(kpoint_id)->get_band_occupancies(band_occupancies);
+            kpoint_set_[ik]->get_band_occupancies(band_occupancies);
         }
 
         void print_info()

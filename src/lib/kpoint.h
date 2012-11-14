@@ -566,6 +566,13 @@ class kpoint
             return (parameters_.mt_basis_size() + num_gkvec());
         }
 
+        inline void get_band_occupancies(double* band_occupancies)
+        {
+            assert((int)band_occupancies_.size() == parameters_.num_bands());
+            
+            memcpy(band_occupancies, &band_occupancies_[0], parameters_.num_bands() * sizeof(double));
+        }
+
         inline void set_band_occupancies(double* band_occupancies)
         {
             band_occupancies_.resize(parameters_.num_bands());
@@ -579,11 +586,10 @@ class kpoint
             memcpy(band_energies, &band_energies_[0], parameters_.num_bands() * sizeof(double));
         }
 
-        inline void get_band_occupancies(double* band_occupancies)
+        inline void set_band_energies(double* band_energies)
         {
-            assert((int)band_occupancies_.size() == parameters_.num_bands());
-            
-            memcpy(band_occupancies, &band_occupancies_[0], parameters_.num_bands() * sizeof(double));
+            band_energies_.resize(parameters_.num_bands()); 
+            memcpy(&band_energies_[0], band_energies, parameters_.num_bands() * sizeof(double));
         }
 
         inline double band_occupancy(int j)

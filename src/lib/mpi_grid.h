@@ -20,6 +20,14 @@ class splindex
         int global_index_offset_;
 
     public:
+
+        splindex() : index_size_(-1),
+                     num_ranks_(-1),
+                     rank_id_(-1),
+                     local_index_size_(-1),
+                     global_index_offset_(-1)
+        {
+        }
         
         splindex(int index_size__,
                  const std::vector<int>& dimensions__, 
@@ -35,7 +43,14 @@ class splindex
 
             for (int i = 0; i < (int)dimensions_.size(); i++)
                 if (coordinates_[i] >= dimensions_[i])
-                    error(__FILE__, __LINE__, "bad coordinates");
+                {
+                    std::stringstream s;
+                    s << "bad coordinates" << std::endl
+                      << "  direction : " << i << std::endl
+                      << "  coordinate : " << coordinates_[i] << std::endl
+                      << "  dimension size : " << dimensions_[i];
+                    error(__FILE__, __LINE__, s);
+                }
 
             num_ranks_ = 1;
             for (int i = 0; i < (int)dimensions_.size(); i++)
@@ -253,9 +268,28 @@ class MPIGrid
             return communicator_root_[valid_directions(directions)];
         }
 
-        /*inline splindex split_index(int directions)
+        std::vector<int> sub_dimensions(int directions)
+        {
+            std::vector<int> sd;
+            for (int i = 0; i < (int)dimensions_.size(); i++)
+                if (directions & (1 << i))
+                    sd.push_back(dimensions_[i]);
+            return sd;
+        }
+
+        std::vector<int> sub_coordinates(int directions)
+        {
+            std::vector<int> sc;
+            for (int i = 0; i < (int)coordinates_.size(); i++)
+                if (directions & (1 << i))
+                    sc.push_back(coordinates_[i]);
+            return sc;
+        }
+
+        inline splindex split_index(int directions, int N)
         {
             int valid_dir = valid_directions(directions);
+            return splindex(N, sub_dimensions(valid_dir), sub_coordinates(valid_dir)); 
 
-        }*/
+        }
 };

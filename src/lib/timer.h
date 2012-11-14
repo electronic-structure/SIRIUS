@@ -66,11 +66,19 @@ class Timer
 
         static void print()
         {
-            std::map<std::string, double>::iterator it;
-            for (it = timers_.begin(); it != timers_.end(); it++)
+            if (Platform::verbose())
             {
-                double avg = (tcount_[it->first] == 0) ? 0.0 : it->second/tcount_[it->first];
-                printf("%-60s : %10.4f (total)   %10.4f (average)\n", it->first.c_str(), it->second, avg);
+                printf("\n");
+                printf("Timers\n");
+                for (int i = 0; i < 80; i++) printf("-");
+                printf("\n");
+ 
+                std::map<std::string, double>::iterator it;
+                for (it = timers_.begin(); it != timers_.end(); it++)
+                {
+                    double avg = (tcount_[it->first] == 0) ? 0.0 : it->second/tcount_[it->first];
+                    printf("%-60s : %10.4f (total)   %10.4f (average)\n", it->first.c_str(), it->second, avg);
+                }
             }
         }
 

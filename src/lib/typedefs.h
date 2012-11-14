@@ -45,6 +45,16 @@ template<> class primitive_type_wrapper<double>
         {
             return real(v);
         }
+        
+        static MPI_Datatype mpi_type_id()
+        {
+            return MPI_DOUBLE;
+        }
+
+        static bool is_complex()
+        {
+            return false;
+        }
 };
 
 template<> class primitive_type_wrapper<float>
