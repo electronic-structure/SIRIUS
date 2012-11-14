@@ -573,15 +573,13 @@ class Density
             parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), 
                                      potential_->effective_potential()->f_pw());
 
+            // solve secular equation and generate wave functions
             for (int ik = spl_num_kpoints_.begin(); ik <= spl_num_kpoints_.end(); ik++)
-            {
-                // solve secular equation and generate wave functions
                 kpoint_set_[ik]->find_eigen_states(band_, potential_->effective_potential(),
                                                    potential_->effective_magnetic_field());
-            }
 
             // synchronize eigen-values
-            kpoint_set_.sync_band_energies(parameters_.num_bands(), spl_num_kpoints_);
+            kpoint_set_.sync_band_energies(parameters_.num_bands(), mpi_grid_, spl_num_kpoints_);
 
             // compute eigen-value sums
             double eval_sum = 0.0;

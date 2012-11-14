@@ -67,13 +67,19 @@ class kpoint_set
             return (int)kpoints_.size();
         }
 
-        void sync_band_energies(int num_bands, splindex& spl_num_kpoints)
+        void sync_band_energies(int num_bands, MPIGrid& mpi_grid, splindex& spl_num_kpoints)
         {
             mdarray<double, 2> band_energies(num_bands, num_kpoints());
             band_energies.zero();
+            
+            // assume that side processors store the full e(k) array
+            if (mpi_grid.side(1 << 0))
+                for (int ik = spl_num_kpoints.begin(); ik <= spl_num_kpoints.end(); ik++)
+                    kpoints_[ik]->get_band_energies(&band_energies(0, ik));
 
-            for (int ik = spl_num_kpoints.begin(); ik <= spl_num_kpoints.end(); ik++)
-                kpoints_[ik]->get_band_energies(&band_energies(0, ik));
+            //mpi_grid.reduce(&band_energies(0, 0), num_bands * num_kpoints(), 1 << 0, true);
+
+            //Platform::bcast(&band_energies(0, 0), num_bands * num_kpoints(), mpi_grid.world_root());
 
             Platform::allreduce(&band_energies(0, 0), num_bands * num_kpoints());
 

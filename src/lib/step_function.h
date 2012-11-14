@@ -66,7 +66,7 @@ class StepFunction : public reciprocal_lattice
                 }
                 step_function_pw_[ig] -= zt * fourpi_omega;
             }
-            Platform::allreduce(&step_function_pw_[0], fft().size());
+            Platform::allreduce(&step_function_pw_[0], fft().size(), spl_fft_size.communicator());
             
             step_function_pw_[0] += 1.0;
 

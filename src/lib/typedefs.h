@@ -51,10 +51,10 @@ template<> class primitive_type_wrapper<double>
             return MPI_DOUBLE;
         }
 
-        static bool is_complex()
+        /*static bool is_complex()
         {
             return false;
-        }
+        }*/
 };
 
 template<> class primitive_type_wrapper<float>
@@ -82,13 +82,13 @@ template<> class primitive_type_wrapper< std::complex<double> >
         
         static MPI_Datatype mpi_type_id()
         {
-            return MPI_DOUBLE;
+            return MPI_C_DOUBLE_COMPLEX;
         }
 
-        static bool is_complex()
+        /*static bool is_complex()
         {
             return true;
-        }
+        }*/
 };
 
 template<> class primitive_type_wrapper< std::complex<float> >
@@ -105,6 +105,16 @@ template<> class primitive_type_wrapper<int>
         {
             return H5T_NATIVE_INT;
         }
+
+        static MPI_Datatype mpi_type_id()
+        {
+            return MPI_INT;
+        }
+
+        /*static bool is_complex()
+        {
+            return false;
+        }*/
 };
 
 

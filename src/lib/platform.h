@@ -55,14 +55,46 @@ class Platform
         {
             verbose_ = verbose__;
         }
-       
-        /// Perform the in-place (the output buffer is used as the input buffer) reduction 
-        template<typename T>
-        static void allreduce(T* data, int N = 1)
+
+        static void barrier()
         {
-            int m = (primitive_type_wrapper<T>::is_complex()) ? 2 : 1;
-            MPI_Allreduce(MPI_IN_PLACE, data, N * m, primitive_type_wrapper<T>::mpi_type_id(), 
-                          MPI_SUM, MPI_COMM_WORLD);
+            MPI_Barrier(MPI_COMM_WORLD);
+        }
+
+        /// Broadcast array 
+        template <typename T>
+        static void bcast(T* buffer, int count, const MPI_Comm& comm, int root)
+        {
+            MPI_Bcast(buffer, count, primitive_type_wrapper<T>::mpi_type_id(), root, comm); 
+        }
+        
+        /// Broadcast array 
+        template <typename T>
+        static void bcast(T* buffer, int count, int root)
+        {
+            bcast(buffer, count, MPI_COMM_WORLD, root);
+        }
+       
+        /// Perform the in-place (the output buffer is used as the input buffer) all-to-one reduction 
+        template<typename T>
+        static void reduce(T* buffer, int count, const MPI_Comm& comm, int root)
+        {
+            MPI_Reduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), MPI_SUM, root, comm);
+        }
+
+        /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
+        template<typename T>
+        static void allreduce(T* buffer, int count, const MPI_Comm& comm)
+        {
+            if (comm != MPI_COMM_NULL)
+                MPI_Allreduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), MPI_SUM, comm);
+        }
+
+        /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
+        template<typename T>
+        static void allreduce(T* buffer, int count)
+        {
+            allreduce(buffer, count, MPI_COMM_WORLD);
         }
 };
 
