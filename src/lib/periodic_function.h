@@ -131,12 +131,12 @@ template<typename T> class PeriodicFunction
             if (flags & it_component) f_it_.deallocate();
         }
 
-        void zero()
+        void zero(int flags = rlm_component | ylm_component | pw_component | it_component)
         {
-            if (f_rlm_.get_ptr()) f_rlm_.zero();
-            if (f_ylm_.get_ptr()) f_ylm_.zero();
-            if (f_it_.get_ptr()) f_it_.zero();
-            if (f_pw_.get_ptr()) f_pw_.zero();
+            if (f_rlm_.get_ptr() && (flags & rlm_component)) f_rlm_.zero();
+            if (f_ylm_.get_ptr() && (flags & ylm_component)) f_ylm_.zero();
+            if (f_it_.get_ptr() && (flags & it_component)) f_it_.zero();
+            if (f_pw_.get_ptr() && (flags & pw_component)) f_pw_.zero();
         }
         
         inline T& f_rlm(int lm, int ir, int ia)

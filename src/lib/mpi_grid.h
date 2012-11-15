@@ -111,6 +111,16 @@ class splindex
             return local_index_size_;
         }
 
+        /*inline int size()
+        {
+            return local_index_size_;
+        }*/
+
+        inline int global_index(int idx_loc)
+        {
+            return (global_index_offset_ + idx_loc);
+        }
+
         inline MPI_Comm& communicator()
         {
             return communicator_;
