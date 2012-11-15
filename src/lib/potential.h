@@ -283,14 +283,43 @@ class Potential
 
             // compute multipoles of interstitial density in MT region
             Timer *t2 = new Timer("sirius::Potential::poisson:qit");
-            mdarray<complex16,2> qit(parameters_.lmmax_rho(), parameters_.num_atoms());
+            mdarray<complex16, 2> qit(parameters_.lmmax_rho(), parameters_.num_atoms());
             qit.zero();
 
             std::vector<complex16> zil(parameters_.lmax_rho() + 1);
             for (int l = 0; l <= parameters_.lmax_rho(); l++)
                 zil[l] = pow(complex16(0.0, 1.0), l);
+            
+            std::vector<complex16> zilm(parameters_.lmmax_rho());
+            for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
+                for (int m = -l; m <= l; m++, lm++)
+                    zilm[lm] = zil[l];
 
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            mdarray<complex16, 2> zm1(parameters_.num_gvec(), parameters_.lmmax_rho());
+            #pragma omp parallel for default(shared)
+            for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
+                for (int ig = 0; ig < parameters_.num_gvec(); ig++)
+                    zm1(ig, lm) = gvec_ylm_(lm, ig) * conj(rho->f_pw(ig) * zilm[lm]);
+
+            mdarray<complex16, 2> zm2(parameters_.num_gvec(), parameters_.num_atoms());
+
+            for (int l = 0; l <= parameters_.lmax_rho(); l++)
+            {
+                #pragma omp parallel for default(shared)
+                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                {
+                    int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+                    for (int ig = 0; ig < parameters_.num_gvec(); ig++)
+                        zm2(ig, ia) = fourpi * gvec_phase_factors_(ig, ia) *  
+                                      sbessel_mom_(l, iat, parameters_.gvec_shell(ig));
+                }
+
+                gemm<cpu>(2, 0, 2 * l + 1, parameters_.num_atoms(), parameters_.num_gvec(), complex16(1, 0), 
+                          &zm1(0, lm_by_l_m(l, -l)), parameters_.num_gvec(), &zm2(0, 0), parameters_.num_gvec(), 
+                          complex16(0, 0), &qit(lm_by_l_m(l, -l), 0), parameters_.lmmax_rho());
+            }
+
+#if 0
             {
                 int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
                 
@@ -298,15 +327,16 @@ class Potential
                 {
                     complex16 zt = fourpi * gvec_phase_factors_(ig, ia) * rho->f_pw(ig);
 
-                    for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
+                    for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
                     {
-                        int l = l_by_lm(lm);
+                        complex16 zt1 = zt * zil[l] * sbessel_mom_(l, iat, parameters_.gvec_shell(ig));
 
-                        qit(lm, ia) += zt * zil[l] * conj(gvec_ylm_(lm, ig)) * 
-                                       sbessel_mom_(l, iat, parameters_.gvec_shell(ig));
+                        for (int m = -l; m <= l; m++, lm++)
+                           qit(lm, ia) += conj(gvec_ylm_(lm, ig)) * zt1;
                     }
                 }
             }
+#endif
             delete t2;
 
             std::vector<complex16> pseudo_pw(parameters_.num_gvec());
@@ -333,7 +363,6 @@ class Potential
             for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
                 for (int l = 0; l <= parameters_.lmax_rho(); l++)
                     Rl(l, iat) = pow(parameters_.atom_type(iat)->mt_radius(), -l);
-
 
             #pragma omp parallel default(shared)
             {
@@ -388,8 +417,6 @@ class Potential
             Platform::allreduce(&pseudo_pw_mp[0], parameters_.num_gvec());
             for (int ig = 0; ig < parameters_.num_gvec(); ig++)
                 pseudo_pw[ig] += pseudo_pw_mp[ig];
-
-
 
             delete t3;
 
