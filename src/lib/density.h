@@ -638,7 +638,8 @@ class Density
             for (int ik = spl_num_kpoints_.begin(); ik <= spl_num_kpoints_.end(); ik++)
                 add_kpoint_contribution(kpoint_set_[ik], mt_density_matrix, occupation_matrix);
             
-            // reduce arrays
+            // reduce arrays; assume that each rank (including ranks along second direction) did it's own 
+            // fraction of the density
             for (int j = 0; j < parameters_.num_mag_dims() + 1; j++)
                 for (int ia = 0; ia < parameters_.num_atoms(); ia++)
                     Platform::allreduce(&mt_density_matrix(0, 0, 0, ia, j), 

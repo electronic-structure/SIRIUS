@@ -34,12 +34,14 @@ class kpoint
 
         double vk_[3];
 
+        mdarray<complex16, 2> gkvec_phase_factors_;
+
+        mdarray<complex16, 2> gkvec_ylm_;
+
         void generate_matching_coefficients()
         {
             Timer t("sirius::kpoint_data_set::generate_matching_coefficients");
 
-            std::vector<complex16> ylmgk(parameters_.lmmax_apw());
-            
             mdarray<double,2> jl(parameters_.lmax_apw() + 2, 2);
             
             std::vector<complex16> zil(parameters_.lmax_apw() + 1);
@@ -55,23 +57,19 @@ class kpoint
             for (int ig = 0; ig < num_gkvec(); ig++)
             {
                 double v[3];
-                double vs[3];
-                parameters_.get_coordinates<cartesian,reciprocal>(gkvec(ig), v);
-                SHT::spherical_coordinates(v, vs);
-                SHT::spherical_harmonics(parameters_.lmax_apw(), vs[1], vs[2], &ylmgk[0]);
+                parameters_.get_coordinates<cartesian, reciprocal>(gkvec(ig), v);
+                double gk = vector_length(v);
 
                 for (int ia = 0; ia < parameters_.num_atoms(); ia++)
                 {
-                    complex16 phase_factor = exp(complex16(0.0, twopi * scalar_product(gkvec(ig), 
-                                                                                       parameters_.atom(ia)->position())));
-
                     assert(parameters_.atom(ia)->type()->max_aw_order() <= 2);
 
                     double R = parameters_.atom(ia)->type()->mt_radius();
-                    double gkR = vs[0] * R; // |G+k|*R
+                    double gkR = gk * R; // |G+k|*R
 
                     // generate spherical Bessel functions
                     gsl_sf_bessel_jl_array(parameters_.lmax_apw() + 1, gkR, &jl(0, 0));
+
                     // Bessel function derivative: f_{{n}}^{{\prime}}(z)=-f_{{n+1}}(z)+(n/z)f_{{n}}(z)
                     for (int l = 0; l <= parameters_.lmax_apw(); l++)
                         jl(l, 1) = -jl(l + 1, 0) + (l / R) * jl(l, 0);
@@ -91,7 +89,8 @@ class kpoint
                         for (int m = -l; m <= l; m++)
                             for (int order = 0; order < num_aw; order++)
                                 b(order, m + l) = (fourpi / sqrt(parameters_.omega())) * zil[l] * jl(l, order) * 
-                                    phase_factor * conj(ylmgk[lm_by_l_m(l, m)]) * pow(gkR, order); 
+                                    gkvec_phase_factors_(ig, ia) * conj(gkvec_ylm_(lm_by_l_m(l, m), ig)) * 
+                                    pow(gkR, order); 
                         
                         double det = (num_aw == 1) ? abs(a[0][0]) : abs(a[0][0] * a[1][1] - a[0][1] * a [1][0]);
                         if (det  < 1e-8)
@@ -247,6 +246,32 @@ class kpoint
             fft_index_.resize(num_gkvec());
             for (int ig = 0; ig < num_gkvec(); ig++)
                 fft_index_[ig] = parameters_.fft_index(gvec_index_[ig]);
+            
+            // precompute 
+            gkvec_phase_factors_.set_dimensions(num_gkvec(), parameters_.num_atoms());
+            gkvec_phase_factors_.allocate();
+
+            gkvec_ylm_.set_dimensions(parameters_.lmmax_apw(), num_gkvec());
+            gkvec_ylm_.allocate();
+
+            #pragma omp parallel for default(shared)
+            for (int ig = 0; ig < num_gkvec(); ig++)
+            {
+                double v[3];
+                double vs[3];
+
+                parameters_.get_coordinates<cartesian, reciprocal>(gkvec(ig), v);
+                SHT::spherical_coordinates(v, vs); // vs = {r, theta, phi}
+
+                SHT::spherical_harmonics(parameters_.lmax_apw(), vs[1], vs[2], &gkvec_ylm_(0, ig));
+
+                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                {
+                    double phase = twopi * scalar_product(gkvec(ig), parameters_.atom(ia)->position());
+
+                    gkvec_phase_factors_(ig, ia) = exp(complex16(0.0, phase));
+                }
+            }
         }
 
         void find_eigen_states(Band* band, PeriodicFunction<double>* effective_potential, 

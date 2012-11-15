@@ -61,25 +61,15 @@ class Potential
 
         int pseudo_density_order;
 
+        mdarray<complex16, 2> gvec_phase_factors_;
+
     public:
 
         Potential(Global& parameters__, int allocate_f__ = pw_component) : parameters_(parameters__),
                                                                            allocate_f_(allocate_f__),
                                                                            pseudo_density_order(10)
         {
-            initialize();
-        }
-
-        ~Potential()
-        {
-            delete effective_potential_; // TODO: check for memory leak
-            for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                delete effective_magnetic_field_[j];
-        }
-
-        void initialize()
-        {
-            Timer t("sirius::Potential::initialize");
+            Timer t("sirius::Potential::Potential");
             
             int lmax = std::max(parameters_.lmax_rho(), parameters_.lmax_pot());
 
@@ -136,9 +126,21 @@ class Potential
             }
 
             sht_.set_lmax(lmax);
+
+            gvec_phase_factors_.set_dimensions(parameters_.num_gvec(), parameters_.num_atoms());
+            gvec_phase_factors_.allocate();
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                for (int ig = 0; ig < parameters_.num_gvec(); ig++)
+                    gvec_phase_factors_(ig, ia) = parameters_.gvec_phase_factor(ig, ia);
         }
 
-       
+        ~Potential()
+        {
+            delete effective_potential_; 
+            for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                delete effective_magnetic_field_[j];
+        }
+
         void set_effective_potential_ptr(double* veffmt, double* veffir)
         {
             effective_potential_->set_rlm_ptr(veffmt);
@@ -181,7 +183,8 @@ class Potential
             
             plane wave expansion
             \f[
-                e^{i{\bf g}{\bf r}}=4\pi e^{i{\bf g}{\bf r}_{\alpha}} \sum_{\ell m} i^\ell j_{\ell}(g|{\bf r}-{\bf r}_{\alpha}|)
+                e^{i{\bf g}{\bf r}}=4\pi e^{i{\bf g}{\bf r}_{\alpha}} \sum_{\ell m} i^\ell 
+                    j_{\ell}(g|{\bf r}-{\bf r}_{\alpha}|)
                     Y_{\ell m}^{*}({\bf \hat g}) Y_{\ell m}(\widehat{{\bf r}-{\bf r}_{\alpha}})
             \f]
 
@@ -194,19 +197,20 @@ class Potential
             Spherical Bessel function moments
             \f[
                 \int_0^R j_{\ell}(a x)x^{2+\ell} dx = \frac{\sqrt{\frac{\pi }{2}} R^{\ell+\frac{3}{2}} 
-                   J_{\ell+\frac{3}{2}}(a R)}{a^{3/2}}
+                    J_{\ell+\frac{3}{2}}(a R)}{a^{3/2}}
             \f]
             for a = 0 the integral is \f$ \frac{R^3}{3} \delta_{\ell,0} \f$
 
             General solution to the Poisson equation with spherical boundary condition:
             \f[
                 V({\bf x}) = \int \rho({\bf x'})G({\bf x},{\bf x'}) d{\bf x'} - \frac{1}{4 \pi} \int_{S} V({\bf x'}) 
-                              \frac{\partial G}{\partial n'} d{\bf S'}
+                    \frac{\partial G}{\partial n'} d{\bf S'}
             \f]
 
             Green's function for a sphere
             \f[
-                G({\bf x},{\bf x'}) = 4\pi \sum_{\ell m} \frac{Y_{\ell m}^{*}(\hat {\bf x'}) Y_{\ell m}(\hat {\bf x})}{2\ell + 1}
+                G({\bf x},{\bf x'}) = 4\pi \sum_{\ell m} \frac{Y_{\ell m}^{*}(\hat {\bf x'}) 
+                    Y_{\ell m}(\hat {\bf x})}{2\ell + 1}
                     \frac{r_{<}^{\ell}}{r_{>}^{\ell+1}}\Biggl(1 - \Big( \frac{r_{>}}{R} \Big)^{2\ell + 1} \Biggr)
             \f]
 
@@ -267,8 +271,9 @@ class Potential
                 // nuclear potential
                 for (int ir = 0; ir < nmtp; ir++)
                 {
-                    double r = parameters_.atom(ia)->type()->radial_grid()[ir];
-                    hartree_potential->f_ylm(0, ir, ia) -= fourpi * y00 * parameters_.atom(ia)->type()->zn() * (1.0 / r - 1.0 / R);
+                    double r = parameters_.atom(ia)->type()->radial_grid(ir);
+                    hartree_potential->f_ylm(0, ir, ia) -= fourpi * y00 * parameters_.atom(ia)->type()->zn() * 
+                                                           (1.0 / r - 1.0 / R);
                 }
 
                 // nuclear multipole moment
@@ -291,13 +296,14 @@ class Potential
                 
                 for (int ig = 0; ig < parameters_.num_gvec(); ig++)
                 {
-                    complex16 zt = fourpi * parameters_.gvec_phase_factor(ig, ia) * rho->f_pw(ig);
+                    complex16 zt = fourpi * gvec_phase_factors_(ig, ia) * rho->f_pw(ig);
 
                     for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
                     {
                         int l = l_by_lm(lm);
 
-                        qit(lm, ia) += zt * zil[l] * conj(ylm_gvec_(lm, ig)) * sbessel_mom_(l, iat, parameters_.gvec_shell(ig));
+                        qit(lm, ia) += zt * zil[l] * conj(ylm_gvec_(lm, ig)) * 
+                                       sbessel_mom_(l, iat, parameters_.gvec_shell(ig));
                     }
                 }
             }
@@ -329,7 +335,7 @@ class Potential
                 {
                     double gR = parameters_.gvec_shell_len(parameters_.gvec_shell(ig)) * R;
                     
-                    complex16 zt = fourpi * conj(parameters_.gvec_phase_factor(ig, ia)) / parameters_.omega();
+                    complex16 zt = fourpi * conj(gvec_phase_factors_(ig, ia)) / parameters_.omega();
 
                     if (ig)
                     {
@@ -363,7 +369,7 @@ class Potential
                     
                     for (int ig = 0; ig < parameters_.num_gvec(); ig++)
                     {
-                        complex16 zt = fourpi * parameters_.gvec_phase_factor(ig, ia);
+                        complex16 zt = fourpi * gvec_phase_factors_(ig, ia);
 
                         for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
                         {
@@ -392,7 +398,7 @@ class Potential
             pseudo_pw[0] = 0.0;
             hartree_potential->f_pw(0) = 0.0;
             for (int ig = 1; ig < parameters_.num_gvec(); ig++)
-                hartree_potential->f_pw(ig) = pseudo_pw[ig] * fourpi / pow(parameters_.gvec_shell_len(parameters_.gvec_shell(ig)), 2);
+                hartree_potential->f_pw(ig) = pseudo_pw[ig] * fourpi / pow(parameters_.gvec_len(ig), 2);
 
             // compute V_lm at the MT boundary
             Timer *t5 = new Timer("sirius::Potential::poisson:bc");
@@ -405,7 +411,7 @@ class Potential
 
                 for (int ig = 0; ig < parameters_.num_gvec(); ig++)
                 {
-                    complex16 zt = fourpi * parameters_.gvec_phase_factor(ig, ia) * hartree_potential->f_pw(ig);
+                    complex16 zt = fourpi * gvec_phase_factors_(ig, ia) * hartree_potential->f_pw(ig);
 
                     for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
                     {
