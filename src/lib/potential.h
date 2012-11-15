@@ -51,7 +51,7 @@ class Potential
         
         PeriodicFunction<double>* effective_magnetic_field_[3];
  
-        mdarray<complex16,2> ylm_gvec_;
+        mdarray<complex16,2> gvec_ylm_;
 
         mdarray<double,3> sbessel_mom_;
 
@@ -104,8 +104,8 @@ class Potential
             }
             
             // compute spherical harmonics of G-vectors
-            ylm_gvec_.set_dimensions(lmmax_by_lmax(lmax), parameters_.num_gvec());
-            ylm_gvec_.allocate();
+            gvec_ylm_.set_dimensions(lmmax_by_lmax(lmax), parameters_.num_gvec());
+            gvec_ylm_.allocate();
             
             for (int ig = 0; ig < parameters_.num_gvec(); ig++)
             {
@@ -113,7 +113,7 @@ class Potential
                 double spc[3];
                 parameters_.get_coordinates<cartesian,reciprocal>(parameters_.gvec(ig), cartc);
                 SHT::spherical_coordinates(cartc, spc);
-                SHT::spherical_harmonics(lmax, spc[1], spc[2], &ylm_gvec_(0, ig));
+                SHT::spherical_harmonics(lmax, spc[1], spc[2], &gvec_ylm_(0, ig));
             }
             
             effective_potential_ = new PeriodicFunction<double>(parameters_, parameters_.lmax_pot());
@@ -302,7 +302,7 @@ class Potential
                     {
                         int l = l_by_lm(lm);
 
-                        qit(lm, ia) += zt * zil[l] * conj(ylm_gvec_(lm, ig)) * 
+                        qit(lm, ia) += zt * zil[l] * conj(gvec_ylm_(lm, ig)) * 
                                        sbessel_mom_(l, iat, parameters_.gvec_shell(ig));
                     }
                 }
@@ -313,6 +313,12 @@ class Potential
             memcpy(&pseudo_pw[0], rho->f_pw(), parameters_.num_gvec() * sizeof(complex16));
 
             Timer *t3 = new Timer("sirius::Potential::poisson:pw");
+            
+            std::vector<complex16> pseudo_pw_mp(parameters_.num_gvec(), complex16(0, 0));
+
+            splindex spl_num_gvec(parameters_.num_gvec(), intvec(Platform::num_mpi_ranks()), 
+                                  intvec(Platform::mpi_rank()));
+
             // add contribution from pseudocharge density
             // 
             // The following term is added to the plane-wave coefficients of the charge density:
@@ -321,41 +327,70 @@ class Potential
             // i.e. contributon from pseudodensity to l-th channel of plane wave expansion multiplied by 
             // the difference bethween true and interstitial-in-the-mt multipole moments and divided by the 
             // moment of the pseudodensity
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            
+            // precompute R^(-l)
+            mdarray<double, 2> Rl(parameters_.lmax_rho() + 1, parameters_.num_atom_types());
+            for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+                for (int l = 0; l <= parameters_.lmax_rho(); l++)
+                    Rl(l, iat) = pow(parameters_.atom_type(iat)->mt_radius(), -l);
+
+
+            #pragma omp parallel default(shared)
             {
-                int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+                std::vector<complex16> pseudo_pw_pt(parameters_.num_gvec(), complex16(0, 0));
 
-                double R = parameters_.atom(ia)->type()->mt_radius();
-
-                std::vector<double> Rl(parameters_.lmax_rho() + 1);
-                for (int l = 0; l <= parameters_.lmax_rho(); l++) 
-                    Rl[l] = pow(R, -l);
-                
-                for (int ig = 0; ig < parameters_.num_gvec(); ig++)
+                #pragma omp for
+                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
                 {
-                    double gR = parameters_.gvec_shell_len(parameters_.gvec_shell(ig)) * R;
-                    
-                    complex16 zt = fourpi * conj(gvec_phase_factors_(ig, ia)) / parameters_.omega();
+                    int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
 
-                    if (ig)
+                    double R = parameters_.atom(ia)->type()->mt_radius();
+
+                    // compute G-vector independent prefactor
+                    std::vector<complex16> zp(parameters_.lmmax_rho());
+                    for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
+                        for (int m = -l; m <= l; m++, lm++)
+                            zp[lm] = (qmt(lm, ia) - qit(lm, ia)) * Rl(l, iat) * conj(zil[l]) *
+                                     gamma_factors[l][pseudo_density_order]; 
+
+                    for (int ig = spl_num_gvec.begin(); ig <= spl_num_gvec.end(); ig++)
                     {
-                        zt *= pow(2.0 / gR, pseudo_density_order + 1);
+                        double gR = parameters_.gvec_len(ig) * R;
+                        
+                        complex16 zt = fourpi * conj(gvec_phase_factors_(ig, ia)) / parameters_.omega();
 
-                        for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
+                        // TODO: add to documentation
+                        // (2^(1/2+n) Sqrt[\[Pi]] R^-l (a R)^(-(3/2)-n) BesselJ[3/2+l+n,a R] * 
+                        //   Gamma[5/2+l+n])/Gamma[3/2+l] and BesselJ is expressed in terms of SphericalBesselJ
+                        if (ig)
                         {
-                            int l = l_by_lm(lm);
+                            complex16 zt2(0, 0);
+                            for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
+                            {
+                                complex16 zt1(0, 0);
+                                for (int m = -l; m <= l; m++, lm++)
+                                    zt1 += gvec_ylm_(lm, ig) * zp[lm];
 
-                            // (2^(1/2+n) Sqrt[\[Pi]] R^-l (a R)^(-(3/2)-n) BesselJ[3/2+l+n,a R] Gamma[5/2+l+n])/Gamma[3/2+l]
-                            // and BesselJ is expressed in terms of SphericalBesselJ
-                            pseudo_pw[ig] += zt * conj(zil[l]) * ylm_gvec_(lm, ig) * (qmt(lm, ia) - qit(lm, ia)) * Rl[l] * 
-                                             sbessel_mt_(l + pseudo_density_order + 1, iat, parameters_.gvec_shell(ig)) * 
-                                             gamma_factors[l][pseudo_density_order];
+                                zt2 += zt1 * sbessel_mt_(l + pseudo_density_order + 1, iat, parameters_.gvec_shell(ig));
+                            }
+
+                            pseudo_pw_pt[ig] += zt * zt2 * pow(2.0 / gR, pseudo_density_order + 1);
                         }
+                        else // for |G|=0
+                            pseudo_pw_pt[ig] += zt * y00 * (qmt(0, ia) - qit(0, ia));
                     }
-                    else // for |G|=0
-                        pseudo_pw[ig] += zt * y00 * (qmt(0, ia) - qit(0, ia));
                 }
+                #pragma omp critical
+                for (int ig = 0; ig < parameters_.num_gvec(); ig++)
+                    pseudo_pw_mp[ig] += pseudo_pw_pt[ig];
             }
+
+            Platform::allreduce(&pseudo_pw_mp[0], parameters_.num_gvec());
+            for (int ig = 0; ig < parameters_.num_gvec(); ig++)
+                pseudo_pw[ig] += pseudo_pw_mp[ig];
+
+
+
             delete t3;
 
             
@@ -375,7 +410,7 @@ class Potential
                         {
                             int l = l_by_lm(lm);
 
-                            qit(lm, ia) += pseudo_pw[ig] * zt * zil[l] * conj(ylm_gvec_(lm, ig)) * 
+                            qit(lm, ia) += pseudo_pw[ig] * zt * zil[l] * conj(gvec_ylm_(lm, ig)) * 
                                            sbessel_mom_(l, iat, parameters_.gvec_shell(ig));
                         }
                     }
@@ -418,7 +453,7 @@ class Potential
                         int l = l_by_lm(lm);
 
                         vmtlm(lm, ia) += zt * zil[l] * sbessel_mt_(l, iat, parameters_.gvec_shell(ig)) * 
-                                         conj(ylm_gvec_(lm, ig));
+                                         conj(gvec_ylm_(lm, ig));
                     }
                 }
             }

@@ -362,6 +362,8 @@ class Density
             delete rho_;
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
                 delete magnetization_[j];
+
+            mpi_grid_.finalize();
         }
         
         void set_charge_density_ptr(double* rhomt, double* rhoir)
