@@ -27,6 +27,8 @@ class Density
 
         splindex spl_num_kpoints_;
 
+        std::vector<int> l_by_lm_;
+
         template <int num_mag_dims> 
         void reduce_zdens(int ia, mdarray<complex16,3>& zdens, mdarray<double,5>& mt_density_matrix)
         {
@@ -35,7 +37,7 @@ class Density
 
             for (int lm3 = 0; lm3 < parameters_.lmmax_rho(); lm3++)
             {
-                int l3 = l_by_lm(lm3);
+                int l3 = l_by_lm_[lm3];
                 
                 for (int j2 = 0; j2 < mt_basis_size; j2++)
                 {
@@ -353,6 +355,12 @@ class Density
 
             // distribute k-points along the 1-st direction of the MPI grid
             spl_num_kpoints_ = mpi_grid_.split_index(1 << 0, kpoint_set_.num_kpoints());
+
+
+            l_by_lm_.resize(parameters_.lmmax_rho());
+            for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
+                for (int m = -l; m <= l; m++, lm++)
+                    l_by_lm_[lm] = l;
         }
 
         /// Destructor

@@ -71,6 +71,8 @@ class Potential
         std::vector<complex16> zil_;
         
         std::vector<complex16> zilm_;
+
+        std::vector<int> l_by_lm_;
         
         /// Compute MT part of the potential and MT multipole moments
         
@@ -81,11 +83,6 @@ class Potential
         {
             Timer t("sirius::Potential::poisson:vmt");
 
-            std::vector<int> l_by_lm_(parameters_.lmmax_rho());
-            for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
-                for (int m = -l; m <= l; m++, lm++)
-                    l_by_lm_[lm] = l;
-            
             vh->zero(ylm_component);
             qmt.zero();
             
@@ -363,11 +360,13 @@ class Potential
 
                 for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
                 {
-                    int l = l_by_lm(lm);
+                    int l = l_by_lm_[lm];
 
                     for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
-                        hartree_potential->f_ylm(lm, ir, ia) += vmtlm(lm, ia) * 
-                                                                pow(parameters_.atom(ia)->type()->radial_grid()[ir] / R, l);
+                    {
+                        double rRl = pow(parameters_.atom(ia)->type()->radial_grid(ir) / R, l);
+                        hartree_potential->f_ylm(lm, ir, ia) += vmtlm(lm, ia) * rRl;
+                    }
                 }
             }
             
@@ -376,7 +375,6 @@ class Potential
             parameters_.fft().input(parameters_.num_gvec(), parameters_.fft_index(), hartree_potential->f_pw());
             parameters_.fft().transform(1);
             parameters_.fft().output(hartree_potential->f_it());
-            
         }
 
         void xc(PeriodicFunction<double>* rho, PeriodicFunction<double>* magnetization[3], 
@@ -384,6 +382,9 @@ class Potential
                 PeriodicFunction<double>* xc_energy_density)
         {
             Timer t("sirius::Potential::xc");
+            
+            splindex spl_num_atoms(parameters_.num_atoms(), intvec(Platform::num_mpi_ranks()), 
+                                   intvec(Platform::mpi_rank()));
             
             mdarray<double,2> rhotp(sht_.num_points(), parameters_.max_num_mt_points());
             mdarray<double,2> vxctp(sht_.num_points(), parameters_.max_num_mt_points());
@@ -394,7 +395,12 @@ class Potential
             mdarray<double,3> vecbxctp(sht_.num_points(), parameters_.max_num_mt_points(), parameters_.num_mag_dims());
             mdarray<double,2> bxctp(sht_.num_points(), parameters_.max_num_mt_points());
 
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            xc_potential->zero(rlm_component);
+            xc_energy_density->zero(rlm_component);
+            for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                xc_magnetic_field[j]->zero(rlm_component);
+
+            for (int ia = spl_num_atoms.begin(); ia <= spl_num_atoms.end(); ia++)
             {
                 int nmtp = parameters_.atom(ia)->type()->num_mt_points();
 
@@ -443,6 +449,19 @@ class Potential
                         sht_.rlm_forward_transform(&vecbxctp(0, 0, j), parameters_.lmmax_pot(), nmtp,
                                                    &xc_magnetic_field[j]->f_rlm(0, 0, ia));
                 }
+            }
+           
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                Platform::allreduce(&xc_potential->f_rlm(0, 0, ia), 
+                                    parameters_.lmmax_pot() * parameters_.max_num_mt_points()); 
+
+                Platform::allreduce(&xc_energy_density->f_rlm(0, 0, ia), 
+                                    parameters_.lmmax_pot() * parameters_.max_num_mt_points()); 
+           
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                    Platform::allreduce(&xc_magnetic_field[j]->f_rlm(0, 0, ia), 
+                                        parameters_.lmmax_pot() * parameters_.max_num_mt_points()); 
             }
             
             if (parameters_.num_spins() == 1)
@@ -556,6 +575,11 @@ class Potential
             for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
                 for (int m = -l; m <= l; m++, lm++)
                     zilm_[lm] = zil_[l];
+
+            l_by_lm_.resize(lmmax_by_lmax(lmax));
+            for (int l = 0, lm = 0; l <= lmax; l++)
+                for (int m = -l; m <= l; m++, lm++)
+                    l_by_lm_[lm] = l;
         }
 
         ~Potential()

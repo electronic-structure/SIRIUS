@@ -29,7 +29,7 @@ inline int lm_by_l_m(int l, int m)
     return (l * l + l + m);
 }
 
-inline int l_by_lm(int lm)
+/*inline int l_by_lm(int lm)
 {
     static std::vector<int> l_values;
     static const int lmax = 50;
@@ -46,7 +46,7 @@ inline int l_by_lm(int lm)
     assert(lm < lmmax_by_lmax(lmax));
     
     return l_values[lm];
-}
+}*/
 
 double fermi_dirac_distribution(double e)
 {
