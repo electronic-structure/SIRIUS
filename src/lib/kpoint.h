@@ -7,24 +7,25 @@ class kpoint
 
         Global& parameters_;
 
-        mdarray<double,2> gkvec_;
+        /// G+k vectors
+        mdarray<double, 2> gkvec_;
 
         /// global index (in the range [0, N_G - 1]) of G-vector by the index of G+k vector in the range [0, N_Gk - 1]
         std::vector<int> gvec_index_;
 
-        mdarray<complex16,2> matching_coefficients_;
+        mdarray<complex16, 2> matching_coefficients_;
 
         std::vector<double> evalfv_;
 
-        mdarray<complex16,2> evecfv_;
+        mdarray<complex16, 2> evecfv_;
         
-        mdarray<complex16,2> evecsv_;
+        mdarray<complex16, 2> evecsv_;
 
         std::vector<int> fft_index_;
         
-        mdarray<complex16,2> scalar_wave_functions_;
+        mdarray<complex16, 2> scalar_wave_functions_;
 
-        mdarray<complex16,3> spinor_wave_functions_;
+        mdarray<complex16, 3> spinor_wave_functions_;
 
         std::vector<double> band_occupancies_;
 
@@ -37,6 +38,10 @@ class kpoint
         mdarray<complex16, 2> gkvec_phase_factors_;
 
         mdarray<complex16, 2> gkvec_ylm_;
+
+        mdarray<double, 4> sbessel_mt_;
+
+        std::vector<double> gkvec_len_;
 
         void generate_matching_coefficients()
         {
@@ -51,28 +56,16 @@ class kpoint
             matching_coefficients_.set_dimensions(num_gkvec(), parameters_.mt_aw_basis_size());
             matching_coefficients_.allocate();
 
-            // TODO: check if spherical harmonic generation is slowing things: then it can be cached
-            // TODO: number of Bessel functions can be considerably decreased (G+k shells, atom types)
-            // TODO[?]: G+k shells
             for (int ig = 0; ig < num_gkvec(); ig++)
             {
-                double v[3];
-                parameters_.get_coordinates<cartesian, reciprocal>(gkvec(ig), v);
-                double gk = vector_length(v);
-
                 for (int ia = 0; ia < parameters_.num_atoms(); ia++)
                 {
+                    int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+
                     assert(parameters_.atom(ia)->type()->max_aw_order() <= 2);
 
                     double R = parameters_.atom(ia)->type()->mt_radius();
-                    double gkR = gk * R; // |G+k|*R
-
-                    // generate spherical Bessel functions
-                    gsl_sf_bessel_jl_array(parameters_.lmax_apw() + 1, gkR, &jl(0, 0));
-
-                    // Bessel function derivative: f_{{n}}^{{\prime}}(z)=-f_{{n+1}}(z)+(n/z)f_{{n}}(z)
-                    for (int l = 0; l <= parameters_.lmax_apw(); l++)
-                        jl(l, 1) = -jl(l + 1, 0) + (l / R) * jl(l, 0);
+                    double gkR = gkvec_len_[ig] * R; // |G+k|*R
 
                     for (int l = 0; l <= parameters_.lmax_apw(); l++)
                     {
@@ -88,9 +81,9 @@ class kpoint
                         
                         for (int m = -l; m <= l; m++)
                             for (int order = 0; order < num_aw; order++)
-                                b(order, m + l) = (fourpi / sqrt(parameters_.omega())) * zil[l] * jl(l, order) * 
-                                    gkvec_phase_factors_(ig, ia) * conj(gkvec_ylm_(lm_by_l_m(l, m), ig)) * 
-                                    pow(gkR, order); 
+                                b(order, m + l) = (fourpi / sqrt(parameters_.omega())) * zil[l] * 
+                                    sbessel_mt_(l, iat, ig, order) * gkvec_phase_factors_(ig, ia) * 
+                                    conj(gkvec_ylm_(lm_by_l_m(l, m), ig)) * pow(gkR, order); 
                         
                         double det = (num_aw == 1) ? abs(a[0][0]) : abs(a[0][0] * a[1][1] - a[0][1] * a [1][0]);
                         if (det  < 1e-8)
@@ -270,6 +263,34 @@ class kpoint
                     double phase = twopi * scalar_product(gkvec(ig), parameters_.atom(ia)->position());
 
                     gkvec_phase_factors_(ig, ia) = exp(complex16(0.0, phase));
+                }
+            }
+            
+            // compute values of spherical Bessel functions and first derivative at MT boundary
+            sbessel_mt_.set_dimensions(parameters_.lmax_apw() + 2, parameters_.num_atom_types(), num_gkvec(), 2);
+            sbessel_mt_.allocate();
+            sbessel_mt_.zero();
+                    
+            gkvec_len_.resize(num_gkvec());
+
+            for (int ig = 0; ig < num_gkvec(); ig++)
+            {
+                double v[3];
+                parameters_.get_coordinates<cartesian, reciprocal>(gkvec(ig), v);
+                gkvec_len_[ig] = vector_length(v);
+            
+                for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+                {
+                    double R = parameters_.atom_type(iat)->mt_radius();
+
+                    double gkR = gkvec_len_[ig] * R;
+
+                    gsl_sf_bessel_jl_array(parameters_.lmax_apw() + 1, gkR, &sbessel_mt_(0, iat, ig, 0));
+                    
+                    // Bessel function derivative: f_{{n}}^{{\prime}}(z)=-f_{{n+1}}(z)+(n/z)f_{{n}}(z)
+                    for (int l = 0; l <= parameters_.lmax_apw(); l++)
+                        sbessel_mt_(l, iat, ig, 1) = -sbessel_mt_(l + 1, iat, ig, 0) * gkvec_len_[ig] + 
+                                                     (l / R) * sbessel_mt_(l, iat, ig, 0);
                 }
             }
         }
