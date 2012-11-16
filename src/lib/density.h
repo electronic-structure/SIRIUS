@@ -675,46 +675,51 @@ class Density
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
                 int nmtp = parameters_.atom(ia)->type()->num_mt_points();
-                mdarray<double,2> v(nmtp, parameters_.num_mag_dims() + 1);
 
-                for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
+                #pragma omp parallel default(shared)
                 {
-                    for (int j = 0; j < parameters_.num_mag_dims() + 1; j++)
-                        for (int idxrf = 0; idxrf < parameters_.atom(ia)->type()->mt_radial_basis_size(); idxrf++)
-                            mt_density_matrix(idxrf, idxrf, lm, ia, j) *= 0.5; 
+                    mdarray<double,2> v(nmtp, parameters_.num_mag_dims() + 1);
 
-                    v.zero();
-
-                    for (int j = 0; j < parameters_.num_mag_dims() + 1; j++)
-                        for (int idxrf2 = 0; idxrf2 < parameters_.atom(ia)->type()->mt_radial_basis_size(); idxrf2++)
-                        {
-                            for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
-                            {
-                                for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
-                                    v(ir, j) += 2 * mt_density_matrix(idxrf1, idxrf2, lm, ia, j) * 
-                                                parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf1) * 
-                                                parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf2);
-                            }
-                        }
-
-                    switch(parameters_.num_mag_dims())
+                    #pragma omp for
+                    for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
                     {
-                        case 3:
-                            for (int ir = 0; ir < nmtp; ir++)
+                        for (int j = 0; j < parameters_.num_mag_dims() + 1; j++)
+                            for (int idxrf = 0; idxrf < parameters_.atom(ia)->type()->mt_radial_basis_size(); idxrf++)
+                                mt_density_matrix(idxrf, idxrf, lm, ia, j) *= 0.5; 
+
+                        v.zero();
+
+                        for (int j = 0; j < parameters_.num_mag_dims() + 1; j++)
+                            for (int idxrf2 = 0; idxrf2 < parameters_.atom(ia)->type()->mt_radial_basis_size(); idxrf2++)
                             {
-                                magnetization_[1]->f_rlm(lm, ir, ia) = v(ir, 2);
-                                magnetization_[2]->f_rlm(lm, ir, ia) = v(ir, 3);
+                                for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
+                                {
+                                    for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
+                                        v(ir, j) += 2 * mt_density_matrix(idxrf1, idxrf2, lm, ia, j) * 
+                                                    parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf1) * 
+                                                    parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf2);
+                                }
                             }
-                        case 1:
-                            for (int ir = 0; ir < nmtp; ir++)
-                            {
-                                rho_->f_rlm(lm, ir, ia) = v(ir, 0) + v(ir, 1);
-                                magnetization_[0]->f_rlm(lm, ir, ia) = v(ir, 0) - v(ir, 1);
-                            }
-                            break;
-                        case 0:
-                            for (int ir = 0; ir < nmtp; ir++)
-                                rho_->f_rlm(lm, ir, ia) = v(ir, 0);
+
+                        switch(parameters_.num_mag_dims())
+                        {
+                            case 3:
+                                for (int ir = 0; ir < nmtp; ir++)
+                                {
+                                    magnetization_[1]->f_rlm(lm, ir, ia) = v(ir, 2);
+                                    magnetization_[2]->f_rlm(lm, ir, ia) = v(ir, 3);
+                                }
+                            case 1:
+                                for (int ir = 0; ir < nmtp; ir++)
+                                {
+                                    rho_->f_rlm(lm, ir, ia) = v(ir, 0) + v(ir, 1);
+                                    magnetization_[0]->f_rlm(lm, ir, ia) = v(ir, 0) - v(ir, 1);
+                                }
+                                break;
+                            case 0:
+                                for (int ir = 0; ir < nmtp; ir++)
+                                    rho_->f_rlm(lm, ir, ia) = v(ir, 0);
+                        }
                     }
                 }
             }
