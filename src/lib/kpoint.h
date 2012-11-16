@@ -45,7 +45,7 @@ class kpoint
 
         void generate_matching_coefficients()
         {
-            Timer t("sirius::kpoint_data_set::generate_matching_coefficients");
+            Timer t("sirius::kpoint::generate_matching_coefficients");
 
             mdarray<double,2> jl(parameters_.lmax_apw() + 2, 2);
             
@@ -152,7 +152,7 @@ class kpoint
 
         void generate_scalar_wave_functions()
         {
-            Timer t("sirius::kpoint_data_set::generate_scalar_wave_functions");
+            Timer t("sirius::kpoint::generate_scalar_wave_functions");
             
             scalar_wave_functions_.set_dimensions(scalar_wf_size(), parameters_.num_fv_states());
             scalar_wave_functions_.allocate();
@@ -174,7 +174,7 @@ class kpoint
 
         void generate_spinor_wave_functions(int flag)
         {
-            Timer t("sirius::kpoint_data_set::generate_spinor_wave_functions");
+            Timer t("sirius::kpoint::generate_spinor_wave_functions");
 
             spinor_wave_functions_.set_dimensions(scalar_wf_size(), parameters_.num_spins(), parameters_.num_bands());
             

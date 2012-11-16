@@ -80,6 +80,30 @@ class Timer
                     printf("%-60s : %10.4f (total)   %10.4f (average)\n", it->first.c_str(), it->second, avg);
                 }
             }
+
+            json_write();
+        }
+
+        static void json_write()
+        {
+            if (Platform::mpi_rank() == 0)
+            {
+                FILE* fout = fopen("timers.json", "w");
+
+                fprintf(fout, "{");
+
+                std::map<std::string, double>::iterator it;
+                for (it = timers_.begin(); it != timers_.end(); it++)
+                {
+                    if (it != timers_.begin()) fprintf(fout, ",");
+                    double avg = (tcount_[it->first] == 0) ? 0.0 : it->second/tcount_[it->first];
+                    fprintf(fout, "\n    \"%s\" : %10.4f", it->first.c_str(), avg);
+                }
+                
+                fprintf(fout, "\n}\n");
+                
+                fclose(fout);
+            }
         }
 
         static void delay(double dsec)
