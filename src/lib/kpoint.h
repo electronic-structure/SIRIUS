@@ -56,58 +56,64 @@ class kpoint
             matching_coefficients_.set_dimensions(num_gkvec(), parameters_.mt_aw_basis_size());
             matching_coefficients_.allocate();
 
-            for (int ig = 0; ig < num_gkvec(); ig++)
+            complex16 a[2][2];
+            mdarray<complex16,2> b(2, (2 * parameters_.lmax_apw() + 1) * num_gkvec());
+
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
-                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                assert(parameters_.atom(ia)->type()->max_aw_order() <= 2);
+
+                int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+
+                double R = parameters_.atom(ia)->type()->mt_radius();
+
+                for (int l = 0; l <= parameters_.lmax_apw(); l++)
                 {
-                    int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+                    int num_aw = (int)parameters_.atom(ia)->type()->aw_descriptor(l).size();
 
-                    assert(parameters_.atom(ia)->type()->max_aw_order() <= 2);
+                    for (int order = 0; order < num_aw; order++)
+                        for (int order1 = 0; order1 < num_aw; order1++)
+                            a[order][order1] = complex16(parameters_.atom(ia)->symmetry_class()->
+                                aw_surface_dm(l, order, order1), 0.0);
 
-                    double R = parameters_.atom(ia)->type()->mt_radius();
-                    double gkR = gkvec_len_[ig] * R; // |G+k|*R
-
-                    for (int l = 0; l <= parameters_.lmax_apw(); l++)
+                    double det = (num_aw == 1) ? abs(a[0][0]) : abs(a[0][0] * a[1][1] - a[0][1] * a [1][0]);
+                    if (det  < 1e-8)
+                        error(__FILE__, __LINE__, "ill defined linear equation problem");
+                    
+                    int n = 0;
+                    for (int ig = 0; ig < num_gkvec(); ig++)
                     {
-                        int num_aw = (int)parameters_.atom(ia)->type()->aw_descriptor(l).size();
-
-                        complex16 a[2][2];
-                        mdarray<complex16,2> b(2, 2 * parameters_.lmax_apw() + 1);
-
-                        for (int order = 0; order < num_aw; order++)
-                            for (int order1 = 0; order1 < num_aw; order1++)
-                                a[order][order1] = complex16(parameters_.atom(ia)->symmetry_class()->
-                                    aw_surface_dm(l, order, order1), 0.0);
-                        
+                        double gkR = gkvec_len_[ig] * R; // |G+k|*R
                         for (int m = -l; m <= l; m++)
                             for (int order = 0; order < num_aw; order++)
-                                b(order, m + l) = (fourpi / sqrt(parameters_.omega())) * zil[l] * 
-                                    sbessel_mt_(l, iat, ig, order) * gkvec_phase_factors_(ig, ia) * 
-                                    conj(gkvec_ylm_(lm_by_l_m(l, m), ig)) * pow(gkR, order); 
-                        
-                        double det = (num_aw == 1) ? abs(a[0][0]) : abs(a[0][0] * a[1][1] - a[0][1] * a [1][0]);
-                        if (det  < 1e-8)
-                            error(__FILE__, __LINE__, "ill defined linear equation problem");
-                          
-                        int info = gesv<complex16>(num_aw, 2 * l + 1, &a[0][0], 2, &b(0, 0), 2);
-
-                        if (info)
-                        {
-                            std::stringstream s;
-                            s << "gtsv returned " << info;
-                            error(__FILE__, __LINE__, s);
-                        }
-
-                        for (int order = 0; order < num_aw; order++)
-                            for (int m = -l; m <= l; m++)
-                                matching_coefficients_(ig, parameters_.atom(ia)->offset_aw() + 
-                                                           parameters_.atom(ia)->type()->indexb_by_l_m_order(l, m, order)) = 
-                                    conj(b(order, l + m)); // it is more convenient to store conjugated coefficients
-                                                           // because then the overlap matrix is set with single
-                                                           // matrix-matrix multiplication without further conjugation 
+                                b(order, n++) = (fourpi / sqrt(parameters_.omega())) * zil[l] * 
+                                                sbessel_mt_(l, iat, ig, order) * gkvec_phase_factors_(ig, ia) * 
+                                                conj(gkvec_ylm_(lm_by_l_m(l, m), ig)) * pow(gkR, order); 
                     }
-                }
-            }
+                          
+                    int info = gesv(num_aw, n, &a[0][0], 2, &b(0, 0), 2);
+
+                    if (info)
+                    {
+                        std::stringstream s;
+                        s << "gtsv returned " << info;
+                        error(__FILE__, __LINE__, s);
+                    }
+
+                    int offs = parameters_.atom(ia)->offset_aw();
+                    n = 0;
+                    for (int ig = 0; ig < num_gkvec(); ig++)
+                        for (int m = -l; m <= l; m++)
+                            for (int order = 0; order < num_aw; order++)
+                            {
+                                int idxb = parameters_.atom(ia)->type()->indexb_by_l_m_order(l, m, order);
+                                // it is more convenient to store conjugated coefficients because then the 
+                                // overlap matrix is set with single matrix-matrix multiplication without 
+                                // further conjugation 
+                                matching_coefficients_(ig, offs + idxb) = conj(b(order, n++));
+                            }
+                } // l
+            } //ia
         }
         
         inline void move_apw_blocks(complex16 *wf)
