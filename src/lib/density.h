@@ -469,6 +469,8 @@ class Density
 
         void integrate()
         {
+            Timer t("sirius::Density::integrate");
+
             parameters_.rti().total_charge = rho_->integrate(rlm_component | it_component, 
                                                              parameters_.rti().mt_charge, 
                                                              parameters_.rti().it_charge); 
