@@ -502,6 +502,8 @@ class AtomSymmetryClass
 
         void generate_core_charge_density()
         {
+            Timer t("sirius::AtomSymmetryClass::generate_core_charge_density");
+
             if (atom_type_->num_core_electrons() == 0)
             {
                 core_charge_density_.resize(atom_type_->radial_grid().size());
