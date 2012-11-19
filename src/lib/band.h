@@ -754,13 +754,12 @@ class Band
             set_sv_h(scalar_wave_functions, scalar_wf_size, num_gkvec, fft_index, evalfv, effective_magnetic_field, 
                      evecsv);
             
+            Timer *t1 = new Timer("sirius::Band::solve_sv:heev");
             if (parameters.num_mag_dims() == 1)
             {
                 int info;                    
                                            
-                info = heev<cpu>(parameters.num_fv_states(), 
-                                 &evecsv(0, 0), 
-                                 parameters.num_bands(), band_energies);
+                info = heev<cpu>(parameters.num_fv_states(), &evecsv(0, 0), parameters.num_bands(), band_energies);
                 if (info)
                 {                            
                     std::stringstream s;
@@ -780,9 +779,7 @@ class Band
             }                                
             else                             
             {                                
-                int info = heev<cpu>(parameters.num_bands(), 
-                                     &evecsv(0, 0), 
-                                     parameters_.num_bands(), band_energies);
+                int info = heev<cpu>(parameters.num_bands(), &evecsv(0, 0), parameters_.num_bands(), band_energies);
                 if (info)
                 {
                     std::stringstream s;
@@ -790,9 +787,8 @@ class Band
                     error(__FILE__, __LINE__, s);
                 }
             }
+            delete t1;
         }
 };
-
-Band* band = NULL;
 
 };

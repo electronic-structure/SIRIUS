@@ -24,7 +24,8 @@ timer_groups = [
     "sirius::Band::set_h",
     "sirius::Band::set_o",
     "sirius::Band::solve_fv:hegv<impl>",
-    "set_sv",
+    "sirius::Band::set_sv_h",
+    "sirius::Band::solve_sv:heev",
     "sirius::kpoint::generate_scalar_wave_functions",
     "sirius::kpoint::generate_spinor_wave_functions"
 ],
@@ -52,6 +53,7 @@ for itg in range(len(timer_groups)):
         if timer_names[i] in jin:
             t =jin[timer_names[i]] 
         timer_values.append(t)
+
     if itg == 0: 
         timer_values[2] = timer_values[2] - timer_values[1] - timer_values[0]
    

@@ -15,8 +15,4 @@ const bool check_pseudo_charge = false;
 
 const bool full_relativistic_core = false;
 
-/// true if MPI_Init should be called
-//const bool call_mpi_init = false;
-const bool call_mpi_init = true;
-
 #endif // __CONFIG_H__

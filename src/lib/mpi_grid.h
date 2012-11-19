@@ -171,7 +171,11 @@ class MPIGrid
         {
             dimensions_ = dimensions__;
 
-            if (Platform::num_mpi_ranks() < size())
+            int sz = 1;
+            for (int i = 0; i < (int)dimensions_.size(); i++)
+                sz *= dimensions_[i];
+            
+            if (Platform::num_mpi_ranks() < sz)
             {
                 std::stringstream s;
                 s << "Not enough processors to build a grid";
@@ -263,17 +267,9 @@ class MPIGrid
             dimensions_.clear();
         }
 
-        inline int size()
+        inline int size(int directions = 0xFF)
         {
-            int sz = 1;
-            for (int i = 0; i < (int)dimensions_.size(); i++)
-                sz *= dimensions_[i];
-            return sz;
-        }
-
-        inline int size(int i)
-        {
-            return dimensions_[i];
+            return communicator_size_[valid_directions(directions)];
         }
 
         inline bool in_grid()
@@ -362,6 +358,11 @@ class MPIGrid
 
             //MPI_Reduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), MPI_SUM, root_rank, 
             //           comm);
+        }
+
+        void barrier(int directions)
+        {
+           Platform::barrier(communicators_[valid_directions(directions)]);
         }
 
         inline int world_root()

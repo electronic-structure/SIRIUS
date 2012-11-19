@@ -466,12 +466,6 @@ class Global : public StepFunction
         }
 };
 
-/// global variables used by Fortran code
-Global& static_global(void)
-{
-    static sirius::Global global;
-    return global;
-}
-
 };
+
 

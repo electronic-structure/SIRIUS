@@ -787,6 +787,4 @@ class Potential
         }
 };
 
-Potential* potential = NULL;
-
 };

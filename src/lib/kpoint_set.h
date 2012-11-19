@@ -12,15 +12,15 @@ class kpoint_set
         
         void add_kpoint(double* vk, double weight, Global& parameters)
         {
-            for (int ik = 0; ik < (int)kpoints_.size(); ik++)
-            {
-                double t[3];
-                for (int x = 0; x < 3; x++) 
-                    t[x] = vk[x] - kpoints_[ik]->vk()[x];
+            //for (int ik = 0; ik < (int)kpoints_.size(); ik++)
+            //{
+            //    double t[3];
+            //    for (int x = 0; x < 3; x++) 
+            //        t[x] = vk[x] - kpoints_[ik]->vk()[x];
 
-                if (vector_length(t) < 1e-10)
-                    error(__FILE__, __LINE__, "kpoint is already in list");
-            }
+            //    if (vector_length(t) < 1e-10)
+            //        error(__FILE__, __LINE__, "kpoint is already in list");
+            //}
 
             kpoints_.push_back(new kpoint(parameters, vk, weight));
 

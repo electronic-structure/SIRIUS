@@ -6,9 +6,9 @@ class Platform
     
     public:
 
-        static void initialize()
+        static void initialize(bool call_mpi_init__)
         {
-            if (call_mpi_init) MPI_Init(NULL, NULL);
+            if (call_mpi_init__) MPI_Init(NULL, NULL);
             //MPI_Comm_size(MPI_COMM_WORLD, &size_);
             //MPI_Comm_rank(MPI_COMM_WORLD, &rank_);
 
@@ -56,9 +56,9 @@ class Platform
             verbose_ = verbose__;
         }
 
-        static void barrier()
+        static void barrier(MPI_Comm comm = MPI_COMM_WORLD)
         {
-            MPI_Barrier(MPI_COMM_WORLD);
+            MPI_Barrier(comm);
         }
 
         /// Broadcast array 

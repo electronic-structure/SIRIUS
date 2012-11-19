@@ -22,8 +22,6 @@ extern "C" {
 }
 #include <fftw3.h>
 #include <gsl/gsl_errno.h>
-#include <gsl/gsl_fft_complex.h>
-#include <gsl/gsl_heapsort.h>
 #include <gsl/gsl_sf_legendre.h>
 #include <gsl/gsl_sf_bessel.h>
 #include <gsl/gsl_sf_coupling.h>

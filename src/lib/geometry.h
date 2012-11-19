@@ -133,7 +133,8 @@ class geometry : public unit_cell
                 get_coordinates<cartesian, direct>(atom(ia)->position(), iapos);
                 
                 std::vector<nearest_neighbour_descriptor> nn;
-                std::vector<double> dist;
+
+                std::vector< std::pair<double, int> > nn_sort;
 
                 for (int i0 = -max_frac_coord[0]; i0 <= max_frac_coord[0]; i0++)
                     for (int i1 = -max_frac_coord[1]; i1 <= max_frac_coord[1]; i1++)
@@ -160,17 +161,18 @@ class geometry : public unit_cell
 
                                 nnd.distance = vector_length(v);
                                 
-                                dist.push_back(nnd.distance);
+                                //dist.push_back(nnd.distance);
                                 nn.push_back(nnd);
+
+                                nn_sort.push_back(std::pair<double, int>(nnd.distance, (int)nn.size() - 1));
                             }
 
                         }
                 
-                std::vector<size_t> reorder(dist.size());
-                gsl_heapsort_index(&reorder[0], &dist[0], dist.size(), sizeof(double), compare_doubles);
+                std::sort(nn_sort.begin(), nn_sort.end());
                 nearest_neighbours_[ia].resize(nn.size());
                 for (int i = 0; i < (int)nn.size(); i++)
-                    nearest_neighbours_[ia][i] = nn[reorder[i]];
+                    nearest_neighbours_[ia][i] = nn[nn_sort[i].second];
             }
         }
 

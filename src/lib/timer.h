@@ -123,9 +123,9 @@ class Timer
 
 };
 
-std::map<std::string,double> Timer::timers_;
-std::map<std::string,int> Timer::tcount_;
-std::map<std::string,Timer*> ftimers;
+std::map<std::string, double> Timer::timers_;
+std::map<std::string, int> Timer::tcount_;
+std::map<std::string, Timer*> ftimers;
 
 };
 

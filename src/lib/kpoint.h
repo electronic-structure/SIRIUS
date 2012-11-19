@@ -200,8 +200,6 @@ class kpoint
                                                                       weight_(weight__)
         {
             for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
-
-            initialize();
         }
 
         void initialize()

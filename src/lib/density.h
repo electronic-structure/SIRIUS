@@ -356,6 +356,8 @@ class Density
             // distribute k-points along the 1-st direction of the MPI grid
             spl_num_kpoints_ = mpi_grid_.split_index(1 << 0, kpoint_set_.num_kpoints());
 
+            for (int ik = spl_num_kpoints_.begin(); ik <= spl_num_kpoints_.end(); ik++)
+                kpoint_set_[ik]->initialize();
 
             l_by_lm_.resize(parameters_.lmmax_rho());
             for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
@@ -663,6 +665,8 @@ class Density
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
                 Platform::allreduce(&magnetization_[j]->f_it(0), parameters_.fft().size()); 
 
+            Platform::allreduce(occupation_matrix.get_ptr(), (int)occupation_matrix.size());
+
             // restore the du block of occupation matrix
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
@@ -792,17 +796,31 @@ class Density
 
         void print_info()
         {
-            if (Platform::verbose())
+            if (mpi_grid_.root())
             {
                 printf("\n");
                 printf("Density\n");
                 for (int i = 0; i < 80; i++) printf("-");
                 printf("\n");
                 printf("number of k-points : %i\n", kpoint_set_.num_kpoints());
-                for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
-                    printf("ik=%4i    vk=%12.6f %12.6f %12.6f    weight=%12.6f   num_gkvec=%6i\n", 
-                           ik, kpoint_set_[ik]->vk()[0], kpoint_set_[ik]->vk()[1], kpoint_set_[ik]->vk()[2], 
-                           kpoint_set_[ik]->weight(), kpoint_set_[ik]->num_gkvec());
+
+            }
+
+            if (mpi_grid_.side(1 << 0))
+            {
+                std::vector<int> sc = mpi_grid_.sub_coordinates(1 << 0);
+
+                for (int i = 0; i < mpi_grid_.size(1 << 0); i++)
+                {
+                    if (sc[0] == i)
+                    {
+                        for (int ik = spl_num_kpoints_.begin(); ik <= spl_num_kpoints_.end(); ik++)
+                            printf("ik=%4i    vk=%12.6f %12.6f %12.6f    weight=%12.6f   num_gkvec=%6i\n", 
+                                   ik, kpoint_set_[ik]->vk()[0], kpoint_set_[ik]->vk()[1], kpoint_set_[ik]->vk()[2], 
+                                   kpoint_set_[ik]->weight(), kpoint_set_[ik]->num_gkvec());
+                    }
+                    mpi_grid_.barrier(1 << 0);
+                }
             }
         }
 
@@ -821,7 +839,5 @@ class Density
             return magnetization_[i];
         }
 };
-
-Density* density;
 
 };
