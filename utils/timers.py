@@ -9,7 +9,7 @@ matplotlib.pyplot.figure(1, figsize=(10,14))
 
 fname = os.path.splitext(os.path.basename(sys.argv[1]))[0]
 
-fin = open("timers.json", "r")
+fin = open(sys.argv[1], "r")
 jin = json.load(fin)
 fin.close()
 
