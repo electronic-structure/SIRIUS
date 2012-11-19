@@ -360,9 +360,6 @@ void FORTRAN(sirius_bands)(int4* num_kpoints, real8* kpoints_, real8* dk_)
         }
         fclose(fout);
     }
-   
-//    for (int ik = 0; ik < kpoints.size(1); ik++)
-//        kpoint_set_[ik]->get_band_energies(band_energies);
 }
 
 void FORTRAN(sirius_print_rti)(void)
@@ -398,4 +395,8 @@ void FORTRAN(sirius_set_uj_correction)(int4* uj_correction)
         global.set_uj_correction(false);
 }
 
+void FORTRAN(sirius_platform_mpi_rank)(int4* rank)
+{
+    *rank = Platform::mpi_rank();
+}
 } // extern "C"
