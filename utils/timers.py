@@ -2,8 +2,12 @@ import matplotlib.pyplot
 import scipy
 import colorsys
 import json
+import sys
+import os
 
 matplotlib.pyplot.figure(1, figsize=(10,14))
+
+fname = os.path.splitext(os.path.basename(sys.argv[1]))[0]
 
 fin = open("timers.json", "r")
 jin = json.load(fin)
@@ -78,5 +82,5 @@ for itg in range(len(timer_groups)):
     
     matplotlib.pyplot.legend(plots[::-1], timer_names[::-1], bbox_to_anchor=(1.2, 1), loc=2)
 
-matplotlib.pyplot.savefig("timers.pdf", format="pdf")
+matplotlib.pyplot.savefig(fname+".pdf", format="pdf")
 

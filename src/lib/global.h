@@ -288,7 +288,7 @@ class Global : public StepFunction
             assert(num_atom_types() != 0);
             assert(num_atom_symmetry_classes() != 0);
 
-            num_fv_states_ = int(num_electrons() / 2.0) + 10;
+            num_fv_states_ = int(num_valence_electrons() / 2.0) + 10;
             num_bands_ = num_fv_states_ * num_spins_;
         }
 
