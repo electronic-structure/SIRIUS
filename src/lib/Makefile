@@ -4,14 +4,7 @@ include ../../make.inc
 
 NVCC = nvcc
 
-SRC = ../libjson/_internal/Source/internalJSONNode.cpp ../libjson/_internal/Source/JSONAllocator.cpp \
-      ../libjson/_internal/Source/JSONChildren.cpp ../libjson/_internal/Source/JSONDebug.cpp \
-      ../libjson/_internal/Source/JSONIterators.cpp ../libjson/_internal/Source/JSONMemory.cpp \
-      ../libjson/_internal/Source/JSONNode.cpp ../libjson/_internal/Source/JSONNode_Mutex.cpp \
-      ../libjson/_internal/Source/JSONPreparse.cpp ../libjson/_internal/Source/JSONStream.cpp \
-      ../libjson/_internal/Source/JSONValidator.cpp ../libjson/_internal/Source/JSONWorker.cpp \
-      ../libjson/_internal/Source/JSONWriter.cpp ../libjson/_internal/Source/libjson.cpp \
-      ./LebedevLaikov.cpp
+SRC = ./LebedevLaikov.cpp
       
 OBJ = $(SRC:.cpp=.o) 
       
@@ -35,7 +28,7 @@ log:
 	@echo "const char* build_date = \"$(shell date)\";" >> version.h 
 
 clean:
-	rm $(OBJ) *.a
+	rm $(OBJ) *.o *.a
 
 depend: $(SRC)
 	rm -f ./.depend

@@ -31,11 +31,11 @@ extern "C" {
 #undef FLOAT
 #include <mpi.h>
 #include <hdf5.h>
+#include <libjson.h>
 
 #include "typedefs.h"
 #include "config.h"
 
-#include "../libjson/libjson.h"
 #include "LebedevLaikov.h"
 //#include "mpi_world.h"
 #include "platform.h"
