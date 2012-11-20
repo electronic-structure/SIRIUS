@@ -1,20 +1,19 @@
-include ../../../make.inc
+include ../../make.inc
 
-LIB_SIRIUS = ../../lib/libsirius.a
+LIB_SIRIUS = ../../src/libsirius.a
 
-INCLUDE_PATH = -I./../../lib
+INCLUDE = -I./../../src
 
 .SUFFIXES: .cpp
 
 all: 
-#	$(CXX) $(CXX_OPT) $(INCLUDE_PATH) $(LINK_OPT) $(LIB_SIRIUS) link_lapack.cpp -o link_lapack
-#	$(CXX) $(CXX_OPT) $(INCLUDE_PATH) $(LINK_OPT) $(LIB_SIRIUS) $(LIBS) splindex.cpp -o splindex
-#	$(CXX) $(CXX_OPT) $(INCLUDE_PATH) $(LINK_OPT) $(LIB_SIRIUS) $(LIBS) hdf5.cpp -o hdf5
-	$(CXX) $(CXX_OPT) $(INCLUDE_PATH) hydrogen.cpp $(LIB_SIRIUS) $(LIBS)  -o hydrogen
-#	$(CXX) $(CXX_OPT) $(INCLUDE_PATH) $(LINK_OPT) $(LIB_SIRIUS) $(LIBS) read_atom.cpp -o read_atom
-#	$(CXX) $(CXX_OPT) $(INCLUDE_PATH) $(LINK_OPT) $(LIB_SIRIUS) $(LIBS) fft.cpp -o fft
-#	$(CXX) $(CXX_OPT) $(INCLUDE_PATH) $(LINK_OPT) $(LIB_SIRIUS) $(LIBS) fft1k.cpp -o fft1k
-	$(CXX) $(CXX_OPT) $(INCLUDE_PATH) spline.cpp $(LIB_SIRIUS) $(LIBS) -o spline
+	$(CXX) $(CXX_OPT) $(INCLUDE) splindex.cpp  $(LIB_SIRIUS) $(LIBS) -o splindex
+	$(CXX) $(CXX_OPT) $(INCLUDE) hdf5.cpp      $(LIB_SIRIUS) $(LIBS) -o hdf5
+	$(CXX) $(CXX_OPT) $(INCLUDE) hydrogen.cpp  $(LIB_SIRIUS) $(LIBS) -o hydrogen
+	$(CXX) $(CXX_OPT) $(INCLUDE) read_atom.cpp $(LIB_SIRIUS) $(LIBS) -o read_atom
+	$(CXX) $(CXX_OPT) $(INCLUDE) fft.cpp       $(LIB_SIRIUS) $(LIBS) -o fft
+	$(CXX) $(CXX_OPT) $(INCLUDE) fft1k.cpp     $(LIB_SIRIUS) $(LIBS) -o fft1k
+	$(CXX) $(CXX_OPT) $(INCLUDE) spline.cpp    $(LIB_SIRIUS) $(LIBS) -o spline
 
 clean:
-	rm *.o *.a
+	rm -f *.o *.h5 splindex hdf5 hydrogen read_atom fft fft1k spline

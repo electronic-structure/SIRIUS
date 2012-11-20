@@ -2,7 +2,7 @@
 
 void test1()
 {
-    sirius::hdf5_tree f("f.hdf5", true);
+    sirius::hdf5_tree f("f.h5", true);
     
     mdarray<double,2> dat(2,4);
     dat.zero();

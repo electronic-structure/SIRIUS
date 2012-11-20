@@ -2,7 +2,7 @@
 
 int main(int argn, char** argv)
 {
-    Platform::initialize();
+    Platform::initialize(1);
     
     sirius::Global global;
 
@@ -26,20 +26,28 @@ int main(int argn, char** argv)
     sirius::Potential* potential = 
         new sirius::Potential(global, sirius::rlm_component | sirius::it_component | sirius::pw_component);
         
-    sirius::Density* density = 
-        new sirius::Density(global, potential, sirius::rlm_component | sirius::it_component | sirius::pw_component);
     
     int ngridk[] = {1, 1, 1};
     int numkp = ngridk[0] * ngridk[1] * ngridk[2];
     int ik = 0;
+    mdarray<double, 2> kpoints(3, numkp);
+    std::vector<double> kpoint_weights(numkp);
+
     for (int i0 = 0; i0 < ngridk[0]; i0++) 
         for (int i1 = 0; i1 < ngridk[1]; i1++) 
             for (int i2 = 0; i2 < ngridk[2]; i2++)
             {
-                double vk[] = {double(i0) / ngridk[0], double(i1) / ngridk[1], double(i2) / ngridk[2]};
-                density->add_kpoint(ik, vk, 1.0 / numkp);
+                kpoints(0, ik) = double(i0) / ngridk[0];
+                kpoints(1, ik) = double(i1) / ngridk[1];
+                kpoints(2, ik) = double(i2) / ngridk[2];
+                kpoint_weights[ik] = 1.0 / numkp;
                 ik++;
             }
+
+    sirius::Density* density = 
+        new sirius::Density(global, potential, kpoints, &kpoint_weights[0], 
+                            sirius::rlm_component | sirius::it_component | sirius::pw_component);
+
     density->print_info();
     
     density->initial_density();
@@ -58,6 +66,4 @@ int main(int argn, char** argv)
     global.clear();
 
     sirius::Timer::print();
-    
-    sirius::static_global();
 }

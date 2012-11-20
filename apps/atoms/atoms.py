@@ -1,5 +1,5 @@
 s1 = '''
-#include "../../lib/sirius.h"
+#include <sirius.h>
 
 class atom : public sirius::AtomType
 {

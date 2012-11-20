@@ -1,13 +1,13 @@
-include ../../../make.inc
+include ../../make.inc
 
-LIB_SIRIUS = ../../lib/libsirius.a
+LIB_SIRIUS = ../../src/libsirius.a
 
-INCLUDE_PATH = -I./../../lib
+INCLUDE = -I./../../src
 
 .SUFFIXES: .cpp
 
 all: 
-	$(CXX) $(CXX_OPT) $(INCLUDE_PATH) dft_loop.cpp $(LIB_SIRIUS) $(LIBS) -o dft_loop
+	$(CXX) $(CXX_OPT) $(INCLUDE) dft_loop.cpp $(LIB_SIRIUS) $(LIBS) -o dft_loop
 
 clean:
-	rm *.o *.a
+	rm -f *.o dft_loop *.h5 timers.json

@@ -2,7 +2,7 @@
 
 void test1(void)
 {
-    for (int i = -1; i < 4; i++)
+    for (int i = 0; i < 4; i++)
     {
         splindex spi(3, intvec(4), intvec(i));
         std::cout << "begin = " << spi.begin() << " end = " << spi.end() << 

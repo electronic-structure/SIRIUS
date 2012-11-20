@@ -4,6 +4,17 @@ import urllib2
 import tarfile
 import subprocess
 
+# === platform specific options
+CC = "mpicc"
+CXX = "mpicxx"
+FC = "mpif90"
+
+CXX_OPT = "-O3 -Wall -Wconversion -fopenmp -DNDEBUG -g"
+
+SYSTEM_LIBS = "-llapack -lblas -L/opt/local/lib -lfftw3 -lhdf5"
+
+# === end of platform specific options; don't edit after this line
+
 packages = {
     "fftw" : ["http://www.fftw.org/fftw-3.3.2.tar.gz", 
               ["--disable-fortran", "--disable-mpi", "--disable-openmp", "--disable-threads"]
@@ -23,12 +34,6 @@ packages = {
              ]
 }
 
-CC = "mpicc"
-CXX = "mpicxx"
-FC = "mpif90"
-#FCCPP = "cpp-mp-4.7"
-
-CXX_OPT = "-O3 -Wall -Wconversion -fopenmp -DNDEBUG -g"
 
 def configure_package(package_name):
 
@@ -123,7 +128,7 @@ def main():
     makeinc = open("make.inc", "w")
     makeinc.write("CXX = " + CXX + "\n")
     makeinc.write("CXX_OPT = " + CXX_OPT + "\n")
-    makeinc.write("LIBS := -llapack -lblas \n")
+    makeinc.write("LIBS := " + SYSTEM_LIBS + "\n")
 
     make_packages = []
     clean_packages = []
