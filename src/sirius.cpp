@@ -6,8 +6,6 @@
 
 sirius::Density* density = NULL;
 
-//sirius::Band* band = NULL;
-
 sirius::Potential* potential = NULL;
 
 sirius::Global global;

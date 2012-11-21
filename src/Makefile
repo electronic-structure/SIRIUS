@@ -30,7 +30,7 @@ log:
 clean:
 	rm $(OBJ) *.o *.a
 
-depend: $(SRC)
+depend: $(SRC) sirius.cpp
 	rm -f ./.depend
 	$(CXX) $(CXX_OPT) -MM $^ >> ./.depend
 

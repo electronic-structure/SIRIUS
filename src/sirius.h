@@ -37,7 +37,6 @@ extern "C" {
 #include "config.h"
 
 #include "LebedevLaikov.h"
-//#include "mpi_world.h"
 #include "platform.h"
 //
 // low-level stuff
