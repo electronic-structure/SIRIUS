@@ -1,4 +1,4 @@
-#include "sirius.h"
+#include <sirius.h>
 
 using namespace sirius;
 
@@ -69,6 +69,12 @@ void test2()
 
     global.set_lattice_vectors(a1, a2, a3);
     global.set_pw_cutoff(10.0);
+    
+    global.add_atom_type(1, "H");
+    double pos[] = {0, 0, 0};
+    double vf[] = {0, 0, 0};
+    
+    global.add_atom(1, pos, vf);
     
     global.initialize();
 

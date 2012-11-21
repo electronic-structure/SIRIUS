@@ -1,4 +1,4 @@
-#include "sirius.h"
+#include <sirius.h>
 
 void test1(double x0, double x1, int m, double exact_result)
 {

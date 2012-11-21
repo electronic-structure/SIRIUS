@@ -1,4 +1,4 @@
-#include "sirius.h"
+#include <sirius.h>
 
 int main(int argn, char** argv)
 {
