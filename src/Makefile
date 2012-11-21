@@ -28,7 +28,7 @@ log:
 	@echo "const char* build_date = \"$(shell date)\";" >> version.h 
 
 clean:
-	rm $(OBJ) *.o *.a
+	rm -f $(OBJ) *.o *.a
 
 depend: $(SRC) sirius.cpp
 	rm -f ./.depend

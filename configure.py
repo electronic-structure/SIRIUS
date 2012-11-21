@@ -4,7 +4,8 @@ import urllib2
 import tarfile
 import subprocess
 
-# === platform specific options
+# === platform specific options === 
+
 CC = "mpicc"
 CXX = "mpicxx"
 FC = "mpif90"
@@ -13,7 +14,7 @@ CXX_OPT = "-O3 -Wall -Wconversion -fopenmp -DNDEBUG -g"
 
 SYSTEM_LIBS = "-llapack -lblas -L/opt/local/lib -lfftw3 -lhdf5"
 
-# === end of platform specific options; don't edit after this line
+# === end of platform specific options; don't edit after this line ===
 
 packages = {
     "fftw" : ["http://www.fftw.org/fftw-3.3.2.tar.gz", 
@@ -143,19 +144,36 @@ def main():
     makeinc.write("LIBS := $(LIBS) " + os.getcwd() + "/libs/libjson/libjson.a\n")
 
 
-
     makeinc.close()
 
 
     makef = open("Makefile", "w")
     makef.write("include ./make.inc \n")
+    makef.write("\n")
+    makef.write(".PHONY: apps\n")
+    makef.write("\n")
+    makef.write("all: packages sirius apps\n")
+    makef.write("\n")
+    makef.write("sirius:\n")
+    makef.write("\tcd src; make\n")
+    makef.write("\n")
+    makef.write("apps:\n")
+    makef.write("\tcd apps; make\n")
+    makef.write("\n")
     makef.write("packages:\n")
     for i in range(len(make_packages)):
         makef.write(make_packages[i])
-
+    makef.write("\tcd ./libs/libjson; make\n")
+    
     makef.write("clean_packages:\n")
     for i in range(len(clean_packages)):
         makef.write(clean_packages[i])
+    makef.write("\tcd ./libs/libjson; make clean\n")
+
+    makef.write("\n")
+    makef.write("clean:\n")
+    makef.write("\tcd src; make clean\n")
+    makef.write("\tcd apps; make clean\n")
 
     makef.close()
 
