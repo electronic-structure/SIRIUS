@@ -35,7 +35,7 @@ depend: $(SRC) sirius.cpp
 	$(CXX) $(CXX_OPT) -MM $^ >> ./.depend
 
 showlibs:
-	@echo $(LIBS) $(shell pwd)/libsirius.a 
+	@echo $(shell pwd)/libsirius_f.a $(LIBS) 
 
 ifneq ($(wildcard .depend),)
 include .depend
