@@ -21,9 +21,9 @@ class Density
 
         mdarray<complex16,3> complex_gaunt_;
 
-        kpoint_set kpoint_set_;
-        
         MPIGrid mpi_grid_;
+
+        kpoint_set kpoint_set_;
 
         splindex spl_num_kpoints_;
 
@@ -309,7 +309,8 @@ class Density
                 double* kpoint_weights__,
                 int allocate_f__ = pw_component) : parameters_(parameters__),
                                                    potential_(potential__),
-                                                   allocate_f_(allocate_f__)
+                                                   allocate_f_(allocate_f__),
+                                                   kpoint_set_(mpi_grid_)
         {
             rho_ = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
             rho_->allocate(allocate_f_);
@@ -347,11 +348,13 @@ class Density
 
             band_ = new Band(parameters_);
             
+            //mpi_grid_.initialize(intvec(std::min(Platform::num_mpi_ranks(), kpoint_set_.num_kpoints()), 1));
+            mpi_grid_.initialize(intvec(1, 2, 3));
+            
             kpoint_set_.clear();
             for (int ik = 0; ik < kpoints__.size(1); ik++)
                 kpoint_set_.add_kpoint(&kpoints__(0, ik), kpoint_weights__[ik], parameters_);
 
-            mpi_grid_.initialize(intvec(std::min(Platform::num_mpi_ranks(), kpoint_set_.num_kpoints()), 1));
 
             // distribute k-points along the 1-st direction of the MPI grid
             spl_num_kpoints_ = mpi_grid_.split_index(1 << 0, kpoint_set_.num_kpoints());

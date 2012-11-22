@@ -306,11 +306,12 @@ void FORTRAN(sirius_bands)(int4* num_kpoints, real8* kpoints_, real8* dk_)
 {
     mdarray<double, 2> kpoints(kpoints_, 3, *num_kpoints); 
 
-    sirius::kpoint_set kpoint_set_;
+    MPIGrid mpi_grid_;
+
+    sirius::kpoint_set kpoint_set_(mpi_grid_);
     for (int ik = 0; ik < kpoints.size(1); ik++)
         kpoint_set_.add_kpoint(&kpoints(0, ik), 0.0, global);
 
-    MPIGrid mpi_grid_;
     mpi_grid_.initialize(intvec(std::min(Platform::num_mpi_ranks(), kpoint_set_.num_kpoints()), 1));
 
     // distribute k-points along the 1-st direction of the MPI grid

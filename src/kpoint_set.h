@@ -7,8 +7,13 @@ class kpoint_set
     private:
     
         std::vector<kpoint*> kpoints_;
+
+        MPIGrid& mpi_grid_;
         
     public:
+        kpoint_set(MPIGrid& mpi_grid__) : mpi_grid_(mpi_grid__)
+        {
+        }
         
         void add_kpoint(double* vk, double weight, Global& parameters)
         {
@@ -22,7 +27,7 @@ class kpoint_set
             //        error(__FILE__, __LINE__, "kpoint is already in list");
             //}
 
-            kpoints_.push_back(new kpoint(parameters, vk, weight));
+            kpoints_.push_back(new kpoint(parameters, vk, weight, mpi_grid_.sub_grid(1 << 1 | 1 << 2)));
 
             std::vector<double> initial_occupancies(parameters.num_bands(), 0.0);
 

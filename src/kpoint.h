@@ -7,6 +7,8 @@ class kpoint
 
         Global& parameters_;
 
+        MPIGrid mpi_grid_;
+
         /// G+k vectors
         mdarray<double, 2> gkvec_;
 
@@ -42,6 +44,9 @@ class kpoint
         mdarray<double, 4> sbessel_mt_;
 
         std::vector<double> gkvec_len_;
+
+        /// BLACS communication context
+        int blacs_context;
 
         void generate_matching_coefficients()
         {
@@ -196,10 +201,41 @@ class kpoint
 
     public:
 
-        kpoint(Global& parameters__, double* vk__, double weight__) : parameters_(parameters__), 
-                                                                      weight_(weight__)
+        kpoint(Global& parameters__, 
+               double* vk__, 
+               double weight__, 
+               MPIGrid mpi_grid__) : parameters_(parameters__), 
+                                     mpi_grid_(mpi_grid__),
+                                     weight_(weight__)
         {
             for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
+
+            if (true)
+            {
+                int nrow = mpi_grid_.size(1 << 0);
+                int ncol = mpi_grid_.size(1 << 1);
+
+                mdarray<int, 2> map_ranks(nrow, ncol);
+                for (int i1 = 0; i1 < ncol; i1++)
+                    for (int i0 = 0; i0 < nrow; i0++)
+                        map_ranks(i0, i1) = mpi_grid_.cart_rank(mpi_grid_.communicator(), intvec(i0, i1));
+ 
+                // create BLACS context
+                blacs_context = Csys2blacs_handle(mpi_grid_.communicator());
+                // create grid of MPI ranks 
+                Cblacs_gridmap(&blacs_context, map_ranks.get_ptr(), nrow, nrow, ncol);
+                // check the grid
+                int irow, icol;
+                Cblacs_gridinfo(blacs_context, &nrow, &ncol, &irow, &icol);
+                std::vector<int> x = mpi_grid_.coordinates();
+                if ((x[0] != irow) || (x[1] != icol))
+                    error(__FILE__, __LINE__, "wrong grid", fatal_err);
+            }
+        }
+
+        ~kpoint()
+        {
+            if (true) Cfree_blacs_system_handle(blacs_context);
         }
 
         void initialize()

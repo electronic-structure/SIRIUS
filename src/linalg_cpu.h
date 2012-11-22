@@ -15,7 +15,7 @@ extern "C" void FORTRAN(dgemm)(const char* transa, const char* transb, int4* m, 
                                real8* alpha, real8* a, int4* lda, real8* b, int4* ldb, 
                                real8* beta,real8* c, int4* ldc, int4 transalen, int4 transblen);
 
-extern "C" void FORTRAN(zhemm)(const char *side, const char *uplo, int4* m, int4* n, 
+extern "C" void FORTRAN(zhemm)(const char *side, const char* uplo, int4* m, int4* n, 
                                complex16* alpha, complex16* a, int4* lda, complex16* b,
                                int4* ldb, complex16* beta, complex16* c, int4* ldc,
                                int4 sidelen, int4 uplolen);
@@ -96,6 +96,15 @@ template<> int gesv<complex16>(int4 n, int4 nrhs, complex16* a, int4 lda, comple
 
     return info;
 }
+
+/* 
+    BLACS and ScaLAPACK related functions
+*/
+extern "C" int Csys2blacs_handle(MPI_Comm SysCtxt);
+extern "C" void Cblacs_gridinit(int *ConTxt, char *order, int nprow, int npcol);
+extern "C" void Cblacs_gridmap(int *ConTxt, int *usermap, int ldup, int nprow0, int npcol0);
+extern "C" void Cblacs_gridinfo(int ConTxt, int *nprow, int *npcol, int *myrow, int *mycol);
+extern "C" void Cfree_blacs_system_handle(int ISysCtxt);
 
 #endif // __LINALG_CPU_H__
 

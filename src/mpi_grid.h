@@ -166,8 +166,24 @@ class MPIGrid
         }
 
     public:
+
+        // default constructor
+        MPIGrid() : base_grid_communicator_(MPI_COMM_NULL)
+        {
+
+        }
+
+        MPIGrid(const std::vector<int> dimensions__, MPI_Comm base_comm) : base_grid_communicator_(MPI_COMM_NULL)
+        {
+            initialize(dimensions__, base_comm);
+        }
+
+        ~MPIGrid()
+        {
+            finalize();
+        }
         
-        void initialize(const std::vector<int> dimensions__)
+        void initialize(const std::vector<int> dimensions__, MPI_Comm base_comm = MPI_COMM_WORLD)
         {
             dimensions_ = dimensions__;
 
@@ -175,17 +191,21 @@ class MPIGrid
             for (int i = 0; i < (int)dimensions_.size(); i++)
                 sz *= dimensions_[i];
             
-            if (Platform::num_mpi_ranks() < sz)
+            if (Platform::num_mpi_ranks(base_comm) < sz)
             {
                 std::stringstream s;
-                s << "Not enough processors to build a grid";
+                s << "Not enough processors to build a grid." << std::endl
+                  << "  grid dimensions :";
+                for (int i = 0; i < (int)dimensions_.size(); i++) s << " " << dimensions_[i];
+                s << std::endl
+                  << "  available number of MPI ranks : " << Platform::num_mpi_ranks(base_comm);
+
                 error(__FILE__, __LINE__, s);
             }
 
             // communicator of the entire grid
-            base_grid_communicator_ = MPI_COMM_NULL;
             std::vector<int> periods(dimensions_.size(), 0);
-            MPI_Cart_create(MPI_COMM_WORLD, (int)dimensions_.size(), &dimensions_[0], &periods[0], 0, 
+            MPI_Cart_create(base_comm, (int)dimensions_.size(), &dimensions_[0], &periods[0], 0, 
                             &base_grid_communicator_);
 
             if (in_grid()) 
@@ -236,13 +256,8 @@ class MPIGrid
 
                 // double check the size of communicators
                 for (int i = 1; i < num_comm; i++)
-                {
-                    int comm_size;
-                    MPI_Comm_size(communicators_[i], &comm_size);
-
-                    if (comm_size != communicator_size_[i]) 
+                    if (Platform :: num_mpi_ranks(communicators_[i]) != communicator_size_[i]) 
                         error(__FILE__, __LINE__, "Communicator sizes don't match");
-                }
             }
 
             std::vector<int> v(Platform::num_mpi_ranks(), 0);
@@ -319,6 +334,16 @@ class MPIGrid
 
             return sc;
         }
+        
+        std::vector<int> coordinates()
+        {
+            return coordinates_;
+        }
+
+        MPIGrid sub_grid(int directions)
+        {
+            return MPIGrid(sub_dimensions(directions), communicator(directions));
+        }
 
         inline splindex split_index(int directions, int size)
         {
@@ -330,7 +355,7 @@ class MPIGrid
             return splindex(size, sub_dimensions(directions), sub_coordinates(directions), comm); 
         }
 
-        int cart_rank(const MPI_Comm& comm, std::vector<int>& coords)
+        int cart_rank(const MPI_Comm& comm, std::vector<int> coords)
         {
             int r;
 
@@ -367,7 +392,7 @@ class MPIGrid
             return world_root_;
         }
 
-        inline MPI_Comm& communicator(int directions)
+        inline MPI_Comm& communicator(int directions = 0xFF)
         {
             return communicators_[valid_directions(directions)];
         }
