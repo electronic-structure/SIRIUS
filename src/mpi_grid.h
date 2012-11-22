@@ -355,9 +355,6 @@ class MPIGrid
             MPI_Comm comm = communicators_[valid_directions(directions)];
 
             Platform::reduce(buffer, count, comm, cart_rank(comm, root_coords));
-
-            //MPI_Reduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), MPI_SUM, root_rank, 
-            //           comm);
         }
 
         void barrier(int directions)
@@ -368,5 +365,10 @@ class MPIGrid
         inline int world_root()
         {
             return world_root_;
+        }
+
+        inline MPI_Comm& communicator(int directions)
+        {
+            return communicators_[valid_directions(directions)];
         }
 };
