@@ -94,6 +94,11 @@ template <typename T, int ND> class mdarray_base
            return d[i].size();
         }
 
+        inline int ld()
+        {
+            return d[0].size();
+        }
+
         inline std::vector<int> dimensions()
         {
             std::vector<int> vd(ND);
@@ -185,7 +190,7 @@ template <typename T, int ND> class mdarray_base
         // forbid copy constructor
         mdarray_base(const mdarray_base<T,ND>& src);
         
-        // forbid assign operator
+        // forbid assignment operator
         mdarray_base<T,ND>& operator=(const mdarray_base<T,ND>& src); 
         
 };

@@ -5,9 +5,11 @@ class kpoint
 {
     private:
 
+        /// global set of parameters
         Global& parameters_;
 
-        MPIGrid mpi_grid_;
+        /// grid of MPI ranks participating in diagonalization
+        MPIGrid* mpi_grid_;
 
         /// G+k vectors
         mdarray<double, 2> gkvec_;
@@ -15,6 +17,7 @@ class kpoint
         /// global index (in the range [0, N_G - 1]) of G-vector by the index of G+k vector in the range [0, N_Gk - 1]
         std::vector<int> gvec_index_;
 
+        /// plane-wave matching coefficients
         mdarray<complex16, 2> matching_coefficients_;
 
         std::vector<double> evalfv_;
@@ -33,8 +36,10 @@ class kpoint
 
         std::vector<double> band_energies_; 
 
+        /// weight of k-poitn
         double weight_;
 
+        /// fractional k-point coordinates
         double vk_[3];
 
         mdarray<complex16, 2> gkvec_phase_factors_;
@@ -48,23 +53,33 @@ class kpoint
         /// BLACS communication context
         int blacs_context;
 
+        int num_gkvec_row_;
+        int num_gkvec_col_;
+        /// short information about each APW+lo basis function
+        std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_;
+        
+        /// in case of ScaLAPACK: local set of basis descriptors: rows then columns
+        std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_loc_;
+
+        int apwlo_row_basis_size_;
+        int apwlo_col_basis_size_;
+
+        /// Generate plane-wave matching coefficents for the radial solutions 
         void generate_matching_coefficients()
         {
             Timer t("sirius::kpoint::generate_matching_coefficients");
 
-            mdarray<double,2> jl(parameters_.lmax_apw() + 2, 2);
-            
             std::vector<complex16> zil(parameters_.lmax_apw() + 1);
             for (int l = 0; l <= parameters_.lmax_apw(); l++)
                 zil[l] = pow(complex16(0.0, 1.0), l);
       
-            matching_coefficients_.set_dimensions(num_gkvec(), parameters_.mt_aw_basis_size());
+            matching_coefficients_.set_dimensions(num_gkvec_loc(), parameters_.mt_aw_basis_size());
             matching_coefficients_.allocate();
 
             #pragma omp parallel default(shared)
             {
                 complex16 a[2][2];
-                mdarray<complex16,2> b(2, (2 * parameters_.lmax_apw() + 1) * num_gkvec());
+                mdarray<complex16,2> b(2, (2 * parameters_.lmax_apw() + 1) * num_gkvec_loc());
 
                 #pragma omp for
                 for (int ia = 0; ia < parameters_.num_atoms(); ia++)
@@ -85,18 +100,19 @@ class kpoint
                                     aw_surface_dm(l, order, order1), 0.0);
 
                         double det = (num_aw == 1) ? abs(a[0][0]) : abs(a[0][0] * a[1][1] - a[0][1] * a [1][0]);
-                        if (det  < 1e-8)
-                            error(__FILE__, __LINE__, "ill defined linear equation problem");
+                        if (det  < 1e-8) 
+                            error(__FILE__, __LINE__, "ill defined linear equation problem", fatal_err);
                         
                         int n = 0;
-                        for (int ig = 0; ig < num_gkvec(); ig++)
+                        for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
                         {
-                            double gkR = gkvec_len_[ig] * R; // |G+k|*R
+                            double gkR = gkvec_len_[igkloc] * R; // |G+k|*R
                             for (int m = -l; m <= l; m++)
                                 for (int order = 0; order < num_aw; order++)
                                     b(order, n++) = (fourpi / sqrt(parameters_.omega())) * zil[l] * 
-                                                    sbessel_mt_(l, iat, ig, order) * gkvec_phase_factors_(ig, ia) * 
-                                                    conj(gkvec_ylm_(lm_by_l_m(l, m), ig)) * pow(gkR, order); 
+                                                    sbessel_mt_(l, iat, igkloc, order) * 
+                                                    gkvec_phase_factors_(igkloc, ia) * 
+                                                    conj(gkvec_ylm_(lm_by_l_m(l, m), igkloc)) * pow(gkR, order); 
                         }
                               
                         int info = gesv(num_aw, n, &a[0][0], 2, &b(0, 0), 2);
@@ -105,12 +121,12 @@ class kpoint
                         {
                             std::stringstream s;
                             s << "gtsv returned " << info;
-                            error(__FILE__, __LINE__, s);
+                            error(__FILE__, __LINE__, s, fatal_err);
                         }
 
                         int offs = parameters_.atom(ia)->offset_aw();
                         n = 0;
-                        for (int ig = 0; ig < num_gkvec(); ig++)
+                        for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
                             for (int m = -l; m <= l; m++)
                                 for (int order = 0; order < num_aw; order++)
                                 {
@@ -118,7 +134,7 @@ class kpoint
                                     // it is more convenient to store conjugated coefficients because then the 
                                     // overlap matrix is set with single matrix-matrix multiplication without 
                                     // further conjugation 
-                                    matching_coefficients_(ig, offs + idxb) = conj(b(order, n++));
+                                    matching_coefficients_(igkloc, offs + idxb) = conj(b(order, n++));
                                 }
                     } // l
                 } //ia
@@ -163,7 +179,7 @@ class kpoint
             scalar_wave_functions_.allocate();
             
             gemm<cpu>(2, 0, parameters_.mt_aw_basis_size(), parameters_.num_fv_states(), num_gkvec(), complex16(1.0, 0.0), 
-                &matching_coefficients_(0, 0), num_gkvec(), &evecfv_(0, 0), fv_basis_size(), 
+                &matching_coefficients_(0, 0), num_gkvec(), &evecfv_(0, 0), apwlo_basis_size(), 
                 complex16(0.0, 0.0), &scalar_wave_functions_(0, 0), scalar_wf_size());
             
             for (int j = 0; j < parameters_.num_fv_states(); j++)
@@ -199,49 +215,8 @@ class kpoint
                           scalar_wf_size() * parameters_.num_spins());
         }
 
-    public:
-
-        kpoint(Global& parameters__, 
-               double* vk__, 
-               double weight__, 
-               MPIGrid mpi_grid__) : parameters_(parameters__), 
-                                     mpi_grid_(mpi_grid__),
-                                     weight_(weight__)
+        void generate_gkvec()
         {
-            for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
-
-            if (true)
-            {
-                int nrow = mpi_grid_.size(1 << 0);
-                int ncol = mpi_grid_.size(1 << 1);
-
-                mdarray<int, 2> map_ranks(nrow, ncol);
-                for (int i1 = 0; i1 < ncol; i1++)
-                    for (int i0 = 0; i0 < nrow; i0++)
-                        map_ranks(i0, i1) = mpi_grid_.cart_rank(mpi_grid_.communicator(), intvec(i0, i1));
- 
-                // create BLACS context
-                blacs_context = Csys2blacs_handle(mpi_grid_.communicator());
-                // create grid of MPI ranks 
-                Cblacs_gridmap(&blacs_context, map_ranks.get_ptr(), nrow, nrow, ncol);
-                // check the grid
-                int irow, icol;
-                Cblacs_gridinfo(blacs_context, &nrow, &ncol, &irow, &icol);
-                std::vector<int> x = mpi_grid_.coordinates();
-                if ((x[0] != irow) || (x[1] != icol))
-                    error(__FILE__, __LINE__, "wrong grid", fatal_err);
-            }
-        }
-
-        ~kpoint()
-        {
-            if (true) Cfree_blacs_system_handle(blacs_context);
-        }
-
-        void initialize()
-        {
-            Timer t("sirius::kpoint::initialize");
-
             if (parameters_.aw_cutoff() > double(parameters_.lmax_apw()))
                 error(__FILE__, __LINE__, "aw cutoff is too large for a given lmax");
 
@@ -279,83 +254,262 @@ class kpoint
                 for (int x = 0; x < 3; x++)
                     gkvec_(x, ig) = parameters_.gvec(gkmap[ig].second)[x] + vk_[x];
             }
-
+            
             fft_index_.resize(num_gkvec());
             for (int ig = 0; ig < num_gkvec(); ig++)
                 fft_index_[ig] = parameters_.fft_index(gvec_index_[ig]);
-            
-            // precompute 
-            gkvec_phase_factors_.set_dimensions(num_gkvec(), parameters_.num_atoms());
+        }
+
+        void precompute_gk()
+        {
+            gkvec_phase_factors_.set_dimensions(num_gkvec_loc(), parameters_.num_atoms());
             gkvec_phase_factors_.allocate();
 
-            gkvec_ylm_.set_dimensions(parameters_.lmmax_apw(), num_gkvec());
+            gkvec_ylm_.set_dimensions(parameters_.lmmax_apw(), num_gkvec_loc());
             gkvec_ylm_.allocate();
 
             #pragma omp parallel for default(shared)
-            for (int ig = 0; ig < num_gkvec(); ig++)
+            for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
             {
+                int igk = igkglob(igkloc);
                 double v[3];
                 double vs[3];
 
-                parameters_.get_coordinates<cartesian, reciprocal>(gkvec(ig), v);
+                parameters_.get_coordinates<cartesian, reciprocal>(gkvec(igk), v);
                 SHT::spherical_coordinates(v, vs); // vs = {r, theta, phi}
 
-                SHT::spherical_harmonics(parameters_.lmax_apw(), vs[1], vs[2], &gkvec_ylm_(0, ig));
+                SHT::spherical_harmonics(parameters_.lmax_apw(), vs[1], vs[2], &gkvec_ylm_(0, igkloc));
 
                 for (int ia = 0; ia < parameters_.num_atoms(); ia++)
                 {
-                    double phase = twopi * scalar_product(gkvec(ig), parameters_.atom(ia)->position());
+                    double phase = twopi * scalar_product(gkvec(igk), parameters_.atom(ia)->position());
 
-                    gkvec_phase_factors_(ig, ia) = exp(complex16(0.0, phase));
+                    gkvec_phase_factors_(igkloc, ia) = exp(complex16(0.0, phase));
                 }
             }
             
             // compute values of spherical Bessel functions and first derivative at MT boundary
-            sbessel_mt_.set_dimensions(parameters_.lmax_apw() + 2, parameters_.num_atom_types(), num_gkvec(), 2);
+            sbessel_mt_.set_dimensions(parameters_.lmax_apw() + 2, parameters_.num_atom_types(), num_gkvec_loc(), 2);
             sbessel_mt_.allocate();
             sbessel_mt_.zero();
                     
-            gkvec_len_.resize(num_gkvec());
+            gkvec_len_.resize(num_gkvec_loc());
 
-            for (int ig = 0; ig < num_gkvec(); ig++)
+            for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
             {
+                int igk = igkglob(igkloc);
+
                 double v[3];
-                parameters_.get_coordinates<cartesian, reciprocal>(gkvec(ig), v);
-                gkvec_len_[ig] = vector_length(v);
+                parameters_.get_coordinates<cartesian, reciprocal>(gkvec(igk), v);
+                gkvec_len_[igkloc] = vector_length(v);
             
                 for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
                 {
                     double R = parameters_.atom_type(iat)->mt_radius();
 
-                    double gkR = gkvec_len_[ig] * R;
+                    double gkR = gkvec_len_[igkloc] * R;
 
-                    gsl_sf_bessel_jl_array(parameters_.lmax_apw() + 1, gkR, &sbessel_mt_(0, iat, ig, 0));
+                    gsl_sf_bessel_jl_array(parameters_.lmax_apw() + 1, gkR, &sbessel_mt_(0, iat, igkloc, 0));
                     
                     // Bessel function derivative: f_{{n}}^{{\prime}}(z)=-f_{{n+1}}(z)+(n/z)f_{{n}}(z)
                     for (int l = 0; l <= parameters_.lmax_apw(); l++)
-                        sbessel_mt_(l, iat, ig, 1) = -sbessel_mt_(l + 1, iat, ig, 0) * gkvec_len_[ig] + 
-                                                     (l / R) * sbessel_mt_(l, iat, ig, 0);
+                        sbessel_mt_(l, iat, igkloc, 1) = -sbessel_mt_(l + 1, iat, igkloc, 0) * gkvec_len_[igkloc] + 
+                                                         (l / R) * sbessel_mt_(l, iat, igkloc, 0);
                 }
             }
+        }
+
+        void init_blacs_context()
+        {
+            int nrow = mpi_grid_->size(1 << 0);
+            int ncol = mpi_grid_->size(1 << 1);
+
+            mdarray<int, 2> map_ranks(nrow, ncol);
+            for (int i1 = 0; i1 < ncol; i1++)
+                for (int i0 = 0; i0 < nrow; i0++)
+                    map_ranks(i0, i1) = mpi_grid_->cart_rank(mpi_grid_->communicator(), intvec(i0, i1));
+ 
+            // create BLACS context
+            blacs_context = Csys2blacs_handle(mpi_grid_->communicator());
+
+            // create grid of MPI ranks 
+            Cblacs_gridmap(&blacs_context, map_ranks.get_ptr(), nrow, nrow, ncol);
+
+            // check the grid
+            int irow, icol;
+            Cblacs_gridinfo(blacs_context, &nrow, &ncol, &irow, &icol);
+            std::vector<int> x = mpi_grid_->coordinates();
+            if ((x[0] != irow) || (x[1] != icol)) error(__FILE__, __LINE__, "wrong grid", fatal_err);
+        }
+
+        /// Build APW+lo basis descriptors 
+        void build_apwlo_basis_descriptors()
+        {
+            apwlo_basis_descriptor apwlobd;
+            // G+k basis functions
+            for (int igk = 0; igk < num_gkvec(); igk++)
+            {
+                apwlobd.global_index = (int)apwlo_basis_descriptors_.size();
+                apwlobd.igk = igk;
+                apwlobd.ig = gvec_index_[igk];
+                apwlobd.ia = -1;
+                apwlobd.lm = -1;
+                apwlobd.idxrf  = -1;
+                apwlo_basis_descriptors_.push_back(apwlobd);
+            }
+            // local orbital basis functions
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                Atom* atom = parameters_.atom(ia);
+                AtomType* type = atom->type();
+            
+                int lo_index_offset = type->mt_aw_basis_size();
+                
+                for (int j = 0; j < type->mt_lo_basis_size(); j++) 
+                {
+                    int lm = type->indexb(lo_index_offset + j).lm;
+                    int idxrf = type->indexb(lo_index_offset + j).idxrf;
+                    apwlobd.global_index = (int)apwlo_basis_descriptors_.size();
+                    apwlobd.igk = -1;
+                    apwlobd.ig = -1;
+                    apwlobd.ia = ia;
+                    apwlobd.lm = lm;
+                    apwlobd.idxrf  = idxrf;
+                    apwlo_basis_descriptors_.push_back(apwlobd);
+                }
+            }
+            
+            // ckeck if we count basis functions correctly
+            if ((int)apwlo_basis_descriptors_.size() != (num_gkvec() + parameters_.mt_lo_basis_size()))
+                error(__FILE__, __LINE__, "APW+lo basis descriptors array has a wrong size");
+        }
+
+        void partition_apwlo_basis_descriptors()
+        {
+            std::vector<int> cart_coord = mpi_grid_->coordinates();
+            std::vector<int> cart_dims = mpi_grid_->dimensions();
+
+            // distribute row and column index of basis functions in block-cyclic manner
+            // add rows first 
+            int irank_row = 0;
+            int iblock_row = 0;
+            for (int i = 0; i < (int)apwlo_basis_descriptors_.size(); i++)
+            {
+                if (cart_coord[0] == irank_row) apwlo_basis_descriptors_loc_.push_back(apwlo_basis_descriptors_[i]);
+                if ((++iblock_row) == scalapack_nb)
+                {
+                    iblock_row = 0;
+                    irank_row = (irank_row + 1) % cart_dims[0];
+                }
+            }
+            apwlo_row_basis_size_ = (int)apwlo_basis_descriptors_loc_.size();
+        
+            // then add columns 
+            int irank_col = 0;
+            int iblock_col = 0;
+            for (int i = 0; i < (int)apwlo_basis_descriptors_.size(); i++)
+            {
+                if (cart_coord[1] == irank_col) apwlo_basis_descriptors_loc_.push_back(apwlo_basis_descriptors_[i]);
+                if ((++iblock_col) == scalapack_nb)
+                {
+                    iblock_col = 0;
+                    irank_col = (irank_col + 1) % cart_dims[1];
+                }
+            }
+            apwlo_col_basis_size_ = (int)apwlo_basis_descriptors_loc_.size() - apwlo_row_basis_size_;
+#if 0
+            int nrow = mpi_grid_->size(1 << 0);
+            int ncol = mpi_grid_->size(1 << 1);
+
+            for (int i1 = 0; i1 < ncol; i1++)
+                for (int i0 = 0; i0 < nrow; i0++)
+                {
+                    if (cart_coord[0] == i0 && cart_coord[1] == i1)
+                    {
+                        std::cout << "row = " << i0 <<" col = " << i1 << std::endl;
+
+                        std::cout << "=== row distribution ===" << std::endl;
+                        for (int i = 0; i < (int)fv_basis_descriptors_row.size(); i++)
+                            std::cout << fv_basis_descriptors_row[i].igk << " " 
+                                      << fv_basis_descriptors_row[i].lm << " " 
+                                      << fv_basis_descriptors_row[i].idxrf << " "
+                                      << fv_basis_descriptors_row[i].global_index << std::endl;
+
+                        std::cout << "=== column distribution ===" << std::endl;
+                        for (int i = 0; i < (int)fv_basis_descriptors_col.size(); i++)
+                            std::cout << fv_basis_descriptors_col[i].igk << " " 
+                                      << fv_basis_descriptors_col[i].lm << " " 
+                                      << fv_basis_descriptors_col[i].idxrf << " "
+                                      << fv_basis_descriptors_col[i].global_index << std::endl;
+                    }
+                    mpi_grid_->barrier();
+                }
+#endif
+            // get the number of row- and column- G+k-vectors
+            num_gkvec_row_ = 0;
+            for (int i = 0; i < apwlo_row_basis_size_; i++)
+                if (apwlo_basis_descriptors_loc_[i].igk != -1) num_gkvec_row_++;
+            
+            num_gkvec_col_ = 0;
+            for (int i = 0; i < apwlo_col_basis_size_; i++)
+                if (apwlo_basis_descriptors_loc_[apwlo_row_basis_size_ + i].igk != -1) num_gkvec_col_++;
+
+            std::cout << num_gkvec_row_ << " " << num_gkvec_col_ << std::endl;
+        }
+
+    public:
+
+        /// Constructor
+        kpoint(Global& parameters__, 
+               double* vk__, 
+               double weight__, 
+               MPIGrid* mpi_grid__) : parameters_(parameters__), 
+                                      mpi_grid_(mpi_grid__),
+                                      weight_(weight__)
+        {
+            for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
+
+            if (eigen_value_solver == scalapack) init_blacs_context();
+        }
+
+        ~kpoint()
+        {
+            if (eigen_value_solver == scalapack) Cfree_blacs_system_handle(blacs_context);
+            if (mpi_grid_) delete mpi_grid_;
+        }
+
+        void initialize()
+        {
+            Timer t("sirius::kpoint::initialize");
+
+            generate_gkvec();
+
+            build_apwlo_basis_descriptors();
+
+            if (eigen_value_solver == scalapack) partition_apwlo_basis_descriptors();
+
+            precompute_gk();
         }
 
         void find_eigen_states(Band* band, PeriodicFunction<double>* effective_potential, 
                                PeriodicFunction<double>* effective_magnetic_field[3])
         {
-            assert(fv_basis_size() > parameters_.num_fv_states());
+            assert(apwlo_basis_size() > parameters_.num_fv_states());
             assert(band != NULL);
             
             Timer t("sirius::kpoint::find_eigen_states");
             
             evalfv_.resize(parameters_.num_fv_states());
-            evecfv_.set_dimensions(fv_basis_size(), parameters_.num_fv_states());
+            evecfv_.set_dimensions(apwlo_basis_size(), parameters_.num_fv_states());
             evecfv_.allocate();
 
             generate_matching_coefficients();
 
-            band->solve_fv(parameters_, fv_basis_size(), num_gkvec(), &gvec_index_[0], gkvec_, 
+            error(__FILE__, __LINE__, "stop");
+
+            /*band->solve_fv(parameters_, fv_basis_size(), num_gkvec(), &gvec_index_[0], gkvec_, 
                            matching_coefficients_, effective_potential, effective_magnetic_field, evecfv_,
-                           &evalfv_[0]);
+                           &evalfv_[0])*/;
 
             generate_scalar_wave_functions();
             
@@ -608,7 +762,38 @@ class kpoint
             }
             std :: cout << "maximum error = " << maxerr << std::endl;
         }
+        
+        PeriodicFunction<complex16>* spinor_wave_function_component(int ispn, int j)
+        {
+            PeriodicFunction<complex16>* func = new PeriodicFunction<complex16>(parameters_, parameters_.lmax_apw());
+            func->allocate(ylm_component | it_component);
+            func->zero();
+
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                for (int i = 0; i < parameters_.atom(ia)->type()->mt_basis_size(); i++)
+                {
+                    int lm = parameters_.atom(ia)->type()->indexb(i).lm;
+                    int idxrf = parameters_.atom(ia)->type()->indexb(i).idxrf;
+                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                        func->f_ylm(lm, ir, ia) += 
+                            spinor_wave_functions_(parameters_.atom(ia)->offset_wf() + i, ispn, j) * 
+                            parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+                }
+            }
+
+            parameters_.fft().input(num_gkvec(), &fft_index_[0], 
+                                    &spinor_wave_functions_(parameters_.mt_basis_size(), ispn, j));
+            parameters_.fft().transform(1);
+            parameters_.fft().output(func->f_it());
+
+            for (int i = 0; i < parameters_.fft().size(); i++)
+                func->f_it(i) /= sqrt(parameters_.omega());
+            
+            return func;
+        }
                 
+        /// Total number of G+k vectors within the cutoff distance
         inline int num_gkvec()
         {
             assert(gkvec_.size(1) == (int)gvec_index_.size());
@@ -616,36 +801,73 @@ class kpoint
             return gkvec_.size(1);
         }
 
-        inline double* gkvec(int ig)
+        /// In case of scalapck diagonalization: number of G+k vectors along the rows of the matrix
+        inline int num_gkvec_row()
         {
-            assert(ig >= 0 && ig < gkvec_.size(1));
+            if (eigen_value_solver != scalapack)
+                error(__FILE__, __LINE__, "can be called with scalapack eigen-value solver only", fatal_err);
 
-            return &gkvec_(0, ig);
+            return num_gkvec_row_;
         }
 
-        inline int gvec_index(int ig) 
+        /// In case of scalapck diagonalization: number of G+k vectors along the columns of the matrix
+        inline int num_gkvec_col()
         {
-            assert(ig >= 0 && ig < (int)gvec_index_.size());
+            if (eigen_value_solver != scalapack)
+                error(__FILE__, __LINE__, "can be called with scalapack eigen-value solver only", fatal_err);
+
+            return num_gkvec_col_;
+        }
+
+        inline int num_gkvec_loc()
+        {
+            return (eigen_value_solver == scalapack) ? (num_gkvec_row() + num_gkvec_col()) : num_gkvec();
+        } 
+
+        inline int igkglob(int igkloc)
+        {
+            if (eigen_value_solver == scalapack)
+            {
+                int igk = (igkloc < num_gkvec_row_) ? apwlo_basis_descriptors_loc_[igkloc].igk : 
+                          apwlo_basis_descriptors_loc_[apwlo_row_basis_size_ + igkloc - num_gkvec_row_].igk;
+                assert(igk >= 0);
+                return igk;
+            }
+            else 
+            {
+                return igkloc;
+            }
+        }
+        
+        /// Pointer to G+k vector
+        inline double* gkvec(int igk)
+        {
+            assert(igk >= 0 && igk < gkvec_.size(1));
+
+            return &gkvec_(0, igk);
+        }
+
+        /// Global index of G-vector by the index of G+k vector
+        inline int gvec_index(int igk) 
+        {
+            assert(igk >= 0 && igk < (int)gvec_index_.size());
             
-            return gvec_index_[ig];
+            return gvec_index_[igk];
         }
 
-        inline complex16& matching_coefficient(int ig, int i)
+        /*inline complex16& matching_coefficient(int ig, int i)
         {
             return matching_coefficients_(ig, i);
-        }
+        }*/
 
-        /*!
-            \brief First-variational basis size
-            
-            Total number of first-variational functions equals to the sum of the number of augmented 
-            plane waves and the number of local orbitals. Number of first-variational functions controls 
-            the size of the firt-variational Hamiltonian and overlap matrices and the size of the 
-            first-variational eigen-vectors.
-        */
-        inline int fv_basis_size()
+
+        /// APW+lo basis size
+
+        /** Total number of APW+lo basis functions is equal to the number of augmented plane-waves plus
+            the number of local orbitals. */
+        inline int apwlo_basis_size()
         {
-            return (num_gkvec() + parameters_.mt_lo_basis_size());
+            return (int)apwlo_basis_descriptors_.size();
         }
         
         /*!
@@ -712,35 +934,6 @@ class kpoint
             return vk_;
         }
 
-        PeriodicFunction<complex16>* spinor_wave_function_component(int ispn, int j)
-        {
-            PeriodicFunction<complex16>* func = new PeriodicFunction<complex16>(parameters_, parameters_.lmax_apw());
-            func->allocate(ylm_component | it_component);
-            func->zero();
-
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            {
-                for (int i = 0; i < parameters_.atom(ia)->type()->mt_basis_size(); i++)
-                {
-                    int lm = parameters_.atom(ia)->type()->indexb(i).lm;
-                    int idxrf = parameters_.atom(ia)->type()->indexb(i).idxrf;
-                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-                        func->f_ylm(lm, ir, ia) += 
-                            spinor_wave_functions_(parameters_.atom(ia)->offset_wf() + i, ispn, j) * 
-                            parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
-                }
-            }
-
-            parameters_.fft().input(num_gkvec(), &fft_index_[0], 
-                                    &spinor_wave_functions_(parameters_.mt_basis_size(), ispn, j));
-            parameters_.fft().transform(1);
-            parameters_.fft().output(func->f_it());
-
-            for (int i = 0; i < parameters_.fft().size(); i++)
-                func->f_it(i) /= sqrt(parameters_.omega());
-            
-            return func;
-        }
 };
 
 };

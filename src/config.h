@@ -17,4 +17,6 @@ const bool full_relativistic_core = false;
 
 const int scalapack_nb = 2;
 
+const eigen_value_solver_t eigen_value_solver = scalapack;
+
 #endif // __CONFIG_H__

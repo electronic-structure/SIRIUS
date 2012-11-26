@@ -138,7 +138,10 @@ class MPIGrid
         /// coordinates of the MPI rank in the grid
         std::vector<int> coordinates_;
 
-        /// base grid communicator
+        /// parent communicator
+        MPI_Comm parent_communicator_;
+
+        /// grid communicator of the enrire grid returned by MPI_Cart_create
         MPI_Comm base_grid_communicator_;
 
         /// grid communicators
@@ -157,7 +160,7 @@ class MPIGrid
         std::vector<bool> communicator_root_;
 
         /// rank (in the MPI_COMM_WORLD) of the grid root
-        int world_root_;
+        //int world_root_;
 
         /// return valid directions for the current grid dimensionality
         inline int valid_directions(int directions)
@@ -165,47 +168,64 @@ class MPIGrid
             return (directions & ((1 << dimensions_.size()) - 1));
         }
 
+        // forbid copy constructor
+        MPIGrid(const MPIGrid& src);
+
+        // forbid assignment operator
+        MPIGrid& operator=(const MPIGrid& src);
+
     public:
 
         // default constructor
-        MPIGrid() : base_grid_communicator_(MPI_COMM_NULL)
+        MPIGrid() : parent_communicator_(MPI_COMM_WORLD),
+                    base_grid_communicator_(MPI_COMM_NULL) 
         {
-
         }
 
-        MPIGrid(const std::vector<int> dimensions__, MPI_Comm base_comm) : base_grid_communicator_(MPI_COMM_NULL)
+        MPIGrid(const std::vector<int> dimensions__, 
+                MPI_Comm parent_communicator__) : dimensions_(dimensions__),
+                                                  parent_communicator_(parent_communicator__),
+                                                  base_grid_communicator_(MPI_COMM_NULL)
         {
-            initialize(dimensions__, base_comm);
+            initialize();
         }
 
         ~MPIGrid()
         {
             finalize();
         }
-        
-        void initialize(const std::vector<int> dimensions__, MPI_Comm base_comm = MPI_COMM_WORLD)
+
+        void initialize(const std::vector<int> dimensions__)
         {
             dimensions_ = dimensions__;
+            initialize();
+        }
+        
+        /// Initialize the grid.
+        void initialize()
+        {
+            if (dimensions_.size() == 0)
+                error(__FILE__, __LINE__, "no dimensions for the grid", fatal_err);
 
             int sz = 1;
             for (int i = 0; i < (int)dimensions_.size(); i++)
                 sz *= dimensions_[i];
             
-            if (Platform::num_mpi_ranks(base_comm) < sz)
+            if (Platform::num_mpi_ranks(parent_communicator_) < sz)
             {
                 std::stringstream s;
                 s << "Not enough processors to build a grid." << std::endl
                   << "  grid dimensions :";
                 for (int i = 0; i < (int)dimensions_.size(); i++) s << " " << dimensions_[i];
                 s << std::endl
-                  << "  available number of MPI ranks : " << Platform::num_mpi_ranks(base_comm);
+                  << "  available number of MPI ranks : " << Platform::num_mpi_ranks(parent_communicator_);
 
-                error(__FILE__, __LINE__, s);
+                error(__FILE__, __LINE__, s, fatal_err);
             }
 
             // communicator of the entire grid
             std::vector<int> periods(dimensions_.size(), 0);
-            MPI_Cart_create(base_comm, (int)dimensions_.size(), &dimensions_[0], &periods[0], 0, 
+            MPI_Cart_create(parent_communicator_, (int)dimensions_.size(), &dimensions_[0], &periods[0], 0, 
                             &base_grid_communicator_);
 
             if (in_grid()) 
@@ -252,7 +272,7 @@ class MPIGrid
                 }
                 
                 // root of the grig can print
-                Platform::set_verbose(root());
+                //Platform::set_verbose(root());
 
                 // double check the size of communicators
                 for (int i = 1; i < num_comm; i++)
@@ -260,11 +280,14 @@ class MPIGrid
                         error(__FILE__, __LINE__, "Communicator sizes don't match");
             }
 
-            std::vector<int> v(Platform::num_mpi_ranks(), 0);
-            if (in_grid() && root()) v[Platform::mpi_rank()] = 1;
-            Platform::allreduce(&v[0], Platform::num_mpi_ranks(), MPI_COMM_WORLD);
-            for (int i = 0; i < Platform::num_mpi_ranks(); i++)
-                if (v[i] == 1) world_root_ = i;
+            //if (base_comm == MPI_COMM_WORLD)
+            //{
+            //    std::vector<int> v(Platform::num_mpi_ranks(), 0);
+            //    if (in_grid() && root()) v[Platform::mpi_rank()] = 1;
+            //    Platform::allreduce(&v[0], Platform::num_mpi_ranks(), MPI_COMM_WORLD);
+            //    for (int i = 0; i < Platform::num_mpi_ranks(); i++)
+            //        if (v[i] == 1) world_root_ = i;
+            //}
         }
 
         void finalize()
@@ -339,10 +362,15 @@ class MPIGrid
         {
             return coordinates_;
         }
-
-        MPIGrid sub_grid(int directions)
+        
+        std::vector<int> dimensions()
         {
-            return MPIGrid(sub_dimensions(directions), communicator(directions));
+            return dimensions_;
+        }
+
+        MPIGrid* sub_grid(int directions)
+        {
+            return new MPIGrid(sub_dimensions(directions), communicator(directions));
         }
 
         inline splindex split_index(int directions, int size)
@@ -382,15 +410,15 @@ class MPIGrid
             Platform::reduce(buffer, count, comm, cart_rank(comm, root_coords));
         }
 
-        void barrier(int directions)
+        void barrier(int directions = 0xFF)
         {
            Platform::barrier(communicators_[valid_directions(directions)]);
         }
 
-        inline int world_root()
-        {
-            return world_root_;
-        }
+        //inline int world_root()
+        //{
+        //    return world_root_;
+        //}
 
         inline MPI_Comm& communicator(int directions = 0xFF)
         {

@@ -15,6 +15,8 @@ enum lattice_type {direct, reciprocal};
 
 enum coordinates_type {cartesian, fractional};
 
+enum eigen_value_solver_t {lapack, scalapack, magma};
+
 /*! 
     \brief Wrapper for primitive data types
 */

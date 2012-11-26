@@ -1,6 +1,54 @@
 
+/** \file band.h
+    \brief Setup and solve first- and second-variational eigen value problem.
+*/
+
 namespace sirius
 {
+
+/// Descriptor of the APW+lo basis function
+
+/** APW+lo basis consists of two different sets of functions: APW functions \f$ \varphi_{{\bf G+k}} \f$ defined over 
+    entire unit cell:
+    \f[
+        \varphi_{{\bf G+k}}({\bf r}) = \left\{ \begin{array}{ll}
+        \displaystyle \sum_{L} \sum_{\nu=1}^{O_{\ell}^{\alpha}} a_{L\nu}^{\alpha}({\bf G+k})u_{\ell \nu}^{\alpha}(r) 
+        Y_{\ell m}(\hat {\bf r}) & {\bf r} \in {\rm MT} \alpha \\
+        \displaystyle \frac{1}{\sqrt  \Omega} e^{i({\bf G+k}){\bf r}} & {\bf r} \in {\rm I} \end{array} \right.
+    \f]  
+    and Bloch sums of local orbitals defined inside muffin-tin spheres only:
+    \f[
+        \begin{array}{ll} \displaystyle \varphi_{j{\bf k}}({\bf r})=\sum_{{\bf T}} e^{i{\bf kT}} 
+        \varphi_{j}({\bf r - T}) & {\rm {\bf r} \in MT} \end{array}
+    \f]
+    Each local orbital is composed of radial and angular parts:
+    \f[
+        \varphi_{j}({\bf r}) = \phi_{\ell_j}^{\zeta_j,\alpha_j}(r) Y_{\ell_j m_j}(\hat {\bf r})
+    \f]
+    Radial part of local orbital is defined as a linear combination of radial functions (minimum two radial functions 
+    are required) such that local orbital vanishes at the sphere boundary:
+    \f[
+        \phi_{\ell}^{\zeta, \alpha}(r) = \sum_{p}\gamma_{p}^{\zeta,\alpha} u_{\ell \nu_p}^{\alpha}(r)  
+    \f]
+    
+    Arbitrary number of local orbitals may be introduced for each angular quantum number.
+
+    Radial functions are m-th order (with zero-order being a function itself) energy derivatives of the radial 
+    Schrödinger equation:
+    \f[
+        u_{\ell \nu}^{\alpha}(r) = \frac{\partial^{m_{\nu}}}{\partial^{m_{\nu}}E}u_{\ell}^{\alpha}(r,E)\Big|_{E=E_{\nu}}
+    \f]
+*/
+struct apwlo_basis_descriptor
+{
+    int global_index;
+    int igk;
+    int ig;
+    int ia;
+    int lm;
+    int idxrf;
+};
+
 
 /*void write_h_o(mdarray<complex16,2>& h, mdarray<complex16,2>& o)
 {
@@ -367,30 +415,40 @@ class Band
             delete t1;
         }
         
-        void set_fv_o(int num_gkvec, mdarray<complex16,2>& apw, int* gvec_index, mdarray<complex16,2>& o)
+        /// Setup the overlap matrix in the APW+lo basis
+
+        /** The overlap matrix has the following expression:
+            \f[
+                O_{\nu' \nu} = \langle \phi_{\nu'} | \phi_{\nu} \rangle
+            \f]
+        */
+        void set_fv_o(const int num_gkvec_row, 
+                      const int num_gkvec_col,
+                      const int apw_col_offset,
+                      mdarray<complex16, 2>& apw, int* gvec_index, mdarray<complex16, 2>& o)
         {
             Timer t("sirius::Band::set_o");
 
-            gemm<cpu>(0, 2, num_gkvec, num_gkvec, parameters_.mt_aw_basis_size(), complex16(1.0, 0.0), 
-                &apw(0, 0), num_gkvec, &apw(0, 0), num_gkvec, complex16(0.0, 0.0), &o(0, 0), o.size(0)); 
+            gemm<cpu>(0, 2, num_gkvec_row, num_gkvec_col, parameters_.mt_aw_basis_size(), complex16(1, 0), 
+                      &apw(0, 0), apw.ld(), &apw(apw_col_offset, 0), apw.ld(), complex16(0, 0), &o(0, 0), o.ld()); 
 
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            // loop over columns of the local orbital block
+            for (int icol = num_gkvec_col; icol < apwlo_col_basis_size; icol++)
             {
+                int ia = apwlo_col_basis_descriptors[icol].ia;
                 Atom* atom = parameters_.atom(ia);
                 AtomType* type = atom->type();
 
                 int lo_index_offset = type->mt_aw_basis_size();
 
-                for (int j2 = 0; j2 < type->mt_lo_basis_size(); j2++) // loop over columns (local-orbital block) 
-                {
-                    int l2 = type->indexb(lo_index_offset + j2).l;
-                    int lm2 = type->indexb(lo_index_offset + j2).lm;
-                    int order2 = type->indexb(lo_index_offset + j2).order;
+                int l2 = apwlo_col_basis_descriptors[icol].l;
+                int lm2 = apwlo_col_basis_descriptors[icol].lm;
+                int order2 = apwlo_col_basis_descriptors[icol].order;
 
-                    // apw-lo block 
-                    for (int order1 = 0; order1 < (int)type->aw_descriptor(l2).size(); order1++)
-                        for (int ig = 0; ig < num_gkvec; ig++)
-                            o(ig, num_gkvec + atom->offset_lo() + j2) += 
+                // apw-lo block 
+                for (int order1 = 0; order1 < (int)type->aw_descriptor(l2).size(); order1++)
+                    for (int igk = 0; igk < num_gkvec_row; igk++)
+                        o(igk, num_gkvec + atom->offset_lo() + j2) += 
                                 atom->symmetry_class()->o_radial_integral(l2, order1, order2) * 
                                 apw(ig, atom->offset_aw() + type->indexb_by_lm_order(lm2, order1));
 
@@ -695,44 +753,70 @@ class Band
         {
             init();
         }
+      
+        /// Setup and solve the first-variational problem
 
-       
+        /** Solve \$ H\psi = E\psi \$.
+
+            \param [in] parameters Global variables
+            \param [in] fv_basis_size Size of the first-variational (APW) basis
+            \param [in] num_gkvec Total number of G+k vectors
+
+        */
         void solve_fv(Global& parameters,
+                      const apwlo_basis_descriptor* apwlo_row_basis_descriptors,
+                      const int apwlo_row_basis_size,
+                      const int num_gkvec_row,
+                      const apwlo_basis_descriptor* apwlo_col_basis_descriptors,
+                      const int apwlo_col_basis_size,
+                      const int num_gkvec_col,
+                      const int apw_col_offset,
+
+
+
+
                       int fv_basis_size, 
                       int num_gkvec, 
                       int* gvec_index, 
-                      mdarray<double,2>& gkvec,
-                      mdarray<complex16,2>& matching_coefficients, 
+                      mdarray<double, 2>& gkvec,
+                      mdarray<complex16, 2>& matching_coefficients, 
                       PeriodicFunction<double>* effective_potential, 
                       PeriodicFunction<double>* effective_magnetic_field[3], 
-                      mdarray<complex16,2>& evecfv, 
-                      double* evalfv)
+                      mdarray<complex16, 2>& evecfv, 
+                      std::vector<double>& evalfv)
         {
-            if (&parameters != &parameters_)
-                error(__FILE__, __LINE__, "different set of parameters");
+            if (&parameters != &parameters_) error(__FILE__, __LINE__, "different set of parameters");
 
             Timer t("sirius::Band::solve_fv");
-            
-            mdarray<complex16,2> h(fv_basis_size, fv_basis_size);
-            mdarray<complex16,2> o(fv_basis_size, fv_basis_size);
+
+            mdarray<complex16,2> h(apwlo_row_basis_size, apwlo_col_basis_size);
+            mdarray<complex16,2> o(apwlo_row_basis_size, apwlo_col_basis_size);
 
             o.zero();
-            set_fv_o(num_gkvec, matching_coefficients, gvec_index, o);
+            set_fv_o(
 
-            h.zero();
-            set_fv_h<nm>(num_gkvec, matching_coefficients, gkvec, gvec_index, effective_potential, h);
 
-            Timer *t1 = new Timer("sirius::Band::solve_fv:hegv<impl>");
-            int info = hegvx<cpu>(fv_basis_size, parameters.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), evalfv, 
-                                  &evecfv(0, 0), fv_basis_size);
-            delete t1;
+            
+            //mdarray<complex16,2> h(fv_basis_size, fv_basis_size);
+            //mdarray<complex16,2> o(fv_basis_size, fv_basis_size);
 
-            if (info)
-            {
-                std::stringstream s;
-                s << "hegvx returned " << info;
-                error(__FILE__, __LINE__, s);
-            }
+            //o.zero();
+            //set_fv_o(num_gkvec, matching_coefficients, gvec_index, o);
+
+            //h.zero();
+            //set_fv_h<nm>(num_gkvec, matching_coefficients, gkvec, gvec_index, effective_potential, h);
+
+            //Timer *t1 = new Timer("sirius::Band::solve_fv:hegv<impl>");
+            //int info = hegvx<cpu>(fv_basis_size, parameters.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), &evalfv[0], 
+            //                      &evecfv(0, 0), fv_basis_size);
+            //delete t1;
+
+            //if (info)
+            //{
+            //    std::stringstream s;
+            //    s << "hegvx returned " << info;
+            //    error(__FILE__, __LINE__, s);
+            //}
         }
 
         void solve_sv(Global& parameters,

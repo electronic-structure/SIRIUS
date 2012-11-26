@@ -350,7 +350,7 @@ class Density
             
             //mpi_grid_.initialize(intvec(std::min(Platform::num_mpi_ranks(), kpoint_set_.num_kpoints()), 1));
             mpi_grid_.initialize(intvec(1, 2, 3));
-            
+
             kpoint_set_.clear();
             for (int ik = 0; ik < kpoints__.size(1); ik++)
                 kpoint_set_.add_kpoint(&kpoints__(0, ik), kpoint_weights__[ik], parameters_);
@@ -805,8 +805,9 @@ class Density
                 printf("Density\n");
                 for (int i = 0; i < 80; i++) printf("-");
                 printf("\n");
-                printf("number of k-points : %i\n", kpoint_set_.num_kpoints());
-
+                printf("  ik                vk                    weight  num_gkvec  apwlo_basis_size\n");
+                for (int i = 0; i < 80; i++) printf("-");
+                printf("\n");
             }
 
             if (mpi_grid_.side(1 << 0))
@@ -818,12 +819,23 @@ class Density
                     if (sc[0] == i)
                     {
                         for (int ik = spl_num_kpoints_.begin(); ik <= spl_num_kpoints_.end(); ik++)
-                            printf("ik=%4i    vk=%12.6f %12.6f %12.6f    weight=%12.6f   num_gkvec=%6i\n", 
+                            printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i            %6i\n", 
                                    ik, kpoint_set_[ik]->vk()[0], kpoint_set_[ik]->vk()[1], kpoint_set_[ik]->vk()[2], 
-                                   kpoint_set_[ik]->weight(), kpoint_set_[ik]->num_gkvec());
+                                   kpoint_set_[ik]->weight(), 
+                                   kpoint_set_[ik]->num_gkvec(), 
+                                   kpoint_set_[ik]->apwlo_basis_size());
                     }
                     mpi_grid_.barrier(1 << 0);
                 }
+            }
+
+            mpi_grid_.barrier();
+
+            if (mpi_grid_.root())
+            {
+                for (int i = 0; i < 80; i++) printf("-");
+                printf("\n");
+                printf("total number of k-points : %i\n", kpoint_set_.num_kpoints());
             }
         }
 
