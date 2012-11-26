@@ -52,7 +52,7 @@ struct apwlo_basis_descriptor
 };
 
 
-/*void write_h_o(mdarray<complex16,2>& h, mdarray<complex16,2>& o)
+void write_h_o(mdarray<complex16,2>& h, mdarray<complex16,2>& o)
 {
     std::ofstream out;
     out.open("h_sirius.txt");
@@ -78,7 +78,7 @@ struct apwlo_basis_descriptor
         }
     }
     out.close();
-}*/
+}
 
 class Band
 {
@@ -109,13 +109,13 @@ class Band
             \f] 
         */
         template <spin_block sblock>
-        void apply_hmt_to_apw(int num_gkvec, mdarray<complex16, 2>& apw, mdarray<complex16, 2>& hapw)
+        void apply_hmt_to_apw(int num_gkvec_row, mdarray<complex16, 2>& apw, mdarray<complex16, 2>& hapw)
         {
             Timer t("sirius::Band::apply_hmt_to_apw");
            
             #pragma omp parallel default(shared)
             {
-                std::vector<complex16> zv(num_gkvec);
+                std::vector<complex16> zv(num_gkvec_row);
                 
                 #pragma omp for
                 for (int ia = 0; ia < parameters_.num_atoms(); ia++)
@@ -125,7 +125,7 @@ class Band
 
                     for (int j2 = 0; j2 < type->mt_aw_basis_size(); j2++)
                     {
-                        memset(&zv[0], 0, num_gkvec * sizeof(complex16));
+                        memset(&zv[0], 0, num_gkvec_row * sizeof(complex16));
 
                         int lm2 = type->indexb(j2).lm;
                         int idxrf2 = type->indexb(j2).idxrf;
@@ -137,12 +137,14 @@ class Band
                             
                             complex16 zsum(0.0, 0.0);
                             
-                            if (sblock == nm)
+                            if (sblock == nm) 
                                 sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf1, idxrf2), zsum);
                             
                             if (abs(zsum) > 1e-14) 
-                                for (int ig = 0; ig < num_gkvec; ig++) 
+                            {
+                                for (int ig = 0; ig < num_gkvec_row; ig++) 
                                     zv[ig] += zsum * apw(ig, atom->offset_aw() + j1); 
+                            }
                         } // j1
                          
                         if (sblock != ud)
@@ -156,12 +158,12 @@ class Band
                                             atom->symmetry_class()->aw_surface_dm(l2, order1, 0) * 
                                             atom->symmetry_class()->aw_surface_dm(l2, order2, 1);
                                 
-                                for (int ig = 0; ig < num_gkvec; ig++) 
+                                for (int ig = 0; ig < num_gkvec_row; ig++) 
                                     zv[ig] += t1 * apw(ig, atom->offset_aw() + type->indexb_by_lm_order(lm2, order1));
                             }
                         }
 
-                        memcpy(&hapw(0, atom->offset_aw() + j2), &zv[0], num_gkvec * sizeof(complex16));
+                        memcpy(&hapw(0, atom->offset_aw() + j2), &zv[0], num_gkvec_row * sizeof(complex16));
 
                     } // j2
                 }
@@ -245,221 +247,217 @@ class Band
 #endif
         }
 
+        /// Setup the Hamiltonian matrix in APW+lo basis
+
+        /** The Hamiltonian matrix has the following expression:
+            \f[
+                H_{\mu' \mu} = \langle \varphi_{\mu'} | \hat H | \varphi_{\mu} \rangle
+            \f]
+
+            \f[
+                H_{\mu' \mu}=\langle \varphi_{\mu' } | \hat H | \varphi_{\mu } \rangle  = 
+                \left( \begin{array}{cc} 
+                   H_{\bf G'G} & H_{{\bf G'}j} \\
+                   H_{j'{\bf G}} & H_{j'j}
+                \end{array} \right)
+            \f]
+        */
         template <spin_block sblock> 
-        void set_fv_h(int num_gkvec, mdarray<complex16,2>& apw, mdarray<double,2>& gkvec, int* gvec_index, 
-                      PeriodicFunction<double>* effective_potential, mdarray<complex16,2>& h)
+        void set_fv_h(const apwlo_basis_descriptor* apwlo_row_basis_descriptors,
+                      const int                     apwlo_row_basis_size,
+                      const int                     num_gkvec_row,
+                      const apwlo_basis_descriptor* apwlo_col_basis_descriptors,
+                      const int                     apwlo_col_basis_size,
+                      const int                     num_gkvec_col,
+                      const int                     apw_col_offset,
+                      mdarray<double, 2>&           gkvec,
+                      mdarray<complex16, 2>&        apw, 
+                      PeriodicFunction<double>*     effective_potential,
+                      mdarray<complex16, 2>&        h)
         {
             Timer t("sirius::Band::set_h");
 
-            mdarray<complex16,2> hapw(num_gkvec, parameters_.mt_aw_basis_size());
+            mdarray<complex16, 2> hapw(num_gkvec_row, parameters_.mt_aw_basis_size());
 
-            apply_hmt_to_apw<sblock>(num_gkvec, apw, hapw);
+            apply_hmt_to_apw<sblock>(num_gkvec_row, apw, hapw);
 
-            gemm<cpu>(0, 2, num_gkvec, num_gkvec, parameters_.mt_aw_basis_size(), complex16(1.0, 0.0), 
-                &hapw(0, 0), num_gkvec, &apw(0, 0), num_gkvec, complex16(0.0, 0.0), &h(0, 0), h.size(0));
+            // apw-apw block
+            gemm<cpu>(0, 2, num_gkvec_row, num_gkvec_col, parameters_.mt_aw_basis_size(), complex16(1, 0), 
+                      &hapw(0, 0), hapw.ld(), &apw(apw_col_offset, 0), apw.ld(), complex16(0, 0), &h(0, 0), h.ld());
 
-            #pragma omp parallel default(shared)
+            // apw-lo block
+            for (int icol = num_gkvec_col; icol < apwlo_col_basis_size; icol++)
             {
-                std::vector<double> v1(parameters_.lmmax_pot());
-                std::vector<complex16> v2(parameters_.lmmax_pot());
-                #pragma omp for
-                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-                {
-                    Atom* atom = parameters_.atom(ia);
-                    AtomType* type = atom->type();
-            
-                    int lo_index_offset = type->mt_aw_basis_size();
-                    
-                    for (int j2 = 0; j2 < type->mt_lo_basis_size(); j2++) // loop over columns (local-orbital block) 
-                    {
-                        int lm2 = type->indexb(lo_index_offset + j2).lm;
-                        int idxrf2 = type->indexb(lo_index_offset + j2).idxrf;
-                        
-                        // apw-lo block
-                        for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++) // loop over rows
-                        {
-                            int lm1 = type->indexb(j1).lm;
-                            int idxrf1 = type->indexb(j1).idxrf;
-                            
-                            complex16 zsum(0, 0);
-                            
-                            if (sblock == nm)
-                                sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf2, idxrf1), zsum);
-        
-                            /*if (sblock == uu)
-                            {
-                                for (int lm3 = 0; lm3 < lapw_parameters_.lmmaxvr; lm3++) 
-                                    v1[lm3] = lapw_runtime.hmltrad(lm3, idxrf2, idxrf1, ias) + lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 0);
-                                L3_sum_gntyry(lm1, lm2, &v1[0], zsum);
-                            }
-                            
-                            if (sblock == dd)
-                            {
-                                for (int lm3 = 0; lm3 < lapw_parameters_.lmmaxvr; lm3++) 
-                                    v1[lm3] = lapw_runtime.hmltrad(lm3, idxrf2, idxrf1, ias) - lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 0);
-                                L3_sum_gntyry(lm1, lm2, &v1[0], zsum);
-                            }
-                            
-                            if (sblock == ud)
-                            {
-                                for (int lm3 = 0; lm3 < lapw_parameters_.lmmaxvr; lm3++) 
-                                    v2[lm3] = complex16(lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 1), -lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 2));
-                                L3_sum_gntyry(lm1, lm2, &v2[0], zsum);
-                            }*/
+                int ia = apwlo_col_basis_descriptors[icol].ia;
+                Atom* atom = parameters_.atom(ia);
+                AtomType* type = atom->type();
+
+                int lm = apwlo_col_basis_descriptors[icol].lm;
+                int idxrf = apwlo_col_basis_descriptors[icol].idxrf;
                 
-                            if (abs(zsum) > 1e-14)
-                                for (int ig = 0; ig < num_gkvec; ig++)
-                                    h(ig, num_gkvec + atom->offset_lo() + j2) += zsum * apw(ig, atom->offset_aw() + j1);
-                        }
-                        
-                        int j1_last = j2;
-                        if (sblock == ud) j1_last = type->mt_lo_basis_size() - 1;
-                        
-                        // lo-lo block 
-                        for (int j1 = 0; j1 <= j1_last; j1++)
-                        {
-                            int lm1 = type->indexb(lo_index_offset + j1).lm;
-                            int idxrf1 = type->indexb(lo_index_offset + j1).idxrf;
+                for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++) 
+                {
+                    int lm1 = type->indexb(j1).lm;
+                    int idxrf1 = type->indexb(j1).idxrf;
                             
-                            complex16 zsum(0.0, 0.0);
-        
-                            if (sblock == nm)
-                                sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf1, idxrf2), zsum);
-        
-                            /*if (sblock == uu)
-                            {
-                                for (int lm3 = 0; lm3 < lapw_parameters_.lmmaxvr; lm3++) 
-                                    v1[lm3] = lapw_runtime.hmltrad(lm3, idxrf1, idxrf2, ias) + lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 0);
-                                L3_sum_gntyry(lm1, lm2, &v1[0], zsum);
-                            }
+                    complex16 zsum(0, 0);
                             
-                            if (sblock == dd)
-                            {
-                                for (int lm3 = 0; lm3 < lapw_parameters_.lmmaxvr; lm3++) 
-                                    v1[lm3] = lapw_runtime.hmltrad(lm3, idxrf1, idxrf2, ias) - lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 0);
-                                L3_sum_gntyry(lm1, lm2, &v1[0], zsum);
-                            }
-                            
-                            if (sblock == ud)
-                            {
-                                for (int lm3 = 0; lm3 < lapw_parameters_.lmmaxvr; lm3++) 
-                                    v2[lm3] = complex16(lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 1), -lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 2));
-                                L3_sum_gntyry(lm1, lm2, &v2[0], zsum);
-                            }*/
+                    if (sblock == nm)
+                        sum_L3_complex_gaunt(lm1, lm, atom->h_radial_integral(idxrf, idxrf1), zsum);
         
-                            h(num_gkvec + atom->offset_lo() + j1, num_gkvec + atom->offset_lo() + j2) += zsum;
-                        }
-                    }
-        
-                    /*if (sblock == ud)
+                    if (abs(zsum) > 1e-14)
                     {
-                        for (int j2 = 0; j2 < species->index.apw_size(); j2++)
-                        {
-                            int lm2 = species->index[j2].lm;
-                            int idxrf2 = species->index[j2].idxrf;
-                            
-                            for (int j1 = 0; j1 < species->index.lo_size(); j1++)
-                            {
-                                int lm1 = species->index[lo_index_offset + j1].lm;
-                                int idxrf1 = species->index[lo_index_offset + j1].idxrf;
-                                
-                                complex16 zsum(0, 0);
-                                
-                                for (int lm3 = 0; lm3 < lapw_parameters_.lmmaxvr; lm3++) 
-                                    v2[lm3] = complex16(lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 1), -lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 2));
-                                L3_sum_gntyry(lm1, lm2, &v2[0], zsum);
-                                
-                                if (abs(zsum) > 1e-14)
-                                    for (int ig = 0; ig < ks->ngk; ig++)
-                                        h(ks->ngk + atom->offset_lo + j1, ig) += zsum * conj(ks->apwalm(ig, atom->offset_apw + j2));
-                            }
-                        }
-                    }*/
-                } 
+                        for (int igkloc = 0; igkloc < num_gkvec_row; igkloc++)
+                            h(igkloc, icol) += zsum * apw(igkloc, atom->offset_aw() + j1);
+                    }
+                }
             }
 
-            
-            Timer *t1 = new Timer("sirius::Band::set_h:it");
-            for (int ig2 = 0; ig2 < num_gkvec; ig2++) // loop over columns
+            // lo-apw block
+            std::vector<complex16> ztmp(num_gkvec_col);
+            for (int irow = num_gkvec_row; irow < apwlo_row_basis_size; irow++)
             {
-                int g1_last = ig2;
-                if (sblock == ud) g1_last = num_gkvec - 1;
+                int ia = apwlo_row_basis_descriptors[irow].ia;
+                Atom* atom = parameters_.atom(ia);
+                AtomType* type = atom->type();
+
+                int lm = apwlo_row_basis_descriptors[irow].lm;
+                int idxrf = apwlo_row_basis_descriptors[irow].idxrf;
+
+                memset(&ztmp[0], 0, num_gkvec_col * sizeof(complex16));
                 
-                // TODO: optimize scalar product if it takes time
+                for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++) 
+                {
+                    int lm1 = type->indexb(j1).lm;
+                    int idxrf1 = type->indexb(j1).idxrf;
+                            
+                    complex16 zsum(0, 0);
+                            
+                    if (sblock == nm)
+                        sum_L3_complex_gaunt(lm, lm1, atom->h_radial_integral(idxrf, idxrf1), zsum);
+        
+                    if (abs(zsum) > 1e-14)
+                    {
+                        for (int igkloc = 0; igkloc < num_gkvec_col; igkloc++)
+                            ztmp[igkloc] += zsum * conj(apw(apw_col_offset + igkloc, atom->offset_aw() + j1));
+                    }
+                }
+
+                for (int igkloc = 0; igkloc < num_gkvec_col; igkloc++)
+                    h(irow, igkloc) += ztmp[igkloc]; 
+            }
+
+            // lo-lo block
+            for (int icol = num_gkvec_col; icol < apwlo_col_basis_size; icol++)
+                for (int irow = num_gkvec_row; irow < apwlo_row_basis_size; irow++)
+                    if ((apwlo_col_basis_descriptors[icol].ia == apwlo_row_basis_descriptors[irow].ia))
+                    {
+                        int ia = apwlo_row_basis_descriptors[irow].ia;
+                        Atom* atom = parameters_.atom(ia);
+                        int lm1 = apwlo_row_basis_descriptors[irow].order; 
+                        int idxrf1 = apwlo_row_basis_descriptors[irow].idxrf; 
+                        int lm2 = apwlo_col_basis_descriptors[icol].order; 
+                        int idxrf2 = apwlo_col_basis_descriptors[icol].idxrf; 
+
+                        complex16 zsum(0.0, 0.0);
+        
+                        if (sblock == nm)
+                            sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf1, idxrf2), zsum);
+        
+                        h(irow, icol) += zsum;
+                    }
+
+            Timer *t1 = new Timer("sirius::Band::set_h:it");
+            for (int igkloc2 = 0; igkloc2 < num_gkvec_col; igkloc2++) // loop over columns
+            {
                 double v2[3];
                 double v2c[3];
-                for (int x = 0; x < 3; x++) v2[x] = gkvec(x, ig2);
-                parameters_.get_coordinates<cartesian,reciprocal>(v2, v2c);
-                
-                for (int ig1 = 0; ig1 <= g1_last; ig1++) // for each column loop over rows
+                for (int x = 0; x < 3; x++) v2[x] = gkvec(x, apwlo_col_basis_descriptors[igkloc2].igk);
+                parameters_.get_coordinates<cartesian, reciprocal>(v2, v2c);
+
+                for (int igkloc1 = 0; igkloc1 < num_gkvec_row; igkloc1++) // for each column loop over rows
                 {
-                    int ig = parameters_.index_g12(gvec_index[ig1], gvec_index[ig2]);
+                    int ig12 = parameters_.index_g12(apwlo_row_basis_descriptors[igkloc1].ig,
+                                                     apwlo_col_basis_descriptors[igkloc2].ig);
                     double v1[3];
                     double v1c[3];
-                    for (int x = 0; x < 3; x++) v1[x] = gkvec(x, ig1);
-                    parameters_.get_coordinates<cartesian,reciprocal>(v1, v1c);
+                    for (int x = 0; x < 3; x++) v1[x] = gkvec(x, apwlo_row_basis_descriptors[igkloc1].igk);
+                    parameters_.get_coordinates<cartesian, reciprocal>(v1, v1c);
                     
                     double t1 = 0.5 * scalar_product(v1c, v2c);
                                        
                     if (sblock == nm)
-                        h(ig1, ig2) += (effective_potential->f_pw(ig) + t1 * parameters_.step_function_pw(ig));
-                    
-                    /*if (sblock == uu)
-                        h(j1, j2) += (lapw_runtime.veffig(ig) + t1 * lapw_parameters_.cfunig[ig] + lapw_runtime.beffig(ig, 0));
-                    
-                    if (sblock == dd)
-                        h(j1, j2) += (lapw_runtime.veffig(ig) + t1 * lapw_parameters_.cfunig[ig] - lapw_runtime.beffig(ig, 0));
-                    
-                    if (sblock == ud)
-                        h(j1, j2) += (lapw_runtime.beffig(ig, 1) - zi * lapw_runtime.beffig(ig, 2));*/
+                        h(igkloc1, igkloc2) += (effective_potential->f_pw(ig12) + 
+                                                t1 * parameters_.step_function_pw(ig12));
                 }
             }
             delete t1;
+            
+            if (debug_level > 0)
+            {
+                if (apwlo_row_basis_descriptors[0].igk == apwlo_col_basis_descriptors[0].igk)
+                {
+                    int n = std::min(apwlo_col_basis_size, apwlo_row_basis_size);
+
+                    for (int i = 0; i < n; i++)
+                        for (int j = 0; j < n; j++)
+                            if (abs(h(j, i) - conj(h(i, j))) > 1e-12)
+                                printf("Hamiltonian matrix is not hermitian\n");
+                }
+            }
         }
         
         /// Setup the overlap matrix in the APW+lo basis
 
         /** The overlap matrix has the following expression:
             \f[
-                O_{\nu' \nu} = \langle \varphi_{\nu'} | \varphi_{\nu} \rangle
+                O_{\mu' \mu} = \langle \varphi_{\mu'} | \varphi_{\mu} \rangle
             \f]
             APW-APW block:
             \f[
-                O_{{\bf G'} {\bf G}} = \sum_{\alpha} \sum_{L\nu} a_{L\nu}^{\alpha *}({\bf G'+k}) 
+                O_{{\bf G'} {\bf G}}^{\bf k} = \sum_{\alpha} \sum_{L\nu} a_{L\nu}^{\alpha *}({\bf G'+k}) 
                 a_{L\nu}^{\alpha}({\bf G+k})
             \f]
             
             APW-lo block:
             \f[
-                O_{{\bf G'} j} = \sum_{\nu'} a_{\ell_j m_j \nu'}^{\alpha_j *}({\bf G'+k}) 
+                O_{{\bf G'} j}^{\bf k} = \sum_{\nu'} a_{\ell_j m_j \nu'}^{\alpha_j *}({\bf G'+k}) 
                 \langle u_{\ell_j \nu'}^{\alpha_j} | \phi_{\ell_j}^{\zeta_j \alpha_j} \rangle
             \f]
 
             lo-APW block:
             \f[
-                O_{j {\bf G}} = 
-                \sum_{\nu'} \langle \phi_{\ell_j}^{\zeta_j \alpha_j} | u_{\ell_j \nu'}^{\alpha_j} \rangle
-                a_{\ell_j m_j \nu'}^{\alpha_j}({\bf G}) 
+                O_{j' {\bf G}}^{\bf k} = 
+                \sum_{\nu'} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} | u_{\ell_{j'} \nu'}^{\alpha_{j'}} \rangle
+                a_{\ell_{j'} m_{j'} \nu'}^{\alpha_{j'}}({\bf G+k}) 
             \f]
 
+            lo-lo block:
+            \f[
+                O_{j' j}^{\bf k} = \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} | 
+                \phi_{\ell_{j}}^{\zeta_{j} \alpha_{j}} \rangle \delta_{\alpha_{j'} \alpha_j} 
+                \delta_{\ell_{j'} \ell_j} \delta_{m_{j'} m_j}
+            \f]
 
         */
         void set_fv_o(const apwlo_basis_descriptor* apwlo_row_basis_descriptors,
-                      const int apwlo_row_basis_size,
-                      const int num_gkvec_row,
+                      const int                     apwlo_row_basis_size,
+                      const int                     num_gkvec_row,
                       const apwlo_basis_descriptor* apwlo_col_basis_descriptors,
-                      const int apwlo_col_basis_size,
-                      const int num_gkvec_col,
-                      const int apw_col_offset,
-                      mdarray<complex16, 2>& apw, 
-                      mdarray<complex16, 2>& o)
+                      const int                     apwlo_col_basis_size,
+                      const int                     num_gkvec_col,
+                      const int                     apw_col_offset,
+                      mdarray<complex16, 2>&        apw, 
+                      mdarray<complex16, 2>&        o)
         {
             Timer t("sirius::Band::set_o");
-
+            
+            // compute APW-APW block
             gemm<cpu>(0, 2, num_gkvec_row, num_gkvec_col, parameters_.mt_aw_basis_size(), complex16(1, 0), 
                       &apw(0, 0), apw.ld(), &apw(apw_col_offset, 0), apw.ld(), complex16(0, 0), &o(0, 0), o.ld()); 
 
-            // loop over columns of the local orbital block
+            // TODO: multithread 
+
             // apw-lo block 
             for (int icol = num_gkvec_col; icol < apwlo_col_basis_size; icol++)
             {
@@ -494,6 +492,7 @@ class Band
                                            conj(apw(igkloc, atom->offset_aw() + type->indexb_by_lm_order(lm, order1)));
             }
 
+            // lo-lo block
             for (int irow = num_gkvec_row; irow < apwlo_row_basis_size; irow++)
                 for (int icol = num_gkvec_col; icol < apwlo_col_basis_size; icol++)
                     if ((apwlo_col_basis_descriptors[icol].ia == apwlo_row_basis_descriptors[irow].ia) &&
@@ -520,15 +519,14 @@ class Band
             {
                 if (apwlo_row_basis_descriptors[0].igk == apwlo_col_basis_descriptors[0].igk)
                 {
-                    assert(apwlo_col_basis_size == apwlo_row_basis_size);
+                    int n = std::min(apwlo_col_basis_size, apwlo_row_basis_size);
 
-                    for (int i = 0; i < apwlo_col_basis_size; i++)
-                        for (int j = 0; j < apwlo_row_basis_size; j++)
+                    for (int i = 0; i < n; i++)
+                        for (int j = 0; j < n; j++)
                             if (abs(o(j, i) - conj(o(i, j))) > 1e-12)
                                 printf("Overlap matrix is not hermitian\n");
                 }
             }
-                        
         }
         
         // bwf must be zero on input
@@ -847,23 +845,21 @@ class Band
 
             Timer t("sirius::Band::solve_fv");
 
-            mdarray<complex16,2> h(apwlo_row_basis_size, apwlo_col_basis_size);
-            mdarray<complex16,2> o(apwlo_row_basis_size, apwlo_col_basis_size);
+            mdarray<complex16, 2> h(apwlo_row_basis_size, apwlo_col_basis_size);
+            mdarray<complex16, 2> o(apwlo_row_basis_size, apwlo_col_basis_size);
 
             o.zero();
             set_fv_o(apwlo_row_basis_descriptors, apwlo_row_basis_size, num_gkvec_row, 
                      apwlo_col_basis_descriptors, apwlo_col_basis_size, num_gkvec_col, 
                      apw_col_offset, matching_coefficients, o);
 
-            
-            //mdarray<complex16,2> h(fv_basis_size, fv_basis_size);
-            //mdarray<complex16,2> o(fv_basis_size, fv_basis_size);
-
-            //o.zero();
-            //set_fv_o(num_gkvec, matching_coefficients, gvec_index, o);
-
             h.zero();
-            set_fv_h<nm>(num_gkvec, matching_coefficients, gkvec, gvec_index, effective_potential, h);
+            set_fv_h<nm>(apwlo_row_basis_descriptors, apwlo_row_basis_size, num_gkvec_row,
+                         apwlo_col_basis_descriptors, apwlo_col_basis_size, num_gkvec_col,
+                         apw_col_offset, gkvec, matching_coefficients, effective_potential, h);
+
+            write_h_o(h, o);
+            error(__FILE__, __LINE__, "stop");
 
             Timer *t1 = new Timer("sirius::Band::solve_fv:hegv<impl>");
             int info = hegvx<cpu>(fv_basis_size, parameters.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), &evalfv[0], 
