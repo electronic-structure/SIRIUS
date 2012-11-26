@@ -211,6 +211,8 @@ class MPIGrid
             for (int i = 0; i < (int)dimensions_.size(); i++)
                 sz *= dimensions_[i];
             
+            if (sz == 0) error(__FILE__, __LINE__, "One of the MPI grid dimensions has a zero length.", fatal_err);
+
             if (Platform::num_mpi_ranks(parent_communicator_) < sz)
             {
                 std::stringstream s;
@@ -357,7 +359,7 @@ class MPIGrid
 
             return sc;
         }
-        
+
         std::vector<int> coordinates()
         {
             return coordinates_;
@@ -370,7 +372,17 @@ class MPIGrid
 
         MPIGrid* sub_grid(int directions)
         {
-            return new MPIGrid(sub_dimensions(directions), communicator(directions));
+            if (valid_directions(directions))
+            {
+                std::vector<int> sd = sub_dimensions(directions);
+                MPI_Comm comm = communicator(directions);
+               // return new MPIGrid(sub_dimensions(directions), communicator(directions));
+                return new MPIGrid(sd, comm);
+            }
+            else
+            {
+                return NULL;
+            }
         }
 
         inline splindex split_index(int directions, int size)
@@ -422,6 +434,8 @@ class MPIGrid
 
         inline MPI_Comm& communicator(int directions = 0xFF)
         {
+            assert(communicators_.size() != 0);
+
             return communicators_[valid_directions(directions)];
         }
 };

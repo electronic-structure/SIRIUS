@@ -45,7 +45,9 @@ struct apwlo_basis_descriptor
     int igk;
     int ig;
     int ia;
+    int l;
     int lm;
+    int order;
     int idxrf;
 };
 
@@ -84,7 +86,7 @@ class Band
 
         Global& parameters_;
     
-        mdarray<std::vector< std::pair<int,complex16> >,2> complex_gaunt_packed_;
+        mdarray<std::vector< std::pair<int, complex16> >, 2> complex_gaunt_packed_;
         
         template <typename T>
         inline void sum_L3_complex_gaunt(int lm1, int lm2, T* v, complex16& zsum)
@@ -107,7 +109,7 @@ class Band
             \f] 
         */
         template <spin_block sblock>
-        void apply_hmt_to_apw(int num_gkvec, mdarray<complex16,2>& apw, mdarray<complex16,2>& hapw)
+        void apply_hmt_to_apw(int num_gkvec, mdarray<complex16, 2>& apw, mdarray<complex16, 2>& hapw)
         {
             Timer t("sirius::Band::apply_hmt_to_apw");
            
@@ -419,13 +421,38 @@ class Band
 
         /** The overlap matrix has the following expression:
             \f[
-                O_{\nu' \nu} = \langle \phi_{\nu'} | \phi_{\nu} \rangle
+                O_{\nu' \nu} = \langle \varphi_{\nu'} | \varphi_{\nu} \rangle
             \f]
+            APW-APW block:
+            \f[
+                O_{{\bf G'} {\bf G}} = \sum_{\alpha} \sum_{L\nu} a_{L\nu}^{\alpha *}({\bf G'+k}) 
+                a_{L\nu}^{\alpha}({\bf G+k})
+            \f]
+            
+            APW-lo block:
+            \f[
+                O_{{\bf G'} j} = \sum_{\nu'} a_{\ell_j m_j \nu'}^{\alpha_j *}({\bf G'+k}) 
+                \langle u_{\ell_j \nu'}^{\alpha_j} | \phi_{\ell_j}^{\zeta_j \alpha_j} \rangle
+            \f]
+
+            lo-APW block:
+            \f[
+                O_{j {\bf G}} = 
+                \sum_{\nu'} \langle \phi_{\ell_j}^{\zeta_j \alpha_j} | u_{\ell_j \nu'}^{\alpha_j} \rangle
+                a_{\ell_j m_j \nu'}^{\alpha_j}({\bf G}) 
+            \f]
+
+
         */
-        void set_fv_o(const int num_gkvec_row, 
+        void set_fv_o(const apwlo_basis_descriptor* apwlo_row_basis_descriptors,
+                      const int apwlo_row_basis_size,
+                      const int num_gkvec_row,
+                      const apwlo_basis_descriptor* apwlo_col_basis_descriptors,
+                      const int apwlo_col_basis_size,
                       const int num_gkvec_col,
                       const int apw_col_offset,
-                      mdarray<complex16, 2>& apw, int* gvec_index, mdarray<complex16, 2>& o)
+                      mdarray<complex16, 2>& apw, 
+                      mdarray<complex16, 2>& o)
         {
             Timer t("sirius::Band::set_o");
 
@@ -433,41 +460,75 @@ class Band
                       &apw(0, 0), apw.ld(), &apw(apw_col_offset, 0), apw.ld(), complex16(0, 0), &o(0, 0), o.ld()); 
 
             // loop over columns of the local orbital block
+            // apw-lo block 
             for (int icol = num_gkvec_col; icol < apwlo_col_basis_size; icol++)
             {
                 int ia = apwlo_col_basis_descriptors[icol].ia;
                 Atom* atom = parameters_.atom(ia);
                 AtomType* type = atom->type();
 
-                int lo_index_offset = type->mt_aw_basis_size();
+                int l = apwlo_col_basis_descriptors[icol].l;
+                int lm = apwlo_col_basis_descriptors[icol].lm;
+                int order = apwlo_col_basis_descriptors[icol].order;
 
-                int l2 = apwlo_col_basis_descriptors[icol].l;
-                int lm2 = apwlo_col_basis_descriptors[icol].lm;
-                int order2 = apwlo_col_basis_descriptors[icol].order;
+                for (int order1 = 0; order1 < (int)type->aw_descriptor(l).size(); order1++)
+                    for (int igkloc = 0; igkloc < num_gkvec_row; igkloc++)
+                        o(igkloc, icol) += atom->symmetry_class()->o_radial_integral(l, order1, order) * 
+                                           apw(igkloc, atom->offset_aw() + type->indexb_by_lm_order(lm, order1));
+            }
 
-                // apw-lo block 
-                for (int order1 = 0; order1 < (int)type->aw_descriptor(l2).size(); order1++)
-                    for (int igk = 0; igk < num_gkvec_row; igk++)
-                        o(igk, num_gkvec + atom->offset_lo() + j2) += 
-                                atom->symmetry_class()->o_radial_integral(l2, order1, order2) * 
-                                apw(ig, atom->offset_aw() + type->indexb_by_lm_order(lm2, order1));
+            // lo-apw block 
+            for (int irow = num_gkvec_row; irow < apwlo_row_basis_size; irow++)
+            {
+                int ia = apwlo_row_basis_descriptors[irow].ia;
+                Atom* atom = parameters_.atom(ia);
+                AtomType* type = atom->type();
 
-                    // lo-lo block
-                    for (int j1 = 0; j1 <= j2; j1++)
+                int l = apwlo_row_basis_descriptors[irow].l;
+                int lm = apwlo_row_basis_descriptors[irow].lm;
+                int order = apwlo_row_basis_descriptors[irow].order;
+
+                for (int order1 = 0; order1 < (int)type->aw_descriptor(l).size(); order1++)
+                    for (int igkloc = 0; igkloc < num_gkvec_col; igkloc++)
+                        o(irow, igkloc) += atom->symmetry_class()->o_radial_integral(l, order, order1) * 
+                                           conj(apw(igkloc, atom->offset_aw() + type->indexb_by_lm_order(lm, order1)));
+            }
+
+            for (int irow = num_gkvec_row; irow < apwlo_row_basis_size; irow++)
+                for (int icol = num_gkvec_col; icol < apwlo_col_basis_size; icol++)
+                    if ((apwlo_col_basis_descriptors[icol].ia == apwlo_row_basis_descriptors[irow].ia) &&
+                        (apwlo_col_basis_descriptors[icol].lm == apwlo_row_basis_descriptors[irow].lm))
                     {
-                        int lm1 = type->indexb(lo_index_offset + j1).lm;
-                        int order1 = type->indexb(lo_index_offset + j1).order;
-                        if (lm1 == lm2) 
-                            o(num_gkvec + atom->offset_lo() + j1, num_gkvec + atom->offset_lo() + j2) += 
-                                atom->symmetry_class()->o_radial_integral(l2, order1, order2);
+                        int ia = apwlo_row_basis_descriptors[irow].ia;
+                        Atom* atom = parameters_.atom(ia);
+                        int l = apwlo_row_basis_descriptors[irow].l;
+                        int order1 = apwlo_row_basis_descriptors[irow].order; 
+                        int order2 = apwlo_col_basis_descriptors[icol].order; 
+                        o(irow, icol) += atom->symmetry_class()->o_radial_integral(l, order1, order2);
                     }
+                    
+            Timer t1("sirius::Band::set_o:it");
+            for (int igkloc2 = 0; igkloc2 < num_gkvec_col; igkloc2++) // loop over columns
+                for (int igkloc1 = 0; igkloc1 < num_gkvec_row; igkloc1++) // for each column loop over rows
+                {
+                    int ig12 = parameters_.index_g12(apwlo_row_basis_descriptors[igkloc1].ig,
+                                                     apwlo_col_basis_descriptors[igkloc2].ig);
+                    o(igkloc1, igkloc2) += parameters_.step_function_pw(ig12);
+                }
+
+            if (debug_level > 0)
+            {
+                if (apwlo_row_basis_descriptors[0].igk == apwlo_col_basis_descriptors[0].igk)
+                {
+                    assert(apwlo_col_basis_size == apwlo_row_basis_size);
+
+                    for (int i = 0; i < apwlo_col_basis_size; i++)
+                        for (int j = 0; j < apwlo_row_basis_size; j++)
+                            if (abs(o(j, i) - conj(o(i, j))) > 1e-12)
+                                printf("Overlap matrix is not hermitian\n");
                 }
             }
-            
-            Timer t1("sirius::Band::set_o:it");
-            for (int ig2 = 0; ig2 < num_gkvec; ig2++) // loop over columns
-                for (int ig1 = 0; ig1 <= ig2; ig1++) // for each column loop over rows
-                    o(ig1, ig2) += parameters_.step_function_pw(parameters_.index_g12(gvec_index[ig1], gvec_index[ig2]));
+                        
         }
         
         // bwf must be zero on input
@@ -772,9 +833,6 @@ class Band
                       const int num_gkvec_col,
                       const int apw_col_offset,
 
-
-
-
                       int fv_basis_size, 
                       int num_gkvec, 
                       int* gvec_index, 
@@ -793,8 +851,9 @@ class Band
             mdarray<complex16,2> o(apwlo_row_basis_size, apwlo_col_basis_size);
 
             o.zero();
-            set_fv_o(
-
+            set_fv_o(apwlo_row_basis_descriptors, apwlo_row_basis_size, num_gkvec_row, 
+                     apwlo_col_basis_descriptors, apwlo_col_basis_size, num_gkvec_col, 
+                     apw_col_offset, matching_coefficients, o);
 
             
             //mdarray<complex16,2> h(fv_basis_size, fv_basis_size);
@@ -803,20 +862,20 @@ class Band
             //o.zero();
             //set_fv_o(num_gkvec, matching_coefficients, gvec_index, o);
 
-            //h.zero();
-            //set_fv_h<nm>(num_gkvec, matching_coefficients, gkvec, gvec_index, effective_potential, h);
+            h.zero();
+            set_fv_h<nm>(num_gkvec, matching_coefficients, gkvec, gvec_index, effective_potential, h);
 
-            //Timer *t1 = new Timer("sirius::Band::solve_fv:hegv<impl>");
-            //int info = hegvx<cpu>(fv_basis_size, parameters.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), &evalfv[0], 
-            //                      &evecfv(0, 0), fv_basis_size);
-            //delete t1;
+            Timer *t1 = new Timer("sirius::Band::solve_fv:hegv<impl>");
+            int info = hegvx<cpu>(fv_basis_size, parameters.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), &evalfv[0], 
+                                  &evecfv(0, 0), fv_basis_size);
+            delete t1;
 
-            //if (info)
-            //{
-            //    std::stringstream s;
-            //    s << "hegvx returned " << info;
-            //    error(__FILE__, __LINE__, s);
-            //}
+            if (info)
+            {
+                std::stringstream s;
+                s << "hegvx returned " << info;
+                error(__FILE__, __LINE__, s);
+            }
         }
 
         void solve_sv(Global& parameters,

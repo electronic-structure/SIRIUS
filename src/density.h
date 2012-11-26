@@ -348,8 +348,8 @@ class Density
 
             band_ = new Band(parameters_);
             
-            //mpi_grid_.initialize(intvec(std::min(Platform::num_mpi_ranks(), kpoint_set_.num_kpoints()), 1));
-            mpi_grid_.initialize(intvec(1, 2, 3));
+            mpi_grid_.initialize(intvec(std::min(Platform::num_mpi_ranks(), kpoints__.size(1)), 1));
+            //mpi_grid_.initialize(intvec(1, 2, 3));
 
             kpoint_set_.clear();
             for (int ik = 0; ik < kpoints__.size(1); ik++)

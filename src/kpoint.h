@@ -354,7 +354,9 @@ class kpoint
                 apwlobd.ig = gvec_index_[igk];
                 apwlobd.ia = -1;
                 apwlobd.lm = -1;
-                apwlobd.idxrf  = -1;
+                apwlobd.l = -1;
+                apwlobd.order = -1;
+                apwlobd.idxrf = -1;
                 apwlo_basis_descriptors_.push_back(apwlobd);
             }
             // local orbital basis functions
@@ -367,14 +369,18 @@ class kpoint
                 
                 for (int j = 0; j < type->mt_lo_basis_size(); j++) 
                 {
+                    int l = type->indexb(lo_index_offset + j).l;
                     int lm = type->indexb(lo_index_offset + j).lm;
+                    int order = type->indexb(lo_index_offset + j).order;
                     int idxrf = type->indexb(lo_index_offset + j).idxrf;
                     apwlobd.global_index = (int)apwlo_basis_descriptors_.size();
                     apwlobd.igk = -1;
                     apwlobd.ig = -1;
                     apwlobd.ia = ia;
                     apwlobd.lm = lm;
-                    apwlobd.idxrf  = idxrf;
+                    apwlobd.l = l;
+                    apwlobd.order = order;
+                    apwlobd.idxrf = idxrf;
                     apwlo_basis_descriptors_.push_back(apwlobd);
                 }
             }
@@ -505,12 +511,35 @@ class kpoint
 
             generate_matching_coefficients();
 
-            error(__FILE__, __LINE__, "stop");
 
-            /*band->solve_fv(parameters_, fv_basis_size(), num_gkvec(), &gvec_index_[0], gkvec_, 
-                           matching_coefficients_, effective_potential, effective_magnetic_field, evecfv_,
-                           &evalfv_[0])*/;
 
+            if (eigen_value_solver == scalapack)
+                band->solve_fv(parameters_, 
+                               &apwlo_basis_descriptors_loc_[0], 
+                               apwlo_row_basis_size_, 
+                               num_gkvec_row(),
+                               &apwlo_basis_descriptors_loc_[apwlo_row_basis_size_], 
+                               apwlo_col_basis_size_, 
+                               num_gkvec_col(),
+                               num_gkvec_row(),
+                               apwlo_basis_size(), num_gkvec(), &gvec_index_[0], gkvec_, 
+                               matching_coefficients_, effective_potential, effective_magnetic_field, evecfv_,
+                               evalfv_);
+            else
+                band->solve_fv(parameters_, 
+                               &apwlo_basis_descriptors_[0], 
+                               apwlo_basis_size(), 
+                               num_gkvec(),
+                               &apwlo_basis_descriptors_[0], 
+                               apwlo_basis_size(), 
+                               num_gkvec(),
+                               0,
+                               apwlo_basis_size(), num_gkvec(), &gvec_index_[0], gkvec_, 
+                               matching_coefficients_, effective_potential, effective_magnetic_field, evecfv_,
+                               evalfv_);
+
+            
+            
             generate_scalar_wave_functions();
             
             if (test_scalar_wf)
