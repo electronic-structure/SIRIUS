@@ -46,7 +46,7 @@ void write_matrix(const std::string& fname, mdarray<complex16, 2>& matrix)
         fprintf(fout, " row                real               imag                abs \n");
         for (int i = 0; i < 80; i++) fprintf(fout, "-");
         fprintf(fout, "\n");
-        for (int j = 0; j < matrix.size(0); j++)
+        for (int j = 0; j <= icol; j++)
         {
             fprintf(fout, "%4i  %18.12f %18.12f %18.12f\n", j, real(matrix(j, icol)), imag(matrix(j, icol)), 
                                                             abs(matrix(j, icol)));
