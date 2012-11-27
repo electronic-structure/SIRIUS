@@ -721,6 +721,10 @@ class Band
 
             h.zero();
             set_fv_h<nm>(num_gkvec, matching_coefficients, gkvec, gvec_index, effective_potential, h);
+            
+            write_matrix("h_old.txt", h);
+            write_matrix("o_old.txt", o);
+            error(__FILE__, __LINE__, "stop");
 
             Timer *t1 = new Timer("sirius::Band::solve_fv:hegv<impl>");
             int info = hegvx<cpu>(fv_basis_size, parameters.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), evalfv, 
