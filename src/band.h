@@ -51,35 +51,6 @@ struct apwlo_basis_descriptor
     int idxrf;
 };
 
-
-void write_h_o(mdarray<complex16,2>& h, mdarray<complex16,2>& o)
-{
-    std::ofstream out;
-    out.open("h_sirius.txt");
-    out << h.size(0) << std::endl;
-    out.precision(16); 
-    for (int i = 0; i < h.size(0); i++)
-    {
-        for (int j = 0; j <= i; j++)
-        {
-            out << real(h(j, i)) << " " << imag(h(j, i)) << std::endl;
-        }
-    }
-    out.close();
-    
-    out.open("o_sirius.txt");
-    out << h.size(0) << std::endl;
-    out.precision(16); 
-    for (int i = 0; i < h.size(0); i++)
-    {
-        for (int j = 0; j <= i; j++)
-        {
-            out << real(o(j, i)) << " " << imag(o(j, i)) << std::endl;
-        }
-    }
-    out.close();
-}
-
 class Band
 {
     private:
@@ -281,6 +252,7 @@ class Band
 
             apply_hmt_to_apw<sblock>(num_gkvec_row, apw, hapw);
 
+#if 0
             // apw-apw block
             gemm<cpu>(0, 2, num_gkvec_row, num_gkvec_col, parameters_.mt_aw_basis_size(), complex16(1, 0), 
                       &hapw(0, 0), hapw.ld(), &apw(apw_col_offset, 0), apw.ld(), complex16(0, 0), &h(0, 0), h.ld());
@@ -346,7 +318,7 @@ class Band
                 for (int igkloc = 0; igkloc < num_gkvec_col; igkloc++)
                     h(irow, igkloc) += ztmp[igkloc]; 
             }
-
+#endif
             // lo-lo block
             for (int icol = num_gkvec_col; icol < apwlo_col_basis_size; icol++)
                 for (int irow = num_gkvec_row; irow < apwlo_row_basis_size; irow++)
@@ -354,19 +326,20 @@ class Band
                     {
                         int ia = apwlo_row_basis_descriptors[irow].ia;
                         Atom* atom = parameters_.atom(ia);
-                        int lm1 = apwlo_row_basis_descriptors[irow].order; 
+                        int lm1 = apwlo_row_basis_descriptors[irow].lm; 
                         int idxrf1 = apwlo_row_basis_descriptors[irow].idxrf; 
-                        int lm2 = apwlo_col_basis_descriptors[icol].order; 
+                        int lm2 = apwlo_col_basis_descriptors[icol].lm; 
                         int idxrf2 = apwlo_col_basis_descriptors[icol].idxrf; 
 
-                        complex16 zsum(0.0, 0.0);
+                        complex16 zsum(0, 0);
         
                         if (sblock == nm)
                             sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf1, idxrf2), zsum);
-        
+
                         h(irow, icol) += zsum;
                     }
 
+#if 0
             Timer *t1 = new Timer("sirius::Band::set_h:it");
             for (int igkloc2 = 0; igkloc2 < num_gkvec_col; igkloc2++) // loop over columns
             {
@@ -392,9 +365,29 @@ class Band
                 }
             }
             delete t1;
-            
+#endif            
             if (debug_level > 0)
             {
+                // check local orbital radial integrals
+                double diff = 0;
+                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                {
+                    Atom* atom = parameters_.atom(ia);
+                    AtomType* type = atom->type();
+                    for (int idxrf1 = type->indexr().index_by_idxlo(0); idxrf1 < type->indexr().size(); idxrf1++)
+                        for (int idxrf2 = type->indexr().index_by_idxlo(0); idxrf2 < type->indexr().size(); idxrf2++)
+                            for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
+                                diff += fabs(atom->h_radial_integral(idxrf1, idxrf2)[lm] -
+                                             atom->h_radial_integral(idxrf2, idxrf1)[lm]);
+                }
+                if (diff > 1e-12)
+                {
+                    std::stringstream s;
+                    s << "Wrong local orbital radial integrals, difference : " << diff;
+                    warning(__FILE__, __LINE__, s, 0);
+                }
+
+                // check hermiticity
                 if (apwlo_row_basis_descriptors[0].igk == apwlo_col_basis_descriptors[0].igk)
                 {
                     int n = std::min(apwlo_col_basis_size, apwlo_row_basis_size);
@@ -402,7 +395,12 @@ class Band
                     for (int i = 0; i < n; i++)
                         for (int j = 0; j < n; j++)
                             if (abs(h(j, i) - conj(h(i, j))) > 1e-12)
-                                printf("Hamiltonian matrix is not hermitian\n");
+                            {
+                                std::stringstream s;
+                                s << "Hamiltonian matrix is not hermitian for the following elements : " 
+                                  << i << " " << j << ", difference : " << abs(h(j, i) - conj(h(i, j)));
+                                warning(__FILE__, __LINE__, s, 0);
+                            }
                 }
             }
         }
@@ -858,11 +856,9 @@ class Band
                          apwlo_col_basis_descriptors, apwlo_col_basis_size, num_gkvec_col,
                          apw_col_offset, gkvec, matching_coefficients, effective_potential, h);
 
-            //write_h_o(h, o);
-            write_matrix("h_new.txt", h);
-            write_matrix("o_new.txt", o);
-
-            error(__FILE__, __LINE__, "stop");
+            //write_matrix("h_new.txt", h);
+            //write_matrix("o_new.txt", o);
+            //error(__FILE__, __LINE__, "stop");
 
             Timer *t1 = new Timer("sirius::Band::solve_fv:hegv<impl>");
             int info = hegvx<cpu>(fv_basis_size, parameters.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), &evalfv[0], 
