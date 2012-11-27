@@ -858,7 +858,10 @@ class Band
                          apwlo_col_basis_descriptors, apwlo_col_basis_size, num_gkvec_col,
                          apw_col_offset, gkvec, matching_coefficients, effective_potential, h);
 
-            write_h_o(h, o);
+            //write_h_o(h, o);
+            write_matrix("h_new.txt", h);
+            write_matrix("o_new.txt", o);
+
             error(__FILE__, __LINE__, "stop");
 
             Timer *t1 = new Timer("sirius::Band::solve_fv:hegv<impl>");
