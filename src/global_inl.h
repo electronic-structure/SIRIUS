@@ -34,3 +34,26 @@ double gaussian_smearing(double e)
     return 0.5 * (1 - gsl_sf_erf(e / delta));
 }
 
+void write_matrix(const std::string& fname, mdarray<complex16, 2>& matrix)
+{
+    FILE* fout = fopen(fname.c_str(), "w");
+
+    for (int icol = 0; icol < matrix.size(1); icol++)
+    {
+        fprintf(fout, "column : %4i\n", icol);
+        for (int i = 0; i < 80; i++) fprintf(fout, "-");
+        fprintf(fout, "\n");
+        fprintf(fout, " row                real               imag                abs \n");
+        for (int i = 0; i < 80; i++) fprintf(fout, "-");
+        fprintf(fout, "\n");
+        for (int j = 0; j < matrix.size(0); j++)
+        {
+            fprintf(fout, "%4i  %18.12f %18.12f %18.12f\n", j, real(matrix(j, icol)), imag(matrix(j, icol)), 
+                                                            abs(matrix(j, icol)));
+        }
+        fprintf(fout,"\n");
+
+    }
+
+    fclose(fout);
+}
