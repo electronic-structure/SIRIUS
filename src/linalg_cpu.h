@@ -101,10 +101,26 @@ template<> int gesv<complex16>(int4 n, int4 nrhs, complex16* a, int4 lda, comple
     BLACS and ScaLAPACK related functions
 */
 extern "C" int Csys2blacs_handle(MPI_Comm SysCtxt);
-extern "C" void Cblacs_gridinit(int *ConTxt, char *order, int nprow, int npcol);
-extern "C" void Cblacs_gridmap(int *ConTxt, int *usermap, int ldup, int nprow0, int npcol0);
-extern "C" void Cblacs_gridinfo(int ConTxt, int *nprow, int *npcol, int *myrow, int *mycol);
+extern "C" MPI_Comm Cblacs2sys_handle(int BlacsCtxt);
+extern "C" void Cblacs_gridinit(int* ConTxt, const char* order, int nprow, int npcol);
+extern "C" void Cblacs_gridmap(int* ConTxt, int* usermap, int ldup, int nprow0, int npcol0);
+extern "C" void Cblacs_gridinfo(int ConTxt, int* nprow, int* npcol, int* myrow, int* mycol);
 extern "C" void Cfree_blacs_system_handle(int ISysCtxt);
+extern "C" void Cblacs_barrier(int ConTxt, const char* scope);
+
+extern "C" void FORTRAN(descinit)(int4* desc, int4* m, int4* n, int4* mb, int4* nb, int4* irsrc, int4* icsrc, 
+                                  int4* ictxt, int4* lld, int4* info);
+
+extern "C" void FORTRAN(pzhegvx)(int4* ibtype, const char* jobz, const char* range, const char* uplo, int4* n, 
+                        complex16* a, int4* ia, int4* ja, int4* desca, complex16* b, int4* ib, int4* jb, int4* descb, 
+                        real8* vl, real8* vu, int4* il, int4* iu, real8* abstol, int4* m, int4* nz, real8* w, 
+                        real8* orfac, complex16* z, int4* iz, int4* jz, int4* descz, complex16* work, int4* lwork, 
+                        real8* rwork, int4* lrwork, int4* iwork, int4* liwork, int4* ifail, int4* iclustr, real8* gap,
+                        int4* info, int4 jobz_len, int4 range_len, int4 uplo_len);
+
+extern "C" void FORTRAN(pzgesv)(int4* n, int4* nrhs, complex16* a, int4* ia, int4* ja, int4* desca, int4* ipiv, 
+                                complex16* b, int4* ib, int4* jb, int4* descb, int4* info);
+
 
 #endif // __LINALG_CPU_H__
 

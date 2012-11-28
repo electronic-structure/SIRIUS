@@ -139,83 +139,6 @@ class Band
                     } // j2
                 }
             }
- #if 0           
-            #pragma omp parallel default(shared)
-            {
-                std::vector<complex16> zv(ks->ngk);
-                std::vector<double> v1(lapw_parameters_.lmmaxvr);
-                std::vector<complex16> v2(lapw_parameters_.lmmaxvr);
-                #pragma omp for
-                for (int ias = 0; ias < (int)lapw_parameters_.atoms.size(); ias++)
-                {
-                    Atom *atom = lapw_parameters_.atoms[ias];
-                    Species *species = atom->species;
-                
-                    // precompute apw block
-                    for (int j2 = 0; j2 < (int)species->index.apw_size(); j2++)
-                    {
-                        memset(&zv[0], 0, ks->ngk * sizeof(complex16));
-                        
-                        int lm2 = species->index[j2].lm;
-                        int idxrf2 = species->index[j2].idxrf;
-                        
-                        for (int j1 = 0; j1 < (int)species->index.apw_size(); j1++)
-                        {
-                            int lm1 = species->index[j1].lm;
-                            int idxrf1 = species->index[j1].idxrf;
-                            
-                            complex16 zsum(0, 0);
-                            
-                            if (sblock == nm)
-                            {
-                                L3_sum_gntyry(lm1, lm2, &lapw_runtime.hmltrad(0, idxrf1, idxrf2, ias), zsum);
-                            }
-        
-                            if (sblock == uu)
-                            {
-                                for (int lm3 = 0; lm3 < lapw_parameters_.lmmaxvr; lm3++) 
-                                    v1[lm3] = lapw_runtime.hmltrad(lm3, idxrf1, idxrf2, ias) + lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 0);
-                                L3_sum_gntyry(lm1, lm2, &v1[0], zsum);
-                            }
-                            
-                            if (sblock == dd)
-                            {
-                                for (int lm3 = 0; lm3 < lapw_parameters_.lmmaxvr; lm3++) 
-                                    v1[lm3] = lapw_runtime.hmltrad(lm3, idxrf1, idxrf2, ias) - lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 0);
-                                L3_sum_gntyry(lm1, lm2, &v1[0], zsum);
-                            }
-                            
-                            if (sblock == ud)
-                            {
-                                for (int lm3 = 0; lm3 < lapw_parameters_.lmmaxvr; lm3++) 
-                                    v2[lm3] = complex16(lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 1), -lapw_runtime.beffrad(lm3, idxrf1, idxrf2, ias, 2));
-                                L3_sum_gntyry(lm1, lm2, &v2[0], zsum);
-                            }
-                
-                            if (abs(zsum) > 1e-14) 
-                                for (int ig = 0; ig < ks->ngk; ig++) 
-                                    zv[ig] += zsum * ks->apwalm(ig, atom->offset_apw + j1); 
-                        }
-                        
-                        // surface term
-                        if (sblock != ud)
-                        {
-                            int l2 = species->index[j2].l;
-                            int io2 = species->index[j2].order;
-                            
-                            for (int io1 = 0; io1 < (int)species->apw_descriptors[l2].radial_solution_descriptors.size(); io1++)
-                            {
-                                double t1 = 0.5 * pow(species->rmt, 2) * lapw_runtime.apwfr(species->nrmt - 1, 0, io1, l2, ias) * lapw_runtime.apwdfr(io2, l2, ias); 
-                                for (int ig = 0; ig < ks->ngk; ig++) 
-                                    zv[ig] += t1 * ks->apwalm(ig, atom->offset_apw + species->index(lm2, io1));
-                            }
-                        }
-        
-                        memcpy(&hapw(0, atom->offset_apw + j2), &zv[0], ks->ngk * sizeof(complex16));
-                    }
-                } 
-            }
-#endif
         }
 
         /// Setup the Hamiltonian matrix in APW+lo basis
@@ -252,7 +175,6 @@ class Band
 
             apply_hmt_to_apw<sblock>(num_gkvec_row, apw, hapw);
 
-#if 0
             // apw-apw block
             gemm<cpu>(0, 2, num_gkvec_row, num_gkvec_col, parameters_.mt_aw_basis_size(), complex16(1, 0), 
                       &hapw(0, 0), hapw.ld(), &apw(apw_col_offset, 0), apw.ld(), complex16(0, 0), &h(0, 0), h.ld());
@@ -318,18 +240,20 @@ class Band
                 for (int igkloc = 0; igkloc < num_gkvec_col; igkloc++)
                     h(irow, igkloc) += ztmp[igkloc]; 
             }
-#endif
+
             // lo-lo block
             for (int icol = num_gkvec_col; icol < apwlo_col_basis_size; icol++)
+            {
+                int ia = apwlo_col_basis_descriptors[icol].ia;
+                int lm2 = apwlo_col_basis_descriptors[icol].lm; 
+                int idxrf2 = apwlo_col_basis_descriptors[icol].idxrf; 
+
                 for (int irow = num_gkvec_row; irow < apwlo_row_basis_size; irow++)
-                    if ((apwlo_col_basis_descriptors[icol].ia == apwlo_row_basis_descriptors[irow].ia))
+                    if (ia == apwlo_row_basis_descriptors[irow].ia)
                     {
-                        int ia = apwlo_row_basis_descriptors[irow].ia;
                         Atom* atom = parameters_.atom(ia);
                         int lm1 = apwlo_row_basis_descriptors[irow].lm; 
                         int idxrf1 = apwlo_row_basis_descriptors[irow].idxrf; 
-                        int lm2 = apwlo_col_basis_descriptors[icol].lm; 
-                        int idxrf2 = apwlo_col_basis_descriptors[icol].idxrf; 
 
                         complex16 zsum(0, 0);
         
@@ -338,8 +262,8 @@ class Band
 
                         h(irow, icol) += zsum;
                     }
+            }
 
-#if 0
             Timer *t1 = new Timer("sirius::Band::set_h:it");
             for (int igkloc2 = 0; igkloc2 < num_gkvec_col; igkloc2++) // loop over columns
             {
@@ -365,28 +289,9 @@ class Band
                 }
             }
             delete t1;
-#endif            
-            if (debug_level > 0)
-            {
-                // check local orbital radial integrals
-                double diff = 0;
-                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-                {
-                    Atom* atom = parameters_.atom(ia);
-                    AtomType* type = atom->type();
-                    for (int idxrf1 = type->indexr().index_by_idxlo(0); idxrf1 < type->indexr().size(); idxrf1++)
-                        for (int idxrf2 = type->indexr().index_by_idxlo(0); idxrf2 < type->indexr().size(); idxrf2++)
-                            for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
-                                diff += fabs(atom->h_radial_integral(idxrf1, idxrf2)[lm] -
-                                             atom->h_radial_integral(idxrf2, idxrf1)[lm]);
-                }
-                if (diff > 1e-12)
-                {
-                    std::stringstream s;
-                    s << "Wrong local orbital radial integrals, difference : " << diff;
-                    warning(__FILE__, __LINE__, s, 0);
-                }
 
+            if ((debug_level > 0) && (eigen_value_solver != scalapack))
+            {
                 // check hermiticity
                 if (apwlo_row_basis_descriptors[0].igk == apwlo_col_basis_descriptors[0].igk)
                 {
@@ -513,7 +418,7 @@ class Band
                     o(igkloc1, igkloc2) += parameters_.step_function_pw(ig12);
                 }
 
-            if (debug_level > 0)
+            if ((debug_level > 0) && (eigen_value_solver != scalapack))
             {
                 if (apwlo_row_basis_descriptors[0].igk == apwlo_col_basis_descriptors[0].igk)
                 {
@@ -828,16 +733,16 @@ class Band
                       const int apwlo_col_basis_size,
                       const int num_gkvec_col,
                       const int apw_col_offset,
+                      const int apwlo_basis_size, 
 
-                      int fv_basis_size, 
-                      int num_gkvec, 
-                      int* gvec_index, 
                       mdarray<double, 2>& gkvec,
                       mdarray<complex16, 2>& matching_coefficients, 
                       PeriodicFunction<double>* effective_potential, 
                       PeriodicFunction<double>* effective_magnetic_field[3], 
                       mdarray<complex16, 2>& evecfv, 
-                      std::vector<double>& evalfv)
+                      std::vector<double>& evalfv, 
+                      int blacs_context,
+                      const std::vector<int> blacs_dims)
         {
             if (&parameters != &parameters_) error(__FILE__, __LINE__, "different set of parameters");
 
@@ -858,18 +763,43 @@ class Band
 
             //write_matrix("h_new.txt", h);
             //write_matrix("o_new.txt", o);
-            //error(__FILE__, __LINE__, "stop");
 
-            Timer *t1 = new Timer("sirius::Band::solve_fv:hegv<impl>");
-            int info = hegvx<cpu>(fv_basis_size, parameters.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), &evalfv[0], 
-                                  &evecfv(0, 0), fv_basis_size);
-            delete t1;
+            evalfv.resize(parameters.num_fv_states());
 
-            if (info)
+            if (eigen_value_solver == scalapack)
             {
-                std::stringstream s;
-                s << "hegvx returned " << info;
-                error(__FILE__, __LINE__, s);
+                mdarray<complex16, 2> z(apwlo_row_basis_size, apwlo_col_basis_size);
+                
+                int desc_h[9];
+                descinit(desc_h, apwlo_basis_size, apwlo_basis_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, 
+                         h.ld());
+
+                int desc_o[9];
+                descinit(desc_o, apwlo_basis_size, apwlo_basis_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, 
+                         o.ld());
+
+                int desc_z[9];
+                descinit(desc_z, apwlo_basis_size, apwlo_basis_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, 
+                         z.ld());
+                
+                hegvx_scalapack(apwlo_basis_size, parameters.num_fv_states(), blacs_dims[0], blacs_dims[1], -1.0, 
+                                h.get_ptr(), desc_h, o.get_ptr(), desc_o, &evalfv[0], z.get_ptr(), desc_z);
+                
+                error(__FILE__, __LINE__, "stop");
+            }
+            else
+            {
+                Timer *t1 = new Timer("sirius::Band::solve_fv:hegv<impl>");
+                int info = hegvx<cpu>(apwlo_basis_size, parameters.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), &evalfv[0], 
+                                      &evecfv(0, 0), apwlo_basis_size);
+                delete t1;
+
+                if (info)
+                {
+                    std::stringstream s;
+                    s << "hegvx returned " << info;
+                    error(__FILE__, __LINE__, s);
+                }
             }
         }
 

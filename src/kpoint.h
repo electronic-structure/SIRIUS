@@ -178,9 +178,9 @@ class kpoint
             scalar_wave_functions_.set_dimensions(scalar_wf_size(), parameters_.num_fv_states());
             scalar_wave_functions_.allocate();
             
-            gemm<cpu>(2, 0, parameters_.mt_aw_basis_size(), parameters_.num_fv_states(), num_gkvec(), complex16(1.0, 0.0), 
-                &matching_coefficients_(0, 0), num_gkvec(), &evecfv_(0, 0), apwlo_basis_size(), 
-                complex16(0.0, 0.0), &scalar_wave_functions_(0, 0), scalar_wf_size());
+            gemm<cpu>(2, 0, parameters_.mt_aw_basis_size(), parameters_.num_fv_states(), num_gkvec(), complex16(1, 0), 
+                      &matching_coefficients_(0, 0), num_gkvec(), &evecfv_(0, 0), apwlo_basis_size(), 
+                      complex16(0, 0), &scalar_wave_functions_(0, 0), scalar_wf_size());
             
             for (int j = 0; j < parameters_.num_fv_states(); j++)
             {
@@ -334,6 +334,7 @@ class kpoint
 
             // create grid of MPI ranks 
             Cblacs_gridmap(&blacs_context, map_ranks.get_ptr(), nrow, nrow, ncol);
+            //Cblacs_gridinit(&blacs_context, "C", nrow, ncol);
 
             // check the grid
             int irow, icol;
@@ -459,8 +460,6 @@ class kpoint
             num_gkvec_col_ = 0;
             for (int i = 0; i < apwlo_col_basis_size_; i++)
                 if (apwlo_basis_descriptors_loc_[apwlo_row_basis_size_ + i].igk != -1) num_gkvec_col_++;
-
-            std::cout << num_gkvec_row_ << " " << num_gkvec_col_ << std::endl;
         }
 
     public:
@@ -511,9 +510,8 @@ class kpoint
 
             generate_matching_coefficients();
 
-
-
             if (eigen_value_solver == scalapack)
+            {
                 band->solve_fv(parameters_, 
                                &apwlo_basis_descriptors_loc_[0], 
                                apwlo_row_basis_size_, 
@@ -522,10 +520,12 @@ class kpoint
                                apwlo_col_basis_size_, 
                                num_gkvec_col(),
                                num_gkvec_row(),
-                               apwlo_basis_size(), num_gkvec(), &gvec_index_[0], gkvec_, 
+                               apwlo_basis_size(), gkvec_, 
                                matching_coefficients_, effective_potential, effective_magnetic_field, evecfv_,
-                               evalfv_);
+                               evalfv_, blacs_context, mpi_grid_->dimensions());
+            }
             else
+            {
                 band->solve_fv(parameters_, 
                                &apwlo_basis_descriptors_[0], 
                                apwlo_basis_size(), 
@@ -534,11 +534,10 @@ class kpoint
                                apwlo_basis_size(), 
                                num_gkvec(),
                                0,
-                               apwlo_basis_size(), num_gkvec(), &gvec_index_[0], gkvec_, 
+                               apwlo_basis_size(), gkvec_, 
                                matching_coefficients_, effective_potential, effective_magnetic_field, evecfv_,
-                               evalfv_);
-
-            
+                               evalfv_, 0, std::vector<int>(0));
+            }
             
             generate_scalar_wave_functions();
             
