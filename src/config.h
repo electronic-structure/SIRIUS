@@ -21,4 +21,6 @@ const eigen_value_solver_t eigen_value_solver = scalapack;
 
 const int debug_level = 1;
 
+const int verbosity_level = 1;
+
 #endif // __CONFIG_H__

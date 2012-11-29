@@ -725,24 +725,25 @@ class Band
             \param [in] num_gkvec Total number of G+k vectors
 
         */
-        void solve_fv(Global& parameters,
+        void solve_fv(Global&                       parameters,
                       const apwlo_basis_descriptor* apwlo_row_basis_descriptors,
-                      const int apwlo_row_basis_size,
-                      const int num_gkvec_row,
+                      const int                     apwlo_row_basis_size,
+                      const int                     num_gkvec_row,
                       const apwlo_basis_descriptor* apwlo_col_basis_descriptors,
-                      const int apwlo_col_basis_size,
-                      const int num_gkvec_col,
-                      const int apw_col_offset,
-                      const int apwlo_basis_size, 
-
-                      mdarray<double, 2>& gkvec,
-                      mdarray<complex16, 2>& matching_coefficients, 
-                      PeriodicFunction<double>* effective_potential, 
-                      PeriodicFunction<double>* effective_magnetic_field[3], 
-                      mdarray<complex16, 2>& evecfv, 
-                      std::vector<double>& evalfv, 
-                      int blacs_context,
-                      const std::vector<int> blacs_dims)
+                      const int                     apwlo_col_basis_size,
+                      const int                     num_gkvec_col,
+                      const int                     apw_col_offset,
+                      const int                     apwlo_basis_size, 
+                      mdarray<double, 2>&           gkvec,
+                      mdarray<complex16, 2>&        matching_coefficients, 
+                      PeriodicFunction<double>*     effective_potential, 
+                      PeriodicFunction<double>*     effective_magnetic_field[3], 
+                      mdarray<complex16, 2>&        evecfv, 
+                      std::vector<double>&          evalfv, 
+                      int                           blacs_context,
+                      const std::vector<int>        blacs_dims,
+                      mdarray<int, 2>&              scalar_wf_col_dist,
+                      mdarray<complex16, 2>&        scalar_wave_functions_)
         {
             if (&parameters != &parameters_) error(__FILE__, __LINE__, "different set of parameters");
 
@@ -784,6 +785,34 @@ class Band
                 
                 hegvx_scalapack(apwlo_basis_size, parameters.num_fv_states(), blacs_dims[0], blacs_dims[1], -1.0, 
                                 h.get_ptr(), desc_h, o.get_ptr(), desc_o, &evalfv[0], z.get_ptr(), desc_z);
+
+
+
+
+#if 0
+                evecfv.set_dimensions(apwlo_basis_size(), (int)scalar_wf_col_dist.size());
+                evecfv.allocate();
+                evecfv.zero();
+
+                scalar_wave_functions_.set_dimensions(scalar_wf_size(), (int)scalar_wf_col_dist.size());
+                scalar_wave_functions_.allocate();
+
+
+                gemm<cpu>(2, 0, parameters_.mt_aw_basis_size(), (int)scalar_wf_col_dist.size(), num_gkvec_row,
+                          complex16(1, 0), &matching_coefficients(0, 0), matching_coefficients.ld(),
+                          &z(0, 0), z.ld(), complex16(0, 0), &scalar_wave_functions(0, 0), scalar_wave_functions.ld());
+
+                for (int j = 0; j < parameters_.num_fv_states(); j++)
+                {
+                    move_apw_blocks(&scalar_wave_functions_(0, j));
+        
+                    if (parameters_.mt_lo_basis_size() > 0) 
+                        copy_lo_blocks(&scalar_wave_functions_(0, j), &evecfv_(num_gkvec(), j));
+        
+                    copy_pw_block(num_gkvec(), &scalar_wave_functions_(parameters_.mt_basis_size(), j), &evecfv_(0, j));
+                }
+
+#endif
                 
                 error(__FILE__, __LINE__, "stop");
             }
