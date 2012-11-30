@@ -81,10 +81,13 @@ class kpoint
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_col_;
 
         /// table of column distribution of first-variational states for each MPI rank
-        mdarray<int, 2> fv_states_col_; 
+        mdarray<int, 2> fv_states_distribution_col_; 
+
+        /// number of first-variational states for distributed along columns for a given MPI rank
+        int num_fv_states_col_;
 
         /// table of row distribution of first-variational states for each MPI rank
-        mdarray<int, 2> fv_states_row_; 
+        mdarray<int, 2> fv_states_distribution_row_; 
 
         /// Generate plane-wave matching coefficents for the radial solutions 
         void generate_matching_coefficients()
@@ -93,7 +96,7 @@ class kpoint
 
             std::vector<complex16> zil(parameters_.lmax_apw() + 1);
             for (int l = 0; l <= parameters_.lmax_apw(); l++)
-                zil[l] = pow(complex16(0.0, 1.0), l);
+                zil[l] = pow(complex16(0, 1), l);
       
             matching_coefficients_.set_dimensions(num_gkvec_loc(), parameters_.mt_aw_basis_size());
             matching_coefficients_.allocate();
@@ -372,7 +375,7 @@ class kpoint
             // G+k basis functions
             for (int igk = 0; igk < num_gkvec(); igk++)
             {
-                apwlobd.global_index = (int)apwlo_basis_descriptors_.size();
+                //apwlobd.global_index = (int)apwlo_basis_descriptors_.size();
                 apwlobd.igk = igk;
                 apwlobd.ig = gvec_index_[igk];
                 apwlobd.ia = -1;
@@ -397,7 +400,7 @@ class kpoint
                     int lm = type->indexb(lo_index_offset + j).lm;
                     int order = type->indexb(lo_index_offset + j).order;
                     int idxrf = type->indexb(lo_index_offset + j).idxrf;
-                    apwlobd.global_index = (int)apwlo_basis_descriptors_.size();
+                    //apwlobd.global_index = (int)apwlo_basis_descriptors_.size();
                     apwlobd.igk = -1;
                     apwlobd.ig = -1;
                     apwlobd.ia = ia;
@@ -449,11 +452,11 @@ class kpoint
 
             // get the number of row- and column- G+k-vectors
             num_gkvec_row_ = 0;
-            for (int i = 0; i < apwlo_row_basis_size(); i++)
+            for (int i = 0; i < apwlo_basis_size_row(); i++)
                 if (apwlo_basis_descriptors_row_[i].igk != -1) num_gkvec_row_++;
             
             num_gkvec_col_ = 0;
-            for (int i = 0; i < apwlo_col_basis_size(); i++)
+            for (int i = 0; i < apwlo_basis_size_col(); i++)
                 if (apwlo_basis_descriptors_col_[i].igk != -1) num_gkvec_col_++;
 
         }
@@ -471,8 +474,8 @@ class kpoint
                                 std::min(1, nblocks_col % cart_dims[1])); // some ranks get extra block
             max_size_col *= scalapack_nb;
             
-            fv_states_col_.set_dimensions(max_size_col, cart_dims[1]);
-            fv_states_col_.allocate();
+            fv_states_distribution_col_.set_dimensions(max_size_col, cart_dims[1]);
+            fv_states_distribution_col_.allocate();
             
             int nblocks_row = (parameters_.num_fv_states() / scalapack_nb) +           // number of full blocks
                               std::min(1, parameters_.num_fv_states() % scalapack_nb); // extra partial block
@@ -481,8 +484,8 @@ class kpoint
                                 std::min(1, nblocks_col % cart_dims[0])); // some ranks get extra block
             max_size_row *= scalapack_nb;
 
-            fv_states_row_.set_dimensions(max_size_row, cart_dims[0]);
-            fv_states_row_.allocate();
+            fv_states_distribution_row_.set_dimensions(max_size_row, cart_dims[0]);
+            fv_states_distribution_row_.allocate();
 
             // partition first variational states along columns 
             int irank_col = 0;
@@ -498,9 +501,13 @@ class kpoint
                 }
             }
 
-            for (int i1 = 0; i1 < fv_states_col_.size(1); i1++)
-                for (int i0 = 0; i0 < fv_states_col_.size(0); i0++)
-                    fv_states_col_(i0, i1) = (i0 < (int)ivcol[i1].size()) ? ivcol[i1][i0] : -1;
+            for (int i1 = 0; i1 < fv_states_distribution_col_.size(1); i1++)
+                for (int i0 = 0; i0 < fv_states_distribution_col_.size(0); i0++)
+                    fv_states_distribution_col_(i0, i1) = (i0 < (int)ivcol[i1].size()) ? ivcol[i1][i0] : -1;
+
+            num_fv_states_col_ = 0;
+            for (int i0 = 0; i0 < fv_states_distribution_col_.size(0); i0++)
+                if (fv_states_distribution_col_(i0, cart_coord[1]) >= 0) num_fv_states_col_++;
             
             // partition first variational states along rows
             int irank_row = 0;
@@ -516,37 +523,32 @@ class kpoint
                 }
             }
 
-            for (int i1 = 0; i1 < fv_states_row_.size(1); i1++)
-                for (int i0 = 0; i0 < fv_states_row_.size(0); i0++)
-                    fv_states_row_(i0, i1) = (i0 < (int)ivrow[i1].size()) ? ivrow[i1][i0] : -1;
+            for (int i1 = 0; i1 < fv_states_distribution_row_.size(1); i1++)
+                for (int i0 = 0; i0 < fv_states_distribution_row_.size(0); i0++)
+                    fv_states_distribution_row_(i0, i1) = (i0 < (int)ivrow[i1].size()) ? ivrow[i1][i0] : -1;
 
             if (verbosity_level > 0 && mpi_grid_->root())
             {
                 printf("\n");
                 printf("table of column distribution of first-variational states\n");
                 printf("columns of the table correspond to MPI ranks\n");
-                for (int i0 = 0; i0 < fv_states_col_.size(0); i0++)
+                for (int i0 = 0; i0 < fv_states_distribution_col_.size(0); i0++)
                 {
-                    for (int i1 = 0; i1 < fv_states_col_.size(1); i1++)
-                        printf("%6i", fv_states_col_(i0, i1));
+                    for (int i1 = 0; i1 < fv_states_distribution_col_.size(1); i1++)
+                        printf("%6i", fv_states_distribution_col_(i0, i1));
                     printf("\n");
                 }
                 
                 printf("\n");
                 printf("table of row distribution of first-variational states\n");
                 printf("columns of the table correspond to MPI ranks\n");
-                for (int i0 = 0; i0 < fv_states_row_.size(0); i0++)
+                for (int i0 = 0; i0 < fv_states_distribution_row_.size(0); i0++)
                 {
-                    for (int i1 = 0; i1 < fv_states_row_.size(1); i1++)
-                        printf("%6i", fv_states_row_(i0, i1));
+                    for (int i1 = 0; i1 < fv_states_distribution_row_.size(1); i1++)
+                        printf("%6i", fv_states_distribution_row_(i0, i1));
                     printf("\n");
                 }
             }
-
-            error(__FILE__, __LINE__, "stop");
-
-
-
         }
 
 #if 0        
@@ -822,25 +824,36 @@ class kpoint
             assert(band != NULL);
             
             Timer t("sirius::kpoint::find_eigen_states");
-            
 
             generate_matching_coefficients();
 
             if (eigen_value_solver == scalapack)
             {
                 band->solve_fv(parameters_, 
-                               &apwlo_basis_descriptors_row_[0], 
-                               apwlo_row_basis_size(), 
+                               blacs_context_, 
+                               mpi_grid_->dimensions(),
+                               apwlo_basis_size(),
+                               num_gkvec(),
+                               mtgk_size(),
+                               apwlo_basis_descriptors_row_, 
+                               apwlo_basis_size_row(), 
                                num_gkvec_row(),
-                               &apwlo_basis_descriptors_col_[0], 
-                               apwlo_col_basis_size(), 
+                               apwlo_basis_descriptors_col_, 
+                               apwlo_basis_size_col(), 
                                num_gkvec_col(),
                                num_gkvec_row(),
-                               apwlo_basis_size(), gkvec_, 
-                               matching_coefficients_, effective_potential, effective_magnetic_field, 
+                               matching_coefficients_, 
+                               gkvec_, 
+                               effective_potential, 
+                               effective_magnetic_field, 
+                               num_fv_states_col_,
+                               fv_states_distribution_col_,
+                               fv_eigen_values_,
                                fv_eigen_vectors_,
-                               fv_eigen_values_, blacs_context_, mpi_grid_->dimensions(), fv_states_col_, 
                                fv_states_);
+
+                for (int j = 0; j < num_fv_states_col_; j++)
+                    Platform::allreduce(&fv_states_(0, j), mtgk_size(), mpi_grid_->communicator(1 << 0));
             }
             else
             {
@@ -848,19 +861,19 @@ class kpoint
                 //fv_eigen_vectors_.set_dimensions(apwlo_basis_size(), parameters_.num_fv_states());
                 //fv_eigen_vectors_.allocate();
 
-                band->solve_fv(parameters_, 
-                               &apwlo_basis_descriptors_[0], 
-                               apwlo_basis_size(), 
-                               num_gkvec(),
-                               &apwlo_basis_descriptors_[0], 
-                               apwlo_basis_size(), 
-                               num_gkvec(),
-                               0,
-                               apwlo_basis_size(), gkvec_, 
-                               matching_coefficients_, effective_potential, effective_magnetic_field, 
-                               fv_eigen_vectors_,
-                               fv_eigen_values_, blacs_context_, mpi_grid_->dimensions(), fv_states_col_, 
-                               fv_states_);
+                //band->solve_fv(parameters_, 
+                //               &apwlo_basis_descriptors_[0], 
+                //               apwlo_basis_size(), 
+                //               num_gkvec(),
+                //               &apwlo_basis_descriptors_[0], 
+                //               apwlo_basis_size(), 
+                //               num_gkvec(),
+                //               0,
+                //               apwlo_basis_size(), gkvec_, 
+                //               matching_coefficients_, effective_potential, effective_magnetic_field, 
+                //               fv_eigen_vectors_,
+                //               fv_eigen_values_, blacs_context_, mpi_grid_->dimensions(), fv_states_col_, 
+                //               fv_states_);
             }
             
             //generate_scalar_wave_functions();
@@ -994,13 +1007,13 @@ class kpoint
         }
 
         /// number of APW+lo basis functions distributed along rows of MPI grid
-        inline int apwlo_row_basis_size()
+        inline int apwlo_basis_size_row()
         {
             return (int)apwlo_basis_descriptors_row_.size();
         }
 
         /// number of APW+lo basis functions distributed along columns of MPI grid
-        inline int apwlo_col_basis_size()
+        inline int apwlo_basis_size_col()
         {
             return (int)apwlo_basis_descriptors_col_.size();
         }

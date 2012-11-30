@@ -41,7 +41,7 @@ namespace sirius
 */
 struct apwlo_basis_descriptor
 {
-    int global_index;
+    //int global_index;
     int igk;
     int ig;
     int ia;
@@ -157,17 +157,17 @@ class Band
             \f]
         */
         template <spin_block sblock> 
-        void set_fv_h(const apwlo_basis_descriptor* apwlo_row_basis_descriptors,
-                      const int                     apwlo_row_basis_size,
-                      const int                     num_gkvec_row,
-                      const apwlo_basis_descriptor* apwlo_col_basis_descriptors,
-                      const int                     apwlo_col_basis_size,
-                      const int                     num_gkvec_col,
-                      const int                     apw_col_offset,
-                      mdarray<double, 2>&           gkvec,
-                      mdarray<complex16, 2>&        apw, 
-                      PeriodicFunction<double>*     effective_potential,
-                      mdarray<complex16, 2>&        h)
+        void set_fv_h(const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row,
+                      const int                                  apwlo_basis_size_row,
+                      const int                                  num_gkvec_row,
+                      const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_col,
+                      const int                                  apwlo_basis_size_col,
+                      const int                                  num_gkvec_col,
+                      const int                                  apw_offset_col,
+                      mdarray<double, 2>&                        gkvec,
+                      mdarray<complex16, 2>&                     apw, 
+                      PeriodicFunction<double>*                  effective_potential,
+                      mdarray<complex16, 2>&                     h)
         {
             Timer t("sirius::Band::set_h");
 
@@ -177,17 +177,17 @@ class Band
 
             // apw-apw block
             gemm<cpu>(0, 2, num_gkvec_row, num_gkvec_col, parameters_.mt_aw_basis_size(), complex16(1, 0), 
-                      &hapw(0, 0), hapw.ld(), &apw(apw_col_offset, 0), apw.ld(), complex16(0, 0), &h(0, 0), h.ld());
+                      &hapw(0, 0), hapw.ld(), &apw(apw_offset_col, 0), apw.ld(), complex16(0, 0), &h(0, 0), h.ld());
 
             // apw-lo block
-            for (int icol = num_gkvec_col; icol < apwlo_col_basis_size; icol++)
+            for (int icol = num_gkvec_col; icol < apwlo_basis_size_col; icol++)
             {
-                int ia = apwlo_col_basis_descriptors[icol].ia;
+                int ia = apwlo_basis_descriptors_col[icol].ia;
                 Atom* atom = parameters_.atom(ia);
                 AtomType* type = atom->type();
 
-                int lm = apwlo_col_basis_descriptors[icol].lm;
-                int idxrf = apwlo_col_basis_descriptors[icol].idxrf;
+                int lm = apwlo_basis_descriptors_col[icol].lm;
+                int idxrf = apwlo_basis_descriptors_col[icol].idxrf;
                 
                 for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++) 
                 {
@@ -209,14 +209,14 @@ class Band
 
             // lo-apw block
             std::vector<complex16> ztmp(num_gkvec_col);
-            for (int irow = num_gkvec_row; irow < apwlo_row_basis_size; irow++)
+            for (int irow = num_gkvec_row; irow < apwlo_basis_size_row; irow++)
             {
-                int ia = apwlo_row_basis_descriptors[irow].ia;
+                int ia = apwlo_basis_descriptors_row[irow].ia;
                 Atom* atom = parameters_.atom(ia);
                 AtomType* type = atom->type();
 
-                int lm = apwlo_row_basis_descriptors[irow].lm;
-                int idxrf = apwlo_row_basis_descriptors[irow].idxrf;
+                int lm = apwlo_basis_descriptors_row[irow].lm;
+                int idxrf = apwlo_basis_descriptors_row[irow].idxrf;
 
                 memset(&ztmp[0], 0, num_gkvec_col * sizeof(complex16));
                 
@@ -233,7 +233,7 @@ class Band
                     if (abs(zsum) > 1e-14)
                     {
                         for (int igkloc = 0; igkloc < num_gkvec_col; igkloc++)
-                            ztmp[igkloc] += zsum * conj(apw(apw_col_offset + igkloc, atom->offset_aw() + j1));
+                            ztmp[igkloc] += zsum * conj(apw(apw_offset_col + igkloc, atom->offset_aw() + j1));
                     }
                 }
 
@@ -242,18 +242,18 @@ class Band
             }
 
             // lo-lo block
-            for (int icol = num_gkvec_col; icol < apwlo_col_basis_size; icol++)
+            for (int icol = num_gkvec_col; icol < apwlo_basis_size_col; icol++)
             {
-                int ia = apwlo_col_basis_descriptors[icol].ia;
-                int lm2 = apwlo_col_basis_descriptors[icol].lm; 
-                int idxrf2 = apwlo_col_basis_descriptors[icol].idxrf; 
+                int ia = apwlo_basis_descriptors_col[icol].ia;
+                int lm2 = apwlo_basis_descriptors_col[icol].lm; 
+                int idxrf2 = apwlo_basis_descriptors_col[icol].idxrf; 
 
-                for (int irow = num_gkvec_row; irow < apwlo_row_basis_size; irow++)
-                    if (ia == apwlo_row_basis_descriptors[irow].ia)
+                for (int irow = num_gkvec_row; irow < apwlo_basis_size_row; irow++)
+                    if (ia == apwlo_basis_descriptors_row[irow].ia)
                     {
                         Atom* atom = parameters_.atom(ia);
-                        int lm1 = apwlo_row_basis_descriptors[irow].lm; 
-                        int idxrf1 = apwlo_row_basis_descriptors[irow].idxrf; 
+                        int lm1 = apwlo_basis_descriptors_row[irow].lm; 
+                        int idxrf1 = apwlo_basis_descriptors_row[irow].idxrf; 
 
                         complex16 zsum(0, 0);
         
@@ -269,16 +269,16 @@ class Band
             {
                 double v2[3];
                 double v2c[3];
-                for (int x = 0; x < 3; x++) v2[x] = gkvec(x, apwlo_col_basis_descriptors[igkloc2].igk);
+                for (int x = 0; x < 3; x++) v2[x] = gkvec(x, apwlo_basis_descriptors_col[igkloc2].igk);
                 parameters_.get_coordinates<cartesian, reciprocal>(v2, v2c);
 
                 for (int igkloc1 = 0; igkloc1 < num_gkvec_row; igkloc1++) // for each column loop over rows
                 {
-                    int ig12 = parameters_.index_g12(apwlo_row_basis_descriptors[igkloc1].ig,
-                                                     apwlo_col_basis_descriptors[igkloc2].ig);
+                    int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row[igkloc1].ig,
+                                                     apwlo_basis_descriptors_col[igkloc2].ig);
                     double v1[3];
                     double v1c[3];
-                    for (int x = 0; x < 3; x++) v1[x] = gkvec(x, apwlo_row_basis_descriptors[igkloc1].igk);
+                    for (int x = 0; x < 3; x++) v1[x] = gkvec(x, apwlo_basis_descriptors_row[igkloc1].igk);
                     parameters_.get_coordinates<cartesian, reciprocal>(v1, v1c);
                     
                     double t1 = 0.5 * scalar_product(v1c, v2c);
@@ -293,9 +293,9 @@ class Band
             if ((debug_level > 0) && (eigen_value_solver != scalapack))
             {
                 // check hermiticity
-                if (apwlo_row_basis_descriptors[0].igk == apwlo_col_basis_descriptors[0].igk)
+                if (apwlo_basis_descriptors_row[0].igk == apwlo_basis_descriptors_col[0].igk)
                 {
-                    int n = std::min(apwlo_col_basis_size, apwlo_row_basis_size);
+                    int n = std::min(apwlo_basis_size_col, apwlo_basis_size_row);
 
                     for (int i = 0; i < n; i++)
                         for (int j = 0; j < n; j++)
@@ -343,15 +343,15 @@ class Band
             \f]
 
         */
-        void set_fv_o(const apwlo_basis_descriptor* apwlo_row_basis_descriptors,
-                      const int                     apwlo_row_basis_size,
-                      const int                     num_gkvec_row,
-                      const apwlo_basis_descriptor* apwlo_col_basis_descriptors,
-                      const int                     apwlo_col_basis_size,
-                      const int                     num_gkvec_col,
-                      const int                     apw_col_offset,
-                      mdarray<complex16, 2>&        apw, 
-                      mdarray<complex16, 2>&        o)
+        void set_fv_o(const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row,
+                      const int                                  apwlo_basis_size_row,
+                      const int                                  num_gkvec_row,
+                      const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_col,
+                      const int                                  apwlo_basis_size_col,
+                      const int                                  num_gkvec_col,
+                      const int                                  apw_col_offset,
+                      mdarray<complex16, 2>&                     apw, 
+                      mdarray<complex16, 2>&                     o)
         {
             Timer t("sirius::Band::set_o");
             
@@ -362,15 +362,15 @@ class Band
             // TODO: multithread 
 
             // apw-lo block 
-            for (int icol = num_gkvec_col; icol < apwlo_col_basis_size; icol++)
+            for (int icol = num_gkvec_col; icol < apwlo_basis_size_col; icol++)
             {
-                int ia = apwlo_col_basis_descriptors[icol].ia;
+                int ia = apwlo_basis_descriptors_col[icol].ia;
                 Atom* atom = parameters_.atom(ia);
                 AtomType* type = atom->type();
 
-                int l = apwlo_col_basis_descriptors[icol].l;
-                int lm = apwlo_col_basis_descriptors[icol].lm;
-                int order = apwlo_col_basis_descriptors[icol].order;
+                int l = apwlo_basis_descriptors_col[icol].l;
+                int lm = apwlo_basis_descriptors_col[icol].lm;
+                int order = apwlo_basis_descriptors_col[icol].order;
 
                 for (int order1 = 0; order1 < (int)type->aw_descriptor(l).size(); order1++)
                     for (int igkloc = 0; igkloc < num_gkvec_row; igkloc++)
@@ -379,15 +379,15 @@ class Band
             }
 
             // lo-apw block 
-            for (int irow = num_gkvec_row; irow < apwlo_row_basis_size; irow++)
+            for (int irow = num_gkvec_row; irow < apwlo_basis_size_row; irow++)
             {
-                int ia = apwlo_row_basis_descriptors[irow].ia;
+                int ia = apwlo_basis_descriptors_row[irow].ia;
                 Atom* atom = parameters_.atom(ia);
                 AtomType* type = atom->type();
 
-                int l = apwlo_row_basis_descriptors[irow].l;
-                int lm = apwlo_row_basis_descriptors[irow].lm;
-                int order = apwlo_row_basis_descriptors[irow].order;
+                int l = apwlo_basis_descriptors_row[irow].l;
+                int lm = apwlo_basis_descriptors_row[irow].lm;
+                int order = apwlo_basis_descriptors_row[irow].order;
 
                 for (int order1 = 0; order1 < (int)type->aw_descriptor(l).size(); order1++)
                     for (int igkloc = 0; igkloc < num_gkvec_col; igkloc++)
@@ -396,16 +396,16 @@ class Band
             }
 
             // lo-lo block
-            for (int irow = num_gkvec_row; irow < apwlo_row_basis_size; irow++)
-                for (int icol = num_gkvec_col; icol < apwlo_col_basis_size; icol++)
-                    if ((apwlo_col_basis_descriptors[icol].ia == apwlo_row_basis_descriptors[irow].ia) &&
-                        (apwlo_col_basis_descriptors[icol].lm == apwlo_row_basis_descriptors[irow].lm))
+            for (int irow = num_gkvec_row; irow < apwlo_basis_size_row; irow++)
+                for (int icol = num_gkvec_col; icol < apwlo_basis_size_col; icol++)
+                    if ((apwlo_basis_descriptors_col[icol].ia == apwlo_basis_descriptors_row[irow].ia) &&
+                        (apwlo_basis_descriptors_col[icol].lm == apwlo_basis_descriptors_row[irow].lm))
                     {
-                        int ia = apwlo_row_basis_descriptors[irow].ia;
+                        int ia = apwlo_basis_descriptors_row[irow].ia;
                         Atom* atom = parameters_.atom(ia);
-                        int l = apwlo_row_basis_descriptors[irow].l;
-                        int order1 = apwlo_row_basis_descriptors[irow].order; 
-                        int order2 = apwlo_col_basis_descriptors[icol].order; 
+                        int l = apwlo_basis_descriptors_row[irow].l;
+                        int order1 = apwlo_basis_descriptors_row[irow].order; 
+                        int order2 = apwlo_basis_descriptors_col[icol].order; 
                         o(irow, icol) += atom->symmetry_class()->o_radial_integral(l, order1, order2);
                     }
                     
@@ -413,16 +413,16 @@ class Band
             for (int igkloc2 = 0; igkloc2 < num_gkvec_col; igkloc2++) // loop over columns
                 for (int igkloc1 = 0; igkloc1 < num_gkvec_row; igkloc1++) // for each column loop over rows
                 {
-                    int ig12 = parameters_.index_g12(apwlo_row_basis_descriptors[igkloc1].ig,
-                                                     apwlo_col_basis_descriptors[igkloc2].ig);
+                    int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row[igkloc1].ig,
+                                                     apwlo_basis_descriptors_col[igkloc2].ig);
                     o(igkloc1, igkloc2) += parameters_.step_function_pw(ig12);
                 }
 
             if ((debug_level > 0) && (eigen_value_solver != scalapack))
             {
-                if (apwlo_row_basis_descriptors[0].igk == apwlo_col_basis_descriptors[0].igk)
+                if (apwlo_basis_descriptors_row[0].igk == apwlo_basis_descriptors_col[0].igk)
                 {
-                    int n = std::min(apwlo_col_basis_size, apwlo_row_basis_size);
+                    int n = std::min(apwlo_basis_size_col, apwlo_basis_size_row);
 
                     for (int i = 0; i < n; i++)
                         for (int j = 0; j < n; j++)
@@ -708,6 +708,44 @@ class Band
             }
         }
  
+        inline void move_apw_blocks(complex16 *vec)
+        {
+            for (int ia = parameters_.num_atoms() - 1; ia > 0; ia--)
+            {
+                int final_block_offset = parameters_.atom(ia)->offset_wf();
+                int initial_block_offset = parameters_.atom(ia)->offset_aw();
+                int block_size = parameters_.atom(ia)->type()->mt_aw_basis_size();
+        
+                memmove(&vec[final_block_offset], &vec[initial_block_offset], block_size * sizeof(complex16));
+
+                memset(&vec[final_block_offset + block_size], 0, 
+                       parameters_.atom(ia)->type()->mt_lo_basis_size() * sizeof(complex16));
+            }
+        }
+        
+        inline void copy_lo_blocks(const int apwlo_basis_size_row, const int num_gkvec_row, 
+                                   const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
+                                   const complex16* z, complex16 *vec)
+        {
+            for (int j = num_gkvec_row; j < apwlo_basis_size_row; j++)
+            {
+                int ia = apwlo_basis_descriptors_row[j].ia;
+                int lm = apwlo_basis_descriptors_row[j].lm;
+                int order = apwlo_basis_descriptors_row[j].order;
+                vec[parameters_.atom(ia)->offset_wf() + parameters_.atom(ia)->type()->indexb_by_lm_order(lm, order)] = z[j];
+            }
+        }
+        
+        inline void copy_pw_block(const int num_gkvec, const int num_gkvec_row, 
+                                  const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
+                                  const complex16* z, complex16 *vec)
+        {
+            memset(vec, 0, num_gkvec * sizeof(complex16));
+
+            for (int j = 0; j < num_gkvec_row; j++)
+                vec[apwlo_basis_descriptors_row[j].igk] = z[j];
+        }
+
     public:
         
         /// Constructor
@@ -725,51 +763,55 @@ class Band
             \param [in] num_gkvec Total number of G+k vectors
 
         */
-        void solve_fv(Global&                       parameters,
-                      const apwlo_basis_descriptor* apwlo_row_basis_descriptors,
-                      const int                     apwlo_row_basis_size,
-                      const int                     num_gkvec_row,
-                      const apwlo_basis_descriptor* apwlo_col_basis_descriptors,
-                      const int                     apwlo_col_basis_size,
-                      const int                     num_gkvec_col,
-                      const int                     apw_col_offset,
-                      const int                     apwlo_basis_size, 
-                      mdarray<double, 2>&           gkvec,
-                      mdarray<complex16, 2>&        matching_coefficients, 
-                      PeriodicFunction<double>*     effective_potential, 
-                      PeriodicFunction<double>*     effective_magnetic_field[3], 
-                      mdarray<complex16, 2>&        evecfv, 
-                      std::vector<double>&          evalfv, 
-                      int                           blacs_context,
-                      const std::vector<int>        blacs_dims,
-                      mdarray<int, 2>&              scalar_wf_col_dist,
-                      mdarray<complex16, 2>&        scalar_wave_functions_)
+        void solve_fv(Global&                                    parameters,
+                      const int                                  blacs_context,
+                      const std::vector<int>                     blacs_dims,
+                      const int                                  apwlo_basis_size, 
+                      const int                                  num_gkvec,
+                      const int                                  mtgk_size,
+                      const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row,
+                      const int                                  apwlo_basis_size_row,
+                      const int                                  num_gkvec_row,
+                      const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_col,
+                      const int                                  apwlo_basis_size_col,
+                      const int                                  num_gkvec_col,
+                      const int                                  apw_offset_col,
+                      mdarray<complex16, 2>&                     matching_coefficients, 
+                      mdarray<double, 2>&                        gkvec,
+                      PeriodicFunction<double>*                  effective_potential, 
+                      PeriodicFunction<double>*                  effective_magnetic_field[3], 
+                      const int                                  num_fv_states_col,
+                      mdarray<int, 2>&                           fv_states_distribution_col,
+                      std::vector<double>&                       fv_eigen_values, 
+                      mdarray<complex16, 2>&                     fv_eigen_vectors, 
+                      mdarray<complex16, 2>&                     fv_states)
         {
             if (&parameters != &parameters_) error(__FILE__, __LINE__, "different set of parameters");
 
             Timer t("sirius::Band::solve_fv");
 
-            mdarray<complex16, 2> h(apwlo_row_basis_size, apwlo_col_basis_size);
-            mdarray<complex16, 2> o(apwlo_row_basis_size, apwlo_col_basis_size);
+            mdarray<complex16, 2> h(apwlo_basis_size_row, apwlo_basis_size_col);
+            mdarray<complex16, 2> o(apwlo_basis_size_row, apwlo_basis_size_col);
 
             o.zero();
-            set_fv_o(apwlo_row_basis_descriptors, apwlo_row_basis_size, num_gkvec_row, 
-                     apwlo_col_basis_descriptors, apwlo_col_basis_size, num_gkvec_col, 
-                     apw_col_offset, matching_coefficients, o);
+            set_fv_o(apwlo_basis_descriptors_row, apwlo_basis_size_row, num_gkvec_row, 
+                     apwlo_basis_descriptors_col, apwlo_basis_size_col, num_gkvec_col, 
+                     apw_offset_col, matching_coefficients, o);
 
             h.zero();
-            set_fv_h<nm>(apwlo_row_basis_descriptors, apwlo_row_basis_size, num_gkvec_row,
-                         apwlo_col_basis_descriptors, apwlo_col_basis_size, num_gkvec_col,
-                         apw_col_offset, gkvec, matching_coefficients, effective_potential, h);
+            set_fv_h<nm>(apwlo_basis_descriptors_row, apwlo_basis_size_row, num_gkvec_row,
+                         apwlo_basis_descriptors_col, apwlo_basis_size_col, num_gkvec_col,
+                         apw_offset_col, gkvec, matching_coefficients, effective_potential, h);
 
             //write_matrix("h_new.txt", h);
             //write_matrix("o_new.txt", o);
 
-            evalfv.resize(parameters.num_fv_states());
+            fv_eigen_values.resize(parameters.num_fv_states());
 
             if (eigen_value_solver == scalapack)
             {
-                mdarray<complex16, 2> z(apwlo_row_basis_size, apwlo_col_basis_size);
+                //mdarray<complex16, 2> z(apwlo_basis_size_row, apwlo_basis_size_col);
+                mdarray<complex16, 2> z(apwlo_basis_size_row, num_fv_states_col);
                 
                 int desc_h[9];
                 descinit(desc_h, apwlo_basis_size, apwlo_basis_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, 
@@ -784,43 +826,39 @@ class Band
                          z.ld());
                 
                 hegvx_scalapack(apwlo_basis_size, parameters.num_fv_states(), blacs_dims[0], blacs_dims[1], -1.0, 
-                                h.get_ptr(), desc_h, o.get_ptr(), desc_o, &evalfv[0], z.get_ptr(), desc_z);
+                                h.get_ptr(), desc_h, o.get_ptr(), desc_o, &fv_eigen_values[0], z.get_ptr(), desc_z);
 
 
+                //fv_eigen_vectors.set_dimensions(apwlo_basis_size, (int)scalar_wf_col_dist.size());
+                //evecfv.allocate();
+                //evecfv.zero();
 
+                fv_states.set_dimensions(mtgk_size, num_fv_states_col);
+                fv_states.allocate();
 
-#if 0
-                evecfv.set_dimensions(apwlo_basis_size(), (int)scalar_wf_col_dist.size());
-                evecfv.allocate();
-                evecfv.zero();
-
-                scalar_wave_functions_.set_dimensions(scalar_wf_size(), (int)scalar_wf_col_dist.size());
-                scalar_wave_functions_.allocate();
-
-
-                gemm<cpu>(2, 0, parameters_.mt_aw_basis_size(), (int)scalar_wf_col_dist.size(), num_gkvec_row,
+                gemm<cpu>(2, 0, parameters_.mt_aw_basis_size(), num_fv_states_col, num_gkvec_row,
                           complex16(1, 0), &matching_coefficients(0, 0), matching_coefficients.ld(),
-                          &z(0, 0), z.ld(), complex16(0, 0), &scalar_wave_functions(0, 0), scalar_wave_functions.ld());
+                          &z(0, 0), z.ld(), complex16(0, 0), &fv_states(0, 0), fv_states.ld());
 
-                for (int j = 0; j < parameters_.num_fv_states(); j++)
+                for (int j = 0; j < num_fv_states_col; j++)
                 {
-                    move_apw_blocks(&scalar_wave_functions_(0, j));
+                    move_apw_blocks(&fv_states(0, j));
         
-                    if (parameters_.mt_lo_basis_size() > 0) 
-                        copy_lo_blocks(&scalar_wave_functions_(0, j), &evecfv_(num_gkvec(), j));
+                    copy_lo_blocks(apwlo_basis_size_row, num_gkvec_row, apwlo_basis_descriptors_row, &z(0, j), 
+                                   &fv_states(0, j));
         
-                    copy_pw_block(num_gkvec(), &scalar_wave_functions_(parameters_.mt_basis_size(), j), &evecfv_(0, j));
+                    copy_pw_block(num_gkvec, num_gkvec_row, apwlo_basis_descriptors_row, &z(0, j), 
+                                  &fv_states(parameters_.mt_basis_size(), j));
                 }
 
-#endif
                 
-                error(__FILE__, __LINE__, "stop");
+                //error(__FILE__, __LINE__, "stop");
             }
             else
             {
                 Timer *t1 = new Timer("sirius::Band::solve_fv:hegv<impl>");
-                int info = hegvx<cpu>(apwlo_basis_size, parameters.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), &evalfv[0], 
-                                      &evecfv(0, 0), apwlo_basis_size);
+                int info = hegvx<cpu>(apwlo_basis_size, parameters.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), 
+                                      &fv_eigen_values[0], &fv_eigen_vectors(0, 0), apwlo_basis_size);
                 delete t1;
 
                 if (info)
