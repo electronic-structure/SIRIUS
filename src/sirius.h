@@ -59,6 +59,7 @@ extern "C" {
 #include "libxc_interface.h"
 #include "run_time_info.h"
 #include "mpi_grid.h"
+#include "splindex.h"
 
 //
 // atoms

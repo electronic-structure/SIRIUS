@@ -315,8 +315,7 @@ void FORTRAN(sirius_bands)(int4* num_kpoints, real8* kpoints_, real8* dk_)
     mpi_grid_.initialize(intvec(std::min(Platform::num_mpi_ranks(), kpoint_set_.num_kpoints()), 1));
 
     // distribute k-points along the 1-st direction of the MPI grid
-    splindex spl_num_kpoints_;
-    spl_num_kpoints_ = mpi_grid_.split_index(1 << 0, kpoint_set_.num_kpoints());
+    splindex<block> spl_num_kpoints_(kpoint_set_.num_kpoints(), mpi_grid_.size(1 << 0), mpi_grid_.coordinate(0));
 
     std::vector<double> enu;
     for (int i = 0; i < global.num_atom_types(); i++)
@@ -337,8 +336,9 @@ void FORTRAN(sirius_bands)(int4* num_kpoints, real8* kpoints_, real8* dk_)
                                 potential->effective_potential()->f_pw());
     
     sirius::Band* band = new sirius::Band(global);
-    for (int ik = spl_num_kpoints_.begin(); ik <= spl_num_kpoints_.end(); ik++)
+    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
     {
+        int ik = spl_num_kpoints_.global_index(ikloc);
         kpoint_set_[ik]->initialize();
         kpoint_set_[ik]->find_eigen_states(band, potential->effective_potential(),
                                            potential->effective_magnetic_field());

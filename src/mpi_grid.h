@@ -1,133 +1,3 @@
-
-class splindex
-{
-    private:
-
-        int index_size_;
-        
-        std::vector<int> dimensions_;
-
-        std::vector<int> coordinates_;
-
-        std::vector<int> offset_;
-
-        int num_ranks_;
-
-        int rank_id_;
-
-        int local_index_size_;
-
-        int global_index_offset_;
-
-        MPI_Comm communicator_;
-
-    public:
-
-        splindex() : index_size_(-1),
-                     num_ranks_(-1),
-                     rank_id_(-1),
-                     local_index_size_(-1),
-                     global_index_offset_(-1),
-                     communicator_(MPI_COMM_NULL)
-        {
-        }
-        
-        splindex(int index_size__,
-                 const std::vector<int>& dimensions__, 
-                 const std::vector<int>& coordinates__,
-                 const MPI_Comm communicator__ = MPI_COMM_WORLD) : index_size_(index_size__),
-                                                                   dimensions_(dimensions__),
-                                                                   coordinates_(coordinates__),
-                                                                   communicator_(communicator__)
-        {
-            if (dimensions__.size() == 0)
-                error(__FILE__, __LINE__, "empty array of dimensions", fatal_err);
-
-            if (dimensions__.size() != coordinates__.size())
-                error(__FILE__, __LINE__, "sizes don't match", fatal_err);
-
-            for (int i = 0; i < (int)dimensions_.size(); i++)
-            {
-                if ((coordinates_[i] < 0) || (coordinates_[i] >= dimensions_[i]))
-                {
-                    std::stringstream s;
-                    s << "bad coordinates" << std::endl
-                      << "  direction : " << i << std::endl
-                      << "  coordinate : " << coordinates_[i] << std::endl
-                      << "  dimension size : " << dimensions_[i];
-                    error(__FILE__, __LINE__, s, fatal_err);
-                }
-            }
-
-            if (index_size_ == 0)
-                error(__FILE__, __LINE__, "need to think what to do with zero index size", fatal_err);
-
-            num_ranks_ = 1;
-            for (int i = 0; i < (int)dimensions_.size(); i++)
-                num_ranks_ *= dimensions_[i];
-
-            offset_ = std::vector<int>(dimensions_.size(), 0);
-            int n = 1;
-            for (int i = 1; i < (int)dimensions_.size(); i++) 
-            {
-                n *= dimensions_[i - 1];
-                offset_[i] = n;
-            }
-            
-            rank_id_ = coordinates_[0];
-            for (int i = 1; i < (int)dimensions_.size(); i++) 
-                rank_id_ += offset_[i] * coordinates_[i];
-
-            // minimum size
-            int n1 = index_size_ / num_ranks_;
-
-            // first n2 ranks have one more index element
-            int n2 = index_size_ % num_ranks_;
-
-            if (rank_id_ < n2)
-            {
-                local_index_size_ = n1 + 1;
-                global_index_offset_ = (n1 + 1) * rank_id_;
-            }
-            else
-            {   
-                local_index_size_ = n1;
-                global_index_offset_ = (n1 > 0) ? (n1 + 1) * n2 + n1 * (rank_id_ - n2) : -1;
-            }
-        }
-
-        inline int begin()
-        {
-            return global_index_offset_;
-        }
-
-        inline int end()
-        {
-            return (global_index_offset_ + local_index_size_ - 1);
-        }
-
-        inline int local_index_size()
-        {
-            return local_index_size_;
-        }
-
-        /*inline int size()
-        {
-            return local_index_size_;
-        }*/
-
-        inline int global_index(int idx_loc)
-        {
-            return (global_index_offset_ + idx_loc);
-        }
-
-        inline MPI_Comm& communicator()
-        {
-            return communicator_;
-        }
-};
-
-
 class MPIGrid
 {
     private:
@@ -338,7 +208,7 @@ class MPIGrid
             return flg;
         }
 
-        std::vector<int> sub_dimensions(int directions)
+        inline std::vector<int> sub_dimensions(int directions)
         {
             std::vector<int> sd;
 
@@ -364,6 +234,13 @@ class MPIGrid
         {
             return coordinates_;
         }
+
+        int coordinate(int idim)
+        {
+            assert(idim < (int)coordinates_.size());
+
+            return coordinates_[idim];
+        }
         
         std::vector<int> dimensions()
         {
@@ -374,25 +251,15 @@ class MPIGrid
         {
             if (valid_directions(directions))
             {
-                std::vector<int> sd = sub_dimensions(directions);
-                MPI_Comm comm = communicator(directions);
-               // return new MPIGrid(sub_dimensions(directions), communicator(directions));
-                return new MPIGrid(sd, comm);
+                //std::vector<int> sd = sub_dimensions(directions);
+                //MPI_Comm comm = communicator(directions);
+                return new MPIGrid(sub_dimensions(directions), communicator(directions));
+                //return new MPIGrid(sd, comm);
             }
             else
             {
                 return NULL;
             }
-        }
-
-        inline splindex split_index(int directions, int size)
-        {
-            if (!in_grid())
-                return splindex();
-
-            MPI_Comm comm = communicators_[valid_directions(directions)];
-
-            return splindex(size, sub_dimensions(directions), sub_coordinates(directions), comm); 
         }
 
         int cart_rank(const MPI_Comm& comm, std::vector<int> coords)

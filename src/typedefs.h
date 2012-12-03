@@ -17,6 +17,7 @@ enum coordinates_type {cartesian, fractional};
 
 enum eigen_value_solver_t {lapack, scalapack, magma};
 
+enum splindex_t {block, block_cyclic};
 /*! 
     \brief Wrapper for primitive data types
 */

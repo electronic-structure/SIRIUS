@@ -89,6 +89,14 @@ class kpoint
         /// table of row distribution of first-variational states for each MPI rank
         mdarray<int, 2> fv_states_distribution_row_; 
 
+        /// location (rank, local offset) of first-variational states distributed along columns
+        /// TODO: all ranks along columns of mpi grid have identical fv_states array; utilize this!!
+        ///       the mapping will be between global index of first-variational state and pair of vectors
+        //std::vector< std::pair<int, int> > fv_states_location_col_;
+        mdarray<int, 2> fv_states_location_col_;
+
+        mdarray<int, 2> spinor_wave_functions_distribution_;
+
         /// Generate plane-wave matching coefficents for the radial solutions 
         void generate_matching_coefficients()
         {
@@ -527,6 +535,21 @@ class kpoint
                 for (int i0 = 0; i0 < fv_states_distribution_row_.size(0); i0++)
                     fv_states_distribution_row_(i0, i1) = (i0 < (int)ivrow[i1].size()) ? ivrow[i1][i0] : -1;
 
+
+            fv_states_location_col_.set_dimensions(2, parameters_.num_fv_states());
+            fv_states_location_col_.allocate();
+
+            for (int i1 = 0; i1 < fv_states_distribution_col_.size(1); i1++)
+                for (int i0 = 0; i0 < fv_states_distribution_col_.size(0); i0++)
+                {
+                    int j = fv_states_distribution_col_(i0, i1);
+                    if (j1 >= 0)
+                    {
+                        fv_states_location_col_(0, j) = i0;
+                        fv_states_location_col_(1, j) = i1;
+                    }
+                }
+
             if (verbosity_level > 0 && mpi_grid_->root())
             {
                 printf("\n");
@@ -548,6 +571,12 @@ class kpoint
                         printf("%6i", fv_states_distribution_row_(i0, i1));
                     printf("\n");
                 }
+
+                printf("\n");
+                printf("First-variational states location (local offset, rank) for column distribution\n");
+                for (int i = 0; i < parameters_.num_fv_states(); i++)
+                    printf("%6i %6i %6i\n", i, fv_states_location_col_(0, i), fv_states_location_col_(1, i));
+
             }
         }
 

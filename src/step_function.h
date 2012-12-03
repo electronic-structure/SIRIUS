@@ -28,13 +28,14 @@ class StepFunction : public reciprocal_lattice
             
             memset(&step_function_pw_[0], 0, fft().size() * sizeof(complex16));
             
-            splindex spl_fft_size(fft().size(), intvec(Platform::num_mpi_ranks()), intvec(Platform::mpi_rank()));
+            splindex<block> spl_fft_size(fft().size(), Platform::num_mpi_ranks(), Platform::mpi_rank());
             
             double fourpi_omega = fourpi / omega();
 
             #pragma omp parallel for default(shared)
-            for (int ig = spl_fft_size.begin(); ig <= spl_fft_size.end(); ig++)
+            for (int igloc = 0; igloc < spl_fft_size.local_size(); igloc++)
             {
+                int ig = spl_fft_size.global_index(igloc);
                 double vg[3];
                 get_coordinates<cartesian, reciprocal>(gvec(ig), vg);
 
@@ -66,7 +67,7 @@ class StepFunction : public reciprocal_lattice
                 }
                 step_function_pw_[ig] -= zt * fourpi_omega;
             }
-            Platform::allreduce(&step_function_pw_[0], fft().size(), spl_fft_size.communicator());
+            Platform::allreduce(&step_function_pw_[0], fft().size());
             
             step_function_pw_[0] += 1.0;
 

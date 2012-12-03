@@ -25,7 +25,7 @@ class Density
 
         kpoint_set kpoint_set_;
 
-        splindex spl_num_kpoints_;
+        splindex<block> spl_num_kpoints_;
 
         std::vector<int> l_by_lm_;
 
@@ -357,10 +357,10 @@ class Density
 
 
             // distribute k-points along the 1-st direction of the MPI grid
-            spl_num_kpoints_ = mpi_grid_.split_index(1 << 0, kpoint_set_.num_kpoints());
+            spl_num_kpoints_.split(kpoints__.size(1), mpi_grid_.size(1 << 0), mpi_grid_.coordinate(0));
 
-            for (int ik = spl_num_kpoints_.begin(); ik <= spl_num_kpoints_.end(); ik++)
-                kpoint_set_[ik]->initialize();
+            for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+                kpoint_set_[spl_num_kpoints_.global_index(ikloc)]->initialize();
 
             l_by_lm_.resize(parameters_.lmmax_rho());
             for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
@@ -591,9 +591,12 @@ class Density
                                      potential_->effective_potential()->f_pw());
 
             // solve secular equation and generate wave functions
-            for (int ik = spl_num_kpoints_.begin(); ik <= spl_num_kpoints_.end(); ik++)
+            for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+            {
+                int ik = spl_num_kpoints_.global_index(ikloc);
                 kpoint_set_[ik]->find_eigen_states(band_, potential_->effective_potential(),
                                                    potential_->effective_magnetic_field());
+            }
 
             // synchronize eigen-values
             kpoint_set_.sync_band_energies(parameters_.num_bands(), mpi_grid_, spl_num_kpoints_);
@@ -652,8 +655,11 @@ class Density
             occupation_matrix.zero();
 
             // add to charge density and magnetization
-            for (int ik = spl_num_kpoints_.begin(); ik <= spl_num_kpoints_.end(); ik++)
+            for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+            {
+                int ik = spl_num_kpoints_.global_index(ikloc); 
                 add_kpoint_contribution(kpoint_set_[ik], mt_density_matrix, occupation_matrix);
+            }
             
             // reduce arrays; assume that each rank (including ranks along second direction) did it's own 
             // fraction of the density
@@ -812,18 +818,19 @@ class Density
 
             if (mpi_grid_.side(1 << 0))
             {
-                std::vector<int> sc = mpi_grid_.sub_coordinates(1 << 0);
-
                 for (int i = 0; i < mpi_grid_.size(1 << 0); i++)
                 {
-                    if (sc[0] == i)
+                    if (mpi_grid_.coordinate(0) == i)
                     {
-                        for (int ik = spl_num_kpoints_.begin(); ik <= spl_num_kpoints_.end(); ik++)
+                        for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+                        {
+                            int ik = spl_num_kpoints_.global_index(ikloc);
                             printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i            %6i\n", 
                                    ik, kpoint_set_[ik]->vk()[0], kpoint_set_[ik]->vk()[1], kpoint_set_[ik]->vk()[2], 
                                    kpoint_set_[ik]->weight(), 
                                    kpoint_set_[ik]->num_gkvec(), 
                                    kpoint_set_[ik]->apwlo_basis_size());
+                        }
                     }
                     mpi_grid_.barrier(1 << 0);
                 }
