@@ -63,6 +63,8 @@ class Global : public StepFunction
         /// run-time information (energies, charges, etc.)
         run_time_info rti_;
 
+        std::vector<int> mpi_grid_dims_;
+
     public:
     
         Global() : lmax_apw_(lmax_apw_default),
@@ -74,6 +76,13 @@ class Global : public StepFunction
                    so_correction_(false),
                    uj_correction_(false)
         {
+            std::string fname("sirius.json");
+
+            if (file_exists(fname))
+            {
+                JsonTree parser(fname);
+                parser["mpi_grid_dims"] >> mpi_grid_dims_; 
+            }
         }
             
         ~Global()
@@ -247,6 +256,11 @@ class Global : public StepFunction
             return uj_correction_;
         }
 
+        inline std::vector<int>& mpi_grid_dims()
+        {
+            return mpi_grid_dims_;
+        }
+
         /// Initialize the global variables
         void initialize()
         {
@@ -309,6 +323,12 @@ class Global : public StepFunction
                 printf("build date : %s\n", build_date);
                 printf("\n");
                 printf("number of MPI ranks   : %i\n", Platform::num_mpi_ranks());
+                if (mpi_grid_dims_.size())
+                {
+                    printf("default MPI grid      :");
+                    for (int i = 0; i < (int)mpi_grid_dims_.size(); i++) printf(" %i", mpi_grid_dims_[i]);
+                    printf("\n");
+                }
                 printf("number of OMP threads : %i\n", Platform::num_threads()); 
 
                 unit_cell::print_info();

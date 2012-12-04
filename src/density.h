@@ -91,12 +91,14 @@ class Density
         {
             Timer t("sirius::Density::add_kpoint_contribution");
             
-            std::vector< std::pair<int,double> > bands;
-            for (int j = 0; j < parameters_.num_bands(); j++)
+            std::vector< std::pair<int, double> > bands;
+            for (int jsub = 0; jsub < kp->num_bands(); jsub++)
             {
+                int j = kp->idxbandglob(jsub);
+                int jloc = kp->idxbandloc(jsub);
                 double wo = kp->band_occupancy(j) * kp->weight();
                 if (wo > 1e-14)
-                    bands.push_back(std::pair<int,double>(j, wo));
+                    bands.push_back(std::pair<int, double>(jloc, wo));
             }
             if (bands.size() == 0) return;
            
@@ -349,7 +351,8 @@ class Density
             band_ = new Band(parameters_);
             
             //mpi_grid_.initialize(intvec(std::min(Platform::num_mpi_ranks(), kpoints__.size(1)), 1));
-            mpi_grid_.initialize(intvec(1, 2, 3));
+            //mpi_grid_.initialize(intvec(1, 2, 2));
+            mpi_grid_.initialize(parameters_.mpi_grid_dims());
 
             kpoint_set_.clear();
             for (int ik = 0; ik < kpoints__.size(1); ik++)

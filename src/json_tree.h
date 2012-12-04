@@ -11,8 +11,7 @@ template<typename T> class json_value_parser
         
     public:
         
-        json_value_parser(const JSONNode& value, 
-                          T& val);
+        json_value_parser(const JSONNode& value, T& val);
         
         const std::string& type_name()
         {
@@ -59,9 +58,9 @@ template<> json_value_parser<double>::json_value_parser(const JSONNode& value,
         data = value.as_float();
 }
 
-template<> json_value_parser< std::vector<double> >::json_value_parser(const JSONNode& value, 
-                                                                       std::vector<double>& data) : type_name_("vector<double>"), 
-                                                                                                    is_valid_(true)
+template<> json_value_parser< std::vector<double> >::json_value_parser
+    (const JSONNode& value, std::vector<double>& data) : type_name_("vector<double>"), 
+                                                         is_valid_(true)
 {
     if (value.type() != JSON_ARRAY) 
         is_valid_ = false;
@@ -80,9 +79,30 @@ template<> json_value_parser< std::vector<double> >::json_value_parser(const JSO
     }
 }
 
-template<> json_value_parser<std::string>::json_value_parser(const JSONNode& value, 
-                                                             std::string& data) : type_name_("string"), 
-                                                                                  is_valid_(true)
+template<> json_value_parser< std::vector<int> >::json_value_parser
+    (const JSONNode& value, std::vector<int>& data) : type_name_("vector<int>"), 
+                                                      is_valid_(true)
+{
+    if (value.type() != JSON_ARRAY) 
+        is_valid_ = false;
+    
+    if (is_valid_) 
+    {
+        data.clear();
+        for (int i = 0; i < (int)value.size(); i++)
+        {
+            int t;
+            json_value_parser<int> v(value[i], t);
+            is_valid_ = is_valid_ && v.is_valid();
+            if (is_valid_) 
+                data.push_back(t);
+        }
+    }
+}
+
+template<> json_value_parser<std::string>::json_value_parser
+    (const JSONNode& value, std::string& data) : type_name_("string"), 
+                                                 is_valid_(true)
 {
     if (value.type() != JSON_STRING)
         is_valid_ = false;

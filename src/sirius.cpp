@@ -332,8 +332,7 @@ void FORTRAN(sirius_bands)(int4* num_kpoints, real8* kpoints_, real8* dk_)
 
     global.fft().input(potential->effective_potential()->f_it());
     global.fft().transform(-1);
-    global.fft().output(global.num_gvec(), global.fft_index(), 
-                                potential->effective_potential()->f_pw());
+    global.fft().output(global.num_gvec(), global.fft_index(), potential->effective_potential()->f_pw());
     
     sirius::Band* band = new sirius::Band(global);
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)

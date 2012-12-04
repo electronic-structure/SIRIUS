@@ -11,8 +11,8 @@ int main(int argn, char** argv)
     double a3[] = {-2.708, 2.708, 2.708};
                 
     global.set_lattice_vectors(a1, a2, a3);
-    global.set_num_spins(2);
-    global.set_num_mag_dims(1);
+    //global.set_num_spins(2);
+    //global.set_num_mag_dims(1);
 
     double pos[] = {0, 0, 0};
     double vf[] = {0, 0, 1};

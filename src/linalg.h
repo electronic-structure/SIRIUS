@@ -139,9 +139,9 @@ int hegvx_scalapack(int4 matrix_size, int4 nv, int nrow, int ncol, real8 abstol,
                      &ione, &nv, &abstol, &m, &nz, &w[0], &orfac, z, &ione, &ione, descz, &z1, &lwork, &d1, &lrwork, 
                      &i1, &liwork, &ifail[0], &iclustr[0], &gap[0], &info, (int4)1, (int4)1, (int4)1); 
 
-    lwork = ((int)real(z1) + 100);
-    lrwork = ((int)d1 + 100);
-    liwork = i1 + 100;
+    lwork = ((int)real(z1) + 100) * 2;
+    lrwork = ((int)d1 + 100) * 2;
+    liwork = (i1 + 100) * 2;
 
     std::vector<complex16> work(lwork);
     std::vector<real8> rwork(lrwork);

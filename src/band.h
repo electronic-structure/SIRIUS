@@ -708,43 +708,6 @@ class Band
             }
         }
  
-        inline void move_apw_blocks(complex16 *vec)
-        {
-            for (int ia = parameters_.num_atoms() - 1; ia > 0; ia--)
-            {
-                int final_block_offset = parameters_.atom(ia)->offset_wf();
-                int initial_block_offset = parameters_.atom(ia)->offset_aw();
-                int block_size = parameters_.atom(ia)->type()->mt_aw_basis_size();
-        
-                memmove(&vec[final_block_offset], &vec[initial_block_offset], block_size * sizeof(complex16));
-
-                memset(&vec[final_block_offset + block_size], 0, 
-                       parameters_.atom(ia)->type()->mt_lo_basis_size() * sizeof(complex16));
-            }
-        }
-        
-        inline void copy_lo_blocks(const int apwlo_basis_size_row, const int num_gkvec_row, 
-                                   const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
-                                   const complex16* z, complex16 *vec)
-        {
-            for (int j = num_gkvec_row; j < apwlo_basis_size_row; j++)
-            {
-                int ia = apwlo_basis_descriptors_row[j].ia;
-                int lm = apwlo_basis_descriptors_row[j].lm;
-                int order = apwlo_basis_descriptors_row[j].order;
-                vec[parameters_.atom(ia)->offset_wf() + parameters_.atom(ia)->type()->indexb_by_lm_order(lm, order)] = z[j];
-            }
-        }
-        
-        inline void copy_pw_block(const int num_gkvec, const int num_gkvec_row, 
-                                  const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
-                                  const complex16* z, complex16 *vec)
-        {
-            memset(vec, 0, num_gkvec * sizeof(complex16));
-
-            for (int j = 0; j < num_gkvec_row; j++)
-                vec[apwlo_basis_descriptors_row[j].igk] = z[j];
-        }
 
     public:
         
@@ -768,7 +731,6 @@ class Band
                       const std::vector<int>                     blacs_dims,
                       const int                                  apwlo_basis_size, 
                       const int                                  num_gkvec,
-                      const int                                  mtgk_size,
                       const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row,
                       const int                                  apwlo_basis_size_row,
                       const int                                  num_gkvec_row,
@@ -780,11 +742,8 @@ class Band
                       mdarray<double, 2>&                        gkvec,
                       PeriodicFunction<double>*                  effective_potential, 
                       PeriodicFunction<double>*                  effective_magnetic_field[3], 
-                      const int                                  num_fv_states_col,
-                      mdarray<int, 2>&                           fv_states_distribution_col,
                       std::vector<double>&                       fv_eigen_values, 
-                      mdarray<complex16, 2>&                     fv_eigen_vectors, 
-                      mdarray<complex16, 2>&                     fv_states)
+                      mdarray<complex16, 2>&                     evecloc)
         {
             if (&parameters != &parameters_) error(__FILE__, __LINE__, "different set of parameters");
 
@@ -803,16 +762,9 @@ class Band
                          apwlo_basis_descriptors_col, apwlo_basis_size_col, num_gkvec_col,
                          apw_offset_col, gkvec, matching_coefficients, effective_potential, h);
 
-            //write_matrix("h_new.txt", h);
-            //write_matrix("o_new.txt", o);
-
-            fv_eigen_values.resize(parameters.num_fv_states());
-
+            Timer *t1 = new Timer("sirius::Band::solve_fv:hegv");
             if (eigen_value_solver == scalapack)
             {
-                //mdarray<complex16, 2> z(apwlo_basis_size_row, apwlo_basis_size_col);
-                mdarray<complex16, 2> z(apwlo_basis_size_row, num_fv_states_col);
-                
                 int desc_h[9];
                 descinit(desc_h, apwlo_basis_size, apwlo_basis_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, 
                          h.ld());
@@ -823,44 +775,16 @@ class Band
 
                 int desc_z[9];
                 descinit(desc_z, apwlo_basis_size, apwlo_basis_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, 
-                         z.ld());
+                         evecloc.ld());
                 
                 hegvx_scalapack(apwlo_basis_size, parameters.num_fv_states(), blacs_dims[0], blacs_dims[1], -1.0, 
-                                h.get_ptr(), desc_h, o.get_ptr(), desc_o, &fv_eigen_values[0], z.get_ptr(), desc_z);
-
-
-                //fv_eigen_vectors.set_dimensions(apwlo_basis_size, (int)scalar_wf_col_dist.size());
-                //evecfv.allocate();
-                //evecfv.zero();
-
-                fv_states.set_dimensions(mtgk_size, num_fv_states_col);
-                fv_states.allocate();
-
-                gemm<cpu>(2, 0, parameters_.mt_aw_basis_size(), num_fv_states_col, num_gkvec_row,
-                          complex16(1, 0), &matching_coefficients(0, 0), matching_coefficients.ld(),
-                          &z(0, 0), z.ld(), complex16(0, 0), &fv_states(0, 0), fv_states.ld());
-
-                for (int j = 0; j < num_fv_states_col; j++)
-                {
-                    move_apw_blocks(&fv_states(0, j));
-        
-                    copy_lo_blocks(apwlo_basis_size_row, num_gkvec_row, apwlo_basis_descriptors_row, &z(0, j), 
-                                   &fv_states(0, j));
-        
-                    copy_pw_block(num_gkvec, num_gkvec_row, apwlo_basis_descriptors_row, &z(0, j), 
-                                  &fv_states(parameters_.mt_basis_size(), j));
-                }
-
-                
-                //error(__FILE__, __LINE__, "stop");
+                                h.get_ptr(), desc_h, o.get_ptr(), desc_o, &fv_eigen_values[0], evecloc.get_ptr(), 
+                                desc_z);
             }
             else
             {
-                Timer *t1 = new Timer("sirius::Band::solve_fv:hegv<impl>");
                 int info = hegvx<cpu>(apwlo_basis_size, parameters.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), 
-                                      &fv_eigen_values[0], &fv_eigen_vectors(0, 0), apwlo_basis_size);
-                delete t1;
-
+                                      &fv_eigen_values[0], evecloc.get_ptr(), evecloc.ld());
                 if (info)
                 {
                     std::stringstream s;
@@ -868,6 +792,7 @@ class Band
                     error(__FILE__, __LINE__, s);
                 }
             }
+            delete t1;
         }
 
         void solve_sv(Global& parameters,

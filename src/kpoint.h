@@ -1,6 +1,8 @@
 namespace sirius
 {
 
+// TODO: all ranks along columns of mpi grid have identical fv_states array; utilize this!!
+
 class kpoint
 {
     private:
@@ -73,29 +75,26 @@ class kpoint
 
         /// short information about each APW+lo basis function
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_;
+
+        /// APW+lo basis index, distributed along the rows of the MPI grid
+        splindex<block_cyclic, scalapack_nb> spl_apwlo_basis_size_row_;
         
         /// row APW+lo basis descriptors
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_row_;
         
+        /// APW+lo basis index, distributed along the columns of the MPI grid
+        splindex<block_cyclic, scalapack_nb> spl_apwlo_basis_size_col_;
+        
         /// column APW+lo basis descriptors
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_col_;
 
-        /// table of column distribution of first-variational states for each MPI rank
-        mdarray<int, 2> fv_states_distribution_col_; 
 
-        /// number of first-variational states for distributed along columns for a given MPI rank
-        int num_fv_states_col_;
-
-        /// table of row distribution of first-variational states for each MPI rank
-        mdarray<int, 2> fv_states_distribution_row_; 
-
-        /// location (rank, local offset) of first-variational states distributed along columns
-        /// TODO: all ranks along columns of mpi grid have identical fv_states array; utilize this!!
-        ///       the mapping will be between global index of first-variational state and pair of vectors
-        //std::vector< std::pair<int, int> > fv_states_location_col_;
-        mdarray<int, 2> fv_states_location_col_;
-
-        mdarray<int, 2> spinor_wave_functions_distribution_;
+        splindex<block_cyclic, scalapack_nb> spl_num_fv_eigen_vectors_col_;
+        
+        splindex<block_cyclic, scalapack_nb> spl_num_bands_;
+        
+        splindex<block> sub_spl_num_bands_;
+        
 
         /// Generate plane-wave matching coefficents for the radial solutions 
         void generate_matching_coefficients()
@@ -173,7 +172,8 @@ class kpoint
                 } //ia
             }
         }
-        
+
+#if 0        
         inline void move_apw_blocks(complex16 *wf)
         {
             for (int ia = parameters_.num_atoms() - 1; ia > 0; ia--)
@@ -203,6 +203,44 @@ class kpoint
         {
             memcpy(wf, evec, ngk * sizeof(complex16));
         }
+#endif        
+        inline void move_apw_blocks(complex16 *vec)
+        {
+            for (int ia = parameters_.num_atoms() - 1; ia >= 0; ia--)
+            {
+                int final_block_offset = parameters_.atom(ia)->offset_wf();
+                int initial_block_offset = parameters_.atom(ia)->offset_aw();
+                int block_size = parameters_.atom(ia)->type()->mt_aw_basis_size();
+        
+                memmove(&vec[final_block_offset], &vec[initial_block_offset], block_size * sizeof(complex16));
+
+                memset(&vec[final_block_offset + block_size], 0, 
+                       parameters_.atom(ia)->type()->mt_lo_basis_size() * sizeof(complex16));
+            }
+        }
+        
+        inline void copy_lo_blocks(const int apwlo_basis_size_row, const int num_gkvec_row, 
+                                   const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
+                                   const complex16* z, complex16 *vec)
+        {
+            for (int j = num_gkvec_row; j < apwlo_basis_size_row; j++)
+            {
+                int ia = apwlo_basis_descriptors_row[j].ia;
+                int lm = apwlo_basis_descriptors_row[j].lm;
+                int order = apwlo_basis_descriptors_row[j].order;
+                vec[parameters_.atom(ia)->offset_wf() + parameters_.atom(ia)->type()->indexb_by_lm_order(lm, order)] = z[j];
+            }
+        }
+        
+        inline void copy_pw_block(const int num_gkvec, const int num_gkvec_row, 
+                                  const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
+                                  const complex16* z, complex16 *vec)
+        {
+            memset(vec, 0, num_gkvec * sizeof(complex16));
+
+            for (int j = 0; j < num_gkvec_row; j++)
+                vec[apwlo_basis_descriptors_row[j].igk] = z[j];
+        }
 
         /*void generate_scalar_wave_functions()
         {
@@ -225,28 +263,41 @@ class kpoint
                 copy_pw_block(num_gkvec(), &scalar_wave_functions_(parameters_.mt_basis_size(), j), &evecfv_(0, j));
             }
         }
-
-        void generate_spinor_wave_functions(int flag)
+        */
+        void generate_spinor_wave_functions(bool has_sv_evec)
         {
             Timer t("sirius::kpoint::generate_spinor_wave_functions");
 
-            spinor_wave_functions_.set_dimensions(scalar_wf_size(), parameters_.num_spins(), parameters_.num_bands());
-            
-            if (flag == -1)
+            if (has_sv_evec)
             {
-                spinor_wave_functions_.set_ptr(scalar_wave_functions_.get_ptr());
-                memcpy(&band_energies_[0], &evalfv_[0], parameters_.num_bands() * sizeof(double));
+
+            }
+            else
+            {
+                spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), 
+                                                      spl_num_bands_.local_size());
+                spinor_wave_functions_.set_ptr(fv_states_.get_ptr());
+                memcpy(&band_energies_[0], &fv_eigen_values_[0], parameters_.num_bands() * sizeof(double));
                 return;
             }
 
-            spinor_wave_functions_.allocate();
-            
-            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-                gemm<cpu>(0, 0, scalar_wf_size(),  parameters_.num_bands(), parameters_.num_fv_states(), complex16(1.0, 0.0), 
-                          &scalar_wave_functions_(0, 0), scalar_wf_size(), &evecsv_(ispn * parameters_.num_fv_states(), 0), 
-                          parameters_.num_bands(), complex16(0.0, 0.0), &spinor_wave_functions_(0, ispn, 0), 
-                          scalar_wf_size() * parameters_.num_spins());
-        }*/
+            //spinor_wave_functions_.set_dimensions(scalar_wf_size(), parameters_.num_spins(), parameters_.num_bands());
+            //
+            //if (flag == -1)
+            //{
+            //    spinor_wave_functions_.set_ptr(scalar_wave_functions_.get_ptr());
+            //    memcpy(&band_energies_[0], &evalfv_[0], parameters_.num_bands() * sizeof(double));
+            //    return;
+            //}
+
+            //spinor_wave_functions_.allocate();
+            //
+            //for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+            //    gemm<cpu>(0, 0, scalar_wf_size(),  parameters_.num_bands(), parameters_.num_fv_states(), complex16(1.0, 0.0), 
+            //              &scalar_wave_functions_(0, 0), scalar_wf_size(), &evecsv_(ispn * parameters_.num_fv_states(), 0), 
+            //              parameters_.num_bands(), complex16(0.0, 0.0), &spinor_wave_functions_(0, ispn, 0), 
+            //              scalar_wf_size() * parameters_.num_spins());
+        }
 
         void generate_gkvec()
         {
@@ -425,37 +476,28 @@ class kpoint
                 error(__FILE__, __LINE__, "APW+lo basis descriptors array has a wrong size");
         }
 
-        /// Block-cyclic distribution of APW+lo basis function 
-        void distribute_block_cyclic_apwlo_basis()
+        /// Block-cyclic distribution of relevant arrays 
+        void distribute_block_cyclic()
         {
             std::vector<int> cart_coord = mpi_grid_->coordinates();
             std::vector<int> cart_dims = mpi_grid_->dimensions();
 
-            // distribute row and column index of basis functions in block-cyclic manner
-            // add rows first 
-            int irank_row = 0;
-            int iblock_row = 0;
-            for (int i = 0; i < (int)apwlo_basis_descriptors_.size(); i++)
+            // distribute APW+lo basis between rows
+            spl_apwlo_basis_size_row_.split(apwlo_basis_size(), cart_dims[0], cart_coord[0]);
+            apwlo_basis_descriptors_row_.resize(spl_apwlo_basis_size_row_.local_size());
+            for (int i = 0; i < spl_apwlo_basis_size_row_.local_size(); i++)
             {
-                if (cart_coord[0] == irank_row) apwlo_basis_descriptors_row_.push_back(apwlo_basis_descriptors_[i]);
-                if ((++iblock_row) == scalapack_nb)
-                {
-                    iblock_row = 0;
-                    irank_row = (irank_row + 1) % cart_dims[0];
-                }
+                int j = spl_apwlo_basis_size_row_.global_index(i);
+                apwlo_basis_descriptors_row_[i] = apwlo_basis_descriptors_[j];
             }
-        
-            // then add columns 
-            int irank_col = 0;
-            int iblock_col = 0;
-            for (int i = 0; i < (int)apwlo_basis_descriptors_.size(); i++)
+
+            // distribute APW+lo basis between columns
+            spl_apwlo_basis_size_col_.split(apwlo_basis_size(), cart_dims[1], cart_coord[1]);
+            apwlo_basis_descriptors_col_.resize(spl_apwlo_basis_size_col_.local_size());
+            for (int i = 0; i < spl_apwlo_basis_size_col_.local_size(); i++)
             {
-                if (cart_coord[1] == irank_col) apwlo_basis_descriptors_col_.push_back(apwlo_basis_descriptors_[i]);
-                if ((++iblock_col) == scalapack_nb)
-                {
-                    iblock_col = 0;
-                    irank_col = (irank_col + 1) % cart_dims[1];
-                }
+                int j = spl_apwlo_basis_size_col_.global_index(i);
+                apwlo_basis_descriptors_col_[i] = apwlo_basis_descriptors_[j];
             }
 
             // get the number of row- and column- G+k-vectors
@@ -467,102 +509,28 @@ class kpoint
             for (int i = 0; i < apwlo_basis_size_col(); i++)
                 if (apwlo_basis_descriptors_col_[i].igk != -1) num_gkvec_col_++;
 
-        }
-        
-        /// Block-cyclic distribution of first-variational states
-        void distribute_block_cyclic_fv_states()
-        {
-            std::vector<int> cart_coord = mpi_grid_->coordinates();
-            std::vector<int> cart_dims = mpi_grid_->dimensions();
+            // distribue first-variational eigen vectors
+            spl_num_fv_eigen_vectors_col_.split(parameters_.num_fv_states(), cart_dims[1], cart_coord[1]);
+           
+            // distribute spinor wave functions
+            spl_num_bands_.split(parameters_.num_bands(), cart_dims[1], cart_coord[1]);
             
-            int nblocks_col = (parameters_.num_fv_states() / scalapack_nb) +           // number of full blocks
-                              std::min(1, parameters_.num_fv_states() % scalapack_nb); // extra partial block
-
-            int max_size_col = ((nblocks_col / cart_dims[1]) +            // minimum number of blocks per rank
-                                std::min(1, nblocks_col % cart_dims[1])); // some ranks get extra block
-            max_size_col *= scalapack_nb;
+            // split along rows 
+            sub_spl_num_bands_.split(spl_num_bands_.local_size(), cart_dims[0], cart_coord[0]);
             
-            fv_states_distribution_col_.set_dimensions(max_size_col, cart_dims[1]);
-            fv_states_distribution_col_.allocate();
-            
-            int nblocks_row = (parameters_.num_fv_states() / scalapack_nb) +           // number of full blocks
-                              std::min(1, parameters_.num_fv_states() % scalapack_nb); // extra partial block
-
-            int max_size_row = ((nblocks_row / cart_dims[0]) +            // minimum number of blocks per rank
-                                std::min(1, nblocks_col % cart_dims[0])); // some ranks get extra block
-            max_size_row *= scalapack_nb;
-
-            fv_states_distribution_row_.set_dimensions(max_size_row, cart_dims[0]);
-            fv_states_distribution_row_.allocate();
-
-            // partition first variational states along columns 
-            int irank_col = 0;
-            int iblock_col = 0;
-            std::vector< std::vector<int> > ivcol(cart_dims[1]);
-            for (int i = 0; i < parameters_.num_fv_states(); i++)
-            {
-                ivcol[irank_col].push_back(i);
-                if ((++iblock_col) == scalapack_nb)
-                {
-                    iblock_col = 0;
-                    irank_col = (irank_col + 1) % cart_dims[1];
-                }
-            }
-
-            for (int i1 = 0; i1 < fv_states_distribution_col_.size(1); i1++)
-                for (int i0 = 0; i0 < fv_states_distribution_col_.size(0); i0++)
-                    fv_states_distribution_col_(i0, i1) = (i0 < (int)ivcol[i1].size()) ? ivcol[i1][i0] : -1;
-
-            num_fv_states_col_ = 0;
-            for (int i0 = 0; i0 < fv_states_distribution_col_.size(0); i0++)
-                if (fv_states_distribution_col_(i0, cart_coord[1]) >= 0) num_fv_states_col_++;
-            
-            // partition first variational states along rows
-            int irank_row = 0;
-            int iblock_row = 0;
-            std::vector< std::vector<int> > ivrow(cart_dims[0]);
-            for (int i = 0; i < parameters_.num_fv_states(); i++)
-            {
-                ivrow[irank_row].push_back(i);
-                if ((++iblock_row) == scalapack_nb)
-                {
-                    iblock_row = 0;
-                    irank_row = (irank_row + 1) % cart_dims[0];
-                }
-            }
-
-            for (int i1 = 0; i1 < fv_states_distribution_row_.size(1); i1++)
-                for (int i0 = 0; i0 < fv_states_distribution_row_.size(0); i0++)
-                    fv_states_distribution_row_(i0, i1) = (i0 < (int)ivrow[i1].size()) ? ivrow[i1][i0] : -1;
-
-
-            fv_states_location_col_.set_dimensions(2, parameters_.num_fv_states());
-            fv_states_location_col_.allocate();
-
-            for (int i1 = 0; i1 < fv_states_distribution_col_.size(1); i1++)
-                for (int i0 = 0; i0 < fv_states_distribution_col_.size(0); i0++)
-                {
-                    int j = fv_states_distribution_col_(i0, i1);
-                    if (j1 >= 0)
-                    {
-                        fv_states_location_col_(0, j) = i0;
-                        fv_states_location_col_(1, j) = i1;
-                    }
-                }
-
             if (verbosity_level > 0 && mpi_grid_->root())
             {
                 printf("\n");
-                printf("table of column distribution of first-variational states\n");
+                printf("table of column distribution of first-variational eigen-vectors\n");
                 printf("columns of the table correspond to MPI ranks\n");
-                for (int i0 = 0; i0 < fv_states_distribution_col_.size(0); i0++)
+                for (int i0 = 0; i0 < spl_num_fv_eigen_vectors_col_.local_size(0); i0++)
                 {
-                    for (int i1 = 0; i1 < fv_states_distribution_col_.size(1); i1++)
-                        printf("%6i", fv_states_distribution_col_(i0, i1));
+                    for (int i1 = 0; i1 < cart_dims[1]; i1++)
+                        printf("%6i", spl_num_fv_eigen_vectors_col_.global_index(i0, i1));
                     printf("\n");
                 }
                 
-                printf("\n");
+                /*printf("\n");
                 printf("table of row distribution of first-variational states\n");
                 printf("columns of the table correspond to MPI ranks\n");
                 for (int i0 = 0; i0 < fv_states_distribution_row_.size(0); i0++)
@@ -570,16 +538,18 @@ class kpoint
                     for (int i1 = 0; i1 < fv_states_distribution_row_.size(1); i1++)
                         printf("%6i", fv_states_distribution_row_(i0, i1));
                     printf("\n");
-                }
+                }*/
 
                 printf("\n");
-                printf("First-variational states location (local offset, rank) for column distribution\n");
+                printf("First-variational eigen-vectors location (local index, rank) for column distribution\n");
                 for (int i = 0; i < parameters_.num_fv_states(); i++)
-                    printf("%6i %6i %6i\n", i, fv_states_location_col_(0, i), fv_states_location_col_(1, i));
+                    printf("%6i %6i %6i\n", i, spl_num_fv_eigen_vectors_col_.location(0, i), 
+                                               spl_num_fv_eigen_vectors_col_.location(1, i));
 
             }
-        }
 
+        }
+        
 #if 0        
         void test_scalar_wave_functions(int use_fft)
         {
@@ -839,10 +809,8 @@ class kpoint
 
             build_apwlo_basis_descriptors();
 
-            distribute_block_cyclic_apwlo_basis();
+            distribute_block_cyclic();
             
-            distribute_block_cyclic_fv_states();
-
             init_gkvec();
         }
 
@@ -856,14 +824,20 @@ class kpoint
 
             generate_matching_coefficients();
 
+            fv_eigen_values_.resize(parameters_.num_fv_states());
+            
+            fv_states_.set_dimensions(mtgk_size(), spl_num_fv_eigen_vectors_col_.local_size());
+            fv_states_.allocate();
+            
             if (eigen_value_solver == scalapack)
             {
+                mdarray<complex16, 2> z(apwlo_basis_size_row(), spl_num_fv_eigen_vectors_col_.local_size());
+
                 band->solve_fv(parameters_, 
                                blacs_context_, 
                                mpi_grid_->dimensions(),
                                apwlo_basis_size(),
                                num_gkvec(),
-                               mtgk_size(),
                                apwlo_basis_descriptors_row_, 
                                apwlo_basis_size_row(), 
                                num_gkvec_row(),
@@ -875,34 +849,58 @@ class kpoint
                                gkvec_, 
                                effective_potential, 
                                effective_magnetic_field, 
-                               num_fv_states_col_,
-                               fv_states_distribution_col_,
                                fv_eigen_values_,
-                               fv_eigen_vectors_,
-                               fv_states_);
+                               z);
+                
 
-                for (int j = 0; j < num_fv_states_col_; j++)
+                gemm<cpu>(2, 0, parameters_.mt_aw_basis_size(), spl_num_fv_eigen_vectors_col_.local_size(),
+                          num_gkvec_row(), complex16(1, 0), &matching_coefficients_(0, 0), matching_coefficients_.ld(),
+                          &z(0, 0), z.ld(), complex16(0, 0), &fv_states_(0, 0), fv_states_.ld());
+
+                for (int j = 0; j < spl_num_fv_eigen_vectors_col_.local_size(); j++)
+                {
+                    move_apw_blocks(&fv_states_(0, j));
+        
+                    copy_lo_blocks(apwlo_basis_size_row(), num_gkvec_row(), apwlo_basis_descriptors_row_, &z(0, j), 
+                                   &fv_states_(0, j));
+        
+                    copy_pw_block(num_gkvec(), num_gkvec_row(), apwlo_basis_descriptors_row_, &z(0, j), 
+                                  &fv_states_(parameters_.mt_basis_size(), j));
+                }
+
+                for (int j = 0; j < spl_num_fv_eigen_vectors_col_.local_size(); j++)
                     Platform::allreduce(&fv_states_(0, j), mtgk_size(), mpi_grid_->communicator(1 << 0));
+                
+                //if (mpi_grid_->root()) 
+                //{
+                //    for (int i = 0; i < parameters_.num_fv_states(); i++)
+                //        std::cout << "i = " << i << " ev = " << fv_eigen_values_[i] << std::endl;
+
+                //    write_matrix("fv_states.txt", true, fv_states_);
+                //}
+                //mpi_grid_->barrier();
+                //stop_here
             }
             else
             {
-                //fv_eigen_values_.resize(parameters_.num_fv_states());
-                //fv_eigen_vectors_.set_dimensions(apwlo_basis_size(), parameters_.num_fv_states());
-                //fv_eigen_vectors_.allocate();
-
-                //band->solve_fv(parameters_, 
-                //               &apwlo_basis_descriptors_[0], 
-                //               apwlo_basis_size(), 
-                //               num_gkvec(),
-                //               &apwlo_basis_descriptors_[0], 
-                //               apwlo_basis_size(), 
-                //               num_gkvec(),
-                //               0,
-                //               apwlo_basis_size(), gkvec_, 
-                //               matching_coefficients_, effective_potential, effective_magnetic_field, 
-                //               fv_eigen_vectors_,
-                //               fv_eigen_values_, blacs_context_, mpi_grid_->dimensions(), fv_states_col_, 
-                //               fv_states_);
+                band->solve_fv(parameters_, 
+                               0,
+                               mpi_grid_->dimensions(),
+                               apwlo_basis_size(), 
+                               num_gkvec(),
+                               apwlo_basis_descriptors_, 
+                               apwlo_basis_size(),
+                               num_gkvec(),
+                               apwlo_basis_descriptors_, 
+                               apwlo_basis_size(),
+                               num_gkvec(),
+                               0,
+                               matching_coefficients_, 
+                               gkvec_,
+                               effective_potential, 
+                               effective_magnetic_field, 
+                               fv_eigen_values_, 
+                               fv_eigen_vectors_);
             }
             
             //generate_scalar_wave_functions();
@@ -911,8 +909,8 @@ class kpoint
                 for (int i = 0; i < 3; i++)
                     test_scalar_wave_functions(i); */
 
-            sv_eigen_vectors_.set_dimensions(parameters_.num_bands(), parameters_.num_bands());
-            sv_eigen_vectors_.allocate();
+            //sv_eigen_vectors_.set_dimensions(parameters_.num_bands(), parameters_.num_bands());
+            //sv_eigen_vectors_.allocate();
             band_energies_.resize(parameters_.num_bands());
             
             if (parameters_.num_spins() == 2)
@@ -923,8 +921,10 @@ class kpoint
 
                 //generate_spinor_wave_functions(1);
             }
-            //else
-                //generate_spinor_wave_functions(-1);
+            else
+            {
+                generate_spinor_wave_functions(false);
+            }
 
             /*for (int i = 0; i < 3; i++)
                 test_spinor_wave_functions(i); */
@@ -1131,6 +1131,20 @@ class kpoint
             return vk_;
         }
 
+        inline int num_bands()
+        {
+            return sub_spl_num_bands_.local_size();
+        }
+
+        inline int idxbandglob(int sub_index)
+        {
+            return spl_num_bands_.global_index(sub_spl_num_bands_.global_index(sub_index));
+        }
+        
+        inline int idxbandloc(int sub_index)
+        {
+            return sub_spl_num_bands_.global_index(sub_index);
+        }
 };
 
 };

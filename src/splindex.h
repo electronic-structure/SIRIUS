@@ -5,7 +5,7 @@ class splindex
 
         int rank_;
 
-        //int num_ranks_;
+        int num_ranks_;
 
         //int index_size_;
         //
@@ -25,23 +25,28 @@ class splindex
 
         //MPI_Comm communicator_;
 
-        // local index size for each rank
+        /// local index size for each rank
         std::vector<int> local_size_;
         
-        // global index by rank and local index
+        /// global index by rank and local index
         mdarray<int, 2> global_index_;
 
+        /// location (local index and rank) of global index
+        mdarray<int, 2> location_;
+
+        /// forbid copy constructor
         splindex(const splindex& src);
 
+        /// forbid assigment operator
         splindex& operator=(const splindex& src);
 
     public:
         
-        splindex()
+        splindex() : rank_(-1), num_ranks_(-1)
         {
         }
         
-        splindex(int global_index_size__, int num_ranks__, int rank__) : rank_(rank__)
+        splindex(int global_index_size__, int num_ranks__, int rank__)
         {
             split(global_index_size__, num_ranks__, rank__); 
         }
@@ -50,6 +55,9 @@ class splindex
         {
             assert(num_ranks__ > 0);
             assert((rank__ >= 0) && (rank__ < num_ranks__));
+
+            rank_ = rank__;
+            num_ranks_ = num_ranks__;
             
             local_size_.resize(num_ranks__);
 
@@ -91,8 +99,8 @@ class splindex
                 int nblocks = (global_index_size__ / block_size__) +           // number of full blocks
                               std::min(1, global_index_size__ % block_size__); // extra partial block
 
-                int max_size = ((nblocks / rank__) +            // minimum number of blocks per rank
-                                std::min(1, nblocks % rank__)); // some ranks get extra block
+                int max_size = ((nblocks / num_ranks__) +            // minimum number of blocks per rank
+                                std::min(1, nblocks % num_ranks__)); // some ranks get extra block
                 max_size *= block_size__;
             
                 global_index_.set_dimensions(max_size, num_ranks__);
@@ -118,6 +126,20 @@ class splindex
                         global_index_(i0, i1) = (i0 < (int)iv[i1].size()) ? iv[i1][i0] : -1;
                 }
             }
+
+            location_.set_dimensions(2, global_index_size__);
+            location_.allocate();
+
+            for (int i1 = 0; i1 < global_index_.size(1); i1++)
+                for (int i0 = 0; i0 < global_index_.size(0); i0++)
+                {
+                    int j = global_index_(i0, i1);
+                    if (j >= 0)
+                    {
+                        location_(0, j) = i0;
+                        location_(1, j) = i1;
+                    }
+                }
         }
         
 
@@ -194,23 +216,17 @@ class splindex
         //    }
         //}
 
-        //inline int begin()
-        //{
-        //    return global_index_offset_;
-        //}
-
-        //inline int end()
-        //{
-        //    return (global_index_offset_ + local_size_ - 1);
-        //}
-
         inline int local_size()
         {
+            assert(rank_ >= 0);
+            
             return local_size_[rank_];
         }
 
         inline int local_size(int rank)
         {
+            assert((rank >= 0) && rank < (num_ranks_));
+
             return local_size_[rank];
         }
 
@@ -219,20 +235,14 @@ class splindex
             return global_index_(idxloc, rank_);
         }
 
+        inline int global_index(int idxloc, int rank)
+        {
+            return global_index_(idxloc, rank);
+        }
 
-        ///*inline int size()
-        //{
-        //    return local_size_;
-        //}*/
-
-        //inline int global_index(int idx_loc)
-        //{
-        //    return (global_index_offset_ + idx_loc);
-        //}
-
-        //inline MPI_Comm& communicator()
-        //{
-        //    return communicator_;
-        //}
+        inline int location(int i, int idxglob)
+        {
+            return location_(i, idxglob);
+        }
 };
 
