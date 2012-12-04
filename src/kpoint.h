@@ -173,37 +173,6 @@ class kpoint
             }
         }
 
-#if 0        
-        inline void move_apw_blocks(complex16 *wf)
-        {
-            for (int ia = parameters_.num_atoms() - 1; ia > 0; ia--)
-            {
-                int final_block_offset = parameters_.atom(ia)->offset_wf();
-                int initial_block_offset = parameters_.atom(ia)->offset_aw();
-                int block_size = parameters_.atom(ia)->type()->mt_aw_basis_size();
-        
-                memmove(&wf[final_block_offset], &wf[initial_block_offset], block_size * sizeof(complex16));
-            }
-        }
-        
-        inline void copy_lo_blocks(complex16 *wf, complex16 *evec)
-        {
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            {
-                int final_block_offset = parameters_.atom(ia)->offset_wf() + parameters_.atom(ia)->type()->mt_aw_basis_size();
-                int initial_block_offset = parameters_.atom(ia)->offset_lo();
-                int block_size = parameters_.atom(ia)->type()->mt_lo_basis_size();
-                
-                if (block_size > 0)
-                    memcpy(&wf[final_block_offset], &evec[initial_block_offset], block_size * sizeof(complex16));
-            }
-        }
-        
-        inline void copy_pw_block(int ngk, complex16 *wf, complex16 *evec)
-        {
-            memcpy(wf, evec, ngk * sizeof(complex16));
-        }
-#endif        
         inline void move_apw_blocks(complex16 *vec)
         {
             for (int ia = parameters_.num_atoms() - 1; ia >= 0; ia--)
@@ -242,28 +211,33 @@ class kpoint
                 vec[apwlo_basis_descriptors_row[j].igk] = z[j];
         }
 
-        /*void generate_scalar_wave_functions()
+        void generate_fv_states()
         {
-            Timer t("sirius::kpoint::generate_scalar_wave_functions");
+            Timer t("sirius::kpoint::generate_fv_states");
             
-            fv_states_.set_dimensions(mtgk_size(), parameters_.num_fv_states());
+            fv_states_.set_dimensions(mtgk_size(), spl_num_fv_eigen_vectors_col_.local_size());
             fv_states_.allocate();
-            
-            gemm<cpu>(2, 0, parameters_.mt_aw_basis_size(), parameters_.num_fv_states(), num_gkvec(), complex16(1, 0), 
-                      &matching_coefficients_(0, 0), num_gkvec(), &evecfv_(0, 0), apwlo_basis_size(), 
-                      complex16(0, 0), &scalar_wave_functions_(0, 0), scalar_wf_size());
-            
-            for (int j = 0; j < parameters_.num_fv_states(); j++)
+                
+            gemm<cpu>(2, 0, parameters_.mt_aw_basis_size(), spl_num_fv_eigen_vectors_col_.local_size(),
+                      num_gkvec_row(), complex16(1, 0), &matching_coefficients_(0, 0), matching_coefficients_.ld(),
+                      &fv_eigen_vectors_(0, 0), fv_eigen_vectors_.ld(), complex16(0, 0), &fv_states_(0, 0), 
+                      fv_states_.ld());
+
+            for (int j = 0; j < spl_num_fv_eigen_vectors_col_.local_size(); j++)
             {
-                move_apw_blocks(&scalar_wave_functions_(0, j));
+                move_apw_blocks(&fv_states_(0, j));
         
-                if (parameters_.mt_lo_basis_size() > 0) 
-                    copy_lo_blocks(&scalar_wave_functions_(0, j), &evecfv_(num_gkvec(), j));
+                copy_lo_blocks(apwlo_basis_size_row(), num_gkvec_row(), apwlo_basis_descriptors_row_, 
+                               &fv_eigen_vectors_(0, j), &fv_states_(0, j));
         
-                copy_pw_block(num_gkvec(), &scalar_wave_functions_(parameters_.mt_basis_size(), j), &evecfv_(0, j));
+                copy_pw_block(num_gkvec(), num_gkvec_row(), apwlo_basis_descriptors_row_, 
+                              &fv_eigen_vectors_(0, j), &fv_states_(parameters_.mt_basis_size(), j));
             }
+
+            for (int j = 0; j < spl_num_fv_eigen_vectors_col_.local_size(); j++)
+                Platform::allreduce(&fv_states_(0, j), mtgk_size(), mpi_grid_->communicator(1 << 0));
         }
-        */
+        
         void generate_spinor_wave_functions(bool has_sv_evec)
         {
             Timer t("sirius::kpoint::generate_spinor_wave_functions");
@@ -825,14 +799,13 @@ class kpoint
             generate_matching_coefficients();
 
             fv_eigen_values_.resize(parameters_.num_fv_states());
+
+            fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), spl_num_fv_eigen_vectors_col_.local_size());
+            fv_eigen_vectors_.allocate();
             
-            fv_states_.set_dimensions(mtgk_size(), spl_num_fv_eigen_vectors_col_.local_size());
-            fv_states_.allocate();
             
             if (eigen_value_solver == scalapack)
             {
-                mdarray<complex16, 2> z(apwlo_basis_size_row(), spl_num_fv_eigen_vectors_col_.local_size());
-
                 band->solve_fv(parameters_, 
                                blacs_context_, 
                                mpi_grid_->dimensions(),
@@ -850,36 +823,7 @@ class kpoint
                                effective_potential, 
                                effective_magnetic_field, 
                                fv_eigen_values_,
-                               z);
-                
-
-                gemm<cpu>(2, 0, parameters_.mt_aw_basis_size(), spl_num_fv_eigen_vectors_col_.local_size(),
-                          num_gkvec_row(), complex16(1, 0), &matching_coefficients_(0, 0), matching_coefficients_.ld(),
-                          &z(0, 0), z.ld(), complex16(0, 0), &fv_states_(0, 0), fv_states_.ld());
-
-                for (int j = 0; j < spl_num_fv_eigen_vectors_col_.local_size(); j++)
-                {
-                    move_apw_blocks(&fv_states_(0, j));
-        
-                    copy_lo_blocks(apwlo_basis_size_row(), num_gkvec_row(), apwlo_basis_descriptors_row_, &z(0, j), 
-                                   &fv_states_(0, j));
-        
-                    copy_pw_block(num_gkvec(), num_gkvec_row(), apwlo_basis_descriptors_row_, &z(0, j), 
-                                  &fv_states_(parameters_.mt_basis_size(), j));
-                }
-
-                for (int j = 0; j < spl_num_fv_eigen_vectors_col_.local_size(); j++)
-                    Platform::allreduce(&fv_states_(0, j), mtgk_size(), mpi_grid_->communicator(1 << 0));
-                
-                //if (mpi_grid_->root()) 
-                //{
-                //    for (int i = 0; i < parameters_.num_fv_states(); i++)
-                //        std::cout << "i = " << i << " ev = " << fv_eigen_values_[i] << std::endl;
-
-                //    write_matrix("fv_states.txt", true, fv_states_);
-                //}
-                //mpi_grid_->barrier();
-                //stop_here
+                               fv_eigen_vectors_);
             }
             else
             {
@@ -903,7 +847,7 @@ class kpoint
                                fv_eigen_vectors_);
             }
             
-            //generate_scalar_wave_functions();
+            generate_fv_states();
             
             /*if (test_scalar_wf)
                 for (int i = 0; i < 3; i++)

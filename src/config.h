@@ -19,8 +19,8 @@ const int scalapack_nb = 2;
 
 const eigen_value_solver_t eigen_value_solver = lapack;
 
-const int debug_level = 1;
+const int debug_level = 0;
 
-const int verbosity_level = 1;
+const int verbosity_level = 0;
 
 #endif // __CONFIG_H__
