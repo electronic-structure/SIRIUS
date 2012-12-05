@@ -17,10 +17,10 @@ const bool full_relativistic_core = false;
 
 const int scalapack_nb = 2;
 
-const eigen_value_solver_t eigen_value_solver = lapack;
+const eigen_value_solver_t eigen_value_solver = scalapack;
 
 const int debug_level = 0;
 
-const int verbosity_level = 0;
+const int verbosity_level = 1;
 
 #endif // __CONFIG_H__

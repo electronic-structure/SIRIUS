@@ -714,6 +714,8 @@ class Band
         /// Constructor
         Band(Global& parameters__) : parameters_(parameters__)
         {
+            if (!parameters_.initialized()) error(__FILE__, __LINE__, "Parameters are not initialized.");
+
             init();
         }
       

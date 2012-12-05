@@ -1,6 +1,6 @@
 namespace sirius {
 
-class unit_cell
+class UnitCell
 {
     private:
         
@@ -47,16 +47,33 @@ class unit_cell
         /// list of equivalent atoms, provided externally
         std::vector<int> equivalent_atoms_;
     
-        /*! 
-            \brief Get crystal symmetries and equivalent atoms.
-            
-            Makes a call to spglib providing the basic unit cell information: lattice vectors and atomic types 
+        /// maximum number of muffin-tin points across all atom types
+        int max_num_mt_points_;
+        
+        /// total number of MT basis functions
+        int mt_basis_size_;
+        
+        /// maximum number of MT basis functions across all atoms
+        int max_mt_basis_size_;
+
+        /// maximum number of MT radial basis functions across all atoms
+        int max_mt_radial_basis_size_;
+
+        /// total number of augmented wave basis functions in the MT (= number of matching coefficients for each plane-wave)
+        int mt_aw_basis_size_;
+
+        /// total number of local orbital basis functions
+        int mt_lo_basis_size_;
+
+        /// Get crystal symmetries and equivalent atoms.
+
+        /** Makes a call to spglib providing the basic unit cell information: lattice vectors and atomic types 
             and positions. Gets back symmetry operations and a table of equivalent atoms. The table of equivalent 
             atoms is then used to make a list of atom symmetry classes and related data.
         */
         void get_symmetry()
         {
-            Timer t("sirius::unit_cell::get_symmetry");
+            Timer t("sirius::UnitCell::get_symmetry");
             
             if (spg_dataset_) 
                 error(__FILE__, __LINE__, "spg_dataset is already allocated");
@@ -119,13 +136,13 @@ class unit_cell
         
     public:
     
-        unit_cell() : spg_dataset_(NULL)
+        UnitCell() : spg_dataset_(NULL)
         {
             assert(sizeof(int4) == 4);
             assert(sizeof(real8) == 8);
         }
        
-        void init()
+        void init(int lmax_apw, int lmax_pot, int num_mag_dims)
         {
             get_symmetry();
             total_nuclear_charge_ = 0;
@@ -139,6 +156,36 @@ class unit_cell
                 num_valence_electrons_ += atom(i)->type()->num_valence_electrons();
             }
             num_electrons_ = num_core_electrons_ + num_valence_electrons_;
+            
+            max_num_mt_points_ = 0;
+            for (int i = 0; i < num_atom_types(); i++)
+            {
+                 atom_type(i)->init(lmax_apw);
+                 max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(i)->num_mt_points());
+            }
+            
+            for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
+                atom_symmetry_class(ic)->init();
+            
+            mt_basis_size_ = 0;
+            mt_aw_basis_size_ = 0;
+            mt_lo_basis_size_ = 0;
+            max_mt_basis_size_ = 0;
+            max_mt_radial_basis_size_ = 0;
+            for (int ia = 0; ia < num_atoms(); ia++)
+            {
+                atom(ia)->init(lmax_pot, num_mag_dims, mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
+                mt_aw_basis_size_ += atom(ia)->type()->mt_aw_basis_size();
+                mt_lo_basis_size_ += atom(ia)->type()->mt_lo_basis_size();
+                mt_basis_size_ += atom(ia)->type()->mt_basis_size();
+                max_mt_basis_size_ = std::max(max_mt_basis_size_, atom(ia)->type()->mt_basis_size());
+                max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom(ia)->type()->mt_radial_basis_size());
+            }
+
+            assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
+            assert(num_atoms() != 0);
+            assert(num_atom_types() != 0);
+            assert(num_atom_symmetry_classes() != 0);
         }
 
         void clear()
@@ -442,44 +489,83 @@ class unit_cell
             return atom_types_[idx];
         }
        
-        /*!
-            \brief Number of atom symmetry classes.
-        */
+        /// Number of atom symmetry classes.
         inline int num_atom_symmetry_classes()
         {
             return (int)atom_symmetry_classes_.size();
         }
        
-        /*! 
-            \brief Pointer to symmetry class by class id.
-        */
+        /// Pointer to symmetry class by class id.
         inline AtomSymmetryClass* atom_symmetry_class(int id)
         {
             return atom_symmetry_classes_[id];
         }
         
+        /// Total number of electrons (core + valence)
         inline int num_electrons()
         {
             return num_electrons_;
         }
 
+        /// Number of valence electrons
         inline int num_valence_electrons()
         {
             return num_valence_electrons_;
         }
         
+        /// Number of core electrons
         inline int num_core_electrons()
         {
             return num_core_electrons_;
         }
         
-        /*!
-            \brief Number of atoms in the unit cell.
-        */
+        /// Number of atoms in the unit cell.
         inline int num_atoms()
         {
             return (int)atoms_.size();
         }
+       
+        /// Maximum number of muffin-tin points across all atom types
+        inline int max_num_mt_points()
+        {
+            return max_num_mt_points_;
+        }
+        
+        /// Total number of the augmented wave basis functions over all atoms
+        inline int mt_aw_basis_size()
+        {
+            return mt_aw_basis_size_;
+        }
+
+        /// Total number of local orbital basis functions over all atoms
+        inline int mt_lo_basis_size()
+        {
+            return mt_lo_basis_size_;
+        }
+
+        /// Total number of the muffin-tin basis functions.
+
+        /** Total number of MT basis functions equals to the sum of the total number of augmented wave
+            basis functions and the total number of local orbital basis functions across all atoms. It controls 
+            the size of the muffin-tin part of the first-variational states and second-variational wave functions.
+        */
+        inline int mt_basis_size()
+        {
+            return mt_basis_size_;
+        }
+        
+        /// Maximum number of basis functions across all atom types
+        inline int max_mt_basis_size()
+        {
+            return max_mt_basis_size_;
+        }
+
+        /// MAximum number of radial functions actoss all atom types
+        inline int max_mt_radial_basis_size()
+        {
+            return max_mt_radial_basis_size_;
+        }
+
 };
 
 };

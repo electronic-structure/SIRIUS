@@ -12,12 +12,15 @@ struct nearest_neighbour_descriptor
     double distance;
 };
 
-class geometry : public unit_cell
+class geometry : public UnitCell
 {
     private:
     
         /// list of nearest neighbours for each atom
         std::vector< std::vector<nearest_neighbour_descriptor> > nearest_neighbours_;
+
+        /// minimum muffin-tin radius
+        double min_mt_radius_;
         
         /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
         
@@ -108,6 +111,10 @@ class geometry : public unit_cell
                   << "  radius of atom " << ja << " : " << atom(ja)->type()->mt_radius();
                 error(__FILE__, __LINE__, s);
             }
+            
+            min_mt_radius_ = 1e100;
+            for (int i = 0; i < num_atom_types(); i++)
+                 min_mt_radius_ = std::min(min_mt_radius_, atom_type(i)->mt_radius());
         }
 
         void find_nearest_neighbours(double cluster_radius)
@@ -262,6 +269,11 @@ class geometry : public unit_cell
 
             
             return true;
+        }
+        
+        inline double min_mt_radius()
+        {
+            return min_mt_radius_;
         }
 };
 
