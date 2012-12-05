@@ -343,7 +343,7 @@ void FORTRAN(sirius_bands)(int4* num_kpoints, real8* kpoints_, real8* dk_)
                                            potential->effective_magnetic_field());
     } 
     // synchronize eigen-values
-    kpoint_set_.sync_band_energies(global.num_bands(), mpi_grid_, spl_num_kpoints_);
+    kpoint_set_.sync_band_energies(global.num_bands(), spl_num_kpoints_);
 
     if (mpi_grid_.root())
     {

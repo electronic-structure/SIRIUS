@@ -51,8 +51,11 @@ class Global : public StepFunction
         /// run-time information (energies, charges, etc.)
         run_time_info rti_;
 
-        /// mPI grid dimensions
+        /// MPI grid dimensions
         std::vector<int> mpi_grid_dims_;
+        
+        /// MPI grid
+        MPIGrid mpi_grid_;
 
         /// read from the input file if it exists
         void read_input()
@@ -203,9 +206,14 @@ class Global : public StepFunction
             return uj_correction_;
         }
 
-        inline std::vector<int>& mpi_grid_dims()
+        //inline std::vector<int>& mpi_grid_dims()
+        //{
+        //    return mpi_grid_dims_;
+        //}
+
+        inline MPIGrid& mpi_grid()
         {
-            return mpi_grid_dims_;
+            return mpi_grid_;
         }
 
         inline bool initialized()
@@ -227,14 +235,17 @@ class Global : public StepFunction
             reciprocal_lattice::init();
             StepFunction::init();
 
-            // check mpi grid dimensions
+            // check MPI grid dimensions and set a default grid if needed
             if (!mpi_grid_dims_.size()) mpi_grid_dims_ = intvec(Platform::num_mpi_ranks());
-           
+
+            // setup MPI grid
+            mpi_grid_.initialize(mpi_grid_dims_);
+            
             num_fv_states_ = int(num_valence_electrons() / 2.0) + 10;
 
             if (eigen_value_solver == scalapack)
             {
-                int ncol = ((int)mpi_grid_dims_.size() >= 3) ? mpi_grid_dims_[2] : 1;
+                int ncol = mpi_grid_.size(2);
 
                 int n = num_fv_states_ / (ncol * scalapack_nb);
                 
@@ -252,6 +263,8 @@ class Global : public StepFunction
             UnitCell::clear();
             reciprocal_lattice::clear();
 
+            mpi_grid_.finalize();
+
             initialized_ = false;
         }
 
@@ -265,12 +278,9 @@ class Global : public StepFunction
                 printf("build date : %s\n", build_date);
                 printf("\n");
                 printf("number of MPI ranks   : %i\n", Platform::num_mpi_ranks());
-                if (mpi_grid_dims_.size())
-                {
-                    printf("default MPI grid      :");
-                    for (int i = 0; i < (int)mpi_grid_dims_.size(); i++) printf(" %i", mpi_grid_dims_[i]);
-                    printf("\n");
-                }
+                printf("MPI grid              :");
+                for (int i = 0; i < mpi_grid_.num_dimensions(); i++) printf(" %i", mpi_grid_.size(1 << i));
+                printf("\n");
                 printf("number of OMP threads : %i\n", Platform::num_threads()); 
 
                 UnitCell::print_info();

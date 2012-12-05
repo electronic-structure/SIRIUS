@@ -1,3 +1,15 @@
+/** \file mpi_grid.h
+
+    \brief Interface to MPI cartesian grids
+
+    The following terminology is used. Suppose we have a 4x5 grid of MPI ranks. We say it's a two-\em dimensional
+    grid with the first dimension of the size 4 and the second dimensoion of the size 5. The \em actual number of
+    grid dimensions is two, however we may also consider the grid as being a D-dimensional (D >= 2) with implicit 
+    dimension sizes equal to one, e.g. 4x5 := 4x5x1x1x1... The communication happens along single or multiple 
+    \em directions along the grid dimensions. We specify directions wth bits, eg. directions=00000101 reads as 
+    "communication along 1-st and 3-rd dimensions".
+*/
+
 class MPIGrid
 {
     private:
@@ -18,8 +30,8 @@ class MPIGrid
 
         /** Grid comminicators are built for all possible combinations of 
             directions, i.e. 001, 010, 011, etc. First communicator is the 
-            trivial "self" communicator (it is not created because it's not 
-            used); the last communicator handles the entire grid.
+            trivial "self" communicator; the last communicator handles the 
+            entire grid.
         */
         std::vector<MPI_Comm> communicators_;
 
@@ -143,6 +155,15 @@ class MPIGrid
                     MPI_Cart_sub(base_grid_communicator_, &flg[0], &communicators_[i]);
                 }
                 
+                // explicitly set the size of "self" communicator
+                communicator_size_[0] = 1;
+                
+                // explicitly set the root of "self" communicator
+                communicator_root_[0] = true;
+
+                // expicitly set the "self" communicator
+                communicators_[0] = MPI_COMM_SELF;
+
                 // root of the grig can print
                 //Platform::set_verbose(root());
 
@@ -177,24 +198,57 @@ class MPIGrid
             dimensions_.clear();
         }
 
+        /// Total number of ranks along specified directions
         inline int size(int directions = 0xFF)
         {
             return communicator_size_[valid_directions(directions)];
         }
 
+        /// true if MPI rank belongs to the grid
         inline bool in_grid()
         {
             return (base_grid_communicator_ != MPI_COMM_NULL);
         }
 
+        /// true if MPI rank is the root of the grid
         inline bool root(int directions = 0xFF)
         {
             return communicator_root_[valid_directions(directions)];
         }
+        
+        /// Actual coordinates of the calling MPI rank
+        std::vector<int> coordinates()
+        {
+            return coordinates_;
+        }
+
+        /// Coordinate along a given dimension
+        inline int coordinate(int idim)
+        {
+            return (idim < (int)coordinates_.size()) ? coordinates_[idim] : 0;
+        }
+       
+        /// Actual grid dimensions 
+        inline std::vector<int> dimensions()
+        {
+            return dimensions_;
+        }
+
+        /// Size of a given dimensions 
+        inline int dimension_size(int idim)
+        {
+            return (idim < (int)dimensions_.size()) ? dimensions_[idim] : 1;
+        }
+
+        /// Actual number of grid dimensions
+        inline int num_dimensions()
+        {
+            return (int)dimensions_.size();
+        }
 
         /// Check if MPI ranks are at the side of the grid
 
-        /** Side ranks are those for which remaining coordinates are zero.
+        /** Side ranks are those for which coordinates along remaining directions are zero.
         */
         inline bool side(int directions)
         {
@@ -208,58 +262,34 @@ class MPIGrid
             return flg;
         }
 
+        /// Get vector of sub-dimensions
         inline std::vector<int> sub_dimensions(int directions)
         {
             std::vector<int> sd;
 
-            for (int i = 0; i < (int)dimensions_.size(); i++)
+            for (int i = 0; i < 8; i++)
                 if (directions & (1 << i))
-                    sd.push_back(dimensions_[i]);
+                    sd.push_back(dimension_size(i));
 
             return sd;
         }
 
-        std::vector<int> sub_coordinates(int directions)
+        /// Get vector of sub-coordinates
+        inline std::vector<int> sub_coordinates(int directions)
         {
             std::vector<int> sc;
 
-            for (int i = 0; i < (int)coordinates_.size(); i++)
+            for (int i = 0; i < 8; i++)
                 if (directions & (1 << i))
-                    sc.push_back(coordinates_[i]);
+                    sc.push_back(coordinate(i));
 
             return sc;
         }
 
-        std::vector<int> coordinates()
-        {
-            return coordinates_;
-        }
-
-        int coordinate(int idim)
-        {
-            assert(idim < (int)coordinates_.size());
-
-            return coordinates_[idim];
-        }
-        
-        std::vector<int> dimensions()
-        {
-            return dimensions_;
-        }
 
         MPIGrid* sub_grid(int directions)
         {
-            if (valid_directions(directions))
-            {
-                //std::vector<int> sd = sub_dimensions(directions);
-                //MPI_Comm comm = communicator(directions);
-                return new MPIGrid(sub_dimensions(directions), communicator(directions));
-                //return new MPIGrid(sd, comm);
-            }
-            else
-            {
-                return NULL;
-            }
+            return new MPIGrid(sub_dimensions(directions), communicator(directions));
         }
 
         int cart_rank(const MPI_Comm& comm, std::vector<int> coords)
@@ -271,23 +301,23 @@ class MPIGrid
             return r;
         }
 
-        template <typename T>
-        void reduce(T* buffer, int count, int directions, bool side_only = false)
-        {
-            if (!in_grid()) return;
-            
-            if (side_only && (!side(directions))) return;
+        //template <typename T>
+        //void reduce(T* buffer, int count, int directions, bool side_only = false)
+        //{
+        //    if (!in_grid()) return;
+        //    
+        //    if (side_only && (!side(directions))) return;
 
-            std::vector<int> root_coords;
+        //    std::vector<int> root_coords;
 
-            for (int i = 0; i < (int)coordinates_.size(); i++)
-                if (directions & (1 << i))
-                    root_coords.push_back(0);
-            
-            MPI_Comm comm = communicators_[valid_directions(directions)];
+        //    for (int i = 0; i < (int)coordinates_.size(); i++)
+        //        if (directions & (1 << i))
+        //            root_coords.push_back(0);
+        //    
+        //    MPI_Comm comm = communicators_[valid_directions(directions)];
 
-            Platform::reduce(buffer, count, comm, cart_rank(comm, root_coords));
-        }
+        //    Platform::reduce(buffer, count, comm, cart_rank(comm, root_coords));
+        //}
 
         void barrier(int directions = 0xFF)
         {

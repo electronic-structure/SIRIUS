@@ -21,7 +21,7 @@ class Density
 
         mdarray<complex16,3> complex_gaunt_;
 
-        MPIGrid mpi_grid_;
+        //MPIGrid mpi_grid_;
 
         kpoint_set kpoint_set_;
 
@@ -312,7 +312,7 @@ class Density
                 int allocate_f__ = pw_component) : parameters_(parameters__),
                                                    potential_(potential__),
                                                    allocate_f_(allocate_f__),
-                                                   kpoint_set_(mpi_grid_)
+                                                   kpoint_set_(parameters__.mpi_grid())
         {
             rho_ = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
             rho_->allocate(allocate_f_);
@@ -350,17 +350,14 @@ class Density
 
             band_ = new Band(parameters_);
             
-            //mpi_grid_.initialize(intvec(std::min(Platform::num_mpi_ranks(), kpoints__.size(1)), 1));
-            //mpi_grid_.initialize(intvec(1, 2, 2));
-            mpi_grid_.initialize(parameters_.mpi_grid_dims());
-
             kpoint_set_.clear();
             for (int ik = 0; ik < kpoints__.size(1); ik++)
                 kpoint_set_.add_kpoint(&kpoints__(0, ik), kpoint_weights__[ik], parameters_);
 
 
             // distribute k-points along the 1-st direction of the MPI grid
-            spl_num_kpoints_.split(kpoints__.size(1), mpi_grid_.size(1 << 0), mpi_grid_.coordinate(0));
+            spl_num_kpoints_.split(kpoints__.size(1), parameters_.mpi_grid().dimension_size(0), 
+                                   parameters_.mpi_grid().coordinate(0));
 
             for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
                 kpoint_set_[spl_num_kpoints_.global_index(ikloc)]->initialize();
@@ -378,8 +375,6 @@ class Density
             delete rho_;
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
                 delete magnetization_[j];
-
-            mpi_grid_.finalize();
         }
         
         void set_charge_density_ptr(double* rhomt, double* rhoir)
@@ -602,7 +597,7 @@ class Density
             }
 
             // synchronize eigen-values
-            kpoint_set_.sync_band_energies(parameters_.num_bands(), mpi_grid_, spl_num_kpoints_);
+            kpoint_set_.sync_band_energies(parameters_.num_bands(), spl_num_kpoints_);
 
             // compute eigen-value sums
             double eval_sum = 0.0;
@@ -808,7 +803,7 @@ class Density
 
         void print_info()
         {
-            if (mpi_grid_.root())
+            if (parameters_.mpi_grid().root())
             {
                 printf("\n");
                 printf("Density\n");
@@ -819,11 +814,11 @@ class Density
                 printf("\n");
             }
 
-            if (mpi_grid_.side(1 << 0))
+            if (parameters_.mpi_grid().side(1 << 0))
             {
-                for (int i = 0; i < mpi_grid_.size(1 << 0); i++)
+                for (int i = 0; i < parameters_.mpi_grid().dimension_size(0); i++)
                 {
-                    if (mpi_grid_.coordinate(0) == i)
+                    if (parameters_.mpi_grid().coordinate(0) == i)
                     {
                         for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
                         {
@@ -835,13 +830,13 @@ class Density
                                    kpoint_set_[ik]->apwlo_basis_size());
                         }
                     }
-                    mpi_grid_.barrier(1 << 0);
+                    parameters_.mpi_grid().barrier(1 << 0);
                 }
             }
 
-            mpi_grid_.barrier();
+            parameters_.mpi_grid().barrier();
 
-            if (mpi_grid_.root())
+            if (parameters_.mpi_grid().root())
             {
                 for (int i = 0; i < 80; i++) printf("-");
                 printf("\n");

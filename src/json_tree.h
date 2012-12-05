@@ -156,7 +156,7 @@ class JsonTree
             {
                 std::stringstream s;
                 s << "fail to open " << fname;
-                error(__FILE__, __LINE__, s);
+                error(__FILE__, __LINE__, s, fatal_err);
             }
             ifs.seekg(0, std::ios::end);
             std::streamoff length = ifs.tellg();
@@ -221,7 +221,7 @@ class JsonTree
                 s << "null or invalid value of type " << type_name << std::endl 
                   << "file : " << fname_ << std::endl
                   << "path : " << path;
-                error(__FILE__, __LINE__, s);
+                error(__FILE__, __LINE__, s, fatal_err);
             }
 
             return val;
@@ -259,7 +259,7 @@ class JsonTree
                 s << "null or invalid value of type " << type_name << std::endl 
                   << "file : " << fname_ << std::endl
                   << "path : " << path;
-                error(__FILE__, __LINE__, s);
+                error(__FILE__, __LINE__, s, fatal_err);
             }
         }
 }; 

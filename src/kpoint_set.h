@@ -2,6 +2,8 @@
 namespace sirius 
 {
 
+// TODO: this is something temporary; think how to handle k- point set
+
 class kpoint_set
 {
     private:
@@ -27,6 +29,7 @@ class kpoint_set
             //        error(__FILE__, __LINE__, "kpoint is already in list");
             //}
 
+            // TODO: kill mpi subgrid here (in the same file where it was allocated!!)
             kpoints_.push_back(new kpoint(parameters, vk, weight, mpi_grid_.sub_grid(1 << 1 | 1 << 2)));
 
             std::vector<double> initial_occupancies(parameters.num_bands(), 0.0);
@@ -72,13 +75,13 @@ class kpoint_set
             return (int)kpoints_.size();
         }
 
-        void sync_band_energies(int num_bands, MPIGrid& mpi_grid, splindex<block>& spl_num_kpoints)
+        void sync_band_energies(int num_bands, splindex<block>& spl_num_kpoints)
         {
             mdarray<double, 2> band_energies(num_bands, num_kpoints());
             band_energies.zero();
             
             // assume that side processors store the full e(k) array
-            if (mpi_grid.side(1 << 0))
+            if (mpi_grid_.side(1 << 0))
                 for (int ikloc = 0; ikloc < spl_num_kpoints.local_size(); ikloc++)
                 {
                     int ik = spl_num_kpoints.global_index(ikloc);

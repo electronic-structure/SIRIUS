@@ -55,9 +55,14 @@ class Band
 {
     private:
 
+        /// Global set of parameters
         Global& parameters_;
     
+        /// Non-zero Gaunt coefficients
         mdarray<std::vector< std::pair<int, complex16> >, 2> complex_gaunt_packed_;
+       
+        /// Block-cyclic distribution of the first-variational states along columns of the MPI grid
+        splindex<block_cyclic, scalapack_nb> spl_fv_states_col_;
         
         template <typename T>
         inline void sum_L3_complex_gaunt(int lm1, int lm2, T* v, complex16& zsum)
@@ -706,6 +711,39 @@ class Band
                     }
                 }
             }
+            
+            //// distribue first-variational states
+            //spl_fv_states_col_.split(parameters_.num_fv_states(), cart_dims[1], cart_coord[1]);
+           
+            //if ((verbosity_level > 0) && (Platform::mpi_rank() == 0))
+            //{
+            //    printf("\n");
+            //    printf("table of column distribution of first-variational eigen-vectors\n");
+            //    printf("columns of the table correspond to MPI ranks\n");
+            //    for (int i0 = 0; i0 < spl_num_fv_eigen_vectors_col_.local_size(0); i0++)
+            //    {
+            //        for (int i1 = 0; i1 < cart_dims[1]; i1++)
+            //            printf("%6i", spl_num_fv_eigen_vectors_col_.global_index(i0, i1));
+            //        printf("\n");
+            //    }
+            //    
+            //    /*printf("\n");
+            //    printf("table of row distribution of first-variational states\n");
+            //    printf("columns of the table correspond to MPI ranks\n");
+            //    for (int i0 = 0; i0 < fv_states_distribution_row_.size(0); i0++)
+            //    {
+            //        for (int i1 = 0; i1 < fv_states_distribution_row_.size(1); i1++)
+            //            printf("%6i", fv_states_distribution_row_(i0, i1));
+            //        printf("\n");
+            //    }*/
+
+            //    printf("\n");
+            //    printf("First-variational eigen-vectors location (local index, rank) for column distribution\n");
+            //    for (int i = 0; i < parameters_.num_fv_states(); i++)
+            //        printf("%6i %6i %6i\n", i, spl_num_fv_eigen_vectors_col_.location(0, i), 
+            //                                   spl_num_fv_eigen_vectors_col_.location(1, i));
+
+            //}
         }
  
 

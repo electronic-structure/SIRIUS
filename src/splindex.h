@@ -2,28 +2,12 @@ template <splindex_t type, int block_size__ = 1>
 class splindex
 {
     private:
-
+        
+        /// rank of the block with local fraction of the global index
         int rank_;
-
+        
+        /// number of ranks over which the global index is distributed
         int num_ranks_;
-
-        //int index_size_;
-        //
-        //std::vector<int> dimensions_;
-
-        //std::vector<int> coordinates_;
-
-        //std::vector<int> offset_;
-
-        //int num_ranks_;
-
-        //int rank_id_;
-
-        //int local_size_;
-
-        //int global_index_offset_;
-
-        //MPI_Comm communicator_;
 
         /// local index size for each rank
         std::vector<int> local_size_;
@@ -55,6 +39,10 @@ class splindex
         {
             assert(num_ranks__ > 0);
             assert((rank__ >= 0) && (rank__ < num_ranks__));
+            assert(global_index_size__ >= 0);
+
+            if (global_index_size__ == 0)
+                error(__FILE__, __LINE__, "need to think what to do with zero index size", fatal_err);
 
             rank_ = rank__;
             num_ranks_ = num_ranks__;
@@ -142,80 +130,6 @@ class splindex
                 }
         }
         
-
-        //splindex() : index_size_(-1),
-        //             num_ranks_(-1),
-        //             rank_id_(-1),
-        //             local_size_(-1),
-        //             global_index_offset_(-1),
-        //             communicator_(MPI_COMM_NULL)
-        //{
-        //}
-        //
-        //splindex(int index_size__,
-        //         const std::vector<int>& dimensions__, 
-        //         const std::vector<int>& coordinates__,
-        //         const MPI_Comm communicator__ = MPI_COMM_WORLD) : index_size_(index_size__),
-        //                                                           dimensions_(dimensions__),
-        //                                                           coordinates_(coordinates__),
-        //                                                           communicator_(communicator__)
-        //{
-        //    if (dimensions__.size() == 0)
-        //        error(__FILE__, __LINE__, "empty array of dimensions", fatal_err);
-
-        //    if (dimensions__.size() != coordinates__.size())
-        //        error(__FILE__, __LINE__, "sizes don't match", fatal_err);
-
-        //    for (int i = 0; i < (int)dimensions_.size(); i++)
-        //    {
-        //        if ((coordinates_[i] < 0) || (coordinates_[i] >= dimensions_[i]))
-        //        {
-        //            std::stringstream s;
-        //            s << "bad coordinates" << std::endl
-        //              << "  direction : " << i << std::endl
-        //              << "  coordinate : " << coordinates_[i] << std::endl
-        //              << "  dimension size : " << dimensions_[i];
-        //            error(__FILE__, __LINE__, s, fatal_err);
-        //        }
-        //    }
-
-        //    if (index_size_ == 0)
-        //        error(__FILE__, __LINE__, "need to think what to do with zero index size", fatal_err);
-
-        //    num_ranks_ = 1;
-        //    for (int i = 0; i < (int)dimensions_.size(); i++)
-        //        num_ranks_ *= dimensions_[i];
-
-        //    offset_ = std::vector<int>(dimensions_.size(), 0);
-        //    int n = 1;
-        //    for (int i = 1; i < (int)dimensions_.size(); i++) 
-        //    {
-        //        n *= dimensions_[i - 1];
-        //        offset_[i] = n;
-        //    }
-        //    
-        //    rank_id_ = coordinates_[0];
-        //    for (int i = 1; i < (int)dimensions_.size(); i++) 
-        //        rank_id_ += offset_[i] * coordinates_[i];
-
-        //    // minimum size
-        //    int n1 = index_size_ / num_ranks_;
-
-        //    // first n2 ranks have one more index element
-        //    int n2 = index_size_ % num_ranks_;
-
-        //    if (rank_id_ < n2)
-        //    {
-        //        local_size_ = n1 + 1;
-        //        global_index_offset_ = (n1 + 1) * rank_id_;
-        //    }
-        //    else
-        //    {   
-        //        local_size_ = n1;
-        //        global_index_offset_ = (n1 > 0) ? (n1 + 1) * n2 + n1 * (rank_id_ - n2) : -1;
-        //    }
-        //}
-
         inline int local_size()
         {
             assert(rank_ >= 0);
@@ -243,6 +157,11 @@ class splindex
         inline int location(int i, int idxglob)
         {
             return location_(i, idxglob);
+        }
+
+        inline int operator[](int idxloc)
+        {
+            return global_index_(idxloc, rank_);
         }
 };
 
