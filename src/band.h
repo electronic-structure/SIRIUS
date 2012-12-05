@@ -712,38 +712,39 @@ class Band
                 }
             }
             
-            //// distribue first-variational states
-            //spl_fv_states_col_.split(parameters_.num_fv_states(), cart_dims[1], cart_coord[1]);
+            // distribue first-variational states
+            spl_fv_states_col_.split(parameters_.num_fv_states(), parameters_.mpi_grid().dimension_size(2), 
+                                     parameters_.mpi_grid().coordinate(2));
            
-            //if ((verbosity_level > 0) && (Platform::mpi_rank() == 0))
-            //{
-            //    printf("\n");
-            //    printf("table of column distribution of first-variational eigen-vectors\n");
-            //    printf("columns of the table correspond to MPI ranks\n");
-            //    for (int i0 = 0; i0 < spl_num_fv_eigen_vectors_col_.local_size(0); i0++)
-            //    {
-            //        for (int i1 = 0; i1 < cart_dims[1]; i1++)
-            //            printf("%6i", spl_num_fv_eigen_vectors_col_.global_index(i0, i1));
-            //        printf("\n");
-            //    }
-            //    
-            //    /*printf("\n");
-            //    printf("table of row distribution of first-variational states\n");
-            //    printf("columns of the table correspond to MPI ranks\n");
-            //    for (int i0 = 0; i0 < fv_states_distribution_row_.size(0); i0++)
-            //    {
-            //        for (int i1 = 0; i1 < fv_states_distribution_row_.size(1); i1++)
-            //            printf("%6i", fv_states_distribution_row_(i0, i1));
-            //        printf("\n");
-            //    }*/
+            if ((verbosity_level > 0) && (Platform::mpi_rank() == 0))
+            {
+                printf("\n");
+                printf("table of column distribution of first-variational states\n");
+                printf("(columns of the table correspond to MPI ranks)\n");
+                for (int i0 = 0; i0 < spl_fv_states_col_.local_size(0); i0++)
+                {
+                    for (int i1 = 0; i1 < parameters_.mpi_grid().dimension_size(2); i1++)
+                        printf("%6i", spl_fv_states_col_.global_index(i0, i1));
+                    printf("\n");
+                }
+                
+                /*printf("\n");
+                printf("table of row distribution of first-variational states\n");
+                printf("columns of the table correspond to MPI ranks\n");
+                for (int i0 = 0; i0 < fv_states_distribution_row_.size(0); i0++)
+                {
+                    for (int i1 = 0; i1 < fv_states_distribution_row_.size(1); i1++)
+                        printf("%6i", fv_states_distribution_row_(i0, i1));
+                    printf("\n");
+                }*/
 
-            //    printf("\n");
-            //    printf("First-variational eigen-vectors location (local index, rank) for column distribution\n");
-            //    for (int i = 0; i < parameters_.num_fv_states(); i++)
-            //        printf("%6i %6i %6i\n", i, spl_num_fv_eigen_vectors_col_.location(0, i), 
-            //                                   spl_num_fv_eigen_vectors_col_.location(1, i));
-
-            //}
+                printf("\n");
+                printf("First-variational states location (local index, rank) for column distribution\n");
+                for (int i = 0; i < parameters_.num_fv_states(); i++)
+                    printf("%6i -> %6i %6i\n", i, spl_fv_states_col_.location(0, i), 
+                                                  spl_fv_states_col_.location(1, i));
+            }
+            stop_here
         }
  
 
@@ -783,7 +784,7 @@ class Band
                       PeriodicFunction<double>*                  effective_potential, 
                       PeriodicFunction<double>*                  effective_magnetic_field[3], 
                       std::vector<double>&                       fv_eigen_values, 
-                      mdarray<complex16, 2>&                     evecloc)
+                      mdarray<complex16, 2>&                     fv_eigen_vectors)
         {
             if (&parameters != &parameters_) error(__FILE__, __LINE__, "different set of parameters");
 
@@ -815,16 +816,16 @@ class Band
 
                 int desc_z[9];
                 descinit(desc_z, apwlo_basis_size, apwlo_basis_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, 
-                         evecloc.ld());
+                         fv_eigen_vectors.ld());
                 
                 hegvx_scalapack(apwlo_basis_size, parameters.num_fv_states(), blacs_dims[0], blacs_dims[1], -1.0, 
-                                h.get_ptr(), desc_h, o.get_ptr(), desc_o, &fv_eigen_values[0], evecloc.get_ptr(), 
-                                desc_z);
+                                h.get_ptr(), desc_h, o.get_ptr(), desc_o, &fv_eigen_values[0], 
+                                fv_eigen_vectors.get_ptr(), desc_z);
             }
             else
             {
                 int info = hegvx<cpu>(apwlo_basis_size, parameters.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), 
-                                      &fv_eigen_values[0], evecloc.get_ptr(), evecloc.ld());
+                                      &fv_eigen_values[0], fv_eigen_vectors.get_ptr(), fv_eigen_vectors.ld());
                 if (info)
                 {
                     std::stringstream s;

@@ -245,7 +245,7 @@ class Global : public StepFunction
 
             if (eigen_value_solver == scalapack)
             {
-                int ncol = mpi_grid_.size(2);
+                int ncol = mpi_grid_.dimension_size(2);
 
                 int n = num_fv_states_ / (ncol * scalapack_nb);
                 
