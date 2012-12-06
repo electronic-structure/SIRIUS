@@ -243,7 +243,7 @@ class geometry : public unit_cell
                             
                             // vector connecting center of atom and reduced point
                             double vf1[3];
-                            for (int i = 0; i < 3; i++) vf1[3] = vf[i] - posf[i];
+                            for (int i = 0; i < 3; i++) vf1[i] = vf[i] - posf[i];
                             
                             // convert to Cartesian coordinates
                             double vc1[3];

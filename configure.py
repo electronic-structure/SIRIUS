@@ -6,9 +6,9 @@ import subprocess
 
 # === platform specific options === 
 
-CC = "mpicc"
-CXX = "mpicxx"
-FC = "mpif90"
+CC = "mpiicc"
+CXX = "mpiicc"
+FC = "mpiifort"
 
 CXX_OPT = "-O3 -Wall -Wconversion -fopenmp -DNDEBUG -g"
 
