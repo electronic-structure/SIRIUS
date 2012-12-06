@@ -1,6 +1,6 @@
 #ifndef __SIRIUS_H__
 #define __SIRIUS_H__
-
+#include <mpi.h>
 #include <assert.h>
 #include <stdio.h>
 #include <sys/time.h>
@@ -29,7 +29,7 @@ extern "C" {
 #include <xc.h>
 // libxc should do that
 #undef FLOAT
-#include <mpi.h>
+
 #include <hdf5.h>
 #include <libjson.h>
 
