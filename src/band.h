@@ -64,6 +64,10 @@ class Band
         /// Block-cyclic distribution of the first-variational states along columns of the MPI grid
         splindex<block_cyclic, scalapack_nb> spl_fv_states_col_;
         
+        splindex<block_cyclic, scalapack_nb> spl_fv_states_row_;
+        
+        splindex<block_cyclic, scalapack_nb> spl_spinor_wf_col_;
+        
         template <typename T>
         inline void sum_L3_complex_gaunt(int lm1, int lm2, T* v, complex16& zsum)
         {
@@ -716,6 +720,16 @@ class Band
             spl_fv_states_col_.split(parameters_.num_fv_states(), parameters_.mpi_grid().dimension_size(2), 
                                      parameters_.mpi_grid().coordinate(2));
            
+            spl_spinor_wf_col_.split(parameters_.num_bands(), parameters_.mpi_grid().dimension_size(2), 
+                                     parameters_.mpi_grid().coordinate(2));
+
+            // check if the distribution of fv states is consistent with the distribtion of spinor wave functions
+            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+                for (int i = 0; i < spl_fv_states_col_.local_size(0); i++)
+                    if (spl_spinor_wf_col_[i + ispn * spl_fv_states_col_.local_size(0)] != 
+                        (spl_fv_states_col_[i] + ispn * parameters_.num_fv_states()))
+                        error(__FILE__, __LINE__, "Wrong distribution of wave-functions");
+
             if ((verbosity_level > 0) && (Platform::mpi_rank() == 0))
             {
                 printf("\n");
@@ -739,12 +753,21 @@ class Band
                 }*/
 
                 printf("\n");
-                printf("First-variational states location (local index, rank) for column distribution\n");
+                printf("First-variational states index -> (local index, rank) for column distribution\n");
                 for (int i = 0; i < parameters_.num_fv_states(); i++)
-                    printf("%6i -> %6i %6i\n", i, spl_fv_states_col_.location(0, i), 
-                                                  spl_fv_states_col_.location(1, i));
+                    printf("%6i -> (%6i %6i)\n", i, spl_fv_states_col_.location(0, i), 
+                                                    spl_fv_states_col_.location(1, i));
+                
+                printf("\n");
+                printf("table of column distribution of spinor wave functions\n");
+                printf("(columns of the table correspond to MPI ranks)\n");
+                for (int i0 = 0; i0 < spl_spinor_wf_col_.local_size(0); i0++)
+                {
+                    for (int i1 = 0; i1 < parameters_.mpi_grid().dimension_size(2); i1++)
+                        printf("%6i", spl_spinor_wf_col_.global_index(i0, i1));
+                    printf("\n");
+                }
             }
-            stop_here
         }
  
 
@@ -841,10 +864,10 @@ class Band
                       int num_gkvec,
                       int* fft_index, 
                       double* evalfv, 
-                      mdarray<complex16,2>& scalar_wave_functions, 
+                      mdarray<complex16, 2>& fv_states, 
                       PeriodicFunction<double>* effective_magnetic_field[3],
                       double* band_energies,
-                      mdarray<complex16,2>& evecsv)
+                      mdarray<complex16, 2>& evecsv)
 
         {
             if (&parameters != &parameters_)
@@ -852,7 +875,7 @@ class Band
 
             Timer t("sirius::Band::solve_sv");
             
-            set_sv_h(scalar_wave_functions, scalar_wf_size, num_gkvec, fft_index, evalfv, effective_magnetic_field, 
+            set_sv_h(fv_states, scalar_wf_size, num_gkvec, fft_index, evalfv, effective_magnetic_field, 
                      evecsv);
             
             Timer *t1 = new Timer("sirius::Band::solve_sv:heev");

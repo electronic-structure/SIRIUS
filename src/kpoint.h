@@ -379,8 +379,8 @@ class kpoint
 
         void init_blacs_context()
         {
-            int nrow = mpi_grid_->size(1 << 0);
-            int ncol = mpi_grid_->size(1 << 1);
+            int nrow = mpi_grid_->dimension_size(0);
+            int ncol = mpi_grid_->dimension_size(1);
 
             mdarray<int, 2> map_ranks(nrow, ncol);
             for (int i1 = 0; i1 < ncol; i1++)
