@@ -90,10 +90,10 @@ class Density
             Timer t("sirius::Density::add_kpoint_contribution");
             
             std::vector< std::pair<int, double> > bands;
-            for (int jsub = 0; jsub < kp->num_bands(); jsub++)
+            for (int jsub = 0; jsub < band_->num_sub_bands(); jsub++)
             {
-                int j = kp->idxbandglob(jsub);
-                int jloc = kp->idxbandloc(jsub);
+                int j = band_->idxbandglob(jsub);
+                int jloc = band_->idxbandloc(jsub);
                 double wo = kp->band_occupancy(j) * kp->weight();
                 if (wo > 1e-14)
                     bands.push_back(std::pair<int, double>(jloc, wo));

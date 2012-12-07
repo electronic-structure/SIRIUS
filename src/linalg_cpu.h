@@ -118,9 +118,15 @@ extern "C" void FORTRAN(pzhegvx)(int4* ibtype, const char* jobz, const char* ran
                         real8* rwork, int4* lrwork, int4* iwork, int4* liwork, int4* ifail, int4* iclustr, real8* gap,
                         int4* info, int4 jobz_len, int4 range_len, int4 uplo_len);
 
-extern "C" void FORTRAN(pzgesv)(int4* n, int4* nrhs, complex16* a, int4* ia, int4* ja, int4* desca, int4* ipiv, 
-                                complex16* b, int4* ib, int4* jb, int4* descb, int4* info);
+extern "C" void FORTRAN(pzheevd)(const char* jobz, const char* uplo, int4* n, complex16* a, int4* ia, int4* ja, 
+                                 int4* desca, real8* w, complex16* z, int4* iz, int4* jz, int4* descz, 
+                                 complex16* work, int4* lwork, real8* rwork, int4* lrwork, int4* iwork, int4* liwork, 
+                                 int4* info, int4 jobz_len, int4 uplo_len);
 
+extern "C" int4 FORTRAN(numroc)(int4* n, int4* nb, int4* iproc, int4* isrcproc, int4* nprocs);
+
+//extern "C" void FORTRAN(pzgesv)(int4* n, int4* nrhs, complex16* a, int4* ia, int4* ja, int4* desca, int4* ipiv, 
+//                                complex16* b, int4* ib, int4* jb, int4* descb, int4* info);
 
 #endif // __LINALG_CPU_H__
 

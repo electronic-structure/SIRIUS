@@ -68,6 +68,9 @@ class Band
         
         splindex<block_cyclic, scalapack_nb> spl_spinor_wf_col_;
         
+        splindex<block> sub_spl_spinor_wf_;
+        
+        
         template <typename T>
         inline void sum_L3_complex_gaunt(int lm1, int lm2, T* v, complex16& zsum)
         {
@@ -441,18 +444,22 @@ class Band
             }
         }
         
-        // bwf must be zero on input
-        void apply_magnetic_field(mdarray<complex16,2>& scalar_wf, int scalar_wf_size, int num_gkvec, int* fft_index, 
-                                  PeriodicFunction<double>* effective_magnetic_field[3], mdarray<complex16,3>& bwf)
+        // assumes that hpsi is zero on input
+        void apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size, int num_gkvec, int* fft_index, 
+                                  PeriodicFunction<double>* effective_magnetic_field[3], mdarray<complex16, 3>& hpsi)
         {
+            assert(hpsi.size(2) >= 2);
+            assert(fv_states.size(0) == hpsi.size(0));
+            assert(fv_states.size(1) == hpsi.size(1));
+
             Timer t("sirius::Band::apply_magnetic_field");
 
-            complex16 zzero = complex16(0.0, 0.0);
-            complex16 zone = complex16(1.0, 0.0);
-            complex16 zi = complex16(0.0, 1.0);
+            complex16 zzero = complex16(0, 0);
+            complex16 zone = complex16(1, 0);
+            complex16 zi = complex16(0, 1);
 
-            mdarray<complex16,3> zm(parameters_.max_mt_basis_size(), parameters_.max_mt_basis_size(), 
-                                    parameters_.num_mag_dims());
+            mdarray<complex16, 3> zm(parameters_.max_mt_basis_size(), parameters_.max_mt_basis_size(), 
+                                     parameters_.num_mag_dims());
                     
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
@@ -479,12 +486,11 @@ class Band
                     }
                 }
                 // compute bwf = B_z*|wf_j>
-                hemm<cpu>(0, 0, mt_basis_size, parameters_.num_fv_states(), zone, &zm(0, 0, 0), 
-                          parameters_.max_mt_basis_size(), &scalar_wf(offset, 0), scalar_wf_size, zzero, 
-                          &bwf(offset, 0, 0), scalar_wf_size);
+                hemm<cpu>(0, 0, mt_basis_size, spl_fv_states_col_.local_size(), zone, &zm(0, 0, 0), zm.ld(), 
+                          &fv_states(offset, 0), fv_states.ld(), zzero, &hpsi(offset, 0, 0), hpsi.ld());
                 
                 // compute bwf = (B_x - iB_y)|wf_j>
-                if (parameters_.num_mag_dims() == 3)
+                if (hpsi.size(2) >= 3)
                 {
                     // reuse first (z) component of zm matrix to store (Bx - iBy)
                     for (int j2 = 0; j2 < mt_basis_size; j2++)
@@ -496,9 +502,25 @@ class Band
                             zm(j1, j2, 0) = conj(zm(j2, j1, 1)) - zi * conj(zm(j2, j1, 2));
                     }
                       
-                    gemm<cpu>(0, 0, mt_basis_size, parameters_.num_fv_states(), mt_basis_size, zone, &zm(0, 0, 0), 
-                              parameters_.max_mt_basis_size(), &scalar_wf(offset, 0), scalar_wf_size, zzero, 
-                              &bwf(offset, 0, 2), scalar_wf_size);
+                    gemm<cpu>(0, 0, mt_basis_size, spl_fv_states_col_.local_size(), mt_basis_size, zone, &zm(0, 0, 0), 
+                              zm.ld(), &fv_states(offset, 0), fv_states.ld(), zzero, &hpsi(offset, 0, 2), hpsi.ld());
+                }
+                
+                // compute bwf = (B_x + iB_y)|wf_j>
+                if ((hpsi.size(2)) == 4 && (eigen_value_solver == scalapack))
+                {
+                    // reuse first (z) component of zm matrix to store (Bx + iBy)
+                    for (int j2 = 0; j2 < mt_basis_size; j2++)
+                    {
+                        for (int j1 = 0; j1 <= j2; j1++)
+                            zm(j1, j2, 0) = zm(j1, j2, 1) + zi * zm(j1, j2, 2);
+                        
+                        for (int j1 = j2 + 1; j1 < mt_basis_size; j1++)
+                            zm(j1, j2, 0) = conj(zm(j2, j1, 1)) + zi * conj(zm(j2, j1, 2));
+                    }
+                      
+                    gemm<cpu>(0, 0, mt_basis_size, spl_fv_states_col_.local_size(), mt_basis_size, zone, &zm(0, 0, 0), 
+                              zm.ld(), &fv_states(offset, 0), fv_states.ld(), zzero, &hpsi(offset, 0, 3), hpsi.ld());
                 }
             }
             
@@ -507,44 +529,58 @@ class Band
             {        
                 int thread_id = omp_get_thread_num();
                 
-                std::vector<complex16> wfit(parameters_.fft().size());
-                std::vector<complex16> bwfit(parameters_.fft().size());
+                std::vector<complex16> psi_it(parameters_.fft().size());
+                std::vector<complex16> hpsi_it(parameters_.fft().size());
                 
                 #pragma omp for
-                for (int i = 0; i < parameters_.num_fv_states(); i++)
+                for (int i = 0; i < spl_fv_states_col_.local_size(); i++)
                 {
-                    parameters_.fft().input(num_gkvec, fft_index, &scalar_wf(parameters_.mt_basis_size(), i), 
+                    parameters_.fft().input(num_gkvec, fft_index, &fv_states(parameters_.mt_basis_size(), i), 
                                             thread_id);
                     parameters_.fft().transform(1, thread_id);
-                    parameters_.fft().output(&wfit[0], thread_id);
+                    parameters_.fft().output(&psi_it[0], thread_id);
                                                 
                     for (int ir = 0; ir < parameters_.fft().size(); ir++)
-                        bwfit[ir] = wfit[ir] * effective_magnetic_field[0]->f_it(ir) * parameters_.step_function(ir);
+                        hpsi_it[ir] = psi_it[ir] * effective_magnetic_field[0]->f_it(ir) * 
+                                      parameters_.step_function(ir);
                     
-                    parameters_.fft().input(&bwfit[0], thread_id);
+                    parameters_.fft().input(&hpsi_it[0], thread_id);
                     parameters_.fft().transform(-1, thread_id);
-                    parameters_.fft().output(num_gkvec, fft_index, &bwf(parameters_.mt_basis_size(), i, 0), thread_id); 
+                    parameters_.fft().output(num_gkvec, fft_index, &hpsi(parameters_.mt_basis_size(), i, 0), thread_id); 
 
-                    if (parameters_.num_mag_dims() == 3)
+                    if (hpsi.size(2) >= 3)
                     {
                         for (int ir = 0; ir < parameters_.fft().size(); ir++)
-                            bwfit[ir] = wfit[ir] * (effective_magnetic_field[1]->f_it(ir) - 
-                                                    zi * effective_magnetic_field[2]->f_it(ir)) * 
-                                                    parameters_.step_function(ir);
+                            hpsi_it[ir] = psi_it[ir] * (effective_magnetic_field[1]->f_it(ir) - 
+                                                        zi * effective_magnetic_field[2]->f_it(ir)) * 
+                                                       parameters_.step_function(ir);
                         
-                        parameters_.fft().input(&bwfit[0], thread_id);
+                        parameters_.fft().input(&hpsi_it[0], thread_id);
                         parameters_.fft().transform(-1, thread_id);
-                        parameters_.fft().output(num_gkvec, fft_index, &bwf(parameters_.mt_basis_size(), i, 2), 
+                        parameters_.fft().output(num_gkvec, fft_index, &hpsi(parameters_.mt_basis_size(), i, 2), 
+                                                 thread_id); 
+                    }
+                    
+                    if ((hpsi.size(2)) == 4 && (eigen_value_solver == scalapack))
+                    {
+                        for (int ir = 0; ir < parameters_.fft().size(); ir++)
+                            hpsi_it[ir] = psi_it[ir] * (effective_magnetic_field[1]->f_it(ir) + 
+                                                        zi * effective_magnetic_field[2]->f_it(ir)) * 
+                                                       parameters_.step_function(ir);
+                        
+                        parameters_.fft().input(&hpsi_it[0], thread_id);
+                        parameters_.fft().transform(-1, thread_id);
+                        parameters_.fft().output(num_gkvec, fft_index, &hpsi(parameters_.mt_basis_size(), i, 3), 
                                                  thread_id); 
                     }
                 }
             }
             delete t1;
-            
-            // copy -B_z|wf> TODO: this implementation assumes that bwf was zero on input!!!
-            for (int i = 0; i < parameters_.num_fv_states(); i++)
-                for (int j = 0; j < scalar_wf_size; j++)
-                    bwf(j, i, 1) = -bwf(j, i, 0);
+           
+            // copy Bz|\psi> to -Bz|\psi>
+            for (int i = 0; i < spl_fv_states_col_.local_size(); i++)
+                for (int j = 0; j < mtgk_size; j++)
+                    hpsi(j, i, 1) = -hpsi(j, i, 0);
         }
 
         /// Apply SO correction to the scalar wave functions
@@ -722,11 +758,27 @@ class Band
            
             spl_spinor_wf_col_.split(parameters_.num_bands(), parameters_.mpi_grid().dimension_size(2), 
                                      parameters_.mpi_grid().coordinate(2));
+            
+            // split along rows 
+            sub_spl_spinor_wf_.split(spl_spinor_wf_col_.local_size(), parameters_.mpi_grid().dimension_size(1), 
+                                     parameters_.mpi_grid().coordinate(1));
+            
+            if (parameters_.num_mag_dims() != 3)
+            {
+                spl_fv_states_row_.split(parameters_.num_fv_states(), parameters_.mpi_grid().dimension_size(1), 
+                                         parameters_.mpi_grid().coordinate(1));
+            }
+            else
+            {
+                spl_fv_states_row_.split(parameters_.num_fv_states() * parameters_.num_spins(), 
+                                         parameters_.mpi_grid().dimension_size(1), 
+                                         parameters_.mpi_grid().coordinate(1));
+            }
 
             // check if the distribution of fv states is consistent with the distribtion of spinor wave functions
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-                for (int i = 0; i < spl_fv_states_col_.local_size(0); i++)
-                    if (spl_spinor_wf_col_[i + ispn * spl_fv_states_col_.local_size(0)] != 
+                for (int i = 0; i < spl_fv_states_col_.local_size(); i++)
+                    if (spl_spinor_wf_col_[i + ispn * spl_fv_states_col_.local_size()] != 
                         (spl_fv_states_col_[i] + ispn * parameters_.num_fv_states()))
                         error(__FILE__, __LINE__, "Wrong distribution of wave-functions");
 
@@ -860,58 +912,170 @@ class Band
         }
 
         void solve_sv(Global& parameters,
-                      int scalar_wf_size, 
+                      int blacs_context,
+                      int mtgk_size, 
                       int num_gkvec,
                       int* fft_index, 
                       double* evalfv, 
-                      mdarray<complex16, 2>& fv_states, 
+                      mdarray<complex16, 2>& fv_states_row, 
+                      mdarray<complex16, 2>& fv_states_col, 
                       PeriodicFunction<double>* effective_magnetic_field[3],
                       double* band_energies,
-                      mdarray<complex16, 2>& evecsv)
+                      mdarray<complex16, 2>& sv_eigen_vectors)
 
         {
             if (&parameters != &parameters_)
                 error(__FILE__, __LINE__, "different set of parameters");
 
             Timer t("sirius::Band::solve_sv");
+
+            // number of h|\psi> components 
+            int nhpsi = parameters_.num_mag_dims() + 1;
+
+            // product of the second-variational Hamiltonian and a wave-function
+            mdarray<complex16, 3> hpsi(mtgk_size, spl_fv_states_col_.local_size(), nhpsi);
+            hpsi.zero();
+
+            // compute product of magnetic field and wave-function 
+            if (parameters_.num_spins() == 2)
+                apply_magnetic_field(fv_states_col, mtgk_size, num_gkvec, fft_index, effective_magnetic_field, hpsi);
+
+            //if (parameters_.uj_correction())
+            //{
+            //    apply_uj_correction<uu>(scalar_wf, hwf);
+            //    if (parameters_.num_mag_dims() != 0) apply_uj_correction<dd>(scalar_wf, hwf);
+            //    if (parameters_.num_mag_dims() == 3) apply_uj_correction<ud>(scalar_wf, hwf);
+            //}
+
+            //if (parameters_.so_correction())
+            //    apply_so_correction(scalar_wf, hwf);
+
+
+            //Timer *t1 = new Timer("sirius::Band::solve_sv:heev");
             
-            set_sv_h(fv_states, scalar_wf_size, num_gkvec, fft_index, evalfv, effective_magnetic_field, 
-                     evecsv);
-            
-            Timer *t1 = new Timer("sirius::Band::solve_sv:heev");
             if (parameters.num_mag_dims() == 1)
             {
-                int info;                    
-                                           
-                info = heev<cpu>(parameters.num_fv_states(), &evecsv(0, 0), parameters.num_bands(), band_energies);
-                if (info)
-                {                            
-                    std::stringstream s;
-                    s << "heev returned" << info;
-                    error(__FILE__, __LINE__, s);
-                }
+                mdarray<complex16, 2> h(spl_fv_states_row_.local_size(), spl_fv_states_col_.local_size());
+
+                //perform two consecutive diagonalizations
+                for (int ispn = 0; ispn < 2; ispn++)
+                {
+                    // compute <wf_i | (h * wf_j)> for up-up block
+                    gemm<cpu>(2, 0, spl_fv_states_row_.local_size(), spl_fv_states_col_.local_size(), 
+                              mtgk_size, complex16(1, 0), &fv_states_row(0, 0), fv_states_row.ld(), 
+                              &hpsi(0, 0, ispn), hpsi.ld(), complex16(0, 0), &h(0, 0), h.ld());
+
+                    for (int icol = 0; icol < spl_fv_states_col_.local_size(); icol++)
+                    {
+                        int i = spl_fv_states_col_[icol];
+                        for (int irow = 0; irow < spl_fv_states_row_.local_size(); irow++)
+                            if (spl_fv_states_row_[irow] == i) h(irow, icol) += evalfv[i];
+                    }
                 
-                info = heev<cpu>(parameters.num_fv_states(), 
-                                 &evecsv(parameters_.num_fv_states(), parameters.num_fv_states()), 
-                                 parameters.num_bands(), &band_energies[parameters.num_fv_states()]);
-                if (info)
-                {
-                    std::stringstream s;
-                    s << "heev returned" << info;
-                    error(__FILE__, __LINE__, s);
-                }
-            }                                
-            else                             
-            {                                
-                int info = heev<cpu>(parameters.num_bands(), &evecsv(0, 0), parameters_.num_bands(), band_energies);
-                if (info)
-                {
-                    std::stringstream s;
-                    s << "heev returned" << info;
-                    error(__FILE__, __LINE__, s);
+                    if (eigen_value_solver == lapack)
+                    {
+                        assert(spl_fv_states_row_.local_size() == parameters_.num_fv_states());
+                        assert(spl_fv_states_col_.local_size() == parameters_.num_fv_states());
+
+                        int info = heev<cpu>(parameters.num_fv_states(), &h(0, 0), h.ld(), 
+                                             &band_energies[ispn * parameters_.num_fv_states()]);
+                        if (info)
+                        {                            
+                            std::stringstream s;
+                            s << "heev returned" << info;
+                            error(__FILE__, __LINE__, s);
+                        }
+                        memcpy(&sv_eigen_vectors(0, ispn * parameters_.num_fv_states()), &h(0, 0), 
+                               h.size() * sizeof(complex16));
+                    }
+                    if (eigen_value_solver == scalapack)
+                    {
+                        int desc_h[9];
+                        descinit(desc_h, parameters_.num_fv_states(), parameters_.num_fv_states(), scalapack_nb, 
+                                 scalapack_nb, 0, 0, blacs_context, h.ld());
+
+                        int desc_z[9];
+                        descinit(desc_z, parameters_.num_fv_states(), parameters_.num_fv_states(), scalapack_nb, 
+                                 scalapack_nb, 0, 0, blacs_context, sv_eigen_vectors.ld());
+                        
+                        heevd_scalapack(parameters_.num_fv_states(), parameters_.mpi_grid().dimension_size(1), 
+                                        parameters_.mpi_grid().dimension_size(2), scalapack_nb, &h(0, 0), desc_h,
+                                        &band_energies[ispn * parameters_.num_fv_states()], 
+                                        &sv_eigen_vectors(0, ispn * spl_fv_states_col_.local_size()), desc_z);
+
+                    }
                 }
             }
-            delete t1;
+
+
+            
+            //set_sv_h(fv_states, mtgk_size, num_gkvec, fft_index, evalfv, effective_magnetic_field, 
+            //         sv_eigen_vectors);
+            //
+            //Timer *t1 = new Timer("sirius::Band::solve_sv:heev");
+            //if (parameters.num_mag_dims() == 1)
+            //{
+            //    int info;                    
+            //                               
+            //    info = heev<cpu>(parameters.num_fv_states(), &sv_eigen_vectors(0, 0), parameters.num_bands(), band_energies);
+            //    if (info)
+            //    {                            
+            //        std::stringstream s;
+            //        s << "heev returned" << info;
+            //        error(__FILE__, __LINE__, s);
+            //    }
+            //    
+            //    info = heev<cpu>(parameters.num_fv_states(), 
+            //                     &sv_eigen_vectors(parameters_.num_fv_states(), parameters.num_fv_states()), 
+            //                     parameters.num_bands(), &band_energies[parameters.num_fv_states()]);
+            //    if (info)
+            //    {
+            //        std::stringstream s;
+            //        s << "heev returned" << info;
+            //        error(__FILE__, __LINE__, s);
+            //    }
+            //}                                
+            //else                             
+            //{                                
+            //    int info = heev<cpu>(parameters.num_bands(), &sv_eigen_vectors(0, 0), parameters_.num_bands(), band_energies);
+            //    if (info)
+            //    {
+            //        std::stringstream s;
+            //        s << "heev returned" << info;
+            //        error(__FILE__, __LINE__, s);
+            //    }
+            //}
+            //delete t1;
+        }
+        
+        inline splindex<block_cyclic, scalapack_nb>& spl_fv_states_col()
+        {
+            return spl_fv_states_col_;
+        }
+        
+        inline splindex<block_cyclic, scalapack_nb>& spl_fv_states_row()
+        {
+            return spl_fv_states_row_;
+        }
+        
+        inline splindex<block_cyclic, scalapack_nb>& spl_spinor_wf_col()
+        {
+            return spl_spinor_wf_col_;
+        }
+        
+        inline int num_sub_bands()
+        {
+            return sub_spl_spinor_wf_.local_size();
+        }
+
+        inline int idxbandglob(int sub_index)
+        {
+            return spl_spinor_wf_col_[sub_spl_spinor_wf_[sub_index]];
+        }
+        
+        inline int idxbandloc(int sub_index)
+        {
+            return sub_spl_spinor_wf_[sub_index];
         }
 };
 

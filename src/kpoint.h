@@ -43,8 +43,11 @@ class kpoint
         /// position of the G vector (from the G+k set) inside the FFT buffer 
         std::vector<int> fft_index_;
        
-        /// first-variational states
-        mdarray<complex16, 2> fv_states_;
+        /// first-variational states, distributed along the columns of the MPI grid
+        mdarray<complex16, 2> fv_states_col_;
+       
+        /// first-variational states, distributed along the rows of the MPI grid
+        mdarray<complex16, 2> fv_states_row_;
 
         /// two-component (spinor) wave functions describing the bands
         mdarray<complex16, 3> spinor_wave_functions_;
@@ -77,7 +80,7 @@ class kpoint
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_;
 
         /// APW+lo basis index, distributed along the rows of the MPI grid
-        splindex<block_cyclic, scalapack_nb> spl_apwlo_basis_size_row_;
+        splindex<block_cyclic, scalapack_nb> spl_apwlo_basis_size_row_; // TODO: remove _size_ from the name
         
         /// row APW+lo basis descriptors
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_row_;
@@ -87,14 +90,6 @@ class kpoint
         
         /// column APW+lo basis descriptors
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_col_;
-
-
-        splindex<block_cyclic, scalapack_nb> spl_num_fv_eigen_vectors_col_;
-        
-        splindex<block_cyclic, scalapack_nb> spl_num_bands_;
-        
-        splindex<block> sub_spl_num_bands_;
-        
 
         /// Generate plane-wave matching coefficents for the radial solutions 
         void generate_matching_coefficients()
@@ -211,66 +206,79 @@ class kpoint
                 vec[apwlo_basis_descriptors_row[j].igk] = z[j];
         }
 
-        void generate_fv_states()
+        void generate_fv_states(Band* band)
         {
             Timer t("sirius::kpoint::generate_fv_states");
             
-            fv_states_.set_dimensions(mtgk_size(), spl_num_fv_eigen_vectors_col_.local_size());
-            fv_states_.allocate();
+            fv_states_col_.set_dimensions(mtgk_size(), band->spl_fv_states_col().local_size());
+            fv_states_col_.allocate();
                 
-            gemm<cpu>(2, 0, parameters_.mt_aw_basis_size(), spl_num_fv_eigen_vectors_col_.local_size(),
+            gemm<cpu>(2, 0, parameters_.mt_aw_basis_size(), band->spl_fv_states_col().local_size(),
                       num_gkvec_row(), complex16(1, 0), &matching_coefficients_(0, 0), matching_coefficients_.ld(),
-                      &fv_eigen_vectors_(0, 0), fv_eigen_vectors_.ld(), complex16(0, 0), &fv_states_(0, 0), 
-                      fv_states_.ld());
+                      &fv_eigen_vectors_(0, 0), fv_eigen_vectors_.ld(), complex16(0, 0), &fv_states_col_(0, 0), 
+                      fv_states_col_.ld());
 
-            for (int j = 0; j < spl_num_fv_eigen_vectors_col_.local_size(); j++)
+            for (int j = 0; j < band->spl_fv_states_col().local_size(); j++)
             {
-                move_apw_blocks(&fv_states_(0, j));
+                move_apw_blocks(&fv_states_col_(0, j));
         
                 copy_lo_blocks(apwlo_basis_size_row(), num_gkvec_row(), apwlo_basis_descriptors_row_, 
-                               &fv_eigen_vectors_(0, j), &fv_states_(0, j));
+                               &fv_eigen_vectors_(0, j), &fv_states_col_(0, j));
         
                 copy_pw_block(num_gkvec(), num_gkvec_row(), apwlo_basis_descriptors_row_, 
-                              &fv_eigen_vectors_(0, j), &fv_states_(parameters_.mt_basis_size(), j));
+                              &fv_eigen_vectors_(0, j), &fv_states_col_(parameters_.mt_basis_size(), j));
             }
 
-            for (int j = 0; j < spl_num_fv_eigen_vectors_col_.local_size(); j++)
-                Platform::allreduce(&fv_states_(0, j), mtgk_size(), mpi_grid_->communicator(1 << 0));
+            for (int j = 0; j < band->spl_fv_states_col().local_size(); j++)
+                Platform::allreduce(&fv_states_col_(0, j), mtgk_size(), mpi_grid_->communicator(1 << 0));
         }
         
-        void generate_spinor_wave_functions(bool has_sv_evec)
+        void generate_spinor_wave_functions(Band* band, bool has_sv_evec)
         {
             Timer t("sirius::kpoint::generate_spinor_wave_functions");
 
+            spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), 
+                                                  band->spl_spinor_wf_col().local_size());
             if (has_sv_evec)
             {
+                spinor_wave_functions_.allocate();
+                spinor_wave_functions_.zero();
+                
+                if (parameters_.num_mag_dims() != 3)
+                {
+                    for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+                        gemm<cpu>(0, 0, mtgk_size(), band->spl_fv_states_col().local_size(), 
+                                  band->spl_fv_states_row().local_size(), complex16(1, 0), 
+                                  &fv_states_row_(0, 0), fv_states_row_.ld(), 
+                                  &sv_eigen_vectors_(0, ispn * band->spl_fv_states_col().local_size()), 
+                                  sv_eigen_vectors_.ld(), complex16(0, 0), 
+                                  &spinor_wave_functions_(0, ispn, ispn * band->spl_fv_states_col().local_size()), 
+                                  spinor_wave_functions_.ld() * parameters_.num_spins());
 
+                    for (int i = 0; i < band->spl_spinor_wf_col().local_size(); i++)
+                        Platform::allreduce(&spinor_wave_functions_(0, 0, i), 
+                                            spinor_wave_functions_.size(0) * spinor_wave_functions_.size(1), 
+                                            mpi_grid_->communicator(1 << 0));
+                }
+                else
+                {
+
+                }
+
+
+                
+                //for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+                //    gemm<cpu>(0, 0, mtgk_size(), parameters_.num_bands(), parameters_.num_fv_states(), 
+                //              complex16(1, 0), &fv_states_(0, 0), fv_states_.ld(), 
+                //              &sv_eigen_vectors_(ispn * parameters_.num_fv_states(), 0), sv_eigen_vectors_.ld(), 
+                //              complex16(0, 0), &spinor_wave_functions_(0, ispn, 0), 
+                //              spinor_wave_functions_.ld() * parameters_.num_spins());
             }
             else
             {
-                spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), 
-                                                      spl_num_bands_.local_size());
-                spinor_wave_functions_.set_ptr(fv_states_.get_ptr());
+                spinor_wave_functions_.set_ptr(fv_states_col_.get_ptr());
                 memcpy(&band_energies_[0], &fv_eigen_values_[0], parameters_.num_bands() * sizeof(double));
-                return;
             }
-
-            //spinor_wave_functions_.set_dimensions(scalar_wf_size(), parameters_.num_spins(), parameters_.num_bands());
-            //
-            //if (flag == -1)
-            //{
-            //    spinor_wave_functions_.set_ptr(scalar_wave_functions_.get_ptr());
-            //    memcpy(&band_energies_[0], &evalfv_[0], parameters_.num_bands() * sizeof(double));
-            //    return;
-            //}
-
-            //spinor_wave_functions_.allocate();
-            //
-            //for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-            //    gemm<cpu>(0, 0, scalar_wf_size(),  parameters_.num_bands(), parameters_.num_fv_states(), complex16(1.0, 0.0), 
-            //              &scalar_wave_functions_(0, 0), scalar_wf_size(), &evecsv_(ispn * parameters_.num_fv_states(), 0), 
-            //              parameters_.num_bands(), complex16(0.0, 0.0), &spinor_wave_functions_(0, ispn, 0), 
-            //              scalar_wf_size() * parameters_.num_spins());
         }
 
         void generate_gkvec()
@@ -482,46 +490,6 @@ class kpoint
             num_gkvec_col_ = 0;
             for (int i = 0; i < apwlo_basis_size_col(); i++)
                 if (apwlo_basis_descriptors_col_[i].igk != -1) num_gkvec_col_++;
-
-            // distribue first-variational eigen vectors
-            spl_num_fv_eigen_vectors_col_.split(parameters_.num_fv_states(), cart_dims[1], cart_coord[1]);
-           
-            // distribute spinor wave functions
-            spl_num_bands_.split(parameters_.num_bands(), cart_dims[1], cart_coord[1]);
-            
-            // split along rows 
-            sub_spl_num_bands_.split(spl_num_bands_.local_size(), cart_dims[0], cart_coord[0]);
-            
-            if (verbosity_level > 0 && mpi_grid_->root())
-            {
-                printf("\n");
-                printf("table of column distribution of first-variational eigen-vectors\n");
-                printf("columns of the table correspond to MPI ranks\n");
-                for (int i0 = 0; i0 < spl_num_fv_eigen_vectors_col_.local_size(0); i0++)
-                {
-                    for (int i1 = 0; i1 < cart_dims[1]; i1++)
-                        printf("%6i", spl_num_fv_eigen_vectors_col_.global_index(i0, i1));
-                    printf("\n");
-                }
-                
-                /*printf("\n");
-                printf("table of row distribution of first-variational states\n");
-                printf("columns of the table correspond to MPI ranks\n");
-                for (int i0 = 0; i0 < fv_states_distribution_row_.size(0); i0++)
-                {
-                    for (int i1 = 0; i1 < fv_states_distribution_row_.size(1); i1++)
-                        printf("%6i", fv_states_distribution_row_(i0, i1));
-                    printf("\n");
-                }*/
-
-                printf("\n");
-                printf("First-variational eigen-vectors location (local index, rank) for column distribution\n");
-                for (int i = 0; i < parameters_.num_fv_states(); i++)
-                    printf("%6i %6i %6i\n", i, spl_num_fv_eigen_vectors_col_.location(0, i), 
-                                               spl_num_fv_eigen_vectors_col_.location(1, i));
-
-            }
-
         }
         
 #if 0        
@@ -800,7 +768,7 @@ class kpoint
 
             fv_eigen_values_.resize(parameters_.num_fv_states());
 
-            fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), spl_num_fv_eigen_vectors_col_.local_size());
+            fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), band->spl_fv_states_col().local_size());
             fv_eigen_vectors_.allocate();
             
             
@@ -847,27 +815,56 @@ class kpoint
                                fv_eigen_vectors_);
             }
             
-            generate_fv_states();
+            generate_fv_states(band);
             
+            // we don't need first-variational eigen-vectors; all information is available in fv_states array
+            fv_eigen_vectors_.deallocate();
+            
+            // distribute fv states along rows of the MPI grid
+            if (mpi_grid_->size() == 1)
+            {
+                fv_states_row_.set_dimensions(mtgk_size(), parameters_.num_fv_states());
+                fv_states_row_.set_ptr(fv_states_col_.get_ptr());
+            }
+            else
+            {
+                fv_states_row_.set_dimensions(mtgk_size(), band->spl_fv_states_row().local_size());
+                fv_states_row_.allocate();
+                fv_states_row_.zero();
+
+                for (int i = 0; i < band->spl_fv_states_row().local_size(); i++)
+                {
+                    int ist = band->spl_fv_states_row()[i];
+                    int offset_col = band->spl_fv_states_col().location(0, ist);
+                    int rank_col = band->spl_fv_states_col().location(1, ist);
+                    if (rank_col == mpi_grid_->coordinate(1))
+                        memcpy(&fv_states_row_(0, i), &fv_states_col_(0, offset_col), mtgk_size() * sizeof(complex16));
+
+                    Platform::allreduce(&fv_states_row_(0, i), mtgk_size(), mpi_grid_->communicator(1 << 1));
+                }
+            }
+
             /*if (test_scalar_wf)
                 for (int i = 0; i < 3; i++)
                     test_scalar_wave_functions(i); */
 
-            //sv_eigen_vectors_.set_dimensions(parameters_.num_bands(), parameters_.num_bands());
-            //sv_eigen_vectors_.allocate();
+            sv_eigen_vectors_.set_dimensions(band->spl_fv_states_row().local_size(), 
+                                             band->spl_spinor_wf_col().local_size());
+            sv_eigen_vectors_.allocate();
+
             band_energies_.resize(parameters_.num_bands());
             
-            if (parameters_.num_spins() == 2)
+            if (parameters_.num_spins() == 2) // or some other conditions which require second variation
             {
-                band->solve_sv(parameters_, mtgk_size(), num_gkvec(), fft_index(), &fv_eigen_values_[0], 
-                               fv_states_, effective_magnetic_field, &band_energies_[0],
+                band->solve_sv(parameters_, blacs_context_, mtgk_size(), num_gkvec(), fft_index(), &fv_eigen_values_[0], 
+                               fv_states_row_, fv_states_col_, effective_magnetic_field, &band_energies_[0],
                                sv_eigen_vectors_);
 
-                //generate_spinor_wave_functions(1);
+                generate_spinor_wave_functions(band, true);
             }
             else
             {
-                generate_spinor_wave_functions(false);
+                generate_spinor_wave_functions(band, false);
             }
 
             /*for (int i = 0; i < 3; i++)
@@ -963,12 +960,6 @@ class kpoint
             
             return gvec_index_[igk];
         }
-
-        /*inline complex16& matching_coefficient(int ig, int i)
-        {
-            return matching_coefficients_(ig, i);
-        }*/
-
 
         /// APW+lo basis size
 
@@ -1073,21 +1064,6 @@ class kpoint
         inline double* vk()
         {
             return vk_;
-        }
-
-        inline int num_bands()
-        {
-            return sub_spl_num_bands_.local_size();
-        }
-
-        inline int idxbandglob(int sub_index)
-        {
-            return spl_num_bands_.global_index(sub_spl_num_bands_.global_index(sub_index));
-        }
-        
-        inline int idxbandloc(int sub_index)
-        {
-            return sub_spl_num_bands_.global_index(sub_index);
         }
 };
 

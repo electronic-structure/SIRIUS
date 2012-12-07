@@ -166,6 +166,39 @@ int hegvx_scalapack(int4 matrix_size, int4 nv, int nrow, int ncol, real8 abstol,
     return info;
 }
 
+int heevd_scalapack(int4 matrix_size, int4 nrow, int4 ncol, int block_size, complex16* a, int4* desca, real8* eval,
+                    complex16* z, int4* descz)
+{                
+    int4 izero = 0;
+    int np0 = FORTRAN(numroc)(&matrix_size, &block_size, &izero, &izero, &nrow);                
+    int mq0 = FORTRAN(numroc)(&matrix_size, &block_size, &izero, &izero, &ncol);
+
+    int lwork = matrix_size + (np0 + mq0 + block_size) * block_size;
+    std::vector<complex16> work(lwork);
+
+    int lrwork = 1 + 9 * matrix_size + 3 * np0 * mq0;
+    std::vector<real8> rwork(lrwork);
+
+    int liwork = 7 * matrix_size + 8 * ncol + 2;
+    std::vector<int4> iwork(liwork);
+
+    int4 info;
+
+    int4 ione = 1;
+    FORTRAN(pzheevd)("V", "U", &matrix_size, a, &ione, &ione, desca, eval, z, &ione, &ione, descz, &work[0], &lwork,
+                     &rwork[0], &lrwork, &iwork[0], &liwork, &info, (int4)1, (int4)1);
+
+    if (info)
+    {
+        std::stringstream s;
+        s << "pzheecd returned " << info; 
+        error(__FILE__, __LINE__, s, fatal_err);
+    }
+
+    return info;
+}
+
+
 /*
 template<implementation impl> 
 void zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, complex16 alpha, 
