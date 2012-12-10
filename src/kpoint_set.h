@@ -30,7 +30,7 @@ class kpoint_set
             //}
 
             // TODO: kill mpi subgrid here (in the same file where it was allocated!!)
-            kpoints_.push_back(new kpoint(parameters, vk, weight, mpi_grid_.sub_grid(1 << 1 | 1 << 2)));
+            kpoints_.push_back(new kpoint(parameters, vk, weight));
 
             std::vector<double> initial_occupancies(parameters.num_bands(), 0.0);
 

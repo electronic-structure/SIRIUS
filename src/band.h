@@ -853,7 +853,6 @@ class Band
                       const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_col,
                       const int                                  apwlo_basis_size_col,
                       const int                                  num_gkvec_col,
-                      const int                                  apw_offset_col,
                       mdarray<complex16, 2>&                     matching_coefficients, 
                       mdarray<double, 2>&                        gkvec,
                       PeriodicFunction<double>*                  effective_potential, 
@@ -863,7 +862,12 @@ class Band
         {
             if (&parameters != &parameters_) error(__FILE__, __LINE__, "different set of parameters");
 
+            if ((eigen_value_solver != scalapack) && (blacs_dims[0] * blacs_dims[1] > 1))
+                error(__FILE__, __LINE__, "Only one MPI rank is allowed."); 
+
             Timer t("sirius::Band::solve_fv");
+
+            int apw_offset_col = (blacs_dims[0] * blacs_dims[1] > 1) ? num_gkvec_row : 0;
 
             mdarray<complex16, 2> h(apwlo_basis_size_row, apwlo_basis_size_col);
             mdarray<complex16, 2> o(apwlo_basis_size_row, apwlo_basis_size_col);
@@ -980,7 +984,7 @@ class Band
                         int info = heev<cpu>(parameters.num_fv_states(), &h(0, 0), h.ld(), 
                                              &band_energies[ispn * parameters_.num_fv_states()]);
                         if (info)
-                        {                            
+                        {
                             std::stringstream s;
                             s << "heev returned" << info;
                             error(__FILE__, __LINE__, s);
@@ -1002,7 +1006,6 @@ class Band
                                         parameters_.mpi_grid().dimension_size(2), scalapack_nb, &h(0, 0), desc_h,
                                         &band_energies[ispn * parameters_.num_fv_states()], 
                                         &sv_eigen_vectors(0, ispn * spl_fv_states_col_.local_size()), desc_z);
-
                     }
                 }
             }

@@ -170,7 +170,7 @@ class MPIGrid
                 // double check the size of communicators
                 for (int i = 1; i < num_comm; i++)
                     if (Platform :: num_mpi_ranks(communicators_[i]) != communicator_size_[i]) 
-                        error(__FILE__, __LINE__, "Communicator sizes don't match");
+                        error(__FILE__, __LINE__, "Communicator sizes don't match", fatal_err);
             }
 
             //if (base_comm == MPI_COMM_WORLD)
@@ -222,6 +222,12 @@ class MPIGrid
             return coordinates_;
         }
 
+        /// Coordinates along chosen directions
+        std::vector<int> coordinates(int directions)
+        {
+            return sub_coordinates(directions);
+        }
+        
         /// Coordinate along a given dimension
         inline int coordinate(int idim)
         {
@@ -232,6 +238,12 @@ class MPIGrid
         inline std::vector<int> dimensions()
         {
             return dimensions_;
+        }
+        
+        /// Grid dimensions along chosen directions 
+        inline std::vector<int> dimensions(int directions)
+        {
+            return sub_dimensions(directions);
         }
 
         /// Size of a given dimensions 
@@ -286,12 +298,6 @@ class MPIGrid
             return sc;
         }
 
-
-        MPIGrid* sub_grid(int directions)
-        {
-            return new MPIGrid(sub_dimensions(directions), communicator(directions));
-        }
-
         int cart_rank(const MPI_Comm& comm, std::vector<int> coords)
         {
             int r;
@@ -300,24 +306,6 @@ class MPIGrid
 
             return r;
         }
-
-        //template <typename T>
-        //void reduce(T* buffer, int count, int directions, bool side_only = false)
-        //{
-        //    if (!in_grid()) return;
-        //    
-        //    if (side_only && (!side(directions))) return;
-
-        //    std::vector<int> root_coords;
-
-        //    for (int i = 0; i < (int)coordinates_.size(); i++)
-        //        if (directions & (1 << i))
-        //            root_coords.push_back(0);
-        //    
-        //    MPI_Comm comm = communicators_[valid_directions(directions)];
-
-        //    Platform::reduce(buffer, count, comm, cart_rank(comm, root_coords));
-        //}
 
         void barrier(int directions = 0xFF)
         {

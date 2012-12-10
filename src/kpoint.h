@@ -10,9 +10,9 @@ class kpoint
         /// global set of parameters
         Global& parameters_;
 
-        /// grid of MPI ranks participating in diagonalization
-        MPIGrid* mpi_grid_;
-        
+        int dim_row_;
+        int dim_col_;
+
         /// weight of k-poitn
         double weight_;
 
@@ -79,14 +79,8 @@ class kpoint
         /// short information about each APW+lo basis function
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_;
 
-        /// APW+lo basis index, distributed along the rows of the MPI grid
-        splindex<block_cyclic, scalapack_nb> spl_apwlo_basis_size_row_; // TODO: remove _size_ from the name
-        
         /// row APW+lo basis descriptors
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_row_;
-        
-        /// APW+lo basis index, distributed along the columns of the MPI grid
-        splindex<block_cyclic, scalapack_nb> spl_apwlo_basis_size_col_;
         
         /// column APW+lo basis descriptors
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_col_;
@@ -230,7 +224,8 @@ class kpoint
             }
 
             for (int j = 0; j < band->spl_fv_states_col().local_size(); j++)
-                Platform::allreduce(&fv_states_col_(0, j), mtgk_size(), mpi_grid_->communicator(1 << 0));
+                Platform::allreduce(&fv_states_col_(0, j), mtgk_size(), 
+                                    parameters_.mpi_grid().communicator(1 << dim_row_));
         }
         
         void generate_spinor_wave_functions(Band* band, bool has_sv_evec)
@@ -258,7 +253,7 @@ class kpoint
                     for (int i = 0; i < band->spl_spinor_wf_col().local_size(); i++)
                         Platform::allreduce(&spinor_wave_functions_(0, 0, i), 
                                             spinor_wave_functions_.size(0) * spinor_wave_functions_.size(1), 
-                                            mpi_grid_->communicator(1 << 0));
+                                            parameters_.mpi_grid().communicator(1 << dim_row_));
                 }
                 else
                 {
@@ -387,16 +382,18 @@ class kpoint
 
         void init_blacs_context()
         {
-            int nrow = mpi_grid_->dimension_size(0);
-            int ncol = mpi_grid_->dimension_size(1);
+            int nrow = parameters_.mpi_grid().dimension_size(dim_row_);
+            int ncol = parameters_.mpi_grid().dimension_size(dim_col_);
 
             mdarray<int, 2> map_ranks(nrow, ncol);
+            int rc = (1 << dim_row_) | 1 << (dim_col_);
             for (int i1 = 0; i1 < ncol; i1++)
                 for (int i0 = 0; i0 < nrow; i0++)
-                    map_ranks(i0, i1) = mpi_grid_->cart_rank(mpi_grid_->communicator(), intvec(i0, i1));
+                    map_ranks(i0, i1) = parameters_.mpi_grid().cart_rank(parameters_.mpi_grid().communicator(rc), 
+                                                                         intvec(i0, i1));
  
             // create BLACS context
-            blacs_context_ = Csys2blacs_handle(mpi_grid_->communicator());
+            blacs_context_ = Csys2blacs_handle(parameters_.mpi_grid().communicator(rc));
 
             // create grid of MPI ranks 
             Cblacs_gridmap(&blacs_context_, map_ranks.get_ptr(), nrow, nrow, ncol);
@@ -404,7 +401,7 @@ class kpoint
             // check the grid
             int irow, icol;
             Cblacs_gridinfo(blacs_context_, &nrow, &ncol, &irow, &icol);
-            std::vector<int> x = mpi_grid_->coordinates();
+            std::vector<int> x = parameters_.mpi_grid().coordinates(rc);
             if ((x[0] != irow) || (x[1] != icol)) error(__FILE__, __LINE__, "wrong grid", fatal_err);
         }
 
@@ -461,26 +458,21 @@ class kpoint
         /// Block-cyclic distribution of relevant arrays 
         void distribute_block_cyclic()
         {
-            std::vector<int> cart_coord = mpi_grid_->coordinates();
-            std::vector<int> cart_dims = mpi_grid_->dimensions();
+            int rc = (1 << dim_row_) | 1 << (dim_col_);
+            std::vector<int> cart_coord = parameters_.mpi_grid().coordinates(rc);
+            std::vector<int> cart_dims = parameters_.mpi_grid().dimensions(rc);
 
             // distribute APW+lo basis between rows
-            spl_apwlo_basis_size_row_.split(apwlo_basis_size(), cart_dims[0], cart_coord[0]);
-            apwlo_basis_descriptors_row_.resize(spl_apwlo_basis_size_row_.local_size());
-            for (int i = 0; i < spl_apwlo_basis_size_row_.local_size(); i++)
-            {
-                int j = spl_apwlo_basis_size_row_.global_index(i);
-                apwlo_basis_descriptors_row_[i] = apwlo_basis_descriptors_[j];
-            }
+            splindex<block_cyclic, scalapack_nb> spl_row(apwlo_basis_size(), cart_dims[0], cart_coord[0]);
+            apwlo_basis_descriptors_row_.resize(spl_row.local_size());
+            for (int i = 0; i < spl_row.local_size(); i++)
+                apwlo_basis_descriptors_row_[i] = apwlo_basis_descriptors_[spl_row[i]];
 
             // distribute APW+lo basis between columns
-            spl_apwlo_basis_size_col_.split(apwlo_basis_size(), cart_dims[1], cart_coord[1]);
-            apwlo_basis_descriptors_col_.resize(spl_apwlo_basis_size_col_.local_size());
-            for (int i = 0; i < spl_apwlo_basis_size_col_.local_size(); i++)
-            {
-                int j = spl_apwlo_basis_size_col_.global_index(i);
-                apwlo_basis_descriptors_col_[i] = apwlo_basis_descriptors_[j];
-            }
+            splindex<block_cyclic, scalapack_nb> spl_col(apwlo_basis_size(), cart_dims[1], cart_coord[1]);
+            apwlo_basis_descriptors_col_.resize(spl_col.local_size());
+            for (int i = 0; i < spl_col.local_size(); i++)
+                apwlo_basis_descriptors_col_[i] = apwlo_basis_descriptors_[spl_col[i]];
 
             // get the number of row- and column- G+k-vectors
             num_gkvec_row_ = 0;
@@ -726,13 +718,14 @@ class kpoint
         /// Constructor
         kpoint(Global& parameters__, 
                double* vk__, 
-               double weight__, 
-               MPIGrid* mpi_grid__) : parameters_(parameters__), 
-                                      mpi_grid_(mpi_grid__),
-                                      weight_(weight__),
-                                      blacs_context_(-1)
+               double weight__) : parameters_(parameters__), 
+                                  weight_(weight__),
+                                  blacs_context_(-1)
         {
             for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
+
+            dim_row_ = 1;
+            dim_col_ = 2;
 
             if (eigen_value_solver == scalapack) init_blacs_context();
         }
@@ -740,7 +733,6 @@ class kpoint
         ~kpoint()
         {
             if (eigen_value_solver == scalapack) Cfree_blacs_system_handle(blacs_context_);
-            if (mpi_grid_) delete mpi_grid_;
         }
 
         void initialize()
@@ -772,48 +764,23 @@ class kpoint
             fv_eigen_vectors_.allocate();
             
             
-            if (eigen_value_solver == scalapack)
-            {
-                band->solve_fv(parameters_, 
-                               blacs_context_, 
-                               mpi_grid_->dimensions(),
-                               apwlo_basis_size(),
-                               num_gkvec(),
-                               apwlo_basis_descriptors_row_, 
-                               apwlo_basis_size_row(), 
-                               num_gkvec_row(),
-                               apwlo_basis_descriptors_col_, 
-                               apwlo_basis_size_col(), 
-                               num_gkvec_col(),
-                               num_gkvec_row(),
-                               matching_coefficients_, 
-                               gkvec_, 
-                               effective_potential, 
-                               effective_magnetic_field, 
-                               fv_eigen_values_,
-                               fv_eigen_vectors_);
-            }
-            else
-            {
-                band->solve_fv(parameters_, 
-                               0,
-                               mpi_grid_->dimensions(),
-                               apwlo_basis_size(), 
-                               num_gkvec(),
-                               apwlo_basis_descriptors_, 
-                               apwlo_basis_size(),
-                               num_gkvec(),
-                               apwlo_basis_descriptors_, 
-                               apwlo_basis_size(),
-                               num_gkvec(),
-                               0,
-                               matching_coefficients_, 
-                               gkvec_,
-                               effective_potential, 
-                               effective_magnetic_field, 
-                               fv_eigen_values_, 
-                               fv_eigen_vectors_);
-            }
+            band->solve_fv(parameters_, 
+                           blacs_context_, 
+                           parameters_.mpi_grid().dimensions((1 << dim_row_) | (1 << dim_col_)),
+                           apwlo_basis_size(),
+                           num_gkvec(),
+                           apwlo_basis_descriptors_row_, 
+                           apwlo_basis_size_row(), 
+                           num_gkvec_row(),
+                           apwlo_basis_descriptors_col_, 
+                           apwlo_basis_size_col(), 
+                           num_gkvec_col(),
+                           matching_coefficients_, 
+                           gkvec_, 
+                           effective_potential, 
+                           effective_magnetic_field, 
+                           fv_eigen_values_,
+                           fv_eigen_vectors_);
             
             generate_fv_states(band);
             
@@ -821,7 +788,7 @@ class kpoint
             fv_eigen_vectors_.deallocate();
             
             // distribute fv states along rows of the MPI grid
-            if (mpi_grid_->size() == 1)
+            if (parameters_.mpi_grid().size((1 << dim_row_) | (1 << dim_col_)) == 1)
             {
                 fv_states_row_.set_dimensions(mtgk_size(), parameters_.num_fv_states());
                 fv_states_row_.set_ptr(fv_states_col_.get_ptr());
@@ -837,10 +804,11 @@ class kpoint
                     int ist = band->spl_fv_states_row()[i];
                     int offset_col = band->spl_fv_states_col().location(0, ist);
                     int rank_col = band->spl_fv_states_col().location(1, ist);
-                    if (rank_col == mpi_grid_->coordinate(1))
+                    if (rank_col == parameters_.mpi_grid().coordinate(dim_col_))
                         memcpy(&fv_states_row_(0, i), &fv_states_col_(0, offset_col), mtgk_size() * sizeof(complex16));
 
-                    Platform::allreduce(&fv_states_row_(0, i), mtgk_size(), mpi_grid_->communicator(1 << 1));
+                    Platform::allreduce(&fv_states_row_(0, i), mtgk_size(), 
+                                        parameters_.mpi_grid().communicator(1 << dim_col_));
                 }
             }
 
@@ -927,21 +895,23 @@ class kpoint
         */
         inline int num_gkvec_loc()
         {
-            return (eigen_value_solver == scalapack) ? (num_gkvec_row() + num_gkvec_col()) : num_gkvec();
+            int n = parameters_.mpi_grid().size((1 << dim_row_) | (1 << dim_col_));
+            return (n == 1) ? num_gkvec() : (num_gkvec_row() + num_gkvec_col());
         } 
 
         inline int igkglob(int igkloc)
         {
-            if (eigen_value_solver == scalapack)
+            int n = parameters_.mpi_grid().size((1 << dim_row_) | (1 << dim_col_));
+            if (n == 1)
+            {
+                return igkloc;
+            }
+            else
             {
                 int igk = (igkloc < num_gkvec_row()) ? apwlo_basis_descriptors_row_[igkloc].igk : 
                                                        apwlo_basis_descriptors_col_[igkloc - num_gkvec_row()].igk;
                 assert(igk >= 0);
                 return igk;
-            }
-            else 
-            {
-                return igkloc;
             }
         }
         
