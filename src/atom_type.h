@@ -872,6 +872,7 @@ class AtomType
         inline void set_mt_radius(double mt_radius__)
         {
             mt_radius_ = mt_radius__;
+            radial_grid_.init(exponential_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
         }
         
         inline int num_mt_points()

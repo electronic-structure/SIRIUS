@@ -882,11 +882,6 @@ class Band
                          apwlo_basis_descriptors_col, apwlo_basis_size_col, num_gkvec_col,
                          apw_offset_col, gkvec, matching_coefficients, effective_potential, h);
 
-            write_matrix("a_new.txt", true, matching_coefficients);
-            write_matrix("h_new.txt", false, h);
-            write_matrix("o_new.txt", false, o);
-            stop_here
-
             Timer *t1 = new Timer("sirius::Band::solve_fv:hegv");
             if (eigen_value_solver == scalapack)
             {

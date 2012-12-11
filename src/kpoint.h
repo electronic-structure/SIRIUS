@@ -763,9 +763,6 @@ class kpoint
             fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), band->spl_fv_states_col().local_size());
             fv_eigen_vectors_.allocate();
             
-            
-            write_matrix("gkvec_new.txt", true, gkvec_);
-            
             band->solve_fv(parameters_, 
                            blacs_context_, 
                            parameters_.mpi_grid().dimensions((1 << dim_row_) | (1 << dim_col_)),
