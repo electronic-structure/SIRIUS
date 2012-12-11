@@ -764,6 +764,8 @@ class kpoint
             fv_eigen_vectors_.allocate();
             
             
+            write_matrix("gkvec_new.txt", true, gkvec_);
+            
             band->solve_fv(parameters_, 
                            blacs_context_, 
                            parameters_.mpi_grid().dimensions((1 << dim_row_) | (1 << dim_col_)),
@@ -781,7 +783,7 @@ class kpoint
                            effective_magnetic_field, 
                            fv_eigen_values_,
                            fv_eigen_vectors_);
-            
+
             generate_fv_states(band);
             
             // we don't need first-variational eigen-vectors; all information is available in fv_states array
