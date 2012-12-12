@@ -70,6 +70,9 @@ class Band
         
         splindex<block> sub_spl_spinor_wf_;
         
+        int num_fv_states_row_up_;
+        
+        int num_fv_states_row_dn_;
         
         template <typename T>
         inline void sum_L3_complex_gaunt(int lm1, int lm2, T* v, complex16& zsum)
@@ -767,12 +770,30 @@ class Band
             {
                 spl_fv_states_row_.split(parameters_.num_fv_states(), parameters_.mpi_grid().dimension_size(1), 
                                          parameters_.mpi_grid().coordinate(1));
+                
+                num_fv_states_row_up_ = num_fv_states_row_dn_ = spl_fv_states_row_.local_size();
             }
             else
             {
                 spl_fv_states_row_.split(parameters_.num_fv_states() * parameters_.num_spins(), 
                                          parameters_.mpi_grid().dimension_size(1), 
                                          parameters_.mpi_grid().coordinate(1));
+
+                num_fv_states_row_up_ = 0;
+                num_fv_states_row_dn_ = 0;
+
+                for (int i = 0; i < spl_fv_states_row_.local_size(); i++)
+                {
+                    int j = spl_fv_states_row_[i];
+                    if (j < parameters_.num_fv_states()) 
+                    {
+                        num_fv_states_row_up_++;
+                    }
+                    else
+                    {
+                        num_fv_states_row_dn_++;
+                    }
+                }
             }
 
             // check if the distribution of fv states is consistent with the distribtion of spinor wave functions
@@ -915,17 +936,18 @@ class Band
             delete t1;
         }
 
-        void solve_sv(Global& parameters,
-                      int blacs_context,
-                      int mtgk_size, 
-                      int num_gkvec,
-                      int* fft_index, 
-                      double* evalfv, 
-                      mdarray<complex16, 2>& fv_states_row, 
-                      mdarray<complex16, 2>& fv_states_col, 
+        void solve_sv(Global&                   parameters,
+                      int                       blacs_context,
+                      const std::vector<int>    blacs_dims,
+                      int                       mtgk_size, 
+                      int                       num_gkvec,
+                      int*                      fft_index, 
+                      double*                   evalfv, 
+                      mdarray<complex16, 2>&    fv_states_row, 
+                      mdarray<complex16, 2>&    fv_states_col, 
                       PeriodicFunction<double>* effective_magnetic_field[3],
-                      double* band_energies,
-                      mdarray<complex16, 2>& sv_eigen_vectors)
+                      double*                   band_energies,
+                      mdarray<complex16, 2>&    sv_eigen_vectors)
 
         {
             if (&parameters != &parameters_)
@@ -964,7 +986,7 @@ class Band
                 //perform two consecutive diagonalizations
                 for (int ispn = 0; ispn < 2; ispn++)
                 {
-                    // compute <wf_i | (h * wf_j)> for up-up block
+                    // compute <wf_i | (h * wf_j)> for up-up or dn-dn block
                     gemm<cpu>(2, 0, spl_fv_states_row_.local_size(), spl_fv_states_col_.local_size(), 
                               mtgk_size, complex16(1, 0), &fv_states_row(0, 0), fv_states_row.ld(), 
                               &hpsi(0, 0, ispn), hpsi.ld(), complex16(0, 0), &h(0, 0), h.ld());
@@ -1010,7 +1032,82 @@ class Band
                 }
             }
 
+            if (parameters.num_mag_dims() == 3)
+            {
+                mdarray<complex16, 2> h(spl_fv_states_row_.local_size(), spl_spinor_wf_col_.local_size());
+                h.zero();
 
+                // compute <wf_i | (h * wf_j)> for up-up block
+                gemm<cpu>(2, 0, num_fv_states_row_up_, spl_fv_states_col_.local_size(), mtgk_size, complex16(1, 0), 
+                          &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 0), hpsi.ld(), complex16(0, 0), 
+                          &h(0, 0), h.ld());
+
+                // compute <wf_i | (h * wf_j)> for up-dn block
+                gemm<cpu>(2, 0, num_fv_states_row_up_, spl_fv_states_col_.local_size(), mtgk_size, complex16(1, 0), 
+                          &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 2), hpsi.ld(), complex16(0, 0), 
+                          &h(0, spl_fv_states_col_.local_size()), h.ld());
+               
+                int fv_states_up_offset = ((blacs_dims[0] * blacs_dims[1]) == 1) ? 0 : num_fv_states_row_up_;
+                // compute <wf_i | (h * wf_j)> for dn-dn block
+                gemm<cpu>(2, 0, num_fv_states_row_dn_, spl_fv_states_col_.local_size(), mtgk_size, complex16(1, 0), 
+                          &fv_states_row(0, fv_states_up_offset), fv_states_row.ld(), &hpsi(0, 0, 1), hpsi.ld(), 
+                          complex16(0, 0), &h(num_fv_states_row_up_, spl_fv_states_col_.local_size()), h.ld());
+
+                if (eigen_value_solver == scalapack)
+                {
+                    // compute <wf_i | (h * wf_j)> for dn-up block
+                    gemm<cpu>(2, 0, num_fv_states_row_dn_, spl_fv_states_col_.local_size(), mtgk_size, complex16(1, 0), 
+                              &fv_states_row(0, fv_states_up_offset), fv_states_row.ld(), &hpsi(0, 0, 3), hpsi.ld(), 
+                              complex16(0, 0), &h(num_fv_states_row_up_, 0), h.ld());
+                }
+               
+                for (int ispn = 0; ispn < 2; ispn++)
+                {
+                    for (int icol = 0; icol < spl_fv_states_col_.local_size(); icol++)
+                    {
+                        for (int irow = 0; irow < spl_fv_states_row_.local_size(); irow++)
+                        {
+                            int j = (spl_fv_states_row_[irow] % parameters_.num_fv_states()); 
+                            int jspn = (spl_fv_states_row_[irow] / parameters_.num_fv_states()); 
+                            if ((j == icol) && (jspn == ispn)) 
+                                h(irow, icol + ispn * spl_fv_states_col_.local_size()) += evalfv[icol];
+                        }
+                    }
+                }
+            
+                if (eigen_value_solver == lapack)
+                {
+                    assert(spl_fv_states_row_.local_size() == parameters_.num_bands());
+                    assert(spl_spinor_wf_col_.local_size() == parameters_.num_bands());
+
+                    int info = heev<cpu>(parameters.num_bands(), &h(0, 0), h.ld(), 
+                                         &band_energies[0]);
+                    if (info)
+                    {
+                        std::stringstream s;
+                        s << "heev returned" << info;
+                        error(__FILE__, __LINE__, s);
+                    }
+                    memcpy(&sv_eigen_vectors(0, 0), &h(0, 0), 
+                           h.size() * sizeof(complex16));
+                }
+
+                if (eigen_value_solver == scalapack)
+                {
+                    int desc_h[9];
+                    descinit(desc_h, parameters_.num_bands(), parameters_.num_bands(), scalapack_nb, 
+                             scalapack_nb, 0, 0, blacs_context, h.ld());
+
+                    int desc_z[9];
+                    descinit(desc_z, parameters_.num_bands(), parameters_.num_bands(), scalapack_nb, 
+                             scalapack_nb, 0, 0, blacs_context, sv_eigen_vectors.ld());
+                    
+                    heevd_scalapack(parameters_.num_bands(), parameters_.mpi_grid().dimension_size(1), 
+                                    parameters_.mpi_grid().dimension_size(2), scalapack_nb, &h(0, 0), desc_h,
+                                    &band_energies[0], 
+                                    &sv_eigen_vectors(0, 0), desc_z);
+                }
+            }
             
             //set_sv_h(fv_states, mtgk_size, num_gkvec, fft_index, evalfv, effective_magnetic_field, 
             //         sv_eigen_vectors);
@@ -1079,6 +1176,16 @@ class Band
         inline int idxbandloc(int sub_index)
         {
             return sub_spl_spinor_wf_[sub_index];
+        }
+
+        inline int num_fv_states_row_up()
+        {
+            return num_fv_states_row_up_;
+        }
+
+        inline int num_fv_states_row_dn()
+        {
+            return num_fv_states_row_dn_;
         }
 };
 

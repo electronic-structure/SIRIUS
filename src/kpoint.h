@@ -22,6 +22,8 @@ class kpoint
         /// BLACS communication context
         int blacs_context_;
 
+        int num_mpi_ranks_;
+
         /// G+k vectors
         mdarray<double, 2> gkvec_;
 
@@ -250,24 +252,26 @@ class kpoint
                                   &spinor_wave_functions_(0, ispn, ispn * band->spl_fv_states_col().local_size()), 
                                   spinor_wave_functions_.ld() * parameters_.num_spins());
 
-                    for (int i = 0; i < band->spl_spinor_wf_col().local_size(); i++)
-                        Platform::allreduce(&spinor_wave_functions_(0, 0, i), 
-                                            spinor_wave_functions_.size(0) * spinor_wave_functions_.size(1), 
-                                            parameters_.mpi_grid().communicator(1 << dim_row_));
                 }
                 else
                 {
-
+                    for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+                    {
+                        int len = (ispn == 0) ? band->num_fv_states_row_up() : band->num_fv_states_row_dn(); 
+                        int offs = (num_mpi_ranks_ == 1) ? 0 : band->num_fv_states_row_up();
+                        gemm<cpu>(0, 0, mtgk_size(), band->spl_spinor_wf_col().local_size(), 
+                                  len, complex16(1, 0), 
+                                  &fv_states_row_(0, offs), fv_states_row_.ld(), 
+                                  &sv_eigen_vectors_(ispn * band->num_fv_states_row_up(), 0), sv_eigen_vectors_.ld(), 
+                                  complex16(0, 0), &spinor_wave_functions_(0, ispn, 0), 
+                                  spinor_wave_functions_.ld() * parameters_.num_spins());
+                    }
                 }
-
-
                 
-                //for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-                //    gemm<cpu>(0, 0, mtgk_size(), parameters_.num_bands(), parameters_.num_fv_states(), 
-                //              complex16(1, 0), &fv_states_(0, 0), fv_states_.ld(), 
-                //              &sv_eigen_vectors_(ispn * parameters_.num_fv_states(), 0), sv_eigen_vectors_.ld(), 
-                //              complex16(0, 0), &spinor_wave_functions_(0, ispn, 0), 
-                //              spinor_wave_functions_.ld() * parameters_.num_spins());
+                for (int i = 0; i < band->spl_spinor_wf_col().local_size(); i++)
+                    Platform::allreduce(&spinor_wave_functions_(0, 0, i), 
+                                        spinor_wave_functions_.size(0) * spinor_wave_functions_.size(1), 
+                                        parameters_.mpi_grid().communicator(1 << dim_row_));
             }
             else
             {
@@ -727,6 +731,8 @@ class kpoint
             dim_row_ = 1;
             dim_col_ = 2;
 
+            num_mpi_ranks_ = parameters_.mpi_grid().size((1 << dim_row_) | (1 << dim_col_));
+
             if (eigen_value_solver == scalapack) init_blacs_context();
         }
 
@@ -800,7 +806,7 @@ class kpoint
 
                 for (int i = 0; i < band->spl_fv_states_row().local_size(); i++)
                 {
-                    int ist = band->spl_fv_states_row()[i];
+                    int ist = (band->spl_fv_states_row()[i] % parameters_.num_fv_states());
                     int offset_col = band->spl_fv_states_col().location(0, ist);
                     int rank_col = band->spl_fv_states_col().location(1, ist);
                     if (rank_col == parameters_.mpi_grid().coordinate(dim_col_))
@@ -823,7 +829,10 @@ class kpoint
             
             if (parameters_.num_spins() == 2) // or some other conditions which require second variation
             {
-                band->solve_sv(parameters_, blacs_context_, mtgk_size(), num_gkvec(), fft_index(), &fv_eigen_values_[0], 
+                band->solve_sv(parameters_, 
+                               blacs_context_, 
+                               parameters_.mpi_grid().dimensions((1 << dim_row_) | (1 << dim_col_)),
+                               mtgk_size(), num_gkvec(), fft_index(), &fv_eigen_values_[0], 
                                fv_states_row_, fv_states_col_, effective_magnetic_field, &band_energies_[0],
                                sv_eigen_vectors_);
 

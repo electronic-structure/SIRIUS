@@ -1,5 +1,17 @@
 namespace sirius {
 
+struct nearest_neighbour_descriptor
+{
+    /// id of neighbour atom
+    int atom_id;
+
+    /// translation along each lattice vector
+    int translation[3];
+
+    /// distance from the central atom
+    double distance;
+};
+
 class UnitCell
 {
     private:
@@ -65,6 +77,12 @@ class UnitCell
         /// total number of local orbital basis functions
         int mt_lo_basis_size_;
 
+        /// list of nearest neighbours for each atom
+        std::vector< std::vector<nearest_neighbour_descriptor> > nearest_neighbours_;
+
+        /// minimum muffin-tin radius
+        double min_mt_radius_;
+        
         /// Get crystal symmetries and equivalent atoms.
 
         /** Makes a call to spglib providing the basic unit cell information: lattice vectors and atomic types 
@@ -134,17 +152,100 @@ class UnitCell
             }
         }
         
-    public:
-    
-        UnitCell() : spg_dataset_(NULL)
+        /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
+        
+        /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
+            bethween nearest atoms. Initial values of the muffin-tin radii (provided in the input file) 
+            are ignored. */
+        void find_mt_radii()
         {
-            assert(sizeof(int4) == 4);
-            assert(sizeof(real8) == 8);
+            if (nearest_neighbours_.size() == 0)                 
+                error(__FILE__, __LINE__, "array of nearest neighbours is empty");
+
+            // initialize Rmt to huge value
+            std::vector<double> rmt(num_atom_types(), 1e10);
+             
+            for (int ia = 0; ia < num_atoms(); ia++)
+            {
+                int id1 = atom(ia)->type_id();
+                if (nearest_neighbours_[ia].size() <= 1) // first atom is always the central one itself
+                {
+                    std::stringstream s;
+                    s << "array of nearest neighbours for atom " << ia << " is empty";
+                    error(__FILE__, __LINE__, s);
+                }
+
+                int ja = nearest_neighbours_[ia][1].atom_id;
+                int id2 = atom(ja)->type_id();
+                double dist = nearest_neighbours_[ia][1].distance;
+                
+                // take a little bit smaller value than half a distance
+                double r = 0.95 * (dist / 2);
+
+                // take minimal R for the given atom type
+                rmt[atom_type_index_by_id(id1)] = std::min(r, rmt[atom_type_index_by_id(id1)]);
+                rmt[atom_type_index_by_id(id2)] = std::min(r, rmt[atom_type_index_by_id(id2)]);
+            }
+
+            for (int i = 0; i < num_atom_types(); i++)
+            {
+                int id = atom_type(i)->id();
+                atom_type_by_id(id)->set_mt_radius(std::min(rmt[i], 3.0));
+            }
         }
-       
+        
+        /// Check if MT spheres overlap
+        bool check_mt_overlap(int& ia__, int& ja__)
+        {
+            if (nearest_neighbours_.size() == 0)
+                error(__FILE__, __LINE__, "array of nearest neighbours is empty");
+
+            for (int ia = 0; ia < num_atoms(); ia++)
+            {
+                if (nearest_neighbours_[ia].size() <= 1) // first atom is always the central one itself
+                {
+                    std::stringstream s;
+                    s << "array of nearest neighbours for atom " << ia << " is empty";
+                    error(__FILE__, __LINE__, s);
+                }
+
+                int ja = nearest_neighbours_[ia][1].atom_id;
+                double dist = nearest_neighbours_[ia][1].distance;
+                
+                if ((atom(ia)->type()->mt_radius() + atom(ja)->type()->mt_radius()) > dist)
+                {
+                    ia__ = ia;
+                    ja__ = ja;
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
+    protected:
+
         void init(int lmax_apw, int lmax_pot, int num_mag_dims)
         {
+            find_nearest_neighbours(15.0);
+            
+            //if (check_mt_overlap(ia, ja)) find_mt_radii();
+            
+            // always scale MT radii
+            find_mt_radii();
+            
+            int ia, ja;
+            if (check_mt_overlap(ia, ja))
+            {
+                std::stringstream s;
+                s << "overlaping muffin-tin spheres for atoms " << ia << " and " << ja << std::endl
+                  << "  radius of atom " << ia << " : " << atom(ia)->type()->mt_radius() << std::endl
+                  << "  radius of atom " << ja << " : " << atom(ja)->type()->mt_radius();
+                error(__FILE__, __LINE__, s);
+            }
+            
             get_symmetry();
+            
             total_nuclear_charge_ = 0;
             num_core_electrons_ = 0;
             num_valence_electrons_ = 0;
@@ -158,10 +259,12 @@ class UnitCell
             num_electrons_ = num_core_electrons_ + num_valence_electrons_;
             
             max_num_mt_points_ = 0;
+            min_mt_radius_ = 1e100;
             for (int i = 0; i < num_atom_types(); i++)
             {
                  atom_type(i)->init(lmax_apw);
                  max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(i)->num_mt_points());
+                 min_mt_radius_ = std::min(min_mt_radius_, atom_type(i)->mt_radius());
             }
             
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
@@ -214,7 +317,15 @@ class UnitCell
 
             equivalent_atoms_.clear();
         }
-
+        
+    public:
+    
+        UnitCell() : spg_dataset_(NULL)
+        {
+            assert(sizeof(int4) == 4);
+            assert(sizeof(real8) == 8);
+        }
+       
         void set_equivalent_atoms(int* equivalent_atoms__)
         {
             equivalent_atoms_.resize(num_atoms());
@@ -279,14 +390,12 @@ class UnitCell
             printf("number of core electrons    : %i\n", num_core_electrons_);
             printf("number of valence electrons : %i\n", num_valence_electrons_);
             printf("total number of electrons   : %i\n", num_electrons_);
-         }
+        }
         
-        /*!
-            \brief Set lattice vectors.
+        /// Set lattice vectors.
 
-            Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and 
+        /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the
             unit cell volume.
-
         */
         void set_lattice_vectors(double* a1, 
                                  double* a2, 
@@ -330,25 +439,171 @@ class UnitCell
                     reciprocal_lattice_vectors_[l][x] = twopi * inverse_lattice_vectors_[x][l];
         }
         
-        /*!
-            \brief Get x coordinate of lattice vector l
-         */
+        void find_nearest_neighbours(double cluster_radius)
+        {
+            Timer t("sirius::geometry::find_nearest_neighbours");
+
+            int max_frac_coord[] = {0, 0, 0};
+            double frac_coord[3];
+            for (int i = 0; i < 3; i++)
+            {
+                double cart_coord[] = {0.0, 0.0, 0.0};
+                cart_coord[i] = cluster_radius; // radius of nearest neighbours cluster
+                get_coordinates<fractional, direct>(cart_coord, frac_coord);
+                for (int i = 0; i < 3; i++)
+                    max_frac_coord[i] = std::max(max_frac_coord[i], abs(int(frac_coord[i])) + 1);
+            }
+           
+            nearest_neighbours_.clear();
+            nearest_neighbours_.resize(num_atoms());
+            for (int ia = 0; ia < num_atoms(); ia++)
+            {
+                double iapos[3];
+                get_coordinates<cartesian, direct>(atom(ia)->position(), iapos);
+                
+                std::vector<nearest_neighbour_descriptor> nn;
+
+                std::vector< std::pair<double, int> > nn_sort;
+
+                for (int i0 = -max_frac_coord[0]; i0 <= max_frac_coord[0]; i0++)
+                    for (int i1 = -max_frac_coord[1]; i1 <= max_frac_coord[1]; i1++)
+                        for (int i2 = -max_frac_coord[2]; i2 <= max_frac_coord[2]; i2++)
+                        {
+                            nearest_neighbour_descriptor nnd;
+                            nnd.translation[0] = i0;
+                            nnd.translation[1] = i1;
+                            nnd.translation[2] = i2;
+                            
+                            double vt[3];
+                            get_coordinates<cartesian, direct>(nnd.translation, vt);
+                            
+                            for (int ja = 0; ja < num_atoms(); ja++)
+                            {
+                                nnd.atom_id = ja;
+
+                                double japos[3];
+                                get_coordinates<cartesian, direct>(atom(ja)->position(), japos);
+
+                                double v[3];
+                                for (int x = 0; x < 3; x++)
+                                    v[x] = japos[x] + vt[x] - iapos[x];
+
+                                nnd.distance = vector_length(v);
+                                
+                                //dist.push_back(nnd.distance);
+                                nn.push_back(nnd);
+
+                                nn_sort.push_back(std::pair<double, int>(nnd.distance, (int)nn.size() - 1));
+                            }
+
+                        }
+                
+                std::sort(nn_sort.begin(), nn_sort.end());
+                nearest_neighbours_[ia].resize(nn.size());
+                for (int i = 0; i < (int)nn.size(); i++)
+                    nearest_neighbours_[ia][i] = nn[nn_sort[i].second];
+            }
+        }
+
+        template <lattice_type Tl>
+        void find_translation_limits(double radius, int* limits)
+        {
+            limits[0] = limits[1] = limits[2] = 0;
+
+            int n = 0;
+            while(true)
+            {
+                bool found = false;
+                for (int i0 = -n; i0 <= n; i0++)
+                    for (int i1 = -n; i1 <= n; i1++)
+                        for (int i2 = -n; i2 <= n; i2++)
+                            if (abs(i0) == n || abs(i1) == n || abs(i2) == n)
+                            {
+                                int vgf[] = {i0, i1, i2};
+                                double vgc[3];
+                                get_coordinates<cartesian, Tl>(vgf, vgc);
+                                double len = vector_length(vgc);
+                                if (len <= radius)
+                                {
+                                    found = true;
+                                    for (int j = 0; j < 3; j++)
+                                        limits[j] = std::max(2 * abs(vgf[j]) + 1, limits[j]);
+                                }
+                            }
+
+                if (found) n++;
+                else return;
+            }
+        }
+
+        template <lattice_type Tl>
+        void reduce_coordinates(double vc[3], int ntr[3], double vf[3])
+        {
+            get_coordinates<fractional, Tl>(vc, vf);
+            for (int i = 0; i < 3; i++)
+            {
+                ntr[i] = (int)floor(vf[i]);
+                vf[i] -= ntr[i];
+                if (vf[i] < 0.0 || vf[i] >= 1.0)
+                    error(__FILE__, __LINE__, "wrong fractional coordinates");
+            }
+        }
+
+        bool is_point_in_mt(double vc[3])
+        {
+            int ntr[3];
+            double vf[3];
+            // reduce coordinates to the primitive unit cell
+            reduce_coordinates<direct>(vc, ntr, vf);
+
+            //double vc1[3];
+            // get Cartesian coordinates of the reduced vector
+            //get_coordinates<cartesian, direct>(vf, vc1);
+
+            for (int ia = 0; ia < num_atoms(); ia++)
+            {
+                for (int i0 = -1; i0 <= 1; i0++)
+                    for (int i1 = -1; i1 <= 1; i1++)
+                        for (int i2 = -1; i2 <= 1; i2++)
+                        {
+                            // atom position
+                            double posf[] = {double(i0), double(i1), double(i2)};
+                            for (int i = 0; i < 3; i++) posf[i] += atom(ia)->position(i);
+                            
+                            // vector connecting center of atom and reduced point
+                            double vf1[3];
+                            for (int i = 0; i < 3; i++) vf1[i] = vf[i] - posf[i];
+                            
+                            // convert to Cartesian coordinates
+                            double vc1[3];
+                            get_coordinates<cartesian, direct>(vf1, vc1);
+
+                            double r = vector_length(vc1);
+
+                            if (r <= atom(ia)->type()->mt_radius())
+                            {
+
+                            }
+
+                        }
+            }
+            
+            return true;
+        }
+        
+        /// Get x coordinate of lattice vector l
         inline double lattice_vectors(int l, int x)
         {
             return lattice_vectors_[l][x];
         }
         
-        /*!
-            \brief Get x coordinate of reciprocal lattice vector l
-         */
+        /// Get x coordinate of reciprocal lattice vector l
         inline double reciprocal_lattice_vectors(int l, int x)
         {
             return reciprocal_lattice_vectors_[l][x];
         }
 
-        /*! 
-            \brief Convert coordinates (fractional <-> Cartesian) of direct or reciprocal lattices
-        */
+        /// Convert coordinates (fractional <-> Cartesian) of direct or reciprocal lattices
         template<coordinates_type cT, lattice_type lT, typename T>
         void get_coordinates(T* a, 
                              double* b)
@@ -390,17 +645,13 @@ class UnitCell
             }
         }
 
-        /*!
-            \brief Unit cell volume.
-        */
+        /// Unit cell volume.
         inline double omega()
         {
             return omega_;
         }
 
-        /*! 
-            \brief Add new atom type to the list of atom types.
-        */
+        /// Add new atom type to the list of atom types.
         void add_atom_type(int atom_type_id, 
                            const std::string& label)
         {
@@ -447,17 +698,13 @@ class UnitCell
         }
 
         
-        /*!
-            \brief Pointer to atom by atom id.
-        */
+        /// Pointer to atom by atom id.
         inline Atom* atom(int id)
         {
             return atoms_[id];
         }
         
-        /*! 
-            \brief Number of atom types.
-        */
+        /// Number of atom types.
         inline int num_atom_types()
         {
             assert(atom_types_.size() == atom_type_index_by_id_.size());
@@ -465,25 +712,19 @@ class UnitCell
             return (int)atom_types_.size();
         }
 
-        /*!
-            \brief Atom type index by atom type id.
-        */
+        /// Atom type index by atom type id.
         inline int atom_type_index_by_id(int id)
         {
             return atom_type_index_by_id_[id];
         }
         
-        /*!
-            \brief Pointer to atom type by type id
-        */
+        /// Pointer to atom type by type id
         inline AtomType* atom_type_by_id(int id)
         {
             return atom_types_[atom_type_index_by_id(id)];
         }
  
-        /*!
-            \brief Pointer to atom type by type index (not(!) by atom type id)
-        */
+        /// Pointer to atom type by type index (not(!) by atom type id)
         inline AtomType* atom_type(int idx)
         {
             return atom_types_[idx];
@@ -560,12 +801,17 @@ class UnitCell
             return max_mt_basis_size_;
         }
 
-        /// MAximum number of radial functions actoss all atom types
+        /// Maximum number of radial functions actoss all atom types
         inline int max_mt_radial_basis_size()
         {
             return max_mt_radial_basis_size_;
         }
 
+        /// Minimum muffin-tin radius
+        inline double min_mt_radius()
+        {
+            return min_mt_radius_;
+        }
 };
 
 };

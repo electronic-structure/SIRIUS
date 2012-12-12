@@ -1,7 +1,7 @@
 
 namespace sirius {
 
-class reciprocal_lattice : public geometry
+class reciprocal_lattice : public UnitCell
 {
     private:
         

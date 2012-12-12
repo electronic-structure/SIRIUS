@@ -231,7 +231,6 @@ class Global : public StepFunction
             // initialize variables, related to the unit cell
             UnitCell::init(lmax_apw(), lmax_pot(), num_mag_dims());
             
-            geometry::init();
             reciprocal_lattice::init();
             StepFunction::init();
 

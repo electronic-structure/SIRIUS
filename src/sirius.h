@@ -72,7 +72,6 @@ extern "C" {
 // stack of classes for Global class
 //
 #include "unit_cell.h"
-#include "geometry.h"
 #include "reciprocal_lattice.h"
 #include "step_function.h"
 #include "global.h"
