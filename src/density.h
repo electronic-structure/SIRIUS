@@ -358,7 +358,7 @@ class Density
                                    parameters_.mpi_grid().coordinate(0));
 
             for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
-                kpoint_set_[spl_num_kpoints_[ikloc]]->initialize();
+                kpoint_set_[spl_num_kpoints_[ikloc]]->initialize(band_);
 
             l_by_lm_.resize(parameters_.lmmax_rho());
             for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)

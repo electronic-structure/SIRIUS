@@ -85,6 +85,11 @@ class Band
         int num_ranks_row_;
 
         int dim_row_;
+
+        int num_ranks_;
+        
+        /// BLACS communication context
+        int blacs_context_;
         
         template <typename T>
         inline void sum_L3_complex_gaunt(int lm1, int lm2, T* v, complex16& zsum)
@@ -694,7 +699,7 @@ class Band
             }
         }
         
-        void set_sv_h(mdarray<complex16,2>& scalar_wf, int scalar_wf_size, int num_gkvec, int* fft_index, 
+/*        void set_sv_h(mdarray<complex16,2>& scalar_wf, int scalar_wf_size, int num_gkvec, int* fft_index, 
                       double* evalfv, PeriodicFunction<double>* effective_magnetic_field[3], mdarray<complex16,2>& h)
         {
             Timer t("sirius::Band::set_sv_h");
@@ -742,6 +747,28 @@ class Band
             for (int ispn = 0, i = 0; ispn < parameters_.num_spins(); ispn++)
                 for (int ist = 0; ist < parameters_.num_fv_states(); ist++, i++)
                     h(i, i) += evalfv[ist];
+        }*/
+
+        void init_blacs_context()
+        {
+            mdarray<int, 2> map_ranks(num_ranks_row_, num_ranks_col_);
+            int rc = (1 << dim_row_) | 1 << (dim_col_);
+            for (int i1 = 0; i1 < num_ranks_col_; i1++)
+                for (int i0 = 0; i0 < num_ranks_row_; i0++)
+                    map_ranks(i0, i1) = parameters_.mpi_grid().cart_rank(parameters_.mpi_grid().communicator(rc), 
+                                                                         intvec(i0, i1));
+ 
+            // create BLACS context
+            blacs_context_ = Csys2blacs_handle(parameters_.mpi_grid().communicator(rc));
+
+            // create grid of MPI ranks 
+            Cblacs_gridmap(&blacs_context_, map_ranks.get_ptr(), map_ranks.ld(), num_ranks_row_, num_ranks_col_);
+
+            // check the grid
+            int nrow, ncol, irow, icol;
+            Cblacs_gridinfo(blacs_context_, &nrow, &ncol, &irow, &icol);
+            if ((rank_row_ != irow) || (rank_col_ != icol) || (num_ranks_row_ != nrow) || (num_ranks_col_ != ncol)) 
+                error(__FILE__, __LINE__, "wrong grid", fatal_err);
         }
 
         void init()
@@ -809,7 +836,7 @@ class Band
                     if (spl_spinor_wf_col_[i + ispn * spl_fv_states_col_.local_size()] != 
                         (spl_fv_states_col_[i] + ispn * parameters_.num_fv_states()))
                         error(__FILE__, __LINE__, "Wrong distribution of wave-functions");
-
+            
             if ((verbosity_level > 0) && (Platform::mpi_rank() == 0))
             {
                 printf("\n");
@@ -850,11 +877,10 @@ class Band
             }
         }
  
-
     public:
         
         /// Constructor
-        Band(Global& parameters__) : parameters_(parameters__)
+        Band(Global& parameters__) : parameters_(parameters__), blacs_context_(-1)
         {
             if (!parameters_.initialized()) error(__FILE__, __LINE__, "Parameters are not initialized.");
 
@@ -864,10 +890,19 @@ class Band
             num_ranks_row_ = parameters_.mpi_grid().dimension_size(dim_row_);
             num_ranks_col_ = parameters_.mpi_grid().dimension_size(dim_col_);
 
+            num_ranks_ = num_ranks_row_ * num_ranks_col_;
+
             rank_row_ = parameters_.mpi_grid().coordinate(dim_row_);
             rank_col_ = parameters_.mpi_grid().coordinate(dim_col_);
 
             init();
+            
+            if (eigen_value_solver == scalapack) init_blacs_context();
+        }
+
+        ~Band()
+        {
+            if (eigen_value_solver == scalapack) Cfree_blacs_system_handle(blacs_context_);
         }
       
         /// Setup and solve the first-variational problem
@@ -880,8 +915,6 @@ class Band
 
         */
         void solve_fv(Global&                                    parameters,
-                      const int                                  blacs_context,
-                      const std::vector<int>                     blacs_dims,
                       const int                                  apwlo_basis_size, 
                       const int                                  num_gkvec,
                       const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row,
@@ -899,12 +932,12 @@ class Band
         {
             if (&parameters != &parameters_) error(__FILE__, __LINE__, "different set of parameters");
 
-            if ((eigen_value_solver != scalapack) && (blacs_dims[0] * blacs_dims[1] > 1))
+            if ((eigen_value_solver != scalapack) && (num_ranks_ > 1))
                 error(__FILE__, __LINE__, "Only one MPI rank is allowed."); 
 
             Timer t("sirius::Band::solve_fv");
 
-            int apw_offset_col = (blacs_dims[0] * blacs_dims[1] > 1) ? num_gkvec_row : 0;
+            int apw_offset_col = (num_ranks_ > 1) ? num_gkvec_row : 0;
 
             mdarray<complex16, 2> h(apwlo_basis_size_row, apwlo_basis_size_col);
             mdarray<complex16, 2> o(apwlo_basis_size_row, apwlo_basis_size_col);
@@ -923,18 +956,18 @@ class Band
             if (eigen_value_solver == scalapack)
             {
                 int desc_h[9];
-                descinit(desc_h, apwlo_basis_size, apwlo_basis_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, 
+                descinit(desc_h, apwlo_basis_size, apwlo_basis_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context_, 
                          h.ld());
 
                 int desc_o[9];
-                descinit(desc_o, apwlo_basis_size, apwlo_basis_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, 
+                descinit(desc_o, apwlo_basis_size, apwlo_basis_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context_, 
                          o.ld());
 
                 int desc_z[9];
-                descinit(desc_z, apwlo_basis_size, apwlo_basis_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, 
+                descinit(desc_z, apwlo_basis_size, apwlo_basis_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context_, 
                          fv_eigen_vectors.ld());
                 
-                hegvx_scalapack(apwlo_basis_size, parameters.num_fv_states(), blacs_dims[0], blacs_dims[1], -1.0, 
+                hegvx_scalapack(apwlo_basis_size, parameters.num_fv_states(), num_ranks_row_, num_ranks_col_, -1.0, 
                                 h.get_ptr(), desc_h, o.get_ptr(), desc_o, &fv_eigen_values[0], 
                                 fv_eigen_vectors.get_ptr(), desc_z);
             }
@@ -953,8 +986,6 @@ class Band
         }
 
         void solve_sv(Global&                   parameters,
-                      int                       blacs_context,
-                      const std::vector<int>    blacs_dims,
                       int                       mtgk_size, 
                       int                       num_gkvec,
                       int*                      fft_index, 
@@ -966,8 +997,7 @@ class Band
                       mdarray<complex16, 2>&    sv_eigen_vectors)
 
         {
-            if (&parameters != &parameters_)
-                error(__FILE__, __LINE__, "different set of parameters");
+            if (&parameters != &parameters_) error(__FILE__, __LINE__, "different set of parameters");
 
             Timer t("sirius::Band::solve_sv");
 
@@ -993,7 +1023,7 @@ class Band
             //    apply_so_correction(scalar_wf, hwf);
 
 
-            //Timer *t1 = new Timer("sirius::Band::solve_sv:heev");
+            Timer t1("sirius::Band::solve_sv:heev", false);
             
             if (parameters.num_mag_dims() == 1)
             {
@@ -1014,6 +1044,7 @@ class Band
                             if (spl_fv_states_row_[irow] == i) h(irow, icol) += evalfv[i];
                     }
                 
+                    t1.start();
                     if (eigen_value_solver == lapack)
                     {
                         assert(spl_fv_states_row_.local_size() == parameters_.num_fv_states());
@@ -1034,16 +1065,17 @@ class Band
                     {
                         int desc_h[9];
                         descinit(desc_h, parameters_.num_fv_states(), parameters_.num_fv_states(), scalapack_nb, 
-                                 scalapack_nb, 0, 0, blacs_context, h.ld());
+                                 scalapack_nb, 0, 0, blacs_context_, h.ld());
 
                         int desc_z[9];
                         descinit(desc_z, parameters_.num_fv_states(), parameters_.num_fv_states(), scalapack_nb, 
-                                 scalapack_nb, 0, 0, blacs_context, sv_eigen_vectors.ld());
+                                 scalapack_nb, 0, 0, blacs_context_, sv_eigen_vectors.ld());
                         
                         heevd_scalapack(parameters_.num_fv_states(), num_ranks_row_, num_ranks_col_, scalapack_nb, 
                                         &h(0, 0), desc_h, &band_energies[ispn * parameters_.num_fv_states()], 
                                         &sv_eigen_vectors(0, ispn * spl_fv_states_col_.local_size()), desc_z);
                     }
+                    t1.stop();
                 }
             }
 
@@ -1062,7 +1094,7 @@ class Band
                           &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 2), hpsi.ld(), complex16(0, 0), 
                           &h(0, spl_fv_states_col_.local_size()), h.ld());
                
-                int fv_states_up_offset = ((blacs_dims[0] * blacs_dims[1]) == 1) ? 0 : num_fv_states_row_up_;
+                int fv_states_up_offset = (num_ranks_ == 1) ? 0 : num_fv_states_row_up_;
                 // compute <wf_i | (h * wf_j)> for dn-dn block
                 gemm<cpu>(2, 0, num_fv_states_row_dn_, spl_fv_states_col_.local_size(), mtgk_size, complex16(1, 0), 
                           &fv_states_row(0, fv_states_up_offset), fv_states_row.ld(), &hpsi(0, 0, 1), hpsi.ld(), 
@@ -1088,6 +1120,7 @@ class Band
                     }
                 }
             
+                t1.start();
                 if (eigen_value_solver == lapack)
                 {
                     assert(spl_fv_states_row_.local_size() == parameters_.num_bands());
@@ -1108,54 +1141,17 @@ class Band
                 {
                     int desc_h[9];
                     descinit(desc_h, parameters_.num_bands(), parameters_.num_bands(), scalapack_nb, scalapack_nb, 
-                             0, 0, blacs_context, h.ld());
+                             0, 0, blacs_context_, h.ld());
 
                     int desc_z[9];
                     descinit(desc_z, parameters_.num_bands(), parameters_.num_bands(), scalapack_nb, scalapack_nb, 
-                             0, 0, blacs_context, sv_eigen_vectors.ld());
+                             0, 0, blacs_context_, sv_eigen_vectors.ld());
                     
                     heevd_scalapack(parameters_.num_bands(), num_ranks_row_, num_ranks_col_, scalapack_nb, &h(0, 0), 
                                     desc_h, &band_energies[0], &sv_eigen_vectors(0, 0), desc_z);
                 }
+                t1.stop();
             }
-            
-            //set_sv_h(fv_states, mtgk_size, num_gkvec, fft_index, evalfv, effective_magnetic_field, 
-            //         sv_eigen_vectors);
-            //
-            //Timer *t1 = new Timer("sirius::Band::solve_sv:heev");
-            //if (parameters.num_mag_dims() == 1)
-            //{
-            //    int info;                    
-            //                               
-            //    info = heev<cpu>(parameters.num_fv_states(), &sv_eigen_vectors(0, 0), parameters.num_bands(), band_energies);
-            //    if (info)
-            //    {                            
-            //        std::stringstream s;
-            //        s << "heev returned" << info;
-            //        error(__FILE__, __LINE__, s);
-            //    }
-            //    
-            //    info = heev<cpu>(parameters.num_fv_states(), 
-            //                     &sv_eigen_vectors(parameters_.num_fv_states(), parameters.num_fv_states()), 
-            //                     parameters.num_bands(), &band_energies[parameters.num_fv_states()]);
-            //    if (info)
-            //    {
-            //        std::stringstream s;
-            //        s << "heev returned" << info;
-            //        error(__FILE__, __LINE__, s);
-            //    }
-            //}                                
-            //else                             
-            //{                                
-            //    int info = heev<cpu>(parameters.num_bands(), &sv_eigen_vectors(0, 0), parameters_.num_bands(), band_energies);
-            //    if (info)
-            //    {
-            //        std::stringstream s;
-            //        s << "heev returned" << info;
-            //        error(__FILE__, __LINE__, s);
-            //    }
-            //}
-            //delete t1;
         }
         
         inline splindex<block_cyclic, scalapack_nb>& spl_fv_states_col()
@@ -1196,6 +1192,57 @@ class Band
         inline int num_fv_states_row_dn()
         {
             return num_fv_states_row_dn_;
+        }
+
+        inline int num_fv_states_row(int ispn)
+        {
+            assert((ispn == 0) || (ispn == 1));
+
+            return (ispn == 0) ? num_fv_states_row_up_ : num_fv_states_row_dn_;
+        }
+
+        inline int offs_fv_states_row(int ispn)
+        {
+            assert((ispn == 0) || (ispn == 1));
+            
+            if (parameters_.num_mag_dims() != 3) return 0;
+            if (num_ranks_ == 1) return 0;
+            return (ispn == 0) ? 0 : num_fv_states_row_up_;
+        }    
+
+        inline int dim_row()
+        {
+            return dim_row_;
+        }
+        
+        inline int dim_col()
+        {
+            return dim_col_;
+        }
+
+        inline int num_ranks_row()
+        {
+            return num_ranks_row_;
+        }
+        
+        inline int rank_row()
+        {
+            return rank_row_;
+        }
+        
+        inline int num_ranks_col()
+        {
+            return num_ranks_col_;
+        }
+        
+        inline int rank_col()
+        {
+            return rank_col_;
+        }
+        
+        inline int num_ranks()
+        {
+            return num_ranks_;
         }
 };
 
