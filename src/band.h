@@ -73,6 +73,18 @@ class Band
         int num_fv_states_row_up_;
         
         int num_fv_states_row_dn_;
+
+        int rank_col_;
+
+        int num_ranks_col_;
+
+        int dim_col_;
+
+        int rank_row_;
+
+        int num_ranks_row_;
+
+        int dim_row_;
         
         template <typename T>
         inline void sum_L3_complex_gaunt(int lm1, int lm2, T* v, complex16& zsum)
@@ -756,28 +768,23 @@ class Band
             }
             
             // distribue first-variational states
-            spl_fv_states_col_.split(parameters_.num_fv_states(), parameters_.mpi_grid().dimension_size(2), 
-                                     parameters_.mpi_grid().coordinate(2));
+            spl_fv_states_col_.split(parameters_.num_fv_states(), num_ranks_col_, rank_col_);
            
-            spl_spinor_wf_col_.split(parameters_.num_bands(), parameters_.mpi_grid().dimension_size(2), 
-                                     parameters_.mpi_grid().coordinate(2));
+            spl_spinor_wf_col_.split(parameters_.num_bands(), num_ranks_col_, rank_col_);
             
             // split along rows 
-            sub_spl_spinor_wf_.split(spl_spinor_wf_col_.local_size(), parameters_.mpi_grid().dimension_size(1), 
-                                     parameters_.mpi_grid().coordinate(1));
+            sub_spl_spinor_wf_.split(spl_spinor_wf_col_.local_size(), num_ranks_row_, rank_row_);
             
             if (parameters_.num_mag_dims() != 3)
             {
-                spl_fv_states_row_.split(parameters_.num_fv_states(), parameters_.mpi_grid().dimension_size(1), 
-                                         parameters_.mpi_grid().coordinate(1));
+                spl_fv_states_row_.split(parameters_.num_fv_states(), num_ranks_row_, rank_row_);
                 
                 num_fv_states_row_up_ = num_fv_states_row_dn_ = spl_fv_states_row_.local_size();
             }
             else
             {
-                spl_fv_states_row_.split(parameters_.num_fv_states() * parameters_.num_spins(), 
-                                         parameters_.mpi_grid().dimension_size(1), 
-                                         parameters_.mpi_grid().coordinate(1));
+                spl_fv_states_row_.split(parameters_.num_fv_states() * parameters_.num_spins(), num_ranks_row_, 
+                                         rank_row_);
 
                 num_fv_states_row_up_ = 0;
                 num_fv_states_row_dn_ = 0;
@@ -810,7 +817,7 @@ class Band
                 printf("(columns of the table correspond to MPI ranks)\n");
                 for (int i0 = 0; i0 < spl_fv_states_col_.local_size(0); i0++)
                 {
-                    for (int i1 = 0; i1 < parameters_.mpi_grid().dimension_size(2); i1++)
+                    for (int i1 = 0; i1 < num_ranks_col_; i1++)
                         printf("%6i", spl_fv_states_col_.global_index(i0, i1));
                     printf("\n");
                 }
@@ -836,7 +843,7 @@ class Band
                 printf("(columns of the table correspond to MPI ranks)\n");
                 for (int i0 = 0; i0 < spl_spinor_wf_col_.local_size(0); i0++)
                 {
-                    for (int i1 = 0; i1 < parameters_.mpi_grid().dimension_size(2); i1++)
+                    for (int i1 = 0; i1 < num_ranks_row_; i1++)
                         printf("%6i", spl_spinor_wf_col_.global_index(i0, i1));
                     printf("\n");
                 }
@@ -850,6 +857,15 @@ class Band
         Band(Global& parameters__) : parameters_(parameters__)
         {
             if (!parameters_.initialized()) error(__FILE__, __LINE__, "Parameters are not initialized.");
+
+            dim_row_ = 1;
+            dim_col_ = 2;
+
+            num_ranks_row_ = parameters_.mpi_grid().dimension_size(dim_row_);
+            num_ranks_col_ = parameters_.mpi_grid().dimension_size(dim_col_);
+
+            rank_row_ = parameters_.mpi_grid().coordinate(dim_row_);
+            rank_col_ = parameters_.mpi_grid().coordinate(dim_col_);
 
             init();
         }
@@ -1024,9 +1040,8 @@ class Band
                         descinit(desc_z, parameters_.num_fv_states(), parameters_.num_fv_states(), scalapack_nb, 
                                  scalapack_nb, 0, 0, blacs_context, sv_eigen_vectors.ld());
                         
-                        heevd_scalapack(parameters_.num_fv_states(), parameters_.mpi_grid().dimension_size(1), 
-                                        parameters_.mpi_grid().dimension_size(2), scalapack_nb, &h(0, 0), desc_h,
-                                        &band_energies[ispn * parameters_.num_fv_states()], 
+                        heevd_scalapack(parameters_.num_fv_states(), num_ranks_row_, num_ranks_col_, scalapack_nb, 
+                                        &h(0, 0), desc_h, &band_energies[ispn * parameters_.num_fv_states()], 
                                         &sv_eigen_vectors(0, ispn * spl_fv_states_col_.local_size()), desc_z);
                     }
                 }
@@ -1060,18 +1075,16 @@ class Band
                               &fv_states_row(0, fv_states_up_offset), fv_states_row.ld(), &hpsi(0, 0, 3), hpsi.ld(), 
                               complex16(0, 0), &h(num_fv_states_row_up_, 0), h.ld());
                 }
-               
+              
                 for (int ispn = 0; ispn < 2; ispn++)
                 {
                     for (int icol = 0; icol < spl_fv_states_col_.local_size(); icol++)
                     {
+                        int i = spl_fv_states_col_[icol] + ispn * parameters_.num_fv_states();
                         for (int irow = 0; irow < spl_fv_states_row_.local_size(); irow++)
-                        {
-                            int j = (spl_fv_states_row_[irow] % parameters_.num_fv_states()); 
-                            int jspn = (spl_fv_states_row_[irow] / parameters_.num_fv_states()); 
-                            if ((j == icol) && (jspn == ispn)) 
-                                h(irow, icol + ispn * spl_fv_states_col_.local_size()) += evalfv[icol];
-                        }
+                            if (spl_fv_states_row_[irow] == i) 
+                                h(irow, icol + ispn * spl_fv_states_col_.local_size()) += 
+                                    evalfv[spl_fv_states_col_[icol]];
                     }
                 }
             
@@ -1088,24 +1101,21 @@ class Band
                         s << "heev returned" << info;
                         error(__FILE__, __LINE__, s);
                     }
-                    memcpy(&sv_eigen_vectors(0, 0), &h(0, 0), 
-                           h.size() * sizeof(complex16));
+                    memcpy(&sv_eigen_vectors(0, 0), &h(0, 0), h.size() * sizeof(complex16));
                 }
 
                 if (eigen_value_solver == scalapack)
                 {
                     int desc_h[9];
-                    descinit(desc_h, parameters_.num_bands(), parameters_.num_bands(), scalapack_nb, 
-                             scalapack_nb, 0, 0, blacs_context, h.ld());
+                    descinit(desc_h, parameters_.num_bands(), parameters_.num_bands(), scalapack_nb, scalapack_nb, 
+                             0, 0, blacs_context, h.ld());
 
                     int desc_z[9];
-                    descinit(desc_z, parameters_.num_bands(), parameters_.num_bands(), scalapack_nb, 
-                             scalapack_nb, 0, 0, blacs_context, sv_eigen_vectors.ld());
+                    descinit(desc_z, parameters_.num_bands(), parameters_.num_bands(), scalapack_nb, scalapack_nb, 
+                             0, 0, blacs_context, sv_eigen_vectors.ld());
                     
-                    heevd_scalapack(parameters_.num_bands(), parameters_.mpi_grid().dimension_size(1), 
-                                    parameters_.mpi_grid().dimension_size(2), scalapack_nb, &h(0, 0), desc_h,
-                                    &band_energies[0], 
-                                    &sv_eigen_vectors(0, 0), desc_z);
+                    heevd_scalapack(parameters_.num_bands(), num_ranks_row_, num_ranks_col_, scalapack_nb, &h(0, 0), 
+                                    desc_h, &band_energies[0], &sv_eigen_vectors(0, 0), desc_z);
                 }
             }
             
