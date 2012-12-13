@@ -7,7 +7,7 @@ typedef double real8;
 
 typedef int32_t int4;
 
-enum spin_block {nm, uu, ud, dd}; // TODO: add _t to type names
+enum spin_block {nm, uu, ud, dd, du}; // TODO: add _t to type names
 
 enum implementation {cpu, gpu};
 

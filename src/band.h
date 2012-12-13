@@ -604,7 +604,13 @@ class Band
         }
 
         /// Apply SO correction to the scalar wave functions
-        void apply_so_correction(mdarray<complex16, 2>& scalar_wf, mdarray<complex16, 3>& hwf)
+
+        /** Raising lowering operators:
+            \f[
+                L_{\pm} Y_{\ell m}= (L_x \pm i L_y) Y_{\ell m}  = \sqrt{\ell(\ell+1) - m(m \pm 1)} Y_{\ell m \pm 1}
+            \f]
+        */
+        void apply_so_correction(mdarray<complex16, 2>& fv_states, mdarray<complex16, 3>& hpsi)
         {
             Timer t("sirius::Band::apply_so_correction");
 
@@ -629,14 +635,19 @@ class Band
                                 int idx1 = type->indexb_by_l_m_order(l, m, order1);
                                 int idx2 = type->indexb_by_l_m_order(l, m, order2);
                                 int idx3 = (m + l != 0) ? type->indexb_by_l_m_order(l, m - 1, order2) : 0;
+                                int idx4 = (m - l != 0) ? type->indexb_by_l_m_order(l, m + 1, order2) : 0;
 
-                                for (int ist = 0; ist < parameters_.num_fv_states(); ist++)
+                                for (int ist = 0; ist < spl_fv_states_col_.local_size(); ist++)
                                 {
-                                    complex16 z1 = scalar_wf(offset + idx2, ist) * double(m) * sori;
-                                    hwf(offset + idx1, ist, 0) += z1;
-                                    hwf(offset + idx1, ist, 1) -= z1;
-                                    if (m + l) hwf(offset + idx1, ist, 2) += scalar_wf(offset + idx3, ist) * sori * 
-                                                                             sqrt(double((l + m) * (l - m + 1)));
+                                    complex16 z1 = fv_states(offset + idx2, ist) * double(m) * sori;
+                                    hpsi(offset + idx1, ist, 0) += z1;
+                                    hpsi(offset + idx1, ist, 1) -= z1;
+                                    // apply L_{-} operator
+                                    if (m + l) hpsi(offset + idx1, ist, 2) += fv_states(offset + idx3, ist) * sori * 
+                                                                              sqrt(double(l * (l + 1) - m * (m - 1)));
+                                    // apply L_{+} operator
+                                    if (m - l) hpsi(offset + idx1, ist, 3) += fv_states(offset + idx4, ist) * sori * 
+                                                                              sqrt(double(l * (l + 1) - m * (m + 1)));
                                 }
                             }
                         }
@@ -647,7 +658,7 @@ class Band
 
         /// Apply UJ correction to scalar wave functions
         template <spin_block sblock>
-        void apply_uj_correction(mdarray<complex16, 2>& scalar_wf, mdarray<complex16, 3>& hwf)
+        void apply_uj_correction(mdarray<complex16, 2>& fv_states, mdarray<complex16, 3>& hpsi)
         {
             Timer t("sirius::Band::apply_uj_correction");
 
@@ -672,24 +683,28 @@ class Band
                             {
                                 double ori = parameters_.atom(ia)->symmetry_class()->o_radial_integral(l, order2, order1);
                                 
-                                for (int ist = 0; ist < parameters_.num_fv_states(); ist++)
+                                for (int ist = 0; ist < spl_fv_states_col_.local_size(); ist++)
                                 {
                                     for (int lm1 = lm_by_l_m(l, -l); lm1 <= lm_by_l_m(l, l); lm1++)
                                     {
                                         int idx1 = type->indexb_by_lm_order(lm1, order1);
-                                        complex16 z1 = scalar_wf(offset + idx1, ist) * ori;
+                                        complex16 z1 = fv_states(offset + idx1, ist) * ori;
 
                                         if (sblock == uu)
-                                            hwf(offset + idx2, ist, 0) += z1 * 
+                                            hpsi(offset + idx2, ist, 0) += z1 * 
                                                 parameters_.atom(ia)->uj_correction_matrix(lm2, lm1, 0, 0);
 
                                         if (sblock == dd)
-                                            hwf(offset + idx2, ist, 1) += z1 *
+                                            hpsi(offset + idx2, ist, 1) += z1 *
                                                 parameters_.atom(ia)->uj_correction_matrix(lm2, lm1, 1, 1);
 
                                         if (sblock == ud)
-                                            hwf(offset + idx2, ist, 2) += z1 *
+                                            hpsi(offset + idx2, ist, 2) += z1 *
                                                 parameters_.atom(ia)->uj_correction_matrix(lm2, lm1, 0, 1);
+                                        
+                                        if (sblock == du)
+                                            hpsi(offset + idx2, ist, 3) += z1 *
+                                                parameters_.atom(ia)->uj_correction_matrix(lm2, lm1, 1, 0);
                                     }
                                 }
                             }
@@ -699,56 +714,6 @@ class Band
             }
         }
         
-/*        void set_sv_h(mdarray<complex16,2>& scalar_wf, int scalar_wf_size, int num_gkvec, int* fft_index, 
-                      double* evalfv, PeriodicFunction<double>* effective_magnetic_field[3], mdarray<complex16,2>& h)
-        {
-            Timer t("sirius::Band::set_sv_h");
-
-            int nhwf = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
-
-            // product of the second-variational hamiltonian and a wave-function
-            mdarray<complex16,3> hwf(scalar_wf_size, parameters_.num_fv_states(), nhwf);
-            hwf.zero();
-
-            // compute product of magnetic field and wave-function 
-            if (parameters_.num_spins() == 2)
-                apply_magnetic_field(scalar_wf, scalar_wf_size, num_gkvec, fft_index, effective_magnetic_field, hwf);
-
-            if (parameters_.uj_correction())
-            {
-                apply_uj_correction<uu>(scalar_wf, hwf);
-                if (parameters_.num_mag_dims() != 0) apply_uj_correction<dd>(scalar_wf, hwf);
-                if (parameters_.num_mag_dims() == 3) apply_uj_correction<ud>(scalar_wf, hwf);
-            }
-
-            if (parameters_.so_correction())
-                apply_so_correction(scalar_wf, hwf);
-
-            complex16 zzero(0.0, 0.0);
-            complex16 zone(1.0, 0.0);
-
-            // compute <wf_i | (h * wf_j)> for up-up block
-            gemm<cpu>(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), scalar_wf_size, zone, 
-                      &scalar_wf(0, 0), scalar_wf_size, &hwf(0, 0, 0), scalar_wf_size, zzero, 
-                      &h(0, 0), parameters_.num_bands());
-                
-            // compute <wf_i | (h * wf_j)> for dn-dn block
-            if (parameters_.num_spins() == 2)
-                gemm<cpu>(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), scalar_wf_size, zone, 
-                          &scalar_wf(0, 0), scalar_wf_size, &hwf(0, 0, 1), scalar_wf_size, zzero, 
-                          &h(parameters_.num_fv_states(), parameters_.num_fv_states()), parameters_.num_bands());
-
-            // compute <wf_i | (h * wf_j)> for up-dn block
-            if (parameters_.num_mag_dims() == 3)
-                gemm<cpu>(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), scalar_wf_size, zone, 
-                          &scalar_wf(0, 0), scalar_wf_size, &hwf(0, 0, 2), scalar_wf_size, zzero, 
-                          &h(0, parameters_.num_fv_states()), parameters_.num_bands());
-
-            for (int ispn = 0, i = 0; ispn < parameters_.num_spins(); ispn++)
-                for (int ist = 0; ist < parameters_.num_fv_states(); ist++, i++)
-                    h(i, i) += evalfv[ist];
-        }*/
-
         void init_blacs_context()
         {
             mdarray<int, 2> map_ranks(num_ranks_row_, num_ranks_col_);
@@ -1012,16 +977,16 @@ class Band
             if (parameters_.num_spins() == 2)
                 apply_magnetic_field(fv_states_col, mtgk_size, num_gkvec, fft_index, effective_magnetic_field, hpsi);
 
-            //if (parameters_.uj_correction())
-            //{
-            //    apply_uj_correction<uu>(scalar_wf, hwf);
-            //    if (parameters_.num_mag_dims() != 0) apply_uj_correction<dd>(scalar_wf, hwf);
-            //    if (parameters_.num_mag_dims() == 3) apply_uj_correction<ud>(scalar_wf, hwf);
-            //}
+            if (parameters_.uj_correction())
+            {
+                apply_uj_correction<uu>(fv_states_col, hpsi);
+                if (parameters_.num_mag_dims() != 0) apply_uj_correction<dd>(fv_states_col, hpsi);
+                if (parameters_.num_mag_dims() == 3) apply_uj_correction<ud>(fv_states_col, hpsi);
+                if ((parameters_.num_mag_dims() == 3) && (eigen_value_solver == scalapack)) 
+                    apply_uj_correction<du>(fv_states_col, hpsi);
+            }
 
-            //if (parameters_.so_correction())
-            //    apply_so_correction(scalar_wf, hwf);
-
+            if (parameters_.so_correction()) apply_so_correction(spinor_wf, hpsi);
 
             Timer t1("sirius::Band::solve_sv:heev", false);
             
