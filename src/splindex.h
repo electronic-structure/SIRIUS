@@ -144,10 +144,10 @@ class splindex
             return local_size_[rank];
         }
 
-        inline int global_index(int idxloc)
-        {
-            return global_index_(idxloc, rank_);
-        }
+        //inline int global_index(int idxloc)
+        //{
+        //    return global_index_(idxloc, rank_);
+        //}
 
         inline int global_index(int idxloc, int rank)
         {

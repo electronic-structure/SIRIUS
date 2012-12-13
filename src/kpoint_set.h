@@ -84,7 +84,7 @@ class kpoint_set
             if (mpi_grid_.side(1 << 0))
                 for (int ikloc = 0; ikloc < spl_num_kpoints.local_size(); ikloc++)
                 {
-                    int ik = spl_num_kpoints.global_index(ikloc);
+                    int ik = spl_num_kpoints[ikloc];
                     kpoints_[ik]->get_band_energies(&band_energies(0, ik));
                 }
 

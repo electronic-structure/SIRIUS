@@ -337,7 +337,7 @@ void FORTRAN(sirius_bands)(int4* num_kpoints, real8* kpoints_, real8* dk_)
     sirius::Band* band = new sirius::Band(global);
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
     {
-        int ik = spl_num_kpoints_.global_index(ikloc);
+        int ik = spl_num_kpoints_[ikloc];
         kpoint_set_[ik]->initialize(band);
         kpoint_set_[ik]->find_eigen_states(band, potential->effective_potential(),
                                            potential->effective_magnetic_field());

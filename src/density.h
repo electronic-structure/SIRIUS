@@ -589,7 +589,7 @@ class Density
             // solve secular equation and generate wave functions
             for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
             {
-                int ik = spl_num_kpoints_.global_index(ikloc);
+                int ik = spl_num_kpoints_[ikloc];
                 kpoint_set_[ik]->find_eigen_states(band_, potential_->effective_potential(),
                                                    potential_->effective_magnetic_field());
             }
@@ -653,7 +653,7 @@ class Density
             // add to charge density and magnetization
             for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
             {
-                int ik = spl_num_kpoints_.global_index(ikloc); 
+                int ik = spl_num_kpoints_[ikloc];
                 add_kpoint_contribution(kpoint_set_[ik], mt_density_matrix, occupation_matrix);
             }
             
@@ -820,7 +820,7 @@ class Density
                     {
                         for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
                         {
-                            int ik = spl_num_kpoints_.global_index(ikloc);
+                            int ik = spl_num_kpoints_[ikloc];
                             printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i            %6i\n", 
                                    ik, kpoint_set_[ik]->vk()[0], kpoint_set_[ik]->vk()[1], kpoint_set_[ik]->vk()[2], 
                                    kpoint_set_[ik]->weight(), 

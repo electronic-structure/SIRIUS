@@ -90,7 +90,7 @@ class Potential
             
             for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
             {
-                int ia = spl_num_atoms.global_index(ialoc);
+                int ia = spl_num_atoms[ialoc];
 
                 double R = parameters_.atom(ia)->type()->mt_radius();
                 int nmtp = parameters_.atom(ia)->type()->num_mt_points();
@@ -168,8 +168,7 @@ class Potential
             #pragma omp parallel for default(shared)
             for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
                 for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
-                    zm1(igloc, lm) = gvec_ylm_(lm, igloc) * 
-                                     conj(fpw[spl_num_gvec_.global_index(igloc)] * zilm_[lm]);
+                    zm1(igloc, lm) = gvec_ylm_(lm, igloc) * conj(fpw[spl_num_gvec_[igloc]] * zilm_[lm]);
 
             mdarray<complex16, 2> zm2(spl_num_gvec_.local_size(), parameters_.num_atoms());
 
@@ -181,7 +180,7 @@ class Potential
                     int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
                     for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
                         zm2(igloc, ia) = fourpi * gvec_phase_factors_(igloc, ia) *  
-                                         fl(l, iat, parameters_.gvec_shell(spl_num_gvec_.global_index(igloc)));
+                                         fl(l, iat, parameters_.gvec_shell(spl_num_gvec_[igloc]));
                 }
 
                 gemm<cpu>(2, 0, 2 * l + 1, parameters_.num_atoms(), spl_num_gvec_.local_size(), complex16(1, 0), 
@@ -232,7 +231,7 @@ class Potential
 
                     for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
                     {
-                        int ig = spl_num_gvec_.global_index(igloc); 
+                        int ig = spl_num_gvec_[igloc];
                         
                         double gR = parameters_.gvec_len(ig) * R;
                         
@@ -401,7 +400,7 @@ class Potential
 
             for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
             {
-                int ia = spl_num_atoms.global_index(ialoc);
+                int ia = spl_num_atoms[ialoc];
                 int nmtp = parameters_.atom(ia)->type()->num_mt_points();
 
                 sht_.rlm_backward_transform(&rho->f_rlm(0, 0, ia), parameters_.lmmax_rho(), nmtp, &rhotp(0, 0));
@@ -545,7 +544,7 @@ class Potential
 
             for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
             {
-                int ig = spl_num_gvec_.global_index(igloc);
+                int ig = spl_num_gvec_[igloc];
                 double cartc[3];
                 double spc[3];
                 parameters_.get_coordinates<cartesian, reciprocal>(parameters_.gvec(ig), cartc);

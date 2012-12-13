@@ -604,7 +604,7 @@ class Band
         }
 
         /// Apply SO correction to the scalar wave functions
-        void apply_so_correction(mdarray<complex16,2>& scalar_wf, mdarray<complex16,3>& hwf)
+        void apply_so_correction(mdarray<complex16, 2>& scalar_wf, mdarray<complex16, 3>& hwf)
         {
             Timer t("sirius::Band::apply_so_correction");
 
@@ -647,7 +647,7 @@ class Band
 
         /// Apply UJ correction to scalar wave functions
         template <spin_block sblock>
-        void apply_uj_correction(mdarray<complex16,2>& scalar_wf, mdarray<complex16,3>& hwf)
+        void apply_uj_correction(mdarray<complex16, 2>& scalar_wf, mdarray<complex16, 3>& hwf)
         {
             Timer t("sirius::Band::apply_uj_correction");
 

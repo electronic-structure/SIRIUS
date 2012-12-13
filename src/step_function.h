@@ -35,7 +35,7 @@ class StepFunction : public reciprocal_lattice
             #pragma omp parallel for default(shared)
             for (int igloc = 0; igloc < spl_fft_size.local_size(); igloc++)
             {
-                int ig = spl_fft_size.global_index(igloc);
+                int ig = spl_fft_size[igloc];
                 double vg[3];
                 get_coordinates<cartesian, reciprocal>(gvec(ig), vg);
 
