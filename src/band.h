@@ -986,7 +986,7 @@ class Band
                     apply_uj_correction<du>(fv_states_col, hpsi);
             }
 
-            if (parameters_.so_correction()) apply_so_correction(spinor_wf, hpsi);
+            if (parameters_.so_correction()) apply_so_correction(fv_states_col, hpsi);
 
             Timer t1("sirius::Band::solve_sv:heev", false);
             
