@@ -10,8 +10,8 @@
     },
     "run" : 
     [ 
-        {"vector_field" : [ [0, 0, 0] ], "num_threads" : 1, "mpi_grid" : [1]},
-        {"vector_field" : [ [0.1, 0.1, 0.1] ], "num_threads" : 1, "mpi_grid" : [1]}
+        {"vector_field" : [ [0, 0, 0.1] ], "num_threads" : 2, "mpi_grid" : [4]},
+        {"vector_field" : [ [0.1, 0.1, 0.1] ], "num_threads" : 2, "mpi_grid" : [4]}
     ]
 }
 

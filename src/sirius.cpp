@@ -408,6 +408,15 @@ void FORTRAN(sirius_global_get_sync_flag)(int4* flag)
     *flag = global.sync_flag();
 }
 
+void FORTRAN(sirius_platform_barrier)(void)
+{
+    Platform::barrier();
+}
+
+void FORTRAN(sirius_get_total_energy)(real8* total_energy)
+{
+    *total_energy = global.total_energy();
+}
 
 
 

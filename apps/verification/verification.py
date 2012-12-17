@@ -49,9 +49,7 @@ def create_input_file(kwargs):
                                        kwargs["ldapu"][i][1], 
                                        kwargs["ldapu"][i][2], 
                                        kwargs["ldapu"][i][3])
-
         elk_in += "\n"
-
 
     return elk_in
 
@@ -81,11 +79,16 @@ def launch_task(irun, inp, conf):
     fout.write("}\n")
     fout.close()
 
+    np = 1
+    for i in range(len(conf["mpi_grid"])): np = np * conf["mpi_grid"][i]
+
     # simple execution
     new_env = copy.deepcopy(os.environ)
     new_env["OMP_NUM_THREADS"] = str(conf["num_threads"])
-    p = subprocess.Popen(["../elk"], cwd=path, env=new_env)
+    fstdout = open(path + "/output.txt", "w");
+    p = subprocess.Popen(["mpirun", "-np", str(np), "../elk"], cwd=path, env=new_env, stdout=fstdout)
     p.wait()
+    fstdout.close()
 
 def main():
     

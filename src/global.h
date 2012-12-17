@@ -497,6 +497,10 @@ class Global : public StepFunction
                     fprintf(fout, ",\n");
                     fprintf(fout, "    \"total_moment_len\" : %f", vector_length(v));
                 }
+                fprintf(fout, ",\n");
+                fprintf(fout, "    \"num_threads\" : %i", Platform::num_threads());
+                fprintf(fout, ",\n");
+                fprintf(fout, "    \"num_ranks\" : %i", Platform::num_mpi_ranks());
                 fprintf(fout, "\n}\n");
                 fclose(fout);
             }
