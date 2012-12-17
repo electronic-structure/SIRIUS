@@ -397,4 +397,18 @@ void FORTRAN(sirius_platform_mpi_rank)(int4* rank)
 {
     *rank = Platform::mpi_rank();
 }
+
+void FORTRAN(sirius_global_set_sync_flag)(int4* flag)
+{
+    global.set_sync_flag(*flag);
+}
+
+void FORTRAN(sirius_global_get_sync_flag)(int4* flag)
+{
+    *flag = global.sync_flag();
+}
+
+
+
+
 } // extern "C"

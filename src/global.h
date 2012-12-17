@@ -63,6 +63,9 @@ class Global : public StepFunction
         /// run-time information (energies, charges, etc.)
         run_time_info rti_;
 
+        /// general purpose synchronization flag
+        int sync_flag_;
+
     public:
     
         Global() : lmax_apw_(lmax_apw_default),
@@ -247,6 +250,17 @@ class Global : public StepFunction
             return uj_correction_;
         }
 
+        inline void set_sync_flag(int flg)
+        {
+            sync_flag_ = flg;
+            Platform::allreduce<MPI_MAX>(&sync_flag_, 1);
+        }
+
+        inline int sync_flag()
+        {
+            return sync_flag_;
+        }
+        
         /// Initialize the global variables
         void initialize()
         {
@@ -462,6 +476,29 @@ class Global : public StepFunction
                 printf("\n");
                 printf("band gap (eV) : %18.8f\n", rti().band_gap * ha2ev);
                 printf("Efermi        : %18.8f\n", rti().energy_fermi);
+            }
+
+            if (Platform::verbose())
+            {
+                FILE* fout = fopen("output.json", "w");
+                fprintf(fout, "{\n");
+                fprintf(fout, "    \"total_energy\" : %f",  total_energy());
+                if (num_mag_dims())
+                {
+                    double v[] = {0, 0, 0};
+                    v[2] = rti().total_magnetization[0];
+                    if (num_mag_dims() == 3)
+                    {
+                        v[0] = rti().total_magnetization[1];
+                        v[1] = rti().total_magnetization[2];
+                    }
+                    fprintf(fout, ",\n");
+                    fprintf(fout, "    \"total_moment\" : [%f, %f, %f]", v[0], v[1], v[2]);
+                    fprintf(fout, ",\n");
+                    fprintf(fout, "    \"total_moment_len\" : %f", vector_length(v));
+                }
+                fprintf(fout, "\n}\n");
+                fclose(fout);
             }
         }
 };
