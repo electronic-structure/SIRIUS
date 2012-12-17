@@ -1,0 +1,18 @@
+{
+    "input" : 
+    {
+        "avec" : [ [1, 1, -1], [1, -1, 1], [-1, 1, 1] ],
+        "scale" : 2.708,
+        "atoms" :  [ ["'Fe.in'", [ [0, 0, 0] ] ] ],
+        "spinpol" : 1,
+        "nempty" : 20,
+        "ngridk" : [4, 4, 4]
+    },
+    "run" : 
+    [ 
+        {"vector_field" : [ [0, 0, 0] ], "num_threads" : 1, "mpi_grid" : [1]},
+        {"vector_field" : [ [0.1, 0.1, 0.1] ], "num_threads" : 1, "mpi_grid" : [1]}
+    ]
+}
+
+
