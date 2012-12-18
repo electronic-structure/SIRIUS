@@ -372,6 +372,46 @@ class AtomSymmetryClass
                         h_spherical_integrals_(i1, i2) = s.integrate(2) / y00;
                     }
                 }
+
+            if (debug_level > 0)
+            {
+                double diff = 0;
+                for (int idxlo1 = 0; idxlo1 < atom_type_->num_lo_descriptors(); idxlo1++)
+                {
+                    int idxrf1 = atom_type_->indexr().index_by_idxlo(idxlo1);
+                    for (int idxlo2 = 0; idxlo2 < atom_type_->num_lo_descriptors(); idxlo2++)
+                    {
+                        int idxrf2 = atom_type_->indexr().index_by_idxlo(idxlo2);
+                        diff += fabs(h_spherical_integrals_(idxrf1, idxrf2) - h_spherical_integrals_(idxrf2, idxrf1));
+                    }
+                }
+                if (diff > 1e-12)
+                {
+                    std::stringstream s;
+                    s << "Wrong local orbital radial integrals for atom class " << id_ << ", difference : " << diff;
+                    warning(__FILE__, __LINE__, s, 0);
+                }
+            }
+
+            // TODO: kinetic energy for s-local orbitals? The best way to do it.
+            // Problem: <s1 | \Delta | s2> != <s2 | \Delta | s1> 
+
+            // symmetrize the radial integrals
+            if (true)
+            {
+                for (int idxlo1 = 0; idxlo1 < atom_type_->num_lo_descriptors(); idxlo1++)
+                {
+                    int idxrf1 = atom_type_->indexr().index_by_idxlo(idxlo1);
+                    for (int idxlo2 = 0; idxlo2 <= idxlo1; idxlo2++)
+                    {
+                        int idxrf2 = atom_type_->indexr().index_by_idxlo(idxlo2);
+                        double avg = 0.5 * (h_spherical_integrals_(idxrf1, idxrf2) + 
+                                            h_spherical_integrals_(idxrf2, idxrf1));
+                        h_spherical_integrals_(idxrf1, idxrf2) = avg;
+                        h_spherical_integrals_(idxrf2, idxrf1) = avg;
+                    }
+                }
+            }
             
             o_radial_integrals_.zero();
             for (int l = 0; l < atom_type_->num_aw_descriptors(); l++)

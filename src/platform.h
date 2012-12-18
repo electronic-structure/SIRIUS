@@ -17,17 +17,17 @@ class Platform
             if (mpi_rank() == 0) verbose_ = true;
         }
 
-        static int mpi_rank()
+        static int mpi_rank(MPI_Comm comm = MPI_COMM_WORLD)
         {
             int rank;
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            MPI_Comm_rank(comm, &rank);
             return rank;
         }
 
-        static int num_mpi_ranks()
+        static int num_mpi_ranks(MPI_Comm comm = MPI_COMM_WORLD)
         {
             int size;
-            MPI_Comm_size(MPI_COMM_WORLD, &size);
+            MPI_Comm_size(comm, &size);
             return size;
         }
 

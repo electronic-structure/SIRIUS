@@ -7,7 +7,7 @@ typedef double real8;
 
 typedef int32_t int4;
 
-enum spin_block {nm, uu, ud, dd}; // TODO: add _t to type names
+enum spin_block {nm, uu, ud, dd, du}; // TODO: add _t to type names
 
 enum implementation {cpu, gpu};
 
@@ -16,6 +16,10 @@ enum lattice_type {direct, reciprocal};
 enum coordinates_type {cartesian, fractional};
 
 enum mpi_op_t {op_sum, op_max};
+
+enum eigen_value_solver_t {lapack, scalapack, magma};
+
+enum splindex_t {block, block_cyclic};
 
 /*! 
     \brief Wrapper for primitive data types

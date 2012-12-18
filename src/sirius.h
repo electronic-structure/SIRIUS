@@ -59,6 +59,7 @@ extern "C" {
 #include "libxc_interface.h"
 #include "run_time_info.h"
 #include "mpi_grid.h"
+#include "splindex.h"
 
 //
 // atoms
@@ -71,7 +72,6 @@ extern "C" {
 // stack of classes for Global class
 //
 #include "unit_cell.h"
-#include "geometry.h"
 #include "reciprocal_lattice.h"
 #include "step_function.h"
 #include "global.h"

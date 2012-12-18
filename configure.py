@@ -9,6 +9,7 @@ import subprocess
 CC = "mpiicc"
 CXX = "mpiicc"
 FC = "mpiifort"
+FCCPP = "cpp-mp-4.7"
 
 CXX_OPT = "-O3 -Wall -Wconversion -fopenmp -DNDEBUG -g"
 
@@ -28,7 +29,7 @@ packages = {
                "--disable-deprecated-symbols"]
              ],
     "xc"   : ["http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-1.2.0.tar.gz",
-              ["--disable-fortran"]
+              []
              ],
     "spg"  : ["http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.3/spglib-1.3.tar.gz",
               []
@@ -71,7 +72,7 @@ def configure_package(package_name):
     new_env["CC"] = CC
     new_env["CXX"] = CXX
     new_env["FC"] = FC
-    #new_env["FCCPP"] = FCCPP
+    new_env["FCCPP"] = FCCPP
     p = subprocess.Popen(["./configure"] + package[1], cwd="./libs/"+package_dir, env=new_env)
     p.wait()
 

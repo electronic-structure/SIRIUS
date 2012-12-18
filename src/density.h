@@ -22,10 +22,8 @@ class Density
         mdarray<complex16,3> complex_gaunt_;
 
         kpoint_set kpoint_set_;
-        
-        MPIGrid mpi_grid_;
 
-        splindex spl_num_kpoints_;
+        splindex<block> spl_num_kpoints_;
 
         std::vector<int> l_by_lm_;
 
@@ -91,12 +89,14 @@ class Density
         {
             Timer t("sirius::Density::add_kpoint_contribution");
             
-            std::vector< std::pair<int,double> > bands;
-            for (int j = 0; j < parameters_.num_bands(); j++)
+            std::vector< std::pair<int, double> > bands;
+            for (int jsub = 0; jsub < band_->num_sub_bands(); jsub++)
             {
+                int j = band_->idxbandglob(jsub);
+                int jloc = band_->idxbandloc(jsub);
                 double wo = kp->band_occupancy(j) * kp->weight();
                 if (wo > 1e-14)
-                    bands.push_back(std::pair<int,double>(j, wo));
+                    bands.push_back(std::pair<int, double>(jloc, wo));
             }
             if (bands.size() == 0) return;
            
@@ -309,7 +309,8 @@ class Density
                 double* kpoint_weights__,
                 int allocate_f__ = pw_component) : parameters_(parameters__),
                                                    potential_(potential__),
-                                                   allocate_f_(allocate_f__)
+                                                   allocate_f_(allocate_f__),
+                                                   kpoint_set_(parameters__.mpi_grid())
         {
             rho_ = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
             rho_->allocate(allocate_f_);
@@ -351,13 +352,13 @@ class Density
             for (int ik = 0; ik < kpoints__.size(1); ik++)
                 kpoint_set_.add_kpoint(&kpoints__(0, ik), kpoint_weights__[ik], parameters_);
 
-            mpi_grid_.initialize(intvec(std::min(Platform::num_mpi_ranks(), kpoint_set_.num_kpoints()), 1));
 
             // distribute k-points along the 1-st direction of the MPI grid
-            spl_num_kpoints_ = mpi_grid_.split_index(1 << 0, kpoint_set_.num_kpoints());
+            spl_num_kpoints_.split(kpoints__.size(1), parameters_.mpi_grid().dimension_size(0), 
+                                   parameters_.mpi_grid().coordinate(0));
 
-            for (int ik = spl_num_kpoints_.begin(); ik <= spl_num_kpoints_.end(); ik++)
-                kpoint_set_[ik]->initialize();
+            for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+                kpoint_set_[spl_num_kpoints_[ikloc]]->initialize(band_);
 
             l_by_lm_.resize(parameters_.lmmax_rho());
             for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
@@ -372,8 +373,6 @@ class Density
             delete rho_;
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
                 delete magnetization_[j];
-
-            mpi_grid_.finalize();
         }
         
         void set_charge_density_ptr(double* rhomt, double* rhoir)
@@ -588,12 +587,15 @@ class Density
                                      potential_->effective_potential()->f_pw());
 
             // solve secular equation and generate wave functions
-            for (int ik = spl_num_kpoints_.begin(); ik <= spl_num_kpoints_.end(); ik++)
+            for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+            {
+                int ik = spl_num_kpoints_[ikloc];
                 kpoint_set_[ik]->find_eigen_states(band_, potential_->effective_potential(),
                                                    potential_->effective_magnetic_field());
+            }
 
             // synchronize eigen-values
-            kpoint_set_.sync_band_energies(parameters_.num_bands(), mpi_grid_, spl_num_kpoints_);
+            kpoint_set_.sync_band_energies(parameters_.num_bands(), spl_num_kpoints_);
 
             // compute eigen-value sums
             double eval_sum = 0.0;
@@ -649,8 +651,11 @@ class Density
             occupation_matrix.zero();
 
             // add to charge density and magnetization
-            for (int ik = spl_num_kpoints_.begin(); ik <= spl_num_kpoints_.end(); ik++)
+            for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+            {
+                int ik = spl_num_kpoints_[ikloc];
                 add_kpoint_contribution(kpoint_set_[ik], mt_density_matrix, occupation_matrix);
+            }
             
             // reduce arrays; assume that each rank (including ranks along second direction) did it's own 
             // fraction of the density
@@ -796,31 +801,44 @@ class Density
 
         void print_info()
         {
-            if (mpi_grid_.root())
+            if (parameters_.mpi_grid().root())
             {
                 printf("\n");
                 printf("Density\n");
                 for (int i = 0; i < 80; i++) printf("-");
                 printf("\n");
-                printf("number of k-points : %i\n", kpoint_set_.num_kpoints());
-
+                printf("  ik                vk                    weight  num_gkvec  apwlo_basis_size\n");
+                for (int i = 0; i < 80; i++) printf("-");
+                printf("\n");
             }
 
-            if (mpi_grid_.side(1 << 0))
+            if (parameters_.mpi_grid().side(1 << 0))
             {
-                std::vector<int> sc = mpi_grid_.sub_coordinates(1 << 0);
-
-                for (int i = 0; i < mpi_grid_.size(1 << 0); i++)
+                for (int i = 0; i < parameters_.mpi_grid().dimension_size(0); i++)
                 {
-                    if (sc[0] == i)
+                    if (parameters_.mpi_grid().coordinate(0) == i)
                     {
-                        for (int ik = spl_num_kpoints_.begin(); ik <= spl_num_kpoints_.end(); ik++)
-                            printf("ik=%4i    vk=%12.6f %12.6f %12.6f    weight=%12.6f   num_gkvec=%6i\n", 
+                        for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+                        {
+                            int ik = spl_num_kpoints_[ikloc];
+                            printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i            %6i\n", 
                                    ik, kpoint_set_[ik]->vk()[0], kpoint_set_[ik]->vk()[1], kpoint_set_[ik]->vk()[2], 
-                                   kpoint_set_[ik]->weight(), kpoint_set_[ik]->num_gkvec());
+                                   kpoint_set_[ik]->weight(), 
+                                   kpoint_set_[ik]->num_gkvec(), 
+                                   kpoint_set_[ik]->apwlo_basis_size());
+                        }
                     }
-                    mpi_grid_.barrier(1 << 0);
+                    parameters_.mpi_grid().barrier(1 << 0);
                 }
+            }
+
+            parameters_.mpi_grid().barrier();
+
+            if (parameters_.mpi_grid().root())
+            {
+                for (int i = 0; i < 80; i++) printf("-");
+                printf("\n");
+                printf("total number of k-points : %i\n", kpoint_set_.num_kpoints());
             }
         }
 

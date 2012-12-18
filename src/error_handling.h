@@ -73,5 +73,7 @@ void warning(const char* file_name, int line_number, const std::stringstream& me
     error(file_name, line_number, message.str().c_str(), flags);
 }
 
+#define stop_here error(__FILE__, __LINE__, "stop");
+
 #endif // __ERROR_HANDLING_H__
 

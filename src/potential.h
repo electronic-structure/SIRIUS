@@ -66,7 +66,7 @@ class Potential
         mdarray<complex16, 2> gvec_phase_factors_;
         
         /// splitted G-vector index
-        splindex spl_num_gvec_;
+        splindex<block> spl_num_gvec_;
 
         std::vector<complex16> zil_;
         
@@ -86,11 +86,12 @@ class Potential
             vh->zero(ylm_component);
             qmt.zero();
             
-            splindex spl_num_atoms(parameters_.num_atoms(), intvec(Platform::num_mpi_ranks()), 
-                                   intvec(Platform::mpi_rank()));
+            splindex<block> spl_num_atoms(parameters_.num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
             
-            for (int ia = spl_num_atoms.begin(); ia <= spl_num_atoms.end(); ia++)
+            for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
             {
+                int ia = spl_num_atoms[ialoc];
+
                 double R = parameters_.atom(ia)->type()->mt_radius();
                 int nmtp = parameters_.atom(ia)->type()->num_mt_points();
                
@@ -162,15 +163,14 @@ class Potential
             
             flm.zero();
 
-            mdarray<complex16, 2> zm1(spl_num_gvec_.local_index_size(), parameters_.lmmax_rho());
+            mdarray<complex16, 2> zm1(spl_num_gvec_.local_size(), parameters_.lmmax_rho());
 
             #pragma omp parallel for default(shared)
             for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
-                for (int igloc = 0; igloc < spl_num_gvec_.local_index_size(); igloc++)
-                    zm1(igloc, lm) = gvec_ylm_(lm, igloc) * 
-                                     conj(fpw[spl_num_gvec_.global_index(igloc)] * zilm_[lm]);
+                for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
+                    zm1(igloc, lm) = gvec_ylm_(lm, igloc) * conj(fpw[spl_num_gvec_[igloc]] * zilm_[lm]);
 
-            mdarray<complex16, 2> zm2(spl_num_gvec_.local_index_size(), parameters_.num_atoms());
+            mdarray<complex16, 2> zm2(spl_num_gvec_.local_size(), parameters_.num_atoms());
 
             for (int l = 0; l <= parameters_.lmax_rho(); l++)
             {
@@ -178,15 +178,14 @@ class Potential
                 for (int ia = 0; ia < parameters_.num_atoms(); ia++)
                 {
                     int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-                    for (int igloc = 0; igloc < spl_num_gvec_.local_index_size(); igloc++)
+                    for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
                         zm2(igloc, ia) = fourpi * gvec_phase_factors_(igloc, ia) *  
-                                         fl(l, iat, parameters_.gvec_shell(spl_num_gvec_.global_index(igloc)));
+                                         fl(l, iat, parameters_.gvec_shell(spl_num_gvec_[igloc]));
                 }
 
-                gemm<cpu>(2, 0, 2 * l + 1, parameters_.num_atoms(), spl_num_gvec_.local_index_size(), complex16(1, 0), 
-                          &zm1(0, lm_by_l_m(l, -l)), spl_num_gvec_.local_index_size(), 
-                          &zm2(0, 0), spl_num_gvec_.local_index_size(), 
-                          complex16(0, 0), &flm(lm_by_l_m(l, -l), 0), parameters_.lmmax_rho());
+                gemm<cpu>(2, 0, 2 * l + 1, parameters_.num_atoms(), spl_num_gvec_.local_size(), complex16(1, 0), 
+                          &zm1(0, lm_by_l_m(l, -l)), zm1.ld(), &zm2(0, 0), zm2.ld(), complex16(0, 0), 
+                          &flm(lm_by_l_m(l, -l), 0), parameters_.lmmax_rho());
             }
             
             Platform::allreduce(&flm(0, 0), (int)flm.size());
@@ -230,9 +229,9 @@ class Potential
                             zp[lm] = (qmt(lm, ia) - qit(lm, ia)) * Rl(l, iat) * conj(zil_[l]) *
                                      gamma_factors[l][pseudo_density_order]; 
 
-                    for (int igloc = 0; igloc < spl_num_gvec_.local_index_size(); igloc++)
+                    for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
                     {
-                        int ig = spl_num_gvec_.global_index(igloc); 
+                        int ig = spl_num_gvec_[igloc];
                         
                         double gR = parameters_.gvec_len(ig) * R;
                         
@@ -383,8 +382,7 @@ class Potential
         {
             Timer t("sirius::Potential::xc");
             
-            splindex spl_num_atoms(parameters_.num_atoms(), intvec(Platform::num_mpi_ranks()), 
-                                   intvec(Platform::mpi_rank()));
+            splindex<block> spl_num_atoms(parameters_.num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
             
             mdarray<double,2> rhotp(sht_.num_points(), parameters_.max_num_mt_points());
             mdarray<double,2> vxctp(sht_.num_points(), parameters_.max_num_mt_points());
@@ -400,8 +398,9 @@ class Potential
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
                 xc_magnetic_field[j]->zero(rlm_component);
 
-            for (int ia = spl_num_atoms.begin(); ia <= spl_num_atoms.end(); ia++)
+            for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
             {
+                int ia = spl_num_atoms[ialoc];
                 int nmtp = parameters_.atom(ia)->type()->num_mt_points();
 
                 sht_.rlm_backward_transform(&rho->f_rlm(0, 0, ia), parameters_.lmmax_rho(), nmtp, &rhotp(0, 0));
@@ -534,19 +533,18 @@ class Potential
             }
 
             // create splitted index
-            spl_num_gvec_ = splindex(parameters_.num_gvec(), intvec(Platform::num_mpi_ranks()), 
-                                     intvec(Platform::mpi_rank()));
+            spl_num_gvec_.split(parameters_.num_gvec(), Platform::num_mpi_ranks(), Platform::mpi_rank());
 
             // precompute spherical harmonics of G-vectors and G-vector phase factors
-            gvec_ylm_.set_dimensions(lmmax_by_lmax(lmax), spl_num_gvec_.local_index_size());
+            gvec_ylm_.set_dimensions(lmmax_by_lmax(lmax), spl_num_gvec_.local_size());
             gvec_ylm_.allocate();
             
-            gvec_phase_factors_.set_dimensions(spl_num_gvec_.local_index_size(), parameters_.num_atoms());
+            gvec_phase_factors_.set_dimensions(spl_num_gvec_.local_size(), parameters_.num_atoms());
             gvec_phase_factors_.allocate();
 
-            for (int igloc = 0; igloc < spl_num_gvec_.local_index_size(); igloc++)
+            for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
             {
-                int ig = spl_num_gvec_.global_index(igloc);
+                int ig = spl_num_gvec_[igloc];
                 double cartc[3];
                 double spc[3];
                 parameters_.get_coordinates<cartesian, reciprocal>(parameters_.gvec(ig), cartc);

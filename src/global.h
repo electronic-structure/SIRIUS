@@ -1,13 +1,22 @@
 namespace sirius {
 
+
+
 /** \file global.h
+
     \brief Global variables 
 */
 
 /// Global variables
+
+/** This class should be created first.
+*/
 class Global : public StepFunction
 {
     private:
+
+        /// true if class was initialized
+        bool initialized_;
     
         /// maximum l for APW functions
         int lmax_apw_;
@@ -21,27 +30,6 @@ class Global : public StepFunction
         /// cutoff for augmented-wave functions
         double aw_cutoff_;
         
-        /// maximum number of muffin-tin points across all atom types
-        int max_num_mt_points_;
-        
-        /// minimum muffin-tin radius
-        double min_mt_radius_;
-        
-        /// total number of MT basis functions
-        int mt_basis_size_;
-        
-        /// maximum number of MT basis functions across all atoms
-        int max_mt_basis_size_;
-
-        /// maximum number of MT radial basis functions across all atoms
-        int max_mt_radial_basis_size_;
-
-        /// total number of augmented wave basis functions in the MT (= number of matching coefficients for each plane-wave)
-        int mt_aw_basis_size_;
-
-        /// total number of local orbital basis functions
-        int mt_lo_basis_size_;
-
         /// number of first-variational states
         int num_fv_states_;
 
@@ -65,10 +53,29 @@ class Global : public StepFunction
 
         /// general purpose synchronization flag
         int sync_flag_;
+        
+        /// MPI grid dimensions
+        std::vector<int> mpi_grid_dims_;
+        
+        /// MPI grid
+        MPIGrid mpi_grid_;
+
+        /// read from the input file if it exists
+        void read_input()
+        {
+            std::string fname("sirius.json");
+
+            if (file_exists(fname))
+            {
+                JsonTree parser(fname);
+                parser["mpi_grid_dims"] >> mpi_grid_dims_; 
+            }
+        }
 
     public:
     
-        Global() : lmax_apw_(lmax_apw_default),
+        Global() : initialized_(false),
+                   lmax_apw_(lmax_apw_default),
                    lmax_rho_(lmax_rho_default),
                    lmax_pot_(lmax_pot_default),
                    aw_cutoff_(aw_cutoff_default),
@@ -138,11 +145,6 @@ class Global : public StepFunction
             return lmmax_by_lmax(lmax_pot_);
         }
 
-        inline int max_num_mt_points()
-        {
-            return max_num_mt_points_;
-        }
-
         inline double aw_cutoff()
         {
             return aw_cutoff_;
@@ -151,49 +153,6 @@ class Global : public StepFunction
         inline void set_aw_cutoff(double aw_cutoff__)
         {
             aw_cutoff_ = aw_cutoff__;
-        }
-
-        inline double min_mt_radius()
-        {
-            return min_mt_radius_;
-        }
-
-        /*!
-            \brief Total number of the augmented radial basis functions
-        */
-        inline int mt_aw_basis_size()
-        {
-            return mt_aw_basis_size_;
-        }
-
-        /*!
-            \brief Total number of local orbital basis functions
-        */
-        inline int mt_lo_basis_size()
-        {
-            return mt_lo_basis_size_;
-        }
-
-        /*!
-            \brief Total number of the muffin-tin basis functions.
-
-            Total number of MT basis functions equals to the sum of the total number of augmented radial 
-            basis functions and the total number of local orbital basis functions across all atoms. It controls 
-            the size of the first- and second-variational wave functions.
-        */
-        inline int mt_basis_size()
-        {
-            return mt_basis_size_;
-        }
-        
-        inline int max_mt_basis_size()
-        {
-            return max_mt_basis_size_;
-        }
-
-        inline int max_mt_radial_basis_size()
-        {
-            return max_mt_radial_basis_size_;
         }
 
         inline int num_fv_states()
@@ -261,56 +220,60 @@ class Global : public StepFunction
             return sync_flag_;
         }
         
+        inline MPIGrid& mpi_grid()
+        {
+            return mpi_grid_;
+        }
+
+        inline bool initialized()
+        {
+            return initialized_;
+        }
+
         /// Initialize the global variables
         void initialize()
         {
-            unit_cell::init();
-            geometry::init();
+            if (initialized_) error(__FILE__, __LINE__, "Can't initialize global variables more than once.");
+
+            read_input();
+            
+            // initialize variables, related to the unit cell
+            UnitCell::init(lmax_apw(), lmax_pot(), num_mag_dims());
+            
             reciprocal_lattice::init();
             StepFunction::init();
-           
-            max_num_mt_points_ = 0;
-            min_mt_radius_ = 1e100;
+
+            // check MPI grid dimensions and set a default grid if needed
+            if (!mpi_grid_dims_.size()) mpi_grid_dims_ = intvec(Platform::num_mpi_ranks());
+
+            // setup MPI grid
+            mpi_grid_.initialize(mpi_grid_dims_);
             
-            for (int i = 0; i < num_atom_types(); i++)
-            {
-                 atom_type(i)->init(lmax_apw());
-                 max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(i)->num_mt_points());
-                 min_mt_radius_ = std::min(min_mt_radius_, atom_type(i)->mt_radius());
-            }
-
-            for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
-                atom_symmetry_class(ic)->init();
-
-            mt_basis_size_ = 0;
-            mt_aw_basis_size_ = 0;
-            mt_lo_basis_size_ = 0;
-            max_mt_basis_size_ = 0;
-            max_mt_radial_basis_size_ = 0;
-            for (int ia = 0; ia < num_atoms(); ia++)
-            {
-                atom(ia)->init(lmax_pot(), num_mag_dims_, mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
-                mt_aw_basis_size_ += atom(ia)->type()->mt_aw_basis_size();
-                mt_lo_basis_size_ += atom(ia)->type()->mt_lo_basis_size();
-                mt_basis_size_ += atom(ia)->type()->mt_basis_size();
-                max_mt_basis_size_ = std::max(max_mt_basis_size_, atom(ia)->type()->mt_basis_size());
-                max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom(ia)->type()->mt_radial_basis_size());
-            }
-
-            assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
-            assert(num_atoms() != 0);
-            assert(num_atom_types() != 0);
-            assert(num_atom_symmetry_classes() != 0);
-
             num_fv_states_ = int(num_valence_electrons() / 2.0) + 10;
+
+            if (eigen_value_solver == scalapack)
+            {
+                int ncol = mpi_grid_.dimension_size(2);
+
+                int n = num_fv_states_ / (ncol * scalapack_nb);
+                
+                num_fv_states_ = (n + 1) * ncol * scalapack_nb;
+            }
+
             num_bands_ = num_fv_states_ * num_spins_;
+
+            initialized_ = true;
         }
 
         /// Clear global variables
         void clear()
         {
-            unit_cell::clear();
+            UnitCell::clear();
             reciprocal_lattice::clear();
+
+            mpi_grid_.finalize();
+
+            initialized_ = false;
         }
 
         void print_info()
@@ -323,9 +286,12 @@ class Global : public StepFunction
                 printf("build date : %s\n", build_date);
                 printf("\n");
                 printf("number of MPI ranks   : %i\n", Platform::num_mpi_ranks());
+                printf("MPI grid              :");
+                for (int i = 0; i < mpi_grid_.num_dimensions(); i++) printf(" %i", mpi_grid_.size(1 << i));
+                printf("\n");
                 printf("number of OMP threads : %i\n", Platform::num_threads()); 
 
-                unit_cell::print_info();
+                UnitCell::print_info();
                 reciprocal_lattice::print_info();
 
                 printf("\n");
@@ -335,6 +301,8 @@ class Global : public StepFunction
                 printf("\n");
                 printf("total number of aw muffin-tin basis functions : %i\n", mt_aw_basis_size());
                 printf("total number of lo basis functions : %i\n", mt_lo_basis_size());
+                printf("number of first-variational states : %i\n", num_fv_states());
+
             }
         }
         

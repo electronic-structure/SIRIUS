@@ -306,16 +306,16 @@ void FORTRAN(sirius_bands)(int4* num_kpoints, real8* kpoints_, real8* dk_)
 {
     mdarray<double, 2> kpoints(kpoints_, 3, *num_kpoints); 
 
-    sirius::kpoint_set kpoint_set_;
+    MPIGrid mpi_grid_;
+
+    sirius::kpoint_set kpoint_set_(mpi_grid_);
     for (int ik = 0; ik < kpoints.size(1); ik++)
         kpoint_set_.add_kpoint(&kpoints(0, ik), 0.0, global);
 
-    MPIGrid mpi_grid_;
     mpi_grid_.initialize(intvec(std::min(Platform::num_mpi_ranks(), kpoint_set_.num_kpoints()), 1));
 
     // distribute k-points along the 1-st direction of the MPI grid
-    splindex spl_num_kpoints_;
-    spl_num_kpoints_ = mpi_grid_.split_index(1 << 0, kpoint_set_.num_kpoints());
+    splindex<block> spl_num_kpoints_(kpoint_set_.num_kpoints(), mpi_grid_.size(1 << 0), mpi_grid_.coordinate(0));
 
     std::vector<double> enu;
     for (int i = 0; i < global.num_atom_types(); i++)
@@ -332,18 +332,18 @@ void FORTRAN(sirius_bands)(int4* num_kpoints, real8* kpoints_, real8* dk_)
 
     global.fft().input(potential->effective_potential()->f_it());
     global.fft().transform(-1);
-    global.fft().output(global.num_gvec(), global.fft_index(), 
-                                potential->effective_potential()->f_pw());
+    global.fft().output(global.num_gvec(), global.fft_index(), potential->effective_potential()->f_pw());
     
     sirius::Band* band = new sirius::Band(global);
-    for (int ik = spl_num_kpoints_.begin(); ik <= spl_num_kpoints_.end(); ik++)
+    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
     {
-        kpoint_set_[ik]->initialize();
+        int ik = spl_num_kpoints_[ikloc];
+        kpoint_set_[ik]->initialize(band);
         kpoint_set_[ik]->find_eigen_states(band, potential->effective_potential(),
                                            potential->effective_magnetic_field());
     } 
     // synchronize eigen-values
-    kpoint_set_.sync_band_energies(global.num_bands(), mpi_grid_, spl_num_kpoints_);
+    kpoint_set_.sync_band_energies(global.num_bands(), spl_num_kpoints_);
 
     if (mpi_grid_.root())
     {

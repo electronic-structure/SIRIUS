@@ -179,7 +179,8 @@ class RadialSolver
             for (int i = 0; i < radial_grid.mt_num_points(); i++)
             {
                 double t1 = 2.0 - v[i] * alph2;
-                hp[i] = (double(l * (l + 1)) / t1 / pow(radial_grid[i], 2.0) + v[i]) * p[i] - q[i] / radial_grid[i] - sq.deriv(1, i);
+                hp[i] = (double(l * (l + 1)) / t1 / pow(radial_grid[i], 2.0) + v[i]) * p[i] - q[i] / radial_grid[i] - 
+                        sq.deriv(1, i);
             }
         }
 
