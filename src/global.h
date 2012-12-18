@@ -253,7 +253,7 @@ class Global : public StepFunction
         inline void set_sync_flag(int flg)
         {
             sync_flag_ = flg;
-            Platform::allreduce<MPI_MAX>(&sync_flag_, 1);
+            Platform::allreduce<op_max>(&sync_flag_, 1);
         }
 
         inline int sync_flag()

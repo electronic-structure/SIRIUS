@@ -91,11 +91,24 @@ class Platform
         }
 
         /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
-        template<MPI_Op op, typename T>
+        template<mpi_op_t op, typename T>
         static void allreduce(T* buffer, int count, const MPI_Comm& comm)
         {
             if (comm != MPI_COMM_NULL)
-                MPI_Allreduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), op, comm);
+            {
+                switch(op)
+                {
+                    case op_sum:
+                        MPI_Allreduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), 
+                                      MPI_SUM, comm);
+                        break;
+
+                    case op_max:
+                        MPI_Allreduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), 
+                                      MPI_MAX, comm);
+                        break;
+                }
+            }
         }
         
         /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
@@ -106,7 +119,7 @@ class Platform
         }
         
         /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
-        template<MPI_Op op, typename T>
+        template<mpi_op_t op, typename T>
         static void allreduce(T* buffer, int count)
         {
             allreduce<op>(buffer, count, MPI_COMM_WORLD);

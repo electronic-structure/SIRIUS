@@ -15,6 +15,8 @@ enum lattice_type {direct, reciprocal};
 
 enum coordinates_type {cartesian, fractional};
 
+enum mpi_op_t {op_sum, op_max};
+
 /*! 
     \brief Wrapper for primitive data types
 */
