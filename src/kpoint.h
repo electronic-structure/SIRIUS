@@ -10,18 +10,12 @@ class kpoint
         /// global set of parameters
         Global& parameters_;
 
-        //int dim_row_;
-        //int dim_col_;
-
         /// weight of k-poitn
         double weight_;
 
         /// fractional k-point coordinates
         double vk_[3];
         
-
-        //int num_mpi_ranks_;
-
         /// G+k vectors
         mdarray<double, 2> gkvec_;
 
@@ -388,7 +382,6 @@ class kpoint
             // G+k basis functions
             for (int igk = 0; igk < num_gkvec(); igk++)
             {
-                //apwlobd.global_index = (int)apwlo_basis_descriptors_.size();
                 apwlobd.igk = igk;
                 apwlobd.ig = gvec_index_[igk];
                 apwlobd.ia = -1;
@@ -413,7 +406,6 @@ class kpoint
                     int lm = type->indexb(lo_index_offset + j).lm;
                     int order = type->indexb(lo_index_offset + j).order;
                     int idxrf = type->indexb(lo_index_offset + j).idxrf;
-                    //apwlobd.global_index = (int)apwlo_basis_descriptors_.size();
                     apwlobd.igk = -1;
                     apwlobd.ig = -1;
                     apwlobd.ia = ia;
@@ -853,8 +845,7 @@ class kpoint
 
         /// Local fraction of G+k vectors for a given MPI rank
 
-        /** In case of ScaLAPACK row and column G+k vector blocks are combined.
-        */
+        /** In case of ScaLAPACK row and column G+k vector blocks are combined. */
         inline int num_gkvec_loc()
         {
             if ((num_gkvec_row() == num_gkvec()) && (num_gkvec_col() == num_gkvec()))
@@ -940,8 +931,7 @@ class kpoint
 
             Thus, the total number of coefficients representing a first-variational state is equal
             to the number of muffi-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r) 
-            Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves.
-        */ 
+            Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves. */ 
         inline int mtgk_size()
         {
             return (parameters_.mt_basis_size() + num_gkvec());

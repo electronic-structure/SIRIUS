@@ -41,7 +41,6 @@ namespace sirius
 */
 struct apwlo_basis_descriptor
 {
-    //int global_index;
     int igk;
     int ig;
     int ia;
