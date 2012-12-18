@@ -281,7 +281,7 @@ class Global : public StepFunction
             if (Platform::verbose())
             {
                 printf("\n");
-                printf("SIRIUS v0.4\n");
+                printf("SIRIUS v0.6\n");
                 printf("git hash : %s\n", git_hash);
                 printf("build date : %s\n", build_date);
                 printf("\n");
