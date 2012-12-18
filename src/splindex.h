@@ -115,6 +115,8 @@ class splindex
                 }
             }
 
+            if (num_ranks_ == 1) assert(local_size_[0] == global_index_size__);
+
             location_.set_dimensions(2, global_index_size__);
             location_.allocate();
 
@@ -143,11 +145,6 @@ class splindex
 
             return local_size_[rank];
         }
-
-        //inline int global_index(int idxloc)
-        //{
-        //    return global_index_(idxloc, rank_);
-        //}
 
         inline int global_index(int idxloc, int rank)
         {

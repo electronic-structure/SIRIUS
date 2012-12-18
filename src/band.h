@@ -920,44 +920,19 @@ class Band
             Timer *t1 = new Timer("sirius::Band::solve_fv:hegv");
 
 
-            generalized_eigenproblem<eigen_value_solver>(apwlo_basis_size, num_ranks_row(), num_ranks_col(), 
-                                                         blacs_context_, parameters_.num_fv_states(), -1.0, 
-                                                         h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), 
-                                                         &fv_eigen_values[0], fv_eigen_vectors.get_ptr(),
+            generalized_eigenproblem<eigen_value_solver>(apwlo_basis_size, 
+                                                         num_ranks_row(), 
+                                                         num_ranks_col(), 
+                                                         blacs_context_, 
+                                                         parameters_.num_fv_states(), 
+                                                         -1.0, 
+                                                         h.get_ptr(), 
+                                                         h.ld(), 
+                                                         o.get_ptr(), 
+                                                         o.ld(), 
+                                                         &fv_eigen_values[0], 
+                                                         fv_eigen_vectors.get_ptr(),
                                                          fv_eigen_vectors.ld());
-
-
-
-
-            //if (eigen_value_solver == scalapack)
-            //{
-            //    int desc_h[9];
-            //    descinit<scalapack>(desc_h, apwlo_basis_size, apwlo_basis_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context_, 
-            //             h.ld());
-
-            //    int desc_o[9];
-            //    descinit<scalapack>(desc_o, apwlo_basis_size, apwlo_basis_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context_, 
-            //             o.ld());
-
-            //    int desc_z[9];
-            //    descinit<scalapack>(desc_z, apwlo_basis_size, apwlo_basis_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context_, 
-            //             fv_eigen_vectors.ld());
-            //    
-            //    hegvx_scalapack(apwlo_basis_size, parameters.num_fv_states(), num_ranks_row_, num_ranks_col_, -1.0, 
-            //                    h.get_ptr(), desc_h, o.get_ptr(), desc_o, &fv_eigen_values[0], 
-            //                    fv_eigen_vectors.get_ptr(), desc_z);
-            //}
-            //else
-            //{
-            //    int info = hegvx<cpu>(apwlo_basis_size, parameters.num_fv_states(), -1.0, &h(0, 0), &o(0, 0), 
-            //                          &fv_eigen_values[0], fv_eigen_vectors.get_ptr(), fv_eigen_vectors.ld());
-            //    if (info)
-            //    {
-            //        std::stringstream s;
-            //        s << "hegvx returned " << info;
-            //        error(__FILE__, __LINE__, s);
-            //    }
-            //}
             delete t1;
         }
 
@@ -1021,42 +996,15 @@ class Band
                     }
                 
                     t1.start();
-                    standard_eigenproblem<eigen_value_solver>(parameters_.num_fv_states(), num_ranks_row(), 
-                                                              num_ranks_col(), blacs_context_, h.get_ptr(), h.ld(),
+                    standard_eigenproblem<eigen_value_solver>(parameters_.num_fv_states(), 
+                                                              num_ranks_row(), 
+                                                              num_ranks_col(), 
+                                                              blacs_context_, 
+                                                              h.get_ptr(), 
+                                                              h.ld(),
                                                               &band_energies[ispn * parameters_.num_fv_states()],
                                                               &sv_eigen_vectors(0, ispn * spl_fv_states_col_.local_size()),
                                                               sv_eigen_vectors.ld());
-
-                    //*if (eigen_value_solver == lapack)
-                    //*{
-                    //*    assert(spl_fv_states_row_.local_size() == parameters_.num_fv_states());
-                    //*    assert(spl_fv_states_col_.local_size() == parameters_.num_fv_states());
-
-                    //*    int info = heev<cpu>(parameters.num_fv_states(), &h(0, 0), h.ld(), 
-                    //*                         &band_energies[ispn * parameters_.num_fv_states()]);
-                    //*    if (info)
-                    //*    {
-                    //*        std::stringstream s;
-                    //*        s << "heev returned" << info;
-                    //*        error(__FILE__, __LINE__, s);
-                    //*    }
-                    //*    memcpy(&sv_eigen_vectors(0, ispn * parameters_.num_fv_states()), &h(0, 0), 
-                    //*           h.size() * sizeof(complex16));
-                    //*}
-                    //*if (eigen_value_solver == scalapack)
-                    //*{
-                    //*    int desc_h[9];
-                    //*    descinit<scalapack>(desc_h, parameters_.num_fv_states(), parameters_.num_fv_states(), scalapack_nb, 
-                    //*             scalapack_nb, 0, 0, blacs_context_, h.ld());
-
-                    //*    int desc_z[9];
-                    //*    descinit<scalapack>(desc_z, parameters_.num_fv_states(), parameters_.num_fv_states(), scalapack_nb, 
-                    //*             scalapack_nb, 0, 0, blacs_context_, sv_eigen_vectors.ld());
-                    //*    
-                    //*    heevd_scalapack(parameters_.num_fv_states(), num_ranks_row_, num_ranks_col_, scalapack_nb, 
-                    //*                    &h(0, 0), desc_h, &band_energies[ispn * parameters_.num_fv_states()], 
-                    //*                    &sv_eigen_vectors(0, ispn * spl_fv_states_col_.local_size()), desc_z);
-                    //*}
                     t1.stop();
                 }
             }
@@ -1103,40 +1051,15 @@ class Band
                 }
             
                 t1.start();
-                
-                standard_eigenproblem<eigen_value_solver>(parameters_.num_bands(), num_ranks_row(), 
-                                                          num_ranks_col(), blacs_context_, h.get_ptr(), h.ld(),
-                                                          &band_energies[0], sv_eigen_vectors.get_ptr(),
+                standard_eigenproblem<eigen_value_solver>(parameters_.num_bands(), 
+                                                          num_ranks_row(), 
+                                                          num_ranks_col(), 
+                                                          blacs_context_, 
+                                                          h.get_ptr(), 
+                                                          h.ld(),
+                                                          &band_energies[0], 
+                                                          sv_eigen_vectors.get_ptr(),
                                                           sv_eigen_vectors.ld());
-                //*if (eigen_value_solver == lapack)
-                //*{
-                //*    assert(spl_fv_states_row_.local_size() == parameters_.num_bands());
-                //*    assert(spl_spinor_wf_col_.local_size() == parameters_.num_bands());
-
-                //*    int info = heev<cpu>(parameters.num_bands(), &h(0, 0), h.ld(), 
-                //*                         &band_energies[0]);
-                //*    if (info)
-                //*    {
-                //*        std::stringstream s;
-                //*        s << "heev returned" << info;
-                //*        error(__FILE__, __LINE__, s);
-                //*    }
-                //*    memcpy(&sv_eigen_vectors(0, 0), &h(0, 0), h.size() * sizeof(complex16));
-                //*}
-
-                //*if (eigen_value_solver == scalapack)
-                //*{
-                //*    int desc_h[9];
-                //*    descinit<scalapack>(desc_h, parameters_.num_bands(), parameters_.num_bands(), scalapack_nb, scalapack_nb, 
-                //*             0, 0, blacs_context_, h.ld());
-
-                //*    int desc_z[9];
-                //*    descinit<scalapack>(desc_z, parameters_.num_bands(), parameters_.num_bands(), scalapack_nb, scalapack_nb, 
-                //*             0, 0, blacs_context_, sv_eigen_vectors.ld());
-                //*    
-                //*    heevd_scalapack(parameters_.num_bands(), num_ranks_row_, num_ranks_col_, scalapack_nb, &h(0, 0), 
-                //*                    desc_h, &band_energies[0], &sv_eigen_vectors(0, 0), desc_z);
-                //*}
                 t1.stop();
             }
         }
