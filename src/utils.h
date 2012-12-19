@@ -24,6 +24,21 @@ class Utils
         }
 
 
+        static inline double fermi_dirac_distribution(double e)
+        {
+            double kT = 0.01;
+            if (e > 100 * kT) return 0.0;
+            if (e < -100 * kT) return 1.0;
+            return (1.0 / (exp(e / kT) + 1.0));
+        }
+        
+        static inline double gaussian_smearing(double e)
+        {
+            double delta = 0.01;
+        
+            return 0.5 * (1 - gsl_sf_erf(e / delta));
+        }
+
 };
 
 #endif

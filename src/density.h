@@ -496,18 +496,23 @@ class Density
 
             double ne = 0.0;
 
+            mdarray<double, 2> bnd_occ(parameters_.num_bands(), kpoint_set_.num_kpoints());
+            
+            // TODO: safe way not to get stuck here
             while(true)
             {
                 ne = 0.0;
                 for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
                 {
-                    double wkmo = kpoint_set_[ik]->weight() * parameters_.max_occupancy();
                     for (int j = 0; j < parameters_.num_bands(); j++)
-                        ne += gaussian_smearing(kpoint_set_[ik]->band_energy(j) - ef) * wkmo;
+                    {
+                        bnd_occ(j, ik) = Utils::gaussian_smearing(kpoint_set_[ik]->band_energy(j) - ef) * 
+                                         parameters_.max_occupancy();
+                        ne += bnd_occ(j, ik) * kpoint_set_[ik]->weight();
+                    }
                 }
 
-                if (fabs(ne - parameters_.num_valence_electrons()) < 1e-11)
-                    break;
+                if (fabs(ne - parameters_.num_valence_electrons()) < 1e-11) break;
  
                 sp = s;
                 s = (ne > parameters_.num_valence_electrons()) ? -1 : 1;
@@ -521,16 +526,8 @@ class Density
 
             parameters_.rti().energy_fermi = ef;
             
-            std::vector<double> bnd_occ(parameters_.num_bands());
-
             for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
-            {
-                for (int j = 0; j < parameters_.num_bands(); j++)
-                    bnd_occ[j] = gaussian_smearing(kpoint_set_[ik]->band_energy(j) - ef) * 
-                                 parameters_.max_occupancy();
-
-                kpoint_set_[ik]->set_band_occupancies(&bnd_occ[0]);
-            }
+                kpoint_set_[ik]->set_band_occupancies(&bnd_occ(0, ik));
 
             double gap = 0.0;
             if (parameters_.num_spins() == 2 || parameters_.num_valence_electrons() % 2 == 0)
