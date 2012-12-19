@@ -505,7 +505,7 @@ class UnitCell
             }
         }
 
-        template <lattice_type Tl>
+        template <lattice_t Tl>
         void find_translation_limits(double radius, int* limits)
         {
             limits[0] = limits[1] = limits[2] = 0;
@@ -536,7 +536,7 @@ class UnitCell
             }
         }
 
-        template <lattice_type Tl>
+        template <lattice_t Tl>
         void reduce_coordinates(double vc[3], int ntr[3], double vf[3])
         {
             get_coordinates<fractional, Tl>(vc, vf);
@@ -604,7 +604,7 @@ class UnitCell
         }
 
         /// Convert coordinates (fractional <-> Cartesian) of direct or reciprocal lattices
-        template<coordinates_t cT, lattice_type lT, typename T>
+        template<coordinates_t cT, lattice_t lT, typename T>
         void get_coordinates(T* a, double* b)
         {
             b[0] = b[1] = b[2] = 0.0;

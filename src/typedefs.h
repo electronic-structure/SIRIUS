@@ -13,7 +13,7 @@ enum implementation {cpu, gpu};
 
 enum processing_unit_t {cpu_p, gpu_p};
 
-enum lattice_type {direct, reciprocal};
+enum lattice_t {direct, reciprocal};
 
 enum coordinates_t {cartesian, fractional};
 
