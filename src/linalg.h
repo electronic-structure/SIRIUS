@@ -16,7 +16,7 @@
 
 template<processing_unit_t> struct linalg;
 
-template<> struct linalg<cpu_p>
+template<> struct linalg<cpu>
 {
     template <typename T>
     static inline void gemm(int transa, int transb, int4 m, int4 n, int4 k, T alpha, T* a, int4 lda, T* b, int4 ldb, 
@@ -27,9 +27,9 @@ template<> struct linalg<cpu_p>
                             int4 ldc);
 };
 
-template<> inline void linalg<cpu_p>::gemm<real8>(int transa, int transb, int4 m, int4 n, int4 k, real8 alpha, 
-                                                  real8* a, int4 lda, real8* b, int4 ldb, real8 beta, real8* c, 
-                                                  int4 ldc)
+template<> inline void linalg<cpu>::gemm<real8>(int transa, int transb, int4 m, int4 n, int4 k, real8 alpha, 
+                                                real8* a, int4 lda, real8* b, int4 ldb, real8 beta, real8* c, 
+                                                int4 ldc)
 {
     const char *trans[] = {"N", "T", "C"};
 
@@ -37,15 +37,15 @@ template<> inline void linalg<cpu_p>::gemm<real8>(int transa, int transb, int4 m
                    (int4)1);
 }
 
-template<> inline void linalg<cpu_p>::gemm<real8>(int transa, int transb, int4 m, int4 n, int4 k, real8* a, int4 lda, 
-                                                  real8* b, int4 ldb, real8* c, int4 ldc)
+template<> inline void linalg<cpu>::gemm<real8>(int transa, int transb, int4 m, int4 n, int4 k, real8* a, int4 lda, 
+                                                real8* b, int4 ldb, real8* c, int4 ldc)
 {
     gemm(transa, transb, m, n, k, 1.0, a, lda, b, ldb, 0.0, c, ldc);
 }
 
-template<> inline void linalg<cpu_p>::gemm<complex16>(int transa, int transb, int4 m, int4 n, int4 k, complex16 alpha, 
-                                                      complex16* a, int4 lda, complex16* b, int4 ldb, complex16 beta, 
-                                                      complex16* c, int4 ldc)
+template<> inline void linalg<cpu>::gemm<complex16>(int transa, int transb, int4 m, int4 n, int4 k, complex16 alpha, 
+                                                    complex16* a, int4 lda, complex16* b, int4 ldb, complex16 beta, 
+                                                    complex16* c, int4 ldc)
 {
     const char *trans[] = {"N", "T", "C"};
 
@@ -53,14 +53,14 @@ template<> inline void linalg<cpu_p>::gemm<complex16>(int transa, int transb, in
                    (int4)1);
 }
 
-template<> inline void linalg<cpu_p>::gemm<complex16>(int transa, int transb, int4 m, int4 n, int4 k, complex16* a, 
-                                                      int4 lda, complex16* b, int4 ldb, complex16* c, int4 ldc)
+template<> inline void linalg<cpu>::gemm<complex16>(int transa, int transb, int4 m, int4 n, int4 k, complex16* a, 
+                                                    int4 lda, complex16* b, int4 ldb, complex16* c, int4 ldc)
 {
     gemm(transa, transb, m, n, k, complex16(1, 0), a, lda, b, ldb, complex16(0, 0), c, ldc);
 }
 
 /// Matrix matrix multimplication
-template<implementation impl, typename T> 
+template<processing_unit_t device, typename T> 
 void gemm(int transa, int transb, int4 m, int4 n, int4 k, T alpha, T* a, int4 lda, T* b, int4 ldb, T beta, T* c, 
           int4 ldc);
 
@@ -85,7 +85,7 @@ template<> void gemm<cpu, complex16>(int transa, int transb, int4 m, int4 n, int
 }
 
 /// Hermitian matrix matrix multimplication
-template<implementation impl, typename T> 
+template<processing_unit_t device, typename T> 
 void hemm(int side, int uplo, int4 m, int4 n, T alpha, T* a, int4 lda, T* b, int4 ldb, T beta, T* c, int4 ldc);
 
 template<> void hemm<cpu, complex16>(int side, int uplo, int4 m, int4 n, complex16 alpha, complex16* a, int4 lda, 

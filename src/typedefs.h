@@ -9,9 +9,7 @@ typedef int32_t int4;
 
 enum spin_block {nm, uu, ud, dd, du}; // TODO: add _t to type names
 
-enum implementation {cpu, gpu};
-
-enum processing_unit_t {cpu_p, gpu_p};
+enum processing_unit_t {cpu, gpu};
 
 enum lattice_t {direct, reciprocal};
 
