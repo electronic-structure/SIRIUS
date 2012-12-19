@@ -1,28 +1,55 @@
 #ifndef __FFT3D_H__
 #define __FFT3D_H__
 
-#include "fft3d_base.h"
+/** \file fft3d.h
+    
+    \brief Interface to FFTW3 library.
+    
+    FFT convention:
+    \f[
+        f({\bf r}) = \sum_{{\bf G}} e^{i{\bf G}{\bf r}} f({\bf G})
+    \f]
+    is a \em backward transformation from a set of pw coefficients to a function.  
+
+    \f[
+        f({\bf G}) = \frac{1}{\Omega} \int e^{-i{\bf G}{\bf r}} f({\bf r}) d {\bf r} = 
+            \frac{1}{N} \sum_{{\bf r}_j} e^{-i{\bf G}{\bf r}_j} f({\bf r}_j)
+    \f]
+    is a \em forward transformation from a function to a set of coefficients. 
+*/
 
 namespace sirius
 {
 
-class FFT3D : public FFT3D_base
+class FFT3D
 {
     private:
 
+        /// size of each dimension
+        int grid_size_[3];
+
+        /// reciprocal space range
+        int grid_limits_[3][2];
+        
+        /// backward transformation plan for each thread
         std::vector<fftw_plan> plan_backward_;
         
+        /// forward transformation plan for each thread
         std::vector<fftw_plan> plan_forward_;
     
-        mdarray<complex16,2> fftw_input_buffer_;
+        /// inout buffer for each thread
+        mdarray<complex16, 2> fftw_input_buffer_;
         
-        mdarray<complex16,2> fftw_output_buffer_;
+        /// output buffer for each thread
+        mdarray<complex16, 2> fftw_output_buffer_;
 
+        /// Execute backward transformation.
         inline void backward(int thread_id = 0)
         {    
             fftw_execute(plan_backward_[thread_id]);
         }
         
+        /// Execute forward transformation.
         inline void forward(int thread_id = 0)
         {    
             fftw_execute(plan_forward_[thread_id]);
@@ -31,11 +58,37 @@ class FFT3D : public FFT3D_base
                 fftw_output_buffer_(i, thread_id) *= norm;
         }
 
+        /// Find smallest optimal grid size starting from n.
+        int find_grid_size(int n)
+        {
+            while (true)
+            {
+                int m = n;
+                for (int k = 2; k <= 7; k++)
+                    while (m % k == 0)
+                        m /= k;
+                if (m == 1) return n;
+                else n++;
+            }
+        } 
+        
+        /// Determine the optimal FFT grid size and set grid limits.
+        void set_grid_size(int* dims)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                grid_size_[i] = find_grid_size(dims[i]);
+                
+                grid_limits_[i][1] = grid_size_[i] / 2;
+                grid_limits_[i][0] = grid_limits_[i][1] - grid_size_[i] + 1;
+            }
+        }
+
     public:
 
-        void init(int* n)
+        void init(int* dims)
         {
-            FFT3D_base::init(n);
+            set_grid_size(dims);
             
             fftw_input_buffer_.set_dimensions(size(), Platform::num_threads());
             fftw_input_buffer_.allocate();
@@ -128,6 +181,30 @@ class FFT3D : public FFT3D_base
         {
             for (int i = 0; i < n; i++)
                 data[i] = fftw_output_buffer_(map[i], thread_id);
+        }
+        
+        inline int grid_limits(int d, int i)
+        {
+            return grid_limits_[d][i];
+        }
+
+        inline int size()
+        {
+            return grid_size_[0] * grid_size_[1] * grid_size_[2]; 
+        }
+        
+        inline int size(int i)
+        {
+            return grid_size_[i]; 
+        }
+
+        inline int index(int i0, int i1, int i2)
+        {
+            if (i0 < 0) i0 += grid_size_[0];
+            if (i1 < 0) i1 += grid_size_[1];
+            if (i2 < 0) i2 += grid_size_[2];
+
+            return (i0 + i1 * grid_size_[0] + i2 * grid_size_[0] * grid_size_[1]);
         }
 };
 

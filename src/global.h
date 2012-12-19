@@ -240,7 +240,7 @@ class Global : public StepFunction
             // initialize variables, related to the unit cell
             UnitCell::init(lmax_apw(), lmax_pot(), num_mag_dims());
             
-            reciprocal_lattice::init();
+            ReciprocalLattice::init();
             StepFunction::init();
 
             // check MPI grid dimensions and set a default grid if needed
@@ -269,7 +269,7 @@ class Global : public StepFunction
         void clear()
         {
             UnitCell::clear();
-            reciprocal_lattice::clear();
+            ReciprocalLattice::clear();
 
             mpi_grid_.finalize();
 
@@ -292,7 +292,7 @@ class Global : public StepFunction
                 printf("number of OMP threads : %i\n", Platform::num_threads()); 
 
                 UnitCell::print_info();
-                reciprocal_lattice::print_info();
+                ReciprocalLattice::print_info();
 
                 printf("\n");
                 for (int i = 0; i < num_atom_types(); i++)

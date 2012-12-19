@@ -1,7 +1,9 @@
+#ifndef __RECIPROCAL_LATTICE_H__
+#define __RECIPROCAL_LATTICE_H__
 
 namespace sirius {
 
-class reciprocal_lattice : public UnitCell
+class ReciprocalLattice : public UnitCell
 {
     private:
         
@@ -33,7 +35,7 @@ class reciprocal_lattice : public UnitCell
 
         void init()
         {
-            Timer t("sirius::reciprocal_lattice::init");
+            Timer t("sirius::ReciprocalLattice::init");
             
             int max_frac_coord[3];
             find_translation_limits<reciprocal>(pw_cutoff(), max_frac_coord);
@@ -117,7 +119,7 @@ class reciprocal_lattice : public UnitCell
             // compute phase factors
             if (num_atoms())
             {
-                Timer t1("sirius::reciprocal_lattice::init:pf");
+                Timer t1("sirius::ReciprocalLattice::init:pf");
 
                 splindex spl_fft_size(fft().size(), intvec(Platform::num_mpi_ranks()), intvec(Platform::mpi_rank()));
                 //std::vector<double> phase_tmp(fft().size());
@@ -179,9 +181,9 @@ class reciprocal_lattice : public UnitCell
         }
 
     public:
-    
-        reciprocal_lattice() : pw_cutoff_(pw_cutoff_default),
-                               num_gvec_(0)
+        
+        ReciprocalLattice() : pw_cutoff_(pw_cutoff_default),
+                              num_gvec_(0)
         {
         }
   
@@ -284,3 +286,6 @@ class reciprocal_lattice : public UnitCell
 };
 
 };
+
+#endif
+

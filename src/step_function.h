@@ -1,7 +1,7 @@
 
 namespace sirius {
 
-class StepFunction : public reciprocal_lattice
+class StepFunction : public ReciprocalLattice
 {
     private:
     
@@ -105,12 +105,7 @@ class StepFunction : public reciprocal_lattice
             return volume_it_;
         }
         
-        /*inline void get_step_function(double* ptr)
-        {
-            memcpy(ptr, &step_function_[0], fft().size() * sizeof(double));
-        }*/
-
-       inline complex16& step_function_pw(int ig)
+        inline complex16& step_function_pw(int ig)
         {
             return step_function_pw_[ig];
         }
