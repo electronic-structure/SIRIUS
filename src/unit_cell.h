@@ -488,7 +488,7 @@ class UnitCell
                                 for (int x = 0; x < 3; x++)
                                     v[x] = japos[x] + vt[x] - iapos[x];
 
-                                nnd.distance = vector_length(v);
+                                nnd.distance = Utils::vector_length(v);
                                 
                                 //dist.push_back(nnd.distance);
                                 nn.push_back(nnd);
@@ -522,7 +522,7 @@ class UnitCell
                                 int vgf[] = {i0, i1, i2};
                                 double vgc[3];
                                 get_coordinates<cartesian, Tl>(vgf, vgc);
-                                double len = vector_length(vgc);
+                                double len = Utils::vector_length(vgc);
                                 if (len <= radius)
                                 {
                                     found = true;
@@ -578,7 +578,7 @@ class UnitCell
                             double vc1[3];
                             get_coordinates<cartesian, direct>(vf1, vc1);
 
-                            double r = vector_length(vc1);
+                            double r = Utils::vector_length(vc1);
 
                             if (r <= atom(ia)->type()->mt_radius())
                             {

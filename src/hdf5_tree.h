@@ -81,13 +81,6 @@ class hdf5_tree
         
     public:
 
-        bool static file_exists(const std::string& file_name__)
-        {
-            std::ifstream ifs(file_name__.c_str());
-            if (ifs.is_open()) return true;
-            return false;
-        }
-    
         hdf5_tree(const std::string& file_name__, bool truncate = false) : file_name_(file_name__), 
                                                                            file_id_(-1),
                                                                            root_node_(true)
@@ -107,7 +100,7 @@ class hdf5_tree
             }
             else
             {
-                if (file_exists(file_name_))
+                if (Utils::file_exists(file_name_))
                 {
                     // try to open existing file
                     file_id_ = H5Fopen(file_name_.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);

@@ -58,7 +58,7 @@ class ReciprocalLattice : public UnitCell
                         double cartc[3];
                         get_coordinates<cartesian, reciprocal>(fracc, cartc);
 
-                        gvec_tmp_length.push_back(std::pair<double, int>(vector_length(cartc), ig++));
+                        gvec_tmp_length.push_back(std::pair<double, int>(Utils::vector_length(cartc), ig++));
                     }
 
             std::sort(gvec_tmp_length.begin(), gvec_tmp_length.end());
@@ -108,7 +108,7 @@ class ReciprocalLattice : public UnitCell
             {
                 double cartc[3];
                 get_coordinates<cartesian, reciprocal>(&gvec_(0, ig), cartc);
-                double t = vector_length(cartc);
+                double t = Utils::vector_length(cartc);
 
                 if (gvec_shell_len_.empty() || fabs(t - gvec_shell_len_.back()) > 1e-8)
                     gvec_shell_len_.push_back(t);

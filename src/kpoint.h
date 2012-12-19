@@ -291,7 +291,7 @@ class kpoint
 
                 double v[3];
                 parameters_.get_coordinates<cartesian,reciprocal>(vgk, v);
-                double gklen = vector_length(v);
+                double gklen = Utils::vector_length(v);
 
                 if (gklen <= gk_cutoff) gkmap.push_back(std::pair<double,int>(gklen, ig));
             }
@@ -356,7 +356,7 @@ class kpoint
 
                 double v[3];
                 parameters_.get_coordinates<cartesian, reciprocal>(gkvec(igk), v);
-                gkvec_len_[igkloc] = vector_length(v);
+                gkvec_len_[igkloc] = Utils::vector_length(v);
             
                 for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
                 {

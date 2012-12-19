@@ -175,7 +175,7 @@ class SHT
         {
             double eps = 1e-12;
         
-            vs[0] = vector_length(vc);
+            vs[0] = Utils::vector_length(vc);
         
             if (vs[0] <= eps)
             {

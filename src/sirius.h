@@ -48,6 +48,7 @@ extern "C" {
 #include "mdarray.h"
 #include "intvec.h"
 #include "linalg.h"
+#include "utils.h"
 #include "global_inl.h"
 #include "radial_grid.h"
 #include "spline.h"

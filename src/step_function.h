@@ -39,7 +39,7 @@ class StepFunction : public ReciprocalLattice
                 double vg[3];
                 get_coordinates<cartesian, reciprocal>(gvec(ig), vg);
 
-                double g = vector_length(vg);
+                double g = Utils::vector_length(vg);
                 double g3inv = (ig) ? 1.0 / pow(g, 3) : 0.0;
 
                 double gRprev = -1.0;

@@ -433,7 +433,7 @@ class Density
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
                 double* v = parameters_.atom(ia)->vector_field();
-                double len = vector_length(v);
+                double len = Utils::vector_length(v);
 
                 int nmtp = parameters_.atom(ia)->type()->num_mt_points();
                 Spline<double> rho(nmtp, parameters_.atom(ia)->type()->radial_grid());

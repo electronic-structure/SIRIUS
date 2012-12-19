@@ -65,7 +65,7 @@ class Global : public StepFunction
         {
             std::string fname("sirius.json");
 
-            if (file_exists(fname))
+            if (Utils::file_exists(fname))
             {
                 JsonTree parser(fname);
                 parser["mpi_grid_dims"] >> mpi_grid_dims_; 
@@ -392,7 +392,7 @@ class Global : public StepFunction
                             v[0] = rti().mt_magnetization[1][ia];
                             v[1] = rti().mt_magnetization[2][ia];
                         }
-                        printf("  (%8.4f %8.4f %8.4f)  %10.6f", v[0], v[1], v[2], vector_length(v));
+                        printf("  (%8.4f %8.4f %8.4f)  %10.6f", v[0], v[1], v[2], Utils::vector_length(v));
                     }
                     printf("\n");
                 }
@@ -409,7 +409,7 @@ class Global : public StepFunction
                         v[1] = rti().it_magnetization[2];
                     }
                     printf("interstitial moment   : (%8.4f %8.4f %8.4f)\n", v[0], v[1], v[2]);
-                    printf("interstitial |moment| : %10.6f\n", vector_length(v));
+                    printf("interstitial |moment| : %10.6f\n", Utils::vector_length(v));
                 }
                 
                 printf("\n");
@@ -425,7 +425,7 @@ class Global : public StepFunction
                         v[1] = rti().total_magnetization[2];
                     }
                     printf("total moment          : (%8.4f %8.4f %8.4f)\n", v[0], v[1], v[2]);
-                    printf("total |moment|        : %10.6f\n", vector_length(v));
+                    printf("total |moment|        : %10.6f\n", Utils::vector_length(v));
                 }
                 printf("pseudo charge error : %18.12f\n", rti().pseudo_charge_error);
                 
@@ -463,7 +463,7 @@ class Global : public StepFunction
                     fprintf(fout, ",\n");
                     fprintf(fout, "    \"total_moment\" : [%f, %f, %f]", v[0], v[1], v[2]);
                     fprintf(fout, ",\n");
-                    fprintf(fout, "    \"total_moment_len\" : %f", vector_length(v));
+                    fprintf(fout, "    \"total_moment_len\" : %f", Utils::vector_length(v));
                 }
                 fprintf(fout, ",\n");
                 fprintf(fout, "    \"num_threads\" : %i", Platform::num_threads());

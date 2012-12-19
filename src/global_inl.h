@@ -1,8 +1,3 @@
-inline double vector_length(double v[3])
-{
-    return sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-}
-
 template <typename Ta, typename Tb>
 inline double scalar_product(Ta a[3], Tb b[3])
 {
@@ -97,9 +92,4 @@ void write_matrix(const std::string& fname, bool write_all, mdarray<double, 2>& 
     fclose(fout);
 }
 
-bool file_exists(const std::string& file_name)
-{
-    std::ifstream ifs(file_name.c_str());
-    if (ifs.is_open()) return true;
-    return false;
-}
+
