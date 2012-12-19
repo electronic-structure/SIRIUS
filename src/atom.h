@@ -140,7 +140,7 @@ class Atom
             lmax_pot_ = lmax_pot__;
             num_mag_dims_ = num_mag_dims__;
 
-            int lmmax = lmmax_by_lmax(lmax_pot_);
+            int lmmax = Utils::lmmax_by_lmax(lmax_pot_);
 
             h_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size());
             h_radial_integrals_.allocate();
@@ -187,7 +187,7 @@ class Atom
         {
             Timer t("sirius::Atom::generate_radial_integrals");
             
-            int lmmax = lmmax_by_lmax(lmax_pot_);
+            int lmmax = Utils::lmmax_by_lmax(lmax_pot_);
             int nmtp = type()->num_mt_points();
 
             h_radial_integrals_.zero();

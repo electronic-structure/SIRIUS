@@ -203,7 +203,7 @@ class basis_functions_index
                 assert(order >= 0);
                 assert(idxrf >= 0);
 
-                lm = lm_by_l_m(l, m);
+                lm = Utils::lm_by_l_m(l, m);
             }
         };
 
@@ -240,7 +240,7 @@ class basis_functions_index
                     basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, m, order, idxlo, idxrf));
             }
 
-            index_by_lm_order_.set_dimensions(lmmax_by_lmax(lmax), indexr.max_num_rf());
+            index_by_lm_order_.set_dimensions(Utils::lmmax_by_lmax(lmax), indexr.max_num_rf());
             index_by_lm_order_.allocate();
 
             for (int i = 0; i < (int)basis_function_index_descriptors_.size(); i++)
@@ -279,7 +279,7 @@ class basis_functions_index
         
         inline int index_by_l_m_order(int l, int m, int order)
         {
-            return index_by_lm_order_(lm_by_l_m(l, m), order);
+            return index_by_lm_order_(Utils::lm_by_l_m(l, m), order);
         }
         
         inline int index_by_lm_order(int lm, int order)

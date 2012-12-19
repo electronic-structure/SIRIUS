@@ -675,7 +675,7 @@ class Band
 
                     for (int order2 = 0; order2 < nrf; order2++)
                     {
-                        for (int lm2 = lm_by_l_m(l, -l); lm2 <= lm_by_l_m(l, l); lm2++)
+                        for (int lm2 = Utils::lm_by_l_m(l, -l); lm2 <= Utils::lm_by_l_m(l, l); lm2++)
                         {
                             int idx2 = type->indexb_by_lm_order(lm2, order2);
                             for (int order1 = 0; order1 < nrf; order1++)
@@ -684,7 +684,7 @@ class Band
                                 
                                 for (int ist = 0; ist < spl_fv_states_col_.local_size(); ist++)
                                 {
-                                    for (int lm1 = lm_by_l_m(l, -l); lm1 <= lm_by_l_m(l, l); lm1++)
+                                    for (int lm1 = Utils::lm_by_l_m(l, -l); lm1 <= Utils::lm_by_l_m(l, l); lm1++)
                                     {
                                         int idx1 = type->indexb_by_lm_order(lm1, order1);
                                         complex16 z1 = fv_states(offset + idx1, ist) * ori;
@@ -743,15 +743,15 @@ class Band
             for (int l1 = 0; l1 <= parameters_.lmax_apw(); l1++) 
             for (int m1 = -l1; m1 <= l1; m1++)
             {
-                int lm1 = lm_by_l_m(l1, m1);
+                int lm1 = Utils::lm_by_l_m(l1, m1);
                 for (int l2 = 0; l2 <= parameters_.lmax_apw(); l2++)
                 for (int m2 = -l2; m2 <= l2; m2++)
                 {
-                    int lm2 = lm_by_l_m(l2, m2);
+                    int lm2 = Utils::lm_by_l_m(l2, m2);
                     for (int l3 = 0; l3 <= parameters_.lmax_pot(); l3++)
                     for (int m3 = -l3; m3 <= l3; m3++)
                     {
-                        int lm3 = lm_by_l_m(l3, m3);
+                        int lm3 = Utils::lm_by_l_m(l3, m3);
                         complex16 z = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
                         if (abs(z) > 1e-12) complex_gaunt_packed_(lm1, lm2).push_back(std::pair<int,complex16>(lm3, z));
                     }

@@ -147,30 +147,25 @@ class SHT
             }
         }
 
-        /*!
-            \brief Transform from Rlm to spherical coordinates 
-        */
+        /// Transform from Rlm to spherical coordinates 
         void rlm_backward_transform(double* flm, int lmmax, int ncol, double* ftp)
         {
             assert(lmmax <= lmmax_);
 
-            gemm<cpu>(1, 0, num_points_, ncol, lmmax, 1.0, &rlm_backward_(0, 0), lmmax_, flm, lmmax, 0.0, ftp, num_points_);
+            gemm<cpu>(1, 0, num_points_, ncol, lmmax, 1.0, &rlm_backward_(0, 0), lmmax_, flm, lmmax, 0.0, ftp, 
+                      num_points_);
         }
 
-   
-        /*
-            \brief Transform from spherical coordinates to Rlm
-        */
+        /// Transform from spherical coordinates to Rlm
         void rlm_forward_transform(double *ftp, int lmmax, int ncol, double* flm)
         {
             assert(lmmax <= lmmax_);
             
-            gemm<cpu>(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, ftp, num_points_, 0.0, flm, lmmax);
+            gemm<cpu>(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, ftp, num_points_, 0.0, 
+                      flm, lmmax);
         }
 
-        /*!
-            \brief Transform Cartesian coordinates [x,y,z] to spherical coordinates [r,theta,phi]
-        */
+        /// Transform Cartesian coordinates [x,y,z] to spherical coordinates [r,theta,phi]
         static inline void spherical_coordinates(double* vc, double* vs)
         {
             double eps = 1e-12;
@@ -192,7 +187,9 @@ class SHT
                     if (vs[2] < 0.0) vs[2] += twopi;
                 }
                 else
+                {
                     vs[2] = 0.0;
+                }
             }
         }
 
@@ -212,11 +209,15 @@ class SHT
         
                 for (int l = m; l <= lmax; l++)
                 {
-                    ylm[lm_by_l_m(l, m)] = result_array[l - m] * z;
+                    ylm[Utils::lm_by_l_m(l, m)] = result_array[l - m] * z;
                     if (m % 2) 
-                        ylm[lm_by_l_m(l, -m)] = -conj(ylm[lm_by_l_m(l, m)]);
+                    {
+                        ylm[Utils::lm_by_l_m(l, -m)] = -conj(ylm[Utils::lm_by_l_m(l, m)]);
+                    }
                     else
-                        ylm[lm_by_l_m(l, -m)] = conj(ylm[lm_by_l_m(l, m)]);        
+                    {
+                        ylm[Utils::lm_by_l_m(l, -m)] = conj(ylm[Utils::lm_by_l_m(l, m)]);        
+                    }
                 }
             }
         }
@@ -245,12 +246,12 @@ class SHT
             for (int l = 1; l <= lmax; l++)
             {
                 for (int m = -l; m < 0; m++) 
-                    rlm[lm_by_l_m(l, m)] = t * imag(ylm[lm_by_l_m(l, m)]);
+                    rlm[Utils::lm_by_l_m(l, m)] = t * imag(ylm[Utils::lm_by_l_m(l, m)]);
                 
-                rlm[lm_by_l_m(l, 0)] = real(ylm[lm_by_l_m(l, 0)]);
+                rlm[Utils::lm_by_l_m(l, 0)] = real(ylm[Utils::lm_by_l_m(l, 0)]);
                  
                 for (int m = 1; m <= l; m++) 
-                    rlm[lm_by_l_m(l, m)] = t * real(ylm[lm_by_l_m(l, m)]);
+                    rlm[Utils::lm_by_l_m(l, m)] = t * real(ylm[Utils::lm_by_l_m(l, m)]);
             }
         }
                         
@@ -318,8 +319,15 @@ class SHT
             for (int l = 0; l <= lmax; l++)
                 for (int m = -l; m <= l; m++)
                 {
-                    if (m == 0) fylm[lm] = frlm[lm];
-                    else fylm[lm] = ylm_dot_rlm(l, m, m) * frlm[lm] + ylm_dot_rlm(l, m, -m) * frlm[lm_by_l_m(l, -m)];
+                    if (m == 0)
+                    {
+                        fylm[lm] = frlm[lm];
+                    }
+                    else 
+                    {
+                        fylm[lm] = ylm_dot_rlm(l, m, m) * frlm[lm] + 
+                                   ylm_dot_rlm(l, m, -m) * frlm[Utils::lm_by_l_m(l, -m)];
+                    }
                     lm++;
                 }
         }
@@ -334,8 +342,15 @@ class SHT
             for (int l = 0; l <= lmax; l++)
                 for (int m = -l; m <= l; m++)
                 {
-                    if (m == 0) frlm[lm] = real(fylm[lm]);
-                    else frlm[lm] = real(conj(ylm_dot_rlm(l, m, m)) * fylm[lm] + conj(ylm_dot_rlm(l, -m, m)) * fylm[lm_by_l_m(l, -m)]);
+                    if (m == 0) 
+                    {
+                        frlm[lm] = real(fylm[lm]);
+                    }
+                    else 
+                    {
+                        frlm[lm] = real(conj(ylm_dot_rlm(l, m, m)) * fylm[lm] + 
+                                   conj(ylm_dot_rlm(l, -m, m)) * fylm[Utils::lm_by_l_m(l, -m)]);
+                    }
                     lm++;
                 }
         }
@@ -368,10 +383,14 @@ class SHT
             assert(m2 >= -l2 && m2 <= l2);
             assert(m3 >= -l3 && m3 <= l3);
 
-            if (m2 == 0) return complex16(gaunt(l1, l2, l3, m1, m2, m3), 0.0);
+            if (m2 == 0) 
+            {
+                return complex16(gaunt(l1, l2, l3, m1, m2, m3), 0.0);
+            }
             else 
             {
-                return ylm_dot_rlm(l2, m2, m2) *  gaunt(l1, l2, l3, m1, m2, m3) +  ylm_dot_rlm(l2, -m2, m2) *  gaunt(l1, l2, l3, m1, -m2, m3);
+                return (ylm_dot_rlm(l2, m2, m2) * gaunt(l1, l2, l3, m1, m2, m3) +  
+                        ylm_dot_rlm(l2, -m2, m2) * gaunt(l1, l2, l3, m1, -m2, m3));
             }
         }
 };

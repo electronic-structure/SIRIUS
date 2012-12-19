@@ -184,8 +184,8 @@ class Potential
                 }
 
                 gemm<cpu>(2, 0, 2 * l + 1, parameters_.num_atoms(), spl_num_gvec_.local_size(), complex16(1, 0), 
-                          &zm1(0, lm_by_l_m(l, -l)), zm1.ld(), &zm2(0, 0), zm2.ld(), complex16(0, 0), 
-                          &flm(lm_by_l_m(l, -l), 0), parameters_.lmmax_rho());
+                          &zm1(0, Utils::lm_by_l_m(l, -l)), zm1.ld(), &zm2(0, 0), zm2.ld(), complex16(0, 0), 
+                          &flm(Utils::lm_by_l_m(l, -l), 0), parameters_.lmmax_rho());
             }
             
             Platform::allreduce(&flm(0, 0), (int)flm.size());
@@ -536,7 +536,7 @@ class Potential
             spl_num_gvec_.split(parameters_.num_gvec(), Platform::num_mpi_ranks(), Platform::mpi_rank());
 
             // precompute spherical harmonics of G-vectors and G-vector phase factors
-            gvec_ylm_.set_dimensions(lmmax_by_lmax(lmax), spl_num_gvec_.local_size());
+            gvec_ylm_.set_dimensions(Utils::lmmax_by_lmax(lmax), spl_num_gvec_.local_size());
             gvec_ylm_.allocate();
             
             gvec_phase_factors_.set_dimensions(spl_num_gvec_.local_size(), parameters_.num_atoms());
@@ -574,7 +574,7 @@ class Potential
                 for (int m = -l; m <= l; m++, lm++)
                     zilm_[lm] = zil_[l];
 
-            l_by_lm_.resize(lmmax_by_lmax(lmax));
+            l_by_lm_.resize(Utils::lmmax_by_lmax(lmax));
             for (int l = 0, lm = 0; l <= lmax; l++)
                 for (int m = -l; m <= l; m++, lm++)
                     l_by_lm_[lm] = l;

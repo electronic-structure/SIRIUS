@@ -127,7 +127,7 @@ class kpoint
                                     b(order, n++) = (fourpi / sqrt(parameters_.omega())) * zil[l] * 
                                                     sbessel_mt_(l, iat, igkloc, order) * 
                                                     gkvec_phase_factors_(igkloc, ia) * 
-                                                    conj(gkvec_ylm_(lm_by_l_m(l, m), igkloc)) * pow(gkR, order); 
+                                                    conj(gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc)) * pow(gkR, order); 
                         }
                               
                         int info = gesv(num_aw, n, &a[0][0], 2, &b(0, 0), 2);

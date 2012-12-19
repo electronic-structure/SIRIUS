@@ -49,7 +49,7 @@ extern "C" {
 #include "intvec.h"
 #include "linalg.h"
 #include "utils.h"
-#include "global_inl.h"
+//#include "global_inl.h"
 #include "radial_grid.h"
 #include "spline.h"
 #include "radial_solver.h"

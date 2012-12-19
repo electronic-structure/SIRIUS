@@ -69,7 +69,7 @@ template<typename T> class PeriodicFunction
         PeriodicFunction(Global& parameters__, int lmax__) : parameters_(parameters__), 
                                                              lmax_(lmax__)
         {
-            lmmax_ = lmmax_by_lmax(lmax_);
+            lmmax_ = Utils::lmmax_by_lmax(lmax_);
             
             f_rlm_.set_dimensions(lmmax_, parameters_.max_num_mt_points(), parameters_.num_atoms());
             f_ylm_.set_dimensions(lmmax_, parameters_.max_num_mt_points(), parameters_.num_atoms());

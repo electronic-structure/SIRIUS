@@ -122,7 +122,7 @@ class Global : public StepFunction
 
         inline int lmmax_apw()
         {
-            return lmmax_by_lmax(lmax_apw_);
+            return Utils::lmmax_by_lmax(lmax_apw_);
         }
         
         inline int lmax_rho()
@@ -132,7 +132,7 @@ class Global : public StepFunction
 
         inline int lmmax_rho()
         {
-            return lmmax_by_lmax(lmax_rho_);
+            return Utils::lmmax_by_lmax(lmax_rho_);
         }
         
         inline int lmax_pot()
@@ -142,7 +142,7 @@ class Global : public StepFunction
 
         inline int lmmax_pot()
         {
-            return lmmax_by_lmax(lmax_pot_);
+            return Utils::lmmax_by_lmax(lmax_pot_);
         }
 
         inline double aw_cutoff()

@@ -52,7 +52,7 @@ class Density
                         
                         if ((l1 + l2 + l3) % 2 == 0)
                         {
-                            for (int lm1 = lm_by_l_m(l1, -l1); lm1 <= lm_by_l_m(l1, l1); lm1++, j1++) 
+                            for (int lm1 = Utils::lm_by_l_m(l1, -l1); lm1 <= Utils::lm_by_l_m(l1, l1); lm1++, j1++) 
                             {
                                 complex16 gc = complex_gaunt_(lm1, lm2, lm3);
 
@@ -81,8 +81,7 @@ class Density
             \f[
                 n_{\ell,mm'}^{\sigma \sigma'} = \sum_{i {\bf k}}^{occ} \int_{0}^{R_{MT}} r^2 dr 
                           \Psi_{\ell m}^{i{\bf k}\sigma *}({\bf r}) \Psi_{\ell m'}^{i{\bf k}\sigma'}({\bf r})
-            \f]
-        */
+            \f] */
         void add_kpoint_contribution(kpoint* kp, 
                                      mdarray<double,5>& mt_density_matrix, 
                                      mdarray<complex16,5>& occupation_matrix)
@@ -165,10 +164,10 @@ class Density
                         for (int j = 0; j < num_zdmat; j++)
                         {
                             for (int order2 = 0; order2 < num_rf; order2++)
-                            for (int lm2 = lm_by_l_m(l, -l); lm2 <= lm_by_l_m(l, l); lm2++)
+                            for (int lm2 = Utils::lm_by_l_m(l, -l); lm2 <= Utils::lm_by_l_m(l, l); lm2++)
                             {
                                 for (int order1 = 0; order1 < num_rf; order1++)
-                                for (int lm1 = lm_by_l_m(l, -l); lm1 <= lm_by_l_m(l, l); lm1++)
+                                for (int lm1 = Utils::lm_by_l_m(l, -l); lm1 <= Utils::lm_by_l_m(l, l); lm1++)
                                 {
                                     occupation_matrix(lm1, lm2, dmat_spins_[j].first, dmat_spins_[j].second, ia) +=
                                         zdens(type->indexb_by_lm_order(lm1, order1),
@@ -332,15 +331,15 @@ class Density
             for (int l1 = 0; l1 <= parameters_.lmax_apw(); l1++) 
             for (int m1 = -l1; m1 <= l1; m1++)
             {
-                int lm1 = lm_by_l_m(l1, m1);
+                int lm1 = Utils::lm_by_l_m(l1, m1);
                 for (int l2 = 0; l2 <= parameters_.lmax_apw(); l2++)
                 for (int m2 = -l2; m2 <= l2; m2++)
                 {
-                    int lm2 = lm_by_l_m(l2, m2);
+                    int lm2 = Utils::lm_by_l_m(l2, m2);
                     for (int l3 = 0; l3 <= parameters_.lmax_pot(); l3++)
                     for (int m3 = -l3; m3 <= l3; m3++)
                     {
-                        int lm3 = lm_by_l_m(l3, m3);
+                        int lm3 = Utils::lm_by_l_m(l3, m3);
                         complex_gaunt_(lm1, lm2, lm3) = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
                     }
                 }

@@ -5,6 +5,16 @@ class Utils
 {
     public:
 
+        static inline int lmmax_by_lmax(int lmax)
+        {
+            return (lmax + 1) * (lmax + 1);
+        }
+
+        static inline int lm_by_l_m(int l, int m)
+        {
+            return (l * l + l + m);
+        }
+
         static bool file_exists(const std::string& file_name)
         {
             std::ifstream ifs(file_name.c_str());
@@ -39,7 +49,7 @@ class Utils
             return 0.5 * (1 - gsl_sf_erf(e / delta));
         }
 
-        void write_matrix(const std::string& fname, bool write_all, mdarray<complex16, 2>& matrix)
+        static void write_matrix(const std::string& fname, bool write_all, mdarray<complex16, 2>& matrix)
         {
             static int icount = 0;
         
@@ -71,7 +81,7 @@ class Utils
             fclose(fout);
         }
         
-        void write_matrix(const std::string& fname, bool write_all, mdarray<double, 2>& matrix)
+        static void write_matrix(const std::string& fname, bool write_all, mdarray<double, 2>& matrix)
         {
             static int icount = 0;
         
