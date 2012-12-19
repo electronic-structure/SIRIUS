@@ -312,7 +312,7 @@ class Band
                     for (int x = 0; x < 3; x++) v1[x] = gkvec(x, apwlo_basis_descriptors_row[igkloc1].igk);
                     parameters_.get_coordinates<cartesian, reciprocal>(v1, v1c);
                     
-                    double t1 = 0.5 * scalar_product(v1c, v2c);
+                    double t1 = 0.5 * Utils::scalar_product(v1c, v2c);
                                        
                     if (sblock == nm)
                         h(igkloc1, igkloc2) += (effective_potential->f_pw(ig12) + 

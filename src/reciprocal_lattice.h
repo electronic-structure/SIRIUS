@@ -273,7 +273,7 @@ class ReciprocalLattice : public UnitCell
         /// phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
         inline complex16 gvec_phase_factor(int ig, int ia)
         {
-            return exp(complex16(0.0, twopi * scalar_product(gvec(ig), atom(ia)->position())));
+            return exp(complex16(0.0, twopi * Utils::scalar_product(gvec(ig), atom(ia)->position())));
         }
 
         /// return global index of G1-G2 vector

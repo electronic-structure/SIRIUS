@@ -1,9 +1,3 @@
-template <typename Ta, typename Tb>
-inline double scalar_product(Ta a[3], Tb b[3])
-{
-    return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
-}
-
 inline int lmmax_by_lmax(int lmax)
 {
     return (lmax + 1) * (lmax + 1);
