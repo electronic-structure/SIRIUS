@@ -604,9 +604,8 @@ class UnitCell
         }
 
         /// Convert coordinates (fractional <-> Cartesian) of direct or reciprocal lattices
-        template<coordinates_type cT, lattice_type lT, typename T>
-        void get_coordinates(T* a, 
-                             double* b)
+        template<coordinates_t cT, lattice_type lT, typename T>
+        void get_coordinates(T* a, double* b)
         {
             b[0] = b[1] = b[2] = 0.0;
             

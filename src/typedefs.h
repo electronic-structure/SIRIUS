@@ -15,7 +15,7 @@ enum processing_unit_t {cpu_p, gpu_p};
 
 enum lattice_type {direct, reciprocal};
 
-enum coordinates_type {cartesian, fractional};
+enum coordinates_t {cartesian, fractional};
 
 enum mpi_op_t {op_sum, op_max};
 
