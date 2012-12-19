@@ -50,7 +50,7 @@ class kpoint_set
             //        0.5 * parameters.num_valence_electrons() - double(m);
             //}
 
-            //kpoints_.back()->set_band_occupancies(&initial_occupancies[0]);
+            kpoints_.back()->set_band_occupancies(&initial_occupancies[0]);
         }
 
    
