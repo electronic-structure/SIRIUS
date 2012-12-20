@@ -200,7 +200,7 @@ class Band
                       PeriodicFunction<double>*                  effective_potential,
                       mdarray<complex16, 2>&                     h)
         {
-            Timer t("sirius::Band::set_h");
+            Timer t("sirius::Band::set_fv_h");
 
             mdarray<complex16, 2> hapw(num_gkvec_row, parameters_.mt_aw_basis_size());
 
@@ -295,7 +295,7 @@ class Band
                     }
             }
 
-            Timer *t1 = new Timer("sirius::Band::set_h:it");
+            Timer *t1 = new Timer("sirius::Band::set_fv_h:it");
             for (int igkloc2 = 0; igkloc2 < num_gkvec_col; igkloc2++) // loop over columns
             {
                 double v2[3];
@@ -384,7 +384,7 @@ class Band
                       mdarray<complex16, 2>&                     apw, 
                       mdarray<complex16, 2>&                     o)
         {
-            Timer t("sirius::Band::set_o");
+            Timer t("sirius::Band::set_fv_o");
             
             // compute APW-APW block
             gemm<cpu>(0, 2, num_gkvec_row, num_gkvec_col, parameters_.mt_aw_basis_size(), complex16(1, 0), 
@@ -440,7 +440,7 @@ class Band
                         o(irow, icol) += atom->symmetry_class()->o_radial_integral(l, order1, order2);
                     }
                     
-            Timer t1("sirius::Band::set_o:it");
+            Timer t1("sirius::Band::set_fv_o:it");
             for (int igkloc2 = 0; igkloc2 < num_gkvec_col; igkloc2++) // loop over columns
                 for (int igkloc1 = 0; igkloc1 < num_gkvec_row; igkloc1++) // for each column loop over rows
                 {
@@ -916,7 +916,7 @@ class Band
                          apwlo_basis_descriptors_col, apwlo_basis_size_col, num_gkvec_col,
                          apw_offset_col, gkvec, matching_coefficients, effective_potential, h);
 
-            Timer *t1 = new Timer("sirius::Band::solve_fv:hegv");
+            Timer *t1 = new Timer("sirius::Band::solve_fv:gevp");
 
             generalized_eigenproblem<eigen_value_solver>(apwlo_basis_size, 
                                                          num_ranks_row(), 
@@ -972,7 +972,7 @@ class Band
 
             if (parameters_.so_correction()) apply_so_correction(fv_states_col, hpsi);
 
-            Timer t1("sirius::Band::solve_sv:heev", false);
+            Timer t1("sirius::Band::solve_sv:sevp", false);
             
             if (parameters.num_mag_dims() == 1)
             {

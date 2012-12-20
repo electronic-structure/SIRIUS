@@ -250,53 +250,6 @@ class Density
             }
             
             t3.stop();
-
-#if 0
-            std::vector< std::pair< PeriodicFunction<complex16>*, PeriodicFunction<complex16>* > > wfs;
-
-            for (int i = 0; i < (int)bands.size(); i++)
-            {
-                std::pair< PeriodicFunction<complex16>*, PeriodicFunction<complex16>* > wf;
-                wf.first = kp->spinor_wave_function_component(0, bands[i].first);
-                wf.second= kp->spinor_wave_function_component(1, bands[i].first);
-                wfs.push_back(wf);
-            }
-            
-            static double mom = 0.0;
-            
-            double mom_k = 0.0;
-
-            for (int i = 0; i < (int)wfs.size(); i++)
-            {
-                /*std::cout << "<wf_i|wf_i> = " << wfs[i].first->inner<ylm_component | it_component>(wfs[i].first) +
-                                                 wfs[i].second->inner<ylm_component | it_component>(wfs[i].second) <<
-                                                 std::endl;
-                mom += bands[i].second * real(wfs[i].first->inner<ylm_component | it_component>(wfs[i].first) -
-                                                 wfs[i].second->inner<ylm_component | it_component>(wfs[i].second));*/
-                
-                double rhoup = real(wfs[i].first->inner<it_component>(wfs[i].first));
-                double rhodn = real(wfs[i].second->inner<it_component>(wfs[i].second));
-
-                double m = rhoup - rhodn;
-
-                std::cout << "band " << bands[i].first << "  energy = " << kp->band_energy(bands[i].first) << 
-                             "   rho(u,d) = " << rhoup << "    " << rhodn << " m_i = " << m * bands[i].second << std::endl;
-
- 
-                mom += bands[i].second * m;
-                
-                mom_k += bands[i].second * m;
-            }
-
-            std::cout << "mom_k = " << mom_k << std::endl;
-            std::cout << "mom   = " << mom << std::endl;
-
-
-
-#endif
-
-
-
        }
 
     public:
@@ -767,17 +720,6 @@ class Density
                   << "core leakage : " << core_leakage;
                 warning(__FILE__, __LINE__, s);
             }
-#if 0                
-            for (int j = 0; j < parameters_.num_mag_dims(); j++)
-            {
-                std::vector<double> mti;
-                double iti;
-                double tot;
-                
-                tot = magnetization_[j]->integrate(rlm_component | it_component, mti, iti);
-                std::cout << "M total = " << tot << " mt = " << mti[0] << " it = " << iti << std::endl;
-            }
-#endif
         }
 
         void set_band_occupancies(int ik, double* band_occupancies)
