@@ -244,7 +244,7 @@ class Global : public StepFunction
             StepFunction::init();
 
             // check MPI grid dimensions and set a default grid if needed
-            if (!mpi_grid_dims_.size()) mpi_grid_dims_ = intvec(Platform::num_mpi_ranks());
+            if (!mpi_grid_dims_.size()) mpi_grid_dims_ = Utils::intvec(Platform::num_mpi_ranks());
 
             // setup MPI grid
             mpi_grid_.initialize(mpi_grid_dims_);

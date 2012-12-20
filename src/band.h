@@ -720,7 +720,7 @@ class Band
             for (int i1 = 0; i1 < num_ranks_col_; i1++)
                 for (int i0 = 0; i0 < num_ranks_row_; i0++)
                     map_ranks(i0, i1) = parameters_.mpi_grid().cart_rank(parameters_.mpi_grid().communicator(rc), 
-                                                                         intvec(i0, i1));
+                                                                         Utils::intvec(i0, i1));
  
             // create BLACS context
             blacs_context_ = Csys2blacs_handle(parameters_.mpi_grid().communicator(rc));
