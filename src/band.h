@@ -918,7 +918,6 @@ class Band
 
             Timer *t1 = new Timer("sirius::Band::solve_fv:hegv");
 
-
             generalized_eigenproblem<eigen_value_solver>(apwlo_basis_size, 
                                                          num_ranks_row(), 
                                                          num_ranks_col(), 

@@ -129,7 +129,7 @@ class kpoint
                                                     gkvec_phase_factors_(igkloc, ia) * 
                                                     conj(gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc)) * pow(gkR, order); 
                         }
-                              
+
                         int info = gesv(num_aw, n, &a[0][0], 2, &b(0, 0), 2);
 
                         if (info)
@@ -447,8 +447,7 @@ class kpoint
                 if (apwlo_basis_descriptors_col_[i].igk != -1) num_gkvec_col_++;
         }
         
-#if 0        
-        void test_scalar_wave_functions(int use_fft)
+        void test_fv_states(Band* band, int use_fft)
         {
             std::vector<complex16> v1;
             std::vector<complex16> v2;
@@ -467,12 +466,12 @@ class kpoint
             
             double maxerr = 0;
         
-            for (int j1 = 0; j1 < parameters_.num_fv_states(); j1++)
+            for (int j1 = 0; j1 < band->spl_fv_states_col().local_size(); j1++)
             {
                 if (use_fft == 0)
                 {
                     parameters_.fft().input(num_gkvec(), &fft_index_[0], 
-                                            &scalar_wave_functions_(parameters_.mt_basis_size(), j1));
+                                            &fv_states_col_(parameters_.mt_basis_size(), j1));
                     parameters_.fft().transform(1);
                     parameters_.fft().output(&v2[0]);
 
@@ -487,12 +486,12 @@ class kpoint
                 if (use_fft == 1)
                 {
                     parameters_.fft().input(num_gkvec(), &fft_index_[0], 
-                                            &scalar_wave_functions_(parameters_.mt_basis_size(), j1));
+                                            &fv_states_col_(parameters_.mt_basis_size(), j1));
                     parameters_.fft().transform(1);
                     parameters_.fft().output(&v1[0]);
                 }
                
-                for (int j2 = 0; j2 < parameters_.num_fv_states(); j2++)
+                for (int j2 = 0; j2 < band->spl_fv_states_row().local_size(); j2++)
                 {
                     complex16 zsum(0.0, 0.0);
                     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
@@ -507,10 +506,10 @@ class kpoint
                             for (int io1 = 0; io1 < ordmax; io1++)
                                 for (int io2 = 0; io2 < ordmax; io2++)
                                     for (int m = -l; m <= l; m++)
-                                        zsum += conj(scalar_wave_functions_(offset_wf + 
-                                                                            type->indexb_by_l_m_order(l, m, io1), j1)) *
-                                                     scalar_wave_functions_(offset_wf + 
-                                                                            type->indexb_by_l_m_order(l, m, io2), j2) * 
+                                        zsum += conj(fv_states_col_(offset_wf + 
+                                                                    type->indexb_by_l_m_order(l, m, io1), j1)) *
+                                                     fv_states_row_(offset_wf + 
+                                                                    type->indexb_by_l_m_order(l, m, io2), j2) * 
                                                      symmetry_class->o_radial_integral(l, io1, io2);
                         }
                     }
@@ -518,13 +517,13 @@ class kpoint
                     if (use_fft == 0)
                     {
                        for (int ig = 0; ig < num_gkvec(); ig++)
-                           zsum += conj(v1[ig]) * scalar_wave_functions_(parameters_.mt_basis_size() + ig, j2);
+                           zsum += conj(v1[ig]) * fv_states_row_(parameters_.mt_basis_size() + ig, j2);
                     }
                    
                     if (use_fft == 1)
                     {
                         parameters_.fft().input(num_gkvec(), &fft_index_[0], 
-                                           &scalar_wave_functions_(parameters_.mt_basis_size(), j2));
+                                           &fv_states_row_(parameters_.mt_basis_size(), j2));
                         parameters_.fft().transform(1);
                         parameters_.fft().output(&v2[0]);
         
@@ -539,20 +538,29 @@ class kpoint
                             for (int ig2 = 0; ig2 < num_gkvec(); ig2++)
                             {
                                 int ig3 = parameters_.index_g12(gvec_index(ig1), gvec_index(ig2));
-                                zsum += conj(scalar_wave_functions_(parameters_.mt_basis_size() + ig1, j1)) * 
-                                             scalar_wave_functions_(parameters_.mt_basis_size() + ig2, j2) * 
+                                zsum += conj(fv_states_col_(parameters_.mt_basis_size() + ig1, j1)) * 
+                                             fv_states_row_(parameters_.mt_basis_size() + ig2, j2) * 
                                         parameters_.step_function_pw(ig3);
                             }
                        }
-                   }
-       
-                   zsum = (j1 == j2) ? zsum - complex16(1.0, 0.0) : zsum;
-                   maxerr = std::max(maxerr, abs(zsum));
+                    }
+
+                    if (band->spl_fv_states_col()[j1] == (band->spl_fv_states_row()[j2] % parameters_.num_fv_states()))
+                        zsum = zsum - complex16(1, 0);
+                   
+                    maxerr = std::max(maxerr, abs(zsum));
                 }
             }
-            std :: cout << "maximum error = " << maxerr << std::endl;
+
+            Platform::allreduce(&maxerr, 1, 
+                                parameters_.mpi_grid().communicator(1 << band->dim_row() | 1 << band->dim_col()));
+
+            if (parameters_.mpi_grid().side(1 << 0)) 
+                printf("k-point: %f %f %f, interstitial integration : %i, maximum error : %18.10e\n", 
+                       vk_[0], vk_[1], vk_[2], use_fft, maxerr);
         }
-        
+
+#if 0 
         void test_spinor_wave_functions(int use_fft)
         {
             std::vector<complex16> v1[2];
@@ -765,9 +773,8 @@ class kpoint
                 }
             }
 
-            /*if (test_scalar_wf)
-                for (int i = 0; i < 3; i++)
-                    test_scalar_wave_functions(i); */
+            if (debug_level > 1) 
+                for (int i = 0; i < 3; i++) test_fv_states(band, i);
 
             sv_eigen_vectors_.set_dimensions(band->spl_fv_states_row().local_size(), 
                                              band->spl_spinor_wf_col().local_size());
