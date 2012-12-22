@@ -85,5 +85,10 @@ extern "C" void FORTRAN(pzheevd)(const char* jobz, const char* uplo, int4* n, co
 
 extern "C" int4 FORTRAN(numroc)(int4* n, int4* nb, int4* iproc, int4* isrcproc, int4* nprocs);
 
+extern "C" int4 FORTRAN(pjlaenv)(int4* ictxt, int4* ispec, const char* name, const char* opts, int4* n1, int4* n2, 
+                                 int4* n3, int4* n4, int4 name_len, int4 opts_len);
+
+extern "C" int4 FORTRAN(iceil)(int4* inum, int4* idenom);
+
 #endif // __LINALG_CPU_H__
 
