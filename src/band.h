@@ -916,21 +916,20 @@ class Band
                          apwlo_basis_descriptors_col, apwlo_basis_size_col, num_gkvec_col,
                          apw_offset_col, gkvec, matching_coefficients, effective_potential, h);
 
-            Timer *t1 = new Timer("sirius::Band::solve_fv:gevp");
-
-            generalized_eigenproblem<eigen_value_solver>(apwlo_basis_size, 
-                                                         num_ranks_row(), 
-                                                         num_ranks_col(), 
-                                                         blacs_context_, 
-                                                         parameters_.num_fv_states(), 
-                                                         -1.0, 
-                                                         h.get_ptr(), 
-                                                         h.ld(), 
-                                                         o.get_ptr(), 
-                                                         o.ld(), 
-                                                         &fv_eigen_values[0], 
-                                                         fv_eigen_vectors.get_ptr(),
-                                                         fv_eigen_vectors.ld());
+            Timer *t1 = new Timer("sirius::Band::solve_fv:genevp");
+            eigenproblem<eigen_value_solver>::generalized(apwlo_basis_size, 
+                                                          num_ranks_row(), 
+                                                          num_ranks_col(), 
+                                                          blacs_context_, 
+                                                          parameters_.num_fv_states(), 
+                                                          -1.0, 
+                                                          h.get_ptr(), 
+                                                          h.ld(), 
+                                                          o.get_ptr(), 
+                                                          o.ld(), 
+                                                          &fv_eigen_values[0], 
+                                                          fv_eigen_vectors.get_ptr(),
+                                                          fv_eigen_vectors.ld());
             delete t1;
         }
 
@@ -972,7 +971,7 @@ class Band
 
             if (parameters_.so_correction()) apply_so_correction(fv_states_col, hpsi);
 
-            Timer t1("sirius::Band::solve_sv:sevp", false);
+            Timer t1("sirius::Band::solve_sv:stdevp", false);
             
             if (parameters.num_mag_dims() == 1)
             {
@@ -994,15 +993,16 @@ class Band
                     }
                 
                     t1.start();
-                    standard_eigenproblem<eigen_value_solver>(parameters_.num_fv_states(), 
-                                                              num_ranks_row(), 
-                                                              num_ranks_col(), 
-                                                              blacs_context_, 
-                                                              h.get_ptr(), 
-                                                              h.ld(),
-                                                              &band_energies[ispn * parameters_.num_fv_states()],
-                                                              &sv_eigen_vectors(0, ispn * spl_fv_states_col_.local_size()),
-                                                              sv_eigen_vectors.ld());
+                    int num_fv_states_col = spl_fv_states_col_.local_size();
+                    eigenproblem<eigen_value_solver>::standard(parameters_.num_fv_states(), 
+                                                               num_ranks_row(), 
+                                                               num_ranks_col(), 
+                                                               blacs_context_, 
+                                                               h.get_ptr(), 
+                                                               h.ld(),
+                                                               &band_energies[ispn * parameters_.num_fv_states()],
+                                                               &sv_eigen_vectors(0, ispn * num_fv_states_col),
+                                                               sv_eigen_vectors.ld());
                     t1.stop();
                 }
             }
@@ -1049,15 +1049,15 @@ class Band
                 }
             
                 t1.start();
-                standard_eigenproblem<eigen_value_solver>(parameters_.num_bands(), 
-                                                          num_ranks_row(), 
-                                                          num_ranks_col(), 
-                                                          blacs_context_, 
-                                                          h.get_ptr(), 
-                                                          h.ld(),
-                                                          &band_energies[0], 
-                                                          sv_eigen_vectors.get_ptr(),
-                                                          sv_eigen_vectors.ld());
+                eigenproblem<eigen_value_solver>::standard(parameters_.num_bands(), 
+                                                           num_ranks_row(), 
+                                                           num_ranks_col(), 
+                                                           blacs_context_, 
+                                                           h.get_ptr(), 
+                                                           h.ld(),
+                                                           &band_energies[0], 
+                                                           sv_eigen_vectors.get_ptr(),
+                                                           sv_eigen_vectors.ld());
                 t1.stop();
             }
         }

@@ -13,7 +13,7 @@ const bool full_relativistic_core = false;
 
 const int scalapack_nb = 2;
 
-const eigen_value_solver_t eigen_value_solver = scalapack;
+const linalg_t eigen_value_solver = scalapack;
 
 const int debug_level = 0;
 

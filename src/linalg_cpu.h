@@ -29,9 +29,8 @@ extern "C" void FORTRAN(zhegvx)(int4* itype, const char* jobz, const char* range
                                 int4* ldz, complex16* work, int4* lwork, real8* rwork, int4* iwork, int4* ifail, 
                                 int4* info, int4 jobzlen, int4 rangelen, int4 uplolen);
 
-extern "C" int32_t FORTRAN(ilaenv)(int32_t *ispec, const char *name, const char *opts, int32_t *n1,
-                                   int32_t *n2, int32_t *n3, int32_t *n4, int32_t namelen, 
-                                   int32_t optslen);
+extern "C" int4 FORTRAN(ilaenv)(int4* ispec, const char* name, const char* opts, int4* n1, int4* n2, int4* n3, 
+                                int4* n4, int4 namelen, int4 optslen);
 
 extern "C" void FORTRAN(zheev)(const char* jobz, const char* uplo, int4* n, complex16* a,
                                int4* lda, real8* w, complex16* work, int4* lwork, real8* rwork,
@@ -86,7 +85,7 @@ extern "C" void FORTRAN(pzheevd)(const char* jobz, const char* uplo, int4* n, co
 extern "C" int4 FORTRAN(numroc)(int4* n, int4* nb, int4* iproc, int4* isrcproc, int4* nprocs);
 
 extern "C" int4 FORTRAN(pjlaenv)(int4* ictxt, int4* ispec, const char* name, const char* opts, int4* n1, int4* n2, 
-                                 int4* n3, int4* n4, int4 name_len, int4 opts_len);
+                                 int4* n3, int4* n4, int4 namelen, int4 optslen);
 
 extern "C" int4 FORTRAN(iceil)(int4* inum, int4* idenom);
 

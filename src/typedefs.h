@@ -17,13 +17,11 @@ enum coordinates_t {cartesian, fractional};
 
 enum mpi_op_t {op_sum, op_max};
 
-enum eigen_value_solver_t {lapack, scalapack, magma};
+enum linalg_t {lapack, scalapack, scalapack_elpa, magma};
 
 enum splindex_t {block, block_cyclic};
 
-/*! 
-    \brief Wrapper for primitive data types
-*/
+/// Wrapper for primitive data types
 template <typename T> class primitive_type_wrapper;
 
 template<> class primitive_type_wrapper<double>
