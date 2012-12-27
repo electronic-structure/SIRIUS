@@ -1,0 +1,10 @@
+{
+    "CC"          : "mpicc",
+    "CXX"         : "mpic++",
+    "CXX_OPT"     : "-O3 -Wall -Wconversion -fopenmp -DNDEBUG -g",
+    "FC"          : "mpif90",
+    "FCCPP"       : "cpp-mp-4.7",
+    "SYSTEM_LIBS" : "~/src/LAPACK/scalapack-2.0.2/libscalapack.a ~/src/LAPACK/lapack-3.4.2/liblapack.a ~/src/LAPACK/lapack-3.4.2/librefblas.a -L/opt/local/lib -lfftw3 -lhdf5 -lgfortran"
+}
+
+

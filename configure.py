@@ -3,19 +3,7 @@ import os
 import urllib2
 import tarfile
 import subprocess
-
-# === platform specific options === 
-
-CC = "mpiicc"
-CXX = "mpiicc"
-FC = "mpiifort"
-FCCPP = "cpp-mp-4.7"
-
-CXX_OPT = "-O3 -Wall -Wconversion -fopenmp -DNDEBUG -g"
-
-SYSTEM_LIBS = "-llapack -lblas -L/opt/local/lib -lfftw3 -lhdf5"
-
-# === end of platform specific options; don't edit after this line ===
+import json
 
 packages = {
     "fftw" : ["http://www.fftw.org/fftw-3.3.2.tar.gz", 
@@ -36,8 +24,7 @@ packages = {
              ]
 }
 
-
-def configure_package(package_name):
+def configure_package(package_name, platform):
 
     package = packages[package_name]
    
@@ -69,10 +56,10 @@ def configure_package(package_name):
     tf.extractall("./libs/")
 
     new_env = os.environ.copy()
-    new_env["CC"] = CC
-    new_env["CXX"] = CXX
-    new_env["FC"] = FC
-    new_env["FCCPP"] = FCCPP
+    new_env["CC"] = platform["CC"]
+    new_env["CXX"] = platform["CXX"]
+    new_env["FC"] = platform["FC"]
+    new_env["FCCPP"] = platform["FCCPP"]
     p = subprocess.Popen(["./configure"] + package[1], cwd="./libs/"+package_dir, env=new_env)
     p.wait()
 
@@ -127,15 +114,20 @@ def main():
 #        print "Example: python configure.py fftw gsl hdf5 xc spg"
 #        print "         will download and configure all the necessary packages"
 #        sys.exit(0)
+    
+    fin = open("platform.json", "r");
+    platform = json.load(fin)
+    fin.close()
+
     makeinc = open("make.inc", "w")
-    makeinc.write("CXX = " + CXX + "\n")
-    makeinc.write("CXX_OPT = " + CXX_OPT + "\n")
-    makeinc.write("LIBS := " + SYSTEM_LIBS + "\n")
+    makeinc.write("CXX = " + platform["CXX"] + "\n")
+    makeinc.write("CXX_OPT = " + platform["CXX_OPT"] + "\n")
+    makeinc.write("LIBS := " + platform["SYSTEM_LIBS"] + "\n")
 
     make_packages = []
     clean_packages = []
     for i in range(len(sys.argv) - 1):
-        opts = configure_package(sys.argv[i + 1])
+        opts = configure_package(sys.argv[i + 1], platform)
         makeinc.write("CXX_OPT := $(CXX_OPT) " + opts[0] + "\n")
         makeinc.write("LIBS := $(LIBS) " + opts[1] + "\n")
         make_packages.append(opts[2])
