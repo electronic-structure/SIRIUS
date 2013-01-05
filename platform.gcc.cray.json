@@ -1,0 +1,10 @@
+{
+    "CC"          : "cc",
+    "CXX"         : "CC",
+    "CXX_OPT"     : "-O3 -Wall -Wconversion -fopenmp -DNDEBUG -g",
+    "FC"          : "ftn",
+    "FCCPP"       : "cpp",
+    "SYSTEM_LIBS" : ""
+}
+
+

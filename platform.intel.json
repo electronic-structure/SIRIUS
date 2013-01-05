@@ -1,0 +1,10 @@
+{
+    "CC"          : "mpiicc",
+    "CXX"         : "mpiicc",
+    "CXX_OPT"     : "-O3 -openmp -DNDEBUG -g",
+    "FC"          : "mpiifort",
+    "FCCPP"       : "cpp",
+    "SYSTEM_LIBS" : "-llapack -lblas -L/opt/local/lib -lfftw3 -lhdf5"
+}
+
+

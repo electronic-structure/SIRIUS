@@ -83,12 +83,34 @@ def launch_task(irun, inp, conf):
     for i in range(len(conf["mpi_grid"])): np = np * conf["mpi_grid"][i]
 
     # simple execution
-    new_env = copy.deepcopy(os.environ)
-    new_env["OMP_NUM_THREADS"] = str(conf["num_threads"])
-    fstdout = open(path + "/output.txt", "w");
-    p = subprocess.Popen(["mpirun", "-np", str(np), "../elk"], cwd=path, env=new_env, stdout=fstdout)
+    #new_env = copy.deepcopy(os.environ)
+    #new_env["OMP_NUM_THREADS"] = str(conf["num_threads"])
+    #fstdout = open(path + "/output.txt", "w");
+    #p = subprocess.Popen(["mpirun", "-np", str(np), "../elk"], cwd=path, env=new_env, stdout=fstdout)
+    #p.wait()
+    #fstdout.close()
+
+    # batch job
+    fout = open(path + "/batch_job.slrm", "w")
+    fout.write("#!/bin/bash\n")
+    fout.write("#SBATCH --time=00:05:00\n")
+    fout.write("#SBATCH --ntasks=" + str(np) + "\n")
+    fout.write("#SBATCH --ntasks-per-node=1\n")
+    fout.write("#SBATCH --cpus-per-task=" + str(conf["num_threads"]) + "\n")
+    fout.write("#SBATCH --job-name=test-sirius\n")
+    fout.write("#SBATCH --output=output-%j.txt\n")
+    fout.write("#SBATCH --error=output-%j.txt\n")
+    fout.write("#SBATCH --account=s299\n")
+    fout.write("export NCPUS=" + str(conf["num_threads"]) + "\n")
+    fout.write("export GOTO_NUM_THREADS=" + str(conf["num_threads"]) + "\n")
+    fout.write("export OMP_NUM_THREADS=" + str(conf["num_threads"]) + "\n")
+    fout.write("date\n")
+    fout.write("aprun -n " + str(np) + " -N 1 -d " + str(conf["num_threads"]) + " ../elk\n")
+    fout.write("date\n")
+    fout.close()
+    p = subprocess.Popen(["sbatch", "batch_job.slrm"], cwd=path)
     p.wait()
-    fstdout.close()
+
 
 def main():
     
