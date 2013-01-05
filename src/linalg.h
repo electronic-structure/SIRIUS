@@ -218,7 +218,7 @@ template<> struct eigenproblem<lapack>
         return work_sizes;
     }
     
-    static int standard(int4 matrix_size, int4 num_ranks_row, int4 num_ranks_col, int blacs_context,
+    static int standard(int4 matrix_size, int4 nb, int4 num_ranks_row, int4 num_ranks_col, int blacs_context,
                         complex16* a, int4 lda, real8* eval, complex16* z, int4 ldz)
     {
         std::vector<int4> work_sizes = get_work_sizes(0, matrix_size);
@@ -245,10 +245,12 @@ template<> struct eigenproblem<lapack>
 
     }
 
-    static int generalized(int4 matrix_size, int4 num_ranks_row, int4 num_ranks_col, int blacs_context, 
+    static int generalized(int4 matrix_size, int4 nb, int4 num_ranks_row, int4 num_ranks_col, int blacs_context, 
                            int4 nv, real8 abstol, complex16* a, int4 lda, complex16* b, int4 ldb, real8* eval, 
                            complex16* z, int4 ldz)
     {
+        assert(nv <= matrix_size);
+
         std::vector<int4> work_sizes = get_work_sizes(1, matrix_size);
         
         std::vector<complex16> work(work_sizes[0]);
@@ -283,20 +285,20 @@ template<> struct eigenproblem<lapack>
 
 template<> struct eigenproblem<scalapack>
 {
-    static std::vector<int4> get_work_sizes(int id, int4 matrix_size, int4 nprow, int4 npcol, int blacs_context)
+    static std::vector<int4> get_work_sizes(int id, int4 matrix_size, int4 nb, int4 nprow, int4 npcol, int blacs_context)
     {
         std::vector<int4> work_sizes(3);
         
-        int4 nn = std::max(matrix_size, std::max(scalapack_nb, 2));
+        int4 nn = std::max(matrix_size, std::max(nb, 2));
         
         switch (id)
         {
             case 0: // pzheevd
             {
-                int4 np0 = linalg<scalapack>::numroc(nn, scalapack_nb, 0, 0, nprow);
-                int4 mq0 = linalg<scalapack>::numroc(nn, scalapack_nb, 0, 0, npcol);
+                int4 np0 = linalg<scalapack>::numroc(nn, nb, 0, 0, nprow);
+                int4 mq0 = linalg<scalapack>::numroc(nn, nb, 0, 0, npcol);
 
-                work_sizes[0] = matrix_size + (np0 + mq0 + scalapack_nb) * scalapack_nb;
+                work_sizes[0] = matrix_size + (np0 + mq0 + nb) * nb;
 
                 work_sizes[1] = 1 + 9 * matrix_size + 3 * np0 * mq0;
 
@@ -308,22 +310,22 @@ template<> struct eigenproblem<scalapack>
             {
                 int4 neig = 10;
 
-                int4 nmax3 = std::max(neig, std::max(scalapack_nb, 2));
+                int4 nmax3 = std::max(neig, std::max(nb, 2));
                 
                 int4 np = nprow * npcol;
 
                 // due to the mess in the documentation, take the maximum of np0, nq0, mq0
-                int4 nmpq0 = std::max(linalg<scalapack>::numroc(nn, scalapack_nb, 0, 0, nprow), 
-                                      std::max(linalg<scalapack>::numroc(nn, scalapack_nb, 0, 0, npcol),
-                                               linalg<scalapack>::numroc(nmax3, scalapack_nb, 0, 0, npcol))); 
+                int4 nmpq0 = std::max(linalg<scalapack>::numroc(nn, nb, 0, 0, nprow), 
+                                      std::max(linalg<scalapack>::numroc(nn, nb, 0, 0, npcol),
+                                               linalg<scalapack>::numroc(nmax3, nb, 0, 0, npcol))); 
 
                 int4 anb = linalg<scalapack>::pjlaenv(blacs_context, 3, "PZHETTRD", "L", 0, 0, 0, 0);
                 int4 sqnpc = (int4)pow(real8(np), 0.5);
                 int4 nps = std::max(linalg<scalapack>::numroc(nn, 1, 0, 0, sqnpc), 2 * anb);
 
-                work_sizes[0] = matrix_size + (2 * nmpq0 + scalapack_nb) * scalapack_nb;
+                work_sizes[0] = matrix_size + (2 * nmpq0 + nb) * nb;
                 work_sizes[0] = std::max(work_sizes[0], matrix_size + 2 * (anb + 1) * (4 * nps + 2) + (nps + 1) * nps);
-                work_sizes[0] = std::max(work_sizes[0], 3 * nmpq0 * scalapack_nb + scalapack_nb * scalapack_nb);
+                work_sizes[0] = std::max(work_sizes[0], 3 * nmpq0 * nb + nb * nb);
 
                 work_sizes[1] = 4 * matrix_size + std::max(5 * matrix_size, nmpq0 * nmpq0) + 
                                 linalg<scalapack>::iceil(neig, np) * nn + neig * matrix_size;
@@ -340,18 +342,16 @@ template<> struct eigenproblem<scalapack>
         return work_sizes;
     }
 
-    static int standard(int4 matrix_size, int4 num_ranks_row, int4 num_ranks_col, int blacs_context, 
+    static int standard(int4 matrix_size, int4 nb, int4 num_ranks_row, int4 num_ranks_col, int blacs_context, 
                         complex16* a, int4 lda, real8* eval, complex16* z, int4 ldz)
     {                
         int desca[9];
-        linalg<scalapack>::descinit(desca, matrix_size, matrix_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, 
-                                    lda);
+        linalg<scalapack>::descinit(desca, matrix_size, matrix_size, nb, nb, 0, 0, blacs_context, lda);
         
         int descz[9];
-        linalg<scalapack>::descinit(descz, matrix_size, matrix_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, 
-                                    ldz);
+        linalg<scalapack>::descinit(descz, matrix_size, matrix_size, nb, nb, 0, 0, blacs_context, ldz);
         
-        std::vector<int4> work_sizes = get_work_sizes(0, matrix_size, num_ranks_row, num_ranks_col, blacs_context);
+        std::vector<int4> work_sizes = get_work_sizes(0, matrix_size, nb, num_ranks_row, num_ranks_col, blacs_context);
         
         std::vector<complex16> work(work_sizes[0]);
         std::vector<real8> rwork(work_sizes[1]);
@@ -372,23 +372,22 @@ template<> struct eigenproblem<scalapack>
         return info;
     }
 
-    static int generalized(int4 matrix_size, int num_ranks_row, int num_ranks_col, int blacs_context, 
+    static int generalized(int4 matrix_size, int4 nb, int num_ranks_row, int num_ranks_col, int blacs_context, 
                            int4 nv, real8 abstol, complex16* a, int4 lda, complex16* b, int4 ldb, real8* eval, 
                            complex16* z, int4 ldz)
     {
+        assert(nv <= matrix_size);
+        
         int4 desca[9];
-        linalg<scalapack>::descinit(desca, matrix_size, matrix_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, 
-                                    lda);
+        linalg<scalapack>::descinit(desca, matrix_size, matrix_size, nb, nb, 0, 0, blacs_context, lda);
 
         int4 descb[9];
-        linalg<scalapack>::descinit(descb, matrix_size, matrix_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, 
-                                    ldb); 
+        linalg<scalapack>::descinit(descb, matrix_size, matrix_size, nb, nb, 0, 0, blacs_context, ldb); 
 
         int4 descz[9];
-        linalg<scalapack>::descinit(descz, matrix_size, matrix_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, 
-                                    ldz); 
+        linalg<scalapack>::descinit(descz, matrix_size, matrix_size, nb, nb, 0, 0, blacs_context, ldz); 
 
-        std::vector<int4> work_sizes = get_work_sizes(0, matrix_size, num_ranks_row, num_ranks_col, blacs_context);
+        std::vector<int4> work_sizes = get_work_sizes(0, matrix_size, nb, num_ranks_row, num_ranks_col, blacs_context);
         
         std::vector<complex16> work(work_sizes[0]);
         std::vector<real8> rwork(work_sizes[1]);

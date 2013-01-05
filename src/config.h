@@ -11,8 +11,6 @@ const bool check_pseudo_charge = false;
 
 const bool full_relativistic_core = false;
 
-const int scalapack_nb = 2;
-
 const linalg_t eigen_value_solver = scalapack;
 
 const int debug_level = 0;

@@ -60,6 +60,8 @@ class Global : public StepFunction
         /// MPI grid
         MPIGrid mpi_grid_;
 
+        int cyclic_block_size_; 
+
         /// read from the input file if it exists
         void read_input()
         {
@@ -69,6 +71,7 @@ class Global : public StepFunction
             {
                 JsonTree parser(fname);
                 parser["mpi_grid_dims"] >> mpi_grid_dims_; 
+                parser["cyclic_block_size"] >> cyclic_block_size_;
             }
         }
 
@@ -82,7 +85,8 @@ class Global : public StepFunction
                    num_spins_(1),
                    num_mag_dims_(0),
                    so_correction_(false),
-                   uj_correction_(false)
+                   uj_correction_(false),
+                   cyclic_block_size_(16)
         {
         }
             
@@ -225,6 +229,11 @@ class Global : public StepFunction
             return mpi_grid_;
         }
 
+        inline int cyclic_block_size()
+        {
+            return cyclic_block_size_;
+        }
+
         inline bool initialized()
         {
             return initialized_;
@@ -255,9 +264,9 @@ class Global : public StepFunction
             {
                 int ncol = mpi_grid_.dimension_size(2);
 
-                int n = num_fv_states_ / (ncol * scalapack_nb);
+                int n = num_fv_states_ / (ncol * cyclic_block_size_);
                 
-                num_fv_states_ = (n + 1) * ncol * scalapack_nb;
+                num_fv_states_ = (n + 1) * ncol * cyclic_block_size_;
             }
 
             num_bands_ = num_fv_states_ * num_spins_;

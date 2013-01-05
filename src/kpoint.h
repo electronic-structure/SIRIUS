@@ -426,13 +426,15 @@ class kpoint
         void distribute_block_cyclic(Band* band)
         {
             // distribute APW+lo basis between rows
-            splindex<block_cyclic, scalapack_nb> spl_row(apwlo_basis_size(), band->num_ranks_row(), band->rank_row());
+            splindex<block_cyclic> spl_row(apwlo_basis_size(), band->num_ranks_row(), band->rank_row(), 
+                                           parameters_.cyclic_block_size());
             apwlo_basis_descriptors_row_.resize(spl_row.local_size());
             for (int i = 0; i < spl_row.local_size(); i++)
                 apwlo_basis_descriptors_row_[i] = apwlo_basis_descriptors_[spl_row[i]];
 
             // distribute APW+lo basis between columns
-            splindex<block_cyclic, scalapack_nb> spl_col(apwlo_basis_size(), band->num_ranks_col(), band->rank_col());
+            splindex<block_cyclic> spl_col(apwlo_basis_size(), band->num_ranks_col(), band->rank_col(), 
+                                           parameters_.cyclic_block_size());
             apwlo_basis_descriptors_col_.resize(spl_col.local_size());
             for (int i = 0; i < spl_col.local_size(); i++)
                 apwlo_basis_descriptors_col_[i] = apwlo_basis_descriptors_[spl_col[i]];

@@ -61,11 +61,11 @@ class Band
         mdarray<std::vector< std::pair<int, complex16> >, 2> complex_gaunt_packed_;
        
         /// Block-cyclic distribution of the first-variational states along columns of the MPI grid
-        splindex<block_cyclic, scalapack_nb> spl_fv_states_col_;
+        splindex<block_cyclic> spl_fv_states_col_;
         
-        splindex<block_cyclic, scalapack_nb> spl_fv_states_row_;
+        splindex<block_cyclic> spl_fv_states_row_;
         
-        splindex<block_cyclic, scalapack_nb> spl_spinor_wf_col_;
+        splindex<block_cyclic> spl_spinor_wf_col_;
         
         splindex<block> sub_spl_spinor_wf_;
         
@@ -759,23 +759,26 @@ class Band
             }
             
             // distribue first-variational states
-            spl_fv_states_col_.split(parameters_.num_fv_states(), num_ranks_col_, rank_col_);
+            spl_fv_states_col_.split(parameters_.num_fv_states(), num_ranks_col_, rank_col_, 
+                                     parameters_.cyclic_block_size());
            
-            spl_spinor_wf_col_.split(parameters_.num_bands(), num_ranks_col_, rank_col_);
+            spl_spinor_wf_col_.split(parameters_.num_bands(), num_ranks_col_, rank_col_, 
+                                     parameters_.cyclic_block_size());
             
             // split along rows 
             sub_spl_spinor_wf_.split(spl_spinor_wf_col_.local_size(), num_ranks_row_, rank_row_);
             
             if (parameters_.num_mag_dims() != 3)
             {
-                spl_fv_states_row_.split(parameters_.num_fv_states(), num_ranks_row_, rank_row_);
+                spl_fv_states_row_.split(parameters_.num_fv_states(), num_ranks_row_, rank_row_,
+                                         parameters_.cyclic_block_size());
                 
                 num_fv_states_row_up_ = num_fv_states_row_dn_ = spl_fv_states_row_.local_size();
             }
             else
             {
                 spl_fv_states_row_.split(parameters_.num_fv_states() * parameters_.num_spins(), num_ranks_row_, 
-                                         rank_row_);
+                                         rank_row_, parameters_.cyclic_block_size());
 
                 num_fv_states_row_up_ = 0;
                 num_fv_states_row_dn_ = 0;
@@ -918,6 +921,7 @@ class Band
 
             Timer *t1 = new Timer("sirius::Band::solve_fv:genevp");
             eigenproblem<eigen_value_solver>::generalized(apwlo_basis_size, 
+                                                          parameters_.cyclic_block_size(),
                                                           num_ranks_row(), 
                                                           num_ranks_col(), 
                                                           blacs_context_, 
@@ -995,6 +999,7 @@ class Band
                     t1.start();
                     int num_fv_states_col = spl_fv_states_col_.local_size();
                     eigenproblem<eigen_value_solver>::standard(parameters_.num_fv_states(), 
+                                                               parameters_.cyclic_block_size(),
                                                                num_ranks_row(), 
                                                                num_ranks_col(), 
                                                                blacs_context_, 
@@ -1050,6 +1055,7 @@ class Band
             
                 t1.start();
                 eigenproblem<eigen_value_solver>::standard(parameters_.num_bands(), 
+                                                           parameters_.cyclic_block_size(),
                                                            num_ranks_row(), 
                                                            num_ranks_col(), 
                                                            blacs_context_, 
@@ -1062,17 +1068,17 @@ class Band
             }
         }
         
-        inline splindex<block_cyclic, scalapack_nb>& spl_fv_states_col()
+        inline splindex<block_cyclic>& spl_fv_states_col()
         {
             return spl_fv_states_col_;
         }
         
-        inline splindex<block_cyclic, scalapack_nb>& spl_fv_states_row()
+        inline splindex<block_cyclic>& spl_fv_states_row()
         {
             return spl_fv_states_row_;
         }
         
-        inline splindex<block_cyclic, scalapack_nb>& spl_spinor_wf_col()
+        inline splindex<block_cyclic>& spl_spinor_wf_col()
         {
             return spl_spinor_wf_col_;
         }
