@@ -111,6 +111,22 @@ class Utils
         
             fclose(fout);
         }
+
+        static void check_hermitian(const std::string& name, mdarray<complex16, 2>& mtrx)
+        {
+            assert(mtrx.size(0) == mtrx.size(1));
+
+            for (int i = 0; i < mtrx.size(0); i++)
+                for (int j = 0; j < mtrx.size(1); j++)
+                    if (abs(mtrx(i, j) - conj(mtrx(j, i))) > 1e-10)
+                    {
+                        std::stringstream s;
+                        s << name << " is not a hermitian matrix" << std::endl
+                          << "  i, j : " << i << " " << j << " diff : " << abs(mtrx(i, j) - conj(mtrx(j, i)));
+                   
+                        error(__FILE__, __LINE__, s, fatal_err);
+                    }
+        }
         
         static inline std::vector<int> intvec(int i0)
         {

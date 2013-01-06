@@ -14,14 +14,17 @@ def create_input_file(kwargs):
               "%f %f %f\n"%(kwargs["avec"][1][0], kwargs["avec"][1][1], kwargs["avec"][1][2]) +  \
               "%f %f %f\n"%(kwargs["avec"][2][0], kwargs["avec"][2][1], kwargs["avec"][2][2]) + "\n" 
 
-    elk_in += "scale\n" + "%f\n"%kwargs["scale"] + "\n"
+    if "scale" in kwargs:
+        elk_in += "scale\n" + "%f\n"%kwargs["scale"] + "\n"
 
-    elk_in += "nempty\n" + "%i\n"%kwargs["nempty"] + "\n"
+    if "nempty" in kwargs:
+        elk_in += "nempty\n" + "%i\n"%kwargs["nempty"] + "\n"
     
-    if kwargs["spinpol"] == 0:
-        elk_in += "spinpol\n.false.\n\n"
-    else:
-        elk_in += "spinpol\n.true.\n\n"
+    if "spinpol" in kwargs:
+        if kwargs["spinpol"] == 0:
+            elk_in += "spinpol\n.false.\n\n"
+        else:
+            elk_in += "spinpol\n.true.\n\n"
 
     elk_in += "atoms\n" + "%i\n"%len(kwargs["atoms"])
     
@@ -75,7 +78,8 @@ def launch_task(irun, inp, conf):
 
     fout = open(path + "/sirius.json", "w")
     fout.write("{\n")
-    fout.write("    \"mpi_grid_dims\": " + str(conf["mpi_grid"]) + "\n")
+    fout.write("    \"mpi_grid_dims\": " + str(conf["mpi_grid"]) + ",\n")
+    fout.write("    \"cyclic_block_size\" : " + str(conf["cyclic_block_size"]) + "\n")
     fout.write("}\n")
     fout.close()
 
@@ -83,33 +87,33 @@ def launch_task(irun, inp, conf):
     for i in range(len(conf["mpi_grid"])): np = np * conf["mpi_grid"][i]
 
     # simple execution
-    #new_env = copy.deepcopy(os.environ)
-    #new_env["OMP_NUM_THREADS"] = str(conf["num_threads"])
-    #fstdout = open(path + "/output.txt", "w");
-    #p = subprocess.Popen(["mpirun", "-np", str(np), "../elk"], cwd=path, env=new_env, stdout=fstdout)
-    #p.wait()
-    #fstdout.close()
+    new_env = copy.deepcopy(os.environ)
+    new_env["OMP_NUM_THREADS"] = str(conf["num_threads"])
+    fstdout = open(path + "/output.txt", "w");
+    p = subprocess.Popen(["mpirun", "-np", str(np), "../elk"], cwd=path, env=new_env, stdout=fstdout)
+    p.wait()
+    fstdout.close()
 
     # batch job
-    fout = open(path + "/batch_job.slrm", "w")
-    fout.write("#!/bin/bash\n")
-    fout.write("#SBATCH --time=00:05:00\n")
-    fout.write("#SBATCH --ntasks=" + str(np) + "\n")
-    fout.write("#SBATCH --ntasks-per-node=1\n")
-    fout.write("#SBATCH --cpus-per-task=" + str(conf["num_threads"]) + "\n")
-    fout.write("#SBATCH --job-name=test-sirius\n")
-    fout.write("#SBATCH --output=output-%j.txt\n")
-    fout.write("#SBATCH --error=output-%j.txt\n")
-    fout.write("#SBATCH --account=s299\n")
-    fout.write("export NCPUS=" + str(conf["num_threads"]) + "\n")
-    fout.write("export GOTO_NUM_THREADS=" + str(conf["num_threads"]) + "\n")
-    fout.write("export OMP_NUM_THREADS=" + str(conf["num_threads"]) + "\n")
-    fout.write("date\n")
-    fout.write("aprun -n " + str(np) + " -N 1 -d " + str(conf["num_threads"]) + " ../elk\n")
-    fout.write("date\n")
-    fout.close()
-    p = subprocess.Popen(["sbatch", "batch_job.slrm"], cwd=path)
-    p.wait()
+    #fout = open(path + "/batch_job.slrm", "w")
+    #fout.write("#!/bin/bash\n")
+    #fout.write("#SBATCH --time=00:05:00\n")
+    #fout.write("#SBATCH --ntasks=" + str(np) + "\n")
+    #fout.write("#SBATCH --ntasks-per-node=1\n")
+    #fout.write("#SBATCH --cpus-per-task=" + str(conf["num_threads"]) + "\n")
+    #fout.write("#SBATCH --job-name=test-sirius\n")
+    #fout.write("#SBATCH --output=output-%j.txt\n")
+    #fout.write("#SBATCH --error=output-%j.txt\n")
+    #fout.write("#SBATCH --account=s299\n")
+    #fout.write("export NCPUS=" + str(conf["num_threads"]) + "\n")
+    #fout.write("export GOTO_NUM_THREADS=" + str(conf["num_threads"]) + "\n")
+    #fout.write("export OMP_NUM_THREADS=" + str(conf["num_threads"]) + "\n")
+    #fout.write("date\n")
+    #fout.write("aprun -n " + str(np) + " -N 1 -d " + str(conf["num_threads"]) + " ../elk\n")
+    #fout.write("date\n")
+    #fout.close()
+    #p = subprocess.Popen(["sbatch", "batch_job.slrm"], cwd=path)
+    #p.wait()
 
 
 def main():

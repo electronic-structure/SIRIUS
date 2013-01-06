@@ -41,6 +41,7 @@ namespace sirius
 */
 struct apwlo_basis_descriptor
 {
+    int idxglob;
     int igk;
     int ig;
     int ia;
@@ -321,7 +322,7 @@ class Band
             }
             delete t1;
 
-            if ((debug_level > 0) && (eigen_value_solver != scalapack))
+            /*if ((debug_level > 0) && (eigen_value_solver != scalapack))
             {
                 // check hermiticity
                 if (apwlo_basis_descriptors_row[0].igk == apwlo_basis_descriptors_col[0].igk)
@@ -338,7 +339,7 @@ class Band
                                 warning(__FILE__, __LINE__, s, 0);
                             }
                 }
-            }
+            }*/
         }
         
         /// Setup the overlap matrix in the APW+lo basis
@@ -380,7 +381,7 @@ class Band
                       const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_col,
                       const int                                  apwlo_basis_size_col,
                       const int                                  num_gkvec_col,
-                      const int                                  apw_col_offset,
+                      const int                                  apw_offset_col,
                       mdarray<complex16, 2>&                     apw, 
                       mdarray<complex16, 2>&                     o)
         {
@@ -388,7 +389,7 @@ class Band
             
             // compute APW-APW block
             gemm<cpu>(0, 2, num_gkvec_row, num_gkvec_col, parameters_.mt_aw_basis_size(), complex16(1, 0), 
-                      &apw(0, 0), apw.ld(), &apw(apw_col_offset, 0), apw.ld(), complex16(0, 0), &o(0, 0), o.ld()); 
+                      &apw(0, 0), apw.ld(), &apw(apw_offset_col, 0), apw.ld(), complex16(0, 0), &o(0, 0), o.ld()); 
 
             // TODO: multithread 
 
@@ -423,7 +424,8 @@ class Band
                 for (int order1 = 0; order1 < (int)type->aw_descriptor(l).size(); order1++)
                     for (int igkloc = 0; igkloc < num_gkvec_col; igkloc++)
                         o(irow, igkloc) += atom->symmetry_class()->o_radial_integral(l, order, order1) * 
-                                           conj(apw(igkloc, atom->offset_aw() + type->indexb_by_lm_order(lm, order1)));
+                                           conj(apw(apw_offset_col + igkloc, atom->offset_aw() + 
+                                                                             type->indexb_by_lm_order(lm, order1)));
             }
 
             // lo-lo block
@@ -918,6 +920,46 @@ class Band
             set_fv_h<nm>(apwlo_basis_descriptors_row, apwlo_basis_size_row, num_gkvec_row,
                          apwlo_basis_descriptors_col, apwlo_basis_size_col, num_gkvec_col,
                          apw_offset_col, gkvec, matching_coefficients, effective_potential, h);
+
+            if ((debug_level > 0) && (eigen_value_solver == lapack))
+            {
+                Utils::check_hermitian("h", h);
+                Utils::check_hermitian("o", o);
+
+                printf("hash(alm) : %16llX\n", matching_coefficients.hash());
+                
+                printf("hash(h) : %16llX\n", h.hash());
+                printf("hash(o) : %16llX\n", o.hash());
+            }
+
+            if ((debug_level > 2) && (eigen_value_solver == scalapack))
+            {
+                
+                mdarray<complex16, 2> h_glob(apwlo_basis_size, apwlo_basis_size);
+                mdarray<complex16, 2> o_glob(apwlo_basis_size, apwlo_basis_size);
+                h_glob.zero();
+                o_glob.zero();
+
+                for (int icol = 0; icol < apwlo_basis_size_col; icol++)
+                {
+                    int j = apwlo_basis_descriptors_col[icol].idxglob;
+                    for (int irow = 0; irow < apwlo_basis_size_row; irow++)
+                    {
+                        int i = apwlo_basis_descriptors_row[irow].idxglob;
+                        h_glob(i, j) = h(irow, icol);
+                        o_glob(i, j) = o(irow, icol);
+                    }
+                }
+                
+                Platform::allreduce(h_glob.get_ptr(), (int)h_glob.size(), 
+                                    parameters_.mpi_grid().communicator(1 << dim_row_ | 1 << dim_col_));
+                
+                Platform::allreduce(o_glob.get_ptr(), (int)o_glob.size(), 
+                                    parameters_.mpi_grid().communicator(1 << dim_row_ | 1 << dim_col_));
+
+                Utils::check_hermitian("h_glob", h_glob);
+                Utils::check_hermitian("o_glob", o_glob);
+            }
 
             Timer *t1 = new Timer("sirius::Band::solve_fv:genevp");
             eigenproblem<eigen_value_solver>::generalized(apwlo_basis_size, 

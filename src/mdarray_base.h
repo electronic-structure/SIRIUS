@@ -151,9 +151,9 @@ template <typename T, int ND> class mdarray_base
             return allocated_;
         }
 
-        unsigned int hash()
+        uint64_t hash()
         {
-            unsigned int h = 5381;
+            uint64_t h = 5381;
 
             for(size_t i = 0; i < size() * sizeof(T); i++)
                 h = ((h << 5) + h) + ((unsigned char*)mdarray_ptr)[i];

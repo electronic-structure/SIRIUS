@@ -13,7 +13,14 @@ const bool full_relativistic_core = false;
 
 const linalg_t eigen_value_solver = scalapack;
 
-const int debug_level = 0;
+/// level of internal debugging and checking
+
+/** debug_level = 0 : nothing to do
+    debug_level > 0 : check symmetry of Hamiltonian radial integrals, check hermiticity of the Hamiltonian matrix
+    debug_level > 1 : check orthonormaliztion of the wave-functions
+    debug_level > 2 : check scalapack vs. lapack diagonalization   
+*/
+const int debug_level = 3;
 
 const int verbosity_level = 0;
 

@@ -389,6 +389,7 @@ class kpoint
                 apwlobd.l = -1;
                 apwlobd.order = -1;
                 apwlobd.idxrf = -1;
+                apwlobd.idxglob = (int)apwlo_basis_descriptors_.size();
                 apwlo_basis_descriptors_.push_back(apwlobd);
             }
 
@@ -413,6 +414,7 @@ class kpoint
                     apwlobd.l = l;
                     apwlobd.order = order;
                     apwlobd.idxrf = idxrf;
+                    apwlobd.idxglob = (int)apwlo_basis_descriptors_.size();
                     apwlo_basis_descriptors_.push_back(apwlobd);
                 }
             }
@@ -775,8 +777,7 @@ class kpoint
                 }
             }
 
-            if (debug_level > 1) 
-                for (int i = 0; i < 3; i++) test_fv_states(band, i);
+            if (debug_level > 1) test_fv_states(band, 0);
 
             sv_eigen_vectors_.set_dimensions(band->spl_fv_states_row().local_size(), 
                                              band->spl_spinor_wf_col().local_size());
