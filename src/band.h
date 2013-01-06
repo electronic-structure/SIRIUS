@@ -321,25 +321,6 @@ class Band
                 }
             }
             delete t1;
-
-            /*if ((debug_level > 0) && (eigen_value_solver != scalapack))
-            {
-                // check hermiticity
-                if (apwlo_basis_descriptors_row[0].igk == apwlo_basis_descriptors_col[0].igk)
-                {
-                    int n = std::min(apwlo_basis_size_col, apwlo_basis_size_row);
-
-                    for (int i = 0; i < n; i++)
-                        for (int j = 0; j < n; j++)
-                            if (abs(h(j, i) - conj(h(i, j))) > 1e-12)
-                            {
-                                std::stringstream s;
-                                s << "Hamiltonian matrix is not hermitian for the following elements : " 
-                                  << i << " " << j << ", difference : " << abs(h(j, i) - conj(h(i, j)));
-                                warning(__FILE__, __LINE__, s, 0);
-                            }
-                }
-            }*/
         }
         
         /// Setup the overlap matrix in the APW+lo basis
@@ -430,7 +411,9 @@ class Band
 
             // lo-lo block
             for (int irow = num_gkvec_row; irow < apwlo_basis_size_row; irow++)
+            {
                 for (int icol = num_gkvec_col; icol < apwlo_basis_size_col; icol++)
+                {
                     if ((apwlo_basis_descriptors_col[icol].ia == apwlo_basis_descriptors_row[irow].ia) &&
                         (apwlo_basis_descriptors_col[icol].lm == apwlo_basis_descriptors_row[irow].lm))
                     {
@@ -441,26 +424,17 @@ class Band
                         int order2 = apwlo_basis_descriptors_col[icol].order; 
                         o(irow, icol) += atom->symmetry_class()->o_radial_integral(l, order1, order2);
                     }
+                }
+            }
                     
             Timer t1("sirius::Band::set_fv_o:it");
             for (int igkloc2 = 0; igkloc2 < num_gkvec_col; igkloc2++) // loop over columns
+            {
                 for (int igkloc1 = 0; igkloc1 < num_gkvec_row; igkloc1++) // for each column loop over rows
                 {
                     int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row[igkloc1].ig,
                                                      apwlo_basis_descriptors_col[igkloc2].ig);
                     o(igkloc1, igkloc2) += parameters_.step_function_pw(ig12);
-                }
-
-            if ((debug_level > 0) && (eigen_value_solver != scalapack))
-            {
-                if (apwlo_basis_descriptors_row[0].igk == apwlo_basis_descriptors_col[0].igk)
-                {
-                    int n = std::min(apwlo_basis_size_col, apwlo_basis_size_row);
-
-                    for (int i = 0; i < n; i++)
-                        for (int j = 0; j < n; j++)
-                            if (abs(o(j, i) - conj(o(i, j))) > 1e-12)
-                                printf("Overlap matrix is not hermitian\n");
                 }
             }
         }
