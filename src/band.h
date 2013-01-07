@@ -775,11 +775,15 @@ class Band
 
             // check if the distribution of fv states is consistent with the distribtion of spinor wave functions
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+            {
                 for (int i = 0; i < spl_fv_states_col_.local_size(); i++)
+                {
                     if (spl_spinor_wf_col_[i + ispn * spl_fv_states_col_.local_size()] != 
                         (spl_fv_states_col_[i] + ispn * parameters_.num_fv_states()))
                         error(__FILE__, __LINE__, "Wrong distribution of wave-functions");
-            
+                }
+            }
+
             if ((verbosity_level > 0) && (Platform::mpi_rank() == 0))
             {
                 printf("\n");
@@ -899,11 +903,9 @@ class Band
             {
                 Utils::check_hermitian("h", h);
                 Utils::check_hermitian("o", o);
-
-                printf("hash(alm) : %16llX\n", matching_coefficients.hash());
-                
-                printf("hash(h) : %16llX\n", h.hash());
-                printf("hash(o) : %16llX\n", o.hash());
+                //printf("hash(alm) : %16llX\n", matching_coefficients.hash());
+                //printf("hash(h) : %16llX\n", h.hash());
+                //printf("hash(o) : %16llX\n", o.hash());
             }
 
             if ((debug_level > 2) && (eigen_value_solver == scalapack))
@@ -933,6 +935,31 @@ class Band
 
                 Utils::check_hermitian("h_glob", h_glob);
                 Utils::check_hermitian("o_glob", o_glob);
+                
+                if (parameters_.mpi_grid().root(1 << dim_row_ | 1 << dim_col_))
+                {
+
+                    mdarray<complex16, 2> fv_eigen_vectors_glob(apwlo_basis_size, parameters_.num_fv_states());
+                    eigenproblem<lapack>::generalized(apwlo_basis_size, 
+                                                      parameters_.cyclic_block_size(),
+                                                      1, 
+                                                      1, 
+                                                      -1, 
+                                                      parameters_.num_fv_states(), 
+                                                      -1.0, 
+                                                      h_glob.get_ptr(), 
+                                                      h_glob.ld(), 
+                                                      o_glob.get_ptr(), 
+                                                      o_glob.ld(), 
+                                                      &fv_eigen_values[0], 
+                                                      fv_eigen_vectors_glob.get_ptr(),
+                                                      fv_eigen_vectors_glob.ld());
+
+                    printf("Eigen-values returned by lapack:\n");
+                    for (int i = 0; i < parameters_.num_fv_states(); i++) printf("%12.6f", fv_eigen_values[i]);
+                    printf("\n");
+                }
+
             }
 
             Timer *t1 = new Timer("sirius::Band::solve_fv:genevp");
@@ -951,6 +978,14 @@ class Band
                                                           fv_eigen_vectors.get_ptr(),
                                                           fv_eigen_vectors.ld());
             delete t1;
+
+            if ((debug_level > 2) && (eigen_value_solver == scalapack) && 
+                parameters_.mpi_grid().root(1 << dim_row_ | 1 << dim_col_))
+            {
+                printf("Eigen-values returned by scalapack:\n");
+                for (int i = 0; i < parameters_.num_fv_states(); i++) printf("%12.6f", fv_eigen_values[i]);
+                printf("\n");
+            }
         }
 
         void solve_sv(Global&                   parameters,

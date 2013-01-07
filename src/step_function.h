@@ -21,7 +21,7 @@ class StepFunction : public ReciprocalLattice
 
         void init()
         {
-            Timer t("sirius::sirius_step_func::init");
+            Timer t("sirius::StepFunction::init");
             
             step_function_pw_.resize(fft().size());
             step_function_.resize(fft().size());
