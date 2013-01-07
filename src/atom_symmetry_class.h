@@ -308,7 +308,7 @@ class AtomSymmetryClass
                 spherical_potential_[ir] = atom_type_->free_atom_potential(ir) - 
                                            (atom_type_->free_atom_potential(nmtp - 1) - veff[nmtp - 1]);
 
-            Platform::bcast(&spherical_potential_[0], nmtp, 0);                               
+            Platform::bcast(&spherical_potential_[0], nmtp, 0);
         }
 
         void generate_radial_functions()

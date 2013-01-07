@@ -908,11 +908,13 @@ class Band
                 //printf("hash(o) : %16llX\n", o.hash());
             }
 
+            std::vector<double> fv_eigen_values_glob(parameters_.num_fv_states());
             if ((debug_level > 2) && (eigen_value_solver == scalapack))
             {
-                
                 mdarray<complex16, 2> h_glob(apwlo_basis_size, apwlo_basis_size);
                 mdarray<complex16, 2> o_glob(apwlo_basis_size, apwlo_basis_size);
+                mdarray<complex16, 2> fv_eigen_vectors_glob(apwlo_basis_size, parameters_.num_fv_states());
+
                 h_glob.zero();
                 o_glob.zero();
 
@@ -936,30 +938,20 @@ class Band
                 Utils::check_hermitian("h_glob", h_glob);
                 Utils::check_hermitian("o_glob", o_glob);
                 
-                if (parameters_.mpi_grid().root(1 << dim_row_ | 1 << dim_col_))
-                {
-
-                    mdarray<complex16, 2> fv_eigen_vectors_glob(apwlo_basis_size, parameters_.num_fv_states());
-                    eigenproblem<lapack>::generalized(apwlo_basis_size, 
-                                                      parameters_.cyclic_block_size(),
-                                                      1, 
-                                                      1, 
-                                                      -1, 
-                                                      parameters_.num_fv_states(), 
-                                                      -1.0, 
-                                                      h_glob.get_ptr(), 
-                                                      h_glob.ld(), 
-                                                      o_glob.get_ptr(), 
-                                                      o_glob.ld(), 
-                                                      &fv_eigen_values[0], 
-                                                      fv_eigen_vectors_glob.get_ptr(),
-                                                      fv_eigen_vectors_glob.ld());
-
-                    printf("Eigen-values returned by lapack:\n");
-                    for (int i = 0; i < parameters_.num_fv_states(); i++) printf("%12.6f", fv_eigen_values[i]);
-                    printf("\n");
-                }
-
+                eigenproblem<lapack>::generalized(apwlo_basis_size, 
+                                                  parameters_.cyclic_block_size(),
+                                                  1, 
+                                                  1, 
+                                                  -1, 
+                                                  parameters_.num_fv_states(), 
+                                                  -1.0, 
+                                                  h_glob.get_ptr(), 
+                                                  h_glob.ld(), 
+                                                  o_glob.get_ptr(), 
+                                                  o_glob.ld(), 
+                                                  &fv_eigen_values_glob[0], 
+                                                  fv_eigen_vectors_glob.get_ptr(),
+                                                  fv_eigen_vectors_glob.ld());
             }
 
             Timer *t1 = new Timer("sirius::Band::solve_fv:genevp");
@@ -979,12 +971,14 @@ class Band
                                                           fv_eigen_vectors.ld());
             delete t1;
 
-            if ((debug_level > 2) && (eigen_value_solver == scalapack) && 
-                parameters_.mpi_grid().root(1 << dim_row_ | 1 << dim_col_))
+            if ((debug_level > 2) && (eigen_value_solver == scalapack))
             {
-                printf("Eigen-values returned by scalapack:\n");
-                for (int i = 0; i < parameters_.num_fv_states(); i++) printf("%12.6f", fv_eigen_values[i]);
-                printf("\n");
+                double d = 0.0;
+                for (int i = 0; i < parameters_.num_fv_states(); i++) 
+                    d += fabs(fv_eigen_values[i] - fv_eigen_values_glob[i]);
+                std::stringstream s;
+                s << "Totoal eigen-value difference : " << d;
+                warning(__FILE__, __LINE__, s, 0);
             }
         }
 
