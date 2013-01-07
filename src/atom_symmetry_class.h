@@ -307,25 +307,8 @@ class AtomSymmetryClass
             for (int ir = nmtp; ir < atom_type_->radial_grid().size(); ir++)
                 spherical_potential_[ir] = atom_type_->free_atom_potential(ir) - 
                                            (atom_type_->free_atom_potential(nmtp - 1) - veff[nmtp - 1]);
-#if 0
-            int nmtp = atom_type_->num_mt_points();
 
-            std::ofstream out("veff_for_enu.dat");
-
-            for (int ir = 0; ir < nmtp; ir++)
-               out << atom_type_->radial_grid()[ir] << " " << spherical_potential_[ir] << std::endl;
-            out << std::endl;
-
-            for (int ir = 0; ir < atom_type_->radial_grid().size(); ir++)
-                out << atom_type_->radial_grid()[ir] << " " << atom_type_->free_atom_potential(ir) << std::endl;
-            out << std::endl;
-            
-            for (int ir = 0; ir < atom_type_->radial_grid().size(); ir++)
-                out << atom_type_->radial_grid()[ir] << " " << veff[ir] << std::endl;
-            out << std::endl;
-
-            out.close();
-#endif
+            Platform::bcast(&spherical_potential_[0], nmtp, 0);                               
         }
 
         void generate_radial_functions()

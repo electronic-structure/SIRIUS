@@ -124,7 +124,7 @@ class Utils
                         s << name << " is not a hermitian matrix" << std::endl
                           << "  i, j : " << i << " " << j << " diff : " << abs(mtrx(i, j) - conj(mtrx(j, i)));
                    
-                        error(__FILE__, __LINE__, s, fatal_err);
+                        error(__FILE__, __LINE__, s, 0);
                     }
         }
         
