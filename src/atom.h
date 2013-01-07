@@ -250,7 +250,7 @@ class Atom
                     }
                 }
             }
-       }
+        }
 
         inline int offset_aw()
         {

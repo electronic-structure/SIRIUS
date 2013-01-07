@@ -1,3 +1,8 @@
+/** \file config.h
+
+    \brief Main configuration header
+*/
+
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
@@ -15,9 +20,9 @@ const linalg_t eigen_value_solver = scalapack;
 
 /// level of internal debugging and checking
 
-/** debug_level = 0 : nothing to do
-    debug_level > 0 : check symmetry of Hamiltonian radial integrals, check hermiticity of the Hamiltonian matrix
-    debug_level > 1 : check orthonormaliztion of the wave-functions
+/** debug_level = 0 : nothing to do \n
+    debug_level > 0 : check symmetry of Hamiltonian radial integrals, check hermiticity of the Hamiltonian matrix \n
+    debug_level > 1 : check orthonormaliztion of the wave-functions \n
     debug_level > 2 : check scalapack vs. lapack diagonalization   
 */
 const int debug_level = 3;
