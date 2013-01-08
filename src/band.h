@@ -903,6 +903,9 @@ class Band
             {
                 Utils::check_hermitian("h", h);
                 Utils::check_hermitian("o", o);
+                //Utils::write_matrix("h.txt", true, h);
+                //Utils::write_matrix("o.txt", true, o);
+
                 //printf("hash(alm) : %16llX\n", matching_coefficients.hash());
                 //printf("hash(h) : %16llX\n", h.hash());
                 //printf("hash(o) : %16llX\n", o.hash());
@@ -937,6 +940,8 @@ class Band
 
                 Utils::check_hermitian("h_glob", h_glob);
                 Utils::check_hermitian("o_glob", o_glob);
+                //Utils::write_matrix("h_glob.txt", true, h_glob);
+                //Utils::write_matrix("o_glob.txt", true, o_glob);
                 
                 eigenproblem<lapack>::generalized(apwlo_basis_size, 
                                                   parameters_.cyclic_block_size(),
