@@ -373,11 +373,21 @@ class Density
       
         void initial_density()
         {
-            zero();
-            
+            splindex<block> spl_num_atom_types(parameters_.num_atom_types(), Platform::num_mpi_ranks(), 
+                                               Platform::mpi_rank());
+
             std::vector<double> enu;
+            for (int i = 0; i < spl_num_atom_types.local_size(); i++)
+                parameters_.atom_type(spl_num_atom_types[i])->solve_free_atom(1e-8, 1e-5, 1e-4, enu);
+
             for (int i = 0; i < parameters_.num_atom_types(); i++)
-                parameters_.atom_type(i)->solve_free_atom(1e-8, 1e-5, 1e-4, enu);
+            {
+                int rank = spl_num_atom_types.location(1, i);
+                Platform::bcast(parameters_.atom_type(i)->free_atom_density_ptr(), 
+                                parameters_.atom_type(i)->radial_grid().size(), rank);
+                Platform::bcast(parameters_.atom_type(i)->free_atom_potential_ptr(), 
+                                parameters_.atom_type(i)->radial_grid().size(), rank);
+            }
 
             zero();
             

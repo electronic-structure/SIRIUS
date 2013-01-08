@@ -614,6 +614,9 @@ class AtomType
 
             indexr_.init(lmax, aw_descriptors_, lo_descriptors_);
             indexb_.init(lmax, indexr_);
+            
+            free_atom_density_ = std::vector<double>(radial_grid_.size());
+            free_atom_potential_ = std::vector<double>(radial_grid_.size());
         }
 
         double solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
@@ -920,9 +923,19 @@ class AtomType
             return free_atom_density_[idx];
         }
         
+        inline double* free_atom_density_ptr()
+        {
+            return &free_atom_density_[0];
+        }
+        
         inline double free_atom_potential(const int idx)
         {
             return free_atom_potential_[idx];
+        }
+        
+        inline double* free_atom_potential_ptr()
+        {
+            return &free_atom_potential_[0];
         }
         
         inline int num_aw_descriptors()
