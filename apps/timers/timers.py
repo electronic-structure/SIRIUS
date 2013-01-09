@@ -25,12 +25,12 @@ timer_groups = [
 ],
 [
     "sirius::kpoint::generate_matching_coefficients",
-    "sirius::Band::set_h",
-    "sirius::Band::set_o",
-    "sirius::Band::solve_fv:hegv<impl>",
+    "sirius::Band::set_fv_h",
+    "sirius::Band::set_fv_o",
+    "sirius::Band::solve_fv:genevp",
     "sirius::Band::set_sv_h",
-    "sirius::Band::solve_sv:heev",
-    "sirius::kpoint::generate_scalar_wave_functions",
+    "sirius::Band::solve_sv:stdevp",
+    "sirius::kpoint::generate_fv_states",
     "sirius::kpoint::generate_spinor_wave_functions"
 ],
 [
@@ -38,10 +38,10 @@ timer_groups = [
     "sirius::Potential::xc"
 ],
 [
-    "sirius::reciprocal_lattice::init",
-    "sirius::sirius_step_func::init",
-    "sirius::unit_cell::get_symmetry",
-    "sirius::geometry::find_nearest_neighbours",
+    "sirius::ReciprocalLattice::init",
+    "sirius::StepFunction::init",
+    "sirius::UnitCell::get_symmetry",
+    "sirius::UnitCell::find_nearest_neighbours",
     "sirius::kpoint::initialize",
     "sirius::Potential::Potential",
     "sirius::AtomType::solve_free_atom"

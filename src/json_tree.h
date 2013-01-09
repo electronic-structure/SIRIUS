@@ -161,7 +161,7 @@ class JsonTree
             ifs.seekg(0, std::ios::end);
             std::streamoff length = ifs.tellg();
             ifs.seekg(0, std::ios::beg);
-            
+
             std::string buffer(length, ' ');
             ifs.read(&buffer[0], length);
             ifs.close();
@@ -176,10 +176,26 @@ class JsonTree
             else
                 return 0;
         }
-    
+
         inline JsonTree operator [] (const char *key_) const 
         {
-            std::string key(key_);
+            return (*this)[std::string(key_)];
+            /*std::string key(key_);
+            std::string new_path = path + std::string("/") + key;
+            JSONNode n;
+            try
+            {
+                n = node.at(key);
+            }
+            catch (const std::out_of_range& e)
+            {
+
+            }
+            return JsonTree(n, new_path, fname_);*/
+        }
+
+        inline JsonTree operator [] (const std::string& key) const 
+        {
             std::string new_path = path + std::string("/") + key;
             JSONNode n;
             try
@@ -192,7 +208,7 @@ class JsonTree
             }
             return JsonTree(n, new_path, fname_);
         }
-    
+
         inline JsonTree operator [] (const int key) const 
         {
             std::stringstream s;
