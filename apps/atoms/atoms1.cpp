@@ -152,8 +152,7 @@ void solve_atom(atom* a)
     }
     for (int i = 0; i < (int)valence.size(); i++)
     {
-        if (i) fout << ",";
-        fout << std::endl;
+        fout << "," << std::endl;
         fout << "    {\"l\" : " << valence[i].l
              << ", \"basis\" : [{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}," 
              << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : true}," 
