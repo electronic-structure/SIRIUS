@@ -5,29 +5,15 @@ class atom : public sirius::AtomType
 {
     public:
     
-        std::vector<sirius::atomic_level_descriptor> levels_nlk_;
-        
         double NIST_LDA_Etot;
     
         atom(const char* _symbol, 
              const char* _name, 
              int _zn, 
              double _mass, 
-             std::vector<sirius::atomic_level_descriptor>& _levels_nl,
-             std::vector<sirius::atomic_level_descriptor>& _levels_nlk) : AtomType(_symbol, _name, _zn, _mass, _levels_nl),
-                                                                          levels_nlk_(_levels_nlk),
-                                                                          NIST_LDA_Etot(0.0)
+             std::vector<sirius::atomic_level_descriptor>& _levels_nl) : AtomType(_symbol, _name, _zn, _mass, _levels_nl),
+                                                                         NIST_LDA_Etot(0.0)
         {
-        }
-        
-        inline int num_levels_nlk()
-        {
-            return (int)levels_nlk_.size();
-        }    
-        
-        inline sirius::atomic_level_descriptor& level_nlk(int idx)
-        {
-            return levels_nlk_[idx];
         }
 };
 
@@ -69,7 +55,7 @@ atom* init_atom_configuration(const std::string& label)
         } 
     } 
     a = new atom(label.c_str(), jin[label]["name"].get<std::string>().c_str(), jin[label]["zn"].get<int>(), 
-                 jin[label]["mass"].get<double>(), levels_nl, levels_nlk);
+                 jin[label]["mass"].get<double>(), levels_nl);
     a->NIST_LDA_Etot = jin[label]["NIST_LDA_Etot"].get<double>(); 
     return a;
 }
@@ -115,7 +101,13 @@ void solve_atom(atom* a)
         else
             valence.push_back(a->atomic_level(ist));
     }
-    
+
+    printf("Core levels : \n");
+    for (int i = 0; i < (int)core.size(); i++) printf("%i %i %i\n", core[i].n, core[i].l, core[i].occupancy);
+
+    printf("Valence levels : \n");
+    for (int i = 0; i < (int)valence.size(); i++) printf("%i %i %i\n", valence[i].n, valence[i].l, valence[i].occupancy);
+
     std::string symb[] = {"s", "p", "d", "f"};
     std::string core_str;
     for (int i = 0; i < (int)core.size(); i++)
@@ -127,18 +119,17 @@ void solve_atom(atom* a)
     fout << "  \"core\"    : \"" << core_str << "\", " << std::endl;
     
     fout << "  \"valence\" : [" << std::endl;
-    fout << "    {\"l\" : -1, \"basis\" : [{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : false}]}";
+    fout << "    {\"basis\" : [{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : false}]}";
     
     int lmax = 0;
-    for (int i = 0; i < (int)valence.size(); i++)
-        lmax = std::max(lmax, valence[i].l); 
+    for (int i = 0; i < (int)valence.size(); i++) lmax = std::max(lmax, valence[i].l); 
     lmax = std::min(lmax + 1, 4);
     for (int l = 0; l <= lmax; l++)
     {
         int n = l + 1;
         
-        for (int i = 0; i < (int)core.size(); i++)
-            if (core[i].l == l)
+        for (int i = 0; i < (int)core.size(); i++) 
+            if (core[i].l == l) 
                 n = core[i].n + 1;
         
         for (int i = 0; i < (int)valence.size(); i++)
@@ -155,9 +146,22 @@ void solve_atom(atom* a)
     {
         if (i) fout << ",";
         fout << std::endl;
-        fout << "    {\"l\" : " << valence[i].l << ", \"n\" : " << valence[i].n
-             << ", \"basis\" : [{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : true}]}";
+        fout << "    {\"l\" : " << valence[i].l
+             << ", \"basis\" : [{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}," 
+             << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : true}]}";
     }
+    for (int i = 0; i < (int)valence.size(); i++)
+    {
+        if (i) fout << ",";
+        fout << std::endl;
+        fout << "    {\"l\" : " << valence[i].l
+             << ", \"basis\" : [{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}," 
+             << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : true}," 
+             << " {" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}]}";
+    }
+
+
+
     fout << "]" << std::endl;
     fout<< "}" << std::endl;
     fout.close();
@@ -173,7 +177,4 @@ int main(int argn, char **argv)
     solve_atom(a);
 
     delete a;
-    
-    sirius::Timer::print();
 }
-
