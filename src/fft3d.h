@@ -64,7 +64,7 @@ class FFT3D
             while (true)
             {
                 int m = n;
-                for (int k = 2; k <= 7; k++)
+                for (int k = 2; k <= 5; k++)
                     while (m % k == 0)
                         m /= k;
                 if (m == 1) return n;

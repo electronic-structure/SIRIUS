@@ -453,46 +453,41 @@ class AtomType
             num_core_levels_ = (int)atomic_levels_.size();
             
             radial_solution_descriptor rsd;
-            radial_solution_descriptor_set rsd_set;
 
-            for (int j = 0; j < parser["valence"].size(); j++)
+            // default augmented wave basis
+            rsd.n = -1;
+            rsd.l = -1;
+            for (int order = 0; order < parser["valence"][0]["basis"].size(); order++)
             {
-                int l = parser["valence"][j]["l"].get<int>();
-                if (l == -1)
+                parser["valence"][0]["basis"][order]["enu"] >> rsd.enu;
+                parser["valence"][0]["basis"][order]["dme"] >> rsd.dme;
+                parser["valence"][0]["basis"][order]["auto"] >> rsd.auto_enu;
+                aw_default_l_.push_back(rsd);
+            }
+            
+            radial_solution_descriptor_set rsd_set;
+            for (int j = 1; j < parser["valence"].size(); j++)
+            {
+                rsd.l = parser["valence"][j]["l"].get<int>();
+                rsd.n = parser["valence"][j]["n"].get<int>();
+                rsd_set.clear();
+                for (int order = 0; order < parser["valence"][j]["basis"].size(); order++)
                 {
-                    rsd.n = -1;
-                    rsd.l = -1;
-                    for (int order = 0; order < parser["valence"][j]["basis"].size(); order++)
-                    {
-                        parser["valence"][j]["basis"][order]["enu"] >> rsd.enu;
-                        parser["valence"][j]["basis"][order]["dme"] >> rsd.dme;
-                        parser["valence"][j]["basis"][order]["auto"] >> rsd.auto_enu;
-                        aw_default_l_.push_back(rsd);
-                    }
+                    parser["valence"][j]["basis"][order]["enu"] >> rsd.enu;
+                    parser["valence"][j]["basis"][order]["dme"] >> rsd.dme;
+                    parser["valence"][j]["basis"][order]["auto"] >> rsd.auto_enu;
+                    rsd_set.push_back(rsd);
                 }
-                else
-                {
-                    rsd.l = l;
-                    rsd.n = parser["valence"][j]["n"].get<int>();
-                    rsd_set.clear();
-                    for (int order = 0; order < parser["valence"][j]["basis"].size(); order++)
-                    {
-                        parser["valence"][j]["basis"][order]["enu"] >> rsd.enu;
-                        parser["valence"][j]["basis"][order]["dme"] >> rsd.dme;
-                        parser["valence"][j]["basis"][order]["auto"] >> rsd.auto_enu;
-                        rsd_set.push_back(rsd);
-                    }
-                    aw_specific_l_.push_back(rsd_set);
-                }
+                aw_specific_l_.push_back(rsd_set);
             }
 
             for (int j = 0; j < parser["lo"].size(); j++)
             {
                 rsd.l = parser["lo"][j]["l"].get<int>();
-                rsd.n = parser["lo"][j]["n"].get<int>();
                 rsd_set.clear();
                 for (int order = 0; order < parser["lo"][j]["basis"].size(); order++)
                 {
+                    parser["lo"][j]["basis"][order]["n"] >> rsd.n;
                     parser["lo"][j]["basis"][order]["enu"] >> rsd.enu;
                     parser["lo"][j]["basis"][order]["dme"] >> rsd.dme;
                     parser["lo"][j]["basis"][order]["auto"] >> rsd.auto_enu;
