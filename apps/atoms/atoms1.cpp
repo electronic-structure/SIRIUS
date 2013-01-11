@@ -60,7 +60,7 @@ atom* init_atom_configuration(const std::string& label)
     return a;
 }
 
-void solve_atom(atom* a)
+void solve_atom(atom* a, char type)
 {
     std::vector<double> enu;
     
@@ -150,16 +150,40 @@ void solve_atom(atom* a)
              << ", \"basis\" : [{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}," 
              << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : true}]}";
     }
-    for (int i = 0; i < (int)valence.size(); i++)
+    if (type == '1')
     {
-        fout << "," << std::endl;
-        fout << "    {\"l\" : " << valence[i].l
-             << ", \"basis\" : [{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}," 
-             << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : true}," 
-             << " {" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}]}";
+        printf("LO1 is composed of u_{E1} and u_{E2}, where E1 and E2 are energies of levels n and n+1 respectively\n");
+        for (int i = 0; i < (int)valence.size(); i++)
+        {
+            fout << "," << std::endl;
+            fout << "    {\"l\" : " << valence[i].l
+                 << ", \"basis\" : [{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}," 
+                 << " {" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}]}";
+        }
     }
-
-
+    if (type == '2')
+    {
+        printf("LO2 is composed of u_{E2}, udot_{E2} and u_{E1}, where E2 and E1 are energies of levels n+1 and n respectively\n");
+        for (int i = 0; i < (int)valence.size(); i++)
+        {
+            fout << "," << std::endl;
+            fout << "    {\"l\" : " << valence[i].l
+                 << ", \"basis\" : [{" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}," 
+                 << " {" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : true}," 
+                 << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}]}";
+        }
+    }
+    if (type == '3')
+    {
+        for (int i = 0; i < (int)valence.size(); i++)
+        {
+            fout << "," << std::endl;
+            fout << "    {\"l\" : " << valence[i].l
+                 << ", \"basis\" : [{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}," 
+                 << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : true}," 
+                 << " {" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}]}";
+        }
+    }
 
     fout << "]" << std::endl;
     fout<< "}" << std::endl;
@@ -170,10 +194,18 @@ void solve_atom(atom* a)
 int main(int argn, char **argv)
 {
     Platform::initialize(true);
+
+    if (argn != 3)
+    {
+        printf("usage: ./atoms lo label\n");
+        printf("where 'lo' is a type of local orbital basis (0: lo, 1: lo+LO1, 2: lo+LO2, 3: lo+LO3)\n");
+        printf("and 'label' is an atom label (H, He, Li, etc.)\n");
+        error(__FILE__, __LINE__, "stop");
+    }
     
-    atom* a = init_atom_configuration(argv[1]);
+    atom* a = init_atom_configuration(argv[2]);
     
-    solve_atom(a);
+    solve_atom(a, argv[1][0]);
 
     delete a;
 }

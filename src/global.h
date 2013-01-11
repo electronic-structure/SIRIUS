@@ -330,8 +330,33 @@ class Global : public StepFunction
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
                 atom_symmetry_class(ic)->generate_radial_integrals();
 
+            splindex<block> spl_num_atoms(num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+            for (int i = 0; i < spl_num_atoms.local_size(); i++)
+                atom(spl_num_atoms[i])->generate_radial_integrals();
+
             for (int ia = 0; ia < num_atoms(); ia++)
-                atom(ia)->generate_radial_integrals();
+            {
+                int rank = spl_num_atoms.location(1, ia);
+                int size = lmmax_pot() * atom(ia)->type()->indexr().size() * atom(ia)->type()->indexr().size();
+                Platform::bcast(atom(ia)->h_radial_integral(0, 0), size, rank);
+                if (num_mag_dims()) Platform::bcast(atom(ia)->b_radial_integral(0, 0, 0), size * num_mag_dims(), rank);
+            }
+        }
+
+        void solve_free_atoms()
+        {
+            splindex<block> spl_num_atom_types(num_atom_types(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+
+            std::vector<double> enu;
+            for (int i = 0; i < spl_num_atom_types.local_size(); i++)
+                atom_type(spl_num_atom_types[i])->solve_free_atom(1e-8, 1e-5, 1e-4, enu);
+
+            for (int i = 0; i < num_atom_types(); i++)
+            {
+                int rank = spl_num_atom_types.location(1, i);
+                Platform::bcast(atom_type(i)->free_atom_density_ptr(), atom_type(i)->radial_grid().size(), rank);
+                Platform::bcast(atom_type(i)->free_atom_potential_ptr(), atom_type(i)->radial_grid().size(), rank);
+            }
         }
 
         /// Get the total energy of the electronic subsystem.

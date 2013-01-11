@@ -784,32 +784,47 @@ class AtomType
                 printf("%i  %i  %i  %i\n", atomic_levels_[i].n, atomic_levels_[i].l, atomic_levels_[i].k,
                                            atomic_levels_[i].occupancy);
             
-            std::cout << "default augmented wave basis" << std::endl;
+            printf("default augmented wave basis\n");
+            printf("[");
             for (int order = 0; order < (int)aw_default_l_.size(); order++)
-                std::cout << "  enu : " << aw_default_l_[order].enu 
-                          << "  dme : " << aw_default_l_[order].dme
-                          << "  auto : " << aw_default_l_[order].auto_enu << std::endl;
+            {
+                if (order) printf(", ");
+                printf("{enu : %f, dme : %i, auto : %i}", aw_default_l_[order].enu, 
+                                                          aw_default_l_[order].dme, 
+                                                          aw_default_l_[order].auto_enu);
+            }
+            printf("]\n");
 
-            std::cout << "augmented wave basis for specific l" << std::endl;
+            printf("augmented wave basis for specific l\n");
             for (int j = 0; j < (int)aw_specific_l_.size(); j++)
             {
+                printf("[");
                 for (int order = 0; order < (int)aw_specific_l_[j].size(); order++)
-                    std::cout << "  n : " << aw_specific_l_[j][order].n
-                              << "  l : " << aw_specific_l_[j][order].l
-                              << "  enu : " << aw_specific_l_[j][order].enu 
-                              << "  dme : " << aw_specific_l_[j][order].dme
-                              << "  auto : " << aw_specific_l_[j][order].auto_enu << std::endl;
+                {
+                    if (order) printf(", ");
+                    printf("{l : %i, n : %i, enu : %f, dme : %i, auto : %i}", aw_specific_l_[j][order].l,
+                                                                              aw_specific_l_[j][order].n,
+                                                                              aw_specific_l_[j][order].enu,
+                                                                              aw_specific_l_[j][order].dme,
+                                                                              aw_specific_l_[j][order].auto_enu);
+                }
+                printf("]\n");
             }
 
             printf("augmented wave basis\n");
             for (int j = 0; j < (int)aw_descriptors_.size(); j++)
             {
-                printf("n : %i   l : %i   ", aw_descriptors_[j][0].n, aw_descriptors_[j][0].l);
+                printf("[");
                 for (int order = 0; order < (int)aw_descriptors_[j].size(); order++)
-                    printf("{enu %f dme %i auto %i} ", aw_descriptors_[j][order].enu, 
-                                                       aw_descriptors_[j][order].dme, 
-                                                       aw_descriptors_[j][order].auto_enu);
-                printf("\n");
+                { 
+                    if (order) printf(", ");
+                    printf("{l : %i, n : %i, enu : %f, dme : %i, auto : %i}", aw_descriptors_[j][order].l,
+                                                                              aw_descriptors_[j][order].n,
+                                                                              aw_descriptors_[j][order].enu,
+                                                                              aw_descriptors_[j][order].dme,
+                                                                              aw_descriptors_[j][order].auto_enu);
+                }
+                printf("]\n");
             }
             printf("maximum order of aw : %i\n", max_aw_order_);
 

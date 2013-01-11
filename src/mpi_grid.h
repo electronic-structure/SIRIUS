@@ -301,7 +301,8 @@ class MPIGrid
         int cart_rank(const MPI_Comm& comm, std::vector<int> coords)
         {
             int r;
-
+            if (comm == MPI_COMM_SELF) return 0;
+            
             MPI_Cart_rank(comm, &coords[0], &r);
 
             return r;

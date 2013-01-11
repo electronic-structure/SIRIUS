@@ -373,21 +373,7 @@ class Density
       
         void initial_density()
         {
-            splindex<block> spl_num_atom_types(parameters_.num_atom_types(), Platform::num_mpi_ranks(), 
-                                               Platform::mpi_rank());
-
-            std::vector<double> enu;
-            for (int i = 0; i < spl_num_atom_types.local_size(); i++)
-                parameters_.atom_type(spl_num_atom_types[i])->solve_free_atom(1e-8, 1e-5, 1e-4, enu);
-
-            for (int i = 0; i < parameters_.num_atom_types(); i++)
-            {
-                int rank = spl_num_atom_types.location(1, i);
-                Platform::bcast(parameters_.atom_type(i)->free_atom_density_ptr(), 
-                                parameters_.atom_type(i)->radial_grid().size(), rank);
-                Platform::bcast(parameters_.atom_type(i)->free_atom_potential_ptr(), 
-                                parameters_.atom_type(i)->radial_grid().size(), rank);
-            }
+            parameters_.solve_free_atoms();
 
             zero();
             
@@ -527,7 +513,7 @@ class Density
         void find_eigen_states()
         {
             Timer t("sirius::Density::find_eigen_states");
-
+            
             // generate radial functions
             potential_->set_spherical_potential();
             parameters_.generate_radial_functions();
@@ -535,7 +521,7 @@ class Density
             // generate radial integrals
             potential_->set_nonspherical_potential();
             parameters_.generate_radial_integrals();
-
+            
             // generate plane-wave coefficients of the potential in the interstitial region
             for (int ir = 0; ir < parameters_.fft().size(); ir++)
                  potential_->effective_potential()->f_it(ir) *= parameters_.step_function(ir);

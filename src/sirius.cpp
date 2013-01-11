@@ -306,20 +306,15 @@ void FORTRAN(sirius_bands)(int4* num_kpoints, real8* kpoints_, real8* dk_)
 {
     mdarray<double, 2> kpoints(kpoints_, 3, *num_kpoints); 
 
-    MPIGrid mpi_grid_;
-
-    sirius::kpoint_set kpoint_set_(mpi_grid_);
+    sirius::kpoint_set kpoint_set_(global.mpi_grid());
     for (int ik = 0; ik < kpoints.size(1); ik++)
         kpoint_set_.add_kpoint(&kpoints(0, ik), 0.0, global);
 
-    mpi_grid_.initialize(Utils::intvec(std::min(Platform::num_mpi_ranks(), kpoint_set_.num_kpoints()), 1));
-
     // distribute k-points along the 1-st direction of the MPI grid
-    splindex<block> spl_num_kpoints_(kpoint_set_.num_kpoints(), mpi_grid_.size(1 << 0), mpi_grid_.coordinate(0));
+    splindex<block> spl_num_kpoints_(kpoint_set_.num_kpoints(), global.mpi_grid().dimension_size(0), 
+                                     global.mpi_grid().coordinate(0));
 
-    std::vector<double> enu;
-    for (int i = 0; i < global.num_atom_types(); i++)
-        global.atom_type(i)->solve_free_atom(1e-8, 1e-5, 1e-4, enu);
+    global.solve_free_atoms();
 
     potential->set_spherical_potential();
     potential->set_nonspherical_potential();
@@ -345,7 +340,7 @@ void FORTRAN(sirius_bands)(int4* num_kpoints, real8* kpoints_, real8* dk_)
     // synchronize eigen-values
     kpoint_set_.sync_band_energies(global.num_bands(), spl_num_kpoints_);
 
-    if (mpi_grid_.root())
+    if (global.mpi_grid().root())
     {
         FILE* fout = fopen("bands.dat", "w");
         for (int i = 0; i < global.num_bands(); i++)

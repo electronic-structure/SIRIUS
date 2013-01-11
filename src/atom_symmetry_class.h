@@ -408,7 +408,10 @@ class AtomSymmetryClass
                     {
                         int idxrf2 = atom_type_->indexr().index_by_l_order(l, order2);
 
-                        if (order1 == order2) o_radial_integrals_(l, order1, order2) = 1.0;
+                        if (order1 == order2) 
+                        {
+                            o_radial_integrals_(l, order1, order2) = 1.0;
+                        }
                         else
                         {
                             for (int ir = 0; ir < nmtp; ir++)
