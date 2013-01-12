@@ -290,7 +290,7 @@ class Global : public StepFunction
             if (Platform::verbose())
             {
                 printf("\n");
-                printf("SIRIUS v0.6\n");
+                printf("SIRIUS v0.7\n");
                 printf("git hash : %s\n", git_hash);
                 printf("build date : %s\n", build_date);
                 printf("\n");
@@ -391,7 +391,7 @@ class Global : public StepFunction
         
         inline double kinetic_energy()
         {
-            return rti().core_eval_sum +rti().valence_eval_sum - rti().energy_veff - rti().energy_bxc; 
+            return rti().core_eval_sum + rti().valence_eval_sum - rti().energy_veff - rti().energy_bxc; 
         }
 
         /// Print run-time information.

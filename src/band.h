@@ -1097,9 +1097,13 @@ class Band
                     {
                         int i = spl_fv_states_col_[icol] + ispn * parameters_.num_fv_states();
                         for (int irow = 0; irow < spl_fv_states_row_.local_size(); irow++)
+                        {
                             if (spl_fv_states_row_[irow] == i) 
+                            {
                                 h(irow, icol + ispn * spl_fv_states_col_.local_size()) += 
                                     evalfv[spl_fv_states_col_[icol]];
+                            }
+                        }
                     }
                 }
             

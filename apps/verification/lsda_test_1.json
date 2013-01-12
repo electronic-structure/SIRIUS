@@ -13,8 +13,8 @@
 
     "run" : 
     [ 
-        {"vector_field" : [ [0, 0, 0.1] ], "num_threads" : 2, "mpi_grid" : [1], "cyclic_block_size" : 4},
-        {"vector_field" : [ [0.1, 0.1, 0.1] ], "num_threads" : 2, "mpi_grid" : [1], "cyclic_block_size" : 16}
+        {"aw_cutoff" : 9.0, "lmaxapw" : 10, "vector_field" : [ [0, 0, 0.1] ], "num_threads" : 2, "mpi_grid" : [1], "cyclic_block_size" : 4},
+        {"aw_cutoff" : 7.0, "vector_field" : [ [0.1, 0.1, 0.1] ], "num_threads" : 2, "mpi_grid" : [1], "cyclic_block_size" : 16}
     ]
 }
 

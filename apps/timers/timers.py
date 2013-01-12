@@ -28,8 +28,7 @@ timer_groups = [
     "sirius::Band::set_fv_h",
     "sirius::Band::set_fv_o",
     "sirius::Band::solve_fv:genevp",
-    "sirius::Band::set_sv_h",
-    "sirius::Band::solve_sv:stdevp",
+    "sirius::Band::solve_sv",
     "sirius::kpoint::generate_fv_states",
     "sirius::kpoint::generate_spinor_wave_functions"
 ],
@@ -57,7 +56,7 @@ for itg in range(len(timer_groups)):
         if timer_names[i] in jin:
             t = jin[timer_names[i]] 
         timer_values.append(t)
-
+    
     plot = matplotlib.pyplot.subplot("41%i"%(itg+1))
     box = plot.get_position()
     plot.set_position([box.x0, box.y0, box.width * 0.2, box.height])

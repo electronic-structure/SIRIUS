@@ -764,16 +764,16 @@ class AtomType
         void print_info()
         {
             printf("\n");
-            std::cout << "name          : " << name_ << std::endl;
-            std::cout << "symbol        : " << symbol_ << std::endl;
-            std::cout << "zn            : " << zn_ << std::endl;
-            std::cout << "mass          : " << mass_ << std::endl;
-            std::cout << "mt_radius     : " << mt_radius_ << std::endl;
-            std::cout << "num_mt_points : " << num_mt_points_ << std::endl;
-            
-            printf("number of core electrons : %i\n", num_core_electrons_);
+            printf("name           : %s\n", name_.c_str());
+            printf("symbol         : %s\n", symbol_.c_str());
+            printf("zn             : %i\n", zn_);
+            printf("mass           : %f\n", mass_);
+            printf("mt_radius      : %f\n", mt_radius_);
+            printf("num_mt_points  : %i\n", num_mt_points_);
+            printf("\n");
+            printf("number of core electrons    : %i\n", num_core_electrons_);
             printf("number of valence electrons : %i\n", num_valence_electrons_);
-
+            printf("\n");
             printf("atomic levels (n, l, k, occupancy)\n");
             printf("core\n");
             for (int i = 0; i < num_core_levels_; i++)
@@ -784,6 +784,7 @@ class AtomType
                 printf("%i  %i  %i  %i\n", atomic_levels_[i].n, atomic_levels_[i].l, atomic_levels_[i].k,
                                            atomic_levels_[i].occupancy);
             
+            printf("\n");
             printf("default augmented wave basis\n");
             printf("[");
             for (int order = 0; order < (int)aw_default_l_.size(); order++)
@@ -828,17 +829,23 @@ class AtomType
             }
             printf("maximum order of aw : %i\n", max_aw_order_);
 
-            std::cout << "local orbitals" << std::endl;
+            printf("local orbitals\n");
             for (int j = 0; j < (int)lo_descriptors_.size(); j++)
             {
+                printf("[");
                 for (int order = 0; order < (int)lo_descriptors_[j].size(); order++)
-                    std::cout << "  n : " << lo_descriptors_[j][order].n
-                              << "  l : " << lo_descriptors_[j][order].l
-                              << "  enu : " << lo_descriptors_[j][order].enu
-                              << "  dme : " << lo_descriptors_[j][order].dme
-                              << "  auto : " << lo_descriptors_[j][order].auto_enu << std::endl;
+                {
+                    if (order) printf(", ");
+                    printf("{l : %i, n : %i, enu : %f, dme : %i, auto : %i}", lo_descriptors_[j][order].l,
+                                                                              lo_descriptors_[j][order].n,
+                                                                              lo_descriptors_[j][order].enu,
+                                                                              lo_descriptors_[j][order].dme,
+                                                                              lo_descriptors_[j][order].auto_enu);
+                }
+                printf("]\n");
             }
 
+            printf("\n");
             printf("total number of radial functions : %i\n", indexr().size());
             printf("maximum number of radial functions per orbital quantum number: %i\n", indexr().max_num_rf());
             printf("total number of basis functions : %i\n", indexb().size());

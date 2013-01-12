@@ -6,61 +6,8 @@ import shutil
 import glob
 import subprocess
 
-def create_input_file(kwargs):
-    elk_in = "tasks\n2000\n\n"
+def create_input_file(inp, conf):
     
-    elk_in += "avec\n" + \
-              "%f %f %f\n"%(kwargs["avec"][0][0], kwargs["avec"][0][1], kwargs["avec"][0][2]) + \
-              "%f %f %f\n"%(kwargs["avec"][1][0], kwargs["avec"][1][1], kwargs["avec"][1][2]) +  \
-              "%f %f %f\n"%(kwargs["avec"][2][0], kwargs["avec"][2][1], kwargs["avec"][2][2]) + "\n" 
-
-    if "scale" in kwargs:
-        elk_in += "scale\n" + "%f\n"%kwargs["scale"] + "\n"
-
-    if "nempty" in kwargs:
-        elk_in += "nempty\n" + "%i\n"%kwargs["nempty"] + "\n"
-    
-    if "spinpol" in kwargs:
-        if kwargs["spinpol"] == 0:
-            elk_in += "spinpol\n.false.\n\n"
-        else:
-            elk_in += "spinpol\n.true.\n\n"
-
-    elk_in += "atoms\n" + "%i\n"%len(kwargs["atoms"])
-    
-    for iat in range(len(kwargs["atoms"])):
-        elk_in += kwargs["atoms"][iat][0] + "\n"
-        elk_in += "%i\n"%len(kwargs["atoms"][iat][1])
-        for ia in range(len(kwargs["atoms"][iat][1])):
-            elk_in += "%f %f %f %f %f %f\n"%(kwargs["atoms"][iat][1][ia][0], 
-                                             kwargs["atoms"][iat][1][ia][1],
-                                             kwargs["atoms"][iat][1][ia][2],
-                                             kwargs["atoms"][iat][1][ia][3],
-                                             kwargs["atoms"][iat][1][ia][4],
-                                             kwargs["atoms"][iat][1][ia][5])
-    elk_in += "\n"
-    
-    if "ngridk" in kwargs:
-        elk_in += "ngridk\n" + "%i %i %i\n"%(kwargs["ngridk"][0], kwargs["ngridk"][1], kwargs["ngridk"][2]) + "\n"
-    else:
-        elk_in += "ngridk\n" + "2 2 2\n" + "\n"
-
-    if "ldapu" in kwargs:
-        elk_in += "lda+u\n1 1\n"
-        for i in range(len(kwargs["ldapu"])):
-            elk_in += "%i %i %f %f\n"%(kwargs["ldapu"][i][0], 
-                                       kwargs["ldapu"][i][1], 
-                                       kwargs["ldapu"][i][2], 
-                                       kwargs["ldapu"][i][3])
-        elk_in += "\n"
-
-    return elk_in
-
-def launch_task(irun, inp, conf):
-    path = "./" + str(irun)
-    shutil.rmtree(path, True)
-    os.mkdir(path)
-
     atoms = inp["atoms"]
 
     k = 0
@@ -69,8 +16,72 @@ def launch_task(irun, inp, conf):
             atoms[iat][1][ia].extend(conf["vector_field"][k])
             k = k + 1
     
+    elk_in = "tasks\n2000\n\n"
+    
+    elk_in += "avec\n" + \
+              "%f %f %f\n"%(inp["avec"][0][0], inp["avec"][0][1], inp["avec"][0][2]) + \
+              "%f %f %f\n"%(inp["avec"][1][0], inp["avec"][1][1], inp["avec"][1][2]) +  \
+              "%f %f %f\n"%(inp["avec"][2][0], inp["avec"][2][1], inp["avec"][2][2]) + "\n" 
+
+    if "scale" in inp:
+        elk_in += "scale\n" + "%f\n"%inp["scale"] + "\n"
+
+    if "nempty" in inp:
+        elk_in += "nempty\n" + "%i\n"%inp["nempty"] + "\n"
+    
+    if "spinpol" in inp:
+        if inp["spinpol"] == 0:
+            elk_in += "spinpol\n.false.\n\n"
+        else:
+            elk_in += "spinpol\n.true.\n\n"
+
+    elk_in += "atoms\n" + "%i\n"%len(inp["atoms"])
+    
+    for iat in range(len(inp["atoms"])):
+        elk_in += inp["atoms"][iat][0] + "\n"
+        elk_in += "%i\n"%len(inp["atoms"][iat][1])
+        for ia in range(len(inp["atoms"][iat][1])):
+            elk_in += "%f %f %f %f %f %f\n"%(inp["atoms"][iat][1][ia][0], 
+                                             inp["atoms"][iat][1][ia][1],
+                                             inp["atoms"][iat][1][ia][2],
+                                             inp["atoms"][iat][1][ia][3],
+                                             inp["atoms"][iat][1][ia][4],
+                                             inp["atoms"][iat][1][ia][5])
+    elk_in += "\n"
+    
+    if "ngridk" in inp:
+        elk_in += "ngridk\n" + "%i %i %i\n"%(inp["ngridk"][0], inp["ngridk"][1], inp["ngridk"][2]) + "\n"
+    else:
+        elk_in += "ngridk\n" + "2 2 2\n" + "\n"
+
+    if "ldapu" in inp:
+        elk_in += "lda+u\n1 1\n"
+        for i in range(len(inp["ldapu"])):
+            elk_in += "%i %i %f %f\n"%(inp["ldapu"][i][0], 
+                                       inp["ldapu"][i][1], 
+                                       inp["ldapu"][i][2], 
+                                       inp["ldapu"][i][3])
+        elk_in += "\n"
+
+    if "aw_cutoff" in conf:
+        elk_in += "rgkmax\n"
+        elk_in += "%f\n"%conf["aw_cutoff"]
+        elk_in += "\n"
+
+    if "lmaxapw" in conf:
+        elk_in += "lmaxapw\n"
+        elk_in += "%i\n"%conf["lmaxapw"]
+        elk_in += "\n"
+    
+    return elk_in
+
+def launch_task(irun, inp, conf):
+    path = "./" + str(irun)
+    shutil.rmtree(path, True)
+    os.mkdir(path)
+
     fout = open(path + "/elk.in", "w")
-    fout.write(create_input_file(inp))
+    fout.write(create_input_file(inp, conf))
     fout.close()
 
     for i in glob.glob("[A-Z]*"):
