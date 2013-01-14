@@ -8,23 +8,25 @@ import subprocess
 
 def create_input_file(inp, conf):
     
-    atoms = inp["atoms"]
 
-    k = 0
-    for iat in range(len(atoms)):
-        for ia in range(len(atoms[iat][1])):
-            atoms[iat][1][ia].extend(conf["vector_field"][k])
-            k = k + 1
+    if "vector_field" in conf:
+        atoms = inp["atoms"]
+
+        k = 0
+        for iat in range(len(atoms)):
+            for ia in range(len(atoms[iat][1])):
+                atoms[iat][1][ia].extend(conf["vector_field"][k])
+                k = k + 1
     
     elk_in = "tasks\n2000\n\n"
     
     elk_in += "avec\n" + \
-              "%f %f %f\n"%(inp["avec"][0][0], inp["avec"][0][1], inp["avec"][0][2]) + \
-              "%f %f %f\n"%(inp["avec"][1][0], inp["avec"][1][1], inp["avec"][1][2]) +  \
-              "%f %f %f\n"%(inp["avec"][2][0], inp["avec"][2][1], inp["avec"][2][2]) + "\n" 
+              "%16.10f %16.10f %16.10f\n"%(inp["avec"][0][0], inp["avec"][0][1], inp["avec"][0][2]) + \
+              "%16.10f %16.10f %16.10f\n"%(inp["avec"][1][0], inp["avec"][1][1], inp["avec"][1][2]) +  \
+              "%16.10f %16.10f %16.10f\n"%(inp["avec"][2][0], inp["avec"][2][1], inp["avec"][2][2]) + "\n" 
 
     if "scale" in inp:
-        elk_in += "scale\n" + "%f\n"%inp["scale"] + "\n"
+        elk_in += "scale\n" + "%16.10f\n"%inp["scale"] + "\n"
 
     if "nempty" in inp:
         elk_in += "nempty\n" + "%i\n"%inp["nempty"] + "\n"
@@ -41,12 +43,18 @@ def create_input_file(inp, conf):
         elk_in += inp["atoms"][iat][0] + "\n"
         elk_in += "%i\n"%len(inp["atoms"][iat][1])
         for ia in range(len(inp["atoms"][iat][1])):
-            elk_in += "%f %f %f %f %f %f\n"%(inp["atoms"][iat][1][ia][0], 
-                                             inp["atoms"][iat][1][ia][1],
-                                             inp["atoms"][iat][1][ia][2],
-                                             inp["atoms"][iat][1][ia][3],
-                                             inp["atoms"][iat][1][ia][4],
-                                             inp["atoms"][iat][1][ia][5])
+            if "vector_field" in conf:
+                elk_in += "%16.10f %16.10f %16.10f %16.10f %16.10f %16.10f\n"%(inp["atoms"][iat][1][ia][0], 
+                                                                               inp["atoms"][iat][1][ia][1],
+                                                                               inp["atoms"][iat][1][ia][2],
+                                                                               inp["atoms"][iat][1][ia][3],
+                                                                               inp["atoms"][iat][1][ia][4],
+                                                                               inp["atoms"][iat][1][ia][5])
+            else:
+                elk_in += "%16.10f %16.10f %16.10f\n"%(inp["atoms"][iat][1][ia][0], 
+                                                       inp["atoms"][iat][1][ia][1],
+                                                       inp["atoms"][iat][1][ia][2])
+                
     elk_in += "\n"
     
     if "ngridk" in inp:
