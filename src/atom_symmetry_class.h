@@ -59,6 +59,12 @@ class AtomSymmetryClass
         /// core leakage
         double core_leakage_;
         
+        /// list of radial descriptor sets used to construct augmented waves 
+        std::vector<radial_solution_descriptor_set> aw_descriptors_;
+        
+        /// list of radial descriptor sets used to construct local orbitals
+        std::vector<radial_solution_descriptor_set> lo_descriptors_;
+        
         void generate_aw_radial_functions()
         {
             int nmtp = atom_type_->num_mt_points();
@@ -69,11 +75,11 @@ class AtomSymmetryClass
             std::vector<double> p;
             std::vector<double> hp;
 
-            for (int l = 0; l < atom_type_->num_aw_descriptors(); l++)
+            for (int l = 0; l < num_aw_descriptors(); l++)
             {
-                for (int order = 0; order < (int)atom_type_->aw_descriptor(l).size(); order++)
+                for (int order = 0; order < (int)aw_descriptor(l).size(); order++)
                 {
-                    radial_solution_descriptor& rsd = atom_type_->aw_descriptor(l)[order];
+                    radial_solution_descriptor& rsd = aw_descriptor(l)[order];
 
                     int idxrf = atom_type_->indexr().index_by_l_order(l, order);
 
@@ -155,18 +161,18 @@ class AtomSymmetryClass
             
             double a[4][4];
 
-            for (int idxlo = 0; idxlo < atom_type_->num_lo_descriptors(); idxlo++)
+            for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++)
             {
-                assert(atom_type_->lo_descriptor(idxlo).size() < 4);
+                assert(lo_descriptor(idxlo).size() < 4);
 
                 int idxrf = atom_type_->indexr().index_by_idxlo(idxlo);
 
-                std::vector< std::vector<double> > p(atom_type_->lo_descriptor(idxlo).size());
-                std::vector< std::vector<double> > hp(atom_type_->lo_descriptor(idxlo).size());
+                std::vector< std::vector<double> > p(lo_descriptor(idxlo).size());
+                std::vector< std::vector<double> > hp(lo_descriptor(idxlo).size());
 
-                for (int order = 0; order < (int)atom_type_->lo_descriptor(idxlo).size(); order++)
+                for (int order = 0; order < (int)lo_descriptor(idxlo).size(); order++)
                 {
-                    radial_solution_descriptor& rsd = atom_type_->lo_descriptor(idxlo)[order];
+                    radial_solution_descriptor& rsd = lo_descriptor(idxlo)[order];
                     
                     // find linearization energies
                     if (rsd.auto_enu)
@@ -191,14 +197,14 @@ class AtomSymmetryClass
                     // compute radial derivatives
                     s.interpolate();
 
-                    for (int dm = 0; dm < (int)atom_type_->lo_descriptor(idxlo).size(); dm++)
+                    for (int dm = 0; dm < (int)lo_descriptor(idxlo).size(); dm++)
                         a[order][dm] = s.deriv(dm, nmtp - 1);
                 }
 
                 double b[] = {0.0, 0.0, 0.0, 0.0};
-                b[atom_type_->lo_descriptor(idxlo).size() - 1] = 1.0;
+                b[lo_descriptor(idxlo).size() - 1] = 1.0;
 
-                int info = gesv<double>((int)atom_type_->lo_descriptor(idxlo).size(), 1, &a[0][0], 4, b, 4);
+                int info = gesv<double>((int)lo_descriptor(idxlo).size(), 1, &a[0][0], 4, b, 4);
 
                 if (info) 
                 {
@@ -208,7 +214,7 @@ class AtomSymmetryClass
                 }
                 
                 // take linear combination of radial solutions
-                for (int order = 0; order < (int)atom_type_->lo_descriptor(idxlo).size(); order++)
+                for (int order = 0; order < (int)lo_descriptor(idxlo).size(); order++)
                     for (int ir = 0; ir < nmtp; ir++)
                     {
                         radial_functions_(ir, idxrf, 0) += b[order] * p[order][ir];
@@ -227,12 +233,7 @@ class AtomSymmetryClass
                     radial_functions_(ir, idxrf, 0) *= norm;
                     radial_functions_(ir, idxrf, 1) *= norm;
                 }
-#if 0
-                std::ofstream out("lo.dat");
-                for (int ir = 0; ir < nmtp; ir++)
-                   out << atom_type_->radial_grid()[ir] << " " << lo_radial_functions_(ir, i, 0) << std::endl;
-                out.close();
-#endif
+                
                 if (fabs(radial_functions_(nmtp - 1, idxrf, 0)) > 1e-10)
                 {
                     std::stringstream s;
@@ -245,9 +246,8 @@ class AtomSymmetryClass
 
     public:
     
-        AtomSymmetryClass(int id_, 
-                          AtomType* atom_type_) : id_(id_),
-                                                  atom_type_(atom_type_)
+        AtomSymmetryClass(int id_, AtomType* atom_type_) : id_(id_),
+                                                           atom_type_(atom_type_)
         {
         
         }
@@ -270,7 +270,16 @@ class AtomSymmetryClass
             so_radial_integrals_.set_dimensions(atom_type_->num_aw_descriptors(), atom_type_->indexr().max_num_rf(), 
                                                 atom_type_->indexr().max_num_rf());
             so_radial_integrals_.allocate();
-         }
+
+            // copy descriptors because enu is defferent between atom classes
+            aw_descriptors_.resize(atom_type_->num_aw_descriptors());
+            for (int i = 0; i < num_aw_descriptors(); i++)
+                aw_descriptors_[i] = atom_type_->aw_descriptor(i);
+
+            lo_descriptors_.resize(atom_type_->num_lo_descriptors());
+            for (int i = 0; i < num_lo_descriptors(); i++)
+                lo_descriptors_[i] = atom_type_->lo_descriptor(i);
+        }
 
         inline int id()
         {
@@ -319,8 +328,6 @@ class AtomSymmetryClass
 
             generate_aw_radial_functions();
             generate_lo_radial_functions();
-
-            //print_enu();
         }
 
         /// Generate radial overlap and SO integrals
@@ -488,23 +495,29 @@ class AtomSymmetryClass
         }
 
 
-        void print_enu()
+        void write_enu(FILE* fout)
         {
-            printf("augmented waves\n");
-            for (int l = 0; l < atom_type_->num_aw_descriptors(); l++)
-                for (int order = 0; order < (int)atom_type_->aw_descriptor(l).size(); order++)
+            fprintf(fout, "Atom : %s, class id : %i\n", atom_type_->label().c_str(), id_); 
+            fprintf(fout, "augmented waves\n");
+            for (int l = 0; l < num_aw_descriptors(); l++)
+            {
+                for (int order = 0; order < (int)aw_descriptor(l).size(); order++)
                 {
-                    radial_solution_descriptor& rsd = atom_type_->aw_descriptor(l)[order];
-                    printf("n = %i   l = %i   order = %i   enu = %f\n", rsd.n, rsd.l, order, rsd.enu);
+                    radial_solution_descriptor& rsd = aw_descriptor(l)[order];
+                    fprintf(fout, "n = %i   l = %i   order = %i   enu = %f\n", rsd.n, rsd.l, order, rsd.enu);
                 }
+            }
 
-            printf("local orbitals\n");
-            for (int idxlo = 0; idxlo < atom_type_->num_lo_descriptors(); idxlo++)
-                for (int order = 0; order < (int)atom_type_->lo_descriptor(idxlo).size(); order++)
+            fprintf(fout, "local orbitals\n");
+            for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++)
+            {
+                for (int order = 0; order < (int)lo_descriptor(idxlo).size(); order++)
                 {
-                    radial_solution_descriptor& rsd = atom_type_->lo_descriptor(idxlo)[order];
-                    printf("n = %i   l = %i   order = %i   enu = %f\n", rsd.n, rsd.l, order, rsd.enu);
+                    radial_solution_descriptor& rsd = lo_descriptor(idxlo)[order];
+                    fprintf(fout, "n = %i   l = %i   order = %i   enu = %f\n", rsd.n, rsd.l, order, rsd.enu);
                 }
+            }
+            fprintf(fout, "\n");
         }
 
         /*!
@@ -582,29 +595,49 @@ class AtomSymmetryClass
             for (int ist = 0; ist < atom_type_->num_core_levels(); ist++)
                 core_eval_sum_ += enu_core[ist] * atom_type_->atomic_level(ist).occupancy;
 
-         }
+        }
 
-         double core_charge_density(int ir)
-         {
-             assert(ir >= 0 && ir < (int)core_charge_density_.size());
+        double core_charge_density(int ir)
+        {
+            assert(ir >= 0 && ir < (int)core_charge_density_.size());
 
-             return core_charge_density_[ir];
-         }
+            return core_charge_density_[ir];
+        }
 
-         inline AtomType* atom_type()
-         {
-             return atom_type_;
-         }
+        inline AtomType* atom_type()
+        {
+            return atom_type_;
+        }
 
-         inline double core_eval_sum()
-         {
-             return core_eval_sum_;
-         }
+        inline double core_eval_sum()
+        {
+            return core_eval_sum_;
+        }
 
-         inline double core_leakage()
-         {
-             return core_leakage_;
-         }
+        inline double core_leakage()
+        {
+            return core_leakage_;
+        }
+        
+        inline int num_aw_descriptors()
+        {
+            return (int)aw_descriptors_.size();
+        }
+
+        inline radial_solution_descriptor_set& aw_descriptor(int idx)
+        {
+            return aw_descriptors_[idx];
+        }
+        
+        inline int num_lo_descriptors()
+        {
+            return (int)lo_descriptors_.size();
+        }
+
+        inline radial_solution_descriptor_set& lo_descriptor(int idx)
+        {
+            return lo_descriptors_[idx];
+        }
 };
 
 };

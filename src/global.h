@@ -321,6 +321,14 @@ class Global : public StepFunction
             
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
                 atom_symmetry_class(ic)->generate_radial_functions();
+
+            if (Platform::mpi_rank() == 0)
+            {
+                FILE* fout = fopen("enu.txt", "w");
+                for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
+                    atom_symmetry_class(ic)->write_enu(fout);
+                fclose(fout);
+            }
         }
         
         void generate_radial_integrals()

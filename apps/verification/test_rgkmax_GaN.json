@@ -1,5 +1,5 @@
 {
-    "description" : "Total energy (LSDA) vs. spin direction for a single MPI task",
+    "description" : "Total energy vs. APW cutoff",
     
     "input" : 
     {
