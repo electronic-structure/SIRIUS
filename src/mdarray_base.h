@@ -115,8 +115,18 @@ template <typename T, int ND> class mdarray_base
              
             if (sz && (!mdarray_ptr)) 
             {
-                mdarray_ptr = new T[sz];
+                try
+                {
+                    mdarray_ptr = new T[sz];
+                }
+                catch(...)
+                {
+                    std::stringstream s;
+                    s << "Error allocating " << ND << "-dimensional array of size " << sz;
+                    error(__FILE__, __LINE__, s, fatal_err);
+                }
                 allocated_ = true;
+                Platform::adjust_heap_allocated(sz * sizeof(T));
             }
         }
 
@@ -127,6 +137,7 @@ template <typename T, int ND> class mdarray_base
                 delete[] mdarray_ptr;
                 mdarray_ptr = NULL;
                 allocated_ = false;
+                Platform::adjust_heap_allocated(-size() * sizeof(T));
             }
         }
         

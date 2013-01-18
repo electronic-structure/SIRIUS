@@ -3,6 +3,8 @@ class Platform
     private:
 
         static bool verbose_;
+
+        static int64_t heap_allocated_;
     
     public:
 
@@ -124,7 +126,19 @@ class Platform
         {
             allreduce<op>(buffer, count, MPI_COMM_WORLD);
         }
+
+        static void adjust_heap_allocated(int64_t size)
+        {
+            #pragma omp critical
+            heap_allocated_ += size;
+        }
+
+        static int64_t heap_allocated()
+        {
+            return heap_allocated_;
+        }
 };
 
 bool Platform::verbose_ = false;
+int64_t Platform::heap_allocated_ = 0;
 

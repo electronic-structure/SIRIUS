@@ -84,6 +84,8 @@ class kpoint
         {
             Timer t("sirius::kpoint::generate_matching_coefficients");
 
+            std::cout << "Allocated so far : " << Platform::heap_allocated() << std::endl;
+
             std::vector<complex16> zil(parameters_.lmax_apw() + 1);
             for (int l = 0; l <= parameters_.lmax_apw(); l++)
                 zil[l] = pow(complex16(0, 1), l);

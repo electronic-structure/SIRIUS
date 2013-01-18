@@ -3,6 +3,7 @@ sys.dont_write_bytecode = True
 
 import CifFile
 import re
+import math
 
 def parse_symmetry_op(op):
     result = re.search("(-?|\+?)[0-9]{1,10}/[0-9]{1,10}", op)
@@ -34,7 +35,10 @@ def apply_symmetry(sym_ops_list, initial_atoms_list):
     for atom in initial_atoms_list:
         for sym in sym_ops_list:
             coord = [0, 0, 0]
-            for i in range(3): coord[i] = sym[i][0] * atom[sym[i][1]] + sym[i][2]
+            for i in range(3): 
+                coord[i] = sym[i][0] * atom[sym[i][1]] + sym[i][2]
+                if coord[i] < 0: coord[i] += 1
+                if abs(coord[i] - 1) < 1e-10: coord[i] = 0
             
             found = False
             for c in full_atoms_list:
@@ -54,10 +58,6 @@ def main():
 
     cb = cf.first_block()
 
-    print cb["_cell_length_a"] 
-    print cb["_cell_length_b"] 
-    print cb["_cell_length_c"] 
-   
 
     atoms = cb.GetLoop("_atom_site_label")
     
@@ -81,11 +81,42 @@ def main():
         sym_ops_list.append(parse_symmetry(sym._symmetry_equiv_pos_as_xyz))
 
     
+    au2ang = 0.52917721092
+    a = float(cb["_cell_length_a"])
+    b = float(cb["_cell_length_b"])
+    c = float(cb["_cell_length_c"])
+    alpha = float(cb["_cell_angle_alpha"]) * math.pi / 180
+    beta = float(cb["_cell_angle_beta"]) * math.pi / 180
+    gamma = float(cb["_cell_angle_gamma"]) * math.pi / 180
+
+  
+    x2 = b * math.cos(gamma)
+    y2 = b * math.sin(gamma)
+    x3 = c * math.cos(beta)
+    y3 = (a * b * math.cos(alpha) - x2 * x3) / y2
+    z3 = math.sqrt(c * c - x3 * x3 - y3 * y3)
+
+    avec = [[a, 0, 0], 
+            [x2, y2, 0], 
+            [x3, y3, z3]] 
+
+    
+    fout = open("elk.in", "w")
+    fout.write("avec\n")
+    for i in range(3):
+        fout.write("%18.10f %18.10f %18.10f\n"%(avec[i][0] / au2ang, avec[i][1] / au2ang, avec[i][2] / au2ang))
+    fout.write("\n")
+    fout.write("atoms\n")
+    fout.write("%i\n"%len(initial_atoms_list.keys()))
+
     for key in initial_atoms_list.keys():
-        
-        print len(apply_symmetry(sym_ops_list, initial_atoms_list[key]))
+        atom_list = apply_symmetry(sym_ops_list, initial_atoms_list[key])
+        fout.write("'%s.in'\n"%key)
+        fout.write("%i\n"%len(atom_list))
+        for a in atom_list:
+            fout.write("%18.10f %18.10f %18.10f\n"%(a[0], a[1], a[2]))
 
-
+    fout.close()
 
     return
 
