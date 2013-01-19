@@ -73,9 +73,12 @@ class UnitCell
 
         /// total number of augmented wave basis functions in the MT (= number of matching coefficients for each plane-wave)
         int mt_aw_basis_size_;
-
+        
         /// total number of local orbital basis functions
         int mt_lo_basis_size_;
+
+        /// maximum AW basis size across all atoms
+        int max_mt_aw_basis_size_;
 
         /// list of nearest neighbours for each atom
         std::vector< std::vector<nearest_neighbour_descriptor> > nearest_neighbours_;
@@ -275,6 +278,7 @@ class UnitCell
             mt_lo_basis_size_ = 0;
             max_mt_basis_size_ = 0;
             max_mt_radial_basis_size_ = 0;
+            max_mt_aw_basis_size_ = 0;
             for (int ia = 0; ia < num_atoms(); ia++)
             {
                 atom(ia)->init(lmax_pot, num_mag_dims, mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
@@ -283,6 +287,7 @@ class UnitCell
                 mt_basis_size_ += atom(ia)->type()->mt_basis_size();
                 max_mt_basis_size_ = std::max(max_mt_basis_size_, atom(ia)->type()->mt_basis_size());
                 max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom(ia)->type()->mt_radial_basis_size());
+                max_mt_aw_basis_size_ = std::max(max_mt_aw_basis_size_, atom(ia)->type()->mt_aw_basis_size());
             }
 
             assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
@@ -810,6 +815,12 @@ class UnitCell
         inline double min_mt_radius()
         {
             return min_mt_radius_;
+        }
+
+        /// Maximum number of AW basis functions across all atom types
+        inline int max_mt_aw_basis_size()
+        {
+            return max_mt_aw_basis_size_;
         }
 };
 

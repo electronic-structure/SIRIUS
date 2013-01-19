@@ -91,12 +91,6 @@ class Band
         /// BLACS communication context
         int blacs_context_;
         
-        template <typename T>
-        inline void sum_L3_complex_gaunt(int lm1, int lm2, T* v, complex16& zsum)
-        {
-            for (int k = 0; k < (int)complex_gaunt_packed_(lm1, lm2).size(); k++)
-                zsum += complex_gaunt_packed_(lm1, lm2)[k].second * v[complex_gaunt_packed_(lm1, lm2)[k].first];
-        }
 
         /// Apply the muffin-tin part of the first-variational Hamiltonian to the apw basis function
         
@@ -863,7 +857,6 @@ class Band
         */
         void solve_fv(Global&                                    parameters,
                       const int                                  apwlo_basis_size, 
-                      const int                                  num_gkvec,
                       const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row,
                       const int                                  apwlo_basis_size_row,
                       const int                                  num_gkvec_row,
@@ -899,6 +892,9 @@ class Band
                          apwlo_basis_descriptors_col, apwlo_basis_size_col, num_gkvec_col,
                          apw_offset_col, gkvec, matching_coefficients, effective_potential, h);
 
+            Utils::write_matrix("h.txt", true, h);
+            Utils::write_matrix("o.txt", true, o);
+            
             if ((debug_level > 0) && (eigen_value_solver == lapack))
             {
                 Utils::check_hermitian("h", h);
@@ -1211,6 +1207,13 @@ class Band
         inline int num_ranks()
         {
             return num_ranks_;
+        }
+        
+        template <typename T>
+        inline void sum_L3_complex_gaunt(int lm1, int lm2, T* v, complex16& zsum)
+        {
+            for (int k = 0; k < (int)complex_gaunt_packed_(lm1, lm2).size(); k++)
+                zsum += complex_gaunt_packed_(lm1, lm2)[k].second * v[complex_gaunt_packed_(lm1, lm2)[k].first];
         }
 };
 
