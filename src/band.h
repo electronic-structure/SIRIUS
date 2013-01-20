@@ -892,8 +892,8 @@ class Band
                          apwlo_basis_descriptors_col, apwlo_basis_size_col, num_gkvec_col,
                          apw_offset_col, gkvec, matching_coefficients, effective_potential, h);
 
-            Utils::write_matrix("h.txt", true, h);
-            Utils::write_matrix("o.txt", true, o);
+            //Utils::write_matrix("h.txt", true, h);
+            //Utils::write_matrix("o.txt", true, o);
             
             if ((debug_level > 0) && (eigen_value_solver == lapack))
             {
@@ -1214,6 +1214,11 @@ class Band
         {
             for (int k = 0; k < (int)complex_gaunt_packed_(lm1, lm2).size(); k++)
                 zsum += complex_gaunt_packed_(lm1, lm2)[k].second * v[complex_gaunt_packed_(lm1, lm2)[k].first];
+        }
+
+        inline int blacs_context()
+        {
+            return blacs_context_;
         }
 };
 

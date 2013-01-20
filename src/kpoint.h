@@ -509,8 +509,65 @@ class kpoint
             mdarray<complex16, 2> h(apwlo_basis_size_row(), apwlo_basis_size_col());
             mdarray<complex16, 2> o(apwlo_basis_size_row(), apwlo_basis_size_col());
             set_fv_h_o(band, effective_potential, h, o);
-            Utils::write_matrix("h_new.txt", true, h);
-            Utils::write_matrix("o_new.txt", true, o);
+            
+            fv_eigen_values_.resize(parameters_.num_fv_states());
+
+            fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), band->spl_fv_states_col().local_size());
+            fv_eigen_vectors_.allocate();
+            
+            Timer *t1 = new Timer("sirius::Band::solve_fv:genevp");
+            eigenproblem<eigen_value_solver>::generalized(apwlo_basis_size(), 
+                                                          parameters_.cyclic_block_size(),
+                                                          band->num_ranks_row(), 
+                                                          band->num_ranks_col(), 
+                                                          band->blacs_context(), 
+                                                          parameters_.num_fv_states(), 
+                                                          -1.0, 
+                                                          h.get_ptr(), 
+                                                          h.ld(), 
+                                                          o.get_ptr(), 
+                                                          o.ld(), 
+                                                          &fv_eigen_values_[0], 
+                                                          fv_eigen_vectors_.get_ptr(),
+                                                          fv_eigen_vectors_.ld());
+            delete t1;
+            
+            
+            fv_states_col_.set_dimensions(mtgk_size(), band->spl_fv_states_col().local_size());
+            fv_states_col_.allocate();
+            fv_states_col_.zero();
+
+            mdarray<complex16, 2> alm(num_gkvec_row(), parameters_.max_mt_aw_basis_size());
+            
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                Atom* atom = parameters_.atom(ia);
+                AtomType* type = atom->type();
+                
+                generate_matching_coefficients(num_gkvec_row(), ia, alm);
+
+                blas<cpu>::gemm(2, 0, type->mt_aw_basis_size(), band->spl_fv_states_col().local_size(),
+                                num_gkvec_row(), complex16(1, 0), &alm(0, 0), alm.ld(), &fv_eigen_vectors_(0, 0), 
+                                fv_eigen_vectors_.ld(), complex16(0, 0), &fv_states_col_(atom->offset_wf(), 0), 
+                                fv_states_col_.ld());
+            }
+
+            for (int j = 0; j < band->spl_fv_states_col().local_size(); j++)
+            {
+                copy_lo_blocks(apwlo_basis_size_row(), num_gkvec_row(), apwlo_basis_descriptors_row_, 
+                               &fv_eigen_vectors_(0, j), &fv_states_col_(0, j));
+        
+                copy_pw_block(num_gkvec(), num_gkvec_row(), apwlo_basis_descriptors_row_, 
+                              &fv_eigen_vectors_(0, j), &fv_states_col_(parameters_.mt_basis_size(), j));
+            }
+
+            for (int j = 0; j < band->spl_fv_states_col().local_size(); j++)
+            {
+                Platform::allreduce(&fv_states_col_(0, j), mtgk_size(), 
+                                    parameters_.mpi_grid().communicator(1 << band->dim_row()));
+            }
+
+            fv_eigen_vectors_.deallocate();
         }
 
         inline void move_apw_blocks(complex16 *vec)
@@ -1089,32 +1146,32 @@ class kpoint
             
             
             
-            generate_matching_coefficients();
+            //* generate_matching_coefficients();
 
-            fv_eigen_values_.resize(parameters_.num_fv_states());
+            //* fv_eigen_values_.resize(parameters_.num_fv_states());
 
-            fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), band->spl_fv_states_col().local_size());
-            fv_eigen_vectors_.allocate();
+            //* fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), band->spl_fv_states_col().local_size());
+            //* fv_eigen_vectors_.allocate();
+            //* 
+            //* band->solve_fv(parameters_, 
+            //*                apwlo_basis_size(),
+            //*                apwlo_basis_descriptors_row_, 
+            //*                apwlo_basis_size_row(), 
+            //*                num_gkvec_row(),
+            //*                apwlo_basis_descriptors_col_, 
+            //*                apwlo_basis_size_col(), 
+            //*                num_gkvec_col(),
+            //*                matching_coefficients_, 
+            //*                gkvec_, 
+            //*                effective_potential, 
+            //*                effective_magnetic_field, 
+            //*                fv_eigen_values_,
+            //*                fv_eigen_vectors_);
+
+            //* generate_fv_states(band);
             
-            band->solve_fv(parameters_, 
-                           apwlo_basis_size(),
-                           apwlo_basis_descriptors_row_, 
-                           apwlo_basis_size_row(), 
-                           num_gkvec_row(),
-                           apwlo_basis_descriptors_col_, 
-                           apwlo_basis_size_col(), 
-                           num_gkvec_col(),
-                           matching_coefficients_, 
-                           gkvec_, 
-                           effective_potential, 
-                           effective_magnetic_field, 
-                           fv_eigen_values_,
-                           fv_eigen_vectors_);
-
-            generate_fv_states(band);
-            
-            // we don't need first-variational eigen-vectors; all information is available in fv_states array
-            fv_eigen_vectors_.deallocate();
+            //* // we don't need first-variational eigen-vectors; all information is available in fv_states array
+            //* fv_eigen_vectors_.deallocate();
             
             // distribute fv states along rows of the MPI grid
             if (band->num_ranks() == 1)
