@@ -89,7 +89,7 @@ class StepFunction : public ReciprocalLattice
                 std::stringstream s;
                 s << "step function gives a wrong volume for IT region" << std::endl
                   << "  difference with exact value : " << vit - volume_it_;
-                error(__FILE__, __LINE__, s);
+                error(__FILE__, __LINE__, s, 0);
             }
         }
 

@@ -122,7 +122,7 @@ template <typename T, int ND> class mdarray_base
                 catch(...)
                 {
                     std::stringstream s;
-                    s << "Error allocating " << ND << "-dimensional array of size " << sz;
+                    s << "Error allocating " << ND << "-dimensional array of size " << sz * sizeof(T);
                     error(__FILE__, __LINE__, s, fatal_err);
                 }
                 allocated_ = true;
