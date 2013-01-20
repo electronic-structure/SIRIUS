@@ -375,8 +375,8 @@ class kpoint
                 }
             }
             
-            // TODO: simplify Gk-vectors
-            Timer* t1 = new Timer("sirius::Band::set_fv_h:it");
+            Timer* t1 = new Timer("sirius::kpoint::set_fv_h_o:it");
+            
             for (int igkloc2 = 0; igkloc2 < num_gkvec_col(); igkloc2++) // loop over columns
             {
                 double v2c[3];
@@ -396,9 +396,7 @@ class kpoint
                     h(igkloc1, igkloc2) += (effective_potential->f_pw(ig12) + t1 * parameters_.step_function_pw(ig12));
                 }
             }
-            delete t1;
             
-            Timer* t2 = new Timer("sirius::Band::set_fv_o:it");
             for (int igkloc2 = 0; igkloc2 < num_gkvec_col(); igkloc2++) // loop over columns
             {
                 for (int igkloc1 = 0; igkloc1 < num_gkvec_row(); igkloc1++) // for each column loop over rows
@@ -408,12 +406,13 @@ class kpoint
                     o(igkloc1, igkloc2) += parameters_.step_function_pw(ig12);
                 }
             }
-            delete t2;
+
+            delete t1;
         }
 
         void generate_fv_states(Band* band, PeriodicFunction<double>* effective_potential)
         {
-            Timer t("sirius:kpoint:generate_fv_states");
+            Timer t("sirius::kpoint::generate_fv_states");
 
             mdarray<complex16, 2> h(apwlo_basis_size_row(), apwlo_basis_size_col());
             mdarray<complex16, 2> o(apwlo_basis_size_row(), apwlo_basis_size_col());
@@ -424,7 +423,7 @@ class kpoint
             fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), band->spl_fv_states_col().local_size());
             fv_eigen_vectors_.allocate();
             
-            Timer *t1 = new Timer("sirius::Band::solve_fv:genevp");
+            Timer *t1 = new Timer("sirius::kpoint::generate_fv_states:genevp");
             eigenproblem<eigen_value_solver>::generalized(apwlo_basis_size(), 
                                                           parameters_.cyclic_block_size(),
                                                           band->num_ranks_row(), 
