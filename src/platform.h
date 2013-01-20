@@ -5,6 +5,8 @@ class Platform
         static bool verbose_;
 
         static int64_t heap_allocated_;
+
+        static int num_fft_threads_;
     
     public:
 
@@ -56,6 +58,16 @@ class Platform
         static void set_verbose(bool verbose__)
         {
             verbose_ = verbose__;
+        }
+
+        static int num_fft_threads()
+        {
+            return num_fft_threads_;
+        }
+
+        static void set_num_fft_threads(int num_fft_threads__)
+        {
+            num_fft_threads_ = num_fft_threads__;
         }
 
         static void barrier(MPI_Comm comm = MPI_COMM_WORLD)
@@ -141,4 +153,5 @@ class Platform
 
 bool Platform::verbose_ = false;
 int64_t Platform::heap_allocated_ = 0;
+int Platform::num_fft_threads_ = -1;
 

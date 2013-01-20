@@ -243,7 +243,7 @@ class JsonTree
             return val;
         }
                 
-        template <typename T> inline T get(T& default_val)
+        /*template <typename T> inline T get(T& default_val)
         {
             T val;
             std::string type_name;
@@ -252,7 +252,7 @@ class JsonTree
                 return val;
             else
                 return default_val;
-        }
+        }*/
         
         template <typename T> inline T get(T default_val)
         {

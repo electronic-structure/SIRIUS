@@ -183,8 +183,9 @@ class Density
         
             
             Timer t3("sirius::Density::add_kpoint_contribution:it");
-            
-            #pragma omp parallel default(shared)
+           
+            int num_fft_threads = Platform::num_fft_threads();
+            #pragma omp parallel default(shared) num_threads(num_fft_threads)
             {
                 int thread_id = omp_get_thread_num();
 

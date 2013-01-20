@@ -90,16 +90,16 @@ class FFT3D
         {
             set_grid_size(dims);
             
-            fftw_input_buffer_.set_dimensions(size(), Platform::num_threads());
+            fftw_input_buffer_.set_dimensions(size(), Platform::num_fft_threads());
             fftw_input_buffer_.allocate();
 
-            fftw_output_buffer_.set_dimensions(size(), Platform::num_threads());
+            fftw_output_buffer_.set_dimensions(size(), Platform::num_fft_threads());
             fftw_output_buffer_.allocate();
  
-            plan_backward_.resize(Platform::num_threads());
-            plan_forward_.resize(Platform::num_threads());
+            plan_backward_.resize(Platform::num_fft_threads());
+            plan_forward_.resize(Platform::num_fft_threads());
 
-            for (int i = 0; i < Platform::num_threads(); i++)
+            for (int i = 0; i < Platform::num_fft_threads(); i++)
             {
                 plan_backward_[i] = fftw_plan_dft_3d(size(2), size(1), size(0), 
                                                      (fftw_complex*)&fftw_input_buffer_(0, i), 
@@ -112,7 +112,7 @@ class FFT3D
         
         void clear()
         {
-            for (int i = 0; i < Platform::num_threads(); i++)
+            for (int i = 0; i < Platform::num_fft_threads(); i++)
             {
                 fftw_destroy_plan(plan_backward_[i]);
                 fftw_destroy_plan(plan_forward_[i]);
@@ -126,31 +126,39 @@ class FFT3D
         
         inline void zero(int thread_id = 0)
         {
+            assert(thread_id < Platform::num_fft_threads());
+
             memset(&fftw_input_buffer_(0, thread_id), 0, size() * sizeof(complex16));
         }
 
         template<typename T>
         inline void input(int n, int* map, T* data, int thread_id = 0)
         {
+            assert(thread_id < Platform::num_fft_threads());
+            
             zero(thread_id);
 
-            for (int i = 0; i < n; i++)
-                fftw_input_buffer_(map[i], thread_id) = data[i];
+            for (int i = 0; i < n; i++) fftw_input_buffer_(map[i], thread_id) = data[i];
         }
 
         inline void input(double* data, int thread_id = 0)
         {
-            for (int i = 0; i < size(); i++)
-                fftw_input_buffer_(i, thread_id) = data[i];
+            assert(thread_id < Platform::num_fft_threads());
+            
+            for (int i = 0; i < size(); i++) fftw_input_buffer_(i, thread_id) = data[i];
         }
         
         inline void input(complex16* data, int thread_id = 0)
         {
+            assert(thread_id < Platform::num_fft_threads());
+            
             memcpy(&fftw_input_buffer_(0, thread_id), data, size() * sizeof(complex16));
         }
 
         inline void transform(int direction, int thread_id = 0)
         {
+            assert(thread_id < Platform::num_fft_threads());
+
             switch(direction)
             {
                 case 1:
@@ -168,19 +176,23 @@ class FFT3D
 
         inline void output(double* data, int thread_id = 0)
         {
-            for (int i = 0; i < size(); i++)
-                data[i] = real(fftw_output_buffer_(i, thread_id));
+            assert(thread_id < Platform::num_fft_threads());
+
+            for (int i = 0; i < size(); i++) data[i] = real(fftw_output_buffer_(i, thread_id));
         }
         
         inline void output(complex16* data, int thread_id = 0)
         {
+            assert(thread_id < Platform::num_fft_threads());
+
             memcpy(data, &fftw_output_buffer_(0, thread_id), size() * sizeof(complex16));
         }
         
         inline void output(int n, int* map, complex16* data, int thread_id = 0)
         {
-            for (int i = 0; i < n; i++)
-                data[i] = fftw_output_buffer_(map[i], thread_id);
+            assert(thread_id < Platform::num_fft_threads());
+
+            for (int i = 0; i < n; i++) data[i] = fftw_output_buffer_(map[i], thread_id);
         }
         
         inline int grid_limits(int d, int i)

@@ -60,19 +60,24 @@ class Global : public StepFunction
         /// MPI grid
         MPIGrid mpi_grid_;
 
-        int cyclic_block_size_; 
+        int cyclic_block_size_;
 
         /// read from the input file if it exists
         void read_input()
         {
             std::string fname("sirius.json");
+            
+            int num_fft_threads = Platform::num_threads();
 
             if (Utils::file_exists(fname))
             {
                 JsonTree parser(fname);
                 parser["mpi_grid_dims"] >> mpi_grid_dims_; 
                 parser["cyclic_block_size"] >> cyclic_block_size_;
+                num_fft_threads = parser["num_fft_threads"].get<int>(num_fft_threads);
             }
+
+            Platform::set_num_fft_threads(num_fft_threads);
         }
 
     public:
@@ -294,11 +299,12 @@ class Global : public StepFunction
                 printf("git hash : %s\n", git_hash);
                 printf("build date : %s\n", build_date);
                 printf("\n");
-                printf("number of MPI ranks   : %i\n", Platform::num_mpi_ranks());
-                printf("MPI grid              :");
+                printf("number of MPI ranks           : %i\n", Platform::num_mpi_ranks());
+                printf("MPI grid                      :");
                 for (int i = 0; i < mpi_grid_.num_dimensions(); i++) printf(" %i", mpi_grid_.size(1 << i));
                 printf("\n");
-                printf("number of OMP threads : %i\n", Platform::num_threads()); 
+                printf("number of OMP threads         : %i\n", Platform::num_threads()); 
+                printf("number of OMP threads for FFT : %i\n", Platform::num_fft_threads()); 
 
                 UnitCell::print_info();
                 ReciprocalLattice::print_info();

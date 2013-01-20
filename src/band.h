@@ -515,7 +515,8 @@ class Band
             }
             
             Timer *t1 = new Timer("sirius::Band::apply_magnetic_field:it");
-            #pragma omp parallel default(shared)
+            int num_fft_threads = Platform::num_fft_threads();
+            #pragma omp parallel default(shared) num_threads(num_fft_threads)
             {        
                 int thread_id = omp_get_thread_num();
                 

@@ -74,8 +74,10 @@ class kpoint
         /// column APW+lo basis descriptors
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_col_;
             
+        /// list of columns (lo block) for a given atom
         std::vector< std::vector<int> > icol_by_atom_;
 
+        /// list of rows (lo block) for a given atom
         std::vector< std::vector<int> > irow_by_atom_;
         
         /// Generate plane-wave matching coefficents for the radial solutions 
