@@ -58,6 +58,9 @@ class kpoint
 
         /// spherical Bessel functions and first derivateves at the MT boundary
         mdarray<double, 4> sbessel_mt_;
+        
+        /// precomputed values for the linear equations for matching coefficients
+        mdarray<complex16, 4> alm_b_;
 
         /// length of G+k vectors
         std::vector<double> gkvec_len_;
@@ -76,9 +79,10 @@ class kpoint
         
         /// column APW+lo basis descriptors
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_col_;
+            
+        std::vector< std::vector<int> > icol_by_atom_;
 
-        /// array of i^l values
-        std::vector<complex16> zil_;
+        std::vector< std::vector<int> > irow_by_atom_;
 
         /// Generate plane-wave matching coefficents for the radial solutions 
         void generate_matching_coefficients()
@@ -176,72 +180,79 @@ class kpoint
             AtomType* type = atom->type();
 
             assert(type->max_aw_order() <= 2);
-            
-            complex16 a[2][2];
-            mdarray<complex16, 2> b(2, (2 * parameters_.lmax_apw() + 1) * num_gkvec_loc);
 
-            int iat = parameters_.atom_type_index_by_id(atom->type_id());
+            int iat = parameters_.atom_type_index_by_id(type->id());
 
             double R = type->mt_radius();
 
-            for (int l = 0; l <= parameters_.lmax_apw(); l++)
+            #pragma omp parallel default(shared)
             {
-                int num_aw = (int)type->aw_descriptor(l).size();
+                complex16 a[2][2];
+                mdarray<complex16, 2> b(2, (2 * parameters_.lmax_apw() + 1) * num_gkvec_loc);
 
-                for (int order = 0; order < num_aw; order++)
+                #pragma omp for
+                for (int l = 0; l <= parameters_.lmax_apw(); l++)
                 {
-                    for (int order1 = 0; order1 < num_aw; order1++)
-                    {
-                        a[order][order1] = complex16(atom->symmetry_class()-> aw_surface_dm(l, order, order1), 0.0);
-                    }
-                }
+                    int num_aw = (int)type->aw_descriptor(l).size();
 
-                double det = (num_aw == 1) ? abs(a[0][0]) : abs(a[0][0] * a[1][1] - a[0][1] * a [1][0]);
-                if (det  < 1e-8) error(__FILE__, __LINE__, "ill defined linear equation problem", fatal_err);
-                
-                int n = 0;
-                for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
-                {
-                    double gkR = gkvec_len_[igkloc] * R; // |G+k|*R
-                    for (int m = -l; m <= l; m++)
+                    for (int order = 0; order < num_aw; order++)
                     {
-                        for (int order = 0; order < num_aw; order++)
+                        for (int order1 = 0; order1 < num_aw; order1++)
                         {
-                            b(order, n) = (fourpi / sqrt(parameters_.omega())) * zil_[l] * 
-                                          sbessel_mt_(l, iat, igkloc, order) * 
-                                          gkvec_phase_factors_(igkloc, ia) * 
-                                          conj(gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc)) * pow(gkR, order);
+                            a[order][order1] = complex16(atom->symmetry_class()->aw_surface_dm(l, order, order1), 0.0);
                         }
-                        n++;
                     }
-                }
 
-                int info = gesv(num_aw, n, &a[0][0], 2, &b(0, 0), 2);
-
-                if (info)
-                {
-                    std::stringstream s;
-                    s << "gtsv returned " << info;
-                    error(__FILE__, __LINE__, s, fatal_err);
-                }
-
-                n = 0;
-                for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
-                {
-                    for (int m = -l; m <= l; m++)
+                    double det = (num_aw == 1) ? abs(a[0][0]) : abs(a[0][0] * a[1][1] - a[0][1] * a [1][0]);
+                    if (det < 1e-8) error(__FILE__, __LINE__, "ill defined linear equation problem", fatal_err);
+                    
+                    complex16 zt[2];
+                    
+                    int n = 0;
+                    for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
                     {
-                        for (int order = 0; order < num_aw; order++)
+                        double gkR = gkvec_len_[igkloc] * R; // |G+k|*R
+                        
+                        zt[0] = 1.0 * gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 0);
+                        if (num_aw == 2) zt[1] = gkR * gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 1);
+
+                        for (int m = -l; m <= l; m++)
                         {
-                            int idxb = type->indexb_by_l_m_order(l, m, order);
-                            
-                            /* it is more convenient to store conjugated coefficients because then the 
-                               overlap matrix is set with single matrix-matrix multiplication without 
-                               further conjugation */
-                            alm(igkloc, idxb) = conj(b(order, n));
+                            for (int order = 0; order < num_aw; order++)
+                            {
+                                b(order, n) = zt[order] * conj(gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc));
+                            }
+                            n++;
                         }
-                        n++;
                     }
-                }
+
+                    int info = gesv(num_aw, num_gkvec_loc * (2 * l + 1), &a[0][0], 2, &b(0, 0), 2);
+
+                    if (info)
+                    {
+                        std::stringstream s;
+                        s << "gtsv returned " << info;
+                        error(__FILE__, __LINE__, s, fatal_err);
+                    }
+                   
+                    n = 0; 
+                    for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
+                    {
+                        for (int m = -l; m <= l; m++)
+                        {
+                            for (int order = 0; order < num_aw; order++)
+                            {
+                                int idxb = type->indexb_by_l_m_order(l, m, order);
+                                
+                                /* it is more convenient to store conjugated coefficients because then the 
+                                   overlap matrix is set with single matrix-matrix multiplication without 
+                                   further conjugation */
+                                alm(igkloc, idxb) = conj(b(order, n));
+                            }
+                            n++;
+                        }
+                    }
+                } //l
             }
         }
         
@@ -261,51 +272,56 @@ class kpoint
         void apply_hmt_to_apw(Band* band, int num_gkvec_row, int ia, mdarray<complex16, 2>& alm, 
                               mdarray<complex16, 2>& halm)
         {
-            Timer t("sirius::Band::apply_hmt_to_apw");
+            Timer t("sirius::kpoint::apply_hmt_to_apw");
            
-            std::vector<complex16> zv(num_gkvec_row);
             
             Atom* atom = parameters_.atom(ia);
             AtomType* type = atom->type();
-
-            for (int j2 = 0; j2 < type->mt_aw_basis_size(); j2++)
+            
+            #pragma omp parallel default(shared)
             {
-                memset(&zv[0], 0, num_gkvec_row * sizeof(complex16));
-
-                int lm2 = type->indexb(j2).lm;
-                int idxrf2 = type->indexb(j2).idxrf;
-
-                for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++)
+                std::vector<complex16> zv(num_gkvec_row);
+                
+                #pragma omp for
+                for (int j2 = 0; j2 < type->mt_aw_basis_size(); j2++)
                 {
-                    int lm1 = type->indexb(j1).lm;
-                    int idxrf1 = type->indexb(j1).idxrf;
-                    
-                    complex16 zsum(0, 0);
-                    
-                    band->sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf1, idxrf2), zsum);
-                    
-                    if (abs(zsum) > 1e-14) 
+                    memset(&zv[0], 0, num_gkvec_row * sizeof(complex16));
+
+                    int lm2 = type->indexb(j2).lm;
+                    int idxrf2 = type->indexb(j2).idxrf;
+
+                    for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++)
                     {
-                        for (int ig = 0; ig < num_gkvec_row; ig++) zv[ig] += zsum * alm(ig, j1); 
-                    }
-                } // j1
-                 
-                int l2 = type->indexb(j2).l;
-                int order2 = type->indexb(j2).order;
-                
-                for (int order1 = 0; order1 < (int)type->aw_descriptor(l2).size(); order1++)
-                {
-                    double t1 = 0.5 * pow(type->mt_radius(), 2) * 
-                                atom->symmetry_class()->aw_surface_dm(l2, order1, 0) * 
-                                atom->symmetry_class()->aw_surface_dm(l2, order2, 1);
+                        int lm1 = type->indexb(j1).lm;
+                        int idxrf1 = type->indexb(j1).idxrf;
+                        
+                        complex16 zsum(0, 0);
+                        
+                        band->sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf1, idxrf2), zsum);
+                        
+                        if (abs(zsum) > 1e-14) 
+                        {
+                            for (int ig = 0; ig < num_gkvec_row; ig++) zv[ig] += zsum * alm(ig, j1); 
+                        }
+                    } // j1
+                     
+                    int l2 = type->indexb(j2).l;
+                    int order2 = type->indexb(j2).order;
                     
-                    for (int ig = 0; ig < num_gkvec_row; ig++) 
-                        zv[ig] += t1 * alm(ig, type->indexb_by_lm_order(lm2, order1));
-                }
-                
-                memcpy(&halm(0, j2), &zv[0], num_gkvec_row * sizeof(complex16));
+                    for (int order1 = 0; order1 < (int)type->aw_descriptor(l2).size(); order1++)
+                    {
+                        double t1 = 0.5 * pow(type->mt_radius(), 2) * 
+                                    atom->symmetry_class()->aw_surface_dm(l2, order1, 0) * 
+                                    atom->symmetry_class()->aw_surface_dm(l2, order2, 1);
+                        
+                        for (int ig = 0; ig < num_gkvec_row; ig++) 
+                            zv[ig] += t1 * alm(ig, type->indexb_by_lm_order(lm2, order1));
+                    }
+                    
+                    memcpy(&halm(0, j2), &zv[0], num_gkvec_row * sizeof(complex16));
 
-            } // j2
+                } // j2
+            }
         }
 
         void set_fv_h_o(Band*                     band,
@@ -314,20 +330,7 @@ class kpoint
                         mdarray<complex16, 2>&    o)
 
         {
-            std::vector< std::vector<int> > icol_by_atom(parameters_.num_atoms());
-            std::vector< std::vector<int> > irow_by_atom(parameters_.num_atoms());
-
-            for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
-            {
-                int ia = apwlo_basis_descriptors_col_[icol].ia;
-                icol_by_atom[ia].push_back(icol);
-            }
-            
-            for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
-            {
-                int ia = apwlo_basis_descriptors_row_[irow].ia;
-                irow_by_atom[ia].push_back(irow);
-            }
+            Timer t("sirius::kpoint::set_fv_h_o");
             
             int apw_offset_col = (band->num_ranks() > 1) ? num_gkvec_row() : 0;
             
@@ -356,9 +359,9 @@ class kpoint
                                 &o(0, 0), o.ld()); 
 
                 // apw-lo block
-                for (int i = 0; i < (int)icol_by_atom[ia].size(); i++)
+                for (int i = 0; i < (int)icol_by_atom_[ia].size(); i++)
                 {
-                    int icol = icol_by_atom[ia][i];
+                    int icol = icol_by_atom_[ia][i];
 
                     int l = apwlo_basis_descriptors_col_[icol].l;
                     int lm = apwlo_basis_descriptors_col_[icol].lm;
@@ -393,9 +396,9 @@ class kpoint
 
                 std::vector<complex16> ztmp(num_gkvec_col());
                 // lo-apw block
-                for (int i = 0; i < (int)irow_by_atom[ia].size(); i++)
+                for (int i = 0; i < (int)irow_by_atom_[ia].size(); i++)
                 {
-                    int irow = irow_by_atom[ia][i];
+                    int irow = irow_by_atom_[ia][i];
 
                     int l = apwlo_basis_descriptors_row_[irow].l;
                     int lm = apwlo_basis_descriptors_row_[irow].lm;
@@ -762,8 +765,15 @@ class kpoint
             sbessel_mt_.allocate();
             sbessel_mt_.zero();
                     
+            alm_b_.set_dimensions(parameters_.lmax_apw() + 1, parameters_.num_atom_types(), num_gkvec_loc(), 2);
+            alm_b_.allocate();
+            alm_b_.zero();
+            
             gkvec_len_.resize(num_gkvec_loc());
 
+            std::vector<complex16> zil(parameters_.lmax_apw() + 1);
+            for (int l = 0; l <= parameters_.lmax_apw(); l++) zil[l] = pow(complex16(0, 1), l);
+            
             for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
             {
                 int igk = igkglob(igkloc);
@@ -782,8 +792,17 @@ class kpoint
                     
                     // Bessel function derivative: f_{{n}}^{{\prime}}(z)=-f_{{n+1}}(z)+(n/z)f_{{n}}(z)
                     for (int l = 0; l <= parameters_.lmax_apw(); l++)
+                    {
                         sbessel_mt_(l, iat, igkloc, 1) = -sbessel_mt_(l + 1, iat, igkloc, 0) * gkvec_len_[igkloc] + 
                                                          (l / R) * sbessel_mt_(l, iat, igkloc, 0);
+                    }
+                    
+                    for (int l = 0; l <= parameters_.lmax_apw(); l++)
+                    {
+                        double f = fourpi / sqrt(parameters_.omega());
+                        alm_b_(l, iat, igkloc, 0) = zil[l] * f * sbessel_mt_(l, iat, igkloc, 0); 
+                        alm_b_(l, iat, igkloc, 1) = zil[l] * f * sbessel_mt_(l, iat, igkloc, 1); 
+                    }
                 }
             }
         }
@@ -1129,8 +1148,20 @@ class kpoint
             
             init_gkvec();
             
-            zil_.resize(parameters_.lmax_apw() + 1);
-            for (int l = 0; l <= parameters_.lmax_apw(); l++) zil_[l] = pow(complex16(0, 1), l);
+            icol_by_atom_.resize(parameters_.num_atoms());
+            irow_by_atom_.resize(parameters_.num_atoms());
+
+            for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
+            {
+                int ia = apwlo_basis_descriptors_col_[icol].ia;
+                icol_by_atom_[ia].push_back(icol);
+            }
+            
+            for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
+            {
+                int ia = apwlo_basis_descriptors_row_[irow].ia;
+                irow_by_atom_[ia].push_back(irow);
+            }
         }
 
         void find_eigen_states(Band* band, PeriodicFunction<double>* effective_potential, 
