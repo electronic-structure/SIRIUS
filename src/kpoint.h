@@ -20,9 +20,6 @@ class kpoint
         /// global index (in the range [0, N_G - 1]) of G-vector by the index of G+k vector in the range [0, N_Gk - 1]
         std::vector<int> gvec_index_;
 
-        /// plane-wave matching coefficients
-        mdarray<complex16, 2> matching_coefficients_;
-
         /// first-variational eigen values
         std::vector<double> fv_eigen_values_;
 
@@ -56,9 +53,6 @@ class kpoint
         /// spherical harmonics of G+k vectors
         mdarray<complex16, 2> gkvec_ylm_;
 
-        /// spherical Bessel functions and first derivateves at the MT boundary
-        mdarray<double, 4> sbessel_mt_;
-        
         /// precomputed values for the linear equations for matching coefficients
         mdarray<complex16, 4> alm_b_;
 
@@ -83,93 +77,6 @@ class kpoint
         std::vector< std::vector<int> > icol_by_atom_;
 
         std::vector< std::vector<int> > irow_by_atom_;
-
-        /// Generate plane-wave matching coefficents for the radial solutions 
-        void generate_matching_coefficients()
-        {
-            Timer t("sirius::kpoint::generate_matching_coefficients");
-
-            std::cout << "Allocated so far : " << Platform::heap_allocated() << std::endl;
-
-            std::vector<complex16> zil(parameters_.lmax_apw() + 1);
-            for (int l = 0; l <= parameters_.lmax_apw(); l++)
-                zil[l] = pow(complex16(0, 1), l);
-      
-            matching_coefficients_.set_dimensions(num_gkvec_loc(), parameters_.mt_aw_basis_size());
-            matching_coefficients_.allocate();
-
-            #pragma omp parallel default(shared)
-            {
-                complex16 a[2][2];
-                mdarray<complex16,2> b(2, (2 * parameters_.lmax_apw() + 1) * num_gkvec_loc());
-
-                #pragma omp for
-                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-                {
-                    assert(parameters_.atom(ia)->type()->max_aw_order() <= 2);
-
-                    int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-
-                    double R = parameters_.atom(ia)->type()->mt_radius();
-
-                    for (int l = 0; l <= parameters_.lmax_apw(); l++)
-                    {
-                        int num_aw = (int)parameters_.atom(ia)->type()->aw_descriptor(l).size();
-
-                        for (int order = 0; order < num_aw; order++)
-                            for (int order1 = 0; order1 < num_aw; order1++)
-                                a[order][order1] = complex16(parameters_.atom(ia)->symmetry_class()->
-                                    aw_surface_dm(l, order, order1), 0.0);
-
-                        double det = (num_aw == 1) ? abs(a[0][0]) : abs(a[0][0] * a[1][1] - a[0][1] * a [1][0]);
-                        if (det  < 1e-8) 
-                            error(__FILE__, __LINE__, "ill defined linear equation problem", fatal_err);
-                        
-                        int n = 0;
-                        for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
-                        {
-                            double gkR = gkvec_len_[igkloc] * R; // |G+k|*R
-                            for (int m = -l; m <= l; m++)
-                            {
-                                for (int order = 0; order < num_aw; order++)
-                                {
-                                    b(order, n) = (fourpi / sqrt(parameters_.omega())) * zil[l] * 
-                                                  sbessel_mt_(l, iat, igkloc, order) * 
-                                                  gkvec_phase_factors_(igkloc, ia) * 
-                                                  conj(gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc)) * pow(gkR, order); 
-                                }
-                                n++;
-                            }
-                        }
-
-                        int info = gesv(num_aw, n, &a[0][0], 2, &b(0, 0), 2);
-
-                        if (info)
-                        {
-                            std::stringstream s;
-                            s << "gtsv returned " << info;
-                            error(__FILE__, __LINE__, s, fatal_err);
-                        }
-
-                        int offs = parameters_.atom(ia)->offset_aw();
-                        n = 0;
-                        for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
-                            for (int m = -l; m <= l; m++)
-                            {
-                                for (int order = 0; order < num_aw; order++)
-                                {
-                                    int idxb = parameters_.atom(ia)->type()->indexb_by_l_m_order(l, m, order);
-                                    // it is more convenient to store conjugated coefficients because then the 
-                                    // overlap matrix is set with single matrix-matrix multiplication without 
-                                    // further conjugation 
-                                    matching_coefficients_(igkloc, offs + idxb) = conj(b(order, n));
-                                }
-                                n++;
-                            }
-                    } // l
-                } //ia
-            }
-        }
         
         /// Generate plane-wave matching coefficents for the radial solutions 
         void generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
@@ -273,7 +180,6 @@ class kpoint
                               mdarray<complex16, 2>& halm)
         {
             Timer t("sirius::kpoint::apply_hmt_to_apw");
-           
             
             Atom* atom = parameters_.atom(ia);
             AtomType* type = atom->type();
@@ -473,19 +379,17 @@ class kpoint
             Timer* t1 = new Timer("sirius::Band::set_fv_h:it");
             for (int igkloc2 = 0; igkloc2 < num_gkvec_col(); igkloc2++) // loop over columns
             {
-                double v2[3];
                 double v2c[3];
-                for (int x = 0; x < 3; x++) v2[x] = gkvec_(x, apwlo_basis_descriptors_col_[igkloc2].igk);
-                parameters_.get_coordinates<cartesian, reciprocal>(v2, v2c);
+                parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_col_[igkloc2].igk), 
+                                                                   v2c);
 
                 for (int igkloc1 = 0; igkloc1 < num_gkvec_row(); igkloc1++) // for each column loop over rows
                 {
                     int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row_[igkloc1].ig,
                                                      apwlo_basis_descriptors_col_[igkloc2].ig);
-                    double v1[3];
                     double v1c[3];
-                    for (int x = 0; x < 3; x++) v1[x] = gkvec_(x, apwlo_basis_descriptors_row_[igkloc1].igk);
-                    parameters_.get_coordinates<cartesian, reciprocal>(v1, v1c);
+                    parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_row_[igkloc1].igk), 
+                                                                       v1c);
                     
                     double t1 = 0.5 * Utils::scalar_product(v1c, v2c);
                                        
@@ -507,8 +411,10 @@ class kpoint
             delete t2;
         }
 
-        void generate_fv_states2(Band* band, PeriodicFunction<double>* effective_potential)
+        void generate_fv_states(Band* band, PeriodicFunction<double>* effective_potential)
         {
+            Timer t("sirius:kpoint:generate_fv_states");
+
             mdarray<complex16, 2> h(apwlo_basis_size_row(), apwlo_basis_size_col());
             mdarray<complex16, 2> o(apwlo_basis_size_row(), apwlo_basis_size_col());
             set_fv_h_o(band, effective_potential, h, o);
@@ -573,21 +479,6 @@ class kpoint
             fv_eigen_vectors_.deallocate();
         }
 
-        inline void move_apw_blocks(complex16 *vec)
-        {
-            for (int ia = parameters_.num_atoms() - 1; ia >= 0; ia--)
-            {
-                int final_block_offset = parameters_.atom(ia)->offset_wf();
-                int initial_block_offset = parameters_.atom(ia)->offset_aw();
-                int block_size = parameters_.atom(ia)->type()->mt_aw_basis_size();
-        
-                memmove(&vec[final_block_offset], &vec[initial_block_offset], block_size * sizeof(complex16));
-
-                memset(&vec[final_block_offset + block_size], 0, 
-                       parameters_.atom(ia)->type()->mt_lo_basis_size() * sizeof(complex16));
-            }
-        }
-        
         inline void copy_lo_blocks(const int apwlo_basis_size_row, const int num_gkvec_row, 
                                    const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
                                    const complex16* z, complex16 *vec)
@@ -611,34 +502,6 @@ class kpoint
                 vec[apwlo_basis_descriptors_row[j].igk] = z[j];
         }
 
-        void generate_fv_states(Band* band)
-        {
-            Timer t("sirius::kpoint::generate_fv_states");
-            
-            fv_states_col_.set_dimensions(mtgk_size(), band->spl_fv_states_col().local_size());
-            fv_states_col_.allocate();
-                
-            gemm<cpu>(2, 0, parameters_.mt_aw_basis_size(), band->spl_fv_states_col().local_size(),
-                      num_gkvec_row(), complex16(1, 0), &matching_coefficients_(0, 0), matching_coefficients_.ld(),
-                      &fv_eigen_vectors_(0, 0), fv_eigen_vectors_.ld(), complex16(0, 0), &fv_states_col_(0, 0), 
-                      fv_states_col_.ld());
-
-            for (int j = 0; j < band->spl_fv_states_col().local_size(); j++)
-            {
-                move_apw_blocks(&fv_states_col_(0, j));
-        
-                copy_lo_blocks(apwlo_basis_size_row(), num_gkvec_row(), apwlo_basis_descriptors_row_, 
-                               &fv_eigen_vectors_(0, j), &fv_states_col_(0, j));
-        
-                copy_pw_block(num_gkvec(), num_gkvec_row(), apwlo_basis_descriptors_row_, 
-                              &fv_eigen_vectors_(0, j), &fv_states_col_(parameters_.mt_basis_size(), j));
-            }
-
-            for (int j = 0; j < band->spl_fv_states_col().local_size(); j++)
-                Platform::allreduce(&fv_states_col_(0, j), mtgk_size(), 
-                                    parameters_.mpi_grid().communicator(1 << band->dim_row()));
-        }
-        
         void generate_spinor_wave_functions(Band* band, bool has_sv_evec)
         {
             Timer t("sirius::kpoint::generate_spinor_wave_functions");
@@ -760,16 +623,15 @@ class kpoint
                 }
             }
             
-            // compute values of spherical Bessel functions and first derivative at MT boundary
-            sbessel_mt_.set_dimensions(parameters_.lmax_apw() + 2, parameters_.num_atom_types(), num_gkvec_loc(), 2);
-            sbessel_mt_.allocate();
-            sbessel_mt_.zero();
-                    
             alm_b_.set_dimensions(parameters_.lmax_apw() + 1, parameters_.num_atom_types(), num_gkvec_loc(), 2);
             alm_b_.allocate();
             alm_b_.zero();
             
             gkvec_len_.resize(num_gkvec_loc());
+            
+            // compute values of spherical Bessel functions and first derivative at MT boundary
+            mdarray<double, 2> sbessel_mt(parameters_.lmax_apw() + 2, 2);
+            sbessel_mt.zero();
 
             std::vector<complex16> zil(parameters_.lmax_apw() + 1);
             for (int l = 0; l <= parameters_.lmax_apw(); l++) zil[l] = pow(complex16(0, 1), l);
@@ -788,20 +650,19 @@ class kpoint
 
                     double gkR = gkvec_len_[igkloc] * R;
 
-                    gsl_sf_bessel_jl_array(parameters_.lmax_apw() + 1, gkR, &sbessel_mt_(0, iat, igkloc, 0));
+                    gsl_sf_bessel_jl_array(parameters_.lmax_apw() + 1, gkR, &sbessel_mt(0, 0));
                     
                     // Bessel function derivative: f_{{n}}^{{\prime}}(z)=-f_{{n+1}}(z)+(n/z)f_{{n}}(z)
                     for (int l = 0; l <= parameters_.lmax_apw(); l++)
                     {
-                        sbessel_mt_(l, iat, igkloc, 1) = -sbessel_mt_(l + 1, iat, igkloc, 0) * gkvec_len_[igkloc] + 
-                                                         (l / R) * sbessel_mt_(l, iat, igkloc, 0);
+                        sbessel_mt(l, 1) = -sbessel_mt(l + 1, 0) * gkvec_len_[igkloc] + (l / R) * sbessel_mt(l, 0);
                     }
                     
                     for (int l = 0; l <= parameters_.lmax_apw(); l++)
                     {
                         double f = fourpi / sqrt(parameters_.omega());
-                        alm_b_(l, iat, igkloc, 0) = zil[l] * f * sbessel_mt_(l, iat, igkloc, 0); 
-                        alm_b_(l, iat, igkloc, 1) = zil[l] * f * sbessel_mt_(l, iat, igkloc, 1); 
+                        alm_b_(l, iat, igkloc, 0) = zil[l] * f * sbessel_mt(l, 0); 
+                        alm_b_(l, iat, igkloc, 1) = zil[l] * f * sbessel_mt(l, 1); 
                     }
                 }
             }
@@ -1172,37 +1033,7 @@ class kpoint
             
             Timer t("sirius::kpoint::find_eigen_states");
 
-            generate_fv_states2(band, effective_potential);
-            
-            
-            
-            
-            //* generate_matching_coefficients();
-
-            //* fv_eigen_values_.resize(parameters_.num_fv_states());
-
-            //* fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), band->spl_fv_states_col().local_size());
-            //* fv_eigen_vectors_.allocate();
-            //* 
-            //* band->solve_fv(parameters_, 
-            //*                apwlo_basis_size(),
-            //*                apwlo_basis_descriptors_row_, 
-            //*                apwlo_basis_size_row(), 
-            //*                num_gkvec_row(),
-            //*                apwlo_basis_descriptors_col_, 
-            //*                apwlo_basis_size_col(), 
-            //*                num_gkvec_col(),
-            //*                matching_coefficients_, 
-            //*                gkvec_, 
-            //*                effective_potential, 
-            //*                effective_magnetic_field, 
-            //*                fv_eigen_values_,
-            //*                fv_eigen_vectors_);
-
-            //* generate_fv_states(band);
-            
-            //* // we don't need first-variational eigen-vectors; all information is available in fv_states array
-            //* fv_eigen_vectors_.deallocate();
+            generate_fv_states(band, effective_potential);
             
             // distribute fv states along rows of the MPI grid
             if (band->num_ranks() == 1)

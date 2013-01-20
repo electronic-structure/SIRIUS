@@ -91,7 +91,7 @@ class Band
         /// BLACS communication context
         int blacs_context_;
         
-
+#if 0
         /// Apply the muffin-tin part of the first-variational Hamiltonian to the apw basis function
         
         /** The following vector is computed:
@@ -432,7 +432,8 @@ class Band
                 }
             }
         }
-        
+#endif
+
         // assumes that hpsi is zero on input
         void apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size, int num_gkvec, int* fft_index, 
                                   PeriodicFunction<double>* effective_magnetic_field[3], mdarray<complex16, 3>& hpsi)
@@ -845,7 +846,8 @@ class Band
         {
             if (eigen_value_solver == scalapack) Cfree_blacs_system_handle(blacs_context_);
         }
-      
+ 
+#if 0
         /// Setup and solve the first-variational problem
 
         /** Solve \$ H\psi = E\psi \$.
@@ -982,6 +984,7 @@ class Band
                 warning(__FILE__, __LINE__, s, 0);
             }
         }
+#endif
 
         void solve_sv(Global&                   parameters,
                       int                       mtgk_size, 
