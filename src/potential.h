@@ -79,14 +79,13 @@ class Potential
         /**
             \note MPI reduction may not be efficient on many ranks; consider single node implementation
         */
-        void poisson_vmt(PeriodicFunction<double>* rho, PeriodicFunction<double>* vh, mdarray<complex16, 2>& qmt)
+        void poisson_vmt(PeriodicFunction<double>* rho, PeriodicFunction<double>* vh, splindex<block>& spl_num_atoms,
+                         mdarray<complex16, 2>& qmt)
         {
             Timer t("sirius::Potential::poisson:vmt");
 
             vh->zero(ylm_component);
             qmt.zero();
-            
-            splindex<block> spl_num_atoms(parameters_.num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
             
             for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
             {
@@ -147,8 +146,6 @@ class Potential
             }
 
             Platform::allreduce(&qmt(0, 0), (int)qmt.size());
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-                Platform::allreduce(&vh->f_ylm(0, 0, ia), parameters_.lmmax_pot() * parameters_.max_num_mt_points());
         }
 
 
@@ -266,8 +263,7 @@ class Potential
             Platform::allreduce(&pseudo_pw[0], parameters_.num_gvec());
         }
 
-        /*! 
-            \brief Poisson solver
+        /*! \brief Poisson solver
             
             plane wave expansion
             \f[
@@ -313,9 +309,11 @@ class Potential
         {
             Timer t("sirius::Potential::poisson");
 
+            splindex<block> spl_num_atoms(parameters_.num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+            
             // true multipole moments
             mdarray<complex16,2> qmt(parameters_.lmmax_rho(), parameters_.num_atoms());
-            poisson_vmt(rho, hartree_potential, qmt);
+            poisson_vmt(rho, hartree_potential, spl_num_atoms, qmt);
 
             // compute multipoles of interstitial density in MT region
             mdarray<complex16, 2> qit(parameters_.lmmax_rho(), parameters_.num_atoms());
@@ -325,8 +323,7 @@ class Potential
             std::vector<complex16> pseudo_pw(parameters_.num_gvec());
             poisson_pw(qmt, qit, &pseudo_pw[0]);
 
-            for (int ig = 0; ig < parameters_.num_gvec(); ig++)
-                pseudo_pw[ig] += rho->f_pw(ig); 
+            for (int ig = 0; ig < parameters_.num_gvec(); ig++) pseudo_pw[ig] += rho->f_pw(ig); 
             
             if (check_pseudo_charge)
             {
@@ -340,7 +337,9 @@ class Potential
                 parameters_.rti().pseudo_charge_error = d;
             }
             else
+            {
                 parameters_.rti().pseudo_charge_error = 0.0;
+            }
  
             // compute pw coefficients of Hartree potential
             pseudo_pw[0] = 0.0;
@@ -352,24 +351,46 @@ class Potential
             mdarray<complex16, 2> vmtlm(parameters_.lmmax_pot(), parameters_.num_atoms());
             poisson_sum_G(hartree_potential->f_pw(), sbessel_mt_, vmtlm);
             
-            Timer* t1 = new Timer("sirius::Potential::poisson:bc");
             // add boundary condition
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            {
-                double R = parameters_.atom(ia)->type()->mt_radius();
+            Timer* t1 = new Timer("sirius::Potential::poisson:bc");
+            mdarray<double, 2> rRl(parameters_.max_num_mt_points(), parameters_.lmax_pot() + 1);
+            int type_id_prev = -1;
 
+            for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
+            {
+                int ia = spl_num_atoms[ialoc];
+
+                if (parameters_.atom(ia)->type_id() != type_id_prev)
+                {
+                    type_id_prev = parameters_.atom(ia)->type_id();
+                
+                    double R = parameters_.atom(ia)->type()->mt_radius();
+
+                    #pragma omp parallel for default(shared)
+                    for (int l = 0; l <= parameters_.lmax_pot(); l++)
+                    {
+                        for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
+                            rRl(ir, l) = pow(parameters_.atom(ia)->type()->radial_grid(ir) / R, l);
+                    }
+                }
+
+                #pragma omp parallel for default(shared)
                 for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
                 {
                     int l = l_by_lm_[lm];
 
                     for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
-                    {
-                        double rRl = pow(parameters_.atom(ia)->type()->radial_grid(ir) / R, l);
-                        hartree_potential->f_ylm(lm, ir, ia) += vmtlm(lm, ia) * rRl;
-                    }
+                        hartree_potential->f_ylm(lm, ir, ia) += vmtlm(lm, ia) * rRl(ir, l);
                 }
             }
             delete t1;
+           
+            // sync MT part of Hartree potential after adding a boundary condition
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                Platform::allreduce(&hartree_potential->f_ylm(0, 0, ia), 
+                                    parameters_.lmmax_pot() * parameters_.max_num_mt_points());
+            }
             
             hartree_potential->convert_to_rlm();
 

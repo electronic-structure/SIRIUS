@@ -150,6 +150,8 @@ class SHT
         /// Transform from Rlm to spherical coordinates 
         void rlm_backward_transform(double* flm, int lmmax, int ncol, double* ftp)
         {
+            Timer t("sirius::SHT::rlm_backward_transform");
+            
             assert(lmmax <= lmmax_);
 
             gemm<cpu>(1, 0, num_points_, ncol, lmmax, 1.0, &rlm_backward_(0, 0), lmmax_, flm, lmmax, 0.0, ftp, 
@@ -159,6 +161,8 @@ class SHT
         /// Transform from spherical coordinates to Rlm
         void rlm_forward_transform(double *ftp, int lmmax, int ncol, double* flm)
         {
+            Timer t("sirius::SHT::rlm_forward_transform");
+            
             assert(lmmax <= lmmax_);
             
             gemm<cpu>(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, ftp, num_points_, 0.0, 
@@ -193,9 +197,7 @@ class SHT
             }
         }
 
-        /*!
-            \brief Generate complex spherical harmonics Ylm
-        */
+        /// Generate complex spherical harmonics Ylm
         static inline void spherical_harmonics(int lmax, double theta, double phi, complex16* ylm)
         {
             double x = cos(theta);
@@ -222,10 +224,9 @@ class SHT
             }
         }
         
-        /*!
-            \brief Generate real spherical harmonics Rlm
+        /// Generate real spherical harmonics Rlm
 
-            Mathematica code:
+        /*! Mathematica code:
             \verbatim
             R[l_, m_, th_, ph_] := 
              If[m > 0, Sqrt[2]*ComplexExpand[Re[SphericalHarmonicY[l, m, th, ph]]], 
@@ -255,10 +256,10 @@ class SHT
             }
         }
                         
-        /*!
-            \brief Compute element of the transformation matrix from complex to real spherical harmonics. 
         
-            Real spherical harmonic can be written as a linear combination of complex harmonics:
+        /// Compute element of the transformation matrix from complex to real spherical harmonics. 
+        
+        /*! Real spherical harmonic can be written as a linear combination of complex harmonics:
 
             \f[
                 R_{\ell m}(\theta, \phi) = \sum_{m'} a^{\ell}_{m' m}Y_{\ell m'}(\theta, \phi)
