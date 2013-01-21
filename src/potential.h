@@ -386,11 +386,13 @@ class Potential
             delete t1;
            
             // sync MT part of Hartree potential after adding a boundary condition
+            Timer* t2 = new Timer("sirius::Potential::poisson:sync");
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
                 Platform::allreduce(&hartree_potential->f_ylm(0, 0, ia), 
                                     parameters_.lmmax_pot() * parameters_.max_num_mt_points());
             }
+            delete t2;
             
             hartree_potential->convert_to_rlm();
 
@@ -472,7 +474,9 @@ class Potential
                                                    &xc_magnetic_field[j]->f_rlm(0, 0, ia));
                 }
             }
-           
+          
+            Timer* t1 = new Timer("sirius::Potential::xc:sync");
+
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
                 Platform::allreduce(&xc_potential->f_rlm(0, 0, ia), 
@@ -485,10 +489,14 @@ class Potential
                     Platform::allreduce(&xc_magnetic_field[j]->f_rlm(0, 0, ia), 
                                         parameters_.lmmax_pot() * parameters_.max_num_mt_points()); 
             }
+
+            delete t1;
             
             if (parameters_.num_spins() == 1)
+            {
                 libxc_interface::getxc(parameters_.fft().size(), rho->f_it(), xc_potential->f_it(), 
                                        xc_energy_density->f_it());
+            }
             else
             {
                 std::vector<double> magit(parameters_.fft().size());
