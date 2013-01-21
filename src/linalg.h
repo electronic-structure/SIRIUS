@@ -387,7 +387,7 @@ template<> struct eigenproblem<scalapack>
         int4 descz[9];
         linalg<scalapack>::descinit(descz, matrix_size, matrix_size, nb, nb, 0, 0, blacs_context, ldz); 
 
-        std::vector<int4> work_sizes = get_work_sizes(0, matrix_size, nb, num_ranks_row, num_ranks_col, blacs_context);
+        std::vector<int4> work_sizes = get_work_sizes(1, matrix_size, nb, num_ranks_row, num_ranks_col, blacs_context);
         
         std::vector<complex16> work(work_sizes[0]);
         std::vector<real8> rwork(work_sizes[1]);
