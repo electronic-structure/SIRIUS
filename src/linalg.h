@@ -398,7 +398,7 @@ template<> struct eigenproblem<scalapack>
         std::vector<real8> gap(num_ranks_row * num_ranks_col);
         std::vector<real8> w(matrix_size);
         
-        real8 orfac = -1.0;
+        real8 orfac = 0.00001;
         int4 ione = 1;
         
         int4 m;
@@ -419,17 +419,18 @@ template<> struct eigenproblem<scalapack>
                 s << "eigenvectors corresponding to one or more clusters of eigenvalues" << std::endl  
                   << "could not be reorthogonalized because of insufficient workspace" << std::endl;
 
-                int k = 0;
-                for (int i = 0; i < num_ranks_row * num_ranks_col; i++)
+                int k = num_ranks_row * num_ranks_col;
+                for (int i = 0; i < num_ranks_row * num_ranks_col - 1; i++)
                 {
-                    if ((iclustr[2 * i] != 0) && (iclustr[2 * i + 1] == 0))
+                    if ((iclustr[2 * i + 1] != 0) && (iclustr[2 * (i + 1)] == 0))
                     {
-                        k = i;
+                        k = i + 1;
                         break;
                     }
                 }
-                s << "list of eigenvalue clusters : " << std::endl;
-                for (int i = 0; i < k; i++) s << iclustr[2 * i] << " " << iclustr[2 * i + 1] << std::endl; 
+               
+                s << "number of eigenvalue clusters : " << k << std::endl;
+                for (int i = 0; i < k; i++) s << iclustr[2 * i] << " : " << iclustr[2 * i + 1] << std::endl; 
                 error(__FILE__, __LINE__, s, fatal_err);
             }
 
