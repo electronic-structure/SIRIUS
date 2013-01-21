@@ -308,10 +308,10 @@ class Global : public StepFunction
 
                 UnitCell::print_info();
                 ReciprocalLattice::print_info();
+                StepFunction::print_info();
 
                 printf("\n");
-                for (int i = 0; i < num_atom_types(); i++)
-                    atom_type(i)->print_info();
+                for (int i = 0; i < num_atom_types(); i++) atom_type(i)->print_info();
 
                 printf("\n");
                 printf("total number of aw muffin-tin basis functions : %i\n", mt_aw_basis_size());

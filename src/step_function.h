@@ -119,6 +119,14 @@ class StepFunction : public ReciprocalLattice
         {
             return &step_function_[0];
         }
+
+        void print_info()
+        {
+            printf("\n");
+            printf("Unit cell volume : %f\n", omega());
+            printf("MT volume        : %f (%i%%)\n", volume_mt(), int(volume_mt() * 100 / omega()));
+            printf("IT volume        : %f (%i%%)\n", volume_it(), int(volume_it() * 100 / omega()));
+        }
 };
 
 };

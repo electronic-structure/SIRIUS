@@ -763,9 +763,8 @@ class AtomType
 
         void print_info()
         {
-            printf("\n");
-            printf("name           : %s\n", name_.c_str());
             printf("symbol         : %s\n", symbol_.c_str());
+            printf("name           : %s\n", name_.c_str());
             printf("zn             : %i\n", zn_);
             printf("mass           : %f\n", mass_);
             printf("mt_radius      : %f\n", mt_radius_);
@@ -777,12 +776,16 @@ class AtomType
             printf("atomic levels (n, l, k, occupancy)\n");
             printf("core\n");
             for (int i = 0; i < num_core_levels_; i++)
+            {
                 printf("%i  %i  %i  %i\n", atomic_levels_[i].n, atomic_levels_[i].l, atomic_levels_[i].k,
                                            atomic_levels_[i].occupancy);
+            }
             printf("valence\n");
             for (int i = num_core_levels_; i < (int)atomic_levels_.size(); i++)
+            {
                 printf("%i  %i  %i  %i\n", atomic_levels_[i].n, atomic_levels_[i].l, atomic_levels_[i].k,
                                            atomic_levels_[i].occupancy);
+            }
             
             printf("\n");
             printf("default augmented wave basis\n");
@@ -852,6 +855,7 @@ class AtomType
             printf("number of aw basis functions : %i\n", indexb().size_aw());
             printf("number of lo basis functions : %i\n", indexb().size_lo());
             radial_grid().print_info();
+            printf("\n");
         }
         
         const std::string& label()
