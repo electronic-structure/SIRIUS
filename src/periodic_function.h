@@ -79,6 +79,8 @@ template<typename T> class PeriodicFunction
 
         void convert_to_ylm()
         {
+            Timer t("sirius::PeriodicFunction::convert_to_ylm");
+
             // check source
             if (!f_rlm_.get_ptr()) error(__FILE__, __LINE__, "f_rlm array is empty");
             
@@ -86,13 +88,16 @@ template<typename T> class PeriodicFunction
             if (!f_ylm_.get_ptr()) error(__FILE__, __LINE__, "f_ylm array is empty");
             
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
                 for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
                     SHT::convert_frlm_to_fylm(lmax_, &f_rlm_(0, ir, ia), &f_ylm_(0, ir, ia));      
-
+            }
         }
         
         void convert_to_rlm()
         {
+            Timer t("sirius::PeriodicFunction::convert_to_rlm");
+            
             // check source  
             if (!f_ylm_.get_ptr()) error(__FILE__, __LINE__, "f_ylm array is empty");
 
@@ -100,9 +105,10 @@ template<typename T> class PeriodicFunction
             if (!f_rlm_.get_ptr()) error(__FILE__, __LINE__, "f_rlm array is empty");
             
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
                 for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
-                    SHT::convert_fylm_to_frlm(lmax_, &f_ylm_(0, ir, ia), &f_rlm_(0, ir, ia));      
-
+                    SHT::convert_fylm_to_frlm(lmax_, &f_ylm_(0, ir, ia), &f_rlm_(0, ir, ia));
+            }
         }
         
         void allocate(int flags = rlm_component | ylm_component | pw_component | it_component)

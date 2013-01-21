@@ -352,6 +352,7 @@ class Potential
             mdarray<complex16, 2> vmtlm(parameters_.lmmax_pot(), parameters_.num_atoms());
             poisson_sum_G(hartree_potential->f_pw(), sbessel_mt_, vmtlm);
             
+            Timer* t1 = new Timer("sirius::Potential::poisson:bc");
             // add boundary condition
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
@@ -368,6 +369,7 @@ class Potential
                     }
                 }
             }
+            delete t1;
             
             hartree_potential->convert_to_rlm();
 
