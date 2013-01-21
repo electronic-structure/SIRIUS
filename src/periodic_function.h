@@ -94,6 +94,13 @@ template<typename T> class PeriodicFunction
             }
         }
         
+        void convert_to_ylm(int ia)
+        {
+            Timer t("sirius::PeriodicFunction::convert_to_ylm");
+            for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
+                SHT::convert_frlm_to_fylm(lmax_, &f_rlm_(0, ir, ia), &f_ylm_(0, ir, ia));      
+        }
+        
         void convert_to_rlm()
         {
             Timer t("sirius::PeriodicFunction::convert_to_rlm");
@@ -109,6 +116,13 @@ template<typename T> class PeriodicFunction
                 for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
                     SHT::convert_fylm_to_frlm(lmax_, &f_ylm_(0, ir, ia), &f_rlm_(0, ir, ia));
             }
+        }
+        
+        void convert_to_rlm(int ia)
+        {
+            Timer t("sirius::PeriodicFunction::convert_to_rlm");
+            for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
+                SHT::convert_fylm_to_frlm(lmax_, &f_ylm_(0, ir, ia), &f_rlm_(0, ir, ia));
         }
         
         void allocate(int flags = rlm_component | ylm_component | pw_component | it_component)

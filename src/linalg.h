@@ -398,7 +398,7 @@ template<> struct eigenproblem<scalapack>
         std::vector<real8> gap(num_ranks_row * num_ranks_col);
         std::vector<real8> w(matrix_size);
         
-        real8 orfac = 0.0; //0.00001;
+        real8 orfac = 0.00001;
         int4 ione = 1;
         
         int4 m;
