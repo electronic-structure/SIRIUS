@@ -308,7 +308,7 @@ template<> struct eigenproblem<scalapack>
             }
             case 1: // pzhegvx
             {
-                int4 neig = 10;
+                int4 neig = 20;
 
                 int4 nmax3 = std::max(neig, std::max(nb, 2));
                 
@@ -413,6 +413,26 @@ template<> struct eigenproblem<scalapack>
 
         if (info)
         {
+            if ((info / 2) % 2)
+            {
+                std::stringstream s;
+                s << "eigenvectors corresponding to one or more clusters of eigenvalues" << std::endl  
+                  << "could not be reorthogonalized because of insufficient workspace" << std::endl;
+
+                int k = 0;
+                for (int i = 0; i < num_ranks_row * num_ranks_col; i++)
+                {
+                    if ((iclustr[2 * i] != 0) && (iclustr[2 * i + 1] == 0))
+                    {
+                        k = i;
+                        break;
+                    }
+                }
+                s << "list of eigenvalue clusters : " << std::endl;
+                for (int i = 0; i < k; i++) s << iclustr[2 * i] << " " << iclustr[2 * i + 1] << std::endl; 
+                error(__FILE__, __LINE__, s, fatal_err);
+            }
+
             std::stringstream s;
             s << "pzhegvx returned " << info; 
             error(__FILE__, __LINE__, s, fatal_err);
