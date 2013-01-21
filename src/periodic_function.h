@@ -53,16 +53,16 @@ template<typename T> class PeriodicFunction
         int lmmax_;
 
         /// real spherical harmonic expansion coefficients
-        mdarray<T,3> f_rlm_;
+        mdarray<T, 3> f_rlm_;
         
         /// complex spherical harmonic expansion coefficients
-        mdarray<complex_t,3> f_ylm_;
+        mdarray<complex_t, 3> f_ylm_;
         
         /// interstitial values defined on the FFT grid
-        mdarray<T,1> f_it_;
+        mdarray<T, 1> f_it_;
         
         /// plane-wave expansion coefficients
-        mdarray<complex_t,1> f_pw_;
+        mdarray<complex_t, 1> f_pw_;
 
     public:
 
