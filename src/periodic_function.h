@@ -7,18 +7,9 @@ const int ylm_component = 1 << 1;
 const int pw_component = 1 << 2;
 const int it_component = 1 << 3;
 
-/*template <typename T, typename U> class coupled_type_wrapper;
+/// Representation of the periodical function on the muffin-tin geometry
 
-template <typename T> class coupled_type_wrapper<T,T>
-{
-    public:
-        typedef T coupled_t;
-};*/
-
-/*!
-    \brief Representation of the periodical function on the muffin-tin geometry
-
-    Inside each muffin-tin the spherical expansion is used:
+/*! Inside each muffin-tin the spherical expansion is used:
     \f[
         f({\bf r}) = \sum_{\ell m} f_{\ell m}(r) Y_{\ell m}(\hat {\bf r})
     \f]
@@ -30,7 +21,6 @@ template <typename T> class coupled_type_wrapper<T,T>
     \f[
         f({\bf r}) = \sum_{{\bf G}} f({\bf G}) e^{i{\bf G}{\bf r}}
     \f]
- 
 */
 template<typename T> class PeriodicFunction
 { 
@@ -64,20 +54,24 @@ template<typename T> class PeriodicFunction
         /// plane-wave expansion coefficients
         mdarray<complex_t, 1> f_pw_;
 
+        SHT sht_;
+
     public:
 
         PeriodicFunction(Global& parameters__, int lmax__) : parameters_(parameters__), 
                                                              lmax_(lmax__)
         {
             lmmax_ = Utils::lmmax_by_lmax(lmax_);
+
+            sht_.set_lmax(lmax_);
             
             f_rlm_.set_dimensions(lmmax_, parameters_.max_num_mt_points(), parameters_.num_atoms());
             f_ylm_.set_dimensions(lmmax_, parameters_.max_num_mt_points(), parameters_.num_atoms());
             f_it_.set_dimensions(parameters_.fft().size());
             f_pw_.set_dimensions(parameters_.num_gvec());
-         }
+        }
 
-        void convert_to_ylm()
+        /*void convert_to_ylm()
         {
             Timer t("sirius::PeriodicFunction::convert_to_ylm");
 
@@ -92,16 +86,21 @@ template<typename T> class PeriodicFunction
                 for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
                     SHT::convert_frlm_to_fylm(lmax_, &f_rlm_(0, ir, ia), &f_ylm_(0, ir, ia));      
             }
-        }
+        }*/
         
-        void convert_to_ylm(int ia)
+        /*void convert_to_ylm(int ia)
         {
             Timer t("sirius::PeriodicFunction::convert_to_ylm");
             for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
                 SHT::convert_frlm_to_fylm(lmax_, &f_rlm_(0, ir, ia), &f_ylm_(0, ir, ia));      
         }
+
+        complex_t convert_to_ylm(int lm, int ir, int ia)
+        {
+            return sht_.convert_frlm_to_fylm(lm, &f_rlm_(0, ir, ia));
+        }*/
         
-        void convert_to_rlm()
+        /*void convert_to_rlm()
         {
             Timer t("sirius::PeriodicFunction::convert_to_rlm");
             
@@ -116,16 +115,21 @@ template<typename T> class PeriodicFunction
                 for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
                     SHT::convert_fylm_to_frlm(lmax_, &f_ylm_(0, ir, ia), &f_rlm_(0, ir, ia));
             }
-        }
+        }*/
         
-        void convert_to_rlm(int ia)
+        /*void convert_to_rlm(int ia)
         {
             Timer t("sirius::PeriodicFunction::convert_to_rlm");
             for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
                 SHT::convert_fylm_to_frlm(lmax_, &f_ylm_(0, ir, ia), &f_rlm_(0, ir, ia));
         }
         
-        void allocate(int flags = rlm_component | ylm_component | pw_component | it_component)
+        double convert_to_rlm(int lm, int ir, int ia)
+        {
+            return sht_.convert_fylm_to_frlm(lm, &f_ylm_(0, ir, ia));
+        }*/
+        
+        void allocate(int flags) //int flags = rlm_component | ylm_component | pw_component | it_component)
         {
             if (flags & rlm_component) f_rlm_.allocate();
             if (flags & ylm_component) f_ylm_.allocate();
@@ -337,8 +341,7 @@ template<typename T> class PeriodicFunction
             }
 
             T total = it_val;
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-                total += mt_val[ia];
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++) total += mt_val[ia];
 
             return total;
         }

@@ -12,24 +12,29 @@ class SHT
 
         int num_points_;
 
-        mdarray<double,2> coord_;
+        mdarray<double, 2> coord_;
 
         std::vector<double> w_;
 
         /// backward transformation from Ylm to spherical coordinates
-        mdarray<complex16,2> ylm_backward_;
+        mdarray<complex16, 2> ylm_backward_;
         
         /// forward transformation from spherical coordinates to Ylm
-        mdarray<complex16,2> ylm_forward_;
+        mdarray<complex16, 2> ylm_forward_;
         
         /// backward transformation from Rlm to spherical coordinates
-        mdarray<double,2> rlm_backward_;
+        mdarray<double, 2> rlm_backward_;
 
         /// forward transformation from spherical coordinates to Rlm
-        mdarray<double,2> rlm_forward_;
+        mdarray<double, 2> rlm_forward_;
+
+        mdarray<complex16, 2> ylm_dot_rlm_;
+
+        mdarray<int, 2> l_m_by_lm_;
 
     public:
         
+        /// Default constructor
         SHT()
         {
 
@@ -132,8 +137,7 @@ class SHT
                 flm[lm] -= 1.0;
 
                 double t = 0.0;
-                for (int lm1 = 0; lm1 < lmmax_; lm1++)
-                    t += fabs(flm[lm1]);
+                for (int lm1 = 0; lm1 < lmmax_; lm1++) t += fabs(flm[lm1]);
 
                 t /= lmmax_;
 
@@ -143,6 +147,25 @@ class SHT
                     s << "test of backward / forward real SHT failed" << std::endl
                       << "  total error " << t;
                     error(__FILE__, __LINE__, s);
+                }
+            }
+
+            // cache transformation matrices and l,m indices
+            ylm_dot_rlm_.set_dimensions(lmmax_, 2);
+            ylm_dot_rlm_.allocate();
+            l_m_by_lm_.set_dimensions(2, lmmax_);
+            l_m_by_lm_.allocate();
+            for (int l = 0; l <= lmax_; l++)
+            {
+                for (int m = -l; m <= l; m++) 
+                {
+                    int lm = Utils::lm_by_l_m(l, m);
+                    
+                    ylm_dot_rlm_(lm, 0) = ylm_dot_rlm(l, m, m);
+                    ylm_dot_rlm_(lm, 1) = ylm_dot_rlm(l, -m, m);
+
+                    l_m_by_lm_(0, lm) = l;
+                    l_m_by_lm_(1, lm) = m;
                 }
             }
         }
@@ -291,24 +314,36 @@ class SHT
         */
         static inline complex16 ylm_dot_rlm(int l, int m1, int m2)
         {
+            const double isqrt2 = 0.70710678118654752440;
+
             assert(l >= 0 && abs(m1) <= l && abs(m2) <= l);
         
-            if (abs(m1) != abs(m2)) return complex16(0.0, 0.0);
+            if (!((m1 == m2) || (m1 == -m2))) return complex16(0, 0);
         
-            if (m1 == 0) return complex16(1.0, 0.0);
+            if (m1 == 0) return complex16(1, 0);
         
             if (m1 < 0)
             {
-                //if (m2 < 0) return -zi / sqrt(2.0);
-                if (m2 < 0) return -complex16(0.0, 1.0) / sqrt(2.0);
-                else return pow(-1.0, m2) / sqrt(2.0);
+                if (m2 < 0) return -complex16(0, isqrt2);
+                else return pow(-1.0, m2) * complex16(isqrt2, 0);
             }
             else
             {
-                if (m2 < 0) return pow(-1.0, m1) * complex16(0.0, 1.0) / sqrt(2.0);
-                else return complex16(1.0 / sqrt(2.0), 0.0);
+                if (m2 < 0) return pow(-1.0, m1) * complex16(0, isqrt2);
+                else return complex16(isqrt2, 0);
             }
         }
+        
+        /*inline complex16 convert_frlm_to_fylm(int lm, double* frlm)
+        {
+            int l = l_m_by_lm_(0, lm);
+            int m = l_m_by_lm_(1, lm);
+            
+            if (m == 0) return frlm[lm];
+            
+            int lm1 = Utils::lm_by_l_m(l, -m);
+            return (ylm_dot_rlm_(lm, 0) * frlm[lm] + ylm_dot_rlm_(lm1, 0) * frlm[lm1]);
+        }*/
         
         static inline void convert_frlm_to_fylm(int lmax, double* frlm, complex16* fylm)
         {
@@ -318,6 +353,7 @@ class SHT
         
             int lm = 0;
             for (int l = 0; l <= lmax; l++)
+            {
                 for (int m = -l; m <= l; m++)
                 {
                     if (m == 0)
@@ -331,7 +367,42 @@ class SHT
                     }
                     lm++;
                 }
+            }
         }
+  
+        inline void convert_to_ylm(int lmax, double* frlm, complex16* fylm)
+        {
+            assert(lmax <= lmax_); 
+        
+            int lm = 0;
+            for (int l = 0; l <= lmax; l++)
+            {
+                for (int m = -l; m <= l; m++)
+                {
+                    if (m == 0)
+                    {
+                        fylm[lm] = frlm[lm];
+                    }
+                    else 
+                    {
+                        int lm1 = Utils::lm_by_l_m(l, -m);
+                        fylm[lm] = ylm_dot_rlm_(lm, 0) * frlm[lm] + ylm_dot_rlm_(lm1, 0) * frlm[lm1];
+                    }
+                    lm++;
+                }
+            }
+        }
+
+        /*inline double convert_fylm_to_frlm(int lm, complex16* fylm)
+        {
+            int l = l_m_by_lm_(0, lm);
+            int m = l_m_by_lm_(1, lm);
+            
+            if (m == 0) return real(fylm[lm]);
+
+            int lm1 = Utils::lm_by_l_m(l, -m);
+            return real(conj(ylm_dot_rlm_(lm, 0)) * fylm[lm] + conj(ylm_dot_rlm_(lm, 1)) * fylm[lm1]);
+        }*/
         
         static inline void convert_fylm_to_frlm(int lmax, complex16* fylm, double* frlm)
         {
@@ -341,6 +412,7 @@ class SHT
         
             int lm = 0;
             for (int l = 0; l <= lmax; l++)
+            {
                 for (int m = -l; m <= l; m++)
                 {
                     if (m == 0) 
@@ -354,6 +426,30 @@ class SHT
                     }
                     lm++;
                 }
+            }
+        }
+
+        inline void convert_to_rlm(int lmax, complex16* fylm, double* frlm)
+        {
+            assert(lmax <= lmax_); 
+            
+            int lm = 0;
+            for (int l = 0; l <= lmax; l++)
+            {
+                for (int m = -l; m <= l; m++)
+                {
+                    if (m == 0) 
+                    {
+                        frlm[lm] = real(fylm[lm]);
+                    }
+                    else 
+                    {
+                        frlm[lm] = real(conj(ylm_dot_rlm_(lm, 0)) * fylm[lm] + 
+                                        conj(ylm_dot_rlm_(lm, 1)) * fylm[Utils::lm_by_l_m(l, -m)]);
+                    }
+                    lm++;
+                }
+            }
         }
 
         inline int num_points()

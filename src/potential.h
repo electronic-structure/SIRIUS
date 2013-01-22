@@ -75,11 +75,7 @@ class Potential
         std::vector<int> l_by_lm_;
         
         /// Compute MT part of the potential and MT multipole moments
-        
-        /**
-            \note MPI reduction may not be efficient on many ranks; consider single node implementation
-        */
-        void poisson_vmt(PeriodicFunction<double>* rho, PeriodicFunction<double>* vh, splindex<block>& spl_num_atoms,
+        void poisson_vmt(splindex<block>& spl_num_atoms, mdarray<complex16, 3>& rho_ylm, mdarray<complex16, 3>& vh_ylm,
                          mdarray<complex16, 2>& qmt)
         {
             Timer t("sirius::Potential::poisson:vmt");
@@ -91,7 +87,7 @@ class Potential
                 int ia = spl_num_atoms[ialoc];
 
                 double R = parameters_.atom(ia)->type()->mt_radius();
-                int nmtp = parameters_.atom(ia)->type()->num_mt_points();
+                int nmtp = parameters_.atom(ia)->num_mt_points();
                
                 #pragma omp parallel default(shared)
                 {
@@ -105,7 +101,7 @@ class Potential
                     {
                         int l = l_by_lm_[lm];
 
-                        for (int ir = 0; ir < nmtp; ir++) rholm[ir] = rho->f_ylm(lm, ir, ia);
+                        for (int ir = 0; ir < nmtp; ir++) rholm[ir] = rho_ylm(lm, ir, ialoc);
                         rholm.interpolate();
 
                         // save multipole moment
@@ -125,7 +121,7 @@ class Potential
                                                 (g2[nmtp - 1] - g2[ir]) * pow(r, l) - 
                                                 (g1[nmtp - 1] - g1[ir]) * pow(r, l) * d1;
 
-                                vh->f_ylm(lm, ir, ia) = fourpi * vlm * d2;
+                                vh_ylm(lm, ir, ialoc) = fourpi * vlm * d2;
                             }
                         }
                     }
@@ -135,8 +131,7 @@ class Potential
                 for (int ir = 0; ir < nmtp; ir++)
                 {
                     double r = parameters_.atom(ia)->type()->radial_grid(ir);
-                    vh->f_ylm(0, ir, ia) -= fourpi * y00 * parameters_.atom(ia)->type()->zn() * 
-                                                           (1.0 / r - 1.0 / R);
+                    vh_ylm(0, ir, ialoc) -= fourpi * y00 * parameters_.atom(ia)->type()->zn() * (1.0 / r - 1.0 / R);
                 }
 
                 // nuclear multipole moment
@@ -162,8 +157,10 @@ class Potential
 
             #pragma omp parallel for default(shared)
             for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
+            {
                 for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
                     zm1(igloc, lm) = gvec_ylm_(lm, igloc) * conj(fpw[spl_num_gvec_[igloc]] * zilm_[lm]);
+            }
 
             mdarray<complex16, 2> zm2(spl_num_gvec_.local_size(), parameters_.num_atoms());
 
@@ -174,8 +171,10 @@ class Potential
                 {
                     int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
                     for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
+                    {
                         zm2(igloc, ia) = fourpi * gvec_phase_factors_(igloc, ia) *  
                                          fl(l, iat, parameters_.gvec_shell(spl_num_gvec_[igloc]));
+                    }
                 }
 
                 gemm<cpu>(2, 0, 2 * l + 1, parameters_.num_atoms(), spl_num_gvec_.local_size(), complex16(1, 0), 
@@ -203,8 +202,10 @@ class Potential
             // precompute R^(-l)
             mdarray<double, 2> Rl(parameters_.lmax_rho() + 1, parameters_.num_atom_types());
             for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+            {
                 for (int l = 0; l <= parameters_.lmax_rho(); l++)
                     Rl(l, iat) = pow(parameters_.atom_type(iat)->mt_radius(), -l);
+            }
 
             #pragma omp parallel default(shared)
             {
@@ -220,9 +221,13 @@ class Potential
                     // compute G-vector independent prefactor
                     std::vector<complex16> zp(parameters_.lmmax_rho());
                     for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
+                    {
                         for (int m = -l; m <= l; m++, lm++)
+                        {
                             zp[lm] = (qmt(lm, ia) - qit(lm, ia)) * Rl(l, iat) * conj(zil_[l]) *
                                      gamma_factors[l][pseudo_density_order]; 
+                        }
+                    }
 
                     for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
                     {
@@ -309,12 +314,25 @@ class Potential
         {
             Timer t("sirius::Potential::poisson");
             
-            hartree_potential->zero(ylm_component);
-            hartree_potential->zero(rlm_component);
+            // temporary Ylm components of Hartree potential
+            mdarray<complex16, 3> vh_ylm(parameters_.lmmax_pot(), parameters_.max_num_mt_points(), 
+                                         spl_num_atoms.local_size());
 
+            // temporary Ylm components of charge density
+            mdarray<complex16, 3> rho_ylm(parameters_.lmmax_rho(), parameters_.max_num_mt_points(), 
+                                          spl_num_atoms.local_size());
+
+            // convert charge density to Ylm expansion
+            for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
+            {
+                int ia = spl_num_atoms[ialoc];
+                for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                    sht_.convert_to_ylm(parameters_.lmax_rho(), &rho->f_rlm(0, ir, ia), &rho_ylm(0, ir, ialoc));
+            }
+            
             // true multipole moments
             mdarray<complex16,2> qmt(parameters_.lmmax_rho(), parameters_.num_atoms());
-            poisson_vmt(rho, hartree_potential, spl_num_atoms, qmt);
+            poisson_vmt(spl_num_atoms, rho_ylm, vh_ylm, qmt);
 
             // compute multipoles of interstitial density in MT region
             mdarray<complex16, 2> qit(parameters_.lmmax_rho(), parameters_.num_atoms());
@@ -324,6 +342,7 @@ class Potential
             std::vector<complex16> pseudo_pw(parameters_.num_gvec());
             poisson_pw(qmt, qit, &pseudo_pw[0]);
 
+            // add interstitial charge density; now pseudo_pw has the correct multipole moments in the muffin-tins
             for (int ig = 0; ig < parameters_.num_gvec(); ig++) pseudo_pw[ig] += rho->f_pw(ig); 
             
             if (check_pseudo_charge)
@@ -353,6 +372,9 @@ class Potential
             mdarray<complex16, 2> vmtlm(parameters_.lmmax_pot(), parameters_.num_atoms());
             poisson_sum_G(hartree_potential->f_pw(), sbessel_mt_, vmtlm);
             
+            // zero Rlm components of Hartree potential
+            hartree_potential->zero(rlm_component);
+            
             // add boundary condition and convert to Rlm
             Timer* t1 = new Timer("sirius::Potential::poisson:bc");
             mdarray<double, 2> rRl(parameters_.max_num_mt_points(), parameters_.lmax_pot() + 1);
@@ -371,7 +393,7 @@ class Potential
                     #pragma omp parallel for default(shared)
                     for (int l = 0; l <= parameters_.lmax_pot(); l++)
                     {
-                        for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
+                        for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
                             rRl(ir, l) = pow(parameters_.atom(ia)->type()->radial_grid(ir) / R, l);
                     }
                 }
@@ -381,11 +403,15 @@ class Potential
                 {
                     int l = l_by_lm_[lm];
 
-                    for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
-                        hartree_potential->f_ylm(lm, ir, ia) += vmtlm(lm, ia) * rRl(ir, l);
+                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                        vh_ylm(lm, ir, ialoc) += vmtlm(lm, ia) * rRl(ir, l);
                 }
 
-                hartree_potential->convert_to_rlm(ia);
+                for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                {
+                    sht_.convert_to_rlm(parameters_.lmax_pot(), &vh_ylm(0, ir, ialoc), 
+                                        &hartree_potential->f_rlm(0, ir, ia));
+                }
             }
             delete t1;
             
@@ -426,7 +452,7 @@ class Potential
             for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
             {
                 int ia = spl_num_atoms[ialoc];
-                int nmtp = parameters_.atom(ia)->type()->num_mt_points();
+                int nmtp = parameters_.atom(ia)->num_mt_points();
 
                 sht_.rlm_backward_transform(&rho->f_rlm(0, 0, ia), parameters_.lmmax_rho(), nmtp, &rhotp(0, 0));
 
@@ -460,18 +486,25 @@ class Potential
                 {
                     vecbxctp.zero();
                     for (int ir = 0; ir < nmtp; ir++)
+                    {
                         for (int itp = 0; itp < sht_.num_points(); itp++)
+                        {
                             if (magtp(itp, ir) > 1e-8)
+                            {
                                 for (int j = 0; j < parameters_.num_mag_dims(); j++)
                                     vecbxctp(itp, ir, j) = bxctp(itp, ir) * vecmagtp(itp, ir, j) / magtp(itp, ir);
+                            }
                             else
-                                for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                                    vecbxctp(itp, ir, j) = 0.0;
-                                
-                    
+                            {
+                                for (int j = 0; j < parameters_.num_mag_dims(); j++) vecbxctp(itp, ir, j) = 0.0;
+                            }
+                        }       
+                    }
                     for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                    {
                         sht_.rlm_forward_transform(&vecbxctp(0, 0, j), parameters_.lmmax_pot(), nmtp,
                                                    &xc_magnetic_field[j]->f_rlm(0, 0, ia));
+                    }
                 }
             }
           
@@ -688,22 +721,10 @@ class Potential
             parameters_.fft().transform(-1);
             parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), rho->f_pw());
             
-            // convert charge density to Ylm expansion
-            rho->allocate(ylm_component);
-            for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
-            {
-                int ia = spl_num_atoms[ialoc];
-                rho->convert_to_ylm(ia);
-            }
-
-            //
-            // Hartree potential
-            //
-
             // allocate Hartree potential
             PeriodicFunction<double>* hartree_potential = new PeriodicFunction<double>(parameters_,
                                                                                        parameters_.lmax_pot());
-            hartree_potential->allocate();
+            hartree_potential->allocate(rlm_component | pw_component | it_component);
 
             // solve Poisson equation
             poisson(rho, hartree_potential, spl_num_atoms);
@@ -725,8 +746,6 @@ class Potential
             parameters_.rti().energy_enuc = enuc;
 
             delete hartree_potential;
-
-            rho->deallocate(ylm_component);
 
             //
             // XC potential and field
@@ -794,7 +813,7 @@ class Potential
             for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
             {
                int ia = parameters_.atom_symmetry_class(ic)->atom_id(0);
-               int nmtp = parameters_.atom(ia)->type()->num_mt_points();
+               int nmtp = parameters_.atom(ia)->num_mt_points();
                
                std::vector<double> veff(nmtp);
                
