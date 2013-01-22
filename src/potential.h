@@ -209,7 +209,7 @@ class Potential
 
             #pragma omp parallel default(shared)
             {
-                std::vector<complex16> pseudo_pw_pt(parameters_.num_gvec(), complex16(0, 0));
+                std::vector<complex16> pseudo_pw_pt(spl_num_gvec_.local_size(), complex16(0, 0));
 
                 #pragma omp for
                 for (int ia = 0; ia < parameters_.num_atoms(); ia++)
@@ -252,16 +252,17 @@ class Potential
                                 zt2 += zt1 * sbessel_mt_(l + pseudo_density_order + 1, iat, parameters_.gvec_shell(ig));
                             }
 
-                            pseudo_pw_pt[ig] += zt * zt2 * pow(2.0 / gR, pseudo_density_order + 1);
+                            pseudo_pw_pt[igloc] += zt * zt2 * pow(2.0 / gR, pseudo_density_order + 1);
                         }
                         else // for |G|=0
                         {
-                            pseudo_pw_pt[ig] += zt * y00 * (qmt(0, ia) - qit(0, ia));
+                            pseudo_pw_pt[igloc] += zt * y00 * (qmt(0, ia) - qit(0, ia));
                         }
                     }
                 }
                 #pragma omp critical
-                for (int ig = 0; ig < parameters_.num_gvec(); ig++) pseudo_pw[ig] += pseudo_pw_pt[ig];
+                for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++) 
+                    pseudo_pw[spl_num_gvec_[igloc]] += pseudo_pw_pt[igloc];
             }
 
             Platform::allreduce(&pseudo_pw[0], parameters_.num_gvec());
