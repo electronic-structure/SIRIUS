@@ -5,8 +5,10 @@ class libxc_interface
 {
     public:
         
-       static void getxc(int size, double* rho, double* vxc, double* exc)
+        static void getxc(int size, double* rho, double* vxc, double* exc)
         {
+            Timer t("sirius::libxc_interface::getxc:nm");
+
             memset(vxc, 0, size * sizeof(double)); 
             memset(exc, 0, size * sizeof(double));
 
@@ -44,6 +46,8 @@ class libxc_interface
 
         static void getxc(int size, double* rho, double* mag, double* vxc, double* bxc, double* exc)
         {
+            Timer t("sirius::libxc_interface::getxc:mag");
+            
             memset(vxc, 0, size * sizeof(double)); 
             memset(bxc, 0, size * sizeof(double)); 
             memset(exc, 0, size * sizeof(double));

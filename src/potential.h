@@ -450,6 +450,7 @@ class Potential
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
                 xc_magnetic_field[j]->zero(rlm_component);
 
+            Timer* t2 = new Timer("sirius::Potential::xc:mt");
             for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
             {
                 int ia = spl_num_atoms[ialoc];
@@ -508,6 +509,7 @@ class Potential
                     }
                 }
             }
+            delete t2;
           
             Timer* t1 = new Timer("sirius::Potential::xc:sync");
 
@@ -526,6 +528,7 @@ class Potential
 
             delete t1;
             
+            Timer* t3 = new Timer("sirius::Potential::xc:it");
             if (parameters_.num_spins() == 1)
             {
                 libxc_interface::getxc(parameters_.fft().size(), rho->f_it(), xc_potential->f_it(), 
@@ -560,6 +563,7 @@ class Potential
                     }
                 }
             }
+            delete t3;
         }
 
     public:
