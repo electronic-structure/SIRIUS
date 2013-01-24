@@ -80,6 +80,8 @@ void solve_atom(atom* a, char type)
     std::cout << " number of core electrons : " <<  ncore << std::endl;
     std::cout << std::endl;
     
+    std::cerr << a->zn() << " " << fabs(energy_tot - a->NIST_LDA_Etot) << std::endl;
+    
     std::string fname = a->symbol() + std::string(".json");
     std::ofstream fout(fname.c_str());
     fout << "{" << std::endl;

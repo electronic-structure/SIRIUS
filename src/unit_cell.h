@@ -461,6 +461,8 @@ class UnitCell
            
             nearest_neighbours_.clear();
             nearest_neighbours_.resize(num_atoms());
+
+            #pragma omp parallel for default(shared)
             for (int ia = 0; ia < num_atoms(); ia++)
             {
                 double iapos[3];
@@ -471,7 +473,9 @@ class UnitCell
                 std::vector< std::pair<double, int> > nn_sort;
 
                 for (int i0 = -max_frac_coord[0]; i0 <= max_frac_coord[0]; i0++)
+                {
                     for (int i1 = -max_frac_coord[1]; i1 <= max_frac_coord[1]; i1++)
+                    {
                         for (int i2 = -max_frac_coord[2]; i2 <= max_frac_coord[2]; i2++)
                         {
                             nearest_neighbour_descriptor nnd;
@@ -490,23 +494,22 @@ class UnitCell
                                 get_coordinates<cartesian, direct>(atom(ja)->position(), japos);
 
                                 double v[3];
-                                for (int x = 0; x < 3; x++)
-                                    v[x] = japos[x] + vt[x] - iapos[x];
+                                for (int x = 0; x < 3; x++) v[x] = japos[x] + vt[x] - iapos[x];
 
                                 nnd.distance = Utils::vector_length(v);
                                 
-                                //dist.push_back(nnd.distance);
                                 nn.push_back(nnd);
 
                                 nn_sort.push_back(std::pair<double, int>(nnd.distance, (int)nn.size() - 1));
                             }
 
                         }
+                    }
+                }
                 
                 std::sort(nn_sort.begin(), nn_sort.end());
                 nearest_neighbours_[ia].resize(nn.size());
-                for (int i = 0; i < (int)nn.size(); i++)
-                    nearest_neighbours_[ia][i] = nn[nn_sort[i].second];
+                for (int i = 0; i < (int)nn.size(); i++) nearest_neighbours_[ia][i] = nn[nn_sort[i].second];
             }
         }
 
@@ -520,8 +523,11 @@ class UnitCell
             {
                 bool found = false;
                 for (int i0 = -n; i0 <= n; i0++)
+                {
                     for (int i1 = -n; i1 <= n; i1++)
+                    {
                         for (int i2 = -n; i2 <= n; i2++)
+                        {
                             if (abs(i0) == n || abs(i1) == n || abs(i2) == n)
                             {
                                 int vgf[] = {i0, i1, i2};
@@ -531,10 +537,12 @@ class UnitCell
                                 if (len <= radius)
                                 {
                                     found = true;
-                                    for (int j = 0; j < 3; j++)
-                                        limits[j] = std::max(2 * abs(vgf[j]) + 1, limits[j]);
+                                    for (int j = 0; j < 3; j++) limits[j] = std::max(2 * abs(vgf[j]) + 1, limits[j]);
                                 }
                             }
+                        }
+                    }
+                }
 
                 if (found) n++;
                 else return;
@@ -549,8 +557,7 @@ class UnitCell
             {
                 ntr[i] = (int)floor(vf[i]);
                 vf[i] -= ntr[i];
-                if (vf[i] < 0.0 || vf[i] >= 1.0)
-                    error(__FILE__, __LINE__, "wrong fractional coordinates");
+                if (vf[i] < 0.0 || vf[i] >= 1.0) error(__FILE__, __LINE__, "wrong fractional coordinates");
             }
         }
 

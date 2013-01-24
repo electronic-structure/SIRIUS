@@ -4,6 +4,7 @@ import colorsys
 import json
 import sys
 import os
+import copy
 
 matplotlib.pyplot.figure(1, figsize=(10,14))
 
@@ -24,12 +25,10 @@ timer_groups = [
     "elk::mixer"
 ],
 [
-    "sirius::kpoint::generate_matching_coefficients",
-    "sirius::Band::set_fv_h",
-    "sirius::Band::set_fv_o",
-    "sirius::Band::solve_fv:genevp",
+    "sirius::kpoint::set_fv_h_o",
+    "sirius::kpoint::generate_fv_states:genevp",
+    "sirius::kpoint::generate_fv_states:wf",
     "sirius::Band::solve_sv",
-    "sirius::kpoint::generate_fv_states",
     "sirius::kpoint::generate_spinor_wave_functions"
 ],
 [
@@ -49,12 +48,13 @@ timer_groups = [
 
 for itg in range(len(timer_groups)):
 
-    timer_names = timer_groups[itg]
+    timer_names = copy.deepcopy(timer_groups[itg])
     timer_values = []
     for i in range(len(timer_names)):
         t = 0.0
         if timer_names[i] in jin:
-            t = jin[timer_names[i]] 
+            t = jin[timer_names[i]]
+            timer_names[i] = timer_names[i] + " (%6.2f)"%t
         timer_values.append(t)
     
     plot = matplotlib.pyplot.subplot("41%i"%(itg+1))

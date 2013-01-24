@@ -2,6 +2,8 @@ import json
 
 fin = open("atoms.in", "r")
 
+fout = open("run.x", "w")
+
 atoms = {}
 
 while 1:
@@ -20,6 +22,8 @@ while 1:
         line = fin.readline()
         s1 = line.split()
         mass = float(s1[0]) # mass
+
+        fout.write("./atoms1 0 " + symbol + "\n");
         
         atoms[symbol] = {}
         atoms[symbol]["name"] = name
@@ -48,6 +52,7 @@ while 1:
             s1 = line.split()
             atoms[symbol]["NIST_LDA_Etot"] = float(s1[0])
 
+fout.close()
 fin.close()
 
 fout = open("atoms.json", "w")
