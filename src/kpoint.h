@@ -442,13 +442,13 @@ class kpoint
                                                           fv_eigen_vectors_.ld());
             delete t1;
             
-            
             fv_states_col_.set_dimensions(mtgk_size(), band->spl_fv_states_col().local_size());
             fv_states_col_.allocate();
             fv_states_col_.zero();
 
             mdarray<complex16, 2> alm(num_gkvec_row(), parameters_.max_mt_aw_basis_size());
             
+            Timer *t2 = new Timer("sirius::kpoint::generate_fv_states:wf");
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
                 Atom* atom = parameters_.atom(ia);
@@ -457,8 +457,8 @@ class kpoint
                 generate_matching_coefficients(num_gkvec_row(), ia, alm);
 
                 blas<cpu>::gemm(2, 0, type->mt_aw_basis_size(), band->spl_fv_states_col().local_size(),
-                                num_gkvec_row(), complex16(1, 0), &alm(0, 0), alm.ld(), &fv_eigen_vectors_(0, 0), 
-                                fv_eigen_vectors_.ld(), complex16(0, 0), &fv_states_col_(atom->offset_wf(), 0), 
+                                num_gkvec_row(), &alm(0, 0), alm.ld(), &fv_eigen_vectors_(0, 0), 
+                                fv_eigen_vectors_.ld(), &fv_states_col_(atom->offset_wf(), 0), 
                                 fv_states_col_.ld());
             }
 
@@ -476,6 +476,7 @@ class kpoint
                 Platform::allreduce(&fv_states_col_(0, j), mtgk_size(), 
                                     parameters_.mpi_grid().communicator(1 << band->dim_row()));
             }
+            delete t2;
 
             fv_eigen_vectors_.deallocate();
         }

@@ -308,7 +308,7 @@ template<> struct eigenproblem<scalapack>
             }
             case 1: // pzhegvx
             {
-                int4 neig = 20;
+                int4 neig = std::max(1024, nb);
 
                 int4 nmax3 = std::max(neig, std::max(nb, 2));
                 
@@ -336,7 +336,9 @@ template<> struct eigenproblem<scalapack>
                 break;
             }
             default:
+            {
                 error(__FILE__, __LINE__, "wrong eigen value solver id");
+            }
         }
 
         return work_sizes;
@@ -398,7 +400,7 @@ template<> struct eigenproblem<scalapack>
         std::vector<real8> gap(num_ranks_row * num_ranks_col);
         std::vector<real8> w(matrix_size);
         
-        real8 orfac = 0.00001;
+        real8 orfac = 1e-6;
         int4 ione = 1;
         
         int4 m;

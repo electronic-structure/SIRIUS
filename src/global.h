@@ -75,6 +75,7 @@ class Global : public StepFunction
                 parser["mpi_grid_dims"] >> mpi_grid_dims_; 
                 parser["cyclic_block_size"] >> cyclic_block_size_;
                 num_fft_threads = parser["num_fft_threads"].get<int>(num_fft_threads);
+                num_fv_states_ = parser["num_fv_states"].get<int>(num_fv_states_);
             }
 
             Platform::set_num_fft_threads(num_fft_threads);
@@ -87,6 +88,7 @@ class Global : public StepFunction
                    lmax_rho_(lmax_rho_default),
                    lmax_pot_(lmax_pot_default),
                    aw_cutoff_(aw_cutoff_default),
+                   num_fv_states_(-1),
                    num_spins_(1),
                    num_mag_dims_(0),
                    so_correction_(false),
@@ -263,7 +265,7 @@ class Global : public StepFunction
             // setup MPI grid
             mpi_grid_.initialize(mpi_grid_dims_);
             
-            num_fv_states_ = int(num_valence_electrons() / 2.0) + 10;
+            if (num_fv_states_ < 0) num_fv_states_ = int(num_valence_electrons() / 2.0) + 20;
 
             if (eigen_value_solver == scalapack)
             {
