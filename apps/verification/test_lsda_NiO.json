@@ -1,0 +1,21 @@
+{
+    "description" : "Total energy (LSDA) vs. spin direction for a Scalapack diagonalization",
+    
+    "input" : 
+    {
+        "avec" : [ [1, 0.5, 0.5], [0.5, 1, 0.5], [0.5, 0.5, 1] ],
+        "scale" : 7.8952789,
+        "atoms" :  [ ["'Ni.in'", [ [0, 0, 0], [0.5, 0.5, 0.5] ] ], ["'O.in'", [ [0.25, 0.25, 0.25], [0.75, 0.75, 0.75] ] ] ],
+        "spinpol" : 2,
+        "nempty" : 20,
+        "ngridk" : [4, 4, 4]
+    },
+
+    "run" : 
+    [ 
+        {"vector_field" : [ [0, 0, 0.1], [0, 0, -0.1], [0, 0, 0], [0, 0, 0] ], "num_threads" : 2, "mpi_grid" : [1, 1, 1], "cyclic_block_size" : 4},
+        {"vector_field" : [ [0.1, 0.1, 0.1], [-0.1, -0.1, -0.1], [0, 0, 0], [0, 0, 0] ], "num_threads" : 2, "mpi_grid" : [1, 1, 1], "cyclic_block_size" : 4}
+    ]
+}
+
+

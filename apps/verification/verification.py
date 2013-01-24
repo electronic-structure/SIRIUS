@@ -8,15 +8,12 @@ import subprocess
 
 def create_input_file(inp, conf):
     
-
-    if "vector_field" in conf:
-        atoms = inp["atoms"]
-
-        k = 0
-        for iat in range(len(atoms)):
-            for ia in range(len(atoms[iat][1])):
-                atoms[iat][1][ia].extend(conf["vector_field"][k])
-                k = k + 1
+    k = 0
+    for atom_type in inp["atoms"]:
+        for atom in atom_type[1]:
+            if "vector_field" in conf: atom.extend(conf["vector_field"][k])
+            else: atom.extend([0, 0, 0])
+            k = k + 1
     
     elk_in = "tasks\n2000\n\n"
     
@@ -32,43 +29,29 @@ def create_input_file(inp, conf):
         elk_in += "nempty\n" + "%i\n"%inp["nempty"] + "\n"
     
     if "spinpol" in inp:
-        if inp["spinpol"] == 0:
-            elk_in += "spinpol\n.false.\n\n"
-        else:
-            elk_in += "spinpol\n.true.\n\n"
+        if inp["spinpol"] == 0: elk_in += "spinpol\n.false.\n\n"
+        else: elk_in += "spinpol\n.true.\n\n"
 
     elk_in += "atoms\n" + "%i\n"%len(inp["atoms"])
     
-    for iat in range(len(inp["atoms"])):
-        elk_in += inp["atoms"][iat][0] + "\n"
-        elk_in += "%i\n"%len(inp["atoms"][iat][1])
-        for ia in range(len(inp["atoms"][iat][1])):
-            if "vector_field" in conf:
-                elk_in += "%16.10f %16.10f %16.10f %16.10f %16.10f %16.10f\n"%(inp["atoms"][iat][1][ia][0], 
-                                                                               inp["atoms"][iat][1][ia][1],
-                                                                               inp["atoms"][iat][1][ia][2],
-                                                                               inp["atoms"][iat][1][ia][3],
-                                                                               inp["atoms"][iat][1][ia][4],
-                                                                               inp["atoms"][iat][1][ia][5])
-            else:
-                elk_in += "%16.10f %16.10f %16.10f\n"%(inp["atoms"][iat][1][ia][0], 
-                                                       inp["atoms"][iat][1][ia][1],
-                                                       inp["atoms"][iat][1][ia][2])
-                
+    for atom_type in inp["atoms"]:
+        elk_in += atom_type[0] + "\n"
+        elk_in += "%i\n"%len(atom_type[1])
+        for atom in atom_type[1]:
+            elk_in += "%16.10f %16.10f %16.10f %16.10f %16.10f %16.10f\n"%(atom[0], atom[1], atom[2],
+                                                                           atom[3], atom[4], atom[5])
     elk_in += "\n"
     
-    if "ngridk" in inp:
-        elk_in += "ngridk\n" + "%i %i %i\n"%(inp["ngridk"][0], inp["ngridk"][1], inp["ngridk"][2]) + "\n"
-    else:
-        elk_in += "ngridk\n" + "2 2 2\n" + "\n"
+    ngridk = [2, 2, 2]
+    if "ngridk" in inp: ngridk = inp["ngridk"]
+    if "ngridk" in conf: ngridk = conf["ngridk"]
+
+    elk_in += "ngridk\n" + "%i %i %i\n"%(ngridk[0], ngridk[1], ngridk[2]) + "\n"
 
     if "ldapu" in inp:
         elk_in += "lda+u\n1 1\n"
         for i in range(len(inp["ldapu"])):
-            elk_in += "%i %i %f %f\n"%(inp["ldapu"][i][0], 
-                                       inp["ldapu"][i][1], 
-                                       inp["ldapu"][i][2], 
-                                       inp["ldapu"][i][3])
+            elk_in += "%i %i %f %f\n"%(inp["ldapu"][i][0], inp["ldapu"][i][1], inp["ldapu"][i][2], inp["ldapu"][i][3])
         elk_in += "\n"
 
     if "aw_cutoff" in conf:
@@ -149,10 +132,6 @@ def main():
 
 
 
-
-
-
-
 ### run tests one by one on one or multiple nodes;
 ### test is described by: elk input + mpi_grid conf + num_theads
 ### at this point we want to test: 
@@ -160,12 +139,6 @@ def main():
 ###   LSDA+U collinear vs LSDA+U at arbitrary direction
 ###   LSDA+SO for [100] [010] and [001] directions
 ###  test is a series of runs
-##    create_input_file(avec=[[1, 1, -1], [1, -1, 1], [-1, 1, 1]], 
-##                      scale=2.708,
-##                      nempty=20,
-##                      spinpol=1,
-##                      atoms=[["'Fe.in'", [[0, 0, 0, 0.1, 0.1, 0.1] ] ] ]) 
-##
 
 if __name__ == "__main__":
     main()
