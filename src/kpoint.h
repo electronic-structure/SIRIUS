@@ -458,6 +458,16 @@ class kpoint
             delete t1;
         }
 
+        /// Generate first-variational states
+
+        /** 1. setup H and O \n 
+            2. solve \$ H\psi = E\psi \$ \n
+            3. senerate wave-functions from eigen-vectors
+
+            \param [in] band Pointer to Band class
+            \param [in] effective_potential Pointer to effective potential 
+
+        */
         void generate_fv_states(Band* band, PeriodicFunction<double>* effective_potential)
         {
             Timer t("sirius::kpoint::generate_fv_states");
@@ -466,10 +476,62 @@ class kpoint
             mdarray<complex16, 2> o(apwlo_basis_size_row(), apwlo_basis_size_col());
             set_fv_h_o(band, effective_potential, h, o);
             
+            if ((debug_level > 0) && (eigen_value_solver == lapack))
+            {
+                Utils::check_hermitian("h", h);
+                Utils::check_hermitian("o", o);
+            }
+            
             fv_eigen_values_.resize(parameters_.num_fv_states());
 
             fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), band->spl_fv_states_col().local_size());
             fv_eigen_vectors_.allocate();
+            
+            std::vector<double> fv_eigen_values_glob(parameters_.num_fv_states());
+            if ((debug_level > 2) && (eigen_value_solver == scalapack))
+            {
+                mdarray<complex16, 2> h_glob(apwlo_basis_size(), apwlo_basis_size());
+                mdarray<complex16, 2> o_glob(apwlo_basis_size(), apwlo_basis_size());
+                mdarray<complex16, 2> fv_eigen_vectors_glob(apwlo_basis_size(), parameters_.num_fv_states());
+
+                h_glob.zero();
+                o_glob.zero();
+
+                for (int icol = 0; icol < apwlo_basis_size_col(); icol++)
+                {
+                    int j = apwlo_basis_descriptors_col_[icol].idxglob;
+                    for (int irow = 0; irow < apwlo_basis_size_row(); irow++)
+                    {
+                        int i = apwlo_basis_descriptors_row_[irow].idxglob;
+                        h_glob(i, j) = h(irow, icol);
+                        o_glob(i, j) = o(irow, icol);
+                    }
+                }
+                
+                Platform::allreduce(h_glob.get_ptr(), (int)h_glob.size(), 
+                                    parameters_.mpi_grid().communicator(1 << band->dim_row() | 1 << band->dim_col()));
+                
+                Platform::allreduce(o_glob.get_ptr(), (int)o_glob.size(), 
+                                    parameters_.mpi_grid().communicator(1 << band->dim_row() | 1 << band->dim_col()));
+
+                Utils::check_hermitian("h_glob", h_glob);
+                Utils::check_hermitian("o_glob", o_glob);
+                
+                eigenproblem<lapack>::generalized(apwlo_basis_size(), 
+                                                  parameters_.cyclic_block_size(),
+                                                  1, 
+                                                  1, 
+                                                  -1, 
+                                                  parameters_.num_fv_states(), 
+                                                  -1.0, 
+                                                  h_glob.get_ptr(), 
+                                                  h_glob.ld(), 
+                                                  o_glob.get_ptr(), 
+                                                  o_glob.ld(), 
+                                                  &fv_eigen_values_glob[0], 
+                                                  fv_eigen_vectors_glob.get_ptr(),
+                                                  fv_eigen_vectors_glob.ld());
+            }
             
             Timer *t1 = new Timer("sirius::kpoint::generate_fv_states:genevp");
             eigenproblem<eigen_value_solver>::generalized(apwlo_basis_size(), 
@@ -488,6 +550,17 @@ class kpoint
                                                           fv_eigen_vectors_.ld());
             delete t1;
             
+            if ((debug_level > 2) && (eigen_value_solver == scalapack))
+            {
+                double d = 0.0;
+                for (int i = 0; i < parameters_.num_fv_states(); i++) 
+                    d += fabs(fv_eigen_values_[i] - fv_eigen_values_glob[i]);
+                std::stringstream s;
+                s << "Totoal eigen-value difference : " << d;
+                warning(__FILE__, __LINE__, s, 0);
+            }
+            
+            // generate first-variational wave-functions
             fv_states_col_.set_dimensions(mtgk_size(), band->spl_fv_states_col().local_size());
             fv_states_col_.allocate();
             fv_states_col_.zero();

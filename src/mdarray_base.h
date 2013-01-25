@@ -162,6 +162,9 @@ template <typename T, int ND> class mdarray_base
             return allocated_;
         }
 
+        /// Compute hash of the array
+
+        /** Example: printf("hash(h) : %16llX\n", h.hash()); */
         uint64_t hash()
         {
             uint64_t h = 5381;
