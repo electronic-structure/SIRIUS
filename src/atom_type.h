@@ -528,7 +528,7 @@ class AtomType
                                                                    zn_(zn__),
                                                                    mass_(mass__),
                                                                    mt_radius_(2.0),
-                                                                   num_mt_points_(2000),
+                                                                   num_mt_points_(2000 + zn__ * 50),
                                                                    atomic_levels_(levels__)
                                                          
         {

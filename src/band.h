@@ -776,7 +776,9 @@ class Band
                 {
                     if (spl_spinor_wf_col_[i + ispn * spl_fv_states_col_.local_size()] != 
                         (spl_fv_states_col_[i] + ispn * parameters_.num_fv_states()))
+                    {
                         error(__FILE__, __LINE__, "Wrong distribution of wave-functions");
+                    }
                 }
             }
 
@@ -840,12 +842,35 @@ class Band
 
             init();
             
-            if (eigen_value_solver == scalapack) init_blacs_context();
+            if (eigen_value_solver == scalapack)
+            {
+                int rc = (1 << dim_row_) | 1 << (dim_col_);
+                MPI_Comm comm = parameters_.mpi_grid().communicator(rc);
+                blacs_context_ = linalg<scalapack>::create_blacs_context(comm);
+
+                mdarray<int, 2> map_ranks(num_ranks_row_, num_ranks_col_);
+                for (int i1 = 0; i1 < num_ranks_col_; i1++)
+                {
+                    for (int i0 = 0; i0 < num_ranks_row_; i0++)
+                    {
+                        map_ranks(i0, i1) = parameters_.mpi_grid().cart_rank(comm, Utils::intvec(i0, i1));
+                    }
+                }
+                linalg<scalapack>::gridmap(blacs_context_, map_ranks.get_ptr(), map_ranks.ld(), 
+                                           num_ranks_row_, num_ranks_col_);
+
+                // check the grid
+                int nrow, ncol, irow, icol;
+                linalg<scalapack>::gridinfo(blacs_context_, &nrow, &ncol, &irow, &icol);
+
+                if ((rank_row_ != irow) || (rank_col_ != icol) || (num_ranks_row_ != nrow) || (num_ranks_col_ != ncol)) 
+                    error(__FILE__, __LINE__, "wrong grid", fatal_err);
+            }
         }
 
         ~Band()
         {
-            if (eigen_value_solver == scalapack) Cfree_blacs_system_handle(blacs_context_);
+            if (eigen_value_solver == scalapack) linalg<scalapack>::free_blacs_context(blacs_context_);
         }
  
 #if 0

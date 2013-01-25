@@ -50,12 +50,16 @@ for itg in range(len(timer_groups)):
 
     timer_names = copy.deepcopy(timer_groups[itg])
     timer_values = []
+    total_time = 0.0
     for i in range(len(timer_names)):
         t = 0.0
         if timer_names[i] in jin:
             t = jin[timer_names[i]]
             timer_names[i] = timer_names[i] + " (%6.2f)"%t
         timer_values.append(t)
+        total_time += t
+        
+    print "total time for timer group ", itg, " ", total_time
     
     plot = matplotlib.pyplot.subplot("41%i"%(itg+1))
     box = plot.get_position()

@@ -158,6 +158,28 @@ template<> struct linalg<lapack>
 
 template<> struct linalg<scalapack>
 {
+    /// Create BLACS context
+    static int create_blacs_context(MPI_Comm comm)
+    {
+        return Csys2blacs_handle(comm);
+    }
+
+    /// create grid of MPI ranks
+    static void gridmap(int blacs_context, int* map, int ld, int nrow, int ncol)
+    {
+        Cblacs_gridmap(&blacs_context, map, ld, nrow, ncol);
+    }
+
+    static void gridinfo(int blacs_context, int* nrow, int* ncol, int* irow, int* icol)
+    {
+        Cblacs_gridinfo(blacs_context, nrow, ncol, irow, icol);
+    }
+
+    static void free_blacs_context(int blacs_context)
+    {
+        Cfree_blacs_system_handle(blacs_context);
+    }
+
     static void descinit(int4* desc, int4 m, int4 n, int4 mb, int4 nb, int4 irsrc, int4 icsrc, int4 ictxt, int4 lld)
     {
         int4 info;
