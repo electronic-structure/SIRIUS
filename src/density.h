@@ -103,9 +103,9 @@ class Density
             // because density matrix is symmetric
             int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
 
-            mdarray<complex16,3> zdens(parameters_.max_mt_basis_size(), parameters_.max_mt_basis_size(), num_zdmat);
-            mdarray<complex16,3> wf1(parameters_.max_mt_basis_size(), (int)bands.size(), parameters_.num_spins());
-            mdarray<complex16,3> wf2(parameters_.max_mt_basis_size(), (int)bands.size(), parameters_.num_spins());
+            mdarray<complex16, 3> zdens(parameters_.max_mt_basis_size(), parameters_.max_mt_basis_size(), num_zdmat);
+            mdarray<complex16, 3> wf1(parameters_.max_mt_basis_size(), (int)bands.size(), parameters_.num_spins());
+            mdarray<complex16, 3> wf2(parameters_.max_mt_basis_size(), (int)bands.size(), parameters_.num_spins());
        
             Timer t1("sirius::Density::add_kpoint_contribution:zdens", false);
             Timer t2("sirius::Density::add_kpoint_contribution:reduce_zdens", false);
@@ -118,20 +118,23 @@ class Density
                 int mt_basis_size = parameters_.atom(ia)->type()->mt_basis_size();
                 
                 for (int i = 0; i < (int)bands.size(); i++)
+                {
                     for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
                     {
                         memcpy(&wf1(0, i, ispn), &kp->spinor_wave_function(offset_wf, ispn, bands[i].first), 
                                mt_basis_size * sizeof(complex16));
-                        for (int j = 0; j < mt_basis_size; j++) 
-                            wf2(j, i, ispn) = wf1(j, i, ispn) * bands[i].second;
+                        for (int j = 0; j < mt_basis_size; j++) wf2(j, i, ispn) = wf1(j, i, ispn) * bands[i].second;
                     }
+                }
 
                 for (int j = 0; j < num_zdmat; j++)
-                    gemm<cpu>(0, 2, mt_basis_size, mt_basis_size, (int)bands.size(), complex16(1.0, 0.0), 
+                {
+                    blas<cpu>::gemm(0, 2, mt_basis_size, mt_basis_size, (int)bands.size(), 
                               &wf1(0, 0, dmat_spins_[j].first), parameters_.max_mt_basis_size(), 
-                              &wf2(0, 0, dmat_spins_[j].second), parameters_.max_mt_basis_size(),complex16(0.0, 0.0), 
+                              &wf2(0, 0, dmat_spins_[j].second), parameters_.max_mt_basis_size(), 
                               &zdens(0, 0, j), parameters_.max_mt_basis_size());
-                
+                }
+
                 t1.stop();
 
                 t2.start();
@@ -641,22 +644,28 @@ class Density
                     for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
                     {
                         for (int j = 0; j < parameters_.num_mag_dims() + 1; j++)
+                        {
                             for (int idxrf = 0; idxrf < parameters_.atom(ia)->type()->mt_radial_basis_size(); idxrf++)
                                 mt_density_matrix(idxrf, idxrf, lm, ia, j) *= 0.5; 
+                        }
 
                         v.zero();
 
                         for (int j = 0; j < parameters_.num_mag_dims() + 1; j++)
+                        {
                             for (int idxrf2 = 0; idxrf2 < parameters_.atom(ia)->type()->mt_radial_basis_size(); idxrf2++)
                             {
                                 for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
                                 {
                                     for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
+                                    {
                                         v(ir, j) += 2 * mt_density_matrix(idxrf1, idxrf2, lm, ia, j) * 
                                                     parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf1) * 
                                                     parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf2);
+                                    }
                                 }
                             }
+                        }
 
                         switch(parameters_.num_mag_dims())
                         {
@@ -674,8 +683,7 @@ class Density
                                 }
                                 break;
                             case 0:
-                                for (int ir = 0; ir < nmtp; ir++)
-                                    rho_->f_rlm(lm, ir, ia) = v(ir, 0);
+                                for (int ir = 0; ir < nmtp; ir++) rho_->f_rlm(lm, ir, ia) = v(ir, 0);
                         }
                     }
                 }

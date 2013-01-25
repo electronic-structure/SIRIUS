@@ -177,8 +177,8 @@ class SHT
             
             assert(lmmax <= lmmax_);
 
-            gemm<cpu>(1, 0, num_points_, ncol, lmmax, 1.0, &rlm_backward_(0, 0), lmmax_, flm, lmmax, 0.0, ftp, 
-                      num_points_);
+            blas<cpu>::gemm(1, 0, num_points_, ncol, lmmax, 1.0, &rlm_backward_(0, 0), lmmax_, flm, lmmax, 0.0, ftp, 
+                            num_points_);
         }
 
         /// Transform from spherical coordinates to Rlm
@@ -188,8 +188,8 @@ class SHT
             
             assert(lmmax <= lmmax_);
             
-            gemm<cpu>(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, ftp, num_points_, 0.0, 
-                      flm, lmmax);
+            blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, ftp, num_points_, 0.0, 
+                            flm, lmmax);
         }
 
         /// Transform Cartesian coordinates [x,y,z] to spherical coordinates [r,theta,phi]

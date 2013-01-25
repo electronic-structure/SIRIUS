@@ -25,11 +25,14 @@ template<> struct blas<cpu>
     template <typename T>
     static inline void gemm(int transa, int transb, int4 m, int4 n, int4 k, T* a, int4 lda, T* b, int4 ldb, T* c, 
                             int4 ldc);
+    template<typename T>
+    static inline void hemm(int side, int uplo, int4 m, int4 n, T alpha, T* a, int4 lda, T* b, int4 ldb, T beta, T* c, 
+                            int4 ldc);
 };
 
 template<> inline void blas<cpu>::gemm<real8>(int transa, int transb, int4 m, int4 n, int4 k, real8 alpha, 
-                                                real8* a, int4 lda, real8* b, int4 ldb, real8 beta, real8* c, 
-                                                int4 ldc)
+                                              real8* a, int4 lda, real8* b, int4 ldb, real8 beta, real8* c, 
+                                              int4 ldc)
 {
     const char *trans[] = {"N", "T", "C"};
 
@@ -38,14 +41,14 @@ template<> inline void blas<cpu>::gemm<real8>(int transa, int transb, int4 m, in
 }
 
 template<> inline void blas<cpu>::gemm<real8>(int transa, int transb, int4 m, int4 n, int4 k, real8* a, int4 lda, 
-                                                real8* b, int4 ldb, real8* c, int4 ldc)
+                                              real8* b, int4 ldb, real8* c, int4 ldc)
 {
     gemm(transa, transb, m, n, k, 1.0, a, lda, b, ldb, 0.0, c, ldc);
 }
 
 template<> inline void blas<cpu>::gemm<complex16>(int transa, int transb, int4 m, int4 n, int4 k, complex16 alpha, 
-                                                    complex16* a, int4 lda, complex16* b, int4 ldb, complex16 beta, 
-                                                    complex16* c, int4 ldc)
+                                                  complex16* a, int4 lda, complex16* b, int4 ldb, complex16 beta, 
+                                                  complex16* c, int4 ldc)
 {
     const char *trans[] = {"N", "T", "C"};
 
@@ -59,87 +62,14 @@ template<> inline void blas<cpu>::gemm<complex16>(int transa, int transb, int4 m
     gemm(transa, transb, m, n, k, complex16(1, 0), a, lda, b, ldb, complex16(0, 0), c, ldc);
 }
 
-/// Matrix matrix multimplication
-template<processing_unit_t device, typename T> 
-void gemm(int transa, int transb, int4 m, int4 n, int4 k, T alpha, T* a, int4 lda, T* b, int4 ldb, T beta, T* c, 
-          int4 ldc);
-
-/// Specialization of matrix matrix multiplication for real8 type on a CPU
-template<> void gemm<cpu, real8>(int transa, int transb, int4 m, int4 n, int4 k, real8 alpha, real8* a, int4 lda, 
-                                 real8* b, int4 ldb, real8 beta, real8* c, int4 ldc)
-{
-    const char *trans[] = {"N", "T", "C"};
-
-    FORTRAN(dgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int4)1, 
-                   (int4)1);
-}
-
-/// Specialization of matrix matrix multiplication for complex16 type on a CPU
-template<> void gemm<cpu, complex16>(int transa, int transb, int4 m, int4 n, int4 k, complex16 alpha, complex16* a, 
-                                     int4 lda, complex16* b, int4 ldb, complex16 beta, complex16* c, int4 ldc)
-{
-    const char *trans[] = {"N", "T", "C"};
-
-    FORTRAN(zgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int4)1, 
-                   (int4)1);
-}
-
-/// Hermitian matrix matrix multimplication
-template<processing_unit_t device, typename T> 
-void hemm(int side, int uplo, int4 m, int4 n, T alpha, T* a, int4 lda, T* b, int4 ldb, T beta, T* c, int4 ldc);
-
-template<> void hemm<cpu, complex16>(int side, int uplo, int4 m, int4 n, complex16 alpha, complex16* a, int4 lda, 
-                                     complex16* b, int4 ldb, complex16 beta, complex16* c, int4 ldc)
-
+template<> inline void blas<cpu>::hemm<complex16>(int side, int uplo, int4 m, int4 n, complex16 alpha, complex16* a, 
+                                                  int4 lda, complex16* b, int4 ldb, complex16 beta, complex16* c, 
+                                                  int4 ldc)
 {
     const char *sidestr[] = {"L", "R"};
     const char *uplostr[] = {"U", "L"};
     FORTRAN(zhemm)(sidestr[side], uplostr[uplo], &m, &n, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int4)1, (int4)1);
 }
-
-template<typename T> 
-int gtsv(int n, int nrhs, T* dl, T* d, T* du, T* b, int ldb);
-
-template<> int gtsv<double>(int n, int nrhs, double *dl, double *d, double *du, double *b, int ldb)
-{
-    int info;
-
-    FORTRAN(dgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
-            
-    return info;
-}
-
-template<> int gtsv<complex16>(int n, int nrhs, complex16* dl, complex16* d, complex16* du, complex16* b, int ldb)
-{
-    int4 info;                   
-
-    FORTRAN(zgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
-            
-    return info;                
-}
-
-template <typename T> int gesv(int4 n, int4 nrhs, T* a, int4 lda, T* b, int4 ldb);
-
-template<> int gesv<real8>(int4 n, int4 nrhs, real8* a, int4 lda, real8* b, int4 ldb)
-{
-    int4 info;
-    std::vector<int4> ipiv(n);
-
-    FORTRAN(dgesv)(&n, &nrhs, a, &lda, &ipiv[0], b, &ldb, &info);
-
-    return info;
-}
-
-template<> int gesv<complex16>(int4 n, int4 nrhs, complex16* a, int4 lda, complex16* b, int4 ldb)
-{
-    int4 info;
-    std::vector<int4> ipiv(n);
-
-    FORTRAN(zgesv)(&n, &nrhs, a, &lda, &ipiv[0], b, &ldb, &info);
-
-    return info;
-}
-
 
 
 template<linalg_t> struct linalg;
@@ -152,7 +82,52 @@ template<> struct linalg<lapack>
         return FORTRAN(ilaenv)(&ispec, name.c_str(), opts.c_str(), &n1, &n2, &n3, &n4, (int4)name.length(), 
                                (int4)opts.length());
     }
+    
+    template <typename T> 
+    static int gesv(int4 n, int4 nrhs, T* a, int4 lda, T* b, int4 ldb);
+
+    template <typename T> 
+    static int gtsv(int4 n, int4 nrhs, T* dl, T* d, T* du, T* b, int4 ldb);
 };
+
+template<> int linalg<lapack>::gesv<real8>(int4 n, int4 nrhs, real8* a, int4 lda, real8* b, int4 ldb)
+{
+    int4 info;
+    std::vector<int4> ipiv(n);
+
+    FORTRAN(dgesv)(&n, &nrhs, a, &lda, &ipiv[0], b, &ldb, &info);
+
+    return info;
+}
+
+template<> int linalg<lapack>::gesv<complex16>(int4 n, int4 nrhs, complex16* a, int4 lda, complex16* b, int4 ldb)
+{
+    int4 info;
+    std::vector<int4> ipiv(n);
+
+    FORTRAN(zgesv)(&n, &nrhs, a, &lda, &ipiv[0], b, &ldb, &info);
+
+    return info;
+}
+
+template<> int linalg<lapack>::gtsv<real8>(int4 n, int4 nrhs, real8* dl, real8* d, real8* du, real8* b, int4 ldb)
+{
+    int info;
+
+    FORTRAN(dgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
+            
+    return info;
+}
+
+template<> int linalg<lapack>::gtsv<complex16>(int4 n, int4 nrhs, complex16* dl, complex16* d, complex16* du, 
+                                               complex16* b, int4 ldb)
+{
+    int4 info;                   
+
+    FORTRAN(zgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
+            
+    return info;               
+}
 
 template<> struct linalg<scalapack>
 {

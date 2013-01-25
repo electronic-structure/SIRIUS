@@ -204,7 +204,7 @@ class AtomSymmetryClass
                 double b[] = {0.0, 0.0, 0.0, 0.0};
                 b[lo_descriptor(idxlo).size() - 1] = 1.0;
 
-                int info = gesv<double>((int)lo_descriptor(idxlo).size(), 1, &a[0][0], 4, b, 4);
+                int info = linalg<lapack>::gesv((int)lo_descriptor(idxlo).size(), 1, &a[0][0], 4, b, 4);
 
                 if (info) 
                 {

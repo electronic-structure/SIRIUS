@@ -135,7 +135,7 @@ class kpoint
                         }
                     }
 
-                    int info = gesv(num_aw, num_gkvec_loc * (2 * l + 1), &a[0][0], 2, &b(0, 0), 2);
+                    int info = linalg<lapack>::gesv(num_aw, num_gkvec_loc * (2 * l + 1), &a[0][0], 2, &b(0, 0), 2);
 
                     if (info)
                     {
@@ -565,25 +565,26 @@ class kpoint
                 {
                     for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
                     {
-                        gemm<cpu>(0, 0, mtgk_size(), band->spl_fv_states_col().local_size(), 
-                                  band->spl_fv_states_row().local_size(), complex16(1, 0), 
-                                  &fv_states_row_(0, 0), fv_states_row_.ld(), 
-                                  &sv_eigen_vectors_(0, ispn * band->spl_fv_states_col().local_size()), 
-                                  sv_eigen_vectors_.ld(), complex16(0, 0), 
-                                  &spinor_wave_functions_(0, ispn, ispn * band->spl_fv_states_col().local_size()), 
-                                  spinor_wave_functions_.ld() * parameters_.num_spins());
+                        blas<cpu>::gemm(0, 0, mtgk_size(), band->spl_fv_states_col().local_size(), 
+                                        band->spl_fv_states_row().local_size(), 
+                                        &fv_states_row_(0, 0), fv_states_row_.ld(), 
+                                        &sv_eigen_vectors_(0, ispn * band->spl_fv_states_col().local_size()), 
+                                        sv_eigen_vectors_.ld(), 
+                                        &spinor_wave_functions_(0, ispn, ispn * band->spl_fv_states_col().local_size()), 
+                                        spinor_wave_functions_.ld() * parameters_.num_spins());
                     }
                 }
                 else
                 {
                     for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
                     {
-                        gemm<cpu>(0, 0, mtgk_size(), band->spl_spinor_wf_col().local_size(), 
-                                  band->num_fv_states_row(ispn), complex16(1, 0), 
-                                  &fv_states_row_(0, band->offs_fv_states_row(ispn)), fv_states_row_.ld(), 
-                                  &sv_eigen_vectors_(ispn * band->num_fv_states_row_up(), 0), sv_eigen_vectors_.ld(), 
-                                  complex16(0, 0), &spinor_wave_functions_(0, ispn, 0), 
-                                  spinor_wave_functions_.ld() * parameters_.num_spins());
+                        blas<cpu>::gemm(0, 0, mtgk_size(), band->spl_spinor_wf_col().local_size(), 
+                                        band->num_fv_states_row(ispn), 
+                                        &fv_states_row_(0, band->offs_fv_states_row(ispn)), fv_states_row_.ld(), 
+                                        &sv_eigen_vectors_(ispn * band->num_fv_states_row_up(), 0), 
+                                        sv_eigen_vectors_.ld(), 
+                                        &spinor_wave_functions_(0, ispn, 0), 
+                                        spinor_wave_functions_.ld() * parameters_.num_spins());
                     }
                 }
                 

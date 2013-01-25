@@ -88,7 +88,8 @@ template <typename T> class Spline
             diag_lower[num_points - 2] = -(h3 * (1 + h3 / h2) + diag_main[num_points - 2]); 
 
             // solve tridiagonal system
-            int info = gtsv(num_points, 1, &diag_lower[0], &diag_main[0], &diag_upper[0], &m[0], num_points);
+            int info = linalg<lapack>::gtsv(num_points, 1, &diag_lower[0], &diag_main[0], &diag_upper[0], &m[0], 
+                                            num_points);
 
             if (info)
             {

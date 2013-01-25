@@ -134,8 +134,8 @@ class Band
                     }
                 }
                 // compute bwf = B_z*|wf_j>
-                hemm<cpu>(0, 0, mt_basis_size, spl_fv_states_col_.local_size(), zone, &zm(0, 0, 0), zm.ld(), 
-                          &fv_states(offset, 0), fv_states.ld(), zzero, &hpsi(offset, 0, 0), hpsi.ld());
+                blas<cpu>::hemm(0, 0, mt_basis_size, spl_fv_states_col_.local_size(), zone, &zm(0, 0, 0), zm.ld(), 
+                                &fv_states(offset, 0), fv_states.ld(), zzero, &hpsi(offset, 0, 0), hpsi.ld());
                 
                 // compute bwf = (B_x - iB_y)|wf_j>
                 if (hpsi.size(2) >= 3)
@@ -150,8 +150,8 @@ class Band
                             zm(j1, j2, 0) = conj(zm(j2, j1, 1)) - zi * conj(zm(j2, j1, 2));
                     }
                       
-                    gemm<cpu>(0, 0, mt_basis_size, spl_fv_states_col_.local_size(), mt_basis_size, zone, &zm(0, 0, 0), 
-                              zm.ld(), &fv_states(offset, 0), fv_states.ld(), zzero, &hpsi(offset, 0, 2), hpsi.ld());
+                    blas<cpu>::gemm(0, 0, mt_basis_size, spl_fv_states_col_.local_size(), mt_basis_size, &zm(0, 0, 0), 
+                                    zm.ld(), &fv_states(offset, 0), fv_states.ld(), &hpsi(offset, 0, 2), hpsi.ld());
                 }
                 
                 // compute bwf = (B_x + iB_y)|wf_j>
@@ -167,8 +167,8 @@ class Band
                             zm(j1, j2, 0) = conj(zm(j2, j1, 1)) + zi * conj(zm(j2, j1, 2));
                     }
                       
-                    gemm<cpu>(0, 0, mt_basis_size, spl_fv_states_col_.local_size(), mt_basis_size, zone, &zm(0, 0, 0), 
-                              zm.ld(), &fv_states(offset, 0), fv_states.ld(), zzero, &hpsi(offset, 0, 3), hpsi.ld());
+                    blas<cpu>::gemm(0, 0, mt_basis_size, spl_fv_states_col_.local_size(), mt_basis_size, &zm(0, 0, 0), 
+                                    zm.ld(), &fv_states(offset, 0), fv_states.ld(), &hpsi(offset, 0, 3), hpsi.ld());
                 }
             }
             
@@ -236,7 +236,8 @@ class Band
                     }
                 }
             }
-            Platform::allreduce(hpsi_pw.get_ptr(), (int)hpsi_pw.size());
+            Platform::allreduce(hpsi_pw.get_ptr(), (int)hpsi_pw.size(), 
+                                parameters_.mpi_grid().communicator(1 << dim_row_));
 
             for (int n = 0; n < hpsi.size(2); n++)
             {
@@ -726,15 +727,17 @@ class Band
                 for (int ispn = 0; ispn < 2; ispn++)
                 {
                     // compute <wf_i | (h * wf_j)> for up-up or dn-dn block
-                    gemm<cpu>(2, 0, spl_fv_states_row_.local_size(), spl_fv_states_col_.local_size(), 
-                              mtgk_size, complex16(1, 0), &fv_states_row(0, 0), fv_states_row.ld(), 
-                              &hpsi(0, 0, ispn), hpsi.ld(), complex16(0, 0), &h(0, 0), h.ld());
+                    blas<cpu>::gemm(2, 0, spl_fv_states_row_.local_size(), spl_fv_states_col_.local_size(), 
+                                    mtgk_size, &fv_states_row(0, 0), fv_states_row.ld(), 
+                                    &hpsi(0, 0, ispn), hpsi.ld(), &h(0, 0), h.ld());
 
                     for (int icol = 0; icol < spl_fv_states_col_.local_size(); icol++)
                     {
                         int i = spl_fv_states_col_[icol];
                         for (int irow = 0; irow < spl_fv_states_row_.local_size(); irow++)
+                        {
                             if (spl_fv_states_row_[irow] == i) h(irow, icol) += evalfv[i];
+                        }
                     }
                 
                     t1.start();
@@ -759,27 +762,26 @@ class Band
                 h.zero();
 
                 // compute <wf_i | (h * wf_j)> for up-up block
-                gemm<cpu>(2, 0, num_fv_states_row_up_, spl_fv_states_col_.local_size(), mtgk_size, complex16(1, 0), 
-                          &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 0), hpsi.ld(), complex16(0, 0), 
-                          &h(0, 0), h.ld());
+                blas<cpu>::gemm(2, 0, num_fv_states_row_up_, spl_fv_states_col_.local_size(), mtgk_size, 
+                                &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 0), hpsi.ld(), &h(0, 0), h.ld());
 
                 // compute <wf_i | (h * wf_j)> for up-dn block
-                gemm<cpu>(2, 0, num_fv_states_row_up_, spl_fv_states_col_.local_size(), mtgk_size, complex16(1, 0), 
-                          &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 2), hpsi.ld(), complex16(0, 0), 
-                          &h(0, spl_fv_states_col_.local_size()), h.ld());
+                blas<cpu>::gemm(2, 0, num_fv_states_row_up_, spl_fv_states_col_.local_size(), mtgk_size, 
+                                &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 2), hpsi.ld(), 
+                                &h(0, spl_fv_states_col_.local_size()), h.ld());
                
                 int fv_states_up_offset = (num_ranks_ == 1) ? 0 : num_fv_states_row_up_;
                 // compute <wf_i | (h * wf_j)> for dn-dn block
-                gemm<cpu>(2, 0, num_fv_states_row_dn_, spl_fv_states_col_.local_size(), mtgk_size, complex16(1, 0), 
-                          &fv_states_row(0, fv_states_up_offset), fv_states_row.ld(), &hpsi(0, 0, 1), hpsi.ld(), 
-                          complex16(0, 0), &h(num_fv_states_row_up_, spl_fv_states_col_.local_size()), h.ld());
+                blas<cpu>::gemm(2, 0, num_fv_states_row_dn_, spl_fv_states_col_.local_size(), mtgk_size,
+                                &fv_states_row(0, fv_states_up_offset), fv_states_row.ld(), &hpsi(0, 0, 1), hpsi.ld(), 
+                                &h(num_fv_states_row_up_, spl_fv_states_col_.local_size()), h.ld());
 
                 if (eigen_value_solver == scalapack)
                 {
                     // compute <wf_i | (h * wf_j)> for dn-up block
-                    gemm<cpu>(2, 0, num_fv_states_row_dn_, spl_fv_states_col_.local_size(), mtgk_size, complex16(1, 0), 
-                              &fv_states_row(0, fv_states_up_offset), fv_states_row.ld(), &hpsi(0, 0, 3), hpsi.ld(), 
-                              complex16(0, 0), &h(num_fv_states_row_up_, 0), h.ld());
+                    blas<cpu>::gemm(2, 0, num_fv_states_row_dn_, spl_fv_states_col_.local_size(), mtgk_size, 
+                                    &fv_states_row(0, fv_states_up_offset), fv_states_row.ld(), &hpsi(0, 0, 3), 
+                                    hpsi.ld(), &h(num_fv_states_row_up_, 0), h.ld());
                 }
               
                 for (int ispn = 0; ispn < 2; ispn++)
