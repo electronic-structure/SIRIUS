@@ -684,7 +684,8 @@ class Band
                 }
             }
         }
-        
+
+#if 0
         void init_blacs_context()
         {
             mdarray<int, 2> map_ranks(num_ranks_row_, num_ranks_col_);
@@ -697,15 +698,21 @@ class Band
             // create BLACS context
             blacs_context_ = Csys2blacs_handle(parameters_.mpi_grid().communicator(rc));
 
+            std::cout << "blacs_context " << blacs_context_ << std::endl;
+
             // create grid of MPI ranks 
             Cblacs_gridmap(&blacs_context_, map_ranks.get_ptr(), map_ranks.ld(), num_ranks_row_, num_ranks_col_);
 
+            std::cout << "blacs_context_after " << blacs_context_ << std::endl;
+
             // check the grid
             int nrow, ncol, irow, icol;
-            Cblacs_gridinfo(blacs_context_, &nrow, &ncol, &irow, &icol);
+            int yy = blacs_context_;
+            Cblacs_gridinfo(yy, &nrow, &ncol, &irow, &icol);
             if ((rank_row_ != irow) || (rank_col_ != icol) || (num_ranks_row_ != nrow) || (num_ranks_col_ != ncol)) 
                 error(__FILE__, __LINE__, "wrong grid", fatal_err);
         }
+#endif
 
         void init()
         {
@@ -856,7 +863,7 @@ class Band
                         map_ranks(i0, i1) = parameters_.mpi_grid().cart_rank(comm, Utils::intvec(i0, i1));
                     }
                 }
-                linalg<scalapack>::gridmap(blacs_context_, map_ranks.get_ptr(), map_ranks.ld(), 
+                linalg<scalapack>::gridmap(&blacs_context_, map_ranks.get_ptr(), map_ranks.ld(), 
                                            num_ranks_row_, num_ranks_col_);
 
                 // check the grid
@@ -864,7 +871,16 @@ class Band
                 linalg<scalapack>::gridinfo(blacs_context_, &nrow, &ncol, &irow, &icol);
 
                 if ((rank_row_ != irow) || (rank_col_ != icol) || (num_ranks_row_ != nrow) || (num_ranks_col_ != ncol)) 
-                    error(__FILE__, __LINE__, "wrong grid", fatal_err);
+                {
+                    std::stringstream s;
+                    s << "wrong grid" << std::endl
+                      << "rank_row : " << rank_row_ << " irow : " << irow << std::endl
+                      << "rank_col : " << rank_col_ << " icol : " << icol << std::endl
+                      << "num_ranks_row : " << num_ranks_row_ << " nrow : " << nrow << std::endl
+                      << "num_ranks_col : " << num_ranks_col_ << " ncol : " << ncol;
+
+                    error(__FILE__, __LINE__, s, fatal_err);
+                }
             }
         }
 

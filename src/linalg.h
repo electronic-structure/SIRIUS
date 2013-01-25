@@ -165,9 +165,9 @@ template<> struct linalg<scalapack>
     }
 
     /// create grid of MPI ranks
-    static void gridmap(int blacs_context, int* map, int ld, int nrow, int ncol)
+    static void gridmap(int* blacs_context, int* map, int ld, int nrow, int ncol)
     {
-        Cblacs_gridmap(&blacs_context, map, ld, nrow, ncol);
+        Cblacs_gridmap(blacs_context, map, ld, nrow, ncol);
     }
 
     static void gridinfo(int blacs_context, int* nrow, int* ncol, int* irow, int* icol)
