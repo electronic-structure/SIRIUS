@@ -447,8 +447,7 @@ class Potential
 
             xc_potential->zero(rlm_component);
             xc_energy_density->zero(rlm_component);
-            for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                xc_magnetic_field[j]->zero(rlm_component);
+            for (int j = 0; j < parameters_.num_mag_dims(); j++) xc_magnetic_field[j]->zero(rlm_component);
 
             Timer* t2 = new Timer("sirius::Potential::xc:mt");
             for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
@@ -464,6 +463,7 @@ class Potential
                         sht_.rlm_backward_transform(&magnetization[j]->f_rlm(0, 0, ia), parameters_.lmmax_rho(), nmtp,
                                                     &vecmagtp(0, 0, j));
                     for (int ir = 0; ir < nmtp; ir++)
+                    {
                         for (int itp = 0; itp < sht_.num_points(); itp++)
                         {
                             double t = 0.0;
@@ -471,13 +471,18 @@ class Potential
                                 t += vecmagtp(itp, ir, j) *  vecmagtp(itp, ir, j);
                             magtp(itp, ir) = sqrt(t);
                         }
+                    }
                 }
                 
                 if (parameters_.num_spins() == 1) 
+                {
                     libxc_interface::getxc(sht_.num_points() * nmtp, &rhotp(0, 0), &vxctp(0, 0), &exctp(0, 0));
+                }
                 else
+                {
                     libxc_interface::getxc(sht_.num_points() * nmtp, &rhotp(0, 0), &magtp(0, 0), &vxctp(0, 0), 
                                            &bxctp(0, 0), &exctp(0, 0));
+                }
 
                 sht_.rlm_forward_transform(&vxctp(0, 0), parameters_.lmmax_pot(), nmtp, 
                                            &xc_potential->f_rlm(0, 0, ia));

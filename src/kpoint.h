@@ -232,6 +232,52 @@ class kpoint
             }
         }
 
+        /// Setup the Hamiltonian and overlap matrices in APW+lo basis
+
+        /** The Hamiltonian matrix has the following expression:
+            \f[
+                H_{\mu' \mu} = \langle \varphi_{\mu'} | \hat H | \varphi_{\mu} \rangle
+            \f]
+
+            \f[
+                H_{\mu' \mu}=\langle \varphi_{\mu' } | \hat H | \varphi_{\mu } \rangle  = 
+                \left( \begin{array}{cc} 
+                   H_{\bf G'G} & H_{{\bf G'}j} \\
+                   H_{j'{\bf G}} & H_{j'j}
+                \end{array} \right)
+            \f]
+            
+            The overlap matrix has the following expression:
+            \f[
+                O_{\mu' \mu} = \langle \varphi_{\mu'} | \varphi_{\mu} \rangle
+            \f]
+            APW-APW block:
+            \f[
+                O_{{\bf G'} {\bf G}}^{\bf k} = \sum_{\alpha} \sum_{L\nu} a_{L\nu}^{\alpha *}({\bf G'+k}) 
+                a_{L\nu}^{\alpha}({\bf G+k})
+            \f]
+            
+            APW-lo block:
+            \f[
+                O_{{\bf G'} j}^{\bf k} = \sum_{\nu'} a_{\ell_j m_j \nu'}^{\alpha_j *}({\bf G'+k}) 
+                \langle u_{\ell_j \nu'}^{\alpha_j} | \phi_{\ell_j}^{\zeta_j \alpha_j} \rangle
+            \f]
+
+            lo-APW block:
+            \f[
+                O_{j' {\bf G}}^{\bf k} = 
+                \sum_{\nu'} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} | u_{\ell_{j'} \nu'}^{\alpha_{j'}} \rangle
+                a_{\ell_{j'} m_{j'} \nu'}^{\alpha_{j'}}({\bf G+k}) 
+            \f]
+
+            lo-lo block:
+            \f[
+                O_{j' j}^{\bf k} = \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} | 
+                \phi_{\ell_{j}}^{\zeta_{j} \alpha_{j}} \rangle \delta_{\alpha_{j'} \alpha_j} 
+                \delta_{\ell_{j'} \ell_j} \delta_{m_{j'} m_j}
+            \f]
+
+        */
         void set_fv_h_o(Band*                     band,
                         PeriodicFunction<double>* effective_potential,
                         mdarray<complex16, 2>&    h,
@@ -518,6 +564,7 @@ class kpoint
                 if (parameters_.num_mag_dims() != 3)
                 {
                     for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+                    {
                         gemm<cpu>(0, 0, mtgk_size(), band->spl_fv_states_col().local_size(), 
                                   band->spl_fv_states_row().local_size(), complex16(1, 0), 
                                   &fv_states_row_(0, 0), fv_states_row_.ld(), 
@@ -525,7 +572,7 @@ class kpoint
                                   sv_eigen_vectors_.ld(), complex16(0, 0), 
                                   &spinor_wave_functions_(0, ispn, ispn * band->spl_fv_states_col().local_size()), 
                                   spinor_wave_functions_.ld() * parameters_.num_spins());
-
+                    }
                 }
                 else
                 {
@@ -541,9 +588,11 @@ class kpoint
                 }
                 
                 for (int i = 0; i < band->spl_spinor_wf_col().local_size(); i++)
+                {
                     Platform::allreduce(&spinor_wave_functions_(0, 0, i), 
                                         spinor_wave_functions_.size(0) * spinor_wave_functions_.size(1), 
                                         parameters_.mpi_grid().communicator(1 << band->dim_row()));
+                }
             }
             else
             {
@@ -568,11 +617,10 @@ class kpoint
             for (int ig = 0; ig < parameters_.num_gvec(); ig++)
             {
                 double vgk[3];
-                for (int x = 0; x < 3; x++)
-                    vgk[x] = parameters_.gvec(ig)[x] + vk_[x];
+                for (int x = 0; x < 3; x++) vgk[x] = parameters_.gvec(ig)[x] + vk_[x];
 
                 double v[3];
-                parameters_.get_coordinates<cartesian,reciprocal>(vgk, v);
+                parameters_.get_coordinates<cartesian, reciprocal>(vgk, v);
                 double gklen = Utils::vector_length(v);
 
                 if (gklen <= gk_cutoff) gkmap.push_back(std::pair<double,int>(gklen, ig));
@@ -588,13 +636,11 @@ class kpoint
             for (int ig = 0; ig < (int)gkmap.size(); ig++)
             {
                 gvec_index_[ig] = gkmap[ig].second;
-                for (int x = 0; x < 3; x++)
-                    gkvec_(x, ig) = parameters_.gvec(gkmap[ig].second)[x] + vk_[x];
+                for (int x = 0; x < 3; x++) gkvec_(x, ig) = parameters_.gvec(gkmap[ig].second)[x] + vk_[x];
             }
             
             fft_index_.resize(num_gkvec());
-            for (int ig = 0; ig < num_gkvec(); ig++)
-                fft_index_[ig] = parameters_.fft_index(gvec_index_[ig]);
+            for (int ig = 0; ig < num_gkvec(); ig++) fft_index_[ig] = parameters_.fft_index(gvec_index_[ig]);
         }
 
         void init_gkvec()
