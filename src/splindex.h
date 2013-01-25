@@ -98,6 +98,8 @@ template<> class splindex<block>: public splindex_base
         
         splindex(int global_index_size__, int num_ranks__, int rank__)
         {
+            assert(global_index_size__ > 0);
+
             split(global_index_size__, num_ranks__, rank__); 
         }
         
@@ -165,6 +167,8 @@ template<> class splindex<block_cyclic>: public splindex_base
 
         splindex(int global_index_size__, int num_ranks__, int rank__, int block_size__)
         {
+            assert(global_index_size__ > 0);
+
             split(global_index_size__, num_ranks__, rank__, block_size__); 
         }
         

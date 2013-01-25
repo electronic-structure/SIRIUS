@@ -36,10 +36,7 @@ const double gamma_factors[31][11] = {
 {30.5,960.75,31224.375,1.0460165625e6,3.608757140625e7,1.281108784921875e9,4.67604706496484375e10,1.7535176493618164062e12,6.7510429500429931641e13,2.6666619652669822998e15,1.0799980959331278314e17},
 {31.5,1023.75,34295.625,1.1831990625e6,4.200356671875e7,1.533130185234375e9,5.74923819462890625e10,2.2134567049321289062e12,8.7431539844819091797e13,3.5409773637151732178e15,1.4695056059417968854e17}};
 
-/*! 
-    \brief Generate effective potential from charge density and magnetization
-   
-*/
+/// Generate effective potential from charge density and magnetization
 class Potential 
 {
     private:
@@ -270,7 +267,7 @@ class Potential
 
         /// Poisson solver
 
-        /*! Plane wave expansion
+        /** Plane wave expansion
             \f[
                 e^{i{\bf g}{\bf r}}=4\pi e^{i{\bf g}{\bf r}_{\alpha}} \sum_{\ell m} i^\ell 
                     j_{\ell}(g|{\bf r}-{\bf r}_{\alpha}|)

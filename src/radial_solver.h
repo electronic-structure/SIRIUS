@@ -3,9 +3,9 @@
 
 namespace sirius {
 
-/*! \brief solves a scalar relativistic equation
-    
-    \f{eqnarray*}{
+/// solves a scalar relativistic equation
+
+/**  \f{eqnarray*}{
        P' &=& 2 M Q + \frac{P}{r} \\
        Q' &=& (V - E + \frac{\ell(\ell + 1)}{2 M r^2}) P - \frac{Q}{r}
     \f}

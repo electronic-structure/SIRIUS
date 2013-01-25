@@ -1,12 +1,12 @@
 #ifndef __ATOM_SYMMETRY_CLASS_H__
 #define __ATOM_SYMMETRY_CLASS_H__
 
-/*! \page page1 Notes
+/** \page page1 Notes
     
     AtomSymmetryClass holds information about radial functions.
 */
 
-/*! \page page2 Standard variable names
+/** \page page2 Standard variable names
 
      idxlo - index of local orbital \n
      idxrf - index of radial function \n
@@ -520,9 +520,7 @@ class AtomSymmetryClass
             fprintf(fout, "\n");
         }
 
-        /*!
-            \brief Compute m-th order radial derivative at the MT surface
-        */
+        /// Compute m-th order radial derivative at the MT surface
         double aw_surface_dm(int l, int order, int dm)
         {
             assert(dm <= 1);

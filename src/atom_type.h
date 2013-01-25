@@ -151,9 +151,7 @@ class radial_functions_index
             return index_by_idxlo_(idxlo);
         }
 
-        /*!
-            \brief Number of radial functions for a given orbital quantum number.
-        */
+        /// Number of radial functions for a given orbital quantum number.
         inline int num_rf(int l)
         {
             assert(l >= 0 && l < (int)num_rf_.size());
@@ -161,9 +159,7 @@ class radial_functions_index
             return num_rf_[l];
         }
 
-        /*!
-            \brief Maximum number of radial functions for one orbital quantum number.
-        */
+        /// Maximum number of radial functions for one orbital quantum number.
         inline int max_num_rf()
         {
             return max_num_rf_;
@@ -259,9 +255,7 @@ class basis_functions_index
             assert(size_lo_ >= 0);
         } 
 
-        /*! 
-            \brief Return total number of MT basis functions.
-        */
+        /// Return total number of MT basis functions.
         inline int size()
         {
             return (int)basis_function_index_descriptors_.size();

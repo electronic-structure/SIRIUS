@@ -249,7 +249,7 @@ class SHT
         
         /// Generate real spherical harmonics Rlm
 
-        /*! Mathematica code:
+        /** Mathematica code:
             \verbatim
             R[l_, m_, th_, ph_] := 
              If[m > 0, Sqrt[2]*ComplexExpand[Re[SphericalHarmonicY[l, m, th, ph]]], 
@@ -282,7 +282,7 @@ class SHT
         
         /// Compute element of the transformation matrix from complex to real spherical harmonics. 
         
-        /*! Real spherical harmonic can be written as a linear combination of complex harmonics:
+        /** Real spherical harmonic can be written as a linear combination of complex harmonics:
 
             \f[
                 R_{\ell m}(\theta, \phi) = \sum_{m'} a^{\ell}_{m' m}Y_{\ell m'}(\theta, \phi)

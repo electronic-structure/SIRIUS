@@ -9,7 +9,7 @@ const int it_component = 1 << 3;
 
 /// Representation of the periodical function on the muffin-tin geometry
 
-/*! Inside each muffin-tin the spherical expansion is used:
+/** Inside each muffin-tin the spherical expansion is used:
     \f[
         f({\bf r}) = \sum_{\ell m} f_{\ell m}(r) Y_{\ell m}(\hat {\bf r})
     \f]
@@ -261,9 +261,7 @@ template<typename T> class PeriodicFunction
             }
         }
 
-        /*! 
-            \brief Computes the inner product <f|g>, where f is "this" and g is the argument
-        */
+        /// Computes the inner product <f|g>, where f is "this" and g is the argument
         template <int flg> inline T inner(PeriodicFunction<T>* g)
         {
             // put asserts here
