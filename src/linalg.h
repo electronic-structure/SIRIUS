@@ -142,8 +142,6 @@ template<> int gesv<complex16>(int4 n, int4 nrhs, complex16* a, int4 lda, comple
 
 
 
-
-
 template<linalg_t> struct linalg;
 
 template<> struct linalg<lapack>

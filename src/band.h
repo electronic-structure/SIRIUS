@@ -458,6 +458,7 @@ class Band
                 
                 zm.zero();
         
+                #pragma omp parallel for default(shared)
                 for (int j2 = 0; j2 < mt_basis_size; j2++)
                 {
                     int lm2 = parameters_.atom(ia)->type()->indexb(j2).lm;
@@ -515,6 +516,12 @@ class Band
             }
             
             Timer *t1 = new Timer("sirius::Band::apply_magnetic_field:it");
+
+            mdarray<complex16, 3> hpsi_pw(num_gkvec, spl_fv_states_col_.local_size(), hpsi.size(2));
+            hpsi_pw.zero();
+
+            splindex<block> sub_spl_fv_states_col(spl_fv_states_col_.local_size(), num_ranks_row_, rank_row_);
+
             int num_fft_threads = Platform::num_fft_threads();
             #pragma omp parallel default(shared) num_threads(num_fft_threads)
             {        
@@ -524,54 +531,69 @@ class Band
                 std::vector<complex16> hpsi_it(parameters_.fft().size());
                 
                 #pragma omp for
-                for (int i = 0; i < spl_fv_states_col_.local_size(); i++)
+                for (int iloc = 0; iloc < sub_spl_fv_states_col.local_size(); iloc++)
                 {
+                    int i = sub_spl_fv_states_col[iloc];
+
                     parameters_.fft().input(num_gkvec, fft_index, &fv_states(parameters_.mt_basis_size(), i), 
                                             thread_id);
                     parameters_.fft().transform(1, thread_id);
                     parameters_.fft().output(&psi_it[0], thread_id);
                                                 
                     for (int ir = 0; ir < parameters_.fft().size(); ir++)
+                    {
                         hpsi_it[ir] = psi_it[ir] * effective_magnetic_field[0]->f_it(ir) * 
                                       parameters_.step_function(ir);
+                    }
                     
                     parameters_.fft().input(&hpsi_it[0], thread_id);
                     parameters_.fft().transform(-1, thread_id);
-                    parameters_.fft().output(num_gkvec, fft_index, &hpsi(parameters_.mt_basis_size(), i, 0), thread_id); 
+                    parameters_.fft().output(num_gkvec, fft_index, &hpsi_pw(0, i, 0), thread_id); 
 
                     if (hpsi.size(2) >= 3)
                     {
                         for (int ir = 0; ir < parameters_.fft().size(); ir++)
+                        {
                             hpsi_it[ir] = psi_it[ir] * (effective_magnetic_field[1]->f_it(ir) - 
                                                         zi * effective_magnetic_field[2]->f_it(ir)) * 
                                                        parameters_.step_function(ir);
+                        }
                         
                         parameters_.fft().input(&hpsi_it[0], thread_id);
                         parameters_.fft().transform(-1, thread_id);
-                        parameters_.fft().output(num_gkvec, fft_index, &hpsi(parameters_.mt_basis_size(), i, 2), 
-                                                 thread_id); 
+                        parameters_.fft().output(num_gkvec, fft_index, &hpsi_pw(0, i, 2), thread_id); 
                     }
                     
                     if ((hpsi.size(2)) == 4 && (eigen_value_solver == scalapack))
                     {
                         for (int ir = 0; ir < parameters_.fft().size(); ir++)
+                        {
                             hpsi_it[ir] = psi_it[ir] * (effective_magnetic_field[1]->f_it(ir) + 
                                                         zi * effective_magnetic_field[2]->f_it(ir)) * 
                                                        parameters_.step_function(ir);
+                        }
                         
                         parameters_.fft().input(&hpsi_it[0], thread_id);
                         parameters_.fft().transform(-1, thread_id);
-                        parameters_.fft().output(num_gkvec, fft_index, &hpsi(parameters_.mt_basis_size(), i, 3), 
-                                                 thread_id); 
+                        parameters_.fft().output(num_gkvec, fft_index, &hpsi_pw(0, i, 3), thread_id); 
                     }
                 }
             }
+            Platform::allreduce(hpsi_pw.get_ptr(), (int)hpsi_pw.size());
+
+            for (int n = 0; n < hpsi.size(2); n++)
+            {
+                for (int i = 0; i < spl_fv_states_col_.local_size(); i++)
+                    memcpy(&hpsi(parameters_.mt_basis_size(), i, n), &hpsi_pw(0, i, n), num_gkvec * sizeof(complex16));
+            }
+
             delete t1;
            
             // copy Bz|\psi> to -Bz|\psi>
             for (int i = 0; i < spl_fv_states_col_.local_size(); i++)
-                for (int j = 0; j < mtgk_size; j++)
-                    hpsi(j, i, 1) = -hpsi(j, i, 0);
+            {
+                for (int j = 0; j < mtgk_size; j++) hpsi(j, i, 1) = -hpsi(j, i, 0);
+            }
         }
 
         /// Apply SO correction to the scalar wave functions
@@ -684,35 +706,6 @@ class Band
                 }
             }
         }
-
-#if 0
-        void init_blacs_context()
-        {
-            mdarray<int, 2> map_ranks(num_ranks_row_, num_ranks_col_);
-            int rc = (1 << dim_row_) | 1 << (dim_col_);
-            for (int i1 = 0; i1 < num_ranks_col_; i1++)
-                for (int i0 = 0; i0 < num_ranks_row_; i0++)
-                    map_ranks(i0, i1) = parameters_.mpi_grid().cart_rank(parameters_.mpi_grid().communicator(rc), 
-                                                                         Utils::intvec(i0, i1));
- 
-            // create BLACS context
-            blacs_context_ = Csys2blacs_handle(parameters_.mpi_grid().communicator(rc));
-
-            std::cout << "blacs_context " << blacs_context_ << std::endl;
-
-            // create grid of MPI ranks 
-            Cblacs_gridmap(&blacs_context_, map_ranks.get_ptr(), map_ranks.ld(), num_ranks_row_, num_ranks_col_);
-
-            std::cout << "blacs_context_after " << blacs_context_ << std::endl;
-
-            // check the grid
-            int nrow, ncol, irow, icol;
-            int yy = blacs_context_;
-            Cblacs_gridinfo(yy, &nrow, &ncol, &irow, &icol);
-            if ((rank_row_ != irow) || (rank_col_ != icol) || (num_ranks_row_ != nrow) || (num_ranks_col_ != ncol)) 
-                error(__FILE__, __LINE__, "wrong grid", fatal_err);
-        }
-#endif
 
         void init()
         {
