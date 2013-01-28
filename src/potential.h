@@ -442,9 +442,11 @@ class Potential
             mdarray<double, 3> vecbxctp(sht_.num_points(), parameters_.max_num_mt_points(), parameters_.num_mag_dims());
             mdarray<double, 2> bxctp(sht_.num_points(), parameters_.max_num_mt_points());
 
+            Timer* t4 = new Timer("sirius::Potential::xc:zero");
             xc_potential->zero(rlm_component);
             xc_energy_density->zero(rlm_component);
             for (int j = 0; j < parameters_.num_mag_dims(); j++) xc_magnetic_field[j]->zero(rlm_component);
+            delete t4;
 
             Timer* t2 = new Timer("sirius::Potential::xc:mt");
             for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
