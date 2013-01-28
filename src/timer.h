@@ -4,6 +4,19 @@
 namespace sirius 
 {
 
+struct timer_descriptor
+{
+    timer_descriptor() : total(0), last(0), count(0)
+    {
+    }
+
+    double total;
+    
+    double last;
+
+    int count;
+};
+
 class Timer
 {
     private:
@@ -17,21 +30,14 @@ class Timer
         /// true if timer is running
         bool active_;
 
-        /// mapping between timer name and timer's value
-        static std::map<std::string, double> timers_;
-        
-        /// number of measures
-        static std::map<std::string, int> tcount_;
+        /// mapping between timer name and timer descriptor pointer
+        static std::map<std::string, timer_descriptor*> timer_descriptors_;
     
     public:
         
         Timer(const std::string& label__, bool start__ = true) : label_(label__), active_(false)
         {
-            if (timers_.count(label_) == 0) 
-            {
-                timers_[label_] = 0;
-                tcount_[label_] = 0;
-            }
+            if (timer_descriptors_.count(label_) == 0) timer_descriptors_[label_] = new timer_descriptor();
 
             if (start__) start();
         }
@@ -43,8 +49,7 @@ class Timer
 
         void start()
         {
-            if (active_)
-                error(__FILE__, __LINE__, "timer is already running", fatal_err);
+            if (active_) error(__FILE__, __LINE__, "timer is already running", fatal_err);
 
             gettimeofday(&starting_time_, NULL);
             active_ = true;
@@ -52,14 +57,17 @@ class Timer
 
         void stop()
         {
-            if (!active_)
-                error(__FILE__, __LINE__, "timer was not running", fatal_err);
+            if (!active_) error(__FILE__, __LINE__, "timer was not running", fatal_err);
 
             timeval end;
             gettimeofday(&end, NULL);
-            timers_[label_] += double(end.tv_sec - starting_time_.tv_sec) + 
-                               double(end.tv_usec - starting_time_.tv_usec) / 1e6;
-            tcount_[label_]++;
+           
+            timer_descriptor* td = timer_descriptors_[label_];
+
+            td->last = double(end.tv_sec - starting_time_.tv_sec) + 
+                       double(end.tv_usec - starting_time_.tv_usec) / 1e6;
+            td->count++;
+            td->total += td->last;
 
             active_ = false;
         }
@@ -73,11 +81,13 @@ class Timer
                 for (int i = 0; i < 80; i++) printf("-");
                 printf("\n");
  
-                std::map<std::string, double>::iterator it;
-                for (it = timers_.begin(); it != timers_.end(); it++)
+                std::map<std::string, timer_descriptor*>::iterator it;
+                for (it = timer_descriptors_.begin(); it != timer_descriptors_.end(); it++)
                 {
-                    double avg = (tcount_[it->first] == 0) ? 0.0 : it->second/tcount_[it->first];
-                    printf("%-60s : %10.4f (total)   %10.4f (average)\n", it->first.c_str(), it->second, avg);
+                    double avg = (it->second->count == 0) ? 0.0 : it->second->total / it->second->count;
+                    
+                    printf("%-60s : %10.4f (total)   %10.4f (average)   %10.4f (last) \n", 
+                           it->first.c_str(), it->second->total, avg, it->second->last);
                 }
             }
 
@@ -92,11 +102,11 @@ class Timer
 
                 fprintf(fout, "{");
 
-                std::map<std::string, double>::iterator it;
-                for (it = timers_.begin(); it != timers_.end(); it++)
+                std::map<std::string, timer_descriptor*>::iterator it;
+                for (it = timer_descriptors_.begin(); it != timer_descriptors_.end(); it++)
                 {
-                    if (it != timers_.begin()) fprintf(fout, ",");
-                    double avg = (tcount_[it->first] == 0) ? 0.0 : it->second/tcount_[it->first];
+                    if (it != timer_descriptors_.begin()) fprintf(fout, ",");
+                    double avg = (it->second->count == 0) ? 0.0 : it->second->total / it->second->count;
                     fprintf(fout, "\n    \"%s\" : %10.4f", it->first.c_str(), avg);
                 }
                 
@@ -123,9 +133,9 @@ class Timer
 
 };
 
-std::map<std::string, double> Timer::timers_;
-std::map<std::string, int> Timer::tcount_;
 std::map<std::string, Timer*> ftimers;
+
+std::map<std::string, timer_descriptor*> Timer::timer_descriptors_;
 
 };
 

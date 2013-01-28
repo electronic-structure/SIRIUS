@@ -524,8 +524,10 @@ class Potential
                                     parameters_.lmmax_pot() * parameters_.max_num_mt_points()); 
            
                 for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                {
                     Platform::allreduce(&xc_magnetic_field[j]->f_rlm(0, 0, ia), 
                                         parameters_.lmmax_pot() * parameters_.max_num_mt_points()); 
+                }
             }
 
             delete t1;
