@@ -61,7 +61,9 @@ class Global : public StepFunction
         MPIGrid mpi_grid_;
 
         int cyclic_block_size_;
-
+        
+        splindex<block> spl_num_atoms_;
+        
         /// read from the input file if it exists
         void read_input()
         {
@@ -246,6 +248,16 @@ class Global : public StepFunction
             return initialized_;
         }
 
+        inline splindex<block>& spl_num_atoms()
+        {
+            return spl_num_atoms_;
+        }
+
+        inline int spl_num_atoms(int i)
+        {
+            return spl_num_atoms_[i];
+        }
+
         /// Initialize the global variables
         void initialize()
         {
@@ -278,6 +290,8 @@ class Global : public StepFunction
 
             num_bands_ = num_fv_states_ * num_spins_;
 
+            spl_num_atoms_.split(num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+            
             initialized_ = true;
         }
 
@@ -346,13 +360,12 @@ class Global : public StepFunction
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
                 atom_symmetry_class(ic)->generate_radial_integrals();
 
-            splindex<block> spl_num_atoms(num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
-            for (int i = 0; i < spl_num_atoms.local_size(); i++)
-                atom(spl_num_atoms[i])->generate_radial_integrals();
+            for (int i = 0; i < spl_num_atoms().local_size(); i++)
+                atom(spl_num_atoms(i))->generate_radial_integrals();
 
             for (int ia = 0; ia < num_atoms(); ia++)
             {
-                int rank = spl_num_atoms.location(1, ia);
+                int rank = spl_num_atoms().location(1, ia);
                 int size = lmmax_pot() * atom(ia)->type()->indexr().size() * atom(ia)->type()->indexr().size();
                 Platform::bcast(atom(ia)->h_radial_integral(0, 0), size, rank);
                 if (num_mag_dims()) Platform::bcast(atom(ia)->b_radial_integral(0, 0, 0), size * num_mag_dims(), rank);

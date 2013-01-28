@@ -656,24 +656,25 @@ class Potential
             
             // precompute i^l
             zil_.resize(parameters_.lmax_rho() + 1);
-            for (int l = 0; l <= parameters_.lmax_rho(); l++)
-                zil_[l] = pow(complex16(0.0, 1.0), l);
+            for (int l = 0; l <= parameters_.lmax_rho(); l++) zil_[l] = pow(complex16(0, 1), l);
             
             zilm_.resize(parameters_.lmmax_rho());
             for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
-                for (int m = -l; m <= l; m++, lm++)
-                    zilm_[lm] = zil_[l];
+            {
+                for (int m = -l; m <= l; m++, lm++) zilm_[lm] = zil_[l];
+            }
 
             l_by_lm_.resize(Utils::lmmax_by_lmax(lmax));
             for (int l = 0, lm = 0; l <= lmax; l++)
+            {
                 for (int m = -l; m <= l; m++, lm++) l_by_lm_[lm] = l;
+            }
         }
 
         ~Potential()
         {
             delete effective_potential_; 
-            for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                delete effective_magnetic_field_[j];
+            for (int j = 0; j < parameters_.num_mag_dims(); j++) delete effective_magnetic_field_[j];
         }
 
         void set_effective_potential_ptr(double* veffmt, double* veffir)
