@@ -20,6 +20,9 @@ struct timer_descriptor
 class Timer
 {
     private:
+
+        /// descriptor of the current timer
+        timer_descriptor* td_; 
         
         /// string label of the timer
         std::string label_;
@@ -37,7 +40,15 @@ class Timer
         
         Timer(const std::string& label__, bool start__ = true) : label_(label__), active_(false)
         {
-            if (timer_descriptors_.count(label_) == 0) timer_descriptors_[label_] = new timer_descriptor();
+            if (timer_descriptors_.count(label_) == 0)
+            {   
+                td_ = new timer_descriptor();
+                timer_descriptors_[label_] = td_;
+            }
+            else 
+            {   
+                td_ = timer_descriptors_[label_];
+            }
 
             if (start__) start();
         }
@@ -62,12 +73,10 @@ class Timer
             timeval end;
             gettimeofday(&end, NULL);
            
-            timer_descriptor* td = timer_descriptors_[label_];
-
-            td->last = double(end.tv_sec - starting_time_.tv_sec) + 
-                       double(end.tv_usec - starting_time_.tv_usec) / 1e6;
-            td->count++;
-            td->total += td->last;
+            td_->last = double(end.tv_sec - starting_time_.tv_sec) + 
+                        double(end.tv_usec - starting_time_.tv_usec) / 1e6;
+            td_->count++;
+            td_->total += td_->last;
 
             active_ = false;
         }
