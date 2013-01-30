@@ -56,7 +56,7 @@ class Density
                             {
                                 complex16 gc = complex_gaunt_(lm1, lm2, lm3);
 
-                                switch(num_mag_dims)
+                                switch (num_mag_dims)
                                 {
                                     case 3:
                                         mt_density_matrix(idxrf1, idxrf2, lm3, ia, 2) += 2.0 * real(zdens(j1, j2, 2) * gc); 
@@ -94,8 +94,7 @@ class Density
                 int j = band_->idxbandglob(jsub);
                 int jloc = band_->idxbandloc(jsub);
                 double wo = kp->band_occupancy(j) * kp->weight();
-                if (wo > 1e-14)
-                    bands.push_back(std::pair<int, double>(jloc, wo));
+                if (wo > 1e-14) bands.push_back(std::pair<int, double>(jloc, wo));
             }
             if (bands.size() == 0) return;
            
@@ -130,16 +129,16 @@ class Density
                 for (int j = 0; j < num_zdmat; j++)
                 {
                     blas<cpu>::gemm(0, 2, mt_basis_size, mt_basis_size, (int)bands.size(), 
-                              &wf1(0, 0, dmat_spins_[j].first), parameters_.max_mt_basis_size(), 
-                              &wf2(0, 0, dmat_spins_[j].second), parameters_.max_mt_basis_size(), 
-                              &zdens(0, 0, j), parameters_.max_mt_basis_size());
+                                    &wf1(0, 0, dmat_spins_[j].first), parameters_.max_mt_basis_size(), 
+                                    &wf2(0, 0, dmat_spins_[j].second), parameters_.max_mt_basis_size(), 
+                                    &zdens(0, 0, j), parameters_.max_mt_basis_size());
                 }
 
                 t1.stop();
 
                 t2.start();
                 
-                switch(parameters_.num_mag_dims())
+                switch (parameters_.num_mag_dims())
                 {
                     case 3:
                         reduce_zdens<3>(ia, zdens, mt_density_matrix);
@@ -212,7 +211,7 @@ class Density
                     
                     double w = bands[i].second / parameters_.omega();
                     
-                    switch(parameters_.num_mag_dims())
+                    switch (parameters_.num_mag_dims())
                     {
                         case 3:
                             for (int ir = 0; ir < parameters_.fft().size(); ir++)
@@ -229,7 +228,7 @@ class Density
                                 it_density(ir, 0) += real(wfit(ir, 0) * conj(wfit(ir, 0))) * w;
                     }
                 }
-                switch(parameters_.num_mag_dims())
+                switch (parameters_.num_mag_dims())
                 {
                     case 3:
                         #pragma omp critical
@@ -327,8 +326,7 @@ class Density
         {
             delete band_;
             delete rho_;
-            for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                delete magnetization_[j];
+            for (int j = 0; j < parameters_.num_mag_dims(); j++) delete magnetization_[j];
         }
         
         void set_charge_density_ptr(double* rhomt, double* rhoir)
@@ -371,8 +369,7 @@ class Density
         void zero()
         {
             rho_->zero();
-            for (int i = 0; i < parameters_.num_mag_dims(); i++)
-                magnetization_[i]->zero();
+            for (int i = 0; i < parameters_.num_mag_dims(); i++) magnetization_[i]->zero();
         }
       
         void initial_density()
@@ -429,10 +426,12 @@ class Density
                                                              parameters_.rti().it_charge); 
 
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
+            {
                 parameters_.rti().total_magnetization[j] = 
                     magnetization_[j]->integrate(rlm_component | it_component, 
                                                  parameters_.rti().mt_magnetization[j], 
                                                  parameters_.rti().it_magnetization[j]);
+            }
         }
 
         void find_band_occupancies()
@@ -451,7 +450,7 @@ class Density
             mdarray<double, 2> bnd_occ(parameters_.num_bands(), kpoint_set_.num_kpoints());
             
             // TODO: safe way not to get stuck here
-            while(true)
+            while (true)
             {
                 ne = 0.0;
                 for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
@@ -609,11 +608,15 @@ class Density
             // reduce arrays; assume that each rank (including ranks along second direction) did it's own 
             // fraction of the density
             for (int j = 0; j < parameters_.num_mag_dims() + 1; j++)
+            {
                 for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                {
                     Platform::allreduce(&mt_density_matrix(0, 0, 0, ia, j), 
                                         parameters_.max_mt_radial_basis_size() * 
                                         parameters_.max_mt_radial_basis_size() * 
                                         parameters_.lmmax_rho());
+                }
+            }
            
             Platform::allreduce(&rho_->f_it(0), parameters_.fft().size()); 
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
@@ -632,8 +635,10 @@ class Density
             }
 
             Timer t1("sirius::Density::generate:convert_mt");
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            //for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
             {
+                int ia = parameters_.spl_num_atoms(ialoc);
                 int nmtp = parameters_.atom(ia)->type()->num_mt_points();
 
                 #pragma omp parallel default(shared)
@@ -667,7 +672,7 @@ class Density
                             }
                         }
 
-                        switch(parameters_.num_mag_dims())
+                        switch (parameters_.num_mag_dims())
                         {
                             case 3:
                                 for (int ir = 0; ir < nmtp; ir++)
@@ -688,6 +693,8 @@ class Density
                     }
                 }
             }
+            rho_->sync(rlm_component);
+            for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync(rlm_component);
             t1.stop();
             
             // add core contribution
