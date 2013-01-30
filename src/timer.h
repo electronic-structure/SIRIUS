@@ -116,7 +116,7 @@ class Timer
                 {
                     if (it != timer_descriptors_.begin()) fprintf(fout, ",");
                     double avg = (it->second->count == 0) ? 0.0 : it->second->total / it->second->count;
-                    fprintf(fout, "\n    \"%s\" : %10.4f", it->first.c_str(), avg);
+                    fprintf(fout, "\n    \"%s\" : [%10.4f, %10.4f]", it->first.c_str(), it->second->total, avg);
                 }
                 
                 fprintf(fout, "\n}\n");
