@@ -71,65 +71,15 @@ template<typename T> class PeriodicFunction
             f_pw_.set_dimensions(parameters_.num_gvec());
         }
 
-        /*void convert_to_ylm()
+        void split(int flags)
         {
-            Timer t("sirius::PeriodicFunction::convert_to_ylm");
-
-            // check source
-            if (!f_rlm_.get_ptr()) error(__FILE__, __LINE__, "f_rlm array is empty");
-            
-            // check target
-            if (!f_ylm_.get_ptr()) error(__FILE__, __LINE__, "f_ylm array is empty");
-            
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            {
-                for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
-                    SHT::convert_frlm_to_fylm(lmax_, &f_rlm_(0, ir, ia), &f_ylm_(0, ir, ia));      
-            }
-        }*/
-        
-        /*void convert_to_ylm(int ia)
-        {
-            Timer t("sirius::PeriodicFunction::convert_to_ylm");
-            for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
-                SHT::convert_frlm_to_fylm(lmax_, &f_rlm_(0, ir, ia), &f_ylm_(0, ir, ia));      
+            int spl_num_atoms = parameters_.spl_num_atoms().local_size();
+            if (flags & rlm_component) f_rlm_.set_dimensions(lmmax_, parameters_.max_num_mt_points(), spl_num_atoms);
+            if (flags & ylm_component) f_ylm_.set_dimensions(lmmax_, parameters_.max_num_mt_points(), spl_num_atoms);
+            if (flags & it_component) f_it_.set_dimensions(parameters_.spl_fft_size().local_size());
         }
 
-        complex_t convert_to_ylm(int lm, int ir, int ia)
-        {
-            return sht_.convert_frlm_to_fylm(lm, &f_rlm_(0, ir, ia));
-        }*/
-        
-        /*void convert_to_rlm()
-        {
-            Timer t("sirius::PeriodicFunction::convert_to_rlm");
-            
-            // check source  
-            if (!f_ylm_.get_ptr()) error(__FILE__, __LINE__, "f_ylm array is empty");
-
-            // check target
-            if (!f_rlm_.get_ptr()) error(__FILE__, __LINE__, "f_rlm array is empty");
-            
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            {
-                for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
-                    SHT::convert_fylm_to_frlm(lmax_, &f_ylm_(0, ir, ia), &f_rlm_(0, ir, ia));
-            }
-        }*/
-        
-        /*void convert_to_rlm(int ia)
-        {
-            Timer t("sirius::PeriodicFunction::convert_to_rlm");
-            for (int ir = 0; ir < parameters_.atom(ia)->type()->num_mt_points(); ir++)
-                SHT::convert_fylm_to_frlm(lmax_, &f_ylm_(0, ir, ia), &f_rlm_(0, ir, ia));
-        }
-        
-        double convert_to_rlm(int lm, int ir, int ia)
-        {
-            return sht_.convert_fylm_to_frlm(lm, &f_ylm_(0, ir, ia));
-        }*/
-        
-        void allocate(int flags) //int flags = rlm_component | ylm_component | pw_component | it_component)
+        void allocate(int flags) 
         {
             if (flags & rlm_component) f_rlm_.allocate();
             if (flags & ylm_component) f_ylm_.allocate();
@@ -262,7 +212,7 @@ template<typename T> class PeriodicFunction
         }
 
         /// Computes the inner product <f|g>, where f is "this" and g is the argument
-        template <int flg> inline T inner(PeriodicFunction<T>* g)
+        /*template <int flg> inline T inner(PeriodicFunction<T>* g)
         {
             // put asserts here
 
@@ -310,9 +260,106 @@ template<typename T> class PeriodicFunction
             }
 
             return result;
+        }*/
+
+        /// Computes the inner product <f|g>, where f is "this" and g is the argument
+        inline T inner(PeriodicFunction<T>* g, int flg)
+        {
+            // put asserts here
+
+            int lmmax = std::min(lmmax_, g->lmmax_);
+
+            T result = 0;
+
+            if (flg & it_component)
+            {
+                bool f_split = (f_it_.size(0) == parameters_.spl_fft_size().local_size());
+                bool g_split = (g->f_it_.size(0) == parameters_.spl_fft_size().local_size());
+
+                if (f_split && g_split)
+                {
+                    for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++)
+                    {
+                        int ir = parameters_.spl_fft_size(irloc);
+                        result += primitive_type_wrapper<T>::conjugate(f_it_(irloc)) * g->f_it(irloc) * 
+                                  parameters_.step_function(ir);
+                    }
+                }
+
+                if (f_split && !g_split)
+                {
+                    for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++)
+                    {
+                        int ir = parameters_.spl_fft_size(irloc);
+                        result += primitive_type_wrapper<T>::conjugate(f_it_(irloc)) * g->f_it(ir) * 
+                                  parameters_.step_function(ir);
+                    }
+                }
+
+                if (!f_split && g_split)
+                {
+                    for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++)
+                    {
+                        int ir = parameters_.spl_fft_size(irloc);
+                        result += primitive_type_wrapper<T>::conjugate(f_it_(ir)) * g->f_it(irloc) * 
+                                  parameters_.step_function(ir);
+                    }
+                }
+
+                if (!f_split && !g_split)
+                {
+                    for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++)
+                    {
+                        int ir = parameters_.spl_fft_size(irloc);
+                        result += primitive_type_wrapper<T>::conjugate(f_it_(ir)) * g->f_it(ir) * 
+                                  parameters_.step_function(ir);
+                    }
+                }
+
+                if (f_split || g_split) Platform::allreduce(&result, 1);
+
+                result *= (parameters_.omega() / parameters_.fft().size());
+            }
+
+            if (flg & rlm_component)
+            {
+                bool f_split = (f_rlm_.size(2) == parameters_.spl_num_atoms().local_size());
+                bool g_split = (g->f_rlm_.size(2) == parameters_.spl_num_atoms().local_size());
+
+                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                {
+                    int nmtp = parameters_.atom(ia)->type()->num_mt_points();
+                    Spline<T> s(nmtp, parameters_.atom(ia)->type()->radial_grid());
+                   
+                    for (int ir = 0; ir < nmtp; ir++)
+                        for (int lm = 0; lm < lmmax; lm++)
+                            s[ir] += primitive_type_wrapper<T>::conjugate(f_rlm_(lm, ir, ia)) * g->f_rlm_(lm, ir, ia);
+                    s.interpolate();
+                    
+                    result += s.integrate(2);
+                }
+            }
+            
+            //* if (flg & ylm_component)
+            //* {
+            //*     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            //*     {
+            //*         int nmtp = parameters_.atom(ia)->type()->num_mt_points();
+            //*         Spline<complex_t> s(nmtp, parameters_.atom(ia)->type()->radial_grid());
+            //*        
+            //*         for (int ir = 0; ir < nmtp; ir++)
+            //*             for (int lm = 0; lm < lmmax; lm++)
+            //*                 s[ir] += primitive_type_wrapper<T>::conjugate(f_ylm_(lm, ir, ia)) * g->f_ylm_(lm, ir, ia);
+            //*         s.interpolate();
+            //*         
+            //*         result += primitive_type_wrapper<T>::sift(s.integrate(2));
+            //*     }
+            //* }
+
+            return result;
         }
 
-        T integrate(int flg, std::vector<T>& mt_val, T& it_val)
+        inline T integrate(int flg, std::vector<T>& mt_val, T& it_val)
         {
             it_val = 0;
             mt_val.resize(parameters_.num_atoms());

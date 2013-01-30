@@ -72,16 +72,15 @@ class Potential
         std::vector<int> l_by_lm_;
         
         /// Compute MT part of the potential and MT multipole moments
-        void poisson_vmt(splindex<block>& spl_num_atoms, mdarray<complex16, 3>& rho_ylm, mdarray<complex16, 3>& vh_ylm,
-                         mdarray<complex16, 2>& qmt)
+        void poisson_vmt(mdarray<complex16, 3>& rho_ylm, PeriodicFunction<double>* vh, mdarray<complex16, 2>& qmt)
         {
             Timer t("sirius::Potential::poisson:vmt");
 
             qmt.zero();
             
-            for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
+            for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
             {
-                int ia = spl_num_atoms[ialoc];
+                int ia = parameters_.spl_num_atoms(ialoc);
 
                 double R = parameters_.atom(ia)->type()->mt_radius();
                 int nmtp = parameters_.atom(ia)->num_mt_points();
@@ -118,7 +117,7 @@ class Potential
                                                 (g2[nmtp - 1] - g2[ir]) * pow(r, l) - 
                                                 (g1[nmtp - 1] - g1[ir]) * pow(r, l) * d1;
 
-                                vh_ylm(lm, ir, ialoc) = fourpi * vlm * d2;
+                                vh->f_ylm(lm, ir, ialoc) = fourpi * vlm * d2;
                             }
                         }
                     }
@@ -128,7 +127,7 @@ class Potential
                 for (int ir = 0; ir < nmtp; ir++)
                 {
                     double r = parameters_.atom(ia)->type()->radial_grid(ir);
-                    vh_ylm(0, ir, ialoc) -= fourpi * y00 * parameters_.atom(ia)->type()->zn() * (1.0 / r - 1.0 / R);
+                    vh->f_ylm(0, ir, ialoc) -= fourpi * y00 * parameters_.atom(ia)->type()->zn() * (1.0 / r - 1.0 / R);
                 }
 
                 // nuclear multipole moment
@@ -307,30 +306,25 @@ class Potential
             where n is the order of pseudo density.
 
         */
-        void poisson(PeriodicFunction<double>* rho, PeriodicFunction<double>* hartree_potential, 
-                     splindex<block>& spl_num_atoms)
+        void poisson(PeriodicFunction<double>* rho, PeriodicFunction<double>* vh)
         {
             Timer t("sirius::Potential::poisson");
             
-            // temporary Ylm components of Hartree potential
-            mdarray<complex16, 3> vh_ylm(parameters_.lmmax_pot(), parameters_.max_num_mt_points(), 
-                                         spl_num_atoms.local_size());
-
             // temporary Ylm components of charge density
             mdarray<complex16, 3> rho_ylm(parameters_.lmmax_rho(), parameters_.max_num_mt_points(), 
-                                          spl_num_atoms.local_size());
+                                          parameters_.spl_num_atoms().local_size());
 
             // convert charge density to Ylm expansion
-            for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
+            for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
             {
-                int ia = spl_num_atoms[ialoc];
+                int ia = parameters_.spl_num_atoms(ialoc);
                 for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
                     sht_.convert_to_ylm(parameters_.lmax_rho(), &rho->f_rlm(0, ir, ia), &rho_ylm(0, ir, ialoc));
             }
             
             // true multipole moments
-            mdarray<complex16,2> qmt(parameters_.lmmax_rho(), parameters_.num_atoms());
-            poisson_vmt(spl_num_atoms, rho_ylm, vh_ylm, qmt);
+            mdarray<complex16, 2> qmt(parameters_.lmmax_rho(), parameters_.num_atoms());
+            poisson_vmt(rho_ylm, vh, qmt);
 
             // compute multipoles of interstitial density in MT region
             mdarray<complex16, 2> qit(parameters_.lmmax_rho(), parameters_.num_atoms());
@@ -362,25 +356,25 @@ class Potential
  
             // compute pw coefficients of Hartree potential
             pseudo_pw[0] = 0.0;
-            hartree_potential->f_pw(0) = 0.0;
+            vh->f_pw(0) = 0.0;
             for (int ig = 1; ig < parameters_.num_gvec(); ig++)
-                hartree_potential->f_pw(ig) = pseudo_pw[ig] * fourpi / pow(parameters_.gvec_len(ig), 2);
+                vh->f_pw(ig) = pseudo_pw[ig] * fourpi / pow(parameters_.gvec_len(ig), 2);
 
             // compute V_lm at the MT boundary
             mdarray<complex16, 2> vmtlm(parameters_.lmmax_pot(), parameters_.num_atoms());
-            poisson_sum_G(hartree_potential->f_pw(), sbessel_mt_, vmtlm);
+            poisson_sum_G(vh->f_pw(), sbessel_mt_, vmtlm);
             
             // zero Rlm components of Hartree potential
-            hartree_potential->zero(rlm_component);
+            //vh->zero(rlm_component);
             
             // add boundary condition and convert to Rlm
             Timer* t1 = new Timer("sirius::Potential::poisson:bc");
             mdarray<double, 2> rRl(parameters_.max_num_mt_points(), parameters_.lmax_pot() + 1);
             int type_id_prev = -1;
 
-            for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
+            for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
             {
-                int ia = spl_num_atoms[ialoc];
+                int ia = parameters_.spl_num_atoms(ialoc);
 
                 if (parameters_.atom(ia)->type_id() != type_id_prev)
                 {
@@ -402,34 +396,32 @@ class Potential
                     int l = l_by_lm_[lm];
 
                     for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-                        vh_ylm(lm, ir, ialoc) += vmtlm(lm, ia) * rRl(ir, l);
+                        vh->f_ylm(lm, ir, ialoc) += vmtlm(lm, ia) * rRl(ir, l);
                 }
 
                 for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
                 {
-                    sht_.convert_to_rlm(parameters_.lmax_pot(), &vh_ylm(0, ir, ialoc), 
-                                        &hartree_potential->f_rlm(0, ir, ia));
+                    sht_.convert_to_rlm(parameters_.lmax_pot(), &vh->f_ylm(0, ir, ialoc), &vh->f_rlm(0, ir, ialoc));
                 }
             }
             delete t1;
             
-            // sync MT part of Hartree potential after adding a boundary condition
-            Timer* t2 = new Timer("sirius::Potential::poisson:sync");
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            {
-                Platform::allreduce(&hartree_potential->f_rlm(0, 0, ia), 
-                                    parameters_.lmmax_pot() * parameters_.max_num_mt_points());
-            }
-            delete t2;
+            //// sync MT part of Hartree potential after adding a boundary condition
+            //Timer* t2 = new Timer("sirius::Potential::poisson:sync");
+            //for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            //{
+            //    Platform::allreduce(&hartree_potential->f_rlm(0, 0, ia), 
+            //                        parameters_.lmmax_pot() * parameters_.max_num_mt_points());
+            //}
+            //delete t2;
 
-            parameters_.fft().input(parameters_.num_gvec(), parameters_.fft_index(), hartree_potential->f_pw());
-            parameters_.fft().transform(1);
-            parameters_.fft().output(hartree_potential->f_it());
+           // parameters_.fft().input(parameters_.num_gvec(), parameters_.fft_index(), hartree_potential->f_pw());
+           // parameters_.fft().transform(1);
+           // parameters_.fft().output(hartree_potential->f_it());
         }
 
         void xc(PeriodicFunction<double>* rho, PeriodicFunction<double>* magnetization[3], 
-                PeriodicFunction<double>* xc_potential, PeriodicFunction<double>* xc_magnetic_field[3], 
-                PeriodicFunction<double>* xc_energy_density, splindex<block>& spl_num_atoms)
+                PeriodicFunction<double>* vxc, PeriodicFunction<double>* bxc[3], PeriodicFunction<double>* exc)
         {
             Timer t("sirius::Potential::xc");
             
@@ -442,16 +434,14 @@ class Potential
             mdarray<double, 3> vecbxctp(sht_.num_points(), parameters_.max_num_mt_points(), parameters_.num_mag_dims());
             mdarray<double, 2> bxctp(sht_.num_points(), parameters_.max_num_mt_points());
 
-            Timer* t4 = new Timer("sirius::Potential::xc:zero");
-            xc_potential->zero(rlm_component);
-            xc_energy_density->zero(rlm_component);
-            for (int j = 0; j < parameters_.num_mag_dims(); j++) xc_magnetic_field[j]->zero(rlm_component);
-            delete t4;
+            //* xc_potential->zero(rlm_component);
+            //* xc_energy_density->zero(rlm_component);
+            //* for (int j = 0; j < parameters_.num_mag_dims(); j++) xc_magnetic_field[j]->zero(rlm_component);
 
             Timer* t2 = new Timer("sirius::Potential::xc:mt");
-            for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
+            for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
             {
-                int ia = spl_num_atoms[ialoc];
+                int ia = parameters_.spl_num_atoms(ialoc);
                 int nmtp = parameters_.atom(ia)->num_mt_points();
 
                 sht_.rlm_backward_transform(&rho->f_rlm(0, 0, ia), parameters_.lmmax_rho(), nmtp, &rhotp(0, 0));
@@ -483,10 +473,8 @@ class Potential
                                            &bxctp(0, 0), &exctp(0, 0));
                 }
 
-                sht_.rlm_forward_transform(&vxctp(0, 0), parameters_.lmmax_pot(), nmtp, 
-                                           &xc_potential->f_rlm(0, 0, ia));
-                sht_.rlm_forward_transform(&exctp(0, 0), parameters_.lmmax_pot(), nmtp, 
-                                           &xc_energy_density->f_rlm(0, 0, ia));
+                sht_.rlm_forward_transform(&vxctp(0, 0), parameters_.lmmax_pot(), nmtp, &vxc->f_rlm(0, 0, ialoc));
+                sht_.rlm_forward_transform(&exctp(0, 0), parameters_.lmmax_pot(), nmtp, &exc->f_rlm(0, 0, ialoc));
 
                 if (parameters_.num_spins() == 2)
                 {
@@ -509,63 +497,70 @@ class Potential
                     for (int j = 0; j < parameters_.num_mag_dims(); j++)
                     {
                         sht_.rlm_forward_transform(&vecbxctp(0, 0, j), parameters_.lmmax_pot(), nmtp,
-                                                   &xc_magnetic_field[j]->f_rlm(0, 0, ia));
+                                                   &bxc[j]->f_rlm(0, 0, ialoc));
                     }
                 }
             }
             delete t2;
           
-            Timer* t1 = new Timer("sirius::Potential::xc:sync");
+            //* Timer* t1 = new Timer("sirius::Potential::xc:sync");
 
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            {
-                Platform::allreduce(&xc_potential->f_rlm(0, 0, ia), 
-                                    parameters_.lmmax_pot() * parameters_.max_num_mt_points()); 
+            //* for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            //* {
+            //*     Platform::allreduce(&xc_potential->f_rlm(0, 0, ia), 
+            //*                         parameters_.lmmax_pot() * parameters_.max_num_mt_points()); 
 
-                Platform::allreduce(&xc_energy_density->f_rlm(0, 0, ia), 
-                                    parameters_.lmmax_pot() * parameters_.max_num_mt_points()); 
+            //*     Platform::allreduce(&xc_energy_density->f_rlm(0, 0, ia), 
+            //*                         parameters_.lmmax_pot() * parameters_.max_num_mt_points()); 
            
-                for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                {
-                    Platform::allreduce(&xc_magnetic_field[j]->f_rlm(0, 0, ia), 
-                                        parameters_.lmmax_pot() * parameters_.max_num_mt_points()); 
-                }
-            }
+            //*     for (int j = 0; j < parameters_.num_mag_dims(); j++)
+            //*     {
+            //*         Platform::allreduce(&xc_magnetic_field[j]->f_rlm(0, 0, ia), 
+            //*                             parameters_.lmmax_pot() * parameters_.max_num_mt_points()); 
+            //*     }
+            //* }
 
-            delete t1;
+            //* delete t1;
             
             Timer* t3 = new Timer("sirius::Potential::xc:it");
+            int it_glob_idx = parameters_.spl_fft_size(0);
+            int it_loc_size = parameters_.spl_fft_size().local_size();
+            
             if (parameters_.num_spins() == 1)
             {
-                libxc_interface::getxc(parameters_.fft().size(), rho->f_it(), xc_potential->f_it(), 
-                                       xc_energy_density->f_it());
+                libxc_interface::getxc(it_loc_size, &rho->f_it(it_glob_idx), vxc->f_it(), exc->f_it());
             }
             else
             {
-                std::vector<double> magit(parameters_.fft().size());
-                std::vector<double> bxcit(parameters_.fft().size());
+                std::vector<double> magit(it_loc_size);
+                std::vector<double> bxcit(it_loc_size);
 
-                for (int ir = 0; ir < parameters_.fft().size(); ir++)
+                for (int irloc = 0; irloc < it_loc_size; irloc++)
                 {
                     double t = 0.0;
                     for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                        t += magnetization[j]->f_it(ir) * magnetization[j]->f_it(ir);
-                    magit[ir] = sqrt(t);
+                    {
+                        t += magnetization[j]->f_it(parameters_.spl_fft_size(irloc)) *
+                             magnetization[j]->f_it(parameters_.spl_fft_size(irloc));
+                    }
+                    magit[irloc] = sqrt(t);
                 }
-                libxc_interface::getxc(parameters_.fft().size(), rho->f_it(), &magit[0], xc_potential->f_it(), 
-                                       &bxcit[0], xc_energy_density->f_it());
+                libxc_interface::getxc(it_loc_size, &rho->f_it(it_glob_idx), &magit[0], vxc->f_it(), &bxcit[0], 
+                                       exc->f_it());
                 
-                for (int ir = 0; ir < parameters_.fft().size(); ir++)
+                for (int irloc = 0; irloc < it_loc_size; irloc++)
                 {
-                    if (magit[ir] > 1e-8)
+                    if (magit[irloc] > 1e-8)
                     {
                         for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                            xc_magnetic_field[j]->f_it(ir) = bxcit[ir] * magnetization[j]->f_it(ir) / magit[ir];
+                        {
+                            bxc[j]->f_it(irloc) = (bxcit[irloc] / magit[irloc]) * 
+                                                  magnetization[j]->f_it(parameters_.spl_fft_size(irloc));
+                        }
                     }
                     else
                     {
-                        for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                            xc_magnetic_field[j]->f_it(ir) = 0.0;
+                        for (int j = 0; j < parameters_.num_mag_dims(); j++) bxc[j]->f_it(irloc) = 0.0;
                     }
                 }
             }
@@ -713,17 +708,17 @@ class Potential
             }
         }
          
+        /// Zero effective potential and magnetic field.
         void zero()
         {
             effective_potential_->zero();
             for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->zero();
         }
 
+        /// Generate effective potential and magnetic field from charge density and magnetization.
         void generate_effective_potential(PeriodicFunction<double>* rho, PeriodicFunction<double>* magnetization[3])
         {
             Timer t("sirius::Potential::generate_effective_potential");
-            
-            splindex<block> spl_num_atoms(parameters_.num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
             
             // zero effective potential and magnetic field
             zero();
@@ -734,82 +729,107 @@ class Potential
             parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), rho->f_pw());
             
             // allocate Hartree potential
-            PeriodicFunction<double>* hartree_potential = new PeriodicFunction<double>(parameters_,
-                                                                                       parameters_.lmax_pot());
-            hartree_potential->allocate(rlm_component | pw_component | it_component);
+            PeriodicFunction<double>* vh = new PeriodicFunction<double>(parameters_, parameters_.lmax_pot());
+            vh->split(rlm_component | ylm_component);
+            vh->allocate(rlm_component | ylm_component | pw_component | it_component);
 
             // solve Poisson equation
-            poisson(rho, hartree_potential, spl_num_atoms);
-            
-            // add Hartree potential to the total potential
-            effective_potential_->add(hartree_potential, rlm_component | it_component);
+            poisson(rho, vh);
 
-            // compute <rho | V_H>
-            parameters_.rti().energy_vha = rho->inner<rlm_component | it_component>(hartree_potential);
-            
-            // compute Eenuc
-            double enuc = 0.0;
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            {
-                int zn = parameters_.atom(ia)->type()->zn();
-                double r0 = parameters_.atom(ia)->type()->radial_grid(0);
-                enuc -= 0.5 * zn * (hartree_potential->f_rlm(0, 0, ia) * y00 + zn / r0);
-            }
-            parameters_.rti().energy_enuc = enuc;
+            // transform Hartree potential to real space; use effective potential as receive buffer
+            parameters_.fft().input(parameters_.num_gvec(), parameters_.fft_index(), vh->f_pw());
+            parameters_.fft().transform(1);
+            parameters_.fft().output(vh->f_it());
 
-            delete hartree_potential;
+            rho->inner(vh, rlm_component | it_component);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            //* // add Hartree potential to the total potential
+            //* effective_potential_->add(hartree_potential, rlm_component | it_component);
+
+            //* // compute <rho | V_H>
+            //* parameters_.rti().energy_vha = rho->inner<rlm_component | it_component>(hartree_potential);
+            //* 
+            //* // compute Eenuc
+            //* double enuc = 0.0;
+            //* for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            //* {
+            //*     int zn = parameters_.atom(ia)->type()->zn();
+            //*     double r0 = parameters_.atom(ia)->type()->radial_grid(0);
+            //*     enuc -= 0.5 * zn * (hartree_potential->f_rlm(0, 0, ia) * y00 + zn / r0);
+            //* }
+            //* parameters_.rti().energy_enuc = enuc;
+
+            //* delete hartree_potential;
 
             //
             // XC potential and field
             //
 
             // allocate functions
-            PeriodicFunction<double>* xc_potential = new PeriodicFunction<double>(parameters_, 
-                                                                                  parameters_.lmax_pot());
-            xc_potential->allocate(rlm_component | it_component);
+            PeriodicFunction<double>* vxc = new PeriodicFunction<double>(parameters_, parameters_.lmax_pot());
+            vxc->split(rlm_component | it_component);
+            vxc->allocate(rlm_component | it_component);
+
+            PeriodicFunction<double>* exc = new PeriodicFunction<double>(parameters_, parameters_.lmax_pot());     
+            exc->split(rlm_component | it_component);
+            exc->allocate(rlm_component | it_component);
             
-            PeriodicFunction<double>* xc_magnetic_field[3];
+            PeriodicFunction<double>* bxc[3];
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
             {
-                xc_magnetic_field[j] = new PeriodicFunction<double>(parameters_, parameters_.lmax_pot());
-                xc_magnetic_field[j]->allocate(rlm_component | it_component);
+                bxc[j] = new PeriodicFunction<double>(parameters_, parameters_.lmax_pot());
+                bxc[j]->split(rlm_component | it_component);
+                bxc[j]->allocate(rlm_component | it_component);
             }
-         
-            PeriodicFunction<double>* xc_energy_density = new PeriodicFunction<double>(parameters_,
-                                                                                       parameters_.lmax_pot());     
-            xc_energy_density->allocate(rlm_component | it_component);
 
-            xc(rho, magnetization, xc_potential, xc_magnetic_field, xc_energy_density, spl_num_atoms);
-            
-            effective_potential_->add(xc_potential, rlm_component | it_component);
-
-            parameters_.rti().energy_veff = rho->inner<rlm_component | it_component>(effective_potential_);
-            parameters_.rti().energy_vxc = rho->inner<rlm_component | it_component>(xc_potential);
-            parameters_.rti().energy_exc = rho->inner<rlm_component | it_component>(xc_energy_density);
-
-            double ebxc = 0.0;
-            for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                ebxc += magnetization[j]->inner<rlm_component | it_component>(xc_magnetic_field[j]);
-            parameters_.rti().energy_bxc = ebxc;
-
-            delete xc_potential;
-
-            for (int j = 0; j < parameters_.num_mag_dims(); j++)
-            {
-                effective_magnetic_field_[j]->add(xc_magnetic_field[j], rlm_component | it_component);
-                delete xc_magnetic_field[j];
-            }
-            
-            delete xc_energy_density;
+            xc(rho, magnetization, vxc, bxc, exc);
            
-            if (Platform::mpi_rank() == 0)
-            {
-                hdf5_tree fout("sirius.h5", true);
-                effective_potential_->hdf5_write(fout.create_node("effective_potential"));
-                fout.create_node("effective_magnetic_field");
-                for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                    effective_magnetic_field_[j]->hdf5_write(fout["effective_magnetic_field"].create_node(j));
-            }
+            stop_here
+
+            //* effective_potential_->add(xc_potential, rlm_component | it_component);
+
+            //* parameters_.rti().energy_veff = rho->inner<rlm_component | it_component>(effective_potential_);
+            //* parameters_.rti().energy_vxc = rho->inner<rlm_component | it_component>(xc_potential);
+            //* parameters_.rti().energy_exc = rho->inner<rlm_component | it_component>(xc_energy_density);
+
+            //* double ebxc = 0.0;
+            //* for (int j = 0; j < parameters_.num_mag_dims(); j++)
+            //*     ebxc += magnetization[j]->inner<rlm_component | it_component>(xc_magnetic_field[j]);
+            //* parameters_.rti().energy_bxc = ebxc;
+
+            //* delete xc_potential;
+
+            //* for (int j = 0; j < parameters_.num_mag_dims(); j++)
+            //* {
+            //*     effective_magnetic_field_[j]->add(xc_magnetic_field[j], rlm_component | it_component);
+            //*     delete xc_magnetic_field[j];
+            //* }
+            //* 
+            //* delete xc_energy_density;
+           
+            //* if (Platform::mpi_rank() == 0)
+            //* {
+            //*     hdf5_tree fout("sirius.h5", true);
+            //*     effective_potential_->hdf5_write(fout.create_node("effective_potential"));
+            //*     fout.create_node("effective_magnetic_field");
+            //*     for (int j = 0; j < parameters_.num_mag_dims(); j++)
+            //*         effective_magnetic_field_[j]->hdf5_write(fout["effective_magnetic_field"].create_node(j));
+            //* }
         }
 
         void hdf5_read()

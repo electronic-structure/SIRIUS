@@ -64,6 +64,8 @@ class Global : public StepFunction
         
         splindex<block> spl_num_atoms_;
         
+        splindex<block> spl_fft_size_;
+        
         /// read from the input file if it exists
         void read_input()
         {
@@ -257,6 +259,16 @@ class Global : public StepFunction
         {
             return spl_num_atoms_[i];
         }
+        
+        inline splindex<block>& spl_fft_size()
+        {
+            return spl_fft_size_;
+        }
+
+        inline int spl_fft_size(int i)
+        {
+            return spl_fft_size_[i];
+        }
 
         /// Initialize the global variables
         void initialize()
@@ -291,6 +303,8 @@ class Global : public StepFunction
             num_bands_ = num_fv_states_ * num_spins_;
 
             spl_num_atoms_.split(num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+            
+            spl_fft_size_.split(fft().size(), Platform::num_mpi_ranks(), Platform::mpi_rank());
             
             initialized_ = true;
         }
