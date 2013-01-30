@@ -364,9 +364,6 @@ class Potential
             mdarray<complex16, 2> vmtlm(parameters_.lmmax_pot(), parameters_.num_atoms());
             poisson_sum_G(vh->f_pw(), sbessel_mt_, vmtlm);
             
-            // zero Rlm components of Hartree potential
-            //vh->zero(rlm_component);
-            
             // add boundary condition and convert to Rlm
             Timer* t1 = new Timer("sirius::Potential::poisson:bc");
             mdarray<double, 2> rRl(parameters_.max_num_mt_points(), parameters_.lmax_pot() + 1);
@@ -406,18 +403,10 @@ class Potential
             }
             delete t1;
             
-            //// sync MT part of Hartree potential after adding a boundary condition
-            //Timer* t2 = new Timer("sirius::Potential::poisson:sync");
-            //for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            //{
-            //    Platform::allreduce(&hartree_potential->f_rlm(0, 0, ia), 
-            //                        parameters_.lmmax_pot() * parameters_.max_num_mt_points());
-            //}
-            //delete t2;
-
-           // parameters_.fft().input(parameters_.num_gvec(), parameters_.fft_index(), hartree_potential->f_pw());
-           // parameters_.fft().transform(1);
-           // parameters_.fft().output(hartree_potential->f_it());
+            // transform Hartree potential to real space
+            parameters_.fft().input(parameters_.num_gvec(), parameters_.fft_index(), vh->f_pw());
+            parameters_.fft().transform(1);
+            parameters_.fft().output(vh->f_it());
         }
 
         void xc(PeriodicFunction<double>* rho, PeriodicFunction<double>* magnetization[3], 
@@ -433,10 +422,6 @@ class Potential
             mdarray<double, 2> magtp(sht_.num_points(), parameters_.max_num_mt_points());
             mdarray<double, 3> vecbxctp(sht_.num_points(), parameters_.max_num_mt_points(), parameters_.num_mag_dims());
             mdarray<double, 2> bxctp(sht_.num_points(), parameters_.max_num_mt_points());
-
-            //* xc_potential->zero(rlm_component);
-            //* xc_energy_density->zero(rlm_component);
-            //* for (int j = 0; j < parameters_.num_mag_dims(); j++) xc_magnetic_field[j]->zero(rlm_component);
 
             Timer* t2 = new Timer("sirius::Potential::xc:mt");
             for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
@@ -503,25 +488,6 @@ class Potential
             }
             delete t2;
           
-            //* Timer* t1 = new Timer("sirius::Potential::xc:sync");
-
-            //* for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            //* {
-            //*     Platform::allreduce(&xc_potential->f_rlm(0, 0, ia), 
-            //*                         parameters_.lmmax_pot() * parameters_.max_num_mt_points()); 
-
-            //*     Platform::allreduce(&xc_energy_density->f_rlm(0, 0, ia), 
-            //*                         parameters_.lmmax_pot() * parameters_.max_num_mt_points()); 
-           
-            //*     for (int j = 0; j < parameters_.num_mag_dims(); j++)
-            //*     {
-            //*         Platform::allreduce(&xc_magnetic_field[j]->f_rlm(0, 0, ia), 
-            //*                             parameters_.lmmax_pot() * parameters_.max_num_mt_points()); 
-            //*     }
-            //* }
-
-            //* delete t1;
-            
             Timer* t3 = new Timer("sirius::Potential::xc:it");
             int it_glob_idx = parameters_.spl_fft_size(0);
             int it_loc_size = parameters_.spl_fft_size().local_size();
@@ -736,49 +702,26 @@ class Potential
             // solve Poisson equation
             poisson(rho, vh);
 
-            // transform Hartree potential to real space; use effective potential as receive buffer
-            parameters_.fft().input(parameters_.num_gvec(), parameters_.fft_index(), vh->f_pw());
-            parameters_.fft().transform(1);
-            parameters_.fft().output(vh->f_it());
+            // compute <rho | V_H>
+            parameters_.rti().energy_vha = rho->inner(vh, rlm_component | it_component);
 
-            rho->inner(vh, rlm_component | it_component);
+            // compute Eenuc
+            double enuc = 0.0;
+            for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+            {
+                int ia = parameters_.spl_num_atoms(ialoc);
+                int zn = parameters_.atom(ia)->type()->zn();
+                double r0 = parameters_.atom(ia)->type()->radial_grid(0);
+                enuc -= 0.5 * zn * (vh->f_rlm(0, 0, ialoc) * y00 + zn / r0);
+            }
+            Platform::allreduce(&enuc, 1);
 
+            parameters_.rti().energy_enuc = enuc;
+            
+            // add Hartree potential to the total potential
+            effective_potential_->add(vh, rlm_component | it_component);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            //* // add Hartree potential to the total potential
-            //* effective_potential_->add(hartree_potential, rlm_component | it_component);
-
-            //* // compute <rho | V_H>
-            //* parameters_.rti().energy_vha = rho->inner<rlm_component | it_component>(hartree_potential);
-            //* 
-            //* // compute Eenuc
-            //* double enuc = 0.0;
-            //* for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            //* {
-            //*     int zn = parameters_.atom(ia)->type()->zn();
-            //*     double r0 = parameters_.atom(ia)->type()->radial_grid(0);
-            //*     enuc -= 0.5 * zn * (hartree_potential->f_rlm(0, 0, ia) * y00 + zn / r0);
-            //* }
-            //* parameters_.rti().energy_enuc = enuc;
-
-            //* delete hartree_potential;
-
-            //
-            // XC potential and field
-            //
+            delete vh;
 
             // allocate functions
             PeriodicFunction<double>* vxc = new PeriodicFunction<double>(parameters_, parameters_.lmax_pot());
@@ -799,37 +742,37 @@ class Potential
 
             xc(rho, magnetization, vxc, bxc, exc);
            
-            stop_here
+            effective_potential_->add(vxc, rlm_component | it_component);
 
-            //* effective_potential_->add(xc_potential, rlm_component | it_component);
+            effective_potential_->sync(rlm_component | it_component);
 
-            //* parameters_.rti().energy_veff = rho->inner<rlm_component | it_component>(effective_potential_);
-            //* parameters_.rti().energy_vxc = rho->inner<rlm_component | it_component>(xc_potential);
-            //* parameters_.rti().energy_exc = rho->inner<rlm_component | it_component>(xc_energy_density);
+            parameters_.rti().energy_veff = rho->inner(effective_potential_, rlm_component | it_component);
+            parameters_.rti().energy_vxc = rho->inner(vxc, rlm_component | it_component);
+            parameters_.rti().energy_exc = rho->inner(exc, rlm_component | it_component);
 
-            //* double ebxc = 0.0;
-            //* for (int j = 0; j < parameters_.num_mag_dims(); j++)
-            //*     ebxc += magnetization[j]->inner<rlm_component | it_component>(xc_magnetic_field[j]);
-            //* parameters_.rti().energy_bxc = ebxc;
+            double ebxc = 0.0;
+            for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                ebxc += magnetization[j]->inner(bxc[j], rlm_component | it_component);
+            parameters_.rti().energy_bxc = ebxc;
 
-            //* delete xc_potential;
+            delete vxc;
 
-            //* for (int j = 0; j < parameters_.num_mag_dims(); j++)
-            //* {
-            //*     effective_magnetic_field_[j]->add(xc_magnetic_field[j], rlm_component | it_component);
-            //*     delete xc_magnetic_field[j];
-            //* }
-            //* 
-            //* delete xc_energy_density;
+            for (int j = 0; j < parameters_.num_mag_dims(); j++)
+            {
+                effective_magnetic_field_[j]->add(bxc[j], rlm_component | it_component);
+                effective_magnetic_field_[j]->sync(rlm_component | it_component);
+                delete bxc[j];
+            }
+            delete exc;
            
-            //* if (Platform::mpi_rank() == 0)
-            //* {
-            //*     hdf5_tree fout("sirius.h5", true);
-            //*     effective_potential_->hdf5_write(fout.create_node("effective_potential"));
-            //*     fout.create_node("effective_magnetic_field");
-            //*     for (int j = 0; j < parameters_.num_mag_dims(); j++)
-            //*         effective_magnetic_field_[j]->hdf5_write(fout["effective_magnetic_field"].create_node(j));
-            //* }
+            if (Platform::mpi_rank() == 0)
+            {
+                hdf5_tree fout("sirius.h5", true);
+                effective_potential_->hdf5_write(fout.create_node("effective_potential"));
+                fout.create_node("effective_magnetic_field");
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                    effective_magnetic_field_[j]->hdf5_write(fout["effective_magnetic_field"].create_node(j));
+            }
         }
 
         void hdf5_read()
