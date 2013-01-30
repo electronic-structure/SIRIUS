@@ -556,7 +556,7 @@ class AtomSymmetryClass
             std::vector<double> enu_core(atom_type_->num_core_levels());
     
             for (int ist = 0; ist < atom_type_->num_core_levels(); ist++)
-                enu_core[ist] = -1.0 * atom_type_->zn() / 2 / pow(atom_type_->atomic_level(ist).n, 2);
+                enu_core[ist] = -1.0 * atom_type_->zn() / 2 / pow(double(atom_type_->atomic_level(ist).n), 2);
             
             memset(&rho[0], 0, rho.size() * sizeof(double));
             #pragma omp parallel default(shared)

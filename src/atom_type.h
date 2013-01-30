@@ -647,7 +647,7 @@ class AtomType
             bool converged = false;
             
             for (int ist = 0; ist < (int)atomic_levels_.size(); ist++)
-                enu[ist] = -1.0 * zn_ / 2 / pow(atomic_levels_[ist].n, 2);
+                enu[ist] = -1.0 * zn_ / 2 / pow(double(atomic_levels_[ist].n), 2);
             
             for (int iter = 0; iter < 100; iter++)
             {
