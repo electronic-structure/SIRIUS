@@ -150,8 +150,7 @@ class Atom
             b_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size(), num_mag_dims_);
             b_radial_integrals_.allocate();
             
-            for (int j = 0; j < 3; j++)
-                beff_[j].set_dimensions(lmmax, type()->num_mt_points());
+            for (int j = 0; j < 3; j++) beff_[j].set_dimensions(lmmax, type()->num_mt_points());
 
             occupation_matrix_.set_dimensions(16, 16, 2, 2);
             occupation_matrix_.allocate();
@@ -195,8 +194,10 @@ class Atom
             
             // copy spherical integrals
             for (int i2 = 0; i2 < type()->indexr().size(); i2++)
+            {
                 for (int i1 = 0; i1 < type()->indexr().size(); i1++)
                     h_radial_integrals_(0, i1, i2) = symmetry_class()->h_spherical_integral(i1, i2);
+            }
 
             #pragma omp parallel default(shared)
             {
@@ -250,6 +251,12 @@ class Atom
                     }
                 }
             }
+        }
+
+        void sync_radial_integrals(int rank)
+        {
+            Platform::bcast(h_radial_integrals_.get_ptr(), (int)h_radial_integrals_.size(), rank);
+            if (num_mag_dims_) Platform::bcast(b_radial_integrals_.get_ptr(), (int)b_radial_integrals_.size(), rank);
         }
 
         inline int offset_aw()

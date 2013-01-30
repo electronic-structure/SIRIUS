@@ -36,19 +36,19 @@ class AtomSymmetryClass
         std::vector<double> spherical_potential_;
 
         /// list of radial functions
-        mdarray<double,3> radial_functions_;
+        mdarray<double, 3> radial_functions_;
         
         /// surface derivatives of aw radial functions
-        mdarray<double,2> aw_surface_derivatives_;
+        mdarray<double, 2> aw_surface_derivatives_;
 
         /// spherical part of radial integral
-        mdarray<double,2> h_spherical_integrals_;
+        mdarray<double, 2> h_spherical_integrals_;
 
         /// overlap integrals
-        mdarray<double,3> o_radial_integrals_;
+        mdarray<double, 3> o_radial_integrals_;
 
         /// spin-orbit interaction integrals
-        mdarray<double,3> so_radial_integrals_;
+        mdarray<double, 3> so_radial_integrals_;
 
         /// core charge density
         std::vector<double> core_charge_density_;
@@ -84,8 +84,7 @@ class AtomSymmetryClass
                     int idxrf = atom_type_->indexr().index_by_l_order(l, order);
 
                     // find linearization energies
-                    if (rsd.auto_enu)
-                        solver.bound_state(rsd.n, rsd.l, spherical_potential_, rsd.enu, p);
+                    if (rsd.auto_enu) solver.bound_state(rsd.n, rsd.l, spherical_potential_, rsd.enu, p);
 
                     solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p, hp);
 
@@ -120,13 +119,11 @@ class AtomSymmetryClass
                     }
                         
                     // normalize again
-                    for (int ir = 0; ir < nmtp; ir++)
-                        s[ir] = pow(radial_functions_(ir, idxrf, 0), 2);
+                    for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf, 0), 2);
                     s.interpolate();
                     norm = s.integrate(0);
 
-                    if (fabs(norm) < 1e-12)
-                        error(__FILE__, __LINE__, "aw radial functions are linearly dependent");
+                    if (fabs(norm) < 1e-12) error(__FILE__, __LINE__, "aw radial functions are linearly dependent");
 
                     norm = 1.0 / sqrt(norm);
 
@@ -175,8 +172,7 @@ class AtomSymmetryClass
                     radial_solution_descriptor& rsd = lo_descriptor(idxlo)[order];
                     
                     // find linearization energies
-                    if (rsd.auto_enu)
-                        solver.bound_state(rsd.n, rsd.l, spherical_potential_, rsd.enu, p[order]);
+                    if (rsd.auto_enu) solver.bound_state(rsd.n, rsd.l, spherical_potential_, rsd.enu, p[order]);
 
                     solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p[order], hp[order]); 
                     
@@ -197,8 +193,7 @@ class AtomSymmetryClass
                     // compute radial derivatives
                     s.interpolate();
 
-                    for (int dm = 0; dm < (int)lo_descriptor(idxlo).size(); dm++)
-                        a[order][dm] = s.deriv(dm, nmtp - 1);
+                    for (int dm = 0; dm < (int)lo_descriptor(idxlo).size(); dm++) a[order][dm] = s.deriv(dm, nmtp - 1);
                 }
 
                 double b[] = {0.0, 0.0, 0.0, 0.0};
@@ -215,15 +210,16 @@ class AtomSymmetryClass
                 
                 // take linear combination of radial solutions
                 for (int order = 0; order < (int)lo_descriptor(idxlo).size(); order++)
+                {
                     for (int ir = 0; ir < nmtp; ir++)
                     {
                         radial_functions_(ir, idxrf, 0) += b[order] * p[order][ir];
                         radial_functions_(ir, idxrf, 1) += b[order] * hp[order][ir];
                     }
+                }
 
                 // normalize
-                for (int ir = 0; ir < nmtp; ir++)
-                    s[ir] = pow(radial_functions_(ir, idxrf, 0), 2);
+                for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf, 0), 2);
                 s.interpolate();
                 double norm = s.integrate(2);
                 norm = 1.0 / sqrt(norm);
@@ -309,13 +305,14 @@ class AtomSymmetryClass
             spherical_potential_.resize(atom_type_->radial_grid().size());
             
             // take current effective potential inside MT
-            for (int ir = 0; ir < nmtp; ir++)
-                spherical_potential_[ir] = veff[ir];
+            for (int ir = 0; ir < nmtp; ir++) spherical_potential_[ir] = veff[ir];
 
             // take potential of the free atom outside MT
             for (int ir = nmtp; ir < atom_type_->radial_grid().size(); ir++)
+            {
                 spherical_potential_[ir] = atom_type_->free_atom_potential(ir) - 
                                            (atom_type_->free_atom_potential(nmtp - 1) - veff[nmtp - 1]);
+            }
 
             //Platform::bcast(&spherical_potential_[0], nmtp, 0);
         }
@@ -328,6 +325,13 @@ class AtomSymmetryClass
 
             generate_aw_radial_functions();
             generate_lo_radial_functions();
+        }
+
+        inline void sync_radial_functions(int rank)
+        {
+            int size = (int)radial_functions_.size(0) * radial_functions_.size(1);
+            Platform::bcast(radial_functions_.get_ptr(), size, rank);
+            Platform::bcast(aw_surface_derivatives_.get_ptr(), (int)aw_surface_derivatives_.size(), rank);
         }
 
         /// Generate radial overlap and SO integrals
@@ -351,6 +355,7 @@ class AtomSymmetryClass
 
             h_spherical_integrals_.zero();
             for (int i1 = 0; i1 < atom_type_->indexr().size(); i1++)
+            {
                 for (int i2 = 0; i2 < atom_type_->indexr().size(); i2++)
                 {
                     // for spherical part of potential integrals are diagonal in l
@@ -362,6 +367,7 @@ class AtomSymmetryClass
                         h_spherical_integrals_(i1, i2) = s.integrate(2) / y00;
                     }
                 }
+            }
 
             if (debug_level > 0)
             {
@@ -474,6 +480,13 @@ class AtomSymmetryClass
             }
         }
 
+        inline void sync_radial_integrals(int rank)
+        {
+            Platform::bcast(h_spherical_integrals_.get_ptr(), (int)h_spherical_integrals_.size(), rank);
+            Platform::bcast(o_radial_integrals_.get_ptr(), (int)o_radial_integrals_.size(), rank);
+            Platform::bcast(so_radial_integrals_.get_ptr(), (int)so_radial_integrals_.size(), rank);
+        }
+
         inline double radial_function(int ir, int idx)
         {
             return radial_functions_(ir, idx, 0);
@@ -493,7 +506,6 @@ class AtomSymmetryClass
         {
             return so_radial_integrals_(l, order1, order2);
         }
-
 
         void write_enu(FILE* fout)
         {
@@ -572,13 +584,14 @@ class AtomSymmetryClass
                                        spherical_potential_, enu_core[ist], p);
                 
                     for (int i = 0; i < atom_type_->radial_grid().size(); i++)
+                    {
                         rho_t[i] += atom_type_->atomic_level(ist).occupancy * 
                                     pow(y00 * p[i] / atom_type_->radial_grid(i), 2);
+                    }
                 }
 
                 #pragma omp critical
-                for (int i = 0; i < rho.size(); i++)
-                    rho[i] += rho_t[i];
+                for (int i = 0; i < rho.size(); i++) rho[i] += rho_t[i];
             } 
                 
             core_charge_density_ = rho.data_points();

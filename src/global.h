@@ -272,6 +272,16 @@ class Global : public StepFunction
             return spl_fft_size_[i];
         }
 
+        inline splindex<block>& spl_num_atom_symmetry_classes()
+        {
+            return spl_num_atom_symmetry_classes_;
+        }
+
+        inline int spl_num_atom_symmetry_classes(int i)
+        {
+            return spl_num_atom_symmetry_classes_[i];
+        }
+
         /// Initialize the global variables
         void initialize()
         {
@@ -359,35 +369,45 @@ class Global : public StepFunction
         void generate_radial_functions()
         {
             Timer t("sirius::Global::generate_radial_functions");
-            
-            for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
-                atom_symmetry_class(ic)->generate_radial_functions();
+           
+            for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
+                atom_symmetry_class(spl_num_atom_symmetry_classes(icloc))->generate_radial_functions();
 
-            if (Platform::mpi_rank() == 0)
+            for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
             {
-                FILE* fout = fopen("enu.txt", "w");
-                for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
-                    atom_symmetry_class(ic)->write_enu(fout);
-                fclose(fout);
+                int rank = spl_num_atom_symmetry_classes().location(1, ic);
+                atom_symmetry_class(ic)->sync_radial_functions(rank);
             }
+
+            //if (Platform::mpi_rank() == 0)
+            //{
+            //    FILE* fout = fopen("enu.txt", "w");
+            //    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
+            //        atom_symmetry_class(ic)->write_enu(fout);
+            //    fclose(fout);
+            //}
         }
         
         void generate_radial_integrals()
         {
             Timer t("sirius::Global::generate_radial_integrals");
             
-            for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
-                atom_symmetry_class(ic)->generate_radial_integrals();
+            for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
+                atom_symmetry_class(spl_num_atom_symmetry_classes(icloc))->generate_radial_integrals();
 
-            for (int i = 0; i < spl_num_atoms().local_size(); i++)
-                atom(spl_num_atoms(i))->generate_radial_integrals();
+            for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
+            {
+                int rank = spl_num_atom_symmetry_classes().location(1, ic);
+                atom_symmetry_class(ic)->sync_radial_integrals(rank);
+            }
+
+            for (int ialoc = 0; ialoc < spl_num_atoms().local_size(); ialoc++)
+                atom(spl_num_atoms(ialoc))->generate_radial_integrals();
 
             for (int ia = 0; ia < num_atoms(); ia++)
             {
                 int rank = spl_num_atoms().location(1, ia);
-                int size = lmmax_pot() * atom(ia)->type()->indexr().size() * atom(ia)->type()->indexr().size();
-                Platform::bcast(atom(ia)->h_radial_integral(0, 0), size, rank);
-                if (num_mag_dims()) Platform::bcast(atom(ia)->b_radial_integral(0, 0, 0), size * num_mag_dims(), rank);
+                atom(ia)->sync_radial_integrals(rank);
             }
         }
 
