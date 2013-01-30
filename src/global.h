@@ -65,6 +65,8 @@ class Global : public StepFunction
         splindex<block> spl_num_atoms_;
         
         splindex<block> spl_fft_size_;
+
+        splindex<block> spl_num_atom_symmetry_classes_;
         
         /// read from the input file if it exists
         void read_input()
@@ -305,6 +307,9 @@ class Global : public StepFunction
             spl_num_atoms_.split(num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
             
             spl_fft_size_.split(fft().size(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+            
+            spl_num_atom_symmetry_classes_.split(num_atom_symmetry_classes(), Platform::num_mpi_ranks(), 
+                                                 Platform::mpi_rank());
             
             initialized_ = true;
         }
