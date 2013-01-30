@@ -33,6 +33,7 @@ class Density
             AtomType* type = parameters_.atom(ia)->type();
             int mt_basis_size = type->mt_basis_size();
 
+            #pragma omp parallel for default(shared)
             for (int lm3 = 0; lm3 < parameters_.lmmax_rho(); lm3++)
             {
                 int l3 = l_by_lm_[lm3];
