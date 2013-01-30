@@ -250,6 +250,8 @@ template<typename T> class PeriodicFunction
 
         inline void sync(int flg)
         {
+            Timer t("sirius::PeriodicFunction::sync");
+
             if (flg & it_component)
             {
                 std::vector<T> buff(parameters_.fft().size(), 0); 
