@@ -69,7 +69,9 @@ class Density
                             }
                         } 
                         else
+                        {
                             j1 += (2 * l1 + 1);
+                        }
                     }
                 } // j2
             } // lm3
@@ -571,8 +573,7 @@ class Density
                     ot += kpoint_set_[ik]->weight() * kpoint_set_[ik]->band_occupancy(j);
             }
 
-            if (fabs(wt - 1.0) > 1e-12)
-                error(__FILE__, __LINE__, "kpoint weights don't sum to one");
+            if (fabs(wt - 1.0) > 1e-12) error(__FILE__, __LINE__, "kpoint weights don't sum to one");
 
             if (fabs(ot - parameters_.num_valence_electrons()) > 1e-8)
             {
@@ -635,7 +636,6 @@ class Density
             }
 
             Timer t1("sirius::Density::generate:convert_mt");
-            //for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
             {
                 int ia = parameters_.spl_num_atoms(ialoc);
