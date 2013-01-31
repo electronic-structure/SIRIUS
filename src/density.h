@@ -80,14 +80,18 @@ class Density
         
         /// Add k-point contribution to the density matrix
 
-        /** In case of LDA+U the occupation matrix is also computed. It has the following expression:
+        /** Interstitial part is added directly to density and magnetization. Muffin-tin part is first
+            collected into an auxiliary density matrix.
+        
+            In case of LDA+U the occupation matrix is also computed. It has the following expression:
             \f[
                 n_{\ell,mm'}^{\sigma \sigma'} = \sum_{i {\bf k}}^{occ} \int_{0}^{R_{MT}} r^2 dr 
                           \Psi_{\ell m}^{i{\bf k}\sigma *}({\bf r}) \Psi_{\ell m'}^{i{\bf k}\sigma'}({\bf r})
-            \f] */
+            \f] 
+        */
         void add_kpoint_contribution(kpoint* kp, 
-                                     mdarray<double,5>& mt_density_matrix, 
-                                     mdarray<complex16,5>& occupation_matrix)
+                                     mdarray<double, 5>& mt_density_matrix, 
+                                     mdarray<complex16, 5>& occupation_matrix)
         {
             Timer t("sirius::Density::add_kpoint_contribution");
             
@@ -320,8 +324,9 @@ class Density
 
             l_by_lm_.resize(parameters_.lmmax_rho());
             for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
-                for (int m = -l; m <= l; m++, lm++)
-                    l_by_lm_[lm] = l;
+            {
+                for (int m = -l; m <= l; m++, lm++) l_by_lm_[lm] = l;
+            }
         }
 
         /// Destructor
@@ -609,15 +614,12 @@ class Density
             
             // reduce arrays; assume that each rank (including ranks along second direction) did it's own 
             // fraction of the density
+            int mt_dm_sz = parameters_.max_mt_radial_basis_size() * parameters_.max_mt_radial_basis_size() * 
+                           parameters_.lmmax_rho();
             for (int j = 0; j < parameters_.num_mag_dims() + 1; j++)
             {
                 for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-                {
-                    Platform::allreduce(&mt_density_matrix(0, 0, 0, ia, j), 
-                                        parameters_.max_mt_radial_basis_size() * 
-                                        parameters_.max_mt_radial_basis_size() * 
-                                        parameters_.lmmax_rho());
-                }
+                    Platform::allreduce(&mt_density_matrix(0, 0, 0, ia, j), mt_dm_sz);
             }
            
             Platform::allreduce(&rho_->f_it(0), parameters_.fft().size()); 
@@ -630,8 +632,10 @@ class Density
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
                 for (int lm1 = 0; lm1 < 16; lm1++)
+                {
                     for (int lm2 = 0; lm2 < 16; lm2++)
                         occupation_matrix(lm2, lm1, 1, 0, ia) = conj(occupation_matrix(lm1, lm2, 0, 1, ia));
+                }
 
                 parameters_.atom(ia)->set_occupation_matrix(&occupation_matrix(0, 0, 0, 0, ia));
             }
@@ -644,13 +648,14 @@ class Density
 
                 #pragma omp parallel default(shared)
                 {
-                    mdarray<double,2> v(nmtp, parameters_.num_mag_dims() + 1);
+                    mdarray<double, 2> v(nmtp, parameters_.num_mag_dims() + 1);
 
                     #pragma omp for
                     for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
                     {
                         for (int j = 0; j < parameters_.num_mag_dims() + 1; j++)
                         {
+                            // we are going to use the 2x prefactor for the density matrix; so divide diagonal by 2
                             for (int idxrf = 0; idxrf < parameters_.atom(ia)->type()->mt_radial_basis_size(); idxrf++)
                                 mt_density_matrix(idxrf, idxrf, lm, ia, j) *= 0.5; 
                         }
@@ -698,28 +703,36 @@ class Density
             for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync(rlm_component);
             t1.stop();
             
-            // add core contribution
+            // compute core states
+            for (int icloc = 0; icloc < parameters_.spl_num_atom_symmetry_classes().local_size(); icloc++)
+            {
+                int ic =  parameters_.spl_num_atom_symmetry_classes(icloc);
+                parameters_.atom_symmetry_class(ic)->generate_core_charge_density();
+            }
+
             double eval_sum = 0.0;
             double core_leakage = 0.0;
             for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
             {
-                int nmtp = parameters_.atom_symmetry_class(ic)->atom_type()->num_mt_points();
-                
-                parameters_.atom_symmetry_class(ic)->generate_core_charge_density();
+                int rank = parameters_.spl_num_atom_symmetry_classes().location(1, ic);
+                parameters_.atom_symmetry_class(ic)->sync_core_charge_density(rank);
 
                 eval_sum += parameters_.atom_symmetry_class(ic)->core_eval_sum() *
                             parameters_.atom_symmetry_class(ic)->num_atoms();
                 
                 core_leakage += parameters_.atom_symmetry_class(ic)->core_leakage() * 
                                 parameters_.atom_symmetry_class(ic)->num_atoms();
-
-                for (int i = 0; i < parameters_.atom_symmetry_class(ic)->num_atoms(); i++)
-                {
-                    int ia = parameters_.atom_symmetry_class(ic)->atom_id(i);
-                    for (int ir = 0; ir < nmtp; ir++)
-                        rho_->f_rlm(0, ir, ia) += parameters_.atom_symmetry_class(ic)->core_charge_density(ir) / y00;
-                }
             }
+            assert(eval_sum == eval_sum);
+            assert(core_leakage == core_leakage);
+            
+            // add core contribution
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                    rho_->f_rlm(0, ir, ia) += parameters_.atom(ia)->symmetry_class()->core_charge_density(ir) / y00;
+            }
+
             parameters_.rti().core_eval_sum = eval_sum;
 
             double nel = rho_->integrate(rlm_component | it_component);

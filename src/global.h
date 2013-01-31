@@ -454,12 +454,21 @@ class Global : public StepFunction
         */
         double total_energy()
         {
-            return kinetic_energy() + rti().energy_exc + 0.5 * rti().energy_vha + rti().energy_enuc;
+            assert(rti().energy_exc == rti().energy_exc);
+            assert(rti().energy_vha == rti().energy_vha);
+            assert(rti().energy_enuc == rti().energy_enuc);
+
+            return (kinetic_energy() + rti().energy_exc + 0.5 * rti().energy_vha + rti().energy_enuc);
         }
         
         inline double kinetic_energy()
         {
-            return rti().core_eval_sum + rti().valence_eval_sum - rti().energy_veff - rti().energy_bxc; 
+            assert(rti().core_eval_sum == rti().core_eval_sum);
+            assert(rti().valence_eval_sum == rti().valence_eval_sum);
+            assert(rti().energy_veff == rti().energy_veff);
+            assert(rti().energy_bxc == rti().energy_bxc);
+
+            return (rti().core_eval_sum + rti().valence_eval_sum - rti().energy_veff - rti().energy_bxc); 
         }
 
         /// Print run-time information.

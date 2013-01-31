@@ -269,12 +269,10 @@ class AtomSymmetryClass
 
             // copy descriptors because enu is defferent between atom classes
             aw_descriptors_.resize(atom_type_->num_aw_descriptors());
-            for (int i = 0; i < num_aw_descriptors(); i++)
-                aw_descriptors_[i] = atom_type_->aw_descriptor(i);
+            for (int i = 0; i < num_aw_descriptors(); i++) aw_descriptors_[i] = atom_type_->aw_descriptor(i);
 
             lo_descriptors_.resize(atom_type_->num_lo_descriptors());
-            for (int i = 0; i < num_lo_descriptors(); i++)
-                lo_descriptors_[i] = atom_type_->lo_descriptor(i);
+            for (int i = 0; i < num_lo_descriptors(); i++) lo_descriptors_[i] = atom_type_->lo_descriptor(i);
         }
 
         inline int id()
@@ -606,6 +604,14 @@ class AtomSymmetryClass
             for (int ist = 0; ist < atom_type_->num_core_levels(); ist++)
                 core_eval_sum_ += enu_core[ist] * atom_type_->atomic_level(ist).occupancy;
 
+        }
+
+        inline void sync_core_charge_density(int rank)
+        {
+            if (core_charge_density_.size() == 0) core_charge_density_.resize(atom_type_->radial_grid().size());
+            Platform::bcast(&core_charge_density_[0],  atom_type_->radial_grid().size(), rank);
+            Platform::bcast(&core_leakage_, 1, rank);
+            Platform::bcast(&core_eval_sum_, 1, rank);
         }
 
         double core_charge_density(int ir)
