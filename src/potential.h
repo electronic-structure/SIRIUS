@@ -174,8 +174,8 @@ class Potential
                 }
 
                 blas<cpu>::gemm(2, 0, 2 * l + 1, parameters_.num_atoms(), spl_num_gvec_.local_size(), 
-                          &zm1(0, Utils::lm_by_l_m(l, -l)), zm1.ld(), &zm2(0, 0), zm2.ld(), 
-                          &flm(Utils::lm_by_l_m(l, -l), 0), parameters_.lmmax_rho());
+                                &zm1(0, Utils::lm_by_l_m(l, -l)), zm1.ld(), &zm2(0, 0), zm2.ld(), 
+                                &flm(Utils::lm_by_l_m(l, -l), 0), parameters_.lmmax_rho());
             }
             
             Platform::allreduce(&flm(0, 0), (int)flm.size());

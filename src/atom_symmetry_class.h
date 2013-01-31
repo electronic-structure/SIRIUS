@@ -602,8 +602,11 @@ class AtomSymmetryClass
 
             core_eval_sum_ = 0.0;
             for (int ist = 0; ist < atom_type_->num_core_levels(); ist++)
+            {
+                assert(enu_core[ist] == enu_core[ist]);
                 core_eval_sum_ += enu_core[ist] * atom_type_->atomic_level(ist).occupancy;
-
+            }
+            assert(core_eval_sum_ == core_eval_sum_);
         }
 
         inline void sync_core_charge_density(int rank)
