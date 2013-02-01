@@ -67,7 +67,7 @@ class Global : public StepFunction
         splindex<block> spl_fft_size_;
 
         splindex<block> spl_num_atom_symmetry_classes_;
-        
+
         /// read from the input file if it exists
         void read_input()
         {
@@ -84,7 +84,7 @@ class Global : public StepFunction
                 num_fv_states_ = parser["num_fv_states"].get<int>(num_fv_states_);
             }
 
-            Platform::set_num_fft_threads(num_fft_threads);
+            Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::num_threads()));
         }
 
     public:

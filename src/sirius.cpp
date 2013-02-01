@@ -302,13 +302,80 @@ void FORTRAN(sirius_potential_hdf5_read)()
     potential->hdf5_read();
 }
 
-void FORTRAN(sirius_bands)(int4* num_kpoints, real8* kpoints_, real8* dk_)
+/*  Relevant block in the input file:
+
+    "bz_path" : {
+        "size" : 100,
+        "points" : [["G", [0, 0, 0]], ["X", [0.5, 0.0, 0.5]], ["L", [0.5, 0.5, 0.5]]]
+    }
+*/
+void FORTRAN(sirius_bands)(void)
 {
-    mdarray<double, 2> kpoints(kpoints_, 3, *num_kpoints); 
+    std::vector<std::pair<std::string, std::vector<double> > > bz_path;
+    std::string fname("sirius.json");
+            
+    int npt;
+    if (Utils::file_exists(fname))
+    {
+        JsonTree parser(fname);
+        if (!parser["bz_path"].empty())
+        {
+            npt = parser["bz_path"]["size"].get<int>();
+
+            for (int ipt = 0; ipt < parser["bz_path"]["points"].size(); ipt++)
+            {
+                std::pair<std::string, std::vector<double> > pt;
+                pt.first = parser["bz_path"]["points"][ipt][0].get<std::string>();
+                pt.second = parser["bz_path"]["points"][ipt][1].get<std::vector<double> >();
+                bz_path.push_back(pt);
+            }
+        }
+    }
+
+    if (bz_path.size() < 2) error(__FILE__, __LINE__, "at least two BZ points are required");
+   
+    // compute length of segments
+    std::vector<double> segment_length;
+    double total_path_length = 0.0;
+    for (int ip = 0; ip < (int)bz_path.size() - 1; ip++)
+    {
+        double vf[3];
+        for (int x = 0; x < 3; x++) vf[x] = bz_path[ip + 1].second[x] - bz_path[ip].second[x];
+        double vc[3];
+        global.get_coordinates<cartesian, reciprocal>(vf, vc);
+        double length = Utils::vector_length(vc);
+        total_path_length += length;
+        segment_length.push_back(length);
+    }
+
+    std::vector<double> xaxis;
 
     sirius::kpoint_set kpoint_set_(global.mpi_grid());
-    for (int ik = 0; ik < kpoints.size(1); ik++)
-        kpoint_set_.add_kpoint(&kpoints(0, ik), 0.0, global);
+    
+    double prev_seg_len = 0.0;
+
+    // segments 
+    for (int ip = 0; ip < (int)bz_path.size() - 1; ip++)
+    {
+        std::vector<double> p0 = bz_path[ip].second;
+        std::vector<double> p1 = bz_path[ip + 1].second;
+
+        int n = int((segment_length[ip] * npt) / total_path_length);
+        int n0 = (ip == (int)bz_path.size() - 2) ? n - 1 : n;
+        
+        double dvf[3];
+        for (int x = 0; x < 3; x++) dvf[x] = (p1[x] - p0[x]) / double(n0);
+        
+        for (int i = 0; i < n; i++)
+        {
+            double vf[3];
+            for (int x = 0; x < 3; x++) vf[x] = p0[x] + dvf[x] * i;
+            kpoint_set_.add_kpoint(vf, 0.0, global);
+
+            xaxis.push_back(prev_seg_len + segment_length[ip] * i / double(n0));
+        }
+        prev_seg_len += segment_length[ip];
+    }
 
     // distribute k-points along the 1-st direction of the MPI grid
     splindex<block> spl_num_kpoints_(kpoint_set_.num_kpoints(), global.mpi_grid().dimension_size(0), 
@@ -347,7 +414,7 @@ void FORTRAN(sirius_bands)(int4* num_kpoints, real8* kpoints_, real8* dk_)
         {
             for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
             {
-                fprintf(fout, "%f %f\n", dk_[ik], kpoint_set_[ik]->band_energy(i));
+                fprintf(fout, "%f %f\n", xaxis[ik], kpoint_set_[ik]->band_energy(i));
             }
             fprintf(fout, "\n");
         }

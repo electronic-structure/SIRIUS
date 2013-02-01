@@ -147,6 +147,11 @@ class JsonTree
         ~JsonTree() 
         {
         };
+
+        inline bool empty()
+        {
+            return node.empty();
+        }
     
         void parse(const std::string& fname)
         {
