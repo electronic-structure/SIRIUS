@@ -243,9 +243,12 @@ class AtomSymmetryClass
     public:
     
         AtomSymmetryClass(int id_, AtomType* atom_type_) : id_(id_),
-                                                           atom_type_(atom_type_)
+                                                           atom_type_(atom_type_),
+                                                           core_eval_sum_(0.0),
+                                                           core_leakage_(0.0)
         {
-        
+            core_charge_density_.resize(atom_type_->radial_grid().size());
+            memset(&core_charge_density_[0], 0, atom_type_->radial_grid().size() * sizeof(double));
         }
 
         void init()
@@ -544,20 +547,17 @@ class AtomSymmetryClass
             {
                 return aw_surface_derivatives_(order, l);
             }
-            else return 0.0;
+            else 
+            {
+                return 0.0;
+            }
         }
 
         void generate_core_charge_density()
         {
             Timer t("sirius::AtomSymmetryClass::generate_core_charge_density");
 
-            if (atom_type_->num_core_electrons() == 0)
-            {
-                core_charge_density_.resize(atom_type_->radial_grid().size());
-                memset(&core_charge_density_[0], 0, atom_type_->radial_grid().size() * sizeof(double));
-                core_leakage_ = 0.0;
-                return;
-            }
+            if (atom_type_->num_core_electrons() == 0) return;
             
             RadialSolver solver(true, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
             
@@ -611,7 +611,6 @@ class AtomSymmetryClass
 
         inline void sync_core_charge_density(int rank)
         {
-            if (core_charge_density_.size() == 0) core_charge_density_.resize(atom_type_->radial_grid().size());
             Platform::bcast(&core_charge_density_[0],  atom_type_->radial_grid().size(), rank);
             Platform::bcast(&core_leakage_, 1, rank);
             Platform::bcast(&core_eval_sum_, 1, rank);

@@ -18,7 +18,7 @@ void test1()
     
     global.add_atom(1, pos, vf);
     global.initialize();
-    global.reciprocal_lattice::print_info();
+    global.ReciprocalLattice::print_info();
 }
 
 void test2()
@@ -37,7 +37,7 @@ void test2()
     
     global.add_atom(1, pos, vf);
     global.initialize();
-    global.reciprocal_lattice::print_info();
+    global.ReciprocalLattice::print_info();
 }
 
 int main(int argn, char **argv)

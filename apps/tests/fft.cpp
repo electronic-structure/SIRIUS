@@ -107,7 +107,7 @@ void test2()
                                             double(j2) / global.fft().size(2)};
                             double rv[3];
                             global.get_coordinates<cartesian, direct>(frv, rv);
-                            d += abs(fft2(j0, j1, j2) - exp(complex16(0.0, scalar_product(rv, gv))));
+                            d += abs(fft2(j0, j1, j2) - exp(complex16(0.0, Utils::scalar_product(rv, gv))));
                         }
             }
 
