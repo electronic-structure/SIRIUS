@@ -70,6 +70,9 @@ extern "C" void Cblacs_barrier(int ConTxt, const char* scope);
 extern "C" void FORTRAN(descinit)(int4* desc, int4* m, int4* n, int4* mb, int4* nb, int4* irsrc, int4* icsrc, 
                                   int4* ictxt, int4* lld, int4* info);
 
+extern "C" void FORTRAN(pztranc)(int4* m, int4* n, complex16* alpha, complex16* a, int4* ia, int4* ja, int4* desca,
+                                 complex16* beta, complex16* c, int4* ic, int4* jc,int4* descc);
+
 extern "C" void FORTRAN(pzhegvx)(int4* ibtype, const char* jobz, const char* range, const char* uplo, int4* n, 
                         complex16* a, int4* ia, int4* ja, int4* desca, complex16* b, int4* ib, int4* jb, int4* descb, 
                         real8* vl, real8* vu, int4* il, int4* iu, real8* abstol, int4* m, int4* nz, real8* w, 
@@ -84,10 +87,26 @@ extern "C" void FORTRAN(pzheevd)(const char* jobz, const char* uplo, int4* n, co
 
 extern "C" int4 FORTRAN(numroc)(int4* n, int4* nb, int4* iproc, int4* isrcproc, int4* nprocs);
 
+extern "C" int4 FORTRAN(indxl2g)(int4* indxloc, int4* nb, int4* iproc, int4* isrcproc, int4* nprocs);
+
 extern "C" int4 FORTRAN(pjlaenv)(int4* ictxt, int4* ispec, const char* name, const char* opts, int4* n1, int4* n2, 
                                  int4* n3, int4* n4, int4 namelen, int4 optslen);
 
 extern "C" int4 FORTRAN(iceil)(int4* inum, int4* idenom);
+
+extern "C" void FORTRAN(elpa_cholesky_complex)(int4* na, complex16* a, int4* lda, int4* nblk, int4* mpi_comm_rows, 
+                                               int4* mpi_comm_cols);
+
+extern "C" void FORTRAN(elpa_invert_trm_complex)(int4* na, complex16* a, int4* lda, int4* nblk, int4* mpi_comm_rows, 
+                                                 int4* mpi_comm_cols);
+
+extern "C" void FORTRAN(elpa_mult_ah_b_complex)(const char* uplo_a, const char* uplo_c, int4* na, int4* ncb, 
+                                                complex16* a, int4* lda, complex16* b, int4* ldb, int4* nblk, 
+                                                int4* mpi_comm_rows, int4* mpi_comm_cols, complex16* c, int4* ldc,
+                                                int4 uplo_a_len, int4 uplo_c_len);
+
+extern "C" void FORTRAN(elpa_solve_evp_complex)(int4* na, int4* nev, complex16* a, int4* lda, real8* ev, complex16* q, 
+                                                int4* ldq, int4* nblk, int4* mpi_comm_rows, int4* mpi_comm_cols);
 
 #endif // __LINALG_CPU_H__
 

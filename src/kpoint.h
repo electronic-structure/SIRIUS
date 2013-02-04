@@ -534,20 +534,49 @@ class kpoint
             }
             
             Timer *t1 = new Timer("sirius::kpoint::generate_fv_states:genevp");
-            eigenproblem<eigen_value_solver>::generalized(apwlo_basis_size(), 
-                                                          parameters_.cyclic_block_size(),
-                                                          band->num_ranks_row(), 
-                                                          band->num_ranks_col(), 
-                                                          band->blacs_context(), 
-                                                          parameters_.num_fv_states(), 
-                                                          -1.0, 
-                                                          h.get_ptr(), 
-                                                          h.ld(), 
-                                                          o.get_ptr(), 
-                                                          o.ld(), 
-                                                          &fv_eigen_values_[0], 
-                                                          fv_eigen_vectors_.get_ptr(),
-                                                          fv_eigen_vectors_.ld());
+
+            if (eigen_value_solver == elpa)
+            {
+
+                eigenproblem<elpa>::generalized(apwlo_basis_size(), 
+                                                parameters_.cyclic_block_size(),
+                                                band->num_ranks_row(), 
+                                                band->num_ranks_col(), 
+                                                band->blacs_context(), 
+                                                parameters_.num_fv_states(), 
+                                                -1.0, 
+                                                h.get_ptr(), 
+                                                h.ld(), 
+                                                o.get_ptr(), 
+                                                o.ld(), 
+                                                &fv_eigen_values_[0], 
+                                                fv_eigen_vectors_.get_ptr(),
+                                                fv_eigen_vectors_.ld(),
+                                                parameters_.mpi_grid().communicator(1 << band->dim_row()),
+                                                parameters_.mpi_grid().communicator(1 << band->dim_col()),
+                                                apwlo_basis_size_row(),
+                                                apwlo_basis_size_col(),
+                                                band->rank_row(),
+                                                band->rank_col());
+
+            }
+            //* else
+            //* {
+            //* eigenproblem<eigen_value_solver>::generalized(apwlo_basis_size(), 
+            //*                                               parameters_.cyclic_block_size(),
+            //*                                               band->num_ranks_row(), 
+            //*                                               band->num_ranks_col(), 
+            //*                                               band->blacs_context(), 
+            //*                                               parameters_.num_fv_states(), 
+            //*                                               -1.0, 
+            //*                                               h.get_ptr(), 
+            //*                                               h.ld(), 
+            //*                                               o.get_ptr(), 
+            //*                                               o.ld(), 
+            //*                                               &fv_eigen_values_[0], 
+            //*                                               fv_eigen_vectors_.get_ptr(),
+            //*                                               fv_eigen_vectors_.ld());
+            //* }
             delete t1;
             
             if ((debug_level > 2) && (eigen_value_solver == scalapack))

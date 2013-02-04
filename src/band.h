@@ -500,7 +500,7 @@ class Band
 
             init();
             
-            if (eigen_value_solver == scalapack)
+            if (eigen_value_solver == scalapack || eigen_value_solver == elpa)
             {
                 int rc = (1 << dim_row_) | 1 << (dim_col_);
                 MPI_Comm comm = parameters_.mpi_grid().communicator(rc);

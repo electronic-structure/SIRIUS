@@ -68,7 +68,12 @@ class Timer
 
         void stop()
         {
-            if (!active_) error(__FILE__, __LINE__, "timer was not running", fatal_err);
+            if (!active_)
+            {
+                std::stringstream s;
+                s << "Timer " << label_ << " was not running";
+                error(__FILE__, __LINE__, s, fatal_err);
+            }
 
             timeval end;
             gettimeofday(&end, NULL);
