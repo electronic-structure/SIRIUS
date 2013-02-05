@@ -554,6 +554,7 @@ class kpoint
                                                 fv_eigen_vectors_.ld(),
                                                 parameters_.mpi_grid().communicator(1 << band->dim_row()),
                                                 parameters_.mpi_grid().communicator(1 << band->dim_col()),
+                                                parameters_.mpi_grid().communicator(1 << band->dim_col() | 1 << band->dim_row()),
                                                 apwlo_basis_size_row(),
                                                 apwlo_basis_size_col(),
                                                 band->rank_row(),

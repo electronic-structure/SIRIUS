@@ -486,16 +486,17 @@ template<> struct eigenproblem<elpa>
 
     static int generalized(int4 matrix_size, int4 nb, int num_ranks_row, int num_ranks_col, int blacs_context, 
                            int4 nv, real8 abstol, complex16* a, int4 lda, complex16* b, int4 ldb, real8* eval, 
-                           complex16* z, int4 ldz, MPI_Comm comm_row, MPI_Comm comm_col, int4 na_rows, int4 na_cols,
-                           int4 rank_row, int4 rank_col)
+                           complex16* z, int4 ldz, MPI_Comm comm_row, MPI_Comm comm_col, MPI_Comm comm_all, 
+                           int4 na_rows, int4 na_cols, int4 rank_row, int4 rank_col)
     {
         assert(nv <= matrix_size);
 
         int4 mpi_comm_rows = MPI_Comm_c2f(comm_row);
         int4 mpi_comm_cols = MPI_Comm_c2f(comm_col);
+        int4 mpi_comm_all = MPI_Comm_c2f(comm_all);
 
-        //FORTRAN(elpa_cholesky_complex)(&matrix_size, b, &ldb, &nb, &mpi_comm_rows, &mpi_comm_cols);
-        //FORTRAN(elpa_invert_trm_complex)(&matrix_size, b, &ldb, &nb, &mpi_comm_rows, &mpi_comm_cols);
+        FORTRAN(elpa_cholesky_complex)(&matrix_size, b, &ldb, &nb, &mpi_comm_rows, &mpi_comm_cols);
+        FORTRAN(elpa_invert_trm_complex)(&matrix_size, b, &ldb, &nb, &mpi_comm_rows, &mpi_comm_cols);
        
         mdarray<complex16, 2> tmp1(na_rows, na_cols);
         mdarray<complex16, 2> tmp2(na_rows, na_cols);
@@ -531,8 +532,8 @@ template<> struct eigenproblem<elpa>
             }
         }
 
-        FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nv, a, &lda, eval, tmp1.get_ptr(), &na_rows, &nb,
-                                        &mpi_comm_rows, &mpi_comm_cols);
+        FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size, &nv, a, &lda, eval, tmp1.get_ptr(), &na_rows, &nb,
+                                               &mpi_comm_rows, &mpi_comm_cols, &mpi_comm_all);
 
 
         //* int4 desca[9];

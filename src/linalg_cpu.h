@@ -108,5 +108,9 @@ extern "C" void FORTRAN(elpa_mult_ah_b_complex)(const char* uplo_a, const char* 
 extern "C" void FORTRAN(elpa_solve_evp_complex)(int4* na, int4* nev, complex16* a, int4* lda, real8* ev, complex16* q, 
                                                 int4* ldq, int4* nblk, int4* mpi_comm_rows, int4* mpi_comm_cols);
 
+extern "C" void FORTRAN(elpa_solve_evp_complex_2stage)(int4* na, int4* nev, complex16* a, int4* lda, real8* ev, 
+                                                       complex16* q, int4* ldq, int4* nblk, int4* mpi_comm_rows, 
+                                                       int4* mpi_comm_cols, int4* mpi_comm_all);
+
 #endif // __LINALG_CPU_H__
 
