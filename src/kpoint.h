@@ -881,6 +881,16 @@ class kpoint
             for (int i = 0; i < spl_col.local_size(); i++)
                 apwlo_basis_descriptors_col_[i] = apwlo_basis_descriptors_[spl_col[i]];
 
+            int nr = linalg<scalapack>::numroc(apwlo_basis_size(), parameters_.cyclic_block_size(), band->rank_row(), 
+                                               0, band->num_ranks_row());
+            
+            if (nr != apwlo_basis_size_row()) error(__FILE__, __LINE__, "numroc returned a different local row size");
+
+            int nc = linalg<scalapack>::numroc(apwlo_basis_size(), parameters_.cyclic_block_size(), band->rank_col(), 
+                                              0, band->num_ranks_col());
+            
+            if (nc != apwlo_basis_size_col()) error(__FILE__, __LINE__, "numroc returned a different local column size");
+
             // get the number of row- and column- G+k-vectors
             num_gkvec_row_ = 0;
             for (int i = 0; i < apwlo_basis_size_row(); i++)
