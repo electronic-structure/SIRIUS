@@ -303,7 +303,7 @@ class Global : public StepFunction
             
             if (num_fv_states_ < 0) num_fv_states_ = int(num_valence_electrons() / 2.0) + 20;
 
-            if (eigen_value_solver == scalapack)
+            if (eigen_value_solver == scalapack || eigen_value_solver == elpa)
             {
                 int ncol = mpi_grid_.dimension_size(2);
 
@@ -340,7 +340,7 @@ class Global : public StepFunction
             if (Platform::verbose())
             {
                 printf("\n");
-                printf("SIRIUS v0.7\n");
+                printf("SIRIUS 0.7\n");
                 printf("git hash : %s\n", git_hash);
                 printf("build date : %s\n", build_date);
                 printf("\n");

@@ -475,6 +475,9 @@ template<> struct eigenproblem<elpa>
         int4 mpi_comm_cols = MPI_Comm_c2f(comm_col);
         int4 mpi_comm_all = MPI_Comm_c2f(comm_all);
 
+        sirius::Timer *t;
+
+        t = new sirius::Timer("elpa::ort");
         FORTRAN(elpa_cholesky_complex)(&matrix_size, b, &ldb, &nb, &mpi_comm_rows, &mpi_comm_cols);
         FORTRAN(elpa_invert_trm_complex)(&matrix_size, b, &ldb, &nb, &mpi_comm_rows, &mpi_comm_cols);
        
@@ -507,16 +510,21 @@ template<> struct eigenproblem<elpa>
                 a[j + i * lda] = tmp1(j, i);
             }
         }
+        delete t;
         
+        t = new sirius::Timer("elpa::diag");
         std::vector<double> w(matrix_size);
         FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size, &nv, a, &lda, &w[0], tmp1.get_ptr(), &na_rows, &nb,
                                                &mpi_comm_rows, &mpi_comm_cols, &mpi_comm_all);
+        delete t;
 
+        t = new sirius::Timer("elpa::bt");
         linalg<scalapack>::pztranc(matrix_size, matrix_size, complex16(1, 0), b, 1, 1, descc, complex16(0, 0), 
                                    tmp2.get_ptr(), 1, 1, descc);
 
         FORTRAN(elpa_mult_ah_b_complex)("L", "N", &matrix_size, &nv, tmp2.get_ptr(), &na_rows, tmp1.get_ptr(), &na_rows,
                                         &nb, &mpi_comm_rows, &mpi_comm_cols, z, &ldz, 1, 1);
+        delete t;
 
         memcpy(eval, &w[0], nv * sizeof(real8));
     }
