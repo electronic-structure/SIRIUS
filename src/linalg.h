@@ -183,11 +183,18 @@ template<> struct linalg<scalapack>
     {
         return FORTRAN(iceil)(&inum, &idenom);
     }
+
+    static void pztranc(int4 m, int4 n, complex16 alpha, complex16* a, int4 ia, int4 ja, int4* desca, 
+                        complex16 beta, complex16* c, int4 ic, int4 jc, int4* descc)
+    {
+        FORTRAN(pztranc)(&m, &n, &alpha, a, &ia, &ja, desca, &beta, c, &ic, &jc, descc);
+    }
 };
 
-
+/// Declaration of an eigenproblem class to be specialized for a particular solver
 template<linalg_t> struct eigenproblem;
 
+/// Lapack eigenvalue specialization
 template<> struct eigenproblem<lapack>
 {
     static std::vector<int4> get_work_sizes(int id, int4 matrix_size)
@@ -218,8 +225,7 @@ template<> struct eigenproblem<lapack>
         return work_sizes;
     }
     
-    static int standard(int4 matrix_size, int4 nb, int4 num_ranks_row, int4 num_ranks_col, int blacs_context,
-                        complex16* a, int4 lda, real8* eval, complex16* z, int4 ldz)
+    static int standard(int4 matrix_size, complex16* a, int4 lda, real8* eval, complex16* z, int4 ldz)
     {
         std::vector<int4> work_sizes = get_work_sizes(0, matrix_size);
         
@@ -245,9 +251,8 @@ template<> struct eigenproblem<lapack>
 
     }
 
-    static int generalized(int4 matrix_size, int4 nb, int4 num_ranks_row, int4 num_ranks_col, int blacs_context, 
-                           int4 nv, real8 abstol, complex16* a, int4 lda, complex16* b, int4 ldb, real8* eval, 
-                           complex16* z, int4 ldz)
+    static int generalized(int4 matrix_size, int4 nv, real8 abstol, complex16* a, int4 lda, complex16* b, int4 ldb, 
+                           real8* eval, complex16* z, int4 ldz)
     {
         assert(nv <= matrix_size);
 
@@ -452,42 +457,17 @@ template<> struct eigenproblem<scalapack>
 
 template<> struct eigenproblem<elpa>
 {
-    static int standard(int4 matrix_size, int4 nb, int4 num_ranks_row, int4 num_ranks_col, int blacs_context, 
+    static void standard(int4 matrix_size, int4 nb, int4 num_ranks_row, int4 num_ranks_col, int blacs_context, 
                         complex16* a, int4 lda, real8* eval, complex16* z, int4 ldz)
     {                
-        //* int desca[9];
-        //* linalg<scalapack>::descinit(desca, matrix_size, matrix_size, nb, nb, 0, 0, blacs_context, lda);
-        //* 
-        //* int descz[9];
-        //* linalg<scalapack>::descinit(descz, matrix_size, matrix_size, nb, nb, 0, 0, blacs_context, ldz);
-        //* 
-        //* std::vector<int4> work_sizes = get_work_sizes(0, matrix_size, nb, num_ranks_row, num_ranks_col, blacs_context);
-        //* 
-        //* std::vector<complex16> work(work_sizes[0]);
-        //* std::vector<real8> rwork(work_sizes[1]);
-        //* std::vector<int4> iwork(work_sizes[2]);
-        //* int4 info;
-
-        //* int4 ione = 1;
-        //* FORTRAN(pzheevd)("V", "U", &matrix_size, a, &ione, &ione, desca, eval, z, &ione, &ione, descz, &work[0], 
-        //*                  &work_sizes[0], &rwork[0], &work_sizes[1], &iwork[0], &work_sizes[2], &info, (int4)1, (int4)1);
-
-        //* if (info)
-        //* {
-        //*     std::stringstream s;
-        //*     s << "pzheevd returned " << info; 
-        //*     error(__FILE__, __LINE__, s, fatal_err);
-        //* }
-
-        //* return info;
-
-        return 0;
+        eigenproblem<scalapack>::standard(matrix_size, nb, num_ranks_row, num_ranks_col, blacs_context, a, lda, eval, 
+                                          z, ldz);
     }
 
-    static int generalized(int4 matrix_size, int4 nb, int num_ranks_row, int num_ranks_col, int blacs_context, 
-                           int4 nv, real8 abstol, complex16* a, int4 lda, complex16* b, int4 ldb, real8* eval, 
-                           complex16* z, int4 ldz, MPI_Comm comm_row, MPI_Comm comm_col, MPI_Comm comm_all, 
-                           int4 na_rows, int4 na_cols, int4 rank_row, int4 rank_col)
+    static void generalized(int4 matrix_size, int4 nb, int4 na_rows, int4 num_ranks_row, int4 rank_row,
+                            int4 na_cols, int4 num_ranks_col, int4 rank_col, int blacs_context, 
+                            int4 nv, complex16* a, int4 lda, complex16* b, int4 ldb, real8* eval, 
+                            complex16* z, int4 ldz, MPI_Comm comm_row, MPI_Comm comm_col, MPI_Comm comm_all)
     {
         assert(nv <= matrix_size);
 
@@ -504,21 +484,17 @@ template<> struct eigenproblem<elpa>
         FORTRAN(elpa_mult_ah_b_complex)("U", "L", &matrix_size, &matrix_size, b, &ldb, a, &lda, &nb, &mpi_comm_rows, 
                                         &mpi_comm_cols, tmp1.get_ptr(), &na_rows, 1, 1);
 
-        complex16 cone(1, 0);
-        complex16 czero(0, 0);
-        int4 ione = 1;
-
         int4 descc[9];
         linalg<scalapack>::descinit(descc, matrix_size, matrix_size, nb, nb, 0, 0, blacs_context, lda);
 
-        FORTRAN(pztranc)(&matrix_size, &matrix_size, &cone, tmp1.get_ptr(), &ione, &ione, descc, &czero, 
-                         tmp2.get_ptr(), &ione, &ione, descc);
+        linalg<scalapack>::pztranc(matrix_size, matrix_size, complex16(1, 0), tmp1.get_ptr(), 1, 1, descc, 
+                                   complex16(0, 0), tmp2.get_ptr(), 1, 1, descc);
 
         FORTRAN(elpa_mult_ah_b_complex)("U", "U", &matrix_size, &matrix_size, b, &ldb, tmp2.get_ptr(), &na_rows, &nb, 
                                         &mpi_comm_rows, &mpi_comm_cols, a, &lda, 1, 1);
 
-        FORTRAN(pztranc)(&matrix_size, &matrix_size, &cone, a, &ione, &ione, descc, &czero, tmp1.get_ptr(), &ione, 
-                         &ione, descc);
+        linalg<scalapack>::pztranc(matrix_size, matrix_size, complex16(1, 0), a, 1, 1, descc, complex16(0, 0), 
+                                   tmp1.get_ptr(), 1, 1, descc);
 
         for (int i = 0; i < na_cols; i++)
         {
@@ -531,303 +507,20 @@ template<> struct eigenproblem<elpa>
                 a[j + i * lda] = tmp1(j, i);
             }
         }
-
-        FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size, &nv, a, &lda, eval, tmp1.get_ptr(), &na_rows, &nb,
+        
+        std::vector<double> w(matrix_size);
+        FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size, &nv, a, &lda, &w[0], tmp1.get_ptr(), &na_rows, &nb,
                                                &mpi_comm_rows, &mpi_comm_cols, &mpi_comm_all);
 
+        linalg<scalapack>::pztranc(matrix_size, matrix_size, complex16(1, 0), b, 1, 1, descc, complex16(0, 0), 
+                                   tmp2.get_ptr(), 1, 1, descc);
 
-        //* int4 desca[9];
-        //* linalg<scalapack>::descinit(desca, matrix_size, matrix_size, nb, nb, 0, 0, blacs_context, lda);
+        FORTRAN(elpa_mult_ah_b_complex)("L", "N", &matrix_size, &nv, tmp2.get_ptr(), &na_rows, tmp1.get_ptr(), &na_rows,
+                                        &nb, &mpi_comm_rows, &mpi_comm_cols, z, &ldz, 1, 1);
 
-        //* int4 descb[9];
-        //* linalg<scalapack>::descinit(descb, matrix_size, matrix_size, nb, nb, 0, 0, blacs_context, ldb); 
-
-        //* int4 descz[9];
-        //* linalg<scalapack>::descinit(descz, matrix_size, matrix_size, nb, nb, 0, 0, blacs_context, ldz); 
-
-        //* std::vector<int4> work_sizes = get_work_sizes(1, matrix_size, nb, num_ranks_row, num_ranks_col, blacs_context);
-        //* 
-        //* std::vector<complex16> work(work_sizes[0]);
-        //* std::vector<real8> rwork(work_sizes[1]);
-        //* std::vector<int4> iwork(work_sizes[2]);
-        //* 
-        //* std::vector<int4> ifail(matrix_size);
-        //* std::vector<int4> iclustr(2 * num_ranks_row * num_ranks_col);
-        //* std::vector<real8> gap(num_ranks_row * num_ranks_col);
-        //* std::vector<real8> w(matrix_size);
-        //* 
-        //* real8 orfac = 1e-6;
-        //* int4 ione = 1;
-        //* 
-        //* int4 m;
-        //* int4 nz;
-        //* real8 d1;
-        //* int4 info;
-
-        //* FORTRAN(pzhegvx)(&ione, "V", "I", "U", &matrix_size, a, &ione, &ione, desca, b, &ione, &ione, descb, &d1, &d1, 
-        //*                  &ione, &nv, &abstol, &m, &nz, &w[0], &orfac, z, &ione, &ione, descz, &work[0], &work_sizes[0], 
-        //*                  &rwork[0], &work_sizes[1], &iwork[0], &work_sizes[2], &ifail[0], &iclustr[0], &gap[0], &info, 
-        //*                  (int4)1, (int4)1, (int4)1); 
-
-        //* if (info)
-        //* {
-        //*     if ((info / 2) % 2)
-        //*     {
-        //*         std::stringstream s;
-        //*         s << "eigenvectors corresponding to one or more clusters of eigenvalues" << std::endl  
-        //*           << "could not be reorthogonalized because of insufficient workspace" << std::endl;
-
-        //*         int k = num_ranks_row * num_ranks_col;
-        //*         for (int i = 0; i < num_ranks_row * num_ranks_col - 1; i++)
-        //*         {
-        //*             if ((iclustr[2 * i + 1] != 0) && (iclustr[2 * (i + 1)] == 0))
-        //*             {
-        //*                 k = i + 1;
-        //*                 break;
-        //*             }
-        //*         }
-        //*        
-        //*         s << "number of eigenvalue clusters : " << k << std::endl;
-        //*         for (int i = 0; i < k; i++) s << iclustr[2 * i] << " : " << iclustr[2 * i + 1] << std::endl; 
-        //*         error(__FILE__, __LINE__, s, fatal_err);
-        //*     }
-
-        //*     std::stringstream s;
-        //*     s << "pzhegvx returned " << info; 
-        //*     error(__FILE__, __LINE__, s, fatal_err);
-        //* }
-
-        //* if ((m != nv) || (nz != nv))
-        //*     error(__FILE__, __LINE__, "Not all eigen-vectors or eigen-values are found.", fatal_err);
-
-        //* memcpy(eval, &w[0], nv * sizeof(real8));
-
-        //* return info;
-
-        return 0;
+        memcpy(eval, &w[0], nv * sizeof(real8));
     }
 };
-
-
-
-
-
-
-
-//* template <linalg_t solver>
-//* void descinit(int4* desc, int4 m, int4 n, int4 mb, int4 nb, int4 irsrc, int4 icsrc, int4 ictxt, int4 lld)
-//* {
-//*     if (solver == scalapack)
-//*     {
-//*         int4 info;
-//* 
-//*         FORTRAN(descinit)(desc, &m, &n, &mb, &nb, &irsrc, &icsrc, &ictxt, &lld, &info);
-//* 
-//*         if (info) error(__FILE__, __LINE__, "error in descinit");
-//*     }
-//* }
-//* template <linalg_t solver>
-//* int pjlaenv(int4 ictxt, int4 ispec, const std::string& name, const std::string& opts, int4 n1, int4 n2, int4 n3, 
-//*             int4 n4)
-//* {
-//*     if (solver == scalapack)
-//*     {
-//*         return FORTRAN(pjlaenv)(&ictxt, &ispec, name.c_str(), opts.c_str(), &n1, &n2, &n3, &n4, (int4)name.length(),
-//*                                 (int4)opts.length());
-//*     }
-//*     
-//*     return 0;
-//* }
-//* 
-//* template <linalg_t solver>
-//* int generalized_eigenproblem(int4 matrix_size, int num_ranks_row, int num_ranks_col, int blacs_context, int4 nv, 
-//*                              real8 abstol, complex16* a, int4 lda, complex16* b, int4 ldb, real8* eval, complex16* z, 
-//*                              int4 ldz)
-//* {
-//*     if (solver == lapack)
-//*     {
-//*         int4 ispec = 1;
-//*         int4 n1 = -1;
-//*         int4 nb = FORTRAN(ilaenv)(&ispec, "ZHETRD", "U",  &matrix_size, &n1, &n1, &n1, (int4)6, (int4)1);
-//*         int4 lwork = (nb + 1) * matrix_size;
-//*         std::vector<int4> iwork(5 * matrix_size);
-//*         std::vector<int4> ifail(matrix_size);
-//*         std::vector<real8> w(matrix_size);
-//*         std::vector<real8> rwork(7 * matrix_size);
-//*         std::vector<complex16> work(lwork);
-//*         n1 = 1;
-//*         real8 vl = 0.0;
-//*         real8 vu = 0.0;
-//*         int4 m;
-//*         int4 info;
-//*         
-//*         FORTRAN(zhegvx)(&n1, "V", "I", "U", &matrix_size, a, &lda, b, &ldb, &vl, &vu, &n1, 
-//*                         &nv, &abstol, &m, &w[0], z, &ldz, &work[0], &lwork, &rwork[0], 
-//*                         &iwork[0], &ifail[0], &info, (int4)1, (int4)1, (int4)1);
-//* 
-//*         if (m != nv) error(__FILE__, __LINE__, "Not all eigen-values are found.", fatal_err);
-//* 
-//*         memcpy(eval, &w[0], nv * sizeof(real8));
-//* 
-//*         return info;
-//*     }
-//* 
-//*     if (solver == scalapack)
-//*     {
-//*         int4 desca[9];
-//*         descinit<solver>(desca, matrix_size, matrix_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, lda);
-//* 
-//*         int4 descb[9];
-//*         descinit<solver>(descb, matrix_size, matrix_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, ldb); 
-//* 
-//*         int4 descz[9];
-//*         descinit<solver>(descz, matrix_size, matrix_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, ldz); 
-//* 
-//*         int4 izero = 0;
-//*         int4 ione = 1;
-//* 
-//*         int4 nb = scalapack_nb;
-//*         int4 np0 = FORTRAN(numroc)(&matrix_size, &nb, &izero, &izero, &num_ranks_row);                
-//*         int4 nq0 = FORTRAN(numroc)(&matrix_size, &nb, &izero, &izero, &num_ranks_col);                
-//*         int4 mq0 = FORTRAN(numroc)(&matrix_size, &nb, &izero, &izero, &num_ranks_col);
-//*         
-//*         int4 ictxt = desca[1];
-//*         int4 anb = pjlaenv<solver>(ictxt, 3, "PZHETTRD", "L", 0, 0, 0, 0);
-//*         int4 sqnpc = (int4)pow(real8(num_ranks_row * num_ranks_col), 0.5);
-//*         int4 nps = std::max(FORTRAN(numroc)(&matrix_size, &ione, &izero, &izero, &sqnpc), 2 * anb);
-//* 
-//*         int4 lwork = matrix_size + (np0 + mq0 + nb) * nb;
-//*         lwork = std::max(lwork, matrix_size + 2 * (anb + 1) * (4 * nps + 2) + (nps + 1) * nps);
-//*         lwork = std::max(lwork, 2 * np0 * nb + nq0 * nb + nb * nb);
-//* 
-//*         int4 neig = 10;
-//*         int4 max3 = std::max(neig, std::max(nb, 2));
-//*         mq0 = FORTRAN(numroc)(&max3, &nb, &izero, &izero, &num_ranks_col);
-//*         int4 np = num_ranks_row * num_ranks_col;
-//*         int4 lrwork = 4 * matrix_size + std::max(5 * matrix_size, np0 * mq0) + 
-//*                       FORTRAN(iceil)(&neig, &np) * matrix_size + neig * matrix_size;
-//* 
-//*         int4 nnp = std::max(matrix_size, std::max(np + 1, 4));
-//*         int4 liwork = 6 * nnp;
-//*         
-//*         real8 orfac = -1.0;
-//* 
-//*         int4 m;
-//*         int4 nz;
-//*         real8 d1;
-//*         std::vector<int4> ifail(matrix_size);
-//*         std::vector<int4> iclustr(2 * np);
-//*         std::vector<real8> gap(np);
-//*         std::vector<real8> w(matrix_size);
-//*         int4 info;
-//* 
-//*         std::vector<complex16> work(lwork);
-//*         std::vector<real8> rwork(lrwork);
-//*         std::vector<int4> iwork(liwork);
-//*         
-//*         FORTRAN(pzhegvx)(&ione, "V", "I", "U", &matrix_size, a, &ione, &ione, desca, b, &ione, &ione, descb, &d1, &d1, 
-//*                          &ione, &nv, &abstol, &m, &nz, &w[0], &orfac, z, &ione, &ione, descz, &work[0], &lwork, &rwork[0], 
-//*                          &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, (int4)1, (int4)1, (int4)1); 
-//* 
-//*         if (info)
-//*         {
-//*             std::stringstream s;
-//*             s << "pzhegvx returned " << info; 
-//*             error(__FILE__, __LINE__, s, fatal_err);
-//*         }
-//* 
-//*         if ((m != nv) || (nz != nv))
-//*             error(__FILE__, __LINE__, "Not all eigen-vectors or eigen-values are found.", fatal_err);
-//* 
-//*         memcpy(eval, &w[0], nv * sizeof(real8));
-//* 
-//*         return info;
-//*     }
-//* 
-//*     return 0;
-//* }
-//* 
-//* template <linalg_t solver>
-//* int standard_eigenproblem(int4 matrix_size, int4 num_ranks_row, int4 num_ranks_col, int blacs_context, 
-//*                           complex16* a, int4 lda, real8* eval, complex16* z, int4 ldz)
-//* {                
-//*     if (solver == scalapack)
-//*     {
-//*         int desca[9];
-//*         descinit<solver>(desca, matrix_size, matrix_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, lda);
-//*         
-//*         int descz[9];
-//*         descinit<solver>(descz, matrix_size, matrix_size, scalapack_nb, scalapack_nb, 0, 0, blacs_context, ldz);
-//*         
-//*         int4 izero = 0;
-//*         int4 nb = scalapack_nb;
-//*         int np0 = FORTRAN(numroc)(&matrix_size, &nb, &izero, &izero, &num_ranks_row);                
-//*         int mq0 = FORTRAN(numroc)(&matrix_size, &nb, &izero, &izero, &num_ranks_col);
-//* 
-//*         int lwork = matrix_size + (np0 + mq0 + scalapack_nb) * scalapack_nb;
-//*         std::vector<complex16> work(lwork);
-//* 
-//*         int lrwork = 1 + 9 * matrix_size + 3 * np0 * mq0;
-//*         std::vector<real8> rwork(lrwork);
-//* 
-//*         int liwork = 7 * matrix_size + 8 * num_ranks_col + 2;
-//*         std::vector<int4> iwork(liwork);
-//* 
-//*         int4 info;
-//* 
-//*         int4 ione = 1;
-//*         FORTRAN(pzheevd)("V", "U", &matrix_size, a, &ione, &ione, desca, eval, z, &ione, &ione, descz, &work[0], 
-//*                          &lwork, &rwork[0], &lrwork, &iwork[0], &liwork, &info, (int4)1, (int4)1);
-//* 
-//*         if (info)
-//*         {
-//*             std::stringstream s;
-//*             s << "pzheevd returned " << info; 
-//*             error(__FILE__, __LINE__, s, fatal_err);
-//*         }
-//* 
-//*         return info;
-//*     }
-//*     
-//*     if (solver == lapack)
-//*     {
-//*         //*int ispec = 1;
-//*         //*int n1 = -1;
-//*         //*int nb = FORTRAN(ilaenv)(&ispec, "ZHETRD", "U",  &matrix_size, &n1, &n1, &n1, (int4)6, (int4)1);
-//*         //*int lwork = (nb + 1) * matrix_size;
-//*         //*std::vector<complex16> work(lwork);
-//*         //*std::vector<double> rwork(3 * matrix_size + 2);
-//*         //*int info;
-//*         //*FORTRAN(zheev)("V", "U", &matrix_size, a, &lda, eval, &work[0], &lwork, &rwork[0], &info, (int4)1, (int4)1);
-//* 
-//*         int4 lwork = 2 * matrix_size + matrix_size * matrix_size;
-//*         int4 lrwork = 1 + 5 * matrix_size + 2 * matrix_size * matrix_size;
-//*         int4 liwork = 3 + 5 * matrix_size;
-//* 
-//*         std::vector<complex16> work(lwork);
-//*         std::vector<real8> rwork(lrwork);
-//*         std::vector<int4> iwork(liwork);
-//* 
-//*         int4 info;
-//* 
-//*         FORTRAN(zheevd)("V", "U", &matrix_size, a, &lda, eval, &work[0], &lwork, &rwork[0], &lrwork, &iwork[0],
-//*                         &liwork, &info, (int4)1, (int4)1);
-//*         
-//*         for (int i = 0; i < matrix_size; i++)
-//*             memcpy(&z[ldz * i], &a[lda * i], matrix_size * sizeof(complex16));
-//*         
-//*         if (info)
-//*         {
-//*             std::stringstream s;
-//*             s << "zheev returned " << info; 
-//*             error(__FILE__, __LINE__, s, fatal_err);
-//*         }
-//* 
-//*         return info;
-//*     }
-//*     
-//*     return 0;
-//* }
 
 #endif // __LINALG_H__
 

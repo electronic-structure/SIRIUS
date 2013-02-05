@@ -486,7 +486,8 @@ class kpoint
 
             fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), band->spl_fv_states_col().local_size());
             fv_eigen_vectors_.allocate();
-            
+           
+            // debug scalapack
             std::vector<double> fv_eigen_values_glob(parameters_.num_fv_states());
             if ((debug_level > 2) && (eigen_value_solver == scalapack))
             {
@@ -517,67 +518,60 @@ class kpoint
                 Utils::check_hermitian("h_glob", h_glob);
                 Utils::check_hermitian("o_glob", o_glob);
                 
-                eigenproblem<lapack>::generalized(apwlo_basis_size(), 
-                                                  parameters_.cyclic_block_size(),
-                                                  1, 
-                                                  1, 
-                                                  -1, 
-                                                  parameters_.num_fv_states(), 
-                                                  -1.0, 
-                                                  h_glob.get_ptr(), 
-                                                  h_glob.ld(), 
-                                                  o_glob.get_ptr(), 
-                                                  o_glob.ld(), 
-                                                  &fv_eigen_values_glob[0], 
-                                                  fv_eigen_vectors_glob.get_ptr(),
+                eigenproblem<lapack>::generalized(apwlo_basis_size(), parameters_.num_fv_states(), -1.0, 
+                                                  h_glob.get_ptr(), h_glob.ld(), o_glob.get_ptr(), o_glob.ld(), 
+                                                  &fv_eigen_values_glob[0], fv_eigen_vectors_glob.get_ptr(),
                                                   fv_eigen_vectors_glob.ld());
             }
             
             Timer *t1 = new Timer("sirius::kpoint::generate_fv_states:genevp");
 
-            if (eigen_value_solver == elpa)
+            switch (eigen_value_solver)
             {
-
-                eigenproblem<elpa>::generalized(apwlo_basis_size(), 
-                                                parameters_.cyclic_block_size(),
-                                                band->num_ranks_row(), 
-                                                band->num_ranks_col(), 
-                                                band->blacs_context(), 
-                                                parameters_.num_fv_states(), 
-                                                -1.0, 
-                                                h.get_ptr(), 
-                                                h.ld(), 
-                                                o.get_ptr(), 
-                                                o.ld(), 
-                                                &fv_eigen_values_[0], 
-                                                fv_eigen_vectors_.get_ptr(),
-                                                fv_eigen_vectors_.ld(),
-                                                parameters_.mpi_grid().communicator(1 << band->dim_row()),
-                                                parameters_.mpi_grid().communicator(1 << band->dim_col()),
-                                                parameters_.mpi_grid().communicator(1 << band->dim_col() | 1 << band->dim_row()),
-                                                apwlo_basis_size_row(),
-                                                apwlo_basis_size_col(),
-                                                band->rank_row(),
-                                                band->rank_col());
+                case lapack:
+                {
+                    eigenproblem<lapack>::generalized(apwlo_basis_size(), parameters_.num_fv_states(), -1.0, 
+                                                      h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), &fv_eigen_values_[0], 
+                                                      fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
+                    break;
+                }
+                case scalapack:
+                {
+                    eigenproblem<scalapack>::generalized(apwlo_basis_size(), 
+                                                         parameters_.cyclic_block_size(),
+                                                         band->num_ranks_row(), 
+                                                         band->num_ranks_col(), 
+                                                         band->blacs_context(), 
+                                                         parameters_.num_fv_states(), 
+                                                         -1.0, 
+                                                         h.get_ptr(), h.ld(), 
+                                                         o.get_ptr(), o.ld(), 
+                                                         &fv_eigen_values_[0], 
+                                                         fv_eigen_vectors_.get_ptr(),
+                                                         fv_eigen_vectors_.ld());
+                    break;
+                }       
+                case elpa:
+                {
+                    eigenproblem<elpa>::generalized(apwlo_basis_size(), 
+                                                    parameters_.cyclic_block_size(),
+                                                    apwlo_basis_size_row(), band->num_ranks_row(), band->rank_row(),
+                                                    apwlo_basis_size_col(), band->num_ranks_col(), band->rank_col(),
+                                                    band->blacs_context(), 
+                                                    parameters_.num_fv_states(), 
+                                                    h.get_ptr(), h.ld(), 
+                                                    o.get_ptr(), o.ld(), 
+                                                    &fv_eigen_values_[0], 
+                                                    fv_eigen_vectors_.get_ptr(),
+                                                    fv_eigen_vectors_.ld(),
+                                                    parameters_.mpi_grid().communicator(1 << band->dim_row()),
+                                                    parameters_.mpi_grid().communicator(1 << band->dim_col()),
+                                                    parameters_.mpi_grid().communicator(1 << band->dim_col() | 
+                                                                                        1 << band->dim_row()));
+                    break;
+                }
 
             }
-            //* else
-            //* {
-            //* eigenproblem<eigen_value_solver>::generalized(apwlo_basis_size(), 
-            //*                                               parameters_.cyclic_block_size(),
-            //*                                               band->num_ranks_row(), 
-            //*                                               band->num_ranks_col(), 
-            //*                                               band->blacs_context(), 
-            //*                                               parameters_.num_fv_states(), 
-            //*                                               -1.0, 
-            //*                                               h.get_ptr(), 
-            //*                                               h.ld(), 
-            //*                                               o.get_ptr(), 
-            //*                                               o.ld(), 
-            //*                                               &fv_eigen_values_[0], 
-            //*                                               fv_eigen_vectors_.get_ptr(),
-            //*                                               fv_eigen_vectors_.ld());
-            //* }
             delete t1;
             
             if ((debug_level > 2) && (eigen_value_solver == scalapack))
