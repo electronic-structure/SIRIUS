@@ -604,16 +604,45 @@ class Band
                 
                     t1.start();
                     int num_fv_states_col = spl_fv_states_col_.local_size();
-                    eigenproblem<eigen_value_solver>::standard(parameters_.num_fv_states(), 
-                                                               parameters_.cyclic_block_size(),
-                                                               num_ranks_row(), 
-                                                               num_ranks_col(), 
-                                                               blacs_context_, 
-                                                               h.get_ptr(), 
-                                                               h.ld(),
-                                                               &band_energies[ispn * parameters_.num_fv_states()],
-                                                               &sv_eigen_vectors(0, ispn * num_fv_states_col),
-                                                               sv_eigen_vectors.ld());
+                    switch (eigen_value_solver)
+                    {
+                        case lapack:
+                        {
+                            eigenproblem<lapack>::standard(parameters_.num_fv_states(), h.get_ptr(), h.ld(),
+                                                           &band_energies[ispn * parameters_.num_fv_states()],
+                                                           &sv_eigen_vectors(0, ispn * num_fv_states_col),
+                                                           sv_eigen_vectors.ld());
+                            break;
+                        }
+                        case scalapack:
+                        {
+                            eigenproblem<scalapack>::standard(parameters_.num_fv_states(), 
+                                                              parameters_.cyclic_block_size(),
+                                                              num_ranks_row(), 
+                                                              num_ranks_col(), 
+                                                              blacs_context_, 
+                                                              h.get_ptr(), 
+                                                              h.ld(),
+                                                              &band_energies[ispn * parameters_.num_fv_states()],
+                                                              &sv_eigen_vectors(0, ispn * num_fv_states_col),
+                                                              sv_eigen_vectors.ld());
+                            break;
+                        }
+                        case elpa:
+                        {
+                            eigenproblem<elpa>::standard(parameters_.num_fv_states(), 
+                                                         parameters_.cyclic_block_size(),
+                                                         num_ranks_row(), 
+                                                         num_ranks_col(), 
+                                                         blacs_context_, 
+                                                         h.get_ptr(), 
+                                                         h.ld(),
+                                                         &band_energies[ispn * parameters_.num_fv_states()],
+                                                         &sv_eigen_vectors(0, ispn * num_fv_states_col),
+                                                         sv_eigen_vectors.ld());
+                            break;
+                        }
+                    }
                     t1.stop();
                 }
             }
