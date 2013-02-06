@@ -232,6 +232,66 @@ class kpoint
             }
         }
 
+        void check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
+        {
+            static SHT sht;
+            static bool sht_init = false;
+            if (!sht_init)
+            {
+                sht.set_lmax(parameters_.lmax_apw());
+                sht_init = true;
+            }
+
+            Atom* atom = parameters_.atom(ia);
+            AtomType* type = parameters_.atom(ia)->type();
+
+            mdarray<complex16, 2> z1(sht.num_points(), type->mt_aw_basis_size());
+            for (int i = 0; i < type->mt_aw_basis_size(); i++)
+            {
+                int lm = type->indexb(i).lm;
+                int idxrf = type->indexb(i).idxrf;
+                double rf = atom->symmetry_class()->radial_function(atom->num_mt_points() - 1, idxrf);
+                for (int itp = 0; itp < sht.num_points(); itp++)
+                {
+                    z1(itp, i) = sht.ylm_backward(lm, itp) * rf;
+                }
+            }
+
+            mdarray<complex16, 2> z2(sht.num_points(), num_gkvec_loc);
+            blas<cpu>::gemm(0, 2, sht.num_points(), num_gkvec_loc, type->mt_aw_basis_size(), z1.get_ptr(), z1.ld(),
+                            alm.get_ptr(), alm.ld(), z2.get_ptr(), z2.ld());
+
+            double vc[3];
+            parameters_.get_coordinates<cartesian, direct>(parameters_.atom(ia)->position(), vc);
+            
+            double tdiff = 0;
+            for (int igloc = 0; igloc < num_gkvec_loc; igloc++)
+            {
+                double gkc[3];
+                parameters_.get_coordinates<cartesian, reciprocal>(gkvec(igkglob(igloc)), gkc);
+                for (int itp = 0; itp < sht.num_points(); itp++)
+                {
+                    complex16 aw_value = z2(itp, igloc);
+                    /*complex16 aw_value(0, 0);
+                    for (int i = 0; i < type->mt_aw_basis_size(); i++)
+                    {
+                        int lm = type->indexb(i).lm;
+                        int idxrf = type->indexb(i).idxrf;
+                        aw_value += conj(alm(igloc, i)) * 
+                                    atom->symmetry_class()->radial_function(atom->num_mt_points() - 1, idxrf) * 
+                                    sht.ylm_backward(lm, itp);
+                    }*/
+                    double r[3];
+                    for (int x = 0; x < 3; x++) r[x] = vc[x] + sht.coord(x, itp) * type->mt_radius();
+                    complex16 pw_value = exp(complex16(0, Utils::scalar_product(r, gkc))) / sqrt(parameters_.omega());
+                    tdiff += abs(pw_value - aw_value);
+                }
+            }
+
+            printf("atom : %i  absolute alm error : %e  average alm error : %e\n", 
+                   ia, tdiff, tdiff / (num_gkvec_loc * sht.num_points()));
+        }
+
         /// Setup the Hamiltonian and overlap matrices in APW+lo basis
 
         /** The Hamiltonian matrix has the following expression:
@@ -299,6 +359,9 @@ class kpoint
                 AtomType* type = atom->type();
                 
                 generate_matching_coefficients(num_gkvec_loc(), ia, alm);
+
+                // check alm coefficients
+                if (debug_level > 1) check_alm(num_gkvec_loc(), ia, alm);
                 
                 apply_hmt_to_apw(band, num_gkvec_row(), ia, alm, halm);
 

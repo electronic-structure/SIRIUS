@@ -95,8 +95,7 @@ class Atom
 
         inline void get_position(double position__[3])
         {
-            for (int i = 0; i < 3; i++)
-                position__[i] = position_[i];
+            for (int i = 0; i < 3; i++) position__[i] = position_[i];
         }
         
         inline double* position()

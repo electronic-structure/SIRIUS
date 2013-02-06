@@ -490,6 +490,16 @@ class SHT
                         ylm_dot_rlm(l2, -m2, m2) * gaunt(l1, l2, l3, m1, -m2, m3));
             }
         }
+
+        inline complex16 ylm_backward(int lm,  int itp)
+        {
+            return ylm_backward_(lm, itp);
+        }
+
+        inline double coord(int x, int itp)
+        {
+            return coord_(x, itp);
+        }
 };
 
 };
