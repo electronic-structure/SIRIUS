@@ -100,33 +100,8 @@ class Timer
                 {
                     double avg = (it->second->count == 0) ? 0.0 : it->second->total / it->second->count;
                     
-                    printf("%-60s : %10.4f (total)   %10.4f (average)   %10.4f (last) \n", 
-                           it->first.c_str(), it->second->total, avg, it->second->last);
+                    printf("%-60s : %10.4f (total)   %10.4f (average)\n", it->first.c_str(), it->second->total, avg);
                 }
-            }
-
-            json_write();
-        }
-
-        static void json_write()
-        {
-            if (Platform::mpi_rank() == 0)
-            {
-                FILE* fout = fopen("timers.json", "w");
-
-                fprintf(fout, "{");
-
-                std::map<std::string, timer_descriptor*>::iterator it;
-                for (it = timer_descriptors_.begin(); it != timer_descriptors_.end(); it++)
-                {
-                    if (it != timer_descriptors_.begin()) fprintf(fout, ",");
-                    double avg = (it->second->count == 0) ? 0.0 : it->second->total / it->second->count;
-                    fprintf(fout, "\n    \"%s\" : [%10.4f, %10.4f]", it->first.c_str(), it->second->total, avg);
-                }
-                
-                fprintf(fout, "\n}\n");
-                
-                fclose(fout);
             }
         }
 

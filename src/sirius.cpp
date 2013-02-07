@@ -427,6 +427,11 @@ void FORTRAN(sirius_print_rti)(void)
     global.print_rti();
 }
 
+void FORTRAN(sirius_write_json_output)(void)
+{
+    global.write_json_output();
+}
+
 void FORTRAN(sirius_get_occupation_matrix)(int4* atom_id, complex16* occupation_matrix)
 {
     int ia = *atom_id - 1;

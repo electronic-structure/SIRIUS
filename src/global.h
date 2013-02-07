@@ -98,6 +98,28 @@ class Global : public StepFunction
             return std::string(buf);
         }
 
+        std::string chemical_formula()
+        {
+            std::string name;
+            for (int i = 0; i < num_atom_types(); i++)
+            {
+                name += atom_type(i)->symbol();
+                int n = 0;
+                for (int j = 0; j < num_atoms(); j++)
+                {
+                    if (atom(j)->type_id() == atom_type(i)->id()) n++;
+                }
+                if (n != 1) 
+                {
+                    std::stringstream s;
+                    s << n;
+                    name = (name + s.str());
+                }
+            }
+
+            return name;
+        }
+
     public:
     
         Global() : initialized_(false),
@@ -569,7 +591,10 @@ class Global : public StepFunction
                 printf("band gap (eV) : %18.8f\n", rti().band_gap * ha2ev);
                 printf("Efermi        : %18.8f\n", rti().energy_fermi);
             }
+        }
 
+        void write_json_output()
+        {
             if (Platform::verbose())
             {
                 std::string fname = std::string("output_") + start_time("%Y%m%d%H%M%S") + std::string(".json");
@@ -577,39 +602,29 @@ class Global : public StepFunction
                 
                 jw.single("git_hash", git_hash);
                 jw.single("build_date", build_date);
+                jw.single("chemical_formula", chemical_formula());
+                jw.single("num_atoms", num_atoms());
                 jw.single("num_ranks", Platform::num_mpi_ranks());
                 jw.single("num_threads", Platform::num_threads());
                 jw.single("num_fft_threads", Platform::num_fft_threads());
                 jw.single("cyclic_block_size", cyclic_block_size());
                 jw.single("total_energy", total_energy());
                 jw.single("aw_cutoff", aw_cutoff());
-                jw.single("timers", Timer::timer_descriptors());
                 
-                //FILE* fout = fopen("output.json", "w");
-                //fprintf(fout, "{\n");
-                //
-                //json_write::to_file(fout, "git_hash", git_hash);
-                //json_write::to_file(fout, "build_date", build_date);
-                //json_write::to_file(fout, "total_energy", total_energy());
-                //if (num_mag_dims())
-                //{
-                //    double v[] = {0, 0, 0};
-                //    v[2] = rti().total_magnetization[0];
-                //    if (num_mag_dims() == 3)
-                //    {
-                //        v[0] = rti().total_magnetization[1];
-                //        v[1] = rti().total_magnetization[2];
-                //    }
-                //    fprintf(fout, ",\n");
-                //    fprintf(fout, "    \"total_moment\" : [%f, %f, %f]", v[0], v[1], v[2]);
-                //    fprintf(fout, ",\n");
-                //    fprintf(fout, "    \"total_moment_len\" : %f", Utils::vector_length(v));
-                //}
-                //fprintf(fout, ",\n");
-                //
-                //json_write::to_file(fout, "aw_cutoff", aw_cutoff());
-                //fprintf(fout, "}\n");
-                //fclose(fout); 
+                if (num_mag_dims())
+                {
+                    std::vector<double> v(3, 0);
+                    v[2] = rti().total_magnetization[0];
+                    if (num_mag_dims() == 3)
+                    {
+                        v[0] = rti().total_magnetization[1];
+                        v[1] = rti().total_magnetization[2];
+                    }
+                    jw.single("total_moment", v);
+                    jw.single("total_moment_len", Utils::vector_length(&v[0]));
+                }
+
+                jw.single("timers", Timer::timer_descriptors());
             }
         }
 };
