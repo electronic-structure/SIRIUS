@@ -285,4 +285,101 @@ class JsonTree
         }
 }; 
 
+class json_write
+{
+    private:
+
+        std::string fname_;
+        
+        FILE* fout_;
+
+        int indent_step_;
+
+        int indent_level_;
+
+        bool first_line_;
+
+        inline void new_line()
+        {
+            std::string s(indent_level_, ' ');
+            if (first_line_)
+            {
+                fprintf(fout_, "\n%s", s.c_str());
+                first_line_ = false;
+            }
+            else
+            {
+                fprintf(fout_, ",\n%s", s.c_str());
+            }
+        }
+
+    public:
+        
+        json_write(const std::string fname__) : fname_(fname__), indent_step_(4), first_line_(true)
+        {
+            fout_ = fopen(fname_.c_str(), "w");
+            fprintf(fout_, "{");
+            indent_level_ = indent_step_;
+        }
+
+        ~json_write()
+        {
+            fprintf(fout_, "\n}\n");
+            fclose(fout_);
+        }
+
+        inline void single(const char* name, int value)
+        {
+            new_line();
+            fprintf(fout_, "\"%s\" : %i", name, value);
+        }
+
+        inline void single(const char* name, double value)
+        {
+            new_line();
+            fprintf(fout_, "\"%s\" : %16.8e", name, value);
+        }
+
+        inline void single(const char* name, const std::string& value)
+        {
+            new_line();
+            fprintf(fout_, "\"%s\" : \"%s\"", name, value.c_str());
+        }
+
+        inline void single(const char* name, std::vector<double> values)
+        {
+            new_line();
+            fprintf(fout_, "\"%s\" : [", name);
+            for (int i = 0; i < (int)values.size(); i++)
+            {
+                if (i) fprintf(fout_, ",");
+                fprintf(fout_, "%16.8e", values[i]);
+            }
+            fprintf(fout_, "]");
+        }
+        
+        inline void single(const char* name, std::map<std::string, sirius::timer_descriptor*>& timer_descriptors)
+        {
+            new_line();
+            fprintf(fout_, "\"%s\" : {", name);
+            
+            indent_level_ += indent_step_;
+            std::map<std::string, sirius::timer_descriptor*>::iterator it;
+            first_line_ = true;
+            for (it = timer_descriptors.begin(); it != timer_descriptors.end(); it++)
+            {
+                std::vector<double> tv(2);
+                tv[0] = it->second->total;
+                tv[1] = (it->second->count == 0) ? 0.0 : it->second->total / it->second->count;
+                single(it->first.c_str(), tv);
+            }
+            
+            indent_level_ -= indent_step_;
+            std::string s(indent_level_, ' ');
+            fprintf(fout_, "\n%s}", s.c_str());
+        }
+};
+
+
+
 #endif // __JSON_TREE_H__

@@ -144,7 +144,10 @@ class Timer
             } while (d < dsec);
         }
 
-
+        static std::map<std::string, timer_descriptor*>& timer_descriptors()
+        {
+            return timer_descriptors_;
+        }
 };
 
 std::map<std::string, Timer*> ftimers;

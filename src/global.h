@@ -68,6 +68,8 @@ class Global : public StepFunction
 
         splindex<block> spl_num_atom_symmetry_classes_;
 
+        timeval start_time_;
+        
         /// read from the input file if it exists
         void read_input()
         {
@@ -87,6 +89,15 @@ class Global : public StepFunction
             Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::num_threads()));
         }
 
+        std::string start_time(const char* fmt)
+        {
+            char buf[100]; 
+            
+            tm* ptm = localtime(&start_time_.tv_sec); 
+            strftime(buf, sizeof(buf), fmt, ptm); 
+            return std::string(buf);
+        }
+
     public:
     
         Global() : initialized_(false),
@@ -101,6 +112,7 @@ class Global : public StepFunction
                    uj_correction_(false),
                    cyclic_block_size_(16)
         {
+            gettimeofday(&start_time_, NULL);
         }
             
         ~Global()
@@ -343,6 +355,7 @@ class Global : public StepFunction
                 printf("SIRIUS 0.7\n");
                 printf("git hash : %s\n", git_hash);
                 printf("build date : %s\n", build_date);
+                printf("start time : %s\n", start_time("%c").c_str());
                 printf("\n");
                 printf("number of MPI ranks           : %i\n", Platform::num_mpi_ranks());
                 printf("MPI grid                      :");
@@ -559,31 +572,44 @@ class Global : public StepFunction
 
             if (Platform::verbose())
             {
-                FILE* fout = fopen("output.json", "w");
-                fprintf(fout, "{\n");
-                fprintf(fout, "    \"total_energy\" : %f",  total_energy());
-                if (num_mag_dims())
-                {
-                    double v[] = {0, 0, 0};
-                    v[2] = rti().total_magnetization[0];
-                    if (num_mag_dims() == 3)
-                    {
-                        v[0] = rti().total_magnetization[1];
-                        v[1] = rti().total_magnetization[2];
-                    }
-                    fprintf(fout, ",\n");
-                    fprintf(fout, "    \"total_moment\" : [%f, %f, %f]", v[0], v[1], v[2]);
-                    fprintf(fout, ",\n");
-                    fprintf(fout, "    \"total_moment_len\" : %f", Utils::vector_length(v));
-                }
-                fprintf(fout, ",\n");
-                fprintf(fout, "    \"aw_cutoff\" : %f", aw_cutoff());
-                fprintf(fout, ",\n");
-                fprintf(fout, "    \"num_threads\" : %i", Platform::num_threads());
-                fprintf(fout, ",\n");
-                fprintf(fout, "    \"num_ranks\" : %i", Platform::num_mpi_ranks());
-                fprintf(fout, "\n}\n");
-                fclose(fout); 
+                std::string fname = std::string("output_") + start_time("%Y%m%d%H%M%S") + std::string(".json");
+                json_write jw(fname);
+                
+                jw.single("git_hash", git_hash);
+                jw.single("build_date", build_date);
+                jw.single("num_ranks", Platform::num_mpi_ranks());
+                jw.single("num_threads", Platform::num_threads());
+                jw.single("num_fft_threads", Platform::num_fft_threads());
+                jw.single("cyclic_block_size", cyclic_block_size());
+                jw.single("total_energy", total_energy());
+                jw.single("aw_cutoff", aw_cutoff());
+                jw.single("timers", Timer::timer_descriptors());
+                
+                //FILE* fout = fopen("output.json", "w");
+                //fprintf(fout, "{\n");
+                //
+                //json_write::to_file(fout, "git_hash", git_hash);
+                //json_write::to_file(fout, "build_date", build_date);
+                //json_write::to_file(fout, "total_energy", total_energy());
+                //if (num_mag_dims())
+                //{
+                //    double v[] = {0, 0, 0};
+                //    v[2] = rti().total_magnetization[0];
+                //    if (num_mag_dims() == 3)
+                //    {
+                //        v[0] = rti().total_magnetization[1];
+                //        v[1] = rti().total_magnetization[2];
+                //    }
+                //    fprintf(fout, ",\n");
+                //    fprintf(fout, "    \"total_moment\" : [%f, %f, %f]", v[0], v[1], v[2]);
+                //    fprintf(fout, ",\n");
+                //    fprintf(fout, "    \"total_moment_len\" : %f", Utils::vector_length(v));
+                //}
+                //fprintf(fout, ",\n");
+                //
+                //json_write::to_file(fout, "aw_cutoff", aw_cutoff());
+                //fprintf(fout, "}\n");
+                //fclose(fout); 
             }
         }
 };
