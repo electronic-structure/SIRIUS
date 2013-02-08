@@ -613,7 +613,8 @@ class AtomType
             Timer t("sirius::AtomType::solve_free_atom");
             
             RadialSolver solver(false, -1.0 * zn_, radial_grid_);
-            
+            libxc_interface xci;
+
             solver.set_tolerance(solver_tol);
             
             std::vector<double> veff(radial_grid_.size());
@@ -689,7 +690,7 @@ class AtomType
                     vh[i] = fourpi * (g2[i] / radial_grid_[i] + t1 - g1[i]);
                 
                 // compute XC potential and energy
-                libxc_interface::getxc(rho.size(), &rho[0], &vxc[0], &exc[0]);
+                xci.getxc(rho.size(), &rho[0], &vxc[0], &exc[0]);
 
                 for (int i = 0; i < radial_grid_.size(); i++)
                     veff[i] = (1 - beta) * veff[i] + beta * (vnuc[i] + vh[i] + vxc[i]);

@@ -413,6 +413,8 @@ class Potential
                 PeriodicFunction<double>* vxc, PeriodicFunction<double>* bxc[3], PeriodicFunction<double>* exc)
         {
             Timer t("sirius::Potential::xc");
+
+            libxc_interface xci;
             
             mdarray<double, 2> rhotp(sht_.num_points(), parameters_.max_num_mt_points());
             mdarray<double, 2> vxctp(sht_.num_points(), parameters_.max_num_mt_points());
@@ -453,7 +455,7 @@ class Potential
                     #pragma omp parallel for default(shared)
                     for (int ir = 0; ir < nmtp; ir++)
                     {
-                        libxc_interface::getxc(sht_.num_points(), &rhotp(0, ir), &vxctp(0, ir), &exctp(0, ir));
+                        xci.getxc(sht_.num_points(), &rhotp(0, ir), &vxctp(0, ir), &exctp(0, ir));
                     }
                 }
                 else
@@ -461,8 +463,8 @@ class Potential
                     #pragma omp parallel for default(shared)
                     for (int ir = 0; ir < nmtp; ir++)
                     {
-                        libxc_interface::getxc(sht_.num_points(), &rhotp(0, ir), &magtp(0, ir), &vxctp(0, ir), 
-                                               &bxctp(0, ir), &exctp(0, ir));
+                        xci.getxc(sht_.num_points(), &rhotp(0, ir), &magtp(0, ir), &vxctp(0, ir), &bxctp(0, ir), 
+                                  &exctp(0, ir));
                     }
                 }
 
@@ -502,7 +504,7 @@ class Potential
             
             if (parameters_.num_spins() == 1)
             {
-                libxc_interface::getxc(it_loc_size, &rho->f_it(it_glob_idx), vxc->f_it(), exc->f_it());
+                xci.getxc(it_loc_size, &rho->f_it(it_glob_idx), vxc->f_it(), exc->f_it());
             }
             else
             {
@@ -519,8 +521,7 @@ class Potential
                     }
                     magit[irloc] = sqrt(t);
                 }
-                libxc_interface::getxc(it_loc_size, &rho->f_it(it_glob_idx), &magit[0], vxc->f_it(), &bxcit[0], 
-                                       exc->f_it());
+                xci.getxc(it_loc_size, &rho->f_it(it_glob_idx), &magit[0], vxc->f_it(), &bxcit[0], exc->f_it());
                 
                 for (int irloc = 0; irloc < it_loc_size; irloc++)
                 {

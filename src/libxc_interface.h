@@ -3,17 +3,39 @@ namespace sirius
 
 class libxc_interface
 {
+    private:
+
+        xc_func_type func1_[2];
+        xc_func_type func2_[2];
+
     public:
         
-        static void getxc(int size, double* rho, double* vxc, double* exc)
+        libxc_interface()
         {
-            Timer t("sirius::libxc_interface::getxc:nm");
+            int xc_id[] = {XC_LDA_X, XC_LDA_C_VWN};
+            for (int i = 0; i < 2; i++)
+            {
+                if (xc_func_init(&func1_[i], xc_id[i], XC_UNPOLARIZED) != 0) 
+                    error(__FILE__, __LINE__, "functional is not found");
+                
+                if (xc_func_init(&func2_[i], xc_id[i], XC_POLARIZED) != 0)
+                    error(__FILE__, __LINE__, "functional is not found");
+            }
+        }
 
+        ~libxc_interface()
+        {
+            for (int i = 0; i < 2; i++)
+            {
+                xc_func_end(&func1_[i]);
+                xc_func_end(&func2_[i]);
+            }
+        }
+        
+        void getxc(int size, const double* rho, double* vxc, double* exc)
+        {
             memset(vxc, 0, size * sizeof(double)); 
             memset(exc, 0, size * sizeof(double));
-
-            int xc_id[] = {XC_LDA_X, XC_LDA_C_VWN};
-            xc_func_type func;
     
             std::vector<double> vxc_tmp(size);
             std::vector<double> exc_tmp(size);
@@ -31,25 +53,18 @@ class libxc_interface
 
             for (int i = 0; i < 2; i++)
             {
-                if(xc_func_init(&func, xc_id[i], XC_UNPOLARIZED) != 0)
-                    error(__FILE__, __LINE__, "functional is not found");
-
-                xc_lda_exc_vxc(&func, size, &rho[0], &exc_tmp[0], &vxc_tmp[0]);
+                xc_lda_exc_vxc(&func1_[i], size, &rho[0], &exc_tmp[0], &vxc_tmp[0]);
        
                 for (int j = 0; j < size; j++)
                 {
                     vxc[j] += vxc_tmp[j];
                     exc[j] += exc_tmp[j];
                 }
-
-                xc_func_end(&func);
             }
         }
 
-        static void getxc(int size, double* rho, double* mag, double* vxc, double* bxc, double* exc)
+        void getxc(int size, const double* rho, const double* mag, double* vxc, double* bxc, double* exc)
         {
-            Timer t("sirius::libxc_interface::getxc:mag");
-            
             memset(vxc, 0, size * sizeof(double)); 
             memset(bxc, 0, size * sizeof(double)); 
             memset(exc, 0, size * sizeof(double));
@@ -81,15 +96,9 @@ class libxc_interface
             std::vector<double> vxc_tmp(size * 2);
             std::vector<double> exc_tmp(size);
             
-            int xc_id[] = {XC_LDA_X, XC_LDA_C_VWN};
-            xc_func_type func;
-    
             for (int i = 0; i < 2; i++)
             {
-                if(xc_func_init(&func, xc_id[i], XC_POLARIZED) != 0)
-                    error(__FILE__, __LINE__, "functional is not found");
-       
-                xc_lda_exc_vxc(&func, size, &rhoud[0], &exc_tmp[0], &vxc_tmp[0]);
+                xc_lda_exc_vxc(&func2_[i], size, &rhoud[0], &exc_tmp[0], &vxc_tmp[0]);
 
                 for (int j = 0; j < size; j++)
                 {
@@ -97,8 +106,6 @@ class libxc_interface
                     vxc[j] += 0.5 * (vxc_tmp[2 * j] + vxc_tmp[2 * j + 1]);
                     bxc[j] += 0.5 * (vxc_tmp[2 * j] - vxc_tmp[2 * j + 1]);
                 }
-
-                xc_func_end(&func);
             }
 
             for (int i = 0; i < size; i++)
