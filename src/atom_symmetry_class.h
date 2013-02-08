@@ -68,83 +68,87 @@ class AtomSymmetryClass
         void generate_aw_radial_functions()
         {
             int nmtp = atom_type_->num_mt_points();
-            
-            Spline<double> s(nmtp, atom_type_->radial_grid());
+           
             RadialSolver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
             
-            std::vector<double> p;
-            std::vector<double> hp;
-
-            for (int l = 0; l < num_aw_descriptors(); l++)
+            #pragma omp parallel default(shared)
             {
-                for (int order = 0; order < (int)aw_descriptor(l).size(); order++)
+                Spline<double> s(nmtp, atom_type_->radial_grid());
+                
+                std::vector<double> p;
+                std::vector<double> hp;
+                
+                #pragma omp for schedule(dynamic, 1)
+                for (int l = 0; l < num_aw_descriptors(); l++)
                 {
-                    radial_solution_descriptor& rsd = aw_descriptor(l)[order];
-
-                    int idxrf = atom_type_->indexr().index_by_l_order(l, order);
-
-                    // find linearization energies
-                    if (rsd.auto_enu) solver.bound_state(rsd.n, rsd.l, spherical_potential_, rsd.enu, p);
-
-                    solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p, hp);
-
-                    // normalize
-                    for (int ir = 0; ir < nmtp; ir++) 
-                        s[ir] = pow(p[ir], 2);
-                    s.interpolate();
-                    double norm = s.integrate(0);
-                    norm = 1.0 / sqrt(norm);
-
-                    for (int ir = 0; ir < nmtp; ir++)
+                    for (int order = 0; order < (int)aw_descriptor(l).size(); order++)
                     {
-                        radial_functions_(ir, idxrf, 0) = p[ir] * norm;
-                        radial_functions_(ir, idxrf, 1) = hp[ir] * norm;
-                    }
-                    
-                    // orthogonalize
-                    for (int order1 = 0; order1 < order - 1; order1++)
-                    {
-                        int idxrf1 = atom_type_->indexr().index_by_l_order(l, order1);
+                        radial_solution_descriptor& rsd = aw_descriptor(l)[order];
 
-                        for (int ir = 0; ir < nmtp; ir++)
-                            s[ir] = radial_functions_(ir, idxrf, 0) * radial_functions_(ir, idxrf1, 0);
+                        int idxrf = atom_type_->indexr().index_by_l_order(l, order);
+
+                        // find linearization energies
+                        if (rsd.auto_enu) solver.bound_state(rsd.n, rsd.l, spherical_potential_, rsd.enu, p);
+
+                        solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p, hp);
+
+                        // normalize
+                        for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(p[ir], 2);
                         s.interpolate();
-                        double t1 = s.integrate(0);
-                        
+                        double norm = s.integrate(0);
+                        norm = 1.0 / sqrt(norm);
+
                         for (int ir = 0; ir < nmtp; ir++)
                         {
-                            radial_functions_(ir, idxrf, 0) -= radial_functions_(ir, idxrf1, 0) * t1;
-                            radial_functions_(ir, idxrf, 1) -= radial_functions_(ir, idxrf1, 1) * t1;
+                            radial_functions_(ir, idxrf, 0) = p[ir] * norm;
+                            radial_functions_(ir, idxrf, 1) = hp[ir] * norm;
                         }
-                    }
                         
-                    // normalize again
-                    for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf, 0), 2);
-                    s.interpolate();
-                    norm = s.integrate(0);
+                        // orthogonalize
+                        for (int order1 = 0; order1 < order - 1; order1++)
+                        {
+                            int idxrf1 = atom_type_->indexr().index_by_l_order(l, order1);
 
-                    if (fabs(norm) < 1e-12) error(__FILE__, __LINE__, "aw radial functions are linearly dependent");
+                            for (int ir = 0; ir < nmtp; ir++)
+                                s[ir] = radial_functions_(ir, idxrf, 0) * radial_functions_(ir, idxrf1, 0);
+                            s.interpolate();
+                            double t1 = s.integrate(0);
+                            
+                            for (int ir = 0; ir < nmtp; ir++)
+                            {
+                                radial_functions_(ir, idxrf, 0) -= radial_functions_(ir, idxrf1, 0) * t1;
+                                radial_functions_(ir, idxrf, 1) -= radial_functions_(ir, idxrf1, 1) * t1;
+                            }
+                        }
+                            
+                        // normalize again
+                        for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf, 0), 2);
+                        s.interpolate();
+                        norm = s.integrate(0);
 
-                    norm = 1.0 / sqrt(norm);
+                        if (fabs(norm) < 1e-12) error(__FILE__, __LINE__, "aw radial functions are linearly dependent");
 
-                    for (int ir = 0; ir < nmtp; ir++)
-                    {
-                        radial_functions_(ir, idxrf, 0) *= norm;
-                        radial_functions_(ir, idxrf, 1) *= norm;
-                    }
+                        norm = 1.0 / sqrt(norm);
 
-                    // radial derivative
-                    double rderiv = (radial_functions_(nmtp - 1, idxrf, 0) - radial_functions_(nmtp - 2, idxrf, 0)) / 
-                                    atom_type_->radial_grid().dr(nmtp - 2);
-                    double R = atom_type_->mt_radius();
+                        for (int ir = 0; ir < nmtp; ir++)
+                        {
+                            radial_functions_(ir, idxrf, 0) *= norm;
+                            radial_functions_(ir, idxrf, 1) *= norm;
+                        }
 
-                    aw_surface_derivatives_(order, l) = (rderiv - radial_functions_(nmtp - 1, idxrf, 0) / R) / R;
-                    
-                    // divide by r
-                    for (int ir = 0; ir < nmtp; ir++)
-                    {
-                        radial_functions_(ir, idxrf, 0) /= atom_type_->radial_grid(ir);
-                        radial_functions_(ir, idxrf, 1) /= atom_type_->radial_grid(ir);
+                        // radial derivative
+                        double rderiv = (radial_functions_(nmtp - 1, idxrf, 0) - radial_functions_(nmtp - 2, idxrf, 0)) / 
+                                        atom_type_->radial_grid().dr(nmtp - 2);
+                        double R = atom_type_->mt_radius();
+
+                        aw_surface_derivatives_(order, l) = (rderiv - radial_functions_(nmtp - 1, idxrf, 0) / R) / R;
+                        
+                        // divide by r
+                        for (int ir = 0; ir < nmtp; ir++)
+                        {
+                            radial_functions_(ir, idxrf, 0) /= atom_type_->radial_grid(ir);
+                            radial_functions_(ir, idxrf, 1) /= atom_type_->radial_grid(ir);
+                        }
                     }
                 }
             }
@@ -153,89 +157,93 @@ class AtomSymmetryClass
         void generate_lo_radial_functions()
         {
             int nmtp = atom_type_->num_mt_points();
-            Spline<double> s(nmtp, atom_type_->radial_grid());
             RadialSolver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
             
-            double a[4][4];
-
-            for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++)
+            #pragma omp parallel default(shared)
             {
-                assert(lo_descriptor(idxlo).size() < 4);
+                Spline<double> s(nmtp, atom_type_->radial_grid());
+                
+                double a[4][4];
 
-                int idxrf = atom_type_->indexr().index_by_idxlo(idxlo);
-
-                std::vector< std::vector<double> > p(lo_descriptor(idxlo).size());
-                std::vector< std::vector<double> > hp(lo_descriptor(idxlo).size());
-
-                for (int order = 0; order < (int)lo_descriptor(idxlo).size(); order++)
+                #pragma omp for schedule(dynamic, 1)
+                for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++)
                 {
-                    radial_solution_descriptor& rsd = lo_descriptor(idxlo)[order];
-                    
-                    // find linearization energies
-                    if (rsd.auto_enu) solver.bound_state(rsd.n, rsd.l, spherical_potential_, rsd.enu, p[order]);
+                    assert(lo_descriptor(idxlo).size() < 4);
 
-                    solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p[order], hp[order]); 
+                    int idxrf = atom_type_->indexr().index_by_idxlo(idxlo);
+
+                    std::vector< std::vector<double> > p(lo_descriptor(idxlo).size());
+                    std::vector< std::vector<double> > hp(lo_descriptor(idxlo).size());
+
+                    for (int order = 0; order < (int)lo_descriptor(idxlo).size(); order++)
+                    {
+                        radial_solution_descriptor& rsd = lo_descriptor(idxlo)[order];
+                        
+                        // find linearization energies
+                        if (rsd.auto_enu) solver.bound_state(rsd.n, rsd.l, spherical_potential_, rsd.enu, p[order]);
+
+                        solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p[order], hp[order]); 
+                        
+                        // normalize radial solutions and divide by r
+                        for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(p[order][ir], 2);
+                        s.interpolate();
+                        double norm = s.integrate(0);
+                        norm = 1.0 / sqrt(norm);
+
+                        for (int ir = 0; ir < nmtp; ir++)
+                        {
+                            p[order][ir] *= (norm / atom_type_->radial_grid(ir));
+                            hp[order][ir] *= (norm / atom_type_->radial_grid(ir));
+                            s[ir] = p[order][ir];
+                        }
+
+                        // compute radial derivatives
+                        s.interpolate();
+
+                        for (int dm = 0; dm < (int)lo_descriptor(idxlo).size(); dm++) a[order][dm] = s.deriv(dm, nmtp - 1);
+                    }
+
+                    double b[] = {0.0, 0.0, 0.0, 0.0};
+                    b[lo_descriptor(idxlo).size() - 1] = 1.0;
+
+                    int info = linalg<lapack>::gesv((int)lo_descriptor(idxlo).size(), 1, &a[0][0], 4, b, 4);
+
+                    if (info) 
+                    {
+                        std::stringstream s;
+                        s << "gesv returned " << info;
+                        error(__FILE__, __LINE__, s);
+                    }
                     
-                    // normalize radial solutions and divide by r
-                    for (int ir = 0; ir < nmtp; ir++)
-                        s[ir] = pow(p[order][ir], 2);
+                    // take linear combination of radial solutions
+                    for (int order = 0; order < (int)lo_descriptor(idxlo).size(); order++)
+                    {
+                        for (int ir = 0; ir < nmtp; ir++)
+                        {
+                            radial_functions_(ir, idxrf, 0) += b[order] * p[order][ir];
+                            radial_functions_(ir, idxrf, 1) += b[order] * hp[order][ir];
+                        }
+                    }
+
+                    // normalize
+                    for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf, 0), 2);
                     s.interpolate();
-                    double norm = s.integrate(0);
+                    double norm = s.integrate(2);
                     norm = 1.0 / sqrt(norm);
 
                     for (int ir = 0; ir < nmtp; ir++)
                     {
-                        p[order][ir] *= (norm / atom_type_->radial_grid(ir));
-                        hp[order][ir] *= (norm / atom_type_->radial_grid(ir));
-                        s[ir] = p[order][ir];
+                        radial_functions_(ir, idxrf, 0) *= norm;
+                        radial_functions_(ir, idxrf, 1) *= norm;
                     }
-
-                    // compute radial derivatives
-                    s.interpolate();
-
-                    for (int dm = 0; dm < (int)lo_descriptor(idxlo).size(); dm++) a[order][dm] = s.deriv(dm, nmtp - 1);
-                }
-
-                double b[] = {0.0, 0.0, 0.0, 0.0};
-                b[lo_descriptor(idxlo).size() - 1] = 1.0;
-
-                int info = linalg<lapack>::gesv((int)lo_descriptor(idxlo).size(), 1, &a[0][0], 4, b, 4);
-
-                if (info) 
-                {
-                    std::stringstream s;
-                    s << "gesv returned " << info;
-                    error(__FILE__, __LINE__, s);
-                }
-                
-                // take linear combination of radial solutions
-                for (int order = 0; order < (int)lo_descriptor(idxlo).size(); order++)
-                {
-                    for (int ir = 0; ir < nmtp; ir++)
+                    
+                    if (fabs(radial_functions_(nmtp - 1, idxrf, 0)) > 1e-10)
                     {
-                        radial_functions_(ir, idxrf, 0) += b[order] * p[order][ir];
-                        radial_functions_(ir, idxrf, 1) += b[order] * hp[order][ir];
+                        std::stringstream s;
+                        s << "local orbital is not zero at MT boundary" << std::endl 
+                          << "  value : " << radial_functions_(nmtp - 1, idxrf, 0);
+                        error(__FILE__, __LINE__, s);
                     }
-                }
-
-                // normalize
-                for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf, 0), 2);
-                s.interpolate();
-                double norm = s.integrate(2);
-                norm = 1.0 / sqrt(norm);
-
-                for (int ir = 0; ir < nmtp; ir++)
-                {
-                    radial_functions_(ir, idxrf, 0) *= norm;
-                    radial_functions_(ir, idxrf, 1) *= norm;
-                }
-                
-                if (fabs(radial_functions_(nmtp - 1, idxrf, 0)) > 1e-10)
-                {
-                    std::stringstream s;
-                    s << "local orbital is not zero at MT boundary" << std::endl 
-                      << "  value : " << radial_functions_(nmtp - 1, idxrf, 0);
-                    error(__FILE__, __LINE__, s);
                 }
             }
         }

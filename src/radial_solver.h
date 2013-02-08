@@ -23,13 +23,8 @@ class RadialSolver
         
         double enu_tolerance;
         
-        int integrate(int nr, 
-                      int l, 
-                      double enu, 
-                      sirius::Spline<double>& ve, 
-                      sirius::Spline<double>& mp, 
-                      std::vector<double>& p, 
-                      std::vector<double>& q)
+        int integrate(int nr, int l, double enu, sirius::Spline<double>& ve, sirius::Spline<double>& mp, 
+                      std::vector<double>& p, std::vector<double>& q)
         {
             double alpha2 = 0.5 * pow((1 / speed_of_light), 2);
             if (!relativistic) alpha2 = 0.0;
@@ -120,19 +115,16 @@ class RadialSolver
             }
 
             int nn = 0;
-            for (int i = 0; i < nr - 1; i++)
-                if (p[i] * p[i + 1] < 0.0) nn++;
+            for (int i = 0; i < nr - 1; i++) if (p[i] * p[i + 1] < 0.0) nn++;
 
             return nn;
         }
 
     public:
 
-        RadialSolver(bool relativistic, 
-                     double zn, 
-                     sirius::RadialGrid& radial_grid) : relativistic(relativistic), 
-                                                        zn(zn), 
-                                                        radial_grid(radial_grid)
+        RadialSolver(bool relativistic, double zn, sirius::RadialGrid& radial_grid) : relativistic(relativistic), 
+                                                                                      zn(zn), 
+                                                                                      radial_grid(radial_grid)
         {
             enu_tolerance = 1e-10;
         }
@@ -142,16 +134,11 @@ class RadialSolver
             enu_tolerance = _tolerance;
         }
         
-        void solve_in_mt(int l, 
-                         double enu, 
-                         int m, 
-                         std::vector<double>& v, 
-                         std::vector<double>& p, 
+        void solve_in_mt(int l, double enu, int m, std::vector<double>& v, std::vector<double>& p, 
                          std::vector<double>& hp)
         {
             std::vector<double> ve(radial_grid.mt_num_points());
-            for (int i = 0; i < radial_grid.mt_num_points(); i++)
-                ve[i] = v[i] - zn / radial_grid[i];
+            for (int i = 0; i < radial_grid.mt_num_points(); i++) ve[i] = v[i] - zn / radial_grid[i];
             
             sirius::Spline<double> ve_spline(radial_grid.mt_num_points(), radial_grid, ve);
 
@@ -163,8 +150,7 @@ class RadialSolver
             {
                 if (j)
                 {
-                    for (int i = 0; i < radial_grid.mt_num_points(); i++)
-                        mp_spline[i] = j * p[i];
+                    for (int i = 0; i < radial_grid.mt_num_points(); i++) mp_spline[i] = j * p[i];
                     
                     mp_spline.interpolate();
                 }
@@ -184,15 +170,10 @@ class RadialSolver
             }
         }
 
-        void bound_state(int n, 
-                         int l, 
-                         std::vector<double>& v, 
-                         double& enu, 
-                         std::vector<double>& p)
+        void bound_state(int n, int l, std::vector<double>& v, double& enu, std::vector<double>& p)
         {
             std::vector<double> ve(radial_grid.size());
-            for (int i = 0; i < radial_grid.size(); i++)
-                ve[i] = v[i] - zn / radial_grid[i];
+            for (int i = 0; i < radial_grid.size(); i++) ve[i] = v[i] - zn / radial_grid[i];
             
             sirius::Spline<double> ve_spline(radial_grid.size(), radial_grid, ve);
             sirius::Spline<double> mp_spline(radial_grid.size(), radial_grid);
@@ -208,18 +189,9 @@ class RadialSolver
                 int nn = integrate(radial_grid.size(), l, enu, ve_spline, mp_spline, p, q);
                 
                 sp = s;
-                
-                if (nn > (n - l - 1)) 
-                    s = -1;
-                else
-                    s = 1;
-                
+                s = (nn > (n - l - 1)) ? -1 : 1;
                 denu = s * fabs(denu);
-                
-                if (s != sp) 
-                    denu *= 0.5;
-                else
-                    denu *= 1.25;
+                denu = (s != sp) ? denu * 0.5 : denu * 1.25;
                 
                 if (fabs(denu) < enu_tolerance && iter > 4) break;
                 
@@ -249,7 +221,9 @@ class RadialSolver
             for (int i = idxtp; i < radial_grid.size(); i++)
             {
                 if ((fabs(p[i]) < t1) && (p[i - 1] * p[i] > 0))
+                {
                     t1 = fabs(p[i]);
+                }
                 else
                 {
                     t1 = 0.0;
@@ -258,27 +232,18 @@ class RadialSolver
             }
 
             std::vector<double> rho(radial_grid.size());
-            for (int i = 0; i < radial_grid.size(); i++)
-                rho[i] = p[i] * p[i];
+            for (int i = 0; i < radial_grid.size(); i++) rho[i] = p[i] * p[i];
 
             double norm = sirius::Spline<double>(radial_grid.size(), radial_grid, rho).integrate();
             
-            for (int i = 0; i < radial_grid.size(); i++)
-                p[i] /= sqrt(norm);
+            for (int i = 0; i < radial_grid.size(); i++) p[i] /= sqrt(norm);
 
             // count number of nodes
             int nn = 0;
-            for (int i = 0; i < radial_grid.size() - 1; i++)
-                if (p[i] * p[i + 1] < 0.0) nn++;
+            for (int i = 0; i < radial_grid.size() - 1; i++) if (p[i] * p[i + 1] < 0.0) nn++;
 
             if (nn != (n - l - 1))
             {
-                /*std::ofstream fout("bound_state.dat");
-                for (int i =0; i < radial_grid.size(); i++)
-                {
-                    fout << radial_grid[i] << " " << p[i] << std::endl;
-                }
-                fout.close();*/
                 std::stringstream s;
                 s << "wrong number of nodes : " << nn << " instead of " << (n - l - 1);
                 error(__FILE__, __LINE__, s);
