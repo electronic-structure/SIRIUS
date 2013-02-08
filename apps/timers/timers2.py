@@ -21,8 +21,7 @@ timer_groups = [
     "sirius::kpoint::find_eigen_states",
     "sirius::Density::generate",
     "sirius::Potential::generate_effective_potential",
-    "elk::symmetrization:rho",
-    "elk::symmetrization:v",
+    "elk::symmetrization",
     "elk::mixer"
 ],
 [
