@@ -450,12 +450,20 @@ class Potential
                 
                 if (parameters_.num_spins() == 1) 
                 {
-                    libxc_interface::getxc(sht_.num_points() * nmtp, &rhotp(0, 0), &vxctp(0, 0), &exctp(0, 0));
+                    #pragma omp parallel for default(shared)
+                    for (int ir = 0; ir < nmtp; ir++)
+                    {
+                        libxc_interface::getxc(sht_.num_points(), &rhotp(0, ir), &vxctp(0, ir), &exctp(0, ir));
+                    }
                 }
                 else
                 {
-                    libxc_interface::getxc(sht_.num_points() * nmtp, &rhotp(0, 0), &magtp(0, 0), &vxctp(0, 0), 
-                                           &bxctp(0, 0), &exctp(0, 0));
+                    #pragma omp parallel for default(shared)
+                    for (int ir = 0; ir < nmtp; ir++)
+                    {
+                        libxc_interface::getxc(sht_.num_points(), &rhotp(0, ir), &magtp(0, ir), &vxctp(0, ir), 
+                                               &bxctp(0, ir), &exctp(0, ir));
+                    }
                 }
 
                 sht_.rlm_forward_transform(&vxctp(0, 0), parameters_.lmmax_pot(), nmtp, &vxc->f_rlm(0, 0, ialoc));
