@@ -2,45 +2,63 @@
 
 int main(int argn, char **argv)
 {
-    FILE* fout = fopen("hydrogen.json", "w");
-    fprintf(fout, "{\n");
+    Platform::initialize(true);
     
-    fprintf(fout, "  \"labels\" : [");
+    json_write jw("out.json");
+    std::vector<int> xaxis;
+    
     int j = 0;
     for (int n = 1; n <= 20; n++)
     {
         for (int l = 0; l <= n - 1; l++)
         {
-            if (j) fprintf(fout, ", ");
-            fprintf(fout, "\"n=%i l=%i\"", n, l);
+            xaxis.push_back(j);
             j++;
         }
     }
-    fprintf(fout,"], \n");
+    jw.single("xaxis", xaxis);
 
-    fprintf(fout,"  \"plot\" : [\n");
+    std::vector<int> xaxis_ticks;
+    std::vector<std::string> xaxis_tick_labels;
 
-    for (int k = 0; k < 9; k++)
+    j = 0;
+    for (int n = 1; n <= 20; n++)
+    {
+        std::stringstream s;
+        s << "n=" << n;
+        xaxis_ticks.push_back(j);
+        xaxis_tick_labels.push_back(s.str());
+        j += n;
+    }
+
+    jw.single("xaxis_ticks", xaxis_ticks);
+    jw.single("xaxis_tick_labels", xaxis_tick_labels);
+    jw.begin_array("plot");
+
+    for (int k = 0; k < 10; k++)
     {
         int z = 1 + k * 10;
-
-        sirius::RadialGrid radial_grid(sirius::exponential_grid, 15000 + z * 150,  1e-6 / z, 150.0 + z * 2.0);
+        std::stringstream s;
+        s << "z=" << z;
+        
+        jw.begin_set();
+        jw.single("label", s.str());
+        
+        sirius::RadialGrid radial_grid(sirius::exponential_grid, 20000 + z * 300,  1e-7 / z, 200.0 + z * 3.0);
         radial_grid.print_info();
 
         std::vector<double> v(radial_grid.size());
         std::vector<double> p(radial_grid.size());
 
         sirius::RadialSolver solver(false, -double(z), radial_grid);
-        //solver.set_tolerance(1e-11);
+        solver.set_tolerance(1e-13 * (k + 1));
 
-        for (int i = 0; i < radial_grid.size(); i++)
-        {
-            v[i] = -z / radial_grid[i];
-        }
+        for (int i = 0; i < radial_grid.size(); i++) v[i] = -z / radial_grid[i];
         
         double enu = -0.1;
-        if (k) fprintf(fout, ", \n");
-        fprintf(fout,"    {\"z\" : %i, \"values\" : [", z);
+
+        std::vector<double> yvalues;
+
         j = 0;
         for (int n = 1; n <= 5 + k; n++)
         {
@@ -48,17 +66,14 @@ int main(int argn, char **argv)
             {
                 solver.bound_state(n, l, v, enu, p);
                 double enu_exact = -0.5 * (z * z) / pow(double(n), 2);
-                if (j) fprintf(fout, ", ");
                 printf("z = %i n = %i l = %i  err = %12.6e\n", z, n, l, fabs(enu  - enu_exact) / fabs(enu_exact));
-                fprintf(fout, "%18.12e", fabs(enu - enu_exact) / fabs(enu_exact));
+                yvalues.push_back(fabs(enu  - enu_exact) / fabs(enu_exact));
                 j++;
             }
         }
-        fprintf(fout, "]}");
+        
+        jw.single("yvalues", yvalues);
+        jw.end_set();
     }
-    fprintf(fout, "\n"); 
-    fprintf(fout, "  ]\n");
-    fprintf(fout, "}\n");
-    
-    fclose(fout);
+    jw.end_array();
 }

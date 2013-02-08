@@ -297,15 +297,15 @@ class json_write
 
         int indent_level_;
 
-        bool first_line_;
+        bool new_block_;
 
         inline void new_line()
         {
             std::string s(indent_level_, ' ');
-            if (first_line_)
+            if (new_block_)
             {
                 fprintf(fout_, "\n%s", s.c_str());
-                first_line_ = false;
+                new_block_ = false;
             }
             else
             {
@@ -313,9 +313,15 @@ class json_write
             }
         }
 
+        inline void new_indent_level(int shift)
+        {
+            indent_level_ += shift;
+            new_block_ = true;
+        }
+
     public:
         
-        json_write(const std::string fname__) : fname_(fname__), indent_step_(4), first_line_(true)
+        json_write(const std::string fname__) : fname_(fname__), indent_step_(4), new_block_(true)
         {
             fout_ = fopen(fname_.c_str(), "w");
             fprintf(fout_, "{");
@@ -370,6 +376,18 @@ class json_write
             fprintf(fout_, "]");
         }
         
+        inline void single(const char* name, std::vector<std::string>& values)
+        {
+            new_line();
+            fprintf(fout_, "\"%s\" : [", name);
+            for (int i = 0; i < (int)values.size(); i++)
+            {
+                if (i) fprintf(fout_, ",");
+                fprintf(fout_, "\"%s\"", values[i].c_str());
+            }
+            fprintf(fout_, "]");
+        }
+        
         inline void single(const char* name, std::map<std::string, sirius::timer_descriptor*>& timer_descriptors)
         {
             new_line();
@@ -377,7 +395,7 @@ class json_write
             
             indent_level_ += indent_step_;
             std::map<std::string, sirius::timer_descriptor*>::iterator it;
-            first_line_ = true;
+            new_block_ = true;
             for (it = timer_descriptors.begin(); it != timer_descriptors.end(); it++)
             {
                 std::vector<double> tv(2);
@@ -386,9 +404,48 @@ class json_write
                 single(it->first.c_str(), tv);
             }
             
-            indent_level_ -= indent_step_;
-            std::string s(indent_level_, ' ');
-            fprintf(fout_, "\n%s}", s.c_str());
+            end_set();
+            //indent_level_ -= indent_step_;
+            //std::string s(indent_level_, ' ');
+            //fprintf(fout_, "\n%s}", s.c_str());
+        }
+
+        inline void begin_array(const char* name)
+        {
+            new_line();
+            fprintf(fout_, "\"%s\" : [", name);
+            
+            new_indent_level(indent_step_);
+            //indent_level_ += indent_step_;
+            //new_block_ = true;
+        }
+        
+        inline void end_array()
+        {
+            new_indent_level(-indent_step_);
+            //indent_level_ -= indent_step_;
+            //new_block_ = true;
+            new_line();
+            fprintf(fout_, "]");
+        }
+        
+        inline void begin_set()
+        {
+            new_line();
+            fprintf(fout_, "{");
+            
+            new_indent_level(indent_step_);
+            //indent_level_ += indent_step_;
+            //new_block_ = true;
+        }
+        
+        inline void end_set()
+        {
+            new_indent_level(-indent_step_);
+            //indent_level_ -= indent_step_;
+            //new_block_ = true;
+            new_line();
+            fprintf(fout_, "}");
         }
 };
 

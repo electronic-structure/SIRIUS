@@ -192,10 +192,9 @@ class RadialSolver
                 s = (nn > (n - l - 1)) ? -1 : 1;
                 denu = s * fabs(denu);
                 denu = (s != sp) ? denu * 0.5 : denu * 1.25;
+                enu += denu;
                 
                 if (fabs(denu) < enu_tolerance && iter > 4) break;
-                
-                enu += denu;
             }
             
             if (fabs(denu) >= enu_tolerance) 
