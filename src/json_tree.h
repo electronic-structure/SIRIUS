@@ -346,7 +346,7 @@ class json_write
             fprintf(fout_, "\"%s\" : \"%s\"", name, value.c_str());
         }
 
-        inline void single(const char* name, std::vector<double> values)
+        inline void single(const char* name, std::vector<double>& values)
         {
             new_line();
             fprintf(fout_, "\"%s\" : [", name);
@@ -354,6 +354,18 @@ class json_write
             {
                 if (i) fprintf(fout_, ",");
                 fprintf(fout_, "%16.8e", values[i]);
+            }
+            fprintf(fout_, "]");
+        }
+        
+        inline void single(const char* name, std::vector<int>& values)
+        {
+            new_line();
+            fprintf(fout_, "\"%s\" : [", name);
+            for (int i = 0; i < (int)values.size(); i++)
+            {
+                if (i) fprintf(fout_, ",");
+                fprintf(fout_, "%i", values[i]);
             }
             fprintf(fout_, "]");
         }

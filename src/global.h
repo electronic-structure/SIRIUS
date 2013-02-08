@@ -602,13 +602,20 @@ class Global : public StepFunction
                 
                 jw.single("git_hash", git_hash);
                 jw.single("build_date", build_date);
-                jw.single("chemical_formula", chemical_formula());
-                jw.single("num_atoms", num_atoms());
                 jw.single("num_ranks", Platform::num_mpi_ranks());
                 jw.single("num_threads", Platform::num_threads());
                 jw.single("num_fft_threads", Platform::num_fft_threads());
                 jw.single("cyclic_block_size", cyclic_block_size());
-                jw.single("total_energy", total_energy());
+                std::vector<int> mpigrid;
+                for (int i = 0; i < mpi_grid_.num_dimensions(); i++) mpigrid.push_back(mpi_grid_.size(1 << i));
+                jw.single("mpi_grid", mpigrid);
+                std::vector<int> fftgrid(3);
+                for (int i = 0; i < 3; i++) fftgrid[i] = fft().size(i);
+                jw.single("fft_grid", fftgrid);
+                jw.single("chemical_formula", chemical_formula());
+                jw.single("num_atoms", num_atoms());
+                jw.single("num_fv_states", num_fv_states());
+                jw.single("num_bands", num_bands());
                 jw.single("aw_cutoff", aw_cutoff());
                 
                 if (num_mag_dims())
@@ -623,6 +630,8 @@ class Global : public StepFunction
                     jw.single("total_moment", v);
                     jw.single("total_moment_len", Utils::vector_length(&v[0]));
                 }
+                
+                jw.single("total_energy", total_energy());
 
                 jw.single("timers", Timer::timer_descriptors());
             }
