@@ -569,9 +569,43 @@ class kpoint
                         }
                     }
                 }
+                
                 std::stringstream s;
-                s << "h_max " << h_max << " irow, icol : " << h_irow << " " << h_icol << std::endl
-                  << "o_max " << o_max << " irow, icol : " << o_irow << " " << o_icol;
+                s << "h_max " << h_max << " irow, icol : " << h_irow << " " << h_icol << std::endl;
+                s << " (row) igk, ig, ia, l, lm, irdrf, order : " << apwlo_basis_descriptors_row_[h_irow].igk << " "  
+                                                                  << apwlo_basis_descriptors_row_[h_irow].ig << " "  
+                                                                  << apwlo_basis_descriptors_row_[h_irow].ia << " "  
+                                                                  << apwlo_basis_descriptors_row_[h_irow].l << " "  
+                                                                  << apwlo_basis_descriptors_row_[h_irow].lm << " "  
+                                                                  << apwlo_basis_descriptors_row_[h_irow].idxrf << " "  
+                                                                  << apwlo_basis_descriptors_row_[h_irow].order 
+                                                                  << std::endl;
+                s << " (col) igk, ig, ia, l, lm, irdrf, order : " << apwlo_basis_descriptors_col_[h_icol].igk << " "  
+                                                                  << apwlo_basis_descriptors_col_[h_icol].ig << " "  
+                                                                  << apwlo_basis_descriptors_col_[h_icol].ia << " "  
+                                                                  << apwlo_basis_descriptors_col_[h_icol].l << " "  
+                                                                  << apwlo_basis_descriptors_col_[h_icol].lm << " "  
+                                                                  << apwlo_basis_descriptors_col_[h_icol].idxrf << " "  
+                                                                  << apwlo_basis_descriptors_col_[h_icol].order 
+                                                                  << std::endl;
+
+                s << "o_max " << o_max << " irow, icol : " << o_irow << " " << o_icol << std::endl;
+                s << " (row) igk, ig, ia, l, lm, irdrf, order : " << apwlo_basis_descriptors_row_[o_irow].igk << " "  
+                                                                  << apwlo_basis_descriptors_row_[o_irow].ig << " "  
+                                                                  << apwlo_basis_descriptors_row_[o_irow].ia << " "  
+                                                                  << apwlo_basis_descriptors_row_[o_irow].l << " "  
+                                                                  << apwlo_basis_descriptors_row_[o_irow].lm << " "  
+                                                                  << apwlo_basis_descriptors_row_[o_irow].idxrf << " "  
+                                                                  << apwlo_basis_descriptors_row_[o_irow].order 
+                                                                  << std::endl;
+                s << " (col) igk, ig, ia, l, lm, irdrf, order : " << apwlo_basis_descriptors_col_[o_icol].igk << " "  
+                                                                  << apwlo_basis_descriptors_col_[o_icol].ig << " "  
+                                                                  << apwlo_basis_descriptors_col_[o_icol].ia << " "  
+                                                                  << apwlo_basis_descriptors_col_[o_icol].l << " "  
+                                                                  << apwlo_basis_descriptors_col_[o_icol].lm << " "  
+                                                                  << apwlo_basis_descriptors_col_[o_icol].idxrf << " "  
+                                                                  << apwlo_basis_descriptors_col_[o_icol].order 
+                                                                  << std::endl;
                 warning(__FILE__, __LINE__, s, 0);
             }
             
