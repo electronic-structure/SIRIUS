@@ -313,7 +313,7 @@ void FORTRAN(sirius_bands)(void)
     std::vector<std::pair<std::string, std::vector<double> > > bz_path;
     std::string fname("sirius.json");
             
-    int num_steps;
+    int num_steps = 0;
     if (Utils::file_exists(fname))
     {
         JsonTree parser(fname);

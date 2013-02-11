@@ -55,19 +55,21 @@ for itg in range(len(timer_groups)):
         
         if timer_name in jin["timers"]:
             
+            tname = timer_name[timer_name.rfind("::")+2:]
+            
             if itg == 0: 
                 if timer_name == "sirius::Potential::generate_effective_potential":
                     t = (jin["timers"][timer_name][0] - jin["timers"][timer_name][1]) / jin["timers"]["elk::iteration"][0]
                 else:
                     t = jin["timers"][timer_name][0] / jin["timers"]["elk::iteration"][0]
                 t = t * 100
-                timer_names.append(timer_name + " (%6.2f%%, %6.2f sec./call)"%(t, jin["timers"][timer_name][1]))
+                timer_names.append(tname + " (%6.2f%%, %6.2f sec./call)"%(t, jin["timers"][timer_name][1]))
             elif itg == 3:
                 t = jin["timers"][timer_name][0]
-                timer_names.append(timer_name + " (%6.2f sec.)"%t)
+                timer_names.append(tname + " (%6.2f sec.)"%t)
             else:
                 t = jin["timers"][timer_name][1]
-                timer_names.append(timer_name + " (%6.2f sec./call)"%t)
+                timer_names.append(tname + " (%6.2f sec./call)"%t)
             
             timer_values.append(t)
             total_time += t

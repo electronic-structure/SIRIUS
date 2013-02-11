@@ -113,7 +113,14 @@ class kpoint
                     }
 
                     double det = (num_aw == 1) ? abs(a[0][0]) : abs(a[0][0] * a[1][1] - a[0][1] * a [1][0]);
-                    if (det < 1e-8) error(__FILE__, __LINE__, "ill defined linear equation problem", fatal_err);
+                    if (det < 1e-4)
+                    {   
+                        std::stringstream s;
+                        s << "Ill defined linear equation problem for atom " << ia << ", l : " << l << std::endl
+                          << "  radial function value at the MT boundary : " << real(a[0][0]); 
+                        
+                        error(__FILE__, __LINE__, s, fatal_err);
+                    }
                     
                     complex16 zt[2];
                     
@@ -272,15 +279,6 @@ class kpoint
                 for (int itp = 0; itp < sht.num_points(); itp++)
                 {
                     complex16 aw_value = z2(itp, igloc);
-                    /*complex16 aw_value(0, 0);
-                    for (int i = 0; i < type->mt_aw_basis_size(); i++)
-                    {
-                        int lm = type->indexb(i).lm;
-                        int idxrf = type->indexb(i).idxrf;
-                        aw_value += conj(alm(igloc, i)) * 
-                                    atom->symmetry_class()->radial_function(atom->num_mt_points() - 1, idxrf) * 
-                                    sht.ylm_backward(lm, itp);
-                    }*/
                     double r[3];
                     for (int x = 0; x < 3; x++) r[x] = vc[x] + sht.coord(x, itp) * type->mt_radius();
                     complex16 pw_value = exp(complex16(0, Utils::scalar_product(r, gkc))) / sqrt(parameters_.omega());
@@ -543,6 +541,36 @@ class kpoint
             {
                 Utils::check_hermitian("h", h);
                 Utils::check_hermitian("o", o);
+            }
+
+            if ((debug_level > 0) && (eigen_value_solver == lapack))
+            {
+                double h_max = 0;
+                double o_max = 0;
+                int h_irow, h_icol;
+                int o_irow, o_icol;
+                for (int icol = 0; icol < apwlo_basis_size(); icol++)
+                {
+                    for (int irow = 0; irow <= icol; irow++)
+                    {
+                        if (abs(h(irow, icol)) > h_max)
+                        {
+                            h_max = abs(h(irow, icol));
+                            h_irow = irow;
+                            h_icol = icol;
+                        }
+                        if (abs(o(irow, icol)) > o_max)
+                        {
+                            o_max = abs(o(irow, icol));
+                            o_irow = irow;
+                            o_icol = icol;
+                        }
+                    }
+                }
+                std::stringstream s;
+                s << "h_max " << h_max << " irow, icol : " << h_irow << " " << h_icol << std::endl
+                  << "o_max " << o_max << " irow, icol : " << o_irow << " " << o_icol;
+                warning(__FILE__, __LINE__, s, 0);
             }
             
             fv_eigen_values_.resize(parameters_.num_fv_states());
