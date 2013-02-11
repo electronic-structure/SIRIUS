@@ -292,8 +292,11 @@ void FORTRAN(sirius_read_state)()
 void FORTRAN(sirius_write_state)()
 {
     potential->hdf5_write();
-    sirius::hdf5_tree fout("sirius.h5", false);
-    fout.write("energy_fermi", &global.rti().energy_fermi);
+    if (Platform::mpi_rank() == 0)
+    {
+        sirius::hdf5_tree fout("sirius.h5", false);
+        fout.write("energy_fermi", &global.rti().energy_fermi);
+    }
 }
 
 /*  Relevant block in the input file:
