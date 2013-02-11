@@ -543,15 +543,17 @@ class kpoint
                 Utils::check_hermitian("o", o);
             }
 
-            if ((debug_level > 0) && (eigen_value_solver == lapack))
+            if (debug_level > 0)
             {
                 double h_max = 0;
                 double o_max = 0;
-                int h_irow, h_icol;
-                int o_irow, o_icol;
-                for (int icol = 0; icol < apwlo_basis_size(); icol++)
+                int h_irow = 0;
+                int h_icol = 0;
+                int o_irow = 0
+                int o_icol = 0;
+                for (int icol = 0; icol < apwlo_basis_size_col(); icol++)
                 {
-                    for (int irow = 0; irow <= icol; irow++)
+                    for (int irow = 0; irow < apwlo_basis_size_row(); irow++)
                     {
                         if (abs(h(irow, icol)) > h_max)
                         {
