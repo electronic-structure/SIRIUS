@@ -549,7 +549,7 @@ class kpoint
                 double o_max = 0;
                 int h_irow = 0;
                 int h_icol = 0;
-                int o_irow = 0
+                int o_irow = 0;
                 int o_icol = 0;
                 for (int icol = 0; icol < apwlo_basis_size_col(); icol++)
                 {
