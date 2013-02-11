@@ -773,15 +773,6 @@ class Potential
                 delete bxc[j];
             }
             delete exc;
-           
-            if (Platform::mpi_rank() == 0)
-            {
-                hdf5_tree fout("sirius.h5", true);
-                effective_potential_->hdf5_write(fout.create_node("effective_potential"));
-                fout.create_node("effective_magnetic_field");
-                for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                    effective_magnetic_field_[j]->hdf5_write(fout["effective_magnetic_field"].create_node(j));
-            }
         }
 
         void hdf5_read()
@@ -790,6 +781,18 @@ class Potential
             effective_potential_->hdf5_read(fout["effective_potential"]);
             for (int j = 0; j < parameters_.num_mag_dims(); j++)
                 effective_magnetic_field_[j]->hdf5_read(fout["effective_magnetic_field"][j]);
+        }
+
+        void hdf5_write()
+        {
+            if (Platform::mpi_rank() == 0)
+            {
+                hdf5_tree fout("sirius.h5", true);
+                effective_potential_->hdf5_write(fout.create_node("effective_potential"));
+                fout.create_node("effective_magnetic_field");
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                    effective_magnetic_field_[j]->hdf5_write(fout["effective_magnetic_field"].create_node(j));
+            }
         }
         
         void set_spherical_potential()

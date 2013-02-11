@@ -218,6 +218,14 @@ class hdf5_tree
                 error(__FILE__, __LINE__, "error in H5Dread()");
         }
 
+        template<typename T>
+        void read(const std::string& name, T* data, int size = 1)
+        {
+            std::vector<int> dims(1);
+            dims[0] = size;
+            read(name, data, dims);
+        }
+
         template <typename T, int N>
         void read(const std::string& name, mdarray<T,N>& data)
         {

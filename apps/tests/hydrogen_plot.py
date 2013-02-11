@@ -14,7 +14,12 @@ fin.close()
 
 legends = []
 for p in jin["plot"]:
-    matplotlib.pyplot.plot(jin["xaxis"][:len(p["yvalues"])], p["yvalues"], "o-", linewidth = 2.0)
+
+    if "xaxis" in p: 
+        matplotlib.pyplot.plot(p["xaxis"], p["yvalues"], "o-", linewidth = 2.0)
+    else:
+        matplotlib.pyplot.plot(jin["xaxis"], p["yvalues"], "o-", linewidth = 2.0)
+
     legends.append(p["label"])
     
 matplotlib.pyplot.legend(legends)

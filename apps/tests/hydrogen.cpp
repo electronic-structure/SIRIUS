@@ -57,6 +57,18 @@ int main(int argn, char **argv)
         
         double enu = -0.1;
 
+        j = 0;
+        xaxis.clear();
+        for (int n = 1; n <= 5 + k; n++)
+        {
+            for (int l = 0; l <= n - 1; l++)
+            {
+                xaxis.push_back(j);
+                j++;
+            }
+        }
+        jw.single("xaxis", xaxis);
+        
         std::vector<double> yvalues;
 
         j = 0;

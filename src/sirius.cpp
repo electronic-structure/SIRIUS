@@ -192,11 +192,6 @@ void FORTRAN(sirius_global_initialize)()
     global.initialize();
 }
 
-//void FORTRAN(sirius_band_initialize)(void)
-//{
-//    band = new sirius::Band(global);
-//}
-//
 void FORTRAN(sirius_potential_initialize)(void)
 {
     potential = new sirius::Potential(global);
@@ -237,16 +232,6 @@ void FORTRAN(sirius_density_find_band_occupancies)(void)
 {
     density->find_band_occupancies();
 }
-
-
-
-#if 0
-extern "C" void FORTRAN(sirius_get_step_function)(real8* step_function)
-{
-    //global.get_step_function(step_function);
-    memcpy(step_function, global.step_function(), fft().size() * sizeof(real8));
-}
-#endif
 
 void FORTRAN(sirius_density_set_band_occupancies)(int4* ik_, real8* band_occupancies)
 {
@@ -297,30 +282,41 @@ void FORTRAN(sirius_timer_stop)(char* name_, int4 name_len)
     if (sirius::ftimers.count(name)) delete sirius::ftimers[name];
 }
 
-void FORTRAN(sirius_potential_hdf5_read)()
+void FORTRAN(sirius_read_state)()
 {
     potential->hdf5_read();
+    sirius:: hdf5_tree fout("sirius.h5", false);
+    fout.read("energy_fermi", &global.rti().energy_fermi);
+}
+
+void FORTRAN(sirius_write_state)()
+{
+    potential->hdf5_write();
+    sirius::hdf5_tree fout("sirius.h5", false);
+    fout.write("energy_fermi", &global.rti().energy_fermi);
 }
 
 /*  Relevant block in the input file:
 
     "bz_path" : {
-        "size" : 100,
+        "num_steps" : 100,
         "points" : [["G", [0, 0, 0]], ["X", [0.5, 0.0, 0.5]], ["L", [0.5, 0.5, 0.5]]]
     }
 */
 void FORTRAN(sirius_bands)(void)
 {
+    FORTRAN(sirius_read_state)();
+
     std::vector<std::pair<std::string, std::vector<double> > > bz_path;
     std::string fname("sirius.json");
             
-    int npt;
+    int num_steps;
     if (Utils::file_exists(fname))
     {
         JsonTree parser(fname);
         if (!parser["bz_path"].empty())
         {
-            npt = parser["bz_path"]["size"].get<int>();
+            num_steps = parser["bz_path"]["num_steps"].get<int>();
 
             for (int ipt = 0; ipt < parser["bz_path"]["points"].size(); ipt++)
             {
@@ -360,7 +356,7 @@ void FORTRAN(sirius_bands)(void)
         std::vector<double> p0 = bz_path[ip].second;
         std::vector<double> p1 = bz_path[ip + 1].second;
 
-        int n = int((segment_length[ip] * npt) / total_path_length);
+        int n = int((segment_length[ip] * num_steps) / total_path_length);
         int n0 = (ip == (int)bz_path.size() - 2) ? n - 1 : n;
         
         double dvf[3];
@@ -375,6 +371,16 @@ void FORTRAN(sirius_bands)(void)
             xaxis.push_back(prev_seg_len + segment_length[ip] * i / double(n0));
         }
         prev_seg_len += segment_length[ip];
+    }
+
+    std::vector<double> xaxis_ticks;
+    std::vector<std::string> xaxis_tick_labels;
+    prev_seg_len = 0.0;
+    for (int ip = 0; ip < (int)bz_path.size(); ip++)
+    {
+        xaxis_ticks.push_back(prev_seg_len);
+        xaxis_tick_labels.push_back(bz_path[ip].first);
+        if (ip < (int)bz_path.size() - 1) prev_seg_len += segment_length[ip];
     }
 
     // distribute k-points along the 1-st direction of the MPI grid
@@ -409,16 +415,36 @@ void FORTRAN(sirius_bands)(void)
 
     if (global.mpi_grid().root())
     {
-        FILE* fout = fopen("bands.dat", "w");
+        json_write jw("bands.json");
+        jw.single("xaxis", xaxis);
+        jw.single("Ef", global.rti().energy_fermi);
+        
+        jw.single("xaxis_ticks", xaxis_ticks);
+        jw.single("xaxis_tick_labels", xaxis_tick_labels);
+        
+        jw.begin_array("plot");
+        std::vector<double> yvalues(kpoint_set_.num_kpoints());
         for (int i = 0; i < global.num_bands(); i++)
         {
-            for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
-            {
-                fprintf(fout, "%f %f\n", xaxis[ik], kpoint_set_[ik]->band_energy(i));
-            }
-            fprintf(fout, "\n");
+            jw.begin_set();
+            for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++) yvalues[ik] = kpoint_set_[ik]->band_energy(i);
+            jw.single("yvalues", yvalues);
+            jw.end_set();
         }
-        fclose(fout);
+        jw.end_array();
+
+
+
+        //FILE* fout = fopen("bands.dat", "w");
+        //for (int i = 0; i < global.num_bands(); i++)
+        //{
+        //    for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
+        //    {
+        //        fprintf(fout, "%f %f\n", xaxis[ik], kpoint_set_[ik]->band_energy(i));
+        //    }
+        //    fprintf(fout, "\n");
+        //}
+        //fclose(fout);
     }
 }
 
@@ -447,17 +473,25 @@ void FORTRAN(sirius_set_uj_correction_matrix)(int4* atom_id, int4* l, complex16*
 void FORTRAN(sirius_set_so_correction)(int4* so_correction)
 {
     if (*so_correction != 0) 
+    {
         global.set_so_correction(true);
+    }
     else
+    {
         global.set_so_correction(false);
+    }
 }
 
 void FORTRAN(sirius_set_uj_correction)(int4* uj_correction)
 {
     if (*uj_correction != 0)
+    {
         global.set_uj_correction(true);
+    }
     else
+    {
         global.set_uj_correction(false);
+    }
 }
 
 void FORTRAN(sirius_platform_mpi_rank)(int4* rank)
@@ -484,7 +518,6 @@ void FORTRAN(sirius_get_total_energy)(real8* total_energy)
 {
     *total_energy = global.total_energy();
 }
-
 
 
 } // extern "C"
