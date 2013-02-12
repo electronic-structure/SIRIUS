@@ -12,7 +12,7 @@ packages = {
     "gsl"  : ["ftp://ftp.gnu.org/gnu/gsl/gsl-1.15.tar.gz", 
               []
              ],
-    "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.10.tar.gz",
+    "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.10-patch1.tar.gz",
               ["--enable-fortran", "--enable-shared=no", "--enable-static=yes", 
                "--disable-deprecated-symbols"]
              ],
