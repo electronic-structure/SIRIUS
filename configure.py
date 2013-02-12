@@ -12,14 +12,14 @@ packages = {
     "gsl"  : ["ftp://ftp.gnu.org/gnu/gsl/gsl-1.15.tar.gz", 
               []
              ],
-    "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.10-patch1.tar.gz",
+    "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.10.tar.gz",
               ["--enable-fortran", "--enable-shared=no", "--enable-static=yes", 
                "--disable-deprecated-symbols"]
              ],
-    "xc"   : ["http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-1.2.0.tar.gz",
+    "xc"   : ["http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.0.1.tar.gz",
               []
              ],
-    "spg"  : ["http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.3/spglib-1.3.tar.gz",
+    "spg"  : ["http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.3/spglib-1.3.1.tar.gz",
               []
              ]
 }
@@ -66,7 +66,7 @@ def configure_package(package_name, platform):
     retval = []
 
     if (package_name == "xc"):
-        retval = ["-I" + cwdlibs + package_dir + "/src", 
+        retval = ["-I" + cwdlibs + package_dir + "/src" + " -I" + cwdlibs + package_dir, 
                   cwdlibs + package_dir + "/src/.libs/libxc.a", 
                   "\tcd ./libs/" + package_dir + "/src; make; ar -r ./.libs/libxc.a *.o\n",
                   "\tcd ./libs/" + package_dir + "; make clean\n"]
