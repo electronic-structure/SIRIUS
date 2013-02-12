@@ -114,12 +114,6 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
         }
     }
 
-    //* printf("Core levels : \n");
-    //* for (int i = 0; i < (int)core.size(); i++) printf("%i %i %i\n", core[i].n, core[i].l, core[i].occupancy);
-
-    //* printf("Valence levels : \n");
-    //* for (int i = 0; i < (int)valence.size(); i++) printf("%i %i %i\n", valence[i].n, valence[i].l, valence[i].occupancy);
-
     std::string core_str;
     for (int i = 0; i < (int)core.size(); i++)
     {
