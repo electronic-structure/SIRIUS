@@ -551,10 +551,18 @@ class kpoint
                 int h_icol = 0;
                 int o_irow = 0;
                 int o_icol = 0;
+                std::vector<double> h_diag(apwlo_basis_size(), 0);
+                std::vector<double> o_diag(apwlo_basis_size(), 0);
                 for (int icol = 0; icol < apwlo_basis_size_col(); icol++)
                 {
+                    int idxglob = apwlo_basis_descriptors_col_[icol].idxglob;
                     for (int irow = 0; irow < apwlo_basis_size_row(); irow++)
                     {
+                        if (apwlo_basis_descriptors_row_[irow].idxglob == idxglob)
+                        {
+                            h_diag[idxglob] = abs(h(irow, icol));
+                            o_diag[idxglob] = abs(o(irow, icol));
+                        }
                         if (abs(h(irow, icol)) > h_max)
                         {
                             h_max = abs(h(irow, icol));
@@ -569,7 +577,24 @@ class kpoint
                         }
                     }
                 }
+
+                Platform::allreduce(&h_diag[0], apwlo_basis_size(),
+                                    parameters_.mpi_grid().communicator(1 << band->dim_row() | 1 << band->dim_col()));
                 
+                Platform::allreduce(&o_diag[0], apwlo_basis_size(),
+                                    parameters_.mpi_grid().communicator(1 << band->dim_row() | 1 << band->dim_col()));
+                
+                if (parameters_.mpi_grid().root(1 << band->dim_row() | 1 << band->dim_col()))
+                {
+                    std::stringstream s;
+                    s << "h_diag : ";
+                    for (int i = 0; i < apwlo_basis_size(); i++) s << h_diag[i] << " ";
+                    s << std::endl;
+                    s << "o_diag : ";
+                    for (int i = 0; i < apwlo_basis_size(); i++) s << o_diag[i] << " ";
+                    warning(__FILE__, __LINE__, s, 0);
+                }
+
                 std::stringstream s;
                 s << "h_max " << h_max << " irow, icol : " << h_irow << " " << h_icol << std::endl;
                 s << " (row) igk, ig, ia, l, lm, irdrf, order : " << apwlo_basis_descriptors_row_[h_irow].igk << " "  
@@ -831,7 +856,7 @@ class kpoint
             if (parameters_.aw_cutoff() > double(parameters_.lmax_apw()))
                 error(__FILE__, __LINE__, "aw cutoff is too large for a given lmax");
 
-            double gk_cutoff = parameters_.aw_cutoff() / parameters_.min_mt_radius();
+            double gk_cutoff = parameters_.aw_cutoff() / parameters_.max_mt_radius();
             
             if (gk_cutoff * 2 > parameters_.pw_cutoff())
                 error(__FILE__, __LINE__, "aw cutoff is too large for a given plane-wave cutoff");

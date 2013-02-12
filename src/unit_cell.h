@@ -86,6 +86,9 @@ class UnitCell
         /// minimum muffin-tin radius
         double min_mt_radius_;
         
+        /// maximum muffin-tin radius
+        double max_mt_radius_;
+        
         /// Get crystal symmetries and equivalent atoms.
 
         /** Makes a call to spglib providing the basic unit cell information: lattice vectors and atomic types 
@@ -183,11 +186,11 @@ class UnitCell
                 double dist = nearest_neighbours_[ia][1].distance;
                 
                 // take a little bit smaller value than half a distance
-                double r = 0.95 * (dist / 2);
+                double R = 0.95 * (dist / 2);
 
                 // take minimal R for the given atom type
-                rmt[atom_type_index_by_id(id1)] = std::min(r, rmt[atom_type_index_by_id(id1)]);
-                rmt[atom_type_index_by_id(id2)] = std::min(r, rmt[atom_type_index_by_id(id2)]);
+                rmt[atom_type_index_by_id(id1)] = std::min(R, rmt[atom_type_index_by_id(id1)]);
+                rmt[atom_type_index_by_id(id2)] = std::min(R, rmt[atom_type_index_by_id(id2)]);
             }
 
             for (int i = 0; i < num_atom_types(); i++)
@@ -263,11 +266,13 @@ class UnitCell
             
             max_num_mt_points_ = 0;
             min_mt_radius_ = 1e100;
+            max_mt_radius_ = 0;
             for (int i = 0; i < num_atom_types(); i++)
             {
                  atom_type(i)->init(lmax_apw);
                  max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(i)->num_mt_points());
                  min_mt_radius_ = std::min(min_mt_radius_, atom_type(i)->mt_radius());
+                 max_mt_radius_ = std::max(max_mt_radius_, atom_type(i)->mt_radius());
             }
             
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
@@ -402,9 +407,7 @@ class UnitCell
         /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the
             unit cell volume.
         */
-        void set_lattice_vectors(double* a1, 
-                                 double* a2, 
-                                 double* a3)
+        void set_lattice_vectors(double* a1, double* a2, double* a3)
         {
             for (int x = 0; x < 3; x++)
             {
@@ -421,8 +424,7 @@ class UnitCell
             
             omega_ = fabs(t1);
             
-            if (omega_ < 1e-20)
-                error(__FILE__, __LINE__, "lattice vectors are linearly dependent");
+            if (omega_ < 1e-10) error(__FILE__, __LINE__, "lattice vectors are linearly dependent");
             
             t1 = 1.0 / t1;
 
@@ -440,24 +442,18 @@ class UnitCell
             memcpy(&inverse_lattice_vectors_[0][0], &b[0][0], 9 * sizeof(double));
 
             for (int l = 0; l < 3; l++)
-                for (int x = 0; x < 3; x++)
+            {
+                for (int x = 0; x < 3; x++) 
                     reciprocal_lattice_vectors_[l][x] = twopi * inverse_lattice_vectors_[x][l];
+            }
         }
         
         void find_nearest_neighbours(double cluster_radius)
         {
             Timer t("sirius::UnitCell::find_nearest_neighbours");
 
-            int max_frac_coord[] = {0, 0, 0};
-            double frac_coord[3];
-            for (int i = 0; i < 3; i++)
-            {
-                double cart_coord[] = {0.0, 0.0, 0.0};
-                cart_coord[i] = cluster_radius; // radius of nearest neighbours cluster
-                get_coordinates<fractional, direct>(cart_coord, frac_coord);
-                for (int i = 0; i < 3; i++)
-                    max_frac_coord[i] = std::max(max_frac_coord[i], abs(int(frac_coord[i])) + 1);
-            }
+            int max_frac_coord[3];
+            find_translation_limits<direct>(cluster_radius, max_frac_coord);
            
             nearest_neighbours_.clear();
             nearest_neighbours_.resize(num_atoms());
@@ -498,9 +494,12 @@ class UnitCell
 
                                 nnd.distance = Utils::vector_length(v);
                                 
-                                nn.push_back(nnd);
+                                if (nnd.distance <= cluster_radius)
+                                {
+                                    nn.push_back(nnd);
 
-                                nn_sort.push_back(std::pair<double, int>(nnd.distance, (int)nn.size() - 1));
+                                    nn_sort.push_back(std::pair<double, int>(nnd.distance, (int)nn.size() - 1));
+                                }
                             }
 
                         }
@@ -510,6 +509,28 @@ class UnitCell
                 std::sort(nn_sort.begin(), nn_sort.end());
                 nearest_neighbours_[ia].resize(nn.size());
                 for (int i = 0; i < (int)nn.size(); i++) nearest_neighbours_[ia][i] = nn[nn_sort[i].second];
+            }
+
+            if (Platform::mpi_rank() == 0)
+            {
+                FILE* fout = fopen("nghbr.txt", "w");
+                for (int ia = 0; ia < num_atoms(); ia++)
+                {
+                    fprintf(fout, "Central atom: %s (%i)\n", atom(ia)->type()->label().c_str(), ia);
+                    for (int i = 0; i < 80; i++) fprintf(fout, "-");
+                    fprintf(fout, "\n");
+                    fprintf(fout, "atom (  id)       D [a.u.]    translation  R\n");
+                    for (int i = 0; i < 80; i++) fprintf(fout, "-");
+                    fprintf(fout, "\n");
+                    for (int i = 0; i < (int)nearest_neighbours_[ia].size(); i++)
+                    {
+                        int ja = nearest_neighbours_[ia][i].atom_id;
+                        fprintf(fout, "%4s (%4i)   %12.6f\n", atom(ja)->type()->label().c_str(), ja, 
+                                                 nearest_neighbours_[ia][i].distance);
+                    }
+                    fprintf(fout, "\n");
+                }
+                fclose(fout);
             }
         }
 
@@ -544,8 +565,14 @@ class UnitCell
                     }
                 }
 
-                if (found) n++;
-                else return;
+                if (found) 
+                {
+                    n++;
+                }
+                else 
+                {
+                    return;
+                }
             }
         }
 
@@ -822,6 +849,12 @@ class UnitCell
         inline double min_mt_radius()
         {
             return min_mt_radius_;
+        }
+
+        /// Maximum muffin-tin radius
+        inline double max_mt_radius()
+        {
+            return max_mt_radius_;
         }
 
         /// Maximum number of AW basis functions across all atom types

@@ -59,11 +59,15 @@ class StepFunction : public ReciprocalLattice
                     }
 
                     if (ig == 0)
+                    {
                         zt += conj(gvec_phase_factor(ig, ia)) * pow(R, 3) / 3.0;
                         //step_function_pw_[ig] -= fourpi_omega * conj(gvec_phase_factor(ig, ia)) * pow(R, 3) / 3.0;
+                    }
                     else
+                    {
                         zt += conj(gvec_phase_factor(ig, ia)) * sin_cos_gR;
                         //step_function_pw_[ig] -= fourpi_omega * conj(gvec_phase_factor(ig, ia)) * sin_cos_gR;
+                    }
                 }
                 step_function_pw_[ig] -= zt * fourpi_omega;
             }
