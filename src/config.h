@@ -16,7 +16,7 @@ const bool check_pseudo_charge = false;
 
 const bool full_relativistic_core = false;
 
-const linalg_t eigen_value_solver = elpa; //lapack; //scalapack;
+const linalg_t eigen_value_solver = lapack; //magma; //elpa; //lapack; //scalapack;
 
 /// level of internal debugging and checking
 
@@ -25,7 +25,7 @@ const linalg_t eigen_value_solver = elpa; //lapack; //scalapack;
     debug_level > 1 : check orthonormaliztion of the wave-functions \n
     debug_level > 2 : check scalapack vs. lapack diagonalization   
 */
-const int debug_level = 2;
+const int debug_level = 0;
 
 const int verbosity_level = 0;
 

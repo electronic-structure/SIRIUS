@@ -530,5 +530,100 @@ template<> struct eigenproblem<elpa>
     }
 };
 
+/// magma eigenvalue specialization
+template<> struct eigenproblem<magma>
+{
+    static std::vector<int4> get_work_sizes(int id, int4 matrix_size)
+    {
+        std::vector<int4> work_sizes(3);
+        
+        //* switch (id)
+        //* {
+        //*     case 0: // zheevd
+        //*     {
+        //*         work_sizes[0] = 2 * matrix_size + matrix_size * matrix_size;
+        //*         work_sizes[1] = 1 + 5 * matrix_size + 2 * matrix_size * matrix_size;
+        //*         work_sizes[2] = 3 + 5 * matrix_size;
+        //*         break;
+        //*     }
+        //*     case 1: // zhegvx
+        //*     {
+        //*         int4 nb = linalg<lapack>::ilaenv(1, "ZHETRD", "U", matrix_size, 0, 0, 0);
+        //*         work_sizes[0] = (nb + 1) * matrix_size; // lwork
+        //*         work_sizes[1] = 7 * matrix_size; // lrwork
+        //*         work_sizes[2] = 5 * matrix_size; // liwork
+        //*         break;
+        //*     }
+        //*     default:
+        //*         error(__FILE__, __LINE__, "wrong eigen value solver id");
+        //* }
+
+        return work_sizes;
+    }
+    
+    static int standard(int4 matrix_size, complex16* a, int4 lda, real8* eval, complex16* z, int4 ldz)
+    {
+        //* std::vector<int4> work_sizes = get_work_sizes(0, matrix_size);
+        //* 
+        //* std::vector<complex16> work(work_sizes[0]);
+        //* std::vector<real8> rwork(work_sizes[1]);
+        //* std::vector<int4> iwork(work_sizes[2]);
+        //* int4 info;
+
+        //* FORTRAN(zheevd)("V", "U", &matrix_size, a, &lda, eval, &work[0], &work_sizes[0], &rwork[0], &work_sizes[1], 
+        //*                 &iwork[0], &work_sizes[2], &info, (int4)1, (int4)1);
+        //* 
+        //* for (int i = 0; i < matrix_size; i++)
+        //*     memcpy(&z[ldz * i], &a[lda * i], matrix_size * sizeof(complex16));
+        //* 
+        //* if (info)
+        //* {
+        //*     std::stringstream s;
+        //*     s << "zheevd returned " << info; 
+        //*     error(__FILE__, __LINE__, s, fatal_err);
+        //* }
+
+        //* return info;
+        return 0;
+    }
+
+    static int generalized(int4 matrix_size, int4 nv, real8 abstol, complex16* a, int4 lda, complex16* b, int4 ldb, 
+                           real8* eval, complex16* z, int4 ldz)
+    {
+        //* assert(nv <= matrix_size);
+
+        //* std::vector<int4> work_sizes = get_work_sizes(1, matrix_size);
+        //* 
+        //* std::vector<complex16> work(work_sizes[0]);
+        //* std::vector<real8> rwork(work_sizes[1]);
+        //* std::vector<int4> iwork(work_sizes[2]);
+        //* std::vector<int4> ifail(matrix_size);
+        //* std::vector<real8> w(matrix_size);
+        //* real8 vl = 0.0;
+        //* real8 vu = 0.0;
+        //* int4 m;
+        //* int4 info;
+       
+        //* int4 ione = 1;
+        //* FORTRAN(zhegvx)(&ione, "V", "I", "U", &matrix_size, a, &lda, b, &ldb, &vl, &vu, &ione, &nv, &abstol, &m, 
+        //*                 &w[0], z, &ldz, &work[0], &work_sizes[0], &rwork[0], &iwork[0], &ifail[0], &info, (int4)1, 
+        //*                 (int4)1, (int4)1);
+
+        //* if (m != nv) error(__FILE__, __LINE__, "Not all eigen-values are found.", fatal_err);
+
+        //* if (info)
+        //* {
+        //*     std::stringstream s;
+        //*     s << "zhegvx returned " << info; 
+        //*     error(__FILE__, __LINE__, s, fatal_err);
+        //* }
+
+        //* memcpy(eval, &w[0], nv * sizeof(real8));
+
+        //* return info;
+        return 0;
+    }
+};
+
 #endif // __LINALG_H__
 

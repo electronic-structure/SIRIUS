@@ -33,6 +33,8 @@ extern "C" {
 #include <hdf5.h>
 #include <libjson.h>
 
+#include <magma.h>
+
 #include "typedefs.h"
 #include "config.h"
 

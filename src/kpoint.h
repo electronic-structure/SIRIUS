@@ -687,6 +687,13 @@ class kpoint
                                                       fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
                     break;
                 }
+                case magma:
+                {
+                    eigenproblem<magma>::generalized(apwlo_basis_size(), parameters_.num_fv_states(), -1.0, 
+                                                     h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), &fv_eigen_values_[0], 
+                                                     fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
+                    break;
+                }
                 case scalapack:
                 {
                     eigenproblem<scalapack>::generalized(apwlo_basis_size(), 
