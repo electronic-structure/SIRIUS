@@ -5,9 +5,7 @@ typedef std::complex<double> complex16;
 
 typedef double real8;
 
-typedef int32_t int4;
-
-enum spin_block {nm, uu, ud, dd, du}; // TODO: add _t to type names
+enum spin_block_t {nm, uu, ud, dd, du};
 
 enum processing_unit_t {cpu, gpu};
 

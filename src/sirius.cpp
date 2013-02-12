@@ -29,17 +29,17 @@ void FORTRAN(sirius_set_lattice_vectors)(real8* a1, real8* a2, real8* a3)
     global.set_lattice_vectors(a1, a2, a3);
 }
 
-void FORTRAN(sirius_set_lmax_apw)(int4* lmax_apw)
+void FORTRAN(sirius_set_lmax_apw)(int32_t* lmax_apw)
 {
     global.set_lmax_apw(*lmax_apw);
 }
 
-void FORTRAN(sirius_set_lmax_rho)(int4* lmax_rho)
+void FORTRAN(sirius_set_lmax_rho)(int32_t* lmax_rho)
 {
     global.set_lmax_rho(*lmax_rho);
 }
 
-void FORTRAN(sirius_set_lmax_pot)(int4* lmax_pot)
+void FORTRAN(sirius_set_lmax_pot)(int32_t* lmax_pot)
 {
     global.set_lmax_pot(*lmax_pot);
 }
@@ -74,17 +74,17 @@ void FORTRAN(sirius_set_effective_magnetic_field_ptr)(real8* beffmt, real8* beff
     potential->set_effective_magnetic_field_ptr(beffmt, beffir);
 }
 
-void FORTRAN(sirius_set_equivalent_atoms)(int4* equivalent_atoms)
+void FORTRAN(sirius_set_equivalent_atoms)(int32_t* equivalent_atoms)
 {
     global.set_equivalent_atoms(equivalent_atoms);
 }
 
-void FORTRAN(sirius_set_num_spins)(int4* num_spins)
+void FORTRAN(sirius_set_num_spins)(int32_t* num_spins)
 {
     global.set_num_spins(*num_spins);
 }
 
-void FORTRAN(sirius_set_num_mag_dims)(int4* num_mag_dims)
+void FORTRAN(sirius_set_num_mag_dims)(int32_t* num_mag_dims)
 {
     global.set_num_mag_dims(*num_mag_dims);
 }
@@ -92,63 +92,63 @@ void FORTRAN(sirius_set_num_mag_dims)(int4* num_mag_dims)
 /*
     primitive get functions
 */
-void FORTRAN(sirius_get_max_num_mt_points)(int4* max_num_mt_points)
+void FORTRAN(sirius_get_max_num_mt_points)(int32_t* max_num_mt_points)
 {
     *max_num_mt_points = global.max_num_mt_points();
 }
 
-void FORTRAN(sirius_get_num_mt_points)(int4* atom_type_id, int4* num_mt_points)
+void FORTRAN(sirius_get_num_mt_points)(int32_t* atom_type_id, int32_t* num_mt_points)
 {
     *num_mt_points = global.atom_type_by_id(*atom_type_id)->num_mt_points();
 }
 
-void FORTRAN(sirius_get_mt_points)(int4* atom_type_id, real8* mt_points)
+void FORTRAN(sirius_get_mt_points)(int32_t* atom_type_id, real8* mt_points)
 {
     memcpy(mt_points, global.atom_type_by_id(*atom_type_id)->radial_grid().get_ptr(),
         global.atom_type_by_id(*atom_type_id)->num_mt_points() * sizeof(real8));
 }
 
-void FORTRAN(sirius_get_num_grid_points)(int4* num_grid_points)
+void FORTRAN(sirius_get_num_grid_points)(int32_t* num_grid_points)
 {
     *num_grid_points = global.fft().size();
 }
 
-void FORTRAN(sirius_get_num_bands)(int4* num_bands)
+void FORTRAN(sirius_get_num_bands)(int32_t* num_bands)
 {
     *num_bands = global.num_bands();
 }
 
-void FORTRAN(sirius_get_num_gvec)(int4* num_gvec)
+void FORTRAN(sirius_get_num_gvec)(int32_t* num_gvec)
 {
     *num_gvec = global.num_gvec();
 }
 
-void FORTRAN(sirius_get_fft_grid_size)(int4* grid_size)
+void FORTRAN(sirius_get_fft_grid_size)(int32_t* grid_size)
 {
     grid_size[0] = global.fft().size(0);
     grid_size[1] = global.fft().size(1);
     grid_size[2] = global.fft().size(2);
 }
 
-void FORTRAN(sirius_get_fft_grid_limits)(int4* d, int4* ul, int4* val)
+void FORTRAN(sirius_get_fft_grid_limits)(int32_t* d, int32_t* ul, int32_t* val)
 {
     *val = global.fft().grid_limits(*d, *ul);
 }
 
-void FORTRAN(sirius_get_fft_index)(int4* fft_index)
+void FORTRAN(sirius_get_fft_index)(int32_t* fft_index)
 {
-    memcpy(fft_index, global.fft_index(),  global.fft().size() * sizeof(int4));
+    memcpy(fft_index, global.fft_index(),  global.fft().size() * sizeof(int32_t));
     for (int i = 0; i < global.fft().size(); i++) fft_index[i]++;
 }
 
-void FORTRAN(sirius_get_gvec)(int4* gvec)
+void FORTRAN(sirius_get_gvec)(int32_t* gvec)
 {
-    memcpy(gvec, global.gvec(0), 3 * global.fft().size() * sizeof(int4));
+    memcpy(gvec, global.gvec(0), 3 * global.fft().size() * sizeof(int32_t));
 }
 
-void FORTRAN(sirius_get_index_by_gvec)(int4* index_by_gvec)
+void FORTRAN(sirius_get_index_by_gvec)(int32_t* index_by_gvec)
 {
-    memcpy(index_by_gvec, global.index_by_gvec(), global.fft().size() * sizeof(int4));
+    memcpy(index_by_gvec, global.index_by_gvec(), global.fft().size() * sizeof(int32_t));
     for (int i = 0; i < global.fft().size(); i++) index_by_gvec[i]++;
 }
 
@@ -167,13 +167,13 @@ void FORTRAN(sirius_get_num_core_electrons)(real8* num_core_electrons)
     *num_core_electrons = global.num_core_electrons();
 }
 
-void FORTRAN(sirius_add_atom_type)(int4* atom_type_id, char* _label, int4 label_len)
+void FORTRAN(sirius_add_atom_type)(int32_t* atom_type_id, char* _label, int32_t label_len)
 {
     std::string label(_label, label_len);
     global.add_atom_type(*atom_type_id, label);
 }
 
-void FORTRAN(sirius_add_atom)(int4* atom_type_id, real8* position, real8* vector_field)
+void FORTRAN(sirius_add_atom)(int32_t* atom_type_id, real8* position, real8* vector_field)
 {
     global.add_atom(*atom_type_id, position, vector_field);
 }
@@ -181,7 +181,7 @@ void FORTRAN(sirius_add_atom)(int4* atom_type_id, real8* position, real8* vector
 /*
     main functions
 */
-void FORTRAN(sirius_platform_initialize)(int4* call_mpi_init_)
+void FORTRAN(sirius_platform_initialize)(int32_t* call_mpi_init_)
 {
     bool call_mpi_init = (*call_mpi_init_ != 0) ? true : false; 
     Platform::initialize(call_mpi_init);
@@ -197,7 +197,7 @@ void FORTRAN(sirius_potential_initialize)(void)
     potential = new sirius::Potential(global);
 }
 
-void FORTRAN(sirius_density_initialize)(int4* num_kpoints, double* kpoints_, double* kpoint_weights)
+void FORTRAN(sirius_density_initialize)(int32_t* num_kpoints, double* kpoints_, double* kpoint_weights)
 {
     mdarray<double, 2> kpoints(kpoints_, 3, *num_kpoints); 
     density = new sirius::Density(global, potential, kpoints, kpoint_weights);
@@ -233,19 +233,19 @@ void FORTRAN(sirius_density_find_band_occupancies)(void)
     density->find_band_occupancies();
 }
 
-void FORTRAN(sirius_density_set_band_occupancies)(int4* ik_, real8* band_occupancies)
+void FORTRAN(sirius_density_set_band_occupancies)(int32_t* ik_, real8* band_occupancies)
 {
     int ik = *ik_ - 1;
     density->set_band_occupancies(ik, band_occupancies);
 }
 
-void FORTRAN(sirius_density_get_band_energies)(int4* ik_, real8* band_energies)
+void FORTRAN(sirius_density_get_band_energies)(int32_t* ik_, real8* band_energies)
 {
     int ik = *ik_ - 1;
     density->get_band_energies(ik, band_energies);
 }
 
-void FORTRAN(sirius_density_get_band_occupancies)(int4* ik_, real8* band_occupancies)
+void FORTRAN(sirius_density_get_band_occupancies)(int32_t* ik_, real8* band_occupancies)
 {
     int ik = *ik_ - 1;
     density->get_band_occupancies(ik, band_occupancies);
@@ -270,13 +270,13 @@ void FORTRAN(sirius_print_timers)(void)
    sirius::Timer::print();
 }   
 
-void FORTRAN(sirius_timer_start)(char* name_, int4 name_len)
+void FORTRAN(sirius_timer_start)(char* name_, int32_t name_len)
 {
     std::string name(name_, name_len);
     sirius::ftimers[name] = new sirius::Timer(name);
 }
 
-void FORTRAN(sirius_timer_stop)(char* name_, int4 name_len)
+void FORTRAN(sirius_timer_stop)(char* name_, int32_t name_len)
 {
     std::string name(name_, name_len);
     if (sirius::ftimers.count(name)) delete sirius::ftimers[name];
@@ -461,19 +461,19 @@ void FORTRAN(sirius_write_json_output)(void)
     global.write_json_output();
 }
 
-void FORTRAN(sirius_get_occupation_matrix)(int4* atom_id, complex16* occupation_matrix)
+void FORTRAN(sirius_get_occupation_matrix)(int32_t* atom_id, complex16* occupation_matrix)
 {
     int ia = *atom_id - 1;
     global.atom(ia)->get_occupation_matrix(occupation_matrix);
 }
 
-void FORTRAN(sirius_set_uj_correction_matrix)(int4* atom_id, int4* l, complex16* uj_correction_matrix)
+void FORTRAN(sirius_set_uj_correction_matrix)(int32_t* atom_id, int32_t* l, complex16* uj_correction_matrix)
 {
     int ia = *atom_id - 1;
     global.atom(ia)->set_uj_correction_matrix(*l, uj_correction_matrix);
 }
 
-void FORTRAN(sirius_set_so_correction)(int4* so_correction)
+void FORTRAN(sirius_set_so_correction)(int32_t* so_correction)
 {
     if (*so_correction != 0) 
     {
@@ -485,7 +485,7 @@ void FORTRAN(sirius_set_so_correction)(int4* so_correction)
     }
 }
 
-void FORTRAN(sirius_set_uj_correction)(int4* uj_correction)
+void FORTRAN(sirius_set_uj_correction)(int32_t* uj_correction)
 {
     if (*uj_correction != 0)
     {
@@ -497,17 +497,17 @@ void FORTRAN(sirius_set_uj_correction)(int4* uj_correction)
     }
 }
 
-void FORTRAN(sirius_platform_mpi_rank)(int4* rank)
+void FORTRAN(sirius_platform_mpi_rank)(int32_t* rank)
 {
     *rank = Platform::mpi_rank();
 }
 
-void FORTRAN(sirius_global_set_sync_flag)(int4* flag)
+void FORTRAN(sirius_global_set_sync_flag)(int32_t* flag)
 {
     global.set_sync_flag(*flag);
 }
 
-void FORTRAN(sirius_global_get_sync_flag)(int4* flag)
+void FORTRAN(sirius_global_get_sync_flag)(int32_t* flag)
 {
     *flag = global.sync_flag();
 }

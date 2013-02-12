@@ -308,7 +308,7 @@ class Band
         }
 
         /// Apply UJ correction to scalar wave functions
-        template <spin_block sblock>
+        template <spin_block_t sblock>
         void apply_uj_correction(mdarray<complex16, 2>& fv_states, mdarray<complex16, 3>& hpsi)
         {
             Timer t("sirius::Band::apply_uj_correction");

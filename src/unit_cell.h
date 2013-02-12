@@ -332,8 +332,8 @@ class UnitCell
     
         UnitCell() : spg_dataset_(NULL)
         {
-            assert(sizeof(int4) == 4);
-            assert(sizeof(real8) == 8);
+            assert(sizeof(int) == 4);
+            assert(sizeof(double) == 8);
         }
        
         void set_equivalent_atoms(int* equivalent_atoms__)
