@@ -352,6 +352,12 @@ class json_write
             fprintf(fout_, "\"%s\" : \"%s\"", name, value.c_str());
         }
 
+        inline void string(const char* name, const std::string& value)
+        {
+            new_line();
+            fprintf(fout_, "\"%s\" : %s", name, value.c_str());
+        }
+        
         inline void single(const char* name, std::vector<double>& values)
         {
             new_line();

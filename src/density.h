@@ -514,8 +514,7 @@ class Density
                 int ist = parameters_.num_valence_electrons();
                 if (parameters_.num_spins() == 1) ist /= 2; 
 
-                if (eband[ist].first > eband[ist - 1].second)
-                    gap = eband[ist].first - eband[ist - 1].second;
+                if (eband[ist].first > eband[ist - 1].second) gap = eband[ist].first - eband[ist - 1].second;
 
                 parameters_.rti().band_gap = gap;
             }

@@ -149,6 +149,12 @@ class AtomSymmetryClass
                             radial_functions_(ir, idxrf, 0) /= atom_type_->radial_grid(ir);
                             radial_functions_(ir, idxrf, 1) /= atom_type_->radial_grid(ir);
                         }
+
+                        if (debug_level > 1)
+                        {
+                            printf("atom class id : %i  l : %i  order : %i  radial function value at MT : %f\n", 
+                                   id_, l, order, radial_functions_(nmtp - 1, idxrf, 0));
+                        }
                     }
                 }
             }

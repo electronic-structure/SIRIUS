@@ -113,7 +113,7 @@ class kpoint
                     }
 
                     double det = (num_aw == 1) ? abs(a[0][0]) : abs(a[0][0] * a[1][1] - a[0][1] * a [1][0]);
-                    if (det < 1e-4)
+                    if (det < 1.0 / sqrt(parameters_.omega()))
                     {   
                         std::stringstream s;
                         s << "Ill defined linear equation problem for atom " << ia << ", l : " << l << std::endl

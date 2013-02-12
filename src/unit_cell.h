@@ -351,14 +351,21 @@ class UnitCell
             
             printf("lattice vectors\n");
             for (int i = 0; i < 3; i++)
+            {
                 printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors(i, 0), 
                                                                      lattice_vectors(i, 1), 
                                                                      lattice_vectors(i, 2)); 
+            }
             printf("reciprocal lattice vectors\n");
             for (int i = 0; i < 3; i++)
+            {
                 printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors(i, 0), 
                                                                      reciprocal_lattice_vectors(i, 1), 
                                                                      reciprocal_lattice_vectors(i, 2));
+            }
+            printf("\n");
+            printf("unit cell volume : %18.8f [a.u.^3]\n", omega());
+            printf("1/sqrt(omega)    : %18.8f\n", 1.0 / sqrt(omega()));
             
             printf("\n"); 
             printf("number of atom types : %i\n", num_atom_types());
