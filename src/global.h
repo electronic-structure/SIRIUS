@@ -457,8 +457,7 @@ class Global : public StepFunction
             for (int i = 0; i < num_atom_types(); i++)
             {
                 int rank = spl_num_atom_types.location(1, i);
-                Platform::bcast(atom_type(i)->free_atom_density_ptr(), atom_type(i)->radial_grid().size(), rank);
-                Platform::bcast(atom_type(i)->free_atom_potential_ptr(), atom_type(i)->radial_grid().size(), rank);
+                atom_type(i)->sync_free_atom(rank);
             }
         }
 
