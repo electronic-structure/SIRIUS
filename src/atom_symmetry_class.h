@@ -261,8 +261,6 @@ class AtomSymmetryClass
                                                            core_eval_sum_(0.0),
                                                            core_leakage_(0.0)
         {
-            core_charge_density_.resize(atom_type_->radial_grid().size());
-            memset(&core_charge_density_[0], 0, atom_type_->radial_grid().size() * sizeof(double));
         }
 
         void init()
@@ -290,6 +288,9 @@ class AtomSymmetryClass
 
             lo_descriptors_.resize(atom_type_->num_lo_descriptors());
             for (int i = 0; i < num_lo_descriptors(); i++) lo_descriptors_[i] = atom_type_->lo_descriptor(i);
+            
+            core_charge_density_.resize(atom_type_->radial_grid().size());
+            memset(&core_charge_density_[0], 0, atom_type_->radial_grid().size() * sizeof(double));
         }
 
         inline int id()
@@ -625,6 +626,9 @@ class AtomSymmetryClass
 
         inline void sync_core_charge_density(int rank)
         {
+            assert(core_charge_density_.size() != 0);
+            assert(&core_charge_density_[0] != NULL);
+
             Platform::bcast(&core_charge_density_[0],  atom_type_->radial_grid().size(), rank);
             Platform::bcast(&core_leakage_, 1, rank);
             Platform::bcast(&core_eval_sum_, 1, rank);

@@ -705,7 +705,7 @@ class Density
             // compute core states
             for (int icloc = 0; icloc < parameters_.spl_num_atom_symmetry_classes().local_size(); icloc++)
             {
-                int ic =  parameters_.spl_num_atom_symmetry_classes(icloc);
+                int ic = parameters_.spl_num_atom_symmetry_classes(icloc);
                 parameters_.atom_symmetry_class(ic)->generate_core_charge_density();
             }
 

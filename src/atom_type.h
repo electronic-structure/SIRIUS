@@ -53,11 +53,9 @@ class radial_functions_index
 
             int idxlo;
 
-            radial_function_index_descriptor(int l, 
-                                             int order, 
-                                             int idxlo =  -1) : l(l), 
-                                                                order(order), 
-                                                                idxlo(idxlo)
+            radial_function_index_descriptor(int l, int order, int idxlo =  -1) : l(l), 
+                                                                                  order(order), 
+                                                                                  idxlo(idxlo)
             {
                 assert(l >= 0);
                 assert(order >= 0);
@@ -107,8 +105,7 @@ class radial_functions_index
                 num_rf_[l]++;
             }
 
-            for (int l = 0; l <= lmax; l++)
-                max_num_rf_ = std::max(max_num_rf_, num_rf_[l]);
+            for (int l = 0; l <= lmax; l++) max_num_rf_ = std::max(max_num_rf_, num_rf_[l]);
 
             index_by_l_order_.set_dimensions(lmax + 1, max_num_rf_);
             index_by_l_order_.allocate();
@@ -531,12 +528,10 @@ class AtomType
             radial_grid_.init(exponential_grid, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
         }
 
-        AtomType(int id__, 
-                 const std::string& label__) : id_(id__),
-                                               label_(label__)
+        AtomType(int id__, const std::string& label__) : id_(id__),
+                                                         label_(label__)
         {
-            if (label_.size() == 0)
-                error(__FILE__, __LINE__, "empty atom label");
+            if (label_.size() == 0) error(__FILE__, __LINE__, "empty atom label");
 
             read_input();
            
