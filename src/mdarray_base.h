@@ -1,9 +1,6 @@
 #ifndef _MDARRAY_BASE_H_
 #define _MDARRAY_BASE_H_
 
-#include <assert.h>
-
-// TODO: size_t for all offset- and size-related variables
 class dimension 
 {
     public:
@@ -69,7 +66,7 @@ template <typename T, int ND> class mdarray_base
             for (int i = 0; i < ND; i++) d[i] = vd[i];
             
             offset[0] = -d[0].start();
-            unsigned int n = 1;
+            size_t n = 1;
             for (int i = 1; i < ND; i++) 
             {
                 n *= d[i-1].size();
@@ -102,8 +99,7 @@ template <typename T, int ND> class mdarray_base
         inline std::vector<int> dimensions()
         {
             std::vector<int> vd(ND);
-            for (int i = 0; i < ND; i++)
-                vd[i] = d[i].size();
+            for (int i = 0; i < ND; i++) vd[i] = d[i].size();
             return vd;
         }
 
@@ -197,7 +193,7 @@ template <typename T, int ND> class mdarray_base
         
         dimension d[ND];
         
-        int offset[ND];
+        size_t offset[ND];
 
     private:
 

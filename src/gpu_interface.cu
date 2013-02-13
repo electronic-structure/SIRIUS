@@ -1,9 +1,11 @@
+// This file must be compiled with nvcc
+
 #include <stdio.h>
 #include <assert.h>
 #include <cublas.h>
 #include <cublas_v2.h>
-//#include <magmablas.h>
-//#include <magma_lapack.h>
+#include <magmablas.h>
+#include <magma_lapack.h>
 #include <magma.h>
 
 
@@ -25,12 +27,19 @@ extern "C" void cuda_free_host(void* ptr)
     }
 }
 
-extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, std::complex<double>* a, int32_t lda, 
-                                             std::complex<double>* b, int32_t ldb, double* eval, 
-                                             std::complex<double>* z, int32_t ldz)
+extern "C" magma_int_t magma_zbulge_get_lq2(magma_int_t n);
+
+extern "C" magma_int_t magma_zhegvdx_2stage(magma_int_t itype, char jobz, char range, char uplo, magma_int_t n,
+                                            cuDoubleComplex *a, magma_int_t lda, cuDoubleComplex *b, magma_int_t ldb,
+                                            double vl, double vu, magma_int_t il, magma_int_t iu,
+                                            magma_int_t *m, double *w, cuDoubleComplex *work, magma_int_t lwork,
+                                            double *rwork, magma_int_t lrwork,
+                                            magma_int_t *iwork, magma_int_t liwork, magma_int_t *info);
+
+extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, 
+                                             void* b, int32_t ldb, double* eval, void* z, int32_t ldz)
 {
-    int m1;
-    std::vector<real8> w(matrix_size);
+    int m;
     int info;
 
     int lwork = magma_zbulge_get_lq2(matrix_size) + 2 * matrix_size + matrix_size * matrix_size;
@@ -38,24 +47,32 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, st
     int liwork = 3 + 5 * matrix_size;
             
     cuDoubleComplex* h_work;
-    cuda_malloc_host(&h_work, lwork * sizeof(cuDoubleComplex));
+    cuda_malloc_host((void**)&h_work, lwork * sizeof(cuDoubleComplex));
 
     double* rwork;
-    cuda_malloc_host(&rwork, lrwork * sizeof(double));
+    cuda_malloc_host((void**)&rwork, lrwork * sizeof(double));
     
     magma_int_t *iwork;
-    if ((iwork = malloc(liwork * sizeof(magma_int_t))) == NULL)
+    if ((iwork = (magma_int_t*)malloc(liwork * sizeof(magma_int_t))) == NULL)
     {
         printf("malloc failed\n");
         exit(-1);
     }
     
-    magma_zhegvdx_2stage(1, 'V', 'I', 'U', matrix_size, a, lda, b, ldb, 0.0, 0.0, 1, nv, &m1, &w[0], h_work, lwork, 
-                         rwork, lrwork, iwork, liwork, &info);
+    double* w;
+    if ((w = (double*)malloc(matrix_size * sizeof(double))) == NULL)
+    {
+        printf("mallof failed\n");
+        exit(-1);
+    }
+
+    magma_zhegvdx_2stage(1, 'V', 'I', 'U', matrix_size, (cuDoubleComplex*)a, lda, (cuDoubleComplex*)b, ldb, 0.0, 0.0, 
+                         1, nv, &m, w, h_work, lwork, rwork, lrwork, iwork, liwork, &info);
 
     cuda_free_host(h_work);
     cuda_free_host(rwork);
     free(iwork);
+    free(w);
 
     if (m != nv)
     {
@@ -69,9 +86,7 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, st
         exit(-1);
     }
     
-    memcpy(eval, &w[0], nv * sizeof(real8));
-
-    return 0;
+    memcpy(eval, &w[0], nv * sizeof(double));
 }
 
 

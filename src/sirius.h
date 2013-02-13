@@ -34,7 +34,7 @@ extern "C" {
 #include <libjson.h>
 
 #ifdef _GPU_
-#include <magma.h>
+#include "gpu_interface.h"
 #endif
 
 #include "typedefs.h"

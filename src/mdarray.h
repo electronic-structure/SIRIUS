@@ -8,12 +8,12 @@
 #include "mdarray_base_cpu.h"
 #endif
 
-template <typename T, int ND> class mdarray : public mdarray_base_impl<T,ND> 
+template <typename T, int ND> class mdarray : public mdarray_base_impl<T, ND> 
 {
 };
 
 // 1d specialization
-template <typename T> class mdarray<T,1> : public mdarray_base_impl<T,1> 
+template <typename T> class mdarray<T, 1> : public mdarray_base_impl<T, 1> 
 {
     public:
   
@@ -45,7 +45,7 @@ template <typename T> class mdarray<T,1> : public mdarray_base_impl<T,1>
             assert(this->mdarray_ptr);
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             
-            int i = this->offset[0] + i0;
+            size_t i = this->offset[0] + i0;
             return this->mdarray_ptr[i];
         }
 };
@@ -85,7 +85,7 @@ template <typename T> class mdarray<T,2> : public mdarray_base_impl<T,2>
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
             
-            int i = this->offset[0] + i0 + i1 * this->offset[1];
+            size_t i = this->offset[0] + i0 + i1 * this->offset[1];
             return this->mdarray_ptr[i];
         }
 };
@@ -127,7 +127,7 @@ template <typename T> class mdarray<T,3> : public mdarray_base_impl<T,3>
             assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
             assert(i2 >= this->d[2].start() && i2 <= this->d[2].end());
             
-            int i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2];
+            size_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2];
             return this->mdarray_ptr[i];
         }
 };
@@ -171,7 +171,7 @@ template <typename T> class mdarray<T,4> : public mdarray_base_impl<T,4>
             assert(i2 >= this->d[2].start() && i2 <= this->d[2].end());
             assert(i3 >= this->d[3].start() && i3 <= this->d[3].end());
             
-            int i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2] + i3 * this->offset[3];
+            size_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2] + i3 * this->offset[3];
             return this->mdarray_ptr[i];
         }
 };
@@ -217,7 +217,7 @@ template <typename T> class mdarray<T,5> : public mdarray_base_impl<T,5>
             assert(i3 >= this->d[3].start() && i3 <= this->d[3].end());
             assert(i4 >= this->d[4].start() && i4 <= this->d[4].end());
             
-            int i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2] + i3 * this->offset[3] + i4 * this->offset[4];
+            size_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2] + i3 * this->offset[3] + i4 * this->offset[4];
             return this->mdarray_ptr[i];
         }
 };
@@ -259,7 +259,7 @@ template <typename T> class mdarray<T,6> : public mdarray_base_impl<T,6>
             assert(i4 >= this->d[4].start() && i4 <= this->d[4].end());
             assert(i5 >= this->d[5].start() && i5 <= this->d[5].end());
             
-            int i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2] + i3 * this->offset[3] + i4 * this->offset[4] + i5 * this->offset[5];
+            size_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2] + i3 * this->offset[3] + i4 * this->offset[4] + i5 * this->offset[5];
             return this->mdarray_ptr[i];
         }
 };

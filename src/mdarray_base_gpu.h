@@ -1,10 +1,7 @@
 #ifndef _MDARRAY_BASE_GPU_H_
 #define _MDARRAY_BASE_GPU_H_
 
-#include <iostream>
-#include "gpu_interface.h"
-
-template <typename T, int ND> class mdarray_base_impl : public mdarray_base<T,ND> 
+template <typename T, int ND> class mdarray_base_impl : public mdarray_base<T, ND> 
 {
     public:
         ~mdarray_base_impl()
@@ -29,6 +26,31 @@ template <typename T, int ND> class mdarray_base_impl : public mdarray_base<T,ND
             {
                 gpu_free(this->mdarray_ptr_device);
                 this->allocated_on_device = false;
+            }
+        }
+
+        void allocate_page_locked()
+        {
+            deallocate_page_locked();
+
+            size_t sz = this->size();
+             
+            if (sz && (!this->mdarray_ptr)) 
+            {
+                cuda_malloc_host((void**)&this->mdarray_ptr, sz * sizeof(T));
+                this->allocated_ = true;
+                Platform::adjust_heap_allocated(sz * sizeof(T));
+            }
+        }
+
+        void deallocate_page_locked()
+        {
+            if (this->allocated_)
+            {
+                cuda_free_host(this->mdarray_ptr);
+                this->mdarray_ptr = NULL;
+                this->allocated_ = false;
+                Platform::adjust_heap_allocated(-this->size() * sizeof(T));
             }
         }
         

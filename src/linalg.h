@@ -587,41 +587,12 @@ template<> struct eigenproblem<magma>
         return 0;
     }
 
-    static int generalized(int32_t matrix_size, int32_t nv, real8 abstol, complex16* a, int32_t lda, complex16* b, int32_t ldb, 
+    static void generalized(int32_t matrix_size, int32_t nv, real8 abstol, complex16* a, int32_t lda, complex16* b, int32_t ldb, 
                            real8* eval, complex16* z, int32_t ldz)
     {
-        //* assert(nv <= matrix_size);
-
-        //* std::vector<int32_t> work_sizes = get_work_sizes(1, matrix_size);
-        //* 
-        //* std::vector<complex16> work(work_sizes[0]);
-        //* std::vector<real8> rwork(work_sizes[1]);
-        //* std::vector<int32_t> iwork(work_sizes[2]);
-        //* std::vector<int32_t> ifail(matrix_size);
-        //* std::vector<real8> w(matrix_size);
-        //* real8 vl = 0.0;
-        //* real8 vu = 0.0;
-        //* int32_t m;
-        //* int32_t info;
-       
-        //* int32_t ione = 1;
-        //* FORTRAN(zhegvx)(&ione, "V", "I", "U", &matrix_size, a, &lda, b, &ldb, &vl, &vu, &ione, &nv, &abstol, &m, 
-        //*                 &w[0], z, &ldz, &work[0], &work_sizes[0], &rwork[0], &iwork[0], &ifail[0], &info, (int32_t)1, 
-        //*                 (int32_t)1, (int32_t)1);
-
-        //* if (m != nv) error(__FILE__, __LINE__, "Not all eigen-values are found.", fatal_err);
-
-        //* if (info)
-        //* {
-        //*     std::stringstream s;
-        //*     s << "zhegvx returned " << info; 
-        //*     error(__FILE__, __LINE__, s, fatal_err);
-        //* }
-
-        //* memcpy(eval, &w[0], nv * sizeof(real8));
-
-        //* return info;
-        return 0;
+        assert(nv <= matrix_size);
+        
+        magma_zhegvdx_2stage_wrapper(matrix_size, nv, a, lda, b, ldb, eval, z, ldz);
     }
 };
 

@@ -1,6 +1,13 @@
 #ifndef _GPU_INTERFACE_H_
 #define _GPU_INTERFACE_H_
 
+extern "C" void cuda_malloc_host(void** ptr, size_t size);
+
+extern "C" void cuda_free_host(void* ptr);
+
+
+
+
 extern "C" void gpu_malloc(void **ptr, int size);
 
 extern "C" void gpu_free(void *ptr);
