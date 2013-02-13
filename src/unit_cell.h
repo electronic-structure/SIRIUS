@@ -89,6 +89,9 @@ class UnitCell
         /// maximum muffin-tin radius
         double max_mt_radius_;
         
+        /// scale muffin-tin radii automatically
+        int auto_rmt_;
+
         /// Get crystal symmetries and equivalent atoms.
 
         /** Makes a call to spglib providing the basic unit cell information: lattice vectors and atomic types 
@@ -165,8 +168,9 @@ class UnitCell
             are ignored. */
         void find_mt_radii()
         {
-            if (nearest_neighbours_.size() == 0)                 
-                error(__FILE__, __LINE__, "array of nearest neighbours is empty");
+            // TODO: update documentation
+
+            if (nearest_neighbours_.size() == 0) error(__FILE__, __LINE__, "array of nearest neighbours is empty");
 
             // initialize Rmt to huge value
             std::vector<double> rmt(num_atom_types(), 1e10);
@@ -193,10 +197,36 @@ class UnitCell
                 rmt[atom_type_index_by_id(id2)] = std::min(R, rmt[atom_type_index_by_id(id2)]);
             }
 
+            std::vector<bool> can_scale(num_atom_types(), true);
+            for (int ia = 0; ia < num_atoms(); ia++)
+            {
+                int id1 = atom(ia)->type_id();
+                int ja = nearest_neighbours_[ia][1].atom_id;
+                int id2 = atom(ja)->type_id();
+                double dist = nearest_neighbours_[ia][1].distance;
+                
+                if (rmt[atom_type_index_by_id(id1)] + rmt[atom_type_index_by_id(id2)] > dist * 0.94)
+                {
+                    can_scale[atom_type_index_by_id(id1)] = false;
+                    can_scale[atom_type_index_by_id(id2)] = false;
+                }
+            }
+
+            for (int ia = 0; ia < num_atoms(); ia++)
+            {
+                int id1 = atom(ia)->type_id();
+                int ja = nearest_neighbours_[ia][1].atom_id;
+                int id2 = atom(ja)->type_id();
+                double dist = nearest_neighbours_[ia][1].distance;
+                
+                if (can_scale[atom_type_index_by_id(id1)])
+                    rmt[atom_type_index_by_id(id1)] = 0.95 * (dist - rmt[atom_type_index_by_id(id2)]);
+            }
+            
             for (int i = 0; i < num_atom_types(); i++)
             {
                 int id = atom_type(i)->id();
-                atom_type_by_id(id)->set_mt_radius(std::min(rmt[i], 3.0));
+                atom_type_by_id(id)->set_mt_radius(std::min(rmt[i], 5.0));
             }
         }
         
@@ -238,8 +268,10 @@ class UnitCell
             //if (check_mt_overlap(ia, ja)) find_mt_radii();
             
             // always scale MT radii
-            find_mt_radii();
-            
+            //find_mt_radii();
+
+            if (auto_rmt() != 0) find_mt_radii();
+
             int ia, ja;
             if (check_mt_overlap(ia, ja))
             {
@@ -247,7 +279,7 @@ class UnitCell
                 s << "overlaping muffin-tin spheres for atoms " << ia << " and " << ja << std::endl
                   << "  radius of atom " << ia << " : " << atom(ia)->type()->mt_radius() << std::endl
                   << "  radius of atom " << ja << " : " << atom(ja)->type()->mt_radius();
-                error(__FILE__, __LINE__, s);
+                error(__FILE__, __LINE__, s, fatal_err);
             }
             
             get_symmetry();
@@ -275,8 +307,7 @@ class UnitCell
                  max_mt_radius_ = std::max(max_mt_radius_, atom_type(i)->mt_radius());
             }
             
-            for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
-                atom_symmetry_class(ic)->init();
+            for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) atom_symmetry_class(ic)->init();
             
             mt_basis_size_ = 0;
             mt_aw_basis_size_ = 0;
@@ -310,19 +341,16 @@ class UnitCell
             }
             
             // delete atom types
-            for (int i = 0; i < (int)atom_types_.size(); i++)
-                delete atom_types_[i];
+            for (int i = 0; i < (int)atom_types_.size(); i++) delete atom_types_[i];
             atom_types_.clear();
             atom_type_index_by_id_.clear();
 
             // delete atom classes
-            for (int i = 0; i < (int)atom_symmetry_classes_.size(); i++)
-                delete atom_symmetry_classes_[i];
+            for (int i = 0; i < (int)atom_symmetry_classes_.size(); i++) delete atom_symmetry_classes_[i];
             atom_symmetry_classes_.clear();
 
             // delete atoms
-            for (int i = 0; i < num_atoms(); i++)
-                delete atoms_[i];
+            for (int i = 0; i < num_atoms(); i++) delete atoms_[i];
             atoms_.clear();
 
             equivalent_atoms_.clear();
@@ -330,7 +358,7 @@ class UnitCell
         
     public:
     
-        UnitCell() : spg_dataset_(NULL)
+        UnitCell() : spg_dataset_(NULL), auto_rmt_(0)
         {
             assert(sizeof(int) == 4);
             assert(sizeof(double) == 8);
@@ -868,6 +896,16 @@ class UnitCell
         inline int max_mt_aw_basis_size()
         {
             return max_mt_aw_basis_size_;
+        }
+
+        inline void set_auto_rmt(int auto_rmt__)
+        {
+            auto_rmt_ = auto_rmt__;
+        }
+
+        inline int auto_rmt()
+        {
+            return auto_rmt_;
         }
 };
 

@@ -53,7 +53,7 @@ class Global : public StepFunction
 
         /// general purpose synchronization flag
         int sync_flag_;
-        
+
         /// MPI grid dimensions
         std::vector<int> mpi_grid_dims_;
         

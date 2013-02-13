@@ -36,10 +36,8 @@ template <typename T> class Spline
             memset(&d[0], 0, (num_points - 1) * sizeof(T));
         }
         
-        Spline(int num_points, 
-               sirius::RadialGrid& radial_grid, 
-               std::vector<T>& y) : num_points(num_points), 
-                                    radial_grid(radial_grid)
+        Spline(int num_points, sirius::RadialGrid& radial_grid, std::vector<T>& y) : num_points(num_points), 
+                                                                                     radial_grid(radial_grid)
         {
             interpolate(y);
         }

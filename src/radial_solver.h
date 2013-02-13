@@ -178,7 +178,7 @@ class RadialSolver
             sirius::Spline<double> ve_spline(radial_grid.size(), radial_grid, ve);
             sirius::Spline<double> mp_spline(radial_grid.size(), radial_grid);
             
-            std::vector<double> q;
+            std::vector<double> q(radial_grid.size());
             
             int s = 1;
             int sp;

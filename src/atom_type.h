@@ -356,6 +356,8 @@ class AtomType
         /// potential of a free atom
         std::vector<double> free_atom_potential_;
 
+        mdarray<double, 2> free_atom_radial_functions_;
+
         /// maximum number of aw radial functions across angular momentums
         int max_aw_order_;
 
@@ -550,12 +552,12 @@ class AtomType
                 int n = atomic_conf[zn_ - 1][ist][0];
                 int l = atomic_conf[zn_ - 1][ist][1];
 
-                if (n != -1)
-                    nl_occ[n - 1][l] += atomic_conf[zn_ - 1][ist][3];
+                if (n != -1) nl_occ[n - 1][l] += atomic_conf[zn_ - 1][ist][3];
             }
 
             // scan all levels of the atom
             for (int n = 0; n < 7; n++)
+            {
                 for (int l = 0; l < 4; l++)
                 {
                     level.n = n + 1;
@@ -576,14 +578,13 @@ class AtomType
                             }
                         }
                         // add a valence level
-                        if (!found)
-                            atomic_levels_.push_back(level);
+                        if (!found) atomic_levels_.push_back(level);
                     }
                 }
+            }
 
             num_core_electrons_ = 0;
-            for (int i = 0; i < num_core_levels_; i++)
-                num_core_electrons_ += atomic_levels_[i].occupancy;
+            for (int i = 0; i < num_core_levels_; i++) num_core_electrons_ += atomic_levels_[i].occupancy;
 
             num_valence_electrons_ = zn_ - num_core_electrons_;
         }
@@ -603,15 +604,15 @@ class AtomType
 
             indexr_.init(lmax, aw_descriptors_, lo_descriptors_);
             indexb_.init(lmax, indexr_);
-            
-            free_atom_density_ = std::vector<double>(radial_grid_.size());
-            free_atom_potential_ = std::vector<double>(radial_grid_.size());
         }
 
         double solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
         {
             Timer t("sirius::AtomType::solve_free_atom");
             
+            free_atom_radial_functions_.set_dimensions(radial_grid_.size(), (int)atomic_levels_.size());
+            free_atom_radial_functions_.allocate();
+
             RadialSolver solver(false, -1.0 * zn_, radial_grid_);
             libxc_interface xci;
 
@@ -657,9 +658,9 @@ class AtomType
                 memset(&rho[0], 0, rho.size() * sizeof(double));
                 #pragma omp parallel default(shared)
                 {
+                    std::vector<double> p(rho.size());
                     std::vector<double> rho_t(rho.size());
                     memset(&rho_t[0], 0, rho.size() * sizeof(double));
-                    std::vector<double> p;
                 
                     #pragma omp for
                     for (int ist = 0; ist < (int)atomic_levels_.size(); ist++)
@@ -667,17 +668,19 @@ class AtomType
                         solver.bound_state(atomic_levels_[ist].n, atomic_levels_[ist].l, veff, enu[ist], p);
                     
                         for (int i = 0; i < radial_grid_.size(); i++)
-                            rho_t[i] += atomic_levels_[ist].occupancy * pow(y00 * p[i] / radial_grid_[i], 2);
+                        {
+                            free_atom_radial_functions_(i, ist) = p[i] / radial_grid_[i];
+                            rho_t[i] += atomic_levels_[ist].occupancy * 
+                                        pow(y00 * free_atom_radial_functions_(i, ist), 2);
+                        }
                     }
 
                     #pragma omp critical
-                    for (int i = 0; i < rho.size(); i++)
-                        rho[i] += rho_t[i];
+                    for (int i = 0; i < rho.size(); i++) rho[i] += rho_t[i];
                 } 
                 
                 charge_rms = 0.0;
-                for (int i = 0; i < radial_grid_.size(); i++)
-                    charge_rms += pow(rho[i] - rho_old[i], 2);
+                for (int i = 0; i < radial_grid_.size(); i++) charge_rms += pow(rho[i] - rho_old[i], 2);
                 charge_rms = sqrt(charge_rms / radial_grid_.size());
                 
                 rho.interpolate();
@@ -696,8 +699,7 @@ class AtomType
                     veff[i] = (1 - beta) * veff[i] + beta * (vnuc[i] + vh[i] + vxc[i]);
                 
                 // kinetic energy
-                for (int i = 0; i < radial_grid_.size(); i++)
-                    f[i] = veff[i] * rho[i];
+                for (int i = 0; i < radial_grid_.size(); i++) f[i] = veff[i] * rho[i];
                 f.interpolate();
                 
                 double eval_sum = 0.0;
@@ -707,20 +709,17 @@ class AtomType
                 double energy_kin = eval_sum - fourpi * f.integrate(2);
 
                 // xc energy
-                for (int i = 0; i < radial_grid_.size(); i++)
-                    f[i] = exc[i] * rho[i];
+                for (int i = 0; i < radial_grid_.size(); i++) f[i] = exc[i] * rho[i];
                 f.interpolate();
                 double energy_xc = fourpi * f.integrate(2); 
                 
                 // electron-nuclear energy
-                for (int i = 0; i < radial_grid_.size(); i++)
-                    f[i] = vnuc[i] * rho[i];
+                for (int i = 0; i < radial_grid_.size(); i++) f[i] = vnuc[i] * rho[i];
                 f.interpolate();
                 double energy_enuc = fourpi * f.integrate(2); 
 
                 // Coulomb energy
-                for (int i = 0; i < radial_grid_.size(); i++)
-                    f[i] = vh[i] * rho[i];
+                for (int i = 0; i < radial_grid_.size(); i++) f[i] = vh[i] * rho[i];
                 f.interpolate();
                 double energy_coul = 0.5 * fourpi * f.integrate(2);
                 
@@ -936,21 +935,29 @@ class AtomType
         
         inline double free_atom_density(const int idx)
         {
+            assert(idx >= 0 && idx < (int)free_atom_density_.size());
+
             return free_atom_density_[idx];
         }
         
         inline double* free_atom_density_ptr()
         {
+            assert(free_atom_density_.size() != 0);
+            
             return &free_atom_density_[0];
         }
         
         inline double free_atom_potential(const int idx)
         {
+            assert(idx >= 0 && idx < (int)free_atom_potential_.size());
+            
             return free_atom_potential_[idx];
         }
         
         inline double* free_atom_potential_ptr()
         {
+            assert(free_atom_potential_.size() != 0);
+            
             return &free_atom_potential_[0];
         }
         
@@ -1031,6 +1038,11 @@ class AtomType
         inline int mt_radial_basis_size()
         {
             return indexr_.size();
+        }
+
+        inline double free_atom_radial_function(int ir, int ist)
+        {
+            return free_atom_radial_functions_(ir, ist);
         }
 };
 

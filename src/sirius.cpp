@@ -89,6 +89,11 @@ void FORTRAN(sirius_set_num_mag_dims)(int32_t* num_mag_dims)
     global.set_num_mag_dims(*num_mag_dims);
 }
 
+void FORTRAN(sirius_set_auto_rmt)(int32_t* auto_rmt)
+{
+    global.set_auto_rmt(*auto_rmt);
+}
+
 /*
     primitive get functions
 */

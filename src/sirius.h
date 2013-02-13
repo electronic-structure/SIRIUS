@@ -33,7 +33,7 @@ extern "C" {
 #include <hdf5.h>
 #include <libjson.h>
 
-#ifdef _MAGMA_
+#ifdef _GPU_
 #include <magma.h>
 #endif
 

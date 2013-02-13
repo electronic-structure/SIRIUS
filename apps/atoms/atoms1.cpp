@@ -89,7 +89,7 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
     jw.single("mass", a->mass());
     jw.single("rmin", a->radial_grid()[0]);
     jw.single("rmax", a->radial_grid()[a->radial_grid().size() - 1]);
-    jw.single("rmt", a->mt_radius());
+    //jw.single("rmt", a->mt_radius());
     jw.single("nrmt", a->num_mt_points());
 
     std::vector<sirius::atomic_level_descriptor> core;
@@ -98,6 +98,7 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
     
     printf("Core / valence partitioning\n");
     printf("core cutoff energy : %f\n", core_cutoff_energy);
+    sirius::Spline <double> rho_c(a->radial_grid().size(), a->radial_grid());
     for (int ist = 0; ist < (int)a->num_atomic_levels(); ist++)
     {
         printf("%i%s  occ : %2i  energy : %12.6f", a->atomic_level(ist).n, level_symb[a->atomic_level(ist).l].c_str(), 
@@ -106,6 +107,9 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
         {
             core.push_back(a->atomic_level(ist));
             printf("  => core \n");
+
+            for (int ir = 0; ir < a->radial_grid().size(); ir++) 
+                rho_c[ir] += a->atomic_level(ist).occupancy * pow(y00 * a->free_atom_radial_function(ir, ist), 2);
         }
         else
         {
@@ -114,6 +118,27 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
         }
     }
 
+    std::vector<double> g;
+    rho_c.interpolate();
+    rho_c.integrate(g, 2);
+
+    double core_radius = 2.0;
+    if (ncore != 0)
+    {
+        for (int ir = a->radial_grid().size() - 1; ir >= 0; ir--)
+        {
+            //if (fourpi * fabs(g[ir] - g[a->radial_grid().size() - 1]) > 1e-5) 
+            if (fabs(g[ir] - g[a->radial_grid().size() - 1]) / fabs(g[a->radial_grid().size() - 1]) > 1e-5) 
+            {
+                core_radius = a->radial_grid(ir);
+                break;
+            }
+        }
+    }
+
+    printf("suggested MT radius : %f\n", core_radius);
+    jw.single("rmt", core_radius);
+    
     std::string core_str;
     for (int i = 0; i < (int)core.size(); i++)
     {

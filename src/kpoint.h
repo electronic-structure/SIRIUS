@@ -860,11 +860,17 @@ class kpoint
 
         void generate_gkvec()
         {
-            if (parameters_.aw_cutoff() > double(parameters_.lmax_apw()))
-                error(__FILE__, __LINE__, "aw cutoff is too large for a given lmax");
-
-            double gk_cutoff = parameters_.aw_cutoff() / parameters_.max_mt_radius();
+            double gk_cutoff = parameters_.aw_cutoff() / parameters_.min_mt_radius();
             
+            if (gk_cutoff * parameters_.max_mt_radius() > double(parameters_.lmax_apw()))
+            {
+                std::stringstream s;
+                s << "G+k cutoff (" << gk_cutoff << ") is too large for a given lmax (" 
+                  << parameters_.lmax_apw() << ")" << std::endl
+                  << "minimum value for lmax : " << int(gk_cutoff * parameters_.max_mt_radius()) + 1;
+                error(__FILE__, __LINE__, s);
+            }
+
             if (gk_cutoff * 2 > parameters_.pw_cutoff())
                 error(__FILE__, __LINE__, "aw cutoff is too large for a given plane-wave cutoff");
 
