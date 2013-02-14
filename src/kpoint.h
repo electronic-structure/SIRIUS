@@ -533,8 +533,22 @@ class kpoint
         {
             Timer t("sirius::kpoint::generate_fv_states");
 
-            mdarray<complex16, 2> h(apwlo_basis_size_row(), apwlo_basis_size_col());
-            mdarray<complex16, 2> o(apwlo_basis_size_row(), apwlo_basis_size_col());
+            mdarray<complex16, 2> h(NULL, apwlo_basis_size_row(), apwlo_basis_size_col());
+            mdarray<complex16, 2> o(NULL, apwlo_basis_size_row(), apwlo_basis_size_col());
+            
+            // Magma requires special allocation
+            if (eigen_value_solver != magma)
+            {
+                h.allocate();
+                o.allocate();
+            }
+            else
+            {
+                h.allocate_page_locked();
+                o.allocate_page_locked();
+            }
+           
+            // setup Hamiltonian and overlap
             set_fv_h_o(band, effective_potential, h, o);
             
             if ((debug_level > 0) && (eigen_value_solver == lapack))
@@ -689,7 +703,7 @@ class kpoint
                 }
                 case magma:
                 {
-                    eigenproblem<magma>::generalized(apwlo_basis_size(), parameters_.num_fv_states(), -1.0, 
+                    eigenproblem<magma>::generalized(apwlo_basis_size(), parameters_.num_fv_states(), 
                                                      h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), &fv_eigen_values_[0], 
                                                      fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
                     break;
@@ -732,6 +746,17 @@ class kpoint
 
             }
             delete t1;
+            
+            if (eigen_value_solver != magma)
+            {
+                h.allocate();
+                o.allocate();
+            }
+            else
+            {
+                h.allocate_page_locked();
+                o.allocate_page_locked();
+            }
             
             if ((debug_level > 2) && (eigen_value_solver == scalapack))
             {

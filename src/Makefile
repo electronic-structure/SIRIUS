@@ -2,13 +2,11 @@ include ../make.inc
 
 .SUFFIXES: .cpp .cu
 
-NVCC = nvcc
-
 SRC = ./LebedevLaikov.cpp
       
 OBJ = $(SRC:.cpp=.o) 
       
-ifneq (,$(findstring D_GPU_,$(CPP_OPT)))
+ifneq (,$(findstring D_GPU_,$(CXX_OPT)))
 	OBJ := $(OBJ) gpu_interface.o
 endif
 	
@@ -16,7 +14,7 @@ endif
 	$(CXX) $(CXX_OPT) -c -o $(*D)/$(*F).o $<
 
 .cu.o:
-	$(NVCC) -DADD_ -I/project/s299/magma/magma-1.1_my-xk6-gcc-4.6.2-libsci/include -c $<
+	$(NVCC) -DADD_ $(NVCC_OPT) -c $<
 
 all: log $(OBJ) sirius.o
 	ar -r libsirius.a $(OBJ)

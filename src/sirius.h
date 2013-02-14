@@ -33,15 +33,12 @@ extern "C" {
 #include <hdf5.h>
 #include <libjson.h>
 
-#ifdef _GPU_
-#include "gpu_interface.h"
-#endif
-
 #include "typedefs.h"
 #include "config.h"
-
 #include "LebedevLaikov.h"
+#include "gpu_interface.h"
 #include "platform.h"
+
 //
 // low-level stuff
 //

@@ -12,7 +12,6 @@
 #include <complex>
 #include "config.h"
 #include "linalg_cpu.h"
-#include "linalg_gpu.h"
 
 template<processing_unit_t> struct blas;
 
@@ -587,12 +586,14 @@ template<> struct eigenproblem<magma>
         return 0;
     }
 
-    static void generalized(int32_t matrix_size, int32_t nv, real8 abstol, complex16* a, int32_t lda, complex16* b, int32_t ldb, 
+    static void generalized(int32_t matrix_size, int32_t nv, complex16* a, int32_t lda, complex16* b, int32_t ldb, 
                            real8* eval, complex16* z, int32_t ldz)
     {
         assert(nv <= matrix_size);
         
-        magma_zhegvdx_2stage_wrapper(matrix_size, nv, a, lda, b, ldb, eval, z, ldz);
+        magma_zhegvdx_2stage_wrapper(matrix_size, nv, a, lda, b, ldb, eval);
+
+        for (int i = 0; i < nv; i++) memcpy(&z[ldz * i], &a[lda * i], matrix_size * sizeof(complex16));
     }
 };
 

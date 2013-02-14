@@ -19,6 +19,9 @@ class Platform
             // rank 0 prints by default
             verbose_ = false;
             if (mpi_rank() == 0) verbose_ = true;
+
+            cuda_init();
+            cublas_init();
         }
 
         static int mpi_rank(MPI_Comm comm = MPI_COMM_WORLD)

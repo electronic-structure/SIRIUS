@@ -2,12 +2,43 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include <cuda.h>
 #include <cublas.h>
 #include <cublas_v2.h>
 #include <magmablas.h>
 #include <magma_lapack.h>
 #include <magma.h>
 
+cublasHandle_t& cublas_handle()
+{
+    static cublasHandle_t handle;
+    static bool init = false;
+
+    if (!init)
+    {
+        if (cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS)
+        {
+            printf("cublasCreate() failed \n");
+            exit(-1);
+        }
+        init = true;
+    }
+    
+    return handle;
+}
+
+extern "C" void cuda_init()
+{
+    if (cuInit(0) != CUDA_SUCCESS)
+    {
+        printf("cuInit failed\n");
+    }
+}
+
+extern "C" void cublas_init()
+{
+    cublas_handle();
+}
 
 extern "C" void cuda_malloc_host(void** ptr, size_t size)
 {
@@ -36,8 +67,8 @@ extern "C" magma_int_t magma_zhegvdx_2stage(magma_int_t itype, char jobz, char r
                                             double *rwork, magma_int_t lrwork,
                                             magma_int_t *iwork, magma_int_t liwork, magma_int_t *info);
 
-extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, 
-                                             void* b, int32_t ldb, double* eval, void* z, int32_t ldz)
+extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, void* b, 
+                                             int32_t ldb, double* eval)
 {
     int m;
     int info;
@@ -69,6 +100,8 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
     magma_zhegvdx_2stage(1, 'V', 'I', 'U', matrix_size, (cuDoubleComplex*)a, lda, (cuDoubleComplex*)b, ldb, 0.0, 0.0, 
                          1, nv, &m, w, h_work, lwork, rwork, lrwork, iwork, liwork, &info);
 
+    memcpy(eval, &w[0], nv * sizeof(double));
+    
     cuda_free_host(h_work);
     cuda_free_host(rwork);
     free(iwork);
@@ -85,8 +118,6 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
         printf("magma_zhegvdx_2stage returned : %i\n", info);
         exit(-1);
     }
-    
-    memcpy(eval, &w[0], nv * sizeof(double));
 }
 
 
@@ -99,23 +130,6 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
 //* 
 //* }
 //* 
-//* cublasHandle_t& cublas_handle()
-//* {
-//*     static cublasHandle_t handle;
-//*     static bool init = false;
-//* 
-//*     if (!init)
-//*     {
-//*         if (cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS)
-//*         {
-//*             printf("cublasCreate() failed \n");
-//*             exit(0);
-//*         }
-//*         init = true;
-//*     }
-//*     
-//*     return handle;
-//* }
 //* 
 //* extern "C" void init_gpu()
 //* {

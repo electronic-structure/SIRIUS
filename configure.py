@@ -60,6 +60,7 @@ def configure_package(package_name, platform):
     new_env["CXX"] = platform["CXX"]
     new_env["FC"] = platform["FC"]
     new_env["FCCPP"] = platform["FCCPP"]
+
     p = subprocess.Popen(["./configure"] + package[1], cwd="./libs/"+package_dir, env=new_env)
     p.wait()
 
@@ -122,8 +123,10 @@ def main():
     makeinc = open("make.inc", "w")
     makeinc.write("CXX = " + platform["CXX"] + "\n")
     makeinc.write("CXX_OPT = " + platform["CXX_OPT"] + "\n")
-    makeinc.write("LIBS := " + platform["SYSTEM_LIBS"] + "\n")
-
+    makeinc.write("LIBS = " + platform["SYSTEM_LIBS"] + "\n")
+    if "NVCC" in platform: makeinc.write("NVCC = " + platform["NVCC"] + "\n")
+    if "NVCC_OPT" in platform: makeinc.write("NVCC_OPT = " + platform["NVCC_OPT"] + "\n")
+    
     make_packages = []
     clean_packages = []
     for i in range(len(sys.argv) - 1):
