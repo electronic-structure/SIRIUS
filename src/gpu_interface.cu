@@ -42,16 +42,16 @@ extern "C" void cublas_init()
 
 extern "C" void cuda_malloc_host(void** ptr, size_t size)
 {
-    if (cudaMallocHost(&ptr, size) != cudaSuccess)
+    if (cudaMallocHost(ptr, size) != cudaSuccess)
     {  
         printf("cudaMallocHost failed\n");
         exit(-1);
     }
 }
 
-extern "C" void cuda_free_host(void* ptr)
+extern "C" void cuda_free_host(void** ptr)
 {
-    if (cudaFreeHost(ptr) != cudaSuccess)
+    if (cudaFreeHost(*ptr) != cudaSuccess)
     {
         printf("cudaFreeHost failed\n");
         exit(-1);
@@ -97,13 +97,13 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
         exit(-1);
     }
 
-    magma_zhegvdx_2stage(1, 'V', 'I', 'U', matrix_size, (cuDoubleComplex*)a, lda, (cuDoubleComplex*)b, ldb, 0.0, 0.0, 
+    magma_zhegvdx_2stage(1, 'V', 'I', 'L', matrix_size, (cuDoubleComplex*)a, lda, (cuDoubleComplex*)b, ldb, 0.0, 0.0, 
                          1, nv, &m, w, h_work, lwork, rwork, lrwork, iwork, liwork, &info);
 
     memcpy(eval, &w[0], nv * sizeof(double));
     
-    cuda_free_host(h_work);
-    cuda_free_host(rwork);
+    cuda_free_host((void**)&h_work);
+    cuda_free_host((void**)&rwork);
     free(iwork);
     free(w);
 
@@ -176,51 +176,52 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
 //*     printf("totalGlobalMem              : %i kB \n", devprop.totalGlobalMem/1024);
 //* }
 //* 
-//* extern "C" void gpu_malloc(void **ptr, int size)
-//* {
-//*     if (cudaMalloc(ptr, size) != cudaSuccess)
-//*     {
-//*         printf("failed to execute cudaMalloc() \n");
-//*         exit(0);
-//*     }
-//* }
-//* 
-//* extern "C" void gpu_free(void *ptr)
-//* {
-//*     if (cudaFree(ptr) != cudaSuccess)
-//*     {
-//*         printf("failed to execute cudaFree() \n");
-//*         exit(0);
-//*     }
-//* }
-//* 
-//* extern "C" void gpu_copy_to_device(void *target, void *source, int size)
-//* {
-//*     if (cudaMemcpy(target, source, size, cudaMemcpyHostToDevice) != cudaSuccess)
-//*     {
-//*         printf("failed to execute cudaMemcpy(cudaMemcpyHostToDevice)\n");
-//*         exit(0);
-//*     }
-//* }
-//* 
-//* extern "C" void gpu_copy_to_host(void *target, void *source, int size)
-//* {
-//*     if (cudaMemcpy(target, source, size, cudaMemcpyDeviceToHost) != cudaSuccess)
-//*     {
-//*         printf("failed to execute cudaMemcpy(cudaMemcpyDeviceToHost)\n");
-//*         exit(0);
-//*     }
-//* }
-//* 
-//* extern "C" void gpu_mem_zero(void *ptr, int size)
-//* {
-//*     if (cudaMemset(ptr, 0, size) != cudaSuccess)
-//*     {
-//*         printf("failed to execute cudaMemset()\n");
-//*         exit(0);
-//*     }
-//* }
-//* 
+
+extern "C" void cuda_malloc(void **ptr, int size)
+{
+    if (cudaMalloc(ptr, size) != cudaSuccess)
+    {
+        printf("failed to execute cudaMalloc() \n");
+        exit(0);
+    }
+}
+
+extern "C" void cuda_free(void *ptr)
+{
+    if (cudaFree(ptr) != cudaSuccess)
+    {
+        printf("failed to execute cudaFree() \n");
+        exit(0);
+    }
+}
+
+extern "C" void cuda_copy_to_device(void *target, void *source, int size)
+{
+    if (cudaMemcpy(target, source, size, cudaMemcpyHostToDevice) != cudaSuccess)
+    {
+        printf("failed to execute cudaMemcpy(cudaMemcpyHostToDevice)\n");
+        exit(0);
+    }
+}
+
+extern "C" void cuda_copy_to_host(void *target, void *source, int size)
+{
+    if (cudaMemcpy(target, source, size, cudaMemcpyDeviceToHost) != cudaSuccess)
+    {
+        printf("failed to execute cudaMemcpy(cudaMemcpyDeviceToHost)\n");
+        exit(0);
+    }
+}
+
+extern "C" void cuda_memset(void *ptr,int value, size_t size)
+{
+    if (cudaMemset(ptr, value, size) != cudaSuccess)
+    {
+        printf("failed to execute cudaMemset()\n");
+        exit(0);
+    }
+}
+
 //* extern "C" void gpu_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
 //*                           complex16 alpha, complex16 *a, int32_t lda, complex16 *b, 
 //*                           int32_t ldb, complex16 beta, complex16 *c, int32_t ldc)

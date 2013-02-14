@@ -749,13 +749,13 @@ class kpoint
             
             if (eigen_value_solver != magma)
             {
-                h.allocate();
-                o.allocate();
+                h.deallocate();
+                o.deallocate();
             }
             else
             {
-                h.allocate_page_locked();
-                o.allocate_page_locked();
+                h.deallocate_page_locked();
+                o.deallocate_page_locked();
             }
             
             if ((debug_level > 2) && (eigen_value_solver == scalapack))
