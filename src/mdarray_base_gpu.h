@@ -13,7 +13,7 @@ template <typename T, int ND> class mdarray_base_impl : public mdarray_base<T, N
         {
             deallocate_on_device();
             
-            int sz = this->size();
+            size_t sz = this->size();
             if (sz == 0) throw std::runtime_error("can't allocate a zero sized array");
              
             cuda_malloc((void**)(&this->mdarray_ptr_device), sz * sizeof(T));

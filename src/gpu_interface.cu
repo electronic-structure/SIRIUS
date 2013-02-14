@@ -3,11 +3,11 @@
 #include <stdio.h>
 #include <assert.h>
 #include <cuda.h>
-#include <cublas.h>
+//#include <cublas.h>
+//#include <magmablas.h>
+//#include <magma_lapack.h>
+#include <magma_z.h>
 #include <cublas_v2.h>
-#include <magmablas.h>
-#include <magma_lapack.h>
-#include <magma.h>
 
 cublasHandle_t& cublas_handle()
 {
@@ -58,14 +58,59 @@ extern "C" void cuda_free_host(void** ptr)
     }
 }
 
+extern "C" void cuda_malloc(void **ptr, size_t size)
+{
+    if (cudaMalloc(ptr, size) != cudaSuccess)
+    {
+        printf("failed to execute cudaMalloc() \n");
+        exit(0);
+    }
+}
+
+extern "C" void cuda_free(void *ptr)
+{
+    if (cudaFree(ptr) != cudaSuccess)
+    {
+        printf("failed to execute cudaFree() \n");
+        exit(0);
+    }
+}
+
+extern "C" void cuda_copy_to_device(void *target, void *source, size_t size)
+{
+    if (cudaMemcpy(target, source, size, cudaMemcpyHostToDevice) != cudaSuccess)
+    {
+        printf("failed to execute cudaMemcpy(cudaMemcpyHostToDevice)\n");
+        exit(0);
+    }
+}
+
+extern "C" void cuda_copy_to_host(void *target, void *source, size_t size)
+{
+    if (cudaMemcpy(target, source, size, cudaMemcpyDeviceToHost) != cudaSuccess)
+    {
+        printf("failed to execute cudaMemcpy(cudaMemcpyDeviceToHost)\n");
+        exit(0);
+    }
+}
+
+extern "C" void cuda_memset(void *ptr,int value, size_t size)
+{
+    if (cudaMemset(ptr, value, size) != cudaSuccess)
+    {
+        printf("failed to execute cudaMemset()\n");
+        exit(0);
+    }
+}
+
 extern "C" magma_int_t magma_zbulge_get_lq2(magma_int_t n);
 
 extern "C" magma_int_t magma_zhegvdx_2stage(magma_int_t itype, char jobz, char range, char uplo, magma_int_t n,
                                             cuDoubleComplex *a, magma_int_t lda, cuDoubleComplex *b, magma_int_t ldb,
-                                            double vl, double vu, magma_int_t il, magma_int_t iu,
-                                            magma_int_t *m, double *w, cuDoubleComplex *work, magma_int_t lwork,
-                                            double *rwork, magma_int_t lrwork,
-                                            magma_int_t *iwork, magma_int_t liwork, magma_int_t *info);
+                                            double vl, double vu, magma_int_t il, magma_int_t iu, magma_int_t *m, 
+                                            double *w, cuDoubleComplex *work, magma_int_t lwork, double *rwork, 
+                                            magma_int_t lrwork, magma_int_t *iwork, magma_int_t liwork, 
+                                            magma_int_t *info);
 
 extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, void* b, 
                                              int32_t ldb, double* eval)
@@ -107,15 +152,15 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
     free(iwork);
     free(w);
 
-    if (m != nv)
-    {
-        printf("Not all eigen-values are found.\n");
-        exit(-1);
-    }
-    
     if (info)
     {
         printf("magma_zhegvdx_2stage returned : %i\n", info);
+        exit(-1);
+    }    
+
+    if (m != nv)
+    {
+        printf("Not all eigen-values are found.\n");
         exit(-1);
     }
 }
@@ -177,66 +222,20 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
 //* }
 //* 
 
-extern "C" void cuda_malloc(void **ptr, int size)
+extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+                             void* alpha, void* a, int32_t lda, void* b, 
+                             int32_t ldb, void* beta, void* c, int32_t ldc)
 {
-    if (cudaMalloc(ptr, size) != cudaSuccess)
+    const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
+
+    if (cublasZgemm(cublas_handle(), trans[transa], trans[transb], m, n, k, (cuDoubleComplex*)alpha, (cuDoubleComplex*)a, lda, 
+                   (cuDoubleComplex*)b, ldb, (cuDoubleComplex*)beta, (cuDoubleComplex*)c, ldc) != CUBLAS_STATUS_SUCCESS)
     {
-        printf("failed to execute cudaMalloc() \n");
-        exit(0);
+        printf("failed to execute cublasZgemm() \n");
+        exit(-1);
     }
 }
 
-extern "C" void cuda_free(void *ptr)
-{
-    if (cudaFree(ptr) != cudaSuccess)
-    {
-        printf("failed to execute cudaFree() \n");
-        exit(0);
-    }
-}
-
-extern "C" void cuda_copy_to_device(void *target, void *source, int size)
-{
-    if (cudaMemcpy(target, source, size, cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        printf("failed to execute cudaMemcpy(cudaMemcpyHostToDevice)\n");
-        exit(0);
-    }
-}
-
-extern "C" void cuda_copy_to_host(void *target, void *source, int size)
-{
-    if (cudaMemcpy(target, source, size, cudaMemcpyDeviceToHost) != cudaSuccess)
-    {
-        printf("failed to execute cudaMemcpy(cudaMemcpyDeviceToHost)\n");
-        exit(0);
-    }
-}
-
-extern "C" void cuda_memset(void *ptr,int value, size_t size)
-{
-    if (cudaMemset(ptr, value, size) != cudaSuccess)
-    {
-        printf("failed to execute cudaMemset()\n");
-        exit(0);
-    }
-}
-
-//* extern "C" void gpu_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-//*                           complex16 alpha, complex16 *a, int32_t lda, complex16 *b, 
-//*                           int32_t ldb, complex16 beta, complex16 *c, int32_t ldc)
-//* {
-//*     assert(sizeof(cuDoubleComplex) == sizeof(complex16));
-//*     
-//*     const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
-//* 
-//*     if (cublasZgemm(cublas_handle(), trans[transa], trans[transb], m, n, k, (cuDoubleComplex *)(&alpha), (cuDoubleComplex *)a, lda, 
-//*                     (cuDoubleComplex *)b, ldb, (cuDoubleComplex *)(&beta), (cuDoubleComplex *)c, ldc) != CUBLAS_STATUS_SUCCESS)
-//*     {
-//*         printf("failed to execute cublasZgemm() \n");
-//*         exit(0);
-//*     }
-//* }
 //* 
 //* extern "C" void gpu_zhegvx(int32_t n, int32_t nv, double abstol, void *a, void *b,
 //*                            double *eval, void *z, int32_t ldz)
@@ -269,3 +268,14 @@ extern "C" void cuda_memset(void *ptr,int value, size_t size)
 //*     free(h_work);
 //* }
 //*  
+
+// A(GPU) => B(host)
+extern "C" void cublas_get_matrix(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb)
+{
+    if (cublasGetMatrix(rows, cols, elemSize, A, lda, B, ldb) != CUBLAS_STATUS_SUCCESS)
+    {
+        printf("failed to execute cublasGetMatrix\n");
+        exit(-1);
+    }
+}
+

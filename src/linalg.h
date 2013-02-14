@@ -15,6 +15,7 @@
 
 template<processing_unit_t> struct blas;
 
+// CPU
 template<> struct blas<cpu>
 {
     template <typename T>
@@ -68,6 +69,23 @@ template<> inline void blas<cpu>::hemm<complex16>(int side, int uplo, int32_t m,
     const char *sidestr[] = {"L", "R"};
     const char *uplostr[] = {"U", "L"};
     FORTRAN(zhemm)(sidestr[side], uplostr[uplo], &m, &n, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int32_t)1, (int32_t)1);
+}
+
+
+
+// GPU
+template<> struct blas<gpu>
+{
+    template <typename T>
+    static inline void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T* alpha, T* a, int32_t lda, T* b, int32_t ldb, 
+                            T* beta, T* c, int32_t ldc);
+};
+
+template<> inline void blas<gpu>::gemm<complex16>(int transa, int transb, int32_t m, int32_t n, int32_t k, complex16* alpha, 
+                                                  complex16* a, int32_t lda, complex16* b, int32_t ldb, complex16* beta, 
+                                                  complex16* c, int32_t ldc)
+{
+    cublas_zgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, lda);
 }
 
 

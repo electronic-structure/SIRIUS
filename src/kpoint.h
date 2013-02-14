@@ -348,9 +348,23 @@ class kpoint
             
             mdarray<complex16, 2> alm(num_gkvec_loc(), parameters_.max_mt_aw_basis_size());
             mdarray<complex16, 2> halm(num_gkvec_row(), parameters_.max_mt_aw_basis_size());
-
+            
             h.zero();
             o.zero();
+
+            complex16 zone(1, 0);
+
+            if (eigen_value_solver == magma)
+            {
+                h.allocate_on_device();
+                h.zero_on_device();
+                o.allocate_on_device();
+                o.zero_on_device();
+
+                alm.allocate_on_device();
+                halm.allocate_on_device();
+            }
+            
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
                 Atom* atom = parameters_.atom(ia);
@@ -363,15 +377,31 @@ class kpoint
                 
                 apply_hmt_to_apw(band, num_gkvec_row(), ia, alm, halm);
 
-                // apw-apw block
-                blas<cpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), complex16(1, 0), 
-                                &halm(0, 0), halm.ld(), &alm(apw_offset_col, 0), alm.ld(), complex16(1, 0), 
-                                &h(0, 0), h.ld());
-                
-                // compute APW-APW block
-                blas<cpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), complex16(1, 0), 
-                                &alm(0, 0), alm.ld(), &alm(apw_offset_col, 0), alm.ld(), complex16(1, 0), 
-                                &o(0, 0), o.ld()); 
+                if (eigen_value_solver == magma)
+                {
+                    alm.copy_to_device();
+                    halm.copy_to_device();
+                    
+                    blas<gpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
+                                    halm.get_ptr_device(), halm.ld(), &(alm.get_ptr_device()[apw_offset_col]), alm.ld(),
+                                    &zone, h.get_ptr_device(), h.ld());
+                    
+                    blas<gpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
+                                    alm.get_ptr_device(), alm.ld(), &(alm.get_ptr_device()[apw_offset_col]), alm.ld(), 
+                                    &zone, o.get_ptr_device(), o.ld()); 
+                }
+                else
+                {
+                    // apw-apw block
+                    blas<cpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), zone, 
+                                    &halm(0, 0), halm.ld(), &alm(apw_offset_col, 0), alm.ld(), zone, 
+                                    &h(0, 0), h.ld());
+                    
+                    // compute APW-APW block
+                    blas<cpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), zone, 
+                                    &alm(0, 0), alm.ld(), &alm(apw_offset_col, 0), alm.ld(), zone, 
+                                    &o(0, 0), o.ld()); 
+                }
 
                 // apw-lo block
                 for (int i = 0; i < (int)icol_by_atom_[ia].size(); i++)
@@ -451,6 +481,15 @@ class kpoint
                 }
             } //ia
 
+            // move apw-apw block from device to main memory
+            if (eigen_value_solver == magma)
+            {
+                cublas_get_matrix(num_gkvec_row(), num_gkvec_col(), sizeof(complex16), h.get_ptr_device(), h.ld(), 
+                                  h.get_ptr(), h.ld());
+                cublas_get_matrix(num_gkvec_row(), num_gkvec_col(), sizeof(complex16), o.get_ptr_device(), o.ld(), 
+                                  o.get_ptr(), o.ld());
+            }
+            
             // lo-lo block
             for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
             {
@@ -517,6 +556,15 @@ class kpoint
             }
 
             delete t1;
+            
+            if (eigen_value_solver == magma)
+            {
+                h.deallocate_on_device();
+                o.deallocate_on_device();
+
+                alm.deallocate_on_device();
+                halm.deallocate_on_device();
+            }
         }
 
         /// Generate first-variational states
