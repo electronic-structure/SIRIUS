@@ -336,10 +336,9 @@ class kpoint
             \f]
 
         */
-        void set_fv_h_o(Band*                     band,
-                        PeriodicFunction<double>* effective_potential,
-                        mdarray<complex16, 2>&    h,
-                        mdarray<complex16, 2>&    o)
+        template <processing_unit_t pu>
+        void set_fv_h_o(Band* band, PeriodicFunction<double>* effective_potential, 
+                        mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 
         {
             Timer t("sirius::kpoint::set_fv_h_o");
@@ -354,7 +353,7 @@ class kpoint
 
             complex16 zone(1, 0);
 
-            if (eigen_value_solver == magma)
+            if (pu == gpu)
             {
                 h.allocate_on_device();
                 h.zero_on_device();
@@ -377,7 +376,7 @@ class kpoint
                 
                 apply_hmt_to_apw(band, num_gkvec_row(), ia, alm, halm);
 
-                if (eigen_value_solver == magma)
+                if (pu == gpu)
                 {
                     alm.copy_to_device();
                     halm.copy_to_device();
@@ -481,14 +480,20 @@ class kpoint
                 }
             } //ia
 
+            //Utils::write_matrix("h_cpu.txt", true, h); 
+            //Utils::write_matrix("o_cpu.txt", true, o); 
+
             // move apw-apw block from device to main memory
-            if (eigen_value_solver == magma)
+            if (pu == gpu)
             {
                 cublas_get_matrix(num_gkvec_row(), num_gkvec_col(), sizeof(complex16), h.get_ptr_device(), h.ld(), 
                                   h.get_ptr(), h.ld());
                 cublas_get_matrix(num_gkvec_row(), num_gkvec_col(), sizeof(complex16), o.get_ptr_device(), o.ld(), 
                                   o.get_ptr(), o.ld());
             }
+            
+            //Utils::write_matrix("h_gpu.txt", true, h); 
+            //Utils::write_matrix("o_gpu.txt", true, o); 
             
             // lo-lo block
             for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
@@ -557,7 +562,7 @@ class kpoint
 
             delete t1;
             
-            if (eigen_value_solver == magma)
+            if (pu == gpu)
             {
                 h.deallocate_on_device();
                 o.deallocate_on_device();
@@ -597,7 +602,13 @@ class kpoint
             }
            
             // setup Hamiltonian and overlap
-            set_fv_h_o(band, effective_potential, h, o);
+            set_fv_h_o<cpu>(band, effective_potential, h, o);
+            Utils::write_matrix("h_cpu.txt", true, h); 
+            Utils::write_matrix("o_cpu.txt", true, o); 
+            
+            set_fv_h_o<gpu>(band, effective_potential, h, o);
+            Utils::write_matrix("h_gpu.txt", true, h); 
+            Utils::write_matrix("o_gpu.txt", true, o); 
             
             if ((debug_level > 0) && (eigen_value_solver == lapack))
             {

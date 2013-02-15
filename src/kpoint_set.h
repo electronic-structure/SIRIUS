@@ -63,8 +63,7 @@ class kpoint_set
 
         void clear()
         {
-            for (int ik = 0; ik < (int)kpoints_.size(); ik++)
-                delete kpoints_[ik];
+            for (int ik = 0; ik < (int)kpoints_.size(); ik++) delete kpoints_[ik];
             
             kpoints_.clear();
         }
