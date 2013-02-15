@@ -265,12 +265,22 @@ extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32
 //* }
 //*  
 
-// A(GPU) => B(host)
+// A(GPU) => B(CPU)
 extern "C" void cublas_get_matrix(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb)
 {
     if (cublasGetMatrix(rows, cols, elemSize, A, lda, B, ldb) != CUBLAS_STATUS_SUCCESS)
     {
         printf("failed to execute cublasGetMatrix\n");
+        exit(-1);
+    }
+}
+
+// A(CPU) => B(GPU)
+extern "C" void cublas_set_matrix(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb)
+{
+    if (cublasSetMatrix(rows, cols, elemSize, A, lda, B, ldb) != CUBLAS_STATUS_SUCCESS)
+    {
+        printf("failed to execute cublasSetMatrix\n");
         exit(-1);
     }
 }

@@ -31,5 +31,7 @@ extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32
 
 extern "C" void cublas_get_matrix(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb);
 
+extern "C" void cublas_set_matrix(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb);
+
 #endif // _GPU_INTERFACE_H_
 

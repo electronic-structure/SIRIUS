@@ -345,24 +345,30 @@ class kpoint
             
             int apw_offset_col = (band->num_ranks() > 1) ? num_gkvec_row() : 0;
             
-            mdarray<complex16, 2> alm(num_gkvec_loc(), parameters_.max_mt_aw_basis_size());
-            mdarray<complex16, 2> halm(num_gkvec_row(), parameters_.max_mt_aw_basis_size());
+            mdarray<complex16, 2> alm(NULL, num_gkvec_loc(), parameters_.max_mt_aw_basis_size());
+            mdarray<complex16, 2> halm(NULL, num_gkvec_row(), parameters_.max_mt_aw_basis_size());
+
+            if (pu == cpu)
+            {
+                alm.allocate();
+                halm.allocate();
+            }
+            else
+            {
+                alm.allocate_page_locked();
+                alm.allocate_on_device();
+                halm.allocate_page_locked();
+                halm.allocate_on_device();
+                h.allocate_on_device();
+                h.zero_on_device();
+                o.allocate_on_device();
+                o.zero_on_device();
+            }
             
             h.zero();
             o.zero();
 
             complex16 zone(1, 0);
-
-            if (pu == gpu)
-            {
-                h.allocate_on_device();
-                h.zero_on_device();
-                o.allocate_on_device();
-                o.zero_on_device();
-
-                alm.allocate_on_device();
-                halm.allocate_on_device();
-            }
             
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
@@ -370,35 +376,35 @@ class kpoint
                 AtomType* type = atom->type();
                 
                 generate_matching_coefficients(num_gkvec_loc(), ia, alm);
-
+                
                 // check alm coefficients
                 if (debug_level > 1) check_alm(num_gkvec_loc(), ia, alm);
                 
                 apply_hmt_to_apw(band, num_gkvec_row(), ia, alm, halm);
-
+                
                 if (pu == gpu)
                 {
                     alm.copy_to_device();
                     halm.copy_to_device();
                     
                     blas<gpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
-                                    halm.get_ptr_device(), halm.ld(), &(alm.get_ptr_device()[apw_offset_col]), alm.ld(),
-                                    &zone, h.get_ptr_device(), h.ld());
-                    
-                    blas<gpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
                                     alm.get_ptr_device(), alm.ld(), &(alm.get_ptr_device()[apw_offset_col]), alm.ld(), 
                                     &zone, o.get_ptr_device(), o.ld()); 
+                    
+                    blas<gpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
+                                    halm.get_ptr_device(), halm.ld(), &(alm.get_ptr_device()[apw_offset_col]), alm.ld(),
+                                    &zone, h.get_ptr_device(), h.ld());
                 }
                 else
                 {
+                    blas<cpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), zone, 
+                                    &alm(0, 0), alm.ld(), &alm(apw_offset_col, 0), alm.ld(), zone, 
+                                    &o(0, 0), o.ld()); 
+                    
                     // apw-apw block
                     blas<cpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), zone, 
                                     &halm(0, 0), halm.ld(), &alm(apw_offset_col, 0), alm.ld(), zone, 
                                     &h(0, 0), h.ld());
-                    
-                    blas<cpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), zone, 
-                                    &alm(0, 0), alm.ld(), &alm(apw_offset_col, 0), alm.ld(), zone, 
-                                    &o(0, 0), o.ld()); 
                 }
 
                 // apw-lo block
@@ -488,7 +494,34 @@ class kpoint
                                   o.get_ptr(), o.ld());
             }
             
+            Timer* t1 = new Timer("sirius::kpoint::set_fv_h_o:it");
+
+            #pragma omp parallel for default(shared)
+            for (int igkloc2 = 0; igkloc2 < num_gkvec_col(); igkloc2++) // loop over columns
+            {
+                double v2c[3];
+                parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_col_[igkloc2].igk), 
+                                                                   v2c);
+
+                for (int igkloc1 = 0; igkloc1 < num_gkvec_row(); igkloc1++) // for each column loop over rows
+                {
+                    int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row_[igkloc1].ig,
+                                                     apwlo_basis_descriptors_col_[igkloc2].ig);
+                    double v1c[3];
+                    parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_row_[igkloc1].igk), 
+                                                                       v1c);
+                    
+                    double t1 = 0.5 * Utils::scalar_product(v1c, v2c);
+                                       
+                    h(igkloc1, igkloc2) += (effective_potential->f_pw(ig12) + t1 * parameters_.step_function_pw(ig12));
+                    o(igkloc1, igkloc2) += parameters_.step_function_pw(ig12);
+                }
+            }
+           
+            delete t1;
+            
             // lo-lo block
+            #pragma omp parallel for default(shared)
             for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
             {
                 int ia = apwlo_basis_descriptors_col_[icol].ia;
@@ -520,48 +553,20 @@ class kpoint
                     }
                 }
             }
-            
-            Timer* t1 = new Timer("sirius::kpoint::set_fv_h_o:it");
-            
-            for (int igkloc2 = 0; igkloc2 < num_gkvec_col(); igkloc2++) // loop over columns
-            {
-                double v2c[3];
-                parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_col_[igkloc2].igk), 
-                                                                   v2c);
 
-                for (int igkloc1 = 0; igkloc1 < num_gkvec_row(); igkloc1++) // for each column loop over rows
-                {
-                    int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row_[igkloc1].ig,
-                                                     apwlo_basis_descriptors_col_[igkloc2].ig);
-                    double v1c[3];
-                    parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_row_[igkloc1].igk), 
-                                                                       v1c);
-                    
-                    double t1 = 0.5 * Utils::scalar_product(v1c, v2c);
-                                       
-                    h(igkloc1, igkloc2) += (effective_potential->f_pw(ig12) + t1 * parameters_.step_function_pw(ig12));
-                }
-            }
-            
-            for (int igkloc2 = 0; igkloc2 < num_gkvec_col(); igkloc2++) // loop over columns
-            {
-                for (int igkloc1 = 0; igkloc1 < num_gkvec_row(); igkloc1++) // for each column loop over rows
-                {
-                    int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row_[igkloc1].ig,
-                                                     apwlo_basis_descriptors_col_[igkloc2].ig);
-                    o(igkloc1, igkloc2) += parameters_.step_function_pw(ig12);
-                }
-            }
-
-            delete t1;
-            
             if (pu == gpu)
             {
                 h.deallocate_on_device();
                 o.deallocate_on_device();
-
                 alm.deallocate_on_device();
+                alm.deallocate_page_locked();
                 halm.deallocate_on_device();
+                halm.deallocate_page_locked();
+            }
+            else
+            {
+                alm.deallocate();
+                halm.deallocate();
             }
         }
 
