@@ -396,7 +396,6 @@ class kpoint
                                     &halm(0, 0), halm.ld(), &alm(apw_offset_col, 0), alm.ld(), zone, 
                                     &h(0, 0), h.ld());
                     
-                    // compute APW-APW block
                     blas<cpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), zone, 
                                     &alm(0, 0), alm.ld(), &alm(apw_offset_col, 0), alm.ld(), zone, 
                                     &o(0, 0), o.ld()); 
@@ -480,9 +479,6 @@ class kpoint
                 }
             } //ia
 
-            //Utils::write_matrix("h_cpu.txt", true, h); 
-            //Utils::write_matrix("o_cpu.txt", true, o); 
-
             // move apw-apw block from device to main memory
             if (pu == gpu)
             {
@@ -491,9 +487,6 @@ class kpoint
                 cublas_get_matrix(num_gkvec_row(), num_gkvec_col(), sizeof(complex16), o.get_ptr_device(), o.ld(), 
                                   o.get_ptr(), o.ld());
             }
-            
-            //Utils::write_matrix("h_gpu.txt", true, h); 
-            //Utils::write_matrix("o_gpu.txt", true, o); 
             
             // lo-lo block
             for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
@@ -602,13 +595,14 @@ class kpoint
             }
            
             // setup Hamiltonian and overlap
-            set_fv_h_o<cpu>(band, effective_potential, h, o);
-            Utils::write_matrix("h_cpu.txt", true, h); 
-            Utils::write_matrix("o_cpu.txt", true, o); 
-            
-            set_fv_h_o<gpu>(band, effective_potential, h, o);
-            Utils::write_matrix("h_gpu.txt", true, h); 
-            Utils::write_matrix("o_gpu.txt", true, o); 
+            if (eigen_value_solver == magma) 
+            {
+                set_fv_h_o<gpu>(band, effective_potential, h, o);
+            }
+            else
+            {
+                set_fv_h_o<cpu>(band, effective_potential, h, o);
+            }
             
             if ((debug_level > 0) && (eigen_value_solver == lapack))
             {
@@ -1130,15 +1124,20 @@ class kpoint
             for (int i = 0; i < spl_col.local_size(); i++)
                 apwlo_basis_descriptors_col_[i] = apwlo_basis_descriptors_[spl_col[i]];
 
-            int nr = linalg<scalapack>::numroc(apwlo_basis_size(), parameters_.cyclic_block_size(), band->rank_row(), 
-                                               0, band->num_ranks_row());
-            
-            if (nr != apwlo_basis_size_row()) error(__FILE__, __LINE__, "numroc returned a different local row size");
+            if (eigen_value_solver == scalapack || eigen_value_solver == elpa)
+            {
+                int nr = linalg<scalapack>::numroc(apwlo_basis_size(), parameters_.cyclic_block_size(), 
+                                                   band->rank_row(), 0, band->num_ranks_row());
+                
+                if (nr != apwlo_basis_size_row()) 
+                    error(__FILE__, __LINE__, "numroc returned a different local row size");
 
-            int nc = linalg<scalapack>::numroc(apwlo_basis_size(), parameters_.cyclic_block_size(), band->rank_col(), 
-                                              0, band->num_ranks_col());
-            
-            if (nc != apwlo_basis_size_col()) error(__FILE__, __LINE__, "numroc returned a different local column size");
+                int nc = linalg<scalapack>::numroc(apwlo_basis_size(), parameters_.cyclic_block_size(), 
+                                                   band->rank_col(), 0, band->num_ranks_col());
+                
+                if (nc != apwlo_basis_size_col()) 
+                    error(__FILE__, __LINE__, "numroc returned a different local column size");
+            }
 
             // get the number of row- and column- G+k-vectors
             num_gkvec_row_ = 0;
