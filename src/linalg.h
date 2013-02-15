@@ -85,7 +85,7 @@ template<> inline void blas<gpu>::gemm<complex16>(int transa, int transb, int32_
                                                   complex16* a, int32_t lda, complex16* b, int32_t ldb, complex16* beta, 
                                                   complex16* c, int32_t ldc)
 {
-    cublas_zgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, lda);
+    cublas_zgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
 
 
