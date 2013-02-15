@@ -15,6 +15,10 @@ template <typename T, int ND> class mdarray_base_impl : public mdarray_base<T,ND
         
         void zero_on_device();
         
+        void allocate_page_locked();
+        
+        void deallocate_page_locked();
+        
         T *get_ptr_device();
 };
 

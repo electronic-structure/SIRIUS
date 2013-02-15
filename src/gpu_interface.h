@@ -5,6 +5,8 @@ extern "C" void cuda_init();
 
 extern "C" void cublas_init();
 
+extern "C" void cuda_device_info();
+
 extern "C" void cuda_malloc_host(void** ptr, size_t size);
 
 extern "C" void cuda_free_host(void** ptr);

@@ -20,8 +20,10 @@ class Platform
             verbose_ = false;
             if (mpi_rank() == 0) verbose_ = true;
 
-            cuda_init();
+            //cuda_init();
             cublas_init();
+
+            cuda_device_info();
         }
 
         static int mpi_rank(MPI_Comm comm = MPI_COMM_WORLD)

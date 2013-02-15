@@ -7,7 +7,11 @@ SRC = ./LebedevLaikov.cpp
 OBJ = $(SRC:.cpp=.o) 
       
 ifneq (,$(findstring D_GPU_,$(CXX_OPT)))
-	OBJ := $(OBJ) gpu_interface.o
+	OBJ := $(OBJ) cuda_interface.o
+endif
+
+ifneq (,$(findstring D_MAGMA_,$(CXX_OPT)))
+	OBJ := $(OBJ) magma_interface.o
 endif
 	
 .cpp.o:
