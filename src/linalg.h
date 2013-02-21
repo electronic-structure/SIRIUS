@@ -550,58 +550,37 @@ template<> struct eigenproblem<elpa>
 /// magma eigenvalue specialization
 template<> struct eigenproblem<magma>
 {
-    static std::vector<int32_t> get_work_sizes(int id, int32_t matrix_size)
-    {
-        std::vector<int32_t> work_sizes(3);
-        
-        //* switch (id)
-        //* {
-        //*     case 0: // zheevd
-        //*     {
-        //*         work_sizes[0] = 2 * matrix_size + matrix_size * matrix_size;
-        //*         work_sizes[1] = 1 + 5 * matrix_size + 2 * matrix_size * matrix_size;
-        //*         work_sizes[2] = 3 + 5 * matrix_size;
-        //*         break;
-        //*     }
-        //*     case 1: // zhegvx
-        //*     {
-        //*         int32_t nb = linalg<lapack>::ilaenv(1, "ZHETRD", "U", matrix_size, 0, 0, 0);
-        //*         work_sizes[0] = (nb + 1) * matrix_size; // lwork
-        //*         work_sizes[1] = 7 * matrix_size; // lrwork
-        //*         work_sizes[2] = 5 * matrix_size; // liwork
-        //*         break;
-        //*     }
-        //*     default:
-        //*         error(__FILE__, __LINE__, "wrong eigen value solver id");
-        //* }
+    //* static std::vector<int32_t> get_work_sizes(int id, int32_t matrix_size)
+    //* {
+    //*     std::vector<int32_t> work_sizes(3);
+    //*     
+    //*     //* switch (id)
+    //*     //* {
+    //*     //*     case 0: // zheevd
+    //*     //*     {
+    //*     //*         work_sizes[0] = 2 * matrix_size + matrix_size * matrix_size;
+    //*     //*         work_sizes[1] = 1 + 5 * matrix_size + 2 * matrix_size * matrix_size;
+    //*     //*         work_sizes[2] = 3 + 5 * matrix_size;
+    //*     //*         break;
+    //*     //*     }
+    //*     //*     case 1: // zhegvx
+    //*     //*     {
+    //*     //*         int32_t nb = linalg<lapack>::ilaenv(1, "ZHETRD", "U", matrix_size, 0, 0, 0);
+    //*     //*         work_sizes[0] = (nb + 1) * matrix_size; // lwork
+    //*     //*         work_sizes[1] = 7 * matrix_size; // lrwork
+    //*     //*         work_sizes[2] = 5 * matrix_size; // liwork
+    //*     //*         break;
+    //*     //*     }
+    //*     //*     default:
+    //*     //*         error(__FILE__, __LINE__, "wrong eigen value solver id");
+    //*     //* }
 
-        return work_sizes;
-    }
+    //*     return work_sizes;
+    //* }
     
-    static int standard(int32_t matrix_size, complex16* a, int32_t lda, real8* eval, complex16* z, int32_t ldz)
+    static void standard(int32_t matrix_size, complex16* a, int32_t lda, real8* eval, complex16* z, int32_t ldz)
     {
-        //* std::vector<int32_t> work_sizes = get_work_sizes(0, matrix_size);
-        //* 
-        //* std::vector<complex16> work(work_sizes[0]);
-        //* std::vector<real8> rwork(work_sizes[1]);
-        //* std::vector<int32_t> iwork(work_sizes[2]);
-        //* int32_t info;
-
-        //* FORTRAN(zheevd)("V", "U", &matrix_size, a, &lda, eval, &work[0], &work_sizes[0], &rwork[0], &work_sizes[1], 
-        //*                 &iwork[0], &work_sizes[2], &info, (int32_t)1, (int32_t)1);
-        //* 
-        //* for (int i = 0; i < matrix_size; i++)
-        //*     memcpy(&z[ldz * i], &a[lda * i], matrix_size * sizeof(complex16));
-        //* 
-        //* if (info)
-        //* {
-        //*     std::stringstream s;
-        //*     s << "zheevd returned " << info; 
-        //*     error(__FILE__, __LINE__, s, fatal_err);
-        //* }
-
-        //* return info;
-        return 0;
+        eigenproblem<lapack>::standard(matrix_size, a, lda, eval, z, ldz);
     }
 
     static void generalized(int32_t matrix_size, int32_t nv, complex16* a, int32_t lda, complex16* b, int32_t ldb, 
