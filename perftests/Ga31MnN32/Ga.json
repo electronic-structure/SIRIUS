@@ -1,0 +1,78 @@
+{
+    "name" : "gallium",
+    "symbol" : "Ga",
+    "number" : 31,
+    "mass" :   6.97230000e+01,
+    "rmin" :   3.22580645e-08,
+    "rmax" :   2.77186687e+01,
+    "nrmt" : 3550,
+    "rmt" :   8.68453077e-01,
+    "core" : "1s2s2p",
+    "valence" : [
+        {
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : false}]
+        },
+        {
+            "l" : 0,
+            "n" : 4,
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]
+        },
+        {
+            "l" : 1,
+            "n" : 4,
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]
+        },
+        {
+            "l" : 2,
+            "n" : 3,
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]
+        },
+        {
+            "l" : 3,
+            "n" : 4,
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]
+        }
+    ],
+    "lo" : [
+        {
+            "l" : 0,
+            "basis" : [{"n" : 3, "enu" : 0.15, "dme" : 0, "auto" : true}, {"n" : 3, "enu" : 0.15, "dme" : 1, "auto" : true}]
+        },
+        {
+            "l" : 1,
+            "basis" : [{"n" : 3, "enu" : 0.15, "dme" : 0, "auto" : true}, {"n" : 3, "enu" : 0.15, "dme" : 1, "auto" : true}]
+        },
+        {
+            "l" : 2,
+            "basis" : [{"n" : 3, "enu" : 0.15, "dme" : 0, "auto" : true}, {"n" : 3, "enu" : 0.15, "dme" : 1, "auto" : true}]
+        },
+        {
+            "l" : 0,
+            "basis" : [{"n" : 4, "enu" : 0.15, "dme" : 0, "auto" : true}, {"n" : 4, "enu" : 0.15, "dme" : 1, "auto" : true}]
+        },
+        {
+            "l" : 1,
+            "basis" : [{"n" : 4, "enu" : 0.15, "dme" : 0, "auto" : true}, {"n" : 4, "enu" : 0.15, "dme" : 1, "auto" : true}]
+        },
+        {
+            "l" : 0,
+            "basis" : [{"n" : 3, "enu" : 0.15, "dme" : 0, "auto" : true}, {"n" : 4, "enu" : 0.15, "dme" : 0, "auto" : true}]
+        },
+        {
+            "l" : 1,
+            "basis" : [{"n" : 3, "enu" : 0.15, "dme" : 0, "auto" : true}, {"n" : 4, "enu" : 0.15, "dme" : 0, "auto" : true}]
+        },
+        {
+            "l" : 2,
+            "basis" : [{"n" : 3, "enu" : 0.15, "dme" : 0, "auto" : true}, {"n" : 4, "enu" : 0.15, "dme" : 0, "auto" : true}]
+        },
+        {
+            "l" : 0,
+            "basis" : [{"n" : 4, "enu" : 0.15, "dme" : 0, "auto" : true}, {"n" : 5, "enu" : 0.15, "dme" : 0, "auto" : true}]
+        },
+        {
+            "l" : 1,
+            "basis" : [{"n" : 4, "enu" : 0.15, "dme" : 0, "auto" : true}, {"n" : 5, "enu" : 0.15, "dme" : 0, "auto" : true}]
+        }
+    ]
+}
