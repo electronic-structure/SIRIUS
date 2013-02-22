@@ -259,15 +259,13 @@ int main(int argn, char **argv)
         std::string s(argv[i]);
         if (s == "-l")
         {
-            std::string s(argv[i + 1]);
-            std::istringstream iss(s);
+            std::istringstream iss((std::string(argv[i + 1])));
             iss >> lo_type;
             i++;
         }
         if (s == "-c")
         {
-            std::string s(argv[i + 1]);
-            std::istringstream iss(s);
+            std::istringstream iss((std::string(argv[i + 1])));
             iss >> core_cutoff_energy;
             i++;
         }
