@@ -2,10 +2,7 @@ tasks
  2000
  
 ngridk
- 1 1 1
- 
-nosym
- .true.
+ 2 2 2
  
 autormt
  .true.
