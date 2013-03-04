@@ -398,6 +398,8 @@ class Global : public StepFunction
                 printf("total number of lo basis functions : %i\n", mt_lo_basis_size());
                 printf("number of first-variational states : %i\n", num_fv_states());
 
+                UnitCell::write_cif();
+
             }
         }
         

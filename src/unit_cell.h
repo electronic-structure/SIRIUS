@@ -114,8 +114,9 @@ class UnitCell
             double lattice[3][3];
 
             for (int i = 0; i < 3; i++)
-                for (int j = 0; j < 3; j++) 
-                    lattice[i][j] = lattice_vectors_[j][i];
+            {
+                for (int j = 0; j < 3; j++) lattice[i][j] = lattice_vectors_[j][i];
+            }
 
             mdarray<double,2> positions(3, num_atoms());
             
@@ -436,6 +437,47 @@ class UnitCell
             printf("number of valence electrons : %i\n", num_valence_electrons_);
             printf("total number of electrons   : %i\n", num_electrons_);
         }
+
+        void write_cif()
+        {
+            if (Platform::mpi_rank() == 0)
+            {
+                FILE* fout = fopen("unit_cell.cif", "w");
+
+                double a = Utils::vector_length(lattice_vectors_[0]);
+                double b = Utils::vector_length(lattice_vectors_[1]);
+                double c = Utils::vector_length(lattice_vectors_[2]);
+                fprintf(fout, "_cell_length_a %f\n", a);
+                fprintf(fout, "_cell_length_b %f\n", b);
+                fprintf(fout, "_cell_length_c %f\n", c);
+
+                double alpha = acos(Utils::scalar_product(lattice_vectors_[1], lattice_vectors_[2]) / b / c) * 180 / pi;
+                double beta = acos(Utils::scalar_product(lattice_vectors_[0], lattice_vectors_[2]) / a / c) * 180 / pi;
+                double gamma = acos(Utils::scalar_product(lattice_vectors_[0], lattice_vectors_[1]) / a / b) * 180 / pi;
+                fprintf(fout, "_cell_angle_alpha %f\n", alpha);
+                fprintf(fout, "_cell_angle_beta %f\n", beta);
+                fprintf(fout, "_cell_angle_gamma %f\n", gamma);
+
+                //fprintf(fout, "loop_\n");
+                //fprintf(fout, "_symmetry_equiv_pos_as_xyz\n");
+
+                fprintf(fout, "loop_\n");
+                fprintf(fout, "_atom_site_label\n");
+                fprintf(fout, "_atom_type_symbol\n");
+                fprintf(fout, "_atom_site_fract_x\n");
+                fprintf(fout, "_atom_site_fract_y\n");
+                fprintf(fout, "_atom_site_fract_z\n");
+                for (int ia = 0; ia < num_atoms(); ia++)
+                {
+                    std::stringstream s;
+                    s << ia + 1 << " " << atom(ia)->type()->symbol() << " " << atom(ia)->position(0) << " " << 
+                         atom(ia)->position(1) << " " << atom(ia)->position(2);
+                    fprintf(fout,"%s\n",s.str().c_str());
+                }
+                fclose(fout);
+            }
+        }
+
         
         /// Set lattice vectors.
 
