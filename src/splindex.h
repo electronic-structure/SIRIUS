@@ -1,3 +1,7 @@
+
+const int __splindex_offs__ = 0;
+const int __splindex_rank__ = 1;
+
 class splindex_base
 {
     private:
@@ -38,15 +42,15 @@ class splindex_base
             location_.set_dimensions(2, global_index_size_);
             location_.allocate();
 
-            for (int i1 = 0; i1 < global_index_.size(1); i1++)
+            for (int i1 = 0; i1 < global_index_.size(__splindex_rank__); i1++)
             {
-                for (int i0 = 0; i0 < global_index_.size(0); i0++)
+                for (int i0 = 0; i0 < global_index_.size(__splindex_offsr__); i0++)
                 {
                     int j = global_index_(i0, i1);
                     if (j >= 0)
                     {
-                        location_(0, j) = i0;
-                        location_(1, j) = i1;
+                        location_(__splindex_offs__, j) = i0;
+                        location_(__splindex_rank__, j) = i1;
                     }
                 }
             }

@@ -55,7 +55,8 @@ for itg in range(len(timer_groups)):
         
         if timer_name in jin["timers"]:
             
-            tname = timer_name[timer_name.rfind("::")+2:]
+            #tname = timer_name[timer_name.rfind("::")+2:]
+            tname = timer_name
             
             if itg == 0: 
                 if timer_name == "sirius::Potential::generate_effective_potential":
