@@ -281,7 +281,6 @@ class Density
             for (int ik = 0; ik < kpoints__.size(1); ik++)
                 kpoint_set_.add_kpoint(&kpoints__(0, ik), kpoint_weights__[ik], parameters_);
 
-
             // distribute k-points along the 1-st direction of the MPI grid
             spl_num_kpoints_.split(kpoints__.size(1), parameters_.mpi_grid().dimension_size(0), 
                                    parameters_.mpi_grid().coordinate(0));
@@ -374,8 +373,10 @@ class Density
                 if (len > 1e-8)
                 {
                     if (parameters_.num_mag_dims())
+                    {
                         for (int ir = 0; ir < nmtp; ir++)
                             magnetization_[0]->f_rlm(0, ir, ia) = 0.2 * rho_->f_rlm(0, ir, ia) * v[2] / len;
+                    }
 
                     if (parameters_.num_mag_dims() == 3)
                     {
