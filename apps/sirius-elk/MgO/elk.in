@@ -36,9 +36,10 @@ plot1d
   0.5 0.75 0.25
   0.0 0.0 0.0
 
-lmaxapw
- 12
- 
 autormt
  .true.
+
+spinpol
+ .true.
  
+  

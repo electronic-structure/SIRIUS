@@ -1,6 +1,6 @@
 
-const int __splindex_offs__ = 0;
-const int __splindex_rank__ = 1;
+const int _splindex_offs_ = 0;
+const int _splindex_rank_ = 1;
 
 class splindex_base
 {
@@ -42,15 +42,15 @@ class splindex_base
             location_.set_dimensions(2, global_index_size_);
             location_.allocate();
 
-            for (int i1 = 0; i1 < global_index_.size(__splindex_rank__); i1++)
+            for (int i1 = 0; i1 < global_index_.size(_splindex_rank_); i1++)
             {
-                for (int i0 = 0; i0 < global_index_.size(__splindex_offsr__); i0++)
+                for (int i0 = 0; i0 < global_index_.size(_splindex_offs_); i0++)
                 {
                     int j = global_index_(i0, i1);
                     if (j >= 0)
                     {
-                        location_(__splindex_offs__, j) = i0;
-                        location_(__splindex_rank__, j) = i1;
+                        location_(_splindex_offs_, j) = i0;
+                        location_(_splindex_rank_, j) = i1;
                     }
                 }
             }
@@ -120,21 +120,22 @@ template<> class splindex<block>: public splindex_base
             num_ranks_ = num_ranks__;
             global_index_size_ = global_index_size__;
             
-            local_size_.resize(num_ranks__);
+            local_size_.resize(num_ranks_);
 
             // minimum size
-            int n1 = global_index_size__ / num_ranks__;
+            int n1 = global_index_size_ / num_ranks_;
 
             // first n2 ranks have one more index element
-            int n2 = global_index_size__ % num_ranks__;
+            int n2 = global_index_size_ % num_ranks_;
             
-            global_index_.set_dimensions(n1 + std::min(1, n2), num_ranks__);
+            global_index_.set_dimensions(n1 + std::min(1, n2), num_ranks_);
             global_index_.allocate();
-            for (int i1 = 0; i1 < global_index_.size(1); i1++)
-                for (int i0 = 0; i0 < global_index_.size(0); i0++)
-                    global_index_(i0, i1) = -1;
+            for (int i1 = 0; i1 < global_index_.size(_splindex_rank_); i1++)
+            {
+                for (int i0 = 0; i0 < global_index_.size(_splindex_offs_); i0++) global_index_(i0, i1) = -1;
+            }
 
-            for (int i1 = 0; i1 < num_ranks__; i1++)
+            for (int i1 = 0; i1 < num_ranks_; i1++)
             {
                 int global_index_offset;
                 if (i1 < n2)
@@ -147,8 +148,7 @@ template<> class splindex<block>: public splindex_base
                     local_size_[i1] = n1; 
                     global_index_offset = (n1 > 0) ? (n1 + 1) * n2 + n1 * (i1 - n2) : -1;
                 }
-                for (int i0 = 0; i0 < local_size_[i1]; i0++)
-                    global_index_(i0, i1) = global_index_offset + i0;
+                for (int i0 = 0; i0 < local_size_[i1]; i0++) global_index_(i0, i1) = global_index_offset + i0;
             }
 
             init();
@@ -191,36 +191,36 @@ template<> class splindex<block_cyclic>: public splindex_base
             global_index_size_ = global_index_size__;
             block_size_ = block_size__;
             
-            local_size_.resize(num_ranks__);
+            local_size_.resize(num_ranks_);
 
 
-            int nblocks = (global_index_size__ / block_size__) +           // number of full blocks
-                          std::min(1, global_index_size__ % block_size__); // extra partial block
+            int nblocks = (global_index_size_ / block_size_) +           // number of full blocks
+                          std::min(1, global_index_size_ % block_size_); // extra partial block
 
-            int max_size = ((nblocks / num_ranks__) +            // minimum number of blocks per rank
-                            std::min(1, nblocks % num_ranks__)); // some ranks get extra block
-            max_size *= block_size__;
+            int max_size = ((nblocks / num_ranks_) +            // minimum number of blocks per rank
+                            std::min(1, nblocks % num_ranks_)); // some ranks get extra block
+            max_size *= block_size_;
             
-            global_index_.set_dimensions(max_size, num_ranks__);
+            global_index_.set_dimensions(max_size, num_ranks_);
             global_index_.allocate();
             
             int irank = 0;
             int iblock = 0;
-            std::vector< std::vector<int> > iv(num_ranks__);
-            for (int i = 0; i < global_index_size__; i++)
+            std::vector< std::vector<int> > iv(num_ranks_);
+            for (int i = 0; i < global_index_size_; i++)
             {
                 iv[irank].push_back(i);
-                if ((++iblock) == block_size__)
+                if ((++iblock) == block_size_)
                 {
                     iblock = 0;
-                    irank = (irank + 1) % num_ranks__;
+                    irank = (irank + 1) % num_ranks_;
                 }
             }
            
-            for (int i1 = 0; i1 < global_index_.size(1); i1++)
+            for (int i1 = 0; i1 < global_index_.size(_splindex_rank_); i1++)
             {
                 local_size_[i1] = (int)iv[i1].size();
-                for (int i0 = 0; i0 < global_index_.size(0); i0++)
+                for (int i0 = 0; i0 < global_index_.size(_splindex_offs_); i0++)
                     global_index_(i0, i1) = (i0 < (int)iv[i1].size()) ? iv[i1][i0] : -1;
             }
 
