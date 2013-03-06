@@ -96,9 +96,9 @@ class Platform
        
         /// Perform the in-place (the output buffer is used as the input buffer) all-to-one reduction 
         template<typename T>
-        static void reduce(T* buffer, int count, const MPI_Comm& comm, int root)
+        static void reduce(T* sendbuf, T* recvbuf, int count, const MPI_Comm& comm, int root)
         {
-            MPI_Reduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), MPI_SUM, root, comm);
+            MPI_Reduce(sendbuf, recvbuf, count, primitive_type_wrapper<T>::mpi_type_id(), MPI_SUM, root, comm);
         }
 
         /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 

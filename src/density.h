@@ -28,58 +28,7 @@ class Density
         std::vector<int> l_by_lm_;
 
         template <int num_mag_dims> 
-        void reduce_zdens(int ia, mdarray<complex16, 3>& zdens, mdarray<double, 5>& mt_density_matrix)
-        {
-            AtomType* type = parameters_.atom(ia)->type();
-            int mt_basis_size = type->mt_basis_size();
-
-            #pragma omp parallel for default(shared)
-            for (int lm3 = 0; lm3 < parameters_.lmmax_rho(); lm3++)
-            {
-                int l3 = l_by_lm_[lm3];
-                
-                for (int j2 = 0; j2 < mt_basis_size; j2++)
-                {
-                    int l2 = type->indexb(j2).l;
-                    int lm2 = type->indexb(j2).lm;
-                    int idxrf2 = type->indexb(j2).idxrf;
-        
-                    int j1 = 0;
-
-                    // compute only upper triangular block and later use the symmetry properties of the density matrix
-                    for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
-                    {
-                        int l1 = type->indexr(idxrf1).l;
-                        
-                        if ((l1 + l2 + l3) % 2 == 0)
-                        {
-                            for (int lm1 = Utils::lm_by_l_m(l1, -l1); lm1 <= Utils::lm_by_l_m(l1, l1); lm1++, j1++) 
-                            {
-                                complex16 gc = complex_gaunt_(lm1, lm2, lm3);
-
-                                switch (num_mag_dims)
-                                {
-                                    case 3:
-                                        mt_density_matrix(idxrf1, idxrf2, lm3, ia, 2) += 2.0 * real(zdens(j1, j2, 2) * gc); 
-                                        mt_density_matrix(idxrf1, idxrf2, lm3, ia, 3) -= 2.0 * imag(zdens(j1, j2, 2) * gc);
-                                    case 1:
-                                        mt_density_matrix(idxrf1, idxrf2, lm3, ia, 1) += real(zdens(j1, j2, 1) * gc);
-                                    case 0:
-                                        mt_density_matrix(idxrf1, idxrf2, lm3, ia, 0) += real(zdens(j1, j2, 0) * gc);
-                                }
-                            }
-                        } 
-                        else
-                        {
-                            j1 += (2 * l1 + 1);
-                        }
-                    }
-                } // j2
-            } // lm3
-        }
-        
-        template <int num_mag_dims> 
-        void reduce_zdens_v2(int ia, int ialoc, mdarray<complex16, 4>& zdens, mdarray<double, 4>& mt_density_matrix)
+        void reduce_zdens(int ia, int ialoc, mdarray<complex16, 4>& zdens, mdarray<double, 4>& mt_density_matrix)
         {
             AtomType* type = parameters_.atom(ia)->type();
             int mt_basis_size = type->mt_basis_size();
@@ -112,12 +61,12 @@ class Density
                                 switch (num_mag_dims)
                                 {
                                     case 3:
-                                        mt_density_matrix(offs + idxrf1, lm3, 2, ialoc) += 2.0 * real(zdens(j1, j2, 2, ia) * gc); 
-                                        mt_density_matrix(offs + idxrf1, lm3, 3, ialoc) -= 2.0 * imag(zdens(j1, j2, 2, ia) * gc);
+                                        mt_density_matrix(offs + idxrf1, lm3, 2, ialoc) += 2.0 * real(zdens(j1, j2, 2, ialoc) * gc); 
+                                        mt_density_matrix(offs + idxrf1, lm3, 3, ialoc) -= 2.0 * imag(zdens(j1, j2, 2, ialoc) * gc);
                                     case 1:
-                                        mt_density_matrix(offs + idxrf1, lm3, 1, ialoc) += real(zdens(j1, j2, 1, ia) * gc);
+                                        mt_density_matrix(offs + idxrf1, lm3, 1, ialoc) += real(zdens(j1, j2, 1, ialoc) * gc);
                                     case 0:
-                                        mt_density_matrix(offs + idxrf1, lm3, 0, ialoc) += real(zdens(j1, j2, 0, ia) * gc);
+                                        mt_density_matrix(offs + idxrf1, lm3, 0, ialoc) += real(zdens(j1, j2, 0, ialoc) * gc);
                                 }
                             }
                         } 
@@ -664,6 +613,11 @@ class Density
                                                             num_zdmat, 
                                                             parameters_.num_atoms());
             
+            mdarray<complex16, 4> mt_complex_density_matrix_loc(parameters_.max_mt_basis_size(), 
+                                                                parameters_.max_mt_basis_size(),
+                                                                num_zdmat, 
+                                                                parameters_.spl_num_atoms().local_size());
+            
             mt_complex_density_matrix.zero();
 
 
@@ -680,9 +634,6 @@ class Density
             mdarray<complex16, 5> occupation_matrix(16, 16, 2, 2, parameters_.num_atoms()); 
             occupation_matrix.zero();
             
-            stop_here
-
-
 
 
             // add to charge density and magnetization
@@ -691,9 +642,6 @@ class Density
                 int ik = spl_num_kpoints_[ikloc];
                 add_kpoint_contribution(kpoint_set_[ik], mt_complex_density_matrix);
             }
-
-
-            stop_here
 
             
             // reduce arrays; assume that each rank (including ranks along second direction) did it's own 
@@ -735,10 +683,11 @@ class Density
             {
                 for (int ia = 0; ia < parameters_.num_atoms(); ia++)
                 {
-                    //int ialoc = parameters_.spl_num_atoms().location(0, ia);
+                    int ialoc = parameters_.spl_num_atoms().location(_splindex_offs_, ia);
                     int rank = parameters_.spl_num_atoms().location(_splindex_rank_, ia);
 
                     Platform::reduce(&mt_complex_density_matrix(0, 0, j, ia), 
+                                     &mt_complex_density_matrix_loc(0, 0, j, ialoc),
                                      parameters_.max_mt_basis_size() * parameters_.max_mt_basis_size(),
                                      parameters_.mpi_grid().communicator(), rank);
                 }
@@ -762,13 +711,13 @@ class Density
                 switch (parameters_.num_mag_dims())
                 {
                     case 3:
-                        reduce_zdens_v2<3>(ia, ialoc, mt_complex_density_matrix, mt_density_matrix);
+                        reduce_zdens<3>(ia, ialoc, mt_complex_density_matrix_loc, mt_density_matrix);
                         break;
                     case 1:
-                        reduce_zdens_v2<1>(ia, ialoc, mt_complex_density_matrix, mt_density_matrix);
+                        reduce_zdens<1>(ia, ialoc, mt_complex_density_matrix_loc, mt_density_matrix);
                         break;
                     case 0:
-                        reduce_zdens_v2<0>(ia, ialoc, mt_complex_density_matrix, mt_density_matrix);
+                        reduce_zdens<0>(ia, ialoc, mt_complex_density_matrix_loc, mt_density_matrix);
                         break;
                 }
                 t1.stop();

@@ -94,7 +94,20 @@ class MPIGrid
                 sz *= dimensions_[i];
             
             if (sz == 0) error(__FILE__, __LINE__, "One of the MPI grid dimensions has a zero length.", fatal_err);
+            
 
+            if (Platform::num_mpi_ranks(parent_communicator_) > sz)
+            {
+                std::stringstream s;
+                s << "Too many processors for a grid." << std::endl
+                  << "  grid dimensions :";
+                for (int i = 0; i < (int)dimensions_.size(); i++) s << " " << dimensions_[i];
+                s << std::endl
+                  << "  available number of MPI ranks : " << Platform::num_mpi_ranks(parent_communicator_);
+
+                error(__FILE__, __LINE__, s, fatal_err);
+            }
+            
             if (Platform::num_mpi_ranks(parent_communicator_) < sz)
             {
                 std::stringstream s;
