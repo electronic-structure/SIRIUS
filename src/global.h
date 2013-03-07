@@ -69,6 +69,8 @@ class Global : public StepFunction
         splindex<block> spl_num_atom_symmetry_classes_;
 
         timeval start_time_;
+
+        linalg_t eigen_value_solver_; 
         
         /// read from the input file if it exists
         void read_input()
@@ -84,6 +86,14 @@ class Global : public StepFunction
                 parser["cyclic_block_size"] >> cyclic_block_size_;
                 num_fft_threads = parser["num_fft_threads"].get<int>(num_fft_threads);
                 num_fv_states_ = parser["num_fv_states"].get<int>(num_fv_states_);
+                
+                if (parser.exist("eigen_value_solver"))
+                {
+                    std::string ev_solver_name = parser["eigen_value_solver"].get<std::string>();
+                    std::cout << ev_solver_name << std::endl;
+                }
+                stop_here
+
             }
 
             Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::num_threads()));
@@ -132,7 +142,8 @@ class Global : public StepFunction
                    num_mag_dims_(0),
                    so_correction_(false),
                    uj_correction_(false),
-                   cyclic_block_size_(16)
+                   cyclic_block_size_(16),
+                   eigen_value_solver_(lapack)
         {
             gettimeofday(&start_time_, NULL);
         }

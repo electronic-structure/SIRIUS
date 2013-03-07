@@ -749,6 +749,30 @@ class kpoint
             }
             
             Timer *t1 = new Timer("sirius::kpoint::generate_fv_states:genevp");
+            generalized_evp* solver;
+            linalg_t evst = scalapack;
+
+            switch (evst)
+            {
+                case lapack:
+                {
+
+                    solver = new generalized_evp_lapack(-1.0);
+                    break;
+                }
+                case scalapack:
+                {
+
+                    solver = new generalized_evp_scalapack(parameters_.cyclic_block_size(), band->num_ranks_row(), 
+                                                           band->num_ranks_col(), band->blacs_context(), -1.0);
+                    break;
+                }
+            }
+
+            solver->solve(apwlo_basis_size(), parameters_.num_fv_states(), h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), 
+                          &fv_eigen_values_[0], fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
+
+            stop_here
 
             switch (eigen_value_solver)
             {

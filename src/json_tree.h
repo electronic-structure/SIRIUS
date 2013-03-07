@@ -83,8 +83,7 @@ template<> json_value_parser< std::vector<int> >::json_value_parser
     (const JSONNode& value, std::vector<int>& data) : type_name_("vector<int>"), 
                                                       is_valid_(true)
 {
-    if (value.type() != JSON_ARRAY) 
-        is_valid_ = false;
+    if (value.type() != JSON_ARRAY) is_valid_ = false;
     
     if (is_valid_) 
     {
@@ -94,8 +93,7 @@ template<> json_value_parser< std::vector<int> >::json_value_parser
             int t;
             json_value_parser<int> v(value[i], t);
             is_valid_ = is_valid_ && v.is_valid();
-            if (is_valid_) 
-                data.push_back(t);
+            if (is_valid_) data.push_back(t);
         }
     }
 }
@@ -104,11 +102,9 @@ template<> json_value_parser<std::string>::json_value_parser
     (const JSONNode& value, std::string& data) : type_name_("string"), 
                                                  is_valid_(true)
 {
-    if (value.type() != JSON_STRING)
-        is_valid_ = false;
+    if (value.type() != JSON_STRING) is_valid_ = false;
         
-    if (is_valid_) 
-        data = value.as_string();
+    if (is_valid_) data = value.as_string();
 }
 
 class JsonTree 
@@ -151,6 +147,12 @@ class JsonTree
         inline bool empty()
         {
             return node.empty();
+        }
+
+        inline bool exist(const std::string& name)
+        {
+            if (node.find(name) == node.end()) return false;
+            return true;
         }
     
         void parse(const std::string& fname)

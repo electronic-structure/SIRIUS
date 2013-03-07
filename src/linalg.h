@@ -594,5 +594,269 @@ template<> struct eigenproblem<magma>
     }
 };
 
+class generalized_evp
+{
+    public:
+        virtual void solve(int32_t matrix_size, int32_t nevec, complex16* a, int32_t lda, complex16* b, int32_t ldb, 
+                           real8* eval, complex16* z, int32_t ldz)
+        {
+            error(__FILE__, __LINE__, "eigen-value solver is not configured");
+        }
+};
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+class generalized_evp_lapack: public generalized_evp
+{
+    private:
+
+        real8 abstol_;
+    
+    public:
+
+        generalized_evp_lapack(real8 abstol__) : abstol_(abstol__)
+        {
+        }
+
+        void solve(int32_t matrix_size, int32_t nevec, complex16* a, int32_t lda, complex16* b, int32_t ldb, 
+                   real8* eval, complex16* z, int32_t ldz)
+        {
+            assert(nevec <= matrix_size);
+
+            int nb = linalg<lapack>::ilaenv(1, "ZHETRD", "U", matrix_size, 0, 0, 0);
+            int lwork = (nb + 1) * matrix_size; // lwork
+            int lrwork = 7 * matrix_size; // lrwork
+            int liwork = 5 * matrix_size; // liwork
+            
+            std::vector<complex16> work(lwork);
+            std::vector<real8> rwork(lrwork);
+            std::vector<int32_t> iwork(liwork);
+            std::vector<int32_t> ifail(matrix_size);
+            std::vector<real8> w(matrix_size);
+            real8 vl = 0.0;
+            real8 vu = 0.0;
+            int32_t m;
+            int32_t info;
+       
+            int32_t ione = 1;
+            FORTRAN(zhegvx)(&ione, "V", "I", "U", &matrix_size, a, &lda, b, &ldb, &vl, &vu, &ione, &nevec, &abstol_, &m, 
+                            &w[0], z, &ldz, &work[0], &lwork, &rwork[0], &iwork[0], &ifail[0], &info, (int32_t)1, 
+                            (int32_t)1, (int32_t)1);
+
+            if (m != nevec) error(__FILE__, __LINE__, "Not all eigen-values are found.", fatal_err);
+
+            if (info)
+            {
+                std::stringstream s;
+                s << "zhegvx returned " << info; 
+                error(__FILE__, __LINE__, s, fatal_err);
+            }
+
+            memcpy(eval, &w[0], nevec * sizeof(real8));
+        }
+
+
+};
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+class generalized_evp_scalapack: public generalized_evp
+{
+    private:
+
+        int32_t block_size_;
+        int num_ranks_row_;
+        int num_ranks_col_;
+        int blacs_context_;
+        real8 abstol_;
+       
+        std::vector<int32_t> get_work_sizes(int32_t matrix_size, int32_t nb, int32_t nprow, int32_t npcol, 
+                                            int blacs_context)
+        {
+            std::vector<int32_t> work_sizes(3);
+            
+            int32_t nn = std::max(matrix_size, std::max(nb, 2));
+            
+            int32_t neig = std::max(1024, nb);
+
+            int32_t nmax3 = std::max(neig, std::max(nb, 2));
+            
+            int32_t np = nprow * npcol;
+
+            // due to the mess in the documentation, take the maximum of np0, nq0, mq0
+            int32_t nmpq0 = std::max(linalg<scalapack>::numroc(nn, nb, 0, 0, nprow), 
+                                  std::max(linalg<scalapack>::numroc(nn, nb, 0, 0, npcol),
+                                           linalg<scalapack>::numroc(nmax3, nb, 0, 0, npcol))); 
+
+            int32_t anb = linalg<scalapack>::pjlaenv(blacs_context, 3, "PZHETTRD", "L", 0, 0, 0, 0);
+            int32_t sqnpc = (int32_t)pow(real8(np), 0.5);
+            int32_t nps = std::max(linalg<scalapack>::numroc(nn, 1, 0, 0, sqnpc), 2 * anb);
+
+            work_sizes[0] = matrix_size + (2 * nmpq0 + nb) * nb;
+            work_sizes[0] = std::max(work_sizes[0], matrix_size + 2 * (anb + 1) * (4 * nps + 2) + (nps + 1) * nps);
+            work_sizes[0] = std::max(work_sizes[0], 3 * nmpq0 * nb + nb * nb);
+
+            work_sizes[1] = 4 * matrix_size + std::max(5 * matrix_size, nmpq0 * nmpq0) + 
+                            linalg<scalapack>::iceil(neig, np) * nn + neig * matrix_size;
+
+            int32_t nnp = std::max(matrix_size, std::max(np + 1, 4));
+            work_sizes[2] = 6 * nnp;
+
+            return work_sizes;
+        }
+    
+    public:
+
+        generalized_evp_scalapack(int32_t block_size__, int num_ranks_row__, int num_ranks_col__, int blacs_context__, 
+                                  real8 abstol__) : block_size_(block_size__), num_ranks_row_(num_ranks_row__), 
+                                                    num_ranks_col_(num_ranks_col__), blacs_context_(blacs_context__), 
+                                                    abstol_(abstol__)
+        {
+        }
+
+        #ifdef _SCALAPACK_
+        void solve(int32_t matrix_size, int32_t nevec, complex16* a, int32_t lda, complex16* b, int32_t ldb, 
+                   real8* eval, complex16* z, int32_t ldz)
+        {
+        
+            assert(nevec <= matrix_size);
+            
+            int32_t desca[9];
+            linalg<scalapack>::descinit(desca, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+                                        blacs_context_, lda);
+
+            int32_t descb[9];
+            linalg<scalapack>::descinit(descb, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+                                        blacs_context_, ldb); 
+
+            int32_t descz[9];
+            linalg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+                                        blacs_context_, ldz); 
+
+            std::vector<int32_t> work_sizes = get_work_sizes(matrix_size, block_size_, num_ranks_row_, num_ranks_col_, 
+                                                             blacs_context_);
+            
+            std::vector<complex16> work(work_sizes[0]);
+            std::vector<real8> rwork(work_sizes[1]);
+            std::vector<int32_t> iwork(work_sizes[2]);
+            
+            std::vector<int32_t> ifail(matrix_size);
+            std::vector<int32_t> iclustr(2 * num_ranks_row_ * num_ranks_col_);
+            std::vector<real8> gap(num_ranks_row_ * num_ranks_col_);
+            std::vector<real8> w(matrix_size);
+            
+            real8 orfac = 1e-6;
+            int32_t ione = 1;
+            
+            int32_t m;
+            int32_t nz;
+            real8 d1;
+            int32_t info;
+
+            FORTRAN(pzhegvx)(&ione, "V", "I", "U", &matrix_size, a, &ione, &ione, desca, b, &ione, &ione, descb, &d1, &d1, 
+                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, z, &ione, &ione, descz, &work[0], &work_sizes[0], 
+                             &rwork[0], &work_sizes[1], &iwork[0], &work_sizes[2], &ifail[0], &iclustr[0], &gap[0], &info, 
+                             (int32_t)1, (int32_t)1, (int32_t)1); 
+
+            if (info)
+            {
+                if ((info / 2) % 2)
+                {
+                    std::stringstream s;
+                    s << "eigenvectors corresponding to one or more clusters of eigenvalues" << std::endl  
+                      << "could not be reorthogonalized because of insufficient workspace" << std::endl;
+
+                    int k = num_ranks_row_ * num_ranks_col_;
+                    for (int i = 0; i < num_ranks_row_ * num_ranks_col_ - 1; i++)
+                    {
+                        if ((iclustr[2 * i + 1] != 0) && (iclustr[2 * (i + 1)] == 0))
+                        {
+                            k = i + 1;
+                            break;
+                        }
+                    }
+                   
+                    s << "number of eigenvalue clusters : " << k << std::endl;
+                    for (int i = 0; i < k; i++) s << iclustr[2 * i] << " : " << iclustr[2 * i + 1] << std::endl; 
+                    error(__FILE__, __LINE__, s, fatal_err);
+                }
+
+                std::stringstream s;
+                s << "pzhegvx returned " << info; 
+                error(__FILE__, __LINE__, s, fatal_err);
+            }
+
+            if ((m != nevec) || (nz != nevec))
+                error(__FILE__, __LINE__, "Not all eigen-vectors or eigen-values are found.", fatal_err);
+
+            memcpy(eval, &w[0], nevec * sizeof(real8));
+
+        }
+        #endif
+
+};
+
+
+
+
+
+
+
+
+
+
+
+
 #endif // __LINALG_H__
 
