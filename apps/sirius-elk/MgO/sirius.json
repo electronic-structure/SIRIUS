@@ -1,6 +1,5 @@
 {
     "mpi_grid_dims" : [1, 1, 1],
-    "cyclic_block_size" : 4,
     "eigen_value_solver" : "scalapack",
     
     "bz_path" : {
