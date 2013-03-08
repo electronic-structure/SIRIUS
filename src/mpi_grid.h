@@ -90,16 +90,12 @@ class MPIGrid
                 error(__FILE__, __LINE__, "no dimensions for the grid", fatal_err);
 
             int sz = 1;
-            for (int i = 0; i < (int)dimensions_.size(); i++)
-                sz *= dimensions_[i];
+            for (int i = 0; i < (int)dimensions_.size(); i++) sz *= dimensions_[i];
             
-            if (sz == 0) error(__FILE__, __LINE__, "One of the MPI grid dimensions has a zero length.", fatal_err);
-            
-
-            if (Platform::num_mpi_ranks(parent_communicator_) > sz)
+            if (Platform::num_mpi_ranks(parent_communicator_) != sz)
             {
                 std::stringstream s;
-                s << "Too many processors for a grid." << std::endl
+                s << "Number of MPI ranks doesn't match the size of the grid." << std::endl
                   << "  grid dimensions :";
                 for (int i = 0; i < (int)dimensions_.size(); i++) s << " " << dimensions_[i];
                 s << std::endl
@@ -108,18 +104,6 @@ class MPIGrid
                 error(__FILE__, __LINE__, s, fatal_err);
             }
             
-            if (Platform::num_mpi_ranks(parent_communicator_) < sz)
-            {
-                std::stringstream s;
-                s << "Not enough processors to build a grid." << std::endl
-                  << "  grid dimensions :";
-                for (int i = 0; i < (int)dimensions_.size(); i++) s << " " << dimensions_[i];
-                s << std::endl
-                  << "  available number of MPI ranks : " << Platform::num_mpi_ranks(parent_communicator_);
-
-                error(__FILE__, __LINE__, s, fatal_err);
-            }
-
             // communicator of the entire grid
             std::vector<int> periods(dimensions_.size(), 0);
             MPI_Cart_create(parent_communicator_, (int)dimensions_.size(), &dimensions_[0], &periods[0], 0, 

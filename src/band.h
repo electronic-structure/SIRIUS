@@ -155,7 +155,8 @@ class Band
                 }
                 
                 // compute bwf = (B_x + iB_y)|wf_j>
-                if ((hpsi.size(2)) == 4 && (eigen_value_solver == scalapack || eigen_value_solver == elpa))
+                if ((hpsi.size(2)) == 4 && 
+                    (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa))
                 {
                     // reuse first (z) component of zm matrix to store (Bx + iBy)
                     for (int j2 = 0; j2 < mt_basis_size; j2++)
@@ -221,7 +222,8 @@ class Band
                         parameters_.fft().output(num_gkvec, fft_index, &hpsi_pw(0, i, 2), thread_id); 
                     }
                     
-                    if ((hpsi.size(2)) == 4 && (eigen_value_solver == scalapack || eigen_value_solver == elpa))
+                    if ((hpsi.size(2)) == 4 && 
+                        (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa))
                     {
                         for (int ir = 0; ir < parameters_.fft().size(); ir++)
                         {
@@ -500,7 +502,8 @@ class Band
 
             init();
             
-            if (eigen_value_solver == scalapack || eigen_value_solver == elpa)
+            #if defined(_SCALAPACK_) || defined(_ELPA_)
+            if (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa)
             {
                 int rc = (1 << dim_row_) | 1 << (dim_col_);
                 MPI_Comm comm = parameters_.mpi_grid().communicator(rc);
@@ -533,12 +536,15 @@ class Band
                     error(__FILE__, __LINE__, s, fatal_err);
                 }
             }
+            #endif
         }
 
         ~Band()
         {
-            if (eigen_value_solver == scalapack || eigen_value_solver == elpa) 
+            #if defined(_SCALAPACK_) || defined(_ELPA_)
+            if (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa) 
                 linalg<scalapack>::free_blacs_context(blacs_context_);
+            #endif
         }
  
         void solve_sv(Global&                   parameters,
@@ -573,7 +579,8 @@ class Band
                 apply_uj_correction<uu>(fv_states_col, hpsi);
                 if (parameters_.num_mag_dims() != 0) apply_uj_correction<dd>(fv_states_col, hpsi);
                 if (parameters_.num_mag_dims() == 3) apply_uj_correction<ud>(fv_states_col, hpsi);
-                if ((parameters_.num_mag_dims() == 3) && (eigen_value_solver == scalapack || eigen_value_solver == elpa)) 
+                if ((parameters_.num_mag_dims() == 3) && 
+                    (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa)) 
                     apply_uj_correction<du>(fv_states_col, hpsi);
             }
 
@@ -604,7 +611,7 @@ class Band
                 
                     t1.start();
                     int num_fv_states_col = spl_fv_states_col_.local_size();
-                    switch (eigen_value_solver)
+                    switch (parameters_.eigen_value_solver())
                     {
                         case lapack:
                         {
@@ -675,7 +682,7 @@ class Band
                                 &fv_states_row(0, fv_states_up_offset), fv_states_row.ld(), &hpsi(0, 0, 1), hpsi.ld(), 
                                 &h(num_fv_states_row_up_, spl_fv_states_col_.local_size()), h.ld());
 
-                if (eigen_value_solver == scalapack || eigen_value_solver == elpa)
+                if (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa)
                 {
                     // compute <wf_i | (h * wf_j)> for dn-up block
                     blas<cpu>::gemm(2, 0, num_fv_states_row_dn_, spl_fv_states_col_.local_size(), mtgk_size, 
@@ -700,7 +707,7 @@ class Band
                 }
             
                 t1.start();
-                switch (eigen_value_solver)
+                switch (parameters_.eigen_value_solver())
                 {
                     case lapack:
                     {

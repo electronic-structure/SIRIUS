@@ -588,7 +588,7 @@ class kpoint
             mdarray<complex16, 2> o(NULL, apwlo_basis_size_row(), apwlo_basis_size_col());
             
             // Magma requires special allocation
-            if (eigen_value_solver != magma)
+            if (parameters_.eigen_value_solver() != magma)
             {
                 h.allocate();
                 o.allocate();
@@ -600,7 +600,7 @@ class kpoint
             }
            
             // setup Hamiltonian and overlap
-            if (eigen_value_solver == magma) 
+            if (parameters_.eigen_value_solver() == magma) 
             {
                 set_fv_h_o<gpu>(band, effective_potential, h, o);
             }
@@ -609,7 +609,7 @@ class kpoint
                 set_fv_h_o<cpu>(band, effective_potential, h, o);
             }
             
-            if ((debug_level > 0) && (eigen_value_solver == lapack))
+            if ((debug_level > 0) && (parameters_.eigen_value_solver() == lapack))
             {
                 Utils::check_hermitian("h", h);
                 Utils::check_hermitian("o", o);
@@ -713,7 +713,8 @@ class kpoint
            
             // debug scalapack
             std::vector<double> fv_eigen_values_glob(parameters_.num_fv_states());
-            if ((debug_level > 2) && (eigen_value_solver == scalapack))
+            if ((debug_level > 2) && 
+                (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa))
             {
                 mdarray<complex16, 2> h_glob(apwlo_basis_size(), apwlo_basis_size());
                 mdarray<complex16, 2> o_glob(apwlo_basis_size(), apwlo_basis_size());
@@ -750,9 +751,8 @@ class kpoint
             
             Timer *t1 = new Timer("sirius::kpoint::generate_fv_states:genevp");
             generalized_evp* solver;
-            linalg_t evst = scalapack;
 
-            switch (evst)
+            switch (parameters_.eigen_value_solver())
             {
                 case lapack:
                 {
@@ -767,6 +767,28 @@ class kpoint
                                                            band->num_ranks_col(), band->blacs_context(), -1.0);
                     break;
                 }
+                case elpa:
+                {
+
+                    solver = new generalized_evp_elpa(parameters_.cyclic_block_size(), apwlo_basis_size_row(), 
+                                                      band->num_ranks_row(), band->rank_row(),
+                                                      apwlo_basis_size_col(), band->num_ranks_col(), 
+                                                      band->rank_col(), band->blacs_context(), 
+                                                      parameters_.mpi_grid().communicator(1 << band->dim_row()),
+                                                      parameters_.mpi_grid().communicator(1 << band->dim_col()),
+                                                      parameters_.mpi_grid().communicator(1 << band->dim_col() | 
+                                                                                          1 << band->dim_row()));
+                    break;
+                }
+                case magma:
+                {
+                    solver = new generalized_evp_magma();
+                    break;
+                }
+                default:
+                {
+                    solver = NULL;
+                }
             }
 
             solver->solve(apwlo_basis_size(), parameters_.num_fv_states(), h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), 
@@ -774,7 +796,7 @@ class kpoint
 
             stop_here
 
-            switch (eigen_value_solver)
+            switch (parameters_.eigen_value_solver())
             {
                 case lapack:
                 {
@@ -829,7 +851,7 @@ class kpoint
             }
             delete t1;
             
-            if (eigen_value_solver != magma)
+            if (parameters_.eigen_value_solver() != magma)
             {
                 h.deallocate();
                 o.deallocate();
@@ -840,7 +862,7 @@ class kpoint
                 o.deallocate_page_locked();
             }
             
-            if ((debug_level > 2) && (eigen_value_solver == scalapack))
+            if ((debug_level > 2) && (parameters_.eigen_value_solver() == scalapack))
             {
                 double d = 0.0;
                 for (int i = 0; i < parameters_.num_fv_states(); i++) 
@@ -1152,8 +1174,9 @@ class kpoint
             apwlo_basis_descriptors_col_.resize(spl_col.local_size());
             for (int i = 0; i < spl_col.local_size(); i++)
                 apwlo_basis_descriptors_col_[i] = apwlo_basis_descriptors_[spl_col[i]];
-
-            if (eigen_value_solver == scalapack || eigen_value_solver == elpa)
+            
+            #if defined(_SCALAPACK) || defined(_ELPA_)
+            if (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa)
             {
                 int nr = linalg<scalapack>::numroc(apwlo_basis_size(), parameters_.cyclic_block_size(), 
                                                    band->rank_row(), 0, band->num_ranks_row());
@@ -1167,6 +1190,7 @@ class kpoint
                 if (nc != apwlo_basis_size_col()) 
                     error(__FILE__, __LINE__, "numroc returned a different local column size");
             }
+            #endif
 
             // get the number of row- and column- G+k-vectors
             num_gkvec_row_ = 0;

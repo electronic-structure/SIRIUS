@@ -594,6 +594,12 @@ template<> struct eigenproblem<magma>
     }
 };
 
+
+
+
+
+
+
 class generalized_evp
 {
     public:
@@ -847,7 +853,130 @@ class generalized_evp_scalapack: public generalized_evp
 
 };
 
+class generalized_evp_elpa: public generalized_evp
+{
+    private:
+        
+        int32_t block_size_;
+        int32_t na_rows_;
+        int32_t num_ranks_row_;
+        int32_t rank_row_;
+        int32_t na_cols_;
+        int32_t num_ranks_col_;
+        int32_t rank_col_;
+        int blacs_context_;
+        MPI_Comm comm_row_;
+        MPI_Comm comm_col_;
+        MPI_Comm comm_all_;
 
+    public:
+        
+        generalized_evp_elpa(int32_t block_size__, int32_t na_rows__, int32_t num_ranks_row__, int32_t rank_row__,
+                             int32_t na_cols__, int32_t num_ranks_col__, int32_t rank_col__, int blacs_context__, 
+                             MPI_Comm comm_row__, MPI_Comm comm_col__, MPI_Comm comm_all__) : block_size_(block_size__), 
+                             na_rows_(na_rows__), num_ranks_row_(num_ranks_row__), rank_row_(rank_row__),
+                             na_cols_(na_cols__), num_ranks_col_(num_ranks_col__), rank_col_(rank_col__),
+                             blacs_context_(blacs_context__), comm_row_(comm_row__), comm_col_(comm_col__), 
+                             comm_all_(comm_all__)
+
+        {
+
+        }
+        
+        #ifdef _ELPA_
+        void solve(int32_t matrix_size, int32_t nevec, complex16* a, int32_t lda, complex16* b, int32_t ldb, 
+                   real8* eval, complex16* z, int32_t ldz)
+        {
+
+            assert(nv <= matrix_size);
+
+            int32_t mpi_comm_rows = MPI_Comm_c2f(comm_row_);
+            int32_t mpi_comm_cols = MPI_Comm_c2f(comm_col_);
+            int32_t mpi_comm_all = MPI_Comm_c2f(comm_all_);
+
+            sirius::Timer *t;
+
+            t = new sirius::Timer("elpa::ort");
+            FORTRAN(elpa_cholesky_complex)(&matrix_size, b, &ldb, &block_size_, &mpi_comm_rows, &mpi_comm_cols);
+            FORTRAN(elpa_invert_trm_complex)(&matrix_size, b, &ldb, &block_size_, &mpi_comm_rows, &mpi_comm_cols);
+       
+            mdarray<complex16, 2> tmp1(na_rows_, na_cols_);
+            mdarray<complex16, 2> tmp2(na_rows_, na_cols_);
+
+            FORTRAN(elpa_mult_ah_b_complex)("U", "L", &matrix_size, &matrix_size, b, &ldb, a, &lda, &block_size_, 
+                                            &mpi_comm_rows, &mpi_comm_cols, tmp1.get_ptr(), &na_rows_, (int32_t)1, 
+                                            (int32_t)1);
+
+            int32_t descc[9];
+            linalg<scalapack>::descinit(descc, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+                                        blacs_context_, lda);
+
+            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex16(1, 0), tmp1.get_ptr(), 1, 1, descc, 
+                                       complex16(0, 0), tmp2.get_ptr(), 1, 1, descc);
+
+            FORTRAN(elpa_mult_ah_b_complex)("U", "U", &matrix_size, &matrix_size, b, &ldb, tmp2.get_ptr(), &na_rows_, 
+                                            &block_size_, &mpi_comm_rows, &mpi_comm_cols, a, &lda, (int32_t)1, 
+                                            (int32_t)1);
+
+            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex16(1, 0), a, 1, 1, descc, complex16(0, 0), 
+                                       tmp1.get_ptr(), 1, 1, descc);
+
+            for (int i = 0; i < na_cols_; i++)
+            {
+                int32_t n_col = linalg<scalapack>::indxl2g(i + 1, block_size_, rank_col_, 0, num_ranks_col_);
+                int32_t n_row = linalg<scalapack>::numroc(n_col, block_size_, rank_row_, 0, num_ranks_row_);
+                for (int j = n_row; j < na_rows_; j++) 
+                {
+                    assert(j < na_rows_);
+                    assert(i < na_cols_);
+                    a[j + i * lda] = tmp1(j, i);
+                }
+            }
+            delete t;
+            
+            t = new sirius::Timer("elpa::diag");
+            std::vector<double> w(matrix_size);
+            FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size, &nevec, a, &lda, &w[0], tmp1.get_ptr(), &na_rows_, 
+                                                   &block_size_, &mpi_comm_rows, &mpi_comm_cols, &mpi_comm_all);
+            delete t;
+
+            t = new sirius::Timer("elpa::bt");
+            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex16(1, 0), b, 1, 1, descc, complex16(0, 0), 
+                                       tmp2.get_ptr(), 1, 1, descc);
+
+            FORTRAN(elpa_mult_ah_b_complex)("L", "N", &matrix_size, &nevec, tmp2.get_ptr(), &na_rows_, tmp1.get_ptr(), 
+                                            &na_rows_, &block_size_, &mpi_comm_rows, &mpi_comm_cols, z, &ldz, 
+                                            (int32_t)1, (int32_t)1);
+            delete t;
+
+            memcpy(eval, &w[0], nevec * sizeof(real8));
+        }
+        #endif
+};
+
+class generalized_evp_magma: public generalized_evp
+{
+    private:
+
+    public:
+        generalized_evp_magma()
+        {
+        }
+
+        void solve(int32_t matrix_size, int32_t nevec, complex16* a, int32_t lda, complex16* b, int32_t ldb, 
+                   real8* eval, complex16* z, int32_t ldz)
+        {
+
+            assert(nevec <= matrix_size);
+            
+            std::vector<double> w(matrix_size);
+            
+            magma_zhegvdx_2stage_wrapper(matrix_size, nevec, a, lda, b, ldb, eval);
+            
+            memcpy(eval, &w[0], nevec * sizeof(real8));
+            for (int i = 0; i < nevec; i++) memcpy(&z[ldz * i], &a[lda * i], matrix_size * sizeof(complex16));
+        }
+};
 
 
 
