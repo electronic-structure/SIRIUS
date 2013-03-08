@@ -600,14 +600,7 @@ class kpoint
             }
            
             // setup Hamiltonian and overlap
-            if (parameters_.eigen_value_solver() == magma) 
-            {
-                set_fv_h_o<gpu>(band, effective_potential, h, o);
-            }
-            else
-            {
-                set_fv_h_o<cpu>(band, effective_potential, h, o);
-            }
+            set_fv_h_o<linalg_device>(band, effective_potential, h, o);
             
             if ((debug_level > 0) && (parameters_.eigen_value_solver() == lapack))
             {
@@ -743,14 +736,14 @@ class kpoint
                 Utils::check_hermitian("h_glob", h_glob);
                 Utils::check_hermitian("o_glob", o_glob);
                 
-                eigenproblem<lapack>::generalized(apwlo_basis_size(), parameters_.num_fv_states(), -1.0, 
-                                                  h_glob.get_ptr(), h_glob.ld(), o_glob.get_ptr(), o_glob.ld(), 
-                                                  &fv_eigen_values_glob[0], fv_eigen_vectors_glob.get_ptr(),
-                                                  fv_eigen_vectors_glob.ld());
+                //eigenproblem<lapack>::generalized(apwlo_basis_size(), parameters_.num_fv_states(), -1.0, 
+                //                                  h_glob.get_ptr(), h_glob.ld(), o_glob.get_ptr(), o_glob.ld(), 
+                //                                  &fv_eigen_values_glob[0], fv_eigen_vectors_glob.get_ptr(),
+                 //                                 fv_eigen_vectors_glob.ld());
             }
             
             Timer *t1 = new Timer("sirius::kpoint::generate_fv_states:genevp");
-            generalized_evp* solver;
+            generalized_evp* solver = NULL;
 
             switch (parameters_.eigen_value_solver())
             {
@@ -787,68 +780,70 @@ class kpoint
                 }
                 default:
                 {
-                    solver = NULL;
+                    error(__FILE__, __LINE__, "eigen value solver is not defined", fatal_err);
                 }
             }
 
             solver->solve(apwlo_basis_size(), parameters_.num_fv_states(), h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), 
                           &fv_eigen_values_[0], fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
 
-            stop_here
+            delete solver;
 
-            switch (parameters_.eigen_value_solver())
-            {
-                case lapack:
-                {
-                    eigenproblem<lapack>::generalized(apwlo_basis_size(), parameters_.num_fv_states(), -1.0, 
-                                                      h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), &fv_eigen_values_[0], 
-                                                      fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
-                    break;
-                }
-                case magma:
-                {
-                    eigenproblem<magma>::generalized(apwlo_basis_size(), parameters_.num_fv_states(), 
-                                                     h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), &fv_eigen_values_[0], 
-                                                     fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
-                    break;
-                }
-                case scalapack:
-                {
-                    eigenproblem<scalapack>::generalized(apwlo_basis_size(), 
-                                                         parameters_.cyclic_block_size(),
-                                                         band->num_ranks_row(), 
-                                                         band->num_ranks_col(), 
-                                                         band->blacs_context(), 
-                                                         parameters_.num_fv_states(), 
-                                                         -1.0, 
-                                                         h.get_ptr(), h.ld(), 
-                                                         o.get_ptr(), o.ld(), 
-                                                         &fv_eigen_values_[0], 
-                                                         fv_eigen_vectors_.get_ptr(),
-                                                         fv_eigen_vectors_.ld());
-                    break;
-                }       
-                case elpa:
-                {
-                    eigenproblem<elpa>::generalized(apwlo_basis_size(), 
-                                                    parameters_.cyclic_block_size(),
-                                                    apwlo_basis_size_row(), band->num_ranks_row(), band->rank_row(),
-                                                    apwlo_basis_size_col(), band->num_ranks_col(), band->rank_col(),
-                                                    band->blacs_context(), 
-                                                    parameters_.num_fv_states(), 
-                                                    h.get_ptr(), h.ld(), 
-                                                    o.get_ptr(), o.ld(), 
-                                                    &fv_eigen_values_[0], 
-                                                    fv_eigen_vectors_.get_ptr(),
-                                                    fv_eigen_vectors_.ld(),
-                                                    parameters_.mpi_grid().communicator(1 << band->dim_row()),
-                                                    parameters_.mpi_grid().communicator(1 << band->dim_col()),
-                                                    parameters_.mpi_grid().communicator(1 << band->dim_col() | 
-                                                                                        1 << band->dim_row()));
-                    break;
-                }
+            //stop_here
 
-            }
+            //switch (parameters_.eigen_value_solver())
+            //{
+            //    case lapack:
+            //    {
+            //        eigenproblem<lapack>::generalized(apwlo_basis_size(), parameters_.num_fv_states(), -1.0, 
+            //                                          h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), &fv_eigen_values_[0], 
+            //                                          fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
+            //        break;
+            //    }
+            //    case magma:
+            //    {
+            //        eigenproblem<magma>::generalized(apwlo_basis_size(), parameters_.num_fv_states(), 
+            //                                         h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), &fv_eigen_values_[0], 
+            //                                         fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
+            //        break;
+            //    }
+            //    case scalapack:
+            //    {
+            //        eigenproblem<scalapack>::generalized(apwlo_basis_size(), 
+            //                                             parameters_.cyclic_block_size(),
+            //                                             band->num_ranks_row(), 
+            //                                             band->num_ranks_col(), 
+            //                                             band->blacs_context(), 
+            //                                             parameters_.num_fv_states(), 
+            //                                             -1.0, 
+            //                                             h.get_ptr(), h.ld(), 
+            //                                             o.get_ptr(), o.ld(), 
+            //                                             &fv_eigen_values_[0], 
+            //                                             fv_eigen_vectors_.get_ptr(),
+            //                                             fv_eigen_vectors_.ld());
+            //        break;
+            //    }       
+            //    case elpa:
+            //    {
+            //        eigenproblem<elpa>::generalized(apwlo_basis_size(), 
+            //                                        parameters_.cyclic_block_size(),
+            //                                        apwlo_basis_size_row(), band->num_ranks_row(), band->rank_row(),
+            //                                        apwlo_basis_size_col(), band->num_ranks_col(), band->rank_col(),
+            //                                        band->blacs_context(), 
+            //                                        parameters_.num_fv_states(), 
+            //                                        h.get_ptr(), h.ld(), 
+            //                                        o.get_ptr(), o.ld(), 
+            //                                        &fv_eigen_values_[0], 
+            //                                        fv_eigen_vectors_.get_ptr(),
+            //                                        fv_eigen_vectors_.ld(),
+            //                                        parameters_.mpi_grid().communicator(1 << band->dim_row()),
+            //                                        parameters_.mpi_grid().communicator(1 << band->dim_col()),
+            //                                        parameters_.mpi_grid().communicator(1 << band->dim_col() | 
+            //                                                                            1 << band->dim_row()));
+            //        break;
+            //    }
+
+            //}
             delete t1;
             
             if (parameters_.eigen_value_solver() != magma)

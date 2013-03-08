@@ -16,7 +16,11 @@ const bool check_pseudo_charge = false;
 
 const bool full_relativistic_core = false;
 
-//const linalg_t eigen_value_solver = lapack;
+#ifdef _GPU_
+const processing_unit_t linalg_device = gpu;
+#else
+const processing_unit_t linalg_device = cpu;
+#endif
 
 /// level of internal debugging and checking
 

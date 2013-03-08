@@ -1,6 +1,6 @@
 {
     "mpi_grid_dims" : [1, 1, 1],
-    "eigen_value_solver" : "scalapack",
+    "eigen_value_solver" : "magma",
     
     "bz_path" : {
         "num_steps" : 100,

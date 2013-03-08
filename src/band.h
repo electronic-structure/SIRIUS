@@ -587,11 +587,42 @@ class Band
             if (parameters_.so_correction()) apply_so_correction(fv_states_col, hpsi);
 
             Timer t1("sirius::Band::solve_sv:stdevp", false);
+
+            standard_evp* solver = NULL;
+            switch (parameters_.eigen_value_solver())
+            {
+                case lapack:
+                {
+                    solver = new standard_evp_lapack();
+                    break;
+                }
+                case scalapack:
+                {
+                    solver = new standard_evp_scalapack(parameters_.cyclic_block_size(), num_ranks_row(), 
+                                                        num_ranks_col(), blacs_context_);
+                    break;
+                }
+                case elpa:
+                {
+                    solver = new standard_evp_scalapack(parameters_.cyclic_block_size(), num_ranks_row(), 
+                                                        num_ranks_col(), blacs_context_);
+                    break;
+                }
+                case magma:
+                {
+                    solver = new standard_evp_lapack();
+                    break;
+                }
+                default:
+                {
+                    error(__FILE__, __LINE__, "eigen value solver is not defined", fatal_err);
+                }
+            }
             
             if (parameters.num_mag_dims() == 1)
             {
                 mdarray<complex16, 2> h(spl_fv_states_row_.local_size(), spl_fv_states_col_.local_size());
-
+                
                 //perform two consecutive diagonalizations
                 for (int ispn = 0; ispn < 2; ispn++)
                 {
@@ -611,53 +642,58 @@ class Band
                 
                     t1.start();
                     int num_fv_states_col = spl_fv_states_col_.local_size();
-                    switch (parameters_.eigen_value_solver())
-                    {
-                        case lapack:
-                        {
-                            eigenproblem<lapack>::standard(parameters_.num_fv_states(), h.get_ptr(), h.ld(),
-                                                           &band_energies[ispn * parameters_.num_fv_states()],
-                                                           &sv_eigen_vectors(0, ispn * num_fv_states_col),
-                                                           sv_eigen_vectors.ld());
-                            break;
-                        }
-                        case magma:
-                        {
-                            eigenproblem<magma>::standard(parameters_.num_fv_states(), h.get_ptr(), h.ld(),
-                                                          &band_energies[ispn * parameters_.num_fv_states()],
-                                                          &sv_eigen_vectors(0, ispn * num_fv_states_col),
-                                                          sv_eigen_vectors.ld());
-                            break;
-                        }
-                        case scalapack:
-                        {
-                            eigenproblem<scalapack>::standard(parameters_.num_fv_states(), 
-                                                              parameters_.cyclic_block_size(),
-                                                              num_ranks_row(), 
-                                                              num_ranks_col(), 
-                                                              blacs_context_, 
-                                                              h.get_ptr(), 
-                                                              h.ld(),
-                                                              &band_energies[ispn * parameters_.num_fv_states()],
-                                                              &sv_eigen_vectors(0, ispn * num_fv_states_col),
-                                                              sv_eigen_vectors.ld());
-                            break;
-                        }
-                        case elpa:
-                        {
-                            eigenproblem<elpa>::standard(parameters_.num_fv_states(), 
-                                                         parameters_.cyclic_block_size(),
-                                                         num_ranks_row(), 
-                                                         num_ranks_col(), 
-                                                         blacs_context_, 
-                                                         h.get_ptr(), 
-                                                         h.ld(),
-                                                         &band_energies[ispn * parameters_.num_fv_states()],
-                                                         &sv_eigen_vectors(0, ispn * num_fv_states_col),
-                                                         sv_eigen_vectors.ld());
-                            break;
-                        }
-                    }
+                    solver->solve(parameters_.num_fv_states(), h.get_ptr(), h.ld(),
+                                  &band_energies[ispn * parameters_.num_fv_states()],
+                                  &sv_eigen_vectors(0, ispn * num_fv_states_col),
+                                  sv_eigen_vectors.ld());
+
+                    //switch (parameters_.eigen_value_solver())
+                    //{
+                    //    case lapack:
+                    //    {
+                    //        eigenproblem<lapack>::standard(parameters_.num_fv_states(), h.get_ptr(), h.ld(),
+                    //                                       &band_energies[ispn * parameters_.num_fv_states()],
+                    //                                       &sv_eigen_vectors(0, ispn * num_fv_states_col),
+                    //                                       sv_eigen_vectors.ld());
+                    //        break;
+                    //    }
+                    //    case magma:
+                    //    {
+                    //        eigenproblem<magma>::standard(parameters_.num_fv_states(), h.get_ptr(), h.ld(),
+                    //                                      &band_energies[ispn * parameters_.num_fv_states()],
+                    //                                      &sv_eigen_vectors(0, ispn * num_fv_states_col),
+                    //                                      sv_eigen_vectors.ld());
+                    //        break;
+                    //    }
+                    //    case scalapack:
+                    //    {
+                    //        eigenproblem<scalapack>::standard(parameters_.num_fv_states(), 
+                    //                                          parameters_.cyclic_block_size(),
+                    //                                          num_ranks_row(), 
+                    //                                          num_ranks_col(), 
+                    //                                          blacs_context_, 
+                    //                                          h.get_ptr(), 
+                    //                                          h.ld(),
+                    //                                          &band_energies[ispn * parameters_.num_fv_states()],
+                    //                                          &sv_eigen_vectors(0, ispn * num_fv_states_col),
+                    //                                          sv_eigen_vectors.ld());
+                    //        break;
+                    //    }
+                    //    case elpa:
+                    //    {
+                    //        eigenproblem<elpa>::standard(parameters_.num_fv_states(), 
+                    //                                     parameters_.cyclic_block_size(),
+                    //                                     num_ranks_row(), 
+                    //                                     num_ranks_col(), 
+                    //                                     blacs_context_, 
+                    //                                     h.get_ptr(), 
+                    //                                     h.ld(),
+                    //                                     &band_energies[ispn * parameters_.num_fv_states()],
+                    //                                     &sv_eigen_vectors(0, ispn * num_fv_states_col),
+                    //                                     sv_eigen_vectors.ld());
+                    //        break;
+                    //    }
+                    //}
                     t1.stop();
                 }
             }
@@ -707,51 +743,55 @@ class Band
                 }
             
                 t1.start();
-                switch (parameters_.eigen_value_solver())
-                {
-                    case lapack:
-                    {
-                        eigenproblem<lapack>::standard(parameters_.num_bands(), h.get_ptr(), h.ld(), &band_energies[0], 
-                                                       sv_eigen_vectors.get_ptr(), sv_eigen_vectors.ld());
-                        break;
-                    }
-                    case magma:
-                    {
-                        eigenproblem<magma>::standard(parameters_.num_bands(), h.get_ptr(), h.ld(), &band_energies[0], 
-                                                      sv_eigen_vectors.get_ptr(), sv_eigen_vectors.ld());
-                        break;
-                    }
-                    case scalapack:
-                    {
-                       eigenproblem<scalapack>::standard(parameters_.num_bands(), 
-                                                         parameters_.cyclic_block_size(),
-                                                         num_ranks_row(), 
-                                                         num_ranks_col(), 
-                                                         blacs_context_, 
-                                                         h.get_ptr(), 
-                                                         h.ld(),
-                                                         &band_energies[0], 
-                                                         sv_eigen_vectors.get_ptr(),
-                                                         sv_eigen_vectors.ld());
-                       break;
-                    }
-                    case elpa:
-                    {
-                        eigenproblem<elpa>::standard(parameters_.num_bands(), 
-                                                     parameters_.cyclic_block_size(),
-                                                     num_ranks_row(), 
-                                                     num_ranks_col(), 
-                                                     blacs_context_, 
-                                                     h.get_ptr(), 
-                                                     h.ld(),
-                                                     &band_energies[0], 
-                                                     sv_eigen_vectors.get_ptr(),
-                                                     sv_eigen_vectors.ld());
-                        break;
-                    }
-                }
+                solver->solve(parameters_.num_bands(), h.get_ptr(), h.ld(), &band_energies[0], 
+                              sv_eigen_vectors.get_ptr(), sv_eigen_vectors.ld());
+
+                //switch (parameters_.eigen_value_solver())
+                //{
+                //    case lapack:
+                //    {
+                //        eigenproblem<lapack>::standard(parameters_.num_bands(), h.get_ptr(), h.ld(), &band_energies[0], 
+                //                                       sv_eigen_vectors.get_ptr(), sv_eigen_vectors.ld());
+                //        break;
+                //    }
+                //    case magma:
+                //    {
+                //        eigenproblem<magma>::standard(parameters_.num_bands(), h.get_ptr(), h.ld(), &band_energies[0], 
+                //                                      sv_eigen_vectors.get_ptr(), sv_eigen_vectors.ld());
+                //        break;
+                //    }
+                //    case scalapack:
+                //    {
+                //       eigenproblem<scalapack>::standard(parameters_.num_bands(), 
+                //                                         parameters_.cyclic_block_size(),
+                //                                         num_ranks_row(), 
+                //                                         num_ranks_col(), 
+                //                                         blacs_context_, 
+                //                                         h.get_ptr(), 
+                //                                         h.ld(),
+                //                                         &band_energies[0], 
+                //                                         sv_eigen_vectors.get_ptr(),
+                //                                         sv_eigen_vectors.ld());
+                //       break;
+                //    }
+                //    case elpa:
+                //    {
+                //        eigenproblem<elpa>::standard(parameters_.num_bands(), 
+                //                                     parameters_.cyclic_block_size(),
+                //                                     num_ranks_row(), 
+                //                                     num_ranks_col(), 
+                //                                     blacs_context_, 
+                //                                     h.get_ptr(), 
+                //                                     h.ld(),
+                //                                     &band_energies[0], 
+                //                                     sv_eigen_vectors.get_ptr(),
+                //                                     sv_eigen_vectors.ld());
+                //        break;
+                //    }
+                //}
                 t1.stop();
             }
+            delete solver;
         }
         
         inline splindex<block_cyclic>& spl_fv_states_col()
