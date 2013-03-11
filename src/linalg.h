@@ -74,6 +74,7 @@ template<> inline void blas<cpu>::hemm<complex16>(int side, int uplo, int32_t m,
 
 
 // GPU
+#ifdef _GPU_
 template<> struct blas<gpu>
 {
     template <typename T>
@@ -87,7 +88,7 @@ template<> inline void blas<gpu>::gemm<complex16>(int transa, int transb, int32_
 {
     cublas_zgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-
+#endif
 
 template<linalg_t> struct linalg;
 
@@ -960,7 +961,7 @@ class generalized_evp_elpa: public generalized_evp
                    real8* eval, complex16* z, int32_t ldz)
         {
 
-            assert(nv <= matrix_size);
+            assert(nevec <= matrix_size);
 
             int32_t mpi_comm_rows = MPI_Comm_c2f(comm_row_);
             int32_t mpi_comm_cols = MPI_Comm_c2f(comm_col_);

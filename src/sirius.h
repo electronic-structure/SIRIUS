@@ -36,7 +36,9 @@ extern "C" {
 #include "typedefs.h"
 #include "config.h"
 #include "LebedevLaikov.h"
+#ifdef _GPU_
 #include "gpu_interface.h"
+#endif
 #include "platform.h"
 
 //

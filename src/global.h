@@ -72,6 +72,8 @@ class Global : public StepFunction
 
         linalg_t eigen_value_solver_; 
         
+        processing_unit_t processing_unit_;
+
         /// read from the input file if it exists
         void read_input()
         {
@@ -90,10 +92,43 @@ class Global : public StepFunction
                 if (parser.exist("eigen_value_solver"))
                 {
                     std::string ev_solver_name = parser["eigen_value_solver"].get<std::string>();
-                    if (ev_solver_name == "lapack") eigen_value_solver_ = lapack;
-                    if (ev_solver_name == "scalapack") eigen_value_solver_ = scalapack;
-                    if (ev_solver_name == "elpa") eigen_value_solver_ = elpa;
-                    if (ev_solver_name == "magma") eigen_value_solver_ = magma;
+                    if (ev_solver_name == "lapack") 
+                    {
+                        eigen_value_solver_ = lapack;
+                    }
+                    else if (ev_solver_name == "scalapack") 
+                    {
+                        eigen_value_solver_ = scalapack;
+                    }
+                    else if (ev_solver_name == "elpa") 
+                    {
+                        eigen_value_solver_ = elpa;
+                    }
+                    else if (ev_solver_name == "magma") 
+                    {
+                        eigen_value_solver_ = magma;
+                    }
+                    else
+                    {
+                        error(__FILE__, __LINE__, "wrong eigen value solver", fatal_err);
+                    }
+                }
+
+                if (parser.exist("processing_unit"))
+                {
+                    std::string pu = parser["processing_unit"].get<std::string>();
+                    if (pu == "cpu")
+                    {
+                        processing_unit_ = cpu;
+                    }
+                    else if (pu == "gpu")
+                    {
+                        processing_unit_ = gpu;
+                    }
+                    else
+                    {
+                        error(__FILE__, __LINE__, "wrong processing unit", fatal_err);
+                    }
                 }
             }
 
@@ -144,7 +179,12 @@ class Global : public StepFunction
                    so_correction_(false),
                    uj_correction_(false),
                    cyclic_block_size_(16),
-                   eigen_value_solver_(lapack)
+                   eigen_value_solver_(lapack),
+                   #ifdef _GPU_
+                   processing_unit_(gpu)
+                   #else
+                   processing_unit_(cpu)
+                   #endif
         {
             gettimeofday(&start_time_, NULL);
         }
@@ -331,6 +371,11 @@ class Global : public StepFunction
         inline linalg_t eigen_value_solver()
         {
             return eigen_value_solver_;
+        }
+
+        inline processing_unit_t processing_unit()
+        {
+            return processing_unit_;
         }
 
         /// Initialize the global variables
