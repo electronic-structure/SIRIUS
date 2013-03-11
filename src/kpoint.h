@@ -212,7 +212,7 @@ class kpoint
                         
                         complex16 zsum(0, 0);
                         
-                        band->sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf1, idxrf2), zsum);
+                        band->sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integrals(idxrf1, idxrf2), zsum);
                         
                         if (abs(zsum) > 1e-14) 
                         {
@@ -312,7 +312,7 @@ class kpoint
                             
                     complex16 zsum(0, 0);
                             
-                    band->sum_L3_complex_gaunt(lm1, lm, atom->h_radial_integral(idxrf, idxrf1), zsum);
+                    band->sum_L3_complex_gaunt(lm1, lm, atom->h_radial_integrals(idxrf, idxrf1), zsum);
 
                     if (abs(zsum) > 1e-14)
                     {
@@ -351,7 +351,7 @@ class kpoint
                             
                     complex16 zsum(0, 0);
                             
-                    band->sum_L3_complex_gaunt(lm, lm1, atom->h_radial_integral(idxrf, idxrf1), zsum);
+                    band->sum_L3_complex_gaunt(lm, lm1, atom->h_radial_integrals(idxrf, idxrf1), zsum);
 
                     if (abs(zsum) > 1e-14)
                     {
@@ -423,7 +423,7 @@ class kpoint
 
                         complex16 zsum(0, 0);
 
-                        band->sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integral(idxrf1, idxrf2), zsum);
+                        band->sum_L3_complex_gaunt(lm1, lm2, atom->h_radial_integrals(idxrf1, idxrf2), zsum);
 
                         h(irow, icol) += zsum;
                         

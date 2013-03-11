@@ -284,12 +284,12 @@ class Atom
             return offset_wf_;  
         }
 
-        inline double* h_radial_integral(int idxrf1, int idxrf2)
+        inline double* h_radial_integrals(int idxrf1, int idxrf2)
         {
             return &h_radial_integrals_(0, idxrf1, idxrf2);
         }
         
-        inline double* b_radial_integral(int idxrf1, int idxrf2, int x)
+        inline double* b_radial_integrals(int idxrf1, int idxrf2, int x)
         {
             return &b_radial_integrals_(0, idxrf1, idxrf2, x);
         }

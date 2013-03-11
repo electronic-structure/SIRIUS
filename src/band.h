@@ -128,7 +128,7 @@ class Band
                             int lm1 = parameters_.atom(ia)->type()->indexb(j1).lm;
                             int idxrf1 = parameters_.atom(ia)->type()->indexb(j1).idxrf;
 
-                            sum_L3_complex_gaunt(lm1, lm2, parameters_.atom(ia)->b_radial_integral(idxrf1, idxrf2, i), 
+                            sum_L3_complex_gaunt(lm1, lm2, parameters_.atom(ia)->b_radial_integrals(idxrf1, idxrf2, i), 
                                                  zm(j1, j2, i));
                         }
                     }

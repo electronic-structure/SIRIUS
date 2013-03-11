@@ -138,10 +138,8 @@ class Density
                 }
             }
             delete t1;
-
-
             
-            Timer* t2 = new Timer("sirius::Density::add_kpoint_contribution:it");
+            t1 = new Timer("sirius::Density::add_kpoint_contribution:it");
             int num_fft_threads = Platform::num_fft_threads();
             #pragma omp parallel default(shared) num_threads(num_fft_threads)
             {
@@ -220,7 +218,7 @@ class Density
                     }
                 }
             }
-            delete t2;
+            delete t1;
        }
 
     public:
