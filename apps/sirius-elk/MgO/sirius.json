@@ -1,7 +1,7 @@
 {
     "mpi_grid_dims" : [1, 1, 1],
     "eigen_value_solver" : "lapack",
-    "processing_unit" : "cpu",
+    "processing_unit" : "gpu",
     
     "bz_path" : {
         "num_steps" : 100,

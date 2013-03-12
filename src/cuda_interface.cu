@@ -287,9 +287,23 @@ extern "C" void cublas_set_matrix(int rows, int cols, int elemSize, const void *
 
 extern "C" void cuda_host_register(void* ptr, size_t size)
 {
-    if (cudaHostRegister(ptr, size, 0) != cudaSuccess)
+    assert(ptr);
+    
+    cudaError_t err = cudaHostRegister(ptr, size, 0);
+    if (err != cudaSuccess)
     {
         printf("failed to execute cudaHostRegister\n");
+        switch (err)
+        {
+            case cudaErrorInvalidValue:
+                printf("cudaErrorInvalidValue\n");
+                break;
+            case cudaErrorMemoryAllocation:
+                printf("cudaErrorMemoryAllocation\n");
+                break;
+            default:
+                printf("unrecognized error\n");
+        }
         exit(-1);
     }
 }

@@ -39,7 +39,4 @@ plot1d
 autormt
  .true.
 
-lmaxapw
- 12
- 
    

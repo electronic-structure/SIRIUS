@@ -179,26 +179,11 @@ class kpoint
 
         inline void copy_lo_blocks(const int apwlo_basis_size_row, const int num_gkvec_row, 
                                    const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
-                                   const complex16* z, complex16 *vec)
-        {
-            for (int j = num_gkvec_row; j < apwlo_basis_size_row; j++)
-            {
-                int ia = apwlo_basis_descriptors_row[j].ia;
-                int lm = apwlo_basis_descriptors_row[j].lm;
-                int order = apwlo_basis_descriptors_row[j].order;
-                vec[parameters_.atom(ia)->offset_wf() + parameters_.atom(ia)->type()->indexb_by_lm_order(lm, order)] = z[j];
-            }
-        }
+                                   const complex16* z, complex16* vec);
         
         inline void copy_pw_block(const int num_gkvec, const int num_gkvec_row, 
                                   const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
-                                  const complex16* z, complex16 *vec)
-        {
-            memset(vec, 0, num_gkvec * sizeof(complex16));
-
-            for (int j = 0; j < num_gkvec_row; j++)
-                vec[apwlo_basis_descriptors_row[j].igk] = z[j];
-        }
+                                  const complex16* z, complex16* vec);
 
         void generate_spinor_wave_functions(Band* band, bool has_sv_evec)
         {
@@ -1026,14 +1011,13 @@ inline void kpoint::generate_matching_coefficients_order1(int ia, int iat, AtomT
     {
         zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 0) * A;
 
+        int idxb = type->indexb_by_l_m_order(l, -l, 0);
         for (int m = -l; m <= l; m++)
         {
-            int idxb = type->indexb_by_l_m_order(l, m, 0);
-                        
             /* it is more convenient to store conjugated coefficients because then the 
                overlap matrix is set with single matrix-matrix multiplication without 
                further conjugation */
-            alm(igkloc, idxb) = gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc) * conj(zt);
+            alm(igkloc, idxb++) = gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc) * conj(zt);
         }
     }
 }
@@ -1239,7 +1223,7 @@ void kpoint::apply_hmt_to_apw(Band* band, int num_gkvec_row, int ia, mdarray<com
 }
 
 inline void kpoint::set_fv_h_o_apw_lo(Band* band, AtomType* type, Atom* atom, int ia, int apw_offset_col, 
-                              mdarray<complex16, 2>& alm, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+                                      mdarray<complex16, 2>& alm, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
     Timer t("sirius::kpoint::set_fv_h_o_apw_lo");
     
@@ -1322,7 +1306,7 @@ inline void kpoint::set_fv_h_o_apw_lo(Band* band, AtomType* type, Atom* atom, in
 }
 
 inline void kpoint::set_fv_h_o_it(PeriodicFunction<double>* effective_potential, 
-                          mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+                                  mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
     Timer t("sirius::kpoint::set_fv_h_o_it");
 
@@ -1448,7 +1432,7 @@ template<> void kpoint::set_fv_h_o<gpu>(Band* band, PeriodicFunction<double>* ef
     mdarray<complex16, 2> alm(NULL, num_gkvec_loc(), parameters_.max_mt_aw_basis_size());
     mdarray<complex16, 2> halm(NULL, num_gkvec_row(), parameters_.max_mt_aw_basis_size());
     
-    alm.allocated();
+    alm.allocate();
     alm.pin_memory();
     alm.allocate_on_device();
     halm.allocate();
@@ -1507,6 +1491,28 @@ template<> void kpoint::set_fv_h_o<gpu>(Band* band, PeriodicFunction<double>* ef
     halm.deallocate();
 }
 #endif
+
+inline void kpoint::copy_lo_blocks(const int apwlo_basis_size_row, const int num_gkvec_row, 
+                                   const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
+                                   const complex16* z, complex16* vec)
+{
+    for (int j = num_gkvec_row; j < apwlo_basis_size_row; j++)
+    {
+        int ia = apwlo_basis_descriptors_row[j].ia;
+        int lm = apwlo_basis_descriptors_row[j].lm;
+        int order = apwlo_basis_descriptors_row[j].order;
+        vec[parameters_.atom(ia)->offset_wf() + parameters_.atom(ia)->type()->indexb_by_lm_order(lm, order)] = z[j];
+    }
+}
+
+inline void kpoint::copy_pw_block(const int num_gkvec, const int num_gkvec_row, 
+                                  const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
+                                  const complex16* z, complex16* vec)
+{
+    memset(vec, 0, num_gkvec * sizeof(complex16));
+
+    for (int j = 0; j < num_gkvec_row; j++) vec[apwlo_basis_descriptors_row[j].igk] = z[j];
+}
 
 void kpoint::generate_fv_states(Band* band, PeriodicFunction<double>* effective_potential)
 {
