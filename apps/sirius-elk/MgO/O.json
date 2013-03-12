@@ -9,11 +9,8 @@
   "nrmt"    : 2000,
   "core"    : "1s", 
   "valence" : [
-    {"basis" : [{"enu" : 0.15, "dme" : 0, "auto" : false}]},
-    {"l" : 0, "n" : 2, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]},
-    {"l" : 1, "n" : 2, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]},
-    {"l" : 2, "n" : 3, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]}],
-  "lo"      : [
-    {"l" : 0, "basis" : [{"n" : 2, "enu" : 0.15, "dme" : 0, "auto" : true}, {"n" : 2, "enu" : 0.15, "dme" : 1, "auto" : true}]},
-    {"l" : 1, "basis" : [{"n" : 2, "enu" : 0.15, "dme" : 0, "auto" : true}, {"n" : 2, "enu" : 0.15, "dme" : 1, "auto" : true}]}]
+    {"basis" : [{"enu" : 0.15, "dme" : 0, "auto" : false}, {"enu" : 0.15, "dme" : 1, "auto" : false}]},
+    {"l" : 0, "n" : 2, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true},{"enu" : 0.15, "dme" : 1, "auto" : true}]},
+    {"l" : 1, "n" : 2, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true},{"enu" : 0.15, "dme" : 1, "auto" : true}]},
+    {"l" : 2, "n" : 3, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true},{"enu" : 0.15, "dme" : 1, "auto" : true}]}]
 }

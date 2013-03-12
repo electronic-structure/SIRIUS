@@ -16,12 +16,6 @@ const bool check_pseudo_charge = false;
 
 const bool full_relativistic_core = false;
 
-//#ifdef _GPU_
-//const processing_unit_t linalg_device = gpu;
-//#else
-//const processing_unit_t linalg_device = cpu;
-//#endif
-
 /// level of internal debugging and checking
 
 /** debug_level = 0 : nothing to do \n
@@ -29,7 +23,7 @@ const bool full_relativistic_core = false;
     debug_level > 1 : check orthonormaliztion of the wave-functions \n
     debug_level > 2 : check scalapack vs. lapack diagonalization   
 */
-const int debug_level = 0;
+const int debug_level = 2;
 
 const int verbosity_level = 0;
 

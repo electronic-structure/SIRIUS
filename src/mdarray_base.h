@@ -48,9 +48,11 @@ template <typename T, int ND> class mdarray_base
     public:
     
         mdarray_base() : mdarray_ptr(NULL), 
-                         allocated_(false), 
-                         mdarray_ptr_device(NULL), 
-                         allocated_on_device(false) 
+                         allocated_(false)
+                         #ifdef _GPU_
+                         ,mdarray_ptr_device(NULL)
+                         ,allocated_on_device(false)
+                         #endif
         { 
         }
         
@@ -180,16 +182,72 @@ template <typename T, int ND> class mdarray_base
                 d[i] = src.d[i];
             }
         }*/
+
+
+
+        #ifdef _GPU_
+        void allocate_on_device()
+        {
+            deallocate_on_device();
+            
+            size_t sz = this->size();
+            if (sz == 0) throw std::runtime_error("can't allocate a zero sized array");
+             
+            cuda_malloc((void**)(&this->mdarray_ptr_device), sz * sizeof(T));
+            this->allocated_on_device = true;
+        }
+
+        void deallocate_on_device()
+        {
+            if (this->allocated_on_device)
+            {
+                cuda_free(this->mdarray_ptr_device);
+                this->allocated_on_device = false;
+            }
+        }
+
+        void copy_to_device() 
+        {
+            cuda_copy_to_device(this->mdarray_ptr_device, this->mdarray_ptr, this->size() * sizeof(T));
+        }
+        
+        void copy_to_host() 
+        {
+            cuda_copy_to_host(this->mdarray_ptr, this->mdarray_ptr_device, this->size() * sizeof(T));
+        }
+
+        inline T *get_ptr_device()
+        {
+            return this->mdarray_ptr_device;
+        }
+
+        void zero_on_device()
+        {
+            cuda_memset(this->mdarray_ptr_device, 0, this->size() * sizeof(T));
+        }
+
+        void pin_memory()
+        {
+            cuda_host_register(mdarray_ptr, this->size() * sizeof(T));
+        }
+        
+        void unpin_memory()
+        {
+            cuda_host_unregister(mdarray_ptr);
+        }
+        #endif
  
     protected:
     
         T* mdarray_ptr;
         
         bool allocated_;
-        
+       
+        #ifdef _GPU_
         T* mdarray_ptr_device;  
         
         bool allocated_on_device;
+        #endif
         
         dimension d[ND];
         

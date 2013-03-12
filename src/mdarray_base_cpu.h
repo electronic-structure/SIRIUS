@@ -4,7 +4,8 @@
 template <typename T, int ND> class mdarray_base_impl : public mdarray_base<T,ND> 
 {
     public:
-    
+
+#if 0
         void allocate_on_device()
         {
         }
@@ -39,6 +40,8 @@ template <typename T, int ND> class mdarray_base_impl : public mdarray_base<T,ND
         {
             return NULL;
         }
+#endif
+
 };
 
 #endif // _MDARRAY_BASE_CPU_H_

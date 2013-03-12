@@ -2,18 +2,22 @@
 #define _MDARRAY_H_
 
 #include "mdarray_base.h"
-#ifdef _GPU_
-#include "mdarray_base_gpu.h"
-#else
-#include "mdarray_base_cpu.h"
-#endif
+//#ifdef _GPU_
+//#include "mdarray_base_gpu.h"
+//#else
+//#include "mdarray_base_cpu.h"
+//#endif
 
-template <typename T, int ND> class mdarray : public mdarray_base_impl<T, ND> 
+//template <typename T, int ND> class mdarray : public mdarray_base_impl<T, ND> 
+//{
+//};
+
+template <typename T, int ND> class mdarray : public mdarray_base<T, ND>
 {
 };
 
 // 1d specialization
-template <typename T> class mdarray<T, 1> : public mdarray_base_impl<T, 1> 
+template <typename T> class mdarray<T, 1> : public mdarray_base<T, 1> 
 {
     public:
   
@@ -51,7 +55,7 @@ template <typename T> class mdarray<T, 1> : public mdarray_base_impl<T, 1>
 };
 
 // 2d specialization
-template <typename T> class mdarray<T,2> : public mdarray_base_impl<T,2> 
+template <typename T> class mdarray<T, 2> : public mdarray_base<T, 2> 
 {
     public:
   
@@ -91,7 +95,7 @@ template <typename T> class mdarray<T,2> : public mdarray_base_impl<T,2>
 };
 
 // 3d specialization
-template <typename T> class mdarray<T,3> : public mdarray_base_impl<T,3> 
+template <typename T> class mdarray<T, 3> : public mdarray_base<T, 3> 
 {
     public:
   
@@ -133,7 +137,7 @@ template <typename T> class mdarray<T,3> : public mdarray_base_impl<T,3>
 };
 
 // 4d specialization
-template <typename T> class mdarray<T,4> : public mdarray_base_impl<T,4> 
+template <typename T> class mdarray<T, 4> : public mdarray_base<T, 4> 
 {
     public:
   
@@ -176,8 +180,9 @@ template <typename T> class mdarray<T,4> : public mdarray_base_impl<T,4>
         }
 };
 
+#if 0
 // 5d specialization
-template <typename T> class mdarray<T,5> : public mdarray_base_impl<T,5> 
+template <typename T> class mdarray<T, 5> : public mdarray_base<T, 5> 
 {
     public:
   
@@ -221,9 +226,11 @@ template <typename T> class mdarray<T,5> : public mdarray_base_impl<T,5>
             return this->mdarray_ptr[i];
         }
 };
+#endif
 
+#if 0
 // 6d specialization
-template <typename T> class mdarray<T,6> : public mdarray_base_impl<T,6> 
+template <typename T> class mdarray<T, 6> : public mdarray_base<T, 6> 
 {
     public:
   
@@ -263,6 +270,7 @@ template <typename T> class mdarray<T,6> : public mdarray_base_impl<T,6>
             return this->mdarray_ptr[i];
         }
 };
+#endif
 
 #endif // _MDARRAY_H_
 
