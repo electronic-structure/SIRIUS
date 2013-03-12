@@ -484,6 +484,20 @@ class Global : public StepFunction
                         break;
                     }
                 }
+                printf("processing unit : ");
+                switch (processing_unit())
+                {
+                    case cpu:
+                    {
+                        printf("CPU\n");
+                        break;
+                    }
+                    case gpu:
+                    {
+                        printf("GPU\n");
+                        break;
+                    }
+                }
             }
         }
         

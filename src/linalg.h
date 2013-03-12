@@ -685,7 +685,8 @@ class standard_evp_scalapack: public standard_evp
     public:
 
         standard_evp_scalapack(int32_t block_size__, int num_ranks_row__, int num_ranks_col__, int blacs_context__) : 
-            block_size_(block_size__), num_ranks_row_(num_ranks_row__), num_ranks_col_(num_ranks_col__)
+            block_size_(block_size__), num_ranks_row_(num_ranks_row__), num_ranks_col_(num_ranks_col__), 
+            blacs_context_(blacs_context__)
         {
         }
 

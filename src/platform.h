@@ -42,7 +42,15 @@ class Platform
 
         static void abort()
         {
-            MPI_Abort(MPI_COMM_WORLD, -1);
+            if (num_mpi_ranks() ==  1)
+            {
+                raise(SIGTERM);
+            }
+            else
+            {   
+                MPI_Abort(MPI_COMM_WORLD, -1);
+            }
+            exit(0);
         }
 
         static int num_threads()

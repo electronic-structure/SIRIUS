@@ -52,8 +52,6 @@ void error(const char* file_name, int line_number, const char* message, int flag
         } while (d < delay_time);
  
         Platform::abort();
-        // raise(SIGTERM);
-        // exit(0);
     }
 }
 
