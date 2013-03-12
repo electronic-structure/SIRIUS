@@ -662,7 +662,8 @@ class standard_evp_scalapack: public standard_evp
         int num_ranks_row_;
         int num_ranks_col_;
         int blacs_context_;
-
+        
+        #ifdef _SCALAPACK_
         std::vector<int32_t> get_work_sizes(int32_t matrix_size, int32_t nb, int32_t nprow, int32_t npcol, 
                                             int blacs_context)
         {
@@ -681,6 +682,7 @@ class standard_evp_scalapack: public standard_evp
             
             return work_sizes;
         }
+        #endif
 
     public:
 
@@ -800,7 +802,8 @@ class generalized_evp_scalapack: public generalized_evp
         int num_ranks_col_;
         int blacs_context_;
         real8 abstol_;
-       
+        
+        #ifdef _SCALAPACK_
         std::vector<int32_t> get_work_sizes(int32_t matrix_size, int32_t nb, int32_t nprow, int32_t npcol, 
                                             int blacs_context)
         {
@@ -835,6 +838,7 @@ class generalized_evp_scalapack: public generalized_evp
 
             return work_sizes;
         }
+        #endif
     
     public:
 

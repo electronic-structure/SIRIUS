@@ -88,7 +88,15 @@ class AtomSymmetryClass
                         int idxrf = atom_type_->indexr().index_by_l_order(l, order);
 
                         // find linearization energies
-                        if (rsd.auto_enu) solver.bound_state(rsd.n, rsd.l, spherical_potential_, rsd.enu, p);
+                        if (rsd.auto_enu == 1 || rsd.auto_enu == 2) 
+                        {
+                            solver.bound_state(rsd.n, rsd.l, spherical_potential_, rsd.enu, p);
+                            if (rsd.auto_enu == 2) rsd.enu = solver.find_enu(rsd.l, spherical_potential_, rsd.enu);
+                        }
+                        //* if (rsd.auto_enu == 3)
+                        //* {
+                        //*     rsd.enu = efermi;
+                        //* }
 
                         solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p, hp);
 
@@ -186,7 +194,11 @@ class AtomSymmetryClass
                         radial_solution_descriptor& rsd = lo_descriptor(idxlo)[order];
                         
                         // find linearization energies
-                        if (rsd.auto_enu) solver.bound_state(rsd.n, rsd.l, spherical_potential_, rsd.enu, p[order]);
+                        if (rsd.auto_enu == 1 || rsd.auto_enu == 2) 
+                        {
+                            solver.bound_state(rsd.n, rsd.l, spherical_potential_, rsd.enu, p[order]);
+                            if (rsd.auto_enu == 2) rsd.enu = solver.find_enu(rsd.l, spherical_potential_, rsd.enu);
+                        }
 
                         solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p[order], hp[order]); 
                         
