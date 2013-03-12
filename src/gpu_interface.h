@@ -31,6 +31,10 @@ extern "C" void cublas_get_matrix(int rows, int cols, int elemSize, const void *
 
 extern "C" void cublas_set_matrix(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb);
 
+extern "C" void cuda_host_register(void* ptr, size_t size);
+
+extern "C" void cuda_host_unregister(void* ptr);
+
 #ifdef _MAGMA_
 extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, 
                                              void* b, int32_t ldb, double* eval);

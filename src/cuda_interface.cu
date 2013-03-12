@@ -285,3 +285,21 @@ extern "C" void cublas_set_matrix(int rows, int cols, int elemSize, const void *
     }
 }
 
+extern "C" void cuda_host_register(void* ptr, size_t size)
+{
+    if (cudaHostRegister(ptr, size, 0) != cudaSuccess)
+    {
+        printf("failed to execute cudaHostRegister\n");
+        exit(-1);
+    }
+}
+
+extern "C" void cuda_host_unregister(void* ptr)
+{
+    if (cudaHostUnregister(ptr) != cudaSuccess)
+    {
+        printf("failed to execute cudaHostUnregister\n");
+        exit(-1);
+    }
+}
+

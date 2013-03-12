@@ -2,15 +2,6 @@
 #define _MDARRAY_H_
 
 #include "mdarray_base.h"
-//#ifdef _GPU_
-//#include "mdarray_base_gpu.h"
-//#else
-//#include "mdarray_base_cpu.h"
-//#endif
-
-//template <typename T, int ND> class mdarray : public mdarray_base_impl<T, ND> 
-//{
-//};
 
 template <typename T, int ND> class mdarray : public mdarray_base<T, ND>
 {

@@ -1448,9 +1448,11 @@ template<> void kpoint::set_fv_h_o<gpu>(Band* band, PeriodicFunction<double>* ef
     mdarray<complex16, 2> alm(NULL, num_gkvec_loc(), parameters_.max_mt_aw_basis_size());
     mdarray<complex16, 2> halm(NULL, num_gkvec_row(), parameters_.max_mt_aw_basis_size());
     
-    alm.allocate_page_locked();
+    alm.allocated();
+    alm.pin_memory();
     alm.allocate_on_device();
-    halm.allocate_page_locked();
+    halm.allocate();
+    halm.pin_memory();
     halm.allocate_on_device();
     h.allocate_on_device();
     h.zero_on_device();
@@ -1498,9 +1500,11 @@ template<> void kpoint::set_fv_h_o<gpu>(Band* band, PeriodicFunction<double>* ef
     h.deallocate_on_device();
     o.deallocate_on_device();
     alm.deallocate_on_device();
-    alm.deallocate_page_locked();
+    alm.unpin_memory();
+    alm.deallocate();
     halm.deallocate_on_device();
-    halm.deallocate_page_locked();
+    halm.unpin_memory();
+    halm.deallocate();
 }
 #endif
 
