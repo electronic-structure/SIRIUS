@@ -1115,6 +1115,9 @@ void kpoint::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<c
             }
         } //l
     }
+    
+    // check alm coefficients
+    if (debug_level > 1) check_alm(num_gkvec_loc, ia, alm);
 }
 
 void kpoint::check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
@@ -1397,9 +1400,6 @@ template<> void kpoint::set_fv_h_o<cpu>(Band* band, PeriodicFunction<double>* ef
         
         generate_matching_coefficients(num_gkvec_loc(), ia, alm);
         
-        // check alm coefficients
-        if (debug_level > 1) check_alm(num_gkvec_loc(), ia, alm);
-        
         apply_hmt_to_apw(band, num_gkvec_row(), ia, alm, halm);
         
         blas<cpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), zone, &alm(0, 0), alm.ld(), 
@@ -1451,9 +1451,6 @@ template<> void kpoint::set_fv_h_o<gpu>(Band* band, PeriodicFunction<double>* ef
         AtomType* type = atom->type();
         
         generate_matching_coefficients(num_gkvec_loc(), ia, alm);
-        
-        // check alm coefficients
-        if (debug_level > 1) check_alm(num_gkvec_loc(), ia, alm);
         
         apply_hmt_to_apw(band, num_gkvec_row(), ia, alm, halm);
         
@@ -1559,7 +1556,7 @@ void kpoint::generate_fv_states(Band* band, PeriodicFunction<double>* effective_
         Utils::check_hermitian("o", o);
     }
 
-    if (debug_level > 0)
+    if (verbosity_level > 1)
     {
         double h_max = 0;
         double o_max = 0;

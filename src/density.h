@@ -518,6 +518,20 @@ class Density
             // synchronize eigen-values
             kpoint_set_.sync_band_energies(parameters_.num_bands(), spl_num_kpoints_);
 
+            if (Platform::mpi_rank() == 0)
+            {
+                printf("Lowest band energies\n");
+                for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
+                {
+                    printf("ik : %i, ", ik); 
+                    for (int j = 0; j < std::min(10, parameters_.num_bands()); j++) 
+                        printf("%12.6f", kpoint_set_[ik]->band_energy(j));
+                    printf("\n");
+                }
+            }
+
+
+
             // compute eigen-value sums
             double eval_sum = 0.0;
             for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
@@ -780,8 +794,21 @@ class Density
             }
 
             parameters_.rti().core_eval_sum = eval_sum;
-
-            double nel = rho_->integrate(rlm_component | it_component);
+            
+            std::vector<double> nel_mt;
+            double nel_it;
+            double nel = rho_->integrate(rlm_component | it_component, nel_mt, nel_it);
+            if (Platform::mpi_rank() == 0)
+            {
+                printf("\n");
+                printf("Charges before symmetrization\n");
+                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                {
+                    printf("ia : %i  q : %f\n", ia, nel_mt[ia]);
+                }
+                printf("interstitial : %f\n", nel_it);
+            }
+            
             if (fabs(nel - parameters_.num_electrons()) > 1e-5)
             {
                 std::stringstream s;

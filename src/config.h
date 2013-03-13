@@ -25,6 +25,6 @@ const bool full_relativistic_core = false;
 */
 const int debug_level = 0;
 
-const int verbosity_level = 0;
+const int verbosity_level = 2;
 
 #endif // __CONFIG_H__
