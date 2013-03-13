@@ -119,5 +119,24 @@ template<> class primitive_type_wrapper<int>
         }*/
 };
 
+template<> class primitive_type_wrapper<char>
+{
+    public:
+        /*static hid_t hdf5_type_id()
+        {
+            return H5T_NATIVE_INT;
+        }*/
+
+        static MPI_Datatype mpi_type_id()
+        {
+            return MPI_CHAR;
+        }
+
+        /*static bool is_complex()
+        {
+            return false;
+        }*/
+};
+
 
 #endif // __TYPEDEFS_H__

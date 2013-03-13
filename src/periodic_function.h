@@ -1,4 +1,5 @@
 
+// TODO: this is one of the most ugly parts of the code; need to think how to improve the implementation
 namespace sirius
 {
 
@@ -341,6 +342,43 @@ template<typename T> class PeriodicFunction
             return result;
         }
 
+        inline T inner(PeriodicFunction<T>* g, int flg, T& mt_value, T& it_value)
+        {
+            // put asserts here
+
+            int lmmax = std::min(lmmax_, g->lmmax_);
+
+            T result = 0;
+
+            if (flg & it_component)
+            {
+                bool f_split = (f_it_.size(0) == parameters_.spl_fft_size().local_size());
+                bool g_split = (g->f_it_.size(0) == parameters_.spl_fft_size().local_size());
+
+                if (!f_split && !g_split) result = prod_it<0, 0>(f_it(), g->f_it());
+                if (!f_split && g_split) result = prod_it<0, 1>(f_it(), g->f_it());
+                if (f_split && !g_split) result = prod_it<1, 0>(f_it(), g->f_it());
+                if (f_split && g_split) result = prod_it<1, 1>(f_it(), g->f_it());
+
+                it_value = result;
+            }
+
+            if (flg & rlm_component)
+            {
+                bool f_split = (f_rlm_.size(2) == parameters_.spl_num_atoms().local_size());
+                bool g_split = (g->f_rlm_.size(2) == parameters_.spl_num_atoms().local_size());
+
+                if (!f_split && !g_split) result += prod_mt_rlm<0, 0>(lmmax, f_rlm_, g->f_rlm_);
+                if (!f_split && g_split) result += prod_mt_rlm<0, 1>(lmmax, f_rlm_, g->f_rlm_);
+                if (f_split && !g_split) result += prod_mt_rlm<1, 0>(lmmax, f_rlm_, g->f_rlm_);
+                if (f_split && g_split) result += prod_mt_rlm<1, 1>(lmmax, f_rlm_, g->f_rlm_);
+
+                mt_value = result - it_value;
+            }
+
+            return result;
+        }
+        
         inline T integrate(int flg, std::vector<T>& mt_val, T& it_val)
         {
             it_val = 0;

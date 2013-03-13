@@ -510,10 +510,26 @@ class Global : public StepFunction
 
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
             {
-                int rank = spl_num_atom_symmetry_classes().location(1, ic);
+                int rank = spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
                 atom_symmetry_class(ic)->sync_radial_functions(rank);
             }
+            
+            mdarray<char, 2> outbuff(4000, num_atom_symmetry_classes());
+            outbuff.zero();
 
+            for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
+            {
+                int ic = spl_num_atom_symmetry_classes(icloc);
+                atom_symmetry_class(ic)->write_enu(&outbuff(0, ic), 4000);
+            }
+
+            Platform::reduce(outbuff.get_ptr(), (int)outbuff.size(), mpi_grid_.communicator(), 0);
+            if (Platform::mpi_rank() == 0)
+            {
+                printf("\n");
+                printf("Linearization energies\n");
+                for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) printf("%s", &outbuff(0, ic));
+            }
             //if (Platform::mpi_rank() == 0)
             //{
             //    FILE* fout = fopen("enu.txt", "w");

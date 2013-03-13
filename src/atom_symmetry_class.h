@@ -535,7 +535,7 @@ class AtomSymmetryClass
             return so_radial_integrals_(l, order1, order2);
         }
 
-        void write_enu(FILE* fout)
+        /*void write_enu(FILE* fout)
         {
             fprintf(fout, "Atom : %s, class id : %i\n", atom_type_->label().c_str(), id_); 
             fprintf(fout, "augmented waves\n");
@@ -544,7 +544,7 @@ class AtomSymmetryClass
                 for (int order = 0; order < (int)aw_descriptor(l).size(); order++)
                 {
                     radial_solution_descriptor& rsd = aw_descriptor(l)[order];
-                    fprintf(fout, "n = %i   l = %i   order = %i   enu = %f\n", rsd.n, rsd.l, order, rsd.enu);
+                    fprintf(fout, "n = %2i   l = %2i   order = %i   enu = %f\n", rsd.n, rsd.l, order, rsd.enu);
                 }
             }
 
@@ -558,26 +558,57 @@ class AtomSymmetryClass
                 }
             }
             fprintf(fout, "\n");
-        }
+        }*/
 
+        void write_enu(char* buf, size_t n)
+        {
+            int j;
+            j = snprintf(buf, n, "Atom : %s, class id : %i\n", atom_type_->label().c_str(), id_); 
+            j += snprintf(buf + j, n, "augmented waves\n");
+            for (int l = 0; l < num_aw_descriptors(); l++)
+            {
+                for (int order = 0; order < (int)aw_descriptor(l).size(); order++)
+                {
+                    radial_solution_descriptor& rsd = aw_descriptor(l)[order];
+                    j += snprintf(buf + j, n, "n = %2i   l = %2i   order = %i   enu = %12.6f\n", 
+                                  rsd.n, rsd.l, order, rsd.enu);
+                }
+            }
+
+            j += snprintf(buf + j, n, "local orbitals\n");
+            for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++)
+            {
+                for (int order = 0; order < (int)lo_descriptor(idxlo).size(); order++)
+                {
+                    radial_solution_descriptor& rsd = lo_descriptor(idxlo)[order];
+                    j +=snprintf(buf + j, n, "n = %2i   l = %2i   order = %i   enu = %12.6f\n", 
+                                 rsd.n, rsd.l, order, rsd.enu);
+                }
+            }
+            j += snprintf(buf + j, n, "\n");
+        }
+        
         /// Compute m-th order radial derivative at the MT surface
         double aw_surface_dm(int l, int order, int dm)
         {
-            assert(dm <= 1);
+            switch (dm)
+            {
+                case 0:
+                {
+                    int idxrf = atom_type_->indexr().index_by_l_order(l, order);
+                    return radial_functions_(atom_type_->num_mt_points() - 1, idxrf, 0);
+                }
+                case 1:
+                {
+                    return aw_surface_derivatives_(order, l);
+                }
+                default:
+                {
+                    error(__FILE__, __LINE__, "wrong order of radial derivative", fatal_err);
+                }
+            }
 
-            if (dm == 0)
-            {
-                int idxrf = atom_type_->indexr().index_by_l_order(l, order);
-                return radial_functions_(atom_type_->num_mt_points() - 1, idxrf, 0);
-            } 
-            else if (dm == 1)
-            {
-                return aw_surface_derivatives_(order, l);
-            }
-            else 
-            {
-                return 0.0;
-            }
+            return 0.0; // just to make compiler happy
         }
 
         void generate_core_charge_density()
