@@ -507,6 +507,18 @@ class Density
             parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), 
                                      potential_->effective_potential()->f_pw());
 
+            double v_pw_min = 1e100;
+            double v_pw_max = -1e100;
+            for (int ig = 0; ig < parameters_.num_gvec(); ig++)
+            {
+                v_pw_min = std::min(v_pw_min, abs(potential_->effective_potential()->f_pw(ig)));
+                v_pw_max = std::max(v_pw_max, abs(potential_->effective_potential()->f_pw(ig)));
+            }
+            if (Platform::mpi_rank() == 0)
+            {
+                printf("v_pw_min : %f, v_pw_max : %f\n", v_pw_min, v_pw_max);
+            }
+
             // solve secular equation and generate wave functions
             for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
             {
