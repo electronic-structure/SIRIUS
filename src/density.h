@@ -507,17 +507,17 @@ class Density
             parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), 
                                      potential_->effective_potential()->f_pw());
 
-            double v_pw_min = 1e100;
-            double v_pw_max = -1e100;
-            for (int ig = 0; ig < parameters_.num_gvec(); ig++)
-            {
-                v_pw_min = std::min(v_pw_min, abs(potential_->effective_potential()->f_pw(ig)));
-                v_pw_max = std::max(v_pw_max, abs(potential_->effective_potential()->f_pw(ig)));
-            }
-            if (Platform::mpi_rank() == 0)
-            {
-                printf("v_pw_min : %f, v_pw_max : %f\n", v_pw_min, v_pw_max);
-            }
+            //double v_pw_min = 1e100;
+            //double v_pw_max = -1e100;
+            //for (int ig = 0; ig < parameters_.num_gvec(); ig++)
+            //{
+            //    v_pw_min = std::min(v_pw_min, abs(potential_->effective_potential()->f_pw(ig)));
+            //    v_pw_max = std::max(v_pw_max, abs(potential_->effective_potential()->f_pw(ig)));
+            //}
+            //if (Platform::mpi_rank() == 0)
+            //{
+            //    printf("v_pw_min : %f, v_pw_max : %f\n", v_pw_min, v_pw_max);
+            //}
 
             // solve secular equation and generate wave functions
             for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
@@ -541,8 +541,6 @@ class Density
                     printf("\n");
                 }
             }
-
-
 
             // compute eigen-value sums
             double eval_sum = 0.0;
@@ -810,16 +808,16 @@ class Density
             std::vector<double> nel_mt;
             double nel_it;
             double nel = rho_->integrate(rlm_component | it_component, nel_mt, nel_it);
-            if (Platform::mpi_rank() == 0)
-            {
-                printf("\n");
-                printf("Charges before symmetrization\n");
-                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-                {
-                    printf("ia : %i  q : %f\n", ia, nel_mt[ia]);
-                }
-                printf("interstitial : %f\n", nel_it);
-            }
+            //if (Platform::mpi_rank() == 0)
+            //{
+            //    printf("\n");
+            //    printf("Charges before symmetrization\n");
+            //    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            //    {
+            //        printf("ia : %i  q : %f\n", ia, nel_mt[ia]);
+            //    }
+            //    printf("interstitial : %f\n", nel_it);
+            //}
             
             if (fabs(nel - parameters_.num_electrons()) > 1e-5)
             {

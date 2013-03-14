@@ -717,7 +717,7 @@ class Potential
             double vh_mt_val;
             double vh_it_val;
             vh->inner(vh, it_component | rlm_component, vh_mt_val, vh_it_val);
-            std::cout << "<VH|VH>_MT = " << vh_mt_val << " <VH|VH>_IT = " << vh_it_val << std::endl;
+            //std::cout << "<VH|VH>_MT = " << vh_mt_val << " <VH|VH>_IT = " << vh_it_val << std::endl;
 
             // compute Eenuc
             double enuc = 0.0;

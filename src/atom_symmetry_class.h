@@ -264,14 +264,87 @@ class AtomSymmetryClass
                     }
                 }
             }
+            
+            if (debug_level > 0)
+            {
+                Spline<double> s(nmtp, atom_type_->radial_grid());
+                mdarray<double, 2> loprod(num_lo_descriptors(), num_lo_descriptors());
+                mdarray<complex16, 2> loprod_tmp(num_lo_descriptors(), num_lo_descriptors());
+                for (int idxlo1 = 0; idxlo1 < num_lo_descriptors(); idxlo1++)
+                {
+                    int idxrf1 = atom_type_->indexr().index_by_idxlo(idxlo1);
+                    radial_solution_descriptor rsd1 = lo_descriptor(idxlo1)[0];
+                    
+                    for (int idxlo2 = 0; idxlo2 < num_lo_descriptors(); idxlo2++)
+                    {
+                        int idxrf2 = atom_type_->indexr().index_by_idxlo(idxlo2);
+                        radial_solution_descriptor rsd2 = lo_descriptor(idxlo2)[0];
+                        
+                        for (int ir = 0; ir < nmtp; ir++)
+                        {
+                            s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
+                        }
+                        s.interpolate();
+                        if (rsd1.l == rsd2.l)
+                        {
+                            loprod(idxlo1, idxlo2) = s.integrate(2);
+                        }
+                        else
+                        {
+                            loprod(idxlo1, idxlo2) = 0.0;
+                        }
+                        loprod_tmp(idxlo1, idxlo2) = complex16(loprod(idxlo1, idxlo2), 0);
+                    }
+                }
+                    
+                standard_evp_lapack stdevp;
+
+                std::vector<double> loprod_eval(num_lo_descriptors());
+                mdarray<complex16, 2> loprod_evec(num_lo_descriptors(), num_lo_descriptors());
+    
+                stdevp.solve(num_lo_descriptors(), loprod_tmp.get_ptr(), loprod_tmp.ld(), &loprod_eval[0], 
+                             loprod_evec.get_ptr(), loprod_evec.ld());
+
+                double det = 1.0;
+                for (int i = 0; i < num_lo_descriptors(); i++) det *= loprod_eval[i];
+
+                if (fabs(det) < 0.001) 
+                {
+                    printf("\n");
+                    printf("local orbitals for atom symmetry class %i are nearly degenerate\n", id_);
+                    printf("local orbitals overlap matrix:\n");
+                    for (int i = 0; i < num_lo_descriptors(); i++)
+                    {
+                        for (int j = 0; j < num_lo_descriptors(); j++) printf("%12.6f", loprod(i, j));
+                        printf("\n");
+                    }
+                }
+            }
+
+            if (verbosity_level > 0)
+            {
+                std::stringstream s;
+                s << "local_orbitals_" << id_ << ".dat";
+                FILE* fout = fopen(s.str().c_str(), "w");
+
+                for (int ir = 0; ir <atom_type_->num_mt_points(); ir++)
+                {
+                    fprintf(fout, "%f ", atom_type_->radial_grid(ir));
+                    for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++)
+                    {
+                        int idxrf = atom_type_->indexr().index_by_idxlo(idxlo);
+                        fprintf(fout, "%f ", radial_functions_(ir, idxrf, 0));
+                    }
+                    fprintf(fout, "\n");
+                }
+                fclose(fout);
+            }
         }
 
     public:
     
-        AtomSymmetryClass(int id_, AtomType* atom_type_) : id_(id_),
-                                                           atom_type_(atom_type_),
-                                                           core_eval_sum_(0.0),
-                                                           core_leakage_(0.0)
+        AtomSymmetryClass(int id_, AtomType* atom_type_) : 
+            id_(id_), atom_type_(atom_type_), core_eval_sum_(0.0), core_leakage_(0.0)
         {
         }
 

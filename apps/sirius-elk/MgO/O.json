@@ -1,19 +1,41 @@
 {
-  "name"    : "oxygen",
-  "symbol"  : "O",
-  "number"  : 8,
-  "mass"    : 15.9994,
-  "rmin"    : 1.25e-07,
-  "rmax"    : 21.8244,
-  "rmt"     : 2,
-  "nrmt"    : 2000,
-  "core"    : "1s", 
-  "valence" : [
-    {"basis" : [{"enu" : 0.15, "dme" : 0, "auto" : false}]},
-    {"l" : 0, "n" : 2, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]},
-    {"l" : 1, "n" : 2, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]},
-    {"l" : 2, "n" : 3, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]}],
-  "lo"      : [
-    {"l" : 0, "basis" : [{"n" : 2, "enu" : 0.15, "dme" : 0, "auto" : true}, {"n" : 2, "enu" : 0.15, "dme" : 1, "auto" : true}]},
-    {"l" : 1, "basis" : [{"n" : 2, "enu" : 0.15, "dme" : 0, "auto" : true}, {"n" : 2, "enu" : 0.15, "dme" : 1, "auto" : true}]}]
+    "name" : "oxygen",
+    "symbol" : "O",
+    "number" : 8,
+    "mass" :   1.59994000e+01,
+    "rmin" :   1.25000000e-07,
+    "rmax" :   2.18804821e+01,
+    "nrmt" : 2000,
+    "rmt" :   1.16626838e+00,
+    "core" : "1s",
+    "valence" : [
+        {
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : 0}]
+        },
+        {
+            "l" : 0,
+            "n" : 2,
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : 1}]
+        },
+        {
+            "l" : 1,
+            "n" : 2,
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : 1}]
+        },
+        {
+            "l" : 2,
+            "n" : 3,
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : 1}]
+        }
+    ],
+    "lo" : [
+        {
+            "l" : 0,
+            "basis" : [{"n" : 2, "enu" : 0.15, "dme" : 0, "auto" : 1}, {"n" : 2, "enu" : 0.15, "dme" : 1, "auto" : 1}]
+        },
+        {
+            "l" : 1,
+            "basis" : [{"n" : 2, "enu" : 0.15, "dme" : 0, "auto" : 1}, {"n" : 2, "enu" : 0.15, "dme" : 1, "auto" : 1}]
+        }
+    ]
 }

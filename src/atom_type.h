@@ -181,15 +181,8 @@ class basis_functions_index
 
             int idxrf;
             
-            basis_function_index_descriptor(int l, 
-                                            int m, 
-                                            int order, 
-                                            int idxlo, 
-                                            int idxrf) : l(l), 
-                                                         m(m), 
-                                                         order(order), 
-                                                         idxlo(idxlo), 
-                                                         idxrf(idxrf) 
+            basis_function_index_descriptor(int l, int m, int order, int idxlo, int idxrf) : l(l), m(m), order(order), 
+                                                                                             idxlo(idxlo), idxrf(idxrf) 
             {
                 assert(l >= 0);
                 assert(m >= -l && m <= l);
@@ -219,8 +212,7 @@ class basis_functions_index
         {
         }
         
-        void init(const int lmax,
-                 radial_functions_index& indexr)
+        void init(const int lmax, radial_functions_index& indexr)
         {
             basis_function_index_descriptors_.clear();
 

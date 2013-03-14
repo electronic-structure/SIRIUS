@@ -150,6 +150,7 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
     jw.begin_array("valence");
     jw.begin_set();
     jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}]");
+    //jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 0}]");
     jw.end_set();
     
     int lmax = 0;
@@ -187,6 +188,20 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
         jw.single("l", valence[i].l);
         jw.string("basis", s.str());
         jw.end_set();
+    }
+    if (lo_type == 4)
+    {
+        printf("lo4 is composed of u_{n,E1} and u_{n+1,E2}\n");
+        for (int i = 0; i < (int)valence.size(); i++)
+        {
+            jw.begin_set();
+            std::stringstream s;
+            s << "[{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}," 
+              << " {" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : 2}]";
+            jw.single("l", valence[i].l);
+            jw.string("basis", s.str());
+            jw.end_set();
+        }
     }
     if (lo_type == 1)
     {

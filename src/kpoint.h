@@ -1548,12 +1548,44 @@ void kpoint::generate_fv_states(Band* band, PeriodicFunction<double>* effective_
         }
     }
 
-    sirius_io::hdf5_write_matrix("h.h5", h);
-    sirius_io::hdf5_write_matrix("o.h5", o);
-    Utils::write_matrix("h.txt", true, h);
-    Utils::write_matrix("o.txt", true, o);
+    //sirius_io::hdf5_write_matrix("h.h5", h);
+    //sirius_io::hdf5_write_matrix("o.h5", o);
+    //Utils::write_matrix("h.txt", true, h);
+    //Utils::write_matrix("o.txt", true, o);
 
+    if ((debug_level > 0) && (parameters_.eigen_value_solver() == lapack))
+    {
+        standard_evp_lapack s;
+
+        std::vector<double> o_eval(apwlo_basis_size());
+        mdarray<complex16, 2> o_tmp(apwlo_basis_size(), apwlo_basis_size());
+        memcpy(o_tmp.get_ptr(), o.get_ptr(), o.size() * sizeof(complex16));
+        mdarray<complex16, 2> o_evec(apwlo_basis_size(), apwlo_basis_size());
     
+        s.solve(apwlo_basis_size(), o_tmp.get_ptr(), o_tmp.ld(), &o_eval[0], o_evec.get_ptr(), o_evec.ld());
+        for (int i = 0; i < apwlo_basis_size(); i++)
+        {
+            if (o_eval[i] < 1e-7)
+            {
+                //Utils::write_matrix("o.txt", true, o);
+                std::stringstream ss;
+                
+                //for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
+                //{
+                //    for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
+                //    {
+                //        printf("%12.6f ", abs(o(irow, icol)));
+                //    }
+                //    printf("\n");
+                //}
+
+                ss << "ill defined overlap matrix" << std::endl;
+                for (int j = 0; j < apwlo_basis_size(); j++) ss << o_eval[j] << " ";
+                error(__FILE__, __LINE__, ss, 0);
+            }
+        }
+    }
+
     if ((debug_level > 0) && (parameters_.eigen_value_solver() == lapack))
     {
         Utils::check_hermitian("h", h);

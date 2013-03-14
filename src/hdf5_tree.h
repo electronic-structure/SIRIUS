@@ -236,14 +236,22 @@ class hdf5_tree
         }
 
         template <typename T, int N>
-        void read(const std::string& name, mdarray<T,N>& data)
+        void read(const std::string& name, mdarray<T, N>& data)
         {
-            std::vector<int> dims(N);
-            for (int i = 0; i < N; i++)
-                dims[i] = data.size(i);
+            if (primitive_type_wrapper<T>::is_complex())
+            {
+                std::vector<int> dims(N + 1);
+                dims[0] = 2; 
+                for (int i = 0; i < N; i++) dims[i + 1] = data.size(i);
+                read(name, (typename primitive_type_wrapper<T>::real_t*)data.get_ptr(), dims);
+            }
+            else
+            {
+                std::vector<int> dims(N);
+                for (int i = 0; i < N; i++) dims[i] = data.size(i);
 
-            read(name, data.get_ptr(), dims);
-
+                read(name, data.get_ptr(), dims);
+            }
         }
 
         hdf5_tree operator[](const std::string& path__)
