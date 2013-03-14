@@ -62,7 +62,7 @@ extern "C" {
 #include "run_time_info.h"
 #include "mpi_grid.h"
 #include "splindex.h"
-
+#include "sirius_io.h"
 //
 // atoms
 //

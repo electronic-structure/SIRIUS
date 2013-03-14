@@ -1317,16 +1317,14 @@ inline void kpoint::set_fv_h_o_it(PeriodicFunction<double>* effective_potential,
     for (int igkloc2 = 0; igkloc2 < num_gkvec_col(); igkloc2++) // loop over columns
     {
         double v2c[3];
-        parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_col_[igkloc2].igk), 
-                                                           v2c);
+        parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_col_[igkloc2].igk), v2c);
 
         for (int igkloc1 = 0; igkloc1 < num_gkvec_row(); igkloc1++) // for each column loop over rows
         {
             int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row_[igkloc1].ig,
                                              apwlo_basis_descriptors_col_[igkloc2].ig);
             double v1c[3];
-            parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_row_[igkloc1].igk), 
-                                                               v1c);
+            parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_row_[igkloc1].igk), v1c);
             
             double t1 = 0.5 * Utils::scalar_product(v1c, v2c);
                                
@@ -1549,6 +1547,12 @@ void kpoint::generate_fv_states(Band* band, PeriodicFunction<double>* effective_
             error(__FILE__, __LINE__, "wrong processing unit");
         }
     }
+
+    sirius_io::hdf5_write_matrix("h.h5", h);
+    sirius_io::hdf5_write_matrix("o.h5", o);
+    Utils::write_matrix("h.txt", true, h);
+    Utils::write_matrix("o.txt", true, o);
+
     
     if ((debug_level > 0) && (parameters_.eigen_value_solver() == lapack))
     {

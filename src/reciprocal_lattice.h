@@ -47,7 +47,9 @@ class ReciprocalLattice : public UnitCell
 
             int ig = 0;
             for (int i0 = fft_.grid_limits(0, 0); i0 <= fft_.grid_limits(0, 1); i0++)
+            {
                 for (int i1 = fft_.grid_limits(1, 0); i1 <= fft_.grid_limits(1, 1); i1++)
+                {
                     for (int i2 = fft_.grid_limits(2, 0); i2 <= fft_.grid_limits(2, 1); i2++)
                     {
                         gvec_tmp(0, ig) = i0;
@@ -60,6 +62,8 @@ class ReciprocalLattice : public UnitCell
 
                         gvec_tmp_length.push_back(std::pair<double, int>(Utils::vector_length(cartc), ig++));
                     }
+                }
+            }
 
             std::sort(gvec_tmp_length.begin(), gvec_tmp_length.end());
 
@@ -70,11 +74,9 @@ class ReciprocalLattice : public UnitCell
             num_gvec_ = 0;
             for (int i = 0; i < fft_.size(); i++)
             {
-                for (int j = 0; j < 3; j++)
-                    gvec_(j, i) = gvec_tmp(j, gvec_tmp_length[i].second);
+                for (int j = 0; j < 3; j++) gvec_(j, i) = gvec_tmp(j, gvec_tmp_length[i].second);
                 
-                if (gvec_tmp_length[i].first <= pw_cutoff_)
-                    num_gvec_++;
+                if (gvec_tmp_length[i].first <= pw_cutoff_) num_gvec_++;
             }
             
             // clean temporary arrays
@@ -110,62 +112,10 @@ class ReciprocalLattice : public UnitCell
                 get_coordinates<cartesian, reciprocal>(&gvec_(0, ig), cartc);
                 double t = Utils::vector_length(cartc);
 
-                if (gvec_shell_len_.empty() || fabs(t - gvec_shell_len_.back()) > 1e-8)
-                    gvec_shell_len_.push_back(t);
+                if (gvec_shell_len_.empty() || fabs(t - gvec_shell_len_.back()) > 1e-8) gvec_shell_len_.push_back(t);
                  
                 gvec_shell_[ig] = (int)gvec_shell_len_.size() - 1;
             }
-#if 0
-            // compute phase factors
-            if (num_atoms())
-            {
-                Timer t1("sirius::ReciprocalLattice::init:pf");
-
-                splindex spl_fft_size(fft().size(), intvec(Platform::num_mpi_ranks()), intvec(Platform::mpi_rank()));
-                //std::vector<double> phase_tmp(fft().size());
-                //std::vector<complex16> phase_factor_tmp(fft().size());
-
-
-                //gvec_phase_factor_.set_dimensions(fft_.size(), num_atoms());
-                //gvec_phase_factor_.allocate();
-
-                //gvec_phase_factor_by_phase_;
-
-                // TODO: parallelize
-                //std::map<double,complex16> phase;
-               
-                // phase factor map for each MPI rank
-                std::map<double, complex16> phase_factor_tmp;
-               
-                for (int ig = spl_fft_size.begin(); ig <= spl_fft_size.end(); ig++)
-                {
-                    
-                    #pragma omp parallel default(shared)
-                    {
-                        std::map<double, complex16> phase_factor_tmp_pt;
-                        #pragma omp for
-                        for (int ia = 0; ia < num_atoms(); ia++)
-                        {
-                            double t = scalar_product(gvec(ig), atom(ia)->position());
-                            t -= floor(t);
-                            if (!phase_factor_tmp_pt.count(t))
-                                phase_factor_tmp_pt[t] = exp(complex16(0.0, twopi * t));
-                        }
-
-
-
-
-                    for (int ig = 0; ig < fft().size(); ig++)
-                    {
-                        double t = scalar_product(&gvec_(0, ig), atom(ia)->position());
-                        t -= floor(t);
-                        if (!gvec_phase_factor_by_phase_.count(t)) 
-                            gvec_phase_factor_by_phase_[t] = exp(complex16(0.0, twopi * t));
-                        //exp(complex16(0.0, twopi * scalar_product(&gvec_(0, ig), atom(ia)->position())));
-                        //gvec_phase_factor_(ig, ia) = phase[t];                     
-                    }
-            }
-#endif
         }
 
         void clear()
@@ -176,14 +126,11 @@ class ReciprocalLattice : public UnitCell
             gvec_shell_.clear();
             index_by_gvec_.deallocate();
             fft_index_.clear();
-            //gvec_phase_factor_.deallocate();
-            //gvec_phase_factor_by_phase_.clear();
         }
 
     public:
         
-        ReciprocalLattice() : pw_cutoff_(pw_cutoff_default),
-                              num_gvec_(0)
+        ReciprocalLattice() : pw_cutoff_(pw_cutoff_default), num_gvec_(0)
         {
         }
   

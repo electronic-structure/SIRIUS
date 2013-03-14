@@ -85,11 +85,9 @@ class hdf5_tree
                                                                            file_id_(-1),
                                                                            root_node_(true)
         {
-            if (H5open() < 0)
-                error(__FILE__, __LINE__, "error in H5open()");
+            if (H5open() < 0) error(__FILE__, __LINE__, "error in H5open()");
             
-            if (hdf5_trace_errors)
-                H5Eset_auto(H5E_DEFAULT, NULL, NULL);
+            if (hdf5_trace_errors) H5Eset_auto(H5E_DEFAULT, NULL, NULL);
             
             if (truncate)
             {
@@ -130,8 +128,9 @@ class hdf5_tree
         ~hdf5_tree()
         {
             if (root_node_)
-                if (H5Fclose(file_id_) < 0)
-                    error(__FILE__, __LINE__, "error in H5Fclose()");
+            {
+                if (H5Fclose(file_id_) < 0) error(__FILE__, __LINE__, "error in H5Fclose()");
+            }
         }
 
         hdf5_tree create_node(int idx)
@@ -157,7 +156,9 @@ class hdf5_tree
                 error(__FILE__, __LINE__, s);
             }
             else if (H5Gclose(new_group_id) < 0)
+            {
                 error(__FILE__, __LINE__, "error in H5Gclose()");
+            }
                 
             return (*this)[name];
         }
@@ -195,13 +196,21 @@ class hdf5_tree
         }
 
         template <typename T, int N>
-        void write(const std::string& name, mdarray<T,N>& data)
+        void write(const std::string& name, mdarray<T, N>& data)
         {
-            std::vector<int> dims(N);
-            for (int i = 0; i < N; i++)
-                dims[i] = data.size(i);
-
-            write(name, data.get_ptr(), dims);
+            if (primitive_type_wrapper<T>::is_complex())
+            {
+                std::vector<int> dims(N + 1);
+                dims[0] = 2; 
+                for (int i = 0; i < N; i++) dims[i + 1] = data.size(i);
+                write(name, (typename primitive_type_wrapper<T>::real_t*)data.get_ptr(), dims);
+            }
+            else
+            {
+                std::vector<int> dims(N);
+                for (int i = 0; i < N; i++) dims[i] = data.size(i);
+                write(name, data.get_ptr(), dims);
+            }
         }
 
         template<typename T>
