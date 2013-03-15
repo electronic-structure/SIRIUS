@@ -1,0 +1,2021 @@
+
+SIRIUS 0.7
+git hash : e4516c0aa1eafe6e09f01f562fc0ae6c0cd37626
+build date : Fri Mar 15 15:48:30 CET 2013
+start time : Fri Mar 15 15:51:43 2013
+
+number of MPI ranks           : 1
+MPI grid                      : 1 1 1
+number of OMP threads         : 1
+number of OMP threads for FFT : 1
+
+Unit cell
+--------------------------------------------------------------------------------
+lattice vectors
+  a1 :       0.0000000000       3.9835442600       3.9835442600 
+  a2 :       3.9835442600       0.0000000000       3.9835442600 
+  a3 :       3.9835442600       3.9835442600       0.0000000000 
+reciprocal lattice vectors
+  b1 :      -0.7886425877       0.7886425877       0.7886425877 
+  b2 :       0.7886425877      -0.7886425877       0.7886425877 
+  b3 :       0.7886425877       0.7886425877      -0.7886425877 
+
+unit cell volume :       126.42673904 [a.u.^3]
+1/sqrt(omega)    :         0.08893660
+
+number of atom types : 2
+type id : 1   symbol : Mg   label : Mg   mt_radius :   1.892184
+type id : 2   symbol :  O   label :  O   mt_radius :   1.892184
+number of atoms : 2
+number of symmetry classes : 2
+
+atom id    type id    class id
+------------------------------
+     0          1           0
+     1          2           1
+
+class id : 0   atom id : 0 
+class id : 1   atom id : 1 
+
+space group number   : 225
+international symbol : Fm-3m     
+Hall symbol          : -F 4 2 3        
+number of operations : 48
+
+total nuclear charge        : 20
+number of core electrons    : 4
+number of valence electrons : 16
+total number of electrons   : 20
+
+plane wave cutoff : 12.000000
+number of G-vectors within the cutoff : 3695
+number of G-shells : 79
+FFT grid size : 24 24 24   total : 13824
+FFT grid limits : -11 12   -11 12   -11 12
+
+Unit cell volume : 126.426739
+MT volume        : 56.755555 (44%)
+IT volume        : 69.671184 (55%)
+
+symbol         : Mg
+name           : magnesium
+zn             : 12
+mass           : 24.305000
+mt_radius      : 1.892184
+num_mt_points  : 2000
+
+number of core electrons    : 2
+number of valence electrons : 10
+
+atomic levels (n, l, k, occupancy)
+core
+1  0  -1  2
+valence
+2  0  -1  2
+2  1  -1  6
+3  0  -1  2
+
+default augmented wave basis
+[{enu : 0.150000, dme : 0, auto : 0}]
+augmented wave basis for specific l
+[{l : 0, n : 3, enu : 0.150000, dme : 0, auto : 1}]
+[{l : 1, n : 2, enu : 0.150000, dme : 0, auto : 1}]
+[{l : 2, n : 3, enu : 0.150000, dme : 0, auto : 1}]
+augmented wave basis
+[{l : 0, n : 3, enu : 0.150000, dme : 0, auto : 1}]
+[{l : 1, n : 2, enu : 0.150000, dme : 0, auto : 1}]
+[{l : 2, n : 3, enu : 0.150000, dme : 0, auto : 1}]
+[{l : 3, n : 4, enu : 0.150000, dme : 0, auto : 0}]
+[{l : 4, n : 5, enu : 0.150000, dme : 0, auto : 0}]
+[{l : 5, n : 6, enu : 0.150000, dme : 0, auto : 0}]
+[{l : 6, n : 7, enu : 0.150000, dme : 0, auto : 0}]
+[{l : 7, n : 8, enu : 0.150000, dme : 0, auto : 0}]
+[{l : 8, n : 9, enu : 0.150000, dme : 0, auto : 0}]
+maximum order of aw : 1
+local orbitals
+[{l : 0, n : 2, enu : 0.150000, dme : 0, auto : 1}, {l : 0, n : 2, enu : 0.150000, dme : 1, auto : 1}]
+[{l : 1, n : 2, enu : 0.150000, dme : 0, auto : 1}, {l : 1, n : 2, enu : 0.150000, dme : 1, auto : 1}]
+[{l : 0, n : 3, enu : 0.150000, dme : 0, auto : 1}, {l : 0, n : 3, enu : 0.150000, dme : 1, auto : 1}]
+
+total number of radial functions : 12
+maximum number of radial functions per orbital quantum number: 3
+total number of basis functions : 86
+number of aw basis functions : 81
+number of lo basis functions : 5
+exponential grid
+  number of muffin-tin points : 2000
+  total number of points      : 2294
+  starting point              : 8.33333e-08
+  muffin-tin point            : 1.89218
+  effective infinity point    : 22.8485
+
+symbol         : O
+name           : oxygen
+zn             : 8
+mass           : 15.999400
+mt_radius      : 1.892184
+num_mt_points  : 2000
+
+number of core electrons    : 2
+number of valence electrons : 6
+
+atomic levels (n, l, k, occupancy)
+core
+1  0  -1  2
+valence
+2  0  -1  2
+2  1  -1  4
+
+default augmented wave basis
+[{enu : 0.150000, dme : 0, auto : 0}]
+augmented wave basis for specific l
+[{l : 0, n : 2, enu : 0.150000, dme : 0, auto : 1}]
+[{l : 1, n : 2, enu : 0.150000, dme : 0, auto : 1}]
+[{l : 2, n : 3, enu : 0.150000, dme : 0, auto : 1}]
+augmented wave basis
+[{l : 0, n : 2, enu : 0.150000, dme : 0, auto : 1}]
+[{l : 1, n : 2, enu : 0.150000, dme : 0, auto : 1}]
+[{l : 2, n : 3, enu : 0.150000, dme : 0, auto : 1}]
+[{l : 3, n : 4, enu : 0.150000, dme : 0, auto : 0}]
+[{l : 4, n : 5, enu : 0.150000, dme : 0, auto : 0}]
+[{l : 5, n : 6, enu : 0.150000, dme : 0, auto : 0}]
+[{l : 6, n : 7, enu : 0.150000, dme : 0, auto : 0}]
+[{l : 7, n : 8, enu : 0.150000, dme : 0, auto : 0}]
+[{l : 8, n : 9, enu : 0.150000, dme : 0, auto : 0}]
+maximum order of aw : 1
+local orbitals
+[{l : 0, n : 2, enu : 0.150000, dme : 0, auto : 1}, {l : 0, n : 2, enu : 0.150000, dme : 1, auto : 1}]
+[{l : 1, n : 2, enu : 0.150000, dme : 0, auto : 1}, {l : 1, n : 2, enu : 0.150000, dme : 1, auto : 1}]
+
+total number of radial functions : 11
+maximum number of radial functions per orbital quantum number: 2
+total number of basis functions : 85
+number of aw basis functions : 81
+number of lo basis functions : 4
+exponential grid
+  number of muffin-tin points : 2000
+  total number of points      : 2295
+  starting point              : 1.25e-07
+  muffin-tin point            : 1.89218
+  effective infinity point    : 21.7046
+
+
+total number of aw muffin-tin basis functions : 162
+total number of lo basis functions : 9
+number of first-variational states : 28
+
+eigen-value solver: LAPACK
+processing unit : CPU
+
+Density
+--------------------------------------------------------------------------------
+  ik                vk                    weight  num_gkvec  apwlo_basis_size
+--------------------------------------------------------------------------------
+   0     0.0000   0.0000   0.0000       0.015625        113               122
+   1     0.2500   0.0000   0.0000       0.125000        107               116
+   2     0.5000   0.0000   0.0000       0.062500        108               117
+   3     0.2500   0.2500   0.0000       0.093750        101               110
+   4     0.5000   0.2500   0.0000       0.375000        108               117
+   5     0.7500   0.2500   0.0000       0.187500        107               116
+   6     0.5000   0.5000   0.0000       0.046875        116               125
+   7     0.7500   0.5000   0.2500       0.093750        108               117
+--------------------------------------------------------------------------------
+total number of k-points : 8
+
+Timers
+--------------------------------------------------------------------------------
+sirius::AtomType::solve_free_atom                            :     1.1314 (total)       0.5657 (average)
+sirius::PeriodicFunction::sync                               :     0.0001 (total)       0.0001 (average)
+sirius::Potential::Potential                                 :     0.0224 (total)       0.0224 (average)
+sirius::Potential::generate_effective_potential              :     0.2603 (total)       0.2603 (average)
+sirius::Potential::poisson                                   :     0.0866 (total)       0.0866 (average)
+sirius::Potential::poisson:bc                                :     0.0071 (total)       0.0071 (average)
+sirius::Potential::poisson:vmt                               :     0.0608 (total)       0.0608 (average)
+sirius::Potential::poisson_pw                                :     0.0030 (total)       0.0030 (average)
+sirius::Potential::poisson_sum_G                             :     0.0128 (total)       0.0064 (average)
+sirius::Potential::xc                                        :     0.1469 (total)       0.1469 (average)
+sirius::Potential::xc:it                                     :     0.0035 (total)       0.0035 (average)
+sirius::Potential::xc:mt                                     :     0.1429 (total)       0.1429 (average)
+sirius::ReciprocalLattice::init                              :     0.0261 (total)       0.0261 (average)
+sirius::SHT::rlm_backward_transform                          :     0.0225 (total)       0.0001 (average)
+sirius::SHT::rlm_forward_transform                           :     0.0413 (total)       0.0001 (average)
+sirius::StepFunction::init                                   :     0.0023 (total)       0.0023 (average)
+sirius::UnitCell::find_nearest_neighbours                    :     0.0005 (total)       0.0005 (average)
+sirius::UnitCell::get_symmetry                               :     0.0230 (total)       0.0230 (average)
+sirius::kpoint::initialize                                   :     0.0063 (total)       0.0008 (average)
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.260007
+n =  2   l =  1   order = 0   enu =    -1.283539
+n =  3   l =  2   order = 0   enu =     0.458677
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.468316
+n =  2   l =  0   order = 1   enu =    -2.468316
+n =  2   l =  1   order = 0   enu =    -1.283539
+n =  2   l =  1   order = 1   enu =    -1.283539
+n =  3   l =  0   order = 0   enu =     0.260007
+n =  3   l =  0   order = 1   enu =     0.260007
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.616605
+n =  2   l =  1   order = 0   enu =    -0.083623
+n =  3   l =  2   order = 0   enu =     0.288877
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.616605
+n =  2   l =  0   order = 1   enu =    -0.616605
+n =  2   l =  1   order = 0   enu =    -0.083623
+n =  2   l =  1   order = 1   enu =    -0.083623
+
+Lowest band energies
+ik :  0,    -2.469273   -1.283859   -1.283859   -1.283859   -0.656819   -0.055793   -0.055793   -0.055793    0.247992    0.694913
+ik :  1,    -2.469056   -1.285666   -1.283862   -1.283862   -0.640495   -0.113976   -0.063587   -0.063587    0.328875    0.565122
+ik :  2,    -2.468851   -1.287609   -1.283906   -1.283906   -0.622389   -0.162950   -0.071052   -0.071052    0.429892    0.483606
+ik :  3,    -2.468951   -1.285262   -1.284333   -1.284333   -0.636318   -0.112670   -0.070688   -0.070688    0.348314    0.528827
+ik :  4,    -2.468726   -1.286711   -1.284952   -1.284443   -0.619779   -0.139961   -0.094804   -0.077769    0.452279    0.489209
+ik :  5,    -2.468823   -1.286405   -1.285122   -1.283892   -0.624349   -0.134799   -0.095137   -0.070890    0.416398    0.527810
+ik :  6,    -2.468609   -1.286832   -1.285070   -1.285070   -0.616829   -0.142840   -0.084294   -0.084294    0.454273    0.463967
+ik :  7,    -2.468635   -1.285902   -1.285902   -1.285049   -0.615264   -0.116261   -0.116261   -0.095560    0.510911    0.510911
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.127003  0.00000000e+00
+   1    8.704905  3.41799707e-09
+
+interstitial charge   :   1.168092
+
+total charge          :  20.000000
+total core leakage    : 3.41799707e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       286.93579906
+<rho|V^{XC}>     :       -32.06824409
+<rho|E^{XC}>     :       -24.30269690
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.24663751
+Total energy     :      -264.43960233
+
+band gap (eV) :         8.26642236
+Efermi        :         0.15000000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.256168
+n =  2   l =  1   order = 0   enu =    -1.289040
+n =  3   l =  2   order = 0   enu =     0.454888
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.473780
+n =  2   l =  0   order = 1   enu =    -2.473780
+n =  2   l =  1   order = 0   enu =    -1.289040
+n =  2   l =  1   order = 1   enu =    -1.289040
+n =  3   l =  0   order = 0   enu =     0.256168
+n =  3   l =  0   order = 1   enu =     0.256168
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.591737
+n =  2   l =  1   order = 0   enu =    -0.060054
+n =  3   l =  2   order = 0   enu =     0.291087
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.591737
+n =  2   l =  0   order = 1   enu =    -0.591737
+n =  2   l =  1   order = 0   enu =    -0.060054
+n =  2   l =  1   order = 1   enu =    -0.060054
+
+Lowest band energies
+ik :  0,    -2.474711   -1.289311   -1.289311   -1.289311   -0.634528   -0.029830   -0.029830   -0.029830    0.253880    0.695818
+ik :  1,    -2.474497   -1.291070   -1.289315   -1.289315   -0.617304   -0.092963   -0.038254   -0.038254    0.337291    0.568091
+ik :  2,    -2.474295   -1.292967   -1.289363   -1.289363   -0.598029   -0.145184   -0.046281   -0.046281    0.432770    0.495802
+ik :  3,    -2.474393   -1.290682   -1.289777   -1.289777   -0.612853   -0.091511   -0.045896   -0.045896    0.357068    0.529070
+ik :  4,    -2.474171   -1.292104   -1.290389   -1.289888   -0.595204   -0.120626   -0.072078   -0.053464    0.459472    0.494577
+ik :  5,    -2.474266   -1.291795   -1.290556   -1.289348   -0.600114   -0.115169   -0.072487   -0.046102    0.425734    0.532793
+ik :  6,    -2.474057   -1.292243   -1.290505   -1.290505   -0.591991   -0.123513   -0.060407   -0.060407    0.454444    0.465001
+ik :  7,    -2.474081   -1.291325   -1.291325   -1.290475   -0.590350   -0.095148   -0.095148   -0.072878    0.517456    0.517456
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.141533  0.00000000e+00
+   1    8.627640  3.44536847e-09
+
+interstitial charge   :   1.230827
+
+total charge          :  20.000000
+total core leakage    : 3.44536847e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       272.65012455
+<rho|V^{XC}>     :       -31.97829423
+<rho|E^{XC}>     :       -24.23465932
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.29941336
+Total energy     :      -278.30990114
+
+band gap (eV) :         7.72014092
+Efermi        :         0.15000000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.249209
+n =  2   l =  1   order = 0   enu =    -1.298355
+n =  3   l =  2   order = 0   enu =     0.447967
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.483039
+n =  2   l =  0   order = 1   enu =    -2.483039
+n =  2   l =  1   order = 0   enu =    -1.298355
+n =  2   l =  1   order = 1   enu =    -1.298355
+n =  3   l =  0   order = 0   enu =     0.249209
+n =  3   l =  0   order = 1   enu =     0.249209
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.548865
+n =  2   l =  1   order = 0   enu =    -0.020200
+n =  3   l =  2   order = 0   enu =     0.294845
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.548865
+n =  2   l =  0   order = 1   enu =    -0.548865
+n =  2   l =  1   order = 0   enu =    -0.020200
+n =  2   l =  1   order = 1   enu =    -0.020200
+
+Lowest band energies
+ik :  0,    -2.483923   -1.298537   -1.298537   -1.298537   -0.596516    0.014735    0.014735    0.014735    0.264807    0.697437
+ik :  1,    -2.483713   -1.300222   -1.298546   -1.298546   -0.577598   -0.057857    0.005100    0.005100    0.352861    0.573754
+ik :  2,    -2.483515   -1.302049   -1.298599   -1.298599   -0.556069   -0.116009   -0.003992   -0.003992    0.438012    0.518411
+ik :  3,    -2.483612   -1.299859   -1.298990   -1.298990   -0.572638   -0.056106   -0.003577   -0.003577    0.373400    0.529505
+ik :  4,    -2.483395   -1.301237   -1.299594   -1.299106   -0.552858   -0.088599   -0.033760   -0.012053    0.471466    0.505641
+ik :  5,    -2.483488   -1.300926   -1.299753   -1.298583   -0.558417   -0.082599   -0.034328   -0.003778    0.443036    0.542110
+ik :  6,    -2.483283   -1.301402   -1.299706   -1.299706   -0.549160   -0.091434   -0.019775   -0.019775    0.454748    0.466932
+ik :  7,    -2.483307   -1.300506   -1.300506   -1.299662   -0.547356   -0.059843   -0.059843   -0.034660    0.529553    0.529553
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.168717  0.00000000e+00
+   1    8.484465  3.65487252e-09
+
+interstitial charge   :   1.346818
+
+total charge          :  20.000000
+total core leakage    : 3.65487252e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       272.97300876
+<rho|V^{XC}>     :       -31.82055019
+<rho|E^{XC}>     :       -24.11533576
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.37232283
+Total energy     :      -277.24601135
+
+band gap (eV) :         6.80479995
+Efermi        :         0.15000000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.240754
+n =  2   l =  1   order = 0   enu =    -1.307841
+n =  3   l =  2   order = 0   enu =     0.439405
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.492475
+n =  2   l =  0   order = 1   enu =    -2.492475
+n =  2   l =  1   order = 0   enu =    -1.307841
+n =  2   l =  1   order = 1   enu =    -1.307841
+n =  3   l =  0   order = 0   enu =     0.240754
+n =  3   l =  0   order = 1   enu =     0.240754
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.502028
+n =  2   l =  1   order = 0   enu =     0.021990
+n =  3   l =  2   order = 0   enu =     0.298730
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.502028
+n =  2   l =  0   order = 1   enu =    -0.502028
+n =  2   l =  1   order = 0   enu =     0.021990
+n =  2   l =  1   order = 1   enu =     0.021990
+
+Lowest band energies
+ik :  0,    -2.493305   -1.307912   -1.307912   -1.307912   -0.555591    0.063098    0.063098    0.063098    0.278009    0.699471
+ik :  1,    -2.493099   -1.309525   -1.307925   -1.307925   -0.534618   -0.021167    0.051943    0.051943    0.371377    0.580967
+ik :  2,    -2.492905   -1.311285   -1.307983   -1.307983   -0.510242   -0.086224    0.041545    0.041545    0.444250    0.545371
+ik :  3,    -2.493000   -1.309187   -1.308352   -1.308352   -0.529045   -0.019016    0.041977    0.041977    0.393104    0.530126
+ik :  4,    -2.492788   -1.310523   -1.308947   -1.308472   -0.506588   -0.055533    0.006741    0.032414    0.483488    0.520876
+ik :  5,    -2.492878   -1.310210   -1.309100   -1.307966   -0.512960   -0.048880    0.005945    0.041804    0.463674    0.553484
+ik :  6,    -2.492679   -1.310711   -1.309055   -1.309055   -0.502305   -0.058213    0.023761    0.023762    0.455216    0.469433
+ik :  7,    -2.492702   -1.309835   -1.309835   -1.309000   -0.500274   -0.022948   -0.022948    0.005690    0.540324    0.544007
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.201312  0.00000000e+00
+   1    8.314697  3.74938783e-09
+
+interstitial charge   :   1.483991
+
+total charge          :  20.000000
+total core leakage    : 3.74938783e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.28750104
+<rho|V^{XC}>     :       -31.64687431
+<rho|E^{XC}>     :       -23.98395076
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.42167047
+Total energy     :      -276.09493730
+
+band gap (eV) :         5.84801691
+Efermi        :         0.15000000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.232655
+n =  2   l =  1   order = 0   enu =    -1.313871
+n =  3   l =  2   order = 0   enu =     0.430951
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.498486
+n =  2   l =  0   order = 1   enu =    -2.498486
+n =  2   l =  1   order = 0   enu =    -1.313871
+n =  2   l =  1   order = 1   enu =    -1.313871
+n =  3   l =  0   order = 0   enu =     0.232655
+n =  3   l =  0   order = 1   enu =     0.232655
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.464809
+n =  2   l =  1   order = 0   enu =     0.054216
+n =  3   l =  2   order = 0   enu =     0.301322
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.464809
+n =  2   l =  0   order = 1   enu =    -0.464809
+n =  2   l =  1   order = 0   enu =     0.054216
+n =  2   l =  1   order = 1   enu =     0.054216
+
+Lowest band energies
+ik :  0,    -2.499264   -1.313829   -1.313829   -1.313829   -0.523419    0.101218    0.101218    0.101220    0.289600    0.701684
+ik :  1,    -2.499061   -1.315395   -1.313845   -1.313845   -0.500674    0.006823    0.088712    0.088714    0.387128    0.587779
+ik :  2,    -2.498870   -1.317110   -1.313907   -1.313907   -0.473741   -0.063940    0.077180    0.077181    0.449792    0.568279
+ik :  3,    -2.498964   -1.315073   -1.314260   -1.314260   -0.494578    0.009343    0.077614    0.077615    0.410158    0.531023
+ik :  4,    -2.498755   -1.316381   -1.314850   -1.314384   -0.469727   -0.030582    0.037863    0.067133    0.492326    0.535309
+ik :  5,    -2.498844   -1.316067   -1.314997   -1.313889   -0.476825   -0.023360    0.036838    0.077484    0.481272    0.563569
+ik :  6,    -2.498650   -1.316584   -1.314955   -1.314955   -0.464940   -0.033068    0.057697    0.057698    0.455965    0.472081
+ik :  7,    -2.498672   -1.315722   -1.315722   -1.314893   -0.462686    0.005135    0.005136    0.036662    0.548782    0.556467
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.228783  0.00000000e+00
+   1    8.172614  3.82782616e-09
+
+interstitial charge   :   1.598603
+
+total charge          :  20.000000
+total core leakage    : 3.82782616e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.51307058
+<rho|V^{XC}>     :       -31.51160105
+<rho|E^{XC}>     :       -23.88160952
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.43762391
+Total energy     :      -275.20280527
+
+band gap (eV) :         5.12607295
+Efermi        :         0.15000000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.226096
+n =  2   l =  1   order = 0   enu =    -1.315250
+n =  3   l =  2   order = 0   enu =     0.423814
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.499910
+n =  2   l =  0   order = 1   enu =    -2.499910
+n =  2   l =  1   order = 0   enu =    -1.315250
+n =  2   l =  1   order = 1   enu =    -1.315250
+n =  3   l =  0   order = 0   enu =     0.226096
+n =  3   l =  0   order = 1   enu =     0.226096
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.442835
+n =  2   l =  1   order = 0   enu =     0.072378
+n =  3   l =  2   order = 0   enu =     0.302080
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.442835
+n =  2   l =  0   order = 1   enu =    -0.442835
+n =  2   l =  1   order = 0   enu =     0.072378
+n =  2   l =  1   order = 1   enu =     0.072378
+
+Lowest band energies
+ik :  0,    -2.500646   -1.315104   -1.315103   -1.315103   -0.504317    0.123479    0.123479    0.123480    0.297038    0.703915
+ik :  1,    -2.500444   -1.316649   -1.315123   -1.315123   -0.480502    0.023032    0.110153    0.110153    0.396806    0.592542
+ik :  2,    -2.500255   -1.318344   -1.315187   -1.315187   -0.451974   -0.051038    0.097943    0.097943    0.453605    0.582037
+ik :  3,    -2.500348   -1.316337   -1.315531   -1.315531   -0.474093    0.025774    0.098379    0.098380    0.420764    0.532206
+ik :  4,    -2.500142   -1.317631   -1.316121   -1.315658   -0.447759   -0.016152    0.055863    0.087362    0.497604    0.544636
+ik :  5,    -2.500230   -1.317317   -1.316265   -1.315169   -0.455305   -0.008583    0.054684    0.098277    0.492020    0.570081
+ik :  6,    -2.500037   -1.317843   -1.316223   -1.316223   -0.442675   -0.018499    0.077479    0.077480    0.457026    0.474516
+ik :  7,    -2.500059   -1.316986   -1.316986   -1.316158   -0.440270    0.021358    0.021358    0.054577    0.554646    0.564252
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.244692  0.00000000e+00
+   1    8.090025  3.80512013e-09
+
+interstitial charge   :   1.665283
+
+total charge          :  20.000000
+total core leakage    : 3.80512013e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.65041834
+<rho|V^{XC}>     :       -31.43784347
+<rho|E^{XC}>     :       -23.82580270
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.44826202
+Total energy     :      -274.70622486
+
+band gap (eV) :         4.72277351
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.221175
+n =  2   l =  1   order = 0   enu =    -1.314996
+n =  3   l =  2   order = 0   enu =     0.418291
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.499617
+n =  2   l =  0   order = 1   enu =    -2.499617
+n =  2   l =  1   order = 0   enu =    -1.314996
+n =  2   l =  1   order = 1   enu =    -1.314996
+n =  3   l =  0   order = 0   enu =     0.221175
+n =  3   l =  0   order = 1   enu =     0.221175
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.432824
+n =  2   l =  1   order = 0   enu =     0.080148
+n =  3   l =  2   order = 0   enu =     0.301986
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.432824
+n =  2   l =  0   order = 1   enu =    -0.432824
+n =  2   l =  1   order = 0   enu =     0.080148
+n =  2   l =  1   order = 1   enu =     0.080148
+
+Lowest band energies
+ik :  0,    -2.500319   -1.314763   -1.314762   -1.314762   -0.495320    0.133311    0.133311    0.133311    0.300658    0.705972
+ik :  1,    -2.500118   -1.316298   -1.314783   -1.314783   -0.471058    0.030445    0.119662    0.119663    0.401252    0.595155
+ik :  2,    -2.499929   -1.317986   -1.314850   -1.314850   -0.441851   -0.044922    0.107188    0.107188    0.455830    0.587816
+ik :  3,    -2.500022   -1.315991   -1.315188   -1.315188   -0.464521    0.033270    0.107635    0.107635    0.425605    0.533499
+ik :  4,    -2.499816   -1.317279   -1.315778   -1.315317   -0.437561   -0.009428    0.063997    0.096412    0.500337    0.548953
+ik :  5,    -2.499904   -1.316965   -1.315921   -1.314831   -0.445294   -0.001724    0.062752    0.107537    0.496817    0.573281
+ik :  6,    -2.499713   -1.317495   -1.315879   -1.315879   -0.432361   -0.011709    0.086370    0.086370    0.458226    0.476440
+ik :  7,    -2.499734   -1.316640   -1.316640   -1.315814   -0.429886    0.028790    0.028791    0.062694    0.557829    0.567903
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.250854  0.00000000e+00
+   1    8.057936  3.79194018e-09
+
+interstitial charge   :   1.691211
+
+total charge          :  20.000000
+total core leakage    : 3.79194018e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.72051702
+<rho|V^{XC}>     :       -31.41328734
+<rho|E^{XC}>     :       -23.80721506
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.46534022
+Total energy     :      -274.53388783
+
+band gap (eV) :         4.55375091
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.217550
+n =  2   l =  1   order = 0   enu =    -1.314068
+n =  3   l =  2   order = 0   enu =     0.414156
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.498670
+n =  2   l =  0   order = 1   enu =    -2.498670
+n =  2   l =  1   order = 0   enu =    -1.314068
+n =  2   l =  1   order = 1   enu =    -1.314068
+n =  3   l =  0   order = 0   enu =     0.217550
+n =  3   l =  0   order = 1   enu =     0.217550
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.428354
+n =  2   l =  1   order = 0   enu =     0.083442
+n =  3   l =  2   order = 0   enu =     0.301647
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.428354
+n =  2   l =  0   order = 1   enu =    -0.428354
+n =  2   l =  1   order = 0   enu =     0.083442
+n =  2   l =  1   order = 1   enu =     0.083442
+
+Lowest band energies
+ik :  0,    -2.499345   -1.313764   -1.313763   -1.313763   -0.491051    0.137642    0.137643    0.137643    0.302494    0.707721
+ik :  1,    -2.499144   -1.315296   -1.313785   -1.313785   -0.466628    0.033953    0.123889    0.123890    0.403371    0.596717
+ik :  2,    -2.498956   -1.316981   -1.313853   -1.313853   -0.437175   -0.041838    0.111328    0.111329    0.457269    0.590207
+ik :  3,    -2.499048   -1.314991   -1.314189   -1.314189   -0.460049    0.036797    0.111793    0.111794    0.427860    0.534700
+ik :  4,    -2.498843   -1.316277   -1.314779   -1.314318   -0.432869   -0.006132    0.067773    0.100506    0.501946    0.551014
+ik :  5,    -2.498930   -1.315963   -1.314921   -1.313834   -0.440664    0.001609    0.066505    0.111684    0.499013    0.574978
+ik :  6,    -2.498740   -1.316495   -1.314879   -1.314879   -0.427636   -0.008379    0.090427    0.090427    0.459358    0.477954
+ik :  7,    -2.498761   -1.315640   -1.315639   -1.314814   -0.425132    0.032334    0.032335    0.066474    0.559692    0.569728
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.252797  0.00000000e+00
+   1    8.047578  3.84948512e-09
+
+interstitial charge   :   1.699625
+
+total charge          :  20.000000
+total core leakage    : 3.84948512e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.76499453
+<rho|V^{XC}>     :       -31.40676240
+<rho|E^{XC}>     :       -23.80227346
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.47511944
+Total energy     :      -274.46894597
+
+band gap (eV) :         4.48583322
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.214997
+n =  2   l =  1   order = 0   enu =    -1.312694
+n =  3   l =  2   order = 0   enu =     0.411197
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.497282
+n =  2   l =  0   order = 1   enu =    -2.497282
+n =  2   l =  1   order = 0   enu =    -1.312694
+n =  2   l =  1   order = 1   enu =    -1.312694
+n =  3   l =  0   order = 0   enu =     0.214997
+n =  3   l =  0   order = 1   enu =     0.214997
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.426089
+n =  2   l =  1   order = 0   enu =     0.085023
+n =  3   l =  2   order = 0   enu =     0.301116
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.426089
+n =  2   l =  0   order = 1   enu =    -0.426089
+n =  2   l =  1   order = 0   enu =     0.085023
+n =  2   l =  1   order = 1   enu =     0.085023
+
+Lowest band energies
+ik :  0,    -2.497937   -1.312334   -1.312334   -1.312334   -0.488714    0.139883    0.139885    0.139885    0.303671    0.709160
+ik :  1,    -2.497736   -1.313867   -1.312357   -1.312356   -0.464232    0.035920    0.126097    0.126099    0.404646    0.597828
+ik :  2,    -2.497547   -1.315552   -1.312425   -1.312425   -0.434691   -0.040003    0.113508    0.113510    0.458339    0.591479
+ik :  3,    -2.497640   -1.313563   -1.312760   -1.312759   -0.457642    0.038761    0.113991    0.113993    0.429187    0.535740
+ik :  4,    -2.497435   -1.314849   -1.313351   -1.312890   -0.430386   -0.004223    0.069842    0.102684    0.503087    0.552264
+ik :  5,    -2.497522   -1.314534   -1.313493   -1.312406   -0.438199    0.003525    0.068567    0.113869    0.500287    0.576094
+ik :  6,    -2.497332   -1.315068   -1.313451   -1.313451   -0.425150   -0.006454    0.092605    0.092606    0.460347    0.479205
+ik :  7,    -2.497353   -1.314212   -1.314211   -1.313386   -0.422632    0.034330    0.034331    0.068555    0.561014    0.570875
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.253306  0.00000000e+00
+   1    8.044400  3.78771114e-09
+
+interstitial charge   :   1.702294
+
+total charge          :  20.000000
+total core leakage    : 3.78771114e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.79713602
+<rho|V^{XC}>     :       -31.40524829
+<rho|E^{XC}>     :       -23.80112561
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.48146048
+Total energy     :      -274.43612343
+
+band gap (eV) :         4.45684591
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.213325
+n =  2   l =  1   order = 0   enu =    -1.311192
+n =  3   l =  2   order = 0   enu =     0.409222
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.495762
+n =  2   l =  0   order = 1   enu =    -2.495762
+n =  2   l =  1   order = 0   enu =    -1.311192
+n =  2   l =  1   order = 1   enu =    -1.311192
+n =  3   l =  0   order = 0   enu =     0.213325
+n =  3   l =  0   order = 1   enu =     0.213325
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.424857
+n =  2   l =  1   order = 0   enu =     0.085782
+n =  3   l =  2   order = 0   enu =     0.300489
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.424857
+n =  2   l =  0   order = 1   enu =    -0.424857
+n =  2   l =  1   order = 0   enu =     0.085782
+n =  2   l =  1   order = 1   enu =     0.085782
+
+Lowest band energies
+ik :  0,    -2.496403   -1.310793   -1.310793   -1.310793   -0.487333    0.141109    0.141112    0.141112    0.304506    0.710282
+ik :  1,    -2.496202   -1.312328   -1.310816   -1.310816   -0.462831    0.037094    0.127318    0.127320    0.405492    0.598644
+ik :  2,    -2.496013   -1.314016   -1.310885   -1.310885   -0.433260   -0.038851    0.114723    0.114726    0.459149    0.592232
+ik :  3,    -2.496107   -1.312025   -1.311219   -1.311219   -0.456238    0.039928    0.115221    0.115223    0.430049    0.536583
+ik :  4,    -2.495901   -1.313311   -1.311812   -1.311350   -0.428962   -0.003053    0.071044    0.103911    0.503924    0.553090
+ik :  5,    -2.495988   -1.312997   -1.311953   -1.310866   -0.436778    0.004693    0.069768    0.115087    0.501101    0.576872
+ik :  6,    -2.495799   -1.313531   -1.311911   -1.311911   -0.423732   -0.005276    0.093843    0.093845    0.461154    0.480205
+ik :  7,    -2.495819   -1.312673   -1.312673   -1.311847   -0.421207    0.035520    0.035522    0.069770    0.561986    0.571650
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.253271  0.00000000e+00
+   1    8.043943  3.70224824e-09
+
+interstitial charge   :   1.702786
+
+total charge          :  20.000000
+total core leakage    : 3.70224824e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.82085392
+<rho|V^{XC}>     :       -31.40541142
+<rho|E^{XC}>     :       -23.80124798
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.48598615
+Total energy     :      -274.41747312
+
+band gap (eV) :         4.44619878
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.212317
+n =  2   l =  1   order = 0   enu =    -1.309840
+n =  3   l =  2   order = 0   enu =     0.408003
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.494383
+n =  2   l =  0   order = 1   enu =    -2.494383
+n =  2   l =  1   order = 0   enu =    -1.309840
+n =  2   l =  1   order = 1   enu =    -1.309840
+n =  3   l =  0   order = 0   enu =     0.212317
+n =  3   l =  0   order = 1   enu =     0.212317
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.424100
+n =  2   l =  1   order = 0   enu =     0.086170
+n =  3   l =  2   order = 0   enu =     0.299864
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.424100
+n =  2   l =  0   order = 1   enu =    -0.424100
+n =  2   l =  1   order = 0   enu =     0.086170
+n =  2   l =  1   order = 1   enu =     0.086170
+
+Lowest band energies
+ik :  0,    -2.495016   -1.309415   -1.309415   -1.309415   -0.486434    0.141851    0.141854    0.141854    0.305131    0.711105
+ik :  1,    -2.494814   -1.310952   -1.309438   -1.309438   -0.461923    0.037849    0.128061    0.128064    0.406095    0.599241
+ik :  2,    -2.494626   -1.312643   -1.309508   -1.309508   -0.432340   -0.038091    0.115468    0.115470    0.459751    0.592739
+ik :  3,    -2.494719   -1.310649   -1.309842   -1.309841   -0.455332    0.040676    0.115976    0.115978    0.430658    0.537223
+ik :  4,    -2.494514   -1.311937   -1.310436   -1.309973   -0.428049   -0.002291    0.071799    0.104667    0.504539    0.553672
+ik :  5,    -2.494601   -1.311622   -1.310577   -1.309489   -0.435864    0.005452    0.070524    0.115832    0.501668    0.577431
+ik :  6,    -2.494411   -1.312157   -1.310535   -1.310535   -0.422826   -0.004513    0.094610    0.094612    0.461769    0.480962
+ik :  7,    -2.494431   -1.311298   -1.311298   -1.310471   -0.420295    0.036280    0.036282    0.070535    0.562697    0.572198
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.253120  0.00000000e+00
+   1    8.044140  3.72226233e-09
+
+interstitial charge   :   1.702741
+
+total charge          :  20.000000
+total core leakage    : 3.72226233e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.83818453
+<rho|V^{XC}>     :       -31.40586647
+<rho|E^{XC}>     :       -23.80159161
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.48955483
+Total energy     :      -274.40559654
+
+band gap (eV) :         4.44299720
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.211765
+n =  2   l =  1   order = 0   enu =    -1.308783
+n =  3   l =  2   order = 0   enu =     0.407316
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.493293
+n =  2   l =  0   order = 1   enu =    -2.493293
+n =  2   l =  1   order = 0   enu =    -1.308783
+n =  2   l =  1   order = 1   enu =    -1.308783
+n =  3   l =  0   order = 0   enu =     0.211765
+n =  3   l =  0   order = 1   enu =     0.211765
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.423600
+n =  2   l =  1   order = 0   enu =     0.086378
+n =  3   l =  2   order = 0   enu =     0.299312
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.423600
+n =  2   l =  0   order = 1   enu =    -0.423600
+n =  2   l =  1   order = 0   enu =     0.086378
+n =  2   l =  1   order = 1   enu =     0.086378
+
+Lowest band energies
+ik :  0,    -2.493921   -1.308342   -1.308342   -1.308342   -0.485828    0.142331    0.142333    0.142333    0.305594    0.711671
+ik :  1,    -2.493719   -1.309881   -1.308365   -1.308365   -0.461310    0.038349    0.128543    0.128545    0.406531    0.599664
+ik :  2,    -2.493530   -1.311574   -1.308436   -1.308435   -0.431717   -0.037588    0.115950    0.115953    0.460180    0.593106
+ik :  3,    -2.493624   -1.309578   -1.308769   -1.308769   -0.454719    0.041171    0.116465    0.116466    0.431097    0.537676
+ik :  4,    -2.493418   -1.310867   -1.309364   -1.308901   -0.427430   -0.001790    0.072292    0.105156    0.504975    0.554086
+ik :  5,    -2.493505   -1.310552   -1.309505   -1.308416   -0.435245    0.005954    0.071016    0.116316    0.502074    0.577828
+ik :  6,    -2.493315   -1.311087   -1.309463   -1.309463   -0.422211   -0.004013    0.095107    0.095108    0.462206    0.481498
+ik :  7,    -2.493336   -1.310227   -1.310227   -1.309399   -0.419676    0.036777    0.036778    0.071035    0.563199    0.572588
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.252997  0.00000000e+00
+   1    8.044307  3.76148655e-09
+
+interstitial charge   :   1.702696
+
+total charge          :  20.000000
+total core leakage    : 3.76148655e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.85025668
+<rho|V^{XC}>     :       -31.40620950
+<rho|E^{XC}>     :       -23.80185053
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.49240586
+Total energy     :      -274.39787247
+
+band gap (eV) :         4.44253610
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.211499
+n =  2   l =  1   order = 0   enu =    -1.308040
+n =  3   l =  2   order = 0   enu =     0.406968
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.492517
+n =  2   l =  0   order = 1   enu =    -2.492517
+n =  2   l =  1   order = 0   enu =    -1.308040
+n =  2   l =  1   order = 1   enu =    -1.308040
+n =  3   l =  0   order = 0   enu =     0.211499
+n =  3   l =  0   order = 1   enu =     0.211499
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.423287
+n =  2   l =  1   order = 0   enu =     0.086478
+n =  3   l =  2   order = 0   enu =     0.298871
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.423287
+n =  2   l =  0   order = 1   enu =    -0.423287
+n =  2   l =  1   order = 0   enu =     0.086478
+n =  2   l =  1   order = 1   enu =     0.086478
+
+Lowest band energies
+ik :  0,    -2.493142   -1.307590   -1.307590   -1.307590   -0.485440    0.142627    0.142629    0.142629    0.305915    0.712035
+ik :  1,    -2.492940   -1.309131   -1.307614   -1.307614   -0.460917    0.038662    0.128840    0.128842    0.406828    0.599947
+ik :  2,    -2.492751   -1.310826   -1.307684   -1.307684   -0.431316   -0.037274    0.116248    0.116250    0.460467    0.593358
+ik :  3,    -2.492845   -1.308828   -1.308018   -1.308018   -0.454325    0.041481    0.116766    0.116767    0.431395    0.537976
+ik :  4,    -2.492639   -1.310118   -1.308614   -1.308150   -0.427032   -0.001477    0.072596    0.105458    0.505267    0.554366
+ik :  5,    -2.492726   -1.309803   -1.308755   -1.307665   -0.434847    0.006267    0.071321    0.116614    0.502350    0.578094
+ik :  6,    -2.492537   -1.310338   -1.308712   -1.308712   -0.421815   -0.003702    0.095412    0.095414    0.462498    0.481852
+ik :  7,    -2.492557   -1.309477   -1.309477   -1.308649   -0.419278    0.037085    0.037086    0.071344    0.563532    0.572850
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.252916  0.00000000e+00
+   1    8.044399  3.77042561e-09
+
+interstitial charge   :   1.702685
+
+total charge          :  20.000000
+total core leakage    : 3.77042561e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.85806125
+<rho|V^{XC}>     :       -31.40645197
+<rho|E^{XC}>     :       -23.80203342
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.49452689
+Total energy     :      -274.39336849
+
+band gap (eV) :         4.44324159
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.211389
+n =  2   l =  1   order = 0   enu =    -1.307560
+n =  3   l =  2   order = 0   enu =     0.406812
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.492009
+n =  2   l =  0   order = 1   enu =    -2.492009
+n =  2   l =  1   order = 0   enu =    -1.307560
+n =  2   l =  1   order = 1   enu =    -1.307560
+n =  3   l =  0   order = 0   enu =     0.211389
+n =  3   l =  0   order = 1   enu =     0.211389
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.423106
+n =  2   l =  1   order = 0   enu =     0.086515
+n =  3   l =  2   order = 0   enu =     0.298549
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.423106
+n =  2   l =  0   order = 1   enu =    -0.423106
+n =  2   l =  1   order = 0   enu =     0.086515
+n =  2   l =  1   order = 1   enu =     0.086515
+
+Lowest band energies
+ik :  0,    -2.492634   -1.307106   -1.307106   -1.307106   -0.485210    0.142796    0.142798    0.142798    0.306123    0.712253
+ik :  1,    -2.492432   -1.308648   -1.307130   -1.307130   -0.460683    0.038844    0.129010    0.129011    0.407017    0.600124
+ik :  2,    -2.492243   -1.310344   -1.307200   -1.307200   -0.431078   -0.037092    0.116419    0.116420    0.460646    0.593520
+ik :  3,    -2.492336   -1.308345   -1.307534   -1.307534   -0.454091    0.041661    0.116938    0.116939    0.431585    0.538162
+ik :  4,    -2.492131   -1.309636   -1.308130   -1.307667   -0.426794   -0.001297    0.072770    0.105630    0.505449    0.554542
+ik :  5,    -2.492218   -1.309320   -1.308271   -1.307181   -0.434610    0.006449    0.071495    0.116784    0.502524    0.578261
+ik :  6,    -2.492028   -1.309856   -1.308229   -1.308229   -0.421578   -0.003524    0.095586    0.095587    0.462679    0.482071
+ik :  7,    -2.492049   -1.308994   -1.308994   -1.308166   -0.419040    0.037261    0.037262    0.071521    0.563737    0.573015
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.252864  0.00000000e+00
+   1    8.044450  3.70900459e-09
+
+interstitial charge   :   1.702687
+
+total charge          :  20.000000
+total core leakage    : 3.70900459e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.86272332
+<rho|V^{XC}>     :       -31.40661667
+<rho|E^{XC}>     :       -23.80215758
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.49591076
+Total energy     :      -274.39097697
+
+band gap (eV) :         4.44431371
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.211354
+n =  2   l =  1   order = 0   enu =    -1.307272
+n =  3   l =  2   order = 0   enu =     0.406751
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.491702
+n =  2   l =  0   order = 1   enu =    -2.491702
+n =  2   l =  1   order = 0   enu =    -1.307272
+n =  2   l =  1   order = 1   enu =    -1.307272
+n =  3   l =  0   order = 0   enu =     0.211354
+n =  3   l =  0   order = 1   enu =     0.211354
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.423010
+n =  2   l =  1   order = 0   enu =     0.086522
+n =  3   l =  2   order = 0   enu =     0.298336
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.423010
+n =  2   l =  0   order = 1   enu =    -0.423010
+n =  2   l =  1   order = 0   enu =     0.086522
+n =  2   l =  1   order = 1   enu =     0.086522
+
+Lowest band energies
+ik :  0,    -2.492325   -1.306816   -1.306816   -1.306816   -0.485083    0.142886    0.142887    0.142887    0.306249    0.712374
+ik :  1,    -2.492123   -1.308358   -1.306840   -1.306840   -0.460554    0.038943    0.129101    0.129101    0.407129    0.600226
+ik :  2,    -2.491934   -1.310054   -1.306910   -1.306910   -0.430945   -0.036994    0.116509    0.116510    0.460751    0.593618
+ik :  3,    -2.492028   -1.308055   -1.307244   -1.307244   -0.453962    0.041759    0.117029    0.117029    0.431697    0.538269
+ik :  4,    -2.491822   -1.309346   -1.307840   -1.307376   -0.426662   -0.001200    0.072863    0.105722    0.505555    0.554646
+ik :  5,    -2.491909   -1.309031   -1.307981   -1.306891   -0.434478    0.006547    0.071588    0.116875    0.502628    0.578359
+ik :  6,    -2.491720   -1.309566   -1.307939   -1.307938   -0.421447   -0.003429    0.095678    0.095679    0.462784    0.482196
+ik :  7,    -2.491740   -1.308705   -1.308705   -1.307876   -0.418908    0.037355    0.037356    0.071616    0.563856    0.573112
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.252833  0.00000000e+00
+   1    8.044473  3.74323035e-09
+
+interstitial charge   :   1.702694
+
+total charge          :  20.000000
+total core leakage    : 3.74323035e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.86529682
+<rho|V^{XC}>     :       -31.40670760
+<rho|E^{XC}>     :       -23.80222610
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.49666176
+Total energy     :      -274.38968457
+
+band gap (eV) :         4.44529021
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.211346
+n =  2   l =  1   order = 0   enu =    -1.307110
+n =  3   l =  2   order = 0   enu =     0.406731
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.491528
+n =  2   l =  0   order = 1   enu =    -2.491528
+n =  2   l =  1   order = 0   enu =    -1.307110
+n =  2   l =  1   order = 1   enu =    -1.307110
+n =  3   l =  0   order = 0   enu =     0.211346
+n =  3   l =  0   order = 1   enu =     0.211346
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.422960
+n =  2   l =  1   order = 0   enu =     0.086519
+n =  3   l =  2   order = 0   enu =     0.298207
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.422960
+n =  2   l =  0   order = 1   enu =    -0.422960
+n =  2   l =  1   order = 0   enu =     0.086519
+n =  2   l =  1   order = 1   enu =     0.086519
+
+Lowest band energies
+ik :  0,    -2.492151   -1.306652   -1.306652   -1.306652   -0.485016    0.142932    0.142933    0.142933    0.306320    0.712437
+ik :  1,    -2.491949   -1.308195   -1.306676   -1.306676   -0.460486    0.038994    0.129147    0.129147    0.407192    0.600282
+ik :  2,    -2.491760   -1.309892   -1.306747   -1.306747   -0.430875   -0.036944    0.116556    0.116556    0.460808    0.593674
+ik :  3,    -2.491854   -1.307892   -1.307080   -1.307080   -0.453893    0.041809    0.117075    0.117075    0.431761    0.538327
+ik :  4,    -2.491648   -1.309183   -1.307677   -1.307213   -0.426592   -0.001151    0.072910    0.105768    0.505613    0.554704
+ik :  5,    -2.491735   -1.308868   -1.307818   -1.306728   -0.434409    0.006597    0.071635    0.116921    0.502686    0.578413
+ik :  6,    -2.491546   -1.309403   -1.307775   -1.307775   -0.421377   -0.003381    0.095725    0.095725    0.462841    0.482264
+ik :  7,    -2.491566   -1.308542   -1.308542   -1.307712   -0.418838    0.037403    0.037403    0.071663    0.563920    0.573165
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.252817  0.00000000e+00
+   1    8.044475  3.65795545e-09
+
+interstitial charge   :   1.702708
+
+total charge          :  20.000000
+total core leakage    : 3.65795545e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.86659398
+<rho|V^{XC}>     :       -31.40673567
+<rho|E^{XC}>     :       -23.80224721
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.49697429
+Total energy     :      -274.38888745
+
+band gap (eV) :         4.44598408
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.211348
+n =  2   l =  1   order = 0   enu =    -1.307025
+n =  3   l =  2   order = 0   enu =     0.406726
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.491437
+n =  2   l =  0   order = 1   enu =    -2.491437
+n =  2   l =  1   order = 0   enu =    -1.307025
+n =  2   l =  1   order = 1   enu =    -1.307025
+n =  3   l =  0   order = 0   enu =     0.211348
+n =  3   l =  0   order = 1   enu =     0.211348
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.422937
+n =  2   l =  1   order = 0   enu =     0.086516
+n =  3   l =  2   order = 0   enu =     0.298137
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.422937
+n =  2   l =  0   order = 1   enu =    -0.422937
+n =  2   l =  1   order = 0   enu =     0.086516
+n =  2   l =  1   order = 1   enu =     0.086516
+
+Lowest band energies
+ik :  0,    -2.492060   -1.306567   -1.306567   -1.306567   -0.484984    0.142955    0.142955    0.142955    0.306358    0.712467
+ik :  1,    -2.491858   -1.308110   -1.306591   -1.306591   -0.460453    0.039018    0.129169    0.129169    0.407225    0.600311
+ik :  2,    -2.491669   -1.309807   -1.306661   -1.306661   -0.430841   -0.036920    0.116578    0.116578    0.460838    0.593705
+ik :  3,    -2.491763   -1.307806   -1.306995   -1.306995   -0.453860    0.041834    0.117097    0.117097    0.431794    0.538355
+ik :  4,    -2.491557   -1.309098   -1.307592   -1.307128   -0.426558   -0.001128    0.072932    0.105790    0.505642    0.554734
+ik :  5,    -2.491644   -1.308783   -1.307733   -1.306642   -0.434375    0.006620    0.071657    0.116943    0.502717    0.578441
+ik :  6,    -2.491454   -1.309318   -1.307690   -1.307690   -0.421343   -0.003358    0.095747    0.095747    0.462869    0.482298
+ik :  7,    -2.491475   -1.308456   -1.308456   -1.307627   -0.418803    0.037425    0.037425    0.071686    0.563953    0.573193
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.252810  0.00000000e+00
+   1    8.044468  3.68913246e-09
+
+interstitial charge   :   1.702722
+
+total charge          :  20.000000
+total core leakage    : 3.68913246e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.86716463
+<rho|V^{XC}>     :       -31.40673062
+<rho|E^{XC}>     :       -23.80224334
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.49705459
+Total energy     :      -274.38838787
+
+band gap (eV) :         4.44642140
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.211350
+n =  2   l =  1   order = 0   enu =    -1.306984
+n =  3   l =  2   order = 0   enu =     0.406725
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.491393
+n =  2   l =  0   order = 1   enu =    -2.491393
+n =  2   l =  1   order = 0   enu =    -1.306984
+n =  2   l =  1   order = 1   enu =    -1.306984
+n =  3   l =  0   order = 0   enu =     0.211350
+n =  3   l =  0   order = 1   enu =     0.211350
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.422926
+n =  2   l =  1   order = 0   enu =     0.086513
+n =  3   l =  2   order = 0   enu =     0.298103
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.422926
+n =  2   l =  0   order = 1   enu =    -0.422926
+n =  2   l =  1   order = 0   enu =     0.086513
+n =  2   l =  1   order = 1   enu =     0.086513
+
+Lowest band energies
+ik :  0,    -2.492017   -1.306525   -1.306525   -1.306525   -0.484969    0.142965    0.142965    0.142965    0.306377    0.712480
+ik :  1,    -2.491814   -1.308069   -1.306550   -1.306550   -0.460437    0.039029    0.129179    0.129179    0.407242    0.600324
+ik :  2,    -2.491625   -1.309766   -1.306620   -1.306620   -0.430825   -0.036910    0.116588    0.116588    0.460852    0.593721
+ik :  3,    -2.491719   -1.307765   -1.306954   -1.306954   -0.453845    0.041845    0.117107    0.117107    0.431811    0.538368
+ik :  4,    -2.491513   -1.309057   -1.307551   -1.307087   -0.426542   -0.001118    0.072942    0.105800    0.505656    0.554749
+ik :  5,    -2.491600   -1.308742   -1.307692   -1.306601   -0.434359    0.006631    0.071667    0.116953    0.502733    0.578455
+ik :  6,    -2.491411   -1.309277   -1.307649   -1.307649   -0.421327   -0.003348    0.095757    0.095757    0.462881    0.482314
+ik :  7,    -2.491431   -1.308415   -1.308415   -1.307586   -0.418787    0.037435    0.037435    0.071696    0.563969    0.573207
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.252807  0.00000000e+00
+   1    8.044459  3.75565309e-09
+
+interstitial charge   :   1.702734
+
+total charge          :  20.000000
+total core leakage    : 3.75565309e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.86736374
+<rho|V^{XC}>     :       -31.40671437
+<rho|E^{XC}>     :       -23.80223105
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.49704958
+Total energy     :      -274.38810154
+
+band gap (eV) :         4.44666715
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.211352
+n =  2   l =  1   order = 0   enu =    -1.306966
+n =  3   l =  2   order = 0   enu =     0.406725
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.491374
+n =  2   l =  0   order = 1   enu =    -2.491374
+n =  2   l =  1   order = 0   enu =    -1.306966
+n =  2   l =  1   order = 1   enu =    -1.306966
+n =  3   l =  0   order = 0   enu =     0.211352
+n =  3   l =  0   order = 1   enu =     0.211352
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.422919
+n =  2   l =  1   order = 0   enu =     0.086514
+n =  3   l =  2   order = 0   enu =     0.298088
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.422919
+n =  2   l =  0   order = 1   enu =    -0.422919
+n =  2   l =  1   order = 0   enu =     0.086514
+n =  2   l =  1   order = 1   enu =     0.086514
+
+Lowest band energies
+ik :  0,    -2.491998   -1.306508   -1.306508   -1.306508   -0.484960    0.142972    0.142972    0.142972    0.306387    0.712486
+ik :  1,    -2.491796   -1.308051   -1.306532   -1.306532   -0.460428    0.039036    0.129186    0.129186    0.407251    0.600331
+ik :  2,    -2.491607   -1.309748   -1.306602   -1.306602   -0.430815   -0.036904    0.116594    0.116594    0.460859    0.593730
+ik :  3,    -2.491700   -1.307748   -1.306936   -1.306936   -0.453836    0.041851    0.117114    0.117114    0.431821    0.538374
+ik :  4,    -2.491495   -1.309039   -1.307533   -1.307069   -0.426532   -0.001112    0.072948    0.105806    0.505663    0.554758
+ik :  5,    -2.491582   -1.308724   -1.307674   -1.306583   -0.434349    0.006637    0.071673    0.116959    0.502742    0.578462
+ik :  6,    -2.491392   -1.309259   -1.307631   -1.307631   -0.421317   -0.003343    0.095763    0.095763    0.462887    0.482321
+ik :  7,    -2.491412   -1.308397   -1.308397   -1.307568   -0.418777    0.037441    0.037441    0.071702    0.563976    0.573214
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.252808  0.00000000e+00
+   1    8.044442  3.74392862e-09
+
+interstitial charge   :   1.702750
+
+total charge          :  20.000000
+total core leakage    : 3.74392862e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.86741378
+<rho|V^{XC}>     :       -31.40669156
+<rho|E^{XC}>     :       -23.80221380
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.49703479
+Total energy     :      -274.38791756
+
+band gap (eV) :         4.44675656
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.211353
+n =  2   l =  1   order = 0   enu =    -1.306958
+n =  3   l =  2   order = 0   enu =     0.406725
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.491366
+n =  2   l =  0   order = 1   enu =    -2.491366
+n =  2   l =  1   order = 0   enu =    -1.306958
+n =  2   l =  1   order = 1   enu =    -1.306958
+n =  3   l =  0   order = 0   enu =     0.211353
+n =  3   l =  0   order = 1   enu =     0.211353
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.422915
+n =  2   l =  1   order = 0   enu =     0.086514
+n =  3   l =  2   order = 0   enu =     0.298082
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.422915
+n =  2   l =  0   order = 1   enu =    -0.422915
+n =  2   l =  1   order = 0   enu =     0.086514
+n =  2   l =  1   order = 1   enu =     0.086514
+
+Lowest band energies
+ik :  0,    -2.491989   -1.306499   -1.306499   -1.306499   -0.484956    0.142975    0.142975    0.142975    0.306392    0.712488
+ik :  1,    -2.491787   -1.308043   -1.306524   -1.306524   -0.460424    0.039039    0.129189    0.129189    0.407256    0.600334
+ik :  2,    -2.491598   -1.309740   -1.306594   -1.306594   -0.430810   -0.036902    0.116598    0.116598    0.460862    0.593735
+ik :  3,    -2.491692   -1.307739   -1.306928   -1.306928   -0.453831    0.041854    0.117117    0.117117    0.431826    0.538376
+ik :  4,    -2.491486   -1.309031   -1.307525   -1.307061   -0.426527   -0.001109    0.072951    0.105810    0.505667    0.554761
+ik :  5,    -2.491573   -1.308716   -1.307666   -1.306575   -0.434344    0.006640    0.071676    0.116962    0.502746    0.578465
+ik :  6,    -2.491384   -1.309251   -1.307623   -1.307623   -0.421312   -0.003340    0.095766    0.095766    0.462890    0.482325
+ik :  7,    -2.491404   -1.308389   -1.308389   -1.307560   -0.418772    0.037444    0.037444    0.071705    0.563980    0.573218
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.252809  0.00000000e+00
+   1    8.044432  3.77083194e-09
+
+interstitial charge   :   1.702758
+
+total charge          :  20.000000
+total core leakage    : 3.77083194e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.86741122
+<rho|V^{XC}>     :       -31.40667920
+<rho|E^{XC}>     :       -23.80220444
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.49703147
+Total energy     :      -274.38785037
+
+band gap (eV) :         4.44680475
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.211353
+n =  2   l =  1   order = 0   enu =    -1.306954
+n =  3   l =  2   order = 0   enu =     0.406726
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.491363
+n =  2   l =  0   order = 1   enu =    -2.491363
+n =  2   l =  1   order = 0   enu =    -1.306954
+n =  2   l =  1   order = 1   enu =    -1.306954
+n =  3   l =  0   order = 0   enu =     0.211353
+n =  3   l =  0   order = 1   enu =     0.211353
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.422913
+n =  2   l =  1   order = 0   enu =     0.086514
+n =  3   l =  2   order = 0   enu =     0.298079
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.422913
+n =  2   l =  0   order = 1   enu =    -0.422913
+n =  2   l =  1   order = 0   enu =     0.086514
+n =  2   l =  1   order = 1   enu =     0.086514
+
+Lowest band energies
+ik :  0,    -2.491986   -1.306496   -1.306496   -1.306496   -0.484954    0.142976    0.142976    0.142976    0.306394    0.712489
+ik :  1,    -2.491784   -1.308040   -1.306520   -1.306520   -0.460422    0.039040    0.129190    0.129190    0.407258    0.600336
+ik :  2,    -2.491595   -1.309737   -1.306591   -1.306591   -0.430809   -0.036901    0.116598    0.116598    0.460864    0.593737
+ik :  3,    -2.491689   -1.307736   -1.306925   -1.306925   -0.453829    0.041855    0.117118    0.117118    0.431827    0.538377
+ik :  4,    -2.491483   -1.309028   -1.307522   -1.307057   -0.426526   -0.001108    0.072952    0.105810    0.505668    0.554763
+ik :  5,    -2.491570   -1.308713   -1.307662   -1.306572   -0.434343    0.006641    0.071677    0.116963    0.502748    0.578466
+ik :  6,    -2.491380   -1.309248   -1.307620   -1.307620   -0.421310   -0.003339    0.095767    0.095767    0.462891    0.482326
+ik :  7,    -2.491401   -1.308386   -1.308386   -1.307557   -0.418770    0.037444    0.037444    0.071706    0.563981    0.573219
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.252809  0.00000000e+00
+   1    8.044431  3.71492839e-09
+
+interstitial charge   :   1.702760
+
+total charge          :  20.000000
+total core leakage    : 3.71492839e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.86739228
+<rho|V^{XC}>     :       -31.40667547
+<rho|E^{XC}>     :       -23.80220163
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.49703025
+Total energy     :      -274.38784643
+
+band gap (eV) :         4.44684275
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.211353
+n =  2   l =  1   order = 0   enu =    -1.306953
+n =  3   l =  2   order = 0   enu =     0.406726
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.491362
+n =  2   l =  0   order = 1   enu =    -2.491362
+n =  2   l =  1   order = 0   enu =    -1.306953
+n =  2   l =  1   order = 1   enu =    -1.306953
+n =  3   l =  0   order = 0   enu =     0.211353
+n =  3   l =  0   order = 1   enu =     0.211353
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.422914
+n =  2   l =  1   order = 0   enu =     0.086513
+n =  3   l =  2   order = 0   enu =     0.298079
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.422914
+n =  2   l =  0   order = 1   enu =    -0.422914
+n =  2   l =  1   order = 0   enu =     0.086513
+n =  2   l =  1   order = 1   enu =     0.086513
+
+Lowest band energies
+ik :  0,    -2.491985   -1.306495   -1.306495   -1.306495   -0.484955    0.142975    0.142975    0.142975    0.306395    0.712490
+ik :  1,    -2.491783   -1.308039   -1.306519   -1.306519   -0.460422    0.039039    0.129189    0.129189    0.407258    0.600336
+ik :  2,    -2.491594   -1.309736   -1.306590   -1.306590   -0.430809   -0.036901    0.116598    0.116598    0.460864    0.593737
+ik :  3,    -2.491688   -1.307735   -1.306924   -1.306924   -0.453830    0.041855    0.117117    0.117117    0.431828    0.538378
+ik :  4,    -2.491482   -1.309027   -1.307521   -1.307056   -0.426526   -0.001109    0.072951    0.105810    0.505669    0.554763
+ik :  5,    -2.491569   -1.308712   -1.307662   -1.306571   -0.434343    0.006640    0.071676    0.116963    0.502748    0.578467
+ik :  6,    -2.491379   -1.309247   -1.307619   -1.307619   -0.421311   -0.003340    0.095767    0.095767    0.462891    0.482326
+ik :  7,    -2.491400   -1.308385   -1.308385   -1.307556   -0.418771    0.037444    0.037444    0.071706    0.563982    0.573219
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.252809  0.00000000e+00
+   1    8.044433  3.67390966e-09
+
+interstitial charge   :   1.702759
+
+total charge          :  20.000000
+total core leakage    : 3.67390966e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.86737243
+<rho|V^{XC}>     :       -31.40667545
+<rho|E^{XC}>     :       -23.80220161
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.49702593
+Total energy     :      -274.38785940
+
+band gap (eV) :         4.44687349
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.211354
+n =  2   l =  1   order = 0   enu =    -1.306953
+n =  3   l =  2   order = 0   enu =     0.406727
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.491362
+n =  2   l =  0   order = 1   enu =    -2.491362
+n =  2   l =  1   order = 0   enu =    -1.306953
+n =  2   l =  1   order = 1   enu =    -1.306953
+n =  3   l =  0   order = 0   enu =     0.211354
+n =  3   l =  0   order = 1   enu =     0.211354
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.422915
+n =  2   l =  1   order = 0   enu =     0.086513
+n =  3   l =  2   order = 0   enu =     0.298079
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.422915
+n =  2   l =  0   order = 1   enu =    -0.422915
+n =  2   l =  1   order = 0   enu =     0.086513
+n =  2   l =  1   order = 1   enu =     0.086513
+
+Lowest band energies
+ik :  0,    -2.491985   -1.306495   -1.306495   -1.306495   -0.484956    0.142974    0.142974    0.142974    0.306395    0.712490
+ik :  1,    -2.491783   -1.308039   -1.306519   -1.306519   -0.460423    0.039039    0.129188    0.129188    0.407258    0.600336
+ik :  2,    -2.491594   -1.309736   -1.306590   -1.306590   -0.430810   -0.036902    0.116597    0.116597    0.460864    0.593737
+ik :  3,    -2.491688   -1.307735   -1.306924   -1.306924   -0.453831    0.041854    0.117116    0.117116    0.431828    0.538378
+ik :  4,    -2.491482   -1.309027   -1.307521   -1.307056   -0.426527   -0.001109    0.072951    0.105809    0.505669    0.554763
+ik :  5,    -2.491569   -1.308712   -1.307661   -1.306571   -0.434344    0.006640    0.071676    0.116962    0.502748    0.578467
+ik :  6,    -2.491379   -1.309247   -1.307619   -1.307619   -0.421312   -0.003340    0.095766    0.095766    0.462891    0.482327
+ik :  7,    -2.491400   -1.308385   -1.308385   -1.307556   -0.418772    0.037443    0.037443    0.071705    0.563981    0.573219
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.252808  0.00000000e+00
+   1    8.044436  3.74222480e-09
+
+interstitial charge   :   1.702756
+
+total charge          :  20.000000
+total core leakage    : 3.74222480e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.86735614
+<rho|V^{XC}>     :       -31.40667688
+<rho|E^{XC}>     :       -23.80220270
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.49702026
+Total energy     :      -274.38787539
+
+band gap (eV) :         4.44689800
+Efermi        :         0.21250000
+
+Linearization energies
+Atom : Mg, class id : 0
+augmented waves
+n =  3   l =  0   order = 0   enu =     0.211354
+n =  2   l =  1   order = 0   enu =    -1.306953
+n =  3   l =  2   order = 0   enu =     0.406727
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -2.491362
+n =  2   l =  0   order = 1   enu =    -2.491362
+n =  2   l =  1   order = 0   enu =    -1.306953
+n =  2   l =  1   order = 1   enu =    -1.306953
+n =  3   l =  0   order = 0   enu =     0.211354
+n =  3   l =  0   order = 1   enu =     0.211354
+
+Atom : O, class id : 1
+augmented waves
+n =  2   l =  0   order = 0   enu =    -0.422916
+n =  2   l =  1   order = 0   enu =     0.086512
+n =  3   l =  2   order = 0   enu =     0.298079
+n =  4   l =  3   order = 0   enu =     0.150000
+n =  5   l =  4   order = 0   enu =     0.150000
+n =  6   l =  5   order = 0   enu =     0.150000
+n =  7   l =  6   order = 0   enu =     0.150000
+n =  8   l =  7   order = 0   enu =     0.150000
+n =  9   l =  8   order = 0   enu =     0.150000
+local orbitals
+n =  2   l =  0   order = 0   enu =    -0.422916
+n =  2   l =  0   order = 1   enu =    -0.422916
+n =  2   l =  1   order = 0   enu =     0.086512
+n =  2   l =  1   order = 1   enu =     0.086512
+
+Lowest band energies
+ik :  0,    -2.491985   -1.306495   -1.306495   -1.306495   -0.484957    0.142974    0.142974    0.142974    0.306395    0.712490
+ik :  1,    -2.491783   -1.308039   -1.306519   -1.306519   -0.460424    0.039038    0.129187    0.129187    0.407258    0.600336
+ik :  2,    -2.491594   -1.309736   -1.306590   -1.306590   -0.430811   -0.036902    0.116596    0.116596    0.460864    0.593737
+ik :  3,    -2.491688   -1.307735   -1.306924   -1.306924   -0.453832    0.041853    0.117115    0.117115    0.431827    0.538378
+ik :  4,    -2.491482   -1.309027   -1.307521   -1.307056   -0.426528   -0.001110    0.072950    0.105808    0.505669    0.554763
+ik :  5,    -2.491569   -1.308712   -1.307662   -1.306571   -0.434345    0.006639    0.071675    0.116961    0.502748    0.578467
+ik :  6,    -2.491379   -1.309247   -1.307619   -1.307619   -0.421313   -0.003341    0.095765    0.095765    0.462891    0.482326
+ik :  7,    -2.491400   -1.308385   -1.308385   -1.307556   -0.418773    0.037443    0.037443    0.071704    0.563981    0.573219
+
+Charges and magnetic moments
+--------------------------------------------------------------------------------
+atom      charge    core leakage
+--------------------------------------------------------------------------------
+   0   10.252807  0.00000000e+00
+   1    8.044439  3.71612577e-09
+
+interstitial charge   :   1.702753
+
+total charge          :  20.000000
+total core leakage    : 3.71612577e-09
+pseudo charge error :     0.000000000000
+
+Energy
+--------------------------------------------------------------------------------
+kinetic energy   :       273.86734648
+<rho|V^{XC}>     :       -31.40667847
+<rho|E^{XC}>     :       -23.80220391
+<mag|B^{XC}>     :         0.00000000
+<rho|V^{H}>      :      -383.49701552
+Total energy     :      -274.38788670
+
+band gap (eV) :         4.44691643
+Efermi        :         0.21250000
+
+Timers
+--------------------------------------------------------------------------------
+elk::band_occ                                                :     0.0265 (total)       0.0011 (average)
+elk::find_eigen_states                                       :    29.1374 (total)       1.2141 (average)
+elk::generate_density                                        :     2.0846 (total)       0.0869 (average)
+elk::integrate_density                                       :     0.0067 (total)       0.0003 (average)
+elk::iteration                                               :    45.5628 (total)       1.8985 (average)
+elk::mixer                                                   :     0.0495 (total)       0.0020 (average)
+elk::potential                                               :     6.4721 (total)       0.2697 (average)
+elk::symmetrization                                          :     7.7778 (total)       0.1620 (average)
+sirius::Atom::generate_radial_integrals                      :    20.2508 (total)       0.4219 (average)
+sirius::AtomSymmetryClass::generate_core_charge_density      :     1.0133 (total)       0.0211 (average)
+sirius::AtomSymmetryClass::generate_radial_functions         :     4.6055 (total)       0.0959 (average)
+sirius::AtomSymmetryClass::generate_radial_integrals         :     0.3170 (total)       0.0066 (average)
+sirius::AtomSymmetryClass::transform_radial_functions        :     0.0314 (total)       0.0007 (average)
+sirius::AtomType::solve_free_atom                            :     1.1314 (total)       0.5657 (average)
+sirius::Density::add_kpoint_contribution                     :     0.4576 (total)       0.0024 (average)
+sirius::Density::add_kpoint_contribution:it                  :     0.3995 (total)       0.0021 (average)
+sirius::Density::add_kpoint_contribution:mt                  :     0.0568 (total)       0.0003 (average)
+sirius::Density::find_band_occupancies                       :     0.0007 (total)       0.0000 (average)
+sirius::Density::find_eigen_states                           :    29.1373 (total)       1.2141 (average)
+sirius::Density::generate                                    :     2.0845 (total)       0.0869 (average)
+sirius::Density::generate:expand_lm                          :     0.5055 (total)       0.0105 (average)
+sirius::Density::generate:sum_zdens                          :     0.0924 (total)       0.0019 (average)
+sirius::Density::integrate                                   :     0.0066 (total)       0.0003 (average)
+sirius::Global::generate_radial_functions                    :     4.6220 (total)       0.1926 (average)
+sirius::Global::generate_radial_integrals                    :    20.5681 (total)       0.8570 (average)
+sirius::PeriodicFunction::sync                               :     0.0028 (total)       0.0001 (average)
+sirius::Potential::Potential                                 :     0.0224 (total)       0.0224 (average)
+sirius::Potential::generate_effective_potential              :     6.7323 (total)       0.2693 (average)
+sirius::Potential::poisson                                   :     2.4269 (total)       0.0971 (average)
+sirius::Potential::poisson:bc                                :     0.1627 (total)       0.0065 (average)
+sirius::Potential::poisson:vmt                               :     1.7798 (total)       0.0712 (average)
+sirius::Potential::poisson_pw                                :     0.0770 (total)       0.0031 (average)
+sirius::Potential::poisson_sum_G                             :     0.3419 (total)       0.0068 (average)
+sirius::Potential::xc                                        :     3.6546 (total)       0.1462 (average)
+sirius::Potential::xc:it                                     :     0.0833 (total)       0.0033 (average)
+sirius::Potential::xc:mt                                     :     3.5702 (total)       0.1428 (average)
+sirius::ReciprocalLattice::init                              :     0.0261 (total)       0.0261 (average)
+sirius::SHT::rlm_backward_transform                          :     0.5299 (total)       0.0001 (average)
+sirius::SHT::rlm_forward_transform                           :     1.0171 (total)       0.0002 (average)
+sirius::StepFunction::init                                   :     0.0023 (total)       0.0023 (average)
+sirius::UnitCell::find_nearest_neighbours                    :     0.0005 (total)       0.0005 (average)
+sirius::UnitCell::get_symmetry                               :     0.0230 (total)       0.0230 (average)
+sirius::kpoint::apply_hmt_to_apw                             :     0.2901 (total)       0.0008 (average)
+sirius::kpoint::find_eigen_states                            :     3.9308 (total)       0.0205 (average)
+sirius::kpoint::generate_fv_states                           :     3.9299 (total)       0.0205 (average)
+sirius::kpoint::generate_fv_states:genevp                    :     1.5435 (total)       0.0080 (average)
+sirius::kpoint::generate_fv_states:wf                        :     0.1855 (total)       0.0010 (average)
+sirius::kpoint::generate_matching_coefficients               :     0.0632 (total)       0.0001 (average)
+sirius::kpoint::generate_spinor_wave_functions               :     0.0001 (total)       0.0000 (average)
+sirius::kpoint::initialize                                   :     0.0063 (total)       0.0008 (average)
+sirius::kpoint::set_fv_h_o                                   :     2.1881 (total)       0.0114 (average)
+sirius::kpoint::set_fv_h_o_apw_lo                            :     0.0356 (total)       0.0001 (average)
+sirius::kpoint::set_fv_h_o_it                                :     0.0801 (total)       0.0004 (average)
+sirius::kpoint::set_fv_h_o_lo_lo                             :     0.0007 (total)       0.0000 (average)
+
+timestamp: 15.03.2013  15:51:43
+comment: [main] done mpi_world_initialize
+
+timestamp: 15.03.2013  15:51:43
+comment: [main] done readinput
+charge RMS :    1.000000000     total energy difference :   0.1000000000+101
+charge RMS :   0.3374353317     total energy difference :    13.87029881    
+charge RMS :   0.2868171514     total energy difference :    1.063889790    
+charge RMS :   0.1986602354     total energy difference :    1.151074048    
+charge RMS :   0.1038565827     total energy difference :   0.8921320290    
+charge RMS :   0.3810772808E-01 total energy difference :   0.4965804086    
+charge RMS :   0.2381371447E-01 total energy difference :   0.1723370358    
+charge RMS :   0.2416949204E-01 total energy difference :   0.6494185503E-01
+charge RMS :   0.2120252386E-01 total energy difference :   0.3282254500E-01
+charge RMS :   0.1670702320E-01 total energy difference :   0.1865030099E-01
+charge RMS :   0.1200095270E-01 total energy difference :   0.1187658648E-01
+charge RMS :   0.7954340171E-02 total energy difference :   0.7724069049E-02
+charge RMS :   0.4904807010E-02 total energy difference :   0.4503974068E-02
+charge RMS :   0.2812047242E-02 total energy difference :   0.2391522731E-02
+charge RMS :   0.1496757335E-02 total energy difference :   0.1292402139E-02
+charge RMS :   0.7426684266E-03 total energy difference :   0.7971174252E-03
+charge RMS :   0.3500638471E-03 total energy difference :   0.4995796940E-03
+charge RMS :   0.1612888640E-03 total energy difference :   0.2863285775E-03
+charge RMS :   0.7550071129E-04 total energy difference :   0.1839830720E-03
+charge RMS :   0.3848937587E-04 total energy difference :   0.6718785181E-04
+charge RMS :   0.1862178927E-04 total energy difference :   0.3944010189E-05
+charge RMS :   0.8201153986E-05 total energy difference :   0.1296891173E-04
+charge RMS :   0.3548999684E-05 total energy difference :   0.1599193627E-04
+charge RMS :   0.1675229580E-05 total energy difference :   0.1130701116E-04
+Total execution time :      47.3490 seconds

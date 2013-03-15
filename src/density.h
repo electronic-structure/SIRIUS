@@ -535,7 +535,7 @@ class Density
                 printf("Lowest band energies\n");
                 for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
                 {
-                    printf("ik : %i, ", ik); 
+                    printf("ik : %2i, ", ik); 
                     for (int j = 0; j < std::min(10, parameters_.num_bands()); j++) 
                         printf("%12.6f", kpoint_set_[ik]->band_energy(j));
                     printf("\n");

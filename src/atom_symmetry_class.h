@@ -65,7 +65,7 @@ class AtomSymmetryClass
         /// list of radial descriptor sets used to construct local orbitals
         std::vector<radial_solution_descriptor_set> lo_descriptors_;
         
-        void generate_aw_radial_functions()
+        void generate_aw_radial_functions(bool divide_by_r)
         {
             int nmtp = atom_type_->num_mt_points();
            
@@ -113,7 +113,7 @@ class AtomSymmetryClass
                         }
                         
                         // orthogonalize
-                        for (int order1 = 0; order1 < order - 1; order1++)
+                        for (int order1 = 0; order1 < order; order1++)
                         {
                             int idxrf1 = atom_type_->indexr().index_by_l_order(l, order1);
 
@@ -134,7 +134,7 @@ class AtomSymmetryClass
                         s.interpolate();
                         norm = s.integrate(0);
 
-                        if (fabs(norm) < 1e-12) error(__FILE__, __LINE__, "aw radial functions are linearly dependent");
+                        if (fabs(norm) < 1e-10) error(__FILE__, __LINE__, "aw radial functions are linearly dependent");
 
                         norm = 1.0 / sqrt(norm);
 
@@ -154,9 +154,13 @@ class AtomSymmetryClass
                         // divide by r
                         for (int ir = 0; ir < nmtp; ir++)
                         {
-                            radial_functions_(ir, idxrf, 0) /= atom_type_->radial_grid(ir);
+                            if (divide_by_r) radial_functions_(ir, idxrf, 0) /= atom_type_->radial_grid(ir);
                             radial_functions_(ir, idxrf, 1) /= atom_type_->radial_grid(ir);
                         }
+                        //double aw_surface_derivatives_(order, l) = (radial_functions_(nmtp - 1, idxrf, 0) - 
+                        //                                            radial_functions_(nmtp - 2, idxrf, 0)) / 
+                        //                                            atom_type_->radial_grid().dr(nmtp - 2);
+
 
                         if (debug_level > 1)
                         {
@@ -265,7 +269,7 @@ class AtomSymmetryClass
                 }
             }
             
-            if (debug_level > 0)
+            if (debug_level > 0 && num_lo_descriptors() > 0)
             {
                 Spline<double> s(nmtp, atom_type_->radial_grid());
                 mdarray<double, 2> loprod(num_lo_descriptors(), num_lo_descriptors());
@@ -338,6 +342,127 @@ class AtomSymmetryClass
                     fprintf(fout, "\n");
                 }
                 fclose(fout);
+            }
+        }
+        
+        void transform_radial_functions()
+        {
+            Timer t("sirius::AtomSymmetryClass::transform_radial_functions");
+
+            int nmtp = atom_type_->num_mt_points();
+            Spline<double> s(nmtp, atom_type_->radial_grid());
+            for (int l = 0; l <= 3; l++)
+            {
+                // if we have local orbitals for the given l
+                if (atom_type_->indexr().num_lo(l) > 1)
+                {
+                    int naw = (int)atom_type_->aw_descriptor(l).size();
+
+                    // orthogonalize local orbitals
+                    for (int order1 = 1; order1 < atom_type_->indexr().num_lo(l); order1++)
+                    {
+                        int idxrf1 = atom_type_->indexr().index_by_l_order(l, naw + order1);
+
+                        for (int order2 = 0; order2 < order1; order2++)
+                        {
+                            int idxrf2 = atom_type_->indexr().index_by_l_order(l, naw + order2);
+
+                            for (int ir = 0; ir < nmtp; ir++)
+                                s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
+                            s.interpolate();
+                            double t1 = s.integrate(2);
+                                
+                            for (int ir = 0; ir < nmtp; ir++)
+                            {
+                                radial_functions_(ir, idxrf1, 0) -= radial_functions_(ir, idxrf2, 0) * t1;
+                                radial_functions_(ir, idxrf1, 1) -= radial_functions_(ir, idxrf2, 1) * t1;
+                            }
+                        }
+                            
+                        // normalize again
+                        for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf1, 0), 2);
+                        s.interpolate();
+                        double norm = s.integrate(2);
+
+                        if (fabs(norm) < 1e-10) 
+                            error(__FILE__, __LINE__, "local orbital radial functions are linearly dependent");
+
+                        norm = 1.0 / sqrt(norm);
+
+                        for (int ir = 0; ir < nmtp; ir++)
+                        {
+                            radial_functions_(ir, idxrf1, 0) *= norm;
+                            radial_functions_(ir, idxrf1, 1) *= norm;
+                        }
+                    }
+                }
+                
+                if (atom_type_->indexr().num_lo(l) > 0)
+                {
+                    int naw = (int)atom_type_->aw_descriptor(l).size();
+
+                    // orthogonalize aw functions to local orbitals
+                    for (int order1 = 0; order1 < naw; order1++)
+                    {
+                        int idxrf1 = atom_type_->indexr().index_by_l_order(l, order1);
+                        for (int order2 = 0; order2 < atom_type_->indexr().num_lo(l); order2++)
+                        {
+                            int idxrf2 = atom_type_->indexr().index_by_l_order(l, naw + order2);
+                            
+                            for (int ir = 0; ir < nmtp; ir++)
+                                s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
+                            s.interpolate();
+                            double t1 = s.integrate(1);
+                                
+                            for (int ir = 0; ir < nmtp; ir++)
+                            {
+                                radial_functions_(ir, idxrf1, 0) -= atom_type_->radial_grid(ir) * 
+                                                                    radial_functions_(ir, idxrf2, 0) * t1;
+                                radial_functions_(ir, idxrf1, 1) -= radial_functions_(ir, idxrf2, 1) * t1;
+                            }
+                        }
+                            
+                        // normalize again
+                        for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf1, 0), 2);
+                        s.interpolate();
+                        double norm = s.integrate(0);
+
+                        if (fabs(norm) < 1e-10) 
+                            error(__FILE__, __LINE__, "aw radial function is linearly dependent");
+
+                        norm = 1.0 / sqrt(norm);
+
+                        for (int ir = 0; ir < nmtp; ir++)
+                        {
+                            radial_functions_(ir, idxrf1, 0) *= norm;
+                            radial_functions_(ir, idxrf1, 1) *= norm;
+                        }
+
+                        double rderiv = (radial_functions_(nmtp - 1, idxrf1, 0) - radial_functions_(nmtp - 2, idxrf1, 0)) / 
+                                        atom_type_->radial_grid().dr(nmtp - 2);
+                        double R = atom_type_->mt_radius();
+
+                        aw_surface_derivatives_(order1, l) = (rderiv - radial_functions_(nmtp - 1, idxrf1, 0) / R) / R;
+
+
+                        /*double rderiv = (radial_functions_(nmtp - 1, idxrf1, 0) - radial_functions_(nmtp - 2, idxrf1, 0)) / 
+                                        atom_type_->radial_grid().dr(nmtp - 2);
+                        aw_surface_derivatives_(order1, l) = rderiv;*/
+                    }
+
+                }
+            }
+            
+            for (int l = 0; l < num_aw_descriptors(); l++)
+            {
+                for (int order = 0; order < (int)aw_descriptor(l).size(); order++)
+                {
+                    int idxrf = atom_type_->indexr().index_by_l_order(l, order);
+                    for (int ir = 0; ir < nmtp; ir++)
+                    {
+                        radial_functions_(ir, idxrf, 0) /= atom_type_->radial_grid(ir);
+                    }
+                }
             }
         }
 
@@ -424,8 +549,27 @@ class AtomSymmetryClass
 
             radial_functions_.zero();
 
-            generate_aw_radial_functions();
+            generate_aw_radial_functions(false);
             generate_lo_radial_functions();
+            transform_radial_functions();
+            
+            if (verbosity_level > 0)
+            {
+                std::stringstream s;
+                s << "radial_functions_" << id_ << ".dat";
+                FILE* fout = fopen(s.str().c_str(), "w");
+
+                for (int ir = 0; ir <atom_type_->num_mt_points(); ir++)
+                {
+                    fprintf(fout, "%f ", atom_type_->radial_grid(ir));
+                    for (int idxrf = 0; idxrf < atom_type_->indexr().size(); idxrf++)
+                    {
+                        fprintf(fout, "%f ", radial_functions_(ir, idxrf, 0));
+                    }
+                    fprintf(fout, "\n");
+                }
+                fclose(fout);
+            }
         }
 
         inline void sync_radial_functions(int rank)
