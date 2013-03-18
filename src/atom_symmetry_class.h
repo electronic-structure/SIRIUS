@@ -65,7 +65,7 @@ class AtomSymmetryClass
         /// list of radial descriptor sets used to construct local orbitals
         std::vector<radial_solution_descriptor_set> lo_descriptors_;
         
-        void generate_aw_radial_functions(bool divide_by_r)
+        void generate_aw_radial_functions()
         {
             int nmtp = atom_type_->num_mt_points();
            
@@ -154,13 +154,8 @@ class AtomSymmetryClass
                         // divide by r
                         for (int ir = 0; ir < nmtp; ir++)
                         {
-                            if (divide_by_r) radial_functions_(ir, idxrf, 0) /= atom_type_->radial_grid(ir);
                             radial_functions_(ir, idxrf, 1) /= atom_type_->radial_grid(ir);
                         }
-                        //double aw_surface_derivatives_(order, l) = (radial_functions_(nmtp - 1, idxrf, 0) - 
-                        //                                            radial_functions_(nmtp - 2, idxrf, 0)) / 
-                        //                                            atom_type_->radial_grid().dr(nmtp - 2);
-
 
                         if (debug_level > 1)
                         {
@@ -345,7 +340,7 @@ class AtomSymmetryClass
             }
         }
         
-        void transform_radial_functions()
+        void transform_radial_functions(bool ort_lo, bool ort_aw)
         {
             Timer t("sirius::AtomSymmetryClass::transform_radial_functions");
 
@@ -354,7 +349,7 @@ class AtomSymmetryClass
             for (int l = 0; l <= 3; l++)
             {
                 // if we have local orbitals for the given l
-                if (atom_type_->indexr().num_lo(l) > 1)
+                if ((atom_type_->indexr().num_lo(l) > 1) && ort_lo)
                 {
                     int naw = (int)atom_type_->aw_descriptor(l).size();
 
@@ -397,7 +392,7 @@ class AtomSymmetryClass
                     }
                 }
                 
-                if (atom_type_->indexr().num_lo(l) > 0)
+                if ((atom_type_->indexr().num_lo(l) > 0) && ort_aw)
                 {
                     int naw = (int)atom_type_->aw_descriptor(l).size();
 
@@ -452,7 +447,8 @@ class AtomSymmetryClass
 
                 }
             }
-            
+           
+            // divide by r
             for (int l = 0; l < num_aw_descriptors(); l++)
             {
                 for (int order = 0; order < (int)aw_descriptor(l).size(); order++)
@@ -549,9 +545,9 @@ class AtomSymmetryClass
 
             radial_functions_.zero();
 
-            generate_aw_radial_functions(false);
+            generate_aw_radial_functions();
             generate_lo_radial_functions();
-            transform_radial_functions();
+            transform_radial_functions(true, false);
             
             if (verbosity_level > 0)
             {
