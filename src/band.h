@@ -369,25 +369,34 @@ class Band
 
         void init()
         {
-            complex_gaunt_packed_.set_dimensions(parameters_.lmmax_apw(), parameters_.lmmax_apw());
+            int lmax = std::max(parameters_.lmax_apw(), parameters_.lmax_pot());
+            int lmmax = Utils::lmmax_by_lmax(lmax);
+
+            complex_gaunt_packed_.set_dimensions(lmmax, lmmax);
             complex_gaunt_packed_.allocate();
 
-            for (int l1 = 0; l1 <= parameters_.lmax_apw(); l1++) 
+            for (int l1 = 0; l1 <= lmax; l1++) 
+            {
             for (int m1 = -l1; m1 <= l1; m1++)
             {
                 int lm1 = Utils::lm_by_l_m(l1, m1);
-                for (int l2 = 0; l2 <= parameters_.lmax_apw(); l2++)
+                for (int l2 = 0; l2 <= lmax; l2++)
+                {
                 for (int m2 = -l2; m2 <= l2; m2++)
                 {
                     int lm2 = Utils::lm_by_l_m(l2, m2);
                     for (int l3 = 0; l3 <= parameters_.lmax_pot(); l3++)
+                    {
                     for (int m3 = -l3; m3 <= l3; m3++)
                     {
                         int lm3 = Utils::lm_by_l_m(l3, m3);
                         complex16 z = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
-                        if (abs(z) > 1e-12) complex_gaunt_packed_(lm1, lm2).push_back(std::pair<int,complex16>(lm3, z));
+                        if (abs(z) > 1e-12) complex_gaunt_packed_(lm1, lm2).push_back(std::pair<int, complex16>(lm3, z));
+                    }
                     }
                 }
+                }
+            }
             }
             
             // distribue first-variational states
@@ -798,6 +807,16 @@ class Band
         {
             for (int k = 0; k < (int)complex_gaunt_packed_(lm1, lm2).size(); k++)
                 zsum += complex_gaunt_packed_(lm1, lm2)[k].second * v[complex_gaunt_packed_(lm1, lm2)[k].first];
+        }
+
+        inline int complex_gaunt_size(int lm1, int lm2)
+        {
+            return (int)complex_gaunt_packed_(lm1, lm2).size();
+        }
+
+        inline std::pair<int, complex16>& complex_gaunt(int lm1, int lm2, int k)
+        {
+            return complex_gaunt_packed_(lm1, lm2)[k];
         }
 
         inline int blacs_context()

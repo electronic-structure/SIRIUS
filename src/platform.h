@@ -136,14 +136,18 @@ class Platform
                 switch(op)
                 {
                     case op_sum:
+                    {
                         MPI_Allreduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), 
                                       MPI_SUM, comm);
                         break;
+                    }
 
                     case op_max:
+                    {
                         MPI_Allreduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), 
                                       MPI_MAX, comm);
                         break;
+                    }
                 }
             }
         }

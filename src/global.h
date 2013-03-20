@@ -385,6 +385,8 @@ class Global : public StepFunction
 
             read_input();
             
+            if (basis_type == pw) lmax_apw_ = -1;
+            
             // initialize variables, related to the unit cell
             UnitCell::init(lmax_apw(), lmax_pot(), num_mag_dims());
             

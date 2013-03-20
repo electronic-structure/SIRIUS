@@ -224,14 +224,10 @@ class Density
     public:
 
         /// Constructor
-        Density(Global& parameters__, 
-                Potential* potential__,
-                mdarray<double, 2>& kpoints__,
-                double* kpoint_weights__,
-                int allocate_f__ = pw_component) : parameters_(parameters__),
-                                                   potential_(potential__),
-                                                   allocate_f_(allocate_f__),
-                                                   kpoint_set_(parameters__.mpi_grid())
+        Density(Global& parameters__, Potential* potential__, mdarray<double, 2>& kpoints__, double* kpoint_weights__,
+                int allocate_f__ = pw_component) : 
+            parameters_(parameters__), potential_(potential__), allocate_f_(allocate_f__), 
+            kpoint_set_(parameters__.mpi_grid())
         {
             rho_ = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
             rho_->allocate(allocate_f_);
@@ -507,18 +503,8 @@ class Density
             parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), 
                                      potential_->effective_potential()->f_pw());
 
-            //double v_pw_min = 1e100;
-            //double v_pw_max = -1e100;
-            //for (int ig = 0; ig < parameters_.num_gvec(); ig++)
-            //{
-            //    v_pw_min = std::min(v_pw_min, abs(potential_->effective_potential()->f_pw(ig)));
-            //    v_pw_max = std::max(v_pw_max, abs(potential_->effective_potential()->f_pw(ig)));
-            //}
-            //if (Platform::mpi_rank() == 0)
-            //{
-            //    printf("v_pw_min : %f, v_pw_max : %f\n", v_pw_min, v_pw_max);
-            //}
-
+            if (basis_type == pw) potential_->add_mt_contribution_to_pw(); 
+            
             // solve secular equation and generate wave functions
             for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
             {

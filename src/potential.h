@@ -49,11 +49,11 @@ class Potential
         
         PeriodicFunction<double>* effective_magnetic_field_[3];
  
-        mdarray<complex16,2> gvec_ylm_;
+        mdarray<complex16, 2> gvec_ylm_;
 
-        mdarray<double,3> sbessel_mom_;
+        mdarray<double, 3> sbessel_mom_;
 
-        mdarray<double,3> sbessel_mt_;
+        mdarray<double, 3> sbessel_mt_;
         
         SHT sht_;
 
@@ -70,6 +70,8 @@ class Potential
         std::vector<complex16> zilm_;
 
         std::vector<int> l_by_lm_;
+
+        mdarray<complex16, 2> pw_integrals_;
         
         /// Compute MT part of the potential and MT multipole moments
         void poisson_vmt(mdarray<complex16, 3>& rho_ylm, PeriodicFunction<double>* vh, mdarray<complex16, 2>& qmt)
@@ -639,6 +641,12 @@ class Potential
             {
                 for (int m = -l; m <= l; m++, lm++) l_by_lm_[lm] = l;
             }
+
+            if (basis_type == pw)
+            {
+                pw_integrals_.set_dimensions(parameters_.num_gvec(), parameters_.num_atoms());
+                pw_integrals_.allocate();
+            }
         }
 
         ~Potential()
@@ -809,8 +817,7 @@ class Potential
                
                std::vector<double> veff(nmtp);
                
-               for (int ir = 0; ir < nmtp; ir++)
-                   veff[ir] = y00 * effective_potential_->f_rlm(0, ir, ia);
+               for (int ir = 0; ir < nmtp; ir++) veff[ir] = y00 * effective_potential_->f_rlm(0, ir, ia);
 
                parameters_.atom_symmetry_class(ic)->set_spherical_potential(veff);
             }
@@ -843,6 +850,174 @@ class Potential
         PeriodicFunction<double>* effective_magnetic_field(int i)
         {
             return effective_magnetic_field_[i];
+        }
+
+        //** void add_mt_contribution_to_pw()
+        //** {
+        //**     Timer t("sirius::Potential::add_mt_contribution_to_pw");
+
+        //**     mdarray<complex16, 1> fpw(parameters_.num_gvec());
+        //**     fpw.zero();
+
+        //**     #pragma omp parallel default(shared)
+        //**     {
+        //**         mdarray<double, 3> sbessel(parameters_.lmax_pot() + 1, parameters_.max_num_mt_points(), 
+        //**                                    parameters_.num_atom_types());
+        //**         mdarray<double, 1> vjlm(parameters_.lmmax_pot());
+        //**         
+        //**         #pragma omp for
+        //**         for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
+        //**         {
+        //**             int ig = spl_num_gvec_[igloc];
+
+        //**             for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+        //**             {
+        //**                 for (int ir = 0; ir < parameters_.atom_type(iat)->num_mt_points(); ir++)
+        //**                 {
+        //**                     double x = parameters_.atom_type(iat)->radial_grid(ir) * parameters_.gvec_len(ig); 
+        //**                     gsl_sf_bessel_jl_array(parameters_.lmax_pot(), x, &sbessel(0, ir, iat));
+        //**                 }
+        //**             }
+
+        //**             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+        //**             {
+        //**                 int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+        //**                 Spline<double> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->type()->radial_grid());
+
+        //**                 for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
+        //**                 {
+        //**                     int l = l_by_lm_[lm];
+        //**                     for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++) 
+        //**                         s[ir] = sbessel(l, ir, iat) * effective_potential_->f_rlm(lm, ir, ia);
+        //**                     s.interpolate();
+        //**                     vjlm(lm) = s.integrate(2);
+        //**                 }
+
+        //**                 complex16 zt(0, 0);
+        //**                 for (int l = 0; l <= parameters_.lmax_pot(); l++)
+        //**                 {
+        //**                     for (int m = -l; m <= l; m++)
+        //**                     {
+        //**                         if (m == 0)
+        //**                         {
+        //**                             zt += conj(zil_[l]) * gvec_ylm_(Utils::lm_by_l_m(l, m), igloc) * 
+        //**                                   vjlm(Utils::lm_by_l_m(l, m));
+
+        //**                         }
+        //**                         else
+        //**                         {
+        //**                             zt += conj(zil_[l]) * gvec_ylm_(Utils::lm_by_l_m(l, m), igloc) * 
+        //**                                   (SHT::ylm_dot_rlm(l, m, m) * vjlm(Utils::lm_by_l_m(l, m)) + 
+        //**                                    SHT::ylm_dot_rlm(l, m, -m) * vjlm(Utils::lm_by_l_m(l, -m)));
+        //**                         }
+        //**                     }
+        //**                 }
+        //**                 fpw(ig) += zt * fourpi * conj(gvec_phase_factors_(igloc, ia)) / parameters_.omega();
+        //**             }
+        //**         }
+        //**     }
+        //**     Platform::allreduce(fpw.get_ptr(), (int)fpw.size());
+        //**     for (int ig = 0; ig < parameters_.num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
+        //** }
+
+        void add_mt_contribution_to_pw()
+        {
+            Timer t("sirius::Potential::add_mt_contribution_to_pw");
+
+            mdarray<complex16, 1> fpw(parameters_.num_gvec());
+            fpw.zero();
+
+            mdarray<Spline<double>*, 2> svlm(parameters_.lmmax_pot(), parameters_.num_atoms());
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
+                {
+                    svlm(lm, ia) = new Spline<double>(parameters_.atom(ia)->num_mt_points(), 
+                                                      parameters_.atom(ia)->type()->radial_grid());
+                    
+                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                        (*svlm(lm, ia))[ir] = effective_potential_->f_rlm(lm, ir, ia);
+                    
+                    svlm(lm, ia)->interpolate();
+                }
+            }
+            
+            #pragma omp parallel default(shared)
+            {
+                mdarray<Spline<double>*, 2> sjl(parameters_.lmax_pot() + 1, parameters_.num_atom_types());
+                for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+                {
+                    for (int l = 0; l <= parameters_.lmax_pot(); l++)
+                    {
+                        sjl(l, iat) = new Spline<double>(parameters_.atom_type(iat)->num_mt_points(), 
+                                                         parameters_.atom_type(iat)->radial_grid());
+                    }
+                }
+
+                std::vector<double> jl(parameters_.lmax_pot());
+                
+                mdarray<double, 1> vjlm(parameters_.lmmax_pot());
+                
+                #pragma omp for
+                for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
+                {
+                    int ig = spl_num_gvec_[igloc];
+
+                    for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+                    {
+                        for (int ir = 0; ir < parameters_.atom_type(iat)->num_mt_points(); ir++)
+                        {
+                            double x = parameters_.atom_type(iat)->radial_grid(ir) * parameters_.gvec_len(ig); 
+                            gsl_sf_bessel_jl_array(parameters_.lmax_pot(), x, &jl[0]);
+                            for (int l = 0; l <= parameters_.lmax_pot(); l++) (*sjl(l, iat))[ir] = jl[l];
+                        }
+                        for (int l = 0; l <= parameters_.lmax_pot(); l++) sjl(l, iat)->interpolate();
+                    }
+
+                    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                    {
+                        int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+
+                        for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
+                        {
+                            int l = l_by_lm_[lm];
+                            vjlm(lm) = Spline<double>::integrate(sjl(l, iat), svlm(lm, ia));
+                        }
+
+                        complex16 zt(0, 0);
+                        for (int l = 0; l <= parameters_.lmax_pot(); l++)
+                        {
+                            for (int m = -l; m <= l; m++)
+                            {
+                                if (m == 0)
+                                {
+                                    zt += conj(zil_[l]) * gvec_ylm_(Utils::lm_by_l_m(l, m), igloc) * 
+                                          vjlm(Utils::lm_by_l_m(l, m));
+
+                                }
+                                else
+                                {
+                                    zt += conj(zil_[l]) * gvec_ylm_(Utils::lm_by_l_m(l, m), igloc) * 
+                                          (SHT::ylm_dot_rlm(l, m, m) * vjlm(Utils::lm_by_l_m(l, m)) + 
+                                           SHT::ylm_dot_rlm(l, m, -m) * vjlm(Utils::lm_by_l_m(l, -m)));
+                                }
+                            }
+                        }
+                        fpw(ig) += zt * fourpi * conj(gvec_phase_factors_(igloc, ia)) / parameters_.omega();
+                    }
+                }
+                for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+                {
+                    for (int l = 0; l <= parameters_.lmax_pot(); l++) delete sjl(l, iat);
+                }
+            }
+            Platform::allreduce(fpw.get_ptr(), (int)fpw.size());
+            for (int ig = 0; ig < parameters_.num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
+            
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                for (int lm = 0; lm < parameters_.lmmax_pot(); lm++) delete svlm(lm, ia);
+            }
         }
 };
 

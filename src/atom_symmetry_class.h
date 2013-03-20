@@ -346,12 +346,12 @@ class AtomSymmetryClass
 
             int nmtp = atom_type_->num_mt_points();
             Spline<double> s(nmtp, atom_type_->radial_grid());
-            for (int l = 0; l <= 3; l++)
+            for (int l = 0; l <= atom_type_->indexr().lmax_lo(); l++)
             {
                 // if we have local orbitals for the given l
                 if ((atom_type_->indexr().num_lo(l) > 1) && ort_lo)
                 {
-                    int naw = (int)atom_type_->aw_descriptor(l).size();
+                    int naw = (atom_type_->num_aw_descriptors() > l) ? (int)atom_type_->aw_descriptor(l).size() : 0;
 
                     // orthogonalize local orbitals
                     for (int order1 = 1; order1 < atom_type_->indexr().num_lo(l); order1++)
@@ -480,11 +480,11 @@ class AtomSymmetryClass
             h_spherical_integrals_.set_dimensions(atom_type_->indexr().size(), atom_type_->indexr().size());
             h_spherical_integrals_.allocate();
             
-            o_radial_integrals_.set_dimensions(atom_type_->num_aw_descriptors(), atom_type_->indexr().max_num_rf(), 
+            o_radial_integrals_.set_dimensions(atom_type_->indexr().lmax() + 1, atom_type_->indexr().max_num_rf(), 
                                                atom_type_->indexr().max_num_rf());
             o_radial_integrals_.allocate();
             
-            so_radial_integrals_.set_dimensions(atom_type_->num_aw_descriptors(), atom_type_->indexr().max_num_rf(), 
+            so_radial_integrals_.set_dimensions(atom_type_->indexr().lmax() + 1, atom_type_->indexr().max_num_rf(), 
                                                 atom_type_->indexr().max_num_rf());
             so_radial_integrals_.allocate();
 
@@ -651,7 +651,7 @@ class AtomSymmetryClass
             }
             
             o_radial_integrals_.zero();
-            for (int l = 0; l < atom_type_->num_aw_descriptors(); l++)
+            for (int l = 0; l <= atom_type_->indexr().lmax(); l++)
             {
                 int nrf = atom_type_->indexr().num_rf(l);
 
@@ -689,7 +689,7 @@ class AtomSymmetryClass
                 ve.interpolate();
 
                 so_radial_integrals_.zero();
-                for (int l = 0; l < atom_type_->num_aw_descriptors(); l++)
+                for (int l = 0; l <= atom_type_->indexr().lmax(); l++)
                 {
                     int nrf = atom_type_->indexr().num_rf(l);
     
@@ -733,6 +733,11 @@ class AtomSymmetryClass
             return radial_functions_(ir, idx, 0);
         }
 
+        inline double h_radial_function(int ir, int idx)
+        {
+            return radial_functions_(ir, idx, 1);
+        }
+        
         inline double h_spherical_integral(int i1, int i2)
         {
             return h_spherical_integrals_(i1, i2);
@@ -839,11 +844,11 @@ class AtomSymmetryClass
             for (int ist = 0; ist < atom_type_->num_core_levels(); ist++)
                 enu_core[ist] = -1.0 * atom_type_->zn() / 2 / pow(double(atom_type_->atomic_level(ist).n), 2);
             
-            memset(&rho[0], 0, rho.size() * sizeof(double));
+            memset(&rho[0], 0, rho.num_points() * sizeof(double));
             #pragma omp parallel default(shared)
             {
-                std::vector<double> rho_t(rho.size());
-                memset(&rho_t[0], 0, rho.size() * sizeof(double));
+                std::vector<double> rho_t(rho.num_points());
+                memset(&rho_t[0], 0, rho.num_points() * sizeof(double));
                 std::vector<double> p;
                 
                 #pragma omp for
@@ -860,7 +865,7 @@ class AtomSymmetryClass
                 }
 
                 #pragma omp critical
-                for (int i = 0; i < rho.size(); i++) rho[i] += rho_t[i];
+                for (int i = 0; i < rho.num_points(); i++) rho[i] += rho_t[i];
             } 
                 
             core_charge_density_ = rho.data_points();

@@ -61,13 +61,9 @@ class Atom
     public:
     
         /// Constructor
-        Atom(AtomType* type__, double* position__, double* vector_field__) : type_(type__),
-                                                                             symmetry_class_(NULL),
-                                                                             offset_aw_(-1),
-                                                                             offset_lo_(-1),
-                                                                             offset_wf_(-1),
-                                                                             apply_uj_correction_(false),
-                                                                             uj_correction_l_(-1)
+        Atom(AtomType* type__, double* position__, double* vector_field__) : 
+            type_(type__), symmetry_class_(NULL), offset_aw_(-1), offset_lo_(-1), offset_wf_(-1), 
+            apply_uj_correction_(false), uj_correction_l_(-1)
         {
             assert(type__);
                 
@@ -116,9 +112,13 @@ class Atom
         inline int symmetry_class_id()
         {
             if (symmetry_class()) 
+            {
                 return symmetry_class()->id();
+            }
             else
+            {
                 return -1;
+            }
         }
 
         inline void set_symmetry_class(AtomSymmetryClass* symmetry_class__)
@@ -162,8 +162,7 @@ class Atom
         {
             veff_.set_ptr(veff__);
             
-            for (int j = 0; j < 3; j++)
-                beff_[j].set_ptr(beff__[j]);
+            for (int j = 0; j < 3; j++) beff_[j].set_ptr(beff__[j]);
         }
 
         /// Generate radial Hamiltonian and effective magnetic field integrals

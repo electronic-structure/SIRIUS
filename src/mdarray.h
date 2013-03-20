@@ -9,7 +9,7 @@ class dimension
         {
         }
         
-        dimension(unsigned int size_) : size_(size_)
+        dimension(unsigned int size__) : size_(size__)
         {
             start_ = 0;
             end_ = size_ - 1;
@@ -141,8 +141,11 @@ template <typename T, int ND> class mdarray_base
         
         void zero()
         {
-            assert(mdarray_ptr);
-            memset(mdarray_ptr, 0, size() * sizeof(T));
+            if (size() != 0)
+            {
+                assert(mdarray_ptr);
+                memset(mdarray_ptr, 0, size() * sizeof(T));
+            }
         }
         
         void set_ptr(T* ptr)
@@ -297,10 +300,10 @@ template <typename T> class mdarray<T, 1> : public mdarray_base<T, 1>
     
         inline T& operator()(const int i0) 
         {
-            assert(this->mdarray_ptr);
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
-            
             size_t i = this->offset[0] + i0;
+            
+            assert(this->mdarray_ptr);
             return this->mdarray_ptr[i];
         }
 };
@@ -336,11 +339,11 @@ template <typename T> class mdarray<T, 2> : public mdarray_base<T, 2>
     
         inline T& operator()(const int i0, const int i1) 
         {
-            assert(this->mdarray_ptr);
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
-            
             size_t i = this->offset[0] + i0 + i1 * this->offset[1];
+            
+            assert(this->mdarray_ptr);
             return this->mdarray_ptr[i];
         }
 };
