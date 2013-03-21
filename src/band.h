@@ -1,55 +1,9 @@
-
 /** \file band.h
     \brief Setup and solve first- and second-variational eigen value problem.
 */
 
 namespace sirius
 {
-
-/// Descriptor of the APW+lo basis function
-
-/** APW+lo basis consists of two different sets of functions: APW functions \f$ \varphi_{{\bf G+k}} \f$ defined over 
-    entire unit cell:
-    \f[
-        \varphi_{{\bf G+k}}({\bf r}) = \left\{ \begin{array}{ll}
-        \displaystyle \sum_{L} \sum_{\nu=1}^{O_{\ell}^{\alpha}} a_{L\nu}^{\alpha}({\bf G+k})u_{\ell \nu}^{\alpha}(r) 
-        Y_{\ell m}(\hat {\bf r}) & {\bf r} \in {\rm MT} \alpha \\
-        \displaystyle \frac{1}{\sqrt  \Omega} e^{i({\bf G+k}){\bf r}} & {\bf r} \in {\rm I} \end{array} \right.
-    \f]  
-    and Bloch sums of local orbitals defined inside muffin-tin spheres only:
-    \f[
-        \begin{array}{ll} \displaystyle \varphi_{j{\bf k}}({\bf r})=\sum_{{\bf T}} e^{i{\bf kT}} 
-        \varphi_{j}({\bf r - T}) & {\rm {\bf r} \in MT} \end{array}
-    \f]
-    Each local orbital is composed of radial and angular parts:
-    \f[
-        \varphi_{j}({\bf r}) = \phi_{\ell_j}^{\zeta_j,\alpha_j}(r) Y_{\ell_j m_j}(\hat {\bf r})
-    \f]
-    Radial part of local orbital is defined as a linear combination of radial functions (minimum two radial functions 
-    are required) such that local orbital vanishes at the sphere boundary:
-    \f[
-        \phi_{\ell}^{\zeta, \alpha}(r) = \sum_{p}\gamma_{p}^{\zeta,\alpha} u_{\ell \nu_p}^{\alpha}(r)  
-    \f]
-    
-    Arbitrary number of local orbitals may be introduced for each angular quantum number.
-
-    Radial functions are m-th order (with zero-order being a function itself) energy derivatives of the radial 
-    Schrödinger equation:
-    \f[
-        u_{\ell \nu}^{\alpha}(r) = \frac{\partial^{m_{\nu}}}{\partial^{m_{\nu}}E}u_{\ell}^{\alpha}(r,E)\Big|_{E=E_{\nu}}
-    \f]
-*/
-struct apwlo_basis_descriptor
-{
-    int idxglob;
-    int igk;
-    int ig;
-    int ia;
-    int l;
-    int lm;
-    int order;
-    int idxrf;
-};
 
 class Band
 {

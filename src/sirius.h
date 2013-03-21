@@ -81,6 +81,7 @@ extern "C" {
 //
 // main classes
 //
+#include "sbessel_pw.h"
 #include "periodic_function.h"
 #include "band.h"
 #include "kpoint.h"

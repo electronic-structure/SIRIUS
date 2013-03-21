@@ -177,131 +177,152 @@ template <typename T> class Spline
             g = std::vector<T>(num_points_);
 
             g[0] = 0.0;
-            
-            if (m == 0)
+
+            switch (m)
             {
-                double t = 1.0 / 3.0;
-                for (int i = 0; i < num_points_ - 1; i++)
+                case 0:
                 {
-                    double dx = radial_grid.dr(i);
-                    g[i + 1] = g[i] + (((d[i] * dx * 0.25 + c[i] * t) * dx + b[i] * 0.5) * dx + a[i]) * dx;
+                    double t = 1.0 / 3.0;
+                    for (int i = 0; i < num_points_ - 1; i++)
+                    {
+                        double dx = radial_grid.dr(i);
+                        g[i + 1] = g[i] + (((d[i] * dx * 0.25 + c[i] * t) * dx + b[i] * 0.5) * dx + a[i]) * dx;
+                    }
+                    break;
+                }
+                case 2:
+                {
+                    for (int i = 0; i < num_points_ - 1; i++)
+                    {
+                        double x0 = radial_grid[i];
+                        double x1 = radial_grid[i + 1];
+                        double dx = radial_grid.dr(i);
+                        T a0 = a[i];
+                        T a1 = b[i];
+                        T a2 = c[i];
+                        T a3 = d[i];
+
+                        double x0_2 = x0 * x0;
+                        double x0_3 = x0_2 * x0;
+                        double x1_2 = x1 * x1;
+                        double x1_3 = x1_2 * x1;
+
+                        g[i + 1] = g[i] + (20.0 * a0 * (x1_3 - x0_3) + 5.0 * a1 * (x0 * x0_3 + x1_3 * (3.0 * dx - x0)) - 
+                                   dx * dx * dx * (-2.0 * a2 * (x0_2 + 3.0 * x0 * x1 + 6.0 * x1_2) - 
+                                   a3 * dx * (x0_2 + 4.0 * x0 * x1 + 10.0 * x1_2))) / 60.0;
+                    }
+                    break;
+                }
+                case -1:
+                {
+                    for (int i = 0; i < num_points_ - 1; i++)
+                    {
+                        double x0 = radial_grid[i];
+                        double x1 = radial_grid[i + 1];
+                        T a0 = a[i];
+                        T a1 = b[i];
+                        T a2 = c[i];
+                        T a3 = d[i];
+
+                        // obtained with the following Mathematica code:
+                        //   FullSimplify[Integrate[x^(-1)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],
+                        //                          Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
+                        g[i + 1] = g[i] + (-((x0 - x1) * (6.0 * a1 - 9.0 * a2 * x0 + 11.0 * a3 * pow(x0, 2) + 
+                                   3.0 * a2 * x1 - 7.0 * a3 * x0 * x1 + 2.0 * a3 * pow(x1, 2))) / 6.0 + 
+                                   (-a0 + x0 * (a1 - a2 * x0 + a3 * pow(x0, 2))) * log(x0 / x1));
+                    }
+                    break;
+                }
+                case -2:
+                {
+                    for (int i = 0; i < num_points_ - 1; i++)
+                    {
+                        double x0 = radial_grid[i];
+                        double x1 = radial_grid[i + 1];
+                        T a0 = a[i];
+                        T a1 = b[i];
+                        T a2 = c[i];
+                        T a3 = d[i];
+
+                        // obtained with the following Mathematica code:
+                        //   FullSimplify[Integrate[x^(-2)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],
+                        //                          Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
+                        g[i + 1] = g[i] + (((x0 - x1) * (-2.0 * a0 + x0 * (2.0 * a1 - 2.0 * a2 * (x0 + x1) + 
+                                   a3 * (2.0 * pow(x0, 2) + 5.0 * x0 * x1 - pow(x1, 2)))) + 
+                                   2.0 * x0 * (a1 + x0 * (-2.0 * a2 + 3.0 * a3 * x0)) * x1 * log(x1 / x0)) / 
+                                   (2.0 * x0 * x1));
+                    }
+                    break;
+                }
+                case -3:
+                {
+                    for (int i = 0; i < num_points_ - 1; i++)
+                    {
+                        double x0 = radial_grid[i];
+                        double x1 = radial_grid[i + 1];
+                        T a0 = a[i];
+                        T a1 = b[i];
+                        T a2 = c[i];
+                        T a3 = d[i];
+
+                        // obtained with the following Mathematica code:
+                        //   FullSimplify[Integrate[x^(-3)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],
+                        //                          Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
+                        g[i + 1] = g[i] + (-((x0 - x1) * (a0 * (x0 + x1) + x0 * (a1 * (-x0 + x1) + 
+                                   x0 * (a2 * x0 - a3 * pow(x0, 2) - 3.0 * a2 * x1 + 5.0 * a3 * x0 * x1 + 
+                                   2.0 * a3 * pow(x1, 2)))) + 2.0 * pow(x0, 2) * (a2 - 3.0 * a3 * x0) * pow(x1, 2) * 
+                                   log(x0 / x1)) / (2.0 * pow(x0, 2) * pow(x1, 2)));
+                    }
+                    break;
+                }
+                case -4:
+                {
+                    for (int i = 0; i < num_points_ - 1; i++)
+                    {
+                        double x0 = radial_grid[i];
+                        double x1 = radial_grid[i + 1];
+                        T a0 = a[i];
+                        T a1 = b[i];
+                        T a2 = c[i];
+                        T a3 = d[i];
+
+                        // obtained with the following Mathematica code:
+                        //   FullSimplify[Integrate[x^(-4)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],
+                        //                          Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
+                        g[i + 1] = g[i] + ((2.0 * a0 * (-pow(x0, 3) + pow(x1, 3)) + 
+                                   x0 * (x0 - x1) * (a1 * (x0 - x1) * (2.0 * x0 + x1) + 
+                                   x0 * (-2.0 * a2 * pow(x0 - x1, 2) + a3 * x0 * (2.0 * pow(x0, 2) - 7.0 * x0 * x1 + 
+                                   11.0 * pow(x1, 2)))) + 6.0 * a3 * pow(x0, 3) * pow(x1, 3) * log(x1 / x0)) / 
+                                   (6.0 * pow(x0, 3) * pow(x1, 3)));
+                    }
+                    break;
+                }
+                default:
+                {
+                    for (int i = 0; i < num_points_ - 1; i++)
+                    {
+                        double x0 = radial_grid[i];
+                        double x1 = radial_grid[i + 1];
+                        T a0 = a[i];
+                        T a1 = b[i];
+                        T a2 = c[i];
+                        T a3 = d[i];
+
+                        // obtained with the following Mathematica code:
+                        //   FullSimplify[Integrate[x^(m)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}], 
+                        //                          Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
+                        g[i + 1] = g[i] + (pow(x0, 1 + m) * (-(a0 * double((2 + m) * (3 + m) * (4 + m))) + 
+                                   x0 * (a1 * double((3 + m) * (4 + m)) - 2.0 * a2 * double(4 + m) * x0 + 
+                                   6.0 * a3 * pow(x0, 2)))) / double((1 + m) * (2 + m) * (3 + m) * (4 + m)) + 
+                                   pow(x1, 1 + m) * ((a0 - x0 * (a1 + x0 * (-a2 + a3 * x0))) / double(1 + m) + 
+                                   ((a1 + x0 * (-2.0 * a2 + 3.0 * a3 * x0)) * x1) / double(2 + m) + 
+                                   ((a2 - 3.0 * a3 * x0) * pow(x1, 2)) / double(3 + m) + 
+                                   (a3 * pow(x1, 3)) / double(4 + m));
+                    }
+                    break;
                 }
             }
             
-            if (m == 2)
-            {
-                for (int i = 0; i < num_points_ - 1; i++)
-                {
-                    double x0 = radial_grid[i];
-                    double x1 = radial_grid[i + 1];
-                    double dx = radial_grid.dr(i);
-                    T a0 = a[i];
-                    T a1 = b[i];
-                    T a2 = c[i];
-                    T a3 = d[i];
-
-                    double x0_2 = x0 * x0;
-                    double x0_3 = x0_2 * x0;
-                    double x1_2 = x1 * x1;
-                    double x1_3 = x1_2 * x1;
-
-                    g[i + 1] = g[i] + (20.0 * a0 * (x1_3 - x0_3) + 5.0 * a1 * (x0 * x0_3 + x1_3 * (3.0 * dx - x0)) - dx * dx * dx * 
-                        (-2.0 * a2 * (x0_2 + 3.0 * x0 * x1 + 6.0 * x1_2) - a3 * dx * (x0_2 + 4.0 * x0 * x1 + 10.0 * x1_2))) / 60.0;
-                }
-            }
-            
-            if ((m > 0 && m != 2) || m < -4)
-            {
-                for (int i = 0; i < num_points_ - 1; i++)
-                {
-                    double x0 = radial_grid[i];
-                    double x1 = radial_grid[i + 1];
-                    T a0 = a[i];
-                    T a1 = b[i];
-                    T a2 = c[i];
-                    T a3 = d[i];
-
-                    // obtained with the following Mathematica code:
-                    //   FullSimplify[Integrate[x^(m)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
-                    g[i + 1] = g[i] + (pow(x0, 1 + m) * (-(a0 * double((2 + m) * (3 + m) * (4 + m))) + 
-                        x0 * (a1 * double((3 + m) * (4 + m)) - 2.0 * a2 * double(4 + m) * x0 + 6.0 * a3 * pow(x0, 2)))) / double((1 + m) * (2 + m) * (3 + m) * (4 + m)) + 
-                        pow(x1, 1 + m) * ((a0 - x0 * (a1 + x0 * (-a2 + a3 * x0))) / double(1 + m) + ((a1 + x0 * (-2.0 * a2 + 3.0 * a3 * x0)) * x1) / double(2 + m) + 
-                        ((a2 - 3.0 * a3 * x0) * pow(x1, 2)) / double(3 + m) + (a3 * pow(x1, 3)) / double(4 + m));
-                }
-            }
-
-            if (m == -1)
-            {
-                for (int i = 0; i < num_points_ - 1; i++)
-                {
-                    double x0 = radial_grid[i];
-                    double x1 = radial_grid[i + 1];
-                    T a0 = a[i];
-                    T a1 = b[i];
-                    T a2 = c[i];
-                    T a3 = d[i];
-
-                    // obtained with the following Mathematica code:
-                    //   FullSimplify[Integrate[x^(-1)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
-                    g[i + 1] = g[i] + (-((x0 - x1) * (6.0 * a1 - 9.0 * a2 * x0 + 11.0 * a3 * pow(x0, 2) + 3.0 * a2 * x1 - 7.0 * a3 * x0 * x1 + 2.0 * a3 * pow(x1, 2))) / 6.0 + 
-                        (-a0 + x0 * (a1 - a2 * x0 + a3 * pow(x0, 2))) * log(x0 / x1));
-                }
-            }
-            
-            if (m == -2)
-            {
-                for (int i = 0; i < num_points_ - 1; i++)
-                {
-                    double x0 = radial_grid[i];
-                    double x1 = radial_grid[i + 1];
-                    T a0 = a[i];
-                    T a1 = b[i];
-                    T a2 = c[i];
-                    T a3 = d[i];
-
-                    // obtained with the following Mathematica code:
-                    //   FullSimplify[Integrate[x^(-2)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
-                    g[i + 1] = g[i] + (((x0 - x1) * (-2.0 * a0 + x0 * (2.0 * a1 - 2.0 * a2 * (x0 + x1) + a3 * (2.0 * pow(x0, 2) + 5.0 * x0 * x1 - pow(x1, 2)))) + 
-                        2.0 * x0 * (a1 + x0 * (-2.0 * a2 + 3.0 * a3 * x0)) * x1 * log(x1 / x0)) / (2.0 * x0 * x1));
-                }
-            }
-
-            if (m == -3)
-            {
-                for (int i = 0; i < num_points_ - 1; i++)
-                {
-                    double x0 = radial_grid[i];
-                    double x1 = radial_grid[i + 1];
-                    T a0 = a[i];
-                    T a1 = b[i];
-                    T a2 = c[i];
-                    T a3 = d[i];
-
-                    // obtained with the following Mathematica code:
-                    //   FullSimplify[Integrate[x^(-3)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
-                    g[i + 1] = g[i] + (-((x0 - x1) * (a0 * (x0 + x1) + x0 * (a1 * (-x0 + x1) + x0 * (a2 * x0 - a3 * pow(x0, 2) - 3.0 * a2 * x1 + 5.0 * a3 * x0 * x1 + 
-                        2.0 * a3 * pow(x1, 2)))) + 2.0 * pow(x0, 2) * (a2 - 3.0 * a3 * x0) * pow(x1, 2) * log(x0 / x1)) / (2.0 * pow(x0, 2) * pow(x1, 2)));
-                }
-            }
-
-            if (m == -4)
-            {
-                for (int i = 0; i < num_points_ - 1; i++)
-                {
-                    double x0 = radial_grid[i];
-                    double x1 = radial_grid[i + 1];
-                    T a0 = a[i];
-                    T a1 = b[i];
-                    T a2 = c[i];
-                    T a3 = d[i];
-
-                    // obtained with the following Mathematica code:
-                    //   FullSimplify[Integrate[x^(-4)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
-                    g[i + 1] = g[i] + ((2.0 * a0 * (-pow(x0, 3) + pow(x1, 3)) + x0 * (x0 - x1) * (a1 * (x0 - x1) * (2.0 * x0 + x1) + x0 * (-2.0 * a2 * pow(x0 - x1, 2) + 
-                        a3 * x0 * (2.0 * pow(x0, 2) - 7.0 * x0 * x1 + 11.0 * pow(x1, 2)))) + 6.0 * a3 * pow(x0, 3) * pow(x1, 3) * log(x1 / x0)) / (6.0 * pow(x0, 3) * pow(x1, 3)));
-                }
-            }
-
             return g[num_points_ - 1];
         }
 
@@ -314,17 +335,6 @@ template <typename T> class Spline
         {
             return num_points_;
         }
-                
-        /*T operator()(double x)
-        {
-            int i;
-            for (i = 0; i < num_points_; i++) 
-            {
-                if (x >= radial_grid[i] && x < radial_grid[i + 1]) break;
-            }
-            double t = (x - radial_grid[i]);
-            return a[i] + t * (b[i] + t * (c[i] + t * d[i]));
-        }*/
 
         T operator()(const int i, double dx)
         {
@@ -341,30 +351,44 @@ template <typename T> class Spline
             switch (dm)
             {
                 case 0:
+                {
                     return a[i] + dx * (b[i] + dx * (c[i] + dx * d[i]));
                     break;
+                }
                 case 1:
+                {
                     return b[i] + dx * (2 * c[i] + 3 * dx * d[i]);
                     break;
+                }
                 case 2:
+                {
                     return 2 * c[i] + 6 * dx * d[i];
                     break;
+                }
                 case 3:
+                {
                     return 6 * d[i];
                     break;
+                }
                 default:
+                {
                     error(__FILE__, __LINE__, "wrong order of derivative");
-                    return 0.0;
+                    return 0.0; // make compiler happy
                     break;
+                }
             }
         }
 
         inline T deriv(const int dm, const int i)
         {
-            if (i == num_points_ - 1) return deriv(dm, i - 1, radial_grid.dr(i - 1));
-            else return deriv(dm, i, 0.0);
-            //if (i == 0) return deriv(dm, 0, 0.0);
-            //else return deriv(dm, i - 1, radial_grid.dr(i));
+            if (i == num_points_ - 1) 
+            {
+                return deriv(dm, i - 1, radial_grid.dr(i - 1));
+            }
+            else 
+            {
+                return deriv(dm, i, 0.0);
+            }
         }
 };
 

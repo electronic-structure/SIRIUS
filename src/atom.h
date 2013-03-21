@@ -298,6 +298,11 @@ class Atom
             return type_->num_mt_points();
         }
 
+        inline RadialGrid& radial_grid()
+        {
+            return type_->radial_grid();
+        }
+
         inline void set_occupation_matrix(const complex16* source)
         {
             memcpy(occupation_matrix_.get_ptr(), source, 16 * 16 * 2 * 2 * sizeof(complex16));
