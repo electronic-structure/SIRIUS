@@ -19,7 +19,7 @@ class Density
         
         std::vector< std::pair<int, int> > dmat_spins_;
 
-        mdarray<complex16,3> complex_gaunt_;
+        mdarray<complex16, 3> complex_gaunt_;
 
         kpoint_set kpoint_set_;
 
@@ -503,7 +503,7 @@ class Density
             parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), 
                                      potential_->effective_potential()->f_pw());
 
-            if (basis_type == pw) potential_->add_mt_contribution_to_pw(); 
+            if (basis_type == pwlo) potential_->add_mt_contribution_to_pw(); 
             
             // solve secular equation and generate wave functions
             for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
@@ -539,36 +539,9 @@ class Density
             
             parameters_.rti().valence_eval_sum = eval_sum;
         }
-        
-        /// Generate charge density and magnetization from the wave functions
-        void generate()
+
+        void generate_valence_density()
         {
-            Timer t("sirius::Density::generate");
-            
-            double wt = 0.0;
-            double ot = 0.0;
-            for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
-            {
-                wt += kpoint_set_[ik]->weight();
-                for (int j = 0; j < parameters_.num_bands(); j++)
-                    ot += kpoint_set_[ik]->weight() * kpoint_set_[ik]->band_occupancy(j);
-            }
-
-            if (fabs(wt - 1.0) > 1e-12) error(__FILE__, __LINE__, "kpoint weights don't sum to one");
-
-            if (fabs(ot - parameters_.num_valence_electrons()) > 1e-8)
-            {
-                std::stringstream s;
-                s << "wrong occupancies" << std::endl
-                  << "  computed : " << ot << std::endl
-                  << "  required : " << parameters_.num_valence_electrons() << std::endl
-                  << "  difference : " << fabs(ot - parameters_.num_valence_electrons());
-                error(__FILE__, __LINE__, s);
-            }
-
-            // zero density and magnetization
-            zero();
-            
             // if we have ud and du spin blocks, don't compute one of them (du in this implementation)
             // because density matrix is symmetric
             int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
@@ -758,7 +731,80 @@ class Density
             
             rho_->sync(rlm_component);
             for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync(rlm_component);
+        }
+
+        //** void generate_valence_density_directly()
+        //** {
+        //**     // add k-point contribution
+        //**     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+        //**     {
+        //**         int ik = spl_num_kpoints_[ikloc];
+        //**         for (int jloc = 0; jloc < band_->spl_spinor_wf_col().local_size(); jloc++)
+        //**         {
+        //**             int j = band_->spl_spinor_wf_col(jloc);
+
+        //**             double wo = kpoint_set_[ik]->band_occupancy(j) * kpoint_set_[ik]->weight();
+
+        //**             if (wo > 1e-14)
+        //**             {
+        //**                 std::vector<PeriodicFunction<complex16, radial_angular>*> psi(parameters_.num_spins());
+        //**                 for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+        //**                     psi[ispn] = kpoint_set_[ik]->spinor_wave_function_component<radial_angular>(ispn, j); 
+
+        //**             }
+        //**         }
+        //**     }
+
+        //** }
+
+        void add_pw_contribution_to_mt()
+        {
+            mdarray<complex16, 3> fylm_tmp(parameters_.max_num_mt_points(), parameters_.lmmax_pot(), 
+                                           parameters_.num_atoms());
+            fylm_tmp.zero();
+
+            // get plane-wave coefficients of the charge density
+            parameters_.fft().input(rho_->f_it());
+            parameters_.fft().transform(-1);
+            parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), rho_->f_pw());
+
+
+
+        }
+        
+        /// Generate charge density and magnetization from the wave functions
+        void generate()
+        {
+            Timer t("sirius::Density::generate");
             
+            double wt = 0.0;
+            double ot = 0.0;
+            for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
+            {
+                wt += kpoint_set_[ik]->weight();
+                for (int j = 0; j < parameters_.num_bands(); j++)
+                    ot += kpoint_set_[ik]->weight() * kpoint_set_[ik]->band_occupancy(j);
+            }
+
+            if (fabs(wt - 1.0) > 1e-12) error(__FILE__, __LINE__, "kpoint weights don't sum to one");
+
+            if (fabs(ot - parameters_.num_valence_electrons()) > 1e-8)
+            {
+                std::stringstream s;
+                s << "wrong occupancies" << std::endl
+                  << "  computed : " << ot << std::endl
+                  << "  required : " << parameters_.num_valence_electrons() << std::endl
+                  << "  difference : " << fabs(ot - parameters_.num_valence_electrons());
+                error(__FILE__, __LINE__, s);
+            }
+
+            // zero density and magnetization
+            zero();
+
+            generate_valence_density();
+            
+            if (basis_type == pwlo) add_pw_contribution_to_mt();
+
             // compute core states
             for (int icloc = 0; icloc < parameters_.spl_num_atom_symmetry_classes().local_size(); icloc++)
             {

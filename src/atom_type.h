@@ -551,8 +551,7 @@ class AtomType
             radial_grid_.init(exponential_grid, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
         }
 
-        AtomType(int id__, const std::string& label__) : id_(id__),
-                                                         label_(label__)
+        AtomType(int id__, const std::string& label__) : id_(id__), label_(label__)
         {
             if (label_.size() == 0) error(__FILE__, __LINE__, "empty atom label");
 

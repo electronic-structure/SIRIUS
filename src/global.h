@@ -26,6 +26,9 @@ class Global : public StepFunction
         
         /// maximum l for potential
         int lmax_pot_;
+
+        /// maxim overall l
+        int lmax_;
         
         /// cutoff for augmented-wave functions
         double aw_cutoff_;
@@ -248,6 +251,16 @@ class Global : public StepFunction
             return Utils::lmmax_by_lmax(lmax_pot_);
         }
 
+        inline int lmax()
+        {
+            return lmax_;
+        }
+
+        inline int lmmax()
+        {
+            return Utils::lmmax_by_lmax(lmax_);
+        }
+
         inline double aw_cutoff()
         {
             return aw_cutoff_;
@@ -385,12 +398,14 @@ class Global : public StepFunction
 
             read_input();
             
-            if (basis_type == pw) lmax_apw_ = -1;
+            if (basis_type == pwlo) lmax_apw_ = -1;
+
+            lmax_ = std::max(std::max(std::max(lmax_pot_, lmax_rho_), lmax_apw_), 10); 
             
             // initialize variables, related to the unit cell
             UnitCell::init(lmax_apw(), lmax_pot(), num_mag_dims());
             
-            ReciprocalLattice::init();
+            ReciprocalLattice::init(lmax());
             StepFunction::init();
 
             // check MPI grid dimensions and set a default grid if needed

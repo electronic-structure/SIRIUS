@@ -265,11 +265,6 @@ class UnitCell
         {
             find_nearest_neighbours(15.0);
             
-            //if (check_mt_overlap(ia, ja)) find_mt_radii();
-            
-            // always scale MT radii
-            //find_mt_radii();
-
             if (auto_rmt() != 0) find_mt_radii();
 
             int ia, ja;

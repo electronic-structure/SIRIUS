@@ -680,6 +680,11 @@ class Band
             return spl_spinor_wf_col_;
         }
         
+        inline int spl_spinor_wf_col(int jloc)
+        {
+            return spl_spinor_wf_col_[jloc];
+        }
+        
         inline int num_sub_bands()
         {
             return sub_spl_spinor_wf_.local_size();

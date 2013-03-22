@@ -19,7 +19,7 @@ enum linalg_t {lapack, scalapack, elpa, magma};
 
 enum splindex_t {block, block_cyclic};
 
-enum basis_t {lapw, pw};
+enum basis_t {apwlo, pwlo};
 
 /// Wrapper for primitive data types
 template <typename T> class primitive_type_wrapper;

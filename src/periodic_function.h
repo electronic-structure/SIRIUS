@@ -8,8 +8,9 @@ const int ylm_component = 1 << 1;
 const int pw_component = 1 << 2;
 const int it_component = 1 << 3;
 
-/// Representation of the periodical function on the muffin-tin geometry
+enum index_order_t {angular_radial, radial_angular};
 
+/// Representation of the periodical function on the muffin-tin geometry
 /** Inside each muffin-tin the spherical expansion is used:
     \f[
         f({\bf r}) = \sum_{\ell m} f_{\ell m}(r) Y_{\ell m}(\hat {\bf r})
@@ -23,7 +24,7 @@ const int it_component = 1 << 3;
         f({\bf r}) = \sum_{{\bf G}} f({\bf G}) e^{i{\bf G}{\bf r}}
     \f]
 */
-template<typename T> class PeriodicFunction
+template<typename T, index_order_t index_order = angular_radial> class PeriodicFunction
 { 
     protected:
 
@@ -146,15 +147,28 @@ template<typename T> class PeriodicFunction
 
     public:
 
-        PeriodicFunction(Global& parameters__, int lmax__) : parameters_(parameters__), 
-                                                             lmax_(lmax__)
+        PeriodicFunction(Global& parameters__, int lmax__) : parameters_(parameters__), lmax_(lmax__)
         {
             lmmax_ = Utils::lmmax_by_lmax(lmax_);
 
             sht_.set_lmax(lmax_);
             
-            f_rlm_.set_dimensions(lmmax_, parameters_.max_num_mt_points(), parameters_.num_atoms());
-            f_ylm_.set_dimensions(lmmax_, parameters_.max_num_mt_points(), parameters_.num_atoms());
+            switch (index_order)
+            {
+                case angular_radial:
+                {
+                    f_rlm_.set_dimensions(lmmax_, parameters_.max_num_mt_points(), parameters_.num_atoms());
+                    f_ylm_.set_dimensions(lmmax_, parameters_.max_num_mt_points(), parameters_.num_atoms());
+                    break;
+                }
+                case radial_angular:
+                {
+                    f_rlm_.set_dimensions(parameters_.max_num_mt_points(), lmmax_, parameters_.num_atoms());
+                    f_ylm_.set_dimensions(parameters_.max_num_mt_points(), lmmax_, parameters_.num_atoms());
+                    break;
+                }
+            }
+
             f_it_.set_dimensions(parameters_.fft().size());
             f_pw_.set_dimensions(parameters_.num_gvec());
         }
@@ -201,18 +215,18 @@ template<typename T> class PeriodicFunction
             if (f_pw_.get_ptr() && (flags & pw_component)) f_pw_.zero();
         }
         
-        inline T& f_rlm(int lm, int ir, int ia)
+        inline T& f_rlm(int idx0, int idx1, int ia)
         {
             assert(f_rlm_.get_ptr());
 
-            return f_rlm_(lm, ir, ia);
+            return f_rlm_(idx0, idx1, ia);
         }
         
-        inline complex_t& f_ylm(int lm, int ir, int ia)
+        inline complex_t& f_ylm(int idx0, int idx1, int ia)
         {
             assert(f_ylm_.get_ptr());
 
-            return f_ylm_(lm, ir, ia);
+            return f_ylm_(idx0, idx1, ia);
         }
 
         inline T& f_it(int ir)
