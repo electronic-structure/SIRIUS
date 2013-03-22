@@ -733,14 +733,49 @@ class Density
             for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync(rlm_component);
         }
 
+        void add_band_contribution(double weight, std::vector<PeriodicFunction<complex16, radial_angular>*>& psi, 
+                                   std::vector<PeriodicFunction<double, radial_angular>*>& dens)
+        {
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                for (int lm1 = 0; lm1 < psi[0]->lmmax(); lm1++)
+                {
+                    for (int lm2 = 0; lm2 < psi[0]->lmmax(); lm2++)
+                    {
+                        for (int k = 0; k < band_->complex_gaunt_size(lm1, lm2); k++)
+                        {
+                            int lm3 = band_->complex_gaunt(lm1, lm2, k).first;
+                            complex16 gc = band_->complex_gaunt(lm1, lm2, k).second;
+
+                            for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                            {
+                                dens[0]->f_rlm(ir, lm3, ia) += weight * real(gc * conj(psi[0]->f_ylm(ir, lm1, ia)) * 
+                                                                             psi[0]->f_ylm(ir, lm2, ia));
+                            }
+                        }
+                    }
+                }
+            }
+        
+            for (int ir = 0; ir < parameters_.fft().size(); ir++)
+            {
+                dens[0]->f_it(ir) += weight * real(conj(psi[0]->f_it(ir)) * psi[0]->f_it(ir));
+            }
+        }
+
         void generate_valence_density_directly()
         {
             Timer t("sirius::Density::generate_valence_density_directly");
             
             int lmax = (basis_type == apwlo) ? parameters_.lmax_apw() : parameters_.lmax_rho();
 
-            mdarray<double, 3> dlm(parameters_.max_num_mt_points(), parameters_.lmmax_rho(), parameters_.num_atoms());
-            dlm.zero();
+            std::vector<PeriodicFunction<double, radial_angular>*> dens(1 + parameters_.num_mag_dims());
+            for (int i = 0; i < (int)dens.size(); i++)
+            {
+                dens[i] = new PeriodicFunction<double, radial_angular>(parameters_, parameters_.lmax_rho());
+                dens[i]->allocate(rlm_component | it_component);
+                dens[i]->zero();
+            }
 
             // add k-point contribution
             for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
@@ -758,29 +793,12 @@ class Density
                         for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
                             psi[ispn] = kpoint_set_[ik]->spinor_wave_function_component<radial_angular>(band_, lmax, ispn, jloc); 
 
-                        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                        add_band_contribution(wo, psi, dens);
+
+                        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
                         {
-                            for (int lm3 = 0; lm3 < parameters_.lmmax_rho(); lm3++)
-                            {
-                                for (int lm1 = 0; lm1 < Utils::lmmax_by_lmax(lmax); lm1++)
-                                {
-                                    for (int lm2 = 0; lm2 < Utils::lmmax_by_lmax(lmax); lm2++)
-                                    {
-                                        complex16 gc = complex_gaunt_(lm1, lm2, lm3);
-                                        if (abs(gc) > 1e-10)
-                                        {
-                                            for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-                                            {
-                                                dlm(ir, lm3, ia) += wo * real(gc * conj(psi[0]->f_ylm(ir, lm1, ia)) * psi[0]->f_ylm(ir, lm2, ia));
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        for (int ir = 0; ir < parameters_.fft().size(); ir++)
-                        {
-                            rho_->f_it(ir) += wo * real(conj(psi[0]->f_it(ir)) * psi[0]->f_it(ir));
+                            psi[ispn]->deallocate(ylm_component | it_component);
+                            delete psi[ispn];
                         }
                     }
                 }
@@ -788,13 +806,21 @@ class Density
 
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
-                for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
+                for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
                 {
-                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                    for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
                     {
-                        rho_->f_rlm(lm, ir, ia) += dlm(ir, lm, ia);
+                        rho_->f_rlm(lm, ir, ia) += dens[0]->f_rlm(ir, lm, ia);
                     }
                 }
+            }
+            for (int ir = 0; ir < parameters_.fft().size(); ir++)
+                rho_->f_it(ir) += dens[0]->f_it(ir);
+            
+            for (int i = 0; i < (int)dens.size(); i++) 
+            {
+                dens[i]->deallocate(rlm_component | it_component);
+                delete dens[i];
             }
         }
 

@@ -126,6 +126,8 @@ class kpoint
         std::vector< std::vector<int> > irow_by_atom_;
 
         std::vector<complex16> zil_;
+
+        std::vector<int> l_by_lm_;
         
         /// number of APW+lo basis functions distributed along rows of MPI grid
         inline int apwlo_basis_size_row()
@@ -583,6 +585,15 @@ class kpoint
         void initialize(Band* band)
         {
             Timer t("sirius::kpoint::initialize");
+            
+            zil_.resize(parameters_.lmax() + 1);
+            for (int l = 0; l <= parameters_.lmax(); l++) zil_[l] = pow(complex16(0, 1), l);
+            
+            l_by_lm_.resize(Utils::lmmax_by_lmax(parameters_.lmax()));
+            for (int l = 0, lm = 0; l <= parameters_.lmax(); l++)
+            {
+                for (int m = -l; m <= l; m++, lm++) l_by_lm_[lm] = l;
+            }
 
             generate_gkvec();
 
@@ -1944,9 +1955,6 @@ void kpoint::init_gkvec()
         }
     }
     
-    zil_.resize(parameters_.lmax() + 1);
-    for (int l = 0; l <= parameters_.lmax(); l++) zil_[l] = pow(complex16(0, 1), l);
-    
     gkvec_len_.resize(num_gkvec_loc());
     for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
     {
@@ -2159,40 +2167,36 @@ PeriodicFunction<complex16, index_order>* kpoint::spinor_wave_function_component
     {
         if (index_order != radial_angular) error(__FILE__, __LINE__, "wrong order of indices");
 
-        mdarray<complex16, 3> flm(parameters_.max_num_mt_points(), lmmax, parameters_.num_atoms());
-        flm.zero();
-
         sbessel_pw<double> jl(parameters_, lmax);
+        
+        double fourpi_omega = fourpi / sqrt(parameters_.omega());
+        
         for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
         {
+            complex16 z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igkloc, ispn, jloc) * fourpi_omega;
+
             jl.load(gkvec_len_[igkloc]);
 
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
                 int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-                for (int l = 0; l <= lmax; l++)
+                complex16 z2 = z1 * gkvec_phase_factors_(igkloc, ia);
+                
+                #pragma omp parallel for default(shared)
+                for (int lm = 0; lm < lmmax; lm++)
                 {
-                    for (int m = -l; m <= l; m++)
-                    {
-                        int lm = Utils::lm_by_l_m(l, m);
-                        complex16 z = (fourpi / sqrt(parameters_.omega())) * pow(complex16(0, 1), l) * 
-                                      gkvec_phase_factors_(igkloc, ia) * conj(gkvec_ylm_(lm, igkloc)) * 
-                                      spinor_wave_functions_(parameters_.mt_basis_size() + igkloc, ispn, jloc);
-                        for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-                            flm(ir, lm, ia) += z * jl(ir, l, iat);
-                    }
+                    int l = l_by_lm_[lm];
+                    complex16 z3 = z2 * zil_[l] * conj(gkvec_ylm_(lm, igkloc)); 
+                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                        func->f_ylm(ir, lm, ia) += z3 * jl(ir, l, iat);
                 }
             }
         }
+
         for (int ia = 0; ia < parameters_.num_atoms(); ia++)
         {
-            Platform::allreduce(&flm(0, 0, ia), flm.size(0) * flm.size(1), 
+            Platform::allreduce(&func->f_ylm(0, 0, ia), lmmax * parameters_.max_num_mt_points(),
                                 parameters_.mpi_grid().communicator(1 << band->dim_row()));
-            for (int lm = 0; lm < lmmax; lm++)
-            {
-                for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++) 
-                    func->f_ylm(ir, lm, ia) += flm(ir, lm, ia);
-            } 
         }
     }
 
@@ -2228,6 +2232,7 @@ PeriodicFunction<complex16, index_order>* kpoint::spinor_wave_function_component
         }
     }
 
+    // in principle, wave function must have an overall e^{ikr} phase factor
     parameters_.fft().input(num_gkvec(), &fft_index_[0], 
                             &spinor_wave_functions_(parameters_.mt_basis_size(), ispn, jloc));
     parameters_.fft().transform(1);

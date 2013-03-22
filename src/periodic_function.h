@@ -445,6 +445,16 @@ template<typename T, index_order_t index_order = angular_radial> class PeriodicF
             h5f.read("f_rlm", f_rlm_);
             h5f.read("f_it", f_it_);
         }
+
+        inline int lmax()
+        {
+            return lmax_;
+        }
+
+        inline int lmmax()
+        {
+            return lmmax_;
+        }
 };
 
 };
