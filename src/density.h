@@ -243,15 +243,15 @@ class Density
             dmat_spins_.push_back(std::pair<int, int>(1, 1));
             dmat_spins_.push_back(std::pair<int, int>(0, 1));
             
-            complex_gaunt_.set_dimensions(parameters_.lmmax_apw(), parameters_.lmmax_apw(), parameters_.lmmax_rho());
+            complex_gaunt_.set_dimensions(parameters_.lmmax(), parameters_.lmmax(), parameters_.lmmax_rho());
             complex_gaunt_.allocate();
 
-            for (int l1 = 0; l1 <= parameters_.lmax_apw(); l1++) 
+            for (int l1 = 0; l1 <= parameters_.lmax(); l1++) 
             {
             for (int m1 = -l1; m1 <= l1; m1++)
             {
                 int lm1 = Utils::lm_by_l_m(l1, m1);
-                for (int l2 = 0; l2 <= parameters_.lmax_apw(); l2++)
+                for (int l2 = 0; l2 <= parameters_.lmax(); l2++)
                 {
                 for (int m2 = -l2; m2 <= l2; m2++)
                 {
@@ -733,44 +733,123 @@ class Density
             for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync(rlm_component);
         }
 
-        //** void generate_valence_density_directly()
-        //** {
-        //**     // add k-point contribution
-        //**     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
-        //**     {
-        //**         int ik = spl_num_kpoints_[ikloc];
-        //**         for (int jloc = 0; jloc < band_->spl_spinor_wf_col().local_size(); jloc++)
-        //**         {
-        //**             int j = band_->spl_spinor_wf_col(jloc);
-
-        //**             double wo = kpoint_set_[ik]->band_occupancy(j) * kpoint_set_[ik]->weight();
-
-        //**             if (wo > 1e-14)
-        //**             {
-        //**                 std::vector<PeriodicFunction<complex16, radial_angular>*> psi(parameters_.num_spins());
-        //**                 for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-        //**                     psi[ispn] = kpoint_set_[ik]->spinor_wave_function_component<radial_angular>(ispn, j); 
-
-        //**             }
-        //**         }
-        //**     }
-
-        //** }
-
-        void add_pw_contribution_to_mt()
+        void generate_valence_density_directly()
         {
-            mdarray<complex16, 3> fylm_tmp(parameters_.max_num_mt_points(), parameters_.lmmax_pot(), 
-                                           parameters_.num_atoms());
-            fylm_tmp.zero();
+            Timer t("sirius::Density::generate_valence_density_directly");
+            
+            int lmax = (basis_type == apwlo) ? parameters_.lmax_apw() : parameters_.lmax_rho();
 
-            // get plane-wave coefficients of the charge density
-            parameters_.fft().input(rho_->f_it());
-            parameters_.fft().transform(-1);
-            parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), rho_->f_pw());
+            mdarray<double, 3> dlm(parameters_.max_num_mt_points(), parameters_.lmmax_rho(), parameters_.num_atoms());
+            dlm.zero();
 
+            // add k-point contribution
+            for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+            {
+                int ik = spl_num_kpoints_[ikloc];
+                for (int jloc = 0; jloc < band_->spl_spinor_wf_col().local_size(); jloc++)
+                {
+                    int j = band_->spl_spinor_wf_col(jloc);
 
+                    double wo = kpoint_set_[ik]->band_occupancy(j) * kpoint_set_[ik]->weight();
 
+                    if (wo > 1e-14)
+                    {
+                        std::vector<PeriodicFunction<complex16, radial_angular>*> psi(parameters_.num_spins());
+                        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+                            psi[ispn] = kpoint_set_[ik]->spinor_wave_function_component<radial_angular>(band_, lmax, ispn, jloc); 
+
+                        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                        {
+                            for (int lm3 = 0; lm3 < parameters_.lmmax_rho(); lm3++)
+                            {
+                                for (int lm1 = 0; lm1 < Utils::lmmax_by_lmax(lmax); lm1++)
+                                {
+                                    for (int lm2 = 0; lm2 < Utils::lmmax_by_lmax(lmax); lm2++)
+                                    {
+                                        complex16 gc = complex_gaunt_(lm1, lm2, lm3);
+                                        if (abs(gc) > 1e-10)
+                                        {
+                                            for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                                            {
+                                                dlm(ir, lm3, ia) += wo * real(gc * conj(psi[0]->f_ylm(ir, lm1, ia)) * psi[0]->f_ylm(ir, lm2, ia));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        for (int ir = 0; ir < parameters_.fft().size(); ir++)
+                        {
+                            rho_->f_it(ir) += wo * real(conj(psi[0]->f_it(ir)) * psi[0]->f_it(ir));
+                        }
+                    }
+                }
+            }
+
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
+                {
+                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                    {
+                        rho_->f_rlm(lm, ir, ia) += dlm(ir, lm, ia);
+                    }
+                }
+            }
         }
+
+            // this is wrong :(
+        //* void add_pw_contribution_to_mt()
+        //* {
+        //*     Timer t("sirius::Density::add_pw_contribution_to_mt");
+
+        //*     mdarray<complex16, 3> fylm_tmp(parameters_.max_num_mt_points(), parameters_.lmmax_rho(), 
+        //*                                    parameters_.num_atoms());
+        //*     fylm_tmp.zero();
+
+        //*     // get plane-wave coefficients of the charge density
+        //*     parameters_.fft().input(rho_->f_it());
+        //*     parameters_.fft().transform(-1);
+        //*     parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), rho_->f_pw());
+        //*     
+        //*     sbessel_pw<double> jl(parameters_);
+        //*     for (int igloc = 0; igloc < parameters_.spl_num_gvec().local_size(); igloc++)
+        //*     {
+        //*         int ig = parameters_.spl_num_gvec(igloc);
+        //*         jl.interpolate(parameters_.gvec_len(ig));
+        //*         for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+        //*         {
+        //*             int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+
+        //*             for (int l = 0; l <= parameters_.lmax_rho(); l++)
+        //*             {
+        //*                 for (int m = -l; m <= l; m++)
+        //*                 {
+        //*                     int lm = Utils::lm_by_l_m(l, m);
+        //*                     complex16 zt = fourpi * pow(complex16(0, 1), l) * rho_->f_pw(ig) * 
+        //*                                    conj(parameters_.gvec_ylm(lm, igloc)); 
+        //*                     for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+        //*                         fylm_tmp(ir, lm, ia) += zt * jl(ir, l, iat);
+        //*                 }
+        //*             }
+        //*         }
+        //*     }
+
+        //*     Platform::allreduce(fylm_tmp.get_ptr(), (int)fylm_tmp.size());
+
+        //*     std::vector<complex16> fylm(parameters_.lmmax_rho());
+        //*     std::vector<double> frlm(parameters_.lmmax_rho());
+
+        //*     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+        //*     {
+        //*         for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+        //*         {
+        //*             for (int lm = 0; lm < parameters_.lmmax_rho(); lm++) fylm[lm] = fylm_tmp(ir, lm, ia);
+        //*             SHT::convert_fylm_to_frlm(parameters_.lmax_rho(), &fylm[0], &frlm[0]);
+        //*             for (int lm = 0; lm < parameters_.lmmax_rho(); lm++) rho_->f_rlm(lm, ir, ia) += frlm[lm];
+        //*         }
+        //*     }
+        //* }
         
         /// Generate charge density and magnetization from the wave functions
         void generate()
@@ -801,9 +880,20 @@ class Density
             // zero density and magnetization
             zero();
 
-            generate_valence_density();
+            switch (basis_type)
+            {
+                case apwlo:
+                {
+                    generate_valence_density();
+                    break;
+                }
+                case pwlo:
+                {
             
-            if (basis_type == pwlo) add_pw_contribution_to_mt();
+                    generate_valence_density_directly();
+                    break;
+                }
+            }
 
             // compute core states
             for (int icloc = 0; icloc < parameters_.spl_num_atom_symmetry_classes().local_size(); icloc++)

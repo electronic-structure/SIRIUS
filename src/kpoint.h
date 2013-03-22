@@ -125,6 +125,8 @@ class kpoint
         /// list of rows (lo block) for a given atom
         std::vector< std::vector<int> > irow_by_atom_;
 
+        std::vector<complex16> zil_;
+        
         /// number of APW+lo basis functions distributed along rows of MPI grid
         inline int apwlo_basis_size_row()
         {
@@ -610,7 +612,7 @@ class kpoint
                                PeriodicFunction<double>* effective_magnetic_field[3]);
 
         template <index_order_t index_order>
-        PeriodicFunction<complex16, index_order>* spinor_wave_function_component(int ispn, int j);
+        PeriodicFunction<complex16, index_order>* spinor_wave_function_component(Band* band, int lmax, int ispn, int j);
         
         /// APW+lo basis size
         /** Total number of APW+lo basis functions is equal to the number of augmented plane-waves plus
@@ -1176,7 +1178,7 @@ void kpoint::set_fv_h_o_pw_lo(Band* band, PeriodicFunction<double>* effective_po
     
     #pragma omp parallel default(shared)
     {
-        sbessel_pw<complex16> jl(parameters_);
+        sbessel_pw<complex16> jl(parameters_, parameters_.lmax_pot());
 
         #pragma omp for
         for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
@@ -1274,7 +1276,7 @@ void kpoint::set_fv_h_o_pw_lo(Band* band, PeriodicFunction<double>* effective_po
     
     #pragma omp parallel default(shared)
     {
-        sbessel_pw<complex16> jl(parameters_);
+        sbessel_pw<complex16> jl(parameters_, parameters_.lmax_pot());
 
         #pragma omp for
         for (int igkloc = 0; igkloc < num_gkvec_col(); igkloc++)
@@ -1942,8 +1944,8 @@ void kpoint::init_gkvec()
         }
     }
     
-    std::vector<complex16> zil(parameters_.lmax_apw() + 1);
-    for (int l = 0; l <= parameters_.lmax_apw(); l++) zil[l] = pow(complex16(0, 1), l);
+    zil_.resize(parameters_.lmax() + 1);
+    for (int l = 0; l <= parameters_.lmax(); l++) zil_[l] = pow(complex16(0, 1), l);
     
     gkvec_len_.resize(num_gkvec_loc());
     for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
@@ -1981,8 +1983,8 @@ void kpoint::init_gkvec()
                 for (int l = 0; l <= parameters_.lmax_apw(); l++)
                 {
                     double f = fourpi / sqrt(parameters_.omega());
-                    alm_b_(l, iat, igkloc, 0) = zil[l] * f * sbessel_mt(l, 0); 
-                    alm_b_(l, iat, igkloc, 1) = zil[l] * f * sbessel_mt(l, 1); 
+                    alm_b_(l, iat, igkloc, 0) = zil_[l] * f * sbessel_mt(l, 0); 
+                    alm_b_(l, iat, igkloc, 1) = zil_[l] * f * sbessel_mt(l, 1); 
                 }
             }
         }
@@ -2142,31 +2144,57 @@ void kpoint::find_eigen_states(Band* band, PeriodicFunction<double>* effective_p
 }
 
 template<index_order_t index_order>
-PeriodicFunction<complex16, index_order>* kpoint::spinor_wave_function_component(int ispn, int j)
+PeriodicFunction<complex16, index_order>* kpoint::spinor_wave_function_component(Band* band, int lmax, int ispn, int jloc)
 {
+    Timer t("sirius::kpoint::spinor_wave_function_component");
+
+    int lmmax = Utils::lmmax_by_lmax(lmax);
+
     PeriodicFunction<complex16, index_order>* func = 
-        new PeriodicFunction<complex16, index_order>(parameters_, parameters_.lmax_apw());
+        new PeriodicFunction<complex16, index_order>(parameters_, lmax);
     func->allocate(ylm_component | it_component);
     func->zero();
     
-    //** if (basis_type == pw)
-    //** {
-    //**     if (index_order != radial_angular) error(__FILE__, __LINE__, "wrong order of indices");
+    if (basis_type == pwlo)
+    {
+        if (index_order != radial_angular) error(__FILE__, __LINE__, "wrong order of indices");
 
-    //**     mdarray<complex16, 3> flm(parameters_->max_num_mt_points(), parameters_.lmax_apw(), parameters_.num_atoms());
-    //**     flm.zero();
+        mdarray<complex16, 3> flm(parameters_.max_num_mt_points(), lmmax, parameters_.num_atoms());
+        flm.zero();
 
-    //**     sbessel_pw<complex16> jl(parameters_);
-    //**     for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
-    //**     {
-    //**         jl.interpolate(gkvec_len_[igkloc]);
+        sbessel_pw<double> jl(parameters_, lmax);
+        for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
+        {
+            jl.load(gkvec_len_[igkloc]);
 
-
-
-
-
-
-    //** }
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+                for (int l = 0; l <= lmax; l++)
+                {
+                    for (int m = -l; m <= l; m++)
+                    {
+                        int lm = Utils::lm_by_l_m(l, m);
+                        complex16 z = (fourpi / sqrt(parameters_.omega())) * pow(complex16(0, 1), l) * 
+                                      gkvec_phase_factors_(igkloc, ia) * conj(gkvec_ylm_(lm, igkloc)) * 
+                                      spinor_wave_functions_(parameters_.mt_basis_size() + igkloc, ispn, jloc);
+                        for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                            flm(ir, lm, ia) += z * jl(ir, l, iat);
+                    }
+                }
+            }
+        }
+        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+        {
+            Platform::allreduce(&flm(0, 0, ia), flm.size(0) * flm.size(1), 
+                                parameters_.mpi_grid().communicator(1 << band->dim_row()));
+            for (int lm = 0; lm < lmmax; lm++)
+            {
+                for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++) 
+                    func->f_ylm(ir, lm, ia) += flm(ir, lm, ia);
+            } 
+        }
+    }
 
     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
     {
@@ -2181,7 +2209,7 @@ PeriodicFunction<complex16, index_order>* kpoint::spinor_wave_function_component
                     for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
                     {
                         func->f_ylm(lm, ir, ia) += 
-                            spinor_wave_functions_(parameters_.atom(ia)->offset_wf() + i, ispn, j) * 
+                            spinor_wave_functions_(parameters_.atom(ia)->offset_wf() + i, ispn, jloc) * 
                             parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
                     }
                     break;
@@ -2191,7 +2219,7 @@ PeriodicFunction<complex16, index_order>* kpoint::spinor_wave_function_component
                     for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
                     {
                         func->f_ylm(ir, lm, ia) += 
-                            spinor_wave_functions_(parameters_.atom(ia)->offset_wf() + i, ispn, j) * 
+                            spinor_wave_functions_(parameters_.atom(ia)->offset_wf() + i, ispn, jloc) * 
                             parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
                     }
                     break;
@@ -2201,7 +2229,7 @@ PeriodicFunction<complex16, index_order>* kpoint::spinor_wave_function_component
     }
 
     parameters_.fft().input(num_gkvec(), &fft_index_[0], 
-                            &spinor_wave_functions_(parameters_.mt_basis_size(), ispn, j));
+                            &spinor_wave_functions_(parameters_.mt_basis_size(), ispn, jloc));
     parameters_.fft().transform(1);
     parameters_.fft().output(func->f_it());
 
