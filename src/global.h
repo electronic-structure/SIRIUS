@@ -21,6 +21,9 @@ class Global : public StepFunction
         /// maximum l for APW functions
         int lmax_apw_;
         
+        /// maximum l for plane waves
+        int lmax_pw_;
+        
         /// maximum l for density
         int lmax_rho_;
         
@@ -76,8 +79,6 @@ class Global : public StepFunction
         linalg_t eigen_value_solver_; 
         
         processing_unit_t processing_unit_;
-
-        SHT sht_;
 
         /// read from the input file if it exists
         void read_input()
@@ -231,6 +232,16 @@ class Global : public StepFunction
         inline int lmmax_apw()
         {
             return Utils::lmmax_by_lmax(lmax_apw_);
+        }
+        
+        inline int lmax_pw()
+        {
+            return lmax_pw_;
+        }
+
+        inline int lmmax_pw()
+        {
+            return Utils::lmmax_by_lmax(lmax_pw_);
         }
         
         inline int lmax_rho()
@@ -400,12 +411,14 @@ class Global : public StepFunction
 
             read_input();
             
-            if (basis_type == pwlo) lmax_apw_ = -1;
+            if (basis_type == pwlo)
+            {
+                lmax_pw_ = lmax_apw_;
+                lmax_apw_ = -1;
+            }
 
-            lmax_ = std::max(std::max(std::max(lmax_pot_, lmax_rho_), lmax_apw_), 10); 
+            lmax_ = std::max(std::max(std::max(lmax_pot_, lmax_rho_), lmax_apw_), lmax_pw_); 
 
-            sht_.set_lmax(lmax_);
-            
             // initialize variables, related to the unit cell
             UnitCell::init(lmax_apw(), lmax_pot(), num_mag_dims());
             
@@ -551,13 +564,6 @@ class Global : public StepFunction
                 printf("Linearization energies\n");
                 for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) printf("%s", &outbuff(0, ic));
             }
-            //if (Platform::mpi_rank() == 0)
-            //{
-            //    FILE* fout = fopen("enu.txt", "w");
-            //    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
-            //        atom_symmetry_class(ic)->write_enu(fout);
-            //    fclose(fout);
-            //}
         }
         
         void generate_radial_integrals()
@@ -599,7 +605,6 @@ class Global : public StepFunction
         }
 
         /// Get the total energy of the electronic subsystem.
-
         /** From the definition of the density functional we have:
             
             \f[
@@ -771,11 +776,6 @@ class Global : public StepFunction
 
                 jw.single("timers", Timer::timer_descriptors());
             }
-        }
-
-        inline SHT& sht()
-        {
-            return sht_;
         }
 };
 

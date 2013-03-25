@@ -55,6 +55,7 @@ extern "C" {
 #include "spline.h"
 #include "radial_solver.h"
 #include "sht.h"
+#include "gaunt.h"
 #include "fft3d.h"
 #include "json_tree.h"
 #include "hdf5_tree.h" 
