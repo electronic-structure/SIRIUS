@@ -102,12 +102,12 @@ template<> class primitive_type_wrapper< std::complex<double> >
         }
 };
 
-template<> class primitive_type_wrapper< std::complex<float> >
+/*template<> class primitive_type_wrapper< std::complex<float> >
 {
     public:
         typedef std::complex<float> complex_t;
         typedef float real_t;
-};
+};*/
 
 template<> class primitive_type_wrapper<int>
 {

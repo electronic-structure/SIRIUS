@@ -77,6 +77,8 @@ class Global : public StepFunction
         
         processing_unit_t processing_unit_;
 
+        SHT sht_;
+
         /// read from the input file if it exists
         void read_input()
         {
@@ -401,6 +403,8 @@ class Global : public StepFunction
             if (basis_type == pwlo) lmax_apw_ = -1;
 
             lmax_ = std::max(std::max(std::max(lmax_pot_, lmax_rho_), lmax_apw_), 10); 
+
+            sht_.set_lmax(lmax_);
             
             // initialize variables, related to the unit cell
             UnitCell::init(lmax_apw(), lmax_pot(), num_mag_dims());
@@ -767,6 +771,11 @@ class Global : public StepFunction
 
                 jw.single("timers", Timer::timer_descriptors());
             }
+        }
+
+        inline SHT& sht()
+        {
+            return sht_;
         }
 };
 

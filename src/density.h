@@ -738,18 +738,20 @@ class Density
         {
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
-                for (int lm1 = 0; lm1 < psi[0]->lmmax(); lm1++)
+                #pragma omp parallel for default(shared)
+                for (int lm3 = 0; lm3 < parameters_.lmmax_rho(); lm3++)
                 {
-                    for (int lm2 = 0; lm2 < psi[0]->lmmax(); lm2++)
+                    for (int k = 0; k < parameters_.sht().complex_gaunt_packed_L1_L2_size(lm3); k++)
                     {
-                        for (int k = 0; k < band_->complex_gaunt_size(lm1, lm2); k++)
+                        int lm1 = parameters_.sht().complex_gaunt_packed_L1_L2(lm3, k).lm1;
+                        int lm2 = parameters_.sht().complex_gaunt_packed_L1_L2(lm3, k).lm2;
+                        complex16 cg = parameters_.sht().complex_gaunt_packed_L1_L2(lm3, k).cg;
+                        
+                        if (lm1 < psi[0]->lmmax() && lm2 < psi[0]->lmmax())
                         {
-                            int lm3 = band_->complex_gaunt(lm1, lm2, k).first;
-                            complex16 gc = band_->complex_gaunt(lm1, lm2, k).second;
-
                             for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
                             {
-                                dens[0]->f_rlm(ir, lm3, ia) += weight * real(gc * conj(psi[0]->f_ylm(ir, lm1, ia)) * 
+                                dens[0]->f_rlm(ir, lm3, ia) += weight * real(cg * conj(psi[0]->f_ylm(ir, lm1, ia)) * 
                                                                              psi[0]->f_ylm(ir, lm2, ia));
                             }
                         }
@@ -814,8 +816,7 @@ class Density
                     }
                 }
             }
-            for (int ir = 0; ir < parameters_.fft().size(); ir++)
-                rho_->f_it(ir) += dens[0]->f_it(ir);
+            for (int ir = 0; ir < parameters_.fft().size(); ir++) rho_->f_it(ir) += dens[0]->f_it(ir);
             
             for (int i = 0; i < (int)dens.size(); i++) 
             {
@@ -824,59 +825,6 @@ class Density
             }
         }
 
-            // this is wrong :(
-        //* void add_pw_contribution_to_mt()
-        //* {
-        //*     Timer t("sirius::Density::add_pw_contribution_to_mt");
-
-        //*     mdarray<complex16, 3> fylm_tmp(parameters_.max_num_mt_points(), parameters_.lmmax_rho(), 
-        //*                                    parameters_.num_atoms());
-        //*     fylm_tmp.zero();
-
-        //*     // get plane-wave coefficients of the charge density
-        //*     parameters_.fft().input(rho_->f_it());
-        //*     parameters_.fft().transform(-1);
-        //*     parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), rho_->f_pw());
-        //*     
-        //*     sbessel_pw<double> jl(parameters_);
-        //*     for (int igloc = 0; igloc < parameters_.spl_num_gvec().local_size(); igloc++)
-        //*     {
-        //*         int ig = parameters_.spl_num_gvec(igloc);
-        //*         jl.interpolate(parameters_.gvec_len(ig));
-        //*         for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-        //*         {
-        //*             int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-
-        //*             for (int l = 0; l <= parameters_.lmax_rho(); l++)
-        //*             {
-        //*                 for (int m = -l; m <= l; m++)
-        //*                 {
-        //*                     int lm = Utils::lm_by_l_m(l, m);
-        //*                     complex16 zt = fourpi * pow(complex16(0, 1), l) * rho_->f_pw(ig) * 
-        //*                                    conj(parameters_.gvec_ylm(lm, igloc)); 
-        //*                     for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-        //*                         fylm_tmp(ir, lm, ia) += zt * jl(ir, l, iat);
-        //*                 }
-        //*             }
-        //*         }
-        //*     }
-
-        //*     Platform::allreduce(fylm_tmp.get_ptr(), (int)fylm_tmp.size());
-
-        //*     std::vector<complex16> fylm(parameters_.lmmax_rho());
-        //*     std::vector<double> frlm(parameters_.lmmax_rho());
-
-        //*     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-        //*     {
-        //*         for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-        //*         {
-        //*             for (int lm = 0; lm < parameters_.lmmax_rho(); lm++) fylm[lm] = fylm_tmp(ir, lm, ia);
-        //*             SHT::convert_fylm_to_frlm(parameters_.lmax_rho(), &fylm[0], &frlm[0]);
-        //*             for (int lm = 0; lm < parameters_.lmmax_rho(); lm++) rho_->f_rlm(lm, ir, ia) += frlm[lm];
-        //*         }
-        //*     }
-        //* }
-        
         /// Generate charge density and magnetization from the wave functions
         void generate()
         {
@@ -915,7 +863,6 @@ class Density
                 }
                 case pwlo:
                 {
-            
                     generate_valence_density_directly();
                     break;
                 }

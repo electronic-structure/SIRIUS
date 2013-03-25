@@ -747,9 +747,11 @@ void kpoint::generate_matching_coefficients_order1(int ia, int iat, AtomType* ty
         int idxb = type->indexb_by_l_m_order(l, -l, 0);
         for (int m = -l; m <= l; m++)
         {
-            /* it is more convenient to store conjugated coefficients because then the 
-               overlap matrix is set with single matrix-matrix multiplication without 
-               further conjugation */
+            // =========================================================================
+            // it is more convenient to store conjugated coefficients because then the 
+            // overlap matrix is set with single matrix-matrix multiplication without 
+            // further conjugation
+            // =========================================================================
             alm(igkloc, idxb++) = gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc) * conj(zt);
         }
     }
@@ -790,9 +792,11 @@ void kpoint::generate_matching_coefficients_order2(int ia, int iat, AtomType* ty
             int idxb0 = type->indexb_by_l_m_order(l, m, 0);
             int idxb1 = type->indexb_by_l_m_order(l, m, 1);
                         
-            /* it is more convenient to store conjugated coefficients because then the 
-               overlap matrix is set with single matrix-matrix multiplication without 
-               further conjugation */
+            // ===========================================================================
+            // it is more convenient to store conjugated coefficients because then the 
+            // overlap matrix is set with single matrix-matrix multiplication without 
+            // further conjugation
+            // ===========================================================================
             alm(igkloc, idxb0) = gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc) * conj(zb[0]);
             alm(igkloc, idxb1) = gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc) * conj(zb[1]);
         }
