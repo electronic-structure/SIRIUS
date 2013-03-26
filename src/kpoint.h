@@ -2181,7 +2181,8 @@ PeriodicFunction<complex16, index_order>* kpoint::spinor_wave_function_component
             complex16 z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
 
             jl.load(gkvec_len_[igkloc]);
-
+            
+            // TODO: possilbe optimization with zgemm
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
                 int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());

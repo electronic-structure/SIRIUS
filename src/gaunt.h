@@ -104,6 +104,15 @@ class GauntCoefficients
             assert(idx >= 0 && idx < (int)complex_gaunt_packed_L1_L2_[lm3].size());
             return complex_gaunt_packed_L1_L2_[lm3][idx];
         }
+        
+        template <typename T>
+        inline complex16 sum_L3_complex_gaunt(int lm1, int lm2, T* v)
+        {
+            complex16 zsum(0, 0);
+            for (int k = 0; k < (int)complex_gaunt_packed_L3_(lm1, lm2).size(); k++)
+                zsum += complex_gaunt_packed_L3_(lm1, lm2)[k].cg * v[complex_gaunt_packed_L3_(lm1, lm2)[k].lm3];
+            return zsum;
+        }
 };
 
 };

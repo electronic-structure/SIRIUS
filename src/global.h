@@ -80,6 +80,8 @@ class Global : public StepFunction
         
         processing_unit_t processing_unit_;
 
+        GauntCoefficients gaunt_;
+
         /// read from the input file if it exists
         void read_input()
         {
@@ -424,6 +426,8 @@ class Global : public StepFunction
             
             ReciprocalLattice::init(lmax());
             StepFunction::init();
+
+            gaunt_.set_lmax(lmax_apw(), lmax_apw(), lmax_rho());
 
             // check MPI grid dimensions and set a default grid if needed
             if (!mpi_grid_dims_.size()) mpi_grid_dims_ = Utils::intvec(Platform::num_mpi_ranks());
@@ -776,6 +780,11 @@ class Global : public StepFunction
 
                 jw.single("timers", Timer::timer_descriptors());
             }
+        }
+
+        inline GauntCoefficients& gaunt()
+        {
+            return gaunt_;
         }
 };
 
