@@ -47,11 +47,9 @@ template <typename T, int ND> class mdarray_base
 {
     public:
     
-        mdarray_base() : mdarray_ptr(NULL), 
-                         allocated_(false)
+        mdarray_base() : mdarray_ptr(NULL), allocated_(false)
                          #ifdef _GPU_
-                         ,mdarray_ptr_device(NULL)
-                         ,allocated_on_device(false)
+                         ,mdarray_ptr_device(NULL), allocated_on_device(false)
                          #endif
         { 
         }
@@ -81,8 +79,7 @@ template <typename T, int ND> class mdarray_base
         {
             size_t size_ = 1;
 
-            for (int i = 0; i < ND; i++) 
-                size_ *= d[i].size();
+            for (int i = 0; i < ND; i++) size_ *= d[i].size();
 
             return size_;
         }
@@ -164,29 +161,15 @@ template <typename T, int ND> class mdarray_base
         }
 
         /// Compute hash of the array
-
         /** Example: printf("hash(h) : %16llX\n", h.hash()); */
         uint64_t hash()
         {
             uint64_t h = 5381;
 
-            for(size_t i = 0; i < size() * sizeof(T); i++)
-                h = ((h << 5) + h) + ((unsigned char*)mdarray_ptr)[i];
+            for(size_t i = 0; i < size() * sizeof(T); i++) h = ((h << 5) + h) + ((unsigned char*)mdarray_ptr)[i];
 
             return h;
         }
-
-        
-        /*void copy_members(const mdarray_base<impl,T,ND>& src) 
-        {
-            for (int i = 0; i < ND; i++) 
-            { 
-                offset[i] = src.offset[i];
-                d[i] = src.d[i];
-            }
-        }*/
-
-
 
         #ifdef _GPU_
         void allocate_on_device()

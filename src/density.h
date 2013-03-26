@@ -415,8 +415,12 @@ class Density
         void add_band_contribution(double weight, std::vector<PeriodicFunction<complex16, radial_angular>*>& psi, 
                                    std::vector<PeriodicFunction<double, radial_angular>*>& dens)
         {
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            splindex<block> spl_num_atoms(parameters_.num_atoms(), band_->num_ranks_row(), band_->rank_row());
+
+            //for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
             {
+                int ia = spl_num_atoms[ialoc];
                 #pragma omp parallel for default(shared)
                 for (int lm3 = 0; lm3 < parameters_.lmmax_rho(); lm3++)
                 {
@@ -425,21 +429,20 @@ class Density
                         int lm1 = gaunt12_.complex_gaunt_packed_L1_L2(lm3, k).lm1;
                         int lm2 = gaunt12_.complex_gaunt_packed_L1_L2(lm3, k).lm2;
                         complex16 cg = gaunt12_.complex_gaunt_packed_L1_L2(lm3, k).cg;
-                        
-                        if (lm1 < psi[0]->lmmax() && lm2 < psi[0]->lmmax())
+
+                        for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
                         {
-                            for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-                            {
-                                dens[0]->f_rlm(ir, lm3, ia) += weight * real(cg * conj(psi[0]->f_ylm(ir, lm1, ia)) * 
-                                                                             psi[0]->f_ylm(ir, lm2, ia));
-                            }
+                            dens[0]->f_rlm(ir, lm3, ia) += weight * real(cg * conj(psi[0]->f_ylm(ir, lm1, ia)) * 
+                                                           psi[0]->f_ylm(ir, lm2, ia));
                         }
                     }
                 }
             }
         
-            for (int ir = 0; ir < parameters_.fft().size(); ir++)
+            splindex<block> spl_fft_size(parameters_.fft().size(), band_->num_ranks_row(), band_->rank_row());
+            for (int irloc = 0; irloc < spl_fft_size.local_size(); irloc++)
             {
+                int ir = spl_fft_size[irloc];
                 dens[0]->f_it(ir) += weight * real(conj(psi[0]->f_it(ir)) * psi[0]->f_it(ir));
             }
         }
@@ -485,6 +488,20 @@ class Density
                 }
             }
 
+            for (int i = 0; i < (int)dens.size(); i++)
+            {
+                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                {
+                    Platform::allreduce(&dens[i]->f_rlm(0, 0, ia), 
+                                        parameters_.lmmax_rho() * parameters_.max_num_mt_points(), 
+                                        parameters_.mpi_grid().communicator(1 << band_->dim_row() | 
+                                                                            1 << band_->dim_col()));
+                }
+                Platform::allreduce(&dens[i]->f_it(0), parameters_.fft().size(),
+                                    parameters_.mpi_grid().communicator(1 << band_->dim_row() | 
+                                                                        1 << band_->dim_col()));
+            }
+                                                                
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
                 for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)

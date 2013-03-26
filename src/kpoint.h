@@ -1934,7 +1934,7 @@ void kpoint::init_gkvec()
     gkvec_phase_factors_.set_dimensions(num_gkvec_loc(), parameters_.num_atoms());
     gkvec_phase_factors_.allocate();
 
-    int lmax = std::max(parameters_.lmax_apw(), parameters_.lmax_pot());
+    int lmax = std::max(parameters_.lmax_apw(), parameters_.lmax_pw());
 
     gkvec_ylm_.set_dimensions(Utils::lmmax_by_lmax(lmax), num_gkvec_loc());
     gkvec_ylm_.allocate();
@@ -2177,7 +2177,8 @@ PeriodicFunction<complex16, index_order>* kpoint::spinor_wave_function_component
         
         for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
         {
-            complex16 z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igkloc, ispn, jloc) * fourpi_omega;
+            int igk = igkglob(igkloc);
+            complex16 z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
 
             jl.load(gkvec_len_[igkloc]);
 

@@ -94,11 +94,14 @@ class GauntCoefficients
 
         inline int complex_gaunt_packed_L1_L2_size(int lm3)
         {
+            assert(lm3 >= 0 && lm3 < lmmax3_);
             return (int)complex_gaunt_packed_L1_L2_[lm3].size();
         }
         
         inline complex_gaunt_L1_L2& complex_gaunt_packed_L1_L2(int lm3, int idx)
         {
+            assert(lm3 >= 0 && lm3 < lmmax3_);
+            assert(idx >= 0 && idx < (int)complex_gaunt_packed_L1_L2_[lm3].size());
             return complex_gaunt_packed_L1_L2_[lm3][idx];
         }
 };
