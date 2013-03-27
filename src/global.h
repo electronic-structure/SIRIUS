@@ -427,7 +427,7 @@ class Global : public StepFunction
             ReciprocalLattice::init(lmax());
             StepFunction::init();
 
-            gaunt_.set_lmax(lmax_apw(), lmax_apw(), lmax_rho());
+            gaunt_.set_lmax(std::max(lmax_apw(), lmax_pw()), std::max(lmax_apw(), lmax_pw()), lmax_pot());
 
             // check MPI grid dimensions and set a default grid if needed
             if (!mpi_grid_dims_.size()) mpi_grid_dims_ = Utils::intvec(Platform::num_mpi_ranks());

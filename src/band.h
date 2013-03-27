@@ -12,9 +12,6 @@ class Band
         /// Global set of parameters
         Global& parameters_;
     
-        /// Non-zero Gaunt coefficients
-        mdarray<std::vector< std::pair<int, complex16> >, 2> complex_gaunt_packed_;
-       
         /// Block-cyclic distribution of the first-variational states along columns of the MPI grid
         splindex<block_cyclic> spl_fv_states_col_;
         
@@ -66,24 +63,24 @@ class Band
             {
                 int offset = parameters_.atom(ia)->offset_wf();
                 int mt_basis_size = parameters_.atom(ia)->type()->mt_basis_size();
+                Atom* atom = parameters_.atom(ia);
                 
                 zm.zero();
         
                 #pragma omp parallel for default(shared)
                 for (int j2 = 0; j2 < mt_basis_size; j2++)
                 {
-                    int lm2 = parameters_.atom(ia)->type()->indexb(j2).lm;
-                    int idxrf2 = parameters_.atom(ia)->type()->indexb(j2).idxrf;
+                    int lm2 = atom->type()->indexb(j2).lm;
+                    int idxrf2 = atom->type()->indexb(j2).idxrf;
                     
                     for (int i = 0; i < parameters_.num_mag_dims(); i++)
                     {
                         for (int j1 = 0; j1 <= j2; j1++)
                         {
-                            int lm1 = parameters_.atom(ia)->type()->indexb(j1).lm;
-                            int idxrf1 = parameters_.atom(ia)->type()->indexb(j1).idxrf;
+                            int lm1 = atom->type()->indexb(j1).lm;
+                            int idxrf1 = atom->type()->indexb(j1).idxrf;
 
-                            sum_L3_complex_gaunt(lm1, lm2, parameters_.atom(ia)->b_radial_integrals(idxrf1, idxrf2, i), 
-                                                 zm(j1, j2, i));
+                            zm(j1, j2, i) = parameters_.gaunt().sum_L3_complex_gaunt(lm1, lm2, atom->b_radial_integrals(idxrf1, idxrf2, i)); 
                         }
                     }
                 }
@@ -323,36 +320,6 @@ class Band
 
         void init()
         {
-            int lmax = std::max(parameters_.lmax_apw(), parameters_.lmax_pot());
-            int lmmax = Utils::lmmax_by_lmax(lmax);
-
-            complex_gaunt_packed_.set_dimensions(lmmax, lmmax);
-            complex_gaunt_packed_.allocate();
-
-            for (int l1 = 0; l1 <= lmax; l1++) 
-            {
-            for (int m1 = -l1; m1 <= l1; m1++)
-            {
-                int lm1 = Utils::lm_by_l_m(l1, m1);
-                for (int l2 = 0; l2 <= lmax; l2++)
-                {
-                for (int m2 = -l2; m2 <= l2; m2++)
-                {
-                    int lm2 = Utils::lm_by_l_m(l2, m2);
-                    for (int l3 = 0; l3 <= parameters_.lmax_pot(); l3++)
-                    {
-                    for (int m3 = -l3; m3 <= l3; m3++)
-                    {
-                        int lm3 = Utils::lm_by_l_m(l3, m3);
-                        complex16 z = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
-                        if (abs(z) > 1e-12) complex_gaunt_packed_(lm1, lm2).push_back(std::pair<int, complex16>(lm3, z));
-                    }
-                    }
-                }
-                }
-            }
-            }
-            
             // distribue first-variational states
             spl_fv_states_col_.split(parameters_.num_fv_states(), num_ranks_col_, rank_col_, 
                                      parameters_.cyclic_block_size());
@@ -761,23 +728,6 @@ class Band
             return num_ranks_;
         }
         
-        template <typename T>
-        inline void sum_L3_complex_gaunt(int lm1, int lm2, T* v, complex16& zsum)
-        {
-            for (int k = 0; k < (int)complex_gaunt_packed_(lm1, lm2).size(); k++)
-                zsum += complex_gaunt_packed_(lm1, lm2)[k].second * v[complex_gaunt_packed_(lm1, lm2)[k].first];
-        }
-
-        inline int complex_gaunt_size(int lm1, int lm2)
-        {
-            return (int)complex_gaunt_packed_(lm1, lm2).size();
-        }
-
-        inline std::pair<int, complex16>& complex_gaunt(int lm1, int lm2, int k)
-        {
-            return complex_gaunt_packed_(lm1, lm2)[k];
-        }
-
         inline int blacs_context()
         {
             return blacs_context_;

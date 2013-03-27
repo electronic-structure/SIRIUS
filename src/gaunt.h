@@ -113,6 +113,16 @@ class GauntCoefficients
                 zsum += complex_gaunt_packed_L3_(lm1, lm2)[k].cg * v[complex_gaunt_packed_L3_(lm1, lm2)[k].lm3];
             return zsum;
         }
+        
+        inline int complex_gaunt_packed_L3_size(int lm1, int lm2)
+        {
+            return (int)complex_gaunt_packed_L3_(lm1, lm2).size();
+        }
+
+        inline complex_gaunt_L3& complex_gaunt_packed_L3(int lm1, int lm2, int k)
+        {
+            return complex_gaunt_packed_L3_(lm1, lm2)[k];
+        }
 };
 
 };
