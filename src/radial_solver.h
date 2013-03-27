@@ -133,7 +133,77 @@ class RadialSolver
         {
             enu_tolerance = _tolerance;
         }
-        
+
+        double find_enu(int l, std::vector<double>& v, double enu0)
+        {
+            std::vector<double> p;
+            std::vector<double> hp;
+            
+            double enu = enu0;
+            double de = 0.001;
+            bool found = false;
+            double p0p = 0;
+            for (int i = 0; i < 1000; i++)
+            {
+                solve_in_mt(l, enu, 0, v, p, hp);
+                if (i > 0)
+                {
+                    if (p[radial_grid.mt_num_points() - 1] * p0p < 0.0)
+                    {
+                        if (fabs(de) < 1e-10)
+                        {
+                            found = true;
+                            break;
+                        }
+                        de *= -0.5;
+                    }
+                    else
+                    {
+                        de *= 1.25;
+                    }
+                }
+                p0p = p[radial_grid.mt_num_points() - 1];
+                enu += de;
+            }
+            if (!found)
+            {   
+                error(__FILE__, __LINE__, "top of the band is not found");
+            }
+            double etop = enu;
+            de = -0.001;
+            found = false;
+            double p1p = 0;
+            for (int i = 0; i < 1000; i++)
+            {
+                solve_in_mt(l, enu, 0, v, p, hp);
+                Spline<double> sp(radial_grid.mt_num_points(), radial_grid, p);
+
+                if (i > 0)
+                {
+                    if (sp.deriv(1, radial_grid.mt_num_points() - 1) * p1p < 0.0)
+                    {
+                        if (fabs(de) < 1e-10)
+                        {
+                            found = true;
+                            break;
+                        }
+                        de *= -0.5;
+                    }
+                    else
+                    {
+                        de *= 1.25;
+                    }
+                }
+                p1p = sp.deriv(1, radial_grid.mt_num_points() - 1);
+                enu += de;
+            }
+            if (!found)
+            {   
+                error(__FILE__, __LINE__, "bottom of the band is not found");
+            }
+            return (enu + etop) / 2.0;
+        }
+                        
         void solve_in_mt(int l, double enu, int m, std::vector<double>& v, std::vector<double>& p, 
                          std::vector<double>& hp)
         {

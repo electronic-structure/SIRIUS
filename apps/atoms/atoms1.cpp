@@ -149,7 +149,8 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
     jw.single("core", core_str);
     jw.begin_array("valence");
     jw.begin_set();
-    jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : false}]");
+    jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}]");
+    //jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 0}]");
     jw.end_set();
     
     int lmax = 0;
@@ -172,7 +173,7 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
         jw.begin_set();
         jw.single("l", l);
         jw.single("n", n);
-        jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}]");
+        jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]");
 
         jw.end_set();
     }
@@ -182,11 +183,39 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
     {
         jw.begin_set();
         std::stringstream s;
-        s << "[{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}," 
-          << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : true}]";
+        s << "[{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}," 
+          << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}]";
         jw.single("l", valence[i].l);
         jw.string("basis", s.str());
         jw.end_set();
+    }
+    if (lo_type == 4)
+    {
+        printf("lo4 is composed of u_{n,E1} and u_{n+1,E2}\n");
+        for (int i = 0; i < (int)valence.size(); i++)
+        {
+            jw.begin_set();
+            std::stringstream s;
+            s << "[{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}," 
+              << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : 0},"
+              << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]";
+            jw.single("l", valence[i].l);
+            jw.string("basis", s.str());
+            jw.end_set();
+        }
+    }
+    if (lo_type == 5)
+    {
+        for (int i = 0; i < (int)valence.size(); i++)
+        {
+            jw.begin_set();
+            std::stringstream s;
+            s << "[{" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}," 
+              << " {" << "\"n\" : " << valence[i].n + 2 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]";
+            jw.single("l", valence[i].l);
+            jw.string("basis", s.str());
+            jw.end_set();
+        }
     }
     if (lo_type == 1)
     {
@@ -195,8 +224,8 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
         {
             jw.begin_set();
             std::stringstream s;
-            s << "[{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}," 
-              << " {" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}]";
+            s << "[{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}," 
+              << " {" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]";
             jw.single("l", valence[i].l);
             jw.string("basis", s.str());
             jw.end_set();
@@ -209,9 +238,9 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
         {
             jw.begin_set();
             std::stringstream s;
-            s << "[{" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}," 
-              << " {" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : true}," 
-              << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}]";
+            s << "[{" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}," 
+              << " {" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}," 
+              << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]";
             jw.single("l", valence[i].l);
             jw.string("basis", s.str());
             jw.end_set();
@@ -223,9 +252,9 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
         {
             jw.begin_set();
             std::stringstream s;
-            s << "[{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}," 
-              << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : true}," 
-              << " {" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : true}]";
+            s << "[{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}," 
+              << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}," 
+              << " {" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]";
             jw.single("l", valence[i].l);
             jw.string("basis", s.str());
             jw.end_set();

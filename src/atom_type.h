@@ -35,7 +35,7 @@ struct radial_solution_descriptor
     double enu;
     
     /// automatically determine energy
-    bool auto_enu;
+    int auto_enu;
 };
 
 /// set of radial solution descriptors, used to construct augmented waves or local orbitals
@@ -66,12 +66,15 @@ class radial_functions_index
 
         std::vector<radial_function_index_descriptor> radial_function_index_descriptors_;
 
-        mdarray<int,2> index_by_l_order_;
+        mdarray<int, 2> index_by_l_order_;
 
-        mdarray<int,1> index_by_idxlo_;
+        mdarray<int, 1> index_by_idxlo_;
 
         /// number of radial functions for each angular momentum quantum number
         std::vector<int> num_rf_;
+
+        /// number of local orbitals for each angular momentum quantum number
+        std::vector<int> num_lo_;
 
         // maximum number of radial functions across all angular momentums
         int max_num_rf_;
@@ -85,6 +88,8 @@ class radial_functions_index
             assert((int)aw_descriptors.size() == lmax + 1);
 
             num_rf_ = std::vector<int>(lmax + 1, 0);
+            num_lo_ = std::vector<int>(lmax + 1, 0);
+            
             max_num_rf_ = 0;
 
             radial_function_index_descriptors_.clear();
@@ -103,6 +108,7 @@ class radial_functions_index
                 int l = lo_descriptors[idxlo][0].l;
                 radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, num_rf_[l], idxlo));
                 num_rf_[l]++;
+                num_lo_[l]++;
             }
 
             for (int l = 0; l <= lmax; l++) max_num_rf_ = std::max(max_num_rf_, num_rf_[l]);
@@ -156,7 +162,15 @@ class radial_functions_index
             return num_rf_[l];
         }
 
-        /// Maximum number of radial functions for one orbital quantum number.
+        /// Number of local orbitals for a given orbital quantum number.
+        inline int num_lo(int l)
+        {
+            assert(l >= 0 && l < (int)num_lo_.size());
+            
+            return num_lo_[l];
+        }
+        
+        /// Maximum possible number of radial functions for an orbital quantum number.
         inline int max_num_rf()
         {
             return max_num_rf_;
@@ -181,15 +195,8 @@ class basis_functions_index
 
             int idxrf;
             
-            basis_function_index_descriptor(int l, 
-                                            int m, 
-                                            int order, 
-                                            int idxlo, 
-                                            int idxrf) : l(l), 
-                                                         m(m), 
-                                                         order(order), 
-                                                         idxlo(idxlo), 
-                                                         idxrf(idxrf) 
+            basis_function_index_descriptor(int l, int m, int order, int idxlo, int idxrf) : l(l), m(m), order(order), 
+                                                                                             idxlo(idxlo), idxrf(idxrf) 
             {
                 assert(l >= 0);
                 assert(m >= -l && m <= l);
@@ -219,8 +226,7 @@ class basis_functions_index
         {
         }
         
-        void init(const int lmax,
-                 radial_functions_index& indexr)
+        void init(const int lmax, radial_functions_index& indexr)
         {
             basis_function_index_descriptors_.clear();
 
@@ -512,17 +518,10 @@ class AtomType
 
     public:
         
-        AtomType(const char* symbol__, 
-                 const char* name__, 
-                 int zn__, 
-                 double mass__, 
-                 std::vector<atomic_level_descriptor>& levels__) : symbol_(std::string(symbol__)),
-                                                                   name_(std::string(name__)),
-                                                                   zn_(zn__),
-                                                                   mass_(mass__),
-                                                                   mt_radius_(2.0),
-                                                                   num_mt_points_(2000 + zn__ * 50),
-                                                                   atomic_levels_(levels__)
+        AtomType(const char* symbol__, const char* name__, int zn__, double mass__, 
+                 std::vector<atomic_level_descriptor>& levels__) : 
+            symbol_(std::string(symbol__)), name_(std::string(name__)), zn_(zn__), mass_(mass__), mt_radius_(2.0), 
+            num_mt_points_(2000 + zn__ * 50), atomic_levels_(levels__)
                                                          
         {
             radial_grid_.init(exponential_grid, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
@@ -959,9 +958,9 @@ class AtomType
             return (int)aw_descriptors_.size();
         }
 
-        inline radial_solution_descriptor_set& aw_descriptor(int idx)
+        inline radial_solution_descriptor_set& aw_descriptor(int l)
         {
-            return aw_descriptors_[idx];
+            return aw_descriptors_[l];
         }
         
         inline int num_lo_descriptors()

@@ -36,7 +36,9 @@ extern "C" {
 #include "typedefs.h"
 #include "config.h"
 #include "LebedevLaikov.h"
+#ifdef _GPU_
 #include "gpu_interface.h"
+#endif
 #include "platform.h"
 
 //
@@ -60,7 +62,7 @@ extern "C" {
 #include "run_time_info.h"
 #include "mpi_grid.h"
 #include "splindex.h"
-
+#include "sirius_io.h"
 //
 // atoms
 //

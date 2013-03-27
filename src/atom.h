@@ -20,16 +20,16 @@ class Atom
         double vector_field_[3];
 
         /// MT potential
-        mdarray<double,2> veff_;
+        mdarray<double, 2> veff_;
 
         /// radial integrals of the Hamiltonian 
-        mdarray<double,3> h_radial_integrals_;
+        mdarray<double, 3> h_radial_integrals_;
         
         /// MT magnetic field
-        mdarray<double,2> beff_[3];
+        mdarray<double, 2> beff_[3];
 
         /// radial integrals of the effective magnetic field
-        mdarray<double,4> b_radial_integrals_;
+        mdarray<double, 4> b_radial_integrals_;
 
         /// number of magnetic dimensions
         int num_mag_dims_;
@@ -47,10 +47,10 @@ class Atom
         int offset_wf_;
 
         /// unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method
-        mdarray<complex16,4> occupation_matrix_;
+        mdarray<complex16, 4> occupation_matrix_;
         
         /// U,J correction matrix of the L(S)DA+U method
-        mdarray<complex16,4> uj_correction_matrix_;
+        mdarray<complex16, 4> uj_correction_matrix_;
 
         /// true if UJ correction is applied for the current atom
         bool apply_uj_correction_;
@@ -258,6 +258,11 @@ class Atom
             if (num_mag_dims_) Platform::bcast(b_radial_integrals_.get_ptr(), (int)b_radial_integrals_.size(), rank);
         }
 
+        void sync_occupation_matrix(int rank)
+        {
+            Platform::bcast(occupation_matrix_.get_ptr(), (int)occupation_matrix_.size(), rank);
+        }
+
         inline int offset_aw()
         {
             assert(offset_aw_ >= 0);
@@ -279,12 +284,12 @@ class Atom
             return offset_wf_;  
         }
 
-        inline double* h_radial_integral(int idxrf1, int idxrf2)
+        inline double* h_radial_integrals(int idxrf1, int idxrf2)
         {
             return &h_radial_integrals_(0, idxrf1, idxrf2);
         }
         
-        inline double* b_radial_integral(int idxrf1, int idxrf2, int x)
+        inline double* b_radial_integrals(int idxrf1, int idxrf2, int x)
         {
             return &b_radial_integrals_(0, idxrf1, idxrf2, x);
         }

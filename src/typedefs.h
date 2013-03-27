@@ -53,10 +53,10 @@ template<> class primitive_type_wrapper<double>
             return MPI_DOUBLE;
         }
 
-        /*static bool is_complex()
+        static bool is_complex()
         {
             return false;
-        }*/
+        }
 };
 
 template<> class primitive_type_wrapper<float>
@@ -82,15 +82,20 @@ template<> class primitive_type_wrapper< std::complex<double> >
             return v;
         }
         
+        static hid_t hdf5_type_id()
+        {
+            return H5T_NATIVE_LDOUBLE;
+        }
+        
         static MPI_Datatype mpi_type_id()
         {
             return MPI_COMPLEX16;
         }
 
-        /*static bool is_complex()
+        static bool is_complex()
         {
             return true;
-        }*/
+        }
 };
 
 template<> class primitive_type_wrapper< std::complex<float> >
@@ -111,6 +116,25 @@ template<> class primitive_type_wrapper<int>
         static MPI_Datatype mpi_type_id()
         {
             return MPI_INT;
+        }
+
+        /*static bool is_complex()
+        {
+            return false;
+        }*/
+};
+
+template<> class primitive_type_wrapper<char>
+{
+    public:
+        /*static hid_t hdf5_type_id()
+        {
+            return H5T_NATIVE_INT;
+        }*/
+
+        static MPI_Datatype mpi_type_id()
+        {
+            return MPI_CHAR;
         }
 
         /*static bool is_complex()

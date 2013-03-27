@@ -20,10 +20,10 @@ class Platform
             verbose_ = false;
             if (mpi_rank() == 0) verbose_ = true;
 
-#ifdef _GPU_
+            #ifdef _GPU_
             cublas_init();
             if (mpi_rank() == 0) cuda_device_info();
-#endif
+            #endif
         }
 
         static int mpi_rank(MPI_Comm comm = MPI_COMM_WORLD)
@@ -42,7 +42,15 @@ class Platform
 
         static void abort()
         {
-            MPI_Abort(MPI_COMM_WORLD, -1);
+            if (num_mpi_ranks() ==  1)
+            {
+                raise(SIGTERM);
+            }
+            else
+            {   
+                MPI_Abort(MPI_COMM_WORLD, -1);
+            }
+            exit(0);
         }
 
         static int num_threads()
@@ -94,13 +102,23 @@ class Platform
             bcast(buffer, count, MPI_COMM_WORLD, root);
         }
        
-        /// Perform the in-place (the output buffer is used as the input buffer) all-to-one reduction 
+        /// Performs the standart all-to-one reduction
         template<typename T>
-        static void reduce(T* buffer, int count, const MPI_Comm& comm, int root)
+        static void reduce(T* buf, int count, const MPI_Comm& comm, int root)
         {
-            MPI_Reduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), MPI_SUM, root, comm);
+            T* buf_tmp = (T*)malloc(count * sizeof(T));
+            MPI_Reduce(buf, buf_tmp, count, primitive_type_wrapper<T>::mpi_type_id(), MPI_SUM, root, comm);
+            memcpy(buf, buf_tmp, count * sizeof(T));
+            free(buf_tmp);
         }
 
+        /// Perform the in-place (the output buffer is used as the input buffer) all-to-one reduction 
+        template<typename T>
+        static void reduce(T* sendbuf, T* recvbuf, int count, const MPI_Comm& comm, int root)
+        {
+            MPI_Reduce(sendbuf, recvbuf, count, primitive_type_wrapper<T>::mpi_type_id(), MPI_SUM, root, comm);
+        }
+        
         /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
         template<typename T>
         static void allreduce(T* buffer, int count, const MPI_Comm& comm)

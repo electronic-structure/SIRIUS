@@ -69,7 +69,11 @@ class Global : public StepFunction
         splindex<block> spl_num_atom_symmetry_classes_;
 
         timeval start_time_;
+
+        linalg_t eigen_value_solver_; 
         
+        processing_unit_t processing_unit_;
+
         /// read from the input file if it exists
         void read_input()
         {
@@ -81,9 +85,51 @@ class Global : public StepFunction
             {
                 JsonTree parser(fname);
                 parser["mpi_grid_dims"] >> mpi_grid_dims_; 
-                parser["cyclic_block_size"] >> cyclic_block_size_;
+                cyclic_block_size_ = parser["cyclic_block_size"].get<int>(cyclic_block_size_);
                 num_fft_threads = parser["num_fft_threads"].get<int>(num_fft_threads);
                 num_fv_states_ = parser["num_fv_states"].get<int>(num_fv_states_);
+                
+                if (parser.exist("eigen_value_solver"))
+                {
+                    std::string ev_solver_name = parser["eigen_value_solver"].get<std::string>();
+                    if (ev_solver_name == "lapack") 
+                    {
+                        eigen_value_solver_ = lapack;
+                    }
+                    else if (ev_solver_name == "scalapack") 
+                    {
+                        eigen_value_solver_ = scalapack;
+                    }
+                    else if (ev_solver_name == "elpa") 
+                    {
+                        eigen_value_solver_ = elpa;
+                    }
+                    else if (ev_solver_name == "magma") 
+                    {
+                        eigen_value_solver_ = magma;
+                    }
+                    else
+                    {
+                        error(__FILE__, __LINE__, "wrong eigen value solver", fatal_err);
+                    }
+                }
+
+                if (parser.exist("processing_unit"))
+                {
+                    std::string pu = parser["processing_unit"].get<std::string>();
+                    if (pu == "cpu")
+                    {
+                        processing_unit_ = cpu;
+                    }
+                    else if (pu == "gpu")
+                    {
+                        processing_unit_ = gpu;
+                    }
+                    else
+                    {
+                        error(__FILE__, __LINE__, "wrong processing unit", fatal_err);
+                    }
+                }
             }
 
             Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::num_threads()));
@@ -132,7 +178,13 @@ class Global : public StepFunction
                    num_mag_dims_(0),
                    so_correction_(false),
                    uj_correction_(false),
-                   cyclic_block_size_(16)
+                   cyclic_block_size_(16),
+                   eigen_value_solver_(lapack),
+                   #ifdef _GPU_
+                   processing_unit_(gpu)
+                   #else
+                   processing_unit_(cpu)
+                   #endif
         {
             gettimeofday(&start_time_, NULL);
         }
@@ -316,6 +368,16 @@ class Global : public StepFunction
             return spl_num_atom_symmetry_classes_[i];
         }
 
+        inline linalg_t eigen_value_solver()
+        {
+            return eigen_value_solver_;
+        }
+
+        inline processing_unit_t processing_unit()
+        {
+            return processing_unit_;
+        }
+
         /// Initialize the global variables
         void initialize()
         {
@@ -337,7 +399,7 @@ class Global : public StepFunction
             
             if (num_fv_states_ < 0) num_fv_states_ = int(num_valence_electrons() / 2.0) + 20;
 
-            if (eigen_value_solver == scalapack || eigen_value_solver == elpa)
+            if (eigen_value_solver() == scalapack || eigen_value_solver() == elpa)
             {
                 int ncol = mpi_grid_.dimension_size(2);
 
@@ -397,9 +459,46 @@ class Global : public StepFunction
                 printf("total number of aw muffin-tin basis functions : %i\n", mt_aw_basis_size());
                 printf("total number of lo basis functions : %i\n", mt_lo_basis_size());
                 printf("number of first-variational states : %i\n", num_fv_states());
-
+                printf("\n");
+                printf("eigen-value solver: ");
+                switch (eigen_value_solver())
+                {
+                    case lapack:
+                    {
+                        printf("LAPACK\n");
+                        break;
+                    }
+                    case scalapack:
+                    {
+                        printf("ScaLAPACK, block size %i\n", cyclic_block_size());
+                        break;
+                    }
+                    case elpa:
+                    {
+                        printf("ELPA, block size %i\n", cyclic_block_size());
+                        break;
+                    }
+                    case magma:
+                    {
+                        printf("MAGMA\n");
+                        break;
+                    }
+                }
+                printf("processing unit : ");
+                switch (processing_unit())
+                {
+                    case cpu:
+                    {
+                        printf("CPU\n");
+                        break;
+                    }
+                    case gpu:
+                    {
+                        printf("GPU\n");
+                        break;
+                    }
+                }
                 UnitCell::write_cif();
-
             }
         }
         
@@ -412,10 +511,26 @@ class Global : public StepFunction
 
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
             {
-                int rank = spl_num_atom_symmetry_classes().location(1, ic);
+                int rank = spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
                 atom_symmetry_class(ic)->sync_radial_functions(rank);
             }
+            
+            mdarray<char, 2> outbuff(4000, num_atom_symmetry_classes());
+            outbuff.zero();
 
+            for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
+            {
+                int ic = spl_num_atom_symmetry_classes(icloc);
+                atom_symmetry_class(ic)->write_enu(&outbuff(0, ic), 4000);
+            }
+
+            Platform::reduce(outbuff.get_ptr(), (int)outbuff.size(), mpi_grid_.communicator(), 0);
+            if (Platform::mpi_rank() == 0)
+            {
+                printf("\n");
+                printf("Linearization energies\n");
+                for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) printf("%s", &outbuff(0, ic));
+            }
             //if (Platform::mpi_rank() == 0)
             //{
             //    FILE* fout = fopen("enu.txt", "w");

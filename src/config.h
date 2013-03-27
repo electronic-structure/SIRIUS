@@ -16,8 +16,6 @@ const bool check_pseudo_charge = false;
 
 const bool full_relativistic_core = false;
 
-const linalg_t eigen_value_solver = lapack;
-
 /// level of internal debugging and checking
 
 /** debug_level = 0 : nothing to do \n

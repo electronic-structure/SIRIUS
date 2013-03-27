@@ -6,7 +6,7 @@ import sys
 import os
 import copy
 
-matplotlib.pyplot.figure(1, figsize=(18, 8))
+matplotlib.pyplot.figure(1, figsize=(20, 5))
 
 fin = open(sys.argv[1], "r")
 jin = json.load(fin)
