@@ -1194,6 +1194,33 @@ void kpoint::set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int
             svlo(lm1, icol)->interpolate();
         }
     }
+
+    // compute overlap and kinetic energy
+    for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
+    {
+        int ia = apwlo_basis_descriptors_col_[icol].ia;
+        int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+
+        int l = apwlo_basis_descriptors_col_[icol].l;
+        int lm = apwlo_basis_descriptors_col_[icol].lm;
+        int idxrf = apwlo_basis_descriptors_col_[icol].idxrf;
+
+        Spline<double> slo(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
+        for (int ir = 0; ir < slo.num_points(); ir++)
+            slo[ir] = parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+        slo.interpolate();
+        
+        #pragma omp parallel for default(shared)
+        for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
+        {
+            o(igkloc, icol) = (fourpi / sqrt(parameters_.omega())) * conj(zil_[l]) * gkvec_ylm_(lm, igkloc) * 
+                              Spline<double>::integrate(&slo, (*sbessel_[igkloc])(l, iat)) * 
+                              conj(gkvec_phase_factors_(igkloc, ia));
+
+            // kinetic part <G+k| -1/2 \nabla^2 |lo> = 1/2 |G+k|^2 <G+k|lo>
+            h(igkloc, icol) = 0.5 * pow(gkvec_len_[igkloc], 2) * o(igkloc, icol);
+        }
+    }
     
     #pragma omp parallel for default(shared)
     for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
@@ -1203,24 +1230,24 @@ void kpoint::set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int
             int ia = apwlo_basis_descriptors_col_[icol].ia;
             int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
 
-            int l = apwlo_basis_descriptors_col_[icol].l;
-            int lm = apwlo_basis_descriptors_col_[icol].lm;
-            int idxrf = apwlo_basis_descriptors_col_[icol].idxrf;
+            //int l = apwlo_basis_descriptors_col_[icol].l;
+            //int lm = apwlo_basis_descriptors_col_[icol].lm;
+            //int idxrf = apwlo_basis_descriptors_col_[icol].idxrf;
 
-            // compue overlap <G+k|lo>
-            Spline<double> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
-            for (int ir = 0; ir < s.num_points(); ir++)
-            {
-                s[ir] = (*sbessel_[igkloc])(ir, l, iat) * 
-                        parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
-            }
-            s.interpolate();
-                
-            o(igkloc, icol) = (fourpi / sqrt(parameters_.omega())) * conj(zil_[l]) * gkvec_ylm_(lm, igkloc) * 
-                              s.integrate(2) * conj(gkvec_phase_factors_(igkloc, ia));
+            //*// compue overlap <G+k|lo>
+            //*Spline<double> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
+            //*for (int ir = 0; ir < s.num_points(); ir++)
+            //*{
+            //*    s[ir] = (*sbessel_[igkloc])(ir, l, iat) * 
+            //*            parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+            //*}
+            //*s.interpolate();
+            //*    
+            //*o(igkloc, icol) = (fourpi / sqrt(parameters_.omega())) * conj(zil_[l]) * gkvec_ylm_(lm, igkloc) * 
+            //*                  s.integrate(2) * conj(gkvec_phase_factors_(igkloc, ia));
 
-            // kinetic part <G+k| -1/2 \nabla^2 |lo> = 1/2 |G+k|^2 <G+k|lo>
-            h(igkloc, icol) = 0.5 * pow(gkvec_len_[igkloc], 2) * o(igkloc, icol);
+            //*// kinetic part <G+k| -1/2 \nabla^2 |lo> = 1/2 |G+k|^2 <G+k|lo>
+            //*h(igkloc, icol) = 0.5 * pow(gkvec_len_[igkloc], 2) * o(igkloc, icol);
 
             // add <G+k|V|lo>
             complex16 zt1(0, 0);
