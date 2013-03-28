@@ -21,6 +21,8 @@ template <typename T> class Spline
 
     public:
     
+        template <typename U> friend class Spline;
+        
         Spline(int num_points__, sirius::RadialGrid& radial_grid__) : 
             num_points_(num_points__), radial_grid(radial_grid__)
         {
@@ -105,7 +107,8 @@ template <typename T> class Spline
             }
         }
 
-        static T integrate(Spline<T>* f, Spline<T>* g)
+        template <typename U>
+        static T integrate(Spline<T>* f, Spline<U>* g)
         {
             if ((&f->radial_grid != &g->radial_grid) || (f->num_points_ != g->num_points_)) 
                 error(__FILE__, __LINE__, "radial grids don't match");
@@ -131,10 +134,10 @@ template <typename T> class Spline
                 T a2 = f->c[i];
                 T a3 = f->d[i];
                 
-                T b0 = g->a[i];
-                T b1 = g->b[i];
-                T b2 = g->c[i];
-                T b3 = g->d[i];
+                U b0 = g->a[i];
+                U b1 = g->b[i];
+                U b2 = g->c[i];
+                U b3 = g->d[i];
                 
                 result += (a0 * (20.0 * b0 * (x1_3 - x0_3) + 5.0 * b1 * (x0_4 - 4.0 * x0 * x1_3 + 3.0 * x1_4) + 
                            dx * dx * dx * (-2.0 * b2 * (x0_2 + 3.0 * x0 * x1 + 6 * x1_2) + 
@@ -390,6 +393,7 @@ template <typename T> class Spline
                 return deriv(dm, i, 0.0);
             }
         }
+
 };
 
 };

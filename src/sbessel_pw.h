@@ -30,6 +30,15 @@ template <typename T> class sbessel_pw
                 }
             }
         }
+        
+        ~sbessel_pw()
+        {
+            for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+            {
+                for (int l = 0; l <= lmax_; l++) delete sjl_(l, iat);
+            }
+            sjl_.deallocate();
+        }
 
         void load(double q)
         {
@@ -65,15 +74,6 @@ template <typename T> class sbessel_pw
         inline Spline<T>* operator()(int l, int iat)
         {
             return sjl_(l, iat);
-        }
-
-        ~sbessel_pw()
-        {
-            for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
-            {
-                for (int l = 0; l <= lmax_; l++) delete sjl_(l, iat);
-            }
-            sjl_.deallocate();
         }
 };
 

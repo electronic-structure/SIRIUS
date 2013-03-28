@@ -127,6 +127,8 @@ class kpoint
         std::vector<complex16> zil_;
 
         std::vector<int> l_by_lm_;
+
+        std::vector< sbessel_pw<double>* > sbessel_;
         
         /// number of APW+lo basis functions distributed along rows of MPI grid
         inline int apwlo_basis_size_row()
@@ -577,6 +579,10 @@ class kpoint
 
         ~kpoint()
         {
+            if (basis_type == pwlo)
+            {
+                for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) delete sbessel_[igkloc];
+            }
         }
 
         void initialize(Band* band)
@@ -613,6 +619,16 @@ class kpoint
             {
                 int ia = apwlo_basis_descriptors_row_[irow].ia;
                 irow_by_atom_[ia].push_back(irow);
+            }
+            
+            if (basis_type == pwlo)
+            {
+                sbessel_.resize(num_gkvec_loc()); 
+                for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
+                {
+                    sbessel_[igkloc] = new sbessel_pw<double>(parameters_, parameters_.lmax_pw());
+                    sbessel_[igkloc]->interpolate(gkvec_len_[igkloc]);
+                }
             }
         }
 
@@ -1145,6 +1161,8 @@ void kpoint::set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int
 {
     Timer t("sirius::kpoint::set_fv_h_o_pw_lo");
     
+    int offset_col = (num_ranks > 1) ? num_gkvec_row() : 0;
+    
     mdarray<Spline<complex16>*, 2> svlo(parameters_.lmmax_pw(), std::max(num_lo_col(), num_lo_row()));
 
     // first part: compute <G+k|H|lo> and <G+k|lo>
@@ -1177,51 +1195,48 @@ void kpoint::set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int
         }
     }
     
-    #pragma omp parallel default(shared)
+    #pragma omp parallel for default(shared)
+    for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
     {
-        sbessel_pw<complex16> jl(parameters_, parameters_.lmax_pw());
-
-        #pragma omp for
-        for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
+        for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
         {
-            jl.interpolate(gkvec_len_[igkloc]);
+            int ia = apwlo_basis_descriptors_col_[icol].ia;
+            int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
 
-            for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
+            int l = apwlo_basis_descriptors_col_[icol].l;
+            int lm = apwlo_basis_descriptors_col_[icol].lm;
+            int idxrf = apwlo_basis_descriptors_col_[icol].idxrf;
+
+            // compue overlap <G+k|lo>
+            Spline<double> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
+            for (int ir = 0; ir < s.num_points(); ir++)
             {
-                int ia = apwlo_basis_descriptors_col_[icol].ia;
-                int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-
-                int l = apwlo_basis_descriptors_col_[icol].l;
-                int lm = apwlo_basis_descriptors_col_[icol].lm;
-                int idxrf = apwlo_basis_descriptors_col_[icol].idxrf;
-
-                // compue overlap <G+k|lo>
-                Spline<double> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
-                for (int ir = 0; ir < s.num_points(); ir++)
-                    s[ir] = real(jl(ir, l, iat)) * parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
-                s.interpolate();
-                    
-                o(igkloc, icol) = (fourpi / sqrt(parameters_.omega())) * conj(pow(complex16(0, 1), l)) * 
-                                  gkvec_ylm_(lm, igkloc) * s.integrate(2) * conj(gkvec_phase_factors_(igkloc, ia));
-
-                // kinetic part <G+k| -1/2 \nabla^2 |lo> = 1/2 |G+k|^2 <G+k|lo>
-                h(igkloc, icol) = 0.5 * pow(gkvec_len_[igkloc], 2) * o(igkloc, icol);
-
-                // add <G+k|V|lo>
-                complex16 zt1(0, 0);
-                for (int l1 = 0; l1 <= parameters_.lmax_pw(); l1++)
-                {
-                    for (int m1 = -l1; m1 <= l1; m1++)
-                    {
-                        int lm1 = Utils::lm_by_l_m(l1, m1);
-
-                        zt1 += Spline<complex16>::integrate(svlo(lm1, icol - num_gkvec_col()), jl(l1, iat)) * 
-                               conj(pow(complex16(0, 1), l1)) * gkvec_ylm_(lm1, igkloc);
-                    }
-                }
-                zt1 *= ((fourpi / sqrt(parameters_.omega())) * conj(gkvec_phase_factors_(igkloc, ia)));
-                h(igkloc, icol) += zt1;
+                s[ir] = (*sbessel_[igkloc])(ir, l, iat) * 
+                        parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
             }
+            s.interpolate();
+                
+            o(igkloc, icol) = (fourpi / sqrt(parameters_.omega())) * conj(zil_[l]) * gkvec_ylm_(lm, igkloc) * 
+                              s.integrate(2) * conj(gkvec_phase_factors_(igkloc, ia));
+
+            // kinetic part <G+k| -1/2 \nabla^2 |lo> = 1/2 |G+k|^2 <G+k|lo>
+            h(igkloc, icol) = 0.5 * pow(gkvec_len_[igkloc], 2) * o(igkloc, icol);
+
+            // add <G+k|V|lo>
+            complex16 zt1(0, 0);
+            for (int l1 = 0; l1 <= parameters_.lmax_pw(); l1++)
+            {
+                for (int m1 = -l1; m1 <= l1; m1++)
+                {
+                    int lm1 = Utils::lm_by_l_m(l1, m1);
+
+                    zt1 += Spline<complex16>::integrate(svlo(lm1, icol - num_gkvec_col()), 
+                                                        (*sbessel_[igkloc])(l1, iat)) * 
+                           conj(zil_[l1]) * gkvec_ylm_(lm1, igkloc);
+                }
+            }
+            zt1 *= ((fourpi / sqrt(parameters_.omega())) * conj(gkvec_phase_factors_(igkloc, ia)));
+            h(igkloc, icol) += zt1;
         }
     }
    
@@ -1275,52 +1290,47 @@ void kpoint::set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int
         }
     }
     
-    #pragma omp parallel default(shared)
+    #pragma omp parallel for default(shared)
+    for (int igkloc = 0; igkloc < num_gkvec_col(); igkloc++)
     {
-        sbessel_pw<complex16> jl(parameters_, parameters_.lmax_pw());
-
-        #pragma omp for
-        for (int igkloc = 0; igkloc < num_gkvec_col(); igkloc++)
+        for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
         {
-            jl.interpolate(gkvec_len_[num_gkvec_row() + igkloc]);
+            int ia = apwlo_basis_descriptors_row_[irow].ia;
+            int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
 
-            for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
+            int l = apwlo_basis_descriptors_row_[irow].l;
+            int lm = apwlo_basis_descriptors_row_[irow].lm;
+            int idxrf = apwlo_basis_descriptors_row_[irow].idxrf;
+
+            // compue overlap <lo|G+k>
+            Spline<double> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
+            for (int ir = 0; ir < s.num_points(); ir++)
+                s[ir] = (*sbessel_[offset_col + igkloc])(ir, l, iat) * 
+                        parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+            s.interpolate();
+                
+            o(irow, igkloc) = (fourpi / sqrt(parameters_.omega())) * zil_[l] * 
+                              conj(gkvec_ylm_(lm, offset_col + igkloc)) * s.integrate(2) * 
+                              gkvec_phase_factors_(offset_col + igkloc, ia);
+
+            // kinetic part <li| -1/2 \nabla^2 |G+k> = 1/2 |G+k|^2 <lo|G+k>
+            h(irow, igkloc) = 0.5 * pow(gkvec_len_[offset_col + igkloc], 2) * o(irow, igkloc);
+
+            // add <lo|V|G+k>
+            complex16 zt1(0, 0);
+            for (int l1 = 0; l1 <= parameters_.lmax_pw(); l1++)
             {
-                int ia = apwlo_basis_descriptors_row_[irow].ia;
-                int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-
-                int l = apwlo_basis_descriptors_row_[irow].l;
-                int lm = apwlo_basis_descriptors_row_[irow].lm;
-                int idxrf = apwlo_basis_descriptors_row_[irow].idxrf;
-
-                // compue overlap <lo|G+k>
-                Spline<double> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
-                for (int ir = 0; ir < s.num_points(); ir++)
-                    s[ir] = real(jl(ir, l, iat)) * parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
-                s.interpolate();
-                    
-                o(irow, igkloc) = (fourpi / sqrt(parameters_.omega())) * pow(complex16(0, 1), l) * 
-                                  conj(gkvec_ylm_(lm, num_gkvec_row() + igkloc)) * s.integrate(2) * 
-                                  gkvec_phase_factors_(num_gkvec_row() + igkloc, ia);
-
-                // kinetic part <li| -1/2 \nabla^2 |G+k> = 1/2 |G+k|^2 <lo|G+k>
-                h(irow, igkloc) = 0.5 * pow(gkvec_len_[num_gkvec_row() + igkloc], 2) * o(irow, igkloc);
-
-                // add <lo|V|G+k>
-                complex16 zt1(0, 0);
-                for (int l1 = 0; l1 <= parameters_.lmax_pw(); l1++)
+                for (int m1 = -l1; m1 <= l1; m1++)
                 {
-                    for (int m1 = -l1; m1 <= l1; m1++)
-                    {
-                        int lm1 = Utils::lm_by_l_m(l1, m1);
+                    int lm1 = Utils::lm_by_l_m(l1, m1);
 
-                        zt1 += conj(Spline<complex16>::integrate(svlo(lm1, irow - num_gkvec_row()), jl(l1, iat))) * 
-                               pow(complex16(0, 1), l1) * conj(gkvec_ylm_(lm1, num_gkvec_row() + igkloc));
-                    }
+                    zt1 += conj(Spline<complex16>::integrate(svlo(lm1, irow - num_gkvec_row()), 
+                                                             (*sbessel_[offset_col + igkloc])(l1, iat))) * 
+                           zil_[l1] * conj(gkvec_ylm_(lm1, offset_col + igkloc));
                 }
-                zt1 *= ((fourpi / sqrt(parameters_.omega())) * gkvec_phase_factors_(num_gkvec_row() + igkloc, ia));
-                h(irow, igkloc) += zt1;
             }
+            zt1 *= ((fourpi / sqrt(parameters_.omega())) * gkvec_phase_factors_(offset_col + igkloc, ia));
+            h(irow, igkloc) += zt1;
         }
     }
     
@@ -1887,7 +1897,7 @@ void kpoint::generate_gkvec()
         parameters_.get_coordinates<cartesian, reciprocal>(vgk, v);
         double gklen = Utils::vector_length(v);
 
-        if (gklen <= gk_cutoff) gkmap.push_back(std::pair<double,int>(gklen, ig));
+        if (gklen <= gk_cutoff) gkmap.push_back(std::pair<double, int>(gklen, ig));
     }
 
     std::sort(gkmap.begin(), gkmap.end());
@@ -2149,8 +2159,6 @@ PeriodicFunction<complex16, index_order>* kpoint::spinor_wave_function_component
     {
         if (index_order != radial_angular) error(__FILE__, __LINE__, "wrong order of indices");
 
-        sbessel_pw<double> jl(parameters_, lmax);
-        
         double fourpi_omega = fourpi / sqrt(parameters_.omega());
         
         for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
@@ -2158,8 +2166,6 @@ PeriodicFunction<complex16, index_order>* kpoint::spinor_wave_function_component
             int igk = igkglob(igkloc);
             complex16 z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
 
-            jl.load(gkvec_len_[igkloc]);
-            
             // TODO: possilbe optimization with zgemm
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
@@ -2172,7 +2178,7 @@ PeriodicFunction<complex16, index_order>* kpoint::spinor_wave_function_component
                     int l = l_by_lm_[lm];
                     complex16 z3 = z2 * zil_[l] * conj(gkvec_ylm_(lm, igkloc)); 
                     for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-                        func->f_ylm(ir, lm, ia) += z3 * jl(ir, l, iat);
+                        func->f_ylm(ir, lm, ia) += z3 * (*sbessel_[igkloc])(ir, l, iat);
                 }
             }
         }
