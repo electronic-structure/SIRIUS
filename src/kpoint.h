@@ -1167,7 +1167,12 @@ void kpoint::set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int
 
     // first part: compute <G+k|H|lo> and <G+k|lo>
 
+    Timer t1("sirius::kpoint::set_fv_h_o_pw_lo:vlo", false);
+    Timer t2("sirius::kpoint::set_fv_h_o_pw_lo:ohk", false);
+    Timer t3("sirius::kpoint::set_fv_h_o_pw_lo:hvlo", false);
+
     // compute V|lo>
+    t1.start();
     for (int icol = 0; icol < num_lo_col(); icol++)
     {
         int ia = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].ia;
@@ -1194,7 +1199,9 @@ void kpoint::set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int
             svlo(lm1, icol)->interpolate();
         }
     }
-
+    t1.stop();
+    
+    t2.start();
     // compute overlap and kinetic energy
     for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
     {
@@ -1221,7 +1228,9 @@ void kpoint::set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int
             h(igkloc, icol) = 0.5 * pow(gkvec_len_[igkloc], 2) * o(igkloc, icol);
         }
     }
-    
+    t2.stop();
+
+    t3.start();
     #pragma omp parallel for default(shared)
     for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
     {
@@ -1266,6 +1275,7 @@ void kpoint::set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int
             h(igkloc, icol) += zt1;
         }
     }
+    t3.stop();
    
     // deallocate V|lo>
     for (int icol = 0; icol < num_lo_col(); icol++)
@@ -1290,6 +1300,7 @@ void kpoint::set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int
     // second part: compute <lo|H|G+k> and <lo|G+k>
 
     // compute V|lo>
+    t1.start();
     for (int irow = 0; irow < num_lo_row(); irow++)
     {
         int ia = apwlo_basis_descriptors_row_[num_gkvec_row() + irow].ia;
@@ -1316,7 +1327,39 @@ void kpoint::set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int
             svlo(lm1, irow)->interpolate();
         }
     }
-    
+    t1.stop();
+   
+    t2.start();
+    for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
+    {
+        int ia = apwlo_basis_descriptors_row_[irow].ia;
+        int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+
+        int l = apwlo_basis_descriptors_row_[irow].l;
+        int lm = apwlo_basis_descriptors_row_[irow].lm;
+        int idxrf = apwlo_basis_descriptors_row_[irow].idxrf;
+
+        // compue overlap <lo|G+k>
+        Spline<double> slo(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
+        for (int ir = 0; ir < slo.num_points(); ir++)
+            slo[ir] = parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+        slo.interpolate();
+        
+        #pragma omp parallel for default(shared)
+        for (int igkloc = 0; igkloc < num_gkvec_col(); igkloc++)
+        {
+            o(irow, igkloc) = (fourpi / sqrt(parameters_.omega())) * zil_[l] * 
+                              conj(gkvec_ylm_(lm, offset_col + igkloc)) * 
+                              Spline<double>::integrate(&slo, (*sbessel_[offset_col + igkloc])(l, iat)) * 
+                              gkvec_phase_factors_(offset_col + igkloc, ia);
+
+            // kinetic part <li| -1/2 \nabla^2 |G+k> = 1/2 |G+k|^2 <lo|G+k>
+            h(irow, igkloc) = 0.5 * pow(gkvec_len_[offset_col + igkloc], 2) * o(irow, igkloc);
+        }
+    }
+    t2.stop();
+
+    t3.start();
     #pragma omp parallel for default(shared)
     for (int igkloc = 0; igkloc < num_gkvec_col(); igkloc++)
     {
@@ -1325,23 +1368,23 @@ void kpoint::set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int
             int ia = apwlo_basis_descriptors_row_[irow].ia;
             int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
 
-            int l = apwlo_basis_descriptors_row_[irow].l;
-            int lm = apwlo_basis_descriptors_row_[irow].lm;
-            int idxrf = apwlo_basis_descriptors_row_[irow].idxrf;
+            //int l = apwlo_basis_descriptors_row_[irow].l;
+            //int lm = apwlo_basis_descriptors_row_[irow].lm;
+            //int idxrf = apwlo_basis_descriptors_row_[irow].idxrf;
 
-            // compue overlap <lo|G+k>
-            Spline<double> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
-            for (int ir = 0; ir < s.num_points(); ir++)
-                s[ir] = (*sbessel_[offset_col + igkloc])(ir, l, iat) * 
-                        parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
-            s.interpolate();
-                
-            o(irow, igkloc) = (fourpi / sqrt(parameters_.omega())) * zil_[l] * 
-                              conj(gkvec_ylm_(lm, offset_col + igkloc)) * s.integrate(2) * 
-                              gkvec_phase_factors_(offset_col + igkloc, ia);
+            //*// compue overlap <lo|G+k>
+            //*Spline<double> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
+            //*for (int ir = 0; ir < s.num_points(); ir++)
+            //*    s[ir] = (*sbessel_[offset_col + igkloc])(ir, l, iat) * 
+            //*            parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+            //*s.interpolate();
+            //*    
+            //*o(irow, igkloc) = (fourpi / sqrt(parameters_.omega())) * zil_[l] * 
+            //*                  conj(gkvec_ylm_(lm, offset_col + igkloc)) * s.integrate(2) * 
+            //*                  gkvec_phase_factors_(offset_col + igkloc, ia);
 
-            // kinetic part <li| -1/2 \nabla^2 |G+k> = 1/2 |G+k|^2 <lo|G+k>
-            h(irow, igkloc) = 0.5 * pow(gkvec_len_[offset_col + igkloc], 2) * o(irow, igkloc);
+            //*// kinetic part <li| -1/2 \nabla^2 |G+k> = 1/2 |G+k|^2 <lo|G+k>
+            //*h(irow, igkloc) = 0.5 * pow(gkvec_len_[offset_col + igkloc], 2) * o(irow, igkloc);
 
             // add <lo|V|G+k>
             complex16 zt1(0, 0);
@@ -1360,6 +1403,7 @@ void kpoint::set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int
             h(irow, igkloc) += zt1;
         }
     }
+    t3.stop();
     
     for (int irow = 0; irow < num_lo_row(); irow++)
     {
