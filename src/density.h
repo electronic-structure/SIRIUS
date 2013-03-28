@@ -494,12 +494,10 @@ class Density
                 {
                     Platform::allreduce(&dens[i]->f_rlm(0, 0, ia), 
                                         parameters_.lmmax_rho() * parameters_.max_num_mt_points(), 
-                                        parameters_.mpi_grid().communicator(1 << band_->dim_row() | 
-                                                                            1 << band_->dim_col()));
+                                        parameters_.mpi_grid().communicator());
                 }
                 Platform::allreduce(&dens[i]->f_it(0), parameters_.fft().size(),
-                                    parameters_.mpi_grid().communicator(1 << band_->dim_row() | 
-                                                                        1 << band_->dim_col()));
+                                    parameters_.mpi_grid().communicator());
             }
                                                                 
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
