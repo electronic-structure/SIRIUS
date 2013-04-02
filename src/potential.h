@@ -726,7 +726,8 @@ class Potential
                 int ia = parameters_.spl_num_atoms(ialoc);
                 int zn = parameters_.atom(ia)->type()->zn();
                 double r0 = parameters_.atom(ia)->type()->radial_grid(0);
-                enuc -= 0.5 * zn * (vh->f_rlm(0, 0, ialoc) * y00 + zn / r0);
+                double R = parameters_.atom(ia)->mt_radius();
+                enuc -= 0.5 * zn * (vh->f_rlm(0, 0, ialoc) * y00 + zn / r0 - zn / R);
             }
             Platform::allreduce(&enuc, 1);
 
