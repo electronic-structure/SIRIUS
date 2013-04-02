@@ -684,7 +684,6 @@ class Potential
             double vh_mt_val;
             double vh_it_val;
             vh->inner(vh, it_component | rlm_component, vh_mt_val, vh_it_val);
-            //std::cout << "<VH|VH>_MT = " << vh_mt_val << " <VH|VH>_IT = " << vh_it_val << std::endl;
 
             // compute Eenuc
             double enuc = 0.0;
@@ -692,8 +691,9 @@ class Potential
             {
                 int ia = parameters_.spl_num_atoms(ialoc);
                 int zn = parameters_.atom(ia)->type()->zn();
+                double R = parameters_.atom(ia)->mt_radius();
                 double r0 = parameters_.atom(ia)->type()->radial_grid(0);
-                enuc -= 0.5 * zn * (vh->f_rlm(0, 0, ialoc) * y00 + zn / r0);
+                enuc -= 0.5 * zn * (vh->f_rlm(0, 0, ialoc) * y00 + zn / r0 - zn / R);
             }
             Platform::allreduce(&enuc, 1);
 
