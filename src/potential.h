@@ -691,7 +691,6 @@ class Potential
             {
                 int ia = parameters_.spl_num_atoms(ialoc);
                 int zn = parameters_.atom(ia)->type()->zn();
-                double R = parameters_.atom(ia)->mt_radius();
                 double r0 = parameters_.atom(ia)->type()->radial_grid(0);
                 // ==========================================================
                 // compute energy of nucleus in the electrostatic potential 
