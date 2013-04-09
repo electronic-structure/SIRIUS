@@ -37,6 +37,9 @@ depend: $(SRC) sirius.cpp
 	$(CXX) $(CXX_OPT) -MM $^ >> ./.depend
 
 showlibs:
+	@echo
+	@echo List of libraries for linking with the Fortran code:
+	@echo
 	@echo $(shell pwd)/libsirius_f.a $(LIBS) 
 
 ifneq ($(wildcard .depend),)

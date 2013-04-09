@@ -316,6 +316,9 @@ class kpoint
             alm_b_.set_dimensions(parameters_.lmax_apw() + 1, parameters_.num_atom_types(), num_gkvec_loc(), 2);
             alm_b_.allocate();
             alm_b_.zero();
+            //* #ifdef _GPU_
+            //* alm_b_.allocate_on_device();
+            //* #endif
             
             gkvec_len_.resize(num_gkvec_loc());
             
