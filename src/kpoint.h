@@ -741,14 +741,14 @@ class kpoint
 void kpoint::generate_matching_coefficients_order1(int ia, int iat, AtomType* type, int l, int num_gkvec_loc, 
                                                    double A, mdarray<complex16, 2>& alm)
 {
-    if (fabs(A) < 1.0 / sqrt(parameters_.omega()))
-    {   
-        std::stringstream s;
-        s << "Ill defined plane wave matching problem for atom " << ia << ", l = " << l << std::endl
-          << "  radial function value at the MT boundary : " << A; 
-        
-        error(__FILE__, __LINE__, s, fatal_err);
-    }
+    //** if (fabs(A) < 1.0 / sqrt(parameters_.omega()))
+    //** {   
+    //**     std::stringstream s;
+    //**     s << "Ill defined plane wave matching problem for atom " << ia << ", l = " << l << std::endl
+    //**       << "  radial function value at the MT boundary : " << A; 
+    //**     
+    //**     error(__FILE__, __LINE__, s, fatal_err);
+    //** }
     
     A = 1.0 / A;
 
