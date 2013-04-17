@@ -14,7 +14,7 @@ const bool hdf5_trace_errors = false;
 
 const bool check_pseudo_charge = false;
 
-const bool full_relativistic_core = false;
+//** const bool full_relativistic_core = false;
 
 /// level of internal debugging and checking
 

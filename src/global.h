@@ -168,17 +168,9 @@ class Global : public StepFunction
 
     public:
     
-        Global() : initialized_(false),
-                   lmax_apw_(lmax_apw_default),
-                   lmax_rho_(lmax_rho_default),
-                   lmax_pot_(lmax_pot_default),
-                   aw_cutoff_(aw_cutoff_default),
-                   num_fv_states_(-1),
-                   num_spins_(1),
-                   num_mag_dims_(0),
-                   so_correction_(false),
-                   uj_correction_(false),
-                   cyclic_block_size_(16),
+        Global() : initialized_(false), lmax_apw_(lmax_apw_default), lmax_rho_(lmax_rho_default), 
+                   lmax_pot_(lmax_pot_default), aw_cutoff_(aw_cutoff_default), num_fv_states_(-1), num_spins_(1),
+                   num_mag_dims_(0), so_correction_(false), uj_correction_(false), cyclic_block_size_(16),
                    eigen_value_solver_(lapack),
                    #ifdef _GPU_
                    processing_unit_(gpu)
@@ -379,14 +371,14 @@ class Global : public StepFunction
         }
 
         /// Initialize the global variables
-        void initialize()
+        void initialize(int init_radial_grid__, int init_aw_descriptors__)
         {
             if (initialized_) error(__FILE__, __LINE__, "Can't initialize global variables more than once.");
 
             read_input();
             
             // initialize variables, related to the unit cell
-            UnitCell::init(lmax_apw(), lmax_pot(), num_mag_dims());
+            UnitCell::init(lmax_apw(), lmax_pot(), num_mag_dims(), init_radial_grid__, init_aw_descriptors__);
             
             ReciprocalLattice::init();
             StepFunction::init();

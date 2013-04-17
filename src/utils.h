@@ -15,7 +15,7 @@ class Utils
             return (l * l + l + m);
         }
 
-        static bool file_exists(const std::string& file_name)
+        static bool file_exists(const std::string file_name)
         {
             std::ifstream ifs(file_name.c_str());
             if (ifs.is_open()) return true;

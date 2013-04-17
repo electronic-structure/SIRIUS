@@ -16,7 +16,10 @@ struct atomic_level_descriptor
     int k;
     
     /// level occupancy
-    int occupancy;
+    double occupancy;
+
+    /// true if this is a core level
+    bool core;
 };
 
 /// describes radial solution
@@ -53,9 +56,7 @@ class radial_functions_index
 
             int idxlo;
 
-            radial_function_index_descriptor(int l, int order, int idxlo =  -1) : l(l), 
-                                                                                  order(order), 
-                                                                                  idxlo(idxlo)
+            radial_function_index_descriptor(int l, int order, int idxlo =  -1) : l(l), order(order), idxlo(idxlo)
             {
                 assert(l >= 0);
                 assert(order >= 0);
@@ -81,8 +82,7 @@ class radial_functions_index
     
     public:
 
-        void init(const int lmax,
-                  const std::vector<radial_solution_descriptor_set>& aw_descriptors, 
+        void init(const int lmax, const std::vector<radial_solution_descriptor_set>& aw_descriptors, 
                   const std::vector<radial_solution_descriptor_set>& lo_descriptors)
         {
             assert((int)aw_descriptors.size() == lmax + 1);
@@ -195,8 +195,8 @@ class basis_functions_index
 
             int idxrf;
             
-            basis_function_index_descriptor(int l, int m, int order, int idxlo, int idxrf) : l(l), m(m), order(order), 
-                                                                                             idxlo(idxlo), idxrf(idxrf) 
+            basis_function_index_descriptor(int l, int m, int order, int idxlo, int idxrf) : 
+                l(l), m(m), order(order), idxlo(idxlo), idxrf(idxrf) 
             {
                 assert(l >= 0);
                 assert(m >= -l && m <= l);
@@ -221,8 +221,7 @@ class basis_functions_index
 
     public:
 
-        basis_functions_index() : size_aw_(-1),
-                                  size_lo_(-1)
+        basis_functions_index() : size_aw_(-1), size_lo_(-1)
         {
         }
         
@@ -332,14 +331,11 @@ class AtomType
         /// list of atomic levels 
         std::vector<atomic_level_descriptor> atomic_levels_;
 
-        /// number of core levels
-        int num_core_levels_;
-
         /// number of core electrons
-        int num_core_electrons_;
+        double num_core_electrons_;
 
         /// number of valence electrons
-        int num_valence_electrons_;
+        double num_valence_electrons_;
         
         /// default augmented wave configuration
         radial_solution_descriptor_set aw_default_l_;
@@ -437,19 +433,21 @@ class AtomType
                     }
 
                     atomic_level_descriptor level;
-                    if (!full_relativistic_core)
+                    level.n = n;
+                    level.l = l;
+                    level.core = true;
+                    for (int ist = 0; ist < 28; ist++)
                     {
-                        level.n = n;
-                        level.l = l;
-                        level.k = -1;
-                        level.occupancy = 2 * (2 * l + 1);
-                        atomic_levels_.push_back(level);
+                        if ((level.n == atomic_conf[zn_ - 1][ist][0]) && (level.l == atomic_conf[zn_ - 1][ist][1]))
+                        {
+                            level.k = atomic_conf[zn_ - 1][ist][2]; 
+                            level.occupancy = double(atomic_conf[zn_ - 1][ist][3]);
+                            atomic_levels_.push_back(level);
+                        }
                     }
-                    //TODO: add nlk levels here
                 }
-
             }
-            num_core_levels_ = (int)atomic_levels_.size();
+            //num_core_levels_ = (int)atomic_levels_.size();
             
             radial_solution_descriptor rsd;
 
@@ -496,7 +494,86 @@ class AtomType
             }
         }
     
-        void rebuild_aw_descriptors(int lmax)
+
+    public:
+        
+        AtomType(const char* symbol__, const char* name__, int zn__, double mass__, 
+                 std::vector<atomic_level_descriptor>& levels__) : 
+            symbol_(std::string(symbol__)), name_(std::string(name__)), zn_(zn__), mass_(mass__), mt_radius_(2.0), 
+            num_mt_points_(2000 + zn__ * 50), atomic_levels_(levels__)
+                                                         
+        {
+            radial_grid_.init(exponential_grid, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
+        }
+
+        AtomType(int id__, const std::string label__) : id_(id__), label_(label__)
+        {
+            if (Utils::file_exists(label_ + ".json")) 
+            {
+                read_input();
+           
+                //==============================================
+                // add valence levels to the list of core levels
+                //==============================================
+                atomic_level_descriptor level;
+
+                for (int ist = 0; ist < 28; ist++)
+                {
+                    bool found = false;
+                    level.n = atomic_conf[zn_ - 1][ist][0];
+                    level.l = atomic_conf[zn_ - 1][ist][1];
+                    level.k = atomic_conf[zn_ - 1][ist][2];
+                    level.occupancy = double(atomic_conf[zn_ - 1][ist][3]);
+                    level.core = false;
+
+                    if (level.n != -1)
+                    {
+                        for (int jst = 0; jst < (int)atomic_levels_.size(); jst++)
+                        {
+                            if ((atomic_levels_[jst].n == level.n) &&
+                                (atomic_levels_[jst].l == level.l) &&
+                                (atomic_levels_[jst].k == level.k)) found = true;
+                        }
+                        if (!found) atomic_levels_.push_back(level);
+                    }
+                }
+            }
+        }
+        
+        void init(int lmax)
+        {
+            //radial_grid_.init(exponential_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
+            
+            //rebuild_aw_descriptors(lmax);
+
+            max_aw_order_ = 0;
+            for (int l = 0; l <= lmax; l++)
+                max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
+            
+            if (max_aw_order_ > 2)
+                error(__FILE__, __LINE__, "maximum aw order is > 2");
+
+            indexr_.init(lmax, aw_descriptors_, lo_descriptors_);
+            indexb_.init(lmax, indexr_);
+            
+            free_atom_density_.resize(radial_grid_.size());
+            free_atom_potential_.resize(radial_grid_.size());
+            
+            num_core_electrons_ = 0;
+            for (int i = 0; i < (int)atomic_levels_.size(); i++) 
+            {
+                if (atomic_levels_[i].core) num_core_electrons_ += atomic_levels_[i].occupancy;
+            }
+
+            num_valence_electrons_ = zn_ - num_core_electrons_;
+        }
+
+        void init_radial_grid()
+        {
+            radial_grid_.init(exponential_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
+        }
+        
+        void init_aw_descriptors(int lmax)
         {
             aw_descriptors_.clear();
             for (int l = 0; l <= lmax; l++)
@@ -516,91 +593,16 @@ class AtomType
             }
         }
 
-    public:
-        
-        AtomType(const char* symbol__, const char* name__, int zn__, double mass__, 
-                 std::vector<atomic_level_descriptor>& levels__) : 
-            symbol_(std::string(symbol__)), name_(std::string(name__)), zn_(zn__), mass_(mass__), mt_radius_(2.0), 
-            num_mt_points_(2000 + zn__ * 50), atomic_levels_(levels__)
-                                                         
+        void add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu)
         {
-            radial_grid_.init(exponential_grid, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
-        }
-
-        AtomType(int id__, const std::string& label__) : id_(id__),
-                                                         label_(label__)
-        {
-            if (label_.size() == 0) error(__FILE__, __LINE__, "empty atom label");
-
-            read_input();
-           
-            // add valence levels to the list of core levels
-            atomic_level_descriptor level;
-            
-            int nl_occ[7][4];
-            memset(&nl_occ[0][0], 0, 28 * sizeof(int));
-
-            // scan the list of atomic levels and get the occupancy of (n,l) shell which is 2 * (2 * l + 1)
-            for (int ist = 0; ist < 28; ist++)
-            {
-                int n = atomic_conf[zn_ - 1][ist][0];
-                int l = atomic_conf[zn_ - 1][ist][1];
-
-                if (n != -1) nl_occ[n - 1][l] += atomic_conf[zn_ - 1][ist][3];
-            }
-
-            // scan all levels of the atom
-            for (int n = 0; n < 7; n++)
-            {
-                for (int l = 0; l < 4; l++)
-                {
-                    level.n = n + 1;
-                    level.l = l;
-                    level.k = -1;
-                    level.occupancy = nl_occ[n][l];
-
-                    if (level.occupancy)
-                    {
-                        // check if this is not a core level
-                        bool found = false;
-                        for (int ist = 0; ist < (int)atomic_levels_.size(); ist++)
-                        {
-                            if (atomic_levels_[ist].n == level.n && atomic_levels_[ist].l == level.l)
-                            {
-                                found = true;
-                                break;
-                            }
-                        }
-                        // add a valence level
-                        if (!found) atomic_levels_.push_back(level);
-                    }
-                }
-            }
-
-            num_core_electrons_ = 0;
-            for (int i = 0; i < num_core_levels_; i++) num_core_electrons_ += atomic_levels_[i].occupancy;
-
-            num_valence_electrons_ = zn_ - num_core_electrons_;
-        }
-        
-        void init(int lmax)
-        {
-            radial_grid_.init(exponential_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
-            
-            rebuild_aw_descriptors(lmax);
-
-            max_aw_order_ = 0;
-            for (int l = 0; l <= lmax; l++)
-                max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
-            
-            if (max_aw_order_ > 2)
-                error(__FILE__, __LINE__, "maximum aw order is > 2");
-
-            indexr_.init(lmax, aw_descriptors_, lo_descriptors_);
-            indexb_.init(lmax, indexr_);
-            
-            free_atom_density_.resize(radial_grid_.size());
-            free_atom_potential_.resize(radial_grid_.size());
+            if ((int)aw_descriptors_.size() == l) aw_descriptors_.push_back(radial_solution_descriptor_set());
+            radial_solution_descriptor rsd;
+            rsd.n = (n == -1) ? (l + 1) : n;
+            rsd.l = l;
+            rsd.dme = dme;
+            rsd.enu = enu;
+            rsd.auto_enu = auto_enu;
+            aw_descriptors_[l].push_back(rsd);
         }
 
         double solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
@@ -761,50 +763,43 @@ class AtomType
             printf("mt_radius      : %f\n", mt_radius_);
             printf("num_mt_points  : %i\n", num_mt_points_);
             printf("\n");
-            printf("number of core electrons    : %i\n", num_core_electrons_);
-            printf("number of valence electrons : %i\n", num_valence_electrons_);
+            printf("number of core electrons    : %f\n", num_core_electrons_);
+            printf("number of valence electrons : %f\n", num_valence_electrons_);
             printf("\n");
-            printf("atomic levels (n, l, k, occupancy)\n");
-            printf("core\n");
-            for (int i = 0; i < num_core_levels_; i++)
+            printf("atomic levels (n, l, k, occupancy, core)\n");
+            for (int i = 0; i < (int)atomic_levels_.size(); i++)
             {
-                printf("%i  %i  %i  %i\n", atomic_levels_[i].n, atomic_levels_[i].l, atomic_levels_[i].k,
-                                           atomic_levels_[i].occupancy);
+                printf("%i  %i  %i  %8.4f %i\n", atomic_levels_[i].n, atomic_levels_[i].l, atomic_levels_[i].k,
+                                                  atomic_levels_[i].occupancy, atomic_levels_[i].core);
             }
-            printf("valence\n");
-            for (int i = num_core_levels_; i < (int)atomic_levels_.size(); i++)
-            {
-                printf("%i  %i  %i  %i\n", atomic_levels_[i].n, atomic_levels_[i].l, atomic_levels_[i].k,
-                                           atomic_levels_[i].occupancy);
-            }
-            
-            printf("\n");
-            printf("default augmented wave basis\n");
-            printf("[");
-            for (int order = 0; order < (int)aw_default_l_.size(); order++)
-            {
-                if (order) printf(", ");
-                printf("{enu : %f, dme : %i, auto : %i}", aw_default_l_[order].enu, 
-                                                          aw_default_l_[order].dme, 
-                                                          aw_default_l_[order].auto_enu);
-            }
-            printf("]\n");
 
-            printf("augmented wave basis for specific l\n");
-            for (int j = 0; j < (int)aw_specific_l_.size(); j++)
-            {
-                printf("[");
-                for (int order = 0; order < (int)aw_specific_l_[j].size(); order++)
-                {
-                    if (order) printf(", ");
-                    printf("{l : %i, n : %i, enu : %f, dme : %i, auto : %i}", aw_specific_l_[j][order].l,
-                                                                              aw_specific_l_[j][order].n,
-                                                                              aw_specific_l_[j][order].enu,
-                                                                              aw_specific_l_[j][order].dme,
-                                                                              aw_specific_l_[j][order].auto_enu);
-                }
-                printf("]\n");
-            }
+            //*printf("\n");
+            //*printf("default augmented wave basis\n");
+            //*printf("[");
+            //*for (int order = 0; order < (int)aw_default_l_.size(); order++)
+            //*{
+            //*    if (order) printf(", ");
+            //*    printf("{enu : %f, dme : %i, auto : %i}", aw_default_l_[order].enu, 
+            //*                                              aw_default_l_[order].dme, 
+            //*                                              aw_default_l_[order].auto_enu);
+            //*}
+            //*printf("]\n");
+
+            //*printf("augmented wave basis for specific l\n");
+            //*for (int j = 0; j < (int)aw_specific_l_.size(); j++)
+            //*{
+            //*    printf("[");
+            //*    for (int order = 0; order < (int)aw_specific_l_[j].size(); order++)
+            //*    {
+            //*        if (order) printf(", ");
+            //*        printf("{l : %i, n : %i, enu : %f, dme : %i, auto : %i}", aw_specific_l_[j][order].l,
+            //*                                                                  aw_specific_l_[j][order].n,
+            //*                                                                  aw_specific_l_[j][order].enu,
+            //*                                                                  aw_specific_l_[j][order].dme,
+            //*                                                                  aw_specific_l_[j][order].auto_enu);
+            //*    }
+            //*    printf("]\n");
+            //*}
 
             printf("augmented wave basis\n");
             for (int j = 0; j < (int)aw_descriptors_.size(); j++)
@@ -813,11 +808,11 @@ class AtomType
                 for (int order = 0; order < (int)aw_descriptors_[j].size(); order++)
                 { 
                     if (order) printf(", ");
-                    printf("{l : %i, n : %i, enu : %f, dme : %i, auto : %i}", aw_descriptors_[j][order].l,
-                                                                              aw_descriptors_[j][order].n,
-                                                                              aw_descriptors_[j][order].enu,
-                                                                              aw_descriptors_[j][order].dme,
-                                                                              aw_descriptors_[j][order].auto_enu);
+                    printf("{l : %2i, n : %2i, enu : %f, dme : %i, auto : %i}", aw_descriptors_[j][order].l,
+                                                                                aw_descriptors_[j][order].n,
+                                                                                aw_descriptors_[j][order].enu,
+                                                                                aw_descriptors_[j][order].dme,
+                                                                                aw_descriptors_[j][order].auto_enu);
                 }
                 printf("]\n");
             }
@@ -884,12 +879,6 @@ class AtomType
             return mt_radius_;
         }
         
-        inline void set_mt_radius(double mt_radius__)
-        {
-            mt_radius_ = mt_radius__;
-            radial_grid_.init(exponential_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
-        }
-        
         inline int num_mt_points()
         {
             return num_mt_points_;
@@ -910,22 +899,17 @@ class AtomType
             return (int)atomic_levels_.size();
         }    
         
-        inline int num_core_levels()
-        {
-            return num_core_levels_;
-        }    
-        
         inline atomic_level_descriptor& atomic_level(int idx)
         {
             return atomic_levels_[idx];
         }
         
-        inline int num_core_electrons()
+        inline double num_core_electrons()
         {
             return num_core_electrons_;
         }
         
-        inline int num_valence_electrons()
+        inline double num_valence_electrons()
         {
             return num_valence_electrons_;
         }
@@ -1035,6 +1019,52 @@ class AtomType
         inline double free_atom_radial_function(int ir, int ist)
         {
             return free_atom_radial_functions_(ir, ist);
+        }
+
+        inline void set_symbol(const std::string symbol__)
+        {
+            symbol_ = symbol__;
+        }
+
+        inline void set_zn(int zn__)
+        {
+            zn_ = zn__;
+        }
+
+        inline void set_mass(double mass__)
+        {
+            mass_ = mass__;
+        }
+        
+        inline void set_mt_radius(double mt_radius__)
+        {
+            mt_radius_ = mt_radius__;
+        }
+
+        inline void set_num_mt_points(int num_mt_points__)
+        {
+            num_mt_points_ = num_mt_points__;
+        }
+
+        inline void set_radial_grid_origin(double radial_grid_origin__)
+        {
+            radial_grid_origin_ = radial_grid_origin__;
+        }
+
+        inline void set_radial_grid_infinity(double radial_grid_infinity__)
+        {
+            radial_grid_infinity_ = radial_grid_infinity__;
+        }
+
+        inline void set_configuration(int n, int l, int k, double occupancy, bool core)
+        {
+            atomic_level_descriptor level;
+            level.n = n;
+            level.l = l;
+            level.k = k;
+            level.occupancy = occupancy;
+            level.core = core;
+            atomic_levels_.push_back(level);
         }
 };
 

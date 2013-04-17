@@ -828,16 +828,16 @@ class AtomSymmetryClass
         {
             Timer t("sirius::AtomSymmetryClass::generate_core_charge_density");
 
-            if (atom_type_->num_core_electrons() == 0) return;
+            if (atom_type_->num_core_electrons() == 0.0) return;
             
             RadialSolver solver(true, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
             
             Spline<double> rho(atom_type_->radial_grid().size(), atom_type_->radial_grid());
             
-            std::vector<double> enu_core(atom_type_->num_core_levels());
+            std::vector<double> level_energy(atom_type_->num_atomic_levels());
     
-            for (int ist = 0; ist < atom_type_->num_core_levels(); ist++)
-                enu_core[ist] = -1.0 * atom_type_->zn() / 2 / pow(double(atom_type_->atomic_level(ist).n), 2);
+            for (int ist = 0; ist < atom_type_->num_atomic_levels(); ist++)
+                level_energy[ist] = -1.0 * atom_type_->zn() / 2 / pow(double(atom_type_->atomic_level(ist).n), 2);
             
             memset(&rho[0], 0, rho.size() * sizeof(double));
             #pragma omp parallel default(shared)
@@ -847,15 +847,18 @@ class AtomSymmetryClass
                 std::vector<double> p;
                 
                 #pragma omp for
-                for (int ist = 0; ist < atom_type_->num_core_levels(); ist++)
+                for (int ist = 0; ist < atom_type_->num_atomic_levels(); ist++)
                 {
-                    solver.bound_state(atom_type_->atomic_level(ist).n, atom_type_->atomic_level(ist).l, 
-                                       spherical_potential_, enu_core[ist], p);
-                
-                    for (int i = 0; i < atom_type_->radial_grid().size(); i++)
+                    if (atom_type_->atomic_level(ist).core)
                     {
-                        rho_t[i] += atom_type_->atomic_level(ist).occupancy * 
-                                    pow(y00 * p[i] / atom_type_->radial_grid(i), 2);
+                        solver.bound_state(atom_type_->atomic_level(ist).n, atom_type_->atomic_level(ist).l, 
+                                           spherical_potential_, level_energy[ist], p);
+                
+                        for (int i = 0; i < atom_type_->radial_grid().size(); i++)
+                        {
+                            rho_t[i] += atom_type_->atomic_level(ist).occupancy * 
+                                        pow(y00 * p[i] / atom_type_->radial_grid(i), 2);
+                        }
                     }
                 }
 
@@ -872,10 +875,13 @@ class AtomSymmetryClass
             core_leakage_ = fourpi * (rho.integrate(2) - rho_mt.integrate(2));
 
             core_eval_sum_ = 0.0;
-            for (int ist = 0; ist < atom_type_->num_core_levels(); ist++)
+            for (int ist = 0; ist < atom_type_->num_atomic_levels(); ist++)
             {
-                assert(enu_core[ist] == enu_core[ist]);
-                core_eval_sum_ += enu_core[ist] * atom_type_->atomic_level(ist).occupancy;
+                if (atom_type_->atomic_level(ist).core)
+                {
+                    assert(enu_core[ist] == enu_core[ist]);
+                    core_eval_sum_ += level_energy[ist] * atom_type_->atomic_level(ist).occupancy;
+                }
             }
             assert(core_eval_sum_ == core_eval_sum_);
         }

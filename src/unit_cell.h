@@ -48,13 +48,13 @@ class UnitCell
         int total_nuclear_charge_;
         
         /// total number of core electrons
-        int num_core_electrons_;
+        double num_core_electrons_;
         
         /// total number of valence electrons
-        int num_valence_electrons_;
+        double num_valence_electrons_;
 
         /// total number of electrons
-        int num_electrons_;
+        double num_electrons_;
 
         /// list of equivalent atoms, provided externally
         std::vector<int> equivalent_atoms_;
@@ -227,7 +227,8 @@ class UnitCell
             for (int i = 0; i < num_atom_types(); i++)
             {
                 int id = atom_type(i)->id();
-                atom_type_by_id(id)->set_mt_radius(std::min(rmt[i], 5.0));
+                atom_type_by_id(id)->set_mt_radius(std::min(rmt[i], 3.0));
+                atom_type_by_id(id)->init_radial_grid();
             }
         }
         
@@ -262,15 +263,10 @@ class UnitCell
 
     protected:
 
-        void init(int lmax_apw, int lmax_pot, int num_mag_dims)
+        void init(int lmax_apw, int lmax_pot, int num_mag_dims, int init_radial_grid__, int init_aw_descriptors__)
         {
             find_nearest_neighbours(15.0);
             
-            //if (check_mt_overlap(ia, ja)) find_mt_radii();
-            
-            // always scale MT radii
-            //find_mt_radii();
-
             if (auto_rmt() != 0) find_mt_radii();
 
             int ia, ja;
@@ -302,6 +298,8 @@ class UnitCell
             max_mt_radius_ = 0;
             for (int i = 0; i < num_atom_types(); i++)
             {
+                 if (init_radial_grid__) atom_type(i)->init_radial_grid();
+                 if (init_aw_descriptors__) atom_type(i)->init_aw_descriptors(lmax_apw);
                  atom_type(i)->init(lmax_apw);
                  max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(i)->num_mt_points());
                  min_mt_radius_ = std::min(min_mt_radius_, atom_type(i)->mt_radius());
@@ -433,9 +431,9 @@ class UnitCell
             
             printf("\n");
             printf("total nuclear charge        : %i\n", total_nuclear_charge_);
-            printf("number of core electrons    : %i\n", num_core_electrons_);
-            printf("number of valence electrons : %i\n", num_valence_electrons_);
-            printf("total number of electrons   : %i\n", num_electrons_);
+            printf("number of core electrons    : %f\n", num_core_electrons_);
+            printf("number of valence electrons : %f\n", num_valence_electrons_);
+            printf("total number of electrons   : %f\n", num_electrons_);
         }
 
         void write_cif()
@@ -767,8 +765,7 @@ class UnitCell
         }
 
         /// Add new atom type to the list of atom types.
-        void add_atom_type(int atom_type_id, 
-                           const std::string& label)
+        void add_atom_type(int atom_type_id, const std::string& label)
         {
             if (atom_type_index_by_id_.count(atom_type_id) != 0) 
             {   
@@ -780,9 +777,7 @@ class UnitCell
             atom_type_index_by_id_[atom_type_id] = (int)atom_types_.size() - 1;
         }
         
-        void add_atom(int atom_type_id, 
-                      double* position, 
-                      double* vector_field)
+        void add_atom(int atom_type_id, double* position, double* vector_field)
         {
             double eps = 1e-10;
             double pos[3];
@@ -858,19 +853,19 @@ class UnitCell
         }
         
         /// Total number of electrons (core + valence)
-        inline int num_electrons()
+        inline double num_electrons()
         {
             return num_electrons_;
         }
 
         /// Number of valence electrons
-        inline int num_valence_electrons()
+        inline double num_valence_electrons()
         {
             return num_valence_electrons_;
         }
         
         /// Number of core electrons
-        inline int num_core_electrons()
+        inline double num_core_electrons()
         {
             return num_core_electrons_;
         }
@@ -900,7 +895,6 @@ class UnitCell
         }
 
         /// Total number of the muffin-tin basis functions.
-
         /** Total number of MT basis functions equals to the sum of the total number of augmented wave
             basis functions and the total number of local orbital basis functions across all atoms. It controls 
             the size of the muffin-tin part of the first-variational states and second-variational wave functions.

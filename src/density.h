@@ -455,7 +455,10 @@ class Density
                 kpoint_set_[ik]->set_band_occupancies(&bnd_occ(0, ik));
 
             double gap = 0.0;
-            if (parameters_.num_spins() == 2 || parameters_.num_valence_electrons() % 2 == 0)
+            
+            int nve = int(parameters_.num_valence_electrons() + 1e-12);
+            if ((parameters_.num_spins() == 2) || 
+                ((fabs(nve - parameters_.num_valence_electrons()) < 1e-12) && nve % 2 == 0))
             {
                 // find band gap
                 std::vector< std::pair<double, double> > eband;
@@ -477,7 +480,7 @@ class Density
                 
                 std::sort(eband.begin(), eband.end());
 
-                int ist = parameters_.num_valence_electrons();
+                int ist = nve;
                 if (parameters_.num_spins() == 1) ist /= 2; 
 
                 if (eband[ist].first > eband[ist - 1].second) gap = eband[ist].first - eband[ist - 1].second;
