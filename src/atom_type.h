@@ -594,6 +594,7 @@ class AtomType
             
             radial_solution_descriptor rsd;
             
+            rsd.n = n;
             if (n == -1)
             {
                 // default value for any l
@@ -621,6 +622,7 @@ class AtomType
             
             radial_solution_descriptor rsd;
             
+            rsd.n = n;
             if (n == -1)
             {
                 // default value for any l
