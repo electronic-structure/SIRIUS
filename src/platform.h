@@ -102,7 +102,7 @@ class Platform
             bcast(buffer, count, MPI_COMM_WORLD, root);
         }
        
-        /// Performs the standart all-to-one reduction
+        /// Perform all-to-one in-place reduction
         template<typename T>
         static void reduce(T* buf, int count, const MPI_Comm& comm, int root)
         {
@@ -112,7 +112,7 @@ class Platform
             free(buf_tmp);
         }
 
-        /// Perform the in-place (the output buffer is used as the input buffer) all-to-one reduction 
+        /// Perform all-to-one out-of-place reduction 
         template<typename T>
         static void reduce(T* sendbuf, T* recvbuf, int count, const MPI_Comm& comm, int root)
         {
@@ -136,14 +136,17 @@ class Platform
                 switch(op)
                 {
                     case op_sum:
+                    {
                         MPI_Allreduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), 
                                       MPI_SUM, comm);
                         break;
-
+                    }
                     case op_max:
+                    {
                         MPI_Allreduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), 
                                       MPI_MAX, comm);
                         break;
+                    }
                 }
             }
         }

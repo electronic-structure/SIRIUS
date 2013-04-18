@@ -523,13 +523,6 @@ class Global : public StepFunction
                 printf("Linearization energies\n");
                 for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) printf("%s", &outbuff(0, ic));
             }
-            //if (Platform::mpi_rank() == 0)
-            //{
-            //    FILE* fout = fopen("enu.txt", "w");
-            //    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
-            //        atom_symmetry_class(ic)->write_enu(fout);
-            //    fclose(fout);
-            //}
         }
         
         void generate_radial_integrals()
@@ -571,7 +564,6 @@ class Global : public StepFunction
         }
 
         /// Get the total energy of the electronic subsystem.
-
         /** From the definition of the density functional we have:
             
             \f[

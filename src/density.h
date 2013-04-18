@@ -224,14 +224,10 @@ class Density
     public:
 
         /// Constructor
-        Density(Global& parameters__, 
-                Potential* potential__,
-                mdarray<double, 2>& kpoints__,
-                double* kpoint_weights__,
-                int allocate_f__ = pw_component) : parameters_(parameters__),
-                                                   potential_(potential__),
-                                                   allocate_f_(allocate_f__),
-                                                   kpoint_set_(parameters__.mpi_grid())
+        Density(Global& parameters__, Potential* potential__, mdarray<double, 2>& kpoints__, double* kpoint_weights__,
+                int allocate_f__ = pw_component) : 
+            parameters_(parameters__), potential_(potential__), allocate_f_(allocate_f__), 
+            kpoint_set_(parameters__.mpi_grid())
         {
             rho_ = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
             rho_->allocate(allocate_f_);
@@ -607,7 +603,7 @@ class Density
             mdarray<complex16, 4> mt_complex_density_matrix_loc(parameters_.max_mt_basis_size(), 
                                                                 parameters_.max_mt_basis_size(),
                                                                 num_zdmat, 
-                                                                parameters_.spl_num_atoms().local_size());
+                                                                parameters_.spl_num_atoms().local_size(0));
             
             // reduce arrays; assume that each rank (including ranks along second direction) did it's own 
             // fraction of the density

@@ -27,14 +27,17 @@ void error(const char* file_name, int line_number, const char* message, int flag
     char header[1024];
 
     if (flags & fatal_err)
+    {
         sprintf(header, "\n=== Fatal error at line %i of file %s\n=== MPI rank: %i", 
                 line_number, file_name, Platform::mpi_rank());
+    }
     else
+    {
         sprintf(header, "\n=== Warning at line %i of file %s\n=== MPI rank: %i", 
                 line_number, file_name, Platform::mpi_rank());
+    }
     
-    if (verbose)
-        printf("%s\n%s\n\n", header, message);
+    if (verbose) printf("%s\n%s\n\n", header, message);
 
     if (flags & fatal_err) 
     {
