@@ -748,31 +748,6 @@ class AtomSymmetryClass
             return so_radial_integrals_(l, order1, order2);
         }
 
-        /*void write_enu(FILE* fout)
-        {
-            fprintf(fout, "Atom : %s, class id : %i\n", atom_type_->label().c_str(), id_); 
-            fprintf(fout, "augmented waves\n");
-            for (int l = 0; l < num_aw_descriptors(); l++)
-            {
-                for (int order = 0; order < (int)aw_descriptor(l).size(); order++)
-                {
-                    radial_solution_descriptor& rsd = aw_descriptor(l)[order];
-                    fprintf(fout, "n = %2i   l = %2i   order = %i   enu = %f\n", rsd.n, rsd.l, order, rsd.enu);
-                }
-            }
-
-            fprintf(fout, "local orbitals\n");
-            for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++)
-            {
-                for (int order = 0; order < (int)lo_descriptor(idxlo).size(); order++)
-                {
-                    radial_solution_descriptor& rsd = lo_descriptor(idxlo)[order];
-                    fprintf(fout, "n = %i   l = %i   order = %i   enu = %f\n", rsd.n, rsd.l, order, rsd.enu);
-                }
-            }
-            fprintf(fout, "\n");
-        }*/
-
         void write_enu(char* buf, size_t n)
         {
             int j;
@@ -879,7 +854,7 @@ class AtomSymmetryClass
             {
                 if (atom_type_->atomic_level(ist).core)
                 {
-                    assert(enu_core[ist] == enu_core[ist]);
+                    assert(level_energy[ist] == level_energy[ist]);
                     core_eval_sum_ += level_energy[ist] * atom_type_->atomic_level(ist).occupancy;
                 }
             }

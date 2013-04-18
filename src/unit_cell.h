@@ -118,7 +118,7 @@ class UnitCell
                 for (int j = 0; j < 3; j++) lattice[i][j] = lattice_vectors_[j][i];
             }
 
-            mdarray<double,2> positions(3, num_atoms());
+            mdarray<double, 2> positions(3, num_atoms());
             
             std::vector<int> types(num_atoms());
 
@@ -281,18 +281,6 @@ class UnitCell
             
             get_symmetry();
             
-            total_nuclear_charge_ = 0;
-            num_core_electrons_ = 0;
-            num_valence_electrons_ = 0;
-
-            for (int i = 0; i < num_atoms(); i++)
-            {
-                total_nuclear_charge_ += atom(i)->type()->zn();
-                num_core_electrons_ += atom(i)->type()->num_core_electrons();
-                num_valence_electrons_ += atom(i)->type()->num_valence_electrons();
-            }
-            num_electrons_ = num_core_electrons_ + num_valence_electrons_;
-            
             max_num_mt_points_ = 0;
             min_mt_radius_ = 1e100;
             max_mt_radius_ = 0;
@@ -306,6 +294,17 @@ class UnitCell
                  max_mt_radius_ = std::max(max_mt_radius_, atom_type(i)->mt_radius());
             }
             
+            total_nuclear_charge_ = 0;
+            num_core_electrons_ = 0;
+            num_valence_electrons_ = 0;
+            for (int i = 0; i < num_atoms(); i++)
+            {
+                total_nuclear_charge_ += atom(i)->type()->zn();
+                num_core_electrons_ += atom(i)->type()->num_core_electrons();
+                num_valence_electrons_ += atom(i)->type()->num_valence_electrons();
+            }
+            
+            num_electrons_ = num_core_electrons_ + num_valence_electrons_;
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) atom_symmetry_class(ic)->init();
             
             mt_basis_size_ = 0;

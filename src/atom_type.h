@@ -409,7 +409,7 @@ class AtomType
                         error(__FILE__, __LINE__, s);
                     }
                     
-                    switch(c2)
+                    switch (c2)
                     {
                         case 's':
                             l = 0;
@@ -447,7 +447,6 @@ class AtomType
                     }
                 }
             }
-            //num_core_levels_ = (int)atomic_levels_.size();
             
             radial_solution_descriptor rsd;
 
@@ -542,10 +541,6 @@ class AtomType
         
         void init(int lmax)
         {
-            //radial_grid_.init(exponential_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
-            
-            //rebuild_aw_descriptors(lmax);
-
             max_aw_order_ = 0;
             for (int l = 0; l <= lmax; l++)
                 max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
@@ -596,13 +591,55 @@ class AtomType
         void add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu)
         {
             if ((int)aw_descriptors_.size() == l) aw_descriptors_.push_back(radial_solution_descriptor_set());
+            
             radial_solution_descriptor rsd;
-            rsd.n = (n == -1) ? (l + 1) : n;
+            
+            if (n == -1)
+            {
+                // default value for any l
+                rsd.n = l + 1;
+                for (int ist = 0; ist < num_atomic_levels(); ist++)
+                {
+                    if (atomic_level(ist).core && atomic_level(ist).l == l)
+                    {   
+                        // take next level after the core
+                        rsd.n = atomic_level(ist).n + 1;
+                    }
+                }
+            }
+            
             rsd.l = l;
             rsd.dme = dme;
             rsd.enu = enu;
             rsd.auto_enu = auto_enu;
             aw_descriptors_[l].push_back(rsd);
+        }
+        
+        void add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu)
+        {
+            if ((int)lo_descriptors_.size() == ilo) lo_descriptors_.push_back(radial_solution_descriptor_set());
+            
+            radial_solution_descriptor rsd;
+            
+            if (n == -1)
+            {
+                // default value for any l
+                rsd.n = l + 1;
+                for (int ist = 0; ist < num_atomic_levels(); ist++)
+                {
+                    if (atomic_level(ist).core && atomic_level(ist).l == l)
+                    {   
+                        // take next level after the core
+                        rsd.n = atomic_level(ist).n + 1;
+                    }
+                }
+            }
+            
+            rsd.l = l;
+            rsd.dme = dme;
+            rsd.enu = enu;
+            rsd.auto_enu = auto_enu;
+            lo_descriptors_[ilo].push_back(rsd);
         }
 
         double solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)

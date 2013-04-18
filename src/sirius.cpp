@@ -562,4 +562,11 @@ void FORTRAN(sirius_add_atom_type_aw_descriptor)(int32_t* atom_type_id, int32_t*
     type->add_aw_descriptor(*n, *l, *enu, *dme, *auto_enu);
 }
 
+void FORTRAN(sirius_add_atom_type_lo_descriptor)(int32_t* atom_type_id, int32_t* ilo, int32_t* n, int32_t* l, 
+                                                 real8* enu, int32_t* dme, int32_t* auto_enu)
+{
+    sirius::AtomType* type = global.atom_type_by_id(*atom_type_id);
+    type->add_lo_descriptor(*ilo - 1, *n, *l, *enu, *dme, *auto_enu);
+}
+
 } // extern "C"
