@@ -42,8 +42,6 @@ template <typename T> class sbessel_pw
 
         void load(double q)
         {
-            Timer t("sirius::sbessel_pw::load");
-            
             std::vector<double> jl(lmax_+ 1);
             for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
             {

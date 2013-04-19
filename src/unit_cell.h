@@ -263,7 +263,7 @@ class UnitCell
 
         void init(int lmax_apw, int lmax_pot, int num_mag_dims)
         {
-            find_nearest_neighbours(15.0);
+            find_nearest_neighbours(25.0);
             
             if (auto_rmt() != 0) find_mt_radii();
 
