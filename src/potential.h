@@ -424,6 +424,22 @@ class Potential
 
                 sht_.rlm_backward_transform(&rho->f_rlm(0, 0, ia), parameters_.lmmax_rho(), nmtp, &rhotp(0, 0));
 
+                if (debug_level > 0)
+                {
+                    for (int ir = 0; ir < nmtp; ir++)
+                    {
+                        for (int itp = 0; itp < sht_.num_points(); itp++)
+                        {
+                            if (rhotp(itp, ir) < 0.0)
+                            {
+                                std::stringstream s;
+                                s << "Atom : " << ia << "   rhotp(" << itp << "," << ir << ") = " << rhotp(itp, ir);
+                                warning(__FILE__, __LINE__, s, 0);
+                            }
+                        }
+                    }
+                }
+
                 if (parameters_.num_spins() == 2)
                 {
                     for (int j = 0; j < parameters_.num_mag_dims(); j++)
@@ -490,8 +506,24 @@ class Potential
             delete t2;
           
             Timer* t3 = new Timer("sirius::Potential::xc:it");
+
+            // TODO: this is unreadable and must be reimplemented
+            // global offset
             int it_glob_idx = parameters_.spl_fft_size(0);
             int it_loc_size = parameters_.spl_fft_size().local_size();
+
+            if (debug_level > 0)
+            {
+                for (int irloc = 0; irloc < it_loc_size; irloc++)
+                {
+                    if (rho->f_it(it_glob_idx + irloc) < 0)
+                    {
+                        std::stringstream s;
+                        s << "rho->f_it(" << it_glob_idx + irloc << ") = " << rho->f_it(it_glob_idx + irloc);
+                        warning(__FILE__, __LINE__, s, 0);
+                    }
+                }
+            }
             
             if (parameters_.num_spins() == 1)
             {

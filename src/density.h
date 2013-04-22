@@ -155,8 +155,7 @@ class Density
                     {
                         parameters_.fft().input(kp->num_gkvec(), kp->fft_index(), 
                                                 &kp->spinor_wave_function(parameters_.mt_basis_size(), ispn, 
-                                                                          bands[i].first),
-                                                thread_id);
+                                                                          bands[i].first), thread_id);
                         parameters_.fft().transform(1, thread_id);
                         parameters_.fft().output(&wfit(0, ispn), thread_id);
                     }
