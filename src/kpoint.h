@@ -1222,7 +1222,6 @@ void kpoint::apply_hmt_to_apw(Band* band, int num_gkvec_row, int ia, mdarray<com
             }
             
             memcpy(&halm(0, j2), &zv[0], num_gkvec_row * sizeof(complex16));
-
         } // j2
     }
 }

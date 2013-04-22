@@ -9,7 +9,7 @@
 
     Examples:
 
-        error(__FILE__, __LINE__, message, global_msg | fatal_err); // fatal global error (default) 
+        error(__FILE__, __LINE__, message, fatal_err); // fatal local error (default) 
 
         error(__FILE__, __LINE__, message, global_msg); // global non-fatal (warning) message 
 
@@ -18,7 +18,7 @@
 const int global_msg = 1 << 0;
 const int fatal_err = 1 << 1;
 
-const int default_error_flags = global_msg | fatal_err;
+const int default_error_flags = fatal_err;
 const int default_warning_flags = global_msg;
 
 void error(const char* file_name, int line_number, const char* message, int flags = default_error_flags)
@@ -42,7 +42,7 @@ void error(const char* file_name, int line_number, const char* message, int flag
     if (flags & fatal_err) 
     {
         // give writing ranks some time to flush the output buffer 
-        double delay_time = 0.3;
+        double delay_time = 0.5;
         timeval t1;
         timeval t2;
         double d;

@@ -24,7 +24,7 @@ class RadialSolver
         double enu_tolerance;
         
         int integrate(int nr, int l, double enu, sirius::Spline<double>& ve, sirius::Spline<double>& mp, 
-                      std::vector<double>& p, std::vector<double>& q)
+                      std::vector<double>& p, std::vector<double>& q, double& dpdr)
         {
             double alpha2 = 0.5 * pow((1 / speed_of_light), 2);
             if (!relativistic) alpha2 = 0.0;
@@ -117,6 +117,10 @@ class RadialSolver
             int nn = 0;
             for (int i = 0; i < nr - 1; i++) if (p[i] * p[i + 1] < 0.0) nn++;
 
+            // P' = 2MQ + P/r
+            dpdr = 2 * (1.0 - (ve[nr - 1] + zn * radial_grid.rinv(nr - 1) - enu0) * alpha2) * q[nr - 1] + 
+                   p[nr - 1] * radial_grid.rinv(nr - 1);
+            
             return nn;
         }
 
@@ -143,9 +147,10 @@ class RadialSolver
             double de = 0.001;
             bool found = false;
             double p0p = 0;
+            double dpdr;
             for (int i = 0; i < 1000; i++)
             {
-                solve_in_mt(l, enu, 0, v, p, hp);
+                solve_in_mt(l, enu, 0, v, p, hp, dpdr);
                 if (i > 0)
                 {
                     if (p[radial_grid.num_mt_points() - 1] * p0p < 0.0)
@@ -175,7 +180,7 @@ class RadialSolver
             double p1p = 0;
             for (int i = 0; i < 1000; i++)
             {
-                solve_in_mt(l, enu, 0, v, p, hp);
+                solve_in_mt(l, enu, 0, v, p, hp, dpdr);
                 Spline<double> sp(radial_grid.num_mt_points(), radial_grid, p);
 
                 if (i > 0)
@@ -205,7 +210,7 @@ class RadialSolver
         }
                         
         void solve_in_mt(int l, double enu, int m, std::vector<double>& v, std::vector<double>& p, 
-                         std::vector<double>& hp)
+                         std::vector<double>& hp, double& dpdr)
         {
             std::vector<double> ve(radial_grid.num_mt_points());
             for (int i = 0; i < radial_grid.num_mt_points(); i++) ve[i] = v[i] - zn / radial_grid[i];
@@ -225,7 +230,7 @@ class RadialSolver
                     mp_spline.interpolate();
                 }
                 
-                integrate(radial_grid.num_mt_points(), l, enu, ve_spline, mp_spline, p, q);
+                integrate(radial_grid.num_mt_points(), l, enu, ve_spline, mp_spline, p, q, dpdr);
             }
 
             hp.resize(radial_grid.num_mt_points());
@@ -253,10 +258,11 @@ class RadialSolver
             int s = 1;
             int sp;
             double denu = enu_tolerance;
+            double dpdr;
 
             for (int iter = 0; iter < 1000; iter++)
             {
-                int nn = integrate(radial_grid.size(), l, enu, ve_spline, mp_spline, p, q);
+                int nn = integrate(radial_grid.size(), l, enu, ve_spline, mp_spline, p, q, dpdr);
                 
                 sp = s;
                 s = (nn > (n - l - 1)) ? -1 : 1;

@@ -42,13 +42,13 @@ template <typename T> class Spline
             interpolate(y);
         }
         
-        void interpolate(std::vector<T>& y)
+        Spline<T>& interpolate(std::vector<T>& y)
         {
             a = y;
-            interpolate();
+            return interpolate();
         }
         
-        void interpolate()
+        Spline<T>& interpolate()
         {
             std::vector<T> diag_main(num_points);
             std::vector<T> diag_lower(num_points - 1);
@@ -57,12 +57,10 @@ template <typename T> class Spline
             std::vector<T> dy(num_points - 1);
             
             // derivative of y
-            for (int i = 0; i < num_points - 1; i++) 
-                dy[i] = (a[i + 1] - a[i]) / radial_grid.dr(i);
+            for (int i = 0; i < num_points - 1; i++) dy[i] = (a[i + 1] - a[i]) / radial_grid.dr(i);
             
             // setup "B" vector of AX=B equation
-            for (int i = 0; i < num_points - 2; i++) 
-                m[i + 1] = (dy[i + 1] - dy[i]) * 6.0;
+            for (int i = 0; i < num_points - 2; i++) m[i + 1] = (dy[i + 1] - dy[i]) * 6.0;
             m[0] = -m[1];
             m[num_points - 1] = -m[num_points - 2];
             
@@ -107,6 +105,7 @@ template <typename T> class Spline
                 b[i] = dy[i] - (c[i] + t) * radial_grid.dr(i);
                 d[i] = t / radial_grid.dr(i);
             }
+            return *this;
         }
         
         T integrate(int m = 0)

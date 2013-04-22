@@ -78,6 +78,8 @@ class AtomSymmetryClass
                 std::vector<double> p;
                 std::vector<double> hp;
                 
+                double dpdr[atom_type_->max_aw_order()];
+                
                 #pragma omp for schedule(dynamic, 1)
                 for (int l = 0; l < num_aw_descriptors(); l++)
                 {
@@ -98,12 +100,13 @@ class AtomSymmetryClass
                         //*     rsd.enu = efermi;
                         //* }
 
-                        solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p, hp);
+                        solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p, hp, dpdr[order]);
 
                         // normalize
                         for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(p[ir], 2);
-                        s.interpolate();
-                        double norm = s.integrate(0);
+                        //s.interpolate();
+                        //double norm = s.integrate(0);
+                        double norm = s.interpolate().integrate(0);
                         norm = 1.0 / sqrt(norm);
 
                         for (int ir = 0; ir < nmtp; ir++)
@@ -111,24 +114,25 @@ class AtomSymmetryClass
                             radial_functions_(ir, idxrf, 0) = p[ir] * norm;
                             radial_functions_(ir, idxrf, 1) = hp[ir] * norm;
                         }
-                        
+                        dpdr[order] *= norm;
+
                         // orthogonalize
                         for (int order1 = 0; order1 < order; order1++)
                         {
                             int idxrf1 = atom_type_->indexr().index_by_l_order(l, order1);
 
-                            for (int ir = 0; ir < nmtp; ir++)
-                                s[ir] = radial_functions_(ir, idxrf, 0) * radial_functions_(ir, idxrf1, 0);
+                            for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf, 0), 2);
                             s.interpolate();
                             double t1 = s.integrate(0);
-                            
+
                             for (int ir = 0; ir < nmtp; ir++)
                             {
                                 radial_functions_(ir, idxrf, 0) -= radial_functions_(ir, idxrf1, 0) * t1;
                                 radial_functions_(ir, idxrf, 1) -= radial_functions_(ir, idxrf1, 1) * t1;
                             }
+                            dpdr[order] -= t1 * dpdr[order1];
                         }
-                            
+
                         // normalize again
                         for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf, 0), 2);
                         s.interpolate();
@@ -143,10 +147,13 @@ class AtomSymmetryClass
                             radial_functions_(ir, idxrf, 0) *= norm;
                             radial_functions_(ir, idxrf, 1) *= norm;
                         }
+                        dpdr[order] *= norm;
 
                         // radial derivative
-                        double rderiv = (radial_functions_(nmtp - 1, idxrf, 0) - radial_functions_(nmtp - 2, idxrf, 0)) / 
-                                        atom_type_->radial_grid().dr(nmtp - 2);
+                        //double rderiv = (radial_functions_(nmtp - 1, idxrf, 0) - radial_functions_(nmtp - 2, idxrf, 0)) / 
+                        //                atom_type_->radial_grid().dr(nmtp - 2);
+                        
+                        double rderiv = dpdr[order];
                         double R = atom_type_->mt_radius();
 
                         aw_surface_derivatives_(order, l) = (rderiv - radial_functions_(nmtp - 1, idxrf, 0) / R) / R;
@@ -199,7 +206,8 @@ class AtomSymmetryClass
                             if (rsd.auto_enu == 2) rsd.enu = solver.find_enu(rsd.l, spherical_potential_, rsd.enu);
                         }
 
-                        solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p[order], hp[order]); 
+                        double dpdr;
+                        solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p[order], hp[order], dpdr); 
                         
                         // normalize radial solutions and divide by r
                         for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(p[order][ir], 2);
