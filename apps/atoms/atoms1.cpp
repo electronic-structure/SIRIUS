@@ -74,8 +74,9 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
 
     std::cout << " atom : " << a->symbol() << "    Z : " << a->zn() << std::endl;
     std::cout << " =================== " << std::endl;
-    std::cout << " total energy : " << energy_tot << ", NIST value : " <<  a->NIST_LDA_Etot 
-              << ", difference : " << fabs(energy_tot - a->NIST_LDA_Etot) << std::endl;
+    printf("total energy : %12.6f, NIST value : %12.6f\n", energy_tot, a->NIST_LDA_Etot);
+    //std::cout << " total energy : " << energy_tot << ", NIST value : " <<  a->NIST_LDA_Etot 
+    //          << ", difference : " << fabs(energy_tot - a->NIST_LDA_Etot) << std::endl;
     std::cout << " number of core electrons : " <<  ncore << std::endl;
     std::cout << std::endl;
     

@@ -435,7 +435,7 @@ class Potential
                         {
                             double t = 0.0;
                             for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                                t += vecmagtp(itp, ir, j) *  vecmagtp(itp, ir, j);
+                                t += vecmagtp(itp, ir, j) * vecmagtp(itp, ir, j);
                             magtp(itp, ir) = sqrt(t);
                         }
                     }
