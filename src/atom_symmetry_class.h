@@ -818,7 +818,7 @@ class AtomSymmetryClass
 
             if (atom_type_->num_core_electrons() == 0.0) return;
             
-            RadialSolver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
+            RadialSolver solver(true, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
             
             Spline<double> rho(atom_type_->radial_grid().size(), atom_type_->radial_grid());
             
