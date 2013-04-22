@@ -19,16 +19,6 @@ class kpoint_set
         
         void add_kpoint(double* vk, double weight, Global& parameters)
         {
-            //for (int ik = 0; ik < (int)kpoints_.size(); ik++)
-            //{
-            //    double t[3];
-            //    for (int x = 0; x < 3; x++) 
-            //        t[x] = vk[x] - kpoints_[ik]->vk()[x];
-
-            //    if (vector_length(t) < 1e-10)
-            //        error(__FILE__, __LINE__, "kpoint is already in list");
-            //}
-
             kpoints_.push_back(new kpoint(parameters, vk, weight));
 
             std::vector<double> initial_occupancies(parameters.num_bands(), 0.0);
@@ -80,23 +70,18 @@ class kpoint_set
             
             // assume that side processors store the full e(k) array
             if (mpi_grid_.side(1 << 0))
+            {
                 for (int ikloc = 0; ikloc < spl_num_kpoints.local_size(); ikloc++)
                 {
                     int ik = spl_num_kpoints[ikloc];
                     kpoints_[ik]->get_band_energies(&band_energies(0, ik));
                 }
-
-            //mpi_grid.reduce(&band_energies(0, 0), num_bands * num_kpoints(), 1 << 0, true);
-
-            //Platform::bcast(&band_energies(0, 0), num_bands * num_kpoints(), mpi_grid.world_root());
+            }
 
             Platform::allreduce(&band_energies(0, 0), num_bands * num_kpoints());
 
-            for (int ik = 0; ik < num_kpoints(); ik++)
-                kpoints_[ik]->set_band_energies(&band_energies(0, ik));
+            for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_energies(&band_energies(0, ik));
         }
-
-
 };
 
 };
