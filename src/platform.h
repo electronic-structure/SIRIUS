@@ -48,7 +48,7 @@ class Platform
             }
             else
             {   
-                MPI_Abort(MPI_COMM_WORLD, -1);
+                MPI_Abort(MPI_COMM_WORLD, -13);
             }
             exit(0);
         }
@@ -65,7 +65,7 @@ class Platform
         
         static bool verbose()
         {
-            return verbose_;
+            return (verbose_ || (verbosity_level > 0));
         }
 
         static void set_verbose(bool verbose__)

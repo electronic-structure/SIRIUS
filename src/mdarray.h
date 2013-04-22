@@ -141,8 +141,11 @@ template <typename T, int ND> class mdarray_base
         
         void zero()
         {
-            assert(mdarray_ptr);
-            memset(mdarray_ptr, 0, size() * sizeof(T));
+            if (size())
+            {
+                assert(mdarray_ptr);
+                memset(mdarray_ptr, 0, size() * sizeof(T));
+            }
         }
         
         void set_ptr(T* ptr)
