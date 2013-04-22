@@ -1,55 +1,9 @@
-
 /** \file band.h
     \brief Setup and solve first- and second-variational eigen value problem.
 */
 
 namespace sirius
 {
-
-/// Descriptor of the APW+lo basis function
-
-/** APW+lo basis consists of two different sets of functions: APW functions \f$ \varphi_{{\bf G+k}} \f$ defined over 
-    entire unit cell:
-    \f[
-        \varphi_{{\bf G+k}}({\bf r}) = \left\{ \begin{array}{ll}
-        \displaystyle \sum_{L} \sum_{\nu=1}^{O_{\ell}^{\alpha}} a_{L\nu}^{\alpha}({\bf G+k})u_{\ell \nu}^{\alpha}(r) 
-        Y_{\ell m}(\hat {\bf r}) & {\bf r} \in {\rm MT} \alpha \\
-        \displaystyle \frac{1}{\sqrt  \Omega} e^{i({\bf G+k}){\bf r}} & {\bf r} \in {\rm I} \end{array} \right.
-    \f]  
-    and Bloch sums of local orbitals defined inside muffin-tin spheres only:
-    \f[
-        \begin{array}{ll} \displaystyle \varphi_{j{\bf k}}({\bf r})=\sum_{{\bf T}} e^{i{\bf kT}} 
-        \varphi_{j}({\bf r - T}) & {\rm {\bf r} \in MT} \end{array}
-    \f]
-    Each local orbital is composed of radial and angular parts:
-    \f[
-        \varphi_{j}({\bf r}) = \phi_{\ell_j}^{\zeta_j,\alpha_j}(r) Y_{\ell_j m_j}(\hat {\bf r})
-    \f]
-    Radial part of local orbital is defined as a linear combination of radial functions (minimum two radial functions 
-    are required) such that local orbital vanishes at the sphere boundary:
-    \f[
-        \phi_{\ell}^{\zeta, \alpha}(r) = \sum_{p}\gamma_{p}^{\zeta,\alpha} u_{\ell \nu_p}^{\alpha}(r)  
-    \f]
-    
-    Arbitrary number of local orbitals may be introduced for each angular quantum number.
-
-    Radial functions are m-th order (with zero-order being a function itself) energy derivatives of the radial 
-    Schrödinger equation:
-    \f[
-        u_{\ell \nu}^{\alpha}(r) = \frac{\partial^{m_{\nu}}}{\partial^{m_{\nu}}E}u_{\ell}^{\alpha}(r,E)\Big|_{E=E_{\nu}}
-    \f]
-*/
-struct apwlo_basis_descriptor
-{
-    int idxglob;
-    int igk;
-    int ig;
-    int ia;
-    int l;
-    int lm;
-    int order;
-    int idxrf;
-};
 
 class Band
 {
@@ -58,9 +12,6 @@ class Band
         /// Global set of parameters
         Global& parameters_;
     
-        /// Non-zero Gaunt coefficients
-        mdarray<std::vector< std::pair<int, complex16> >, 2> complex_gaunt_packed_;
-       
         /// Block-cyclic distribution of the first-variational states along columns of the MPI grid
         splindex<block_cyclic> spl_fv_states_col_;
         
@@ -112,24 +63,24 @@ class Band
             {
                 int offset = parameters_.atom(ia)->offset_wf();
                 int mt_basis_size = parameters_.atom(ia)->type()->mt_basis_size();
+                Atom* atom = parameters_.atom(ia);
                 
                 zm.zero();
         
                 #pragma omp parallel for default(shared)
                 for (int j2 = 0; j2 < mt_basis_size; j2++)
                 {
-                    int lm2 = parameters_.atom(ia)->type()->indexb(j2).lm;
-                    int idxrf2 = parameters_.atom(ia)->type()->indexb(j2).idxrf;
+                    int lm2 = atom->type()->indexb(j2).lm;
+                    int idxrf2 = atom->type()->indexb(j2).idxrf;
                     
                     for (int i = 0; i < parameters_.num_mag_dims(); i++)
                     {
                         for (int j1 = 0; j1 <= j2; j1++)
                         {
-                            int lm1 = parameters_.atom(ia)->type()->indexb(j1).lm;
-                            int idxrf1 = parameters_.atom(ia)->type()->indexb(j1).idxrf;
+                            int lm1 = atom->type()->indexb(j1).lm;
+                            int idxrf1 = atom->type()->indexb(j1).idxrf;
 
-                            sum_L3_complex_gaunt(lm1, lm2, parameters_.atom(ia)->b_radial_integrals(idxrf1, idxrf2, i), 
-                                                 zm(j1, j2, i));
+                            zm(j1, j2, i) = parameters_.gaunt().sum_L3_complex_gaunt(lm1, lm2, atom->b_radial_integrals(idxrf1, idxrf2, i)); 
                         }
                     }
                 }
@@ -369,27 +320,6 @@ class Band
 
         void init()
         {
-            complex_gaunt_packed_.set_dimensions(parameters_.lmmax_apw(), parameters_.lmmax_apw());
-            complex_gaunt_packed_.allocate();
-
-            for (int l1 = 0; l1 <= parameters_.lmax_apw(); l1++) 
-            for (int m1 = -l1; m1 <= l1; m1++)
-            {
-                int lm1 = Utils::lm_by_l_m(l1, m1);
-                for (int l2 = 0; l2 <= parameters_.lmax_apw(); l2++)
-                for (int m2 = -l2; m2 <= l2; m2++)
-                {
-                    int lm2 = Utils::lm_by_l_m(l2, m2);
-                    for (int l3 = 0; l3 <= parameters_.lmax_pot(); l3++)
-                    for (int m3 = -l3; m3 <= l3; m3++)
-                    {
-                        int lm3 = Utils::lm_by_l_m(l3, m3);
-                        complex16 z = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
-                        if (abs(z) > 1e-12) complex_gaunt_packed_(lm1, lm2).push_back(std::pair<int,complex16>(lm3, z));
-                    }
-                }
-            }
-            
             // distribue first-variational states
             spl_fv_states_col_.split(parameters_.num_fv_states(), num_ranks_col_, rank_col_, 
                                      parameters_.cyclic_block_size());
@@ -717,6 +647,11 @@ class Band
             return spl_spinor_wf_col_;
         }
         
+        inline int spl_spinor_wf_col(int jloc)
+        {
+            return spl_spinor_wf_col_[jloc];
+        }
+        
         inline int num_sub_bands()
         {
             return sub_spl_spinor_wf_.local_size();
@@ -793,13 +728,6 @@ class Band
             return num_ranks_;
         }
         
-        template <typename T>
-        inline void sum_L3_complex_gaunt(int lm1, int lm2, T* v, complex16& zsum)
-        {
-            for (int k = 0; k < (int)complex_gaunt_packed_(lm1, lm2).size(); k++)
-                zsum += complex_gaunt_packed_(lm1, lm2)[k].second * v[complex_gaunt_packed_(lm1, lm2)[k].first];
-        }
-
         inline int blacs_context()
         {
             return blacs_context_;

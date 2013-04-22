@@ -265,7 +265,7 @@ class UnitCell
 
         void init(int lmax_apw, int lmax_pot, int num_mag_dims, int init_radial_grid__, int init_aw_descriptors__)
         {
-            find_nearest_neighbours(15.0);
+            find_nearest_neighbours(25.0);
             
             if (auto_rmt() != 0) find_mt_radii();
 
@@ -764,7 +764,7 @@ class UnitCell
         }
 
         /// Add new atom type to the list of atom types.
-        void add_atom_type(int atom_type_id, const std::string& label)
+        void add_atom_type(int atom_type_id, const std::string label)
         {
             if (atom_type_index_by_id_.count(atom_type_id) != 0) 
             {   

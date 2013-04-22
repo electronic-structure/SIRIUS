@@ -19,7 +19,7 @@ const int global_msg = 1 << 0;
 const int fatal_err = 1 << 1;
 
 const int default_error_flags = fatal_err;
-const int default_warning_flags = global_msg;
+const int default_warning_flags = 0;
 
 void error(const char* file_name, int line_number, const char* message, int flags = default_error_flags)
 {

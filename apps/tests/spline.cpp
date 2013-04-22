@@ -30,6 +30,31 @@ void test2(double x0, double x1)
  
 }
 
+void test3(double x0, double x1)
+{
+    printf("test3\n");
+    sirius::RadialGrid r(sirius::exponential_grid, 2000, x0, x1);
+    sirius::Spline<double> s1(2000, r);
+    sirius::Spline<double> s2(2000, r);
+    sirius::Spline<double> s3(2000, r);
+
+    for (int i = 0; i < 2000; i++)
+    {
+        s1[i] = sin(r[i]) / r[i];
+        s2[i] = exp(-r[i]) * pow(r[i], 8.0 / 3.0);
+        s3[i] = s1[i] * s2[i];
+    }
+    s1.interpolate();
+    s2.interpolate();
+    s3.interpolate();
+
+    double v1 = s3.integrate(2);
+    double v2 = sirius::Spline<double>::integrate(&s1, &s2);
+
+    printf("integral values: %16.12f %16.12f, diff %16.12f\n", v1, v2, fabs(v1 - v2));
+
+}
+
 int main(int argn, char **argv)
 {
     test1(0.1, 7.13, 0, 0.3326313127230704);
@@ -44,6 +69,8 @@ int main(int argn, char **argv)
     test1(0.1, 7.13, -5, 331.7312413927384);
  
     test2(0.1, 2.0);
+
+    test3(0.0001, 2.0);
     
 
 }

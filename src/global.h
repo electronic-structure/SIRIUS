@@ -21,11 +21,17 @@ class Global : public StepFunction
         /// maximum l for APW functions
         int lmax_apw_;
         
+        /// maximum l for plane waves
+        int lmax_pw_;
+        
         /// maximum l for density
         int lmax_rho_;
         
         /// maximum l for potential
         int lmax_pot_;
+
+        /// maxim overall l
+        int lmax_;
         
         /// cutoff for augmented-wave functions
         double aw_cutoff_;
@@ -73,6 +79,8 @@ class Global : public StepFunction
         linalg_t eigen_value_solver_; 
         
         processing_unit_t processing_unit_;
+
+        GauntCoefficients gaunt_;
 
         /// read from the input file if it exists
         void read_input()
@@ -220,6 +228,16 @@ class Global : public StepFunction
             return Utils::lmmax_by_lmax(lmax_apw_);
         }
         
+        inline int lmax_pw()
+        {
+            return lmax_pw_;
+        }
+
+        inline int lmmax_pw()
+        {
+            return Utils::lmmax_by_lmax(lmax_pw_);
+        }
+        
         inline int lmax_rho()
         {
             return lmax_rho_;
@@ -238,6 +256,16 @@ class Global : public StepFunction
         inline int lmmax_pot()
         {
             return Utils::lmmax_by_lmax(lmax_pot_);
+        }
+
+        inline int lmax()
+        {
+            return lmax_;
+        }
+
+        inline int lmmax()
+        {
+            return Utils::lmmax_by_lmax(lmax_);
         }
 
         inline double aw_cutoff()
@@ -377,11 +405,21 @@ class Global : public StepFunction
 
             read_input();
             
+            if (basis_type == pwlo)
+            {
+                lmax_pw_ = lmax_apw_;
+                lmax_apw_ = -1;
+            }
+
+            lmax_ = std::max(std::max(std::max(lmax_pot_, lmax_rho_), lmax_apw_), lmax_pw_); 
+
             // initialize variables, related to the unit cell
             UnitCell::init(lmax_apw(), lmax_pot(), num_mag_dims(), init_radial_grid__, init_aw_descriptors__);
             
-            ReciprocalLattice::init();
+            ReciprocalLattice::init(lmax());
             StepFunction::init();
+
+            gaunt_.set_lmax(std::max(lmax_apw(), lmax_pw()), std::max(lmax_apw(), lmax_pw()), lmax_pot());
 
             // check MPI grid dimensions and set a default grid if needed
             if (!mpi_grid_dims_.size()) mpi_grid_dims_ = Utils::intvec(Platform::num_mpi_ranks());
@@ -735,6 +773,11 @@ class Global : public StepFunction
 
                 jw.single("timers", Timer::timer_descriptors());
             }
+        }
+
+        inline GauntCoefficients& gaunt()
+        {
+            return gaunt_;
         }
 };
 

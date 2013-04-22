@@ -49,28 +49,20 @@ class Potential
         
         PeriodicFunction<double>* effective_magnetic_field_[3];
  
-        mdarray<complex16,2> gvec_ylm_;
+        mdarray<double, 3> sbessel_mom_;
 
-        mdarray<double,3> sbessel_mom_;
-
-        mdarray<double,3> sbessel_mt_;
+        mdarray<double, 3> sbessel_mt_;
         
         SHT sht_;
 
         int pseudo_density_order;
-
-        /// G-vector phase factors
-        mdarray<complex16, 2> gvec_phase_factors_;
-        
-        /// splitted G-vector index
-        splindex<block> spl_num_gvec_;
 
         std::vector<complex16> zil_;
         
         std::vector<complex16> zilm_;
 
         std::vector<int> l_by_lm_;
-        
+
         /// Compute MT part of the potential and MT multipole moments
         void poisson_vmt(mdarray<complex16, 3>& rho_ylm, PeriodicFunction<double>* vh, mdarray<complex16, 2>& qmt)
         {
@@ -149,16 +141,16 @@ class Potential
             
             flm.zero();
 
-            mdarray<complex16, 2> zm1(spl_num_gvec_.local_size(), parameters_.lmmax_rho());
+            mdarray<complex16, 2> zm1(parameters_.spl_num_gvec().local_size(), parameters_.lmmax_rho());
 
             #pragma omp parallel for default(shared)
             for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
             {
-                for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
-                    zm1(igloc, lm) = gvec_ylm_(lm, igloc) * conj(fpw[spl_num_gvec_[igloc]] * zilm_[lm]);
+                for (int igloc = 0; igloc < parameters_.spl_num_gvec().local_size(); igloc++)
+                    zm1(igloc, lm) = parameters_.gvec_ylm(lm, igloc) * conj(fpw[parameters_.spl_num_gvec(igloc)] * zilm_[lm]);
             }
 
-            mdarray<complex16, 2> zm2(spl_num_gvec_.local_size(), parameters_.num_atoms());
+            mdarray<complex16, 2> zm2(parameters_.spl_num_gvec().local_size(), parameters_.num_atoms());
 
             for (int l = 0; l <= parameters_.lmax_rho(); l++)
             {
@@ -166,14 +158,14 @@ class Potential
                 for (int ia = 0; ia < parameters_.num_atoms(); ia++)
                 {
                     int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-                    for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
+                    for (int igloc = 0; igloc < parameters_.spl_num_gvec().local_size(); igloc++)
                     {
-                        zm2(igloc, ia) = fourpi * gvec_phase_factors_(igloc, ia) *  
-                                         fl(l, iat, parameters_.gvec_shell(spl_num_gvec_[igloc]));
+                        zm2(igloc, ia) = fourpi * parameters_.gvec_phase_factor<local>(igloc, ia) *  
+                                         fl(l, iat, parameters_.gvec_shell<local>(igloc));
                     }
                 }
 
-                blas<cpu>::gemm(2, 0, 2 * l + 1, parameters_.num_atoms(), spl_num_gvec_.local_size(), 
+                blas<cpu>::gemm(2, 0, 2 * l + 1, parameters_.num_atoms(), parameters_.spl_num_gvec().local_size(), 
                                 &zm1(0, Utils::lm_by_l_m(l, -l)), zm1.ld(), &zm2(0, 0), zm2.ld(), 
                                 &flm(Utils::lm_by_l_m(l, -l), 0), parameters_.lmmax_rho());
             }
@@ -205,7 +197,7 @@ class Potential
 
             #pragma omp parallel default(shared)
             {
-                std::vector<complex16> pseudo_pw_pt(spl_num_gvec_.local_size(), complex16(0, 0));
+                std::vector<complex16> pseudo_pw_pt(parameters_.spl_num_gvec().local_size(), complex16(0, 0));
 
                 #pragma omp for
                 for (int ia = 0; ia < parameters_.num_atoms(); ia++)
@@ -225,13 +217,13 @@ class Potential
                         }
                     }
 
-                    for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
+                    for (int igloc = 0; igloc < parameters_.spl_num_gvec().local_size(); igloc++)
                     {
-                        int ig = spl_num_gvec_[igloc];
+                        int ig = parameters_.spl_num_gvec(igloc);
                         
                         double gR = parameters_.gvec_len(ig) * R;
                         
-                        complex16 zt = fourpi * conj(gvec_phase_factors_(igloc, ia)) / parameters_.omega();
+                        complex16 zt = fourpi * conj(parameters_.gvec_phase_factor<local>(igloc, ia)) / parameters_.omega();
 
                         // TODO: add to documentation
                         // (2^(1/2+n) Sqrt[\[Pi]] R^-l (a R)^(-(3/2)-n) BesselJ[3/2+l+n,a R] * 
@@ -243,9 +235,9 @@ class Potential
                             {
                                 complex16 zt1(0, 0);
                                 for (int m = -l; m <= l; m++, lm++)
-                                    zt1 += gvec_ylm_(lm, igloc) * zp[lm];
+                                    zt1 += parameters_.gvec_ylm(lm, igloc) * zp[lm];
 
-                                zt2 += zt1 * sbessel_mt_(l + pseudo_density_order + 1, iat, parameters_.gvec_shell(ig));
+                                zt2 += zt1 * sbessel_mt_(l + pseudo_density_order + 1, iat, parameters_.gvec_shell<global>(ig));
                             }
 
                             pseudo_pw_pt[igloc] += zt * zt2 * pow(2.0 / gR, pseudo_density_order + 1);
@@ -257,15 +249,14 @@ class Potential
                     }
                 }
                 #pragma omp critical
-                for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++) 
-                    pseudo_pw[spl_num_gvec_[igloc]] += pseudo_pw_pt[igloc];
+                for (int igloc = 0; igloc < parameters_.spl_num_gvec().local_size(); igloc++) 
+                    pseudo_pw[parameters_.spl_num_gvec(igloc)] += pseudo_pw_pt[igloc];
             }
 
             Platform::allreduce(&pseudo_pw[0], parameters_.num_gvec());
         }
 
         /// Poisson solver
-
         /** Plane wave expansion
             \f[
                 e^{i{\bf g}{\bf r}}=4\pi e^{i{\bf g}{\bf r}_{\alpha}} \sum_{\ell m} i^\ell 
@@ -444,7 +435,7 @@ class Potential
                         {
                             double t = 0.0;
                             for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                                t += vecmagtp(itp, ir, j) *  vecmagtp(itp, ir, j);
+                                t += vecmagtp(itp, ir, j) * vecmagtp(itp, ir, j);
                             magtp(itp, ir) = sqrt(t);
                         }
                     }
@@ -544,9 +535,8 @@ class Potential
 
     public:
 
-        Potential(Global& parameters__, int allocate_f__ = pw_component) : parameters_(parameters__),
-                                                                           allocate_f_(allocate_f__),
-                                                                           pseudo_density_order(10)
+        Potential(Global& parameters__, int allocate_f__ = pw_component) : 
+            parameters_(parameters__), allocate_f_(allocate_f__), pseudo_density_order(10)
         {
             Timer t("sirius::Potential::Potential");
             
@@ -590,29 +580,6 @@ class Potential
                                                     sbessel_mt_(l + 1, iat, igs) / parameters_.gvec_shell_len(igs);
                     }
                 }
-            }
-
-            // create splitted index
-            spl_num_gvec_.split(parameters_.num_gvec(), Platform::num_mpi_ranks(), Platform::mpi_rank());
-
-            // precompute spherical harmonics of G-vectors and G-vector phase factors
-            gvec_ylm_.set_dimensions(Utils::lmmax_by_lmax(lmax), spl_num_gvec_.local_size());
-            gvec_ylm_.allocate();
-            
-            gvec_phase_factors_.set_dimensions(spl_num_gvec_.local_size(), parameters_.num_atoms());
-            gvec_phase_factors_.allocate();
-
-            for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
-            {
-                int ig = spl_num_gvec_[igloc];
-                double cartc[3];
-                double spc[3];
-                parameters_.get_coordinates<cartesian, reciprocal>(parameters_.gvec(ig), cartc);
-                SHT::spherical_coordinates(cartc, spc);
-                SHT::spherical_harmonics(lmax, spc[1], spc[2], &gvec_ylm_(0, igloc));
-
-                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-                    gvec_phase_factors_(igloc, ia) = parameters_.gvec_phase_factor(ig, ia);
             }
 
             effective_potential_ = new PeriodicFunction<double>(parameters_, parameters_.lmax_pot());
@@ -717,7 +684,6 @@ class Potential
             double vh_mt_val;
             double vh_it_val;
             vh->inner(vh, it_component | rlm_component, vh_mt_val, vh_it_val);
-            //std::cout << "<VH|VH>_MT = " << vh_mt_val << " <VH|VH>_IT = " << vh_it_val << std::endl;
 
             // compute Eenuc
             double enuc = 0.0;
@@ -726,6 +692,11 @@ class Potential
                 int ia = parameters_.spl_num_atoms(ialoc);
                 int zn = parameters_.atom(ia)->type()->zn();
                 double r0 = parameters_.atom(ia)->type()->radial_grid(0);
+                // ==========================================================
+                // compute energy of nucleus in the electrostatic potential 
+                // generated by the total (electrons + nuclei) charge density;
+                // diverging self-interaction term z*z/|r=0| is excluded
+                // ==========================================================
                 enuc -= 0.5 * zn * (vh->f_rlm(0, 0, ialoc) * y00 + zn / r0);
             }
             Platform::allreduce(&enuc, 1);
@@ -809,8 +780,7 @@ class Potential
                
                std::vector<double> veff(nmtp);
                
-               for (int ir = 0; ir < nmtp; ir++)
-                   veff[ir] = y00 * effective_potential_->f_rlm(0, ir, ia);
+               for (int ir = 0; ir < nmtp; ir++) veff[ir] = y00 * effective_potential_->f_rlm(0, ir, ia);
 
                parameters_.atom_symmetry_class(ic)->set_spherical_potential(veff);
             }
@@ -843,6 +813,83 @@ class Potential
         PeriodicFunction<double>* effective_magnetic_field(int i)
         {
             return effective_magnetic_field_[i];
+        }
+
+        void add_mt_contribution_to_pw()
+        {
+            Timer t("sirius::Potential::add_mt_contribution_to_pw");
+
+            mdarray<complex16, 1> fpw(parameters_.num_gvec());
+            fpw.zero();
+
+            mdarray<Spline<double>*, 2> svlm(parameters_.lmmax_pot(), parameters_.num_atoms());
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
+                {
+                    svlm(lm, ia) = new Spline<double>(parameters_.atom(ia)->num_mt_points(), 
+                                                      parameters_.atom(ia)->type()->radial_grid());
+                    
+                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                        (*svlm(lm, ia))[ir] = effective_potential_->f_rlm(lm, ir, ia);
+                    
+                    svlm(lm, ia)->interpolate();
+                }
+            }
+            
+            #pragma omp parallel default(shared)
+            {
+                mdarray<double, 1> vjlm(parameters_.lmmax_pot());
+
+                sbessel_pw<double> jl(parameters_, parameters_.lmax_pot());
+                
+                #pragma omp for
+                for (int igloc = 0; igloc < parameters_.spl_num_gvec().local_size(); igloc++)
+                {
+                    int ig = parameters_.spl_num_gvec(igloc);
+
+                    jl.interpolate(parameters_.gvec_len(ig));
+
+                    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                    {
+                        int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+
+                        for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
+                        {
+                            int l = l_by_lm_[lm];
+                            vjlm(lm) = Spline<double>::integrate(jl(l, iat), svlm(lm, ia));
+                        }
+
+                        complex16 zt(0, 0);
+                        for (int l = 0; l <= parameters_.lmax_pot(); l++)
+                        {
+                            for (int m = -l; m <= l; m++)
+                            {
+                                if (m == 0)
+                                {
+                                    zt += conj(zil_[l]) * parameters_.gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
+                                          vjlm(Utils::lm_by_l_m(l, m));
+
+                                }
+                                else
+                                {
+                                    zt += conj(zil_[l]) * parameters_.gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
+                                          (SHT::ylm_dot_rlm(l, m, m) * vjlm(Utils::lm_by_l_m(l, m)) + 
+                                           SHT::ylm_dot_rlm(l, m, -m) * vjlm(Utils::lm_by_l_m(l, -m)));
+                                }
+                            }
+                        }
+                        fpw(ig) += zt * fourpi * conj(parameters_.gvec_phase_factor<local>(igloc, ia)) / parameters_.omega();
+                    }
+                }
+            }
+            Platform::allreduce(fpw.get_ptr(), (int)fpw.size());
+            for (int ig = 0; ig < parameters_.num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
+            
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                for (int lm = 0; lm < parameters_.lmmax_pot(); lm++) delete svlm(lm, ia);
+            }
         }
 };
 

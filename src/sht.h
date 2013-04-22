@@ -1,4 +1,3 @@
-
 namespace sirius
 {
 
@@ -248,7 +247,6 @@ class SHT
         }
         
         /// Generate real spherical harmonics Rlm
-
         /** Mathematica code:
             \verbatim
             R[l_, m_, th_, ph_] := 
@@ -279,9 +277,7 @@ class SHT
             }
         }
                         
-        
         /// Compute element of the transformation matrix from complex to real spherical harmonics. 
-        
         /** Real spherical harmonic can be written as a linear combination of complex harmonics:
 
             \f[

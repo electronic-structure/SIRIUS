@@ -54,8 +54,7 @@ class FFT3D
         {    
             fftw_execute(plan_forward_[thread_id]);
             double norm = 1.0 / size();
-            for (int i = 0; i < size(); i++)
-                fftw_output_buffer_(i, thread_id) *= norm;
+            for (int i = 0; i < size(); i++) fftw_output_buffer_(i, thread_id) *= norm;
         }
 
         /// Find smallest optimal grid size starting from n.
@@ -65,10 +64,17 @@ class FFT3D
             {
                 int m = n;
                 for (int k = 2; k <= 5; k++)
-                    while (m % k == 0)
-                        m /= k;
-                if (m == 1) return n;
-                else n++;
+                {
+                    while (m % k == 0) m /= k;
+                }
+                if (m == 1) 
+                {
+                    return n;
+                }
+                else 
+                {
+                    n++;
+                }
             }
         } 
         
@@ -162,15 +168,19 @@ class FFT3D
             switch(direction)
             {
                 case 1:
+                {
                     backward(thread_id);
                     break;
-
+                }
                 case -1:
+                {
                     forward(thread_id);
                     break;
-
+                }
                 default:
+                {
                     error(__FILE__, __LINE__, "wrong FFT direction");
+                }
             }
         }
 

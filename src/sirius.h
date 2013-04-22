@@ -41,9 +41,9 @@ extern "C" {
 #endif
 #include "platform.h"
 
-//
+// ===========================
 // low-level stuff
-//
+// ===========================
 #include "version.h"
 #include "error_handling.h"
 #include "timer.h"
@@ -55,6 +55,7 @@ extern "C" {
 #include "spline.h"
 #include "radial_solver.h"
 #include "sht.h"
+#include "gaunt.h"
 #include "fft3d.h"
 #include "json_tree.h"
 #include "hdf5_tree.h" 
@@ -63,24 +64,26 @@ extern "C" {
 #include "mpi_grid.h"
 #include "splindex.h"
 #include "sirius_io.h"
-//
-// atoms
-//
+
+// =============================
+// atoms        
+// =============================
 #include "atom_type.h"
 #include "atom_symmetry_class.h"
 #include "atom.h"
 
-//
+// =================================
 // stack of classes for Global class
-//
+// =================================
 #include "unit_cell.h"
 #include "reciprocal_lattice.h"
 #include "step_function.h"
 #include "global.h"
 
-//
+// ===========================
 // main classes
-//
+// ===========================
+#include "sbessel_pw.h"
 #include "periodic_function.h"
 #include "band.h"
 #include "kpoint.h"

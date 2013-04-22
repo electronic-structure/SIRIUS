@@ -19,6 +19,10 @@ enum linalg_t {lapack, scalapack, elpa, magma};
 
 enum splindex_t {block, block_cyclic};
 
+enum basis_t {apwlo, pwlo};
+
+enum index_domain_t {global, local};
+
 /// Wrapper for primitive data types
 template <typename T> class primitive_type_wrapper;
 
@@ -98,12 +102,12 @@ template<> class primitive_type_wrapper< std::complex<double> >
         }
 };
 
-template<> class primitive_type_wrapper< std::complex<float> >
+/*template<> class primitive_type_wrapper< std::complex<float> >
 {
     public:
         typedef std::complex<float> complex_t;
         typedef float real_t;
-};
+};*/
 
 template<> class primitive_type_wrapper<int>
 {

@@ -27,4 +27,6 @@ const int debug_level = 0;
 
 const int verbosity_level = 0;
 
+const basis_t basis_type = apwlo;
+
 #endif // __CONFIG_H__

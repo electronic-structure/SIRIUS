@@ -14,7 +14,7 @@ class ReciprocalLattice : public UnitCell
         FFT3D fft_;
 
         /// list of G-vector fractional coordinates
-        mdarray<int,2> gvec_;
+        mdarray<int, 2> gvec_;
 
         /// number of G-vectors within plane wave cutoff
         int num_gvec_;
@@ -26,14 +26,20 @@ class ReciprocalLattice : public UnitCell
         std::vector<int> gvec_shell_;
 
         /// mapping between linear G-vector index and G-vector coordinates
-        mdarray<int,3> index_by_gvec_;
+        mdarray<int, 3> index_by_gvec_;
 
         /// mapping betwee linear G-vector index and position in FFT buffer
         std::vector<int> fft_index_;
 
+        splindex<block> spl_num_gvec_;
+        
+        mdarray<complex16, 2> gvec_ylm_;
+        
+        mdarray<complex16, 2> gvec_phase_factors_;
+
     protected:
 
-        void init()
+        void init(int lmax)
         {
             Timer t("sirius::ReciprocalLattice::init");
             
@@ -115,6 +121,29 @@ class ReciprocalLattice : public UnitCell
                 if (gvec_shell_len_.empty() || fabs(t - gvec_shell_len_.back()) > 1e-8) gvec_shell_len_.push_back(t);
                  
                 gvec_shell_[ig] = (int)gvec_shell_len_.size() - 1;
+            }
+            
+            // create splitted index
+            spl_num_gvec_.split(num_gvec(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+
+            // precompute spherical harmonics of G-vectors and G-vector phase factors
+            gvec_ylm_.set_dimensions(Utils::lmmax_by_lmax(lmax), spl_num_gvec_.local_size());
+            gvec_ylm_.allocate();
+            
+            gvec_phase_factors_.set_dimensions(spl_num_gvec_.local_size(), num_atoms());
+            gvec_phase_factors_.allocate();
+            
+            for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
+            {
+                int ig = spl_num_gvec_[igloc];
+                double xyz[3];
+                double rtp[3];
+                get_coordinates<cartesian, reciprocal>(gvec(ig), xyz);
+                SHT::spherical_coordinates(xyz, rtp);
+                SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm_(0, igloc));
+
+                for (int ia = 0; ia < num_atoms(); ia++) 
+                    gvec_phase_factors_(igloc, ia) = gvec_phase_factor<global>(ig, ia);
             }
         }
 
@@ -204,10 +233,23 @@ class ReciprocalLattice : public UnitCell
         }
         
         /// index of G-vector shell
+        template <index_domain_t index_domain>
         inline int gvec_shell(int ig)
         {
-            assert(ig >= 0 && ig < (int)gvec_shell_.size());
-            return gvec_shell_[ig];
+            switch (index_domain)
+            {
+                case global:
+                {
+                    assert(ig >= 0 && ig < (int)gvec_shell_.size());
+                    return gvec_shell_[ig];
+                    break;
+                }
+                case local:
+                {
+                    return gvec_shell_[spl_num_gvec_[ig]];
+                    break;
+                }
+            }
         }
 
         /// length of G-vector
@@ -216,11 +258,24 @@ class ReciprocalLattice : public UnitCell
             assert(ig >= 0 && ig < (int)gvec_shell_.size());
             return gvec_shell_len_[gvec_shell_[ig]];
         }
-
+        
         /// phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
+        template <index_domain_t index_domain>
         inline complex16 gvec_phase_factor(int ig, int ia)
         {
-            return exp(complex16(0.0, twopi * Utils::scalar_product(gvec(ig), atom(ia)->position())));
+            switch (index_domain)
+            {
+                case global:
+                {
+                    return exp(complex16(0.0, twopi * Utils::scalar_product(gvec(ig), atom(ia)->position())));
+                    break;
+                }
+                case local:
+                {
+                    return gvec_phase_factors_(ig, ia);
+                    break;
+                }
+            }
         }
 
         /// return global index of G1-G2 vector
@@ -229,6 +284,21 @@ class ReciprocalLattice : public UnitCell
             return index_by_gvec_(gvec_(0, ig1) - gvec_(0, ig2),
                                   gvec_(1, ig1) - gvec_(1, ig2),
                                   gvec_(2, ig1) - gvec_(2, ig2));
+        }
+
+        inline splindex<block>& spl_num_gvec()
+        {
+            return spl_num_gvec_;
+        }
+        
+        inline int spl_num_gvec(int igloc)
+        {
+            return spl_num_gvec_[igloc];
+        }
+
+        inline complex16 gvec_ylm(int lm, int igloc)
+        {
+            return gvec_ylm_(lm, igloc);
         }
 };
 

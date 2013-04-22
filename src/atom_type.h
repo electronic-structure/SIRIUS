@@ -79,22 +79,36 @@ class radial_functions_index
 
         // maximum number of radial functions across all angular momentums
         int max_num_rf_;
+
+        int lmax_aw_;
+
+        int lmax_lo_;
+
+        int lmax_;
     
     public:
 
-        void init(const int lmax, const std::vector<radial_solution_descriptor_set>& aw_descriptors, 
+        void init(const std::vector<radial_solution_descriptor_set>& aw_descriptors, 
                   const std::vector<radial_solution_descriptor_set>& lo_descriptors)
         {
-            assert((int)aw_descriptors.size() == lmax + 1);
+            lmax_aw_ = (int)aw_descriptors.size() - 1;
+            lmax_lo_ = -1;
+            for (int idxlo = 0; idxlo < (int)lo_descriptors.size(); idxlo++)
+            {
+                int l = lo_descriptors[idxlo][0].l;
+                lmax_lo_ = std::max(lmax_lo_, l);
+            }
 
-            num_rf_ = std::vector<int>(lmax + 1, 0);
-            num_lo_ = std::vector<int>(lmax + 1, 0);
+            lmax_ = std::max(lmax_aw_, lmax_lo_);
+
+            num_rf_ = std::vector<int>(lmax_ + 1, 0);
+            num_lo_ = std::vector<int>(lmax_ + 1, 0);
             
             max_num_rf_ = 0;
 
             radial_function_index_descriptors_.clear();
 
-            for (int l = 0; l <= lmax; l++)
+            for (int l = 0; l <= lmax_aw_; l++)
             {
                 assert(aw_descriptors[l].size() <= 2);
 
@@ -111,9 +125,9 @@ class radial_functions_index
                 num_lo_[l]++;
             }
 
-            for (int l = 0; l <= lmax; l++) max_num_rf_ = std::max(max_num_rf_, num_rf_[l]);
+            for (int l = 0; l <= lmax_; l++) max_num_rf_ = std::max(max_num_rf_, num_rf_[l]);
 
-            index_by_l_order_.set_dimensions(lmax + 1, max_num_rf_);
+            index_by_l_order_.set_dimensions(lmax_ + 1, max_num_rf_);
             index_by_l_order_.allocate();
 
             if (lo_descriptors.size())
@@ -175,6 +189,16 @@ class radial_functions_index
         {
             return max_num_rf_;
         }
+
+        inline int lmax()
+        {
+            return lmax_;
+        }
+        
+        inline int lmax_lo()
+        {
+            return lmax_lo_;
+        }
 };
 
 class basis_functions_index
@@ -221,11 +245,11 @@ class basis_functions_index
 
     public:
 
-        basis_functions_index() : size_aw_(-1), size_lo_(-1)
+        basis_functions_index() : size_aw_(0), size_lo_(0)
         {
         }
         
-        void init(const int lmax, radial_functions_index& indexr)
+        void init(radial_functions_index& indexr)
         {
             basis_function_index_descriptors_.clear();
 
@@ -238,7 +262,7 @@ class basis_functions_index
                     basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, m, order, idxlo, idxrf));
             }
 
-            index_by_lm_order_.set_dimensions(Utils::lmmax_by_lmax(lmax), indexr.max_num_rf());
+            index_by_lm_order_.set_dimensions(Utils::lmmax_by_lmax(indexr.lmax()), indexr.max_num_rf());
             index_by_lm_order_.allocate();
 
             for (int i = 0; i < (int)basis_function_index_descriptors_.size(); i++)
@@ -253,7 +277,7 @@ class basis_functions_index
 
             size_lo_ = (int)basis_function_index_descriptors_.size() - size_aw_;
 
-            assert(size_aw_ > 0);
+            assert(size_aw_ >= 0);
             assert(size_lo_ >= 0);
         } 
 
@@ -493,7 +517,6 @@ class AtomType
             }
         }
     
-
     public:
         
         AtomType(const char* symbol__, const char* name__, int zn__, double mass__, 
@@ -539,17 +562,15 @@ class AtomType
             }
         }
         
-        void init(int lmax)
+        void init(int lmax_apw)
         {
             max_aw_order_ = 0;
-            for (int l = 0; l <= lmax; l++)
-                max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
+            for (int l = 0; l <= lmax_apw; l++) max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
             
-            if (max_aw_order_ > 2)
-                error(__FILE__, __LINE__, "maximum aw order is > 2");
+            if (max_aw_order_ > 2) error(__FILE__, __LINE__, "maximum aw order is > 2");
 
-            indexr_.init(lmax, aw_descriptors_, lo_descriptors_);
-            indexb_.init(lmax, indexr_);
+            indexr_.init(aw_descriptors_, lo_descriptors_);
+            indexb_.init(indexr_);
             
             free_atom_density_.resize(radial_grid_.size());
             free_atom_potential_.resize(radial_grid_.size());
@@ -570,6 +591,8 @@ class AtomType
         
         void init_aw_descriptors(int lmax)
         {
+            assert(lmax >= -1);
+
             aw_descriptors_.clear();
             for (int l = 0; l <= lmax; l++)
             {
@@ -584,7 +607,7 @@ class AtomType
             for (int i = 0; i < (int)aw_specific_l_.size(); i++)
             {
                 int l = aw_specific_l_[i][0].l;
-                aw_descriptors_[l] = aw_specific_l_[i];
+                if (l < lmax) aw_descriptors_[l] = aw_specific_l_[i];
             }
         }
 
@@ -693,12 +716,12 @@ class AtomType
             {
                 rho_old = rho.data_points();
                 
-                memset(&rho[0], 0, rho.size() * sizeof(double));
+                memset(&rho[0], 0, rho.num_points() * sizeof(double));
                 #pragma omp parallel default(shared)
                 {
-                    std::vector<double> p(rho.size());
-                    std::vector<double> rho_t(rho.size());
-                    memset(&rho_t[0], 0, rho.size() * sizeof(double));
+                    std::vector<double> p(rho.num_points());
+                    std::vector<double> rho_t(rho.num_points());
+                    memset(&rho_t[0], 0, rho.num_points() * sizeof(double));
                 
                     #pragma omp for
                     for (int ist = 0; ist < (int)atomic_levels_.size(); ist++)
@@ -714,7 +737,7 @@ class AtomType
                     }
 
                     #pragma omp critical
-                    for (int i = 0; i < rho.size(); i++) rho[i] += rho_t[i];
+                    for (int i = 0; i < rho.num_points(); i++) rho[i] += rho_t[i];
                 } 
                 
                 charge_rms = 0.0;
@@ -731,7 +754,7 @@ class AtomType
                     vh[i] = fourpi * (g2[i] / radial_grid_[i] + t1 - g1[i]);
                 
                 // compute XC potential and energy
-                xci.getxc(rho.size(), &rho[0], &vxc[0], &exc[0]);
+                xci.getxc(rho.num_points(), &rho[0], &vxc[0], &exc[0]);
 
                 for (int i = 0; i < radial_grid_.size(); i++)
                     veff[i] = (1 - beta) * veff[i] + beta * (vnuc[i] + vh[i] + vxc[i]);
@@ -811,34 +834,6 @@ class AtomType
                 printf("%i  %i  %i  %8.4f %i\n", atomic_levels_[i].n, atomic_levels_[i].l, atomic_levels_[i].k,
                                                   atomic_levels_[i].occupancy, atomic_levels_[i].core);
             }
-
-            //*printf("\n");
-            //*printf("default augmented wave basis\n");
-            //*printf("[");
-            //*for (int order = 0; order < (int)aw_default_l_.size(); order++)
-            //*{
-            //*    if (order) printf(", ");
-            //*    printf("{enu : %f, dme : %i, auto : %i}", aw_default_l_[order].enu, 
-            //*                                              aw_default_l_[order].dme, 
-            //*                                              aw_default_l_[order].auto_enu);
-            //*}
-            //*printf("]\n");
-
-            //*printf("augmented wave basis for specific l\n");
-            //*for (int j = 0; j < (int)aw_specific_l_.size(); j++)
-            //*{
-            //*    printf("[");
-            //*    for (int order = 0; order < (int)aw_specific_l_[j].size(); order++)
-            //*    {
-            //*        if (order) printf(", ");
-            //*        printf("{l : %i, n : %i, enu : %f, dme : %i, auto : %i}", aw_specific_l_[j][order].l,
-            //*                                                                  aw_specific_l_[j][order].n,
-            //*                                                                  aw_specific_l_[j][order].enu,
-            //*                                                                  aw_specific_l_[j][order].dme,
-            //*                                                                  aw_specific_l_[j][order].auto_enu);
-            //*    }
-            //*    printf("]\n");
-            //*}
 
             printf("augmented wave basis\n");
             for (int j = 0; j < (int)aw_descriptors_.size(); j++)
@@ -983,6 +978,7 @@ class AtomType
 
         inline radial_solution_descriptor_set& aw_descriptor(int l)
         {
+            assert(l < (int)aw_descriptors_.size());
             return aw_descriptors_[l];
         }
         
