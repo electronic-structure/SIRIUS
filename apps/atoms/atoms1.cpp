@@ -37,7 +37,7 @@ atom* init_atom_configuration(const std::string& label)
         jin[label]["levels"][i][1] >> nlk.l;
         jin[label]["levels"][i][2] >> nlk.k;
         jin[label]["levels"][i][3] >> nlk.occupancy;
-        nl_occ[nlk.n - 1][nlk.l] += nlk.occupancy;
+        nl_occ[nlk.n - 1][nlk.l] += int(nlk.occupancy + 1e-12);
         levels_nlk.push_back(nlk);
     }
 
@@ -69,7 +69,7 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
     int ncore = 0;
     for (int ist = 0; ist < (int)a->num_atomic_levels(); ist++)
     {
-        if (enu[ist] < core_cutoff_energy) ncore += a->atomic_level(ist).occupancy;
+        if (enu[ist] < core_cutoff_energy) ncore += int(a->atomic_level(ist).occupancy + 1e-12);
     }
 
     std::cout << " atom : " << a->symbol() << "    Z : " << a->zn() << std::endl;
@@ -102,7 +102,7 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
     sirius::Spline <double> rho_c(a->radial_grid().size(), a->radial_grid());
     for (int ist = 0; ist < (int)a->num_atomic_levels(); ist++)
     {
-        printf("%i%s  occ : %2i  energy : %12.6f", a->atomic_level(ist).n, level_symb[a->atomic_level(ist).l].c_str(), 
+        printf("%i%s  occ : %8.4f  energy : %12.6f", a->atomic_level(ist).n, level_symb[a->atomic_level(ist).l].c_str(), 
                                                    a->atomic_level(ist).occupancy, enu[ist]);
         if (enu[ist] < core_cutoff_energy)
         {
