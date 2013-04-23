@@ -65,7 +65,7 @@ class Platform
         
         static bool verbose()
         {
-            return (verbose_ || (verbosity_level > 0));
+            return (verbose_ || (verbosity_level > 1));
         }
 
         static void set_verbose(bool verbose__)
