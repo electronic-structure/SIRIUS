@@ -242,7 +242,7 @@ template <typename T, int ND> class mdarray_base
     private:
 
         // forbid copy constructor
-        mdarray_base(const mdarray_base<T,ND>& src);
+        mdarray_base(const mdarray_base<T, ND>& src);
         
         // forbid assignment operator
         mdarray_base<T,ND>& operator=(const mdarray_base<T,ND>& src); 

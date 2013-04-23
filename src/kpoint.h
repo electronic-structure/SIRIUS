@@ -575,6 +575,9 @@ class kpoint
         kpoint(Global& parameters__, double* vk__, double weight__) : parameters_(parameters__), weight_(weight__)
         {
             for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
+
+            band_occupancies_.resize(parameters_.num_bands());
+            memset(&band_occupancies_[0], 0, parameters_.num_bands() * sizeof(double));
         }
 
         ~kpoint()
@@ -676,7 +679,7 @@ class kpoint
             to the number of muffi-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r) 
             Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves. 
         */ 
-        inline int mtgk_size()
+        inline int mtgk_size() // TODO: find a better name for this
         {
             return (parameters_.mt_basis_size() + num_gkvec());
         }
@@ -735,6 +738,37 @@ class kpoint
         inline double* vk()
         {
             return vk_;
+        }
+
+        void save_wave_functions(int id, Band* band__)
+        {
+            if (parameters_.mpi_grid().root(1 << band__->dim_col()))
+            {
+                hdf5_tree fout("sirius.h5", false);
+
+                fout["kpoints"].create_node(id);
+                fout["kpoints"][id].write("coordinates", vk_, 3);
+                fout["kpoints"][id].write("mtgk_size", mtgk_size());
+                fout["kpoints"][id].create_node("spinor_wave_functions");
+                fout["kpoints"][id].write("band_energies", &band_energies_[0], parameters_.num_bands());
+                fout["kpoints"][id].write("band_occupancies", &band_occupancies_[0], parameters_.num_bands());
+            }
+            
+            Platform::barrier(parameters_.mpi_grid().communicator(1 << band__->dim_col()));
+            
+            mdarray<complex16, 2> wfj(NULL, mtgk_size(), parameters_.num_spins()); 
+            for (int j = 0; j < parameters_.num_bands(); j++)
+            {
+                int rank = band__->spl_spinor_wf_col().location(_splindex_rank_, j);
+                int offs = band__->spl_spinor_wf_col().location(_splindex_offs_, j);
+                if (parameters_.mpi_grid().coordinate(band__->dim_col()) == rank)
+                {
+                    hdf5_tree fout("sirius.h5", false);
+                    wfj.set_ptr(&spinor_wave_functions_(0, 0, offs));
+                    fout["kpoints"][id]["spinor_wave_functions"].write(j, wfj);
+                }
+                Platform::barrier(parameters_.mpi_grid().communicator(1 << band__->dim_col()));
+            }
         }
 };
 
@@ -2160,6 +2194,12 @@ void kpoint::find_eigen_states(Band* band, PeriodicFunction<double>* effective_p
     assert(band != NULL);
     
     Timer t("sirius::kpoint::find_eigen_states");
+
+    if (band->num_ranks() > 1 && 
+        (parameters_.eigen_value_solver() == lapack || parameters_.eigen_value_solver() == magma))
+    {
+        error(__FILE__, __LINE__, "Can't use more than one MPI rank for LAPACK or MAGMA eigen-value solver");
+    }
 
     generate_fv_states(band, effective_potential);
     

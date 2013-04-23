@@ -295,12 +295,29 @@ void FORTRAN(sirius_read_state)()
 
 void FORTRAN(sirius_write_state)()
 {
-    potential->hdf5_write();
-    if (Platform::mpi_rank() == 0)
+    if (Platform::mpi_rank() == 0) 
     {
-        sirius::hdf5_tree fout("sirius.h5", false);
+        // create new hdf5 file
+        sirius::hdf5_tree fout("sirius.h5", true);
+        fout.create_node("parameters");
+        fout.create_node("kpoints");
+        fout.create_node("effective_potential");
+        fout.create_node("effective_magnetic_field");
+        
+        // write Fermi energy
         fout.write("energy_fermi", &global_parameters.rti().energy_fermi);
+        
+        // write potential
+        potential->effective_potential()->hdf5_write(fout["effective_potential"]);
+
+        // write magnetic field
+        for (int j = 0; j < global_parameters.num_mag_dims(); j++)
+            potential->effective_magnetic_field(j)->hdf5_write(fout["effective_magnetic_field"].create_node(j));
+        
     }
+    Platform::barrier();
+    
+    density->save_wave_functions();
 }
 
 /*  Relevant block in the input file:

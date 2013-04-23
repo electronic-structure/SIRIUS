@@ -166,8 +166,10 @@ class MPIGrid
 
                 // double check the size of communicators
                 for (int i = 1; i < num_comm; i++)
+                {
                     if (Platform :: num_mpi_ranks(communicators_[i]) != communicator_size_[i]) 
                         error(__FILE__, __LINE__, "Communicator sizes don't match", fatal_err);
+                }
             }
 
             //if (base_comm == MPI_COMM_WORLD)
@@ -182,11 +184,9 @@ class MPIGrid
 
         void finalize()
         {
-            for (int i = 1; i < (int)communicators_.size(); i++)
-                MPI_Comm_free(&communicators_[i]);
+            for (int i = 1; i < (int)communicators_.size(); i++) MPI_Comm_free(&communicators_[i]);
 
-            if (in_grid())
-                MPI_Comm_free(&base_grid_communicator_);
+            if (in_grid()) MPI_Comm_free(&base_grid_communicator_);
 
             communicators_.clear();
             communicator_root_.clear();
@@ -266,7 +266,9 @@ class MPIGrid
             bool flg = true; 
 
             for (int i = 0; i < (int)dimensions_.size(); i++) 
+            {
                 if (!(directions & (1 << i)) && coordinates_[i]) flg = false;
+            }
 
             return flg;
         }
@@ -277,8 +279,9 @@ class MPIGrid
             std::vector<int> sd;
 
             for (int i = 0; i < 8; i++)
-                if (directions & (1 << i))
-                    sd.push_back(dimension_size(i));
+            {
+                if (directions & (1 << i)) sd.push_back(dimension_size(i));
+            }
 
             return sd;
         }
@@ -289,8 +292,9 @@ class MPIGrid
             std::vector<int> sc;
 
             for (int i = 0; i < 8; i++)
-                if (directions & (1 << i))
-                    sc.push_back(coordinate(i));
+            {
+                if (directions & (1 << i)) sc.push_back(coordinate(i));
+            }
 
             return sc;
         }

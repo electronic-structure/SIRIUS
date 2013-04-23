@@ -167,6 +167,14 @@ class Utils
             iv[2] = i2;
             return iv;
         }
+
+        template <typename T>
+        static std::string name_by_argument(T argument)
+        {
+            std::stringstream s;
+            s << argument;
+            return s.str();
+        }
 };
 
 #endif

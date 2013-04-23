@@ -13,6 +13,7 @@ class kpoint_set
         MPIGrid& mpi_grid_;
         
     public:
+
         kpoint_set(MPIGrid& mpi_grid__) : mpi_grid_(mpi_grid__)
         {
         }
@@ -20,29 +21,7 @@ class kpoint_set
         void add_kpoint(double* vk, double weight, Global& parameters)
         {
             kpoints_.push_back(new kpoint(parameters, vk, weight));
-
-            std::vector<double> initial_occupancies(parameters.num_bands(), 0.0);
-
-            //// in case of non-magnetic, or magnetic non-collinear case occupy first N bands
-            //if (parameters.num_mag_dims() == 0 || parameters.num_mag_dims() == 3)
-            //{
-            //    int m = parameters.num_valence_electrons() / parameters.max_occupancy();
-            //    for (int i = 0; i < m; i++)
-            //        initial_occupancies[i] = double(parameters.max_occupancy());
-            //    initial_occupancies[m] = double(parameters.num_valence_electrons() % parameters.max_occupancy());
-            //}
-            //else // otherwise occupy up and down bands
-            //{
-            //    int m = parameters.num_valence_electrons() / 2;
-            //    for (int i = 0; i < m; i++)
-            //        initial_occupancies[i] = initial_occupancies[i + parameters.num_fv_states()] = 1.0;
-            //    initial_occupancies[m] = initial_occupancies[m + parameters.num_fv_states()] = 
-            //        0.5 * parameters.num_valence_electrons() - double(m);
-            //}
-
-            kpoints_.back()->set_band_occupancies(&initial_occupancies[0]);
         }
-
    
         inline kpoint* operator[](int i)
         {

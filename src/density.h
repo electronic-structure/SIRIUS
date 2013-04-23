@@ -1025,6 +1025,33 @@ class Density
         {
             return magnetization_[i];
         }
+
+        /// Save wave-functions to HDF5 file
+        void save_wave_functions()
+        {
+            if (Platform::mpi_rank() == 0)
+            {
+                hdf5_tree fout("sirius.h5", false);
+                fout["parameters"].write("num_kpoints", kpoint_set_.num_kpoints());
+                fout["parameters"].write("num_bands", parameters_.num_bands());
+                fout["parameters"].write("num_spins", parameters_.num_spins());
+            }
+
+            if (parameters_.mpi_grid().side(1 << 0 | 1 << band_->dim_col()))
+            {
+                for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
+                {
+                    int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
+                    
+                    if (parameters_.mpi_grid().coordinate(0) == rank) kpoint_set_[ik]->save_wave_functions(ik, band_);
+                    
+                    parameters_.mpi_grid().barrier(1 << 0 | 1 << band_->dim_col());
+                }
+            }
+        }
+
+
+
 };
 
 };
