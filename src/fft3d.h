@@ -228,6 +228,16 @@ class FFT3D
 
             return (i0 + i1 * grid_size_[0] + i2 * grid_size_[0] * grid_size_[1]);
         }
+
+        inline complex16& output_buffer(int i, int thread_id = 0)
+        {
+            return fftw_output_buffer_(i, thread_id);
+        }
+        
+        inline complex16* output_buffer_ptr(int thread_id = 0)
+        {
+            return &fftw_output_buffer_(0, thread_id);
+        }
 };
 
 };

@@ -238,9 +238,10 @@ class hdf5_tree
             read(name, data, dims);
         }
 
-        template <typename T, int N>
-        void read(const std::string& name, mdarray<T, N>& data)
+        template <typename U, typename T, int N>
+        void read(U name_id, mdarray<T, N>& data)
         {
+            std::string name = Utils::name_by_argument(name_id);
             if (primitive_type_wrapper<T>::is_complex())
             {
                 std::vector<int> dims(N + 1);

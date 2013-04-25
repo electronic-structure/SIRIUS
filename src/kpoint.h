@@ -196,14 +196,6 @@ class kpoint
             }
         }
         
-        /// Pointer to G+k vector
-        inline double* gkvec(int igk)
-        {
-            assert(igk >= 0 && igk < gkvec_.size(1));
-
-            return &gkvec_(0, igk);
-        }
-
         /// Global index of G-vector by the index of G+k vector
         inline int gvec_index(int igk) 
         {
@@ -648,6 +640,14 @@ class kpoint
         {
             return (int)apwlo_basis_descriptors_.size();
         }
+        
+        /// Pointer to G+k vector
+        inline double* gkvec(int igk)
+        {
+            assert(igk >= 0 && igk < gkvec_.size(1));
+
+            return &gkvec_(0, igk);
+        }
                 
         /// Total number of G+k vectors within the cutoff distance
         inline int num_gkvec()
@@ -740,6 +740,11 @@ class kpoint
             return vk_;
         }
 
+        inline double vk(int x)
+        {
+            return vk_[x];
+        }
+        
         void save_wave_functions(int id, Band* band__)
         {
             if (parameters_.mpi_grid().root(1 << band__->dim_col()))
@@ -768,6 +773,29 @@ class kpoint
                     fout["kpoints"][id]["spinor_wave_functions"].write(j, wfj);
                 }
                 Platform::barrier(parameters_.mpi_grid().communicator(1 << band__->dim_col()));
+            }
+        }
+
+        void load_wave_functions(int id, Band* band__)
+        {
+            hdf5_tree fin("sirius.h5", false);
+            
+            int mtgk_size_in;
+            fin["kpoints"][id].read("mtgk_size", &mtgk_size_in);
+            if (mtgk_size_in != mtgk_size()) error(__FILE__, __LINE__, "wrong wave-function size");
+
+            band_energies_.resize(parameters_.num_bands());
+            fin["kpoints"][id].read("band_energies", &band_energies_[0], parameters_.num_bands());
+
+            band_occupancies_.resize(parameters_.num_bands());
+            fin["kpoints"][id].read("band_occupancies", &band_occupancies_[0], parameters_.num_bands());
+
+            mdarray<complex16, 2> wfj(NULL, mtgk_size(), parameters_.num_spins()); 
+            for (int jloc = 0; jloc < band__->spl_spinor_wf_col().local_size(); jloc++)
+            {
+                int j = band__->spl_spinor_wf_col(jloc);
+                wfj.set_ptr(&spinor_wave_functions_(0, 0, jloc));
+                fin["kpoints"][id]["spinor_wave_functions"].read(j, wfj);
             }
         }
 };

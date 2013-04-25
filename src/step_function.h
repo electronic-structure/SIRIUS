@@ -83,8 +83,7 @@ class StepFunction : public ReciprocalLattice
             
             volume_it_ = omega() - volume_mt_;
             double vit = 0.0;
-            for (int i = 0; i < fft().size(); i++)
-                vit += step_function_[i] * omega() / fft().size();
+            for (int i = 0; i < fft().size(); i++) vit += step_function_[i] * omega() / fft().size();
             
             if (fabs(vit - volume_it_) > 1e-8)
             {

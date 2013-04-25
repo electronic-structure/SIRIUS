@@ -482,10 +482,11 @@ class AtomSymmetryClass
             aw_surface_derivatives_.set_dimensions(atom_type_->max_aw_order(), atom_type_->num_aw_descriptors());
             aw_surface_derivatives_.allocate();
 
-            radial_functions_.set_dimensions(atom_type_->num_mt_points(), atom_type_->indexr().size(), 2);
+            radial_functions_.set_dimensions(atom_type_->num_mt_points(), atom_type_->mt_radial_basis_size(), 2);
             radial_functions_.allocate();
 
-            h_spherical_integrals_.set_dimensions(atom_type_->indexr().size(), atom_type_->indexr().size());
+            h_spherical_integrals_.set_dimensions(atom_type_->mt_radial_basis_size(), 
+                                                  atom_type_->mt_radial_basis_size());
             h_spherical_integrals_.allocate();
             
             o_radial_integrals_.set_dimensions(atom_type_->indexr().lmax() + 1, atom_type_->indexr().max_num_rf(), 

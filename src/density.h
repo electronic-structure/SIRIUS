@@ -25,8 +25,6 @@ class Density
 
         kpoint_set kpoint_set_;
 
-        splindex<block> spl_num_kpoints_;
-
         std::vector<int> l_by_lm_;
 
         template <int num_mag_dims> 
@@ -237,9 +235,9 @@ class Density
             //=========================
             // add k-point contribution
             //-========================
-            for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+            for (int ikloc = 0; ikloc < kpoint_set_.spl_num_kpoints().local_size(); ikloc++)
             {
-                int ik = spl_num_kpoints_[ikloc];
+                int ik = kpoint_set_.spl_num_kpoints(ikloc);
                 add_kpoint_contribution(kpoint_set_[ik], mt_complex_density_matrix);
             }
             
@@ -423,7 +421,6 @@ class Density
         {
             splindex<block> spl_num_atoms(parameters_.num_atoms(), band_->num_ranks_row(), band_->rank_row());
 
-            //for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
             {
                 int ia = spl_num_atoms[ialoc];
@@ -468,9 +465,9 @@ class Density
             }
 
             // add k-point contribution
-            for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+            for (int ikloc = 0; ikloc < kpoint_set_.spl_num_kpoints().local_size(); ikloc++)
             {
-                int ik = spl_num_kpoints_[ikloc];
+                int ik = kpoint_set_.spl_num_kpoints(ikloc);
                 for (int jloc = 0; jloc < band_->spl_spinor_wf_col().local_size(); jloc++)
                 {
                     int j = band_->spl_spinor_wf_col(jloc);
@@ -531,7 +528,7 @@ class Density
         Density(Global& parameters__, Potential* potential__, mdarray<double, 2>& kpoints__, double* kpoint_weights__,
                 int allocate_f__ = pw_component) : 
             parameters_(parameters__), potential_(potential__), allocate_f_(allocate_f__), 
-            kpoint_set_(parameters__.mpi_grid())
+            kpoint_set_(parameters__)
         {
             rho_ = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
             rho_->allocate(allocate_f_);
@@ -577,18 +574,11 @@ class Density
 
             gaunt12_.set_lmax(parameters_.lmax_pw(), parameters_.lmax_pw(), parameters_.lmax_rho());
 
-            band_ = new Band(parameters_);
+            band_ = kpoint_set_.band();
             
             kpoint_set_.clear();
-            for (int ik = 0; ik < kpoints__.size(1); ik++)
-                kpoint_set_.add_kpoint(&kpoints__(0, ik), kpoint_weights__[ik], parameters_);
-
-            // distribute k-points along the 1-st direction of the MPI grid
-            spl_num_kpoints_.split(kpoints__.size(1), parameters_.mpi_grid().dimension_size(0), 
-                                   parameters_.mpi_grid().coordinate(0));
-
-            for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
-                kpoint_set_[spl_num_kpoints_[ikloc]]->initialize(band_);
+            kpoint_set_.add_kpoints(kpoints__, kpoint_weights__);
+            kpoint_set_.initialize();
 
             l_by_lm_.resize(parameters_.lmmax_rho());
             for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
@@ -600,7 +590,6 @@ class Density
         /// Destructor
         ~Density()
         {
-            delete band_;
             delete rho_;
             for (int j = 0; j < parameters_.num_mag_dims(); j++) delete magnetization_[j];
         }
@@ -817,15 +806,15 @@ class Density
             if (basis_type == pwlo) potential_->add_mt_contribution_to_pw(); 
             
             // solve secular equation and generate wave functions
-            for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+            for (int ikloc = 0; ikloc < kpoint_set_.spl_num_kpoints().local_size(); ikloc++)
             {
-                int ik = spl_num_kpoints_[ikloc];
+                int ik = kpoint_set_.spl_num_kpoints(ikloc);
                 kpoint_set_[ik]->find_eigen_states(band_, potential_->effective_potential(),
                                                    potential_->effective_magnetic_field());
             }
 
             // synchronize eigen-values
-            kpoint_set_.sync_band_energies(parameters_.num_bands(), spl_num_kpoints_);
+            kpoint_set_.sync_band_energies();
 
             if (Platform::mpi_rank() == 0)
             {
@@ -987,9 +976,9 @@ class Density
                 {
                     if (parameters_.mpi_grid().coordinate(0) == i)
                     {
-                        for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+                        for (int ikloc = 0; ikloc < kpoint_set_.spl_num_kpoints().local_size(); ikloc++)
                         {
-                            int ik = spl_num_kpoints_[ikloc];
+                            int ik = kpoint_set_.spl_num_kpoints(ikloc);
                             printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i            %6i\n", 
                                    ik, kpoint_set_[ik]->vk()[0], kpoint_set_[ik]->vk()[1], kpoint_set_[ik]->vk()[2], 
                                    kpoint_set_[ik]->weight(), 
@@ -1029,29 +1018,8 @@ class Density
         /// Save wave-functions to HDF5 file
         void save_wave_functions()
         {
-            if (Platform::mpi_rank() == 0)
-            {
-                hdf5_tree fout("sirius.h5", false);
-                fout["parameters"].write("num_kpoints", kpoint_set_.num_kpoints());
-                fout["parameters"].write("num_bands", parameters_.num_bands());
-                fout["parameters"].write("num_spins", parameters_.num_spins());
-            }
-
-            if (parameters_.mpi_grid().side(1 << 0 | 1 << band_->dim_col()))
-            {
-                for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
-                {
-                    int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
-                    
-                    if (parameters_.mpi_grid().coordinate(0) == rank) kpoint_set_[ik]->save_wave_functions(ik, band_);
-                    
-                    parameters_.mpi_grid().barrier(1 << 0 | 1 << band_->dim_col());
-                }
-            }
+            kpoint_set_.save_wave_functions();
         }
-
-
-
 };
 
 };
