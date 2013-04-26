@@ -526,6 +526,16 @@ void FORTRAN(sirius_platform_mpi_rank)(int32_t* rank)
     *rank = Platform::mpi_rank();
 }
 
+void FORTRAN(sirius_platform_mpi_grid_rank)(int32_t* dimension, int32_t* rank)
+{
+    *rank = global_parameters.mpi_grid().coordinate(*dimension);
+}
+
+void FORTRAN(sirius_platform_mpi_grid_barrier)(int32_t* dimension)
+{
+    global_parameters.mpi_grid().barrier(1 << (*dimension));
+}
+
 void FORTRAN(sirius_global_set_sync_flag)(int32_t* flag)
 {
     global_parameters.set_sync_flag(*flag);
@@ -637,9 +647,16 @@ void FORTRAN(sirius_get_local_num_kpoints)(int32_t* kpoint_set_id, int32_t* nkpt
     *nkpt_loc = kpoint_set_list[*kpoint_set_id]->spl_num_kpoints().local_size();
 }
 
+void FORTRAN(sirius_get_local_kpoint_rank_and_offset)(int32_t* kpoint_set_id, int32_t* ik, int32_t* rank, 
+                                                      int32_t* ikloc)
+{
+    *rank = kpoint_set_list[*kpoint_set_id]->spl_num_kpoints().location(_splindex_rank_, *ik - 1);
+    *ikloc = kpoint_set_list[*kpoint_set_id]->spl_num_kpoints().location(_splindex_offs_, *ik - 1) + 1;
+}
+
 void FORTRAN(sirius_get_global_kpoint_idx)(int32_t* kpoint_set_id, int32_t* ikloc, int32_t* ik)
 {
-    *ik = kpoint_set_list[*kpoint_set_id]->spl_num_kpoints(*ikloc) + 1; // Fortran counts from 1
+    *ik = kpoint_set_list[*kpoint_set_id]->spl_num_kpoints(*ikloc - 1) + 1; // Fortran counts from 1
 }
 
 void FORTRAN(sirius_generate_radial_functions)()

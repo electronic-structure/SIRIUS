@@ -23,7 +23,7 @@ const bool check_pseudo_charge = false;
     debug_level > 1 : check orthonormaliztion of the wave-functions \n
     debug_level > 2 : check scalapack vs. lapack diagonalization   
 */
-const int debug_level = 2;
+const int debug_level = 0;
 
 const int verbosity_level = 0;
 

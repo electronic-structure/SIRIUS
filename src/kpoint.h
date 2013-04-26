@@ -790,6 +790,10 @@ class kpoint
             band_occupancies_.resize(parameters_.num_bands());
             fin["kpoints"][id].read("band_occupancies", &band_occupancies_[0], parameters_.num_bands());
 
+            spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), 
+                                                  band__->spl_spinor_wf_col().local_size());
+            spinor_wave_functions_.allocate();
+
             mdarray<complex16, 2> wfj(NULL, mtgk_size(), parameters_.num_spins()); 
             for (int jloc = 0; jloc < band__->spl_spinor_wf_col().local_size(); jloc++)
             {

@@ -153,7 +153,7 @@ class AtomSymmetryClass
                         double rderiv = (radial_functions_(nmtp - 1, idxrf, 0) - radial_functions_(nmtp - 2, idxrf, 0)) / 
                                         atom_type_->radial_grid().dr(nmtp - 2);
                         
-                        //double rderiv = dpdr[order];
+                        rderiv = dpdr[order];
                         double R = atom_type_->mt_radius();
 
                         aw_surface_derivatives_(order, l) = (rderiv - radial_functions_(nmtp - 1, idxrf, 0) / R) / R;
@@ -604,39 +604,73 @@ class AtomSymmetryClass
             Spline<double> s(nmtp, atom_type_->radial_grid()); 
 
             h_spherical_integrals_.zero();
-            for (int i1 = 0; i1 < atom_type_->indexr().size(); i1++)
+            for (int i1 = 0; i1 < atom_type_->mt_radial_basis_size(); i1++)
             {
-                for (int i2 = 0; i2 < atom_type_->indexr().size(); i2++)
+                for (int i2 = 0; i2 < atom_type_->mt_radial_basis_size(); i2++)
                 {
                     // for spherical part of potential integrals are diagonal in l
                     if (atom_type_->indexr(i1).l == atom_type_->indexr(i2).l)
                     {
                         for (int ir = 0; ir < nmtp; ir++)
                             s[ir] = radial_functions_(ir, i1, 0) * radial_functions_(ir, i2, 1);
-                        s.interpolate();
-                        h_spherical_integrals_(i1, i2) = s.integrate(2) / y00;
+                        //s.interpolate();
+                        h_spherical_integrals_(i1, i2) = s.interpolate().integrate(2) / y00;
                     }
                 }
             }
 
             if (debug_level > 0)
             {
-                double diff = 0;
-                for (int idxlo1 = 0; idxlo1 < atom_type_->num_lo_descriptors(); idxlo1++)
+                for (int i2 = 0; i2 < atom_type_->mt_radial_basis_size() - atom_type_->num_lo_descriptors(); i2++)
                 {
-                    int idxrf1 = atom_type_->indexr().index_by_idxlo(idxlo1);
-                    for (int idxlo2 = 0; idxlo2 < atom_type_->num_lo_descriptors(); idxlo2++)
+                    int l = atom_type_->indexr(i2).l;
+
+                    for (int i1 = 0; i1 <= i2; i1++)
                     {
-                        int idxrf2 = atom_type_->indexr().index_by_idxlo(idxlo2);
-                        diff += fabs(h_spherical_integrals_(idxrf1, idxrf2) - h_spherical_integrals_(idxrf2, idxrf1));
+                        if (atom_type_->indexr(i1).l == l)
+                        {
+                            int order1 = atom_type_->indexr(i1).order;
+                            int order2 = atom_type_->indexr(i2).order;
+
+                            double v1 = y00 * h_spherical_integrals_(i1, i2) + 0.5 * aw_surface_dm(l, order1, 0) * 
+                                                                                     aw_surface_dm(l, order2, 1) * 
+                                                                                     pow(atom_type_->mt_radius(), 2);
+
+                            double v2 = y00 * h_spherical_integrals_(i2, i1) + 0.5 * aw_surface_dm(l, order2, 0) * 
+                                                                                     aw_surface_dm(l, order1, 1) *
+                                                                                     pow(atom_type_->mt_radius(), 2);
+
+                            double diff = fabs(v1 - v2);
+                            if (diff > 1e-12)
+                            {
+                                std::stringstream s;
+                                s << "Wrong radial integrals for atom class " << id_ << std::endl  
+                                  << " l1 = " << atom_type_->indexr(i1).l << ", order1 = " << atom_type_->indexr(i1).order << std::endl
+                                  << " l2 = " << atom_type_->indexr(i2).l << ", order2 = " << atom_type_->indexr(i2).order << std::endl
+                                  << " difference between <u_{l1,o1}|h_{00}|u_{l2,o2}> and <u_{l2,o2}| h_{00} |u_{l1,o1}> : " << diff; 
+                                        
+                                warning(__FILE__, __LINE__, s, 0);
+                            }
+                        }
                     }
                 }
-                if (diff > 1e-12)
-                {
-                    std::stringstream s;
-                    s << "Wrong local orbital radial integrals for atom class " << id_ << ", difference : " << diff;
-                    warning(__FILE__, __LINE__, s, 0);
-                }
+            
+               double diff = 0;
+               for (int idxlo1 = 0; idxlo1 < atom_type_->num_lo_descriptors(); idxlo1++)
+               {
+                   int idxrf1 = atom_type_->indexr().index_by_idxlo(idxlo1);
+                   for (int idxlo2 = 0; idxlo2 < atom_type_->num_lo_descriptors(); idxlo2++)
+                   {
+                       int idxrf2 = atom_type_->indexr().index_by_idxlo(idxlo2);
+                       diff += fabs(h_spherical_integrals_(idxrf1, idxrf2) - h_spherical_integrals_(idxrf2, idxrf1));
+                   }
+               }
+               if (diff > 1e-12)
+               {
+                   std::stringstream s;
+                   s << "Wrong local orbital radial integrals for atom class " << id_ << ", difference : " << diff;
+                   warning(__FILE__, __LINE__, s, 0);
+               }
             }
 
             // TODO: kinetic energy for s-local orbitals? The best way to do it.
