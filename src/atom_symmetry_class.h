@@ -95,19 +95,12 @@ class AtomSymmetryClass
                             solver.bound_state(rsd.n, rsd.l, spherical_potential_, rsd.enu, p);
                             if (rsd.auto_enu == 2) rsd.enu = solver.find_enu(rsd.l, spherical_potential_, rsd.enu);
                         }
-                        //* if (rsd.auto_enu == 3)
-                        //* {
-                        //*     rsd.enu = efermi;
-                        //* }
 
                         solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p, hp, dpdr[order]);
 
                         // normalize
                         for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(p[ir], 2);
-                        //s.interpolate();
-                        //double norm = s.integrate(0);
-                        double norm = s.interpolate().integrate(0);
-                        norm = 1.0 / sqrt(norm);
+                        double norm = 1.0 / sqrt(s.interpolate().integrate(0));
 
                         for (int ir = 0; ir < nmtp; ir++)
                         {
@@ -121,9 +114,10 @@ class AtomSymmetryClass
                         {
                             int idxrf1 = atom_type_->indexr().index_by_l_order(l, order1);
 
-                            for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf, 0), 2);
-                            s.interpolate();
-                            double t1 = s.integrate(0);
+                            for (int ir = 0; ir < nmtp; ir++) 
+                                s[ir] = radial_functions_(ir, idxrf, 0) * radial_functions_(ir, idxrf1, 0);
+
+                            double t1 = s.interpolate().integrate(0);
 
                             for (int ir = 0; ir < nmtp; ir++)
                             {
@@ -135,8 +129,7 @@ class AtomSymmetryClass
 
                         // normalize again
                         for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf, 0), 2);
-                        s.interpolate();
-                        norm = s.integrate(0);
+                        norm = s.interpolate().integrate(0);
 
                         if (fabs(norm) < 1e-10) error(__FILE__, __LINE__, "aw radial functions are linearly dependent");
 
@@ -150,20 +143,14 @@ class AtomSymmetryClass
                         dpdr[order] *= norm;
 
                         // radial derivative
-                        double rderiv = (radial_functions_(nmtp - 1, idxrf, 0) - radial_functions_(nmtp - 2, idxrf, 0)) / 
-                                        atom_type_->radial_grid().dr(nmtp - 2);
+                        //double rderiv = (radial_functions_(nmtp - 1, idxrf, 0) - radial_functions_(nmtp - 2, idxrf, 0)) / 
+                        //                atom_type_->radial_grid().dr(nmtp - 2);
                         
-                        rderiv = dpdr[order];
+                        double rderiv = dpdr[order];
                         double R = atom_type_->mt_radius();
 
                         aw_surface_derivatives_(order, l) = (rderiv - radial_functions_(nmtp - 1, idxrf, 0) / R) / R;
                         
-                        // divide by r
-                        for (int ir = 0; ir < nmtp; ir++)
-                        {
-                            radial_functions_(ir, idxrf, 1) /= atom_type_->radial_grid(ir);
-                        }
-
                         if (debug_level > 1)
                         {
                             printf("atom class id : %i  l : %i  order : %i  radial function value at MT : %f\n", 
@@ -211,14 +198,12 @@ class AtomSymmetryClass
                         
                         // normalize radial solutions and divide by r
                         for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(p[order][ir], 2);
-                        s.interpolate();
-                        double norm = s.integrate(0);
-                        norm = 1.0 / sqrt(norm);
+                        double norm = 1.0 / sqrt(s.interpolate().integrate(0));
 
                         for (int ir = 0; ir < nmtp; ir++)
                         {
                             p[order][ir] *= (norm / atom_type_->radial_grid(ir));
-                            hp[order][ir] *= (norm / atom_type_->radial_grid(ir));
+                            hp[order][ir] *= norm; // don't divide hp by r
                             s[ir] = p[order][ir];
                         }
 
@@ -544,8 +529,6 @@ class AtomSymmetryClass
                 spherical_potential_[ir] = atom_type_->free_atom_potential(ir) - 
                                            (atom_type_->free_atom_potential(nmtp - 1) - veff[nmtp - 1]);
             }
-
-            //Platform::bcast(&spherical_potential_[0], nmtp, 0);
         }
 
         void generate_radial_functions()
@@ -579,13 +562,13 @@ class AtomSymmetryClass
 
         inline void sync_radial_functions(int rank)
         {
+            // don't broadcast Hamiltonian radial functions, because they are used locally
             int size = (int)radial_functions_.size(0) * radial_functions_.size(1);
             Platform::bcast(radial_functions_.get_ptr(), size, rank);
             Platform::bcast(aw_surface_derivatives_.get_ptr(), (int)aw_surface_derivatives_.size(), rank);
         }
 
         /// Generate radial overlap and SO integrals
-
         /** In the case of spin-orbit interaction the following integrals are computed:
             \f[
                 \int f_{p}(r) \Big( \frac{1}{(2 M c)^2} \frac{1}{r} \frac{d V}{d r} \Big) f_{p'}(r) r^2 dr
@@ -613,8 +596,8 @@ class AtomSymmetryClass
                     {
                         for (int ir = 0; ir < nmtp; ir++)
                             s[ir] = radial_functions_(ir, i1, 0) * radial_functions_(ir, i2, 1);
-                        //s.interpolate();
-                        h_spherical_integrals_(i1, i2) = s.interpolate().integrate(2) / y00;
+                        // hp was not divided by r, so we use r^{1}dr 
+                        h_spherical_integrals_(i1, i2) = s.interpolate().integrate(1) / y00;
                     }
                 }
             }
@@ -644,11 +627,21 @@ class AtomSymmetryClass
                             if (diff > 1e-12)
                             {
                                 std::stringstream s;
-                                s << "Wrong radial integrals for atom class " << id_ << std::endl  
-                                  << " l1 = " << atom_type_->indexr(i1).l << ", order1 = " << atom_type_->indexr(i1).order << std::endl
-                                  << " l2 = " << atom_type_->indexr(i2).l << ", order2 = " << atom_type_->indexr(i2).order << std::endl
-                                  << " difference between <u_{l1,o1}|h_{00}|u_{l2,o2}> and <u_{l2,o2}| h_{00} |u_{l1,o1}> : " << diff; 
-                                        
+                                s << "Wrong radial integrals for atom class " << id_ << ", l = " << l << std::endl
+                                  << " order1 = " << atom_type_->indexr(i1).order << " value = " << v1 << std::endl
+                                  << " order2 = " << atom_type_->indexr(i2).order << " value = " << v2 << std::endl
+                                  << " difference between <u_{l1,o1}|h_{00}|u_{l2,o2}> and <u_{l2,o2}| h_{00} |u_{l1,o1}> : " << diff << std::endl
+                                  << " h(1,2) = " << y00 * h_spherical_integrals_(i1, i2) << std::endl
+                                  << " h(2,1) = " << y00 * h_spherical_integrals_(i2, i1) << std::endl 
+                                  << " h(1,1) = " << y00 * h_spherical_integrals_(i1, i1) << std::endl
+                                  << " h(2,2) = " << y00 * h_spherical_integrals_(i2, i2) << std::endl 
+                                  << " surf1 = " << 0.5 * aw_surface_dm(l, order1, 0) * 
+                                                         aw_surface_dm(l, order2, 1) * 
+                                                         pow(atom_type_->mt_radius(), 2) << std::endl
+                                  << " surf2 = " << 0.5 * aw_surface_dm(l, order2, 0) * 
+                                                         aw_surface_dm(l, order1, 1) *
+                                                         pow(atom_type_->mt_radius(), 2);
+                                
                                 warning(__FILE__, __LINE__, s, 0);
                             }
                         }
@@ -689,6 +682,32 @@ class AtomSymmetryClass
                                             h_spherical_integrals_(idxrf2, idxrf1));
                         h_spherical_integrals_(idxrf1, idxrf2) = avg;
                         h_spherical_integrals_(idxrf2, idxrf1) = avg;
+                    }
+                }
+                
+                for (int i2 = 0; i2 < atom_type_->mt_radial_basis_size() - atom_type_->num_lo_descriptors(); i2++)
+                {
+                    int l = atom_type_->indexr(i2).l;
+
+                    for (int i1 = 0; i1 <= i2; i1++)
+                    {
+                        if (atom_type_->indexr(i1).l == l)
+                        {
+                            int order1 = atom_type_->indexr(i1).order;
+                            int order2 = atom_type_->indexr(i2).order;
+
+                            double v1 = y00 * h_spherical_integrals_(i1, i2) + 0.5 * aw_surface_dm(l, order1, 0) * 
+                                                                                     aw_surface_dm(l, order2, 1) * 
+                                                                                     pow(atom_type_->mt_radius(), 2);
+
+                            double v2 = y00 * h_spherical_integrals_(i2, i1) + 0.5 * aw_surface_dm(l, order2, 0) * 
+                                                                                     aw_surface_dm(l, order1, 1) *
+                                                                                     pow(atom_type_->mt_radius(), 2);
+
+                            double diff = (v1 - v2);
+                            h_spherical_integrals_(i1, i2) -= 0.5 * diff / y00;
+                            h_spherical_integrals_(i2, i1) += 0.5 * diff / y00;
+                        }
                     }
                 }
             }

@@ -126,9 +126,8 @@ class RadialSolver
 
     public:
 
-        RadialSolver(bool relativistic, double zn, sirius::RadialGrid& radial_grid) : relativistic(relativistic), 
-                                                                                      zn(zn), 
-                                                                                      radial_grid(radial_grid)
+        RadialSolver(bool relativistic, double zn, sirius::RadialGrid& radial_grid) : 
+            relativistic(relativistic), zn(zn), radial_grid(radial_grid)
         {
             enu_tolerance = 1e-10;
         }
