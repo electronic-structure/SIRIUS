@@ -1,0 +1,36 @@
+{
+    "description" : "Total energy vs. volume",
+    
+    "common" : 
+    {
+        "avec" : [ 
+                   [1, 0, 0], 
+                   [0, 1, 0],
+                   [0, 0, 1]
+                 ],
+        "atoms" :  [ 
+                     ["'Ne.in'", [ [0, 0, 0] ] ]
+                   ],
+        "nempty" : 10,
+        "ngridk" : [4, 4, 4],
+        "lmaxapw" : 10,
+        "lmaxvr" : 10,
+        "aw_cutoff" : 9,
+        "mpi_grid" : [2],
+        "num_threads" : 2
+    },
+
+    "private" : 
+    [ 
+        {"scale" : 2.0},
+        {"scale" : 2.5},
+        {"scale" : 3.0},
+        {"scale" : 3.5},
+        {"scale" : 4.0},
+        {"scale" : 4.5},
+        {"scale" : 5.0},
+        {"scale" : 5.5}
+    ]
+}
+
+
