@@ -636,11 +636,11 @@ class AtomSymmetryClass
                                   << " h(1,1) = " << y00 * h_spherical_integrals_(i1, i1) << std::endl
                                   << " h(2,2) = " << y00 * h_spherical_integrals_(i2, i2) << std::endl 
                                   << " surf1 = " << 0.5 * aw_surface_dm(l, order1, 0) * 
-                                                         aw_surface_dm(l, order2, 1) * 
-                                                         pow(atom_type_->mt_radius(), 2) << std::endl
+                                                          aw_surface_dm(l, order2, 1) * 
+                                                          pow(atom_type_->mt_radius(), 2) << std::endl
                                   << " surf2 = " << 0.5 * aw_surface_dm(l, order2, 0) * 
-                                                         aw_surface_dm(l, order1, 1) *
-                                                         pow(atom_type_->mt_radius(), 2);
+                                                          aw_surface_dm(l, order1, 1) *
+                                                          pow(atom_type_->mt_radius(), 2);
                                 
                                 warning(__FILE__, __LINE__, s, 0);
                             }
