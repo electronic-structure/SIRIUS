@@ -55,6 +55,22 @@ void test3(double x0, double x1)
 
 }
 
+void test4(double x0, double x1)
+{
+    sirius::RadialGrid r(sirius::exponential_grid, 5000, x0, x1);
+    sirius::Spline<double> s(5000, r);
+    
+    for (int i = 0; i < 5000; i++)
+        s[i] = exp(-r[i])*r[i]*r[i];
+    
+    s.interpolate();
+    
+    std::cout << s[0] << " " << s.deriv(0, 0) << " " << s.deriv(1, 0) << " " << s.deriv(2, 0) << std::endl;
+    std::cout << s[4999] << " " << s.deriv(0, 4999) << " " << s.deriv(1, 4999) << " " << s.deriv(2, 4999) << std::endl;
+
+ 
+}
+
 int main(int argn, char **argv)
 {
     test1(0.1, 7.13, 0, 0.3326313127230704);
@@ -71,6 +87,8 @@ int main(int argn, char **argv)
     test2(0.1, 2.0);
 
     test3(0.0001, 2.0);
+
+    test4(0.0001, 1.892184);
     
 
 }
