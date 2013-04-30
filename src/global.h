@@ -755,6 +755,7 @@ class Global : public StepFunction
                 jw.single("num_fv_states", num_fv_states());
                 jw.single("num_bands", num_bands());
                 jw.single("aw_cutoff", aw_cutoff());
+                jw.single("omega", omega());
                 
                 if (num_mag_dims())
                 {

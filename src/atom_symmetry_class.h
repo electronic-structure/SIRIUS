@@ -603,7 +603,6 @@ class AtomSymmetryClass
             // TODO: kinetic energy for s-local orbitals? The best way to do it.
             // Problem: <s1 | \Delta | s2> != <s2 | \Delta | s1> 
 
-
             // check and symmetrize the radial integrals
             for (int idxlo1 = 0; idxlo1 < atom_type_->num_lo_descriptors(); idxlo1++)
             {
