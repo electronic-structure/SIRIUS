@@ -24,7 +24,8 @@ class RadialSolver
         double enu_tolerance;
         
         int integrate(int nr, int l, double enu, sirius::Spline<double>& ve, sirius::Spline<double>& mp, 
-                      std::vector<double>& p, std::vector<double>& q, double& dpdr)
+                      std::vector<double>& p, std::vector<double>& dpdr, 
+                      std::vector<double>& q, std::vector<double>& dqdr)
         {
             double alpha2 = 0.5 * pow((1 / speed_of_light), 2);
             if (!relativistic) alpha2 = 0.0;
@@ -40,11 +41,13 @@ class RadialSolver
             double m2 = 1 - (v2 - enu0) * alpha2;
 
             p.resize(nr);
+            dpdr.resize(nr);
             q.resize(nr);
+            dqdr.resize(nr);
 
             // TODO: check r->0 asymptotic
             p[0] = pow(radial_grid[0], l + 1) * exp(zn * radial_grid[0] / (l + 1));
-            q[0] = 0.0; // (0.5 / m2) * p[0] * (l / r[0] + zn / (l + 1));
+            q[0] = (0.5 / m2) * p[0] * (l / radial_grid[0] + zn / (l + 1));
 
             double p2 = p[0];
             double q2 = q[0];
@@ -117,10 +120,19 @@ class RadialSolver
             int nn = 0;
             for (int i = 0; i < nr - 1; i++) if (p[i] * p[i + 1] < 0.0) nn++;
 
-            // P' = 2MQ + P/r
-            dpdr = 2 * (1.0 - (ve[nr - 1] + zn * radial_grid.rinv(nr - 1) - enu0) * alpha2) * q[nr - 1] + 
-                   p[nr - 1] * radial_grid.rinv(nr - 1);
-            
+            for (int i = 0; i < nr; i++)
+            {
+                double V = ve[i] + zn * radial_grid.rinv(i); 
+                double M = 1.0 - (V - enu0) * alpha2;
+
+                // P' = 2MQ + \frac{P}{r}
+                dpdr[i] = 2 * M * q[i] + p[i] * radial_grid.rinv(i);
+
+                // Q' = (V - E + \frac{\ell(\ell + 1)}{2 M r^2}) P - \frac{Q}{r}
+                dqdr[i] = (V - enu + double(l * (l + 1)) / (2 * M * pow(radial_grid[i], 2))) * p[i] - 
+                          q[i] * radial_grid.rinv(i) - mp[i];
+            }
+
             return nn;
         }
 
@@ -209,7 +221,7 @@ class RadialSolver
         }
                         
         void solve_in_mt(int l, double enu, int m, std::vector<double>& v, std::vector<double>& p, 
-                         std::vector<double>& hp, double& dpdr)
+                         std::vector<double>& hp, double& dpdr_R)
         {
             std::vector<double> ve(radial_grid.num_mt_points());
             for (int i = 0; i < radial_grid.num_mt_points(); i++) ve[i] = v[i] - zn / radial_grid[i];
@@ -219,6 +231,8 @@ class RadialSolver
             sirius::Spline<double> mp_spline(radial_grid.num_mt_points(), radial_grid);
 
             std::vector<double> q;
+            std::vector<double> dpdr;
+            std::vector<double> dqdr;
             
             for (int j = 0; j <= m; j++)
             {
@@ -229,19 +243,19 @@ class RadialSolver
                     mp_spline.interpolate();
                 }
                 
-                integrate(radial_grid.num_mt_points(), l, enu, ve_spline, mp_spline, p, q, dpdr);
+                integrate(radial_grid.num_mt_points(), l, enu, ve_spline, mp_spline, p, dpdr, q, dqdr);
             }
 
             hp.resize(radial_grid.num_mt_points());
             double alph2 = 0.0;
             if (relativistic) alph2 = pow((1.0 / speed_of_light), 2);
-            Spline<double> sq(radial_grid.num_mt_points(), radial_grid, q);
             for (int i = 0; i < radial_grid.num_mt_points(); i++)
             {
                 double t1 = 2.0 - v[i] * alph2;
                 hp[i] = (double(l * (l + 1)) / t1 / pow(radial_grid[i], 2.0) + v[i]) * p[i] - q[i] / radial_grid[i] - 
-                        sq.deriv(1, i);
+                        dqdr[i];
             }
+            dpdr_R = dpdr[radial_grid.num_mt_points() - 1];
         }
 
         void bound_state(int n, int l, std::vector<double>& v, double& enu, std::vector<double>& p)
@@ -253,15 +267,16 @@ class RadialSolver
             sirius::Spline<double> mp_spline(radial_grid.size(), radial_grid);
             
             std::vector<double> q(radial_grid.size());
+            std::vector<double> dpdr(radial_grid.size());
+            std::vector<double> dqdr(radial_grid.size());
             
             int s = 1;
             int sp;
             double denu = enu_tolerance;
-            double dpdr;
 
             for (int iter = 0; iter < 1000; iter++)
             {
-                int nn = integrate(radial_grid.size(), l, enu, ve_spline, mp_spline, p, q, dpdr);
+                int nn = integrate(radial_grid.size(), l, enu, ve_spline, mp_spline, p, dpdr, q, dqdr);
                 
                 sp = s;
                 s = (nn > (n - l - 1)) ? -1 : 1;

@@ -525,7 +525,7 @@ class AtomType
             num_mt_points_(2000 + zn__ * 50), atomic_levels_(levels__)
                                                          
         {
-            radial_grid_.init(exponential_grid, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
+            radial_grid_.init(pow3_grid, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
         }
 
         AtomType(int id__, const std::string label__) : id_(id__), label_(label__)
@@ -586,7 +586,7 @@ class AtomType
 
         void init_radial_grid()
         {
-            radial_grid_.init(exponential_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
+            radial_grid_.init(pow3_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
         }
         
         void init_aw_descriptors(int lmax)
@@ -712,7 +712,7 @@ class AtomType
             for (int ist = 0; ist < (int)atomic_levels_.size(); ist++)
                 enu[ist] = -1.0 * zn_ / 2 / pow(double(atomic_levels_[ist].n), 2);
             
-            for (int iter = 0; iter < 100; iter++)
+            for (int iter = 0; iter < 200; iter++)
             {
                 rho_old = rho.data_points();
                 
@@ -796,7 +796,7 @@ class AtomType
                     break;
                 }
                 
-                beta = std::max(beta * 0.95, 0.01);
+                beta = std::max(beta * 0.95, 0.005);
             }
             
             if (!converged)

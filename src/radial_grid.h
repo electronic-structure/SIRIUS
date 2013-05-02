@@ -3,7 +3,7 @@
 
 namespace sirius {
 
-enum radial_grid_type {linear_grid, exponential_grid, linear_exponential_grid};
+enum radial_grid_type {linear_grid, exponential_grid, linear_exponential_grid, pow3_grid};
 
 /// \brief radial grid for a muffin-tin or isolated atom
 class RadialGrid
@@ -112,6 +112,34 @@ class RadialGrid
                     x = origin_ + exp(b * (i++) / double (num_mt_points_ - 1)) - 1.0;
                 }
             }
+            
+            if (grid_type == pow3_grid)
+            {
+                double x = origin_;
+                int i = 1;
+                
+                while (x <= infinity_ + tol)
+                {
+                    points_.push_back(x);
+                    double t = double(i++) / double(num_mt_points_ - 1);
+                    x = origin_ + (mt_radius_ - origin_) * pow(t, 3);
+                }
+
+            }
+            
+            //**if (grid_type == hyperbolic)
+            //**{
+            //**    double x = origin_;
+            //**    int i = 1;
+            //**    
+            //**    while (x <= infinity_ + tol)
+            //**    {
+            //**        points_.push_back(x);
+            //**        double t = double(i++) / double(num_mt_points_ - 1);
+            //**        x = origin_ + 2.0 * (mt_radius_ - origin_) * t / (t + 1);
+            //**    }
+
+            //**}
             
             if (mt_radius_ == infinity_ && num_mt_points() != size()) 
                 error(__FILE__, __LINE__, "radial grid is wrong");

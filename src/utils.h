@@ -48,6 +48,16 @@ class Utils
         
             return 0.5 * (1 - gsl_sf_erf(e / delta));
         }
+        
+        static inline double cold_smearing(double e)
+        {
+            double a = -0.5634;
+
+            if (e < -10.0) return 1.0;
+            if (e > 10.0) return 0.0;
+
+            return 0.5 * (1 - gsl_sf_erf(e)) - 1 - 0.25 * exp(-e * e) * (a + 2 * e - 2 * a * e * e) / sqrt(pi);
+        }
 
         static void write_matrix(const std::string& fname, bool write_all, mdarray<complex16, 2>& matrix)
         {

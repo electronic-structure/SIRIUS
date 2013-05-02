@@ -64,7 +64,7 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
 {
     std::vector<double> enu;
     
-    double energy_tot = a->solve_free_atom(1e-10, 1e-7, 1e-6, enu);
+    double energy_tot = a->solve_free_atom(1e-10, 1e-8, 1e-7, enu);
     
     int ncore = 0;
     for (int ist = 0; ist < (int)a->num_atomic_levels(); ist++)
@@ -75,12 +75,15 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
     std::cout << " atom : " << a->symbol() << "    Z : " << a->zn() << std::endl;
     std::cout << " =================== " << std::endl;
     printf("total energy : %12.6f, NIST value : %12.6f\n", energy_tot, a->NIST_LDA_Etot);
-    //std::cout << " total energy : " << energy_tot << ", NIST value : " <<  a->NIST_LDA_Etot 
-    //          << ", difference : " << fabs(energy_tot - a->NIST_LDA_Etot) << std::endl;
     std::cout << " number of core electrons : " <<  ncore << std::endl;
     std::cout << std::endl;
-    
-    std::cerr << a->zn() << " " << fabs(energy_tot - a->NIST_LDA_Etot) << std::endl;
+  
+    //std::cout << "====>" << int64_t(energy_tot * 1e6 - 1) << std::endl;
+    //std::cout << "====>" << double(int64_t(energy_tot * 1e6 - 1))/1e6 << std::endl;
+
+    //double Eout = double(int64_t(energy_tot * 1e6 - 1)) / 1e6;
+    double dE = double(int64_t(fabs(energy_tot - a->NIST_LDA_Etot) * 1e8)) / 1e8;
+    std::cerr << a->zn() << " " << dE << std::endl;
     
     std::string fname = a->symbol() + std::string(".json");
     json_write jw(fname);
@@ -90,7 +93,6 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
     jw.single("mass", a->mass());
     jw.single("rmin", a->radial_grid()[0]);
     jw.single("rmax", a->radial_grid()[a->radial_grid().size() - 1]);
-    //jw.single("rmt", a->mt_radius());
     jw.single("nrmt", a->num_mt_points());
 
     std::vector<sirius::atomic_level_descriptor> core;
