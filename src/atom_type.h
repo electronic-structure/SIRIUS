@@ -22,9 +22,13 @@ struct atomic_level_descriptor
     bool core;
 };
 
+enum radial_function_t {radial_solution, polynom};
+
 /// describes radial solution
 struct radial_solution_descriptor
 {
+    radial_function_t type;
+
     /// principal quantum number
     int n;
     
@@ -39,6 +43,9 @@ struct radial_solution_descriptor
     
     /// automatically determine energy
     int auto_enu;
+
+    int p1;
+    int p2;
 };
 
 /// set of radial solution descriptors, used to construct augmented waves or local orbitals
@@ -504,16 +511,32 @@ class AtomType
             for (int j = 0; j < parser["lo"].size(); j++)
             {
                 rsd.l = parser["lo"][j]["l"].get<int>();
-                rsd_set.clear();
-                for (int order = 0; order < parser["lo"][j]["basis"].size(); order++)
+                if (parser["lo"][j].exist("basis"))
                 {
-                    parser["lo"][j]["basis"][order]["n"] >> rsd.n;
-                    parser["lo"][j]["basis"][order]["enu"] >> rsd.enu;
-                    parser["lo"][j]["basis"][order]["dme"] >> rsd.dme;
-                    parser["lo"][j]["basis"][order]["auto"] >> rsd.auto_enu;
-                    rsd_set.push_back(rsd);
+                    rsd_set.clear();
+                    for (int order = 0; order < parser["lo"][j]["basis"].size(); order++)
+                    {
+                        rsd.type = radial_solution;
+                        parser["lo"][j]["basis"][order]["n"] >> rsd.n;
+                        parser["lo"][j]["basis"][order]["enu"] >> rsd.enu;
+                        parser["lo"][j]["basis"][order]["dme"] >> rsd.dme;
+                        parser["lo"][j]["basis"][order]["auto"] >> rsd.auto_enu;
+                        rsd_set.push_back(rsd);
+                    }
+                    lo_descriptors_.push_back(rsd_set);
                 }
-                lo_descriptors_.push_back(rsd_set);
+                if (parser["lo"][j].exist("polynom"))
+                {
+                    rsd_set.clear();
+                    rsd.type = polynom;
+                    std::vector<int> v;
+                    parser["lo"][j]["polynom"] >> v;
+                    rsd.p1 = v[0];
+                    rsd.p2 = v[1];
+                    rsd_set.push_back(rsd);
+                    lo_descriptors_.push_back(rsd_set);
+                }
+
             }
         }
     
