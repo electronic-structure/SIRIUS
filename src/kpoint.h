@@ -291,6 +291,10 @@ class kpoint
         void set_fv_h_o(PeriodicFunction<double>* effective_potential, int num_ranks,
                         mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
 
+        void solve_fv_evp_1stage(Band* band, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
+
+        void solve_fv_evp_2stage(mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
+
         /// Generate first-variational states
         /** 1. setup H and O \n 
             2. solve \$ H\psi = E\psi \$ \n
@@ -1598,6 +1602,118 @@ inline void kpoint::copy_pw_block(const int num_gkvec, const int num_gkvec_row,
     for (int j = 0; j < num_gkvec_row; j++) vec[apwlo_basis_descriptors_row[j].igk] = z[j];
 }
 
+void kpoint::solve_fv_evp_1stage(Band* band, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+{
+    Timer *t1 = new Timer("sirius::kpoint::generate_fv_states:genevp");
+    generalized_evp* solver = NULL;
+
+    switch (parameters_.eigen_value_solver())
+    {
+        case lapack:
+        {
+            solver = new generalized_evp_lapack(-1.0);
+            break;
+        }
+        case scalapack:
+        {
+            solver = new generalized_evp_scalapack(parameters_.cyclic_block_size(), band->num_ranks_row(), 
+                                                   band->num_ranks_col(), band->blacs_context(), -1.0);
+            break;
+        }
+        case elpa:
+        {
+            solver = new generalized_evp_elpa(parameters_.cyclic_block_size(), apwlo_basis_size_row(), 
+                                              band->num_ranks_row(), band->rank_row(),
+                                              apwlo_basis_size_col(), band->num_ranks_col(), 
+                                              band->rank_col(), band->blacs_context(), 
+                                              parameters_.mpi_grid().communicator(1 << band->dim_row()),
+                                              parameters_.mpi_grid().communicator(1 << band->dim_col()),
+                                              parameters_.mpi_grid().communicator(1 << band->dim_col() | 
+                                                                                  1 << band->dim_row()));
+            break;
+        }
+        case magma:
+        {
+            solver = new generalized_evp_magma();
+            break;
+        }
+        default:
+        {
+            error(__FILE__, __LINE__, "eigen value solver is not defined", fatal_err);
+        }
+    }
+
+    solver->solve(apwlo_basis_size(), parameters_.num_fv_states(), h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), 
+                  &fv_eigen_values_[0], fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
+
+    delete solver;
+    delete t1;
+}
+
+void kpoint::solve_fv_evp_2stage(mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+{
+    if (parameters_.eigen_value_solver() != lapack) error(__FILE__, __LINE__, "implemented for LAPACK only");
+    
+    standard_evp_lapack s;
+
+    std::vector<double> o_eval(apwlo_basis_size());
+    
+    mdarray<complex16, 2> o_tmp(apwlo_basis_size(), apwlo_basis_size());
+    memcpy(o_tmp.get_ptr(), o.get_ptr(), o.size() * sizeof(complex16));
+    mdarray<complex16, 2> o_evec(apwlo_basis_size(), apwlo_basis_size());
+ 
+    s.solve(apwlo_basis_size(), o_tmp.get_ptr(), o_tmp.ld(), &o_eval[0], o_evec.get_ptr(), o_evec.ld());
+
+    int num_dependent_apwlo = 0;
+    for (int i = 0; i < apwlo_basis_size(); i++) 
+    {
+        if (fabs(o_eval[i]) < 1e-4) 
+        {
+            num_dependent_apwlo++;
+        }
+        else
+        {
+            o_eval[i] = 1.0 / sqrt(o_eval[i]);
+        }
+    }
+
+    //std::cout << "num_dependent_apwlo = " << num_dependent_apwlo << std::endl;
+
+    mdarray<complex16, 2> h_tmp(apwlo_basis_size(), apwlo_basis_size());
+    // compute h_tmp = Z^{h.c.} * H
+    blas<cpu>::gemm(2, 0, apwlo_basis_size(), apwlo_basis_size(), apwlo_basis_size(), o_evec.get_ptr(), 
+                    o_evec.ld(), h.get_ptr(), h.ld(), h_tmp.get_ptr(), h_tmp.ld());
+    // compute \tilda H = Z^{h.c.} * H * Z = h_tmp * Z
+    blas<cpu>::gemm(0, 0, apwlo_basis_size(), apwlo_basis_size(), apwlo_basis_size(), h_tmp.get_ptr(), 
+                    h_tmp.ld(), o_evec.get_ptr(), o_evec.ld(), h.get_ptr(), h.ld());
+
+    int reduced_apwlo_basis_size = apwlo_basis_size() - num_dependent_apwlo;
+    
+    for (int i = 0; i < reduced_apwlo_basis_size; i++)
+    {
+        for (int j = 0; j < reduced_apwlo_basis_size; j++)
+        {
+            double d = o_eval[num_dependent_apwlo + j] * o_eval[num_dependent_apwlo + i];
+            h(num_dependent_apwlo + j, num_dependent_apwlo + i) *= d;
+        }
+    }
+
+    std::vector<double> h_eval(reduced_apwlo_basis_size);
+    s.solve(reduced_apwlo_basis_size, &h(num_dependent_apwlo, num_dependent_apwlo), h.ld(), &h_eval[0], 
+            h_tmp.get_ptr(), h_tmp.ld());
+
+    for (int i = 0; i < reduced_apwlo_basis_size; i++)
+    {
+        for (int j = 0; j < reduced_apwlo_basis_size; j++) h_tmp(j, i) *= o_eval[num_dependent_apwlo + j];
+    }
+
+    for (int i = 0; i < parameters_.num_fv_states(); i++) fv_eigen_values_[i] = h_eval[i];
+
+    blas<cpu>::gemm(0, 0, apwlo_basis_size(), parameters_.num_fv_states(), reduced_apwlo_basis_size, 
+                    &o_evec(0, num_dependent_apwlo), o_evec.ld(), h_tmp.get_ptr(), h_tmp.ld(), 
+                    fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
+}
+
 void kpoint::generate_fv_states(Band* band, PeriodicFunction<double>* effective_potential)
 {
     Timer t("sirius::kpoint::generate_fv_states");
@@ -1636,72 +1752,18 @@ void kpoint::generate_fv_states(Band* band, PeriodicFunction<double>* effective_
             error(__FILE__, __LINE__, "wrong processing unit");
         }
     }
-
-    // TODO: move debug code to a separate function
-
-    //sirius_io::hdf5_write_matrix("h.h5", h);
-    //sirius_io::hdf5_write_matrix("o.h5", o);
-    //Utils::write_matrix("h.txt", true, h);
-    //Utils::write_matrix("o.txt", true, o);
-
-    //** // debug overlap matrix problem
-    //** if ((debug_level > 0) && (parameters_.eigen_value_solver() == lapack))
-    //** {
     
-    //**{
-    //**     standard_evp_lapack s;
-
-    //**     std::vector<double> o_eval(apwlo_basis_size());
-    //**     mdarray<complex16, 2> o_tmp(apwlo_basis_size(), apwlo_basis_size());
-    //**     memcpy(o_tmp.get_ptr(), o.get_ptr(), o.size() * sizeof(complex16));
-    //**     mdarray<complex16, 2> o_evec(apwlo_basis_size(), apwlo_basis_size());
-    //** 
-    //**     s.solve(apwlo_basis_size(), o_tmp.get_ptr(), o_tmp.ld(), &o_eval[0], o_evec.get_ptr(), o_evec.ld());
-    //**     //for (int i = 0; i < apwlo_basis_size(); i++)
-    //**    // {
-    //**         //if (o_eval[i] < 0.01)
-    //**         //{
-    //**             //Utils::write_matrix("o.txt", true, o);
-    //**             std::stringstream ss;
-    //**             
-    //**             //for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
-    //**             //{
-    //**             //    for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
-    //**             //    {
-    //**             //        printf("%12.6f ", abs(o(irow, icol)));
-    //**             //    }
-    //**             //    printf("\n");
-    //**             //}
-
-    //**             ss << "ill defined overlap matrix" << std::endl;
-    //**             for (int j = 0; j < apwlo_basis_size(); j++) ss << o_eval[j] << " ";
-    //**             error(__FILE__, __LINE__, ss, 0);
-    //**             //break;
-    //**        // }
-    //**   //  }
-    //** }
-         
-    //**     memcpy(o_tmp.get_ptr(), o.get_ptr(), o.size() * sizeof(complex16));
-    //**     for (int i = 0; i < apwlo_basis_size(); i++)
-    //**         for (int j = 0; j < apwlo_basis_size(); j++)
-    //**             o_tmp(i, j) = o_tmp(i, j) / sqrt(abs(o(i, i))) / sqrt(abs(o(j, j)));
-
-    //**     for (int j = 0; j < num_gkvec(); j++)
-    //**     {
-    //**         printf("ig : %i ", j);
-    //**         for (int k = 0; k < 3; k++) printf("%f ", gkvec(j)[k]);
-    //**         printf("  len = %f\n", gkvec_len_[j]);
-    //**     }
-
-    //**     Utils::write_matrix("cos_angle.txt", true, o_tmp);
-    //**     stop_here
-    //** }
-
+    // TODO: move debug code to a separate function
     if ((debug_level > 0) && (parameters_.eigen_value_solver() == lapack))
     {
         Utils::check_hermitian("h", h);
         Utils::check_hermitian("o", o);
     }
+
+    //sirius_io::hdf5_write_matrix("h.h5", h);
+    //sirius_io::hdf5_write_matrix("o.h5", o);
+    //Utils::write_matrix("h.txt", true, h);
+    //Utils::write_matrix("o.txt", true, o);
 
     //** if (verbosity_level > 1)
     //** {
@@ -1840,55 +1902,15 @@ void kpoint::generate_fv_states(Band* band, PeriodicFunction<double>* effective_
     //**                         fv_eigen_vectors_glob.ld());
     //** }
     
-    Timer *t1 = new Timer("sirius::kpoint::generate_fv_states:genevp");
-    generalized_evp* solver = NULL;
-
-    switch (parameters_.eigen_value_solver())
+    if (fix_apwlo_linear_dependence)
     {
-        case lapack:
-        {
-
-            solver = new generalized_evp_lapack(-1.0);
-            break;
-        }
-        case scalapack:
-        {
-
-            solver = new generalized_evp_scalapack(parameters_.cyclic_block_size(), band->num_ranks_row(), 
-                                                   band->num_ranks_col(), band->blacs_context(), -1.0);
-            break;
-        }
-        case elpa:
-        {
-
-            solver = new generalized_evp_elpa(parameters_.cyclic_block_size(), apwlo_basis_size_row(), 
-                                              band->num_ranks_row(), band->rank_row(),
-                                              apwlo_basis_size_col(), band->num_ranks_col(), 
-                                              band->rank_col(), band->blacs_context(), 
-                                              parameters_.mpi_grid().communicator(1 << band->dim_row()),
-                                              parameters_.mpi_grid().communicator(1 << band->dim_col()),
-                                              parameters_.mpi_grid().communicator(1 << band->dim_col() | 
-                                                                                  1 << band->dim_row()));
-            break;
-        }
-        case magma:
-        {
-            solver = new generalized_evp_magma();
-            break;
-        }
-        default:
-        {
-            error(__FILE__, __LINE__, "eigen value solver is not defined", fatal_err);
-        }
+        solve_fv_evp_2stage(h, o);
     }
-
-    solver->solve(apwlo_basis_size(), parameters_.num_fv_states(), h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), 
-                  &fv_eigen_values_[0], fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
-
-    delete solver;
-
-    delete t1;
-   
+    else
+    {
+        solve_fv_evp_1stage(band, h, o);
+    }
+        
     #ifdef _MAGMA_
     if (parameters_.eigen_value_solver() == magma)
     {
