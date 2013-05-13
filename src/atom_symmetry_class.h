@@ -252,7 +252,7 @@ class AtomSymmetryClass
                         if (fabs(radial_functions_(nmtp - 1, idxrf, 0)) > 1e-10)
                         {
                             std::stringstream s;
-                            s << "local orbital is not zero at MT boundary" << std::endl 
+                            s << "local orbital " << idxlo << " is not zero at MT boundary" << std::endl 
                               << "  value : " << radial_functions_(nmtp - 1, idxrf, 0);
                             error(__FILE__, __LINE__, s);
                         }

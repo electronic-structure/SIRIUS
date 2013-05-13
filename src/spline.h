@@ -12,7 +12,7 @@ template <typename T> class Spline
         int num_points_;
     
         /// radial grid
-        sirius::RadialGrid& radial_grid;
+        sirius::RadialGrid& radial_grid_;
 
         std::vector<T> a;
         std::vector<T> b;
@@ -24,7 +24,7 @@ template <typename T> class Spline
         template <typename U> friend class Spline;
         
         Spline(int num_points__, sirius::RadialGrid& radial_grid__) : 
-            num_points_(num_points__), radial_grid(radial_grid__)
+            num_points_(num_points__), radial_grid_(radial_grid__)
         {
             a = std::vector<T>(num_points_);
             b = std::vector<T>(num_points_ - 1);
@@ -38,7 +38,7 @@ template <typename T> class Spline
         }
         
         Spline(int num_points__, sirius::RadialGrid& radial_grid__, std::vector<T>& y) : 
-            num_points_(num_points__), radial_grid(radial_grid__)
+            num_points_(num_points__), radial_grid_(radial_grid__)
         {
             interpolate(y);
         }
@@ -58,7 +58,7 @@ template <typename T> class Spline
             std::vector<T> dy(num_points_ - 1);
             
             // derivative of y
-            for (int i = 0; i < num_points_ - 1; i++) dy[i] = (a[i + 1] - a[i]) / radial_grid.dr(i);
+            for (int i = 0; i < num_points_ - 1; i++) dy[i] = (a[i + 1] - a[i]) / radial_grid_.dr(i);
             
             // setup "B" vector of AX=B equation
             for (int i = 0; i < num_points_ - 2; i++) m[i + 1] = (dy[i + 1] - dy[i]) * 6.0;
@@ -67,19 +67,19 @@ template <typename T> class Spline
             m[num_points_ - 1] = -m[num_points_ - 2];
             
             // main diagonal of "A" matrix
-            for (int i = 0; i < num_points_ - 2; i++) diag_main[i + 1] = 2 * (radial_grid.dr(i) + radial_grid.dr(i + 1));
-            double h0 = radial_grid.dr(0);
-            double h1 = radial_grid.dr(1);
-            double h2 = radial_grid.dr(num_points_ - 2);
-            double h3 = radial_grid.dr(num_points_ - 3);
+            for (int i = 0; i < num_points_ - 2; i++) diag_main[i + 1] = 2 * (radial_grid_.dr(i) + radial_grid_.dr(i + 1));
+            double h0 = radial_grid_.dr(0);
+            double h1 = radial_grid_.dr(1);
+            double h2 = radial_grid_.dr(num_points_ - 2);
+            double h3 = radial_grid_.dr(num_points_ - 3);
             diag_main[0] = (h1 / h0) * h1 - h0;
             diag_main[num_points_ - 1] = (h3 / h2) * h3 - h2;
             
             // subdiagonals of "A" matrix
             for (int i = 0; i < num_points_ - 1; i++)
             {
-                diag_upper[i] = radial_grid.dr(i);
-                diag_lower[i] = radial_grid.dr(i);
+                diag_upper[i] = radial_grid_.dr(i);
+                diag_lower[i] = radial_grid_.dr(i);
             }
             diag_upper[0] = -(h1 * (1 + h1 / h0) + diag_main[1]);
             diag_lower[num_points_ - 2] = -(h3 * (1 + h3 / h2) + diag_main[num_points_ - 2]); 
@@ -103,8 +103,8 @@ template <typename T> class Spline
             {
                 c[i] = m[i] / 2.0;
                 T t = (m[i + 1] - m[i]) / 6.0;
-                b[i] = dy[i] - (c[i] + t) * radial_grid.dr(i);
-                d[i] = t / radial_grid.dr(i);
+                b[i] = dy[i] - (c[i] + t) * radial_grid_.dr(i);
+                d[i] = t / radial_grid_.dr(i);
             }
             return *this;
         }
@@ -112,14 +112,14 @@ template <typename T> class Spline
         template <typename U>
         static T integrate(Spline<T>* f, Spline<U>* g)
         {
-            if ((&f->radial_grid != &g->radial_grid) || (f->num_points_ != g->num_points_)) 
+            if ((&f->radial_grid_ != &g->radial_grid_) || (f->num_points_ != g->num_points_)) 
                 error(__FILE__, __LINE__, "radial grids don't match");
             
             T result = 0;
 
             for (int i = 0; i < f->num_points_ - 1; i++)
             {
-                double x0 = f->radial_grid[i];
+                double x0 = f->radial_grid_[i];
                 //double x1 = f->radial_grid[i + 1];
                 
                 //double x0_2 = x0 * x0;
@@ -129,7 +129,7 @@ template <typename T> class Spline
                 //double x1_3 = x1_2 * x1;
                 //double x1_4 = x1_2 * x1_2;
                 
-                double dx = f->radial_grid.dr(i);
+                double dx = f->radial_grid_.dr(i);
 
                 //*T a0 = f->a[i];
                 //*T a1 = f->b[i];
@@ -257,7 +257,7 @@ template <typename T> class Spline
                     double t = 1.0 / 3.0;
                     for (int i = 0; i < num_points_ - 1; i++)
                     {
-                        double dx = radial_grid.dr(i);
+                        double dx = radial_grid_.dr(i);
                         g[i + 1] = g[i] + (((d[i] * dx * 0.25 + c[i] * t) * dx + b[i] * 0.5) * dx + a[i]) * dx;
                     }
                     break;
@@ -266,9 +266,9 @@ template <typename T> class Spline
                 {
                     for (int i = 0; i < num_points_ - 1; i++)
                     {
-                        double x0 = radial_grid[i];
-                        double x1 = radial_grid[i + 1];
-                        double dx = radial_grid.dr(i);
+                        double x0 = radial_grid_[i];
+                        double x1 = radial_grid_[i + 1];
+                        double dx = radial_grid_.dr(i);
                         T a0 = a[i];
                         T a1 = b[i];
                         T a2 = c[i];
@@ -289,8 +289,8 @@ template <typename T> class Spline
                 {
                     for (int i = 0; i < num_points_ - 1; i++)
                     {
-                        double x0 = radial_grid[i];
-                        double x1 = radial_grid[i + 1];
+                        double x0 = radial_grid_[i];
+                        double x1 = radial_grid_[i + 1];
                         T a0 = a[i];
                         T a1 = b[i];
                         T a2 = c[i];
@@ -309,8 +309,8 @@ template <typename T> class Spline
                 {
                     for (int i = 0; i < num_points_ - 1; i++)
                     {
-                        double x0 = radial_grid[i];
-                        double x1 = radial_grid[i + 1];
+                        double x0 = radial_grid_[i];
+                        double x1 = radial_grid_[i + 1];
                         T a0 = a[i];
                         T a1 = b[i];
                         T a2 = c[i];
@@ -330,8 +330,8 @@ template <typename T> class Spline
                 {
                     for (int i = 0; i < num_points_ - 1; i++)
                     {
-                        double x0 = radial_grid[i];
-                        double x1 = radial_grid[i + 1];
+                        double x0 = radial_grid_[i];
+                        double x1 = radial_grid_[i + 1];
                         T a0 = a[i];
                         T a1 = b[i];
                         T a2 = c[i];
@@ -351,8 +351,8 @@ template <typename T> class Spline
                 {
                     for (int i = 0; i < num_points_ - 1; i++)
                     {
-                        double x0 = radial_grid[i];
-                        double x1 = radial_grid[i + 1];
+                        double x0 = radial_grid_[i];
+                        double x1 = radial_grid_[i + 1];
                         T a0 = a[i];
                         T a1 = b[i];
                         T a2 = c[i];
@@ -373,8 +373,8 @@ template <typename T> class Spline
                 {
                     for (int i = 0; i < num_points_ - 1; i++)
                     {
-                        double x0 = radial_grid[i];
-                        double x1 = radial_grid[i + 1];
+                        double x0 = radial_grid_[i];
+                        double x1 = radial_grid_[i + 1];
                         T a0 = a[i];
                         T a1 = b[i];
                         T a2 = c[i];
@@ -455,13 +455,26 @@ template <typename T> class Spline
         {
             if (i == num_points_ - 1) 
             {
-                return deriv(dm, i - 1, radial_grid.dr(i - 1));
+                return deriv(dm, i - 1, radial_grid_.dr(i - 1));
             }
             else 
             {
                 return deriv(dm, i, 0.0);
             }
         }
+
+        inline void get_coefs(T* array)
+        {
+            for (int i = 0; i < num_points_ - 1; i++)
+            {
+                array[0 * num_points_ + i] = a[i];
+                array[1 * num_points_ + i] = b[i];
+                array[2 * num_points_ + i] = c[i];
+                array[3 * num_points_ + i] = d[i];
+            }
+            array[num_points_ - 1] = a[num_points_ - 1];
+        }
+
 
 };
 
