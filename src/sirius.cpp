@@ -773,5 +773,16 @@ void FORTRAN(sirius_get_gkvec_cart)(int32_t* kpoint_set_id, int32_t* ik, double*
         global_parameters.get_coordinates<cartesian, reciprocal>(kp->gkvec(ig), &gkvec_cart(0, ig));
 }
 
+void FORTRAN(sirius_get_band_energies)(int32_t* kpoint_set_id, int32_t* ik, double* band_energies)
+{
+    sirius::kpoint* kp = (*kpoint_set_list[*kpoint_set_id])[*ik - 1];
+    kp->get_band_energies(band_energies);
+}
+
+void FORTRAN(sirius_get_band_occupancies)(int32_t* kpoint_set_id, int32_t* ik, double* band_occupancies)
+{
+    sirius::kpoint* kp = (*kpoint_set_list[*kpoint_set_id])[*ik - 1];
+    kp->get_band_occupancies(band_occupancies);
+}
 
 } // extern "C"
