@@ -198,6 +198,12 @@ class RadialGrid
 
             init_dr_ir();
         }
+
+        void get_r_dr(double* array, int lda)
+        {
+            for (int i = 0; i < num_mt_points_; i++) array[i] = points_[i]; 
+            for (int i = 0; i < num_mt_points_ - 1; i++) array[lda + i] = deltas_[i]; 
+        }
 };
 
 };
