@@ -47,6 +47,9 @@ extern "C" {
 #include "version.h"
 #include "error_handling.h"
 #include "timer.h"
+
+#define stop_here Timer::print(); error(__FILE__, __LINE__, "stop_here macros is called");
+
 #include "constants.h"
 #include "mdarray.h"
 #include "linalg.h"
