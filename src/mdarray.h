@@ -201,11 +201,17 @@ template <typename T, int ND> class mdarray_base
 
         void copy_to_device() 
         {
+            assert(mdarray_ptr != NULL);
+            assert(mdarray_ptr_device != NULL);
+
             cuda_copy_to_device(mdarray_ptr_device, mdarray_ptr, size() * sizeof(T));
         }
         
         void copy_to_host() 
         {
+            assert(mdarray_ptr != NULL);
+            assert(mdarray_ptr_device != NULL);
+            
             cuda_copy_to_host(mdarray_ptr, mdarray_ptr_device, size() * sizeof(T));
         }
         
