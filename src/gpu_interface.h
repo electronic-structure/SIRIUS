@@ -61,5 +61,8 @@ void bessel_vlm_inner_product_gpu(int max_num_mt_points, int lmax_pot, int lmmax
                                   int* iat_by_ia, int* nmtp_by_ia, int* l_by_lm, double* r_dr, double* jl_coefs, 
                                   double* vlm_coefs, double* vjlm, int stream_id);
 
+void bessel_vlo_inner_product_gpu(int num_gkvec, int num_lo, int max_num_mt_points, int lmax_pw, int lmmax_pw, int num_atom_types, 
+                                 double* jl_coefs, void* vlo_coefs, int* l_by_lm, int* iat_by_ilo, int* nmtp_by_ilo, 
+                                 double* r_dr, void* jvlo);
 #endif // _GPU_INTERFACE_H_
 
