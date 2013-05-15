@@ -966,8 +966,6 @@ template <> void Potential::add_mt_contribution_to_pw<gpu>()
     r_dr.allocate_on_device();
     r_dr.copy_to_device();
 
-    sbessel_pw<double> jl(parameters_, parameters_.lmax_pot());
-
     cuda_create_streams(Platform::num_threads());
     #pragma omp parallel
     {
@@ -984,6 +982,8 @@ template <> void Potential::add_mt_contribution_to_pw<gpu>()
         jl_coefs.pin_memory();
         jl_coefs.allocate_on_device();
 
+        sbessel_pw<double> jl(parameters_, parameters_.lmax_pot());
+        
         #pragma omp for
         for (int igloc = 0; igloc < parameters_.spl_num_gvec().local_size(); igloc++)
         {
@@ -1003,6 +1003,7 @@ template <> void Potential::add_mt_contribution_to_pw<gpu>()
                                          jl_coefs.get_ptr_device(), vlm_coefs.get_ptr_device(), vjlm.get_ptr_device(), thread_id);
 
             vjlm.async_copy_to_host(thread_id);
+            
             cuda_stream_synchronize(thread_id);
 
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
