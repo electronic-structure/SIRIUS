@@ -49,7 +49,7 @@ template <typename T, int ND> class mdarray_base
     
         mdarray_base() : mdarray_ptr(NULL), allocated_(false)
                          #ifdef _GPU_
-                         ,mdarray_ptr_device(NULL), allocated_on_device(false)
+                         ,mdarray_ptr_device(NULL), allocated_on_device(false), pinned_(false)
                          #endif
         { 
         }
@@ -129,11 +129,17 @@ template <typename T, int ND> class mdarray_base
         {
             if (allocated_)
             {
+                #ifdef _GPU_
+                unpin_memory();
+                #endif
                 delete[] mdarray_ptr;
                 mdarray_ptr = NULL;
                 allocated_ = false;
                 Platform::adjust_heap_allocated(-size() * sizeof(T));
             }
+            #ifdef _GPU_
+            deallocate_on_device();
+            #endif
         }
         
         void zero()
@@ -176,50 +182,67 @@ template <typename T, int ND> class mdarray_base
         {
             deallocate_on_device();
             
-            size_t sz = this->size();
+            size_t sz = size();
             if (sz == 0) throw std::runtime_error("can't allocate a zero sized array");
              
-            cuda_malloc((void**)(&this->mdarray_ptr_device), sz * sizeof(T));
-            this->allocated_on_device = true;
+            cuda_malloc((void**)(&mdarray_ptr_device), sz * sizeof(T));
+            allocated_on_device = true;
         }
 
         void deallocate_on_device()
         {
-            if (this->allocated_on_device)
+            if (allocated_on_device)
             {
-                cuda_free(this->mdarray_ptr_device);
-                this->allocated_on_device = false;
+                cuda_free(mdarray_ptr_device);
+                mdarray_ptr_device = NULL;
+                allocated_on_device = false;
             }
         }
 
         void copy_to_device() 
         {
-            cuda_copy_to_device(this->mdarray_ptr_device, this->mdarray_ptr, this->size() * sizeof(T));
+            cuda_copy_to_device(mdarray_ptr_device, mdarray_ptr, size() * sizeof(T));
         }
         
         void copy_to_host() 
         {
-            cuda_copy_to_host(this->mdarray_ptr, this->mdarray_ptr_device, this->size() * sizeof(T));
+            cuda_copy_to_host(mdarray_ptr, mdarray_ptr_device, size() * sizeof(T));
+        }
+        
+        void async_copy_to_device(int stream_id = -1) 
+        {
+            cuda_async_copy_to_device(mdarray_ptr_device, mdarray_ptr, size() * sizeof(T), stream_id);
+        }
+        
+        void async_copy_to_host(int stream_id = -1) 
+        {
+            cuda_async_copy_to_host(mdarray_ptr, mdarray_ptr_device, size() * sizeof(T), stream_id);
         }
 
         inline T* get_ptr_device()
         {
-            return this->mdarray_ptr_device;
+            return mdarray_ptr_device;
         }
 
         void zero_on_device()
         {
-            cuda_memset(this->mdarray_ptr_device, 0, this->size() * sizeof(T));
+            cuda_memset(mdarray_ptr_device, 0, size() * sizeof(T));
         }
 
         void pin_memory()
         {
-            cuda_host_register(mdarray_ptr, this->size() * sizeof(T));
+            if (pinned_) error(__FILE__, __LINE__, "Memory is already pinned");
+            cuda_host_register(mdarray_ptr, size() * sizeof(T));
+            pinned_ = true;
         }
         
         void unpin_memory()
         {
-            cuda_host_unregister(mdarray_ptr);
+            if (pinned_)
+            {
+                cuda_host_unregister(mdarray_ptr);
+                pinned_ = false;
+            }
         }
         #endif
  
@@ -233,6 +256,8 @@ template <typename T, int ND> class mdarray_base
         T* mdarray_ptr_device;  
         
         bool allocated_on_device;
+
+        bool pinned_;
         #endif
         
         dimension d[ND];
@@ -245,7 +270,7 @@ template <typename T, int ND> class mdarray_base
         mdarray_base(const mdarray_base<T, ND>& src);
         
         // forbid assignment operator
-        mdarray_base<T,ND>& operator=(const mdarray_base<T,ND>& src); 
+        mdarray_base<T, ND>& operator=(const mdarray_base<T, ND>& src); 
         
 };
 
