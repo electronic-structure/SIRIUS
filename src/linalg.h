@@ -57,7 +57,7 @@ template<> inline void blas<cpu>::gemm<complex16>(int transa, int transb, int32_
 }
 
 template<> inline void blas<cpu>::gemm<complex16>(int transa, int transb, int32_t m, int32_t n, int32_t k, complex16* a, 
-                                                    int32_t lda, complex16* b, int32_t ldb, complex16* c, int32_t ldc)
+                                                  int32_t lda, complex16* b, int32_t ldb, complex16* c, int32_t ldc)
 {
     gemm(transa, transb, m, n, k, complex16(1, 0), a, lda, b, ldb, complex16(0, 0), c, ldc);
 }
