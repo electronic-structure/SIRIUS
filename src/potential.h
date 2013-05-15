@@ -61,7 +61,7 @@ class Potential
         
         std::vector<complex16> zilm_;
 
-        std::vector<int> l_by_lm_;
+        mdarray<int, 1> l_by_lm_;
 
         /// Compute MT part of the potential and MT multipole moments
         void poisson_vmt(mdarray<complex16, 3>& rho_ylm, PeriodicFunction<double>* vh, mdarray<complex16, 2>& qmt)
@@ -87,7 +87,7 @@ class Potential
                     #pragma omp for
                     for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
                     {
-                        int l = l_by_lm_[lm];
+                        int l = l_by_lm_(lm);
 
                         for (int ir = 0; ir < nmtp; ir++) rholm[ir] = rho_ylm(lm, ir, ialoc);
                         rholm.interpolate();
@@ -381,7 +381,7 @@ class Potential
                 #pragma omp parallel for default(shared)
                 for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
                 {
-                    int l = l_by_lm_[lm];
+                    int l = l_by_lm_(lm);
 
                     for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
                         vh->f_ylm(lm, ir, ialoc) += vmtlm(lm, ia) * rRl(ir, l);
@@ -619,10 +619,11 @@ class Potential
                 for (int m = -l; m <= l; m++, lm++) zilm_[lm] = zil_[l];
             }
 
-            l_by_lm_.resize(Utils::lmmax_by_lmax(lmax));
+            l_by_lm_.set_dimensions(Utils::lmmax_by_lmax(lmax));
+            l_by_lm_.allocate();
             for (int l = 0, lm = 0; l <= lmax; l++)
             {
-                for (int m = -l; m <= l; m++, lm++) l_by_lm_[lm] = l;
+                for (int m = -l; m <= l; m++, lm++) l_by_lm_(lm) = l;
             }
         }
 
@@ -833,82 +834,244 @@ class Potential
             return effective_magnetic_field_[i];
         }
 
-        void add_mt_contribution_to_pw()
+        template <processing_unit_t pu> 
+        void add_mt_contribution_to_pw();
+
+        /// Generate plane-wave coefficients of the potential in the interstitial region
+        void generate_pw_coefs();
+};
+
+template<> void Potential::add_mt_contribution_to_pw<cpu>()
+{
+    Timer t("sirius::Potential::add_mt_contribution_to_pw");
+
+    mdarray<complex16, 1> fpw(parameters_.num_gvec());
+    fpw.zero();
+
+    mdarray<Spline<double>*, 2> svlm(parameters_.lmmax_pot(), parameters_.num_atoms());
+    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    {
+        for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
         {
-            Timer t("sirius::Potential::add_mt_contribution_to_pw");
+            svlm(lm, ia) = new Spline<double>(parameters_.atom(ia)->num_mt_points(), 
+                                              parameters_.atom(ia)->type()->radial_grid());
+            
+            for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                (*svlm(lm, ia))[ir] = effective_potential_->f_rlm(lm, ir, ia);
+            
+            svlm(lm, ia)->interpolate();
+        }
+    }
+   
+    #pragma omp parallel default(shared)
+    {
+        mdarray<double, 1> vjlm(parameters_.lmmax_pot());
 
-            mdarray<complex16, 1> fpw(parameters_.num_gvec());
-            fpw.zero();
+        sbessel_pw<double> jl(parameters_, parameters_.lmax_pot());
+        
+        #pragma omp for
+        for (int igloc = 0; igloc < parameters_.spl_num_gvec().local_size(); igloc++)
+        {
+            int ig = parameters_.spl_num_gvec(igloc);
 
-            mdarray<Spline<double>*, 2> svlm(parameters_.lmmax_pot(), parameters_.num_atoms());
+            jl.interpolate(parameters_.gvec_len(ig));
+
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
+                int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+
                 for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
                 {
-                    svlm(lm, ia) = new Spline<double>(parameters_.atom(ia)->num_mt_points(), 
-                                                      parameters_.atom(ia)->type()->radial_grid());
-                    
-                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-                        (*svlm(lm, ia))[ir] = effective_potential_->f_rlm(lm, ir, ia);
-                    
-                    svlm(lm, ia)->interpolate();
+                    int l = l_by_lm_(lm);
+                    vjlm(lm) = Spline<double>::integrate(jl(l, iat), svlm(lm, ia));
                 }
-            }
-            
-            #pragma omp parallel default(shared)
-            {
-                mdarray<double, 1> vjlm(parameters_.lmmax_pot());
 
-                sbessel_pw<double> jl(parameters_, parameters_.lmax_pot());
-                
-                #pragma omp for
-                for (int igloc = 0; igloc < parameters_.spl_num_gvec().local_size(); igloc++)
+                complex16 zt(0, 0);
+                for (int l = 0; l <= parameters_.lmax_pot(); l++)
                 {
-                    int ig = parameters_.spl_num_gvec(igloc);
-
-                    jl.interpolate(parameters_.gvec_len(ig));
-
-                    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                    for (int m = -l; m <= l; m++)
                     {
-                        int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-
-                        for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
+                        if (m == 0)
                         {
-                            int l = l_by_lm_[lm];
-                            vjlm(lm) = Spline<double>::integrate(jl(l, iat), svlm(lm, ia));
-                        }
+                            zt += conj(zil_[l]) * parameters_.gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
+                                  vjlm(Utils::lm_by_l_m(l, m));
 
-                        complex16 zt(0, 0);
-                        for (int l = 0; l <= parameters_.lmax_pot(); l++)
+                        }
+                        else
                         {
-                            for (int m = -l; m <= l; m++)
-                            {
-                                if (m == 0)
-                                {
-                                    zt += conj(zil_[l]) * parameters_.gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
-                                          vjlm(Utils::lm_by_l_m(l, m));
-
-                                }
-                                else
-                                {
-                                    zt += conj(zil_[l]) * parameters_.gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
-                                          (SHT::ylm_dot_rlm(l, m, m) * vjlm(Utils::lm_by_l_m(l, m)) + 
-                                           SHT::ylm_dot_rlm(l, m, -m) * vjlm(Utils::lm_by_l_m(l, -m)));
-                                }
-                            }
+                            zt += conj(zil_[l]) * parameters_.gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
+                                  (SHT::ylm_dot_rlm(l, m, m) * vjlm(Utils::lm_by_l_m(l, m)) + 
+                                   SHT::ylm_dot_rlm(l, m, -m) * vjlm(Utils::lm_by_l_m(l, -m)));
                         }
-                        fpw(ig) += zt * fourpi * conj(parameters_.gvec_phase_factor<local>(igloc, ia)) / parameters_.omega();
                     }
                 }
-            }
-            Platform::allreduce(fpw.get_ptr(), (int)fpw.size());
-            for (int ig = 0; ig < parameters_.num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
-            
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            {
-                for (int lm = 0; lm < parameters_.lmmax_pot(); lm++) delete svlm(lm, ia);
+                fpw(ig) += zt * fourpi * conj(parameters_.gvec_phase_factor<local>(igloc, ia)) / parameters_.omega();
             }
         }
-};
+    }
+    Platform::allreduce(fpw.get_ptr(), (int)fpw.size());
+    for (int ig = 0; ig < parameters_.num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
+    
+    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    {
+        for (int lm = 0; lm < parameters_.lmmax_pot(); lm++) delete svlm(lm, ia);
+    }
+}
+
+#ifdef _GPU_
+template <> void Potential::add_mt_contribution_to_pw<gpu>()
+{
+    Timer t("sirius::Potential::add_mt_contribution_to_pw");
+
+    mdarray<complex16, 1> fpw(parameters_.num_gvec());
+    fpw.zero();
+
+    mdarray<double, 3> vlm_coefs(parameters_.max_num_mt_points() * 4, parameters_.lmmax_pot(), 
+                                 parameters_.num_atoms());
+    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    {
+        for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
+        {
+            Spline<double> s(parameters_.atom(ia)->num_mt_points(), 
+                             parameters_.atom(ia)->type()->radial_grid());
+            
+            for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                s[ir] = effective_potential_->f_rlm(lm, ir, ia);
+            
+            s.interpolate();
+            s.get_coefs(&vlm_coefs(0, lm, ia), parameters_.max_num_mt_points());
+        }
+    }
+    vlm_coefs.allocate_on_device();
+    vlm_coefs.copy_to_device();
+
+    mdarray<int, 1> iat_by_ia(parameters_.num_atoms());
+    mdarray<int, 1> nmtp_by_ia(parameters_.num_atoms());
+    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    {
+        iat_by_ia(ia) = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+        nmtp_by_ia(ia) = parameters_.atom(ia)->num_mt_points();
+    }
+    iat_by_ia.allocate_on_device();
+    iat_by_ia.copy_to_device();
+    nmtp_by_ia.allocate_on_device();
+    nmtp_by_ia.copy_to_device();
+
+    l_by_lm_.allocate_on_device();
+    l_by_lm_.copy_to_device();
+    
+    mdarray<double, 2> r_dr(parameters_.max_num_mt_points() * 2, parameters_.num_atom_types());
+    for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+        parameters_.atom_type(iat)->radial_grid().get_r_dr(&r_dr(0, iat), parameters_.max_num_mt_points());
+    r_dr.allocate_on_device();
+    r_dr.copy_to_device();
+
+    sbessel_pw<double> jl(parameters_, parameters_.lmax_pot());
+
+    cuda_create_streams(Platform::num_threads());
+    #pragma omp parallel
+    {
+        int thread_id = Platform::thread_id();
+
+        mdarray<double, 3> jl_coefs(parameters_.max_num_mt_points() * 4, parameters_.lmax_pot() + 1, 
+                                    parameters_.num_atom_types());
+        
+        mdarray<double, 2> vjlm(parameters_.lmmax_pot(), parameters_.num_atoms());
+
+        vjlm.pin_memory();
+        vjlm.allocate_on_device();
+            
+        jl_coefs.pin_memory();
+        jl_coefs.allocate_on_device();
+
+        #pragma omp for
+        for (int igloc = 0; igloc < parameters_.spl_num_gvec().local_size(); igloc++)
+        {
+            int ig = parameters_.spl_num_gvec(igloc);
+            
+            jl.interpolate(parameters_.gvec_len(ig));
+            for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+            {
+                for (int l = 0; l <= parameters_.lmax_pot(); l++)
+                    jl(l, iat)->get_coefs(&jl_coefs(0, l, iat), parameters_.max_num_mt_points());
+            }
+            jl_coefs.async_copy_to_device(thread_id);
+
+            bessel_vlm_inner_product_gpu(parameters_.max_num_mt_points(), parameters_.lmax_pot(), parameters_.lmmax_pot(), 
+                                         parameters_.num_atoms(), parameters_.num_atom_types(), iat_by_ia.get_ptr_device(), 
+                                         nmtp_by_ia.get_ptr_device(), l_by_lm_.get_ptr_device(), r_dr.get_ptr_device(), 
+                                         jl_coefs.get_ptr_device(), vlm_coefs.get_ptr_device(), vjlm.get_ptr_device(), thread_id);
+
+            vjlm.async_copy_to_host(thread_id);
+            cuda_stream_synchronize(thread_id);
+
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                complex16 zt(0, 0);
+                for (int l = 0; l <= parameters_.lmax_pot(); l++)
+                {
+                    for (int m = -l; m <= l; m++)
+                    {
+                        if (m == 0)
+                        {
+                            zt += conj(zil_[l]) * parameters_.gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
+                                  vjlm(Utils::lm_by_l_m(l, m), ia);
+
+                        }
+                        else
+                        {
+                            zt += conj(zil_[l]) * parameters_.gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
+                                  (SHT::ylm_dot_rlm(l, m, m) * vjlm(Utils::lm_by_l_m(l, m), ia) + 
+                                   SHT::ylm_dot_rlm(l, m, -m) * vjlm(Utils::lm_by_l_m(l, -m), ia));
+                        }
+                    }
+                }
+                fpw(ig) += zt * fourpi * conj(parameters_.gvec_phase_factor<local>(igloc, ia)) / parameters_.omega();
+            }
+        }
+    }
+    cuda_destroy_streams(Platform::num_threads());
+    
+    Platform::allreduce(fpw.get_ptr(), (int)fpw.size());
+    for (int ig = 0; ig < parameters_.num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
+
+    l_by_lm_.deallocate_on_device();
+}
+#endif
+
+void Potential::generate_pw_coefs()
+{
+    for (int ir = 0; ir < parameters_.fft().size(); ir++)
+        effective_potential()->f_it(ir) *= parameters_.step_function(ir);
+    
+    parameters_.fft().input(effective_potential()->f_it());
+    parameters_.fft().transform(-1);
+    parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), effective_potential()->f_pw());
+    
+    if (basis_type == pwlo) 
+    {
+        switch (parameters_.processing_unit())
+        {
+            case cpu:
+            {
+                add_mt_contribution_to_pw<cpu>();
+                break;
+            }
+            #ifdef _GPU_
+            case gpu:
+            {
+                add_mt_contribution_to_pw<gpu>();
+                break;
+            }
+            #endif
+            default:
+            {
+                error(__FILE__, __LINE__, "wrong processing unit");
+            }
+        }
+    }
+}
 
 };
+
+
