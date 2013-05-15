@@ -463,14 +463,14 @@ template <typename T> class Spline
             }
         }
 
-        inline void get_coefs(T* array)
+        inline void get_coefs(T* array, int lda)
         {
             for (int i = 0; i < num_points_ - 1; i++)
             {
-                array[0 * num_points_ + i] = a[i];
-                array[1 * num_points_ + i] = b[i];
-                array[2 * num_points_ + i] = c[i];
-                array[3 * num_points_ + i] = d[i];
+                array[0 * lda + i] = a[i];
+                array[1 * lda + i] = b[i];
+                array[2 * lda + i] = c[i];
+                array[3 * lda + i] = d[i];
             }
             array[num_points_ - 1] = a[num_points_ - 1];
         }
