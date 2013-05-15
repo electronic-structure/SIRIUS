@@ -793,17 +793,8 @@ class Density
             // generate radial integrals
             potential_->set_nonspherical_potential();
             parameters_.generate_radial_integrals();
-            
-            // generate plane-wave coefficients of the potential in the interstitial region
-            for (int ir = 0; ir < parameters_.fft().size(); ir++)
-                 potential_->effective_potential()->f_it(ir) *= parameters_.step_function(ir);
 
-            parameters_.fft().input(potential_->effective_potential()->f_it());
-            parameters_.fft().transform(-1);
-            parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), 
-                                     potential_->effective_potential()->f_pw());
-
-            if (basis_type == pwlo) potential_->add_mt_contribution_to_pw(); 
+            potential_->generate_pw_coefs();
             
             // solve secular equation and generate wave functions
             for (int ikloc = 0; ikloc < kpoint_set_.spl_num_kpoints().local_size(); ikloc++)
