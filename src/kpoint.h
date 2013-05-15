@@ -52,7 +52,7 @@ class kpoint
         /// global set of parameters
         Global& parameters_;
 
-        /// weight of k-poitn
+        /// weight of k-point
         double weight_;
 
         /// fractional k-point coordinates
@@ -106,31 +106,34 @@ class kpoint
         /// number of G+k vectors distributed along rows of MPI grid
         int num_gkvec_row_;
         
-        /// number of G+k vectors distributed along columns of MPI grid
+        /// Number of G+k vectors distributed along columns of MPI grid
         int num_gkvec_col_;
 
-        /// short information about each APW+lo basis function
+        /// Short information about each APW+lo basis function
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_;
 
-        /// row APW+lo basis descriptors
+        /// Row APW+lo basis descriptors
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_row_;
         
-        /// column APW+lo basis descriptors
+        /// Column APW+lo basis descriptors
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_col_;
             
-        /// list of columns (lo block) for a given atom
+        /// List of columns (lo block) for a given atom
         std::vector< std::vector<int> > icol_by_atom_;
 
-        /// list of rows (lo block) for a given atom
+        /// List of rows (lo block) for a given atom
         std::vector< std::vector<int> > irow_by_atom_;
 
+        /// Imaginary unit to the power of l
         std::vector<complex16> zil_;
 
-        std::vector<int> l_by_lm_;
+        /// Mapping between lm and l
+        mdarray<int, 1> l_by_lm_;
 
+        /// Spherical bessel functions for G+k vectors  
         std::vector< sbessel_pw<double>* > sbessel_;
         
-        /// number of APW+lo basis functions distributed along rows of MPI grid
+        /// Number of APW+lo basis functions distributed along rows of MPI grid
         inline int apwlo_basis_size_row()
         {
             return (int)apwlo_basis_descriptors_row_.size();
@@ -148,7 +151,7 @@ class kpoint
             return (int)apwlo_basis_descriptors_row_.size() - num_gkvec_row_;
         }
 
-        /// number of APW+lo basis functions distributed along columns of MPI grid
+        /// Number of APW+lo basis functions distributed along columns of MPI grid
         inline int apwlo_basis_size_col()
         {
             return (int)apwlo_basis_descriptors_col_.size();
@@ -239,6 +242,7 @@ class kpoint
 
         void set_fv_h_o_lo_lo(mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
 
+        template <processing_unit_t pu>
         void set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int num_ranks,
                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
 
@@ -584,52 +588,7 @@ class kpoint
             }
         }
 
-        void initialize(Band* band)
-        {
-            Timer t("sirius::kpoint::initialize");
-            
-            zil_.resize(parameters_.lmax() + 1);
-            for (int l = 0; l <= parameters_.lmax(); l++) zil_[l] = pow(complex16(0, 1), l);
-            
-            l_by_lm_.resize(Utils::lmmax_by_lmax(parameters_.lmax()));
-            for (int l = 0, lm = 0; l <= parameters_.lmax(); l++)
-            {
-                for (int m = -l; m <= l; m++, lm++) l_by_lm_[lm] = l;
-            }
-
-            generate_gkvec();
-
-            build_apwlo_basis_descriptors();
-
-            distribute_block_cyclic(band);
-            
-            init_gkvec();
-            
-            icol_by_atom_.resize(parameters_.num_atoms());
-            irow_by_atom_.resize(parameters_.num_atoms());
-
-            for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
-            {
-                int ia = apwlo_basis_descriptors_col_[icol].ia;
-                icol_by_atom_[ia].push_back(icol);
-            }
-            
-            for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
-            {
-                int ia = apwlo_basis_descriptors_row_[irow].ia;
-                irow_by_atom_[ia].push_back(irow);
-            }
-            
-            if (basis_type == pwlo)
-            {
-                sbessel_.resize(num_gkvec_loc()); 
-                for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
-                {
-                    sbessel_[igkloc] = new sbessel_pw<double>(parameters_, parameters_.lmax_pw());
-                    sbessel_[igkloc]->interpolate(gkvec_len_[igkloc]);
-                }
-            }
-        }
+        void initialize(Band* band);
 
         void find_eigen_states(Band* band, PeriodicFunction<double>* effective_potential, 
                                PeriodicFunction<double>* effective_magnetic_field[3]);
@@ -807,6 +766,54 @@ class kpoint
             }
         }
 };
+
+void kpoint::initialize(Band* band)
+{
+    Timer t("sirius::kpoint::initialize");
+    
+    zil_.resize(parameters_.lmax() + 1);
+    for (int l = 0; l <= parameters_.lmax(); l++) zil_[l] = pow(complex16(0, 1), l);
+    
+    l_by_lm_.set_dimensions(Utils::lmmax_by_lmax(parameters_.lmax()));
+    l_by_lm_.allocate();
+    for (int l = 0, lm = 0; l <= parameters_.lmax(); l++)
+    {
+        for (int m = -l; m <= l; m++, lm++) l_by_lm_(lm) = l;
+    }
+
+    generate_gkvec();
+
+    build_apwlo_basis_descriptors();
+
+    distribute_block_cyclic(band);
+    
+    init_gkvec();
+    
+    icol_by_atom_.resize(parameters_.num_atoms());
+    irow_by_atom_.resize(parameters_.num_atoms());
+
+    for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
+    {
+        int ia = apwlo_basis_descriptors_col_[icol].ia;
+        icol_by_atom_[ia].push_back(icol);
+    }
+    
+    for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
+    {
+        int ia = apwlo_basis_descriptors_row_[irow].ia;
+        irow_by_atom_[ia].push_back(irow);
+    }
+    
+    if (basis_type == pwlo)
+    {
+        sbessel_.resize(num_gkvec_loc()); 
+        for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
+        {
+            sbessel_[igkloc] = new sbessel_pw<double>(parameters_, parameters_.lmax_pw());
+            sbessel_[igkloc]->interpolate(gkvec_len_[igkloc]);
+        }
+    }
+}
 
 void kpoint::generate_matching_coefficients_order1(int ia, int iat, AtomType* type, int l, int num_gkvec_loc, 
                                                    double A, mdarray<complex16, 2>& alm)
@@ -1225,8 +1232,8 @@ template<> void kpoint::set_fv_h_o<cpu, apwlo>(PeriodicFunction<double>* effecti
     halm.deallocate();
 }
 
-void kpoint::set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int num_ranks, 
-                              mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+template<> void kpoint::set_fv_h_o_pw_lo<cpu>(PeriodicFunction<double>* effective_potential, int num_ranks, 
+                                              mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
     Timer t("sirius::kpoint::set_fv_h_o_pw_lo");
     
@@ -1480,7 +1487,6 @@ void kpoint::set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int
     }
 }
 
-
 template<> void kpoint::set_fv_h_o<cpu, pwlo>(PeriodicFunction<double>* effective_potential, int num_ranks,
                                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
@@ -1506,7 +1512,7 @@ template<> void kpoint::set_fv_h_o<cpu, pwlo>(PeriodicFunction<double>* effectiv
         }
     }
     
-    set_fv_h_o_pw_lo(effective_potential, num_ranks, h, o);
+    set_fv_h_o_pw_lo<cpu>(effective_potential, num_ranks, h, o);
 
     set_fv_h_o_lo_lo(h, o);
 }
@@ -1577,6 +1583,340 @@ template<> void kpoint::set_fv_h_o<gpu, apwlo>(PeriodicFunction<double>* effecti
     halm.deallocate_on_device();
     halm.unpin_memory();
     halm.deallocate();
+}
+
+template<> void kpoint::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effective_potential, int num_ranks, 
+                                              mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+{
+    Timer t("sirius::kpoint::set_fv_h_o_pw_lo");
+    
+
+    //============================================
+    // first part: compute <G+k|H|lo> and <G+k|lo>
+    //============================================
+
+    Timer t1("sirius::kpoint::set_fv_h_o_pw_lo:vlo", false);
+    Timer t2("sirius::kpoint::set_fv_h_o_pw_lo:ohk", false);
+    Timer t3("sirius::kpoint::set_fv_h_o_pw_lo:hvlo", false);
+
+    //==========================
+    // compute V|lo> for columns
+    //==========================
+    t1.start();
+    mdarray<complex16, 3> vlo_coefs(parameters_.max_num_mt_points() * 4, parameters_.lmmax_pw(), num_lo_col());
+    for (int icol = 0; icol < num_lo_col(); icol++)
+    {
+        int ia = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].ia;
+        int lm = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].lm;
+        int idxrf = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].idxrf;
+        
+        for (int lm1 = 0; lm1 < parameters_.lmmax_pw(); lm1++)
+        {
+            Spline<complex16> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
+
+            for (int k = 0; k < parameters_.gaunt().complex_gaunt_packed_L3_size(lm1, lm); k++)
+            {
+                int lm3 = parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm, k).lm3;
+                complex16 cg = parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm, k).cg;
+
+                for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                {
+                    s[ir] += (cg * effective_potential->f_rlm(lm3, ir, ia) * 
+                              parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf));
+                }
+            }
+            s.interpolate();
+            s.get_coefs(&vlo_coefs(0, lm1, icol), parameters_.max_num_mt_points());
+        }
+    }
+    vlo_coefs.pin_memory();
+    vlo_coefs.allocate_on_device();
+    vlo_coefs.async_copy_to_device(-1);
+    t1.stop();
+    
+    //============================================
+    // pack Bessel function splines into one array
+    //============================================
+    mdarray<double, 4> sbessel_coefs(parameters_.max_num_mt_points() * 4, parameters_.lmax_pw() + 1, 
+                                     parameters_.num_atom_types(), num_gkvec_row());
+    for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
+    {
+        for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+        {
+            for (int l = 0; l <= parameters_.lmax_pw(); l++)
+            {
+                (*sbessel_[igkloc])(l, iat)->get_coefs(&sbessel_coefs(0, l, iat, igkloc), 
+                                                       parameters_.max_num_mt_points());
+            }
+        }
+    }
+    sbessel_coefs.pin_memory();
+    sbessel_coefs.allocate_on_device();
+    sbessel_coefs.async_copy_to_device(-1);
+
+    //===============================
+    // pack lo splines into one array
+    //===============================
+    mdarray<double, 2> lo_coefs(parameters_.max_num_mt_points() * 4, num_lo_col());
+    mdarray<int, 1> l_by_ilo(num_lo_col());
+    mdarray<int, 1> iat_by_ilo(num_lo_col());
+    mdarray<int, 1> nmtp_by_ilo(num_lo_col());
+    for (int icol = 0; icol < num_lo_col(); icol++)
+    {
+        int ia = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].ia;
+        l_by_ilo(icol) = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].l;
+        iat_by_ilo(icol) = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+        nmtp_by_ilo(icol) = parameters_.atom(ia)->num_mt_points();
+
+        int idxrf = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].idxrf;
+
+        Spline<double> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
+        for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+            s[ir] = parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+        s.interpolate();
+        s.get_coefs(&lo_coefs(0, icol), parameters_.max_num_mt_points());
+    }
+    lo_coefs.allocate_on_device();
+    lo_coefs.async_copy_to_device(-1);
+    l_by_ilo.allocate_on_device();
+    l_by_ilo.async_copy_to_device(-1);
+    iat_by_ilo.allocate_on_device();
+    iat_by_ilo.async_copy_to_device(-1);
+    nmtp_by_ilo.allocate_on_device();
+    nmtp_by_ilo.async_copy_to_device(-1);
+
+    //=============
+    // radial grids
+    //=============
+    mdarray<double, 2> r_dr(parameters_.max_num_mt_points() * 2, parameters_.num_atom_types());
+    for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+        parameters_.atom_type(iat)->radial_grid().get_r_dr(&r_dr(0, iat), parameters_.max_num_mt_points());
+    r_dr.allocate_on_device();
+    r_dr.async_copy_to_device(-1);
+
+    mdarray<double, 2> jlo(num_gkvec_row(), num_lo_col());
+    jlo.allocate_on_device();
+
+    bessel_lo_inner_product_gpu(num_gkvec_row(), num_lo_col(), parameters_.max_num_mt_points(), parameters_.lmax_pw(), 
+                                parameters_.num_atom_types(), sbessel_coefs.get_ptr_device(), lo_coefs.get_ptr_device(), 
+                                l_by_ilo.get_ptr_device(), iat_by_ilo.get_ptr_device(), nmtp_by_ilo.get_ptr_device(),
+                                r_dr.get_ptr_device(), jlo.get_ptr_device());
+    jlo.copy_to_host();
+            
+    //t2.start();
+    // compute overlap and kinetic energy
+    for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
+    {
+        int ia = apwlo_basis_descriptors_col_[icol].ia;
+        int l = apwlo_basis_descriptors_col_[icol].l;
+        int lm = apwlo_basis_descriptors_col_[icol].lm;
+
+        for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
+        {
+            o(igkloc, icol) = (fourpi / sqrt(parameters_.omega())) * conj(zil_[l]) * gkvec_ylm_(lm, igkloc) * 
+                              jlo(igkloc, icol - num_gkvec_col()) * conj(gkvec_phase_factors_(igkloc, ia));
+
+            // kinetic part <G+k| -1/2 \nabla^2 |lo> = 1/2 |G+k|^2 <G+k|lo>
+            h(igkloc, icol) = 0.5 * pow(gkvec_len_[igkloc], 2) * o(igkloc, icol);
+        }
+    }
+    //t2.stop();
+
+    l_by_lm_.allocate_on_device();
+    l_by_lm_.copy_to_device();
+
+    mdarray<complex16, 3> jvlo(parameters_.lmmax_pw(), num_gkvec_row(), num_lo_col());
+    jvlo.allocate_on_device();
+
+    bessel_vlo_inner_product_gpu(num_gkvec_row(), num_lo_col(), parameters_.max_num_mt_points(), parameters_.lmax_pw(), 
+                                 parameters_.lmmax_pw(), parameters_.num_atom_types(), sbessel_coefs.get_ptr_device(), 
+                                 vlo_coefs.get_ptr_device(), l_by_lm_.get_ptr_device(), iat_by_ilo.get_ptr_device(), 
+                                 nmtp_by_ilo.get_ptr_device(), r_dr.get_ptr_device(), jvlo.get_ptr_device());
+    jvlo.copy_to_host();
+
+    l_by_lm_.deallocate_on_device();
+
+    //t3.start();
+    #pragma omp parallel for default(shared)
+    for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
+    {
+        for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
+        {
+            int ia = apwlo_basis_descriptors_col_[icol].ia;
+
+            // add <G+k|V|lo>
+            complex16 zt1(0, 0);
+            for (int l1 = 0; l1 <= parameters_.lmax_pw(); l1++)
+            {
+                for (int m1 = -l1; m1 <= l1; m1++)
+                {
+                    int lm1 = Utils::lm_by_l_m(l1, m1);
+                    zt1 += jvlo(lm1, igkloc, icol - num_gkvec_col()) * conj(zil_[l1]) * gkvec_ylm_(lm1, igkloc);
+                }
+            }
+            zt1 *= ((fourpi / sqrt(parameters_.omega())) * conj(gkvec_phase_factors_(igkloc, ia)));
+            h(igkloc, icol) += zt1;
+        }
+    }
+    //t3.stop();
+   
+    // restore the <lo|H|G+k> and <lo|G+k> bocks and exit
+    if (num_ranks == 1)
+    {
+        for (int igkloc = 0; igkloc < num_gkvec_col(); igkloc++)
+        {
+            for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
+            {
+                h(irow, igkloc) = conj(h(igkloc, irow));
+                o(irow, igkloc) = conj(o(igkloc, irow));
+            }
+        }
+        return;
+    }
+
+    //** // second part: compute <lo|H|G+k> and <lo|G+k>
+
+    //** int offset_col = (num_ranks > 1) ? num_gkvec_row() : 0;
+    //** // compute V|lo>
+    //** t1.start();
+    //** for (int irow = 0; irow < num_lo_row(); irow++)
+    //** {
+    //**     int ia = apwlo_basis_descriptors_row_[num_gkvec_row() + irow].ia;
+    //**     int lm = apwlo_basis_descriptors_row_[num_gkvec_row() + irow].lm;
+    //**     int idxrf = apwlo_basis_descriptors_row_[num_gkvec_row() + irow].idxrf;
+    //**     
+    //**     for (int lm1 = 0; lm1 < parameters_.lmmax_pw(); lm1++)
+    //**     {
+    //**         svlo(lm1, irow) = new Spline<complex16>(parameters_.atom(ia)->num_mt_points(), 
+    //**                                                 parameters_.atom(ia)->radial_grid());
+
+    //**         for (int k = 0; k < parameters_.gaunt().complex_gaunt_packed_L3_size(lm1, lm); k++)
+    //**         {
+    //**             int lm3 = parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm, k).lm3;
+    //**             complex16 cg = parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm, k).cg;
+
+    //**             for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+    //**             {
+    //**                 (*svlo(lm1, irow))[ir] += (cg * effective_potential->f_rlm(lm3, ir, ia) * 
+    //**                                            parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf));
+    //**             }
+    //**         }
+
+    //**         svlo(lm1, irow)->interpolate();
+    //**     }
+    //** }
+    //** t1.stop();
+   
+    //** t2.start();
+    //** for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
+    //** {
+    //**     int ia = apwlo_basis_descriptors_row_[irow].ia;
+    //**     int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+
+    //**     int l = apwlo_basis_descriptors_row_[irow].l;
+    //**     int lm = apwlo_basis_descriptors_row_[irow].lm;
+    //**     int idxrf = apwlo_basis_descriptors_row_[irow].idxrf;
+
+    //**     // compue overlap <lo|G+k>
+    //**     Spline<double> slo(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
+    //**     for (int ir = 0; ir < slo.num_points(); ir++)
+    //**         slo[ir] = parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+    //**     slo.interpolate();
+    //**     
+    //**     #pragma omp parallel for default(shared)
+    //**     for (int igkloc = 0; igkloc < num_gkvec_col(); igkloc++)
+    //**     {
+    //**         o(irow, igkloc) = (fourpi / sqrt(parameters_.omega())) * zil_[l] * 
+    //**                           conj(gkvec_ylm_(lm, offset_col + igkloc)) * 
+    //**                           Spline<double>::integrate(&slo, (*sbessel_[offset_col + igkloc])(l, iat)) * 
+    //**                           gkvec_phase_factors_(offset_col + igkloc, ia);
+
+    //**         // kinetic part <li| -1/2 \nabla^2 |G+k> = 1/2 |G+k|^2 <lo|G+k>
+    //**         h(irow, igkloc) = 0.5 * pow(gkvec_len_[offset_col + igkloc], 2) * o(irow, igkloc);
+    //**     }
+    //** }
+    //** t2.stop();
+
+    //** t3.start();
+    //** #pragma omp parallel for default(shared)
+    //** for (int igkloc = 0; igkloc < num_gkvec_col(); igkloc++)
+    //** {
+    //**     for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
+    //**     {
+    //**         int ia = apwlo_basis_descriptors_row_[irow].ia;
+    //**         int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+
+    //**         //int l = apwlo_basis_descriptors_row_[irow].l;
+    //**         //int lm = apwlo_basis_descriptors_row_[irow].lm;
+    //**         //int idxrf = apwlo_basis_descriptors_row_[irow].idxrf;
+
+    //**         //*// compue overlap <lo|G+k>
+    //**         //*Spline<double> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
+    //**         //*for (int ir = 0; ir < s.num_points(); ir++)
+    //**         //*    s[ir] = (*sbessel_[offset_col + igkloc])(ir, l, iat) * 
+    //**         //*            parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+    //**         //*s.interpolate();
+    //**         //*    
+    //**         //*o(irow, igkloc) = (fourpi / sqrt(parameters_.omega())) * zil_[l] * 
+    //**         //*                  conj(gkvec_ylm_(lm, offset_col + igkloc)) * s.integrate(2) * 
+    //**         //*                  gkvec_phase_factors_(offset_col + igkloc, ia);
+
+    //**         //*// kinetic part <li| -1/2 \nabla^2 |G+k> = 1/2 |G+k|^2 <lo|G+k>
+    //**         //*h(irow, igkloc) = 0.5 * pow(gkvec_len_[offset_col + igkloc], 2) * o(irow, igkloc);
+
+    //**         // add <lo|V|G+k>
+    //**         complex16 zt1(0, 0);
+    //**         for (int l1 = 0; l1 <= parameters_.lmax_pw(); l1++)
+    //**         {
+    //**             for (int m1 = -l1; m1 <= l1; m1++)
+    //**             {
+    //**                 int lm1 = Utils::lm_by_l_m(l1, m1);
+
+    //**                 zt1 += conj(Spline<complex16>::integrate(svlo(lm1, irow - num_gkvec_row()), 
+    //**                                                          (*sbessel_[offset_col + igkloc])(l1, iat))) * 
+    //**                        zil_[l1] * conj(gkvec_ylm_(lm1, offset_col + igkloc));
+    //**             }
+    //**         }
+    //**         zt1 *= ((fourpi / sqrt(parameters_.omega())) * gkvec_phase_factors_(offset_col + igkloc, ia));
+    //**         h(irow, igkloc) += zt1;
+    //**     }
+    //** }
+    //** t3.stop();
+    //** 
+    //** for (int irow = 0; irow < num_lo_row(); irow++)
+    //** {
+    //**     for (int lm = 0; lm < parameters_.lmmax_pw(); lm++) delete svlo(lm, irow);
+    //** }
+}
+
+template<> void kpoint::set_fv_h_o<gpu, pwlo>(PeriodicFunction<double>* effective_potential, int num_ranks,
+                                              mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+{
+    Timer t("sirius::kpoint::set_fv_h_o");
+    
+    h.zero();
+    o.zero();
+
+    #pragma omp parallel for default(shared)
+    for (int igkloc2 = 0; igkloc2 < num_gkvec_col(); igkloc2++) // loop over columns
+    {
+        for (int igkloc1 = 0; igkloc1 < num_gkvec_row(); igkloc1++) // for each column loop over rows
+        {
+            if (apwlo_basis_descriptors_row_[igkloc1].idxglob == apwlo_basis_descriptors_col_[igkloc2].idxglob) 
+            {
+                h(igkloc1, igkloc2) = 0.5 * pow(gkvec_len_[igkloc1], 2);
+                o(igkloc1, igkloc2) = complex16(1, 0);
+            }
+                               
+            int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row_[igkloc1].ig,
+                                             apwlo_basis_descriptors_col_[igkloc2].ig);
+            h(igkloc1, igkloc2) += effective_potential->f_pw(ig12);
+        }
+    }
+    
+    set_fv_h_o_pw_lo<gpu>(effective_potential, num_ranks, h, o);
+
+    set_fv_h_o_lo_lo(h, o);
 }
 #endif
 
@@ -1762,8 +2102,9 @@ void kpoint::generate_fv_states(Band* band, PeriodicFunction<double>* effective_
 
     //sirius_io::hdf5_write_matrix("h.h5", h);
     //sirius_io::hdf5_write_matrix("o.h5", o);
-    //Utils::write_matrix("h.txt", true, h);
-    //Utils::write_matrix("o.txt", true, o);
+    
+    Utils::write_matrix("h.txt", true, h);
+    Utils::write_matrix("o.txt", true, o);
 
     //** if (verbosity_level > 1)
     //** {
@@ -2339,7 +2680,7 @@ PeriodicFunction<complex16, index_order>* kpoint::spinor_wave_function_component
                 #pragma omp parallel for default(shared)
                 for (int lm = 0; lm < lmmax; lm++)
                 {
-                    int l = l_by_lm_[lm];
+                    int l = l_by_lm_(lm);
                     complex16 z3 = z2 * zil_[l] * conj(gkvec_ylm_(lm, igkloc)); 
                     for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
                         func->f_ylm(ir, lm, ia) += z3 * (*sbessel_[igkloc])(ir, l, iat);
