@@ -428,13 +428,13 @@ cuDoubleComplex spline_inner_product_gpu_function<double, cuDoubleComplex>(int l
     }
     __syncthreads();
 
-    ////for (int s = 1; s < blockDim.x; s *= 2) 
-    ////{
-    ////    if (threadIdx.x % (2 * s) == 0) sdata[threadIdx.x] += sdata[threadIdx.x + s];
-    ////    __syncthreads();
-    ////}
-    //
-    if (threadIdx.x == 0) for (int i = 1; i < blockDim.x; i++) sdata[0] = cuCadd(sdata[0], sdata[i]);
+    for (int s = 1; s < blockDim.x; s *= 2) 
+    {
+        if (threadIdx.x % (2 * s) == 0) sdata[threadIdx.x] = cuCadd(sdata[threadIdx.x], sdata[threadIdx.x + s]);
+        __syncthreads();
+    }
+    
+    //if (threadIdx.x == 0) for (int i = 1; i < blockDim.x; i++) sdata[0] = cuCadd(sdata[0], sdata[i]);
 
     return sdata[0];
 }
@@ -488,107 +488,122 @@ template void spline_inner_product_gpu<double>(int size, double* r_dr, double* s
 
 
 
-__global__ void bessel_lo_inner_product_gpu_kernel(int max_num_mt_points, int lmax_pw, int num_atom_types, int num_gkvec, 
-                                                   double* jl_coefs, double* lo_coefs, int* l_by_ilo, int* iat_by_ilo, 
-                                                   int* nmtp_by_ilo, double* r_dr, double* jlo)
+
+
+
+// Input array dimensions:
+//   sbessel_coefs(max_num_mt_points * 4, lmax_pw + 1, num_atom_types, num_gkvec_row);
+//   lo_coefs(max_num_mt_points * 4, num_lo);
+//   jlo(num_gkvec, num_lo);
+__global__ void sbessel_lo_inner_product_gpu_kernel(int* kargs, int num_gkvec, int* l_by_ilo, int* iat_by_ilo, 
+                                                    int* nmtp_by_iat, double* r_dr, double* sbessel_coefs, 
+                                                    double* lo_coefs, double* jlo)
 {
+    int num_atom_types = kargs[0];
+    int max_nmtp = kargs[1];
+    int lmax_pw = kargs[2];
+
     int igk = blockIdx.x;
     int ilo = blockIdx.y;
+
     int l = l_by_ilo[ilo];
     int iat = iat_by_ilo[ilo];
-    int nmtp = nmtp_by_ilo[ilo];
+    int nmtp = nmtp_by_iat[iat];
 
-    int ld1 = max_num_mt_points * 4;
-    int ld2 = ld1 * (lmax_pw + 1);
-    int ld3 = ld2 * num_atom_types;
-    double* jl_ptr = &jl_coefs[l * ld1 + iat * ld2 + igk * ld3];
-    double* lo_ptr = &lo_coefs[ld1 * ilo];
-    double* r_dr_ptr = &r_dr[2 * max_num_mt_points * iat];
+    double* jl_ptr = &sbessel_coefs[array4D_offset(0, l, iat, igk, max_nmtp * 4, lmax_pw + 1, num_atom_types)];
+    double* lo_ptr = &lo_coefs[array2D_offset(0, ilo, max_nmtp * 4)];
+    double* r_dr_ptr = &r_dr[array2D_offset(0, iat, 2 * max_nmtp)];
     
-    jlo[igk + ilo * num_gkvec] = spline_inner_product_gpu_function(max_num_mt_points, nmtp, r_dr_ptr, jl_ptr, lo_ptr);
+    jlo[array2D_offset(igk, ilo, num_gkvec)] = 
+        spline_inner_product_gpu_function(max_nmtp, nmtp, r_dr_ptr, jl_ptr, lo_ptr);
 }
 
 
-void bessel_lo_inner_product_gpu(int num_gkvec, int num_lo, int max_num_mt_points, int lmax_pw, int num_atom_types, 
-                                 double* jl_coefs, double* lo_coefs, int* l_by_ilo, int* iat_by_ilo, int* nmtp_by_ilo, 
-                                 double* r_dr, double* jlo)
+void sbessel_lo_inner_product_gpu(int* kargs, int num_gkvec, int num_lo, int* l_by_ilo, int* iat_by_ilo, 
+                                  int* nmtp_by_iat, double* r_dr, double* sbessel_coefs, double* lo_coefs, double* jlo)
 {
     dim3 threadsPerBlock(64);
     dim3 numBlocks(num_gkvec, num_lo);
 
-    bessel_lo_inner_product_gpu_kernel<<<numBlocks, threadsPerBlock, 64 * 16>>>
-        (max_num_mt_points, lmax_pw, num_atom_types, num_gkvec, jl_coefs, lo_coefs, l_by_ilo, iat_by_ilo, nmtp_by_ilo,
-         r_dr, jlo);
+    sbessel_lo_inner_product_gpu_kernel<<<numBlocks, threadsPerBlock, 64 * 16>>>
+        (kargs, num_gkvec, l_by_ilo, iat_by_ilo, nmtp_by_iat, r_dr, sbessel_coefs, lo_coefs, jlo);
 }
 
-__global__ void bessel_vlo_inner_product_gpu_kernel(int max_num_mt_points, int lmax_pw, int lmmax_pw, int num_atom_types, 
-                                                    int num_gkvec, double* jl_coefs, cuDoubleComplex* vlo_coefs,
-                                                    int* l_by_lm, int* iat_by_ilo, int* nmtp_by_ilo, double* r_dr, 
-                                                    cuDoubleComplex* jvlo)
-
+// Compute <jl|V|lo>
+// Input array dimensions:
+//   vlo(max_num_mt_points * 4, lmmax_pw, num_lo_col)
+//   jvlo(lmmax_pw, num_gkvec, num_lo)
+__global__ void sbessel_vlo_inner_product_gpu_kernel(int* kargs, int num_gkvec, int* l_by_lm, int* iat_by_ilo, 
+                                                     int* nmtp_by_iat, double* r_dr, double* sbessel_coefs, 
+                                                     cuDoubleComplex* vlo_coefs, cuDoubleComplex* jvlo)
 {
+    int num_atom_types = kargs[0];
+    int max_nmtp = kargs[1];
+    int lmax_pw = kargs[2];
+    int lmmax_pw = kargs[3];
+
     int igk = blockIdx.x;
     int ilo = blockIdx.y;
     int lm = blockIdx.z;
+
     int l = l_by_lm[lm];
     int iat = iat_by_ilo[ilo];
-    int nmtp = nmtp_by_ilo[ilo];
+    int nmtp = nmtp_by_iat[iat];
     
-    int ld1 = max_num_mt_points * 4;
-    int ld2 = ld1 * (lmax_pw + 1);
-    int ld3 = ld2 * num_atom_types;
-    double* jl_ptr = &jl_coefs[l * ld1 + iat * ld2 + igk * ld3];
-    cuDoubleComplex* vlo_ptr = &vlo_coefs[ld1 * lm + ld1 * lmmax_pw * ilo];
-    double* r_dr_ptr = &r_dr[2 * max_num_mt_points * iat];
+    double* jl_ptr = &sbessel_coefs[array4D_offset(0, l, iat, igk, max_nmtp * 4, lmax_pw + 1, num_atom_types)];
+    cuDoubleComplex* vlo_ptr = &vlo_coefs[array3D_offset(0, lm, ilo, 4 * max_nmtp, lmmax_pw)];
+    double* r_dr_ptr = &r_dr[array2D_offset(0, iat, 2 * max_nmtp)];
     
-    jvlo[lm + igk * lmmax_pw + ilo * lmmax_pw * num_gkvec] = 
-        spline_inner_product_gpu_function(max_num_mt_points, nmtp, r_dr_ptr, jl_ptr, vlo_ptr);
+    jvlo[array3D_offset(lm, igk, ilo, lmmax_pw, num_gkvec)] = 
+        spline_inner_product_gpu_function(max_nmtp, nmtp, r_dr_ptr, jl_ptr, vlo_ptr);
 }
 
-
-
-void bessel_vlo_inner_product_gpu(int num_gkvec, int num_lo, int max_num_mt_points, int lmax_pw, int lmmax_pw, int num_atom_types, 
-                                 double* jl_coefs, void* vlo_coefs, int* l_by_lm, int* iat_by_ilo, int* nmtp_by_ilo, 
-                                 double* r_dr, void* jvlo)
+// Compute <jl|V|lo>
+void sbessel_vlo_inner_product_gpu(int* kargs, int num_gkvec, int num_lo, int lmmax_pw, int* l_by_lm, int* iat_by_ilo, 
+                                   int* nmtp_by_iat, double* r_dr, double* sbessel_coefs, void* vlo_coefs, void* jvlo)
 {
-    dim3 threadsPerBlock(128);
+    dim3 threadsPerBlock(64);
     dim3 numBlocks(num_gkvec, num_lo, lmmax_pw);
 
-    bessel_vlo_inner_product_gpu_kernel<<<numBlocks, threadsPerBlock, 128 * 16>>>
-        (max_num_mt_points, lmax_pw, lmmax_pw, num_atom_types, num_gkvec, jl_coefs, (cuDoubleComplex*)vlo_coefs, 
-         l_by_lm, iat_by_ilo, nmtp_by_ilo, r_dr, (cuDoubleComplex*)jvlo);
+    sbessel_vlo_inner_product_gpu_kernel<<<numBlocks, threadsPerBlock, 64 * 16>>>
+        (kargs, num_gkvec, l_by_lm, iat_by_ilo, nmtp_by_iat, r_dr, sbessel_coefs, (cuDoubleComplex*)vlo_coefs, 
+         (cuDoubleComplex*)jvlo);
 }
 
-__global__ void bessel_vlm_inner_product_gpu_kernel(int max_num_mt_points, int lmax_pot, int lmmax_pot, int* iat_by_ia,
-                                                    int* nmtp_by_ia, int* l_by_lm, double* r_dr, double* bessel, 
-                                                    double* vlm, double* vjlm)
+__global__ void sbessel_vlm_inner_product_gpu_kernel(int* kargs, int* iat_by_ia, int* l_by_lm, int* nmtp_by_iat,
+                                                     double* r_dr, double* sbessel_coefs, double* vlm_coefs, 
+                                                     double* jvlm)
 {
+    int max_nmtp = kargs[1];
+    int lmax_pot = kargs[2];
+    int lmmax_pot = kargs[3];
+    
     int lm = blockIdx.x;
     int ia = blockIdx.y;
+
     int iat = iat_by_ia[ia];
-    int nmtp = nmtp_by_ia[ia];
+    int nmtp = nmtp_by_iat[ia];
     int l = l_by_lm[lm];
 
-    int ld1 = max_num_mt_points * 4;
-    
-    double* jl_ptr = &bessel[l * ld1 + iat * ld1 * (lmax_pot + 1)];
-    double* vlm_ptr = &vlm[lm * ld1 + ia * ld1 * lmmax_pot];
-    double* r_dr_ptr = &r_dr[2 * max_num_mt_points * iat];
+    double* jl_ptr = &sbessel_coefs[array3D_offset(0, l, iat, max_nmtp * 4, lmax_pot + 1)];
+    double* vlm_ptr = &vlm_coefs[array3D_offset(0, lm, ia, max_nmtp * 4, lmmax_pot)];
+    double* r_dr_ptr = &r_dr[array2D_offset(0, iat, 2 * max_nmtp)];
 
-    vjlm[lm + ia * lmmax_pot] = spline_inner_product_gpu_function(max_num_mt_points, nmtp, r_dr_ptr, jl_ptr, vlm_ptr);
+    jvlm[array2D_offset(lm, ia, lmmax_pot)] = 
+        spline_inner_product_gpu_function(max_nmtp, nmtp, r_dr_ptr, jl_ptr, vlm_ptr);
 }
 
 
-void bessel_vlm_inner_product_gpu(int max_num_mt_points, int lmax_pot, int lmmax_pot, int num_atoms, int num_atom_types, 
-                                  int* iat_by_ia, int* nmtp_by_ia, int* l_by_lm, double* r_dr, double* jl_coefs, 
-                                  double* vlm_coefs, double* vjlm, int stream_id)
+void sbessel_vlm_inner_product_gpu(int* kargs, int lmmax_pot, int num_atoms, int* iat_by_ia, int* l_by_lm, 
+                                   int* nmtp_by_iat, double* r_dr, double* sbessel_coefs, double* vlm_coefs, 
+                                   double* jvlm, int stream_id)
 {
     cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
     dim3 threadsPerBlock(64);
     dim3 numBlocks(lmmax_pot, num_atoms);
     
-    bessel_vlm_inner_product_gpu_kernel<<<numBlocks, threadsPerBlock, 64 * 16, stream>>>
-        (max_num_mt_points, lmax_pot, lmmax_pot, iat_by_ia, nmtp_by_ia, l_by_lm, r_dr, jl_coefs, vlm_coefs, vjlm);
+    sbessel_vlm_inner_product_gpu_kernel<<<numBlocks, threadsPerBlock, 64 * 16, stream>>>
+        (kargs, iat_by_ia, l_by_lm, nmtp_by_iat, r_dr, sbessel_coefs, vlm_coefs, jvlm);
 }
 
 

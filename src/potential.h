@@ -925,6 +925,14 @@ template <> void Potential::add_mt_contribution_to_pw<gpu>()
 
     mdarray<complex16, 1> fpw(parameters_.num_gvec());
     fpw.zero();
+    
+    mdarray<int, 1> kargs(4);
+    kargs(0) = parameters_.num_atom_types();
+    kargs(1) = parameters_.max_num_mt_points();
+    kargs(2) = parameters_.lmax_pot();
+    kargs(3) = parameters_.lmmax_pot();
+    kargs.allocate_on_device();
+    kargs.copy_to_device();
 
     mdarray<double, 3> vlm_coefs(parameters_.max_num_mt_points() * 4, parameters_.lmmax_pot(), 
                                  parameters_.num_atoms());
@@ -946,25 +954,28 @@ template <> void Potential::add_mt_contribution_to_pw<gpu>()
     vlm_coefs.copy_to_device();
 
     mdarray<int, 1> iat_by_ia(parameters_.num_atoms());
-    mdarray<int, 1> nmtp_by_ia(parameters_.num_atoms());
     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-    {
         iat_by_ia(ia) = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-        nmtp_by_ia(ia) = parameters_.atom(ia)->num_mt_points();
-    }
     iat_by_ia.allocate_on_device();
     iat_by_ia.copy_to_device();
-    nmtp_by_ia.allocate_on_device();
-    nmtp_by_ia.copy_to_device();
 
     l_by_lm_.allocate_on_device();
     l_by_lm_.copy_to_device();
     
+    //=============
+    // radial grids
+    //=============
     mdarray<double, 2> r_dr(parameters_.max_num_mt_points() * 2, parameters_.num_atom_types());
+    mdarray<int, 1> nmtp_by_iat(parameters_.num_atom_types());
     for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+    {
+        nmtp_by_iat(iat) = parameters_.atom_type(iat)->num_mt_points();
         parameters_.atom_type(iat)->radial_grid().get_r_dr(&r_dr(0, iat), parameters_.max_num_mt_points());
+    }
     r_dr.allocate_on_device();
-    r_dr.copy_to_device();
+    r_dr.async_copy_to_device(-1);
+    nmtp_by_iat.allocate_on_device();
+    nmtp_by_iat.async_copy_to_device(-1);
 
     cuda_create_streams(Platform::num_threads());
     #pragma omp parallel
@@ -974,10 +985,10 @@ template <> void Potential::add_mt_contribution_to_pw<gpu>()
         mdarray<double, 3> jl_coefs(parameters_.max_num_mt_points() * 4, parameters_.lmax_pot() + 1, 
                                     parameters_.num_atom_types());
         
-        mdarray<double, 2> vjlm(parameters_.lmmax_pot(), parameters_.num_atoms());
+        mdarray<double, 2> jvlm(parameters_.lmmax_pot(), parameters_.num_atoms());
 
-        vjlm.pin_memory();
-        vjlm.allocate_on_device();
+        jvlm.pin_memory();
+        jvlm.allocate_on_device();
             
         jl_coefs.pin_memory();
         jl_coefs.allocate_on_device();
@@ -997,12 +1008,13 @@ template <> void Potential::add_mt_contribution_to_pw<gpu>()
             }
             jl_coefs.async_copy_to_device(thread_id);
 
-            bessel_vlm_inner_product_gpu(parameters_.max_num_mt_points(), parameters_.lmax_pot(), parameters_.lmmax_pot(), 
-                                         parameters_.num_atoms(), parameters_.num_atom_types(), iat_by_ia.get_ptr_device(), 
-                                         nmtp_by_ia.get_ptr_device(), l_by_lm_.get_ptr_device(), r_dr.get_ptr_device(), 
-                                         jl_coefs.get_ptr_device(), vlm_coefs.get_ptr_device(), vjlm.get_ptr_device(), thread_id);
+            sbessel_vlm_inner_product_gpu(kargs.get_ptr_device(), parameters_.lmmax_pot(), parameters_.num_atoms(), 
+                                          iat_by_ia.get_ptr_device(), l_by_lm_.get_ptr_device(), 
+                                          nmtp_by_iat.get_ptr_device(), r_dr.get_ptr_device(), 
+                                          jl_coefs.get_ptr_device(), vlm_coefs.get_ptr_device(), jvlm.get_ptr_device(), 
+                                          thread_id);
 
-            vjlm.async_copy_to_host(thread_id);
+            jvlm.async_copy_to_host(thread_id);
             
             cuda_stream_synchronize(thread_id);
 
@@ -1016,14 +1028,14 @@ template <> void Potential::add_mt_contribution_to_pw<gpu>()
                         if (m == 0)
                         {
                             zt += conj(zil_[l]) * parameters_.gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
-                                  vjlm(Utils::lm_by_l_m(l, m), ia);
+                                  jvlm(Utils::lm_by_l_m(l, m), ia);
 
                         }
                         else
                         {
                             zt += conj(zil_[l]) * parameters_.gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
-                                  (SHT::ylm_dot_rlm(l, m, m) * vjlm(Utils::lm_by_l_m(l, m), ia) + 
-                                   SHT::ylm_dot_rlm(l, m, -m) * vjlm(Utils::lm_by_l_m(l, -m), ia));
+                                  (SHT::ylm_dot_rlm(l, m, m) * jvlm(Utils::lm_by_l_m(l, m), ia) + 
+                                   SHT::ylm_dot_rlm(l, m, -m) * jvlm(Utils::lm_by_l_m(l, -m), ia));
                         }
                     }
                 }

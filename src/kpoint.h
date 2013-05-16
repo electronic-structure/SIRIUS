@@ -1590,7 +1590,6 @@ template<> void kpoint::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effectiv
 {
     Timer t("sirius::kpoint::set_fv_h_o_pw_lo");
     
-
     //============================================
     // first part: compute <G+k|H|lo> and <G+k|lo>
     //============================================
@@ -1598,6 +1597,14 @@ template<> void kpoint::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effectiv
     Timer t1("sirius::kpoint::set_fv_h_o_pw_lo:vlo", false);
     Timer t2("sirius::kpoint::set_fv_h_o_pw_lo:ohk", false);
     Timer t3("sirius::kpoint::set_fv_h_o_pw_lo:hvlo", false);
+
+    mdarray<int, 1> kargs(4);
+    kargs(0) = parameters_.num_atom_types();
+    kargs(1) = parameters_.max_num_mt_points();
+    kargs(2) = parameters_.lmax_pw();
+    kargs(3) = parameters_.lmmax_pw();
+    kargs.allocate_on_device();
+    kargs.copy_to_device();
 
     //==========================
     // compute V|lo> for columns
@@ -1660,13 +1667,11 @@ template<> void kpoint::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effectiv
     mdarray<double, 2> lo_coefs(parameters_.max_num_mt_points() * 4, num_lo_col());
     mdarray<int, 1> l_by_ilo(num_lo_col());
     mdarray<int, 1> iat_by_ilo(num_lo_col());
-    mdarray<int, 1> nmtp_by_ilo(num_lo_col());
     for (int icol = 0; icol < num_lo_col(); icol++)
     {
         int ia = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].ia;
         l_by_ilo(icol) = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].l;
         iat_by_ilo(icol) = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-        nmtp_by_ilo(icol) = parameters_.atom(ia)->num_mt_points();
 
         int idxrf = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].idxrf;
 
@@ -1676,34 +1681,37 @@ template<> void kpoint::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effectiv
         s.interpolate();
         s.get_coefs(&lo_coefs(0, icol), parameters_.max_num_mt_points());
     }
+    lo_coefs.pin_memory();
     lo_coefs.allocate_on_device();
     lo_coefs.async_copy_to_device(-1);
     l_by_ilo.allocate_on_device();
     l_by_ilo.async_copy_to_device(-1);
     iat_by_ilo.allocate_on_device();
     iat_by_ilo.async_copy_to_device(-1);
-    nmtp_by_ilo.allocate_on_device();
-    nmtp_by_ilo.async_copy_to_device(-1);
 
     //=============
     // radial grids
     //=============
     mdarray<double, 2> r_dr(parameters_.max_num_mt_points() * 2, parameters_.num_atom_types());
+    mdarray<int, 1> nmtp_by_iat(parameters_.num_atom_types());
     for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+    {
+        nmtp_by_iat(iat) = parameters_.atom_type(iat)->num_mt_points();
         parameters_.atom_type(iat)->radial_grid().get_r_dr(&r_dr(0, iat), parameters_.max_num_mt_points());
+    }
     r_dr.allocate_on_device();
     r_dr.async_copy_to_device(-1);
+    nmtp_by_iat.allocate_on_device();
+    nmtp_by_iat.async_copy_to_device(-1);
 
     mdarray<double, 2> jlo(num_gkvec_row(), num_lo_col());
     jlo.allocate_on_device();
 
-    bessel_lo_inner_product_gpu(num_gkvec_row(), num_lo_col(), parameters_.max_num_mt_points(), parameters_.lmax_pw(), 
-                                parameters_.num_atom_types(), sbessel_coefs.get_ptr_device(), lo_coefs.get_ptr_device(), 
-                                l_by_ilo.get_ptr_device(), iat_by_ilo.get_ptr_device(), nmtp_by_ilo.get_ptr_device(),
-                                r_dr.get_ptr_device(), jlo.get_ptr_device());
+    t2.start();
+    sbessel_lo_inner_product_gpu(kargs.get_ptr_device(), num_gkvec_row(), num_lo_col(), l_by_ilo.get_ptr_device(), 
+                                 iat_by_ilo.get_ptr_device(), nmtp_by_iat.get_ptr_device(), r_dr.get_ptr_device(), 
+                                 sbessel_coefs.get_ptr_device(), lo_coefs.get_ptr_device(), jlo.get_ptr_device());
     jlo.copy_to_host();
-            
-    //t2.start();
     // compute overlap and kinetic energy
     for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
     {
@@ -1720,23 +1728,23 @@ template<> void kpoint::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effectiv
             h(igkloc, icol) = 0.5 * pow(gkvec_len_[igkloc], 2) * o(igkloc, icol);
         }
     }
-    //t2.stop();
+    t2.stop();
 
     l_by_lm_.allocate_on_device();
     l_by_lm_.copy_to_device();
 
     mdarray<complex16, 3> jvlo(parameters_.lmmax_pw(), num_gkvec_row(), num_lo_col());
     jvlo.allocate_on_device();
-
-    bessel_vlo_inner_product_gpu(num_gkvec_row(), num_lo_col(), parameters_.max_num_mt_points(), parameters_.lmax_pw(), 
-                                 parameters_.lmmax_pw(), parameters_.num_atom_types(), sbessel_coefs.get_ptr_device(), 
-                                 vlo_coefs.get_ptr_device(), l_by_lm_.get_ptr_device(), iat_by_ilo.get_ptr_device(), 
-                                 nmtp_by_ilo.get_ptr_device(), r_dr.get_ptr_device(), jvlo.get_ptr_device());
+    
+    t3.start();
+    sbessel_vlo_inner_product_gpu(kargs.get_ptr_device(), num_gkvec_row(), num_lo_col(), parameters_.lmmax_pw(), 
+                                  l_by_lm_.get_ptr_device(), iat_by_ilo.get_ptr_device(), nmtp_by_iat.get_ptr_device(), 
+                                  r_dr.get_ptr_device(), sbessel_coefs.get_ptr_device(), vlo_coefs.get_ptr_device(), 
+                                  jvlo.get_ptr_device());
     jvlo.copy_to_host();
 
     l_by_lm_.deallocate_on_device();
 
-    //t3.start();
     #pragma omp parallel for default(shared)
     for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
     {
@@ -1746,19 +1754,19 @@ template<> void kpoint::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effectiv
 
             // add <G+k|V|lo>
             complex16 zt1(0, 0);
-            for (int l1 = 0; l1 <= parameters_.lmax_pw(); l1++)
+            for (int l = 0; l <= parameters_.lmax_pw(); l++)
             {
-                for (int m1 = -l1; m1 <= l1; m1++)
+                for (int m = -l; m <= l; m++)
                 {
-                    int lm1 = Utils::lm_by_l_m(l1, m1);
-                    zt1 += jvlo(lm1, igkloc, icol - num_gkvec_col()) * conj(zil_[l1]) * gkvec_ylm_(lm1, igkloc);
+                    int lm = Utils::lm_by_l_m(l, m);
+                    zt1 += jvlo(lm, igkloc, icol - num_gkvec_col()) * conj(zil_[l]) * gkvec_ylm_(lm, igkloc);
                 }
             }
             zt1 *= ((fourpi / sqrt(parameters_.omega())) * conj(gkvec_phase_factors_(igkloc, ia)));
             h(igkloc, icol) += zt1;
         }
     }
-    //t3.stop();
+    t3.stop();
    
     // restore the <lo|H|G+k> and <lo|G+k> bocks and exit
     if (num_ranks == 1)

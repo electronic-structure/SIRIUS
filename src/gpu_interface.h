@@ -53,16 +53,14 @@ extern "C" void cuda_async_copy_to_host(void *target, void *source, size_t size,
 template <typename T>
 void spline_inner_product_gpu(int size, double* r_dr, T* s1_coefs, T* s2_coefs);
 
-void bessel_lo_inner_product_gpu(int num_gkvec, int num_rowcol, int max_num_mt_points, int lmax_pw, int num_atom_types, 
-                                 double* bessel, double* lo, int* l_by_ilo, int* iat_by_ilo, int* nmtp_by_ilo, 
-                                 double* r_dr, double* result);
+void sbessel_vlm_inner_product_gpu(int* kargs, int lmmax_pot, int num_atoms, int* iat_by_ia, int* l_by_lm, 
+                                   int* nmtp_by_iat, double* r_dr, double* sbessel_coefs, double* vlm_coefs, 
+                                   double* jvlm, int stream_id);
 
-void bessel_vlm_inner_product_gpu(int max_num_mt_points, int lmax_pot, int lmmax_pot, int num_atoms, int num_atom_types, 
-                                  int* iat_by_ia, int* nmtp_by_ia, int* l_by_lm, double* r_dr, double* jl_coefs, 
-                                  double* vlm_coefs, double* vjlm, int stream_id);
+void sbessel_lo_inner_product_gpu(int* kargs, int num_gkvec, int num_lo, int* l_by_ilo, int* iat_by_ilo, 
+                                  int* nmtp_by_iat, double* r_dr, double* sbessel_coefs, double* lo_coefs, double* jlo);
 
-void bessel_vlo_inner_product_gpu(int num_gkvec, int num_lo, int max_num_mt_points, int lmax_pw, int lmmax_pw, int num_atom_types, 
-                                 double* jl_coefs, void* vlo_coefs, int* l_by_lm, int* iat_by_ilo, int* nmtp_by_ilo, 
-                                 double* r_dr, void* jvlo);
+void sbessel_vlo_inner_product_gpu(int* kargs, int num_gkvec, int num_lo, int lmmax_pw, int* l_by_lm, int* iat_by_ilo, 
+                                   int* nmtp_by_iat, double* r_dr, double* sbessel_coefs, void* vlo_coefs, void* jvlo);
 #endif // _GPU_INTERFACE_H_
 
