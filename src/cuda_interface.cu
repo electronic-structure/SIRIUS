@@ -264,6 +264,22 @@ extern "C" void cublas_set_matrix(int rows, int cols, int elemSize, const void *
     }
 }
 
+
+__device__ size_t array2D_offset(int i0, int i1, int ld0)
+{
+    return i0 + i1 * ld0;
+}
+
+__device__ size_t array3D_offset(int i0, int i1, int i2, int ld0, int ld1)
+{
+    return i0 + i1 * ld0 + i2 * ld0 * ld1;
+}
+
+__device__ size_t array4D_offset(int i0, int i1, int i2, int i3, int ld0, int ld1, int ld2)
+{
+    return i0 + i1 * ld0 + i2 * ld0 * ld1 + i3 * ld0 * ld1 * ld2;
+}
+
 template <typename T, typename U>
 __device__ U spline_inner_product_gpu_function(int ld, int size, double* r_dr, T* s1_coefs, U* s2_coefs)
 {
