@@ -607,6 +607,89 @@ void sbessel_vlm_inner_product_gpu(int* kargs, int lmmax_pot, int num_atoms, int
 }
 
 
+//__global__ void add_band_density_gpu_kernel(int nmtp, int lmmax_rho, int max_nmtp, int max_num_gaunt, int* gaunt12_size, 
+//                                            int* gaunt12_lm1_by_lm3, int* gaunt12_lm2_by_lm3, 
+//                                            cuDoubleComplex* gaunt12_cg, cuDoubleComplex* fylm, double weight, 
+//                                            int ia, double* dens)
+//{
+//    int ir = blockDim.x * blockIdx.x + threadIdx.x;
+//    int lm = blockIdx.y;
+//
+//    int offs3 = array3D_offset(ir, lm, ia, max_nmtp, lmmax_rho);
+//
+//    if (ir < nmtp)
+//    {
+//        for (int k = 0; k < gaunt12_size[lm]; k++)
+//        {
+//            int offs = array2D_offset(k, lm, max_num_gaunt);
+//            int lm1 = gaunt12_lm1_by_lm3[offs];
+//            int lm2 = gaunt12_lm2_by_lm3[offs];
+//            cuDoubleComplex cg = gaunt12_cg[offs];
+//            
+//            int offs1 = array2D_offset(ir, lm1, max_nmtp);
+//            int offs2 = array2D_offset(ir, lm2, max_nmtp);
+//
+//            cuDoubleComplex z = cuCmul(cuConj(fylm[offs1]), fylm[offs2]);
+//
+//            dens[offs3] += weight * cuCreal(cuCmul(z, cg));
+//        }
+//    }
+//}
+
+__global__ void add_band_density_gpu_kernel(int lmmax_rho, int lmmax_wf, int max_nmtp, int* ia_by_ialoc, 
+                                            int* iat_by_ia, int* nmtp_by_iat, int max_num_gaunt, 
+                                            int* gaunt12_size, int* gaunt12_lm1_by_lm3, int* gaunt12_lm2_by_lm3, 
+                                            cuDoubleComplex* gaunt12_cg, cuDoubleComplex* fylm, double weight, 
+                                            double* dens)
+{
+    int lm = blockIdx.x;
+    int ialoc = blockIdx.y;
+    int ia = ia_by_ialoc[ialoc];
+    int iat = iat_by_ia[ia];
+    int nmtp = nmtp_by_iat[iat];
+
+    int offs3 = array3D_offset(0, lm, ialoc, max_nmtp, lmmax_rho);
+
+    int N = nmtp / blockDim.x;
+    if (nmtp % blockDim.x != 0) N++;
+
+    for (int k = 0; k < gaunt12_size[lm]; k++)
+    {
+        int offs = array2D_offset(k, lm, max_num_gaunt);
+
+        int lm1 = gaunt12_lm1_by_lm3[offs];
+        int lm2 = gaunt12_lm2_by_lm3[offs];
+        cuDoubleComplex cg = gaunt12_cg[offs];
+        
+        int offs1 = array3D_offset(0, lm1, ia, max_nmtp, lmmax_wf);
+        int offs2 = array3D_offset(0, lm2, ia, max_nmtp, lmmax_wf);
+        
+        for (int n = 0; n < N; n++)
+        {
+            int ir = n * blockDim.x + threadIdx.x;
+            if (ir < nmtp)
+            {
+                cuDoubleComplex z = cuCmul(cuConj(fylm[offs1 + ir]), fylm[offs2 + ir]);
+
+                dens[offs3 + ir] += weight * cuCreal(cuCmul(z, cg));
+            }
+        }
+    }
+}
+
+void add_band_density_gpu(int lmmax_rho, int lmmax_wf, int max_nmtp, int num_atoms_loc, int* ia_by_ialoc, 
+                          int* iat_by_ia, int* nmtp_by_iat, int max_num_gaunt, int* gaunt12_size, 
+                          int* gaunt12_lm1_by_lm3, int* gaunt12_lm2_by_lm3, void* gaunt12_cg, void* fylm, 
+                          double weight, double* dens)
+{
+    dim3 threadsPerBlock(128);
+    dim3 numBlocks(lmmax_rho, num_atoms_loc);
+    add_band_density_gpu_kernel<<<numBlocks, threadsPerBlock>>>
+        (lmmax_rho, lmmax_wf, max_nmtp, ia_by_ialoc, iat_by_ia, nmtp_by_iat, max_num_gaunt, gaunt12_size, 
+         gaunt12_lm1_by_lm3, gaunt12_lm2_by_lm3, (cuDoubleComplex*)gaunt12_cg, (cuDoubleComplex*)fylm, weight, dens);
+}
+    
+
 
 
 
