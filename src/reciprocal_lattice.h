@@ -19,6 +19,9 @@ class ReciprocalLattice : public UnitCell
         /// number of G-vectors within plane wave cutoff
         int num_gvec_;
 
+        /// mapping between index of a G-shell and a list of G-vectors belonging to the shell 
+        std::vector< std::vector<int> > ig_by_igs_;
+
         /// length of G-vectors belonging to the same shell
         std::vector<double> gvec_shell_len_;
 
@@ -31,10 +34,13 @@ class ReciprocalLattice : public UnitCell
         /// mapping betwee linear G-vector index and position in FFT buffer
         std::vector<int> fft_index_;
 
+        /// split index of G-vectors
         splindex<block> spl_num_gvec_;
         
+        /// Ylm components of G-vectors
         mdarray<complex16, 2> gvec_ylm_;
         
+        /// cached values of G-vector phase factors 
         mdarray<complex16, 2> gvec_phase_factors_;
 
     protected:
@@ -121,6 +127,14 @@ class ReciprocalLattice : public UnitCell
                 if (gvec_shell_len_.empty() || fabs(t - gvec_shell_len_.back()) > 1e-8) gvec_shell_len_.push_back(t);
                  
                 gvec_shell_[ig] = (int)gvec_shell_len_.size() - 1;
+            }
+
+            ig_by_igs_.clear();
+            ig_by_igs_.resize(num_gvec_shells());
+            for (int ig = 0; ig < num_gvec_; ig++)
+            {
+                int igs = gvec_shell_[ig];
+                ig_by_igs_[igs].push_back(ig);
             }
             
             // create splitted index
@@ -299,6 +313,16 @@ class ReciprocalLattice : public UnitCell
         inline complex16 gvec_ylm(int lm, int igloc)
         {
             return gvec_ylm_(lm, igloc);
+        }
+
+        inline int igs_size(int igs)
+        {
+            return (int)ig_by_igs_.size();
+        }
+
+        inline std::vector<int>& ig_by_igs(int igs)
+        {
+            return ig_by_igs_[igs];
         }
 };
 
