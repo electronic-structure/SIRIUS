@@ -1614,6 +1614,7 @@ template<> void kpoint::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effectiv
     //==========================
     t1.start();
     mdarray<complex16, 3> vlo_coefs(parameters_.max_num_mt_points() * 4, parameters_.lmmax_pw(), num_lo_col());
+    #pragma omp parallel for default(shared)
     for (int icol = 0; icol < num_lo_col(); icol++)
     {
         int ia = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].ia;
