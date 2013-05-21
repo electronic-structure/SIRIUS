@@ -58,13 +58,14 @@ class Density
         /// Generate valence density in the muffin-tins 
         void generate_valence_density_mt();
         
-        /// Generate  valence density in the muffin-tins using straightforward (slow) approach
+        /// Generate valence density in the muffin-tins using straightforward (slow) approach
         template <processing_unit_t pu> 
         void generate_valence_density_mt_directly();
         
         /// Generate valence density in the interstitial
         void generate_valence_density_it();
-        
+       
+        /// Add band contribution to the muffin-tin density
         void add_band_contribution_mt(double weight, std::vector<PeriodicFunction<complex16, radial_angular>*>& psi, 
                                       std::vector<PeriodicFunction<double, radial_angular>*>& dens);
 

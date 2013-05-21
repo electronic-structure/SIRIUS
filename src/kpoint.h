@@ -2763,28 +2763,49 @@ void kpoint::spinor_wave_function_component_mt(Band* band, int lmax, int ispn, i
         if (index_order != radial_angular) error(__FILE__, __LINE__, "wrong order of indices");
 
         double fourpi_omega = fourpi / sqrt(parameters_.omega());
-        
-        for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
-        {
-            int igk = igkglob(igkloc);
-            complex16 z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
 
-            // TODO: possilbe optimization with zgemm
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+        mdarray<complex16, 2> zm(parameters_.max_num_mt_points(),  num_gkvec_row());
+
+        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+        {
+            int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+            for (int l = 0; l <= lmax; l++)
             {
-                int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-                complex16 z2 = z1 * gkvec_phase_factors_(igkloc, ia);
-                
                 #pragma omp parallel for default(shared)
-                for (int lm = 0; lm < lmmax; lm++)
+                for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
                 {
-                    int l = l_by_lm_(lm);
-                    complex16 z3 = z2 * zil_[l] * conj(gkvec_ylm_(lm, igkloc)); 
+                    int igk = igkglob(igkloc);
+                    complex16 z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
+                    complex16 z2 = z1 * gkvec_phase_factors_(igkloc, ia) * zil_[l];
                     for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-                        fylm(ir, lm, ia) += z3 * (*sbessel_[igkloc])(ir, l, iat);
+                        zm(ir, igkloc) = z2 * (*sbessel_[igkloc])(ir, l, iat);
                 }
+                blas<cpu>::gemm(0, 2, parameters_.atom(ia)->num_mt_points(), (2 * l + 1), num_gkvec_row(),
+                                &zm(0, 0), zm.ld(), &gkvec_ylm_(Utils::lm_by_l_m(l, -l), 0), gkvec_ylm_.ld(), 
+                                &fylm(0, Utils::lm_by_l_m(l, -l), ia), fylm.ld());
             }
         }
+        //for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
+        //{
+        //    int igk = igkglob(igkloc);
+        //    complex16 z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
+
+        //    // TODO: possilbe optimization with zgemm
+        //    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+        //    {
+        //        int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+        //        complex16 z2 = z1 * gkvec_phase_factors_(igkloc, ia);
+        //        
+        //        #pragma omp parallel for default(shared)
+        //        for (int lm = 0; lm < lmmax; lm++)
+        //        {
+        //            int l = l_by_lm_(lm);
+        //            complex16 z3 = z2 * zil_[l] * conj(gkvec_ylm_(lm, igkloc)); 
+        //            for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+        //                fylm(ir, lm, ia) += z3 * (*sbessel_[igkloc])(ir, l, iat);
+        //        }
+        //    }
+        //}
 
         for (int ia = 0; ia < parameters_.num_atoms(); ia++)
         {
