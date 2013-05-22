@@ -51,6 +51,22 @@ struct radial_solution_descriptor
 /// set of radial solution descriptors, used to construct augmented waves or local orbitals
 typedef std::vector<radial_solution_descriptor> radial_solution_descriptor_set;
 
+/// type of local orbitals
+/** rs_lo - local orbital, composed of radial solutions
+    cp_lo - confined polynomial local orbital 
+*/
+enum local_orbital_t {rs_lo, cp_lo};
+
+struct local_orbital_descriptor
+{
+    local_orbital_t type;
+
+    radial_solution_descriptor_set rsds;
+
+    int p1;
+    int p2;
+};
+
 class radial_functions_index
 {
     public:

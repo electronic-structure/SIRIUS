@@ -185,6 +185,30 @@ class Utils
             s << argument;
             return s.str();
         }
+
+        static double confined_polynomial(double r, double R, int p1, int p2, int dm)
+        {
+            double t = 1.0 - pow(r / R, 2);
+            switch (dm)
+            {
+                case 0:
+                {
+                    return (pow(r, p1) * pow(t, p2));
+                }
+                case 2:
+                {
+                    return (-4 * p1 * p2 * pow(r, p1) * pow(t, p2 - 1) / pow(R, 2) +
+                            p1 * (p1 - 1) * pow(r, p1 - 2) * pow(t, p2) + 
+                            pow(r, p1) * (4 * (p2 - 1) * p2 * pow(r, 2) * pow(t, p2 - 2) / pow(R, 4) - 
+                                          2 * p2 * pow(t, p2 - 1) / pow(R, 2)));
+                }
+                default:
+                {
+                    error(__FILE__, __LINE__, "wrong derivative order");
+                    return 0.0;
+                }
+            }
+        }
 };
 
 #endif

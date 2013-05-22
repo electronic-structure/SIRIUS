@@ -269,12 +269,12 @@ class AtomSymmetryClass
                         {
                             double r = atom_type_->radial_grid(ir);
                             radial_functions_(ir, idxrf, 0) = pow(r, p1) * pow(1.0 - pow(r / R, 2), p2);
-                            radial_functions_(ir, idxrf, 1) = -0.5 * ((-4*(1 + p1)*p2*pow(r,1 + p1)*pow(1 - pow(r,2)/pow(R,2),-1 + p2))/pow(R,2) + 
-   p1*(1 + p1)*pow(r,-1 + p1)*pow(1 - pow(r,2)/pow(R,2),p2) + 
-   pow(r,1 + p1)*((4*(-1 + p2)*p2*pow(r,2)* pow(1 - pow(r,2)/pow(R,2),-2 + p2))/pow(R,4) - 
-      (2*p2*pow(1 - pow(r,2)/pow(R,2),-1 + p2))/pow(R,2))) + 
-                            
-                             (0.5 * l * (l + 1) / pow(r, 2) + spherical_potential_[ir]) * (radial_functions_(ir, idxrf, 0) * r);
+                            radial_functions_(ir, idxrf, 1) = 
+                                -0.5 * ((-4 * (1 + p1) * p2 * pow(r, 1 + p1) * pow(1 - pow(r, 2) / pow(R, 2), p2 - 1)) / pow(R, 2) + 
+                                p1 * (1 + p1) * pow(r, p1 - 1) * pow(1 - pow(r, 2) / pow(R, 2), p2) + 
+                                pow(r, 1 + p1) * ((4 * (p2 - 1) * p2 * pow(r, 2) * pow(1 - pow(r, 2) / pow(R, 2), p2 - 2)) / pow(R, 4) - 
+                                (2 * p2 * pow(1 - pow(r, 2) / pow(R, 2), p2 - 1)) / pow(R, 2))) +                            
+                                (0.5 * l * (l + 1) / pow(r, 2) + spherical_potential_[ir]) * (radial_functions_(ir, idxrf, 0) * r);
                         }
                         
                         for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf, 0), 2);
