@@ -22,13 +22,9 @@ struct atomic_level_descriptor
     bool core;
 };
 
-enum radial_function_t {radial_solution, polynom};
-
 /// describes radial solution
 struct radial_solution_descriptor
 {
-    radial_function_t type;
-
     /// principal quantum number
     int n;
     
@@ -43,25 +39,25 @@ struct radial_solution_descriptor
     
     /// automatically determine energy
     int auto_enu;
-
-    int p1;
-    int p2;
 };
 
 /// set of radial solution descriptors, used to construct augmented waves or local orbitals
 typedef std::vector<radial_solution_descriptor> radial_solution_descriptor_set;
 
 /// type of local orbitals
-/** rs_lo - local orbital, composed of radial solutions
-    cp_lo - confined polynomial local orbital 
+/** lo_rs - local orbital, composed of radial solutions
+    lo_cp - confined polynomial local orbital 
 */
-enum local_orbital_t {rs_lo, cp_lo};
+enum local_orbital_t {lo_rs, lo_cp};
 
+/// descriptor of a local orbital radial function
 struct local_orbital_descriptor
 {
     local_orbital_t type;
 
-    radial_solution_descriptor_set rsds;
+    int l;
+
+    radial_solution_descriptor_set rsd_set;
 
     int p1;
     int p2;
@@ -112,13 +108,13 @@ class radial_functions_index
     public:
 
         void init(const std::vector<radial_solution_descriptor_set>& aw_descriptors, 
-                  const std::vector<radial_solution_descriptor_set>& lo_descriptors)
+                  const std::vector<local_orbital_descriptor>& lo_descriptors)
         {
             lmax_aw_ = (int)aw_descriptors.size() - 1;
             lmax_lo_ = -1;
             for (int idxlo = 0; idxlo < (int)lo_descriptors.size(); idxlo++)
             {
-                int l = lo_descriptors[idxlo][0].l;
+                int l = lo_descriptors[idxlo].l;
                 lmax_lo_ = std::max(lmax_lo_, l);
             }
 
@@ -142,7 +138,7 @@ class radial_functions_index
 
             for (int idxlo = 0; idxlo < (int)lo_descriptors.size(); idxlo++)
             {
-                int l = lo_descriptors[idxlo][0].l;
+                int l = lo_descriptors[idxlo].l;
                 radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, num_rf_[l], idxlo));
                 num_rf_[l]++;
                 num_lo_[l]++;
@@ -394,7 +390,7 @@ class AtomType
         std::vector<radial_solution_descriptor_set> aw_descriptors_;
         
         /// list of radial descriptor sets used to construct local orbitals
-        std::vector<radial_solution_descriptor_set> lo_descriptors_;
+        std::vector<local_orbital_descriptor> lo_descriptors_;
         
         /// density of a free atom
         std::vector<double> free_atom_density_;
@@ -523,34 +519,57 @@ class AtomType
                 }
                 aw_specific_l_.push_back(rsd_set);
             }
-
+            
             for (int j = 0; j < parser["lo"].size(); j++)
             {
-                rsd.l = parser["lo"][j]["l"].get<int>();
+                int l = parser["lo"][j]["l"].get<int>();
+
                 if (parser["lo"][j].exist("basis"))
                 {
+                    local_orbital_descriptor lod;
+                    lod.type = lo_rs;
+                    lod.l = l;
+                    rsd.l = l;
                     rsd_set.clear();
                     for (int order = 0; order < parser["lo"][j]["basis"].size(); order++)
                     {
-                        rsd.type = radial_solution;
                         parser["lo"][j]["basis"][order]["n"] >> rsd.n;
                         parser["lo"][j]["basis"][order]["enu"] >> rsd.enu;
                         parser["lo"][j]["basis"][order]["dme"] >> rsd.dme;
                         parser["lo"][j]["basis"][order]["auto"] >> rsd.auto_enu;
                         rsd_set.push_back(rsd);
                     }
-                    lo_descriptors_.push_back(rsd_set);
+                    lod.rsd_set = rsd_set;
+                    lo_descriptors_.push_back(lod);
                 }
                 if (parser["lo"][j].exist("polynom"))
                 {
-                    rsd_set.clear();
-                    rsd.type = polynom;
-                    std::vector<int> v;
-                    parser["lo"][j]["polynom"] >> v;
-                    rsd.p1 = v[0];
-                    rsd.p2 = v[1];
-                    rsd_set.push_back(rsd);
-                    lo_descriptors_.push_back(rsd_set);
+                    local_orbital_descriptor lod;
+                    lod.type = lo_cp;
+                    lod.l = l;
+
+                    std::vector<int> p1;
+                    std::vector<int> p2;
+                    
+                    parser["lo"][j]["polynom"]["p1"] >> p1;
+                    if (parser["lo"][j]["polynom"].exist("p2")) 
+                    {
+                        parser["lo"][j]["polynom"]["p2"] >> p2;
+                    }
+                    else
+                    {
+                        p2.push_back(2);
+                    }
+
+                    for (int i = 0; i < (int)p2.size(); i++)
+                    {
+                        for (int j = 0; j < (int)p1.size(); j++)
+                        {
+                            lod.p1 = p1[j];
+                            lod.p2 = p2[i];
+                            lo_descriptors_.push_back(lod);
+                        }
+                    }
                 }
 
             }
@@ -680,7 +699,16 @@ class AtomType
         
         void add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu)
         {
-            if ((int)lo_descriptors_.size() == ilo) lo_descriptors_.push_back(radial_solution_descriptor_set());
+            if ((int)lo_descriptors_.size() == ilo) 
+            {
+                lo_descriptors_.push_back(local_orbital_descriptor());
+                lo_descriptors_[ilo].type = lo_rs;
+                lo_descriptors_[ilo].l = l;
+            }
+            else
+            {
+                if (l != lo_descriptors_[ilo].l) error(__FILE__, __LINE__, "wrong angular quantum number");
+            }
             
             radial_solution_descriptor rsd;
             
@@ -703,7 +731,7 @@ class AtomType
             rsd.dme = dme;
             rsd.enu = enu;
             rsd.auto_enu = auto_enu;
-            lo_descriptors_[ilo].push_back(rsd);
+            lo_descriptors_[ilo].rsd_set.push_back(rsd);
         }
 
         double solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
@@ -894,17 +922,31 @@ class AtomType
             printf("local orbitals\n");
             for (int j = 0; j < (int)lo_descriptors_.size(); j++)
             {
-                printf("[");
-                for (int order = 0; order < (int)lo_descriptors_[j].size(); order++)
+                switch (lo_descriptors_[j].type)
                 {
-                    if (order) printf(", ");
-                    printf("{l : %i, n : %i, enu : %f, dme : %i, auto : %i}", lo_descriptors_[j][order].l,
-                                                                              lo_descriptors_[j][order].n,
-                                                                              lo_descriptors_[j][order].enu,
-                                                                              lo_descriptors_[j][order].dme,
-                                                                              lo_descriptors_[j][order].auto_enu);
+                    case lo_rs:
+                    {
+                        printf("radial solutions   [");
+                        for (int order = 0; order < (int)lo_descriptors_[j].rsd_set.size(); order++)
+                        {
+                            if (order) printf(", ");
+                            printf("{l : %i, n : %i, enu : %f, dme : %i, auto : %i}", lo_descriptors_[j].rsd_set[order].l,
+                                                                                      lo_descriptors_[j].rsd_set[order].n,
+                                                                                      lo_descriptors_[j].rsd_set[order].enu,
+                                                                                      lo_descriptors_[j].rsd_set[order].dme,
+                                                                                      lo_descriptors_[j].rsd_set[order].auto_enu);
+                        }
+                        printf("]\n");
+                        break;
+                    }
+                    case lo_cp:
+                    {
+                        printf("confined polynomial {l : %i, p1 : %i, p2 : %i}\n", lo_descriptors_[j].l, 
+                                                                                   lo_descriptors_[j].p1, 
+                                                                                   lo_descriptors_[j].p2);
+                        break;
+                    }
                 }
-                printf("]\n");
             }
 
             printf("\n");
@@ -1026,7 +1068,7 @@ class AtomType
             return (int)lo_descriptors_.size();
         }
 
-        inline radial_solution_descriptor_set& lo_descriptor(int idx)
+        inline local_orbital_descriptor& lo_descriptor(int idx)
         {
             return lo_descriptors_[idx];
         }

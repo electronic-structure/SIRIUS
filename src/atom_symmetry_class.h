@@ -63,7 +63,7 @@ class AtomSymmetryClass
         std::vector<radial_solution_descriptor_set> aw_descriptors_;
         
         /// list of radial descriptor sets used to construct local orbitals
-        std::vector<radial_solution_descriptor_set> lo_descriptors_;
+        std::vector<local_orbital_descriptor> lo_descriptors_;
         
         void generate_aw_radial_functions()
         {
@@ -175,19 +175,21 @@ class AtomSymmetryClass
                 #pragma omp for schedule(dynamic, 1)
                 for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++)
                 {
-                    assert(lo_descriptor(idxlo).size() < 4);
+                    assert(lo_descriptor(idxlo).rsd_set.size() < 4);
 
                     int idxrf = atom_type_->indexr().index_by_idxlo(idxlo);
 
-                    if (lo_descriptor(idxlo)[0].type == radial_solution)
+                    if (lo_descriptor(idxlo).type == lo_rs)
                     {
+                        // number of radial solutions
+                        int num_rs = (int)lo_descriptor(idxlo).rsd_set.size();
 
-                        std::vector< std::vector<double> > p(lo_descriptor(idxlo).size());
-                        std::vector< std::vector<double> > hp(lo_descriptor(idxlo).size());
+                        std::vector< std::vector<double> > p(num_rs);
+                        std::vector< std::vector<double> > hp(num_rs);
 
-                        for (int order = 0; order < (int)lo_descriptor(idxlo).size(); order++)
+                        for (int order = 0; order < num_rs; order++)
                         {
-                            radial_solution_descriptor& rsd = lo_descriptor(idxlo)[order];
+                            radial_solution_descriptor& rsd = lo_descriptor(idxlo).rsd_set[order];
                             
                             // find linearization energies
                             if (rsd.auto_enu == 1 || rsd.auto_enu == 2) 
@@ -213,14 +215,14 @@ class AtomSymmetryClass
                             s.interpolate();
                             
                             // compute radial derivatives
-                            for (int dm = 0; dm < (int)lo_descriptor(idxlo).size(); dm++) 
+                            for (int dm = 0; dm < num_rs; dm++) 
                                 a[order][dm] = s.deriv(dm, nmtp - 1);
                         }
 
                         double b[] = {0.0, 0.0, 0.0, 0.0};
-                        b[lo_descriptor(idxlo).size() - 1] = 1.0;
+                        b[num_rs - 1] = 1.0;
 
-                        int info = linalg<lapack>::gesv((int)lo_descriptor(idxlo).size(), 1, &a[0][0], 4, b, 4);
+                        int info = linalg<lapack>::gesv(num_rs, 1, &a[0][0], 4, b, 4);
 
                         if (info) 
                         {
@@ -230,7 +232,7 @@ class AtomSymmetryClass
                         }
                         
                         // take linear combination of radial solutions
-                        for (int order = 0; order < (int)lo_descriptor(idxlo).size(); order++)
+                        for (int order = 0; order < num_rs; order++)
                         {
                             for (int ir = 0; ir < nmtp; ir++)
                             {
@@ -258,22 +260,18 @@ class AtomSymmetryClass
                         }
                     }
 
-                    if (lo_descriptor(idxlo)[0].type == polynom)
+                    if (lo_descriptor(idxlo).type == lo_cp)
                     {
-                        int l = lo_descriptor(idxlo)[0].l;
-                        int p1 = lo_descriptor(idxlo)[0].p1;
-                        int p2 = lo_descriptor(idxlo)[0].p2;
+                        int l = lo_descriptor(idxlo).l;
+                        int p1 = lo_descriptor(idxlo).p1;
+                        int p2 = lo_descriptor(idxlo).p2;
                         double R = atom_type_->mt_radius();
 
                         for (int ir = 0; ir < nmtp; ir++)
                         {
                             double r = atom_type_->radial_grid(ir);
-                            radial_functions_(ir, idxrf, 0) = pow(r, p1) * pow(1.0 - pow(r / R, 2), p2);
-                            radial_functions_(ir, idxrf, 1) = 
-                                -0.5 * ((-4 * (1 + p1) * p2 * pow(r, 1 + p1) * pow(1 - pow(r, 2) / pow(R, 2), p2 - 1)) / pow(R, 2) + 
-                                p1 * (1 + p1) * pow(r, p1 - 1) * pow(1 - pow(r, 2) / pow(R, 2), p2) + 
-                                pow(r, 1 + p1) * ((4 * (p2 - 1) * p2 * pow(r, 2) * pow(1 - pow(r, 2) / pow(R, 2), p2 - 2)) / pow(R, 4) - 
-                                (2 * p2 * pow(1 - pow(r, 2) / pow(R, 2), p2 - 1)) / pow(R, 2))) +                            
+                            radial_functions_(ir, idxrf, 0) = Utils::confined_polynomial(r, R, p1, p2, 0);
+                            radial_functions_(ir, idxrf, 1) = -0.5 * Utils::confined_polynomial(r, R, p1 + 1, p2, 2) +
                                 (0.5 * l * (l + 1) / pow(r, 2) + spherical_potential_[ir]) * (radial_functions_(ir, idxrf, 0) * r);
                         }
                         
@@ -297,19 +295,17 @@ class AtomSymmetryClass
                 for (int idxlo1 = 0; idxlo1 < num_lo_descriptors(); idxlo1++)
                 {
                     int idxrf1 = atom_type_->indexr().index_by_idxlo(idxlo1);
-                    radial_solution_descriptor rsd1 = lo_descriptor(idxlo1)[0];
                     
                     for (int idxlo2 = 0; idxlo2 < num_lo_descriptors(); idxlo2++)
                     {
                         int idxrf2 = atom_type_->indexr().index_by_idxlo(idxlo2);
-                        radial_solution_descriptor rsd2 = lo_descriptor(idxlo2)[0];
                         
                         for (int ir = 0; ir < nmtp; ir++)
                         {
                             s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
                         }
                         s.interpolate();
-                        if (rsd1.l == rsd2.l)
+                        if (lo_descriptor(idxlo1).l == lo_descriptor(idxlo2).l)
                         {
                             loprod(idxlo1, idxlo2) = s.integrate(2);
                         }
@@ -857,11 +853,14 @@ class AtomSymmetryClass
             j += snprintf(buf + j, n, "local orbitals\n");
             for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++)
             {
-                for (int order = 0; order < (int)lo_descriptor(idxlo).size(); order++)
+                if (lo_descriptor(idxlo).type == lo_rs)
                 {
-                    radial_solution_descriptor& rsd = lo_descriptor(idxlo)[order];
-                    j +=snprintf(buf + j, n, "n = %2i   l = %2i   order = %i   enu = %12.6f\n", 
-                                 rsd.n, rsd.l, order, rsd.enu);
+                    for (int order = 0; order < (int)lo_descriptor(idxlo).rsd_set.size(); order++)
+                    {
+                        radial_solution_descriptor& rsd = lo_descriptor(idxlo).rsd_set[order];
+                        j += snprintf(buf + j, n, "n = %2i   l = %2i   order = %i   enu = %12.6f\n", 
+                                      rsd.n, rsd.l, order, rsd.enu);
+                    }
                 }
             }
             j += snprintf(buf + j, n, "\n");
@@ -999,7 +998,7 @@ class AtomSymmetryClass
             return (int)lo_descriptors_.size();
         }
 
-        inline radial_solution_descriptor_set& lo_descriptor(int idx)
+        inline local_orbital_descriptor& lo_descriptor(int idx)
         {
             return lo_descriptors_[idx];
         }
