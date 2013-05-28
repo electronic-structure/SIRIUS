@@ -27,7 +27,7 @@ const int debug_level = 0;
 
 const int verbosity_level = 0;
 
-const bool fix_apwlo_linear_dependence = true;
+const bool fix_apwlo_linear_dependence = false;
 
 const basis_t basis_type = apwlo;
 
