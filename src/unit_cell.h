@@ -662,7 +662,7 @@ class UnitCell
             }
         }
 
-        bool is_point_in_mt(double vc[3])
+        bool is_point_in_mt(double vc[3], int& ja, int& jr, double& dr, double tp[2])
         {
             int ntr[3];
             double vf[3];
@@ -676,7 +676,9 @@ class UnitCell
             for (int ia = 0; ia < num_atoms(); ia++)
             {
                 for (int i0 = -1; i0 <= 1; i0++)
+                {
                     for (int i1 = -1; i1 <= 1; i1++)
+                    {
                         for (int i2 = -1; i2 <= 1; i2++)
                         {
                             // atom position
@@ -695,13 +697,40 @@ class UnitCell
 
                             if (r <= atom(ia)->type()->mt_radius())
                             {
+                                ja = ia;
+                                double vs1[3];                       
+                                SHT::spherical_coordinates(vc1, vs1);
+                                tp[0] = vs1[1]; // theta
+                                tp[1] = vs1[2]; // phi
 
+                                if (r < atom(ia)->type()->radial_grid(0))
+                                {
+                                    jr = 0;
+                                    dr = 0.0;
+                                }
+                                else
+                                {
+                                    for (int ir = 0; ir < atom(ia)->num_mt_points() - 1; ir++)
+                                    {
+                                        if ((r >= atom(ia)->type()->radial_grid(ir)) && 
+                                            (r <= atom(ia)->type()->radial_grid(ir + 1)))
+                                        {
+                                            jr = ir;
+                                            dr = r - atom(ia)->type()->radial_grid(ir);
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                return true;
                             }
 
                         }
+                    }
+                }
             }
             
-            return true;
+            return false;
         }
         
         /// Get x coordinate of lattice vector l
