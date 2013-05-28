@@ -73,164 +73,41 @@ class Density
 
         /// Constructor
         Density(Global& parameters__, Potential* potential__, mdarray<double, 2>& kpoints__, double* kpoint_weights__,
-                int allocate_f__ = pw_component) : 
-            parameters_(parameters__), potential_(potential__), allocate_f_(allocate_f__), 
-            kpoint_set_(parameters__)
-        {
-            rho_ = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
-            rho_->allocate(allocate_f_);
-
-            for (int i = 0; i < parameters_.num_mag_dims(); i++)
-            {
-                magnetization_[i] = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
-                magnetization_[i]->allocate(allocate_f_);
-            }
-
-            dmat_spins_.clear();
-            dmat_spins_.push_back(std::pair<int, int>(0, 0));
-            dmat_spins_.push_back(std::pair<int, int>(1, 1));
-            dmat_spins_.push_back(std::pair<int, int>(0, 1));
-            
-            complex_gaunt_.set_dimensions(parameters_.lmmax_apw(), parameters_.lmmax_rho());
-            complex_gaunt_.allocate();
-
-            for (int l2 = 0; l2 <= parameters_.lmax_apw(); l2++)
-            {
-            for (int m2 = -l2; m2 <= l2; m2++)
-            {
-                int lm2 = Utils::lm_by_l_m(l2, m2);
-                for (int l3 = 0; l3 <= parameters_.lmax_rho(); l3++)
-                {
-                for (int m3 = -l3; m3 <= l3; m3++)
-                {
-                    int lm3 = Utils::lm_by_l_m(l3, m3);
-                    complex_gaunt_(lm2, lm3).resize(parameters_.lmax_apw() + 1);
-                    for (int l1 = 0; l1 <= parameters_.lmax_apw(); l1++) 
-                    {
-                        for (int m1 = -l1; m1 <= l1; m1++)
-                        {
-                            complex16 gc = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
-                            if (abs(gc) > 1e-16)
-                                complex_gaunt_(lm2, lm3)[l1].push_back(std::pair<int, complex16>(m1 + l1, gc));
-                        }
-                    }
-                }
-                }
-            }
-            }
-
-            gaunt12_.set_lmax(parameters_.lmax_pw(), parameters_.lmax_pw(), parameters_.lmax_rho());
-
-            band_ = kpoint_set_.band();
-            
-            kpoint_set_.clear();
-            kpoint_set_.add_kpoints(kpoints__, kpoint_weights__);
-            kpoint_set_.initialize();
-
-            l_by_lm_.resize(parameters_.lmmax_rho());
-            for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
-            {
-                for (int m = -l; m <= l; m++, lm++) l_by_lm_[lm] = l;
-            }
-        }
-
+                int allocate_f__);
+        
         /// Destructor
-        ~Density()
-        {
-            delete rho_;
-            for (int j = 0; j < parameters_.num_mag_dims(); j++) delete magnetization_[j];
-        }
+        ~Density();
+       
+        /// Set pointers to muffin-tin and interstitial charge density arrays
+        void set_charge_density_ptr(double* rhomt, double* rhoir);
         
-        void set_charge_density_ptr(double* rhomt, double* rhoir)
-        {
-            rho_->set_rlm_ptr(rhomt);
-            rho_->set_it_ptr(rhoir);
-        }
+        /// Set pointers to muffin-tin and interstitial magnetization arrays
+        void set_magnetization_ptr(double* magmt, double* magir);
         
-        void set_magnetization_ptr(double* magmt, double* magir)
-        {
-            assert(parameters_.num_spins() == 2);
-
-            // set temporary array wrapper
-            mdarray<double, 4> magmt_tmp(magmt, parameters_.lmmax_rho(), parameters_.max_num_mt_points(), 
-                                         parameters_.num_atoms(), parameters_.num_mag_dims());
-            mdarray<double, 2> magir_tmp(magir, parameters_.fft().size(), parameters_.num_mag_dims());
-            
-            if (parameters_.num_mag_dims() == 1)
-            {
-                // z component is the first and only one
-                magnetization_[0]->set_rlm_ptr(&magmt_tmp(0, 0, 0, 0));
-                magnetization_[0]->set_it_ptr(&magir_tmp(0, 0));
-            }
-
-            if (parameters_.num_mag_dims() == 3)
-            {
-                // z component is the first
-                magnetization_[0]->set_rlm_ptr(&magmt_tmp(0, 0, 0, 2));
-                magnetization_[0]->set_it_ptr(&magir_tmp(0, 2));
-                // x component is the second
-                magnetization_[1]->set_rlm_ptr(&magmt_tmp(0, 0, 0, 0));
-                magnetization_[1]->set_it_ptr(&magir_tmp(0, 0));
-                // y component is the third
-                magnetization_[2]->set_rlm_ptr(&magmt_tmp(0, 0, 0, 1));
-                magnetization_[2]->set_it_ptr(&magir_tmp(0, 1));
-            }
-        }
-    
         /// Zero density and magnetization
-        void zero()
-        {
-            rho_->zero();
-            for (int i = 0; i < parameters_.num_mag_dims(); i++) magnetization_[i]->zero();
-        }
-      
-        void initial_density()
-        {
-            parameters_.solve_free_atoms();
+        void zero();
+        
+        /// Generate initial charge density and magnetization
+        void initial_density(int type);
 
-            zero();
-            
-            double mt_charge = 0.0;
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            {
-                double* v = parameters_.atom(ia)->vector_field();
-                double len = Utils::vector_length(v);
+        /// Print some basic info 
+        void print_info();
+        
+        /// Solve H\psi = E\psi and find eigen wave-functions
+        void find_eigen_states();
+        
+        /// Find Fermi energy and band occupation numbers
+        void find_band_occupancies();
+        
+        /// Generate charge density and magnetization from the wave functions
+        void generate();
+        
+        /// Integrtae charge density to get total and partial charges
+        void integrate();
 
-                int nmtp = parameters_.atom(ia)->type()->num_mt_points();
-                Spline<double> rho(nmtp, parameters_.atom(ia)->type()->radial_grid());
-                for (int ir = 0; ir < nmtp; ir++)
-                {
-                    rho[ir] = parameters_.atom(ia)->type()->free_atom_density(ir);
-                    rho_->f_rlm(0, ir, ia) = rho[ir] / y00;
-                }
-                rho.interpolate();
-
-                // add charge of the MT sphere
-                mt_charge += fourpi * rho.integrate(nmtp - 1, 2);
-
-                if (len > 1e-8)
-                {
-                    if (parameters_.num_mag_dims())
-                    {
-                        for (int ir = 0; ir < nmtp; ir++)
-                            magnetization_[0]->f_rlm(0, ir, ia) = 0.2 * rho_->f_rlm(0, ir, ia) * v[2] / len;
-                    }
-
-                    if (parameters_.num_mag_dims() == 3)
-                    {
-                        for (int ir = 0; ir < nmtp; ir++)
-                            magnetization_[1]->f_rlm(0, ir, ia) = 0.2 * rho_->f_rlm(0, ir, ia) * v[0] / len;
-                        for (int ir = 0; ir < nmtp; ir++)
-                            magnetization_[2]->f_rlm(0, ir, ia) = 0.2 * rho_->f_rlm(0, ir, ia) * v[1] / len;
-                    }
-                }
-            }
-            
-            // distribute remaining charge
-            for (int i = 0; i < parameters_.fft().size(); i++)
-                rho_->f_it(i) = (parameters_.num_electrons() - mt_charge) / parameters_.volume_it();
-        }
-
+        /// Check density at MT boundary
+        void check_density_continuity_at_mt();
+         
         void set_band_occupancies(int ik, double* band_occupancies)
         {
             kpoint_set_[ik]->set_band_occupancies(band_occupancies);
@@ -266,22 +143,178 @@ class Density
         {
             kpoint_set_.save_wave_functions();
         }
-
-        /// Print some basic info 
-        void print_info();
-        
-        /// Solve H\psi = E\psi and find eigen wave-functions
-        void find_eigen_states();
-        
-        /// Find Fermi energy and band occupation numbers
-        void find_band_occupancies();
-        
-        /// Generate charge density and magnetization from the wave functions
-        void generate();
-        
-        /// Integrtae charge density to get total and partial charges
-        void integrate();
 };
+
+Density::Density(Global& parameters__, Potential* potential__, mdarray<double, 2>& kpoints__, double* kpoint_weights__,
+        int allocate_f__ = pw_component) : 
+    parameters_(parameters__), potential_(potential__), allocate_f_(allocate_f__), 
+    kpoint_set_(parameters__)
+{
+    rho_ = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
+    rho_->allocate(allocate_f_);
+
+    for (int i = 0; i < parameters_.num_mag_dims(); i++)
+    {
+        magnetization_[i] = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
+        magnetization_[i]->allocate(allocate_f_);
+    }
+
+    dmat_spins_.clear();
+    dmat_spins_.push_back(std::pair<int, int>(0, 0));
+    dmat_spins_.push_back(std::pair<int, int>(1, 1));
+    dmat_spins_.push_back(std::pair<int, int>(0, 1));
+    
+    complex_gaunt_.set_dimensions(parameters_.lmmax_apw(), parameters_.lmmax_rho());
+    complex_gaunt_.allocate();
+
+    for (int l2 = 0; l2 <= parameters_.lmax_apw(); l2++)
+    {
+    for (int m2 = -l2; m2 <= l2; m2++)
+    {
+        int lm2 = Utils::lm_by_l_m(l2, m2);
+        for (int l3 = 0; l3 <= parameters_.lmax_rho(); l3++)
+        {
+        for (int m3 = -l3; m3 <= l3; m3++)
+        {
+            int lm3 = Utils::lm_by_l_m(l3, m3);
+            complex_gaunt_(lm2, lm3).resize(parameters_.lmax_apw() + 1);
+            for (int l1 = 0; l1 <= parameters_.lmax_apw(); l1++) 
+            {
+                for (int m1 = -l1; m1 <= l1; m1++)
+                {
+                    complex16 gc = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
+                    if (abs(gc) > 1e-16)
+                        complex_gaunt_(lm2, lm3)[l1].push_back(std::pair<int, complex16>(m1 + l1, gc));
+                }
+            }
+        }
+        }
+    }
+    }
+
+    gaunt12_.set_lmax(parameters_.lmax_pw(), parameters_.lmax_pw(), parameters_.lmax_rho());
+
+    band_ = kpoint_set_.band();
+    
+    kpoint_set_.clear();
+    kpoint_set_.add_kpoints(kpoints__, kpoint_weights__);
+    kpoint_set_.initialize();
+
+    l_by_lm_.resize(parameters_.lmmax_rho());
+    for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
+    {
+        for (int m = -l; m <= l; m++, lm++) l_by_lm_[lm] = l;
+    }
+}
+
+Density::~Density()
+{
+    delete rho_;
+    for (int j = 0; j < parameters_.num_mag_dims(); j++) delete magnetization_[j];
+}
+
+void Density::set_charge_density_ptr(double* rhomt, double* rhoir)
+{
+    rho_->set_rlm_ptr(rhomt);
+    rho_->set_it_ptr(rhoir);
+}
+
+void Density::set_magnetization_ptr(double* magmt, double* magir)
+{
+    assert(parameters_.num_spins() == 2);
+
+    // set temporary array wrapper
+    mdarray<double, 4> magmt_tmp(magmt, parameters_.lmmax_rho(), parameters_.max_num_mt_points(), 
+                                 parameters_.num_atoms(), parameters_.num_mag_dims());
+    mdarray<double, 2> magir_tmp(magir, parameters_.fft().size(), parameters_.num_mag_dims());
+    
+    if (parameters_.num_mag_dims() == 1)
+    {
+        // z component is the first and only one
+        magnetization_[0]->set_rlm_ptr(&magmt_tmp(0, 0, 0, 0));
+        magnetization_[0]->set_it_ptr(&magir_tmp(0, 0));
+    }
+
+    if (parameters_.num_mag_dims() == 3)
+    {
+        // z component is the first
+        magnetization_[0]->set_rlm_ptr(&magmt_tmp(0, 0, 0, 2));
+        magnetization_[0]->set_it_ptr(&magir_tmp(0, 2));
+        // x component is the second
+        magnetization_[1]->set_rlm_ptr(&magmt_tmp(0, 0, 0, 0));
+        magnetization_[1]->set_it_ptr(&magir_tmp(0, 0));
+        // y component is the third
+        magnetization_[2]->set_rlm_ptr(&magmt_tmp(0, 0, 0, 1));
+        magnetization_[2]->set_it_ptr(&magir_tmp(0, 1));
+    }
+}
+    
+void Density::zero()
+{
+    rho_->zero();
+    for (int i = 0; i < parameters_.num_mag_dims(); i++) magnetization_[i]->zero();
+}
+
+void Density::initial_density(int type = 0)
+{
+    zero();
+    
+    if (type == 0)
+    {
+        parameters_.solve_free_atoms();
+        
+        double mt_charge = 0.0;
+        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+        {
+            double* v = parameters_.atom(ia)->vector_field();
+            double len = Utils::vector_length(v);
+
+            int nmtp = parameters_.atom(ia)->type()->num_mt_points();
+            Spline<double> rho(nmtp, parameters_.atom(ia)->type()->radial_grid());
+            for (int ir = 0; ir < nmtp; ir++)
+            {
+                rho[ir] = parameters_.atom(ia)->type()->free_atom_density(ir);
+                rho_->f_rlm(0, ir, ia) = rho[ir] / y00;
+            }
+            rho.interpolate();
+
+            // add charge of the MT sphere
+            mt_charge += fourpi * rho.integrate(nmtp - 1, 2);
+
+            if (len > 1e-8)
+            {
+                if (parameters_.num_mag_dims())
+                {
+                    for (int ir = 0; ir < nmtp; ir++)
+                        magnetization_[0]->f_rlm(0, ir, ia) = 0.2 * rho_->f_rlm(0, ir, ia) * v[2] / len;
+                }
+
+                if (parameters_.num_mag_dims() == 3)
+                {
+                    for (int ir = 0; ir < nmtp; ir++)
+                        magnetization_[1]->f_rlm(0, ir, ia) = 0.2 * rho_->f_rlm(0, ir, ia) * v[0] / len;
+                    for (int ir = 0; ir < nmtp; ir++)
+                        magnetization_[2]->f_rlm(0, ir, ia) = 0.2 * rho_->f_rlm(0, ir, ia) * v[1] / len;
+                }
+            }
+        }
+        
+        // distribute remaining charge
+        for (int i = 0; i < parameters_.fft().size(); i++)
+            rho_->f_it(i) = (parameters_.num_electrons() - mt_charge) / parameters_.volume_it();
+    }
+
+    if (type == 1)
+    {
+        double rho_avg = parameters_.num_electrons() / parameters_.omega();
+        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+        {
+            int nmtp = parameters_.atom(ia)->num_mt_points();
+            for (int ir = 0; ir < nmtp; ir++) rho_->f_rlm(0, ir, ia) = rho_avg / y00;
+        }
+        for (int i = 0; i < parameters_.fft().size(); i++) rho_->f_it(i) = rho_avg;
+    }
+}
 
 template <int num_mag_dims> 
 void Density::reduce_zdens(int ia, int ialoc, mdarray<complex16, 4>& zdens, mdarray<double, 4>& mt_density_matrix)
@@ -596,14 +629,20 @@ void Density::generate_valence_density_mt()
         switch (parameters_.num_mag_dims())
         {
             case 3:
+            {
                 reduce_zdens<3>(ia, ialoc, mt_complex_density_matrix_loc, mt_density_matrix);
                 break;
+            }
             case 1:
+            {
                 reduce_zdens<1>(ia, ialoc, mt_complex_density_matrix_loc, mt_density_matrix);
                 break;
+            }
             case 0:
+            {
                 reduce_zdens<0>(ia, ialoc, mt_complex_density_matrix_loc, mt_density_matrix);
                 break;
+            }
         }
         t1.stop();
 
@@ -978,6 +1017,8 @@ void Density::find_eigen_states()
             printf("\n");
         }
     }
+    //parameters_.rti().enu1 = kpoint_set_[0]->band_energy(0);
+    //parameters_.rti().enu2 = kpoint_set_[0]->band_energy(1);
 
     // compute eigen-value sums
     double eval_sum = 0.0;
@@ -1193,6 +1234,8 @@ void Density::generate()
           << "core leakage : " << core_leakage;
         warning(__FILE__, __LINE__, s);
     }
+    
+    if (debug_level > 1) check_density_continuity_at_mt();
 }
 
 void Density::integrate()
@@ -1210,6 +1253,42 @@ void Density::integrate()
                                          parameters_.rti().mt_magnetization[j], 
                                          parameters_.rti().it_magnetization[j]);
     }
+}
+
+void Density::check_density_continuity_at_mt()
+{
+    // generate plane-wave coefficients of the potential in the interstitial region
+    parameters_.fft().input(rho_->f_it());
+    parameters_.fft().transform(-1);
+    parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), rho_->f_pw());
+    
+    SHT sht;
+    sht.set_lmax(parameters_.lmax_rho());
+
+    double diff = 0.0;
+    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    {
+        for (int itp = 0; itp < sht.num_points(); itp++)
+        {
+            double vc[3];
+            for (int x = 0; x < 3; x++) vc[x] = sht.coord(x, itp) * parameters_.atom(ia)->mt_radius();
+
+            double val_it = 0.0;
+            for (int ig = 0; ig < parameters_.num_gvec(); ig++) 
+            {
+                double vgc[3];
+                parameters_.get_coordinates<cartesian, reciprocal>(parameters_.gvec(ig), vgc);
+                val_it += real(rho_->f_pw(ig) * exp(complex16(0.0, Utils::scalar_product(vc, vgc))));
+            }
+
+            double val_mt = 0.0;
+            for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
+                val_mt += rho_->f_rlm(lm, parameters_.atom(ia)->num_mt_points() - 1, ia) * sht.rlm_backward(lm, itp);
+
+            diff += fabs(val_it - val_mt);
+        }
+    }
+    printf("Total and average charge difference at MT boundary : %.12f %.12f\n", diff, diff / parameters_.num_atoms() / sht.num_points());
 }
 
 };
