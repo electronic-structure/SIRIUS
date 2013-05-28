@@ -537,7 +537,7 @@ class Global : public StepFunction
             Timer t("sirius::Global::generate_radial_functions");
            
             for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
-                atom_symmetry_class(spl_num_atom_symmetry_classes(icloc))->generate_radial_functions();
+                atom_symmetry_class(spl_num_atom_symmetry_classes(icloc))->generate_radial_functions(rti_);
 
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
             {
@@ -755,6 +755,7 @@ class Global : public StepFunction
                 jw.single("num_fv_states", num_fv_states());
                 jw.single("num_bands", num_bands());
                 jw.single("aw_cutoff", aw_cutoff());
+                jw.single("pw_cutoff", pw_cutoff());
                 jw.single("omega", omega());
                 
                 if (num_mag_dims())
@@ -771,6 +772,16 @@ class Global : public StepFunction
                 }
                 
                 jw.single("total_energy", total_energy());
+                jw.single("kinetic_energy", kinetic_energy());
+                jw.single("energy_veff", rti_.energy_veff);
+                jw.single("energy_vha", rti_.energy_vha);
+                jw.single("energy_vxc", rti_.energy_vxc);
+                jw.single("energy_bxc", rti_.energy_bxc);
+                jw.single("energy_exc", rti_.energy_exc);
+                jw.single("energy_enuc", rti_.energy_enuc);
+                jw.single("core_eval_sum", rti_.core_eval_sum);
+                jw.single("valence_eval_sum", rti_.valence_eval_sum);
+                jw.single("band_gap", rti_.band_gap);
 
                 jw.single("timers", Timer::timer_descriptors());
             }
