@@ -345,7 +345,7 @@ class json_write
         inline void single(const char* name, double value)
         {
             new_line();
-            fprintf(fout_, "\"%s\" : %16.8e", name, value);
+            fprintf(fout_, "\"%s\" : %.12f", name, value);
         }
 
         inline void single(const char* name, const std::string& value)
@@ -367,7 +367,7 @@ class json_write
             for (int i = 0; i < (int)values.size(); i++)
             {
                 if (i) fprintf(fout_, ",");
-                fprintf(fout_, "%16.8e", values[i]);
+                fprintf(fout_, "%.12f", values[i]);
             }
             fprintf(fout_, "]");
         }
@@ -413,9 +413,6 @@ class json_write
             }
             
             end_set();
-            //indent_level_ -= indent_step_;
-            //std::string s(indent_level_, ' ');
-            //fprintf(fout_, "\n%s}", s.c_str());
         }
 
         inline void begin_array(const char* name)
@@ -424,15 +421,11 @@ class json_write
             fprintf(fout_, "\"%s\" : [", name);
             
             new_indent_level(indent_step_);
-            //indent_level_ += indent_step_;
-            //new_block_ = true;
         }
         
         inline void end_array()
         {
             new_indent_level(-indent_step_);
-            //indent_level_ -= indent_step_;
-            //new_block_ = true;
             new_line();
             fprintf(fout_, "]");
         }
@@ -443,15 +436,11 @@ class json_write
             fprintf(fout_, "{");
             
             new_indent_level(indent_step_);
-            //indent_level_ += indent_step_;
-            //new_block_ = true;
         }
         
         inline void end_set()
         {
             new_indent_level(-indent_step_);
-            //indent_level_ -= indent_step_;
-            //new_block_ = true;
             new_line();
             fprintf(fout_, "}");
         }
