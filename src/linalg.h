@@ -71,8 +71,6 @@ template<> inline void blas<cpu>::hemm<complex16>(int side, int uplo, int32_t m,
     FORTRAN(zhemm)(sidestr[side], uplostr[uplo], &m, &n, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int32_t)1, (int32_t)1);
 }
 
-
-
 // GPU
 #ifdef _GPU_
 template<> struct blas<gpu>
@@ -94,8 +92,8 @@ template<linalg_t> struct linalg;
 
 template<> struct linalg<lapack>
 {
-    static int32_t ilaenv(int32_t ispec, const std::string& name, const std::string& opts, int32_t n1, int32_t n2, int32_t n3, 
-                       int32_t n4)
+    static int32_t ilaenv(int32_t ispec, const std::string& name, const std::string& opts, int32_t n1, int32_t n2, 
+                          int32_t n3, int32_t n4)
     {
         return FORTRAN(ilaenv)(&ispec, name.c_str(), opts.c_str(), &n1, &n2, &n3, &n4, (int32_t)name.length(), 
                                (int32_t)opts.length());
@@ -106,15 +104,43 @@ template<> struct linalg<lapack>
 
     template <typename T> 
     static int gtsv(int32_t n, int32_t nrhs, T* dl, T* d, T* du, T* b, int32_t ldb);
+
+    template <typename T>
+    static int getrf(int32_t m, int32_t n, T* a, int32_t lda, int32_t* ipiv);
+    
+    template <typename T>
+    static int getri(int32_t n, T* a, int32_t lda, int32_t* ipiv, T* work, int32_t lwork);
+
+    template <typename T>
+    static void invert_ge(T* mtrx, int size)
+    {
+        int32_t nb = std::max(ilaenv(1, "dgetri", "U", size, -1, -1, -1), ilaenv(1, "zgetri", "U", size, -1, -1, -1));
+        int32_t lwork = size * nb;
+        std::vector<T> work(lwork);
+        std::vector<int> ipiv(size);
+        int info = getrf(size, size, mtrx, size, &ipiv[0]);
+        if (info != 0)
+        {
+            std::stringstream s;
+            s << "getrf returned : " << info;
+            error(__FILE__, __LINE__, s);
+        }
+
+        info = getri(size, mtrx, size, &ipiv[0], &work[0], lwork);
+        if (info != 0)
+        {
+            std::stringstream s;
+            s << "getri returned : " << info;
+            error(__FILE__, __LINE__, s);
+        }
+    }
 };
 
 template<> int linalg<lapack>::gesv<real8>(int32_t n, int32_t nrhs, real8* a, int32_t lda, real8* b, int32_t ldb)
 {
     int32_t info;
     std::vector<int32_t> ipiv(n);
-
     FORTRAN(dgesv)(&n, &nrhs, a, &lda, &ipiv[0], b, &ldb, &info);
-
     return info;
 }
 
@@ -122,18 +148,14 @@ template<> int linalg<lapack>::gesv<complex16>(int32_t n, int32_t nrhs, complex1
 {
     int32_t info;
     std::vector<int32_t> ipiv(n);
-
     FORTRAN(zgesv)(&n, &nrhs, a, &lda, &ipiv[0], b, &ldb, &info);
-
     return info;
 }
 
 template<> int linalg<lapack>::gtsv<real8>(int32_t n, int32_t nrhs, real8* dl, real8* d, real8* du, real8* b, int32_t ldb)
 {
     int info;
-
     FORTRAN(dgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
-            
     return info;
 }
 
@@ -141,11 +163,39 @@ template<> int linalg<lapack>::gtsv<complex16>(int32_t n, int32_t nrhs, complex1
                                                complex16* b, int32_t ldb)
 {
     int32_t info;                   
-
     FORTRAN(zgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
-            
     return info;               
 }
+
+template<> int linalg<lapack>::getrf<real8>(int32_t m, int32_t n, real8* a, int32_t lda, int32_t* ipiv)
+{
+    int32_t info;
+    FORTRAN(dgetrf)(&m, &n, a, &lda, ipiv, &info);
+    return info;
+}
+    
+template<> int linalg<lapack>::getrf<complex16>(int32_t m, int32_t n, complex16* a, int32_t lda, int32_t* ipiv)
+{
+    int32_t info;
+    FORTRAN(zgetrf)(&m, &n, a, &lda, ipiv, &info);
+    return info;
+}
+
+template<> int linalg<lapack>::getri<real8>(int32_t n, real8* a, int32_t lda, int32_t* ipiv, real8* work, int32_t lwork)
+{
+    int32_t info;
+    FORTRAN(dgetri)(&n, a, &lda, ipiv, work, &lwork, &info);
+    return info;
+}
+
+template<> int linalg<lapack>::getri<complex16>(int32_t n, complex16* a, int32_t lda, int32_t* ipiv, complex16* work, 
+                                                int32_t lwork)
+{
+    int32_t info;
+    FORTRAN(zgetri)(&n, a, &lda, ipiv, work, &lwork, &info);
+    return info;
+}
+
 
 #ifdef _SCALAPACK_
 template<> struct linalg<scalapack>
