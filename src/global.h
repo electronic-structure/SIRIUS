@@ -782,7 +782,8 @@ class Global : public StepFunction
                 jw.single("core_eval_sum", rti_.core_eval_sum);
                 jw.single("valence_eval_sum", rti_.valence_eval_sum);
                 jw.single("band_gap", rti_.band_gap);
-
+                jw.single("energy_fermi", rti_.energy_fermi);
+                
                 jw.single("timers", Timer::timer_descriptors());
             }
         }
