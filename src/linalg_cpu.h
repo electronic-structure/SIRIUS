@@ -55,6 +55,16 @@ extern "C" void FORTRAN(dgesv)(int32_t* n, int32_t* nrhs, real8* a, int32_t* lda
 
 extern "C" void FORTRAN(zgesv)(int32_t* n, int32_t* nrhs, complex16* a, int32_t* lda, int32_t* ipiv, complex16* b, int32_t* ldb, int32_t* info);
 
+extern "C" void FORTRAN(dgetrf)(int32_t* m, int32_t* n, real8* a, int32_t* lda, int32_t* ipiv, int32_t* info);
+
+extern "C" void FORTRAN(zgetrf)(int32_t* m, int32_t* n, complex16* a, int32_t* lda, int32_t* ipiv, int32_t* info);
+
+extern "C" void FORTRAN(dgetri)(int32_t* n, real8* a, int32_t* lda, int32_t* ipiv, real8* work, int32_t* lwork, int32_t* info);
+
+extern "C" void FORTRAN(zgetri)(int32_t* n, complex16* a, int32_t* lda, int32_t* ipiv, complex16* work, int32_t* lwork, int32_t* info);
+
+
+
 
 /* 
     BLACS and ScaLAPACK related functions
