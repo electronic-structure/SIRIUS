@@ -13,6 +13,8 @@ class SHT
 
         mdarray<double, 2> coord_;
 
+        mdarray<double, 2> tp_;
+
         std::vector<double> w_;
 
         /// backward transformation from Ylm to spherical coordinates
@@ -45,6 +47,7 @@ class SHT
             lmmax_ = (lmax_ + 1) * (lmax_ + 1);
 
             num_points_ = Lebedev_Laikov_npoint(2 * lmax_);
+            //num_points_ = lmmax_;
             
             std::vector<double> x(num_points_);
             std::vector<double> y(num_points_);
@@ -53,9 +56,13 @@ class SHT
             coord_.set_dimensions(3, num_points_);
             coord_.allocate();
 
+            tp_.set_dimensions(2, num_points_);
+            tp_.allocate();
+
             w_.resize(num_points_);
 
             Lebedev_Laikov_sphere(num_points_, &x[0], &y[0], &z[0], &w_[0]);
+            //uniform_coverage();
 
             ylm_backward_.set_dimensions(lmmax_, num_points_);
             ylm_backward_.allocate();
@@ -79,6 +86,13 @@ class SHT
 
                 spherical_coordinates(&coord_(0, itp), vs);
 
+                //double t = tp_(0, itp);
+                //double p = tp_(1, itp);
+
+                //coord_(0, itp) = sin(t) * cos(p);
+                //coord_(1, itp) = sin(t) * sin(p);
+                //coord_(2, itp) = cos(t);
+
                 spherical_harmonics(lmax_, vs[1], vs[2], &ylm_backward_(0, itp));
                 spherical_harmonics(lmax_, vs[1], vs[2], &rlm_backward_(0, itp));
 
@@ -86,18 +100,23 @@ class SHT
                 {
                     ylm_forward_(itp, lm) = conj(ylm_backward_(lm, itp)) * w_[itp] * fourpi;
                     rlm_forward_(itp, lm) = rlm_backward_(lm, itp) * w_[itp] * fourpi;
+                    //ylm_forward_(lm, itp) = ylm_backward_(lm, itp);
+                    //rlm_forward_(lm, itp) = rlm_backward_(lm, itp);
                 }
             }
 
-            double dr = 0.0;
-            double dy = 0.0;
+            //linalg<lapack>::invert_ge(&ylm_forward_(0, 0), lmmax_);
+            //linalg<lapack>::invert_ge(&rlm_forward_(0, 0), lmmax_);
+
+            double dr = 0;
+            double dy = 0;
 
             for (int lm = 0; lm < lmmax_; lm++)
             {
                 for (int lm1 = 0; lm1 < lmmax_; lm1++)
                 {
-                    double t = 0.0;
-                    complex16 zt(0.0, 0.0);
+                    double t = 0;
+                    complex16 zt(0, 0);
                     for (int itp = 0; itp < num_points_; itp++)
                     {
                         zt += ylm_forward_(itp, lm) * ylm_backward_(lm1, itp);
@@ -122,7 +141,7 @@ class SHT
                 s << "spherical mesh error is too big" << std::endl
                   << "  real spherical integration error " << dr << std::endl
                   << "  complex spherical integration error " << dy;
-                error(__FILE__, __LINE__, s);
+                warning(__FILE__, __LINE__, s);
             }
 
             std::vector<double> flm(lmmax_);
@@ -189,6 +208,41 @@ class SHT
             
             blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, ftp, num_points_, 0.0, 
                             flm, lmmax);
+        }
+        
+        void rlm_forward_iterative_transform(double *ftp__, int lmmax, int ncol, double* flm)
+        {
+            Timer t("sirius::SHT::rlm_forward_iterative_transform");
+            
+            assert(lmmax <= lmmax_);
+
+            mdarray<double, 2> ftp(ftp__, num_points_, ncol);
+            mdarray<double, 2> ftp1(num_points_, ncol);
+            
+            blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, &ftp(0, 0), num_points_, 0.0, 
+                            flm, lmmax);
+            
+            for (int i = 0; i < 2; i++)
+            {
+                rlm_backward_transform(flm, lmmax, ncol, &ftp1(0, 0));
+                double tdiff = 0.0;
+                for (int ir = 0; ir < ncol; ir++)
+                {
+                    for (int itp = 0; itp < num_points_; itp++) 
+                    {
+                        ftp1(itp, ir) = ftp(itp, ir) - ftp1(itp, ir);
+                        //tdiff += fabs(ftp1(itp, ir));
+                    }
+                }
+                
+                for (int itp = 0; itp < num_points_; itp++) 
+                {
+                    tdiff += fabs(ftp1(itp, ncol - 1));
+                }
+                std::cout << "iter : " << i << " avg. MT diff = " << tdiff / num_points_ << std::endl;
+                blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, &ftp1(0, 0), num_points_, 1.0, 
+                                flm, lmmax);
+            }
         }
 
         /// Transform Cartesian coordinates [x,y,z] to spherical coordinates [r,theta,phi]
@@ -491,10 +545,32 @@ class SHT
         {
             return ylm_backward_(lm, itp);
         }
+        
+        inline double rlm_backward(int lm,  int itp)
+        {
+            return rlm_backward_(lm, itp);
+        }
 
         inline double coord(int x, int itp)
         {
             return coord_(x, itp);
+        }
+
+        void uniform_coverage()
+        {
+            tp_(0, 0) = pi;
+            tp_(1, 0) = 0;
+
+            for (int k = 1; k < num_points_ - 1; k++)
+            {
+                double hk = -1.0 + double(2 * k) / double(num_points_ - 1);
+                tp_(0, k) = acos(hk);
+                double t = tp_(1, k - 1) + 3.80925122745582 / sqrt(double(num_points_)) / sqrt(1 - hk * hk);
+                tp_(1, k) = fmod(t, twopi);
+            }
+            
+            tp_(0, num_points_ - 1) = 0;
+            tp_(1, num_points_ - 1) = 0;
         }
 };
 
