@@ -217,7 +217,7 @@ void FORTRAN(sirius_clear)(void)
 
 void FORTRAN(sirius_initial_density)(void)
 {
-    density->initial_density();
+    density->initial_density(0);
 }
 
 void FORTRAN(sirius_generate_effective_potential)(void)
@@ -473,6 +473,48 @@ void FORTRAN(sirius_bands)(void)
         //}
         //fclose(fout);
     }
+}
+
+void FORTRAN(sirius_plot_potential)(void)
+{
+    //FORTRAN(sirius_read_state)();
+
+    density->initial_density(1);
+
+    potential->generate_effective_potential(density->rho(), density->magnetization());
+
+    
+    // generate plane-wave coefficients of the potential in the interstitial region
+    global_parameters.fft().input(potential->effective_potential()->f_it());
+    global_parameters.fft().transform(-1);
+    global_parameters.fft().output(global_parameters.num_gvec(), global_parameters.fft_index(), 
+                                   potential->effective_potential()->f_pw());
+
+    int N = 10000;
+    double* p = new double[N];
+    double* x = new double[N];
+
+    double vf1[] = {0.1, 0.1, 0.1};
+    double vf2[] = {0.9, 0.9, 0.9};
+
+    #pragma omp parallel for default(shared)
+    for (int i = 0; i < N; i++)
+    {
+        double vf[3];
+        double vc[3];
+        double t = double(i) / (N - 1);
+        for (int j = 0; j < 3; j++) vf[j] = vf1[j] + t * (vf2[j] - vf1[j]);
+
+        global_parameters.get_coordinates<cartesian, direct>(vf, vc);
+        p[i] = potential->value(vc);
+        x[i] = Utils::vector_length(vc);
+    }
+
+    FILE* fout = fopen("potential.dat", "w");
+    for (int i = 0; i < N; i++) fprintf(fout, "%.12f %.12f\n", x[i] - x[0], p[i]);
+    fclose(fout);
+    delete x;
+    delete p;
 }
 
 void FORTRAN(sirius_print_rti)(void)
@@ -783,6 +825,11 @@ void FORTRAN(sirius_get_band_occupancies)(int32_t* kpoint_set_id, int32_t* ik, d
 {
     sirius::kpoint* kp = (*kpoint_set_list[*kpoint_set_id])[*ik - 1];
     kp->get_band_occupancies(band_occupancies);
+}
+
+void FORTRAN(sirius_get_evalsum)(double* evalsum)
+{
+    *evalsum = global_parameters.rti().core_eval_sum + global_parameters.rti().valence_eval_sum;
 }
 
 } // extern "C"
