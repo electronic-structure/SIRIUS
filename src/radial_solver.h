@@ -149,7 +149,7 @@ class RadialSolver
             enu_tolerance = _tolerance;
         }
 
-        double find_enu(int l, std::vector<double>& v, double enu0)
+        double find_enu(int n, int l, std::vector<double>& v, double enu0)
         {
             std::vector<double> p;
             std::vector<double> hp;
@@ -157,29 +157,36 @@ class RadialSolver
             double enu = enu0;
             double de = 0.001;
             bool found = false;
-            double p0p = 0;
             double dpdr;
+            int nndp = 0;
             for (int i = 0; i < 1000; i++)
             {
-                solve_in_mt(l, enu, 0, v, p, hp, dpdr);
+                int nnd = solve_in_mt(l, enu, 0, v, p, hp, dpdr) - (n - l - 1);
+                if (nnd > 0)
+                {
+                    enu -= de;
+                }
+                else
+                {
+                    enu += de;
+                }
                 if (i > 0)
                 {
-                    if (p[radial_grid.num_mt_points() - 1] * p0p < 0.0)
+                    if (nnd != nndp) 
                     {
-                        if (fabs(de) < 1e-10)
-                        {
-                            found = true;
-                            break;
-                        }
-                        de *= -0.5;
+                        de *= 0.5;
                     }
                     else
                     {
                         de *= 1.25;
                     }
                 }
-                p0p = p[radial_grid.num_mt_points() - 1];
-                enu += de;
+                nndp = nnd;
+                if (fabs(de) < 1e-10)
+                {
+                    found = true;
+                    break;
+                }
             }
             if (!found)
             {   
@@ -192,11 +199,10 @@ class RadialSolver
             for (int i = 0; i < 1000; i++)
             {
                 solve_in_mt(l, enu, 0, v, p, hp, dpdr);
-                Spline<double> sp(radial_grid.num_mt_points(), radial_grid, p);
 
                 if (i > 0)
                 {
-                    if (sp.deriv(1, radial_grid.num_mt_points() - 1) * p1p < 0.0)
+                    if (dpdr * p1p < 0.0)
                     {
                         if (fabs(de) < 1e-10)
                         {
@@ -210,7 +216,7 @@ class RadialSolver
                         de *= 1.25;
                     }
                 }
-                p1p = sp.deriv(1, radial_grid.num_mt_points() - 1);
+                p1p = dpdr;
                 enu += de;
             }
             if (!found)
@@ -220,7 +226,7 @@ class RadialSolver
             return (enu + etop) / 2.0;
         }
                         
-        void solve_in_mt(int l, double enu, int m, std::vector<double>& v, std::vector<double>& p, 
+        int solve_in_mt(int l, double enu, int m, std::vector<double>& v, std::vector<double>& p, 
                          std::vector<double>& hp, double& dpdr_R)
         {
             std::vector<double> ve(radial_grid.num_mt_points());
@@ -233,6 +239,8 @@ class RadialSolver
             std::vector<double> q;
             std::vector<double> dpdr;
             std::vector<double> dqdr;
+
+            int nn = 0;
             
             for (int j = 0; j <= m; j++)
             {
@@ -243,7 +251,7 @@ class RadialSolver
                     mp_spline.interpolate();
                 }
                 
-                integrate(radial_grid.num_mt_points(), l, enu, ve_spline, mp_spline, p, dpdr, q, dqdr);
+                nn = integrate(radial_grid.num_mt_points(), l, enu, ve_spline, mp_spline, p, dpdr, q, dqdr);
             }
 
             hp.resize(radial_grid.num_mt_points());
@@ -256,6 +264,7 @@ class RadialSolver
                         dqdr[i];
             }
             dpdr_R = dpdr[radial_grid.num_mt_points() - 1];
+            return nn;
         }
 
         void bound_state(int n, int l, std::vector<double>& v, double& enu, std::vector<double>& p)
