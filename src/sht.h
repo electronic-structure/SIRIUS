@@ -32,11 +32,13 @@ class SHT
         mdarray<complex16, 2> ylm_dot_rlm_;
 
         mdarray<int, 2> l_m_by_lm_;
+        
+        int mesh_type_;
 
     public:
         
         /// Default constructor
-        SHT()
+        SHT() : mesh_type_(0)
         {
 
         }
@@ -45,9 +47,9 @@ class SHT
         {
             lmax_ = lmax__;
             lmmax_ = (lmax_ + 1) * (lmax_ + 1);
-
-            num_points_ = Lebedev_Laikov_npoint(2 * lmax_);
-            //num_points_ = lmmax_;
+            
+            if (mesh_type_ == 0) num_points_ = Lebedev_Laikov_npoint(2 * lmax_);
+            if (mesh_type_ == 1) num_points_ = lmmax_;
             
             std::vector<double> x(num_points_);
             std::vector<double> y(num_points_);
@@ -61,8 +63,8 @@ class SHT
 
             w_.resize(num_points_);
 
-            Lebedev_Laikov_sphere(num_points_, &x[0], &y[0], &z[0], &w_[0]);
-            //uniform_coverage();
+            if (mesh_type_ == 0) Lebedev_Laikov_sphere(num_points_, &x[0], &y[0], &z[0], &w_[0]);
+            if (mesh_type_ == 1) uniform_coverage();
 
             ylm_backward_.set_dimensions(lmmax_, num_points_);
             ylm_backward_.allocate();
@@ -78,35 +80,48 @@ class SHT
 
             for (int itp = 0; itp < num_points_; itp++)
             {
-                coord_(0, itp) = x[itp];
-                coord_(1, itp) = y[itp];
-                coord_(2, itp) = z[itp];
-                
-                double vs[3];
-
-                spherical_coordinates(&coord_(0, itp), vs);
-
-                //double t = tp_(0, itp);
-                //double p = tp_(1, itp);
-
-                //coord_(0, itp) = sin(t) * cos(p);
-                //coord_(1, itp) = sin(t) * sin(p);
-                //coord_(2, itp) = cos(t);
-
-                spherical_harmonics(lmax_, vs[1], vs[2], &ylm_backward_(0, itp));
-                spherical_harmonics(lmax_, vs[1], vs[2], &rlm_backward_(0, itp));
-
-                for (int lm = 0; lm < lmmax_; lm++)
+                if (mesh_type_ == 0)
                 {
-                    ylm_forward_(itp, lm) = conj(ylm_backward_(lm, itp)) * w_[itp] * fourpi;
-                    rlm_forward_(itp, lm) = rlm_backward_(lm, itp) * w_[itp] * fourpi;
-                    //ylm_forward_(lm, itp) = ylm_backward_(lm, itp);
-                    //rlm_forward_(lm, itp) = rlm_backward_(lm, itp);
+                    coord_(0, itp) = x[itp];
+                    coord_(1, itp) = y[itp];
+                    coord_(2, itp) = z[itp];
+                    
+                    double vs[3];
+
+                    spherical_coordinates(&coord_(0, itp), vs);
+                    spherical_harmonics(lmax_, vs[1], vs[2], &ylm_backward_(0, itp));
+                    spherical_harmonics(lmax_, vs[1], vs[2], &rlm_backward_(0, itp));
+                    for (int lm = 0; lm < lmmax_; lm++)
+                    {
+                        ylm_forward_(itp, lm) = conj(ylm_backward_(lm, itp)) * w_[itp] * fourpi;
+                        rlm_forward_(itp, lm) = rlm_backward_(lm, itp) * w_[itp] * fourpi;
+                    }
+                }
+                if (mesh_type_ == 1)
+                {
+                    double t = tp_(0, itp);
+                    double p = tp_(1, itp);
+
+                    coord_(0, itp) = sin(t) * cos(p);
+                    coord_(1, itp) = sin(t) * sin(p);
+                    coord_(2, itp) = cos(t);
+
+                    spherical_harmonics(lmax_, t, p, &ylm_backward_(0, itp));
+                    spherical_harmonics(lmax_, t, p, &rlm_backward_(0, itp));
+
+                    for (int lm = 0; lm < lmmax_; lm++)
+                    {
+                        ylm_forward_(lm, itp) = ylm_backward_(lm, itp);
+                        rlm_forward_(lm, itp) = rlm_backward_(lm, itp);
+                    }
                 }
             }
 
-            //linalg<lapack>::invert_ge(&ylm_forward_(0, 0), lmmax_);
-            //linalg<lapack>::invert_ge(&rlm_forward_(0, 0), lmmax_);
+            if (mesh_type_ == 1)
+            {
+                linalg<lapack>::invert_ge(&ylm_forward_(0, 0), lmmax_);
+                linalg<lapack>::invert_ge(&rlm_forward_(0, 0), lmmax_);
+            }
 
             double dr = 0;
             double dy = 0;
