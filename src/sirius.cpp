@@ -20,8 +20,7 @@ extern "C"
     primitive set functions
 */
 
-/// set lattice vectors
-
+/// Set lattice vectors
 /** Fortran example:
     \code{.F90}
         call sirius_set_lattice_vectors(avec(1,1), avec(1,2), avec(1,3))
