@@ -66,7 +66,7 @@ class Density
         void generate_valence_density_it();
        
         /// Add band contribution to the muffin-tin density
-        void add_band_contribution_mt(double weight, std::vector<PeriodicFunction<complex16, radial_angular>*>& psi, 
+        void add_band_contribution_mt(double weight, mdarray<complex16, 3>& fylm, 
                                       std::vector<PeriodicFunction<double, radial_angular>*>& dens);
 
     public:
@@ -146,9 +146,8 @@ class Density
 };
 
 Density::Density(Global& parameters__, Potential* potential__, mdarray<double, 2>& kpoints__, double* kpoint_weights__,
-        int allocate_f__ = pw_component) : 
-    parameters_(parameters__), potential_(potential__), allocate_f_(allocate_f__), 
-    kpoint_set_(parameters__)
+                 int allocate_f__ = pw_component) : 
+    parameters_(parameters__), potential_(potential__), allocate_f_(allocate_f__), kpoint_set_(parameters__)
 {
     rho_ = new PeriodicFunction<double>(parameters_, parameters_.lmax_rho());
     rho_->allocate(allocate_f_);
@@ -192,7 +191,19 @@ Density::Density(Global& parameters__, Potential* potential__, mdarray<double, 2
     }
     }
 
-    gaunt12_.set_lmax(parameters_.lmax_pw(), parameters_.lmax_pw(), parameters_.lmax_rho());
+    switch (basis_type)
+    {
+        case apwlo:
+        {
+            gaunt12_.set_lmax(parameters_.lmax_apw(), parameters_.lmax_apw(), parameters_.lmax_rho());
+            break;
+        }
+        case pwlo:
+        {
+            gaunt12_.set_lmax(parameters_.lmax_pw(), parameters_.lmax_pw(), parameters_.lmax_rho());
+            break;
+        }
+    }
 
     band_ = kpoint_set_.band();
     
@@ -314,6 +325,61 @@ void Density::initial_density(int type = 0)
         }
         for (int i = 0; i < parameters_.fft().size(); i++) rho_->f_it(i) = rho_avg;
     }
+
+    if (type == 2)
+    {
+        rho_->f_pw(0) = parameters_.num_electrons() / parameters_.omega();
+        for (int ig = 1; ig < parameters_.num_gvec(); ig++)
+        {
+            rho_->f_pw(ig) = (ig < 20) ? 1.0 / double(ig + 1) / parameters_.omega() : 0.0;
+        }
+
+        parameters_.fft().input(parameters_.num_gvec(), parameters_.fft_index(), rho_->f_pw());
+        parameters_.fft().transform(1);
+        parameters_.fft().output(rho_->f_it());
+
+        rho_->allocate(ylm_component);
+        rho_->zero(ylm_component);
+        
+        sbessel_pw<double> jl(parameters_, parameters_.lmax_rho());
+        
+        for (int igloc = 0; igloc < parameters_.spl_num_gvec().local_size(); igloc++)
+        {
+            int ig = parameters_.spl_num_gvec(igloc);
+            if (ig < 20)
+            {
+                std::cout << "ig = " << ig << std::endl;
+                jl.load(parameters_.gvec_len(ig));
+                complex16 z1 = rho_->f_pw(ig) * fourpi;
+
+                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                {
+                    int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+                    complex16 z2 = z1 * parameters_.gvec_phase_factor<local>(igloc, ia);
+                    
+                    #pragma omp parallel for default(shared)
+                    for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
+                    {
+                        int l = l_by_lm_[lm];
+                        complex16 z3 = z2 * pow(std::complex<double>(0, 1), l) * conj(parameters_.gvec_ylm(lm, igloc)); 
+                        for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                            rho_->f_ylm(lm, ir, ia) += z3 * jl(ir, l, iat);
+                    }
+                }
+            }
+        }
+        SHT sht_;
+        sht_.set_lmax(parameters_.lmax_rho());
+        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+        {
+            for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+                sht_.convert_to_rlm(parameters_.lmax_rho(), &rho_->f_ylm(0, ir, ia), &rho_->f_rlm(0, ir, ia));
+        }
+        rho_->deallocate(ylm_component);
+
+        std::cout << "pseudo-random number of electrons : " << rho_->integrate(rlm_component | it_component);
+    }
+            
 }
 
 template <int num_mag_dims> 
@@ -722,7 +788,7 @@ void Density::generate_valence_density_it()
         Platform::allreduce(&magnetization_[j]->f_it(0), parameters_.fft().size()); 
 }
 
-void Density::add_band_contribution_mt(double weight, std::vector<PeriodicFunction<complex16, radial_angular>*>& psi, 
+void Density::add_band_contribution_mt(double weight, mdarray<complex16, 3>& fylm, 
                                        std::vector<PeriodicFunction<double, radial_angular>*>& dens)
 {
     splindex<block> spl_num_atoms(parameters_.num_atoms(), band_->num_ranks_row(), band_->rank_row());
@@ -741,8 +807,7 @@ void Density::add_band_contribution_mt(double weight, std::vector<PeriodicFuncti
 
                 for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
                 {
-                    dens[0]->f_rlm(ir, lm3, ia) += weight * real(cg * conj(psi[0]->f_ylm(ir, lm1, ia)) * 
-                                                   psi[0]->f_ylm(ir, lm2, ia));
+                    dens[0]->f_rlm(ir, lm3, ia) += weight * real(cg * conj(fylm(ir, lm1, ia)) * fylm(ir, lm2, ia));
                 }
             }
         }
@@ -754,7 +819,8 @@ template<> void Density::generate_valence_density_mt_directly<cpu>()
     Timer t("sirius::Density::generate_valence_density_mt_directly");
     
     int lmax = (basis_type == apwlo) ? parameters_.lmax_apw() : parameters_.lmax_pw();
-
+    int lmmax = Utils::lmmax_by_lmax(lmax);
+    
     std::vector<PeriodicFunction<double, radial_angular>*> dens(1 + parameters_.num_mag_dims());
     for (int i = 0; i < (int)dens.size(); i++)
     {
@@ -762,6 +828,8 @@ template<> void Density::generate_valence_density_mt_directly<cpu>()
         dens[i]->allocate(rlm_component);
         dens[i]->zero();
     }
+    
+    mdarray<complex16, 3> fylm(parameters_.max_num_mt_points(), lmmax, parameters_.num_atoms());
 
     // add k-point contribution
     for (int ikloc = 0; ikloc < kpoint_set_.spl_num_kpoints().local_size(); ikloc++)
@@ -775,17 +843,11 @@ template<> void Density::generate_valence_density_mt_directly<cpu>()
 
             if (wo > 1e-14)
             {
-                std::vector<PeriodicFunction<complex16, radial_angular>*> psi(parameters_.num_spins());
-                for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-                    psi[ispn] = kpoint_set_[ik]->spinor_wave_function_component<radial_angular>(band_, lmax, ispn, jloc); 
+                int ispn = 0;
 
-                add_band_contribution_mt(wo, psi, dens);
-
-                for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-                {
-                    psi[ispn]->deallocate(ylm_component | it_component);
-                    delete psi[ispn];
-                }
+                kpoint_set_[ik]->spinor_wave_function_component_mt<radial_angular>(band_, lmax, ispn, jloc, fylm);
+                
+                add_band_contribution_mt(wo, fylm, dens);
             }
         }
     }
