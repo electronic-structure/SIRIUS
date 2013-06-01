@@ -223,6 +223,12 @@ class ReciprocalLattice : public UnitCell
         {
             return &gvec_(0, ig);
         }
+
+        // TODO: call it everywhere
+        inline void gvec_cart(int ig, double* vgc)
+        {
+            get_coordinates<cartesian, reciprocal>(gvec(ig), vgc);
+        }
         
         /// Plane-wave cutoff for G-vectors
         inline double pw_cutoff()
@@ -269,8 +275,17 @@ class ReciprocalLattice : public UnitCell
         /// length of G-vector
         inline double gvec_len(int ig)
         {
-            assert(ig >= 0 && ig < (int)gvec_shell_.size());
-            return gvec_shell_len_[gvec_shell_[ig]];
+            //assert(ig >= 0 && ig < (int)gvec_shell_.size());
+            if (ig < (int)gvec_shell_.size())
+            {
+                return gvec_shell_len_[gvec_shell_[ig]];
+            }
+            else
+            {
+                double vgc[3];
+                gvec_cart(ig, vgc);
+                return Utils::vector_length(vgc);
+            }
         }
         
         /// phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
@@ -313,6 +328,30 @@ class ReciprocalLattice : public UnitCell
         inline complex16 gvec_ylm(int lm, int igloc)
         {
             return gvec_ylm_(lm, igloc);
+        }
+
+        template <index_domain_t index_domain>
+        inline void gvec_ylm_array(int ig, complex16* ylm, int lmax)
+        {
+            switch (index_domain)
+            {
+                case local:
+                {
+                    int lmmax = Utils::lmmax_by_lmax(lmax);
+                    assert(lmmax <= gvec_ylm_.size(0));
+                    memcpy(ylm, &gvec_ylm_(0, ig), lmmax * sizeof(complex16));
+                    return;
+                }
+                case global:
+                {
+                    double vgc[3];
+                    gvec_cart(ig, vgc);
+                    double rtp[3];
+                    SHT::spherical_coordinates(vgc, rtp);
+                    SHT::spherical_harmonics(lmax, rtp[1], rtp[2], ylm);
+                    return;
+                }
+            }
         }
 
         inline int igs_size(int igs)
