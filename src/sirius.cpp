@@ -125,11 +125,13 @@ void FORTRAN(sirius_get_num_bands)(int32_t* num_bands)
     *num_bands = global_parameters.num_bands();
 }
 
+/// Get number of G-vectors within the plane-wave cutoff
 void FORTRAN(sirius_get_num_gvec)(int32_t* num_gvec)
 {
     *num_gvec = global_parameters.num_gvec();
 }
 
+/// Get sizes of FFT grid
 void FORTRAN(sirius_get_fft_grid_size)(int32_t* grid_size)
 {
     grid_size[0] = global_parameters.fft().size(0);
@@ -137,26 +139,71 @@ void FORTRAN(sirius_get_fft_grid_size)(int32_t* grid_size)
     grid_size[2] = global_parameters.fft().size(2);
 }
 
-void FORTRAN(sirius_get_fft_grid_limits)(int32_t* d, int32_t* ul, int32_t* val)
+/// Get lower or upper limit of each FFT grid dimension
+void FORTRAN(sirius_get_fft_grid_limits)(int32_t* d, int32_t* lu, int32_t* val)
 {
-    *val = global_parameters.fft().grid_limits(*d, *ul);
+    *val = global_parameters.fft().grid_limits(*d, *lu);
 }
 
+/// Get mapping between G-vector index and FFT index
 void FORTRAN(sirius_get_fft_index)(int32_t* fft_index)
 {
     memcpy(fft_index, global_parameters.fft_index(),  global_parameters.fft().size() * sizeof(int32_t));
     for (int i = 0; i < global_parameters.fft().size(); i++) fft_index[i]++;
 }
 
+/// Get list of G-vectors in fractional corrdinates
 void FORTRAN(sirius_get_gvec)(int32_t* gvec)
 {
     memcpy(gvec, global_parameters.gvec(0), 3 * global_parameters.fft().size() * sizeof(int32_t));
+}
+
+/// Get list of G-vectors in Cartesian coordinates
+void FORTRAN(sirius_get_gvec_cart)(real8* gvec_cart__)
+{
+    mdarray<double, 2> gvec_cart(gvec_cart__, 3,  global_parameters.fft().size());
+    for (int ig = 0; ig <  global_parameters.fft().size(); ig++)
+        global_parameters.get_coordinates<cartesian, reciprocal>(global_parameters.gvec(ig), &gvec_cart(0, ig));
+}
+
+/// Get lengh of G-vectors
+void FORTRAN(sirius_get_gvec_len)(real8* gvec_len)
+{
+    for (int ig = 0; ig <  global_parameters.fft().size(); ig++) gvec_len[ig] = global_parameters.gvec_len(ig);
 }
 
 void FORTRAN(sirius_get_index_by_gvec)(int32_t* index_by_gvec)
 {
     memcpy(index_by_gvec, global_parameters.index_by_gvec(), global_parameters.fft().size() * sizeof(int32_t));
     for (int i = 0; i < global_parameters.fft().size(); i++) index_by_gvec[i]++;
+}
+
+void FORTRAN(sirius_get_gvec_ylm)(complex16* gvec_ylm__, int* ld, int* lmax)
+{
+    mdarray<complex16, 2> gvec_ylm(gvec_ylm__, *ld, global_parameters.num_gvec());
+    for (int ig = 0; ig < global_parameters.num_gvec(); ig++)
+    {
+        global_parameters.gvec_ylm_array<global>(ig, &gvec_ylm(0, ig), *lmax);
+    }
+}
+
+void FORTRAN(sirius_get_gvec_phase_factors)(complex16* sfacg__)
+{
+    mdarray<complex16, 2> sfacg(sfacg__, global_parameters.num_gvec(), global_parameters.num_atoms());
+    for (int ia = 0; ia < global_parameters.num_atoms(); ia++)
+    {
+        for (int ig = 0; ig < global_parameters.num_gvec(); ig++)
+            sfacg(ig, ia) = global_parameters.gvec_phase_factor<global>(ig, ia);
+    }
+}
+
+void FORTRAN(sirius_get_step_function)(complex16* cfunig, real8* cfunir)
+{
+    for (int i = 0; i < global_parameters.fft().size(); i++)
+    {
+        cfunig[i] = global_parameters.step_function_pw(i);
+        cfunir[i] = global_parameters.step_function(i);
+    }
 }
 
 void FORTRAN(sirius_get_num_electrons)(real8* num_electrons)
