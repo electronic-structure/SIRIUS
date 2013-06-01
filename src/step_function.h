@@ -37,7 +37,7 @@ class StepFunction : public ReciprocalLattice
             {
                 int ig = spl_fft_size[igloc];
                 double vg[3];
-                get_coordinates<cartesian, reciprocal>(gvec(ig), vg);
+                gvec_cart(ig, vg);
 
                 double g = Utils::vector_length(vg);
                 double g3inv = (ig) ? 1.0 / pow(g, 3) : 0.0;
@@ -45,7 +45,7 @@ class StepFunction : public ReciprocalLattice
                 double gRprev = -1.0;
                 double sin_cos_gR;
                 
-                complex16 zt(0.0, 0.0);
+                complex16 zt(0, 0);
 
                 for (int ia = 0; ia < num_atoms(); ia++)
                 {            
@@ -85,7 +85,7 @@ class StepFunction : public ReciprocalLattice
             double vit = 0.0;
             for (int i = 0; i < fft().size(); i++) vit += step_function_[i] * omega() / fft().size();
             
-            if (fabs(vit - volume_it_) > 1e-8)
+            if (fabs(vit - volume_it_) > 1e-10)
             {
                 std::stringstream s;
                 s << "step function gives a wrong volume for IT region" << std::endl
@@ -106,12 +106,12 @@ class StepFunction : public ReciprocalLattice
             return volume_it_;
         }
         
-        inline complex16& step_function_pw(int ig)
+        inline complex16 step_function_pw(int ig)
         {
             return step_function_pw_[ig];
         }
 
-        inline double& step_function(int ir)
+        inline double step_function(int ir)
         {
             return step_function_[ir];
         }
