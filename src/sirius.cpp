@@ -340,8 +340,7 @@ void FORTRAN(sirius_read_state)()
     // TODO: save and load the potential of free atoms
     global_parameters.solve_free_atoms();
     potential->hdf5_read();
-    potential->set_spherical_potential();
-    potential->set_nonspherical_potential();
+    potential->update_atomic_potential();
     sirius:: hdf5_tree fout("sirius.h5", false);
     fout.read("energy_fermi", &global_parameters.rti().energy_fermi);
 }
@@ -464,8 +463,7 @@ void FORTRAN(sirius_bands)(void)
 
     global_parameters.solve_free_atoms();
 
-    potential->set_spherical_potential();
-    potential->set_nonspherical_potential();
+    potential->update_atomic_potential();
     global_parameters.generate_radial_functions();
     global_parameters.generate_radial_integrals();
 
@@ -873,9 +871,51 @@ void FORTRAN(sirius_get_band_occupancies)(int32_t* kpoint_set_id, int32_t* ik, d
     kp->get_band_occupancies(band_occupancies);
 }
 
-void FORTRAN(sirius_get_evalsum)(double* evalsum)
+void FORTRAN(sirius_get_evalsum)(real8* evalsum)
 {
     *evalsum = global_parameters.rti().core_eval_sum + global_parameters.rti().valence_eval_sum;
 }
+
+void FORTRAN(sirius_get_energy_exc)(real8* exc)
+{
+    *exc = global_parameters.rti().energy_exc;
+}
+
+void FORTRAN(sirius_generate_xc_potential)(real8* rhomt, real8* rhoit, real8* vxcmt, real8* vxcit)
+{
+    sirius::PeriodicFunction<double>* rho = new sirius::PeriodicFunction<double>(global_parameters, global_parameters.lmax_rho()); 
+    rho->set_rlm_ptr(rhomt);
+    rho->set_it_ptr(rhoit);
+    
+    sirius::PeriodicFunction<double>* vxc = new sirius::PeriodicFunction<double>(global_parameters, global_parameters.lmax_pot());
+    vxc->set_rlm_ptr(vxcmt);
+    vxc->set_it_ptr(vxcit);
+
+    sirius::PeriodicFunction<double>* exc = new sirius::PeriodicFunction<double>(global_parameters, global_parameters.lmax_pot());     
+    exc->allocate(sirius::rlm_component | sirius::it_component);
+    
+    //PeriodicFunction<double>* bxc[3];
+    //for (int j = 0; j < parameters_.num_mag_dims(); j++)
+    //{
+    //    bxc[j] = new PeriodicFunction<double>(parameters_, parameters_.lmax_pot());
+    //    bxc[j]->split(rlm_component | it_component);
+    //    bxc[j]->allocate(rlm_component | it_component);
+    //    //bxc[j]->zero();
+    //}
+
+    potential->xc(rho, NULL, vxc, NULL, exc);
+    //vxc->zero();
+    //exc->zero();
+   
+    global_parameters.rti().energy_vxc = rho->inner(vxc, sirius::rlm_component | sirius::it_component);
+    global_parameters.rti().energy_exc = rho->inner(exc, sirius::rlm_component | sirius::it_component);
+
+    delete vxc;
+    delete exc;
+    delete rho;
+}
+    
+
+
 
 } // extern "C"
