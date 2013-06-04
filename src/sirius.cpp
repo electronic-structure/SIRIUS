@@ -4,26 +4,25 @@
     \brief Fortran API
 */
 
+/// pointer to Density class, implicitly used by Fortran side
 sirius::Density* density = NULL;
 
+/// pointer to Potential class, implicitly used by Fortran side
 sirius::Potential* potential = NULL;
 
+/// set of global parameters
 sirius::Global global_parameters;
 
-/// List of sets of k-points
+/// list of sets of k-points
 std::vector<sirius::kpoint_set*> kpoint_set_list;
 
 extern "C" 
 {
 
-/*
-    primitive set functions
-*/
-
 /// Set lattice vectors
 /** Fortran example:
     \code{.F90}
-        call sirius_set_lattice_vectors(avec(1,1), avec(1,2), avec(1,3))
+        call sirius_set_lattice_vectors(a1, a2, a3)
     \endcode
 */
 void FORTRAN(sirius_set_lattice_vectors)(real8* a1, real8* a2, real8* a3)
@@ -745,9 +744,16 @@ void FORTRAN(sirius_get_global_kpoint_idx)(int32_t* kpoint_set_id, int32_t* iklo
     *ik = kpoint_set_list[*kpoint_set_id]->spl_num_kpoints(*ikloc - 1) + 1; // Fortran counts from 1
 }
 
+/// Generate radial functions (both aw and lo)
 void FORTRAN(sirius_generate_radial_functions)()
 {
     global_parameters.generate_radial_functions();
+}
+
+/// Generate radial integrals
+void FORTRAN(sirius_generate_radial_integrals)()
+{
+    global_parameters.generate_radial_integrals();
 }
 
 void FORTRAN(sirius_get_symmetry_classes)(int32_t* ncls, int32_t* icls_by_ia)
@@ -914,7 +920,117 @@ void FORTRAN(sirius_generate_xc_potential)(real8* rhomt, real8* rhoit, real8* vx
     delete exc;
     delete rho;
 }
+
+void FORTRAN(sirius_update_atomic_potential)()
+{
+    potential->update_atomic_potential();
+}
+
+void FORTRAN(sirius_scalar_radial_solver)(int32_t* zn, int32_t* l, int32_t* dme, real8* enu, int32_t* nr, real8* r, 
+                                          real8* v__, int32_t* nn, real8* p0__, real8* p1__, real8* q0__, real8* q1__)
+{
+    sirius::RadialGrid rgrid;
+    rgrid.set_radial_points(*nr, *nr, r);
+    sirius::RadialSolver solver(false, *zn, rgrid);
+
+    std::vector<real8> v(*nr);
+    std::vector<real8> p0;
+    std::vector<real8> p1;
+    std::vector<real8> q0;
+    std::vector<real8> q1;
+
+    memcpy(&v[0], v__, (*nr) * sizeof(real8));
+
+    *nn = solver.solve_in_mt(*l, *enu, *dme, v, p0, p1, q0, q1);
+
+    memcpy(p0__, &p0[0], (*nr) * sizeof(real8));
+    memcpy(p1__, &p1[0], (*nr) * sizeof(real8));
+    memcpy(q0__, &q0[0], (*nr) * sizeof(real8));
+    memcpy(q1__, &q1[0], (*nr) * sizeof(real8));
+}
+
+void FORTRAN(sirius_get_aw_radial_function)(int32_t* ia__, int32_t* l, int32_t* io__, real8* awrf)
+{
+    int ia = *ia__ - 1;
+    int io = *io__ - 1;
+    int idxrf = global_parameters.atom(ia)->type()->indexr().index_by_l_order(*l, io);
+    for (int ir = 0; ir < global_parameters.atom(ia)->num_mt_points(); ir++)
+        awrf[ir] = global_parameters.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+}
     
+void FORTRAN(sirius_get_aw_h_radial_function)(int32_t* ia__, int32_t* l, int32_t* io__, real8* hawrf)
+{
+    int ia = *ia__ - 1;
+    int io = *io__ - 1;
+    int idxrf = global_parameters.atom(ia)->type()->indexr().index_by_l_order(*l, io);
+    for (int ir = 0; ir < global_parameters.atom(ia)->num_mt_points(); ir++)
+    {
+        double rinv = global_parameters.atom(ia)->type()->radial_grid().rinv(ir);
+        hawrf[ir] = global_parameters.atom(ia)->symmetry_class()->h_radial_function(ir, idxrf) * rinv;
+    }
+}
+    
+void FORTRAN(sirius_get_aw_surface_derivative)(int32_t* ia, int32_t* l, int32_t* io, real8* dawrf)
+{
+    *dawrf = global_parameters.atom(*ia - 1)->symmetry_class()->aw_surface_dm(*l, *io - 1, 1); 
+}
+
+void FORTRAN(sirius_get_aw_lo_o_radial_integral)(int32_t* ia__, int32_t* l, int32_t* io1, int32_t* ilo2, 
+                                                 real8* oalo)
+{
+    int ia = *ia__ - 1;
+
+    int idxrf2 = global_parameters.atom(ia)->type()->indexr().index_by_idxlo(*ilo2 - 1);
+    int order2 = global_parameters.atom(ia)->type()->indexr(idxrf2).order;
+
+    *oalo = global_parameters.atom(ia)->symmetry_class()->o_radial_integral(*l, *io1 - 1, order2);
+}
+
+void FORTRAN(sirius_get_lo_lo_o_radial_integral)(int32_t* ia__, int32_t* l, int32_t* ilo1, int32_t* ilo2, 
+                                                 real8* ololo)
+{
+    int ia = *ia__ - 1;
+
+    int idxrf1 = global_parameters.atom(ia)->type()->indexr().index_by_idxlo(*ilo1 - 1);
+    int order1 = global_parameters.atom(ia)->type()->indexr(idxrf1).order;
+    int idxrf2 = global_parameters.atom(ia)->type()->indexr().index_by_idxlo(*ilo2 - 1);
+    int order2 = global_parameters.atom(ia)->type()->indexr(idxrf2).order;
+
+    *ololo = global_parameters.atom(ia)->symmetry_class()->o_radial_integral(*l, order1, order2);
+}
+
+void FORTRAN(sirius_get_aw_aw_h_radial_integral)(int32_t* ia__, int32_t* l1, int32_t* io1, int32_t* l2, 
+                                                 int32_t* io2, int32_t* lm3, real8* haa)
+{
+    int ia = *ia__ - 1;
+    int idxrf1 = global_parameters.atom(ia)->type()->indexr().index_by_l_order(*l1, *io1 - 1);
+    int idxrf2 = global_parameters.atom(ia)->type()->indexr().index_by_l_order(*l2, *io2 - 1);
+
+    *haa = global_parameters.atom(ia)->h_radial_integrals(idxrf1, idxrf2)[*lm3 - 1];
+}
+
+void FORTRAN(sirius_get_lo_aw_h_radial_integral)(int32_t* ia__, int32_t* ilo1, int32_t* l2, int32_t* io2, int32_t* lm3, 
+                                                 real8* hloa)
+{
+    int ia = *ia__ - 1;
+    int idxrf1 = global_parameters.atom(ia)->type()->indexr().index_by_idxlo(*ilo1 - 1);
+    int idxrf2 = global_parameters.atom(ia)->type()->indexr().index_by_l_order(*l2, *io2 - 1);
+
+    *hloa = global_parameters.atom(ia)->h_radial_integrals(idxrf1, idxrf2)[*lm3 - 1];
+}
+
+
+void FORTRAN(sirius_get_lo_lo_h_radial_integral)(int32_t* ia__, int32_t* ilo1, int32_t* ilo2, int32_t* lm3, 
+                                                 real8* hlolo)
+{
+    int ia = *ia__ - 1;
+    int idxrf1 = global_parameters.atom(ia)->type()->indexr().index_by_idxlo(*ilo1 - 1);
+    int idxrf2 = global_parameters.atom(ia)->type()->indexr().index_by_idxlo(*ilo2 - 1);
+
+    *hlolo = global_parameters.atom(ia)->h_radial_integrals(idxrf1, idxrf2)[*lm3 - 1];
+}
+
+
 
 
 
