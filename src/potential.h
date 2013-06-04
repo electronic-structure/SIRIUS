@@ -117,8 +117,6 @@ class Potential
         */
         void poisson(PeriodicFunction<double>* rho, PeriodicFunction<double>* vh);
         
-        void xc(PeriodicFunction<double>* rho, PeriodicFunction<double>* magnetization[3], 
-                PeriodicFunction<double>* vxc, PeriodicFunction<double>* bxc[3], PeriodicFunction<double>* exc);
     public:
 
         /// Constructor
@@ -133,6 +131,10 @@ class Potential
         /// Zero effective potential and magnetic field.
         void zero();
 
+        /// Generate XC potential and energy density
+        void xc(PeriodicFunction<double>* rho, PeriodicFunction<double>* magnetization[3], 
+                PeriodicFunction<double>* vxc, PeriodicFunction<double>* bxc[3], PeriodicFunction<double>* exc);
+        
         /// Generate effective potential and magnetic field from charge density and magnetization.
         void generate_effective_potential(PeriodicFunction<double>* rho, PeriodicFunction<double>* magnetization[3]);
         
@@ -150,10 +152,8 @@ class Potential
         //**    }
         //**}
         
-        void set_spherical_potential();
+        void update_atomic_potential();
         
-        void set_nonspherical_potential();
-
         template <processing_unit_t pu> 
         void add_mt_contribution_to_pw();
 
@@ -894,7 +894,11 @@ void Potential::xc(PeriodicFunction<double>* rho, PeriodicFunction<double>* magn
         double rhomin = 0.0;
         for (int ir = 0; ir < nmtp; ir++)
         {
-            for (int itp = 0; itp < sht_.num_points(); itp++) rhomin = std::min(rhomin, rhotp(itp, ir));
+            for (int itp = 0; itp < sht_.num_points(); itp++) 
+            {
+                rhomin = std::min(rhomin, rhotp(itp, ir));
+                if (rhotp(itp, ir) < 0.0)  rhotp(itp, ir) = 0.0;
+            }
         }
 
         if (rhomin < 0.0)
@@ -903,7 +907,7 @@ void Potential::xc(PeriodicFunction<double>* rho, PeriodicFunction<double>* magn
             s << "Charge density for atom " << ia << " has negative values" << std::endl
               << "most negatve value : " << rhomin << std::endl
               << "current Rlm expansion of the charge density may be not sufficient, try to increase lmax_rho";
-            error(__FILE__, __LINE__, s);
+            error(__FILE__, __LINE__, s, 0);
         }
 
         if (parameters_.num_spins() == 2)
@@ -977,6 +981,20 @@ void Potential::xc(PeriodicFunction<double>* rho, PeriodicFunction<double>* magn
     // global offset
     int it_glob_idx = parameters_.spl_fft_size(0);
     int it_loc_size = parameters_.spl_fft_size().local_size();
+
+    double rhomin = 0.0;
+    for (int irloc = 0; irloc < it_loc_size; irloc++)
+    {
+        rhomin = std::min(rhomin, rho->f_it(parameters_.spl_fft_size(irloc)));
+        if (rho->f_it(parameters_.spl_fft_size(irloc)) < 0.0)  rho->f_it(parameters_.spl_fft_size(irloc)) = 0.0;
+    }
+    if (rhomin < 0.0)
+    {
+        std::stringstream s;
+        s << "Interstitial charge density has negative values" << std::endl
+          << "most negatve value : " << rhomin;
+        error(__FILE__, __LINE__, s, 0);
+    }
 
     if (parameters_.num_spins() == 1)
     {
@@ -1181,7 +1199,7 @@ void Potential::hdf5_read()
         effective_magnetic_field_[j]->hdf5_read(fout["effective_magnetic_field"][j]);
 }
 
-void Potential::set_spherical_potential()
+void Potential::update_atomic_potential()
 {
     for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
     {
@@ -1194,17 +1212,13 @@ void Potential::set_spherical_potential()
 
        parameters_.atom_symmetry_class(ic)->set_spherical_potential(veff);
     }
-}
-
-void Potential::set_nonspherical_potential()
-{
+    
     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
     {
         double* veff = &effective_potential_->f_rlm(0, 0, ia);
         
         double* beff[] = {NULL, NULL, NULL};
-        for (int i = 0; i < parameters_.num_mag_dims(); i++)
-            beff[i] = &effective_magnetic_field_[i]->f_rlm(0, 0, ia);
+        for (int i = 0; i < parameters_.num_mag_dims(); i++) beff[i] = &effective_magnetic_field_[i]->f_rlm(0, 0, ia);
         
         parameters_.atom(ia)->set_nonspherical_potential(veff, beff);
     }
