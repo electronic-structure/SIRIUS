@@ -227,7 +227,7 @@ class RadialSolver
         }
                         
         int solve_in_mt(int l, double enu, int m, std::vector<double>& v, std::vector<double>& p, 
-                         std::vector<double>& hp, double& dpdr_R)
+                        std::vector<double>& hp, double& dpdr_R)
         {
             std::vector<double> ve(radial_grid.num_mt_points());
             for (int i = 0; i < radial_grid.num_mt_points(); i++) ve[i] = v[i] - zn / radial_grid[i];
@@ -264,6 +264,33 @@ class RadialSolver
                         dqdr[i];
             }
             dpdr_R = dpdr[radial_grid.num_mt_points() - 1];
+            return nn;
+        }
+        
+        int solve_in_mt(int l, double enu, int m, std::vector<double>& v, std::vector<double>& p0, 
+                        std::vector<double>& p1, std::vector<double>& q0, std::vector<double>& q1)
+        {
+            std::vector<double> ve(radial_grid.num_mt_points());
+            for (int i = 0; i < radial_grid.num_mt_points(); i++) ve[i] = v[i] - zn / radial_grid[i];
+            
+            sirius::Spline<double> ve_spline(radial_grid.num_mt_points(), radial_grid, ve);
+
+            sirius::Spline<double> mp_spline(radial_grid.num_mt_points(), radial_grid);
+
+            int nn = 0;
+            
+            for (int j = 0; j <= m; j++)
+            {
+                if (j)
+                {
+                    for (int i = 0; i < radial_grid.num_mt_points(); i++) mp_spline[i] = j * p0[i];
+                    
+                    mp_spline.interpolate();
+                }
+                
+                nn = integrate(radial_grid.num_mt_points(), l, enu, ve_spline, mp_spline, p0, p1, q0, q1);
+            }
+
             return nn;
         }
 
