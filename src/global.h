@@ -176,7 +176,7 @@ class Global : public StepFunction
 
     public:
     
-        Global() : initialized_(false), lmax_apw_(lmax_apw_default), lmax_rho_(lmax_rho_default), 
+        Global() : initialized_(false), lmax_apw_(lmax_apw_default), lmax_pw_(-1), lmax_rho_(lmax_rho_default), 
                    lmax_pot_(lmax_pot_default), aw_cutoff_(aw_cutoff_default), num_fv_states_(-1), num_spins_(1),
                    num_mag_dims_(0), so_correction_(false), uj_correction_(false), cyclic_block_size_(16),
                    eigen_value_solver_(lapack),
