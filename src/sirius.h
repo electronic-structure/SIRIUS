@@ -92,6 +92,7 @@ extern "C" {
 #include "kpoint.h"
 #include "kpoint_set.h"
 #include "potential.h"
+#include "kset.h"
 #include "density.h"
 
 #endif // __SIRIUS_H__
