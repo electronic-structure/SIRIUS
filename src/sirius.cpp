@@ -47,6 +47,14 @@ void FORTRAN(sirius_set_lmax_apw)(int32_t* lmax_apw)
     global_parameters.set_lmax_apw(*lmax_apw);
 }
 
+/// Set maximum l-value for density expansion
+/** Fortran example:
+    \code{.F90}
+        integer lmaxrho
+        lmaxrho = 8
+        call sirius_set_lmax_rho(lmaxrho)
+    \endcode
+*/
 void FORTRAN(sirius_set_lmax_rho)(int32_t* lmax_rho)
 {
     global_parameters.set_lmax_rho(*lmax_rho);
@@ -253,7 +261,8 @@ void FORTRAN(sirius_platform_initialize)(int32_t* call_mpi_init_)
 }
 
 /// Initialize the global variables
-/** All _set_ functions must be called before.*/
+/** All _set_ functions except for sirius_set_aw_cutoff() must be called prior to
+    the call of sirius_global_initialize(). */
 void FORTRAN(sirius_global_initialize)(int32_t* init_radial_grid, int32_t* init_aw_descriptors)
 {
     global_parameters.initialize(*init_radial_grid, *init_aw_descriptors);
@@ -270,6 +279,7 @@ void FORTRAN(sirius_density_initialize)(int32_t* num_kpoints, double* kpoints_, 
     density = new sirius::Density(global_parameters, potential);
 }
 
+/// Clear the global variables and destroy all objects
 void FORTRAN(sirius_clear)(void)
 {
     global_parameters.clear();
@@ -1073,6 +1083,27 @@ void FORTRAN(sirius_get_aw_surface_derivative)(int32_t* ia, int32_t* l, int32_t*
     *dawrf = global_parameters.atom(*ia - 1)->symmetry_class()->aw_surface_dm(*l, *io - 1, 1); 
 }
 
+void FORTRAN(sirius_get_lo_radial_function)(int32_t* ia__, int32_t* idxlo__, real8* lorf)
+{
+    int ia = *ia__ - 1;
+    int idxlo = *idxlo__ - 1;
+    int idxrf = global_parameters.atom(ia)->type()->indexr().index_by_idxlo(idxlo);
+    for (int ir = 0; ir < global_parameters.atom(ia)->num_mt_points(); ir++)
+        lorf[ir] = global_parameters.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+}
+    
+void FORTRAN(sirius_get_lo_h_radial_function)(int32_t* ia__, int32_t* idxlo__, real8* hlorf)
+{
+    int ia = *ia__ - 1;
+    int idxlo = *idxlo__ - 1;
+    int idxrf = global_parameters.atom(ia)->type()->indexr().index_by_idxlo(idxlo);
+    for (int ir = 0; ir < global_parameters.atom(ia)->num_mt_points(); ir++)
+    {
+        double rinv = global_parameters.atom(ia)->type()->radial_grid().rinv(ir);
+        hlorf[ir] = global_parameters.atom(ia)->symmetry_class()->h_radial_function(ir, idxrf) * rinv;
+    }
+}
+    
 void FORTRAN(sirius_get_aw_lo_o_radial_integral)(int32_t* ia__, int32_t* l, int32_t* io1, int32_t* ilo2, 
                                                  real8* oalo)
 {
