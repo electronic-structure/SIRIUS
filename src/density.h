@@ -10,10 +10,8 @@ class Density
         /// Global set of parameters
         Global& parameters_;
 
-        /// Pointer to Band class
-        Band* band_;
-        
-        /// Pointer to effective potential
+        // TODO: potential must be an external object. Density class not always needs a potential.
+        /// Pointer to effective potential 
         Potential* potential_;
 
         int allocate_f_;
@@ -24,11 +22,10 @@ class Density
         
         std::vector< std::pair<int, int> > dmat_spins_;
 
+        // TODO: clean Gaunt arrays (should be one)
         mdarray< std::vector< std::vector< std::pair<int, complex16> > >, 2> complex_gaunt_;
 
         GauntCoefficients gaunt12_;
-
-        kpoint_set kpoint_set_;
 
         std::vector<int> l_by_lm_;
 
@@ -39,7 +36,7 @@ class Density
             Additionaly bands are sub split over rows of the 2D MPI grid, so each MPI rank in the total MPI grid gets
             it's local fraction of the bands.
         */
-        void get_occupied_bands_list(kpoint* kp, std::vector< std::pair<int, double> >& bands);
+        void get_occupied_bands_list(Band* band, kpoint* kp, std::vector< std::pair<int, double> >& bands);
 
         /// Reduce complex density matrix over magnetic quantum numbers
         template <int num_mag_dims> 
@@ -52,33 +49,30 @@ class Density
                           \Psi_{\ell m}^{i{\bf k}\sigma *}({\bf r}) \Psi_{\ell m'}^{i{\bf k}\sigma'}({\bf r})
             \f] 
         */
-        void add_kpoint_contribution_mt(kpoint* kp, mdarray<complex16, 4>& mt_complex_density_matrix);
+        void add_kpoint_contribution_mt(Band* band, kpoint* kp, mdarray<complex16, 4>& mt_complex_density_matrix);
         
         /// Add k-point contribution to the interstitial density and magnetization
-        void add_kpoint_contribution_it(kpoint* kp);
+        void add_kpoint_contribution_it(Band* band, kpoint* kp);
         
         /// Generate valence density in the muffin-tins 
-        void generate_valence_density_mt();
+        void generate_valence_density_mt(kset& ks);
         
         /// Generate valence density in the muffin-tins using straightforward (slow) approach
         template <processing_unit_t pu> 
-        void generate_valence_density_mt_directly();
+        void generate_valence_density_mt_directly(kset& ks);
         
-        void generate_valence_density_mt_sht();
+        void generate_valence_density_mt_sht(kset& ks);
         
         /// Generate valence density in the interstitial
-        void generate_valence_density_it();
+        void generate_valence_density_it(kset& ks);
        
         /// Add band contribution to the muffin-tin density
-        void add_band_contribution_mt(double weight, mdarray<complex16, 3>& fylm, 
+        void add_band_contribution_mt(Band* band, double weight, mdarray<complex16, 3>& fylm, 
                                       std::vector<PeriodicFunction<double, radial_angular>*>& dens);
 
     public:
 
         /// Constructor
-        Density(Global& parameters__, Potential* potential__, mdarray<double, 2>& kpoints__, double* kpoint_weights__,
-                int allocate_f__);
-        
         Density(Global& parameters__, Potential* potential__, int allocate_f__);
         
         /// Destructor
@@ -96,17 +90,8 @@ class Density
         /// Generate initial charge density and magnetization
         void initial_density(int type);
 
-        /// Print some basic info 
-        void print_info();
-        
-        /// Solve H\psi = E\psi and find eigen wave-functions
-        void find_eigen_states();
-        
-        /// Find Fermi energy and band occupation numbers
-        void find_band_occupancies();
-        
         /// Generate charge density and magnetization from the wave functions
-        void generate();
+        void generate(kset& ks);
         
         /// Integrtae charge density to get total and partial charges
         void integrate();
@@ -114,21 +99,6 @@ class Density
         /// Check density at MT boundary
         void check_density_continuity_at_mt();
          
-        void set_band_occupancies(int ik, double* band_occupancies)
-        {
-            kpoint_set_[ik]->set_band_occupancies(band_occupancies);
-        }
-
-        void get_band_energies(int ik, double* band_energies)
-        {
-            kpoint_set_[ik]->get_band_energies(band_energies);
-        }
-        
-        void get_band_occupancies(int ik, double* band_occupancies)
-        {
-            kpoint_set_[ik]->get_band_occupancies(band_occupancies);
-        }
-
         PeriodicFunction<double>* rho()
         {
             return rho_;
@@ -143,29 +113,10 @@ class Density
         {
             return magnetization_[i];
         }
-
-        /// Save wave-functions to HDF5 file
-        void save_wave_functions()
-        {
-            kpoint_set_.save_wave_functions();
-        }
 };
 
-Density::Density(Global& parameters__, Potential* potential__, mdarray<double, 2>& kpoints__, double* kpoint_weights__,
-                 int allocate_f__ = pw_component) : 
-    parameters_(parameters__), potential_(potential__), allocate_f_(allocate_f__), kpoint_set_(parameters__)
-{
-    init();
-
-    band_ = kpoint_set_.band();
-    
-    kpoint_set_.clear();
-    kpoint_set_.add_kpoints(kpoints__, kpoint_weights__);
-    kpoint_set_.initialize();
-}
-
 Density::Density(Global& parameters__, Potential* potential__, int allocate_f__ = pw_component) : 
-    parameters_(parameters__), potential_(potential__), allocate_f_(allocate_f__), kpoint_set_(parameters__)
+    parameters_(parameters__), potential_(potential__), allocate_f_(allocate_f__)
 {
     init();
 }
@@ -455,24 +406,24 @@ void Density::reduce_zdens(int ia, int ialoc, mdarray<complex16, 4>& zdens, mdar
     } // lm3
 }
 
-void Density::get_occupied_bands_list(kpoint* kp, std::vector< std::pair<int, double> >& bands)
+void Density::get_occupied_bands_list(Band* band, kpoint* kp, std::vector< std::pair<int, double> >& bands)
 {
     bands.clear();
-    for (int jsub = 0; jsub < band_->num_sub_bands(); jsub++)
+    for (int jsub = 0; jsub < band->num_sub_bands(); jsub++)
     {
-        int j = band_->idxbandglob(jsub);
-        int jloc = band_->idxbandloc(jsub);
+        int j = band->idxbandglob(jsub);
+        int jloc = band->idxbandloc(jsub);
         double wo = kp->band_occupancy(j) * kp->weight();
         if (wo > 1e-14) bands.push_back(std::pair<int, double>(jloc, wo));
     }
 }
 
-void Density::add_kpoint_contribution_mt(kpoint* kp, mdarray<complex16, 4>& mt_complex_density_matrix)
+void Density::add_kpoint_contribution_mt(Band* band, kpoint* kp, mdarray<complex16, 4>& mt_complex_density_matrix)
 {
     Timer t("sirius::Density::add_kpoint_contribution_mt");
     
     std::vector< std::pair<int, double> > bands;
-    get_occupied_bands_list(kp, bands);
+    get_occupied_bands_list(band, kp, bands);
     if (bands.size() == 0) return;
    
     mdarray<complex16, 3> wf1(parameters_.max_mt_basis_size(), (int)bands.size(), parameters_.num_spins());
@@ -503,12 +454,12 @@ void Density::add_kpoint_contribution_mt(kpoint* kp, mdarray<complex16, 4>& mt_c
     }
 }
 
-void Density::add_kpoint_contribution_it(kpoint* kp)
+void Density::add_kpoint_contribution_it(Band* band, kpoint* kp)
 {
     Timer t("sirius::Density::add_kpoint_contribution_it");
     
     std::vector< std::pair<int, double> > bands;
-    get_occupied_bands_list(kp, bands);
+    get_occupied_bands_list(band, kp, bands);
     if (bands.size() == 0) return;
     mdarray<complex16, 3> wf1(parameters_.max_mt_basis_size(), (int)bands.size(), parameters_.num_spins());
     mdarray<complex16, 3> wf2(parameters_.max_mt_basis_size(), (int)bands.size(), parameters_.num_spins());
@@ -592,7 +543,7 @@ void Density::add_kpoint_contribution_it(kpoint* kp)
     }
 }
 
-void Density::generate_valence_density_mt()
+void Density::generate_valence_density_mt(kset& ks)
 {
     Timer t("sirius::Density::generate_valence_density_mt");
 
@@ -610,10 +561,10 @@ void Density::generate_valence_density_mt()
     // ========================
     // add k-point contribution
     // ========================
-    for (int ikloc = 0; ikloc < kpoint_set_.spl_num_kpoints().local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
     {
-        int ik = kpoint_set_.spl_num_kpoints(ikloc);
-        add_kpoint_contribution_mt(kpoint_set_[ik], mt_complex_density_matrix);
+        int ik = ks.spl_num_kpoints(ikloc);
+        add_kpoint_contribution_mt(ks.band(), ks[ik], mt_complex_density_matrix);
     }
     
     mdarray<complex16, 4> mt_complex_density_matrix_loc(parameters_.max_mt_basis_size(), 
@@ -784,17 +735,17 @@ void Density::generate_valence_density_mt()
     for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync(rlm_component);
 }
 
-void Density::generate_valence_density_it()
+void Density::generate_valence_density_it(kset& ks)
 {
     Timer t("sirius::Density::generate_valence_density_it");
 
     // ========================
     // add k-point contribution
     // ========================
-    for (int ikloc = 0; ikloc < kpoint_set_.spl_num_kpoints().local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
     {
-        int ik = kpoint_set_.spl_num_kpoints(ikloc);
-        add_kpoint_contribution_it(kpoint_set_[ik]);
+        int ik = ks.spl_num_kpoints(ikloc);
+        add_kpoint_contribution_it(ks.band(), ks[ik]);
     }
     
     // ==========================================================================================
@@ -806,10 +757,10 @@ void Density::generate_valence_density_it()
         Platform::allreduce(&magnetization_[j]->f_it(0), parameters_.fft().size()); 
 }
 
-void Density::add_band_contribution_mt(double weight, mdarray<complex16, 3>& fylm, 
+void Density::add_band_contribution_mt(Band* band, double weight, mdarray<complex16, 3>& fylm, 
                                        std::vector<PeriodicFunction<double, radial_angular>*>& dens)
 {
-    splindex<block> spl_num_atoms(parameters_.num_atoms(), band_->num_ranks_row(), band_->rank_row());
+    splindex<block> spl_num_atoms(parameters_.num_atoms(), band->num_ranks_row(), band->rank_row());
 
     for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
     {
@@ -832,12 +783,13 @@ void Density::add_band_contribution_mt(double weight, mdarray<complex16, 3>& fyl
     }
 }
 
-template<> void Density::generate_valence_density_mt_directly<cpu>()
+template<> void Density::generate_valence_density_mt_directly<cpu>(kset& ks)
 {
     Timer t("sirius::Density::generate_valence_density_mt_directly");
     
     int lmax = (basis_type == apwlo) ? parameters_.lmax_apw() : parameters_.lmax_pw();
     int lmmax = Utils::lmmax_by_lmax(lmax);
+    Band* band = ks.band();
     
     std::vector<PeriodicFunction<double, radial_angular>*> dens(1 + parameters_.num_mag_dims());
     for (int i = 0; i < (int)dens.size(); i++)
@@ -850,22 +802,22 @@ template<> void Density::generate_valence_density_mt_directly<cpu>()
     mdarray<complex16, 3> fylm(parameters_.max_num_mt_points(), lmmax, parameters_.num_atoms());
 
     // add k-point contribution
-    for (int ikloc = 0; ikloc < kpoint_set_.spl_num_kpoints().local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
     {
-        int ik = kpoint_set_.spl_num_kpoints(ikloc);
-        for (int jloc = 0; jloc < band_->spl_spinor_wf_col().local_size(); jloc++)
+        int ik = ks.spl_num_kpoints(ikloc);
+        for (int jloc = 0; jloc < band->spl_spinor_wf_col().local_size(); jloc++)
         {
-            int j = band_->spl_spinor_wf_col(jloc);
+            int j = band->spl_spinor_wf_col(jloc);
 
-            double wo = kpoint_set_[ik]->band_occupancy(j) * kpoint_set_[ik]->weight();
+            double wo = ks[ik]->band_occupancy(j) * ks[ik]->weight();
 
             if (wo > 1e-14)
             {
                 int ispn = 0;
 
-                kpoint_set_[ik]->spinor_wave_function_component_mt<radial_angular>(band_, lmax, ispn, jloc, fylm);
+                ks[ik]->spinor_wave_function_component_mt<radial_angular>(band, lmax, ispn, jloc, fylm);
                 
-                add_band_contribution_mt(wo, fylm, dens);
+                add_band_contribution_mt(band, wo, fylm, dens);
             }
         }
     }
@@ -898,12 +850,13 @@ template<> void Density::generate_valence_density_mt_directly<cpu>()
     }
 }
 
-void Density::generate_valence_density_mt_sht()
+void Density::generate_valence_density_mt_sht(kset& ks)
 {
     Timer t("sirius::Density::generate_valence_density_mt_sht");
     
     int lmax = (basis_type == apwlo) ? parameters_.lmax_apw() : parameters_.lmax_pw();
     int lmmax = Utils::lmmax_by_lmax(lmax);
+    Band* band = ks.band();
     
     //std::vector<PeriodicFunction<double, radial_angular>*> dens(1 + parameters_.num_mag_dims());
     //for (int i = 0; i < (int)dens.size(); i++)
@@ -927,20 +880,20 @@ void Density::generate_valence_density_mt_sht()
     rholm.zero();
 
     // add k-point contribution
-    for (int ikloc = 0; ikloc < kpoint_set_.spl_num_kpoints().local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
     {
-        int ik = kpoint_set_.spl_num_kpoints(ikloc);
-        for (int jloc = 0; jloc < band_->spl_spinor_wf_col().local_size(); jloc++)
+        int ik = ks.spl_num_kpoints(ikloc);
+        for (int jloc = 0; jloc < band->spl_spinor_wf_col().local_size(); jloc++)
         {
-            int j = band_->spl_spinor_wf_col(jloc);
+            int j = band->spl_spinor_wf_col(jloc);
 
-            double wo = kpoint_set_[ik]->band_occupancy(j) * kpoint_set_[ik]->weight();
+            double wo = ks[ik]->band_occupancy(j) * ks[ik]->weight();
 
             if (wo > 1e-14)
             {
                 int ispn = 0;
 
-                kpoint_set_[ik]->spinor_wave_function_component_mt<radial_angular>(band_, lmax, ispn, jloc, fylm);
+                ks[ik]->spinor_wave_function_component_mt<radial_angular>(band, lmax, ispn, jloc, fylm);
                 for (int ia = 0; ia < parameters_.num_atoms(); ia++)
                 {
                     for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
@@ -1109,192 +1062,16 @@ template<> void Density::generate_valence_density_mt_directly<gpu>()
 }
 #endif
 
-void Density::print_info()
-{
-    if (parameters_.mpi_grid().root())
-    {
-        printf("\n");
-        printf("Density\n");
-        for (int i = 0; i < 80; i++) printf("-");
-        printf("\n");
-        printf("  ik                vk                    weight  num_gkvec  apwlo_basis_size\n");
-        for (int i = 0; i < 80; i++) printf("-");
-        printf("\n");
-    }
-
-    if (parameters_.mpi_grid().side(1 << 0))
-    {
-        for (int i = 0; i < parameters_.mpi_grid().dimension_size(0); i++)
-        {
-            if (parameters_.mpi_grid().coordinate(0) == i)
-            {
-                for (int ikloc = 0; ikloc < kpoint_set_.spl_num_kpoints().local_size(); ikloc++)
-                {
-                    int ik = kpoint_set_.spl_num_kpoints(ikloc);
-                    printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i            %6i\n", 
-                           ik, kpoint_set_[ik]->vk()[0], kpoint_set_[ik]->vk()[1], kpoint_set_[ik]->vk()[2], 
-                           kpoint_set_[ik]->weight(), 
-                           kpoint_set_[ik]->num_gkvec(), 
-                           kpoint_set_[ik]->apwlo_basis_size());
-                }
-            }
-            parameters_.mpi_grid().barrier(1 << 0);
-        }
-    }
-
-    parameters_.mpi_grid().barrier();
-
-    if (parameters_.mpi_grid().root())
-    {
-        for (int i = 0; i < 80; i++) printf("-");
-        printf("\n");
-        printf("total number of k-points : %i\n", kpoint_set_.num_kpoints());
-    }
-}
-
-void Density::find_eigen_states()
-{
-    Timer t("sirius::Density::find_eigen_states");
-    
-    potential_->update_atomic_potential();
-    
-    // generate radial functions
-    parameters_.generate_radial_functions();
-    
-    // generate radial integrals
-    parameters_.generate_radial_integrals();
-
-    potential_->generate_pw_coefs();
-    
-    // solve secular equation and generate wave functions
-    for (int ikloc = 0; ikloc < kpoint_set_.spl_num_kpoints().local_size(); ikloc++)
-    {
-        int ik = kpoint_set_.spl_num_kpoints(ikloc);
-        kpoint_set_[ik]->find_eigen_states(band_, potential_->effective_potential(),
-                                           potential_->effective_magnetic_field());
-    }
-
-    // synchronize eigen-values
-    kpoint_set_.sync_band_energies();
-
-    if (Platform::mpi_rank() == 0)
-    {
-        printf("Lowest band energies\n");
-        for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
-        {
-            printf("ik : %2i, ", ik); 
-            for (int j = 0; j < std::min(10, parameters_.num_bands()); j++) 
-                printf("%12.6f", kpoint_set_[ik]->band_energy(j));
-            printf("\n");
-        }
-    }
-    //parameters_.rti().enu1 = kpoint_set_[0]->band_energy(0);
-    //parameters_.rti().enu2 = kpoint_set_[0]->band_energy(1);
-
-    // compute eigen-value sums
-    double eval_sum = 0.0;
-    for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
-    {
-        double wk = kpoint_set_[ik]->weight();
-        for (int j = 0; j < parameters_.num_bands(); j++)
-            eval_sum += wk * kpoint_set_[ik]->band_energy(j) * kpoint_set_[ik]->band_occupancy(j);
-    }
-    
-    parameters_.rti().valence_eval_sum = eval_sum;
-}
-
-void Density::find_band_occupancies()
-{
-    Timer t("sirius::Density::find_band_occupancies");
-
-    double ef = 0.15;
-
-    double de = 0.1;
-
-    int s = 1;
-    int sp;
-
-    double ne = 0.0;
-
-    mdarray<double, 2> bnd_occ(parameters_.num_bands(), kpoint_set_.num_kpoints());
-    
-    // TODO: safe way not to get stuck here
-    while (true)
-    {
-        ne = 0.0;
-        for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
-        {
-            for (int j = 0; j < parameters_.num_bands(); j++)
-            {
-                bnd_occ(j, ik) = Utils::gaussian_smearing(kpoint_set_[ik]->band_energy(j) - ef) * 
-                                 parameters_.max_occupancy();
-                ne += bnd_occ(j, ik) * kpoint_set_[ik]->weight();
-            }
-        }
-
-        if (fabs(ne - parameters_.num_valence_electrons()) < 1e-11) break;
-
-        sp = s;
-        s = (ne > parameters_.num_valence_electrons()) ? -1 : 1;
-
-        de = s * fabs(de);
-
-        (s != sp) ? de *= 0.5 : de *= 1.25; 
-        
-        ef += de;
-    } 
-
-    parameters_.rti().energy_fermi = ef;
-    
-    for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
-        kpoint_set_[ik]->set_band_occupancies(&bnd_occ(0, ik));
-
-    double gap = 0.0;
-    
-    int nve = int(parameters_.num_valence_electrons() + 1e-12);
-    if ((parameters_.num_spins() == 2) || 
-        ((fabs(nve - parameters_.num_valence_electrons()) < 1e-12) && nve % 2 == 0))
-    {
-        // find band gap
-        std::vector< std::pair<double, double> > eband;
-        std::pair<double, double> eminmax;
-
-        for (int j = 0; j < parameters_.num_bands(); j++)
-        {
-            eminmax.first = 1e10;
-            eminmax.second = -1e10;
-
-            for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
-            {
-                eminmax.first = std::min(eminmax.first, kpoint_set_[ik]->band_energy(j));
-                eminmax.second = std::max(eminmax.second, kpoint_set_[ik]->band_energy(j));
-            }
-
-            eband.push_back(eminmax);
-        }
-        
-        std::sort(eband.begin(), eband.end());
-
-        int ist = nve;
-        if (parameters_.num_spins() == 1) ist /= 2; 
-
-        if (eband[ist].first > eband[ist - 1].second) gap = eband[ist].first - eband[ist - 1].second;
-
-        parameters_.rti().band_gap = gap;
-    }
-}
-
-void Density::generate()
+void Density::generate(kset& ks)
 {
     Timer t("sirius::Density::generate");
     
     double wt = 0.0;
     double ot = 0.0;
-    for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
+    for (int ik = 0; ik < ks.num_kpoints(); ik++)
     {
-        wt += kpoint_set_[ik]->weight();
-        for (int j = 0; j < parameters_.num_bands(); j++)
-            ot += kpoint_set_[ik]->weight() * kpoint_set_[ik]->band_occupancy(j);
+        wt += ks[ik]->weight();
+        for (int j = 0; j < parameters_.num_bands(); j++) ot += ks[ik]->weight() * ks[ik]->band_occupancy(j);
     }
 
     if (fabs(wt - 1.0) > 1e-12) error(__FILE__, __LINE__, "kpoint weights don't sum to one");
@@ -1313,14 +1090,14 @@ void Density::generate()
     zero();
 
     // interstitial part is independent of basis type
-    generate_valence_density_it();
+    generate_valence_density_it(ks);
    
     // for muffin-tin part
     switch (basis_type)
     {
         case apwlo:
         {
-            generate_valence_density_mt();
+            generate_valence_density_mt(ks);
             //generate_valence_density_mt_sht();
             break;
         }
@@ -1330,13 +1107,13 @@ void Density::generate()
             {
                 case cpu:
                 {
-                    generate_valence_density_mt_directly<cpu>();
+                    generate_valence_density_mt_directly<cpu>(ks);
                     break;
                 }
                 #ifdef _GPU_
                 case gpu:
                 {
-                    generate_valence_density_mt_directly<gpu>();
+                    generate_valence_density_mt_directly<gpu>(ks);
                     break;
                 }
                 #endif
