@@ -906,7 +906,7 @@ void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, co
                     for (int m = -l; m <= l; m++)
                     {
                         int lm = Utils::lm_by_l_m(l, m);
-                        int i = atom->type()->indexb().index_by_lm_order(lm, order);
+                        int i = atom->type()->indexb_by_lm_order(lm, order);
                         for (int ig = 0; ig < kp->num_gkvec(); ig++) apwalm(ig, order, lm, ia) = conj(alm(ig, i));
                     }
                 }
@@ -1061,7 +1061,7 @@ void FORTRAN(sirius_get_aw_radial_function)(int32_t* ia__, int32_t* l, int32_t* 
 {
     int ia = *ia__ - 1;
     int io = *io__ - 1;
-    int idxrf = global_parameters.atom(ia)->type()->indexr().index_by_l_order(*l, io);
+    int idxrf = global_parameters.atom(ia)->type()->indexr_by_l_order(*l, io);
     for (int ir = 0; ir < global_parameters.atom(ia)->num_mt_points(); ir++)
         awrf[ir] = global_parameters.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
 }
@@ -1070,7 +1070,7 @@ void FORTRAN(sirius_get_aw_h_radial_function)(int32_t* ia__, int32_t* l, int32_t
 {
     int ia = *ia__ - 1;
     int io = *io__ - 1;
-    int idxrf = global_parameters.atom(ia)->type()->indexr().index_by_l_order(*l, io);
+    int idxrf = global_parameters.atom(ia)->type()->indexr_by_l_order(*l, io);
     for (int ir = 0; ir < global_parameters.atom(ia)->num_mt_points(); ir++)
     {
         double rinv = global_parameters.atom(ia)->type()->radial_grid().rinv(ir);
@@ -1087,7 +1087,7 @@ void FORTRAN(sirius_get_lo_radial_function)(int32_t* ia__, int32_t* idxlo__, rea
 {
     int ia = *ia__ - 1;
     int idxlo = *idxlo__ - 1;
-    int idxrf = global_parameters.atom(ia)->type()->indexr().index_by_idxlo(idxlo);
+    int idxrf = global_parameters.atom(ia)->type()->indexr_by_idxlo(idxlo);
     for (int ir = 0; ir < global_parameters.atom(ia)->num_mt_points(); ir++)
         lorf[ir] = global_parameters.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
 }
@@ -1096,7 +1096,7 @@ void FORTRAN(sirius_get_lo_h_radial_function)(int32_t* ia__, int32_t* idxlo__, r
 {
     int ia = *ia__ - 1;
     int idxlo = *idxlo__ - 1;
-    int idxrf = global_parameters.atom(ia)->type()->indexr().index_by_idxlo(idxlo);
+    int idxrf = global_parameters.atom(ia)->type()->indexr_by_idxlo(idxlo);
     for (int ir = 0; ir < global_parameters.atom(ia)->num_mt_points(); ir++)
     {
         double rinv = global_parameters.atom(ia)->type()->radial_grid().rinv(ir);
@@ -1109,7 +1109,7 @@ void FORTRAN(sirius_get_aw_lo_o_radial_integral)(int32_t* ia__, int32_t* l, int3
 {
     int ia = *ia__ - 1;
 
-    int idxrf2 = global_parameters.atom(ia)->type()->indexr().index_by_idxlo(*ilo2 - 1);
+    int idxrf2 = global_parameters.atom(ia)->type()->indexr_by_idxlo(*ilo2 - 1);
     int order2 = global_parameters.atom(ia)->type()->indexr(idxrf2).order;
 
     *oalo = global_parameters.atom(ia)->symmetry_class()->o_radial_integral(*l, *io1 - 1, order2);
@@ -1120,9 +1120,9 @@ void FORTRAN(sirius_get_lo_lo_o_radial_integral)(int32_t* ia__, int32_t* l, int3
 {
     int ia = *ia__ - 1;
 
-    int idxrf1 = global_parameters.atom(ia)->type()->indexr().index_by_idxlo(*ilo1 - 1);
+    int idxrf1 = global_parameters.atom(ia)->type()->indexr_by_idxlo(*ilo1 - 1);
     int order1 = global_parameters.atom(ia)->type()->indexr(idxrf1).order;
-    int idxrf2 = global_parameters.atom(ia)->type()->indexr().index_by_idxlo(*ilo2 - 1);
+    int idxrf2 = global_parameters.atom(ia)->type()->indexr_by_idxlo(*ilo2 - 1);
     int order2 = global_parameters.atom(ia)->type()->indexr(idxrf2).order;
 
     *ololo = global_parameters.atom(ia)->symmetry_class()->o_radial_integral(*l, order1, order2);
@@ -1132,8 +1132,8 @@ void FORTRAN(sirius_get_aw_aw_h_radial_integral)(int32_t* ia__, int32_t* l1, int
                                                  int32_t* io2, int32_t* lm3, real8* haa)
 {
     int ia = *ia__ - 1;
-    int idxrf1 = global_parameters.atom(ia)->type()->indexr().index_by_l_order(*l1, *io1 - 1);
-    int idxrf2 = global_parameters.atom(ia)->type()->indexr().index_by_l_order(*l2, *io2 - 1);
+    int idxrf1 = global_parameters.atom(ia)->type()->indexr_by_l_order(*l1, *io1 - 1);
+    int idxrf2 = global_parameters.atom(ia)->type()->indexr_by_l_order(*l2, *io2 - 1);
 
     *haa = global_parameters.atom(ia)->h_radial_integrals(idxrf1, idxrf2)[*lm3 - 1];
 }
@@ -1142,8 +1142,8 @@ void FORTRAN(sirius_get_lo_aw_h_radial_integral)(int32_t* ia__, int32_t* ilo1, i
                                                  real8* hloa)
 {
     int ia = *ia__ - 1;
-    int idxrf1 = global_parameters.atom(ia)->type()->indexr().index_by_idxlo(*ilo1 - 1);
-    int idxrf2 = global_parameters.atom(ia)->type()->indexr().index_by_l_order(*l2, *io2 - 1);
+    int idxrf1 = global_parameters.atom(ia)->type()->indexr_by_idxlo(*ilo1 - 1);
+    int idxrf2 = global_parameters.atom(ia)->type()->indexr_by_l_order(*l2, *io2 - 1);
 
     *hloa = global_parameters.atom(ia)->h_radial_integrals(idxrf1, idxrf2)[*lm3 - 1];
 }
@@ -1153,8 +1153,8 @@ void FORTRAN(sirius_get_lo_lo_h_radial_integral)(int32_t* ia__, int32_t* ilo1, i
                                                  real8* hlolo)
 {
     int ia = *ia__ - 1;
-    int idxrf1 = global_parameters.atom(ia)->type()->indexr().index_by_idxlo(*ilo1 - 1);
-    int idxrf2 = global_parameters.atom(ia)->type()->indexr().index_by_idxlo(*ilo2 - 1);
+    int idxrf1 = global_parameters.atom(ia)->type()->indexr_by_idxlo(*ilo1 - 1);
+    int idxrf2 = global_parameters.atom(ia)->type()->indexr_by_idxlo(*ilo2 - 1);
 
     *hlolo = global_parameters.atom(ia)->h_radial_integrals(idxrf1, idxrf2)[*lm3 - 1];
 }

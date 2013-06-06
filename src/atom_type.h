@@ -413,167 +413,13 @@ class AtomType
         // forbid assignment operator
         AtomType& operator=(const AtomType& src);
         
-        void read_input()
-        {
-            std::string fname = label_ + std::string(".json");
-            JsonTree parser(fname);
-            parser["name"] >> name_;
-            parser["symbol"] >> symbol_;
-            parser["mass"] >> mass_;
-            parser["number"] >> zn_;
-            parser["rmin"] >> radial_grid_origin_;
-            parser["rmax"] >> radial_grid_infinity_;
-            parser["rmt"] >> mt_radius_;
-            parser["nrmt"] >> num_mt_points_;
-            std::string core_str;
-            parser["core"] >> core_str;
-            if (int size = (int)core_str.size())
-            {
-                if (size % 2)
-                {
-                    std::string s = std::string("wrong core configuration string : ") + core_str;
-                    error(__FILE__, __LINE__, s);
-                }
-                int j = 0;
-                while (j < size)
-                {
-                    char c1 = core_str[j++];
-                    char c2 = core_str[j++];
-                    
-                    int n = -1;
-                    int l = -1;
-                    
-                    std::istringstream iss(std::string(1, c1));
-                    iss >> n;
-                    
-                    if (n <= 0 || iss.fail())
-                    {
-                        std::string s = std::string("wrong principal quantum number : " ) + std::string(1, c1);
-                        error(__FILE__, __LINE__, s);
-                    }
-                    
-                    switch (c2)
-                    {
-                        case 's':
-                            l = 0;
-                            break;
+        void read_input_core(JsonTree& parser);
 
-                        case 'p':
-                            l = 1;
-                            break;
+        void read_input_aw(JsonTree& parser);
 
-                        case 'd':
-                            l = 2;
-                            break;
+        void read_input_lo(JsonTree& parser);
 
-                        case 'f':
-                            l = 3;
-                            break;
-
-                        default:
-                            std::string s = std::string("wrong angular momentum label : " ) + std::string(1, c2);
-                            error(__FILE__, __LINE__, s);
-                    }
-
-                    atomic_level_descriptor level;
-                    level.n = n;
-                    level.l = l;
-                    level.core = true;
-                    for (int ist = 0; ist < 28; ist++)
-                    {
-                        if ((level.n == atomic_conf[zn_ - 1][ist][0]) && (level.l == atomic_conf[zn_ - 1][ist][1]))
-                        {
-                            level.k = atomic_conf[zn_ - 1][ist][2]; 
-                            level.occupancy = double(atomic_conf[zn_ - 1][ist][3]);
-                            atomic_levels_.push_back(level);
-                        }
-                    }
-                }
-            }
-            
-            radial_solution_descriptor rsd;
-
-            // default augmented wave basis
-            rsd.n = -1;
-            rsd.l = -1;
-            for (int order = 0; order < parser["valence"][0]["basis"].size(); order++)
-            {
-                parser["valence"][0]["basis"][order]["enu"] >> rsd.enu;
-                parser["valence"][0]["basis"][order]["dme"] >> rsd.dme;
-                parser["valence"][0]["basis"][order]["auto"] >> rsd.auto_enu;
-                aw_default_l_.push_back(rsd);
-            }
-            
-            radial_solution_descriptor_set rsd_set;
-            for (int j = 1; j < parser["valence"].size(); j++)
-            {
-                rsd.l = parser["valence"][j]["l"].get<int>();
-                rsd.n = parser["valence"][j]["n"].get<int>();
-                rsd_set.clear();
-                for (int order = 0; order < parser["valence"][j]["basis"].size(); order++)
-                {
-                    parser["valence"][j]["basis"][order]["enu"] >> rsd.enu;
-                    parser["valence"][j]["basis"][order]["dme"] >> rsd.dme;
-                    parser["valence"][j]["basis"][order]["auto"] >> rsd.auto_enu;
-                    rsd_set.push_back(rsd);
-                }
-                aw_specific_l_.push_back(rsd_set);
-            }
-            
-            for (int j = 0; j < parser["lo"].size(); j++)
-            {
-                int l = parser["lo"][j]["l"].get<int>();
-
-                if (parser["lo"][j].exist("basis"))
-                {
-                    local_orbital_descriptor lod;
-                    lod.type = lo_rs;
-                    lod.l = l;
-                    rsd.l = l;
-                    rsd_set.clear();
-                    for (int order = 0; order < parser["lo"][j]["basis"].size(); order++)
-                    {
-                        parser["lo"][j]["basis"][order]["n"] >> rsd.n;
-                        parser["lo"][j]["basis"][order]["enu"] >> rsd.enu;
-                        parser["lo"][j]["basis"][order]["dme"] >> rsd.dme;
-                        parser["lo"][j]["basis"][order]["auto"] >> rsd.auto_enu;
-                        rsd_set.push_back(rsd);
-                    }
-                    lod.rsd_set = rsd_set;
-                    lo_descriptors_.push_back(lod);
-                }
-                if (parser["lo"][j].exist("polynom"))
-                {
-                    local_orbital_descriptor lod;
-                    lod.type = lo_cp;
-                    lod.l = l;
-
-                    std::vector<int> p1;
-                    std::vector<int> p2;
-                    
-                    parser["lo"][j]["polynom"]["p1"] >> p1;
-                    if (parser["lo"][j]["polynom"].exist("p2")) 
-                    {
-                        parser["lo"][j]["polynom"]["p2"] >> p2;
-                    }
-                    else
-                    {
-                        p2.push_back(2);
-                    }
-
-                    for (int i = 0; i < (int)p2.size(); i++)
-                    {
-                        for (int j = 0; j < (int)p1.size(); j++)
-                        {
-                            lod.p1 = p1[j];
-                            lod.p2 = p2[i];
-                            lo_descriptors_.push_back(lod);
-                        }
-                    }
-                }
-
-            }
-        }
+        void read_input();
     
     public:
         
@@ -1090,6 +936,16 @@ class AtomType
             return indexr_[i];
         }
 
+        inline int indexr_by_l_order(int l, int order)
+        {
+            return indexr_.index_by_l_order(l, order);
+        }
+        
+        inline int indexr_by_idxlo(int idxlo)
+        {
+            return indexr_.index_by_idxlo(idxlo);
+        }
+
         inline basis_functions_index& indexb()
         {
             return indexb_;
@@ -1183,6 +1039,187 @@ class AtomType
             atomic_levels_.push_back(level);
         }
 };
+
+void AtomType::read_input_core(JsonTree& parser)
+{
+    std::string core_str;
+    parser["core"] >> core_str;
+    if (int size = (int)core_str.size())
+    {
+        if (size % 2)
+        {
+            std::string s = std::string("wrong core configuration string : ") + core_str;
+            error(__FILE__, __LINE__, s);
+        }
+        int j = 0;
+        while (j < size)
+        {
+            char c1 = core_str[j++];
+            char c2 = core_str[j++];
+            
+            int n = -1;
+            int l = -1;
+            
+            std::istringstream iss(std::string(1, c1));
+            iss >> n;
+            
+            if (n <= 0 || iss.fail())
+            {
+                std::string s = std::string("wrong principal quantum number : " ) + std::string(1, c1);
+                error(__FILE__, __LINE__, s);
+            }
+            
+            switch (c2)
+            {
+                case 's':
+                    l = 0;
+                    break;
+
+                case 'p':
+                    l = 1;
+                    break;
+
+                case 'd':
+                    l = 2;
+                    break;
+
+                case 'f':
+                    l = 3;
+                    break;
+
+                default:
+                    std::string s = std::string("wrong angular momentum label : " ) + std::string(1, c2);
+                    error(__FILE__, __LINE__, s);
+            }
+
+            atomic_level_descriptor level;
+            level.n = n;
+            level.l = l;
+            level.core = true;
+            for (int ist = 0; ist < 28; ist++)
+            {
+                if ((level.n == atomic_conf[zn_ - 1][ist][0]) && (level.l == atomic_conf[zn_ - 1][ist][1]))
+                {
+                    level.k = atomic_conf[zn_ - 1][ist][2]; 
+                    level.occupancy = double(atomic_conf[zn_ - 1][ist][3]);
+                    atomic_levels_.push_back(level);
+                }
+            }
+        }
+    }
+}
+
+void AtomType::read_input_aw(JsonTree& parser)
+{
+    radial_solution_descriptor rsd;
+    radial_solution_descriptor_set rsd_set;
+    
+    // default augmented wave basis
+    rsd.n = -1;
+    rsd.l = -1;
+    for (int order = 0; order < parser["valence"][0]["basis"].size(); order++)
+    {
+        parser["valence"][0]["basis"][order]["enu"] >> rsd.enu;
+        parser["valence"][0]["basis"][order]["dme"] >> rsd.dme;
+        parser["valence"][0]["basis"][order]["auto"] >> rsd.auto_enu;
+        aw_default_l_.push_back(rsd);
+    }
+    
+    for (int j = 1; j < parser["valence"].size(); j++)
+    {
+        rsd.l = parser["valence"][j]["l"].get<int>();
+        rsd.n = parser["valence"][j]["n"].get<int>();
+        rsd_set.clear();
+        for (int order = 0; order < parser["valence"][j]["basis"].size(); order++)
+        {
+            parser["valence"][j]["basis"][order]["enu"] >> rsd.enu;
+            parser["valence"][j]["basis"][order]["dme"] >> rsd.dme;
+            parser["valence"][j]["basis"][order]["auto"] >> rsd.auto_enu;
+            rsd_set.push_back(rsd);
+        }
+        aw_specific_l_.push_back(rsd_set);
+    }
+}
+    
+void AtomType::read_input_lo(JsonTree& parser)
+{
+    radial_solution_descriptor rsd;
+    radial_solution_descriptor_set rsd_set;
+    
+    for (int j = 0; j < parser["lo"].size(); j++)
+    {
+        int l = parser["lo"][j]["l"].get<int>();
+
+        if (parser["lo"][j].exist("basis"))
+        {
+            local_orbital_descriptor lod;
+            lod.type = lo_rs;
+            lod.l = l;
+            rsd.l = l;
+            rsd_set.clear();
+            for (int order = 0; order < parser["lo"][j]["basis"].size(); order++)
+            {
+                parser["lo"][j]["basis"][order]["n"] >> rsd.n;
+                parser["lo"][j]["basis"][order]["enu"] >> rsd.enu;
+                parser["lo"][j]["basis"][order]["dme"] >> rsd.dme;
+                parser["lo"][j]["basis"][order]["auto"] >> rsd.auto_enu;
+                rsd_set.push_back(rsd);
+            }
+            lod.rsd_set = rsd_set;
+            lo_descriptors_.push_back(lod);
+        }
+        if (parser["lo"][j].exist("polynom"))
+        {
+            local_orbital_descriptor lod;
+            lod.type = lo_cp;
+            lod.l = l;
+
+            std::vector<int> p1;
+            std::vector<int> p2;
+            
+            parser["lo"][j]["polynom"]["p1"] >> p1;
+            if (parser["lo"][j]["polynom"].exist("p2")) 
+            {
+                parser["lo"][j]["polynom"]["p2"] >> p2;
+            }
+            else
+            {
+                p2.push_back(2);
+            }
+
+            for (int i = 0; i < (int)p2.size(); i++)
+            {
+                for (int j = 0; j < (int)p1.size(); j++)
+                {
+                    lod.p1 = p1[j];
+                    lod.p2 = p2[i];
+                    lo_descriptors_.push_back(lod);
+                }
+            }
+        }
+
+    }
+}
+    
+void AtomType::read_input()
+{
+    std::string fname = label_ + std::string(".json");
+    JsonTree parser(fname);
+    parser["name"] >> name_;
+    parser["symbol"] >> symbol_;
+    parser["mass"] >> mass_;
+    parser["number"] >> zn_;
+    parser["rmin"] >> radial_grid_origin_;
+    parser["rmax"] >> radial_grid_infinity_;
+    parser["rmt"] >> mt_radius_;
+    parser["nrmt"] >> num_mt_points_;
+
+    read_input_core(parser);
+
+    read_input_aw(parser);
+
+    read_input_lo(parser);
+}
 
 };
 
