@@ -41,6 +41,8 @@ class kset
         /// Return sum of valence eigen-values
         double valence_eval_sum();
 
+        void print_info();
+
         void add_kpoint(double* vk__, double weight__)
         {
             kpoints_.push_back(new kpoint(parameters_, vk__, weight__));
@@ -351,48 +353,32 @@ void kset::find_band_occupancies()
     }
 }
 
-//void kset::print_info()
-//{
-//    //** if (parameters_.mpi_grid().root())
-//    //** {
-//    //**     printf("\n");
-//    //**     printf("Density\n");
-//    //**     for (int i = 0; i < 80; i++) printf("-");
-//    //**     printf("\n");
-//    //**     printf("  ik                vk                    weight  num_gkvec  apwlo_basis_size\n");
-//    //**     for (int i = 0; i < 80; i++) printf("-");
-//    //**     printf("\n");
-//    //** }
-//
-//    //** if (parameters_.mpi_grid().side(1 << 0))
-//    //** {
-//    //**     for (int i = 0; i < parameters_.mpi_grid().dimension_size(0); i++)
-//    //**     {
-//    //**         if (parameters_.mpi_grid().coordinate(0) == i)
-//    //**         {
-//    //**             for (int ikloc = 0; ikloc < kpoint_set_.spl_num_kpoints().local_size(); ikloc++)
-//    //**             {
-//    //**                 int ik = kpoint_set_.spl_num_kpoints(ikloc);
-//    //**                 printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i            %6i\n", 
-//    //**                        ik, kpoint_set_[ik]->vk()[0], kpoint_set_[ik]->vk()[1], kpoint_set_[ik]->vk()[2], 
-//    //**                        kpoint_set_[ik]->weight(), 
-//    //**                        kpoint_set_[ik]->num_gkvec(), 
-//    //**                        kpoint_set_[ik]->apwlo_basis_size());
-//    //**             }
-//    //**         }
-//    //**         parameters_.mpi_grid().barrier(1 << 0);
-//    //**     }
-//    //** }
-//
-//    //** parameters_.mpi_grid().barrier();
-//
-//    //** if (parameters_.mpi_grid().root())
-//    //** {
-//    //**     for (int i = 0; i < 80; i++) printf("-");
-//    //**     printf("\n");
-//    //**     printf("total number of k-points : %i\n", kpoint_set_.num_kpoints());
-//    //** }
-//}
+void kset::print_info()
+{
+    pstdout pout;
+
+    if (parameters_.mpi_grid().side(1 << 0))
+    {
+        for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
+        {
+            int ik = spl_num_kpoints(ikloc);
+            pout.printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i            %6i\n", 
+                        ik, kpoints_[ik]->vk()[0], kpoints_[ik]->vk()[1], kpoints_[ik]->vk()[2], 
+                        kpoints_[ik]->weight(), kpoints_[ik]->num_gkvec(), kpoints_[ik]->apwlo_basis_size());
+        }
+    }
+    if (Platform::mpi_rank() == 0)
+    {
+        printf("\n");
+        printf("total number of k-points : %i\n", num_kpoints());
+        for (int i = 0; i < 80; i++) printf("-");
+        printf("\n");
+        printf("  ik                vk                    weight  num_gkvec  apwlo_basis_size\n");
+        for (int i = 0; i < 80; i++) printf("-");
+        printf("\n");
+    }
+    pout.flush(0);
+}
 
 
 };
