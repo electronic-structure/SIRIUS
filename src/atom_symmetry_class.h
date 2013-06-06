@@ -112,7 +112,7 @@ class AtomSymmetryClass
         /// Find core states and generate core density
         void generate_core_charge_density();
 
-        void write_enu(char* buf, size_t n);
+        void write_enu(pstdout& pout);
         
         /// Generate radial overlap and SO integrals
         /** In the case of spin-orbit interaction the following integrals are computed:
@@ -937,22 +937,20 @@ void AtomSymmetryClass::generate_radial_integrals()
     }
 }
 
-void AtomSymmetryClass::write_enu(char* buf, size_t n)
+void AtomSymmetryClass::write_enu(pstdout& pout)
 {
-    int j;
-    j = snprintf(buf, n, "Atom : %s, class id : %i\n", atom_type_->label().c_str(), id_); 
-    j += snprintf(buf + j, n, "augmented waves\n");
+    pout.printf("Atom : %s, class id : %i\n", atom_type_->label().c_str(), id_); 
+    pout.printf("augmented waves\n");
     for (int l = 0; l < num_aw_descriptors(); l++)
     {
         for (int order = 0; order < (int)aw_descriptor(l).size(); order++)
         {
             radial_solution_descriptor& rsd = aw_descriptor(l)[order];
-            j += snprintf(buf + j, n, "n = %2i   l = %2i   order = %i   enu = %12.6f\n", 
-                          rsd.n, rsd.l, order, rsd.enu);
+            pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f\n", rsd.n, rsd.l, order, rsd.enu);
         }
     }
 
-    j += snprintf(buf + j, n, "local orbitals\n");
+    pout.printf("local orbitals\n");
     for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++)
     {
         if (lo_descriptor(idxlo).type == lo_rs)
@@ -960,12 +958,11 @@ void AtomSymmetryClass::write_enu(char* buf, size_t n)
             for (int order = 0; order < (int)lo_descriptor(idxlo).rsd_set.size(); order++)
             {
                 radial_solution_descriptor& rsd = lo_descriptor(idxlo).rsd_set[order];
-                j += snprintf(buf + j, n, "n = %2i   l = %2i   order = %i   enu = %12.6f\n", 
-                              rsd.n, rsd.l, order, rsd.enu);
+                pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f\n", rsd.n, rsd.l, order, rsd.enu);
             }
         }
     }
-    j += snprintf(buf + j, n, "\n");
+    pout.printf("\n");
 }
 
 double AtomSymmetryClass::aw_surface_dm(int l, int order, int dm)
