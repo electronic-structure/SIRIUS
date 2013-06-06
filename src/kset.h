@@ -10,7 +10,7 @@ class kset
     
         Global& parameters_;
 
-        //Band* band_;
+        Band* band_;
 
         std::vector<kpoint*> kpoints_;
 
@@ -20,20 +20,23 @@ class kset
 
         kset(Global& parameters__) : parameters_(parameters__)
         {
+            band_ = new Band(parameters_);
         }
 
         ~kset()
         {
             clear();
+            delete band_;
         }
         
         /// Initialize the k-point set
-        void initialize(Band* band);
+        void initialize();
         
         /// Find eigen-states
-        /** Radial functions, radial integrals and plane-wave coefficients of V(r)*Theta(r) must be already 
-            calculated. */
-        void find_eigen_states(Band* band, Potential* potential);
+        void find_eigen_states(Potential* potential);
+
+        /// Find Fermi energy and band occupation numbers
+        void find_band_occupancies();
 
         /// Return sum of valence eigen-values
         double valence_eval_sum();
@@ -97,7 +100,7 @@ class kset
             return spl_num_kpoints_[ikloc];
         }
 
-        void save_wave_functions(Band* band)
+        void save_wave_functions()
         {
             if (Platform::mpi_rank() == 0)
             {
@@ -107,20 +110,20 @@ class kset
                 fout["parameters"].write("num_spins", parameters_.num_spins());
             }
 
-            if (parameters_.mpi_grid().side(1 << 0 | 1 << band->dim_col()))
+            if (parameters_.mpi_grid().side(1 << 0 | 1 << band_->dim_col()))
             {
                 for (int ik = 0; ik < num_kpoints(); ik++)
                 {
                     int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
                     
-                    if (parameters_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->save_wave_functions(ik, band);
+                    if (parameters_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->save_wave_functions(ik, band_);
                     
-                    parameters_.mpi_grid().barrier(1 << 0 | 1 << band->dim_col());
+                    parameters_.mpi_grid().barrier(1 << 0 | 1 << band_->dim_col());
                 }
             }
         }
 
-        void load_wave_functions(Band* band)
+        void load_wave_functions()
         {
             hdf5_tree fin("sirius.h5", false);
             int num_spins;
@@ -160,12 +163,46 @@ class kset
             {
                 int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
                 
-                if (parameters_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->load_wave_functions(ikidx[ik], band);
+                if (parameters_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->load_wave_functions(ikidx[ik], band_);
             }
         }
+
+        Band* band()
+        {
+            return band_;
+        }
+        
+        void set_band_occupancies(int ik, double* band_occupancies)
+        {
+            kpoints_[ik]->set_band_occupancies(band_occupancies);
+        }
+        
+        void get_band_energies(int ik, double* band_energies)
+        {
+            kpoints_[ik]->get_band_energies(band_energies);
+        }
+        
+        void get_band_occupancies(int ik, double* band_occupancies)
+        {
+            kpoints_[ik]->get_band_occupancies(band_occupancies);
+        }
+
+        int max_num_gkvec()
+        {
+            int max_num_gkvec_ = 0;
+            for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+            {
+                int ik = spl_num_kpoints_[ikloc];
+                max_num_gkvec_ = std::max(max_num_gkvec_, kpoints_[ik]->num_gkvec());
+            }
+            Platform::allreduce<op_max>(&max_num_gkvec_, 1);
+            return max_num_gkvec_;
+        }
+
+            
 };
 
-void kset::initialize(Band* band)
+void kset::initialize()
 {
     // ============================================================
     // distribute k-points along the 1-st dimension of the MPI grid
@@ -174,18 +211,23 @@ void kset::initialize(Band* band)
                            parameters_.mpi_grid().coordinate(0));
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
-        kpoints_[spl_num_kpoints_[ikloc]]->initialize(band);
+        kpoints_[spl_num_kpoints_[ikloc]]->initialize(band_);
 }
 
-void kset::find_eigen_states(Band* band, Potential* potential)
+void kset::find_eigen_states(Potential* potential)
 {
     Timer t("sirius::kset::find_eigen_states");
+    
+    potential->generate_pw_coefs();
+    potential->update_atomic_potential();
+    parameters_.generate_radial_functions();
+    parameters_.generate_radial_integrals();
     
     // solve secular equation and generate wave functions
     for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = spl_num_kpoints(ikloc);
-        kpoints_[ik]->find_eigen_states(band, potential->effective_potential(), potential->effective_magnetic_field());
+        kpoints_[ik]->find_eigen_states(band_, potential->effective_potential(), potential->effective_magnetic_field());
     }
 
     // synchronize eigen-values
@@ -228,6 +270,130 @@ double kset::valence_eval_sum()
 
     return eval_sum;
 }
+
+void kset::find_band_occupancies()
+{
+    Timer t("sirius::Density::find_band_occupancies");
+
+    double ef = 0.15;
+
+    double de = 0.1;
+
+    int s = 1;
+    int sp;
+
+    double ne = 0.0;
+
+    mdarray<double, 2> bnd_occ(parameters_.num_bands(), num_kpoints());
+    
+    // TODO: safe way not to get stuck here
+    while (true)
+    {
+        ne = 0.0;
+        for (int ik = 0; ik < num_kpoints(); ik++)
+        {
+            for (int j = 0; j < parameters_.num_bands(); j++)
+            {
+                bnd_occ(j, ik) = Utils::gaussian_smearing(kpoints_[ik]->band_energy(j) - ef) * 
+                                 parameters_.max_occupancy();
+                ne += bnd_occ(j, ik) * kpoints_[ik]->weight();
+            }
+        }
+
+        if (fabs(ne - parameters_.num_valence_electrons()) < 1e-11) break;
+
+        sp = s;
+        s = (ne > parameters_.num_valence_electrons()) ? -1 : 1;
+
+        de = s * fabs(de);
+
+        (s != sp) ? de *= 0.5 : de *= 1.25; 
+        
+        ef += de;
+    } 
+
+    parameters_.rti().energy_fermi = ef;
+    
+    for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_occupancies(&bnd_occ(0, ik));
+
+    double gap = 0.0;
+    
+    int nve = int(parameters_.num_valence_electrons() + 1e-12);
+    if ((parameters_.num_spins() == 2) || 
+        ((fabs(nve - parameters_.num_valence_electrons()) < 1e-12) && nve % 2 == 0))
+    {
+        // find band gap
+        std::vector< std::pair<double, double> > eband;
+        std::pair<double, double> eminmax;
+
+        for (int j = 0; j < parameters_.num_bands(); j++)
+        {
+            eminmax.first = 1e10;
+            eminmax.second = -1e10;
+
+            for (int ik = 0; ik < num_kpoints(); ik++)
+            {
+                eminmax.first = std::min(eminmax.first, kpoints_[ik]->band_energy(j));
+                eminmax.second = std::max(eminmax.second, kpoints_[ik]->band_energy(j));
+            }
+
+            eband.push_back(eminmax);
+        }
+        
+        std::sort(eband.begin(), eband.end());
+
+        int ist = nve;
+        if (parameters_.num_spins() == 1) ist /= 2; 
+
+        if (eband[ist].first > eband[ist - 1].second) gap = eband[ist].first - eband[ist - 1].second;
+
+        parameters_.rti().band_gap = gap;
+    }
+}
+
+//void kset::print_info()
+//{
+//    //** if (parameters_.mpi_grid().root())
+//    //** {
+//    //**     printf("\n");
+//    //**     printf("Density\n");
+//    //**     for (int i = 0; i < 80; i++) printf("-");
+//    //**     printf("\n");
+//    //**     printf("  ik                vk                    weight  num_gkvec  apwlo_basis_size\n");
+//    //**     for (int i = 0; i < 80; i++) printf("-");
+//    //**     printf("\n");
+//    //** }
+//
+//    //** if (parameters_.mpi_grid().side(1 << 0))
+//    //** {
+//    //**     for (int i = 0; i < parameters_.mpi_grid().dimension_size(0); i++)
+//    //**     {
+//    //**         if (parameters_.mpi_grid().coordinate(0) == i)
+//    //**         {
+//    //**             for (int ikloc = 0; ikloc < kpoint_set_.spl_num_kpoints().local_size(); ikloc++)
+//    //**             {
+//    //**                 int ik = kpoint_set_.spl_num_kpoints(ikloc);
+//    //**                 printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i            %6i\n", 
+//    //**                        ik, kpoint_set_[ik]->vk()[0], kpoint_set_[ik]->vk()[1], kpoint_set_[ik]->vk()[2], 
+//    //**                        kpoint_set_[ik]->weight(), 
+//    //**                        kpoint_set_[ik]->num_gkvec(), 
+//    //**                        kpoint_set_[ik]->apwlo_basis_size());
+//    //**             }
+//    //**         }
+//    //**         parameters_.mpi_grid().barrier(1 << 0);
+//    //**     }
+//    //** }
+//
+//    //** parameters_.mpi_grid().barrier();
+//
+//    //** if (parameters_.mpi_grid().root())
+//    //** {
+//    //**     for (int i = 0; i < 80; i++) printf("-");
+//    //**     printf("\n");
+//    //**     printf("total number of k-points : %i\n", kpoint_set_.num_kpoints());
+//    //** }
+//}
+
 
 };
 
