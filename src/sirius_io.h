@@ -40,9 +40,8 @@ class pstdout
 
             mdarray<char, 1> outb((int)buffer_.size() * Platform::num_mpi_ranks());
             outb.zero();
-            
-            for (int i = 0; i < Platform::num_mpi_ranks(); i++)
-                memcpy(&outb(offsets(i, 1)), &buffer_(0), offsets(i, 0) * sizeof(char));
+
+            memcpy(&outb(offsets(Platform::mpi_rank(), 1)), &buffer_(0), offset_ * sizeof(char));
 
             Platform::reduce(outb.get_ptr(), (int)outb.size(), MPI_COMM_WORLD, rank);
             if (Platform::mpi_rank() == rank) std::printf("%s", outb.get_ptr());
