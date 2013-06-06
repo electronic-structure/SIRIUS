@@ -179,7 +179,7 @@ class SHT
                     std::stringstream s;
                     s << "test of backward / forward real SHT failed" << std::endl
                       << "  total error " << t;
-                    error(__FILE__, __LINE__, s);
+                    warning(__FILE__, __LINE__, s);
                 }
             }
 
@@ -201,6 +201,16 @@ class SHT
                     l_m_by_lm_(1, lm) = m;
                 }
             }
+        }
+        
+        /// Transform from Ylm to spherical coordinates 
+        void ylm_backward_transform(complex16* flm, int lmmax, int ncol, complex16* ftp)
+        {
+            Timer t("sirius::SHT::ylm_backward_transform");
+            
+            assert(lmmax <= lmmax_);
+
+            blas<cpu>::gemm(1, 0, num_points_, ncol, lmmax, &ylm_backward_(0, 0), lmmax_, flm, lmmax, ftp, num_points_);
         }
 
         /// Transform from Rlm to spherical coordinates 
