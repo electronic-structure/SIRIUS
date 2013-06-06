@@ -198,14 +198,6 @@ class kpoint
                 return igk;
             }
         }
-        
-        /// Global index of G-vector by the index of G+k vector
-        inline int gvec_index(int igk) 
-        {
-            assert(igk >= 0 && igk < (int)gvec_index_.size());
-            
-            return gvec_index_[igk];
-        }
 
         /// Generate matching coefficients for APW
         void generate_matching_coefficients_order1(int ia, int iat, AtomType* type, int l, int num_gkvec_loc, 
@@ -213,11 +205,8 @@ class kpoint
 
         /// Generate matching coefficients for LAPW
         void generate_matching_coefficients_order2(int ia, int iat, AtomType* type, int l, int num_gkvec_loc, 
-                                                   double R, double A[2][2], mdarray<complex16, 2>& alm);
+                                                   double A[2][2], mdarray<complex16, 2>& alm);
 
-        /// Generate plane-wave matching coefficents for the radial solutions 
-        void generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm);
-        
         /// Apply the muffin-tin part of the first-variational Hamiltonian to the apw basis function
         /** The following vector is computed:
             \f[
@@ -245,55 +234,6 @@ class kpoint
         template <processing_unit_t pu>
         void set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int num_ranks,
                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
-
-        /// Setup the Hamiltonian and overlap matrices in APW+lo basis
-        /** The Hamiltonian matrix has the following expression:
-            \f[
-                H_{\mu' \mu} = \langle \varphi_{\mu'} | \hat H | \varphi_{\mu} \rangle
-            \f]
-
-            \f[
-                H_{\mu' \mu}=\langle \varphi_{\mu' } | \hat H | \varphi_{\mu } \rangle  = 
-                \left( \begin{array}{cc} 
-                   H_{\bf G'G} & H_{{\bf G'}j} \\
-                   H_{j'{\bf G}} & H_{j'j}
-                \end{array} \right)
-            \f]
-            
-            The overlap matrix has the following expression:
-            \f[
-                O_{\mu' \mu} = \langle \varphi_{\mu'} | \varphi_{\mu} \rangle
-            \f]
-            APW-APW block:
-            \f[
-                O_{{\bf G'} {\bf G}}^{\bf k} = \sum_{\alpha} \sum_{L\nu} a_{L\nu}^{\alpha *}({\bf G'+k}) 
-                a_{L\nu}^{\alpha}({\bf G+k})
-            \f]
-            
-            APW-lo block:
-            \f[
-                O_{{\bf G'} j}^{\bf k} = \sum_{\nu'} a_{\ell_j m_j \nu'}^{\alpha_j *}({\bf G'+k}) 
-                \langle u_{\ell_j \nu'}^{\alpha_j} | \phi_{\ell_j}^{\zeta_j \alpha_j} \rangle
-            \f]
-
-            lo-APW block:
-            \f[
-                O_{j' {\bf G}}^{\bf k} = 
-                \sum_{\nu'} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} | u_{\ell_{j'} \nu'}^{\alpha_{j'}} \rangle
-                a_{\ell_{j'} m_{j'} \nu'}^{\alpha_{j'}}({\bf G+k}) 
-            \f]
-
-            lo-lo block:
-            \f[
-                O_{j' j}^{\bf k} = \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} | 
-                \phi_{\ell_{j}}^{\zeta_{j} \alpha_{j}} \rangle \delta_{\alpha_{j'} \alpha_j} 
-                \delta_{\ell_{j'} \ell_j} \delta_{m_{j'} m_j}
-            \f]
-
-        */
-        template <processing_unit_t pu, basis_t basis>
-        void set_fv_h_o(PeriodicFunction<double>* effective_potential, int num_ranks,
-                        mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
 
         void solve_fv_evp_1stage(Band* band, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
 
@@ -590,6 +530,58 @@ class kpoint
 
         void initialize(Band* band);
 
+        /// Generate plane-wave matching coefficents for the radial solutions 
+        void generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm);
+        
+        /// Setup the Hamiltonian and overlap matrices in APW+lo basis
+        /** The Hamiltonian matrix has the following expression:
+            \f[
+                H_{\mu' \mu} = \langle \varphi_{\mu'} | \hat H | \varphi_{\mu} \rangle
+            \f]
+
+            \f[
+                H_{\mu' \mu}=\langle \varphi_{\mu' } | \hat H | \varphi_{\mu } \rangle  = 
+                \left( \begin{array}{cc} 
+                   H_{\bf G'G} & H_{{\bf G'}j} \\
+                   H_{j'{\bf G}} & H_{j'j}
+                \end{array} \right)
+            \f]
+            
+            The overlap matrix has the following expression:
+            \f[
+                O_{\mu' \mu} = \langle \varphi_{\mu'} | \varphi_{\mu} \rangle
+            \f]
+            APW-APW block:
+            \f[
+                O_{{\bf G'} {\bf G}}^{\bf k} = \sum_{\alpha} \sum_{L\nu} a_{L\nu}^{\alpha *}({\bf G'+k}) 
+                a_{L\nu}^{\alpha}({\bf G+k})
+            \f]
+            
+            APW-lo block:
+            \f[
+                O_{{\bf G'} j}^{\bf k} = \sum_{\nu'} a_{\ell_j m_j \nu'}^{\alpha_j *}({\bf G'+k}) 
+                \langle u_{\ell_j \nu'}^{\alpha_j} | \phi_{\ell_j}^{\zeta_j \alpha_j} \rangle
+            \f]
+
+            lo-APW block:
+            \f[
+                O_{j' {\bf G}}^{\bf k} = 
+                \sum_{\nu'} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} | u_{\ell_{j'} \nu'}^{\alpha_{j'}} \rangle
+                a_{\ell_{j'} m_{j'} \nu'}^{\alpha_{j'}}({\bf G+k}) 
+            \f]
+
+            lo-lo block:
+            \f[
+                O_{j' j}^{\bf k} = \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} | 
+                \phi_{\ell_{j}}^{\zeta_{j} \alpha_{j}} \rangle \delta_{\alpha_{j'} \alpha_j} 
+                \delta_{\ell_{j'} \ell_j} \delta_{m_{j'} m_j}
+            \f]
+
+        */
+        template <processing_unit_t pu, basis_t basis>
+        void set_fv_h_o(PeriodicFunction<double>* effective_potential, int num_ranks,
+                        mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
+
         void find_eigen_states(Band* band, PeriodicFunction<double>* effective_potential, 
                                PeriodicFunction<double>* effective_magnetic_field[3]);
 
@@ -607,12 +599,25 @@ class kpoint
             return (int)apwlo_basis_descriptors_.size();
         }
         
+        /// Global index of G-vector by the index of G+k vector
+        inline int gvec_index(int igk) 
+        {
+            assert(igk >= 0 && igk < (int)gvec_index_.size());
+            
+            return gvec_index_[igk];
+        }
+        
         /// Pointer to G+k vector
         inline double* gkvec(int igk)
         {
             assert(igk >= 0 && igk < gkvec_.size(1));
 
             return &gkvec_(0, igk);
+        }
+
+        inline complex16 gkvec_phase_factor(int igk, int ia)
+        {
+            return gkvec_phase_factors_(igk, ia);
         }
                 
         /// Total number of G+k vectors within the cutoff distance
@@ -710,7 +715,7 @@ class kpoint
         {
             return vk_[x];
         }
-        
+
         void save_wave_functions(int id, Band* band__)
         {
             if (parameters_.mpi_grid().root(1 << band__->dim_col()))
@@ -851,7 +856,7 @@ void kpoint::generate_matching_coefficients_order1(int ia, int iat, AtomType* ty
 }
 
 void kpoint::generate_matching_coefficients_order2(int ia, int iat, AtomType* type, int l, int num_gkvec_loc, 
-                                                   double R, double A[2][2], mdarray<complex16, 2>& alm)
+                                                   double A[2][2], mdarray<complex16, 2>& alm)
 {
     double det = A[0][0] * A[1][1] - A[0][1] * A[1][0];
     
@@ -873,9 +878,8 @@ void kpoint::generate_matching_coefficients_order2(int ia, int iat, AtomType* ty
     complex16 zb[2];
     for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
     {
-        double gkR = gkvec_len_[igkloc] * R; // |G+k|*R
         zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 0);
-        zt[1] = gkR * gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 1);
+        zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 1);
 
         zb[0] = A[0][0] * zt[0] + A[0][1] * zt[1];
         zb[1] = A[1][0] * zt[0] + A[1][1] * zt[1];
@@ -958,8 +962,6 @@ void kpoint::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<c
 
     int iat = parameters_.atom_type_index_by_id(type->id());
 
-    double R = type->mt_radius();
-
     #pragma omp parallel default(shared)
     {
         double A[2][2];
@@ -986,7 +988,7 @@ void kpoint::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<c
                 }
                 case 2:
                 {
-                    generate_matching_coefficients_order2(ia, iat, type, l, num_gkvec_loc, R, A, alm);
+                    generate_matching_coefficients_order2(ia, iat, type, l, num_gkvec_loc, A, alm);
                     break;
                 }
                 default:
@@ -2383,7 +2385,7 @@ void kpoint::generate_spinor_wave_functions(Band* band, bool has_sv_evec)
 void kpoint::generate_gkvec()
 {
     double gk_cutoff = parameters_.aw_cutoff() / parameters_.min_mt_radius();
-    
+
     if ((gk_cutoff * parameters_.max_mt_radius() > double(parameters_.lmax_apw())) && basis_type == apwlo)
     {
         std::stringstream s;
@@ -2476,7 +2478,7 @@ void kpoint::init_gkvec()
         // compute values of spherical Bessel functions and first derivative at MT boundary
         mdarray<double, 2> sbessel_mt(parameters_.lmax_apw() + 2, 2);
         sbessel_mt.zero();
-        
+
         for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
         {
             for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
@@ -2495,7 +2497,7 @@ void kpoint::init_gkvec()
                 {
                     double f = fourpi / sqrt(parameters_.omega());
                     alm_b_(l, iat, igkloc, 0) = zil_[l] * f * sbessel_mt(l, 0); 
-                    alm_b_(l, iat, igkloc, 1) = zil_[l] * f * sbessel_mt(l, 1); 
+                    alm_b_(l, iat, igkloc, 1) = zil_[l] * f * sbessel_mt(l, 1);
                 }
             }
         }
