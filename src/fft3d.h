@@ -234,6 +234,11 @@ class FFT3D
             return fftw_output_buffer_(i, thread_id);
         }
         
+        inline complex16& input_buffer(int i, int thread_id = 0)
+        {
+            return fftw_input_buffer_(i, thread_id);
+        }
+        
         inline complex16* output_buffer_ptr(int thread_id = 0)
         {
             return &fftw_output_buffer_(0, thread_id);
