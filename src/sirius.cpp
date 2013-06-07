@@ -768,17 +768,29 @@ void FORTRAN(sirius_set_atom_type_configuration)(int32_t* atom_type_id, int32_t*
 }
 
 void FORTRAN(sirius_add_atom_type_aw_descriptor)(int32_t* atom_type_id, int32_t* n, int32_t* l, real8* enu, 
-                                                 int32_t* dme, int32_t* auto_enu)
+                                                 int32_t* dme, int32_t* auto_enu__)
 {
     sirius::AtomType* type = global_parameters.atom_type_by_id(*atom_type_id);
-    type->add_aw_descriptor(*n, *l, *enu, *dme, *auto_enu);
+    int auto_enu = (*auto_enu__) ? 2 : 0;
+    type->add_aw_descriptor(*n, *l, *enu, *dme, auto_enu);
 }
 
 void FORTRAN(sirius_add_atom_type_lo_descriptor)(int32_t* atom_type_id, int32_t* ilo, int32_t* n, int32_t* l, 
-                                                 real8* enu, int32_t* dme, int32_t* auto_enu)
+                                                 real8* enu, int32_t* dme, int32_t* auto_enu__)
 {
     sirius::AtomType* type = global_parameters.atom_type_by_id(*atom_type_id);
-    type->add_lo_descriptor(*ilo - 1, *n, *l, *enu, *dme, *auto_enu);
+    int auto_enu = (*auto_enu__) ? 2 : 0;
+    type->add_lo_descriptor(*ilo - 1, *n, *l, *enu, *dme, auto_enu);
+}
+
+void FORTRAN(sirius_set_aw_enu)(int32_t* ia, int32_t* l, int32_t* order, real8* enu)
+{
+    global_parameters.atom(*ia - 1)->symmetry_class()->set_aw_enu(*l, *order - 1, *enu);
+}
+
+void FORTRAN(sirius_set_lo_enu)(int32_t* ia, int32_t* idxlo, int32_t* order, real8* enu)
+{
+    global_parameters.atom(*ia - 1)->symmetry_class()->set_lo_enu(*idxlo - 1, *order - 1, *enu);
 }
 
 /// Create the k-point set from the list of k-points and return it's id
@@ -983,10 +995,10 @@ void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, co
 }
 
 /// Get first-variational matrices of Hamiltonian and overlap
+/** Radial integrals and plane-wave coefficients of the interstitial potential must be calculated prior to
+    Hamiltonian and overlap matrix construction. */
 void FORTRAN(sirius_get_fv_h_o)(int32_t* kset_id, int32_t* ik, int32_t* size, complex16* h__, complex16* o__)
 {
-    potential->generate_pw_coefs();
-
     int rank = kset_list[*kset_id]->spl_num_kpoints().location(_splindex_rank_, *ik - 1);
     
     if (rank == global_parameters.mpi_grid().coordinate(0))
@@ -1057,9 +1069,29 @@ void FORTRAN(sirius_get_evalsum)(real8* evalsum)
     *evalsum = global_parameters.rti().core_eval_sum + global_parameters.rti().valence_eval_sum;
 }
 
-void FORTRAN(sirius_get_energy_exc)(real8* exc)
+void FORTRAN(sirius_get_energy_exc)(real8* energy_exc)
 {
-    *exc = global_parameters.rti().energy_exc;
+    *energy_exc = global_parameters.rti().energy_exc;
+}
+
+void FORTRAN(sirius_get_energy_vxc)(real8* energy_vxc)
+{
+    *energy_vxc = global_parameters.rti().energy_vxc;
+}
+
+void FORTRAN(sirius_get_energy_veff)(real8* energy_veff)
+{
+    *energy_veff = global_parameters.rti().energy_veff;
+}
+
+void FORTRAN(sirius_get_energy_vha)(real8* energy_vha)
+{
+    *energy_vha = global_parameters.rti().energy_vha;
+}
+
+void FORTRAN(sirius_get_energy_enuc)(real8* energy_enuc)
+{
+    *energy_enuc = global_parameters.rti().energy_enuc;
 }
 
 void FORTRAN(sirius_generate_xc_potential)(real8* rhomt, real8* rhoit, real8* vxcmt, real8* vxcit)
@@ -1226,7 +1258,7 @@ void FORTRAN(sirius_get_lo_lo_h_radial_integral)(int32_t* ia__, int32_t* ilo1, i
     *hlolo = global_parameters.atom(ia)->h_radial_integrals(idxrf1, idxrf2)[*lm3 - 1];
 }
 
-void FORTRAN(sirius_generate_potential_pw_coefs)()
+void FORTRAN(sirius_generate_potential_pw_coefs)(void)
 {
     potential->generate_pw_coefs();
 }
