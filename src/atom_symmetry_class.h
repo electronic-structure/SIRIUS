@@ -78,8 +78,7 @@ class AtomSymmetryClass
         void dump_lo();
         
         /// Transform radial functions
-        /** Local orbitals are orthogonalized and all radial functions are divided by r.
-        */
+        /** Local orbitals are orthogonalized and all radial functions are divided by r. */
         void transform_radial_functions(bool ort_lo, bool ort_aw);
 
     public:
@@ -216,6 +215,17 @@ class AtomSymmetryClass
         {
             return lo_descriptors_[idx];
         }
+
+        inline void set_aw_enu(int l, int order, double enu)
+        {
+            aw_descriptors_[l][order].enu = enu;
+        }
+        
+        inline void set_lo_enu(int idxlo, int order, double enu)
+        {
+            lo_descriptors_[idxlo].rsd_set[order].enu = enu;
+        }
+            
 };
 
 void AtomSymmetryClass::generate_aw_radial_functions(run_time_info& rti__)
