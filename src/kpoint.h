@@ -2217,6 +2217,8 @@ void kpoint::init_gkvec()
 
 void kpoint::build_apwlo_basis_descriptors()
 {
+    assert(apwlo_basis_descriptors_.size() == 0);
+
     apwlo_basis_descriptor apwlobd;
 
     // G+k basis functions
@@ -2261,7 +2263,14 @@ void kpoint::build_apwlo_basis_descriptors()
     
     // ckeck if we count basis functions correctly
     if ((int)apwlo_basis_descriptors_.size() != (num_gkvec() + parameters_.mt_lo_basis_size()))
-        error(__FILE__, __LINE__, "APW+lo basis descriptors array has a wrong size");
+    {
+        std::stringstream s;
+        s << "(L)APW+lo basis descriptors array has a wrong size" << std::endl
+          << "size of apwlo_basis_descriptors_ : " << apwlo_basis_descriptors_.size() << std::endl
+          << "num_gkvec : " << num_gkvec() << std::endl 
+          << "mt_lo_basis_size : " << parameters_.mt_lo_basis_size();
+        error(__FILE__, __LINE__, s);
+    }
 }
 
 /// Block-cyclic distribution of relevant arrays 

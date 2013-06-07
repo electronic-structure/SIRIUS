@@ -20,7 +20,11 @@ extern "C"
 {
 
 /// Set lattice vectors
-/** Fortran example:
+/** \param [in] a1 1st lattice vector
+    \param [in] a2 2nd lattice vector
+    \param [in] a3 3rd lattice vector
+
+    Example:
     \code{.F90}
         real(8) a1(3),a2(3),a3(3)
         a1(:) = (/5.d0, 0.d0, 0.d0/)
@@ -35,7 +39,9 @@ void FORTRAN(sirius_set_lattice_vectors)(real8* a1, real8* a2, real8* a3)
 }
 
 /// Set maximum l-value for augmented waves
-/** Fortran example:
+/** \param [in] lmax_apw maximum l-value for augmented waves
+
+    Example:
     \code{.F90}
         integer lmaxapw
         lmaxapw = 10
@@ -48,7 +54,9 @@ void FORTRAN(sirius_set_lmax_apw)(int32_t* lmax_apw)
 }
 
 /// Set maximum l-value for density expansion
-/** Fortran example:
+/** \param [in] lmax_rho maximum l-value for density expansion
+    
+    Example:
     \code{.F90}
         integer lmaxrho
         lmaxrho = 8
@@ -60,16 +68,52 @@ void FORTRAN(sirius_set_lmax_rho)(int32_t* lmax_rho)
     global_parameters.set_lmax_rho(*lmax_rho);
 }
 
+/// Set maximum l-value for potential expansion
+/** \param [in] lmax_pot maximum l-value for potential expansion
+    
+    Example:
+    \code{.F90}
+        integer lmaxpot
+        lmaxrho = 8
+        call sirius_set_lmax_pot(lmaxpot)
+    \endcode
+*/
 void FORTRAN(sirius_set_lmax_pot)(int32_t* lmax_pot)
 {
     global_parameters.set_lmax_pot(*lmax_pot);
 }
 
+/// Set plane-wave cutoff for FFT grid
+/** \param [in] gmaxvr maximum G-vector length 
+
+    Example:
+    \code{.F90}
+        real(8) gmaxvr
+        gmaxvr = 20.0
+        call sirius_set_pw_cutoff(gmaxvr)
+    \endcode
+*/
 void FORTRAN(sirius_set_pw_cutoff)(real8* pw_cutoff)
 {
     global_parameters.set_pw_cutoff(*pw_cutoff);
 }
 
+/// Set augmented-wave cutoff
+/** \param [in] aw_cutoff augmented-wave cutoff
+
+     Augmented wave cutoff is used to setup the |G+k| cutoff which controls the size of the (L)APW basis.
+     The following simple relation is used:
+     \f[
+       |\mathbf{G}+\mathbf{k}| R^{MT}_{min} \leq \textrm{AW cutoff}
+     \f]
+
+     Example:
+     \code{.F90}
+         real(8) rgkmax
+         rgkmax = 10.0
+         call sirius_set_aw_cutoff(rgkmax)
+     \endcode
+*/
 void FORTRAN(sirius_set_aw_cutoff)(real8* aw_cutoff)
 {
     global_parameters.set_aw_cutoff(*aw_cutoff);
@@ -158,10 +202,22 @@ void FORTRAN(sirius_get_fft_grid_size)(int32_t* grid_size)
     grid_size[2] = global_parameters.fft().size(2);
 }
 
-/// Get lower or upper limit of each FFT grid dimension
-void FORTRAN(sirius_get_fft_grid_limits)(int32_t* d, int32_t* lu, int32_t* val)
+/// Get lower and upper limits of the FFT grid dimension
+/** \param [in] d index of dimension (1,2, or 3)
+    \param [out] lower lower (most negative) value
+    \param [out] upper upper (most positive) value
+
+    Example:
+    \code{.F90}
+        do i=1,3
+          call sirius_get_fft_grid_limits(i,intgv(i,1),intgv(i,2))
+        enddo
+    \endcode
+*/
+void FORTRAN(sirius_get_fft_grid_limits)(int32_t* d, int32_t* lower, int32_t* upper)
 {
-    *val = global_parameters.fft().grid_limits(*d, *lu);
+    *lower = global_parameters.fft().grid_limits(*d - 1, 0);
+    *upper = global_parameters.fft().grid_limits(*d - 1, 1);
 }
 
 /// Get mapping between G-vector index and FFT index
@@ -261,8 +317,6 @@ void FORTRAN(sirius_platform_initialize)(int32_t* call_mpi_init_)
 }
 
 /// Initialize the global variables
-/** All _set_ functions except for sirius_set_aw_cutoff() must be called prior to
-    the call of sirius_global_initialize(). */
 void FORTRAN(sirius_global_initialize)(int32_t* init_radial_grid, int32_t* init_aw_descriptors)
 {
     global_parameters.initialize(*init_radial_grid, *init_aw_descriptors);
@@ -273,9 +327,8 @@ void FORTRAN(sirius_potential_initialize)(void)
     potential = new sirius::Potential(global_parameters);
 }
 
-void FORTRAN(sirius_density_initialize)(int32_t* num_kpoints, double* kpoints_, double* kpoint_weights)
+void FORTRAN(sirius_density_initialize)(void)
 {
-    mdarray<double, 2> kpoints(kpoints_, 3, *num_kpoints); 
     density = new sirius::Density(global_parameters, potential);
 }
 
@@ -283,6 +336,18 @@ void FORTRAN(sirius_density_initialize)(int32_t* num_kpoints, double* kpoints_, 
 void FORTRAN(sirius_clear)(void)
 {
     global_parameters.clear();
+    
+    if (density) 
+    {
+        delete density;
+        density = NULL;
+    }
+    
+    if (potential)
+    {
+        delete potential;
+        potential = NULL;
+    }
 }
 
 void FORTRAN(sirius_initial_density)(void)
@@ -339,6 +404,7 @@ void FORTRAN(sirius_integrate_density)(void)
 void FORTRAN(sirius_print_info)(void)
 {
     global_parameters.print_info();
+    for (int i = 0; i < (int)kset_list.size(); i++) if (kset_list[i]) kset_list[i]->print_info();
 }
 
 void FORTRAN(sirius_print_timers)(void)
@@ -716,13 +782,14 @@ void FORTRAN(sirius_add_atom_type_lo_descriptor)(int32_t* atom_type_id, int32_t*
 }
 
 /// Create the k-point set from the list of k-points and return it's id
-void FORTRAN(sirius_create_kset)(int32_t* num_kpoints, double* kpoints__, double* kpoint_weights, int32_t* kset_id)
+void FORTRAN(sirius_create_kset)(int32_t* num_kpoints, double* kpoints__, double* kpoint_weights, int32_t* init_kset, 
+                                 int32_t* kset_id)
 {
     mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints); 
     
     sirius::kset* new_kset = new sirius::kset(global_parameters);
     new_kset->add_kpoints(kpoints, kpoint_weights);
-    new_kset->initialize();
+    if (*init_kset) new_kset->initialize();
     
     for (int i = 0; i < (int)kset_list.size(); i++)
     {
@@ -738,10 +805,10 @@ void FORTRAN(sirius_create_kset)(int32_t* num_kpoints, double* kpoints__, double
     *kset_id = (int)kset_list.size() - 1;
 }
 
-void FORTRAN(sirius_initialize_kset)(int32_t* kset_id)
-{
-    kset_list[*kset_id]->initialize();
-}
+//** void FORTRAN(sirius_initialize_kset)(int32_t* kset_id)
+//** {
+//**     kset_list[*kset_id]->initialize();
+//** }
 
 void FORTRAN(sirius_delete_kset)(int32_t* kset_id)
 {
