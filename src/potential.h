@@ -599,9 +599,8 @@ template <> void Potential::add_mt_contribution_to_pw<gpu>()
 void Potential::generate_pw_coefs()
 {
     for (int ir = 0; ir < parameters_.fft().size(); ir++)
-        effective_potential()->f_it(ir) *= parameters_.step_function(ir);
+        parameters_.fft().input_buffer(ir) = effective_potential()->f_it(ir) * parameters_.step_function(ir);
     
-    parameters_.fft().input(effective_potential()->f_it());
     parameters_.fft().transform(-1);
     parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), effective_potential()->f_pw());
     
@@ -688,10 +687,6 @@ void Potential::generate_effective_potential(PeriodicFunction<double>* rho, Peri
     // compute <rho | V_H>
     parameters_.rti().energy_vha = rho->inner(vh, rlm_component | it_component);
 
-    double vh_mt_val;
-    double vh_it_val;
-    vh->inner(vh, it_component | rlm_component, vh_mt_val, vh_it_val);
-
     // compute Eenuc
     double enuc = 0.0;
     for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
@@ -732,12 +727,9 @@ void Potential::generate_effective_potential(PeriodicFunction<double>* rho, Peri
         bxc[j] = new PeriodicFunction<double>(parameters_, parameters_.lmax_pot());
         bxc[j]->split(rlm_component | it_component);
         bxc[j]->allocate(rlm_component | it_component);
-        //bxc[j]->zero();
     }
 
     xc(rho, magnetization, vxc, bxc, exc);
-    //vxc->zero();
-    //exc->zero();
    
     effective_potential_->add(vxc, rlm_component | it_component);
 
