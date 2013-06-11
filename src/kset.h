@@ -33,7 +33,7 @@ class kset
         void initialize();
         
         /// Find eigen-states
-        void find_eigen_states(Potential* potential);
+        void find_eigen_states(Potential* potential, bool precompute);
 
         /// Find Fermi energy and band occupation numbers
         void find_band_occupancies();
@@ -216,14 +216,17 @@ void kset::initialize()
         kpoints_[spl_num_kpoints_[ikloc]]->initialize(band_);
 }
 
-void kset::find_eigen_states(Potential* potential)
+void kset::find_eigen_states(Potential* potential, bool precompute)
 {
     Timer t("sirius::kset::find_eigen_states");
     
-    potential->generate_pw_coefs();
-    potential->update_atomic_potential();
-    parameters_.generate_radial_functions();
-    parameters_.generate_radial_integrals();
+    if (precompute)
+    {
+        potential->generate_pw_coefs();
+        potential->update_atomic_potential();
+        parameters_.generate_radial_functions();
+        parameters_.generate_radial_integrals();
+    }
     
     // solve secular equation and generate wave functions
     for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
