@@ -408,7 +408,7 @@ void FORTRAN(sirius_generate_density)(int32_t* kset_id)
         call sirius_find_eigen_states(kset_id, 0) 
         .
         .
-        or
+        ! or
         .
         .
         ! ask the library to precompute the necessary data
@@ -1008,6 +1008,7 @@ void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* nu
                 gkvec_phase_factors(igk, ia) = kp->gkvec_phase_factor(igk, ia);
         }
     }
+    Platform::bcast(num_gkvec, 1, rank);
 }
 
 void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, complex16* apwalm__, 
