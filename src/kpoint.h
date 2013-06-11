@@ -255,7 +255,7 @@ class kpoint
                                   const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
                                   const complex16* z, complex16* vec);
 
-        void generate_spinor_wave_functions(Band* band, bool has_sv_evec);
+        void generate_spinor_wave_functions(Band* band);
 
         /// Find G+k vectors within the cutoff
         void generate_gkvec();
@@ -358,6 +358,10 @@ class kpoint
         void save_wave_functions(int id, Band* band__);
 
         void load_wave_functions(int id, Band* band__);
+
+        void get_fv_eigen_vectors(mdarray<complex16, 2>& fv_evec);
+        
+        void get_sv_eigen_vectors(mdarray<complex16, 2>& sv_evec);
         
         /// APW+lo basis size
         /** Total number of APW+lo basis functions is equal to the number of augmented plane-waves plus
@@ -483,7 +487,6 @@ class kpoint
         {
             return vk_[x];
         }
-
 };
 
 void kpoint::initialize(Band* band)
@@ -532,6 +535,34 @@ void kpoint::initialize(Band* band)
             sbessel_[igkloc]->interpolate(gkvec_len_[igkloc]);
         }
     }
+    
+    fv_eigen_values_.resize(parameters_.num_fv_states());
+
+    fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), band->spl_fv_states_col().local_size());
+    fv_eigen_vectors_.allocate();
+    
+    fv_states_col_.set_dimensions(mtgk_size(), band->spl_fv_states_col().local_size());
+    fv_states_col_.allocate();
+    
+    if (band->num_ranks() == 1)
+    {
+        fv_states_row_.set_dimensions(mtgk_size(), parameters_.num_fv_states());
+        fv_states_row_.set_ptr(fv_states_col_.get_ptr());
+    }
+    else
+    {
+        fv_states_row_.set_dimensions(mtgk_size(), band->spl_fv_states_row().local_size());
+        fv_states_row_.allocate();
+    }
+    
+    sv_eigen_vectors_.set_dimensions(band->spl_fv_states_row().local_size(), band->spl_spinor_wf_col().local_size());
+    sv_eigen_vectors_.allocate();
+
+    band_energies_.resize(parameters_.num_bands());
+
+    spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), 
+                                          band->spl_spinor_wf_col().local_size());
+    spinor_wave_functions_.allocate();
 }
 
 template<> void kpoint::generate_matching_coefficients_l<1>(int ia, int iat, AtomType* type, int l, int num_gkvec_loc, 
@@ -1306,9 +1337,9 @@ template<> void kpoint::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effectiv
 {
     Timer t("sirius::kpoint::set_fv_h_o_pw_lo");
     
-    //============================================
+    // ===========================================
     // first part: compute <G+k|H|lo> and <G+k|lo>
-    //============================================
+    // ===========================================
 
     Timer t1("sirius::kpoint::set_fv_h_o_pw_lo:vlo", false);
     Timer t2("sirius::kpoint::set_fv_h_o_pw_lo:ohk", false);
@@ -1322,9 +1353,9 @@ template<> void kpoint::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effectiv
     kargs.allocate_on_device();
     kargs.copy_to_device();
 
-    //==========================
+    // =========================
     // compute V|lo> for columns
-    //==========================
+    // =========================
     t1.start();
     mdarray<complex16, 3> vlo_coefs(parameters_.max_num_mt_points() * 4, parameters_.lmmax_pw(), num_lo_col());
     #pragma omp parallel for default(shared)
@@ -1358,9 +1389,9 @@ template<> void kpoint::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effectiv
     vlo_coefs.async_copy_to_device(-1);
     t1.stop();
     
-    //============================================
+    // ===========================================
     // pack Bessel function splines into one array
-    //============================================
+    // ===========================================
     mdarray<double, 4> sbessel_coefs(parameters_.max_num_mt_points() * 4, parameters_.lmax_pw() + 1, 
                                      parameters_.num_atom_types(), num_gkvec_row());
     for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
@@ -1378,9 +1409,9 @@ template<> void kpoint::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effectiv
     sbessel_coefs.allocate_on_device();
     sbessel_coefs.async_copy_to_device(-1);
 
-    //===============================
+    // ==============================
     // pack lo splines into one array
-    //===============================
+    // ==============================
     mdarray<double, 2> lo_coefs(parameters_.max_num_mt_points() * 4, num_lo_col());
     mdarray<int, 1> l_by_ilo(num_lo_col());
     mdarray<int, 1> iat_by_ilo(num_lo_col());
@@ -1406,9 +1437,9 @@ template<> void kpoint::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effectiv
     iat_by_ilo.allocate_on_device();
     iat_by_ilo.async_copy_to_device(-1);
 
-    //=============
+    // ============
     // radial grids
-    //=============
+    // ============
     mdarray<double, 2> r_dr(parameters_.max_num_mt_points() * 2, parameters_.num_atom_types());
     mdarray<int, 1> nmtp_by_iat(parameters_.num_atom_types());
     for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
@@ -1924,10 +1955,10 @@ void kpoint::generate_fv_states(Band* band, PeriodicFunction<double>* effective_
     
     assert(apwlo_basis_size() > parameters_.num_fv_states());
     
-    fv_eigen_values_.resize(parameters_.num_fv_states());
+    //== fv_eigen_values_.resize(parameters_.num_fv_states());
 
-    fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), band->spl_fv_states_col().local_size());
-    fv_eigen_vectors_.allocate();
+    //== fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), band->spl_fv_states_col().local_size());
+    //== fv_eigen_vectors_.allocate();
    
     // debug scalapack
     //** std::vector<double> fv_eigen_values_glob(parameters_.num_fv_states());
@@ -1999,8 +2030,8 @@ void kpoint::generate_fv_states(Band* band, PeriodicFunction<double>* effective_
     //** }
     
     // generate first-variational wave-functions
-    fv_states_col_.set_dimensions(mtgk_size(), band->spl_fv_states_col().local_size());
-    fv_states_col_.allocate();
+    //==fv_states_col_.set_dimensions(mtgk_size(), band->spl_fv_states_col().local_size());
+    //==fv_states_col_.allocate();
     fv_states_col_.zero();
 
     mdarray<complex16, 2> alm(num_gkvec_row(), parameters_.max_mt_aw_basis_size());
@@ -2037,59 +2068,46 @@ void kpoint::generate_fv_states(Band* band, PeriodicFunction<double>* effective_
                             parameters_.mpi_grid().communicator(1 << band->dim_row()));
     }
     delete t2;
-
-    fv_eigen_vectors_.deallocate();
 }
 
-void kpoint::generate_spinor_wave_functions(Band* band, bool has_sv_evec)
+void kpoint::generate_spinor_wave_functions(Band* band)
 {
     Timer t("sirius::kpoint::generate_spinor_wave_functions");
 
-    spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), 
-                                          band->spl_spinor_wf_col().local_size());
-    if (has_sv_evec)
+    spinor_wave_functions_.zero();
+    
+    if (parameters_.num_mag_dims() != 3)
     {
-        spinor_wave_functions_.allocate();
-        spinor_wave_functions_.zero();
-        
-        if (parameters_.num_mag_dims() != 3)
+        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
         {
-            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-            {
-                blas<cpu>::gemm(0, 0, mtgk_size(), band->spl_fv_states_col().local_size(), 
-                                band->spl_fv_states_row().local_size(), 
-                                &fv_states_row_(0, 0), fv_states_row_.ld(), 
-                                &sv_eigen_vectors_(0, ispn * band->spl_fv_states_col().local_size()), 
-                                sv_eigen_vectors_.ld(), 
-                                &spinor_wave_functions_(0, ispn, ispn * band->spl_fv_states_col().local_size()), 
-                                spinor_wave_functions_.ld() * parameters_.num_spins());
-            }
-        }
-        else
-        {
-            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-            {
-                blas<cpu>::gemm(0, 0, mtgk_size(), band->spl_spinor_wf_col().local_size(), 
-                                band->num_fv_states_row(ispn), 
-                                &fv_states_row_(0, band->offs_fv_states_row(ispn)), fv_states_row_.ld(), 
-                                &sv_eigen_vectors_(ispn * band->num_fv_states_row_up(), 0), 
-                                sv_eigen_vectors_.ld(), 
-                                &spinor_wave_functions_(0, ispn, 0), 
-                                spinor_wave_functions_.ld() * parameters_.num_spins());
-            }
-        }
-        
-        for (int i = 0; i < band->spl_spinor_wf_col().local_size(); i++)
-        {
-            Platform::allreduce(&spinor_wave_functions_(0, 0, i), 
-                                spinor_wave_functions_.size(0) * spinor_wave_functions_.size(1), 
-                                parameters_.mpi_grid().communicator(1 << band->dim_row()));
+            blas<cpu>::gemm(0, 0, mtgk_size(), band->spl_fv_states_col().local_size(), 
+                            band->spl_fv_states_row().local_size(), 
+                            &fv_states_row_(0, 0), fv_states_row_.ld(), 
+                            &sv_eigen_vectors_(0, ispn * band->spl_fv_states_col().local_size()), 
+                            sv_eigen_vectors_.ld(), 
+                            &spinor_wave_functions_(0, ispn, ispn * band->spl_fv_states_col().local_size()), 
+                            spinor_wave_functions_.ld() * parameters_.num_spins());
         }
     }
     else
     {
-        spinor_wave_functions_.set_ptr(fv_states_col_.get_ptr());
-        memcpy(&band_energies_[0], &fv_eigen_values_[0], parameters_.num_bands() * sizeof(double));
+        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+        {
+            blas<cpu>::gemm(0, 0, mtgk_size(), band->spl_spinor_wf_col().local_size(), 
+                            band->num_fv_states_row(ispn), 
+                            &fv_states_row_(0, band->offs_fv_states_row(ispn)), fv_states_row_.ld(), 
+                            &sv_eigen_vectors_(ispn * band->num_fv_states_row_up(), 0), 
+                            sv_eigen_vectors_.ld(), 
+                            &spinor_wave_functions_(0, ispn, 0), 
+                            spinor_wave_functions_.ld() * parameters_.num_spins());
+        }
+    }
+    
+    for (int i = 0; i < band->spl_spinor_wf_col().local_size(); i++)
+    {
+        Platform::allreduce(&spinor_wave_functions_(0, 0, i), 
+                            spinor_wave_functions_.size(0) * spinor_wave_functions_.size(1), 
+                            parameters_.mpi_grid().communicator(1 << band->dim_row()));
     }
 }
 
@@ -2333,15 +2351,8 @@ void kpoint::find_eigen_states(Band* band, PeriodicFunction<double>* effective_p
     generate_fv_states(band, effective_potential);
     
     // distribute fv states along rows of the MPI grid
-    if (band->num_ranks() == 1)
+    if (band->num_ranks() != 1)
     {
-        fv_states_row_.set_dimensions(mtgk_size(), parameters_.num_fv_states());
-        fv_states_row_.set_ptr(fv_states_col_.get_ptr());
-    }
-    else
-    {
-        fv_states_row_.set_dimensions(mtgk_size(), band->spl_fv_states_row().local_size());
-        fv_states_row_.allocate();
         fv_states_row_.zero();
 
         for (int i = 0; i < band->spl_fv_states_row().local_size(); i++)
@@ -2359,24 +2370,11 @@ void kpoint::find_eigen_states(Band* band, PeriodicFunction<double>* effective_p
 
     if (debug_level > 1) test_fv_states(band, 0);
 
-    sv_eigen_vectors_.set_dimensions(band->spl_fv_states_row().local_size(), 
-                                     band->spl_spinor_wf_col().local_size());
-    sv_eigen_vectors_.allocate();
+    band->solve_sv(parameters_, mtgk_size(), num_gkvec(), fft_index(), &fv_eigen_values_[0], 
+                   fv_states_row_, fv_states_col_, effective_magnetic_field, &band_energies_[0],
+                   sv_eigen_vectors_);
 
-    band_energies_.resize(parameters_.num_bands());
-    
-    if (parameters_.num_spins() == 2) // or some other conditions which require second variation
-    {
-        band->solve_sv(parameters_, mtgk_size(), num_gkvec(), fft_index(), &fv_eigen_values_[0], 
-                       fv_states_row_, fv_states_col_, effective_magnetic_field, &band_energies_[0],
-                       sv_eigen_vectors_);
-
-        generate_spinor_wave_functions(band, true);
-    }
-    else
-    {
-        generate_spinor_wave_functions(band, false);
-    }
+    if (band->sv()) generate_spinor_wave_functions(band);
 
     /*for (int i = 0; i < 3; i++)
         test_spinor_wave_functions(i); */
@@ -2860,6 +2858,52 @@ void kpoint::load_wave_functions(int id, Band* band__)
         int j = band__->spl_spinor_wf_col(jloc);
         wfj.set_ptr(&spinor_wave_functions_(0, 0, jloc));
         fin["kpoints"][id]["spinor_wave_functions"].read(j, wfj);
+    }
+}
+
+void kpoint::get_fv_eigen_vectors(mdarray<complex16, 2>& fv_evec)
+{
+    assert(fv_evec.size(0) >= fv_eigen_vectors_.size(0));
+    assert(fv_evec.size(1) <= fv_eigen_vectors_.size(1));
+
+    for (int i = 0; i < fv_evec.size(1); i++)
+        memcpy(&fv_evec(0, i), &fv_eigen_vectors_(0, i), fv_eigen_vectors_.size(0) * sizeof(complex16));
+}
+
+void kpoint::get_sv_eigen_vectors(mdarray<complex16, 2>& sv_evec)
+{
+    assert(sv_evec.size(0) == parameters_.num_bands());
+    assert(sv_evec.size(1) == parameters_.num_bands());
+    assert(sv_eigen_vectors_.size(1) == parameters_.num_bands());
+
+    sv_evec.zero();
+
+    if (parameters_.num_mag_dims() == 0)
+    {
+        assert(sv_eigen_vectors_.size(0) == parameters_.num_fv_states());
+
+        for (int i = 0; i < sv_evec.size(1); i++)
+            memcpy(&sv_evec(0, i), &sv_eigen_vectors_(0, i), sv_eigen_vectors_.size(0) * sizeof(complex16));
+    }
+    if (parameters_.num_mag_dims() == 1)
+    {
+        assert(sv_eigen_vectors_.size(0) == parameters_.num_fv_states());
+
+        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+        {
+            for (int i = 0; i < parameters_.num_fv_states(); i++)
+            {
+                memcpy(&sv_evec(ispn * parameters_.num_fv_states(), ispn * parameters_.num_fv_states() + i), 
+                       &sv_eigen_vectors_(0, ispn * parameters_.num_fv_states() + i), 
+                       sv_eigen_vectors_.size(0) * sizeof(complex16));
+            }
+        }
+    }
+    if (parameters_.num_mag_dims() == 3)
+    {
+        assert(sv_eigen_vectors_.size(0) == parameters_.num_bands());
+        for (int i = 0; i < parameters_.num_bands(); i++)
+            memcpy(&sv_evec(0, i), &sv_eigen_vectors_(0, i), sv_eigen_vectors_.size(0) * sizeof(complex16));
     }
 }
 
