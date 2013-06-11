@@ -98,6 +98,44 @@ void FORTRAN(sirius_set_pw_cutoff)(real8* pw_cutoff)
     global_parameters.set_pw_cutoff(*pw_cutoff);
 }
 
+/// Set the number of spins
+/** \param [in] num_spins number of spins (1 or 2)
+    
+    The default number of spins is 1 (non-magnetic treatment of electrons).
+
+    Example:
+    \code{.F90}
+        if (spinpol) call sirius_set_num_spins(2)
+    \endcode
+*/
+void FORTRAN(sirius_set_num_spins)(int32_t* num_spins)
+{
+    global_parameters.set_num_spins(*num_spins);
+}
+
+/// Set the number of magnetic dimensions
+/** \param [in] num_mag_dims number of magnetic dimensions (0, 1, or 3)
+    
+    In case of spin-polarized calculation magnetization density may have only one (z) component 
+    (num_mag_dims = 1, collinear case) or all three components (num_mag_dims = 3, non-collinear case).
+    For non magnetic calcualtions num_mag_dims = 0.
+
+    Example:
+    \code{.F90}
+        integer ndmag
+        ndmag = 3
+        call sirius_set_num_mag_dims(ndmag)
+    \endcode
+*/
+void FORTRAN(sirius_set_num_mag_dims)(int32_t* num_mag_dims)
+{
+    global_parameters.set_num_mag_dims(*num_mag_dims);
+}
+
+
+
+
+
 /// Set augmented-wave cutoff
 /** \param [in] aw_cutoff augmented-wave cutoff
 
@@ -142,16 +180,6 @@ void FORTRAN(sirius_set_effective_magnetic_field_ptr)(real8* beffmt, real8* beff
 void FORTRAN(sirius_set_equivalent_atoms)(int32_t* equivalent_atoms)
 {
     global_parameters.set_equivalent_atoms(equivalent_atoms);
-}
-
-void FORTRAN(sirius_set_num_spins)(int32_t* num_spins)
-{
-    global_parameters.set_num_spins(*num_spins);
-}
-
-void FORTRAN(sirius_set_num_mag_dims)(int32_t* num_mag_dims)
-{
-    global_parameters.set_num_mag_dims(*num_mag_dims);
 }
 
 void FORTRAN(sirius_set_auto_rmt)(int32_t* auto_rmt)
@@ -365,9 +393,32 @@ void FORTRAN(sirius_generate_density)(int32_t* kset_id)
     density->generate(*kset_list[*kset_id]);
 }
 
-void FORTRAN(sirius_find_eigen_states)(int32_t* kset_id)
+/// Find eigen-states of the k-point set. 
+/** \param [in] kset_id k-point set id
+    \param [in] precompute .true. if the radial integrals and plane-wave coefficients of the interstitial 
+                potential must be precomputed
+
+    Example
+    \code{.F90}
+        ! precompute the necessary data on the Fortran side
+        call sirius_update_atomic_potential
+        call sirius_generate_radial_functions
+        call sirius_generate_radial_integrals
+        call sirius_generate_potential_pw_coefs
+        call sirius_find_eigen_states(kset_id, 0) 
+        .
+        .
+        or
+        .
+        .
+        ! ask the library to precompute the necessary data
+        call sirius_find_eigen_states(kset_id, 1) 
+    \endcode
+*/
+void FORTRAN(sirius_find_eigen_states)(int32_t* kset_id, int32_t* precompute__)
 {
-    kset_list[*kset_id]->find_eigen_states(potential);
+    bool precompute = (*precompute__) ? true : false;
+    kset_list[*kset_id]->find_eigen_states(potential, precompute);
 }
 
 void FORTRAN(sirius_find_band_occupancies)(int32_t* kset_id)
@@ -1263,5 +1314,22 @@ void FORTRAN(sirius_generate_potential_pw_coefs)(void)
     potential->generate_pw_coefs();
 }
 
+void FORTRAN(sirius_get_fv_eigen_vectors)(int32_t* kset_id, int32_t* ik, complex16* fv_evec__, int32_t* ld, 
+                                          int32_t* num_fv_evec)
+{
+    mdarray<complex16, 2> fv_evec(fv_evec__, *ld, *num_fv_evec);
+    (*kset_list[*kset_id])[*ik - 1]->get_fv_eigen_vectors(fv_evec);
+}
+
+void FORTRAN(sirius_get_sv_eigen_vectors)(int32_t* kset_id, int32_t* ik, complex16* sv_evec__, int32_t* size)
+{
+    mdarray<complex16, 2> sv_evec(sv_evec__, *size, *size);
+    (*kset_list[*kset_id])[*ik - 1]->get_sv_eigen_vectors(sv_evec);
+}
+
+void FORTRAN(sirius_get_num_fv_states)(int32_t* num_fv_states)
+{
+    *num_fv_states = global_parameters.num_fv_states();
+}
 
 } // extern "C"
