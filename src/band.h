@@ -66,7 +66,19 @@ class Band
         Band(Global& parameters__);
 
         ~Band();
- 
+
+        bool sv()
+        {
+            if (parameters_.num_spins() == 2 || parameters_.uj_correction() || parameters_.so_correction())
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        
         void solve_sv(Global& parameters, int mtgk_size, int num_gkvec, int* fft_index, double* evalfv, 
                       mdarray<complex16, 2>& fv_states_row, mdarray<complex16, 2>& fv_states_col, 
                       PeriodicFunction<double>* effective_magnetic_field[3], double* band_energies, 
@@ -616,6 +628,21 @@ void Band::solve_sv(Global& parameters, int mtgk_size, int num_gkvec, int* fft_i
     if (&parameters != &parameters_) error(__FILE__, __LINE__, "different set of parameters");
 
     Timer t("sirius::Band::solve_sv");
+
+    if (!sv())
+    {
+        memcpy(band_energies, evalfv, parameters_.num_fv_states() * sizeof(double));
+        sv_eigen_vectors.zero();
+        for (int icol = 0; icol < spl_fv_states_col().local_size(); icol++)
+        {
+            int i = spl_fv_states_col(icol);
+            for (int irow = 0; irow < spl_fv_states_row().local_size(); irow++)
+            {
+                if (spl_fv_states_row(irow) == i) sv_eigen_vectors(irow, icol) = complex16(1, 0);
+            }
+        }
+        return;
+    }
 
     // number of h|\psi> components 
     int nhpsi = parameters_.num_mag_dims() + 1;
