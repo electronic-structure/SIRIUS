@@ -562,7 +562,15 @@ void kpoint::initialize(Band* band)
 
     spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), 
                                           band->spl_spinor_wf_col().local_size());
-    spinor_wave_functions_.allocate();
+
+    if (band->sv())
+    {
+        spinor_wave_functions_.allocate();
+    }
+    else
+    {
+        spinor_wave_functions_.set_ptr(fv_states_col_.get_ptr());
+    }
 }
 
 template<> void kpoint::generate_matching_coefficients_l<1>(int ia, int iat, AtomType* type, int l, int num_gkvec_loc, 
