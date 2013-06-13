@@ -132,6 +132,85 @@ void FORTRAN(sirius_set_num_mag_dims)(int32_t* num_mag_dims)
     global_parameters.set_num_mag_dims(*num_mag_dims);
 }
 
+/// Turn on or off the automatic scaling of muffin-tin spheres
+/** \param [in] auto_rmt .true. if muffin-tin spheres must be resized to the maximally allowed radii
+
+    The auto_rmt flag tells the library how to proceed with the muffin-tin spheres in the case when 
+    library takes the full control over the muffin-tin geometry.
+    
+    Example:
+    \code{.F90}
+        logical autormt
+        autormt = .true.
+        call sirius_set_auto_rmt(autormt)
+    \endcode
+*/
+void FORTRAN(sirius_set_auto_rmt)(int32_t* auto_rmt)
+{
+    global_parameters.set_auto_rmt(*auto_rmt);
+}
+
+/// Add atom type to the library
+/** \param [in] atom_type_id unique id of atom type
+    \param [in] label atom type label
+
+    Atom type (species in the terminology of Exciting/Elk) is a class which holds information 
+    common to the atoms of the same element: charge, number of core and valence electrons, muffin-tin
+    radius, radial grid etc. See AtomType class for details.
+
+    Example:
+    \code{.F90}
+        do is = 1, nspecies
+          !======================================================
+          ! add atom type with ID=is and read the .json file with 
+          ! the symbol name if it exists
+          !======================================================
+          call sirius_add_atom_type(is, trim(spsymb(is))
+        enddo
+    \endcode
+*/
+void FORTRAN(sirius_add_atom_type)(int32_t* atom_type_id, char* label, int32_t label_len)
+{
+    global_parameters.add_atom_type(*atom_type_id, std::string(label, label_len));
+}
+
+/// Set basic properties of the atom type
+/** \param [in] atom_type_id id of the atom type
+*/ 
+void FORTRAN(sirius_set_atom_type_properties)(int32_t* atom_type_id, char* symbol, int32_t* zn, real8* mass, 
+                                              real8* mt_radius, int32_t* num_mt_points, real8* radial_grid_origin, 
+                                              real8* radial_grid_infinity, int32_t symbol_len)
+{
+    sirius::AtomType* type = global_parameters.atom_type_by_id(*atom_type_id);
+    type->set_symbol(std::string(symbol, symbol_len));
+    type->set_zn(*zn);
+    type->set_mass(*mass);
+    type->set_num_mt_points(*num_mt_points);
+    type->set_radial_grid_origin(*radial_grid_origin);
+    type->set_radial_grid_infinity(*radial_grid_infinity);
+    type->set_mt_radius(*mt_radius);
+}
+
+
+/// Add atom to the library
+/** \param [in] atom_type_id id of the atom type
+    \param [in] position atom position in fractional coordinates
+    \param [in] vector_field vector field associated with the given atom
+
+    Example:
+    \code{.F90}
+        do is = 1, nspecies
+          do ia = 1, natoms(is)
+            call sirius_add_atom(is, atposl(:, ia, is), bfcmt(:, ia, is))
+          enddo
+        enddo
+    \endcode
+*/
+void FORTRAN(sirius_add_atom)(int32_t* atom_type_id, real8* position, real8* vector_field)
+{
+    global_parameters.add_atom(*atom_type_id, position, vector_field);
+}
+
 
 
 
@@ -182,10 +261,6 @@ void FORTRAN(sirius_set_equivalent_atoms)(int32_t* equivalent_atoms)
     global_parameters.set_equivalent_atoms(equivalent_atoms);
 }
 
-void FORTRAN(sirius_set_auto_rmt)(int32_t* auto_rmt)
-{
-    global_parameters.set_auto_rmt(*auto_rmt);
-}
 
 /*
     primitive get functions
@@ -327,15 +402,6 @@ void FORTRAN(sirius_get_num_core_electrons)(real8* num_core_electrons)
     *num_core_electrons = global_parameters.num_core_electrons();
 }
 
-void FORTRAN(sirius_add_atom_type)(int32_t* atom_type_id, char* label, int32_t label_len)
-{
-    global_parameters.add_atom_type(*atom_type_id, std::string(label, label_len));
-}
-
-void FORTRAN(sirius_add_atom)(int32_t* atom_type_id, real8* position, real8* vector_field)
-{
-    global_parameters.add_atom(*atom_type_id, position, vector_field);
-}
 
 /// Initialize the low-level of the library
 void FORTRAN(sirius_platform_initialize)(int32_t* call_mpi_init_)
@@ -398,21 +464,21 @@ void FORTRAN(sirius_generate_density)(int32_t* kset_id)
     \param [in] precompute .true. if the radial integrals and plane-wave coefficients of the interstitial 
                 potential must be precomputed
 
-    Example
+    Example:
     \code{.F90}
         ! precompute the necessary data on the Fortran side
-        call sirius_update_atomic_potential
-        call sirius_generate_radial_functions
-        call sirius_generate_radial_integrals
-        call sirius_generate_potential_pw_coefs
-        call sirius_find_eigen_states(kset_id, 0) 
-        .
-        .
+          call sirius_update_atomic_potential
+          call sirius_generate_radial_functions
+          call sirius_generate_radial_integrals
+          call sirius_generate_potential_pw_coefs
+          call sirius_find_eigen_states(kset_id, 0) 
+          .
+          .
         ! or
-        .
-        .
+          .
+          .
         ! ask the library to precompute the necessary data
-        call sirius_find_eigen_states(kset_id, 1) 
+          call sirius_find_eigen_states(kset_id, 1) 
     \endcode
 */
 void FORTRAN(sirius_find_eigen_states)(int32_t* kset_id, int32_t* precompute__)
@@ -789,19 +855,6 @@ void FORTRAN(sirius_get_total_energy)(real8* total_energy)
     *total_energy = global_parameters.total_energy();
 }
 
-void FORTRAN(sirius_set_atom_type_properties)(int32_t* atom_type_id, char* symbol, int32_t* zn, real8* mass, 
-                                              real8* mt_radius, int32_t* num_mt_points, real8* radial_grid_origin, 
-                                              real8* radial_grid_infinity, int32_t symbol_len)
-{
-    sirius::AtomType* type = global_parameters.atom_type_by_id(*atom_type_id);
-    type->set_symbol(std::string(symbol, symbol_len));
-    type->set_zn(*zn);
-    type->set_mass(*mass);
-    type->set_num_mt_points(*num_mt_points);
-    type->set_radial_grid_origin(*radial_grid_origin);
-    type->set_radial_grid_infinity(*radial_grid_infinity);
-    type->set_mt_radius(*mt_radius);
-}
 
 void FORTRAN(sirius_set_atom_type_radial_grid)(int32_t* atom_type_id, int32_t* num_radial_points, 
                                                int32_t* num_mt_points, real8* radial_points)
@@ -1093,17 +1146,19 @@ void FORTRAN(sirius_get_spinor_wave_functions)(int32_t* kset_id, int32_t* ik, co
 
 void FORTRAN(sirius_apply_step_function_gk)(int32_t* kset_id, int32_t* ik, complex16* wf__)
 {
+    int thread_id = Platform::thread_id();
+
     sirius::kpoint* kp = (*kset_list[*kset_id])[*ik - 1];
     int num_gkvec = kp->num_gkvec();
 
-    global_parameters.fft().input(num_gkvec, kp->fft_index(), wf__);
-    global_parameters.fft().transform(1);
+    global_parameters.fft().input(num_gkvec, kp->fft_index(), wf__, thread_id);
+    global_parameters.fft().transform(1, thread_id);
     for (int ir = 0; ir < global_parameters.fft().size(); ir++)
-        global_parameters.fft().output_buffer(ir) *= global_parameters.step_function(ir);
+        global_parameters.fft().output_buffer(ir, thread_id) *= global_parameters.step_function(ir);
 
-    global_parameters.fft().input(global_parameters.fft().output_buffer_ptr());
-    global_parameters.fft().transform(-1);
-    global_parameters.fft().output(num_gkvec, kp->fft_index(), wf__);
+    global_parameters.fft().input(&global_parameters.fft().output_buffer(0, thread_id));
+    global_parameters.fft().transform(-1, thread_id);
+    global_parameters.fft().output(num_gkvec, kp->fft_index(), wf__, thread_id);
 }
 
 /// Get Cartesian coordinates of G+k vectors
@@ -1129,6 +1184,11 @@ void FORTRAN(sirius_get_energy_exc)(real8* energy_exc)
 void FORTRAN(sirius_get_energy_vxc)(real8* energy_vxc)
 {
     *energy_vxc = global_parameters.rti().energy_vxc;
+}
+
+void FORTRAN(sirius_get_energy_bxc)(real8* energy_bxc)
+{
+    *energy_bxc = global_parameters.rti().energy_bxc;
 }
 
 void FORTRAN(sirius_get_energy_veff)(real8* energy_veff)
