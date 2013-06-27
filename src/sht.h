@@ -566,6 +566,19 @@ class SHT
             }
         }
 
+        static inline double clebsch_gordan(int l1, int l2, int l3, int m1, int m2, int m3)
+        {
+            assert(l1 >= 0);
+            assert(l2 >= 0);
+            assert(l3 >= 0);
+            assert(m1 >= -l1 && m1 <= l1);
+            assert(m2 >= -l2 && m2 <= l2);
+            assert(m3 >= -l3 && m3 <= l3);
+
+            return pow(-1, l1 - l2 + m3) * sqrt(double(2 * l3 + 1)) * 
+                   gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 2 * m1, 2 * m2, -2 * m3);
+        }
+
         inline complex16 ylm_backward(int lm,  int itp)
         {
             return ylm_backward_(lm, itp);
