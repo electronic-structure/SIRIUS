@@ -307,7 +307,7 @@ class ReciprocalLattice : public UnitCell
             }
         }
 
-        /// return global index of G1-G2 vector
+        /// Return global index of G1-G2 vector
         inline int index_g12(int ig1, int ig2)
         {
             return index_by_gvec_(gvec_(0, ig1) - gvec_(0, ig2),
