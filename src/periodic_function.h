@@ -3,6 +3,190 @@
 namespace sirius
 {
 
+
+enum argument_t {arg_lm, arg_tp, arg_radial, arg_atom, arg_coord, arg_generic};
+
+class Argument
+{
+    public:
+
+        argument_t type_;
+        
+        dimension d_;
+
+        //splindex<block>* spl_d_;
+
+        Argument()
+        {
+        }
+
+        Argument(argument_t type__, dimension d__) : type_(type__), d_(d__)
+        {
+        }
+        
+        //Argument(argument_t type__, splindex<block>* spl_d__) : type_(type__), d_(spl_d__->local_size()), 
+        //    spl_d_(spl_d__)
+        //{
+        //}
+};
+
+
+template<typename T, int N> class Function_base
+{
+    public:
+        mdarray<T, N> data_;
+        Argument arguments_[N];
+        
+};
+
+template<typename T, int N> class Function: public Function_base<T, N>
+{
+};
+
+//template<typename T> class Function<T, 3> : public Function_base<T, 3>
+//{
+//    public:
+//
+//        Function(Argument arg0, Argument arg1, Argument arg2)
+//        {
+//            this->arguments_[0] = arg0;
+//            this->arguments_[1] = arg1;
+//            this->arguments_[2] = arg2;
+//            this->data_.set_dimensions(arg0.d_, arg1.d_, arg2.d_);
+//            this->data_.allocate();
+//        }
+//};
+
+template<typename T> class Function<T, 2> : public Function_base<T, 2>
+{
+    public:
+
+        Function(Argument arg0, Argument arg1)
+        {
+            this->arguments_[0] = arg0;
+            this->arguments_[1] = arg1;
+            this->data_.set_dimensions(arg0.d_, arg1.d_);
+            this->data_.allocate();
+        }
+
+        template <typename U>
+        void convert_to_ylm(Function<U, 2>& f)
+        {
+            if (this->arguments_[0].type_ == arg_radial && this->arguments_[1].type_ == arg_lm)
+            {
+                int nr = this->data_.size(0);
+                int lmmax = this->data_.size(1);
+                int lmax = Utils::lmax_by_lmmax(lmmax);
+                std::vector<complex16> ylm_dot_rlm_pp(lmmax);
+                std::vector<complex16> ylm_dot_rlm_pm(lmmax);
+                for (int l = 0; l <= lmax; l++)
+                {
+                    for (int m = -l; m <= l; m++) 
+                    {
+                        int lm = Utils::lm_by_l_m(l, m);
+                        ylm_dot_rlm_pp[lm] = SHT::ylm_dot_rlm(l, m, m);
+                        ylm_dot_rlm_pm[lm] = SHT::ylm_dot_rlm(l, m, -m);
+                    }
+                }
+                int lm = 0;
+                for (int l = 0; l <= lmax; l++)
+                {
+                    for (int m = -l; m <= l; m++)
+                    {
+                        if (m == 0)
+                        {
+                            for (int ir = 0; ir < nr; ir++) this->data_(ir, lm) = f.data_(ir, lm);
+                        }
+                        else 
+                        {
+                            int lm1 = Utils::lm_by_l_m(l, -m);
+                            for (int ir = 0; ir < nr; ir++)
+                            {
+                                this->data_(ir, lm) = ylm_dot_rlm_pp[lm] * f.data_(ir, lm) + 
+                                                      ylm_dot_rlm_pm[lm] * f.data_(ir, lm1);
+                            }
+                        }
+                        lm++;
+                    }
+                }
+            }
+        }
+};
+
+void gradient(RadialGrid& r, Function<complex16, 2>& f, Function<complex16, 2>* g[3])
+{
+    for (int i = 0; i < 3; i++) g[i]->data_.zero();
+
+    if (f.arguments_[0].type_ == arg_radial && f.arguments_[1].type_ == arg_lm)
+    {
+        int lmax = Utils::lmax_by_lmmax(f.arguments_[1].d_.size());
+        Spline<complex16> s(f.arguments_[0].d_.size(), r);
+        for (int l = 0; l <= lmax; l++)
+        {
+            double d1 = sqrt(double(l + 1) / double(2 * l + 3));
+            double d2 = sqrt(double(l) / double(2 * l - 1));
+
+            for (int m = -l; m <= l; m++)
+            {
+                int lm = Utils::lm_by_l_m(l, m);
+                for (int ir = 0; ir < (int)f.arguments_[0].d_.size(); ir++) s[ir] = f.data_(ir, lm);
+                s.interpolate();
+
+                for (int mu = -1; mu <= 1; mu++)
+                {
+                    int j = (mu + 2) % 3; // map -1,0,1 to 1,2,0
+
+                    if ((l + 1) <= lmax && abs(m + mu) <= l + 1)
+                    {
+                        for (int ir = 0; ir < (int)f.arguments_[0].d_.size(); ir++)
+                        {
+                            g[j]->data_(ir, Utils::lm_by_l_m(l + 1, m + mu)) +=  
+                                complex16(d1 * SHT::clebsch_gordan(l, 1, l + 1, m, mu, m + mu), 0) * 
+                                (s.deriv(1, ir) - complex16(r.rinv(ir) * l, 0) * f.data_(ir, lm));
+
+                        }
+                    }
+                    if ((l - 1) >= 0 && abs(m + mu) <= l - 1)
+                    {
+                        for (int ir = 0; ir < (int)f.arguments_[0].d_.size(); ir++)
+                        {
+                            g[j]->data_(ir, Utils::lm_by_l_m(l - 1, m + mu)) -= 
+                                complex16(d2 * SHT::clebsch_gordan(l, 1, l - 1, m, mu, m + mu), 0) * 
+                                (s.deriv(1, ir) + complex16(r.rinv(ir) * (l + 1), 0) * f.data_(ir, lm));
+                        }
+                    }
+                }
+            }
+        }
+
+        complex16 d1(1.0 / sqrt(2.0), 0);
+        complex16 d2(0, 1.0 / sqrt(2.0));
+        for (int lm = 0; lm < (int)f.arguments_[1].d_.size(); lm++)
+        {
+            for (int ir = 0; ir < (int)f.arguments_[0].d_.size(); ir++)
+            {
+                complex16 g_p1 = g[0]->data_(ir, lm);
+                complex16 g_m1 = g[1]->data_(ir, lm);
+                g[0]->data_(ir, lm) = d1 * (g_m1 - g_p1);
+                g[1]->data_(ir, lm) = d2 * (g_m1 + g_p1);
+            }
+        }
+    }
+
+}
+
+template <typename T>
+T inner(RadialGrid& r, Function<T, 2>* f1, Function<T, 2>* f2)
+{
+    Spline<T> s(f1->data_.size(0), r);
+    for (int lm = 0; lm < f1->data_.size(1); lm++)
+    {
+        for (int ir = 0; ir < f1->data_.size(0); ir++)
+            s[ir] += primitive_type_wrapper<T>::conjugate(f1->data_(ir, lm)) * f2->data_(ir, lm);
+    }       
+    return s.interpolate().integrate(2);
+}
+
 const int rlm_component = 1 << 0;
 const int ylm_component = 1 << 1;
 const int pw_component = 1 << 2;
@@ -57,6 +241,8 @@ template<typename T, index_order_t index_order = angular_radial> class PeriodicF
         mdarray<complex_t, 1> f_pw_;
 
         SHT sht_;
+
+        //Function<T, 1> Func;
 
         template <int split_f, int split_g>
         inline void add_it(T* f_it__, T* g_it__)
