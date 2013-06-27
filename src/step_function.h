@@ -128,6 +128,41 @@ class StepFunction : public ReciprocalLattice
             printf("MT volume        : %f (%i%%)\n", volume_mt(), int(volume_mt() * 100 / omega()));
             printf("IT volume        : %f (%i%%)\n", volume_it(), int(volume_it() * 100 / omega()));
         }
+
+        void get_step_function_form_factors(mdarray<double, 2>& ffac)
+        {
+            ffac.zero();
+            
+            double fourpi_omega = fourpi / omega();
+
+            splindex<block> spl_num_gvec_shells(num_gvec_shells(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+
+            #pragma omp parallel for default(shared)
+            for (int igsloc = 0; igsloc < spl_num_gvec_shells.local_size(); igsloc++)
+            {
+                int igs = spl_num_gvec_shells[igsloc];
+                double g = gvec_shell_len(igs);
+                double g3inv = (igs) ? 1.0 / pow(g, 3) : 0.0;
+
+                for (int iat = 0; iat < num_atom_types(); iat++)
+                {            
+                    double R = atom_type(iat)->mt_radius();
+                    double gR = g * R;
+
+                    if (igs == 0)
+                    {
+                        ffac(igs, iat) = fourpi_omega * pow(R, 3) / 3.0;
+                    }
+                    else
+                    {
+                        ffac(igs, iat) = fourpi_omega * (sin(gR) - gR * cos(gR)) * g3inv;
+                    }
+                }
+            }
+
+            for (int iat = 0; iat < num_atom_types(); iat++) Platform::allreduce(&ffac(0, iat), num_gvec_shells());
+        }
+
 };
 
 };
