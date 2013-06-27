@@ -15,6 +15,11 @@ class Utils
             return (l * l + l + m);
         }
 
+        static inline int lmax_by_lmmax(int lmmax)
+        {
+            return (int(sqrt(double(lmmax)) + 1e-8) - 1);
+        }
+
         static bool file_exists(const std::string file_name)
         {
             std::ifstream ifs(file_name.c_str());
