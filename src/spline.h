@@ -429,17 +429,17 @@ template <typename T> class Spline
                 }
                 case 1:
                 {
-                    return b[i] + dx * (2 * c[i] + 3 * dx * d[i]);
+                    return b[i] + dx * (c[i] * 2.0 + d[i] * dx * 3.0);
                     break;
                 }
                 case 2:
                 {
-                    return 2 * c[i] + 6 * dx * d[i];
+                    return c[i] * 2.0 + d[i] * dx * 6.0;
                     break;
                 }
                 case 3:
                 {
-                    return 6 * d[i];
+                    return d[i] * 6.0;
                     break;
                 }
                 default:
