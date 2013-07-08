@@ -349,10 +349,8 @@ class kpoint
         void find_eigen_states(Band* band, PeriodicFunction<double>* effective_potential, 
                                PeriodicFunction<double>* effective_magnetic_field[3]);
 
-        template <index_order_t index_order>
-        PeriodicFunction<complex16, index_order>* spinor_wave_function_component(Band* band, int lmax, int ispn, int j);
+        PeriodicFunction<complex16>* spinor_wave_function_component(Band* band, int lmax, int ispn, int j);
 
-        template<index_order_t index_order>
         void spinor_wave_function_component_mt(Band* band, int lmax, int ispn, int jloc, mdarray<complex16, 3>& fylm);
         
         void save_wave_functions(int id, Band* band__);
@@ -652,31 +650,29 @@ template<> void kpoint::generate_matching_coefficients_l<2>(int ia, int iat, Ato
 
 void kpoint::check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
 {
-    static SHT sht;
-    static bool sht_init = false;
-    if (!sht_init)
+    static SHT* sht = NULL;
+    if (!sht)
     {
-        sht.set_lmax(parameters_.lmax_apw());
-        sht_init = true;
+        sht = new SHT(parameters_.lmax_apw());
     }
 
     Atom* atom = parameters_.atom(ia);
     AtomType* type = parameters_.atom(ia)->type();
 
-    mdarray<complex16, 2> z1(sht.num_points(), type->mt_aw_basis_size());
+    mdarray<complex16, 2> z1(sht->num_points(), type->mt_aw_basis_size());
     for (int i = 0; i < type->mt_aw_basis_size(); i++)
     {
         int lm = type->indexb(i).lm;
         int idxrf = type->indexb(i).idxrf;
         double rf = atom->symmetry_class()->radial_function(atom->num_mt_points() - 1, idxrf);
-        for (int itp = 0; itp < sht.num_points(); itp++)
+        for (int itp = 0; itp < sht->num_points(); itp++)
         {
-            z1(itp, i) = sht.ylm_backward(lm, itp) * rf;
+            z1(itp, i) = sht->ylm_backward(lm, itp) * rf;
         }
     }
 
-    mdarray<complex16, 2> z2(sht.num_points(), num_gkvec_loc);
-    blas<cpu>::gemm(0, 2, sht.num_points(), num_gkvec_loc, type->mt_aw_basis_size(), z1.get_ptr(), z1.ld(),
+    mdarray<complex16, 2> z2(sht->num_points(), num_gkvec_loc);
+    blas<cpu>::gemm(0, 2, sht->num_points(), num_gkvec_loc, type->mt_aw_basis_size(), z1.get_ptr(), z1.ld(),
                     alm.get_ptr(), alm.ld(), z2.get_ptr(), z2.ld());
 
     double vc[3];
@@ -687,18 +683,18 @@ void kpoint::check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
     {
         double gkc[3];
         parameters_.get_coordinates<cartesian, reciprocal>(gkvec(igkglob(igloc)), gkc);
-        for (int itp = 0; itp < sht.num_points(); itp++)
+        for (int itp = 0; itp < sht->num_points(); itp++)
         {
             complex16 aw_value = z2(itp, igloc);
             double r[3];
-            for (int x = 0; x < 3; x++) r[x] = vc[x] + sht.coord(x, itp) * type->mt_radius();
+            for (int x = 0; x < 3; x++) r[x] = vc[x] + sht->coord(x, itp) * type->mt_radius();
             complex16 pw_value = exp(complex16(0, Utils::scalar_product(r, gkc))) / sqrt(parameters_.omega());
             tdiff += abs(pw_value - aw_value);
         }
     }
 
     printf("atom : %i  absolute alm error : %e  average alm error : %e\n", 
-           ia, tdiff, tdiff / (num_gkvec_loc * sht.num_points()));
+           ia, tdiff, tdiff / (num_gkvec_loc * sht->num_points()));
 }
 
 void kpoint::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
@@ -1022,7 +1018,7 @@ template<> void kpoint::set_fv_h_o_pw_lo<cpu>(PeriodicFunction<double>* effectiv
 
                 for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
                 {
-                    (*svlo(lm1, icol))[ir] += (cg * effective_potential->f_rlm(lm3, ir, ia) * 
+                    (*svlo(lm1, icol))[ir] += (cg * effective_potential->f_mt<global>(lm3, ir, ia) * 
                                                parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf));
                 }
             }
@@ -1150,7 +1146,7 @@ template<> void kpoint::set_fv_h_o_pw_lo<cpu>(PeriodicFunction<double>* effectiv
 
                 for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
                 {
-                    (*svlo(lm1, irow))[ir] += (cg * effective_potential->f_rlm(lm3, ir, ia) * 
+                    (*svlo(lm1, irow))[ir] += (cg * effective_potential->f_mt<global>(lm3, ir, ia) * 
                                                parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf));
                 }
             }
@@ -2388,193 +2384,191 @@ void kpoint::find_eigen_states(Band* band, PeriodicFunction<double>* effective_p
         test_spinor_wave_functions(i); */
 }
 
-template<index_order_t index_order>
-PeriodicFunction<complex16, index_order>* kpoint::spinor_wave_function_component(Band* band, int lmax, int ispn, int jloc)
-{
-    Timer t("sirius::kpoint::spinor_wave_function_component");
+//PeriodicFunction<complex16>* kpoint::spinor_wave_function_component(Band* band, int lmax, int ispn, int jloc)
+//{
+//    Timer t("sirius::kpoint::spinor_wave_function_component");
+//
+//    int lmmax = Utils::lmmax_by_lmax(lmax);
+//
+//    PeriodicFunction<complex16, index_order>* func = 
+//        new PeriodicFunction<complex16, index_order>(parameters_, lmax);
+//    func->allocate(ylm_component | it_component);
+//    func->zero();
+//    
+//    if (basis_type == pwlo)
+//    {
+//        if (index_order != radial_angular) error(__FILE__, __LINE__, "wrong order of indices");
+//
+//        double fourpi_omega = fourpi / sqrt(parameters_.omega());
+//        
+//        for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
+//        {
+//            int igk = igkglob(igkloc);
+//            complex16 z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
+//
+//            // TODO: possilbe optimization with zgemm
+//            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+//            {
+//                int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+//                complex16 z2 = z1 * gkvec_phase_factors_(igkloc, ia);
+//                
+//                #pragma omp parallel for default(shared)
+//                for (int lm = 0; lm < lmmax; lm++)
+//                {
+//                    int l = l_by_lm_(lm);
+//                    complex16 z3 = z2 * zil_[l] * conj(gkvec_ylm_(lm, igkloc)); 
+//                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+//                        func->f_ylm(ir, lm, ia) += z3 * (*sbessel_[igkloc])(ir, l, iat);
+//                }
+//            }
+//        }
+//
+//        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+//        {
+//            Platform::allreduce(&func->f_ylm(0, 0, ia), lmmax * parameters_.max_num_mt_points(),
+//                                parameters_.mpi_grid().communicator(1 << band->dim_row()));
+//        }
+//    }
+//
+//    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+//    {
+//        for (int i = 0; i < parameters_.atom(ia)->type()->mt_basis_size(); i++)
+//        {
+//            int lm = parameters_.atom(ia)->type()->indexb(i).lm;
+//            int idxrf = parameters_.atom(ia)->type()->indexb(i).idxrf;
+//            switch (index_order)
+//            {
+//                case angular_radial:
+//                {
+//                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+//                    {
+//                        func->f_ylm(lm, ir, ia) += 
+//                            spinor_wave_functions_(parameters_.atom(ia)->offset_wf() + i, ispn, jloc) * 
+//                            parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+//                    }
+//                    break;
+//                }
+//                case radial_angular:
+//                {
+//                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+//                    {
+//                        func->f_ylm(ir, lm, ia) += 
+//                            spinor_wave_functions_(parameters_.atom(ia)->offset_wf() + i, ispn, jloc) * 
+//                            parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+//                    }
+//                    break;
+//                }
+//            }
+//        }
+//    }
+//
+//    // in principle, wave function must have an overall e^{ikr} phase factor
+//    parameters_.fft().input(num_gkvec(), &fft_index_[0], 
+//                            &spinor_wave_functions_(parameters_.mt_basis_size(), ispn, jloc));
+//    parameters_.fft().transform(1);
+//    parameters_.fft().output(func->f_it());
+//
+//    for (int i = 0; i < parameters_.fft().size(); i++) func->f_it(i) /= sqrt(parameters_.omega());
+//    
+//    return func;
+//}
 
-    int lmmax = Utils::lmmax_by_lmax(lmax);
-
-    PeriodicFunction<complex16, index_order>* func = 
-        new PeriodicFunction<complex16, index_order>(parameters_, lmax);
-    func->allocate(ylm_component | it_component);
-    func->zero();
-    
-    if (basis_type == pwlo)
-    {
-        if (index_order != radial_angular) error(__FILE__, __LINE__, "wrong order of indices");
-
-        double fourpi_omega = fourpi / sqrt(parameters_.omega());
-        
-        for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
-        {
-            int igk = igkglob(igkloc);
-            complex16 z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
-
-            // TODO: possilbe optimization with zgemm
-            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            {
-                int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-                complex16 z2 = z1 * gkvec_phase_factors_(igkloc, ia);
-                
-                #pragma omp parallel for default(shared)
-                for (int lm = 0; lm < lmmax; lm++)
-                {
-                    int l = l_by_lm_(lm);
-                    complex16 z3 = z2 * zil_[l] * conj(gkvec_ylm_(lm, igkloc)); 
-                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-                        func->f_ylm(ir, lm, ia) += z3 * (*sbessel_[igkloc])(ir, l, iat);
-                }
-            }
-        }
-
-        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-        {
-            Platform::allreduce(&func->f_ylm(0, 0, ia), lmmax * parameters_.max_num_mt_points(),
-                                parameters_.mpi_grid().communicator(1 << band->dim_row()));
-        }
-    }
-
-    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-    {
-        for (int i = 0; i < parameters_.atom(ia)->type()->mt_basis_size(); i++)
-        {
-            int lm = parameters_.atom(ia)->type()->indexb(i).lm;
-            int idxrf = parameters_.atom(ia)->type()->indexb(i).idxrf;
-            switch (index_order)
-            {
-                case angular_radial:
-                {
-                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-                    {
-                        func->f_ylm(lm, ir, ia) += 
-                            spinor_wave_functions_(parameters_.atom(ia)->offset_wf() + i, ispn, jloc) * 
-                            parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
-                    }
-                    break;
-                }
-                case radial_angular:
-                {
-                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-                    {
-                        func->f_ylm(ir, lm, ia) += 
-                            spinor_wave_functions_(parameters_.atom(ia)->offset_wf() + i, ispn, jloc) * 
-                            parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
-                    }
-                    break;
-                }
-            }
-        }
-    }
-
-    // in principle, wave function must have an overall e^{ikr} phase factor
-    parameters_.fft().input(num_gkvec(), &fft_index_[0], 
-                            &spinor_wave_functions_(parameters_.mt_basis_size(), ispn, jloc));
-    parameters_.fft().transform(1);
-    parameters_.fft().output(func->f_it());
-
-    for (int i = 0; i < parameters_.fft().size(); i++) func->f_it(i) /= sqrt(parameters_.omega());
-    
-    return func;
-}
-
-template<index_order_t index_order>
-void kpoint::spinor_wave_function_component_mt(Band* band, int lmax, int ispn, int jloc, mdarray<complex16, 3>& fylm)
-{
-    Timer t("sirius::kpoint::spinor_wave_function_component_mt");
-
-    int lmmax = Utils::lmmax_by_lmax(lmax);
-
-    fylm.zero();
-    
-    if (basis_type == pwlo)
-    {
-        if (index_order != radial_angular) error(__FILE__, __LINE__, "wrong order of indices");
-
-        double fourpi_omega = fourpi / sqrt(parameters_.omega());
-
-        mdarray<complex16, 2> zm(parameters_.max_num_mt_points(),  num_gkvec_row());
-
-        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-        {
-            int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-            for (int l = 0; l <= lmax; l++)
-            {
-                #pragma omp parallel for default(shared)
-                for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
-                {
-                    int igk = igkglob(igkloc);
-                    complex16 z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
-                    complex16 z2 = z1 * gkvec_phase_factors_(igkloc, ia) * zil_[l];
-                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-                        zm(ir, igkloc) = z2 * (*sbessel_[igkloc])(ir, l, iat);
-                }
-                blas<cpu>::gemm(0, 2, parameters_.atom(ia)->num_mt_points(), (2 * l + 1), num_gkvec_row(),
-                                &zm(0, 0), zm.ld(), &gkvec_ylm_(Utils::lm_by_l_m(l, -l), 0), gkvec_ylm_.ld(), 
-                                &fylm(0, Utils::lm_by_l_m(l, -l), ia), fylm.ld());
-            }
-        }
-        //for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
-        //{
-        //    int igk = igkglob(igkloc);
-        //    complex16 z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
-
-        //    // TODO: possilbe optimization with zgemm
-        //    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-        //    {
-        //        int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-        //        complex16 z2 = z1 * gkvec_phase_factors_(igkloc, ia);
-        //        
-        //        #pragma omp parallel for default(shared)
-        //        for (int lm = 0; lm < lmmax; lm++)
-        //        {
-        //            int l = l_by_lm_(lm);
-        //            complex16 z3 = z2 * zil_[l] * conj(gkvec_ylm_(lm, igkloc)); 
-        //            for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-        //                fylm(ir, lm, ia) += z3 * (*sbessel_[igkloc])(ir, l, iat);
-        //        }
-        //    }
-        //}
-
-        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-        {
-            Platform::allreduce(&fylm(0, 0, ia), lmmax * parameters_.max_num_mt_points(),
-                                parameters_.mpi_grid().communicator(1 << band->dim_row()));
-        }
-    }
-
-    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-    {
-        for (int i = 0; i < parameters_.atom(ia)->type()->mt_basis_size(); i++)
-        {
-            int lm = parameters_.atom(ia)->type()->indexb(i).lm;
-            int idxrf = parameters_.atom(ia)->type()->indexb(i).idxrf;
-            switch (index_order)
-            {
-                case angular_radial:
-                {
-                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-                    {
-                        fylm(lm, ir, ia) += 
-                            spinor_wave_functions_(parameters_.atom(ia)->offset_wf() + i, ispn, jloc) * 
-                            parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
-                    }
-                    break;
-                }
-                case radial_angular:
-                {
-                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-                    {
-                        fylm(ir, lm, ia) += 
-                            spinor_wave_functions_(parameters_.atom(ia)->offset_wf() + i, ispn, jloc) * 
-                            parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
-                    }
-                    break;
-                }
-            }
-        }
-    }
-}
+//void kpoint::spinor_wave_function_component_mt(Band* band, int lmax, int ispn, int jloc, mdarray<complex16, 3>& fylm)
+//{
+//    Timer t("sirius::kpoint::spinor_wave_function_component_mt");
+//
+//    int lmmax = Utils::lmmax_by_lmax(lmax);
+//
+//    fylm.zero();
+//    
+//    if (basis_type == pwlo)
+//    {
+//        if (index_order != radial_angular) error(__FILE__, __LINE__, "wrong order of indices");
+//
+//        double fourpi_omega = fourpi / sqrt(parameters_.omega());
+//
+//        mdarray<complex16, 2> zm(parameters_.max_num_mt_points(),  num_gkvec_row());
+//
+//        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+//        {
+//            int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+//            for (int l = 0; l <= lmax; l++)
+//            {
+//                #pragma omp parallel for default(shared)
+//                for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
+//                {
+//                    int igk = igkglob(igkloc);
+//                    complex16 z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
+//                    complex16 z2 = z1 * gkvec_phase_factors_(igkloc, ia) * zil_[l];
+//                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+//                        zm(ir, igkloc) = z2 * (*sbessel_[igkloc])(ir, l, iat);
+//                }
+//                blas<cpu>::gemm(0, 2, parameters_.atom(ia)->num_mt_points(), (2 * l + 1), num_gkvec_row(),
+//                                &zm(0, 0), zm.ld(), &gkvec_ylm_(Utils::lm_by_l_m(l, -l), 0), gkvec_ylm_.ld(), 
+//                                &fylm(0, Utils::lm_by_l_m(l, -l), ia), fylm.ld());
+//            }
+//        }
+//        //for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
+//        //{
+//        //    int igk = igkglob(igkloc);
+//        //    complex16 z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
+//
+//        //    // TODO: possilbe optimization with zgemm
+//        //    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+//        //    {
+//        //        int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+//        //        complex16 z2 = z1 * gkvec_phase_factors_(igkloc, ia);
+//        //        
+//        //        #pragma omp parallel for default(shared)
+//        //        for (int lm = 0; lm < lmmax; lm++)
+//        //        {
+//        //            int l = l_by_lm_(lm);
+//        //            complex16 z3 = z2 * zil_[l] * conj(gkvec_ylm_(lm, igkloc)); 
+//        //            for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+//        //                fylm(ir, lm, ia) += z3 * (*sbessel_[igkloc])(ir, l, iat);
+//        //        }
+//        //    }
+//        //}
+//
+//        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+//        {
+//            Platform::allreduce(&fylm(0, 0, ia), lmmax * parameters_.max_num_mt_points(),
+//                                parameters_.mpi_grid().communicator(1 << band->dim_row()));
+//        }
+//    }
+//
+//    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+//    {
+//        for (int i = 0; i < parameters_.atom(ia)->type()->mt_basis_size(); i++)
+//        {
+//            int lm = parameters_.atom(ia)->type()->indexb(i).lm;
+//            int idxrf = parameters_.atom(ia)->type()->indexb(i).idxrf;
+//            switch (index_order)
+//            {
+//                case angular_radial:
+//                {
+//                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+//                    {
+//                        fylm(lm, ir, ia) += 
+//                            spinor_wave_functions_(parameters_.atom(ia)->offset_wf() + i, ispn, jloc) * 
+//                            parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+//                    }
+//                    break;
+//                }
+//                case radial_angular:
+//                {
+//                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+//                    {
+//                        fylm(ir, lm, ia) += 
+//                            spinor_wave_functions_(parameters_.atom(ia)->offset_wf() + i, ispn, jloc) * 
+//                            parameters_.atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+//                    }
+//                    break;
+//                }
+//            }
+//        }
+//    }
+//}
 
 void kpoint::test_fv_states(Band* band, int use_fft)
 {

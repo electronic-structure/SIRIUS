@@ -12,7 +12,8 @@ class libxc_interface
         
         libxc_interface()
         {
-            int xc_id[] = {XC_LDA_X, XC_LDA_C_VWN};
+            //int xc_id[] = {XC_LDA_X, XC_LDA_C_VWN};
+            int xc_id[] = {XC_LDA_X, XC_LDA_C_PW};
             for (int i = 0; i < 2; i++)
             {
                 if (xc_func_init(&func1_[i], xc_id[i], XC_UNPOLARIZED) != 0) 
@@ -79,7 +80,7 @@ class libxc_interface
 
                 if (rhoud[2 * i + 1] < 0.0)
                 {
-                    if (fabs(rhoud[2 * i + 1]) > 1e-9)
+                    if (fabs(rhoud[2 * i + 1]) > 1e-8)
                     {
                         std::stringstream s;
                         s << "rho_dn is negative : " << rhoud[2 * i + 1] << std::endl
@@ -114,16 +115,16 @@ class libxc_interface
                 
                 if (bxc[i] > 0.0)
                 {
-                    if (fabs(bxc[i]) > 1e-9)
-                    {
-                        std::stringstream s;
-                        s << "bxc is negative : " << bxc[i];
-                        error(__FILE__, __LINE__, s);
-                    }
-                    else
-                    {
+                    //if (bxc[i] > 1e-7)
+                    //{
+                    //    std::stringstream s;
+                    //    s << "bxc is positive : " << bxc[i];
+                    //    error(__FILE__, __LINE__, s);
+                    //}
+                    //else
+                    //{
                         bxc[i] = 0.0;
-                    }
+                    //}
                 }
             }
          }

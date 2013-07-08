@@ -175,6 +175,40 @@ class Platform
         {
             return heap_allocated_;
         }
+
+        template<typename T>
+        static void allgather(T* sendbuf, T* recvbuf, int offset, int count)
+        {
+            std::vector<int> counts(num_mpi_ranks());
+            counts[mpi_rank()] = count;
+            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &counts[0], 1, primitive_type_wrapper<int>::mpi_type_id(), 
+                          MPI_COMM_WORLD);
+            
+            std::vector<int> offsets(num_mpi_ranks());
+            offsets[mpi_rank()] = offset;
+            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &offsets[0], 1, primitive_type_wrapper<int>::mpi_type_id(), 
+                          MPI_COMM_WORLD);
+
+            MPI_Allgatherv(sendbuf, count, primitive_type_wrapper<T>::mpi_type_id(), recvbuf, &counts[0], &offsets[0],
+                           primitive_type_wrapper<T>::mpi_type_id(), MPI_COMM_WORLD);
+        }
+        
+        template<typename T>
+        static void allgather(T* buf, int offset, int count)
+        {
+            std::vector<int> counts(num_mpi_ranks());
+            counts[mpi_rank()] = count;
+            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &counts[0], 1, primitive_type_wrapper<int>::mpi_type_id(), 
+                          MPI_COMM_WORLD);
+            
+            std::vector<int> offsets(num_mpi_ranks());
+            offsets[mpi_rank()] = offset;
+            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &offsets[0], 1, primitive_type_wrapper<int>::mpi_type_id(), 
+                          MPI_COMM_WORLD);
+
+            MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, buf, &counts[0], &offsets[0],
+                           primitive_type_wrapper<T>::mpi_type_id(), MPI_COMM_WORLD);
+        }
 };
 
 bool Platform::verbose_ = false;

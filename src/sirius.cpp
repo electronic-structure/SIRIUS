@@ -682,13 +682,8 @@ void FORTRAN(sirius_bands)(void)
     global_parameters.generate_radial_integrals();
 
     // generate plane-wave coefficients of the potential in the interstitial region
-    for (int ir = 0; ir < global_parameters.fft().size(); ir++)
-         potential->effective_potential()->f_it(ir) *= global_parameters.step_function(ir);
+    potential->generate_pw_coefs();
 
-    global_parameters.fft().input(potential->effective_potential()->f_it());
-    global_parameters.fft().transform(-1);
-    global_parameters.fft().output(global_parameters.num_gvec(), global_parameters.fft_index(), potential->effective_potential()->f_pw());
-    
     sirius::Band* band = kset_.band();
     
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++)
@@ -734,44 +729,44 @@ void FORTRAN(sirius_bands)(void)
 
 void FORTRAN(sirius_plot_potential)(void)
 {
-    //FORTRAN(sirius_read_state)();
-
-    density->initial_density(1);
-
-    potential->generate_effective_potential(density->rho(), density->magnetization());
-
-    
-    // generate plane-wave coefficients of the potential in the interstitial region
-    global_parameters.fft().input(potential->effective_potential()->f_it());
-    global_parameters.fft().transform(-1);
-    global_parameters.fft().output(global_parameters.num_gvec(), global_parameters.fft_index(), 
-                                   potential->effective_potential()->f_pw());
-
-    int N = 10000;
-    double* p = new double[N];
-    double* x = new double[N];
-
-    double vf1[] = {0.1, 0.1, 0.1};
-    double vf2[] = {0.9, 0.9, 0.9};
-
-    #pragma omp parallel for default(shared)
-    for (int i = 0; i < N; i++)
-    {
-        double vf[3];
-        double vc[3];
-        double t = double(i) / (N - 1);
-        for (int j = 0; j < 3; j++) vf[j] = vf1[j] + t * (vf2[j] - vf1[j]);
-
-        global_parameters.get_coordinates<cartesian, direct>(vf, vc);
-        p[i] = potential->value(vc);
-        x[i] = Utils::vector_length(vc);
-    }
-
-    FILE* fout = fopen("potential.dat", "w");
-    for (int i = 0; i < N; i++) fprintf(fout, "%.12f %.12f\n", x[i] - x[0], p[i]);
-    fclose(fout);
-    delete x;
-    delete p;
+//    //FORTRAN(sirius_read_state)();
+//
+//    density->initial_density(1);
+//
+//    potential->generate_effective_potential(density->rho(), density->magnetization());
+//
+//    
+//    // generate plane-wave coefficients of the potential in the interstitial region
+//    global_parameters.fft().input(potential->effective_potential()->f_it());
+//    global_parameters.fft().transform(-1);
+//    global_parameters.fft().output(global_parameters.num_gvec(), global_parameters.fft_index(), 
+//                                   potential->effective_potential()->f_pw());
+//
+//    int N = 10000;
+//    double* p = new double[N];
+//    double* x = new double[N];
+//
+//    double vf1[] = {0.1, 0.1, 0.1};
+//    double vf2[] = {0.9, 0.9, 0.9};
+//
+//    #pragma omp parallel for default(shared)
+//    for (int i = 0; i < N; i++)
+//    {
+//        double vf[3];
+//        double vc[3];
+//        double t = double(i) / (N - 1);
+//        for (int j = 0; j < 3; j++) vf[j] = vf1[j] + t * (vf2[j] - vf1[j]);
+//
+//        global_parameters.get_coordinates<cartesian, direct>(vf, vc);
+//        p[i] = potential->value(vc);
+//        x[i] = Utils::vector_length(vc);
+//    }
+//
+//    FILE* fout = fopen("potential.dat", "w");
+//    for (int i = 0; i < N; i++) fprintf(fout, "%.12f %.12f\n", x[i] - x[0], p[i]);
+//    fclose(fout);
+//    delete x;
+//    delete p;
 }
 
 void FORTRAN(sirius_print_rti)(void)
@@ -1208,16 +1203,23 @@ void FORTRAN(sirius_get_energy_enuc)(real8* energy_enuc)
 
 void FORTRAN(sirius_generate_xc_potential)(real8* rhomt, real8* rhoit, real8* vxcmt, real8* vxcit)
 {
-    sirius::PeriodicFunction<double>* rho = new sirius::PeriodicFunction<double>(global_parameters, global_parameters.lmax_rho()); 
-    rho->set_rlm_ptr(rhomt);
+    using namespace sirius;
+    sirius::PeriodicFunction<double>* rho = 
+        new sirius::PeriodicFunction<double>(global_parameters, Argument(arg_rlm, global_parameters.lmmax_rho()),
+                                                                Argument(arg_radial, global_parameters.max_num_mt_points()));
+    rho->set_mt_ptr(rhomt);
     rho->set_it_ptr(rhoit);
     
-    sirius::PeriodicFunction<double>* vxc = new sirius::PeriodicFunction<double>(global_parameters, global_parameters.lmax_pot());
-    vxc->set_rlm_ptr(vxcmt);
+    sirius::PeriodicFunction<double>* vxc = 
+        new sirius::PeriodicFunction<double>(global_parameters, Argument(arg_rlm, global_parameters.lmmax_pot()),
+                                                                Argument(arg_radial, global_parameters.max_num_mt_points()));
+    vxc->set_mt_ptr(vxcmt);
     vxc->set_it_ptr(vxcit);
 
-    sirius::PeriodicFunction<double>* exc = new sirius::PeriodicFunction<double>(global_parameters, global_parameters.lmax_pot());     
-    exc->allocate(sirius::rlm_component | sirius::it_component);
+    sirius::PeriodicFunction<double>* exc = 
+        new sirius::PeriodicFunction<double>(global_parameters, Argument(arg_rlm, global_parameters.lmmax_pot()),
+                                                                Argument(arg_radial, global_parameters.max_num_mt_points()));
+    exc->allocate(false);
     
     //PeriodicFunction<double>* bxc[3];
     //for (int j = 0; j < parameters_.num_mag_dims(); j++)
@@ -1232,8 +1234,8 @@ void FORTRAN(sirius_generate_xc_potential)(real8* rhomt, real8* rhoit, real8* vx
     //vxc->zero();
     //exc->zero();
    
-    global_parameters.rti().energy_vxc = rho->inner(vxc, sirius::rlm_component | sirius::it_component);
-    global_parameters.rti().energy_exc = rho->inner(exc, sirius::rlm_component | sirius::it_component);
+    global_parameters.rti().energy_vxc = inner(global_parameters, rho, vxc);
+    global_parameters.rti().energy_exc = inner(global_parameters, rho, exc);
 
     delete vxc;
     delete exc;

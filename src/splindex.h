@@ -82,6 +82,11 @@ class splindex_base
             return location_(i, idxglob);
         }
 
+        inline int global_offset()
+        {
+            return global_index_(0, rank_);
+        }
+
         inline int operator[](int idxloc)
         {
             return global_index_(idxloc, rank_);

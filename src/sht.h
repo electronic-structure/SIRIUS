@@ -29,246 +29,54 @@ class SHT
         /// forward transformation from spherical coordinates to Rlm
         mdarray<double, 2> rlm_forward_;
 
-        mdarray<complex16, 2> ylm_dot_rlm_;
-
-        mdarray<int, 2> l_m_by_lm_;
-        
         int mesh_type_;
 
     public:
         
         /// Default constructor
-        SHT() : mesh_type_(0)
-        {
-
-        }
-
-        void set_lmax(int lmax__)
-        {
-            lmax_ = lmax__;
-            lmmax_ = (lmax_ + 1) * (lmax_ + 1);
-            
-            if (mesh_type_ == 0) num_points_ = Lebedev_Laikov_npoint(2 * lmax_);
-            if (mesh_type_ == 1) num_points_ = lmmax_;
-            
-            std::vector<double> x(num_points_);
-            std::vector<double> y(num_points_);
-            std::vector<double> z(num_points_);
-
-            coord_.set_dimensions(3, num_points_);
-            coord_.allocate();
-
-            tp_.set_dimensions(2, num_points_);
-            tp_.allocate();
-
-            w_.resize(num_points_);
-
-            if (mesh_type_ == 0) Lebedev_Laikov_sphere(num_points_, &x[0], &y[0], &z[0], &w_[0]);
-            if (mesh_type_ == 1) uniform_coverage();
-
-            ylm_backward_.set_dimensions(lmmax_, num_points_);
-            ylm_backward_.allocate();
-
-            ylm_forward_.set_dimensions(num_points_, lmmax_);
-            ylm_forward_.allocate();
-
-            rlm_backward_.set_dimensions(lmmax_, num_points_);
-            rlm_backward_.allocate();
-
-            rlm_forward_.set_dimensions(num_points_, lmmax_);
-            rlm_forward_.allocate();
-
-            for (int itp = 0; itp < num_points_; itp++)
-            {
-                if (mesh_type_ == 0)
-                {
-                    coord_(0, itp) = x[itp];
-                    coord_(1, itp) = y[itp];
-                    coord_(2, itp) = z[itp];
-                    
-                    double vs[3];
-
-                    spherical_coordinates(&coord_(0, itp), vs);
-                    spherical_harmonics(lmax_, vs[1], vs[2], &ylm_backward_(0, itp));
-                    spherical_harmonics(lmax_, vs[1], vs[2], &rlm_backward_(0, itp));
-                    for (int lm = 0; lm < lmmax_; lm++)
-                    {
-                        ylm_forward_(itp, lm) = conj(ylm_backward_(lm, itp)) * w_[itp] * fourpi;
-                        rlm_forward_(itp, lm) = rlm_backward_(lm, itp) * w_[itp] * fourpi;
-                    }
-                }
-                if (mesh_type_ == 1)
-                {
-                    double t = tp_(0, itp);
-                    double p = tp_(1, itp);
-
-                    coord_(0, itp) = sin(t) * cos(p);
-                    coord_(1, itp) = sin(t) * sin(p);
-                    coord_(2, itp) = cos(t);
-
-                    spherical_harmonics(lmax_, t, p, &ylm_backward_(0, itp));
-                    spherical_harmonics(lmax_, t, p, &rlm_backward_(0, itp));
-
-                    for (int lm = 0; lm < lmmax_; lm++)
-                    {
-                        ylm_forward_(lm, itp) = ylm_backward_(lm, itp);
-                        rlm_forward_(lm, itp) = rlm_backward_(lm, itp);
-                    }
-                }
-            }
-
-            if (mesh_type_ == 1)
-            {
-                linalg<lapack>::invert_ge(&ylm_forward_(0, 0), lmmax_);
-                linalg<lapack>::invert_ge(&rlm_forward_(0, 0), lmmax_);
-            }
-
-            double dr = 0;
-            double dy = 0;
-
-            for (int lm = 0; lm < lmmax_; lm++)
-            {
-                for (int lm1 = 0; lm1 < lmmax_; lm1++)
-                {
-                    double t = 0;
-                    complex16 zt(0, 0);
-                    for (int itp = 0; itp < num_points_; itp++)
-                    {
-                        zt += ylm_forward_(itp, lm) * ylm_backward_(lm1, itp);
-                        t += rlm_forward_(itp, lm) * rlm_backward_(lm1, itp);
-                    }
-                    
-                    if (lm == lm1) 
-                    {
-                        zt -= 1.0;
-                        t -= 1.0;
-                    }
-                    dr += fabs(t);
-                    dy += abs(zt);
-                }
-            }
-            dr = dr / lmmax_ / lmmax_;
-            dy = dy / lmmax_ / lmmax_;
-
-            if (dr > 1e-15 || dy > 1e-15)
-            {
-                std::stringstream s;
-                s << "spherical mesh error is too big" << std::endl
-                  << "  real spherical integration error " << dr << std::endl
-                  << "  complex spherical integration error " << dy;
-                warning(__FILE__, __LINE__, s);
-            }
-
-            std::vector<double> flm(lmmax_);
-            std::vector<double> ftp(num_points_);
-            for (int lm = 0; lm < lmmax_; lm++)
-            {
-                memset(&flm[0], 0, lmmax_ * sizeof(double));
-                flm[lm] = 1.0;
-                rlm_backward_transform(&flm[0], lmmax_, 1, &ftp[0]);
-                rlm_forward_transform(&ftp[0], lmmax_, 1, &flm[0]);
-                flm[lm] -= 1.0;
-
-                double t = 0.0;
-                for (int lm1 = 0; lm1 < lmmax_; lm1++) t += fabs(flm[lm1]);
-
-                t /= lmmax_;
-
-                if (t > 1e-15) 
-                {
-                    std::stringstream s;
-                    s << "test of backward / forward real SHT failed" << std::endl
-                      << "  total error " << t;
-                    warning(__FILE__, __LINE__, s);
-                }
-            }
-
-            // cache transformation matrices and l,m indices
-            ylm_dot_rlm_.set_dimensions(lmmax_, 2);
-            ylm_dot_rlm_.allocate();
-            l_m_by_lm_.set_dimensions(2, lmmax_);
-            l_m_by_lm_.allocate();
-            for (int l = 0; l <= lmax_; l++)
-            {
-                for (int m = -l; m <= l; m++) 
-                {
-                    int lm = Utils::lm_by_l_m(l, m);
-                    
-                    ylm_dot_rlm_(lm, 0) = ylm_dot_rlm(l, m, m);
-                    ylm_dot_rlm_(lm, 1) = ylm_dot_rlm(l, -m, m);
-
-                    l_m_by_lm_(0, lm) = l;
-                    l_m_by_lm_(1, lm) = m;
-                }
-            }
-        }
+        SHT(int lmax_);
         
-        /// Transform from Ylm to spherical coordinates 
-        void ylm_backward_transform(complex16* flm, int lmmax, int ncol, complex16* ftp)
-        {
-            Timer t("sirius::SHT::ylm_backward_transform");
-            
-            assert(lmmax <= lmmax_);
-
-            blas<cpu>::gemm(1, 0, num_points_, ncol, lmmax, &ylm_backward_(0, 0), lmmax_, flm, lmmax, ftp, num_points_);
-        }
-
-        /// Transform from Rlm to spherical coordinates 
-        void rlm_backward_transform(double* flm, int lmmax, int ncol, double* ftp)
-        {
-            Timer t("sirius::SHT::rlm_backward_transform");
-            
-            assert(lmmax <= lmmax_);
-
-            blas<cpu>::gemm(1, 0, num_points_, ncol, lmmax, 1.0, &rlm_backward_(0, 0), lmmax_, flm, lmmax, 0.0, ftp, 
-                            num_points_);
-        }
-
-        /// Transform from spherical coordinates to Rlm
-        void rlm_forward_transform(double *ftp, int lmmax, int ncol, double* flm)
-        {
-            Timer t("sirius::SHT::rlm_forward_transform");
-            
-            assert(lmmax <= lmmax_);
-            
-            blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, ftp, num_points_, 0.0, 
-                            flm, lmmax);
-        }
+        template <typename T>
+        void backward_transform(T* flm, int lmmax, int ncol, T* ftp);
         
-        void rlm_forward_iterative_transform(double *ftp__, int lmmax, int ncol, double* flm)
-        {
-            Timer t("sirius::SHT::rlm_forward_iterative_transform");
-            
-            assert(lmmax <= lmmax_);
+        template <typename T>
+        void forward_transform(T* ftp, int lmmax, int ncol, T* flm);
+        
+        
+        //void rlm_forward_iterative_transform(double *ftp__, int lmmax, int ncol, double* flm)
+        //{
+        //    Timer t("sirius::SHT::rlm_forward_iterative_transform");
+        //    
+        //    assert(lmmax <= lmmax_);
 
-            mdarray<double, 2> ftp(ftp__, num_points_, ncol);
-            mdarray<double, 2> ftp1(num_points_, ncol);
-            
-            blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, &ftp(0, 0), num_points_, 0.0, 
-                            flm, lmmax);
-            
-            for (int i = 0; i < 2; i++)
-            {
-                rlm_backward_transform(flm, lmmax, ncol, &ftp1(0, 0));
-                double tdiff = 0.0;
-                for (int ir = 0; ir < ncol; ir++)
-                {
-                    for (int itp = 0; itp < num_points_; itp++) 
-                    {
-                        ftp1(itp, ir) = ftp(itp, ir) - ftp1(itp, ir);
-                        //tdiff += fabs(ftp1(itp, ir));
-                    }
-                }
-                
-                for (int itp = 0; itp < num_points_; itp++) 
-                {
-                    tdiff += fabs(ftp1(itp, ncol - 1));
-                }
-                std::cout << "iter : " << i << " avg. MT diff = " << tdiff / num_points_ << std::endl;
-                blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, &ftp1(0, 0), num_points_, 1.0, 
-                                flm, lmmax);
-            }
-        }
+        //    mdarray<double, 2> ftp(ftp__, num_points_, ncol);
+        //    mdarray<double, 2> ftp1(num_points_, ncol);
+        //    
+        //    blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, &ftp(0, 0), num_points_, 0.0, 
+        //                    flm, lmmax);
+        //    
+        //    for (int i = 0; i < 2; i++)
+        //    {
+        //        rlm_backward_transform(flm, lmmax, ncol, &ftp1(0, 0));
+        //        double tdiff = 0.0;
+        //        for (int ir = 0; ir < ncol; ir++)
+        //        {
+        //            for (int itp = 0; itp < num_points_; itp++) 
+        //            {
+        //                ftp1(itp, ir) = ftp(itp, ir) - ftp1(itp, ir);
+        //                //tdiff += fabs(ftp1(itp, ir));
+        //            }
+        //        }
+        //        
+        //        for (int itp = 0; itp < num_points_; itp++) 
+        //        {
+        //            tdiff += fabs(ftp1(itp, ncol - 1));
+        //        }
+        //        std::cout << "iter : " << i << " avg. MT diff = " << tdiff / num_points_ << std::endl;
+        //        blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, &ftp1(0, 0), num_points_, 1.0, 
+        //                        flm, lmmax);
+        //    }
+        //}
 
         /// Transform Cartesian coordinates [x,y,z] to spherical coordinates [r,theta,phi]
         static inline void spherical_coordinates(double* vc, double* vs)
@@ -409,127 +217,24 @@ class SHT
             }
         }
         
-        /*inline complex16 convert_frlm_to_fylm(int lm, double* frlm)
+        static inline complex16 rlm_dot_ylm(int l, int m1, int m2)
         {
-            int l = l_m_by_lm_(0, lm);
-            int m = l_m_by_lm_(1, lm);
-            
-            if (m == 0) return frlm[lm];
-            
-            int lm1 = Utils::lm_by_l_m(l, -m);
-            return (ylm_dot_rlm_(lm, 0) * frlm[lm] + ylm_dot_rlm_(lm1, 0) * frlm[lm1]);
-        }*/
-        
-        static inline void convert_frlm_to_fylm(int lmax, double* frlm, complex16* fylm)
-        {
-            int lmmax = (lmax + 1) * (lmax + 1);
-        
-            memset(fylm, 0, lmmax * sizeof(complex16));
-        
-            int lm = 0;
-            for (int l = 0; l <= lmax; l++)
-            {
-                for (int m = -l; m <= l; m++)
-                {
-                    if (m == 0)
-                    {
-                        fylm[lm] = frlm[lm];
-                    }
-                    else 
-                    {
-                        fylm[lm] = ylm_dot_rlm(l, m, m) * frlm[lm] + 
-                                   ylm_dot_rlm(l, m, -m) * frlm[Utils::lm_by_l_m(l, -m)];
-                    }
-                    lm++;
-                }
-            }
-        }
-  
-        inline void convert_to_ylm(int lmax, double* frlm, complex16* fylm)
-        {
-            assert(lmax <= lmax_); 
-        
-            int lm = 0;
-            for (int l = 0; l <= lmax; l++)
-            {
-                for (int m = -l; m <= l; m++)
-                {
-                    if (m == 0)
-                    {
-                        fylm[lm] = frlm[lm];
-                    }
-                    else 
-                    {
-                        int lm1 = Utils::lm_by_l_m(l, -m);
-                        fylm[lm] = ylm_dot_rlm_(lm, 0) * frlm[lm] + ylm_dot_rlm_(lm1, 0) * frlm[lm1];
-                    }
-                    lm++;
-                }
-            }
-        }
-
-        /*inline double convert_fylm_to_frlm(int lm, complex16* fylm)
-        {
-            int l = l_m_by_lm_(0, lm);
-            int m = l_m_by_lm_(1, lm);
-            
-            if (m == 0) return real(fylm[lm]);
-
-            int lm1 = Utils::lm_by_l_m(l, -m);
-            return real(conj(ylm_dot_rlm_(lm, 0)) * fylm[lm] + conj(ylm_dot_rlm_(lm, 1)) * fylm[lm1]);
-        }*/
-        
-        static inline void convert_fylm_to_frlm(int lmax, complex16* fylm, double* frlm)
-        {
-            int lmmax = (lmax + 1) * (lmax + 1);
-        
-            memset(frlm, 0, lmmax * sizeof(double));
-        
-            int lm = 0;
-            for (int l = 0; l <= lmax; l++)
-            {
-                for (int m = -l; m <= l; m++)
-                {
-                    if (m == 0) 
-                    {
-                        frlm[lm] = real(fylm[lm]);
-                    }
-                    else 
-                    {
-                        frlm[lm] = real(conj(ylm_dot_rlm(l, m, m)) * fylm[lm] + 
-                                   conj(ylm_dot_rlm(l, -m, m)) * fylm[Utils::lm_by_l_m(l, -m)]);
-                    }
-                    lm++;
-                }
-            }
-        }
-
-        inline void convert_to_rlm(int lmax, complex16* fylm, double* frlm)
-        {
-            assert(lmax <= lmax_); 
-            
-            int lm = 0;
-            for (int l = 0; l <= lmax; l++)
-            {
-                for (int m = -l; m <= l; m++)
-                {
-                    if (m == 0) 
-                    {
-                        frlm[lm] = real(fylm[lm]);
-                    }
-                    else 
-                    {
-                        frlm[lm] = real(conj(ylm_dot_rlm_(lm, 0)) * fylm[lm] + 
-                                        conj(ylm_dot_rlm_(lm, 1)) * fylm[Utils::lm_by_l_m(l, -m)]);
-                    }
-                    lm++;
-                }
-            }
+            return conj(ylm_dot_rlm(l, m2, m1));
         }
 
         inline int num_points()
         {
             return num_points_;
+        }
+
+        inline int lmax()
+        {
+            return lmax_;
+        }
+
+        inline int lmmax()
+        {
+            return lmmax_;
         }
 
         static inline double gaunt(int l1, int l2, int l3, int m1, int m2, int m3)
@@ -611,6 +316,170 @@ class SHT
             tp_(1, num_points_ - 1) = 0;
         }
 };
+
+template<> void SHT::backward_transform<double>(double* flm, int lmmax, int ncol, double* ftp)
+{
+    assert(lmmax <= lmmax_);
+    blas<cpu>::gemm(1, 0, num_points_, ncol, lmmax, &rlm_backward_(0, 0), lmmax_, flm, lmmax, ftp, num_points_);
+}
+
+template<> void SHT::backward_transform<complex16>(complex16* flm, int lmmax, int ncol, complex16* ftp)
+{
+    assert(lmmax <= lmmax_);
+    blas<cpu>::gemm(1, 0, num_points_, ncol, lmmax, &ylm_backward_(0, 0), lmmax_, flm, lmmax, ftp, num_points_);
+}
+
+template<> void SHT::forward_transform<double>(double* ftp, int lmmax, int ncol, double* flm)
+{
+    assert(lmmax <= lmmax_);
+    blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, &rlm_forward_(0, 0), num_points_, ftp, num_points_, flm, lmmax);
+}
+
+template<> void SHT::forward_transform<complex16>(complex16* ftp, int lmmax, int ncol, complex16* flm)
+{
+    assert(lmmax <= lmmax_);
+    blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, &ylm_forward_(0, 0), num_points_, ftp, num_points_, flm, lmmax);
+}
+
+SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
+{
+    lmmax_ = (lmax_ + 1) * (lmax_ + 1);
+    
+    if (mesh_type_ == 0) num_points_ = Lebedev_Laikov_npoint(2 * lmax_);
+    if (mesh_type_ == 1) num_points_ = lmmax_;
+    
+    std::vector<double> x(num_points_);
+    std::vector<double> y(num_points_);
+    std::vector<double> z(num_points_);
+
+    coord_.set_dimensions(3, num_points_);
+    coord_.allocate();
+
+    tp_.set_dimensions(2, num_points_);
+    tp_.allocate();
+
+    w_.resize(num_points_);
+
+    if (mesh_type_ == 0) Lebedev_Laikov_sphere(num_points_, &x[0], &y[0], &z[0], &w_[0]);
+    if (mesh_type_ == 1) uniform_coverage();
+
+    ylm_backward_.set_dimensions(lmmax_, num_points_);
+    ylm_backward_.allocate();
+
+    ylm_forward_.set_dimensions(num_points_, lmmax_);
+    ylm_forward_.allocate();
+
+    rlm_backward_.set_dimensions(lmmax_, num_points_);
+    rlm_backward_.allocate();
+
+    rlm_forward_.set_dimensions(num_points_, lmmax_);
+    rlm_forward_.allocate();
+
+    for (int itp = 0; itp < num_points_; itp++)
+    {
+        if (mesh_type_ == 0)
+        {
+            coord_(0, itp) = x[itp];
+            coord_(1, itp) = y[itp];
+            coord_(2, itp) = z[itp];
+            
+            double vs[3];
+
+            spherical_coordinates(&coord_(0, itp), vs);
+            spherical_harmonics(lmax_, vs[1], vs[2], &ylm_backward_(0, itp));
+            spherical_harmonics(lmax_, vs[1], vs[2], &rlm_backward_(0, itp));
+            for (int lm = 0; lm < lmmax_; lm++)
+            {
+                ylm_forward_(itp, lm) = conj(ylm_backward_(lm, itp)) * w_[itp] * fourpi;
+                rlm_forward_(itp, lm) = rlm_backward_(lm, itp) * w_[itp] * fourpi;
+            }
+        }
+        if (mesh_type_ == 1)
+        {
+            double t = tp_(0, itp);
+            double p = tp_(1, itp);
+
+            coord_(0, itp) = sin(t) * cos(p);
+            coord_(1, itp) = sin(t) * sin(p);
+            coord_(2, itp) = cos(t);
+
+            spherical_harmonics(lmax_, t, p, &ylm_backward_(0, itp));
+            spherical_harmonics(lmax_, t, p, &rlm_backward_(0, itp));
+
+            for (int lm = 0; lm < lmmax_; lm++)
+            {
+                ylm_forward_(lm, itp) = ylm_backward_(lm, itp);
+                rlm_forward_(lm, itp) = rlm_backward_(lm, itp);
+            }
+        }
+    }
+
+    if (mesh_type_ == 1)
+    {
+        linalg<lapack>::invert_ge(&ylm_forward_(0, 0), lmmax_);
+        linalg<lapack>::invert_ge(&rlm_forward_(0, 0), lmmax_);
+    }
+
+    double dr = 0;
+    double dy = 0;
+
+    for (int lm = 0; lm < lmmax_; lm++)
+    {
+        for (int lm1 = 0; lm1 < lmmax_; lm1++)
+        {
+            double t = 0;
+            complex16 zt(0, 0);
+            for (int itp = 0; itp < num_points_; itp++)
+            {
+                zt += ylm_forward_(itp, lm) * ylm_backward_(lm1, itp);
+                t += rlm_forward_(itp, lm) * rlm_backward_(lm1, itp);
+            }
+            
+            if (lm == lm1) 
+            {
+                zt -= 1.0;
+                t -= 1.0;
+            }
+            dr += fabs(t);
+            dy += abs(zt);
+        }
+    }
+    dr = dr / lmmax_ / lmmax_;
+    dy = dy / lmmax_ / lmmax_;
+
+    if (dr > 1e-15 || dy > 1e-15)
+    {
+        std::stringstream s;
+        s << "spherical mesh error is too big" << std::endl
+          << "  real spherical integration error " << dr << std::endl
+          << "  complex spherical integration error " << dy;
+        warning(__FILE__, __LINE__, s);
+    }
+
+    std::vector<double> flm(lmmax_);
+    std::vector<double> ftp(num_points_);
+    for (int lm = 0; lm < lmmax_; lm++)
+    {
+        memset(&flm[0], 0, lmmax_ * sizeof(double));
+        flm[lm] = 1.0;
+        backward_transform(&flm[0], lmmax_, 1, &ftp[0]);
+        forward_transform(&ftp[0], lmmax_, 1, &flm[0]);
+        flm[lm] -= 1.0;
+
+        double t = 0.0;
+        for (int lm1 = 0; lm1 < lmmax_; lm1++) t += fabs(flm[lm1]);
+
+        t /= lmmax_;
+
+        if (t > 1e-15) 
+        {
+            std::stringstream s;
+            s << "test of backward / forward real SHT failed" << std::endl
+              << "  total error " << t;
+            warning(__FILE__, __LINE__, s);
+        }
+    }
+}
 
 };
 

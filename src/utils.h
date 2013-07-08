@@ -17,7 +17,9 @@ class Utils
 
         static inline int lmax_by_lmmax(int lmmax)
         {
-            return (int(sqrt(double(lmmax)) + 1e-8) - 1);
+            int lmax = int(sqrt(double(lmmax)) + 1e-8) - 1;
+            if (lmmax_by_lmax(lmax) != lmmax) error(__FILE__, __LINE__, "wrong lmmax");
+            return lmax;
         }
 
         static bool file_exists(const std::string file_name)

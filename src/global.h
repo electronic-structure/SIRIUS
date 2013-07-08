@@ -70,8 +70,6 @@ class Global : public StepFunction
         
         splindex<block> spl_num_atoms_;
         
-        splindex<block> spl_fft_size_;
-
         splindex<block> spl_num_atom_symmetry_classes_;
 
         timeval start_time_;
@@ -368,16 +366,6 @@ class Global : public StepFunction
             return spl_num_atoms_[i];
         }
         
-        inline splindex<block>& spl_fft_size()
-        {
-            return spl_fft_size_;
-        }
-
-        inline int spl_fft_size(int i)
-        {
-            return spl_fft_size_[i];
-        }
-
         inline splindex<block>& spl_num_atom_symmetry_classes()
         {
             return spl_num_atom_symmetry_classes_;
@@ -441,8 +429,6 @@ class Global : public StepFunction
             num_bands_ = num_fv_states_ * num_spins_;
 
             spl_num_atoms_.split(num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
-            
-            spl_fft_size_.split(fft().size(), Platform::num_mpi_ranks(), Platform::mpi_rank());
             
             spl_num_atom_symmetry_classes_.split(num_atom_symmetry_classes(), Platform::num_mpi_ranks(), 
                                                  Platform::mpi_rank());

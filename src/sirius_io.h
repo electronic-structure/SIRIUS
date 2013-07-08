@@ -14,9 +14,9 @@ class pstdout
 
     public:
 
-        pstdout()
+        pstdout(int size = 8192)
         {
-            buffer_.set_dimensions(8192);
+            buffer_.set_dimensions(size);
             buffer_.allocate();
             buffer_.zero();
             offset_ = 0;
@@ -34,17 +34,19 @@ class pstdout
         {
             mdarray<int, 2> offsets(Platform::num_mpi_ranks(), 2);
             offsets.zero();
-            offsets(Platform::mpi_rank(), 0) = offset_;
-            Platform::allreduce(&offsets(0, 0), (int)offsets.size(0)); 
+            Platform::allgather(&offset_, &offsets(0, 0), Platform::mpi_rank(), 1); 
+            
             for (int i = 1; i < Platform::num_mpi_ranks(); i++) offsets(i, 1) = offsets(i - 1, 1) + offsets(i - 1, 0);
 
             mdarray<char, 1> outb((int)buffer_.size() * Platform::num_mpi_ranks());
             outb.zero();
 
-            memcpy(&outb(offsets(Platform::mpi_rank(), 1)), &buffer_(0), offset_ * sizeof(char));
+            Platform::allgather(&buffer_(0), &outb(0), offsets(Platform::mpi_rank(), 1), offset_);  
 
-            Platform::reduce(outb.get_ptr(), (int)outb.size(), MPI_COMM_WORLD, rank);
             if (Platform::mpi_rank() == rank) std::printf("%s", outb.get_ptr());
+
+            offset_ = 0;
+            buffer_.zero();
         }
 };
             

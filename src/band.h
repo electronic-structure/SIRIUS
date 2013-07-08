@@ -197,7 +197,7 @@ class Band
 };
 
 void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size, int num_gkvec, int* fft_index, 
-                          PeriodicFunction<double>* effective_magnetic_field[3], mdarray<complex16, 3>& hpsi)
+                                PeriodicFunction<double>* effective_magnetic_field[3], mdarray<complex16, 3>& hpsi)
 {
     assert(hpsi.size(2) >= 2);
     assert(fv_states.size(0) == hpsi.size(0));
@@ -304,7 +304,7 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
                                         
             for (int ir = 0; ir < parameters_.fft().size(); ir++)
             {
-                hpsi_it[ir] = psi_it[ir] * effective_magnetic_field[0]->f_it(ir) * 
+                hpsi_it[ir] = psi_it[ir] * effective_magnetic_field[0]->f_it<global>(ir) * 
                               parameters_.step_function(ir);
             }
             
@@ -316,8 +316,8 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
             {
                 for (int ir = 0; ir < parameters_.fft().size(); ir++)
                 {
-                    hpsi_it[ir] = psi_it[ir] * (effective_magnetic_field[1]->f_it(ir) - 
-                                                zi * effective_magnetic_field[2]->f_it(ir)) * 
+                    hpsi_it[ir] = psi_it[ir] * (effective_magnetic_field[1]->f_it<global>(ir) - 
+                                                zi * effective_magnetic_field[2]->f_it<global>(ir)) * 
                                                parameters_.step_function(ir);
                 }
                 
@@ -331,8 +331,8 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
             {
                 for (int ir = 0; ir < parameters_.fft().size(); ir++)
                 {
-                    hpsi_it[ir] = psi_it[ir] * (effective_magnetic_field[1]->f_it(ir) + 
-                                                zi * effective_magnetic_field[2]->f_it(ir)) * 
+                    hpsi_it[ir] = psi_it[ir] * (effective_magnetic_field[1]->f_it<global>(ir) + 
+                                                zi * effective_magnetic_field[2]->f_it<global>(ir)) * 
                                                parameters_.step_function(ir);
                 }
                 
@@ -342,6 +342,7 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
             }
         }
     }
+
     Platform::allreduce(hpsi_pw.get_ptr(), (int)hpsi_pw.size(), 
                         parameters_.mpi_grid().communicator(1 << dim_row_));
 

@@ -37,6 +37,9 @@ class ReciprocalLattice : public UnitCell
         /// split index of G-vectors
         splindex<block> spl_num_gvec_;
         
+        /// split index of FFT buffer
+        splindex<block> spl_fft_size_;
+        
         /// Ylm components of G-vectors
         mdarray<complex16, 2> gvec_ylm_;
         
@@ -137,9 +140,11 @@ class ReciprocalLattice : public UnitCell
                 ig_by_igs_[igs].push_back(ig);
             }
             
-            // create splitted index
+            // create split index
             spl_num_gvec_.split(num_gvec(), Platform::num_mpi_ranks(), Platform::mpi_rank());
 
+            spl_fft_size_.split(fft().size(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+            
             // precompute spherical harmonics of G-vectors and G-vector phase factors
             gvec_ylm_.set_dimensions(Utils::lmmax_by_lmax(lmax), spl_num_gvec_.local_size());
             gvec_ylm_.allocate();
@@ -323,6 +328,16 @@ class ReciprocalLattice : public UnitCell
         inline int spl_num_gvec(int igloc)
         {
             return spl_num_gvec_[igloc];
+        }
+        
+        inline splindex<block>& spl_fft_size()
+        {
+            return spl_fft_size_;
+        }
+
+        inline int spl_fft_size(int i)
+        {
+            return spl_fft_size_[i];
         }
 
         inline complex16 gvec_ylm(int lm, int igloc)

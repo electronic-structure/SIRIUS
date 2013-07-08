@@ -28,14 +28,12 @@ class StepFunction : public ReciprocalLattice
             
             memset(&step_function_pw_[0], 0, fft().size() * sizeof(complex16));
             
-            splindex<block> spl_fft_size(fft().size(), Platform::num_mpi_ranks(), Platform::mpi_rank());
-            
             double fourpi_omega = fourpi / omega();
 
             #pragma omp parallel for default(shared)
-            for (int igloc = 0; igloc < spl_fft_size.local_size(); igloc++)
+            for (int igloc = 0; igloc < spl_fft_size().local_size(); igloc++)
             {
-                int ig = spl_fft_size[igloc];
+                int ig = spl_fft_size(igloc);
                 double vg[3];
                 gvec_cart(ig, vg);
 
@@ -69,7 +67,8 @@ class StepFunction : public ReciprocalLattice
                 }
                 step_function_pw_[ig] -= zt * fourpi_omega;
             }
-            Platform::allreduce(&step_function_pw_[0], fft().size());
+            //Platform::allreduce(&step_function_pw_[0], fft().size());
+            Platform::allgather(&step_function_pw_[0], spl_fft_size().global_offset(), spl_fft_size().local_size());
             
             step_function_pw_[0] += 1.0;
 
