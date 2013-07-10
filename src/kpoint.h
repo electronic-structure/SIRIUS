@@ -2357,18 +2357,29 @@ void kpoint::find_eigen_states(Band* band, PeriodicFunction<double>* effective_p
     // distribute fv states along rows of the MPI grid
     if (band->num_ranks() != 1)
     {
-        fv_states_row_.zero();
-
+        // ===========================================================================================
+        // Initially fv states are distributed along the colums of the MPI grid and aligned such that
+        // each MPI column rank has exactly the same number of fv states. But this does not imply that
+        // the distribution is the same for row MPI ranks, because MPI grid can be rectangular.
+        // ===========================================================================================
         for (int i = 0; i < band->spl_fv_states_row().local_size(); i++)
         {
-            int ist = (band->spl_fv_states_row()[i] % parameters_.num_fv_states());
-            int offset_col = band->spl_fv_states_col().location(0, ist);
-            int rank_col = band->spl_fv_states_col().location(1, ist);
+            // index of fv state in the range [0...num_fv_states)
+            int ist = (band->spl_fv_states_row(i) % parameters_.num_fv_states());
+            
+            // find local column lindex of fv state
+            int offset_col = band->spl_fv_states_col().location(_splindex_offs_, ist);
+            
+            // find column MPI rank which stores this fv state 
+            int rank_col = band->spl_fv_states_col().location(_splindex_rank_, ist);
+
+            // if this rank stores this fv state, then copy it
             if (rank_col == band->rank_col())
                 memcpy(&fv_states_row_(0, i), &fv_states_col_(0, offset_col), mtgk_size() * sizeof(complex16));
 
-            Platform::allreduce(&fv_states_row_(0, i), mtgk_size(), 
-                                parameters_.mpi_grid().communicator(1 << band->dim_col()));
+            // send fv state to all column MPI ranks
+            Platform::bcast(&fv_states_row_(0, i), mtgk_size(), 
+                            parameters_.mpi_grid().communicator(1 << band->dim_col()), rank_col); 
         }
     }
 
