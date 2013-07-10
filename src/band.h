@@ -209,6 +209,8 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
     complex16 zone = complex16(1, 0);
     complex16 zi = complex16(0, 1);
 
+    splindex<block> sub_spl_fv_states_col(spl_fv_states_col().local_size(), num_ranks_row(), rank_row());
+    
     mdarray<complex16, 3> zm(parameters_.max_mt_basis_size(), parameters_.max_mt_basis_size(), 
                              parameters_.num_mag_dims());
             
@@ -238,8 +240,9 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
             }
         }
         // compute bwf = B_z*|wf_j>
-        blas<cpu>::hemm(0, 0, mt_basis_size, spl_fv_states_col_.local_size(), zone, &zm(0, 0, 0), zm.ld(), 
-                        &fv_states(offset, 0), fv_states.ld(), zzero, &hpsi(offset, 0, 0), hpsi.ld());
+        blas<cpu>::hemm(0, 0, mt_basis_size, sub_spl_fv_states_col.local_size(), zone, &zm(0, 0, 0), zm.ld(), 
+                        &fv_states(offset, sub_spl_fv_states_col.global_offset()), fv_states.ld(), zzero, 
+                        &hpsi(offset, sub_spl_fv_states_col.global_offset(), 0), hpsi.ld());
         
         // compute bwf = (B_x - iB_y)|wf_j>
         if (hpsi.size(2) >= 3)
@@ -254,8 +257,9 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
                     zm(j1, j2, 0) = conj(zm(j2, j1, 1)) - zi * conj(zm(j2, j1, 2));
             }
               
-            blas<cpu>::gemm(0, 0, mt_basis_size, spl_fv_states_col_.local_size(), mt_basis_size, &zm(0, 0, 0), 
-                            zm.ld(), &fv_states(offset, 0), fv_states.ld(), &hpsi(offset, 0, 2), hpsi.ld());
+            blas<cpu>::gemm(0, 0, mt_basis_size, sub_spl_fv_states_col.local_size(), mt_basis_size, &zm(0, 0, 0), 
+                            zm.ld(), &fv_states(offset, sub_spl_fv_states_col.global_offset()), fv_states.ld(), 
+                            &hpsi(offset, sub_spl_fv_states_col.global_offset(), 2), hpsi.ld());
         }
         
         // compute bwf = (B_x + iB_y)|wf_j>
@@ -272,8 +276,9 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
                     zm(j1, j2, 0) = conj(zm(j2, j1, 1)) + zi * conj(zm(j2, j1, 2));
             }
               
-            blas<cpu>::gemm(0, 0, mt_basis_size, spl_fv_states_col_.local_size(), mt_basis_size, &zm(0, 0, 0), 
-                            zm.ld(), &fv_states(offset, 0), fv_states.ld(), &hpsi(offset, 0, 3), hpsi.ld());
+            blas<cpu>::gemm(0, 0, mt_basis_size, sub_spl_fv_states_col.local_size(), mt_basis_size, &zm(0, 0, 0), 
+                            zm.ld(), &fv_states(offset, sub_spl_fv_states_col.global_offset()), fv_states.ld(), 
+                            &hpsi(offset, sub_spl_fv_states_col.global_offset(), 3), hpsi.ld());
         }
     }
     
@@ -281,8 +286,6 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
 
     mdarray<complex16, 3> hpsi_pw(num_gkvec, spl_fv_states_col_.local_size(), hpsi.size(2));
     hpsi_pw.zero();
-
-    splindex<block> sub_spl_fv_states_col(spl_fv_states_col_.local_size(), num_ranks_row_, rank_row_);
 
     int num_fft_threads = Platform::num_fft_threads();
     #pragma omp parallel default(shared) num_threads(num_fft_threads)
@@ -342,23 +345,39 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
             }
         }
     }
-
-    Platform::allreduce(hpsi_pw.get_ptr(), (int)hpsi_pw.size(), 
-                        parameters_.mpi_grid().communicator(1 << dim_row_));
+    delete t1;
 
     for (int n = 0; n < hpsi.size(2); n++)
     {
-        for (int i = 0; i < spl_fv_states_col_.local_size(); i++)
-            memcpy(&hpsi(parameters_.mt_basis_size(), i, n), &hpsi_pw(0, i, n), num_gkvec * sizeof(complex16));
+        if (n != 1)
+        {
+            for (int iloc = 0; iloc < sub_spl_fv_states_col.local_size(); iloc++)
+            {
+                int i = sub_spl_fv_states_col[iloc];
+                memcpy(&hpsi(parameters_.mt_basis_size(), i, n), &hpsi_pw(0, i, n), num_gkvec * sizeof(complex16));
+            }
+        }
+        else
+        {
+            // copy Bz|\psi> to -Bz|\psi>
+            for (int iloc = 0; iloc < sub_spl_fv_states_col.local_size(); iloc++)
+            {
+                int i = sub_spl_fv_states_col[iloc];
+                for (int j = 0; j < mtgk_size; j++) hpsi(j, i, 1) = -hpsi(j, i, 0);
+            }
+        }
     }
 
-    delete t1;
-   
-    // copy Bz|\psi> to -Bz|\psi>
-    for (int i = 0; i < spl_fv_states_col_.local_size(); i++)
+    for (int n = 0; n < hpsi.size(2); n++)
     {
-        for (int j = 0; j < mtgk_size; j++) hpsi(j, i, 1) = -hpsi(j, i, 0);
+        Platform::allgather(&hpsi(0, 0, n), hpsi.size(0) * sub_spl_fv_states_col.global_offset(),
+                            hpsi.size(0) * sub_spl_fv_states_col.local_size(), 
+                            parameters_.mpi_grid().communicator(1 << dim_row_));
     }
+    
+    //Platform::allreduce(hpsi_pw.get_ptr(), (int)hpsi_pw.size(), 
+    //                    parameters_.mpi_grid().communicator(1 << dim_row_));
+
 }
 
 void Band::apply_so_correction(mdarray<complex16, 2>& fv_states, mdarray<complex16, 3>& hpsi)
