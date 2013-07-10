@@ -59,15 +59,13 @@ class MPIGrid
     public:
 
         // default constructor
-        MPIGrid() : parent_communicator_(MPI_COMM_WORLD),
-                    base_grid_communicator_(MPI_COMM_NULL) 
+        MPIGrid() : parent_communicator_(MPI_COMM_WORLD), base_grid_communicator_(MPI_COMM_NULL) 
         {
         }
 
-        MPIGrid(const std::vector<int> dimensions__, 
-                MPI_Comm parent_communicator__) : dimensions_(dimensions__),
-                                                  parent_communicator_(parent_communicator__),
-                                                  base_grid_communicator_(MPI_COMM_NULL)
+        MPIGrid(const std::vector<int> dimensions__, MPI_Comm parent_communicator__) : 
+            dimensions_(dimensions__), parent_communicator_(parent_communicator__), 
+            base_grid_communicator_(MPI_COMM_NULL)
         {
             initialize();
         }
@@ -86,8 +84,7 @@ class MPIGrid
         /// Initialize the grid.
         void initialize()
         {
-            if (dimensions_.size() == 0)
-                error(__FILE__, __LINE__, "no dimensions for the grid", fatal_err);
+            if (dimensions_.size() == 0) error(__FILE__, __LINE__, "no dimensions for the grid", fatal_err);
 
             int sz = 1;
             for (int i = 0; i < (int)dimensions_.size(); i++) sz *= dimensions_[i];
@@ -170,6 +167,15 @@ class MPIGrid
                     if (Platform :: num_mpi_ranks(communicators_[i]) != communicator_size_[i]) 
                         error(__FILE__, __LINE__, "Communicator sizes don't match", fatal_err);
                 }
+
+                for (int i = 0; i < (int)dimensions_.size(); i++)
+                {
+                    if (Platform::mpi_rank(communicator(1 << i)) != coordinate(i))
+                    {
+                        error(__FILE__, __LINE__, "ranks don't match", fatal_err);
+                    }
+                }
+
             }
 
             //if (base_comm == MPI_COMM_WORLD)
