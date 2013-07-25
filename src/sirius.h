@@ -16,6 +16,7 @@
 #include <sstream>
 #include <cmath>
 #include <complex>
+#include <typeinfo>
 
 extern "C" {
 #include <spglib.h>
@@ -87,11 +88,16 @@ extern "C" {
 // main classes
 // ===========================
 #include "sbessel_pw.h"
+#include "mt_function.h"
 #include "periodic_function.h"
 #include "band.h"
 #include "kpoint.h"
 #include "potential.h"
 #include "kset.h"
 #include "density.h"
+#include "mixer.h"
+
+#include "dft_ground_state.h"
+
 
 #endif // __SIRIUS_H__

@@ -374,10 +374,6 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
                             hpsi.size(0) * sub_spl_fv_states_col.local_size(), 
                             parameters_.mpi_grid().communicator(1 << dim_row_));
     }
-    
-    //Platform::allreduce(hpsi_pw.get_ptr(), (int)hpsi_pw.size(), 
-    //                    parameters_.mpi_grid().communicator(1 << dim_row_));
-
 }
 
 void Band::apply_so_correction(mdarray<complex16, 2>& fv_states, mdarray<complex16, 3>& hpsi)

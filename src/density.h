@@ -111,6 +111,11 @@ class Density
         {
             return magnetization_[i];
         }
+
+        mt_function<double>* density_mt(int ialoc)
+        {
+            return rho_->f_mt(ialoc);
+        }
 };
 
 Density::Density(Global& parameters__, Potential* potential__) : 
@@ -127,12 +132,12 @@ Density::~Density()
 
 void Density::init()
 {
-    rho_ = new PeriodicFunction<double>(parameters_, Argument(arg_rlm, parameters_.lmmax_rho()), 
+    rho_ = new PeriodicFunction<double>(parameters_, Argument(arg_lm, parameters_.lmmax_rho()), 
                                         Argument(arg_radial, parameters_.max_num_mt_points()), parameters_.num_gvec());
 
     for (int i = 0; i < parameters_.num_mag_dims(); i++)
     {
-        magnetization_[i] = new PeriodicFunction<double>(parameters_, Argument(arg_rlm, parameters_.lmmax_rho()), 
+        magnetization_[i] = new PeriodicFunction<double>(parameters_, Argument(arg_lm, parameters_.lmmax_rho()), 
                                                          Argument(arg_radial, parameters_.max_num_mt_points()));
     }
 

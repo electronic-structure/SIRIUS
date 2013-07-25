@@ -23,7 +23,7 @@ enum basis_t {apwlo, pwlo};
 
 enum index_domain_t {global, local};
 
-enum argument_t {arg_ylm, arg_rlm, arg_tp, arg_radial};
+enum argument_t {arg_lm, arg_tp, arg_radial};
 
 /// Wrapper for primitive data types
 template <typename T> class primitive_type_wrapper;
@@ -44,20 +44,10 @@ template<> class primitive_type_wrapper<double>
             return v;
         }
 
-        //static inline std::complex<double> conjugate(std::complex<double>& v)
-        //{
-        //    return conj(v);
-        //}
-        
         static inline double sift(std::complex<double> v)
         {
             return real(v);
         }
-        
-        //static inline double sift(double v)
-        //{
-        //    return v;
-        //}
         
         static MPI_Datatype mpi_type_id()
         {
@@ -67,6 +57,11 @@ template<> class primitive_type_wrapper<double>
         static bool is_complex()
         {
             return false;
+        }
+        
+        static bool is_real()
+        {
+            return true;
         }
 
         static inline double abs(double val)
@@ -111,6 +106,11 @@ template<> class primitive_type_wrapper< std::complex<double> >
         static bool is_complex()
         {
             return true;
+        }
+        
+        static bool is_real()
+        {
+            return false;
         }
         
         static inline double abs(std::complex<double> val)

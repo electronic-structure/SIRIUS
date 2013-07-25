@@ -23,6 +23,9 @@ class StepFunction : public ReciprocalLattice
         {
             Timer t("sirius::StepFunction::init");
             
+            //mdarray<double, 2> ffac(num_gvec_shells(), num_atom_types());
+            //get_step_function_form_factors(ffac);
+
             step_function_pw_.resize(fft().size());
             step_function_.resize(fft().size());
             
@@ -67,7 +70,6 @@ class StepFunction : public ReciprocalLattice
                 }
                 step_function_pw_[ig] -= zt * fourpi_omega;
             }
-            //Platform::allreduce(&step_function_pw_[0], fft().size());
             Platform::allgather(&step_function_pw_[0], spl_fft_size().global_offset(), spl_fft_size().local_size());
             
             step_function_pw_[0] += 1.0;
@@ -159,6 +161,7 @@ class StepFunction : public ReciprocalLattice
                 }
             }
 
+            // TODO: change to allgather
             for (int iat = 0; iat < num_atom_types(); iat++) Platform::allreduce(&ffac(0, iat), num_gvec_shells());
         }
 

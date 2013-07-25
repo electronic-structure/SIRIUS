@@ -196,15 +196,29 @@ class Platform
         template<typename T>
         static void allgather(T* buf, int offset, int count, MPI_Comm comm = MPI_COMM_WORLD)
         {
+
+            std::vector<int> v(num_mpi_ranks(comm) * 2);
+            v[2 * mpi_rank(comm)] = count;
+            v[2 * mpi_rank(comm) + 1] = offset;
+
+            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &v[0], 2, primitive_type_wrapper<int>::mpi_type_id(), 
+                          comm);
+
             std::vector<int> counts(num_mpi_ranks(comm));
-            counts[mpi_rank(comm)] = count;
-            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &counts[0], 1, primitive_type_wrapper<int>::mpi_type_id(), 
-                          comm);
-            
+            //counts[mpi_rank(comm)] = count;
+            //MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &counts[0], 1, primitive_type_wrapper<int>::mpi_type_id(), 
+            //              comm);
+            //
             std::vector<int> offsets(num_mpi_ranks(comm));
-            offsets[mpi_rank(comm)] = offset;
-            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &offsets[0], 1, primitive_type_wrapper<int>::mpi_type_id(), 
-                          comm);
+            //offsets[mpi_rank(comm)] = offset;
+            //MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &offsets[0], 1, primitive_type_wrapper<int>::mpi_type_id(), 
+            //              comm);
+
+            for (int i = 0; i < num_mpi_ranks(comm); i++)
+            {
+                counts[i] = v[2 * i];
+                offsets[i] = v[2 * i + 1];
+            }
 
             MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, buf, &counts[0], &offsets[0],
                            primitive_type_wrapper<T>::mpi_type_id(), comm);

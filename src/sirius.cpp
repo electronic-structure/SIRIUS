@@ -1205,19 +1205,19 @@ void FORTRAN(sirius_generate_xc_potential)(real8* rhomt, real8* rhoit, real8* vx
 {
     using namespace sirius;
     sirius::PeriodicFunction<double>* rho = 
-        new sirius::PeriodicFunction<double>(global_parameters, Argument(arg_rlm, global_parameters.lmmax_rho()),
+        new sirius::PeriodicFunction<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_rho()),
                                                                 Argument(arg_radial, global_parameters.max_num_mt_points()));
     rho->set_mt_ptr(rhomt);
     rho->set_it_ptr(rhoit);
     
     sirius::PeriodicFunction<double>* vxc = 
-        new sirius::PeriodicFunction<double>(global_parameters, Argument(arg_rlm, global_parameters.lmmax_pot()),
+        new sirius::PeriodicFunction<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_pot()),
                                                                 Argument(arg_radial, global_parameters.max_num_mt_points()));
     vxc->set_mt_ptr(vxcmt);
     vxc->set_it_ptr(vxcit);
 
     sirius::PeriodicFunction<double>* exc = 
-        new sirius::PeriodicFunction<double>(global_parameters, Argument(arg_rlm, global_parameters.lmmax_pot()),
+        new sirius::PeriodicFunction<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_pot()),
                                                                 Argument(arg_radial, global_parameters.max_num_mt_points()));
     exc->allocate(false);
     
