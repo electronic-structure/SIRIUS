@@ -503,7 +503,7 @@ class K_point
         }
 };
 
-#include "kpoint.hpp"
+#include "k_point.hpp"
 
 };
 

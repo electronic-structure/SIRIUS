@@ -91,7 +91,7 @@ extern "C" {
 #include "mt_function.h"
 #include "periodic_function.h"
 #include "band.h"
-#include "kpoint.h"
+#include "k_point.h"
 #include "potential.h"
 #include "kset.h"
 #include "density.h"
