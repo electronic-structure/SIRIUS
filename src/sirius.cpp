@@ -1034,7 +1034,7 @@ void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* nu
     
     if (rank == global_parameters.mpi_grid().coordinate(0))
     {
-        sirius::kpoint* kp = (*kset_list[*kset_id])[*ik - 1];
+        sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
         *num_gkvec = kp->num_gkvec();
         mdarray<double, 2> gkvec(gkvec__, 3, kp->num_gkvec()); 
         mdarray<double, 2> gkvec_cart(gkvec_cart__, 3, kp->num_gkvec());
@@ -1067,7 +1067,7 @@ void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, co
     
     if (rank == global_parameters.mpi_grid().coordinate(0))
     {
-        sirius::kpoint* kp = (*kset_list[*kset_id])[*ik - 1];
+        sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
         
         mdarray<complex16, 4> apwalm(apwalm__, *ngkmax, *apwordmax, global_parameters.lmmax_apw(), 
                                      global_parameters.num_atoms());
@@ -1103,7 +1103,7 @@ void FORTRAN(sirius_get_fv_h_o)(int32_t* kset_id, int32_t* ik, int32_t* size, co
     
     if (rank == global_parameters.mpi_grid().coordinate(0))
     {
-        sirius::kpoint* kp = (*kset_list[*kset_id])[*ik - 1];
+        sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
         
         if (*size != kp->apwlo_basis_size())
         {
@@ -1126,7 +1126,7 @@ void FORTRAN(sirius_get_spinor_wave_functions)(int32_t* kset_id, int32_t* ik, co
 {
     assert(global_parameters.num_bands() == kset_list[*kset_id]->band()->spl_spinor_wf_col().local_size());
 
-    sirius::kpoint* kp = (*kset_list[*kset_id])[*ik - 1];
+    sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
     sirius::Band* band = kset_list[*kset_id]->band();
     
     mdarray<complex16, 3> spinor_wave_functions(spinor_wave_functions__, kp->mtgk_size(), global_parameters.num_spins(), 
@@ -1143,7 +1143,7 @@ void FORTRAN(sirius_apply_step_function_gk)(int32_t* kset_id, int32_t* ik, compl
 {
     int thread_id = Platform::thread_id();
 
-    sirius::kpoint* kp = (*kset_list[*kset_id])[*ik - 1];
+    sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
     int num_gkvec = kp->num_gkvec();
 
     global_parameters.fft().input(num_gkvec, kp->fft_index(), wf__, thread_id);
@@ -1159,7 +1159,7 @@ void FORTRAN(sirius_apply_step_function_gk)(int32_t* kset_id, int32_t* ik, compl
 /// Get Cartesian coordinates of G+k vectors
 void FORTRAN(sirius_get_gkvec_cart)(int32_t* kset_id, int32_t* ik, double* gkvec_cart__)
 {
-    sirius::kpoint* kp = (*kset_list[*kset_id])[*ik - 1];
+    sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
     mdarray<double, 2> gkvec_cart(gkvec_cart__, 3, kp->num_gkvec());
 
     for (int ig = 0; ig < kp->num_gkvec(); ig++)

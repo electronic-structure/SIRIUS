@@ -32,7 +32,7 @@ class Density
             Additionaly bands are sub split over rows of the 2D MPI grid, so each MPI rank in the total MPI grid gets
             it's local fraction of the bands.
         */
-        void get_occupied_bands_list(Band* band, kpoint* kp, std::vector< std::pair<int, double> >& bands);
+        void get_occupied_bands_list(Band* band, K_point* kp, std::vector< std::pair<int, double> >& bands);
 
         /// Reduce complex density matrix over magnetic quantum numbers
         template <int num_mag_dims> 
@@ -45,10 +45,10 @@ class Density
                           \Psi_{\ell m}^{i{\bf k}\sigma *}({\bf r}) \Psi_{\ell m'}^{i{\bf k}\sigma'}({\bf r})
             \f] 
         */
-        void add_kpoint_contribution_mt(Band* band, kpoint* kp, mdarray<complex16, 4>& mt_complex_density_matrix);
+        void add_kpoint_contribution_mt(Band* band, K_point* kp, mdarray<complex16, 4>& mt_complex_density_matrix);
         
         /// Add k-point contribution to the interstitial density and magnetization
-        void add_kpoint_contribution_it(Band* band, kpoint* kp);
+        void add_kpoint_contribution_it(Band* band, K_point* kp);
         
         /// Generate valence density in the muffin-tins 
         void generate_valence_density_mt(kset& ks);
@@ -432,7 +432,7 @@ void Density::reduce_zdens(int ia, int ialoc, mdarray<complex16, 4>& zdens, mdar
     } // lm3
 }
 
-void Density::get_occupied_bands_list(Band* band, kpoint* kp, std::vector< std::pair<int, double> >& bands)
+void Density::get_occupied_bands_list(Band* band, K_point* kp, std::vector< std::pair<int, double> >& bands)
 {
     bands.clear();
     for (int jsub = 0; jsub < band->num_sub_bands(); jsub++)
@@ -444,7 +444,7 @@ void Density::get_occupied_bands_list(Band* band, kpoint* kp, std::vector< std::
     }
 }
 
-void Density::add_kpoint_contribution_mt(Band* band, kpoint* kp, mdarray<complex16, 4>& mt_complex_density_matrix)
+void Density::add_kpoint_contribution_mt(Band* band, K_point* kp, mdarray<complex16, 4>& mt_complex_density_matrix)
 {
     Timer t("sirius::Density::add_kpoint_contribution_mt");
     
@@ -484,7 +484,7 @@ void Density::add_kpoint_contribution_mt(Band* band, kpoint* kp, mdarray<complex
     }
 }
 
-void Density::add_kpoint_contribution_it(Band* band, kpoint* kp)
+void Density::add_kpoint_contribution_it(Band* band, K_point* kp)
 {
     Timer t("sirius::Density::add_kpoint_contribution_it");
     
@@ -1096,7 +1096,7 @@ void Density::generate(kset& ks)
         for (int j = 0; j < parameters_.num_bands(); j++) ot += ks[ik]->weight() * ks[ik]->band_occupancy(j);
     }
 
-    if (fabs(wt - 1.0) > 1e-12) error(__FILE__, __LINE__, "kpoint weights don't sum to one");
+    if (fabs(wt - 1.0) > 1e-12) error(__FILE__, __LINE__, "K_point weights don't sum to one");
 
     if (fabs(ot - parameters_.num_valence_electrons()) > 1e-8)
     {

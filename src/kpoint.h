@@ -50,7 +50,7 @@ struct apwlo_basis_descriptor
 
 };
 
-class kpoint
+class K_point
 {
     private:
 
@@ -282,7 +282,7 @@ class kpoint
     public:
 
         /// Constructor
-        kpoint(Global& parameters__, double* vk__, double weight__) : parameters_(parameters__), weight_(weight__)
+        K_point(Global& parameters__, double* vk__, double weight__) : parameters_(parameters__), weight_(weight__)
         {
             for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
 
@@ -290,7 +290,7 @@ class kpoint
             memset(&band_occupancies_[0], 0, parameters_.num_bands() * sizeof(double));
         }
 
-        ~kpoint()
+        ~K_point()
         {
             if (basis_type == pwlo)
             {

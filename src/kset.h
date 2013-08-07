@@ -12,7 +12,7 @@ class kset
 
         Band* band_;
 
-        std::vector<kpoint*> kpoints_;
+        std::vector<K_point*> kpoints_;
 
         splindex<block> spl_num_kpoints_;
 
@@ -47,7 +47,7 @@ class kset
 
         void add_kpoint(double* vk__, double weight__)
         {
-            kpoints_.push_back(new kpoint(parameters_, vk__, weight__));
+            kpoints_.push_back(new K_point(parameters_, vk__, weight__));
         }
 
         void add_kpoints(mdarray<double, 2>& kpoints__, double* weights__)
@@ -55,7 +55,7 @@ class kset
             for (int ik = 0; ik < kpoints__.size(1); ik++) add_kpoint(&kpoints__(0, ik), weights__[ik]);
         }
 
-        inline kpoint* operator[](int i)
+        inline K_point* operator[](int i)
         {
             assert(i >= 0 && i < (int)kpoints_.size());
             

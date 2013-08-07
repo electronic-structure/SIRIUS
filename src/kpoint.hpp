@@ -1,4 +1,4 @@
-template<> void kpoint::generate_matching_coefficients_l<1>(int ia, int iat, AtomType* type, int l, int num_gkvec_loc, 
+template<> void K_point::generate_matching_coefficients_l<1>(int ia, int iat, AtomType* type, int l, int num_gkvec_loc, 
                                                             mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
 {
     if ((fabs(A(0, 0)) < 1.0 / sqrt(parameters_.omega())) && (verbosity_level > 0))
@@ -30,7 +30,7 @@ template<> void kpoint::generate_matching_coefficients_l<1>(int ia, int iat, Ato
     }
 }
 
-template<> void kpoint::generate_matching_coefficients_l<2>(int ia, int iat, AtomType* type, int l, int num_gkvec_loc, 
+template<> void K_point::generate_matching_coefficients_l<2>(int ia, int iat, AtomType* type, int l, int num_gkvec_loc, 
                                                             mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
 {
     double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
@@ -75,10 +75,10 @@ template<> void kpoint::generate_matching_coefficients_l<2>(int ia, int iat, Ato
     }
 }
 
-template<> void kpoint::set_fv_h_o<cpu, apwlo>(PeriodicFunction<double>* effective_potential, int num_ranks,
+template<> void K_point::set_fv_h_o<cpu, apwlo>(PeriodicFunction<double>* effective_potential, int num_ranks,
                                                mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
-    Timer t("sirius::kpoint::set_fv_h_o");
+    Timer t("sirius::K_point::set_fv_h_o");
     
     int apw_offset_col = (num_ranks > 1) ? num_gkvec_row() : 0;
     
@@ -117,9 +117,9 @@ template<> void kpoint::set_fv_h_o<cpu, apwlo>(PeriodicFunction<double>* effecti
     halm.deallocate();
 }
 
-template<> void kpoint::ibs_force<cpu, apwlo>(Band* band, mdarray<double, 2>& ffac, mdarray<double, 2>& force)
+template<> void K_point::ibs_force<cpu, apwlo>(Band* band, mdarray<double, 2>& ffac, mdarray<double, 2>& force)
 {
-    Timer t("sirius::kpoint::ibs_force");
+    Timer t("sirius::K_point::ibs_force");
 
     int apw_offset_col = (band->num_ranks() > 1) ? num_gkvec_row() : 0;
 
@@ -287,10 +287,10 @@ template<> void kpoint::ibs_force<cpu, apwlo>(Band* band, mdarray<double, 2>& ff
     }
 }
 
-template<> void kpoint::set_fv_h_o_pw_lo<cpu>(PeriodicFunction<double>* effective_potential, int num_ranks, 
+template<> void K_point::set_fv_h_o_pw_lo<cpu>(PeriodicFunction<double>* effective_potential, int num_ranks, 
                                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
-    Timer t("sirius::kpoint::set_fv_h_o_pw_lo");
+    Timer t("sirius::K_point::set_fv_h_o_pw_lo");
     
     int offset_col = (num_ranks > 1) ? num_gkvec_row() : 0;
     
@@ -298,9 +298,9 @@ template<> void kpoint::set_fv_h_o_pw_lo<cpu>(PeriodicFunction<double>* effectiv
 
     // first part: compute <G+k|H|lo> and <G+k|lo>
 
-    Timer t1("sirius::kpoint::set_fv_h_o_pw_lo:vlo", false);
-    Timer t2("sirius::kpoint::set_fv_h_o_pw_lo:ohk", false);
-    Timer t3("sirius::kpoint::set_fv_h_o_pw_lo:hvlo", false);
+    Timer t1("sirius::K_point::set_fv_h_o_pw_lo:vlo", false);
+    Timer t2("sirius::K_point::set_fv_h_o_pw_lo:ohk", false);
+    Timer t3("sirius::K_point::set_fv_h_o_pw_lo:hvlo", false);
 
     // compute V|lo>
     t1.start();
@@ -542,10 +542,10 @@ template<> void kpoint::set_fv_h_o_pw_lo<cpu>(PeriodicFunction<double>* effectiv
     }
 }
 
-template<> void kpoint::set_fv_h_o<cpu, pwlo>(PeriodicFunction<double>* effective_potential, int num_ranks,
+template<> void K_point::set_fv_h_o<cpu, pwlo>(PeriodicFunction<double>* effective_potential, int num_ranks,
                                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
-    Timer t("sirius::kpoint::set_fv_h_o");
+    Timer t("sirius::K_point::set_fv_h_o");
     
     h.zero();
     o.zero();
@@ -574,11 +574,11 @@ template<> void kpoint::set_fv_h_o<cpu, pwlo>(PeriodicFunction<double>* effectiv
 
 
 #ifdef _GPU_
-template<> void kpoint::set_fv_h_o<gpu, apwlo>(PeriodicFunction<double>* effective_potential, int num_ranks,
+template<> void K_point::set_fv_h_o<gpu, apwlo>(PeriodicFunction<double>* effective_potential, int num_ranks,
                                                mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 
 {
-    Timer t("sirius::kpoint::set_fv_h_o");
+    Timer t("sirius::K_point::set_fv_h_o");
     
     int apw_offset_col = (num_ranks > 1) ? num_gkvec_row() : 0;
     
@@ -639,18 +639,18 @@ template<> void kpoint::set_fv_h_o<gpu, apwlo>(PeriodicFunction<double>* effecti
     halm.deallocate();
 }
 
-template<> void kpoint::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effective_potential, int num_ranks, 
+template<> void K_point::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effective_potential, int num_ranks, 
                                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
-    Timer t("sirius::kpoint::set_fv_h_o_pw_lo");
+    Timer t("sirius::K_point::set_fv_h_o_pw_lo");
     
     // ===========================================
     // first part: compute <G+k|H|lo> and <G+k|lo>
     // ===========================================
 
-    Timer t1("sirius::kpoint::set_fv_h_o_pw_lo:vlo", false);
-    Timer t2("sirius::kpoint::set_fv_h_o_pw_lo:ohk", false);
-    Timer t3("sirius::kpoint::set_fv_h_o_pw_lo:hvlo", false);
+    Timer t1("sirius::K_point::set_fv_h_o_pw_lo:vlo", false);
+    Timer t2("sirius::K_point::set_fv_h_o_pw_lo:ohk", false);
+    Timer t3("sirius::K_point::set_fv_h_o_pw_lo:hvlo", false);
 
     mdarray<int, 1> kargs(4);
     kargs(0) = parameters_.num_atom_types();
@@ -952,10 +952,10 @@ template<> void kpoint::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effectiv
     //** }
 }
 
-template<> void kpoint::set_fv_h_o<gpu, pwlo>(PeriodicFunction<double>* effective_potential, int num_ranks,
+template<> void K_point::set_fv_h_o<gpu, pwlo>(PeriodicFunction<double>* effective_potential, int num_ranks,
                                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
-    Timer t("sirius::kpoint::set_fv_h_o");
+    Timer t("sirius::K_point::set_fv_h_o");
     
     h.zero();
     o.zero();
@@ -983,9 +983,9 @@ template<> void kpoint::set_fv_h_o<gpu, pwlo>(PeriodicFunction<double>* effectiv
 }
 #endif
 
-void kpoint::initialize(Band* band)
+void K_point::initialize(Band* band)
 {
-    Timer t("sirius::kpoint::initialize");
+    Timer t("sirius::K_point::initialize");
     
     zil_.resize(parameters_.lmax() + 1);
     for (int l = 0; l <= parameters_.lmax(); l++) zil_[l] = pow(complex16(0, 1), l);
@@ -1068,9 +1068,9 @@ void kpoint::initialize(Band* band)
 }
 
 // TODO: add a switch to return conjuagted or normal coefficients
-void kpoint::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
+void K_point::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
 {
-    Timer t("sirius::kpoint::generate_matching_coefficients");
+    Timer t("sirius::K_point::generate_matching_coefficients");
 
     Atom* atom = parameters_.atom(ia);
     AtomType* type = atom->type();
@@ -1120,7 +1120,7 @@ void kpoint::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<c
     if (debug_level > 1) check_alm(num_gkvec_loc, ia, alm);
 }
 
-void kpoint::check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
+void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
 {
     static SHT* sht = NULL;
     if (!sht)
@@ -1169,9 +1169,9 @@ void kpoint::check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
            ia, tdiff, tdiff / (num_gkvec_loc * sht->num_points()));
 }
 
-void kpoint::apply_hmt_to_apw(int num_gkvec_row, int ia, mdarray<complex16, 2>& alm, mdarray<complex16, 2>& halm)
+void K_point::apply_hmt_to_apw(int num_gkvec_row, int ia, mdarray<complex16, 2>& alm, mdarray<complex16, 2>& halm)
 {
-    Timer t("sirius::kpoint::apply_hmt_to_apw");
+    Timer t("sirius::K_point::apply_hmt_to_apw");
     
     Atom* atom = parameters_.atom(ia);
     AtomType* type = atom->type();
@@ -1220,10 +1220,10 @@ void kpoint::apply_hmt_to_apw(int num_gkvec_row, int ia, mdarray<complex16, 2>& 
     }
 }
 
-void kpoint::set_fv_h_o_apw_lo(AtomType* type, Atom* atom, int ia, int apw_offset_col, mdarray<complex16, 2>& alm, 
+void K_point::set_fv_h_o_apw_lo(AtomType* type, Atom* atom, int ia, int apw_offset_col, mdarray<complex16, 2>& alm, 
                                mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
-    Timer t("sirius::kpoint::set_fv_h_o_apw_lo");
+    Timer t("sirius::K_point::set_fv_h_o_apw_lo");
     
     // apw-lo block
     for (int i = 0; i < (int)icol_by_atom_[ia].size(); i++)
@@ -1298,10 +1298,10 @@ void kpoint::set_fv_h_o_apw_lo(AtomType* type, Atom* atom, int ia, int apw_offse
     }
 }
 
-void kpoint::set_fv_h_o_it(PeriodicFunction<double>* effective_potential, 
+void K_point::set_fv_h_o_it(PeriodicFunction<double>* effective_potential, 
                            mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
-    Timer t("sirius::kpoint::set_fv_h_o_it");
+    Timer t("sirius::K_point::set_fv_h_o_it");
 
     #pragma omp parallel for default(shared)
     for (int igkloc2 = 0; igkloc2 < num_gkvec_col(); igkloc2++) // loop over columns
@@ -1324,9 +1324,9 @@ void kpoint::set_fv_h_o_it(PeriodicFunction<double>* effective_potential,
     }
 }
 
-void kpoint::set_fv_h_o_lo_lo(mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+void K_point::set_fv_h_o_lo_lo(mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
-    Timer t("sirius::kpoint::set_fv_h_o_lo_lo");
+    Timer t("sirius::K_point::set_fv_h_o_lo_lo");
 
     // lo-lo block
     #pragma omp parallel for default(shared)
@@ -1359,7 +1359,7 @@ void kpoint::set_fv_h_o_lo_lo(mdarray<complex16, 2>& h, mdarray<complex16, 2>& o
     }
 }
 
-inline void kpoint::copy_lo_blocks(const int apwlo_basis_size_row, const int num_gkvec_row, 
+inline void K_point::copy_lo_blocks(const int apwlo_basis_size_row, const int num_gkvec_row, 
                                    const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
                                    const complex16* z, complex16* vec)
 {
@@ -1372,7 +1372,7 @@ inline void kpoint::copy_lo_blocks(const int apwlo_basis_size_row, const int num
     }
 }
 
-inline void kpoint::copy_pw_block(const int num_gkvec, const int num_gkvec_row, 
+inline void K_point::copy_pw_block(const int num_gkvec, const int num_gkvec_row, 
                                   const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
                                   const complex16* z, complex16* vec)
 {
@@ -1381,9 +1381,9 @@ inline void kpoint::copy_pw_block(const int num_gkvec, const int num_gkvec_row,
     for (int j = 0; j < num_gkvec_row; j++) vec[apwlo_basis_descriptors_row[j].igk] = z[j];
 }
 
-void kpoint::solve_fv_evp_1stage(Band* band, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+void K_point::solve_fv_evp_1stage(Band* band, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
-    Timer *t1 = new Timer("sirius::kpoint::generate_fv_states:genevp");
+    Timer *t1 = new Timer("sirius::K_point::generate_fv_states:genevp");
     generalized_evp* solver = NULL;
 
     switch (parameters_.eigen_value_solver())
@@ -1429,7 +1429,7 @@ void kpoint::solve_fv_evp_1stage(Band* band, mdarray<complex16, 2>& h, mdarray<c
     delete t1;
 }
 
-void kpoint::solve_fv_evp_2stage(mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+void K_point::solve_fv_evp_2stage(mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
     if (parameters_.eigen_value_solver() != lapack) error(__FILE__, __LINE__, "implemented for LAPACK only");
     
@@ -1493,9 +1493,9 @@ void kpoint::solve_fv_evp_2stage(mdarray<complex16, 2>& h, mdarray<complex16, 2>
                     fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
 }
 
-void kpoint::generate_fv_states(Band* band, PeriodicFunction<double>* effective_potential)
+void K_point::generate_fv_states(Band* band, PeriodicFunction<double>* effective_potential)
 {
-    Timer t("sirius::kpoint::generate_fv_states");
+    Timer t("sirius::K_point::generate_fv_states");
 
     mdarray<complex16, 2> h(apwlo_basis_size_row(), apwlo_basis_size_col());
     mdarray<complex16, 2> o(apwlo_basis_size_row(), apwlo_basis_size_col());
@@ -1717,7 +1717,7 @@ void kpoint::generate_fv_states(Band* band, PeriodicFunction<double>* effective_
 
     mdarray<complex16, 2> alm(num_gkvec_row(), parameters_.max_mt_aw_basis_size());
     
-    Timer *t2 = new Timer("sirius::kpoint::generate_fv_states:wf");
+    Timer *t2 = new Timer("sirius::K_point::generate_fv_states:wf");
     if (basis_type == apwlo)
     {
         for (int ia = 0; ia < parameters_.num_atoms(); ia++)
@@ -1751,9 +1751,9 @@ void kpoint::generate_fv_states(Band* band, PeriodicFunction<double>* effective_
     delete t2;
 }
 
-void kpoint::generate_spinor_wave_functions(Band* band)
+void K_point::generate_spinor_wave_functions(Band* band)
 {
-    Timer t("sirius::kpoint::generate_spinor_wave_functions");
+    Timer t("sirius::K_point::generate_spinor_wave_functions");
 
     spinor_wave_functions_.zero();
     
@@ -1792,7 +1792,7 @@ void kpoint::generate_spinor_wave_functions(Band* band)
     }
 }
 
-void kpoint::generate_gkvec()
+void K_point::generate_gkvec()
 {
     double gk_cutoff = parameters_.aw_cutoff() / parameters_.min_mt_radius();
 
@@ -1840,7 +1840,7 @@ void kpoint::generate_gkvec()
     for (int ig = 0; ig < num_gkvec(); ig++) fft_index_[ig] = parameters_.fft_index(gvec_index_[ig]);
 }
 
-void kpoint::init_gkvec_phase_factors()
+void K_point::init_gkvec_phase_factors()
 {
     gkvec_phase_factors_.set_dimensions(num_gkvec_loc(), parameters_.num_atoms());
     gkvec_phase_factors_.allocate();
@@ -1860,7 +1860,7 @@ void kpoint::init_gkvec_phase_factors()
 
 }
 
-void kpoint::init_gkvec()
+void K_point::init_gkvec()
 {
     int lmax = std::max(parameters_.lmax_apw(), parameters_.lmax_pw());
 
@@ -1926,7 +1926,7 @@ void kpoint::init_gkvec()
     }
 }
 
-void kpoint::build_apwlo_basis_descriptors()
+void K_point::build_apwlo_basis_descriptors()
 {
     assert(apwlo_basis_descriptors_.size() == 0);
 
@@ -1985,7 +1985,7 @@ void kpoint::build_apwlo_basis_descriptors()
 }
 
 /// Block-cyclic distribution of relevant arrays 
-void kpoint::distribute_block_cyclic(Band* band)
+void K_point::distribute_block_cyclic(Band* band)
 {
     // distribute APW+lo basis between rows
     splindex<block_cyclic> spl_row(apwlo_basis_size(), band->num_ranks_row(), band->rank_row(), 
@@ -2028,12 +2028,12 @@ void kpoint::distribute_block_cyclic(Band* band)
         if (apwlo_basis_descriptors_col_[i].igk != -1) num_gkvec_col_++;
 }
 
-void kpoint::find_eigen_states(Band* band, PeriodicFunction<double>* effective_potential, 
+void K_point::find_eigen_states(Band* band, PeriodicFunction<double>* effective_potential, 
                                PeriodicFunction<double>* effective_magnetic_field[3])
 {
     assert(band != NULL);
     
-    Timer t("sirius::kpoint::find_eigen_states");
+    Timer t("sirius::K_point::find_eigen_states");
 
     if (band->num_ranks() > 1 && 
         (parameters_.eigen_value_solver() == lapack || parameters_.eigen_value_solver() == magma))
@@ -2084,9 +2084,9 @@ void kpoint::find_eigen_states(Band* band, PeriodicFunction<double>* effective_p
         test_spinor_wave_functions(i); */
 }
 
-//PeriodicFunction<complex16>* kpoint::spinor_wave_function_component(Band* band, int lmax, int ispn, int jloc)
+//PeriodicFunction<complex16>* K_point::spinor_wave_function_component(Band* band, int lmax, int ispn, int jloc)
 //{
-//    Timer t("sirius::kpoint::spinor_wave_function_component");
+//    Timer t("sirius::K_point::spinor_wave_function_component");
 //
 //    int lmmax = Utils::lmmax_by_lmax(lmax);
 //
@@ -2173,9 +2173,9 @@ void kpoint::find_eigen_states(Band* band, PeriodicFunction<double>* effective_p
 //    return func;
 //}
 
-void kpoint::spinor_wave_function_component_mt(Band* band, int lmax, int ispn, int jloc, mt_functions<complex16>& psilm)
+void K_point::spinor_wave_function_component_mt(Band* band, int lmax, int ispn, int jloc, mt_functions<complex16>& psilm)
 {
-    Timer t("sirius::kpoint::spinor_wave_function_component_mt");
+    Timer t("sirius::K_point::spinor_wave_function_component_mt");
 
     //int lmmax = Utils::lmmax_by_lmax(lmax);
 
@@ -2253,7 +2253,7 @@ void kpoint::spinor_wave_function_component_mt(Band* band, int lmax, int ispn, i
     }
 }
 
-void kpoint::test_fv_states(Band* band, int use_fft)
+void K_point::test_fv_states(Band* band, int use_fft)
 {
     std::vector<complex16> v1;
     std::vector<complex16> v2;
@@ -2366,7 +2366,7 @@ void kpoint::test_fv_states(Band* band, int use_fft)
                vk_[0], vk_[1], vk_[2], use_fft, maxerr);
 }
 
-//** void kpoint::test_spinor_wave_functions(int use_fft)
+//** void K_point::test_spinor_wave_functions(int use_fft)
 //** {
 //**     std::vector<complex16> v1[2];
 //**     std::vector<complex16> v2;
@@ -2488,18 +2488,18 @@ void kpoint::test_fv_states(Band* band, int use_fft)
 //**     std :: cout << "maximum error = " << maxerr << std::endl;
 //** }
 
-void kpoint::save_wave_functions(int id, Band* band__)
+void K_point::save_wave_functions(int id, Band* band__)
 {
     if (parameters_.mpi_grid().root(1 << band__->dim_col()))
     {
         hdf5_tree fout("sirius.h5", false);
 
-        fout["kpoints"].create_node(id);
-        fout["kpoints"][id].write("coordinates", vk_, 3);
-        fout["kpoints"][id].write("mtgk_size", mtgk_size());
-        fout["kpoints"][id].create_node("spinor_wave_functions");
-        fout["kpoints"][id].write("band_energies", &band_energies_[0], parameters_.num_bands());
-        fout["kpoints"][id].write("band_occupancies", &band_occupancies_[0], parameters_.num_bands());
+        fout["K_points"].create_node(id);
+        fout["K_points"][id].write("coordinates", vk_, 3);
+        fout["K_points"][id].write("mtgk_size", mtgk_size());
+        fout["K_points"][id].create_node("spinor_wave_functions");
+        fout["K_points"][id].write("band_energies", &band_energies_[0], parameters_.num_bands());
+        fout["K_points"][id].write("band_occupancies", &band_occupancies_[0], parameters_.num_bands());
     }
     
     Platform::barrier(parameters_.mpi_grid().communicator(1 << band__->dim_col()));
@@ -2513,25 +2513,25 @@ void kpoint::save_wave_functions(int id, Band* band__)
         {
             hdf5_tree fout("sirius.h5", false);
             wfj.set_ptr(&spinor_wave_functions_(0, 0, offs));
-            fout["kpoints"][id]["spinor_wave_functions"].write(j, wfj);
+            fout["K_points"][id]["spinor_wave_functions"].write(j, wfj);
         }
         Platform::barrier(parameters_.mpi_grid().communicator(1 << band__->dim_col()));
     }
 }
 
-void kpoint::load_wave_functions(int id, Band* band__)
+void K_point::load_wave_functions(int id, Band* band__)
 {
     hdf5_tree fin("sirius.h5", false);
     
     int mtgk_size_in;
-    fin["kpoints"][id].read("mtgk_size", &mtgk_size_in);
+    fin["K_points"][id].read("mtgk_size", &mtgk_size_in);
     if (mtgk_size_in != mtgk_size()) error(__FILE__, __LINE__, "wrong wave-function size");
 
     band_energies_.resize(parameters_.num_bands());
-    fin["kpoints"][id].read("band_energies", &band_energies_[0], parameters_.num_bands());
+    fin["K_points"][id].read("band_energies", &band_energies_[0], parameters_.num_bands());
 
     band_occupancies_.resize(parameters_.num_bands());
-    fin["kpoints"][id].read("band_occupancies", &band_occupancies_[0], parameters_.num_bands());
+    fin["K_points"][id].read("band_occupancies", &band_occupancies_[0], parameters_.num_bands());
 
     spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), 
                                           band__->spl_spinor_wf_col().local_size());
@@ -2542,11 +2542,11 @@ void kpoint::load_wave_functions(int id, Band* band__)
     {
         int j = band__->spl_spinor_wf_col(jloc);
         wfj.set_ptr(&spinor_wave_functions_(0, 0, jloc));
-        fin["kpoints"][id]["spinor_wave_functions"].read(j, wfj);
+        fin["K_points"][id]["spinor_wave_functions"].read(j, wfj);
     }
 }
 
-void kpoint::get_fv_eigen_vectors(mdarray<complex16, 2>& fv_evec)
+void K_point::get_fv_eigen_vectors(mdarray<complex16, 2>& fv_evec)
 {
     assert(fv_evec.size(0) >= fv_eigen_vectors_.size(0));
     assert(fv_evec.size(1) <= fv_eigen_vectors_.size(1));
@@ -2555,7 +2555,7 @@ void kpoint::get_fv_eigen_vectors(mdarray<complex16, 2>& fv_evec)
         memcpy(&fv_evec(0, i), &fv_eigen_vectors_(0, i), fv_eigen_vectors_.size(0) * sizeof(complex16));
 }
 
-void kpoint::get_sv_eigen_vectors(mdarray<complex16, 2>& sv_evec)
+void K_point::get_sv_eigen_vectors(mdarray<complex16, 2>& sv_evec)
 {
     assert(sv_evec.size(0) == parameters_.num_bands());
     assert(sv_evec.size(1) == parameters_.num_bands());
