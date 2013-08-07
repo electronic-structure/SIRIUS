@@ -90,7 +90,7 @@ class AtomSymmetryClass
         }
 
         /// Initialize the symmetry class
-        void init();
+        void initialize();
 
         /// Set the spherical component of the potential
         /** Atoms belonging to the same symmetry class have the same spherical potential.
@@ -674,7 +674,7 @@ void AtomSymmetryClass::transform_radial_functions(bool ort_lo, bool ort_aw)
     }
 }
 
-void AtomSymmetryClass::init()
+void AtomSymmetryClass::initialize()
 {
     aw_surface_derivatives_.set_dimensions(atom_type_->max_aw_order(), atom_type_->num_aw_descriptors());
     aw_surface_derivatives_.allocate();

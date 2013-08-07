@@ -27,5 +27,7 @@ const int lmax_rho_default = 7;
 
 const int lmax_pot_default = 7;
 
+const char* storage_file_name = "sirius.h5";
+
 #endif // __CONSTANTS_H__
 

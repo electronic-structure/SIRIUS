@@ -350,7 +350,7 @@ class AtomType
         /// chemical element name
         std::string name_;
         
-        /// nucleus charge
+        /// nucleus charge, treated as positive(!) integer
         int zn_;
 
         /// atom mass
@@ -432,7 +432,7 @@ class AtomType
             radial_grid_.init(pow3_grid, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
         }
 
-        AtomType(int id__, const std::string label__) : id_(id__), label_(label__)
+        AtomType(int id__, const std::string label__) : id_(id__), label_(label__), zn_(0), num_mt_points_(0)
         {
             if (Utils::file_exists(label_ + ".json")) 
             {
@@ -468,6 +468,8 @@ class AtomType
         
         void init(int lmax_apw)
         {
+            if (zn_ == 0) error(__FILE__, __LINE__, "zero atom charge");
+            
             max_aw_order_ = 0;
             for (int l = 0; l <= lmax_apw; l++) max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
             
@@ -490,6 +492,7 @@ class AtomType
 
         void init_radial_grid()
         {
+            if (num_mt_points_ == 0) error(__FILE__, __LINE__, "number of muffin-tin points is zero");
             radial_grid_.init(pow3_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
         }
         

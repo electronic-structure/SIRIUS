@@ -1204,21 +1204,21 @@ void FORTRAN(sirius_get_energy_enuc)(real8* energy_enuc)
 void FORTRAN(sirius_generate_xc_potential)(real8* rhomt, real8* rhoit, real8* vxcmt, real8* vxcit)
 {
     using namespace sirius;
-    sirius::PeriodicFunction<double>* rho = 
-        new sirius::PeriodicFunction<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_rho()),
-                                                                Argument(arg_radial, global_parameters.max_num_mt_points()));
+    PeriodicFunction<double>* rho = 
+        new PeriodicFunction<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_rho()),
+                                                        Argument(arg_radial, global_parameters.max_num_mt_points()));
     rho->set_mt_ptr(rhomt);
     rho->set_it_ptr(rhoit);
     
-    sirius::PeriodicFunction<double>* vxc = 
-        new sirius::PeriodicFunction<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_pot()),
-                                                                Argument(arg_radial, global_parameters.max_num_mt_points()));
+    PeriodicFunction<double>* vxc = 
+        new PeriodicFunction<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_pot()),
+                                                        Argument(arg_radial, global_parameters.max_num_mt_points()));
     vxc->set_mt_ptr(vxcmt);
     vxc->set_it_ptr(vxcit);
 
-    sirius::PeriodicFunction<double>* exc = 
-        new sirius::PeriodicFunction<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_pot()),
-                                                                Argument(arg_radial, global_parameters.max_num_mt_points()));
+    PeriodicFunction<double>* exc = 
+        new PeriodicFunction<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_pot()),
+                                                        Argument(arg_radial, global_parameters.max_num_mt_points()));
     exc->allocate(false);
     
     //PeriodicFunction<double>* bxc[3];
@@ -1239,6 +1239,31 @@ void FORTRAN(sirius_generate_xc_potential)(real8* rhomt, real8* rhoit, real8* vx
 
     delete vxc;
     delete exc;
+    delete rho;
+}
+
+void FORTRAN(sirius_generate_coulomb_potential)(real8* rhomt, real8* rhoit, real8* vclmt, real8* vclit)
+{
+    using namespace sirius;
+    PeriodicFunction<double>* rho = 
+        new PeriodicFunction<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_rho()),
+                                                        Argument(arg_radial, global_parameters.max_num_mt_points()),
+                                                        global_parameters.num_gvec());
+    rho->set_mt_ptr(rhomt);
+    rho->set_it_ptr(rhoit);
+    
+    PeriodicFunction<double>* vcl = 
+        new PeriodicFunction<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_pot()),
+                                                        Argument(arg_radial, global_parameters.max_num_mt_points()),
+                                                        global_parameters.num_gvec());
+    vcl->set_mt_ptr(vclmt);
+    vcl->set_it_ptr(vclit);
+
+    potential->poisson(rho, vcl);
+   
+    global_parameters.rti().energy_vha = inner(global_parameters, rho, vcl);
+
+    delete vcl;
     delete rho;
 }
 

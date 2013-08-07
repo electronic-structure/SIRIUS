@@ -93,6 +93,11 @@ class Atom
         {
             for (int i = 0; i < 3; i++) position__[i] = position_[i];
         }
+
+        inline void set_position(double position__[3])
+        {
+            for (int i = 0; i < 3; i++) position_[i] = position__[i];
+        }
         
         inline double* position()
         {
@@ -128,7 +133,6 @@ class Atom
 
         void init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_lo__, int offset_wf__)
         {
-            assert(symmetry_class());
             assert(lmax_pot__ >= 0);
             assert(offset_aw__ >= 0);
             

@@ -102,14 +102,17 @@ class UnitCell
         {
             Timer t("sirius::UnitCell::get_symmetry");
             
-            if (spg_dataset_) 
-                error(__FILE__, __LINE__, "spg_dataset is already allocated");
+            if (num_atoms() == 0) error(__FILE__, __LINE__, "no atoms");
+            
+            if (spg_dataset_) spg_free_dataset(spg_dataset_);
                 
             if (atom_symmetry_classes_.size() != 0)
-                error(__FILE__, __LINE__, "atom_symmetry_classes_ list is not empty");
-            
-            if (num_atoms() == 0)
-                error(__FILE__, __LINE__, "no atoms");
+            {
+                for (int ic = 0; ic < (int)atom_symmetry_classes_.size(); ic++) delete atom_symmetry_classes_[ic];
+                atom_symmetry_classes_.clear();
+
+                for (int ia = 0; ia < num_atoms(); ia++) atom(ia)->set_symmetry_class(NULL);
+            }
 
             double lattice[3][3];
 
@@ -132,8 +135,7 @@ class UnitCell
             if (spg_dataset_->spacegroup_number == 0)
                 error(__FILE__, __LINE__, "spg_get_dataset() returned 0 for the space group");
 
-            if (spg_dataset_->n_atoms != num_atoms())
-                error(__FILE__, __LINE__, "wrong number of atoms");
+            if (spg_dataset_->n_atoms != num_atoms()) error(__FILE__, __LINE__, "wrong number of atoms");
 
             AtomSymmetryClass* atom_symmetry_class;
             
@@ -141,7 +143,7 @@ class UnitCell
 
             for (int i = 0; i < num_atoms(); i++)
             {
-                if (atoms_[i]->symmetry_class_id() == -1) // if class id is not assigned to this atom
+                if (!atoms_[i]->symmetry_class()) // if symmetry class is not assigned to this atom
                 {
                     atom_class_id++; // take next id 
                     atom_symmetry_class = new AtomSymmetryClass(atom_class_id, atoms_[i]->type());
@@ -265,22 +267,25 @@ class UnitCell
 
         void init(int lmax_apw, int lmax_pot, int num_mag_dims, int init_radial_grid__, int init_aw_descriptors__)
         {
-            find_nearest_neighbours(25.0);
-            
-            if (auto_rmt() != 0) find_mt_radii();
+            //find_nearest_neighbours(25.0);
+            //
+            //if (auto_rmt() != 0) find_mt_radii();
 
-            int ia, ja;
-            if (check_mt_overlap(ia, ja))
-            {
-                std::stringstream s;
-                s << "overlaping muffin-tin spheres for atoms " << ia << " and " << ja << std::endl
-                  << "  radius of atom " << ia << " : " << atom(ia)->type()->mt_radius() << std::endl
-                  << "  radius of atom " << ja << " : " << atom(ja)->type()->mt_radius();
-                error(__FILE__, __LINE__, s, fatal_err);
-            }
+            //int ia, ja;
+            //if (check_mt_overlap(ia, ja))
+            //{
+            //    std::stringstream s;
+            //    s << "overlaping muffin-tin spheres for atoms " << ia << " and " << ja << std::endl
+            //      << "  radius of atom " << ia << " : " << atom(ia)->type()->mt_radius() << std::endl
+            //      << "  radius of atom " << ja << " : " << atom(ja)->type()->mt_radius();
+            //    error(__FILE__, __LINE__, s, fatal_err);
+            //}
+            //
+            //get_symmetry();
             
-            get_symmetry();
-            
+            // =====================
+            // initialize atom types
+            // =====================
             max_num_mt_points_ = 0;
             min_mt_radius_ = 1e100;
             max_mt_radius_ = 0;
@@ -294,6 +299,9 @@ class UnitCell
                  max_mt_radius_ = std::max(max_mt_radius_, atom_type(i)->mt_radius());
             }
             
+            // ================
+            // find the charges
+            // ================
             total_nuclear_charge_ = 0;
             num_core_electrons_ = 0;
             num_valence_electrons_ = 0;
@@ -303,10 +311,16 @@ class UnitCell
                 num_core_electrons_ += atom(i)->type()->num_core_electrons();
                 num_valence_electrons_ += atom(i)->type()->num_valence_electrons();
             }
-            
             num_electrons_ = num_core_electrons_ + num_valence_electrons_;
-            for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) atom_symmetry_class(ic)->init();
+           
+            // ================================
+            // initialize atom symmetry classes
+            // ================================
+            //for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) atom_symmetry_class(ic)->initialize();
             
+            // ================
+            // initialize atoms
+            // ================
             mt_basis_size_ = 0;
             mt_aw_basis_size_ = 0;
             mt_lo_basis_size_ = 0;
@@ -327,7 +341,30 @@ class UnitCell
             assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
             assert(num_atoms() != 0);
             assert(num_atom_types() != 0);
+
+            update_symmetry();
             assert(num_atom_symmetry_classes() != 0);
+        }
+
+        void update_symmetry()
+        {
+            find_nearest_neighbours(25.0);
+            
+            if (auto_rmt() != 0) find_mt_radii();
+
+            int ia, ja;
+            if (check_mt_overlap(ia, ja))
+            {
+                std::stringstream s;
+                s << "overlaping muffin-tin spheres for atoms " << ia << " and " << ja << std::endl
+                  << "  radius of atom " << ia << " : " << atom(ia)->type()->mt_radius() << std::endl
+                  << "  radius of atom " << ja << " : " << atom(ja)->type()->mt_radius();
+                error(__FILE__, __LINE__, s, fatal_err);
+            }
+            
+            get_symmetry();
+
+            for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) atom_symmetry_class(ic)->initialize();
         }
 
         void clear()
@@ -406,12 +443,17 @@ class UnitCell
 
             printf("number of atoms : %i\n", num_atoms());
             printf("number of symmetry classes : %i\n", num_atom_symmetry_classes());
-
             printf("\n"); 
-            printf("atom id    type id    class id\n");
-            printf("------------------------------\n");
+            printf("atom id              position            type id    class id\n");
+            printf("------------------------------------------------------------\n");
             for (int i = 0; i < num_atoms(); i++)
-                printf("%6i     %6i      %6i\n", i, atom(i)->type_id(), atom(i)->symmetry_class_id()); 
+            {
+                printf("%6i      %f %f %f   %6i      %6i\n", i, atom(i)->position(0), 
+                                                                atom(i)->position(1), 
+                                                                atom(i)->position(2), 
+                                                                atom(i)->type_id(),
+                                                                atom(i)->symmetry_class_id());
+            }
            
             printf("\n");
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
@@ -756,15 +798,17 @@ class UnitCell
                 if (cT == fractional)
                 {    
                     for (int l = 0; l < 3; l++)
-                        for (int x = 0; x < 3; x++)
-                            b[l] += a[x] * inverse_lattice_vectors_[x][l];
+                    {
+                        for (int x = 0; x < 3; x++) b[l] += a[x] * inverse_lattice_vectors_[x][l];
+                    }
                 }
 
                 if (cT == cartesian)
                 {
                     for (int x = 0; x < 3; x++)
-                        for (int l = 0; l < 3; l++)
-                            b[x] += a[l] * lattice_vectors_[l][x];
+                    {
+                        for (int l = 0; l < 3; l++) b[x] += a[l] * lattice_vectors_[l][x];
+                    }
                 }
             }
 
@@ -773,15 +817,17 @@ class UnitCell
                 if (cT == fractional)
                 {
                     for (int l = 0; l < 3; l++)
-                        for (int x = 0; x < 3; x++)
-                            b[l] += lattice_vectors_[l][x] * a[x] / twopi;
+                    {
+                        for (int x = 0; x < 3; x++) b[l] += lattice_vectors_[l][x] * a[x] / twopi;
+                    }
                 }
 
                 if (cT == cartesian)
                 {
                     for (int x = 0; x < 3; x++)
-                        for (int l = 0; l < 3; l++)
-                            b[x] += a[l] * reciprocal_lattice_vectors_[l][x];
+                    {
+                        for (int l = 0; l < 3; l++) b[x] += a[l] * reciprocal_lattice_vectors_[l][x];
+                    }
                 }
             }
         }

@@ -1,8 +1,6 @@
 namespace sirius
 {
 
-// TODO: introduce external kpoint_set for density
-
 class Density
 {
     private:
@@ -116,10 +114,33 @@ class Density
         {
             return rho_->f_mt(ialoc);
         }
+
+        void allocate()
+        {
+            rho_->allocate(true);
+        }
+
+        void save()
+        {
+            if (Platform::mpi_rank() == 0)
+            {
+                hdf5_tree fout(storage_file_name, false);
+                rho_->hdf5_write(fout["density"]);
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                    magnetization_[j]->hdf5_write(fout["magnetization"].create_node(j));
+            }
+        }
+        
+        void load()
+        {
+            hdf5_tree fout(storage_file_name, false);
+            rho_->hdf5_read(fout["density"]);
+            for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                magnetization_[j]->hdf5_read(fout["magnetization"][j]);
+        }
 };
 
-Density::Density(Global& parameters__, Potential* potential__) : 
-    parameters_(parameters__), potential_(potential__)
+Density::Density(Global& parameters__, Potential* potential__) : parameters_(parameters__), potential_(potential__)
 {
     init();
 }
@@ -247,8 +268,9 @@ void Density::initial_density(int type = 0)
         parameters_.solve_free_atoms();
         
         double mt_charge = 0.0;
-        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+        for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
         {
+            int ia = parameters_.spl_num_atoms(ialoc);
             double* v = parameters_.atom(ia)->vector_field();
             double len = Utils::vector_length(v);
 
@@ -257,46 +279,48 @@ void Density::initial_density(int type = 0)
             for (int ir = 0; ir < nmtp; ir++)
             {
                 rho[ir] = parameters_.atom(ia)->type()->free_atom_density(ir);
-                rho_->f_mt<global>(0, ir, ia) = rho[ir] / y00;
+                rho_->f_mt<local>(0, ir, ialoc) = rho[ir] / y00;
             }
-            rho.interpolate();
 
             // add charge of the MT sphere
-            mt_charge += fourpi * rho.integrate(nmtp - 1, 2);
+            mt_charge += fourpi * rho.interpolate().integrate(nmtp - 1, 2);
 
             if (len > 1e-8)
             {
                 if (parameters_.num_mag_dims())
                 {
                     for (int ir = 0; ir < nmtp; ir++)
-                        magnetization_[0]->f_mt<global>(0, ir, ia) = 0.2 * rho_->f_mt<global>(0, ir, ia) * v[2] / len;
+                        magnetization_[0]->f_mt<local>(0, ir, ialoc) = 0.2 * rho_->f_mt<local>(0, ir, ialoc) * v[2] / len;
                 }
 
                 if (parameters_.num_mag_dims() == 3)
                 {
                     for (int ir = 0; ir < nmtp; ir++)
-                        magnetization_[1]->f_mt<global>(0, ir, ia) = 0.2 * rho_->f_mt<global>(0, ir, ia) * v[0] / len;
+                        magnetization_[1]->f_mt<local>(0, ir, ia) = 0.2 * rho_->f_mt<local>(0, ir, ia) * v[0] / len;
                     for (int ir = 0; ir < nmtp; ir++)
-                        magnetization_[2]->f_mt<global>(0, ir, ia) = 0.2 * rho_->f_mt<global>(0, ir, ia) * v[1] / len;
+                        magnetization_[2]->f_mt<local>(0, ir, ia) = 0.2 * rho_->f_mt<local>(0, ir, ia) * v[1] / len;
                 }
             }
         }
         
         // distribute remaining charge
-        for (int i = 0; i < parameters_.fft().size(); i++)
-            rho_->f_it<global>(i) = (parameters_.num_electrons() - mt_charge) / parameters_.volume_it();
+        for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++)
+            rho_->f_it<local>(irloc) = (parameters_.num_electrons() - mt_charge) / parameters_.volume_it();
     }
 
-    if (type == 1)
-    {
-        double rho_avg = parameters_.num_electrons() / parameters_.omega();
-        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-        {
-            int nmtp = parameters_.atom(ia)->num_mt_points();
-            for (int ir = 0; ir < nmtp; ir++) rho_->f_mt<global>(0, ir, ia) = rho_avg / y00;
-        }
-        for (int i = 0; i < parameters_.fft().size(); i++) rho_->f_it<global>(i) = rho_avg;
-    }
+    //rho_->sync();
+    //for (int i = 0; i < parameters_.num_mag_dims(); i++) magnetization_[i]->sync();
+
+    //if (type == 1)
+    //{
+    //    double rho_avg = parameters_.num_electrons() / parameters_.omega();
+    //    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    //    {
+    //        int nmtp = parameters_.atom(ia)->num_mt_points();
+    //        for (int ir = 0; ir < nmtp; ir++) rho_->f_mt<global>(0, ir, ia) = rho_avg / y00;
+    //    }
+    //    for (int i = 0; i < parameters_.fft().size(); i++) rho_->f_it<global>(i) = rho_avg;
+    //}
 
     //if (type == 2)
     //{
@@ -440,15 +464,19 @@ void Density::add_kpoint_contribution_mt(Band* band, kpoint* kp, mdarray<complex
         {
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
-                memcpy(&wf1(0, i, ispn), &kp->spinor_wave_function(offset_wf, ispn, bands[i].first), 
-                       mt_basis_size * sizeof(complex16));
-                for (int j = 0; j < mt_basis_size; j++) wf2(j, i, ispn) = wf1(j, i, ispn) * bands[i].second;
+                //* memcpy(&wf1(0, i, ispn), &kp->spinor_wave_function(offset_wf, ispn, bands[i].first), 
+                //*        mt_basis_size * sizeof(complex16));
+                for (int j = 0; j < mt_basis_size; j++)
+                {
+                    wf1(j, i, ispn) = conj(kp->spinor_wave_function(offset_wf + j, ispn, bands[i].first));
+                    wf2(j, i, ispn) = kp->spinor_wave_function(offset_wf + j, ispn, bands[i].first) * bands[i].second;
+                }
             }
         }
 
         for (int j = 0; j < mt_complex_density_matrix.size(2); j++)
         {
-            blas<cpu>::gemm(0, 2, mt_basis_size, mt_basis_size, (int)bands.size(), complex16(1, 0), 
+            blas<cpu>::gemm(0, 1, mt_basis_size, mt_basis_size, (int)bands.size(), complex16(1, 0), 
                             &wf1(0, 0, dmat_spins_[j].first), wf1.ld(), 
                             &wf2(0, 0, dmat_spins_[j].second), wf2.ld(), complex16(1, 0), 
                             &mt_complex_density_matrix(0, 0, j, ia), mt_complex_density_matrix.ld());
@@ -853,67 +881,56 @@ void Density::generate_valence_density_it(kset& ks)
 //    }
 //}
 
-//void Density::generate_valence_density_mt_sht(kset& ks)
-//{
-//    Timer t("sirius::Density::generate_valence_density_mt_sht");
-//    
-//    int lmax = (basis_type == apwlo) ? parameters_.lmax_apw() : parameters_.lmax_pw();
-//    int lmmax = Utils::lmmax_by_lmax(lmax);
-//    Band* band = ks.band();
-//    
-//    //std::vector<PeriodicFunction<double, radial_angular>*> dens(1 + parameters_.num_mag_dims());
-//    //for (int i = 0; i < (int)dens.size(); i++)
-//    //{
-//    //    dens[i] = new PeriodicFunction<double, radial_angular>(parameters_, parameters_.lmax_rho());
-//    //    dens[i]->allocate(rlm_component);
-//    //    dens[i]->zero();
-//    //}
-//
-//    SHT sht(parameters_.lmax_rho());
-//
-//    
-//    mdarray<complex16, 3> fylm(parameters_.max_num_mt_points(), lmmax, parameters_.num_atoms());
-//    mdarray<complex16, 2> gylm(parameters_.lmmax_rho(), parameters_.max_num_mt_points());
-//    mdarray<complex16, 2> gtp(sht.num_points(), parameters_.max_num_mt_points());
-//    mdarray<double, 3> rhotp(sht.num_points(), parameters_.max_num_mt_points(), parameters_.num_atoms());
-//    rhotp.zero();
-//
-//    mdarray<double, 3> rholm(parameters_.lmmax_rho(), parameters_.max_num_mt_points(), parameters_.num_atoms());
-//    rholm.zero();
-//
-//    // add k-point contribution
-//    for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
-//    {
-//        int ik = ks.spl_num_kpoints(ikloc);
-//        for (int jloc = 0; jloc < band->spl_spinor_wf_col().local_size(); jloc++)
-//        {
-//            int j = band->spl_spinor_wf_col(jloc);
-//
-//            double wo = ks[ik]->band_occupancy(j) * ks[ik]->weight();
-//
-//            if (wo > 1e-14)
-//            {
-//                int ispn = 0;
-//
-//                ks[ik]->spinor_wave_function_component_mt<radial_angular>(band, lmax, ispn, jloc, fylm);
-//                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-//                {
-//                    for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
-//                    {
-//                        for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++) 
-//                            gylm(lm, ir) = fylm(ir, lm, ia);
-//                    }
-//                    sht.ylm_backward_transform(&gylm(0, 0), parameters_.lmmax_rho(), parameters_.atom(ia)->num_mt_points(),
-//                                               &gtp(0, 0));
-//                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++) 
-//                    {
-//                        for (int itp = 0; itp < sht.num_points(); itp++) 
-//                            rhotp(itp, ir, ia) += wo * pow(abs(gtp(itp, ir)), 2);
-//                    }
-//                }
-//            }
-//        }
-//    }
+void Density::generate_valence_density_mt_sht(kset& ks)
+{
+    Timer t("sirius::Density::generate_valence_density_mt_sht");
+    
+    int lmax = (basis_type == apwlo) ? parameters_.lmax_apw() : parameters_.lmax_pw();
+    int lmmax = Utils::lmmax_by_lmax(lmax);
+    Band* band = ks.band();
+    
+    SHT sht(parameters_.lmax_rho());
+
+    mt_functions<complex16> psilm(Argument(arg_lm, lmmax), Argument(arg_radial, parameters_.max_num_mt_points()), 
+                                  parameters_.num_atoms());
+    mt_function<complex16> psitp(Argument(arg_tp, sht.num_points()), 
+                                 Argument(arg_radial, parameters_.max_num_mt_points()));
+    mt_functions<double> rhotp(Argument(arg_tp, sht.num_points()), 
+                               Argument(arg_radial, parameters_.max_num_mt_points()), 
+                               parameters_.num_atoms());
+    rhotp.zero();
+    mt_function<double> rholm(Argument(arg_lm, parameters_.lmmax_rho()), 
+                              Argument(arg_radial, parameters_.max_num_mt_points()));
+
+    
+    // add k-point contribution
+    for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
+    {
+        int ik = ks.spl_num_kpoints(ikloc);
+        for (int jloc = 0; jloc < band->spl_spinor_wf_col().local_size(); jloc++)
+        {
+            int j = band->spl_spinor_wf_col(jloc);
+
+            double wo = ks[ik]->band_occupancy(j) * ks[ik]->weight();
+
+            if (wo > 1e-14)
+            {
+                int ispn = 0;
+
+                ks[ik]->spinor_wave_function_component_mt(band, lmax, ispn, jloc, psilm);
+                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                {
+                    psilm(ia)->sh_transform(&sht, &psitp);
+
+                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++) 
+                    {
+                        for (int itp = 0; itp < sht.num_points(); itp++) 
+                            rhotp(itp, ir, ia) += wo * pow(abs(psitp(itp, ir)), 2);
+                    }
+                }
+            }
+        }
+    }
 //
 //    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
 //    {
@@ -925,23 +942,26 @@ void Density::generate_valence_density_it(kset& ks)
 //   // {
 //        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
 //        {
-//            Platform::allreduce(&rholm(0, 0, ia), 
+///            Platform::allreduce(&rholm(0, 0, ia), 
 //                                parameters_.lmmax_rho() * parameters_.max_num_mt_points(), 
 //                                parameters_.mpi_grid().communicator());
 //        }
 //    //}
 //                                                        
-//    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-//    {
-//        for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-//        {
-//            for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
-//            {
-//                rho_->f_rlm(lm, ir, ia) = rholm(lm, ir, ia);
-//            }
-//        }
-//    }
-//}
+    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    {
+        rhotp(ia)->sh_transform(&sht, &rholm);
+     
+        for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+        {
+            for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
+            {
+                rho_->f_mt<global>(lm, ir, ia) = rholm(lm, ir);
+            }
+        }
+    }
+//    for (int ia = 0; ia < parameters_.num_atoms(); ia++) delete zf[ia];
+}
 
 
 #ifdef _GPU_
@@ -1100,7 +1120,7 @@ void Density::generate(kset& ks)
         case apwlo:
         {
             generate_valence_density_mt(ks);
-            //generate_valence_density_mt_sht();
+            //generate_valence_density_mt_sht(ks);
             break;
         }
         case pwlo:
@@ -1186,7 +1206,7 @@ void Density::generate(kset& ks)
         warning(__FILE__, __LINE__, s);
     }
     
-    if (debug_level > 1) check_density_continuity_at_mt();
+    //if (debug_level > 1) check_density_continuity_at_mt();
 }
 
 void Density::integrate()

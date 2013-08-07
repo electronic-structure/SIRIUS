@@ -84,16 +84,34 @@ extern "C" void FORTRAN(pztranc)(int32_t* m, int32_t* n, complex16* alpha, compl
                                  complex16* beta, complex16* c, int32_t* ic, int32_t* jc,int32_t* descc);
 
 extern "C" void FORTRAN(pzhegvx)(int32_t* ibtype, const char* jobz, const char* range, const char* uplo, int32_t* n, 
-                        complex16* a, int32_t* ia, int32_t* ja, int32_t* desca, complex16* b, int32_t* ib, int32_t* jb, int32_t* descb, 
-                        real8* vl, real8* vu, int32_t* il, int32_t* iu, real8* abstol, int32_t* m, int32_t* nz, real8* w, 
-                        real8* orfac, complex16* z, int32_t* iz, int32_t* jz, int32_t* descz, complex16* work, int32_t* lwork, 
-                        real8* rwork, int32_t* lrwork, int32_t* iwork, int32_t* liwork, int32_t* ifail, int32_t* iclustr, real8* gap,
-                        int32_t* info, int32_t jobz_len, int32_t range_len, int32_t uplo_len);
+                                 complex16* a, int32_t* ia, int32_t* ja, int32_t* desca, 
+                                 complex16* b, int32_t* ib, int32_t* jb, int32_t* descb, 
+                                 real8* vl, real8* vu, 
+                                 int32_t* il, int32_t* iu, 
+                                 real8* abstol, 
+                                 int32_t* m, int32_t* nz, real8* w, real8* orfac, 
+                                 complex16* z, int32_t* iz, int32_t* jz, int32_t* descz, 
+                                 complex16* work, int32_t* lwork, 
+                                 real8* rwork, int32_t* lrwork, 
+                                 int32_t* iwork, int32_t* liwork, 
+                                 int32_t* ifail, int32_t* iclustr, real8* gap, int32_t* info, 
+                                 int32_t jobz_len, int32_t range_len, int32_t uplo_len);
 
-extern "C" void FORTRAN(pzheevd)(const char* jobz, const char* uplo, int32_t* n, complex16* a, int32_t* ia, int32_t* ja, 
-                                 int32_t* desca, real8* w, complex16* z, int32_t* iz, int32_t* jz, int32_t* descz, 
-                                 complex16* work, int32_t* lwork, real8* rwork, int32_t* lrwork, int32_t* iwork, int32_t* liwork, 
-                                 int32_t* info, int32_t jobz_len, int32_t uplo_len);
+extern "C" void FORTRAN(pzheevd)(const char* jobz, const char* uplo, int32_t* n, 
+                                 complex16* a, int32_t* ia, int32_t* ja, int32_t* desca, 
+                                 real8* w, 
+                                 complex16* z, int32_t* iz, int32_t* jz, int32_t* descz, 
+                                 complex16* work, int32_t* lwork, real8* rwork, int32_t* lrwork, int32_t* iwork, 
+                                 int32_t* liwork, int32_t* info, int32_t jobz_len, int32_t uplo_len);
+
+extern "C" void FORTRAN(pzgemm)(const char* transa, const char* transb, 
+                                int32_t* m, int32_t* n, int32_t* k, 
+                                complex16* aplha,
+                                complex16* a, int32_t* ia, int32_t* ja, int32_t* desca, 
+                                complex16* b, int32_t* ib, int32_t* jb, int32_t* descb,
+                                complex16* beta,
+                                complex16* c, int32_t* ic, int32_t* jc, int32_t* descc,
+                                int32_t transa_len, int32_t transb_len);
 
 extern "C" int32_t FORTRAN(numroc)(int32_t* n, int32_t* nb, int32_t* iproc, int32_t* isrcproc, int32_t* nprocs);
 

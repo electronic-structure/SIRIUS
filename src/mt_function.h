@@ -110,6 +110,11 @@ template <typename T> class mt_function
             return arguments_[i].d_.size();
         }
 
+        int size()
+        {
+            return size(0) * size(1);
+        }
+
         int argument_idx(argument_t type)
         {
             for (int i = 0; i < 2; i++) 
@@ -258,6 +263,42 @@ template <typename T> class mt_function
             {
                 for (int i0 = 0; i0 < size(0); i0++) this->data_(i0, i1) += (*f)(i0, i1);
             }
+        }
+};
+
+template <typename T> class mt_functions
+{
+    private:
+
+        mdarray<mt_function<T>*, 1> f_;
+
+    public:
+
+        mt_functions(Argument arg0, Argument arg1, int nf)
+        {
+            f_.set_dimensions(nf);
+            f_.allocate();
+            for (int i = 0; i < nf; i++) f_(i) = new mt_function<T>(arg0, arg1);
+        }
+
+        ~mt_functions()
+        {
+            for (int i = 0; i < f_.size(0); i++) delete f_(i);
+        }
+
+        T& operator()(int i0, int i1, int i2)
+        {
+            return (*f_(i2))(i0, i1);
+        }
+
+        void zero()
+        {
+            for (int i = 0; i < f_.size(0); i++) f_(i)->zero();
+        }
+
+        mt_function<T>* operator()(int i)
+        {
+            return f_(i);
         }
 };
 

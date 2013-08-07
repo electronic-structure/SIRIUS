@@ -230,7 +230,7 @@ class ReciprocalLattice : public UnitCell
         }
 
         // TODO: call it everywhere
-        inline void gvec_cart(int ig, double* vgc)
+        inline void gvec_cart(int ig, double vgc[3])
         {
             get_coordinates<cartesian, reciprocal>(gvec(ig), vgc);
         }

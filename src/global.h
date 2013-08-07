@@ -136,6 +136,36 @@ class Global : public StepFunction
                         error(__FILE__, __LINE__, "wrong processing unit", fatal_err);
                     }
                 }
+
+                //std::vector<double> a0 = parser["lattice_vectors"][0].get(std::vector<double>(3, 0)); 
+                //std::vector<double> a1 = parser["lattice_vectors"][1].get(std::vector<double>(3, 0)); 
+                //std::vector<double> a2 = parser["lattice_vectors"][2].get(std::vector<double>(3, 0));
+
+                //double scale =  parser["lattice_vectors_scale"].get(1.0);
+                //for (int x = 0; x < 3; x++)
+                //{
+                //    a0[x] *= scale;
+                //    a1[x] *= scale;
+                //    a2[x] *= scale;
+                //}
+                //set_lattice_vectors(&a0[0], &a1[0], &a2[0]);
+
+                //for (int iat = 0; iat < parser["atoms"].size(); iat++)
+                //{
+                //    std::string label = parser["atoms"][iat][0].get<std::string>();
+                //    add_atom_type(iat, label);
+                //    for (int ia = 0; ia < parser["atoms"][iat][1].size(); ia++)
+                //    {
+                //        std::vector<double> v = parser["atoms"][iat][1][ia].get< std::vector<double> >();
+
+                //        if (!(v.size() == 3 || v.size() == 6)) error(__FILE__, __LINE__, "wrong coordinates size");
+                //        if (v.size() == 3) v.resize(6, 0.0);
+                //        
+                //        add_atom(iat, &v[0], &v[3]);
+                //    }
+                //}
+
+                //set_auto_rmt(parser["auto_rmt"].get(0));
             }
 
             Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::num_threads()));
@@ -403,7 +433,7 @@ class Global : public StepFunction
 
             // initialize variables, related to the unit cell
             UnitCell::init(lmax_apw(), lmax_pot(), num_mag_dims(), init_radial_grid__, init_aw_descriptors__);
-            
+           
             ReciprocalLattice::init(lmax());
             StepFunction::init();
 
@@ -702,6 +732,9 @@ class Global : public StepFunction
                 for (int i = 0; i < 80; i++) printf("-");
                 printf("\n"); 
 
+                printf("valence_eval_sum : %18.8f\n", rti().valence_eval_sum);
+                printf("core_eval_sum    : %18.8f\n", rti().core_eval_sum);
+
                 printf("kinetic energy   : %18.8f\n", kinetic_energy());
                 printf("<rho|V^{XC}>     : %18.8f\n", rti().energy_vxc);
                 printf("<rho|E^{XC}>     : %18.8f\n", rti().energy_exc);
@@ -776,6 +809,31 @@ class Global : public StepFunction
         {
             return gaunt_;
         }
+
+        void create_storage_file()
+        {
+            if (Platform::mpi_rank() == 0) 
+            {
+                // create new hdf5 file
+                hdf5_tree fout(storage_file_name, true);
+                fout.create_node("parameters");
+                fout.create_node("effective_potential");
+                fout.create_node("effective_magnetic_field");
+                fout.create_node("density");
+                fout.create_node("magnetization");
+            }
+            Platform::barrier();
+        }
+
+        void update()
+        {
+            UnitCell::update_symmetry();
+            ReciprocalLattice::clear();
+            ReciprocalLattice::init(lmax());
+            StepFunction::init();
+        }
+
+
 };
 
 };

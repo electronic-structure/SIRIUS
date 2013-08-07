@@ -12,8 +12,8 @@ class libxc_interface
         
         libxc_interface()
         {
-            int xc_id[] = {XC_LDA_X, XC_LDA_C_VWN};
-            //int xc_id[] = {XC_LDA_X, XC_LDA_C_PW};
+            //int xc_id[] = {XC_LDA_X, XC_LDA_C_VWN};
+            int xc_id[] = {XC_LDA_X, XC_LDA_C_PW};
             for (int i = 0; i < 2; i++)
             {
                 if (xc_func_init(&func1_[i], xc_id[i], XC_UNPOLARIZED) != 0) 

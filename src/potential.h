@@ -75,6 +75,20 @@ class Potential
         /// Compute contribution from the pseudocharge to the plane-wave expansion
         void poisson_pw(mdarray<complex16, 2>& qmt, mdarray<complex16, 2>& qit, complex16* pseudo_pw);
 
+    public:
+
+        /// Constructor
+        Potential(Global& parameters__);
+
+        ~Potential();
+
+        void set_effective_potential_ptr(double* veffmt, double* veffir);
+        
+        void set_effective_magnetic_field_ptr(double* beffmt, double* beffir);
+         
+        /// Zero effective potential and magnetic field.
+        void zero();
+
         /// Poisson solver
         /** Plane wave expansion
             \f[
@@ -118,20 +132,6 @@ class Potential
         */
         void poisson(PeriodicFunction<double>* rho, PeriodicFunction<double>* vh);
         
-    public:
-
-        /// Constructor
-        Potential(Global& parameters__);
-
-        ~Potential();
-
-        void set_effective_potential_ptr(double* veffmt, double* veffir);
-        
-        void set_effective_magnetic_field_ptr(double* beffmt, double* beffir);
-         
-        /// Zero effective potential and magnetic field.
-        void zero();
-
         /// Generate XC potential and energy density
         void xc(PeriodicFunction<double>* rho, PeriodicFunction<double>* magnetization[3], 
                 PeriodicFunction<double>* vxc, PeriodicFunction<double>* bxc[3], PeriodicFunction<double>* exc);
@@ -141,17 +141,24 @@ class Potential
         
         void hdf5_read();
 
-        //**void hdf5_write()
-        //**{
-        //**    if (Platform::mpi_rank() == 0)
-        //**    {
-        //**        hdf5_tree fout("sirius.h5", false);
-        //**        effective_potential_->hdf5_write(fout.create_node("effective_potential"));
-        //**        fout.create_node("effective_magnetic_field");
-        //**        for (int j = 0; j < parameters_.num_mag_dims(); j++)
-        //**            effective_magnetic_field_[j]->hdf5_write(fout["effective_magnetic_field"].create_node(j));
-        //**    }
-        //**}
+        void save()
+        {
+            if (Platform::mpi_rank() == 0)
+            {
+                hdf5_tree fout(storage_file_name, false);
+                effective_potential_->hdf5_write(fout["effective_potential"]);
+                for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                    effective_magnetic_field_[j]->hdf5_write(fout["effective_magnetic_field"].create_node(j));
+            }
+        }
+        
+        void load()
+        {
+            hdf5_tree fout(storage_file_name, false);
+            effective_potential_->hdf5_read(fout["effective_potential"]);
+            for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                effective_magnetic_field_[j]->hdf5_read(fout["effective_magnetic_field"][j]);
+        }
         
         void update_atomic_potential();
         
@@ -187,9 +194,13 @@ class Potential
         
         mt_function<double>* effective_potential_mt(int ialoc)
         {
-            return coulomb_potential_->f_mt(ialoc);
+            return effective_potential_->f_mt(ialoc);
         }
 
+        void allocate()
+        {
+            effective_potential_->allocate(true);
+        }
 };
 
 void Potential::poisson_vmt(mdarray<mt_function<complex16>*, 1>& rho_ylm, mdarray<mt_function<complex16>*, 1>& vh_ylm, 
@@ -684,11 +695,6 @@ void Potential::generate_effective_potential(PeriodicFunction<double>* rho, Peri
     // zero effective potential and magnetic field
     zero();
 
-    // get plane-wave coefficients of the charge density
-    parameters_.fft().input(&rho->f_it<global>(0));
-    parameters_.fft().transform(-1);
-    parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), &rho->f_pw(0));
-
     // solve Poisson equation
     poisson(rho, coulomb_potential_);
 
@@ -716,7 +722,7 @@ void Potential::generate_effective_potential(PeriodicFunction<double>* rho, Peri
     // add Hartree potential to the total potential
     effective_potential_->add(coulomb_potential_);
 
-    if (debug_level > 1) check_potential_continuity_at_mt();
+    //if (debug_level > 1) check_potential_continuity_at_mt();
     
     // allocate functions
     PeriodicFunction<double>* vxc = new PeriodicFunction<double>(parameters_, Argument(arg_lm, parameters_.lmmax_pot()),
@@ -759,23 +765,25 @@ void Potential::generate_effective_potential(PeriodicFunction<double>* rho, Peri
     }
     delete exc;
 
-    if (debug_level > 1) check_potential_continuity_at_mt();
+    //if (debug_level > 1) check_potential_continuity_at_mt();
 }
 
 void Potential::poisson(PeriodicFunction<double>* rho, PeriodicFunction<double>* vh)
 {
     Timer t("sirius::Potential::poisson");
 
+    // get plane-wave coefficients of the charge density
+    parameters_.fft().input(&rho->f_it<global>(0));
+    parameters_.fft().transform(-1);
+    parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), &rho->f_pw(0));
+    
     mdarray<mt_function<complex16>*, 1> rho_ylm(parameters_.spl_num_atoms().local_size());
     mdarray<mt_function<complex16>*, 1> vh_ylm(parameters_.spl_num_atoms().local_size());
     for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
     {
-        rho_ylm(ialoc) = new mt_function<complex16>(Argument(arg_lm, parameters_.lmmax_rho()),
-                                                    Argument(arg_radial, parameters_.max_num_mt_points()));
-        rho->f_mt(ialoc)->sh_convert(rho_ylm(ialoc));
+        rho_ylm(ialoc) = new mt_function<complex16>(rho->f_mt(ialoc), true);
 
-        vh_ylm(ialoc) = new mt_function<complex16>(Argument(arg_lm, parameters_.lmmax_rho()),
-                                                   Argument(arg_radial, parameters_.max_num_mt_points()));
+        vh_ylm(ialoc) = new mt_function<complex16>(vh->f_mt(ialoc), false);
     }
     
     // true multipole moments
@@ -870,6 +878,24 @@ void Potential::poisson(PeriodicFunction<double>* rho, PeriodicFunction<double>*
         delete rho_ylm(ialoc);
         delete vh_ylm(ialoc);
     }
+    
+    // compute Eenuc
+    double enuc = 0.0;
+    for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+    {
+        int ia = parameters_.spl_num_atoms(ialoc);
+        int zn = parameters_.atom(ia)->type()->zn();
+        double r0 = parameters_.atom(ia)->type()->radial_grid(0);
+        // ==========================================================
+        // compute energy of nucleus in the electrostatic potential 
+        // generated by the total (electrons + nuclei) charge density;
+        // diverging self-interaction term z*z/|r=0| is excluded
+        // ==========================================================
+        enuc -= 0.5 * zn * (vh->f_mt<local>(0, 0, ialoc) * y00 + zn / r0);
+    }
+    Platform::allreduce(&enuc, 1);
+
+    parameters_.rti().energy_enuc = enuc;
 }
 
 void Potential::xc(PeriodicFunction<double>* rho, PeriodicFunction<double>* magnetization[3], 
@@ -1049,7 +1075,7 @@ void Potential::xc(PeriodicFunction<double>* rho, PeriodicFunction<double>* magn
     }
 }
 
-Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_density_order(10)
+Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_density_order(9)
 {
     Timer t("sirius::Potential::Potential");
     
@@ -1071,12 +1097,13 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
         }
     }
 
-    /* compute moments of spherical Bessel functions 
-     
-       Integrate[SphericalBesselJ[l,a*x]*x^(2+l),{x,0,R},Assumptions->{R>0,a>0,l>=0}]
-       and use relation between Bessel and spherical Bessel functions: 
-         Subscript[j, n](z)=Sqrt[\[Pi]/2]/Sqrt[z]Subscript[J, n+1/2](z) 
-    */
+    // ==============================================================================
+    // compute moments of spherical Bessel functions 
+    //  
+    // Integrate[SphericalBesselJ[l,a*x]*x^(2+l),{x,0,R},Assumptions->{R>0,a>0,l>=0}]
+    // and use relation between Bessel and spherical Bessel functions: 
+    // Subscript[j, n](z)=Sqrt[\[Pi]/2]/Sqrt[z]Subscript[J, n+1/2](z) 
+    //===============================================================================
     sbessel_mom_.set_dimensions(parameters_.lmax_rho() + 1, parameters_.num_atom_types(), 
                                 parameters_.num_gvec_shells());
     sbessel_mom_.allocate();

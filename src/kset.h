@@ -31,6 +31,8 @@ class kset
         
         /// Initialize the k-point set
         void initialize();
+
+        void update();
         
         /// Find eigen-states
         void find_eigen_states(Potential* potential, bool precompute);
@@ -230,6 +232,12 @@ void kset::initialize()
         kpoints_[spl_num_kpoints_[ikloc]]->initialize(band_);
 }
 
+void kset::update()
+{
+    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+        kpoints_[spl_num_kpoints_[ikloc]]->init_gkvec_phase_factors();
+}
+
 void kset::find_eigen_states(Potential* potential, bool precompute)
 {
     Timer t("sirius::kset::find_eigen_states");
@@ -287,6 +295,7 @@ double kset::valence_eval_sum()
             eval_sum += wk * kpoints_[ik]->band_energy(j) * kpoints_[ik]->band_occupancy(j);
     }
 
+    parameters_.rti().valence_eval_sum = eval_sum;
     return eval_sum;
 }
 
@@ -372,7 +381,7 @@ void kset::find_band_occupancies()
 
 void kset::print_info()
 {
-    pstdout pout;
+    pstdout pout(100 * num_kpoints());
 
     if (parameters_.mpi_grid().side(1 << 0))
     {

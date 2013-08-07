@@ -96,7 +96,6 @@ extern "C" {
 #include "kset.h"
 #include "density.h"
 #include "mixer.h"
-
 #include "dft_ground_state.h"
 
 

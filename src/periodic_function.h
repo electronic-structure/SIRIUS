@@ -99,16 +99,17 @@ template<typename T> class PeriodicFunction
 
         void allocate(bool allocate_global) 
         {
+            // interstitial part is always a global array
+            f_it_.allocate();
+            set_local_it_ptr();
+
             if (allocate_global)
             {
-                f_it_.allocate();
-                set_local_it_ptr();
                 f_mt_.allocate();
                 set_local_mt_ptr();
             }
             else
             {
-                f_it_local_.allocate();
                 for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
                     f_mt_local_(ialoc)->allocate();
             }
@@ -125,9 +126,9 @@ template<typename T> class PeriodicFunction
 
         void zero()
         {
-            f_mt_.zero();
-            f_it_.zero();
-            f_pw_.zero();
+            if (f_mt_.get_ptr()) f_mt_.zero();
+            if (f_it_.get_ptr()) f_it_.zero();
+            if (f_pw_.get_ptr()) f_pw_.zero();
             for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc)->zero();
             f_it_local_.zero();
         }
@@ -179,16 +180,19 @@ template<typename T> class PeriodicFunction
         {
             Timer t("sirius::PeriodicFunction::sync");
 
-            if (f_it_.get_ptr() == NULL || f_mt_.get_ptr() == NULL)
-                error(__FILE__, __LINE__, "global arrays are not allocated");
-
-            Platform::allgather(&f_it_(0), parameters_.spl_fft_size().global_offset(), 
-                                parameters_.spl_fft_size().local_size());
-
-            Platform::allgather(&f_mt_(0, 0, 0), 
-                                f_mt_.size(0) * f_mt_.size(1) * parameters_.spl_num_atoms().global_offset(), 
-                                f_mt_.size(0) * f_mt_.size(1) * parameters_.spl_num_atoms().local_size());
-                             
+            if (f_it_.get_ptr() != NULL)
+            {
+                Platform::allgather(&f_it_(0), parameters_.spl_fft_size().global_offset(), 
+                                    parameters_.spl_fft_size().local_size());
+            }
+            
+            if (f_mt_.get_ptr() != NULL)
+            {
+                Platform::allgather(&f_mt_(0, 0, 0), 
+                                    f_mt_.size(0) * f_mt_.size(1) * parameters_.spl_num_atoms().global_offset(), 
+                                    f_mt_.size(0) * f_mt_.size(1) * parameters_.spl_num_atoms().local_size());
+            }
+                                 
 
             //for (int rank = 0; rank < Platform::num_mpi_ranks(); rank++)
             //{
@@ -256,22 +260,58 @@ template<typename T> class PeriodicFunction
         //TODO: this is more complicated if the function is distributed
         void hdf5_write(hdf5_tree h5f)
         {
-            //h5f.write("lmax", &lmax_); 
-            //h5f.write("lmmax", &lmmax_); 
-            h5f.write("f_rlm", f_mt_);
+            h5f.write("f_mt", f_mt_);
             h5f.write("f_it", f_it_);
         }
 
         void hdf5_read(hdf5_tree h5f)
         {
-            h5f.read("f_rlm", f_mt_);
+            h5f.read("f_mt", f_mt_);
             h5f.read("f_it", f_it_);
         }
 
-        int size()
+        size_t size()
         {
+            size_t size = f_it_local_.size();
+            for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+                size += f_mt_local_(ialoc)->size();
+            return size;
+        }
 
-            return 0;
+        void pack(T* array)
+        {
+            int n = 0;
+            for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+            {
+                for (int i1 = 0; i1 < f_mt_local_(ialoc)->size(1); i1++)
+                {
+                    for (int i0 = 0; i0 < f_mt_local_(ialoc)->size(0); i0++)
+                    {
+                        array[n++] = (*f_mt_local_(ialoc))(i0, i1);
+                    }
+                }
+            }
+
+            for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++)
+                array[n++] = f_it_local_(irloc);
+        }
+        
+        void unpack(T* array)
+        {
+            int n = 0;
+            for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+            {
+                for (int i1 = 0; i1 < f_mt_local_(ialoc)->size(1); i1++)
+                {
+                    for (int i0 = 0; i0 < f_mt_local_(ialoc)->size(0); i0++)
+                    {
+                        (*f_mt_local_(ialoc))(i0, i1) = array[n++];
+                    }
+                }
+            }
+
+            for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++)
+                f_it_local_(irloc) = array[n++];
         }
 };
 
