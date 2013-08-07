@@ -29,5 +29,11 @@ const int lmax_pot_default = 7;
 
 const char* storage_file_name = "sirius.h5";
 
+const int _dim_k_ = 0;
+
+const int _dim_row_ = 1;
+
+const int _dim_col_ = 2;
+
 #endif // __CONSTANTS_H__
 

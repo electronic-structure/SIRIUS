@@ -449,11 +449,15 @@ class Global : public StepFunction
 
             if (eigen_value_solver() == scalapack || eigen_value_solver() == elpa)
             {
-                int ncol = mpi_grid_.dimension_size(2);
+                int nrow = mpi_grid_.dimension_size(_dim_row_);
+                int ncol = mpi_grid_.dimension_size(_dim_col_);
 
-                int n = num_fv_states_ / (ncol * cyclic_block_size_);
+                int n = num_fv_states_ / (ncol * cyclic_block_size_) + 
+                        std::min(1, num_fv_states_ % (ncol * cyclic_block_size_));
+
+                while ((n * ncol) % nrow) n++;
                 
-                num_fv_states_ = (n + 1) * ncol * cyclic_block_size_;
+                num_fv_states_ = n * ncol * cyclic_block_size_;
             }
 
             num_bands_ = num_fv_states_ * num_spins_;

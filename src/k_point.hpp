@@ -1,5 +1,5 @@
 template<> void K_point::generate_matching_coefficients_l<1>(int ia, int iat, AtomType* type, int l, int num_gkvec_loc, 
-                                                            mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
+                                                             mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
 {
     if ((fabs(A(0, 0)) < 1.0 / sqrt(parameters_.omega())) && (verbosity_level > 0))
     {   
@@ -31,7 +31,7 @@ template<> void K_point::generate_matching_coefficients_l<1>(int ia, int iat, At
 }
 
 template<> void K_point::generate_matching_coefficients_l<2>(int ia, int iat, AtomType* type, int l, int num_gkvec_loc, 
-                                                            mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
+                                                             mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
 {
     double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
     
@@ -1049,13 +1049,14 @@ void K_point::initialize(Band* band)
         fv_states_row_.allocate();
     }
     
-    sv_eigen_vectors_.set_dimensions(band->spl_fv_states_row().local_size(), band->spl_spinor_wf_col().local_size());
+    // in case of collinear magnetism store pure up and pure dn components, otherwise store both up and dn components
+    int ns = (parameters_.num_mag_dims() == 3) ? 2 : 1;
+    sv_eigen_vectors_.set_dimensions(ns * band->spl_fv_states_row().local_size(), band->spl_spinor_wf_col().local_size());
     sv_eigen_vectors_.allocate();
 
     band_energies_.resize(parameters_.num_bands());
 
-    spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), 
-                                          band->spl_spinor_wf_col().local_size());
+    spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), band->spl_spinor_wf_col().local_size());
 
     if (band->sv())
     {
@@ -1405,10 +1406,9 @@ void K_point::solve_fv_evp_1stage(Band* band, mdarray<complex16, 2>& h, mdarray<
                                               band->num_ranks_row(), band->rank_row(),
                                               apwlo_basis_size_col(), band->num_ranks_col(), 
                                               band->rank_col(), band->blacs_context(), 
-                                              parameters_.mpi_grid().communicator(1 << band->dim_row()),
-                                              parameters_.mpi_grid().communicator(1 << band->dim_col()),
-                                              parameters_.mpi_grid().communicator(1 << band->dim_col() | 
-                                                                                  1 << band->dim_row()));
+                                              parameters_.mpi_grid().communicator(1 << _dim_row_),
+                                              parameters_.mpi_grid().communicator(1 << _dim_col_),
+                                              parameters_.mpi_grid().communicator(1 << _dim_col_ | 1 << _dim_row_));
             break;
         }
         case magma:
@@ -1745,8 +1745,7 @@ void K_point::generate_fv_states(Band* band, PeriodicFunction<double>* effective
 
     for (int j = 0; j < band->spl_fv_states_col().local_size(); j++)
     {
-        Platform::allreduce(&fv_states_col_(0, j), mtgk_size(), 
-                            parameters_.mpi_grid().communicator(1 << band->dim_row()));
+        Platform::allreduce(&fv_states_col_(0, j), mtgk_size(), parameters_.mpi_grid().communicator(1 << _dim_row_));
     }
     delete t2;
 }
@@ -1756,11 +1755,12 @@ void K_point::generate_spinor_wave_functions(Band* band)
     Timer t("sirius::K_point::generate_spinor_wave_functions");
 
     spinor_wave_functions_.zero();
-    
-    if (parameters_.num_mag_dims() != 3)
+
+    for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
     {
-        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+        if (parameters_.num_mag_dims() != 3)
         {
+            // multiply up block for first half of the bands, dn block for second half of the bands
             blas<cpu>::gemm(0, 0, mtgk_size(), band->spl_fv_states_col().local_size(), 
                             band->spl_fv_states_row().local_size(), 
                             &fv_states_row_(0, 0), fv_states_row_.ld(), 
@@ -1769,15 +1769,13 @@ void K_point::generate_spinor_wave_functions(Band* band)
                             &spinor_wave_functions_(0, ispn, ispn * band->spl_fv_states_col().local_size()), 
                             spinor_wave_functions_.ld() * parameters_.num_spins());
         }
-    }
-    else
-    {
-        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+        else
         {
+            // multiply up block and then dn block for all bands
             blas<cpu>::gemm(0, 0, mtgk_size(), band->spl_spinor_wf_col().local_size(), 
-                            band->num_fv_states_row(ispn), 
-                            &fv_states_row_(0, band->offs_fv_states_row(ispn)), fv_states_row_.ld(), 
-                            &sv_eigen_vectors_(ispn * band->num_fv_states_row_up(), 0), 
+                            band->spl_fv_states_row().local_size(), 
+                            &fv_states_row_(0, 0), fv_states_row_.ld(), 
+                            &sv_eigen_vectors_(ispn * band->spl_fv_states_row().local_size(), 0), 
                             sv_eigen_vectors_.ld(), 
                             &spinor_wave_functions_(0, ispn, 0), 
                             spinor_wave_functions_.ld() * parameters_.num_spins());
@@ -1788,7 +1786,7 @@ void K_point::generate_spinor_wave_functions(Band* band)
     {
         Platform::allreduce(&spinor_wave_functions_(0, 0, i), 
                             spinor_wave_functions_.size(0) * spinor_wave_functions_.size(1), 
-                            parameters_.mpi_grid().communicator(1 << band->dim_row()));
+                            parameters_.mpi_grid().communicator(1 << _dim_row_));
     }
 }
 
@@ -2029,7 +2027,7 @@ void K_point::distribute_block_cyclic(Band* band)
 }
 
 void K_point::find_eigen_states(Band* band, PeriodicFunction<double>* effective_potential, 
-                               PeriodicFunction<double>* effective_magnetic_field[3])
+                                PeriodicFunction<double>* effective_magnetic_field[3])
 {
     assert(band != NULL);
     
@@ -2042,35 +2040,37 @@ void K_point::find_eigen_states(Band* band, PeriodicFunction<double>* effective_
     }
 
     generate_fv_states(band, effective_potential);
-    
-    // distribute fv states along rows of the MPI grid
-    if (band->num_ranks() != 1)
-    {
-        // ===========================================================================================
-        // Initially fv states are distributed along the colums of the MPI grid and aligned such that
-        // each MPI column rank has exactly the same number of fv states. But this does not imply that
-        // the distribution is the same for row MPI ranks, because MPI grid can be rectangular.
-        // ===========================================================================================
-        for (int i = 0; i < band->spl_fv_states_row().local_size(); i++)
-        {
-            // index of fv state in the range [0...num_fv_states)
-            int ist = (band->spl_fv_states_row(i) % parameters_.num_fv_states());
-            
-            // find local column lindex of fv state
-            int offset_col = band->spl_fv_states_col().location(_splindex_offs_, ist);
-            
-            // find column MPI rank which stores this fv state 
-            int rank_col = band->spl_fv_states_col().location(_splindex_rank_, ist);
 
-            // if this rank stores this fv state, then copy it
-            if (rank_col == band->rank_col())
-                memcpy(&fv_states_row_(0, i), &fv_states_col_(0, offset_col), mtgk_size() * sizeof(complex16));
+    if (band->num_ranks() != 1) distribute_fv_states_row(band);
 
-            // send fv state to all column MPI ranks
-            Platform::bcast(&fv_states_row_(0, i), mtgk_size(), 
-                            parameters_.mpi_grid().communicator(1 << band->dim_col()), rank_col); 
-        }
-    }
+    //// distribute fv states along rows of the MPI grid
+    //if (band->num_ranks() != 1)
+    //{
+    //    // ===========================================================================================
+    //    // Initially fv states are distributed along the colums of the MPI grid and aligned such that
+    //    // each MPI column rank has exactly the same number of fv states. But this does not imply that
+    //    // the distribution is the same for row MPI ranks, because MPI grid can be rectangular.
+    //    // ===========================================================================================
+    //    for (int i = 0; i < band->spl_fv_states_row().local_size(); i++)
+    //    {
+    //        // index of fv state in the range [0...num_fv_states)
+    //        int ist = (band->spl_fv_states_row(i) % parameters_.num_fv_states());
+    //        
+    //        // find local column lindex of fv state
+    //        int offset_col = band->spl_fv_states_col().location(_splindex_offs_, ist);
+    //        
+    //        // find column MPI rank which stores this fv state 
+    //        int rank_col = band->spl_fv_states_col().location(_splindex_rank_, ist);
+
+    //        // if this rank stores this fv state, then copy it
+    //        if (rank_col == band->rank_col())
+    //            memcpy(&fv_states_row_(0, i), &fv_states_col_(0, offset_col), mtgk_size() * sizeof(complex16));
+
+    //        // send fv state to all column MPI ranks
+    //        Platform::bcast(&fv_states_row_(0, i), mtgk_size(), 
+    //                        parameters_.mpi_grid().communicator(1 << _dim_col_), rank_col); 
+    //    }
+    //}
 
     if (debug_level > 1) test_fv_states(band, 0);
 
@@ -2358,12 +2358,13 @@ void K_point::test_fv_states(Band* band, int use_fft)
         }
     }
 
-    Platform::allreduce(&maxerr, 1, 
-                        parameters_.mpi_grid().communicator(1 << band->dim_row() | 1 << band->dim_col()));
+    Platform::allreduce(&maxerr, 1, parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
 
     if (parameters_.mpi_grid().side(1 << 0)) 
+    {
         printf("k-point: %f %f %f, interstitial integration : %i, maximum error : %18.10e\n", 
                vk_[0], vk_[1], vk_[2], use_fft, maxerr);
+    }
 }
 
 //** void K_point::test_spinor_wave_functions(int use_fft)
@@ -2490,7 +2491,7 @@ void K_point::test_fv_states(Band* band, int use_fft)
 
 void K_point::save_wave_functions(int id, Band* band__)
 {
-    if (parameters_.mpi_grid().root(1 << band__->dim_col()))
+    if (parameters_.mpi_grid().root(1 << _dim_col_))
     {
         hdf5_tree fout("sirius.h5", false);
 
@@ -2502,20 +2503,20 @@ void K_point::save_wave_functions(int id, Band* band__)
         fout["K_points"][id].write("band_occupancies", &band_occupancies_[0], parameters_.num_bands());
     }
     
-    Platform::barrier(parameters_.mpi_grid().communicator(1 << band__->dim_col()));
+    Platform::barrier(parameters_.mpi_grid().communicator(1 << _dim_col_));
     
     mdarray<complex16, 2> wfj(NULL, mtgk_size(), parameters_.num_spins()); 
     for (int j = 0; j < parameters_.num_bands(); j++)
     {
         int rank = band__->spl_spinor_wf_col().location(_splindex_rank_, j);
         int offs = band__->spl_spinor_wf_col().location(_splindex_offs_, j);
-        if (parameters_.mpi_grid().coordinate(band__->dim_col()) == rank)
+        if (parameters_.mpi_grid().coordinate(_dim_col_) == rank)
         {
             hdf5_tree fout("sirius.h5", false);
             wfj.set_ptr(&spinor_wave_functions_(0, 0, offs));
             fout["K_points"][id]["spinor_wave_functions"].write(j, wfj);
         }
-        Platform::barrier(parameters_.mpi_grid().communicator(1 << band__->dim_col()));
+        Platform::barrier(parameters_.mpi_grid().communicator(_dim_col_));
     }
 }
 
@@ -2592,3 +2593,23 @@ void K_point::get_sv_eigen_vectors(mdarray<complex16, 2>& sv_evec)
     }
 }
 
+void K_point::distribute_fv_states_row(Band* band)
+{
+    for (int i = 0; i < band->spl_fv_states_row().local_size(); i++)
+    {
+        int ist = band->spl_fv_states_row(i);
+        
+        // find local column lindex of fv state
+        int offset_col = band->spl_fv_states_col().location(_splindex_offs_, ist);
+        
+        // find column MPI rank which stores this fv state 
+        int rank_col = band->spl_fv_states_col().location(_splindex_rank_, ist);
+
+        // if this rank stores this fv state, then copy it
+        if (rank_col == band->rank_col())
+            memcpy(&fv_states_row_(0, i), &fv_states_col_(0, offset_col), mtgk_size() * sizeof(complex16));
+
+        // send fv state to all column MPI ranks
+        Platform::bcast(&fv_states_row_(0, i), mtgk_size(), parameters_.mpi_grid().communicator(1 << _dim_col_), rank_col); 
+    }
+}

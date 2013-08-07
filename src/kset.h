@@ -114,15 +114,15 @@ class kset
                 fout["parameters"].write("num_spins", parameters_.num_spins());
             }
 
-            if (parameters_.mpi_grid().side(1 << 0 | 1 << band_->dim_col()))
+            if (parameters_.mpi_grid().side(1 << _dim_k_ | 1 << _dim_col_))
             {
                 for (int ik = 0; ik < num_kpoints(); ik++)
                 {
                     int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
                     
-                    if (parameters_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->save_wave_functions(ik, band_);
+                    if (parameters_.mpi_grid().coordinate(_dim_k_) == rank) kpoints_[ik]->save_wave_functions(ik, band_);
                     
-                    parameters_.mpi_grid().barrier(1 << 0 | 1 << band_->dim_col());
+                    parameters_.mpi_grid().barrier(1 << _dim_k_ | 1 << _dim_col_);
                 }
             }
         }

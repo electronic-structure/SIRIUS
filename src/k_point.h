@@ -279,6 +279,8 @@ class K_point
 
         void test_spinor_wave_functions(int use_fft);
 
+        void distribute_fv_states_row(Band* band);
+
     public:
 
         /// Constructor
