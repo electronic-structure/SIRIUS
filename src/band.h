@@ -69,7 +69,12 @@ class Band
 
         ~Band();
 
-        bool sv()
+        void solve_sv(Global& parameters, int mtgk_size, int num_gkvec, int* fft_index, double* evalfv, 
+                      mdarray<complex16, 2>& fv_states_row, mdarray<complex16, 2>& fv_states_col, 
+                      PeriodicFunction<double>* effective_magnetic_field[3], double* band_energies, 
+                      mdarray<complex16, 2>& sv_eigen_vectors);
+        
+        bool need_sv()
         {
             if (parameters_.num_spins() == 2 || parameters_.uj_correction() || parameters_.so_correction())
             {
@@ -80,11 +85,6 @@ class Band
                 return false;
             }
         }
-        
-        void solve_sv(Global& parameters, int mtgk_size, int num_gkvec, int* fft_index, double* evalfv, 
-                      mdarray<complex16, 2>& fv_states_row, mdarray<complex16, 2>& fv_states_col, 
-                      PeriodicFunction<double>* effective_magnetic_field[3], double* band_energies, 
-                      mdarray<complex16, 2>& sv_eigen_vectors);
         
         inline splindex<block_cyclic>& spl_fv_states_col()
         {
@@ -130,42 +130,6 @@ class Band
         {
             return sub_spl_spinor_wf_[sub_index];
         }
-
-        //inline int num_fv_states_row_up()
-        //{
-        //    return num_fv_states_row_up_;
-        //}
-
-        //inline int num_fv_states_row_dn()
-        //{
-        //    return num_fv_states_row_dn_;
-        //}
-
-        //inline int num_fv_states_row(int ispn)
-        //{
-        //    assert((ispn == 0) || (ispn == 1));
-
-        //    return (ispn == 0) ? num_fv_states_row_up_ : num_fv_states_row_dn_;
-        //}
-
-        //inline int offs_fv_states_row(int ispn)
-        //{
-        //    assert((ispn == 0) || (ispn == 1));
-        //    
-        //    if (parameters_.num_mag_dims() != 3) return 0;
-        //    if (num_ranks_ == 1) return 0;
-        //    return (ispn == 0) ? 0 : num_fv_states_row_up_;
-        //}    
-
-        //static inline int dim_row()
-        //{
-        //    return 1;
-        //}
-        //
-        //static inline int dim_col()
-        //{
-        //    return 2;
-        //}
 
         inline int num_ranks_row()
         {

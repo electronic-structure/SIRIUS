@@ -1058,7 +1058,7 @@ void K_point::initialize(Band* band)
 
     spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), band->spl_spinor_wf_col().local_size());
 
-    if (band->sv())
+    if (band->need_sv())
     {
         spinor_wave_functions_.allocate();
     }
@@ -2078,7 +2078,7 @@ void K_point::find_eigen_states(Band* band, PeriodicFunction<double>* effective_
                    fv_states_row_, fv_states_col_, effective_magnetic_field, &band_energies_[0],
                    sv_eigen_vectors_);
 
-    if (band->sv()) generate_spinor_wave_functions(band);
+    if (band->need_sv()) generate_spinor_wave_functions(band);
 
     /*for (int i = 0; i < 3; i++)
         test_spinor_wave_functions(i); */
