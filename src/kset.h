@@ -2,9 +2,7 @@
 namespace sirius 
 {
 
-// TODO: this is something temporary; think how to handle k- point set
-
-class kset
+class K_set
 {
     private:
     
@@ -18,12 +16,12 @@ class kset
 
     public:
 
-        kset(Global& parameters__) : parameters_(parameters__)
+        K_set(Global& parameters__) : parameters_(parameters__)
         {
             band_ = new Band(parameters_);
         }
 
-        ~kset()
+        ~K_set()
         {
             clear();
             delete band_;
@@ -214,13 +212,13 @@ class kset
             {
                  kpoints_[spl_num_kpoints_[ikloc]]->ibs_force<cpu, apwlo>(band_, ffac, forcek);
             }
-            Platform::allreduce(&forcek(0, 0), (int)forcek.size());
+            Platform::allreduce(&forcek(0, 0), (int)forcek.size(), parameters_.mpi_grid().communicator(1 << _dim_k_));
         }
 
             
 };
 
-void kset::initialize()
+void K_set::initialize()
 {
     // ============================================================
     // distribute k-points along the 1-st dimension of the MPI grid
@@ -232,15 +230,15 @@ void kset::initialize()
         kpoints_[spl_num_kpoints_[ikloc]]->initialize(band_);
 }
 
-void kset::update()
+void K_set::update()
 {
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
         kpoints_[spl_num_kpoints_[ikloc]]->init_gkvec_phase_factors();
 }
 
-void kset::find_eigen_states(Potential* potential, bool precompute)
+void K_set::find_eigen_states(Potential* potential, bool precompute)
 {
-    Timer t("sirius::kset::find_eigen_states");
+    Timer t("sirius::K_set::find_eigen_states");
     
     if (precompute)
     {
@@ -284,7 +282,7 @@ void kset::find_eigen_states(Potential* potential, bool precompute)
     parameters_.rti().valence_eval_sum = eval_sum;
 }
 
-double kset::valence_eval_sum()
+double K_set::valence_eval_sum()
 {
     double eval_sum = 0.0;
 
@@ -299,7 +297,7 @@ double kset::valence_eval_sum()
     return eval_sum;
 }
 
-void kset::find_band_occupancies()
+void K_set::find_band_occupancies()
 {
     Timer t("sirius::Density::find_band_occupancies");
 
@@ -379,7 +377,7 @@ void kset::find_band_occupancies()
     }
 }
 
-void kset::print_info()
+void K_set::print_info()
 {
     pstdout pout(100 * num_kpoints());
 

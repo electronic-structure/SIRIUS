@@ -287,7 +287,7 @@ class JsonTree
         }
 }; 
 
-class json_write
+class JSON_write
 {
     private:
 
@@ -323,14 +323,14 @@ class json_write
 
     public:
         
-        json_write(const std::string fname__) : fname_(fname__), indent_step_(4), new_block_(true)
+        JSON_write(const std::string fname__) : fname_(fname__), indent_step_(4), new_block_(true)
         {
             fout_ = fopen(fname_.c_str(), "w");
             fprintf(fout_, "{");
             indent_level_ = indent_step_;
         }
 
-        ~json_write()
+        ~JSON_write()
         {
             fprintf(fout_, "\n}\n");
             fclose(fout_);

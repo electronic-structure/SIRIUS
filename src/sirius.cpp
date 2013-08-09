@@ -14,7 +14,7 @@ sirius::Potential* potential = NULL;
 sirius::Global global_parameters;
 
 /// list of pointers to the sets of k-points
-std::vector<sirius::kset*> kset_list;
+std::vector<sirius::K_set*> kset_list;
 
 extern "C" 
 {
@@ -636,7 +636,7 @@ void FORTRAN(sirius_bands)(void)
 
     std::vector<double> xaxis;
 
-    sirius::kset kset_(global_parameters);
+    sirius::K_set kset_(global_parameters);
     
     double prev_seg_len = 0.0;
 
@@ -696,7 +696,7 @@ void FORTRAN(sirius_bands)(void)
 
     if (global_parameters.mpi_grid().root())
     {
-        json_write jw("bands.json");
+        JSON_write jw("bands.json");
         jw.single("xaxis", xaxis);
         jw.single("Ef", global_parameters.rti().energy_fermi);
         
@@ -898,7 +898,7 @@ void FORTRAN(sirius_create_kset)(int32_t* num_kpoints, double* kpoints__, double
 {
     mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints); 
     
-    sirius::kset* new_kset = new sirius::kset(global_parameters);
+    sirius::K_set* new_kset = new sirius::K_set(global_parameters);
     new_kset->add_kpoints(kpoints, kpoint_weights);
     if (*init_kset) new_kset->initialize();
     

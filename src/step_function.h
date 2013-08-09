@@ -1,6 +1,8 @@
 
 namespace sirius {
 
+// TODO: remove duplicate code
+
 class StepFunction : public ReciprocalLattice
 {
     private:

@@ -123,6 +123,9 @@ template<> void K_point::ibs_force<cpu, apwlo>(Band* band, mdarray<double, 2>& f
 
     int apw_offset_col = (band->num_ranks() > 1) ? num_gkvec_row() : 0;
 
+    mdarray<double, 2> forcek(3, parameters_.num_atoms());
+    forcek.zero();
+
     mdarray<complex16, 2> ha(apwlo_basis_size_row(), apwlo_basis_size_col());
     mdarray<complex16, 2> oa(apwlo_basis_size_row(), apwlo_basis_size_col());
     
@@ -132,122 +135,139 @@ template<> void K_point::ibs_force<cpu, apwlo>(Band* band, mdarray<double, 2>& f
     mdarray<complex16, 2> alm(num_gkvec_loc(), parameters_.max_mt_aw_basis_size());
     mdarray<complex16, 2> halm(num_gkvec_row(), parameters_.max_mt_aw_basis_size());
     
-    mdarray<complex16, 2> dm(parameters_.num_fv_states(), parameters_.num_fv_states());
+    mdarray<complex16, 2> zf(band->spl_fv_states_row().local_size(), 
+                             band->spl_fv_states_col().local_size());
+    
+    mdarray<complex16, 2> dm(band->spl_fv_states_row().local_size(), 
+                             band->spl_fv_states_col().local_size());
     dm.zero();
-    
-    mdarray<complex16, 2> zf(parameters_.num_fv_states(), parameters_.num_fv_states());
-    
-    if (band->num_ranks() == 1)
-    {
-        mdarray<complex16, 2> zm1(apwlo_basis_size_row(), band->spl_fv_states_col().local_size());
-        
-        // compute the density matrix
-        // TODO: this is a zgemm or pzgemm
-        for (int n = 0; n < parameters_.num_bands(); n++)
-        {
-            for (int i = 0; i < band->spl_fv_states_row().global_size(); i++)
-            {
-                int ist = i % parameters_.num_fv_states();
-                int ispn = i / parameters_.num_fv_states();
-                for (int j = 0; j < band->spl_fv_states_row().global_size(); j++)
-                {
-                    int jst = j % parameters_.num_fv_states();
-                    int jspn = j / parameters_.num_fv_states();
 
-                    if (ispn == jspn)
-                    {
-                        dm(ist, jst) += band_occupancy(n) * conj(sv_eigen_vectors_(i, n)) * sv_eigen_vectors_(j, n); 
-                    }
-                }
+    if (!band->need_sv())
+    {
+        for (int i = 0; i < band->spl_fv_states_col().local_size(); i++)
+        {
+            int ist = band->spl_fv_states_col(i);
+            for (int j = 0; j < band->spl_fv_states_row().local_size(); j++)
+            {
+                if (band->spl_fv_states_row(j) == ist) dm(j, i) = band_occupancy(ist);
             }
         }
+    }
+    else
+    {
+        //// compute the density matrix
+        //// TODO: this is a zgemm or pzgemm
+        //for (int n = 0; n < parameters_.num_bands(); n++)
+        //{
+        //    for (int i = 0; i < band->spl_fv_states_row().global_size(); i++)
+        //    {
+        //        int ist = i % parameters_.num_fv_states();
+        //        int ispn = i / parameters_.num_fv_states();
+        //        for (int j = 0; j < band->spl_fv_states_row().global_size(); j++)
+        //        {
+        //            int jst = j % parameters_.num_fv_states();
+        //            int jspn = j / parameters_.num_fv_states();
+
+        //            if (ispn == jspn)
+        //            {
+        //                dm(ist, jst) += band_occupancy(n) * conj(sv_eigen_vectors_(i, n)) * sv_eigen_vectors_(j, n); 
+        //            }
+        //        }
+        //    }
+        //}
+    }
+
+    mdarray<complex16, 2> zm1(apwlo_basis_size_row(), band->spl_fv_states_col().local_size());
+
+    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    {
+        ha.zero();
+        oa.zero();
+        
+        Atom* atom = parameters_.atom(ia);
+        AtomType* type = atom->type();
+
+        int iat = parameters_.atom_type_index_by_id(type->id());
+        
+        generate_matching_coefficients(num_gkvec_loc(), ia, alm);
+        
+        apply_hmt_to_apw(num_gkvec_row(), ia, alm, halm);
+        
+        // apw-apw block of the overlap matrix
+        blas<cpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), &alm(0, 0), alm.ld(), 
+                        &alm(apw_offset_col, 0), alm.ld(), &oa(0, 0), oa.ld()); 
             
-        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+        // apw-apw block of the Hamiltonian matrix
+        blas<cpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), &halm(0, 0), halm.ld(), 
+                        &alm(apw_offset_col, 0), alm.ld(), &ha(0, 0), ha.ld());
+        
+        // apw-lo and lo-apw blocks of Hamiltonian and overlap
+        set_fv_h_o_apw_lo(type, atom, ia, apw_offset_col, alm, ha, oa);
+
+        for (int igkloc2 = 0; igkloc2 < num_gkvec_col(); igkloc2++) // loop over columns
         {
-            ha.zero();
-            oa.zero();
-            
-            Atom* atom = parameters_.atom(ia);
-            AtomType* type = atom->type();
+            double v2c[3];
+            parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_col_[igkloc2].igk), v2c);
 
-            int iat = parameters_.atom_type_index_by_id(type->id());
-            
-            generate_matching_coefficients(num_gkvec_loc(), ia, alm);
-            
-            apply_hmt_to_apw(num_gkvec_row(), ia, alm, halm);
-            
-            blas<cpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), &alm(0, 0), alm.ld(), 
-                            &alm(apw_offset_col, 0), alm.ld(), &oa(0, 0), oa.ld()); 
-                
-            // apw-apw block
-            blas<cpu>::gemm(0, 2, num_gkvec_row(), num_gkvec_col(), type->mt_aw_basis_size(), &halm(0, 0), halm.ld(), 
-                            &alm(apw_offset_col, 0), alm.ld(), &ha(0, 0), ha.ld());
-            
-            set_fv_h_o_apw_lo(type, atom, ia, apw_offset_col, alm, ha, oa);
+            for (int igkloc1 = 0; igkloc1 < num_gkvec_row(); igkloc1++) // for each column loop over rows
+            {
+                int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row_[igkloc1].ig,
+                                                 apwlo_basis_descriptors_col_[igkloc2].ig);
+                int igs = parameters_.gvec_shell<global>(ig12);
+                double v1c[3];
+                parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_row_[igkloc1].igk), v1c);
 
+                complex16 zt = conj(parameters_.gvec_phase_factor<global>(ig12, ia)) * ffac(igs, iat);
+
+                ha(igkloc1, igkloc2) -= 0.5 * Utils::scalar_product(v1c, v2c) * zt;
+                oa(igkloc1, igkloc2) -= zt;
+            }
+        }
+
+        for (int x = 0; x < 3; x++)
+        {
             for (int igkloc2 = 0; igkloc2 < num_gkvec_col(); igkloc2++) // loop over columns
             {
-                double v2c[3];
-                parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_col_[igkloc2].igk), v2c);
-
                 for (int igkloc1 = 0; igkloc1 < num_gkvec_row(); igkloc1++) // for each column loop over rows
                 {
                     int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row_[igkloc1].ig,
                                                      apwlo_basis_descriptors_col_[igkloc2].ig);
-                    int igs = parameters_.gvec_shell<global>(ig12);
-                    double v1c[3];
-                    parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_col_[igkloc1].igk), v1c);
-
-                    complex16 zt = conj(parameters_.gvec_phase_factor<global>(ig12, ia)) * ffac(igs, iat);
-
-                    ha(igkloc1, igkloc2) -= 0.5 * Utils::scalar_product(v1c, v2c) * zt;
-                    oa(igkloc1, igkloc2) -= zt;
+                    double vg[3];
+                    parameters_.gvec_cart(ig12, vg);
+                    vha(igkloc1, igkloc2) = complex16(0.0, vg[x]) * ha(igkloc1, igkloc2);
+                    voa(igkloc1, igkloc2) = complex16(0.0, vg[x]) * oa(igkloc1, igkloc2);
                 }
             }
 
-            for (int x = 0; x < 3; x++)
+            for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
             {
-                for (int igkloc2 = 0; igkloc2 < num_gkvec_col(); igkloc2++) // loop over columns
+                for (int igkloc1 = 0; igkloc1 < num_gkvec_row(); igkloc1++)
                 {
-                    for (int igkloc1 = 0; igkloc1 < num_gkvec_row(); igkloc1++) // for each column loop over rows
-                    {
-                        int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row_[igkloc1].ig,
-                                                         apwlo_basis_descriptors_col_[igkloc2].ig);
-                        double vg[3];
-                        parameters_.gvec_cart(ig12, vg);
-                        vha(igkloc1, igkloc2) = complex16(0.0, vg[x]) * ha(igkloc1, igkloc2);
-                        voa(igkloc1, igkloc2) = complex16(0.0, vg[x]) * oa(igkloc1, igkloc2);
-                    }
-                }
+                    double vgk[3];
+                    parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_row_[igkloc1].igk), vgk);
 
-                for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
+                    vha(igkloc1, icol) = complex16(0.0, vgk[x]) * ha(igkloc1, icol);
+                    voa(igkloc1, icol) = complex16(0.0, vgk[x]) * oa(igkloc1, icol);
+                }
+            }
+                    
+            for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
+            {
+                for (int igkloc2 = 0; igkloc2 < num_gkvec_col(); igkloc2++)
                 {
-                    for (int igkloc1 = 0; igkloc1 < num_gkvec_row(); igkloc1++)
-                    {
-                        double vgk[3];
-                        parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_col_[igkloc1].igk), vgk);
+                    double vgk[3];
+                    parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_col_[igkloc2].igk), vgk);
 
-                        vha(igkloc1, icol) = complex16(0.0, vgk[x]) * ha(igkloc1, icol);
-                        voa(igkloc1, icol) = complex16(0.0, vgk[x]) * oa(igkloc1, icol);
-                    }
+                    vha(irow, igkloc2) = complex16(0.0, -vgk[x]) * ha(irow, igkloc2);
+                    voa(irow, igkloc2) = complex16(0.0, -vgk[x]) * oa(irow, igkloc2);
                 }
-                        
-                for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
-                {
-                    for (int igkloc2 = 0; igkloc2 < num_gkvec_col(); igkloc2++)
-                    {
-                        double vgk[3];
-                        parameters_.get_coordinates<cartesian, reciprocal>(gkvec(apwlo_basis_descriptors_col_[igkloc2].igk), vgk);
+            }
 
-                        vha(irow, igkloc2) = complex16(0.0, -vgk[x]) * ha(irow, igkloc2);
-                        voa(irow, igkloc2) = complex16(0.0, -vgk[x]) * oa(irow, igkloc2);
-                    }
-                }
-
+            if (band->num_ranks() == 1)
+            {
                 // zm1 = H * V
                 blas<cpu>::gemm(0, 0, apwlo_basis_size(), parameters_.num_fv_states(), apwlo_basis_size(), 
-                                &vha(0, 0), vha.ld(), &fv_eigen_vectors_(0, 0), fv_eigen_vectors_.ld(),
-                                &zm1(0, 0), zm1.ld());
+                                &vha(0, 0), vha.ld(), &fv_eigen_vectors_(0, 0), fv_eigen_vectors_.ld(), &zm1(0, 0), zm1.ld());
                 
                 // F = V^{+} * zm1 = V^{+} * H * V
                 blas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), apwlo_basis_size(),
@@ -258,6 +278,7 @@ template<> void K_point::ibs_force<cpu, apwlo>(Band* band, mdarray<double, 2>& f
                 blas<cpu>::gemm(0, 0, apwlo_basis_size(), parameters_.num_fv_states(), apwlo_basis_size(), 
                                 &voa(0, 0), voa.ld(), &fv_eigen_vectors_(0, 0), fv_eigen_vectors_.ld(),
                                 &zm1(0, 0), zm1.ld());
+
                 // multiply by energy
                 for (int i = 0; i < parameters_.num_fv_states(); i++)
                 {
@@ -271,19 +292,61 @@ template<> void K_point::ibs_force<cpu, apwlo>(Band* band, mdarray<double, 2>& f
 
                 for (int i = 0; i < parameters_.num_fv_states(); i++)
                 {
-                    for (int j = 0; j < parameters_.num_fv_states(); j++) force(x, ia) += weight() * real(dm(i, j) * zf(i, j));
+                    for (int j = 0; j < parameters_.num_fv_states(); j++) forcek(x, ia) += weight() * real(dm(j, i) * zf(j, i));
+                }
+            }
+            else
+            {
+                #ifdef _SCALAPACK_
+                // zm1 = H * V
+                pblas<cpu>::gemm(0, 0, apwlo_basis_size(), parameters_.num_fv_states(), apwlo_basis_size(), 
+                                 complex16(1, 0), &vha(0, 0), vha.ld(), &fv_eigen_vectors_(0, 0), fv_eigen_vectors_.ld(), 
+                                 complex16(0, 0), &zm1(0, 0), zm1.ld(), parameters_.cyclic_block_size(), band->blacs_context());
+
+                // F = V^{+} * zm1 = V^{+} * H * V
+                pblas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), apwlo_basis_size(),
+                                 complex16(1, 0), &fv_eigen_vectors_(0, 0), fv_eigen_vectors_.ld(), &zm1(0, 0), zm1.ld(), 
+                                 complex16(0, 0), &zf(0, 0), zf.ld(), parameters_.cyclic_block_size(), band->blacs_context());
+
+                // zm1 = O * V
+                pblas<cpu>::gemm(0, 0, apwlo_basis_size(), parameters_.num_fv_states(), apwlo_basis_size(), 
+                                 complex16(1, 0), &voa(0, 0), voa.ld(), &fv_eigen_vectors_(0, 0), fv_eigen_vectors_.ld(),
+                                 complex16(0, 0), &zm1(0, 0), zm1.ld(), parameters_.cyclic_block_size(), band->blacs_context());
+
+                // multiply by energy
+                for (int i = 0; i < band->spl_fv_states_col().local_size(); i++)
+                {
+                    int ist = band->spl_fv_states_col(i);
+                    for (int j = 0; j < apwlo_basis_size_row(); j++) zm1(j, i) = zm1(j, i) * fv_eigen_values_[ist];
                 }
 
-            }
-        } //ia
-    }
-    else
-    {
-    #if defined (_SCALAPACK_) || defined (_ELPA_)
+                // F = F - V^{+} * zm1 = F - V^{+} * O * (E*V)
+                pblas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), apwlo_basis_size(),
+                                 complex16(-1, 0), &fv_eigen_vectors_(0, 0), fv_eigen_vectors_.ld(), &zm1(0, 0), zm1.ld(), 
+                                 complex16(1, 0), &zf(0, 0), zf.ld(), parameters_.cyclic_block_size(), band->blacs_context());
 
-    #else
-        error(__FILE__, __LINE__, "not compiled with Scalapack or Elpa");
-    #endif
+                for (int i = 0; i < band->spl_fv_states_col().local_size(); i++)
+                {
+                    for (int j = 0; j < band->spl_fv_states_row().local_size(); j++) 
+                        forcek(x, ia) += weight() * real(dm(j, i) * zf(j, i));
+                }
+
+                #else
+                error(__FILE__, __LINE__, "not compiled with ScaLAPACK");
+                #endif
+            }
+        }
+    } //ia
+    
+    if (band->num_ranks() > 1)
+    {
+        Platform::allreduce(&forcek(0, 0), (int)forcek.size(), 
+                            parameters_.mpi_grid().communicator((1 << _dim_row_) | (1 << _dim_col_)));
+    }
+    
+    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    {
+        for (int x = 0; x < 3; x++) force(x, ia) += forcek(x, ia);
     }
 }
 
@@ -2605,7 +2668,7 @@ void K_point::distribute_fv_states_row(Band* band)
         // find column MPI rank which stores this fv state 
         int rank_col = band->spl_fv_states_col().location(_splindex_rank_, ist);
 
-        // if this rank stores this fv state, then copy it
+        // copy fv state if this rank stores it
         if (rank_col == band->rank_col())
             memcpy(&fv_states_row_(0, i), &fv_states_col_(0, offset_col), mtgk_size() * sizeof(complex16));
 

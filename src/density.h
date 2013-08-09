@@ -51,16 +51,16 @@ class Density
         void add_kpoint_contribution_it(Band* band, K_point* kp);
         
         /// Generate valence density in the muffin-tins 
-        void generate_valence_density_mt(kset& ks);
+        void generate_valence_density_mt(K_set& ks);
         
         /// Generate valence density in the muffin-tins using straightforward (slow) approach
         template <processing_unit_t pu> 
-        void generate_valence_density_mt_directly(kset& ks);
+        void generate_valence_density_mt_directly(K_set& ks);
         
-        void generate_valence_density_mt_sht(kset& ks);
+        void generate_valence_density_mt_sht(K_set& ks);
         
         /// Generate valence density in the interstitial
-        void generate_valence_density_it(kset& ks);
+        void generate_valence_density_it(K_set& ks);
        
         /// Add band contribution to the muffin-tin density
         void add_band_contribution_mt(Band* band, double weight, mdarray<complex16, 3>& fylm, 
@@ -87,7 +87,7 @@ class Density
         void initial_density(int type);
 
         /// Generate charge density and magnetization from the wave functions
-        void generate(kset& ks);
+        void generate(K_set& ks);
         
         /// Integrtae charge density to get total and partial charges
         void integrate();
@@ -573,7 +573,7 @@ void Density::add_kpoint_contribution_it(Band* band, K_point* kp)
     }
 }
 
-void Density::generate_valence_density_mt(kset& ks)
+void Density::generate_valence_density_mt(K_set& ks)
 {
     Timer t("sirius::Density::generate_valence_density_mt");
 
@@ -766,7 +766,7 @@ void Density::generate_valence_density_mt(kset& ks)
     for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync();
 }
 
-void Density::generate_valence_density_it(kset& ks)
+void Density::generate_valence_density_it(K_set& ks)
 {
     Timer t("sirius::Density::generate_valence_density_it");
 
@@ -814,7 +814,7 @@ void Density::generate_valence_density_it(kset& ks)
 //    }
 //}
 
-//template<> void Density::generate_valence_density_mt_directly<cpu>(kset& ks)
+//template<> void Density::generate_valence_density_mt_directly<cpu>(K_set& ks)
 //{
 //    Timer t("sirius::Density::generate_valence_density_mt_directly");
 //    
@@ -881,7 +881,7 @@ void Density::generate_valence_density_it(kset& ks)
 //    }
 //}
 
-void Density::generate_valence_density_mt_sht(kset& ks)
+void Density::generate_valence_density_mt_sht(K_set& ks)
 {
     Timer t("sirius::Density::generate_valence_density_mt_sht");
     
@@ -1084,7 +1084,7 @@ template<> void Density::generate_valence_density_mt_directly<gpu>()
 }
 #endif
 
-void Density::generate(kset& ks)
+void Density::generate(K_set& ks)
 {
     Timer t("sirius::Density::generate");
     

@@ -486,10 +486,10 @@ class Global : public StepFunction
             if (Platform::verbose())
             {
                 printf("\n");
-                printf("SIRIUS 0.8\n");
-                printf("git hash : %s\n", git_hash);
-                printf("build date : %s\n", build_date);
-                printf("start time : %s\n", start_time("%c").c_str());
+                printf("SIRIUS version : %2i.%02i\n", major_version, minor_version);
+                printf("git hash       : %s\n", git_hash);
+                printf("build date     : %s\n", build_date);
+                printf("start time     : %s\n", start_time("%c").c_str());
                 printf("\n");
                 printf("number of MPI ranks           : %i\n", Platform::num_mpi_ranks());
                 printf("MPI grid                      :");
@@ -757,7 +757,7 @@ class Global : public StepFunction
             if (Platform::verbose())
             {
                 std::string fname = std::string("output_") + start_time("%Y%m%d%H%M%S") + std::string(".json");
-                json_write jw(fname);
+                JSON_write jw(fname);
                 
                 jw.single("git_hash", git_hash);
                 jw.single("build_date", build_date);

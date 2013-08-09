@@ -24,7 +24,14 @@ void DFT_ground_state::forces(mdarray<double, 2>& atom_force)
     mdarray<double, 2> forcehf(3, parameters_->num_atoms());
     mdarray<double, 2> forcerho(3, parameters_->num_atoms());
 
+    pstdout pout;
+
     kset_->force(atom_force);
+    
+    for (int ia = 0; ia < parameters_->num_atoms(); ia++)
+    {
+        pout.printf("atom : %i  forcek : %f %f %f\n", ia, atom_force(0, ia), atom_force(1, ia), atom_force(2, ia));
+    }
     
     mt_function<double>* g[3];
     for (int x = 0; x < 3; x++) 
@@ -33,11 +40,18 @@ void DFT_ground_state::forces(mdarray<double, 2>& atom_force)
                                        Argument(arg_radial, parameters_->max_num_mt_points()));
     }
     
+    forcehf.zero();
     for (int ialoc = 0; ialoc < parameters_->spl_num_atoms().local_size(); ialoc++)
     {
         int ia = parameters_->spl_num_atoms(ialoc);
         gradient(parameters_->atom(ia)->type()->radial_grid(), potential_->coulomb_potential_mt(ialoc), g[0], g[1], g[2]);
         for (int x = 0; x < 3; x++) forcehf(x, ia) = parameters_->atom(ia)->type()->zn() * (*g[x])(0, 0) * y00;
+    }
+    Platform::allreduce(&forcehf(0, 0), (int)forcehf.size());
+    
+    for (int ia = 0; ia < parameters_->num_atoms(); ia++)
+    {
+        pout.printf("atom : %i  forcehf : %f %f %f\n", ia, forcehf(0, ia), forcehf(1, ia), forcehf(2, ia));
     }
     
     for (int x = 0; x < 3; x++) 
@@ -47,6 +61,7 @@ void DFT_ground_state::forces(mdarray<double, 2>& atom_force)
                                        Argument(arg_radial, parameters_->max_num_mt_points()));
     }
 
+    forcerho.zero();
     for (int ialoc = 0; ialoc < parameters_->spl_num_atoms().local_size(); ialoc++)
     {
         int ia = parameters_->spl_num_atoms(ialoc);
@@ -57,7 +72,14 @@ void DFT_ground_state::forces(mdarray<double, 2>& atom_force)
                                     potential_->effective_potential_mt(ialoc), g[x]);
         }
     }
-
+    Platform::allreduce(&forcerho(0, 0), (int)forcerho.size());
+    
+    for (int ia = 0; ia < parameters_->num_atoms(); ia++)
+    {
+        pout.printf("atom : %i  forcerho : %f %f %f\n", ia, forcerho(0, ia), forcerho(1, ia), forcerho(2, ia));
+    }
+    
+    
     for (int x = 0; x < 3; x++) delete g[x];
 
     for (int ia = 0; ia < parameters_->num_atoms(); ia++)
@@ -67,8 +89,13 @@ void DFT_ground_state::forces(mdarray<double, 2>& atom_force)
     
     for (int ia = 0; ia < parameters_->num_atoms(); ia++)
     {
-        printf("atom : %i  force : %f %f %f\n", ia, atom_force(0, ia), atom_force(1, ia), atom_force(2, ia));
+        pout.printf("atom : %i  force : %f %f %f\n", ia, atom_force(0, ia), atom_force(1, ia), atom_force(2, ia));
     }
+    pout.printf("===\n");
+
+    pout.flush(0);
+    
+    stop_here
 }
 
 void DFT_ground_state::scf_loop()
