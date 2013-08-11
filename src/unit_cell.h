@@ -267,36 +267,14 @@ class UnitCell
 
         void init(int lmax_apw, int lmax_pot, int num_mag_dims, int init_radial_grid__, int init_aw_descriptors__)
         {
-            //find_nearest_neighbours(25.0);
-            //
-            //if (auto_rmt() != 0) find_mt_radii();
-
-            //int ia, ja;
-            //if (check_mt_overlap(ia, ja))
-            //{
-            //    std::stringstream s;
-            //    s << "overlaping muffin-tin spheres for atoms " << ia << " and " << ja << std::endl
-            //      << "  radius of atom " << ia << " : " << atom(ia)->type()->mt_radius() << std::endl
-            //      << "  radius of atom " << ja << " : " << atom(ja)->type()->mt_radius();
-            //    error(__FILE__, __LINE__, s, fatal_err);
-            //}
-            //
-            //get_symmetry();
-            
             // =====================
             // initialize atom types
             // =====================
-            max_num_mt_points_ = 0;
-            min_mt_radius_ = 1e100;
-            max_mt_radius_ = 0;
             for (int i = 0; i < num_atom_types(); i++)
             {
                  if (init_radial_grid__) atom_type(i)->init_radial_grid();
                  if (init_aw_descriptors__) atom_type(i)->init_aw_descriptors(lmax_apw);
                  atom_type(i)->init(lmax_apw);
-                 max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(i)->num_mt_points());
-                 min_mt_radius_ = std::min(min_mt_radius_, atom_type(i)->mt_radius());
-                 max_mt_radius_ = std::max(max_mt_radius_, atom_type(i)->mt_radius());
             }
             
             // ================
@@ -313,11 +291,6 @@ class UnitCell
             }
             num_electrons_ = num_core_electrons_ + num_valence_electrons_;
            
-            // ================================
-            // initialize atom symmetry classes
-            // ================================
-            //for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) atom_symmetry_class(ic)->initialize();
-            
             // ================
             // initialize atoms
             // ================
@@ -365,6 +338,16 @@ class UnitCell
             get_symmetry();
 
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) atom_symmetry_class(ic)->initialize();
+            
+            max_num_mt_points_ = 0;
+            min_mt_radius_ = 1e100;
+            max_mt_radius_ = 0;
+            for (int i = 0; i < num_atom_types(); i++)
+            {
+                 max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(i)->num_mt_points());
+                 min_mt_radius_ = std::min(min_mt_radius_, atom_type(i)->mt_radius());
+                 max_mt_radius_ = std::max(max_mt_radius_, atom_type(i)->mt_radius());
+            }
         }
 
         void clear()

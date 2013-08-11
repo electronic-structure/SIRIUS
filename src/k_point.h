@@ -479,6 +479,11 @@ class K_point
             return band_energies_[j];
         }
 
+        inline double fv_eigen_value(int i)
+        {
+            return fv_eigen_values_[i];
+        }
+
         inline double weight()
         {
             return weight_;

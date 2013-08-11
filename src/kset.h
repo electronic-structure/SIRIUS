@@ -260,12 +260,31 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
 
     if (Platform::mpi_rank() == 0)
     {
+        printf("Lowesr first-variational energies\n");
+        for (int ik = 0; ik < num_kpoints(); ik++)
+        {
+            printf("ik : %2i, ", ik); 
+            for (int j = 0; j < std::min(10, parameters_.num_fv_states()); j++) 
+                    printf("%12.6f", kpoints_[ik]->fv_eigen_value(j));
+            printf("\n");
+        }
         printf("Lowest band energies\n");
         for (int ik = 0; ik < num_kpoints(); ik++)
         {
             printf("ik : %2i, ", ik); 
-            for (int j = 0; j < std::min(10, parameters_.num_bands()); j++) 
-                printf("%12.6f", kpoints_[ik]->band_energy(j));
+            if (parameters_.num_mag_dims() != 1)
+            {
+                for (int j = 0; j < std::min(10, parameters_.num_bands()); j++) 
+                    printf("%12.6f", kpoints_[ik]->band_energy(j));
+            }
+            else
+            {
+                for (int j = 0; j < std::min(10, parameters_.num_fv_states()); j++) 
+                    printf("%12.6f", kpoints_[ik]->band_energy(j));
+                printf("\n         ");
+                for (int j = 0; j < std::min(10, parameters_.num_fv_states()); j++) 
+                    printf("%12.6f", kpoints_[ik]->band_energy(parameters_.num_fv_states() + j));
+            }
             printf("\n");
         }
     }

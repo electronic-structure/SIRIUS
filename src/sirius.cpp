@@ -423,7 +423,7 @@ void FORTRAN(sirius_potential_initialize)(void)
 
 void FORTRAN(sirius_density_initialize)(void)
 {
-    density = new sirius::Density(global_parameters, potential);
+    density = new sirius::Density(global_parameters);
 }
 
 /// Clear the global variables and destroy all objects

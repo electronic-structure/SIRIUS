@@ -102,9 +102,13 @@ void DFT_ground_state::scf_loop()
 {
     parameters_->print_info();
 
-    mixer<double>* mx = new periodic_function_mixer<double>(density_->rho());
+    mixer<double>* mx = new periodic_function_mixer<double>(density_->rho(), 0.1);
+    mixer<double>* mxmag[3];
+    for (int i = 0; i < parameters_->num_mag_dims(); i++) 
+        mxmag[i] = new periodic_function_mixer<double>(density_->magnetization(i), 0.1); 
     
     mx->load();
+    for (int i = 0; i < parameters_->num_mag_dims(); i++) mxmag[i]->load();
     
     double eold = 1e100;
 
@@ -116,9 +120,9 @@ void DFT_ground_state::scf_loop()
         density_->generate(*kset_);
         density_->integrate();
 
-        mx->load();
         double rms = mx->mix();
-    
+        for (int i = 0; i < parameters_->num_mag_dims(); i++) rms += mxmag[i]->mix();
+        
         potential_->generate_effective_potential(density_->rho(), density_->magnetization());
         
         parameters_->print_rti();

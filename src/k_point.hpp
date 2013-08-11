@@ -142,6 +142,7 @@ template<> void K_point::ibs_force<cpu, apwlo>(Band* band, mdarray<double, 2>& f
                              band->spl_fv_states_col().local_size());
     dm.zero();
 
+    // compute the density matrix
     if (!band->need_sv())
     {
         for (int i = 0; i < band->spl_fv_states_col().local_size(); i++)
@@ -155,7 +156,36 @@ template<> void K_point::ibs_force<cpu, apwlo>(Band* band, mdarray<double, 2>& f
     }
     else
     {
-        //// compute the density matrix
+        mdarray<complex16, 2> evq(sv_eigen_vectors_.size(0), band->spl_spinor_wf_col().local_size());
+        for (int i = 0; i < band->spl_spinor_wf_col().local_size(); i++)
+        {
+            int n = band->spl_spinor_wf_col(i);
+            for (int j = 0; j < sv_eigen_vectors_.size(0); j++) evq(j, i) = sv_eigen_vectors_(j, i) * band_occupancy(n);
+        }
+        
+        // Important! Obtained with the following zgemm, density matrix is conjugated. 
+        if (band->num_ranks() == 1)
+        {
+            // TODO: this can be combined
+            if (parameters_.num_mag_dims() != 3)
+            {
+                blas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
+                                &sv_eigen_vectors_(0, 0), sv_eigen_vectors_.ld(), &evq(0, 0), evq.ld(), &dm(0, 0), dm.ld());
+            }
+            else
+            {
+                for (int ispn = 0; ispn < 2; ispn++)
+                {
+                    blas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
+                                    complex16(1, 0), &sv_eigen_vectors_(ispn * parameters_.num_fv_states(), 0), 
+                                    sv_eigen_vectors_.ld(), &evq(ispn * parameters_.num_fv_states(), 0), evq.ld(), 
+                                    complex16(1, 0), &dm(0, 0), dm.ld());
+                }
+
+
+            }
+        }
+
         //// TODO: this is a zgemm or pzgemm
         //for (int n = 0; n < parameters_.num_bands(); n++)
         //{
@@ -292,7 +322,8 @@ template<> void K_point::ibs_force<cpu, apwlo>(Band* band, mdarray<double, 2>& f
 
                 for (int i = 0; i < parameters_.num_fv_states(); i++)
                 {
-                    for (int j = 0; j < parameters_.num_fv_states(); j++) forcek(x, ia) += weight() * real(dm(j, i) * zf(j, i));
+                    for (int j = 0; j < parameters_.num_fv_states(); j++) 
+                        forcek(x, ia) += weight() * real(conj(dm(j, i)) * zf(j, i));
                 }
             }
             else
@@ -325,10 +356,11 @@ template<> void K_point::ibs_force<cpu, apwlo>(Band* band, mdarray<double, 2>& f
                                  complex16(-1, 0), &fv_eigen_vectors_(0, 0), fv_eigen_vectors_.ld(), &zm1(0, 0), zm1.ld(), 
                                  complex16(1, 0), &zf(0, 0), zf.ld(), parameters_.cyclic_block_size(), band->blacs_context());
 
+                // TODO: this can be combined with the previous code
                 for (int i = 0; i < band->spl_fv_states_col().local_size(); i++)
                 {
                     for (int j = 0; j < band->spl_fv_states_row().local_size(); j++) 
-                        forcek(x, ia) += weight() * real(dm(j, i) * zf(j, i));
+                        forcek(x, ia) += weight() * real(conj(dm(j, i)) * zf(j, i));
                 }
 
                 #else
@@ -1154,10 +1186,7 @@ void K_point::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<
 
             for (int order = 0; order < num_aw; order++)
             {
-                for (int dm = 0; dm < num_aw; dm++)
-                {
-                    A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
-                }
+                for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
             }
 
             switch (num_aw)
@@ -1774,8 +1803,6 @@ void K_point::generate_fv_states(Band* band, PeriodicFunction<double>* effective
     //** }
     
     // generate first-variational wave-functions
-    //==fv_states_col_.set_dimensions(mtgk_size(), band->spl_fv_states_col().local_size());
-    //==fv_states_col_.allocate();
     fv_states_col_.zero();
 
     mdarray<complex16, 2> alm(num_gkvec_row(), parameters_.max_mt_aw_basis_size());
@@ -2106,35 +2133,6 @@ void K_point::find_eigen_states(Band* band, PeriodicFunction<double>* effective_
 
     if (band->num_ranks() != 1) distribute_fv_states_row(band);
 
-    //// distribute fv states along rows of the MPI grid
-    //if (band->num_ranks() != 1)
-    //{
-    //    // ===========================================================================================
-    //    // Initially fv states are distributed along the colums of the MPI grid and aligned such that
-    //    // each MPI column rank has exactly the same number of fv states. But this does not imply that
-    //    // the distribution is the same for row MPI ranks, because MPI grid can be rectangular.
-    //    // ===========================================================================================
-    //    for (int i = 0; i < band->spl_fv_states_row().local_size(); i++)
-    //    {
-    //        // index of fv state in the range [0...num_fv_states)
-    //        int ist = (band->spl_fv_states_row(i) % parameters_.num_fv_states());
-    //        
-    //        // find local column lindex of fv state
-    //        int offset_col = band->spl_fv_states_col().location(_splindex_offs_, ist);
-    //        
-    //        // find column MPI rank which stores this fv state 
-    //        int rank_col = band->spl_fv_states_col().location(_splindex_rank_, ist);
-
-    //        // if this rank stores this fv state, then copy it
-    //        if (rank_col == band->rank_col())
-    //            memcpy(&fv_states_row_(0, i), &fv_states_col_(0, offset_col), mtgk_size() * sizeof(complex16));
-
-    //        // send fv state to all column MPI ranks
-    //        Platform::bcast(&fv_states_row_(0, i), mtgk_size(), 
-    //                        parameters_.mpi_grid().communicator(1 << _dim_col_), rank_col); 
-    //    }
-    //}
-
     if (debug_level > 1) test_fv_states(band, 0);
 
     band->solve_sv(parameters_, mtgk_size(), num_gkvec(), fft_index(), &fv_eigen_values_[0], 
@@ -2344,8 +2342,7 @@ void K_point::test_fv_states(Band* band, int use_fft)
             parameters_.fft().transform(1);
             parameters_.fft().output(&v2[0]);
 
-            for (int ir = 0; ir < parameters_.fft().size(); ir++)
-                v2[ir] *= parameters_.step_function(ir);
+            for (int ir = 0; ir < parameters_.fft().size(); ir++) v2[ir] *= parameters_.step_function(ir);
             
             parameters_.fft().input(&v2[0]);
             parameters_.fft().transform(-1);
@@ -2362,7 +2359,7 @@ void K_point::test_fv_states(Band* band, int use_fft)
        
         for (int j2 = 0; j2 < band->spl_fv_states_row().local_size(); j2++)
         {
-            complex16 zsum(0.0, 0.0);
+            complex16 zsum(0, 0);
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
                 int offset_wf = parameters_.atom(ia)->offset_wf();
@@ -2373,13 +2370,17 @@ void K_point::test_fv_states(Band* band, int use_fft)
                 {
                     int ordmax = type->indexr().num_rf(l);
                     for (int io1 = 0; io1 < ordmax; io1++)
+                    {
                         for (int io2 = 0; io2 < ordmax; io2++)
+                        {
                             for (int m = -l; m <= l; m++)
-                                zsum += conj(fv_states_col_(offset_wf + 
-                                                            type->indexb_by_l_m_order(l, m, io1), j1)) *
-                                             fv_states_row_(offset_wf + 
-                                                            type->indexb_by_l_m_order(l, m, io2), j2) * 
+                            {
+                                zsum += conj(fv_states_col_(offset_wf + type->indexb_by_l_m_order(l, m, io1), j1)) *
+                                             fv_states_row_(offset_wf + type->indexb_by_l_m_order(l, m, io2), j2) * 
                                              symmetry_class->o_radial_integral(l, io1, io2);
+                            }
+                        }
+                    }
                 }
             }
             
@@ -2414,16 +2415,15 @@ void K_point::test_fv_states(Band* band, int use_fft)
                }
             }
 
-            if (band->spl_fv_states_col()[j1] == (band->spl_fv_states_row()[j2] % parameters_.num_fv_states()))
-                zsum = zsum - complex16(1, 0);
+            if (band->spl_fv_states_col(j1) == band->spl_fv_states_row(j2)) zsum = zsum - complex16(1, 0);
            
             maxerr = std::max(maxerr, abs(zsum));
         }
     }
 
-    Platform::allreduce(&maxerr, 1, parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
+    Platform::allreduce<op_max>(&maxerr, 1, parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
 
-    if (parameters_.mpi_grid().side(1 << 0)) 
+    if (parameters_.mpi_grid().side(1 << _dim_k_)) 
     {
         printf("k-point: %f %f %f, interstitial integration : %i, maximum error : %18.10e\n", 
                vk_[0], vk_[1], vk_[2], use_fft, maxerr);

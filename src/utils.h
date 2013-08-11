@@ -43,7 +43,7 @@ class Utils
 
         static inline double fermi_dirac_distribution(double e)
         {
-            double kT = 0.01;
+            double kT = 0.001;
             if (e > 100 * kT) return 0.0;
             if (e < -100 * kT) return 1.0;
             return (1.0 / (exp(e / kT) + 1.0));
