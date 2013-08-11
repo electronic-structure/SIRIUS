@@ -11,7 +11,7 @@ namespace sirius {
 
 /** This class should be created first.
 */
-class Global : public StepFunction
+class Global : public Step_function
 {
     private:
 
@@ -432,10 +432,10 @@ class Global : public StepFunction
             lmax_ = std::max(std::max(std::max(lmax_pot_, lmax_rho_), lmax_apw_), lmax_pw_); 
 
             // initialize variables, related to the unit cell
-            UnitCell::init(lmax_apw(), lmax_pot(), num_mag_dims(), init_radial_grid__, init_aw_descriptors__);
+            Unit_cell::init(lmax_apw(), lmax_pot(), num_mag_dims(), init_radial_grid__, init_aw_descriptors__);
            
-            ReciprocalLattice::init(lmax());
-            StepFunction::init();
+            Reciprocal_lattice::init(lmax());
+            Step_function::init();
 
             gaunt_.set_lmax(std::max(lmax_apw(), lmax_pw()), std::max(lmax_apw(), lmax_pw()), lmax_pot());
 
@@ -473,8 +473,8 @@ class Global : public StepFunction
         /// Clear global variables
         void clear()
         {
-            UnitCell::clear();
-            ReciprocalLattice::clear();
+            Unit_cell::clear();
+            Reciprocal_lattice::clear();
 
             mpi_grid_.finalize();
 
@@ -498,9 +498,9 @@ class Global : public StepFunction
                 printf("number of OMP threads         : %i\n", Platform::num_threads()); 
                 printf("number of OMP threads for FFT : %i\n", Platform::num_fft_threads()); 
 
-                UnitCell::print_info();
-                ReciprocalLattice::print_info();
-                StepFunction::print_info();
+                Unit_cell::print_info();
+                Reciprocal_lattice::print_info();
+                Step_function::print_info();
 
                 printf("\n");
                 for (int i = 0; i < num_atom_types(); i++) atom_type(i)->print_info();
@@ -548,7 +548,7 @@ class Global : public StepFunction
                         break;
                     }
                 }
-                UnitCell::write_cif();
+                Unit_cell::write_cif();
             }
         }
         
@@ -831,10 +831,10 @@ class Global : public StepFunction
 
         void update()
         {
-            UnitCell::update_symmetry();
-            ReciprocalLattice::clear();
-            ReciprocalLattice::init(lmax());
-            StepFunction::init();
+            Unit_cell::update_symmetry();
+            Reciprocal_lattice::clear();
+            Reciprocal_lattice::init(lmax());
+            Step_function::init();
         }
 
 
