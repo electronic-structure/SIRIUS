@@ -156,7 +156,7 @@ void FORTRAN(sirius_set_auto_rmt)(int32_t* auto_rmt)
 
     Atom type (species in the terminology of Exciting/Elk) is a class which holds information 
     common to the atoms of the same element: charge, number of core and valence electrons, muffin-tin
-    radius, radial grid etc. See AtomType class for details.
+    radius, radial grid etc. See Atom_type class for details.
 
     Example:
     \code{.F90}
@@ -181,7 +181,7 @@ void FORTRAN(sirius_set_atom_type_properties)(int32_t* atom_type_id, char* symbo
                                               real8* mt_radius, int32_t* num_mt_points, real8* radial_grid_origin, 
                                               real8* radial_grid_infinity, int32_t symbol_len)
 {
-    sirius::AtomType* type = global_parameters.atom_type_by_id(*atom_type_id);
+    sirius::Atom_type* type = global_parameters.atom_type_by_id(*atom_type_id);
     type->set_symbol(std::string(symbol, symbol_len));
     type->set_zn(*zn);
     type->set_mass(*mass);
@@ -854,14 +854,14 @@ void FORTRAN(sirius_get_total_energy)(real8* total_energy)
 void FORTRAN(sirius_set_atom_type_radial_grid)(int32_t* atom_type_id, int32_t* num_radial_points, 
                                                int32_t* num_mt_points, real8* radial_points)
 {
-    sirius::AtomType* type = global_parameters.atom_type_by_id(*atom_type_id);
+    sirius::Atom_type* type = global_parameters.atom_type_by_id(*atom_type_id);
     type->radial_grid().set_radial_points(*num_radial_points, *num_mt_points, radial_points);
 }
 
 void FORTRAN(sirius_set_atom_type_configuration)(int32_t* atom_type_id, int32_t* n, int32_t* l, int32_t* k, 
                                                  real8* occupancy, int32_t* core_)
 {
-    sirius::AtomType* type = global_parameters.atom_type_by_id(*atom_type_id);
+    sirius::Atom_type* type = global_parameters.atom_type_by_id(*atom_type_id);
     bool core = *core_;
     type->set_configuration(*n, *l, *k, *occupancy, core);
 }
@@ -869,7 +869,7 @@ void FORTRAN(sirius_set_atom_type_configuration)(int32_t* atom_type_id, int32_t*
 void FORTRAN(sirius_add_atom_type_aw_descriptor)(int32_t* atom_type_id, int32_t* n, int32_t* l, real8* enu, 
                                                  int32_t* dme, int32_t* auto_enu__)
 {
-    sirius::AtomType* type = global_parameters.atom_type_by_id(*atom_type_id);
+    sirius::Atom_type* type = global_parameters.atom_type_by_id(*atom_type_id);
     int auto_enu = (*auto_enu__) ? 2 : 0;
     type->add_aw_descriptor(*n, *l, *enu, *dme, auto_enu);
 }
@@ -877,7 +877,7 @@ void FORTRAN(sirius_add_atom_type_aw_descriptor)(int32_t* atom_type_id, int32_t*
 void FORTRAN(sirius_add_atom_type_lo_descriptor)(int32_t* atom_type_id, int32_t* ilo, int32_t* n, int32_t* l, 
                                                  real8* enu, int32_t* dme, int32_t* auto_enu__)
 {
-    sirius::AtomType* type = global_parameters.atom_type_by_id(*atom_type_id);
+    sirius::Atom_type* type = global_parameters.atom_type_by_id(*atom_type_id);
     int auto_enu = (*auto_enu__) ? 2 : 0;
     type->add_lo_descriptor(*ilo - 1, *n, *l, *enu, *dme, auto_enu);
 }

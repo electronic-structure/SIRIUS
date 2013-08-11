@@ -8,7 +8,7 @@ class Atom
     private:
     
         /// type of the given atom
-        AtomType* type_;
+        Atom_type* type_;
 
         /// symmetry class of the given atom
         AtomSymmetryClass* symmetry_class_;
@@ -61,7 +61,7 @@ class Atom
     public:
     
         /// Constructor
-        Atom(AtomType* type__, double* position__, double* vector_field__) : 
+        Atom(Atom_type* type__, double* position__, double* vector_field__) : 
             type_(type__), symmetry_class_(NULL), offset_aw_(-1), offset_lo_(-1), offset_wf_(-1), 
             apply_uj_correction_(false), uj_correction_l_(-1)
         {
@@ -74,7 +74,7 @@ class Atom
             }
         }
 
-        inline AtomType* type()
+        inline Atom_type* type()
         {
             return type_;
         }

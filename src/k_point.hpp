@@ -1,4 +1,4 @@
-template<> void K_point::generate_matching_coefficients_l<1>(int ia, int iat, AtomType* type, int l, int num_gkvec_loc, 
+template<> void K_point::generate_matching_coefficients_l<1>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
                                                              mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
 {
     if ((fabs(A(0, 0)) < 1.0 / sqrt(parameters_.omega())) && (verbosity_level > 0))
@@ -30,7 +30,7 @@ template<> void K_point::generate_matching_coefficients_l<1>(int ia, int iat, At
     }
 }
 
-template<> void K_point::generate_matching_coefficients_l<2>(int ia, int iat, AtomType* type, int l, int num_gkvec_loc, 
+template<> void K_point::generate_matching_coefficients_l<2>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
                                                              mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
 {
     double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
@@ -93,7 +93,7 @@ template<> void K_point::set_fv_h_o<cpu, apwlo>(PeriodicFunction<double>* effect
     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
     {
         Atom* atom = parameters_.atom(ia);
-        AtomType* type = atom->type();
+        Atom_type* type = atom->type();
         
         generate_matching_coefficients(num_gkvec_loc(), ia, alm);
         
@@ -215,7 +215,7 @@ template<> void K_point::ibs_force<cpu, apwlo>(Band* band, mdarray<double, 2>& f
         oa.zero();
         
         Atom* atom = parameters_.atom(ia);
-        AtomType* type = atom->type();
+        Atom_type* type = atom->type();
 
         int iat = parameters_.atom_type_index_by_id(type->id());
         
@@ -694,7 +694,7 @@ template<> void K_point::set_fv_h_o<gpu, apwlo>(PeriodicFunction<double>* effect
     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
     {
         Atom* atom = parameters_.atom(ia);
-        AtomType* type = atom->type();
+        Atom_type* type = atom->type();
         
         generate_matching_coefficients(num_gkvec_loc(), ia, alm);
         
@@ -1169,7 +1169,7 @@ void K_point::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<
     Timer t("sirius::K_point::generate_matching_coefficients");
 
     Atom* atom = parameters_.atom(ia);
-    AtomType* type = atom->type();
+    Atom_type* type = atom->type();
 
     assert(type->max_aw_order() <= 2);
 
@@ -1222,7 +1222,7 @@ void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
     }
 
     Atom* atom = parameters_.atom(ia);
-    AtomType* type = parameters_.atom(ia)->type();
+    Atom_type* type = parameters_.atom(ia)->type();
 
     mdarray<complex16, 2> z1(sht->num_points(), type->mt_aw_basis_size());
     for (int i = 0; i < type->mt_aw_basis_size(); i++)
@@ -1267,7 +1267,7 @@ void K_point::apply_hmt_to_apw(int num_gkvec_row, int ia, mdarray<complex16, 2>&
     Timer t("sirius::K_point::apply_hmt_to_apw");
     
     Atom* atom = parameters_.atom(ia);
-    AtomType* type = atom->type();
+    Atom_type* type = atom->type();
     
     #pragma omp parallel default(shared)
     {
@@ -1313,7 +1313,7 @@ void K_point::apply_hmt_to_apw(int num_gkvec_row, int ia, mdarray<complex16, 2>&
     }
 }
 
-void K_point::set_fv_h_o_apw_lo(AtomType* type, Atom* atom, int ia, int apw_offset_col, mdarray<complex16, 2>& alm, 
+void K_point::set_fv_h_o_apw_lo(Atom_type* type, Atom* atom, int ia, int apw_offset_col, mdarray<complex16, 2>& alm, 
                                mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
     Timer t("sirius::K_point::set_fv_h_o_apw_lo");
@@ -1813,7 +1813,7 @@ void K_point::generate_fv_states(Band* band, PeriodicFunction<double>* effective
         for (int ia = 0; ia < parameters_.num_atoms(); ia++)
         {
             Atom* atom = parameters_.atom(ia);
-            AtomType* type = atom->type();
+            Atom_type* type = atom->type();
             
             generate_matching_coefficients(num_gkvec_row(), ia, alm);
 
@@ -2038,7 +2038,7 @@ void K_point::build_apwlo_basis_descriptors()
     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
     {
         Atom* atom = parameters_.atom(ia);
-        AtomType* type = atom->type();
+        Atom_type* type = atom->type();
     
         int lo_index_offset = type->mt_aw_basis_size();
         
@@ -2363,7 +2363,7 @@ void K_point::test_fv_states(Band* band, int use_fft)
             for (int ia = 0; ia < parameters_.num_atoms(); ia++)
             {
                 int offset_wf = parameters_.atom(ia)->offset_wf();
-                AtomType* type = parameters_.atom(ia)->type();
+                Atom_type* type = parameters_.atom(ia)->type();
                 AtomSymmetryClass* symmetry_class = parameters_.atom(ia)->symmetry_class();
 
                 for (int l = 0; l <= parameters_.lmax_apw(); l++)
@@ -2487,7 +2487,7 @@ void K_point::test_fv_states(Band* band, int use_fft)
 //**                 for (int ia = 0; ia < parameters_.num_atoms(); ia++)
 //**                 {
 //**                     int offset_wf = parameters_.atom(ia)->offset_wf();
-//**                     AtomType* type = parameters_.atom(ia)->type();
+//**                     Atom_type* type = parameters_.atom(ia)->type();
 //**                     AtomSymmetryClass* symmetry_class = parameters_.atom(ia)->symmetry_class();
 //** 
 //**                     for (int l = 0; l <= parameters_.lmax_apw(); l++)

@@ -1,4 +1,4 @@
-AtomType::AtomType(const char* symbol__, const char* name__, int zn__, double mass__, 
+Atom_type::Atom_type(const char* symbol__, const char* name__, int zn__, double mass__, 
                    std::vector<atomic_level_descriptor>& levels__) : 
     symbol_(std::string(symbol__)), name_(std::string(name__)), zn_(zn__), mass_(mass__), mt_radius_(2.0), 
     num_mt_points_(2000 + zn__ * 50), atomic_levels_(levels__)
@@ -7,7 +7,7 @@ AtomType::AtomType(const char* symbol__, const char* name__, int zn__, double ma
     radial_grid_.init(pow3_grid, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
 }
 
-AtomType::AtomType(int id__, const std::string label__) : id_(id__), label_(label__), zn_(0), num_mt_points_(0)
+Atom_type::Atom_type(int id__, const std::string label__) : id_(id__), label_(label__), zn_(0), num_mt_points_(0)
 {
     if (Utils::file_exists(label_ + ".json")) 
     {
@@ -41,7 +41,7 @@ AtomType::AtomType(int id__, const std::string label__) : id_(id__), label_(labe
     }
 }
 
-void AtomType::init(int lmax_apw)
+void Atom_type::init(int lmax_apw)
 {
     if (zn_ == 0) error(__FILE__, __LINE__, "zero atom charge");
     
@@ -65,13 +65,13 @@ void AtomType::init(int lmax_apw)
     num_valence_electrons_ = zn_ - num_core_electrons_;
 }
 
-void AtomType::init_radial_grid()
+void Atom_type::init_radial_grid()
 {
     if (num_mt_points_ == 0) error(__FILE__, __LINE__, "number of muffin-tin points is zero");
     radial_grid_.init(pow3_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
 }
 
-void AtomType::init_aw_descriptors(int lmax)
+void Atom_type::init_aw_descriptors(int lmax)
 {
     assert(lmax >= -1);
 
@@ -93,7 +93,7 @@ void AtomType::init_aw_descriptors(int lmax)
     }
 }
 
-void AtomType::add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu)
+void Atom_type::add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu)
 {
     if ((int)aw_descriptors_.size() == l) aw_descriptors_.push_back(radial_solution_descriptor_set());
     
@@ -121,7 +121,7 @@ void AtomType::add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu
     aw_descriptors_[l].push_back(rsd);
 }
 
-void AtomType::add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu)
+void Atom_type::add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu)
 {
     if ((int)lo_descriptors_.size() == ilo) 
     {
@@ -158,9 +158,9 @@ void AtomType::add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int
     lo_descriptors_[ilo].rsd_set.push_back(rsd);
 }
 
-double AtomType::solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
+double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
 {
-    Timer t("sirius::AtomType::solve_free_atom");
+    Timer t("sirius::Atom_type::solve_free_atom");
     
     free_atom_radial_functions_.set_dimensions(radial_grid_.size(), (int)atomic_levels_.size());
     free_atom_radial_functions_.allocate();
@@ -307,7 +307,7 @@ double AtomType::solve_free_atom(double solver_tol, double energy_tol, double ch
     return energy_tot;
 }
 
-void AtomType::print_info()
+void Atom_type::print_info()
 {
     printf("symbol         : %s\n", symbol_.c_str());
     printf("name           : %s\n", name_.c_str());
@@ -383,7 +383,7 @@ void AtomType::print_info()
     printf("\n");
 }
         
-void AtomType::read_input_core(JsonTree& parser)
+void Atom_type::read_input_core(JsonTree& parser)
 {
     std::string core_str;
     parser["core"] >> core_str;
@@ -452,7 +452,7 @@ void AtomType::read_input_core(JsonTree& parser)
     }
 }
 
-void AtomType::read_input_aw(JsonTree& parser)
+void Atom_type::read_input_aw(JsonTree& parser)
 {
     radial_solution_descriptor rsd;
     radial_solution_descriptor_set rsd_set;
@@ -484,7 +484,7 @@ void AtomType::read_input_aw(JsonTree& parser)
     }
 }
     
-void AtomType::read_input_lo(JsonTree& parser)
+void Atom_type::read_input_lo(JsonTree& parser)
 {
     radial_solution_descriptor rsd;
     radial_solution_descriptor_set rsd_set;
@@ -544,7 +544,7 @@ void AtomType::read_input_lo(JsonTree& parser)
     }
 }
     
-void AtomType::read_input()
+void Atom_type::read_input()
 {
     std::string fname = label_ + std::string(".json");
     JsonTree parser(fname);
@@ -564,7 +564,7 @@ void AtomType::read_input()
     read_input_lo(parser);
 }
 
-void AtomType::sync_free_atom(int rank)
+void Atom_type::sync_free_atom(int rank)
 {
     assert(free_atom_potential_.size() != 0);
     assert(free_atom_density_.size() != 0);

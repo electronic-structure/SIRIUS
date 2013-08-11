@@ -207,7 +207,7 @@ class K_point
         // TODO: add a conjugation template parameter - this will make it more readable
         /// Generate matching coefficients for specific l-value
         template <int order>
-        void generate_matching_coefficients_l(int ia, int iat, AtomType* type, int l, int num_gkvec_loc, 
+        void generate_matching_coefficients_l(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
                                               mdarray<double, 2>& A, mdarray<complex16, 2>& alm);
         
         /// Apply the muffin-tin part of the first-variational Hamiltonian to the apw basis function
@@ -226,7 +226,7 @@ class K_point
 
         void check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm);
         
-        void set_fv_h_o_apw_lo(AtomType* type, Atom* atom, int ia, int apw_offset_col, mdarray<complex16, 2>& alm, 
+        void set_fv_h_o_apw_lo(Atom_type* type, Atom* atom, int ia, int apw_offset_col, mdarray<complex16, 2>& alm, 
                                mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
 
         void set_fv_h_o_it(PeriodicFunction<double>* effective_potential, 

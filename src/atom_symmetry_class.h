@@ -30,7 +30,7 @@ class AtomSymmetryClass
         std::vector<int> atom_id_;
         
         /// atom type
-        AtomType* atom_type_;
+        Atom_type* atom_type_;
 
         /// spherical part of effective potential 
         std::vector<double> spherical_potential_;
@@ -84,7 +84,7 @@ class AtomSymmetryClass
     public:
     
         /// Constructor
-        AtomSymmetryClass(int id_, AtomType* atom_type_) : 
+        AtomSymmetryClass(int id_, Atom_type* atom_type_) : 
             id_(id_), atom_type_(atom_type_), core_eval_sum_(0.0), core_leakage_(0.0)
         {
         }
@@ -181,7 +181,7 @@ class AtomSymmetryClass
             return core_charge_density_[ir];
         }
 
-        inline AtomType* atom_type()
+        inline Atom_type* atom_type()
         {
             return atom_type_;
         }

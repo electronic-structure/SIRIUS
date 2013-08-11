@@ -173,7 +173,6 @@ class radial_functions_index
         inline radial_function_index_descriptor& operator[](int i)
         {
             assert(i >= 0 && i < (int)radial_function_index_descriptors_.size());
-
             return radial_function_index_descriptors_[i];
         }
 
@@ -191,7 +190,6 @@ class radial_functions_index
         inline int num_rf(int l)
         {
             assert(l >= 0 && l < (int)num_rf_.size());
-            
             return num_rf_[l];
         }
 
@@ -199,7 +197,6 @@ class radial_functions_index
         inline int num_lo(int l)
         {
             assert(l >= 0 && l < (int)num_lo_.size());
-            
             return num_lo_[l];
         }
         
@@ -329,12 +326,11 @@ class basis_functions_index
         inline basis_function_index_descriptor& operator[](int i)
         {
             assert(i >= 0 && i < (int)basis_function_index_descriptors_.size());
-
             return basis_function_index_descriptors_[i];
         }
 };
 
-class AtomType
+class Atom_type
 {
     private:
         
@@ -408,10 +404,10 @@ class AtomType
         basis_functions_index indexb_;
        
         // forbid copy constructor
-        AtomType(const AtomType& src);
+        Atom_type(const Atom_type& src);
         
         // forbid assignment operator
-        AtomType& operator=(const AtomType& src);
+        Atom_type& operator=(const Atom_type& src);
         
         void read_input_core(JsonTree& parser);
 
@@ -423,10 +419,10 @@ class AtomType
     
     public:
         
-        AtomType(const char* symbol__, const char* name__, int zn__, double mass__, 
-                 std::vector<atomic_level_descriptor>& levels__);
-
-        AtomType(int id__, const std::string label__);
+        Atom_type(const char* symbol__, const char* name__, int zn__, double mass__, 
+                  std::vector<atomic_level_descriptor>& levels__);
+ 
+        Atom_type(int id__, const std::string label__);
         
         void init(int lmax_apw);
 

@@ -20,7 +20,7 @@ class UnitCell
         std::map<int, int> atom_type_index_by_id_;
          
         /// list of atom types
-        std::vector<AtomType*> atom_types_;
+        std::vector<Atom_type*> atom_types_;
 
         /// list of atom classes
         std::vector<AtomSymmetryClass*> atom_symmetry_classes_;
@@ -830,7 +830,7 @@ class UnitCell
                 s << "atom type with id " << atom_type_id << " is already in list";
                 error(__FILE__, __LINE__, s);
             }
-            atom_types_.push_back(new AtomType(atom_type_id, label));
+            atom_types_.push_back(new Atom_type(atom_type_id, label));
             atom_type_index_by_id_[atom_type_id] = (int)atom_types_.size() - 1;
         }
         
@@ -886,13 +886,13 @@ class UnitCell
         }
         
         /// Pointer to atom type by type id
-        inline AtomType* atom_type_by_id(int id)
+        inline Atom_type* atom_type_by_id(int id)
         {
             return atom_types_[atom_type_index_by_id(id)];
         }
  
         /// Pointer to atom type by type index (not(!) by atom type id)
-        inline AtomType* atom_type(int idx)
+        inline Atom_type* atom_type(int idx)
         {
             return atom_types_[idx];
         }

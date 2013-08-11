@@ -180,7 +180,7 @@ void Band::apply_so_correction(mdarray<complex16, 2>& fv_states, mdarray<complex
 
     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
     {
-        AtomType* type = parameters_.atom(ia)->type();
+        Atom_type* type = parameters_.atom(ia)->type();
 
         int offset = parameters_.atom(ia)->offset_wf();
 
@@ -229,7 +229,7 @@ void Band::apply_uj_correction(mdarray<complex16, 2>& fv_states, mdarray<complex
     {
         if (parameters_.atom(ia)->apply_uj_correction())
         {
-            AtomType* type = parameters_.atom(ia)->type();
+            Atom_type* type = parameters_.atom(ia)->type();
 
             int offset = parameters_.atom(ia)->offset_wf();
 

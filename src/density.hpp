@@ -234,7 +234,7 @@ void Density::initial_density(int type = 0)
 template <int num_mag_dims> 
 void Density::reduce_zdens(int ia, int ialoc, mdarray<complex16, 4>& zdens, mdarray<double, 4>& mt_density_matrix)
 {
-    AtomType* type = parameters_.atom(ia)->type();
+    Atom_type* type = parameters_.atom(ia)->type();
     int mt_basis_size = type->mt_basis_size();
 
     #pragma omp parallel for default(shared)
@@ -478,7 +478,7 @@ void Density::generate_valence_density_mt(K_set& ks)
         for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
         {
             int ia = parameters_.spl_num_atoms(ialoc);
-            AtomType* type = parameters_.atom(ia)->type();
+            Atom_type* type = parameters_.atom(ia)->type();
             
             occupation_matrix.zero();
             for (int l = 0; l <= 3; l++)
