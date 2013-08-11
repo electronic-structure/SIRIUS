@@ -11,7 +11,7 @@ class Atom
         Atom_type* type_;
 
         /// symmetry class of the given atom
-        AtomSymmetryClass* symmetry_class_;
+        Atom_symmetry_class* symmetry_class_;
         
         /// position in fractional coordinates
         double position_[3];
@@ -79,7 +79,7 @@ class Atom
             return type_;
         }
 
-        inline AtomSymmetryClass* symmetry_class()
+        inline Atom_symmetry_class* symmetry_class()
         {
             return symmetry_class_;
         }
@@ -126,7 +126,7 @@ class Atom
             }
         }
 
-        inline void set_symmetry_class(AtomSymmetryClass* symmetry_class__)
+        inline void set_symmetry_class(Atom_symmetry_class* symmetry_class__)
         {
             symmetry_class_ = symmetry_class__;
         }

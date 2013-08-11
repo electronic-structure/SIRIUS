@@ -23,7 +23,7 @@ class UnitCell
         std::vector<Atom_type*> atom_types_;
 
         /// list of atom classes
-        std::vector<AtomSymmetryClass*> atom_symmetry_classes_;
+        std::vector<Atom_symmetry_class*> atom_symmetry_classes_;
         
         /// list of atoms
         std::vector<Atom*> atoms_;
@@ -137,7 +137,7 @@ class UnitCell
 
             if (spg_dataset_->n_atoms != num_atoms()) error(__FILE__, __LINE__, "wrong number of atoms");
 
-            AtomSymmetryClass* atom_symmetry_class;
+            Atom_symmetry_class* atom_symmetry_class;
             
             int atom_class_id = -1;
 
@@ -146,7 +146,7 @@ class UnitCell
                 if (!atoms_[i]->symmetry_class()) // if symmetry class is not assigned to this atom
                 {
                     atom_class_id++; // take next id 
-                    atom_symmetry_class = new AtomSymmetryClass(atom_class_id, atoms_[i]->type());
+                    atom_symmetry_class = new Atom_symmetry_class(atom_class_id, atoms_[i]->type());
                     atom_symmetry_classes_.push_back(atom_symmetry_class);
 
                     for (int j = 0; j < num_atoms(); j++) // scan all atoms
@@ -904,7 +904,7 @@ class UnitCell
         }
        
         /// Pointer to symmetry class by class id.
-        inline AtomSymmetryClass* atom_symmetry_class(int id)
+        inline Atom_symmetry_class* atom_symmetry_class(int id)
         {
             return atom_symmetry_classes_[id];
         }

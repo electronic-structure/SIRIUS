@@ -2364,7 +2364,7 @@ void K_point::test_fv_states(Band* band, int use_fft)
             {
                 int offset_wf = parameters_.atom(ia)->offset_wf();
                 Atom_type* type = parameters_.atom(ia)->type();
-                AtomSymmetryClass* symmetry_class = parameters_.atom(ia)->symmetry_class();
+                Atom_symmetry_class* symmetry_class = parameters_.atom(ia)->symmetry_class();
 
                 for (int l = 0; l <= parameters_.lmax_apw(); l++)
                 {
@@ -2488,7 +2488,7 @@ void K_point::test_fv_states(Band* band, int use_fft)
 //**                 {
 //**                     int offset_wf = parameters_.atom(ia)->offset_wf();
 //**                     Atom_type* type = parameters_.atom(ia)->type();
-//**                     AtomSymmetryClass* symmetry_class = parameters_.atom(ia)->symmetry_class();
+//**                     Atom_symmetry_class* symmetry_class = parameters_.atom(ia)->symmetry_class();
 //** 
 //**                     for (int l = 0; l <= parameters_.lmax_apw(); l++)
 //**                     {
