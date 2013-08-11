@@ -93,7 +93,7 @@ extern "C" {
 #include "band.h"
 #include "k_point.h"
 #include "potential.h"
-#include "kset.h"
+#include "k_set.h"
 #include "density.h"
 #include "mixer.h"
 #include "dft_ground_state.h"
