@@ -201,18 +201,10 @@ class Platform
             v[2 * mpi_rank(comm)] = count;
             v[2 * mpi_rank(comm) + 1] = offset;
 
-            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &v[0], 2, primitive_type_wrapper<int>::mpi_type_id(), 
-                          comm);
+            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &v[0], 2, primitive_type_wrapper<int>::mpi_type_id(), comm);
 
             std::vector<int> counts(num_mpi_ranks(comm));
-            //counts[mpi_rank(comm)] = count;
-            //MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &counts[0], 1, primitive_type_wrapper<int>::mpi_type_id(), 
-            //              comm);
-            //
             std::vector<int> offsets(num_mpi_ranks(comm));
-            //offsets[mpi_rank(comm)] = offset;
-            //MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &offsets[0], 1, primitive_type_wrapper<int>::mpi_type_id(), 
-            //              comm);
 
             for (int i = 0; i < num_mpi_ranks(comm); i++)
             {

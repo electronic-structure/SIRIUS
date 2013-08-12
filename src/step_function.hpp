@@ -2,52 +2,26 @@ void Step_function::init()
 {
     Timer t("sirius::Step_function::init");
     
-    //mdarray<double, 2> ffac(num_gvec_shells(), num_atom_types());
-    //get_step_function_form_factors(ffac);
+    mdarray<double, 2> ffac((int)gvec_shell_len_.size(), num_atom_types());
+    get_step_function_form_factors(ffac);
 
     step_function_pw_.resize(fft().size());
     step_function_.resize(fft().size());
     
     memset(&step_function_pw_[0], 0, fft().size() * sizeof(complex16));
     
-    double fourpi_omega = fourpi / omega();
-
     #pragma omp parallel for default(shared)
     for (int igloc = 0; igloc < spl_fft_size().local_size(); igloc++)
     {
         int ig = spl_fft_size(igloc);
-        double vg[3];
-        gvec_cart(ig, vg);
-
-        double g = Utils::vector_length(vg);
-        double g3inv = (ig) ? 1.0 / pow(g, 3) : 0.0;
-
-        double gRprev = -1.0;
-        double sin_cos_gR;
-        
-        complex16 zt(0, 0);
+        int igs = gvec_shell<global>(ig);
 
         for (int ia = 0; ia < num_atoms(); ia++)
         {            
-            double R = atom(ia)->type()->mt_radius();
-            double gR = g * R;
+            int iat = atom_type_index_by_id(atom(ia)->type_id());
+            step_function_pw_[ig] -= conj(gvec_phase_factor<global>(ig, ia)) * ffac(igs, iat);
 
-            if (gRprev != gR)
-            {
-                gRprev = gR;
-                sin_cos_gR = (sin(gR) - gR * cos(gR)) * g3inv;
-            }
-
-            if (ig == 0)
-            {
-                zt += conj(gvec_phase_factor<global>(ig, ia)) * pow(R, 3) / 3.0;
-            }
-            else
-            {
-                zt += conj(gvec_phase_factor<global>(ig, ia)) * sin_cos_gR;
-            }
         }
-        step_function_pw_[ig] -= zt * fourpi_omega;
     }
     Platform::allgather(&step_function_pw_[0], spl_fft_size().global_offset(), spl_fft_size().local_size());
     
@@ -58,8 +32,7 @@ void Step_function::init()
     fft().output(&step_function_[0]);
     
     volume_mt_ = 0.0;
-    for (int ia = 0; ia < num_atoms(); ia++)
-        volume_mt_ += fourpi * pow(atom(ia)->type()->mt_radius(), 3) / 3.0; 
+    for (int ia = 0; ia < num_atoms(); ia++) volume_mt_ += fourpi * pow(atom(ia)->type()->mt_radius(), 3) / 3.0; 
     
     volume_it_ = omega() - volume_mt_;
     double vit = 0.0;
@@ -88,7 +61,7 @@ void Step_function::get_step_function_form_factors(mdarray<double, 2>& ffac)
     
     double fourpi_omega = fourpi / omega();
 
-    splindex<block> spl_num_gvec_shells(num_gvec_shells(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+    splindex<block> spl_num_gvec_shells(ffac.size(0), Platform::num_mpi_ranks(), Platform::mpi_rank());
 
     #pragma omp parallel for default(shared)
     for (int igsloc = 0; igsloc < spl_num_gvec_shells.local_size(); igsloc++)
@@ -113,6 +86,6 @@ void Step_function::get_step_function_form_factors(mdarray<double, 2>& ffac)
         }
     }
 
-    // TODO: change to allgather
-    for (int iat = 0; iat < num_atom_types(); iat++) Platform::allreduce(&ffac(0, iat), num_gvec_shells());
+    for (int iat = 0; iat < num_atom_types(); iat++) 
+        Platform::allgather(&ffac(0, iat), spl_num_gvec_shells.global_offset(), spl_num_gvec_shells.local_size());
 }

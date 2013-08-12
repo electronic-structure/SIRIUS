@@ -58,16 +58,8 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
     // synchronize eigen-values
     sync_band_energies();
 
-    if (Platform::mpi_rank() == 0)
+    if (Platform::mpi_rank() == 0 && verbosity_level > 1)
     {
-        printf("Lowesr first-variational energies\n");
-        for (int ik = 0; ik < num_kpoints(); ik++)
-        {
-            printf("ik : %2i, ", ik); 
-            for (int j = 0; j < std::min(10, parameters_.num_fv_states()); j++) 
-                    printf("%12.6f", kpoints_[ik]->fv_eigen_value(j));
-            printf("\n");
-        }
         printf("Lowest band energies\n");
         for (int ik = 0; ik < num_kpoints(); ik++)
         {

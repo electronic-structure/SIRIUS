@@ -30,12 +30,14 @@ void Reciprocal_lattice::init(int lmax)
         }
     }
 
+    // sort G-vectors by length
     std::sort(gvec_tmp_length.begin(), gvec_tmp_length.end());
 
     // create sorted list of G-vectors
     gvec_.set_dimensions(3, fft_.size());
     gvec_.allocate();
 
+    // find number of G-vectors within the cutoff
     num_gvec_ = 0;
     for (int i = 0; i < fft_.size(); i++)
     {
@@ -44,17 +46,16 @@ void Reciprocal_lattice::init(int lmax)
         if (gvec_tmp_length[i].first <= pw_cutoff_) num_gvec_++;
     }
     
-    // clean temporary arrays
-    gvec_tmp.deallocate();
-    gvec_tmp_length.clear();
-
     index_by_gvec_.set_dimensions(dimension(fft_.grid_limits(0, 0), fft_.grid_limits(0, 1)),
                                   dimension(fft_.grid_limits(1, 0), fft_.grid_limits(1, 1)),
                                   dimension(fft_.grid_limits(2, 0), fft_.grid_limits(2, 1)));
     index_by_gvec_.allocate();
-
+    
     fft_index_.resize(fft_.size());
-
+    
+    gvec_shell_.resize(fft_.size());
+    gvec_shell_len_.clear();
+    
     for (int ig = 0; ig < fft_.size(); ig++)
     {
         int i0 = gvec_(0, ig);
@@ -66,29 +67,20 @@ void Reciprocal_lattice::init(int lmax)
 
         // mapping of FFT buffer linear index
         fft_index_[ig] = fft_.index(i0, i1, i2);
-    }
 
-    // find G-shells
-    gvec_shell_.resize(num_gvec_);
-    gvec_shell_len_.clear();
-    for (int ig = 0; ig < num_gvec_; ig++)
-    {
-        double cartc[3];
-        get_coordinates<cartesian, reciprocal>(&gvec_(0, ig), cartc);
-        double t = Utils::vector_length(cartc);
-
-        if (gvec_shell_len_.empty() || fabs(t - gvec_shell_len_.back()) > 1e-8) gvec_shell_len_.push_back(t);
-         
+        // find G-shells
+        double t = gvec_tmp_length[ig].first;
+        if (gvec_shell_len_.empty() || fabs(t - gvec_shell_len_.back()) > 1e-10) gvec_shell_len_.push_back(t);
         gvec_shell_[ig] = (int)gvec_shell_len_.size() - 1;
     }
 
-    ig_by_igs_.clear();
-    ig_by_igs_.resize(num_gvec_shells());
-    for (int ig = 0; ig < num_gvec_; ig++)
-    {
-        int igs = gvec_shell_[ig];
-        ig_by_igs_[igs].push_back(ig);
-    }
+    //ig_by_igs_.clear();
+    //ig_by_igs_.resize(num_gvec_shells());
+    //for (int ig = 0; ig < num_gvec_; ig++)
+    //{
+    //    int igs = gvec_shell_[ig];
+    //    ig_by_igs_[igs].push_back(ig);
+    //}
     
     // create split index
     spl_num_gvec_.split(num_gvec(), Platform::num_mpi_ranks(), Platform::mpi_rank());
@@ -102,12 +94,13 @@ void Reciprocal_lattice::init(int lmax)
     gvec_phase_factors_.set_dimensions(spl_num_gvec_.local_size(), num_atoms());
     gvec_phase_factors_.allocate();
     
+    // precompute phase factors
     for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
     {
         int ig = spl_num_gvec_[igloc];
         double xyz[3];
         double rtp[3];
-        get_coordinates<cartesian, reciprocal>(gvec(ig), xyz);
+        gvec_cart(ig, xyz);
         SHT::spherical_coordinates(xyz, rtp);
         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm_(0, igloc));
 
@@ -154,21 +147,6 @@ inline int Reciprocal_lattice::gvec_shell(int ig)
             return gvec_shell_[spl_num_gvec_[ig]];
             break;
         }
-    }
-}
-
-inline double Reciprocal_lattice::gvec_len(int ig)
-{
-    //assert(ig >= 0 && ig < (int)gvec_shell_.size());
-    if (ig < (int)gvec_shell_.size())
-    {
-        return gvec_shell_len_[gvec_shell_[ig]];
-    }
-    else
-    {
-        double vgc[3];
-        gvec_cart(ig, vgc);
-        return Utils::vector_length(vgc);
     }
 }
 
