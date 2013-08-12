@@ -18,13 +18,13 @@ namespace sirius
         f({\bf r}) = \sum_{{\bf G}} f({\bf G}) e^{i{\bf G}{\bf r}}
     \f]
 */
-template<typename T> class PeriodicFunction
+template<typename T> class Periodic_function
 { 
     protected:
 
-        PeriodicFunction(const PeriodicFunction<T>& src);
+        Periodic_function(const Periodic_function<T>& src);
 
-        PeriodicFunction<T>& operator=(const PeriodicFunction<T>& src);
+        Periodic_function<T>& operator=(const Periodic_function<T>& src);
 
     private:
         
@@ -50,7 +50,7 @@ template<typename T> class PeriodicFunction
     public:
 
         /// Constructor
-        PeriodicFunction(Global& parameters__, Argument arg0, Argument arg1, int num_gvec = 0) : 
+        Periodic_function(Global& parameters__, Argument arg0, Argument arg1, int num_gvec = 0) : 
             parameters_(parameters__)
         {
             f_mt_.set_dimensions(arg0.size(), arg1.size(), parameters_.num_atoms());
@@ -66,7 +66,7 @@ template<typename T> class PeriodicFunction
             f_pw_.allocate();
         }
 
-        ~PeriodicFunction()
+        ~Periodic_function()
         {
             for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++) delete f_mt_local_(ialoc);
         }
@@ -99,9 +99,16 @@ template<typename T> class PeriodicFunction
 
         void allocate(bool allocate_global) 
         {
-            // interstitial part is always a global array
-            f_it_.allocate();
-            set_local_it_ptr();
+            // allocate global array if interstial part requires plane-wave coefficients (need FFT buffer)
+            if (f_pw_.size(0) || allocate_global)
+            {
+                f_it_.allocate();
+                set_local_it_ptr();
+            }
+            else
+            {
+                f_it_local_.allocate();
+            }
 
             if (allocate_global)
             {
@@ -114,15 +121,6 @@ template<typename T> class PeriodicFunction
                     f_mt_local_(ialoc)->allocate();
             }
         }
-
-
-        //void deallocate(int flags = rlm_component | ylm_component | pw_component | it_component)
-        //{
-        //    if (flags & rlm_component) f_rlm_.deallocate();
-        //    if (flags & ylm_component) f_ylm_.deallocate();
-        //    if (flags & pw_component) f_pw_.deallocate();
-        //    if (flags & it_component) f_it_.deallocate();
-        //}
 
         void zero()
         {
@@ -178,7 +176,7 @@ template<typename T> class PeriodicFunction
        
         inline void sync()
         {
-            Timer t("sirius::PeriodicFunction::sync");
+            Timer t("sirius::Periodic_function::sync");
 
             if (f_it_.get_ptr() != NULL)
             {
@@ -192,22 +190,9 @@ template<typename T> class PeriodicFunction
                                     f_mt_.size(0) * f_mt_.size(1) * parameters_.spl_num_atoms().global_offset(), 
                                     f_mt_.size(0) * f_mt_.size(1) * parameters_.spl_num_atoms().local_size());
             }
-                                 
-
-            //for (int rank = 0; rank < Platform::num_mpi_ranks(); rank++)
-            //{
-            //    int offset = parameters_.spl_fft_size().global_index(0, rank);
-            //    Platform::bcast(&f_it_(offset), parameters_.spl_fft_size().local_size(), rank);
-            //}
-
-            //for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            //{
-            //    int rank = parameters_.spl_num_atoms().location(_splindex_rank_, ia);
-            //    Platform::bcast(&f_mt_(0, 0, ia), (int)f_mt_.size(0) * f_mt_.size(1), rank);
-            //}
         }
 
-        inline void add(PeriodicFunction<T>* g)
+        inline void add(Periodic_function<T>* g)
         {
             for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++)
                 f_it_local_(irloc) += g->f_it<local>(irloc);
@@ -316,7 +301,7 @@ template<typename T> class PeriodicFunction
 };
 
 template <typename T>
-T inner(Global& parameters_, PeriodicFunction<T>* f1, PeriodicFunction<T>* f2)
+T inner(Global& parameters_, Periodic_function<T>* f1, Periodic_function<T>* f2)
 {
     T result = 0.0;
 

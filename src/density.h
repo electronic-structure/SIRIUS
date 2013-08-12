@@ -12,9 +12,9 @@ class Density
         /// Pointer to effective potential 
         //Potential* potential_;
 
-        PeriodicFunction<double>* rho_;
+        Periodic_function<double>* rho_;
         
-        PeriodicFunction<double>* magnetization_[3];
+        Periodic_function<double>* magnetization_[3];
         
         std::vector< std::pair<int, int> > dmat_spins_;
 
@@ -62,7 +62,7 @@ class Density
        
         /// Add band contribution to the muffin-tin density
         void add_band_contribution_mt(Band* band, double weight, mdarray<complex16, 3>& fylm, 
-                                      std::vector<PeriodicFunction<double>*>& dens);
+                                      std::vector<Periodic_function<double>*>& dens);
 
     public:
 
@@ -97,17 +97,17 @@ class Density
         
         void load();
         
-        PeriodicFunction<double>* rho()
+        Periodic_function<double>* rho()
         {
             return rho_;
         }
         
-        PeriodicFunction<double>** magnetization()
+        Periodic_function<double>** magnetization()
         {
             return magnetization_;
         }
 
-        PeriodicFunction<double>* magnetization(int i)
+        Periodic_function<double>* magnetization(int i)
         {
             return magnetization_[i];
         }

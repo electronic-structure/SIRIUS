@@ -28,11 +28,11 @@ template <typename T> class periodic_function_mixer: public mixer<T>
 {
     private:
 
-        PeriodicFunction<T>* pf_;
+        Periodic_function<T>* pf_;
 
     public:
 
-        periodic_function_mixer(PeriodicFunction<T>* pf__, double beta__) : pf_(pf__)
+        periodic_function_mixer(Periodic_function<T>* pf__, double beta__) : pf_(pf__)
         {
             this->mixer_data_.set_dimensions((int)pf_->size(), 2);
             this->mixer_data_.allocate();

@@ -43,11 +43,13 @@ class Potential
         
         Global& parameters_;
 
-        PeriodicFunction<double>* effective_potential_;
+        Periodic_function<double>* effective_potential_;
         
-        PeriodicFunction<double>* effective_magnetic_field_[3];
+        Periodic_function<double>* effective_magnetic_field_[3];
  
-        PeriodicFunction<double>* coulomb_potential_;
+        Periodic_function<double>* coulomb_potential_;
+        Periodic_function<double>* xc_potential_;
+        Periodic_function<double>* xc_energy_density_;
         
         mdarray<double, 3> sbessel_mom_;
 
@@ -130,14 +132,14 @@ class Potential
             where n is the order of pseudo density.
 
         */
-        void poisson(PeriodicFunction<double>* rho, PeriodicFunction<double>* vh);
+        void poisson(Periodic_function<double>* rho, Periodic_function<double>* vh);
         
         /// Generate XC potential and energy density
-        void xc(PeriodicFunction<double>* rho, PeriodicFunction<double>* magnetization[3], 
-                PeriodicFunction<double>* vxc, PeriodicFunction<double>* bxc[3], PeriodicFunction<double>* exc);
+        void xc(Periodic_function<double>* rho, Periodic_function<double>* magnetization[3], 
+                Periodic_function<double>* vxc, Periodic_function<double>* bxc[3], Periodic_function<double>* exc);
         
         /// Generate effective potential and magnetic field from charge density and magnetization.
-        void generate_effective_potential(PeriodicFunction<double>* rho, PeriodicFunction<double>* magnetization[3]);
+        void generate_effective_potential(Periodic_function<double>* rho, Periodic_function<double>* magnetization[3]);
         
         void hdf5_read();
 
@@ -157,17 +159,17 @@ class Potential
 
         void check_potential_continuity_at_mt();
         
-        PeriodicFunction<double>* effective_potential()
+        Periodic_function<double>* effective_potential()
         {
             return effective_potential_;
         }
 
-        PeriodicFunction<double>** effective_magnetic_field()
+        Periodic_function<double>** effective_magnetic_field()
         {
             return effective_magnetic_field_;
         }
         
-        PeriodicFunction<double>* effective_magnetic_field(int i)
+        Periodic_function<double>* effective_magnetic_field(int i)
         {
             return effective_magnetic_field_[i];
         }

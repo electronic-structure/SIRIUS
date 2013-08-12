@@ -229,13 +229,13 @@ class K_point
         void set_fv_h_o_apw_lo(Atom_type* type, Atom* atom, int ia, int apw_offset_col, mdarray<complex16, 2>& alm, 
                                mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
 
-        void set_fv_h_o_it(PeriodicFunction<double>* effective_potential, 
+        void set_fv_h_o_it(Periodic_function<double>* effective_potential, 
                            mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
 
         void set_fv_h_o_lo_lo(mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
 
         template <processing_unit_t pu>
-        void set_fv_h_o_pw_lo(PeriodicFunction<double>* effective_potential, int num_ranks,
+        void set_fv_h_o_pw_lo(Periodic_function<double>* effective_potential, int num_ranks,
                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
 
         void solve_fv_evp_1stage(Band* band, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
@@ -251,7 +251,7 @@ class K_point
             \param [in] effective_potential Pointer to effective potential 
 
         */
-        void generate_fv_states(Band* band, PeriodicFunction<double>* effective_potential);
+        void generate_fv_states(Band* band, Periodic_function<double>* effective_potential);
 
         inline void copy_lo_blocks(const int apwlo_basis_size_row, const int num_gkvec_row, 
                                    const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
@@ -357,17 +357,17 @@ class K_point
 
         */
         template <processing_unit_t pu, basis_t basis>
-        void set_fv_h_o(PeriodicFunction<double>* effective_potential, int num_ranks,
+        void set_fv_h_o(Periodic_function<double>* effective_potential, int num_ranks,
                         mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
         
         /// Solve \f$ \hat H \psi = E \psi \f$ and find the eigen-states of the Hamiltonian
-        void find_eigen_states(Band* band, PeriodicFunction<double>* effective_potential, 
-                               PeriodicFunction<double>* effective_magnetic_field[3]);
+        void find_eigen_states(Band* band, Periodic_function<double>* effective_potential, 
+                               Periodic_function<double>* effective_magnetic_field[3]);
 
         template <processing_unit_t pu, basis_t basis>
         void ibs_force(Band* band, mdarray<double, 2>& ffac, mdarray<double, 2>& force);
 
-        PeriodicFunction<complex16>* spinor_wave_function_component(Band* band, int lmax, int ispn, int j);
+        Periodic_function<complex16>* spinor_wave_function_component(Band* band, int lmax, int ispn, int j);
 
         void spinor_wave_function_component_mt(Band* band, int lmax, int ispn, int jloc, mt_functions<complex16>& psilm);
         

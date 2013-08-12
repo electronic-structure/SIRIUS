@@ -75,7 +75,7 @@ template<> void K_point::generate_matching_coefficients_l<2>(int ia, int iat, At
     }
 }
 
-template<> void K_point::set_fv_h_o<cpu, apwlo>(PeriodicFunction<double>* effective_potential, int num_ranks,
+template<> void K_point::set_fv_h_o<cpu, apwlo>(Periodic_function<double>* effective_potential, int num_ranks,
                                                mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
     Timer t("sirius::K_point::set_fv_h_o");
@@ -382,7 +382,7 @@ template<> void K_point::ibs_force<cpu, apwlo>(Band* band, mdarray<double, 2>& f
     }
 }
 
-template<> void K_point::set_fv_h_o_pw_lo<cpu>(PeriodicFunction<double>* effective_potential, int num_ranks, 
+template<> void K_point::set_fv_h_o_pw_lo<cpu>(Periodic_function<double>* effective_potential, int num_ranks, 
                                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
     Timer t("sirius::K_point::set_fv_h_o_pw_lo");
@@ -637,7 +637,7 @@ template<> void K_point::set_fv_h_o_pw_lo<cpu>(PeriodicFunction<double>* effecti
     }
 }
 
-template<> void K_point::set_fv_h_o<cpu, pwlo>(PeriodicFunction<double>* effective_potential, int num_ranks,
+template<> void K_point::set_fv_h_o<cpu, pwlo>(Periodic_function<double>* effective_potential, int num_ranks,
                                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
     Timer t("sirius::K_point::set_fv_h_o");
@@ -669,7 +669,7 @@ template<> void K_point::set_fv_h_o<cpu, pwlo>(PeriodicFunction<double>* effecti
 
 
 #ifdef _GPU_
-template<> void K_point::set_fv_h_o<gpu, apwlo>(PeriodicFunction<double>* effective_potential, int num_ranks,
+template<> void K_point::set_fv_h_o<gpu, apwlo>(Periodic_function<double>* effective_potential, int num_ranks,
                                                mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 
 {
@@ -734,7 +734,7 @@ template<> void K_point::set_fv_h_o<gpu, apwlo>(PeriodicFunction<double>* effect
     halm.deallocate();
 }
 
-template<> void K_point::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effective_potential, int num_ranks, 
+template<> void K_point::set_fv_h_o_pw_lo<gpu>(Periodic_function<double>* effective_potential, int num_ranks, 
                                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
     Timer t("sirius::K_point::set_fv_h_o_pw_lo");
@@ -1047,7 +1047,7 @@ template<> void K_point::set_fv_h_o_pw_lo<gpu>(PeriodicFunction<double>* effecti
     //** }
 }
 
-template<> void K_point::set_fv_h_o<gpu, pwlo>(PeriodicFunction<double>* effective_potential, int num_ranks,
+template<> void K_point::set_fv_h_o<gpu, pwlo>(Periodic_function<double>* effective_potential, int num_ranks,
                                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
     Timer t("sirius::K_point::set_fv_h_o");
@@ -1391,7 +1391,7 @@ void K_point::set_fv_h_o_apw_lo(Atom_type* type, Atom* atom, int ia, int apw_off
     }
 }
 
-void K_point::set_fv_h_o_it(PeriodicFunction<double>* effective_potential, 
+void K_point::set_fv_h_o_it(Periodic_function<double>* effective_potential, 
                            mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
     Timer t("sirius::K_point::set_fv_h_o_it");
@@ -1585,7 +1585,7 @@ void K_point::solve_fv_evp_2stage(mdarray<complex16, 2>& h, mdarray<complex16, 2
                     fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
 }
 
-void K_point::generate_fv_states(Band* band, PeriodicFunction<double>* effective_potential)
+void K_point::generate_fv_states(Band* band, Periodic_function<double>* effective_potential)
 {
     Timer t("sirius::K_point::generate_fv_states");
 
@@ -2116,8 +2116,8 @@ void K_point::distribute_block_cyclic(Band* band)
         if (apwlo_basis_descriptors_col_[i].igk != -1) num_gkvec_col_++;
 }
 
-void K_point::find_eigen_states(Band* band, PeriodicFunction<double>* effective_potential, 
-                                PeriodicFunction<double>* effective_magnetic_field[3])
+void K_point::find_eigen_states(Band* band, Periodic_function<double>* effective_potential, 
+                                Periodic_function<double>* effective_magnetic_field[3])
 {
     assert(band != NULL);
     
@@ -2145,14 +2145,14 @@ void K_point::find_eigen_states(Band* band, PeriodicFunction<double>* effective_
         test_spinor_wave_functions(i); */
 }
 
-//PeriodicFunction<complex16>* K_point::spinor_wave_function_component(Band* band, int lmax, int ispn, int jloc)
+//Periodic_function<complex16>* K_point::spinor_wave_function_component(Band* band, int lmax, int ispn, int jloc)
 //{
 //    Timer t("sirius::K_point::spinor_wave_function_component");
 //
 //    int lmmax = Utils::lmmax_by_lmax(lmax);
 //
-//    PeriodicFunction<complex16, index_order>* func = 
-//        new PeriodicFunction<complex16, index_order>(parameters_, lmax);
+//    Periodic_function<complex16, index_order>* func = 
+//        new Periodic_function<complex16, index_order>(parameters_, lmax);
 //    func->allocate(ylm_component | it_component);
 //    func->zero();
 //    

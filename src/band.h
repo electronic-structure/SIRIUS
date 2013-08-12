@@ -46,7 +46,7 @@ class Band
         
         // assumes that hpsi is zero on input
         void apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size, int num_gkvec, int* fft_index, 
-                                  PeriodicFunction<double>* effective_magnetic_field[3], mdarray<complex16, 3>& hpsi);
+                                  Periodic_function<double>* effective_magnetic_field[3], mdarray<complex16, 3>& hpsi);
 
         /// Apply SO correction to the scalar wave functions
         /** Raising lowering operators:
@@ -71,7 +71,7 @@ class Band
 
         void solve_sv(Global& parameters, int mtgk_size, int num_gkvec, int* fft_index, double* evalfv, 
                       mdarray<complex16, 2>& fv_states_row, mdarray<complex16, 2>& fv_states_col, 
-                      PeriodicFunction<double>* effective_magnetic_field[3], double* band_energies, 
+                      Periodic_function<double>* effective_magnetic_field[3], double* band_energies, 
                       mdarray<complex16, 2>& sv_eigen_vectors);
         
         bool need_sv()

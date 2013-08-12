@@ -1,12 +1,12 @@
 
 Density::Density(Global& parameters__) : parameters_(parameters__)
 {
-    rho_ = new PeriodicFunction<double>(parameters_, Argument(arg_lm, parameters_.lmmax_rho()), 
+    rho_ = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_rho()), 
                                         Argument(arg_radial, parameters_.max_num_mt_points()), parameters_.num_gvec());
 
     for (int i = 0; i < parameters_.num_mag_dims(); i++)
     {
-        magnetization_[i] = new PeriodicFunction<double>(parameters_, Argument(arg_lm, parameters_.lmmax_rho()), 
+        magnetization_[i] = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_rho()), 
                                                          Argument(arg_radial, parameters_.max_num_mt_points()));
     }
 
@@ -643,7 +643,7 @@ void Density::generate_valence_density_it(K_set& ks)
 }
 
 //void Density::add_band_contribution_mt(Band* band, double weight, mdarray<complex16, 3>& fylm, 
-//                                       std::vector<PeriodicFunction<double, radial_angular>*>& dens)
+//                                       std::vector<Periodic_function<double, radial_angular>*>& dens)
 //{
 //    splindex<block> spl_num_atoms(parameters_.num_atoms(), band->num_ranks_row(), band->rank_row());
 //
@@ -676,10 +676,10 @@ void Density::generate_valence_density_it(K_set& ks)
 //    int lmmax = Utils::lmmax_by_lmax(lmax);
 //    Band* band = ks.band();
 //    
-//    std::vector<PeriodicFunction<double, radial_angular>*> dens(1 + parameters_.num_mag_dims());
+//    std::vector<Periodic_function<double, radial_angular>*> dens(1 + parameters_.num_mag_dims());
 //    for (int i = 0; i < (int)dens.size(); i++)
 //    {
-//        dens[i] = new PeriodicFunction<double, radial_angular>(parameters_, parameters_.lmax_rho());
+//        dens[i] = new Periodic_function<double, radial_angular>(parameters_, parameters_.lmax_rho());
 //        dens[i]->allocate(rlm_component);
 //        dens[i]->zero();
 //    }
