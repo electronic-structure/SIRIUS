@@ -164,6 +164,11 @@ class Potential
             return effective_potential_;
         }
 
+        mt_function<double>* effective_potential_mt(int ialoc)
+        {
+            return effective_potential_->f_mt(ialoc);
+        }
+
         Periodic_function<double>** effective_magnetic_field()
         {
             return effective_magnetic_field_;
@@ -174,16 +179,26 @@ class Potential
             return effective_magnetic_field_[i];
         }
 
+        Periodic_function<double>* coulomb_potential()
+        {
+            return coulomb_potential_;
+        }
+        
         mt_function<double>* coulomb_potential_mt(int ialoc)
         {
             return coulomb_potential_->f_mt(ialoc);
         }
         
-        mt_function<double>* effective_potential_mt(int ialoc)
+        Periodic_function<double>* xc_potential()
         {
-            return effective_potential_->f_mt(ialoc);
+            return xc_potential_;
         }
 
+        Periodic_function<double>* xc_energy_density()
+        {
+            return xc_energy_density_;
+        }
+        
         void allocate()
         {
             effective_potential_->allocate(true);

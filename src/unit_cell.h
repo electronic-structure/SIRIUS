@@ -28,6 +28,12 @@ class Unit_cell
         /// list of atoms
         std::vector<Atom*> atoms_;
        
+        /// split index of atoms
+        splindex<block> spl_num_atoms_;
+        
+        /// split index of atom symmetry classes 
+        splindex<block> spl_num_atom_symmetry_classes_;
+
         /// Bravais lattice vectors in row order
         double lattice_vectors_[3][3];
         
@@ -110,10 +116,29 @@ class Unit_cell
 
     protected:
 
+        /// Initialize the unit cell data
+        /** \todo This must be redesigned because currently initialization of the Unit_cell (which is a part of Global 
+                  class) depends on the "to be determined" parameters such as num_mag_dims. Probably Unit_cell must 
+                  become a separate object.
+        */
         void init(int lmax_apw, int lmax_pot, int num_mag_dims, int init_radial_grid__, int init_aw_descriptors__);
 
+        /// Update the symmetry information.
+        /** When the unit cell is initialized for the first time, or when the atoms are moved, several things
+            must be recomputed:
+              1. New atom positions may lead to a new symmetry, which can give a different number of atom 
+                 symmetry classes. Symmetry information must be updated.
+              2. New atom positions can lead to new MT radii if they are determined automatically. MT radii and 
+                 radial meshes must be updated. 
+            
+            Becasue of (1) the G and G+k phase factors must be updated. Because of (2) Bessel funcion moments
+            and G+k APW basis must be also updated. Because of (1 and 2) step function must be updated.
+
+            \todo Think how to implement this dependency in a reliable way without any handwork.
+        */
         void update_symmetry();
 
+        /// Clear the unit cell data
         void clear();
         
     public:
@@ -127,18 +152,21 @@ class Unit_cell
         /// Add new atom type to the list of atom types.
         void add_atom_type(int atom_type_id, const std::string label);
         
+        /// Add new atom to the list of atom types.
         void add_atom(int atom_type_id, double* position, double* vector_field);
         
+        /// Print basic info
         void print_info();
 
+        /// Write structure to CIF file
         void write_cif();
         
         /// Set lattice vectors.
         /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the
-            unit cell volume.
-        */
+            unit cell volume. */
         void set_lattice_vectors(double* a1, double* a2, double* a3);
-        
+       
+        /// Find the cluster of nearest neighbours around each atom
         void find_nearest_neighbours(double cluster_radius);
 
         bool is_point_in_mt(double vc[3], int& ja, int& jr, double& dr, double tp[2]);
@@ -311,6 +339,26 @@ class Unit_cell
         {
             equivalent_atoms_.resize(num_atoms());
             memcpy(&equivalent_atoms_[0], equivalent_atoms__, num_atoms() * sizeof(int));
+        }
+        
+        inline splindex<block>& spl_num_atoms()
+        {
+            return spl_num_atoms_;
+        }
+
+        inline int spl_num_atoms(int i)
+        {
+            return spl_num_atoms_[i];
+        }
+        
+        inline splindex<block>& spl_num_atom_symmetry_classes()
+        {
+            return spl_num_atom_symmetry_classes_;
+        }
+
+        inline int spl_num_atom_symmetry_classes(int i)
+        {
+            return spl_num_atom_symmetry_classes_[i];
         }
 };
 

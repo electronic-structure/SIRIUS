@@ -68,10 +68,6 @@ class Global : public Step_function
 
         int cyclic_block_size_;
         
-        splindex<block> spl_num_atoms_;
-        
-        splindex<block> spl_num_atom_symmetry_classes_;
-
         timeval start_time_;
 
         linalg_t eigen_value_solver_; 
@@ -386,26 +382,6 @@ class Global : public Step_function
             return initialized_;
         }
 
-        inline splindex<block>& spl_num_atoms()
-        {
-            return spl_num_atoms_;
-        }
-
-        inline int spl_num_atoms(int i)
-        {
-            return spl_num_atoms_[i];
-        }
-        
-        inline splindex<block>& spl_num_atom_symmetry_classes()
-        {
-            return spl_num_atom_symmetry_classes_;
-        }
-
-        inline int spl_num_atom_symmetry_classes(int i)
-        {
-            return spl_num_atom_symmetry_classes_[i];
-        }
-
         inline linalg_t eigen_value_solver()
         {
             return eigen_value_solver_;
@@ -462,11 +438,6 @@ class Global : public Step_function
 
             num_bands_ = num_fv_states_ * num_spins_;
 
-            spl_num_atoms_.split(num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
-            
-            spl_num_atom_symmetry_classes_.split(num_atom_symmetry_classes(), Platform::num_mpi_ranks(), 
-                                                 Platform::mpi_rank());
-            
             initialized_ = true;
         }
 

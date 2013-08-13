@@ -347,6 +347,10 @@ void Unit_cell::init(int lmax_apw, int lmax_pot, int num_mag_dims, int init_radi
 
     update_symmetry();
     assert(num_atom_symmetry_classes() != 0);
+            
+    spl_num_atoms_.split(num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+            
+    spl_num_atom_symmetry_classes_.split(num_atom_symmetry_classes(), Platform::num_mpi_ranks(), Platform::mpi_rank());
 }
 
 void Unit_cell::update_symmetry()
