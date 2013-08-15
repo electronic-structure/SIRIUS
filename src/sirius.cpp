@@ -411,9 +411,9 @@ void FORTRAN(sirius_platform_initialize)(int32_t* call_mpi_init_)
 }
 
 /// Initialize the global variables
-void FORTRAN(sirius_global_initialize)(int32_t* init_radial_grid, int32_t* init_aw_descriptors)
+void FORTRAN(sirius_global_initialize)(int32_t* init_aw_descriptors)
 {
-    global_parameters.initialize(*init_radial_grid, *init_aw_descriptors);
+    global_parameters.initialize(*init_aw_descriptors);
 }
 
 void FORTRAN(sirius_potential_initialize)(void)

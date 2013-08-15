@@ -446,6 +446,8 @@ void Atom_symmetry_class::transform_radial_functions(bool ort_lo, bool ort_aw)
 
 void Atom_symmetry_class::initialize()
 {
+    if (!atom_type_->initialized()) error(__FILE__, __LINE__, "Atom type is not initialized");
+
     aw_surface_derivatives_.set_dimensions(atom_type_->max_aw_order(), atom_type_->num_aw_descriptors());
     aw_surface_derivatives_.allocate();
 

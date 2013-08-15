@@ -136,6 +136,12 @@ void Unit_cell::add_atom(int atom_type_id, double* position, double* vector_fiel
     atoms_.push_back(new Atom(atom_type_by_id(atom_type_id), position, vector_field));
 }
 
+void Unit_cell::add_atom(int atom_type_id, double* position)
+{
+    double vector_field[] = {0, 0, 0};
+    add_atom(atom_type_id, position, vector_field);
+}
+
 void Unit_cell::get_symmetry()
 {
     Timer t("sirius::UnitCell::get_symmetry");
@@ -200,71 +206,81 @@ void Unit_cell::get_symmetry()
             }
         }
     }
+    
+    assert(num_atom_symmetry_classes() != 0);
 }
 
-void Unit_cell::find_mt_radii()
+void Unit_cell::find_mt_radii(std::vector<double>& Rmt)
 {
-    // TODO: update documentation
-
     if (nearest_neighbours_.size() == 0) error(__FILE__, __LINE__, "array of nearest neighbours is empty");
 
     // initialize Rmt to huge value
-    std::vector<double> rmt(num_atom_types(), 1e10);
+    Rmt = std::vector<double>(num_atom_types(), 1e10);
      
     for (int ia = 0; ia < num_atoms(); ia++)
     {
         int id1 = atom(ia)->type_id();
-        if (nearest_neighbours_[ia].size() <= 1) // first atom is always the central one itself
+        if (nearest_neighbours_[ia].size() > 1)
         {
-            std::stringstream s;
-            s << "array of nearest neighbours for atom " << ia << " is empty";
-            error(__FILE__, __LINE__, s);
+            int ja = nearest_neighbours_[ia][1].atom_id;
+            int id2 = atom(ja)->type_id();
+            double dist = nearest_neighbours_[ia][1].distance;
+            
+            // don't allow spheres to touch: take a smaller value than half a distance
+            double R = 0.95 * (dist / 2);
+
+            // take minimal R for the given atom type
+            Rmt[atom_type_index_by_id(id1)] = std::min(R, Rmt[atom_type_index_by_id(id1)]);
+            Rmt[atom_type_index_by_id(id2)] = std::min(R, Rmt[atom_type_index_by_id(id2)]);
         }
-
-        int ja = nearest_neighbours_[ia][1].atom_id;
-        int id2 = atom(ja)->type_id();
-        double dist = nearest_neighbours_[ia][1].distance;
-        
-        // take a little bit smaller value than half a distance
-        double R = 0.95 * (dist / 2);
-
-        // take minimal R for the given atom type
-        rmt[atom_type_index_by_id(id1)] = std::min(R, rmt[atom_type_index_by_id(id1)]);
-        rmt[atom_type_index_by_id(id2)] = std::min(R, rmt[atom_type_index_by_id(id2)]);
-    }
-
-    std::vector<bool> can_scale(num_atom_types(), true);
-    for (int ia = 0; ia < num_atoms(); ia++)
-    {
-        int id1 = atom(ia)->type_id();
-        int ja = nearest_neighbours_[ia][1].atom_id;
-        int id2 = atom(ja)->type_id();
-        double dist = nearest_neighbours_[ia][1].distance;
-        
-        if (rmt[atom_type_index_by_id(id1)] + rmt[atom_type_index_by_id(id2)] > dist * 0.94)
+        else
         {
-            can_scale[atom_type_index_by_id(id1)] = false;
-            can_scale[atom_type_index_by_id(id2)] = false;
+            Rmt[atom_type_index_by_id(id1)] = std::min(3.0, Rmt[atom_type_index_by_id(id1)]);
         }
     }
 
-    for (int ia = 0; ia < num_atoms(); ia++)
+    // Suppose we have 3 different atoms. First we determint Rmt between 1st and 2nd atoms, then we determine Rmt 
+    // between (let's say) 2nd and 3rd atoms and at this point we reduce the Rmt of 2nd atom. This means that the 
+    // 1st atom gets a possibility to expand
+    bool inflate = true;
+
+    if (inflate)
     {
-        int id1 = atom(ia)->type_id();
-        int ja = nearest_neighbours_[ia][1].atom_id;
-        int id2 = atom(ja)->type_id();
-        double dist = nearest_neighbours_[ia][1].distance;
-        
-        if (can_scale[atom_type_index_by_id(id1)])
-            rmt[atom_type_index_by_id(id1)] = 0.95 * (dist - rmt[atom_type_index_by_id(id2)]);
+        std::vector<bool> scale_Rmt(num_atom_types(), true);
+        for (int ia = 0; ia < num_atoms(); ia++)
+        {
+            int id1 = atom(ia)->type_id();
+
+            if (nearest_neighbours_[ia].size() > 1)
+            {
+                int ja = nearest_neighbours_[ia][1].atom_id;
+                int id2 = atom(ja)->type_id();
+                double dist = nearest_neighbours_[ia][1].distance;
+            
+                if (Rmt[atom_type_index_by_id(id1)] + Rmt[atom_type_index_by_id(id2)] > dist * 0.94)
+                {
+                    scale_Rmt[atom_type_index_by_id(id1)] = false;
+                    scale_Rmt[atom_type_index_by_id(id2)] = false;
+                }
+            }
+        }
+
+        for (int ia = 0; ia < num_atoms(); ia++)
+        {
+            int id1 = atom(ia)->type_id();
+            if (nearest_neighbours_[ia].size() > 1)
+            {
+                int ja = nearest_neighbours_[ia][1].atom_id;
+                int id2 = atom(ja)->type_id();
+                double dist = nearest_neighbours_[ia][1].distance;
+                
+                if (scale_Rmt[atom_type_index_by_id(id1)])
+                    Rmt[atom_type_index_by_id(id1)] = 0.95 * (dist - Rmt[atom_type_index_by_id(id2)]);
+            }
+        }
     }
     
-    for (int i = 0; i < num_atom_types(); i++)
-    {
-        int id = atom_type(i)->id();
-        atom_type_by_id(id)->set_mt_radius(std::min(rmt[i], 3.0));
-        atom_type_by_id(id)->init_radial_grid();
-    }
+    for (int i = 0; i < num_atom_types(); i++) Rmt[i] = std::min(Rmt[i], 3.0);
 }
 
 bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
@@ -295,16 +311,17 @@ bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
     return false;
 }
 
-void Unit_cell::init(int lmax_apw, int lmax_pot, int num_mag_dims, int init_radial_grid__, int init_aw_descriptors__)
+void Unit_cell::init(int lmax_apw, int lmax_pot, int num_mag_dims, int init_aw_descriptors__)
 {
     // =====================
     // initialize atom types
     // =====================
+    max_num_mt_points_ = 0;
     for (int i = 0; i < num_atom_types(); i++)
     {
-         if (init_radial_grid__) atom_type(i)->init_radial_grid();
          if (init_aw_descriptors__) atom_type(i)->init_aw_descriptors(lmax_apw);
          atom_type(i)->init(lmax_apw);
+         max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(i)->num_mt_points());
     }
     
     // ================
@@ -345,20 +362,29 @@ void Unit_cell::init(int lmax_apw, int lmax_pot, int num_mag_dims, int init_radi
     assert(num_atoms() != 0);
     assert(num_atom_types() != 0);
 
-    update_symmetry();
-    assert(num_atom_symmetry_classes() != 0);
+    update();
             
     spl_num_atoms_.split(num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
             
     spl_num_atom_symmetry_classes_.split(num_atom_symmetry_classes(), Platform::num_mpi_ranks(), Platform::mpi_rank());
 }
 
-void Unit_cell::update_symmetry()
+void Unit_cell::update()
 {
     find_nearest_neighbours(25.0);
-    
-    if (auto_rmt() != 0) find_mt_radii();
 
+    // find new MT radii and initialize radial grid 
+    if (auto_rmt())
+    {
+        std::vector<double> Rmt;
+        find_mt_radii(Rmt);
+        for (int iat = 0; iat < num_atom_types(); iat++) 
+        {
+            atom_type(iat)->set_mt_radius(Rmt[iat]);
+            atom_type(iat)->init_radial_grid();
+        }
+    }
+    
     int ia, ja;
     if (check_mt_overlap(ia, ja))
     {
@@ -369,19 +395,15 @@ void Unit_cell::update_symmetry()
         error(__FILE__, __LINE__, s, fatal_err);
     }
     
-    get_symmetry();
-
-    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) atom_symmetry_class(ic)->initialize();
-    
-    max_num_mt_points_ = 0;
     min_mt_radius_ = 1e100;
     max_mt_radius_ = 0;
     for (int i = 0; i < num_atom_types(); i++)
     {
-         max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(i)->num_mt_points());
          min_mt_radius_ = std::min(min_mt_radius_, atom_type(i)->mt_radius());
          max_mt_radius_ = std::max(max_mt_radius_, atom_type(i)->mt_radius());
     }
+    
+    get_symmetry();
 }
 
 void Unit_cell::clear()
@@ -472,6 +494,21 @@ void Unit_cell::print_info()
     printf("international symbol : %s\n", spg_dataset_->international_symbol);
     printf("Hall symbol          : %s\n", spg_dataset_->hall_symbol);
     printf("number of operations : %i\n", spg_dataset_->n_operations);
+    printf("symmetry operations  : \n");
+    for (int isym = 0; isym < spg_dataset_->n_operations; isym++)
+    {
+        printf("isym : %i\n", isym);
+        printf("R : ");
+        for (int i = 0; i < 3; i++)
+        {
+            if (i) printf("    ");
+            for (int j = 0; j < 3; j++) printf("%3i ",spg_dataset_->rotations[isym][i][j]);
+            printf("\n");
+        }
+        printf("T : ");
+        for (int j = 0; j < 3; j++) printf("%f ",spg_dataset_->translations[isym][j]);
+        printf("\n");
+    }
     
     printf("\n");
     printf("total nuclear charge        : %i\n", total_nuclear_charge_);
@@ -639,7 +676,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
             {
                 int ja = nearest_neighbours_[ia][i].atom_id;
                 fprintf(fout, "%4s (%4i)   %12.6f\n", atom(ja)->type()->label().c_str(), ja, 
-                                         nearest_neighbours_[ia][i].distance);
+                                                      nearest_neighbours_[ia][i].distance);
             }
             fprintf(fout, "\n");
         }

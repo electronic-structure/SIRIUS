@@ -1,13 +1,14 @@
 Atom_type::Atom_type(const char* symbol__, const char* name__, int zn__, double mass__, 
-                   std::vector<atomic_level_descriptor>& levels__) : 
+                     std::vector<atomic_level_descriptor>& levels__) : 
     symbol_(std::string(symbol__)), name_(std::string(name__)), zn_(zn__), mass_(mass__), mt_radius_(2.0), 
-    num_mt_points_(2000 + zn__ * 50), atomic_levels_(levels__)
+    num_mt_points_(2000 + zn__ * 50), atomic_levels_(levels__), initialized_(false)
                                                  
 {
     radial_grid_.init(pow3_grid, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
 }
 
-Atom_type::Atom_type(int id__, const std::string label__) : id_(id__), label_(label__), zn_(0), num_mt_points_(0)
+Atom_type::Atom_type(int id__, const std::string label__) : 
+    id_(id__), label_(label__), zn_(0), num_mt_points_(0), initialized_(false)
 {
     if (Utils::file_exists(label_ + ".json")) 
     {
@@ -43,8 +44,11 @@ Atom_type::Atom_type(int id__, const std::string label__) : id_(id__), label_(la
 
 void Atom_type::init(int lmax_apw)
 {
+    if (initialized_) error(__FILE__, __LINE__, "can't initialize twice");
     if (zn_ == 0) error(__FILE__, __LINE__, "zero atom charge");
-    
+   
+    assert((int)aw_descriptors_.size() == (lmax_apw + 1));
+
     max_aw_order_ = 0;
     for (int l = 0; l <= lmax_apw; l++) max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
     
@@ -63,6 +67,8 @@ void Atom_type::init(int lmax_apw)
     }
 
     num_valence_electrons_ = zn_ - num_core_electrons_;
+
+    initialized_ = true;
 }
 
 void Atom_type::init_radial_grid()

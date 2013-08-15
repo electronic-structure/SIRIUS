@@ -12,8 +12,12 @@ struct nearest_neighbour_descriptor
     double distance;
 };
 
+class Unit_cell_test;
+
 class Unit_cell
 {
+    friend class Unit_cell_test;
+
     private:
         
         /// mapping between atom type id and an ordered index in the range [0, N_{types} - 1]
@@ -109,7 +113,7 @@ class Unit_cell
         /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
             bethween nearest atoms. Initial values of the muffin-tin radii (provided in the input file) 
             are ignored. */
-        void find_mt_radii();
+        void find_mt_radii(std::vector<double>& Rmt);
         
         /// Check if MT spheres overlap
         bool check_mt_overlap(int& ia__, int& ja__);
@@ -117,13 +121,25 @@ class Unit_cell
     protected:
 
         /// Initialize the unit cell data
-        /** \todo This must be redesigned because currently initialization of the Unit_cell (which is a part of Global 
+        /** Several things must be done during this phase:
+              1. Compute number of electrons
+              2. Compute MT basis function indices
+              3. [if needed] Scale MT radii
+              4. Check MT overlap 
+              5. Create radial grid for each atom type
+              6. Find symmetry and assign symmetry class to each atom
+              7. Create split indices for atoms and atom classes
+
+            Initialization must be broken into two parts: one is called once, and the second one is called
+            each time the atoms change the position.
+
+            \todo This must be redesigned because currently initialization of the Unit_cell (which is a part of Global 
                   class) depends on the "to be determined" parameters such as num_mag_dims. Probably Unit_cell must 
                   become a separate object.
         */
-        void init(int lmax_apw, int lmax_pot, int num_mag_dims, int init_radial_grid__, int init_aw_descriptors__);
+        void init(int lmax_apw, int lmax_pot, int num_mag_dims, int init_aw_descriptors__);
 
-        /// Update the symmetry information.
+        /// Update the unit cell after moving the atoms.
         /** When the unit cell is initialized for the first time, or when the atoms are moved, several things
             must be recomputed:
               1. New atom positions may lead to a new symmetry, which can give a different number of atom 
@@ -136,7 +152,7 @@ class Unit_cell
 
             \todo Think how to implement this dependency in a reliable way without any handwork.
         */
-        void update_symmetry();
+        void update();
 
         /// Clear the unit cell data
         void clear();
@@ -154,6 +170,9 @@ class Unit_cell
         
         /// Add new atom to the list of atom types.
         void add_atom(int atom_type_id, double* position, double* vector_field);
+
+        /// Add new atom without vector field to the list of atom types
+        void add_atom(int atom_type_id, double* position);
         
         /// Print basic info
         void print_info();
@@ -364,5 +383,48 @@ class Unit_cell
 
 #include "unit_cell.hpp"
 
+class Unit_cell_test
+{
+    public:
+
+        Unit_cell_test()
+        {
+            Unit_cell unit_cell;
+            
+            double a0[] = {0.5, 0.5, 0.0};
+            double a1[] = {0.5, 0.0, 0.5};
+            double a2[] = {0.0, 0.5, 0.5};
+            unit_cell.set_lattice_vectors(&a0[0], &a1[0], &a2[0]);
+            
+            unit_cell.set_auto_rmt(1);
+
+            unit_cell.add_atom_type(1, "C");
+
+            {
+            double pos0[] = {0, 0, 0};
+            double pos1[] = {0.25, 0.25, 0.25};
+            unit_cell.add_atom(1, pos0);
+            unit_cell.add_atom(1, pos1);
+            }
+
+            unit_cell.init(10, 10, 0, 1);
+            unit_cell.print_info();
+
+            {
+            double pos1[] = {0.251, 0.251, 0.251};
+            unit_cell.atom(1)->set_position(pos1);
+            }
+            unit_cell.update();
+            unit_cell.print_info();
+            
+            {
+            double pos1[] = {0.251, 0.252, 0.253};
+            unit_cell.atom(1)->set_position(pos1);
+            }
+            unit_cell.update();
+            unit_cell.print_info();
+        }
+};
+    
 };
 

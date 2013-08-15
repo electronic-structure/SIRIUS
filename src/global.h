@@ -393,7 +393,7 @@ class Global : public Step_function
         }
 
         /// Initialize the global variables
-        void initialize(int init_radial_grid__, int init_aw_descriptors__)
+        void initialize(int init_aw_descriptors__)
         {
             if (initialized_) error(__FILE__, __LINE__, "Can't initialize global variables more than once.");
 
@@ -408,7 +408,7 @@ class Global : public Step_function
             lmax_ = std::max(std::max(std::max(lmax_pot_, lmax_rho_), lmax_apw_), lmax_pw_); 
 
             // initialize variables, related to the unit cell
-            Unit_cell::init(lmax_apw(), lmax_pot(), num_mag_dims(), init_radial_grid__, init_aw_descriptors__);
+            Unit_cell::init(lmax_apw(), lmax_pot(), num_mag_dims(), init_aw_descriptors__);
            
             Reciprocal_lattice::init(lmax());
             Step_function::init();
@@ -802,7 +802,7 @@ class Global : public Step_function
 
         void update()
         {
-            Unit_cell::update_symmetry();
+            Unit_cell::update();
             Reciprocal_lattice::clear();
             Reciprocal_lattice::init(lmax());
             Step_function::init();
