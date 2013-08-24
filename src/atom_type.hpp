@@ -389,7 +389,7 @@ void Atom_type::print_info()
     printf("\n");
 }
         
-void Atom_type::read_input_core(JsonTree& parser)
+void Atom_type::read_input_core(JSON_tree& parser)
 {
     std::string core_str;
     parser["core"] >> core_str;
@@ -458,7 +458,7 @@ void Atom_type::read_input_core(JsonTree& parser)
     }
 }
 
-void Atom_type::read_input_aw(JsonTree& parser)
+void Atom_type::read_input_aw(JSON_tree& parser)
 {
     radial_solution_descriptor rsd;
     radial_solution_descriptor_set rsd_set;
@@ -490,7 +490,7 @@ void Atom_type::read_input_aw(JsonTree& parser)
     }
 }
     
-void Atom_type::read_input_lo(JsonTree& parser)
+void Atom_type::read_input_lo(JSON_tree& parser)
 {
     radial_solution_descriptor rsd;
     radial_solution_descriptor_set rsd_set;
@@ -553,7 +553,7 @@ void Atom_type::read_input_lo(JsonTree& parser)
 void Atom_type::read_input()
 {
     std::string fname = label_ + std::string(".json");
-    JsonTree parser(fname);
+    JSON_tree parser(fname);
     parser["name"] >> name_;
     parser["symbol"] >> symbol_;
     parser["mass"] >> mass_;

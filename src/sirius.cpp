@@ -603,7 +603,7 @@ void FORTRAN(sirius_bands)(void)
     int num_steps = 0;
     if (Utils::file_exists(fname))
     {
-        JsonTree parser(fname);
+        JSON_tree parser(fname);
         if (!parser["bz_path"].empty())
         {
             num_steps = parser["bz_path"]["num_steps"].get<int>();

@@ -85,7 +85,7 @@ class Global : public Step_function
 
             if (Utils::file_exists(fname))
             {
-                JsonTree parser(fname);
+                JSON_tree parser(fname);
                 parser["mpi_grid_dims"] >> mpi_grid_dims_; 
                 cyclic_block_size_ = parser["cyclic_block_size"].get<int>(cyclic_block_size_);
                 num_fft_threads = parser["num_fft_threads"].get<int>(num_fft_threads);

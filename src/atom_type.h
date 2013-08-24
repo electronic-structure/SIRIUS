@@ -411,11 +411,11 @@ class Atom_type
         // forbid assignment operator
         Atom_type& operator=(const Atom_type& src);
         
-        void read_input_core(JsonTree& parser);
+        void read_input_core(JSON_tree& parser);
 
-        void read_input_aw(JsonTree& parser);
+        void read_input_aw(JSON_tree& parser);
 
-        void read_input_lo(JsonTree& parser);
+        void read_input_lo(JSON_tree& parser);
 
         void read_input();
     
