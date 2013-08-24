@@ -1,7 +1,8 @@
 #ifndef __JSON_TREE_H__
 #define __JSON_TREE_H__
 
-template<typename T> class json_value_parser 
+template<typename T> 
+class JSON_value_parser 
 {
     private:
     
@@ -11,7 +12,7 @@ template<typename T> class json_value_parser
         
     public:
         
-        json_value_parser(const JSONNode& value, T& val);
+        JSON_value_parser(const JSONNode& value, T& val);
         
         const std::string& type_name()
         {
@@ -24,7 +25,7 @@ template<typename T> class json_value_parser
         }
 };
 
-template<> json_value_parser<bool>::json_value_parser(const JSONNode& value, 
+template<> JSON_value_parser<bool>::JSON_value_parser(const JSONNode& value, 
                                                       bool& data) : type_name_("bool"), 
                                                                     is_valid_(true)
 {
@@ -36,7 +37,7 @@ template<> json_value_parser<bool>::json_value_parser(const JSONNode& value,
 }
 
 
-template<> json_value_parser<int>::json_value_parser(const JSONNode& value, 
+template<> JSON_value_parser<int>::JSON_value_parser(const JSONNode& value, 
                                                      int& data) : type_name_("int"), 
                                                                   is_valid_(true)
 {
@@ -47,7 +48,7 @@ template<> json_value_parser<int>::json_value_parser(const JSONNode& value,
         data = (int)value.as_int();
 }
 
-template<> json_value_parser<double>::json_value_parser(const JSONNode& value, 
+template<> JSON_value_parser<double>::JSON_value_parser(const JSONNode& value, 
                                                         double& data) : type_name_("double"), 
                                                                         is_valid_(true)
 {
@@ -58,7 +59,7 @@ template<> json_value_parser<double>::json_value_parser(const JSONNode& value,
         data = value.as_float();
 }
 
-template<> json_value_parser< std::vector<double> >::json_value_parser
+template<> JSON_value_parser< std::vector<double> >::JSON_value_parser
     (const JSONNode& value, std::vector<double>& data) : type_name_("vector<double>"), 
                                                          is_valid_(true)
 {
@@ -71,7 +72,7 @@ template<> json_value_parser< std::vector<double> >::json_value_parser
         for (int i = 0; i < (int)value.size(); i++)
         {
             double t;
-            json_value_parser<double> v(value[i], t);
+            JSON_value_parser<double> v(value[i], t);
             is_valid_ = is_valid_ && v.is_valid();
             if (is_valid_) 
                 data.push_back(t);
@@ -79,7 +80,7 @@ template<> json_value_parser< std::vector<double> >::json_value_parser
     }
 }
 
-template<> json_value_parser< std::vector<int> >::json_value_parser
+template<> JSON_value_parser< std::vector<int> >::JSON_value_parser
     (const JSONNode& value, std::vector<int>& data) : type_name_("vector<int>"), 
                                                       is_valid_(true)
 {
@@ -91,14 +92,14 @@ template<> json_value_parser< std::vector<int> >::json_value_parser
         for (int i = 0; i < (int)value.size(); i++)
         {
             int t;
-            json_value_parser<int> v(value[i], t);
+            JSON_value_parser<int> v(value[i], t);
             is_valid_ = is_valid_ && v.is_valid();
             if (is_valid_) data.push_back(t);
         }
     }
 }
 
-template<> json_value_parser<std::string>::json_value_parser
+template<> JSON_value_parser<std::string>::JSON_value_parser
     (const JSONNode& value, std::string& data) : type_name_("string"), 
                                                  is_valid_(true)
 {
@@ -119,7 +120,7 @@ class JsonTree
         
         template <typename T> inline bool parse_value(T& val, std::string& type_name)
         {
-            json_value_parser<T> jvp(node, val);
+            JSON_value_parser<T> jvp(node, val);
             type_name = jvp.type_name();
             return jvp.is_valid();
         }
