@@ -99,7 +99,7 @@ void Potential::update()
     }
 }
 
-void Potential::poisson_vmt(mdarray<mt_function<complex16>*, 1>& rho_ylm, mdarray<mt_function<complex16>*, 1>& vh_ylm, 
+void Potential::poisson_vmt(mdarray<MT_function<complex16>*, 1>& rho_ylm, mdarray<MT_function<complex16>*, 1>& vh_ylm, 
                             mdarray<complex16, 2>& qmt)
 {
     Timer t("sirius::Potential::poisson:vmt");
@@ -593,13 +593,13 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     parameters_.fft().transform(-1);
     parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), &rho->f_pw(0));
     
-    mdarray<mt_function<complex16>*, 1> rho_ylm(parameters_.spl_num_atoms().local_size());
-    mdarray<mt_function<complex16>*, 1> vh_ylm(parameters_.spl_num_atoms().local_size());
+    mdarray<MT_function<complex16>*, 1> rho_ylm(parameters_.spl_num_atoms().local_size());
+    mdarray<MT_function<complex16>*, 1> vh_ylm(parameters_.spl_num_atoms().local_size());
     for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
     {
-        rho_ylm(ialoc) = new mt_function<complex16>(rho->f_mt(ialoc), true);
+        rho_ylm(ialoc) = new MT_function<complex16>(rho->f_mt(ialoc), true);
 
-        vh_ylm(ialoc) = new mt_function<complex16>(vh->f_mt(ialoc), false);
+        vh_ylm(ialoc) = new MT_function<complex16>(vh->f_mt(ialoc), false);
     }
     
     // true multipole moments
@@ -721,25 +721,25 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
 
     libxc_interface xci;
 
-    mt_function<double> rhotp(Argument(arg_tp, sht_->num_points()), 
+    MT_function<double> rhotp(Argument(arg_tp, sht_->num_points()), 
                               Argument(arg_radial, parameters_.max_num_mt_points()));
-    mt_function<double> vxctp(Argument(arg_tp, sht_->num_points()), 
+    MT_function<double> vxctp(Argument(arg_tp, sht_->num_points()), 
                               Argument(arg_radial, parameters_.max_num_mt_points()));
-    mt_function<double> exctp(Argument(arg_tp, sht_->num_points()), 
+    MT_function<double> exctp(Argument(arg_tp, sht_->num_points()), 
                               Argument(arg_radial, parameters_.max_num_mt_points()));
     
-    mt_function<double> magtp(Argument(arg_tp, sht_->num_points()), 
+    MT_function<double> magtp(Argument(arg_tp, sht_->num_points()), 
                               Argument(arg_radial, parameters_.max_num_mt_points()));
-    mt_function<double> bxctp(Argument(arg_tp, sht_->num_points()), 
+    MT_function<double> bxctp(Argument(arg_tp, sht_->num_points()), 
                               Argument(arg_radial, parameters_.max_num_mt_points()));
 
-    mt_function<double>* vecmagtp[3];
-    mt_function<double>* vecbxctp[3];
+    MT_function<double>* vecmagtp[3];
+    MT_function<double>* vecbxctp[3];
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
     {
-        vecmagtp[j] = new  mt_function<double>(Argument(arg_tp, sht_->num_points()), 
+        vecmagtp[j] = new  MT_function<double>(Argument(arg_tp, sht_->num_points()), 
                                                Argument(arg_radial, parameters_.max_num_mt_points()));
-        vecbxctp[j] = new  mt_function<double>(Argument(arg_tp, sht_->num_points()), 
+        vecbxctp[j] = new  MT_function<double>(Argument(arg_tp, sht_->num_points()), 
                                                Argument(arg_radial, parameters_.max_num_mt_points()));
     }
 

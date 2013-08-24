@@ -6,7 +6,7 @@ Periodic_function<T>::Periodic_function(Global& parameters__, Argument arg0, Arg
     f_mt_local_.set_dimensions(parameters_.spl_num_atoms().local_size());
     f_mt_local_.allocate();
     for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
-        f_mt_local_(ialoc) = new mt_function<T>(NULL, arg0, arg1);
+        f_mt_local_(ialoc) = new MT_function<T>(NULL, arg0, arg1);
     
     f_it_.set_dimensions(parameters_.fft().size());
     f_it_local_.set_dimensions(parameters_.spl_fft_size().local_size());

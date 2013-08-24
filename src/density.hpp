@@ -746,13 +746,13 @@ void Density::generate_valence_density_mt_sht(K_set& ks)
 
     mt_functions<complex16> psilm(Argument(arg_lm, lmmax), Argument(arg_radial, parameters_.max_num_mt_points()), 
                                   parameters_.num_atoms());
-    mt_function<complex16> psitp(Argument(arg_tp, sht.num_points()), 
+    MT_function<complex16> psitp(Argument(arg_tp, sht.num_points()), 
                                  Argument(arg_radial, parameters_.max_num_mt_points()));
     mt_functions<double> rhotp(Argument(arg_tp, sht.num_points()), 
                                Argument(arg_radial, parameters_.max_num_mt_points()), 
                                parameters_.num_atoms());
     rhotp.zero();
-    mt_function<double> rholm(Argument(arg_lm, parameters_.lmmax_rho()), 
+    MT_function<double> rholm(Argument(arg_lm, parameters_.lmmax_rho()), 
                               Argument(arg_radial, parameters_.max_num_mt_points()));
 
     

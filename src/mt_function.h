@@ -36,7 +36,7 @@ int operator ==(Argument& a, Argument& b)
 }
 
 /// Muffin-tin function representation
-template <typename T> class mt_function
+template <typename T> class MT_function
 {
     protected:
        
@@ -49,7 +49,7 @@ template <typename T> class mt_function
     public:
         
         /// Constructor for the new function
-        mt_function(Argument arg0, Argument arg1)
+        MT_function(Argument arg0, Argument arg1)
         {
             this->arguments_[0] = arg0;
             this->arguments_[1] = arg1;
@@ -58,7 +58,7 @@ template <typename T> class mt_function
         }
         
         /// Constructor for the existing function (wrapper for the existing array)
-        mt_function(T* ptr, Argument arg0, Argument arg1)
+        MT_function(T* ptr, Argument arg0, Argument arg1)
         {
             this->arguments_[0] = arg0;
             this->arguments_[1] = arg1;
@@ -68,7 +68,7 @@ template <typename T> class mt_function
         
         /// Analogue of the copy constructor for the different function type
         template <typename U>
-        mt_function(mt_function<U>* f, bool copy)
+        MT_function(MT_function<U>* f, bool copy)
         {
             this->arguments_[0] = f->argument(0);
             this->arguments_[1] = f->argument(1);
@@ -137,7 +137,7 @@ template <typename T> class mt_function
 
         /// Convert between Rlm and Ylm domains
         template <typename U>
-        void sh_convert(mt_function<U>* f)
+        void sh_convert(MT_function<U>* f)
         {
             int radial_domain_idx = this->argument_idx(arg_radial);
 
@@ -235,7 +235,7 @@ template <typename T> class mt_function
             }
         }
 
-        void sh_transform(SHT* sht, mt_function<T>* f)
+        void sh_transform(SHT* sht, MT_function<T>* f)
         {
             // check radial arguments
             if ((this->argument(1) == f->argument(1)) != 2) error(__FILE__, __LINE__, "wrong radial arguments");
@@ -257,7 +257,7 @@ template <typename T> class mt_function
             }
         }
 
-        void add(mt_function<T>* f)
+        void add(MT_function<T>* f)
         {
             for (int i1 = 0; i1 < size(1); i1++)
             {
@@ -270,7 +270,7 @@ template <typename T> class mt_functions
 {
     private:
 
-        mdarray<mt_function<T>*, 1> f_;
+        mdarray<MT_function<T>*, 1> f_;
 
     public:
 
@@ -278,7 +278,7 @@ template <typename T> class mt_functions
         {
             f_.set_dimensions(nf);
             f_.allocate();
-            for (int i = 0; i < nf; i++) f_(i) = new mt_function<T>(arg0, arg1);
+            for (int i = 0; i < nf; i++) f_(i) = new MT_function<T>(arg0, arg1);
         }
 
         ~mt_functions()
@@ -296,18 +296,18 @@ template <typename T> class mt_functions
             for (int i = 0; i < f_.size(0); i++) f_(i)->zero();
         }
 
-        mt_function<T>* operator()(int i)
+        MT_function<T>* operator()(int i)
         {
             return f_(i);
         }
 };
 
-void gradient(RadialGrid& r, mt_function<complex16>* f, mt_function<complex16>* gx, mt_function<complex16>* gy,
-              mt_function<complex16>* gz)
+void gradient(RadialGrid& r, MT_function<complex16>* f, MT_function<complex16>* gx, MT_function<complex16>* gy,
+              MT_function<complex16>* gz)
 {
     // TODO: in principle, gradient has lmax+1 harmonics, or it may be computed up to a smaller number of harmonics
     
-    mt_function<complex16>* g[] = {gx, gy, gz};
+    MT_function<complex16>* g[] = {gx, gy, gz};
 
     int radial_domain_idx = f->argument_idx(arg_radial);
 
@@ -435,14 +435,14 @@ void gradient(RadialGrid& r, mt_function<complex16>* f, mt_function<complex16>* 
     }
 }
 
-void gradient(RadialGrid& r, mt_function<double>* f, mt_function<double>* gx, mt_function<double>* gy,
-              mt_function<double>* gz)
+void gradient(RadialGrid& r, MT_function<double>* f, MT_function<double>* gx, MT_function<double>* gy,
+              MT_function<double>* gz)
 {
-    mt_function<double>* g[] = {gx, gy, gz};
+    MT_function<double>* g[] = {gx, gy, gz};
 
-    mt_function<complex16>* zf = new mt_function<complex16>(f, true);
-    mt_function<complex16>* zg[3];
-    for (int i = 0; i < 3; i++) zg[i] = new mt_function<complex16>(g[i], false);
+    MT_function<complex16>* zf = new MT_function<complex16>(f, true);
+    MT_function<complex16>* zg[3];
+    for (int i = 0; i < 3; i++) zg[i] = new MT_function<complex16>(g[i], false);
 
     gradient(r, zf, zg[0], zg[1], zg[2]);
 
@@ -456,7 +456,7 @@ void gradient(RadialGrid& r, mt_function<double>* f, mt_function<double>* gx, mt
 
 // TODO: generalize for different lmax
 template <typename T>
-T inner(RadialGrid& r, mt_function<T>* f1, mt_function<T>* f2)
+T inner(RadialGrid& r, MT_function<T>* f1, MT_function<T>* f2)
 {
     for (int i = 0; i < 2; i++)
     {

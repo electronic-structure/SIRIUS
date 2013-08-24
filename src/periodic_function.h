@@ -33,7 +33,7 @@ template<typename T> class Periodic_function
         Global& parameters_;
 
         /// local part of muffin-tin functions 
-        mdarray< mt_function<T>*, 1> f_mt_local_;
+        mdarray<MT_function<T>*, 1> f_mt_local_;
         
         /// global muffin tin array 
         mdarray<T, 3> f_mt_;
@@ -106,7 +106,7 @@ template<typename T> class Periodic_function
             set_local_it_ptr();
         }
 
-        inline mt_function<T>* f_mt(int ialoc)
+        inline MT_function<T>* f_mt(int ialoc)
         {
             return f_mt_local_(ialoc);
         }

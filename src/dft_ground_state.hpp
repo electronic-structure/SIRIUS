@@ -64,10 +64,10 @@ void DFT_ground_state::forces(mdarray<double, 2>& atom_force)
         pout.printf("atom : %i  forcek : %f %f %f\n", ia, atom_force(0, ia), atom_force(1, ia), atom_force(2, ia));
     }
     
-    mt_function<double>* g[3];
+    MT_function<double>* g[3];
     for (int x = 0; x < 3; x++) 
     {
-        g[x] = new mt_function<double>(Argument(arg_lm, parameters_.lmmax_pot()), 
+        g[x] = new MT_function<double>(Argument(arg_lm, parameters_.lmmax_pot()), 
                                        Argument(arg_radial, parameters_.max_num_mt_points()));
     }
     
@@ -88,7 +88,7 @@ void DFT_ground_state::forces(mdarray<double, 2>& atom_force)
     for (int x = 0; x < 3; x++) 
     {
         delete g[x];
-        g[x] = new mt_function<double>(Argument(arg_lm, parameters_.lmmax_rho()), 
+        g[x] = new MT_function<double>(Argument(arg_lm, parameters_.lmmax_rho()), 
                                        Argument(arg_radial, parameters_.max_num_mt_points()));
     }
 

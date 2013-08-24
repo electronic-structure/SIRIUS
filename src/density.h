@@ -115,7 +115,7 @@ class Density
             return magnetization_[i];
         }
 
-        mt_function<double>* density_mt(int ialoc)
+        MT_function<double>* density_mt(int ialoc)
         {
             return rho_->f_mt(ialoc);
         }
