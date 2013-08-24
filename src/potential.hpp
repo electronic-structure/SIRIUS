@@ -2,11 +2,64 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
 {
     Timer t("sirius::Potential::Potential");
     
-    int lmax = std::max(parameters_.lmax_rho(), parameters_.lmax_pot());
-    sht_ = new SHT(lmax);
+    lmax_ = std::max(parameters_.lmax_rho(), parameters_.lmax_pot());
+    sht_ = new SHT(lmax_);
 
+    effective_potential_ = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_pot()), 
+                                                         Argument(arg_radial, parameters_.max_num_mt_points()), 
+                                                         parameters_.num_gvec());
+    for (int j = 0; j < parameters_.num_mag_dims(); j++)
+    {
+        effective_magnetic_field_[j] = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_pot()), 
+                                                                     Argument(arg_radial, parameters_.max_num_mt_points()));
+    }
+    
+    // precompute i^l
+    zil_.resize(parameters_.lmax_rho() + 1);
+    for (int l = 0; l <= parameters_.lmax_rho(); l++) zil_[l] = pow(complex16(0, 1), l);
+    
+    zilm_.resize(parameters_.lmmax_rho());
+    for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
+    {
+        for (int m = -l; m <= l; m++, lm++) zilm_[lm] = zil_[l];
+    }
+
+    l_by_lm_.set_dimensions(Utils::lmmax_by_lmax(lmax_));
+    l_by_lm_.allocate();
+    for (int l = 0, lm = 0; l <= lmax_; l++)
+    {
+        for (int m = -l; m <= l; m++, lm++) l_by_lm_(lm) = l;
+    }
+    
+    coulomb_potential_ = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_pot()),
+                                                                    Argument(arg_radial, parameters_.max_num_mt_points()),
+                                                                    parameters_.num_gvec());
+    coulomb_potential_->allocate(false);
+    
+    xc_potential_ = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_pot()),
+                                                               Argument(arg_radial, parameters_.max_num_mt_points()));
+    xc_potential_->allocate(false);
+    
+    xc_energy_density_ = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_pot()),
+                                                                    Argument(arg_radial, parameters_.max_num_mt_points()));
+    xc_energy_density_->allocate(false);
+
+    update();
+}
+
+Potential::~Potential()
+{
+    delete effective_potential_; 
+    for (int j = 0; j < parameters_.num_mag_dims(); j++) delete effective_magnetic_field_[j];
+    delete sht_;
+    delete coulomb_potential_;
+    delete xc_potential_;
+}
+
+void Potential::update()
+{
     // compute values of spherical Bessel functions at MT boundary
-    sbessel_mt_.set_dimensions(lmax + pseudo_density_order + 2, parameters_.num_atom_types(), 
+    sbessel_mt_.set_dimensions(lmax_ + pseudo_density_order + 2, parameters_.num_atom_types(), 
                                parameters_.num_gvec_shells());
     sbessel_mt_.allocate();
 
@@ -14,7 +67,7 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
     {
         for (int igs = 0; igs < parameters_.num_gvec_shells(); igs++)
         {
-            gsl_sf_bessel_jl_array(lmax + pseudo_density_order + 1, 
+            gsl_sf_bessel_jl_array(lmax_ + pseudo_density_order + 1, 
                                    parameters_.gvec_shell_len(igs) * parameters_.atom_type(iat)->mt_radius(), 
                                    &sbessel_mt_(0, iat, igs));
         }
@@ -44,54 +97,6 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
             }
         }
     }
-
-    effective_potential_ = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_pot()), 
-                                                        Argument(arg_radial, parameters_.max_num_mt_points()), 
-                                                        parameters_.num_gvec());
-    for (int j = 0; j < parameters_.num_mag_dims(); j++)
-    {
-        effective_magnetic_field_[j] = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_pot()), 
-                                                                    Argument(arg_radial, parameters_.max_num_mt_points()));
-    }
-    
-    // precompute i^l
-    zil_.resize(parameters_.lmax_rho() + 1);
-    for (int l = 0; l <= parameters_.lmax_rho(); l++) zil_[l] = pow(complex16(0, 1), l);
-    
-    zilm_.resize(parameters_.lmmax_rho());
-    for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
-    {
-        for (int m = -l; m <= l; m++, lm++) zilm_[lm] = zil_[l];
-    }
-
-    l_by_lm_.set_dimensions(Utils::lmmax_by_lmax(lmax));
-    l_by_lm_.allocate();
-    for (int l = 0, lm = 0; l <= lmax; l++)
-    {
-        for (int m = -l; m <= l; m++, lm++) l_by_lm_(lm) = l;
-    }
-    
-    coulomb_potential_ = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_pot()),
-                                                                   Argument(arg_radial, parameters_.max_num_mt_points()),
-                                                                   parameters_.num_gvec());
-    coulomb_potential_->allocate(false);
-    
-    xc_potential_ = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_pot()),
-                                                              Argument(arg_radial, parameters_.max_num_mt_points()));
-    xc_potential_->allocate(false);
-    
-    xc_energy_density_ = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_pot()),
-                                                                   Argument(arg_radial, parameters_.max_num_mt_points()));
-    xc_energy_density_->allocate(false);
-}
-
-Potential::~Potential()
-{
-    delete effective_potential_; 
-    for (int j = 0; j < parameters_.num_mag_dims(); j++) delete effective_magnetic_field_[j];
-    delete sht_;
-    delete coulomb_potential_;
-    delete xc_potential_;
 }
 
 void Potential::poisson_vmt(mdarray<mt_function<complex16>*, 1>& rho_ylm, mdarray<mt_function<complex16>*, 1>& vh_ylm, 

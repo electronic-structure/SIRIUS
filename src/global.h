@@ -803,8 +803,7 @@ class Global : public Step_function
         void update()
         {
             Unit_cell::update();
-            Reciprocal_lattice::clear();
-            Reciprocal_lattice::init(lmax());
+            Reciprocal_lattice::update();
             Step_function::init();
         }
 

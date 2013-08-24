@@ -54,6 +54,8 @@ class Potential
         mdarray<double, 3> sbessel_mom_;
 
         mdarray<double, 3> sbessel_mt_;
+
+        int lmax_;
         
         SHT* sht_;
 
@@ -83,6 +85,8 @@ class Potential
         Potential(Global& parameters__);
 
         ~Potential();
+
+        void update();
 
         void set_effective_potential_ptr(double* veffmt, double* veffir);
         

@@ -87,14 +87,10 @@ void Reciprocal_lattice::init(int lmax)
 
     spl_fft_size_.split(fft().size(), Platform::num_mpi_ranks(), Platform::mpi_rank());
     
-    // precompute spherical harmonics of G-vectors and G-vector phase factors
+    // precompute spherical harmonics of G-vectors 
     gvec_ylm_.set_dimensions(Utils::lmmax_by_lmax(lmax), spl_num_gvec_.local_size());
     gvec_ylm_.allocate();
     
-    gvec_phase_factors_.set_dimensions(spl_num_gvec_.local_size(), num_atoms());
-    gvec_phase_factors_.allocate();
-    
-    // precompute phase factors
     for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
     {
         int ig = spl_num_gvec_[igloc];
@@ -103,9 +99,20 @@ void Reciprocal_lattice::init(int lmax)
         gvec_cart(ig, xyz);
         SHT::spherical_coordinates(xyz, rtp);
         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm_(0, igloc));
+    }
+    
+    update();
+}
 
-        for (int ia = 0; ia < num_atoms(); ia++) 
-            gvec_phase_factors_(igloc, ia) = gvec_phase_factor<global>(ig, ia);
+void Reciprocal_lattice::update()
+{
+    // precompute G-vector phase factors
+    gvec_phase_factors_.set_dimensions(spl_num_gvec_.local_size(), num_atoms());
+    gvec_phase_factors_.allocate();
+    for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
+    {
+        int ig = spl_num_gvec_[igloc];
+        for (int ia = 0; ia < num_atoms(); ia++) gvec_phase_factors_(igloc, ia) = gvec_phase_factor<global>(ig, ia);
     }
 }
 

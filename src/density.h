@@ -84,6 +84,9 @@ class Density
         /// Generate initial charge density and magnetization
         void initial_density(int type);
 
+        /// Find the total leakage of the core states out of the muffin-tins
+        double core_leakage();
+
         /// Generate charge density and magnetization from the wave functions
         void generate(K_set& ks);
         

@@ -13,7 +13,7 @@ void K_set::initialize()
 void K_set::update()
 {
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
-        kpoints_[spl_num_kpoints_[ikloc]]->init_gkvec_phase_factors();
+        kpoints_[spl_num_kpoints_[ikloc]]->update(band_);
 }
 
 void K_set::sync_band_energies()
@@ -82,15 +82,7 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
     }
     
     // compute eigen-value sums
-    double eval_sum = 0.0;
-    for (int ik = 0; ik < num_kpoints(); ik++)
-    {
-        double wk = kpoints_[ik]->weight();
-        for (int j = 0; j < parameters_.num_bands(); j++)
-            eval_sum += wk * kpoints_[ik]->band_energy(j) * kpoints_[ik]->band_occupancy(j);
-    }
-    
-    parameters_.rti().valence_eval_sum = eval_sum;
+    valence_eval_sum();
 }
 
 double K_set::valence_eval_sum()

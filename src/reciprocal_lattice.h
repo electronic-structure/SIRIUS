@@ -50,6 +50,8 @@ class Reciprocal_lattice : public Unit_cell
         std::vector<double> gvec_shell_len_;
         
         void init(int lmax);
+
+        void update();
         
         void clear();
 

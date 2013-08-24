@@ -301,10 +301,9 @@ class K_point
         }
 
         void initialize(Band* band);
-        
-        /// Initialize phase factors of G+k vectors explicitly
-        void init_gkvec_phase_factors();
 
+        void update(Band* band);
+        
         /// Generate plane-wave matching coefficents for the radial solutions 
         /** The matching coefficients are conjugated!. This is done in favor of the convenient overlap 
             matrix construnction.

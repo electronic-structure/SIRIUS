@@ -1,3 +1,62 @@
+Band::Band(Global& parameters__) : parameters_(parameters__), blacs_context_(-1)
+{
+    if (!parameters_.initialized()) error(__FILE__, __LINE__, "Parameters are not initialized.");
+
+    num_ranks_row_ = parameters_.mpi_grid().dimension_size(_dim_row_);
+    num_ranks_col_ = parameters_.mpi_grid().dimension_size(_dim_col_);
+
+    num_ranks_ = num_ranks_row_ * num_ranks_col_;
+
+    rank_row_ = parameters_.mpi_grid().coordinate(_dim_row_);
+    rank_col_ = parameters_.mpi_grid().coordinate(_dim_col_);
+
+    init();
+    
+    #if defined(_SCALAPACK_) || defined(_ELPA_)
+    if (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa)
+    {
+        int rc = (1 << _dim_row_) | (1 << _dim_col_);
+        MPI_Comm comm = parameters_.mpi_grid().communicator(rc);
+        blacs_context_ = linalg<scalapack>::create_blacs_context(comm);
+
+        mdarray<int, 2> map_ranks(num_ranks_row_, num_ranks_col_);
+        for (int i1 = 0; i1 < num_ranks_col_; i1++)
+        {
+            for (int i0 = 0; i0 < num_ranks_row_; i0++)
+            {
+                map_ranks(i0, i1) = parameters_.mpi_grid().cart_rank(comm, Utils::intvec(i0, i1));
+            }
+        }
+        linalg<scalapack>::gridmap(&blacs_context_, map_ranks.get_ptr(), map_ranks.ld(), 
+                                   num_ranks_row_, num_ranks_col_);
+
+        // check the grid
+        int nrow, ncol, irow, icol;
+        linalg<scalapack>::gridinfo(blacs_context_, &nrow, &ncol, &irow, &icol);
+
+        if ((rank_row_ != irow) || (rank_col_ != icol) || (num_ranks_row_ != nrow) || (num_ranks_col_ != ncol)) 
+        {
+            std::stringstream s;
+            s << "wrong grid" << std::endl
+              << "rank_row : " << rank_row_ << " irow : " << irow << std::endl
+              << "rank_col : " << rank_col_ << " icol : " << icol << std::endl
+              << "num_ranks_row : " << num_ranks_row_ << " nrow : " << nrow << std::endl
+              << "num_ranks_col : " << num_ranks_col_ << " ncol : " << ncol;
+
+            error(__FILE__, __LINE__, s, fatal_err);
+        }
+    }
+    #endif
+}
+
+Band::~Band()
+{
+    #if defined(_SCALAPACK_) || defined(_ELPA_)
+    if (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa) 
+        linalg<scalapack>::free_blacs_context(blacs_context_);
+    #endif
+}
+
 void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size, int num_gkvec, int* fft_index, 
                                 Periodic_function<double>* effective_magnetic_field[3], mdarray<complex16, 3>& hpsi)
 {
@@ -353,65 +412,6 @@ void Band::init()
             printf("\n");
         }
     }
-}
-
-Band::Band(Global& parameters__) : parameters_(parameters__), blacs_context_(-1)
-{
-    if (!parameters_.initialized()) error(__FILE__, __LINE__, "Parameters are not initialized.");
-
-    num_ranks_row_ = parameters_.mpi_grid().dimension_size(_dim_row_);
-    num_ranks_col_ = parameters_.mpi_grid().dimension_size(_dim_col_);
-
-    num_ranks_ = num_ranks_row_ * num_ranks_col_;
-
-    rank_row_ = parameters_.mpi_grid().coordinate(_dim_row_);
-    rank_col_ = parameters_.mpi_grid().coordinate(_dim_col_);
-
-    init();
-    
-    #if defined(_SCALAPACK_) || defined(_ELPA_)
-    if (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa)
-    {
-        int rc = (1 << _dim_row_) | (1 << _dim_col_);
-        MPI_Comm comm = parameters_.mpi_grid().communicator(rc);
-        blacs_context_ = linalg<scalapack>::create_blacs_context(comm);
-
-        mdarray<int, 2> map_ranks(num_ranks_row_, num_ranks_col_);
-        for (int i1 = 0; i1 < num_ranks_col_; i1++)
-        {
-            for (int i0 = 0; i0 < num_ranks_row_; i0++)
-            {
-                map_ranks(i0, i1) = parameters_.mpi_grid().cart_rank(comm, Utils::intvec(i0, i1));
-            }
-        }
-        linalg<scalapack>::gridmap(&blacs_context_, map_ranks.get_ptr(), map_ranks.ld(), 
-                                   num_ranks_row_, num_ranks_col_);
-
-        // check the grid
-        int nrow, ncol, irow, icol;
-        linalg<scalapack>::gridinfo(blacs_context_, &nrow, &ncol, &irow, &icol);
-
-        if ((rank_row_ != irow) || (rank_col_ != icol) || (num_ranks_row_ != nrow) || (num_ranks_col_ != ncol)) 
-        {
-            std::stringstream s;
-            s << "wrong grid" << std::endl
-              << "rank_row : " << rank_row_ << " irow : " << irow << std::endl
-              << "rank_col : " << rank_col_ << " icol : " << icol << std::endl
-              << "num_ranks_row : " << num_ranks_row_ << " nrow : " << nrow << std::endl
-              << "num_ranks_col : " << num_ranks_col_ << " ncol : " << ncol;
-
-            error(__FILE__, __LINE__, s, fatal_err);
-        }
-    }
-    #endif
-}
-
-Band::~Band()
-{
-    #if defined(_SCALAPACK_) || defined(_ELPA_)
-    if (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa) 
-        linalg<scalapack>::free_blacs_context(blacs_context_);
-    #endif
 }
 
 void Band::solve_sv(Global& parameters, int mtgk_size, int num_gkvec, int* fft_index, double* evalfv, 

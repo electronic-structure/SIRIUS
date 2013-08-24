@@ -1092,6 +1092,20 @@ void K_point::initialize(Band* band)
         for (int m = -l; m <= l; m++, lm++) l_by_lm_(lm) = l;
     }
 
+    fv_eigen_values_.resize(parameters_.num_fv_states());
+    
+    band_energies_.resize(parameters_.num_bands());
+    
+    // in case of collinear magnetism store pure up and pure dn components, otherwise store both up and dn components
+    int ns = (parameters_.num_mag_dims() == 3) ? 2 : 1;
+    sv_eigen_vectors_.set_dimensions(ns * band->spl_fv_states_row().local_size(), band->spl_spinor_wf_col().local_size());
+    sv_eigen_vectors_.allocate();
+    
+    update(band);
+}
+
+void K_point::update(Band* band)
+{
     generate_gkvec();
 
     build_apwlo_basis_descriptors();
@@ -1115,6 +1129,7 @@ void K_point::initialize(Band* band)
         irow_by_atom_[ia].push_back(irow);
     }
     
+    /** \todo Correct the memory leak */
     if (basis_type == pwlo)
     {
         sbessel_.resize(num_gkvec_loc()); 
@@ -1125,8 +1140,6 @@ void K_point::initialize(Band* band)
         }
     }
     
-    fv_eigen_values_.resize(parameters_.num_fv_states());
-
     fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), band->spl_fv_states_col().local_size());
     fv_eigen_vectors_.allocate();
     
@@ -1144,13 +1157,6 @@ void K_point::initialize(Band* band)
         fv_states_row_.allocate();
     }
     
-    // in case of collinear magnetism store pure up and pure dn components, otherwise store both up and dn components
-    int ns = (parameters_.num_mag_dims() == 3) ? 2 : 1;
-    sv_eigen_vectors_.set_dimensions(ns * band->spl_fv_states_row().local_size(), band->spl_spinor_wf_col().local_size());
-    sv_eigen_vectors_.allocate();
-
-    band_energies_.resize(parameters_.num_bands());
-
     spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), band->spl_spinor_wf_col().local_size());
 
     if (band->need_sv())
@@ -1928,26 +1934,6 @@ void K_point::generate_gkvec()
     for (int ig = 0; ig < num_gkvec(); ig++) fft_index_[ig] = parameters_.fft_index(gvec_index_[ig]);
 }
 
-void K_point::init_gkvec_phase_factors()
-{
-    gkvec_phase_factors_.set_dimensions(num_gkvec_loc(), parameters_.num_atoms());
-    gkvec_phase_factors_.allocate();
-
-    #pragma omp parallel for default(shared)
-    for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
-    {
-        int igk = igkglob(igkloc);
-
-        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-        {
-            double phase = twopi * Utils::scalar_product(gkvec(igk), parameters_.atom(ia)->position());
-
-            gkvec_phase_factors_(igkloc, ia) = exp(complex16(0.0, phase));
-        }
-    }
-
-}
-
 void K_point::init_gkvec()
 {
     int lmax = std::max(parameters_.lmax_apw(), parameters_.lmax_pw());
@@ -1968,7 +1954,21 @@ void K_point::init_gkvec()
         SHT::spherical_harmonics(lmax, vs[1], vs[2], &gkvec_ylm_(0, igkloc));
     }
 
-    init_gkvec_phase_factors();
+    gkvec_phase_factors_.set_dimensions(num_gkvec_loc(), parameters_.num_atoms());
+    gkvec_phase_factors_.allocate();
+
+    #pragma omp parallel for default(shared)
+    for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
+    {
+        int igk = igkglob(igkloc);
+
+        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+        {
+            double phase = twopi * Utils::scalar_product(gkvec(igk), parameters_.atom(ia)->position());
+
+            gkvec_phase_factors_(igkloc, ia) = exp(complex16(0.0, phase));
+        }
+    }
     
     gkvec_len_.resize(num_gkvec_loc());
     for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
@@ -2016,7 +2016,7 @@ void K_point::init_gkvec()
 
 void K_point::build_apwlo_basis_descriptors()
 {
-    assert(apwlo_basis_descriptors_.size() == 0);
+    apwlo_basis_descriptors_.clear();
 
     apwlo_basis_descriptor apwlobd;
 
@@ -2109,11 +2109,15 @@ void K_point::distribute_block_cyclic(Band* band)
     // get the number of row- and column- G+k-vectors
     num_gkvec_row_ = 0;
     for (int i = 0; i < apwlo_basis_size_row(); i++)
+    {
         if (apwlo_basis_descriptors_row_[i].igk != -1) num_gkvec_row_++;
+    }
     
     num_gkvec_col_ = 0;
     for (int i = 0; i < apwlo_basis_size_col(); i++)
+    {
         if (apwlo_basis_descriptors_col_[i].igk != -1) num_gkvec_col_++;
+    }
 }
 
 void K_point::find_eigen_states(Band* band, Periodic_function<double>* effective_potential, 

@@ -1,13 +1,12 @@
-
 Density::Density(Global& parameters__) : parameters_(parameters__)
 {
     rho_ = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_rho()), 
-                                        Argument(arg_radial, parameters_.max_num_mt_points()), parameters_.num_gvec());
+                                         Argument(arg_radial, parameters_.max_num_mt_points()), parameters_.num_gvec());
 
     for (int i = 0; i < parameters_.num_mag_dims(); i++)
     {
         magnetization_[i] = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_rho()), 
-                                                         Argument(arg_radial, parameters_.max_num_mt_points()));
+                                                          Argument(arg_radial, parameters_.max_num_mt_points()));
     }
 
     dmat_spins_.clear();
@@ -785,23 +784,7 @@ void Density::generate_valence_density_mt_sht(K_set& ks)
             }
         }
     }
-//
-//    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-//    {
-//        sht.rlm_forward_transform(&rhotp(0, 0, ia), parameters_.lmmax_rho(),parameters_.atom(ia)->num_mt_points(), 
-//                                  &rholm(0, 0, ia));
-//    }
-//
-//    //for (int i = 0; i < (int)dens.size(); i++)
-//   // {
-//        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-//        {
-///            Platform::allreduce(&rholm(0, 0, ia), 
-//                                parameters_.lmmax_rho() * parameters_.max_num_mt_points(), 
-//                                parameters_.mpi_grid().communicator());
-//        }
-//    //}
-//                                                        
+    
     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
     {
         rhotp(ia)->sh_transform(&sht, &rholm);
@@ -814,7 +797,6 @@ void Density::generate_valence_density_mt_sht(K_set& ks)
             }
         }
     }
-//    for (int ia = 0; ia < parameters_.num_atoms(); ia++) delete zf[ia];
 }
 
 
@@ -937,6 +919,16 @@ template<> void Density::generate_valence_density_mt_directly<gpu>()
     }
 }
 #endif
+
+double Density::core_leakage()
+{
+    double sum = 0.0;
+    for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
+    {
+        sum += parameters_.atom_symmetry_class(ic)->core_leakage() * parameters_.atom_symmetry_class(ic)->num_atoms();
+    }
+    return sum;
+}
 
 void Density::generate(K_set& ks)
 {
