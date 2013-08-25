@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <signal.h>
 #include <omp.h>
 #include <stdint.h>

@@ -476,8 +476,8 @@ void Atom_type::read_input_aw(JSON_tree& parser)
     
     for (int j = 1; j < parser["valence"].size(); j++)
     {
-        rsd.l = parser["valence"][j]["l"].get<int>();
-        rsd.n = parser["valence"][j]["n"].get<int>();
+        parser["valence"][j]["l"] >> rsd.l;
+        parser["valence"][j]["n"] >> rsd.n;
         rsd_set.clear();
         for (int order = 0; order < parser["valence"][j]["basis"].size(); order++)
         {
@@ -495,9 +495,10 @@ void Atom_type::read_input_lo(JSON_tree& parser)
     radial_solution_descriptor rsd;
     radial_solution_descriptor_set rsd_set;
     
+    int l;
     for (int j = 0; j < parser["lo"].size(); j++)
     {
-        int l = parser["lo"][j]["l"].get<int>();
+        parser["lo"][j]["l"] >> l;
 
         if (parser["lo"][j].exist("basis"))
         {

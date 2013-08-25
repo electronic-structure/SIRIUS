@@ -606,13 +606,13 @@ void FORTRAN(sirius_bands)(void)
         JSON_tree parser(fname);
         if (!parser["bz_path"].empty())
         {
-            num_steps = parser["bz_path"]["num_steps"].get<int>();
+            parser["bz_path"]["num_steps"] >> num_steps;
 
             for (int ipt = 0; ipt < parser["bz_path"]["points"].size(); ipt++)
             {
                 std::pair<std::string, std::vector<double> > pt;
-                pt.first = parser["bz_path"]["points"][ipt][0].get<std::string>();
-                pt.second = parser["bz_path"]["points"][ipt][1].get<std::vector<double> >();
+                parser["bz_path"]["points"][ipt][0] >> pt.first;
+                parser["bz_path"]["points"][ipt][1] >> pt.second;
                 bz_path.push_back(pt);
             }
         }

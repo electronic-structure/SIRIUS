@@ -93,7 +93,8 @@ class Global : public Step_function
                 
                 if (parser.exist("eigen_value_solver"))
                 {
-                    std::string ev_solver_name = parser["eigen_value_solver"].get<std::string>();
+                    std::string ev_solver_name;
+                    parser["eigen_value_solver"] >> ev_solver_name;
                     if (ev_solver_name == "lapack") 
                     {
                         eigen_value_solver_ = lapack;
@@ -118,7 +119,8 @@ class Global : public Step_function
 
                 if (parser.exist("processing_unit"))
                 {
-                    std::string pu = parser["processing_unit"].get<std::string>();
+                    std::string pu;
+                    parser["processing_unit"] >> pu;
                     if (pu == "cpu")
                     {
                         processing_unit_ = cpu;

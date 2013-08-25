@@ -1,7 +1,7 @@
 #ifndef __JSON_TREE_H__
 #define __JSON_TREE_H__
 
-/// Auxiliary class for parsing JSONNode 
+/// Auxiliary class for parsing JSONNode of the libjson
 class JSON_value_parser 
 {
     private:
@@ -17,18 +17,21 @@ class JSON_value_parser
         /// Templated constructor which will be specialized for different types
         template<typename T> 
         JSON_value_parser(const JSONNode& value, T& val);
-        
+       
+        /// Return name of the type
         const std::string& type_name()
         {
             return type_name_;
         }
         
+        /// Return validity flag
         inline bool is_valid()
         {
             return is_valid_;
         }
 };
 
+/// Constructor specialization for bool 
 template<> JSON_value_parser::JSON_value_parser<bool>(const JSONNode& value, bool& data) : 
     type_name_("bool"), is_valid_(false)
 {
@@ -39,6 +42,7 @@ template<> JSON_value_parser::JSON_value_parser<bool>(const JSONNode& value, boo
     }
 }
 
+/// Constructor specialization for int
 template<> JSON_value_parser::JSON_value_parser<int>(const JSONNode& value, int& data) : 
     type_name_("int"), is_valid_(false)
 {
@@ -49,6 +53,7 @@ template<> JSON_value_parser::JSON_value_parser<int>(const JSONNode& value, int&
     }
 }
 
+/// Constructor specialization for double
 template<> JSON_value_parser::JSON_value_parser<double>(const JSONNode& value, double& data) :
     type_name_("double"), is_valid_(false)
 {
@@ -59,6 +64,7 @@ template<> JSON_value_parser::JSON_value_parser<double>(const JSONNode& value, d
     }
 }
 
+/// Constructor specialization for vector of doubles
 template<> JSON_value_parser::JSON_value_parser< std::vector<double> >(const JSONNode& value, std::vector<double>& data) : 
     type_name_("vector<double>"), is_valid_(false)
 {
@@ -81,7 +87,7 @@ template<> JSON_value_parser::JSON_value_parser< std::vector<int> >(const JSONNo
 {
     if (value.type() == JSON_ARRAY) 
     {
-        is_valid_ = false;
+        is_valid_ = true;
         data.clear();
         for (int i = 0; i < (int)value.size(); i++)
         {
@@ -107,103 +113,120 @@ class JSON_tree
 {
     private:
         
-        JSONNode node;
+        JSONNode node_;
         
-        std::string path;
+        std::string path_;
         
         std::string fname_;
-        
-        template <typename T> inline bool parse_value(T& val, std::string& type_name)
+       
+        /// Parse value or stop with the error
+        template <typename T> 
+        inline T parse_value()
         {
-            JSON_value_parser jvp(node, val);
-            type_name = jvp.type_name();
-            return jvp.is_valid();
+            T val;
+            JSON_value_parser jvp(node_, val);
+            if (!jvp.is_valid())
+            {
+                std::stringstream s;
+                s << "null or invalid value of type " << jvp.type_name() << std::endl 
+                  << "file : " << fname_ << std::endl
+                  << "path : " << path_;
+                error(__FILE__, __LINE__, s);
+            }
+            return val;
         }
         
+        /// Parse value or return a default value
+        template <typename T> 
+        inline T parse_value(T& default_val)
+        {
+            T val;
+            JSON_value_parser jvp(node_, val);
+            if (!jvp.is_valid())
+            {
+                return default_val;
+            }
+            else
+            {
+                return val;
+            }
+        }
+        
+        void parse_file(const std::string& fname)
+        {
+            FILE* fin;
+            if ((fin = fopen(fname.c_str(), "r")) == NULL)
+            {
+                std::stringstream s;
+                s << "failed to open " << fname;
+                error(__FILE__, __LINE__, s);
+            }
+
+            struct stat st;
+            if (fstat(fileno(fin), &st) == 0)
+            {
+                std::string buffer(st.st_size + 1, 0);
+                fread(&buffer[0], (int)buffer.size(), 1, fin);
+                fclose(fin);
+                node_ = libjson::parse(buffer);
+            }
+            else
+            {
+                error(__FILE__, __LINE__, "bad file handle");
+            }
+        }
+
     public:
     
-
-        JSON_tree(JSONNode& node, 
-                 std::string& path,
-                 const std::string& fname_) : node(node),
-                                              path(path),
-                                              fname_(fname_)
+        JSON_tree(JSONNode& node__, std::string& path__, const std::string& fname__) : 
+            node_(node__), path_(path__), fname_(fname__)
         {
         }
 
-        JSON_tree(const std::string& fname) : fname_(fname)
+        JSON_tree(const std::string& fname__) : fname_(fname__)
         {
-            parse(fname);
+            parse_file(fname_);
         }
         
         ~JSON_tree() 
         {
-        };
+        }
 
         inline bool empty()
         {
-            return node.empty();
+            return node_.empty();
         }
 
-        inline bool exist(const std::string& name)
+        inline bool exist(const std::string& name) const
         {
-            if (node.find(name) == node.end()) return false;
+            if (node_.find(name) == node_.end()) return false;
             return true;
         }
-    
-        void parse(const std::string& fname)
+
+        inline int size() const
         {
-            std::ifstream ifs;
-            ifs.open(fname.c_str(), std::ios::binary);
-            if (ifs.fail())
+            if (node_.type() == JSON_ARRAY || node_.type() ==  JSON_NODE)
             {
-                std::stringstream s;
-                s << "fail to open " << fname;
-                error(__FILE__, __LINE__, s, fatal_err);
+                return node_.size();
             }
-            ifs.seekg(0, std::ios::end);
-            std::streamoff length = ifs.tellg();
-            ifs.seekg(0, std::ios::beg);
-
-            std::string buffer(length, ' ');
-            ifs.read(&buffer[0], length);
-            ifs.close();
-
-            node = libjson::parse(buffer);
-        }
-
-        inline int size() 
-        {
-            if ((node.type() == JSON_ARRAY) || (node.type() ==  JSON_NODE))
-                return node.size();
             else
+            {
                 return 0;
+            }
         }
 
-        inline JSON_tree operator [] (const char *key_) const 
+        inline JSON_tree operator[](const char *key) const 
         {
-            return (*this)[std::string(key_)];
-            /*std::string key(key_);
-            std::string new_path = path + std::string("/") + key;
+            return (*this)[std::string(key)];
+        }
+
+        inline JSON_tree operator[](const std::string& key) const 
+        {
+            std::string new_path = path_ + std::string("/") + key;
             JSONNode n;
             try
             {
-                n = node.at(key);
-            }
-            catch (const std::out_of_range& e)
-            {
-
-            }
-            return JSON_tree(n, new_path, fname_);*/
-        }
-
-        inline JSON_tree operator [] (const std::string& key) const 
-        {
-            std::string new_path = path + std::string("/") + key;
-            JSONNode n;
-            try
-            {
-                n = node.at(key);
+                n = node_.at(key);
             }
             catch (const std::out_of_range& e)
             {
@@ -212,74 +235,33 @@ class JSON_tree
             return JSON_tree(n, new_path, fname_);
         }
 
-        inline JSON_tree operator [] (const int key) const 
+        inline JSON_tree operator[](const int key) const 
         {
-            std::stringstream s;
-            s << key;
-            std::string new_path = path + std::string("/") + s.str();
+            std::string new_path = path_ + std::string("/") + Utils::name_by_argument(key);
             JSONNode n;
             try
             {
-                n = node.at(key);
+                n = node_.at(key);
             }
             catch (const std::out_of_range& e)
             {
 
             }
             return JSON_tree(n, new_path, fname_);
-        }
-
-        template <typename T> inline T get()
-        {
-            T val;
-            std::string type_name;
-            
-            if (!parse_value(val, type_name))
-            {
-                std::stringstream s;
-                s << "null or invalid value of type " << type_name << std::endl 
-                  << "file : " << fname_ << std::endl
-                  << "path : " << path;
-                error(__FILE__, __LINE__, s, fatal_err);
-            }
-
-            return val;
         }
                 
-        /*template <typename T> inline T get(T& default_val)
+        /// Get a value or return a default value
+        template <typename T> 
+        inline T get(T default_val)
         {
-            T val;
-            std::string type_name;
-            
-            if (parse_value(val, type_name)) 
-                return val;
-            else
-                return default_val;
-        }*/
-        
-        template <typename T> inline T get(T default_val)
-        {
-            T val;
-            std::string type_name;
-            
-            if (parse_value(val, type_name)) 
-                return val;
-            else
-                return default_val;
+            return parse_value(default_val);
         }
         
-        template <typename T> inline void operator >> (T& val)
+        /// Get a value or stop with an error
+        template <typename T> 
+        inline void operator>>(T& val)
         {
-            std::string type_name;
-            
-            if (!parse_value(val, type_name))
-            { 
-                std::stringstream s;
-                s << "null or invalid value of type " << type_name << std::endl 
-                  << "file : " << fname_ << std::endl
-                  << "path : " << path;
-                error(__FILE__, __LINE__, s, fatal_err);
-            }
+            val = parse_value<T>();
         }
 }; 
 
