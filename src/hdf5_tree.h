@@ -375,5 +375,6 @@ class HDF5_tree
 
 };
 
-#endif
+#endif // __HDF5_TREE_H__
+
 

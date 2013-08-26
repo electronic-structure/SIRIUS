@@ -275,11 +275,11 @@ void FORTRAN(sirius_get_num_mt_points)(int32_t* atom_type_id, int32_t* num_mt_po
     *num_mt_points = global_parameters.atom_type_by_id(*atom_type_id)->num_mt_points();
 }
 
-void FORTRAN(sirius_get_mt_points)(int32_t* atom_type_id, real8* mt_points)
-{
-    memcpy(mt_points, global_parameters.atom_type_by_id(*atom_type_id)->radial_grid().get_ptr(),
-        global_parameters.atom_type_by_id(*atom_type_id)->num_mt_points() * sizeof(real8));
-}
+//void FORTRAN(sirius_get_mt_points)(int32_t* atom_type_id, real8* mt_points)
+//{
+//    memcpy(mt_points, global_parameters.atom_type_by_id(*atom_type_id)->radial_grid().get_ptr(),
+//        global_parameters.atom_type_by_id(*atom_type_id)->num_mt_points() * sizeof(real8));
+//}
 
 void FORTRAN(sirius_get_num_grid_points)(int32_t* num_grid_points)
 {
@@ -1275,7 +1275,7 @@ void FORTRAN(sirius_update_atomic_potential)()
 void FORTRAN(sirius_scalar_radial_solver)(int32_t* zn, int32_t* l, int32_t* dme, real8* enu, int32_t* nr, real8* r, 
                                           real8* v__, int32_t* nn, real8* p0__, real8* p1__, real8* q0__, real8* q1__)
 {
-    sirius::RadialGrid rgrid;
+    sirius::Radial_grid rgrid;
     rgrid.set_radial_points(*nr, *nr, r);
     sirius::RadialSolver solver(false, *zn, rgrid);
 

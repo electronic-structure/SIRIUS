@@ -4,7 +4,7 @@ Atom_type::Atom_type(const char* symbol__, const char* name__, int zn__, double 
     num_mt_points_(2000 + zn__ * 50), atomic_levels_(levels__), initialized_(false)
                                                  
 {
-    radial_grid_.init(pow3_grid, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
+    radial_grid_ = Radial_grid(pow3_grid, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
 }
 
 Atom_type::Atom_type(int id__, const std::string label__) : 
@@ -74,7 +74,7 @@ void Atom_type::init(int lmax_apw)
 void Atom_type::init_radial_grid()
 {
     if (num_mt_points_ == 0) error(__FILE__, __LINE__, "number of muffin-tin points is zero");
-    radial_grid_.init(pow3_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
+    radial_grid_ = Radial_grid(pow3_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
 }
 
 void Atom_type::init_aw_descriptors(int lmax)

@@ -365,7 +365,7 @@ class Atom_type
         double radial_grid_infinity_;
         
         /// radial grid
-        RadialGrid radial_grid_;
+        Radial_grid radial_grid_;
 
         /// list of atomic levels 
         std::vector<atomic_level_descriptor> atomic_levels_;
@@ -484,12 +484,10 @@ class Atom_type
             return num_mt_points_;
         }
         
-        inline RadialGrid& radial_grid()
+        inline Radial_grid& radial_grid()
         {
             assert(num_mt_points_ > 0);
             assert(radial_grid_.size() > 0);
-            if (fabs(radial_grid_[num_mt_points_ - 1] - mt_radius_) > 1e-10) 
-                error(__FILE__, __LINE__, "Wrong radial grid");
             return radial_grid_;
         }
         

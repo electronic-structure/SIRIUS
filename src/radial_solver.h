@@ -19,7 +19,7 @@ class RadialSolver
         /// negative charge of the nucleus
         double zn;
         
-        sirius::RadialGrid& radial_grid;
+        sirius::Radial_grid& radial_grid;
         
         double enu_tolerance;
         
@@ -138,7 +138,7 @@ class RadialSolver
 
     public:
 
-        RadialSolver(bool relativistic, double zn, sirius::RadialGrid& radial_grid) : 
+        RadialSolver(bool relativistic, double zn, sirius::Radial_grid& radial_grid) : 
             relativistic(relativistic), zn(zn), radial_grid(radial_grid)
         {
             enu_tolerance = 1e-10;

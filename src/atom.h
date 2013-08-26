@@ -189,7 +189,7 @@ class Atom
             return type_->num_mt_points();
         }
 
-        inline RadialGrid& radial_grid()
+        inline Radial_grid& radial_grid()
         {
             return type_->radial_grid();
         }

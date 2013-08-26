@@ -12,7 +12,7 @@ template <typename T> class Spline
         int num_points_;
     
         /// radial grid
-        sirius::RadialGrid& radial_grid_;
+        sirius::Radial_grid& radial_grid_;
 
         std::vector<T> a;
         std::vector<T> b;
@@ -23,7 +23,7 @@ template <typename T> class Spline
     
         template <typename U> friend class Spline;
         
-        Spline(int num_points__, sirius::RadialGrid& radial_grid__) : 
+        Spline(int num_points__, sirius::Radial_grid& radial_grid__) : 
             num_points_(num_points__), radial_grid_(radial_grid__)
         {
             a = std::vector<T>(num_points_);
@@ -37,7 +37,7 @@ template <typename T> class Spline
             memset(&d[0], 0, (num_points_ - 1) * sizeof(T));
         }
         
-        Spline(int num_points__, sirius::RadialGrid& radial_grid__, std::vector<T>& y) : 
+        Spline(int num_points__, sirius::Radial_grid& radial_grid__, std::vector<T>& y) : 
             num_points_(num_points__), radial_grid_(radial_grid__)
         {
             interpolate(y);

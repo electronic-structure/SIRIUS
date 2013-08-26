@@ -302,7 +302,7 @@ template <typename T> class mt_functions
         }
 };
 
-void gradient(RadialGrid& r, MT_function<complex16>* f, MT_function<complex16>* gx, MT_function<complex16>* gy,
+void gradient(Radial_grid& r, MT_function<complex16>* f, MT_function<complex16>* gx, MT_function<complex16>* gy,
               MT_function<complex16>* gz)
 {
     // TODO: in principle, gradient has lmax+1 harmonics, or it may be computed up to a smaller number of harmonics
@@ -435,7 +435,7 @@ void gradient(RadialGrid& r, MT_function<complex16>* f, MT_function<complex16>* 
     }
 }
 
-void gradient(RadialGrid& r, MT_function<double>* f, MT_function<double>* gx, MT_function<double>* gy,
+void gradient(Radial_grid& r, MT_function<double>* f, MT_function<double>* gx, MT_function<double>* gy,
               MT_function<double>* gz)
 {
     MT_function<double>* g[] = {gx, gy, gz};
@@ -456,7 +456,7 @@ void gradient(RadialGrid& r, MT_function<double>* f, MT_function<double>* gx, MT
 
 // TODO: generalize for different lmax
 template <typename T>
-T inner(RadialGrid& r, MT_function<T>* f1, MT_function<T>* f2)
+T inner(Radial_grid& r, MT_function<T>* f1, MT_function<T>* f2)
 {
     for (int i = 0; i < 2; i++)
     {
