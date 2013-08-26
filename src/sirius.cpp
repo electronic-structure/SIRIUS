@@ -547,7 +547,7 @@ void FORTRAN(sirius_read_state)()
     global_parameters.solve_free_atoms();
     potential->hdf5_read();
     potential->update_atomic_potential();
-    sirius:: hdf5_tree fout("sirius.h5", false);
+    sirius:: HDF5_tree fout("sirius.h5", false);
     fout.read("energy_fermi", &global_parameters.rti().energy_fermi);
 }
 
@@ -556,7 +556,7 @@ void FORTRAN(sirius_save_potential)()
     if (Platform::mpi_rank() == 0) 
     {
         // create new hdf5 file
-        sirius::hdf5_tree fout("sirius.h5", true);
+        sirius::HDF5_tree fout("sirius.h5", true);
         fout.create_node("parameters");
         fout.create_node("kpoints");
         fout.create_node("effective_potential");

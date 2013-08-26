@@ -70,9 +70,9 @@ template<typename T> class Periodic_function
         inline T& f_mt(int idx0, int idx1, int ia);
         
         //TODO: this is more complicated if the function is distributed
-        void hdf5_write(hdf5_tree h5f);
+        void hdf5_write(HDF5_tree h5f);
 
-        void hdf5_read(hdf5_tree h5f);
+        void hdf5_read(HDF5_tree h5f);
 
         size_t size();
 

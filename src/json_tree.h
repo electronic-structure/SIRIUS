@@ -237,7 +237,7 @@ class JSON_tree
 
         inline JSON_tree operator[](const int key) const 
         {
-            std::string new_path = path_ + std::string("/") + Utils::name_by_argument(key);
+            std::string new_path = path_ + std::string("/") + Utils::to_string(key);
             JSONNode n;
             try
             {

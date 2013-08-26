@@ -1,21 +1,53 @@
+// This file is part of SIRIUS
+//
+// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#ifndef __HDF5_TREE_H__
+#define __HDF5_TREE_H__
+
+/** \file hdf5_tree.h
+    
+    \brief Interface to the HDF5 library.
+*/
 
 namespace sirius
 {
 
-class hdf5_tree
+class HDF5_tree
 {
     private:
 
-        class hdf5_group
+        /// Auxiliary class to handle HDF5 Group object
+        class HDF5_group
         {
+            private:
+
+                /// HDF5 id of the current object
+                hid_t id_;
+
             public:
                 
-                hid_t id;
-                
-                hdf5_group(hid_t file_id, const std::string path)
+                /// Constructor which openes the existing group.
+                HDF5_group(hid_t file_id, const std::string& path)
                 {
-                    id = H5Gopen(file_id, path.c_str(), H5P_DEFAULT);
-                    if (id < 0) 
+                    if ((id_ = H5Gopen(file_id, path.c_str(), H5P_DEFAULT)) < 0)
                     {
                         std::stringstream s;
                         s << "error in H5Gopen()" << std::endl
@@ -24,63 +56,163 @@ class hdf5_tree
                     }
                 }
 
-                ~hdf5_group()
+                /// Constructor which creates the new group.
+                HDF5_group(HDF5_group& g, const std::string& name)
+                {
+                    if ((id_ = H5Gcreate(g.id(), name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT)) < 0)
+                    {
+                        std::stringstream s;
+                        s << "error in H5Gcreate()" << std::endl
+                          << "name : " << name;
+                        error(__FILE__, __LINE__, s);
+                    }
+                }
+
+                /// Destructor.
+                ~HDF5_group()
                 {            
-                    if (H5Gclose(id) < 0) error(__FILE__, __LINE__, "error in H5Gclose()");
+                    if (H5Gclose(id_) < 0) error(__FILE__, __LINE__, "error in H5Gclose()");
+                }
+
+                /// Return HDF5 id of the current object.
+                inline hid_t id()
+                {
+                    return id_;
                 }
         };
 
-        class hdf5_dataspace
+        /// Auxiliary class to handle HDF5 Dataspace object
+        class HDF5_dataspace
         {
-            public:
-                
-                hid_t id;
+            private:
 
-                hdf5_dataspace(const std::vector<int> dims)
+                /// HDF5 id of the current object
+                hid_t id_;
+
+            public:
+               
+                /// Constructor creates new dataspace object.
+                HDF5_dataspace(const std::vector<int> dims)
                 {
                     std::vector<hsize_t> current_dims(dims.size());
                     for (int i = 0; i < (int)dims.size(); i++) current_dims[dims.size() - i - 1] = dims[i];
 
-                    id = H5Screate_simple((int)dims.size(), &current_dims[0], NULL);
-                    
-                    if (id < 0) error(__FILE__, __LINE__, "error in H5Screate_simple()");
+                    if ((id_ = H5Screate_simple((int)dims.size(), &current_dims[0], NULL)) < 0)
+                        error(__FILE__, __LINE__, "error in H5Screate_simple()");
                 }
-
-                ~hdf5_dataspace()
-                {
-                    if (H5Sclose(id) < 0) error(__FILE__, __LINE__, "error in H5Sclose()");
-                }
-        };
-
-        class hdf5_dataset
-        {
-            public:
-
-                hid_t id;
                 
-                hdf5_dataset(hid_t group_id, const std::string& name)
+                /// Destructor.
+                ~HDF5_dataspace()
                 {
-                    id = H5Dopen(group_id, name.c_str(), H5P_DEFAULT);
-                    if (id < 0) error(__FILE__, __LINE__, "error in H5Dopen()");
+                    if (H5Sclose(id_) < 0) error(__FILE__, __LINE__, "error in H5Sclose()");
                 }
 
-                ~hdf5_dataset()
+                /// Return HDF5 id of the current object.
+                inline hid_t id()
                 {
-                    if (H5Dclose(id) < 0) error(__FILE__, __LINE__, "error in H5Dclose()");
+                    return id_;
                 }
         };
 
-        std::string file_name_;
-        std::string path_;
+        /// Auxiliary class to handle HDF5 Dataset object
+        class HDF5_dataset
+        {
+            private:
+
+                /// HDF5 id of the current object
+                hid_t id_;
+                
+            public:
+                
+                /// Constructor which openes the existing dataset object.
+                HDF5_dataset(hid_t group_id, const std::string& name)
+                {
+                    if ((id_ = H5Dopen(group_id, name.c_str(), H5P_DEFAULT)) < 0)
+                        error(__FILE__, __LINE__, "error in H5Dopen()");
+                }
+                
+                /// Constructor which creates the new dataset object.
+                HDF5_dataset(HDF5_group& group, HDF5_dataspace& dataspace, const std::string& name, hid_t type_id)
+                {
+                    if ((id_ = H5Dcreate(group.id(), name.c_str(), type_id, dataspace.id(), 
+                                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT)) < 0)
+                    {
+                        error(__FILE__, __LINE__, "error in H5Dcreate()");
+                    }
+                }
+                
+                /// Destructor.
+                ~HDF5_dataset()
+                {
+                    if (H5Dclose(id_) < 0) error(__FILE__, __LINE__, "error in H5Dclose()");
+                }
+
+                /// Return HDF5 id of the current object.
+                inline hid_t id()
+                {
+                    return id_;
+                }
+        };
         
+        /// HDF5 file name
+        std::string file_name_;
+
+        /// path inside HDF5 file
+        std::string path_;
+       
+        /// HDF5 file handler
         hid_t file_id_;
         
+        /// true if this is a root node
         bool root_node_;
         
-    public:
+        /// Constructor to create branches of the HDF5 tree.
+        HDF5_tree(hid_t file_id__, const std::string& path__) : path_(path__), file_id_(file_id__), root_node_(false)
+        {
+        }
 
-        hdf5_tree(const std::string& file_name__, bool truncate) : 
-            file_name_(file_name__), file_id_(-1), root_node_(true)
+        /// Write a multidimensional array.
+        template <typename T>
+        void write(const std::string& name, T* data, const std::vector<int>& dims)
+        {
+            // open group
+            HDF5_group group(file_id_, path_);
+
+            // make dataspace
+            HDF5_dataspace dataspace(dims);
+
+            /// create new dataset
+            HDF5_dataset dataset(group, dataspace, name, primitive_type_wrapper<T>::hdf5_type_id());
+
+            // write data
+            if (H5Dwrite(dataset.id(), primitive_type_wrapper<T>::hdf5_type_id(), dataspace.id(), H5S_ALL, 
+                         H5P_DEFAULT, data) < 0)
+            {
+                error(__FILE__, __LINE__, "error in H5Dwrite()");
+            }
+        }
+
+        /// Read a multidimensional array.
+        template<typename T>
+        void read(const std::string& name, T* data, const std::vector<int>& dims)
+        {
+            HDF5_group group(file_id_, path_);
+
+            HDF5_dataspace dataspace(dims);
+
+            HDF5_dataset dataset(group.id(), name);
+
+            if (H5Dread(dataset.id(), primitive_type_wrapper<T>::hdf5_type_id(), dataspace.id(), H5S_ALL, 
+                        H5P_DEFAULT, data) < 0)
+            {
+                error(__FILE__, __LINE__, "error in H5Dread()");
+            }
+        }
+
+    public:
+        
+        /// Constructor to create the HDF5 tree.
+        HDF5_tree(const std::string& file_name__, bool truncate) : file_name_(file_name__), file_id_(-1), root_node_(true)
         {
             if (H5open() < 0) error(__FILE__, __LINE__, "error in H5open()");
             
@@ -113,11 +245,8 @@ class hdf5_tree
             path_ = "/";
         }
 
-        hdf5_tree(hid_t file_id__, const std::string& path__) : path_(path__), file_id_(file_id__), root_node_(false)
-        {
-        }
-
-        ~hdf5_tree()
+        /// Destructor.
+        ~HDF5_tree()
         {
             if (root_node_)
             {
@@ -125,60 +254,30 @@ class hdf5_tree
             }
         }
 
-        hdf5_tree create_node(int idx)
+        /// Create node by integer index.
+        /** Create node at the current location using integer index as a name. */
+        HDF5_tree create_node(int idx)
         {
             std::stringstream s;
             s << idx;
             return create_node(s.str());
         }
-
-        hdf5_tree create_node(const std::string& name)
+        
+        /// Create node by name.
+        /** Create node with the given name at the current location.*/
+        HDF5_tree create_node(const std::string& name)
         {
             // try to open a group
-            hdf5_group group(file_id_, path_);
-            
+            HDF5_group group(file_id_, path_);
+
             // try to create a new group
-            hid_t new_group_id = H5Gcreate(group.id, name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            if (new_group_id < 0)
-            {
-                std::stringstream s;
-                s << "error in H5Gcreate()" << std::endl
-                  << "path : " << path_ << std::endl
-                  << "name : " << name;
-                error(__FILE__, __LINE__, s);
-            }
-            else if (H5Gclose(new_group_id) < 0)
-            {
-                error(__FILE__, __LINE__, "error in H5Gclose()");
-            }
-                
+            HDF5_group(group, name);
+            //group.create(name);
+            
             return (*this)[name];
         }
-        
-        template <typename T>
-        void write(const std::string& name, T* data, const std::vector<int>& dims)
-        {
-            // open group
-            hdf5_group group(file_id_, path_);
-
-            hdf5_dataspace dataspace(dims);
-            
-            // creade dataset
-            hid_t dataset_id = H5Dcreate(group.id, name.c_str(), primitive_type_wrapper<T>::hdf5_type_id(), 
-                                         dataspace.id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            if (dataset_id < 0) error(__FILE__, __LINE__, "error in H5Dcreate()");
-
-            // write data
-            if (H5Dwrite(dataset_id, primitive_type_wrapper<T>::hdf5_type_id(), dataspace.id, H5S_ALL, 
-                         H5P_DEFAULT, data) < 0)
-            {
-                error(__FILE__, __LINE__, "error in H5Dwrite()");
-            }
-
-            // close dataset
-            if (H5Dclose(dataset_id) < 0) error(__FILE__, __LINE__, "error in H5Dclose()");
-        }
-
+       
+        /// Write a vector.
         template <typename T>
         void write(const std::string& name, T* data, int size = 1)
         {
@@ -186,7 +285,8 @@ class hdf5_tree
             dims[0] = size;
             write(name, data, dims);
         }
-
+        
+        /// Write a scalar.
         template <typename T>
         void write(const std::string& name, T data)
         {
@@ -194,11 +294,11 @@ class hdf5_tree
             dims[0] = 1;
             write(name, &data, dims);
         }
-        
-        template <typename U, typename T, int N>
-        void write(U name_id, mdarray<T, N>& data)
+
+        /// Write a multidimensional array by name.
+        template <typename T, int N>
+        void write_mdarray(const std::string& name, mdarray<T, N>& data)
         {
-            std::string name = Utils::name_by_argument(name_id);
             if (primitive_type_wrapper<T>::is_complex())
             {
                 std::vector<int> dims(N + 1);
@@ -213,23 +313,16 @@ class hdf5_tree
                 write(name, data.get_ptr(), dims);
             }
         }
-
-        template<typename T>
-        void read(const std::string& name, T* data, const std::vector<int>& dims)
+        
+        /// Write a multidimensional array by integer index.
+        template <typename T, int N>
+        void write_mdarray(int name_id, mdarray<T, N>& data)
         {
-            hdf5_group group(file_id_, path_);
-
-            hdf5_dataspace dataspace(dims);
-
-            hdf5_dataset dataset(group.id, name);
-
-            if (H5Dread(dataset.id, primitive_type_wrapper<T>::hdf5_type_id(), dataspace.id, H5S_ALL, 
-                        H5P_DEFAULT, data) < 0)
-            {
-                error(__FILE__, __LINE__, "error in H5Dread()");
-            }
+            std::string name = Utils::to_string(name_id);
+            write_mdarray(name, data);
         }
 
+        /// Read a vector or a scalar.
         template<typename T>
         void read(const std::string& name, T* data, int size = 1)
         {
@@ -238,10 +331,10 @@ class hdf5_tree
             read(name, data, dims);
         }
 
-        template <typename U, typename T, int N>
-        void read(U name_id, mdarray<T, N>& data)
+        /// Read a multidimensional array by name.
+        template <typename T, int N>
+        void read_mdarray(const std::string& name, mdarray<T, N>& data)
         {
-            std::string name = Utils::name_by_argument(name_id);
             if (primitive_type_wrapper<T>::is_complex())
             {
                 std::vector<int> dims(N + 1);
@@ -253,25 +346,34 @@ class hdf5_tree
             {
                 std::vector<int> dims(N);
                 for (int i = 0; i < N; i++) dims[i] = data.size(i);
-
                 read(name, data.get_ptr(), dims);
             }
         }
 
-        hdf5_tree operator[](const std::string& path__)
+        /// Read a multidimensional array by integer index.
+        template <typename T, int N>
+        void read_mdarray(int name_id, mdarray<T, N>& data)
+        {
+            std::string name = Utils::to_string(name_id);
+            read_mdarray(name, data);
+        }
+
+        HDF5_tree operator[](const std::string& path__)
         {
             std::string new_path = path_ + path__ + "/";
-            return hdf5_tree(file_id_, new_path);
+            return HDF5_tree(file_id_, new_path);
         }
         
-        hdf5_tree operator[](int idx)
+        HDF5_tree operator[](int idx)
         {
             std::stringstream s;
             s << idx;
             std::string new_path = path_ + s.str() + "/";
-            return hdf5_tree(file_id_, new_path);
+            return HDF5_tree(file_id_, new_path);
         }
 };
 
 };
+
+#endif
 

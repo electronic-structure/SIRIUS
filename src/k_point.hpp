@@ -2560,7 +2560,7 @@ void K_point::save_wave_functions(int id, Band* band__)
 {
     if (parameters_.mpi_grid().root(1 << _dim_col_))
     {
-        hdf5_tree fout("sirius.h5", false);
+        HDF5_tree fout("sirius.h5", false);
 
         fout["K_points"].create_node(id);
         fout["K_points"][id].write("coordinates", vk_, 3);
@@ -2579,9 +2579,9 @@ void K_point::save_wave_functions(int id, Band* band__)
         int offs = band__->spl_spinor_wf_col().location(_splindex_offs_, j);
         if (parameters_.mpi_grid().coordinate(_dim_col_) == rank)
         {
-            hdf5_tree fout("sirius.h5", false);
+            HDF5_tree fout("sirius.h5", false);
             wfj.set_ptr(&spinor_wave_functions_(0, 0, offs));
-            fout["K_points"][id]["spinor_wave_functions"].write(j, wfj);
+            fout["K_points"][id]["spinor_wave_functions"].write_mdarray(j, wfj);
         }
         Platform::barrier(parameters_.mpi_grid().communicator(_dim_col_));
     }
@@ -2589,7 +2589,7 @@ void K_point::save_wave_functions(int id, Band* band__)
 
 void K_point::load_wave_functions(int id, Band* band__)
 {
-    hdf5_tree fin("sirius.h5", false);
+    HDF5_tree fin("sirius.h5", false);
     
     int mtgk_size_in;
     fin["K_points"][id].read("mtgk_size", &mtgk_size_in);
@@ -2610,7 +2610,7 @@ void K_point::load_wave_functions(int id, Band* band__)
     {
         int j = band__->spl_spinor_wf_col(jloc);
         wfj.set_ptr(&spinor_wave_functions_(0, 0, jloc));
-        fin["K_points"][id]["spinor_wave_functions"].read(j, wfj);
+        fin["K_points"][id]["spinor_wave_functions"].read_mdarray(j, wfj);
     }
 }
 

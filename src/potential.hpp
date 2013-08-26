@@ -1024,7 +1024,7 @@ void Potential::zero()
 
 void Potential::hdf5_read()
 {
-    hdf5_tree fout("sirius.h5", false);
+    HDF5_tree fout("sirius.h5", false);
     effective_potential_->hdf5_read(fout["effective_potential"]);
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
         effective_magnetic_field_[j]->hdf5_read(fout["effective_magnetic_field"][j]);
@@ -1059,7 +1059,7 @@ void Potential::save()
 {
     if (Platform::mpi_rank() == 0)
     {
-        hdf5_tree fout(storage_file_name, false);
+        HDF5_tree fout(storage_file_name, false);
         effective_potential_->hdf5_write(fout["effective_potential"]);
         for (int j = 0; j < parameters_.num_mag_dims(); j++)
             effective_magnetic_field_[j]->hdf5_write(fout["effective_magnetic_field"].create_node(j));
@@ -1068,7 +1068,7 @@ void Potential::save()
 
 void Potential::load()
 {
-    hdf5_tree fout(storage_file_name, false);
+    HDF5_tree fout(storage_file_name, false);
     effective_potential_->hdf5_read(fout["effective_potential"]);
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
         effective_magnetic_field_[j]->hdf5_read(fout["effective_magnetic_field"][j]);

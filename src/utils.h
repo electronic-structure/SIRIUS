@@ -183,9 +183,10 @@ class Utils
             iv[2] = i2;
             return iv;
         }
-
+        
+        /// Convert variable of type T to a string
         template <typename T>
-        static std::string name_by_argument(T argument)
+        static std::string to_string(T argument)
         {
             std::stringstream s;
             s << argument;

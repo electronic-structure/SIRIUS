@@ -792,7 +792,7 @@ class Global : public Step_function
             if (Platform::mpi_rank() == 0) 
             {
                 // create new hdf5 file
-                hdf5_tree fout(storage_file_name, true);
+                HDF5_tree fout(storage_file_name, true);
                 fout.create_node("parameters");
                 fout.create_node("effective_potential");
                 fout.create_node("effective_magnetic_field");

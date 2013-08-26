@@ -147,17 +147,17 @@ T Periodic_function<T>::integrate(int flg)
 }
 
 template <typename T>
-void Periodic_function<T>::hdf5_write(hdf5_tree h5f)
+void Periodic_function<T>::hdf5_write(HDF5_tree h5f)
 {
-    h5f.write("f_mt", f_mt_);
-    h5f.write("f_it", f_it_);
+    h5f.write_mdarray("f_mt", f_mt_);
+    h5f.write_mdarray("f_it", f_it_);
 }
 
 template <typename T>
-void Periodic_function<T>::hdf5_read(hdf5_tree h5f)
+void Periodic_function<T>::hdf5_read(HDF5_tree h5f)
 {
-    h5f.read("f_mt", f_mt_);
-    h5f.read("f_it", f_it_);
+    h5f.read_mdarray("f_mt", f_mt_);
+    h5f.read_mdarray("f_it", f_it_);
 }
 
 template <typename T>

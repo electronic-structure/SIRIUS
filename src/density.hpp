@@ -1110,7 +1110,7 @@ void Density::save()
 {
     if (Platform::mpi_rank() == 0)
     {
-        hdf5_tree fout(storage_file_name, false);
+        HDF5_tree fout(storage_file_name, false);
         rho_->hdf5_write(fout["density"]);
         for (int j = 0; j < parameters_.num_mag_dims(); j++)
             magnetization_[j]->hdf5_write(fout["magnetization"].create_node(j));
@@ -1119,7 +1119,7 @@ void Density::save()
 
 void Density::load()
 {
-    hdf5_tree fout(storage_file_name, false);
+    HDF5_tree fout(storage_file_name, false);
     rho_->hdf5_read(fout["density"]);
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
         magnetization_[j]->hdf5_read(fout["magnetization"][j]);

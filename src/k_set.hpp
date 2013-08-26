@@ -211,7 +211,7 @@ void K_set::save_wave_functions()
 {
     if (Platform::mpi_rank() == 0)
     {
-        hdf5_tree fout("sirius.h5", false);
+        HDF5_tree fout("sirius.h5", false);
         fout["parameters"].write("num_kpoints", num_kpoints());
         fout["parameters"].write("num_bands", parameters_.num_bands());
         fout["parameters"].write("num_spins", parameters_.num_spins());
@@ -232,7 +232,7 @@ void K_set::save_wave_functions()
 
 void K_set::load_wave_functions()
 {
-    hdf5_tree fin("sirius.h5", false);
+    HDF5_tree fin("sirius.h5", false);
     int num_spins;
     fin["parameters"].read("num_spins", &num_spins);
     if (num_spins != parameters_.num_spins()) error(__FILE__, __LINE__, "wrong number of spins");
