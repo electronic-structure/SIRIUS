@@ -547,7 +547,7 @@ void FORTRAN(sirius_read_state)()
     global_parameters.solve_free_atoms();
     potential->hdf5_read();
     potential->update_atomic_potential();
-    sirius:: HDF5_tree fout("sirius.h5", false);
+    sirius:: HDF5_tree fout(storage_file_name, false);
     fout.read("energy_fermi", &global_parameters.rti().energy_fermi);
 }
 
@@ -556,7 +556,7 @@ void FORTRAN(sirius_save_potential)()
     if (Platform::mpi_rank() == 0) 
     {
         // create new hdf5 file
-        sirius::HDF5_tree fout("sirius.h5", true);
+        sirius::HDF5_tree fout(storage_file_name, true);
         fout.create_node("parameters");
         fout.create_node("kpoints");
         fout.create_node("effective_potential");
@@ -618,7 +618,7 @@ void FORTRAN(sirius_bands)(void)
         }
     }
 
-    if (bz_path.size() < 2) error(__FILE__, __LINE__, "at least two BZ points are required");
+    if (bz_path.size() < 2) error_local(__FILE__, __LINE__, "at least two BZ points are required");
    
     // compute length of segments
     std::vector<double> segment_length;
@@ -1107,7 +1107,7 @@ void FORTRAN(sirius_get_fv_h_o)(int32_t* kset_id, int32_t* ik, int32_t* size, co
         
         if (*size != kp->apwlo_basis_size())
         {
-            error(__FILE__, __LINE__, "wrong matrix size");
+            error_local(__FILE__, __LINE__, "wrong matrix size");
         }
 
         mdarray<complex16, 2> h(h__, kp->apwlo_basis_size(), kp->apwlo_basis_size());
@@ -1277,7 +1277,7 @@ void FORTRAN(sirius_scalar_radial_solver)(int32_t* zn, int32_t* l, int32_t* dme,
 {
     sirius::Radial_grid rgrid;
     rgrid.set_radial_points(*nr, *nr, r);
-    sirius::RadialSolver solver(false, *zn, rgrid);
+    sirius::Radial_solver solver(false, *zn, rgrid);
 
     std::vector<real8> v(*nr);
     std::vector<real8> p0;

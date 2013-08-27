@@ -2,7 +2,7 @@ void Atom_symmetry_class::generate_aw_radial_functions(run_time_info& rti__)
 {
     int nmtp = atom_type_->num_mt_points();
    
-    RadialSolver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
+    Radial_solver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
     
     #pragma omp parallel default(shared)
     {
@@ -72,7 +72,7 @@ void Atom_symmetry_class::generate_aw_radial_functions(run_time_info& rti__)
                 for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf, 0), 2);
                 norm = s.interpolate().integrate(0);
 
-                if (fabs(norm) < 1e-10) error(__FILE__, __LINE__, "aw radial functions are linearly dependent");
+                if (fabs(norm) < 1e-10) error_local(__FILE__, __LINE__, "aw radial functions are linearly dependent");
 
                 norm = 1.0 / sqrt(norm);
 
@@ -105,7 +105,7 @@ void Atom_symmetry_class::generate_aw_radial_functions(run_time_info& rti__)
 void Atom_symmetry_class::generate_lo_radial_functions()
 {
     int nmtp = atom_type_->num_mt_points();
-    RadialSolver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
+    Radial_solver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
     
     #pragma omp parallel default(shared)
     {
@@ -168,7 +168,7 @@ void Atom_symmetry_class::generate_lo_radial_functions()
                 {
                     std::stringstream s;
                     s << "gesv returned " << info;
-                    error(__FILE__, __LINE__, s);
+                    error_local(__FILE__, __LINE__, s);
                 }
                 
                 // take linear combination of radial solutions
@@ -196,7 +196,7 @@ void Atom_symmetry_class::generate_lo_radial_functions()
                     std::stringstream s;
                     s << "local orbital " << idxlo << " is not zero at MT boundary" << std::endl 
                       << "  value : " << radial_functions_(nmtp - 1, idxrf, 0);
-                    error(__FILE__, __LINE__, s);
+                    error_local(__FILE__, __LINE__, s);
                 }
             }
 
@@ -364,7 +364,7 @@ void Atom_symmetry_class::transform_radial_functions(bool ort_lo, bool ort_aw)
                     std::stringstream s;
                     s << "local orbital radial function for l = " << l << ", order = " << order1 << 
                          " is linearly dependent";
-                    error(__FILE__, __LINE__, s);
+                    error_local(__FILE__, __LINE__, s);
                 }
 
                 norm = 1.0 / sqrt(norm);
@@ -407,7 +407,7 @@ void Atom_symmetry_class::transform_radial_functions(bool ort_lo, bool ort_aw)
                 double norm = s.interpolate().integrate(0);
 
                 if (fabs(norm) < 1e-10) 
-                    error(__FILE__, __LINE__, "aw radial function is linearly dependent");
+                    error_local(__FILE__, __LINE__, "aw radial function is linearly dependent");
 
                 norm = 1.0 / sqrt(norm);
 
@@ -417,7 +417,7 @@ void Atom_symmetry_class::transform_radial_functions(bool ort_lo, bool ort_aw)
                     radial_functions_(ir, idxrf1, 1) *= norm;
                 }
 
-                error(__FILE__, __LINE__, "first, fix the radial derivative");
+                error_local(__FILE__, __LINE__, "first, fix the radial derivative");
                 
                 // this is not precise
                 double rderiv = (radial_functions_(nmtp - 1, idxrf1, 0) - radial_functions_(nmtp - 2, idxrf1, 0)) / 
@@ -586,7 +586,7 @@ void Atom_symmetry_class::generate_radial_integrals()
                   << " idxlo2 = " << idxlo2 << std::endl
                   << " h(1,2) - h(2,1) = " << diff;
 
-                warning(__FILE__, __LINE__, s, 0);
+                warning_local(__FILE__, __LINE__, s);
             }
 
             if (true)
@@ -633,7 +633,7 @@ void Atom_symmetry_class::generate_radial_integrals()
                       << " surf_{12} = " << surf12 << std::endl
                       << " surf_{21} = " << surf21;
                     
-                    warning(__FILE__, __LINE__, s, 0);
+                    warning_local(__FILE__, __LINE__, s);
                 }
 
                 if (true)
@@ -760,7 +760,7 @@ double Atom_symmetry_class::aw_surface_dm(int l, int order, int dm)
         }
         default:
         {
-            error(__FILE__, __LINE__, "wrong order of radial derivative", fatal_err);
+            error_local(__FILE__, __LINE__, "wrong order of radial derivative");
         }
     }
 
@@ -773,8 +773,8 @@ void Atom_symmetry_class::generate_core_charge_density()
 
     if (atom_type_->num_core_electrons() == 0.0) return;
     
-    //RadialSolver solver(true, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
-    RadialSolver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
+    //Radial_solver solver(true, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
+    Radial_solver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
     
     Spline<double> rho(atom_type_->radial_grid().size(), atom_type_->radial_grid());
     

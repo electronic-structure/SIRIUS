@@ -1,3 +1,24 @@
+// This file is part of SIRIUS
+//
+// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #ifndef __FFT3D_H__
 #define __FFT3D_H__
 
@@ -16,6 +37,10 @@
             \frac{1}{N} \sum_{{\bf r}_j} e^{-i{\bf G}{\bf r}_j} f({\bf r}_j)
     \f]
     is a \em forward transformation from a function to a set of coefficients. 
+
+    FFTW performs an "out of place" transformation, which means that we need to allocate both input and output buffers.
+    To get the most performance out of multithreading we are going to put whole FFTs into different threads instead
+    of using threaded implementation for each transform. 
 */
 
 namespace sirius
@@ -91,7 +116,8 @@ class FFT3D
         }
 
     public:
-
+        
+        /// Initialize transformations.
         void init(int* dims)
         {
             set_grid_size(dims);
@@ -116,6 +142,7 @@ class FFT3D
             }
         }
         
+        /// Free all allocated resources.
         void clear()
         {
             for (int i = 0; i < Platform::num_fft_threads(); i++)
@@ -130,6 +157,7 @@ class FFT3D
             fftw_cleanup();
         }
         
+        /// Zero the input buffer for a given thread.
         inline void zero(int thread_id = 0)
         {
             assert(thread_id < Platform::num_fft_threads());
@@ -160,7 +188,8 @@ class FFT3D
             
             memcpy(&fftw_input_buffer_(0, thread_id), data, size() * sizeof(complex16));
         }
-
+        
+        /// Execute the transformation for a given thread.
         inline void transform(int direction, int thread_id = 0)
         {
             assert(thread_id < Platform::num_fft_threads());
@@ -179,7 +208,7 @@ class FFT3D
                 }
                 default:
                 {
-                    error(__FILE__, __LINE__, "wrong FFT direction");
+                    error_local(__FILE__, __LINE__, "wrong FFT direction");
                 }
             }
         }
@@ -210,14 +239,17 @@ class FFT3D
             return grid_limits_[d][i];
         }
 
+        /// Total size of the FFT grid.
         inline int size()
         {
             return grid_size_[0] * grid_size_[1] * grid_size_[2]; 
         }
-        
-        inline int size(int i)
+
+        /// Size of a given dimension.
+        inline int size(int d)
         {
-            return grid_size_[i]; 
+            assert(d >= 0 && d < 3);
+            return grid_size_[d]; 
         }
 
         inline int index(int i0, int i1, int i2)
@@ -228,12 +260,14 @@ class FFT3D
 
             return (i0 + i1 * grid_size_[0] + i2 * grid_size_[0] * grid_size_[1]);
         }
-
+        
+        /// Direct access of the output buffer
         inline complex16& output_buffer(int i, int thread_id = 0)
         {
             return fftw_output_buffer_(i, thread_id);
         }
         
+        /// Direct access of the input buffer
         inline complex16& input_buffer(int i, int thread_id = 0)
         {
             return fftw_input_buffer_(i, thread_id);

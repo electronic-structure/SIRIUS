@@ -60,7 +60,7 @@ class Timer
 
         void start()
         {
-            if (active_) error(__FILE__, __LINE__, "timer is already running", fatal_err);
+            if (active_) error_local(__FILE__, __LINE__, "timer is already running");
 
             gettimeofday(&starting_time_, NULL);
             active_ = true;
@@ -72,7 +72,7 @@ class Timer
             {
                 std::stringstream s;
                 s << "Timer " << label_ << " was not running";
-                error(__FILE__, __LINE__, s, fatal_err);
+                error_local(__FILE__, __LINE__, s);
             }
 
             timeval end;

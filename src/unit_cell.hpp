@@ -48,7 +48,7 @@ void Unit_cell::reduce_coordinates(double vc[3], int ntr[3], double vf[3])
     {
         ntr[i] = (int)floor(vf[i]);
         vf[i] -= ntr[i];
-        if (vf[i] < 0.0 || vf[i] >= 1.0) error(__FILE__, __LINE__, "wrong fractional coordinates");
+        if (vf[i] < 0.0 || vf[i] >= 1.0) error_local(__FILE__, __LINE__, "wrong fractional coordinates");
     }
 }
 
@@ -102,7 +102,7 @@ void Unit_cell::add_atom_type(int atom_type_id, const std::string label)
     {   
         std::stringstream s;
         s << "atom type with id " << atom_type_id << " is already in list";
-        error(__FILE__, __LINE__, s);
+        error_local(__FILE__, __LINE__, s);
     }
     atom_types_.push_back(new Atom_type(atom_type_id, label));
     atom_type_index_by_id_[atom_type_id] = (int)atom_types_.size() - 1;
@@ -117,7 +117,7 @@ void Unit_cell::add_atom(int atom_type_id, double* position, double* vector_fiel
     {
         std::stringstream s;
         s << "atom type with id " << atom_type_id << " is not found";
-        error(__FILE__, __LINE__, s);
+        error_local(__FILE__, __LINE__, s);
     }
 
     for (int i = 0; i < num_atoms(); i++)
@@ -129,7 +129,7 @@ void Unit_cell::add_atom(int atom_type_id, double* position, double* vector_fiel
             s << "atom with the same position is already in list" << std::endl
               << "  position : " << position[0] << " " << position[1] << " " << position[2];
             
-            error(__FILE__, __LINE__, s);
+            error_local(__FILE__, __LINE__, s);
         }
     }
 
@@ -146,7 +146,7 @@ void Unit_cell::get_symmetry()
 {
     Timer t("sirius::UnitCell::get_symmetry");
     
-    if (num_atoms() == 0) error(__FILE__, __LINE__, "no atoms");
+    if (num_atoms() == 0) error_local(__FILE__, __LINE__, "no atoms");
     
     if (spg_dataset_) spg_free_dataset(spg_dataset_);
         
@@ -177,9 +177,9 @@ void Unit_cell::get_symmetry()
     spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions(0, 0), &types[0], num_atoms(), 1e-5);
 
     if (spg_dataset_->spacegroup_number == 0)
-        error(__FILE__, __LINE__, "spg_get_dataset() returned 0 for the space group");
+        error_local(__FILE__, __LINE__, "spg_get_dataset() returned 0 for the space group");
 
-    if (spg_dataset_->n_atoms != num_atoms()) error(__FILE__, __LINE__, "wrong number of atoms");
+    if (spg_dataset_->n_atoms != num_atoms()) error_local(__FILE__, __LINE__, "wrong number of atoms");
 
     Atom_symmetry_class* atom_symmetry_class;
     
@@ -212,7 +212,7 @@ void Unit_cell::get_symmetry()
 
 void Unit_cell::find_mt_radii(std::vector<double>& Rmt)
 {
-    if (nearest_neighbours_.size() == 0) error(__FILE__, __LINE__, "array of nearest neighbours is empty");
+    if (nearest_neighbours_.size() == 0) error_local(__FILE__, __LINE__, "array of nearest neighbours is empty");
 
     // initialize Rmt to huge value
     Rmt = std::vector<double>(num_atom_types(), 1e10);
@@ -286,7 +286,7 @@ void Unit_cell::find_mt_radii(std::vector<double>& Rmt)
 bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
 {
     if (nearest_neighbours_.size() == 0)
-        error(__FILE__, __LINE__, "array of nearest neighbours is empty");
+        error_local(__FILE__, __LINE__, "array of nearest neighbours is empty");
 
     for (int ia = 0; ia < num_atoms(); ia++)
     {
@@ -294,7 +294,7 @@ bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
         {
             std::stringstream s;
             s << "array of nearest neighbours for atom " << ia << " is empty";
-            error(__FILE__, __LINE__, s);
+            error_local(__FILE__, __LINE__, s);
         }
 
         int ja = nearest_neighbours_[ia][1].atom_id;
@@ -390,7 +390,7 @@ void Unit_cell::update()
         s << "overlaping muffin-tin spheres for atoms " << ia << " and " << ja << std::endl
           << "  radius of atom " << ia << " : " << atom(ia)->type()->mt_radius() << std::endl
           << "  radius of atom " << ja << " : " << atom(ja)->type()->mt_radius();
-        error(__FILE__, __LINE__, s, fatal_err);
+        error_local(__FILE__, __LINE__, s);
     }
     
     min_mt_radius_ = 1e100;
@@ -574,7 +574,7 @@ void Unit_cell::set_lattice_vectors(double* a1, double* a2, double* a3)
     
     omega_ = fabs(t1);
     
-    if (omega_ < 1e-10) error(__FILE__, __LINE__, "lattice vectors are linearly dependent");
+    if (omega_ < 1e-10) error_local(__FILE__, __LINE__, "lattice vectors are linearly dependent");
     
     t1 = 1.0 / t1;
 

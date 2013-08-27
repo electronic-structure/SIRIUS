@@ -113,7 +113,7 @@ class Global : public Step_function
                     }
                     else
                     {
-                        error(__FILE__, __LINE__, "wrong eigen value solver", fatal_err);
+                        error_local(__FILE__, __LINE__, "wrong eigen value solver");
                     }
                 }
 
@@ -131,7 +131,7 @@ class Global : public Step_function
                     }
                     else
                     {
-                        error(__FILE__, __LINE__, "wrong processing unit", fatal_err);
+                        error_local(__FILE__, __LINE__, "wrong processing unit");
                     }
                 }
 
@@ -397,7 +397,7 @@ class Global : public Step_function
         /// Initialize the global variables
         void initialize(int init_aw_descriptors__)
         {
-            if (initialized_) error(__FILE__, __LINE__, "Can't initialize global variables more than once.");
+            if (initialized_) error_local(__FILE__, __LINE__, "Can't initialize global variables more than once.");
 
             read_input();
             

@@ -52,7 +52,7 @@ class HDF5_tree
                         std::stringstream s;
                         s << "error in H5Gopen()" << std::endl
                           << "path : " << path;
-                        error(__FILE__, __LINE__, s);
+                        error_local(__FILE__, __LINE__, s);
                     }
                 }
 
@@ -64,14 +64,14 @@ class HDF5_tree
                         std::stringstream s;
                         s << "error in H5Gcreate()" << std::endl
                           << "name : " << name;
-                        error(__FILE__, __LINE__, s);
+                        error_local(__FILE__, __LINE__, s);
                     }
                 }
 
                 /// Destructor.
                 ~HDF5_group()
                 {            
-                    if (H5Gclose(id_) < 0) error(__FILE__, __LINE__, "error in H5Gclose()");
+                    if (H5Gclose(id_) < 0) error_local(__FILE__, __LINE__, "error in H5Gclose()");
                 }
 
                 /// Return HDF5 id of the current object.
@@ -98,13 +98,13 @@ class HDF5_tree
                     for (int i = 0; i < (int)dims.size(); i++) current_dims[dims.size() - i - 1] = dims[i];
 
                     if ((id_ = H5Screate_simple((int)dims.size(), &current_dims[0], NULL)) < 0)
-                        error(__FILE__, __LINE__, "error in H5Screate_simple()");
+                        error_local(__FILE__, __LINE__, "error in H5Screate_simple()");
                 }
                 
                 /// Destructor.
                 ~HDF5_dataspace()
                 {
-                    if (H5Sclose(id_) < 0) error(__FILE__, __LINE__, "error in H5Sclose()");
+                    if (H5Sclose(id_) < 0) error_local(__FILE__, __LINE__, "error in H5Sclose()");
                 }
 
                 /// Return HDF5 id of the current object.
@@ -128,7 +128,7 @@ class HDF5_tree
                 HDF5_dataset(hid_t group_id, const std::string& name)
                 {
                     if ((id_ = H5Dopen(group_id, name.c_str(), H5P_DEFAULT)) < 0)
-                        error(__FILE__, __LINE__, "error in H5Dopen()");
+                        error_local(__FILE__, __LINE__, "error in H5Dopen()");
                 }
                 
                 /// Constructor which creates the new dataset object.
@@ -137,14 +137,14 @@ class HDF5_tree
                     if ((id_ = H5Dcreate(group.id(), name.c_str(), type_id, dataspace.id(), 
                                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT)) < 0)
                     {
-                        error(__FILE__, __LINE__, "error in H5Dcreate()");
+                        error_local(__FILE__, __LINE__, "error in H5Dcreate()");
                     }
                 }
                 
                 /// Destructor.
                 ~HDF5_dataset()
                 {
-                    if (H5Dclose(id_) < 0) error(__FILE__, __LINE__, "error in H5Dclose()");
+                    if (H5Dclose(id_) < 0) error_local(__FILE__, __LINE__, "error in H5Dclose()");
                 }
 
                 /// Return HDF5 id of the current object.
@@ -188,7 +188,7 @@ class HDF5_tree
             if (H5Dwrite(dataset.id(), primitive_type_wrapper<T>::hdf5_type_id(), dataspace.id(), H5S_ALL, 
                          H5P_DEFAULT, data) < 0)
             {
-                error(__FILE__, __LINE__, "error in H5Dwrite()");
+                error_local(__FILE__, __LINE__, "error in H5Dwrite()");
             }
         }
 
@@ -205,7 +205,7 @@ class HDF5_tree
             if (H5Dread(dataset.id(), primitive_type_wrapper<T>::hdf5_type_id(), dataspace.id(), H5S_ALL, 
                         H5P_DEFAULT, data) < 0)
             {
-                error(__FILE__, __LINE__, "error in H5Dread()");
+                error_local(__FILE__, __LINE__, "error in H5Dread()");
             }
         }
 
@@ -214,7 +214,7 @@ class HDF5_tree
         /// Constructor to create the HDF5 tree.
         HDF5_tree(const std::string& file_name__, bool truncate) : file_name_(file_name__), file_id_(-1), root_node_(true)
         {
-            if (H5open() < 0) error(__FILE__, __LINE__, "error in H5open()");
+            if (H5open() < 0) error_local(__FILE__, __LINE__, "error in H5open()");
             
             if (hdf5_trace_errors) H5Eset_auto(H5E_DEFAULT, NULL, NULL);
             
@@ -222,7 +222,7 @@ class HDF5_tree
             {
                 // create a new file
                 file_id_ = H5Fcreate(file_name_.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-                if (file_id_ < 0) error(__FILE__, __LINE__, "error in H5Fcreate()");
+                if (file_id_ < 0) error_local(__FILE__, __LINE__, "error in H5Fcreate()");
             }
             else
             {
@@ -231,14 +231,14 @@ class HDF5_tree
                     // try to open existing file
                     file_id_ = H5Fopen(file_name_.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
 
-                    if (file_id_ < 0) error(__FILE__, __LINE__, "H5Fopen() failed");
+                    if (file_id_ < 0) error_local(__FILE__, __LINE__, "H5Fopen() failed");
                 }
                 else
                 {
                     // create a new file if it doesn't exist
                     file_id_ = H5Fcreate(file_name_.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, H5P_DEFAULT);
 
-                    if (file_id_ < 0) error(__FILE__, __LINE__, "error in H5Fcreate()");
+                    if (file_id_ < 0) error_local(__FILE__, __LINE__, "error in H5Fcreate()");
                 }
             }
 
@@ -250,7 +250,7 @@ class HDF5_tree
         {
             if (root_node_)
             {
-                if (H5Fclose(file_id_) < 0) error(__FILE__, __LINE__, "error in H5Fclose()");
+                if (H5Fclose(file_id_) < 0) error_local(__FILE__, __LINE__, "error in H5Fclose()");
             }
         }
 

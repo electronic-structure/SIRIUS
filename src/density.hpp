@@ -942,7 +942,7 @@ void Density::generate(K_set& ks)
         for (int j = 0; j < parameters_.num_bands(); j++) ot += ks[ik]->weight() * ks[ik]->band_occupancy(j);
     }
 
-    if (fabs(wt - 1.0) > 1e-12) error(__FILE__, __LINE__, "K_point weights don't sum to one");
+    if (fabs(wt - 1.0) > 1e-12) error_local(__FILE__, __LINE__, "K_point weights don't sum to one");
 
     if (fabs(ot - parameters_.num_valence_electrons()) > 1e-8)
     {
@@ -951,7 +951,7 @@ void Density::generate(K_set& ks)
           << "  computed : " << ot << std::endl
           << "  required : " << parameters_.num_valence_electrons() << std::endl
           << "  difference : " << fabs(ot - parameters_.num_valence_electrons());
-        error(__FILE__, __LINE__, s);
+        error_local(__FILE__, __LINE__, s);
     }
 
     // zero density and magnetization
@@ -987,7 +987,7 @@ void Density::generate(K_set& ks)
                 #endif
                 default:
                 {
-                    error(__FILE__, __LINE__, "wrong processing unit");
+                    error_local(__FILE__, __LINE__, "wrong processing unit");
                 }
             }
             break;
@@ -1049,7 +1049,7 @@ void Density::generate(K_set& ks)
           << "target value : " << parameters_.num_electrons() << std::endl
           << "difference : " << fabs(nel - parameters_.num_electrons()) << std::endl
           << "core leakage : " << core_leakage;
-        warning(__FILE__, __LINE__, s);
+        warning_global(__FILE__, __LINE__, s);
     }
     
     //if (debug_level > 1) check_density_continuity_at_mt();

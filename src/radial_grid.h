@@ -29,6 +29,7 @@
 
 namespace sirius {
 
+/// Types of radial grid
 enum radial_grid_type {linear_grid, exponential_grid, linear_exponential_grid, pow3_grid, hyperbolic_grid};
 
 /// Radial grid for a muffin-tin or an isolated atom.
@@ -133,7 +134,7 @@ class Radial_grid
            
             // trivial check
             if (mt_radius == infinity && num_mt_points != (int)grid_points.size()) 
-                error(__FILE__, __LINE__, "Wrong radial grid");
+                error_local(__FILE__, __LINE__, "Wrong radial grid");
 
             return grid_points;
         }
@@ -174,16 +175,19 @@ class Radial_grid
         
         inline double operator [](const int i)
         {
+            assert(i < (int)points_.size());
             return points_[i];
         }
         
         inline double dr(const int i)
         {
+            assert(i < (int)deltas_.size());
             return deltas_[i];
         }
 
         inline double rinv(const int i)
         {
+            assert(i < (int)points_inv_.size());
             return points_inv_[i];
         }
        
@@ -202,12 +206,17 @@ class Radial_grid
         /// Set new radial points.
         inline void set_radial_points(int num_points__, int num_mt_points__, double* points__)
         {
+            assert(num_points__ > 0);
+            assert(num_mt_points__ > 0);
+            assert(num_points__ >= num_mt_points__);
+
             num_mt_points_ = num_mt_points__;
 
             points_.resize(num_points__);
             memcpy(&points_[0], points__, num_points__ * sizeof(real8));
-            
-            if (fabs(points_[num_mt_points_ - 1] - mt_radius_) > 1e-10) error(__FILE__, __LINE__, "Wrong radial grid");
+        
+            // check if the last MT point is equal to the MT radius
+            if (fabs(points_[num_mt_points_ - 1] - mt_radius_) > 1e-10) error_local(__FILE__, __LINE__, "Wrong radial grid");
             
             deltas_.resize(points_.size() - 1);
             for (int i = 0; i < (int)points_.size() - 1; i++) deltas_[i] = points_[i + 1] - points_[i];

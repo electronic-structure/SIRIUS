@@ -453,7 +453,7 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
         s << "spherical mesh error is too big" << std::endl
           << "  real spherical integration error " << dr << std::endl
           << "  complex spherical integration error " << dy;
-        warning(__FILE__, __LINE__, s);
+        warning_local(__FILE__, __LINE__, s);
     }
 
     std::vector<double> flm(lmmax_);
@@ -476,7 +476,7 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
             std::stringstream s;
             s << "test of backward / forward real SHT failed" << std::endl
               << "  total error " << t;
-            warning(__FILE__, __LINE__, s);
+            warning_local(__FILE__, __LINE__, s);
         }
     }
 }

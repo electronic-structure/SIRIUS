@@ -18,7 +18,7 @@ class Utils
         static inline int lmax_by_lmmax(int lmmax)
         {
             int lmax = int(sqrt(double(lmmax)) + 1e-8) - 1;
-            if (lmmax_by_lmax(lmax) != lmmax) error(__FILE__, __LINE__, "wrong lmmax");
+            if (lmmax_by_lmax(lmax) != lmmax) error_local(__FILE__, __LINE__, "wrong lmmax");
             return lmax;
         }
 
@@ -156,7 +156,7 @@ class Utils
                 s << name << " is not a hermitian matrix" << std::endl
                   << "  maximum error: i, j : " << i0 << " " << j0 << " diff : " << maxdiff;
 
-                error(__FILE__, __LINE__, s, 0);
+                warning_local(__FILE__, __LINE__, s);
             }
         }
 
@@ -211,7 +211,7 @@ class Utils
                 }
                 default:
                 {
-                    error(__FILE__, __LINE__, "wrong derivative order");
+                    error_local(__FILE__, __LINE__, "wrong derivative order");
                     return 0.0;
                 }
             }

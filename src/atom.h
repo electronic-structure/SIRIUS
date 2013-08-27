@@ -1,6 +1,10 @@
 #ifndef __ATOM_H__
 #define __ATOM_H__
 
+/** \file atom.h
+    
+    \brief Data and methods specific for each atom in the unit cell.
+*/
 namespace sirius {
 
 class Atom

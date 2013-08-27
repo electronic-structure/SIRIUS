@@ -131,7 +131,7 @@ template<> class linalg<lapack>
             {
                 std::stringstream s;
                 s << "getrf returned : " << info;
-                error(__FILE__, __LINE__, s);
+                error_local(__FILE__, __LINE__, s);
             }
 
             info = getri(size, mtrx, size, &ipiv[0], &work[0], lwork);
@@ -139,7 +139,7 @@ template<> class linalg<lapack>
             {
                 std::stringstream s;
                 s << "getri returned : " << info;
-                error(__FILE__, __LINE__, s);
+                error_local(__FILE__, __LINE__, s);
             }
         }
 };
@@ -238,7 +238,7 @@ template<> class linalg<scalapack>
         
             FORTRAN(descinit)(desc, &m, &n, &mb, &nb, &irsrc, &icsrc, &ictxt, &lld, &info);
         
-            if (info) error(__FILE__, __LINE__, "error in descinit");
+            if (info) error_local(__FILE__, __LINE__, "error in descinit");
         }
 
         static int pjlaenv(int32_t ictxt, int32_t ispec, const std::string& name, const std::string& opts, int32_t n1, int32_t n2, 
@@ -280,7 +280,7 @@ class standard_evp
 
         virtual void solve(int32_t matrix_size, complex16* a, int32_t lda, real8* eval, complex16* z, int32_t ldz)
         {
-            error(__FILE__, __LINE__, "eigen-value solver is not configured");
+            error_local(__FILE__, __LINE__, "eigen-value solver is not configured");
         }
 };
 
@@ -323,7 +323,7 @@ class standard_evp_lapack: public standard_evp
             {
                 std::stringstream s;
                 s << "zheevd returned " << info; 
-                error(__FILE__, __LINE__, s, fatal_err);
+                error_local(__FILE__, __LINE__, s);
             }
         }
 };
@@ -394,7 +394,7 @@ class standard_evp_scalapack: public standard_evp
             {
                 std::stringstream s;
                 s << "pzheevd returned " << info; 
-                error(__FILE__, __LINE__, s, fatal_err);
+                error_local(__FILE__, __LINE__, s);
             }
         }
         #endif
@@ -410,7 +410,7 @@ class generalized_evp
         virtual void solve(int32_t matrix_size, int32_t nevec, complex16* a, int32_t lda, complex16* b, int32_t ldb, 
                            real8* eval, complex16* z, int32_t ldz)
         {
-            error(__FILE__, __LINE__, "eigen-value solver is not configured");
+            error_local(__FILE__, __LINE__, "eigen-value solver is not configured");
         }
 };
 
@@ -451,13 +451,13 @@ class generalized_evp_lapack: public generalized_evp
                             &w[0], z, &ldz, &work[0], &lwork, &rwork[0], &iwork[0], &ifail[0], &info, (int32_t)1, 
                             (int32_t)1, (int32_t)1);
 
-            if (m != nevec) error(__FILE__, __LINE__, "Not all eigen-values are found.", fatal_err);
+            if (m != nevec) error_local(__FILE__, __LINE__, "Not all eigen-values are found.");
 
             if (info)
             {
                 std::stringstream s;
                 s << "zhegvx returned " << info; 
-                error(__FILE__, __LINE__, s, fatal_err);
+                error_local(__FILE__, __LINE__, s);
             }
 
             memcpy(eval, &w[0], nevec * sizeof(real8));
@@ -586,16 +586,16 @@ class generalized_evp_scalapack: public generalized_evp
                    
                     s << "number of eigenvalue clusters : " << k << std::endl;
                     for (int i = 0; i < k; i++) s << iclustr[2 * i] << " : " << iclustr[2 * i + 1] << std::endl; 
-                    error(__FILE__, __LINE__, s, fatal_err);
+                    error_local(__FILE__, __LINE__, s);
                 }
 
                 std::stringstream s;
                 s << "pzhegvx returned " << info; 
-                error(__FILE__, __LINE__, s, fatal_err);
+                error_local(__FILE__, __LINE__, s);
             }
 
             if ((m != nevec) || (nz != nevec))
-                error(__FILE__, __LINE__, "Not all eigen-vectors or eigen-values are found.", fatal_err);
+                error_local(__FILE__, __LINE__, "Not all eigen-vectors or eigen-values are found.");
 
             memcpy(eval, &w[0], nevec * sizeof(real8));
 

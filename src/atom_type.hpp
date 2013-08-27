@@ -44,15 +44,15 @@ Atom_type::Atom_type(int id__, const std::string label__) :
 
 void Atom_type::init(int lmax_apw)
 {
-    if (initialized_) error(__FILE__, __LINE__, "can't initialize twice");
-    if (zn_ == 0) error(__FILE__, __LINE__, "zero atom charge");
+    if (initialized_) error_local(__FILE__, __LINE__, "can't initialize twice");
+    if (zn_ == 0) error_local(__FILE__, __LINE__, "zero atom charge");
    
     assert((int)aw_descriptors_.size() == (lmax_apw + 1));
 
     max_aw_order_ = 0;
     for (int l = 0; l <= lmax_apw; l++) max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
     
-    if (max_aw_order_ > 2) error(__FILE__, __LINE__, "maximum aw order is > 2");
+    if (max_aw_order_ > 2) error_local(__FILE__, __LINE__, "maximum aw order is > 2");
 
     indexr_.init(aw_descriptors_, lo_descriptors_);
     indexb_.init(indexr_);
@@ -73,7 +73,7 @@ void Atom_type::init(int lmax_apw)
 
 void Atom_type::init_radial_grid()
 {
-    if (num_mt_points_ == 0) error(__FILE__, __LINE__, "number of muffin-tin points is zero");
+    if (num_mt_points_ == 0) error_local(__FILE__, __LINE__, "number of muffin-tin points is zero");
     radial_grid_ = Radial_grid(pow3_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
 }
 
@@ -137,7 +137,7 @@ void Atom_type::add_lo_descriptor(int ilo, int n, int l, double enu, int dme, in
     }
     else
     {
-        if (l != lo_descriptors_[ilo].l) error(__FILE__, __LINE__, "wrong angular quantum number");
+        if (l != lo_descriptors_[ilo].l) error_local(__FILE__, __LINE__, "wrong angular quantum number");
     }
     
     radial_solution_descriptor rsd;
@@ -171,7 +171,7 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
     free_atom_radial_functions_.set_dimensions(radial_grid_.size(), (int)atomic_levels_.size());
     free_atom_radial_functions_.allocate();
 
-    RadialSolver solver(false, -1.0 * zn_, radial_grid_);
+    Radial_solver solver(false, -1.0 * zn_, radial_grid_);
     libxc_interface xci;
 
     solver.set_tolerance(solver_tol);
@@ -303,7 +303,7 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
         s << "atom " << symbol_ << " is not converged" << std::endl
           << "  energy difference : " << energy_diff << std::endl
           << "  charge difference : " << charge_rms;
-        error(__FILE__, __LINE__, s);
+        error_local(__FILE__, __LINE__, s);
     }
     
     free_atom_density_ = rho.data_points();
@@ -398,7 +398,7 @@ void Atom_type::read_input_core(JSON_tree& parser)
         if (size % 2)
         {
             std::string s = std::string("wrong core configuration string : ") + core_str;
-            error(__FILE__, __LINE__, s);
+            error_local(__FILE__, __LINE__, s);
         }
         int j = 0;
         while (j < size)
@@ -415,30 +415,36 @@ void Atom_type::read_input_core(JSON_tree& parser)
             if (n <= 0 || iss.fail())
             {
                 std::string s = std::string("wrong principal quantum number : " ) + std::string(1, c1);
-                error(__FILE__, __LINE__, s);
+                error_local(__FILE__, __LINE__, s);
             }
             
             switch (c2)
             {
                 case 's':
+                {
                     l = 0;
                     break;
-
+                }
                 case 'p':
+                {
                     l = 1;
                     break;
-
+                }
                 case 'd':
+                {
                     l = 2;
                     break;
-
+                }
                 case 'f':
+                {
                     l = 3;
                     break;
-
+                }
                 default:
+                {
                     std::string s = std::string("wrong angular momentum label : " ) + std::string(1, c2);
-                    error(__FILE__, __LINE__, s);
+                    error_local(__FILE__, __LINE__, s);
+                }
             }
 
             atomic_level_descriptor level;

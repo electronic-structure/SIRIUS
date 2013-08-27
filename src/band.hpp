@@ -1,6 +1,11 @@
+/** \file band.hpp
+    
+    \brief Implementation of methods for Band class.
+*/
+
 Band::Band(Global& parameters__) : parameters_(parameters__), blacs_context_(-1)
 {
-    if (!parameters_.initialized()) error(__FILE__, __LINE__, "Parameters are not initialized.");
+    if (!parameters_.initialized()) error_local(__FILE__, __LINE__, "Parameters are not initialized.");
 
     num_ranks_row_ = parameters_.mpi_grid().dimension_size(_dim_row_);
     num_ranks_col_ = parameters_.mpi_grid().dimension_size(_dim_col_);
@@ -43,7 +48,7 @@ Band::Band(Global& parameters__) : parameters_(parameters__), blacs_context_(-1)
               << "num_ranks_row : " << num_ranks_row_ << " nrow : " << nrow << std::endl
               << "num_ranks_col : " << num_ranks_col_ << " ncol : " << ncol;
 
-            error(__FILE__, __LINE__, s, fatal_err);
+            error_local(__FILE__, __LINE__, s);
         }
     }
     #endif
@@ -369,7 +374,7 @@ void Band::init()
             if (spl_spinor_wf_col_[i + ispn * spl_fv_states_col_.local_size()] != 
                 (spl_fv_states_col_[i] + ispn * parameters_.num_fv_states()))
             {
-                error(__FILE__, __LINE__, "Wrong distribution of wave-functions");
+                error_local(__FILE__, __LINE__, "Wrong distribution of wave-functions");
             }
         }
     }
@@ -420,7 +425,7 @@ void Band::solve_sv(Global& parameters, int mtgk_size, int num_gkvec, int* fft_i
                     mdarray<complex16, 2>& sv_eigen_vectors)
 
 {
-    if (&parameters != &parameters_) error(__FILE__, __LINE__, "different set of parameters");
+    if (&parameters != &parameters_) error_local(__FILE__, __LINE__, "different set of parameters");
 
     Timer t("sirius::Band::solve_sv");
 
@@ -493,7 +498,7 @@ void Band::solve_sv(Global& parameters, int mtgk_size, int num_gkvec, int* fft_i
         }
         default:
         {
-            error(__FILE__, __LINE__, "eigen value solver is not defined", fatal_err);
+            error_local(__FILE__, __LINE__, "eigen value solver is not defined");
         }
     }
     

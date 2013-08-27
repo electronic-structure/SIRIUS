@@ -141,12 +141,12 @@ template <typename T> class MT_function
         {
             int radial_domain_idx = this->argument_idx(arg_radial);
 
-            if (radial_domain_idx == -1) error(__FILE__, __LINE__, "no radial argument");
+            if (radial_domain_idx == -1) error_local(__FILE__, __LINE__, "no radial argument");
             
             // check radial arguments
             if ((this->argument(radial_domain_idx) == f->argument(radial_domain_idx)) != 2)
             {
-                error(__FILE__, __LINE__, "wrong radial arguments");
+                error_local(__FILE__, __LINE__, "wrong radial arguments");
             }
 
             // number of radial points
@@ -157,7 +157,7 @@ template <typename T> class MT_function
 
             if ((this->argument(angular_domain_idx) == f->argument(angular_domain_idx)) != 2)
             {
-                error(__FILE__, __LINE__, "wrong angular argument of initial function");
+                error_local(__FILE__, __LINE__, "wrong angular argument of initial function");
             }
             
             int lmmax = this->size(angular_domain_idx);
@@ -238,20 +238,20 @@ template <typename T> class MT_function
         void sh_transform(SHT* sht, MT_function<T>* f)
         {
             // check radial arguments
-            if ((this->argument(1) == f->argument(1)) != 2) error(__FILE__, __LINE__, "wrong radial arguments");
+            if ((this->argument(1) == f->argument(1)) != 2) error_local(__FILE__, __LINE__, "wrong radial arguments");
 
             if (this->argument(0).type_ == arg_lm && f->argument(0).type_ == arg_tp)
             {
-                if (this->size(0) > sht->lmmax()) error(__FILE__, __LINE__, "wrong lm size");
-                if (f->size(0) != sht->num_points()) error(__FILE__, __LINE__, "wrong tp size");
+                if (this->size(0) > sht->lmmax()) error_local(__FILE__, __LINE__, "wrong lm size");
+                if (f->size(0) != sht->num_points()) error_local(__FILE__, __LINE__, "wrong tp size");
                 
                 sht->backward_transform(&this->data_(0, 0), this->size(0), this->size(1), &(*f)(0, 0));
             }
             
             if (this->argument(0).type_ == arg_tp && f->argument(0).type_ == arg_lm)
             {
-                if (this->size(0) != sht->num_points()) error(__FILE__, __LINE__, "wrong tp size");
-                if (f->size(0) > sht->lmmax()) error(__FILE__, __LINE__, "wrong lm size");
+                if (this->size(0) != sht->num_points()) error_local(__FILE__, __LINE__, "wrong tp size");
+                if (f->size(0) > sht->lmmax()) error_local(__FILE__, __LINE__, "wrong lm size");
                 
                 sht->forward_transform(&this->data_(0, 0), f->size(0), f->size(1), &(*f)(0, 0));
             }
@@ -311,14 +311,14 @@ void gradient(Radial_grid& r, MT_function<complex16>* f, MT_function<complex16>*
 
     int radial_domain_idx = f->argument_idx(arg_radial);
 
-    if (radial_domain_idx == -1) error(__FILE__, __LINE__, "no radial argument");
+    if (radial_domain_idx == -1) error_local(__FILE__, __LINE__, "no radial argument");
 
     for (int i = 0; i < 3; i++)
     {
         // check radial arguments
         if ((f->argument(radial_domain_idx) == g[i]->argument(radial_domain_idx)) != 2)
         {
-            error(__FILE__, __LINE__, "wrong radial arguments");
+            error_local(__FILE__, __LINE__, "wrong radial arguments");
         }
     }
 
@@ -330,14 +330,14 @@ void gradient(Radial_grid& r, MT_function<complex16>* f, MT_function<complex16>*
 
     if (f->argument(angular_domain_idx).type_ != arg_lm)
     {
-        error(__FILE__, __LINE__, "wrong angular argument of initial function");
+        error_local(__FILE__, __LINE__, "wrong angular argument of initial function");
     }
 
     for (int i = 0; i < 3; i++)
     {
         if ((f->argument(angular_domain_idx) == g[i]->argument(angular_domain_idx)) != 2)
         {
-            error(__FILE__, __LINE__, "wrong angular argument of final function");
+            error_local(__FILE__, __LINE__, "wrong angular argument of final function");
         }    
     }
 
@@ -460,7 +460,7 @@ T inner(Radial_grid& r, MT_function<T>* f1, MT_function<T>* f2)
 {
     for (int i = 0; i < 2; i++)
     {
-        if ((f1->argument(i) == f2->argument(i)) != 2) error(__FILE__, __LINE__, "wrong arguments");
+        if ((f1->argument(i) == f2->argument(i)) != 2) error_local(__FILE__, __LINE__, "wrong arguments");
     }
     int radial_domain_idx = f1->argument_idx(arg_radial);
     int angular_domain_idx = (radial_domain_idx == 0) ? 1 : 0;

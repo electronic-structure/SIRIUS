@@ -1,3 +1,27 @@
+// This file is part of SIRIUS
+//
+// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#ifndef __MPI_GRID_H__
+#define __MPI_GRID_H__
+
 /** \file mpi_grid.h
 
     \brief Interface to MPI cartesian grids
@@ -84,7 +108,7 @@ class MPIGrid
         /// Initialize the grid.
         void initialize()
         {
-            if (dimensions_.size() == 0) error(__FILE__, __LINE__, "no dimensions for the grid", fatal_err);
+            if (dimensions_.size() == 0) error_local(__FILE__, __LINE__, "no dimensions for the grid");
 
             int sz = 1;
             for (int i = 0; i < (int)dimensions_.size(); i++) sz *= dimensions_[i];
@@ -98,7 +122,7 @@ class MPIGrid
                 s << std::endl
                   << "  available number of MPI ranks : " << Platform::num_mpi_ranks(parent_communicator_);
 
-                error(__FILE__, __LINE__, s, fatal_err);
+                error_local(__FILE__, __LINE__, s);
             }
             
             // communicator of the entire grid
@@ -165,14 +189,14 @@ class MPIGrid
                 for (int i = 1; i < num_comm; i++)
                 {
                     if (Platform :: num_mpi_ranks(communicators_[i]) != communicator_size_[i]) 
-                        error(__FILE__, __LINE__, "Communicator sizes don't match", fatal_err);
+                        error_local(__FILE__, __LINE__, "Communicator sizes don't match");
                 }
 
                 for (int i = 0; i < (int)dimensions_.size(); i++)
                 {
                     if (Platform::mpi_rank(communicator(1 << i)) != coordinate(i))
                     {
-                        error(__FILE__, __LINE__, "ranks don't match", fatal_err);
+                        error_local(__FILE__, __LINE__, "ranks don't match");
                     }
                 }
 
@@ -332,3 +356,5 @@ class MPIGrid
             return communicators_[valid_directions(directions)];
         }
 };
+
+#endif // __MPI_GRID_H__

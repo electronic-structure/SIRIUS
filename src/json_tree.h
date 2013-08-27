@@ -131,7 +131,7 @@ class JSON_tree
                 s << "null or invalid value of type " << jvp.type_name() << std::endl 
                   << "file : " << fname_ << std::endl
                   << "path : " << path_;
-                error(__FILE__, __LINE__, s);
+                error_local(__FILE__, __LINE__, s);
             }
             return val;
         }
@@ -159,7 +159,7 @@ class JSON_tree
             {
                 std::stringstream s;
                 s << "failed to open " << fname;
-                error(__FILE__, __LINE__, s);
+                error_local(__FILE__, __LINE__, s);
             }
 
             struct stat st;
@@ -172,7 +172,7 @@ class JSON_tree
             }
             else
             {
-                error(__FILE__, __LINE__, "bad file handle");
+                error_local(__FILE__, __LINE__, "bad file handle");
             }
         }
 

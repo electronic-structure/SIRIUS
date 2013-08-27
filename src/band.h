@@ -1,5 +1,6 @@
 /** \file band.h
-    \brief Setup and solve second-variational eigen value problem.
+    
+    \brief Setup and solve second-variational eigen value problem (aka "band problem").
 */
 
 namespace sirius
@@ -27,10 +28,6 @@ class Band
         
         splindex<block> sub_spl_spinor_wf_;
         
-        //int num_fv_states_row_up_;
-        
-        //int num_fv_states_row_dn_;
-
         int rank_col_;
 
         int num_ranks_col_;

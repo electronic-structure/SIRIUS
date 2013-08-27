@@ -7,7 +7,7 @@ template<> void K_point::generate_matching_coefficients_l<1>(int ia, int iat, At
         s << "Ill defined plane wave matching problem for atom " << ia << ", l = " << l << std::endl
           << "  radial function value at the MT boundary : " << A(0, 0); 
         
-        warning(__FILE__, __LINE__, s);
+        warning_local(__FILE__, __LINE__, s);
     }
     
     A(0, 0) = 1.0 / A(0, 0);
@@ -41,7 +41,7 @@ template<> void K_point::generate_matching_coefficients_l<2>(int ia, int iat, At
         s << "Ill defined plane wave matching problem for atom " << ia << ", l = " << l << std::endl
           << "  radial function value at the MT boundary : " << A(0 ,0); 
         
-        warning(__FILE__, __LINE__, s);
+        warning_local(__FILE__, __LINE__, s);
     }
     std::swap(A(0, 0), A(1, 1));
     A(0, 0) /= det;
@@ -1209,7 +1209,7 @@ void K_point::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<
                 }
                 default:
                 {
-                    error(__FILE__, __LINE__, "wrong order of augmented wave", fatal_err);
+                    error_local(__FILE__, __LINE__, "wrong order of augmented wave");
                 }
             }
         } //l
@@ -1516,7 +1516,7 @@ void K_point::solve_fv_evp_1stage(Band* band, mdarray<complex16, 2>& h, mdarray<
         }
         default:
         {
-            error(__FILE__, __LINE__, "eigen value solver is not defined", fatal_err);
+            error_local(__FILE__, __LINE__, "eigen value solver is not defined");
         }
     }
 
@@ -1529,7 +1529,7 @@ void K_point::solve_fv_evp_1stage(Band* band, mdarray<complex16, 2>& h, mdarray<
 
 void K_point::solve_fv_evp_2stage(mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
-    if (parameters_.eigen_value_solver() != lapack) error(__FILE__, __LINE__, "implemented for LAPACK only");
+    if (parameters_.eigen_value_solver() != lapack) error_local(__FILE__, __LINE__, "implemented for LAPACK only");
     
     standard_evp_lapack s;
 
@@ -1624,7 +1624,7 @@ void K_point::generate_fv_states(Band* band, Periodic_function<double>* effectiv
         #endif
         default:
         {
-            error(__FILE__, __LINE__, "wrong processing unit");
+            error_local(__FILE__, __LINE__, "wrong processing unit");
         }
     }
     
@@ -1896,11 +1896,11 @@ void K_point::generate_gkvec()
         s << "G+k cutoff (" << gk_cutoff << ") is too large for a given lmax (" 
           << parameters_.lmax_apw() << ")" << std::endl
           << "minimum value for lmax : " << int(gk_cutoff * parameters_.max_mt_radius()) + 1;
-        error(__FILE__, __LINE__, s);
+        error_local(__FILE__, __LINE__, s);
     }
 
     if (gk_cutoff * 2 > parameters_.pw_cutoff())
-        error(__FILE__, __LINE__, "aw cutoff is too large for a given plane-wave cutoff");
+        error_local(__FILE__, __LINE__, "aw cutoff is too large for a given plane-wave cutoff");
 
     std::vector< std::pair<double, int> > gkmap;
 
@@ -2068,7 +2068,7 @@ void K_point::build_apwlo_basis_descriptors()
           << "size of apwlo_basis_descriptors_ : " << apwlo_basis_descriptors_.size() << std::endl
           << "num_gkvec : " << num_gkvec() << std::endl 
           << "mt_lo_basis_size : " << parameters_.mt_lo_basis_size();
-        error(__FILE__, __LINE__, s);
+        error_local(__FILE__, __LINE__, s);
     }
 }
 
@@ -2096,13 +2096,13 @@ void K_point::distribute_block_cyclic(Band* band)
                                            band->rank_row(), 0, band->num_ranks_row());
         
         if (nr != apwlo_basis_size_row()) 
-            error(__FILE__, __LINE__, "numroc returned a different local row size");
+            error_local(__FILE__, __LINE__, "numroc returned a different local row size");
 
         int nc = linalg<scalapack>::numroc(apwlo_basis_size(), parameters_.cyclic_block_size(), 
                                            band->rank_col(), 0, band->num_ranks_col());
         
         if (nc != apwlo_basis_size_col()) 
-            error(__FILE__, __LINE__, "numroc returned a different local column size");
+            error_local(__FILE__, __LINE__, "numroc returned a different local column size");
     }
     #endif
 
@@ -2130,7 +2130,7 @@ void K_point::find_eigen_states(Band* band, Periodic_function<double>* effective
     if (band->num_ranks() > 1 && 
         (parameters_.eigen_value_solver() == lapack || parameters_.eigen_value_solver() == magma))
     {
-        error(__FILE__, __LINE__, "Can't use more than one MPI rank for LAPACK or MAGMA eigen-value solver");
+        error_local(__FILE__, __LINE__, "Can't use more than one MPI rank for LAPACK or MAGMA eigen-value solver");
     }
 
     generate_fv_states(band, effective_potential);
@@ -2560,7 +2560,7 @@ void K_point::save_wave_functions(int id, Band* band__)
 {
     if (parameters_.mpi_grid().root(1 << _dim_col_))
     {
-        HDF5_tree fout("sirius.h5", false);
+        HDF5_tree fout(storage_file_name, false);
 
         fout["K_points"].create_node(id);
         fout["K_points"][id].write("coordinates", vk_, 3);
@@ -2579,7 +2579,7 @@ void K_point::save_wave_functions(int id, Band* band__)
         int offs = band__->spl_spinor_wf_col().location(_splindex_offs_, j);
         if (parameters_.mpi_grid().coordinate(_dim_col_) == rank)
         {
-            HDF5_tree fout("sirius.h5", false);
+            HDF5_tree fout(storage_file_name, false);
             wfj.set_ptr(&spinor_wave_functions_(0, 0, offs));
             fout["K_points"][id]["spinor_wave_functions"].write_mdarray(j, wfj);
         }
@@ -2589,11 +2589,11 @@ void K_point::save_wave_functions(int id, Band* band__)
 
 void K_point::load_wave_functions(int id, Band* band__)
 {
-    HDF5_tree fin("sirius.h5", false);
+    HDF5_tree fin(storage_file_name, false);
     
     int mtgk_size_in;
     fin["K_points"][id].read("mtgk_size", &mtgk_size_in);
-    if (mtgk_size_in != mtgk_size()) error(__FILE__, __LINE__, "wrong wave-function size");
+    if (mtgk_size_in != mtgk_size()) error_local(__FILE__, __LINE__, "wrong wave-function size");
 
     band_energies_.resize(parameters_.num_bands());
     fin["K_points"][id].read("band_energies", &band_energies_[0], parameters_.num_bands());

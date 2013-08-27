@@ -1,10 +1,36 @@
+// This file is part of SIRIUS
+//
+// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #ifndef __SPLINE_H__
 #define __SPLINE_H__
 
+/** \file sppline.h
+    
+    \brief Implementation of cubic spline.
+*/
 namespace sirius {
 
-/// \brief cubic spline with a not-a-knot boundary conditions
-template <typename T> class Spline
+/// Cubic spline with a not-a-knot boundary conditions.
+template <typename T> 
+class Spline
 {
     private:
         
@@ -13,15 +39,19 @@ template <typename T> class Spline
     
         /// radial grid
         sirius::Radial_grid& radial_grid_;
-
+        
+        /// spline "a" coefficients
         std::vector<T> a;
+        
+        /// spline "b" coefficients
         std::vector<T> b;
         std::vector<T> c;
         std::vector<T> d;
 
     public:
     
-        template <typename U> friend class Spline;
+        template <typename U> 
+        friend class Spline;
         
         Spline(int num_points__, sirius::Radial_grid& radial_grid__) : 
             num_points_(num_points__), radial_grid_(radial_grid__)
@@ -92,7 +122,7 @@ template <typename T> class Spline
             {
                 std::stringstream s;
                 s << "gtsv returned " << info;
-                error(__FILE__, __LINE__, s);
+                error_local(__FILE__, __LINE__, s);
             }
             
             b.resize(num_points_ - 1);
@@ -113,7 +143,7 @@ template <typename T> class Spline
         static T integrate(Spline<T>* f, Spline<U>* g)
         {
             if ((&f->radial_grid_ != &g->radial_grid_) || (f->num_points_ != g->num_points_)) 
-                error(__FILE__, __LINE__, "radial grids don't match");
+                error_local(__FILE__, __LINE__, "radial grids don't match");
             
             T result = 0;
 
@@ -444,7 +474,7 @@ template <typename T> class Spline
                 }
                 default:
                 {
-                    error(__FILE__, __LINE__, "wrong order of derivative");
+                    error_local(__FILE__, __LINE__, "wrong order of derivative");
                     return 0.0; // make compiler happy
                     break;
                 }

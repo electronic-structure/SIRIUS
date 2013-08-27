@@ -17,10 +17,10 @@ class libxc_interface
             for (int i = 0; i < 2; i++)
             {
                 if (xc_func_init(&func1_[i], xc_id[i], XC_UNPOLARIZED) != 0) 
-                    error(__FILE__, __LINE__, "functional is not found");
+                    error_local(__FILE__, __LINE__, "functional is not found");
                 
                 if (xc_func_init(&func2_[i], xc_id[i], XC_POLARIZED) != 0)
-                    error(__FILE__, __LINE__, "functional is not found");
+                    error_local(__FILE__, __LINE__, "functional is not found");
             }
         }
 
@@ -48,7 +48,7 @@ class libxc_interface
                 {
                     std::stringstream s;
                     s << "rho is negative : " << rho[i];
-                    error(__FILE__, __LINE__, s);
+                    error_local(__FILE__, __LINE__, s);
                 }
             }
 
@@ -76,7 +76,7 @@ class libxc_interface
                 rhoud[2 * i] = 0.5 * (rho[i] + mag[i]);
                 rhoud[2 * i + 1] = 0.5 * (rho[i] - mag[i]);
 
-                if (rhoud[2 * i] < 0.0) error(__FILE__, __LINE__, "rho_up is negative");
+                if (rhoud[2 * i] < 0.0) error_local(__FILE__, __LINE__, "rho_up is negative");
 
                 if (rhoud[2 * i + 1] < 0.0)
                 {
@@ -85,7 +85,7 @@ class libxc_interface
                         std::stringstream s;
                         s << "rho_dn is negative : " << rhoud[2 * i + 1] << std::endl
                           << "  rho : " << rho[i] << "   mag : " << mag[i];
-                        error(__FILE__, __LINE__, s);
+                        error_local(__FILE__, __LINE__, s);
                     }
                     else
                     {
@@ -111,7 +111,7 @@ class libxc_interface
 
             for (int i = 0; i < size; i++)
             {
-                if (vxc[i] > 0.0) error(__FILE__, __LINE__, "vxc > 0");
+                if (vxc[i] > 0.0) error_local(__FILE__, __LINE__, "vxc > 0");
                 
                 if (bxc[i] > 0.0)
                 {

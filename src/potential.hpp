@@ -543,7 +543,7 @@ void Potential::generate_pw_coefs()
             #endif
             default:
             {
-                error(__FILE__, __LINE__, "wrong processing unit");
+                error_local(__FILE__, __LINE__, "wrong processing unit");
             }
         }
     }
@@ -767,7 +767,7 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
             s << "Charge density for atom " << ia << " has negative values" << std::endl
               << "most negatve value : " << rhomin << std::endl
               << "current Rlm expansion of the charge density may be not sufficient, try to increase lmax_rho";
-            error(__FILE__, __LINE__, s, 0);
+            warning_local(__FILE__, __LINE__, s);
         }
 
         if (parameters_.num_spins() == 2)
@@ -848,7 +848,7 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;
-        error(__FILE__, __LINE__, s, 0);
+        error_local(__FILE__, __LINE__, s);
     }
 
     if (parameters_.num_spins() == 1)
@@ -1024,7 +1024,7 @@ void Potential::zero()
 
 void Potential::hdf5_read()
 {
-    HDF5_tree fout("sirius.h5", false);
+    HDF5_tree fout(storage_file_name, false);
     effective_potential_->hdf5_read(fout["effective_potential"]);
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
         effective_magnetic_field_[j]->hdf5_read(fout["effective_magnetic_field"][j]);
