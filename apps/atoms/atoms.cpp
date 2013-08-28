@@ -152,13 +152,13 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
     jw.single("core", core_str);
     jw.begin_array("valence");
     jw.begin_set();
-    jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}]");
-    //jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 0}]");
+    jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 0}]");
     jw.end_set();
     
     int lmax = 0;
     for (int i = 0; i < (int)valence.size(); i++) lmax = std::max(lmax, valence[i].l); 
     lmax = std::min(lmax + 1, 3);
+    int nmax[4];
     for (int l = 0; l <= lmax; l++)
     {
         int n = l + 1;
@@ -172,11 +172,12 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
         {
             if (valence[i].l == l) n = valence[i].n;
         }
+        nmax[l] = n;
                
         jw.begin_set();
         jw.single("l", l);
         jw.single("n", n);
-        jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]");
+        jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}]");
 
         jw.end_set();
     }
@@ -191,6 +192,35 @@ void solve_atom(atom* a, double core_cutoff_energy, int lo_type)
         jw.single("l", valence[i].l);
         jw.string("basis", s.str());
         jw.end_set();
+    }
+    if (lo_type == 6)
+    {
+        //for (int i = 0; i < (int)valence.size(); i++)
+        //{
+        //    
+        //    jw.begin_set();
+        //    std::stringstream s;
+        //    s << "[{" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}," 
+        //      << " {" << "\"n\" : " << valence[i].n + 1 << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : 0}," 
+        //      << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]";
+        //    jw.single("l", valence[i].l);
+        //    jw.string("basis", s.str());
+        //    jw.end_set();
+        //}
+        for (int l = 0; l <= lmax; l++)
+        {
+            for (int nn = 0; nn < 10; nn++)
+            {
+                jw.begin_set();
+                std::stringstream s;
+                s << "[{" << "\"n\" : " << nmax[l] + nn + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}," 
+                  << " {" << "\"n\" : " << nmax[l] + nn + 1 << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : 0},"
+                  << " {" << "\"n\" : " << nmax[l] + nn + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 2}]";
+                jw.single("l", l);
+                jw.string("basis", s.str());
+                jw.end_set();
+            }
+        }
     }
     if (lo_type == 4)
     {
