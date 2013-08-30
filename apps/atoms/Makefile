@@ -7,9 +7,7 @@ INCLUDE = -I./../../src
 .SUFFIXES: .cpp
 
 all: 
-#	python atoms.py
-#	$(CXX) $(CXX_OPT) $(INCLUDE) atoms.cpp $(LIB_SIRIUS) $(LIBS) -o atoms
-	$(CXX) $(CXX_OPT) $(INCLUDE) atoms1.cpp $(LIB_SIRIUS) $(LIBS) -o atoms1
+	$(CXX) $(CXX_OPT) $(INCLUDE) atom.cpp $(LIB_SIRIUS) $(LIBS) -o atom
 
 clean:
-	rm -f *.o atoms atoms.cpp
+	rm -f *.o atom *.json run.x

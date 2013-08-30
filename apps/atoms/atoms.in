@@ -1,6 +1,6 @@
 !
-! initial input file is taken from the Elk code (http://elk.sourceforge.net/)
-! some standard atomic weights are updated to match the NIST data (http://www.nist.gov/pml/data/comp.cfm)
+! Initial input file is taken from the Elk code (http://elk.sourceforge.net/)
+! Some standard atomic weights are updated to match the NIST data (http://www.nist.gov/pml/data/comp.cfm)
 ! NIST total energies are added (http://www.nist.gov/pml/data/dftdata/index.cfm)
 !
 ! June 2012
