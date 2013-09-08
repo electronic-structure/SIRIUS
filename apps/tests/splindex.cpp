@@ -2,17 +2,20 @@
 
 void test1(void)
 {
+    printf("\n");
+    printf("split 17 elements between 4 ranks\n");
+    printf("\n");
     for (int i = 0; i < 4; i++)
     {
-        splindex<block> spl(18, 4, i);
-        std::cout << " size = " << spl.local_size() << std::endl; 
-
-        for (int k = 0; k < 18; k++)
+        splindex<block> spl(17, 4, i);
+        printf("rank : %i, local size : %i\n", i, spl.local_size());
+        
+        printf("local index and rank for each element:\n");
+        for (int k = 0; k < 17; k++)
         {
-            int ialoc = spl.location(_splindex_offs_, k);
+            int iloc = spl.location(_splindex_offs_, k);
             int rank = spl.location(_splindex_rank_, k);
-
-            std::cout << "    ialoc, rank : " << ialoc << " " << rank << std::endl;
+            printf(" global index : %i => local index : %i, rank: %i\n", k, iloc, rank);
         }
     }
 

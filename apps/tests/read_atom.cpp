@@ -2,7 +2,9 @@
 
 int main(int argn, char **argv)
 {
-    sirius::AtomType atom_type(1, std::string("Si"));
+    sirius::Atom_type atom_type(1, "Si");
+    atom_type.init_aw_descriptors(10);
+    atom_type.init_radial_grid();
     atom_type.init(10);
 
     atom_type.print_info();

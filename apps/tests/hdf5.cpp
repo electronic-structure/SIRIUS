@@ -2,9 +2,9 @@
 
 void test1()
 {
-    sirius::hdf5_tree f("f.h5", true);
+    sirius::HDF5_tree f("f.h5", true);
     
-    mdarray<double,2> dat(2,4);
+    mdarray<double, 2> dat(2, 4);
     dat.zero();
     
     dat(0, 0) = 1.1;
@@ -16,15 +16,13 @@ void test1()
     
     std::cout << "hash  = " << dat.hash() << std::endl;
     
-    
-    
     f.create_node("aaa");
-    f["aaa"].write("dat_name", dat);
+    f["aaa"].write_mdarray("dat_name", dat);
     dat.zero();
-    f["aaa"].read("dat_name", dat);
+    f["aaa"].read_mdarray("dat_name", dat);
     std::cout << "hash  = " << dat.hash() << std::endl;
     
-    f.write("dat_name", dat);
+    f.write_mdarray("dat_name", dat);
     
 }
 

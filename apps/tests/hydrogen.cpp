@@ -1,10 +1,17 @@
 #include <sirius.h>
 
+using namespace sirius;
+
 int main(int argn, char **argv)
 {
-    Platform::initialize(true);
+    printf("\n");
+    printf("Test of radial solver for bare nuclear potential V(r) = -z / r \n");
+    printf("Energy of {n,l} states is En = -(1/2) * z^2 / n^2 \n");
+    printf("\n");
+
+    Platform::initialize(1);
     
-    json_write jw("out.json");
+    JSON_write jw("out.json");
     std::vector<int> xaxis;
     
     int j = 0;
@@ -44,13 +51,14 @@ int main(int argn, char **argv)
         jw.begin_set();
         jw.single("label", s.str());
         
-        sirius::RadialGrid radial_grid(sirius::exponential_grid, 20000 + z * 300,  1e-7 / z, 200.0 + z * 3.0);
+        //Radial_grid radial_grid(linear_exponential_grid, 20000 + z * 300,  1e-7 / z, 200.0, 200.0 + z * 3.0);
+        Radial_grid radial_grid(linear_exponential_grid, 20000,  1e-7 / z, 200.0, 200.0 + z * 3.0);
         radial_grid.print_info();
 
         std::vector<double> v(radial_grid.size());
         std::vector<double> p(radial_grid.size());
 
-        sirius::RadialSolver solver(false, -double(z), radial_grid);
+        Radial_solver solver(false, -double(z), radial_grid);
         solver.set_tolerance(1e-13 * (k + 1));
 
         for (int i = 0; i < radial_grid.size(); i++) v[i] = -z / radial_grid[i];
@@ -77,8 +85,18 @@ int main(int argn, char **argv)
             for (int l = 0; l <= n - 1; l++)
             {
                 solver.bound_state(n, l, v, enu, p);
-                double enu_exact = -0.5 * (z * z) / pow(double(n), 2);
-                printf("z = %i n = %i l = %i  err = %12.6e\n", z, n, l, fabs(enu  - enu_exact) / fabs(enu_exact));
+                double enu_exact = -0.5 * pow(double(z) / n, 2);
+                double rel_err =  fabs(enu  - enu_exact) / fabs(enu_exact); 
+                printf("z = %i n = %i l = %i, relative error = %12.6e", z, n, l, rel_err);
+                if (rel_err < 1e-10) 
+                {
+                    
+                    printf("  OK\n");
+                }
+                else
+                {
+                    printf("  Fail\n");
+                }
                 yvalues.push_back(fabs(enu  - enu_exact) / fabs(enu_exact));
                 j++;
             }
@@ -88,4 +106,7 @@ int main(int argn, char **argv)
         jw.end_set();
     }
     jw.end_array();
+
+    printf("\n");
+    printf("Run 'python hydrogen_plot.py out.json' to produce a PDF plot with relative errors.\n");
 }

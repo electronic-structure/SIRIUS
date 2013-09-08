@@ -1,25 +1,26 @@
 #include <sirius.h>
 
+using namespace sirius;
+
 void test1()
 {
-
     double x0 = 1e-6;
     double x1 = 1.5;
     const int N = 5000;
-    sirius::RadialGrid r(sirius::exponential_grid, N, x0, x1);
-    sirius::Spline<double> f(N, r);
-    sirius::Spline<double> g(N, r);
+    Radial_grid r(exponential_grid, N, x0, x1);
+    Spline<double> f(N, r);
+    Spline<double> g(N, r);
 
     for (int ir = 0; ir < N; ir++)
     {
-        f[ir] = exp( -r[ir] * r[ir]);
+        f[ir] = exp(-r[ir] * r[ir]);
         g[ir] = sin(r[ir]) / r[ir];
     }
     f.interpolate();
     g.interpolate();
 
-    sirius::Spline<double> f1(N, r);
-    sirius::Spline<double> g1(N, r);
+    Spline<double> f1(N, r);
+    Spline<double> g1(N, r);
     for (int ir = 0; ir < N; ir++)
     {
         f1[ir] = f.deriv(1, ir) * r[ir] * r[ir];
@@ -28,8 +29,8 @@ void test1()
     f1.interpolate();
     g1.interpolate();
 
-    sirius::Spline<double> f2(N, r);
-    sirius::Spline<double> g2(N, r);
+    Spline<double> f2(N, r);
+    Spline<double> g2(N, r);
     for (int ir = 0; ir < N; ir++)
     {
         f2[ir] = f1.deriv(1, ir) / r[ir] / r[ir];
@@ -38,8 +39,8 @@ void test1()
     f2.interpolate();
     g2.interpolate();
 
-    std::cout << " <g|nabla^2|f> = " << sirius::Spline<double>::integrate(&f2, &g) - g[N - 1] * f.deriv(1, N - 1) * x1 * x1 << std::endl;
-    std::cout << " <f|nabla^2|g> = " << sirius::Spline<double>::integrate(&g2, &f) - f[N - 1] * g.deriv(1, N - 1) * x1 * x1 << std::endl;
+    std::cout << " <g|nabla^2|f> = " << Spline<double>::integrate(&f2, &g) - g[N - 1] * f.deriv(1, N - 1) * x1 * x1 << std::endl;
+    std::cout << " <f|nabla^2|g> = " << Spline<double>::integrate(&g2, &f) - f[N - 1] * g.deriv(1, N - 1) * x1 * x1 << std::endl;
 }
 
 void test2()
@@ -48,12 +49,12 @@ void test2()
     double x0 = 1e-6;
     double x1 = 1.892184;
     const int N = 5000;
-    sirius::RadialGrid r(sirius::exponential_grid, N, x0, x1);
-    sirius::Spline<double> u0(N, r);
-    sirius::Spline<double> u1(N, r);
-    sirius::Spline<double> d2_u0(N, r);
-    sirius::Spline<double> d2_u1(N, r);
-    sirius::Spline<double> s(N, r);
+    Radial_grid r(exponential_grid, N, x0, x1);
+    Spline<double> u0(N, r);
+    Spline<double> u1(N, r);
+    Spline<double> d2_u0(N, r);
+    Spline<double> d2_u1(N, r);
+    Spline<double> s(N, r);
 
     for (int ir = 0; ir < N; ir++)
     {
@@ -91,7 +92,6 @@ void test2()
         d2_u1[ir] *= norm;
     }
 
-    
     //for (int ir = 0; ir < N; ir++) s[ir] = u0[ir] * u1[ir];
     //double t1 = s.interpolate().integrate(0);
 
@@ -114,16 +114,12 @@ void test2()
 
     for (int ir = 0; ir < N; ir++) s[ir] = (u1[ir] / r[ir]) * (d2_u1[ir] / r[ir]);
     std::cout << "<1|d2|1> = " << -0.5 * s.interpolate().integrate(2) << std::endl;
-
-
-
-
-
 }
 
 
 int main(int argn, char** argv)
 {
+    test1();
     test2();
 
 }
