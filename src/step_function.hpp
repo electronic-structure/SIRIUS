@@ -42,7 +42,7 @@ void Step_function::init()
     {
         std::stringstream s;
         s << "step function gives a wrong volume for IT region" << std::endl
-          << "  difference with exact value : " << vit - volume_it_;
+          << "  difference with exact value : " << fabs(vit - volume_it_);
         warning_global(__FILE__, __LINE__, s);
     }
 }

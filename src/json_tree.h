@@ -323,7 +323,14 @@ class JSON_write
         inline void single(const char* name, double value)
         {
             new_line();
-            fprintf(fout_, "\"%s\" : %.12f", name, value);
+            if (fabs(value) > 1e-6)
+            {
+                fprintf(fout_, "\"%s\" : %.12f", name, value);
+            }
+            else
+            {
+                fprintf(fout_, "\"%s\" : %.12e", name, value);
+            }
         }
 
         inline void single(const char* name, const std::string& value)
@@ -345,7 +352,14 @@ class JSON_write
             for (int i = 0; i < (int)values.size(); i++)
             {
                 if (i) fprintf(fout_, ",");
-                fprintf(fout_, "%.12f", values[i]);
+                if (fabs(values[i]) > 1e-6)
+                {
+                    fprintf(fout_, "%.12f", values[i]);
+                }
+                else
+                {
+                    fprintf(fout_, "%.12e", values[i]);
+                }
             }
             fprintf(fout_, "]");
         }

@@ -330,6 +330,9 @@ class basis_functions_index
         }
 };
 
+/**
+    \todo Arbitrary AW order
+*/
 class Atom_type
 {
     private:
@@ -337,9 +340,6 @@ class Atom_type
         /// unique id of atom type
         int id_;
     
-        /// label of the input file
-        std::string label_;
-
         /// chemical element symbol
         std::string symbol_;
 
@@ -365,7 +365,7 @@ class Atom_type
         double radial_grid_infinity_;
         
         /// radial grid
-        Radial_grid radial_grid_;
+        Radial_grid* radial_grid_;
 
         /// list of atomic levels 
         std::vector<atomic_level_descriptor> atomic_levels_;
@@ -417,35 +417,44 @@ class Atom_type
 
         void read_input_lo(JSON_tree& parser);
 
-        void read_input();
+        void read_input(const std::string& fname);
     
+        void init_aw_descriptors(int lmax);
+
     public:
         
         Atom_type(const char* symbol__, const char* name__, int zn__, double mass__, 
                   std::vector<atomic_level_descriptor>& levels__);
  
         Atom_type(int id__, const std::string label__);
+
+        ~Atom_type();
         
         void init(int lmax_apw);
 
-        void init_radial_grid();
+        void create_radial_grid();
         
-        void init_aw_descriptors(int lmax);
+        void set_radial_grid(int num_points, double* points);
 
+        /// Add augmented-wave descriptor.
         void add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu);
         
+        /// Add local orbital descriptor
         void add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu);
 
+        /// Solve free atom and find SCF density and potential.
+        /** Free atom potential is used to augment the MT potential and find the energy of the bound states which is used
+            as a linearization energy (auto_enu = 1). */ 
         double solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu);
 
         void print_info();
         
         void sync_free_atom(int rank);
         
-        const std::string& label()
-        {
-            return label_;
-        }
+        //const std::string& label()
+        //{
+        //    return label_;
+        //}
 
         inline int id()
         {
@@ -487,13 +496,13 @@ class Atom_type
         inline Radial_grid& radial_grid()
         {
             assert(num_mt_points_ > 0);
-            assert(radial_grid_.size() > 0);
-            return radial_grid_;
+            assert(radial_grid_->size() > 0);
+            return (*radial_grid_);
         }
         
         inline double radial_grid(int ir)
         {
-            return radial_grid_[ir];
+            return (*radial_grid_)[ir];
         }
         
         inline int num_atomic_levels()

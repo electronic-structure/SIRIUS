@@ -1,7 +1,13 @@
-template<> void K_point::generate_matching_coefficients_l<1>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
-                                                             mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
+/// First order matching coefficients, conjugated
+/** It is more convenient to store conjugated coefficients because then the overlap matrix is set with 
+    single matrix-matrix multiplication without further conjugation.
+    \todo (l,m) -> lm++;
+*/
+template<> 
+void K_point::generate_matching_coefficients_l<1, true>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
+                                                        mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
 {
-    if ((fabs(A(0, 0)) < 1.0 / sqrt(parameters_.omega())) && (verbosity_level > 0))
+    if ((fabs(A(0, 0)) < 1.0 / sqrt(parameters_.omega())) && (debug_level >= 1))
     {   
         std::stringstream s;
         s << "Ill defined plane wave matching problem for atom " << ia << ", l = " << l << std::endl
@@ -18,24 +24,46 @@ template<> void K_point::generate_matching_coefficients_l<1>(int ia, int iat, At
         zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 0) * A(0, 0);
 
         int idxb = type->indexb_by_l_m_order(l, -l, 0);
-        for (int m = -l; m <= l; m++)
-        {
-            // =========================================================================
-            // it is more convenient to store conjugated coefficients because then the 
-            // overlap matrix is set with single matrix-matrix multiplication without 
-            // further conjugation
-            // =========================================================================
-            alm(igkloc, idxb++) = gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc) * conj(zt);
-        }
+        for (int m = -l; m <= l; m++) alm(igkloc, idxb++) = gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc) * conj(zt);
     }
 }
 
-template<> void K_point::generate_matching_coefficients_l<2>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
-                                                             mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
+/// First order matching coefficients, non-conjugated
+template<> 
+void K_point::generate_matching_coefficients_l<1, false>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
+                                                         mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
+{
+    if ((fabs(A(0, 0)) < 1.0 / sqrt(parameters_.omega())) && (debug_level >= 1))
+    {   
+        std::stringstream s;
+        s << "Ill defined plane wave matching problem for atom " << ia << ", l = " << l << std::endl
+          << "  radial function value at the MT boundary : " << A(0, 0); 
+        
+        warning_local(__FILE__, __LINE__, s);
+    }
+    
+    A(0, 0) = 1.0 / A(0, 0);
+
+    complex16 zt;
+    for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
+    {
+        zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 0) * A(0, 0);
+
+        int idxb = type->indexb_by_l_m_order(l, -l, 0);
+        for (int m = -l; m <= l; m++) alm(igkloc, idxb++) = conj(gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc)) * zt;
+    }
+}
+
+/// Second order matching coefficients, conjugated
+/** It is more convenient to store conjugated coefficients because then the overlap matrix is set with 
+    single matrix-matrix multiplication without further conjugation.
+*/
+template<> void K_point::generate_matching_coefficients_l<2, true>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
+                                                                   mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
 {
     double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
     
-    if ((fabs(det) < 1.0 / sqrt(parameters_.omega())) && (verbosity_level > 0))
+    if ((fabs(det) < 1.0 / sqrt(parameters_.omega())) && (debug_level >= 1))
     {   
         std::stringstream s;
         s << "Ill defined plane wave matching problem for atom " << ia << ", l = " << l << std::endl
@@ -64,13 +92,49 @@ template<> void K_point::generate_matching_coefficients_l<2>(int ia, int iat, At
             int idxb0 = type->indexb_by_l_m_order(l, m, 0);
             int idxb1 = type->indexb_by_l_m_order(l, m, 1);
                         
-            // ===========================================================================
-            // it is more convenient to store conjugated coefficients because then the 
-            // overlap matrix is set with single matrix-matrix multiplication without 
-            // further conjugation
-            // ===========================================================================
             alm(igkloc, idxb0) = gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc) * conj(zb[0]);
             alm(igkloc, idxb1) = gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc) * conj(zb[1]);
+        }
+    }
+}
+
+/// Second order matching coefficients, non-conjugated
+template<> void K_point::generate_matching_coefficients_l<2, false>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
+                                                                    mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
+{
+    double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
+    
+    if ((fabs(det) < 1.0 / sqrt(parameters_.omega())) && (debug_level >= 1))
+    {   
+        std::stringstream s;
+        s << "Ill defined plane wave matching problem for atom " << ia << ", l = " << l << std::endl
+          << "  radial function value at the MT boundary : " << A(0 ,0); 
+        
+        warning_local(__FILE__, __LINE__, s);
+    }
+    std::swap(A(0, 0), A(1, 1));
+    A(0, 0) /= det;
+    A(1, 1) /= det;
+    A(0, 1) = -A(0, 1) / det;
+    A(1, 0) = -A(1, 0) / det;
+    
+    complex16 zt[2];
+    complex16 zb[2];
+    for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
+    {
+        zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 0);
+        zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 1);
+
+        zb[0] = A(0, 0) * zt[0] + A(0, 1) * zt[1];
+        zb[1] = A(1, 0) * zt[0] + A(1, 1) * zt[1];
+
+        for (int m = -l; m <= l; m++)
+        {
+            int idxb0 = type->indexb_by_l_m_order(l, m, 0);
+            int idxb1 = type->indexb_by_l_m_order(l, m, 1);
+                        
+            alm(igkloc, idxb0) = conj(gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc)) * zb[0];
+            alm(igkloc, idxb1) = conj(gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc)) * zb[1];
         }
     }
 }
@@ -95,7 +159,7 @@ template<> void K_point::set_fv_h_o<cpu, apwlo>(Periodic_function<double>* effec
         Atom* atom = parameters_.atom(ia);
         Atom_type* type = atom->type();
         
-        generate_matching_coefficients(num_gkvec_loc(), ia, alm);
+        generate_matching_coefficients<true>(num_gkvec_loc(), ia, alm);
         
         apply_hmt_to_apw(num_gkvec_row(), ia, alm, halm);
         
@@ -219,7 +283,7 @@ template<> void K_point::ibs_force<cpu, apwlo>(Band* band, mdarray<double, 2>& f
 
         int iat = parameters_.atom_type_index_by_id(type->id());
         
-        generate_matching_coefficients(num_gkvec_loc(), ia, alm);
+        generate_matching_coefficients<true>(num_gkvec_loc(), ia, alm);
         
         apply_hmt_to_apw(num_gkvec_row(), ia, alm, halm);
         
@@ -364,7 +428,7 @@ template<> void K_point::ibs_force<cpu, apwlo>(Band* band, mdarray<double, 2>& f
                 }
 
                 #else
-                error(__FILE__, __LINE__, "not compiled with ScaLAPACK");
+                error_local(__FILE__, __LINE__, "not compiled with ScaLAPACK");
                 #endif
             }
         }
@@ -1170,6 +1234,7 @@ void K_point::update(Band* band)
 }
 
 // TODO: add a switch to return conjuagted or normal coefficients
+template<bool conjugate>
 void K_point::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
 {
     Timer t("sirius::K_point::generate_matching_coefficients");
@@ -1199,12 +1264,12 @@ void K_point::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<
             {
                 case 1:
                 {
-                    generate_matching_coefficients_l<1>(ia, iat, type, l, num_gkvec_loc, A, alm);
+                    generate_matching_coefficients_l<1, conjugate>(ia, iat, type, l, num_gkvec_loc, A, alm);
                     break;
                 }
                 case 2:
                 {
-                    generate_matching_coefficients_l<2>(ia, iat, type, l, num_gkvec_loc, A, alm);
+                    generate_matching_coefficients_l<2, conjugate>(ia, iat, type, l, num_gkvec_loc, A, alm);
                     break;
                 }
                 default:
@@ -1821,7 +1886,7 @@ void K_point::generate_fv_states(Band* band, Periodic_function<double>* effectiv
             Atom* atom = parameters_.atom(ia);
             Atom_type* type = atom->type();
             
-            generate_matching_coefficients(num_gkvec_row(), ia, alm);
+            generate_matching_coefficients<true>(num_gkvec_row(), ia, alm);
 
             blas<cpu>::gemm(2, 0, type->mt_aw_basis_size(), band->spl_fv_states_col().local_size(),
                             num_gkvec_row(), &alm(0, 0), alm.ld(), &fv_eigen_vectors_(0, 0), 

@@ -120,6 +120,7 @@ class FFT3D
         /// Initialize transformations.
         void init(int* dims)
         {
+            Timer t("sirius::FFT3D::init");
             set_grid_size(dims);
             
             fftw_input_buffer_.set_dimensions(size(), Platform::num_fft_threads());

@@ -270,11 +270,13 @@ __device__ size_t array2D_offset(int i0, int i1, int ld0)
     return i0 + i1 * ld0;
 }
 
+// TODO: can be optimized in terms of multiplication
 __device__ size_t array3D_offset(int i0, int i1, int i2, int ld0, int ld1)
 {
     return i0 + i1 * ld0 + i2 * ld0 * ld1;
 }
 
+// TODO: can be optimized in terms of multiplication
 __device__ size_t array4D_offset(int i0, int i1, int i2, int i3, int ld0, int ld1, int ld2)
 {
     return i0 + i1 * ld0 + i2 * ld0 * ld1 + i3 * ld0 * ld1 * ld2;
@@ -340,13 +342,13 @@ __device__ U spline_inner_product_gpu_function(int ld, int size, double* r_dr, T
     }
     __syncthreads();
 
-    //for (int s = 1; s < blockDim.x; s *= 2) 
-    //{
-    //    if (threadIdx.x % (2 * s) == 0) sdata[threadIdx.x] += sdata[threadIdx.x + s];
-    //    __syncthreads();
-    //}
+    for (int s = 1; s < blockDim.x; s *= 2) 
+    {
+        if (threadIdx.x % (2 * s) == 0) sdata[threadIdx.x] += sdata[threadIdx.x + s];
+        __syncthreads();
+    }
     
-    if (threadIdx.x == 0) for (int i = 1; i < blockDim.x; i++) sdata[0] += sdata[i];
+    //if (threadIdx.x == 0) for (int i = 1; i < blockDim.x; i++) sdata[0] += sdata[i];
 
     return sdata[0];
 }

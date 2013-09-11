@@ -204,9 +204,8 @@ class K_point
             }
         }
         
-        // TODO: add a conjugation template parameter - this will make it more readable
         /// Generate matching coefficients for specific l-value
-        template <int order>
+        template <int order, bool conjugate>
         void generate_matching_coefficients_l(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
                                               mdarray<double, 2>& A, mdarray<complex16, 2>& alm);
         
@@ -308,6 +307,7 @@ class K_point
         /** The matching coefficients are conjugated!. This is done in favor of the convenient overlap 
             matrix construnction.
         */
+        template <bool conjugate>
         void generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm);
         
         /// Setup the Hamiltonian and overlap matrices in APW+lo basis

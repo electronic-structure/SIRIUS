@@ -71,7 +71,7 @@ class Atom_symmetry_class
         /// Generate local orbital raidal functions
         void generate_lo_radial_functions();
 
-        /// Check if local orbitals are linearly dependent
+        /// Check if local orbitals are linearly independent
         void check_lo_linear_independence();
 
         /// Dump local orbitals to the file for debug purposes

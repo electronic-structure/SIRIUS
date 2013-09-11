@@ -2,8 +2,6 @@ class Platform
 {
     private:
 
-        static bool verbose_;
-
         static int64_t heap_allocated_;
 
         static int num_fft_threads_;
@@ -15,10 +13,6 @@ class Platform
             if (call_mpi_init__) MPI_Init(NULL, NULL);
             //MPI_Comm_size(MPI_COMM_WORLD, &size_);
             //MPI_Comm_rank(MPI_COMM_WORLD, &rank_);
-
-            // rank 0 prints by default
-            verbose_ = false;
-            if (mpi_rank() == 0) verbose_ = true;
 
             #ifdef _GPU_
             cublas_init();
@@ -42,7 +36,7 @@ class Platform
 
         static void abort()
         {
-            if (num_mpi_ranks() ==  1)
+            if (num_mpi_ranks() == 1)
             {
                 raise(SIGTERM);
             }
@@ -50,7 +44,7 @@ class Platform
             {   
                 MPI_Abort(MPI_COMM_WORLD, -13);
             }
-            exit(0);
+            exit(-13);
         }
 
         static int num_threads()
@@ -63,16 +57,6 @@ class Platform
             return omp_get_thread_num();
         }
         
-        static bool verbose()
-        {
-            return (verbose_ || (verbosity_level > 1));
-        }
-
-        static void set_verbose(bool verbose__)
-        {
-            verbose_ = verbose__;
-        }
-
         static int num_fft_threads()
         {
             return num_fft_threads_;
@@ -217,7 +201,6 @@ class Platform
         }
 };
 
-bool Platform::verbose_ = false;
 int64_t Platform::heap_allocated_ = 0;
 int Platform::num_fft_threads_ = -1;
 

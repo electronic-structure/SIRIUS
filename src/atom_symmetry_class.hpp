@@ -194,7 +194,8 @@ void Atom_symmetry_class::generate_lo_radial_functions()
                 if (fabs(radial_functions_(nmtp - 1, idxrf, 0)) > 1e-10)
                 {
                     std::stringstream s;
-                    s << "local orbital " << idxlo << " is not zero at MT boundary" << std::endl 
+                    s << "atom symmetry class id : " << id() << " (" << atom_type()->symbol() << ")" << std::endl
+                      << "local orbital " << idxlo << " is not zero at MT boundary" << std::endl 
                       << "  value : " << radial_functions_(nmtp - 1, idxrf, 0);
                     error_local(__FILE__, __LINE__, s);
                 }
@@ -227,9 +228,9 @@ void Atom_symmetry_class::generate_lo_radial_functions()
         }
     }
     
-    if (debug_level > 0 && num_lo_descriptors() > 0) check_lo_linear_independence();
+    if (debug_level >= 1 && num_lo_descriptors() > 0) check_lo_linear_independence();
 
-    if (verbosity_level > 0) dump_lo();
+    //if (verbosity_level > 0) dump_lo();
 }
 
 void Atom_symmetry_class::check_lo_linear_independence()
@@ -503,23 +504,23 @@ void Atom_symmetry_class::generate_radial_functions(run_time_info& rti__)
     generate_lo_radial_functions();
     transform_radial_functions(true, false);
     
-    if (verbosity_level > 0)
-    {
-        std::stringstream s;
-        s << "radial_functions_" << id_ << ".dat";
-        FILE* fout = fopen(s.str().c_str(), "w");
+    //** if (verbosity_level > 0)
+    //** {
+    //**     std::stringstream s;
+    //**     s << "radial_functions_" << id_ << ".dat";
+    //**     FILE* fout = fopen(s.str().c_str(), "w");
 
-        for (int ir = 0; ir <atom_type_->num_mt_points(); ir++)
-        {
-            fprintf(fout, "%f ", atom_type_->radial_grid(ir));
-            for (int idxrf = 0; idxrf < atom_type_->indexr().size(); idxrf++)
-            {
-                fprintf(fout, "%f ", radial_functions_(ir, idxrf, 0));
-            }
-            fprintf(fout, "\n");
-        }
-        fclose(fout);
-    }
+    //**     for (int ir = 0; ir <atom_type_->num_mt_points(); ir++)
+    //**     {
+    //**         fprintf(fout, "%f ", atom_type_->radial_grid(ir));
+    //**         for (int idxrf = 0; idxrf < atom_type_->indexr().size(); idxrf++)
+    //**         {
+    //**             fprintf(fout, "%f ", radial_functions_(ir, idxrf, 0));
+    //**         }
+    //**         fprintf(fout, "\n");
+    //**     }
+    //**     fclose(fout);
+    //** }
 }
 
 inline void Atom_symmetry_class::sync_radial_functions(int rank)
@@ -565,7 +566,7 @@ void Atom_symmetry_class::generate_radial_integrals()
     // TODO: kinetic energy for s-local orbitals? The best way to do it.
     // Problem: <s1 | \Delta | s2> != <s2 | \Delta | s1>  [???]
 
-    // check and symmetrize the radial integrals
+    // check and symmetrize local orbital radial integrals
     for (int idxlo1 = 0; idxlo1 < atom_type_->num_lo_descriptors(); idxlo1++)
     {
         int idxrf1 = atom_type_->indexr().index_by_idxlo(idxlo1);
@@ -574,14 +575,13 @@ void Atom_symmetry_class::generate_radial_integrals()
         {
             int idxrf2 = atom_type_->indexr().index_by_idxlo(idxlo2);
 
-            double diff = fabs(h_spherical_integrals_(idxrf1, idxrf2) - 
-                               h_spherical_integrals_(idxrf2, idxrf1));
+            double diff = h_spherical_integrals_(idxrf1, idxrf2) - h_spherical_integrals_(idxrf2, idxrf1);
 
-            if (verbosity_level > 0 && diff > 1e-12)
+            if (debug_level >= 1 && fabs(diff) > 1e-12)
             {
                 int l = atom_type_->indexr(idxrf2).l;
                 std::stringstream s;
-                s << "Wrong local orbital radial integrals for atom class " << id_ << ", l = " << l << std::endl
+                s << "Wrong local orbital radial integrals for atom class " << id() << ", l = " << l << std::endl
                   << " idxlo1 = " << idxlo1 << std::endl
                   << " idxlo2 = " << idxlo2 << std::endl
                   << " h(1,2) - h(2,1) = " << diff;
@@ -591,14 +591,14 @@ void Atom_symmetry_class::generate_radial_integrals()
 
             if (true)
             {
-                double avg = 0.5 * (h_spherical_integrals_(idxrf1, idxrf2) + 
-                                    h_spherical_integrals_(idxrf2, idxrf1));
+                double avg = 0.5 * (h_spherical_integrals_(idxrf1, idxrf2) + h_spherical_integrals_(idxrf2, idxrf1));
                 h_spherical_integrals_(idxrf1, idxrf2) = avg;
                 h_spherical_integrals_(idxrf2, idxrf1) = avg;
             }
         }
     }
         
+    // check and symmetrize aw radial integrals
     for (int i2 = 0; i2 < atom_type_->mt_radial_basis_size() - atom_type_->num_lo_descriptors(); i2++)
     {
         int l = atom_type_->indexr(i2).l;
@@ -619,10 +619,10 @@ void Atom_symmetry_class::generate_radial_integrals()
                 double v2 = y00 * h_spherical_integrals_(i2, i1) + surf21; 
 
                 double diff = fabs(v1 - v2);
-                if (verbosity_level > 0 && diff > 1e-12)
+                if (debug_level >= 1 && diff > 1e-12)
                 {
                     std::stringstream s;
-                    s << "Wrong radial integrals for atom class " << id_ << ", l = " << l << std::endl
+                    s << "Wrong augmented wave radial integrals for atom class " << id() << ", l = " << l << std::endl
                       << " order1 = " << order1 << ", value = " << v1 << std::endl
                       << " order2 = " << order2 << ", value = " << v2 << std::endl
                       << " <u_{l1,o1}| T |u_{l2,o2}> - <u_{l2,o2}| T |u_{l1,o1}> = " << diff << std::endl
@@ -719,7 +719,7 @@ void Atom_symmetry_class::generate_radial_integrals()
 
 void Atom_symmetry_class::write_enu(pstdout& pout)
 {
-    pout.printf("Atom : %s, class id : %i\n", atom_type_->label().c_str(), id_); 
+    pout.printf("Atom : %s, class id : %i\n", atom_type_->symbol().c_str(), id_); 
     pout.printf("augmented waves\n");
     for (int l = 0; l < num_aw_descriptors(); l++)
     {

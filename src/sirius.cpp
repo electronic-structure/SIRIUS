@@ -152,7 +152,7 @@ void FORTRAN(sirius_set_auto_rmt)(int32_t* auto_rmt)
 
 /// Add atom type to the library
 /** \param [in] atom_type_id unique id of atom type
-    \param [in] label atom type label
+    \param [in] label json file label of atom type
 
     Atom type (species in the terminology of Exciting/Elk) is a class which holds information 
     common to the atoms of the same element: charge, number of core and valence electrons, muffin-tin
@@ -191,6 +191,21 @@ void FORTRAN(sirius_set_atom_type_properties)(int32_t* atom_type_id, char* symbo
     type->set_mt_radius(*mt_radius);
 }
 
+void FORTRAN(sirius_set_atom_type_radial_grid)(int32_t* atom_type_id, int32_t* num_radial_points, 
+                                               real8* radial_points)
+{
+    sirius::Atom_type* type = global_parameters.atom_type_by_id(*atom_type_id);
+    type->set_radial_grid(*num_radial_points, radial_points);
+}
+
+void FORTRAN(sirius_set_atom_type_configuration)(int32_t* atom_type_id, int32_t* n, int32_t* l, int32_t* k, 
+                                                 real8* occupancy, int32_t* core_)
+{
+    sirius::Atom_type* type = global_parameters.atom_type_by_id(*atom_type_id);
+    bool core = *core_;
+    type->set_configuration(*n, *l, *k, *occupancy, core);
+}
+
 
 /// Add atom to the library
 /** \param [in] atom_type_id id of the atom type
@@ -210,10 +225,6 @@ void FORTRAN(sirius_add_atom)(int32_t* atom_type_id, real8* position, real8* vec
 {
     global_parameters.add_atom(*atom_type_id, position, vector_field);
 }
-
-
-
-
 
 /// Set augmented-wave cutoff
 /** \param [in] aw_cutoff augmented-wave cutoff
@@ -411,9 +422,9 @@ void FORTRAN(sirius_platform_initialize)(int32_t* call_mpi_init_)
 }
 
 /// Initialize the global variables
-void FORTRAN(sirius_global_initialize)(int32_t* init_aw_descriptors)
+void FORTRAN(sirius_global_initialize)()
 {
-    global_parameters.initialize(*init_aw_descriptors);
+    global_parameters.initialize();
 }
 
 void FORTRAN(sirius_potential_initialize)(void)
@@ -851,21 +862,6 @@ void FORTRAN(sirius_get_total_energy)(real8* total_energy)
 }
 
 
-void FORTRAN(sirius_set_atom_type_radial_grid)(int32_t* atom_type_id, int32_t* num_radial_points, 
-                                               int32_t* num_mt_points, real8* radial_points)
-{
-    sirius::Atom_type* type = global_parameters.atom_type_by_id(*atom_type_id);
-    type->radial_grid().set_radial_points(*num_radial_points, *num_mt_points, radial_points);
-}
-
-void FORTRAN(sirius_set_atom_type_configuration)(int32_t* atom_type_id, int32_t* n, int32_t* l, int32_t* k, 
-                                                 real8* occupancy, int32_t* core_)
-{
-    sirius::Atom_type* type = global_parameters.atom_type_by_id(*atom_type_id);
-    bool core = *core_;
-    type->set_configuration(*n, *l, *k, *occupancy, core);
-}
-
 void FORTRAN(sirius_add_atom_type_aw_descriptor)(int32_t* atom_type_id, int32_t* n, int32_t* l, real8* enu, 
                                                  int32_t* dme, int32_t* auto_enu__)
 {
@@ -915,11 +911,6 @@ void FORTRAN(sirius_create_kset)(int32_t* num_kpoints, double* kpoints__, double
     kset_list.push_back(new_kset);
     *kset_id = (int)kset_list.size() - 1;
 }
-
-//** void FORTRAN(sirius_initialize_kset)(int32_t* kset_id)
-//** {
-//**     kset_list[*kset_id]->initialize();
-//** }
 
 void FORTRAN(sirius_delete_kset)(int32_t* kset_id)
 {
@@ -1076,7 +1067,7 @@ void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, co
         for (int ia = 0; ia < global_parameters.num_atoms(); ia++)
         {
             sirius::Atom* atom = global_parameters.atom(ia);
-            kp->generate_matching_coefficients(kp->num_gkvec(), ia, alm);
+            kp->generate_matching_coefficients<false>(kp->num_gkvec(), ia, alm);
 
             for (int l = 0; l <= global_parameters.lmax_apw(); l++)
             {
@@ -1086,7 +1077,7 @@ void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, co
                     {
                         int lm = Utils::lm_by_l_m(l, m);
                         int i = atom->type()->indexb_by_lm_order(lm, order);
-                        for (int ig = 0; ig < kp->num_gkvec(); ig++) apwalm(ig, order, lm, ia) = conj(alm(ig, i));
+                        for (int ig = 0; ig < kp->num_gkvec(); ig++) apwalm(ig, order, lm, ia) = alm(ig, i);
                     }
                 }
             }
@@ -1275,8 +1266,8 @@ void FORTRAN(sirius_update_atomic_potential)()
 void FORTRAN(sirius_scalar_radial_solver)(int32_t* zn, int32_t* l, int32_t* dme, real8* enu, int32_t* nr, real8* r, 
                                           real8* v__, int32_t* nn, real8* p0__, real8* p1__, real8* q0__, real8* q1__)
 {
-    sirius::Radial_grid rgrid;
-    rgrid.set_radial_points(*nr, *nr, r);
+    sirius::Radial_grid rgrid(*nr, r[*nr - 1]);
+    rgrid.set_radial_points(*nr, r);
     sirius::Radial_solver solver(false, *zn, rgrid);
 
     std::vector<real8> v(*nr);

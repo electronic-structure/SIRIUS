@@ -2,18 +2,18 @@ Atom_type::Atom_type(const char* symbol__, const char* name__, int zn__, double 
                      std::vector<atomic_level_descriptor>& levels__) : 
     symbol_(std::string(symbol__)), name_(std::string(name__)), zn_(zn__), mass_(mass__), mt_radius_(2.0), 
     num_mt_points_(2000 + zn__ * 50), atomic_levels_(levels__), initialized_(false)
-                                                 
 {
-    radial_grid_ = Radial_grid(pow3_grid, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
+    radial_grid_ = new Radial_grid(default_radial_grid_t, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
 }
 
-Atom_type::Atom_type(int id__, const std::string label__) : 
-    id_(id__), label_(label__), zn_(0), num_mt_points_(0), initialized_(false)
+Atom_type::Atom_type(int id__, const std::string label) : 
+    id_(id__), zn_(0), num_mt_points_(0), radial_grid_(NULL), initialized_(false)
 {
-    if (Utils::file_exists(label_ + ".json")) 
+    std::string fname = label + ".json";
+    if (Utils::file_exists(fname)) 
     {
-        read_input();
-   
+        read_input(fname);
+
         //==============================================
         // add valence levels to the list of core levels
         //==============================================
@@ -42,23 +42,32 @@ Atom_type::Atom_type(int id__, const std::string label__) :
     }
 }
 
+Atom_type::~Atom_type()
+{
+    delete radial_grid_;
+}
+
 void Atom_type::init(int lmax_apw)
 {
     if (initialized_) error_local(__FILE__, __LINE__, "can't initialize twice");
+
     if (zn_ == 0) error_local(__FILE__, __LINE__, "zero atom charge");
-   
-    assert((int)aw_descriptors_.size() == (lmax_apw + 1));
+
+    // initialize aw descriptors if they were not set manually
+    if (aw_descriptors_.size() == 0) init_aw_descriptors(lmax_apw);
+
+    if ((int)aw_descriptors_.size() != (lmax_apw + 1)) error_local(__FILE__, __LINE__, "wrong size of augmented wave descriptors");
 
     max_aw_order_ = 0;
     for (int l = 0; l <= lmax_apw; l++) max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
-    
-    if (max_aw_order_ > 2) error_local(__FILE__, __LINE__, "maximum aw order is > 2");
+
+    if (max_aw_order_ == 0 || max_aw_order_ > 2) error_local(__FILE__, __LINE__, "maximum aw order is zero or greater than two");
 
     indexr_.init(aw_descriptors_, lo_descriptors_);
     indexb_.init(indexr_);
     
-    free_atom_density_.resize(radial_grid_.size());
-    free_atom_potential_.resize(radial_grid_.size());
+    free_atom_density_.resize(radial_grid_->size());
+    free_atom_potential_.resize(radial_grid_->size());
     
     num_core_electrons_ = 0;
     for (int i = 0; i < (int)atomic_levels_.size(); i++) 
@@ -71,15 +80,26 @@ void Atom_type::init(int lmax_apw)
     initialized_ = true;
 }
 
-void Atom_type::init_radial_grid()
+void Atom_type::create_radial_grid()
 {
     if (num_mt_points_ == 0) error_local(__FILE__, __LINE__, "number of muffin-tin points is zero");
-    radial_grid_ = Radial_grid(pow3_grid, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
+    if (radial_grid_) delete radial_grid_;
+    radial_grid_ = new Radial_grid(default_radial_grid_t, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
+}
+
+void Atom_type::set_radial_grid(int num_points, double* points)
+{
+    if (num_mt_points_ == 0) error_local(__FILE__, __LINE__, "number of muffin-tin points is zero");
+    if (radial_grid_) delete radial_grid_;
+    radial_grid_ = new Radial_grid(num_mt_points_, mt_radius_);
+    radial_grid_->set_radial_points(num_points, points);
 }
 
 void Atom_type::init_aw_descriptors(int lmax)
 {
     assert(lmax >= -1);
+
+    if (aw_default_l_.size() == 0) error_local(__FILE__, __LINE__, "default AW descriptor is empty"); 
 
     aw_descriptors_.clear();
     for (int l = 0; l <= lmax; l++)
@@ -101,22 +121,19 @@ void Atom_type::init_aw_descriptors(int lmax)
 
 void Atom_type::add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu)
 {
-    if ((int)aw_descriptors_.size() == l) aw_descriptors_.push_back(radial_solution_descriptor_set());
+    if ((int)aw_descriptors_.size() < (l + 1)) aw_descriptors_.resize(l + 1, radial_solution_descriptor_set());
     
     radial_solution_descriptor rsd;
     
     rsd.n = n;
     if (n == -1)
     {
-        // default value for any l
+        // default pqn value for any l
         rsd.n = l + 1;
         for (int ist = 0; ist < num_atomic_levels(); ist++)
         {
-            if (atomic_level(ist).core && atomic_level(ist).l == l)
-            {   
-                // take next level after the core
-                rsd.n = atomic_level(ist).n + 1;
-            }
+            // take next level after the core
+            if (atomic_level(ist).core && atomic_level(ist).l == l) rsd.n = atomic_level(ist).n + 1;
         }
     }
     
@@ -168,29 +185,29 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
 {
     Timer t("sirius::Atom_type::solve_free_atom");
     
-    free_atom_radial_functions_.set_dimensions(radial_grid_.size(), (int)atomic_levels_.size());
+    free_atom_radial_functions_.set_dimensions(radial_grid_->size(), (int)atomic_levels_.size());
     free_atom_radial_functions_.allocate();
 
-    Radial_solver solver(false, -1.0 * zn_, radial_grid_);
+    Radial_solver solver(false, -1.0 * zn_, *radial_grid_);
     libxc_interface xci;
 
     solver.set_tolerance(solver_tol);
     
-    std::vector<double> veff(radial_grid_.size());
-    std::vector<double> vnuc(radial_grid_.size());
-    for (int i = 0; i < radial_grid_.size(); i++)
+    std::vector<double> veff(radial_grid_->size());
+    std::vector<double> vnuc(radial_grid_->size());
+    for (int i = 0; i < radial_grid_->size(); i++)
     {
-        vnuc[i] = -1.0 * zn_ / radial_grid_[i];
+        vnuc[i] = -1.0 * zn_ / radial_grid(i);
         veff[i] = vnuc[i];
     }
 
-    Spline<double> rho(radial_grid_.size(), radial_grid_);
+    Spline<double> rho(radial_grid_->size(), *radial_grid_);
 
-    Spline<double> f(radial_grid_.size(), radial_grid_);
+    Spline<double> f(radial_grid_->size(), *radial_grid_);
 
-    std::vector<double> vh(radial_grid_.size());
-    std::vector<double> vxc(radial_grid_.size());
-    std::vector<double> exc(radial_grid_.size());
+    std::vector<double> vh(radial_grid_->size());
+    std::vector<double> vxc(radial_grid_->size());
+    std::vector<double> exc(radial_grid_->size());
     std::vector<double> g1;
     std::vector<double> g2;
     std::vector<double> rho_old;
@@ -225,9 +242,9 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
             {
                 solver.bound_state(atomic_levels_[ist].n, atomic_levels_[ist].l, veff, enu[ist], p);
             
-                for (int i = 0; i < radial_grid_.size(); i++)
+                for (int i = 0; i < radial_grid_->size(); i++)
                 {
-                    free_atom_radial_functions_(i, ist) = p[i] / radial_grid_[i];
+                    free_atom_radial_functions_(i, ist) = p[i] / radial_grid(i);
                     rho_t[i] += atomic_levels_[ist].occupancy * 
                                 pow(y00 * free_atom_radial_functions_(i, ist), 2);
                 }
@@ -238,8 +255,8 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
         } 
         
         charge_rms = 0.0;
-        for (int i = 0; i < radial_grid_.size(); i++) charge_rms += pow(rho[i] - rho_old[i], 2);
-        charge_rms = sqrt(charge_rms / radial_grid_.size());
+        for (int i = 0; i < radial_grid_->size(); i++) charge_rms += pow(rho[i] - rho_old[i], 2);
+        charge_rms = sqrt(charge_rms / radial_grid_->size());
         
         rho.interpolate();
         
@@ -247,17 +264,17 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
         rho.integrate(g2, 2);
         double t1 = rho.integrate(g1, 1);
 
-        for (int i = 0; i < radial_grid_.size(); i++)
-            vh[i] = fourpi * (g2[i] / radial_grid_[i] + t1 - g1[i]);
+        for (int i = 0; i < radial_grid_->size(); i++)
+            vh[i] = fourpi * (g2[i] / radial_grid(i) + t1 - g1[i]);
         
         // compute XC potential and energy
         xci.getxc(rho.num_points(), &rho[0], &vxc[0], &exc[0]);
 
-        for (int i = 0; i < radial_grid_.size(); i++)
+        for (int i = 0; i < radial_grid_->size(); i++)
             veff[i] = (1 - beta) * veff[i] + beta * (vnuc[i] + vh[i] + vxc[i]);
         
         // kinetic energy
-        for (int i = 0; i < radial_grid_.size(); i++) f[i] = veff[i] * rho[i];
+        for (int i = 0; i < radial_grid_->size(); i++) f[i] = veff[i] * rho[i];
         f.interpolate();
         
         double eval_sum = 0.0;
@@ -267,17 +284,17 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
         double energy_kin = eval_sum - fourpi * f.integrate(2);
 
         // xc energy
-        for (int i = 0; i < radial_grid_.size(); i++) f[i] = exc[i] * rho[i];
+        for (int i = 0; i < radial_grid_->size(); i++) f[i] = exc[i] * rho[i];
         f.interpolate();
         double energy_xc = fourpi * f.integrate(2); 
         
         // electron-nuclear energy
-        for (int i = 0; i < radial_grid_.size(); i++) f[i] = vnuc[i] * rho[i];
+        for (int i = 0; i < radial_grid_->size(); i++) f[i] = vnuc[i] * rho[i];
         f.interpolate();
         double energy_enuc = fourpi * f.integrate(2); 
 
         // Coulomb energy
-        for (int i = 0; i < radial_grid_.size(); i++) f[i] = vh[i] * rho[i];
+        for (int i = 0; i < radial_grid_->size(); i++) f[i] = vh[i] * rho[i];
         f.interpolate();
         double energy_coul = 0.5 * fourpi * f.integrate(2);
         
@@ -557,9 +574,8 @@ void Atom_type::read_input_lo(JSON_tree& parser)
     }
 }
     
-void Atom_type::read_input()
+void Atom_type::read_input(const std::string& fname)
 {
-    std::string fname = label_ + std::string(".json");
     JSON_tree parser(fname);
     parser["name"] >> name_;
     parser["symbol"] >> symbol_;

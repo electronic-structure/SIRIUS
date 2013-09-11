@@ -43,28 +43,32 @@
 const int _global_message_ = 1 << 0;
 const int _fatal_error_ = 1 << 1;
 
-//const int default_error_flags = fatal_err;
-//const int default_warning_flags = 0;
-
 /// General error report
 void error_message(const char* file_name, int line_number, const std::string& message, int flags)
 {
     bool verbose = (flags & _global_message_) ? (Platform::mpi_rank() == 0) : true;
-    char header[1024];
+    std::vector<char> buffer(message.size() + 1000);
 
+    int n;
     if (flags & _fatal_error_)
     {
-        sprintf(header, "\n=== Fatal error at line %i of file %s\n=== MPI rank: %i", 
-                line_number, file_name, Platform::mpi_rank());
+        n = sprintf(&buffer[0], "\n=== Fatal error at line %i of file %s ===", line_number, file_name);
     }
     else
     {
-        sprintf(header, "\n=== Warning at line %i of file %s\n=== MPI rank: %i", 
-                line_number, file_name, Platform::mpi_rank());
+        n = sprintf(&buffer[0], "\n=== Warning at line %i of file %s ===", line_number, file_name);
+    }
+    int n1 = n - 1;
+
+    if (!(flags & _global_message_)) n += sprintf(&buffer[n], "\n=== MPI rank: %i ===", Platform::mpi_rank());
+    
+    if (verbose) 
+    {
+        n += sprintf(&buffer[n], "\n%s\n", message.c_str());
+        for (int i = 0; i < n1; i++) n += sprintf(&buffer[n], "-");
+        printf("%s\n", &buffer[0]);
     }
     
-    if (verbose) printf("%s\n%s\n\n", header, message.c_str());
-
     if (flags & _fatal_error_) 
     {
         // give writing ranks some time to flush the output buffer 
@@ -76,8 +80,8 @@ void error_message(const char* file_name, int line_number, const std::string& me
         gettimeofday(&t1, NULL);
         do
         {
-          gettimeofday(&t2, NULL);
-          d = double(t2.tv_sec - t1.tv_sec) + double(t2.tv_usec - t1.tv_usec) / 1e6;
+            gettimeofday(&t2, NULL);
+            d = double(t2.tv_sec - t1.tv_sec) + double(t2.tv_usec - t1.tv_usec) / 1e6;
         } while (d < delay_time);
  
         Platform::abort();
@@ -131,64 +135,5 @@ void warning_local(const char* file_name, int line_number, const std::stringstre
     error_message(file_name, line_number, message.str(), 0);
 }
 
-//** 
-//** 
-//** 
-//** 
-//** 
-//** 
-//** void error(const char* file_name, int line_number, const char* message, int flags = default_error_flags)
-//** {
-//**     bool verbose = (flags & global_msg) ? (Platform::verbose()) : true;
-//**     char header[1024];
-//** 
-//**     if (flags & fatal_err)
-//**     {
-//**         sprintf(header, "\n=== Fatal error at line %i of file %s\n=== MPI rank: %i", 
-//**                 line_number, file_name, Platform::mpi_rank());
-//**     }
-//**     else
-//**     {
-//**         sprintf(header, "\n=== Warning at line %i of file %s\n=== MPI rank: %i", 
-//**                 line_number, file_name, Platform::mpi_rank());
-//**     }
-//**     
-//**     if (verbose) printf("%s\n%s\n\n", header, message);
-//** 
-//**     if (flags & fatal_err) 
-//**     {
-//**         // give writing ranks some time to flush the output buffer 
-//**         double delay_time = 0.5;
-//**         timeval t1;
-//**         timeval t2;
-//**         double d;
-//** 
-//**         gettimeofday(&t1, NULL);
-//**         do
-//**         {
-//**           gettimeofday(&t2, NULL);
-//**           d = double(t2.tv_sec - t1.tv_sec) + double(t2.tv_usec - t1.tv_usec) / 1e6;
-//**         } while (d < delay_time);
-//**  
-//**         Platform::abort();
-//**     }
-//** }
-//** 
-//** void error(const char* file_name, int line_number, const std::string& message, int flags = default_error_flags)
-//** {
-//**     error(file_name, line_number, message.c_str(), flags);
-//** }
-//** 
-//** void error(const char* file_name, int line_number, const std::stringstream& message, int flags = default_error_flags)
-//** {
-//**     error(file_name, line_number, message.str().c_str(), flags);
-//** }
-//** 
-//** void warning(const char* file_name, int line_number, const std::stringstream& message, 
-//**              int flags = default_warning_flags)
-//** {
-//**     error(file_name, line_number, message.str().c_str(), flags);
-//** }
-//** 
 #endif // __ERROR_HANDLING_H__
 

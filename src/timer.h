@@ -58,6 +58,11 @@ class Timer
             if (active_) stop();
         }
 
+        static void clear()
+        {
+            timer_descriptors_.clear();
+        }
+
         void start()
         {
             if (active_) error_local(__FILE__, __LINE__, "timer is already running");
@@ -88,7 +93,7 @@ class Timer
 
         static void print()
         {
-            if (Platform::verbose())
+            if (Platform::mpi_rank() == 0)
             {
                 printf("\n");
                 printf("Timers\n");

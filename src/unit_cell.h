@@ -137,7 +137,7 @@ class Unit_cell
                   class) depends on the "to be determined" parameters such as num_mag_dims. Probably Unit_cell must 
                   become a separate object.
         */
-        void init(int lmax_apw, int lmax_pot, int num_mag_dims, int init_aw_descriptors__);
+        void init(int lmax_apw, int lmax_pot, int num_mag_dims);
 
         /// Update the unit cell after moving the atoms.
         /** When the unit cell is initialized for the first time, or when the atoms are moved, several things
@@ -407,7 +407,7 @@ class Unit_cell_test
             unit_cell.add_atom(1, pos1);
             }
 
-            unit_cell.init(10, 10, 0, 1);
+            unit_cell.init(10, 10, 0);
             unit_cell.print_info();
 
             {

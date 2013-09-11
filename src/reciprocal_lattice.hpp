@@ -9,7 +9,7 @@ void Reciprocal_lattice::init(int lmax)
     
     mdarray<int, 2> gvec_tmp(3, fft_.size());
     std::vector< std::pair<double, int> > gvec_tmp_length;
-
+    
     int ig = 0;
     for (int i0 = fft_.grid_limits(0, 0); i0 <= fft_.grid_limits(0, 1); i0++)
     {
@@ -30,8 +30,10 @@ void Reciprocal_lattice::init(int lmax)
         }
     }
 
+    Timer t1("sirius::Reciprocal_lattice::init|sort_G");
     // sort G-vectors by length
     std::sort(gvec_tmp_length.begin(), gvec_tmp_length.end());
+    t1.stop();
 
     // create sorted list of G-vectors
     gvec_.set_dimensions(3, fft_.size());
@@ -91,6 +93,7 @@ void Reciprocal_lattice::init(int lmax)
     gvec_ylm_.set_dimensions(Utils::lmmax_by_lmax(lmax), spl_num_gvec_.local_size());
     gvec_ylm_.allocate();
     
+    Timer t2("sirius::Reciprocal_lattice::init|ylm_G");
     for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
     {
         int ig = spl_num_gvec_[igloc];
@@ -100,12 +103,14 @@ void Reciprocal_lattice::init(int lmax)
         SHT::spherical_coordinates(xyz, rtp);
         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm_(0, igloc));
     }
+    t2.stop();
     
     update();
 }
 
 void Reciprocal_lattice::update()
 {
+    Timer t2("sirius::Reciprocal_lattice::update");
     // precompute G-vector phase factors
     gvec_phase_factors_.set_dimensions(spl_num_gvec_.local_size(), num_atoms());
     gvec_phase_factors_.allocate();

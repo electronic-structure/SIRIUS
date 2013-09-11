@@ -1,6 +1,8 @@
 template <lattice_t Tl>
 void Unit_cell::find_translation_limits(double radius, int* limits)
 {
+    Timer t("sirius::Unit_cell::find_translation_limits");
+
     limits[0] = limits[1] = limits[2] = 0;
 
     int n = 0;
@@ -144,7 +146,7 @@ void Unit_cell::add_atom(int atom_type_id, double* position)
 
 void Unit_cell::get_symmetry()
 {
-    Timer t("sirius::UnitCell::get_symmetry");
+    Timer t("sirius::Unit_cell::get_symmetry");
     
     if (num_atoms() == 0) error_local(__FILE__, __LINE__, "no atoms");
     
@@ -285,8 +287,7 @@ void Unit_cell::find_mt_radii(std::vector<double>& Rmt)
 
 bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
 {
-    if (nearest_neighbours_.size() == 0)
-        error_local(__FILE__, __LINE__, "array of nearest neighbours is empty");
+    if (nearest_neighbours_.size() == 0) error_local(__FILE__, __LINE__, "array of nearest neighbours is empty");
 
     for (int ia = 0; ia < num_atoms(); ia++)
     {
@@ -311,7 +312,7 @@ bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
     return false;
 }
 
-void Unit_cell::init(int lmax_apw, int lmax_pot, int num_mag_dims, int init_aw_descriptors__)
+void Unit_cell::init(int lmax_apw, int lmax_pot, int num_mag_dims)
 {
     // =====================
     // initialize atom types
@@ -319,7 +320,6 @@ void Unit_cell::init(int lmax_apw, int lmax_pot, int num_mag_dims, int init_aw_d
     max_num_mt_points_ = 0;
     for (int i = 0; i < num_atom_types(); i++)
     {
-         if (init_aw_descriptors__) atom_type(i)->init_aw_descriptors(lmax_apw);
          atom_type(i)->init(lmax_apw);
          max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(i)->num_mt_points());
     }
@@ -369,7 +369,9 @@ void Unit_cell::init(int lmax_apw, int lmax_pot, int num_mag_dims, int init_aw_d
 
 void Unit_cell::update()
 {
-    find_nearest_neighbours(25.0);
+    find_nearest_neighbours(Utils::vector_length(&lattice_vectors_[0][0]) +
+                            Utils::vector_length(&lattice_vectors_[1][0]) +
+                            Utils::vector_length(&lattice_vectors_[2][0]));
 
     // find new MT radii and initialize radial grid 
     if (auto_rmt())
@@ -379,7 +381,7 @@ void Unit_cell::update()
         for (int iat = 0; iat < num_atom_types(); iat++) 
         {
             atom_type(iat)->set_mt_radius(Rmt[iat]);
-            atom_type(iat)->init_radial_grid();
+            atom_type(iat)->create_radial_grid();
         }
     }
     
@@ -460,10 +462,8 @@ void Unit_cell::print_info()
     for (int i = 0; i < num_atom_types(); i++)
     {
         int id = atom_type(i)->id();
-        printf("type id : %i   symbol : %2s   label : %2s   mt_radius : %10.6f\n", id,
-                                                                                   atom_type(i)->symbol().c_str(), 
-                                                                                   atom_type(i)->label().c_str(),
-                                                                                   atom_type(i)->mt_radius()); 
+        printf("type id : %i   symbol : %2s   mt_radius : %10.6f\n", id, atom_type(i)->symbol().c_str(), 
+                                                                         atom_type(i)->mt_radius()); 
     }
 
     printf("number of atoms : %i\n", num_atoms());
@@ -666,7 +666,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
         FILE* fout = fopen("nghbr.txt", "w");
         for (int ia = 0; ia < num_atoms(); ia++)
         {
-            fprintf(fout, "Central atom: %s (%i)\n", atom(ia)->type()->label().c_str(), ia);
+            fprintf(fout, "Central atom: %s (%i)\n", atom(ia)->type()->symbol().c_str(), ia);
             for (int i = 0; i < 80; i++) fprintf(fout, "-");
             fprintf(fout, "\n");
             fprintf(fout, "atom (  id)       D [a.u.]    translation  R\n");
@@ -675,7 +675,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
             for (int i = 0; i < (int)nearest_neighbours_[ia].size(); i++)
             {
                 int ja = nearest_neighbours_[ia][i].atom_id;
-                fprintf(fout, "%4s (%4i)   %12.6f\n", atom(ja)->type()->label().c_str(), ja, 
+                fprintf(fout, "%4s (%4i)   %12.6f\n", atom(ja)->type()->symbol().c_str(), ja, 
                                                       nearest_neighbours_[ia][i].distance);
             }
             fprintf(fout, "\n");

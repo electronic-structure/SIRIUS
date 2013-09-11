@@ -87,9 +87,9 @@ class Global : public Step_function
             {
                 JSON_tree parser(fname);
                 parser["mpi_grid_dims"] >> mpi_grid_dims_; 
-                cyclic_block_size_ = parser["cyclic_block_size"].get<int>(cyclic_block_size_);
-                num_fft_threads = parser["num_fft_threads"].get<int>(num_fft_threads);
-                num_fv_states_ = parser["num_fv_states"].get<int>(num_fv_states_);
+                cyclic_block_size_ = parser["cyclic_block_size"].get(cyclic_block_size_);
+                num_fft_threads = parser["num_fft_threads"].get(num_fft_threads);
+                num_fv_states_ = parser["num_fv_states"].get(num_fv_states_);
                 
                 if (parser.exist("eigen_value_solver"))
                 {
@@ -395,7 +395,7 @@ class Global : public Step_function
         }
 
         /// Initialize the global variables
-        void initialize(int init_aw_descriptors__)
+        void initialize()
         {
             if (initialized_) error_local(__FILE__, __LINE__, "Can't initialize global variables more than once.");
 
@@ -410,7 +410,7 @@ class Global : public Step_function
             lmax_ = std::max(std::max(std::max(lmax_pot_, lmax_rho_), lmax_apw_), lmax_pw_); 
 
             // initialize variables, related to the unit cell
-            Unit_cell::init(lmax_apw(), lmax_pot(), num_mag_dims(), init_aw_descriptors__);
+            Unit_cell::init(lmax_apw(), lmax_pot(), num_mag_dims());
            
             Reciprocal_lattice::init(lmax());
             Step_function::init();
@@ -441,6 +441,8 @@ class Global : public Step_function
             num_bands_ = num_fv_states_ * num_spins_;
 
             initialized_ = true;
+
+            if (verbosity_level >= 1) print_info();
         }
 
         /// Clear global variables
@@ -456,7 +458,7 @@ class Global : public Step_function
 
         void print_info()
         {
-            if (Platform::verbose())
+            if (Platform::mpi_rank() == 0)
             {
                 printf("\n");
                 printf("SIRIUS version : %2i.%02i\n", major_version, minor_version);
@@ -482,6 +484,7 @@ class Global : public Step_function
                 printf("total number of aw muffin-tin basis functions : %i\n", mt_aw_basis_size());
                 printf("total number of lo basis functions : %i\n", mt_lo_basis_size());
                 printf("number of first-variational states : %i\n", num_fv_states());
+                printf("number of bands                    : %i\n", num_bands());
                 printf("\n");
                 printf("eigen-value solver: ");
                 switch (eigen_value_solver())
@@ -537,21 +540,24 @@ class Global : public Step_function
                 int rank = spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
                 atom_symmetry_class(ic)->sync_radial_functions(rank);
             }
-
-            pstdout pout;
             
-            for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
+            if (verbosity_level >= 4)
             {
-                int ic = spl_num_atom_symmetry_classes(icloc);
-                atom_symmetry_class(ic)->write_enu(pout);
-            }
+                pstdout pout;
+                
+                for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
+                {
+                    int ic = spl_num_atom_symmetry_classes(icloc);
+                    atom_symmetry_class(ic)->write_enu(pout);
+                }
 
-            if (Platform::mpi_rank() == 0)
-            {
-                printf("\n");
-                printf("Linearization energies\n");
+                if (Platform::mpi_rank() == 0)
+                {
+                    printf("\n");
+                    printf("Linearization energies\n");
+                }
+                pout.flush(0);
             }
-            pout.flush(0);
         }
         
         void generate_radial_integrals()
@@ -638,7 +644,7 @@ class Global : public Step_function
         /// Print run-time information.
         void print_rti()
         {
-            if (Platform::verbose())
+            if (Platform::mpi_rank() == 0)
             {
                 double total_core_leakage = 0.0;
 
@@ -727,7 +733,7 @@ class Global : public Step_function
 
         void write_json_output()
         {
-            if (Platform::verbose())
+            if (Platform::mpi_rank() == 0)
             {
                 std::string fname = std::string("output_") + start_time("%Y%m%d%H%M%S") + std::string(".json");
                 JSON_write jw(fname);

@@ -8,6 +8,8 @@ void K_set::initialize()
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
         kpoints_[spl_num_kpoints_[ikloc]]->initialize(band_);
+
+    if (verbosity_level >= 2) print_info();
 }
 
 void K_set::update()
@@ -58,7 +60,7 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
     // synchronize eigen-values
     sync_band_energies();
 
-    if (Platform::mpi_rank() == 0 && verbosity_level > 1)
+    if (Platform::mpi_rank() == 0 && verbosity_level >= 5)
     {
         printf("Lowest band energies\n");
         for (int ik = 0; ik < num_kpoints(); ik++)
