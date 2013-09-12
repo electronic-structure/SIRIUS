@@ -77,6 +77,7 @@ void Density::set_charge_density_ptr(double* rhomt, double* rhoir)
 
 void Density::set_magnetization_ptr(double* magmt, double* magir)
 {
+    if (parameters_.num_mag_dims() == 0) return;
     assert(parameters_.num_spins() == 2);
 
     // set temporary array wrapper
@@ -930,6 +931,11 @@ double Density::core_leakage()
     return sum;
 }
 
+double Density::core_leakage(int ic)
+{
+    return parameters_.atom_symmetry_class(ic)->core_leakage();
+}
+
 void Density::generate(K_set& ks)
 {
     Timer t("sirius::Density::generate");
@@ -951,7 +957,7 @@ void Density::generate(K_set& ks)
           << "  computed : " << ot << std::endl
           << "  required : " << parameters_.num_valence_electrons() << std::endl
           << "  difference : " << fabs(ot - parameters_.num_valence_electrons());
-        error_local(__FILE__, __LINE__, s);
+        warning_local(__FILE__, __LINE__, s);
     }
 
     // zero density and magnetization
@@ -1002,20 +1008,15 @@ void Density::generate(K_set& ks)
     }
 
     double eval_sum = 0.0;
-    double core_leakage = 0.0;
     for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
     {
-        int rank = parameters_.spl_num_atom_symmetry_classes().location(1, ic);
+        int rank = parameters_.spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
         parameters_.atom_symmetry_class(ic)->sync_core_charge_density(rank);
 
         eval_sum += parameters_.atom_symmetry_class(ic)->core_eval_sum() *
                     parameters_.atom_symmetry_class(ic)->num_atoms();
-        
-        core_leakage += parameters_.atom_symmetry_class(ic)->core_leakage() * 
-                        parameters_.atom_symmetry_class(ic)->num_atoms();
     }
     assert(eval_sum == eval_sum);
-    assert(core_leakage == core_leakage);
     
     // add core contribution
     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
@@ -1048,7 +1049,9 @@ void Density::generate(K_set& ks)
           << "obtained value : " << nel << std::endl 
           << "target value : " << parameters_.num_electrons() << std::endl
           << "difference : " << fabs(nel - parameters_.num_electrons()) << std::endl
-          << "core leakage : " << core_leakage;
+          << "total core leakage : " << core_leakage();
+        for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++) 
+            s << std::endl << "  atom class : " << ic << ", core leakage : " << core_leakage(ic);
         warning_global(__FILE__, __LINE__, s);
     }
     
@@ -1059,14 +1062,12 @@ void Density::integrate()
 {
     Timer t("sirius::Density::integrate");
 
-    parameters_.rti().total_charge = rho_->integrate(parameters_.rti().mt_charge, 
-                                                     parameters_.rti().it_charge); 
+    parameters_.rti().total_charge = rho_->integrate(parameters_.rti().mt_charge, parameters_.rti().it_charge); 
 
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
     {
         parameters_.rti().total_magnetization[j] = 
-            magnetization_[j]->integrate(parameters_.rti().mt_magnetization[j], 
-                                         parameters_.rti().it_magnetization[j]);
+            magnetization_[j]->integrate(parameters_.rti().mt_magnetization[j], parameters_.rti().it_magnetization[j]);
     }
 }
 

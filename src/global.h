@@ -569,7 +569,7 @@ class Global : public Step_function
 
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
             {
-                int rank = spl_num_atom_symmetry_classes().location(1, ic);
+                int rank = spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
                 atom_symmetry_class(ic)->sync_radial_integrals(rank);
             }
 
@@ -578,7 +578,7 @@ class Global : public Step_function
 
             for (int ia = 0; ia < num_atoms(); ia++)
             {
-                int rank = spl_num_atoms().location(1, ia);
+                int rank = spl_num_atoms().location(_splindex_rank_, ia);
                 atom(ia)->sync_radial_integrals(rank);
             }
         }
@@ -653,8 +653,7 @@ class Global : public Step_function
                 for (int i = 0; i < 80; i++) printf("-");
                 printf("\n"); 
                 printf("atom      charge    core leakage");
-                if (num_mag_dims())
-                    printf("              moment              |moment|");
+                if (num_mag_dims()) printf("              moment              |moment|");
                 printf("\n");
                 for (int i = 0; i < 80; i++) printf("-");
                 printf("\n"); 

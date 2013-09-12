@@ -222,9 +222,19 @@ class Atom_symmetry_class
             aw_descriptors_[l][order].enu = enu;
         }
         
+        inline double get_aw_enu(int l, int order)
+        {
+            return aw_descriptors_[l][order].enu;
+        }
+        
         inline void set_lo_enu(int idxlo, int order, double enu)
         {
             lo_descriptors_[idxlo].rsd_set[order].enu = enu;
+        }
+        
+        inline double get_lo_enu(int idxlo, int order)
+        {
+            return lo_descriptors_[idxlo].rsd_set[order].enu;
         }
             
 };

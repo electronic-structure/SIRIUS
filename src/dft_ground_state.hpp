@@ -47,7 +47,7 @@ void DFT_ground_state::update()
 {
     parameters_.update();
     potential_->update();
-    kset_.update();
+    kset_->update();
 }
 
 void DFT_ground_state::forces(mdarray<double, 2>& atom_force)
@@ -57,7 +57,7 @@ void DFT_ground_state::forces(mdarray<double, 2>& atom_force)
 
     pstdout pout;
 
-    kset_.force(atom_force);
+    kset_->force(atom_force);
     
     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
     {
@@ -145,10 +145,10 @@ void DFT_ground_state::scf_loop()
 
     for (int iter = 0; iter < 100; iter++)
     {
-        kset_.find_eigen_states(potential_, true);
-        kset_.find_band_occupancies();
-        kset_.valence_eval_sum();
-        density_->generate(kset_);
+        kset_->find_eigen_states(potential_, true);
+        kset_->find_band_occupancies();
+        kset_->valence_eval_sum();
+        density_->generate(*kset_);
         density_->integrate();
 
         double rms = mx->mix();

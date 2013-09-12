@@ -197,7 +197,7 @@ void Atom_symmetry_class::generate_lo_radial_functions()
                     s << "atom symmetry class id : " << id() << " (" << atom_type()->symbol() << ")" << std::endl
                       << "local orbital " << idxlo << " is not zero at MT boundary" << std::endl 
                       << "  value : " << radial_functions_(nmtp - 1, idxrf, 0);
-                    error_local(__FILE__, __LINE__, s);
+                    warning_local(__FILE__, __LINE__, s);
                 }
             }
 
@@ -835,7 +835,7 @@ inline void Atom_symmetry_class::sync_core_charge_density(int rank)
     assert(core_charge_density_.size() != 0);
     assert(&core_charge_density_[0] != NULL);
 
-    Platform::bcast(&core_charge_density_[0],  atom_type_->radial_grid().size(), rank);
+    Platform::bcast(&core_charge_density_[0], atom_type_->radial_grid().size(), rank);
     Platform::bcast(&core_leakage_, 1, rank);
     Platform::bcast(&core_eval_sum_, 1, rank);
 }

@@ -16,6 +16,8 @@ sirius::Global global_parameters;
 /// list of pointers to the sets of k-points
 std::vector<sirius::K_set*> kset_list;
 
+sirius::DFT_ground_state* dft_ground_state = NULL;
+
 extern "C" 
 {
 
@@ -48,10 +50,10 @@ void FORTRAN(sirius_set_lattice_vectors)(real8* a1, real8* a2, real8* a3)
         call sirius_set_lmax_apw(lmaxapw)
     \endcode
 */
-void FORTRAN(sirius_set_lmax_apw)(int32_t* lmax_apw)
-{
-    global_parameters.set_lmax_apw(*lmax_apw);
-}
+//** void FORTRAN(sirius_set_lmax_apw)(int32_t* lmax_apw)
+//** {
+//**     global_parameters.set_lmax_apw(*lmax_apw);
+//** }
 
 /// Set maximum l-value for density expansion
 /** \param [in] lmax_rho maximum l-value for density expansion
@@ -63,10 +65,10 @@ void FORTRAN(sirius_set_lmax_apw)(int32_t* lmax_apw)
         call sirius_set_lmax_rho(lmaxrho)
     \endcode
 */
-void FORTRAN(sirius_set_lmax_rho)(int32_t* lmax_rho)
-{
-    global_parameters.set_lmax_rho(*lmax_rho);
-}
+//** void FORTRAN(sirius_set_lmax_rho)(int32_t* lmax_rho)
+//** {
+//**     global_parameters.set_lmax_rho(*lmax_rho);
+//** }
 
 /// Set maximum l-value for potential expansion
 /** \param [in] lmax_pot maximum l-value for potential expansion
@@ -74,14 +76,14 @@ void FORTRAN(sirius_set_lmax_rho)(int32_t* lmax_rho)
     Example:
     \code{.F90}
         integer lmaxpot
-        lmaxrho = 8
+        lmaxpot = 8
         call sirius_set_lmax_pot(lmaxpot)
     \endcode
 */
-void FORTRAN(sirius_set_lmax_pot)(int32_t* lmax_pot)
-{
-    global_parameters.set_lmax_pot(*lmax_pot);
-}
+//** void FORTRAN(sirius_set_lmax_pot)(int32_t* lmax_pot)
+//** {
+//**     global_parameters.set_lmax_pot(*lmax_pot);
+//** }
 
 /// Set plane-wave cutoff for FFT grid
 /** \param [in] gmaxvr maximum G-vector length 
@@ -108,10 +110,10 @@ void FORTRAN(sirius_set_pw_cutoff)(real8* pw_cutoff)
         if (spinpol) call sirius_set_num_spins(2)
     \endcode
 */
-void FORTRAN(sirius_set_num_spins)(int32_t* num_spins)
-{
-    global_parameters.set_num_spins(*num_spins);
-}
+//** void FORTRAN(sirius_set_num_spins)(int32_t* num_spins)
+//** {
+//**     global_parameters.set_num_spins(*num_spins);
+//** }
 
 /// Set the number of magnetic dimensions
 /** \param [in] num_mag_dims number of magnetic dimensions (0, 1, or 3)
@@ -127,10 +129,10 @@ void FORTRAN(sirius_set_num_spins)(int32_t* num_spins)
         call sirius_set_num_mag_dims(ndmag)
     \endcode
 */
-void FORTRAN(sirius_set_num_mag_dims)(int32_t* num_mag_dims)
-{
-    global_parameters.set_num_mag_dims(*num_mag_dims);
-}
+//** void FORTRAN(sirius_set_num_mag_dims)(int32_t* num_mag_dims)
+//** {
+//**     global_parameters.set_num_mag_dims(*num_mag_dims);
+//** }
 
 /// Turn on or off the automatic scaling of muffin-tin spheres
 /** \param [in] auto_rmt .true. if muffin-tin spheres must be resized to the maximally allowed radii
@@ -247,25 +249,41 @@ void FORTRAN(sirius_set_aw_cutoff)(real8* aw_cutoff)
     global_parameters.set_aw_cutoff(*aw_cutoff);
 }
 
-void FORTRAN(sirius_set_charge_density_ptr)(real8* rhomt, real8* rhoit)
-{
-    density->set_charge_density_ptr(rhomt, rhoit);
-}
 
-void FORTRAN(sirius_set_magnetization_ptr)(real8* magmt, real8* magit)
+
+void FORTRAN(sirius_density_initialize)(real8* rhomt, real8* rhoit, real8* magmt, real8* magit)
 {
+    density = new sirius::Density(global_parameters);
+    density->set_charge_density_ptr(rhomt, rhoit);
     density->set_magnetization_ptr(magmt, magit);
 }
 
-void FORTRAN(sirius_set_effective_potential_ptr)(real8* veffmt, real8* veffir)
+//** void FORTRAN(sirius_set_charge_density_ptr)(real8* rhomt, real8* rhoit)
+//** {
+//**     density->set_charge_density_ptr(rhomt, rhoit);
+//** }
+//** 
+//** void FORTRAN(sirius_set_magnetization_ptr)(real8* magmt, real8* magit)
+//** {
+//**     density->set_magnetization_ptr(magmt, magit);
+//** }
+
+void FORTRAN(sirius_potential_initialize)(real8* veffmt, real8* veffit, real8* beffmt, real8* beffit)
 {
-    potential->set_effective_potential_ptr(veffmt, veffir);
+    potential = new sirius::Potential(global_parameters);
+    potential->set_effective_potential_ptr(veffmt, veffit);
+    potential->set_effective_magnetic_field_ptr(beffmt, beffit);
 }
 
-void FORTRAN(sirius_set_effective_magnetic_field_ptr)(real8* beffmt, real8* beffir)
-{
-    potential->set_effective_magnetic_field_ptr(beffmt, beffir);
-}
+//** void FORTRAN(sirius_set_effective_potential_ptr)(real8* veffmt, real8* veffir)
+//** {
+//**     potential->set_effective_potential_ptr(veffmt, veffir);
+//** }
+//** 
+//** void FORTRAN(sirius_set_effective_magnetic_field_ptr)(real8* beffmt, real8* beffir)
+//** {
+//**     potential->set_effective_magnetic_field_ptr(beffmt, beffir);
+//** }
 
 void FORTRAN(sirius_set_equivalent_atoms)(int32_t* equivalent_atoms)
 {
@@ -330,6 +348,7 @@ void FORTRAN(sirius_get_fft_grid_size)(int32_t* grid_size)
 */
 void FORTRAN(sirius_get_fft_grid_limits)(int32_t* d, int32_t* lower, int32_t* upper)
 {
+    assert((*d >= 1) && (*d <= 3));
     *lower = global_parameters.fft().grid_limits(*d - 1, 0);
     *upper = global_parameters.fft().grid_limits(*d - 1, 1);
 }
@@ -422,20 +441,17 @@ void FORTRAN(sirius_platform_initialize)(int32_t* call_mpi_init_)
 }
 
 /// Initialize the global variables
-void FORTRAN(sirius_global_initialize)()
+void FORTRAN(sirius_global_initialize)(int32_t* lmax_apw, int32_t* lmax_rho, int32_t* lmax_pot, int32_t* num_mag_dims)
 {
+    int num_spins = (*num_mag_dims == 0) ? 1 : 2;
+    global_parameters.set_lmax_apw(*lmax_apw);
+    global_parameters.set_lmax_rho(*lmax_rho);
+    global_parameters.set_lmax_pot(*lmax_pot);
+    global_parameters.set_num_spins(num_spins);
+    global_parameters.set_num_mag_dims(*num_mag_dims);
     global_parameters.initialize();
 }
 
-void FORTRAN(sirius_potential_initialize)(void)
-{
-    potential = new sirius::Potential(global_parameters);
-}
-
-void FORTRAN(sirius_density_initialize)(void)
-{
-    density = new sirius::Density(global_parameters);
-}
 
 /// Clear the global variables and destroy all objects
 void FORTRAN(sirius_clear)(void)
@@ -452,6 +468,12 @@ void FORTRAN(sirius_clear)(void)
     {
         delete potential;
         potential = NULL;
+    }
+
+    if (dft_ground_state)
+    {
+        delete dft_ground_state;
+        dft_ground_state = NULL;
     }
 }
 
@@ -863,19 +885,17 @@ void FORTRAN(sirius_get_total_energy)(real8* total_energy)
 
 
 void FORTRAN(sirius_add_atom_type_aw_descriptor)(int32_t* atom_type_id, int32_t* n, int32_t* l, real8* enu, 
-                                                 int32_t* dme, int32_t* auto_enu__)
+                                                 int32_t* dme, int32_t* auto_enu)
 {
     sirius::Atom_type* type = global_parameters.atom_type_by_id(*atom_type_id);
-    int auto_enu = (*auto_enu__) ? 2 : 0;
-    type->add_aw_descriptor(*n, *l, *enu, *dme, auto_enu);
+    type->add_aw_descriptor(*n, *l, *enu, *dme, *auto_enu);
 }
 
 void FORTRAN(sirius_add_atom_type_lo_descriptor)(int32_t* atom_type_id, int32_t* ilo, int32_t* n, int32_t* l, 
-                                                 real8* enu, int32_t* dme, int32_t* auto_enu__)
+                                                 real8* enu, int32_t* dme, int32_t* auto_enu)
 {
     sirius::Atom_type* type = global_parameters.atom_type_by_id(*atom_type_id);
-    int auto_enu = (*auto_enu__) ? 2 : 0;
-    type->add_lo_descriptor(*ilo - 1, *n, *l, *enu, *dme, auto_enu);
+    type->add_lo_descriptor(*ilo - 1, *n, *l, *enu, *dme, *auto_enu);
 }
 
 void FORTRAN(sirius_set_aw_enu)(int32_t* ia, int32_t* l, int32_t* order, real8* enu)
@@ -883,9 +903,19 @@ void FORTRAN(sirius_set_aw_enu)(int32_t* ia, int32_t* l, int32_t* order, real8* 
     global_parameters.atom(*ia - 1)->symmetry_class()->set_aw_enu(*l, *order - 1, *enu);
 }
 
+void FORTRAN(sirius_get_aw_enu)(int32_t* ia, int32_t* l, int32_t* order, real8* enu)
+{
+    *enu = global_parameters.atom(*ia - 1)->symmetry_class()->get_aw_enu(*l, *order - 1);
+}
+
 void FORTRAN(sirius_set_lo_enu)(int32_t* ia, int32_t* idxlo, int32_t* order, real8* enu)
 {
     global_parameters.atom(*ia - 1)->symmetry_class()->set_lo_enu(*idxlo - 1, *order - 1, *enu);
+}
+
+void FORTRAN(sirius_get_lo_enu)(int32_t* ia, int32_t* idxlo, int32_t* order, real8* enu)
+{
+    *enu = global_parameters.atom(*ia - 1)->symmetry_class()->get_lo_enu(*idxlo - 1, *order - 1);
 }
 
 /// Create the k-point set from the list of k-points and return it's id
@@ -1021,16 +1051,16 @@ void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* nu
                                       real8* gkvec__, real8* gkvec_cart__, real8* gkvec_len, real8* gkvec_tp__, 
                                       complex16* gkvec_phase_factors__, int32_t* ld)
 {
-    int rank = kset_list[*kset_id]->spl_num_kpoints().location(_splindex_rank_, *ik - 1);
+    // position of processors which store a given k-point
+    int x0 = kset_list[*kset_id]->spl_num_kpoints().location(_splindex_rank_, *ik - 1);
     
-    if (rank == global_parameters.mpi_grid().coordinate(0))
+    if (x0 == global_parameters.mpi_grid().coordinate(_dim_k_))
     {
         sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
         *num_gkvec = kp->num_gkvec();
         mdarray<double, 2> gkvec(gkvec__, 3, kp->num_gkvec()); 
         mdarray<double, 2> gkvec_cart(gkvec_cart__, 3, kp->num_gkvec());
         mdarray<double, 2> gkvec_tp(gkvec_tp__, 2, kp->num_gkvec()); 
-        mdarray<complex16, 2> gkvec_phase_factors(gkvec_phase_factors__, *ld, global_parameters.num_atoms());
 
         for (int igk = 0; igk < kp->num_gkvec(); igk++)
         {
@@ -1042,12 +1072,26 @@ void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* nu
             gkvec_len[igk] = rtp[0];
             gkvec_tp(0, igk) = rtp[1];
             gkvec_tp(1, igk) = rtp[2];
-
-            for (int ia = 0; ia < global_parameters.num_atoms(); ia++)
-                gkvec_phase_factors(igk, ia) = kp->gkvec_phase_factor(igk, ia);
         }
+        
+        mdarray<complex16, 2> gkvec_phase_factors(gkvec_phase_factors__, *ld, global_parameters.num_atoms());
+        gkvec_phase_factors.zero();
+        for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++)
+        {
+            int igk = kp->igkglob(igkloc);
+            for (int ia = 0; ia < global_parameters.num_atoms(); ia++)
+                gkvec_phase_factors(igk, ia) = kp->gkvec_phase_factor(igkloc, ia);
+        }
+        Platform::allreduce(&gkvec_phase_factors(0, 0), (int)gkvec_phase_factors.size(), 
+                            global_parameters.mpi_grid().communicator(1 << _dim_row_));
     }
-    Platform::bcast(num_gkvec, 1, rank);
+    Platform::bcast(num_gkvec, 1, global_parameters.mpi_grid().communicator(1 << _dim_k_), x0);
+    Platform::bcast(gvec_index, *num_gkvec, global_parameters.mpi_grid().communicator(1 << _dim_k_), x0);
+    Platform::bcast(gkvec__, *num_gkvec * 3, global_parameters.mpi_grid().communicator(1 << _dim_k_), x0);
+    Platform::bcast(gkvec_cart__, *num_gkvec * 3, global_parameters.mpi_grid().communicator(1 << _dim_k_), x0);
+    Platform::bcast(gkvec_len, *num_gkvec, global_parameters.mpi_grid().communicator(1 << _dim_k_), x0);
+    Platform::bcast(gkvec_tp__, *num_gkvec * 2, global_parameters.mpi_grid().communicator(1 << _dim_k_), x0);
+    Platform::bcast(gkvec_phase_factors__, *ld * global_parameters.num_atoms(), global_parameters.mpi_grid().communicator(1 << _dim_k_), x0);
 }
 
 void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, complex16* apwalm__, 
@@ -1062,12 +1106,14 @@ void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, co
         
         mdarray<complex16, 4> apwalm(apwalm__, *ngkmax, *apwordmax, global_parameters.lmmax_apw(), 
                                      global_parameters.num_atoms());
-        mdarray<complex16, 2> alm(kp->num_gkvec(), global_parameters.max_mt_aw_basis_size());
+        apwalm.zero();
+
+        mdarray<complex16, 2> alm(kp->num_gkvec_row(), global_parameters.max_mt_aw_basis_size());
 
         for (int ia = 0; ia < global_parameters.num_atoms(); ia++)
         {
             sirius::Atom* atom = global_parameters.atom(ia);
-            kp->generate_matching_coefficients<false>(kp->num_gkvec(), ia, alm);
+            kp->generate_matching_coefficients<false>(kp->num_gkvec_row(), ia, alm);
 
             for (int l = 0; l <= global_parameters.lmax_apw(); l++)
             {
@@ -1077,10 +1123,19 @@ void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, co
                     {
                         int lm = Utils::lm_by_l_m(l, m);
                         int i = atom->type()->indexb_by_lm_order(lm, order);
-                        for (int ig = 0; ig < kp->num_gkvec(); ig++) apwalm(ig, order, lm, ia) = alm(ig, i);
+                        for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++) 
+                        {
+                            int igk = kp->apwlo_basis_descriptors_row(igkloc).igk;
+                            apwalm(igk, order, lm, ia) = alm(igkloc, i);
+                        }
                     }
                 }
             }
+        }
+        for (int ia = 0; ia < global_parameters.num_atoms(); ia++)
+        {
+            Platform::allreduce(&apwalm(0, 0, 0, ia), (int)(apwalm.size(0) * apwalm.size(1) * apwalm.size(2)),
+                                global_parameters.mpi_grid().communicator(1 << _dim_row_));
         }
     }
 }
@@ -1233,6 +1288,7 @@ void FORTRAN(sirius_generate_xc_potential)(real8* rhomt, real8* rhoit, real8* vx
     delete rho;
 }
 
+/** \todo sync Coulomb and XC potentials */
 void FORTRAN(sirius_generate_coulomb_potential)(real8* rhomt, real8* rhoit, real8* vclmt, real8* vclit)
 {
     using namespace sirius;
@@ -1393,22 +1449,36 @@ void FORTRAN(sirius_generate_potential_pw_coefs)(void)
     potential->generate_pw_coefs();
 }
 
+/// Get first-variational eigen-vectors
+/** Assume that the Fortran side holds the whole array */
 void FORTRAN(sirius_get_fv_eigen_vectors)(int32_t* kset_id, int32_t* ik, complex16* fv_evec__, int32_t* ld, 
                                           int32_t* num_fv_evec)
 {
     mdarray<complex16, 2> fv_evec(fv_evec__, *ld, *num_fv_evec);
-    (*kset_list[*kset_id])[*ik - 1]->get_fv_eigen_vectors(fv_evec);
+    (*kset_list[*kset_id])[*ik - 1]->get_fv_eigen_vectors(kset_list[*kset_id]->band(), fv_evec);
 }
 
+/// Get second-variational eigen-vectors
+/** Assume that the Fortran side holds the whole array */
 void FORTRAN(sirius_get_sv_eigen_vectors)(int32_t* kset_id, int32_t* ik, complex16* sv_evec__, int32_t* size)
 {
     mdarray<complex16, 2> sv_evec(sv_evec__, *size, *size);
-    (*kset_list[*kset_id])[*ik - 1]->get_sv_eigen_vectors(sv_evec);
+    (*kset_list[*kset_id])[*ik - 1]->get_sv_eigen_vectors(kset_list[*kset_id]->band(), sv_evec);
 }
 
 void FORTRAN(sirius_get_num_fv_states)(int32_t* num_fv_states)
 {
     *num_fv_states = global_parameters.num_fv_states();
+}
+
+void FORTRAN(sirius_ground_states_initialize)(int32_t* kset_id)
+{
+    dft_ground_state = new sirius::DFT_ground_state(global_parameters, potential, density, kset_list[*kset_id]);
+}
+
+void FORTRAN(sirius_get_mpi_comm)(int32_t* directions, int32_t* fcomm)
+{
+    *fcomm = MPI_Comm_c2f(global_parameters.mpi_grid().communicator(*directions));
 }
 
 } // extern "C"

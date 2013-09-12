@@ -86,6 +86,9 @@ class Density
 
         /// Find the total leakage of the core states out of the muffin-tins
         double core_leakage();
+        
+        /// Return core leakage for a specific atom symmetry class
+        double core_leakage(int ic);
 
         /// Generate charge density and magnetization from the wave functions
         void generate(K_set& ks);

@@ -138,72 +138,6 @@ class K_point
         /// Spherical bessel functions for G+k vectors  
         std::vector< sbessel_pw<double>* > sbessel_;
         
-        /// Number of APW+lo basis functions distributed along rows of MPI grid
-        inline int apwlo_basis_size_row()
-        {
-            return (int)apwlo_basis_descriptors_row_.size();
-        }
-        
-        /// Number of G+k vectors along the rows of the matrix
-        inline int num_gkvec_row()
-        {
-            return num_gkvec_row_;
-        }
-
-        /// Number of local orbitals along the rows of the matrix
-        inline int num_lo_row()
-        {
-            return (int)apwlo_basis_descriptors_row_.size() - num_gkvec_row_;
-        }
-
-        /// Number of APW+lo basis functions distributed along columns of MPI grid
-        inline int apwlo_basis_size_col()
-        {
-            return (int)apwlo_basis_descriptors_col_.size();
-        }
-        
-        /// Number of G+k vectors along the columns of the matrix
-        inline int num_gkvec_col()
-        {
-            return num_gkvec_col_;
-        }
-        
-        /// Number of local orbitals along the columns of the matrix
-        inline int num_lo_col()
-        {
-            return (int)apwlo_basis_descriptors_col_.size() - num_gkvec_col_;
-        }
-
-        /// Local fraction of G+k vectors for a given MPI rank
-        /** In case of distributed matrix setup row and column G+k vectors are combined. */
-        inline int num_gkvec_loc()
-        {
-            if ((num_gkvec_row() == num_gkvec()) && (num_gkvec_col() == num_gkvec()))
-            {
-                return num_gkvec();
-            }
-            else
-            {
-                return (num_gkvec_row() + num_gkvec_col());
-            }
-        } 
-        
-        /// Return the global index of the G+k vector by the local index
-        inline int igkglob(int igkloc)
-        {
-            if ((num_gkvec_row() == num_gkvec()) && (num_gkvec_col() == num_gkvec()))
-            {
-                return igkloc;
-            }
-            else
-            {
-                int igk = (igkloc < num_gkvec_row()) ? apwlo_basis_descriptors_row_[igkloc].igk : 
-                                                       apwlo_basis_descriptors_col_[igkloc - num_gkvec_row()].igk;
-                assert(igk >= 0);
-                return igk;
-            }
-        }
-        
         /// Generate matching coefficients for specific l-value
         template <int order, bool conjugate>
         void generate_matching_coefficients_l(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
@@ -370,13 +304,13 @@ class K_point
 
         void spinor_wave_function_component_mt(Band* band, int lmax, int ispn, int jloc, mt_functions<complex16>& psilm);
         
-        void save_wave_functions(int id, Band* band__);
+        void save_wave_functions(int id, Band* band);
 
-        void load_wave_functions(int id, Band* band__);
+        void load_wave_functions(int id, Band* band);
 
-        void get_fv_eigen_vectors(mdarray<complex16, 2>& fv_evec);
+        void get_fv_eigen_vectors(Band* band, mdarray<complex16, 2>& fv_evec);
         
-        void get_sv_eigen_vectors(mdarray<complex16, 2>& sv_evec);
+        void get_sv_eigen_vectors(Band* band, mdarray<complex16, 2>& sv_evec);
         
         /// APW+lo basis size
         /** Total number of APW+lo basis functions is equal to the number of augmented plane-waves plus
@@ -506,6 +440,77 @@ class K_point
         inline double vk(int x)
         {
             return vk_[x];
+        }
+        
+        /// Number of APW+lo basis functions distributed along rows of MPI grid
+        inline int apwlo_basis_size_row()
+        {
+            return (int)apwlo_basis_descriptors_row_.size();
+        }
+        
+        /// Number of G+k vectors along the rows of the matrix
+        inline int num_gkvec_row()
+        {
+            return num_gkvec_row_;
+        }
+
+        /// Number of local orbitals along the rows of the matrix
+        inline int num_lo_row()
+        {
+            return (int)apwlo_basis_descriptors_row_.size() - num_gkvec_row_;
+        }
+
+        /// Number of APW+lo basis functions distributed along columns of MPI grid
+        inline int apwlo_basis_size_col()
+        {
+            return (int)apwlo_basis_descriptors_col_.size();
+        }
+        
+        /// Number of G+k vectors along the columns of the matrix
+        inline int num_gkvec_col()
+        {
+            return num_gkvec_col_;
+        }
+        
+        /// Number of local orbitals along the columns of the matrix
+        inline int num_lo_col()
+        {
+            return (int)apwlo_basis_descriptors_col_.size() - num_gkvec_col_;
+        }
+
+        /// Local fraction of G+k vectors for a given MPI rank
+        /** In case of distributed matrix setup row and column G+k vectors are combined. Row G+k vectors are first.*/
+        inline int num_gkvec_loc()
+        {
+            if ((num_gkvec_row() == num_gkvec()) && (num_gkvec_col() == num_gkvec()))
+            {
+                return num_gkvec();
+            }
+            else
+            {
+                return (num_gkvec_row() + num_gkvec_col());
+            }
+        } 
+        
+        /// Return the global index of the G+k vector by the local index
+        inline int igkglob(int igkloc)
+        {
+            if ((num_gkvec_row() == num_gkvec()) && (num_gkvec_col() == num_gkvec()))
+            {
+                return igkloc;
+            }
+            else
+            {
+                int igk = (igkloc < num_gkvec_row()) ? apwlo_basis_descriptors_row_[igkloc].igk : 
+                                                       apwlo_basis_descriptors_col_[igkloc - num_gkvec_row()].igk;
+                assert(igk >= 0);
+                return igk;
+            }
+        }
+
+        inline apwlo_basis_descriptor& apwlo_basis_descriptors_row(int idx)
+        {
+            return apwlo_basis_descriptors_row_[idx];
         }
 };
 

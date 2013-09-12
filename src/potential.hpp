@@ -848,7 +848,7 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;
-        error_local(__FILE__, __LINE__, s);
+        warning_local(__FILE__, __LINE__, s);
     }
 
     if (parameters_.num_spins() == 1)
@@ -955,8 +955,9 @@ void Potential::set_effective_potential_ptr(double* veffmt, double* veffir)
         
 void Potential::set_effective_magnetic_field_ptr(double* beffmt, double* beffir)
 {
+    if (parameters_.num_mag_dims() == 0) return;
     assert(parameters_.num_spins() == 2);
-
+    
     // set temporary array wrapper
     mdarray<double,4> beffmt_tmp(beffmt, parameters_.lmmax_pot(), parameters_.max_num_mt_points(), 
                                  parameters_.num_atoms(), parameters_.num_mag_dims());

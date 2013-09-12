@@ -379,7 +379,7 @@ void Band::init()
         }
     }
 
-    if ((verbosity_level >= 3) && (Platform::mpi_rank() == 0))
+    if (verbosity_level >= 3 && Platform::mpi_rank() == 0 && num_ranks() > 1)
     {
         printf("\n");
         printf("table of column distribution of first-variational states\n");
@@ -420,7 +420,7 @@ void Band::init()
         printf("(columns of the table correspond to MPI ranks)\n");
         for (int i0 = 0; i0 < spl_spinor_wf_col_.local_size(0); i0++)
         {
-            for (int i1 = 0; i1 < num_ranks_row_; i1++) printf("%6i", spl_spinor_wf_col_.global_index(i0, i1));
+            for (int i1 = 0; i1 < num_ranks_col(); i1++) printf("%6i", spl_spinor_wf_col_.global_index(i0, i1));
             printf("\n");
         }
     }
