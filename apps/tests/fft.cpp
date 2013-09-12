@@ -20,7 +20,7 @@ void test1()
     
     global.add_atom(1, pos);
     
-    global.initialize(1);
+    global.initialize();
     
     global.Reciprocal_lattice::print_info();
     
@@ -77,7 +77,7 @@ void test2()
     
     global.add_atom(1, pos);
     
-    global.initialize(1);
+    global.initialize();
     
     global.Reciprocal_lattice::print_info();
     printf("\n");
@@ -156,7 +156,7 @@ void test3()
     double pos[] = {0, 0, 0};
     
     global.add_atom(1, pos);
-    global.initialize(1);
+    global.initialize();
     global.Reciprocal_lattice::print_info();
 
     Timer t("fft::transform");

@@ -26,7 +26,7 @@ void test1(double x0, double x1, int m, double exact_result)
     }
 }
 
-void test2(radial_grid_type grid_type, double x0, double x1)
+void test2(radial_grid_t grid_type, double x0, double x1)
 {
     printf("\n");
     printf("test2: value and derivatives of exp(x)\n");
@@ -112,6 +112,7 @@ int main(int argn, char **argv)
     test2(exponential_grid, x0, 2.0);
     test2(linear_exponential_grid, x0, 2.0);
     test2(pow_grid, x0, 2.0);
+    test2(incremental_grid, x0, 2.0);
     //test2(hyperbolic_grid, x0, 2.0);
 
     test3(0.0001, 2.0, 1.0365460153117974);

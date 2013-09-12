@@ -3,26 +3,8 @@
 int main(int argn, char **argv)
 {
     sirius::Atom_type atom_type(1, "Si");
-    atom_type.init_aw_descriptors(10);
-    atom_type.init_radial_grid();
+    atom_type.create_radial_grid();
     atom_type.init(10);
 
     atom_type.print_info();
-
-    //JsonTree parser(std::string("H.json"));
-    
-    //std::vector<double> array = parser["array"].get< std::vector<double> >();
-    
-    //std::string s = parser["str"].get<std::string>();
-    //std::cout << s << std::endl;
-    //double mass = parser["mass1"].get<double>();
-    //int l = parser["valence"][0]["l1"] >> l;
-    //parser["mass"] >> mass;
-    
-    //double mass = parser["mass"](default_mass);
-    
-    
-    //std::cout << "mass = " << mass << std::endl;
-    
-    //double f1 = parser["mass"](10.0);
 }
