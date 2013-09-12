@@ -6,18 +6,41 @@ INCLUDE = -I./../../src
 
 .SUFFIXES: .cpp
 
-all: 
+all: hdf5 allgather mt_function mt_kinetic spline splindex hydrogen read_atom fft
+
+hdf5:
 	$(CXX) $(CXX_OPT) $(INCLUDE) hdf5.cpp           $(LIB_SIRIUS) $(LIBS) -o hdf5
+	
+allgather:
 	$(CXX) $(CXX_OPT) $(INCLUDE) allgather.cpp      $(LIB_SIRIUS) $(LIBS) -o allgather
+	
+mt_function:
 	$(CXX) $(CXX_OPT) $(INCLUDE) mt_function.cpp    $(LIB_SIRIUS) $(LIBS) -o mt_function
+	
+mt_kinetic:
 	$(CXX) $(CXX_OPT) $(INCLUDE) mt_kinetic.cpp    $(LIB_SIRIUS) $(LIBS) -o mt_kinetic
+	
+spline:
 	$(CXX) $(CXX_OPT) $(INCLUDE) spline.cpp        $(LIB_SIRIUS) $(LIBS) -o spline
+	
+cuda_zgemm:
 #	$(CXX) $(CXX_OPT) $(INCLUDE) cuda_zgemm.cpp    $(LIB_SIRIUS) $(LIBS) -o cuda_zgemm
+	
+spline_gpu:
 #	$(CXX) $(CXX_OPT) $(INCLUDE) spline_gpu.cpp    $(LIB_SIRIUS) $(LIBS) -o spline_gpu
+	
+splindex:
 	$(CXX) $(CXX_OPT) $(INCLUDE) splindex.cpp      $(LIB_SIRIUS) $(LIBS) -o splindex
+	
+hydrogen:
 	$(CXX) $(CXX_OPT) $(INCLUDE) hydrogen.cpp      $(LIB_SIRIUS) $(LIBS) -o hydrogen
+	
+read_atom:
 	$(CXX) $(CXX_OPT) $(INCLUDE) read_atom.cpp     $(LIB_SIRIUS) $(LIBS) -o read_atom
+	
+fft:
 	$(CXX) $(CXX_OPT) $(INCLUDE) fft.cpp           $(LIB_SIRIUS) $(LIBS) -o fft
+	
 
 clean:
-	rm -f *.o *.h5 splindex hdf5 hydrogen read_atom fft fft1k spline
+	rm -f *.o *.h5 *.txt *.dat *.pdf timers.json out.json splindex hdf5 hydrogen read_atom fft fft1k spline allgather cuda_zgemm mt_function mt_kinetic spline_gpu
