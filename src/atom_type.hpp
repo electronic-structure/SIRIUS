@@ -53,6 +53,9 @@ void Atom_type::init(int lmax_apw)
 
     if (zn_ == 0) error_local(__FILE__, __LINE__, "zero atom charge");
 
+    // create radial grid if it was not set
+    if (radial_grid_ == NULL) create_radial_grid();
+
     // initialize aw descriptors if they were not set manually
     if (aw_descriptors_.size() == 0) init_aw_descriptors(lmax_apw);
 
@@ -77,9 +80,6 @@ void Atom_type::init(int lmax_apw)
 
     num_valence_electrons_ = zn_ - num_core_electrons_;
     
-    // create radial grid if it was not set
-    if (radial_grid_ == NULL) create_radial_grid();
-
     initialized_ = true;
 }
 
