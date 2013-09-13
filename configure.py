@@ -14,7 +14,7 @@ packages = {
              ],
     "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.11.tar.gz",
               ["--enable-fortran", "--enable-shared=no", "--enable-static=yes", 
-               "--disable-deprecated-symbols"]
+               "--disable-deprecated-symbols", "--enable-filters=none"]
              ],
     "xc"   : ["http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.0.2.tar.gz",
               []
@@ -134,7 +134,6 @@ def main():
         makeinc = open("make.inc", "w")
         makeinc.write("CXX = " + platform["CXX"] + "\n")
         makeinc.write("CXX_OPT = " + platform["CXX_OPT"] + "\n")
-        makeinc.write("LIBS = " + platform["SYSTEM_LIBS"] + "\n")
         if "NVCC" in platform: makeinc.write("NVCC = " + platform["NVCC"] + "\n")
         if "NVCC_OPT" in platform: makeinc.write("NVCC_OPT = " + platform["NVCC_OPT"] + "\n")
         
@@ -149,6 +148,7 @@ def main():
 
         makeinc.write("CXX_OPT := $(CXX_OPT) -I" + os.getcwd() + "/libs/libjson\n")
         makeinc.write("LIBS := $(LIBS) " + os.getcwd() + "/libs/libjson/libjson.a\n")
+        makeinc.write("LIBS := $(LIBS) " + platform["SYSTEM_LIBS"] + "\n")
 
         makeinc.close()
 
