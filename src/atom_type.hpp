@@ -76,6 +76,9 @@ void Atom_type::init(int lmax_apw)
     }
 
     num_valence_electrons_ = zn_ - num_core_electrons_;
+    
+    // create radial grid if it was not set
+    if (radial_grid_ == NULL) create_radial_grid();
 
     initialized_ = true;
 }
