@@ -92,7 +92,7 @@ def configure_package(package_name, platform):
 
     if (package_name == "hdf5"):
         retval = ["-I" + cwdlibs + package_dir + "/src", 
-                  cwdlibs + package_dir + "/src/.libs/libhdf5.a -lz",
+                  cwdlibs + package_dir + "/src/.libs/libhdf5.a",
                   "\tcd ./libs/" + package_dir + "; make\n",
                   "\tcd ./libs/" + package_dir + "; make clean\n"]
 
