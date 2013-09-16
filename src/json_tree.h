@@ -14,9 +14,73 @@ class JSON_value_parser
         
     public:
        
-        /// Templated constructor which will be specialized for different types
-        template<typename T> 
-        JSON_value_parser(const JSONNode& value, T& val);
+        JSON_value_parser(const JSONNode& value, bool& data) : type_name_("bool"), is_valid_(false)
+        {
+            if (value.type() == JSON_BOOL)
+            {
+                is_valid_ = true;
+                data = value.as_bool();
+            }
+        }
+        
+        JSON_value_parser(const JSONNode& value, int& data) : type_name_("int"), is_valid_(false)
+        {
+            if (value.type() == JSON_NUMBER)
+            {
+                is_valid_ = true;
+                data = (int)value.as_int();
+            }
+        }
+        
+        JSON_value_parser(const JSONNode& value, double& data) : type_name_("double"), is_valid_(false)
+        {
+            if (value.type() == JSON_NUMBER)
+            {
+                is_valid_ = true;
+                data = value.as_float();
+            }
+        }
+        
+        JSON_value_parser(const JSONNode& value, std::vector<double>& data) : type_name_("vector<double>"), is_valid_(false)
+        {
+            if (value.type() == JSON_ARRAY) 
+            {
+                is_valid_ = true;
+                data.clear();
+                for (int i = 0; i < (int)value.size(); i++)
+                {
+                    double t;
+                    JSON_value_parser v(value[i], t);
+                    is_valid_ = is_valid_ && v.is_valid();
+                    if (is_valid_) data.push_back(t);
+                }
+            }
+        }
+        
+        JSON_value_parser(const JSONNode& value, std::vector<int>& data) : type_name_("vector<int>"), is_valid_(false)
+        {
+            if (value.type() == JSON_ARRAY) 
+            {
+                is_valid_ = true;
+                data.clear();
+                for (int i = 0; i < (int)value.size(); i++)
+                {
+                    int t;
+                    JSON_value_parser v(value[i], t);
+                    is_valid_ = is_valid_ && v.is_valid();
+                    if (is_valid_) data.push_back(t);
+                }
+            }
+        }
+
+        JSON_value_parser(const JSONNode& value, std::string& data) : type_name_("string"), is_valid_(false)
+        {
+            if (value.type() == JSON_STRING) 
+            {
+                is_valid_ = true;
+                data = value.as_string();
+            }
+        }
        
         /// Return name of the type
         const std::string& type_name()
@@ -30,84 +94,6 @@ class JSON_value_parser
             return is_valid_;
         }
 };
-
-/// Constructor specialization for bool 
-template<> JSON_value_parser::JSON_value_parser<bool>(const JSONNode& value, bool& data) : 
-    type_name_("bool"), is_valid_(false)
-{
-    if (value.type() == JSON_BOOL)
-    {
-        is_valid_ = true;
-        data = value.as_bool();
-    }
-}
-
-/// Constructor specialization for int
-template<> JSON_value_parser::JSON_value_parser<int>(const JSONNode& value, int& data) : 
-    type_name_("int"), is_valid_(false)
-{
-    if (value.type() == JSON_NUMBER) 
-    {
-        is_valid_ = true;
-        data = (int)value.as_int();
-    }
-}
-
-/// Constructor specialization for double
-template<> JSON_value_parser::JSON_value_parser<double>(const JSONNode& value, double& data) :
-    type_name_("double"), is_valid_(false)
-{
-    if (value.type() == JSON_NUMBER)
-    {
-        is_valid_ = true;
-        data = value.as_float();
-    }
-}
-
-/// Constructor specialization for vector of doubles
-template<> JSON_value_parser::JSON_value_parser< std::vector<double> >(const JSONNode& value, std::vector<double>& data) : 
-    type_name_("vector<double>"), is_valid_(false)
-{
-    if (value.type() == JSON_ARRAY) 
-    {
-        is_valid_ = true;
-        data.clear();
-        for (int i = 0; i < (int)value.size(); i++)
-        {
-            double t;
-            JSON_value_parser v(value[i], t);
-            is_valid_ = is_valid_ && v.is_valid();
-            if (is_valid_) data.push_back(t);
-        }
-    }
-}
-
-template<> JSON_value_parser::JSON_value_parser< std::vector<int> >(const JSONNode& value, std::vector<int>& data) : 
-    type_name_("vector<int>"), is_valid_(false)
-{
-    if (value.type() == JSON_ARRAY) 
-    {
-        is_valid_ = true;
-        data.clear();
-        for (int i = 0; i < (int)value.size(); i++)
-        {
-            int t;
-            JSON_value_parser v(value[i], t);
-            is_valid_ = is_valid_ && v.is_valid();
-            if (is_valid_) data.push_back(t);
-        }
-    }
-}
-
-template<> JSON_value_parser::JSON_value_parser<std::string>(const JSONNode& value, std::string& data) : 
-    type_name_("string"), is_valid_(false)
-{
-    if (value.type() == JSON_STRING) 
-    {
-        is_valid_ = true;
-        data = value.as_string();
-    }
-}
 
 class JSON_tree
 {
