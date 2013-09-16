@@ -1,4 +1,4 @@
-void Atom_symmetry_class::generate_aw_radial_functions(run_time_info& rti__)
+void Atom_symmetry_class::generate_aw_radial_functions()
 {
     int nmtp = atom_type_->num_mt_points();
    
@@ -494,13 +494,13 @@ void Atom_symmetry_class::set_spherical_potential(std::vector<double>& veff)
     }
 }
 
-void Atom_symmetry_class::generate_radial_functions(run_time_info& rti__)
+void Atom_symmetry_class::generate_radial_functions()
 {
     Timer t("sirius::Atom_symmetry_class::generate_radial_functions");
 
     radial_functions_.zero();
 
-    generate_aw_radial_functions(rti__);
+    generate_aw_radial_functions();
     generate_lo_radial_functions();
     transform_radial_functions(true, false);
     

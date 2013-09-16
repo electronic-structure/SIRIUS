@@ -149,24 +149,24 @@ void DFT_ground_state::scf_loop()
         kset_->find_band_occupancies();
         kset_->valence_eval_sum();
         density_->generate(*kset_);
-        density_->integrate();
+        //** density_->integrate();
 
         double rms = mx->mix();
         for (int i = 0; i < parameters_.num_mag_dims(); i++) rms += mxmag[i]->mix();
         
         potential_->generate_effective_potential(density_->rho(), density_->magnetization());
         
-        parameters_.print_rti();
+        //** parameters_.print_rti();
         
-        std::cout << "charge RMS : " << rms << " energy difference : " << fabs(eold - parameters_.total_energy()) << std::endl;
+        std::cout << "charge RMS : " << rms << " energy difference : " << fabs(eold - total_energy()) << std::endl;
 
-        if (fabs(eold - parameters_.total_energy()) < 1e-4 && rms < 1e-4)
+        if (fabs(eold - total_energy()) < 1e-4 && rms < 1e-4)
         {   
             std::cout << "Done after " << iter << " iterations!" << std::endl;
             break;
         }
 
-        eold = parameters_.total_energy();
+        eold = total_energy();
     }
     
     parameters_.create_storage_file();

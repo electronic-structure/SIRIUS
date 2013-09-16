@@ -42,6 +42,10 @@ class K_set
 
         splindex<block> spl_num_kpoints_;
 
+        double energy_fermi_;
+
+        double band_gap_;
+
     public:
 
         K_set(Global& parameters__) : parameters_(parameters__)
@@ -138,6 +142,16 @@ class K_set
         Band* band()
         {
             return band_;
+        }
+
+        inline double energy_fermi()
+        {
+            return energy_fermi_;
+        }
+
+        inline double band_gap()
+        {
+            return band_gap_;
         }
 };
 

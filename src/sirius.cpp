@@ -543,10 +543,10 @@ void FORTRAN(sirius_get_band_occupancies)(int32_t* kset_id, int32_t* ik_, real8*
     kset_list[*kset_id]->get_band_occupancies(ik, band_occupancies);
 }
 
-void FORTRAN(sirius_integrate_density)(void)
-{
-    density->integrate();
-}
+//** void FORTRAN(sirius_integrate_density)(void)
+//** {
+//**     density->integrate();
+//** }
 
 /*
     print info
@@ -581,7 +581,7 @@ void FORTRAN(sirius_read_state)()
     potential->hdf5_read();
     potential->update_atomic_potential();
     sirius:: HDF5_tree fout(storage_file_name, false);
-    fout.read("energy_fermi", &global_parameters.rti().energy_fermi);
+    //** fout.read("energy_fermi", &global_parameters.rti().energy_fermi);
 }
 
 void FORTRAN(sirius_save_potential)()
@@ -596,7 +596,7 @@ void FORTRAN(sirius_save_potential)()
         fout.create_node("effective_magnetic_field");
         
         // write Fermi energy
-        fout.write("energy_fermi", &global_parameters.rti().energy_fermi);
+        //** fout.write("energy_fermi", &global_parameters.rti().energy_fermi);
         
         // write potential
         potential->effective_potential()->hdf5_write(fout["effective_potential"]);
@@ -731,7 +731,7 @@ void FORTRAN(sirius_bands)(void)
     {
         JSON_write jw("bands.json");
         jw.single("xaxis", xaxis);
-        jw.single("Ef", global_parameters.rti().energy_fermi);
+        //** jw.single("Ef", global_parameters.rti().energy_fermi);
         
         jw.single("xaxis_ticks", xaxis_ticks);
         jw.single("xaxis_tick_labels", xaxis_tick_labels);
@@ -802,10 +802,10 @@ void FORTRAN(sirius_plot_potential)(void)
 //    delete p;
 }
 
-void FORTRAN(sirius_print_rti)(void)
-{
-    global_parameters.print_rti();
-}
+//** void FORTRAN(sirius_print_rti)(void)
+//** {
+//**     global_parameters.print_rti();
+//** }
 
 void FORTRAN(sirius_write_json_output)(void)
 {
@@ -880,7 +880,8 @@ void FORTRAN(sirius_platform_barrier)(void)
 
 void FORTRAN(sirius_get_total_energy)(real8* total_energy)
 {
-    *total_energy = global_parameters.total_energy();
+    //*total_energy = global_parameters.total_energy();
+    *total_energy = dft_ground_state->total_energy();
 }
 
 
@@ -1214,37 +1215,49 @@ void FORTRAN(sirius_get_gkvec_cart)(int32_t* kset_id, int32_t* ik, double* gkvec
 
 void FORTRAN(sirius_get_evalsum)(real8* evalsum)
 {
-    *evalsum = global_parameters.rti().core_eval_sum + global_parameters.rti().valence_eval_sum;
+    //*evalsum = global_parameters.rti().core_eval_sum + global_parameters.rti().valence_eval_sum;
+    *evalsum = dft_ground_state->eval_sum();
 }
 
 void FORTRAN(sirius_get_energy_exc)(real8* energy_exc)
 {
-    *energy_exc = global_parameters.rti().energy_exc;
+    //*energy_exc = global_parameters.rti().energy_exc;
+    *energy_exc = dft_ground_state->energy_exc();
 }
 
 void FORTRAN(sirius_get_energy_vxc)(real8* energy_vxc)
 {
-    *energy_vxc = global_parameters.rti().energy_vxc;
+    //*energy_vxc = global_parameters.rti().energy_vxc;
+    *energy_vxc = dft_ground_state->energy_vxc();
 }
 
 void FORTRAN(sirius_get_energy_bxc)(real8* energy_bxc)
 {
-    *energy_bxc = global_parameters.rti().energy_bxc;
+    //*energy_bxc = global_parameters.rti().energy_bxc;
+    *energy_bxc = dft_ground_state->energy_bxc();
 }
 
 void FORTRAN(sirius_get_energy_veff)(real8* energy_veff)
 {
-    *energy_veff = global_parameters.rti().energy_veff;
+    //*energy_veff = global_parameters.rti().energy_veff;
+    *energy_veff = dft_ground_state->energy_veff();
 }
 
 void FORTRAN(sirius_get_energy_vha)(real8* energy_vha)
 {
-    *energy_vha = global_parameters.rti().energy_vha;
+    //*energy_vha = global_parameters.rti().energy_vha;
+    *energy_vha = dft_ground_state->energy_vha();
 }
 
 void FORTRAN(sirius_get_energy_enuc)(real8* energy_enuc)
 {
-    *energy_enuc = global_parameters.rti().energy_enuc;
+    //*energy_enuc = global_parameters.rti().energy_enuc;
+    *energy_enuc = dft_ground_state->energy_enuc();
+}
+
+void FORTRAN(sirius_get_energy_kin)(real8* energy_kin)
+{
+    *energy_kin = dft_ground_state->energy_kin();
 }
 
 void FORTRAN(sirius_generate_xc_potential)(real8* rhomt, real8* rhoit, real8* vxcmt, real8* vxcit)
@@ -1252,19 +1265,19 @@ void FORTRAN(sirius_generate_xc_potential)(real8* rhomt, real8* rhoit, real8* vx
     using namespace sirius;
     Periodic_function<double>* rho = 
         new Periodic_function<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_rho()),
-                                                        Argument(arg_radial, global_parameters.max_num_mt_points()));
+                                                         Argument(arg_radial, global_parameters.max_num_mt_points()));
     rho->set_mt_ptr(rhomt);
     rho->set_it_ptr(rhoit);
     
     Periodic_function<double>* vxc = 
         new Periodic_function<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_pot()),
-                                                        Argument(arg_radial, global_parameters.max_num_mt_points()));
+                                                         Argument(arg_radial, global_parameters.max_num_mt_points()));
     vxc->set_mt_ptr(vxcmt);
     vxc->set_it_ptr(vxcit);
 
     Periodic_function<double>* exc = 
         new Periodic_function<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_pot()),
-                                                        Argument(arg_radial, global_parameters.max_num_mt_points()));
+                                                         Argument(arg_radial, global_parameters.max_num_mt_points()));
     exc->allocate(false);
     
     //Periodic_function<double>* bxc[3];
@@ -1280,8 +1293,8 @@ void FORTRAN(sirius_generate_xc_potential)(real8* rhomt, real8* rhoit, real8* vx
     //vxc->zero();
     //exc->zero();
    
-    global_parameters.rti().energy_vxc = inner(global_parameters, rho, vxc);
-    global_parameters.rti().energy_exc = inner(global_parameters, rho, exc);
+    //** global_parameters.rti().energy_vxc = inner(global_parameters, rho, vxc);
+    //** global_parameters.rti().energy_exc = inner(global_parameters, rho, exc);
 
     delete vxc;
     delete exc;
@@ -1308,7 +1321,7 @@ void FORTRAN(sirius_generate_coulomb_potential)(real8* rhomt, real8* rhoit, real
 
     potential->poisson(rho, vcl);
    
-    global_parameters.rti().energy_vha = inner(global_parameters, rho, vcl);
+    //** global_parameters.rti().energy_vha = inner(global_parameters, rho, vcl);
 
     delete vcl;
     delete rho;

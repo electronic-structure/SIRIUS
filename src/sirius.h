@@ -65,7 +65,7 @@ extern "C" {
 #include "json_tree.h"
 #include "hdf5_tree.h" 
 #include "libxc_interface.h"
-#include "run_time_info.h"
+//** #include "run_time_info.h"
 #include "mpi_grid.h"
 #include "splindex.h"
 #include "sirius_io.h"

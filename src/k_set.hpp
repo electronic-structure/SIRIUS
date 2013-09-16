@@ -98,7 +98,7 @@ double K_set::valence_eval_sum()
             eval_sum += wk * kpoints_[ik]->band_energy(j) * kpoints_[ik]->band_occupancy(j);
     }
 
-    parameters_.rti().valence_eval_sum = eval_sum;
+    //** parameters_.rti().valence_eval_sum = eval_sum;
     return eval_sum;
 }
 
@@ -142,8 +142,9 @@ void K_set::find_band_occupancies()
         
         ef += de;
     } 
+    energy_fermi_ = ef;
 
-    parameters_.rti().energy_fermi = ef;
+    //parameters_.rti().energy_fermi = ef;
     
     for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_occupancies(&bnd_occ(0, ik));
 
@@ -178,7 +179,9 @@ void K_set::find_band_occupancies()
 
         if (eband[ist].first > eband[ist - 1].second) gap = eband[ist].first - eband[ist - 1].second;
 
-        parameters_.rti().band_gap = gap;
+        band_gap_ = gap;
+
+        //parameters_.rti().band_gap = gap;
     }
 }
 

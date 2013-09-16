@@ -1007,16 +1007,16 @@ void Density::generate(K_set& ks)
         parameters_.atom_symmetry_class(ic)->generate_core_charge_density();
     }
 
-    double eval_sum = 0.0;
-    for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
-    {
-        int rank = parameters_.spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
-        parameters_.atom_symmetry_class(ic)->sync_core_charge_density(rank);
+    //** double eval_sum = 0.0;
+    //** for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
+    //** {
+    //**     int rank = parameters_.spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
+    //**     parameters_.atom_symmetry_class(ic)->sync_core_charge_density(rank);
 
-        eval_sum += parameters_.atom_symmetry_class(ic)->core_eval_sum() *
-                    parameters_.atom_symmetry_class(ic)->num_atoms();
-    }
-    assert(eval_sum == eval_sum);
+    //**     eval_sum += parameters_.atom_symmetry_class(ic)->core_eval_sum() *
+    //**                 parameters_.atom_symmetry_class(ic)->num_atoms();
+    //** }
+    //** assert(eval_sum == eval_sum);
     
     // add core contribution
     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
@@ -1025,7 +1025,7 @@ void Density::generate(K_set& ks)
             rho_->f_mt<global>(0, ir, ia) += parameters_.atom(ia)->symmetry_class()->core_charge_density(ir) / y00;
     }
 
-    parameters_.rti().core_eval_sum = eval_sum;
+    //** parameters_.rti().core_eval_sum = eval_sum;
     
     std::vector<double> nel_mt;
     double nel_it;
@@ -1058,18 +1058,18 @@ void Density::generate(K_set& ks)
     //if (debug_level > 1) check_density_continuity_at_mt();
 }
 
-void Density::integrate()
-{
-    Timer t("sirius::Density::integrate");
-
-    parameters_.rti().total_charge = rho_->integrate(parameters_.rti().mt_charge, parameters_.rti().it_charge); 
-
-    for (int j = 0; j < parameters_.num_mag_dims(); j++)
-    {
-        parameters_.rti().total_magnetization[j] = 
-            magnetization_[j]->integrate(parameters_.rti().mt_magnetization[j], parameters_.rti().it_magnetization[j]);
-    }
-}
+//** void Density::integrate()
+//** {
+//**     Timer t("sirius::Density::integrate");
+//** 
+//**     //** parameters_.rti().total_charge = rho_->integrate(parameters_.rti().mt_charge, parameters_.rti().it_charge); 
+//** 
+//**     //** for (int j = 0; j < parameters_.num_mag_dims(); j++)
+//**     //** {
+//**     //**     parameters_.rti().total_magnetization[j] = 
+//**     //**         magnetization_[j]->integrate(parameters_.rti().mt_magnetization[j], parameters_.rti().it_magnetization[j]);
+//**     //** }
+//** }
 
 //void Density::check_density_continuity_at_mt()
 //{

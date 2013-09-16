@@ -77,7 +77,7 @@ class DFT_ground_state
         /// Kinetic energy
         /** more doc here
         */
-        inline double kinetic_energy()
+        inline double energy_kin()
         {
             return (eval_sum() - energy_veff() - energy_bxc());
         }
@@ -108,7 +108,7 @@ class DFT_ground_state
         */
         inline double total_energy()
         {
-            return (kinetic_energy() + energy_exc() + 0.5 * energy_vha() + energy_enuc());
+            return (energy_kin() + energy_exc() + 0.5 * energy_vha() + energy_enuc());
         }
 };
 

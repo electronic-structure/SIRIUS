@@ -94,7 +94,7 @@ class Density
         void generate(K_set& ks);
         
         /// Integrtae charge density to get total and partial charges
-        void integrate();
+        //** void integrate();
 
         /// Check density at MT boundary
         void check_density_continuity_at_mt();

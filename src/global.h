@@ -54,8 +54,8 @@ class Global : public Step_function
         /// true if UJ correction is applied
         bool uj_correction_;
 
-        /// run-time information (energies, charges, etc.)
-        run_time_info rti_;
+        //** /// run-time information (energies, charges, etc.)
+        //** //run_time_info rti_;
 
         /// general purpose synchronization flag
         int sync_flag_;
@@ -333,10 +333,10 @@ class Global : public Step_function
             return (2 / num_spins());
         }
         
-        inline run_time_info& rti()
-        {
-            return rti_;
-        }
+        //inline run_time_info& rti()
+        //{
+        //    return rti_;
+        //}
         
         inline void set_so_correction(bool so_correction__)
         {
@@ -533,7 +533,7 @@ class Global : public Step_function
             Timer t("sirius::Global::generate_radial_functions");
            
             for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
-                atom_symmetry_class(spl_num_atom_symmetry_classes(icloc))->generate_radial_functions(rti_);
+                atom_symmetry_class(spl_num_atom_symmetry_classes(icloc))->generate_radial_functions();
 
             for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
             {
@@ -598,137 +598,137 @@ class Global : public Step_function
             }
         }
 
-        /// Get the total energy of the electronic subsystem.
-        /** From the definition of the density functional we have:
-            
-            \f[
-                E[\rho] = T[\rho] + E^{H}[\rho] + E^{XC}[\rho] + E^{ext}[\rho]
-            \f]
-            where \f$ T[\rho] \f$ is the kinetic energy, \f$ E^{H}[\rho] \f$ - electrostatic energy of
-            electron-electron density interaction, \f$ E^{XC}[\rho] \f$ - exchange-correlation energy
-            and \f$ E^{ext}[\rho] \f$ - energy in the external field of nuclei.
-            
-            Electrostatic and external field energies are grouped in the following way:
-            \f[
-                \frac{1}{2} \int \int \frac{\rho({\bf r})\rho({\bf r'}) d{\bf r} d{\bf r'}}{|{\bf r} - {\bf r'}|} + 
-                    \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r} = \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} + 
-                    \frac{1}{2} \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r}
-            \f]
-            Here \f$ V^{H}({\bf r}) \f$ is the total (electron + nuclei) electrostatic potential returned by the 
-            poisson solver. Next we transform the remaining term:
-            \f[
-                \frac{1}{2} \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r} = 
-                \frac{1}{2} \int \int \frac{\rho({\bf r})\rho^{nuc}({\bf r'}) d{\bf r} d{\bf r'}}{|{\bf r} - {\bf r'}|} = 
-                \frac{1}{2} \int V^{H,el}({\bf r}) \rho^{nuc}({\bf r}) d{\bf r}
-            \f]
-        */
-        double total_energy()
-        {
-            assert(rti().energy_exc == rti().energy_exc);
-            assert(rti().energy_vha == rti().energy_vha);
-            assert(rti().energy_enuc == rti().energy_enuc);
+        //** /// Get the total energy of the electronic subsystem.
+        //** /** From the definition of the density functional we have:
+        //**     
+        //**     \f[
+        //**         E[\rho] = T[\rho] + E^{H}[\rho] + E^{XC}[\rho] + E^{ext}[\rho]
+        //**     \f]
+        //**     where \f$ T[\rho] \f$ is the kinetic energy, \f$ E^{H}[\rho] \f$ - electrostatic energy of
+        //**     electron-electron density interaction, \f$ E^{XC}[\rho] \f$ - exchange-correlation energy
+        //**     and \f$ E^{ext}[\rho] \f$ - energy in the external field of nuclei.
+        //**     
+        //**     Electrostatic and external field energies are grouped in the following way:
+        //**     \f[
+        //**         \frac{1}{2} \int \int \frac{\rho({\bf r})\rho({\bf r'}) d{\bf r} d{\bf r'}}{|{\bf r} - {\bf r'}|} + 
+        //**             \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r} = \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} + 
+        //**             \frac{1}{2} \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r}
+        //**     \f]
+        //**     Here \f$ V^{H}({\bf r}) \f$ is the total (electron + nuclei) electrostatic potential returned by the 
+        //**     poisson solver. Next we transform the remaining term:
+        //**     \f[
+        //**         \frac{1}{2} \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r} = 
+        //**         \frac{1}{2} \int \int \frac{\rho({\bf r})\rho^{nuc}({\bf r'}) d{\bf r} d{\bf r'}}{|{\bf r} - {\bf r'}|} = 
+        //**         \frac{1}{2} \int V^{H,el}({\bf r}) \rho^{nuc}({\bf r}) d{\bf r}
+        //**     \f]
+        //** */
+        //** double total_energy()
+        //** {
+        //**     assert(rti().energy_exc == rti().energy_exc);
+        //**     assert(rti().energy_vha == rti().energy_vha);
+        //**     assert(rti().energy_enuc == rti().energy_enuc);
 
-            return (kinetic_energy() + rti().energy_exc + 0.5 * rti().energy_vha + rti().energy_enuc);
-        }
-        
-        inline double kinetic_energy()
-        {
-            assert(rti().core_eval_sum == rti().core_eval_sum);
-            assert(rti().valence_eval_sum == rti().valence_eval_sum);
-            assert(rti().energy_veff == rti().energy_veff);
-            assert(rti().energy_bxc == rti().energy_bxc);
+        //**     return (kinetic_energy() + rti().energy_exc + 0.5 * rti().energy_vha + rti().energy_enuc);
+        //** }
+        //** 
+        //** inline double kinetic_energy()
+        //** {
+        //**     assert(rti().core_eval_sum == rti().core_eval_sum);
+        //**     assert(rti().valence_eval_sum == rti().valence_eval_sum);
+        //**     assert(rti().energy_veff == rti().energy_veff);
+        //**     assert(rti().energy_bxc == rti().energy_bxc);
 
-            return (rti().core_eval_sum + rti().valence_eval_sum - rti().energy_veff - rti().energy_bxc); 
-        }
+        //**     return (rti().core_eval_sum + rti().valence_eval_sum - rti().energy_veff - rti().energy_bxc); 
+        //** }
 
-        /// Print run-time information.
-        void print_rti()
-        {
-            if (Platform::mpi_rank() == 0)
-            {
-                double total_core_leakage = 0.0;
+        //** /// Print run-time information.
+        //** void print_rti()
+        //** {
+        //**     if (Platform::mpi_rank() == 0)
+        //**     {
+        //**         double total_core_leakage = 0.0;
 
-                printf("\n");
-                printf("Charges and magnetic moments\n");
-                for (int i = 0; i < 80; i++) printf("-");
-                printf("\n"); 
-                printf("atom      charge    core leakage");
-                if (num_mag_dims()) printf("              moment              |moment|");
-                printf("\n");
-                for (int i = 0; i < 80; i++) printf("-");
-                printf("\n"); 
+        //**         printf("\n");
+        //**         printf("Charges and magnetic moments\n");
+        //**         for (int i = 0; i < 80; i++) printf("-");
+        //**         printf("\n"); 
+        //**         printf("atom      charge    core leakage");
+        //**         if (num_mag_dims()) printf("              moment              |moment|");
+        //**         printf("\n");
+        //**         for (int i = 0; i < 80; i++) printf("-");
+        //**         printf("\n"); 
 
-                for (int ia = 0; ia < num_atoms(); ia++)
-                {
-                    double core_leakage = atom(ia)->symmetry_class()->core_leakage();
-                    total_core_leakage += core_leakage;
-                    printf("%4i  %10.6f  %10.8e", ia, rti().mt_charge[ia], core_leakage);
-                    if (num_mag_dims())
-                    {
-                        double v[] = {0, 0, 0};
-                        v[2] = rti().mt_magnetization[0][ia];
-                        if (num_mag_dims() == 3)
-                        {
-                            v[0] = rti().mt_magnetization[1][ia];
-                            v[1] = rti().mt_magnetization[2][ia];
-                        }
-                        printf("  (%8.4f %8.4f %8.4f)  %10.6f", v[0], v[1], v[2], Utils::vector_length(v));
-                    }
-                    printf("\n");
-                }
-                
-                printf("\n");
-                printf("interstitial charge   : %10.6f\n", rti().it_charge);
-                if (num_mag_dims())
-                {
-                    double v[] = {0, 0, 0};
-                    v[2] = rti().it_magnetization[0];
-                    if (num_mag_dims() == 3)
-                    {
-                        v[0] = rti().it_magnetization[1];
-                        v[1] = rti().it_magnetization[2];
-                    }
-                    printf("interstitial moment   : (%8.4f %8.4f %8.4f)\n", v[0], v[1], v[2]);
-                    printf("interstitial |moment| : %10.6f\n", Utils::vector_length(v));
-                }
-                
-                printf("\n");
-                printf("total charge          : %10.6f\n", rti().total_charge);
-                printf("total core leakage    : %10.8e\n", total_core_leakage);
-                if (num_mag_dims())
-                {
-                    double v[] = {0, 0, 0};
-                    v[2] = rti().total_magnetization[0];
-                    if (num_mag_dims() == 3)
-                    {
-                        v[0] = rti().total_magnetization[1];
-                        v[1] = rti().total_magnetization[2];
-                    }
-                    printf("total moment          : (%8.4f %8.4f %8.4f)\n", v[0], v[1], v[2]);
-                    printf("total |moment|        : %10.6f\n", Utils::vector_length(v));
-                }
-                printf("pseudo charge error : %18.12f\n", rti().pseudo_charge_error);
-                
-                printf("\n");
-                printf("Energy\n");
-                for (int i = 0; i < 80; i++) printf("-");
-                printf("\n"); 
+        //**         for (int ia = 0; ia < num_atoms(); ia++)
+        //**         {
+        //**             double core_leakage = atom(ia)->symmetry_class()->core_leakage();
+        //**             total_core_leakage += core_leakage;
+        //**             printf("%4i  %10.6f  %10.8e", ia, rti().mt_charge[ia], core_leakage);
+        //**             if (num_mag_dims())
+        //**             {
+        //**                 double v[] = {0, 0, 0};
+        //**                 v[2] = rti().mt_magnetization[0][ia];
+        //**                 if (num_mag_dims() == 3)
+        //**                 {
+        //**                     v[0] = rti().mt_magnetization[1][ia];
+        //**                     v[1] = rti().mt_magnetization[2][ia];
+        //**                 }
+        //**                 printf("  (%8.4f %8.4f %8.4f)  %10.6f", v[0], v[1], v[2], Utils::vector_length(v));
+        //**             }
+        //**             printf("\n");
+        //**         }
+        //**         
+        //**         printf("\n");
+        //**         printf("interstitial charge   : %10.6f\n", rti().it_charge);
+        //**         if (num_mag_dims())
+        //**         {
+        //**             double v[] = {0, 0, 0};
+        //**             v[2] = rti().it_magnetization[0];
+        //**             if (num_mag_dims() == 3)
+        //**             {
+        //**                 v[0] = rti().it_magnetization[1];
+        //**                 v[1] = rti().it_magnetization[2];
+        //**             }
+        //**             printf("interstitial moment   : (%8.4f %8.4f %8.4f)\n", v[0], v[1], v[2]);
+        //**             printf("interstitial |moment| : %10.6f\n", Utils::vector_length(v));
+        //**         }
+        //**         
+        //**         printf("\n");
+        //**         printf("total charge          : %10.6f\n", rti().total_charge);
+        //**         printf("total core leakage    : %10.8e\n", total_core_leakage);
+        //**         if (num_mag_dims())
+        //**         {
+        //**             double v[] = {0, 0, 0};
+        //**             v[2] = rti().total_magnetization[0];
+        //**             if (num_mag_dims() == 3)
+        //**             {
+        //**                 v[0] = rti().total_magnetization[1];
+        //**                 v[1] = rti().total_magnetization[2];
+        //**             }
+        //**             printf("total moment          : (%8.4f %8.4f %8.4f)\n", v[0], v[1], v[2]);
+        //**             printf("total |moment|        : %10.6f\n", Utils::vector_length(v));
+        //**         }
+        //**         printf("pseudo charge error : %18.12f\n", rti().pseudo_charge_error);
+        //**         
+        //**         printf("\n");
+        //**         printf("Energy\n");
+        //**         for (int i = 0; i < 80; i++) printf("-");
+        //**         printf("\n"); 
 
-                printf("valence_eval_sum : %18.8f\n", rti().valence_eval_sum);
-                printf("core_eval_sum    : %18.8f\n", rti().core_eval_sum);
+        //**         printf("valence_eval_sum : %18.8f\n", rti().valence_eval_sum);
+        //**         printf("core_eval_sum    : %18.8f\n", rti().core_eval_sum);
 
-                printf("kinetic energy   : %18.8f\n", kinetic_energy());
-                printf("<rho|V^{XC}>     : %18.8f\n", rti().energy_vxc);
-                printf("<rho|E^{XC}>     : %18.8f\n", rti().energy_exc);
-                printf("<mag|B^{XC}>     : %18.8f\n", rti().energy_bxc);
-                printf("<rho|V^{H}>      : %18.8f\n", rti().energy_vha);
-                printf("Total energy     : %18.8f\n", total_energy());
+        //**         printf("kinetic energy   : %18.8f\n", kinetic_energy());
+        //**         printf("<rho|V^{XC}>     : %18.8f\n", rti().energy_vxc);
+        //**         printf("<rho|E^{XC}>     : %18.8f\n", rti().energy_exc);
+        //**         printf("<mag|B^{XC}>     : %18.8f\n", rti().energy_bxc);
+        //**         printf("<rho|V^{H}>      : %18.8f\n", rti().energy_vha);
+        //**         printf("Total energy     : %18.8f\n", total_energy());
 
-                printf("\n");
-                printf("band gap (eV) : %18.8f\n", rti().band_gap * ha2ev);
-                printf("Efermi        : %18.8f\n", rti().energy_fermi);
-            }
-        }
+        //**         printf("\n");
+        //**         printf("band gap (eV) : %18.8f\n", rti().band_gap * ha2ev);
+        //**         printf("Efermi        : %18.8f\n", rti().energy_fermi);
+        //**     }
+        //** }
 
         void write_json_output()
         {
@@ -757,31 +757,31 @@ class Global : public Step_function
                 jw.single("pw_cutoff", pw_cutoff());
                 jw.single("omega", omega());
                 
-                if (num_mag_dims())
-                {
-                    std::vector<double> v(3, 0);
-                    v[2] = rti().total_magnetization[0];
-                    if (num_mag_dims() == 3)
-                    {
-                        v[0] = rti().total_magnetization[1];
-                        v[1] = rti().total_magnetization[2];
-                    }
-                    jw.single("total_moment", v);
-                    jw.single("total_moment_len", Utils::vector_length(&v[0]));
-                }
+                //** if (num_mag_dims())
+                //** {
+                //**     std::vector<double> v(3, 0);
+                //**     v[2] = rti().total_magnetization[0];
+                //**     if (num_mag_dims() == 3)
+                //**     {
+                //**         v[0] = rti().total_magnetization[1];
+                //**         v[1] = rti().total_magnetization[2];
+                //**     }
+                //**     jw.single("total_moment", v);
+                //**     jw.single("total_moment_len", Utils::vector_length(&v[0]));
+                //** }
                 
-                jw.single("total_energy", total_energy());
-                jw.single("kinetic_energy", kinetic_energy());
-                jw.single("energy_veff", rti_.energy_veff);
-                jw.single("energy_vha", rti_.energy_vha);
-                jw.single("energy_vxc", rti_.energy_vxc);
-                jw.single("energy_bxc", rti_.energy_bxc);
-                jw.single("energy_exc", rti_.energy_exc);
-                jw.single("energy_enuc", rti_.energy_enuc);
-                jw.single("core_eval_sum", rti_.core_eval_sum);
-                jw.single("valence_eval_sum", rti_.valence_eval_sum);
-                jw.single("band_gap", rti_.band_gap);
-                jw.single("energy_fermi", rti_.energy_fermi);
+                //** jw.single("total_energy", total_energy());
+                //** jw.single("kinetic_energy", kinetic_energy());
+                //** jw.single("energy_veff", rti_.energy_veff);
+                //** jw.single("energy_vha", rti_.energy_vha);
+                //** jw.single("energy_vxc", rti_.energy_vxc);
+                //** jw.single("energy_bxc", rti_.energy_bxc);
+                //** jw.single("energy_exc", rti_.energy_exc);
+                //** jw.single("energy_enuc", rti_.energy_enuc);
+                //** jw.single("core_eval_sum", rti_.core_eval_sum);
+                //** jw.single("valence_eval_sum", rti_.valence_eval_sum);
+                //** jw.single("band_gap", rti_.band_gap);
+                //** jw.single("energy_fermi", rti_.energy_fermi);
                 
                 jw.single("timers", Timer::timer_descriptors());
             }

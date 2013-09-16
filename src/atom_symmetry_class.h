@@ -66,7 +66,7 @@ class Atom_symmetry_class
         std::vector<local_orbital_descriptor> lo_descriptors_;
         
         /// Generate radial functions for augmented waves
-        void generate_aw_radial_functions(run_time_info& rti__);
+        void generate_aw_radial_functions();
 
         /// Generate local orbital raidal functions
         void generate_lo_radial_functions();
@@ -98,7 +98,7 @@ class Atom_symmetry_class
         */
         void set_spherical_potential(std::vector<double>& veff);
 
-        void generate_radial_functions(run_time_info& rti__);
+        void generate_radial_functions();
 
         void sync_radial_functions(int rank);
       
