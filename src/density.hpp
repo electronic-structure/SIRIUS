@@ -981,13 +981,13 @@ void Density::generate(K_set& ks)
             {
                 case cpu:
                 {
-                    generate_valence_density_mt_directly<cpu>(ks);
+                    //** generate_valence_density_mt_directly<cpu>(ks);
                     break;
                 }
                 #ifdef _GPU_
                 case gpu:
                 {
-                    generate_valence_density_mt_directly<gpu>(ks);
+                    //** generate_valence_density_mt_directly<gpu>(ks);
                     break;
                 }
                 #endif

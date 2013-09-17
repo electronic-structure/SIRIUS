@@ -48,8 +48,8 @@ class Density
         void generate_valence_density_mt(K_set& ks);
         
         /// Generate valence density in the muffin-tins using straightforward (slow) approach
-        template <processing_unit_t pu> 
-        void generate_valence_density_mt_directly(K_set& ks);
+        //** template <processing_unit_t pu> 
+        //** void generate_valence_density_mt_directly(K_set& ks);
         
         void generate_valence_density_mt_sht(K_set& ks);
         
