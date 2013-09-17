@@ -8,10 +8,6 @@ class Density
         /// Global set of parameters
         Global& parameters_;
 
-        // TODO: potential must be an external object. Density class not always needs a potential.
-        /// Pointer to effective potential 
-        //Potential* potential_;
-
         Periodic_function<double>* rho_;
         
         Periodic_function<double>* magnetization_[3];

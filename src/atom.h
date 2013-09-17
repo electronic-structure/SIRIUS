@@ -3,7 +3,7 @@
 
 /** \file atom.h
     
-    \brief Data and methods specific for each atom in the unit cell.
+    \brief Data and methods specific to each atom in the unit cell.
 */
 namespace sirius {
 

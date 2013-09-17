@@ -1,23 +1,54 @@
 {
-  "name"    : "iron",
-  "symbol"  : "Fe",
-  "number"  : 26,
-  "mass"    : 55.845,
-  "rmin"    : 3.84615e-08,
-  "rmax"    : 26.3275,
-  "rmt"     : 2.0,
-  "nrmt"    : 2000,
-  "core"    : "1s2s2p", 
-  "valence" : [
-    {"l" : -1, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : false}]},
-    {"l" : 0, "n" : 4, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]},
-    {"l" : 1, "n" : 3, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]},
-    {"l" : 2, "n" : 3, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]},
-    {"l" : 3, "n" : 4, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}]}],
-  "lo"      : [
-    {"l" : 0, "n" : 3, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}, {"enu" : 0.15, "dme" : 1, "auto" : true}]},
-    {"l" : 1, "n" : 3, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}, {"enu" : 0.15, "dme" : 1, "auto" : true}]},
-    {"l" : 2, "n" : 3, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}, {"enu" : 0.15, "dme" : 1, "auto" : true}]},
-    {"l" : 3, "n" : 4, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}, {"enu" : 0.15, "dme" : 1, "auto" : true}]},
-    {"l" : 0, "n" : 4, "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : true}, {"enu" : 0.15, "dme" : 1, "auto" : true}]}]
+    "name" : "iron",
+    "symbol" : "Fe",
+    "number" : 26,
+    "mass" : 55.845000000000,
+    "rmin" : 0.000000038462,
+    "rmax" : 26.495290290667,
+    "nrmt" : 3300,
+    "rmt" : 1.078241209707,
+    "core" : "1s2s2p",
+    "valence" : [
+        {
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : 0}, {"enu" : 0.15, "dme" : 1, "auto" : 0}]
+        },
+        {
+            "l" : 0,
+            "n" : 4,
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : 1}, {"enu" : 0.15, "dme" : 1, "auto" : 1}]
+        },
+        {
+            "l" : 1,
+            "n" : 3,
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : 1}, {"enu" : 0.15, "dme" : 1, "auto" : 1}]
+        },
+        {
+            "l" : 2,
+            "n" : 3,
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : 1}, {"enu" : 0.15, "dme" : 1, "auto" : 1}]
+        },
+        {
+            "l" : 3,
+            "n" : 4,
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : 1}, {"enu" : 0.15, "dme" : 1, "auto" : 1}]
+        }
+    ],
+    "lo" : [
+        {
+            "l" : 0,
+            "basis" : [{"n" : 3, "enu" : 0.15, "dme" : 0, "auto" : 1}, {"n" : 3, "enu" : 0.15, "dme" : 1, "auto" : 1}]
+        },
+        {
+            "l" : 1,
+            "basis" : [{"n" : 3, "enu" : 0.15, "dme" : 0, "auto" : 1}, {"n" : 3, "enu" : 0.15, "dme" : 1, "auto" : 1}]
+        },
+        {
+            "l" : 2,
+            "basis" : [{"n" : 3, "enu" : 0.15, "dme" : 0, "auto" : 1}, {"n" : 3, "enu" : 0.15, "dme" : 1, "auto" : 1}]
+        },
+        {
+            "l" : 0,
+            "basis" : [{"n" : 4, "enu" : 0.15, "dme" : 0, "auto" : 1}, {"n" : 4, "enu" : 0.15, "dme" : 1, "auto" : 1}]
+        }
+    ]
 }

@@ -1,16 +1,52 @@
-namespace sirius {
-
-
-
 /** \file global.h
 
     \brief Global variables 
 */
 
-/// Global variables
+/** \page stdvarname Standard variable names
+    
+    Below it the list of standard names for some of the loop variables:
+    
+    l - index of orbital quantum number \n
+    m - index of azimutal quantum nuber \n
+    lm - combined index of (l,m) quantum numbers \n
+    ia - index of atom \n
+    ic - index of atom class \n
+    iat - index of atom type \n
+    ir - index of r-point \n
+    ig - index of G-vector \n
+    idxlo - index of local orbital \n
+    idxrf - index of radial function \n
 
-/** This class should be created first.
+    The loc suffix is added to the variable to indicate that it runs over the local fraction of elements for the given
+    MPI rank. Typical code looks like this:
+    
+    \code{.cpp}
+        // zero array
+        memset(&mt_val[0], 0, parameters_.num_atoms() * sizeof(T));
+        
+        // loop over local fraction of atoms
+        for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+        {
+            // get global index of atom
+            int ia = parameters_.spl_num_atoms(ialoc);
+
+            int nmtp = parameters_.atom(ia)->num_mt_points();
+           
+            // integrate spgerical part of the function
+            Spline<T> s(nmtp, parameters_.atom(ia)->type()->radial_grid());
+            for (int ir = 0; ir < nmtp; ir++) s[ir] = f_mt<local>(0, ir, ialoc);
+            mt_val[ia] = s.interpolate().integrate(2) * fourpi * y00;
+        }
+
+        // simple array synchronization
+        Platform::allreduce(&mt_val[0], parameters_.num_atoms());
+    \endcode
 */
+
+namespace sirius {
+
+/// Global variables and methods
 class Global : public Step_function
 {
     private:
@@ -54,9 +90,6 @@ class Global : public Step_function
         /// true if UJ correction is applied
         bool uj_correction_;
 
-        //** /// run-time information (energies, charges, etc.)
-        //** //run_time_info rti_;
-
         /// general purpose synchronization flag
         int sync_flag_;
 
@@ -66,12 +99,16 @@ class Global : public Step_function
         /// MPI grid
         MPIGrid mpi_grid_;
 
+        /// block size for block-cyclic data distribution  
         int cyclic_block_size_;
         
+        /// starting time of the program
         timeval start_time_;
 
+        /// type of eigen-value solver
         linalg_t eigen_value_solver_; 
         
+        /// type of the processing unit
         processing_unit_t processing_unit_;
 
         GauntCoefficients gaunt_;
@@ -134,36 +171,6 @@ class Global : public Step_function
                         error_local(__FILE__, __LINE__, "wrong processing unit");
                     }
                 }
-
-                //std::vector<double> a0 = parser["lattice_vectors"][0].get(std::vector<double>(3, 0)); 
-                //std::vector<double> a1 = parser["lattice_vectors"][1].get(std::vector<double>(3, 0)); 
-                //std::vector<double> a2 = parser["lattice_vectors"][2].get(std::vector<double>(3, 0));
-
-                //double scale =  parser["lattice_vectors_scale"].get(1.0);
-                //for (int x = 0; x < 3; x++)
-                //{
-                //    a0[x] *= scale;
-                //    a1[x] *= scale;
-                //    a2[x] *= scale;
-                //}
-                //set_lattice_vectors(&a0[0], &a1[0], &a2[0]);
-
-                //for (int iat = 0; iat < parser["atoms"].size(); iat++)
-                //{
-                //    std::string label = parser["atoms"][iat][0].get<std::string>();
-                //    add_atom_type(iat, label);
-                //    for (int ia = 0; ia < parser["atoms"][iat][1].size(); ia++)
-                //    {
-                //        std::vector<double> v = parser["atoms"][iat][1][ia].get< std::vector<double> >();
-
-                //        if (!(v.size() == 3 || v.size() == 6)) error(__FILE__, __LINE__, "wrong coordinates size");
-                //        if (v.size() == 3) v.resize(6, 0.0);
-                //        
-                //        add_atom(iat, &v[0], &v[3]);
-                //    }
-                //}
-
-                //set_auto_rmt(parser["auto_rmt"].get(0));
             }
 
             Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::num_threads()));
@@ -217,6 +224,7 @@ class Global : public Step_function
             
         ~Global()
         {
+            clear();
         }
 
         void set_lmax_apw(int lmax_apw__)
@@ -333,11 +341,6 @@ class Global : public Step_function
             return (2 / num_spins());
         }
         
-        //inline run_time_info& rti()
-        //{
-        //    return rti_;
-        //}
-        
         inline void set_so_correction(bool so_correction__)
         {
             so_correction_ = so_correction__; 
@@ -442,7 +445,7 @@ class Global : public Step_function
 
             initialized_ = true;
 
-            if (verbosity_level >= 1) print_info();
+            if (Platform::mpi_rank() == 0 && verbosity_level >= 1) print_info();
         }
 
         /// Clear global variables
@@ -458,74 +461,71 @@ class Global : public Step_function
 
         void print_info()
         {
-            if (Platform::mpi_rank() == 0)
+            printf("\n");
+            printf("SIRIUS version : %2i.%02i\n", major_version, minor_version);
+            printf("git hash       : %s\n", git_hash);
+            printf("build date     : %s\n", build_date);
+            printf("start time     : %s\n", start_time("%c").c_str());
+            printf("\n");
+            printf("number of MPI ranks           : %i\n", Platform::num_mpi_ranks());
+            printf("MPI grid                      :");
+            for (int i = 0; i < mpi_grid_.num_dimensions(); i++) printf(" %i", mpi_grid_.size(1 << i));
+            printf("\n");
+            printf("number of OMP threads         : %i\n", Platform::num_threads()); 
+            printf("number of OMP threads for FFT : %i\n", Platform::num_fft_threads()); 
+
+            Unit_cell::print_info();
+            Reciprocal_lattice::print_info();
+            Step_function::print_info();
+
+            printf("\n");
+            for (int i = 0; i < num_atom_types(); i++) atom_type(i)->print_info();
+
+            printf("\n");
+            printf("total number of aw muffin-tin basis functions : %i\n", mt_aw_basis_size());
+            printf("total number of lo basis functions : %i\n", mt_lo_basis_size());
+            printf("number of first-variational states : %i\n", num_fv_states());
+            printf("number of bands                    : %i\n", num_bands());
+            printf("\n");
+            printf("eigen-value solver: ");
+            switch (eigen_value_solver())
             {
-                printf("\n");
-                printf("SIRIUS version : %2i.%02i\n", major_version, minor_version);
-                printf("git hash       : %s\n", git_hash);
-                printf("build date     : %s\n", build_date);
-                printf("start time     : %s\n", start_time("%c").c_str());
-                printf("\n");
-                printf("number of MPI ranks           : %i\n", Platform::num_mpi_ranks());
-                printf("MPI grid                      :");
-                for (int i = 0; i < mpi_grid_.num_dimensions(); i++) printf(" %i", mpi_grid_.size(1 << i));
-                printf("\n");
-                printf("number of OMP threads         : %i\n", Platform::num_threads()); 
-                printf("number of OMP threads for FFT : %i\n", Platform::num_fft_threads()); 
-
-                Unit_cell::print_info();
-                Reciprocal_lattice::print_info();
-                Step_function::print_info();
-
-                printf("\n");
-                for (int i = 0; i < num_atom_types(); i++) atom_type(i)->print_info();
-
-                printf("\n");
-                printf("total number of aw muffin-tin basis functions : %i\n", mt_aw_basis_size());
-                printf("total number of lo basis functions : %i\n", mt_lo_basis_size());
-                printf("number of first-variational states : %i\n", num_fv_states());
-                printf("number of bands                    : %i\n", num_bands());
-                printf("\n");
-                printf("eigen-value solver: ");
-                switch (eigen_value_solver())
+                case lapack:
                 {
-                    case lapack:
-                    {
-                        printf("LAPACK\n");
-                        break;
-                    }
-                    case scalapack:
-                    {
-                        printf("ScaLAPACK, block size %i\n", cyclic_block_size());
-                        break;
-                    }
-                    case elpa:
-                    {
-                        printf("ELPA, block size %i\n", cyclic_block_size());
-                        break;
-                    }
-                    case magma:
-                    {
-                        printf("MAGMA\n");
-                        break;
-                    }
+                    printf("LAPACK\n");
+                    break;
                 }
-                printf("processing unit : ");
-                switch (processing_unit())
+                case scalapack:
                 {
-                    case cpu:
-                    {
-                        printf("CPU\n");
-                        break;
-                    }
-                    case gpu:
-                    {
-                        printf("GPU\n");
-                        break;
-                    }
+                    printf("ScaLAPACK, block size %i\n", cyclic_block_size());
+                    break;
                 }
-                Unit_cell::write_cif();
+                case elpa:
+                {
+                    printf("ELPA, block size %i\n", cyclic_block_size());
+                    break;
+                }
+                case magma:
+                {
+                    printf("MAGMA\n");
+                    break;
+                }
             }
+            printf("processing unit : ");
+            switch (processing_unit())
+            {
+                case cpu:
+                {
+                    printf("CPU\n");
+                    break;
+                }
+                case gpu:
+                {
+                    printf("GPU\n");
+                    break;
+                }
+            }
+            Unit_cell::write_cif();
         }
         
         void generate_radial_functions()
@@ -593,53 +593,10 @@ class Global : public Step_function
 
             for (int i = 0; i < num_atom_types(); i++)
             {
-                int rank = spl_num_atom_types.location(1, i);
+                int rank = spl_num_atom_types.location(_splindex_rank_, i);
                 atom_type(i)->sync_free_atom(rank);
             }
         }
-
-        //** /// Get the total energy of the electronic subsystem.
-        //** /** From the definition of the density functional we have:
-        //**     
-        //**     \f[
-        //**         E[\rho] = T[\rho] + E^{H}[\rho] + E^{XC}[\rho] + E^{ext}[\rho]
-        //**     \f]
-        //**     where \f$ T[\rho] \f$ is the kinetic energy, \f$ E^{H}[\rho] \f$ - electrostatic energy of
-        //**     electron-electron density interaction, \f$ E^{XC}[\rho] \f$ - exchange-correlation energy
-        //**     and \f$ E^{ext}[\rho] \f$ - energy in the external field of nuclei.
-        //**     
-        //**     Electrostatic and external field energies are grouped in the following way:
-        //**     \f[
-        //**         \frac{1}{2} \int \int \frac{\rho({\bf r})\rho({\bf r'}) d{\bf r} d{\bf r'}}{|{\bf r} - {\bf r'}|} + 
-        //**             \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r} = \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} + 
-        //**             \frac{1}{2} \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r}
-        //**     \f]
-        //**     Here \f$ V^{H}({\bf r}) \f$ is the total (electron + nuclei) electrostatic potential returned by the 
-        //**     poisson solver. Next we transform the remaining term:
-        //**     \f[
-        //**         \frac{1}{2} \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r} = 
-        //**         \frac{1}{2} \int \int \frac{\rho({\bf r})\rho^{nuc}({\bf r'}) d{\bf r} d{\bf r'}}{|{\bf r} - {\bf r'}|} = 
-        //**         \frac{1}{2} \int V^{H,el}({\bf r}) \rho^{nuc}({\bf r}) d{\bf r}
-        //**     \f]
-        //** */
-        //** double total_energy()
-        //** {
-        //**     assert(rti().energy_exc == rti().energy_exc);
-        //**     assert(rti().energy_vha == rti().energy_vha);
-        //**     assert(rti().energy_enuc == rti().energy_enuc);
-
-        //**     return (kinetic_energy() + rti().energy_exc + 0.5 * rti().energy_vha + rti().energy_enuc);
-        //** }
-        //** 
-        //** inline double kinetic_energy()
-        //** {
-        //**     assert(rti().core_eval_sum == rti().core_eval_sum);
-        //**     assert(rti().valence_eval_sum == rti().valence_eval_sum);
-        //**     assert(rti().energy_veff == rti().energy_veff);
-        //**     assert(rti().energy_bxc == rti().energy_bxc);
-
-        //**     return (rti().core_eval_sum + rti().valence_eval_sum - rti().energy_veff - rti().energy_bxc); 
-        //** }
 
         //** /// Print run-time information.
         //** void print_rti()
@@ -743,9 +700,7 @@ class Global : public Step_function
                 jw.single("num_threads", Platform::num_threads());
                 jw.single("num_fft_threads", Platform::num_fft_threads());
                 jw.single("cyclic_block_size", cyclic_block_size());
-                std::vector<int> mpigrid;
-                for (int i = 0; i < mpi_grid_.num_dimensions(); i++) mpigrid.push_back(mpi_grid_.size(1 << i));
-                jw.single("mpi_grid", mpigrid);
+                jw.single("mpi_grid", mpi_grid_dims_);
                 std::vector<int> fftgrid(3);
                 for (int i = 0; i < 3; i++) fftgrid[i] = fft().size(i);
                 jw.single("fft_grid", fftgrid);
@@ -813,8 +768,6 @@ class Global : public Step_function
             Reciprocal_lattice::update();
             Step_function::init();
         }
-
-
 };
 
 };

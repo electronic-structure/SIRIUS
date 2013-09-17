@@ -1,20 +1,12 @@
 #ifndef __ATOM_SYMMETRY_CLASS_H__
 #define __ATOM_SYMMETRY_CLASS_H__
 
-/** \page page1 Notes
-    
-    Atom_symmetry_class holds information about radial functions.
-*/
+/** \file atom_symmetry_class.h
 
-/** \page page2 Standard variable names
+    \brief Data and methods specific to each atom symmetry class. 
 
-     idxlo - index of local orbital \n
-     idxrf - index of radial function \n
-     ia - index of atom \n
-     ic - index of atom class \n
-     iat - index of atom type \n
-     ir - index of r-point \n
-     ig - index of G-vector \n
+    Atoms transforming into each other under symmetry opeartions belong to the same symmetry class. They have the
+    same spherical part of the on-site potential and, as a consequence, the same radial functions. 
 */
 
 namespace sirius {

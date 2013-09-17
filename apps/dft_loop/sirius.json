@@ -2,18 +2,24 @@
     "mpi_grid_dims" : [1],
     "cyclic_block_size" : 16,
     "processing_unit" : "cpu",
+    "eigen_value_solver" : "lapack",
+    "num_fv_states" : 64,
     
     "auto_rmt" : 1,
     
-    "lattice_vectors" : [ [0.5, 0.5, 0.0], 
-                          [0.5, 0.0, 0.5], 
-                          [0.0, 0.5, 0.5]
+    "lattice_vectors" : [ [0.5, 0.5, 1.0], 
+                          [0.5, 1.0, 0.5], 
+                          [1.0, 0.5, 0.5]
                         ],
-    "lattice_vectors_scale" : 6.719,
+    "lattice_vectors_scale" : 7.89357814,
     
-    "atoms" : [ ["C", [ [0,    0,    0   ], 
-                        [0.3, 0.3, 0.3] 
-                      ] 
+    "atoms" : [ ["Ni", [ [0,    0,    0,  0, 0,  0.1], 
+                         [0.5, 0.5, 0.5,  0, 0, -0.1] 
+                       ]
+                ],
+                ["O", [ [0.25, 0.25, 0.25],
+                        [0.75, 0.75, 0.75]
+                      ]
                 ]
               ]
 }

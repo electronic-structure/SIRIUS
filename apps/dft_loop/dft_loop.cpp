@@ -14,14 +14,50 @@ int main(int argn, char** argv)
     parameters.set_pw_cutoff(20.0);
     parameters.set_aw_cutoff(7.0);
 
-    parameters.initialize(1, 1);
+    JSON_tree parser("sirius.json");
+    std::vector<double> a0 = parser["lattice_vectors"][0].get(std::vector<double>(3, 0)); 
+    std::vector<double> a1 = parser["lattice_vectors"][1].get(std::vector<double>(3, 0)); 
+    std::vector<double> a2 = parser["lattice_vectors"][2].get(std::vector<double>(3, 0));
+
+    double scale =  parser["lattice_vectors_scale"].get(1.0);
+    for (int x = 0; x < 3; x++)
+    {
+        a0[x] *= scale;
+        a1[x] *= scale;
+        a2[x] *= scale;
+    }
+    parameters.set_lattice_vectors(&a0[0], &a1[0], &a2[0]);
+
+    for (int iat = 0; iat < parser["atoms"].size(); iat++)
+    {
+        std::string label;
+        parser["atoms"][iat][0] >> label;
+        parameters.add_atom_type(iat, label);
+        for (int ia = 0; ia < parser["atoms"][iat][1].size(); ia++)
+        {
+            std::vector<double> v;
+            parser["atoms"][iat][1][ia] >> v;
+
+            if (!(v.size() == 3 || v.size() == 6)) error(__FILE__, __LINE__, "wrong coordinates size");
+            if (v.size() == 3) v.resize(6, 0.0);
+            
+            parameters.add_atom(iat, &v[0], &v[3]);
+        }
+    }
+
+    parameters.set_auto_rmt(parser["auto_rmt"].get(0));
+    
+    parameters.set_num_mag_dims(1);
+    parameters.set_num_spins(2);
+
+    parameters.initialize(1);
     
     parameters.print_info();
     
     Potential* potential = new Potential(parameters);
     potential->allocate();
         
-    int ngridk[] = {1, 1, 1};
+    int ngridk[] = {2, 2, 2};
     int numkp = ngridk[0] * ngridk[1] * ngridk[2];
     int ik = 0;
     mdarray<double, 2> kpoints(3, numkp);
@@ -42,12 +78,12 @@ int main(int argn, char** argv)
         }
     }
 
-    kset ks(parameters);
+    K_set ks(parameters);
     ks.add_kpoints(kpoints, &kpoint_weights[0]);
     ks.initialize();
     ks.print_info();
 
-    Density* density = new Density(parameters, potential);
+    Density* density = new Density(parameters);
     density->allocate();
     
     if (Utils::file_exists(storage_file_name))
@@ -61,9 +97,9 @@ int main(int argn, char** argv)
         potential->generate_effective_potential(density->rho(), density->magnetization());
     }
 
-    DFT_ground_state dft(&parameters, potential, density, &ks);
-    dft.scf_loop();
-    dft.forces();
+    DFT_ground_state dft(parameters, potential, density, ks);
+    
+    dft.relax_atom_positions();
 
     parameters.write_json_output();
 

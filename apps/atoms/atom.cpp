@@ -111,8 +111,8 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type)
     jw.single("symbol", a->symbol());
     jw.single("number", a->zn());
     jw.single("mass", a->mass());
-    jw.single("rmin", a->radial_grid()[0]);
-    jw.single("rmax", a->radial_grid()[a->radial_grid().size() - 1]);
+    jw.single("rmin", a->radial_grid(0));
+    jw.single("rmax", a->radial_grid(a->radial_grid().size() - 1));
     jw.single("nrmt", a->num_mt_points());
 
     std::vector<sirius::atomic_level_descriptor> core;
