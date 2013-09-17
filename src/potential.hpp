@@ -54,6 +54,7 @@ Potential::~Potential()
     delete sht_;
     delete coulomb_potential_;
     delete xc_potential_;
+    delete xc_energy_density_;
 }
 
 void Potential::update()
