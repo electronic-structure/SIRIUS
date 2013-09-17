@@ -451,12 +451,13 @@ class Global : public Step_function
         /// Clear global variables
         void clear()
         {
-            Unit_cell::clear();
-            Reciprocal_lattice::clear();
-
-            mpi_grid_.finalize();
-
-            initialized_ = false;
+            if (initialized_)
+            {
+                Unit_cell::clear();
+                Reciprocal_lattice::clear();
+                mpi_grid_.finalize();
+                initialized_ = false;
+            }
         }
 
         void print_info()

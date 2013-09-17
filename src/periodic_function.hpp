@@ -71,7 +71,6 @@ inline T& Periodic_function<T>::f_mt(int idx0, int idx1, int ia)
             return f_mt_(idx0, idx1, ia);
         }
     }
-
 }
 
 template <typename T>
