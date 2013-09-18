@@ -586,6 +586,8 @@ class Global : public Step_function
 
         void solve_free_atoms()
         {
+            Timer t("sirius::Global::solve_free_atoms");
+
             splindex<block> spl_num_atom_types(num_atom_types(), Platform::num_mpi_ranks(), Platform::mpi_rank());
 
             std::vector<double> enu;
