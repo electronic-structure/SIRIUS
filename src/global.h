@@ -544,7 +544,7 @@ class Global : public Step_function
             
             if (verbosity_level >= 4)
             {
-                pstdout pout;
+                pstdout pout(400 * lmax_apw() * num_atom_symmetry_classes());
                 
                 for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
                 {
