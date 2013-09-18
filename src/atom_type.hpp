@@ -247,7 +247,7 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
             
                 for (int i = 0; i < radial_grid_->size(); i++)
                 {
-                    free_atom_radial_functions_(i, ist) = p[i] / radial_grid(i);
+                    free_atom_radial_functions_(i, ist) = p[i] * radial_grid_->rinv(i);
                     rho_t[i] += atomic_levels_[ist].occupancy * 
                                 pow(y00 * free_atom_radial_functions_(i, ist), 2);
                 }
