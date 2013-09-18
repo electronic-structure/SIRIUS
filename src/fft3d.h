@@ -144,6 +144,7 @@ class FFT3D
         }
         
         /// Free all allocated resources.
+        /** \todo fix for multiple calls */
         void clear()
         {
             for (int i = 0; i < Platform::num_fft_threads(); i++)

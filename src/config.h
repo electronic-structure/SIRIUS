@@ -34,7 +34,7 @@ const int debug_level = 1;
     verbosity_level >= 4 : print linearization energies \n
     verbosity_level >= 5 : print lowest eigen-values \n
 */
-const int verbosity_level = 5;
+const int verbosity_level = 10;
 
 const bool fix_apwlo_linear_dependence = false;
 

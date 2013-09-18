@@ -310,6 +310,7 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
         if (energy_diff < energy_tol && charge_rms < charge_tol) 
         { 
             converged = true;
+            printf("Free atom (id = %i) converged in %i iterations.\n", id(), iter);
             break;
         }
         
