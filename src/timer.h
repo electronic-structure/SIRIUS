@@ -4,25 +4,9 @@
 namespace sirius 
 {
 
-struct timer_descriptor
-{
-    timer_descriptor() : total(0), last(0), count(0)
-    {
-    }
-
-    double total;
-    
-    double last;
-
-    int count;
-};
-
 class Timer
 {
     private:
-
-        /// descriptor of the current timer
-        timer_descriptor* td_; 
         
         /// string label of the timer
         std::string label_;
@@ -34,21 +18,13 @@ class Timer
         bool active_;
 
         /// mapping between timer name and timer descriptor pointer
-        static std::map<std::string, timer_descriptor*> timer_descriptors_;
+        static std::map<std::string, std::vector<double> > timers_;
     
     public:
         
         Timer(const std::string& label__, bool start__ = true) : label_(label__), active_(false)
         {
-            if (timer_descriptors_.count(label_) == 0)
-            {   
-                td_ = new timer_descriptor();
-                timer_descriptors_[label_] = td_;
-            }
-            else 
-            {   
-                td_ = timer_descriptors_[label_];
-            }
+            if (timers_.count(label_) == 0) timers_[label_] = std::vector<double>();
 
             if (start__) start();
         }
@@ -60,7 +36,7 @@ class Timer
 
         static void clear()
         {
-            timer_descriptors_.clear();
+            timers_.clear();
         }
 
         void start()
@@ -82,11 +58,11 @@ class Timer
 
             timeval end;
             gettimeofday(&end, NULL);
-           
-            td_->last = double(end.tv_sec - starting_time_.tv_sec) + 
-                        double(end.tv_usec - starting_time_.tv_usec) / 1e6;
-            td_->count++;
-            td_->total += td_->last;
+
+            double val = double(end.tv_sec - starting_time_.tv_sec) + 
+                         double(end.tv_usec - starting_time_.tv_usec) / 1e6;
+
+            timers_[label_].push_back(val);
 
             active_ = false;
         }
@@ -97,15 +73,28 @@ class Timer
             {
                 printf("\n");
                 printf("Timers\n");
-                for (int i = 0; i < 80; i++) printf("-");
+                for (int i = 0; i < 115; i++) printf("-");
+                printf("\n");
+                printf("name                                                              count      total        min        max    average\n");
+                for (int i = 0; i < 115; i++) printf("-");
                 printf("\n");
  
-                std::map<std::string, timer_descriptor*>::iterator it;
-                for (it = timer_descriptors_.begin(); it != timer_descriptors_.end(); it++)
+                std::map<std::string, std::vector<double> >::iterator it;
+                for (it = timers_.begin(); it != timers_.end(); it++)
                 {
-                    double avg = (it->second->count == 0) ? 0.0 : it->second->total / it->second->count;
+                    int count = (int)it->second.size();
+                    double total = 0.0;
+                    double minval = 1e100;
+                    double maxval = 0.0;
+                    for (int i = 0; i < count; i++)
+                    {
+                        total += it->second[i];
+                        minval = std::min(minval, it->second[i]);
+                        maxval = std::max(maxval, it->second[i]);
+                    }
+                    double average = (count == 0) ? 0.0 : total / count;
                     
-                    printf("%-60s : %10.4f (total)   %10.4f (average)\n", it->first.c_str(), it->second->total, avg);
+                    printf("%-60s :    %5i %10.4f %10.4f %10.4f %10.4f\n", it->first.c_str(), count, total, minval, maxval, average);
                 }
             }
         }
@@ -124,15 +113,15 @@ class Timer
             } while (d < dsec);
         }
 
-        static std::map<std::string, timer_descriptor*>& timer_descriptors()
+        static std::map<std::string, std::vector<double> >& timer_descriptors()
         {
-            return timer_descriptors_;
+            return timers_;
         }
 };
 
 std::map<std::string, Timer*> ftimers;
 
-std::map<std::string, timer_descriptor*> Timer::timer_descriptors_;
+std::map<std::string, std::vector<double> > Timer::timers_;
 
 };
 

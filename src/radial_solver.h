@@ -402,7 +402,10 @@ class Radial_solver
             if (nn != (n - l - 1))
             {
                 std::stringstream s;
-                s << "wrong number of nodes : " << nn << " instead of " << (n - l - 1);
+                s << "n = " << n << std::endl 
+                  << "l = " << l << std::endl
+                  << "enu = " << enu << std::endl
+                  << "wrong number of nodes : " << nn << " instead of " << (n - l - 1);
                 error_local(__FILE__, __LINE__, s);
             }
         }

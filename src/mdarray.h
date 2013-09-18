@@ -121,7 +121,6 @@ template <typename T, int ND> class mdarray_base
                     error_local(__FILE__, __LINE__, s);
                 }
                 allocated_ = true;
-                Platform::adjust_heap_allocated(sz * sizeof(T));
             }
         }
 
@@ -135,7 +134,6 @@ template <typename T, int ND> class mdarray_base
                 delete[] mdarray_ptr;
                 mdarray_ptr = NULL;
                 allocated_ = false;
-                Platform::adjust_heap_allocated(-size() * sizeof(T));
             }
             #ifdef _GPU_
             deallocate_on_device();

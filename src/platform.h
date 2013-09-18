@@ -2,8 +2,6 @@ class Platform
 {
     private:
 
-        static int64_t heap_allocated_;
-
         static int num_fft_threads_;
     
     public:
@@ -149,17 +147,6 @@ class Platform
             allreduce<op>(buffer, count, MPI_COMM_WORLD);
         }
 
-        static void adjust_heap_allocated(int64_t size)
-        {
-            #pragma omp critical
-            heap_allocated_ += size;
-        }
-
-        static int64_t heap_allocated()
-        {
-            return heap_allocated_;
-        }
-
         template<typename T>
         static void allgather(T* sendbuf, T* recvbuf, int offset, int count)
         {
@@ -201,6 +188,5 @@ class Platform
         }
 };
 
-int64_t Platform::heap_allocated_ = 0;
 int Platform::num_fft_threads_ = -1;
 

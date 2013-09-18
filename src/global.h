@@ -18,7 +18,7 @@
     idxlo - index of local orbital \n
     idxrf - index of radial function \n
 
-    The loc suffix is added to the variable to indicate that it runs over the local fraction of elements for the given
+    The loc suffix is added to the variable to indicate that it runs over local fraction of elements for the given
     MPI rank. Typical code looks like this:
     
     \code{.cpp}
@@ -590,7 +590,7 @@ class Global : public Step_function
 
             std::vector<double> enu;
             for (int i = 0; i < spl_num_atom_types.local_size(); i++)
-                atom_type(spl_num_atom_types[i])->solve_free_atom(1e-8, 1e-5, 1e-4, enu);
+                atom_type(spl_num_atom_types[i])->solve_free_atom(1e-6, 1e-4, 1e-4, enu);
 
             for (int i = 0; i < num_atom_types(); i++)
             {
@@ -739,7 +739,7 @@ class Global : public Step_function
                 //** jw.single("band_gap", rti_.band_gap);
                 //** jw.single("energy_fermi", rti_.energy_fermi);
                 
-                jw.single("timers", Timer::timer_descriptors());
+                //** jw.single("timers", Timer::timer_descriptors());
             }
         }
 

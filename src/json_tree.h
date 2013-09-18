@@ -374,24 +374,24 @@ class JSON_write
             fprintf(fout_, "]");
         }
         
-        inline void single(const char* name, std::map<std::string, sirius::timer_descriptor*>& timer_descriptors)
-        {
-            new_line();
-            fprintf(fout_, "\"%s\" : {", name);
-            
-            indent_level_ += indent_step_;
-            std::map<std::string, sirius::timer_descriptor*>::iterator it;
-            new_block_ = true;
-            for (it = timer_descriptors.begin(); it != timer_descriptors.end(); it++)
-            {
-                std::vector<double> tv(2);
-                tv[0] = it->second->total;
-                tv[1] = (it->second->count == 0) ? 0.0 : it->second->total / it->second->count;
-                single(it->first.c_str(), tv);
-            }
-            
-            end_set();
-        }
+        //** inline void single(const char* name, std::map<std::string, std::vector<double> >& timer_descriptors)
+        //** {
+        //**     new_line();
+        //**     fprintf(fout_, "\"%s\" : {", name);
+        //**     
+        //**     indent_level_ += indent_step_;
+        //**     std::map<std::string, sirius::timer_descriptor*>::iterator it;
+        //**     new_block_ = true;
+        //**     for (it = timer_descriptors.begin(); it != timer_descriptors.end(); it++)
+        //**     {
+        //**         std::vector<double> tv(2);
+        //**         tv[0] = it->second->total;
+        //**         tv[1] = (it->second->count == 0) ? 0.0 : it->second->total / it->second->count;
+        //**         single(it->first.c_str(), tv);
+        //**     }
+        //**     
+        //**     end_set();
+        //** }
 
         inline void begin_array(const char* name)
         {
