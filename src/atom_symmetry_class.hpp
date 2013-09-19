@@ -1,6 +1,7 @@
 void Atom_symmetry_class::generate_aw_radial_functions()
 {
     int nmtp = atom_type_->num_mt_points();
+    double R = atom_type_->mt_radius();
    
     Radial_solver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
     
@@ -84,11 +85,7 @@ void Atom_symmetry_class::generate_aw_radial_functions()
                 dpdr[order] *= norm;
 
                 // radial derivative
-                //double rderiv = (radial_functions_(nmtp - 1, idxrf, 0) - radial_functions_(nmtp - 2, idxrf, 0)) / 
-                //                atom_type_->radial_grid().dr(nmtp - 2);
-                //
                 double rderiv = dpdr[order];
-                double R = atom_type_->mt_radius();
 
                 aw_surface_derivatives_(order, l) = (rderiv - radial_functions_(nmtp - 1, idxrf, 0) / R) / R;
                 
@@ -105,6 +102,7 @@ void Atom_symmetry_class::generate_aw_radial_functions()
 void Atom_symmetry_class::generate_lo_radial_functions()
 {
     int nmtp = atom_type_->num_mt_points();
+    double R = atom_type_->mt_radius();
     Radial_solver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
     
     #pragma omp parallel default(shared)
@@ -141,6 +139,7 @@ void Atom_symmetry_class::generate_lo_radial_functions()
 
                     double dpdr;
                     solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p[order], hp[order], dpdr); 
+                    double p1 = p[order][nmtp - 1]; // save last value
                     
                     // normalize radial solutions and divide by r
                     for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(p[order][ir], 2);
@@ -152,11 +151,15 @@ void Atom_symmetry_class::generate_lo_radial_functions()
                         hp[order][ir] *= norm; // don't divide hp by r
                         s[ir] = p[order][ir];
                     }
+                    dpdr *= norm;
+                    p1 *= norm;
 
                     s.interpolate();
                     
                     // compute radial derivatives
                     for (int dm = 0; dm < num_rs; dm++) a[order][dm] = s.deriv(dm, nmtp - 1);
+                    a[order][1] = (dpdr - p1 / R) / R; // replace 1st derivative with more precise value
+
                 }
 
                 double b[] = {0.0, 0.0, 0.0, 0.0};
@@ -272,10 +275,7 @@ void Atom_symmetry_class::check_lo_linear_independence()
     stdevp.solve(num_lo_descriptors(), loprod_tmp.get_ptr(), loprod_tmp.ld(), &loprod_eval[0], 
                  loprod_evec.get_ptr(), loprod_evec.ld());
 
-    double det = 1.0;
-    for (int i = 0; i < num_lo_descriptors(); i++) det *= loprod_eval[i];
-
-    if (fabs(det) < 0.001) 
+    if (fabs(loprod_eval[0]) < 0.001) 
     {
         printf("\n");
         printf("local orbitals for atom symmetry class %i are almost linearly dependent\n", id_);
@@ -580,17 +580,15 @@ void Atom_symmetry_class::generate_radial_integrals()
 
             double diff = h_spherical_integrals_(idxrf1, idxrf2) - h_spherical_integrals_(idxrf2, idxrf1);
 
-            if (debug_level >= 1 && fabs(diff) > 1e-12)
+            if (debug_level >= 1 && fabs(diff) > 1e-8)
             {
                 int l = atom_type_->indexr(idxrf2).l;
                 std::stringstream s;
-                s << "Wrong local orbital radial integrals for atom class " << id() << ", l = " << l << std::endl
-                  << " idxlo1 = " << idxlo1 << std::endl
-                  << " idxlo2 = " << idxlo2 << std::endl
-                  << " h(1,2) = " << h_spherical_integrals_(idxrf1, idxrf2) << std::endl
-                  << " h(2,1) = " << h_spherical_integrals_(idxrf2, idxrf1) << std::endl
-                  << " h(1,2) - h(2,1) = " << diff;
-
+                s << "Wrong radial integrals between local orbitals " << idxlo1 << " and " << idxlo2 << " (l = " << l << ") " 
+                  << " for atom class " << id() << std::endl
+                  << "h(" << idxlo1 << "," << idxlo2 << ") = " << h_spherical_integrals_(idxrf1, idxrf2) << ","
+                  << " h(" << idxlo2 << "," << idxlo1 << ") = " << h_spherical_integrals_(idxrf2, idxrf1) << ","
+                  << " diff = " << diff;
                 warning_local(__FILE__, __LINE__, s);
             }
 
@@ -624,7 +622,7 @@ void Atom_symmetry_class::generate_radial_integrals()
                 double v2 = y00 * h_spherical_integrals_(i2, i1) + surf21; 
 
                 double diff = fabs(v1 - v2);
-                if (debug_level >= 1 && diff > 1e-12)
+                if (debug_level >= 1 && diff > 1e-8)
                 {
                     std::stringstream s;
                     s << "Wrong augmented wave radial integrals for atom class " << id() << ", l = " << l << std::endl
