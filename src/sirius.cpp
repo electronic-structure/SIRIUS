@@ -1215,43 +1215,36 @@ void FORTRAN(sirius_get_gkvec_cart)(int32_t* kset_id, int32_t* ik, double* gkvec
 
 void FORTRAN(sirius_get_evalsum)(real8* evalsum)
 {
-    //*evalsum = global_parameters.rti().core_eval_sum + global_parameters.rti().valence_eval_sum;
     *evalsum = dft_ground_state->eval_sum();
 }
 
 void FORTRAN(sirius_get_energy_exc)(real8* energy_exc)
 {
-    //*energy_exc = global_parameters.rti().energy_exc;
     *energy_exc = dft_ground_state->energy_exc();
 }
 
 void FORTRAN(sirius_get_energy_vxc)(real8* energy_vxc)
 {
-    //*energy_vxc = global_parameters.rti().energy_vxc;
     *energy_vxc = dft_ground_state->energy_vxc();
 }
 
 void FORTRAN(sirius_get_energy_bxc)(real8* energy_bxc)
 {
-    //*energy_bxc = global_parameters.rti().energy_bxc;
     *energy_bxc = dft_ground_state->energy_bxc();
 }
 
 void FORTRAN(sirius_get_energy_veff)(real8* energy_veff)
 {
-    //*energy_veff = global_parameters.rti().energy_veff;
     *energy_veff = dft_ground_state->energy_veff();
 }
 
 void FORTRAN(sirius_get_energy_vha)(real8* energy_vha)
 {
-    //*energy_vha = global_parameters.rti().energy_vha;
     *energy_vha = dft_ground_state->energy_vha();
 }
 
 void FORTRAN(sirius_get_energy_enuc)(real8* energy_enuc)
 {
-    //*energy_enuc = global_parameters.rti().energy_enuc;
     *energy_enuc = dft_ground_state->energy_enuc();
 }
 
