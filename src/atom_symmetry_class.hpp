@@ -587,6 +587,8 @@ void Atom_symmetry_class::generate_radial_integrals()
                 s << "Wrong local orbital radial integrals for atom class " << id() << ", l = " << l << std::endl
                   << " idxlo1 = " << idxlo1 << std::endl
                   << " idxlo2 = " << idxlo2 << std::endl
+                  << " h(1,2) = " << h_spherical_integrals_(idxrf1, idxrf2) << std::endl
+                  << " h(2,1) = " << h_spherical_integrals_(idxrf2, idxrf1) << std::endl
                   << " h(1,2) - h(2,1) = " << diff;
 
                 warning_local(__FILE__, __LINE__, s);
