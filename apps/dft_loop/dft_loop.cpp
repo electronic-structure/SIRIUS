@@ -8,12 +8,6 @@ int main(int argn, char** argv)
     
     Global parameters;
 
-    parameters.set_lmax_apw(8);
-    parameters.set_lmax_pot(8);
-    parameters.set_lmax_rho(8);
-    parameters.set_pw_cutoff(20.0);
-    parameters.set_aw_cutoff(7.0);
-
     JSON_tree parser("sirius.json");
     std::vector<double> a0 = parser["lattice_vectors"][0].get(std::vector<double>(3, 0)); 
     std::vector<double> a1 = parser["lattice_vectors"][1].get(std::vector<double>(3, 0)); 
@@ -28,6 +22,12 @@ int main(int argn, char** argv)
     }
     parameters.set_lattice_vectors(&a0[0], &a1[0], &a2[0]);
 
+    parameters.set_lmax_apw(parser["lmax_apw"].get(10));
+    parameters.set_lmax_pot(parser["lmax_pot"].get(10));
+    parameters.set_lmax_rho(parser["lmax_rho"].get(10));
+    parameters.set_pw_cutoff(parser["pw_cutoff"].get(20.0));
+    parameters.set_aw_cutoff(parser["aw_cutoff"].get(7.0));
+    
     for (int iat = 0; iat < parser["atoms"].size(); iat++)
     {
         std::string label;

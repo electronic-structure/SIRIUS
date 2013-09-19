@@ -426,7 +426,7 @@ class Atom_type
         Atom_type(const char* symbol__, const char* name__, int zn__, double mass__, 
                   std::vector<atomic_level_descriptor>& levels__);
  
-        Atom_type(int id__, const std::string label__);
+        Atom_type(int id__, const std::string label);
 
         ~Atom_type();
         
@@ -451,11 +451,6 @@ class Atom_type
         
         void sync_free_atom(int rank);
         
-        //const std::string& label()
-        //{
-        //    return label_;
-        //}
-
         inline int id()
         {
             return id_;
