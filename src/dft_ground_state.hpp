@@ -157,7 +157,7 @@ void DFT_ground_state::scf_loop(double charge_tol, double energy_tol)
         
         if (Platform::mpi_rank() == 0)
         {
-            printf("iteration : %i, total energy : %16.8f, charge RMS %12.6f, energy difference : %12.6f\n", 
+            printf("iteration : %3i, total energy : %16.8f, charge RMS %12.6f, energy difference : %12.6f\n", 
                    iter, etot, rms, fabs(eold - etot));
         }
         if (fabs(eold - etot) < energy_tol && rms < charge_tol) break;
