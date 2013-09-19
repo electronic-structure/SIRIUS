@@ -245,6 +245,18 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type)
             jw.end_set();
         }
     }
+    if (lo_type == "lo+cp")
+    {
+        for (int l = 0; l <= lmax; l++)
+        {
+            jw.begin_set();
+            jw.single("l", l);
+            std::stringstream s;
+            s << "{ \"p1\": [" << l << "], \"p2\" : [1,2,3,4,5]}";
+            jw.string("polynom", s.str());
+            jw.end_set();
+        }
+    }
     jw.end_array();
 }
 
@@ -261,7 +273,7 @@ int main(int argn, char **argv)
         printf("  [OPTIONS]\n");
         printf("    -type lo_type   set type of local orbital basis\n");
         printf("\n");
-        printf("                    the following types are allowed: 'lo', 'lo+LO', 'lo+SLO'\n");
+        printf("                    the following types are allowed: 'lo', 'lo+LO', 'lo+SLO', 'lo+cp'\n");
         printf("\n");
         printf("                    Definition:\n");
         printf("                      'lo'  : 2nd order local orbitals composed of u(E) and udot(E),\n");
@@ -270,6 +282,7 @@ int main(int argn, char **argv)
         printf("                              where E and E1 are the energies of the bound-state levels {n,l} and {n+1,l}\n");
         printf("                      'SLO' : sequence of 3rd order local orbitals composed of u(E), udot(E) and u(En),\n");
         printf("                              where E is fixed and En is chosen in such a way that u(En) has n nodes inside the muffin-tin\n");
+        printf("                      'cp'  : confined polynomial of the form r^{l}*(1-r/R)^{p}\n");
         printf("\n");
         printf("                    default is 'lo'\n");
         printf("\n");
@@ -301,7 +314,7 @@ int main(int argn, char **argv)
         if (s == "-type")
         {
             lo_type = std::string(argv[i + 1]);
-            if (!(lo_type == "lo" || lo_type == "lo+LO" || lo_type == "lo+SLO"))
+            if (!(lo_type == "lo" || lo_type == "lo+LO" || lo_type == "lo+SLO" || lo_type == "lo+cp"))
                 error_local(__FILE__, __LINE__, "wrong type of local orbital basis");
             i += 2;
         }

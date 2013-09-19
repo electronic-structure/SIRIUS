@@ -139,7 +139,7 @@ void DFT_ground_state::scf_loop(double charge_tol, double energy_tol)
     mx->load();
     for (int i = 0; i < parameters_.num_mag_dims(); i++) mxmag[i]->load();
     
-    double eold = 1e100;
+    double eold = 0.0;
 
     for (int iter = 0; iter < 100; iter++)
     {
