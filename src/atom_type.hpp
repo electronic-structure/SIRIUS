@@ -381,20 +381,20 @@ void Atom_type::print_info()
                 for (int order = 0; order < (int)lo_descriptors_[j].rsd_set.size(); order++)
                 {
                     if (order) printf(", ");
-                    printf("{l : %i, n : %i, enu : %f, dme : %i, auto : %i}", lo_descriptors_[j].rsd_set[order].l,
-                                                                              lo_descriptors_[j].rsd_set[order].n,
-                                                                              lo_descriptors_[j].rsd_set[order].enu,
-                                                                              lo_descriptors_[j].rsd_set[order].dme,
-                                                                              lo_descriptors_[j].rsd_set[order].auto_enu);
+                    printf("{l : %2i, n : %2i, enu : %f, dme : %i, auto : %i}", lo_descriptors_[j].rsd_set[order].l,
+                                                                                lo_descriptors_[j].rsd_set[order].n,
+                                                                                lo_descriptors_[j].rsd_set[order].enu,
+                                                                                lo_descriptors_[j].rsd_set[order].dme,
+                                                                                lo_descriptors_[j].rsd_set[order].auto_enu);
                 }
                 printf("]\n");
                 break;
             }
             case lo_cp:
             {
-                printf("confined polynomial {l : %i, p1 : %i, p2 : %i}\n", lo_descriptors_[j].l, 
-                                                                           lo_descriptors_[j].p1, 
-                                                                           lo_descriptors_[j].p2);
+                printf("confined polynomial {l : %2i, p1 : %i, p2 : %i}\n", lo_descriptors_[j].l, 
+                                                                            lo_descriptors_[j].p1, 
+                                                                            lo_descriptors_[j].p2);
                 break;
             }
         }
