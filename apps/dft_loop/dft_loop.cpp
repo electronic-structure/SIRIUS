@@ -38,7 +38,7 @@ int main(int argn, char** argv)
             std::vector<double> v;
             parser["atoms"][iat][1][ia] >> v;
 
-            if (!(v.size() == 3 || v.size() == 6)) error(__FILE__, __LINE__, "wrong coordinates size");
+            if (!(v.size() == 3 || v.size() == 6)) error_global(__FILE__, __LINE__, "wrong coordinates size");
             if (v.size() == 3) v.resize(6, 0.0);
             
             parameters.add_atom(iat, &v[0], &v[3]);
@@ -46,18 +46,19 @@ int main(int argn, char** argv)
     }
 
     parameters.set_auto_rmt(parser["auto_rmt"].get(0));
+    int num_mag_dims = parser["num_mag_dims"].get(0);
+    int num_spins = (num_mag_dims == 0) ? 1 : 2;
     
-    parameters.set_num_mag_dims(1);
-    parameters.set_num_spins(2);
+    parameters.set_num_mag_dims(num_mag_dims);
+    parameters.set_num_spins(num_spins);
 
-    parameters.initialize(1);
-    
-    parameters.print_info();
+    parameters.initialize();
     
     Potential* potential = new Potential(parameters);
     potential->allocate();
+
+    std::vector<int> ngridk = parser["ngridk"].get(std::vector<int>(3, 1));
         
-    int ngridk[] = {2, 2, 2};
     int numkp = ngridk[0] * ngridk[1] * ngridk[2];
     int ik = 0;
     mdarray<double, 2> kpoints(3, numkp);
@@ -97,11 +98,14 @@ int main(int argn, char** argv)
         potential->generate_effective_potential(density->rho(), density->magnetization());
     }
 
-    DFT_ground_state dft(parameters, potential, density, ks);
-    
-    dft.relax_atom_positions();
+    DFT_ground_state dft(parameters, potential, density, &ks);
+    double charge_tol = parser["charge_tol"].get(1e-4);
+    double energy_tol = parser["energy_tol"].get(1e-4);
+    dft.scf_loop(charge_tol, energy_tol);
 
-    parameters.write_json_output();
+    //dft.relax_atom_positions();
+
+    //parameters.write_json_output();
 
     delete density;
     delete potential;
