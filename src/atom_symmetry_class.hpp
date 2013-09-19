@@ -285,6 +285,9 @@ void Atom_symmetry_class::check_lo_linear_independence()
             for (int j = 0; j < num_lo_descriptors(); j++) printf("%12.6f", loprod(i, j));
             printf("\n");
         }
+        printf("overlap matrix eigen-values:\n");
+        for (int i = 0; i < num_lo_descriptors(); i++) printf("%12.6f", loprod_eval[i]);
+        printf("\n");
     }
 }
 
@@ -502,7 +505,7 @@ void Atom_symmetry_class::generate_radial_functions()
 
     generate_aw_radial_functions();
     generate_lo_radial_functions();
-    transform_radial_functions(true, false);
+    transform_radial_functions(false, false);
     
     //** if (verbosity_level > 0)
     //** {
