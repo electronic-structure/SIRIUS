@@ -122,10 +122,16 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type)
     printf("Core / valence partitioning\n");
     printf("core cutoff energy : %f\n", core_cutoff_energy);
     sirius::Spline <double> rho_c(a->radial_grid().size(), a->radial_grid());
+    sirius::Spline <double> rho(a->radial_grid().size(), a->radial_grid());
     for (int ist = 0; ist < (int)a->num_atomic_levels(); ist++)
     {
         printf("%i%s  occ : %8.4f  energy : %12.6f", a->atomic_level(ist).n, level_symb[a->atomic_level(ist).l].c_str(), 
                                                      a->atomic_level(ist).occupancy, enu[ist]);
+        
+        // total density
+        for (int ir = 0; ir < a->radial_grid().size(); ir++) 
+            rho[ir] += a->atomic_level(ist).occupancy * pow(y00 * a->free_atom_radial_function(ir, ist), 2);
+
         if (enu[ist] < core_cutoff_energy)
         {
             core.push_back(a->atomic_level(ist));
@@ -140,6 +146,23 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type)
             printf("  => valence\n");
         }
     }
+
+    //** FILE* fout = fopen("rho.dat", "w");
+    //** for (int ir = 0; ir < a->radial_grid().size(); ir++) 
+    //** {
+    //**     double x = a->radial_grid(ir);
+    //**     fprintf(fout, "%12.6f %16.8f\n", x, rho[ir] * x * x);
+    //** }
+    //** fclose(fout);
+
+    // estimate effective infinity
+    double rinf = 0.0;
+    for (int ir = 0; ir < a->radial_grid().size(); ir++)
+    {
+        rinf = a->radial_grid(ir);
+        if (rinf > 5.0 && (rho[ir] * rinf * rinf) < 1e-7) break;
+    }
+    printf("Effective infinity : %f\n", rinf);
 
     std::vector<double> g;
     rho_c.interpolate();

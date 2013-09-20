@@ -1,6 +1,8 @@
 #ifndef _MDARRAY_H_
 #define _MDARRAY_H_
 
+/** \todo change to long int64_t for indices */
+
 class dimension 
 {
     public:

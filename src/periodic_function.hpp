@@ -169,41 +169,37 @@ size_t Periodic_function<T>::size()
 }
 
 template <typename T>
-void Periodic_function<T>::pack(T* array)
+size_t Periodic_function<T>::pack(T* array)
 {
-    int n = 0;
+    size_t n = 0;
     for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
     {
         for (int i1 = 0; i1 < f_mt_local_(ialoc)->size(1); i1++)
         {
-            for (int i0 = 0; i0 < f_mt_local_(ialoc)->size(0); i0++)
-            {
-                array[n++] = (*f_mt_local_(ialoc))(i0, i1);
-            }
+            for (int i0 = 0; i0 < f_mt_local_(ialoc)->size(0); i0++) array[n++] = (*f_mt_local_(ialoc))(i0, i1);
         }
     }
 
-    for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++)
-        array[n++] = f_it_local_(irloc);
+    for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++) array[n++] = f_it_local_(irloc);
+
+    return n;
 }
 
 template <typename T>
-void Periodic_function<T>::unpack(T* array)
+size_t Periodic_function<T>::unpack(T* array)
 {
-    int n = 0;
+    size_t n = 0;
     for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
     {
         for (int i1 = 0; i1 < f_mt_local_(ialoc)->size(1); i1++)
         {
-            for (int i0 = 0; i0 < f_mt_local_(ialoc)->size(0); i0++)
-            {
-                (*f_mt_local_(ialoc))(i0, i1) = array[n++];
-            }
+            for (int i0 = 0; i0 < f_mt_local_(ialoc)->size(0); i0++) (*f_mt_local_(ialoc))(i0, i1) = array[n++];
         }
     }
 
-    for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++)
-        f_it_local_(irloc) = array[n++];
+    for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++) f_it_local_(irloc) = array[n++];
+
+    return n;
 }
 
 template <typename T>

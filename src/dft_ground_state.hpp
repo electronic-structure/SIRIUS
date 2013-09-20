@@ -131,13 +131,8 @@ void DFT_ground_state::forces(mdarray<double, 2>& atom_force)
 
 void DFT_ground_state::scf_loop(double charge_tol, double energy_tol)
 {
-    mixer<double>* mx = new periodic_function_mixer<double>(density_->rho(), 0.1);
-    mixer<double>* mxmag[3];
-    for (int i = 0; i < parameters_.num_mag_dims(); i++) 
-        mxmag[i] = new periodic_function_mixer<double>(density_->magnetization(i), 0.1); 
-    
+    density_mixer* mx = new density_mixer(density_->rho(), density_->magnetization(), parameters_.num_mag_dims());
     mx->load();
-    for (int i = 0; i < parameters_.num_mag_dims(); i++) mxmag[i]->load();
     
     double eold = 0.0;
 
@@ -149,7 +144,6 @@ void DFT_ground_state::scf_loop(double charge_tol, double energy_tol)
         density_->generate(*kset_);
 
         double rms = mx->mix();
-        for (int i = 0; i < parameters_.num_mag_dims(); i++) rms += mxmag[i]->mix();
         
         potential_->generate_effective_potential(density_->rho(), density_->magnetization());
         

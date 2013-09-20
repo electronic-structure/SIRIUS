@@ -76,9 +76,9 @@ template<typename T> class Periodic_function
 
         size_t size();
 
-        void pack(T* array);
+        size_t pack(T* array);
         
-        void unpack(T* array);
+        size_t unpack(T* array);
         
         void set_local_mt_ptr()
         {

@@ -24,20 +24,31 @@ template <typename T> class mixer
         virtual double mix() = 0;
 };
 
-template <typename T> class periodic_function_mixer: public mixer<T>
+class density_mixer: public mixer<double>
 {
     private:
 
-        Periodic_function<T>* pf_;
+        int num_mag_dims_;
+        Periodic_function<double>* rho_;
+        Periodic_function<double>* mag_[3];
 
     public:
 
-        periodic_function_mixer(Periodic_function<T>* pf__, double beta__) : pf_(pf__)
+        density_mixer(Periodic_function<double>* rho__, Periodic_function<double>* mag__[3], int num_mag_dims__)
         {
-            this->mixer_data_.set_dimensions((int)pf_->size(), 2);
+            rho_ = rho__;
+            size_t mixer_size = rho_->size();
+            num_mag_dims_ = num_mag_dims__;
+            for (int i = 0; i < num_mag_dims_; i++) 
+            {
+                mag_[i] = mag__[i];
+                mixer_size += mag_[i]->size();
+            }
+
+            this->mixer_data_.set_dimensions(mixer_size, 2);
             this->mixer_data_.allocate();
             this->mixer_data_.zero();
-            this->beta_ = beta__;
+            this->beta_ = 0.1;
             this->rms_prev_ = 0;
             this->initialized_ = false;
         }
@@ -51,7 +62,8 @@ template <typename T> class periodic_function_mixer: public mixer<T>
                 this->initialized_ = true;
             }
             
-            pf_->pack(&this->mixer_data_(0, p));
+            size_t n = rho_->pack(&this->mixer_data_(0, p));
+            for (int i = 0; i < num_mag_dims_; i++) n += mag_[i]->pack(&this->mixer_data_(n, p));
         }
 
         double mix()
@@ -59,13 +71,15 @@ template <typename T> class periodic_function_mixer: public mixer<T>
             load();
 
             double rms = 0.0;
-            for (int n = 0; n < this->mixer_data_.size(0); n++)
+            for (size_t n = 0; n < this->mixer_data_.size(0); n++)
             {
                 this->mixer_data_(n, 0) = (1 - this->beta_) * this->mixer_data_(n, 0) + this->beta_ * this->mixer_data_(n, 1);
                 rms += pow(this->mixer_data_(n, 0) - this->mixer_data_(n, 1), 2);
             }
-            pf_->unpack(&this->mixer_data_(0, 0));
             rms = sqrt(rms / this->mixer_data_.size(0));
+
+            size_t n = rho_->unpack(&this->mixer_data_(0, 0));
+            for (int i = 0; i < num_mag_dims_; i++) n += mag_[i]->unpack(&this->mixer_data_(n, 0));
             
             if (rms < this->rms_prev_) 
             {
@@ -77,8 +91,8 @@ template <typename T> class periodic_function_mixer: public mixer<T>
             }
             this->beta_ = std::min(this->beta_, 0.9);
 
-            printf("[periodic_function_mixer]\n");
-            printf("beta = %f\n", this->beta_);
+            //printf("[periodic_function_mixer]\n");
+            //printf("beta = %f\n", this->beta_);
 
             this->rms_prev_ = rms;
             
