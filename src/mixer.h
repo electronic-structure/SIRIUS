@@ -45,7 +45,7 @@ class density_mixer: public mixer<double>
                 mixer_size += mag_[i]->size();
             }
 
-            this->mixer_data_.set_dimensions(mixer_size, 2);
+            this->mixer_data_.set_dimensions((int)mixer_size, 2);
             this->mixer_data_.allocate();
             this->mixer_data_.zero();
             this->beta_ = 0.1;
@@ -63,7 +63,7 @@ class density_mixer: public mixer<double>
             }
             
             size_t n = rho_->pack(&this->mixer_data_(0, p));
-            for (int i = 0; i < num_mag_dims_; i++) n += mag_[i]->pack(&this->mixer_data_(n, p));
+            for (int i = 0; i < num_mag_dims_; i++) n += mag_[i]->pack(&this->mixer_data_((int)n, p));
         }
 
         double mix()
@@ -71,15 +71,15 @@ class density_mixer: public mixer<double>
             load();
 
             double rms = 0.0;
-            for (size_t n = 0; n < this->mixer_data_.size(0); n++)
+            for (int n = 0; n < this->mixer_data_.size(0); n++)
             {
                 this->mixer_data_(n, 0) = (1 - this->beta_) * this->mixer_data_(n, 0) + this->beta_ * this->mixer_data_(n, 1);
                 rms += pow(this->mixer_data_(n, 0) - this->mixer_data_(n, 1), 2);
             }
             rms = sqrt(rms / this->mixer_data_.size(0));
 
-            size_t n = rho_->unpack(&this->mixer_data_(0, 0));
-            for (int i = 0; i < num_mag_dims_; i++) n += mag_[i]->unpack(&this->mixer_data_(n, 0));
+            int n = (int)rho_->unpack(&this->mixer_data_(0, 0));
+            for (int i = 0; i < num_mag_dims_; i++) n += (int)mag_[i]->unpack(&this->mixer_data_(n, 0));
             
             if (rms < this->rms_prev_) 
             {
