@@ -1469,6 +1469,11 @@ void FORTRAN(sirius_forces)(real8* forces__)
     mdarray<double, 2> forces(forces__, 3, global_parameters.num_atoms()); 
     dft_ground_state->forces(forces);
 }
+
+void FORTRAN(sirius_update)()
+{
+    dft_ground_state->update();
+}
     
 
 } // extern "C"
