@@ -1179,7 +1179,7 @@ void K_point::update(Band* band)
     init_gkvec();
     
     icol_by_atom_.clear();
-    iwot_by_atom_.clear();
+    irow_by_atom_.clear();
     icol_by_atom_.resize(parameters_.num_atoms());
     irow_by_atom_.resize(parameters_.num_atoms());
 
