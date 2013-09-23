@@ -1007,6 +1007,12 @@ void Density::generate(K_set& ks)
         parameters_.atom_symmetry_class(ic)->generate_core_charge_density();
     }
 
+    for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
+    {
+        int rank = parameters_.spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
+        parameters_.atom_symmetry_class(ic)->sync_core_charge_density(rank);
+    }
+
     // add core contribution
     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
     {
