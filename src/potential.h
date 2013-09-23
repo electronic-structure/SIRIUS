@@ -88,9 +88,9 @@ class Potential
 
         void update();
 
-        void set_effective_potential_ptr(double* veffmt, double* veffir);
+        void set_effective_potential_ptr(double* veffmt, double* veffit);
         
-        void set_effective_magnetic_field_ptr(double* beffmt, double* beffir);
+        void set_effective_magnetic_field_ptr(double* beffmt, double* beffit);
          
         /// Zero effective potential and magnetic field.
         void zero();
@@ -162,6 +162,12 @@ class Potential
         double value(double* vc);
 
         void check_potential_continuity_at_mt();
+
+        void copy_to_global_ptr(double* fmt, double* fit, Periodic_function<double>* src);
+
+        //void copy_xc_potential(double* vxcmt, double* vxcir);
+
+        //void copy_effective_magnetic_field(double* beffmt, double* beffit);
         
         Periodic_function<double>* effective_potential()
         {

@@ -52,17 +52,25 @@ template<typename T> class Periodic_function
         /// Constructor
         Periodic_function(Global& parameters__, Argument arg0, Argument arg1, int num_gvec);
         
+        /// Destructor
         ~Periodic_function();
         
-        void allocate(bool allocate_global) ;
+        /// Allocate memory
+        void allocate(bool allocate_global);
 
+        /// Zero the function.
         void zero();
         
-        inline void sync();
+        /// Syncronize global function.
+        void sync();
 
-        inline void add(Periodic_function<T>* g);
+        /// Copy from source
+        void copy(Periodic_function<T>* src);
 
-        inline T integrate(std::vector<T>& mt_val, T& it_val);
+        /// Add the function
+        void add(Periodic_function<T>* g);
+
+        T integrate(std::vector<T>& mt_val, T& it_val);
 
         T integrate(int flg);
         

@@ -1253,71 +1253,48 @@ void FORTRAN(sirius_get_energy_kin)(real8* energy_kin)
     *energy_kin = dft_ground_state->energy_kin();
 }
 
-void FORTRAN(sirius_generate_xc_potential)(real8* rhomt, real8* rhoit, real8* vxcmt, real8* vxcit)
+/// Generate XC potential and magnetic field
+void FORTRAN(sirius_generate_xc_potential)(real8* vxcmt, real8* vxcit, real8* bxcmt, real8* bxcit)
 {
     using namespace sirius;
-    Periodic_function<double>* rho = 
-        new Periodic_function<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_rho()),
-                                                         Argument(arg_radial, global_parameters.max_num_mt_points()));
-    rho->set_mt_ptr(rhomt);
-    rho->set_it_ptr(rhoit);
+
+    potential->xc(density->rho(), density->magnetization(), potential->xc_potential(), potential->effective_magnetic_field(), 
+                  potential->xc_energy_density()); 
+ 
+    potential->copy_to_global_ptr(vxcmt, vxcit, potential->xc_potential());
     
-    Periodic_function<double>* vxc = 
-        new Periodic_function<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_pot()),
-                                                         Argument(arg_radial, global_parameters.max_num_mt_points()));
-    vxc->set_mt_ptr(vxcmt);
-    vxc->set_it_ptr(vxcit);
+    if (global_parameters.num_mag_dims() == 0) return;
+    assert(global_parameters.num_spins() == 2);
+     
+    // set temporary array wrapper
+    mdarray<double,4> bxcmt_tmp(bxcmt, global_parameters.lmmax_pot(), global_parameters.max_num_mt_points(), 
+                                global_parameters.num_atoms(), global_parameters.num_mag_dims());
+    mdarray<double,2> bxcit_tmp(bxcit, global_parameters.fft().size(), global_parameters.num_mag_dims());
 
-    Periodic_function<double>* exc = 
-        new Periodic_function<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_pot()),
-                                                         Argument(arg_radial, global_parameters.max_num_mt_points()));
-    exc->allocate(false);
-    
-    //Periodic_function<double>* bxc[3];
-    //for (int j = 0; j < parameters_.num_mag_dims(); j++)
-    //{
-    //    bxc[j] = new Periodic_function<double>(parameters_, parameters_.lmax_pot());
-    //    bxc[j]->split(rlm_component | it_component);
-    //    bxc[j]->allocate(rlm_component | it_component);
-    //    //bxc[j]->zero();
-    //}
-
-    potential->xc(rho, NULL, vxc, NULL, exc);
-    //vxc->zero();
-    //exc->zero();
-   
-    //** global_parameters.rti().energy_vxc = inner(global_parameters, rho, vxc);
-    //** global_parameters.rti().energy_exc = inner(global_parameters, rho, exc);
-
-    delete vxc;
-    delete exc;
-    delete rho;
+     if (global_parameters.num_mag_dims() == 1)
+     {
+         // z
+         potential->copy_to_global_ptr(&bxcmt_tmp(0, 0, 0, 0), &bxcit_tmp(0, 0), potential->effective_magnetic_field(0));
+     }
+     
+     if (global_parameters.num_mag_dims() == 3)
+     {
+         // z
+         potential->copy_to_global_ptr(&bxcmt_tmp(0, 0, 0, 2), &bxcit_tmp(0, 2), potential->effective_magnetic_field(0));
+         // x
+         potential->copy_to_global_ptr(&bxcmt_tmp(0, 0, 0, 0), &bxcit_tmp(0, 0), potential->effective_magnetic_field(1));
+         // y
+         potential->copy_to_global_ptr(&bxcmt_tmp(0, 0, 0, 1), &bxcit_tmp(0, 1), potential->effective_magnetic_field(2));
+     }
 }
 
-/** \todo sync Coulomb and XC potentials */
-void FORTRAN(sirius_generate_coulomb_potential)(real8* rhomt, real8* rhoit, real8* vclmt, real8* vclit)
+void FORTRAN(sirius_generate_coulomb_potential)(real8* vclmt, real8* vclit)
 {
     using namespace sirius;
-    Periodic_function<double>* rho = 
-        new Periodic_function<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_rho()),
-                                                        Argument(arg_radial, global_parameters.max_num_mt_points()),
-                                                        global_parameters.num_gvec());
-    rho->set_mt_ptr(rhomt);
-    rho->set_it_ptr(rhoit);
-    
-    Periodic_function<double>* vcl = 
-        new Periodic_function<double>(global_parameters, Argument(arg_lm, global_parameters.lmmax_pot()),
-                                                        Argument(arg_radial, global_parameters.max_num_mt_points()),
-                                                        global_parameters.num_gvec());
-    vcl->set_mt_ptr(vclmt);
-    vcl->set_it_ptr(vclit);
 
-    potential->poisson(rho, vcl);
-   
-    //** global_parameters.rti().energy_vha = inner(global_parameters, rho, vcl);
+    potential->poisson(density->rho(), potential->coulomb_potential());
 
-    delete vcl;
-    delete rho;
+    potential->copy_to_global_ptr(vclmt, vclit, potential->coulomb_potential());
 }
 
 void FORTRAN(sirius_update_atomic_potential)()
@@ -1486,5 +1463,12 @@ void FORTRAN(sirius_get_mpi_comm)(int32_t* directions, int32_t* fcomm)
 {
     *fcomm = MPI_Comm_c2f(global_parameters.mpi_grid().communicator(*directions));
 }
+
+void FORTRAN(sirius_forces)(real8* forces__)
+{
+    mdarray<double, 2> forces(forces__, 3, global_parameters.num_atoms()); 
+    dft_ground_state->forces(forces);
+}
+    
 
 } // extern "C"

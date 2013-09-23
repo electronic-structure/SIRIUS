@@ -93,6 +93,16 @@ inline void Periodic_function<T>::sync()
 }
 
 template <typename T>
+inline void Periodic_function<T>::copy(Periodic_function<T>* src)
+{
+    for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++)
+        f_it_local_(irloc) = src->f_it<local>(irloc);
+    
+    for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+        f_mt_local_(ialoc)->copy(src->f_mt(ialoc));
+}
+
+template <typename T>
 inline void Periodic_function<T>::add(Periodic_function<T>* g)
 {
     for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++)

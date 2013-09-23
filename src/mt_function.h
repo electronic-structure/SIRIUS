@@ -264,6 +264,14 @@ template <typename T> class MT_function
                 for (int i0 = 0; i0 < size(0); i0++) this->data_(i0, i1) += (*f)(i0, i1);
             }
         }
+        
+        void copy(MT_function<T>* f)
+        {
+            for (int i1 = 0; i1 < size(1); i1++)
+            {
+                for (int i0 = 0; i0 < size(0); i0++) this->data_(i0, i1) = (*f)(i0, i1);
+            }
+        }
 };
 
 template <typename T> class mt_functions
