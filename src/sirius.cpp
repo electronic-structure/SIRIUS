@@ -1480,7 +1480,7 @@ void FORTRAN(sirius_forces)(real8* forces__)
 
 void FORTRAN(sirius_set_atom_pos)(int32_t* atom_id, real8* pos)
 {
-    global_parameters.atom(*atom_id + 1)->set_position(pos);
+    global_parameters.atom(*atom_id - 1)->set_position(pos);
 }
 
 void FORTRAN(sirius_update)(int32_t* kset_id)
