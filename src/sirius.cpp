@@ -1454,9 +1454,17 @@ void FORTRAN(sirius_get_num_fv_states)(int32_t* num_fv_states)
     *num_fv_states = global_parameters.num_fv_states();
 }
 
-void FORTRAN(sirius_ground_states_initialize)(int32_t* kset_id)
+void FORTRAN(sirius_ground_state_initialize)(int32_t* kset_id)
 {
+    if (dft_ground_state) error_local(__FILE__, __LINE__, "dft_ground_state object is already allocate");
+
     dft_ground_state = new sirius::DFT_ground_state(global_parameters, potential, density, kset_list[*kset_id]);
+}
+
+void FORTRAN(sirius_ground_state_clear)()
+{
+    delete dft_ground_state;
+    dft_ground_state = NULL;
 }
 
 void FORTRAN(sirius_get_mpi_comm)(int32_t* directions, int32_t* fcomm)
@@ -1470,9 +1478,16 @@ void FORTRAN(sirius_forces)(real8* forces__)
     dft_ground_state->forces(forces);
 }
 
-void FORTRAN(sirius_update)()
+void FORTRAN(sirius_set_atom_pos)(int32_t* atom_id, real8* pos)
 {
-    dft_ground_state->update();
+    global_parameters.atom(*atom_id + 1)->set_position(pos);
+}
+
+void FORTRAN(sirius_update)(int32_t* kset_id)
+{
+    global_parameters.update();
+    potential->update();
+    kset_list[*kset_id]->update();
 }
     
 
