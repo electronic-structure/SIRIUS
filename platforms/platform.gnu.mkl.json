@@ -1,0 +1,24 @@
+{
+    "MPI_CXX"     : "mpicxx",
+    "comment"     : "your MPI C++ compiler",
+    
+    "MPI_CXX_OPT" : "-O3 -fopenmp -DNDEBUG -D_SCALAPACK_",
+    "comment"     : "compiler options for the sirius library",
+    
+    "CC"          : "gcc",
+    "comment"     : "plain C compiler for the supplementary libraries",
+    
+    "CXX"         : "g++",
+    "comment"     : "plain C++ compiler for the supplementary libraries",
+    
+    "FC"          : "gfortran",
+    "comment"     : "plain Fortran compiler for the supplementary libraries",
+    
+    "FCCPP"       : "cpp",
+    "comment"     : "Fortran preprocessor",
+    
+    "SYSTEM_LIBS" : "$(MKLROOT)/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group  $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_intel_thread.a $(MKLROOT)/lib/intel64/libmkl_core.a $(MKLROOT)/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lpthread -lm -lfftw3 -lstdc++",
+    "comment"     : "available system libraires"
+}
+
+
