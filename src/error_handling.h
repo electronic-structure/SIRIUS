@@ -47,6 +47,8 @@ const int _fatal_error_ = 1 << 1;
 void error_message(const char* file_name, int line_number, const std::string& message, int flags)
 {
     bool verbose = (flags & _global_message_) ? (Platform::mpi_rank() == 0) : true;
+    if (verbosity_level >= 10) verbose = true;
+    
     std::vector<char> buffer(message.size() + 1000);
 
     int n;
@@ -72,7 +74,7 @@ void error_message(const char* file_name, int line_number, const std::string& me
     if (flags & _fatal_error_) 
     {
         // give writing ranks some time to flush the output buffer 
-        double delay_time = 0.5;
+        double delay_time = 3.5;
         timeval t1;
         timeval t2;
         double d;
@@ -83,7 +85,7 @@ void error_message(const char* file_name, int line_number, const std::string& me
             gettimeofday(&t2, NULL);
             d = double(t2.tv_sec - t1.tv_sec) + double(t2.tv_usec - t1.tv_usec) / 1e6;
         } while (d < delay_time);
- 
+
         Platform::abort();
     }
 }
