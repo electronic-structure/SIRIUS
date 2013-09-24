@@ -14,7 +14,7 @@ packages = {
              ],
     "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.11.tar.gz",
               ["--enable-fortran", "--enable-shared=no", "--enable-static=yes", 
-               "--disable-deprecated-symbols", "--enable-filters=none"]
+               "--disable-deprecated-symbols", "--enable-filters=none","--disable-parallel"]
              ],
     "xc"   : ["http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.0.2.tar.gz",
               []
@@ -132,8 +132,16 @@ def main():
         fin.close()
 
         makeinc = open("make.inc", "w")
-        makeinc.write("CXX = " + platform["CXX"] + "\n")
-        makeinc.write("CXX_OPT = " + platform["CXX_OPT"] + "\n")
+        if ("MPI_CXX") in platform: 
+            makeinc.write("CXX = " + platform["MPI_CXX"] + "\n")
+        else:
+            makeinc.write("CXX = " + platform["CXX"] + "\n")
+
+        if ("MPI_CXX_OPT") in platform:
+            makeinc.write("CXX_OPT = " + platform["MPI_CXX_OPT"] + "\n")
+        else:
+            makeinc.write("CXX_OPT = " + platform["CXX_OPT"] + "\n")
+
         if "NVCC" in platform: makeinc.write("NVCC = " + platform["NVCC"] + "\n")
         if "NVCC_OPT" in platform: makeinc.write("NVCC_OPT = " + platform["NVCC_OPT"] + "\n")
         
