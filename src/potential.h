@@ -65,7 +65,7 @@ class Potential
         
         std::vector<complex16> zilm_;
 
-        mdarray<int, 1> l_by_lm_;
+        std::vector<int> l_by_lm_;
 
         /// Compute MT part of the potential and MT multipole moments
         void poisson_vmt(mdarray<MT_function<complex16>*, 1>& rho_ylm, mdarray<MT_function<complex16>*, 1>& vh, 

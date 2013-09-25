@@ -44,11 +44,11 @@ class GauntCoefficients
         void set_lmax(int lmax1__, int lmax2__, int lmax3__)
         {
             lmax1_ = lmax1__;
-            lmmax1_ = Utils::lmmax_by_lmax(lmax1_);
+            lmmax1_ = Utils::lmmax(lmax1_);
             lmax2_ = lmax2__;
-            lmmax2_ = Utils::lmmax_by_lmax(lmax2_);
+            lmmax2_ = Utils::lmmax(lmax2_);
             lmax3_ = lmax3__;
-            lmmax3_ = Utils::lmmax_by_lmax(lmax3_);
+            lmmax3_ = Utils::lmmax(lmax3_);
        
             complex_gaunt_packed_L1_L2_.resize(lmmax3_);
             complex_gaunt_L1_L2 g12;

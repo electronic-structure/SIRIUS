@@ -114,7 +114,7 @@ void Atom_symmetry_class::generate_lo_radial_functions()
         #pragma omp for schedule(dynamic, 1)
         for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++)
         {
-            assert(lo_descriptor(idxlo).rsd_set.size() < 4);
+            assert(lo_descriptor(idxlo).rsd_set.size() <= 4);
 
             int idxrf = atom_type_->indexr().index_by_idxlo(idxlo);
 

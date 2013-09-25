@@ -125,7 +125,7 @@ void K_set::find_band_occupancies()
         {
             for (int j = 0; j < parameters_.num_bands(); j++)
             {
-                bnd_occ(j, ik) = Utils::gaussian_smearing(kpoints_[ik]->band_energy(j) - ef) * 
+                bnd_occ(j, ik) = Utils::gaussian_smearing(kpoints_[ik]->band_energy(j) - ef, parameters_.smearing_width()) * 
                                  parameters_.max_occupancy();
                 ne += bnd_occ(j, ik) * kpoints_[ik]->weight();
             }

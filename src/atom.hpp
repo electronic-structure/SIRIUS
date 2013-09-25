@@ -28,7 +28,7 @@ void Atom::init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_
     lmax_pot_ = lmax_pot__;
     num_mag_dims_ = num_mag_dims__;
 
-    int lmmax = Utils::lmmax_by_lmax(lmax_pot_);
+    int lmmax = Utils::lmmax(lmax_pot_);
 
     h_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size());
     h_radial_integrals_.allocate();
@@ -51,8 +51,10 @@ void Atom::generate_radial_integrals()
 {
     Timer t("sirius::Atom::generate_radial_integrals");
     
-    int lmmax = Utils::lmmax_by_lmax(lmax_pot_);
+    int lmmax = Utils::lmmax(lmax_pot_);
     int nmtp = type()->num_mt_points();
+
+    std::vector<int> l_by_lm = Utils::l_by_lm(lmax_pot_);
 
     h_radial_integrals_.zero();
     if (num_mag_dims_) b_radial_integrals_.zero();
@@ -72,17 +74,22 @@ void Atom::generate_radial_integrals()
         #pragma omp for
         for (int lm = 1; lm < lmmax; lm++)
         {
+            int l = l_by_lm[lm];
             for (int i2 = 0; i2 < type()->indexr().size(); i2++)
             {
-                for (int ir = 0; ir < nmtp; ir++)
-                    v[ir] = symmetry_class()->radial_function(ir, i2) * veff_(lm, ir);
+                int l2 = type()->indexr(i2).l;
+                for (int ir = 0; ir < nmtp; ir++) v[ir] = symmetry_class()->radial_function(ir, i2) * veff_(lm, ir);
                 
                 for (int i1 = 0; i1 <= i2; i1++)
                 {
-                    for (int ir = 0; ir < nmtp; ir++) s[ir] = symmetry_class()->radial_function(ir, i1) * v[ir];
-                    
-                    s.interpolate();
-                    h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = s.integrate(2);
+                    int l1 = type()->indexr(i1).l;
+                    if ((l + l1 + l2) % 2 == 0)
+                    {
+                        for (int ir = 0; ir < nmtp; ir++) s[ir] = symmetry_class()->radial_function(ir, i1) * v[ir];
+                        
+                        s.interpolate();
+                        h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = s.integrate(2);
+                    }
                 }
             }
         }
@@ -98,17 +105,22 @@ void Atom::generate_radial_integrals()
             #pragma omp for
             for (int lm = 0; lm < lmmax; lm++)
             {
+                int l = l_by_lm[lm];
                 for (int i2 = 0; i2 < type()->indexr().size(); i2++)
                 {
-                    for (int ir = 0; ir < nmtp; ir++)
-                        v[ir] = symmetry_class()->radial_function(ir, i2) * beff_[j](lm, ir);
+                    int l2 = type()->indexr(i2).l;
+                    for (int ir = 0; ir < nmtp; ir++) v[ir] = symmetry_class()->radial_function(ir, i2) * beff_[j](lm, ir);
                     
                     for (int i1 = 0; i1 <= i2; i1++)
                     {
-                        for (int ir = 0; ir < nmtp; ir++) s[ir] = symmetry_class()->radial_function(ir, i1) * v[ir];
-                        
-                        s.interpolate();
-                        b_radial_integrals_(lm, i1, i2, j) = b_radial_integrals_(lm, i2, i1, j) = s.integrate(2);
+                        int l1 = type()->indexr(i1).l;
+                        if ((l + l1 + l2) % 2 == 0)
+                        {
+                            for (int ir = 0; ir < nmtp; ir++) s[ir] = symmetry_class()->radial_function(ir, i1) * v[ir];
+                            
+                            s.interpolate();
+                            b_radial_integrals_(lm, i1, i2, j) = b_radial_integrals_(lm, i2, i1, j) = s.integrate(2);
+                        }
                     }
                 }
             }

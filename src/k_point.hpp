@@ -1148,13 +1148,8 @@ void K_point::initialize(Band* band)
     
     zil_.resize(parameters_.lmax() + 1);
     for (int l = 0; l <= parameters_.lmax(); l++) zil_[l] = pow(complex16(0, 1), l);
-    
-    l_by_lm_.set_dimensions(Utils::lmmax_by_lmax(parameters_.lmax()));
-    l_by_lm_.allocate();
-    for (int l = 0, lm = 0; l <= parameters_.lmax(); l++)
-    {
-        for (int m = -l; m <= l; m++, lm++) l_by_lm_(lm) = l;
-    }
+   
+    l_by_lm_ = Utils::l_by_lm(parameters_.lmax());
 
     fv_eigen_values_.resize(parameters_.num_fv_states());
     
@@ -2001,7 +1996,7 @@ void K_point::init_gkvec()
 {
     int lmax = std::max(parameters_.lmax_apw(), parameters_.lmax_pw());
 
-    gkvec_ylm_.set_dimensions(Utils::lmmax_by_lmax(lmax), num_gkvec_loc());
+    gkvec_ylm_.set_dimensions(Utils::lmmax(lmax), num_gkvec_loc());
     gkvec_ylm_.allocate();
 
     #pragma omp parallel for default(shared)

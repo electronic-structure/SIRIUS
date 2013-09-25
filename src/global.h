@@ -113,6 +113,8 @@ class Global : public Step_function
 
         GauntCoefficients gaunt_;
 
+        double smearing_width_;
+
         /// read from the input file if it exists
         void read_input()
         {
@@ -127,6 +129,7 @@ class Global : public Step_function
                 cyclic_block_size_ = parser["cyclic_block_size"].get(cyclic_block_size_);
                 num_fft_threads = parser["num_fft_threads"].get(num_fft_threads);
                 num_fv_states_ = parser["num_fv_states"].get(num_fv_states_);
+                smearing_width_ = parser["smearing_width"].get(smearing_width_);
                 
                 if (parser.exist("eigen_value_solver"))
                 {
@@ -214,10 +217,11 @@ class Global : public Step_function
                    num_mag_dims_(0), so_correction_(false), uj_correction_(false), cyclic_block_size_(16),
                    eigen_value_solver_(lapack),
                    #ifdef _GPU_
-                   processing_unit_(gpu)
+                   processing_unit_(gpu),
                    #else
-                   processing_unit_(cpu)
+                   processing_unit_(cpu),
                    #endif
+                   smearing_width_(0.001)
         {
             gettimeofday(&start_time_, NULL);
         }
@@ -259,7 +263,7 @@ class Global : public Step_function
 
         inline int lmmax_apw()
         {
-            return Utils::lmmax_by_lmax(lmax_apw_);
+            return Utils::lmmax(lmax_apw_);
         }
         
         inline int lmax_pw()
@@ -269,7 +273,7 @@ class Global : public Step_function
 
         inline int lmmax_pw()
         {
-            return Utils::lmmax_by_lmax(lmax_pw_);
+            return Utils::lmmax(lmax_pw_);
         }
         
         inline int lmax_rho()
@@ -279,7 +283,7 @@ class Global : public Step_function
 
         inline int lmmax_rho()
         {
-            return Utils::lmmax_by_lmax(lmax_rho_);
+            return Utils::lmmax(lmax_rho_);
         }
         
         inline int lmax_pot()
@@ -289,7 +293,7 @@ class Global : public Step_function
 
         inline int lmmax_pot()
         {
-            return Utils::lmmax_by_lmax(lmax_pot_);
+            return Utils::lmmax(lmax_pot_);
         }
 
         inline int lmax()
@@ -299,7 +303,7 @@ class Global : public Step_function
 
         inline int lmmax()
         {
-            return Utils::lmmax_by_lmax(lmax_);
+            return Utils::lmmax(lmax_);
         }
 
         inline double aw_cutoff()
@@ -395,6 +399,11 @@ class Global : public Step_function
         inline processing_unit_t processing_unit()
         {
             return processing_unit_;
+        }
+
+        inline double smearing_width()
+        {
+            return smearing_width_;
         }
 
         /// Initialize the global variables

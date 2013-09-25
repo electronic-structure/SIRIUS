@@ -5,7 +5,7 @@ class Utils
 {
     public:
 
-        static inline int lmmax_by_lmax(int lmax)
+        static inline int lmmax(int lmax)
         {
             return (lmax + 1) * (lmax + 1);
         }
@@ -15,10 +15,10 @@ class Utils
             return (l * l + l + m);
         }
 
-        static inline int lmax_by_lmmax(int lmmax)
+        static inline int lmax_by_lmmax(int lmmax__)
         {
-            int lmax = int(sqrt(double(lmmax)) + 1e-8) - 1;
-            if (lmmax_by_lmax(lmax) != lmmax) error_local(__FILE__, __LINE__, "wrong lmmax");
+            int lmax = int(sqrt(double(lmmax__)) + 1e-8) - 1;
+            if (lmmax(lmax) != lmmax__) error_local(__FILE__, __LINE__, "wrong lmmax");
             return lmax;
         }
 
@@ -48,10 +48,8 @@ class Utils
             return (1.0 / (exp(e / kT) + 1.0));
         }
         
-        static inline double gaussian_smearing(double e)
+        static inline double gaussian_smearing(double e, double delta)
         {
-            double delta = 0.01;
-        
             return 0.5 * (1 - gsl_sf_erf(e / delta));
         }
         
@@ -215,6 +213,16 @@ class Utils
                     return 0.0;
                 }
             }
+        }
+
+        static std::vector<int> l_by_lm(int lmax)
+        {
+            std::vector<int> l_by_lm__(lmmax(lmax));
+            for (int l = 0; l <= lmax; l++)
+            {
+                for (int m = -l; m <= l; m++) l_by_lm__[lm_by_l_m(l, m)] = l;
+            }
+            return l_by_lm__;
         }
 };
 

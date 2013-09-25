@@ -90,7 +90,7 @@ void Reciprocal_lattice::init(int lmax)
     spl_fft_size_.split(fft().size(), Platform::num_mpi_ranks(), Platform::mpi_rank());
     
     // precompute spherical harmonics of G-vectors 
-    gvec_ylm_.set_dimensions(Utils::lmmax_by_lmax(lmax), spl_num_gvec_.local_size());
+    gvec_ylm_.set_dimensions(Utils::lmmax(lmax), spl_num_gvec_.local_size());
     gvec_ylm_.allocate();
     
     Timer t2("sirius::Reciprocal_lattice::init|ylm_G");
@@ -187,7 +187,7 @@ inline void Reciprocal_lattice::gvec_ylm_array(int ig, complex16* ylm, int lmax)
     {
         case local:
         {
-            int lmmax = Utils::lmmax_by_lmax(lmax);
+            int lmmax = Utils::lmmax(lmax);
             assert(lmmax <= gvec_ylm_.size(0));
             memcpy(ylm, &gvec_ylm_(0, ig), lmmax * sizeof(complex16));
             return;

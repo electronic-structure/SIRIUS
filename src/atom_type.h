@@ -278,7 +278,7 @@ class basis_functions_index
                     basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, m, order, idxlo, idxrf));
             }
 
-            index_by_lm_order_.set_dimensions(Utils::lmmax_by_lmax(indexr.lmax()), indexr.max_num_rf());
+            index_by_lm_order_.set_dimensions(Utils::lmmax(indexr.lmax()), indexr.max_num_rf());
             index_by_lm_order_.allocate();
 
             for (int i = 0; i < (int)basis_function_index_descriptors_.size(); i++)

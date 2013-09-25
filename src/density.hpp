@@ -740,7 +740,7 @@ void Density::generate_valence_density_mt_sht(K_set& ks)
     Timer t("sirius::Density::generate_valence_density_mt_sht");
     
     int lmax = (basis_type == apwlo) ? parameters_.lmax_apw() : parameters_.lmax_pw();
-    int lmmax = Utils::lmmax_by_lmax(lmax);
+    int lmmax = Utils::lmmax(lmax);
     Band* band = ks.band();
     
     SHT sht(parameters_.lmax_rho());

@@ -24,12 +24,7 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
         for (int m = -l; m <= l; m++, lm++) zilm_[lm] = zil_[l];
     }
 
-    l_by_lm_.set_dimensions(Utils::lmmax_by_lmax(lmax_));
-    l_by_lm_.allocate();
-    for (int l = 0, lm = 0; l <= lmax_; l++)
-    {
-        for (int m = -l; m <= l; m++, lm++) l_by_lm_(lm) = l;
-    }
+    l_by_lm_ = Utils::l_by_lm(lmax_);
     
     coulomb_potential_ = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_pot()),
                                                                     Argument(arg_radial, parameters_.max_num_mt_points()),
@@ -124,7 +119,7 @@ void Potential::poisson_vmt(mdarray<MT_function<complex16>*, 1>& rho_ylm, mdarra
             #pragma omp for
             for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
             {
-                int l = l_by_lm_(lm);
+                int l = l_by_lm_[lm];
 
                 for (int ir = 0; ir < nmtp; ir++) rholm[ir] = (*rho_ylm(ialoc))(lm, ir);
                 rholm.interpolate();
@@ -329,7 +324,7 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
 
                 for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
                 {
-                    int l = l_by_lm_(lm);
+                    int l = l_by_lm_[lm];
                     vjlm(lm) = Spline<double>::integrate(jl(l, iat), svlm(lm, ia));
                 }
 
@@ -672,7 +667,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         #pragma omp parallel for default(shared)
         for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
         {
-            int l = l_by_lm_(lm);
+            int l = l_by_lm_[lm];
 
             for (int ir = 0; ir < nmtp; ir++)
                 (*vh_ylm(ialoc))(lm, ir) += (vmtlm(lm, ia) - (*vh_ylm(ialoc))(lm, nmtp - 1)) * rRl(ir, l);

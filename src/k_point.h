@@ -133,7 +133,7 @@ class K_point
         std::vector<complex16> zil_;
 
         /// Mapping between lm and l
-        mdarray<int, 1> l_by_lm_;
+        std::vector<int> l_by_lm_;
 
         /// Spherical bessel functions for G+k vectors  
         std::vector< sbessel_pw<double>* > sbessel_;
