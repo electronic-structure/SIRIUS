@@ -212,40 +212,34 @@ void Unit_cell::get_symmetry()
     assert(num_atom_symmetry_classes() != 0);
 }
 
-void Unit_cell::find_mt_radii(std::vector<double>& Rmt)
+std::vector<double> Unit_cell::find_mt_radii()
 {
     if (nearest_neighbours_.size() == 0) error_local(__FILE__, __LINE__, "array of nearest neighbours is empty");
 
-    // initialize Rmt to huge value
-    Rmt = std::vector<double>(num_atom_types(), 1e10);
-     
+    std::vector<double> Rmt(num_atom_types(), 1e10);
+    
     for (int ia = 0; ia < num_atoms(); ia++)
     {
         int id1 = atom(ia)->type_id();
         if (nearest_neighbours_[ia].size() > 1)
         {
-            int ja = nearest_neighbours_[ia][1].atom_id;
-            int id2 = atom(ja)->type_id();
-            double dist = nearest_neighbours_[ia][1].distance;
-            
             // don't allow spheres to touch: take a smaller value than half a distance
-            double R = 0.95 * (dist / 2);
+            double R = 0.95 * nearest_neighbours_[ia][1].distance / 2;
 
             // take minimal R for the given atom type
             Rmt[atom_type_index_by_id(id1)] = std::min(R, Rmt[atom_type_index_by_id(id1)]);
-            Rmt[atom_type_index_by_id(id2)] = std::min(R, Rmt[atom_type_index_by_id(id2)]);
         }
         else
         {
             Rmt[atom_type_index_by_id(id1)] = std::min(3.0, Rmt[atom_type_index_by_id(id1)]);
         }
     }
-
-    // Suppose we have 3 different atoms. First we determint Rmt between 1st and 2nd atoms, then we determine Rmt 
-    // between (let's say) 2nd and 3rd atoms and at this point we reduce the Rmt of 2nd atom. This means that the 
-    // 1st atom gets a possibility to expand
+    
+    // Suppose we have 3 different atoms. First we determint Rmt between 1st and 2nd atom, then we determine Rmt 
+    // between (let's say) 2nd and 3rd atom and at this point we reduce the Rmt of the 2nd atom. This means that the 
+    // 1st atom gets a possibility to expand if he is far from the 3rd atom
     bool inflate = true;
-
+    
     if (inflate)
     {
         std::vector<bool> scale_Rmt(num_atom_types(), true);
@@ -282,7 +276,13 @@ void Unit_cell::find_mt_radii(std::vector<double>& Rmt)
         }
     }
     
-    for (int i = 0; i < num_atom_types(); i++) Rmt[i] = std::min(Rmt[i], 3.0);
+    for (int i = 0; i < num_atom_types(); i++) 
+    {
+        Rmt[i] = std::min(Rmt[i], 3.0);
+        if (Rmt[i] < 0.3) error_global(__FILE__, __LINE__, "Muffin-tin radius is too small");
+    }
+
+    return Rmt;
 }
 
 bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
@@ -376,8 +376,7 @@ void Unit_cell::update()
     // find new MT radii and initialize radial grid 
     if (auto_rmt())
     {
-        std::vector<double> Rmt;
-        find_mt_radii(Rmt);
+        std::vector<double> Rmt = find_mt_radii();
         for (int iat = 0; iat < num_atom_types(); iat++) 
         {
             atom_type(iat)->set_mt_radius(Rmt[iat]);
@@ -389,9 +388,11 @@ void Unit_cell::update()
     if (check_mt_overlap(ia, ja))
     {
         std::stringstream s;
-        s << "overlaping muffin-tin spheres for atoms " << ia << " and " << ja << std::endl
+        s << "overlaping muffin-tin spheres for atoms " << ia << "(" << atom(ia)->type()->symbol() << ")" << " and " 
+          << ja << "(" << atom(ja)->type()->symbol() << ")" << std::endl 
           << "  radius of atom " << ia << " : " << atom(ia)->type()->mt_radius() << std::endl
-          << "  radius of atom " << ja << " : " << atom(ja)->type()->mt_radius();
+          << "  radius of atom " << ja << " : " << atom(ja)->type()->mt_radius() << std::endl
+          << "  distance : " << nearest_neighbours_[ia][1].distance << " " << nearest_neighbours_[ja][1].distance;
         error_local(__FILE__, __LINE__, s);
     }
     

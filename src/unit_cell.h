@@ -113,7 +113,7 @@ class Unit_cell
         /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
             bethween nearest atoms. Initial values of the muffin-tin radii (provided in the input file) 
             are ignored. */
-        void find_mt_radii(std::vector<double>& Rmt);
+        std::vector<double> find_mt_radii();
         
         /// Check if MT spheres overlap
         bool check_mt_overlap(int& ia__, int& ja__);
