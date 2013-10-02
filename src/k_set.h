@@ -64,7 +64,7 @@ class K_set
 
         void update();
         
-        /// Find eigen-states
+        /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian
         void find_eigen_states(Potential* potential, bool precompute);
 
         /// Find Fermi energy and band occupation numbers

@@ -982,6 +982,7 @@ class Global : public Step_function
             Unit_cell::update();
             Reciprocal_lattice::update();
             Step_function::init();
+            solve_free_atoms();
         }
         
         inline int blacs_context()

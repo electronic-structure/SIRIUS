@@ -56,7 +56,9 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         int ik = spl_num_kpoints(ikloc);
         band_->solve_fv(kpoints_[ik], potential->effective_potential());
         kpoints_[ik]->generate_fv_states();
+        kpoints_[ik]->distribute_fv_states_row();
         band_->solve_sv(kpoints_[ik], potential->effective_magnetic_field());
+        kpoints_[ik]->generate_spinor_wave_functions();
     }
 
     // synchronize eigen-values
@@ -293,17 +295,17 @@ int K_set::max_num_gkvec()
     return max_num_gkvec_;
 }
 
-void K_set::force(mdarray<double, 2>& forcek)
-{
-    mdarray<double, 2> ffac(parameters_.num_gvec_shells(), parameters_.num_atom_types());
-    parameters_.get_step_function_form_factors(ffac);
-
-    forcek.zero();
-
-    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
-    {
-         kpoints_[spl_num_kpoints_[ikloc]]->ibs_force<cpu, apwlo>(ffac, forcek);
-    }
-    Platform::allreduce(&forcek(0, 0), (int)forcek.size(), parameters_.mpi_grid().communicator(1 << _dim_k_));
-}
+//** void K_set::force(mdarray<double, 2>& forcek)
+//** {
+//**     mdarray<double, 2> ffac(parameters_.num_gvec_shells(), parameters_.num_atom_types());
+//**     parameters_.get_step_function_form_factors(ffac);
+//** 
+//**     forcek.zero();
+//** 
+//**     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+//**     {
+//**          //kpoints_[spl_num_kpoints_[ikloc]]->ibs_force<cpu, apwlo>(ffac, forcek);
+//**     }
+//**     Platform::allreduce(&forcek(0, 0), (int)forcek.size(), parameters_.mpi_grid().communicator(1 << _dim_k_));
+//** }
 

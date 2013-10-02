@@ -626,137 +626,137 @@ void FORTRAN(sirius_load_wave_functions)(int32_t* kset_id)
         "points" : [["G", [0, 0, 0]], ["X", [0.5, 0.0, 0.5]], ["L", [0.5, 0.5, 0.5]]]
     }
 */
-void FORTRAN(sirius_bands)(void)
-{
-    FORTRAN(sirius_read_state)();
-
-    std::vector<std::pair<std::string, std::vector<double> > > bz_path;
-    std::string fname("sirius.json");
-            
-    int num_steps = 0;
-    if (Utils::file_exists(fname))
-    {
-        JSON_tree parser(fname);
-        if (!parser["bz_path"].empty())
-        {
-            parser["bz_path"]["num_steps"] >> num_steps;
-
-            for (int ipt = 0; ipt < parser["bz_path"]["points"].size(); ipt++)
-            {
-                std::pair<std::string, std::vector<double> > pt;
-                parser["bz_path"]["points"][ipt][0] >> pt.first;
-                parser["bz_path"]["points"][ipt][1] >> pt.second;
-                bz_path.push_back(pt);
-            }
-        }
-    }
-
-    if (bz_path.size() < 2) error_local(__FILE__, __LINE__, "at least two BZ points are required");
-   
-    // compute length of segments
-    std::vector<double> segment_length;
-    double total_path_length = 0.0;
-    for (int ip = 0; ip < (int)bz_path.size() - 1; ip++)
-    {
-        double vf[3];
-        for (int x = 0; x < 3; x++) vf[x] = bz_path[ip + 1].second[x] - bz_path[ip].second[x];
-        double vc[3];
-        global_parameters.get_coordinates<cartesian, reciprocal>(vf, vc);
-        double length = Utils::vector_length(vc);
-        total_path_length += length;
-        segment_length.push_back(length);
-    }
-
-    std::vector<double> xaxis;
-
-    sirius::K_set kset_(global_parameters);
-    
-    double prev_seg_len = 0.0;
-
-    // segments 
-    for (int ip = 0; ip < (int)bz_path.size() - 1; ip++)
-    {
-        std::vector<double> p0 = bz_path[ip].second;
-        std::vector<double> p1 = bz_path[ip + 1].second;
-
-        int n = int((segment_length[ip] * num_steps) / total_path_length);
-        int n0 = (ip == (int)bz_path.size() - 2) ? n - 1 : n;
-        
-        double dvf[3];
-        for (int x = 0; x < 3; x++) dvf[x] = (p1[x] - p0[x]) / double(n0);
-        
-        for (int i = 0; i < n; i++)
-        {
-            double vf[3];
-            for (int x = 0; x < 3; x++) vf[x] = p0[x] + dvf[x] * i;
-            kset_.add_kpoint(vf, 0.0);
-
-            xaxis.push_back(prev_seg_len + segment_length[ip] * i / double(n0));
-        }
-        prev_seg_len += segment_length[ip];
-    }
-
-    std::vector<double> xaxis_ticks;
-    std::vector<std::string> xaxis_tick_labels;
-    prev_seg_len = 0.0;
-    for (int ip = 0; ip < (int)bz_path.size(); ip++)
-    {
-        xaxis_ticks.push_back(prev_seg_len);
-        xaxis_tick_labels.push_back(bz_path[ip].first);
-        if (ip < (int)bz_path.size() - 1) prev_seg_len += segment_length[ip];
-    }
-
-    kset_.initialize();
-
-    global_parameters.solve_free_atoms();
-
-    potential->update_atomic_potential();
-    global_parameters.generate_radial_functions();
-    global_parameters.generate_radial_integrals();
-
-    // generate plane-wave coefficients of the potential in the interstitial region
-    potential->generate_pw_coefs();
-
-    for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++)
-    {
-        int ik = kset_.spl_num_kpoints(ikloc);
-        kset_[ik]->find_eigen_states(potential->effective_potential(), potential->effective_magnetic_field());
-    } 
-    // synchronize eigen-values
-    kset_.sync_band_energies();
-
-    if (global_parameters.mpi_grid().root())
-    {
-        JSON_write jw("bands.json");
-        jw.single("xaxis", xaxis);
-        //** jw.single("Ef", global_parameters.rti().energy_fermi);
-        
-        jw.single("xaxis_ticks", xaxis_ticks);
-        jw.single("xaxis_tick_labels", xaxis_tick_labels);
-        
-        jw.begin_array("plot");
-        std::vector<double> yvalues(kset_.num_kpoints());
-        for (int i = 0; i < global_parameters.num_bands(); i++)
-        {
-            jw.begin_set();
-            for (int ik = 0; ik < kset_.num_kpoints(); ik++) yvalues[ik] = kset_[ik]->band_energy(i);
-            jw.single("yvalues", yvalues);
-            jw.end_set();
-        }
-        jw.end_array();
-
-        //FILE* fout = fopen("bands.dat", "w");
-        //for (int i = 0; i < global_parameters.num_bands(); i++)
-        //{
-        //    for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
-        //    {
-        //        fprintf(fout, "%f %f\n", xaxis[ik], kpoint_set_[ik]->band_energy(i));
-        //    }
-        //    fprintf(fout, "\n");
-        //}
-        //fclose(fout);
-    }
-}
+//== void FORTRAN(sirius_bands)(void)
+//== {
+//==     FORTRAN(sirius_read_state)();
+//== 
+//==     std::vector<std::pair<std::string, std::vector<double> > > bz_path;
+//==     std::string fname("sirius.json");
+//==             
+//==     int num_steps = 0;
+//==     if (Utils::file_exists(fname))
+//==     {
+//==         JSON_tree parser(fname);
+//==         if (!parser["bz_path"].empty())
+//==         {
+//==             parser["bz_path"]["num_steps"] >> num_steps;
+//== 
+//==             for (int ipt = 0; ipt < parser["bz_path"]["points"].size(); ipt++)
+//==             {
+//==                 std::pair<std::string, std::vector<double> > pt;
+//==                 parser["bz_path"]["points"][ipt][0] >> pt.first;
+//==                 parser["bz_path"]["points"][ipt][1] >> pt.second;
+//==                 bz_path.push_back(pt);
+//==             }
+//==         }
+//==     }
+//== 
+//==     if (bz_path.size() < 2) error_local(__FILE__, __LINE__, "at least two BZ points are required");
+//==    
+//==     // compute length of segments
+//==     std::vector<double> segment_length;
+//==     double total_path_length = 0.0;
+//==     for (int ip = 0; ip < (int)bz_path.size() - 1; ip++)
+//==     {
+//==         double vf[3];
+//==         for (int x = 0; x < 3; x++) vf[x] = bz_path[ip + 1].second[x] - bz_path[ip].second[x];
+//==         double vc[3];
+//==         global_parameters.get_coordinates<cartesian, reciprocal>(vf, vc);
+//==         double length = Utils::vector_length(vc);
+//==         total_path_length += length;
+//==         segment_length.push_back(length);
+//==     }
+//== 
+//==     std::vector<double> xaxis;
+//== 
+//==     sirius::K_set kset_(global_parameters);
+//==     
+//==     double prev_seg_len = 0.0;
+//== 
+//==     // segments 
+//==     for (int ip = 0; ip < (int)bz_path.size() - 1; ip++)
+//==     {
+//==         std::vector<double> p0 = bz_path[ip].second;
+//==         std::vector<double> p1 = bz_path[ip + 1].second;
+//== 
+//==         int n = int((segment_length[ip] * num_steps) / total_path_length);
+//==         int n0 = (ip == (int)bz_path.size() - 2) ? n - 1 : n;
+//==         
+//==         double dvf[3];
+//==         for (int x = 0; x < 3; x++) dvf[x] = (p1[x] - p0[x]) / double(n0);
+//==         
+//==         for (int i = 0; i < n; i++)
+//==         {
+//==             double vf[3];
+//==             for (int x = 0; x < 3; x++) vf[x] = p0[x] + dvf[x] * i;
+//==             kset_.add_kpoint(vf, 0.0);
+//== 
+//==             xaxis.push_back(prev_seg_len + segment_length[ip] * i / double(n0));
+//==         }
+//==         prev_seg_len += segment_length[ip];
+//==     }
+//== 
+//==     std::vector<double> xaxis_ticks;
+//==     std::vector<std::string> xaxis_tick_labels;
+//==     prev_seg_len = 0.0;
+//==     for (int ip = 0; ip < (int)bz_path.size(); ip++)
+//==     {
+//==         xaxis_ticks.push_back(prev_seg_len);
+//==         xaxis_tick_labels.push_back(bz_path[ip].first);
+//==         if (ip < (int)bz_path.size() - 1) prev_seg_len += segment_length[ip];
+//==     }
+//== 
+//==     kset_.initialize();
+//== 
+//==     global_parameters.solve_free_atoms();
+//== 
+//==     potential->update_atomic_potential();
+//==     global_parameters.generate_radial_functions();
+//==     global_parameters.generate_radial_integrals();
+//== 
+//==     // generate plane-wave coefficients of the potential in the interstitial region
+//==     potential->generate_pw_coefs();
+//== 
+//==     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++)
+//==     {
+//==         int ik = kset_.spl_num_kpoints(ikloc);
+//==         kset_[ik]->find_eigen_states(potential->effective_potential(), potential->effective_magnetic_field());
+//==     } 
+//==     // synchronize eigen-values
+//==     kset_.sync_band_energies();
+//== 
+//==     if (global_parameters.mpi_grid().root())
+//==     {
+//==         JSON_write jw("bands.json");
+//==         jw.single("xaxis", xaxis);
+//==         //** jw.single("Ef", global_parameters.rti().energy_fermi);
+//==         
+//==         jw.single("xaxis_ticks", xaxis_ticks);
+//==         jw.single("xaxis_tick_labels", xaxis_tick_labels);
+//==         
+//==         jw.begin_array("plot");
+//==         std::vector<double> yvalues(kset_.num_kpoints());
+//==         for (int i = 0; i < global_parameters.num_bands(); i++)
+//==         {
+//==             jw.begin_set();
+//==             for (int ik = 0; ik < kset_.num_kpoints(); ik++) yvalues[ik] = kset_[ik]->band_energy(i);
+//==             jw.single("yvalues", yvalues);
+//==             jw.end_set();
+//==         }
+//==         jw.end_array();
+//== 
+//==         //FILE* fout = fopen("bands.dat", "w");
+//==         //for (int i = 0; i < global_parameters.num_bands(); i++)
+//==         //{
+//==         //    for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
+//==         //    {
+//==         //        fprintf(fout, "%f %f\n", xaxis[ik], kpoint_set_[ik]->band_energy(i));
+//==         //    }
+//==         //    fprintf(fout, "\n");
+//==         //}
+//==         //fclose(fout);
+//==     }
+//== }
 
 void FORTRAN(sirius_plot_potential)(void)
 {
@@ -1169,7 +1169,7 @@ void FORTRAN(sirius_get_mtgk_size)(int32_t* kset_id, int32_t* ik, int32_t* mtgk_
 
 void FORTRAN(sirius_get_spinor_wave_functions)(int32_t* kset_id, int32_t* ik, complex16* spinor_wave_functions__)
 {
-    assert(global_parameters.num_bands() == kset_list[*kset_id]->band()->spl_spinor_wf_col().local_size());
+    assert(global_parameters.num_bands() == global_parameters.spl_spinor_wf_col().local_size());
 
     sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
     

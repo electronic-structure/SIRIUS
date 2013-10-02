@@ -35,19 +35,35 @@ namespace sirius
 */
 struct apwlo_basis_descriptor
 {
+    /// global index of the descriptor
     int idxglob;
+
+    /// index of G+k vector
     int igk;
-    int ig;
-    int ia;
-    int l;
-    int lm;
-    int order;
-    int idxrf;
-    
-    // TODO: add G+k vector in lattice and Cartesian coordinates
+
+    /// G+k vector in lattice coordinates
     double gkvec[3];
+
+    /// G+k vector in Cartesian coordinates
     double gkvec_cart[3];
 
+    /// G vector index for the G+k vector
+    int ig;
+
+    /// index of atom if this is a local orbital descriptor
+    int ia;
+
+    /// index of l
+    int l;
+
+    /// combined lm index
+    int lm;
+
+    /// order of a lo radial function for a given orbital quantum number l
+    int order;
+
+    /// index of a lo radial function
+    int idxrf;
 };
 
 class K_point
@@ -155,31 +171,11 @@ class K_point
         
         void check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm);
 
-        void set_fv_h_o_apw_lo(Atom_type* type, Atom* atom, int ia, int apw_offset_col, mdarray<complex16, 2>& alm, 
-                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
-
-        void set_fv_h_o_it(Periodic_function<double>* effective_potential, 
-                           mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
-
-        void set_fv_h_o_lo_lo(mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
-
-        template <processing_unit_t pu>
-        void set_fv_h_o_pw_lo(Periodic_function<double>* effective_potential, int num_ranks,
-                              mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
-
-        void solve_fv_evp_1stage(mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
-
-        void solve_fv_evp_2stage(mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
-
-        inline void copy_lo_blocks(const int apwlo_basis_size_row, const int num_gkvec_row, 
-                                   const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
-                                   const complex16* z, complex16* vec);
+        /// Copy lo block from eigen-vector to wave-function
+        inline void copy_lo_blocks(const complex16* z, complex16* vec);
         
-        inline void copy_pw_block(const int num_gkvec, const int num_gkvec_row, 
-                                  const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
-                                  const complex16* z, complex16* vec);
-
-        void generate_spinor_wave_functions();
+        /// Copy plane wave block from eigen-vector to wave-function
+        inline void copy_pw_block(const complex16* z, complex16* vec);
 
         /// Find G+k vectors within the cutoff
         void generate_gkvec();
@@ -193,11 +189,12 @@ class K_point
         /// Block-cyclic distribution of relevant arrays 
         void distribute_block_cyclic();
         
+        /// Test orthonormalization of first-variational states
+        /** Important: distribute_fv_states_row() must be called prior to calling this function.*/
         void test_fv_states(int use_fft);
 
         void test_spinor_wave_functions(int use_fft);
 
-        void distribute_fv_states_row();
 
     public:
 
@@ -226,75 +223,26 @@ class K_point
             }
         }
 
+        /// Initialize the k-point related arrays and data
         void initialize();
 
+        /// Update the relevant arrays in case of atom positions have been changed.
         void update();
         
         /// Generate plane-wave matching coefficents for the radial solutions 
         /** The matching coefficients are conjugated!. This is done in favor of the convenient overlap 
-            matrix construnction.
-        */
+            matrix construnction. */
         template <bool conjugate>
         void generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm);
-        
-        /// Setup the Hamiltonian and overlap matrices in APW+lo basis
-        /** The Hamiltonian matrix has the following expression:
-            \f[
-                H_{\mu' \mu} = \langle \varphi_{\mu'} | \hat H | \varphi_{\mu} \rangle
-            \f]
-
-            \f[
-                H_{\mu' \mu}=\langle \varphi_{\mu' } | \hat H | \varphi_{\mu } \rangle  = 
-                \left( \begin{array}{cc} 
-                   H_{\bf G'G} & H_{{\bf G'}j} \\
-                   H_{j'{\bf G}} & H_{j'j}
-                \end{array} \right)
-            \f]
-            
-            The overlap matrix has the following expression:
-            \f[
-                O_{\mu' \mu} = \langle \varphi_{\mu'} | \varphi_{\mu} \rangle
-            \f]
-            APW-APW block:
-            \f[
-                O_{{\bf G'} {\bf G}}^{\bf k} = \sum_{\alpha} \sum_{L\nu} a_{L\nu}^{\alpha *}({\bf G'+k}) 
-                a_{L\nu}^{\alpha}({\bf G+k})
-            \f]
-            
-            APW-lo block:
-            \f[
-                O_{{\bf G'} j}^{\bf k} = \sum_{\nu'} a_{\ell_j m_j \nu'}^{\alpha_j *}({\bf G'+k}) 
-                \langle u_{\ell_j \nu'}^{\alpha_j} | \phi_{\ell_j}^{\zeta_j \alpha_j} \rangle
-            \f]
-
-            lo-APW block:
-            \f[
-                O_{j' {\bf G}}^{\bf k} = 
-                \sum_{\nu'} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} | u_{\ell_{j'} \nu'}^{\alpha_{j'}} \rangle
-                a_{\ell_{j'} m_{j'} \nu'}^{\alpha_{j'}}({\bf G+k}) 
-            \f]
-
-            lo-lo block:
-            \f[
-                O_{j' j}^{\bf k} = \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} | 
-                \phi_{\ell_{j}}^{\zeta_{j} \alpha_{j}} \rangle \delta_{\alpha_{j'} \alpha_j} 
-                \delta_{\ell_{j'} \ell_j} \delta_{m_{j'} m_j}
-            \f]
-
-        */
-        template <processing_unit_t pu, basis_t basis>
-        void set_fv_h_o(Periodic_function<double>* effective_potential, int num_ranks,
-                        mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
         
         /// Generate first-variational states from eigen-vectors
         void generate_fv_states();
 
-        /// Solve \f$ \hat H \psi = E \psi \f$ and find the eigen-states of the Hamiltonian
-        void find_eigen_states(Periodic_function<double>* effective_potential, 
-                               Periodic_function<double>* effective_magnetic_field[3]);
-
-        template <processing_unit_t pu, basis_t basis>
-        void ibs_force(mdarray<double, 2>& ffac, mdarray<double, 2>& force);
+        /// Distribute fv states over rows of the MPI grid 
+        void distribute_fv_states_row();
+        
+        /// Generate two-component spinor wave functions 
+        void generate_spinor_wave_functions();
 
         Periodic_function<complex16>* spinor_wave_function_component(int lmax, int ispn, int j);
 
@@ -595,7 +543,7 @@ class K_point
         {
             return sv_eigen_vectors_;
         }
-
+        
         void bypass_sv()
         {
             memcpy(&band_energies_[0], &fv_eigen_values_[0], parameters_.num_fv_states() * sizeof(double));
