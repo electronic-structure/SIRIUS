@@ -1,6 +1,6 @@
 /** \file band.h
     
-    \brief Setup and solve second-variational eigen value problem (aka "band problem").
+    \brief Setup and solve eigen value problem.
 */
 
 namespace sirius
@@ -10,43 +10,16 @@ class Band
 {
     private:
 
-        /// Global set of parameters.
+        /// global set of parameters
         Global& parameters_;
     
-        /// Block-cyclic distribution of the first-variational states along columns of the MPI grid.
-        /** Very important! The number of first-variational states is aligned in such a way that each row or 
-            column MPI rank gets equal row or column fraction of the fv states. This is done in order to have a 
-            simple acces to the fv states when, for example, spin blocks of the second-variational Hamiltonian are
-            constructed.
-        */
-        splindex<block_cyclic> spl_fv_states_col_;
-
-        /// Block-cyclic distribution of the first-variational states along rows of the MPI grid.
-        splindex<block_cyclic> spl_fv_states_row_;
-        
-        splindex<block_cyclic> spl_spinor_wf_col_;
-        
-        splindex<block> sub_spl_spinor_wf_;
-        
-        int rank_col_;
-
-        int num_ranks_col_;
-
-        int rank_row_;
-
-        int num_ranks_row_;
-
-        int num_ranks_;
-        
-        /// BLACS communication context
-        int blacs_context_;
-        
-        // assumes that hpsi is zero on input
+        /// Apply effective magentic field to the first-variational state.
+        /** Must be called first because hpsi is overwritten with B|fv_j>. */
         void apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size, int num_gkvec, int* fft_index, 
                                   Periodic_function<double>* effective_magnetic_field[3], mdarray<complex16, 3>& hpsi);
 
-        /// Apply SO correction to the scalar wave functions
-        /** Raising lowering operators:
+        /// Apply SO correction to the first-variational states.
+        /** Raising and lowering operators:
             \f[
                 L_{\pm} Y_{\ell m}= (L_x \pm i L_y) Y_{\ell m}  = \sqrt{\ell(\ell+1) - m(m \pm 1)} Y_{\ell m \pm 1}
             \f]
@@ -57,106 +30,50 @@ class Band
         template <spin_block_t sblock>
         void apply_uj_correction(mdarray<complex16, 2>& fv_states, mdarray<complex16, 3>& hpsi);
 
-        void init();
+        /// Apply the muffin-tin part of the first-variational Hamiltonian to the apw basis function
+        /** The following vector is computed:
+            \f[
+              b_{L_2 \nu_2}^{\alpha}({\bf G'}) = \sum_{L_1 \nu_1} \sum_{L_3} 
+                a_{L_1\nu_1}^{\alpha*}({\bf G'}) 
+                \langle u_{\ell_1\nu_1}^{\alpha} | h_{L3}^{\alpha} |  u_{\ell_2\nu_2}^{\alpha}  
+                \rangle  \langle Y_{L_1} | R_{L_3} | Y_{L_2} \rangle +  
+                \frac{1}{2} \sum_{\nu_1} a_{L_2\nu_1}^{\alpha *}({\bf G'})
+                u_{\ell_2\nu_1}^{\alpha}(R_{\alpha})
+                u_{\ell_2\nu_2}^{'\alpha}(R_{\alpha})R_{\alpha}^{2}
+            \f] 
+        */
+        void apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, mdarray<complex16, 2>& halm);
  
+        void set_fv_h_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<complex16, 2>& alm, 
+                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
+        
+        void set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_potential, 
+                           mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
+        
+        void set_fv_h_o_lo_lo(K_point* kp, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
+
+        void solve_fv_evp_1stage(K_point* kp, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o, 
+                                 std::vector<double>& fv_eigen_values, mdarray<complex16, 2>& fv_eigen_vectors);
+    
     public:
         
         /// Constructor
-        Band(Global& parameters__);
-
-        ~Band();
-
-        void solve_sv(Global& parameters, int mtgk_size, int num_gkvec, int* fft_index, double* evalfv, 
-                      mdarray<complex16, 2>& fv_states_row, mdarray<complex16, 2>& fv_states_col, 
-                      Periodic_function<double>* effective_magnetic_field[3], double* band_energies, 
-                      mdarray<complex16, 2>& sv_eigen_vectors);
-        
-        bool need_sv()
+        Band(Global& parameters__) : parameters_(parameters__)
         {
-            if (parameters_.num_spins() == 2 || parameters_.uj_correction() || parameters_.so_correction())
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-        
-        inline splindex<block_cyclic>& spl_fv_states_col()
-        {
-            return spl_fv_states_col_;
-        }
-        
-        inline int spl_fv_states_col(int icol_loc)
-        {
-            return spl_fv_states_col_[icol_loc];
         }
 
-        inline splindex<block_cyclic>& spl_fv_states_row()
+        ~Band()
         {
-            return spl_fv_states_row_;
-        }
-        
-        inline int spl_fv_states_row(int irow_loc)
-        {
-            return spl_fv_states_row_[irow_loc];
-        }
-        
-        inline splindex<block_cyclic>& spl_spinor_wf_col()
-        {
-            return spl_spinor_wf_col_;
-        }
-        
-        inline int spl_spinor_wf_col(int jloc)
-        {
-            return spl_spinor_wf_col_[jloc];
-        }
-        
-        inline int num_sub_bands()
-        {
-            return sub_spl_spinor_wf_.local_size();
         }
 
-        inline int idxbandglob(int sub_index)
-        {
-            return spl_spinor_wf_col_[sub_spl_spinor_wf_[sub_index]];
-        }
-        
-        inline int idxbandloc(int sub_index)
-        {
-            return sub_spl_spinor_wf_[sub_index];
-        }
+        template <processing_unit_t pu, basis_t basis>
+        void set_fv_h_o(K_point* kp, Periodic_function<double>* effective_potential,
+                        mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
 
-        inline int num_ranks_row()
-        {
-            return num_ranks_row_;
-        }
+        void solve_fv(K_point* kp, Periodic_function<double>* effective_potential);
+
+        void solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_field[3]);
         
-        inline int rank_row()
-        {
-            return rank_row_;
-        }
-        
-        inline int num_ranks_col()
-        {
-            return num_ranks_col_;
-        }
-        
-        inline int rank_col()
-        {
-            return rank_col_;
-        }
-        
-        inline int num_ranks()
-        {
-            return num_ranks_;
-        }
-        
-        inline int blacs_context()
-        {
-            return blacs_context_;
-        }
 };
 
 #include "band.hpp"

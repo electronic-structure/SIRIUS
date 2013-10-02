@@ -717,12 +717,10 @@ void FORTRAN(sirius_bands)(void)
     // generate plane-wave coefficients of the potential in the interstitial region
     potential->generate_pw_coefs();
 
-    sirius::Band* band = kset_.band();
-    
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = kset_.spl_num_kpoints(ikloc);
-        kset_[ik]->find_eigen_states(band, potential->effective_potential(), potential->effective_magnetic_field());
+        kset_[ik]->find_eigen_states(potential->effective_potential(), potential->effective_magnetic_field());
     } 
     // synchronize eigen-values
     kset_.sync_band_energies();
@@ -1144,25 +1142,25 @@ void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, co
 /// Get first-variational matrices of Hamiltonian and overlap
 /** Radial integrals and plane-wave coefficients of the interstitial potential must be calculated prior to
     Hamiltonian and overlap matrix construction. */
-void FORTRAN(sirius_get_fv_h_o)(int32_t* kset_id, int32_t* ik, int32_t* size, complex16* h__, complex16* o__)
-{
-    int rank = kset_list[*kset_id]->spl_num_kpoints().location(_splindex_rank_, *ik - 1);
-    
-    if (rank == global_parameters.mpi_grid().coordinate(0))
-    {
-        sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
-        
-        if (*size != kp->apwlo_basis_size())
-        {
-            error_local(__FILE__, __LINE__, "wrong matrix size");
-        }
-
-        mdarray<complex16, 2> h(h__, kp->apwlo_basis_size(), kp->apwlo_basis_size());
-        mdarray<complex16, 2> o(o__, kp->apwlo_basis_size(), kp->apwlo_basis_size());
-        kp->set_fv_h_o<cpu, apwlo>(potential->effective_potential(), kset_list[*kset_id]->band()->num_ranks(), h, o);
-    }
-}
-
+//** void FORTRAN(sirius_get_fv_h_o)(int32_t* kset_id, int32_t* ik, int32_t* size, complex16* h__, complex16* o__)
+//** {
+//**     int rank = kset_list[*kset_id]->spl_num_kpoints().location(_splindex_rank_, *ik - 1);
+//**     
+//**     if (rank == global_parameters.mpi_grid().coordinate(0))
+//**     {
+//**         sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
+//**         
+//**         if (*size != kp->apwlo_basis_size())
+//**         {
+//**             error_local(__FILE__, __LINE__, "wrong matrix size");
+//**         }
+//** 
+//**         mdarray<complex16, 2> h(h__, kp->apwlo_basis_size(), kp->apwlo_basis_size());
+//**         mdarray<complex16, 2> o(o__, kp->apwlo_basis_size(), kp->apwlo_basis_size());
+//**         kp->set_fv_h_o<cpu, apwlo>(potential->effective_potential(), kset_list[*kset_id]->band()->num_ranks(), h, o);
+//**     }
+//** }
+//** 
 /// Get the total size of wave-function (number of mt coefficients + number of G+k coefficients)
 void FORTRAN(sirius_get_mtgk_size)(int32_t* kset_id, int32_t* ik, int32_t* mtgk_size)
 {
@@ -1174,12 +1172,11 @@ void FORTRAN(sirius_get_spinor_wave_functions)(int32_t* kset_id, int32_t* ik, co
     assert(global_parameters.num_bands() == kset_list[*kset_id]->band()->spl_spinor_wf_col().local_size());
 
     sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
-    sirius::Band* band = kset_list[*kset_id]->band();
     
     mdarray<complex16, 3> spinor_wave_functions(spinor_wave_functions__, kp->mtgk_size(), global_parameters.num_spins(), 
-                                                band->spl_spinor_wf_col().local_size());
+                                                global_parameters.spl_spinor_wf_col().local_size());
 
-    for (int j = 0; j < band->spl_spinor_wf_col().local_size(); j++)
+    for (int j = 0; j < global_parameters.spl_spinor_wf_col().local_size(); j++)
     {
         memcpy(&spinor_wave_functions(0, 0, j), &kp->spinor_wave_function(0, 0, j), 
                kp->mtgk_size() * global_parameters.num_spins() * sizeof(complex16));
@@ -1438,7 +1435,7 @@ void FORTRAN(sirius_get_fv_eigen_vectors)(int32_t* kset_id, int32_t* ik, complex
                                           int32_t* num_fv_evec)
 {
     mdarray<complex16, 2> fv_evec(fv_evec__, *ld, *num_fv_evec);
-    (*kset_list[*kset_id])[*ik - 1]->get_fv_eigen_vectors(kset_list[*kset_id]->band(), fv_evec);
+    (*kset_list[*kset_id])[*ik - 1]->get_fv_eigen_vectors(fv_evec);
 }
 
 /// Get second-variational eigen-vectors
@@ -1446,7 +1443,7 @@ void FORTRAN(sirius_get_fv_eigen_vectors)(int32_t* kset_id, int32_t* ik, complex
 void FORTRAN(sirius_get_sv_eigen_vectors)(int32_t* kset_id, int32_t* ik, complex16* sv_evec__, int32_t* size)
 {
     mdarray<complex16, 2> sv_evec(sv_evec__, *size, *size);
-    (*kset_list[*kset_id])[*ik - 1]->get_sv_eigen_vectors(kset_list[*kset_id]->band(), sv_evec);
+    (*kset_list[*kset_id])[*ik - 1]->get_sv_eigen_vectors(sv_evec);
 }
 
 void FORTRAN(sirius_get_num_fv_states)(int32_t* num_fv_states)

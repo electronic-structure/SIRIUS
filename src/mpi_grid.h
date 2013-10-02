@@ -286,9 +286,7 @@ class MPIGrid
         }
 
         /// Check if MPI ranks are at the side of the grid
-
-        /** Side ranks are those for which coordinates along remaining directions are zero.
-        */
+        /** Side ranks are those for which coordinates along remaining directions are zero. */
         inline bool side(int directions)
         {
             if (!in_grid()) return false;

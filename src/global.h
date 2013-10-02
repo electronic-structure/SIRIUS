@@ -112,7 +112,29 @@ class Global : public Step_function
         processing_unit_t processing_unit_;
 
         GauntCoefficients gaunt_;
+        
+        /// Block-cyclic distribution of the first-variational states along columns of the MPI grid.
+        /** Very important! The number of first-variational states is aligned in such a way that each row or 
+            column MPI rank gets equal row or column fraction of the fv states. This is done in order to have a 
+            simple acces to the fv states when, for example, spin blocks of the second-variational Hamiltonian are
+            constructed. */
+        splindex<block_cyclic> spl_fv_states_col_;
 
+        /// Block-cyclic distribution of the first-variational states along rows of the MPI grid.
+        splindex<block_cyclic> spl_fv_states_row_;
+        
+        splindex<block_cyclic> spl_spinor_wf_col_;
+        
+        splindex<block> sub_spl_spinor_wf_;
+
+        splindex<block> sub_spl_fv_states_col_;
+
+        #if defined(_SCALAPACK_) || defined(_ELPA_)
+        /// BLACS communication context for an eigen-value solver and related operations
+        int blacs_context_; // TODO: if more contexts are necessary, they should be moved to mpi_grid.h 
+        #endif
+        
+        /// smearing function width
         double smearing_width_;
 
         /// read from the input file if it exists
@@ -221,6 +243,9 @@ class Global : public Step_function
                    #else
                    processing_unit_(cpu),
                    #endif
+                   #if defined(_SCALAPACK_) || defined(_ELPA_)
+                   blacs_context_(-1),
+                   #endif
                    smearing_width_(0.001)
         {
             gettimeofday(&start_time_, NULL);
@@ -229,6 +254,10 @@ class Global : public Step_function
         ~Global()
         {
             clear();
+            #if defined(_SCALAPACK_) || defined(_ELPA_)
+            if (eigen_value_solver() == scalapack || eigen_value_solver() == elpa) 
+                linalg<scalapack>::free_blacs_context(blacs_context_);
+            #endif
         }
 
         void set_lmax_apw(int lmax_apw__)
@@ -406,6 +435,67 @@ class Global : public Step_function
             return smearing_width_;
         }
 
+        bool need_sv()
+        {
+            if (num_spins() == 2 || uj_correction() || so_correction()) return true;
+            return false;
+        }
+        
+        inline splindex<block_cyclic>& spl_fv_states_col()
+        {
+            return spl_fv_states_col_;
+        }
+        
+        inline int spl_fv_states_col(int icol_loc)
+        {
+            return spl_fv_states_col_[icol_loc];
+        }
+
+        inline splindex<block_cyclic>& spl_fv_states_row()
+        {
+            return spl_fv_states_row_;
+        }
+        
+        inline int spl_fv_states_row(int irow_loc)
+        {
+            return spl_fv_states_row_[irow_loc];
+        }
+        
+        inline splindex<block_cyclic>& spl_spinor_wf_col()
+        {
+            return spl_spinor_wf_col_;
+        }
+        
+        inline int spl_spinor_wf_col(int jloc)
+        {
+            return spl_spinor_wf_col_[jloc];
+        }
+        
+        inline int num_sub_bands()
+        {
+            return sub_spl_spinor_wf_.local_size();
+        }
+
+        inline splindex<block>& sub_spl_fv_states_col()
+        {
+            return sub_spl_fv_states_col_;
+        }
+        
+        inline int sub_spl_fv_states_col(int idx)
+        {
+            return sub_spl_fv_states_col_[idx];
+        }
+
+        inline int idxbandglob(int sub_index)
+        {
+            return spl_spinor_wf_col_[sub_spl_spinor_wf_[sub_index]];
+        }
+        
+        inline int idxbandloc(int sub_index)
+        {
+            return sub_spl_spinor_wf_[sub_index];
+        }
+
         /// Initialize the global variables
         void initialize()
         {
@@ -437,24 +527,129 @@ class Global : public Step_function
             
             if (num_fv_states_ < 0) num_fv_states_ = int(num_valence_electrons() / 2.0) + 20;
 
+            int nrow = mpi_grid().dimension_size(_dim_row_);
+            int ncol = mpi_grid().dimension_size(_dim_col_);
+            
+            int irow = mpi_grid().coordinate(_dim_row_);
+            int icol = mpi_grid().coordinate(_dim_col_);
+
             if (eigen_value_solver() == scalapack || eigen_value_solver() == elpa)
             {
-                int nrow = mpi_grid_.dimension_size(_dim_row_);
-                int ncol = mpi_grid_.dimension_size(_dim_col_);
-
-                int n = num_fv_states_ / (ncol * cyclic_block_size_) + 
-                        std::min(1, num_fv_states_ % (ncol * cyclic_block_size_));
+                int n = num_fv_states_ / (ncol * cyclic_block_size()) + 
+                        std::min(1, num_fv_states_ % (ncol * cyclic_block_size()));
 
                 while ((n * ncol) % nrow) n++;
                 
-                num_fv_states_ = n * ncol * cyclic_block_size_;
+                num_fv_states_ = n * ncol * cyclic_block_size();
+
+                #if defined(_SCALAPACK_) || defined(_ELPA_)
+                int rc = (1 << _dim_row_) | (1 << _dim_col_);
+                MPI_Comm comm = mpi_grid().communicator(rc);
+                blacs_context_ = linalg<scalapack>::create_blacs_context(comm);
+
+                mdarray<int, 2> map_ranks(nrow, ncol);
+                for (int i1 = 0; i1 < ncol; i1++)
+                {
+                    for (int i0 = 0; i0 < nrow; i0++)
+                    {
+                        map_ranks(i0, i1) = mpi_grid().cart_rank(comm, Utils::intvec(i0, i1));
+                    }
+                }
+                linalg<scalapack>::gridmap(&blacs_context_, map_ranks.get_ptr(), map_ranks.ld(), nrow, ncol);
+
+                // check the grid
+                int nrow1, ncol1, irow1, icol1;
+                linalg<scalapack>::gridinfo(blacs_context_, &nrow1, &ncol1, &irow1, &icol1);
+
+                if (irow != irow1 || icol != icol1 || nrow != nrow1 || ncol != ncol1) 
+                {
+                    std::stringstream s;
+                    s << "wrong grid" << std::endl
+                      << "            row | col | nrow | ncol " << std::endl
+                      << " mpi_grid " << irow << " " << icol << " " << nrow << " " << ncol << std::endl  
+                      << " blacs    " << irow1 << " " << icol1 << " " << nrow1 << " " << ncol1;
+                    error_local(__FILE__, __LINE__, s);
+                }
+                #endif
             }
 
             num_bands_ = num_fv_states_ * num_spins_;
+    
+            // distribue first-variational states along columns
+            spl_fv_states_col_.split(num_fv_states(), ncol, icol, cyclic_block_size());
+   
+            // distribue first-variational states along rows
+            spl_fv_states_row_.split(num_fv_states(), nrow, irow, cyclic_block_size());
 
-            initialized_ = true;
+            // distribue spinor wave-functions along columns
+            spl_spinor_wf_col_.split(num_bands(), ncol, icol, cyclic_block_size());
+            
+            // additionally split along rows 
+            sub_spl_spinor_wf_.split(spl_spinor_wf_col_.local_size(), nrow, irow);
+            
+            sub_spl_fv_states_col_.split(spl_fv_states_col().local_size(), nrow, irow);
 
+            // check if the distribution of fv states is consistent with the distribtion of spinor wave functions
+            for (int ispn = 0; ispn < num_spins(); ispn++)
+            {
+                for (int i = 0; i < spl_fv_states_col_.local_size(); i++)
+                {
+                    if (spl_spinor_wf_col_[i + ispn * spl_fv_states_col_.local_size()] != 
+                        spl_fv_states_col_[i] + ispn * num_fv_states())
+                    {
+                        error_local(__FILE__, __LINE__, "Wrong distribution of wave-functions");
+                    }
+                }
+            }
+
+            if (verbosity_level >= 3 && Platform::mpi_rank() == 0 && nrow * ncol > 1)
+            {
+                printf("\n");
+                printf("table of column distribution of first-variational states\n");
+                printf("(columns of the table correspond to column MPI ranks)\n");
+                for (int i0 = 0; i0 < spl_fv_states_col_.local_size(0); i0++)
+                {
+                    for (int i1 = 0; i1 < ncol; i1++) printf("%6i", spl_fv_states_col_.global_index(i0, i1));
+                    printf("\n");
+                }
+                
+                printf("\n");
+                printf("table of row distribution of first-variational states\n");
+                printf("(columns of the table correspond to row MPI ranks)\n");
+                for (int i0 = 0; i0 < spl_fv_states_row_.local_size(0); i0++)
+                {
+                    for (int i1 = 0; i1 < nrow; i1++) printf("%6i", spl_fv_states_row_.global_index(i0, i1));
+                    printf("\n");
+                }
+
+                printf("\n");
+                printf("First-variational states index -> (local index, rank) for column distribution\n");
+                for (int i = 0; i < num_fv_states(); i++)
+                {
+                    printf("%6i -> (%6i %6i)\n", i, spl_fv_states_col_.location(_splindex_offs_, i), 
+                                                    spl_fv_states_col_.location(_splindex_rank_, i));
+                }
+                
+                printf("\n");
+                printf("First-variational states index -> (local index, rank) for row distribution\n");
+                for (int i = 0; i < num_fv_states(); i++)
+                {
+                    printf("%6i -> (%6i %6i)\n", i, spl_fv_states_row_.location(_splindex_offs_, i), 
+                                                    spl_fv_states_row_.location(_splindex_rank_, i));
+                }
+                
+                printf("\n");
+                printf("table of column distribution of spinor wave functions\n");
+                printf("(columns of the table correspond to MPI ranks)\n");
+                for (int i0 = 0; i0 < spl_spinor_wf_col_.local_size(0); i0++)
+                {
+                    for (int i1 = 0; i1 < ncol; i1++) printf("%6i", spl_spinor_wf_col_.global_index(i0, i1));
+                    printf("\n");
+                }
+            }
+            
             if (Platform::mpi_rank() == 0 && verbosity_level >= 1) print_info();
+            initialized_ = true;
         }
 
         /// Clear global variables
@@ -787,6 +982,11 @@ class Global : public Step_function
             Unit_cell::update();
             Reciprocal_lattice::update();
             Step_function::init();
+        }
+        
+        inline int blacs_context()
+        {
+            return blacs_context_;
         }
 };
 

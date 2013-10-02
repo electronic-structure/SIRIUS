@@ -289,10 +289,10 @@ void Density::reduce_zdens(int ia, int ialoc, mdarray<complex16, 4>& zdens, mdar
 void Density::get_occupied_bands_list(Band* band, K_point* kp, std::vector< std::pair<int, double> >& bands)
 {
     bands.clear();
-    for (int jsub = 0; jsub < band->num_sub_bands(); jsub++)
+    for (int jsub = 0; jsub < parameters_.num_sub_bands(); jsub++)
     {
-        int j = band->idxbandglob(jsub);
-        int jloc = band->idxbandloc(jsub);
+        int j = parameters_.idxbandglob(jsub);
+        int jloc = parameters_.idxbandloc(jsub);
         double wo = kp->band_occupancy(j) * kp->weight();
         if (wo > 1e-14) bands.push_back(std::pair<int, double>(jloc, wo));
     }
@@ -741,7 +741,6 @@ void Density::generate_valence_density_mt_sht(K_set& ks)
     
     int lmax = (basis_type == apwlo) ? parameters_.lmax_apw() : parameters_.lmax_pw();
     int lmmax = Utils::lmmax(lmax);
-    Band* band = ks.band();
     
     SHT sht(parameters_.lmax_rho());
 
@@ -761,9 +760,9 @@ void Density::generate_valence_density_mt_sht(K_set& ks)
     for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks.spl_num_kpoints(ikloc);
-        for (int jloc = 0; jloc < band->spl_spinor_wf_col().local_size(); jloc++)
+        for (int jloc = 0; jloc < parameters_.spl_spinor_wf_col().local_size(); jloc++)
         {
-            int j = band->spl_spinor_wf_col(jloc);
+            int j = parameters_.spl_spinor_wf_col(jloc);
 
             double wo = ks[ik]->band_occupancy(j) * ks[ik]->weight();
 
@@ -771,7 +770,7 @@ void Density::generate_valence_density_mt_sht(K_set& ks)
             {
                 int ispn = 0;
 
-                ks[ik]->spinor_wave_function_component_mt(band, lmax, ispn, jloc, psilm);
+                ks[ik]->spinor_wave_function_component_mt(lmax, ispn, jloc, psilm);
                 for (int ia = 0; ia < parameters_.num_atoms(); ia++)
                 {
                     psilm(ia)->sh_transform(&sht, &psitp);

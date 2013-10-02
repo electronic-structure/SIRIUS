@@ -7,7 +7,7 @@ void K_set::initialize()
                            parameters_.mpi_grid().coordinate(0));
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
-        kpoints_[spl_num_kpoints_[ikloc]]->initialize(band_);
+        kpoints_[spl_num_kpoints_[ikloc]]->initialize();
 
     if (verbosity_level >= 2) print_info();
 }
@@ -15,7 +15,7 @@ void K_set::initialize()
 void K_set::update()
 {
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
-        kpoints_[spl_num_kpoints_[ikloc]]->update(band_);
+        kpoints_[spl_num_kpoints_[ikloc]]->update();
 }
 
 void K_set::sync_band_energies()
@@ -54,7 +54,9 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
     for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = spl_num_kpoints(ikloc);
-        kpoints_[ik]->find_eigen_states(band_, potential->effective_potential(), potential->effective_magnetic_field());
+        band_->solve_fv(kpoints_[ik], potential->effective_potential());
+        kpoints_[ik]->generate_fv_states();
+        band_->solve_sv(kpoints_[ik], potential->effective_magnetic_field());
     }
 
     // synchronize eigen-values
@@ -228,7 +230,7 @@ void K_set::save_wave_functions()
         {
             int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
             
-            if (parameters_.mpi_grid().coordinate(_dim_k_) == rank) kpoints_[ik]->save_wave_functions(ik, band_);
+            if (parameters_.mpi_grid().coordinate(_dim_k_) == rank) kpoints_[ik]->save_wave_functions(ik);
             
             parameters_.mpi_grid().barrier(1 << _dim_k_ | 1 << _dim_col_);
         }
@@ -275,7 +277,7 @@ void K_set::load_wave_functions()
     {
         int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
         
-        if (parameters_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->load_wave_functions(ikidx[ik], band_);
+        if (parameters_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->load_wave_functions(ikidx[ik]);
     }
 }
 
@@ -300,7 +302,7 @@ void K_set::force(mdarray<double, 2>& forcek)
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
     {
-         kpoints_[spl_num_kpoints_[ikloc]]->ibs_force<cpu, apwlo>(band_, ffac, forcek);
+         kpoints_[spl_num_kpoints_[ikloc]]->ibs_force<cpu, apwlo>(ffac, forcek);
     }
     Platform::allreduce(&forcek(0, 0), (int)forcek.size(), parameters_.mpi_grid().communicator(1 << _dim_k_));
 }
