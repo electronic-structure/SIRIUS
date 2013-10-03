@@ -520,7 +520,11 @@ class Global : public Step_function
             gaunt_.set_lmax(std::max(lmax_apw(), lmax_pw()), std::max(lmax_apw(), lmax_pw()), lmax_pot());
 
             // check MPI grid dimensions and set a default grid if needed
-            if (!mpi_grid_dims_.size()) mpi_grid_dims_ = Utils::intvec(Platform::num_mpi_ranks());
+            if (!mpi_grid_dims_.size()) 
+            {
+                mpi_grid_dims_ = std::vector<int>(1);
+                mpi_grid_dims_[0] = Platform::num_mpi_ranks();
+            }
 
             // setup MPI grid
             mpi_grid_.initialize(mpi_grid_dims_);
@@ -552,7 +556,10 @@ class Global : public Step_function
                 {
                     for (int i0 = 0; i0 < nrow; i0++)
                     {
-                        map_ranks(i0, i1) = mpi_grid().cart_rank(comm, Utils::intvec(i0, i1));
+                        std::vector<int> xy(2);
+                        xy[0] = i0;
+                        xy[1] = i1;
+                        map_ranks(i0, i1) = mpi_grid().cart_rank(comm, xy);
                     }
                 }
                 linalg<scalapack>::gridmap(&blacs_context_, map_ranks.get_ptr(), map_ranks.ld(), nrow, ncol);

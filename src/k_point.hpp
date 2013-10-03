@@ -484,7 +484,7 @@ void K_point::init_gkvec()
 
         for (int ia = 0; ia < parameters_.num_atoms(); ia++)
         {
-            double phase = twopi * Utils::scalar_product(gkvec_cart(igk), parameters_.atom(ia)->position());
+            double phase = twopi * Utils::scalar_product(gkvec(igk), parameters_.atom(ia)->position());
 
             gkvec_phase_factors_(igkloc, ia) = exp(complex16(0.0, phase));
         }
