@@ -304,7 +304,7 @@ void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
     double tdiff = 0;
     for (int igloc = 0; igloc < num_gkvec_loc; igloc++)
     {
-        vector3d<double> gkc = parameters_.get_coordinates<cartesian, reciprocal>(vector3d<double>(gkvec(igkglob(igloc))));
+        vector3d<double> gkc = gkvec_cart(igkglob(igloc));
         for (int itp = 0; itp < sht->num_points(); itp++)
         {
             complex16 aw_value = z2(itp, igloc);
@@ -469,8 +469,7 @@ void K_point::init_gkvec()
         int igk = igkglob(igkloc);
         double vs[3];
 
-        vector3d<double> v = parameters_.get_coordinates<cartesian, reciprocal>(vector3d<double>(gkvec(igk)));
-        SHT::spherical_coordinates(v, vs); // vs = {r, theta, phi}
+        SHT::spherical_coordinates(gkvec_cart(igk), vs); // vs = {r, theta, phi}
 
         SHT::spherical_harmonics(lmax, vs[1], vs[2], &gkvec_ylm_(0, igkloc));
     }
@@ -485,7 +484,7 @@ void K_point::init_gkvec()
 
         for (int ia = 0; ia < parameters_.num_atoms(); ia++)
         {
-            double phase = twopi * Utils::scalar_product(vector3d<double>(gkvec(igk)), parameters_.atom(ia)->position());
+            double phase = twopi * Utils::scalar_product(gkvec_cart(igk), parameters_.atom(ia)->position());
 
             gkvec_phase_factors_(igkloc, ia) = exp(complex16(0.0, phase));
         }
@@ -495,8 +494,7 @@ void K_point::init_gkvec()
     for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
     {
         int igk = igkglob(igkloc);
-        vector3d<double> v = parameters_.get_coordinates<cartesian, reciprocal>(vector3d<double>(gkvec(igk)));
-        gkvec_len_[igkloc] = v.length();
+        gkvec_len_[igkloc] = gkvec_cart(igk).length();
     }
    
     if (basis_type == apwlo)
@@ -552,8 +550,8 @@ void K_point::build_apwlo_basis_descriptors()
         apwlobd.idxrf = -1;
         apwlobd.idxglob = (int)apwlo_basis_descriptors_.size();
 
-        for (int x = 0; x < 3; x++) apwlobd.gkvec[x] = gkvec_(x, igk);
-        apwlobd.gkvec_cart = parameters_.get_coordinates<cartesian, reciprocal>(apwlobd.gkvec);
+        apwlobd.gkvec = gkvec(igk);
+        apwlobd.gkvec_cart = gkvec_cart(igk);
 
         apwlo_basis_descriptors_.push_back(apwlobd);
     }
@@ -1057,7 +1055,7 @@ void K_point::save_wave_functions(int id)
         HDF5_tree fout(storage_file_name, false);
 
         fout["K_points"].create_node(id);
-        fout["K_points"][id].write("coordinates", vk_, 3);
+        fout["K_points"][id].write("coordinates", &vk_[0], 3);
         fout["K_points"][id].write("mtgk_size", mtgk_size());
         fout["K_points"][id].create_node("spinor_wave_functions");
         fout["K_points"][id].write("band_energies", &band_energies_[0], parameters_.num_bands());

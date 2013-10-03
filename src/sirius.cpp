@@ -1067,11 +1067,13 @@ void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* nu
         for (int igk = 0; igk < kp->num_gkvec(); igk++)
         {
             gvec_index[igk] = kp->gvec_index(igk) + 1; //Fortran counst form 1
-            for (int x = 0; x < 3; x++) gkvec(x, igk) = kp->gkvec(igk)[x];
-            vector3d<double> gvc = global_parameters.get_coordinates<cartesian, reciprocal>(vector3d<double>(&gkvec(0, igk)));
-            for (int x = 0; x < 3; x++) gkvec_cart(x, igk) = gvc[x];
+            for (int x = 0; x < 3; x++) 
+            {
+                gkvec(x, igk) = kp->gkvec(igk)[x];
+                gkvec_cart(x, igk) = kp->gkvec_cart(igk)[x];
+            }
             double rtp[3];
-            sirius::SHT::spherical_coordinates(gvc, rtp);
+            sirius::SHT::spherical_coordinates(kp->gkvec_cart(igk), rtp);
             gkvec_len[igk] = rtp[0];
             gkvec_tp(0, igk) = rtp[1];
             gkvec_tp(1, igk) = rtp[2];
@@ -1212,8 +1214,7 @@ void FORTRAN(sirius_get_gkvec_cart)(int32_t* kset_id, int32_t* ik, double* gkvec
 
     for (int igk = 0; igk < kp->num_gkvec(); igk++)
     {
-        vector3d<double> gkv = global_parameters.get_coordinates<cartesian, reciprocal>(vector3d<double>(kp->gkvec(igk)));
-        for (int x = 0; x < 3; x++) gkvec_cart(x, igk) = gkv[x];
+        for (int x = 0; x < 3; x++) gkvec_cart(x, igk) = kp->gkvec_cart(igk)[x];
     }
 }
 

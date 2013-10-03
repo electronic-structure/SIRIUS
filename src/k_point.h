@@ -77,7 +77,7 @@ class K_point
         double weight_;
 
         /// fractional k-point coordinates
-        double vk_[3];
+        vector3d<double> vk_;
         
         /// G+k vectors
         mdarray<double, 2> gkvec_;
@@ -272,12 +272,17 @@ class K_point
             return gvec_index_[igk];
         }
         
-        /// Pointer to G+k vector
-        inline double* gkvec(int igk)
+        /// Return G+k vector in fractional coordinates
+        inline vector3d<double> gkvec(int igk)
         {
             assert(igk >= 0 && igk < gkvec_.size(1));
 
-            return &gkvec_(0, igk);
+            return vector3d<double>(gkvec_(0, igk), gkvec_(1, igk), gkvec_(2, igk));
+        }
+
+        inline vector3d<double> gkvec_cart(int igk)
+        {
+            return parameters_.get_coordinates<cartesian, reciprocal>(gkvec(igk));
         }
 
         inline complex16 gkvec_phase_factor(int igk, int ia)
@@ -381,7 +386,7 @@ class K_point
             return &fft_index_[0];
         }
 
-        inline double* vk()
+        inline vector3d<double> vk()
         {
             return vk_;
         }
