@@ -42,10 +42,10 @@ struct apwlo_basis_descriptor
     int igk;
 
     /// G+k vector in lattice coordinates
-    double gkvec[3];
+    vector3d<double> gkvec;
 
     /// G+k vector in Cartesian coordinates
-    double gkvec_cart[3];
+    vector3d<double> gkvec_cart;
 
     /// G vector index for the G+k vector
     int ig;

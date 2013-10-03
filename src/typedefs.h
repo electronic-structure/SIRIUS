@@ -167,5 +167,48 @@ template<> class primitive_type_wrapper<char>
         }*/
 };
 
+template <typename T> class vector3d
+{
+    private:
+
+        T vec_[3];
+
+    public:
+
+        vector3d()
+        {
+            vec_[0] = vec_[1] = vec_[2] = 0;
+        }
+
+        vector3d(T v0)
+        {
+            vec_[0] = vec_[1] = vec_[2] = v0;
+        }
+
+        vector3d(T x, T y, T z)
+        {
+            vec_[0] = x;
+            vec_[1] = y;
+            vec_[2] = z;
+        }
+
+        vector3d(T* ptr)
+        {
+            for (int i = 0; i < 3; i++) vec_[i] = ptr[i];
+        }
+
+        inline T& operator[](const int i)
+        {
+            assert(i >= 0 && i <= 2);
+            return vec_[i];
+        }
+
+        inline double length()
+        {
+            return sqrt(vec_[0] * vec_[0] + vec_[1] * vec_[1] + vec_[2] * vec_[2]);
+        }
+};
+
+
 
 #endif // __TYPEDEFS_H__

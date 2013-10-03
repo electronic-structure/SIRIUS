@@ -29,13 +29,8 @@ class Utils
             return false;
         }
 
-        static inline double vector_length(double v[3])
-        {
-            return sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-        }
-
         template <typename U, typename V>
-        static inline double scalar_product(U a[3], V b[3])
+        static inline double scalar_product(vector3d<U> a, vector3d<V> b)
         {
             return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
         }

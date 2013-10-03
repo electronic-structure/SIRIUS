@@ -2,10 +2,10 @@ void Reciprocal_lattice::init(int lmax)
 {
     Timer t("sirius::Reciprocal_lattice::init");
     
-    int max_frac_coord[3];
-    find_translation_limits<reciprocal>(pw_cutoff(), max_frac_coord);
+    //int max_frac_coord[3];
+    vector3d<int> max_frac_coord = find_translation_limits<reciprocal>(pw_cutoff());
     
-    fft_.init(max_frac_coord);
+    fft_.init(&max_frac_coord[0]);
     
     mdarray<int, 2> gvec_tmp(3, fft_.size());
     std::vector< std::pair<double, int> > gvec_tmp_length;
@@ -20,12 +20,11 @@ void Reciprocal_lattice::init(int lmax)
                 gvec_tmp(0, ig) = i0;
                 gvec_tmp(1, ig) = i1;
                 gvec_tmp(2, ig) = i2;
+                
+                vector3d<int> fracc(i0, i1, i2);
+                vector3d<double> cartc = get_coordinates<cartesian, reciprocal>(fracc);
 
-                int fracc[] = {i0, i1, i2};
-                double cartc[3];
-                get_coordinates<cartesian, reciprocal>(fracc, cartc);
-
-                gvec_tmp_length.push_back(std::pair<double, int>(Utils::vector_length(cartc), ig++));
+                gvec_tmp_length.push_back(std::pair<double, int>(cartc.length(), ig++));
             }
         }
     }
@@ -97,10 +96,8 @@ void Reciprocal_lattice::init(int lmax)
     for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
     {
         int ig = spl_num_gvec_[igloc];
-        double xyz[3];
         double rtp[3];
-        gvec_cart(ig, xyz);
-        SHT::spherical_coordinates(xyz, rtp);
+        SHT::spherical_coordinates(gvec_cart(ig), rtp);
         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm_(0, igloc));
     }
     t2.stop();
@@ -169,7 +166,7 @@ inline complex16 Reciprocal_lattice::gvec_phase_factor(int ig, int ia)
     {
         case global:
         {
-            return exp(complex16(0.0, twopi * Utils::scalar_product(gvec(ig), atom(ia)->position())));
+            return exp(complex16(0.0, twopi * Utils::scalar_product(vector3d<int>(gvec(ig)), atom(ia)->position())));
             break;
         }
         case local:
@@ -194,10 +191,8 @@ inline void Reciprocal_lattice::gvec_ylm_array(int ig, complex16* ylm, int lmax)
         }
         case global:
         {
-            double vgc[3];
-            gvec_cart(ig, vgc);
             double rtp[3];
-            SHT::spherical_coordinates(vgc, rtp);
+            SHT::spherical_coordinates(gvec_cart(ig), rtp);
             SHT::spherical_harmonics(lmax, rtp[1], rtp[2], ylm);
             return;
         }

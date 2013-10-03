@@ -120,8 +120,8 @@ void Density::initial_density(int type = 0)
         for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
         {
             int ia = parameters_.spl_num_atoms(ialoc);
-            double* v = parameters_.atom(ia)->vector_field();
-            double len = Utils::vector_length(v);
+            vector3d<double> v = parameters_.atom(ia)->vector_field();
+            double len = v.length();
 
             int nmtp = parameters_.atom(ia)->type()->num_mt_points();
             Spline<double> rho(nmtp, parameters_.atom(ia)->type()->radial_grid());

@@ -371,7 +371,10 @@ void FORTRAN(sirius_get_gvec_cart)(real8* gvec_cart__)
 {
     mdarray<double, 2> gvec_cart(gvec_cart__, 3,  global_parameters.fft().size());
     for (int ig = 0; ig <  global_parameters.fft().size(); ig++)
-        global_parameters.get_coordinates<cartesian, reciprocal>(global_parameters.gvec(ig), &gvec_cart(0, ig));
+    {
+        vector3d<double> gvc = global_parameters.gvec_cart(ig);
+        for (int x = 0; x < 3; x++) gvec_cart(x, ig) = gvc[x];
+    }
 }
 
 /// Get lengh of G-vectors
@@ -1065,9 +1068,10 @@ void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* nu
         {
             gvec_index[igk] = kp->gvec_index(igk) + 1; //Fortran counst form 1
             for (int x = 0; x < 3; x++) gkvec(x, igk) = kp->gkvec(igk)[x];
-            global_parameters.get_coordinates<cartesian, reciprocal>(&gkvec(0, igk), &gkvec_cart(0, igk));
+            vector3d<double> gvc = global_parameters.get_coordinates<cartesian, reciprocal>(vector3d<double>(&gkvec(0, igk)));
+            for (int x = 0; x < 3; x++) gkvec_cart(x, igk) = gvc[x];
             double rtp[3];
-            sirius::SHT::spherical_coordinates(&gkvec_cart(0, igk), rtp);
+            sirius::SHT::spherical_coordinates(gvc, rtp);
             gkvec_len[igk] = rtp[0];
             gkvec_tp(0, igk) = rtp[1];
             gkvec_tp(1, igk) = rtp[2];
@@ -1206,8 +1210,11 @@ void FORTRAN(sirius_get_gkvec_cart)(int32_t* kset_id, int32_t* ik, double* gkvec
     sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
     mdarray<double, 2> gkvec_cart(gkvec_cart__, 3, kp->num_gkvec());
 
-    for (int ig = 0; ig < kp->num_gkvec(); ig++)
-        global_parameters.get_coordinates<cartesian, reciprocal>(kp->gkvec(ig), &gkvec_cart(0, ig));
+    for (int igk = 0; igk < kp->num_gkvec(); igk++)
+    {
+        vector3d<double> gkv = global_parameters.get_coordinates<cartesian, reciprocal>(vector3d<double>(kp->gkvec(igk)));
+        for (int x = 0; x < 3; x++) gkvec_cart(x, igk) = gkv[x];
+    }
 }
 
 void FORTRAN(sirius_get_evalsum)(real8* evalsum)

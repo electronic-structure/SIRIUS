@@ -18,10 +18,10 @@ class Atom
         Atom_symmetry_class* symmetry_class_;
         
         /// position in fractional coordinates
-        double position_[3];
+        vector3d<double> position_;
        
         /// vector field associated with the current site
-        double vector_field_[3];
+        vector3d<double> vector_field_;
 
         /// MT potential
         mdarray<double, 2> veff_;
@@ -100,19 +100,14 @@ class Atom
             return type_->id();
         }
 
-        inline void get_position(double position__[3])
-        {
-            for (int i = 0; i < 3; i++) position__[i] = position_[i];
-        }
-
-        inline void set_position(double position__[3])
-        {
-            for (int i = 0; i < 3; i++) position_[i] = position__[i];
-        }
-        
-        inline double* position()
+        inline vector3d<double> position()
         {
             return position_;
+        }
+
+        inline void set_position(vector3d<double> position__)
+        {
+            position_ = position__;
         }
         
         inline double position(int i)
@@ -120,7 +115,7 @@ class Atom
             return position_[i];
         }
         
-        inline double* vector_field()
+        inline vector3d<double> vector_field()
         {
             return vector_field_;
         }

@@ -3,8 +3,8 @@ void K_set::initialize()
     // ============================================================
     // distribute k-points along the 1-st dimension of the MPI grid
     // ============================================================
-    spl_num_kpoints_.split(num_kpoints(), parameters_.mpi_grid().dimension_size(0), 
-                           parameters_.mpi_grid().coordinate(0));
+    spl_num_kpoints_.split(num_kpoints(), parameters_.mpi_grid().dimension_size(_dim_k_), 
+                           parameters_.mpi_grid().coordinate(_dim_k_));
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
         kpoints_[spl_num_kpoints_[ikloc]]->initialize();
@@ -265,9 +265,9 @@ void K_set::load_wave_functions()
         fin["kpoints"][jk].read("coordinates", vk_in, 3);
         for (int ik = 0; ik < num_kpoints(); ik++)
         {
-            double dvk[3]; 
+            vector3d<double> dvk; 
             for (int x = 0; x < 3; x++) dvk[x] = vk_in[x] - kpoints_[ik]->vk(x);
-            if (Utils::vector_length(dvk) < 1e-12)
+            if (dvk.length() < 1e-12)
             {
                 ikidx[ik] = jk;
                 break;

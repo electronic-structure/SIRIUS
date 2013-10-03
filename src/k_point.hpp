@@ -299,18 +299,16 @@ void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
     blas<cpu>::gemm(0, 2, sht->num_points(), num_gkvec_loc, type->mt_aw_basis_size(), z1.get_ptr(), z1.ld(),
                     alm.get_ptr(), alm.ld(), z2.get_ptr(), z2.ld());
 
-    double vc[3];
-    parameters_.get_coordinates<cartesian, direct>(parameters_.atom(ia)->position(), vc);
+    vector3d<double> vc = parameters_.get_coordinates<cartesian, direct>(parameters_.atom(ia)->position());
     
     double tdiff = 0;
     for (int igloc = 0; igloc < num_gkvec_loc; igloc++)
     {
-        double gkc[3];
-        parameters_.get_coordinates<cartesian, reciprocal>(gkvec(igkglob(igloc)), gkc);
+        vector3d<double> gkc = parameters_.get_coordinates<cartesian, reciprocal>(vector3d<double>(gkvec(igkglob(igloc))));
         for (int itp = 0; itp < sht->num_points(); itp++)
         {
             complex16 aw_value = z2(itp, igloc);
-            double r[3];
+            vector3d<double> r;
             for (int x = 0; x < 3; x++) r[x] = vc[x] + sht->coord(x, itp) * type->mt_radius();
             complex16 pw_value = exp(complex16(0, Utils::scalar_product(r, gkc))) / sqrt(parameters_.omega());
             tdiff += abs(pw_value - aw_value);
@@ -432,12 +430,11 @@ void K_point::generate_gkvec()
     // find G-vectors for which |G+k| < cutoff
     for (int ig = 0; ig < parameters_.num_gvec(); ig++)
     {
-        double vgk[3];
+        vector3d<double> vgk;
         for (int x = 0; x < 3; x++) vgk[x] = parameters_.gvec(ig)[x] + vk_[x];
 
-        double v[3];
-        parameters_.get_coordinates<cartesian, reciprocal>(vgk, v);
-        double gklen = Utils::vector_length(v);
+        vector3d<double> v = parameters_.get_coordinates<cartesian, reciprocal>(vgk);
+        double gklen = v.length();
 
         if (gklen <= gk_cutoff) gkmap.push_back(std::pair<double, int>(gklen, ig));
     }
@@ -470,10 +467,9 @@ void K_point::init_gkvec()
     for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
     {
         int igk = igkglob(igkloc);
-        double v[3];
         double vs[3];
 
-        parameters_.get_coordinates<cartesian, reciprocal>(gkvec(igk), v);
+        vector3d<double> v = parameters_.get_coordinates<cartesian, reciprocal>(vector3d<double>(gkvec(igk)));
         SHT::spherical_coordinates(v, vs); // vs = {r, theta, phi}
 
         SHT::spherical_harmonics(lmax, vs[1], vs[2], &gkvec_ylm_(0, igkloc));
@@ -489,7 +485,7 @@ void K_point::init_gkvec()
 
         for (int ia = 0; ia < parameters_.num_atoms(); ia++)
         {
-            double phase = twopi * Utils::scalar_product(gkvec(igk), parameters_.atom(ia)->position());
+            double phase = twopi * Utils::scalar_product(vector3d<double>(gkvec(igk)), parameters_.atom(ia)->position());
 
             gkvec_phase_factors_(igkloc, ia) = exp(complex16(0.0, phase));
         }
@@ -499,9 +495,8 @@ void K_point::init_gkvec()
     for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
     {
         int igk = igkglob(igkloc);
-        double v[3];
-        parameters_.get_coordinates<cartesian, reciprocal>(gkvec(igk), v);
-        gkvec_len_[igkloc] = Utils::vector_length(v);
+        vector3d<double> v = parameters_.get_coordinates<cartesian, reciprocal>(vector3d<double>(gkvec(igk)));
+        gkvec_len_[igkloc] = v.length();
     }
    
     if (basis_type == apwlo)
@@ -558,7 +553,7 @@ void K_point::build_apwlo_basis_descriptors()
         apwlobd.idxglob = (int)apwlo_basis_descriptors_.size();
 
         for (int x = 0; x < 3; x++) apwlobd.gkvec[x] = gkvec_(x, igk);
-        parameters_.get_coordinates<cartesian, reciprocal>(apwlobd.gkvec, apwlobd.gkvec_cart);
+        apwlobd.gkvec_cart = parameters_.get_coordinates<cartesian, reciprocal>(apwlobd.gkvec);
 
         apwlo_basis_descriptors_.push_back(apwlobd);
     }
@@ -647,35 +642,6 @@ void K_point::distribute_block_cyclic()
         if (apwlo_basis_descriptors_col_[i].igk != -1) num_gkvec_col_++;
     }
 }
-
-//** void K_point::find_eigen_states(Periodic_function<double>* effective_potential, 
-//**                                 Periodic_function<double>* effective_magnetic_field[3])
-//** {
-//**     assert(band != NULL);
-//**     
-//**     Timer t("sirius::K_point::find_eigen_states");
-//** 
-//**     if (num_ranks_ > 1 && 
-//**         (parameters_.eigen_value_solver() == lapack || parameters_.eigen_value_solver() == magma))
-//**     {
-//**         error_local(__FILE__, __LINE__, "Can't use more than one MPI rank for LAPACK or MAGMA eigen-value solver");
-//**     }
-//** 
-//**     generate_fv_states();
-//** 
-//**     if (num_ranks_ != 1) distribute_fv_states_row();
-//** 
-//**     if (debug_level > 1) test_fv_states(0);
-//** 
-//**     //band->solve_sv(parameters_, mtgk_size(), num_gkvec(), fft_index(), &fv_eigen_values_[0], 
-//**     //               fv_states_row_, fv_states_col_, effective_magnetic_field, &band_energies_[0],
-//**     //               sv_eigen_vectors_);
-//** 
-//**     if (parameters_.need_sv()) generate_spinor_wave_functions();
-//** 
-//**     /*for (int i = 0; i < 3; i++)
-//**         test_spinor_wave_functions(i); */
-//** }
 
 //Periodic_function<complex16>* K_point::spinor_wave_function_component(Band* band, int lmax, int ispn, int jloc)
 //{

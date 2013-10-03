@@ -120,10 +120,10 @@ class Reciprocal_lattice : public Unit_cell
         }
 
         // TODO: call it everywhere
-        inline void gvec_cart(int ig, double vgc[3])
+        inline vector3d<double> gvec_cart(int ig)
         {
             assert(ig >=0 && ig < num_gvec_);
-            get_coordinates<cartesian, reciprocal>(gvec(ig), vgc);
+            return get_coordinates<cartesian, reciprocal>(vector3d<int>(gvec(ig)));
         }
         
         /// Plane-wave cutoff for G-vectors

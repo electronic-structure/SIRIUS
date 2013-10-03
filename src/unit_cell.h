@@ -6,7 +6,7 @@ struct nearest_neighbour_descriptor
     int atom_id;
 
     /// translation along each lattice vector
-    int translation[3];
+    vector3d<int> translation;
 
     /// distance from the central atom
     double distance;
@@ -191,14 +191,14 @@ class Unit_cell
         bool is_point_in_mt(double vc[3], int& ja, int& jr, double& dr, double tp[2]);
         
         template <lattice_t Tl>
-        void find_translation_limits(double radius, int* limits);
+        vector3d<int> find_translation_limits(double radius);
         
         template <lattice_t Tl>
-        void reduce_coordinates(double vc[3], int ntr[3], double vf[3]);
+        void reduce_coordinates(vector3d<double> vc, vector3d<int>& ntr, vector3d<double>& vf);
 
         /// Convert coordinates (fractional <-> Cartesian) of direct or reciprocal lattices
         template<coordinates_t cT, lattice_t lT, typename T>
-        void get_coordinates(T* a, double* b);
+        vector3d<double> get_coordinates(vector3d<T> a);
         
         /// Get x coordinate of lattice vector l
         inline double lattice_vectors(int l, int x)

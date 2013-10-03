@@ -31,11 +31,9 @@ void DFT_ground_state::move_atoms(int istep)
 
     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
     {
-        double pos[3];
-        parameters_.atom(ia)->get_position(pos);
+        vector3d<double> pos = parameters_.atom(ia)->position();
 
-        double forcef[3];
-        parameters_.get_coordinates<fractional, direct>(&atom_force(0, ia), &forcef[0]);
+        vector3d<double> forcef = parameters_.get_coordinates<fractional, direct>(vector3d<double>(&atom_force(0, ia)));
 
         for (int x = 0; x < 3; x++) pos[x] += 1.0 * forcef[x];
         

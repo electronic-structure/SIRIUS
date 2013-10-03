@@ -69,7 +69,7 @@ void Potential::update()
         }
     }
 
-    // ==============================================================================
+    //===============================================================================
     // compute moments of spherical Bessel functions 
     //  
     // Integrate[SphericalBesselJ[l,a*x]*x^(2+l),{x,0,R},Assumptions->{R>0,a>0,l>=0}]
