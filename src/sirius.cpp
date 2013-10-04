@@ -881,7 +881,6 @@ void FORTRAN(sirius_platform_barrier)(void)
 
 void FORTRAN(sirius_get_total_energy)(real8* total_energy)
 {
-    //*total_energy = global_parameters.total_energy();
     *total_energy = dft_ground_state->total_energy();
 }
 
