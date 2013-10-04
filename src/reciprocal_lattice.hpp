@@ -2,7 +2,6 @@ void Reciprocal_lattice::init(int lmax)
 {
     Timer t("sirius::Reciprocal_lattice::init");
     
-    //int max_frac_coord[3];
     vector3d<int> max_frac_coord = find_translation_limits<reciprocal>(pw_cutoff());
     
     fft_.init(&max_frac_coord[0]);
@@ -75,14 +74,6 @@ void Reciprocal_lattice::init(int lmax)
         gvec_shell_[ig] = (int)gvec_shell_len_.size() - 1;
     }
 
-    //ig_by_igs_.clear();
-    //ig_by_igs_.resize(num_gvec_shells());
-    //for (int ig = 0; ig < num_gvec_; ig++)
-    //{
-    //    int igs = gvec_shell_[ig];
-    //    ig_by_igs_[igs].push_back(ig);
-    //}
-    
     // create split index
     spl_num_gvec_.split(num_gvec(), Platform::num_mpi_ranks(), Platform::mpi_rank());
 
