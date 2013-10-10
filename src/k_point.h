@@ -66,6 +66,8 @@ struct apwlo_basis_descriptor
     int idxrf;
 };
 
+/// K-point related variables and methods
+/** \image html wf_storage.png "Wave-function storage" */
 class K_point
 {
     private:
@@ -93,6 +95,9 @@ class K_point
         
         /// second-variational eigen vectors
         mdarray<complex16, 2> sv_eigen_vectors_;
+
+        /// full-diagonalization eigen vectors
+        mdarray<complex16, 2> fd_eigen_vectors_;
 
         /// position of the G vector (from the G+k set) inside the FFT buffer 
         std::vector<int> fft_index_;
@@ -549,6 +554,11 @@ class K_point
             return sv_eigen_vectors_;
         }
         
+        inline mdarray<complex16, 2>& fd_eigen_vectors()
+        {
+            return fd_eigen_vectors_;
+        }
+
         void bypass_sv()
         {
             memcpy(&band_energies_[0], &fv_eigen_values_[0], parameters_.num_fv_states() * sizeof(double));

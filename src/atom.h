@@ -183,6 +183,51 @@ class Atom
             return &b_radial_integrals_(0, idxrf1, idxrf2, x);
         }
         
+        /** \todo this is not good because the similar code exists in gaunt.h */
+        template <spin_block_t sblock>
+        inline complex16 hb_radial_integrals_sum_L3(int idxrf1, int idxrf2, std::vector<complex_gaunt_L3>& gnt)
+        {
+            complex16 zsum(0, 0);
+
+            for (int i = 0; i < (int)gnt.size(); i++)
+            {
+                switch (sblock)
+                {
+                    case nm:
+                    {
+                        zsum += gnt[i].cg * h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2);
+                        break;
+                    }
+                    case uu:
+                    {
+                        zsum += gnt[i].cg * (h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2) + 
+                                             b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 0));
+                        break;
+                    }
+                    case dd:
+                    {
+                        zsum += gnt[i].cg * (h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2) -
+                                             b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 0));
+                        break;
+                    }
+                    case ud:
+                    {
+                        zsum += gnt[i].cg * complex16(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
+                                                     -b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
+                        break;
+                    }
+                    case du:
+                    {
+                        zsum += gnt[i].cg * complex16(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
+                                                      b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
+                        break;
+                    }
+                }
+
+            }
+            return zsum;
+        }
+
         inline int num_mt_points()
         {
             return type_->num_mt_points();

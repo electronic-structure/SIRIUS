@@ -5,13 +5,15 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
     lmax_ = std::max(parameters_.lmax_rho(), parameters_.lmax_pot());
     sht_ = new SHT(lmax_);
 
+    int ngv = (use_second_variation) ? 0 : parameters_.num_gvec();
+
     effective_potential_ = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_pot()), 
                                                          Argument(arg_radial, parameters_.max_num_mt_points()), 
                                                          parameters_.num_gvec());
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
     {
         effective_magnetic_field_[j] = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_pot()), 
-                                                                     Argument(arg_radial, parameters_.max_num_mt_points()));
+                                                                     Argument(arg_radial, parameters_.max_num_mt_points()), ngv);
     }
     
     // precompute i^l
@@ -520,7 +522,19 @@ void Potential::generate_pw_coefs()
     
     parameters_.fft().transform(-1);
     parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), &effective_potential()->f_pw(0));
+
+    if (!use_second_variation) // for full diagonalization we also need Beff(G)
+    {
+        for (int i = 0; i < parameters_.num_mag_dims(); i++)
+        {
+            for (int ir = 0; ir < parameters_.fft().size(); ir++)
+                parameters_.fft().input_buffer(ir) = effective_magnetic_field(i)->f_it<global>(ir) * parameters_.step_function(ir);
     
+            parameters_.fft().transform(-1);
+            parameters_.fft().output(parameters_.num_gvec(), parameters_.fft_index(), &effective_magnetic_field(i)->f_pw(0));
+        }
+    }
+
     if (basis_type == pwlo) 
     {
         switch (parameters_.processing_unit())

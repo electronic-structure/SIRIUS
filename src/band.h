@@ -33,13 +33,29 @@ class Band
         /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap
         void set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_potential, 
                            mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
+
+        void set_o_it(K_point* kp, mdarray<complex16, 2>& o);
+
+        template <spin_block_t sblock>
+        void set_h_it(K_point* kp, Periodic_function<double>* effective_potential, 
+                      Periodic_function<double>* effective_magnetic_field[3], mdarray<complex16, 2>& h);
         
         /// Setup lo-lo block of Hamiltonian and overlap matrices
         void set_fv_h_o_lo_lo(K_point* kp, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
 
+        template <spin_block_t sblock>
+        void set_h_lo_lo(K_point* kp, mdarray<complex16, 2>& h);
+        
+        void set_o_lo_lo(K_point* kp, mdarray<complex16, 2>& o);
+       
         void solve_fv_evp_1stage(K_point* kp, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o, 
                                  std::vector<double>& fv_eigen_values, mdarray<complex16, 2>& fv_eigen_vectors);
+
+        void set_o(K_point* kp, mdarray<complex16, 2>& o);
     
+        template <spin_block_t sblock> 
+        void set_h(K_point* kp, Periodic_function<double>* effective_potential, 
+                   Periodic_function<double>* effective_magnetic_field[3], mdarray<complex16, 2>& h);
     public:
         
         /// Constructor
@@ -63,11 +79,19 @@ class Band
                 u_{\ell_2\nu_2}^{'\alpha}(R_{\alpha})R_{\alpha}^{2}
             \f] 
         */
+        template <spin_block_t sblock>
         void apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, mdarray<complex16, 2>& halm);
  
         /// Setup apw-lo and lo-apw blocs of Hamiltonian and overlap matrices
         void set_fv_h_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<complex16, 2>& alm, 
                                mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
+        
+        template <spin_block_t sblock>
+        void set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<complex16, 2>& alm, 
+                          mdarray<complex16, 2>& h);
+
+        void set_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<complex16, 2>& alm, 
+                          mdarray<complex16, 2>& o);
 
         /// Setup the Hamiltonian and overlap matrices in APW+lo basis
         /** The Hamiltonian matrix has the following expression:
@@ -115,14 +139,18 @@ class Band
 
         */
         template <processing_unit_t pu, basis_t basis>
-        void set_fv_h_o(K_point* kp, Periodic_function<double>* effective_potential,
-                        mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
+        void set_fv_h_o(K_point* kp, Periodic_function<double>* effective_potential, mdarray<complex16, 2>& h, 
+                        mdarray<complex16, 2>& o);
 
         /// Solve first-variational problem
         void solve_fv(K_point* kp, Periodic_function<double>* effective_potential);
 
         /// Solve second-variational problem
         void solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_field[3]);
+
+        void solve_fd(K_point* kp, Periodic_function<double>* effective_potential, 
+                      Periodic_function<double>* effective_magnetic_field[3]);
+
         
 };
 

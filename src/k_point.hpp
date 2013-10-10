@@ -7,16 +7,35 @@ void K_point::initialize()
    
     l_by_lm_ = Utils::l_by_lm(parameters_.lmax());
 
-    fv_eigen_values_.resize(parameters_.num_fv_states());
-    
     band_energies_.resize(parameters_.num_bands());
+
+    if (use_second_variation)
+    {
+        fv_eigen_values_.resize(parameters_.num_fv_states());
+        // in case of collinear magnetism store pure up and pure dn components, otherwise store both up and dn components
+        int ns = (parameters_.num_mag_dims() == 3) ? 2 : 1;
+        sv_eigen_vectors_.set_dimensions(ns * parameters_.spl_fv_states_row().local_size(), parameters_.spl_spinor_wf_col().local_size());
+        sv_eigen_vectors_.allocate();
+    }
     
-    // in case of collinear magnetism store pure up and pure dn components, otherwise store both up and dn components
-    int ns = (parameters_.num_mag_dims() == 3) ? 2 : 1;
-    sv_eigen_vectors_.set_dimensions(ns * parameters_.spl_fv_states_row().local_size(), parameters_.spl_spinor_wf_col().local_size());
-    sv_eigen_vectors_.allocate();
     
+    update();
+}
+
+void K_point::update()
+{
+    generate_gkvec();
+    
+    build_apwlo_basis_descriptors();
+
+    distribute_block_cyclic();
+    
+    init_gkvec();
+   
+    atom_lo_cols_.clear();
     atom_lo_cols_.resize(parameters_.num_atoms());
+
+    atom_lo_rows_.clear();
     atom_lo_rows_.resize(parameters_.num_atoms());
 
     for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
@@ -31,19 +50,6 @@ void K_point::initialize()
         atom_lo_rows_[ia].push_back(irow);
     }
     
-    update();
-}
-
-void K_point::update()
-{
-    generate_gkvec();
-
-    build_apwlo_basis_descriptors();
-
-    distribute_block_cyclic();
-    
-    init_gkvec();
-    
     /** \todo Correct the memory leak */
     if (basis_type == pwlo)
     {
@@ -54,33 +60,43 @@ void K_point::update()
             sbessel_[igkloc]->interpolate(gkvec_len_[igkloc]);
         }
     }
-    
-    fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), parameters_.spl_fv_states_col().local_size());
-    fv_eigen_vectors_.allocate();
-    
-    fv_states_col_.set_dimensions(mtgk_size(), parameters_.spl_fv_states_col().local_size());
-    fv_states_col_.allocate();
-    
-    if (num_ranks() == 1)
-    {
-        fv_states_row_.set_dimensions(mtgk_size(), parameters_.num_fv_states());
-        fv_states_row_.set_ptr(fv_states_col_.get_ptr());
-    }
-    else
-    {
-        fv_states_row_.set_dimensions(mtgk_size(), parameters_.spl_fv_states_row().local_size());
-        fv_states_row_.allocate();
-    }
-    
-    spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), parameters_.spl_spinor_wf_col().local_size());
 
-    if (parameters_.need_sv())
+    if (use_second_variation)
     {
-        spinor_wave_functions_.allocate();
+        fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), parameters_.spl_fv_states_col().local_size());
+        fv_eigen_vectors_.allocate();
+        
+        fv_states_col_.set_dimensions(mtgk_size(), parameters_.spl_fv_states_col().local_size());
+        fv_states_col_.allocate();
+        
+        if (num_ranks() == 1)
+        {
+            fv_states_row_.set_dimensions(mtgk_size(), parameters_.num_fv_states());
+            fv_states_row_.set_ptr(fv_states_col_.get_ptr());
+        }
+        else
+        {
+            fv_states_row_.set_dimensions(mtgk_size(), parameters_.spl_fv_states_row().local_size());
+            fv_states_row_.allocate();
+        }
+        
+        spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), parameters_.spl_spinor_wf_col().local_size());
+
+        if (parameters_.need_sv())
+        {
+            spinor_wave_functions_.allocate();
+        }
+        else
+        {
+            spinor_wave_functions_.set_ptr(fv_states_col_.get_ptr());
+        }
     }
     else
     {
-        spinor_wave_functions_.set_ptr(fv_states_col_.get_ptr());
+        fd_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), parameters_.spl_spinor_wf_col().local_size());
+        fd_eigen_vectors_.allocate();
+        spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), parameters_.spl_spinor_wf_col().local_size());
+        spinor_wave_functions_.allocate();
     }
 }
 
@@ -378,31 +394,66 @@ void K_point::generate_spinor_wave_functions()
 {
     Timer t("sirius::K_point::generate_spinor_wave_functions");
 
-    if (!parameters_.need_sv()) return;
-
-    spinor_wave_functions_.zero();
-
+    int wfld = spinor_wave_functions_.size(0) * spinor_wave_functions_.size(1); // size of each spinor wave-function
     int nrow = parameters_.spl_fv_states_row().local_size();
     int ncol = parameters_.spl_fv_states_col().local_size();
-    int wfld = spinor_wave_functions_.size(0) * spinor_wave_functions_.size(1);
 
-    for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+    if (use_second_variation) 
     {
-        if (parameters_.num_mag_dims() != 3)
+        if (!parameters_.need_sv()) return;
+
+        spinor_wave_functions_.zero();
+
+
+        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
         {
-            // multiply up block for first half of the bands, dn block for second half of the bands
-            blas<cpu>::gemm(0, 0, mtgk_size(), ncol, nrow, &fv_states_row_(0, 0), fv_states_row_.ld(), 
-                            &sv_eigen_vectors_(0, ispn * ncol), sv_eigen_vectors_.ld(), 
-                            &spinor_wave_functions_(0, ispn, ispn * ncol), wfld);
+            if (parameters_.num_mag_dims() != 3)
+            {
+                // multiply up block for first half of the bands, dn block for second half of the bands
+                blas<cpu>::gemm(0, 0, mtgk_size(), ncol, nrow, &fv_states_row_(0, 0), fv_states_row_.ld(), 
+                                &sv_eigen_vectors_(0, ispn * ncol), sv_eigen_vectors_.ld(), 
+                                &spinor_wave_functions_(0, ispn, ispn * ncol), wfld);
+            }
+            else
+            {
+                // multiply up block and then dn block for all bands
+                blas<cpu>::gemm(0, 0, mtgk_size(), parameters_.spl_spinor_wf_col().local_size(), nrow, 
+                                &fv_states_row_(0, 0), fv_states_row_.ld(), 
+                                &sv_eigen_vectors_(ispn * nrow, 0), sv_eigen_vectors_.ld(), 
+                                &spinor_wave_functions_(0, ispn, 0), wfld);
+            }
         }
-        else
+    }
+    else
+    {
+        mdarray<complex16, 2> alm(num_gkvec_row(), parameters_.max_mt_aw_basis_size());
+
+        /** \todo generalize for non-collinear case */
+        spinor_wave_functions_.zero();
+        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
         {
-            // multiply up block and then dn block for all bands
-            blas<cpu>::gemm(0, 0, mtgk_size(), parameters_.spl_spinor_wf_col().local_size(), nrow, 
-                            &fv_states_row_(0, 0), fv_states_row_.ld(), 
-                            &sv_eigen_vectors_(ispn * nrow, 0), sv_eigen_vectors_.ld(), 
-                            &spinor_wave_functions_(0, ispn, 0), wfld);
+            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            {
+                Atom* atom = parameters_.atom(ia);
+                Atom_type* type = atom->type();
+                
+                /** \todo generate unconjugated coefficients for better readability */
+                generate_matching_coefficients<true>(num_gkvec_row(), ia, alm);
+
+                blas<cpu>::gemm(2, 0, type->mt_aw_basis_size(), ncol, num_gkvec_row(), &alm(0, 0), alm.ld(), 
+                                &fd_eigen_vectors_(0, ispn * ncol), fd_eigen_vectors_.ld(), 
+                                &spinor_wave_functions_(atom->offset_wf(), ispn, ispn * ncol), wfld); 
+            }
+
+            for (int j = 0; j < ncol; j++)
+            {
+                copy_lo_blocks(&fd_eigen_vectors_(0, j + ispn * ncol), &spinor_wave_functions_(0, ispn, j + ispn * ncol));
+
+                copy_pw_block(&fd_eigen_vectors_(0, j + ispn * ncol), &spinor_wave_functions_(parameters_.mt_basis_size(), ispn, j + ispn * ncol));
+            }
         }
+        /** \todo how to distribute states in case of full diagonalziation. num_fv_states will probably be reused. 
+                  maybe the 'fv' should be renamed. */
     }
     
     for (int i = 0; i < parameters_.spl_spinor_wf_col().local_size(); i++)
@@ -423,7 +474,16 @@ void K_point::generate_gkvec()
     }
 
     if (gk_cutoff * 2 > parameters_.pw_cutoff())
-        error_local(__FILE__, __LINE__, "aw cutoff is too large for a given plane-wave cutoff");
+    {
+        std::stringstream s;
+        s << "aw cutoff is too large for a given plane-wave cutoff" << std::endl
+          << "  pw cutoff : " << parameters_.pw_cutoff() << std::endl
+          << "  aw cutoff : " << parameters_.aw_cutoff() << std::endl 
+          << "  2 * Gk cutoff : " << gk_cutoff * 2 << std::endl
+          << "  min_mt_radius : " << parameters_.min_mt_radius();
+
+        error_local(__FILE__, __LINE__, s);
+    }
 
     std::vector< std::pair<double, int> > gkmap;
 

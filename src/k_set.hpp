@@ -54,10 +54,17 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
     for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = spl_num_kpoints(ikloc);
-        band_->solve_fv(kpoints_[ik], potential->effective_potential());
-        kpoints_[ik]->generate_fv_states();
-        kpoints_[ik]->distribute_fv_states_row();
-        band_->solve_sv(kpoints_[ik], potential->effective_magnetic_field());
+        if (use_second_variation)
+        {
+            band_->solve_fv(kpoints_[ik], potential->effective_potential());
+            kpoints_[ik]->generate_fv_states();
+            kpoints_[ik]->distribute_fv_states_row();
+            band_->solve_sv(kpoints_[ik], potential->effective_magnetic_field());
+        }
+        else
+        {
+            band_->solve_fd(kpoints_[ik], potential->effective_potential(), potential->effective_magnetic_field());
+        }
         kpoints_[ik]->generate_spinor_wave_functions();
     }
 
