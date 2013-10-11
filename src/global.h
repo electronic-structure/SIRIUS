@@ -990,10 +990,14 @@ class Global : public Step_function
             Reciprocal_lattice::update();
             Step_function::init();
         }
-        
+       
         inline int blacs_context()
         {
+            #ifdef _SCALAPACK_
             return blacs_context_;
+            #else
+            return -1;
+            #endif
         }
 };
 
