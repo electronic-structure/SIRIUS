@@ -86,8 +86,7 @@ void Atom::generate_radial_integrals(MPI_Comm& comm)
                     {
                         for (int ir = 0; ir < nmtp; ir++) s[ir] = symmetry_class()->radial_function(ir, i1) * v[ir];
                         
-                        s.interpolate();
-                        h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = s.integrate(2);
+                        h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = s.interplate().integrate(2);
                     }
                 }
             }
@@ -102,13 +101,13 @@ void Atom::generate_radial_integrals(MPI_Comm& comm)
             h_radial_integrals_(0, i1, i2) = symmetry_class()->h_spherical_integral(i1, i2);
     }
 
-    for (int j = 0; j < num_mag_dims_; j++)
+    #pragma omp parallel default(shared)
     {
-        #pragma omp parallel default(shared)
+        Spline<double> s(nmtp, type()->radial_grid());
+        std::vector<double> v(nmtp);
+        
+        for (int j = 0; j < num_mag_dims_; j++)
         {
-            Spline<double> s(nmtp, type()->radial_grid());
-            std::vector<double> v(nmtp);
-
             for (int lm_loc = 0; lm_loc < spl_lm_b.local_size(); lm_loc++)
             {
                 int lm = spl_lm_b[lm_loc];
@@ -127,8 +126,7 @@ void Atom::generate_radial_integrals(MPI_Comm& comm)
                         {
                             for (int ir = 0; ir < nmtp; ir++) s[ir] = symmetry_class()->radial_function(ir, i1) * v[ir];
                             
-                            s.interpolate();
-                            b_radial_integrals_(lm, i1, i2, j) = b_radial_integrals_(lm, i2, i1, j) = s.integrate(2);
+                            b_radial_integrals_(lm, i1, i2, j) = b_radial_integrals_(lm, i2, i1, j) = s.interpolate().integrate(2);
                         }
                     }
                 }
