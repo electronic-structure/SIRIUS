@@ -83,7 +83,7 @@ class Atom
                   V_{\ell m}(r) & \ell > 0 \end{array} \right.
             \f]
         */
-        void generate_radial_integrals();
+        void generate_radial_integrals(MPI_Comm& comm);
         
         inline Atom_type* type()
         {

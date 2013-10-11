@@ -34,7 +34,7 @@
     "communication along 1-st and 3-rd dimensions".
 */
 
-class MPIGrid
+class MPI_grid
 {
     private:
         
@@ -51,12 +51,10 @@ class MPIGrid
         MPI_Comm base_grid_communicator_;
 
         /// grid communicators
-
         /** Grid comminicators are built for all possible combinations of 
             directions, i.e. 001, 010, 011, etc. First communicator is the 
             trivial "self" communicator; the last communicator handles the 
-            entire grid.
-        */
+            entire grid. */
         std::vector<MPI_Comm> communicators_;
 
         /// number of MPI ranks in each communicator
@@ -65,8 +63,7 @@ class MPIGrid
         /// true if this is the root of the communicator group
         std::vector<bool> communicator_root_;
 
-        /// rank (in the MPI_COMM_WORLD) of the grid root
-        //int world_root_;
+        MPI_Group base_group_;
 
         /// return valid directions for the current grid dimensionality
         inline int valid_directions(int directions)
@@ -75,26 +72,26 @@ class MPIGrid
         }
 
         // forbid copy constructor
-        MPIGrid(const MPIGrid& src);
+        MPI_grid(const MPI_grid& src);
 
         // forbid assignment operator
-        MPIGrid& operator=(const MPIGrid& src);
+        MPI_grid& operator=(const MPI_grid& src);
 
     public:
 
         // default constructor
-        MPIGrid() : parent_communicator_(MPI_COMM_WORLD), base_grid_communicator_(MPI_COMM_NULL) 
+        MPI_grid() : parent_communicator_(MPI_COMM_WORLD), base_grid_communicator_(MPI_COMM_NULL) 
         {
         }
 
-        MPIGrid(const std::vector<int> dimensions__, MPI_Comm parent_communicator__) : 
+        MPI_grid(const std::vector<int> dimensions__, MPI_Comm parent_communicator__) : 
             dimensions_(dimensions__), parent_communicator_(parent_communicator__), 
             base_grid_communicator_(MPI_COMM_NULL)
         {
             initialize();
         }
 
-        ~MPIGrid()
+        ~MPI_grid()
         {
             finalize();
         }
@@ -182,38 +179,30 @@ class MPIGrid
                 // expicitly set the "self" communicator
                 communicators_[0] = MPI_COMM_SELF;
 
-                // root of the grig can print
-                //Platform::set_verbose(root());
+                MPI_Comm_group(communicator(), &base_group_);
 
                 // double check the size of communicators
                 for (int i = 1; i < num_comm; i++)
                 {
                     if (Platform :: num_mpi_ranks(communicators_[i]) != communicator_size_[i]) 
-                        error_local(__FILE__, __LINE__, "Communicator sizes don't match");
+                        error_local(__FILE__, __LINE__, "communicator sizes don't match");
                 }
 
                 for (int i = 0; i < (int)dimensions_.size(); i++)
                 {
                     if (Platform::mpi_rank(communicator(1 << i)) != coordinate(i))
-                    {
                         error_local(__FILE__, __LINE__, "ranks don't match");
-                    }
                 }
 
+                if (cart_rank(communicator(), coordinates()) != Platform::mpi_rank(communicator()))
+                    error_local(__FILE__, __LINE__, "cartesian and communicator ranks don't match");
             }
-
-            //if (base_comm == MPI_COMM_WORLD)
-            //{
-            //    std::vector<int> v(Platform::num_mpi_ranks(), 0);
-            //    if (in_grid() && root()) v[Platform::mpi_rank()] = 1;
-            //    Platform::allreduce(&v[0], Platform::num_mpi_ranks(), MPI_COMM_WORLD);
-            //    for (int i = 0; i < Platform::num_mpi_ranks(); i++)
-            //        if (v[i] == 1) world_root_ = i;
-            //}
         }
 
         void finalize()
         {
+            MPI_Group_free(&base_group_);
+            
             for (int i = 1; i < (int)communicators_.size(); i++) MPI_Comm_free(&communicators_[i]);
 
             if (in_grid()) MPI_Comm_free(&base_grid_communicator_);
@@ -342,17 +331,51 @@ class MPIGrid
            Platform::barrier(communicators_[valid_directions(directions)]);
         }
 
-        //inline int world_root()
-        //{
-        //    return world_root_;
-        //}
-
         inline MPI_Comm& communicator(int directions = 0xFF)
         {
             assert(communicators_.size() != 0);
 
             return communicators_[valid_directions(directions)];
         }
+
+        inline MPI_Group& base_group()
+        {
+            return base_group_;
+        }
 };
+
+class MPI_group
+{
+    private:
+        
+        MPI_Comm communicator_;
+
+    public:
+        
+        MPI_group() : communicator_(MPI_COMM_NULL)
+        {
+        }
+
+        ~MPI_group()
+        {
+            if (communicator_ != MPI_COMM_NULL) MPI_Comm_free(&communicator_);
+        }
+        
+        void split(int num_groups, MPI_Comm base_comm)
+        {
+            int rank = Platform::mpi_rank(base_comm);
+            int color = rank % num_groups;
+            MPI_Comm_split(base_comm, color, rank, &communicator_);
+        }
+
+        inline MPI_Comm& communicator()
+        {
+            return communicator_;
+        }
+
+
+};
+
+
 
 #endif // __MPI_GRID_H__

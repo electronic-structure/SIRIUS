@@ -18,6 +18,11 @@ class Platform
             #endif
         }
 
+        static void finalize()
+        {
+            MPI_Finalize();
+        }
+
         static int mpi_rank(MPI_Comm comm = MPI_COMM_WORLD)
         {
             int rank;

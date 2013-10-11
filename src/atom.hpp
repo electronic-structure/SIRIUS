@@ -47,34 +47,33 @@ void Atom::init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_
     uj_correction_matrix_.allocate();
 }
 
-void Atom::generate_radial_integrals()
+void Atom::generate_radial_integrals(MPI_Comm& comm)
 {
     Timer t("sirius::Atom::generate_radial_integrals");
     
     int lmmax = Utils::lmmax(lmax_pot_);
     int nmtp = type()->num_mt_points();
 
+    splindex<block> spl_lm(lmmax - 1, Platform::num_mpi_ranks(comm), Platform::mpi_rank(comm));
+    
+    splindex<block> spl_lm_b(lmmax, Platform::num_mpi_ranks(comm), Platform::mpi_rank(comm));
+
     std::vector<int> l_by_lm = Utils::l_by_lm(lmax_pot_);
 
     h_radial_integrals_.zero();
     if (num_mag_dims_) b_radial_integrals_.zero();
     
-    // copy spherical integrals
-    for (int i2 = 0; i2 < type()->indexr().size(); i2++)
-    {
-        for (int i1 = 0; i1 < type()->indexr().size(); i1++)
-            h_radial_integrals_(0, i1, i2) = symmetry_class()->h_spherical_integral(i1, i2);
-    }
-
     #pragma omp parallel default(shared)
     {
         Spline<double> s(nmtp, type()->radial_grid());
         std::vector<double> v(nmtp);
 
-        #pragma omp for
-        for (int lm = 1; lm < lmmax; lm++)
+        for (int lm_loc = 0; lm_loc < spl_lm.local_size(); lm_loc++)
         {
+            int lm = spl_lm[lm_loc] + 1; // skip spherical part
             int l = l_by_lm[lm];
+
+            #pragma omp for
             for (int i2 = 0; i2 < type()->indexr().size(); i2++)
             {
                 int l2 = type()->indexr(i2).l;
@@ -94,6 +93,14 @@ void Atom::generate_radial_integrals()
             }
         }
     }
+    Platform::reduce(h_radial_integrals_.get_ptr(), (int)h_radial_integrals_.size(), comm, 0);
+
+    // copy spherical integrals
+    for (int i2 = 0; i2 < type()->indexr().size(); i2++)
+    {
+        for (int i1 = 0; i1 < type()->indexr().size(); i1++)
+            h_radial_integrals_(0, i1, i2) = symmetry_class()->h_spherical_integral(i1, i2);
+    }
 
     for (int j = 0; j < num_mag_dims_; j++)
     {
@@ -102,10 +109,12 @@ void Atom::generate_radial_integrals()
             Spline<double> s(nmtp, type()->radial_grid());
             std::vector<double> v(nmtp);
 
-            #pragma omp for
-            for (int lm = 0; lm < lmmax; lm++)
+            for (int lm_loc = 0; lm_loc < spl_lm_b.local_size(); lm_loc++)
             {
+                int lm = spl_lm_b[lm_loc];
                 int l = l_by_lm[lm];
+                
+                #pragma omp for
                 for (int i2 = 0; i2 < type()->indexr().size(); i2++)
                 {
                     int l2 = type()->indexr(i2).l;
@@ -126,5 +135,6 @@ void Atom::generate_radial_integrals()
             }
         }
     }
+    if (num_mag_dims_) Platform::reduce(b_radial_integrals_.get_ptr(), (int)b_radial_integrals_.size(), comm, 0);
 }
 

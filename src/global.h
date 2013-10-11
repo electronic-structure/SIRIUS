@@ -97,7 +97,9 @@ class Global : public Step_function
         std::vector<int> mpi_grid_dims_;
         
         /// MPI grid
-        MPIGrid mpi_grid_;
+        MPI_grid mpi_grid_;
+
+        MPI_group sub_spl_atoms_;
 
         /// block size for block-cyclic data distribution  
         int cyclic_block_size_;
@@ -405,7 +407,7 @@ class Global : public Step_function
             return sync_flag_;
         }
         
-        inline MPIGrid& mpi_grid()
+        inline MPI_grid& mpi_grid()
         {
             return mpi_grid_;
         }
@@ -528,6 +530,8 @@ class Global : public Step_function
 
             // setup MPI grid
             mpi_grid_.initialize(mpi_grid_dims_);
+
+            sub_spl_atoms_.split(num_atoms(), mpi_grid_.communicator());
             
             if (num_fv_states_ < 0) num_fv_states_ = int(num_valence_electrons() / 2.0) + 20;
 
@@ -763,7 +767,7 @@ class Global : public Step_function
                     size += 10;
                 }
 
-                pstdout pout(100 * size);
+                pstdout pout;
                 
                 for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
                 {
@@ -793,8 +797,19 @@ class Global : public Step_function
                 atom_symmetry_class(ic)->sync_radial_integrals(rank);
             }
 
+            //std::cout << "group size : " << Platform::num_mpi_ranks(sub_spl_atoms_.communicator()) << std::endl;
+            
+            
+            int loc_num_atoms = spl_num_atoms().local_size();
+            Platform::bcast(&loc_num_atoms, 1, sub_spl_atoms_.communicator(), 0);
+
             for (int ialoc = 0; ialoc < spl_num_atoms().local_size(); ialoc++)
-                atom(spl_num_atoms(ialoc))->generate_radial_integrals();
+            {
+                int ia = spl_num_atoms(ialoc);
+                Platform::bcast(&ia, 1, sub_spl_atoms_.communicator(), 0);
+
+                atom(ia)->generate_radial_integrals(sub_spl_atoms_.communicator());
+            }
 
             for (int ia = 0; ia < num_atoms(); ia++)
             {

@@ -198,7 +198,7 @@ void K_set::find_band_occupancies()
 
 void K_set::print_info()
 {
-    pstdout pout(100 * num_kpoints());
+    pstdout pout;
 
     if (parameters_.mpi_grid().side(1 << 0))
     {
