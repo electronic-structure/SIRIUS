@@ -100,6 +100,7 @@ int main(int argn, char** argv)
     DFT_ground_state dft(parameters, potential, density, &ks);
     double charge_tol = parser["charge_tol"].get(1e-4);
     double energy_tol = parser["energy_tol"].get(1e-4);
+
     dft.scf_loop(charge_tol, energy_tol);
 
     //dft.relax_atom_positions();
@@ -112,4 +113,7 @@ int main(int argn, char** argv)
     parameters.clear();
 
     Timer::print();
+
+    Platform::barrier();
+    Platform::finalize();
 }
