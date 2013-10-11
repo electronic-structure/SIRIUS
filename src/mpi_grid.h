@@ -350,9 +350,13 @@ class MPI_group
         
         MPI_Comm communicator_;
 
+        int num_groups_;
+
+        int group_id_;
+
     public:
         
-        MPI_group() : communicator_(MPI_COMM_NULL)
+        MPI_group() : communicator_(MPI_COMM_NULL), num_groups_(-1), group_id_(-1)
         {
         }
 
@@ -361,11 +365,12 @@ class MPI_group
             if (communicator_ != MPI_COMM_NULL) MPI_Comm_free(&communicator_);
         }
         
-        void split(int num_groups, MPI_Comm base_comm)
+        void split(int max_num_groups, MPI_Comm base_comm)
         {
+            num_groups_ = std::min(Platform::num_mpi_ranks(base_comm), max_num_groups);
             int rank = Platform::mpi_rank(base_comm);
-            int color = rank % num_groups;
-            MPI_Comm_split(base_comm, color, rank, &communicator_);
+            group_id_ = rank % num_groups_;
+            MPI_Comm_split(base_comm, group_id_, rank, &communicator_);
         }
 
         inline MPI_Comm& communicator()
@@ -373,9 +378,16 @@ class MPI_group
             return communicator_;
         }
 
+        inline int num_groups()
+        {
+            return num_groups_;
+        }
 
+        inline int group_id()
+        {
+            return group_id_;
+        }
 };
-
 
 
 #endif // __MPI_GRID_H__
