@@ -84,6 +84,7 @@ class Atom
             \f]
         */
         void generate_radial_integrals(MPI_Comm& comm);
+        void generate_radial_integrals();
         
         inline Atom_type* type()
         {

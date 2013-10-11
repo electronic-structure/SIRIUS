@@ -807,10 +807,18 @@ class Global : public Step_function
                 atom_symmetry_class(ic)->sync_radial_integrals(rank);
             }
 
-            for (int ialoc = 0; ialoc < spl_atoms_.local_size(); ialoc++)
+            std::cout << "group id : " << mpi_group_atom_.group_id() << std::endl;
+
+            //for (int ialoc = 0; ialoc < spl_atoms_.local_size(); ialoc++)
+            //{
+            //    int ia = spl_atoms_[ialoc];
+            //    std::cout << "ialoc : " << ialoc << " ia : " << ia << " comm : " << mpi_group_atom_.communicator() << std::endl;
+            //    atom(ia)->generate_radial_integrals(mpi_group_atom_.communicator());
+            //}
+            
+            for (int ialoc = 0; ialoc < spl_num_atoms().local_size(); ialoc++)
             {
-                int ia = spl_atoms_[ialoc];
-                atom(ia)->generate_radial_integrals(mpi_group_atom_.communicator());
+                atom(spl_num_atoms(ialoc))->generate_radial_integrals();
             }
 
             for (int ia = 0; ia < num_atoms(); ia++)
