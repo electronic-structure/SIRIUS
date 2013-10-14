@@ -809,8 +809,7 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
             #pragma omp parallel for default(shared)
             for (int ir = 0; ir < nmtp; ir++)
             {
-                xci.getxc(sht_->num_points(), &rhotp(0, ir), &magtp(0, ir), &vxctp(0, ir), &bxctp(0, ir), 
-                          &exctp(0, ir));
+                xci.getxc(sht_->num_points(), &rhotp(0, ir), &magtp(0, ir), &vxctp(0, ir), &bxctp(0, ir), &exctp(0, ir));
             }
         }
         vxctp.sh_transform(sht_, vxc->f_mt(ialoc));
@@ -859,6 +858,7 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
         warning_local(__FILE__, __LINE__, s);
     }
 
+    /** \todo OMP threads can do this in parallel */
     if (parameters_.num_spins() == 1)
     {
         xci.getxc(irloc_size, &rho->f_it<local>(0), &vxc->f_it<local>(0), &exc->f_it<local>(0));

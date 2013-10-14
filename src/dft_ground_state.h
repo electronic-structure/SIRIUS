@@ -61,9 +61,11 @@ class DFT_ground_state
             double etot = total_energy();
             double gap = kset_->band_gap() * ha2ev;
             double ef = kset_->energy_fermi();
+            double core_leak = density_->core_leakage();
             
             if (Platform::mpi_rank() == 0)
             {
+                printf("\n");
                 printf("Energy\n");
                 for (int i = 0; i < 80; i++) printf("-");
                 printf("\n"); 
@@ -81,6 +83,8 @@ class DFT_ground_state
                 printf("\n");
                 printf("band gap (eV) : %18.8f\n", gap);
                 printf("Efermi        : %18.8f\n", ef);
+                printf("\n");
+                printf("core leakage : %18.8f\n", core_leak);
             }
         }
 
