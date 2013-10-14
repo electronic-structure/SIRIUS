@@ -23,7 +23,7 @@ const bool check_pseudo_charge = false;
     debug_level >= 2 : check orthonormaliztion of the wave-functions \n
     debug_level >= 3 : check scalapack vs. lapack diagonalization   
 */
-const int debug_level = 1;
+const int debug_level = 0;
 
 /// verbosity level
 /** Controls the ammount of information printed to standard output. 
@@ -34,7 +34,7 @@ const int debug_level = 1;
     verbosity_level >= 4 : print linearization energies \n
     verbosity_level >= 5 : print lowest eigen-values \n
 */
-const int verbosity_level = 10;
+const int verbosity_level = 5;
 
 const bool fix_apwlo_linear_dependence = false;
 

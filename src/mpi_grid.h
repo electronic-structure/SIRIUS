@@ -63,8 +63,6 @@ class MPI_grid
         /// true if this is the root of the communicator group
         std::vector<bool> communicator_root_;
 
-        MPI_Group base_group_;
-
         /// return valid directions for the current grid dimensionality
         inline int valid_directions(int directions)
         {
@@ -179,8 +177,6 @@ class MPI_grid
                 // expicitly set the "self" communicator
                 communicators_[0] = MPI_COMM_SELF;
 
-                MPI_Comm_group(communicator(), &base_group_);
-
                 // double check the size of communicators
                 for (int i = 1; i < num_comm; i++)
                 {
@@ -201,8 +197,6 @@ class MPI_grid
 
         void finalize()
         {
-            MPI_Group_free(&base_group_);
-            
             for (int i = 1; i < (int)communicators_.size(); i++) MPI_Comm_free(&communicators_[i]);
 
             if (in_grid()) MPI_Comm_free(&base_grid_communicator_);
@@ -336,11 +330,6 @@ class MPI_grid
             assert(communicators_.size() != 0);
 
             return communicators_[valid_directions(directions)];
-        }
-
-        inline MPI_Group& base_group()
-        {
-            return base_group_;
         }
 };
 

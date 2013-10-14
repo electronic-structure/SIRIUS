@@ -96,11 +96,12 @@ class Global : public Step_function
         /// MPI grid dimensions
         std::vector<int> mpi_grid_dims_;
         
+        MPI_group mpi_group_atom_;
+        
+        splindex<block> spl_atoms_;
+
         /// MPI grid
         MPI_grid mpi_grid_;
-
-        MPI_group mpi_group_atom_;
-        splindex<block> spl_atoms_;
 
         /// block size for block-cyclic data distribution  
         int cyclic_block_size_;
@@ -150,7 +151,7 @@ class Global : public Step_function
             if (Utils::file_exists(fname))
             {
                 JSON_tree parser(fname);
-                parser["mpi_grid_dims"] >> mpi_grid_dims_; 
+                mpi_grid_dims_ = parser["mpi_grid_dims"].get(mpi_grid_dims_); 
                 cyclic_block_size_ = parser["cyclic_block_size"].get(cyclic_block_size_);
                 num_fft_threads = parser["num_fft_threads"].get(num_fft_threads);
                 num_fv_states_ = parser["num_fv_states"].get(num_fv_states_);
@@ -807,19 +808,16 @@ class Global : public Step_function
                 atom_symmetry_class(ic)->sync_radial_integrals(rank);
             }
 
-            std::cout << "group id : " << mpi_group_atom_.group_id() << std::endl;
-
-            //for (int ialoc = 0; ialoc < spl_atoms_.local_size(); ialoc++)
-            //{
-            //    int ia = spl_atoms_[ialoc];
-            //    std::cout << "ialoc : " << ialoc << " ia : " << ia << " comm : " << mpi_group_atom_.communicator() << std::endl;
-            //    atom(ia)->generate_radial_integrals(mpi_group_atom_.communicator());
-            //}
-            
-            for (int ialoc = 0; ialoc < spl_num_atoms().local_size(); ialoc++)
+            for (int ialoc = 0; ialoc < spl_atoms_.local_size(); ialoc++)
             {
-                atom(spl_num_atoms(ialoc))->generate_radial_integrals();
+                int ia = spl_atoms_[ialoc];
+                atom(ia)->generate_radial_integrals(mpi_group_atom_.communicator());
             }
+            
+            //for (int ialoc = 0; ialoc < spl_num_atoms().local_size(); ialoc++)
+            //{
+            //    atom(spl_num_atoms(ialoc))->generate_radial_integrals();
+            //}
 
             for (int ia = 0; ia < num_atoms(); ia++)
             {

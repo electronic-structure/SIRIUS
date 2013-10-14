@@ -1,6 +1,6 @@
 template <typename T>
 Periodic_function<T>::Periodic_function(Global& parameters__, Argument arg0, Argument arg1, int num_gvec = 0) : 
-    parameters_(parameters__)
+    parameters_(parameters__), num_gvec_(num_gvec)
 {
     f_mt_.set_dimensions(arg0.size(), arg1.size(), parameters_.num_atoms());
     f_mt_local_.set_dimensions(parameters_.spl_num_atoms().local_size());
@@ -22,28 +22,27 @@ Periodic_function<T>::~Periodic_function()
 }
 
 template <typename T>
-void Periodic_function<T>::allocate(bool allocate_global) 
+void Periodic_function<T>::allocate(bool allocate_global_mt, bool allocate_global_it) 
 {
-    // allocate global array if interstial part requires plane-wave coefficients (need FFT buffer)
-    if (f_pw_.size(0) || allocate_global)
+    if (allocate_global_it)
     {
         f_it_.allocate();
         set_local_it_ptr();
     }
     else
-    {
+    {   
+        if (num_gvec_) error_global(__FILE__, __LINE__, "Function requires global array for interstitial storage");
         f_it_local_.allocate();
     }
 
-    if (allocate_global)
+    if (allocate_global_mt)
     {
         f_mt_.allocate();
         set_local_mt_ptr();
     }
     else
     {
-        for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
-            f_mt_local_(ialoc)->allocate();
+        for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc)->allocate();
     }
 }
 
@@ -74,17 +73,17 @@ inline T& Periodic_function<T>::f_mt(int idx0, int idx1, int ia)
 }
 
 template <typename T>
-inline void Periodic_function<T>::sync()
+inline void Periodic_function<T>::sync(bool sync_mt, bool sync_it)
 {
     Timer t("sirius::Periodic_function::sync");
 
-    if (f_it_.get_ptr() != NULL)
+    if (f_it_.get_ptr() != NULL && sync_it)
     {
         Platform::allgather(&f_it_(0), parameters_.spl_fft_size().global_offset(), 
                             parameters_.spl_fft_size().local_size());
     }
     
-    if (f_mt_.get_ptr() != NULL)
+    if (f_mt_.get_ptr() != NULL && sync_mt)
     {
         Platform::allgather(&f_mt_(0, 0, 0), 
                             f_mt_.size(0) * f_mt_.size(1) * parameters_.spl_num_atoms().global_offset(), 
@@ -172,25 +171,44 @@ void Periodic_function<T>::hdf5_read(HDF5_tree h5f)
 template <typename T>
 size_t Periodic_function<T>::size()
 {
-    size_t size = f_it_local_.size();
-    for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
-        size += f_mt_local_(ialoc)->size();
-    return size;
+    if (f_it_.get_ptr() == NULL || f_mt_.get_ptr() == NULL)
+        error_local(__FILE__, __LINE__, "Current implementation requires global function");
+
+    //== size_t size = f_it_local_.size();
+    //== for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+    //==     size += f_mt_local_(ialoc)->size();
+    //== return size;
+    
+    return (f_it_.size() + f_mt_.size());
 }
 
 template <typename T>
 size_t Periodic_function<T>::pack(T* array)
 {
+    if (f_it_.get_ptr() == NULL || f_mt_.get_ptr() == NULL)
+        error_local(__FILE__, __LINE__, "Current implementation requires global function");
+
     size_t n = 0;
-    for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+
+    //== for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+    //== {
+    //==     for (int i1 = 0; i1 < f_mt_local_(ialoc)->size(1); i1++)
+    //==     {
+    //==         for (int i0 = 0; i0 < f_mt_local_(ialoc)->size(0); i0++) array[n++] = (*f_mt_local_(ialoc))(i0, i1);
+    //==     }
+    //== }
+
+    //== for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++) array[n++] = f_it_local_(irloc);
+
+    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
     {
-        for (int i1 = 0; i1 < f_mt_local_(ialoc)->size(1); i1++)
+        for (int i1 = 0; i1 < f_mt_.size(1); i1++)
         {
-            for (int i0 = 0; i0 < f_mt_local_(ialoc)->size(0); i0++) array[n++] = (*f_mt_local_(ialoc))(i0, i1);
+            for (int i0 = 0; i0 < f_mt_.size(0); i0++) array[n++] = f_mt_(i0, i1, ia);
         }
     }
 
-    for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++) array[n++] = f_it_local_(irloc);
+    for (int ir = 0; ir < parameters_.fft().size(); ir++) array[n++] = f_it_(ir);
 
     return n;
 }
@@ -198,16 +216,29 @@ size_t Periodic_function<T>::pack(T* array)
 template <typename T>
 size_t Periodic_function<T>::unpack(T* array)
 {
+    if (f_it_.get_ptr() == NULL || f_mt_.get_ptr() == NULL)
+        error_local(__FILE__, __LINE__, "Current implementation requires global function");
+
     size_t n = 0;
-    for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+    //== for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+    //== {
+    //==     for (int i1 = 0; i1 < f_mt_local_(ialoc)->size(1); i1++)
+    //==     {
+    //==         for (int i0 = 0; i0 < f_mt_local_(ialoc)->size(0); i0++) (*f_mt_local_(ialoc))(i0, i1) = array[n++];
+    //==     }
+    //== }
+
+    //== for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++) f_it_local_(irloc) = array[n++];
+
+    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
     {
-        for (int i1 = 0; i1 < f_mt_local_(ialoc)->size(1); i1++)
+        for (int i1 = 0; i1 < f_mt_.size(1); i1++)
         {
-            for (int i0 = 0; i0 < f_mt_local_(ialoc)->size(0); i0++) (*f_mt_local_(ialoc))(i0, i1) = array[n++];
+            for (int i0 = 0; i0 < f_mt_.size(0); i0++) f_mt_(i0, i1, ia) = array[n++];
         }
     }
 
-    for (int irloc = 0; irloc < parameters_.spl_fft_size().local_size(); irloc++) f_it_local_(irloc) = array[n++];
+    for (int ir = 0; ir < parameters_.fft().size(); ir++) f_it_(ir) = array[n++];
 
     return n;
 }

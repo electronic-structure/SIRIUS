@@ -1,6 +1,7 @@
 namespace sirius
 {
 
+/** \note density and potenaitl are allocated as global function because it's easier to load and save them. */
 class Density
 {
     private:
@@ -121,8 +122,8 @@ class Density
 
         void allocate()
         {
-            rho_->allocate(true);
-            for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->allocate(true);
+            rho_->allocate(true, true);
+            for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->allocate(true, true);
         }
 };
 

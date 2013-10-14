@@ -17,6 +17,14 @@ namespace sirius
     \f[
         f({\bf r}) = \sum_{{\bf G}} f({\bf G}) e^{i{\bf G}{\bf r}}
     \f]
+
+    The following terminology is used to describe the distribution of the function:
+        - global function: the whole copy of the function is stored at each MPI rank. Ranks should take care about the
+          syncronization of the data.
+        - local function: the function is distributed across the MPI ranks. 
+
+    \note In order to check if the function is defined as global or as distributed, check the f_mt_ and f_it_ pointers.
+          If the function is global, the pointers should not be null.
 */
 template<typename T> class Periodic_function
 { 
@@ -47,6 +55,22 @@ template<typename T> class Periodic_function
         /// plane-wave expansion coefficients
         mdarray<complex_t, 1> f_pw_;
 
+        int num_gvec_;
+
+        void set_local_mt_ptr()
+        {
+            for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+            {
+                int ia = parameters_.spl_num_atoms(ialoc);
+                f_mt_local_(ialoc)->set_ptr(&f_mt_(0, 0, ia));
+            }
+        }
+
+        void set_local_it_ptr()
+        {
+            f_it_local_.set_ptr(&f_it_(parameters_.spl_fft_size().global_offset()));
+        }
+
     public:
 
         /// Constructor
@@ -56,13 +80,13 @@ template<typename T> class Periodic_function
         ~Periodic_function();
         
         /// Allocate memory
-        void allocate(bool allocate_global);
+        void allocate(bool allocate_global_mt, bool allocate_global_it);
 
         /// Zero the function.
         void zero();
         
         /// Syncronize global function.
-        void sync();
+        void sync(bool sync_mt, bool sync_it);
 
         /// Copy from source
         void copy(Periodic_function<T>* src);
@@ -77,7 +101,7 @@ template<typename T> class Periodic_function
         template <index_domain_t index_domain>
         inline T& f_mt(int idx0, int idx1, int ia);
         
-        //TODO: this is more complicated if the function is distributed
+        /** \todo write and read distributed functions */
         void hdf5_write(HDF5_tree h5f);
 
         void hdf5_read(HDF5_tree h5f);
@@ -87,27 +111,15 @@ template<typename T> class Periodic_function
         size_t pack(T* array);
         
         size_t unpack(T* array);
-        
-        void set_local_mt_ptr()
-        {
-            for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
-            {
-                int ia = parameters_.spl_num_atoms(ialoc);
-                f_mt_local_(ialoc)->set_ptr(&f_mt_(0, 0, ia));
-            }
-        }
-        
+       
+        /// Set the global pointer to the muffin-tin part
         void set_mt_ptr(T* mt_ptr)
         {
             f_mt_.set_ptr(mt_ptr);
             set_local_mt_ptr();
         }
 
-        void set_local_it_ptr()
-        {
-            f_it_local_.set_ptr(&f_it_(parameters_.spl_fft_size().global_offset()));
-        }
-        
+        /// Set the global pointer to the interstitial part
         void set_it_ptr(T* it_ptr)
         {
             f_it_.set_ptr(it_ptr);

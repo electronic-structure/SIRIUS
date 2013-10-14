@@ -158,8 +158,8 @@ void Density::initial_density(int type = 0)
             rho_->f_it<global>(ir) = (parameters_.num_electrons() - mt_charge) / parameters_.volume_it();
     }
 
-    //rho_->sync();
-    //for (int i = 0; i < parameters_.num_mag_dims(); i++) magnetization_[i]->sync();
+    rho_->sync(true, true);
+    for (int i = 0; i < parameters_.num_mag_dims(); i++) magnetization_[i]->sync(true, true);
 
     //if (type == 1)
     //{
@@ -609,9 +609,6 @@ void Density::generate_valence_density_mt(K_set& ks)
         }
         t2.stop();
     }
-    
-    rho_->sync();
-    for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync();
 }
 
 void Density::generate_valence_density_it(K_set& ks)
@@ -993,6 +990,7 @@ void Density::generate(K_set& ks)
         }
     }
 
+
     // compute core states
     for (int icloc = 0; icloc < parameters_.spl_num_atom_symmetry_classes().local_size(); icloc++)
     {
@@ -1007,11 +1005,16 @@ void Density::generate(K_set& ks)
     }
 
     // add core contribution
-    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
     {
+        int ia = parameters_.spl_num_atoms(ialoc);
         for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-            rho_->f_mt<global>(0, ir, ia) += parameters_.atom(ia)->symmetry_class()->core_charge_density(ir) / y00;
+            rho_->f_mt<local>(0, ir, ialoc) += parameters_.atom(ia)->symmetry_class()->core_charge_density(ir) / y00;
     }
+
+    // synctronize muffin-tin part (interstitial is already syncronized with allreduce)
+    rho_->sync(true, false);
+    for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync(true, false);
 
     std::vector<double> nel_mt;
     double nel_it;

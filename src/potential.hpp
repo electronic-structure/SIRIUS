@@ -31,15 +31,15 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
     coulomb_potential_ = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_pot()),
                                                                     Argument(arg_radial, parameters_.max_num_mt_points()),
                                                                     parameters_.num_gvec());
-    coulomb_potential_->allocate(false);
+    coulomb_potential_->allocate(false, true);
     
     xc_potential_ = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_pot()),
                                                                Argument(arg_radial, parameters_.max_num_mt_points()));
-    xc_potential_->allocate(false);
+    xc_potential_->allocate(false, false);
     
     xc_energy_density_ = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_pot()),
                                                                     Argument(arg_radial, parameters_.max_num_mt_points()));
-    xc_energy_density_->allocate(false);
+    xc_energy_density_->allocate(false, false);
 
     update();
 }
@@ -206,7 +206,6 @@ void Potential::poisson_pw(mdarray<complex16, 2>& qmt, mdarray<complex16, 2>& qi
     Timer t("sirius::Potential::poisson_pw");
     memset(pseudo_pw, 0, parameters_.num_gvec() * sizeof(complex16));
     
-    // 
     // The following term is added to the plane-wave coefficients of the charge density:
     // Integrate[SphericalBesselJ[l,a*x]*p[x,R]*x^2,{x,0,R},Assumptions->{l>=0,n>=0,R>0,a>0}] / 
     //   Integrate[p[x,R]*x^(2+l),{x,0,R},Assumptions->{h>=0,n>=0,R>0}]
@@ -608,14 +607,13 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
     {
         rho_ylm(ialoc) = new MT_function<complex16>(rho->f_mt(ialoc), true);
-
         vh_ylm(ialoc) = new MT_function<complex16>(vh->f_mt(ialoc), false);
     }
     
     // true multipole moments
     mdarray<complex16, 2> qmt(parameters_.lmmax_rho(), parameters_.num_atoms());
     poisson_vmt(rho_ylm, vh_ylm, qmt);
-
+    
     // compute multipoles of interstitial density in MT region
     mdarray<complex16, 2> qit(parameters_.lmmax_rho(), parameters_.num_atoms());
     poisson_sum_G(&rho->f_pw(0), sbessel_mom_, qit);
@@ -920,9 +918,8 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho, Per
    
     effective_potential_->add(xc_potential_);
 
-    effective_potential_->sync();
-
-    for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->sync();
+    effective_potential_->sync(true, true);
+    for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->sync(true, true);
 
     //if (debug_level > 1) check_potential_continuity_at_mt();
 }
@@ -941,7 +938,7 @@ void Potential::copy_to_global_ptr(double* fmt, double* fit, Periodic_function<d
     dest->set_mt_ptr(fmt);
     dest->set_it_ptr(fit);
     dest->copy(src);
-    dest->sync();
+    dest->sync(true, true);
     delete dest;
 }
 

@@ -53,14 +53,16 @@ void DFT_ground_state::forces(mdarray<double, 2>& forces)
     Force::total_force(parameters_, potential_, density_, kset_, forces);
 }
 
-void DFT_ground_state::scf_loop(double charge_tol, double energy_tol)
+void DFT_ground_state::scf_loop(double charge_tol, double energy_tol, int num_dft_iter)
 {
+    Timer t("sirius::DFT_ground_state::scf_loop");
+
     density_mixer* mx = new density_mixer(density_->rho(), density_->magnetization(), parameters_.num_mag_dims());
     mx->load();
     
     double eold = 0.0;
 
-    for (int iter = 0; iter < 100; iter++)
+    for (int iter = 0; iter < num_dft_iter; iter++)
     {
         kset_->find_eigen_states(potential_, true);
         kset_->find_band_occupancies();
@@ -68,16 +70,21 @@ void DFT_ground_state::scf_loop(double charge_tol, double energy_tol)
         density_->generate(*kset_);
 
         double rms = mx->mix();
-        
+
+        Platform::bcast(&rms, 1, 0);
+
         potential_->generate_effective_potential(density_->rho(), density_->magnetization());
         
         double etot = total_energy();
         
+        print_info();
+        
         if (Platform::mpi_rank() == 0)
         {
-            printf("iteration : %3i, total energy : %16.8f, charge RMS %12.6f, energy difference : %12.6f\n", 
-                   iter, etot, rms, fabs(eold - etot));
+            printf("iteration : %3i, charge RMS %12.6f, energy difference : %12.6f, beta : %12.6f\n", 
+                    iter, rms, fabs(eold - etot), mx->beta());
         }
+        
         if (fabs(eold - etot) < energy_tol && rms < charge_tol) break;
 
         eold = etot;
@@ -94,7 +101,7 @@ void DFT_ground_state::relax_atom_positions()
 {
     for (int i = 0; i < 5; i++)
     {
-        scf_loop(1e-4, 1e-4);
+        scf_loop(1e-4, 1e-4, 100);
         move_atoms(i);
         update();
     }
