@@ -858,35 +858,41 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
         warning_local(__FILE__, __LINE__, s);
     }
 
-    /** \todo OMP threads can do this in parallel */
-    if (parameters_.num_spins() == 1)
+    #pragma omp parallel default(shared)
     {
-        xci.getxc(irloc_size, &rho->f_it<local>(0), &vxc->f_it<local>(0), &exc->f_it<local>(0));
-    }
-    else
-    {
-        std::vector<double> magit(irloc_size);
-        std::vector<double> bxcit(irloc_size);
+        int id = Platform::thread_id(); 
+        int m = irloc_size % Platform::num_threads(); // first m thread get n+1 elements
+        int pt_nloc = irloc_size / Platform::num_threads() + (id < m ? 1 : 0); // local number of elements: +1 if id < m
+        int pt_offs = (id < m) ? pt_nloc * id : m * (pt_nloc + 1) + (id - m) * pt_nloc; // offset
 
-        for (int irloc = 0; irloc < irloc_size; irloc++)
+        if (parameters_.num_spins() == 1)
         {
-            double t = 0.0;
-            for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                t += magnetization[j]->f_it<local>(irloc) * magnetization[j]->f_it<local>(irloc);
-            magit[irloc] = sqrt(t);
+            xci.getxc(pt_nloc, &rho->f_it<local>(pt_offs), &vxc->f_it<local>(pt_offs), &exc->f_it<local>(pt_offs));
         }
-        xci.getxc(irloc_size, &rho->f_it<local>(0), &magit[0], &vxc->f_it<local>(0), &bxcit[0], &exc->f_it<local>(0));
-        
-        for (int irloc = 0; irloc < irloc_size; irloc++)
+        else
         {
-            if (magit[irloc] > 1e-8)
+            std::vector<double> magit(pt_nloc);
+            std::vector<double> bxcit(pt_nloc);
+
+            for (int irloc = 0; irloc < pt_nloc; irloc++)
             {
-                for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                    bxc[j]->f_it<local>(irloc) = (bxcit[irloc] / magit[irloc]) * magnetization[j]->f_it<local>(irloc);
+                double t = 0.0;
+                for (int j = 0; j < parameters_.num_mag_dims(); j++) t += pow(magnetization[j]->f_it<local>(pt_offs + irloc), 2);
+                magit[irloc] = sqrt(t);
             }
-            else
+            xci.getxc(pt_nloc, &rho->f_it<local>(pt_offs), &magit[pt_offs], &vxc->f_it<local>(pt_offs), &bxcit[pt_offs], &exc->f_it<local>(pt_offs));
+            
+            for (int irloc = 0; irloc < pt_nloc; irloc++)
             {
-                for (int j = 0; j < parameters_.num_mag_dims(); j++) bxc[j]->f_it<local>(irloc) = 0.0;
+                if (magit[irloc] > 1e-8)
+                {
+                    for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                        bxc[j]->f_it<local>(pt_offs + irloc) = (bxcit[irloc] / magit[irloc]) * magnetization[j]->f_it<local>(pt_offs + irloc);
+                }
+                else
+                {
+                    for (int j = 0; j < parameters_.num_mag_dims(); j++) bxc[j]->f_it<local>(pt_offs + irloc) = 0.0;
+                }
             }
         }
     }
