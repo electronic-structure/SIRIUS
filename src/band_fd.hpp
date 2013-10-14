@@ -183,7 +183,7 @@ void Band::set_o_it(K_point* kp, mdarray<complex16, 2>& o)
 template <spin_block_t sblock>
 void Band::set_h_lo_lo(K_point* kp, mdarray<complex16, 2>& h)
 {
-    Timer t("sirius::K_point::set_fv_h_o_lo_lo");
+    Timer t("sirius::K_point::set_h_lo_lo");
 
     // lo-lo block
     #pragma omp parallel for default(shared)
@@ -369,13 +369,17 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
     std::vector<double> eval(parameters_.num_bands());
     mdarray<complex16, 2>& fd_evec = kp->fd_eigen_vectors();
 
+    Timer t2("sirius::Band::solve_fd|diag", false);
+
     if (parameters_.num_mag_dims() == 0)
     {
         assert(kp->apwlo_basis_size() >= parameters_.num_fv_states());
         set_h<nm>(kp, effective_potential, effective_magnetic_field, h);
-        
+       
+        t2.start();
         solver->solve(kp->apwlo_basis_size(), parameters_.num_fv_states(), h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), 
                       &eval[0], fd_evec.get_ptr(), fd_evec.ld());
+        t2.stop();
     }
     
     if (parameters_.num_mag_dims() == 1)
@@ -386,14 +390,18 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
         memcpy(&o1(0, 0), &o(0, 0), o.size() * sizeof(complex16));
 
         set_h<uu>(kp, effective_potential, effective_magnetic_field, h);
-        
+       
+        t2.start();
         solver->solve(kp->apwlo_basis_size(), parameters_.num_fv_states(), h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), 
                       &eval[0], &fd_evec(0, 0), fd_evec.ld());
-        
+        t2.stop();
+
         set_h<dd>(kp, effective_potential, effective_magnetic_field, h);
         
+        t2.start();
         solver->solve(kp->apwlo_basis_size(), parameters_.num_fv_states(), h.get_ptr(), h.ld(), o1.get_ptr(), o1.ld(), 
                       &eval[parameters_.num_fv_states()], &fd_evec(0, parameters_.spl_fv_states_col().local_size()), fd_evec.ld());
+        t2.stop();
     }
 
     kp->set_band_energies(&eval[0]);

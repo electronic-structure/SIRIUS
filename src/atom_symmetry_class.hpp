@@ -541,6 +541,7 @@ inline void Atom_symmetry_class::sync_radial_integrals(int rank)
     Platform::bcast(so_radial_integrals_.get_ptr(), (int)so_radial_integrals_.size(), rank);
 }
 
+/** \todo OMP for radial integrals */
 void Atom_symmetry_class::generate_radial_integrals()
 {
     Timer t("sirius::Atom_symmetry_class::generate_radial_integrals");
