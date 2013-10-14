@@ -547,22 +547,26 @@ void Atom_symmetry_class::generate_radial_integrals()
     Timer t("sirius::Atom_symmetry_class::generate_radial_integrals");
 
     int nmtp = atom_type_->num_mt_points();
-    Spline<double> s(nmtp, atom_type_->radial_grid()); 
 
     h_spherical_integrals_.zero();
-    for (int i1 = 0; i1 < atom_type_->mt_radial_basis_size(); i1++)
+    #pragma omp parallel default(shared)
     {
-        for (int i2 = 0; i2 < atom_type_->mt_radial_basis_size(); i2++)
+        Spline<double> s(nmtp, atom_type_->radial_grid()); 
+        #pragma omp for
+        for (int i1 = 0; i1 < atom_type_->mt_radial_basis_size(); i1++)
         {
-            // for spherical part of potential integrals are diagonal in l
-            if (atom_type_->indexr(i1).l == atom_type_->indexr(i2).l)
+            for (int i2 = 0; i2 < atom_type_->mt_radial_basis_size(); i2++)
             {
-                for (int ir = 0; ir < nmtp; ir++)
+                // for spherical part of potential integrals are diagonal in l
+                if (atom_type_->indexr(i1).l == atom_type_->indexr(i2).l)
                 {
-                    s[ir] = radial_functions_(ir, i1, 0) * radial_functions_(ir, i2, 1) * 
-                            atom_type_->radial_grid(ir); // hp was not divided by r, so we use r^{1}dr
+                    for (int ir = 0; ir < nmtp; ir++)
+                    {
+                        s[ir] = radial_functions_(ir, i1, 0) * radial_functions_(ir, i2, 1) * 
+                                atom_type_->radial_grid(ir); // hp was not divided by r, so we use r^{1}dr
+                    }
+                    h_spherical_integrals_(i1, i2) = s.interpolate().integrate(0) / y00;
                 }
-                h_spherical_integrals_(i1, i2) = s.interpolate().integrate(0) / y00;
             }
         }
     }
@@ -652,40 +656,45 @@ void Atom_symmetry_class::generate_radial_integrals()
     }
         
     o_radial_integrals_.zero();
-    for (int l = 0; l <= atom_type_->indexr().lmax(); l++)
+    #pragma omp parallel default(shared)
     {
-        int nrf = atom_type_->indexr().num_rf(l);
-
-        for (int order1 = 0; order1 < nrf; order1++)
+        Spline<double> s(nmtp, atom_type_->radial_grid()); 
+        #pragma omp for
+        for (int l = 0; l <= atom_type_->indexr().lmax(); l++)
         {
-            int idxrf1 = atom_type_->indexr().index_by_l_order(l, order1);
-            for (int order2 = 0; order2 < nrf; order2++)
-            {
-                int idxrf2 = atom_type_->indexr().index_by_l_order(l, order2);
+            int nrf = atom_type_->indexr().num_rf(l);
 
-                if (order1 == order2) 
+            for (int order1 = 0; order1 < nrf; order1++)
+            {
+                int idxrf1 = atom_type_->indexr().index_by_l_order(l, order1);
+                for (int order2 = 0; order2 < nrf; order2++)
                 {
-                    o_radial_integrals_(l, order1, order2) = 1.0;
-                }
-                else
-                {
-                    for (int ir = 0; ir < nmtp; ir++)
-                        s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
-                    o_radial_integrals_(l, order1, order2) = s.interpolate().integrate(2);
+                    int idxrf2 = atom_type_->indexr().index_by_l_order(l, order2);
+
+                    if (order1 == order2) 
+                    {
+                        o_radial_integrals_(l, order1, order2) = 1.0;
+                    }
+                    else
+                    {
+                        for (int ir = 0; ir < nmtp; ir++)
+                            s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
+                        o_radial_integrals_(l, order1, order2) = s.interpolate().integrate(2);
+                    }
                 }
             }
         }
     }
 
-    if (true) // TODO: if it's slow, compute only when spin-orbit is turned on
+    if (false) // TODO: if it's slow, compute only when spin-orbit is turned on
     {
         double soc = pow(2 * speed_of_light, -2);
 
+        Spline<double> s(nmtp, atom_type_->radial_grid()); 
         Spline<double> s1(nmtp, atom_type_->radial_grid()); 
-        
         Spline<double> ve(nmtp, atom_type_->radial_grid()); 
-        for (int i = 0; i < nmtp; i++)
-            ve[i] = spherical_potential_[i] + atom_type_->zn() / atom_type_->radial_grid(i);
+        
+        for (int i = 0; i < nmtp; i++) ve[i] = spherical_potential_[i] + atom_type_->zn() / atom_type_->radial_grid(i);
         ve.interpolate();
 
         so_radial_integrals_.zero();

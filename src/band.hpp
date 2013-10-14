@@ -1335,7 +1335,7 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
 
 void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
-    Timer t("sirius::K_point::set_fv_h_o_lo_lo");
+    Timer t("sirius::Band::set_fv_h_o_lo_lo");
 
     // lo-lo block
     #pragma omp parallel for default(shared)
