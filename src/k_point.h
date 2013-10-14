@@ -235,8 +235,12 @@ class K_point
         void update();
         
         /// Generate plane-wave matching coefficents for the radial solutions 
-        /** The matching coefficients are conjugated!. This is done in favor of the convenient overlap 
-            matrix construnction. */
+        /** At some point we need to compute the radial derivatives of the spherical Bessel functions at the 
+            muffin-tin boundary. The following formula is used:
+            \f[
+                j_{{n}}^{{\prime}}(z)=-j_{{n+1}}(z)+(n/z)j_{{n}}(z)
+            \f]
+        */
         template <bool conjugate>
         void generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm);
         
