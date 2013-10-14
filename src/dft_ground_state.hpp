@@ -64,6 +64,8 @@ void DFT_ground_state::scf_loop(double charge_tol, double energy_tol, int num_df
 
     for (int iter = 0; iter < num_dft_iter; iter++)
     {
+        Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
+
         kset_->find_eigen_states(potential_, true);
         kset_->find_band_occupancies();
         kset_->valence_eval_sum();
