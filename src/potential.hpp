@@ -880,7 +880,7 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
                 for (int j = 0; j < parameters_.num_mag_dims(); j++) t += pow(magnetization[j]->f_it<local>(pt_offs + irloc), 2);
                 magit[irloc] = sqrt(t);
             }
-            xci.getxc(pt_nloc, &rho->f_it<local>(pt_offs), &magit[pt_offs], &vxc->f_it<local>(pt_offs), &bxcit[pt_offs], &exc->f_it<local>(pt_offs));
+            xci.getxc(pt_nloc, &rho->f_it<local>(pt_offs), &magit[0], &vxc->f_it<local>(pt_offs), &bxcit[0], &exc->f_it<local>(pt_offs));
             
             for (int irloc = 0; irloc < pt_nloc; irloc++)
             {
