@@ -121,7 +121,7 @@ void Atom::generate_radial_integrals(MPI_Comm& comm)
                             //for (int ir = 0; ir < nmtp; ir++) s[ir] = symmetry_class()->radial_function(ir, i1) * v(ir, 1 + j);
                             
                             //b_radial_integrals_(lm, i1, i2, j) = b_radial_integrals_(lm, i2, i1, j) = s.interpolate().integrate(2);
-                            b_radial_integrals_(lm, i1, i2, j) = Spline<double>::integrate(&rf_spline[i1], &vrf_spline[1 + j]);
+                            b_radial_integrals_(lm, i1, i2, j) = b_radial_integrals_(lm, i2, i1, j) = Spline<double>::integrate(&rf_spline[i1], &vrf_spline[1 + j]);
                         }
                     }
                 }
