@@ -123,7 +123,7 @@ void K_point::generate_matching_coefficients_l<1, true>(int ia, int iat, Atom_ty
     complex16 zt;
     for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
     {
-        zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 0) * A(0, 0);
+        zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat) * A(0, 0);
 
         int idxb = type->indexb_by_l_m_order(l, -l, 0);
         for (int m = -l; m <= l; m++) alm(igkloc, idxb++) = gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc) * conj(zt);
@@ -149,7 +149,7 @@ void K_point::generate_matching_coefficients_l<1, false>(int ia, int iat, Atom_t
     complex16 zt;
     for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
     {
-        zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 0) * A(0, 0);
+        zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat) * A(0, 0);
 
         int idxb = type->indexb_by_l_m_order(l, -l, 0);
         for (int m = -l; m <= l; m++) alm(igkloc, idxb++) = conj(gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc)) * zt;
@@ -183,8 +183,8 @@ template<> void K_point::generate_matching_coefficients_l<2, true>(int ia, int i
     complex16 zb[2];
     for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
     {
-        zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 0);
-        zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 1);
+        zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat);
+        zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(1, igkloc, l, iat);
 
         zb[0] = A(0, 0) * zt[0] + A(0, 1) * zt[1];
         zb[1] = A(1, 0) * zt[0] + A(1, 1) * zt[1];
@@ -224,8 +224,8 @@ template<> void K_point::generate_matching_coefficients_l<2, false>(int ia, int 
     complex16 zb[2];
     for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
     {
-        zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 0);
-        zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 1);
+        zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat);
+        zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(1, igkloc, l, iat);
 
         zb[0] = A(0, 0) * zt[0] + A(0, 1) * zt[1];
         zb[1] = A(1, 0) * zt[0] + A(1, 1) * zt[1];
@@ -250,9 +250,9 @@ template<> void K_point::generate_matching_coefficients_l<3, true>(int ia, int i
     complex16 zb[3];
     for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
     {
-        zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 0);
-        zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 1);
-        zt[2] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 2);
+        zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat);
+        zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(1, igkloc, l, iat);
+        zt[2] = gkvec_phase_factors_(igkloc, ia) * alm_b_(2, igkloc, l, iat);
 
         zb[0] = A(0, 0) * zt[0] + A(0, 1) * zt[1] + A(0, 2) * zt[2];
         zb[1] = A(1, 0) * zt[0] + A(1, 1) * zt[1] + A(1, 2) * zt[2];
@@ -280,9 +280,9 @@ template<> void K_point::generate_matching_coefficients_l<3, false>(int ia, int 
     complex16 zb[3];
     for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
     {
-        zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 0);
-        zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 1);
-        zt[2] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 2);
+        zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat);
+        zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(1, igkloc, l, iat);
+        zt[2] = gkvec_phase_factors_(igkloc, ia) * alm_b_(2, igkloc, l, iat);
 
         zb[0] = A(0, 0) * zt[0] + A(0, 1) * zt[1] + A(0, 2) * zt[2];
         zb[1] = A(1, 0) * zt[0] + A(1, 1) * zt[1] + A(1, 2) * zt[2];
@@ -624,7 +624,7 @@ void K_point::init_gkvec()
    
     if (basis_type == apwlo)
     {
-        alm_b_.set_dimensions(parameters_.lmax_apw() + 1, parameters_.num_atom_types(), num_gkvec_loc(), 3);
+        alm_b_.set_dimensions(3, num_gkvec_loc(), parameters_.lmax_apw() + 1, parameters_.num_atom_types());
         alm_b_.allocate();
         alm_b_.zero();
 
@@ -659,9 +659,9 @@ void K_point::init_gkvec()
                 for (int l = 0; l <= parameters_.lmax_apw(); l++)
                 {
                     double f = fourpi / sqrt(parameters_.omega());
-                    alm_b_(l, iat, igkloc, 0) = zil_[l] * f * sbessel_mt(l, 0); 
-                    alm_b_(l, iat, igkloc, 1) = zil_[l] * f * sbessel_mt(l, 1);
-                    alm_b_(l, iat, igkloc, 2) = zil_[l] * f * sbessel_mt(l, 2);
+                    alm_b_(0, igkloc, l, iat) = zil_[l] * f * sbessel_mt(l, 0); 
+                    alm_b_(1, igkloc, l, iat) = zil_[l] * f * sbessel_mt(l, 1);
+                    alm_b_(2, igkloc, l, iat) = zil_[l] * f * sbessel_mt(l, 2);
                 }
             }
         }
