@@ -188,14 +188,14 @@ template<> void K_point::generate_matching_coefficients_l<2, true>(int ia, int i
 
         zb[0] = A(0, 0) * zt[0] + A(0, 1) * zt[1];
         zb[1] = A(1, 0) * zt[0] + A(1, 1) * zt[1];
-
-        for (int m = -l; m <= l; m++)
+        
+        for (int lm = Utils::lm_by_l_m(l, -l); lm <= Utils::lm_by_l_m(l, l); lm++)
         {
-            int idxb0 = type->indexb_by_l_m_order(l, m, 0);
-            int idxb1 = type->indexb_by_l_m_order(l, m, 1);
+            int idxb0 = type->indexb_by_lm_order(lm, 0);
+            int idxb1 = type->indexb_by_lm_order(lm, 1);
                         
-            alm(igkloc, idxb0) = gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc) * conj(zb[0]);
-            alm(igkloc, idxb1) = gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc) * conj(zb[1]);
+            alm(igkloc, idxb0) = gkvec_ylm_(lm, igkloc) * conj(zb[0]);
+            alm(igkloc, idxb1) = gkvec_ylm_(lm, igkloc) * conj(zb[1]);
         }
     }
 }
