@@ -559,12 +559,12 @@ void K_point::init_gkvec()
    
     if (basis_type == apwlo)
     {
-        alm_b_.set_dimensions(parameters_.lmax_apw() + 1, parameters_.num_atom_types(), num_gkvec_loc(), 2);
+        alm_b_.set_dimensions(parameters_.lmax_apw() + 1, parameters_.num_atom_types(), num_gkvec_loc(), 3);
         alm_b_.allocate();
         alm_b_.zero();
 
-        // compute values of spherical Bessel functions and first derivative at MT boundary
-        mdarray<double, 2> sbessel_mt(parameters_.lmax_apw() + 2, 2);
+        // compute values and first and second derivatives of the spherical Bessel functions at the MT boundary
+        mdarray<double, 2> sbessel_mt(parameters_.lmax_apw() + 2, 3);
         sbessel_mt.zero();
 
         for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
@@ -578,14 +578,25 @@ void K_point::init_gkvec()
                 gsl_sf_bessel_jl_array(parameters_.lmax_apw() + 1, gkR, &sbessel_mt(0, 0));
                 
                 // Bessel function derivative: f_{{n}}^{{\prime}}(z)=-f_{{n+1}}(z)+(n/z)f_{{n}}(z)
+                //
+                // In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,1}]]
+                // Out[]= (n SphericalBesselJ[n,a x])/x-a SphericalBesselJ[1+n,a x]
+                //
+                // In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,2}]]
+                // Out[]= (((-1+n) n-a^2 x^2) SphericalBesselJ[n,a x]+2 a x SphericalBesselJ[1+n,a x])/x^2
                 for (int l = 0; l <= parameters_.lmax_apw(); l++)
+                {
                     sbessel_mt(l, 1) = -sbessel_mt(l + 1, 0) * gkvec_len_[igkloc] + (l / R) * sbessel_mt(l, 0);
+                    sbessel_mt(l, 2) = 2 * gkvec_len_[igkloc] * sbessel_mt(l + 1, 0) / R + 
+                                       ((l - 1) * l - pow(gkR, 2)) * sbessel_mt(l, 0) / pow(R, 2);
+                }
                 
                 for (int l = 0; l <= parameters_.lmax_apw(); l++)
                 {
                     double f = fourpi / sqrt(parameters_.omega());
                     alm_b_(l, iat, igkloc, 0) = zil_[l] * f * sbessel_mt(l, 0); 
                     alm_b_(l, iat, igkloc, 1) = zil_[l] * f * sbessel_mt(l, 1);
+                    alm_b_(l, iat, igkloc, 2) = zil_[l] * f * sbessel_mt(l, 2);
                 }
             }
         }

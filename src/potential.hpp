@@ -861,7 +861,7 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
     #pragma omp parallel default(shared)
     {
         int id = Platform::thread_id(); 
-        int m = irloc_size % Platform::num_threads(); // first m thread get n+1 elements
+        int m = irloc_size % Platform::num_threads(); // first m threads get n+1 elements
         int pt_nloc = irloc_size / Platform::num_threads() + (id < m ? 1 : 0); // local number of elements: +1 if id < m
         int pt_offs = (id < m) ? pt_nloc * id : m * (pt_nloc + 1) + (id - m) * pt_nloc; // offset
 
