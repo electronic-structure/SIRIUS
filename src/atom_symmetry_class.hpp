@@ -84,10 +84,15 @@ void Atom_symmetry_class::generate_aw_radial_functions()
                 }
                 dpdr[order] *= norm;
 
-                // radial derivative
+                // 1st radial derivative
                 double rderiv = dpdr[order];
-
-                aw_surface_derivatives_(order, l) = (rderiv - radial_functions_(nmtp - 1, idxrf, 0) / R) / R;
+                aw_surface_derivatives_(order, l, 0) = (rderiv - radial_functions_(nmtp - 1, idxrf, 0) / R) / R;
+                
+                // 2nd radial derivative
+                for (int ir = 0; ir < nmtp; ir++) s[ir] = radial_functions_(ir, idxrf, 0);
+                s.interpolate();
+                aw_surface_derivatives_(order, l, 1) = (2 * radial_functions_(nmtp - 1, idxrf, 0) / R / R - 
+                                                        2 * rderiv / R + s.deriv(2, nmtp - 1)) / R;  
                 
                 if (debug_level > 1)
                 {
@@ -428,7 +433,7 @@ void Atom_symmetry_class::transform_radial_functions(bool ort_lo, bool ort_aw)
                                 atom_type_->radial_grid().dr(nmtp - 2);
                 double R = atom_type_->mt_radius();
 
-                aw_surface_derivatives_(order1, l) = (rderiv - radial_functions_(nmtp - 1, idxrf1, 0) / R) / R;
+                aw_surface_derivatives_(order1, l, 0) = (rderiv - radial_functions_(nmtp - 1, idxrf1, 0) / R) / R;
             }
 
         }
@@ -450,7 +455,7 @@ void Atom_symmetry_class::transform_radial_functions(bool ort_lo, bool ort_aw)
 
 void Atom_symmetry_class::initialize()
 {
-    aw_surface_derivatives_.set_dimensions(atom_type_->max_aw_order(), atom_type_->num_aw_descriptors());
+    aw_surface_derivatives_.set_dimensions(atom_type_->max_aw_order(), atom_type_->num_aw_descriptors(), 2);
     aw_surface_derivatives_.allocate();
 
     radial_functions_.set_dimensions(atom_type_->num_mt_points(), atom_type_->mt_radial_basis_size(), 2);
@@ -769,7 +774,11 @@ double Atom_symmetry_class::aw_surface_dm(int l, int order, int dm)
         }
         case 1:
         {
-            return aw_surface_derivatives_(order, l);
+            return aw_surface_derivatives_(order, l, 0);
+        }
+        case 2:
+        {
+            return aw_surface_derivatives_(order, l, 1);
         }
         default:
         {

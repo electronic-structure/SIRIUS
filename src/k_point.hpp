@@ -241,6 +241,66 @@ template<> void K_point::generate_matching_coefficients_l<2, false>(int ia, int 
     }
 }
 
+template<> void K_point::generate_matching_coefficients_l<3, true>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
+                                                                   mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
+{
+    linalg<lapack>::invert_ge(&A(0, 0), 3);
+    
+    complex16 zt[3];
+    complex16 zb[3];
+    for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
+    {
+        zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 0);
+        zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 1);
+        zt[2] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 2);
+
+        zb[0] = A(0, 0) * zt[0] + A(0, 1) * zt[1] + A(0, 2) * zt[2];
+        zb[1] = A(1, 0) * zt[0] + A(1, 1) * zt[1] + A(1, 2) * zt[2];
+        zb[2] = A(2, 0) * zt[0] + A(2, 1) * zt[1] + A(2, 2) * zt[2];
+
+        for (int m = -l; m <= l; m++)
+        {
+            int idxb0 = type->indexb_by_l_m_order(l, m, 0);
+            int idxb1 = type->indexb_by_l_m_order(l, m, 1);
+            int idxb2 = type->indexb_by_l_m_order(l, m, 2);
+                        
+            alm(igkloc, idxb0) = gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc) * conj(zb[0]);
+            alm(igkloc, idxb1) = gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc) * conj(zb[1]);
+            alm(igkloc, idxb2) = gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc) * conj(zb[2]);
+        }
+    }
+}
+
+template<> void K_point::generate_matching_coefficients_l<3, false>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
+                                                                    mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
+{
+    linalg<lapack>::invert_ge(&A(0, 0), 3);
+    
+    complex16 zt[3];
+    complex16 zb[3];
+    for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
+    {
+        zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 0);
+        zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 1);
+        zt[2] = gkvec_phase_factors_(igkloc, ia) * alm_b_(l, iat, igkloc, 2);
+
+        zb[0] = A(0, 0) * zt[0] + A(0, 1) * zt[1] + A(0, 2) * zt[2];
+        zb[1] = A(1, 0) * zt[0] + A(1, 1) * zt[1] + A(1, 2) * zt[2];
+        zb[2] = A(2, 0) * zt[0] + A(2, 1) * zt[1] + A(2, 2) * zt[2];
+
+        for (int m = -l; m <= l; m++)
+        {
+            int idxb0 = type->indexb_by_l_m_order(l, m, 0);
+            int idxb1 = type->indexb_by_l_m_order(l, m, 1);
+            int idxb2 = type->indexb_by_l_m_order(l, m, 2);
+                        
+            alm(igkloc, idxb0) = conj(gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc)) * zb[0];
+            alm(igkloc, idxb1) = conj(gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc)) * zb[1];
+            alm(igkloc, idxb2) = conj(gkvec_ylm_(Utils::lm_by_l_m(l, m), igkloc)) * zb[2];
+        }
+    }
+}
+
 template<bool conjugate>
 void K_point::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
 {
@@ -249,13 +309,13 @@ void K_point::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<
     Atom* atom = parameters_.atom(ia);
     Atom_type* type = atom->type();
 
-    assert(type->max_aw_order() <= 2);
+    assert(type->max_aw_order() <= 3);
 
     int iat = parameters_.atom_type_index_by_id(type->id());
 
     #pragma omp parallel default(shared)
     {
-        mdarray<double, 2> A(2, 2);
+        mdarray<double, 2> A(3, 3);
 
         #pragma omp for
         for (int l = 0; l <= parameters_.lmax_apw(); l++)
@@ -277,6 +337,11 @@ void K_point::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<
                 case 2:
                 {
                     generate_matching_coefficients_l<2, conjugate>(ia, iat, type, l, num_gkvec_loc, A, alm);
+                    break;
+                }
+                case 3:
+                {
+                    generate_matching_coefficients_l<3, conjugate>(ia, iat, type, l, num_gkvec_loc, A, alm);
                     break;
                 }
                 default:

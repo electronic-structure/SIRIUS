@@ -31,7 +31,7 @@ class Atom_symmetry_class
         mdarray<double, 3> radial_functions_;
         
         /// surface derivatives of aw radial functions
-        mdarray<double, 2> aw_surface_derivatives_;
+        mdarray<double, 3> aw_surface_derivatives_;
 
         /// spherical part of radial integral
         mdarray<double, 2> h_spherical_integrals_;

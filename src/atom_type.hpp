@@ -64,7 +64,7 @@ void Atom_type::init(int lmax_apw)
     max_aw_order_ = 0;
     for (int l = 0; l <= lmax_apw; l++) max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
 
-    if (max_aw_order_ == 0 || max_aw_order_ > 2) error_local(__FILE__, __LINE__, "maximum aw order is zero or greater than two");
+    if (max_aw_order_ == 0 || max_aw_order_ > 3) error_local(__FILE__, __LINE__, "maximum aw order is zero or greater than three");
 
     indexr_.init(aw_descriptors_, lo_descriptors_);
     indexb_.init(indexr_);
