@@ -18,7 +18,6 @@ void K_point::initialize()
         sv_eigen_vectors_.allocate();
     }
     
-    
     update();
 }
 

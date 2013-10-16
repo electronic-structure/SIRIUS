@@ -158,8 +158,9 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
             {
                 for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++)
                 {
-                    vh(igk_row, icol) = complex16(0.0, kp->apwlo_basis_descriptors_row(igk_row).gkvec_cart[x]) * h(igk_row, icol);
-                    vo(igk_row, icol) = complex16(0.0, kp->apwlo_basis_descriptors_row(igk_row).gkvec_cart[x]) * o(igk_row, icol);
+                    vector3d<double>& vgk = kp->apwlo_basis_descriptors_row(igk_row).gkvec_cart;
+                    vh(igk_row, icol) = complex16(0.0, vgk[x]) * h(igk_row, icol);
+                    vo(igk_row, icol) = complex16(0.0, vgk[x]) * o(igk_row, icol);
                 }
             }
                     
@@ -167,8 +168,9 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
             {
                 for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++)
                 {
-                    vh(irow, igk_col) = complex16(0.0, -kp->apwlo_basis_descriptors_col(igk_col).gkvec_cart[x]) * h(irow, igk_col);
-                    vo(irow, igk_col) = complex16(0.0, -kp->apwlo_basis_descriptors_col(igk_col).gkvec_cart[x]) * o(irow, igk_col);
+                    vector3d<double>& vgk = kp->apwlo_basis_descriptors_col(igk_col).gkvec_cart;
+                    vh(irow, igk_col) = complex16(0.0, -vgk[x]) * h(irow, igk_col);
+                    vo(irow, igk_col) = complex16(0.0, -vgk[x]) * o(irow, igk_col);
                 }
             }
 
@@ -278,6 +280,13 @@ void Force::total_force(Global& parameters_, Potential* potential, Density* dens
     }
     Platform::allreduce(&force(0, 0), (int)force.size(), parameters_.mpi_grid().communicator(1 << _dim_k_));
 
+    if (Platform::mpi_rank() == 0)
+    {
+        printf("============================================================\n");
+        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            printf("ia : %i, forcek : %12.6f %12.6f %12.6f\n", ia, force(0, ia), force(1, ia), force(2, ia));
+    }
+
     
     mdarray<double, 2> forcehf(3, parameters_.num_atoms());
     mdarray<double, 2> forcerho(3, parameters_.num_atoms());
@@ -298,6 +307,13 @@ void Force::total_force(Global& parameters_, Potential* potential, Density* dens
     }
     Platform::allreduce(&forcehf(0, 0), (int)forcehf.size());
     
+    if (Platform::mpi_rank() == 0)
+    {
+        printf("============================================================\n");
+        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            printf("ia : %i, forcehf : %12.6f %12.6f %12.6f\n", ia, forcehf(0, ia), forcehf(1, ia), forcehf(2, ia));
+    }
+    
     for (int x = 0; x < 3; x++) 
     {
         delete g[x];
@@ -317,6 +333,12 @@ void Force::total_force(Global& parameters_, Potential* potential, Density* dens
         }
     }
     Platform::allreduce(&forcerho(0, 0), (int)forcerho.size());
+    if (Platform::mpi_rank() == 0)
+    {
+        printf("============================================================\n");
+        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            printf("ia : %i, forcerho : %12.6f %12.6f %12.6f\n", ia, forcerho(0, ia), forcerho(1, ia), forcerho(2, ia));
+    }
     
     for (int x = 0; x < 3; x++) delete g[x];
 
