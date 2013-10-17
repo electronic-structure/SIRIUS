@@ -167,6 +167,7 @@ template<> class primitive_type_wrapper<char>
         }*/
 };
 
+/// Simple implementation of 3d vector
 template <typename T> class vector3d
 {
     private:
@@ -174,17 +175,20 @@ template <typename T> class vector3d
         T vec_[3];
 
     public:
-
+        
+        /// Construct zero vector
         vector3d()
         {
             vec_[0] = vec_[1] = vec_[2] = 0;
         }
 
+        /// Construct vector with the same values
         vector3d(T v0)
         {
             vec_[0] = vec_[1] = vec_[2] = v0;
         }
 
+        /// Construct arbitrary vector
         vector3d(T x, T y, T z)
         {
             vec_[0] = x;
@@ -192,17 +196,20 @@ template <typename T> class vector3d
             vec_[2] = z;
         }
 
+        /// Construct vector from pointer
         vector3d(T* ptr)
         {
             for (int i = 0; i < 3; i++) vec_[i] = ptr[i];
         }
 
+        /// Access vector elements
         inline T& operator[](const int i)
         {
             assert(i >= 0 && i <= 2);
             return vec_[i];
         }
 
+        /// Return vector length
         inline double length()
         {
             return sqrt(vec_[0] * vec_[0] + vec_[1] * vec_[1] + vec_[2] * vec_[2]);
