@@ -489,19 +489,19 @@ T inner(Radial_grid& r, MT_function<T>* f1, MT_function<T>* f2)
     int radial_domain_idx = f1->argument_idx(arg_radial);
     int angular_domain_idx = (radial_domain_idx == 0) ? 1 : 0;
     
-    Spline<T> s(f1->size(radial_domain_idx), r);
+    Spline<T> s(r.num_mt_points(), r);
 
     if (radial_domain_idx == 0)
     {
         for (int lm = 0; lm < f1->size(angular_domain_idx); lm++)
         {
-            for (int ir = 0; ir < f1->size(radial_domain_idx); ir++)
+            for (int ir = 0; ir < r.num_mt_points(); ir++)
                 s[ir] += primitive_type_wrapper<T>::conjugate((*f1)(ir, lm)) * (*f2)(ir, lm);
         }       
     }
     else
     {
-        for (int ir = 0; ir < f1->size(radial_domain_idx); ir++)
+        for (int ir = 0; ir < r.num_mt_points(); ir++)
         {
             for (int lm = 0; lm < f1->size(angular_domain_idx); lm++)
                 s[ir] += primitive_type_wrapper<T>::conjugate((*f1)(lm, ir)) * (*f2)(lm, ir);
