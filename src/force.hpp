@@ -346,5 +346,11 @@ void Force::total_force(Global& parameters_, Potential* potential, Density* dens
     {
         for (int x = 0; x < 3; x++) force(x, ia) += (forcehf(x, ia) + forcerho(x, ia));
     }
+    if (Platform::mpi_rank() == 0)
+    {
+        printf("============================================================\n");
+        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+            printf("ia : %i, forcetot : %12.6f %12.6f %12.6f\n", ia, force(0, ia), force(1, ia), force(2, ia));
+    }
 }
 

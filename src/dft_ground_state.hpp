@@ -97,6 +97,9 @@ void DFT_ground_state::scf_loop(double charge_tol, double energy_tol, int num_df
     density_->save();
 
     delete mx;
+
+    mdarray<double, 2> atom_force(3, parameters_.num_atoms());
+    forces(atom_force);
 }
 
 void DFT_ground_state::relax_atom_positions()

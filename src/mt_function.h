@@ -310,6 +310,22 @@ template <typename T> class mt_functions
         }
 };
 
+template <typename T>
+class MT_function_vector3d
+{
+    private:
+        MT_function<T>* vec_[3];
+
+    public:
+        MT_function_vector3d()
+        {
+            vec_[0] = vec_[1] = vec_[2] = NULL;
+        }
+        
+            
+
+};
+
 void gradient(Radial_grid& r, MT_function<complex16>* f, MT_function<complex16>* gx, MT_function<complex16>* gy,
               MT_function<complex16>* gz)
 {
