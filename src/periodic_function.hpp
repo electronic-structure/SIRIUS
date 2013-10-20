@@ -1,12 +1,15 @@
 template <typename T>
-Periodic_function<T>::Periodic_function(Global& parameters__, Argument arg0, Argument arg1, int num_gvec = 0) : 
+Periodic_function<T>::Periodic_function(Global& parameters__, int angular_domain_size, int num_gvec = 0) : 
     parameters_(parameters__), num_gvec_(num_gvec)
 {
-    f_mt_.set_dimensions(arg0.size(), arg1.size(), parameters_.num_atoms());
+    f_mt_.set_dimensions(angular_domain_size, parameters_.max_num_mt_points(), parameters_.num_atoms());
     f_mt_local_.set_dimensions(parameters_.spl_num_atoms().local_size());
     f_mt_local_.allocate();
     for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
-        f_mt_local_(ialoc) = new MT_function<T>(NULL, arg0, arg1);
+    {
+        int ia = parameters_.spl_num_atoms(ialoc);
+        f_mt_local_(ialoc) = new Spheric_function<T>(NULL, angular_domain_size, parameters_.atom(ia)->radial_grid());
+    }
     
     f_it_.set_dimensions(parameters_.fft().size());
     f_it_local_.set_dimensions(parameters_.spl_fft_size().local_size());
@@ -260,7 +263,7 @@ T inner(Global& parameters_, Periodic_function<T>* f1, Periodic_function<T>* f2)
     for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
     {
         int ia =  parameters_.spl_num_atoms(ialoc);
-        result += inner(parameters_.atom(ia)->type()->radial_grid(), f1->f_mt(ialoc), f2->f_mt(ialoc));
+        result += inner(f1->f_mt(ialoc), f2->f_mt(ialoc));
     }
 
     Platform::allreduce(&result, 1);

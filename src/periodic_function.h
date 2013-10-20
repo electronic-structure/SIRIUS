@@ -41,7 +41,7 @@ template<typename T> class Periodic_function
         Global& parameters_;
 
         /// local part of muffin-tin functions 
-        mdarray<MT_function<T>*, 1> f_mt_local_;
+        mdarray<Spheric_function<T>*, 1> f_mt_local_;
         
         /// global muffin tin array 
         mdarray<T, 3> f_mt_;
@@ -74,7 +74,7 @@ template<typename T> class Periodic_function
     public:
 
         /// Constructor
-        Periodic_function(Global& parameters__, Argument arg0, Argument arg1, int num_gvec);
+        Periodic_function(Global& parameters__, int angular_domain_size, int num_gvec);
         
         /// Destructor
         ~Periodic_function();
@@ -126,9 +126,9 @@ template<typename T> class Periodic_function
             set_local_it_ptr();
         }
 
-        inline MT_function<T>* f_mt(int ialoc)
+        inline Spheric_function<T>& f_mt(int ialoc)
         {
-            return f_mt_local_(ialoc);
+            return *f_mt_local_(ialoc);
         }
 
         template <index_domain_t index_domain>

@@ -73,7 +73,7 @@ class Potential
         std::vector<int> l_by_lm_;
 
         /// Compute MT part of the potential and MT multipole moments
-        void poisson_vmt(mdarray<MT_function<complex16>*, 1>& rho_ylm, mdarray<MT_function<complex16>*, 1>& vh, 
+        void poisson_vmt(mdarray<Spheric_function<complex16>*, 1>& rho_ylm, mdarray<Spheric_function<complex16>*, 1>& vh, 
                          mdarray<complex16, 2>& qmt);
 
         /// Compute multipole momenst of the interstitial charge density
@@ -179,7 +179,7 @@ class Potential
             return effective_potential_;
         }
 
-        MT_function<double>* effective_potential_mt(int ialoc)
+        Spheric_function<double>& effective_potential_mt(int ialoc)
         {
             return effective_potential_->f_mt(ialoc);
         }
@@ -199,7 +199,7 @@ class Potential
             return coulomb_potential_;
         }
         
-        MT_function<double>* coulomb_potential_mt(int ialoc)
+        Spheric_function<double>& coulomb_potential_mt(int ialoc)
         {
             return coulomb_potential_->f_mt(ialoc);
         }

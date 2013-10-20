@@ -255,7 +255,7 @@ class K_point
 
         Periodic_function<complex16>* spinor_wave_function_component(int lmax, int ispn, int j);
 
-        void spinor_wave_function_component_mt(int lmax, int ispn, int jloc, mt_functions<complex16>& psilm);
+        //== void spinor_wave_function_component_mt(int lmax, int ispn, int jloc, mt_functions<complex16>& psilm);
         
         void save_wave_functions(int id);
 

@@ -1,12 +1,10 @@
 Density::Density(Global& parameters__) : parameters_(parameters__)
 {
-    rho_ = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_rho()), 
-                                         Argument(arg_radial, parameters_.max_num_mt_points()), parameters_.num_gvec());
+    rho_ = new Periodic_function<double>(parameters_, parameters_.lmmax_rho(), parameters_.num_gvec());
 
     for (int i = 0; i < parameters_.num_mag_dims(); i++)
     {
-        magnetization_[i] = new Periodic_function<double>(parameters_, Argument(arg_lm, parameters_.lmmax_rho()), 
-                                                          Argument(arg_radial, parameters_.max_num_mt_points()));
+        magnetization_[i] = new Periodic_function<double>(parameters_, parameters_.lmmax_rho());
     }
 
     dmat_spins_.clear();

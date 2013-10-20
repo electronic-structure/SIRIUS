@@ -291,19 +291,19 @@ void Force::total_force(Global& parameters_, Potential* potential, Density* dens
     mdarray<double, 2> forcehf(3, parameters_.num_atoms());
     mdarray<double, 2> forcerho(3, parameters_.num_atoms());
 
-    MT_function<double>* g[3];
-    for (int x = 0; x < 3; x++) 
-    {
-        g[x] = new MT_function<double>(Argument(arg_lm, parameters_.lmmax_pot()), 
-                                       Argument(arg_radial, parameters_.max_num_mt_points()));
-    }
-    
+    //MT_function<double>* g[3];
+    //for (int x = 0; x < 3; x++) 
+    //{
+    //    g[x] = new MT_function<double>(Argument(arg_lm, parameters_.lmmax_pot()), 
+    //                                   Argument(arg_radial, parameters_.max_num_mt_points()));
+    //}
+    //
     forcehf.zero();
     for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
     {
         int ia = parameters_.spl_num_atoms(ialoc);
-        gradient(parameters_.atom(ia)->type()->radial_grid(), potential->coulomb_potential_mt(ialoc), g[0], g[1], g[2]);
-        for (int x = 0; x < 3; x++) forcehf(x, ia) = parameters_.atom(ia)->type()->zn() * (*g[x])(0, 0) * y00;
+        Spheric_function_gradient<double> g(potential->coulomb_potential_mt(ialoc));
+        for (int x = 0; x < 3; x++) forcehf(x, ia) = parameters_.atom(ia)->type()->zn() * g[x](0, 0) * y00;
     }
     Platform::allreduce(&forcehf(0, 0), (int)forcehf.size());
     
@@ -314,22 +314,14 @@ void Force::total_force(Global& parameters_, Potential* potential, Density* dens
             printf("ia : %i, forcehf : %12.6f %12.6f %12.6f\n", ia, forcehf(0, ia), forcehf(1, ia), forcehf(2, ia));
     }
     
-    for (int x = 0; x < 3; x++) 
-    {
-        delete g[x];
-        g[x] = new MT_function<double>(Argument(arg_lm, parameters_.lmmax_rho()), 
-                                       Argument(arg_radial, parameters_.max_num_mt_points()));
-    }
-
     forcerho.zero();
     for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
     {
         int ia = parameters_.spl_num_atoms(ialoc);
-        gradient(parameters_.atom(ia)->type()->radial_grid(), density->density_mt(ialoc), g[0], g[1], g[2]);
+        Spheric_function_gradient<double> g(density->density_mt(ialoc));
         for (int x = 0; x < 3; x++)
         {
-            forcerho(x, ia) = inner(parameters_.atom(ia)->type()->radial_grid(), 
-                                    potential->effective_potential_mt(ialoc), g[x]);
+            forcerho(x, ia) = inner(potential->effective_potential_mt(ialoc), g[x]);
         }
     }
     Platform::allreduce(&forcerho(0, 0), (int)forcerho.size());
@@ -340,8 +332,6 @@ void Force::total_force(Global& parameters_, Potential* potential, Density* dens
             printf("ia : %i, forcerho : %12.6f %12.6f %12.6f\n", ia, forcerho(0, ia), forcerho(1, ia), forcerho(2, ia));
     }
     
-    for (int x = 0; x < 3; x++) delete g[x];
-
     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
     {
         for (int x = 0; x < 3; x++) force(x, ia) += (forcehf(x, ia) + forcerho(x, ia));
