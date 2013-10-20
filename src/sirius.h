@@ -88,7 +88,9 @@ extern "C" {
 // main classes
 //============================
 #include "sbessel_pw.h"
-#include "mt_function.h"
+#include "spheric_function.h"
+#include "spheric_function_vector.h"
+#include "spheric_function_gradient.h"
 #include "periodic_function.h"
 #include "k_point.h"
 #include "band.h"

@@ -261,10 +261,7 @@ T inner(Global& parameters_, Periodic_function<T>* f1, Periodic_function<T>* f2)
     result *= (parameters_.omega() / parameters_.fft().size());
     
     for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
-    {
-        int ia =  parameters_.spl_num_atoms(ialoc);
         result += inner(f1->f_mt(ialoc), f2->f_mt(ialoc));
-    }
 
     Platform::allreduce(&result, 1);
 
