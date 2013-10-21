@@ -129,7 +129,7 @@ class radial_functions_index
 
             for (int l = 0; l <= lmax_aw_; l++)
             {
-                assert(aw_descriptors[l].size() <= 2);
+                assert(aw_descriptors[l].size() <= 3);
 
                 num_rf_[l] = (int)aw_descriptors[l].size();
                 for (int order = 0; order < (int)aw_descriptors[l].size(); order++)

@@ -141,7 +141,7 @@ T inner(Spheric_function<T>& f1, Spheric_function<T>& f2)
         {
             for (int ir = 0; ir < f1.radial_domain_size(); ir++)
                 s[ir] += primitive_type_wrapper<T>::conjugate(f1(ir, lm)) * f2(ir, lm);
-        }       
+        }
     }
     else
     {
