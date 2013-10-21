@@ -122,7 +122,6 @@ class Reciprocal_lattice : public Unit_cell
         // TODO: call it everywhere
         inline vector3d<double> gvec_cart(int ig)
         {
-            assert(ig >=0 && ig < num_gvec_);
             return get_coordinates<cartesian, reciprocal>(vector3d<int>(gvec(ig)));
         }
         

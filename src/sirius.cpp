@@ -370,7 +370,7 @@ void FORTRAN(sirius_get_gvec)(int32_t* gvec)
 void FORTRAN(sirius_get_gvec_cart)(real8* gvec_cart__)
 {
     mdarray<double, 2> gvec_cart(gvec_cart__, 3,  global_parameters.fft().size());
-    for (int ig = 0; ig <  global_parameters.fft().size(); ig++)
+    for (int ig = 0; ig < global_parameters.fft().size(); ig++)
     {
         vector3d<double> gvc = global_parameters.gvec_cart(ig);
         for (int x = 0; x < 3; x++) gvec_cart(x, ig) = gvc[x];
