@@ -91,11 +91,13 @@ class Reciprocal_lattice : public Unit_cell
             return index_by_gvec_.get_ptr();
         }
 
+        /// FFT index for a given  G-vector index
         inline int fft_index(int ig)
         {
             return fft_index_[ig];
         }
 
+        /// Pointer to FFT index array
         inline int* fft_index()
         {
             return &fft_index_[0];

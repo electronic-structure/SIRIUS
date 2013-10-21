@@ -705,7 +705,6 @@ class Global : public Step_function
             Reciprocal_lattice::print_info();
             Step_function::print_info();
 
-            printf("\n");
             for (int i = 0; i < num_atom_types(); i++) atom_type(i)->print_info();
 
             printf("\n");
@@ -713,6 +712,8 @@ class Global : public Step_function
             printf("total number of lo basis functions : %i\n", mt_lo_basis_size());
             printf("number of first-variational states : %i\n", num_fv_states());
             printf("number of bands                    : %i\n", num_bands());
+            printf("number of spins                    : %i\n", num_spins());
+            printf("number of magnetic dimensions      : %i\n", num_mag_dims());
             printf("\n");
             printf("eigen-value solver: ");
             switch (eigen_value_solver())

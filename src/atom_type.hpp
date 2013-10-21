@@ -336,6 +336,7 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
 
 void Atom_type::print_info()
 {
+    printf("\n");
     printf("symbol         : %s\n", symbol_.c_str());
     printf("name           : %s\n", name_.c_str());
     printf("zn             : %i\n", zn_);
@@ -407,7 +408,6 @@ void Atom_type::print_info()
     printf("number of aw basis functions : %i\n", indexb().size_aw());
     printf("number of lo basis functions : %i\n", indexb().size_lo());
     radial_grid().print_info();
-    printf("\n");
 }
         
 void Atom_type::read_input_core(JSON_tree& parser)
