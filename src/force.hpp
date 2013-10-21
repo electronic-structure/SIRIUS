@@ -1,3 +1,81 @@
+void Force::compute_dmat(Global& parameters_, K_point* kp, mdarray<complex16, 2>& dm)
+{
+    dm.zero();
+
+    // second-variational dimensions
+    int nsrow = parameters_.spl_fv_states_row().local_size();
+    int nscol = parameters_.spl_fv_states_col().local_size();
+
+    // compute the density matrix
+    if (!parameters_.need_sv())
+    {
+        for (int i = 0; i < nscol; i++)
+        {
+            int ist = parameters_.spl_fv_states_col(i);
+            for (int j = 0; j < nsrow; j++)
+            {
+                if (parameters_.spl_fv_states_row(j) == ist) dm(j, i) = kp->band_occupancy(ist);
+            }
+        }
+    }
+    else
+    {
+        // multiply second-variational eigen-vectors with band occupancies
+        mdarray<complex16, 2>& sv_evec = kp->sv_eigen_vectors();
+        mdarray<complex16, 2> evq(sv_evec.size(0), sv_evec.size(1));
+        for (int i = 0; i < parameters_.spl_spinor_wf_col().local_size(); i++)
+        {
+            int n = parameters_.spl_spinor_wf_col(i);
+            for (int j = 0; j < sv_evec.size(0); j++) evq(j, i) = sv_evec(j, i) * kp->band_occupancy(n);
+        }
+        
+        int ns = (parameters_.num_mag_dims() == 3) ? 2 : 1;
+        
+        // Important! Obtained with the following zgemm, density matrix is conjugated. 
+        if (kp->num_ranks() == 1)
+        {
+            //== // TODO: this possibly can be combined
+            //== if (parameters_.num_mag_dims() != 3)
+            //== {
+            //==     blas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
+            //==                     &sv_evec(0, 0), sv_evec.ld(), &evq(0, 0), evq.ld(), &dm(0, 0), dm.ld());
+            //== }
+            //== else
+            //== {
+            //==     for (int ispn = 0; ispn < 2; ispn++)
+            //==     {
+            //==         blas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
+            //==                         complex16(1, 0), &sv_evec(ispn * parameters_.num_fv_states(), 0), sv_evec.ld(), 
+            //==                         &evq(ispn * parameters_.num_fv_states(), 0), evq.ld(), complex16(1, 0), &dm(0, 0), dm.ld());
+            //==     }
+
+
+            //== }
+
+            for (int s = 0; s < ns; s++)
+            {
+                blas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
+                                complex16(1, 0), &sv_evec(s * parameters_.num_fv_states(), 0), sv_evec.ld(), 
+                                &evq(s * parameters_.num_fv_states(), 0), evq.ld(), complex16(1, 0), &dm(0, 0), dm.ld());
+            }
+        }
+        else
+        {
+            #ifdef _SCALAPACK_
+            for (int s = 0; s < ns; s++)
+            {
+                pblas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
+                                 complex16(1, 0), &sv_evec(s * nsrow, 0), sv_evec.ld(), &evq(s * nsrow, 0), evq.ld(),
+                                 complex16(1, 0), &dm(0, 0), dm.ld(), parameters_.cyclic_block_size(), 
+                                 parameters_.blacs_context());
+            }
+            #else
+            error_local(__FILE__, __LINE__, "not compiled with ScaLAPACK");
+            #endif
+        }
+    }
+}
+
 void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<double, 2>& ffac, mdarray<double, 2>& forcek)
 {
     Timer timer("sirius::Force::ibs_force");
@@ -24,89 +102,92 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
     mdarray<complex16, 2> halm(kp->num_gkvec_row(), parameters_.max_mt_aw_basis_size());
     
     mdarray<complex16, 2> dm(nsrow, nscol);
-    dm.zero();
 
-    // compute the density matrix
-    if (!parameters_.need_sv())
-    {
-        for (int i = 0; i < nscol; i++)
-        {
-            int ist = parameters_.spl_fv_states_col(i);
-            for (int j = 0; j < nsrow; j++)
-            {
-                if (parameters_.spl_fv_states_row(j) == ist) dm(j, i) = kp->band_occupancy(ist);
-            }
-        }
-    }
-    else
-    {
-        // multiply second-variational eigen-vectors with band occupancies
-        mdarray<complex16, 2>& sv_evec = kp->sv_eigen_vectors();
-        mdarray<complex16, 2> evq(sv_evec.size(0), sv_evec.size(1));
-        for (int i = 0; i < parameters_.spl_spinor_wf_col().local_size(); i++)
-        {
-            int n = parameters_.spl_spinor_wf_col(i);
-            for (int j = 0; j < sv_evec.size(0); j++) evq(j, i) = sv_evec(j, i) * kp->band_occupancy(n);
-        }
-        
-        // Important! Obtained with the following zgemm, density matrix is conjugated. 
-        if (kp->num_ranks() == 1)
-        {
-            // TODO: this possibly can be combined
-            if (parameters_.num_mag_dims() != 3)
-            {
-                blas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
-                                &sv_evec(0, 0), sv_evec.ld(), &evq(0, 0), evq.ld(), &dm(0, 0), dm.ld());
-            }
-            else
-            {
-                for (int ispn = 0; ispn < 2; ispn++)
-                {
-                    blas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
-                                    complex16(1, 0), &sv_evec(ispn * parameters_.num_fv_states(), 0), sv_evec.ld(), 
-                                    &evq(ispn * parameters_.num_fv_states(), 0), evq.ld(), complex16(1, 0), &dm(0, 0), dm.ld());
-                }
+    compute_dmat(parameters_, kp, dm);
+
+    //== dm.zero();
+
+    //== // compute the density matrix
+    //== if (!parameters_.need_sv())
+    //== {
+    //==     for (int i = 0; i < nscol; i++)
+    //==     {
+    //==         int ist = parameters_.spl_fv_states_col(i);
+    //==         for (int j = 0; j < nsrow; j++)
+    //==         {
+    //==             if (parameters_.spl_fv_states_row(j) == ist) dm(j, i) = kp->band_occupancy(ist);
+    //==         }
+    //==     }
+    //== }
+    //== else
+    //== {
+    //==     // multiply second-variational eigen-vectors with band occupancies
+    //==     mdarray<complex16, 2>& sv_evec = kp->sv_eigen_vectors();
+    //==     mdarray<complex16, 2> evq(sv_evec.size(0), sv_evec.size(1));
+    //==     for (int i = 0; i < parameters_.spl_spinor_wf_col().local_size(); i++)
+    //==     {
+    //==         int n = parameters_.spl_spinor_wf_col(i);
+    //==         for (int j = 0; j < sv_evec.size(0); j++) evq(j, i) = sv_evec(j, i) * kp->band_occupancy(n);
+    //==     }
+    //==     
+    //==     // Important! Obtained with the following zgemm, density matrix is conjugated. 
+    //==     if (kp->num_ranks() == 1)
+    //==     {
+    //==         // TODO: this possibly can be combined
+    //==         if (parameters_.num_mag_dims() != 3)
+    //==         {
+    //==             blas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
+    //==                             &sv_evec(0, 0), sv_evec.ld(), &evq(0, 0), evq.ld(), &dm(0, 0), dm.ld());
+    //==         }
+    //==         else
+    //==         {
+    //==             for (int ispn = 0; ispn < 2; ispn++)
+    //==             {
+    //==                 blas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
+    //==                                 complex16(1, 0), &sv_evec(ispn * parameters_.num_fv_states(), 0), sv_evec.ld(), 
+    //==                                 &evq(ispn * parameters_.num_fv_states(), 0), evq.ld(), complex16(1, 0), &dm(0, 0), dm.ld());
+    //==             }
 
 
-            }
-        }
-        else
-        {
-            #ifdef _SCALAPACK_
-            int ns = (parameters_.num_mag_dims() == 3) ? 2 : 1;
+    //==         }
+    //==     }
+    //==     else
+    //==     {
+    //==         #ifdef _SCALAPACK_
+    //==         int ns = (parameters_.num_mag_dims() == 3) ? 2 : 1;
 
-            for (int s = 0; s < ns; s++)
-            {
-                pblas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
-                                 complex16(1, 0), &sv_evec(s * nsrow, 0), sv_evec.ld(), &evq(s * nsrow, 0), evq.ld(),
-                                 complex16(1, 0), &dm(0, 0), dm.ld(), parameters_.cyclic_block_size(), 
-                                 parameters_.blacs_context());
-            }
-            #else
-            error_local(__FILE__, __LINE__, "not compiled with ScaLAPACK");
-            #endif
-        }
+    //==         for (int s = 0; s < ns; s++)
+    //==         {
+    //==             pblas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
+    //==                              complex16(1, 0), &sv_evec(s * nsrow, 0), sv_evec.ld(), &evq(s * nsrow, 0), evq.ld(),
+    //==                              complex16(1, 0), &dm(0, 0), dm.ld(), parameters_.cyclic_block_size(), 
+    //==                              parameters_.blacs_context());
+    //==         }
+    //==         #else
+    //==         error_local(__FILE__, __LINE__, "not compiled with ScaLAPACK");
+    //==         #endif
+    //==     }
 
-        //// TODO: this is a zgemm or pzgemm
-        //for (int n = 0; n < parameters_.num_bands(); n++)
-        //{
-        //    for (int i = 0; i < band->spl_fv_states_row().global_size(); i++)
-        //    {
-        //        int ist = i % parameters_.num_fv_states();
-        //        int ispn = i / parameters_.num_fv_states();
-        //        for (int j = 0; j < band->spl_fv_states_row().global_size(); j++)
-        //        {
-        //            int jst = j % parameters_.num_fv_states();
-        //            int jspn = j / parameters_.num_fv_states();
+    //==     //// TODO: this is a zgemm or pzgemm
+    //==     //for (int n = 0; n < parameters_.num_bands(); n++)
+    //==     //{
+    //==     //    for (int i = 0; i < band->spl_fv_states_row().global_size(); i++)
+    //==     //    {
+    //==     //        int ist = i % parameters_.num_fv_states();
+    //==     //        int ispn = i / parameters_.num_fv_states();
+    //==     //        for (int j = 0; j < band->spl_fv_states_row().global_size(); j++)
+    //==     //        {
+    //==     //            int jst = j % parameters_.num_fv_states();
+    //==     //            int jspn = j / parameters_.num_fv_states();
 
-        //            if (ispn == jspn)
-        //            {
-        //                dm(ist, jst) += band_occupancy(n) * conj(sv_eigen_vectors_(i, n)) * sv_eigen_vectors_(j, n); 
-        //            }
-        //        }
-        //    }
-        //}
-    }
+    //==     //            if (ispn == jspn)
+    //==     //            {
+    //==     //                dm(ist, jst) += band_occupancy(n) * conj(sv_eigen_vectors_(i, n)) * sv_eigen_vectors_(j, n); 
+    //==     //            }
+    //==     //        }
+    //==     //    }
+    //==     //}
+    //== }
 
     mdarray<complex16, 2>& fv_evec = kp->fv_eigen_vectors();
     mdarray<complex16, 2> zm1(nfrow, nscol);
