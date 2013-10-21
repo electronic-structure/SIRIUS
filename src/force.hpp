@@ -42,7 +42,7 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
     {
         // multiply second-variational eigen-vectors with band occupancies
         mdarray<complex16, 2>& sv_evec = kp->sv_eigen_vectors();
-        mdarray<complex16, 2> evq(sv_evec.size(0), parameters_.spl_spinor_wf_col().local_size());
+        mdarray<complex16, 2> evq(sv_evec.size(0), sv_evec.size(1));
         for (int i = 0; i < parameters_.spl_spinor_wf_col().local_size(); i++)
         {
             int n = parameters_.spl_spinor_wf_col(i);
@@ -69,6 +69,22 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
 
 
             }
+        }
+        else
+        {
+            #ifdef _SCALAPACK_
+            int ns = (parameters_.num_mag_dims() == 3) ? 2 : 1;
+
+            for (int s = 0; s < ns; s++)
+            {
+                pblas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
+                                 complex16(1, 0), &sv_evec(s * nsrow, 0), sv_evec.ld(), &evq(s * nsrow, 0), evq.ld(),
+                                 complex16(1, 0), &dm(0, 0), dm.ld(), parameters_.cyclic_block_size(), 
+                                 parameters_.blacs_context());
+            }
+            #else
+            error_local(__FILE__, __LINE__, "not compiled with ScaLAPACK");
+            #endif
         }
 
         //// TODO: this is a zgemm or pzgemm
@@ -280,24 +296,8 @@ void Force::total_force(Global& parameters_, Potential* potential, Density* dens
     }
     Platform::allreduce(&force(0, 0), (int)force.size(), parameters_.mpi_grid().communicator(1 << _dim_k_));
 
-    if (Platform::mpi_rank() == 0)
-    {
-        printf("============================================================\n");
-        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            printf("ia : %i, forcek : %12.6f %12.6f %12.6f\n", ia, force(0, ia), force(1, ia), force(2, ia));
-    }
-
-    
     mdarray<double, 2> forcehf(3, parameters_.num_atoms());
-    mdarray<double, 2> forcerho(3, parameters_.num_atoms());
 
-    //MT_function<double>* g[3];
-    //for (int x = 0; x < 3; x++) 
-    //{
-    //    g[x] = new MT_function<double>(Argument(arg_lm, parameters_.lmmax_pot()), 
-    //                                   Argument(arg_radial, parameters_.max_num_mt_points()));
-    //}
-    //
     forcehf.zero();
     for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
     {
@@ -307,40 +307,20 @@ void Force::total_force(Global& parameters_, Potential* potential, Density* dens
     }
     Platform::allreduce(&forcehf(0, 0), (int)forcehf.size());
     
-    if (Platform::mpi_rank() == 0)
-    {
-        printf("============================================================\n");
-        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            printf("ia : %i, forcehf : %12.6f %12.6f %12.6f\n", ia, forcehf(0, ia), forcehf(1, ia), forcehf(2, ia));
-    }
-    
+    mdarray<double, 2> forcerho(3, parameters_.num_atoms());
     forcerho.zero();
     for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
     {
         int ia = parameters_.spl_num_atoms(ialoc);
         Spheric_function_gradient<double> g(density->density_mt(ialoc));
-        for (int x = 0; x < 3; x++)
-        {
-            forcerho(x, ia) = inner(potential->effective_potential_mt(ialoc), g[x]);
-        }
+        vector3d<double> v = inner(potential->effective_potential_mt(ialoc), g);
+        for (int x = 0; x < 3; x++) forcerho(x, ia) = v[x];
     }
     Platform::allreduce(&forcerho(0, 0), (int)forcerho.size());
-    if (Platform::mpi_rank() == 0)
-    {
-        printf("============================================================\n");
-        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            printf("ia : %i, forcerho : %12.6f %12.6f %12.6f\n", ia, forcerho(0, ia), forcerho(1, ia), forcerho(2, ia));
-    }
     
     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
     {
         for (int x = 0; x < 3; x++) force(x, ia) += (forcehf(x, ia) + forcerho(x, ia));
-    }
-    if (Platform::mpi_rank() == 0)
-    {
-        printf("============================================================\n");
-        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-            printf("ia : %i, forcetot : %12.6f %12.6f %12.6f\n", ia, force(0, ia), force(1, ia), force(2, ia));
     }
 }
 

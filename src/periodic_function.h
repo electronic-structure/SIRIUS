@@ -1,3 +1,10 @@
+#ifndef __PERIODIC_FUNCTION_H__
+#define __PERIODIC_FUNCTION_H__
+
+/** \file periodic_function.h
+    
+    \brief Lattice periodic function
+*/
 
 // TODO: this implementation is better, however the distinction between local and global periodic functions is
 //       still not very clear
@@ -19,14 +26,15 @@ namespace sirius
     \f]
 
     The following terminology is used to describe the distribution of the function:
-        - global function: the whole copy of the function is stored at each MPI rank. Ranks should take care about the
+        - global function: the whole copy of the function is stored on each MPI rank. Ranks should take care about the
           syncronization of the data.
         - local function: the function is distributed across the MPI ranks. 
 
     \note In order to check if the function is defined as global or as distributed, check the f_mt_ and f_it_ pointers.
           If the function is global, the pointers should not be null.
 */
-template<typename T> class Periodic_function
+template<typename T> 
+class Periodic_function
 { 
     protected:
 
@@ -43,10 +51,10 @@ template<typename T> class Periodic_function
         /// local part of muffin-tin functions 
         mdarray<Spheric_function<T>*, 1> f_mt_local_;
         
-        /// global muffin tin array 
+        /// global muffin-tin array 
         mdarray<T, 3> f_mt_;
 
-        /// interstitial values defined on the FFT grid
+        /// local part of interstitial array
         mdarray<T, 1> f_it_local_;
         
         /// global interstitial array
@@ -54,9 +62,11 @@ template<typename T> class Periodic_function
 
         /// plane-wave expansion coefficients
         mdarray<complex_t, 1> f_pw_;
-
+        
+        /// number of plane-wave expansion coefficients
         int num_gvec_;
 
+        /// Set pointer to local part of muffin-tin functions
         void set_local_mt_ptr()
         {
             for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
@@ -65,7 +75,8 @@ template<typename T> class Periodic_function
                 f_mt_local_(ialoc)->set_ptr(&f_mt_(0, 0, ia));
             }
         }
-
+        
+        /// Set pointer to local part of interstitial array
         void set_local_it_ptr()
         {
             f_it_local_.set_ptr(&f_it_(parameters_.spl_fft_size().global_offset()));
@@ -156,3 +167,6 @@ template<typename T> class Periodic_function
 #include "periodic_function.hpp"
 
 };
+
+#endif // __PERIODIC_FUNCTION_H__
+
