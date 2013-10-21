@@ -771,14 +771,6 @@ class Global : public Step_function
             
             if (verbosity_level >= 4)
             {
-                int size = 0;
-                for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
-                {
-                    size += (atom_symmetry_class(ic)->atom_type()->num_aw_descriptors() + 
-                             atom_symmetry_class(ic)->atom_type()->num_lo_descriptors());
-                    size += 10;
-                }
-
                 pstdout pout;
                 
                 for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
