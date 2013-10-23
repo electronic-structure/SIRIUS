@@ -34,7 +34,7 @@ const int debug_level = 0;
     verbosity_level >= 4 : print linearization energies \n
     verbosity_level >= 5 : print lowest eigen-values \n
 */
-const int verbosity_level = 5;
+const int verbosity_level = 10;
 
 const bool fix_apwlo_linear_dependence = false;
 
@@ -42,6 +42,6 @@ const basis_t basis_type = apwlo;
 
 const radial_grid_t default_radial_grid_t = linear_exponential_grid;
 
-const bool use_second_variation = false; 
+const bool use_second_variation = true; 
 
 #endif // __CONFIG_H__

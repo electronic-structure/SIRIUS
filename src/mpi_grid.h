@@ -331,6 +331,21 @@ class MPI_grid
 
             return communicators_[valid_directions(directions)];
         }
+
+        void test_grid()
+        {
+            if (verbosity_level >= 10) printf("rank%i => MPI_grid::test_grid()\n", Platform::mpi_rank());
+            std::vector<complex16> v(2089);
+
+            Platform::bcast(&v[0], v.size(), communicator(1 << 1), 0);
+            Platform::bcast(&v[0], v.size(), communicator(1 << 1), 1);
+
+            Platform::bcast(&v[0], v.size(), communicator(1 << 2), 0);
+            Platform::bcast(&v[0], v.size(), communicator(1 << 2), 1);
+
+            if (verbosity_level >= 10) printf("rank%i <= MPI_grid::test_grid()\n", Platform::mpi_rank());
+
+        }
 };
 
 class MPI_group

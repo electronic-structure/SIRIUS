@@ -419,6 +419,8 @@ inline void K_point::copy_pw_block(const complex16* z, complex16* vec)
 
 void K_point::generate_fv_states()
 {
+    if (verbosity_level >= 10) printf("rank%i => K_point::generate_fv_states()\n", Platform::mpi_rank());
+
     Timer t("sirius::K_point::generate_fv_states");
 
     fv_states_col_.zero();
@@ -452,10 +454,14 @@ void K_point::generate_fv_states()
     {
         Platform::allreduce(&fv_states_col_(0, j), mtgk_size(), parameters_.mpi_grid().communicator(1 << _dim_row_));
     }
+
+    if (verbosity_level >= 10) printf("rank%i <= K_point::generate_fv_states()\n", Platform::mpi_rank());
 }
 
 void K_point::generate_spinor_wave_functions()
 {
+    if (verbosity_level >= 10) printf("rank%i => K_point::generate_spinor_wave_functions()\n", Platform::mpi_rank());
+
     Timer t("sirius::K_point::generate_spinor_wave_functions");
 
     int wfld = spinor_wave_functions_.size(0) * spinor_wave_functions_.size(1); // size of each spinor wave-function
@@ -522,6 +528,8 @@ void K_point::generate_spinor_wave_functions()
     
     for (int i = 0; i < parameters_.spl_spinor_wf_col().local_size(); i++)
         Platform::allreduce(&spinor_wave_functions_(0, 0, i), wfld, parameters_.mpi_grid().communicator(1 << _dim_row_));
+    
+    if (verbosity_level >= 10) printf("rank%i i<= K_point::generate_spinor_wave_functions()\n", Platform::mpi_rank());
 }
 
 void K_point::generate_gkvec()
@@ -1307,20 +1315,32 @@ void K_point::get_sv_eigen_vectors(mdarray<complex16, 2>& sv_evec)
 
 void K_point::distribute_fv_states_row()
 {
+    if (verbosity_level >= 10) printf("rank%i => K_point::distribute_fv_states_row()\n", Platform::mpi_rank());
+
+    parameters_.mpi_grid().test_grid();
+
     if (num_ranks_ == 1) return;
-    
+
+    std::vector<complex16> v(mtgk_size());
+    Platform::bcast(&v[0], v.size(), parameters_.mpi_grid().communicator(1 << _dim_col_), 0);
+    Platform::bcast(&v[0], v.size(), parameters_.mpi_grid().communicator(1 << _dim_col_), 1);
+
+
     for (int i = 0; i < parameters_.spl_fv_states_row().local_size(); i++)
     {
         int ist = parameters_.spl_fv_states_row(i);
         
-        // find local column lindex of fv state
+        // find local column index of fv state
         int offset_col = parameters_.spl_fv_states_col().location(_splindex_offs_, ist);
         
         // find column MPI rank which stores this fv state and copy fv state if this rank stores it
         if (parameters_.spl_fv_states_col().location(_splindex_rank_, ist) == rank_col_)
             memcpy(&fv_states_row_(0, i), &fv_states_col_(0, offset_col), mtgk_size() * sizeof(complex16));
-
+        
+        std::cout << "rank : " <<Platform::mpi_rank()<<" i="<<i<<" ist="<<ist<<" offset_col="<<offset_col << " dim_col=" <<_dim_col_ << " rank_col="<<rank_col_<<" mtgk_size="<<mtgk_size()<<std::endl;
         // send fv state to all column MPI ranks
         Platform::bcast(&fv_states_row_(0, i), mtgk_size(), parameters_.mpi_grid().communicator(1 << _dim_col_), rank_col_); 
     }
+    
+    if (verbosity_level >= 10) printf("rank%i <= K_point::distribute_fv_states_row()\n", Platform::mpi_rank());
 }

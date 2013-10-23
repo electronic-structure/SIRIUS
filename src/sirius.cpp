@@ -37,7 +37,11 @@ extern "C"
 */
 void FORTRAN(sirius_set_lattice_vectors)(real8* a1, real8* a2, real8* a3)
 {
+    if (verbosity_level >= 10) printf("rank%i => sirius_set_lattice_vectors()\n", Platform::mpi_rank());
+
     global_parameters.set_lattice_vectors(a1, a2, a3);
+    
+    if (verbosity_level >= 10) printf("rank%i <= sirius_set_lattice_vectors()\n", Platform::mpi_rank());
 }
 
 /// Set maximum l-value for augmented waves
@@ -519,8 +523,12 @@ void FORTRAN(sirius_generate_density)(int32_t* kset_id)
 */
 void FORTRAN(sirius_find_eigen_states)(int32_t* kset_id, int32_t* precompute__)
 {
+    if (verbosity_level >= 10) printf("rank%i => sirius_find_eigen_states()\n", Platform::mpi_rank());
+    
     bool precompute = (*precompute__) ? true : false;
     kset_list[*kset_id]->find_eigen_states(potential, precompute);
+    
+    if (verbosity_level >= 10) printf("rank%i <= sirius_find_eigen_states()\n", Platform::mpi_rank());
 }
 
 void FORTRAN(sirius_find_band_occupancies)(int32_t* kset_id)
@@ -969,13 +977,21 @@ void FORTRAN(sirius_get_global_kpoint_index)(int32_t* kset_id, int32_t* ikloc, i
 /// Generate radial functions (both aw and lo)
 void FORTRAN(sirius_generate_radial_functions)()
 {
+    if (verbosity_level >= 10) printf("rank%i => sirius_generate_radial_functions()\n", Platform::mpi_rank());
+
     global_parameters.generate_radial_functions();
+    
+    if (verbosity_level >= 10) printf("rank%i <= sirius_generate_radial_functions()\n", Platform::mpi_rank());
 }
 
 /// Generate radial integrals
 void FORTRAN(sirius_generate_radial_integrals)()
 {
+    if (verbosity_level >= 10) printf("rank%i => sirius_generate_radial_integrals()\n", Platform::mpi_rank());
+    
     global_parameters.generate_radial_integrals();
+    
+    if (verbosity_level >= 10) printf("rank%i <= sirius_generate_radial_integrals()\n", Platform::mpi_rank());
 }
 
 void FORTRAN(sirius_get_symmetry_classes)(int32_t* ncls, int32_t* icls_by_ia)
@@ -1433,7 +1449,11 @@ void FORTRAN(sirius_get_lo_lo_h_radial_integral)(int32_t* ia__, int32_t* ilo1, i
 
 void FORTRAN(sirius_generate_potential_pw_coefs)(void)
 {
+    if (verbosity_level >= 10) printf("rank%i => sirius_generate_potential_pw_coefs()\n", Platform::mpi_rank());
+    
     potential->generate_pw_coefs();
+    
+    if (verbosity_level >= 10) printf("rank%i <= sirius_generate_potential_pw_coefs()\n", Platform::mpi_rank());
 }
 
 /// Get first-variational eigen-vectors
