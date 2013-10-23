@@ -924,6 +924,23 @@ double Density::core_leakage(int ic)
     return parameters_.atom_symmetry_class(ic)->core_leakage();
 }
 
+void Density::generate_core_charge_density()
+{
+    Timer t("sirius::Density::generate_core_charge_density");
+
+    for (int icloc = 0; icloc < parameters_.spl_num_atom_symmetry_classes().local_size(); icloc++)
+    {
+        int ic = parameters_.spl_num_atom_symmetry_classes(icloc);
+        parameters_.atom_symmetry_class(ic)->generate_core_charge_density();
+    }
+
+    for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
+    {
+        int rank = parameters_.spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
+        parameters_.atom_symmetry_class(ic)->sync_core_charge_density(rank);
+    }
+}
+
 void Density::generate(K_set& ks)
 {
     Timer t("sirius::Density::generate");
@@ -988,19 +1005,7 @@ void Density::generate(K_set& ks)
         }
     }
 
-
-    // compute core states
-    for (int icloc = 0; icloc < parameters_.spl_num_atom_symmetry_classes().local_size(); icloc++)
-    {
-        int ic = parameters_.spl_num_atom_symmetry_classes(icloc);
-        parameters_.atom_symmetry_class(ic)->generate_core_charge_density();
-    }
-
-    for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
-    {
-        int rank = parameters_.spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
-        parameters_.atom_symmetry_class(ic)->sync_core_charge_density(rank);
-    }
+    generate_core_charge_density();
 
     // add core contribution
     for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)

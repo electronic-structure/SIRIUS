@@ -681,6 +681,7 @@ class Global : public Step_function
             {
                 Unit_cell::clear();
                 Reciprocal_lattice::clear();
+                mpi_group_atom_.finalize();
                 mpi_grid_.finalize();
                 initialized_ = false;
             }

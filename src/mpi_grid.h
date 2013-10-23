@@ -353,6 +353,12 @@ class MPI_group
         {
             if (communicator_ != MPI_COMM_NULL) MPI_Comm_free(&communicator_);
         }
+
+        void finalize()
+        {
+            if (communicator_ != MPI_COMM_NULL) MPI_Comm_free(&communicator_);
+            communicator_ = MPI_COMM_NULL;
+        }
         
         void split(int max_num_groups, MPI_Comm base_comm)
         {
