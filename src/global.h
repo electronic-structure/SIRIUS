@@ -977,7 +977,7 @@ class Global : public Step_function
                 //** jw.single("band_gap", rti_.band_gap);
                 //** jw.single("energy_fermi", rti_.energy_fermi);
                 
-                //** jw.single("timers", Timer::timer_descriptors());
+                jw.single("timers", Timer::timers());
             }
         }
 

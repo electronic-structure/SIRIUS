@@ -17,7 +17,7 @@ class Timer
         /// true if timer is running
         bool active_;
 
-        /// mapping between timer name and timer descriptor pointer
+        /// mapping between timer name and timer values
         static std::map<std::string, std::vector<double> > timers_;
     
     public:
@@ -113,7 +113,7 @@ class Timer
             } while (d < dsec);
         }
 
-        static std::map<std::string, std::vector<double> >& timer_descriptors()
+        static std::map<std::string, std::vector<double> >& timers()
         {
             return timers_;
         }
