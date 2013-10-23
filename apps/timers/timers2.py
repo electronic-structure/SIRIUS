@@ -14,35 +14,36 @@ fin = open(sys.argv[1], "r")
 jin = json.load(fin)
 fin.close()
 
+# 4 timer values are: total, min, max, average
 timer_groups = [
 [
     "sirius::Global::generate_radial_functions",
     "sirius::Global::generate_radial_integrals", 
-    "sirius::kpoint::find_eigen_states",
+    "sirius::K_set::find_eigen_states",
     "sirius::Density::generate",
     "sirius::Potential::generate_effective_potential",
-    "elk::symmetrization",
-    "elk::mixer"
+    "exciting::sym_rho_mag",
+    "exciting::mixer"
 ],
 [
-    "sirius::kpoint::set_fv_h_o",
-    "sirius::kpoint::generate_fv_states:genevp",
-    "sirius::kpoint::generate_fv_states:wf",
+    "sirius::Band::set_fv_h_o",
+    "sirius::Band::solve_fv_evp",
+    "sirius::K_point::generate_fv_states",
     "sirius::Band::solve_sv",
-    "sirius::kpoint::generate_spinor_wave_functions"
+    "sirius::K_point::generate_spinor_wave_functions"
 ],
 [
     "sirius::Potential::poisson",
     "sirius::Potential::xc"
 ],
 [
-    "sirius::ReciprocalLattice::init",
-    "sirius::StepFunction::init",
-    "sirius::UnitCell::get_symmetry",
-    "sirius::UnitCell::find_nearest_neighbours",
-    "sirius::kpoint::initialize",
+    "sirius::Reciprocal_lattice::init",
+    "sirius::Step_function::init",
+    "sirius::Unit_cell::get_symmetry",
+    "sirius::Unit_cell::find_nearest_neighbours",
+    "sirius::K_point::initialize",
     "sirius::Potential::Potential",
-    "sirius::AtomType::solve_free_atom"
+    "sirius::Atom_type::solve_free_atom"
 ]
 ]
 
@@ -55,21 +56,26 @@ for itg in range(len(timer_groups)):
         
         if timer_name in jin["timers"]:
             
-            #tname = timer_name[timer_name.rfind("::")+2:]
             tname = timer_name
             
+            # effective potential is generated once before the scf loop
+            # the first timer is reported in percentage
             if itg == 0: 
                 if timer_name == "sirius::Potential::generate_effective_potential":
-                    t = (jin["timers"][timer_name][0] - jin["timers"][timer_name][1]) / jin["timers"]["elk::iteration"][0]
+                    # (total - average) of effective potential / total of iterations
+                    t = (jin["timers"][timer_name][0] - jin["timers"][timer_name][3]) / jin["timers"]["exciting::iteration"][0]
                 else:
-                    t = jin["timers"][timer_name][0] / jin["timers"]["elk::iteration"][0]
+                    t = jin["timers"][timer_name][0] / jin["timers"]["exciting::iteration"][0]
                 t = t * 100
-                timer_names.append(tname + " (%6.2f%%, %6.2f sec./call)"%(t, jin["timers"][timer_name][1]))
+                # show average time in legend
+                timer_names.append(tname + " (%6.2f%%, %6.2f sec./call)"%(t, jin["timers"][timer_name][3]))
+            # show total time for intialization routines
             elif itg == 3:
                 t = jin["timers"][timer_name][0]
                 timer_names.append(tname + " (%6.2f sec.)"%t)
+            # show average time
             else:
-                t = jin["timers"][timer_name][1]
+                t = jin["timers"][timer_name][3]
                 timer_names.append(tname + " (%6.2f sec./call)"%t)
             
             timer_values.append(t)
