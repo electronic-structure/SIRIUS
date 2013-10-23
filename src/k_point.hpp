@@ -1317,14 +1317,7 @@ void K_point::distribute_fv_states_row()
 {
     if (verbosity_level >= 10) printf("rank%i => K_point::distribute_fv_states_row()\n", Platform::mpi_rank());
 
-    parameters_.mpi_grid().test_grid();
-
     if (num_ranks_ == 1) return;
-
-    std::vector<complex16> v(mtgk_size());
-    Platform::bcast(&v[0], v.size(), parameters_.mpi_grid().communicator(1 << _dim_col_), 0);
-    Platform::bcast(&v[0], v.size(), parameters_.mpi_grid().communicator(1 << _dim_col_), 1);
-
 
     for (int i = 0; i < parameters_.spl_fv_states_row().local_size(); i++)
     {
@@ -1337,9 +1330,8 @@ void K_point::distribute_fv_states_row()
         if (parameters_.spl_fv_states_col().location(_splindex_rank_, ist) == rank_col_)
             memcpy(&fv_states_row_(0, i), &fv_states_col_(0, offset_col), mtgk_size() * sizeof(complex16));
         
-        std::cout << "rank : " <<Platform::mpi_rank()<<" i="<<i<<" ist="<<ist<<" offset_col="<<offset_col << " dim_col=" <<_dim_col_ << " rank_col="<<rank_col_<<" mtgk_size="<<mtgk_size()<<std::endl;
-        // send fv state to all column MPI ranks
-        Platform::bcast(&fv_states_row_(0, i), mtgk_size(), parameters_.mpi_grid().communicator(1 << _dim_col_), rank_col_); 
+        // send fv state to all column MPI ranks; communication happens along the rows of the MPI grid
+        Platform::bcast(&fv_states_row_(0, i), mtgk_size(), parameters_.mpi_grid().communicator(1 << _dim_row_), rank_row_); 
     }
     
     if (verbosity_level >= 10) printf("rank%i <= K_point::distribute_fv_states_row()\n", Platform::mpi_rank());
