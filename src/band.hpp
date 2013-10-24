@@ -298,7 +298,7 @@ void Band::apply_uj_correction(mdarray<complex16, 2>& fv_states, mdarray<complex
 
 void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_field[3])
 {
-    if (verbosity_level >= 10) printf("rank%i => Band::solve_sv()\n", Platform::mpi_rank());
+    log_function_enter(__func__);
 
     Timer t("sirius::Band::solve_sv");
 
@@ -453,7 +453,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     delete solver;
 
     kp->set_band_energies(&band_energies[0]);
-    if (verbosity_level >= 10) printf("rank%i <= Band::solve_sv()\n", Platform::mpi_rank());
+    log_function_exit(__func__);
 }
 
 template <spin_block_t sblock>
@@ -1484,8 +1484,7 @@ void Band::solve_fv_evp_1stage(K_point* kp, mdarray<complex16, 2>& h, mdarray<co
 
 void Band::solve_fv(K_point* kp, Periodic_function<double>* effective_potential)
 {
-    if (verbosity_level >= 10) printf("rank%i => Band::solve_fv()\n", Platform::mpi_rank());
-
+    log_function_enter(__func__);
     Timer t("sirius::Band::solve_fv");
 
     if (kp->num_ranks() > 1 && (parameters_.eigen_value_solver() == lapack || parameters_.eigen_value_solver() == magma))
@@ -1699,7 +1698,7 @@ void Band::solve_fv(K_point* kp, Periodic_function<double>* effective_potential)
     //**     warning(__FILE__, __LINE__, s, 0);
     //** }
 
-    if (verbosity_level >= 10) printf("rank%i <= Band::solve_fv()\n", Platform::mpi_rank());
+    log_function_exit(__func__);
 }
 
 

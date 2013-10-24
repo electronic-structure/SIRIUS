@@ -567,14 +567,14 @@ class Global : public Step_function
                 blacs_context_ = linalg<scalapack>::create_blacs_context(comm);
 
                 mdarray<int, 2> map_ranks(nrow, ncol);
-                for (int i1 = 0; i1 < ncol; i1++)
+                for (int i = 0; i < nrow; i++)
                 {
-                    for (int i0 = 0; i0 < nrow; i0++)
+                    for (int j = 0; j < ncol; j++)
                     {
                         std::vector<int> xy(2);
-                        xy[0] = i0;
-                        xy[1] = i1;
-                        map_ranks(i0, i1) = mpi_grid().cart_rank(comm, xy);
+                        xy[0] = j;
+                        xy[1] = i;
+                        map_ranks(i, j) = mpi_grid().cart_rank(comm, xy);
                     }
                 }
                 linalg<scalapack>::gridmap(&blacs_context_, map_ranks.get_ptr(), map_ranks.ld(), nrow, ncol);

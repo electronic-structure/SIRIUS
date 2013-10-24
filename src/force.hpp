@@ -1,5 +1,7 @@
 void Force::compute_dmat(Global& parameters_, K_point* kp, mdarray<complex16, 2>& dm)
 {
+    Timer t("sirius::Force::compute_dmat");
+
     dm.zero();
 
     // second-variational dimensions
@@ -360,6 +362,8 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
 void Force::total_force(Global& parameters_, Potential* potential, Density* density, K_set* ks, 
                         mdarray<double, 2>& force)
 {
+    Timer t("sirius::Force::total_force");
+
     mdarray<double, 2> ffac(parameters_.num_gvec_shells(), parameters_.num_atom_types());
     parameters_.get_step_function_form_factors(ffac);
 
