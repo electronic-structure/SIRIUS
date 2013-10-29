@@ -86,11 +86,6 @@ class Reciprocal_lattice : public Unit_cell
             return index_by_gvec_(i0, i1, i2);
         }
 
-        inline int* index_by_gvec()
-        {
-            return index_by_gvec_.get_ptr();
-        }
-
         /// FFT index for a given  G-vector index
         inline int fft_index(int ig)
         {
@@ -103,10 +98,10 @@ class Reciprocal_lattice : public Unit_cell
             return &fft_index_[0];
         }
         
-        /// Pointer to G-vector in fractional coordinates
-        inline int* gvec(int ig)
+        /// G-vector in integer fractional coordinates
+        inline vector3d<int> gvec(int ig)
         {
-            return &gvec_(0, ig);
+            return vector3d<int>(gvec_(0, ig), gvec_(1, ig), gvec_(2, ig));
         }
         
         inline double gvec_shell_len(int igs)
@@ -121,10 +116,10 @@ class Reciprocal_lattice : public Unit_cell
             return gvec_shell_len(gvec_shell_[ig]);
         }
 
-        // TODO: call it everywhere
+        /// G-vector in Cartesian coordinates
         inline vector3d<double> gvec_cart(int ig)
         {
-            return get_coordinates<cartesian, reciprocal>(vector3d<int>(gvec(ig)));
+            return get_coordinates<cartesian, reciprocal>(gvec(ig));
         }
         
         /// Plane-wave cutoff for G-vectors
@@ -157,6 +152,21 @@ class Reciprocal_lattice : public Unit_cell
             return index_by_gvec_(gvec_(0, ig1) - gvec_(0, ig2),
                                   gvec_(1, ig1) - gvec_(1, ig2),
                                   gvec_(2, ig1) - gvec_(2, ig2));
+        }
+        
+        inline int index_g12_safe(int ig1, int ig2)
+        {
+            vector3d<int> v(gvec_(0, ig1) - gvec_(0, ig2), gvec_(1, ig1) - gvec_(1, ig2), gvec_(2, ig1) - gvec_(2, ig2));
+            if (v[0] >= fft_.grid_limits(0).first && v[0] <= fft_.grid_limits(0).second &&
+                v[1] >= fft_.grid_limits(1).first && v[1] <= fft_.grid_limits(1).second &&
+                v[2] >= fft_.grid_limits(2).first && v[2] <= fft_.grid_limits(2).second)
+            {
+                return index_by_gvec(v[0], v[1], v[2]);
+            }
+            else
+            {
+                return -1;
+            }
         }
 
         inline splindex<block>& spl_num_gvec()

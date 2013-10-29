@@ -532,15 +532,18 @@ class Global : public Step_function
 
             // setup MPI grid
             mpi_grid_.initialize(mpi_grid_dims_);
-
-            mpi_group_atom_.split(num_atoms(), mpi_grid_.communicator());
-            spl_atoms_.split(num_atoms(), mpi_group_atom_.num_groups(), mpi_group_atom_.group_id());
-            for (int ia = 0; ia < num_atoms(); ia++)
+            
+            if (num_atoms() != 0)
             {
-                int rank = spl_num_atoms().location(_splindex_rank_, ia);
-                if (Platform::mpi_rank() == rank)
+                mpi_group_atom_.split(num_atoms(), mpi_grid_.communicator());
+                spl_atoms_.split(num_atoms(), mpi_group_atom_.num_groups(), mpi_group_atom_.group_id());
+                for (int ia = 0; ia < num_atoms(); ia++)
                 {
-                    if (Platform::mpi_rank(mpi_group_atom_.communicator()) != 0) error_local(__FILE__, __LINE__, "wrong root rank");
+                    int rank = spl_num_atoms().location(_splindex_rank_, ia);
+                    if (Platform::mpi_rank() == rank)
+                    {
+                        if (Platform::mpi_rank(mpi_group_atom_.communicator()) != 0) error_local(__FILE__, __LINE__, "wrong root rank");
+                    }
                 }
             }
             

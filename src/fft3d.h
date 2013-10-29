@@ -54,7 +54,7 @@ class FFT3D
         int grid_size_[3];
 
         /// reciprocal space range
-        int grid_limits_[3][2];
+        std::pair<int, int> grid_limits_[3];
         
         /// backward transformation plan for each thread
         std::vector<fftw_plan> plan_backward_;
@@ -110,8 +110,8 @@ class FFT3D
             {
                 grid_size_[i] = find_grid_size(dims[i]);
                 
-                grid_limits_[i][1] = grid_size_[i] / 2;
-                grid_limits_[i][0] = grid_limits_[i][1] - grid_size_[i] + 1;
+                grid_limits_[i].second = grid_size_[i] / 2;
+                grid_limits_[i].first = grid_limits_[i].second - grid_size_[i] + 1;
             }
         }
 
@@ -236,9 +236,9 @@ class FFT3D
             for (int i = 0; i < n; i++) data[i] = fftw_output_buffer_(map[i], thread_id);
         }
         
-        inline int grid_limits(int d, int i)
+        inline const std::pair<int, int>& grid_limits(int idim)
         {
-            return grid_limits_[d][i];
+            return grid_limits_[idim];
         }
 
         /// Total size of the FFT grid.

@@ -34,6 +34,10 @@
     "communication along 1-st and 3-rd dimensions".
 */
 
+/// MPI grid interface
+/** \image html mpi_grid_comm.png "Communication along dimension d0 (between ranks of d0)." 
+    In the provided example the corresponding communicator is MPI_grid::communicator(1 << d0), where d0 is the integer 
+    index of dimension. */
 class MPI_grid
 {
     private:

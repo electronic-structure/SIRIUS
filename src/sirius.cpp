@@ -384,8 +384,8 @@ void FORTRAN(sirius_get_fft_grid_limits)(int32_t* d, int32_t* lower, int32_t* up
 {
     log_function_enter(__func__);
     assert((*d >= 1) && (*d <= 3));
-    *lower = global_parameters.fft().grid_limits(*d - 1, 0);
-    *upper = global_parameters.fft().grid_limits(*d - 1, 1);
+    *lower = global_parameters.fft().grid_limits(*d - 1).first;
+    *upper = global_parameters.fft().grid_limits(*d - 1).second;
     log_function_exit(__func__);
 }
 
@@ -399,10 +399,16 @@ void FORTRAN(sirius_get_fft_index)(int32_t* fft_index)
 }
 
 /// Get list of G-vectors in fractional corrdinates
-void FORTRAN(sirius_get_gvec)(int32_t* gvec)
+void FORTRAN(sirius_get_gvec)(int32_t* gvec__)
 {
     log_function_enter(__func__);
-    memcpy(gvec, global_parameters.gvec(0), 3 * global_parameters.fft().size() * sizeof(int32_t));
+    mdarray<int, 2> gvec(gvec__, 3,  global_parameters.fft().size());
+    for (int ig = 0; ig < global_parameters.fft().size(); ig++)
+    {
+        vector3d<int> gv = global_parameters.gvec(ig);
+        for (int x = 0; x < 3; x++) gvec(x, ig) = gv[x];
+    }
+    //memcpy(gvec, global_parameters.gvec(0), 3 * global_parameters.fft().size() * sizeof(int32_t));
     log_function_exit(__func__);
 }
 
@@ -427,11 +433,25 @@ void FORTRAN(sirius_get_gvec_len)(real8* gvec_len)
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_index_by_gvec)(int32_t* index_by_gvec)
+void FORTRAN(sirius_get_index_by_gvec)(int32_t* index_by_gvec__)
 {
     log_function_enter(__func__);
-    memcpy(index_by_gvec, global_parameters.index_by_gvec(), global_parameters.fft().size() * sizeof(int32_t));
-    for (int i = 0; i < global_parameters.fft().size(); i++) index_by_gvec[i]++;
+    sirius::FFT3D& fft = global_parameters.fft();
+    std::pair<int, int> d0 = fft.grid_limits(0);
+    std::pair<int, int> d1 = fft.grid_limits(1);
+    std::pair<int, int> d2 = fft.grid_limits(2);
+
+    mdarray<int, 3> index_by_gvec(index_by_gvec__, dimension(d0.first, d0.second), dimension(d1.first, d1.second), dimension(d2.first, d2.second));
+    for (int i0 = d0.first; i0 <= d0.second; i0++)
+    {
+        for (int i1 = d1.first; i1 <= d1.second; i1++)
+        {
+            for (int i2 = d2.first; i2 <= d2.second; i2++)
+            {
+                index_by_gvec(i0, i1, i2) = global_parameters.index_by_gvec(i0, i1, i2) + 1;
+            }
+        }
+    }
     log_function_exit(__func__);
 }
 

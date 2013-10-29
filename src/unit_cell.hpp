@@ -149,7 +149,7 @@ void Unit_cell::get_symmetry()
 {
     Timer t("sirius::Unit_cell::get_symmetry");
     
-    if (num_atoms() == 0) error_local(__FILE__, __LINE__, "no atoms");
+    if (num_atoms() == 0) return; //error_local(__FILE__, __LINE__, "no atoms");
     
     if (spg_dataset_) spg_free_dataset(spg_dataset_);
         
@@ -288,7 +288,7 @@ std::vector<double> Unit_cell::find_mt_radii()
 
 bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
 {
-    if (nearest_neighbours_.size() == 0) error_local(__FILE__, __LINE__, "array of nearest neighbours is empty");
+    if (num_atoms() != 0 && nearest_neighbours_.size() == 0) error_local(__FILE__, __LINE__, "array of nearest neighbours is empty");
 
     for (int ia = 0; ia < num_atoms(); ia++)
     {
@@ -360,8 +360,8 @@ void Unit_cell::init(int lmax_apw, int lmax_pot, int num_mag_dims)
     }
 
     assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
-    assert(num_atoms() != 0);
-    assert(num_atom_types() != 0);
+    //assert(num_atoms() != 0);
+    //assert(num_atom_types() != 0);
 
     update();
             
@@ -493,25 +493,28 @@ void Unit_cell::print_info()
         printf("\n");
     }
 
-    printf("\n");
-    printf("space group number   : %i\n", spg_dataset_->spacegroup_number);
-    printf("international symbol : %s\n", spg_dataset_->international_symbol);
-    printf("Hall symbol          : %s\n", spg_dataset_->hall_symbol);
-    printf("number of operations : %i\n", spg_dataset_->n_operations);
-    printf("symmetry operations  : \n");
-    for (int isym = 0; isym < spg_dataset_->n_operations; isym++)
+    if (spg_dataset_)
     {
-        printf("isym : %i\n", isym);
-        printf("R : ");
-        for (int i = 0; i < 3; i++)
+        printf("\n");
+        printf("space group number   : %i\n", spg_dataset_->spacegroup_number);
+        printf("international symbol : %s\n", spg_dataset_->international_symbol);
+        printf("Hall symbol          : %s\n", spg_dataset_->hall_symbol);
+        printf("number of operations : %i\n", spg_dataset_->n_operations);
+        printf("symmetry operations  : \n");
+        for (int isym = 0; isym < spg_dataset_->n_operations; isym++)
         {
-            if (i) printf("    ");
-            for (int j = 0; j < 3; j++) printf("%3i ",spg_dataset_->rotations[isym][i][j]);
+            printf("isym : %i\n", isym);
+            printf("R : ");
+            for (int i = 0; i < 3; i++)
+            {
+                if (i) printf("    ");
+                for (int j = 0; j < 3; j++) printf("%3i ",spg_dataset_->rotations[isym][i][j]);
+                printf("\n");
+            }
+            printf("T : ");
+            for (int j = 0; j < 3; j++) printf("%f ",spg_dataset_->translations[isym][j]);
             printf("\n");
         }
-        printf("T : ");
-        for (int j = 0; j < 3; j++) printf("%f ",spg_dataset_->translations[isym][j]);
-        printf("\n");
     }
     
     printf("\n");
