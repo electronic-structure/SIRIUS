@@ -7,8 +7,8 @@ INCLUDE = -I./../../src
 .SUFFIXES: .cpp
 
 all: 
-#	$(CXX) $(CXX_OPT) $(INCLUDE) davidson.cpp $(LIB_SIRIUS) $(LIBS) -o davidson
-	$(CXX) $(CXX_OPT) $(INCLUDE) lobpcg.cpp $(LIB_SIRIUS) $(LIBS) -o lobpcg
+	$(CXX) $(CXX_OPT) $(INCLUDE) block_davidson.cpp $(LIB_SIRIUS) $(LIBS) -o block_davidson
+#	$(CXX) $(CXX_OPT) $(INCLUDE) lobpcg.cpp $(LIB_SIRIUS) $(LIBS) -o lobpcg
 
 clean:
 	rm -f *.o davidson
