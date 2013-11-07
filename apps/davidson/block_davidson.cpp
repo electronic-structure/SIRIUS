@@ -313,7 +313,9 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
             blas<cpu>::gemm(2, 0, N, N, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
        
             // compute overlap matrix <phi|phi>
-            blas<cpu>::gemm(2, 0, N, N, kp.num_gkvec(), &phi(0, 0), phi.ld(), &phi(0, 0), phi.ld(), &ovlp(0, 0), ovlp.ld());
+            //blas<cpu>::gemm(2, 0, N, N, kp.num_gkvec(), &phi(0, 0), phi.ld(), &phi(0, 0), phi.ld(), &ovlp(0, 0), ovlp.ld());
+            ovlp.zero();
+            for (int i = 0; i < N; i++) ovlp(i, i) = complex16(1, 0);
 
             full_hmlt_update = false;
         }
@@ -413,6 +415,7 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
             apply_h(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
             N = num_bands;
             full_hmlt_update = true;
+
             t_psi.stop();
         }
         
