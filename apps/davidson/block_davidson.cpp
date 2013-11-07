@@ -319,22 +319,23 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
         }
         else
         {
+            int M = N - n;
             // copy old Hamiltonian and overlap
-            for (int i = 0; i < N - n; i++)
+            for (int i = 0; i < M; i++)
             {
-                memcpy(&hmlt(0, i), &hmlt_old(0, i), (N - n) * sizeof(complex16));
-                memcpy(&ovlp(0, i), &ovlp_old(0, i), (N - n) * sizeof(complex16));
+                memcpy(&hmlt(0, i), &hmlt_old(0, i), M * sizeof(complex16));
+                memcpy(&ovlp(0, i), &ovlp_old(0, i), M * sizeof(complex16));
             }
             
             // <phi|H|res>
-            blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, N), hphi.ld(), &hmlt(0, N), hmlt.ld());
+            blas<cpu>::gemm(2, 0, M, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, M), hphi.ld(), &hmlt(0, M), hmlt.ld());
             // <res|H|res>
-            blas<cpu>::gemm(2, 0, n, n, kp.num_gkvec(), &phi(0, N), phi.ld(), &hphi(0, N), hphi.ld(), &hmlt(N, N), hmlt.ld());
+            blas<cpu>::gemm(2, 0, n, n, kp.num_gkvec(), &phi(0, M), phi.ld(), &hphi(0, M), hphi.ld(), &hmlt(M, M), hmlt.ld());
             
             // <phi|res>
-            blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &phi(0, N), phi.ld(), &ovlp(0, N), ovlp.ld());
+            blas<cpu>::gemm(2, 0, M, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &phi(0, M), phi.ld(), &ovlp(0, M), ovlp.ld());
             // <res|res>
-            blas<cpu>::gemm(2, 0, n, n, kp.num_gkvec(), &phi(0, N), phi.ld(), &phi(0, N), phi.ld(), &ovlp(N, N), ovlp.ld());
+            blas<cpu>::gemm(2, 0, n, n, kp.num_gkvec(), &phi(0, M), phi.ld(), &phi(0, M), phi.ld(), &ovlp(M, M), ovlp.ld());
         }
 
         // save Hamiltonian and overlap
