@@ -23,7 +23,8 @@ void K_point::initialize()
 
 void K_point::update()
 {
-    generate_gkvec();
+    double gk_cutoff = parameters_.aw_cutoff() / parameters_.min_mt_radius();
+    generate_gkvec(gk_cutoff);
     
     build_apwlo_basis_descriptors();
 
@@ -530,10 +531,8 @@ void K_point::generate_spinor_wave_functions()
     log_function_exit(__func__);
 }
 
-void K_point::generate_gkvec()
+void K_point::generate_gkvec(double gk_cutoff)
 {
-    double gk_cutoff = parameters_.aw_cutoff() / parameters_.min_mt_radius();
-
     if ((gk_cutoff * parameters_.max_mt_radius() > double(parameters_.lmax_apw())) && basis_type == apwlo)
     {
         std::stringstream s;
@@ -546,11 +545,9 @@ void K_point::generate_gkvec()
     if (gk_cutoff * 2 > parameters_.pw_cutoff())
     {
         std::stringstream s;
-        s << "aw cutoff is too large for a given plane-wave cutoff" << std::endl
+        s << "G+k cutoff is too large for a given plane-wave cutoff" << std::endl
           << "  pw cutoff : " << parameters_.pw_cutoff() << std::endl
-          << "  aw cutoff : " << parameters_.aw_cutoff() << std::endl 
-          << "  2 * Gk cutoff : " << gk_cutoff * 2 << std::endl
-          << "  min_mt_radius : " << parameters_.min_mt_radius();
+          << "  G+k cutoff : " << gk_cutoff * 2;
 
         error_local(__FILE__, __LINE__, s);
     }

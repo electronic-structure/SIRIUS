@@ -182,9 +182,6 @@ class K_point
         /// Copy plane wave block from eigen-vector to wave-function
         inline void copy_pw_block(const complex16* z, complex16* vec);
 
-        /// Find G+k vectors within the cutoff
-        void generate_gkvec();
-
         /// Initialize G+k related data
         void init_gkvec();
         
@@ -234,6 +231,9 @@ class K_point
         /// Update the relevant arrays in case of atom positions have been changed.
         void update();
         
+        /// Find G+k vectors within the cutoff
+        void generate_gkvec(double gk_cutoff);
+
         /// Generate plane-wave matching coefficents for the radial solutions 
         /** At some point we need to compute the radial derivatives of the spherical Bessel functions at the 
             muffin-tin boundary. The following formula is used:

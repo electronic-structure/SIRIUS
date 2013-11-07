@@ -176,6 +176,18 @@ template <typename T, int ND> class mdarray_base
 
             return h;
         }
+        
+
+        /// Copy the content of the array to dest
+        void operator>>(mdarray_base<T, ND>& dest)
+        {
+            for (int i = 0; i < ND; i++) 
+            {
+                if (dest.d[i].start() != d[i].start() || dest.d[i].end() != d[i].end())
+                    error_local(__FILE__, __LINE__, "array dimensions don't match");
+            }
+            memcpy(dest.get_ptr(), get_ptr(), size() * sizeof(T));
+        }
 
         #ifdef _GPU_
         void allocate_on_device()
