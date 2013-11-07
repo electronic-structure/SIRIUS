@@ -261,7 +261,7 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
 
     int num_phi = num_bands * 5;
 
-    int num_iter = 20;
+    int num_iter = 8;
 
     mdarray<complex16, 2> phi(kp.num_gkvec(), num_phi);
     mdarray<complex16, 2> hphi(kp.num_gkvec(), num_phi);
@@ -274,6 +274,8 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
 
     mdarray<complex16, 2> hmlt(num_phi, num_phi);
     mdarray<complex16, 2> ovlp(num_phi, num_phi);
+    mdarray<complex16, 2> hmlt_old(num_phi, num_phi);
+    mdarray<complex16, 2> ovlp_old(num_phi, num_phi);
     mdarray<complex16, 2> evec(num_phi, num_phi);
     std::vector<double> eval(num_phi);
     
@@ -290,21 +292,67 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
     generalized_evp* gevp = new generalized_evp_lapack(-1.0);
 
     int N = num_bands; // intial eigen-value problem size
+    int n = 0; // number of added residuals
+
+    Timer t_ho("hmlt_ovlp_setup", false);
+    Timer t_diag("gevp", false);
+    Timer t_res("res", false);
+    Timer t_res_p("res_precond", false);
+    Timer t_psi("psi", false);
+
+    bool full_hmlt_update = true;
 
     for (int k = 0; k < num_iter; k++)
     {
         std::cout << "Iteration : " << k << ", subspace size : " << N << std::endl;
-
-        // compute the Hamiltonian matrix: <phi|H|phi>
-        blas<cpu>::gemm(2, 0, N, N, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
-       
-        // compute overlap matrix <phi|phi>
-        blas<cpu>::gemm(2, 0, N, N, kp.num_gkvec(), &phi(0, 0), phi.ld(), &phi(0, 0), phi.ld(), &ovlp(0, 0), ovlp.ld());
         
+        t_ho.start();
+        if (full_hmlt_update)
+        {
+            // compute the Hamiltonian matrix: <phi|H|phi>
+            blas<cpu>::gemm(2, 0, N, N, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
+       
+            // compute overlap matrix <phi|phi>
+            blas<cpu>::gemm(2, 0, N, N, kp.num_gkvec(), &phi(0, 0), phi.ld(), &phi(0, 0), phi.ld(), &ovlp(0, 0), ovlp.ld());
+
+            full_hmlt_update = false;
+        }
+        else
+        {
+            // copy old Hamiltonian and overlap
+            for (int i = 0; i < N - n; i++)
+            {
+                memcpy(&hmlt(0, i), &hmlt_old(0, i), (N - n) * sizeof(complex16));
+                memcpy(&ovlp(0, i), &ovlp_old(0, i), (N - n) * sizeof(complex16));
+            }
+            
+            // <phi|H|res>
+            blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, N), hphi.ld(), &hmlt(0, N), hmlt.ld());
+            // <res|H|res>
+            blas<cpu>::gemm(2, 0, n, n, kp.num_gkvec(), &phi(0, N), phi.ld(), &hphi(0, N), hphi.ld(), &hmlt(N, N), hmlt.ld());
+            
+            // <phi|res>
+            blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &phi(0, N), phi.ld(), &ovlp(0, N), ovlp.ld());
+            // <res|res>
+            blas<cpu>::gemm(2, 0, n, n, kp.num_gkvec(), &phi(0, N), phi.ld(), &phi(0, N), phi.ld(), &ovlp(N, N), ovlp.ld());
+        }
+
+        // save Hamiltonian and overlap
+        for (int i = 0; i < N; i++)
+        {
+            memcpy(&hmlt_old(0, i), &hmlt(0, i), N * sizeof(complex16));
+            memcpy(&ovlp_old(0, i), &ovlp(0, i), N * sizeof(complex16));
+        }
+        
+        t_ho.stop();
+        
+        t_diag.start();
         //solver->solve(N, hmlt.get_ptr(), hmlt.ld(), &eval[0], evec.get_ptr(), evec.ld());
         gevp->solve(N, num_bands, hmlt.get_ptr(), hmlt.ld(), ovlp.get_ptr(), ovlp.ld(), &eval[0], 
                     evec.get_ptr(), evec.ld());
+        t_diag.stop();
         
+        t_res.start();
         // compute residuals
         // 1. \Psi_{i} = \phi_{mu} * Z_{mu, i}
         blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), &res(0, 0), res.ld());
@@ -316,7 +364,9 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
         // 3. r_{i} = H\Psi_{i} - E_{i}\Psi_{i}
         blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, N, complex16(1, 0), &hphi(0, 0), hphi.ld(), &evec(0, 0), evec.ld(), 
                         complex16(-1, 0), &res(0, 0), res.ld());
-        
+        t_res.stop();
+
+        t_res_p.start();
         // compute norm and apply preconditioner
         #pragma omp parallel for
         for (int i = 0; i < num_bands; i++)
@@ -333,9 +383,10 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
                 res(ig, i) /= t;
             }
         }
+        t_res_p.stop();
 
         // check which residuals are converged
-        int n = 0;
+        n = 0;
         for (int i = 0; i < num_bands; i++)
         {
             // take the residual if it's norm is above the threshold
@@ -352,12 +403,16 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
         // check if we run out of variational space
         if (N + n > num_phi)
         {   
+            t_psi.start();
+
             // use current espansion of \Psi as a new starting basis
             blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), 
                             &zm(0, 0), zm.ld());
             memcpy(phi.get_ptr(), zm.get_ptr(), num_bands * kp.num_gkvec() * sizeof(complex16));
             apply_h(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
             N = num_bands;
+            full_hmlt_update = true;
+            t_psi.stop();
         }
         
         //apply_p(kp, res_active);
@@ -423,7 +478,7 @@ void test_davidson()
 
     //== delete solver;
     
-    int num_bands = 20;
+    int num_bands = 700;
 
     //== printf("\n");
     //== printf("Lowest eigen-values (exact): \n");
