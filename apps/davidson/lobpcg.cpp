@@ -79,50 +79,6 @@ using namespace sirius;
 //==     }
 //== }
 //== 
-//== void expand_subspace(Global& parameters, int N, int bs, mdarray<complex16, 2>& phi, mdarray<complex16, 2>& res)
-//== {
-//==     // overlap between new addisional basis vectors and old basis vectors
-//==     mdarray<complex16, 2> ovlp(N, bs);
-//==     ovlp.zero();
-//==     for (int i = 0; i < N; i++)
-//==     {
-//==         for (int j = 0; j < bs; j++) 
-//==         {
-//==             for (int ig = 0; ig < parameters.num_gvec(); ig++) ovlp(i, j) += conj(phi(ig, i)) * res(ig, j);
-//==         }
-//==     }
-//== 
-//==     // project out the the old subspace
-//==     for (int j = 0; j < bs; j++)
-//==     {
-//==         for (int i = 0; i < N; i++)
-//==         {
-//==             for (int ig = 0; ig < parameters.num_gvec(); ig++) res(ig, j) -= ovlp(i, j) * phi(ig, i);
-//==         }
-//==     }
-//== 
-//==     // orthogonalize
-//==     for (int j = 0; j < bs; j++)
-//==     {
-//==         std::vector<complex16> v(parameters.num_gvec());
-//==         memcpy(&v[0], &res(0, j), parameters.num_gvec() * sizeof(complex16));
-//==         for (int j1 = 0; j1 < j; j1++)
-//==         {
-//==             complex16 z(0, 0);
-//==             for (int ig = 0; ig < parameters.num_gvec(); ig++) z += conj(res(ig, j1)) * v[ig];
-//==             for (int ig = 0; ig < parameters.num_gvec(); ig++) v[ig] -= z * res(ig, j1);
-//==         }
-//==         double norm = 0;
-//==         for (int ig = 0; ig < parameters.num_gvec(); ig++) norm += real(conj(v[ig]) * v[ig]);
-//==         //std::cout << "j=" << j <<" final norm=" << norm << std::endl;
-//==         for (int ig = 0; ig < parameters.num_gvec(); ig++) res(ig, j) = v[ig] / sqrt(norm);
-//==     }
-//== 
-//==     for (int j = 0; j < bs; j++)
-//==     {
-//==         for (int ig = 0; ig < parameters.num_gvec(); ig++) phi(ig, N + j) = res(ig, j);
-//==     }
-//== }
 
 void apply_h(Global& parameters, K_point& kp, int n, std::vector<complex16>& v_r, complex16* phi__, complex16* hphi__)
 {
@@ -204,20 +160,6 @@ void orthonormalize(mdarray<complex16, 2>& f)
         for (int ig = 0; ig < f.size(0); ig++) norm += real(conj(v[ig]) * v[ig]);
         for (int ig = 0; ig < f.size(0); ig++) f(ig, j) = v[ig] / sqrt(norm);
     }
-
-    //for (int i = 0; i < f.size(1); i++)
-    //{
-    //    for (int j = 0; j < f.size(1); j++)
-    //    {
-    //        complex16 z(0, 0);
-    //        for (int ig = 0; ig < f.size(0); ig++)
-    //        {
-    //            z += conj(f(ig, i)) * f(ig, j);
-    //        }
-    //        if (i == j) z -= 1.0;
-    //        if (abs(z) > 1e-12) error_local(__FILE__, __LINE__, "basis is not orthogonal");
-    //    }
-    //}
 }
 
 void check_orth(mdarray<complex16, 2>& f)
@@ -253,7 +195,7 @@ void apply_p(K_point& kp, mdarray<complex16, 2>& r)
         // apply the preconditioner
         for (int ig = 0; ig < kp.num_gkvec(); ig++)
         {
-            double x = pow(kp.gkvec_cart(ig).length(), 2) / 1.5 / ekin;
+            double x = pow(kp.gkvec_cart(ig).length(), 2) / 2 / 1.5 / ekin;
             r(ig, i) = r(ig, i) * (27 + 18 * x + 12 * x * x + 8 * x * x * x) / (27 + 18 * x + 12 * x * x + 8 * x * x * x + 16 * x * x * x * x);
         }
     }
@@ -329,7 +271,7 @@ void diag_lobpcg(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, 
             std::cout << "band : " << i << " residiual : " << r << " eigen-value : " << eval[i] << std::endl;
         }
 
-        apply_p(kp, res);
+        //apply_p(kp, res);
 
         //orthonormalize(res);
         apply_h(parameters, kp, num_bands, v_r, &res(0, 0), &hres(0, 0));
@@ -415,6 +357,127 @@ void diag_lobpcg(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, 
 
 }
 
+void expand_subspace(K_point& kp, int N, int num_bands, mdarray<complex16, 2>& phi, mdarray<complex16, 2>& res)
+{
+    // overlap between new addisional basis vectors and old basis vectors
+    mdarray<complex16, 2> ovlp(N, num_bands);
+    ovlp.zero();
+    for (int i = 0; i < N; i++)
+    {
+        for (int j = 0; j < num_bands; j++) 
+        {
+            for (int ig = 0; ig < kp.num_gkvec(); ig++) ovlp(i, j) += conj(phi(ig, i)) * res(ig, j);
+        }
+    }
+
+    // project out the the old subspace
+    for (int j = 0; j < num_bands; j++)
+    {
+        for (int i = 0; i < N; i++)
+        {
+            for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, j) -= ovlp(i, j) * phi(ig, i);
+        }
+    }
+    orthonormalize(res);
+
+    for (int j = 0; j < num_bands; j++)
+    {
+        for (int ig = 0; ig < kp.num_gkvec(); ig++) phi(ig, N + j) = res(ig, j);
+    }
+}
+
+void diag_davidson(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands)
+{
+    std::vector<complex16> v_r(parameters.fft().size());
+    parameters.fft().input(parameters.num_gvec(), parameters.fft_index(), &v_pw[0]);
+    parameters.fft().transform(1);
+    parameters.fft().output(&v_r[0]);
+
+    for (int ir = 0; ir < parameters.fft().size(); ir++)
+    {
+        if (fabs(imag(v_r[ir])) > 1e-10) error_local(__FILE__, __LINE__, "potential is complex");
+    }
+
+    int num_iter = 5;
+
+    int num_big_iter = 5;
+
+    // initial basis functions
+    mdarray<complex16, 2> phi(kp.num_gkvec(), num_bands * num_iter);
+    phi.zero();
+    for (int i = 0; i < num_bands; i++) phi(i, i) = 1.0;
+
+    mdarray<complex16, 2> hphi(kp.num_gkvec(), num_bands * num_iter);
+
+
+    mdarray<complex16, 2> hmlt(num_bands * num_iter, num_bands * num_iter);
+    mdarray<complex16, 2> evec(num_bands * num_iter, num_bands * num_iter);
+    std::vector<double> eval(num_bands * num_iter);
+    
+    mdarray<complex16, 2> res(kp.num_gkvec(), num_bands);
+
+    standard_evp* solver = new standard_evp_lapack();
+
+    for (int l = 0; l < num_big_iter; l++)
+    {
+        for (int k = 1; k <= num_iter; k++)
+        {
+            int N = k * num_bands;
+
+            apply_h(parameters, kp, num_bands, v_r, &phi(0, (k - 1) * num_bands), &hphi(0, (k - 1) * num_bands));
+
+            blas<cpu>::gemm(2, 0, N, N, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
+
+            solver->solve(N, hmlt.get_ptr(), hmlt.ld(), &eval[0], evec.get_ptr(), evec.ld());
+            
+            // compute residuals
+            res.zero();
+            for (int j = 0; j < num_bands; j++)
+            {
+                for (int mu = 0; mu < N; mu++)
+                {
+                    for (int ig = 0; ig < kp.num_gkvec(); ig++)
+                    {
+                        res(ig, j) += (evec(mu, j) * hphi(ig, mu) - eval[j] * evec(mu, j) * phi(ig, mu));
+                    }
+                }
+            }
+
+            std::cout << "Iteration : " << k << std::endl;
+            for (int i = 0; i < num_bands; i++)
+            {
+                double r = 0;
+                for (int ig = 0; ig < kp.num_gkvec(); ig++) r += real(conj(res(ig, i)) * res(ig, i));
+                //for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, i) /= sqrt(r);
+                std::cout << "band : " << i << " residiual : " << r << " eigen-value : " << eval[i] << std::endl;
+            }
+
+            //apply_p(kp, res);
+            
+            for (int j = 0; j < num_bands; j++)
+            {
+                for (int ig = 0; ig < kp.num_gkvec(); ig++)
+                {
+                    complex16 t = pow(kp.gkvec_cart(ig).length(), 2) / 2.0 + v_pw[0] - eval[j];
+                    if (abs(t) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
+                    res(ig, j) /= t;
+                }
+            }
+
+            if (k < num_iter) expand_subspace(kp, N, num_bands, phi, res);
+        }
+
+        mdarray<complex16, 2> zm(kp.num_gkvec(), num_bands);
+        blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, num_bands * num_iter, &phi(0, 0), phi.ld(), 
+                        &evec(0, 0), evec.ld(), &zm(0, 0), zm.ld());
+        //check_orth(zm);
+        memcpy(phi.get_ptr(), zm.get_ptr(), num_bands * kp.num_gkvec() * sizeof(complex16));
+    }
+
+    delete solver;
+}
+
+
 void test_lobpcg()
 {
     Global parameters;
@@ -438,7 +501,7 @@ void test_lobpcg()
 
     // generate some potential in plane-wave domain
     std::vector<complex16> v_pw(parameters.num_gvec());
-    for (int ig = 0; ig < parameters.num_gvec(); ig++) v_pw[ig] = complex16(1.0 / (parameters.gvec_len(ig) + 1.0), 0.0);
+    for (int ig = 0; ig < parameters.num_gvec(); ig++) v_pw[ig] = complex16(1.0 / pow(parameters.gvec_len(ig) + 1.0, 2), 0.0);
 
     //== // cook the Hamiltonian
     //== mdarray<complex16, 2> hmlt(kp.num_gkvec(), kp.num_gkvec());
@@ -462,7 +525,7 @@ void test_lobpcg()
 
     //== delete solver;
     
-    int num_bands = 10;
+    int num_bands = 20;
 
     //== printf("\n");
     //== printf("Lowest eigen-values (exact): \n");
@@ -473,6 +536,8 @@ void test_lobpcg()
 
 
     diag_lobpcg(parameters, kp, v_pw, num_bands);
+
+    //diag_davidson(parameters, kp, v_pw, num_bands);
 
     
 //    mdarray<complex16, 2> evec(Nmax, Nmax);
