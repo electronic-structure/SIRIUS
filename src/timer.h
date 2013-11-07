@@ -93,7 +93,8 @@ class Timer
                         maxval = std::max(maxval, it->second[i]);
                     }
                     double average = (count == 0) ? 0.0 : total / count;
-                    
+                    if (count == 0) minval = 0.0;
+
                     printf("%-60s :    %5i %10.4f %10.4f %10.4f %10.4f\n", it->first.c_str(), count, total, minval, maxval, average);
                 }
             }
