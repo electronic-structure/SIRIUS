@@ -292,7 +292,15 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
     phi.zero();
     for (int i = 0; i < num_bands; i++) phi(i, i) = 1.0;
     // apply Hamiltonian to intial states
-    apply_h(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
+    //apply_h(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
+    for (int i = 0; i < num_bands; i++)
+    {
+        for (int ig = 0; ig < kp.num_gkvec(); ig++)
+        {
+            hphi(ig, i) = v_pw[parameters.index_g12(kp.gvec_index(ig), kp.gvec_index(i))];
+        }
+        hphi(i, i) += pow(kp.gkvec_cart(i).length(), 2) / 2.0;
+    }
 
     mdarray<complex16, 2> hmlt(num_phi, num_phi);
     mdarray<complex16, 2> ovlp(num_phi, num_phi);
@@ -381,7 +389,7 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
             {
                 res_e[n] = eval[i];
                 
-                // use hmlt as a temorary storage for evec
+                // use hmlt as a temporary storage for evec
                 memcpy(&hmlt(0, n), &evec(0, i), N * sizeof(complex16));
 
                 n++;
