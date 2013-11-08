@@ -267,7 +267,8 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
     delete gevp;
 }
 
-void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands)
+void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, 
+                      mdarray<complex16, 2>& psi)
 {
     Timer t("diag_davidson");
 
@@ -313,8 +314,6 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
     
     mdarray<complex16, 2> res(kp.num_gkvec(), num_bands);
 
-    mdarray<complex16, 2> zm(kp.num_gkvec(), num_bands); // temporary storage
-
     std::vector<double> res_e(num_bands);
 
     generalized_evp* gevp = new generalized_evp_lapack(-1.0);
@@ -322,19 +321,13 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
     int N = num_bands; // intial eigen-value problem size
     int n = 0; // number of added residuals
 
-    Timer t_ho("hmlt_ovlp_setup", false);
-    Timer t_diag("gevp", false);
-    Timer t_res("res", false);
-    Timer t_res_p("res_precond", false);
-    Timer t_psi("psi", false);
-
     bool full_hmlt_update = true;
 
     for (int k = 0; k < num_iter; k++)
     {
         std::cout << "Iteration : " << k << ", subspace size : " << N << std::endl;
-        
-        t_ho.start();
+       
+        Timer t1("setup_evp");
         if (full_hmlt_update)
         {
             // compute the Hamiltonian matrix: <phi|H|phi>
@@ -373,13 +366,13 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
             memcpy(&hmlt_old(0, i), &hmlt(0, i), N * sizeof(complex16));
             memcpy(&ovlp_old(0, i), &ovlp(0, i), N * sizeof(complex16));
         }
+        t1.stop();
         
-        t_ho.stop();
-        
-        t_diag.start();
+        // solve generalized eigen-value problem    
+        Timer t2("solve_evp");
         gevp->solve(N, num_bands, hmlt.get_ptr(), hmlt.ld(), ovlp.get_ptr(), ovlp.ld(), &eval[0], 
                     evec.get_ptr(), evec.ld());
-        t_diag.stop();
+        t2.stop();
         
         n = 0;
         // check eigen-values for convergence
@@ -398,51 +391,58 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
         }
 
         std::cout << "number of non-converged eigen-vectors : " << n << std::endl;
-        if (n == 0) break;
         
-        t_res.start();
-        // compute residuals
-        // 1. \Psi_{i} = \phi_{mu} * Z_{mu, i}
-        blas<cpu>::gemm(0, 0, kp.num_gkvec(), n, N, &phi(0, 0), phi.ld(), &hmlt(0, 0), hmlt.ld(), &res(0, 0), res.ld());
-        // 2. multiply \Psi_{i} with energy
-        for (int i = 0; i < n; i++)
+        // if we have unconverged eigen-states
+        if (n != 0)
         {
-            for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, i) *= res_e[i];
-        }
-        // 3. r_{i} = H\Psi_{i} - E_{i}\Psi_{i}
-        blas<cpu>::gemm(0, 0, kp.num_gkvec(), n, N, complex16(1, 0), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld(), 
-                        complex16(-1, 0), &res(0, 0), res.ld());
-        t_res.stop();
-
-        t_res_p.start();
-        // compute norm and apply preconditioner
-        #pragma omp parallel for
-        for (int i = 0; i < n; i++)
-        {
-            // apply preconditioner
-            for (int ig = 0; ig < kp.num_gkvec(); ig++)
+            Timer t3("residuals");
+            // compute residuals
+            // 1. \Psi_{i} = \phi_{mu} * Z_{mu, i}
+            blas<cpu>::gemm(0, 0, kp.num_gkvec(), n, N, &phi(0, 0), phi.ld(), &hmlt(0, 0), hmlt.ld(), &res(0, 0), res.ld());
+            // 2. multiply \Psi_{i} with energy
+            for (int i = 0; i < n; i++)
             {
-                complex16 t = pow(kp.gkvec_cart(ig).length(), 2) / 2.0 + v_pw[0] - res_e[i];
-                if (abs(t) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
-                res(ig, i) /= t;
+                for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, i) *= res_e[i];
+            }
+            // 3. r_{i} = H\Psi_{i} - E_{i}\Psi_{i}
+            blas<cpu>::gemm(0, 0, kp.num_gkvec(), n, N, complex16(1, 0), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld(), 
+                            complex16(-1, 0), &res(0, 0), res.ld());
+            t3.stop();
+
+            // apply preconditioner
+            #pragma omp parallel for
+            for (int i = 0; i < n; i++)
+            {
+                // apply preconditioner
+                for (int ig = 0; ig < kp.num_gkvec(); ig++)
+                {
+                    complex16 t = pow(kp.gkvec_cart(ig).length(), 2) / 2.0 + v_pw[0] - res_e[i];
+                    if (abs(t) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
+                    res(ig, i) /= t;
+                }
             }
         }
-        t_res_p.stop();
 
-        // check if we run out of variational space
-        if (N + n > num_phi)
+        // check if we run out of variational space or eigen-vectors are converged or it's a last iteration
+        if (N + n > num_phi || n == 0 || k == (num_iter - 1))
         {   
-            t_psi.start();
-
-            // use current espansion of \Psi as a new starting basis
+            Timer t3("update_phi");
+            // \Psi_{i} = \phi_{mu} * Z_{mu, i}
             blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), 
-                            &zm(0, 0), zm.ld());
-            memcpy(phi.get_ptr(), zm.get_ptr(), num_bands * kp.num_gkvec() * sizeof(complex16));
-            apply_h(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
-            N = num_bands;
-            full_hmlt_update = true;
+                            &psi(0, 0), psi.ld());
+            t3.stop();
 
-            t_psi.stop();
+            if (n == 0 || k == (num_iter - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
+            {
+                break;
+            }
+            else // otherwise set psi as a new trial basis
+            {
+                memcpy(phi.get_ptr(), psi.get_ptr(), num_bands * kp.num_gkvec() * sizeof(complex16));
+                apply_h(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
+                N = num_bands;
+                full_hmlt_update = true;
+            }
         }
         
         //apply_p(kp, res_active);
@@ -460,7 +460,39 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
     delete gevp;
 }
 
-void test_davidson()
+void sum_rho(Global& parameters, K_point& kp, int num_bands, mdarray<complex16, 2>& psi)
+{
+    Timer t("sum_rho");
+
+    std::vector<double> rho(parameters.fft().size());
+
+    int num_fft_threads = Platform::num_fft_threads();
+    #pragma omp parallel default(shared) num_threads(num_fft_threads)
+    {
+        int thread_id = omp_get_thread_num();
+
+        std::vector<double> rho_pt(parameters.fft().size(), 0);
+        
+        std::vector<complex16> psi_r(parameters.fft().size());
+
+        #pragma omp for
+        for (int i = 0; i < num_bands; i++)
+        {
+            parameters.fft().input(kp.num_gkvec(), kp.fft_index(), &psi(0, i), thread_id);
+            parameters.fft().transform(1, thread_id);
+            parameters.fft().output(&psi_r[0], thread_id);
+            
+            double w = 1.0 / parameters.omega();
+            
+            for (int ir = 0; ir < parameters.fft().size(); ir++) rho_pt[ir] += real(psi_r[ir] * conj(psi_r[ir])) * w;
+        }
+
+        #pragma omp critical
+        for (int ir = 0; ir < parameters.fft().size(); ir++) rho[ir] += rho_pt[ir];
+    }
+}
+
+void test_davidson(int num_bands)
 {
     Global parameters;
 
@@ -507,7 +539,7 @@ void test_davidson()
 
     //== delete solver;
     
-    int num_bands = 700;
+    mdarray<complex16, 2> psi(kp.num_gkvec(), num_bands);
 
     //== printf("\n");
     //== printf("Lowest eigen-values (exact): \n");
@@ -518,7 +550,9 @@ void test_davidson()
 
 
     //diag_davidson(parameters, kp, v_pw, num_bands);
-    diag_davidson_v3(parameters, kp, v_pw, num_bands);
+    diag_davidson_v3(parameters, kp, v_pw, num_bands, psi);
+
+    sum_rho(parameters, kp, num_bands, psi);
 
     parameters.clear();
 }
@@ -527,7 +561,16 @@ int main(int argn, char** argv)
 {
     Platform::initialize(true);
 
-    test_davidson();
+    int num_bands = 20;
+
+    std::string fname("input.json");
+    if (Utils::file_exists(fname))
+    {
+        JSON_tree parser(fname);
+        num_bands = parser["num_bands"].get(num_bands);
+    }
+
+    test_davidson(num_bands);
 
     Timer::print();
 
