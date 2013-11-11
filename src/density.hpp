@@ -337,8 +337,6 @@ void Density::add_kpoint_contribution_it(Band* band, K_point* kp)
     std::vector< std::pair<int, double> > bands;
     get_occupied_bands_list(band, kp, bands);
     if (bands.size() == 0) return;
-    mdarray<complex16, 3> wf1(parameters_.max_mt_basis_size(), (int)bands.size(), parameters_.num_spins());
-    mdarray<complex16, 3> wf2(parameters_.max_mt_basis_size(), (int)bands.size(), parameters_.num_spins());
 
     int num_fft_threads = Platform::num_fft_threads();
     #pragma omp parallel default(shared) num_threads(num_fft_threads)
@@ -789,125 +787,125 @@ void Density::generate_valence_density_it(K_set& ks)
 //** }
 
 
-#ifdef _GPU_
-template<> void Density::generate_valence_density_mt_directly<gpu>()
-{
-    Timer t("sirius::Density::generate_valence_density_mt_directly");
-    
-    int lmax = (basis_type == apwlo) ? parameters_.lmax_apw() : parameters_.lmax_pw();
-    int lmmax = Utils::lmmax_by_lmax(lmax);
-
-    // ==========================
-    // prepare Gaunt coefficients
-    // ==========================
-    int max_num_gaunt = 0;
-    for (int lm3 = 0; lm3 < parameters_.lmmax_rho(); lm3++)
-        max_num_gaunt = std::max(max_num_gaunt, gaunt12_.complex_gaunt_packed_L1_L2_size(lm3));
-   
-    mdarray<int, 1> gaunt12_size(parameters_.lmmax_rho());
-    mdarray<int, 2> gaunt12_lm1_by_lm3(max_num_gaunt, parameters_.lmmax_rho());
-    mdarray<int, 2> gaunt12_lm2_by_lm3(max_num_gaunt, parameters_.lmmax_rho());
-    mdarray<complex16, 2> gaunt12_cg(max_num_gaunt, parameters_.lmmax_rho());
-
-    for (int lm3 = 0; lm3 < parameters_.lmmax_rho(); lm3++)
-    {
-        gaunt12_size(lm3) = gaunt12_.complex_gaunt_packed_L1_L2_size(lm3);
-        for (int k = 0; k < gaunt12_.complex_gaunt_packed_L1_L2_size(lm3); k++)
-        {
-            gaunt12_lm1_by_lm3(k, lm3) = gaunt12_.complex_gaunt_packed_L1_L2(lm3, k).lm1;
-            gaunt12_lm2_by_lm3(k, lm3) = gaunt12_.complex_gaunt_packed_L1_L2(lm3, k).lm2;
-            gaunt12_cg(k, lm3) = gaunt12_.complex_gaunt_packed_L1_L2(lm3, k).cg;
-        }
-    }
-    gaunt12_size.allocate_on_device();
-    gaunt12_size.copy_to_device();
-    gaunt12_lm1_by_lm3.allocate_on_device();
-    gaunt12_lm1_by_lm3.copy_to_device();
-    gaunt12_lm2_by_lm3.allocate_on_device();
-    gaunt12_lm2_by_lm3.copy_to_device();
-    gaunt12_cg.allocate_on_device();
-    gaunt12_cg.copy_to_device();
-
-    mdarray<double, 3> dens_mt(parameters_.max_num_mt_points(), parameters_.lmmax_rho(), parameters_.num_atoms());
-    dens_mt.zero();
-    dens_mt.allocate_on_device();
-    dens_mt.zero_on_device();
-
-    mdarray<complex16, 3> fylm(parameters_.max_num_mt_points(), lmmax, parameters_.num_atoms());
-    fylm.pin_memory();
-    fylm.allocate_on_device();
-    
-    splindex<block> spl_num_atoms(parameters_.num_atoms(), band_->num_ranks_row(), band_->rank_row());
-    
-    mdarray<int, 1> iat_by_ia(parameters_.num_atoms());
-    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-        iat_by_ia(ia) = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-    iat_by_ia.allocate_on_device();
-    iat_by_ia.copy_to_device();
-
-    mdarray<int, 1> nmtp_by_iat(parameters_.num_atom_types());
-    for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
-        nmtp_by_iat(iat) = parameters_.atom_type(iat)->num_mt_points();
-    nmtp_by_iat.allocate_on_device();
-    nmtp_by_iat.copy_to_device();
-
-    mdarray<int, 1> ia_by_ialoc(spl_num_atoms.local_size());
-    for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
-    {
-        int ia = spl_num_atoms[ialoc];
-        ia_by_ialoc(ialoc) = ia;
-    }
-    ia_by_ialoc.allocate_on_device();
-    ia_by_ialoc.copy_to_device();
-    
-    // add k-point contribution
-    for (int ikloc = 0; ikloc < kpoint_set_.spl_num_kpoints().local_size(); ikloc++)
-    {
-        int ik = kpoint_set_.spl_num_kpoints(ikloc);
-        for (int jloc = 0; jloc < band_->spl_spinor_wf_col().local_size(); jloc++)
-        {
-            int j = band_->spl_spinor_wf_col(jloc);
-
-            double wo = kpoint_set_[ik]->band_occupancy(j) * kpoint_set_[ik]->weight();
-
-            if (wo > 1e-14)
-            {
-                int ispn = 0;
-                kpoint_set_[ik]->spinor_wave_function_component_mt<radial_angular>(band_, lmax, ispn, jloc, fylm);
-                fylm.copy_to_device();
-                
-                add_band_density_gpu(parameters_.lmmax_rho(), lmmax, parameters_.max_num_mt_points(), 
-                                     spl_num_atoms.local_size(), ia_by_ialoc.get_ptr_device(), iat_by_ia.get_ptr_device(),
-                                     nmtp_by_iat.get_ptr_device(), max_num_gaunt, 
-                                     gaunt12_size.get_ptr_device(), gaunt12_lm1_by_lm3.get_ptr_device(), 
-                                     gaunt12_lm2_by_lm3.get_ptr_device(), gaunt12_cg.get_ptr_device(), 
-                                     fylm.get_ptr_device(), wo, dens_mt.get_ptr_device());
-            }
-        }
-    }
-    dens_mt.copy_to_host();
-
-    //for (int i = 0; i < (int)dens.size(); i++)
-    //{
-        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-        {
-            Platform::allreduce(&dens_mt(0, 0, ia), parameters_.lmmax_rho() * parameters_.max_num_mt_points(), 
-                                parameters_.mpi_grid().communicator());
-        }
-    //}
-
-    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-    {
-        for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-        {
-            for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
-            {
-                rho_->f_rlm(lm, ir, ia) += dens_mt(ir, lm, ia);
-            }
-        }
-    }
-}
-#endif
+//** #ifdef _GPU_
+//** template<> void Density::generate_valence_density_mt_directly<gpu>()
+//** {
+//**     Timer t("sirius::Density::generate_valence_density_mt_directly");
+//**     
+//**     int lmax = (basis_type == apwlo) ? parameters_.lmax_apw() : parameters_.lmax_pw();
+//**     int lmmax = Utils::lmmax_by_lmax(lmax);
+//** 
+//**     // ==========================
+//**     // prepare Gaunt coefficients
+//**     // ==========================
+//**     int max_num_gaunt = 0;
+//**     for (int lm3 = 0; lm3 < parameters_.lmmax_rho(); lm3++)
+//**         max_num_gaunt = std::max(max_num_gaunt, gaunt12_.complex_gaunt_packed_L1_L2_size(lm3));
+//**    
+//**     mdarray<int, 1> gaunt12_size(parameters_.lmmax_rho());
+//**     mdarray<int, 2> gaunt12_lm1_by_lm3(max_num_gaunt, parameters_.lmmax_rho());
+//**     mdarray<int, 2> gaunt12_lm2_by_lm3(max_num_gaunt, parameters_.lmmax_rho());
+//**     mdarray<complex16, 2> gaunt12_cg(max_num_gaunt, parameters_.lmmax_rho());
+//** 
+//**     for (int lm3 = 0; lm3 < parameters_.lmmax_rho(); lm3++)
+//**     {
+//**         gaunt12_size(lm3) = gaunt12_.complex_gaunt_packed_L1_L2_size(lm3);
+//**         for (int k = 0; k < gaunt12_.complex_gaunt_packed_L1_L2_size(lm3); k++)
+//**         {
+//**             gaunt12_lm1_by_lm3(k, lm3) = gaunt12_.complex_gaunt_packed_L1_L2(lm3, k).lm1;
+//**             gaunt12_lm2_by_lm3(k, lm3) = gaunt12_.complex_gaunt_packed_L1_L2(lm3, k).lm2;
+//**             gaunt12_cg(k, lm3) = gaunt12_.complex_gaunt_packed_L1_L2(lm3, k).cg;
+//**         }
+//**     }
+//**     gaunt12_size.allocate_on_device();
+//**     gaunt12_size.copy_to_device();
+//**     gaunt12_lm1_by_lm3.allocate_on_device();
+//**     gaunt12_lm1_by_lm3.copy_to_device();
+//**     gaunt12_lm2_by_lm3.allocate_on_device();
+//**     gaunt12_lm2_by_lm3.copy_to_device();
+//**     gaunt12_cg.allocate_on_device();
+//**     gaunt12_cg.copy_to_device();
+//** 
+//**     mdarray<double, 3> dens_mt(parameters_.max_num_mt_points(), parameters_.lmmax_rho(), parameters_.num_atoms());
+//**     dens_mt.zero();
+//**     dens_mt.allocate_on_device();
+//**     dens_mt.zero_on_device();
+//** 
+//**     mdarray<complex16, 3> fylm(parameters_.max_num_mt_points(), lmmax, parameters_.num_atoms());
+//**     fylm.pin_memory();
+//**     fylm.allocate_on_device();
+//**     
+//**     splindex<block> spl_num_atoms(parameters_.num_atoms(), band_->num_ranks_row(), band_->rank_row());
+//**     
+//**     mdarray<int, 1> iat_by_ia(parameters_.num_atoms());
+//**     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+//**         iat_by_ia(ia) = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+//**     iat_by_ia.allocate_on_device();
+//**     iat_by_ia.copy_to_device();
+//** 
+//**     mdarray<int, 1> nmtp_by_iat(parameters_.num_atom_types());
+//**     for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+//**         nmtp_by_iat(iat) = parameters_.atom_type(iat)->num_mt_points();
+//**     nmtp_by_iat.allocate_on_device();
+//**     nmtp_by_iat.copy_to_device();
+//** 
+//**     mdarray<int, 1> ia_by_ialoc(spl_num_atoms.local_size());
+//**     for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++)
+//**     {
+//**         int ia = spl_num_atoms[ialoc];
+//**         ia_by_ialoc(ialoc) = ia;
+//**     }
+//**     ia_by_ialoc.allocate_on_device();
+//**     ia_by_ialoc.copy_to_device();
+//**     
+//**     // add k-point contribution
+//**     for (int ikloc = 0; ikloc < kpoint_set_.spl_num_kpoints().local_size(); ikloc++)
+//**     {
+//**         int ik = kpoint_set_.spl_num_kpoints(ikloc);
+//**         for (int jloc = 0; jloc < band_->spl_spinor_wf_col().local_size(); jloc++)
+//**         {
+//**             int j = band_->spl_spinor_wf_col(jloc);
+//** 
+//**             double wo = kpoint_set_[ik]->band_occupancy(j) * kpoint_set_[ik]->weight();
+//** 
+//**             if (wo > 1e-14)
+//**             {
+//**                 int ispn = 0;
+//**                 kpoint_set_[ik]->spinor_wave_function_component_mt<radial_angular>(band_, lmax, ispn, jloc, fylm);
+//**                 fylm.copy_to_device();
+//**                 
+//**                 add_band_density_gpu(parameters_.lmmax_rho(), lmmax, parameters_.max_num_mt_points(), 
+//**                                      spl_num_atoms.local_size(), ia_by_ialoc.get_ptr_device(), iat_by_ia.get_ptr_device(),
+//**                                      nmtp_by_iat.get_ptr_device(), max_num_gaunt, 
+//**                                      gaunt12_size.get_ptr_device(), gaunt12_lm1_by_lm3.get_ptr_device(), 
+//**                                      gaunt12_lm2_by_lm3.get_ptr_device(), gaunt12_cg.get_ptr_device(), 
+//**                                      fylm.get_ptr_device(), wo, dens_mt.get_ptr_device());
+//**             }
+//**         }
+//**     }
+//**     dens_mt.copy_to_host();
+//** 
+//**     //for (int i = 0; i < (int)dens.size(); i++)
+//**     //{
+//**         for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+//**         {
+//**             Platform::allreduce(&dens_mt(0, 0, ia), parameters_.lmmax_rho() * parameters_.max_num_mt_points(), 
+//**                                 parameters_.mpi_grid().communicator());
+//**         }
+//**     //}
+//** 
+//**     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+//**     {
+//**         for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+//**         {
+//**             for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
+//**             {
+//**                 rho_->f_rlm(lm, ir, ia) += dens_mt(ir, lm, ia);
+//**             }
+//**         }
+//**     }
+//** }
+//** #endif
 
 double Density::core_leakage()
 {
