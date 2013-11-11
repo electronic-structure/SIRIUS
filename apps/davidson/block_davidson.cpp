@@ -270,7 +270,7 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
     memcpy(&eval_out[0], &eval[0], num_bands * sizeof(double));
 }
 
-void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, 
+void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, int max_iter,
                       mdarray<complex16, 2>& psi, std::vector<double>& eval_out)
 {
     Timer t("diag_davidson");
@@ -286,8 +286,6 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
     }
 
     int num_phi = num_bands * 5;
-
-    int num_iter = 8;
 
     mdarray<complex16, 2> phi(kp.num_gkvec(), num_phi);
     mdarray<complex16, 2> hphi(kp.num_gkvec(), num_phi);
@@ -325,7 +323,7 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
 
     bool full_hmlt_update = true;
 
-    for (int k = 0; k < num_iter; k++)
+    for (int k = 0; k < max_iter; k++)
     {
         std::cout << "Iteration : " << k << ", subspace size : " << N << std::endl;
        
@@ -421,7 +419,7 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
         }
 
         // check if we run out of variational space or eigen-vectors are converged or it's a last iteration
-        if (N + n > num_phi || n == 0 || k == (num_iter - 1))
+        if (N + n > num_phi || n == 0 || k == (max_iter - 1))
         {   
             Timer t3("update_phi");
             // \Psi_{i} = \phi_{mu} * Z_{mu, i}
@@ -429,7 +427,7 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
                             &psi(0, 0), psi.ld());
             t3.stop();
 
-            if (n == 0 || k == (num_iter - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
+            if (n == 0 || k == (max_iter - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
             {
                 break;
             }
@@ -773,12 +771,16 @@ void diag_exact(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, i
 void test_davidson()
 {
     int num_bands = 20;
+    int max_iter = 8;
+    double Ekin = 4;
 
     std::string fname("input.json");
     if (Utils::file_exists(fname))
     {
         JSON_tree parser(fname);
         num_bands = parser["num_bands"].get(num_bands);
+        max_iter = parser["max_iter"].get(max_iter);
+        Ekin = parser["Ekin"].get(Ekin);
     }
 
     Global parameters;
@@ -786,8 +788,6 @@ void test_davidson()
     double a0[] = {12.975 * 1.889726125, 0, 0};
     double a1[] = {0, 12.975 * 1.889726125, 0};
     double a2[] = {0, 0, 12.975 * 1.889726125};
-
-    double Ekin = 4; //20.0; // 40 Ry in QE = 20 Ha here
 
     parameters.set_lattice_vectors(a0, a1, a2);
     parameters.set_pw_cutoff(2 * sqrt(2 * Ekin) + 0.5);
@@ -804,38 +804,13 @@ void test_davidson()
     std::vector<complex16> v_pw(parameters.num_gvec());
     for (int ig = 0; ig < parameters.num_gvec(); ig++) v_pw[ig] = complex16(1.0 / pow(parameters.gvec_len(ig) + 1.0, 1), 0.0);
 
-
-
-    //== // cook the Hamiltonian
-    //== mdarray<complex16, 2> hmlt(kp.num_gkvec(), kp.num_gkvec());
-    //== hmlt.zero();
-    //== for (int ig1 = 0; ig1 < kp.num_gkvec(); ig1++)
-    //== {
-    //==     for (int ig2 = 0; ig2 < kp.num_gkvec(); ig2++)
-    //==     {
-    //==         int ig = parameters.index_g12(kp.gvec_index(ig2), kp.gvec_index(ig1));
-    //==         hmlt(ig2, ig1) = v_pw[ig];
-    //==         if (ig1 == ig2) hmlt(ig2, ig1) += pow(kp.gkvec_cart(ig1).length(), 2) / 2.0;
-    //==     }
-    //== }
-
-    //== standard_evp* solver = new standard_evp_lapack();
-
-    //== std::vector<double> eval(kp.num_gkvec());
-    //== mdarray<complex16, 2> evec(kp.num_gkvec(), kp.num_gkvec());
-
-    //== solver->solve(kp.num_gkvec(), hmlt.get_ptr(), hmlt.ld(), &eval[0], evec.get_ptr(), evec.ld());
-
-    //== delete solver;
     
     mdarray<complex16, 2> psi(kp.num_gkvec(), num_bands);
     std::vector<double> eval;
 
     //diag_exact(parameters, kp, v_pw, num_bands, eval);
 
-
-    //diag_davidson(parameters, kp, v_pw, num_bands);
-    diag_davidson_v3_gpu(parameters, kp, v_pw, num_bands, psi, eval);
+    diag_davidson_v3(parameters, kp, v_pw, num_bands, max_iter, psi, eval);
 
     if (Platform::mpi_rank() == 0)
     {
