@@ -4,6 +4,8 @@
 #include <assert.h>
 #include <cuda.h>
 #include <cublas_v2.h>
+#include <map>
+#include <string>
 
 cublasHandle_t& cublas_handle()
 {
@@ -89,6 +91,16 @@ extern "C" void cuda_copy_to_host(void *target, void *source, size_t size)
         exit(0);
     }
 }
+
+extern "C" void cuda_device_synchronize()
+{
+    if (cudaDeviceSynchronize() != cudaSuccess)
+    {
+        printf("failed to execute cudaDeviceSynchronize()\n");
+        exit(0);
+    }
+}
+        
 
 cudaStream_t* streams;
 
@@ -229,19 +241,62 @@ extern "C" void cuda_device_info()
     printf("totalGlobalMem              : %li kB \n", devprop.totalGlobalMem/1024);
 }
 
+std::map<cublasStatus_t, std::string> init_cublas_status(void)
+{
+    std::map<cublasStatus_t, std::string> status;
+
+    status[CUBLAS_STATUS_NOT_INITIALIZED] = "CUBLAS_STATUS_NOT_INITIALIZED";
+    status[CUBLAS_STATUS_INVALID_VALUE] = "CUBLAS_STATUS_INVALID_VALUE";
+    status[CUBLAS_STATUS_ARCH_MISMATCH] = "CUBLAS_STATUS_ARCH_MISMATCH";
+    status[CUBLAS_STATUS_EXECUTION_FAILED] = "CUBLAS_STATUS_EXECUTION_FAILED";
+    
+    return status;
+}
+
+std::map<cublasStatus_t, std::string> cublas_status = init_cublas_status();
+
+
+
 
 extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                              void* alpha, void* a, int32_t lda, void* b, 
                              int32_t ldb, void* beta, void* c, int32_t ldc)
 {
     const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
+    
+    
+    cublasStatus_t status = cublasZgemm(cublas_handle(), trans[transa], trans[transb], m, n, k, (cuDoubleComplex*)alpha, 
+                                        (cuDoubleComplex*)a, lda, (cuDoubleComplex*)b, ldb, (cuDoubleComplex*)beta, 
+                                        (cuDoubleComplex*)c, ldc);
+    if (status == CUBLAS_STATUS_SUCCESS) return;
 
-    if (cublasZgemm(cublas_handle(), trans[transa], trans[transb], m, n, k, (cuDoubleComplex*)alpha, (cuDoubleComplex*)a, lda, 
-                   (cuDoubleComplex*)b, ldb, (cuDoubleComplex*)beta, (cuDoubleComplex*)c, ldc) != CUBLAS_STATUS_SUCCESS)
+    printf("failed to execute cublasZgemm\n");
+    
+    switch (status)
     {
-        printf("failed to execute cublasZgemm() \n");
-        exit(-1);
+        case CUBLAS_STATUS_NOT_INITIALIZED:
+        {
+            printf("the library was not initialized\n");
+            break;
+        }
+        case CUBLAS_STATUS_INVALID_VALUE:
+        {
+            printf("the parameters m,n,k<0\n");
+            break;
+        }
+        case CUBLAS_STATUS_ARCH_MISMATCH:
+        {
+            printf("he device does not support double-precision\n");
+            break;
+        }
+        case CUBLAS_STATUS_EXECUTION_FAILED:
+        {
+            printf("the function failed to launch on the GPU\n");
+            break;
+        }
     }
+
+    exit(-1);
 }
 
 // A(GPU) => B(CPU)
@@ -281,6 +336,8 @@ __device__ size_t array4D_offset(int i0, int i1, int i2, int i3, int ld0, int ld
 {
     return i0 + i1 * ld0 + i2 * ld0 * ld1 + i3 * ld0 * ld1 * ld2;
 }
+
+
 
 template <typename T, typename U>
 __device__ U spline_inner_product_gpu_function(int ld, int size, double* r_dr, T* s1_coefs, U* s2_coefs)
@@ -693,6 +750,24 @@ void add_band_density_gpu(int lmmax_rho, int lmmax_wf, int max_nmtp, int num_ato
     
 
 
+__global__ void scale_matrix_columns_gpu_kernel(int nrow, int ncol, cuDoubleComplex* mtrx, double* a)
+{
+    int icol = blockIdx.y;
+    int irow = blockIdx.x * blockDim.x + threadIdx.x;
+    if (irow < nrow) 
+    {
+        mtrx[array2D_offset(irow, icol, nrow)] =
+            cuCmul(mtrx[array2D_offset(irow, icol, nrow)], make_cuDoubleComplex(a[icol], 0));
+    }
+}
+
+void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a)
+{
+    dim3 threadsPerBlock(64);
+    dim3 numBlocks((nrow / 64) + min(nrow % 64, 1), ncol);
+    scale_matrix_columns_gpu_kernel<<<numBlocks, threadsPerBlock>>>
+        (nrow, ncol, (cuDoubleComplex*)mtrx, a);
+}
 
 
 

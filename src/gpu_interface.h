@@ -40,6 +40,8 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
                                              void* b, int32_t ldb, double* eval);
 #endif
 
+extern "C" void cuda_device_synchronize();
+
 extern "C" void cuda_create_streams(int num_streams);
 
 extern "C" void cuda_destroy_streams(int num_streams);
@@ -67,6 +69,8 @@ void add_band_density_gpu(int lmmax_rho, int lmmax_wf, int max_nmtp, int num_ato
                           int* iat_by_ia, int* nmtp_by_iat, int max_num_gaunt, int* gaunt12_size, 
                           int* gaunt12_lm1_by_lm3, int* gaunt12_lm2_by_lm3, void* gaunt12_cg, void* fylm, 
                           double weight, double* dens);
+
+void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a);
 
 #endif // _GPU_INTERFACE_H_
 
