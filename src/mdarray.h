@@ -249,7 +249,7 @@ template <typename T, int ND> class mdarray_base
 
         void pin_memory()
         {
-            if (pinned_) error(__FILE__, __LINE__, "Memory is already pinned");
+            if (pinned_) error_local(__FILE__, __LINE__, "Memory is already pinned");
             cuda_host_register(mdarray_ptr, size() * sizeof(T));
             pinned_ = true;
         }
