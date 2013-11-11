@@ -325,6 +325,7 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
 
     for (int k = 0; k < max_iter; k++)
     {
+        std::cout << std::endl;
         std::cout << "Iteration : " << k << ", subspace size : " << N << std::endl;
        
         Timer t1("setup_evp");
@@ -368,6 +369,8 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
         gevp->solve(N, num_bands, hmlt.get_ptr(), hmlt.ld(), ovlp.get_ptr(), ovlp.ld(), &eval[0], 
                     evec.get_ptr(), evec.ld());
         t2.stop();
+
+        printf("lower and upper eigen-values : %16.8f %16.8f\n", eval[0], eval[num_bands - 1]);
         
         n = 0;
         // check eigen-values for convergence
