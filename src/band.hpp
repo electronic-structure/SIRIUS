@@ -1513,7 +1513,7 @@ void Band::solve_fv(K_point* kp, Periodic_function<double>* effective_potential)
         #ifdef _GPU_
         case gpu:
         {
-            set_fv_h_o<gpu, basis_type>(kp, effective_potential, h, o);
+            //set_fv_h_o<gpu, basis_type>(kp, effective_potential, h, o);
             break;
         }
         #endif
