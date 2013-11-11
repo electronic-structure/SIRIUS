@@ -352,158 +352,158 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
     }
 }
 
-#ifdef _GPU_
-template <> void Potential::add_mt_contribution_to_pw<gpu>()
-{
-    // TODO: couple of things to consider: 1) global array jvlm with G-vector shells may be large; 
-    //                                     2) MPI reduction over thousands of shell may be slow
-    Timer t("sirius::Potential::add_mt_contribution_to_pw");
-
-    mdarray<complex16, 1> fpw(parameters_.num_gvec());
-    fpw.zero();
-    
-    mdarray<int, 1> kargs(4);
-    kargs(0) = parameters_.num_atom_types();
-    kargs(1) = parameters_.max_num_mt_points();
-    kargs(2) = parameters_.lmax_pot();
-    kargs(3) = parameters_.lmmax_pot();
-    kargs.allocate_on_device();
-    kargs.copy_to_device();
-
-    mdarray<double, 3> vlm_coefs(parameters_.max_num_mt_points() * 4, parameters_.lmmax_pot(), 
-                                 parameters_.num_atoms());
-    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-    {
-        for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
-        {
-            Spline<double> s(parameters_.atom(ia)->num_mt_points(), 
-                             parameters_.atom(ia)->type()->radial_grid());
-            
-            for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-                s[ir] = effective_potential_->f_rlm(lm, ir, ia);
-            
-            s.interpolate();
-            s.get_coefs(&vlm_coefs(0, lm, ia), parameters_.max_num_mt_points());
-        }
-    }
-    vlm_coefs.allocate_on_device();
-    vlm_coefs.copy_to_device();
-
-    mdarray<int, 1> iat_by_ia(parameters_.num_atoms());
-    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-        iat_by_ia(ia) = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-    iat_by_ia.allocate_on_device();
-    iat_by_ia.copy_to_device();
-
-    l_by_lm_.allocate_on_device();
-    l_by_lm_.copy_to_device();
-    
-    //=============
-    // radial grids
-    //=============
-    mdarray<double, 2> r_dr(parameters_.max_num_mt_points() * 2, parameters_.num_atom_types());
-    mdarray<int, 1> nmtp_by_iat(parameters_.num_atom_types());
-    for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
-    {
-        nmtp_by_iat(iat) = parameters_.atom_type(iat)->num_mt_points();
-        parameters_.atom_type(iat)->radial_grid().get_r_dr(&r_dr(0, iat), parameters_.max_num_mt_points());
-    }
-    r_dr.allocate_on_device();
-    r_dr.async_copy_to_device(-1);
-    nmtp_by_iat.allocate_on_device();
-    nmtp_by_iat.async_copy_to_device(-1);
-
-    splindex<block> spl_num_gvec_shells(parameters_.num_gvec_shells(), Platform::num_mpi_ranks(), Platform::mpi_rank());
-    mdarray<double, 3> jvlm(parameters_.lmmax_pot(), parameters_.num_atoms(), parameters_.num_gvec_shells());
-    jvlm.zero();
-
-    cuda_create_streams(Platform::num_threads());
-    #pragma omp parallel
-    {
-        int thread_id = Platform::thread_id();
-
-        mdarray<double, 3> jl_coefs(parameters_.max_num_mt_points() * 4, parameters_.lmax_pot() + 1, 
-                                    parameters_.num_atom_types());
-        
-        mdarray<double, 2> jvlm_loc(parameters_.lmmax_pot(), parameters_.num_atoms());
-
-        jvlm_loc.pin_memory();
-        jvlm_loc.allocate_on_device();
-            
-        jl_coefs.pin_memory();
-        jl_coefs.allocate_on_device();
-
-        sbessel_pw<double> jl(parameters_, parameters_.lmax_pot());
-        
-        #pragma omp for
-        for (int igsloc = 0; igsloc < spl_num_gvec_shells.local_size(); igsloc++)
-        {
-            int igs = spl_num_gvec_shells[igsloc];
-
-            jl.interpolate(parameters_.gvec_shell_len(igs));
-
-            for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
-            {
-                for (int l = 0; l <= parameters_.lmax_pot(); l++)
-                    jl(l, iat)->get_coefs(&jl_coefs(0, l, iat), parameters_.max_num_mt_points());
-            }
-            jl_coefs.async_copy_to_device(thread_id);
-
-            sbessel_vlm_inner_product_gpu(kargs.get_ptr_device(), parameters_.lmmax_pot(), parameters_.num_atoms(), 
-                                          iat_by_ia.get_ptr_device(), l_by_lm_.get_ptr_device(), 
-                                          nmtp_by_iat.get_ptr_device(), r_dr.get_ptr_device(), 
-                                          jl_coefs.get_ptr_device(), vlm_coefs.get_ptr_device(), jvlm_loc.get_ptr_device(), 
-                                          thread_id);
-
-            jvlm_loc.async_copy_to_host(thread_id);
-            
-            cuda_stream_synchronize(thread_id);
-
-            memcpy(&jvlm(0, 0, igs), &jvlm_loc(0, 0), parameters_.lmmax_pot() * parameters_.num_atoms() * sizeof(double));
-        }
-    }
-    cuda_destroy_streams(Platform::num_threads());
-    
-    for (int igs = 0; igs < parameters_.num_gvec_shells(); igs++)
-        Platform::allreduce(&jvlm(0, 0, igs), parameters_.lmmax_pot() * parameters_.num_atoms());
-
-    #pragma omp parallel for default(shared)
-    for (int igloc = 0; igloc < parameters_.spl_num_gvec().local_size(); igloc++)
-    {
-        int ig = parameters_.spl_num_gvec(igloc);
-        int igs = parameters_.gvec_shell<local>(igloc);
-
-        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-        {
-            complex16 zt(0, 0);
-            for (int l = 0; l <= parameters_.lmax_pot(); l++)
-            {
-                for (int m = -l; m <= l; m++)
-                {
-                    if (m == 0)
-                    {
-                        zt += conj(zil_[l]) * parameters_.gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
-                              jvlm(Utils::lm_by_l_m(l, m), ia, igs);
-
-                    }
-                    else
-                    {
-                        zt += conj(zil_[l]) * parameters_.gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
-                              (SHT::ylm_dot_rlm(l, m, m) * jvlm(Utils::lm_by_l_m(l, m), ia, igs) + 
-                               SHT::ylm_dot_rlm(l, m, -m) * jvlm(Utils::lm_by_l_m(l, -m), ia, igs));
-                    }
-                }
-            }
-            fpw(ig) += zt * fourpi * conj(parameters_.gvec_phase_factor<local>(igloc, ia)) / parameters_.omega();
-        }
-    }
-
-    Platform::allreduce(fpw.get_ptr(), (int)fpw.size());
-    for (int ig = 0; ig < parameters_.num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
-
-    l_by_lm_.deallocate_on_device();
-}
-#endif
+//== #ifdef _GPU_
+//== template <> void Potential::add_mt_contribution_to_pw<gpu>()
+//== {
+//==     // TODO: couple of things to consider: 1) global array jvlm with G-vector shells may be large; 
+//==     //                                     2) MPI reduction over thousands of shell may be slow
+//==     Timer t("sirius::Potential::add_mt_contribution_to_pw");
+//== 
+//==     mdarray<complex16, 1> fpw(parameters_.num_gvec());
+//==     fpw.zero();
+//==     
+//==     mdarray<int, 1> kargs(4);
+//==     kargs(0) = parameters_.num_atom_types();
+//==     kargs(1) = parameters_.max_num_mt_points();
+//==     kargs(2) = parameters_.lmax_pot();
+//==     kargs(3) = parameters_.lmmax_pot();
+//==     kargs.allocate_on_device();
+//==     kargs.copy_to_device();
+//== 
+//==     mdarray<double, 3> vlm_coefs(parameters_.max_num_mt_points() * 4, parameters_.lmmax_pot(), 
+//==                                  parameters_.num_atoms());
+//==     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+//==     {
+//==         for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
+//==         {
+//==             Spline<double> s(parameters_.atom(ia)->num_mt_points(), 
+//==                              parameters_.atom(ia)->type()->radial_grid());
+//==             
+//==             for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
+//==                 s[ir] = effective_potential_->f_rlm(lm, ir, ia);
+//==             
+//==             s.interpolate();
+//==             s.get_coefs(&vlm_coefs(0, lm, ia), parameters_.max_num_mt_points());
+//==         }
+//==     }
+//==     vlm_coefs.allocate_on_device();
+//==     vlm_coefs.copy_to_device();
+//== 
+//==     mdarray<int, 1> iat_by_ia(parameters_.num_atoms());
+//==     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+//==         iat_by_ia(ia) = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
+//==     iat_by_ia.allocate_on_device();
+//==     iat_by_ia.copy_to_device();
+//== 
+//==     l_by_lm_.allocate_on_device();
+//==     l_by_lm_.copy_to_device();
+//==     
+//==     //=============
+//==     // radial grids
+//==     //=============
+//==     mdarray<double, 2> r_dr(parameters_.max_num_mt_points() * 2, parameters_.num_atom_types());
+//==     mdarray<int, 1> nmtp_by_iat(parameters_.num_atom_types());
+//==     for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+//==     {
+//==         nmtp_by_iat(iat) = parameters_.atom_type(iat)->num_mt_points();
+//==         parameters_.atom_type(iat)->radial_grid().get_r_dr(&r_dr(0, iat), parameters_.max_num_mt_points());
+//==     }
+//==     r_dr.allocate_on_device();
+//==     r_dr.async_copy_to_device(-1);
+//==     nmtp_by_iat.allocate_on_device();
+//==     nmtp_by_iat.async_copy_to_device(-1);
+//== 
+//==     splindex<block> spl_num_gvec_shells(parameters_.num_gvec_shells(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+//==     mdarray<double, 3> jvlm(parameters_.lmmax_pot(), parameters_.num_atoms(), parameters_.num_gvec_shells());
+//==     jvlm.zero();
+//== 
+//==     cuda_create_streams(Platform::num_threads());
+//==     #pragma omp parallel
+//==     {
+//==         int thread_id = Platform::thread_id();
+//== 
+//==         mdarray<double, 3> jl_coefs(parameters_.max_num_mt_points() * 4, parameters_.lmax_pot() + 1, 
+//==                                     parameters_.num_atom_types());
+//==         
+//==         mdarray<double, 2> jvlm_loc(parameters_.lmmax_pot(), parameters_.num_atoms());
+//== 
+//==         jvlm_loc.pin_memory();
+//==         jvlm_loc.allocate_on_device();
+//==             
+//==         jl_coefs.pin_memory();
+//==         jl_coefs.allocate_on_device();
+//== 
+//==         sbessel_pw<double> jl(parameters_, parameters_.lmax_pot());
+//==         
+//==         #pragma omp for
+//==         for (int igsloc = 0; igsloc < spl_num_gvec_shells.local_size(); igsloc++)
+//==         {
+//==             int igs = spl_num_gvec_shells[igsloc];
+//== 
+//==             jl.interpolate(parameters_.gvec_shell_len(igs));
+//== 
+//==             for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+//==             {
+//==                 for (int l = 0; l <= parameters_.lmax_pot(); l++)
+//==                     jl(l, iat)->get_coefs(&jl_coefs(0, l, iat), parameters_.max_num_mt_points());
+//==             }
+//==             jl_coefs.async_copy_to_device(thread_id);
+//== 
+//==             sbessel_vlm_inner_product_gpu(kargs.get_ptr_device(), parameters_.lmmax_pot(), parameters_.num_atoms(), 
+//==                                           iat_by_ia.get_ptr_device(), l_by_lm_.get_ptr_device(), 
+//==                                           nmtp_by_iat.get_ptr_device(), r_dr.get_ptr_device(), 
+//==                                           jl_coefs.get_ptr_device(), vlm_coefs.get_ptr_device(), jvlm_loc.get_ptr_device(), 
+//==                                           thread_id);
+//== 
+//==             jvlm_loc.async_copy_to_host(thread_id);
+//==             
+//==             cuda_stream_synchronize(thread_id);
+//== 
+//==             memcpy(&jvlm(0, 0, igs), &jvlm_loc(0, 0), parameters_.lmmax_pot() * parameters_.num_atoms() * sizeof(double));
+//==         }
+//==     }
+//==     cuda_destroy_streams(Platform::num_threads());
+//==     
+//==     for (int igs = 0; igs < parameters_.num_gvec_shells(); igs++)
+//==         Platform::allreduce(&jvlm(0, 0, igs), parameters_.lmmax_pot() * parameters_.num_atoms());
+//== 
+//==     #pragma omp parallel for default(shared)
+//==     for (int igloc = 0; igloc < parameters_.spl_num_gvec().local_size(); igloc++)
+//==     {
+//==         int ig = parameters_.spl_num_gvec(igloc);
+//==         int igs = parameters_.gvec_shell<local>(igloc);
+//== 
+//==         for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+//==         {
+//==             complex16 zt(0, 0);
+//==             for (int l = 0; l <= parameters_.lmax_pot(); l++)
+//==             {
+//==                 for (int m = -l; m <= l; m++)
+//==                 {
+//==                     if (m == 0)
+//==                     {
+//==                         zt += conj(zil_[l]) * parameters_.gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
+//==                               jvlm(Utils::lm_by_l_m(l, m), ia, igs);
+//== 
+//==                     }
+//==                     else
+//==                     {
+//==                         zt += conj(zil_[l]) * parameters_.gvec_ylm(Utils::lm_by_l_m(l, m), igloc) * 
+//==                               (SHT::ylm_dot_rlm(l, m, m) * jvlm(Utils::lm_by_l_m(l, m), ia, igs) + 
+//==                                SHT::ylm_dot_rlm(l, m, -m) * jvlm(Utils::lm_by_l_m(l, -m), ia, igs));
+//==                     }
+//==                 }
+//==             }
+//==             fpw(ig) += zt * fourpi * conj(parameters_.gvec_phase_factor<local>(igloc, ia)) / parameters_.omega();
+//==         }
+//==     }
+//== 
+//==     Platform::allreduce(fpw.get_ptr(), (int)fpw.size());
+//==     for (int ig = 0; ig < parameters_.num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
+//== 
+//==     l_by_lm_.deallocate_on_device();
+//== }
+//== #endif
 
 void Potential::generate_pw_coefs()
 {
