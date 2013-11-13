@@ -6,14 +6,12 @@ class Platform
     
     public:
 
-        static void initialize(bool call_mpi_init__)
+        static void initialize(bool call_mpi_init, bool call_cublas_init = true)
         {
-            if (call_mpi_init__) MPI_Init(NULL, NULL);
-            //MPI_Comm_size(MPI_COMM_WORLD, &size_);
-            //MPI_Comm_rank(MPI_COMM_WORLD, &rank_);
+            if (call_mpi_init) MPI_Init(NULL, NULL);
 
             #ifdef _GPU_
-            cublas_init();
+            if (call_cublas_init) cublas_init();
             if (mpi_rank() == 0) cuda_device_info();
             #endif
         }
