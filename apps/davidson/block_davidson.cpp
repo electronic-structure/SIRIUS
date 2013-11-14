@@ -270,6 +270,58 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
     memcpy(&eval_out[0], &eval[0], num_bands * sizeof(double));
 }
 
+void check_degeneracy(K_point& kp, int N, int n, mdarray<complex16, 2>& phi, mdarray<complex16, 2>& res)
+{
+    Timer t("check_degeneracy");
+
+    // normalize residuals
+    for (int i = 0; i < n; i++)
+    {
+        double norm = 0;
+        for (int ig = 0; ig < kp.num_gkvec(); ig++) norm += real(conj(res(ig, i)) * res(ig, i));
+        if (norm < 1e-10) error_local(__FILE__, __LINE__, "initial residual norm is small");
+        for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, i) /= sqrt(norm);
+    }
+
+    // overlap between new addisional basis vectors and old basis vectors
+    mdarray<complex16, 2> ovlp(N, n);
+    ovlp.zero();
+    for (int i = 0; i < N; i++)
+    {
+        for (int j = 0; j < n; j++) 
+        {
+            for (int ig = 0; ig < kp.num_gkvec(); ig++) ovlp(i, j) += conj(phi(ig, i)) * res(ig, j);
+        }
+    }
+
+    // project out the the old subspace
+    for (int j = 0; j < n; j++)
+    {
+        for (int i = 0; i < N; i++)
+        {
+            for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, j) -= ovlp(i, j) * phi(ig, i);
+        }
+    }
+
+    // orthogonalize
+    for (int j = 0; j < n; j++)
+    {
+        std::vector<complex16> v(kp.num_gkvec());
+        memcpy(&v[0], &res(0, j), kp.num_gkvec() * sizeof(complex16));
+        for (int j1 = 0; j1 < j; j1++)
+        {
+            complex16 z(0, 0);
+            for (int ig = 0; ig < kp.num_gkvec(); ig++) z += conj(res(ig, j1)) * v[ig];
+            for (int ig = 0; ig < kp.num_gkvec(); ig++) v[ig] -= z * res(ig, j1);
+        }
+        double norm = 0;
+        for (int ig = 0; ig < kp.num_gkvec(); ig++) norm += real(conj(v[ig]) * v[ig]);
+        if (norm < 1e-10) error_local(__FILE__, __LINE__, "final residual norm is small");
+        for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, j) = v[ig] / sqrt(norm);
+    }
+}
+
+
 void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, int max_iter,
                       mdarray<complex16, 2>& psi, std::vector<double>& eval_out)
 {
@@ -356,8 +408,8 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
             blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &phi(0, M), phi.ld(), &ovlp(0, M), ovlp.ld());
         }
 
-        Utils::write_matrix("hmlt.txt", hmlt, N, N, true, true, "%12.6f");
-        Utils::write_matrix("ovlp.txt", ovlp, N, N, true, true, "%12.6f");
+        //== Utils::write_matrix("hmlt.txt", hmlt, N, N, true, true, "%12.6f");
+        //== Utils::write_matrix("ovlp.txt", ovlp, N, N, true, true, "%12.6f");
 
         // save Hamiltonian and overlap
         for (int i = 0; i < N; i++)
@@ -373,7 +425,7 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
                     evec.get_ptr(), evec.ld());
         t2.stop();
 
-        Utils::write_matrix("evec.txt", evec, N, N, false, true, "%12.6f");
+        //== Utils::write_matrix("evec.txt", evec, N, N, false, true, "%12.6f");
 
         printf("lower and upper eigen-values : %16.8f %16.8f\n", eval[0], eval[num_bands - 1]);
         
@@ -411,8 +463,9 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
             blas<cpu>::gemm(0, 0, kp.num_gkvec(), n, N, complex16(1, 0), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld(), 
                             complex16(-1, 0), &res(0, 0), res.ld());
             t3.stop();
-            
-            Utils::write_matrix("res.txt", res, kp.num_gkvec(), n, false, true, "%12.6f");
+
+                        
+            //== Utils::write_matrix("res.txt", res, kp.num_gkvec(), n, false, true, "%12.6f");
 
             // apply preconditioner
             #pragma omp parallel for
@@ -429,6 +482,8 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
                 }
                 if (norm < 1e-10) error_local(__FILE__, __LINE__, "residual is converged");
             }
+
+            check_degeneracy(kp, N, n, phi, res);
         }
 
         // check if we run out of variational space or eigen-vectors are converged or it's a last iteration
@@ -809,7 +864,6 @@ void test_davidson()
     parameters.set_lattice_vectors(a0, a1, a2);
     parameters.set_pw_cutoff(2 * sqrt(2 * Ekin) + 0.5);
     parameters.initialize();
-    parameters.print_info();
     
     double vk[] = {0, 0, 0};
     K_point kp(parameters, vk, 1.0);
