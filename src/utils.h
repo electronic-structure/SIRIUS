@@ -58,9 +58,13 @@ class Utils
             return 0.5 * (1 - gsl_sf_erf(e)) - 1 - 0.25 * exp(-e * e) * (a + 2 * e - 2 * a * e * e) / sqrt(pi);
         }
 
-        static void write_matrix(const std::string& fname, bool write_all, mdarray<complex16, 2>& matrix)
+        static void write_matrix(const std::string& fname, mdarray<complex16, 2>& matrix, int nrow, int ncol,
+                                 bool write_upper_only = true, bool write_abs_only = false, std::string fmt = "%18.12f")
         {
             static int icount = 0;
+
+            if (nrow < 0 || nrow > matrix.size(0) || ncol < 0 || ncol > matrix.size(1))
+                error_local(__FILE__, __LINE__, "wrong number of rows or columns");
         
             icount++;
             std::stringstream s;
@@ -69,20 +73,35 @@ class Utils
         
             FILE* fout = fopen(full_name.c_str(), "w");
         
-            for (int icol = 0; icol < matrix.size(1); icol++)
+            for (int icol = 0; icol < ncol; icol++)
             {
                 fprintf(fout, "column : %4i\n", icol);
                 for (int i = 0; i < 80; i++) fprintf(fout, "-");
                 fprintf(fout, "\n");
-                fprintf(fout, " row                real               imag                abs \n");
+                if (write_abs_only)
+                {
+                    fprintf(fout, " row, absolute value\n");
+                }
+                else
+                {
+                    fprintf(fout, " row, real part, imaginary part, absolute value\n");
+                }
                 for (int i = 0; i < 80; i++) fprintf(fout, "-");
                 fprintf(fout, "\n");
                 
-                int max_row = (write_all) ? (matrix.size(0) - 1) : std::min(icol, matrix.size(0) - 1);
+                int max_row = (write_upper_only) ? std::min(icol, nrow - 1) : (nrow - 1);
                 for (int j = 0; j <= max_row; j++)
                 {
-                    fprintf(fout, "%4i  %18.12f %18.12f %18.12f\n", j, real(matrix(j, icol)), imag(matrix(j, icol)), 
-                                                                    abs(matrix(j, icol)));
+                    if (write_abs_only)
+                    {
+                        std::string s = "%4i  " + fmt + "\n";
+                        fprintf(fout, s.c_str(), j, abs(matrix(j, icol)));
+                    }
+                    else
+                    {
+                        fprintf(fout, "%4i  %18.12f %18.12f %18.12f\n", j, real(matrix(j, icol)), imag(matrix(j, icol)), 
+                                                                        abs(matrix(j, icol)));
+                    }
                 }
                 fprintf(fout,"\n");
             }
