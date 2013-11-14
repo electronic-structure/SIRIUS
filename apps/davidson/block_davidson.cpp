@@ -81,7 +81,71 @@ void expand_subspace_v2(K_point& kp, int N, int num_bands, mdarray<complex16, 2>
     memcpy(&phi(0, N), &res(0, 0), num_bands * kp.num_gkvec() * sizeof(complex16));
 }
 
-void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, 
+void check_degeneracy(K_point& kp, int N, int n, mdarray<complex16, 2>& phi, mdarray<complex16, 2>& res)
+{
+    Timer t("check_degeneracy");
+
+    std::vector<bool> drop_res(n, false);
+    // normalize residuals or discard converged
+    for (int i = 0; i < n; i++)
+    {
+        double norm = 0;
+        for (int ig = 0; ig < kp.num_gkvec(); ig++) norm += real(conj(res(ig, i)) * res(ig, i));
+        if (norm < 1e-8)
+        {
+            drop_res[i] = true;
+        }
+        else
+        {
+            for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, i) /= sqrt(norm);
+        }
+    }
+
+    // overlap between new addisional basis vectors and old basis vectors
+    mdarray<complex16, 2> ovlp(N, n);
+    blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &res(0, 0), res.ld(), &ovlp(0, 0), ovlp.ld());
+    
+    //== ovlp.zero();
+    //== for (int i = 0; i < N; i++)
+    //== {
+    //==     for (int j = 0; j < n; j++) 
+    //==     {
+    //==         for (int ig = 0; ig < kp.num_gkvec(); ig++) ovlp(i, j) += conj(phi(ig, i)) * res(ig, j);
+    //==     }
+    //== }
+
+    // project out the the old subspace
+    blas<cpu>::gemm(0, 0, kp.num_gkvec(), n, N, complex16(-1, 0), &phi(0, 0), phi.ld(), &ovlp(0, 0), ovlp.ld(), 
+                    complex16(1, 0), &res(0, 0), res.ld());
+    
+    //== for (int j = 0; j < n; j++)
+    //== {
+    //==     for (int i = 0; i < N; i++)
+    //==     {
+    //==         for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, j) -= ovlp(i, j) * phi(ig, i);
+    //==     }
+    //== }
+
+    // orthogonalize
+    for (int j = 0; j < n; j++)
+    {
+        std::vector<complex16> v(kp.num_gkvec());
+        memcpy(&v[0], &res(0, j), kp.num_gkvec() * sizeof(complex16));
+        for (int j1 = 0; j1 < j; j1++)
+        {
+            complex16 z(0, 0);
+            for (int ig = 0; ig < kp.num_gkvec(); ig++) z += conj(res(ig, j1)) * v[ig];
+            for (int ig = 0; ig < kp.num_gkvec(); ig++) v[ig] -= z * res(ig, j1);
+        }
+        double norm = 0;
+        for (int ig = 0; ig < kp.num_gkvec(); ig++) norm += real(conj(v[ig]) * v[ig]);
+        if (norm < 1e-10) error_local(__FILE__, __LINE__, "final residual norm is small");
+        for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, j) = v[ig] / sqrt(norm);
+    }
+}
+
+
+void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, int max_iter,
                       mdarray<complex16, 2>& psi, std::vector<double>& eval_out)
 {
     Timer t("diag_davidson");
@@ -97,8 +161,6 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
     }
 
     int num_phi = num_bands * 5;
-
-    int num_iter = 20;
 
     mdarray<complex16, 2> phi(kp.num_gkvec(), num_phi);
     mdarray<complex16, 2> hphi(kp.num_gkvec(), num_phi);
@@ -135,15 +197,14 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
 
     bool full_hmlt_update = true;
 
-    for (int k = 0; k < num_iter; k++)
+    for (int k = 0; k < max_iter; k++)
     {
+        std::cout << std::endl;
         std::cout << "Iteration : " << k << ", subspace size : " << N << std::endl;
         
         Timer t1("setup_evp");
         if (full_hmlt_update)
         {
-            check_orth(phi, N);
-
             // compute the Hamiltonian matrix: <phi|H|phi>
             blas<cpu>::gemm(2, 0, N, N, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
        
@@ -184,6 +245,8 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
                     evec.get_ptr(), evec.ld());
         t2.stop();
         
+        printf("lower and upper eigen-values : %16.8f %16.8f\n", eval[0], eval[num_bands - 1]);
+
         Timer t3("residuals");
         // compute residuals
         // 1. \Psi_{i} = \phi_{mu} * Z_{mu, i}
@@ -228,8 +291,10 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
         }
         std::cout << "number of non-converged eigen-vectors : " << n << std::endl;
 
+        //== check_degeneracy(kp, N, n, phi, res);
+
         // check if we run out of variational space or eigen-vectors are converged or it's a last iteration
-        if (N + n > num_phi || n == 0 || k == (num_iter - 1))
+        if (N + n > num_phi || n == 0 || k == (max_iter - 1))
         {   
             Timer t3("update_phi");
             // \Psi_{i} = \phi_{mu} * Z_{mu, i}
@@ -237,7 +302,7 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
                             &psi(0, 0), psi.ld());
             t3.stop();
 
-            if (n == 0 || k == (num_iter - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
+            if (n == 0 || k == (max_iter - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
             {
                 break;
             }
@@ -268,57 +333,6 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
 
     eval_out.resize(num_bands);
     memcpy(&eval_out[0], &eval[0], num_bands * sizeof(double));
-}
-
-void check_degeneracy(K_point& kp, int N, int n, mdarray<complex16, 2>& phi, mdarray<complex16, 2>& res)
-{
-    Timer t("check_degeneracy");
-
-    // normalize residuals
-    for (int i = 0; i < n; i++)
-    {
-        double norm = 0;
-        for (int ig = 0; ig < kp.num_gkvec(); ig++) norm += real(conj(res(ig, i)) * res(ig, i));
-        if (norm < 1e-10) error_local(__FILE__, __LINE__, "initial residual norm is small");
-        for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, i) /= sqrt(norm);
-    }
-
-    // overlap between new addisional basis vectors and old basis vectors
-    mdarray<complex16, 2> ovlp(N, n);
-    ovlp.zero();
-    for (int i = 0; i < N; i++)
-    {
-        for (int j = 0; j < n; j++) 
-        {
-            for (int ig = 0; ig < kp.num_gkvec(); ig++) ovlp(i, j) += conj(phi(ig, i)) * res(ig, j);
-        }
-    }
-
-    // project out the the old subspace
-    for (int j = 0; j < n; j++)
-    {
-        for (int i = 0; i < N; i++)
-        {
-            for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, j) -= ovlp(i, j) * phi(ig, i);
-        }
-    }
-
-    // orthogonalize
-    for (int j = 0; j < n; j++)
-    {
-        std::vector<complex16> v(kp.num_gkvec());
-        memcpy(&v[0], &res(0, j), kp.num_gkvec() * sizeof(complex16));
-        for (int j1 = 0; j1 < j; j1++)
-        {
-            complex16 z(0, 0);
-            for (int ig = 0; ig < kp.num_gkvec(); ig++) z += conj(res(ig, j1)) * v[ig];
-            for (int ig = 0; ig < kp.num_gkvec(); ig++) v[ig] -= z * res(ig, j1);
-        }
-        double norm = 0;
-        for (int ig = 0; ig < kp.num_gkvec(); ig++) norm += real(conj(v[ig]) * v[ig]);
-        if (norm < 1e-10) error_local(__FILE__, __LINE__, "final residual norm is small");
-        for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, j) = v[ig] / sqrt(norm);
-    }
 }
 
 
@@ -480,7 +494,7 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
                     if (abs(t) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
                     res(ig, i) /= t;
                 }
-                if (norm < 1e-10) error_local(__FILE__, __LINE__, "residual is converged");
+                //if (norm < 1e-10) error_local(__FILE__, __LINE__, "residual is converged");
             }
 
             check_degeneracy(kp, N, n, phi, res);
@@ -884,7 +898,7 @@ void test_davidson()
     if (device == "cpu")
     {
         std::cout << "calling CPU version" << std::endl;
-        diag_davidson_v3(parameters, kp, v_pw, num_bands, max_iter, psi, eval);
+        diag_davidson_v2(parameters, kp, v_pw, num_bands, max_iter, psi, eval);
     } 
     else if (device == "gpu")
     {
