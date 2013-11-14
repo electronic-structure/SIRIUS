@@ -356,6 +356,9 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
             blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &phi(0, M), phi.ld(), &ovlp(0, M), ovlp.ld());
         }
 
+        Utils::write_matrix("hmlt.txt", hmlt, N, N, true, true, "%12.6f");
+        Utils::write_matrix("ovlp.txt", ovlp, N, N, true, true, "%12.6f");
+
         // save Hamiltonian and overlap
         for (int i = 0; i < N; i++)
         {
@@ -369,6 +372,8 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
         gevp->solve(N, num_bands, hmlt.get_ptr(), hmlt.ld(), ovlp.get_ptr(), ovlp.ld(), &eval[0], 
                     evec.get_ptr(), evec.ld());
         t2.stop();
+
+        Utils::write_matrix("evec.txt", evec, N, N, false, true, "%12.6f");
 
         printf("lower and upper eigen-values : %16.8f %16.8f\n", eval[0], eval[num_bands - 1]);
         
@@ -406,18 +411,23 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
             blas<cpu>::gemm(0, 0, kp.num_gkvec(), n, N, complex16(1, 0), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld(), 
                             complex16(-1, 0), &res(0, 0), res.ld());
             t3.stop();
+            
+            Utils::write_matrix("res.txt", res, kp.num_gkvec(), n, false, true, "%12.6f");
 
             // apply preconditioner
             #pragma omp parallel for
             for (int i = 0; i < n; i++)
             {
+                double norm = 0.0;
                 // apply preconditioner
                 for (int ig = 0; ig < kp.num_gkvec(); ig++)
                 {
+                    norm += real(conj(res(ig, i)) * res(ig, i));
                     complex16 t = pow(kp.gkvec_cart(ig).length(), 2) / 2.0 + v_pw[0] - res_e[i];
                     if (abs(t) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
                     res(ig, i) /= t;
                 }
+                if (norm < 1e-10) error_local(__FILE__, __LINE__, "residual is converged");
             }
         }
 
@@ -464,7 +474,7 @@ void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v
     memcpy(&eval_out[0], &eval[0], num_bands * sizeof(double));
 }
 
-void diag_davidson_v3_gpu(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, 
+void diag_davidson_v3_gpu(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, int max_iter,
                           mdarray<complex16, 2>& psi, std::vector<double>& eval_out)
 {
 #ifdef _GPU_
@@ -481,8 +491,6 @@ void diag_davidson_v3_gpu(Global& parameters, K_point& kp, std::vector<complex16
     }
 
     int num_phi = num_bands * 5;
-
-    int num_iter = 8;
 
     mdarray<complex16, 2> phi(kp.num_gkvec(), num_phi);
     mdarray<complex16, 2> hphi(kp.num_gkvec(), num_phi);
@@ -520,8 +528,9 @@ void diag_davidson_v3_gpu(Global& parameters, K_point& kp, std::vector<complex16
 
     bool full_hmlt_update = true;
 
-    for (int k = 0; k < num_iter; k++)
+    for (int k = 0; k < max_iter; k++)
     {
+        std::cout << std::endl;
         std::cout << "Iteration : " << k << ", subspace size : " << N << std::endl;
        
         Timer t1("setup_evp");
@@ -565,6 +574,8 @@ void diag_davidson_v3_gpu(Global& parameters, K_point& kp, std::vector<complex16
         gevp->solve(N, num_bands, hmlt.get_ptr(), hmlt.ld(), ovlp.get_ptr(), ovlp.ld(), &eval[0], 
                     evec.get_ptr(), evec.ld());
         t2.stop();
+
+        printf("lower and upper eigen-values : %16.8f %16.8f\n", eval[0], eval[num_bands - 1]);
         
         n = 0;
         // check eigen-values for convergence
@@ -650,7 +661,7 @@ void diag_davidson_v3_gpu(Global& parameters, K_point& kp, std::vector<complex16
         }
 
         // check if we run out of variational space or eigen-vectors are converged or it's a last iteration
-        if (N + n > num_phi || n == 0 || k == (num_iter - 1))
+        if (N + n > num_phi || n == 0 || k == (max_iter - 1))
         {   
             Timer t3("update_phi");
             // \Psi_{i} = \phi_{mu} * Z_{mu, i}
@@ -658,7 +669,7 @@ void diag_davidson_v3_gpu(Global& parameters, K_point& kp, std::vector<complex16
                             &psi(0, 0), psi.ld());
             t3.stop();
 
-            if (n == 0 || k == (num_iter - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
+            if (n == 0 || k == (max_iter - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
             {
                 break;
             }
@@ -777,6 +788,8 @@ void test_davidson()
     int max_iter = 8;
     double Ekin = 4;
 
+    std::string device("cpu");
+
     std::string fname("input.json");
     if (Utils::file_exists(fname))
     {
@@ -784,6 +797,7 @@ void test_davidson()
         num_bands = parser["num_bands"].get(num_bands);
         max_iter = parser["max_iter"].get(max_iter);
         Ekin = parser["Ekin"].get(Ekin);
+        device = parser["device"].get(device);
     }
 
     Global parameters;
@@ -813,14 +827,23 @@ void test_davidson()
 
     //diag_exact(parameters, kp, v_pw, num_bands, eval);
 
-    diag_davidson_v3(parameters, kp, v_pw, num_bands, max_iter, psi, eval);
-
-    if (Platform::mpi_rank() == 0)
+    if (device == "cpu")
     {
-        printf("\n");
-        printf("Eigen-values:\n");
-        for (int i = 0; i < num_bands; i++) printf("i : %3i,  eval : %16.10f\n", i, eval[i]);
+        std::cout << "calling CPU version" << std::endl;
+        diag_davidson_v3(parameters, kp, v_pw, num_bands, max_iter, psi, eval);
+    } 
+    else if (device == "gpu")
+    {
+        std::cout << "calling GPU version" << std::endl;
+        diag_davidson_v3_gpu(parameters, kp, v_pw, num_bands, max_iter, psi, eval);
     }
+
+    //== if (Platform::mpi_rank() == 0)
+    //== {
+    //==     printf("\n");
+    //==     printf("Eigen-values:\n");
+    //==     for (int i = 0; i < num_bands; i++) printf("i : %3i,  eval : %16.10f\n", i, eval[i]);
+    //== }
 
     //sum_rho(parameters, kp, num_bands, psi);
 
