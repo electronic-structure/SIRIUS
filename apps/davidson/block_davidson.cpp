@@ -105,27 +105,10 @@ void check_degeneracy(K_point& kp, int N, int n, mdarray<complex16, 2>& phi, mda
     mdarray<complex16, 2> ovlp(N, n);
     blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &res(0, 0), res.ld(), &ovlp(0, 0), ovlp.ld());
     
-    //== ovlp.zero();
-    //== for (int i = 0; i < N; i++)
-    //== {
-    //==     for (int j = 0; j < n; j++) 
-    //==     {
-    //==         for (int ig = 0; ig < kp.num_gkvec(); ig++) ovlp(i, j) += conj(phi(ig, i)) * res(ig, j);
-    //==     }
-    //== }
-
     // project out the the old subspace
     blas<cpu>::gemm(0, 0, kp.num_gkvec(), n, N, complex16(-1, 0), &phi(0, 0), phi.ld(), &ovlp(0, 0), ovlp.ld(), 
                     complex16(1, 0), &res(0, 0), res.ld());
     
-    //== for (int j = 0; j < n; j++)
-    //== {
-    //==     for (int i = 0; i < N; i++)
-    //==     {
-    //==         for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, j) -= ovlp(i, j) * phi(ig, i);
-    //==     }
-    //== }
-
     // orthogonalize
     for (int j = 0; j < n; j++)
     {
@@ -163,15 +146,14 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
     int num_phi = num_bands * 5;
 
     mdarray<complex16, 2> phi(kp.num_gkvec(), num_phi);
+    phi.zero();
     mdarray<complex16, 2> hphi(kp.num_gkvec(), num_phi);
     
-    // initial basis functions
-    phi.zero();
-    for (int i = 0; i < num_bands; i++) phi(i, i) = 1.0;
-    // apply Hamiltonian to intial states
-    //apply_h(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
     for (int i = 0; i < num_bands; i++)
     {
+        // initial basis functions
+        phi(i, i) = 1.0; 
+        // apply Hamiltonian to intial basis functions
         for (int ig = 0; ig < kp.num_gkvec(); ig++)
         {
             hphi(ig, i) = v_pw[parameters.index_g12(kp.gvec_index(ig), kp.gvec_index(i))];
@@ -209,7 +191,6 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
             blas<cpu>::gemm(2, 0, N, N, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
        
             // compute overlap matrix <phi|phi>
-            //blas<cpu>::gemm(2, 0, N, N, kp.num_gkvec(), &phi(0, 0), phi.ld(), &phi(0, 0), phi.ld(), &ovlp(0, 0), ovlp.ld());
             ovlp.zero();
             for (int i = 0; i < N; i++) ovlp(i, i) = complex16(1, 0);
 
@@ -276,20 +257,21 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
                 res(ig, i) /= t;
             }
         }
-        t3.stop();
 
         // check which residuals are converged
         n = 0;
         for (int i = 0; i < num_bands; i++)
         {
-            // take the residual if it's norm is above the threshold, use hphi as temporary storage
+            // take the residual if it's norm is above the threshold
             if (res_norm[i] > 1e-5) 
             {
+                // shift unconverged residuals to the beginning of array
                 if (n != i) memcpy(&res(0, n), &res(0, i), kp.num_gkvec() * sizeof(complex16));
                 n++;
             }
         }
         std::cout << "number of non-converged eigen-vectors : " << n << std::endl;
+        t3.stop();
 
         //== check_degeneracy(kp, N, n, phi, res);
 
