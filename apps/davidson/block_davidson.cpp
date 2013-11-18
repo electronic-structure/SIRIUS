@@ -604,8 +604,25 @@ void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16
         Timer t1("setup_evp");
         if (full_hmlt_update)
         {
+            mdarray<complex16, 2> mtrx_gpu(NULL, N, N);
+            mtrx_gpu.allocate_on_device();
+
+            mdarray<complex16, 2> phi_gpu(&phi(0, 0), kp.num_gkvec(), N);
+            phi_gpu.allocate_on_device();
+            phi_gpu.copy_to_device();
+            
+            mdarray<complex16, 2> hphi_gpu(&hphi(0, 0), kp.num_gkvec(), N);
+            hphi_gpu.allocate_on_device();
+            hphi_gpu.copy_to_device();
+
+            complex16 zone(1, 0);
+            complex16 zzero(0, 0);
+            blas<gpu>::gemm(2, 0, N, N, kp.num_gkvec(), &zone, phi_gpu.get_ptr_device(), phi_gpu.ld(),
+                            hphi_gpu.get_ptr_device(), hphi_gpu.ld(), &zzero, mtrx_gpu.get_ptr_device(), mtrx_gpu.ld());
+            
+            cublas_get_matrix(N, N, sizeof(complex16), mtrx_gpu.get_ptr_device(), mtrx_gpu.ld(), &hmlt(0, 0), hmlt.ld());
             // compute the Hamiltonian matrix: <phi|H|phi>
-            blas<cpu>::gemm(2, 0, N, N, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
+            //== blas<cpu>::gemm(2, 0, N, N, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
        
             // compute overlap matrix <phi|phi>
             ovlp.zero();
@@ -645,7 +662,7 @@ void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16
                             &phi_gpu.get_ptr_device()[kp.num_gkvec() * M], phi_gpu.ld(), &zzero, 
                             mtrx_gpu.get_ptr_device(), mtrx_gpu.ld());
             
-            cublas_get_matrix(N, n, sizeof(complex16), mtrx_gpu.get_ptr_device(), mtrx_gpu.ld(), &ovlp(0, M), hmlt.ld());
+            cublas_get_matrix(N, n, sizeof(complex16), mtrx_gpu.get_ptr_device(), mtrx_gpu.ld(), &ovlp(0, M), ovlp.ld());
 
             mtrx_gpu.deallocate_on_device();
             phi_gpu.deallocate_on_device();
