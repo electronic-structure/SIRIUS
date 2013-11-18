@@ -33,6 +33,76 @@ void apply_h(Global& parameters, K_point& kp, int n, std::vector<complex16>& v_r
     }
 }
 
+void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<complex16>& v_r, complex16* phi__, complex16* hphi__)
+{
+    Timer t("apply_h");
+
+    FFT3D<gpu> fft(parameters.fft().grid_size());
+    
+    // send arrays to GPU
+    mdarray<int, 1> map(kp.fft_index(), kp.num_gkvec());
+    map.allocate_on_device();
+    map.copy_to_device();
+
+    mdarray<complex16, 1> v_r_gpu(&v_r[0], parameters.fft().size());
+    v_r_gpu.allocate_on_device();
+    v_r_gpu.copy_to_device();
+   
+    // get maximum number of simultaneous FFTs
+    int nfft_max = fft.nfft_max();
+
+    mdarray<complex16, 2> phi(phi__, kp.num_gkvec(), n);
+    mdarray<complex16, 2> hphi(hphi__, kp.num_gkvec(), n);
+
+    mdarray<complex16, 2> p(NULL, kp.num_gkvec(), std::min(nfft_max, n)); 
+    p.allocate_on_device();
+
+    fft.allocate_batch_fft_buffer();
+    fft.create_batch_plan(nfft_max);
+
+    for (int i = 0; i < n; i += nfft_max)
+    {
+        int nfft = std::min(n - i, nfft_max);
+        if (nfft != nfft_max)
+        {
+            fft.destroy_batch_plan();
+            fft.create_batch_plan(nfft);
+        }
+            
+        p.set_dimensions(kp.num_gkvec(), nfft);
+
+        p.set_ptr(&phi(0, i));
+        p.copy_to_device();
+        
+        fft.batch_apply_v(kp.num_gkvec(), nfft, map.get_ptr_device(), v_r_gpu.get_ptr_device(), p.get_ptr_device());
+
+        p.set_ptr(&hphi(0, i));
+        p.copy_to_host();
+    }
+    fft.destroy_batch_plan();
+
+    //== for (int i = 0; i < n; i++)
+    //== {
+    //==     for (int ig = 0; ig < kp.num_gkvec(); ig++)
+    //==     {
+    //==         if (abs(phi(ig, i) - hphi(ig, i)) > 1e-10)
+    //==         {
+    //==             std::stringstream s;
+    //==             s << "error in fft " << phi(ig, i) << " " << hphi(ig, i) << std::endl;
+    //==             error_local(__FILE__, __LINE__, s);
+    //==         }
+    //==     }
+    //== }
+
+    fft.deallocate_batch_fft_buffer();
+    
+    #pragma omp parallel for
+    for (int i = 0; i < n; i++)
+    {
+        for (int ig = 0; ig < kp.num_gkvec(); ig++) hphi(ig, i) += phi(ig, i) * pow(kp.gkvec_cart(ig).length(), 2) / 2.0;
+    }
+}
+
 void apply_p(K_point& kp, mdarray<complex16, 2>& r)
 {
     for (int i = 0; i < r.size(1); i++)
@@ -525,7 +595,7 @@ void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16
             else // otherwise set psi as a new trial basis
             {
                 memcpy(phi.get_ptr(), psi.get_ptr(), num_bands * kp.num_gkvec() * sizeof(complex16));
-                apply_h(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
+                apply_h_gpu(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
                 N = num_bands;
                 full_hmlt_update = true;
             }
