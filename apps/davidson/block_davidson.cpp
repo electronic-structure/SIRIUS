@@ -94,12 +94,11 @@ void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<complex16>&
     v_r_gpu.copy_to_device();
    
     // get maximum number of simultaneous FFTs
-    int nfft_max = fft.nfft_max();
+    int nfft_max = fft.nfft_max(32);
 
     int nfft_gpu = int(n * gpu_cpu_balance / nfft_max) * nfft_max;
 
     if (nfft_gpu + nfft_max < n) nfft_gpu += nfft_max;
-
 
     mdarray<complex16, 2> phi(phi__, kp.num_gkvec(), n);
     mdarray<complex16, 2> hphi(hphi__, kp.num_gkvec(), n);
@@ -138,7 +137,9 @@ void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<complex16>&
         }
     }
 
+    Timer t1("exec_gpu_fft:wait");
     pthread_join(gpu_thread_id, NULL);
+    t1.stop();
 
     //mdarray<complex16, 2> p(NULL, kp.num_gkvec(), std::min(nfft_max, n)); 
     //p.allocate_on_device();

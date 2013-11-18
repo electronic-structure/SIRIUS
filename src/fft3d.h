@@ -298,9 +298,10 @@ template<> class FFT3D<gpu>
         {
         }
 
-        int nfft_max()
+        int nfft_max(int min_block_size = 1 << 20)
         {
-            return (int)(cuda_get_free_mem() / size() / 10 / sizeof(complex16));
+            int nfft = (int)(cuda_get_free_mem() / size() / 10 / sizeof(complex16));
+            return std::min(nfft, min_block_size);
         }
 
         void allocate_batch_fft_buffer()
