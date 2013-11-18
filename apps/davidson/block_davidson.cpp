@@ -2,6 +2,8 @@
 
 using namespace sirius;
 
+double gpu_cpu_balance = 0.5;
+
 void apply_h(Global& parameters, K_point& kp, int n, std::vector<complex16>& v_r, complex16* phi__, complex16* hphi__)
 {
     Timer t("apply_h");
@@ -64,7 +66,8 @@ void* exec_gpu_fft(void* args__)
         p.set_ptr(&(*args->phi)(0, i));
         p.copy_to_device();
         
-        fft.batch_apply_v(args->kp->num_gkvec(), args->nfft_max, args->map->get_ptr_device(), args->v_r_gpu->get_ptr_device(), p.get_ptr_device());
+        fft.batch_apply_v(args->kp->num_gkvec(), args->nfft_max, args->map->get_ptr_device(), 
+                          args->v_r_gpu->get_ptr_device(), p.get_ptr_device());
 
         p.set_ptr(&(*args->hphi)(0, i));
         p.copy_to_host();
@@ -72,11 +75,6 @@ void* exec_gpu_fft(void* args__)
     fft.destroy_batch_plan();
     fft.deallocate_batch_fft_buffer();
     
-    for (int i = 0; i < args->nfft_gpu; i++)
-    {
-        for (int ig = 0; ig < args->kp->num_gkvec(); ig++) (*args->hphi)(ig, i) += (*args->phi)(ig, i) * pow(args->kp->gkvec_cart(ig).length(), 2) / 2.0;
-    }
-
     return NULL;
 }
 
@@ -98,13 +96,9 @@ void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<complex16>&
     // get maximum number of simultaneous FFTs
     int nfft_max = fft.nfft_max();
 
-    double gpu_cpu_balance = 0.5; // fraction of FFTs done on GPU
-
     int nfft_gpu = int(n * gpu_cpu_balance / nfft_max) * nfft_max;
 
     if (nfft_gpu + nfft_max < n) nfft_gpu += nfft_max;
-
-    //int nfft_cpu = n - nfft_gpu;
 
 
     mdarray<complex16, 2> phi(phi__, kp.num_gkvec(), n);
@@ -122,7 +116,6 @@ void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<complex16>&
     
     pthread_t gpu_thread_id;
     pthread_create(&gpu_thread_id, NULL, exec_gpu_fft, &args); 
-
     
     int num_fft_threads = std::min(Platform::num_fft_threads(), Platform::num_threads() - 1);
     #pragma omp parallel default(shared) num_threads(num_fft_threads)
@@ -142,8 +135,6 @@ void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<complex16>&
             parameters.fft().input(&phi_r[0], thread_id);
             parameters.fft().transform(-1, thread_id);
             parameters.fft().output(kp.num_gkvec(), kp.fft_index(), &hphi(0, i), thread_id);
-
-            for (int ig = 0; ig < kp.num_gkvec(); ig++) hphi(ig, i) += phi(ig, i) * pow(kp.gkvec_cart(ig).length(), 2) / 2.0;
         }
     }
 
@@ -177,12 +168,12 @@ void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<complex16>&
     //fft.destroy_batch_plan();
 
     //fft.deallocate_batch_fft_buffer();
-    //
-    //#pragma omp parallel for
-    //for (int i = 0; i < n; i++)
-    //{
-    //    for (int ig = 0; ig < kp.num_gkvec(); ig++) hphi(ig, i) += phi(ig, i) * pow(kp.gkvec_cart(ig).length(), 2) / 2.0;
-    //}
+    
+    #pragma omp parallel for
+    for (int i = 0; i < n; i++)
+    {
+        for (int ig = 0; ig < kp.num_gkvec(); ig++) hphi(ig, i) += phi(ig, i) * pow(kp.gkvec_cart(ig).length(), 2) / 2.0;
+    }
 }
 
 //== // before have changes to pthreads
@@ -1319,6 +1310,7 @@ void test_davidson()
         max_iter = parser["max_iter"].get(max_iter);
         Ekin = parser["Ekin"].get(Ekin);
         device = parser["device"].get(device);
+        gpu_cpu_balance = parser["gpu_cpu_balance"].get(gpu_cpu_balance);
     }
 
     Global parameters;
