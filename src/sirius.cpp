@@ -436,7 +436,7 @@ void FORTRAN(sirius_get_gvec_len)(real8* gvec_len)
 void FORTRAN(sirius_get_index_by_gvec)(int32_t* index_by_gvec__)
 {
     log_function_enter(__func__);
-    sirius::FFT3D& fft = global_parameters.fft();
+    sirius::FFT3D<cpu>& fft = global_parameters.fft();
     std::pair<int, int> d0 = fft.grid_limits(0);
     std::pair<int, int> d1 = fft.grid_limits(1);
     std::pair<int, int> d2 = fft.grid_limits(2);
