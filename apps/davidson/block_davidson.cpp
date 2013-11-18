@@ -622,12 +622,41 @@ void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16
                 memcpy(&hmlt(0, i), &hmlt_old(0, i), M * sizeof(complex16));
                 memcpy(&ovlp(0, i), &ovlp_old(0, i), M * sizeof(complex16));
             }
+
+            mdarray<complex16, 2> mtrx_gpu(NULL, N, n);
+            mtrx_gpu.allocate_on_device();
+
+            mdarray<complex16, 2> phi_gpu(&phi(0, 0), kp.num_gkvec(), N);
+            phi_gpu.allocate_on_device();
+            phi_gpu.copy_to_device();
+            
+            mdarray<complex16, 2> hphi_gpu(&hphi(0, M), kp.num_gkvec(), n);
+            hphi_gpu.allocate_on_device();
+            hphi_gpu.copy_to_device();
+
+            complex16 zone(1, 0);
+            complex16 zzero(0, 0);
+            blas<gpu>::gemm(2, 0, N, n, kp.num_gkvec(), &zone, phi_gpu.get_ptr_device(), phi_gpu.ld(),
+                            hphi_gpu.get_ptr_device(), hphi_gpu.ld(), &zzero, mtrx_gpu.get_ptr_device(), mtrx_gpu.ld());
+            
+            cublas_get_matrix(N, n, sizeof(complex16), mtrx_gpu.get_ptr_device(), mtrx_gpu.ld(), &hmlt(0, M), hmlt.ld());
+            
+            blas<gpu>::gemm(2, 0, N, n, kp.num_gkvec(), &zone, phi_gpu.get_ptr_device(), phi_gpu.ld(),
+                            &phi_gpu.get_ptr_device()[kp.num_gkvec() * M], phi_gpu.ld(), &zzero, 
+                            mtrx_gpu.get_ptr_device(), mtrx_gpu.ld());
+            
+            cublas_get_matrix(N, n, sizeof(complex16), mtrx_gpu.get_ptr_device(), mtrx_gpu.ld(), &ovlp(0, M), hmlt.ld());
+
+            mtrx_gpu.deallocate_on_device();
+            phi_gpu.deallocate_on_device();
+            hphi_gpu.deallocate_on_device();
+
             
             // <{phi,res}|H|res>
-            blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, M), hphi.ld(), &hmlt(0, M), hmlt.ld());
+            //== blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, M), hphi.ld(), &hmlt(0, M), hmlt.ld());
             
             // <{phi,res}|res>
-            blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &phi(0, M), phi.ld(), &ovlp(0, M), ovlp.ld());
+            //== blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &phi(0, M), phi.ld(), &ovlp(0, M), ovlp.ld());
         }
 
         // save Hamiltonian and overlap
