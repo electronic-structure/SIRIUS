@@ -12,7 +12,7 @@ class Reciprocal_lattice : public Unit_cell
         double pw_cutoff_;
         
         /// FFT wrapper
-        FFT3D fft_;
+        FFT3D<cpu> fft_;
 
         /// list of G-vector fractional coordinates
         mdarray<int, 2> gvec_;
@@ -76,7 +76,7 @@ class Reciprocal_lattice : public Unit_cell
         template <index_domain_t index_domain>
         inline void gvec_ylm_array(int ig, complex16* ylm, int lmax);
 
-        inline FFT3D& fft()
+        inline FFT3D<cpu>& fft()
         {
             return fft_;
         }
