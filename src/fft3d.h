@@ -304,9 +304,9 @@ template<> class FFT3D<gpu>
             return std::min(nfft, min_block_size);
         }
 
-        void allocate_batch_fft_buffer()
+        void allocate_batch_fft_buffer(int nfft_max)
         {
-            cuda_malloc(&fft_buffer_device_ptr, size() * nfft_max() * sizeof(complex16));
+            cuda_malloc(&fft_buffer_device_ptr, size() * nfft_max * sizeof(complex16));
         }
 
         void deallocate_batch_fft_buffer()
