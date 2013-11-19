@@ -35,46 +35,106 @@ void apply_h(Global& parameters, K_point& kp, int n, std::vector<complex16>& v_r
     }
 }
 
-struct exec_gpu_fft_args
+struct exec_fft_args
 {
-    int nfft_gpu;
-    int nfft_max;
-    vector3d<int> grid_size;
+    int thread_id;
+    Global* parameters;
     K_point* kp;
+    int n;
     mdarray<complex16, 2>* phi;
     mdarray<complex16, 2>* hphi;
     mdarray<int, 1>* map;
     mdarray<complex16, 1>* v_r_gpu;
 };
 
+pthread_mutex_t exec_fft_mutex;
+int idxfft;
+
 void* exec_gpu_fft(void* args__)
 {
-    exec_gpu_fft_args* args = (exec_gpu_fft_args*)args__;
+    exec_fft_args* args = (exec_fft_args*)args__;
 
-    if (args->nfft_gpu == 0) return NULL;
+    FFT3D<gpu> fft(args->parameters->fft().grid_size());
 
-    mdarray<complex16, 2> p(NULL, args->kp->num_gkvec(), args->nfft_max); 
+    int nfft_max = fft.nfft_max(16);
+    
+    mdarray<complex16, 2> p(NULL, args->kp->num_gkvec(), nfft_max); 
     p.allocate_on_device();
     
-    FFT3D<gpu> fft(args->grid_size);
+    fft.allocate_batch_fft_buffer(nfft_max);
+    fft.create_batch_plan(nfft_max);
 
-    fft.allocate_batch_fft_buffer();
-    fft.create_batch_plan(args->nfft_max);
+    bool done = false;
 
-    for (int i = 0; i < args->nfft_gpu; i += args->nfft_max)
+    while (!done)
     {
-        p.set_ptr(&(*args->phi)(0, i));
-        p.copy_to_device();
-        
-        fft.batch_apply_v(args->kp->num_gkvec(), args->nfft_max, args->map->get_ptr_device(), 
-                          args->v_r_gpu->get_ptr_device(), p.get_ptr_device());
+        pthread_mutex_lock(&exec_fft_mutex);
+        int i = idxfft;
+        if (idxfft + nfft_max > args->n) 
+        {
+            done = true;
+        }
+        else
+        {
+            idxfft += nfft_max;
+        }
+        pthread_mutex_unlock(&exec_fft_mutex);
 
-        p.set_ptr(&(*args->hphi)(0, i));
-        p.copy_to_host();
+        if (!done)
+        {
+            p.set_ptr(&(*args->phi)(0, i));
+            p.copy_to_device();
+            
+            fft.batch_apply_v(args->kp->num_gkvec(), nfft_max, args->map->get_ptr_device(), 
+                              args->v_r_gpu->get_ptr_device(), p.get_ptr_device());
+
+            p.set_ptr(&(*args->hphi)(0, i));
+            p.copy_to_host();
+        }
     }
+    
     fft.destroy_batch_plan();
     fft.deallocate_batch_fft_buffer();
-    
+    p.deallocate_on_device();
+    return NULL;
+}
+
+void* exec_cpu_fft(void* args__)
+{
+    exec_fft_args* args = (exec_fft_args*)args__;
+
+    std::vector<complex16> phi_r(args->parameters->fft().size());
+    int thread_id = args->thread_id;
+
+    bool done = false;
+    while (!done)
+    {
+        pthread_mutex_lock(&exec_fft_mutex);
+        int i = idxfft;
+        if (idxfft + 1 > args->n)
+        {
+            done = true;
+        }
+        else
+        {
+            idxfft++;
+        }
+        pthread_mutex_unlock(&exec_fft_mutex);
+
+        if (!done)
+        {
+            args->parameters->fft().input(args->kp->num_gkvec(), args->kp->fft_index(), &(*args->phi)(0, i), thread_id);
+            args->parameters->fft().transform(1, thread_id);
+            args->parameters->fft().output(&phi_r[0], thread_id);
+
+            for (int ir = 0; ir < args->parameters->fft().size(); ir++) phi_r[ir] *= (*args->v_r_gpu)(ir);
+
+            args->parameters->fft().input(&phi_r[0], thread_id);
+            args->parameters->fft().transform(-1, thread_id);
+            args->parameters->fft().output(args->kp->num_gkvec(), args->kp->fft_index(), &(*args->hphi)(0, i), thread_id);
+        }
+    }
+
     return NULL;
 }
 
@@ -82,8 +142,8 @@ void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<complex16>&
 {
     Timer t("apply_h");
 
-    FFT3D<gpu> fft(parameters.fft().grid_size());
-    
+    pthread_mutex_init(&exec_fft_mutex, NULL);
+
     // send arrays to GPU
     mdarray<int, 1> map(kp.fft_index(), kp.num_gkvec());
     map.allocate_on_device();
@@ -93,82 +153,40 @@ void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<complex16>&
     v_r_gpu.allocate_on_device();
     v_r_gpu.copy_to_device();
    
-    // get maximum number of simultaneous FFTs
-    int nfft_max = fft.nfft_max(32);
-
-    int nfft_gpu = int(n * gpu_cpu_balance / nfft_max) * nfft_max;
-
-    if (nfft_gpu + nfft_max < n) nfft_gpu += nfft_max;
-
     mdarray<complex16, 2> phi(phi__, kp.num_gkvec(), n);
     mdarray<complex16, 2> hphi(hphi__, kp.num_gkvec(), n);
-    
-    exec_gpu_fft_args args;
-    args.nfft_gpu = nfft_gpu;
-    args.nfft_max = nfft_max;
-    args.grid_size = parameters.fft().grid_size();
-    args.kp = &kp;
-    args.phi = &phi;
-    args.hphi = &hphi;
-    args.map = &map;
-    args.v_r_gpu = &v_r_gpu;
-    
-    pthread_t gpu_thread_id;
-    pthread_create(&gpu_thread_id, NULL, exec_gpu_fft, &args); 
+
+    idxfft = 0;
     
     int num_fft_threads = std::min(Platform::num_fft_threads(), Platform::num_threads() - 1);
-    #pragma omp parallel default(shared) num_threads(num_fft_threads)
-    {        
-        int thread_id = omp_get_thread_num();
-        std::vector<complex16> phi_r(parameters.fft().size());
-        
-        #pragma omp for
-        for (int i = nfft_gpu; i < n; i++)
+
+    std::vector<pthread_t> pthread_id(num_fft_threads + 1);
+    std::vector<exec_fft_args> args(num_fft_threads + 1);
+
+    for (int i = 0; i <= num_fft_threads; i++)
+    {
+        args[i].thread_id = i;
+        args[i].parameters = &parameters;
+        args[i].kp = &kp;
+        args[i].n = n;
+        args[i].phi = &phi;
+        args[i].hphi = &hphi;
+        args[i].map = &map;
+        args[i].v_r_gpu = &v_r_gpu;
+        if (i < num_fft_threads)
         {
-            parameters.fft().input(kp.num_gkvec(), kp.fft_index(), &phi(0, i), thread_id);
-            parameters.fft().transform(1, thread_id);
-            parameters.fft().output(&phi_r[0], thread_id);
-
-            for (int ir = 0; ir < parameters.fft().size(); ir++) phi_r[ir] *= v_r[ir];
-
-            parameters.fft().input(&phi_r[0], thread_id);
-            parameters.fft().transform(-1, thread_id);
-            parameters.fft().output(kp.num_gkvec(), kp.fft_index(), &hphi(0, i), thread_id);
+            pthread_create(&pthread_id[i], NULL, exec_cpu_fft, &args[i]);
+        }
+        else
+        {
+            pthread_create(&pthread_id[i], NULL, exec_gpu_fft, &args[i]);
         }
     }
 
-    Timer t1("exec_gpu_fft:wait");
-    pthread_join(gpu_thread_id, NULL);
-    t1.stop();
+    // sync threads
+    for (int i = 0; i <= num_fft_threads; i++) pthread_join(pthread_id[i], NULL);
 
-    //mdarray<complex16, 2> p(NULL, kp.num_gkvec(), std::min(nfft_max, n)); 
-    //p.allocate_on_device();
-
-    //fft.allocate_batch_fft_buffer();
-    //fft.create_batch_plan(nfft_max);
-
-    //for (int i = 0; i < nfft_gpu; i += nfft_max)
-    //{
-    //    int nfft = std::min(n - i, nfft_max);
-    //    if (nfft != nfft_max)
-    //    {
-    //        fft.destroy_batch_plan();
-    //        fft.create_batch_plan(nfft);
-    //    }
-    //        
-    //    p.set_dimensions(kp.num_gkvec(), nfft);
-
-    //    p.set_ptr(&phi(0, i));
-    //    p.copy_to_device();
-    //    
-    //    fft.batch_apply_v(kp.num_gkvec(), nfft, map.get_ptr_device(), v_r_gpu.get_ptr_device(), p.get_ptr_device());
-
-    //    p.set_ptr(&hphi(0, i));
-    //    p.copy_to_host();
-    //}
-    //fft.destroy_batch_plan();
-
-    //fft.deallocate_batch_fft_buffer();
+    pthread_mutex_destroy(&exec_fft_mutex);
     
     #pragma omp parallel for
     for (int i = 0; i < n; i++)
@@ -693,48 +711,48 @@ void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16
 
         Timer t3("residuals");
             
-            // allocate residuals on GPU
-            res.allocate_on_device();
+        // allocate residuals on GPU
+        res.allocate_on_device();
 
-            // move eigen vectors to GPU
-            mdarray<complex16, 2> evec_gpu(&evec(0, 0), num_phi, N);
-            evec_gpu.allocate_on_device();
-            evec_gpu.copy_to_device();
+        // move eigen vectors to GPU
+        mdarray<complex16, 2> evec_gpu(&evec(0, 0), num_phi, N);
+        evec_gpu.allocate_on_device();
+        evec_gpu.copy_to_device();
 
-            // move phi to gpu
-            mdarray<complex16, 2> phi_gpu(&phi(0, 0), kp.num_gkvec(), N);
-            phi_gpu.allocate_on_device();
-            phi_gpu.copy_to_device();
+        // move phi to gpu
+        mdarray<complex16, 2> phi_gpu(&phi(0, 0), kp.num_gkvec(), N);
+        phi_gpu.allocate_on_device();
+        phi_gpu.copy_to_device();
 
-            // execute first zgemm: \Psi_{i} = \phi_{mu} * Z_{mu, i}
-            complex16 zone(1, 0);
-            complex16 zzero(0, 0);
-            blas<gpu>::gemm(0, 0, kp.num_gkvec(), num_bands, N, &zone, phi_gpu.get_ptr_device(), phi_gpu.ld(), 
-                            evec_gpu.get_ptr_device(), evec_gpu.ld(), &zzero, res.get_ptr_device(), res.ld());
+        // execute first zgemm: \Psi_{i} = \phi_{mu} * Z_{mu, i}
+        complex16 zone(1, 0);
+        complex16 zzero(0, 0);
+        blas<gpu>::gemm(0, 0, kp.num_gkvec(), num_bands, N, &zone, phi_gpu.get_ptr_device(), phi_gpu.ld(), 
+                        evec_gpu.get_ptr_device(), evec_gpu.ld(), &zzero, res.get_ptr_device(), res.ld());
 
-            // scale by eigen-values
-            mdarray<double, 1> eval_gpu(&eval[0], num_bands);
-            eval_gpu.allocate_on_device();
-            eval_gpu.copy_to_device();
-            scale_matrix_columns_gpu(kp.num_gkvec(), num_bands, res.get_ptr_device(), eval_gpu.get_ptr_device());
-            
-            // move hphi to gpu, use already allocated phi_gpu
-            phi_gpu.set_ptr(hphi.get_ptr());
-            phi_gpu.copy_to_device();
+        // scale by eigen-values
+        mdarray<double, 1> eval_gpu(&eval[0], num_bands);
+        eval_gpu.allocate_on_device();
+        eval_gpu.copy_to_device();
+        scale_matrix_columns_gpu(kp.num_gkvec(), num_bands, res.get_ptr_device(), eval_gpu.get_ptr_device());
+        
+        // move hphi to gpu, use already allocated phi_gpu
+        phi_gpu.set_ptr(hphi.get_ptr());
+        phi_gpu.copy_to_device();
 
-            complex16 mzone(-1, 0);
-            // execute second zgemm: r_{i} = H\Psi_{i} - E_{i}\Psi_{i}
-            blas<gpu>::gemm(0, 0, kp.num_gkvec(), num_bands, N, &zone, phi_gpu.get_ptr_device(), phi_gpu.ld(), 
-                            evec_gpu.get_ptr_device(), evec_gpu.ld(), &mzone, res.get_ptr_device(), res.ld());
+        complex16 mzone(-1, 0);
+        // execute second zgemm: r_{i} = H\Psi_{i} - E_{i}\Psi_{i}
+        blas<gpu>::gemm(0, 0, kp.num_gkvec(), num_bands, N, &zone, phi_gpu.get_ptr_device(), phi_gpu.ld(), 
+                        evec_gpu.get_ptr_device(), evec_gpu.ld(), &mzone, res.get_ptr_device(), res.ld());
 
-            // copy residual to host memory
-            res.copy_to_host();
-            
-            // free memory on gpu
-            res.deallocate_on_device();
-            evec_gpu.deallocate_on_device();
-            phi_gpu.deallocate_on_device();
-            eval_gpu.deallocate_on_device();
+        // copy residual to host memory
+        res.copy_to_host();
+        
+        // free memory on gpu
+        res.deallocate_on_device();
+        evec_gpu.deallocate_on_device();
+        phi_gpu.deallocate_on_device();
+        eval_gpu.deallocate_on_device();
 
         // compute residuals
         // 1. \Psi_{i} = \phi_{mu} * Z_{mu, i}
