@@ -4,16 +4,19 @@
 #include <assert.h>
 #include <cuda.h>
 #include <magma_z.h>
+#include <magma_zbulge.h>
+#include <magma_threadsetting.h>
 #include "gpu_interface.h"
 
-extern "C" magma_int_t magma_zbulge_get_lq2(magma_int_t n);
+extern "C" void magma_init_wrapper()
+{
+    magma_init();
+}
 
-extern "C" magma_int_t magma_zhegvdx_2stage(magma_int_t itype, char jobz, char range, char uplo, magma_int_t n,
-                                            cuDoubleComplex *a, magma_int_t lda, cuDoubleComplex *b, magma_int_t ldb,
-                                            double vl, double vu, magma_int_t il, magma_int_t iu, magma_int_t *m, 
-                                            double *w, cuDoubleComplex *work, magma_int_t lwork, double *rwork, 
-                                            magma_int_t lrwork, magma_int_t *iwork, magma_int_t liwork, 
-                                            magma_int_t *info);
+extern "C" void magma_finalize_wrapper()
+{
+    magma_finalize();
+}
 
 extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, void* b, 
                                              int32_t ldb, double* eval)
@@ -21,7 +24,7 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
     int m;
     int info;
 
-    int lwork = magma_zbulge_get_lq2(matrix_size) + 2 * matrix_size + matrix_size * matrix_size;
+    int lwork = magma_zbulge_get_lq2(matrix_size, magma_get_numthreads()) + 2 * matrix_size + matrix_size * matrix_size;
     int lrwork = 1 + 5 * matrix_size + 2 * matrix_size * matrix_size;
     int liwork = 3 + 5 * matrix_size;
             
@@ -41,7 +44,7 @@ extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
     double* w;
     if ((w = (double*)malloc(matrix_size * sizeof(double))) == NULL)
     {
-        printf("mallof failed\n");
+        printf("malloc failed\n");
         exit(-1);
     }
 

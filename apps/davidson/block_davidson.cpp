@@ -606,8 +606,12 @@ void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16
     mdarray<complex16, 2> res(kp.num_gkvec(), num_bands);
 
     std::vector<double> res_norm(num_bands); // norm of residuals
-
+    
+    #ifndef _MAGMA_
     generalized_evp* gevp = new generalized_evp_lapack(-1.0);
+    #else
+    generalized_evp* gevp = new generalized_evp_magma();
+    #endif
 
     int N = num_bands; // intial eigen-value problem size
     int n = 0; // number of added residuals
@@ -686,6 +690,16 @@ void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16
             phi_gpu.deallocate_on_device();
             hphi_gpu.deallocate_on_device();
 
+            #ifdef _MAGMA_
+            for (int i = 0; i < M; i++)
+            {
+                for (int j = M; j < N; j++)
+                {
+                    hmlt(j, i) = conj(hmlt(i, j));
+                    ovlp(j, i) = conj(ovlp(i, j));
+                }
+            }
+            #endif
             
             // <{phi,res}|H|res>
             //== blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, M), hphi.ld(), &hmlt(0, M), hmlt.ld());
@@ -693,7 +707,7 @@ void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16
             // <{phi,res}|res>
             //== blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &phi(0, M), phi.ld(), &ovlp(0, M), ovlp.ld());
         }
-
+        
         // save Hamiltonian and overlap
         for (int i = 0; i < N; i++)
         {

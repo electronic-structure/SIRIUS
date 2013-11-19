@@ -14,11 +14,17 @@ class Platform
             if (call_cublas_init) cublas_init();
             if (mpi_rank() == 0) cuda_device_info();
             #endif
+            #ifdef _MAGMA_
+            magma_init_wrapper();
+            #endif
         }
 
         static void finalize()
         {
             MPI_Finalize();
+            #ifdef _MAGMA_
+            magma_finalize_wrapper();
+            #endif
         }
 
         static int mpi_rank(MPI_Comm comm = MPI_COMM_WORLD)

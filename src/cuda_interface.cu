@@ -56,6 +56,24 @@ extern "C" void cuda_free(void* ptr)
     }
 }
 
+extern "C" void cuda_malloc_host(void** ptr, size_t size)
+{
+    if (cudaMallocHost(ptr, size) != cudaSuccess)
+    {  
+        printf("cudaMallocHost failed\n");
+        exit(-1);
+    }
+}
+
+extern "C" void cuda_free_host(void** ptr)
+{
+    if (cudaFreeHost(*ptr) != cudaSuccess)
+    {
+        printf("cudaFreeHost failed\n");
+        exit(-1);
+    }
+}
+
 extern "C" void cuda_copy_to_device(void* target, void* source, size_t size)
 {
     if (cudaMemcpy(target, source, size, cudaMemcpyHostToDevice) != cudaSuccess)

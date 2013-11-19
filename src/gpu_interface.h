@@ -9,6 +9,10 @@ extern "C" void cuda_device_info();
 
 extern "C" void cuda_malloc(void** ptr, size_t size);
 
+extern "C" void cuda_malloc_host(void** ptr, size_t size);
+
+extern "C" void cuda_free_host(void** ptr);
+
 extern "C" void cuda_free(void* ptr);
 
 extern "C" void cuda_copy_to_device(void *target, void *source, size_t size);
@@ -66,6 +70,10 @@ extern "C" void cufft_batch_apply_v(int fft_size, int num_gkvec, int num_phi, vo
 #ifdef _MAGMA_
 extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, 
                                              void* b, int32_t ldb, double* eval);
+
+extern "C" void magma_init_wrapper();
+
+extern "C" void magma_finalize_wrapper();
 #endif
 
 //==================================
