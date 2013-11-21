@@ -77,9 +77,13 @@ class K_set
 
         void sync_band_energies();
         
-        void save_wave_functions();
+        void save();
 
-        void load_wave_functions();
+        void load();
+
+        //== void save_wave_functions();
+
+        //== void load_wave_functions();
         
         int max_num_gkvec();
 

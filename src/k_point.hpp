@@ -537,7 +537,7 @@ void K_point::generate_gkvec(double gk_cutoff)
     {
         std::stringstream s;
         s << "G+k cutoff (" << gk_cutoff << ") is too large for a given lmax (" 
-          << parameters_.lmax_apw() << ")" << std::endl
+          << parameters_.lmax_apw() << ") and a maximum MT radius (" << parameters_.max_mt_radius() << ")" << std::endl
           << "minimum value for lmax : " << int(gk_cutoff * parameters_.max_mt_radius()) + 1;
         error_local(__FILE__, __LINE__, s);
     }
@@ -1186,18 +1186,24 @@ void K_point::test_fv_states(int use_fft)
 //**     std :: cout << "maximum error = " << maxerr << std::endl;
 //** }
 
-void K_point::save_wave_functions(int id)
+void K_point::save(int id)
 {
+    if (num_ranks() > 1) error_local(__FILE__, __LINE__, "writing of distributed eigen-vectors is not implemented");
+
     if (parameters_.mpi_grid().root(1 << _dim_col_))
     {
         HDF5_tree fout(storage_file_name, false);
 
-        fout["K_points"].create_node(id);
-        fout["K_points"][id].write("coordinates", &vk_[0], 3);
-        fout["K_points"][id].write("mtgk_size", mtgk_size());
-        fout["K_points"][id].create_node("spinor_wave_functions");
-        fout["K_points"][id].write("band_energies", &band_energies_[0], parameters_.num_bands());
-        fout["K_points"][id].write("band_occupancies", &band_occupancies_[0], parameters_.num_bands());
+        fout["K_set"].create_node(id);
+        fout["K_set"][id].create_node("spinor_wave_functions");
+        fout["K_set"][id].write("coordinates", &vk_[0], 3);
+        fout["K_set"][id].write("band_energies", band_energies_);
+        fout["K_set"][id].write("band_occupancies", band_occupancies_);
+        if (num_ranks() == 1)
+        {
+            fout["K_set"][id].write_mdarray("fv_eigen_vectors", fv_eigen_vectors_);
+            fout["K_set"][id].write_mdarray("sv_eigen_vectors", sv_eigen_vectors_);
+        }
     }
     
     Platform::barrier(parameters_.mpi_grid().communicator(1 << _dim_col_));
@@ -1211,38 +1217,83 @@ void K_point::save_wave_functions(int id)
         {
             HDF5_tree fout(storage_file_name, false);
             wfj.set_ptr(&spinor_wave_functions_(0, 0, offs));
-            fout["K_points"][id]["spinor_wave_functions"].write_mdarray(j, wfj);
+            fout["K_set"][id]["spinor_wave_functions"].write_mdarray(j, wfj);
         }
         Platform::barrier(parameters_.mpi_grid().communicator(_dim_col_));
     }
 }
 
-void K_point::load_wave_functions(int id)
+void K_point::load(int id)
 {
     HDF5_tree fin(storage_file_name, false);
     
-    int mtgk_size_in;
-    fin["K_points"][id].read("mtgk_size", &mtgk_size_in);
-    if (mtgk_size_in != mtgk_size()) error_local(__FILE__, __LINE__, "wrong wave-function size");
-
     band_energies_.resize(parameters_.num_bands());
-    fin["K_points"][id].read("band_energies", &band_energies_[0], parameters_.num_bands());
+    fin["K_points"][id].read("band_energies", band_energies_);
 
     band_occupancies_.resize(parameters_.num_bands());
-    fin["K_points"][id].read("band_occupancies", &band_occupancies_[0], parameters_.num_bands());
-
-    spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), 
-                                          parameters_.spl_spinor_wf_col().local_size());
-    spinor_wave_functions_.allocate();
-
-    mdarray<complex16, 2> wfj(NULL, mtgk_size(), parameters_.num_spins()); 
-    for (int jloc = 0; jloc < parameters_.spl_spinor_wf_col().local_size(); jloc++)
-    {
-        int j = parameters_.spl_spinor_wf_col(jloc);
-        wfj.set_ptr(&spinor_wave_functions_(0, 0, jloc));
-        fin["K_points"][id]["spinor_wave_functions"].read_mdarray(j, wfj);
-    }
+    fin["K_points"][id].read("band_occupancies", band_occupancies_);
+    
+    fin["K_set"][id].read_mdarray("fv_eigen_vectors", fv_eigen_vectors_);
+    fin["K_set"][id].read_mdarray("sv_eigen_vectors", sv_eigen_vectors_);
 }
+
+//== void K_point::save_wave_functions(int id)
+//== {
+//==     if (parameters_.mpi_grid().root(1 << _dim_col_))
+//==     {
+//==         HDF5_tree fout(storage_file_name, false);
+//== 
+//==         fout["K_points"].create_node(id);
+//==         fout["K_points"][id].write("coordinates", &vk_[0], 3);
+//==         fout["K_points"][id].write("mtgk_size", mtgk_size());
+//==         fout["K_points"][id].create_node("spinor_wave_functions");
+//==         fout["K_points"][id].write("band_energies", &band_energies_[0], parameters_.num_bands());
+//==         fout["K_points"][id].write("band_occupancies", &band_occupancies_[0], parameters_.num_bands());
+//==     }
+//==     
+//==     Platform::barrier(parameters_.mpi_grid().communicator(1 << _dim_col_));
+//==     
+//==     mdarray<complex16, 2> wfj(NULL, mtgk_size(), parameters_.num_spins()); 
+//==     for (int j = 0; j < parameters_.num_bands(); j++)
+//==     {
+//==         int rank = parameters_.spl_spinor_wf_col().location(_splindex_rank_, j);
+//==         int offs = parameters_.spl_spinor_wf_col().location(_splindex_offs_, j);
+//==         if (parameters_.mpi_grid().coordinate(_dim_col_) == rank)
+//==         {
+//==             HDF5_tree fout(storage_file_name, false);
+//==             wfj.set_ptr(&spinor_wave_functions_(0, 0, offs));
+//==             fout["K_points"][id]["spinor_wave_functions"].write_mdarray(j, wfj);
+//==         }
+//==         Platform::barrier(parameters_.mpi_grid().communicator(_dim_col_));
+//==     }
+//== }
+//== 
+//== void K_point::load_wave_functions(int id)
+//== {
+//==     HDF5_tree fin(storage_file_name, false);
+//==     
+//==     int mtgk_size_in;
+//==     fin["K_points"][id].read("mtgk_size", &mtgk_size_in);
+//==     if (mtgk_size_in != mtgk_size()) error_local(__FILE__, __LINE__, "wrong wave-function size");
+//== 
+//==     band_energies_.resize(parameters_.num_bands());
+//==     fin["K_points"][id].read("band_energies", &band_energies_[0], parameters_.num_bands());
+//== 
+//==     band_occupancies_.resize(parameters_.num_bands());
+//==     fin["K_points"][id].read("band_occupancies", &band_occupancies_[0], parameters_.num_bands());
+//== 
+//==     spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), 
+//==                                           parameters_.spl_spinor_wf_col().local_size());
+//==     spinor_wave_functions_.allocate();
+//== 
+//==     mdarray<complex16, 2> wfj(NULL, mtgk_size(), parameters_.num_spins()); 
+//==     for (int jloc = 0; jloc < parameters_.spl_spinor_wf_col().local_size(); jloc++)
+//==     {
+//==         int j = parameters_.spl_spinor_wf_col(jloc);
+//==         wfj.set_ptr(&spinor_wave_functions_(0, 0, jloc));
+//==         fin["K_points"][id]["spinor_wave_functions"].read_mdarray(j, wfj);
+//==     }
+//== }
 
 void K_point::get_fv_eigen_vectors(mdarray<complex16, 2>& fv_evec)
 {

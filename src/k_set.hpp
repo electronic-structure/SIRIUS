@@ -223,53 +223,43 @@ void K_set::print_info()
     pout.flush(0);
 }
 
-void K_set::save_wave_functions()
+void K_set::save()
 {
     if (Platform::mpi_rank() == 0)
     {
         HDF5_tree fout(storage_file_name, false);
-        fout["parameters"].write("num_kpoints", num_kpoints());
-        fout["parameters"].write("num_bands", parameters_.num_bands());
-        fout["parameters"].write("num_spins", parameters_.num_spins());
+        fout.create_node("K_set");
+        fout["K_set"].write("num_kpoints", num_kpoints());
     }
-
+    Platform::barrier();
+    
     if (parameters_.mpi_grid().side(1 << _dim_k_ | 1 << _dim_col_))
     {
         for (int ik = 0; ik < num_kpoints(); ik++)
         {
             int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
             
-            if (parameters_.mpi_grid().coordinate(_dim_k_) == rank) kpoints_[ik]->save_wave_functions(ik);
+            if (parameters_.mpi_grid().coordinate(_dim_k_) == rank) kpoints_[ik]->save(ik);
             
             parameters_.mpi_grid().barrier(1 << _dim_k_ | 1 << _dim_col_);
         }
     }
 }
 
-void K_set::load_wave_functions()
+/// \todo check parameters of saved data in a separate function
+void K_set::load()
 {
     HDF5_tree fin(storage_file_name, false);
-    int num_spins;
-    fin["parameters"].read("num_spins", &num_spins);
-    if (num_spins != parameters_.num_spins()) error_local(__FILE__, __LINE__, "wrong number of spins");
 
-    int num_bands;
-    fin["parameters"].read("num_bands", &num_bands);
-    if (num_bands != parameters_.num_bands()) error_local(__FILE__, __LINE__, "wrong number of bands");
-    
     int num_kpoints_in;
-    fin["parameters"].read("num_kpoints", &num_kpoints_in);
+    fin["K_set"].read("num_kpoints", &num_kpoints_in);
 
-    // ==================================================================
-    // index of current k-points in the hdf5 file, which (in general) may 
-    // contain a different set of k-points 
-    // ==================================================================
     std::vector<int> ikidx(num_kpoints(), -1); 
     // read available k-points
     double vk_in[3];
     for (int jk = 0; jk < num_kpoints_in; jk++)
     {
-        fin["kpoints"][jk].read("coordinates", vk_in, 3);
+        fin["K_set"][jk].read("coordinates", vk_in, 3);
         for (int ik = 0; ik < num_kpoints(); ik++)
         {
             vector3d<double> dvk; 
@@ -286,9 +276,76 @@ void K_set::load_wave_functions()
     {
         int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
         
-        if (parameters_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->load_wave_functions(ikidx[ik]);
+        if (parameters_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->load(ikidx[ik]);
     }
 }
+
+//== void K_set::save_wave_functions()
+//== {
+//==     if (Platform::mpi_rank() == 0)
+//==     {
+//==         HDF5_tree fout(storage_file_name, false);
+//==         fout["parameters"].write("num_kpoints", num_kpoints());
+//==         fout["parameters"].write("num_bands", parameters_.num_bands());
+//==         fout["parameters"].write("num_spins", parameters_.num_spins());
+//==     }
+//== 
+//==     if (parameters_.mpi_grid().side(1 << _dim_k_ | 1 << _dim_col_))
+//==     {
+//==         for (int ik = 0; ik < num_kpoints(); ik++)
+//==         {
+//==             int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
+//==             
+//==             if (parameters_.mpi_grid().coordinate(_dim_k_) == rank) kpoints_[ik]->save_wave_functions(ik);
+//==             
+//==             parameters_.mpi_grid().barrier(1 << _dim_k_ | 1 << _dim_col_);
+//==         }
+//==     }
+//== }
+//== 
+//== void K_set::load_wave_functions()
+//== {
+//==     HDF5_tree fin(storage_file_name, false);
+//==     int num_spins;
+//==     fin["parameters"].read("num_spins", &num_spins);
+//==     if (num_spins != parameters_.num_spins()) error_local(__FILE__, __LINE__, "wrong number of spins");
+//== 
+//==     int num_bands;
+//==     fin["parameters"].read("num_bands", &num_bands);
+//==     if (num_bands != parameters_.num_bands()) error_local(__FILE__, __LINE__, "wrong number of bands");
+//==     
+//==     int num_kpoints_in;
+//==     fin["parameters"].read("num_kpoints", &num_kpoints_in);
+//== 
+//==     // ==================================================================
+//==     // index of current k-points in the hdf5 file, which (in general) may 
+//==     // contain a different set of k-points 
+//==     // ==================================================================
+//==     std::vector<int> ikidx(num_kpoints(), -1); 
+//==     // read available k-points
+//==     double vk_in[3];
+//==     for (int jk = 0; jk < num_kpoints_in; jk++)
+//==     {
+//==         fin["kpoints"][jk].read("coordinates", vk_in, 3);
+//==         for (int ik = 0; ik < num_kpoints(); ik++)
+//==         {
+//==             vector3d<double> dvk; 
+//==             for (int x = 0; x < 3; x++) dvk[x] = vk_in[x] - kpoints_[ik]->vk(x);
+//==             if (dvk.length() < 1e-12)
+//==             {
+//==                 ikidx[ik] = jk;
+//==                 break;
+//==             }
+//==         }
+//==     }
+//== 
+//==     for (int ik = 0; ik < num_kpoints(); ik++)
+//==     {
+//==         int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
+//==         
+//==         if (parameters_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->load_wave_functions(ikidx[ik]);
+//==     }
+//== }
 
 int K_set::max_num_gkvec()
 {
@@ -301,18 +358,4 @@ int K_set::max_num_gkvec()
     Platform::allreduce<op_max>(&max_num_gkvec_, 1);
     return max_num_gkvec_;
 }
-
-//** void K_set::force(mdarray<double, 2>& forcek)
-//** {
-//**     mdarray<double, 2> ffac(parameters_.num_gvec_shells(), parameters_.num_atom_types());
-//**     parameters_.get_step_function_form_factors(ffac);
-//** 
-//**     forcek.zero();
-//** 
-//**     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
-//**     {
-//**          //kpoints_[spl_num_kpoints_[ikloc]]->ibs_force<cpu, apwlo>(ffac, forcek);
-//**     }
-//**     Platform::allreduce(&forcek(0, 0), (int)forcek.size(), parameters_.mpi_grid().communicator(1 << _dim_k_));
-//** }
 

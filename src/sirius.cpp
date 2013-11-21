@@ -1,7 +1,7 @@
 #include "sirius.h"
 
 /** \file sirius.cpp
-    \brief Fortran API
+    \brief Fortran API 
 */
 
 /// pointer to Density class, implicitly used by Fortran side
@@ -16,10 +16,28 @@ sirius::Global global_parameters;
 /// list of pointers to the sets of k-points
 std::vector<sirius::K_set*> kset_list;
 
+/// DFT ground state wrapper
 sirius::DFT_ground_state* dft_ground_state = NULL;
 
 extern "C" 
 {
+
+/// Initialize the the library
+/** \param [in] call_mpi_init .true. if the library needs to call MPI_Init()
+
+    Example:
+    \code{.F90}
+        integer ierr
+        call mpi_init(ierr)
+        ! initialize low-level stuff and don't call MPI_Init() from SIRIUS
+        call sirius_platform_initialize(0)
+    \endcode
+*/
+void FORTRAN(sirius_platform_initialize)(int32_t* call_mpi_init_)
+{
+    bool call_mpi_init = (*call_mpi_init_ != 0) ? true : false; 
+    Platform::initialize(call_mpi_init);
+}
 
 /// Set lattice vectors
 /** \param [in] a1 1st lattice vector
@@ -42,51 +60,6 @@ void FORTRAN(sirius_set_lattice_vectors)(real8* a1, real8* a2, real8* a3)
     log_function_exit(__func__);
 }
 
-/// Set maximum l-value for augmented waves
-/** \param [in] lmax_apw maximum l-value for augmented waves
-
-    Example:
-    \code{.F90}
-        integer lmaxapw
-        lmaxapw = 10
-        call sirius_set_lmax_apw(lmaxapw)
-    \endcode
-*/
-//** void FORTRAN(sirius_set_lmax_apw)(int32_t* lmax_apw)
-//** {
-//**     global_parameters.set_lmax_apw(*lmax_apw);
-//** }
-
-/// Set maximum l-value for density expansion
-/** \param [in] lmax_rho maximum l-value for density expansion
-    
-    Example:
-    \code{.F90}
-        integer lmaxrho
-        lmaxrho = 8
-        call sirius_set_lmax_rho(lmaxrho)
-    \endcode
-*/
-//** void FORTRAN(sirius_set_lmax_rho)(int32_t* lmax_rho)
-//** {
-//**     global_parameters.set_lmax_rho(*lmax_rho);
-//** }
-
-/// Set maximum l-value for potential expansion
-/** \param [in] lmax_pot maximum l-value for potential expansion
-    
-    Example:
-    \code{.F90}
-        integer lmaxpot
-        lmaxpot = 8
-        call sirius_set_lmax_pot(lmaxpot)
-    \endcode
-*/
-//** void FORTRAN(sirius_set_lmax_pot)(int32_t* lmax_pot)
-//** {
-//**     global_parameters.set_lmax_pot(*lmax_pot);
-//** }
-
 /// Set plane-wave cutoff for FFT grid
 /** \param [in] gmaxvr maximum G-vector length 
 
@@ -103,40 +76,6 @@ void FORTRAN(sirius_set_pw_cutoff)(real8* pw_cutoff)
     global_parameters.set_pw_cutoff(*pw_cutoff);
     log_function_exit(__func__);
 }
-
-/// Set the number of spins
-/** \param [in] num_spins number of spins (1 or 2)
-    
-    The default number of spins is 1 (non-magnetic treatment of electrons).
-
-    Example:
-    \code{.F90}
-        if (spinpol) call sirius_set_num_spins(2)
-    \endcode
-*/
-//** void FORTRAN(sirius_set_num_spins)(int32_t* num_spins)
-//** {
-//**     global_parameters.set_num_spins(*num_spins);
-//** }
-
-/// Set the number of magnetic dimensions
-/** \param [in] num_mag_dims number of magnetic dimensions (0, 1, or 3)
-    
-    In case of spin-polarized calculation magnetization density may have only one (z) component 
-    (num_mag_dims = 1, collinear case) or all three components (num_mag_dims = 3, non-collinear case).
-    For non magnetic calcualtions num_mag_dims = 0.
-
-    Example:
-    \code{.F90}
-        integer ndmag
-        ndmag = 3
-        call sirius_set_num_mag_dims(ndmag)
-    \endcode
-*/
-//** void FORTRAN(sirius_set_num_mag_dims)(int32_t* num_mag_dims)
-//** {
-//**     global_parameters.set_num_mag_dims(*num_mag_dims);
-//** }
 
 /// Turn on or off the automatic scaling of muffin-tin spheres
 /** \param [in] auto_rmt .true. if muffin-tin spheres must be resized to the maximally allowed radii
@@ -160,7 +99,7 @@ void FORTRAN(sirius_set_auto_rmt)(int32_t* auto_rmt)
 
 /// Add atom type to the library
 /** \param [in] atom_type_id unique id of atom type
-    \param [in] label json file label of atom type
+    \param [in] label file label of atom type
 
     Atom type (species in the terminology of Exciting/Elk) is a class which holds information 
     common to the atoms of the same element: charge, number of core and valence electrons, muffin-tin
@@ -173,7 +112,7 @@ void FORTRAN(sirius_set_auto_rmt)(int32_t* auto_rmt)
           ! add atom type with ID=is and read the .json file with 
           ! the symbol name if it exists
           !======================================================
-          call sirius_add_atom_type(is, trim(spsymb(is))
+          call sirius_add_atom_type(is, trim(spfname(is))
         enddo
     \endcode
 */
@@ -186,6 +125,22 @@ void FORTRAN(sirius_add_atom_type)(int32_t* atom_type_id, char* label, int32_t l
 
 /// Set basic properties of the atom type
 /** \param [in] atom_type_id id of the atom type
+    \param [in] symbol symbol of the element
+    \param [in] zn positive integer charge
+    \param [in] mass atomic mass
+    \param [in] mt_radius muffin-tin radius
+    \param [in] num_mt_points number of muffin-tin points
+    \param [in] radial_grid_origin origin of radial grid
+    \param [in] radial_grid_infinity effective infinity
+    
+    Example:
+    \code{.F90}
+        do is=1,nspecies
+          call sirius_set_atom_type_properties(is, trim(spsymb(is)), nint(-spzn(is)),&
+                                              &spmass(is), rmt(is), nrmt(is), &
+                                              &sprmin(is), sprmax(is))
+        enddo
+    \endcode
 */ 
 void FORTRAN(sirius_set_atom_type_properties)(int32_t* atom_type_id, char* symbol, int32_t* zn, real8* mass, 
                                               real8* mt_radius, int32_t* num_mt_points, real8* radial_grid_origin, 
@@ -203,6 +158,18 @@ void FORTRAN(sirius_set_atom_type_properties)(int32_t* atom_type_id, char* symbo
     log_function_exit(__func__);
 }
 
+/// Set the radial grid of atom type
+/** \param [in] atom_type_id id of the atom type
+    \param [in] num_radial_points number of radial points
+    \param [in] radial_points radial points
+
+    Example:
+    \code{.F90}
+        do is=1,nspecies
+          call sirius_set_atom_type_radial_grid(is, spnr(is), spr(1, is))
+        enddo
+    \endcode
+*/
 void FORTRAN(sirius_set_atom_type_radial_grid)(int32_t* atom_type_id, int32_t* num_radial_points, 
                                                real8* radial_points)
 {
@@ -210,6 +177,27 @@ void FORTRAN(sirius_set_atom_type_radial_grid)(int32_t* atom_type_id, int32_t* n
     type->set_radial_grid(*num_radial_points, radial_points);
 }
 
+/// Set the atomic level configuration of the atom type
+/** With each call to the function new atomic level is added to the list of atomic levels of the atom type.
+
+    \param [in] atom_type_id id of the atom type
+    \param [in] n principal quantum number of the atomic level
+    \param [in] l angular quantum number of the atomic level
+    \param [in] k kappa quantum number of the atomic level
+    \param [in] occupancy occupancy of the atomic level
+    \param [in] core .true. if the atomic level belongs to the core
+
+    Example
+    \code{.F90}
+        do is=1,nspecies
+          do ist=1,spnst(is)
+            call sirius_set_atom_type_configuration(is, spn(ist, is), spl(ist, is),&
+                                                   &spk(ist, is), spocc(ist, is),&
+                                                   &spcore(ist, is)) 
+          enddo
+        enddo
+    \endcode
+*/
 void FORTRAN(sirius_set_atom_type_configuration)(int32_t* atom_type_id, int32_t* n, int32_t* l, int32_t* k, 
                                                  real8* occupancy, int32_t* core_)
 {
@@ -219,7 +207,6 @@ void FORTRAN(sirius_set_atom_type_configuration)(int32_t* atom_type_id, int32_t*
     type->set_configuration(*n, *l, *k, *occupancy, core);
     log_function_exit(__func__);
 }
-
 
 /// Add atom to the library
 /** \param [in] atom_type_id id of the atom type
@@ -265,8 +252,44 @@ void FORTRAN(sirius_set_aw_cutoff)(real8* aw_cutoff)
     log_function_exit(__func__);
 }
 
+/// Initialize the global variables
+/** The function must be called after setting up the lattice vectors, plane wave-cutoff, autormt flag and loading
+    atom types and atoms into the unit cell.
 
+    \param [in] lmax_apw maximum \f$ \ell \f$ for APW functions
+    \param [in] lmax_rho maximum \f$ \ell \f$ for charge density and magnetization
+    \param [in] lmax_pot maximum \f$ \ell \f$ for potential and effective magnetic field
+    \param [in] num_mag_dims number of magnetic dimensions (0, 1 or 3)
 
+    Example:
+    \code{.F90}
+        integer lmaxapw, lmaxvr, ndmag
+        lmaxapw = 10
+        lmaxvr = 8
+        ndmag = 0
+        ! initialize global variables
+        call sirius_global_initialize(lmaxapw, lmaxvr, lmaxvr, ndmag)
+    \endcode
+*/
+void FORTRAN(sirius_global_initialize)(int32_t* lmax_apw, int32_t* lmax_rho, int32_t* lmax_pot, int32_t* num_mag_dims)
+{
+    log_function_enter(__func__);
+    int num_spins = (*num_mag_dims == 0) ? 1 : 2;
+    global_parameters.set_lmax_apw(*lmax_apw);
+    global_parameters.set_lmax_rho(*lmax_rho);
+    global_parameters.set_lmax_pot(*lmax_pot);
+    global_parameters.set_num_spins(num_spins);
+    global_parameters.set_num_mag_dims(*num_mag_dims);
+    global_parameters.initialize();
+    log_function_exit(__func__);
+}
+
+/// Initialize the Density object
+/** \param [in] rhomt pointer to the muffin-tin part of the density
+    \param [in] rhoit pointer to the interstitial part of the denssity
+    \param [in] magmt pointer to the muffin-tin part of the magnetization
+    \param [in] magit pointer to the interstitial part of the magnetization
+*/
 void FORTRAN(sirius_density_initialize)(real8* rhomt, real8* rhoit, real8* magmt, real8* magit)
 {
     log_function_enter(__func__);
@@ -330,11 +353,13 @@ void FORTRAN(sirius_get_num_mt_points)(int32_t* atom_type_id, int32_t* num_mt_po
     log_function_exit(__func__);
 }
 
-//void FORTRAN(sirius_get_mt_points)(int32_t* atom_type_id, real8* mt_points)
-//{
-//    memcpy(mt_points, global_parameters.atom_type_by_id(*atom_type_id)->radial_grid().get_ptr(),
-//        global_parameters.atom_type_by_id(*atom_type_id)->num_mt_points() * sizeof(real8));
-//}
+void FORTRAN(sirius_get_mt_points)(int32_t* atom_type_id, real8* mt_points)
+{
+    log_function_enter(__func__);
+    sirius::Atom_type* atom = global_parameters.atom_type_by_id(*atom_type_id);
+    for (int i = 0; i < atom->num_mt_points(); i++) mt_points[i] = atom->radial_grid(i);
+    log_function_exit(__func__);
+}
 
 void FORTRAN(sirius_get_num_grid_points)(int32_t* num_grid_points)
 {
@@ -514,46 +539,22 @@ void FORTRAN(sirius_get_num_core_electrons)(real8* num_core_electrons)
 }
 
 
-/// Initialize the low-level of the library
-void FORTRAN(sirius_platform_initialize)(int32_t* call_mpi_init_)
-{
-    bool call_mpi_init = (*call_mpi_init_ != 0) ? true : false; 
-    Platform::initialize(call_mpi_init);
-}
-
-/// Initialize the global variables
-void FORTRAN(sirius_global_initialize)(int32_t* lmax_apw, int32_t* lmax_rho, int32_t* lmax_pot, int32_t* num_mag_dims)
-{
-    log_function_enter(__func__);
-    int num_spins = (*num_mag_dims == 0) ? 1 : 2;
-    global_parameters.set_lmax_apw(*lmax_apw);
-    global_parameters.set_lmax_rho(*lmax_rho);
-    global_parameters.set_lmax_pot(*lmax_pot);
-    global_parameters.set_num_spins(num_spins);
-    global_parameters.set_num_mag_dims(*num_mag_dims);
-    global_parameters.initialize();
-    log_function_exit(__func__);
-}
-
 
 /// Clear the global variables and destroy all objects
 void FORTRAN(sirius_clear)(void)
 {
     log_function_enter(__func__);
     global_parameters.clear();
-    
     if (density) 
     {
         delete density;
         density = NULL;
     }
-    
     if (potential)
     {
         delete potential;
         potential = NULL;
     }
-
     if (dft_ground_state)
     {
         delete dft_ground_state;
@@ -652,13 +653,12 @@ void FORTRAN(sirius_get_band_occupancies)(int32_t* kset_id, int32_t* ik_, real8*
 /*
     print info
 */
-void FORTRAN(sirius_print_info)(void)
-{
-    log_function_enter(__func__);
-    global_parameters.print_info();
-    for (int i = 0; i < (int)kset_list.size(); i++) if (kset_list[i]) kset_list[i]->print_info();
-    log_function_exit(__func__);
-}
+//== void FORTRAN(sirius_print_info)(void)
+//== {
+//==     log_function_enter(__func__);
+//==     global_parameters.print_info();
+//==     log_function_exit(__func__);
+//== }
 
 void FORTRAN(sirius_print_timers)(void)
 {
@@ -683,57 +683,42 @@ void FORTRAN(sirius_stop_timer)(char* name_, int32_t name_len)
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_read_state)()
+void FORTRAN(sirius_save_potential)(void)
 {
     log_function_enter(__func__);
-    // TODO: save and load the potential of free atoms
-    global_parameters.solve_free_atoms();
-    potential->hdf5_read();
-    potential->update_atomic_potential();
-    sirius:: HDF5_tree fout(storage_file_name, false);
-    log_function_exit(__func__);
-    //** fout.read("energy_fermi", &global_parameters.rti().energy_fermi);
-}
-
-void FORTRAN(sirius_save_potential)()
-{
-    log_function_enter(__func__);
-    if (Platform::mpi_rank() == 0) 
-    {
-        // create new hdf5 file
-        sirius::HDF5_tree fout(storage_file_name, true);
-        fout.create_node("parameters");
-        fout.create_node("kpoints");
-        fout.create_node("effective_potential");
-        fout.create_node("effective_magnetic_field");
-        
-        // write Fermi energy
-        //** fout.write("energy_fermi", &global_parameters.rti().energy_fermi);
-        
-        // write potential
-        potential->effective_potential()->hdf5_write(fout["effective_potential"]);
-
-        // write magnetic field
-        for (int j = 0; j < global_parameters.num_mag_dims(); j++)
-            potential->effective_magnetic_field(j)->hdf5_write(fout["effective_magnetic_field"].create_node(j));
-        
-    }
-    Platform::barrier();
+    potential->save();
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_save_wave_functions)(int32_t* kset_id)
+void FORTRAN(sirius_load_potential)(void)
 {
     log_function_enter(__func__);
-    kset_list[*kset_id]->save_wave_functions();
+    potential->load();
     log_function_exit(__func__);
 }
-    
-void FORTRAN(sirius_load_wave_functions)(int32_t* kset_id)
+
+//== void FORTRAN(sirius_save_wave_functions)(int32_t* kset_id)
+//== {
+//==     log_function_enter(__func__);
+//==     kset_list[*kset_id]->save_wave_functions();
+//==     log_function_exit(__func__);
+//== }
+//==     
+//== void FORTRAN(sirius_load_wave_functions)(int32_t* kset_id)
+//== {
+//==     log_function_enter(__func__);
+//==     kset_list[*kset_id]->load_wave_functions();
+//==     log_function_exit(__func__);
+//== }
+
+void FORTRAN(sirius_save_kset)(int32_t* kset_id)
 {
-    log_function_enter(__func__);
-    kset_list[*kset_id]->load_wave_functions();
-    log_function_exit(__func__);
+    kset_list[*kset_id]->save();
+}
+
+void FORTRAN(sirius_load_kset)(int32_t* kset_id)
+{
+    kset_list[*kset_id]->load();
 }
 
 /*  Relevant block in the input file:
@@ -1102,7 +1087,6 @@ void FORTRAN(sirius_delete_kset)(int32_t* kset_id)
     kset_list[*kset_id] = NULL;
     log_function_exit(__func__);
 }
-
 
 void FORTRAN(sirius_get_local_num_kpoints)(int32_t* kset_id, int32_t* nkpt_loc)
 {
@@ -1747,6 +1731,20 @@ void FORTRAN(sirius_update)(int32_t* kset_id)
     kset_list[*kset_id]->update();
     log_function_exit(__func__);
 }
-    
+
+void FORTRAN(sirius_core_leakage)(real8* core_leakage)
+{
+    *core_leakage = density->core_leakage();
+}
+
+void FORTRAN(sirius_ground_state_print_info)(void)
+{
+    dft_ground_state->print_info();
+}
+
+void FORTRAN(sirius_create_storage_file)(void)
+{
+    global_parameters.create_storage_file();
+}
 
 } // extern "C"

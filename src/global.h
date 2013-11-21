@@ -1000,6 +1000,10 @@ class Global : public Step_function
                 fout.create_node("effective_magnetic_field");
                 fout.create_node("density");
                 fout.create_node("magnetization");
+                
+                fout["parameters"].write("num_spins", num_spins());
+                fout["parameters"].write("num_mag_dims", num_mag_dims());
+                fout["parameters"].write("num_bands", num_bands());
             }
             Platform::barrier();
         }

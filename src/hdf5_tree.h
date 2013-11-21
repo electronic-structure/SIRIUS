@@ -322,6 +322,19 @@ class HDF5_tree
             write_mdarray(name, data);
         }
 
+        template<typename T>
+        void write(int name_id, std::vector<T>& vec)
+        {
+            std::string name = Utils::to_string(name_id);
+            write(name, &vec[0], (int)vec.size());
+        }
+        
+        template<typename T>
+        void write(const std::string& name, std::vector<T>& vec)
+        {
+            write(name, &vec[0], (int)vec.size());
+        }
+
         /// Read a vector or a scalar.
         template<typename T>
         void read(const std::string& name, T* data, int size = 1)
@@ -356,6 +369,19 @@ class HDF5_tree
         {
             std::string name = Utils::to_string(name_id);
             read_mdarray(name, data);
+        }
+
+        template<typename T>
+        void read(int name_id, std::vector<T>& vec)
+        {
+            std::string name = Utils::to_string(name_id);
+            read(name, &vec[0], (int)vec.size());
+        }
+
+        template<typename T>
+        void read(const std::string& name, std::vector<T>& vec)
+        {
+            read(name, &vec[0], (int)vec.size());
         }
 
         HDF5_tree operator[](const std::string& path__)

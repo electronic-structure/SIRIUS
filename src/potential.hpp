@@ -86,6 +86,40 @@ void Potential::update()
             }
         }
     }
+    
+    //==================================================
+    // compute Gamma[5/2 + n + l] / Gamma[3/2 + l] / R^l
+    //
+    // use Gamma[1/2 + p] = (2p - 1)!!/2^p Sqrt[Pi]
+    //==================================================
+    gamma_factors_R_.set_dimensions(parameters_.lmax_rho() + 1, parameters_.num_atom_types());
+    gamma_factors_R_.allocate();
+    for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+    {
+        for (int l = 0; l <= parameters_.lmax_rho(); l++)
+        {
+            //double p = pow(2.0, pseudo_density_order + 1) * pow(parameters_.atom_type(iat)->mt_radius(), l);
+            double Rl = pow(parameters_.atom_type(iat)->mt_radius(), l);
+
+            int n_min = (2 * l + 3);
+            int n_max = (2 * l + 1) + (2 * pseudo_density_order + 2);
+            // split factorial product into two parts to avoid overflow
+            double f1 = 1.0;
+            double f2 = 1.0;
+            for (int n = n_min; n <= n_max; n += 2) 
+            {
+                if (f1 < Rl) 
+                {
+                    f1 *= (n / 2.0);
+                }
+                else
+                {
+                    f2 *= (n / 2.0);
+                }
+            }
+            gamma_factors_R_(l, iat) = (f1 / Rl) * f2;
+        }
+    }
 }
 
 void Potential::poisson_vmt(mdarray<Spheric_function<complex16>*, 1>& rho_ylm, mdarray<Spheric_function<complex16>*, 1>& vh_ylm, 
@@ -204,13 +238,13 @@ void Potential::poisson_pw(mdarray<complex16, 2>& qmt, mdarray<complex16, 2>& qi
     // the difference bethween true and interstitial-in-the-mt multipole moments and divided by the 
     // moment of the pseudodensity
     
-    // precompute R^(-l)
-    mdarray<double, 2> Rl(parameters_.lmax_rho() + 1, parameters_.num_atom_types());
-    for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
-    {
-        for (int l = 0; l <= parameters_.lmax_rho(); l++)
-            Rl(l, iat) = pow(parameters_.atom_type(iat)->mt_radius(), -l);
-    }
+    //== // precompute R^(-l)
+    //== mdarray<double, 2> Rl(parameters_.lmax_rho() + 1, parameters_.num_atom_types());
+    //== for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+    //== {
+    //==     for (int l = 0; l <= parameters_.lmax_rho(); l++)
+    //==         Rl(l, iat) = pow(parameters_.atom_type(iat)->mt_radius(), -l);
+    //== }
 
     #pragma omp parallel default(shared)
     {
@@ -229,8 +263,9 @@ void Potential::poisson_pw(mdarray<complex16, 2>& qmt, mdarray<complex16, 2>& qi
             {
                 for (int m = -l; m <= l; m++, lm++)
                 {
-                    zp[lm] = (qmt(lm, ia) - qit(lm, ia)) * Rl(l, iat) * conj(zil_[l]) *
-                             gamma_factors[l][pseudo_density_order]; 
+                    //== zp[lm] = (qmt(lm, ia) - qit(lm, ia)) * Rl(l, iat) * conj(zil_[l]) *
+                    //==          gamma_factors[l][pseudo_density_order]; 
+                    zp[lm] = (qmt(lm, ia) - qit(lm, ia)) * conj(zil_[l]) * gamma_factors_R_(l, iat);
                 }
             }
 
@@ -251,8 +286,7 @@ void Potential::poisson_pw(mdarray<complex16, 2>& qmt, mdarray<complex16, 2>& qi
                     for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
                     {
                         complex16 zt1(0, 0);
-                        for (int m = -l; m <= l; m++, lm++)
-                            zt1 += parameters_.gvec_ylm(lm, igloc) * zp[lm];
+                        for (int m = -l; m <= l; m++, lm++) zt1 += parameters_.gvec_ylm(lm, igloc) * zp[lm];
 
                         zt2 += zt1 * sbessel_mt_(l + pseudo_density_order + 1, iat, parameters_.gvec_shell<global>(ig));
                     }
@@ -1039,14 +1073,6 @@ void Potential::zero()
 //    }
 //}
 
-void Potential::hdf5_read()
-{
-    HDF5_tree fout(storage_file_name, false);
-    effective_potential_->hdf5_read(fout["effective_potential"]);
-    for (int j = 0; j < parameters_.num_mag_dims(); j++)
-        effective_magnetic_field_[j]->hdf5_read(fout["effective_magnetic_field"][j]);
-}
-
 void Potential::update_atomic_potential()
 {
     for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
@@ -1077,17 +1103,35 @@ void Potential::save()
     if (Platform::mpi_rank() == 0)
     {
         HDF5_tree fout(storage_file_name, false);
+
         effective_potential_->hdf5_write(fout["effective_potential"]);
+
         for (int j = 0; j < parameters_.num_mag_dims(); j++)
             effective_magnetic_field_[j]->hdf5_write(fout["effective_magnetic_field"].create_node(j));
+
+        fout["effective_potential"].create_node("free_atom_potential");
+        for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+        {
+            fout["effective_potential"]["free_atom_potential"].write(iat, parameters_.atom_type(iat)->free_atom_potential());
+        }
     }
+    Platform::barrier();
 }
 
 void Potential::load()
 {
     HDF5_tree fout(storage_file_name, false);
+    
     effective_potential_->hdf5_read(fout["effective_potential"]);
+
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
         effective_magnetic_field_[j]->hdf5_read(fout["effective_magnetic_field"][j]);
+    
+    for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
+    {
+        fout["effective_potential"]["free_atom_potential"].read(iat, parameters_.atom_type(iat)->free_atom_potential());
+    }
+
+    update_atomic_potential();
 }
 

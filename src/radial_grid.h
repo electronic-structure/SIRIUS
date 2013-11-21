@@ -295,10 +295,11 @@ class Radial_grid
         }
 
         /// Get all radial points.
-        inline void get_radial_points(double* radial_points)
-        {
-            memcpy(radial_points, &points_[0], points_.size() * sizeof(real8));
-        }
+        /// \todo make it safe and universal
+        //== inline void get_radial_points(double* radial_points)
+        //== {
+        //==     memcpy(radial_points, &points_[0], points_.size() * sizeof(real8));
+        //== }
 
         /// Get muffin-tin radial points and deltas.
         inline void get_r_dr(double* array, int lda)

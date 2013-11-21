@@ -257,9 +257,13 @@ class K_point
 
         //== void spinor_wave_function_component_mt(int lmax, int ispn, int jloc, mt_functions<complex16>& psilm);
         
-        void save_wave_functions(int id);
+        void save(int id);
 
-        void load_wave_functions(int id);
+        void load(int id);
+
+        //== void save_wave_functions(int id);
+
+        //== void load_wave_functions(int id);
 
         void get_fv_eigen_vectors(mdarray<complex16, 2>& fv_evec);
         

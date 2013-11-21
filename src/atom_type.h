@@ -626,6 +626,11 @@ class Atom_type
             return free_atom_radial_functions_(ir, ist);
         }
 
+        inline std::vector<double>& free_atom_potential()
+        {
+            return free_atom_potential_;
+        }
+
         inline void set_symbol(const std::string symbol__)
         {
             symbol_ = symbol__;
