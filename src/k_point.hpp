@@ -66,21 +66,21 @@ void K_point::update()
         fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), parameters_.spl_fv_states_col().local_size());
         fv_eigen_vectors_.allocate();
         
-        fv_states_col_.set_dimensions(mtgk_size(), parameters_.spl_fv_states_col().local_size());
+        fv_states_col_.set_dimensions(wf_size(), parameters_.spl_fv_states_col().local_size());
         fv_states_col_.allocate();
         
         if (num_ranks() == 1)
         {
-            fv_states_row_.set_dimensions(mtgk_size(), parameters_.num_fv_states());
+            fv_states_row_.set_dimensions(wf_size(), parameters_.num_fv_states());
             fv_states_row_.set_ptr(fv_states_col_.get_ptr());
         }
         else
         {
-            fv_states_row_.set_dimensions(mtgk_size(), parameters_.spl_fv_states_row().local_size());
+            fv_states_row_.set_dimensions(wf_size(), parameters_.spl_fv_states_row().local_size());
             fv_states_row_.allocate();
         }
         
-        spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), parameters_.spl_spinor_wf_col().local_size());
+        spinor_wave_functions_.set_dimensions(wf_size(), parameters_.num_spins(), parameters_.spl_spinor_wf_col().local_size());
 
         if (parameters_.need_sv())
         {
@@ -95,7 +95,7 @@ void K_point::update()
     {
         fd_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), parameters_.spl_spinor_wf_col().local_size());
         fd_eigen_vectors_.allocate();
-        spinor_wave_functions_.set_dimensions(mtgk_size(), parameters_.num_spins(), parameters_.spl_spinor_wf_col().local_size());
+        spinor_wave_functions_.set_dimensions(wf_size(), parameters_.num_spins(), parameters_.spl_spinor_wf_col().local_size());
         spinor_wave_functions_.allocate();
     }
 }
@@ -452,7 +452,7 @@ void K_point::generate_fv_states()
 
     for (int j = 0; j < parameters_.spl_fv_states_col().local_size(); j++)
     {
-        Platform::allreduce(&fv_states_col_(0, j), mtgk_size(), parameters_.mpi_grid().communicator(1 << _dim_row_));
+        Platform::allreduce(&fv_states_col_(0, j), wf_size(), parameters_.mpi_grid().communicator(1 << _dim_row_));
     }
 
     log_function_exit(__func__);
@@ -479,14 +479,14 @@ void K_point::generate_spinor_wave_functions()
             if (parameters_.num_mag_dims() != 3)
             {
                 // multiply up block for first half of the bands, dn block for second half of the bands
-                blas<cpu>::gemm(0, 0, mtgk_size(), ncol, nrow, &fv_states_row_(0, 0), fv_states_row_.ld(), 
+                blas<cpu>::gemm(0, 0, wf_size(), ncol, nrow, &fv_states_row_(0, 0), fv_states_row_.ld(), 
                                 &sv_eigen_vectors_(0, ispn * ncol), sv_eigen_vectors_.ld(), 
                                 &spinor_wave_functions_(0, ispn, ispn * ncol), wfld);
             }
             else
             {
                 // multiply up block and then dn block for all bands
-                blas<cpu>::gemm(0, 0, mtgk_size(), parameters_.spl_spinor_wf_col().local_size(), nrow, 
+                blas<cpu>::gemm(0, 0, wf_size(), parameters_.spl_spinor_wf_col().local_size(), nrow, 
                                 &fv_states_row_(0, 0), fv_states_row_.ld(), 
                                 &sv_eigen_vectors_(ispn * nrow, 0), sv_eigen_vectors_.ld(), 
                                 &spinor_wave_functions_(0, ispn, 0), wfld);
@@ -1064,127 +1064,133 @@ void K_point::test_fv_states(int use_fft)
     }
 }
 
-//** void K_point::test_spinor_wave_functions(int use_fft)
-//** {
-//**     std::vector<complex16> v1[2];
-//**     std::vector<complex16> v2;
-//** 
-//**     if (use_fft == 0 || use_fft == 1)
-//**         v2.resize(parameters_.fft().size());
-//**     
-//**     if (use_fft == 0) 
-//**         for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-//**             v1[ispn].resize(num_gkvec());
-//**     
-//**     if (use_fft == 1) 
-//**         for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-//**             v1[ispn].resize(parameters_.fft().size());
-//**     
-//**     double maxerr = 0;
-//** 
-//**     for (int j1 = 0; j1 < parameters_.num_bands(); j1++)
-//**     {
-//**         if (use_fft == 0)
-//**         {
-//**             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-//**             {
-//**                 parameters_.fft().input(num_gkvec(), &fft_index_[0], 
-//**                                    &spinor_wave_functions_(parameters_.mt_basis_size(), ispn, j1));
-//**                 parameters_.fft().transform(1);
-//**                 parameters_.fft().output(&v2[0]);
-//** 
-//**                 for (int ir = 0; ir < parameters_.fft().size(); ir++)
-//**                     v2[ir] *= parameters_.step_function(ir);
-//**                 
-//**                 parameters_.fft().input(&v2[0]);
-//**                 parameters_.fft().transform(-1);
-//**                 parameters_.fft().output(num_gkvec(), &fft_index_[0], &v1[ispn][0]); 
-//**             }
-//**         }
-//**         
-//**         if (use_fft == 1)
-//**         {
-//**             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-//**             {
-//**                 parameters_.fft().input(num_gkvec(), &fft_index_[0], 
-//**                                    &spinor_wave_functions_(parameters_.mt_basis_size(), ispn, j1));
-//**                 parameters_.fft().transform(1);
-//**                 parameters_.fft().output(&v1[ispn][0]);
-//**             }
-//**         }
-//**        
-//**         for (int j2 = 0; j2 < parameters_.num_bands(); j2++)
-//**         {
-//**             complex16 zsum(0.0, 0.0);
-//**             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-//**             {
-//**                 for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-//**                 {
-//**                     int offset_wf = parameters_.atom(ia)->offset_wf();
-//**                     Atom_type* type = parameters_.atom(ia)->type();
-//**                     Atom_symmetry_class* symmetry_class = parameters_.atom(ia)->symmetry_class();
-//** 
-//**                     for (int l = 0; l <= parameters_.lmax_apw(); l++)
-//**                     {
-//**                         int ordmax = type->indexr().num_rf(l);
-//**                         for (int io1 = 0; io1 < ordmax; io1++)
-//**                             for (int io2 = 0; io2 < ordmax; io2++)
-//**                                 for (int m = -l; m <= l; m++)
-//**                                     zsum += conj(spinor_wave_functions_(offset_wf + 
-//**                                                                         type->indexb_by_l_m_order(l, m, io1),
-//**                                                                         ispn, j1)) *
-//**                                                  spinor_wave_functions_(offset_wf + 
-//**                                                                         type->indexb_by_l_m_order(l, m, io2), 
-//**                                                                         ispn, j2) * 
-//**                                                  symmetry_class->o_radial_integral(l, io1, io2);
-//**                     }
-//**                 }
-//**             }
-//**             
-//**             if (use_fft == 0)
-//**             {
-//**                for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-//**                {
-//**                    for (int ig = 0; ig < num_gkvec(); ig++)
-//**                        zsum += conj(v1[ispn][ig]) * spinor_wave_functions_(parameters_.mt_basis_size() + ig, ispn, j2);
-//**                }
-//**             }
-//**            
-//**             if (use_fft == 1)
-//**             {
-//**                 for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-//**                 {
-//**                     parameters_.fft().input(num_gkvec(), &fft_index_[0], 
-//**                                        &spinor_wave_functions_(parameters_.mt_basis_size(), ispn, j2));
-//**                     parameters_.fft().transform(1);
-//**                     parameters_.fft().output(&v2[0]);
-//** 
-//**                     for (int ir = 0; ir < parameters_.fft().size(); ir++)
-//**                         zsum += conj(v1[ispn][ir]) * v2[ir] * parameters_.step_function(ir) / double(parameters_.fft().size());
-//**                 }
-//**             }
-//**             
-//**             if (use_fft == 2) 
-//**             {
-//**                 for (int ig1 = 0; ig1 < num_gkvec(); ig1++)
-//**                 {
-//**                     for (int ig2 = 0; ig2 < num_gkvec(); ig2++)
-//**                     {
-//**                         int ig3 = parameters_.index_g12(gvec_index(ig1), gvec_index(ig2));
-//**                         for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-//**                             zsum += conj(spinor_wave_functions_(parameters_.mt_basis_size() + ig1, ispn, j1)) * 
-//**                                          spinor_wave_functions_(parameters_.mt_basis_size() + ig2, ispn, j2) * 
-//**                                     parameters_.step_function_pw(ig3);
-//**                     }
-//**                }
-//**            }
-//** 
-//**            zsum = (j1 == j2) ? zsum - complex16(1.0, 0.0) : zsum;
-//**            maxerr = std::max(maxerr, abs(zsum));
-//**         }
-//**     }
-//**     std :: cout << "maximum error = " << maxerr << std::endl;
-//** }
+void K_point::test_spinor_wave_functions(int use_fft)
+{
+    if (num_ranks() > 1) error_local(__FILE__, __LINE__, "test of spinor wave functions on multiple ranks is not implemented");
+
+    std::vector<complex16> v1[2];
+    std::vector<complex16> v2;
+
+    if (use_fft == 0 || use_fft == 1) v2.resize(parameters_.fft().size());
+    
+    if (use_fft == 0) 
+    {
+        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++) v1[ispn].resize(num_gkvec());
+    }
+    
+    if (use_fft == 1) 
+    {
+        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++) v1[ispn].resize(parameters_.fft().size());
+    }
+    
+    double maxerr = 0;
+
+    for (int j1 = 0; j1 < parameters_.num_bands(); j1++)
+    {
+        if (use_fft == 0)
+        {
+            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+            {
+                parameters_.fft().input(num_gkvec(), &fft_index_[0], 
+                                       &spinor_wave_functions_(parameters_.mt_basis_size(), ispn, j1));
+                parameters_.fft().transform(1);
+                parameters_.fft().output(&v2[0]);
+
+                for (int ir = 0; ir < parameters_.fft().size(); ir++) v2[ir] *= parameters_.step_function(ir);
+                
+                parameters_.fft().input(&v2[0]);
+                parameters_.fft().transform(-1);
+                parameters_.fft().output(num_gkvec(), &fft_index_[0], &v1[ispn][0]); 
+            }
+        }
+        
+        if (use_fft == 1)
+        {
+            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+            {
+                parameters_.fft().input(num_gkvec(), &fft_index_[0], 
+                                       &spinor_wave_functions_(parameters_.mt_basis_size(), ispn, j1));
+                parameters_.fft().transform(1);
+                parameters_.fft().output(&v1[ispn][0]);
+            }
+        }
+       
+        for (int j2 = 0; j2 < parameters_.num_bands(); j2++)
+        {
+            complex16 zsum(0, 0);
+            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+            {
+                for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+                {
+                    int offset_wf = parameters_.atom(ia)->offset_wf();
+                    Atom_type* type = parameters_.atom(ia)->type();
+                    Atom_symmetry_class* symmetry_class = parameters_.atom(ia)->symmetry_class();
+
+                    for (int l = 0; l <= parameters_.lmax_apw(); l++)
+                    {
+                        int ordmax = type->indexr().num_rf(l);
+                        for (int io1 = 0; io1 < ordmax; io1++)
+                        {
+                            for (int io2 = 0; io2 < ordmax; io2++)
+                            {
+                                for (int m = -l; m <= l; m++)
+                                {
+                                    zsum += conj(spinor_wave_functions_(offset_wf + type->indexb_by_l_m_order(l, m, io1), ispn, j1)) *
+                                            spinor_wave_functions_(offset_wf + type->indexb_by_l_m_order(l, m, io2), ispn, j2) * 
+                                            symmetry_class->o_radial_integral(l, io1, io2);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if (use_fft == 0)
+            {
+               for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+               {
+                   for (int ig = 0; ig < num_gkvec(); ig++)
+                       zsum += conj(v1[ispn][ig]) * spinor_wave_functions_(parameters_.mt_basis_size() + ig, ispn, j2);
+               }
+            }
+           
+            if (use_fft == 1)
+            {
+                for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+                {
+                    parameters_.fft().input(num_gkvec(), &fft_index_[0], 
+                                           &spinor_wave_functions_(parameters_.mt_basis_size(), ispn, j2));
+                    parameters_.fft().transform(1);
+                    parameters_.fft().output(&v2[0]);
+
+                    for (int ir = 0; ir < parameters_.fft().size(); ir++)
+                        zsum += conj(v1[ispn][ir]) * v2[ir] * parameters_.step_function(ir) / double(parameters_.fft().size());
+                }
+            }
+            
+            if (use_fft == 2) 
+            {
+                for (int ig1 = 0; ig1 < num_gkvec(); ig1++)
+                {
+                    for (int ig2 = 0; ig2 < num_gkvec(); ig2++)
+                    {
+                        int ig3 = parameters_.index_g12(gvec_index(ig1), gvec_index(ig2));
+                        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+                        {
+                            zsum += conj(spinor_wave_functions_(parameters_.mt_basis_size() + ig1, ispn, j1)) * 
+                                    spinor_wave_functions_(parameters_.mt_basis_size() + ig2, ispn, j2) * 
+                                    parameters_.step_function_pw(ig3);
+                        }
+                    }
+               }
+           }
+
+           zsum = (j1 == j2) ? zsum - complex16(1.0, 0.0) : zsum;
+           maxerr = std::max(maxerr, abs(zsum));
+        }
+    }
+    std :: cout << "maximum error = " << maxerr << std::endl;
+}
 
 void K_point::save(int id)
 {
@@ -1208,7 +1214,7 @@ void K_point::save(int id)
     
     Platform::barrier(parameters_.mpi_grid().communicator(1 << _dim_col_));
     
-    mdarray<complex16, 2> wfj(NULL, mtgk_size(), parameters_.num_spins()); 
+    mdarray<complex16, 2> wfj(NULL, wf_size(), parameters_.num_spins()); 
     for (int j = 0; j < parameters_.num_bands(); j++)
     {
         int rank = parameters_.spl_spinor_wf_col().location(_splindex_rank_, j);
@@ -1223,18 +1229,16 @@ void K_point::save(int id)
     }
 }
 
-void K_point::load(int id)
+void K_point::load(HDF5_tree h5in, int id)
 {
-    HDF5_tree fin(storage_file_name, false);
-    
     band_energies_.resize(parameters_.num_bands());
-    fin["K_points"][id].read("band_energies", band_energies_);
+    h5in[id].read("band_energies", band_energies_);
 
     band_occupancies_.resize(parameters_.num_bands());
-    fin["K_points"][id].read("band_occupancies", band_occupancies_);
+    h5in[id].read("band_occupancies", band_occupancies_);
     
-    fin["K_set"][id].read_mdarray("fv_eigen_vectors", fv_eigen_vectors_);
-    fin["K_set"][id].read_mdarray("sv_eigen_vectors", sv_eigen_vectors_);
+    h5in[id].read_mdarray("fv_eigen_vectors", fv_eigen_vectors_);
+    h5in[id].read_mdarray("sv_eigen_vectors", sv_eigen_vectors_);
 }
 
 //== void K_point::save_wave_functions(int id)
@@ -1372,9 +1376,9 @@ void K_point::distribute_fv_states_row()
         int root_col = parameters_.spl_fv_states_col().location(_splindex_rank_, ist);
         
         // find column MPI rank which stores this fv state and copy fv state if this rank stores it
-        if (rank_col() == root_col) memcpy(&fv_states_row_(0, i), &fv_states_col_(0, offset_col), mtgk_size() * sizeof(complex16));
+        if (rank_col() == root_col) memcpy(&fv_states_row_(0, i), &fv_states_col_(0, offset_col), wf_size() * sizeof(complex16));
         
         // send fv state to all column MPI ranks; communication happens between the columns of the MPI grid
-        Platform::bcast(&fv_states_row_(0, i), mtgk_size(), parameters_.mpi_grid().communicator(1 << _dim_col_), root_col); 
+        Platform::bcast(&fv_states_row_(0, i), wf_size(), parameters_.mpi_grid().communicator(1 << _dim_col_), root_col); 
     }
 }

@@ -215,11 +215,12 @@ class Radial_grid
 
     public:
         
-        /// Constructor for empty radial grid
-        /** The actual grid points must be set with the subsequent call to set_radial_points() */
-        Radial_grid(int num_mt_points__, double mt_radius__) : 
+        /// Constructor for user provided radial grid
+        /** The actual grid points must are set with the subsequent call to set_radial_points() */
+        Radial_grid(int num_points, int num_mt_points__, double mt_radius__, double* points__) : 
             mt_radius_(mt_radius__), num_mt_points_(num_mt_points__), grid_type_name_("custom")
         {
+            set_radial_points(num_points, points__);
         }
 
         /// Constructor for muffin-tin radial grids

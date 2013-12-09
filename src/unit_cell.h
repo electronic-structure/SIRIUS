@@ -194,10 +194,12 @@ class Unit_cell
         vector3d<int> find_translation_limits(double radius);
         
         template <lattice_t Tl>
-        void reduce_coordinates(vector3d<double> vc, vector3d<int>& ntr, vector3d<double>& vf);
+        void reduce_coordinates(vector3d<double> coord, vector3d<int>& ntr, vector3d<double>& vf);
+
+        std::pair< vector3d<double>, vector3d<int> > reduce_coordinates(vector3d<double> coord);
 
         /// Convert coordinates (fractional <-> Cartesian) of direct or reciprocal lattices
-        template<coordinates_t cT, lattice_t lT, typename T>
+        template<coordinates_t Tc, lattice_t Tl, typename T>
         vector3d<double> get_coordinates(vector3d<T> a);
         
         /// Get x coordinate of lattice vector l

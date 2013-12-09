@@ -336,7 +336,7 @@ class basis_functions_index
 class Atom_type
 {
     private:
-        
+
         /// unique id of atom type
         int id_;
     
@@ -432,9 +432,7 @@ class Atom_type
         
         void init(int lmax_apw);
 
-        void create_radial_grid();
-        
-        void set_radial_grid(int num_points, double* points);
+        void set_radial_grid(int num_points = -1, double* points = NULL);
 
         /// Add augmented-wave descriptor.
         void add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu);

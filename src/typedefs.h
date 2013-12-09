@@ -21,6 +21,8 @@ enum splindex_t {block, block_cyclic};
 
 enum basis_t {apwlo, pwlo};
 
+enum method_t {fp, uspp, ncpp, paw};
+
 enum index_domain_t {global, local};
 
 enum argument_t {arg_lm, arg_tp, arg_radial};
@@ -213,6 +215,20 @@ template <typename T> class vector3d
         inline double length()
         {
             return sqrt(vec_[0] * vec_[0] + vec_[1] * vec_[1] + vec_[2] * vec_[2]);
+        }
+
+        inline vector3d<T> operator+(const vector3d<T>& b)
+        {
+            vector3d<T> a = *this;
+            for (int x = 0; x < 3; x++) a[x] += b.vec_[x];
+            return a;
+        }
+
+        inline vector3d<T> operator-(const vector3d<T>& b)
+        {
+            vector3d<T> a = *this;
+            for (int x = 0; x < 3; x++) a[x] -= b.vec_[x];
+            return a;
         }
 };
 

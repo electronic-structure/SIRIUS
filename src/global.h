@@ -811,11 +811,6 @@ class Global : public Step_function
                 atom(ia)->generate_radial_integrals(mpi_group_atom_.communicator());
             }
             
-            //for (int ialoc = 0; ialoc < spl_num_atoms().local_size(); ialoc++)
-            //{
-            //    atom(spl_num_atoms(ialoc))->generate_radial_integrals();
-            //}
-
             for (int ia = 0; ia < num_atoms(); ia++)
             {
                 int rank = spl_num_atoms().location(_splindex_rank_, ia);

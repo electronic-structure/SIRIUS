@@ -276,7 +276,7 @@ void K_set::load()
     {
         int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
         
-        if (parameters_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->load(ikidx[ik]);
+        if (parameters_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->load(fin["K_set"], ikidx[ik]);
     }
 }
 

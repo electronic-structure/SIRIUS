@@ -316,7 +316,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
 
     int nrow = parameters_.spl_fv_states_row().local_size();
     int ncol = parameters_.spl_fv_states_col().local_size();
-    int fvsz = kp->mtgk_size();
+    int fvsz = kp->wf_size();
 
     mdarray<complex16, 2>& fv_states_row = kp->fv_states_row();
     mdarray<complex16, 2>& sv_eigen_vectors = kp->sv_eigen_vectors();
@@ -328,7 +328,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
 
     // compute product of magnetic field and wave-function 
     if (parameters_.num_spins() == 2)
-        apply_magnetic_field(kp->fv_states_col(), kp->mtgk_size(), kp->num_gkvec(), kp->fft_index(), effective_magnetic_field, hpsi);
+        apply_magnetic_field(kp->fv_states_col(), kp->wf_size(), kp->num_gkvec(), kp->fft_index(), effective_magnetic_field, hpsi);
 
     if (parameters_.uj_correction())
     {

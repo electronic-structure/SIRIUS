@@ -42,10 +42,9 @@ vector3d<int> Unit_cell::find_translation_limits(double radius)
 }
 
 template <lattice_t Tl>
-void Unit_cell::reduce_coordinates(vector3d<double>vc, vector3d<int>& ntr, vector3d<double>& vf)
+void Unit_cell::reduce_coordinates(vector3d<double>coord, vector3d<int>& ntr, vector3d<double>& vf)
 {
-    
-    vf = get_coordinates<fractional, Tl>(vc);
+    vf = get_coordinates<fractional, Tl>(coord);
     for (int i = 0; i < 3; i++)
     {
         ntr[i] = (int)floor(vf[i]);
@@ -54,14 +53,28 @@ void Unit_cell::reduce_coordinates(vector3d<double>vc, vector3d<int>& ntr, vecto
     }
 }
 
-template<coordinates_t cT, lattice_t lT, typename T>
+std::pair< vector3d<double>, vector3d<int> > Unit_cell::reduce_coordinates(vector3d<double> coord)
+{
+    std::pair< vector3d<double>, vector3d<int> > v; 
+    
+    v.first = coord;
+    for (int i = 0; i < 3; i++)
+    {
+        v.second[i] = (int)floor(v.first[i]);
+        v.first[i] -= v.second[i];
+        if (v.first[i] < 0.0 || v.first[i] >= 1.0) error_local(__FILE__, __LINE__, "wrong fractional coordinates");
+    }
+    return v;
+}
+
+template<coordinates_t Tc, lattice_t Tl, typename T>
 vector3d<double> Unit_cell::get_coordinates(vector3d<T> a)
 {
     vector3d<double> b;
     
-    if (lT == direct)
+    if (Tl == direct)
     {
-        if (cT == fractional)
+        if (Tc == fractional)
         {    
             for (int l = 0; l < 3; l++)
             {
@@ -69,7 +82,7 @@ vector3d<double> Unit_cell::get_coordinates(vector3d<T> a)
             }
         }
 
-        if (cT == cartesian)
+        if (Tc == cartesian)
         {
             for (int x = 0; x < 3; x++)
             {
@@ -78,9 +91,9 @@ vector3d<double> Unit_cell::get_coordinates(vector3d<T> a)
         }
     }
 
-    if (lT == reciprocal)
+    if (Tl == reciprocal)
     {
-        if (cT == fractional)
+        if (Tc == fractional)
         {
             for (int l = 0; l < 3; l++)
             {
@@ -88,7 +101,7 @@ vector3d<double> Unit_cell::get_coordinates(vector3d<T> a)
             }
         }
 
-        if (cT == cartesian)
+        if (Tc == cartesian)
         {
             for (int x = 0; x < 3; x++)
             {
@@ -383,7 +396,7 @@ void Unit_cell::update()
         for (int iat = 0; iat < num_atom_types(); iat++) 
         {
             atom_type(iat)->set_mt_radius(Rmt[iat]);
-            atom_type(iat)->create_radial_grid();
+            atom_type(iat)->set_radial_grid();
         }
     }
     

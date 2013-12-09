@@ -159,8 +159,10 @@ class K_point
         /// spherical bessel functions for G+k vectors  
         std::vector< sbessel_pw<double>* > sbessel_;
         
+        /// column rank of the processors of ScaLAPACK/ELPA diagonalization grid
         int rank_col_;
 
+        /// number of processors along columns of the diagonalization grid
         int num_ranks_col_;
 
         int rank_row_;
@@ -194,9 +196,6 @@ class K_point
         /// Test orthonormalization of first-variational states
         /** Important: distribute_fv_states_row() must be called prior to calling this function.*/
         void test_fv_states(int use_fft);
-
-        void test_spinor_wave_functions(int use_fft);
-
 
     public:
 
@@ -259,7 +258,7 @@ class K_point
         
         void save(int id);
 
-        void load(int id);
+        void load(HDF5_tree h5in, int id);
 
         //== void save_wave_functions(int id);
 
@@ -268,6 +267,9 @@ class K_point
         void get_fv_eigen_vectors(mdarray<complex16, 2>& fv_evec);
         
         void get_sv_eigen_vectors(mdarray<complex16, 2>& sv_evec);
+        
+        /// Test orthonormalization of spinor wave-functions
+        void test_spinor_wave_functions(int use_fft);
         
         /// APW+lo basis size
         /** Total number of APW+lo basis functions is equal to the number of augmented plane-waves plus
@@ -311,7 +313,7 @@ class K_point
             return gkvec_.size(1);
         }
 
-        /// Total number of muffin-tin and plane-wave expansion coefficients for the first-variational state
+        /// Total number of muffin-tin and plane-wave expansion coefficients for the wave-functions.
         /** APW+lo basis \f$ \varphi_{\mu {\bf k}}({\bf r}) = \{ \varphi_{\bf G+k}({\bf r}),
             \varphi_{j{\bf k}}({\bf r}) \} \f$ is used to expand first-variational wave-functions:
 
@@ -329,11 +331,11 @@ class K_point
                 Y_{\ell m}(\hat {\bf r}) & {\bf r} \in MT_{\alpha} \end{array}
             \f]
 
-            Thus, the total number of coefficients representing a first-variational state is equal
-            to the number of muffi-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r) 
+            Thus, the total number of coefficients representing a wave-funstion is equal
+            to the number of muffin-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r) 
             Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves. 
         */ 
-        inline int mtgk_size() // TODO: find a better name for this
+        inline int wf_size()
         {
             return (parameters_.mt_basis_size() + num_gkvec());
         }

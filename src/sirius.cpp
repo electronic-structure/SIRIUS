@@ -229,6 +229,20 @@ void FORTRAN(sirius_add_atom)(int32_t* atom_type_id, real8* position, real8* vec
     log_function_exit(__func__);
 }
 
+/// Set the table of equivalent atoms.
+/** \param [in] equivalent_atoms table of equivalent atoms
+    
+    Equivalent atoms are symmetry related and belong to the same atom symmetry class. If equivalence table is not
+    provided by user, \a spglib is called. In case of magnetic symmetry \a spglib is of no use and euivalence table 
+    must be provided.
+*/
+void FORTRAN(sirius_set_equivalent_atoms)(int32_t* equivalent_atoms)
+{
+    log_function_enter(__func__);
+    global_parameters.set_equivalent_atoms(equivalent_atoms);
+    log_function_exit(__func__);
+}
+
 /// Set augmented-wave cutoff
 /** \param [in] aw_cutoff augmented-wave cutoff
 
@@ -252,7 +266,7 @@ void FORTRAN(sirius_set_aw_cutoff)(real8* aw_cutoff)
     log_function_exit(__func__);
 }
 
-/// Initialize the global variables
+/// Initialize the global variables.
 /** The function must be called after setting up the lattice vectors, plane wave-cutoff, autormt flag and loading
     atom types and atoms into the unit cell.
 
@@ -284,7 +298,7 @@ void FORTRAN(sirius_global_initialize)(int32_t* lmax_apw, int32_t* lmax_rho, int
     log_function_exit(__func__);
 }
 
-/// Initialize the Density object
+/// Initialize the Density object.
 /** \param [in] rhomt pointer to the muffin-tin part of the density
     \param [in] rhoit pointer to the interstitial part of the denssity
     \param [in] magmt pointer to the muffin-tin part of the magnetization
@@ -299,16 +313,12 @@ void FORTRAN(sirius_density_initialize)(real8* rhomt, real8* rhoit, real8* magmt
     log_function_exit(__func__);
 }
 
-//** void FORTRAN(sirius_set_charge_density_ptr)(real8* rhomt, real8* rhoit)
-//** {
-//**     density->set_charge_density_ptr(rhomt, rhoit);
-//** }
-//** 
-//** void FORTRAN(sirius_set_magnetization_ptr)(real8* magmt, real8* magit)
-//** {
-//**     density->set_magnetization_ptr(magmt, magit);
-//** }
-
+/// Initialize the Potential object.
+/** \param [in] veffmt pointer to the muffin-tin part of the effective potential
+    \param [in] veffit pointer to the interstitial part of the effective potential
+    \param [in] beffmt pointer to the muffin-tin part of effective magnetic field
+    \param [in] beffit pointer to the interstitial part of the effective magnetic field
+*/
 void FORTRAN(sirius_potential_initialize)(real8* veffmt, real8* veffit, real8* beffmt, real8* beffit)
 {
     log_function_enter(__func__);
@@ -318,26 +328,8 @@ void FORTRAN(sirius_potential_initialize)(real8* veffmt, real8* veffit, real8* b
     log_function_exit(__func__);
 }
 
-//** void FORTRAN(sirius_set_effective_potential_ptr)(real8* veffmt, real8* veffir)
-//** {
-//**     potential->set_effective_potential_ptr(veffmt, veffir);
-//** }
-//** 
-//** void FORTRAN(sirius_set_effective_magnetic_field_ptr)(real8* beffmt, real8* beffir)
-//** {
-//**     potential->set_effective_magnetic_field_ptr(beffmt, beffir);
-//** }
-
-void FORTRAN(sirius_set_equivalent_atoms)(int32_t* equivalent_atoms)
-{
-    log_function_enter(__func__);
-    global_parameters.set_equivalent_atoms(equivalent_atoms);
-    log_function_exit(__func__);
-}
-
-
-/*
-    primitive get functions
+/// Get maximum number of muffin-tin radial points.
+/** \param [out] max_num_mt_points maximum number of muffin-tin points
 */
 void FORTRAN(sirius_get_max_num_mt_points)(int32_t* max_num_mt_points)
 {
@@ -346,6 +338,10 @@ void FORTRAN(sirius_get_max_num_mt_points)(int32_t* max_num_mt_points)
     log_function_exit(__func__);
 }
 
+/// Get number of muffin-tin radial points for a specific atom type.
+/** \param [in] atom_type_id id of the atom type
+    \param [out] num_mt_points number of muffin-tin points
+*/
 void FORTRAN(sirius_get_num_mt_points)(int32_t* atom_type_id, int32_t* num_mt_points)
 {
     log_function_enter(__func__);
@@ -540,7 +536,7 @@ void FORTRAN(sirius_get_num_core_electrons)(real8* num_core_electrons)
 
 
 
-/// Clear the global variables and destroy all objects
+/// Clear global variables and destroy all objects
 void FORTRAN(sirius_clear)(void)
 {
     log_function_enter(__func__);
@@ -560,6 +556,15 @@ void FORTRAN(sirius_clear)(void)
         delete dft_ground_state;
         dft_ground_state = NULL;
     }
+    for (int i = 0; i < (int)kset_list.size(); i++)
+    {
+        if (kset_list[i] != NULL) 
+        {
+            delete kset_list[i];
+            kset_list[i] = NULL;
+        }
+    }
+    kset_list.clear();
     log_function_exit(__func__);
 }
 
@@ -1336,7 +1341,7 @@ void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, co
 void FORTRAN(sirius_get_mtgk_size)(int32_t* kset_id, int32_t* ik, int32_t* mtgk_size)
 {
     log_function_enter(__func__);
-    *mtgk_size = (*kset_list[*kset_id])[*ik - 1]->mtgk_size();
+    *mtgk_size = (*kset_list[*kset_id])[*ik - 1]->wf_size();
     log_function_exit(__func__);
 }
 
@@ -1347,13 +1352,13 @@ void FORTRAN(sirius_get_spinor_wave_functions)(int32_t* kset_id, int32_t* ik, co
 
     sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
     
-    mdarray<complex16, 3> spinor_wave_functions(spinor_wave_functions__, kp->mtgk_size(), global_parameters.num_spins(), 
+    mdarray<complex16, 3> spinor_wave_functions(spinor_wave_functions__, kp->wf_size(), global_parameters.num_spins(), 
                                                 global_parameters.spl_spinor_wf_col().local_size());
 
     for (int j = 0; j < global_parameters.spl_spinor_wf_col().local_size(); j++)
     {
         memcpy(&spinor_wave_functions(0, 0, j), &kp->spinor_wave_function(0, 0, j), 
-               kp->mtgk_size() * global_parameters.num_spins() * sizeof(complex16));
+               kp->wf_size() * global_parameters.num_spins() * sizeof(complex16));
     }
     log_function_exit(__func__);
 }
@@ -1506,8 +1511,7 @@ void FORTRAN(sirius_scalar_radial_solver)(int32_t* zn, int32_t* l, int32_t* dme,
                                           real8* v__, int32_t* nn, real8* p0__, real8* p1__, real8* q0__, real8* q1__)
 {
     log_function_enter(__func__);
-    sirius::Radial_grid rgrid(*nr, r[*nr - 1]);
-    rgrid.set_radial_points(*nr, r);
+    sirius::Radial_grid rgrid(*nr, *nr, r[*nr - 1], r);
     sirius::Radial_solver solver(false, *zn, rgrid);
 
     std::vector<real8> v(*nr);
@@ -1746,5 +1750,21 @@ void FORTRAN(sirius_create_storage_file)(void)
 {
     global_parameters.create_storage_file();
 }
+
+void FORTRAN(sirius_test_spinor_wave_functions)(int32_t* kset_id)
+{
+    sirius::K_set* kset = kset_list[*kset_id];
+    for (int ikloc = 0; ikloc < kset->spl_num_kpoints().local_size(); ikloc++)
+    {
+        int ik = kset->spl_num_kpoints(ikloc);
+        (*kset)[ik]->test_spinor_wave_functions(0);
+    }
+}
+
+void FORTRAN(sirius_generate_gq_matrix_elements)(int32_t* kset_id, real8* vq)
+{
+     kset_list[*kset_id]->generate_Gq_matrix_elements(vq);
+}
+    
 
 } // extern "C"
