@@ -113,7 +113,7 @@ vector3d<double> Unit_cell::get_coordinates(vector3d<T> a)
     return b;
 }
 
-void Unit_cell::add_atom_type(int atom_type_id, const std::string label)
+void Unit_cell::add_atom_type(int atom_type_id, const std::string label, potential_t potential_type)
 {
     if (atom_type_index_by_id_.count(atom_type_id) != 0) 
     {   
@@ -121,7 +121,19 @@ void Unit_cell::add_atom_type(int atom_type_id, const std::string label)
         s << "atom type with id " << atom_type_id << " is already in list";
         error_local(__FILE__, __LINE__, s);
     }
-    atom_types_.push_back(new Atom_type(atom_type_id, label));
+    atom_types_.push_back(new Atom_type(atom_type_id, label, potential_type));
+    atom_type_index_by_id_[atom_type_id] = (int)atom_types_.size() - 1;
+}
+
+void Unit_cell::add_empty_atom_type(int atom_type_id)
+{
+    if (atom_type_index_by_id_.count(atom_type_id) != 0) 
+    {   
+        std::stringstream s;
+        s << "atom type with id " << atom_type_id << " is already in list";
+        error_local(__FILE__, __LINE__, s);
+    }
+    atom_types_.push_back(new Atom_type(atom_type_id));
     atom_type_index_by_id_[atom_type_id] = (int)atom_types_.size() - 1;
 }
 
@@ -373,8 +385,6 @@ void Unit_cell::init(int lmax_apw, int lmax_pot, int num_mag_dims)
     }
 
     assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
-    //assert(num_atoms() != 0);
-    //assert(num_atom_types() != 0);
 
     update();
             

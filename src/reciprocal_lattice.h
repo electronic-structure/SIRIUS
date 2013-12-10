@@ -3,7 +3,7 @@
 
 namespace sirius {
 
-class Reciprocal_lattice : public Unit_cell
+class Reciprocal_lattice: public Unit_cell
 {
     private:
         

@@ -218,7 +218,7 @@ class K_point
 
         ~K_point()
         {
-            if (basis_type == pwlo)
+            if (parameters_.basis_type() == pwlo)
             {
                 for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) delete sbessel_[igkloc];
             }

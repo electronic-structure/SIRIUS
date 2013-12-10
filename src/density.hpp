@@ -40,7 +40,7 @@ Density::Density(Global& parameters__) : parameters_(parameters__)
     }
     }
 
-    switch (basis_type)
+    switch (parameters_.basis_type())
     {
         case apwlo:
         {
@@ -51,6 +51,10 @@ Density::Density(Global& parameters__) : parameters_(parameters__)
         {
             gaunt12_.set_lmax(parameters_.lmax_pw(), parameters_.lmax_pw(), parameters_.lmax_rho());
             break;
+        }
+        default:
+        {
+            stop_here
         }
     }
 
@@ -970,7 +974,7 @@ void Density::generate(K_set& ks)
     generate_valence_density_it(ks);
    
     // for muffin-tin part
-    switch (basis_type)
+    switch (parameters_.basis_type())
     {
         case apwlo:
         {
@@ -1000,6 +1004,10 @@ void Density::generate(K_set& ks)
                 }
             }
             break;
+        }
+        default:
+        {
+            stop_here
         }
     }
 

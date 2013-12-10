@@ -68,6 +68,7 @@ extern "C" {
 #include "mpi_grid.h"
 #include "splindex.h"
 #include "sirius_io.h"
+#include "descriptors.h"
 
 //==============================
 // atoms        

@@ -3,66 +3,6 @@
 
 namespace sirius {
 
-/// describes single atomic level
-struct atomic_level_descriptor
-{
-    /// principal quantum number
-    int n;
-
-    /// angular momentum quantum number
-    int l;
-    
-    /// quantum number k
-    int k;
-    
-    /// level occupancy
-    double occupancy;
-
-    /// true if this is a core level
-    bool core;
-};
-
-/// describes radial solution
-struct radial_solution_descriptor
-{
-    /// principal quantum number
-    int n;
-    
-    /// angular momentum quantum number
-    int l;
-    
-    /// order of energy derivative
-    int dme;
-    
-    /// energy of the solution
-    double enu;
-    
-    /// automatically determine energy
-    int auto_enu;
-};
-
-/// set of radial solution descriptors, used to construct augmented waves or local orbitals
-typedef std::vector<radial_solution_descriptor> radial_solution_descriptor_set;
-
-/// type of local orbitals
-/** lo_rs - local orbital, composed of radial solutions
-    lo_cp - confined polynomial local orbital 
-*/
-enum local_orbital_t {lo_rs, lo_cp};
-
-/// descriptor of a local orbital radial function
-struct local_orbital_descriptor
-{
-    local_orbital_t type;
-
-    int l;
-
-    radial_solution_descriptor_set rsd_set;
-
-    int p1;
-    int p2;
-};
-
 class radial_functions_index
 {
     public:
@@ -403,6 +343,11 @@ class Atom_type
         
         basis_functions_index indexb_;
 
+        uspp_descriptor uspp_;
+
+        /// type of atomic potential
+        potential_t potential_type_;
+
         bool initialized_;
        
         // forbid copy constructor
@@ -426,7 +371,9 @@ class Atom_type
         Atom_type(const char* symbol__, const char* name__, int zn__, double mass__, 
                   std::vector<atomic_level_descriptor>& levels__);
  
-        Atom_type(int id__, const std::string label);
+        Atom_type(int id__, const std::string label, potential_t potential_type__);
+
+        Atom_type(int id__);
 
         ~Atom_type();
         
@@ -627,6 +574,11 @@ class Atom_type
         inline std::vector<double>& free_atom_potential()
         {
             return free_atom_potential_;
+        }
+
+        inline uspp_descriptor& uspp()
+        {
+            return uspp_;
         }
 
         inline void set_symbol(const std::string symbol__)

@@ -51,7 +51,7 @@ void K_point::update()
     }
     
     /** \todo Correct the memory leak */
-    if (basis_type == pwlo)
+    if (parameters_.basis_type() == pwlo)
     {
         sbessel_.resize(num_gkvec_loc()); 
         for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
@@ -427,7 +427,7 @@ void K_point::generate_fv_states()
 
     mdarray<complex16, 2> alm(num_gkvec_row(), parameters_.max_mt_aw_basis_size());
     
-    if (basis_type == apwlo)
+    if (parameters_.basis_type() == apwlo)
     {
         for (int ia = 0; ia < parameters_.num_atoms(); ia++)
         {
@@ -533,7 +533,7 @@ void K_point::generate_spinor_wave_functions()
 
 void K_point::generate_gkvec(double gk_cutoff)
 {
-    if ((gk_cutoff * parameters_.max_mt_radius() > double(parameters_.lmax_apw())) && basis_type == apwlo)
+    if ((gk_cutoff * parameters_.max_mt_radius() > double(parameters_.lmax_apw())) && parameters_.basis_type() == apwlo)
     {
         std::stringstream s;
         s << "G+k cutoff (" << gk_cutoff << ") is too large for a given lmax (" 
@@ -624,7 +624,7 @@ void K_point::init_gkvec()
         gkvec_len_[igkloc] = gkvec_cart(igk).length();
     }
    
-    if (basis_type == apwlo)
+    if (parameters_.basis_type() == apwlo)
     {
         alm_b_.set_dimensions(3, num_gkvec_loc(), parameters_.lmax_apw() + 1, parameters_.num_atom_types());
         alm_b_.allocate();

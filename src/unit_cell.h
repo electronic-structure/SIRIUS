@@ -1,17 +1,5 @@
 namespace sirius {
 
-struct nearest_neighbour_descriptor
-{
-    /// id of neighbour atom
-    int atom_id;
-
-    /// translation along each lattice vector
-    vector3d<int> translation;
-
-    /// distance from the central atom
-    double distance;
-};
-
 class Unit_cell_test;
 
 class Unit_cell
@@ -165,8 +153,11 @@ class Unit_cell
             assert(sizeof(double) == 8);
         }
        
-        /// Add new atom type to the list of atom types.
-        void add_atom_type(int atom_type_id, const std::string label);
+        /// Add new atom type to the list of atom types and read necessary data from the .json file
+        void add_atom_type(int atom_type_id, const std::string label, potential_t potential_type);
+        
+        /// Add new empty atom type to the list of atom types.
+        void add_empty_atom_type(int atom_type_id);
         
         /// Add new atom to the list of atom types.
         void add_atom(int atom_type_id, double* position, double* vector_field);
@@ -381,6 +372,60 @@ class Unit_cell
         {
             return spl_num_atom_symmetry_classes_[i];
         }
+
+        //== inline potential_t potential_kind()
+        //== {
+        //==     static bool is_done = false;
+
+        //==     if (!is_done)
+        //==     {
+        //==         // check kind of potential
+        //==         if (num_atom_types() != 0)
+        //==         {
+        //==             potential_kind_ = atom_type(0)->potential_kind();
+        //==             for (int iat = 1; iat < num_atom_types(); iat++)
+        //==             {
+        //==                 if (atom_type(iat)->potential_kind() != potential_kind_)
+        //==                     error_local(__FILE__, __LINE__, "inconsistent potential treatment");
+        //==             }
+
+        //==         }
+        //==         else
+        //==         {
+        //==             potential_kind_ = full_potential;
+        //==         }
+        //==         is_done = true;
+        //==     }
+
+        //==     return potential_kind_;
+        //== }
+
+        //== inline basis_t basis_kind()
+        //== {
+        //==     static bool is_done = false;
+
+        //==     if (!is_done)
+        //==     {
+        //==         // check kind of potential
+        //==         if (num_atom_types() != 0)
+        //==         {
+        //==             basis_kind_ = atom_type(0)->basis_kind();
+        //==             for (int iat = 1; iat < num_atom_types(); iat++)
+        //==             {
+        //==                 if (atom_type(iat)->basis_kind() != basis_kind_)
+        //==                     error_local(__FILE__, __LINE__, "inconsistent potential treatment");
+        //==             }
+
+        //==         }
+        //==         else
+        //==         {
+        //==             basis_kind_ = apwlo;
+        //==         }
+        //==         is_done = true;
+        //==     }
+
+        //==     return basis_kind_;
+        //== }
 };
 
 #include "unit_cell.hpp"
@@ -400,7 +445,7 @@ class Unit_cell_test
             
             unit_cell.set_auto_rmt(1);
 
-            unit_cell.add_atom_type(1, "C");
+            unit_cell.add_atom_type(1, "C", full_potential);
 
             {
             double pos0[] = {0, 0, 0};

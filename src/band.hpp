@@ -1507,7 +1507,7 @@ void Band::solve_fv(K_point* kp, Periodic_function<double>* effective_potential)
     {
         case cpu:
         {
-            set_fv_h_o<cpu, basis_type>(kp, effective_potential, h, o);
+            set_fv_h_o<cpu, apwlo>(kp, effective_potential, h, o);
             break;
         }
         #ifdef _GPU_

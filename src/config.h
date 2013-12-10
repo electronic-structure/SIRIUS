@@ -38,8 +38,6 @@ const int verbosity_level = 5;
 
 const bool fix_apwlo_linear_dependence = false;
 
-const basis_t basis_type = apwlo;
-
 const radial_grid_t default_radial_grid_t = linear_exponential_grid;
 
 const bool use_second_variation = true; 

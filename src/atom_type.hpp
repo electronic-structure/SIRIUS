@@ -1,45 +1,53 @@
 Atom_type::Atom_type(const char* symbol__, const char* name__, int zn__, double mass__, 
                      std::vector<atomic_level_descriptor>& levels__) : 
     symbol_(std::string(symbol__)), name_(std::string(name__)), zn_(zn__), mass_(mass__), mt_radius_(2.0), 
-    num_mt_points_(2000 + zn__ * 50), atomic_levels_(levels__), initialized_(false)
+    num_mt_points_(2000 + zn__ * 50), atomic_levels_(levels__), potential_type_(full_potential), initialized_(false)
 {
     radial_grid_ = new Radial_grid(default_radial_grid_t, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
 }
 
-Atom_type::Atom_type(int id__, const std::string label) : 
-    id_(id__), zn_(0), num_mt_points_(0), radial_grid_(NULL), initialized_(false)
+Atom_type::Atom_type(int id__, const std::string label, potential_t potential_type__) : 
+    id_(id__), zn_(0), num_mt_points_(0), radial_grid_(NULL), potential_type_(potential_type__), initialized_(false)
 {
     std::string fname = label + ".json";
-    if (Utils::file_exists(fname)) 
+    if (!Utils::file_exists(fname))
     {
-        read_input(fname);
+        std::stringstream s;
+        s << "file " + fname + " doesn't exist";
+        error_global(__FILE__, __LINE__, s);
+    }
+    read_input(fname);
 
-        //==============================================
-        // add valence levels to the list of core levels
-        //==============================================
-        atomic_level_descriptor level;
+    //==============================================
+    // add valence levels to the list of core levels
+    //==============================================
+    atomic_level_descriptor level;
 
-        for (int ist = 0; ist < 28; ist++)
+    for (int ist = 0; ist < 28; ist++)
+    {
+        bool found = false;
+        level.n = atomic_conf[zn_ - 1][ist][0];
+        level.l = atomic_conf[zn_ - 1][ist][1];
+        level.k = atomic_conf[zn_ - 1][ist][2];
+        level.occupancy = double(atomic_conf[zn_ - 1][ist][3]);
+        level.core = false;
+
+        if (level.n != -1)
         {
-            bool found = false;
-            level.n = atomic_conf[zn_ - 1][ist][0];
-            level.l = atomic_conf[zn_ - 1][ist][1];
-            level.k = atomic_conf[zn_ - 1][ist][2];
-            level.occupancy = double(atomic_conf[zn_ - 1][ist][3]);
-            level.core = false;
-
-            if (level.n != -1)
+            for (int jst = 0; jst < (int)atomic_levels_.size(); jst++)
             {
-                for (int jst = 0; jst < (int)atomic_levels_.size(); jst++)
-                {
-                    if ((atomic_levels_[jst].n == level.n) &&
-                        (atomic_levels_[jst].l == level.l) &&
-                        (atomic_levels_[jst].k == level.k)) found = true;
-                }
-                if (!found) atomic_levels_.push_back(level);
+                if ((atomic_levels_[jst].n == level.n) &&
+                    (atomic_levels_[jst].l == level.l) &&
+                    (atomic_levels_[jst].k == level.k)) found = true;
             }
+            if (!found) atomic_levels_.push_back(level);
         }
     }
+}
+
+Atom_type::Atom_type(int id__) : id_(id__), zn_(0), num_mt_points_(0), radial_grid_(NULL), 
+                                 potential_type_(full_potential), initialized_(false)
+{
 }
 
 Atom_type::~Atom_type()
@@ -100,7 +108,7 @@ void Atom_type::init_aw_descriptors(int lmax)
 {
     assert(lmax >= -1);
 
-    if (aw_default_l_.size() == 0) error_local(__FILE__, __LINE__, "default AW descriptor is empty"); 
+    if (lmax >= 0 && aw_default_l_.size() == 0) error_local(__FILE__, __LINE__, "default AW descriptor is empty"); 
 
     aw_descriptors_.clear();
     for (int l = 0; l <= lmax; l++)
@@ -580,20 +588,46 @@ void Atom_type::read_input(const std::string& fname)
 {
     JSON_tree parser(fname);
 
-    parser["name"] >> name_;
-    parser["symbol"] >> symbol_;
-    parser["mass"] >> mass_;
-    parser["number"] >> zn_;
-    parser["rmin"] >> radial_grid_origin_;
-    parser["rmax"] >> radial_grid_infinity_;
-    parser["rmt"] >> mt_radius_;
-    parser["nrmt"] >> num_mt_points_;
+    if (potential_type_ == ultrasoft_pseudopotential)
+    {
+        double zp;
+        parser["uspp"]["header"]["zp"] >> zp;
+        zn_ = int(zp + 1e-10);
 
-    read_input_core(parser);
+        int nmesh;
+        parser["uspp"]["header"]["nmesh"] >> nmesh;
 
-    read_input_aw(parser);
+        parser["uspp"]["mesh"]["r"] >> uspp_.r;
+        parser["uspp"]["mesh"]["rab"] >> uspp_.rab;
+        parser["uspp"]["vloc"] >> uspp_.vloc;
 
-    read_input_lo(parser);
+        if ((int)uspp_.r.size() != nmesh || (int)uspp_.rab.size() != nmesh || (int)uspp_.vloc.size() != nmesh)
+        {
+            error_local(__FILE__, __LINE__, "wrong mesh size");
+        }
+
+        num_mt_points_ = nmesh;
+        mt_radius_ = uspp_.r[nmesh - 1];
+        
+        set_radial_grid(nmesh, &uspp_.r[0]);
+    }
+    if (potential_type_ == full_potential)
+    {
+        parser["name"] >> name_;
+        parser["symbol"] >> symbol_;
+        parser["mass"] >> mass_;
+        parser["number"] >> zn_;
+        parser["rmin"] >> radial_grid_origin_;
+        parser["rmax"] >> radial_grid_infinity_;
+        parser["rmt"] >> mt_radius_;
+        parser["nrmt"] >> num_mt_points_;
+
+        read_input_core(parser);
+
+        read_input_aw(parser);
+
+        read_input_lo(parser);
+    }
 }
 
 void Atom_type::sync_free_atom(int rank)

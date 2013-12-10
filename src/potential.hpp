@@ -559,7 +559,7 @@ void Potential::generate_pw_coefs()
         }
     }
 
-    if (basis_type == pwlo) 
+    if (parameters_.basis_type() == pwlo) 
     {
         switch (parameters_.processing_unit())
         {

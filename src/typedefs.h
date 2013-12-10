@@ -19,9 +19,9 @@ enum linalg_t {lapack, scalapack, elpa, magma};
 
 enum splindex_t {block, block_cyclic};
 
-enum basis_t {apwlo, pwlo};
+enum basis_t {apwlo, pwlo, pw};
 
-enum method_t {fp, uspp, ncpp, paw};
+enum potential_t {full_potential, ultrasoft_pseudopotential, norm_conserving_pseudopotential};
 
 enum index_domain_t {global, local};
 
@@ -29,6 +29,11 @@ enum argument_t {arg_lm, arg_tp, arg_radial};
 
 /// Types of radial grid
 enum radial_grid_t {linear_grid, exponential_grid, linear_exponential_grid, pow_grid, hyperbolic_grid, incremental_grid};
+
+/// type of local orbitals
+/** lo_rs - local orbital, composed of radial solutions
+    lo_cp - confined polynomial local orbital */
+enum local_orbital_t {lo_rs, lo_cp};
 
 /// Wrapper for primitive data types
 template <typename T> class primitive_type_wrapper;

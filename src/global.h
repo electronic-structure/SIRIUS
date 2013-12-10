@@ -47,7 +47,7 @@
 namespace sirius {
 
 /// Global variables and methods
-class Global : public Step_function
+class Global: public Step_function
 {
     private:
 
@@ -140,6 +140,12 @@ class Global : public Step_function
         
         /// smearing function width
         double smearing_width_;
+        
+        /// type of potential
+        potential_t potential_type_;
+
+        /// type of basis
+        basis_t basis_type_;
 
         /// read from the input file if it exists
         void read_input()
@@ -200,6 +206,42 @@ class Global : public Step_function
                         error_local(__FILE__, __LINE__, "wrong processing unit");
                     }
                 }
+
+                if (parser.exist("potential_type"))
+                {
+                    std::string str;
+                    parser["potential_type"] >> str;
+                    if (str == "full_potential")
+                    {
+                        potential_type_ = full_potential;
+                    }
+                    else if (str == "ultrasoft_pseudopotential")
+                    {
+                        potential_type_ = ultrasoft_pseudopotential;
+                    }
+                    else
+                    {
+                        error_local(__FILE__, __LINE__, "wrong type of potential");
+                    }
+                }
+
+                if (parser.exist("basis_type"))
+                {
+                    std::string str;
+                    parser["basis_type"] >> str;
+                    if (str == "apwlo")
+                    {
+                        basis_type_ = apwlo;
+                    }
+                    else if (str == "pw")
+                    {
+                        basis_type_ = pw;
+                    }
+                    else
+                    {
+                        error_local(__FILE__, __LINE__, "wrong type of basis");
+                    }
+                }
             }
 
             Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::num_threads()));
@@ -250,9 +292,10 @@ class Global : public Step_function
                    #if defined(_SCALAPACK_) || defined(_ELPA_)
                    blacs_context_(-1),
                    #endif
-                   smearing_width_(0.001)
+                   smearing_width_(0.001), potential_type_(full_potential), basis_type_(apwlo)
         {
             gettimeofday(&start_time_, NULL);
+            read_input();
         }
             
         ~Global()
@@ -505,12 +548,18 @@ class Global : public Step_function
         {
             if (initialized_) error_local(__FILE__, __LINE__, "Can't initialize global variables more than once.");
 
-            read_input();
-            
-            if (basis_type == pwlo)
+            //read_input();
+
+            if (basis_type() == pwlo)
             {
                 lmax_pw_ = lmax_apw_;
                 lmax_apw_ = -1;
+            }
+
+            if (basis_type() == pw)
+            {
+                lmax_apw_ = -1;
+                lmax_rho_ = lmax_pot_ = -1;
             }
 
             lmax_ = std::max(std::max(std::max(lmax_pot_, lmax_rho_), lmax_apw_), lmax_pw_); 
@@ -519,7 +568,8 @@ class Global : public Step_function
             Unit_cell::init(lmax_apw(), lmax_pot(), num_mag_dims());
            
             Reciprocal_lattice::init(lmax());
-            Step_function::init();
+
+            if (basis_type() == apwlo || basis_type() == pwlo) Step_function::init();
 
             gaunt_.set_lmax(std::max(lmax_apw(), lmax_pw()), std::max(lmax_apw(), lmax_pw()), lmax_pot());
 
@@ -1017,6 +1067,16 @@ class Global : public Step_function
             #else
             return -1;
             #endif
+        }
+
+        inline potential_t potential_type()
+        {
+            return potential_type_;
+        }
+
+        inline basis_t basis_type()
+        {
+            return basis_type_;
         }
 };
 

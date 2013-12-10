@@ -1,7 +1,7 @@
 
 namespace sirius {
 
-class Step_function : public Reciprocal_lattice
+class Step_function: public Reciprocal_lattice
 {
     private:
     
