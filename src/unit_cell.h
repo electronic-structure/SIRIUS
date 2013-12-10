@@ -149,8 +149,6 @@ class Unit_cell
     
         Unit_cell() : spg_dataset_(NULL), auto_rmt_(0)
         {
-            assert(sizeof(int) == 4);
-            assert(sizeof(double) == 8);
         }
        
         /// Add new atom type to the list of atom types and read necessary data from the .json file
@@ -300,8 +298,7 @@ class Unit_cell
         /// Total number of the muffin-tin basis functions.
         /** Total number of MT basis functions equals to the sum of the total number of augmented wave
             basis functions and the total number of local orbital basis functions across all atoms. It controls 
-            the size of the muffin-tin part of the first-variational states and second-variational wave functions.
-        */
+            the size of the muffin-tin part of the first-variational states and second-variational wave functions. */
         inline int mt_basis_size()
         {
             return mt_basis_size_;
@@ -372,60 +369,6 @@ class Unit_cell
         {
             return spl_num_atom_symmetry_classes_[i];
         }
-
-        //== inline potential_t potential_kind()
-        //== {
-        //==     static bool is_done = false;
-
-        //==     if (!is_done)
-        //==     {
-        //==         // check kind of potential
-        //==         if (num_atom_types() != 0)
-        //==         {
-        //==             potential_kind_ = atom_type(0)->potential_kind();
-        //==             for (int iat = 1; iat < num_atom_types(); iat++)
-        //==             {
-        //==                 if (atom_type(iat)->potential_kind() != potential_kind_)
-        //==                     error_local(__FILE__, __LINE__, "inconsistent potential treatment");
-        //==             }
-
-        //==         }
-        //==         else
-        //==         {
-        //==             potential_kind_ = full_potential;
-        //==         }
-        //==         is_done = true;
-        //==     }
-
-        //==     return potential_kind_;
-        //== }
-
-        //== inline basis_t basis_kind()
-        //== {
-        //==     static bool is_done = false;
-
-        //==     if (!is_done)
-        //==     {
-        //==         // check kind of potential
-        //==         if (num_atom_types() != 0)
-        //==         {
-        //==             basis_kind_ = atom_type(0)->basis_kind();
-        //==             for (int iat = 1; iat < num_atom_types(); iat++)
-        //==             {
-        //==                 if (atom_type(iat)->basis_kind() != basis_kind_)
-        //==                     error_local(__FILE__, __LINE__, "inconsistent potential treatment");
-        //==             }
-
-        //==         }
-        //==         else
-        //==         {
-        //==             basis_kind_ = apwlo;
-        //==         }
-        //==         is_done = true;
-        //==     }
-
-        //==     return basis_kind_;
-        //== }
 };
 
 #include "unit_cell.hpp"

@@ -17,6 +17,9 @@ class Platform
             #ifdef _MAGMA_
             magma_init_wrapper();
             #endif
+
+            assert(sizeof(int) == 4);
+            assert(sizeof(double) == 8);
         }
 
         static void finalize()

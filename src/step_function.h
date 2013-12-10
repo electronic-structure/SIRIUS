@@ -46,11 +46,6 @@ class Step_function: public Reciprocal_lattice
         {
             return step_function_[ir];
         }
-
-        inline double* step_function()
-        {
-            return &step_function_[0];
-        }
 };
 
 #include "step_function.hpp"
