@@ -576,6 +576,11 @@ class Atom_type
             return free_atom_potential_;
         }
 
+        inline potential_t potential_type()
+        {
+            return potential_type_;
+        }
+
         inline uspp_descriptor& uspp()
         {
             return uspp_;

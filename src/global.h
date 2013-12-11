@@ -47,7 +47,7 @@
 namespace sirius {
 
 /// Global variables and methods
-class Global: public Step_function
+class Global
 {
     private:
 
@@ -71,6 +71,9 @@ class Global: public Step_function
         
         /// cutoff for augmented-wave functions
         double aw_cutoff_;
+
+        /// cutoff for plane-waves
+        double pw_cutoff_;
         
         /// number of first-variational states
         int num_fv_states_;
@@ -146,6 +149,13 @@ class Global: public Step_function
 
         /// type of basis
         basis_t basis_type_;
+        
+        /// step function is used in full-potential methods
+        Step_function* step_function_;
+
+        Reciprocal_lattice* reciprocal_lattice_;
+
+        Unit_cell* unit_cell_;
 
         /// read from the input file if it exists
         void read_input()
@@ -256,34 +266,12 @@ class Global: public Step_function
             return std::string(buf);
         }
 
-        std::string chemical_formula()
-        {
-            std::string name;
-            for (int i = 0; i < num_atom_types(); i++)
-            {
-                name += atom_type(i)->symbol();
-                int n = 0;
-                for (int j = 0; j < num_atoms(); j++)
-                {
-                    if (atom(j)->type_id() == atom_type(i)->id()) n++;
-                }
-                if (n != 1) 
-                {
-                    std::stringstream s;
-                    s << n;
-                    name = (name + s.str());
-                }
-            }
-
-            return name;
-        }
-
     public:
     
         Global() : initialized_(false), lmax_apw_(lmax_apw_default), lmax_pw_(-1), lmax_rho_(lmax_rho_default), 
-                   lmax_pot_(lmax_pot_default), aw_cutoff_(aw_cutoff_default), num_fv_states_(-1), num_spins_(1),
-                   num_mag_dims_(0), so_correction_(false), uj_correction_(false), cyclic_block_size_(16),
-                   eigen_value_solver_(lapack),
+                   lmax_pot_(lmax_pot_default), aw_cutoff_(aw_cutoff_default), pw_cutoff_(pw_cutoff_default), 
+                   num_fv_states_(-1), num_spins_(1), num_mag_dims_(0), so_correction_(false), uj_correction_(false), 
+                   cyclic_block_size_(64), eigen_value_solver_(lapack),
                    #ifdef _GPU_
                    processing_unit_(gpu),
                    #else
@@ -292,15 +280,18 @@ class Global: public Step_function
                    #if defined(_SCALAPACK_) || defined(_ELPA_)
                    blacs_context_(-1),
                    #endif
-                   smearing_width_(0.001), potential_type_(full_potential), basis_type_(apwlo)
+                   smearing_width_(0.001), potential_type_(full_potential), basis_type_(apwlo), step_function_(NULL),
+                   reciprocal_lattice_(NULL)
         {
-            gettimeofday(&start_time_, NULL);
-            read_input();
+            gettimeofday(&start_time_, NULL); // measure the start time
+            read_input(); // read initial data from sirius.json
+            unit_cell_ = new Unit_cell(potential_type_); // create new empty unit cell
         }
             
         ~Global()
         {
             clear();
+            delete unit_cell_;
             #if defined(_SCALAPACK_) || defined(_ELPA_)
             if (eigen_value_solver() == scalapack || eigen_value_solver() == elpa) 
                 linalg<scalapack>::free_blacs_context(blacs_context_);
@@ -390,6 +381,18 @@ class Global: public Step_function
         inline void set_aw_cutoff(double aw_cutoff__)
         {
             aw_cutoff_ = aw_cutoff__;
+        }
+
+        /// Return plane-wave cutoff for G-vectors.
+        inline double pw_cutoff()
+        {
+            return pw_cutoff_;
+        }
+
+        /// Set plane-wave cutoff.
+        inline void set_pw_cutoff(double pw_cutoff__)
+        {
+            pw_cutoff_ = pw_cutoff__;
         }
 
         inline int num_fv_states()
@@ -548,8 +551,6 @@ class Global: public Step_function
         {
             if (initialized_) error_local(__FILE__, __LINE__, "Can't initialize global variables more than once.");
 
-            //read_input();
-
             if (basis_type() == pwlo)
             {
                 lmax_pw_ = lmax_apw_;
@@ -565,11 +566,12 @@ class Global: public Step_function
             lmax_ = std::max(std::max(std::max(lmax_pot_, lmax_rho_), lmax_apw_), lmax_pw_); 
 
             // initialize variables, related to the unit cell
-            Unit_cell::init(lmax_apw(), lmax_pot(), num_mag_dims());
-           
-            Reciprocal_lattice::init(lmax());
+            unit_cell_->initialize(lmax_apw(), lmax_pot(), num_mag_dims());
 
-            if (basis_type() == apwlo || basis_type() == pwlo) Step_function::init();
+            // create a reciprocal lattice
+            reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, pw_cutoff(), lmax_);
+
+            if (basis_type() == apwlo || basis_type() == pwlo) step_function_ = new Step_function(unit_cell_, reciprocal_lattice_);
 
             gaunt_.set_lmax(std::max(lmax_apw(), lmax_pw()), std::max(lmax_apw(), lmax_pw()), lmax_pot());
 
@@ -582,14 +584,15 @@ class Global: public Step_function
 
             // setup MPI grid
             mpi_grid_.initialize(mpi_grid_dims_);
-            
-            if (num_atoms() != 0)
+           
+            // TODO: this is unreadable and must be improved
+            if (unit_cell_->num_atoms() != 0)
             {
-                mpi_group_atom_.split(num_atoms(), mpi_grid_.communicator());
-                spl_atoms_.split(num_atoms(), mpi_group_atom_.num_groups(), mpi_group_atom_.group_id());
-                for (int ia = 0; ia < num_atoms(); ia++)
+                mpi_group_atom_.split(unit_cell_->num_atoms(), mpi_grid_.communicator());
+                spl_atoms_.split(unit_cell_->num_atoms(), mpi_group_atom_.num_groups(), mpi_group_atom_.group_id());
+                for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
                 {
-                    int rank = spl_num_atoms().location(_splindex_rank_, ia);
+                    int rank = unit_cell_->spl_num_atoms().location(_splindex_rank_, ia);
                     if (Platform::mpi_rank() == rank)
                     {
                         if (Platform::mpi_rank(mpi_group_atom_.communicator()) != 0) error_local(__FILE__, __LINE__, "wrong root rank");
@@ -597,7 +600,7 @@ class Global: public Step_function
                 }
             }
             
-            if (num_fv_states_ < 0) num_fv_states_ = int(num_valence_electrons() / 2.0) + 20;
+            if (num_fv_states_ < 0) num_fv_states_ = int(unit_cell_->num_valence_electrons() / 2.0) + 20;
 
             int nrow = mpi_grid().dimension_size(_dim_row_);
             int ncol = mpi_grid().dimension_size(_dim_col_);
@@ -732,8 +735,9 @@ class Global: public Step_function
         {
             if (initialized_)
             {
-                Unit_cell::clear();
-                Reciprocal_lattice::clear();
+                unit_cell_->clear();
+                delete reciprocal_lattice_;
+                delete step_function_;
                 mpi_group_atom_.finalize();
                 mpi_grid_.finalize();
                 initialized_ = false;
@@ -755,15 +759,14 @@ class Global: public Step_function
             printf("number of OMP threads         : %i\n", Platform::num_threads()); 
             printf("number of OMP threads for FFT : %i\n", Platform::num_fft_threads()); 
 
-            Unit_cell::print_info();
-            Reciprocal_lattice::print_info();
-            Step_function::print_info();
+            unit_cell_->print_info();
+            reciprocal_lattice_->print_info();
 
-            for (int i = 0; i < num_atom_types(); i++) atom_type(i)->print_info();
+            for (int i = 0; i < unit_cell_->num_atom_types(); i++) unit_cell_->atom_type(i)->print_info();
 
             printf("\n");
-            printf("total number of aw muffin-tin basis functions : %i\n", mt_aw_basis_size());
-            printf("total number of lo basis functions : %i\n", mt_lo_basis_size());
+            printf("total number of aw muffin-tin basis functions : %i\n", unit_cell_->mt_aw_basis_size());
+            printf("total number of lo basis functions : %i\n", unit_cell_->mt_lo_basis_size());
             printf("number of first-variational states : %i\n", num_fv_states());
             printf("number of bands                    : %i\n", num_bands());
             printf("number of spins                    : %i\n", num_spins());
@@ -807,64 +810,64 @@ class Global: public Step_function
                     break;
                 }
             }
-            Unit_cell::write_cif();
+            unit_cell_->write_cif();
         }
         
-        void generate_radial_functions()
-        {
-            Timer t("sirius::Global::generate_radial_functions");
-           
-            for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
-                atom_symmetry_class(spl_num_atom_symmetry_classes(icloc))->generate_radial_functions();
+        //== void generate_radial_functions() // TODO: move to unit cell
+        //== {
+        //==     Timer t("sirius::Global::generate_radial_functions");
+        //==    
+        //==     for (int icloc = 0; icloc < unit_cell_->spl_num_atom_symmetry_classes().local_size(); icloc++)
+        //==         unit_cell_->atom_symmetry_class(unit_cell_->spl_num_atom_symmetry_classes(icloc))->generate_radial_functions();
 
-            for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
-            {
-                int rank = spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
-                atom_symmetry_class(ic)->sync_radial_functions(rank);
-            }
-            
-            if (verbosity_level >= 4)
-            {
-                pstdout pout;
-                
-                for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
-                {
-                    int ic = spl_num_atom_symmetry_classes(icloc);
-                    atom_symmetry_class(ic)->write_enu(pout);
-                }
+        //==     for (int ic = 0; ic < unit_cell_->num_atom_symmetry_classes(); ic++)
+        //==     {
+        //==         int rank = unit_cell_->spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
+        //==         unit_cell_->atom_symmetry_class(ic)->sync_radial_functions(rank);
+        //==     }
+        //==     
+        //==     if (verbosity_level >= 4)
+        //==     {
+        //==         pstdout pout;
+        //==         
+        //==         for (int icloc = 0; icloc < unit_cell_->spl_num_atom_symmetry_classes().local_size(); icloc++)
+        //==         {
+        //==             int ic = unit_cell_->spl_num_atom_symmetry_classes(icloc);
+        //==             unit_cell_->atom_symmetry_class(ic)->write_enu(pout);
+        //==         }
 
-                if (Platform::mpi_rank() == 0)
-                {
-                    printf("\n");
-                    printf("Linearization energies\n");
-                }
-                pout.flush(0);
-            }
-        }
+        //==         if (Platform::mpi_rank() == 0)
+        //==         {
+        //==             printf("\n");
+        //==             printf("Linearization energies\n");
+        //==         }
+        //==         pout.flush(0);
+        //==     }
+        //== }
         
         void generate_radial_integrals()
         {
             Timer t("sirius::Global::generate_radial_integrals");
             
-            for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
-                atom_symmetry_class(spl_num_atom_symmetry_classes(icloc))->generate_radial_integrals();
+            for (int icloc = 0; icloc < unit_cell_->spl_num_atom_symmetry_classes().local_size(); icloc++)
+                unit_cell_->atom_symmetry_class(unit_cell_->spl_num_atom_symmetry_classes(icloc))->generate_radial_integrals();
 
-            for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
+            for (int ic = 0; ic < unit_cell_->num_atom_symmetry_classes(); ic++)
             {
-                int rank = spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
-                atom_symmetry_class(ic)->sync_radial_integrals(rank);
+                int rank = unit_cell_->spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
+                unit_cell_->atom_symmetry_class(ic)->sync_radial_integrals(rank);
             }
 
             for (int ialoc = 0; ialoc < spl_atoms_.local_size(); ialoc++)
             {
                 int ia = spl_atoms_[ialoc];
-                atom(ia)->generate_radial_integrals(mpi_group_atom_.communicator());
+                unit_cell_->atom(ia)->generate_radial_integrals(mpi_group_atom_.communicator());
             }
             
-            for (int ia = 0; ia < num_atoms(); ia++)
+            for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
             {
-                int rank = spl_num_atoms().location(_splindex_rank_, ia);
-                atom(ia)->sync_radial_integrals(rank);
+                int rank = unit_cell_->spl_num_atoms().location(_splindex_rank_, ia);
+                unit_cell_->atom(ia)->sync_radial_integrals(rank);
             }
         }
 
@@ -872,16 +875,16 @@ class Global: public Step_function
         {
             Timer t("sirius::Global::solve_free_atoms");
 
-            splindex<block> spl_num_atom_types(num_atom_types(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+            splindex<block> spl_num_atom_types(unit_cell_->num_atom_types(), Platform::num_mpi_ranks(), Platform::mpi_rank());
 
             std::vector<double> enu;
             for (int i = 0; i < spl_num_atom_types.local_size(); i++)
-                atom_type(spl_num_atom_types[i])->solve_free_atom(1e-6, 1e-4, 1e-4, enu);
+                unit_cell_->atom_type(spl_num_atom_types[i])->solve_free_atom(1e-6, 1e-4, 1e-4, enu);
 
-            for (int i = 0; i < num_atom_types(); i++)
+            for (int i = 0; i < unit_cell_->num_atom_types(); i++)
             {
                 int rank = spl_num_atom_types.location(_splindex_rank_, i);
-                atom_type(i)->sync_free_atom(rank);
+                unit_cell_->atom_type(i)->sync_free_atom(rank);
             }
         }
 
@@ -989,15 +992,15 @@ class Global: public Step_function
                 jw.single("cyclic_block_size", cyclic_block_size());
                 jw.single("mpi_grid", mpi_grid_dims_);
                 std::vector<int> fftgrid(3);
-                for (int i = 0; i < 3; i++) fftgrid[i] = fft().size(i);
+                for (int i = 0; i < 3; i++) fftgrid[i] = reciprocal_lattice_->fft()->size(i);
                 jw.single("fft_grid", fftgrid);
-                jw.single("chemical_formula", chemical_formula());
-                jw.single("num_atoms", num_atoms());
+                jw.single("chemical_formula", unit_cell()->chemical_formula());
+                jw.single("num_atoms", unit_cell()->num_atoms());
                 jw.single("num_fv_states", num_fv_states());
                 jw.single("num_bands", num_bands());
                 jw.single("aw_cutoff", aw_cutoff());
                 jw.single("pw_cutoff", pw_cutoff());
-                jw.single("omega", omega());
+                jw.single("omega", unit_cell()->omega());
                 
                 //** if (num_mag_dims())
                 //** {
@@ -1053,11 +1056,12 @@ class Global: public Step_function
             Platform::barrier();
         }
 
-        void update()
+        void update() // TODO: better way to update unit cell after relaxation
         {
-            Unit_cell::update();
-            Reciprocal_lattice::update();
-            Step_function::init();
+            unit_cell_->update();
+            reciprocal_lattice_->update();
+            delete step_function_;
+            step_function_ = new Step_function(unit_cell_, reciprocal_lattice_);
         }
        
         inline int blacs_context()
@@ -1077,6 +1081,26 @@ class Global: public Step_function
         inline basis_t basis_type()
         {
             return basis_type_;
+        }
+
+        inline Step_function* step_function()
+        {
+            return step_function_;
+        }
+
+        inline double step_function(int ir)
+        {
+            return step_function_->theta_it(ir);
+        }
+
+        inline Reciprocal_lattice* reciprocal_lattice()
+        {
+            return reciprocal_lattice_;
+        }
+
+        inline Unit_cell* unit_cell()
+        {
+            return unit_cell_;
         }
 };
 

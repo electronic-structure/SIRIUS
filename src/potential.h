@@ -48,6 +48,9 @@ class Potential
         
         Global& parameters_;
 
+        /// alias for FFT driver
+        FFT3D<cpu>* fft_;
+
         Periodic_function<double>* effective_potential_;
         
         Periodic_function<double>* effective_magnetic_field_[3];

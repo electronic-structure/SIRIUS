@@ -75,6 +75,9 @@ class K_point
         /// global set of parameters
         Global& parameters_;
 
+        /// alias for FFT driver
+        FFT3D<cpu>* fft_;
+
         /// weight of k-point
         double weight_;
 
@@ -214,6 +217,8 @@ class K_point
 
             rank_row_ = parameters_.mpi_grid().coordinate(_dim_row_);
             rank_col_ = parameters_.mpi_grid().coordinate(_dim_col_);
+
+            fft_ = parameters_.reciprocal_lattice()->fft();
         }
 
         ~K_point()
@@ -297,7 +302,7 @@ class K_point
 
         inline vector3d<double> gkvec_cart(int igk)
         {
-            return parameters_.get_coordinates<cartesian, reciprocal>(gkvec(igk));
+            return parameters_.reciprocal_lattice()->get_cartesian_coordinates(gkvec(igk));
         }
 
         inline complex16 gkvec_phase_factor(int igk, int ia)
@@ -337,7 +342,7 @@ class K_point
         */ 
         inline int wf_size()
         {
-            return (parameters_.mt_basis_size() + num_gkvec());
+            return (parameters_.unit_cell()->mt_basis_size() + num_gkvec());
         }
 
         inline void get_band_occupancies(double* band_occupancies)

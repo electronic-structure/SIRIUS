@@ -55,6 +55,8 @@ class Spline
         /// spline "d" coefficients
         std::vector<T> d;
 
+        // TODO; maybe add x-coordinate as an oprator. we know the radial grid and we can return x here
+
     public:
     
         template <typename U> 

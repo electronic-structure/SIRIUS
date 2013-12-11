@@ -72,7 +72,7 @@ void Atom_type::init(int lmax_apw)
     max_aw_order_ = 0;
     for (int l = 0; l <= lmax_apw; l++) max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
 
-    if (max_aw_order_ == 0 || max_aw_order_ > 3) error_local(__FILE__, __LINE__, "maximum aw order is zero or greater than three");
+    if (max_aw_order_ > 3) error_local(__FILE__, __LINE__, "maximum aw order > 3");
 
     indexr_.init(aw_descriptors_, lo_descriptors_);
     indexb_.init(indexr_);
@@ -590,6 +590,8 @@ void Atom_type::read_input(const std::string& fname)
 
     if (potential_type_ == ultrasoft_pseudopotential)
     {
+        parser["uspp"]["header"]["element"] >> symbol_;
+
         double zp;
         parser["uspp"]["header"]["zp"] >> zp;
         zn_ = int(zp + 1e-10);

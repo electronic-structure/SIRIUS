@@ -100,8 +100,8 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
     mdarray<complex16, 2> vh(nfrow, nfcol);
     mdarray<complex16, 2> vo(nfrow, nfcol);
     
-    mdarray<complex16, 2> alm(kp->num_gkvec_loc(), parameters_.max_mt_aw_basis_size());
-    mdarray<complex16, 2> halm(kp->num_gkvec_row(), parameters_.max_mt_aw_basis_size());
+    mdarray<complex16, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    mdarray<complex16, 2> halm(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
     
     mdarray<complex16, 2> dm(nsrow, nscol);
 
@@ -195,15 +195,15 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
     mdarray<complex16, 2> zm1(nfrow, nscol);
     mdarray<complex16, 2> zf(nsrow, nscol);
 
-    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
         h.zero();
         o.zero();
         
-        Atom* atom = parameters_.atom(ia);
+        Atom* atom = parameters_.unit_cell()->atom(ia);
         Atom_type* type = atom->type();
 
-        int iat = parameters_.atom_type_index_by_id(type->id());
+        int iat = parameters_.unit_cell()->atom_type_index_by_id(type->id());
         
         kp->generate_matching_coefficients<true>(kp->num_gkvec_loc(), ia, alm);
         
@@ -224,11 +224,11 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
         {
             for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
             {
-                int ig12 = parameters_.index_g12(kp->apwlo_basis_descriptors_row(igk_row).ig,
+                int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->apwlo_basis_descriptors_row(igk_row).ig,
                                                  kp->apwlo_basis_descriptors_col(igk_col).ig);
-                int igs = parameters_.gvec_shell<global>(ig12);
+                int igs = parameters_.reciprocal_lattice()->gvec_shell<global>(ig12);
 
-                complex16 zt = conj(parameters_.gvec_phase_factor<global>(ig12, ia)) * ffac(igs, iat);
+                complex16 zt = conj(parameters_.reciprocal_lattice()->gvec_phase_factor<global>(ig12, ia)) * ffac(igs, iat);
 
                 double t1 = 0.5 * Utils::scalar_product(kp->apwlo_basis_descriptors_row(igk_row).gkvec_cart, 
                                                         kp->apwlo_basis_descriptors_col(igk_col).gkvec_cart);
@@ -244,10 +244,10 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
             {
                 for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
                 {
-                    int ig12 = parameters_.index_g12(kp->apwlo_basis_descriptors_row(igk_row).ig,
+                    int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->apwlo_basis_descriptors_row(igk_row).ig,
                                                      kp->apwlo_basis_descriptors_col(igk_col).ig);
 
-                    vector3d<double> vg = parameters_.gvec_cart(ig12);
+                    vector3d<double> vg = parameters_.reciprocal_lattice()->gvec_cart(ig12);
                     vh(igk_row, igk_col) = complex16(0.0, vg[x]) * h(igk_row, igk_col);
                     vo(igk_row, igk_col) = complex16(0.0, vg[x]) * o(igk_row, igk_col);
                 }
@@ -364,46 +364,46 @@ void Force::total_force(Global& parameters_, Potential* potential, Density* dens
 {
     Timer t("sirius::Force::total_force");
 
-    mdarray<double, 2> ffac(parameters_.num_gvec_shells(), parameters_.num_atom_types());
-    parameters_.get_step_function_form_factors(ffac);
+    mdarray<double, 2> ffac(parameters_.reciprocal_lattice()->num_gvec_shells_inner(), parameters_.unit_cell()->num_atom_types());
+    parameters_.step_function()->get_step_function_form_factors(ffac);
 
     force.zero();
 
-    mdarray<double, 2> forcek(3, parameters_.num_atoms());
+    mdarray<double, 2> forcek(3, parameters_.unit_cell()->num_atoms());
     for (int ikloc = 0; ikloc < ks->spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks->spl_num_kpoints(ikloc);
         ibs_force(parameters_, ks->band(), (*ks)[ik], ffac, forcek);
-        for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
             for (int x = 0; x < 3; x++) force(x, ia) += forcek(x, ia);
         }
     }
     Platform::allreduce(&force(0, 0), (int)force.size(), parameters_.mpi_grid().communicator(1 << _dim_k_));
 
-    mdarray<double, 2> forcehf(3, parameters_.num_atoms());
+    mdarray<double, 2> forcehf(3, parameters_.unit_cell()->num_atoms());
 
     forcehf.zero();
-    for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+    for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
     {
-        int ia = parameters_.spl_num_atoms(ialoc);
+        int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
         Spheric_function_gradient<double> g(potential->coulomb_potential_mt(ialoc));
-        for (int x = 0; x < 3; x++) forcehf(x, ia) = parameters_.atom(ia)->type()->zn() * g[x](0, 0) * y00;
+        for (int x = 0; x < 3; x++) forcehf(x, ia) = parameters_.unit_cell()->atom(ia)->type()->zn() * g[x](0, 0) * y00;
     }
     Platform::allreduce(&forcehf(0, 0), (int)forcehf.size());
     
-    mdarray<double, 2> forcerho(3, parameters_.num_atoms());
+    mdarray<double, 2> forcerho(3, parameters_.unit_cell()->num_atoms());
     forcerho.zero();
-    for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+    for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
     {
-        int ia = parameters_.spl_num_atoms(ialoc);
+        int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
         Spheric_function_gradient<double> g(density->density_mt(ialoc));
         vector3d<double> v = inner(potential->effective_potential_mt(ialoc), g);
         for (int x = 0; x < 3; x++) forcerho(x, ia) = v[x];
     }
     Platform::allreduce(&forcerho(0, 0), (int)forcerho.size());
     
-    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
         for (int x = 0; x < 3; x++) force(x, ia) += (forcehf(x, ia) + forcerho(x, ia));
     }

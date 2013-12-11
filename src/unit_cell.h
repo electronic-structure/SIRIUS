@@ -1,10 +1,20 @@
 namespace sirius {
 
-class Unit_cell_test;
+//== class Unit_cell_test;
+
+struct unit_cell_parameters_descriptor
+{
+    double a;
+    double b;
+    double c;
+    double alpha;
+    double beta;
+    double gamma;
+};
 
 class Unit_cell
 {
-    friend class Unit_cell_test;
+    //== friend class Unit_cell_test;
 
     private:
         
@@ -39,6 +49,12 @@ class Unit_cell
         /// volume of the unit cell; volume of Brillouin zone is (2Pi)^3 / omega
         double omega_;
        
+        /// total volume of the muffin tin spheres
+        double volume_mt_;
+        
+        /// volume of the interstitial region
+        double volume_it_;
+
         /// spglib structure with symmetry information
         SpglibDataset* spg_dataset_;
         
@@ -58,7 +74,7 @@ class Unit_cell
         std::vector<int> equivalent_atoms_;
     
         /// maximum number of muffin-tin points across all atom types
-        int max_num_mt_points_;
+        int max_num_mt_points_;  // TODO: move this and similar values to global
         
         /// total number of MT basis functions
         int mt_basis_size_;
@@ -90,6 +106,8 @@ class Unit_cell
         /// scale muffin-tin radii automatically
         int auto_rmt_;
 
+        potential_t potential_type_;
+
         /// Get crystal symmetries and equivalent atoms.
         /** Makes a call to spglib providing the basic unit cell information: lattice vectors and atomic types 
             and positions. Gets back symmetry operations and a table of equivalent atoms. The table of equivalent 
@@ -106,8 +124,12 @@ class Unit_cell
         /// Check if MT spheres overlap
         bool check_mt_overlap(int& ia__, int& ja__);
 
-    protected:
-
+    public:
+    
+        Unit_cell(potential_t potential_type__) : spg_dataset_(NULL), auto_rmt_(0), potential_type_(potential_type__)
+        {
+        }
+        
         /// Initialize the unit cell data
         /** Several things must be done during this phase:
               1. Compute number of electrons
@@ -125,7 +147,7 @@ class Unit_cell
                   class) depends on the "to be determined" parameters such as num_mag_dims. Probably Unit_cell must 
                   become a separate object.
         */
-        void init(int lmax_apw, int lmax_pot, int num_mag_dims);
+        void initialize(int lmax_apw, int lmax_pot, int num_mag_dims);
 
         /// Update the unit cell after moving the atoms.
         /** When the unit cell is initialized for the first time, or when the atoms are moved, several things
@@ -144,12 +166,6 @@ class Unit_cell
 
         /// Clear the unit cell data
         void clear();
-        
-    public:
-    
-        Unit_cell() : spg_dataset_(NULL), auto_rmt_(0)
-        {
-        }
        
         /// Add new atom type to the list of atom types and read necessary data from the .json file
         void add_atom_type(int atom_type_id, const std::string label, potential_t potential_type);
@@ -166,6 +182,8 @@ class Unit_cell
         /// Print basic info
         void print_info();
 
+        unit_cell_parameters_descriptor unit_cell_parameters();
+
         /// Write structure to CIF file
         void write_cif();
         
@@ -177,19 +195,14 @@ class Unit_cell
         /// Find the cluster of nearest neighbours around each atom
         void find_nearest_neighbours(double cluster_radius);
 
-        bool is_point_in_mt(double vc[3], int& ja, int& jr, double& dr, double tp[2]);
+        bool is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr, double tp[2]);
         
-        template <lattice_t Tl>
-        vector3d<int> find_translation_limits(double radius);
+        template <typename T>
+        inline vector3d<double> get_cartesian_coordinates(vector3d<T> a);
         
-        template <lattice_t Tl>
-        void reduce_coordinates(vector3d<double> coord, vector3d<int>& ntr, vector3d<double>& vf);
-
-        std::pair< vector3d<double>, vector3d<int> > reduce_coordinates(vector3d<double> coord);
-
-        /// Convert coordinates (fractional <-> Cartesian) of direct or reciprocal lattices
-        template<coordinates_t Tc, lattice_t Tl, typename T>
-        vector3d<double> get_coordinates(vector3d<T> a);
+        inline vector3d<double> get_fractional_coordinates(vector3d<double> a);
+        
+        void generate_radial_functions();
         
         /// Get x coordinate of lattice vector l
         inline double lattice_vectors(int l, int x)
@@ -369,52 +382,85 @@ class Unit_cell
         {
             return spl_num_atom_symmetry_classes_[i];
         }
+
+        std::string chemical_formula()
+        {
+            std::string name;
+            for (int iat = 0; iat < num_atom_types(); iat++)
+            {
+                name += atom_type(iat)->symbol();
+                int n = 0;
+                for (int ia = 0; ia < num_atoms(); ia++)
+                {
+                    if (atom(ia)->type_id() == atom_type(iat)->id()) n++;
+                }
+                if (n != 1) 
+                {
+                    std::stringstream s;
+                    s << n;
+                    name = (name + s.str());
+                }
+            }
+
+            return name;
+        }
+
+        inline double volume_mt()
+        {
+            return volume_mt_;
+        }
+
+        inline double volume_it()
+        {
+            return volume_it_;
+        }
+
 };
 
 #include "unit_cell.hpp"
 
-class Unit_cell_test
-{
-    public:
-
-        Unit_cell_test()
-        {
-            Unit_cell unit_cell;
-            
-            double a0[] = {0.5, 0.5, 0.0};
-            double a1[] = {0.5, 0.0, 0.5};
-            double a2[] = {0.0, 0.5, 0.5};
-            unit_cell.set_lattice_vectors(&a0[0], &a1[0], &a2[0]);
-            
-            unit_cell.set_auto_rmt(1);
-
-            unit_cell.add_atom_type(1, "C", full_potential);
-
-            {
-            double pos0[] = {0, 0, 0};
-            double pos1[] = {0.25, 0.25, 0.25};
-            unit_cell.add_atom(1, pos0);
-            unit_cell.add_atom(1, pos1);
-            }
-
-            unit_cell.init(10, 10, 0);
-            unit_cell.print_info();
-
-            {
-            double pos1[] = {0.251, 0.251, 0.251};
-            unit_cell.atom(1)->set_position(pos1);
-            }
-            unit_cell.update();
-            unit_cell.print_info();
-            
-            {
-            double pos1[] = {0.251, 0.252, 0.253};
-            unit_cell.atom(1)->set_position(pos1);
-            }
-            unit_cell.update();
-            unit_cell.print_info();
-        }
-};
+//== class Unit_cell_test
+//== {
+//==     public:
+//== 
+//==         Unit_cell_test()
+//==         {
+//==             Unit_cell unit_cell;
+//==             
+//==             double a0[] = {0.5, 0.5, 0.0};
+//==             double a1[] = {0.5, 0.0, 0.5};
+//==             double a2[] = {0.0, 0.5, 0.5};
+//==             unit_cell.set_lattice_vectors(&a0[0], &a1[0], &a2[0]);
+//==             
+//==             unit_cell.set_auto_rmt(1);
+//== 
+//==             unit_cell.add_atom_type(1, "C", full_potential);
+//== 
+//==             {
+//==             double pos0[] = {0, 0, 0};
+//==             double pos1[] = {0.25, 0.25, 0.25};
+//==             unit_cell.add_atom(1, pos0);
+//==             unit_cell.add_atom(1, pos1);
+//==             }
+//== 
+//==             unit_cell.init(10, 10, 0);
+//==             unit_cell.print_info();
+//== 
+//==             {
+//==             double pos1[] = {0.251, 0.251, 0.251};
+//==             unit_cell.atom(1)->set_position(pos1);
+//==             }
+//==             unit_cell.update();
+//==             unit_cell.print_info();
+//==             
+//==             {
+//==             double pos1[] = {0.251, 0.252, 0.253};
+//==             unit_cell.atom(1)->set_position(pos1);
+//==             }
+//==             unit_cell.update();
+//==             unit_cell.print_info();
+//==         }
+//== };
     
 };
 

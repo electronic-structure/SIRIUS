@@ -1,115 +1,21 @@
-template <lattice_t Tl>
-vector3d<int> Unit_cell::find_translation_limits(double radius)
-{
-    Timer t("sirius::Unit_cell::find_translation_limits");
-
-    vector3d<int> limits;
-
-    int n = 0;
-    while(true)
-    {
-        bool found = false;
-        for (int i0 = -n; i0 <= n; i0++)
-        {
-            for (int i1 = -n; i1 <= n; i1++)
-            {
-                for (int i2 = -n; i2 <= n; i2++)
-                {
-                    if (abs(i0) == n || abs(i1) == n || abs(i2) == n)
-                    {
-                        vector3d<int> vgf(i0, i1, i2);
-                        vector3d<double> vgc = get_coordinates<cartesian, Tl>(vgf);
-                        double len = vgc.length();
-                        if (len <= radius)
-                        {
-                            found = true;
-                            for (int j = 0; j < 3; j++) limits[j] = std::max(2 * abs(vgf[j]) + 1, limits[j]);
-                        }
-                    }
-                }
-            }
-        }
-
-        if (found) 
-        {
-            n++;
-        }
-        else 
-        {
-            return limits;
-        }
-    }
-}
-
-template <lattice_t Tl>
-void Unit_cell::reduce_coordinates(vector3d<double>coord, vector3d<int>& ntr, vector3d<double>& vf)
-{
-    vf = get_coordinates<fractional, Tl>(coord);
-    for (int i = 0; i < 3; i++)
-    {
-        ntr[i] = (int)floor(vf[i]);
-        vf[i] -= ntr[i];
-        if (vf[i] < 0.0 || vf[i] >= 1.0) error_local(__FILE__, __LINE__, "wrong fractional coordinates");
-    }
-}
-
-std::pair< vector3d<double>, vector3d<int> > Unit_cell::reduce_coordinates(vector3d<double> coord)
-{
-    std::pair< vector3d<double>, vector3d<int> > v; 
-    
-    v.first = coord;
-    for (int i = 0; i < 3; i++)
-    {
-        v.second[i] = (int)floor(v.first[i]);
-        v.first[i] -= v.second[i];
-        if (v.first[i] < 0.0 || v.first[i] >= 1.0) error_local(__FILE__, __LINE__, "wrong fractional coordinates");
-    }
-    return v;
-}
-
-template<coordinates_t Tc, lattice_t Tl, typename T>
-vector3d<double> Unit_cell::get_coordinates(vector3d<T> a)
+template <typename T>
+vector3d<double> Unit_cell::get_cartesian_coordinates(vector3d<T> a)
 {
     vector3d<double> b;
-    
-    if (Tl == direct)
+    for (int x = 0; x < 3; x++)
     {
-        if (Tc == fractional)
-        {    
-            for (int l = 0; l < 3; l++)
-            {
-                for (int x = 0; x < 3; x++) b[l] += a[x] * inverse_lattice_vectors_[x][l];
-            }
-        }
-
-        if (Tc == cartesian)
-        {
-            for (int x = 0; x < 3; x++)
-            {
-                for (int l = 0; l < 3; l++) b[x] += a[l] * lattice_vectors_[l][x];
-            }
-        }
+        for (int l = 0; l < 3; l++) b[x] += a[l] * lattice_vectors_[l][x];
     }
+    return b;
+}
 
-    if (Tl == reciprocal)
+vector3d<double> Unit_cell::get_fractional_coordinates(vector3d<double> a)
+{
+    vector3d<double> b;
+    for (int l = 0; l < 3; l++)
     {
-        if (Tc == fractional)
-        {
-            for (int l = 0; l < 3; l++)
-            {
-                for (int x = 0; x < 3; x++) b[l] += lattice_vectors_[l][x] * a[x] / twopi;
-            }
-        }
-
-        if (Tc == cartesian)
-        {
-            for (int x = 0; x < 3; x++)
-            {
-                for (int l = 0; l < 3; l++) b[x] += a[l] * reciprocal_lattice_vectors_[l][x];
-            }
-        }
+        for (int x = 0; x < 3; x++) b[l] += a[x] * inverse_lattice_vectors_[x][l];
     }
-
     return b;
 }
 
@@ -338,7 +244,7 @@ bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
     return false;
 }
 
-void Unit_cell::init(int lmax_apw, int lmax_pot, int num_mag_dims)
+void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
 {
     //======================
     // initialize atom types
@@ -399,40 +305,51 @@ void Unit_cell::update()
 
     find_nearest_neighbours(v0.length() + v1.length() + v2.length());
 
-    // find new MT radii and initialize radial grid 
-    if (auto_rmt())
+    if (potential_type_ == full_potential) // TODO: think of a possiblity to mix full-potential and pseudopotential atoms
     {
-        std::vector<double> Rmt = find_mt_radii();
-        for (int iat = 0; iat < num_atom_types(); iat++) 
+        // find new MT radii and initialize radial grid 
+        if (auto_rmt())
         {
-            atom_type(iat)->set_mt_radius(Rmt[iat]);
-            atom_type(iat)->set_radial_grid();
+            std::vector<double> Rmt = find_mt_radii();
+            for (int iat = 0; iat < num_atom_types(); iat++) 
+            {
+                atom_type(iat)->set_mt_radius(Rmt[iat]);
+                atom_type(iat)->set_radial_grid();
+            }
         }
-    }
-    
-    int ia, ja;
-    if (check_mt_overlap(ia, ja))
-    {
-        std::stringstream s;
-        s << "overlaping muffin-tin spheres for atoms " << ia << "(" << atom(ia)->type()->symbol() << ")" << " and " 
-          << ja << "(" << atom(ja)->type()->symbol() << ")" << std::endl 
-          << "  radius of atom " << ia << " : " << atom(ia)->type()->mt_radius() << std::endl
-          << "  radius of atom " << ja << " : " << atom(ja)->type()->mt_radius() << std::endl
-          << "  distance : " << nearest_neighbours_[ia][1].distance << " " << nearest_neighbours_[ja][1].distance;
-        error_local(__FILE__, __LINE__, s);
-    }
-    
-    min_mt_radius_ = 1e100;
-    max_mt_radius_ = 0;
-    for (int i = 0; i < num_atom_types(); i++)
-    {
-         min_mt_radius_ = std::min(min_mt_radius_, atom_type(i)->mt_radius());
-         max_mt_radius_ = std::max(max_mt_radius_, atom_type(i)->mt_radius());
+        
+        int ia, ja;
+        if (check_mt_overlap(ia, ja))
+        {
+            std::stringstream s;
+            s << "overlaping muffin-tin spheres for atoms " << ia << "(" << atom(ia)->type()->symbol() << ")" << " and " 
+              << ja << "(" << atom(ja)->type()->symbol() << ")" << std::endl 
+              << "  radius of atom " << ia << " : " << atom(ia)->type()->mt_radius() << std::endl
+              << "  radius of atom " << ja << " : " << atom(ja)->type()->mt_radius() << std::endl
+              << "  distance : " << nearest_neighbours_[ia][1].distance << " " << nearest_neighbours_[ja][1].distance;
+            error_local(__FILE__, __LINE__, s);
+        }
+        
+        min_mt_radius_ = 1e100;
+        max_mt_radius_ = 0;
+        for (int i = 0; i < num_atom_types(); i++)
+        {
+             min_mt_radius_ = std::min(min_mt_radius_, atom_type(i)->mt_radius());
+             max_mt_radius_ = std::max(max_mt_radius_, atom_type(i)->mt_radius());
+        }
     }
     
     get_symmetry();
     
     spl_num_atom_symmetry_classes_.split(num_atom_symmetry_classes(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+    
+    volume_mt_ = 0.0;
+    for (int ia = 0; ia < num_atoms(); ia++)
+    {
+        if (atom(ia)->type()->potential_type() == full_potential) volume_mt_ += fourpi * pow(atom(ia)->mt_radius(), 3) / 3.0; 
+    }
+    
+    volume_it_ = omega() - volume_mt_;
 }
 
 void Unit_cell::clear()
@@ -483,6 +400,8 @@ void Unit_cell::print_info()
     printf("\n");
     printf("unit cell volume : %18.8f [a.u.^3]\n", omega());
     printf("1/sqrt(omega)    : %18.8f\n", 1.0 / sqrt(omega()));
+    printf("MT volume        : %f (%5.2f%%)\n", volume_mt(), volume_mt() * 100 / omega());
+    printf("IT volume        : %f (%5.2f%%)\n", volume_it(), volume_it() * 100 / omega());
     
     printf("\n"); 
     printf("number of atom types : %i\n", num_atom_types());
@@ -547,29 +466,39 @@ void Unit_cell::print_info()
     printf("total number of electrons   : %f\n", num_electrons_);
 }
 
+unit_cell_parameters_descriptor Unit_cell::unit_cell_parameters()
+{
+    unit_cell_parameters_descriptor d;
+
+    vector3d<double> v0(lattice_vectors_[0]);
+    vector3d<double> v1(lattice_vectors_[1]);
+    vector3d<double> v2(lattice_vectors_[2]);
+
+    d.a = v0.length();
+    d.b = v1.length();
+    d.c = v2.length();
+
+    d.alpha = acos(Utils::scalar_product(v1, v2) / d.b / d.c) * 180 / pi;
+    d.beta = acos(Utils::scalar_product(v0, v2) / d.a / d.c) * 180 / pi;
+    d.gamma = acos(Utils::scalar_product(v0, v1) / d.a / d.b) * 180 / pi;
+
+    return d;
+}
+
 void Unit_cell::write_cif()
 {
     if (Platform::mpi_rank() == 0)
     {
         FILE* fout = fopen("unit_cell.cif", "w");
+
+        auto d = unit_cell_parameters();
         
-        vector3d<double> v0(lattice_vectors_[0]);
-        vector3d<double> v1(lattice_vectors_[1]);
-        vector3d<double> v2(lattice_vectors_[2]);
-
-        double a = v0.length();
-        double b = v1.length();
-        double c = v2.length();
-        fprintf(fout, "_cell_length_a %f\n", a);
-        fprintf(fout, "_cell_length_b %f\n", b);
-        fprintf(fout, "_cell_length_c %f\n", c);
-
-        double alpha = acos(Utils::scalar_product(v1, v2) / b / c) * 180 / pi;
-        double beta = acos(Utils::scalar_product(v0, v2) / a / c) * 180 / pi;
-        double gamma = acos(Utils::scalar_product(v0, v1) / a / b) * 180 / pi;
-        fprintf(fout, "_cell_angle_alpha %f\n", alpha);
-        fprintf(fout, "_cell_angle_beta %f\n", beta);
-        fprintf(fout, "_cell_angle_gamma %f\n", gamma);
+        fprintf(fout, "_cell_length_a %f\n", d.a);
+        fprintf(fout, "_cell_length_b %f\n", d.b);
+        fprintf(fout, "_cell_length_c %f\n", d.c);
+        fprintf(fout, "_cell_angle_alpha %f\n", d.alpha);
+        fprintf(fout, "_cell_angle_beta %f\n", d.beta);
+        fprintf(fout, "_cell_angle_gamma %f\n", d.gamma);
 
         //fprintf(fout, "loop_\n");
         //fprintf(fout, "_symmetry_equiv_pos_as_xyz\n");
@@ -636,7 +565,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
 {
     Timer t("sirius::Unit_cell::find_nearest_neighbours");
 
-    vector3d<int> max_frac_coord = find_translation_limits<direct>(cluster_radius);
+    vector3d<int> max_frac_coord = Utils::find_translation_limits(cluster_radius, lattice_vectors_);
    
     nearest_neighbours_.clear();
     nearest_neighbours_.resize(num_atoms());
@@ -644,7 +573,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
     #pragma omp parallel for default(shared)
     for (int ia = 0; ia < num_atoms(); ia++)
     {
-        vector3d<double> iapos = get_coordinates<cartesian, direct>(atom(ia)->position());
+        vector3d<double> iapos = get_cartesian_coordinates(atom(ia)->position());
         
         std::vector<nearest_neighbour_descriptor> nn;
 
@@ -661,16 +590,15 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
                     nnd.translation[1] = i1;
                     nnd.translation[2] = i2;
                     
-                    vector3d<double> vt = get_coordinates<cartesian, direct>(nnd.translation);
+                    vector3d<double> vt = get_cartesian_coordinates(nnd.translation);
                     
                     for (int ja = 0; ja < num_atoms(); ja++)
                     {
                         nnd.atom_id = ja;
 
-                        vector3d<double> japos = get_coordinates<cartesian, direct>(atom(ja)->position());
+                        vector3d<double> japos = get_cartesian_coordinates(atom(ja)->position());
 
-                        vector3d<double> v;
-                        for (int x = 0; x < 3; x++) v[x] = japos[x] + vt[x] - iapos[x];
+                        vector3d<double> v = japos + vt - iapos;
 
                         nnd.distance = v.length();
                         
@@ -714,13 +642,14 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
     }
 }
 
-bool Unit_cell::is_point_in_mt(double vc[3], int& ja, int& jr, double& dr, double tp[2])
+bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr, double tp[2])
 {
     vector3d<int> ntr;
-    vector3d<double> vf;
     
     // reduce coordinates to the primitive unit cell
-    reduce_coordinates<direct>(vector3d<double>(vc), ntr, vf);
+    vector3d<double> vf = get_fractional_coordinates(vc);
+
+    std::pair< vector3d<double>, vector3d<int> > vr = Utils::reduce_coordinates(vf);
 
     for (int ia = 0; ia < num_atoms(); ia++)
     {
@@ -737,14 +666,14 @@ bool Unit_cell::is_point_in_mt(double vc[3], int& ja, int& jr, double& dr, doubl
                     
                     // vector connecting center of atom and reduced point
                     vector3d<double> vf1;
-                    for (int i = 0; i < 3; i++) vf1[i] = vf[i] - posf[i];
+                    for (int i = 0; i < 3; i++) vf1[i] = vr.first[i] - posf[i];
                     
                     // convert to Cartesian coordinates
-                    vector3d<double> vc1 = get_coordinates<cartesian, direct>(vf1);
+                    vector3d<double> vc1 = get_cartesian_coordinates(vf1);
 
                     double r = vc1.length();
 
-                    if (r <= atom(ia)->type()->mt_radius())
+                    if (r <= atom(ia)->mt_radius())
                     {
                         ja = ia;
                         double vs1[3];                       
@@ -782,3 +711,34 @@ bool Unit_cell::is_point_in_mt(double vc[3], int& ja, int& jr, double& dr, doubl
     return false;
 }
 
+void Unit_cell::generate_radial_functions() 
+{
+    Timer t("sirius::Unit_cell::generate_radial_functions");
+   
+    for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
+        atom_symmetry_class(spl_num_atom_symmetry_classes(icloc))->generate_radial_functions();
+
+    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
+    {
+        int rank = spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
+        atom_symmetry_class(ic)->sync_radial_functions(rank);
+    }
+    
+    if (verbosity_level >= 4)
+    {
+        pstdout pout;
+        
+        for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
+        {
+            int ic = spl_num_atom_symmetry_classes(icloc);
+            atom_symmetry_class(ic)->write_enu(pout);
+        }
+
+        if (Platform::mpi_rank() == 0)
+        {
+            printf("\n");
+            printf("Linearization energies\n");
+        }
+        pout.flush(0);
+    }
+}

@@ -214,6 +214,68 @@ class Utils
             }
             return l_by_lm__;
         }
+
+        static std::pair< vector3d<double>, vector3d<int> > reduce_coordinates(vector3d<double> coord)
+        {
+            std::pair< vector3d<double>, vector3d<int> > v; 
+            
+            v.first = coord;
+            for (int i = 0; i < 3; i++)
+            {
+                v.second[i] = (int)floor(v.first[i]);
+                v.first[i] -= v.second[i];
+                if (v.first[i] < 0.0 || v.first[i] >= 1.0) error_local(__FILE__, __LINE__, "wrong fractional coordinates");
+            }
+            return v;
+        }
+
+        static vector3d<int> find_translation_limits(double radius, double lattice_vectors[3][3])
+        {
+            sirius::Timer t("sirius::Utils::find_translation_limits");
+        
+            vector3d<int> limits;
+        
+            int n = 0;
+            while(true)
+            {
+                bool found = false;
+                for (int i0 = -n; i0 <= n; i0++)
+                {
+                    for (int i1 = -n; i1 <= n; i1++)
+                    {
+                        for (int i2 = -n; i2 <= n; i2++)
+                        {
+                            if (abs(i0) == n || abs(i1) == n || abs(i2) == n)
+                            {
+                                vector3d<int> vf(i0, i1, i2);
+                                vector3d<double> vc;
+                                for (int x = 0; x < 3; x++)
+                                {
+                                    vc[x] += (vf[0] * lattice_vectors[0][x] + 
+                                              vf[1] * lattice_vectors[1][x] + 
+                                              vf[2] * lattice_vectors[2][x]);
+                                }
+                                double len = vc.length();
+                                if (len <= radius)
+                                {
+                                    found = true;
+                                    for (int j = 0; j < 3; j++) limits[j] = std::max(2 * abs(vf[j]) + 1, limits[j]);
+                                }
+                            }
+                        }
+                    }
+                }
+        
+                if (found) 
+                {
+                    n++;
+                }
+                else 
+                {
+                    return limits;
+                }
+            }
+        }
 };
 
 #endif

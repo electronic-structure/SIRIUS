@@ -128,7 +128,7 @@ void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential,
     {
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
-            int ig12 = parameters_.index_g12(kp->apwlo_basis_descriptors_row(igk_row).ig,
+            int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->apwlo_basis_descriptors_row(igk_row).ig,
                                              kp->apwlo_basis_descriptors_col(igk_col).ig);
             
             // pw kinetic energy
@@ -139,19 +139,19 @@ void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential,
             {
                 case nm:
                 {
-                    h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * parameters_.step_function_pw(ig12));
+                    h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * parameters_.step_function()->theta_pw(ig12));
                     break;
                 }
                 case uu:
                 {
                     h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + effective_magnetic_field[0]->f_pw(ig12) +  
-                                            t1 * parameters_.step_function_pw(ig12));
+                                            t1 * parameters_.step_function()->theta_pw(ig12));
                     break;
                 }
                 case dd:
                 {
                     h(igk_row, igk_col) += (effective_potential->f_pw(ig12) - effective_magnetic_field[0]->f_pw(ig12) +  
-                                            t1 * parameters_.step_function_pw(ig12));
+                                            t1 * parameters_.step_function()->theta_pw(ig12));
                     break;
                 }
                 case ud:
@@ -180,10 +180,10 @@ void Band::set_o_it(K_point* kp, mdarray<complex16, 2>& o)
     {
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
-            int ig12 = parameters_.index_g12(kp->apwlo_basis_descriptors_row(igk_row).ig,
+            int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->apwlo_basis_descriptors_row(igk_row).ig,
                                              kp->apwlo_basis_descriptors_col(igk_col).ig);
             
-            o(igk_row, igk_col) += parameters_.step_function_pw(ig12);
+            o(igk_row, igk_col) += parameters_.step_function()->theta_pw(ig12);
         }
     }
 }
@@ -205,7 +205,7 @@ void Band::set_h_lo_lo(K_point* kp, mdarray<complex16, 2>& h)
         {
             if (ia == kp->apwlo_basis_descriptors_row(irow).ia)
             {
-                Atom* atom = parameters_.atom(ia);
+                Atom* atom = parameters_.unit_cell()->atom(ia);
                 int lm1 = kp->apwlo_basis_descriptors_row(irow).lm; 
                 int idxrf1 = kp->apwlo_basis_descriptors_row(irow).idxrf; 
 
@@ -230,7 +230,7 @@ void Band::set_o_lo_lo(K_point* kp, mdarray<complex16, 2>& o)
         {
             if (ia == kp->apwlo_basis_descriptors_row(irow).ia)
             {
-                Atom* atom = parameters_.atom(ia);
+                Atom* atom = parameters_.unit_cell()->atom(ia);
                 int lm1 = kp->apwlo_basis_descriptors_row(irow).lm; 
 
                 if (lm1 == lm2)
@@ -254,16 +254,16 @@ void Band::set_h(K_point* kp, Periodic_function<double>* effective_potential,
     // index of column apw coefficients in apw array
     int apw_offset_col = kp->apw_offset_col();
     
-    mdarray<complex16, 2> alm(kp->num_gkvec_loc(), parameters_.max_mt_aw_basis_size());
-    mdarray<complex16, 2> halm(kp->num_gkvec_row(), parameters_.max_mt_aw_basis_size());
+    mdarray<complex16, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    mdarray<complex16, 2> halm(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
 
     h.zero();
 
     complex16 zone(1, 0);
     
-    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
-        Atom* atom = parameters_.atom(ia);
+        Atom* atom = parameters_.unit_cell()->atom(ia);
         Atom_type* type = atom->type();
        
         // generate conjugated coefficients
@@ -295,14 +295,14 @@ void Band::set_o(K_point* kp, mdarray<complex16, 2>& o)
     // index of column apw coefficients in apw array
     int apw_offset_col = kp->apw_offset_col();
     
-    mdarray<complex16, 2> alm(kp->num_gkvec_loc(), parameters_.max_mt_aw_basis_size());
+    mdarray<complex16, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
     o.zero();
 
     complex16 zone(1, 0);
     
-    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
-        Atom* atom = parameters_.atom(ia);
+        Atom* atom = parameters_.unit_cell()->atom(ia);
         Atom_type* type = atom->type();
        
         // generate conjugated coefficients

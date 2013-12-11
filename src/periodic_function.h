@@ -65,13 +65,16 @@ class Periodic_function
         
         /// number of plane-wave expansion coefficients
         int num_gvec_;
+        
+        /// alias for FFT driver
+        FFT3D<cpu>* fft_;
 
         /// Set pointer to local part of muffin-tin functions
         void set_local_mt_ptr()
         {
-            for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+            for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
             {
-                int ia = parameters_.spl_num_atoms(ialoc);
+                int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
                 f_mt_local_(ialoc)->set_ptr(&f_mt_(0, 0, ia));
             }
         }
@@ -79,7 +82,7 @@ class Periodic_function
         /// Set pointer to local part of interstitial array
         void set_local_it_ptr()
         {
-            f_it_local_.set_ptr(&f_it_(parameters_.spl_fft_size().global_offset()));
+            f_it_local_.set_ptr(&f_it_(fft_->global_offset()));
         }
 
     public:

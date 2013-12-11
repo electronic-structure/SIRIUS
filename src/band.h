@@ -12,6 +12,9 @@ class Band
 
         /// global set of parameters
         Global& parameters_;
+
+        /// alias for FFT driver
+        FFT3D<cpu>* fft_;
     
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
@@ -61,6 +64,7 @@ class Band
         /// Constructor
         Band(Global& parameters__) : parameters_(parameters__)
         {
+            fft_ = parameters_.reciprocal_lattice()->fft();
         }
 
         ~Band()

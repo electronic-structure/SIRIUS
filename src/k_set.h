@@ -179,7 +179,7 @@ class K_set
             for (int ik = 0; ik < num_kpoints(); ik++)
             {
                 // reduce k+q to first BZ: k+q=k"+K; k"=k+q-K
-                std::pair< vector3d<double>, vector3d<int> > vkqr = parameters_.reduce_coordinates(kpoints_[ik]->vk() + vq);
+                std::pair< vector3d<double>, vector3d<int> > vkqr = Utils::reduce_coordinates(kpoints_[ik]->vk() + vq);
                 
                 if ((kpq[ik].jk = find_kpoint(vkqr.first)) == -1) 
                     error_local(__FILE__, __LINE__, "index of reduced k+q point is not found");

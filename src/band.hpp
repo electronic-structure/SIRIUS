@@ -20,18 +20,18 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
     complex16 zone = complex16(1, 0);
     complex16 zi = complex16(0, 1);
 
-    mdarray<complex16, 3> zm(parameters_.max_mt_basis_size(), parameters_.max_mt_basis_size(), 
+    mdarray<complex16, 3> zm(parameters_.unit_cell()->max_mt_basis_size(), parameters_.unit_cell()->max_mt_basis_size(), 
                              parameters_.num_mag_dims());
 
     // column fv states are further distributed over rows to make use of all row processors
     int num_fv_local = parameters_.sub_spl_fv_states_col().local_size();
     int idx_fv_local = parameters_.sub_spl_fv_states_col().global_offset();
             
-    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
-        int offset = parameters_.atom(ia)->offset_wf();
-        int mt_basis_size = parameters_.atom(ia)->type()->mt_basis_size();
-        Atom* atom = parameters_.atom(ia);
+        int offset = parameters_.unit_cell()->atom(ia)->offset_wf();
+        int mt_basis_size = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+        Atom* atom = parameters_.unit_cell()->atom(ia);
         
         zm.zero();
 
@@ -101,31 +101,31 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
     {        
         int thread_id = omp_get_thread_num();
         
-        std::vector<complex16> psi_it(parameters_.fft().size());
-        std::vector<complex16> hpsi_it(parameters_.fft().size());
+        std::vector<complex16> psi_it(fft_->size());
+        std::vector<complex16> hpsi_it(fft_->size());
         
         #pragma omp for
         for (int iloc = 0; iloc < num_fv_local; iloc++)
         {
             int i = parameters_.sub_spl_fv_states_col(iloc);
 
-            parameters_.fft().input(num_gkvec, fft_index, &fv_states(parameters_.mt_basis_size(), i), thread_id);
-            parameters_.fft().transform(1, thread_id);
-            parameters_.fft().output(&psi_it[0], thread_id);
+            fft_->input(num_gkvec, fft_index, &fv_states(parameters_.unit_cell()->mt_basis_size(), i), thread_id);
+            fft_->transform(1, thread_id);
+            fft_->output(&psi_it[0], thread_id);
                                         
-            for (int ir = 0; ir < parameters_.fft().size(); ir++)
+            for (int ir = 0; ir < fft_->size(); ir++)
             {
                 // hpsi(r) = psi(r) * Bz(r) * Theta(r)
                 hpsi_it[ir] = psi_it[ir] * effective_magnetic_field[0]->f_it<global>(ir) * parameters_.step_function(ir);
             }
             
-            parameters_.fft().input(&hpsi_it[0], thread_id);
-            parameters_.fft().transform(-1, thread_id);
-            parameters_.fft().output(num_gkvec, fft_index, &hpsi_pw(0, i, 0), thread_id); 
+            fft_->input(&hpsi_it[0], thread_id);
+            fft_->transform(-1, thread_id);
+            fft_->output(num_gkvec, fft_index, &hpsi_pw(0, i, 0), thread_id); 
 
             if (hpsi.size(2) >= 3)
             {
-                for (int ir = 0; ir < parameters_.fft().size(); ir++)
+                for (int ir = 0; ir < fft_->size(); ir++)
                 {
                     // hpsi(r) = psi(r) * (Bx(r) - iBy(r)) * Theta(r)
                     hpsi_it[ir] = psi_it[ir] * parameters_.step_function(ir) * 
@@ -133,15 +133,15 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
                                    zi * effective_magnetic_field[2]->f_it<global>(ir));
                 }
                 
-                parameters_.fft().input(&hpsi_it[0], thread_id);
-                parameters_.fft().transform(-1, thread_id);
-                parameters_.fft().output(num_gkvec, fft_index, &hpsi_pw(0, i, 2), thread_id); 
+                fft_->input(&hpsi_it[0], thread_id);
+                fft_->transform(-1, thread_id);
+                fft_->output(num_gkvec, fft_index, &hpsi_pw(0, i, 2), thread_id); 
             }
             
             if ((hpsi.size(2)) == 4 && 
                 (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa))
             {
-                for (int ir = 0; ir < parameters_.fft().size(); ir++)
+                for (int ir = 0; ir < fft_->size(); ir++)
                 {
                     // hpsi(r) = psi(r) * (Bx(r) + iBy(r)) * Theta(r)
                     hpsi_it[ir] = psi_it[ir] * parameters_.step_function(ir) *
@@ -149,9 +149,9 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
                                    zi * effective_magnetic_field[2]->f_it<global>(ir));
                 }
                 
-                parameters_.fft().input(&hpsi_it[0], thread_id);
-                parameters_.fft().transform(-1, thread_id);
-                parameters_.fft().output(num_gkvec, fft_index, &hpsi_pw(0, i, 3), thread_id); 
+                fft_->input(&hpsi_it[0], thread_id);
+                fft_->transform(-1, thread_id);
+                fft_->output(num_gkvec, fft_index, &hpsi_pw(0, i, 3), thread_id); 
             }
         }
     }
@@ -164,7 +164,7 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
             for (int iloc = 0; iloc < num_fv_local; iloc++)
             {
                 int i = parameters_.sub_spl_fv_states_col(iloc);
-                memcpy(&hpsi(parameters_.mt_basis_size(), i, n), &hpsi_pw(0, i, n), num_gkvec * sizeof(complex16));
+                memcpy(&hpsi(parameters_.unit_cell()->mt_basis_size(), i, n), &hpsi_pw(0, i, n), num_gkvec * sizeof(complex16));
             }
         }
         else
@@ -189,11 +189,11 @@ void Band::apply_so_correction(mdarray<complex16, 2>& fv_states, mdarray<complex
 {
     Timer t("sirius::Band::apply_so_correction");
 
-    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
-        Atom_type* type = parameters_.atom(ia)->type();
+        Atom_type* type = parameters_.unit_cell()->atom(ia)->type();
 
-        int offset = parameters_.atom(ia)->offset_wf();
+        int offset = parameters_.unit_cell()->atom(ia)->offset_wf();
 
         for (int l = 0; l <= parameters_.lmax_apw(); l++)
         {
@@ -203,7 +203,7 @@ void Band::apply_so_correction(mdarray<complex16, 2>& fv_states, mdarray<complex
             {
                 for (int order2 = 0; order2 < nrf; order2++)
                 {
-                    double sori = parameters_.atom(ia)->symmetry_class()->so_radial_integral(l, order1, order2);
+                    double sori = parameters_.unit_cell()->atom(ia)->symmetry_class()->so_radial_integral(l, order1, order2);
                     
                     for (int m = -l; m <= l; m++)
                     {
@@ -236,15 +236,15 @@ void Band::apply_uj_correction(mdarray<complex16, 2>& fv_states, mdarray<complex
 {
     Timer t("sirius::Band::apply_uj_correction");
 
-    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
-        if (parameters_.atom(ia)->apply_uj_correction())
+        if (parameters_.unit_cell()->atom(ia)->apply_uj_correction())
         {
-            Atom_type* type = parameters_.atom(ia)->type();
+            Atom_type* type = parameters_.unit_cell()->atom(ia)->type();
 
-            int offset = parameters_.atom(ia)->offset_wf();
+            int offset = parameters_.unit_cell()->atom(ia)->offset_wf();
 
-            int l = parameters_.atom(ia)->uj_correction_l();
+            int l = parameters_.unit_cell()->atom(ia)->uj_correction_l();
 
             int nrf = type->indexr().num_rf(l);
 
@@ -255,7 +255,7 @@ void Band::apply_uj_correction(mdarray<complex16, 2>& fv_states, mdarray<complex
                     int idx2 = type->indexb_by_lm_order(lm2, order2);
                     for (int order1 = 0; order1 < nrf; order1++)
                     {
-                        double ori = parameters_.atom(ia)->symmetry_class()->o_radial_integral(l, order2, order1);
+                        double ori = parameters_.unit_cell()->atom(ia)->symmetry_class()->o_radial_integral(l, order2, order1);
                         
                         for (int ist = 0; ist < parameters_.spl_fv_states_col().local_size(); ist++)
                         {
@@ -267,25 +267,25 @@ void Band::apply_uj_correction(mdarray<complex16, 2>& fv_states, mdarray<complex
                                 if (sblock == uu)
                                 {
                                     hpsi(offset + idx2, ist, 0) += z1 * 
-                                        parameters_.atom(ia)->uj_correction_matrix(lm2, lm1, 0, 0);
+                                        parameters_.unit_cell()->atom(ia)->uj_correction_matrix(lm2, lm1, 0, 0);
                                 }
 
                                 if (sblock == dd)
                                 {
                                     hpsi(offset + idx2, ist, 1) += z1 *
-                                        parameters_.atom(ia)->uj_correction_matrix(lm2, lm1, 1, 1);
+                                        parameters_.unit_cell()->atom(ia)->uj_correction_matrix(lm2, lm1, 1, 1);
                                 }
 
                                 if (sblock == ud)
                                 {
                                     hpsi(offset + idx2, ist, 2) += z1 *
-                                        parameters_.atom(ia)->uj_correction_matrix(lm2, lm1, 0, 1);
+                                        parameters_.unit_cell()->atom(ia)->uj_correction_matrix(lm2, lm1, 0, 1);
                                 }
                                 
                                 if (sblock == du)
                                 {
                                     hpsi(offset + idx2, ist, 3) += z1 *
-                                        parameters_.atom(ia)->uj_correction_matrix(lm2, lm1, 1, 0);
+                                        parameters_.unit_cell()->atom(ia)->uj_correction_matrix(lm2, lm1, 1, 0);
                                 }
                             }
                         }
@@ -461,7 +461,7 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 {
     Timer t("sirius::Band::apply_hmt_to_apw");
     
-    Atom* atom = parameters_.atom(ia);
+    Atom* atom = parameters_.unit_cell()->atom(ia);
     Atom_type* type = atom->type();
     
     #pragma omp parallel default(shared)
@@ -1194,17 +1194,17 @@ template<> void Band::set_fv_h_o<cpu, apwlo>(K_point* kp, Periodic_function<doub
     // index of column apw coefficients in apw array
     int apw_offset_col = kp->apw_offset_col();
     
-    mdarray<complex16, 2> alm(kp->num_gkvec_loc(), parameters_.max_mt_aw_basis_size());
-    mdarray<complex16, 2> halm(kp->num_gkvec_row(), parameters_.max_mt_aw_basis_size());
+    mdarray<complex16, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    mdarray<complex16, 2> halm(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
 
     h.zero();
     o.zero();
 
     complex16 zone(1, 0);
     
-    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
-        Atom* atom = parameters_.atom(ia);
+        Atom* atom = parameters_.unit_cell()->atom(ia);
         Atom_type* type = atom->type();
        
         // generate conjugated coefficients
@@ -1323,15 +1323,15 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
     {
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
-            int ig12 = parameters_.index_g12(kp->apwlo_basis_descriptors_row(igk_row).ig,
-                                             kp->apwlo_basis_descriptors_col(igk_col).ig);
+            int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->apwlo_basis_descriptors_row(igk_row).ig,
+                                                                   kp->apwlo_basis_descriptors_col(igk_col).ig);
             
             // pw kinetic energy
             double t1 = 0.5 * Utils::scalar_product(kp->apwlo_basis_descriptors_row(igk_row).gkvec_cart, 
                                                     kp->apwlo_basis_descriptors_col(igk_col).gkvec_cart);
                                
-            h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * parameters_.step_function_pw(ig12));
-            o(igk_row, igk_col) += parameters_.step_function_pw(ig12);
+            h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * parameters_.step_function()->theta_pw(ig12));
+            o(igk_row, igk_col) += parameters_.step_function()->theta_pw(ig12);
         }
     }
 }
@@ -1352,7 +1352,7 @@ void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<complex16, 2>& h, mdarray<compl
         {
             if (ia == kp->apwlo_basis_descriptors_row(irow).ia)
             {
-                Atom* atom = parameters_.atom(ia);
+                Atom* atom = parameters_.unit_cell()->atom(ia);
                 int lm1 = kp->apwlo_basis_descriptors_row(irow).lm; 
                 int idxrf1 = kp->apwlo_basis_descriptors_row(irow).idxrf; 
 

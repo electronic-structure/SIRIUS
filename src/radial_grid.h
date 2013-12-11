@@ -292,7 +292,7 @@ class Radial_grid
             for (int i = 0; i < (int)points_.size() - 1; i++) deltas_[i] = points_[i + 1] - points_[i];
             
             points_inv_.resize(points_.size());
-            for (int i = 0; i < (int)points_.size(); i++) points_inv_[i] = 1.0 / points_[i];
+            for (int i = 0; i < (int)points_.size(); i++) points_inv_[i] = (points_[i] == 0) ? 0 : 1.0 / points_[i];
         }
 
         /// Get all radial points.

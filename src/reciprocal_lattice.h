@@ -3,16 +3,22 @@
 
 namespace sirius {
 
-class Reciprocal_lattice: public Unit_cell
+class Reciprocal_lattice
 {
     private:
+
+        Unit_cell* unit_cell_;
+        
+        double lattice_vectors_[3][3];
+
+        double reciprocal_lattice_vectors_[3][3];
         
         /// plane wave cutoff radius (in inverse a.u. of length)
         /** Plane-wave cutoff controls the size of the FFT grid used in the interstitial region. */
         double pw_cutoff_;
         
         /// FFT wrapper
-        FFT3D<cpu> fft_;
+        FFT3D<cpu>* fft_;
 
         /// list of G-vector fractional coordinates
         mdarray<int, 2> gvec_;
@@ -30,13 +36,10 @@ class Reciprocal_lattice: public Unit_cell
         mdarray<int, 3> index_by_gvec_;
 
         /// mapping betwee linear G-vector index and position in FFT buffer
-        std::vector<int> fft_index_;
+        std::vector<int> fft_index_; // TODO: move to FFT? what to do with sorting of G-vectors?
 
         /// split index of G-vectors
         splindex<block> spl_num_gvec_;
-        
-        /// split index of FFT buffer
-        splindex<block> spl_fft_size_;
         
         /// cached Ylm components of G-vectors
         mdarray<complex16, 2> gvec_ylm_;
@@ -44,23 +47,38 @@ class Reciprocal_lattice: public Unit_cell
         /// cached values of G-vector phase factors 
         mdarray<complex16, 2> gvec_phase_factors_;
 
-    protected:
-
         /// length of G-vectors belonging to the same shell
         std::vector<double> gvec_shell_len_;
         
         void init(int lmax);
 
-        void update();
-        
-        void clear();
-
     public:
         
-        Reciprocal_lattice() : pw_cutoff_(pw_cutoff_default), num_gvec_(0)
+        Reciprocal_lattice(Unit_cell* unit_cell__, double pw_cutoff__, int lmax__) : 
+            unit_cell_(unit_cell__), pw_cutoff_(pw_cutoff__), num_gvec_(0)
         {
+            for (int l = 0; l < 3; l++)
+            {
+                for (int x = 0; x < 3; x++)
+                {
+                    lattice_vectors_[l][x] = unit_cell_->lattice_vectors(l, x);
+                    reciprocal_lattice_vectors_[l][x] = unit_cell_->reciprocal_lattice_vectors(l, x);
+                }
+            }
+
+            vector3d<int> max_frac_coord = Utils::find_translation_limits(pw_cutoff_, reciprocal_lattice_vectors_);
+            fft_ = new FFT3D<cpu>(max_frac_coord);
+
+            init(lmax__);
+        }
+
+        ~Reciprocal_lattice()
+        {
+            delete fft_;
         }
   
+        void update();
+
         /// Print basic info
         void print_info();
         
@@ -76,7 +94,7 @@ class Reciprocal_lattice: public Unit_cell
         template <index_domain_t index_domain>
         inline void gvec_ylm_array(int ig, complex16* ylm, int lmax);
 
-        inline FFT3D<cpu>& fft()
+        inline FFT3D<cpu>* fft()
         {
             return fft_;
         }
@@ -115,23 +133,32 @@ class Reciprocal_lattice: public Unit_cell
         {
             return gvec_shell_len(gvec_shell_[ig]);
         }
+        
+        inline vector3d<double> get_fractional_coordinates(vector3d<double> a)
+        {
+            vector3d<double> b;
+            for (int l = 0; l < 3; l++)
+            {
+                for (int x = 0; x < 3; x++) b[l] += lattice_vectors_[l][x] * a[x] / twopi;
+            }
+            return b;
+        }
+        
+        template <typename T>
+        inline vector3d<double> get_cartesian_coordinates(vector3d<T> a)
+        {
+            vector3d<double> b;
+            for (int x = 0; x < 3; x++)
+            {
+                for (int l = 0; l < 3; l++) b[x] += a[l] * reciprocal_lattice_vectors_[l][x];
+            }
+            return b;
+        }
 
         /// G-vector in Cartesian coordinates
         inline vector3d<double> gvec_cart(int ig)
         {
-            return get_coordinates<cartesian, reciprocal>(gvec(ig));
-        }
-        
-        /// Plane-wave cutoff for G-vectors
-        inline double pw_cutoff()
-        {
-            return pw_cutoff_;
-        }
-        
-        /// Set plane-wave cutoff
-        void set_pw_cutoff(double pw_cutoff__)
-        {
-            pw_cutoff_ = pw_cutoff__;
+            return get_cartesian_coordinates(gvec(ig));
         }
         
         /// Number of G-vectors within plane-wave cutoff
@@ -141,9 +168,14 @@ class Reciprocal_lattice: public Unit_cell
         }
 
         /// Number of G-vector shells within plane-wave cutoff
-        inline int num_gvec_shells()
+        inline int num_gvec_shells_inner()
         {
             return gvec_shell_[num_gvec_];
+        }
+
+        inline int num_gvec_shells_total()
+        {
+            return (int)gvec_shell_len_.size();
         }
         
         /// Return global index of G1-G2 vector
@@ -157,9 +189,9 @@ class Reciprocal_lattice: public Unit_cell
         inline int index_g12_safe(int ig1, int ig2)
         {
             vector3d<int> v(gvec_(0, ig1) - gvec_(0, ig2), gvec_(1, ig1) - gvec_(1, ig2), gvec_(2, ig1) - gvec_(2, ig2));
-            if (v[0] >= fft_.grid_limits(0).first && v[0] <= fft_.grid_limits(0).second &&
-                v[1] >= fft_.grid_limits(1).first && v[1] <= fft_.grid_limits(1).second &&
-                v[2] >= fft_.grid_limits(2).first && v[2] <= fft_.grid_limits(2).second)
+            if (v[0] >= fft_->grid_limits(0).first && v[0] <= fft_->grid_limits(0).second &&
+                v[1] >= fft_->grid_limits(1).first && v[1] <= fft_->grid_limits(1).second &&
+                v[2] >= fft_->grid_limits(2).first && v[2] <= fft_->grid_limits(2).second)
             {
                 return index_by_gvec(v[0], v[1], v[2]);
             }
@@ -179,16 +211,6 @@ class Reciprocal_lattice: public Unit_cell
             return spl_num_gvec_[igloc];
         }
         
-        inline splindex<block>& spl_fft_size()
-        {
-            return spl_fft_size_;
-        }
-
-        inline int spl_fft_size(int i)
-        {
-            return spl_fft_size_[i];
-        }
-
         inline complex16 gvec_ylm(int lm, int igloc)
         {
             return gvec_ylm_(lm, igloc);

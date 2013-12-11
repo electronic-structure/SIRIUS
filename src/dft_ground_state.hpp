@@ -1,11 +1,11 @@
 inline double DFT_ground_state::energy_enuc()
 {
     double enuc = 0.0;
-    for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
+    for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
     {
-        int ia = parameters_.spl_num_atoms(ialoc);
-        int zn = parameters_.atom(ia)->type()->zn();
-        double r0 = parameters_.atom(ia)->type()->radial_grid(0);
+        int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
+        int zn = parameters_.unit_cell()->atom(ia)->type()->zn();
+        double r0 = parameters_.unit_cell()->atom(ia)->type()->radial_grid(0);
         enuc -= 0.5 * zn * (potential_->coulomb_potential()->f_mt<local>(0, 0, ialoc) * y00 + zn / r0);
     }
     Platform::allreduce(&enuc, 1);
@@ -16,28 +16,28 @@ inline double DFT_ground_state::energy_enuc()
 inline double DFT_ground_state::core_eval_sum()
 {
     double sum = 0.0;
-    for (int ic = 0; ic < parameters_.num_atom_symmetry_classes(); ic++)
+    for (int ic = 0; ic < parameters_.unit_cell()->num_atom_symmetry_classes(); ic++)
     {
-        sum += parameters_.atom_symmetry_class(ic)->core_eval_sum() * 
-               parameters_.atom_symmetry_class(ic)->num_atoms();
+        sum += parameters_.unit_cell()->atom_symmetry_class(ic)->core_eval_sum() * 
+               parameters_.unit_cell()->atom_symmetry_class(ic)->num_atoms();
     }
     return sum;
 }
 
 void DFT_ground_state::move_atoms(int istep)
 {
-    mdarray<double, 2> atom_force(3, parameters_.num_atoms());
+    mdarray<double, 2> atom_force(3, parameters_.unit_cell()->num_atoms());
     forces(atom_force);
 
-    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
-        vector3d<double> pos = parameters_.atom(ia)->position();
+        vector3d<double> pos = parameters_.unit_cell()->atom(ia)->position();
 
-        vector3d<double> forcef = parameters_.get_coordinates<fractional, direct>(vector3d<double>(&atom_force(0, ia)));
+        vector3d<double> forcef = parameters_.unit_cell()->get_fractional_coordinates(vector3d<double>(&atom_force(0, ia)));
 
         for (int x = 0; x < 3; x++) pos[x] += 1.0 * forcef[x];
         
-        parameters_.atom(ia)->set_position(pos);
+        parameters_.unit_cell()->atom(ia)->set_position(pos);
     }
 }
 

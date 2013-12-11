@@ -7,6 +7,8 @@
 */
 namespace sirius {
 
+// TODO: return index of atom type, don't bother with atom_type_index_by_id
+
 class Atom
 {
     private:

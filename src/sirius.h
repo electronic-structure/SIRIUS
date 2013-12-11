@@ -29,8 +29,6 @@ extern "C" {
 #include <gsl/gsl_sf_coupling.h>
 #include <gsl/gsl_sf_erf.h>
 #include <xc.h>
-// libxc should do that
-#undef FLOAT
 
 #include <hdf5.h>
 #include <libjson.h>
@@ -61,14 +59,15 @@ extern "C" {
 #include "radial_solver.h"
 #include "sht.h"
 #include "gaunt.h"
+#include "splindex.h"
 #include "fft3d.h"
 #include "json_tree.h"
 #include "hdf5_tree.h" 
 #include "libxc_interface.h"
 #include "mpi_grid.h"
-#include "splindex.h"
 #include "sirius_io.h"
 #include "descriptors.h"
+#include "parset.h"
 
 //==============================
 // atoms        
@@ -77,17 +76,13 @@ extern "C" {
 #include "atom_symmetry_class.h"
 #include "atom.h"
 
-//==================================
-// stack of classes for Global class
-//==================================
+//============================
+// main classes
+//============================
 #include "unit_cell.h"
 #include "reciprocal_lattice.h"
 #include "step_function.h"
 #include "global.h"
-
-//============================
-// main classes
-//============================
 #include "sbessel_pw.h"
 #include "spheric_function.h"
 #include "spheric_function_vector.h"

@@ -46,7 +46,7 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
     {
         potential->generate_pw_coefs();
         potential->update_atomic_potential();
-        parameters_.generate_radial_functions();
+        parameters_.unit_cell()->generate_radial_functions();
         parameters_.generate_radial_integrals();
     }
     
@@ -142,10 +142,10 @@ void K_set::find_band_occupancies()
             }
         }
 
-        if (fabs(ne - parameters_.num_valence_electrons()) < 1e-11) break;
+        if (fabs(ne - parameters_.unit_cell()->num_valence_electrons()) < 1e-11) break;
 
         sp = s;
-        s = (ne > parameters_.num_valence_electrons()) ? -1 : 1;
+        s = (ne > parameters_.unit_cell()->num_valence_electrons()) ? -1 : 1;
 
         de = s * fabs(de);
 
@@ -161,9 +161,9 @@ void K_set::find_band_occupancies()
 
     double gap = 0.0;
     
-    int nve = int(parameters_.num_valence_electrons() + 1e-12);
+    int nve = int(parameters_.unit_cell()->num_valence_electrons() + 1e-12);
     if ((parameters_.num_spins() == 2) || 
-        ((fabs(nve - parameters_.num_valence_electrons()) < 1e-12) && nve % 2 == 0))
+        ((fabs(nve - parameters_.unit_cell()->num_valence_electrons()) < 1e-12) && nve % 2 == 0))
     {
         // find band gap
         std::vector< std::pair<double, double> > eband;

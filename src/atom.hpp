@@ -18,7 +18,7 @@ Atom::Atom(Atom_type* type__, double* position__, double* vector_field__) :
 
 void Atom::init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_lo__, int offset_wf__)
 {
-    assert(lmax_pot__ >= 0);
+    assert(lmax_pot__ >= -1);
     assert(offset_aw__ >= 0);
     
     offset_aw_ = offset_aw__;

@@ -70,6 +70,9 @@ template<> class FFT3D<cpu>
         /// output buffer for each thread
         mdarray<complex16, 2> fftw_output_buffer_;
 
+        /// split index of FFT buffer
+        splindex<block> spl_fft_size_;
+
         /// Execute backward transformation.
         inline void backward(int thread_id = 0)
         {    
@@ -105,9 +108,11 @@ template<> class FFT3D<cpu>
             }
         } 
         
-        /// Determine the optimal FFT grid size and set grid limits.
-        void set_grid_size(int* dims)
+    public:
+
+        FFT3D<cpu>(vector3d<int> dims)
         {
+            Timer t("sirius::FFT3D<cpu>::FFT3D<cpu>");
             for (int i = 0; i < 3; i++)
             {
                 grid_size_[i] = find_grid_size(dims[i]);
@@ -115,16 +120,7 @@ template<> class FFT3D<cpu>
                 grid_limits_[i].second = grid_size_[i] / 2;
                 grid_limits_[i].first = grid_limits_[i].second - grid_size_[i] + 1;
             }
-        }
 
-    public:
-        
-        /// Initialize transformations.
-        void init(int* dims)
-        {
-            Timer t("sirius::FFT3D::init");
-            set_grid_size(dims);
-            
             fftw_input_buffer_.set_dimensions(size(), Platform::num_fft_threads());
             fftw_input_buffer_.allocate();
 
@@ -143,24 +139,20 @@ template<> class FFT3D<cpu>
                                                     (fftw_complex*)&fftw_input_buffer_(0, i), 
                                                     (fftw_complex*)&fftw_output_buffer_(0, i), -1, FFTW_MEASURE);
             }
+
+            spl_fft_size_.split(size(), Platform::num_mpi_ranks(), Platform::mpi_rank());
         }
-        
-        /// Free all allocated resources.
-        /** \todo fix for multiple calls */
-        void clear()
+
+        ~FFT3D<cpu>()
         {
             for (int i = 0; i < Platform::num_fft_threads(); i++)
             {
                 fftw_destroy_plan(plan_backward_[i]);
                 fftw_destroy_plan(plan_forward_[i]);
             }
-            plan_backward_.clear();
-            plan_forward_.clear();
-            fftw_input_buffer_.deallocate();
-            fftw_output_buffer_.deallocate();
             fftw_cleanup();
         }
-        
+
         /// Zero the input buffer for a given thread.
         inline void zero(int thread_id = 0)
         {
@@ -263,6 +255,21 @@ template<> class FFT3D<cpu>
             if (i2 < 0) i2 += grid_size_[2];
 
             return (i0 + i1 * grid_size_[0] + i2 * grid_size_[0] * grid_size_[1]);
+        }
+
+        inline int local_size()
+        {
+            return spl_fft_size_.local_size();
+        }
+
+        inline int global_index(int irloc)
+        {
+            return spl_fft_size_[irloc];
+        }
+
+        inline int global_offset()
+        {
+            return spl_fft_size_.global_offset();
         }
         
         /// Direct access of the output buffer

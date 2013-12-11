@@ -6,8 +6,11 @@ class Density
 {
     private:
         
-        /// Global set of parameters
+        /// global set of parameters
         Global& parameters_;
+
+        /// alias for FFT driver
+        FFT3D<cpu>* fft_;
 
         Periodic_function<double>* rho_;
         
