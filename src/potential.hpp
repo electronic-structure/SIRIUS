@@ -81,7 +81,7 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
             int igs = parameters_.reciprocal_lattice()->gvec_shell<global>(ig);
             for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
             {
-                int iat = parameters_.unit_cell()->atom_type_index_by_id(parameters_.unit_cell()->atom(ia)->type_id());
+                int iat = parameters_.unit_cell()->atom(ia)->type_id();
                 vloc_pw[ig] += conj(parameters_.reciprocal_lattice()->gvec_phase_factor<global>(ig, ia)) * vloc_radial_integrals(iat, igs) * fourpi_omega;
             }
         }
@@ -306,7 +306,7 @@ void Potential::poisson_sum_G(complex16* fpw, mdarray<double, 3>& fl, mdarray<co
         #pragma omp parallel for default(shared)
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
-            int iat = parameters_.unit_cell()->atom_type_index_by_id(parameters_.unit_cell()->atom(ia)->type_id());
+            int iat = parameters_.unit_cell()->atom(ia)->type_id();
             for (int igloc = 0; igloc < parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
             {
                 zm2(igloc, ia) = fourpi * parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia) *  
@@ -334,14 +334,6 @@ void Potential::poisson_pw(mdarray<complex16, 2>& qmt, mdarray<complex16, 2>& qi
     // the difference bethween true and interstitial-in-the-mt multipole moments and divided by the 
     // moment of the pseudodensity
     
-    //== // precompute R^(-l)
-    //== mdarray<double, 2> Rl(parameters_.lmax_rho() + 1, parameters_.num_atom_types());
-    //== for (int iat = 0; iat < parameters_.num_atom_types(); iat++)
-    //== {
-    //==     for (int l = 0; l <= parameters_.lmax_rho(); l++)
-    //==         Rl(l, iat) = pow(parameters_.atom_type(iat)->mt_radius(), -l);
-    //== }
-
     #pragma omp parallel default(shared)
     {
         std::vector<complex16> pseudo_pw_pt(parameters_.reciprocal_lattice()->spl_num_gvec().local_size(), complex16(0, 0));
@@ -349,7 +341,7 @@ void Potential::poisson_pw(mdarray<complex16, 2>& qmt, mdarray<complex16, 2>& qi
         #pragma omp for
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
-            int iat = parameters_.unit_cell()->atom_type_index_by_id(parameters_.unit_cell()->atom(ia)->type_id());
+            int iat = parameters_.unit_cell()->atom(ia)->type_id();
 
             double R = parameters_.unit_cell()->atom(ia)->mt_radius();
 
@@ -358,11 +350,7 @@ void Potential::poisson_pw(mdarray<complex16, 2>& qmt, mdarray<complex16, 2>& qi
             for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
             {
                 for (int m = -l; m <= l; m++, lm++)
-                {
-                    //== zp[lm] = (qmt(lm, ia) - qit(lm, ia)) * Rl(l, iat) * conj(zil_[l]) *
-                    //==          gamma_factors[l][pseudo_density_order]; 
                     zp[lm] = (qmt(lm, ia) - qit(lm, ia)) * conj(zil_[l]) * gamma_factors_R_(l, iat);
-                }
             }
 
             for (int igloc = 0; igloc < parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
@@ -442,7 +430,7 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
 
             for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
             {
-                int iat = parameters_.unit_cell()->atom_type_index_by_id(parameters_.unit_cell()->atom(ia)->type_id());
+                int iat = parameters_.unit_cell()->atom(ia)->type_id();
 
                 for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
                 {

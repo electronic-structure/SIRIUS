@@ -99,10 +99,6 @@ class Global
         /// MPI grid dimensions
         std::vector<int> mpi_grid_dims_;
         
-        MPI_group mpi_group_atom_;
-        
-        splindex<block> spl_atoms_;
-
         /// MPI grid
         MPI_grid mpi_grid_;
 
@@ -584,21 +580,6 @@ class Global
 
             // setup MPI grid
             mpi_grid_.initialize(mpi_grid_dims_);
-           
-            // TODO: this is unreadable and must be improved
-            if (unit_cell_->num_atoms() != 0)
-            {
-                mpi_group_atom_.split(unit_cell_->num_atoms(), mpi_grid_.communicator());
-                spl_atoms_.split(unit_cell_->num_atoms(), mpi_group_atom_.num_groups(), mpi_group_atom_.group_id());
-                for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
-                {
-                    int rank = unit_cell_->spl_num_atoms().location(_splindex_rank_, ia);
-                    if (Platform::mpi_rank() == rank)
-                    {
-                        if (Platform::mpi_rank(mpi_group_atom_.communicator()) != 0) error_local(__FILE__, __LINE__, "wrong root rank");
-                    }
-                }
-            }
             
             if (num_fv_states_ < 0) num_fv_states_ = int(unit_cell_->num_valence_electrons() / 2.0) + 20;
 
@@ -738,7 +719,6 @@ class Global
                 unit_cell_->clear();
                 delete reciprocal_lattice_;
                 delete step_function_;
-                mpi_group_atom_.finalize();
                 mpi_grid_.finalize();
                 initialized_ = false;
             }
@@ -813,81 +793,6 @@ class Global
             unit_cell_->write_cif();
         }
         
-        //== void generate_radial_functions() // TODO: move to unit cell
-        //== {
-        //==     Timer t("sirius::Global::generate_radial_functions");
-        //==    
-        //==     for (int icloc = 0; icloc < unit_cell_->spl_num_atom_symmetry_classes().local_size(); icloc++)
-        //==         unit_cell_->atom_symmetry_class(unit_cell_->spl_num_atom_symmetry_classes(icloc))->generate_radial_functions();
-
-        //==     for (int ic = 0; ic < unit_cell_->num_atom_symmetry_classes(); ic++)
-        //==     {
-        //==         int rank = unit_cell_->spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
-        //==         unit_cell_->atom_symmetry_class(ic)->sync_radial_functions(rank);
-        //==     }
-        //==     
-        //==     if (verbosity_level >= 4)
-        //==     {
-        //==         pstdout pout;
-        //==         
-        //==         for (int icloc = 0; icloc < unit_cell_->spl_num_atom_symmetry_classes().local_size(); icloc++)
-        //==         {
-        //==             int ic = unit_cell_->spl_num_atom_symmetry_classes(icloc);
-        //==             unit_cell_->atom_symmetry_class(ic)->write_enu(pout);
-        //==         }
-
-        //==         if (Platform::mpi_rank() == 0)
-        //==         {
-        //==             printf("\n");
-        //==             printf("Linearization energies\n");
-        //==         }
-        //==         pout.flush(0);
-        //==     }
-        //== }
-        
-        void generate_radial_integrals()
-        {
-            Timer t("sirius::Global::generate_radial_integrals");
-            
-            for (int icloc = 0; icloc < unit_cell_->spl_num_atom_symmetry_classes().local_size(); icloc++)
-                unit_cell_->atom_symmetry_class(unit_cell_->spl_num_atom_symmetry_classes(icloc))->generate_radial_integrals();
-
-            for (int ic = 0; ic < unit_cell_->num_atom_symmetry_classes(); ic++)
-            {
-                int rank = unit_cell_->spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
-                unit_cell_->atom_symmetry_class(ic)->sync_radial_integrals(rank);
-            }
-
-            for (int ialoc = 0; ialoc < spl_atoms_.local_size(); ialoc++)
-            {
-                int ia = spl_atoms_[ialoc];
-                unit_cell_->atom(ia)->generate_radial_integrals(mpi_group_atom_.communicator());
-            }
-            
-            for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
-            {
-                int rank = unit_cell_->spl_num_atoms().location(_splindex_rank_, ia);
-                unit_cell_->atom(ia)->sync_radial_integrals(rank);
-            }
-        }
-
-        void solve_free_atoms()
-        {
-            Timer t("sirius::Global::solve_free_atoms");
-
-            splindex<block> spl_num_atom_types(unit_cell_->num_atom_types(), Platform::num_mpi_ranks(), Platform::mpi_rank());
-
-            std::vector<double> enu;
-            for (int i = 0; i < spl_num_atom_types.local_size(); i++)
-                unit_cell_->atom_type(spl_num_atom_types[i])->solve_free_atom(1e-6, 1e-4, 1e-4, enu);
-
-            for (int i = 0; i < unit_cell_->num_atom_types(); i++)
-            {
-                int rank = spl_num_atom_types.location(_splindex_rank_, i);
-                unit_cell_->atom_type(i)->sync_free_atom(rank);
-            }
-        }
-
         //** /// Print run-time information.
         //** void print_rti()
         //** {

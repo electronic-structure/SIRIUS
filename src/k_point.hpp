@@ -311,7 +311,7 @@ void K_point::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<
 
     assert(type->max_aw_order() <= 3);
 
-    int iat = parameters_.unit_cell()->atom_type_index_by_id(type->id());
+    int iat = type->id();
 
     #pragma omp parallel default(shared)
     {

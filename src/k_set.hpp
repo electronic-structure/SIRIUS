@@ -47,7 +47,7 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         potential->generate_pw_coefs();
         potential->update_atomic_potential();
         parameters_.unit_cell()->generate_radial_functions();
-        parameters_.generate_radial_integrals();
+        parameters_.unit_cell()->generate_radial_integrals();
     }
     
     // solve secular equation and generate wave functions

@@ -364,7 +364,7 @@ class MPI_group
             communicator_ = MPI_COMM_NULL;
         }
         
-        void split(int max_num_groups, MPI_Comm base_comm)
+        void split(int max_num_groups, MPI_Comm base_comm = MPI_COMM_WORLD)
         {
             num_groups_ = std::min(Platform::num_mpi_ranks(base_comm), max_num_groups);
             int rank = Platform::mpi_rank(base_comm);

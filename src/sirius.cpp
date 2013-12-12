@@ -147,7 +147,7 @@ void FORTRAN(sirius_set_atom_type_properties)(int32_t* atom_type_id, char* symbo
                                               real8* radial_grid_infinity, int32_t symbol_len)
 {
     log_function_enter(__func__);
-    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_id(*atom_type_id);
+    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id);
     type->set_symbol(std::string(symbol, symbol_len));
     type->set_zn(*zn);
     type->set_mass(*mass);
@@ -173,7 +173,7 @@ void FORTRAN(sirius_set_atom_type_properties)(int32_t* atom_type_id, char* symbo
 void FORTRAN(sirius_set_atom_type_radial_grid)(int32_t* atom_type_id, int32_t* num_radial_points, 
                                                real8* radial_points)
 {
-    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_id(*atom_type_id);
+    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id);
     type->set_radial_grid(*num_radial_points, radial_points);
 }
 
@@ -202,7 +202,7 @@ void FORTRAN(sirius_set_atom_type_configuration)(int32_t* atom_type_id, int32_t*
                                                  real8* occupancy, int32_t* core_)
 {
     log_function_enter(__func__);
-    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_id(*atom_type_id);
+    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id);
     bool core = *core_;
     type->set_configuration(*n, *l, *k, *occupancy, core);
     log_function_exit(__func__);
@@ -345,14 +345,14 @@ void FORTRAN(sirius_get_max_num_mt_points)(int32_t* max_num_mt_points)
 void FORTRAN(sirius_get_num_mt_points)(int32_t* atom_type_id, int32_t* num_mt_points)
 {
     log_function_enter(__func__);
-    *num_mt_points = global_parameters.unit_cell()->atom_type_by_id(*atom_type_id)->num_mt_points();
+    *num_mt_points = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id)->num_mt_points();
     log_function_exit(__func__);
 }
 
 void FORTRAN(sirius_get_mt_points)(int32_t* atom_type_id, real8* mt_points)
 {
     log_function_enter(__func__);
-    sirius::Atom_type* atom = global_parameters.unit_cell()->atom_type_by_id(*atom_type_id);
+    sirius::Atom_type* atom = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id);
     for (int i = 0; i < atom->num_mt_points(); i++) mt_points[i] = atom->radial_grid(i);
     log_function_exit(__func__);
 }
@@ -1017,7 +1017,7 @@ void FORTRAN(sirius_add_atom_type_aw_descriptor)(int32_t* atom_type_id, int32_t*
                                                  int32_t* dme, int32_t* auto_enu)
 {
     log_function_enter(__func__);
-    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_id(*atom_type_id);
+    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id);
     type->add_aw_descriptor(*n, *l, *enu, *dme, *auto_enu);
     log_function_exit(__func__);
 }
@@ -1026,7 +1026,7 @@ void FORTRAN(sirius_add_atom_type_lo_descriptor)(int32_t* atom_type_id, int32_t*
                                                  real8* enu, int32_t* dme, int32_t* auto_enu)
 {
     log_function_enter(__func__);
-    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_id(*atom_type_id);
+    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id);
     type->add_lo_descriptor(*ilo - 1, *n, *l, *enu, *dme, *auto_enu);
     log_function_exit(__func__);
 }
@@ -1127,7 +1127,7 @@ void FORTRAN(sirius_generate_radial_functions)()
 void FORTRAN(sirius_generate_radial_integrals)()
 {
     log_function_enter(__func__);
-    global_parameters.generate_radial_integrals();
+    global_parameters.unit_cell()->generate_radial_integrals();
     log_function_exit(__func__);
 }
 

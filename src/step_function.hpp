@@ -20,7 +20,7 @@ void Step_function::init()
 
         for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
         {            
-            int iat = unit_cell_->atom_type_index_by_id(unit_cell_->atom(ia)->type_id());
+            int iat = unit_cell_->atom(ia)->type_id();
             step_function_pw_[ig] -= conj(reciprocal_lattice_->gvec_phase_factor<global>(ig, ia)) * ffac(igs, iat);
 
         }

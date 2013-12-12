@@ -203,7 +203,7 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
         Atom* atom = parameters_.unit_cell()->atom(ia);
         Atom_type* type = atom->type();
 
-        int iat = parameters_.unit_cell()->atom_type_index_by_id(type->id());
+        int iat = type->id();
         
         kp->generate_matching_coefficients<true>(kp->num_gkvec_loc(), ia, alm);
         

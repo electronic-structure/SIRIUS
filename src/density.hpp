@@ -118,7 +118,7 @@ void Density::initial_density(int type = 0)
     
     if (type == 0)
     {
-        parameters_.solve_free_atoms();
+        parameters_.unit_cell()->solve_free_atoms();
         
         double mt_charge = 0.0;
         for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)

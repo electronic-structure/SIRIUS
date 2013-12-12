@@ -19,38 +19,38 @@ vector3d<double> Unit_cell::get_fractional_coordinates(vector3d<double> a)
     return b;
 }
 
-void Unit_cell::add_atom_type(int atom_type_id, const std::string label, potential_t potential_type)
+int Unit_cell::next_atom_type_id(int atom_type_external_id)
 {
-    if (atom_type_index_by_id_.count(atom_type_id) != 0) 
+    if (atom_type_id_map_.count(atom_type_external_id) != 0) 
     {   
         std::stringstream s;
-        s << "atom type with id " << atom_type_id << " is already in list";
+        s << "atom type with external id " << atom_type_external_id << " is already in list";
         error_local(__FILE__, __LINE__, s);
     }
-    atom_types_.push_back(new Atom_type(atom_type_id, label, potential_type));
-    atom_type_index_by_id_[atom_type_id] = (int)atom_types_.size() - 1;
+    atom_type_id_map_[atom_type_external_id] = (int)atom_types_.size(); // internal id
+    return atom_type_id_map_[atom_type_external_id];
 }
 
-void Unit_cell::add_empty_atom_type(int atom_type_id)
+void Unit_cell::add_atom_type(int atom_type_external_id, const std::string label, potential_t potential_type)
 {
-    if (atom_type_index_by_id_.count(atom_type_id) != 0) 
-    {   
-        std::stringstream s;
-        s << "atom type with id " << atom_type_id << " is already in list";
-        error_local(__FILE__, __LINE__, s);
-    }
-    atom_types_.push_back(new Atom_type(atom_type_id));
-    atom_type_index_by_id_[atom_type_id] = (int)atom_types_.size() - 1;
+    int id = next_atom_type_id(atom_type_external_id);
+    atom_types_.push_back(new Atom_type(id, label, potential_type));
 }
 
-void Unit_cell::add_atom(int atom_type_id, double* position, double* vector_field)
+void Unit_cell::add_atom_type(int atom_type_external_id)
+{
+    int id = next_atom_type_id(atom_type_external_id);
+    atom_types_.push_back(new Atom_type(id));
+}
+
+void Unit_cell::add_atom(int atom_type_external_id, double* position, double* vector_field)
 {
     double eps = 1e-10;
     
-    if (atom_type_index_by_id_.count(atom_type_id) == 0)
+    if (atom_type_id_map_.count(atom_type_external_id) == 0)
     {
         std::stringstream s;
-        s << "atom type with id " << atom_type_id << " is not found";
+        s << "atom type with external id " << atom_type_external_id << " is not found";
         error_local(__FILE__, __LINE__, s);
     }
 
@@ -67,7 +67,7 @@ void Unit_cell::add_atom(int atom_type_id, double* position, double* vector_fiel
         }
     }
 
-    atoms_.push_back(new Atom(atom_type_by_id(atom_type_id), position, vector_field));
+    atoms_.push_back(new Atom(atom_type_by_external_id(atom_type_external_id), position, vector_field));
 }
 
 void Unit_cell::add_atom(int atom_type_id, double* position)
@@ -159,11 +159,11 @@ std::vector<double> Unit_cell::find_mt_radii()
             double R = 0.95 * nearest_neighbours_[ia][1].distance / 2;
 
             // take minimal R for the given atom type
-            Rmt[atom_type_index_by_id(id1)] = std::min(R, Rmt[atom_type_index_by_id(id1)]);
+            Rmt[id1] = std::min(R, Rmt[id1]);
         }
         else
         {
-            Rmt[atom_type_index_by_id(id1)] = std::min(3.0, Rmt[atom_type_index_by_id(id1)]);
+            Rmt[id1] = std::min(3.0, Rmt[id1]);
         }
     }
     
@@ -185,10 +185,10 @@ std::vector<double> Unit_cell::find_mt_radii()
                 int id2 = atom(ja)->type_id();
                 double dist = nearest_neighbours_[ia][1].distance;
             
-                if (Rmt[atom_type_index_by_id(id1)] + Rmt[atom_type_index_by_id(id2)] > dist * 0.94)
+                if (Rmt[id1] + Rmt[id2] > dist * 0.94)
                 {
-                    scale_Rmt[atom_type_index_by_id(id1)] = false;
-                    scale_Rmt[atom_type_index_by_id(id2)] = false;
+                    scale_Rmt[id1] = false;
+                    scale_Rmt[id2] = false;
                 }
             }
         }
@@ -202,8 +202,7 @@ std::vector<double> Unit_cell::find_mt_radii()
                 int id2 = atom(ja)->type_id();
                 double dist = nearest_neighbours_[ia][1].distance;
                 
-                if (scale_Rmt[atom_type_index_by_id(id1)])
-                    Rmt[atom_type_index_by_id(id1)] = 0.95 * (dist - Rmt[atom_type_index_by_id(id2)]);
+                if (scale_Rmt[id1]) Rmt[id1] = 0.95 * (dist - Rmt[id2]);
             }
         }
     }
@@ -295,6 +294,21 @@ void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
     update();
             
     spl_num_atoms_.split(num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+
+    // TODO: this is unreadable and must be improved
+    if (num_atoms() != 0)
+    {
+        mpi_group_atom_.split(num_atoms());
+        spl_atoms_.split(num_atoms(), mpi_group_atom_.num_groups(), mpi_group_atom_.group_id());
+        for (int ia = 0; ia < num_atoms(); ia++)
+        {
+            int rank = spl_num_atoms().location(_splindex_rank_, ia);
+            if (Platform::mpi_rank() == rank)
+            {
+                if (Platform::mpi_rank(mpi_group_atom_.communicator()) != 0) error_local(__FILE__, __LINE__, "wrong root rank");
+            }
+        }
+    }
 }
 
 void Unit_cell::update()
@@ -363,7 +377,7 @@ void Unit_cell::clear()
     // delete atom types
     for (int i = 0; i < (int)atom_types_.size(); i++) delete atom_types_[i];
     atom_types_.clear();
-    atom_type_index_by_id_.clear();
+    atom_type_id_map_.clear();
 
     // delete atom classes
     for (int i = 0; i < (int)atom_symmetry_classes_.size(); i++) delete atom_symmetry_classes_[i];
@@ -374,6 +388,8 @@ void Unit_cell::clear()
     atoms_.clear();
 
     equivalent_atoms_.clear();
+
+    mpi_group_atom_.finalize();
 }
 
 void Unit_cell::print_info()
@@ -742,3 +758,47 @@ void Unit_cell::generate_radial_functions()
         pout.flush(0);
     }
 }
+
+void Unit_cell::generate_radial_integrals()
+{
+    Timer t("sirius::Unit_cell::generate_radial_integrals");
+    
+    for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
+        atom_symmetry_class(spl_num_atom_symmetry_classes(icloc))->generate_radial_integrals();
+
+    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
+    {
+        int rank = spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
+        atom_symmetry_class(ic)->sync_radial_integrals(rank);
+    }
+
+    for (int ialoc = 0; ialoc < spl_atoms_.local_size(); ialoc++)
+    {
+        int ia = spl_atoms_[ialoc];
+        atom(ia)->generate_radial_integrals(mpi_group_atom_.communicator());
+    }
+    
+    for (int ia = 0; ia < num_atoms(); ia++)
+    {
+        int rank = spl_num_atoms().location(_splindex_rank_, ia);
+        atom(ia)->sync_radial_integrals(rank);
+    }
+}
+
+void Unit_cell::solve_free_atoms()
+{
+    Timer t("sirius::Unit_cell::solve_free_atoms");
+
+    splindex<block> spl_num_atom_types(num_atom_types(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+
+    std::vector<double> enu;
+    for (int i = 0; i < spl_num_atom_types.local_size(); i++)
+        atom_type(spl_num_atom_types[i])->solve_free_atom(1e-6, 1e-4, 1e-4, enu);
+
+    for (int i = 0; i < num_atom_types(); i++)
+    {
+        int rank = spl_num_atom_types.location(_splindex_rank_, i);
+        atom_type(i)->sync_free_atom(rank);
+    }
+}
+

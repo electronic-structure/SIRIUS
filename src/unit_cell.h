@@ -18,8 +18,8 @@ class Unit_cell
 
     private:
         
-        /// mapping between atom type id and an ordered index in the range [0, N_{types} - 1]
-        std::map<int, int> atom_type_index_by_id_;
+        /// mapping between external atom type id and an ordered internal id in the range [0, N_{types} - 1]
+        std::map<int, int> atom_type_id_map_;
          
         /// list of atom types
         std::vector<Atom_type*> atom_types_;
@@ -108,6 +108,10 @@ class Unit_cell
 
         potential_t potential_type_;
 
+        MPI_group mpi_group_atom_;
+        
+        splindex<block> spl_atoms_;
+
         /// Get crystal symmetries and equivalent atoms.
         /** Makes a call to spglib providing the basic unit cell information: lattice vectors and atomic types 
             and positions. Gets back symmetry operations and a table of equivalent atoms. The table of equivalent 
@@ -123,6 +127,8 @@ class Unit_cell
         
         /// Check if MT spheres overlap
         bool check_mt_overlap(int& ia__, int& ja__);
+
+        int next_atom_type_id(int atom_type_external_id);
 
     public:
     
@@ -168,10 +174,10 @@ class Unit_cell
         void clear();
        
         /// Add new atom type to the list of atom types and read necessary data from the .json file
-        void add_atom_type(int atom_type_id, const std::string label, potential_t potential_type);
+        void add_atom_type(int atom_type_external_id, const std::string label, potential_t potential_type);
         
         /// Add new empty atom type to the list of atom types.
-        void add_empty_atom_type(int atom_type_id);
+        void add_atom_type(int atom_type_external_id);
         
         /// Add new atom to the list of atom types.
         void add_atom(int atom_type_id, double* position, double* vector_field);
@@ -203,6 +209,10 @@ class Unit_cell
         inline vector3d<double> get_fractional_coordinates(vector3d<double> a);
         
         void generate_radial_functions();
+
+        void generate_radial_integrals();
+        
+        void solve_free_atoms();
         
         /// Get x coordinate of lattice vector l
         inline double lattice_vectors(int l, int x)
@@ -231,27 +241,21 @@ class Unit_cell
         /// Number of atom types.
         inline int num_atom_types()
         {
-            assert(atom_types_.size() == atom_type_index_by_id_.size());
+            assert(atom_types_.size() == atom_type_id_map_.size());
 
             return (int)atom_types_.size();
         }
 
-        /// Atom type index by atom type id.
-        inline int atom_type_index_by_id(int id)
+        /// Pointer to atom type by external id
+        inline Atom_type* atom_type_by_external_id(int atom_type_external_id)
         {
-            return atom_type_index_by_id_[id];
-        }
-        
-        /// Pointer to atom type by type id
-        inline Atom_type* atom_type_by_id(int id)
-        {
-            return atom_types_[atom_type_index_by_id(id)];
+            return atom_types_[atom_type_id_map_[atom_type_external_id]];
         }
  
-        /// Pointer to atom type by type index (not(!) by atom type id)
-        inline Atom_type* atom_type(int idx)
+        /// Pointer to atom type by internal id
+        inline Atom_type* atom_type(int id)
         {
-            return atom_types_[idx];
+            return atom_types_[id];
         }
        
         /// Number of atom symmetry classes.
