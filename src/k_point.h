@@ -200,6 +200,9 @@ class K_point
         /** Important: distribute_fv_states_row() must be called prior to calling this function.*/
         void test_fv_states(int use_fft);
 
+        template <index_domain_t index_domain> 
+        void init_gkvec_ylm_and_len(int lmax, int ngk);
+
     public:
 
         /// Constructor

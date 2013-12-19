@@ -13,6 +13,8 @@ class Density
         FFT3D<cpu>* fft_;
 
         Periodic_function<double>* rho_;
+
+        Periodic_function<double>* rho_core_;
         
         Periodic_function<double>* magnetization_[3];
         
@@ -109,6 +111,11 @@ class Density
         Periodic_function<double>* rho()
         {
             return rho_;
+        }
+        
+        Periodic_function<double>* rho_core()
+        {
+            return rho_core_;
         }
         
         Periodic_function<double>** magnetization()

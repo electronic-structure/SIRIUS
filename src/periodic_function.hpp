@@ -1,6 +1,6 @@
 template <typename T>
-Periodic_function<T>::Periodic_function(Global& parameters__, int angular_domain_size, int num_gvec = 0) : 
-    parameters_(parameters__), num_gvec_(num_gvec)
+Periodic_function<T>::Periodic_function(Global& parameters__, int angular_domain_size, int num_gvec = 0) 
+    : parameters_(parameters__), num_gvec_(num_gvec)
 {
     fft_ = parameters_.reciprocal_lattice()->fft();
 
@@ -40,14 +40,17 @@ void Periodic_function<T>::allocate(bool allocate_global_mt, bool allocate_globa
         f_it_local_.allocate();
     }
 
-    if (allocate_global_mt)
+    if (parameters_.potential_type() == full_potential)
     {
-        f_mt_.allocate();
-        set_local_mt_ptr();
-    }
-    else
-    {
-        for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc)->allocate();
+        if (allocate_global_mt)
+        {
+            f_mt_.allocate();
+            set_local_mt_ptr();
+        }
+        else
+        {
+            for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc)->allocate();
+        }
     }
 }
 

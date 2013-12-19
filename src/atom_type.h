@@ -15,7 +15,10 @@ class radial_functions_index
 
             int idxlo;
 
-            radial_function_index_descriptor(int l, int order, int idxlo =  -1) : l(l), order(order), idxlo(idxlo)
+            radial_function_index_descriptor(int l, int order, int idxlo =  -1) 
+                : l(l), 
+                  order(order), 
+                  idxlo(idxlo)
             {
                 assert(l >= 0);
                 assert(order >= 0);
@@ -71,9 +74,11 @@ class radial_functions_index
             {
                 assert(aw_descriptors[l].size() <= 3);
 
-                num_rf_[l] = (int)aw_descriptors[l].size();
                 for (int order = 0; order < (int)aw_descriptors[l].size(); order++)
-                   radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, order));
+                {
+                    radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, num_rf_[l]));
+                    num_rf_[l]++;
+                }
             }
 
             for (int idxlo = 0; idxlo < (int)lo_descriptors.size(); idxlo++)
@@ -175,8 +180,12 @@ class basis_functions_index
 
             int idxrf;
             
-            basis_function_index_descriptor(int l, int m, int order, int idxlo, int idxrf) : 
-                l(l), m(m), order(order), idxlo(idxlo), idxrf(idxrf) 
+            basis_function_index_descriptor(int l, int m, int order, int idxlo, int idxrf) 
+                : l(l), 
+                  m(m), 
+                  order(order), 
+                  idxlo(idxlo), 
+                  idxrf(idxrf) 
             {
                 assert(l >= 0);
                 assert(m >= -l && m <= l);
@@ -395,6 +404,21 @@ class Atom_type
         void print_info();
         
         void sync_free_atom(int rank);
+
+        void fix_q_radial_function(int l, int i, int j, double* qrf)
+        {
+            for (int ir = 0; ir < num_mt_points(); ir++)
+            {
+                double x = radial_grid(ir);
+                double x2 = x * x;
+                if (x < uspp_.q_functions_inner_radius[l])
+                {
+                    qrf[ir] = uspp_.q_coefs(0, l, i, j);
+                    for (int n = 1; n < uspp_.num_q_coefs; n++) qrf[ir] += uspp_.q_coefs(n, l, i, j) * pow(x2, n);
+                    qrf[ir] *= pow(x, l + 2);
+                }
+            }
+        }
         
         inline int id()
         {

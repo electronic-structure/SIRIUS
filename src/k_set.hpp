@@ -198,27 +198,34 @@ void K_set::find_band_occupancies()
 
 void K_set::print_info()
 {
-    pstdout pout;
-
-    if (parameters_.mpi_grid().side(1 << 0))
-    {
-        for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
-        {
-            int ik = spl_num_kpoints(ikloc);
-            pout.printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i            %6i\n", 
-                        ik, kpoints_[ik]->vk()[0], kpoints_[ik]->vk()[1], kpoints_[ik]->vk()[2], 
-                        kpoints_[ik]->weight(), kpoints_[ik]->num_gkvec(), kpoints_[ik]->apwlo_basis_size());
-        }
-    }
     if (Platform::mpi_rank() == 0)
     {
         printf("\n");
         printf("total number of k-points : %i\n", num_kpoints());
         for (int i = 0; i < 80; i++) printf("-");
         printf("\n");
-        printf("  ik                vk                    weight  num_gkvec  apwlo_basis_size\n");
+        printf("  ik                vk                    weight  num_gkvec");
+        if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo) printf("  apwlo_basis_size");
+        printf("\n");
         for (int i = 0; i < 80; i++) printf("-");
         printf("\n");
+    }
+
+    pstdout pout;
+    if (parameters_.mpi_grid().side(1 << 0))
+    {
+        for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
+        {
+            int ik = spl_num_kpoints(ikloc);
+            pout.printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i", 
+                        ik, kpoints_[ik]->vk()[0], kpoints_[ik]->vk()[1], kpoints_[ik]->vk()[2], 
+                        kpoints_[ik]->weight(), kpoints_[ik]->num_gkvec());
+
+            if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
+                pout.printf("            %6i", kpoints_[ik]->apwlo_basis_size());
+            
+            pout.printf("\n");
+        }
     }
     pout.flush(0);
 }

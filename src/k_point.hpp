@@ -2,10 +2,10 @@ void K_point::initialize()
 {
     Timer t("sirius::K_point::initialize");
     
-    zil_.resize(parameters_.lmax() + 1);
-    for (int l = 0; l <= parameters_.lmax(); l++) zil_[l] = pow(complex16(0, 1), l);
+    zil_.resize(parameters_.lmax_apw() + 1);
+    for (int l = 0; l <= parameters_.lmax_apw(); l++) zil_[l] = pow(complex16(0, 1), l);
    
-    l_by_lm_ = Utils::l_by_lm(parameters_.lmax());
+    l_by_lm_ = Utils::l_by_lm(parameters_.lmax_apw());
 
     band_energies_.resize(parameters_.num_bands());
 
@@ -23,48 +23,68 @@ void K_point::initialize()
 
 void K_point::update()
 {
-    double gk_cutoff = parameters_.aw_cutoff() / parameters_.unit_cell()->min_mt_radius();
-    generate_gkvec(gk_cutoff);
-    
-    build_apwlo_basis_descriptors();
-
-    distribute_block_cyclic();
-    
-    init_gkvec();
-   
-    atom_lo_cols_.clear();
-    atom_lo_cols_.resize(parameters_.unit_cell()->num_atoms());
-
-    atom_lo_rows_.clear();
-    atom_lo_rows_.resize(parameters_.unit_cell()->num_atoms());
-
-    for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
+    double gk_cutoff = 0;
+    switch (parameters_.basis_type())
     {
-        int ia = apwlo_basis_descriptors_col(icol).ia;
-        atom_lo_cols_[ia].push_back(icol);
-    }
-    
-    for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
-    {
-        int ia = apwlo_basis_descriptors_row(irow).ia;
-        atom_lo_rows_[ia].push_back(irow);
-    }
-    
-    /** \todo Correct the memory leak */
-    if (parameters_.basis_type() == pwlo)
-    {
-        sbessel_.resize(num_gkvec_loc()); 
-        for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
+        case pw:
         {
-            sbessel_[igkloc] = new sbessel_pw<double>(parameters_, parameters_.lmax_pw());
-            sbessel_[igkloc]->interpolate(gkvec_len_[igkloc]);
+            gk_cutoff = parameters_.gk_cutoff();
+            break;
+        }
+        default:
+        {
+            gk_cutoff = parameters_.aw_cutoff() / parameters_.unit_cell()->min_mt_radius();
         }
     }
 
+    generate_gkvec(gk_cutoff);
+    
+    if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
+    {
+        build_apwlo_basis_descriptors();
+        distribute_block_cyclic();
+        
+        atom_lo_cols_.clear();
+        atom_lo_cols_.resize(parameters_.unit_cell()->num_atoms());
+
+        atom_lo_rows_.clear();
+        atom_lo_rows_.resize(parameters_.unit_cell()->num_atoms());
+
+        for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
+        {
+            int ia = apwlo_basis_descriptors_col(icol).ia;
+            atom_lo_cols_[ia].push_back(icol);
+        }
+        
+        for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
+        {
+            int ia = apwlo_basis_descriptors_row(irow).ia;
+            atom_lo_rows_[ia].push_back(irow);
+        }
+        
+        /** \todo Correct the memory leak */
+        if (parameters_.basis_type() == pwlo)
+        {
+            sbessel_.resize(num_gkvec_loc()); 
+            for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
+            {
+                sbessel_[igkloc] = new sbessel_pw<double>(parameters_, parameters_.lmax_pw());
+                sbessel_[igkloc]->interpolate(gkvec_len_[igkloc]);
+            }
+        }
+    }
+    
+    init_gkvec();
+
+    spinor_wave_functions_.set_dimensions(wf_size(), parameters_.num_spins(), parameters_.spl_spinor_wf_col().local_size());
+
     if (use_second_variation)
     {
-        fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), parameters_.spl_fv_states_col().local_size());
-        fv_eigen_vectors_.allocate();
+        if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
+        {
+            fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), parameters_.spl_fv_states_col().local_size());
+            fv_eigen_vectors_.allocate();
+        }
         
         fv_states_col_.set_dimensions(wf_size(), parameters_.spl_fv_states_col().local_size());
         fv_states_col_.allocate();
@@ -80,8 +100,6 @@ void K_point::update()
             fv_states_row_.allocate();
         }
         
-        spinor_wave_functions_.set_dimensions(wf_size(), parameters_.num_spins(), parameters_.spl_spinor_wf_col().local_size());
-
         if (parameters_.need_sv())
         {
             spinor_wave_functions_.allocate();
@@ -93,10 +111,12 @@ void K_point::update()
     }
     else
     {
-        fd_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), parameters_.spl_spinor_wf_col().local_size());
-        fd_eigen_vectors_.allocate();
-        spinor_wave_functions_.set_dimensions(wf_size(), parameters_.num_spins(), parameters_.spl_spinor_wf_col().local_size());
-        spinor_wave_functions_.allocate();
+        if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
+        {
+            fd_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), parameters_.spl_spinor_wf_col().local_size());
+            fd_eigen_vectors_.allocate();
+            spinor_wave_functions_.allocate();
+        }
     }
 }
 
@@ -547,8 +567,7 @@ void K_point::generate_gkvec(double gk_cutoff)
         std::stringstream s;
         s << "G+k cutoff is too large for a given plane-wave cutoff" << std::endl
           << "  pw cutoff : " << parameters_.pw_cutoff() << std::endl
-          << "  G+k cutoff : " << gk_cutoff * 2;
-
+          << "  doubled G+k cutoff : " << gk_cutoff * 2;
         error_local(__FILE__, __LINE__, s);
     }
 
@@ -583,47 +602,84 @@ void K_point::generate_gkvec(double gk_cutoff)
     for (int ig = 0; ig < num_gkvec(); ig++) fft_index_[ig] = parameters_.reciprocal_lattice()->fft_index(gvec_index_[ig]);
 }
 
-void K_point::init_gkvec()
+template <index_domain_t index_domain> 
+void K_point::init_gkvec_ylm_and_len(int lmax, int ngk)
 {
-    int lmax = std::max(parameters_.lmax_apw(), parameters_.lmax_pw());
-
-    gkvec_ylm_.set_dimensions(Utils::lmmax(lmax), num_gkvec_loc());
+    gkvec_ylm_.set_dimensions(Utils::lmmax(lmax), ngk);
     gkvec_ylm_.allocate();
+    
+    gkvec_len_.resize(ngk);
 
     #pragma omp parallel for default(shared)
-    for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
+    for (int igk = 0; igk < ngk; igk++)
     {
-        int igk = igkglob(igkloc);
+        int igk_glob = (index_domain == global) ? igk : igkglob(igk);
+
         double vs[3];
 
-        SHT::spherical_coordinates(gkvec_cart(igk), vs); // vs = {r, theta, phi}
-
-        SHT::spherical_harmonics(lmax, vs[1], vs[2], &gkvec_ylm_(0, igkloc));
+        SHT::spherical_coordinates(gkvec_cart(igk_glob), vs); // vs = {r, theta, phi}
+        
+        SHT::spherical_harmonics(lmax, vs[1], vs[2], &gkvec_ylm_(0, igk));
+        
+        gkvec_len_[igk] = vs[0];
     }
+}
 
-    gkvec_phase_factors_.set_dimensions(num_gkvec_loc(), parameters_.unit_cell()->num_atoms());
-    gkvec_phase_factors_.allocate();
-
-    #pragma omp parallel for default(shared)
-    for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
+void K_point::init_gkvec()
+{
+    int lmax = -1;
+    
+    switch (parameters_.basis_type())
     {
-        int igk = igkglob(igkloc);
-
-        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        case apwlo:
         {
-            double phase = twopi * Utils::scalar_product(gkvec(igk), parameters_.unit_cell()->atom(ia)->position());
-
-            gkvec_phase_factors_(igkloc, ia) = exp(complex16(0.0, phase));
+            lmax = parameters_.lmax_apw();
+            break;
+        }
+        case pwlo:
+        {
+            lmax =  parameters_.lmax_pw();
+            break;
+        }
+        case pw:
+        {
+            lmax = parameters_.lmax_beta();
+            break;
         }
     }
     
-    gkvec_len_.resize(num_gkvec_loc());
-    for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
+    // spherical harmonics of G+k vectors
+    if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
     {
-        int igk = igkglob(igkloc);
-        gkvec_len_[igkloc] = gkvec_cart(igk).length();
+        init_gkvec_ylm_and_len<local>(lmax, num_gkvec_loc());
     }
-   
+
+    if (parameters_.basis_type() == pw)
+    {
+        init_gkvec_ylm_and_len<global>(lmax, num_gkvec());
+    }
+    
+    // TODO: check if phase factors are needed for PW basis
+    if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
+    {
+        gkvec_phase_factors_.set_dimensions(num_gkvec_loc(), parameters_.unit_cell()->num_atoms());
+        gkvec_phase_factors_.allocate();
+
+        #pragma omp parallel for default(shared)
+        for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
+        {
+            int igk = igkglob(igkloc);
+
+            for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+            {
+                double phase = twopi * Utils::scalar_product(gkvec(igk), parameters_.unit_cell()->atom(ia)->position());
+
+                gkvec_phase_factors_(igkloc, ia) = exp(complex16(0.0, phase));
+            }
+        }
+    }
+    
+    // cache "b" vector of linear equations Ax=b for matching coefficients (A will be a matrix of radial derivatives)
     if (parameters_.basis_type() == apwlo)
     {
         alm_b_.set_dimensions(3, num_gkvec_loc(), parameters_.lmax_apw() + 1, parameters_.unit_cell()->num_atom_types());

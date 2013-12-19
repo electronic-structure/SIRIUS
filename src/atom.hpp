@@ -3,9 +3,14 @@
     \brief Implementation of methods for Atom class.
 */
 
-Atom::Atom(Atom_type* type__, double* position__, double* vector_field__) : 
-    type_(type__), symmetry_class_(NULL), offset_aw_(-1), offset_lo_(-1), offset_wf_(-1), apply_uj_correction_(false), 
-    uj_correction_l_(-1)
+Atom::Atom(Atom_type* type__, double* position__, double* vector_field__) 
+    : type_(type__), 
+      symmetry_class_(NULL), 
+      offset_aw_(-1), 
+      offset_lo_(-1), 
+      offset_wf_(-1), 
+      apply_uj_correction_(false), 
+      uj_correction_l_(-1)
 {
     assert(type__);
         

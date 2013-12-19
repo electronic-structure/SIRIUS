@@ -237,40 +237,13 @@ class SHT
             return lmmax_;
         }
 
-        static inline double gaunt(int l1, int l2, int l3, int m1, int m2, int m3)
-        {
-            assert(l1 >= 0);
-            assert(l2 >= 0);
-            assert(l3 >= 0);
-            assert(m1 >= -l1 && m1 <= l1);
-            assert(m2 >= -l2 && m2 <= l2);
-            assert(m3 >= -l3 && m3 <= l3);
+        /// Return real or complex Gaunt coefficent.
+        template <typename T>
+        static inline T gaunt(int l1, int l2, int l3, int m1, int m2, int m3);
 
-            return pow(-1.0, abs(m1)) * sqrt(double(2 * l1 + 1) * double(2 * l2 + 1) * double(2 * l3 + 1) / fourpi) * 
-                   gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 0, 0, 0) *
-                   gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, -2 * m1, 2 * m2, 2 * m3);
-        }
-
-        static inline complex16 complex_gaunt(int l1, int l2, int l3, int m1, int m2, int m3)
-        {
-            assert(l1 >= 0);
-            assert(l2 >= 0);
-            assert(l3 >= 0);
-            assert(m1 >= -l1 && m1 <= l1);
-            assert(m2 >= -l2 && m2 <= l2);
-            assert(m3 >= -l3 && m3 <= l3);
-
-            if (m2 == 0) 
-            {
-                return complex16(gaunt(l1, l2, l3, m1, m2, m3), 0.0);
-            }
-            else 
-            {
-                return (ylm_dot_rlm(l2, m2, m2) * gaunt(l1, l2, l3, m1, m2, m3) +  
-                        ylm_dot_rlm(l2, -m2, m2) * gaunt(l1, l2, l3, m1, -m2, m3));
-            }
-        }
-
+        /// Return Clebsch-Gordan coefficient.
+        /** Clebsch-Gordan coefficients arise when two angular momenta are combined into a
+            total angular momentum. */
         static inline double clebsch_gordan(int l1, int l2, int l3, int m1, int m2, int m3)
         {
             assert(l1 >= 0);
@@ -478,6 +451,50 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
               << "  total error " << t;
             warning_local(__FILE__, __LINE__, s);
         }
+    }
+}
+
+/** Specialization for real Gaunt coefficients between three complex spherical harmonics
+    \f[ 
+        \langle Y_{\ell_1 m_1} | Y_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
+    \f]
+*/
+template<> double SHT::gaunt<double>(int l1, int l2, int l3, int m1, int m2, int m3)
+{
+    assert(l1 >= 0);
+    assert(l2 >= 0);
+    assert(l3 >= 0);
+    assert(m1 >= -l1 && m1 <= l1);
+    assert(m2 >= -l2 && m2 <= l2);
+    assert(m3 >= -l3 && m3 <= l3);
+    
+    return pow(-1.0, abs(m1)) * sqrt(double(2 * l1 + 1) * double(2 * l2 + 1) * double(2 * l3 + 1) / fourpi) * 
+           gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 0, 0, 0) *
+           gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, -2 * m1, 2 * m2, 2 * m3);
+}
+
+/** Specialization for complex Gaunt coefficients between two complex and one real spherical harmonics
+    \f[ 
+        \langle Y_{\ell_1 m_1} | R_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
+    \f]
+*/
+template<> complex16 SHT::gaunt<complex16>(int l1, int l2, int l3, int m1, int m2, int m3)
+{
+    assert(l1 >= 0);
+    assert(l2 >= 0);
+    assert(l3 >= 0);
+    assert(m1 >= -l1 && m1 <= l1);
+    assert(m2 >= -l2 && m2 <= l2);
+    assert(m3 >= -l3 && m3 <= l3);
+
+    if (m2 == 0) 
+    {
+        return complex16(gaunt<double>(l1, l2, l3, m1, m2, m3), 0.0);
+    }
+    else 
+    {
+        return (ylm_dot_rlm(l2, m2, m2) * gaunt<double>(l1, l2, l3, m1, m2, m3) +  
+                ylm_dot_rlm(l2, -m2, m2) * gaunt<double>(l1, l2, l3, m1, -m2, m3));
     }
 }
 

@@ -72,7 +72,7 @@ class GauntCoefficients
                     for (int m3 = -l3; m3 <= l3; m3++)
                     {
                         int lm3 = Utils::lm_by_l_m(l3, m3);
-                        complex16 z = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
+                        complex16 z = SHT::gaunt<complex16>(l1, l3, l2, m1, m3, m2);
                         if (abs(z) > 1e-12) 
                         {
                             g12.lm1 = lm1;

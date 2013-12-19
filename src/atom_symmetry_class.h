@@ -76,8 +76,11 @@ class Atom_symmetry_class
     public:
     
         /// Constructor
-        Atom_symmetry_class(int id_, Atom_type* atom_type_) : 
-            id_(id_), atom_type_(atom_type_), core_eval_sum_(0.0), core_leakage_(0.0)
+        Atom_symmetry_class(int id_, Atom_type* atom_type_) 
+            : id_(id_), 
+              atom_type_(atom_type_), 
+              core_eval_sum_(0.0), 
+              core_leakage_(0.0)
         {
             initialize();
         }

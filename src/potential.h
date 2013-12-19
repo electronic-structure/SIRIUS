@@ -15,12 +15,15 @@ class Potential
         FFT3D<cpu>* fft_;
 
         Periodic_function<double>* effective_potential_;
-        
+
         Periodic_function<double>* effective_magnetic_field_[3];
  
         Periodic_function<double>* coulomb_potential_;
         Periodic_function<double>* xc_potential_;
         Periodic_function<double>* xc_energy_density_;
+        
+        /// local part of pseudopotential
+        Periodic_function<double>* local_potential_;
         
         mdarray<double, 3> sbessel_mom_;
 
@@ -49,8 +52,8 @@ class Potential
         */
         void poisson_sum_G(complex16* fpw, mdarray<double, 3>& fl, mdarray<complex16, 2>& flm);
         
-        /// Compute contribution from the pseudocharge to the plane-wave expansion
-        void poisson_pw(mdarray<complex16, 2>& qmt, mdarray<complex16, 2>& qit, complex16* pseudo_pw);
+        /// Add contribution from the pseudocharge to the plane-wave expansion
+        void poisson_add_pseudo_pw(mdarray<complex16, 2>& qmt, mdarray<complex16, 2>& qit, complex16* rho_pw);
 
     public:
 
@@ -118,6 +121,9 @@ class Potential
         /// Generate effective potential and magnetic field from charge density and magnetization.
         void generate_effective_potential(Periodic_function<double>* rho, Periodic_function<double>* magnetization[3]);
         
+        void generate_effective_potential(Periodic_function<double>* rho, Periodic_function<double>* rho_core, 
+                                          Periodic_function<double>* magnetization[3]);
+
         void save();
         
         void load();

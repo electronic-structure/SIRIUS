@@ -33,8 +33,11 @@ class DFT_ground_state
 
     public:
 
-        DFT_ground_state(Global& parameters__, Potential* potential__, Density* density__, K_set* kset__) : 
-            parameters_(parameters__), potential_(potential__), density_(density__), kset_(kset__)
+        DFT_ground_state(Global& parameters__, Potential* potential__, Density* density__, K_set* kset__) 
+            : parameters_(parameters__), 
+              potential_(potential__), 
+              density_(density__), 
+              kset_(kset__)
         {
 
         }

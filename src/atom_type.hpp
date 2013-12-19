@@ -1,13 +1,26 @@
 Atom_type::Atom_type(const char* symbol__, const char* name__, int zn__, double mass__, 
-                     std::vector<atomic_level_descriptor>& levels__) : 
-    symbol_(std::string(symbol__)), name_(std::string(name__)), zn_(zn__), mass_(mass__), mt_radius_(2.0), 
-    num_mt_points_(2000 + zn__ * 50), atomic_levels_(levels__), potential_type_(full_potential), initialized_(false)
+                     std::vector<atomic_level_descriptor>& levels__) 
+    : symbol_(std::string(symbol__)), 
+      name_(std::string(name__)), 
+      zn_(zn__), 
+      mass_(mass__), 
+      mt_radius_(2.0), 
+      num_mt_points_(2000 + zn__ * 50), 
+      atomic_levels_(levels__), 
+      potential_type_(full_potential), 
+      initialized_(false)
 {
     radial_grid_ = new Radial_grid(default_radial_grid_t, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
 }
 
-Atom_type::Atom_type(int id__, const std::string label, potential_t potential_type__) : 
-    id_(id__), zn_(0), num_mt_points_(0), radial_grid_(NULL), potential_type_(potential_type__), initialized_(false)
+Atom_type::Atom_type(int id__, const std::string label, potential_t potential_type__) 
+    : id_(id__), 
+      zn_(0), 
+      mass_(0), 
+      num_mt_points_(0), 
+      radial_grid_(NULL), 
+      potential_type_(potential_type__), 
+      initialized_(false)
 {
     std::string fname = label + ".json";
     if (!Utils::file_exists(fname))
@@ -45,8 +58,13 @@ Atom_type::Atom_type(int id__, const std::string label, potential_t potential_ty
     }
 }
 
-Atom_type::Atom_type(int id__) : id_(id__), zn_(0), num_mt_points_(0), radial_grid_(NULL), 
-                                 potential_type_(full_potential), initialized_(false)
+Atom_type::Atom_type(int id__) 
+    : id_(id__), 
+      zn_(0), 
+      num_mt_points_(0), 
+      radial_grid_(NULL), 
+      potential_type_(full_potential), 
+      initialized_(false)
 {
 }
 
@@ -55,7 +73,7 @@ Atom_type::~Atom_type()
     delete radial_grid_;
 }
 
-void Atom_type::init(int lmax_apw)
+void Atom_type::init(int lmax)
 {
     if (initialized_) error_local(__FILE__, __LINE__, "can't initialize twice");
 
@@ -63,26 +81,34 @@ void Atom_type::init(int lmax_apw)
 
     // set default radial grid if it was not done by user
     if (radial_grid_ == NULL) set_radial_grid();
+    
+    if (potential_type_ == full_potential) // TODO: this is related to the basis type, not to a potential type
+    {
+        // initialize aw descriptors if they were not set manually
+        if (aw_descriptors_.size() == 0) init_aw_descriptors(lmax);
 
-    // initialize aw descriptors if they were not set manually
-    if (aw_descriptors_.size() == 0) init_aw_descriptors(lmax_apw);
+        if ((int)aw_descriptors_.size() != (lmax + 1)) error_local(__FILE__, __LINE__, "wrong size of augmented wave descriptors");
 
-    if ((int)aw_descriptors_.size() != (lmax_apw + 1)) error_local(__FILE__, __LINE__, "wrong size of augmented wave descriptors");
+        max_aw_order_ = 0;
+        for (int l = 0; l <= lmax; l++) max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
 
-    max_aw_order_ = 0;
-    for (int l = 0; l <= lmax_apw; l++) max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
-
-    if (max_aw_order_ > 3) error_local(__FILE__, __LINE__, "maximum aw order > 3");
+        if (max_aw_order_ > 3) error_local(__FILE__, __LINE__, "maximum aw order > 3");
+    }
 
     indexr_.init(aw_descriptors_, lo_descriptors_);
     indexb_.init(indexr_);
-    
+   
+    // get the number of core electrons
     num_core_electrons_ = 0;
-    for (int i = 0; i < (int)atomic_levels_.size(); i++) 
+    if (potential_type_ == full_potential)
     {
-        if (atomic_levels_[i].core) num_core_electrons_ += atomic_levels_[i].occupancy;
+        for (int i = 0; i < (int)atomic_levels_.size(); i++) 
+        {
+            if (atomic_levels_[i].core) num_core_electrons_ += atomic_levels_[i].occupancy;
+        }
     }
 
+    // get number of valence electrons
     num_valence_electrons_ = zn_ - num_core_electrons_;
     
     initialized_ = true;
@@ -352,57 +378,60 @@ void Atom_type::print_info()
     printf("\n");
     printf("number of core electrons    : %f\n", num_core_electrons_);
     printf("number of valence electrons : %f\n", num_valence_electrons_);
-    printf("\n");
-    printf("atomic levels (n, l, k, occupancy, core)\n");
-    for (int i = 0; i < (int)atomic_levels_.size(); i++)
+    if (potential_type_ == full_potential)
     {
-        printf("%i  %i  %i  %8.4f %i\n", atomic_levels_[i].n, atomic_levels_[i].l, atomic_levels_[i].k,
-                                          atomic_levels_[i].occupancy, atomic_levels_[i].core);
-    }
-
-    printf("augmented wave basis\n");
-    for (int j = 0; j < (int)aw_descriptors_.size(); j++)
-    {
-        printf("[");
-        for (int order = 0; order < (int)aw_descriptors_[j].size(); order++)
-        { 
-            if (order) printf(", ");
-            printf("{l : %2i, n : %2i, enu : %f, dme : %i, auto : %i}", aw_descriptors_[j][order].l,
-                                                                        aw_descriptors_[j][order].n,
-                                                                        aw_descriptors_[j][order].enu,
-                                                                        aw_descriptors_[j][order].dme,
-                                                                        aw_descriptors_[j][order].auto_enu);
-        }
-        printf("]\n");
-    }
-    printf("maximum order of aw : %i\n", max_aw_order_);
-
-    printf("local orbitals\n");
-    for (int j = 0; j < (int)lo_descriptors_.size(); j++)
-    {
-        switch (lo_descriptors_[j].type)
+        printf("\n");
+        printf("atomic levels (n, l, k, occupancy, core)\n");
+        for (int i = 0; i < (int)atomic_levels_.size(); i++)
         {
-            case lo_rs:
-            {
-                printf("radial solutions   [");
-                for (int order = 0; order < (int)lo_descriptors_[j].rsd_set.size(); order++)
-                {
-                    if (order) printf(", ");
-                    printf("{l : %2i, n : %2i, enu : %f, dme : %i, auto : %i}", lo_descriptors_[j].rsd_set[order].l,
-                                                                                lo_descriptors_[j].rsd_set[order].n,
-                                                                                lo_descriptors_[j].rsd_set[order].enu,
-                                                                                lo_descriptors_[j].rsd_set[order].dme,
-                                                                                lo_descriptors_[j].rsd_set[order].auto_enu);
-                }
-                printf("]\n");
-                break;
+            printf("%i  %i  %i  %8.4f %i\n", atomic_levels_[i].n, atomic_levels_[i].l, atomic_levels_[i].k,
+                                              atomic_levels_[i].occupancy, atomic_levels_[i].core);
+        }
+
+        printf("augmented wave basis\n");
+        for (int j = 0; j < (int)aw_descriptors_.size(); j++)
+        {
+            printf("[");
+            for (int order = 0; order < (int)aw_descriptors_[j].size(); order++)
+            { 
+                if (order) printf(", ");
+                printf("{l : %2i, n : %2i, enu : %f, dme : %i, auto : %i}", aw_descriptors_[j][order].l,
+                                                                            aw_descriptors_[j][order].n,
+                                                                            aw_descriptors_[j][order].enu,
+                                                                            aw_descriptors_[j][order].dme,
+                                                                            aw_descriptors_[j][order].auto_enu);
             }
-            case lo_cp:
+            printf("]\n");
+        }
+        printf("maximum order of aw : %i\n", max_aw_order_);
+
+        printf("local orbitals\n");
+        for (int j = 0; j < (int)lo_descriptors_.size(); j++)
+        {
+            switch (lo_descriptors_[j].type)
             {
-                printf("confined polynomial {l : %2i, p1 : %i, p2 : %i}\n", lo_descriptors_[j].l, 
-                                                                            lo_descriptors_[j].p1, 
-                                                                            lo_descriptors_[j].p2);
-                break;
+                case lo_rs:
+                {
+                    printf("radial solutions   [");
+                    for (int order = 0; order < (int)lo_descriptors_[j].rsd_set.size(); order++)
+                    {
+                        if (order) printf(", ");
+                        printf("{l : %2i, n : %2i, enu : %f, dme : %i, auto : %i}", lo_descriptors_[j].rsd_set[order].l,
+                                                                                    lo_descriptors_[j].rsd_set[order].n,
+                                                                                    lo_descriptors_[j].rsd_set[order].enu,
+                                                                                    lo_descriptors_[j].rsd_set[order].dme,
+                                                                                    lo_descriptors_[j].rsd_set[order].auto_enu);
+                    }
+                    printf("]\n");
+                    break;
+                }
+                case lo_cp:
+                {
+                    printf("confined polynomial {l : %2i, p1 : %i, p2 : %i}\n", lo_descriptors_[j].l, 
+                                                                                lo_descriptors_[j].p1, 
+                                                                                lo_descriptors_[j].p2);
+                    break;
+                }
             }
         }
     }
@@ -602,16 +631,99 @@ void Atom_type::read_input(const std::string& fname)
         parser["uspp"]["mesh"]["r"] >> uspp_.r;
         parser["uspp"]["mesh"]["rab"] >> uspp_.rab;
         parser["uspp"]["vloc"] >> uspp_.vloc;
+        parser["uspp"]["rho_atc"] >> uspp_.core_charge_density;
+        parser["uspp"]["rho_at"] >> uspp_.total_charge_density;
 
-        if ((int)uspp_.r.size() != nmesh || (int)uspp_.rab.size() != nmesh || (int)uspp_.vloc.size() != nmesh)
+        if ((int)uspp_.r.size() != nmesh || (int)uspp_.rab.size() != nmesh)
         {
             error_local(__FILE__, __LINE__, "wrong mesh size");
+        }
+        if ((int)uspp_.vloc.size() != nmesh || 
+            (int)uspp_.core_charge_density.size() != nmesh || 
+            (int)uspp_.total_charge_density.size() != nmesh)
+        {
+            error_local(__FILE__, __LINE__, "wrong array size");
         }
 
         num_mt_points_ = nmesh;
         mt_radius_ = uspp_.r[nmesh - 1];
         
         set_radial_grid(nmesh, &uspp_.r[0]);
+
+        parser["uspp"]["header"]["lmax"] >> uspp_.lmax;
+        parser["uspp"]["header"]["nbeta"] >> uspp_.num_beta_radial_functions;
+
+        parser["uspp"]["non_local"]["qij"]["nqf"] >> uspp_.num_q_coefs;
+
+        parser["uspp"]["non_local"]["qij"]["rinner"] >> uspp_.q_functions_inner_radius;
+
+        uspp_.q_coefs.set_dimensions(uspp_.num_q_coefs, 2 * uspp_.lmax + 1, 
+                                     uspp_.num_beta_radial_functions,  uspp_.num_beta_radial_functions); 
+        uspp_.q_coefs.allocate();
+
+        uspp_.q_radial_functions.set_dimensions(num_mt_points_, uspp_.num_beta_radial_functions * (uspp_.num_beta_radial_functions + 1) / 2);
+        uspp_.q_radial_functions.allocate();
+
+        for (int i = 0; i < uspp_.num_beta_radial_functions; i++)
+        {
+            for (int j = i; j < uspp_.num_beta_radial_functions; j++)
+            {
+                int idx = i * uspp_.num_beta_radial_functions + j - i * (i + 1) / 2;
+
+                std::vector<int> ij;
+                parser["uspp"]["non_local"]["qij"]["q"][idx]["ij"] >> ij;
+                if (ij[0] != i || ij[1] != j) 
+                {
+                    std::stringstream s;
+                    s << "wrong ij indices" << std::endl
+                      << "i = " << i << " j = " << j << " idx = " << idx << std::endl
+                      << "ij = " << ij[0] << " " << ij[1];
+                    error_local(__FILE__, __LINE__, s);
+                }
+
+                std::vector<double> qfcoef;
+                parser["uspp"]["non_local"]["qij"]["q"][idx]["qfcoef"] >> qfcoef;
+
+                int k = 0;
+                for (int l = 0; l <= 2 * uspp_.lmax; l++)
+                {
+                    for (int n = 0; n < uspp_.num_q_coefs; n++) 
+                    {
+                        if (k >= (int)qfcoef.size()) error_local(__FILE__, __LINE__, "wrong size of qfcoef");
+                        uspp_.q_coefs(n, l, i, j) = uspp_.q_coefs(n, l, j, i) = qfcoef[k++];
+                    }
+                }
+
+                std::vector<double> qfunc;
+                parser["uspp"]["non_local"]["qij"]["q"][idx]["qfunc"] >> qfunc;
+                if ((int)qfunc.size() != num_mt_points_) error_local(__FILE__, __LINE__, "wrong size of qfunc");
+                memcpy(&uspp_.q_radial_functions(0, idx), &qfunc[0], num_mt_points_ * sizeof(double)); 
+
+            }
+        }
+
+        uspp_.beta_radial_functions.set_dimensions(num_mt_points_, uspp_.num_beta_radial_functions);
+        uspp_.beta_radial_functions.allocate();
+        uspp_.beta_radial_functions.zero();
+
+        uspp_.num_beta_radial_points.resize(uspp_.num_beta_radial_functions);
+        uspp_.beta_l.resize(uspp_.num_beta_radial_functions);
+
+        local_orbital_descriptor lod;
+        for (int i = 0; i < uspp_.num_beta_radial_functions; i++)
+        {
+            parser["uspp"]["non_local"]["beta"][i]["kbeta"] >> uspp_.num_beta_radial_points[i];
+            std::vector<double> beta;
+            parser["uspp"]["non_local"]["beta"][i]["beta"] >> beta;
+            if ((int)beta.size() != uspp_.num_beta_radial_points[i]) error_local(__FILE__, __LINE__, "wrong size of beta function");
+            memcpy(&uspp_.beta_radial_functions(0, i), &beta[0], beta.size() * sizeof(double)); 
+ 
+            parser["uspp"]["non_local"]["beta"][i]["lll"] >> uspp_.beta_l[i];
+            
+            // think of |beta> functions as of local orbitals
+            lod.l = uspp_.beta_l[i];
+            lo_descriptors_.push_back(lod);
+        }
     }
     if (potential_type_ == full_potential)
     {

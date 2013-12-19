@@ -24,51 +24,74 @@ class Spheric_function
         template <typename U> 
         friend class Spheric_function;
 
-        Spheric_function(Radial_grid& radial_grid__, int angular_domain_size__) : 
-            radial_grid_(radial_grid__), sht_(NULL), angular_domain_size_(angular_domain_size__), angular_domain_idx_(1),
-            radial_domain_size_(radial_grid__.num_mt_points()), radial_domain_idx_(0)
+        Spheric_function(Radial_grid& radial_grid__, int angular_domain_size__) 
+            : radial_grid_(radial_grid__), 
+              sht_(NULL), 
+              angular_domain_size_(angular_domain_size__), 
+              angular_domain_idx_(1),
+              radial_domain_size_(radial_grid__.num_mt_points()), 
+              radial_domain_idx_(0)
         {
             data_.set_dimensions(radial_domain_size_, angular_domain_size_);
             data_.allocate();
         }
         
-        Spheric_function(int angular_domain_size__, Radial_grid& radial_grid__) : 
-            radial_grid_(radial_grid__), sht_(NULL), angular_domain_size_(angular_domain_size__), angular_domain_idx_(0),
-            radial_domain_size_(radial_grid__.num_mt_points()), radial_domain_idx_(1)
+        Spheric_function(int angular_domain_size__, Radial_grid& radial_grid__) 
+            : radial_grid_(radial_grid__), 
+              sht_(NULL), 
+              angular_domain_size_(angular_domain_size__), 
+              angular_domain_idx_(0),
+              radial_domain_size_(radial_grid__.num_mt_points()), 
+              radial_domain_idx_(1)
         {
             data_.set_dimensions(angular_domain_size_, radial_domain_size_);
             data_.allocate();
         }
 
-        Spheric_function(T* ptr, int angular_domain_size__, Radial_grid& radial_grid__) : 
-            radial_grid_(radial_grid__), sht_(NULL), angular_domain_size_(angular_domain_size__), angular_domain_idx_(0),
-            radial_domain_size_(radial_grid__.num_mt_points()), radial_domain_idx_(1)
+        Spheric_function(T* ptr, int angular_domain_size__, Radial_grid& radial_grid__) 
+            : radial_grid_(radial_grid__), 
+              sht_(NULL), 
+              angular_domain_size_(angular_domain_size__), 
+              angular_domain_idx_(0),
+              radial_domain_size_(radial_grid__.num_mt_points()), 
+              radial_domain_idx_(1)
         {
             data_.set_dimensions(angular_domain_size_, radial_domain_size_);
             data_.set_ptr(ptr);
         }
 
-        Spheric_function(SHT& sht__, Radial_grid& radial_grid__) : 
-            radial_grid_(radial_grid__), sht_(&sht__), angular_domain_size_(sht__.num_points()), angular_domain_idx_(0),
-            radial_domain_size_(radial_grid__.num_mt_points()), radial_domain_idx_(1)
+        Spheric_function(SHT& sht__, Radial_grid& radial_grid__) 
+            : radial_grid_(radial_grid__), 
+              sht_(&sht__), 
+              angular_domain_size_(sht__.num_points()), 
+              angular_domain_idx_(0),
+              radial_domain_size_(radial_grid__.num_mt_points()), 
+              radial_domain_idx_(1)
         {
             data_.set_dimensions(angular_domain_size_, radial_domain_size_);
             data_.allocate();
         }
 
-        Spheric_function(T* ptr, SHT& sht__, Radial_grid& radial_grid__) : 
-            radial_grid_(radial_grid__), sht_(&sht__), angular_domain_size_(sht__.num_points()), angular_domain_idx_(0),
-            radial_domain_size_(radial_grid__.num_mt_points()), radial_domain_idx_(1)
+        Spheric_function(T* ptr, SHT& sht__, Radial_grid& radial_grid__) 
+            : radial_grid_(radial_grid__), 
+              sht_(&sht__), 
+              angular_domain_size_(sht__.num_points()), 
+              angular_domain_idx_(0),
+              radial_domain_size_(radial_grid__.num_mt_points()), 
+              radial_domain_idx_(1)
         {
             data_.set_dimensions(angular_domain_size_, radial_domain_size_);
             data_.set_ptr(ptr);
         }
         
         template <typename U>
-        Spheric_function(Spheric_function<U>& f, bool fill) : 
-            radial_grid_(f.radial_grid_), sht_(f.sht_), angular_domain_size_(f.angular_domain_size_),
-            angular_domain_idx_(f.angular_domain_idx_), radial_domain_size_(f.radial_domain_size_),
-            radial_domain_idx_(f.radial_domain_idx_)
+        Spheric_function(Spheric_function<U>& f, bool fill) 
+            : radial_grid_(f.radial_grid_), 
+              sht_(f.sht_), 
+              angular_domain_size_(f.angular_domain_size_),
+              angular_domain_idx_(f.angular_domain_idx_), 
+              radial_domain_size_(f.radial_domain_size_),
+              radial_domain_idx_(f.radial_domain_idx_)
         {
             if (radial_domain_idx_ == 0)
             {

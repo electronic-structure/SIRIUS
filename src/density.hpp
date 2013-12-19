@@ -1,6 +1,50 @@
 Density::Density(Global& parameters__) : parameters_(parameters__)
 {
+    fft_ = parameters_.reciprocal_lattice()->fft();
+
     rho_ = new Periodic_function<double>(parameters_, parameters_.lmmax_rho(), parameters_.reciprocal_lattice()->num_gvec());
+
+    // core density of the pseudopotential method
+    if (parameters_.potential_type() == ultrasoft_pseudopotential)
+    {
+        rho_core_ = new Periodic_function<double>(parameters_, 0, parameters_.reciprocal_lattice()->num_gvec());
+        rho_core_->allocate(true, true);
+        rho_core_->zero();
+        
+        mdarray<double, 2> rho_core_radial_integrals(parameters_.unit_cell()->num_atom_types(), 
+                                                     parameters_.reciprocal_lattice()->num_gvec_shells_inner());
+
+        sbessel_pw<double> jl(parameters_, 0);
+        for (int igs = 0; igs < parameters_.reciprocal_lattice()->num_gvec_shells_inner(); igs++)
+        {
+            jl.load(parameters_.reciprocal_lattice()->gvec_shell_len(igs));
+
+            for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+            {
+                auto atom_type = parameters_.unit_cell()->atom_type(iat);
+                Spline<double> s(atom_type->num_mt_points(), atom_type->radial_grid()); // not very efficient to create splines 
+                                                                                        // for each G-shell, but we do this only once
+                for (int ir = 0; ir < s.num_points(); ir++) 
+                    s[ir] = jl(ir, 0, iat) * atom_type->uspp().core_charge_density[ir];
+                rho_core_radial_integrals(iat, igs) = s.interpolate().integrate(2);
+            }
+        }
+        
+        for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
+        {
+            int igs = parameters_.reciprocal_lattice()->gvec_shell<global>(ig);
+            for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+            {
+                int iat = parameters_.unit_cell()->atom(ia)->type_id();
+                rho_core_->f_pw(ig) += fourpi * conj(parameters_.reciprocal_lattice()->gvec_phase_factor<global>(ig, ia)) * 
+                                       rho_core_radial_integrals(iat, igs) / parameters_.unit_cell()->omega();
+            }
+        }
+
+        fft_->input(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &rho_core_->f_pw(0));
+        fft_->transform(1);
+        fft_->output(&rho_core_->f_it<global>(0));
+    }
 
     for (int i = 0; i < parameters_.num_mag_dims(); i++)
     {
@@ -30,7 +74,7 @@ Density::Density(Global& parameters__) : parameters_(parameters__)
             {
                 for (int m1 = -l1; m1 <= l1; m1++)
                 {
-                    complex16 gc = SHT::complex_gaunt(l1, l3, l2, m1, m3, m2);
+                    complex16 gc = SHT::gaunt<complex16>(l1, l3, l2, m1, m3, m2);
                     if (abs(gc) > 1e-16)
                         complex_gaunt_(lm2, lm3)[l1].push_back(std::pair<int, complex16>(m1 + l1, gc));
                 }
@@ -54,19 +98,19 @@ Density::Density(Global& parameters__) : parameters_(parameters__)
         }
         default:
         {
-            stop_here
+            gaunt12_.set_lmax(parameters_.lmax_beta(), parameters_.lmax_beta() * 2, parameters_.lmax_beta());
         }
     }
 
     l_by_lm_ = Utils::l_by_lm(parameters_.lmax_rho());
 
-    fft_ = parameters_.reciprocal_lattice()->fft();
 }
 
 Density::~Density()
 {
     delete rho_;
     for (int j = 0; j < parameters_.num_mag_dims(); j++) delete magnetization_[j];
+    if (parameters_.potential_type() == ultrasoft_pseudopotential) delete rho_core_;
 }
 
 void Density::set_charge_density_ptr(double* rhomt, double* rhoir)
@@ -115,51 +159,126 @@ void Density::zero()
 void Density::initial_density(int type = 0)
 {
     zero();
-    
-    if (type == 0)
+
+    if (parameters_.potential_type() == full_potential)
     {
-        parameters_.unit_cell()->solve_free_atoms();
-        
-        double mt_charge = 0.0;
-        for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+        if (type == 0)
         {
-            int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
-            vector3d<double> v = parameters_.unit_cell()->atom(ia)->vector_field();
-            double len = v.length();
-
-            int nmtp = parameters_.unit_cell()->atom(ia)->type()->num_mt_points();
-            Spline<double> rho(nmtp, parameters_.unit_cell()->atom(ia)->type()->radial_grid());
-            for (int ir = 0; ir < nmtp; ir++)
+            parameters_.unit_cell()->solve_free_atoms();
+            
+            double mt_charge = 0.0;
+            for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
             {
-                rho[ir] = parameters_.unit_cell()->atom(ia)->type()->free_atom_density(ir);
-                rho_->f_mt<local>(0, ir, ialoc) = rho[ir] / y00;
+                int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
+                vector3d<double> v = parameters_.unit_cell()->atom(ia)->vector_field();
+                double len = v.length();
+
+                int nmtp = parameters_.unit_cell()->atom(ia)->type()->num_mt_points();
+                Spline<double> rho(nmtp, parameters_.unit_cell()->atom(ia)->type()->radial_grid());
+                for (int ir = 0; ir < nmtp; ir++)
+                {
+                    rho[ir] = parameters_.unit_cell()->atom(ia)->type()->free_atom_density(ir);
+                    rho_->f_mt<local>(0, ir, ialoc) = rho[ir] / y00;
+                }
+
+                // add charge of the MT sphere
+                mt_charge += fourpi * rho.interpolate().integrate(nmtp - 1, 2);
+
+                if (len > 1e-8)
+                {
+                    if (parameters_.num_mag_dims())
+                    {
+                        for (int ir = 0; ir < nmtp; ir++)
+                            magnetization_[0]->f_mt<local>(0, ir, ialoc) = 0.2 * rho_->f_mt<local>(0, ir, ialoc) * v[2] / len;
+                    }
+
+                    if (parameters_.num_mag_dims() == 3)
+                    {
+                        for (int ir = 0; ir < nmtp; ir++)
+                            magnetization_[1]->f_mt<local>(0, ir, ia) = 0.2 * rho_->f_mt<local>(0, ir, ia) * v[0] / len;
+                        for (int ir = 0; ir < nmtp; ir++)
+                            magnetization_[2]->f_mt<local>(0, ir, ia) = 0.2 * rho_->f_mt<local>(0, ir, ia) * v[1] / len;
+                    }
+                }
             }
+            Platform::allreduce(&mt_charge, 1);
+            
+            // distribute remaining charge
+            for (int ir = 0; ir < fft_->size(); ir++)
+                rho_->f_it<global>(ir) = (parameters_.unit_cell()->num_electrons() - mt_charge) / parameters_.unit_cell()->volume_it();
+        }
+    }
+    if (parameters_.potential_type() == ultrasoft_pseudopotential)
+    {
+        mdarray<double, 2> rho_radial_integrals(parameters_.unit_cell()->num_atom_types(), 
+                                                parameters_.reciprocal_lattice()->num_gvec_shells_inner());
 
-            // add charge of the MT sphere
-            mt_charge += fourpi * rho.interpolate().integrate(nmtp - 1, 2);
+        sbessel_pw<double> jl(parameters_, 0);
+        for (int igs = 0; igs < parameters_.reciprocal_lattice()->num_gvec_shells_inner(); igs++)
+        {
+            jl.load(parameters_.reciprocal_lattice()->gvec_shell_len(igs));
 
-            if (len > 1e-8)
+            for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
             {
-                if (parameters_.num_mag_dims())
-                {
-                    for (int ir = 0; ir < nmtp; ir++)
-                        magnetization_[0]->f_mt<local>(0, ir, ialoc) = 0.2 * rho_->f_mt<local>(0, ir, ialoc) * v[2] / len;
-                }
-
-                if (parameters_.num_mag_dims() == 3)
-                {
-                    for (int ir = 0; ir < nmtp; ir++)
-                        magnetization_[1]->f_mt<local>(0, ir, ia) = 0.2 * rho_->f_mt<local>(0, ir, ia) * v[0] / len;
-                    for (int ir = 0; ir < nmtp; ir++)
-                        magnetization_[2]->f_mt<local>(0, ir, ia) = 0.2 * rho_->f_mt<local>(0, ir, ia) * v[1] / len;
-                }
+                auto atom_type = parameters_.unit_cell()->atom_type(iat);
+                Spline<double> s(atom_type->num_mt_points(), atom_type->radial_grid()); // not very efficient to create splines 
+                                                                                        // for each G-shell, but we do this only once
+                for (int ir = 0; ir < s.num_points(); ir++) 
+                    s[ir] = jl(ir, 0, iat) * atom_type->uspp().total_charge_density[ir];
+                rho_radial_integrals(iat, igs) = s.interpolate().integrate(0);
             }
         }
-        Platform::allreduce(&mt_charge, 1);
-        
-        // distribute remaining charge
+
+        for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
+        {
+            int igs = parameters_.reciprocal_lattice()->gvec_shell<global>(ig);
+            for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+            {
+                int iat = parameters_.unit_cell()->atom(ia)->type_id();
+                rho_->f_pw(ig) += conj(parameters_.reciprocal_lattice()->gvec_phase_factor<global>(ig, ia)) * 
+                                  rho_radial_integrals(iat, igs) / parameters_.unit_cell()->omega(); // atomic density from UPF file is already multiplied by 4*PI
+            }
+        }
+        if (fabs(rho_->f_pw(0) * parameters_.unit_cell()->omega() - parameters_.unit_cell()->num_valence_electrons()) > 1e-6)
+            warning_local(__FILE__, __LINE__, "initial charge density is wrong");
+
+        fft_->input(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &rho_->f_pw(0));
+        fft_->transform(1);
+        fft_->output(&rho_->f_it<global>(0));
+
         for (int ir = 0; ir < fft_->size(); ir++)
-            rho_->f_it<global>(ir) = (parameters_.unit_cell()->num_electrons() - mt_charge) / parameters_.unit_cell()->volume_it();
+        {
+            if (rho_->f_it<global>(ir) < 0) rho_->f_it<global>(ir) = 0;
+        }
+        
+        fft_->input(&rho_->f_it<global>(0));
+        fft_->transform(-1);
+        fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &rho_->f_pw(0));
+        
+        //== mdarray<double, 3> rho_3d_map(&rho_it[0], fft_->size(0), fft_->size(1), fft_->size(2));
+        //== int nx = fft_->size(0);
+        //== int ny = fft_->size(1);
+        //== int nz = fft_->size(2);
+
+        //== auto p = parameters_.unit_cell()->unit_cell_parameters();
+
+        //== FILE* fout = fopen("density.ted", "w");
+        //== fprintf(fout, "%s\n", parameters_.unit_cell()->chemical_formula().c_str());
+        //== fprintf(fout, "%16.10f %16.10f %16.10f  %16.10f %16.10f %16.10f\n", p.a, p.b, p.c, p.alpha, p.beta, p.gamma);
+        //== fprintf(fout, "%i %i %i\n", nx + 1, ny + 1, nz + 1);
+        //== for (int i0 = 0; i0 <= nx; i0++)
+        //== {
+        //==     for (int i1 = 0; i1 <= ny; i1++)
+        //==     {
+        //==         for (int i2 = 0; i2 <= nz; i2++)
+        //==         {
+        //==             fprintf(fout, "%14.8f\n", rho_3d_map(i0 % nx, i1 % ny, i2 % nz));
+        //==         }
+        //==     }
+        //== }
+        //== fclose(fout);
+        //== stop_here
+
     }
 
     rho_->sync(true, true);

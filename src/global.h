@@ -66,14 +66,14 @@ class Global
         /// maximum l for potential
         int lmax_pot_;
 
-        /// maxim overall l
-        int lmax_;
-        
         /// cutoff for augmented-wave functions
         double aw_cutoff_;
 
         /// cutoff for plane-waves
         double pw_cutoff_;
+
+        /// cutoff for |G+k| plane-waves
+        double gk_cutoff_;
         
         /// number of first-variational states
         int num_fv_states_;
@@ -264,20 +264,35 @@ class Global
 
     public:
     
-        Global() : initialized_(false), lmax_apw_(lmax_apw_default), lmax_pw_(-1), lmax_rho_(lmax_rho_default), 
-                   lmax_pot_(lmax_pot_default), aw_cutoff_(aw_cutoff_default), pw_cutoff_(pw_cutoff_default), 
-                   num_fv_states_(-1), num_spins_(1), num_mag_dims_(0), so_correction_(false), uj_correction_(false), 
-                   cyclic_block_size_(64), eigen_value_solver_(lapack),
-                   #ifdef _GPU_
-                   processing_unit_(gpu),
-                   #else
-                   processing_unit_(cpu),
-                   #endif
-                   #if defined(_SCALAPACK_) || defined(_ELPA_)
-                   blacs_context_(-1),
-                   #endif
-                   smearing_width_(0.001), potential_type_(full_potential), basis_type_(apwlo), step_function_(NULL),
-                   reciprocal_lattice_(NULL)
+        Global() 
+            : initialized_(false), 
+              lmax_apw_(lmax_apw_default), 
+              lmax_pw_(-1), 
+              lmax_rho_(lmax_rho_default), 
+              lmax_pot_(lmax_pot_default), 
+              aw_cutoff_(aw_cutoff_default), 
+              pw_cutoff_(pw_cutoff_default), 
+              gk_cutoff_(pw_cutoff_default / 4.0), 
+              num_fv_states_(-1), 
+              num_spins_(1), 
+              num_mag_dims_(0), 
+              so_correction_(false), 
+              uj_correction_(false), 
+              cyclic_block_size_(64), 
+              eigen_value_solver_(lapack),
+              #ifdef _GPU_
+              processing_unit_(gpu),
+              #else
+              processing_unit_(cpu),
+              #endif
+              #if defined(_SCALAPACK_) || defined(_ELPA_)
+              blacs_context_(-1),
+              #endif
+              smearing_width_(0.001), 
+              potential_type_(full_potential), 
+              basis_type_(apwlo), 
+              step_function_(NULL),
+              reciprocal_lattice_(NULL)
         {
             gettimeofday(&start_time_, NULL); // measure the start time
             read_input(); // read initial data from sirius.json
@@ -354,19 +369,14 @@ class Global
             return lmax_pot_;
         }
 
+        inline int lmax_beta()
+        {
+            return unit_cell_->lmax_beta();
+        }
+
         inline int lmmax_pot()
         {
             return Utils::lmmax(lmax_pot_);
-        }
-
-        inline int lmax()
-        {
-            return lmax_;
-        }
-
-        inline int lmmax()
-        {
-            return Utils::lmmax(lmax_);
         }
 
         inline double aw_cutoff()
@@ -389,6 +399,11 @@ class Global
         inline void set_pw_cutoff(double pw_cutoff__)
         {
             pw_cutoff_ = pw_cutoff__;
+        }
+
+        inline double gk_cutoff()
+        {
+            return gk_cutoff_;
         }
 
         inline int num_fv_states()
@@ -547,25 +562,48 @@ class Global
         {
             if (initialized_) error_local(__FILE__, __LINE__, "Can't initialize global variables more than once.");
 
-            if (basis_type() == pwlo)
+            switch (basis_type())
             {
-                lmax_pw_ = lmax_apw_;
-                lmax_apw_ = -1;
+                case pwlo:
+                {
+                    lmax_pw_ = lmax_apw_;
+                    lmax_apw_ = -1;
+                    break;
+                }
+                case pw:
+                {
+                    lmax_apw_ = lmax_rho_ = lmax_pot_ = -1;
+                    break;
+                }
+                default:
+                {
+                    stop_here
+                }
             }
-
-            if (basis_type() == pw)
-            {
-                lmax_apw_ = -1;
-                lmax_rho_ = lmax_pot_ = -1;
-            }
-
-            lmax_ = std::max(std::max(std::max(lmax_pot_, lmax_rho_), lmax_apw_), lmax_pw_); 
 
             // initialize variables, related to the unit cell
             unit_cell_->initialize(lmax_apw(), lmax_pot(), num_mag_dims());
 
             // create a reciprocal lattice
-            reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, pw_cutoff(), lmax_);
+            int lmax = -1;
+            switch (basis_type())
+            {
+                case apwlo:
+                {
+                    lmax = lmax_pot_;
+                    break;
+                }
+                case pw:
+                {
+                    lmax = unit_cell_->lmax_beta();
+                    break;
+                }
+                case pwlo:
+                {
+                    stop_here
+                }
+            }
+            reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, pw_cutoff(), lmax);
 
             if (basis_type() == apwlo || basis_type() == pwlo) step_function_ = new Step_function(unit_cell_, reciprocal_lattice_);
 
@@ -745,12 +783,18 @@ class Global
             for (int i = 0; i < unit_cell_->num_atom_types(); i++) unit_cell_->atom_type(i)->print_info();
 
             printf("\n");
-            printf("total number of aw muffin-tin basis functions : %i\n", unit_cell_->mt_aw_basis_size());
+            printf("total number of aw basis functions : %i\n", unit_cell_->mt_aw_basis_size());
             printf("total number of lo basis functions : %i\n", unit_cell_->mt_lo_basis_size());
             printf("number of first-variational states : %i\n", num_fv_states());
             printf("number of bands                    : %i\n", num_bands());
             printf("number of spins                    : %i\n", num_spins());
             printf("number of magnetic dimensions      : %i\n", num_mag_dims());
+            printf("lmax_apw                           : %i\n", lmax_apw());
+            printf("lmax_pw                            : %i\n", lmax_pw());
+            printf("lmax_rho                           : %i\n", lmax_rho());
+            printf("lmax_pot                           : %i\n", lmax_pot());
+            printf("lmax_beta                          : %i\n", lmax_beta());
+
             printf("\n");
             printf("eigen-value solver: ");
             switch (eigen_value_solver())

@@ -54,8 +54,10 @@ class Reciprocal_lattice
 
     public:
         
-        Reciprocal_lattice(Unit_cell* unit_cell__, double pw_cutoff__, int lmax__) : 
-            unit_cell_(unit_cell__), pw_cutoff_(pw_cutoff__), num_gvec_(0)
+        Reciprocal_lattice(Unit_cell* unit_cell__, double pw_cutoff__, int lmax__) 
+            : unit_cell_(unit_cell__), 
+              pw_cutoff_(pw_cutoff__), 
+              num_gvec_(0)
         {
             for (int l = 0; l < 3; l++)
             {

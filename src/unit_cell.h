@@ -106,6 +106,8 @@ class Unit_cell
         /// scale muffin-tin radii automatically
         int auto_rmt_;
 
+        int lmax_beta_;
+
         potential_t potential_type_;
 
         MPI_group mpi_group_atom_;
@@ -132,7 +134,8 @@ class Unit_cell
 
     public:
     
-        Unit_cell(potential_t potential_type__) : spg_dataset_(NULL), auto_rmt_(0), potential_type_(potential_type__)
+        Unit_cell(potential_t potential_type__) : spg_dataset_(NULL), auto_rmt_(0), lmax_beta_(-1), 
+                                                  potential_type_(potential_type__)
         {
         }
         
@@ -419,6 +422,10 @@ class Unit_cell
             return volume_it_;
         }
 
+        inline int lmax_beta()
+        {
+            return lmax_beta_;
+        }
 };
 
 #include "unit_cell.hpp"
