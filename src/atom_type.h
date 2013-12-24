@@ -411,7 +411,7 @@ class Atom_type
             {
                 double x = radial_grid(ir);
                 double x2 = x * x;
-                if (x < uspp_.q_functions_inner_radius[l])
+                if (x < uspp_.q_functions_inner_radii[l])
                 {
                     qrf[ir] = uspp_.q_coefs(0, l, i, j);
                     for (int n = 1; n < uspp_.num_q_coefs; n++) qrf[ir] += uspp_.q_coefs(n, l, i, j) * pow(x2, n);

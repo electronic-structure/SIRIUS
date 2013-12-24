@@ -2,6 +2,7 @@
 // TODO: rename coulomb potential to hartree potential
 // TODO: make one function for synthesis of periodic function form phase factors and radial integrals
 // TODO: better naming convention: q is meaningless
+// TODO: think what to do with phase factors: some kind of spline interpolation
 
 Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_density_order(9)
 {
@@ -9,11 +10,35 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
     
     fft_ = parameters_.reciprocal_lattice()->fft();
 
-    if (parameters_.potential_type() == full_potential)
+    switch (parameters_.potential_type())
     {
-        lmax_ = std::max(parameters_.lmax_rho(), parameters_.lmax_pot());
-        sht_ = new SHT(lmax_);
-        l_by_lm_ = Utils::l_by_lm(lmax_);
+        case full_potential:
+        {
+            lmax_ = std::max(parameters_.lmax_rho(), parameters_.lmax_pot());
+            sht_ = new SHT(lmax_);
+            break;
+        }
+        case ultrasoft_pseudopotential:
+        {
+            lmax_ = parameters_.lmax_beta() * 2;
+            break;
+        }
+        default:
+        {
+            stop_here
+        }
+    }
+
+    l_by_lm_ = Utils::l_by_lm(lmax_);
+
+    // precompute i^l
+    zil_.resize(lmax_ + 1);
+    for (int l = 0; l <= lmax_; l++) zil_[l] = pow(complex16(0, 1), l);
+    
+    zilm_.resize(Utils::lmmax(lmax_));
+    for (int l = 0, lm = 0; l <= lmax_; l++)
+    {
+        for (int m = -l; m <= l; m++, lm++) zilm_[lm] = zil_[l];
     }
 
     int ngv = (use_second_variation) ? 0 : parameters_.reciprocal_lattice()->num_gvec();
@@ -21,17 +46,6 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
     effective_potential_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), parameters_.reciprocal_lattice()->num_gvec());
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
         effective_magnetic_field_[j] = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), ngv);
-    
-    // precompute i^l
-    zil_.resize(parameters_.lmax_rho() + 1);
-    for (int l = 0; l <= parameters_.lmax_rho(); l++) zil_[l] = pow(complex16(0, 1), l);
-    
-    zilm_.resize(parameters_.lmmax_rho());
-    for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
-    {
-        for (int m = -l; m <= l; m++, lm++) zilm_[lm] = zil_[l];
-    }
-
     
     coulomb_potential_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), parameters_.reciprocal_lattice()->num_gvec());
     coulomb_potential_->allocate(false, true);
@@ -119,8 +133,6 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
         //==     }
         //== }
         //== fclose(fout);
-        
-        
          
         // compute radial integrals of Q functions
         int nbeta = parameters_.unit_cell()->max_mt_radial_basis_size();
@@ -135,21 +147,23 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
         for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
         {
             auto atom_type = parameters_.unit_cell()->atom_type(iat);
-            for (int l3 = 0; l3 <= parameters_.lmax_beta() * 2; l3++)
+            for (int l3 = 0; l3 <= 2 * atom_type->indexr().lmax(); l3++)
             {
-                for (int i = 0; i < atom_type->mt_radial_basis_size(); i++)
+                for (int idxrf2 = 0; idxrf2 < atom_type->mt_radial_basis_size(); idxrf2++)
                 {
-                    for (int j = i; j < atom_type->mt_radial_basis_size(); j++)
+                    for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
                     {
-                        int idx = i * atom_type->mt_radial_basis_size() + j - i * (i + 1) / 2;
+                        int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
                         memcpy(&q_radial_functions(0, l3, idx, iat), &atom_type->uspp().q_radial_functions(0, idx), 
                                atom_type->num_mt_points() * sizeof(double));
-                        atom_type->fix_q_radial_function(l3, i, j, &q_radial_functions(0, l3, idx, iat));
+                        atom_type->fix_q_radial_function(l3, idxrf1, idxrf2, &q_radial_functions(0, l3, idx, iat));
                     }
                 }
             }
         }
 
+        // TODO: in principle, this can be sistributed over G-shells (each mpi rank holds radial integrals only for
+        //       G-shells of local fraction of G-vectors
         sbessel_pw<double> jl(parameters_, parameters_.lmax_beta() * 2);
         for (int igs = 0; igs < parameters_.reciprocal_lattice()->num_gvec_shells_inner(); igs++)
         {
@@ -160,23 +174,23 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
                 auto atom_type = parameters_.unit_cell()->atom_type(iat);
                 Spline<double> s(atom_type->num_mt_points(), atom_type->radial_grid());
 
-                for (int l3 = 0; l3 <= parameters_.lmax_beta() * 2; l3++)
+                for (int l3 = 0; l3 <= 2 * atom_type->indexr().lmax(); l3++)
                 {
-                    for (int i = 0; i < atom_type->mt_radial_basis_size(); i++)
+                    for (int idxrf2 = 0; idxrf2 < atom_type->mt_radial_basis_size(); idxrf2++)
                     {
-                        int l1 = atom_type->indexr(i).l;
-                        for (int j = i; j < atom_type->mt_radial_basis_size(); j++)
+                        int l2 = atom_type->indexr(idxrf2).l;
+                        for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
                         {
-                            int l2 = atom_type->indexr(j).l;
+                            int l1 = atom_type->indexr(idxrf1).l;
 
-                            int idx = i * atom_type->mt_radial_basis_size() + j - i * (i + 1) / 2;
+                            int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
                             
-                            if (l3 >= abs(l1 - l2) && l3 <= l1 + l2 && (l1 + l2 + l3) % 2 == 0)
+                            if (l3 >= abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0)
                             {
                                 for (int ir = 0; ir < atom_type->num_mt_points(); ir++)
                                     s[ir] = jl(ir, l3, iat) * q_radial_functions(ir, l3, idx, iat);
 
-                                q_radial_integrals(idx, l3, iat, igs) = s.interpolate().integrate();
+                                q_radial_integrals(idx, l3, iat, igs) = s.interpolate().integrate(0);
                             }
                         }
                     }
@@ -186,68 +200,49 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
 
         int nbf_max = parameters_.unit_cell()->max_mt_basis_size();
 
-        mdarray<complex16, 3> q_pw(parameters_.reciprocal_lattice()->num_gvec(), nbf_max * (nbf_max + 1) / 2,
-                                   parameters_.unit_cell()->num_atom_types()); 
+        q_pw_.set_dimensions(parameters_.reciprocal_lattice()->num_gvec(), nbf_max * (nbf_max + 1) / 2,
+                             parameters_.unit_cell()->num_atom_types()); 
+        q_pw_.allocate();
+        q_pw_.zero();
+        for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+        {
+            auto atom_type = parameters_.unit_cell()->atom_type(iat);
+            int nbf = atom_type->mt_basis_size();
+            int lmax_beta = atom_type->indexr().lmax();
+            int lmmax = Utils::lmmax(lmax_beta * 2);
+            std::vector<complex16> v(lmmax);
+            Gaunt_coefficients<double> gaunt_coefs(lmax_beta, 2 * lmax_beta, lmax_beta);
 
-        //==q_pw.zero();
-        //==for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
-        //=={
-        //==    auto atom_type = parameters_.unit_cell()->atom_type(iat);
-        //==    int nbf = atom_type->mt_basis_size();
-        //==    int lmmax = Utils::lmmax_by_lmax(atom_type->lmax_beta() * 2);
-        //==    std::vector<complex> v(lmmax);
+            atom_type->uspp().q_mtrx.zero();
 
-        //==    for (int i1 = 0; i1 < nbf; i1++)
-        //==    {
-        //==        int l1 = atom_type->indexb(i1).l;
-        //==        int idxrf1 = atom_type->indexb(i1).idxrf;
+            for (int xi2 = 0; xi2 < nbf; xi2++)
+            {
+                int lm2 = atom_type->indexb(xi2).lm;
+                int idxrf2 = atom_type->indexb(xi2).idxrf;
 
-        //==        for (int i2 = 0; i2 <= i2; i2++)
-        //==        {
-        //==            int l2 = atom_type->indexb(i2).l;
-        //==            int idxrf2 = atom_type->indexb(i2).idxrf;
+                for (int xi1 = 0; xi1 <= xi2; xi1++)
+                {
+                    int lm1 = atom_type->indexb(xi1).lm;
+                    int idxrf1 = atom_type->indexb(xi1).idxrf;
 
-        //==            int idx12 = i1 * (i1 + 1) / 2 + i2;
-        //==            int idxrf12 = idxrf1 * atom_type->mt_radial_basis_size() + idxrf2 - idxrf1 * (idxrf1 + 1) / 2;
-        //==            
-        //==            for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
-        //==            {
-        //==                int igs = parameters_.reciprocal_lattice()->gvec_shell<global>(ig);
-        //==                for (int lm3 = 0; lm3 < lmmax; lm3++)
-        //==                {
-        //==                    v[lm3] = conj(zilm_[lm]) * parameters_.reciprocal_lattice()->gvec_ylm(lm, ig) * q_radial_integrals(idxrf12, l_by_lm_[lm3], iat, igs);
-        //==                }
-        //==                q_pw(ig, idx12, iat) = fourpi_omega * 
-
-
- 
-        //==            
-
-
-
-
-
-        t.stop();
-
-        stop_here
-
-
-
-
-
-
-
-
-
-
-        //==         for (int ir = 0; ir < s.num_points(); ir++) 
-        //==             s[ir] = jl(ir, 0, iat) * atom_type->uspp().core_charge_density[ir];
-        //==         rho_core_radial_integrals(iat, igs) = s.interpolate().integrate(2);
-        //==     }
-        //== }
-
-        //== for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
-
+                    int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+                    int idxrf12 = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
+                    
+                    for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
+                    {
+                        int igs = parameters_.reciprocal_lattice()->gvec_shell<global>(ig);
+                        for (int lm3 = 0; lm3 < lmmax; lm3++)
+                        {
+                            v[lm3] = conj(zilm_[lm3]) * parameters_.reciprocal_lattice()->gvec_ylm(lm3, ig) * 
+                                     q_radial_integrals(idxrf12, l_by_lm_[lm3], iat, igs);
+                        }
+                        q_pw_(ig, idx12, iat) = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
+                    }
+                    atom_type->uspp().q_mtrx(xi1, xi2) = parameters_.unit_cell()->omega() * q_pw_(0, idx12, iat);
+                    atom_type->uspp().q_mtrx(xi2, xi1) = conj(atom_type->uspp().q_mtrx(xi1, xi2));
+                }
+            }
+        }
     }
 
     update();
@@ -257,7 +252,7 @@ Potential::~Potential()
 {
     delete effective_potential_; 
     for (int j = 0; j < parameters_.num_mag_dims(); j++) delete effective_magnetic_field_[j];
-    delete sht_;
+    if (parameters_.potential_type() == full_potential) delete sht_;
     delete coulomb_potential_;
     delete xc_potential_;
     delete xc_energy_density_;
@@ -884,7 +879,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     // compute pw coefficients of Hartree potential
     vh->f_pw(0) = 0.0;
     for (int ig = 1; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
-        vh->f_pw(ig) *= (fourpi / pow(parameters_.reciprocal_lattice()->gvec_len(ig), 2));
+        vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / pow(parameters_.reciprocal_lattice()->gvec_len(ig), 2));
     
     // boundary condition for muffin-tins
     if (parameters_.potential_type() == full_potential)
@@ -1178,31 +1173,50 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho, Per
     
     // add XC potential to the effective potential
     effective_potential_->add(xc_potential_);
+    
+    // add local ionic potential to the effective potential
+    effective_potential_->add(local_potential_);
 
     // synchronize effective potential
     effective_potential_->sync(false, true);
+    for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->sync(false, true);
     
-    // at this point effective potential contains V^H[rho] + V^{XC}[rho+rho_core]
-    // now we can compute D_{\xi \xi'} = \int V^{Hxc}(r) Q_{\xi \xi'}(r) dr
-    // we are going to do this in plane-wave domain
-    
-    // get plane-wave coefficients of V^{Hxc}
+    // get plane-wave coefficients of effective potential
     fft_->input(&effective_potential_->f_it<global>(0));
     fft_->transform(-1);
     fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), 
                  &effective_potential_->f_pw(0));
+    
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {
+        auto atom_type = parameters_.unit_cell()->atom(ia)->type();
+        int iat = atom_type->id();
+        int nbf = atom_type->mt_basis_size();
 
+        for (int xi2 = 0; xi2 < nbf; xi2++)
+        {
+            int idxrf2 = atom_type->indexb(xi2).idxrf;
+            for (int xi1 = 0; xi1 <= xi2; xi1++)
+            {
+                int idxrf1 = atom_type->indexb(xi1).idxrf;
 
+                int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
 
-    stop_here
+                complex16 z(0, 0);
+                
+                for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
+                {
+                    z += conj(q_pw_(ig, idx12, iat)) * effective_potential_->f_pw(ig) * 
+                         parameters_.reciprocal_lattice()->gvec_phase_factor<global>(ig, ia);
+                }
 
-    // add local ionic potential to the effective potential
-    effective_potential_->add(local_potential_);
+                complex16 z1 = z * parameters_.unit_cell()->omega() + atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
 
-    effective_potential_->sync(false, true);
-    for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->sync(false, true);
-
-    //if (debug_level > 1) check_potential_continuity_at_mt();
+                parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) = z1;
+                parameters_.unit_cell()->atom(ia)->d_mtrx(xi2, xi1) = conj(z1);
+            }
+        }
+    }
 }
 
 void Potential::set_effective_potential_ptr(double* veffmt, double* veffit)

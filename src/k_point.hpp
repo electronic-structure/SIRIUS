@@ -75,19 +75,130 @@ void K_point::update()
     }
     
     init_gkvec();
+    
+    // cache "b" vector of linear equations Ax=b for matching coefficients (A will be a matrix of radial derivatives)
+    if (parameters_.basis_type() == apwlo)
+    {
+        alm_b_.set_dimensions(3, num_gkvec_loc(), parameters_.lmax_apw() + 1, parameters_.unit_cell()->num_atom_types());
+        alm_b_.allocate();
+        alm_b_.zero();
+
+        // compute values and first and second derivatives of the spherical Bessel functions at the MT boundary
+        mdarray<double, 2> sbessel_mt(parameters_.lmax_apw() + 2, 3);
+        sbessel_mt.zero();
+
+        for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
+        {
+            for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+            {
+                double R = parameters_.unit_cell()->atom_type(iat)->mt_radius();
+
+                double gkR = gkvec_len_[igkloc] * R;
+
+                gsl_sf_bessel_jl_array(parameters_.lmax_apw() + 1, gkR, &sbessel_mt(0, 0));
+                
+                // Bessel function derivative: f_{{n}}^{{\prime}}(z)=-f_{{n+1}}(z)+(n/z)f_{{n}}(z)
+                //
+                // In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,1}]]
+                // Out[]= (n SphericalBesselJ[n,a x])/x-a SphericalBesselJ[1+n,a x]
+                //
+                // In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,2}]]
+                // Out[]= (((-1+n) n-a^2 x^2) SphericalBesselJ[n,a x]+2 a x SphericalBesselJ[1+n,a x])/x^2
+                for (int l = 0; l <= parameters_.lmax_apw(); l++)
+                {
+                    sbessel_mt(l, 1) = -sbessel_mt(l + 1, 0) * gkvec_len_[igkloc] + (l / R) * sbessel_mt(l, 0);
+                    sbessel_mt(l, 2) = 2 * gkvec_len_[igkloc] * sbessel_mt(l + 1, 0) / R + 
+                                       ((l - 1) * l - pow(gkR, 2)) * sbessel_mt(l, 0) / pow(R, 2);
+                }
+                
+                for (int l = 0; l <= parameters_.lmax_apw(); l++)
+                {
+                    double f = fourpi / sqrt(parameters_.unit_cell()->omega());
+                    alm_b_(0, igkloc, l, iat) = zil_[l] * f * sbessel_mt(l, 0); 
+                    alm_b_(1, igkloc, l, iat) = zil_[l] * f * sbessel_mt(l, 1);
+                    alm_b_(2, igkloc, l, iat) = zil_[l] * f * sbessel_mt(l, 2);
+                }
+            }
+        }
+    }
+
+    // compute radial integrals of |beta> functions
+    if (parameters_.potential_type() == ultrasoft_pseudopotential)
+    {
+        mdarray<double, 3> beta_radial_integrals_;
+
+        beta_radial_integrals_.set_dimensions(num_gkvec(), parameters_.unit_cell()->max_mt_radial_basis_size(), 
+                                              parameters_.unit_cell()->num_atom_types());
+        beta_radial_integrals_.allocate();
+
+        sbessel_pw<double> jl(parameters_, parameters_.lmax_beta());
+
+        for (int igk = 0; igk < num_gkvec(); igk++)
+        {
+            jl.load(gkvec_len_[igk]);
+
+            for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+            {
+                auto atom_type = parameters_.unit_cell()->atom_type(iat);
+                for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
+                {
+                    int nr = atom_type->uspp().num_beta_radial_points[idxrf];
+                    int l = atom_type->indexr(idxrf).l;
+                    Spline<double> s(nr, atom_type->radial_grid());
+                    for (int ir = 0; ir < nr; ir++) s[ir] = jl(ir, l, iat) * atom_type->uspp().beta_radial_functions(ir, idxrf);
+                    beta_radial_integrals_(igk, idxrf, iat) = s.interpolate().integrate(1);
+                }
+            }
+        }
+
+        beta_pw_.set_dimensions(num_gkvec(), parameters_.unit_cell()->max_mt_basis_size(), 
+                                parameters_.unit_cell()->num_atom_types());
+        beta_pw_.allocate();
+        
+        for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+        {
+            auto atom_type = parameters_.unit_cell()->atom_type(iat);
+            for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
+            {
+                int l = atom_type->indexb(xi).l;
+                int lm = atom_type->indexb(xi).lm;
+                int idxrf = atom_type->indexb(xi).idxrf;
+
+                complex16 z = pow(complex16(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
+                for (int igk = 0; igk < num_gkvec(); igk++)
+                {
+                    beta_pw_(igk, xi, iat) = z * gkvec_ylm_(lm, igk) * beta_radial_integrals_(igk, idxrf, iat);
+                }
+            }
+        }
+    }
 
     spinor_wave_functions_.set_dimensions(wf_size(), parameters_.num_spins(), parameters_.spl_spinor_wf_col().local_size());
 
     if (use_second_variation)
     {
+        // allocate memory for first-variational eigen vectors
         if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
         {
             fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), parameters_.spl_fv_states_col().local_size());
             fv_eigen_vectors_.allocate();
         }
         
+        // allocate memory for first-variational states
         fv_states_col_.set_dimensions(wf_size(), parameters_.spl_fv_states_col().local_size());
         fv_states_col_.allocate();
+
+        if (parameters_.basis_type() == pw)
+        {
+            fv_states_col_.zero();
+            for (int i = 0; i < parameters_.num_fv_states(); i++)
+            {
+                int rank = parameters_.spl_fv_states_col().location(_splindex_rank_, i);
+                int iloc = parameters_.spl_fv_states_col().location(_splindex_offs_, i);
+                
+                if (rank == rank_col_) fv_states_col_(i, iloc) = 1.0; 
+            }
+        }
         
         if (num_ranks() == 1)
         {
@@ -625,6 +736,26 @@ void K_point::init_gkvec_ylm_and_len(int lmax, int ngk)
     }
 }
 
+template <index_domain_t index_domain> 
+void K_point::init_gkvec_phase_factors(int ngk)
+{
+    gkvec_phase_factors_.set_dimensions(ngk, parameters_.unit_cell()->num_atoms());
+    gkvec_phase_factors_.allocate();
+
+    #pragma omp parallel for default(shared)
+    for (int igk = 0; igk < ngk; igk++)
+    {
+        int igk_glob = (index_domain == global) ? igk : igkglob(igk);
+
+        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        {
+            double phase = twopi * Utils::scalar_product(gkvec(igk_glob), parameters_.unit_cell()->atom(ia)->position());
+
+            gkvec_phase_factors_(igk, ia) = exp(complex16(0.0, phase));
+        }
+    }
+}
+
 void K_point::init_gkvec()
 {
     int lmax = -1;
@@ -652,78 +783,36 @@ void K_point::init_gkvec()
     if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
     {
         init_gkvec_ylm_and_len<local>(lmax, num_gkvec_loc());
+        init_gkvec_phase_factors<local>(num_gkvec_loc());
     }
 
     if (parameters_.basis_type() == pw)
     {
+        if (num_gkvec() != wf_size()) error_local(__FILE__, __LINE__, "wrong size of wave-functions");
         init_gkvec_ylm_and_len<global>(lmax, num_gkvec());
+        init_gkvec_phase_factors<global>(num_gkvec());
     }
     
-    // TODO: check if phase factors are needed for PW basis
-    if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
-    {
-        gkvec_phase_factors_.set_dimensions(num_gkvec_loc(), parameters_.unit_cell()->num_atoms());
-        gkvec_phase_factors_.allocate();
+    //== // TODO: check if phase factors are needed for PW basis
+    //== if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
+    //== {
+    //==     gkvec_phase_factors_.set_dimensions(num_gkvec_loc(), parameters_.unit_cell()->num_atoms());
+    //==     gkvec_phase_factors_.allocate();
 
-        #pragma omp parallel for default(shared)
-        for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
-        {
-            int igk = igkglob(igkloc);
+    //==     #pragma omp parallel for default(shared)
+    //==     for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
+    //==     {
+    //==         int igk = igkglob(igkloc);
 
-            for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-            {
-                double phase = twopi * Utils::scalar_product(gkvec(igk), parameters_.unit_cell()->atom(ia)->position());
+    //==         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    //==         {
+    //==             double phase = twopi * Utils::scalar_product(gkvec(igk), parameters_.unit_cell()->atom(ia)->position());
 
-                gkvec_phase_factors_(igkloc, ia) = exp(complex16(0.0, phase));
-            }
-        }
-    }
+    //==             gkvec_phase_factors_(igkloc, ia) = exp(complex16(0.0, phase));
+    //==         }
+    //==     }
+    //== }
     
-    // cache "b" vector of linear equations Ax=b for matching coefficients (A will be a matrix of radial derivatives)
-    if (parameters_.basis_type() == apwlo)
-    {
-        alm_b_.set_dimensions(3, num_gkvec_loc(), parameters_.lmax_apw() + 1, parameters_.unit_cell()->num_atom_types());
-        alm_b_.allocate();
-        alm_b_.zero();
-
-        // compute values and first and second derivatives of the spherical Bessel functions at the MT boundary
-        mdarray<double, 2> sbessel_mt(parameters_.lmax_apw() + 2, 3);
-        sbessel_mt.zero();
-
-        for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
-        {
-            for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
-            {
-                double R = parameters_.unit_cell()->atom_type(iat)->mt_radius();
-
-                double gkR = gkvec_len_[igkloc] * R;
-
-                gsl_sf_bessel_jl_array(parameters_.lmax_apw() + 1, gkR, &sbessel_mt(0, 0));
-                
-                // Bessel function derivative: f_{{n}}^{{\prime}}(z)=-f_{{n+1}}(z)+(n/z)f_{{n}}(z)
-                //
-                // In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,1}]]
-                // Out[]= (n SphericalBesselJ[n,a x])/x-a SphericalBesselJ[1+n,a x]
-                //
-                // In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,2}]]
-                // Out[]= (((-1+n) n-a^2 x^2) SphericalBesselJ[n,a x]+2 a x SphericalBesselJ[1+n,a x])/x^2
-                for (int l = 0; l <= parameters_.lmax_apw(); l++)
-                {
-                    sbessel_mt(l, 1) = -sbessel_mt(l + 1, 0) * gkvec_len_[igkloc] + (l / R) * sbessel_mt(l, 0);
-                    sbessel_mt(l, 2) = 2 * gkvec_len_[igkloc] * sbessel_mt(l + 1, 0) / R + 
-                                       ((l - 1) * l - pow(gkR, 2)) * sbessel_mt(l, 0) / pow(R, 2);
-                }
-                
-                for (int l = 0; l <= parameters_.lmax_apw(); l++)
-                {
-                    double f = fourpi / sqrt(parameters_.unit_cell()->omega());
-                    alm_b_(0, igkloc, l, iat) = zil_[l] * f * sbessel_mt(l, 0); 
-                    alm_b_(1, igkloc, l, iat) = zil_[l] * f * sbessel_mt(l, 1);
-                    alm_b_(2, igkloc, l, iat) = zil_[l] * f * sbessel_mt(l, 2);
-                }
-            }
-        }
-    }
 }
 
 void K_point::build_apwlo_basis_descriptors()
@@ -1027,8 +1116,7 @@ void K_point::test_fv_states(int use_fft)
     {
         if (use_fft == 0)
         {
-            fft_->input(num_gkvec(), &fft_index_[0], 
-                                                         &fv_states_col_(parameters_.unit_cell()->mt_basis_size(), j1));
+            fft_->input(num_gkvec(), &fft_index_[0], &fv_states_col_(parameters_.unit_cell()->mt_basis_size(), j1));
             fft_->transform(1);
             fft_->output(&v2[0]);
 
@@ -1042,8 +1130,7 @@ void K_point::test_fv_states(int use_fft)
         
         if (use_fft == 1)
         {
-            fft_->input(num_gkvec(), &fft_index_[0], 
-                                    &fv_states_col_(parameters_.unit_cell()->mt_basis_size(), j1));
+            fft_->input(num_gkvec(), &fft_index_[0], &fv_states_col_(parameters_.unit_cell()->mt_basis_size(), j1));
             fft_->transform(1);
             fft_->output(&v1[0]);
         }
@@ -1083,8 +1170,7 @@ void K_point::test_fv_states(int use_fft)
            
             if (use_fft == 1)
             {
-                fft_->input(num_gkvec(), &fft_index_[0], 
-                                   &fv_states_row_(parameters_.unit_cell()->mt_basis_size(), j2));
+                fft_->input(num_gkvec(), &fft_index_[0], &fv_states_row_(parameters_.unit_cell()->mt_basis_size(), j2));
                 fft_->transform(1);
                 fft_->output(&v2[0]);
 
@@ -1439,3 +1525,29 @@ void K_point::distribute_fv_states_row()
         Platform::bcast(&fv_states_row_(0, i), wf_size(), parameters_.mpi_grid().communicator(1 << _dim_col_), root_col); 
     }
 }
+
+void K_point::generate_beta_pw(mdarray<complex16, 2>& beta_pw, int ia)
+{
+    Timer t("sirius::K_point::generate_beta_pw");
+    auto atom_type = parameters_.unit_cell()->atom(ia)->type();
+    int iat = atom_type->id();
+    
+    for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
+    {
+        //== int l = atom_type->indexb(xi).l;
+        //== int lm = atom_type->indexb(xi).lm;
+        //== int idxrf = atom_type->indexb(xi).idxrf;
+
+        //== complex16 z = pow(complex16(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
+        for (int igk = 0; igk < num_gkvec(); igk++)
+        {
+            //== beta_pw(igk, xi) = z * gkvec_ylm_(lm, igk) * beta_radial_integrals_(igk, idxrf, iat) * 
+            //==                    conj(gkvec_phase_factors_(igk, ia));
+            beta_pw(igk, xi) = beta_pw_(igk, xi, iat) * conj(gkvec_phase_factors_(igk, ia));
+        }
+    }
+}
+
+
+
+

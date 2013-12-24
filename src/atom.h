@@ -63,6 +63,9 @@ class Atom
 
         /// orbital quantum number for UJ correction
         int uj_correction_l_;
+
+        /// D_{ij} matrix of the pseudo-potential method
+        mdarray<complex16, 2> d_mtrx_;
     
     public:
     
@@ -186,9 +189,8 @@ class Atom
             return &b_radial_integrals_(0, idxrf1, idxrf2, x);
         }
         
-        /** \todo this is not good because the similar code exists in gaunt.h */
         template <spin_block_t sblock>
-        inline complex16 hb_radial_integrals_sum_L3(int idxrf1, int idxrf2, std::vector<complex_gaunt_L3>& gnt)
+        inline complex16 hb_radial_integrals_sum_L3(int idxrf1, int idxrf2, std::vector<gaunt_L3<complex16> >& gnt)
         {
             complex16 zsum(0, 0);
 
@@ -198,31 +200,31 @@ class Atom
                 {
                     case nm:
                     {
-                        zsum += gnt[i].cg * h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2);
+                        zsum += gnt[i].coef * h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2);
                         break;
                     }
                     case uu:
                     {
-                        zsum += gnt[i].cg * (h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2) + 
-                                             b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 0));
+                        zsum += gnt[i].coef * (h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2) + 
+                                               b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 0));
                         break;
                     }
                     case dd:
                     {
-                        zsum += gnt[i].cg * (h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2) -
-                                             b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 0));
+                        zsum += gnt[i].coef * (h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2) -
+                                               b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 0));
                         break;
                     }
                     case ud:
                     {
-                        zsum += gnt[i].cg * complex16(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
-                                                     -b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
+                        zsum += gnt[i].coef * complex16(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
+                                                       -b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
                         break;
                     }
                     case du:
                     {
-                        zsum += gnt[i].cg * complex16(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
-                                                      b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
+                        zsum += gnt[i].coef * complex16(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
+                                                        b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
                         break;
                     }
                 }
@@ -277,6 +279,11 @@ class Atom
         inline complex16 uj_correction_matrix(int lm1, int lm2, int ispn1, int ispn2)
         {
              return uj_correction_matrix_(lm1, lm2, ispn1, ispn2);
+        }
+
+        inline complex16& d_mtrx(int xi1, int xi2)
+        {
+            return d_mtrx_(xi1, xi2);
         }
 };
 

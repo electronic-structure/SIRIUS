@@ -27,7 +27,7 @@ void Band::set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarra
                 int lm1 = type->indexb(j1).lm;
                 int idxrf1 = type->indexb(j1).idxrf;
                         
-                complex16 zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf, idxrf1, parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm));
+                complex16 zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf, idxrf1, gaunt_coefs_->gaunt_vector(lm1, lm));
                 
                 if (abs(zsum) > 1e-14)
                 {
@@ -56,7 +56,7 @@ void Band::set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarra
                 int lm1 = type->indexb(j1).lm;
                 int idxrf1 = type->indexb(j1).idxrf;
                         
-                complex16 zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf, idxrf1, parameters_.gaunt().complex_gaunt_packed_L3(lm, lm1));
+                complex16 zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf, idxrf1, gaunt_coefs_->gaunt_vector(lm, lm1));
 
                 if (abs(zsum) > 1e-14)
                 {
@@ -209,7 +209,7 @@ void Band::set_h_lo_lo(K_point* kp, mdarray<complex16, 2>& h)
                 int lm1 = kp->apwlo_basis_descriptors_row(irow).lm; 
                 int idxrf1 = kp->apwlo_basis_descriptors_row(irow).idxrf; 
 
-                h(irow, icol) += atom->hb_radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm2));
+                h(irow, icol) += atom->hb_radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
             }
         }
     }

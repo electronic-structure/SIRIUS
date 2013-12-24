@@ -67,6 +67,7 @@ void DFT_ground_state::scf_loop(double charge_tol, double energy_tol, int num_df
         Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
         kset_->find_eigen_states(potential_, true);
+        stop_here
         kset_->find_band_occupancies();
         kset_->valence_eval_sum();
         density_->generate(*kset_);
@@ -75,7 +76,14 @@ void DFT_ground_state::scf_loop(double charge_tol, double energy_tol, int num_df
 
         Platform::bcast(&rms, 1, 0);
 
-        potential_->generate_effective_potential(density_->rho(), density_->magnetization());
+        if (parameters_.potential_type() == full_potential)
+        {
+            potential_->generate_effective_potential(density_->rho(), density_->magnetization());
+        }
+        if (parameters_.potential_type() == ultrasoft_pseudopotential)
+        {
+            potential_->generate_effective_potential(density_->rho(), density_->rho_core(), density_->magnetization());
+        }
         
         double etot = total_energy();
         

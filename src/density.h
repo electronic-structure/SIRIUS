@@ -20,10 +20,10 @@ class Density
         
         std::vector< std::pair<int, int> > dmat_spins_;
 
-        // TODO: clean Gaunt arrays (should be one)
+        /// speciall arranged array of Gaunt coefficents for the fast reduction of the density matrix
         mdarray< std::vector< std::vector< std::pair<int, complex16> > >, 2> complex_gaunt_;
 
-        GauntCoefficients gaunt12_;
+        Gaunt_coefficients<complex16>* gaunt_coefs_;
 
         std::vector<int> l_by_lm_;
 

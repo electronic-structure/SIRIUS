@@ -173,7 +173,13 @@ class K_point
         int num_ranks_row_;
 
         int num_ranks_;
+
+        /// in case of pseudopotential: radial integrals of |beta> functions
+        //mdarray<double, 3> beta_radial_integrals_;
         
+        /// phase-factor independent plane-wave coefficients of |beta> functions 
+        mdarray<complex16, 3> beta_pw_;
+
         /// Generate matching coefficients for specific l-value
         template <int order, bool conjugate>
         void generate_matching_coefficients_l(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
@@ -202,6 +208,9 @@ class K_point
 
         template <index_domain_t index_domain> 
         void init_gkvec_ylm_and_len(int lmax, int ngk);
+        
+        template <index_domain_t index_domain> 
+        void init_gkvec_phase_factors(int ngk);
 
     public:
 
@@ -264,6 +273,8 @@ class K_point
 
         //== void spinor_wave_function_component_mt(int lmax, int ispn, int jloc, mt_functions<complex16>& psilm);
         
+        void generate_beta_pw(mdarray<complex16, 2>& beta_pw, int ia);
+        
         void save(int id);
 
         void load(HDF5_tree h5in, int id);
@@ -311,6 +322,12 @@ class K_point
         inline complex16 gkvec_phase_factor(int igk, int ia)
         {
             return gkvec_phase_factors_(igk, ia);
+        }
+
+        /// Return length of a G+k vector
+        inline double gkvec_len(int igk)
+        {
+            return gkvec_len_[igk];
         }
                 
         /// Total number of G+k vectors within the cutoff distance
@@ -589,6 +606,13 @@ class K_point
                     if (parameters_.spl_fv_states_row(irow) == i) sv_eigen_vectors_(irow, icol) = complex16(1, 0);
                 }
             }
+        }
+
+        std::vector<double> get_pw_ekin()
+        {
+            std::vector<double> pw_ekin(num_gkvec());
+            for (int igk = 0; igk < num_gkvec(); igk++) pw_ekin[igk] = 0.5 * pow(gkvec_len(igk), 2);
+            return pw_ekin; 
         }
 };
 

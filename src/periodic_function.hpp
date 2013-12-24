@@ -178,7 +178,7 @@ void Periodic_function<T>::hdf5_read(HDF5_tree h5f)
 template <typename T>
 size_t Periodic_function<T>::size()
 {
-    if (f_it_.get_ptr() == NULL || f_mt_.get_ptr() == NULL)
+    if (f_it_.get_ptr() == NULL || (f_mt_.size() != 0 && f_mt_.get_ptr() == NULL))
         error_local(__FILE__, __LINE__, "Current implementation requires global function");
 
     //== size_t size = f_it_local_.size();
@@ -192,7 +192,7 @@ size_t Periodic_function<T>::size()
 template <typename T>
 size_t Periodic_function<T>::pack(T* array)
 {
-    if (f_it_.get_ptr() == NULL || f_mt_.get_ptr() == NULL)
+    if (f_it_.get_ptr() == NULL || (f_mt_.size() != 0 && f_mt_.get_ptr() == NULL))
         error_local(__FILE__, __LINE__, "Current implementation requires global function");
 
     size_t n = 0;

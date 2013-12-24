@@ -4,7 +4,8 @@
 class Utils
 {
     public:
-
+        
+        /// Maximum number of \f$ \ell, m \f$ combinations for a given \f$ \ell_{max} \f$
         static inline int lmmax(int lmax)
         {
             return (lmax + 1) * (lmax + 1);

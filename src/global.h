@@ -114,7 +114,7 @@ class Global
         /// type of the processing unit
         processing_unit_t processing_unit_;
 
-        GauntCoefficients gaunt_;
+        //== GauntCoefficients gaunt_;
         
         /// Block-cyclic distribution of the first-variational states along columns of the MPI grid.
         /** Very important! The number of first-variational states is aligned in such a way that each row or 
@@ -406,6 +406,11 @@ class Global
             return gk_cutoff_;
         }
 
+        inline void set_gk_cutoff(double gk_cutoff__)
+        {
+            gk_cutoff_ = gk_cutoff__;
+        }
+
         inline int num_fv_states()
         {
             return num_fv_states_;
@@ -595,7 +600,7 @@ class Global
                 }
                 case pw:
                 {
-                    lmax = unit_cell_->lmax_beta();
+                    lmax = 2 * unit_cell_->lmax_beta();
                     break;
                 }
                 case pwlo:
@@ -607,7 +612,7 @@ class Global
 
             if (basis_type() == apwlo || basis_type() == pwlo) step_function_ = new Step_function(unit_cell_, reciprocal_lattice_);
 
-            gaunt_.set_lmax(std::max(lmax_apw(), lmax_pw()), std::max(lmax_apw(), lmax_pw()), lmax_pot());
+            //== gaunt_.set_lmax(std::max(lmax_apw(), lmax_pw()), std::max(lmax_apw(), lmax_pw()), lmax_pot());
 
             // check MPI grid dimensions and set a default grid if needed
             if (!mpi_grid_dims_.size()) 
@@ -981,10 +986,10 @@ class Global
             }
         }
 
-        inline GauntCoefficients& gaunt()
-        {
-            return gaunt_;
-        }
+        //== inline GauntCoefficients& gaunt()
+        //== {
+        //==     return gaunt_;
+        //== }
 
         void create_storage_file()
         {

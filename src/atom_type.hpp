@@ -97,6 +97,13 @@ void Atom_type::init(int lmax)
 
     indexr_.init(aw_descriptors_, lo_descriptors_);
     indexb_.init(indexr_);
+    
+    // allocate Q matrix
+    if (potential_type_ == ultrasoft_pseudopotential)
+    {
+        uspp_.q_mtrx.set_dimensions(mt_basis_size(), mt_basis_size());
+        uspp_.q_mtrx.allocate();
+    }
    
     // get the number of core electrons
     num_core_electrons_ = 0;
@@ -628,13 +635,15 @@ void Atom_type::read_input(const std::string& fname)
         int nmesh;
         parser["uspp"]["header"]["nmesh"] >> nmesh;
 
-        parser["uspp"]["mesh"]["r"] >> uspp_.r;
-        parser["uspp"]["mesh"]["rab"] >> uspp_.rab;
-        parser["uspp"]["vloc"] >> uspp_.vloc;
-        parser["uspp"]["rho_atc"] >> uspp_.core_charge_density;
-        parser["uspp"]["rho_at"] >> uspp_.total_charge_density;
+        parser["uspp"]["radial_grid"] >> uspp_.r;
 
-        if ((int)uspp_.r.size() != nmesh || (int)uspp_.rab.size() != nmesh)
+        parser["uspp"]["vloc"] >> uspp_.vloc;
+
+        uspp_.core_charge_density = parser["uspp"]["core_charge_density"].get(std::vector<double>(nmesh, 0));
+
+        parser["uspp"]["total_charge_density"] >> uspp_.total_charge_density;
+
+        if ((int)uspp_.r.size() != nmesh)
         {
             error_local(__FILE__, __LINE__, "wrong mesh size");
         }
@@ -642,6 +651,7 @@ void Atom_type::read_input(const std::string& fname)
             (int)uspp_.core_charge_density.size() != nmesh || 
             (int)uspp_.total_charge_density.size() != nmesh)
         {
+            std::cout << uspp_.vloc.size()  << " " << uspp_.core_charge_density.size() << " " << uspp_.total_charge_density.size() << std::endl;
             error_local(__FILE__, __LINE__, "wrong array size");
         }
 
@@ -653,9 +663,9 @@ void Atom_type::read_input(const std::string& fname)
         parser["uspp"]["header"]["lmax"] >> uspp_.lmax;
         parser["uspp"]["header"]["nbeta"] >> uspp_.num_beta_radial_functions;
 
-        parser["uspp"]["non_local"]["qij"]["nqf"] >> uspp_.num_q_coefs;
+        parser["uspp"]["non_local"]["Q"]["num_q_coefs"] >> uspp_.num_q_coefs;
 
-        parser["uspp"]["non_local"]["qij"]["rinner"] >> uspp_.q_functions_inner_radius;
+        parser["uspp"]["non_local"]["Q"]["q_functions_inner_radii"] >> uspp_.q_functions_inner_radii;
 
         uspp_.q_coefs.set_dimensions(uspp_.num_q_coefs, 2 * uspp_.lmax + 1, 
                                      uspp_.num_beta_radial_functions,  uspp_.num_beta_radial_functions); 
@@ -664,14 +674,14 @@ void Atom_type::read_input(const std::string& fname)
         uspp_.q_radial_functions.set_dimensions(num_mt_points_, uspp_.num_beta_radial_functions * (uspp_.num_beta_radial_functions + 1) / 2);
         uspp_.q_radial_functions.allocate();
 
-        for (int i = 0; i < uspp_.num_beta_radial_functions; i++)
+        for (int j = 0; j < uspp_.num_beta_radial_functions; j++)
         {
-            for (int j = i; j < uspp_.num_beta_radial_functions; j++)
+            for (int i = 0; i <= j; i++)
             {
-                int idx = i * uspp_.num_beta_radial_functions + j - i * (i + 1) / 2;
+                int idx = j * (j + 1) / 2 + i;
 
                 std::vector<int> ij;
-                parser["uspp"]["non_local"]["qij"]["q"][idx]["ij"] >> ij;
+                parser["uspp"]["non_local"]["Q"]["qij"][idx]["ij"] >> ij;
                 if (ij[0] != i || ij[1] != j) 
                 {
                     std::stringstream s;
@@ -682,7 +692,7 @@ void Atom_type::read_input(const std::string& fname)
                 }
 
                 std::vector<double> qfcoef;
-                parser["uspp"]["non_local"]["qij"]["q"][idx]["qfcoef"] >> qfcoef;
+                parser["uspp"]["non_local"]["Q"]["qij"][idx]["q_coefs"] >> qfcoef;
 
                 int k = 0;
                 for (int l = 0; l <= 2 * uspp_.lmax; l++)
@@ -695,10 +705,9 @@ void Atom_type::read_input(const std::string& fname)
                 }
 
                 std::vector<double> qfunc;
-                parser["uspp"]["non_local"]["qij"]["q"][idx]["qfunc"] >> qfunc;
+                parser["uspp"]["non_local"]["Q"]["qij"][idx]["q_radial_function"] >> qfunc;
                 if ((int)qfunc.size() != num_mt_points_) error_local(__FILE__, __LINE__, "wrong size of qfunc");
                 memcpy(&uspp_.q_radial_functions(0, idx), &qfunc[0], num_mt_points_ * sizeof(double)); 
-
             }
         }
 
@@ -724,7 +733,23 @@ void Atom_type::read_input(const std::string& fname)
             lod.l = uspp_.beta_l[i];
             lo_descriptors_.push_back(lod);
         }
+
+        uspp_.d_mtrx_ion.set_dimensions(uspp_.num_beta_radial_functions, uspp_.num_beta_radial_functions);
+        uspp_.d_mtrx_ion.allocate();
+        uspp_.d_mtrx_ion.zero();
+
+        for (int k = 0; k < parser["uspp"]["non_local"]["D"].size(); k++)
+        {
+            double d;
+            std::vector<int> ij;
+            parser["uspp"]["non_local"]["D"][k]["ij"] >> ij;
+            parser["uspp"]["non_local"]["D"][k]["d_ion"] >> d;
+            uspp_.d_mtrx_ion(ij[0], ij[1]) = d;
+            uspp_.d_mtrx_ion(ij[1], ij[0]) = d;
+        }
+        
     }
+
     if (potential_type_ == full_potential)
     {
         parser["name"] >> name_;

@@ -15,6 +15,8 @@ class Band
 
         /// alias for FFT driver
         FFT3D<cpu>* fft_;
+
+        Gaunt_coefficients<complex16>* gaunt_coefs_;
     
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
@@ -59,16 +61,33 @@ class Band
         template <spin_block_t sblock> 
         void set_h(K_point* kp, Periodic_function<double>* effective_potential, 
                    Periodic_function<double>* effective_magnetic_field[3], mdarray<complex16, 2>& h);
+       
+        void solve_fv_exact_diagonalization(K_point* kp, Periodic_function<double>* effective_potential);
+
+        void apply_h_local(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
+                           int n, complex16* phi__, complex16* hphi__);
+
+        void solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<double>* effective_potential);
+        
+        void get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
+                          std::vector<complex16>& h_diag, std::vector<complex16>& o_diag);
+
+        void apply_h_o(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, int n,
+                       complex16* phi__, complex16* hphi__, complex16* ophi__);
     public:
         
         /// Constructor
         Band(Global& parameters__) : parameters_(parameters__)
         {
             fft_ = parameters_.reciprocal_lattice()->fft();
+
+            gaunt_coefs_ = new Gaunt_coefficients<complex16>(parameters_.lmax_apw(), parameters_.lmax_pot(), 
+                                                             parameters_.lmax_apw());
         }
 
         ~Band()
         {
+            delete gaunt_coefs_;
         }
 
         /// Apply the muffin-tin part of the first-variational Hamiltonian to the apw basis function

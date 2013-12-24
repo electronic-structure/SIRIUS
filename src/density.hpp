@@ -1,3 +1,5 @@
+// TODO: document the magic with density matrix
+
 Density::Density(Global& parameters__) : parameters_(parameters__)
 {
     fft_ = parameters_.reciprocal_lattice()->fft();
@@ -88,22 +90,24 @@ Density::Density(Global& parameters__) : parameters_(parameters__)
     {
         case apwlo:
         {
-            gaunt12_.set_lmax(parameters_.lmax_apw(), parameters_.lmax_apw(), parameters_.lmax_rho());
+            gaunt_coefs_ = new Gaunt_coefficients<complex16>(parameters_.lmax_apw(), parameters_.lmax_rho(), 
+                                                             parameters_.lmax_apw());
             break;
         }
         case pwlo:
         {
-            gaunt12_.set_lmax(parameters_.lmax_pw(), parameters_.lmax_pw(), parameters_.lmax_rho());
+            gaunt_coefs_ = new Gaunt_coefficients<complex16>(parameters_.lmax_pw(), parameters_.lmax_rho(), 
+                                                             parameters_.lmax_pw());
             break;
         }
-        default:
+        case pw:
         {
-            gaunt12_.set_lmax(parameters_.lmax_beta(), parameters_.lmax_beta() * 2, parameters_.lmax_beta());
+            //== gaunt_coefs_ = new Gaunt_coefficients<complex16>(parameters_.lmax_beta(), parameters_.lmax_beta() * 2, 
+            //==                                                  parameters_.lmax_beta());
         }
     }
 
     l_by_lm_ = Utils::l_by_lm(parameters_.lmax_rho());
-
 }
 
 Density::~Density()
@@ -111,6 +115,7 @@ Density::~Density()
     delete rho_;
     for (int j = 0; j < parameters_.num_mag_dims(); j++) delete magnetization_[j];
     if (parameters_.potential_type() == ultrasoft_pseudopotential) delete rho_core_;
+    delete gaunt_coefs_;
 }
 
 void Density::set_charge_density_ptr(double* rhomt, double* rhoir)
@@ -350,6 +355,7 @@ void Density::initial_density(int type = 0)
             
 }
 
+// TODO: document and possibly simplify
 template <int num_mag_dims> 
 void Density::reduce_zdens(int ia, int ialoc, mdarray<complex16, 4>& zdens, mdarray<double, 4>& mt_density_matrix)
 {

@@ -42,7 +42,7 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
 {
     Timer t("sirius::K_set::find_eigen_states");
     
-    if (precompute)
+    if (precompute && (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo))
     {
         potential->generate_pw_coefs();
         potential->update_atomic_potential();
@@ -57,8 +57,11 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         if (use_second_variation)
         {
             band_->solve_fv(kpoints_[ik], potential->effective_potential());
-            kpoints_[ik]->generate_fv_states();
-            kpoints_[ik]->distribute_fv_states_row();
+            if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
+            {
+                kpoints_[ik]->generate_fv_states();
+                kpoints_[ik]->distribute_fv_states_row();
+            }
             band_->solve_sv(kpoints_[ik], potential->effective_magnetic_field());
         }
         else

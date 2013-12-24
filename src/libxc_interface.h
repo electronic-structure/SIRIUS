@@ -12,7 +12,8 @@ class libxc_interface
         
         libxc_interface()
         {
-            int xc_id[] = {XC_LDA_X, XC_LDA_C_VWN};
+            //int xc_id[] = {XC_LDA_X, XC_LDA_C_VWN};
+            int xc_id[] = {XC_LDA_X, XC_LDA_C_PZ};
             //int xc_id[] = {XC_LDA_X, XC_LDA_C_PW};
             for (int i = 0; i < 2; i++)
             {

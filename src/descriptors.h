@@ -86,7 +86,6 @@ class uspp_descriptor
 {
     public:
         std::vector<double> r;
-        std::vector<double> rab; // TODO: seems like this is not necessary
         std::vector<double> vloc;
 
         /// maximum angular momentum for |beta> projectors
@@ -101,7 +100,7 @@ class uspp_descriptor
         /// Q coefficients
         mdarray<double, 4> q_coefs;
 
-        std::vector<double> q_functions_inner_radius;
+        std::vector<double> q_functions_inner_radii;
 
         mdarray<double, 2> q_radial_functions;
 
@@ -114,6 +113,12 @@ class uspp_descriptor
         std::vector<double> core_charge_density;
 
         std::vector<double> total_charge_density;
+
+        mdarray<complex16, 2> d_mtrx_ion;
+
+        mdarray<complex16, 2> d_mtrx;
+
+        mdarray<complex16, 2> q_mtrx;
 
 
 

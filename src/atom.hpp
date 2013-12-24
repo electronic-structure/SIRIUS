@@ -50,6 +50,12 @@ void Atom::init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_
     
     uj_correction_matrix_.set_dimensions(16, 16, 2, 2);
     uj_correction_matrix_.allocate();
+
+    if (type()->potential_type() == ultrasoft_pseudopotential) 
+    {
+        d_mtrx_.set_dimensions(type()->mt_basis_size(), type()->mt_basis_size());
+        d_mtrx_.allocate();
+    }
 }
 
 void Atom::generate_radial_integrals(MPI_Comm& comm)

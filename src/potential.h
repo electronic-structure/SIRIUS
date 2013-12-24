@@ -24,7 +24,9 @@ class Potential
         
         /// local part of pseudopotential
         Periodic_function<double>* local_potential_;
-        
+
+        mdarray<complex16, 3> q_pw_;
+
         mdarray<double, 3> sbessel_mom_;
 
         mdarray<double, 3> sbessel_mt_;
