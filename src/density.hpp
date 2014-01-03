@@ -61,34 +61,6 @@ Density::Density(Global& parameters__) : parameters_(parameters__)
     dmat_spins_.push_back(std::pair<int, int>(1, 1));
     dmat_spins_.push_back(std::pair<int, int>(0, 1));
     
-    complex_gaunt_.set_dimensions(parameters_.lmmax_apw(), parameters_.lmmax_rho());
-    complex_gaunt_.allocate();
-
-    for (int l2 = 0; l2 <= parameters_.lmax_apw(); l2++)
-    {
-    for (int m2 = -l2; m2 <= l2; m2++)
-    {
-        int lm2 = Utils::lm_by_l_m(l2, m2);
-        for (int l3 = 0; l3 <= parameters_.lmax_rho(); l3++)
-        {
-        for (int m3 = -l3; m3 <= l3; m3++)
-        {
-            int lm3 = Utils::lm_by_l_m(l3, m3);
-            complex_gaunt_(lm2, lm3).resize(parameters_.lmax_apw() + 1);
-            for (int l1 = 0; l1 <= parameters_.lmax_apw(); l1++) 
-            {
-                for (int m1 = -l1; m1 <= l1; m1++)
-                {
-                    complex16 gc = SHT::gaunt<complex16>(l1, l3, l2, m1, m3, m2);
-                    if (abs(gc) > 1e-16)
-                        complex_gaunt_(lm2, lm3)[l1].push_back(std::pair<int, complex16>(m1 + l1, gc));
-                }
-            }
-        }
-        }
-    }
-    }
-
     switch (parameters_.basis_type())
     {
         case apwlo:
@@ -399,26 +371,25 @@ void Density::add_kpoint_contribution_mt(Band* band, K_point* kp, mdarray<comple
 
 
 template <int num_mag_dims> 
-void Density::reduce_zdens(int ia, int ialoc, mdarray<complex16, 4>& zdens, mdarray<double, 4>& mt_density_matrix)
+void Density::reduce_zdens(Atom_type* atom_type, int ialoc, mdarray<complex16, 4>& zdens, mdarray<double, 3>& mt_density_matrix)
 {
-    Atom_type* type = parameters_.unit_cell()->atom(ia)->type();
-    int mt_basis_size = type->mt_basis_size();
+    mt_density_matrix.zero();
     
     #pragma omp parallel for default(shared)
-    for (int idxrf2 = 0; idxrf2 < type->mt_radial_basis_size(); idxrf2++)
+    for (int idxrf2 = 0; idxrf2 < atom_type->mt_radial_basis_size(); idxrf2++)
     {
-        int l2 = type->indexr(idxrf2).l;
+        int l2 = atom_type->indexr(idxrf2).l;
         for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
         {
             int offs = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
-            int l1 = type->indexr(idxrf1).l;
+            int l1 = atom_type->indexr(idxrf1).l;
 
-            int xi2 = type->indexb().index_by_idxrf(idxrf2);
+            int xi2 = atom_type->indexb().index_by_idxrf(idxrf2);
             int lm2 = Utils::lm_by_l_m(l2, -l2);
             for (int m2 = -l2; m2 <= l2; m2++, lm2++, xi2++)
             {
                 int lm1 = Utils::lm_by_l_m(l1, -l1);
-                int xi1 = type->indexb().index_by_idxrf(idxrf1);
+                int xi1 = atom_type->indexb().index_by_idxrf(idxrf1);
                 for (int m1 = -l1; m1 <= l1; m1++, lm1++, xi1++)
                 {
                     for (int k = 0; k < gaunt_coefs_->num_gaunt(lm1, lm2); k++)
@@ -427,13 +398,18 @@ void Density::reduce_zdens(int ia, int ialoc, mdarray<complex16, 4>& zdens, mdar
                         complex16 gc = gaunt_coefs_->gaunt(lm1, lm2, k).coef;
                         switch (num_mag_dims)
                         {
+                            case 3:
+                            {
+                                mt_density_matrix(lm3, offs, 2) += 2.0 * real(zdens(xi1, xi2, 2, ialoc) * gc); 
+                                mt_density_matrix(lm3, offs, 3) -= 2.0 * imag(zdens(xi1, xi2, 2, ialoc) * gc);
+                            }
                             case 1:
                             {
-                                mt_density_matrix(offs, lm3, 1, ialoc) += real(zdens(xi1, xi2, 1, ialoc) * gc);
+                                mt_density_matrix(lm3, offs, 1) += real(zdens(xi1, xi2, 1, ialoc) * gc);
                             }
                             case 0:
                             {
-                                mt_density_matrix(offs, lm3, 0, ialoc) += real(zdens(xi1, xi2, 0, ialoc) * gc);
+                                mt_density_matrix(lm3, offs, 0) += real(zdens(xi1, xi2, 0, ialoc) * gc);
                             }
                         }
                     }
@@ -441,63 +417,6 @@ void Density::reduce_zdens(int ia, int ialoc, mdarray<complex16, 4>& zdens, mdar
             }
         }
     }
-
-
-
-                    
-
-
-
-
-
-
-    //== #pragma omp parallel for default(shared)
-    //== for (int lm3 = 0; lm3 < parameters_.lmmax_rho(); lm3++)
-    //== {
-    //==     int l3 = l_by_lm_[lm3];
-    //==     
-    //==     for (int j2 = 0; j2 < mt_basis_size; j2++)
-    //==     {
-    //==         int l2 = type->indexb(j2).l;
-    //==         int lm2 = type->indexb(j2).lm;
-    //==         int idxrf2 = type->indexb(j2).idxrf;
-    //==         int offs = idxrf2 * (idxrf2 + 1) / 2;
-
-    //==         int j1 = 0;
-
-    //==         // compute only upper triangular block and later use the symmetry properties of the density matrix
-    //==         for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
-    //==         {
-    //==             int l1 = type->indexr(idxrf1).l;
-    //==             if ((l1 + l2 + l3) % 2 == 0)
-    //==             {
-    //==                 for (int k = 0; k < (int)complex_gaunt_(lm2, lm3)[l1].size(); k++)
-    //==                 {
-    //==                     int m1 = complex_gaunt_(lm2, lm3)[l1][k].first;
-    //==                     complex16 gc = complex_gaunt_(lm2, lm3)[l1][k].second;
-
-    //==                     switch (num_mag_dims)
-    //==                     {
-    //==                         case 3:
-    //==                         {
-    //==                             mt_density_matrix(offs + idxrf1, lm3, 2, ialoc) += 2.0 * real(zdens(j1 + m1, j2, 2, ialoc) * gc); 
-    //==                             mt_density_matrix(offs + idxrf1, lm3, 3, ialoc) -= 2.0 * imag(zdens(j1 + m1, j2, 2, ialoc) * gc);
-    //==                         }
-    //==                         case 1:
-    //==                         {
-    //==                             mt_density_matrix(offs + idxrf1, lm3, 1, ialoc) += real(zdens(j1 + m1, j2, 1, ialoc) * gc);
-    //==                         }
-    //==                         case 0:
-    //==                         {
-    //==                             mt_density_matrix(offs + idxrf1, lm3, 0, ialoc) += real(zdens(j1 + m1, j2, 0, ialoc) * gc);
-    //==                         }
-    //==                     }
-    //==                 }
-    //==             } 
-    //==             j1 += (2 * l1 + 1);
-    //==         }
-    //==     } // j2
-    //== } // lm3
 }
 
 // TODO: return the list instead of accepting a reference
@@ -741,42 +660,42 @@ void Density::generate_valence_density_mt(K_set& ks)
         delete t3;
     }
 
-    int max_num_rf_pairs = parameters_.unit_cell()->max_mt_radial_basis_size() * (parameters_.unit_cell()->max_mt_radial_basis_size() + 1) / 2;
+    int max_num_rf_pairs = parameters_.unit_cell()->max_mt_radial_basis_size() * 
+                           (parameters_.unit_cell()->max_mt_radial_basis_size() + 1) / 2;
     
     // real density matrix
-    mdarray<double, 4> mt_density_matrix(max_num_rf_pairs, parameters_.lmmax_rho(), parameters_.num_mag_dims() + 1, 
-                                         parameters_.unit_cell()->spl_num_atoms().local_size());
-    mt_density_matrix.zero();
+    mdarray<double, 3> mt_density_matrix(parameters_.lmmax_rho(), max_num_rf_pairs, parameters_.num_mag_dims() + 1);
     
     Timer t1("sirius::Density::generate:sum_zdens", false);
     Timer t2("sirius::Density::generate:expand_lm", false);
-    mdarray<double, 2> rf_pairs(max_num_rf_pairs, parameters_.unit_cell()->max_num_mt_points());
+    mdarray<double, 2> rf_pairs(parameters_.unit_cell()->max_num_mt_points(), max_num_rf_pairs);
     mdarray<double, 3> dlm(parameters_.lmmax_rho(), parameters_.unit_cell()->max_num_mt_points(), 
                            parameters_.num_mag_dims() + 1);
     for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
     {
         int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
-        int nmtp = parameters_.unit_cell()->atom(ia)->type()->num_mt_points();
-        int num_rf_pairs = parameters_.unit_cell()->atom(ia)->type()->mt_radial_basis_size() * 
-                           (parameters_.unit_cell()->atom(ia)->type()->mt_radial_basis_size() + 1) / 2;
+        Atom_type* atom_type = parameters_.unit_cell()->atom(ia)->type();
+
+        int nmtp = atom_type->num_mt_points();
+        int num_rf_pairs = atom_type->mt_radial_basis_size() * (atom_type->mt_radial_basis_size() + 1) / 2;
         
         t1.start();
-        // TODO: pass atom type instead of ia
+
         switch (parameters_.num_mag_dims())
         {
             case 3:
             {
-                reduce_zdens<3>(ia, ialoc, mt_complex_density_matrix_loc, mt_density_matrix);
+                reduce_zdens<3>(atom_type, ialoc, mt_complex_density_matrix_loc, mt_density_matrix);
                 break;
             }
             case 1:
             {
-                reduce_zdens<1>(ia, ialoc, mt_complex_density_matrix_loc, mt_density_matrix);
+                reduce_zdens<1>(atom_type, ialoc, mt_complex_density_matrix_loc, mt_density_matrix);
                 break;
             }
             case 0:
             {
-                reduce_zdens<0>(ia, ialoc, mt_complex_density_matrix_loc, mt_density_matrix);
+                reduce_zdens<0>(atom_type, ialoc, mt_complex_density_matrix_loc, mt_density_matrix);
                 break;
             }
         }
@@ -785,23 +704,24 @@ void Density::generate_valence_density_mt(K_set& ks)
         // TODO: change order of indices in dmat and rf_pairs
         t2.start();
         // collect radial functions
-        for (int idxrf2 = 0; idxrf2 < parameters_.unit_cell()->atom(ia)->type()->mt_radial_basis_size(); idxrf2++)
+        for (int idxrf2 = 0; idxrf2 < atom_type->mt_radial_basis_size(); idxrf2++)
         {
             int offs = idxrf2 * (idxrf2 + 1) / 2;
             for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
             {
-                int n = (idxrf1 == idxrf2) ? 1 : 2;
+                // off-diagonal pairs are taken two times: d_{12}*f_1*f_2 + d_{21}*f_2*f_1 = d_{12}*2*f_1*f_2
+                int n = (idxrf1 == idxrf2) ? 1 : 2; 
                 for (int ir = 0; ir < parameters_.unit_cell()->atom(ia)->type()->num_mt_points(); ir++)
                 {
-                    rf_pairs(offs + idxrf1, ir) = n * parameters_.unit_cell()->atom(ia)->symmetry_class()->radial_function(ir, idxrf1) * 
+                    rf_pairs(ir, offs + idxrf1) = n * parameters_.unit_cell()->atom(ia)->symmetry_class()->radial_function(ir, idxrf1) * 
                                                       parameters_.unit_cell()->atom(ia)->symmetry_class()->radial_function(ir, idxrf2); 
                 }
             }
         }
         for (int j = 0; j < parameters_.num_mag_dims() + 1; j++)
         {
-            blas<cpu>::gemm(1, 0, parameters_.lmmax_rho(), nmtp, num_rf_pairs, 
-                            &mt_density_matrix(0, 0, j, ialoc), mt_density_matrix.ld(), 
+            blas<cpu>::gemm(0, 1, parameters_.lmmax_rho(), nmtp, num_rf_pairs, 
+                            &mt_density_matrix(0, 0, j), mt_density_matrix.ld(), 
                             &rf_pairs(0, 0), rf_pairs.ld(), &dlm(0, 0, j), dlm.ld());
         }
 

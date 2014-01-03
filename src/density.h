@@ -101,11 +101,10 @@ class Density
         
         std::vector< std::pair<int, int> > dmat_spins_;
 
-        /// speciall arranged array of Gaunt coefficents for the fast reduction of the density matrix
-        mdarray< std::vector< std::vector< std::pair<int, complex16> > >, 2> complex_gaunt_;
-
+        /// non-zero Gaunt coefficients
         Gaunt_coefficients<complex16>* gaunt_coefs_;
-
+        
+        /// fast mapping between composite lm index and corresponding orbital quantum number
         std::vector<int> l_by_lm_;
 
         /// Get the local list of occupied bands
@@ -116,11 +115,24 @@ class Density
         void get_occupied_bands_list(Band* band, K_point* kp, std::vector< std::pair<int, double> >& bands);
 
         /// Reduce complex density matrix over magnetic quantum numbers
+        /** The following operation is performed:
+            \f[
+                d_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha} = 
+                    \sum_{mm'} D_{\ell \lambda m, \ell' \lambda' m'}^{\alpha} 
+                    \langle Y_{\ell m} | R_{\ell_3 m_3} | Y_{\ell' m'} \rangle
+            \f]
+        */
         template <int num_mag_dims> 
-        void reduce_zdens(int ia, int ialoc, mdarray<complex16, 4>& zdens, mdarray<double, 4>& mt_density_matrix);
+        void reduce_zdens(Atom_type* atom_type, int ialoc, mdarray<complex16, 4>& zdens, mdarray<double, 3>& mt_density_matrix);
         
         /// Add k-point contribution to the auxiliary muffin-tin density matrix
-        /** In case of LDA+U the occupation matrix is also computed. It has the following expression:
+        /** Complex density matrix has the following expression:
+            \f[
+                D_{\xi \sigma, \xi' \sigma'}^{\alpha} = \sum_{j{\bf k}} n_{j{\bf k}} S_{\xi}^{\sigma j {\bf k},\alpha*} 
+                    S_{\xi'}^{\sigma' j {\bf k},\alpha}
+            \f]
+        
+            In case of LDA+U the occupation matrix is also computed. It has the following expression:
             \f[
                 n_{\ell,mm'}^{\sigma \sigma'} = \sum_{i {\bf k}}^{occ} \int_{0}^{R_{MT}} r^2 dr 
                           \Psi_{\ell m}^{i{\bf k}\sigma *}({\bf r}) \Psi_{\ell m'}^{i{\bf k}\sigma'}({\bf r})
