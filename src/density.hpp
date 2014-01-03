@@ -1,4 +1,7 @@
-// TODO: document the magic with density matrix
+/** \file density.hpp
+    
+    \brief Contains remaining implementation of sirius::Density class.
+*/
 
 Density::Density(Global& parameters__) : parameters_(parameters__)
 {
@@ -102,6 +105,7 @@ Density::Density(Global& parameters__) : parameters_(parameters__)
         }
         case pw:
         {
+            stop_here
             //== gaunt_coefs_ = new Gaunt_coefficients<complex16>(parameters_.lmax_beta(), parameters_.lmax_beta() * 2, 
             //==                                                  parameters_.lmax_beta());
         }
@@ -355,74 +359,6 @@ void Density::initial_density(int type = 0)
             
 }
 
-// TODO: document and possibly simplify
-template <int num_mag_dims> 
-void Density::reduce_zdens(int ia, int ialoc, mdarray<complex16, 4>& zdens, mdarray<double, 4>& mt_density_matrix)
-{
-    Atom_type* type = parameters_.unit_cell()->atom(ia)->type();
-    int mt_basis_size = type->mt_basis_size();
-
-    #pragma omp parallel for default(shared)
-    for (int lm3 = 0; lm3 < parameters_.lmmax_rho(); lm3++)
-    {
-        int l3 = l_by_lm_[lm3];
-        
-        for (int j2 = 0; j2 < mt_basis_size; j2++)
-        {
-            int l2 = type->indexb(j2).l;
-            int lm2 = type->indexb(j2).lm;
-            int idxrf2 = type->indexb(j2).idxrf;
-            int offs = idxrf2 * (idxrf2 + 1) / 2;
-
-            int j1 = 0;
-
-            // compute only upper triangular block and later use the symmetry properties of the density matrix
-            for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
-            {
-                int l1 = type->indexr(idxrf1).l;
-                if ((l1 + l2 + l3) % 2 == 0)
-                {
-                    for (int k = 0; k < (int)complex_gaunt_(lm2, lm3)[l1].size(); k++)
-                    {
-                        int m1 = complex_gaunt_(lm2, lm3)[l1][k].first;
-                        complex16 gc = complex_gaunt_(lm2, lm3)[l1][k].second;
-
-                        switch (num_mag_dims)
-                        {
-                            case 3:
-                            {
-                                mt_density_matrix(offs + idxrf1, lm3, 2, ialoc) += 2.0 * real(zdens(j1 + m1, j2, 2, ialoc) * gc); 
-                                mt_density_matrix(offs + idxrf1, lm3, 3, ialoc) -= 2.0 * imag(zdens(j1 + m1, j2, 2, ialoc) * gc);
-                            }
-                            case 1:
-                            {
-                                mt_density_matrix(offs + idxrf1, lm3, 1, ialoc) += real(zdens(j1 + m1, j2, 1, ialoc) * gc);
-                            }
-                            case 0:
-                            {
-                                mt_density_matrix(offs + idxrf1, lm3, 0, ialoc) += real(zdens(j1 + m1, j2, 0, ialoc) * gc);
-                            }
-                        }
-                    }
-                } 
-                j1 += (2 * l1 + 1);
-            }
-        } // j2
-    } // lm3
-}
-
-void Density::get_occupied_bands_list(Band* band, K_point* kp, std::vector< std::pair<int, double> >& bands)
-{
-    bands.clear();
-    for (int jsub = 0; jsub < parameters_.num_sub_bands(); jsub++)
-    {
-        int j = parameters_.idxbandglob(jsub);
-        int jloc = parameters_.idxbandloc(jsub);
-        double wo = kp->band_occupancy(j) * kp->weight();
-        if (wo > 1e-14) bands.push_back(std::pair<int, double>(jloc, wo));
-    }
-}
-
 void Density::add_kpoint_contribution_mt(Band* band, K_point* kp, mdarray<complex16, 4>& mt_complex_density_matrix)
 {
     Timer t("sirius::Density::add_kpoint_contribution_mt");
@@ -461,6 +397,165 @@ void Density::add_kpoint_contribution_mt(Band* band, K_point* kp, mdarray<comple
     }
 }
 
+
+template <int num_mag_dims> 
+void Density::reduce_zdens(int ia, int ialoc, mdarray<complex16, 4>& zdens, mdarray<double, 4>& mt_density_matrix)
+{
+    Atom_type* type = parameters_.unit_cell()->atom(ia)->type();
+    int mt_basis_size = type->mt_basis_size();
+    
+    #pragma omp parallel for default(shared)
+    for (int idxrf2 = 0; idxrf2 < type->mt_radial_basis_size(); idxrf2++)
+    {
+        int l2 = type->indexr(idxrf2).l;
+        for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
+        {
+            int offs = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
+            int l1 = type->indexr(idxrf1).l;
+
+            int xi2 = type->indexb().index_by_idxrf(idxrf2);
+            int lm2 = Utils::lm_by_l_m(l2, -l2);
+            for (int m2 = -l2; m2 <= l2; m2++, lm2++, xi2++)
+            {
+                int lm1 = Utils::lm_by_l_m(l1, -l1);
+                int xi1 = type->indexb().index_by_idxrf(idxrf1);
+                for (int m1 = -l1; m1 <= l1; m1++, lm1++, xi1++)
+                {
+                    for (int k = 0; k < gaunt_coefs_->num_gaunt(lm1, lm2); k++)
+                    {
+                        int lm3 = gaunt_coefs_->gaunt(lm1, lm2, k).lm3;
+                        complex16 gc = gaunt_coefs_->gaunt(lm1, lm2, k).coef;
+                        switch (num_mag_dims)
+                        {
+                            case 1:
+                            {
+                                mt_density_matrix(offs, lm3, 1, ialoc) += real(zdens(xi1, xi2, 1, ialoc) * gc);
+                            }
+                            case 0:
+                            {
+                                mt_density_matrix(offs, lm3, 0, ialoc) += real(zdens(xi1, xi2, 0, ialoc) * gc);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+
+                    
+
+
+
+
+
+
+    //== #pragma omp parallel for default(shared)
+    //== for (int lm3 = 0; lm3 < parameters_.lmmax_rho(); lm3++)
+    //== {
+    //==     int l3 = l_by_lm_[lm3];
+    //==     
+    //==     for (int j2 = 0; j2 < mt_basis_size; j2++)
+    //==     {
+    //==         int l2 = type->indexb(j2).l;
+    //==         int lm2 = type->indexb(j2).lm;
+    //==         int idxrf2 = type->indexb(j2).idxrf;
+    //==         int offs = idxrf2 * (idxrf2 + 1) / 2;
+
+    //==         int j1 = 0;
+
+    //==         // compute only upper triangular block and later use the symmetry properties of the density matrix
+    //==         for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
+    //==         {
+    //==             int l1 = type->indexr(idxrf1).l;
+    //==             if ((l1 + l2 + l3) % 2 == 0)
+    //==             {
+    //==                 for (int k = 0; k < (int)complex_gaunt_(lm2, lm3)[l1].size(); k++)
+    //==                 {
+    //==                     int m1 = complex_gaunt_(lm2, lm3)[l1][k].first;
+    //==                     complex16 gc = complex_gaunt_(lm2, lm3)[l1][k].second;
+
+    //==                     switch (num_mag_dims)
+    //==                     {
+    //==                         case 3:
+    //==                         {
+    //==                             mt_density_matrix(offs + idxrf1, lm3, 2, ialoc) += 2.0 * real(zdens(j1 + m1, j2, 2, ialoc) * gc); 
+    //==                             mt_density_matrix(offs + idxrf1, lm3, 3, ialoc) -= 2.0 * imag(zdens(j1 + m1, j2, 2, ialoc) * gc);
+    //==                         }
+    //==                         case 1:
+    //==                         {
+    //==                             mt_density_matrix(offs + idxrf1, lm3, 1, ialoc) += real(zdens(j1 + m1, j2, 1, ialoc) * gc);
+    //==                         }
+    //==                         case 0:
+    //==                         {
+    //==                             mt_density_matrix(offs + idxrf1, lm3, 0, ialoc) += real(zdens(j1 + m1, j2, 0, ialoc) * gc);
+    //==                         }
+    //==                     }
+    //==                 }
+    //==             } 
+    //==             j1 += (2 * l1 + 1);
+    //==         }
+    //==     } // j2
+    //== } // lm3
+}
+
+// TODO: return the list instead of accepting a reference
+void Density::get_occupied_bands_list(Band* band, K_point* kp, std::vector< std::pair<int, double> >& bands)
+{
+    bands.clear();
+    for (int jsub = 0; jsub < parameters_.num_sub_bands(); jsub++)
+    {
+        int j = parameters_.idxbandglob(jsub);
+        int jloc = parameters_.idxbandloc(jsub);
+        double wo = kp->band_occupancy(j) * kp->weight();
+        if (wo > 1e-14) bands.push_back(std::pair<int, double>(jloc, wo));
+    }
+}
+
+void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
+                                         mdarray<complex16, 2>& pp_complex_density_matrix)
+{
+    // take only occupied wave-functions
+    mdarray<complex16, 2> wfs(kp->num_gkvec(), (int)occupied_bands.size());
+    for (int i = 0; i < (int)occupied_bands.size(); i++)
+    {
+        memcpy(&wfs(0, i), &kp->spinor_wave_function(0, 0, occupied_bands[i].first), kp->num_gkvec() * sizeof(complex16));
+    }
+
+    mdarray<complex16, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
+
+    mdarray<complex16, 2> beta_psi(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+
+    // auxiliary arrays
+    mdarray<complex16, 2> bp1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+    mdarray<complex16, 2> bp2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {   
+        // number of beta functions for a given atom
+        int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+
+        kp->generate_beta_pw(beta_pw, ia);
+        
+        // compute <beta|Psi>
+        blas<cpu>::gemm(2, 0, nbf, (int)occupied_bands.size(), kp->num_gkvec(), &beta_pw(0, 0), beta_pw.ld(), 
+                        &wfs(0, 0), wfs.ld(), &beta_psi(0, 0), beta_psi.ld());
+        
+        for (int i = 0; i < (int)occupied_bands.size(); i++)
+        {
+            for (int xi = 0; xi < nbf; xi++)
+            {
+                bp1(xi, i) = conj(beta_psi(xi, i));
+                bp2(xi, i) = beta_psi(xi, i) * occupied_bands[i].second;
+            }
+        }
+
+        blas<cpu>::gemm(0, 1, nbf, nbf, (int)occupied_bands.size(), complex16(1, 0), &bp1(0, 0), bp1.ld(),
+                        &bp2(0, 0), bp2.ld(), complex16(1, 0), &pp_complex_density_matrix(0, 0), pp_complex_density_matrix.ld());
+    }
+}
+
 void Density::add_kpoint_contribution_it(Band* band, K_point* kp)
 {
     Timer t("sirius::Density::add_kpoint_contribution_it");
@@ -469,10 +564,9 @@ void Density::add_kpoint_contribution_it(Band* band, K_point* kp)
     get_occupied_bands_list(band, kp, bands);
     if (bands.size() == 0) return;
 
-    int num_fft_threads = Platform::num_fft_threads();
-    #pragma omp parallel default(shared) num_threads(num_fft_threads)
+    #pragma omp parallel default(shared) num_threads(Platform::num_fft_threads())
     {
-        int thread_id = omp_get_thread_num();
+        int thread_id = Platform::thread_id();
 
         mdarray<double, 2> it_density_matrix(fft_->size(), parameters_.num_mag_dims() + 1);
         it_density_matrix.zero();
@@ -485,8 +579,8 @@ void Density::add_kpoint_contribution_it(Band* band, K_point* kp)
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
                 fft_->input(kp->num_gkvec(), kp->fft_index(), 
-                                        &kp->spinor_wave_function(parameters_.unit_cell()->mt_basis_size(), ispn, 
-                                                                  bands[i].first), thread_id);
+                            &kp->spinor_wave_function(parameters_.unit_cell()->mt_basis_size(), ispn, bands[i].first), 
+                            thread_id);
                 fft_->transform(1, thread_id);
                 fft_->output(&wfit(0, ispn), thread_id);
             }
@@ -559,7 +653,8 @@ void Density::generate_valence_density_mt(K_set& ks)
     int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
 
     // complex density matrix
-    mdarray<complex16, 4> mt_complex_density_matrix(parameters_.unit_cell()->max_mt_basis_size(), parameters_.unit_cell()->max_mt_basis_size(),
+    mdarray<complex16, 4> mt_complex_density_matrix(parameters_.unit_cell()->max_mt_basis_size(), 
+                                                    parameters_.unit_cell()->max_mt_basis_size(),
                                                     num_zdmat, parameters_.unit_cell()->num_atoms());
     mt_complex_density_matrix.zero();
     
@@ -666,7 +761,7 @@ void Density::generate_valence_density_mt(K_set& ks)
                            (parameters_.unit_cell()->atom(ia)->type()->mt_radial_basis_size() + 1) / 2;
         
         t1.start();
-        // TODO: atom type instead of ia
+        // TODO: pass atom type instead of ia
         switch (parameters_.num_mag_dims())
         {
             case 3:
@@ -686,7 +781,8 @@ void Density::generate_valence_density_mt(K_set& ks)
             }
         }
         t1.stop();
-
+        
+        // TODO: change order of indices in dmat and rf_pairs
         t2.start();
         // collect radial functions
         for (int idxrf2 = 0; idxrf2 < parameters_.unit_cell()->atom(ia)->type()->mt_radial_basis_size(); idxrf2++)
@@ -751,10 +847,9 @@ void Density::generate_valence_density_it(K_set& ks)
         add_kpoint_contribution_it(ks.band(), ks[ik]);
     }
     
-    //===========================================================================================
-    // reduce arrays; assume that each rank (including ranks along second direction) did it's own 
-    // fraction of the density
-    //===========================================================================================
+    //==========================================================================
+    // reduce arrays; assume that each rank did it's own fraction of the density
+    //==========================================================================
     Platform::allreduce(&rho_->f_it<global>(0), fft_->size()); 
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
         Platform::allreduce(&magnetization_[j]->f_it<global>(0), fft_->size()); 

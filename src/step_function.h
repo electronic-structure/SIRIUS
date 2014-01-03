@@ -24,16 +24,54 @@
 
 /** \file step_function.h
 
-    \brief Step function for the full potential methods: 1 in the interstitial and 0 inside muffin-tin spheres.
+    \brief Contains definition and partial implementation of sirius::Step_function class. 
 */
 namespace sirius {
 
+/// Unit step function is defined to be 1 in the interstitial and 0 inside muffin-tins.
+/** Unit step function is constructed from it's plane-wave expansion coefficients which are computed
+    analytically:
+    \f[
+        \Theta({\bf r}) = \sum_{\bf G} \Theta({\bf G}) e^{i{\bf Gr}},
+    \f]
+    where
+    \f[
+        \Theta({\bf G}) = \frac{1}{\Omega} \int \Theta({\bf r}) e^{-i{\bf Gr}} d{\bf r} = 
+            \frac{1}{\Omega} \int_{\Omega} e^{-i{\bf Gr}} d{\bf r} - \frac{1}{\Omega} \int_{MT} e^{-i{\bf Gr}} d{\bf r} = 
+            \delta_{\bf G, 0} - \sum_{\alpha} \frac{1}{\Omega} \int_{MT_{\alpha}} e^{-i{\bf Gr}} d{\bf r}  
+    \f]
+    Integral of a plane-wave over the muffin-tin volume is taken using the spherical expansion of the plane-wave 
+    around central point \f$ \tau_{\alpha} \f$:
+    \f[
+        \int_{MT_{\alpha}} e^{-i{\bf Gr}} d{\bf r} = 
+            e^{-i{\bf G\tau_{\alpha}}} \int_{MT_{\alpha}} 4\pi \sum_{\ell m} (-i)^{\ell} j_{\ell}(Gr) 
+            Y_{\ell m}(\hat {\bf G}) Y_{\ell m}^{*}(\hat {\bf r}) r^2 \sin \theta dr d\phi d\theta
+    \f]
+    In the above integral only \f$ \ell=m=0 \f$ term survive. So we have:
+    \f[
+        \int_{MT_{\alpha}} e^{-i{\bf Gr}} d{\bf r} = 4\pi e^{-i{\bf G\tau_{\alpha}}} \Theta(\alpha, G)
+    \f]
+    where
+    \f[
+        \Theta(\alpha, G) = \int_{0}^{R_{\alpha}} \frac{\sin(Gr)}{Gr} r^2 dr = 
+            \left\{ \begin{array}{ll} \displaystyle R_{\alpha}^3 / 3 & G=0 \\
+            \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
+    \f]
+    are the so-called step function form factors. With this we have a final expression for the plane-wave coefficients 
+    of the unit step function:
+    \f[
+        \Theta({\bf G}) = \delta_{\bf G, 0} - \sum_{\alpha} \frac{4\pi}{\Omega} e^{-i{\bf G\tau_{\alpha}}} 
+            \Theta(\alpha, G)
+    \f]
+*/
 class Step_function
 {
     private:
-
+        
+        /// unit cell for which step function is constructed
         Unit_cell* unit_cell_;
-
+        
+        /// reciprocal lattice for the unit cell
         Reciprocal_lattice* reciprocal_lattice_;
     
         /// plane wave expansion coefficients of the step function
@@ -41,24 +79,29 @@ class Step_function
         
         /// step function on the real-space grid
         std::vector<double> step_function_;
-        
-        void init();
-
+       
     public:
-
-        Step_function(Unit_cell* unit_cell__, Reciprocal_lattice* reciprocal_lattice__) : 
-            unit_cell_(unit_cell__), reciprocal_lattice_(reciprocal_lattice__)
-        {
-            init();
-        }
-
-        void get_step_function_form_factors(mdarray<double, 2>& ffac);
         
+        /// Constructor
+        Step_function(Unit_cell* unit_cell__, Reciprocal_lattice* reciprocal_lattice__);
+
+        /// Get \f$ \Theta(\alpha, G) \f$ form factors of the step function.
+        /**
+            \f[
+                \Theta(\alpha, G) = \int_{0}^{R_{\alpha}} \frac{\sin(Gr)}{Gr} r^2 dr = 
+                    \left\{ \begin{array}{ll} \displaystyle R_{\alpha}^3 / 3 & G=0 \\
+                    \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
+            \f]
+        */
+        void get_step_function_form_factors(mdarray<double, 2>& ffac);
+       
+        /// Return plane-wave coefficient of the step function.
         inline complex16 theta_pw(int ig)
         {
             return step_function_pw_[ig];
         }
 
+        /// Return the value of the step function for the grid point ir.
         inline double theta_it(int ir)
         {
             return step_function_[ir];

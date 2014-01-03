@@ -96,6 +96,10 @@ class Reciprocal_lattice
         template <index_domain_t index_domain>
         inline void gvec_ylm_array(int ig, complex16* ylm, int lmax);
 
+        /// Make periodic function out of form factors
+        /** Return vector of plane-wave coefficients */
+        std::vector<complex16> make_periodic_function(mdarray<double, 2>& ffac, int ngv);
+
         inline FFT3D<cpu>* fft()
         {
             return fft_;

@@ -15,7 +15,7 @@ class radial_functions_index
 
             int idxlo;
 
-            radial_function_index_descriptor(int l, int order, int idxlo =  -1) 
+            radial_function_index_descriptor(int l, int order, int idxlo = -1) 
                 : l(l), 
                   order(order), 
                   idxlo(idxlo)
@@ -200,7 +200,9 @@ class basis_functions_index
 
         std::vector<basis_function_index_descriptor> basis_function_index_descriptors_; 
        
-        mdarray<int,2> index_by_lm_order_;
+        mdarray<int, 2> index_by_lm_order_;
+
+        mdarray<int, 1> index_by_idxrf_;
        
         /// number of augmented wave basis functions
         int size_aw_;
@@ -218,11 +220,17 @@ class basis_functions_index
         {
             basis_function_index_descriptors_.clear();
 
+            index_by_idxrf_.set_dimensions(indexr.size());
+            index_by_idxrf_.allocate();
+
             for (int idxrf = 0; idxrf < indexr.size(); idxrf++)
             {
                 int l = indexr[idxrf].l;
                 int order = indexr[idxrf].order;
                 int idxlo = indexr[idxrf].idxlo;
+
+                index_by_idxrf_(idxrf) = (int)basis_function_index_descriptors_.size();
+
                 for (int m = -l; m <= l; m++)
                     basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, m, order, idxlo, idxrf));
             }
@@ -235,7 +243,7 @@ class basis_functions_index
                 int lm = basis_function_index_descriptors_[i].lm;
                 int order = basis_function_index_descriptors_[i].order;
                 index_by_lm_order_(lm, order) = i;
-               
+                
                 // get number of aw basis functions
                 if (basis_function_index_descriptors_[i].idxlo < 0) size_aw_ = i + 1;
             }
@@ -270,6 +278,11 @@ class basis_functions_index
         inline int index_by_lm_order(int lm, int order)
         {
             return index_by_lm_order_(lm, order);
+        }
+
+        inline int index_by_idxrf(int idxrf)
+        {
+            return index_by_idxrf_(idxrf);
         }
         
         inline basis_function_index_descriptor& operator[](int i)

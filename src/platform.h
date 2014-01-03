@@ -1,3 +1,8 @@
+/** \file platform.h
+    
+    \brief Contains definition and implementation of Platform class.
+*/
+
 class Platform
 {
     private:
@@ -57,26 +62,38 @@ class Platform
             exit(-13);
         }
 
-        static int num_threads()
+        /// Returm maximum number of OMP threads.
+        /** Maximum number of OMP threads is controlled by environment variable OMP_NUM_THREADS */
+        static int max_num_threads()
         {
             return omp_get_max_threads();
         }
 
+        /// Returm number of actually running OMP threads. 
+        static int num_threads()
+        {
+            return omp_get_num_threads();
+        }
+        
+        /// Return thread id.
         static int thread_id()
         {
             return omp_get_thread_num();
         }
         
+        /// Return number of threads for independent FFT transformations.
         static int num_fft_threads()
         {
             return num_fft_threads_;
         }
-
+        
+        /// Set the number of FFT threads
         static void set_num_fft_threads(int num_fft_threads__)
         {
             num_fft_threads_ = num_fft_threads__;
         }
-
+        
+        /// Global barrier
         static void barrier(MPI_Comm comm = MPI_COMM_WORLD)
         {
             MPI_Barrier(comm);

@@ -1,7 +1,88 @@
+/** \file density.h
+    
+    \brief Contains definition and partial implementation of sirius::Density class.
+*/
+
 namespace sirius
 {
 
-/** \note density and potenaitl are allocated as global function because it's easier to load and save them. */
+
+/// Generate charge density and magnetization from occupied spinor wave-functions.
+/** Let's start from the definition of the complex density matrix:
+    \f[
+        \rho_{\sigma' \sigma}({\bf r}) =
+         \sum_{j{\bf k}} n_{j{\bf k}} \Psi_{j{\bf k}}^{\sigma*}({\bf r}) \Psi_{j{\bf k}}^{\sigma'}({\bf r}) = 
+         \frac{1}{2} \left( \begin{array}{cc} \rho({\bf r})+m_z({\bf r}) & 
+                m_x({\bf r})-im_y({\bf r}) \\ m_x({\bf r})+im_y({\bf r}) & \rho({\bf r})-m_z({\bf r}) \end{array} \right)
+    \f]
+    We notice that the diagonal components of the density matrix are actually real and the off-diagonal components are
+    expressed trough two independent functions \f$ m_x({\bf r}) \f$ and \f$ m_y({\bf r}) \f$. Having this in mind we 
+    will work with a slightly different object, namely a real density matrix, defined as a 1-, 2- or 4-dimensional 
+    (depending on the number of magnetic components) vector with the following elements: 
+        - \f$ [ \rho({\bf r}) ] \f$ in case of non-magnetic configuration
+        - \f$ [ \rho_{\uparrow \uparrow}({\bf r}), \rho_{\downarrow \downarrow}({\bf r}) ]  = 
+              [ \frac{\rho({\bf r})+m_z({\bf r})}{2}, \frac{\rho({\bf r})-m_z({\bf r})}{2} ] \f$ in case of collinear 
+           magnetic configuration
+        - \f$ [ \rho_{\uparrow \uparrow}({\bf r}), \rho_{\downarrow \downarrow}({\bf r}), 
+                2 \Re \rho_{\uparrow \downarrow}({\bf r}), -2 \Im \rho_{\uparrow \downarrow}({\bf r}) ] = 
+              [ \frac{\rho({\bf r})+m_z({\bf r})}{2}, \frac{\rho({\bf r})-m_z({\bf r})}{2}, 
+                m_x({\bf r}),  m_y({\bf r}) ] \f$ in the general case of non-collinear magnetic configuration
+    
+    At this point it is straightforward to compute the density and magnetization in the interstitial (see add_kpoint_contribution_it()).
+    The muffin-tin part of the density and magnetization is obtained in a slighlty more complicated way. Recall the
+    expansion of spinor wave-functions inside the muffin-tin \f$ \alpha \f$
+    \f[
+        \Psi_{j{\bf k}}^{\sigma}({\bf r}) = \sum_{\xi}^{N_{\xi}^{\alpha}} {S_{\xi}^{\sigma j {\bf k},\alpha}} 
+        f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r)Y_{\ell_{\xi}m_{\xi}}(\hat {\bf r})
+    \f]
+    which we insert into expression for the complex density matrix: 
+    \f[
+        \rho_{\sigma' \sigma}({\bf r}) = \sum_{j{\bf k}} n_{j{\bf k}} \sum_{\xi}^{N_{\xi}^{\alpha}} 
+            S_{\xi}^{\sigma j {\bf k},\alpha*} f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r)
+            Y_{\ell_{\xi}m_{\xi}}^{*}(\hat {\bf r}) \sum_{\xi'}^{N_{\xi'}^{\alpha}} S_{\xi'}^{\sigma' j{\bf k},\alpha}
+            f_{\ell_{\xi'} \lambda_{\xi'}}^{\alpha}(r)Y_{\ell_{\xi'}m_{\xi'}}(\hat {\bf r})
+    \f]
+    First, we eliminate a sum over bands and k-points by forming an auxiliary density tensor:
+    \f[
+        D_{\xi \sigma, \xi' \sigma'}^{\alpha} = \sum_{j{\bf k}} n_{j{\bf k}} S_{\xi}^{\sigma j {\bf k},\alpha*} 
+            S_{\xi'}^{\sigma' j {\bf k},\alpha}
+    \f]
+    The expression for complex density matrix simplifies to:
+    \f[
+        \rho_{\sigma' \sigma}({\bf r}) =  \sum_{\xi \xi'} D_{\xi \sigma, \xi' \sigma'}^{\alpha} 
+            f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r)Y_{\ell_{\xi}m_{\xi}}^{*}(\hat {\bf r}) 
+            f_{\ell_{\xi'} \lambda_{\xi'}}^{\alpha}(r)Y_{\ell_{\xi'}m_{\xi'}}(\hat {\bf r})
+    \f]
+    Now we can switch to the real density matrix and write its' expansion in real spherical harmonics. Let's take
+    non-magnetic case as an example:
+    \f[
+        \rho({\bf r}) = \sum_{\xi \xi'} D_{\xi \xi'}^{\alpha} 
+            f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r)Y_{\ell_{\xi}m_{\xi}}^{*}(\hat {\bf r}) 
+            f_{\ell_{\xi'} \lambda_{\xi'}}^{\alpha}(r)Y_{\ell_{\xi'}m_{\xi'}}(\hat {\bf r}) = 
+            \sum_{\ell_3 m_3} \rho_{\ell_3 m_3}^{\alpha}(r) R_{\ell_3 m_3}(\hat {\bf r}) 
+    \f]
+    where
+    \f[
+        \rho_{\ell_3 m_3}^{\alpha}(r) = \sum_{\xi \xi'} D_{\xi \xi'}^{\alpha} f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r) 
+            f_{\ell_{\xi'} \lambda_{\xi'}}^{\alpha}(r) \langle Y_{\ell_{\xi}m_{\xi}} | R_{\ell_3 m_3} | Y_{\ell_{\xi'}m_{\xi'}} \rangle
+    \f]
+    We are almost done. Now it is time to switch to the full index notation  \f$ \xi \rightarrow \{ \ell \lambda m \} \f$
+    and sum over \a m and \a m' indices:
+    \f[
+         \rho_{\ell_3 m_3}^{\alpha}(r) = \sum_{\ell \lambda, \ell' \lambda'} f_{\ell \lambda}^{\alpha}(r)  
+            f_{\ell' \lambda'}^{\alpha}(r) d_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha} 
+    \f]
+    where
+    \f[
+        d_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha} = 
+            \sum_{mm'} D_{\ell \lambda m, \ell' \lambda' m'}^{\alpha} 
+            \langle Y_{\ell m} | R_{\ell_3 m_3} | Y_{\ell' m'} \rangle
+    \f]
+    This is our final answer: radial components of density and magnetization are expressed as a linear combination of
+    quadratic forms in radial functions. 
+
+    \note density and potential are allocated as global function because it's easier to load and save them.
+*/
 class Density
 {
     private:
@@ -50,6 +131,19 @@ class Density
         /// Add k-point contribution to the interstitial density and magnetization
         void add_kpoint_contribution_it(Band* band, K_point* kp);
         
+        /// Add k-point contribution to the density matrix in case of ultrasoft pseudo-potential
+        /** The following density matrix has to be computed for each atom:
+            \f[
+                d_{\xi \xi'}^{\alpha} = \langle \beta_{\xi}^{\alpha} | \hat N | \beta_{\xi'}^{\alpha} \rangle = 
+                  \sum_{j {\bf k}} \langle \beta_{\xi}^{\alpha} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} 
+                  \langle \Psi_{j{\bf k}} | \beta_{\xi'}^{\alpha} \rangle
+            \f]
+            Here \f$ \hat N = \sum_{j{\bf k}} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} \langle \Psi_{j{\bf k}} | \f$ is 
+            the occupancy operator written in spectral representation. 
+        */
+        void add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
+                                        mdarray<complex16, 2>& pp_complex_density_matrix);
+
         /// Generate valence density in the muffin-tins 
         void generate_valence_density_mt(K_set& ks);
         

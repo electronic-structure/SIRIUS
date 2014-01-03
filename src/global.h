@@ -158,7 +158,7 @@ class Global
         {
             std::string fname("sirius.json");
             
-            int num_fft_threads = Platform::num_threads();
+            int num_fft_threads = Platform::max_num_threads();
 
             if (Utils::file_exists(fname))
             {
@@ -250,7 +250,7 @@ class Global
                 }
             }
 
-            Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::num_threads()));
+            Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::max_num_threads()));
         }
 
         std::string start_time(const char* fmt)
@@ -569,6 +569,10 @@ class Global
 
             switch (basis_type())
             {
+                case apwlo:
+                {
+                    break;
+                }
                 case pwlo:
                 {
                     lmax_pw_ = lmax_apw_;
@@ -579,10 +583,6 @@ class Global
                 {
                     lmax_apw_ = lmax_rho_ = lmax_pot_ = -1;
                     break;
-                }
-                default:
-                {
-                    stop_here
                 }
             }
 
@@ -598,14 +598,14 @@ class Global
                     lmax = lmax_pot_;
                     break;
                 }
+                case pwlo:
+                {
+                    stop_here
+                }
                 case pw:
                 {
                     lmax = 2 * unit_cell_->lmax_beta();
                     break;
-                }
-                case pwlo:
-                {
-                    stop_here
                 }
             }
             reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, pw_cutoff(), lmax);
@@ -779,7 +779,7 @@ class Global
             printf("MPI grid                      :");
             for (int i = 0; i < mpi_grid_.num_dimensions(); i++) printf(" %i", mpi_grid_.size(1 << i));
             printf("\n");
-            printf("number of OMP threads         : %i\n", Platform::num_threads()); 
+            printf("maximum number of OMP threads : %i\n", Platform::max_num_threads()); 
             printf("number of OMP threads for FFT : %i\n", Platform::num_fft_threads()); 
 
             unit_cell_->print_info();
@@ -941,7 +941,7 @@ class Global
                 jw.single("git_hash", git_hash);
                 jw.single("build_date", build_date);
                 jw.single("num_ranks", Platform::num_mpi_ranks());
-                jw.single("num_threads", Platform::num_threads());
+                jw.single("max_num_threads", Platform::max_num_threads());
                 jw.single("num_fft_threads", Platform::num_fft_threads());
                 jw.single("cyclic_block_size", cyclic_block_size());
                 jw.single("mpi_grid", mpi_grid_dims_);

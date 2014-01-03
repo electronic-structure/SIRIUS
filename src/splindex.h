@@ -24,12 +24,79 @@
 
 /** \file splindex.h
     
-    \brief Split index implementation
+    \brief Contains definition of splindex_base and splindex_iterator classes and specialization for block and
+           block_cyclic distributions.
 */
 
 const int _splindex_offs_ = 0;
 const int _splindex_rank_ = 1;
 
+class splindex_base;
+
+/// Iterator for split index.
+/** Split index iterator is introduced to simplify the loop over local part of global index.
+
+    Example:
+    \code{.cpp}
+        splindex<block> spl(17, Platform::num_mpi_ranks(), Platform::mpi_rank());
+        #pragma omp parallel
+        for (auto it = spl.begin(); it.valid(); it++)
+        {
+            printf("thread_id: %i, local index : %i, global index : %i\n", 
+                   Platform::thread_id(), it.idx_local(), it.idx());
+        }
+    \endcode
+*/ 
+class splindex_iterator
+{
+    private:
+        
+        /// current global index
+        int idx_;
+        
+        /// current local index
+        int idx_local_;
+
+        /// incremental step for operator++
+        int inc_;
+        
+        /// pointer to split index
+        splindex_base* splindex_;
+
+    public:
+        
+        /// Constructor
+        splindex_iterator(splindex_base* splindex__) 
+            : idx_(-1), 
+              idx_local_(Platform::thread_id()), 
+              inc_(Platform::num_threads()),
+              splindex_(splindex__)
+        {
+            valid();
+        }
+        
+        /// Incremental operator
+        splindex_iterator& operator++(int);
+
+        /// Update the global index and check if it is valid.
+        /** Global index is updated using the current value of the local index. Return true if the index is valid,
+            otherwise return false. */
+        inline bool valid();
+        
+        /// Return current global index.
+        inline int idx()
+        {
+            return idx_;
+        }
+
+        /// Return current local index.
+        inline int idx_local()
+        {
+            return idx_local_;
+        }
+};
+
+/// Base class for split index.
 class splindex_base
 {
     private:
@@ -48,6 +115,7 @@ class splindex_base
         /// number of ranks over which the global index is distributed
         int num_ranks_;
 
+        /// size of the global index 
         int global_index_size_;
 
         /// local index size for each rank
@@ -88,6 +156,11 @@ class splindex_base
     
     public:
 
+        splindex_iterator begin()
+        {
+            return splindex_iterator(this);
+        }
+        
         inline int local_size()
         {
             assert(rank_ >= 0);
@@ -122,6 +195,19 @@ class splindex_base
             return global_index_size_;
         }
 };
+
+splindex_iterator& splindex_iterator::operator++(int)
+{
+    this->idx_local_ += inc_;
+    return *this;
+}
+
+inline bool splindex_iterator::valid()
+{
+    if (idx_local_ >= splindex_->local_size()) return false;
+    idx_ = (*splindex_)[idx_local_];
+    return true;
+}
 
 template <splindex_t type> class splindex: public splindex_base
 {

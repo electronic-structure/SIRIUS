@@ -7,6 +7,9 @@
 
     \page DFT Spin-polarized DFT
     \section section1 Preliminary notes
+
+    \note Here and below sybol \f$ \sigma \f$ is reserved for the Pauli matrices. Spin components are labeled with \f$ \alpha \f$ or \f$ \beta\f$.
+
     Wave-function of spin-1/2 particle is a two-component spinor:
     \f[
         {\bf \varphi}({\bf r})=\left( \begin{array}{c} \varphi_1({\bf r}) \\ \varphi_2({\bf r}) \end{array} \right)

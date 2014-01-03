@@ -1,32 +1,45 @@
-void Step_function::init()
+// This file is part of SIRIUS
+//
+// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file step_function.hpp
+
+    \brief Contains remaining implementation of sirius::Step_function class. 
+*/
+
+Step_function::Step_function(Unit_cell* unit_cell__, Reciprocal_lattice* reciprocal_lattice__)
+    : unit_cell_(unit_cell__), 
+      reciprocal_lattice_(reciprocal_lattice__)
 {
-    Timer t("sirius::Step_function::init");
+    Timer t("sirius::Step_function::Step_function");
 
     auto fft = reciprocal_lattice_->fft();
     
-    mdarray<double, 2> ffac((int)reciprocal_lattice_->num_gvec_shells_total(), unit_cell_->num_atom_types());
+    mdarray<double, 2> ffac(unit_cell_->num_atom_types(), (int)reciprocal_lattice_->num_gvec_shells_total());
     get_step_function_form_factors(ffac);
 
     step_function_pw_.resize(fft->size());
     step_function_.resize(fft->size());
     
-    memset(&step_function_pw_[0], 0, fft->size() * sizeof(complex16));
-    
-    #pragma omp parallel for default(shared)
-    for (int igloc = 0; igloc < fft->local_size(); igloc++)
-    {
-        int ig = fft->global_index(igloc);
-        int igs = reciprocal_lattice_->gvec_shell<global>(ig);
-
-        for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
-        {            
-            int iat = unit_cell_->atom(ia)->type_id();
-            step_function_pw_[ig] -= conj(reciprocal_lattice_->gvec_phase_factor<global>(ig, ia)) * ffac(igs, iat);
-
-        }
-    }
-    Platform::allgather(&step_function_pw_[0], fft->global_offset(), fft->local_size());
-    
+    std::vector<complex16> f_pw = reciprocal_lattice_->make_periodic_function(ffac, fft->size());
+    for (int ig = 0; ig < fft->size(); ig++) step_function_pw_[ig] = -f_pw[ig];
     step_function_pw_[0] += 1.0;
 
     fft->input(fft->size(), reciprocal_lattice_->fft_index(), &step_function_pw_[0]);
@@ -47,11 +60,10 @@ void Step_function::init()
 
 void Step_function::get_step_function_form_factors(mdarray<double, 2>& ffac)
 {
+    assert(ffac.size(0) == unit_cell_->num_atom_types());
     ffac.zero();
     
-    double fourpi_omega = fourpi / unit_cell_->omega();
-
-    splindex<block> spl_num_gvec_shells(ffac.size(0), Platform::num_mpi_ranks(), Platform::mpi_rank());
+    splindex<block> spl_num_gvec_shells(ffac.size(1), Platform::num_mpi_ranks(), Platform::mpi_rank());
 
     #pragma omp parallel for default(shared)
     for (int igsloc = 0; igsloc < spl_num_gvec_shells.local_size(); igsloc++)
@@ -65,17 +77,10 @@ void Step_function::get_step_function_form_factors(mdarray<double, 2>& ffac)
             double R = unit_cell_->atom_type(iat)->mt_radius();
             double gR = g * R;
 
-            if (igs == 0)
-            {
-                ffac(igs, iat) = fourpi_omega * pow(R, 3) / 3.0;
-            }
-            else
-            {
-                ffac(igs, iat) = fourpi_omega * (sin(gR) - gR * cos(gR)) * g3inv;
-            }
+            ffac(iat, igs) = (igs) ? (sin(gR) - gR * cos(gR)) * g3inv : pow(R, 3) / 3.0;
         }
     }
 
-    for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++) 
-        Platform::allgather(&ffac(0, iat), spl_num_gvec_shells.global_offset(), spl_num_gvec_shells.local_size());
+    Platform::allgather(&ffac(0, 0), unit_cell_->num_atom_types() * spl_num_gvec_shells.global_offset(), 
+                        unit_cell_->num_atom_types() * spl_num_gvec_shells.local_size());
 }

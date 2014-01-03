@@ -175,3 +175,45 @@ inline void Reciprocal_lattice::gvec_ylm_array(int ig, complex16* ylm, int lmax)
         }
     }
 }
+
+std::vector<complex16> Reciprocal_lattice::make_periodic_function(mdarray<double, 2>& ffac, int ngv)
+{
+    assert(ffac.size(0) == unit_cell_->num_atom_types());
+    
+    std::vector<complex16> f_pw(ngv, complex16(0, 0));
+
+    double fourpi_omega = fourpi / unit_cell_->omega();
+
+    splindex<block> spl_ngv(ngv, Platform::num_mpi_ranks(), Platform::mpi_rank());
+
+    //== #pragma omp parallel for default(shared)
+    //== for (int igloc = 0; igloc < spl_ngv.local_size(); igloc++)
+    //== {
+    //==     int ig = spl_ngv[igloc];
+    //==     int igs = gvec_shell<global>(ig);
+
+    //==     for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
+    //==     {            
+    //==         int iat = unit_cell_->atom(ia)->type_id();
+    //==         f_pw[ig] += fourpi_omega * conj(gvec_phase_factor<global>(ig, ia)) * ffac(iat, igs);
+
+    //==     }
+    //== }
+    #pragma omp parallel
+    for (auto it = spl_ngv.begin(); it.valid(); it++)
+    {
+        int ig = it.idx();
+        int igs = gvec_shell<global>(ig);
+
+        for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
+        {            
+            int iat = unit_cell_->atom(ia)->type_id();
+            f_pw[ig] += fourpi_omega * conj(gvec_phase_factor<global>(ig, ia)) * ffac(iat, igs);
+        }
+    }
+
+    Platform::allgather(&f_pw[0], spl_ngv.global_offset(), spl_ngv.local_size());
+
+    return f_pw;
+}
+

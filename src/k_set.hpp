@@ -96,9 +96,6 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
             printf("\n");
         }
     }
-    
-    // compute eigen-value sums
-    valence_eval_sum();
 }
 
 double K_set::valence_eval_sum()
@@ -112,7 +109,6 @@ double K_set::valence_eval_sum()
             eval_sum += wk * kpoints_[ik]->band_energy(j) * kpoints_[ik]->band_occupancy(j);
     }
 
-    //** parameters_.rti().valence_eval_sum = eval_sum;
     return eval_sum;
 }
 
@@ -158,8 +154,6 @@ void K_set::find_band_occupancies()
     } 
     energy_fermi_ = ef;
 
-    //parameters_.rti().energy_fermi = ef;
-    
     for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_occupancies(&bnd_occ(0, ik));
 
     double gap = 0.0;
