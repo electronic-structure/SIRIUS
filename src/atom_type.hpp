@@ -301,17 +301,16 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
         charge_rms = sqrt(charge_rms / radial_grid_->size());
         
         rho.interpolate();
-        
+
         // compute Hartree potential
         rho.integrate(g2, 2);
         double t1 = rho.integrate(g1, 1);
 
-        for (int i = 0; i < radial_grid_->size(); i++)
-            vh[i] = fourpi * (g2[i] / radial_grid(i) + t1 - g1[i]);
+        for (int i = 0; i < radial_grid_->size(); i++) vh[i] = fourpi * (g2[i] / radial_grid(i) + t1 - g1[i]);
         
         // compute XC potential and energy
         xci.getxc(rho.num_points(), &rho[0], &vxc[0], &exc[0]);
-
+        
         for (int i = 0; i < radial_grid_->size(); i++)
             veff[i] = (1 - beta) * veff[i] + beta * (vnuc[i] + vh[i] + vxc[i]);
         
@@ -355,7 +354,7 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
         
         beta = std::max(beta * 0.95, 0.005);
     }
-    
+
     if (!converged)
     {
         printf("energy_diff : %18.10f   charge_rms : %18.10f   beta : %18.10f\n", energy_diff, charge_rms, beta);

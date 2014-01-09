@@ -134,115 +134,115 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
         //== }
         //== fclose(fout);
          
-        // compute radial integrals of Q functions
-        int nbeta = parameters_.unit_cell()->max_mt_radial_basis_size();
-        mdarray<double, 4> q_radial_integrals(nbeta * (nbeta + 1) / 2, parameters_.lmax_beta() * 2 + 1, 
-                                              parameters_.unit_cell()->num_atom_types(), 
-                                              parameters_.reciprocal_lattice()->num_gvec_shells_inner());
-        q_radial_integrals.zero();
+        //== // compute radial integrals of Q functions
+        //== int nbeta = parameters_.unit_cell()->max_mt_radial_basis_size();
+        //== mdarray<double, 4> q_radial_integrals(nbeta * (nbeta + 1) / 2, parameters_.lmax_beta() * 2 + 1, 
+        //==                                       parameters_.unit_cell()->num_atom_types(), 
+        //==                                       parameters_.reciprocal_lattice()->num_gvec_shells_inner());
+        //== q_radial_integrals.zero();
 
-        mdarray<double, 4> q_radial_functions(parameters_.unit_cell()->max_num_mt_points(), parameters_.lmax_beta() * 2 + 1, 
-                                              nbeta * (nbeta + 1) / 2, parameters_.unit_cell()->num_atom_types());
+        //== mdarray<double, 4> q_radial_functions(parameters_.unit_cell()->max_num_mt_points(), parameters_.lmax_beta() * 2 + 1, 
+        //==                                       nbeta * (nbeta + 1) / 2, parameters_.unit_cell()->num_atom_types());
 
-        for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
-        {
-            auto atom_type = parameters_.unit_cell()->atom_type(iat);
-            for (int l3 = 0; l3 <= 2 * atom_type->indexr().lmax(); l3++)
-            {
-                for (int idxrf2 = 0; idxrf2 < atom_type->mt_radial_basis_size(); idxrf2++)
-                {
-                    for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
-                    {
-                        int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
-                        memcpy(&q_radial_functions(0, l3, idx, iat), &atom_type->uspp().q_radial_functions(0, idx), 
-                               atom_type->num_mt_points() * sizeof(double));
-                        atom_type->fix_q_radial_function(l3, idxrf1, idxrf2, &q_radial_functions(0, l3, idx, iat));
-                    }
-                }
-            }
-        }
+        //== for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+        //== {
+        //==     auto atom_type = parameters_.unit_cell()->atom_type(iat);
+        //==     for (int l3 = 0; l3 <= 2 * atom_type->indexr().lmax(); l3++)
+        //==     {
+        //==         for (int idxrf2 = 0; idxrf2 < atom_type->mt_radial_basis_size(); idxrf2++)
+        //==         {
+        //==             for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
+        //==             {
+        //==                 int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
+        //==                 memcpy(&q_radial_functions(0, l3, idx, iat), &atom_type->uspp().q_radial_functions(0, idx), 
+        //==                        atom_type->num_mt_points() * sizeof(double));
+        //==                 atom_type->fix_q_radial_function(l3, idxrf1, idxrf2, &q_radial_functions(0, l3, idx, iat));
+        //==             }
+        //==         }
+        //==     }
+        //== }
 
-        // TODO: in principle, this can be sistributed over G-shells (each mpi rank holds radial integrals only for
-        //       G-shells of local fraction of G-vectors
-        sbessel_pw<double> jl(parameters_, parameters_.lmax_beta() * 2);
-        for (int igs = 0; igs < parameters_.reciprocal_lattice()->num_gvec_shells_inner(); igs++)
-        {
-            jl.load(parameters_.reciprocal_lattice()->gvec_shell_len(igs));
+        //== // TODO: in principle, this can be sistributed over G-shells (each mpi rank holds radial integrals only for
+        //== //       G-shells of local fraction of G-vectors
+        //== sbessel_pw<double> jl(parameters_.unit_cell(), parameters_.lmax_beta() * 2);
+        //== for (int igs = 0; igs < parameters_.reciprocal_lattice()->num_gvec_shells_inner(); igs++)
+        //== {
+        //==     jl.load(parameters_.reciprocal_lattice()->gvec_shell_len(igs));
 
-            for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
-            {
-                auto atom_type = parameters_.unit_cell()->atom_type(iat);
-                Spline<double> s(atom_type->num_mt_points(), atom_type->radial_grid());
+        //==     for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+        //==     {
+        //==         auto atom_type = parameters_.unit_cell()->atom_type(iat);
+        //==         Spline<double> s(atom_type->num_mt_points(), atom_type->radial_grid());
 
-                for (int l3 = 0; l3 <= 2 * atom_type->indexr().lmax(); l3++)
-                {
-                    for (int idxrf2 = 0; idxrf2 < atom_type->mt_radial_basis_size(); idxrf2++)
-                    {
-                        int l2 = atom_type->indexr(idxrf2).l;
-                        for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
-                        {
-                            int l1 = atom_type->indexr(idxrf1).l;
+        //==         for (int l3 = 0; l3 <= 2 * atom_type->indexr().lmax(); l3++)
+        //==         {
+        //==             for (int idxrf2 = 0; idxrf2 < atom_type->mt_radial_basis_size(); idxrf2++)
+        //==             {
+        //==                 int l2 = atom_type->indexr(idxrf2).l;
+        //==                 for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++)
+        //==                 {
+        //==                     int l1 = atom_type->indexr(idxrf1).l;
 
-                            int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
-                            
-                            if (l3 >= abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0)
-                            {
-                                for (int ir = 0; ir < atom_type->num_mt_points(); ir++)
-                                    s[ir] = jl(ir, l3, iat) * q_radial_functions(ir, l3, idx, iat);
+        //==                     int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
+        //==                     
+        //==                     if (l3 >= abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0)
+        //==                     {
+        //==                         for (int ir = 0; ir < atom_type->num_mt_points(); ir++)
+        //==                             s[ir] = jl(ir, l3, iat) * q_radial_functions(ir, l3, idx, iat);
 
-                                q_radial_integrals(idx, l3, iat, igs) = s.interpolate().integrate(0);
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        //==                         q_radial_integrals(idx, l3, iat, igs) = s.interpolate().integrate(0);
+        //==                     }
+        //==                 }
+        //==             }
+        //==         }
+        //==     }
+        //== }
 
-        int nbf_max = parameters_.unit_cell()->max_mt_basis_size();
+        //== int nbf_max = parameters_.unit_cell()->max_mt_basis_size();
 
-        q_pw_.set_dimensions(parameters_.reciprocal_lattice()->num_gvec(), nbf_max * (nbf_max + 1) / 2,
-                             parameters_.unit_cell()->num_atom_types()); 
-        q_pw_.allocate();
-        q_pw_.zero();
-        for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
-        {
-            auto atom_type = parameters_.unit_cell()->atom_type(iat);
-            int nbf = atom_type->mt_basis_size();
-            int lmax_beta = atom_type->indexr().lmax();
-            int lmmax = Utils::lmmax(lmax_beta * 2);
-            std::vector<complex16> v(lmmax);
-            Gaunt_coefficients<double> gaunt_coefs(lmax_beta, 2 * lmax_beta, lmax_beta);
+        //== q_pw_.set_dimensions(parameters_.reciprocal_lattice()->num_gvec(), nbf_max * (nbf_max + 1) / 2,
+        //==                      parameters_.unit_cell()->num_atom_types()); 
+        //== q_pw_.allocate();
+        //== q_pw_.zero();
+        //== for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+        //== {
+        //==     auto atom_type = parameters_.unit_cell()->atom_type(iat);
+        //==     int nbf = atom_type->mt_basis_size();
+        //==     int lmax_beta = atom_type->indexr().lmax();
+        //==     int lmmax = Utils::lmmax(lmax_beta * 2);
+        //==     std::vector<complex16> v(lmmax);
+        //==     Gaunt_coefficients<double> gaunt_coefs(lmax_beta, 2 * lmax_beta, lmax_beta);
 
-            atom_type->uspp().q_mtrx.zero();
+        //==     atom_type->uspp().q_mtrx.zero();
 
-            for (int xi2 = 0; xi2 < nbf; xi2++)
-            {
-                int lm2 = atom_type->indexb(xi2).lm;
-                int idxrf2 = atom_type->indexb(xi2).idxrf;
+        //==     for (int xi2 = 0; xi2 < nbf; xi2++)
+        //==     {
+        //==         int lm2 = atom_type->indexb(xi2).lm;
+        //==         int idxrf2 = atom_type->indexb(xi2).idxrf;
 
-                for (int xi1 = 0; xi1 <= xi2; xi1++)
-                {
-                    int lm1 = atom_type->indexb(xi1).lm;
-                    int idxrf1 = atom_type->indexb(xi1).idxrf;
+        //==         for (int xi1 = 0; xi1 <= xi2; xi1++)
+        //==         {
+        //==             int lm1 = atom_type->indexb(xi1).lm;
+        //==             int idxrf1 = atom_type->indexb(xi1).idxrf;
 
-                    int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
-                    int idxrf12 = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
-                    
-                    for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
-                    {
-                        int igs = parameters_.reciprocal_lattice()->gvec_shell<global>(ig);
-                        for (int lm3 = 0; lm3 < lmmax; lm3++)
-                        {
-                            v[lm3] = conj(zilm_[lm3]) * parameters_.reciprocal_lattice()->gvec_ylm(lm3, ig) * 
-                                     q_radial_integrals(idxrf12, l_by_lm_[lm3], iat, igs);
-                        }
-                        q_pw_(ig, idx12, iat) = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
-                    }
-                    atom_type->uspp().q_mtrx(xi1, xi2) = parameters_.unit_cell()->omega() * q_pw_(0, idx12, iat);
-                    atom_type->uspp().q_mtrx(xi2, xi1) = conj(atom_type->uspp().q_mtrx(xi1, xi2));
-                }
-            }
-        }
+        //==             int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+        //==             int idxrf12 = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
+        //==             
+        //==             for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
+        //==             {
+        //==                 int igs = parameters_.reciprocal_lattice()->gvec_shell<global>(ig);
+        //==                 for (int lm3 = 0; lm3 < lmmax; lm3++)
+        //==                 {
+        //==                     v[lm3] = conj(zilm_[lm3]) * parameters_.reciprocal_lattice()->gvec_ylm(lm3, ig) * 
+        //==                              q_radial_integrals(idxrf12, l_by_lm_[lm3], iat, igs);
+        //==                 }
+        //==                 q_pw_(ig, idx12, iat) = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
+        //==             }
+        //==             atom_type->uspp().q_mtrx(xi1, xi2) = parameters_.unit_cell()->omega() * q_pw_(0, idx12, iat);
+        //==             atom_type->uspp().q_mtrx(xi2, xi1) = conj(atom_type->uspp().q_mtrx(xi1, xi2));
+        //==         }
+        //==     }
+        //== }
     }
 
     update();
@@ -543,7 +543,7 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
     {
         mdarray<double, 1> vjlm(parameters_.lmmax_pot());
 
-        sbessel_pw<double> jl(parameters_, parameters_.lmax_pot());
+        sbessel_pw<double> jl(parameters_.unit_cell(), parameters_.lmax_pot());
         
         #pragma omp for
         for (int igloc = 0; igloc < parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
@@ -1206,7 +1206,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho, Per
                 
                 for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
                 {
-                    z += conj(q_pw_(ig, idx12, iat)) * effective_potential_->f_pw(ig) * 
+                    z += conj(parameters_.reciprocal_lattice()->q_pw(ig, idx12, iat)) * effective_potential_->f_pw(ig) * 
                          parameters_.reciprocal_lattice()->gvec_phase_factor<global>(ig, ia);
                 }
 
@@ -1427,6 +1427,6 @@ void Potential::load()
         fout["effective_potential"]["free_atom_potential"].read(iat, parameters_.unit_cell()->atom_type(iat)->free_atom_potential());
     }
 
-    update_atomic_potential();
+    if (parameters_.unit_cell()->potential_type() == full_potential) update_atomic_potential();
 }
 

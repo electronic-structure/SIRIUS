@@ -40,10 +40,6 @@ extern "C" {
 #include "gpu_interface.h"
 #endif
 #include "platform.h"
-
-//============================
-// low-level stuff
-//============================
 #include "version.h"
 #include "error_handling.h"
 #include "timer.h"
@@ -68,22 +64,15 @@ extern "C" {
 #include "sirius_io.h"
 #include "descriptors.h"
 #include "parset.h"
-
-//==============================
-// atoms        
-//==============================
+#include "mixer.h"
 #include "atom_type.h"
 #include "atom_symmetry_class.h"
 #include "atom.h"
-
-//============================
-// main classes
-//============================
 #include "unit_cell.h"
+#include "sbessel_pw.h"
 #include "reciprocal_lattice.h"
 #include "step_function.h"
 #include "global.h"
-#include "sbessel_pw.h"
 #include "spheric_function.h"
 #include "spheric_function_vector.h"
 #include "spheric_function_gradient.h"
@@ -94,8 +83,6 @@ extern "C" {
 #include "k_set.h"
 #include "density.h"
 #include "force.h"
-#include "mixer.h"
 #include "dft_ground_state.h"
-
 
 #endif // __SIRIUS_H__

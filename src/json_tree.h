@@ -164,8 +164,10 @@ class JSON_tree
 
     public:
     
-        JSON_tree(JSONNode& node__, std::string& path__, const std::string& fname__) : 
-            node_(node__), path_(path__), fname_(fname__)
+        JSON_tree(JSONNode& node__, std::string& path__, const std::string& fname__) 
+            : node_(node__), 
+              path_(path__), 
+              fname_(fname__)
         {
         }
 

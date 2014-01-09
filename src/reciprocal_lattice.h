@@ -1,16 +1,24 @@
 #ifndef __RECIPROCAL_LATTICE_H__
 #define __RECIPROCAL_LATTICE_H__
 
+/** \file reciprocal_lattice.h
+
+    \brief Contains definition and partial implementation of sirius::Reciprocal_lattice class. 
+*/
+
 namespace sirius {
 
 class Reciprocal_lattice
 {
     private:
 
+        /// pointer to corresponding Unit_cell class 
         Unit_cell* unit_cell_;
         
+        /// three direct lattice vectors
         double lattice_vectors_[3][3];
-
+        
+        /// three reciprocal lattice vectors
         double reciprocal_lattice_vectors_[3][3];
         
         /// plane wave cutoff radius (in inverse a.u. of length)
@@ -49,6 +57,8 @@ class Reciprocal_lattice
 
         /// length of G-vectors belonging to the same shell
         std::vector<double> gvec_shell_len_;
+
+        mdarray<complex16, 3> q_pw_;
         
         void init(int lmax);
 
@@ -220,6 +230,11 @@ class Reciprocal_lattice
         inline complex16 gvec_ylm(int lm, int igloc)
         {
             return gvec_ylm_(lm, igloc);
+        }
+
+        inline complex16& q_pw(int ig, int idx, int iat)
+        {
+            return q_pw_(ig, idx, iat);
         }
 
         //inline int igs_size(int igs)

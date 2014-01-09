@@ -112,7 +112,7 @@ class Density
             Additionaly bands are sub split over rows of the 2D MPI grid, so each MPI rank in the total MPI grid gets
             it's local fraction of the bands.
         */
-        void get_occupied_bands_list(Band* band, K_point* kp, std::vector< std::pair<int, double> >& bands);
+        std::vector< std::pair<int, double> > get_occupied_bands_list(Band* band, K_point* kp);
 
         /// Reduce complex density matrix over magnetic quantum numbers
         /** The following operation is performed:
@@ -138,10 +138,11 @@ class Density
                           \Psi_{\ell m}^{i{\bf k}\sigma *}({\bf r}) \Psi_{\ell m'}^{i{\bf k}\sigma'}({\bf r})
             \f] 
         */
-        void add_kpoint_contribution_mt(Band* band, K_point* kp, mdarray<complex16, 4>& mt_complex_density_matrix);
+        void add_kpoint_contribution_mt(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
+                                        mdarray<complex16, 4>& mt_complex_density_matrix);
         
         /// Add k-point contribution to the interstitial density and magnetization
-        void add_kpoint_contribution_it(Band* band, K_point* kp);
+        void add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands);
         
         /// Add k-point contribution to the density matrix in case of ultrasoft pseudo-potential
         /** The following density matrix has to be computed for each atom:
@@ -154,7 +155,9 @@ class Density
             the occupancy operator written in spectral representation. 
         */
         void add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
-                                        mdarray<complex16, 2>& pp_complex_density_matrix);
+                                        mdarray<complex16, 4>& pp_complex_density_matrix);
+        
+        void add_q_contribution_to_valence_density(K_set& kset);
 
         /// Generate valence density in the muffin-tins 
         void generate_valence_density_mt(K_set& ks);
@@ -213,13 +216,32 @@ class Density
         void save();
         
         void load();
+
+        inline size_t size()
+        {
+            size_t s = rho_->size();
+            for (int i = 0; i < parameters_.num_mag_dims(); i++) s += magnetization_[i]->size();
+            return s;
+        }
+
+        inline void pack(double* buffer)
+        {
+            size_t n = rho_->pack(buffer);
+            for (int i = 0; i < parameters_.num_mag_dims(); i++) n += magnetization_[i]->pack(&buffer[n]);
+        }
+
+        inline void unpack(double* buffer)
+        {
+            size_t n = rho_->unpack(buffer);
+            for (int i = 0; i < parameters_.num_mag_dims(); i++) n += magnetization_[i]->unpack(&buffer[n]);
+        }
         
         Periodic_function<double>* rho()
         {
             return rho_;
         }
         
-        Periodic_function<double>* rho_core()
+        Periodic_function<double>* rho_core() // TODO: rename to rho_pseudo_core
         {
             return rho_core_;
         }

@@ -3,7 +3,7 @@
     \brief Contains remaining implementation of sirius::Density class.
 */
 
-Density::Density(Global& parameters__) : parameters_(parameters__)
+Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_(NULL)
 {
     fft_ = parameters_.reciprocal_lattice()->fft();
 
@@ -19,7 +19,7 @@ Density::Density(Global& parameters__) : parameters_(parameters__)
         mdarray<double, 2> rho_core_radial_integrals(parameters_.unit_cell()->num_atom_types(), 
                                                      parameters_.reciprocal_lattice()->num_gvec_shells_inner());
 
-        sbessel_pw<double> jl(parameters_, 0);
+        sbessel_pw<double> jl(parameters_.unit_cell(), 0);
         for (int igs = 0; igs < parameters_.reciprocal_lattice()->num_gvec_shells_inner(); igs++)
         {
             jl.load(parameters_.reciprocal_lattice()->gvec_shell_len(igs));
@@ -77,9 +77,7 @@ Density::Density(Global& parameters__) : parameters_(parameters__)
         }
         case pw:
         {
-            stop_here
-            //== gaunt_coefs_ = new Gaunt_coefficients<complex16>(parameters_.lmax_beta(), parameters_.lmax_beta() * 2, 
-            //==                                                  parameters_.lmax_beta());
+            break;
         }
     }
 
@@ -91,7 +89,7 @@ Density::~Density()
     delete rho_;
     for (int j = 0; j < parameters_.num_mag_dims(); j++) delete magnetization_[j];
     if (parameters_.potential_type() == ultrasoft_pseudopotential) delete rho_core_;
-    delete gaunt_coefs_;
+    if (gaunt_coefs_) delete gaunt_coefs_;
 }
 
 void Density::set_charge_density_ptr(double* rhomt, double* rhoir)
@@ -194,7 +192,7 @@ void Density::initial_density(int type = 0)
         mdarray<double, 2> rho_radial_integrals(parameters_.unit_cell()->num_atom_types(), 
                                                 parameters_.reciprocal_lattice()->num_gvec_shells_inner());
 
-        sbessel_pw<double> jl(parameters_, 0);
+        sbessel_pw<double> jl(parameters_.unit_cell(), 0);
         for (int igs = 0; igs < parameters_.reciprocal_lattice()->num_gvec_shells_inner(); igs++)
         {
             jl.load(parameters_.reciprocal_lattice()->gvec_shell_len(igs));
@@ -275,100 +273,44 @@ void Density::initial_density(int type = 0)
     //    }
     //    for (int i = 0; i < parameters_.fft().size(); i++) rho_->f_it<global>(i) = rho_avg;
     //}
-
-    //if (type == 2)
-    //{
-    //    rho_->f_pw(0) = parameters_.num_electrons() / parameters_.omega();
-    //    for (int ig = 1; ig < parameters_.num_gvec(); ig++)
-    //    {
-    //        rho_->f_pw(ig) = (ig < 20) ? 1.0 / double(ig + 1) / parameters_.omega() : 0.0;
-    //    }
-
-    //    parameters_.fft().input(parameters_.num_gvec(), parameters_.fft_index(), &rho_->f_pw(0));
-    //    parameters_.fft().transform(1);
-    //    parameters_.fft().output(&rho_->f_it(0));
-
-    //    rho_->allocate(ylm_component);
-    //    rho_->zero(ylm_component);
-    //    
-    //    sbessel_pw<double> jl(parameters_, parameters_.lmax_rho());
-    //    
-    //    for (int igloc = 0; igloc < parameters_.spl_num_gvec().local_size(); igloc++)
-    //    {
-    //        int ig = parameters_.spl_num_gvec(igloc);
-    //        if (ig < 20)
-    //        {
-    //            std::cout << "ig = " << ig << std::endl;
-    //            jl.load(parameters_.gvec_len(ig));
-    //            complex16 z1 = rho_->f_pw(ig) * fourpi;
-
-    //            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-    //            {
-    //                int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-    //                complex16 z2 = z1 * parameters_.gvec_phase_factor<local>(igloc, ia);
-    //                
-    //                #pragma omp parallel for default(shared)
-    //                for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
-    //                {
-    //                    int l = l_by_lm_[lm];
-    //                    complex16 z3 = z2 * pow(std::complex<double>(0, 1), l) * conj(parameters_.gvec_ylm(lm, igloc)); 
-    //                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-    //                        rho_->f_ylm(lm, ir, ia) += z3 * jl(ir, l, iat);
-    //                }
-    //            }
-    //        }
-    //    }
-    //    SHT sht_(parameters_.lmax_rho());
-    //    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-    //    {
-    //        for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
-    //            sht_.convert_to_rlm(parameters_.lmax_rho(), &rho_->f_ylm(0, ir, ia), &rho_->f_rlm(0, ir, ia));
-    //    }
-    //    rho_->deallocate(ylm_component);
-
-    //    std::cout << "pseudo-random number of electrons : " << rho_->integrate(rlm_component | it_component);
-    //}
-            
 }
 
-void Density::add_kpoint_contribution_mt(Band* band, K_point* kp, mdarray<complex16, 4>& mt_complex_density_matrix)
+void Density::add_kpoint_contribution_mt(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
+                                         mdarray<complex16, 4>& mt_complex_density_matrix)
 {
     Timer t("sirius::Density::add_kpoint_contribution_mt");
     
-    std::vector< std::pair<int, double> > bands;
-    get_occupied_bands_list(band, kp, bands);
-    if (bands.size() == 0) return;
+    if (occupied_bands.size() == 0) return;
    
-    mdarray<complex16, 3> wf1(parameters_.unit_cell()->max_mt_basis_size(), (int)bands.size(), parameters_.num_spins());
-    mdarray<complex16, 3> wf2(parameters_.unit_cell()->max_mt_basis_size(), (int)bands.size(), parameters_.num_spins());
+    mdarray<complex16, 3> wf1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size(), parameters_.num_spins());
+    mdarray<complex16, 3> wf2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size(), parameters_.num_spins());
 
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
         int offset_wf = parameters_.unit_cell()->atom(ia)->offset_wf();
         int mt_basis_size = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
         
-        for (int i = 0; i < (int)bands.size(); i++)
+        for (int i = 0; i < (int)occupied_bands.size(); i++)
         {
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
                 for (int j = 0; j < mt_basis_size; j++)
                 {
-                    wf1(j, i, ispn) = conj(kp->spinor_wave_function(offset_wf + j, ispn, bands[i].first));
-                    wf2(j, i, ispn) = kp->spinor_wave_function(offset_wf + j, ispn, bands[i].first) * bands[i].second;
+                    wf1(j, i, ispn) = conj(kp->spinor_wave_function(offset_wf + j, ispn, occupied_bands[i].first));
+                    wf2(j, i, ispn) = kp->spinor_wave_function(offset_wf + j, ispn, occupied_bands[i].first) * occupied_bands[i].second;
                 }
             }
         }
 
         for (int j = 0; j < mt_complex_density_matrix.size(2); j++)
         {
-            blas<cpu>::gemm(0, 1, mt_basis_size, mt_basis_size, (int)bands.size(), complex16(1, 0), 
+            blas<cpu>::gemm(0, 1, mt_basis_size, mt_basis_size, (int)occupied_bands.size(), complex16(1, 0), 
                             &wf1(0, 0, dmat_spins_[j].first), wf1.ld(), 
                             &wf2(0, 0, dmat_spins_[j].second), wf2.ld(), complex16(1, 0), 
                             &mt_complex_density_matrix(0, 0, j, ia), mt_complex_density_matrix.ld());
         }
     }
 }
-
 
 template <int num_mag_dims> 
 void Density::reduce_zdens(Atom_type* atom_type, int ialoc, mdarray<complex16, 4>& zdens, mdarray<double, 3>& mt_density_matrix)
@@ -385,12 +327,10 @@ void Density::reduce_zdens(Atom_type* atom_type, int ialoc, mdarray<complex16, 4
             int l1 = atom_type->indexr(idxrf1).l;
 
             int xi2 = atom_type->indexb().index_by_idxrf(idxrf2);
-            int lm2 = Utils::lm_by_l_m(l2, -l2);
-            for (int m2 = -l2; m2 <= l2; m2++, lm2++, xi2++)
+            for (int lm2 = Utils::lm_by_l_m(l2, -l2); lm2 <= Utils::lm_by_l_m(l2, l2); lm2++, xi2++)
             {
-                int lm1 = Utils::lm_by_l_m(l1, -l1);
                 int xi1 = atom_type->indexb().index_by_idxrf(idxrf1);
-                for (int m1 = -l1; m1 <= l1; m1++, lm1++, xi1++)
+                for (int lm1 = Utils::lm_by_l_m(l1, -l1); lm1 <= Utils::lm_by_l_m(l1, l1); lm1++, xi1++)
                 {
                     for (int k = 0; k < gaunt_coefs_->num_gaunt(lm1, lm2); k++)
                     {
@@ -419,10 +359,9 @@ void Density::reduce_zdens(Atom_type* atom_type, int ialoc, mdarray<complex16, 4
     }
 }
 
-// TODO: return the list instead of accepting a reference
-void Density::get_occupied_bands_list(Band* band, K_point* kp, std::vector< std::pair<int, double> >& bands)
+std::vector< std::pair<int, double> > Density::get_occupied_bands_list(Band* band, K_point* kp)
 {
-    bands.clear();
+    std::vector< std::pair<int, double> > bands;
     for (int jsub = 0; jsub < parameters_.num_sub_bands(); jsub++)
     {
         int j = parameters_.idxbandglob(jsub);
@@ -430,11 +369,14 @@ void Density::get_occupied_bands_list(Band* band, K_point* kp, std::vector< std:
         double wo = kp->band_occupancy(j) * kp->weight();
         if (wo > 1e-14) bands.push_back(std::pair<int, double>(jloc, wo));
     }
+    return bands;
 }
 
 void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
-                                         mdarray<complex16, 2>& pp_complex_density_matrix)
+                                         mdarray<complex16, 4>& pp_complex_density_matrix)
 {
+    if (occupied_bands.size() == 0) return;
+
     // take only occupied wave-functions
     mdarray<complex16, 2> wfs(kp->num_gkvec(), (int)occupied_bands.size());
     for (int i = 0; i < (int)occupied_bands.size(); i++)
@@ -465,23 +407,21 @@ void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int
         {
             for (int xi = 0; xi < nbf; xi++)
             {
-                bp1(xi, i) = conj(beta_psi(xi, i));
-                bp2(xi, i) = beta_psi(xi, i) * occupied_bands[i].second;
+                bp1(xi, i) = beta_psi(xi, i);
+                bp2(xi, i) = conj(beta_psi(xi, i)) * occupied_bands[i].second;
             }
         }
 
         blas<cpu>::gemm(0, 1, nbf, nbf, (int)occupied_bands.size(), complex16(1, 0), &bp1(0, 0), bp1.ld(),
-                        &bp2(0, 0), bp2.ld(), complex16(1, 0), &pp_complex_density_matrix(0, 0), pp_complex_density_matrix.ld());
+                        &bp2(0, 0), bp2.ld(), complex16(1, 0), &pp_complex_density_matrix(0, 0, 0, ia), pp_complex_density_matrix.ld());
     }
 }
 
-void Density::add_kpoint_contribution_it(Band* band, K_point* kp)
+void Density::add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands)
 {
     Timer t("sirius::Density::add_kpoint_contribution_it");
     
-    std::vector< std::pair<int, double> > bands;
-    get_occupied_bands_list(band, kp, bands);
-    if (bands.size() == 0) return;
+    if (occupied_bands.size() == 0) return;
 
     #pragma omp parallel default(shared) num_threads(Platform::num_fft_threads())
     {
@@ -493,18 +433,18 @@ void Density::add_kpoint_contribution_it(Band* band, K_point* kp)
         mdarray<complex16, 2> wfit(fft_->size(), parameters_.num_spins());
 
         #pragma omp for
-        for (int i = 0; i < (int)bands.size(); i++)
+        for (int i = 0; i < (int)occupied_bands.size(); i++)
         {
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
                 fft_->input(kp->num_gkvec(), kp->fft_index(), 
-                            &kp->spinor_wave_function(parameters_.unit_cell()->mt_basis_size(), ispn, bands[i].first), 
+                            &kp->spinor_wave_function(parameters_.unit_cell()->mt_basis_size(), ispn, occupied_bands[i].first), 
                             thread_id);
                 fft_->transform(1, thread_id);
                 fft_->output(&wfit(0, ispn), thread_id);
             }
             
-            double w = bands[i].second / parameters_.unit_cell()->omega();
+            double w = occupied_bands[i].second / parameters_.unit_cell()->omega();
             
             switch (parameters_.num_mag_dims())
             {
@@ -561,6 +501,68 @@ void Density::add_kpoint_contribution_it(Band* band, K_point* kp)
     }
 }
 
+void Density::add_q_contribution_to_valence_density(K_set& ks)
+{
+    Timer t("sirius::Density::add_q_contribution_to_valence_density");
+
+    //========================================================================================
+    // if we have ud and du spin blocks, don't compute one of them (du in this implementation)
+    // because density matrix is symmetric
+    //========================================================================================
+    int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
+
+    // complex density matrix
+    mdarray<complex16, 4> pp_complex_density_matrix(parameters_.unit_cell()->max_mt_basis_size(), 
+                                                    parameters_.unit_cell()->max_mt_basis_size(),
+                                                    num_zdmat, parameters_.unit_cell()->num_atoms());
+    pp_complex_density_matrix.zero();
+    
+    //=========================
+    // add k-point contribution
+    //=========================
+    for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
+    {
+        int ik = ks.spl_num_kpoints(ikloc);
+        std::vector< std::pair<int, double> > occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
+
+        add_kpoint_contribution_pp(ks[ik], occupied_bands, pp_complex_density_matrix);
+    }
+    Platform::allreduce(pp_complex_density_matrix.get_ptr(), (int)pp_complex_density_matrix.size());
+
+    std::vector<complex16> f_pw(parameters_.reciprocal_lattice()->num_gvec(), complex16(0, 0));
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {
+        auto atom_type = parameters_.unit_cell()->atom(ia)->type();
+        int iat = atom_type->id();
+        int nbf = atom_type->mt_basis_size();
+
+        for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
+        {
+            complex16 z1 = parameters_.reciprocal_lattice()->gvec_phase_factor<global>(ig, ia);
+            complex16 z2(0, 0);
+            for (int xi2 = 0; xi2 < nbf; xi2++)
+            {
+                for (int xi1 = 0; xi1 <= xi2; xi1++)
+                {
+                    int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+                    z2 += pp_complex_density_matrix(xi2, xi1, 0, ia) * 
+                          conj(z1) * parameters_.reciprocal_lattice()->q_pw(ig, idx12, iat);
+
+                    if (xi1 != xi2)
+                    {
+                        z2 += pp_complex_density_matrix(xi1, xi2, 0, ia) * 
+                              z1 * conj(parameters_.reciprocal_lattice()->q_pw(ig, idx12, iat));
+                    }
+                }
+            }
+            f_pw[ig] += z2;
+        }
+    }
+    fft_->input(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &f_pw[0]);
+    fft_->transform(1);
+    for (int ir = 0; ir < fft_->size(); ir++) rho_->f_it<global>(ir) += real(fft_->output_buffer(ir));
+}
+
 void Density::generate_valence_density_mt(K_set& ks)
 {
     Timer t("sirius::Density::generate_valence_density_mt");
@@ -583,7 +585,8 @@ void Density::generate_valence_density_mt(K_set& ks)
     for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks.spl_num_kpoints(ikloc);
-        add_kpoint_contribution_mt(ks.band(), ks[ik], mt_complex_density_matrix);
+        std::vector< std::pair<int, double> > occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
+        add_kpoint_contribution_mt(ks[ik], occupied_bands, mt_complex_density_matrix);
     }
     
     mdarray<complex16, 4> mt_complex_density_matrix_loc(parameters_.unit_cell()->max_mt_basis_size(), 
@@ -701,7 +704,6 @@ void Density::generate_valence_density_mt(K_set& ks)
         }
         t1.stop();
         
-        // TODO: change order of indices in dmat and rf_pairs
         t2.start();
         // collect radial functions
         for (int idxrf2 = 0; idxrf2 < atom_type->mt_radial_basis_size(); idxrf2++)
@@ -764,7 +766,8 @@ void Density::generate_valence_density_it(K_set& ks)
     for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks.spl_num_kpoints(ikloc);
-        add_kpoint_contribution_it(ks.band(), ks[ik]);
+        std::vector< std::pair<int, double> > occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
+        add_kpoint_contribution_it(ks[ik], occupied_bands);
     }
     
     //==========================================================================
@@ -1058,7 +1061,8 @@ double Density::core_leakage()
     double sum = 0.0;
     for (int ic = 0; ic < parameters_.unit_cell()->num_atom_symmetry_classes(); ic++)
     {
-        sum += parameters_.unit_cell()->atom_symmetry_class(ic)->core_leakage() * parameters_.unit_cell()->atom_symmetry_class(ic)->num_atoms();
+        sum += parameters_.unit_cell()->atom_symmetry_class(ic)->core_leakage() * 
+               parameters_.unit_cell()->atom_symmetry_class(ic)->num_atoms();
     }
     return sum;
 }
@@ -1147,25 +1151,29 @@ void Density::generate(K_set& ks)
             }
             break;
         }
-        default:
+        case pw:
         {
-            stop_here
+            add_q_contribution_to_valence_density(ks);
+            break;
         }
     }
-
-    generate_core_charge_density();
-
-    // add core contribution
-    for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+    
+    if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
     {
-        int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
-        for (int ir = 0; ir < parameters_.unit_cell()->atom(ia)->num_mt_points(); ir++)
-            rho_->f_mt<local>(0, ir, ialoc) += parameters_.unit_cell()->atom(ia)->symmetry_class()->core_charge_density(ir) / y00;
-    }
+        generate_core_charge_density();
 
-    // synctronize muffin-tin part (interstitial is already syncronized with allreduce)
-    rho_->sync(true, false);
-    for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync(true, false);
+        // add core contribution
+        for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+        {
+            int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
+            for (int ir = 0; ir < parameters_.unit_cell()->atom(ia)->num_mt_points(); ir++)
+                rho_->f_mt<local>(0, ir, ialoc) += parameters_.unit_cell()->atom(ia)->symmetry_class()->core_charge_density(ir) / y00;
+        }
+
+        // synctronize muffin-tin part (interstitial is already syncronized with allreduce)
+        rho_->sync(true, false);
+        for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync(true, false);
+    }
 
     std::vector<double> nel_mt;
     double nel_it;
@@ -1188,13 +1196,16 @@ void Density::generate(K_set& ks)
         s << "wrong charge density after k-point summation" << std::endl
           << "obtained value : " << nel << std::endl 
           << "target value : " << parameters_.unit_cell()->num_electrons() << std::endl
-          << "difference : " << fabs(nel - parameters_.unit_cell()->num_electrons()) << std::endl
-          << "total core leakage : " << core_leakage();
-        for (int ic = 0; ic < parameters_.unit_cell()->num_atom_symmetry_classes(); ic++) 
-            s << std::endl << "  atom class : " << ic << ", core leakage : " << core_leakage(ic);
+          << "difference : " << fabs(nel - parameters_.unit_cell()->num_electrons()) << std::endl;
+        if (parameters_.potential_type() == full_potential)
+        {
+            s << "total core leakage : " << core_leakage();
+            for (int ic = 0; ic < parameters_.unit_cell()->num_atom_symmetry_classes(); ic++) 
+                s << std::endl << "  atom class : " << ic << ", core leakage : " << core_leakage(ic);
+        }
         warning_global(__FILE__, __LINE__, s);
     }
-    
+
     //if (debug_level > 1) check_density_continuity_at_mt();
 }
 

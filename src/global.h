@@ -5,7 +5,7 @@
 
 /** \page stdvarname Standard variable names
     
-    Below it the list of standard names for some of the loop variables:
+    Below is the list of standard names for some of the loop variables:
     
     l - index of orbital quantum number \n
     m - index of azimutal quantum nuber \n
@@ -33,7 +33,7 @@
 
             int nmtp = parameters_.atom(ia)->num_mt_points();
            
-            // integrate spgerical part of the function
+            // integrate spherical part of the function
             Spline<T> s(nmtp, parameters_.atom(ia)->type()->radial_grid());
             for (int ir = 0; ir < nmtp; ir++) s[ir] = f_mt<local>(0, ir, ialoc);
             mt_val[ia] = s.interpolate().integrate(2) * fourpi * y00;
@@ -45,6 +45,7 @@
 */
 
 namespace sirius {
+
 
 /// Global variables and methods
 class Global
@@ -114,8 +115,6 @@ class Global
         /// type of the processing unit
         processing_unit_t processing_unit_;
 
-        //== GauntCoefficients gaunt_;
-        
         /// Block-cyclic distribution of the first-variational states along columns of the MPI grid.
         /** Very important! The number of first-variational states is aligned in such a way that each row or 
             column MPI rank gets equal row or column fraction of the fv states. This is done in order to have a 
@@ -248,7 +247,9 @@ class Global
                         error_local(__FILE__, __LINE__, "wrong type of basis");
                     }
                 }
+                mixer_input_section_.read(parser);
             }
+
 
             Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::max_num_threads()));
         }
@@ -611,8 +612,6 @@ class Global
             reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, pw_cutoff(), lmax);
 
             if (basis_type() == apwlo || basis_type() == pwlo) step_function_ = new Step_function(unit_cell_, reciprocal_lattice_);
-
-            //== gaunt_.set_lmax(std::max(lmax_apw(), lmax_pw()), std::max(lmax_apw(), lmax_pw()), lmax_pot());
 
             // check MPI grid dimensions and set a default grid if needed
             if (!mpi_grid_dims_.size()) 
@@ -1056,6 +1055,28 @@ class Global
         {
             return unit_cell_;
         }
+        
+        struct mixer_input_section
+        {
+            double beta_;
+            std::string type_;
+            int max_history_;
+
+            mixer_input_section() : beta_(0.9), type_("broyden"), max_history_(5)
+            {
+            }
+
+            void read(JSON_tree parser)
+            {
+                if (parser.exist("mixer"))
+                {
+                    JSON_tree section = parser["mixer"];
+                    beta_ = section["beta"].get(beta_);
+                    max_history_ = section["max_history"].get(max_history_);
+                    type_ = section["type"].get(type_);
+                }
+            }
+        } mixer_input_section_;
 };
 
 };

@@ -46,7 +46,12 @@ class Periodic_function
         
         typedef typename primitive_type_wrapper<T>::complex_t complex_t; 
         
-        Global& parameters_;
+        Unit_cell* unit_cell_;
+
+        Step_function* step_function_;
+
+        /// alias for FFT driver
+        FFT3D<cpu>* fft_;
 
         /// local part of muffin-tin functions 
         mdarray<Spheric_function<T>*, 1> f_mt_local_;
@@ -62,19 +67,18 @@ class Periodic_function
 
         /// plane-wave expansion coefficients
         mdarray<complex_t, 1> f_pw_;
+
+        int angular_domain_size_;
         
         /// number of plane-wave expansion coefficients
         int num_gvec_;
-        
-        /// alias for FFT driver
-        FFT3D<cpu>* fft_;
 
         /// Set pointer to local part of muffin-tin functions
         void set_local_mt_ptr()
         {
-            for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+            for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++)
             {
-                int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
+                int ia = unit_cell_->spl_num_atoms(ialoc);
                 f_mt_local_(ialoc)->set_ptr(&f_mt_(0, 0, ia));
             }
         }

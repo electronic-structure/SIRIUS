@@ -25,7 +25,7 @@ class Potential
         /// local part of pseudopotential
         Periodic_function<double>* local_potential_;
 
-        mdarray<complex16, 3> q_pw_;
+        //== mdarray<complex16, 3> q_pw_;
 
         mdarray<double, 3> sbessel_mom_;
 
@@ -143,6 +143,25 @@ class Potential
         void check_potential_continuity_at_mt();
 
         void copy_to_global_ptr(double* fmt, double* fit, Periodic_function<double>* src);
+        
+        inline size_t size()
+        {
+            size_t s = effective_potential_->size();
+            for (int i = 0; i < parameters_.num_mag_dims(); i++) s += effective_magnetic_field_[i]->size();
+            return s;
+        }
+
+        inline void pack(double* buffer)
+        {
+            size_t n = effective_potential_->pack(buffer);
+            for (int i = 0; i < parameters_.num_mag_dims(); i++) n += effective_magnetic_field_[i]->pack(&buffer[n]);
+        }
+
+        inline void unpack(double* buffer)
+        {
+            size_t n = effective_potential_->unpack(buffer);
+            for (int i = 0; i < parameters_.num_mag_dims(); i++) n += effective_magnetic_field_[i]->unpack(&buffer[n]);
+        }
 
         //void copy_xc_potential(double* vxcmt, double* vxcir);
 

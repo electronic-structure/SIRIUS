@@ -24,12 +24,13 @@
 
 /** \file hdf5_tree.h
     
-    \brief Interface to the HDF5 library.
+    \brief Contains definition and implementation of sirius::HDF5_tree class.
 */
 
 namespace sirius
 {
 
+/// Interface to the HDF5 library.
 class HDF5_tree
 {
     private:

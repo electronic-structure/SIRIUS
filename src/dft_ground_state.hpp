@@ -1,14 +1,17 @@
 inline double DFT_ground_state::energy_enuc()
 {
     double enuc = 0.0;
-    for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+    if (parameters_.unit_cell()->potential_type() == full_potential)
     {
-        int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
-        int zn = parameters_.unit_cell()->atom(ia)->type()->zn();
-        double r0 = parameters_.unit_cell()->atom(ia)->type()->radial_grid(0);
-        enuc -= 0.5 * zn * (potential_->coulomb_potential()->f_mt<local>(0, 0, ialoc) * y00 + zn / r0);
+        for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+        {
+            int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
+            int zn = parameters_.unit_cell()->atom(ia)->type()->zn();
+            double r0 = parameters_.unit_cell()->atom(ia)->type()->radial_grid(0);
+            enuc -= 0.5 * zn * (potential_->coulomb_potential()->f_mt<local>(0, 0, ialoc) * y00 + zn / r0);
+        }
+        Platform::allreduce(&enuc, 1);
     }
-    Platform::allreduce(&enuc, 1);
     
     return enuc;
 }
@@ -53,14 +56,23 @@ void DFT_ground_state::forces(mdarray<double, 2>& forces)
     Force::total_force(parameters_, potential_, density_, kset_, forces);
 }
 
-void DFT_ground_state::scf_loop(double charge_tol, double energy_tol, int num_dft_iter)
+void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num_dft_iter)
 {
     Timer t("sirius::DFT_ground_state::scf_loop");
-
-    density_mixer* mx = new density_mixer(density_->rho(), density_->magnetization(), parameters_.num_mag_dims());
-    mx->load();
     
+    Mixer* mx = NULL;
+    if (parameters_.mixer_input_section_.type_ == "broyden")
+    {
+        mx = new Broyden_mixer(potential_->size(), parameters_.mixer_input_section_.max_history_, 
+                               parameters_.mixer_input_section_.beta_);
+    }
+    else
+    {
+        stop_here
+    }
+
     double eold = 0.0;
+    double rms = 1.0;
 
     for (int iter = 0; iter < num_dft_iter; iter++)
     {
@@ -69,19 +81,37 @@ void DFT_ground_state::scf_loop(double charge_tol, double energy_tol, int num_df
         kset_->find_eigen_states(potential_, true);
         kset_->find_band_occupancies();
         density_->generate(*kset_);
+        
+        switch(parameters_.potential_type())
+        {
+            case full_potential:
+            {
+                potential_->generate_effective_potential(density_->rho(), density_->magnetization());
+                break;
+            }
+            case ultrasoft_pseudopotential:
+            {
+                potential_->generate_effective_potential(density_->rho(), density_->rho_core(), density_->magnetization());
+                break;
+            }
+            default:
+            {
+                stop_here
+            }
+        }
 
-        double rms = mx->mix();
+        potential_->pack(mx->input_buffer());
 
+        if (iter == 0)
+        {
+            mx->initialize();
+        }
+        else
+        {
+            rms = mx->mix();
+            potential_->unpack(mx->output_buffer());
+        }
         Platform::bcast(&rms, 1, 0);
-
-        if (parameters_.potential_type() == full_potential)
-        {
-            potential_->generate_effective_potential(density_->rho(), density_->magnetization());
-        }
-        if (parameters_.potential_type() == ultrasoft_pseudopotential)
-        {
-            potential_->generate_effective_potential(density_->rho(), density_->rho_core(), density_->magnetization());
-        }
         
         double etot = total_energy();
         
@@ -89,11 +119,11 @@ void DFT_ground_state::scf_loop(double charge_tol, double energy_tol, int num_df
         
         if (Platform::mpi_rank() == 0)
         {
-            printf("iteration : %3i, charge RMS %12.6f, energy difference : %12.6f, beta : %12.6f\n", 
+            printf("iteration : %3i, potential RMS %12.6f, energy difference : %12.6f, beta : %12.6f\n", 
                     iter, rms, fabs(eold - etot), mx->beta());
         }
         
-        if (fabs(eold - etot) < energy_tol && rms < charge_tol) break;
+        if (fabs(eold - etot) < energy_tol && rms < potential_tol) break;
 
         eold = etot;
     }

@@ -134,8 +134,11 @@ class Unit_cell
 
     public:
     
-        Unit_cell(potential_t potential_type__) : spg_dataset_(NULL), auto_rmt_(0), lmax_beta_(-1), 
-                                                  potential_type_(potential_type__)
+        Unit_cell(potential_t potential_type__) 
+            : spg_dataset_(NULL), 
+              auto_rmt_(0), 
+              lmax_beta_(-1),
+              potential_type_(potential_type__)
         {
         }
         
@@ -425,6 +428,11 @@ class Unit_cell
         inline int lmax_beta()
         {
             return lmax_beta_;
+        }
+
+        inline int potential_type()
+        {
+            return potential_type_;
         }
 };
 

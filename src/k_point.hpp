@@ -68,7 +68,7 @@ void K_point::update()
             sbessel_.resize(num_gkvec_loc()); 
             for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
             {
-                sbessel_[igkloc] = new sbessel_pw<double>(parameters_, parameters_.lmax_pw());
+                sbessel_[igkloc] = new sbessel_pw<double>(parameters_.unit_cell(), parameters_.lmax_pw());
                 sbessel_[igkloc]->interpolate(gkvec_len_[igkloc]);
             }
         }
@@ -131,7 +131,7 @@ void K_point::update()
                                               parameters_.unit_cell()->num_atom_types());
         beta_radial_integrals_.allocate();
 
-        sbessel_pw<double> jl(parameters_, parameters_.lmax_beta());
+        sbessel_pw<double> jl(parameters_.unit_cell(), parameters_.lmax_beta());
 
         for (int igk = 0; igk < num_gkvec(); igk++)
         {

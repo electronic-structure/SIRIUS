@@ -1984,6 +1984,7 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
 
             if (n == 0 || k == (max_iter - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
             {
+                std::cout << "converged in " << k << " iterations" << std::endl;
                 break;
             }
             else // otherwise set psi as a new trial basis
@@ -1992,20 +1993,6 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
                 full_hmlt_update = true;
             }
         }
-        //== else
-        //== {
-        //==     //apply_p(kp, res_active);
-        //== 
-        //==     // expand variational subspace with new basis vectors obtatined from residuals
-        //==     memcpy(&phi(0, N), &res(0, 0), n * kp->num_gkvec() * sizeof(complex16));
-
-        //==     // apply Hamiltonian to the new basis functions
-        //==     apply_h_o(kp, effective_potential, pw_ekin, n, &phi(0, N), &hphi(0, N), &ophi(0, N));
-        //==     //apply_s(kp, n, &phi(0, N), &sphi(0, N));
-        //== 
-        //==     // increase the size of the variation space
-        //==     N += n;
-        //== }
     }
 
     delete gevp;
