@@ -597,11 +597,11 @@ void Potential::generate_pw_coefs()
                 break;
             }
             #ifdef _GPU_
-            case gpu:
-            {
-                add_mt_contribution_to_pw<gpu>();
-                break;
-            }
+            //== case gpu:
+            //== {
+            //==     add_mt_contribution_to_pw<gpu>();
+            //==     break;
+            //== }
             #endif
             default:
             {

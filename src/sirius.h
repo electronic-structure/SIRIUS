@@ -63,7 +63,6 @@ extern "C" {
 #include "mpi_grid.h"
 #include "sirius_io.h"
 #include "descriptors.h"
-#include "parset.h"
 #include "mixer.h"
 #include "atom_type.h"
 #include "atom_symmetry_class.h"
