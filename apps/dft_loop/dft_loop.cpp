@@ -21,19 +21,20 @@ int main(int argn, char** argv)
             a1[x] *= scale;
             a2[x] *= scale;
         }
-        parameters.set_lattice_vectors(&a0[0], &a1[0], &a2[0]);
+        parameters.unit_cell()->set_lattice_vectors(&a0[0], &a1[0], &a2[0]);
 
         parameters.set_lmax_apw(parser["lmax_apw"].get(10));
         parameters.set_lmax_pot(parser["lmax_pot"].get(10));
         parameters.set_lmax_rho(parser["lmax_rho"].get(10));
         parameters.set_pw_cutoff(parser["pw_cutoff"].get(20.0));
         parameters.set_aw_cutoff(parser["aw_cutoff"].get(7.0));
+        parameters.set_gk_cutoff(parser["gk_cutoff"].get(7.0));
         
         for (int iat = 0; iat < parser["atoms"].size(); iat++)
         {
             std::string label;
             parser["atoms"][iat][0] >> label;
-            parameters.add_atom_type(iat, label);
+            parameters.unit_cell()->add_atom_type(iat, label, parameters.potential_type());
             for (int ia = 0; ia < parser["atoms"][iat][1].size(); ia++)
             {
                 std::vector<double> v;
@@ -42,11 +43,11 @@ int main(int argn, char** argv)
                 if (!(v.size() == 3 || v.size() == 6)) error_global(__FILE__, __LINE__, "wrong coordinates size");
                 if (v.size() == 3) v.resize(6, 0.0);
                 
-                parameters.add_atom(iat, &v[0], &v[3]);
+                parameters.unit_cell()->add_atom(iat, &v[0], &v[3]);
             }
         }
 
-        parameters.set_auto_rmt(parser["auto_rmt"].get(0));
+        parameters.unit_cell()->set_auto_rmt(parser["auto_rmt"].get(0));
         int num_mag_dims = parser["num_mag_dims"].get(0);
         int num_spins = (num_mag_dims == 0) ? 1 : 2;
         
@@ -94,15 +95,14 @@ int main(int argn, char** argv)
         }
         else
         {
-            density->initial_density(0);
-            potential->generate_effective_potential(density->rho(), density->magnetization());
+            density->initial_density();
         }
 
         DFT_ground_state dft(parameters, potential, density, &ks);
-        double charge_tol = parser["charge_tol"].get(1e-4);
+        double potential_tol = parser["potential_tol"].get(1e-4);
         double energy_tol = parser["energy_tol"].get(1e-4);
 
-        dft.scf_loop(charge_tol, energy_tol, parser["num_dft_iter"].get(100));
+        dft.scf_loop(potential_tol, energy_tol, parser["num_dft_iter"].get(100));
 
         //dft.relax_atom_positions();
 
