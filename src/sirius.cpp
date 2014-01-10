@@ -571,7 +571,7 @@ void FORTRAN(sirius_clear)(void)
 void FORTRAN(sirius_initial_density)(void)
 {
     log_function_enter(__func__);
-    density->initial_density(0);
+    density->initial_density();
     log_function_exit(__func__);
 }
 

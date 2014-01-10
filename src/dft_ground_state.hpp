@@ -1,3 +1,8 @@
+/** \file dft_ground_state.hpp
+
+    \brief Contains remaining implementation of sirius::DFT_ground_state class.
+*/
+
 inline double DFT_ground_state::energy_enuc()
 {
     double enuc = 0.0;
@@ -78,10 +83,6 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     {
         Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
-        kset_->find_eigen_states(potential_, true);
-        kset_->find_band_occupancies();
-        density_->generate(*kset_);
-        
         switch(parameters_.potential_type())
         {
             case full_potential:
@@ -91,7 +92,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
             }
             case ultrasoft_pseudopotential:
             {
-                potential_->generate_effective_potential(density_->rho(), density_->rho_core(), density_->magnetization());
+                potential_->generate_effective_potential(density_->rho(), density_->rho_pseudo_core(), density_->magnetization());
                 break;
             }
             default:
@@ -112,6 +113,10 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
             potential_->unpack(mx->output_buffer());
         }
         Platform::bcast(&rms, 1, 0);
+        
+        kset_->find_eigen_states(potential_, true);
+        kset_->find_band_occupancies();
+        density_->generate(*kset_);
         
         double etot = total_energy();
         

@@ -226,7 +226,7 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
             {
                 int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->apwlo_basis_descriptors_row(igk_row).ig,
                                                  kp->apwlo_basis_descriptors_col(igk_col).ig);
-                int igs = parameters_.reciprocal_lattice()->gvec_shell<global>(ig12);
+                int igs = parameters_.reciprocal_lattice()->gvec_shell(ig12);
 
                 complex16 zt = conj(parameters_.reciprocal_lattice()->gvec_phase_factor<global>(ig12, ia)) * ffac(igs, iat);
 

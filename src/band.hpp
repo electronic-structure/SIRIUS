@@ -1841,9 +1841,8 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
     std::vector<complex16> o_diag;
     get_h_o_diag(kp, effective_potential, pw_ekin, h_diag, o_diag);
 
-    
     int max_iter = 20;
-    int num_phi = 100 * num_psi;
+    int num_phi = std::min(5 * num_psi, kp->num_gkvec());
 
     mdarray<complex16, 2> phi(kp->num_gkvec(), num_phi);
     mdarray<complex16, 2> hphi(kp->num_gkvec(), num_phi);
@@ -2004,6 +2003,9 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
 
 void Band::solve_fv(K_point* kp, Periodic_function<double>* effective_potential)
 {
+    if (kp->num_gkvec() < parameters_.num_fv_states())
+        error_global(__FILE__, __LINE__, "number of G+k vectors is too small");
+
     switch (parameters_.basis_type())
     {
         case apwlo:

@@ -624,6 +624,8 @@ class Global
             mpi_grid_.initialize(mpi_grid_dims_);
             
             if (num_fv_states_ < 0) num_fv_states_ = int(unit_cell_->num_valence_electrons() / 2.0) + 20;
+            if (num_fv_states_ < int(unit_cell_->num_valence_electrons() / 2.0))
+                error_global(__FILE__, __LINE__, "not enough first-variational states");
 
             int nrow = mpi_grid().dimension_size(_dim_row_);
             int ncol = mpi_grid().dimension_size(_dim_col_);

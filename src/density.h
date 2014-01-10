@@ -92,10 +92,18 @@ class Density
 
         /// alias for FFT driver
         FFT3D<cpu>* fft_;
-
+        
+        /// pointer to charge density
+        /** In the case of full-potential calculation this is the full (valence + core) electron charge density.
+            In the case of pseudopotential this is the valence charge density. */ 
         Periodic_function<double>* rho_;
 
-        Periodic_function<double>* rho_core_;
+        /// pointer to pseudo core charge density
+        /** In the case of pseudopotential we need to know the non-linear core correction to the exchange-correlation 
+            energy which is introduced trough the pseudo core density: \f$ E_{xc}[\rho_{val} + \rho_{core}] \f$. The 
+            'pseudo core' reflects the fact that this density integrated does not reproduce the total number of core 
+            elctrons. */
+        Periodic_function<double>* rho_pseudo_core_;
         
         Periodic_function<double>* magnetization_[3];
         
@@ -178,6 +186,8 @@ class Density
         /// Generate charge density of core states
         void generate_core_charge_density();
 
+        void generate_pseudo_core_charge_density();
+
     public:
 
         /// Constructor
@@ -196,7 +206,7 @@ class Density
         void zero();
         
         /// Generate initial charge density and magnetization
-        void initial_density(int type);
+        void initial_density();
 
         /// Find the total leakage of the core states out of the muffin-tins
         double core_leakage();
@@ -241,9 +251,9 @@ class Density
             return rho_;
         }
         
-        Periodic_function<double>* rho_core() // TODO: rename to rho_pseudo_core
+        Periodic_function<double>* rho_pseudo_core()
         {
-            return rho_core_;
+            return rho_pseudo_core_;
         }
         
         Periodic_function<double>** magnetization()

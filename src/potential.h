@@ -25,8 +25,6 @@ class Potential
         /// local part of pseudopotential
         Periodic_function<double>* local_potential_;
 
-        //== mdarray<complex16, 3> q_pw_;
-
         mdarray<double, 3> sbessel_mom_;
 
         mdarray<double, 3> sbessel_mt_;
@@ -56,6 +54,8 @@ class Potential
         
         /// Add contribution from the pseudocharge to the plane-wave expansion
         void poisson_add_pseudo_pw(mdarray<complex16, 2>& qmt, mdarray<complex16, 2>& qit, complex16* rho_pw);
+
+        void generate_local_potential();
 
     public:
 

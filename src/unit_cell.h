@@ -434,6 +434,16 @@ class Unit_cell
         {
             return potential_type_;
         }
+
+        inline int num_nearest_neighbours(int ia)
+        {
+            return (int)nearest_neighbours_[ia].size();
+        }
+
+        inline nearest_neighbour_descriptor& nearest_neighbour(int i, int ia)
+        {
+            return nearest_neighbours_[ia][i];
+        }
 };
 
 #include "unit_cell.hpp"

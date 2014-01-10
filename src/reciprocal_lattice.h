@@ -62,6 +62,12 @@ class Reciprocal_lattice
         
         void init(int lmax);
 
+        void fix_q_radial_functions(mdarray<double, 4>& qrf);
+
+        void generate_q_radial_integrals(int lmax, mdarray<double, 4>& qrf, mdarray<double, 4>& qri);
+
+        void generate_q_pw(int lmax, mdarray<double, 4>& qri);
+
     public:
         
         Reciprocal_lattice(Unit_cell* unit_cell__, double pw_cutoff__, int lmax__) 
@@ -94,10 +100,6 @@ class Reciprocal_lattice
         /// Print basic info
         void print_info();
         
-        /// Index of G-vector shell
-        template <index_domain_t index_domain>
-        inline int gvec_shell(int ig);
-        
         /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
         template <index_domain_t index_domain>
         inline complex16 gvec_phase_factor(int ig, int ia);
@@ -109,6 +111,13 @@ class Reciprocal_lattice
         /// Make periodic function out of form factors
         /** Return vector of plane-wave coefficients */
         std::vector<complex16> make_periodic_function(mdarray<double, 2>& ffac, int ngv);
+        
+        /// Index of G-vector shell
+        inline int gvec_shell(int ig)
+        {
+            assert(ig >= 0 && ig < (int)gvec_shell_.size());
+            return gvec_shell_[ig];
+        }
 
         inline FFT3D<cpu>* fft()
         {
@@ -144,7 +153,7 @@ class Reciprocal_lattice
             return gvec_shell_len_[igs];
         }
         
-        /// Length of G-vector.
+        /// Return length of G-vector.
         inline double gvec_len(int ig)
         {
             return gvec_shell_len(gvec_shell_[ig]);
@@ -246,6 +255,32 @@ class Reciprocal_lattice
         //{
         //    return ig_by_igs_[igs];
         //}
+
+        void write_periodic_function()
+        {
+            //== mdarray<double, 3> vloc_3d_map(&vloc_it[0], fft_->size(0), fft_->size(1), fft_->size(2));
+            //== int nx = fft_->size(0);
+            //== int ny = fft_->size(1);
+            //== int nz = fft_->size(2);
+
+            //== auto p = parameters_.unit_cell()->unit_cell_parameters();
+
+            //== FILE* fout = fopen("potential.ted", "w");
+            //== fprintf(fout, "%s\n", parameters_.unit_cell()->chemical_formula().c_str());
+            //== fprintf(fout, "%16.10f %16.10f %16.10f  %16.10f %16.10f %16.10f\n", p.a, p.b, p.c, p.alpha, p.beta, p.gamma);
+            //== fprintf(fout, "%i %i %i\n", nx + 1, ny + 1, nz + 1);
+            //== for (int i0 = 0; i0 <= nx; i0++)
+            //== {
+            //==     for (int i1 = 0; i1 <= ny; i1++)
+            //==     {
+            //==         for (int i2 = 0; i2 <= nz; i2++)
+            //==         {
+            //==             fprintf(fout, "%14.8f\n", vloc_3d_map(i0 % nx, i1 % ny, i2 % nz));
+            //==         }
+            //==     }
+            //== }
+            //== fclose(fout);
+        }
 };
 
 #include "reciprocal_lattice.hpp"

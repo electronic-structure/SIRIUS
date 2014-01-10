@@ -3,9 +3,10 @@
 
 /** \file dft_ground_state.h
 
-    \brief Data and methods for DFT ground state calculation.
+    \brief Contains definition and partial implementation of sirius::DFT_ground_state class.
+*/
 
-    \page DFT Spin-polarized DFT
+/** \page DFT Spin-polarized DFT
     \section section1 Preliminary notes
 
     \note Here and below sybol \f$ \sigma \f$ is reserved for the Pauli matrices. Spin components are labeled with \f$ \alpha \f$ or \f$ \beta\f$.
@@ -34,6 +35,55 @@ class DFT_ground_state
 
         K_set* kset_;
 
+        double ewald_energy_;
+
+        double ewald_energy()
+        {
+            double alpha = 1.5;
+            
+            double ewald_g = 0;
+
+            for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
+            {
+                complex16 rho(0, 0);
+                for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+                {
+                    rho += parameters_.reciprocal_lattice()->gvec_phase_factor<global>(ig, ia) * 
+                           double(parameters_.unit_cell()->atom(ia)->zn());
+                }
+                double g2 = pow(parameters_.reciprocal_lattice()->gvec_len(ig), 2);
+                if (ig)
+                {
+                    ewald_g += pow(abs(rho), 2) * exp(-g2 / 4 / alpha) / g2;
+                }
+                else
+                {
+                    ewald_g -= pow(parameters_.unit_cell()->num_electrons(), 2) / alpha / 4; // constant term in QE comments
+                }
+            }
+            ewald_g *= (twopi / parameters_.unit_cell()->omega());
+
+            // remove self-interaction
+            for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+            {
+                ewald_g -= sqrt(alpha / pi) * pow(parameters_.unit_cell()->atom(ia)->zn(), 2);
+            }
+
+            double ewald_r = 0;
+            for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+            {
+                for (int i = 1; i < parameters_.unit_cell()->num_nearest_neighbours(ia); i++)
+                {
+                    int ja = parameters_.unit_cell()->nearest_neighbour(i, ia).atom_id;
+                    double d = parameters_.unit_cell()->nearest_neighbour(i, ia).distance;
+                    ewald_r += 0.5 * parameters_.unit_cell()->atom(ia)->zn() * parameters_.unit_cell()->atom(ja)->zn() * 
+                               gsl_sf_erfc(sqrt(alpha) * d) / d;
+                }
+            }
+
+            return (ewald_g + ewald_r);
+        }
+
     public:
 
         DFT_ground_state(Global& parameters__, Potential* potential__, Density* density__, K_set* kset__) 
@@ -42,7 +92,7 @@ class DFT_ground_state
               density_(density__), 
               kset_(kset__)
         {
-
+            if (parameters_.potential_type() == ultrasoft_pseudopotential) ewald_energy_ = ewald_energy();
         }
 
         void move_atoms(int istep);
@@ -76,21 +126,30 @@ class DFT_ground_state
                 for (int i = 0; i < 80; i++) printf("-");
                 printf("\n"); 
 
-                printf("valence_eval_sum : %18.8f\n", evalsum1);
-                printf("core_eval_sum    : %18.8f\n", evalsum2);
-
-                printf("kinetic energy   : %18.8f\n", ekin);
-                printf("<rho|V^{XC}>     : %18.8f\n", evxc);
-                printf("<rho|E^{XC}>     : %18.8f\n", eexc);
-                printf("<mag|B^{XC}>     : %18.8f\n", ebxc);
-                printf("<rho|V^{H}>      : %18.8f\n", evha);
-                printf("Total energy     : %18.8f\n", etot);
+                printf("valence_eval_sum          : %18.8f\n", evalsum1);
+                if (parameters_.potential_type() == full_potential)
+                {
+                    printf("core_eval_sum             : %18.8f\n", evalsum2);
+                    printf("kinetic energy            : %18.8f\n", ekin);
+                }
+                printf("<rho|V^{XC}>              : %18.8f\n", evxc);
+                printf("<rho|E^{XC}>              : %18.8f\n", eexc);
+                printf("<mag|B^{XC}>              : %18.8f\n", ebxc);
+                printf("<rho|V^{H}>               : %18.8f\n", evha);
+                if (parameters_.potential_type() == ultrasoft_pseudopotential)
+                {
+                    printf("one-electron contribution : %18.8f\n", evalsum1 - (evxc + evha)); // eband + deband in QE
+                    printf("hartree contribution      : %18.8f\n", 0.5 * evha);
+                    printf("xc contribution           : %18.8f\n", eexc);
+                    printf("ewald contribution        : %18.8f\n", ewald_energy_);
+                }
+                printf("Total energy              : %18.8f\n", etot);
 
                 printf("\n");
                 printf("band gap (eV) : %18.8f\n", gap);
                 printf("Efermi        : %18.8f\n", ef);
                 printf("\n");
-                printf("core leakage : %18.8f\n", core_leak);
+                if (parameters_.potential_type() == full_potential) printf("core leakage : %18.8f\n", core_leak);
             }
         }
 
@@ -170,9 +229,24 @@ class DFT_ground_state
         */
         inline double total_energy()
         {
-            return (energy_kin() + energy_exc() + 0.5 * energy_vha() + energy_enuc());
+            switch (parameters_.potential_type())
+            {
+                case full_potential:
+                {
+                    return (energy_kin() + energy_exc() + 0.5 * energy_vha() + energy_enuc());
+                }
+                case ultrasoft_pseudopotential:
+                {
+                    return (kset_->valence_eval_sum() - (energy_vxc() + energy_vha()) + 0.5 * energy_vha() + 
+                            energy_exc() + ewald_energy_);
+                }
+                default:
+                {
+                    stop_here
+                }
+            }
+            return 0; // make compiler happy
         }
-
 };
 
 #include "dft_ground_state.hpp"
