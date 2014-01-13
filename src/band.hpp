@@ -1856,7 +1856,7 @@ void Band::apply_h_o(K_point* kp, Periodic_function<double>* effective_potential
     mdarray<complex16, 2> beta_phi(nbf_tot, n);
     
     // Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j>
-    mdarray<complex16, 2> tmp(kp->num_gkvec(), nbf_tot);
+    mdarray<complex16, 2> tmp(nbf_tot, n);
 
     // collect all |beta>
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
@@ -1873,7 +1873,7 @@ void Band::apply_h_o(K_point* kp, Periodic_function<double>* effective_potential
         // number of beta functions for a given atom
         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
         blas<cpu>::gemm(0, 0, nbf, n, nbf, &parameters_.unit_cell()->atom(ia)->d_mtrx(0, 0), nbf, 
-                        &beta_phi(0, offsets[ia]), beta_phi.ld(), &tmp(0, offsets[ia]), tmp.ld());
+                        &beta_phi(offsets[ia], 0), beta_phi.ld(), &tmp(offsets[ia], 0), tmp.ld());
     }
 
     // computr <G+k|beta> * D*<beta|phi> and add to hphi
@@ -1886,7 +1886,7 @@ void Band::apply_h_o(K_point* kp, Periodic_function<double>* effective_potential
         // number of beta functions for a given atom
         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
         blas<cpu>::gemm(0, 0, nbf, n, nbf, &parameters_.unit_cell()->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
-                        &beta_phi(0, offsets[ia]), beta_phi.ld(), &tmp(0, offsets[ia]), tmp.ld());
+                        &beta_phi(offsets[ia], 0), beta_phi.ld(), &tmp(offsets[ia], 0), tmp.ld());
     }
 
     // computr <G+k|beta> * Q*<beta|phi> and add to ophi
