@@ -273,7 +273,7 @@ class K_point
 
         //== void spinor_wave_function_component_mt(int lmax, int ispn, int jloc, mt_functions<complex16>& psilm);
         
-        void generate_beta_pw(mdarray<complex16, 2>& beta_pw, int ia);
+        void generate_beta_pw(complex16* beta_pw__, int ia);
         
         void save(int id);
 

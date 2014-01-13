@@ -338,7 +338,7 @@ void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int
         // number of beta functions for a given atom
         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
 
-        kp->generate_beta_pw(beta_pw, ia);
+        kp->generate_beta_pw(&beta_pw(0, 0), ia);
         
         // compute <beta|Psi>
         blas<cpu>::gemm(2, 0, nbf, (int)occupied_bands.size(), kp->num_gkvec(), &beta_pw(0, 0), beta_pw.ld(), 

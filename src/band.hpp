@@ -1755,7 +1755,7 @@ void Band::get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potent
         // number of beta functions for a given atom
         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
 
-        kp->generate_beta_pw(beta_pw, ia);
+        kp->generate_beta_pw(&beta_pw(0, 0), ia);
 
         for (int xi2 = 0; xi2 < nbf; xi2++)
         {
@@ -1774,6 +1774,57 @@ void Band::get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potent
     }
 }
 
+//== // memory-conservative implementation
+//== void Band::apply_h_o(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, int n,
+//==                      complex16* phi__, complex16* hphi__, complex16* ophi__)
+//== {
+//==     Timer t("sirius::Band::apply_h_o");
+//== 
+//==     mdarray<complex16, 2> phi(phi__, kp->num_gkvec(), n);
+//==     mdarray<complex16, 2> hphi(hphi__, kp->num_gkvec(), n);
+//==     mdarray<complex16, 2> ophi(ophi__, kp->num_gkvec(), n);
+//==     
+//==     // apply local part of Hamiltonian
+//==     apply_h_local(kp, effective_potential, pw_ekin, n, phi__, hphi__);
+//==    
+//==     // set intial ophi
+//==     memcpy(ophi__, phi__, kp->num_gkvec() * n * sizeof(complex16));
+//== 
+//==     mdarray<complex16, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
+//==     mdarray<complex16, 2> beta_phi(parameters_.unit_cell()->max_mt_basis_size(), n);
+//==     mdarray<complex16, 2> d_beta_phi(parameters_.unit_cell()->max_mt_basis_size(), n);
+//==     mdarray<complex16, 2> q_beta_phi(parameters_.unit_cell()->max_mt_basis_size(), n);
+//== 
+//==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//==     {   
+//==         // number of beta functions for a given atom
+//==         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+//== 
+//==         kp->generate_beta_pw(beta_pw, ia);
+//== 
+//==         // compute <beta|phi>
+//==         blas<cpu>::gemm(2, 0, nbf, n, kp->num_gkvec(), &beta_pw(0, 0), beta_pw.ld(), &phi(0, 0), phi.ld(), 
+//==                         &beta_phi(0, 0), beta_phi.ld());
+//== 
+//==         // compute D*<beta|phi>
+//==         blas<cpu>::gemm(0, 0, nbf, n, nbf, &parameters_.unit_cell()->atom(ia)->d_mtrx(0, 0), nbf, 
+//==                         &beta_phi(0, 0), beta_phi.ld(), &d_beta_phi(0, 0), d_beta_phi.ld());
+//==         
+//==         // multiply by <G+k|beta> and add to hphi
+//==         blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, nbf, complex16(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
+//==                         &d_beta_phi(0, 0), d_beta_phi.ld(), complex16(1, 0), &hphi(0, 0), hphi.ld());
+//==         
+//==         // compute Q*<beta|phi>
+//==         blas<cpu>::gemm(0, 0, nbf, n, nbf, &parameters_.unit_cell()->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
+//==                         &beta_phi(0, 0), beta_phi.ld(), &q_beta_phi(0, 0), q_beta_phi.ld());
+//==         
+//==         // multiply by <G+k|beta> and add to ophi
+//==         blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, nbf, complex16(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
+//==                         &q_beta_phi(0, 0), q_beta_phi.ld(), complex16(1, 0), &ophi(0, 0), ophi.ld());
+//==     }
+//== }
+
+// memory-greedy implementation
 void Band::apply_h_o(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, int n,
                      complex16* phi__, complex16* hphi__, complex16* ophi__)
 {
@@ -1789,38 +1840,58 @@ void Band::apply_h_o(K_point* kp, Periodic_function<double>* effective_potential
     // set intial ophi
     memcpy(ophi__, phi__, kp->num_gkvec() * n * sizeof(complex16));
 
-    mdarray<complex16, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
-    mdarray<complex16, 2> beta_phi(parameters_.unit_cell()->max_mt_basis_size(), n);
-    mdarray<complex16, 2> d_beta_phi(parameters_.unit_cell()->max_mt_basis_size(), n);
-    mdarray<complex16, 2> q_beta_phi(parameters_.unit_cell()->max_mt_basis_size(), n);
+    int nbf_tot = 0;
+    std::vector<int> offsets(parameters_.unit_cell()->num_atoms());
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {   
+        offsets[ia] = nbf_tot;
+        // add number of beta functions for a given atom
+        nbf_tot += parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+    }
 
+    // <G+k|\beta_{\xi}^{\alpha}>
+    mdarray<complex16, 2> beta_pw(kp->num_gkvec(), nbf_tot);
+
+    // <\beta_{\xi}^{\alpha}|\phi_j>
+    mdarray<complex16, 2> beta_phi(nbf_tot, n);
+    
+    // Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j>
+    mdarray<complex16, 2> tmp(kp->num_gkvec(), nbf_tot);
+
+    // collect all |beta>
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {   
+        kp->generate_beta_pw(&beta_pw(0, offsets[ia]), ia);
+    }
+    // compute <beta|phi>
+    blas<cpu>::gemm(2, 0, nbf_tot, n, kp->num_gkvec(), &beta_pw(0, 0), beta_pw.ld(), &phi(0, 0), phi.ld(), 
+                    &beta_phi(0, 0), beta_phi.ld());
+    
+    // compute D*<beta|phi>
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {   
         // number of beta functions for a given atom
         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
-
-        kp->generate_beta_pw(beta_pw, ia);
-
-        // compute <beta|phi>
-        blas<cpu>::gemm(2, 0, nbf, n, kp->num_gkvec(), &beta_pw(0, 0), beta_pw.ld(), &phi(0, 0), phi.ld(), 
-                        &beta_phi(0, 0), beta_phi.ld());
-
-        // compute D*<beta|phi>
         blas<cpu>::gemm(0, 0, nbf, n, nbf, &parameters_.unit_cell()->atom(ia)->d_mtrx(0, 0), nbf, 
-                        &beta_phi(0, 0), beta_phi.ld(), &d_beta_phi(0, 0), d_beta_phi.ld());
-        
-        // multiply by <G+k|beta> and add to hphi
-        blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, nbf, complex16(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
-                        &d_beta_phi(0, 0), d_beta_phi.ld(), complex16(1, 0), &hphi(0, 0), hphi.ld());
-        
-        // compute Q*<beta|phi>
-        blas<cpu>::gemm(0, 0, nbf, n, nbf, &parameters_.unit_cell()->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
-                        &beta_phi(0, 0), beta_phi.ld(), &q_beta_phi(0, 0), q_beta_phi.ld());
-        
-        // multiply by <G+k|beta> and add to ophi
-        blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, nbf, complex16(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
-                        &q_beta_phi(0, 0), q_beta_phi.ld(), complex16(1, 0), &ophi(0, 0), ophi.ld());
+                        &beta_phi(0, offsets[ia]), beta_phi.ld(), &tmp(0, offsets[ia]), tmp.ld());
     }
+
+    // computr <G+k|beta> * D*<beta|phi> and add to hphi
+    blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, nbf_tot, complex16(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
+                    &tmp(0, 0), tmp.ld(), complex16(1, 0), &hphi(0, 0), hphi.ld());
+
+    // compute Q*<beta|phi>
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {   
+        // number of beta functions for a given atom
+        int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+        blas<cpu>::gemm(0, 0, nbf, n, nbf, &parameters_.unit_cell()->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
+                        &beta_phi(0, offsets[ia]), beta_phi.ld(), &tmp(0, offsets[ia]), tmp.ld());
+    }
+
+    // computr <G+k|beta> * Q*<beta|phi> and add to ophi
+    blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, nbf_tot, complex16(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
+                    &tmp(0, 0), tmp.ld(), complex16(1, 0), &ophi(0, 0), ophi.ld());
 }
 
 void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<double>* effective_potential)
