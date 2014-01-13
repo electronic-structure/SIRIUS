@@ -1876,7 +1876,7 @@ void Band::apply_h_o(K_point* kp, Periodic_function<double>* effective_potential
                         &beta_phi(offsets[ia], 0), beta_phi.ld(), &tmp(offsets[ia], 0), tmp.ld());
     }
 
-    // computr <G+k|beta> * D*<beta|phi> and add to hphi
+    // compute <G+k|beta> * D*<beta|phi> and add to hphi
     blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, nbf_tot, complex16(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
                     &tmp(0, 0), tmp.ld(), complex16(1, 0), &hphi(0, 0), hphi.ld());
 
