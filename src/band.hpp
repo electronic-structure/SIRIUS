@@ -1913,7 +1913,7 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
     get_h_o_diag(kp, effective_potential, pw_ekin, h_diag, o_diag);
 
     int max_iter = 10;
-    int num_phi = std::min(4 * num_psi, kp->num_gkvec());
+    int num_phi = std::min(5 * num_psi, kp->num_gkvec());
 
     mdarray<complex16, 2> phi(kp->num_gkvec(), num_phi);
     mdarray<complex16, 2> hphi(kp->num_gkvec(), num_phi);
@@ -2031,10 +2031,12 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
 
         // check which residuals are converged
         n = 0;
+        double max_res = 0;
         for (int i = 0; i < num_psi; i++)
         {
+            max_res = std::max(max_res, res_norm[i]);
             // take the residual if it's norm is above the threshold
-            if (res_norm[i] > 1e-6) 
+            if (res_norm[i] > 1e-5) 
             {
                 // shift unconverged residuals to the beginning of array
                 if (n != i) memcpy(&res(0, n), &res(0, i), kp->num_gkvec() * sizeof(complex16));
@@ -2042,6 +2044,10 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
             }
         }
         t3.stop();
+        if (Platform::mpi_rank() == 0)
+        {
+            std::cout << "current eigen-value size = " << N << ", number of added residuals = " << n << ", maximum residual = " << max_res << std::endl;
+        }
 
         // check if we run out of variational space or eigen-vectors are converged or it's a last iteration
         if (N + n > num_phi || n == 0 || k == (max_iter - 1))
