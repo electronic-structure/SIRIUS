@@ -1,5 +1,7 @@
 #include <sirius.h>
 
+// TODO: pin memory for magma!!!
+
 using namespace sirius;
 
 double gpu_cpu_balance = 0.5;
@@ -8,6 +10,8 @@ void apply_h(Global& parameters, K_point& kp, int n, std::vector<complex16>& v_r
 {
     Timer t("apply_h");
 
+    auto fft = parameters.reciprocal_lattice()->fft();
+
     mdarray<complex16, 2> phi(phi__, kp.num_gkvec(), n);
     mdarray<complex16, 2> hphi(hphi__, kp.num_gkvec(), n);
     
@@ -15,20 +19,20 @@ void apply_h(Global& parameters, K_point& kp, int n, std::vector<complex16>& v_r
     #pragma omp parallel default(shared) num_threads(num_fft_threads)
     {        
         int thread_id = omp_get_thread_num();
-        std::vector<complex16> phi_r(parameters.fft().size());
+        std::vector<complex16> phi_r(fft->size());
         
         #pragma omp for
         for (int i = 0; i < n; i++)
         {
-            parameters.fft().input(kp.num_gkvec(), kp.fft_index(), &phi(0, i), thread_id);
-            parameters.fft().transform(1, thread_id);
-            parameters.fft().output(&phi_r[0], thread_id);
+            fft->input(kp.num_gkvec(), kp.fft_index(), &phi(0, i), thread_id);
+            fft->transform(1, thread_id);
+            fft->output(&phi_r[0], thread_id);
 
-            for (int ir = 0; ir < parameters.fft().size(); ir++) phi_r[ir] *= v_r[ir];
+            for (int ir = 0; ir < fft->size(); ir++) phi_r[ir] *= v_r[ir];
 
-            parameters.fft().input(&phi_r[0], thread_id);
-            parameters.fft().transform(-1, thread_id);
-            parameters.fft().output(kp.num_gkvec(), kp.fft_index(), &hphi(0, i), thread_id);
+            fft->input(&phi_r[0], thread_id);
+            fft->transform(-1, thread_id);
+            fft->output(kp.num_gkvec(), kp.fft_index(), &hphi(0, i), thread_id);
 
             for (int ig = 0; ig < kp.num_gkvec(); ig++) hphi(ig, i) += phi(ig, i) * pow(kp.gkvec_cart(ig).length(), 2) / 2.0;
         }
@@ -50,6 +54,7 @@ struct exec_fft_args
 pthread_mutex_t exec_fft_mutex;
 int idxfft;
 
+#ifdef _GPU_
 void* exec_gpu_fft(void* args__)
 {
     exec_fft_args* args = (exec_fft_args*)args__;
@@ -194,6 +199,7 @@ void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<complex16>&
         for (int ig = 0; ig < kp.num_gkvec(); ig++) hphi(ig, i) += phi(ig, i) * pow(kp.gkvec_cart(ig).length(), 2) / 2.0;
     }
 }
+#endif
 
 //== // before have changes to pthreads
 //== void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<complex16>& v_r, complex16* phi__, complex16* hphi__)
@@ -378,12 +384,14 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
 {
     Timer t("diag_davidson");
 
-    std::vector<complex16> v_r(parameters.fft().size());
-    parameters.fft().input(parameters.num_gvec(), parameters.fft_index(), &v_pw[0]);
-    parameters.fft().transform(1);
-    parameters.fft().output(&v_r[0]);
+    auto fft = parameters.reciprocal_lattice()->fft();
 
-    for (int ir = 0; ir < parameters.fft().size(); ir++)
+    std::vector<complex16> v_r(fft->size());
+    fft->input(parameters.reciprocal_lattice()->num_gvec(), parameters.reciprocal_lattice()->fft_index(), &v_pw[0]);
+    fft->transform(1);
+    fft->output(&v_r[0]);
+
+    for (int ir = 0; ir < fft->size(); ir++)
     {
         if (fabs(imag(v_r[ir])) > 1e-10) error_local(__FILE__, __LINE__, "potential is complex");
     }
@@ -401,7 +409,7 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
         // apply Hamiltonian to intial basis functions
         for (int ig = 0; ig < kp.num_gkvec(); ig++)
         {
-            hphi(ig, i) = v_pw[parameters.index_g12(kp.gvec_index(ig), kp.gvec_index(i))];
+            hphi(ig, i) = v_pw[parameters.reciprocal_lattice()->index_g12(kp.gvec_index(ig), kp.gvec_index(i))];
         }
         hphi(i, i) += pow(kp.gkvec_cart(i).length(), 2) / 2.0;
     }
@@ -858,212 +866,212 @@ void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16
 }
 
 
-void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, int max_iter,
-                      mdarray<complex16, 2>& psi, std::vector<double>& eval_out)
-{
-    Timer t("diag_davidson");
-
-    std::vector<complex16> v_r(parameters.fft().size());
-    parameters.fft().input(parameters.num_gvec(), parameters.fft_index(), &v_pw[0]);
-    parameters.fft().transform(1);
-    parameters.fft().output(&v_r[0]);
-
-    for (int ir = 0; ir < parameters.fft().size(); ir++)
-    {
-        if (fabs(imag(v_r[ir])) > 1e-10) error_local(__FILE__, __LINE__, "potential is complex");
-    }
-
-    int num_phi = num_bands * 5;
-
-    mdarray<complex16, 2> phi(kp.num_gkvec(), num_phi);
-    mdarray<complex16, 2> hphi(kp.num_gkvec(), num_phi);
-    
-    // initial basis functions
-    phi.zero();
-    for (int i = 0; i < num_bands; i++) phi(i, i) = 1.0;
-    // apply Hamiltonian to intial states
-    for (int i = 0; i < num_bands; i++)
-    {
-        for (int ig = 0; ig < kp.num_gkvec(); ig++)
-        {
-            hphi(ig, i) = v_pw[parameters.index_g12(kp.gvec_index(ig), kp.gvec_index(i))];
-        }
-        hphi(i, i) += pow(kp.gkvec_cart(i).length(), 2) / 2.0;
-    }
-
-    mdarray<complex16, 2> hmlt(num_phi, num_phi);
-    mdarray<complex16, 2> ovlp(num_phi, num_phi);
-    mdarray<complex16, 2> hmlt_old(num_phi, num_phi);
-    mdarray<complex16, 2> ovlp_old(num_phi, num_phi);
-    mdarray<complex16, 2> evec(num_phi, num_phi);
-
-    std::vector<double> eval(num_phi);
-    std::vector<double> eval_old(num_phi, 1e100);
-    
-    mdarray<complex16, 2> res(kp.num_gkvec(), num_bands);
-
-    std::vector<double> res_e(num_bands);
-
-    generalized_evp* gevp = new generalized_evp_lapack(-1.0);
-
-    int N = num_bands; // intial eigen-value problem size
-    int n = 0; // number of added residuals
-
-    bool full_hmlt_update = true;
-
-    for (int k = 0; k < max_iter; k++)
-    {
-        std::cout << std::endl;
-        std::cout << "Iteration : " << k << ", subspace size : " << N << std::endl;
-       
-        Timer t1("setup_evp");
-        if (full_hmlt_update)
-        {
-            // compute the Hamiltonian matrix: <phi|H|phi>
-            blas<cpu>::gemm(2, 0, N, N, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
-       
-            // initial overlap matrix is identity
-            ovlp.zero();
-            for (int i = 0; i < N; i++) ovlp(i, i) = complex16(1, 0);
-
-            full_hmlt_update = false;
-        }
-        else
-        {
-            int M = N - n;
-            // copy old Hamiltonian and overlap
-            for (int i = 0; i < M; i++)
-            {
-                memcpy(&hmlt(0, i), &hmlt_old(0, i), M * sizeof(complex16));
-                memcpy(&ovlp(0, i), &ovlp_old(0, i), M * sizeof(complex16));
-            }
-            // <{phi,res}|H|res>
-            blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, M), hphi.ld(), &hmlt(0, M), hmlt.ld());
-            
-            // <{phi,res}|res>
-            blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &phi(0, M), phi.ld(), &ovlp(0, M), ovlp.ld());
-        }
-
-        //== Utils::write_matrix("hmlt.txt", hmlt, N, N, true, true, "%12.6f");
-        //== Utils::write_matrix("ovlp.txt", ovlp, N, N, true, true, "%12.6f");
-
-        // save Hamiltonian and overlap
-        for (int i = 0; i < N; i++)
-        {
-            memcpy(&hmlt_old(0, i), &hmlt(0, i), N * sizeof(complex16));
-            memcpy(&ovlp_old(0, i), &ovlp(0, i), N * sizeof(complex16));
-        }
-        t1.stop();
-        
-        // solve generalized eigen-value problem    
-        Timer t2("solve_evp");
-        gevp->solve(N, num_bands, hmlt.get_ptr(), hmlt.ld(), ovlp.get_ptr(), ovlp.ld(), &eval[0], 
-                    evec.get_ptr(), evec.ld());
-        t2.stop();
-
-        //== Utils::write_matrix("evec.txt", evec, N, N, false, true, "%12.6f");
-
-        printf("lower and upper eigen-values : %16.8f %16.8f\n", eval[0], eval[num_bands - 1]);
-        
-        n = 0;
-        // check eigen-values for convergence
-        for (int i = 0; i < num_bands; i++)
-        {
-            if (fabs(eval[i] - eval_old[i]) > 1e-6)
-            {
-                res_e[n] = eval[i];
-                
-                // use hmlt as a temporary storage for evec
-                memcpy(&hmlt(0, n), &evec(0, i), N * sizeof(complex16));
-
-                n++;
-            }
-            eval_old[i] = eval[i];
-        }
-
-        std::cout << "number of non-converged eigen-vectors : " << n << std::endl;
-        
-        // if we have unconverged eigen-states
-        if (n != 0)
-        {
-            Timer t3("residuals");
-            // compute residuals
-            // 1. \Psi_{i} = \phi_{mu} * Z_{mu, i}
-            blas<cpu>::gemm(0, 0, kp.num_gkvec(), n, N, &phi(0, 0), phi.ld(), &hmlt(0, 0), hmlt.ld(), &res(0, 0), res.ld());
-            // 2. multiply \Psi_{i} with energy
-            for (int i = 0; i < n; i++)
-            {
-                for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, i) *= res_e[i];
-            }
-            // 3. r_{i} = H\Psi_{i} - E_{i}\Psi_{i}
-            blas<cpu>::gemm(0, 0, kp.num_gkvec(), n, N, complex16(1, 0), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld(), 
-                            complex16(-1, 0), &res(0, 0), res.ld());
-            t3.stop();
-
-                        
-            //== Utils::write_matrix("res.txt", res, kp.num_gkvec(), n, false, true, "%12.6f");
-
-            // apply preconditioner
-            #pragma omp parallel for
-            for (int i = 0; i < n; i++)
-            {
-                double norm = 0.0;
-                // apply preconditioner
-                for (int ig = 0; ig < kp.num_gkvec(); ig++)
-                {
-                    norm += real(conj(res(ig, i)) * res(ig, i));
-                    complex16 t = pow(kp.gkvec_cart(ig).length(), 2) / 2.0 + v_pw[0] - res_e[i];
-                    if (abs(t) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
-                    res(ig, i) /= t;
-                }
-                //if (norm < 1e-10) error_local(__FILE__, __LINE__, "residual is converged");
-            }
-
-            check_degeneracy(kp, N, n, phi, res);
-        }
-
-        // check if we run out of variational space or eigen-vectors are converged or it's a last iteration
-        if (N + n > num_phi || n == 0 || k == (max_iter - 1))
-        {   
-            Timer t3("update_phi");
-            // \Psi_{i} = \phi_{mu} * Z_{mu, i}
-            blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), 
-                            &psi(0, 0), psi.ld());
-            t3.stop();
-
-            if (n == 0 || k == (max_iter - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
-            {
-                break;
-            }
-            else // otherwise set psi as a new trial basis
-            {
-                memcpy(phi.get_ptr(), psi.get_ptr(), num_bands * kp.num_gkvec() * sizeof(complex16));
-                apply_h(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
-                N = num_bands;
-                full_hmlt_update = true;
-                for (int i = 0; i < num_bands; i++) eval_old[i] = 1e100;
-            }
-        }
-        else
-        {
-            //apply_p(kp, res_active);
-            
-            // expand variational subspace with new basis vectors obtatined from residuals
-            expand_subspace_v2(kp, N, n, phi, res);
-
-            // apply Hamiltonian to the new basis functions
-            apply_h(parameters, kp, n, v_r, &phi(0, N), &hphi(0, N));
-            
-            // increase the size of the variation space
-            N += n;
-        }
-    }
-
-    delete gevp;
-
-    eval_out.resize(num_bands);
-    memcpy(&eval_out[0], &eval[0], num_bands * sizeof(double));
-}
+//== void diag_davidson_v3(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, int max_iter,
+//==                       mdarray<complex16, 2>& psi, std::vector<double>& eval_out)
+//== {
+//==     Timer t("diag_davidson");
+//== 
+//==     std::vector<complex16> v_r(parameters.fft().size());
+//==     parameters.fft().input(parameters.num_gvec(), parameters.fft_index(), &v_pw[0]);
+//==     parameters.fft().transform(1);
+//==     parameters.fft().output(&v_r[0]);
+//== 
+//==     for (int ir = 0; ir < parameters.fft().size(); ir++)
+//==     {
+//==         if (fabs(imag(v_r[ir])) > 1e-10) error_local(__FILE__, __LINE__, "potential is complex");
+//==     }
+//== 
+//==     int num_phi = num_bands * 5;
+//== 
+//==     mdarray<complex16, 2> phi(kp.num_gkvec(), num_phi);
+//==     mdarray<complex16, 2> hphi(kp.num_gkvec(), num_phi);
+//==     
+//==     // initial basis functions
+//==     phi.zero();
+//==     for (int i = 0; i < num_bands; i++) phi(i, i) = 1.0;
+//==     // apply Hamiltonian to intial states
+//==     for (int i = 0; i < num_bands; i++)
+//==     {
+//==         for (int ig = 0; ig < kp.num_gkvec(); ig++)
+//==         {
+//==             hphi(ig, i) = v_pw[parameters.index_g12(kp.gvec_index(ig), kp.gvec_index(i))];
+//==         }
+//==         hphi(i, i) += pow(kp.gkvec_cart(i).length(), 2) / 2.0;
+//==     }
+//== 
+//==     mdarray<complex16, 2> hmlt(num_phi, num_phi);
+//==     mdarray<complex16, 2> ovlp(num_phi, num_phi);
+//==     mdarray<complex16, 2> hmlt_old(num_phi, num_phi);
+//==     mdarray<complex16, 2> ovlp_old(num_phi, num_phi);
+//==     mdarray<complex16, 2> evec(num_phi, num_phi);
+//== 
+//==     std::vector<double> eval(num_phi);
+//==     std::vector<double> eval_old(num_phi, 1e100);
+//==     
+//==     mdarray<complex16, 2> res(kp.num_gkvec(), num_bands);
+//== 
+//==     std::vector<double> res_e(num_bands);
+//== 
+//==     generalized_evp* gevp = new generalized_evp_lapack(-1.0);
+//== 
+//==     int N = num_bands; // intial eigen-value problem size
+//==     int n = 0; // number of added residuals
+//== 
+//==     bool full_hmlt_update = true;
+//== 
+//==     for (int k = 0; k < max_iter; k++)
+//==     {
+//==         std::cout << std::endl;
+//==         std::cout << "Iteration : " << k << ", subspace size : " << N << std::endl;
+//==        
+//==         Timer t1("setup_evp");
+//==         if (full_hmlt_update)
+//==         {
+//==             // compute the Hamiltonian matrix: <phi|H|phi>
+//==             blas<cpu>::gemm(2, 0, N, N, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
+//==        
+//==             // initial overlap matrix is identity
+//==             ovlp.zero();
+//==             for (int i = 0; i < N; i++) ovlp(i, i) = complex16(1, 0);
+//== 
+//==             full_hmlt_update = false;
+//==         }
+//==         else
+//==         {
+//==             int M = N - n;
+//==             // copy old Hamiltonian and overlap
+//==             for (int i = 0; i < M; i++)
+//==             {
+//==                 memcpy(&hmlt(0, i), &hmlt_old(0, i), M * sizeof(complex16));
+//==                 memcpy(&ovlp(0, i), &ovlp_old(0, i), M * sizeof(complex16));
+//==             }
+//==             // <{phi,res}|H|res>
+//==             blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, M), hphi.ld(), &hmlt(0, M), hmlt.ld());
+//==             
+//==             // <{phi,res}|res>
+//==             blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &phi(0, M), phi.ld(), &ovlp(0, M), ovlp.ld());
+//==         }
+//== 
+//==         //== Utils::write_matrix("hmlt.txt", hmlt, N, N, true, true, "%12.6f");
+//==         //== Utils::write_matrix("ovlp.txt", ovlp, N, N, true, true, "%12.6f");
+//== 
+//==         // save Hamiltonian and overlap
+//==         for (int i = 0; i < N; i++)
+//==         {
+//==             memcpy(&hmlt_old(0, i), &hmlt(0, i), N * sizeof(complex16));
+//==             memcpy(&ovlp_old(0, i), &ovlp(0, i), N * sizeof(complex16));
+//==         }
+//==         t1.stop();
+//==         
+//==         // solve generalized eigen-value problem    
+//==         Timer t2("solve_evp");
+//==         gevp->solve(N, num_bands, hmlt.get_ptr(), hmlt.ld(), ovlp.get_ptr(), ovlp.ld(), &eval[0], 
+//==                     evec.get_ptr(), evec.ld());
+//==         t2.stop();
+//== 
+//==         //== Utils::write_matrix("evec.txt", evec, N, N, false, true, "%12.6f");
+//== 
+//==         printf("lower and upper eigen-values : %16.8f %16.8f\n", eval[0], eval[num_bands - 1]);
+//==         
+//==         n = 0;
+//==         // check eigen-values for convergence
+//==         for (int i = 0; i < num_bands; i++)
+//==         {
+//==             if (fabs(eval[i] - eval_old[i]) > 1e-6)
+//==             {
+//==                 res_e[n] = eval[i];
+//==                 
+//==                 // use hmlt as a temporary storage for evec
+//==                 memcpy(&hmlt(0, n), &evec(0, i), N * sizeof(complex16));
+//== 
+//==                 n++;
+//==             }
+//==             eval_old[i] = eval[i];
+//==         }
+//== 
+//==         std::cout << "number of non-converged eigen-vectors : " << n << std::endl;
+//==         
+//==         // if we have unconverged eigen-states
+//==         if (n != 0)
+//==         {
+//==             Timer t3("residuals");
+//==             // compute residuals
+//==             // 1. \Psi_{i} = \phi_{mu} * Z_{mu, i}
+//==             blas<cpu>::gemm(0, 0, kp.num_gkvec(), n, N, &phi(0, 0), phi.ld(), &hmlt(0, 0), hmlt.ld(), &res(0, 0), res.ld());
+//==             // 2. multiply \Psi_{i} with energy
+//==             for (int i = 0; i < n; i++)
+//==             {
+//==                 for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, i) *= res_e[i];
+//==             }
+//==             // 3. r_{i} = H\Psi_{i} - E_{i}\Psi_{i}
+//==             blas<cpu>::gemm(0, 0, kp.num_gkvec(), n, N, complex16(1, 0), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld(), 
+//==                             complex16(-1, 0), &res(0, 0), res.ld());
+//==             t3.stop();
+//== 
+//==                         
+//==             //== Utils::write_matrix("res.txt", res, kp.num_gkvec(), n, false, true, "%12.6f");
+//== 
+//==             // apply preconditioner
+//==             #pragma omp parallel for
+//==             for (int i = 0; i < n; i++)
+//==             {
+//==                 double norm = 0.0;
+//==                 // apply preconditioner
+//==                 for (int ig = 0; ig < kp.num_gkvec(); ig++)
+//==                 {
+//==                     norm += real(conj(res(ig, i)) * res(ig, i));
+//==                     complex16 t = pow(kp.gkvec_cart(ig).length(), 2) / 2.0 + v_pw[0] - res_e[i];
+//==                     if (abs(t) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
+//==                     res(ig, i) /= t;
+//==                 }
+//==                 //if (norm < 1e-10) error_local(__FILE__, __LINE__, "residual is converged");
+//==             }
+//== 
+//==             check_degeneracy(kp, N, n, phi, res);
+//==         }
+//== 
+//==         // check if we run out of variational space or eigen-vectors are converged or it's a last iteration
+//==         if (N + n > num_phi || n == 0 || k == (max_iter - 1))
+//==         {   
+//==             Timer t3("update_phi");
+//==             // \Psi_{i} = \phi_{mu} * Z_{mu, i}
+//==             blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), 
+//==                             &psi(0, 0), psi.ld());
+//==             t3.stop();
+//== 
+//==             if (n == 0 || k == (max_iter - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
+//==             {
+//==                 break;
+//==             }
+//==             else // otherwise set psi as a new trial basis
+//==             {
+//==                 memcpy(phi.get_ptr(), psi.get_ptr(), num_bands * kp.num_gkvec() * sizeof(complex16));
+//==                 apply_h(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
+//==                 N = num_bands;
+//==                 full_hmlt_update = true;
+//==                 for (int i = 0; i < num_bands; i++) eval_old[i] = 1e100;
+//==             }
+//==         }
+//==         else
+//==         {
+//==             //apply_p(kp, res_active);
+//==             
+//==             // expand variational subspace with new basis vectors obtatined from residuals
+//==             expand_subspace_v2(kp, N, n, phi, res);
+//== 
+//==             // apply Hamiltonian to the new basis functions
+//==             apply_h(parameters, kp, n, v_r, &phi(0, N), &hphi(0, N));
+//==             
+//==             // increase the size of the variation space
+//==             N += n;
+//==         }
+//==     }
+//== 
+//==     delete gevp;
+//== 
+//==     eval_out.resize(num_bands);
+//==     memcpy(&eval_out[0], &eval[0], num_bands * sizeof(double));
+//== }
 
 void diag_davidson_v3_gpu(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, int max_iter,
                           mdarray<complex16, 2>& psi, std::vector<double>& eval_out)
@@ -1295,81 +1303,81 @@ void diag_davidson_v3_gpu(Global& parameters, K_point& kp, std::vector<complex16
 #endif
 }
 
-void sum_rho(Global& parameters, K_point& kp, int num_bands, mdarray<complex16, 2>& psi)
-{
-    Timer t("sum_rho");
+//== void sum_rho(Global& parameters, K_point& kp, int num_bands, mdarray<complex16, 2>& psi)
+//== {
+//==     Timer t("sum_rho");
+//== 
+//==     std::vector<double> rho(parameters.fft().size());
+//== 
+//==     int num_fft_threads = Platform::num_fft_threads();
+//==     #pragma omp parallel default(shared) num_threads(num_fft_threads)
+//==     {
+//==         int thread_id = omp_get_thread_num();
+//== 
+//==         std::vector<double> rho_pt(parameters.fft().size(), 0);
+//==         
+//==         std::vector<complex16> psi_r(parameters.fft().size());
+//== 
+//==         #pragma omp for
+//==         for (int i = 0; i < num_bands; i++)
+//==         {
+//==             parameters.fft().input(kp.num_gkvec(), kp.fft_index(), &psi(0, i), thread_id);
+//==             parameters.fft().transform(1, thread_id);
+//==             parameters.fft().output(&psi_r[0], thread_id);
+//==             
+//==             double w = 1.0 / parameters.omega();
+//==             
+//==             for (int ir = 0; ir < parameters.fft().size(); ir++) rho_pt[ir] += real(psi_r[ir] * conj(psi_r[ir])) * w;
+//==         }
+//== 
+//==         #pragma omp critical
+//==         for (int ir = 0; ir < parameters.fft().size(); ir++) rho[ir] += rho_pt[ir];
+//==     }
+//== }
 
-    std::vector<double> rho(parameters.fft().size());
-
-    int num_fft_threads = Platform::num_fft_threads();
-    #pragma omp parallel default(shared) num_threads(num_fft_threads)
-    {
-        int thread_id = omp_get_thread_num();
-
-        std::vector<double> rho_pt(parameters.fft().size(), 0);
-        
-        std::vector<complex16> psi_r(parameters.fft().size());
-
-        #pragma omp for
-        for (int i = 0; i < num_bands; i++)
-        {
-            parameters.fft().input(kp.num_gkvec(), kp.fft_index(), &psi(0, i), thread_id);
-            parameters.fft().transform(1, thread_id);
-            parameters.fft().output(&psi_r[0], thread_id);
-            
-            double w = 1.0 / parameters.omega();
-            
-            for (int ir = 0; ir < parameters.fft().size(); ir++) rho_pt[ir] += real(psi_r[ir] * conj(psi_r[ir])) * w;
-        }
-
-        #pragma omp critical
-        for (int ir = 0; ir < parameters.fft().size(); ir++) rho[ir] += rho_pt[ir];
-    }
-}
-
-void diag_exact(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, std::vector<double>& eval)
-{
-    Timer t("diag_exact");
-
-    splindex<block_cyclic> spl_gkvec_row(kp.num_gkvec(), parameters.mpi_grid().dimension_size(_dim_row_), 
-                                         parameters.mpi_grid().coordinate(_dim_row_), parameters.cyclic_block_size());
-    splindex<block_cyclic> spl_gkvec_col(kp.num_gkvec(), parameters.mpi_grid().dimension_size(_dim_col_), 
-                                         parameters.mpi_grid().coordinate(_dim_col_), parameters.cyclic_block_size());
-
-    mdarray<complex16, 2> hmlt(spl_gkvec_row.local_size(), spl_gkvec_col.local_size());
-    mdarray<complex16, 2> ovlp(spl_gkvec_row.local_size(), spl_gkvec_col.local_size());
-    mdarray<complex16, 2> evec(spl_gkvec_row.local_size(), spl_gkvec_col.local_size());
-    eval.resize(num_bands);
-
-    for (int icol_loc = 0; icol_loc < spl_gkvec_col.local_size(); icol_loc++)
-    {
-        int icol = spl_gkvec_col[icol_loc];
-        for (int irow_loc = 0; irow_loc < spl_gkvec_row.local_size(); irow_loc++)
-        {
-            int irow = spl_gkvec_row[irow_loc];
-
-            int ig = parameters.index_g12(kp.gvec_index(irow), kp.gvec_index(icol));
-            hmlt(irow_loc, icol_loc) = v_pw[ig];
-            ovlp(irow_loc, icol_loc) = 0;
-
-            if (irow == icol) 
-            {
-                hmlt(irow_loc, icol_loc) += pow(kp.gkvec_cart(irow).length(), 2) / 2.0;
-                ovlp(irow_loc, icol_loc) = 1;
-            }
-        }
-    }
-
-    generalized_evp* solver = new generalized_evp_scalapack(parameters.cyclic_block_size(),  
-                                                            parameters.mpi_grid().dimension_size(_dim_row_),
-                                                            parameters.mpi_grid().dimension_size(_dim_col_),
-                                                            parameters.blacs_context(), -1.0);
-    
-    solver->solve(kp.num_gkvec(), num_bands, hmlt.get_ptr(), hmlt.ld(), ovlp.get_ptr(), ovlp.ld(), &eval[0], 
-                  evec.get_ptr(), evec.ld());
-    
-    delete solver;
-}
+//== void diag_exact(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, std::vector<double>& eval)
+//== {
+//==     Timer t("diag_exact");
+//== 
+//==     splindex<block_cyclic> spl_gkvec_row(kp.num_gkvec(), parameters.mpi_grid().dimension_size(_dim_row_), 
+//==                                          parameters.mpi_grid().coordinate(_dim_row_), parameters.cyclic_block_size());
+//==     splindex<block_cyclic> spl_gkvec_col(kp.num_gkvec(), parameters.mpi_grid().dimension_size(_dim_col_), 
+//==                                          parameters.mpi_grid().coordinate(_dim_col_), parameters.cyclic_block_size());
+//== 
+//==     mdarray<complex16, 2> hmlt(spl_gkvec_row.local_size(), spl_gkvec_col.local_size());
+//==     mdarray<complex16, 2> ovlp(spl_gkvec_row.local_size(), spl_gkvec_col.local_size());
+//==     mdarray<complex16, 2> evec(spl_gkvec_row.local_size(), spl_gkvec_col.local_size());
+//==     eval.resize(num_bands);
+//== 
+//==     for (int icol_loc = 0; icol_loc < spl_gkvec_col.local_size(); icol_loc++)
+//==     {
+//==         int icol = spl_gkvec_col[icol_loc];
+//==         for (int irow_loc = 0; irow_loc < spl_gkvec_row.local_size(); irow_loc++)
+//==         {
+//==             int irow = spl_gkvec_row[irow_loc];
+//== 
+//==             int ig = parameters.index_g12(kp.gvec_index(irow), kp.gvec_index(icol));
+//==             hmlt(irow_loc, icol_loc) = v_pw[ig];
+//==             ovlp(irow_loc, icol_loc) = 0;
+//== 
+//==             if (irow == icol) 
+//==             {
+//==                 hmlt(irow_loc, icol_loc) += pow(kp.gkvec_cart(irow).length(), 2) / 2.0;
+//==                 ovlp(irow_loc, icol_loc) = 1;
+//==             }
+//==         }
+//==     }
+//== 
+//==     generalized_evp* solver = new generalized_evp_scalapack(parameters.cyclic_block_size(),  
+//==                                                             parameters.mpi_grid().dimension_size(_dim_row_),
+//==                                                             parameters.mpi_grid().dimension_size(_dim_col_),
+//==                                                             parameters.blacs_context(), -1.0);
+//==     
+//==     solver->solve(kp.num_gkvec(), num_bands, hmlt.get_ptr(), hmlt.ld(), ovlp.get_ptr(), ovlp.ld(), &eval[0], 
+//==                   evec.get_ptr(), evec.ld());
+//==     
+//==     delete solver;
+//== }
 
 
 
@@ -1377,7 +1385,8 @@ void test_davidson()
 {
     int num_bands = 20;
     int max_iter = 8;
-    double Ekin = 4;
+    double gk_cutoff = 3;
+    double pw_cutoff = 10;
 
     std::string device("cpu");
 
@@ -1387,7 +1396,8 @@ void test_davidson()
         JSON_tree parser(fname);
         num_bands = parser["num_bands"].get(num_bands);
         max_iter = parser["max_iter"].get(max_iter);
-        Ekin = parser["Ekin"].get(Ekin);
+        pw_cutoff = parser["pw_cutoff"].get(pw_cutoff);
+        gk_cutoff = parser["gk_cutoff"].get(gk_cutoff);
         device = parser["device"].get(device);
         gpu_cpu_balance = parser["gpu_cpu_balance"].get(gpu_cpu_balance);
     }
@@ -1398,19 +1408,20 @@ void test_davidson()
     double a1[] = {0, 12.975 * 1.889726125, 0};
     double a2[] = {0, 0, 12.975 * 1.889726125};
 
-    parameters.set_lattice_vectors(a0, a1, a2);
-    parameters.set_pw_cutoff(2 * sqrt(2 * Ekin) + 0.5);
+    parameters.unit_cell()->set_lattice_vectors(a0, a1, a2);
+    parameters.set_pw_cutoff(pw_cutoff);
     parameters.initialize();
     
     double vk[] = {0, 0, 0};
     K_point kp(parameters, vk, 1.0);
-    kp.generate_gkvec(sqrt(2 * Ekin));
+    kp.generate_gkvec(gk_cutoff);
 
     if (Platform::mpi_rank() == 0) std::cout << "num_gkvec = " << kp.num_gkvec() << std::endl;
 
     // generate some potential in plane-wave domain
-    std::vector<complex16> v_pw(parameters.num_gvec());
-    for (int ig = 0; ig < parameters.num_gvec(); ig++) v_pw[ig] = complex16(1.0 / pow(parameters.gvec_len(ig) + 1.0, 1), 0.0);
+    std::vector<complex16> v_pw(parameters.reciprocal_lattice()->num_gvec());
+    for (int ig = 0; ig < parameters.reciprocal_lattice()->num_gvec(); ig++) 
+        v_pw[ig] = complex16(1.0 / pow(parameters.reciprocal_lattice()->gvec_len(ig) + 1.0, 1), 0.0);
 
     
     mdarray<complex16, 2> psi(kp.num_gkvec(), num_bands);
