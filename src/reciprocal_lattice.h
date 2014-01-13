@@ -58,8 +58,6 @@ class Reciprocal_lattice
         /// length of G-vectors belonging to the same shell
         std::vector<double> gvec_shell_len_;
 
-        mdarray<complex16, 3> q_pw_;
-        
         void init(int lmax);
 
         void fix_q_radial_functions(mdarray<double, 4>& qrf);
@@ -241,10 +239,10 @@ class Reciprocal_lattice
             return gvec_ylm_(lm, igloc);
         }
 
-        inline complex16& q_pw(int ig, int idx, int iat)
-        {
-            return q_pw_(ig, idx, iat);
-        }
+        //== inline complex16& q_pw(int ig, int idx, int iat)
+        //== {
+        //==     return q_pw_(ig, idx, iat);
+        //== }
 
         //inline int igs_size(int igs)
         //{

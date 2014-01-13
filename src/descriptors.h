@@ -120,10 +120,7 @@ class uspp_descriptor
 
         mdarray<complex16, 2> q_mtrx;
 
-
-
-    
-
+        mdarray<complex16, 2> q_pw;
 };
 
 struct nearest_neighbour_descriptor

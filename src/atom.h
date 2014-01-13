@@ -290,6 +290,11 @@ class Atom
         {
             return d_mtrx_(xi1, xi2);
         }
+        
+        inline mdarray<complex16, 2>& d_mtrx()
+        {
+            return d_mtrx_;
+        }
 };
 
 #include "atom.hpp"

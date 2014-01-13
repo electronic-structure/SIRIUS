@@ -1729,7 +1729,7 @@ void Band::apply_h_local(K_point* kp, Periodic_function<double>* effective_poten
             fft_->transform(-1, thread_id);
             fft_->output(kp->num_gkvec(), kp->fft_index(), &hphi(0, i), thread_id);
             
-            for (int igk = 0; igk < kp->num_gkvec(); igk++) hphi(igk, i) += phi(igk, i) * pw_ekin[igk]; //pow(kp->gkvec_cart(ig).length(), 2) / 2.0;
+            for (int igk = 0; igk < kp->num_gkvec(); igk++) hphi(igk, i) += phi(igk, i) * pw_ekin[igk];
         }
     }
 }
@@ -1737,7 +1737,7 @@ void Band::apply_h_local(K_point* kp, Periodic_function<double>* effective_poten
 void Band::get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
                         std::vector<complex16>& h_diag, std::vector<complex16>& o_diag)
 {
-    Timer t("sirius::Band::get_ho_diag");
+    Timer t("sirius::Band::get_h_o_diag");
 
     h_diag.resize(kp->num_gkvec());
     o_diag.resize(kp->num_gkvec());
@@ -1787,7 +1787,7 @@ void Band::apply_h_o(K_point* kp, Periodic_function<double>* effective_potential
     apply_h_local(kp, effective_potential, pw_ekin, n, phi__, hphi__);
    
     // set intial ophi
-    memcpy(ophi__, phi__,  kp->num_gkvec() * n * sizeof(complex16));
+    memcpy(ophi__, phi__, kp->num_gkvec() * n * sizeof(complex16));
 
     mdarray<complex16, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
     mdarray<complex16, 2> beta_phi(parameters_.unit_cell()->max_mt_basis_size(), n);
@@ -1841,8 +1841,8 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
     std::vector<complex16> o_diag;
     get_h_o_diag(kp, effective_potential, pw_ekin, h_diag, o_diag);
 
-    int max_iter = 20;
-    int num_phi = std::min(5 * num_psi, kp->num_gkvec());
+    int max_iter = 10;
+    int num_phi = std::min(4 * num_psi, kp->num_gkvec());
 
     mdarray<complex16, 2> phi(kp->num_gkvec(), num_phi);
     mdarray<complex16, 2> hphi(kp->num_gkvec(), num_phi);

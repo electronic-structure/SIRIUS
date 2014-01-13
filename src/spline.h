@@ -148,6 +148,8 @@ class Spline
             return *this;
         }
 
+        // TODO: double check the documentation
+        /// Integrate two splines with r^2 weight
         template <typename U>
         static T integrate(Spline<T>* f, Spline<U>* g)
         {

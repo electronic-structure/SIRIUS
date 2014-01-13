@@ -1006,35 +1006,49 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho, Per
     fft_->transform(-1);
     fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), 
                  &effective_potential_->f_pw(0));
-    
+   
+    #pragma omp parallel for
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
         auto atom_type = parameters_.unit_cell()->atom(ia)->type();
-        int iat = atom_type->id();
+        int nbf = atom_type->mt_basis_size();
+
+        for (int xi2 = 0; xi2 < nbf; xi2++)
+        {
+            for (int xi1 = 0; xi1 <= xi2; xi1++)
+            {
+                int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+
+                complex16 z(0, 0);
+
+                for (int igloc = 0; igloc < parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
+                {
+                    int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
+                    z += conj(atom_type->uspp().q_pw(igloc, idx12)) * effective_potential_->f_pw(ig) * 
+                         parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia);
+                }
+
+                parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) = z * parameters_.unit_cell()->omega();
+                parameters_.unit_cell()->atom(ia)->d_mtrx(xi2, xi1) = conj(z) * parameters_.unit_cell()->omega();
+            }
+        }
+    }
+
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {
+        Platform::allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().get_ptr(),
+                            (int)parameters_.unit_cell()->atom(ia)->d_mtrx().size());
+
+        auto atom_type = parameters_.unit_cell()->atom(ia)->type();
         int nbf = atom_type->mt_basis_size();
 
         for (int xi2 = 0; xi2 < nbf; xi2++)
         {
             int idxrf2 = atom_type->indexb(xi2).idxrf;
-            for (int xi1 = 0; xi1 <= xi2; xi1++)
+            for (int xi1 = 0; xi1 < nbf; xi1++)
             {
                 int idxrf1 = atom_type->indexb(xi1).idxrf;
-
-                int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
-
-                complex16 z(0, 0);
-                
-                for (auto it = parameters_.reciprocal_lattice()->spl_num_gvec().begin(); it.valid(); it++)
-                {
-                    z += conj(parameters_.reciprocal_lattice()->q_pw(it.idx_local(), idx12, iat)) * effective_potential_->f_pw(it.idx()) * 
-                         parameters_.reciprocal_lattice()->gvec_phase_factor<local>(it.idx_local(), ia);
-                }
-                Platform::allreduce(&z, 1);
-
-                complex16 z1 = z * parameters_.unit_cell()->omega() + atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
-
-                parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) = z1;
-                parameters_.unit_cell()->atom(ia)->d_mtrx(xi2, xi1) = conj(z1);
+                parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
             }
         }
     }

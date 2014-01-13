@@ -476,9 +476,9 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
         auto atom_type = parameters_.unit_cell()->atom(ia)->type();
-        int iat = atom_type->id();
         int nbf = atom_type->mt_basis_size();
         
+        #pragma omp parallel
         for (auto it = rl->spl_num_gvec().begin(); it.valid(); it++)
         {
             complex16 z1 = rl->gvec_phase_factor<local>(it.idx_local(), ia);
@@ -488,11 +488,11 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                 for (int xi1 = 0; xi1 <= xi2; xi1++)
                 {
                     int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
-                    z2 += pp_complex_density_matrix(xi2, xi1, 0, ia) * conj(z1) * rl->q_pw(it.idx_local(), idx12, iat);
+                    z2 += pp_complex_density_matrix(xi2, xi1, 0, ia) * conj(z1) * atom_type->uspp().q_pw(it.idx_local(), idx12);
 
                     if (xi1 != xi2) // TODO: use Hermitian symmetry
                     {
-                        z2 += pp_complex_density_matrix(xi1, xi2, 0, ia) * z1 * conj(rl->q_pw(it.idx_local(), idx12, iat));
+                        z2 += pp_complex_density_matrix(xi1, xi2, 0, ia) * z1 * conj(atom_type->uspp().q_pw(it.idx_local(), idx12));
                     }
                 }
             }

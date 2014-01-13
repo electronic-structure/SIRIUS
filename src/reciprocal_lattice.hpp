@@ -309,10 +309,6 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
         for (int m = -l; m <= l; m++, lm++) zilm[lm] = pow(complex16(0, 1), l);
     }
 
-    int nbf_max = unit_cell_->max_mt_basis_size();
-    
-    q_pw_.set_dimensions(spl_num_gvec_.local_size(), nbf_max * (nbf_max + 1) / 2, unit_cell_->num_atom_types()); 
-    q_pw_.allocate();
     for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
     {
         auto atom_type = unit_cell_->atom_type(iat);
@@ -322,6 +318,9 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
         Gaunt_coefficients<double> gaunt_coefs(lmax_beta, 2 * lmax_beta, lmax_beta);
 
         atom_type->uspp().q_mtrx.zero();
+        
+        atom_type->uspp().q_pw.set_dimensions(spl_num_gvec_.local_size(), nbf * (nbf + 1) / 2);
+        atom_type->uspp().q_pw.allocate();
 
         for (int xi2 = 0; xi2 < nbf; xi2++)
         {
@@ -347,11 +346,11 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
                         {
                             v[lm3] = conj(zilm[lm3]) * gvec_ylm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3], iat, igs);
                         }
-                        q_pw_(igloc, idx12, iat) = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
+                        atom_type->uspp().q_pw(igloc, idx12) = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
 
                         if (igs == 0)
                         {
-                            atom_type->uspp().q_mtrx(xi1, xi2) = unit_cell_->omega() * q_pw_(0, idx12, iat);
+                            atom_type->uspp().q_mtrx(xi1, xi2) = unit_cell_->omega() * atom_type->uspp().q_pw(0, idx12);
                             atom_type->uspp().q_mtrx(xi2, xi1) = conj(atom_type->uspp().q_mtrx(xi1, xi2));
                         }
                     }
