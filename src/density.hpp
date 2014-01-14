@@ -316,6 +316,8 @@ std::vector< std::pair<int, double> > Density::get_occupied_bands_list(Band* ban
 void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
                                          mdarray<complex16, 4>& pp_complex_density_matrix)
 {
+    Timer t("sirius::Density::add_kpoint_contribution_pp");
+
     if (occupied_bands.size() == 0) return;
 
     // take only occupied wave-functions
@@ -473,30 +475,50 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     auto rl = parameters_.reciprocal_lattice();
 
     std::vector<complex16> f_pw(rl->num_gvec(), complex16(0, 0));
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    
+    #pragma omp parallel
     {
-        auto atom_type = parameters_.unit_cell()->atom(ia)->type();
-        int nbf = atom_type->mt_basis_size();
-        
-        #pragma omp parallel
-        for (auto it = rl->spl_num_gvec().begin(); it.valid(); it++)
+        std::vector<complex16> f_pw_pt(rl->spl_num_gvec().local_size(), complex16(0, 0));
+
+        #pragma omp for
+        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
-            complex16 z1 = rl->gvec_phase_factor<local>(it.idx_local(), ia);
-            complex16 z2(0, 0);
+            auto atom_type = parameters_.unit_cell()->atom(ia)->type();
+            int nbf = atom_type->mt_basis_size();
+
             for (int xi2 = 0; xi2 < nbf; xi2++)
             {
-                for (int xi1 = 0; xi1 <= xi2; xi1++)
-                {
-                    int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
-                    z2 += pp_complex_density_matrix(xi2, xi1, 0, ia) * conj(z1) * atom_type->uspp().q_pw(it.idx_local(), idx12);
+                int idx12 = xi2 * (xi2 + 1) / 2;
 
-                    if (xi1 != xi2) // TODO: use Hermitian symmetry
+                // add diagonal term
+                for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
+                {
+                    // D_{xi2,xix} * Q(G)_{xi2, xi2}
+                    f_pw_pt[igloc] += pp_complex_density_matrix(xi2, xi2, 0, ia) * 
+                                      conj(rl->gvec_phase_factor<local>(igloc, ia)) * 
+                                      atom_type->uspp().q_pw(igloc, idx12 + xi2);
+
+                }
+                // add non-diagonal terms
+                for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
+                {
+                    for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
                     {
-                        z2 += pp_complex_density_matrix(xi1, xi2, 0, ia) * z1 * conj(atom_type->uspp().q_pw(it.idx_local(), idx12));
+                        // D_{xi2,xi1} * Q(G)_{xi1, xi2}
+                        f_pw_pt[igloc] += 2 * real(pp_complex_density_matrix(xi2, xi1, 0, ia) * 
+                                                   conj(rl->gvec_phase_factor<local>(igloc, ia)) * 
+                                                   atom_type->uspp().q_pw(igloc, idx12));
                     }
                 }
             }
-            f_pw[it.idx()] += z2;
+        }
+        
+        // sum contribution from different atoms
+        #pragma omp critical
+        for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
+        {
+            int ig = rl->spl_num_gvec(igloc);
+            f_pw[ig] += f_pw_pt[igloc];
         }
     }
     
