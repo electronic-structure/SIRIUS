@@ -123,7 +123,7 @@ def main():
     fout.close()
 
     fout = open("sirius.json", "w")
-    json.dump({"mpi_grid_dims" : [1], "lattice_vectors" : avec, "atoms" : json_atoms}, fout, indent=2)
+    fout.write(re.sub(r"(?<=[0-9]),\s\n\s*(?=[-|0-9])", r", ", json.dumps({"mpi_grid_dims" : [1], "lattice_vectors" : avec, "atoms" : json_atoms}, indent=2)))
     fout.close()
 
     return
