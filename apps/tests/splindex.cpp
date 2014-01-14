@@ -22,7 +22,28 @@ void test1(void)
 
 }
 
+void test2()
+{
+    printf("\n");
+    printf("test2\n");
+
+    for (int i = 0; i < 4; i++)
+    {
+        printf("rank : %i\n", i);
+        splindex<block> spl(17, 4, i);
+        
+        #pragma omp parallel
+        for (auto it = spl.begin(); it.valid(); it++)
+        {
+            printf("thread_id: %i, local index : %i, global index : %i\n", Platform::thread_id(), it.idx_local(), it.idx());
+        }
+    }
+    
+
+}
+
 int main(int argn, char** argv)
 {
     test1();
+    test2();
 }
