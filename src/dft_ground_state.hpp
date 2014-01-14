@@ -73,7 +73,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     }
     else
     {
-        stop_here
+        mx = new Linear_mixer(potential_->size(), parameters_.mixer_input_section_.beta_);
     }
 
     double eold = 0.0;

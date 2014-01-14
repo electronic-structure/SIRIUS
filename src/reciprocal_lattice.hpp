@@ -191,19 +191,6 @@ std::vector<complex16> Reciprocal_lattice::make_periodic_function(mdarray<double
 
     splindex<block> spl_ngv(ngv, Platform::num_mpi_ranks(), Platform::mpi_rank());
 
-    //== #pragma omp parallel for default(shared)
-    //== for (int igloc = 0; igloc < spl_ngv.local_size(); igloc++)
-    //== {
-    //==     int ig = spl_ngv[igloc];
-    //==     int igs = gvec_shell<global>(ig);
-
-    //==     for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
-    //==     {            
-    //==         int iat = unit_cell_->atom(ia)->type_id();
-    //==         f_pw[ig] += fourpi_omega * conj(gvec_phase_factor<global>(ig, ia)) * ffac(iat, igs);
-
-    //==     }
-    //== }
     #pragma omp parallel
     for (auto it = spl_ngv.begin(); it.valid(); it++)
     {
@@ -346,6 +333,7 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
                         {
                             v[lm3] = conj(zilm[lm3]) * gvec_ylm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3], iat, igs);
                         }
+
                         atom_type->uspp().q_pw(igloc, idx12) = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
 
                         if (igs == 0)

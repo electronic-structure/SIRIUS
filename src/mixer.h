@@ -205,10 +205,12 @@ class Linear_mixer: public Mixer
         /// previous root mean square
         double rms_prev_;
 
+        double beta0_;
+
     public:
         
         /// Constructor
-        Linear_mixer(size_t size__) : Mixer(size__, 2, 0.1), rms_prev_(0)
+        Linear_mixer(size_t size__, double beta0__) : Mixer(size__, 2, beta0__), rms_prev_(0), beta0_(beta0__)
         {
         }
 
@@ -220,14 +222,14 @@ class Linear_mixer: public Mixer
             
             double rms = rms_deviation();
 
-            if (rms < rms_prev_) 
-            {
-                beta_ *= 1.1;
-            }
-            else 
-            {
-                beta_ = 0.1;
-            }
+            //if (rms < rms_prev_) 
+            //{
+            //    beta_ *= 1.1;
+            //}
+            //else 
+            //{
+            //    beta_ = beta0_;
+            //}
             beta_ = std::min(beta_, 0.9);
 
             rms_prev_ = rms;

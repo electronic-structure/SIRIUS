@@ -39,6 +39,8 @@ class DFT_ground_state
 
         double ewald_energy()
         {
+            Timer t("sirius::DFT_ground_state::ewald_energy");
+
             double alpha = 1.5;
             
             double ewald_g = 0;
@@ -173,7 +175,10 @@ class DFT_ground_state
         
         inline double energy_exc()
         {
-            return inner(parameters_, density_->rho(), potential_->xc_energy_density());
+            double exc = inner(parameters_, density_->rho(), potential_->xc_energy_density());
+            if (parameters_.potential_type() == ultrasoft_pseudopotential) 
+                exc += inner(parameters_, density_->rho_pseudo_core(), potential_->xc_energy_density());
+            return exc;
         }
 
         inline double energy_bxc()

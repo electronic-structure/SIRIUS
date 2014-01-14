@@ -1800,7 +1800,7 @@ void Band::get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potent
 //==         // number of beta functions for a given atom
 //==         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
 //== 
-//==         kp->generate_beta_pw(beta_pw, ia);
+//==         kp->generate_beta_pw(&beta_pw(0, 0), ia);
 //== 
 //==         // compute <beta|phi>
 //==         blas<cpu>::gemm(2, 0, nbf, n, kp->num_gkvec(), &beta_pw(0, 0), beta_pw.ld(), &phi(0, 0), phi.ld(), 
@@ -1912,8 +1912,8 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
     std::vector<complex16> o_diag;
     get_h_o_diag(kp, effective_potential, pw_ekin, h_diag, o_diag);
 
-    int max_iter = 10;
-    int num_phi = std::min(5 * num_psi, kp->num_gkvec());
+    int max_iter = 20;
+    int num_phi = std::min(4 * num_psi, kp->num_gkvec());
 
     mdarray<complex16, 2> phi(kp->num_gkvec(), num_phi);
     mdarray<complex16, 2> hphi(kp->num_gkvec(), num_phi);
@@ -1924,13 +1924,17 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
     mdarray<complex16, 2> hmlt_old(num_phi, num_phi);
     mdarray<complex16, 2> ovlp_old(num_phi, num_phi);
     mdarray<complex16, 2> evec(num_phi, num_phi);
-    std::vector<double> eval(num_phi);
+    std::vector<double> eval(num_psi);
+    std::vector<double> eval_old(num_psi, 1e100);
     
     mdarray<complex16, 2> res(kp->num_gkvec(), num_psi); // residuals
 
     std::vector<double> res_norm(num_psi); // norm of residuals
+    std::vector<double> res_e(num_psi);
 
     generalized_evp* gevp = new generalized_evp_lapack(-1.0);
+
+    bool convergence_by_energy = true;
 
     int N; // current eigen-value problem size
     int n; // number of added residuals
@@ -1997,57 +2001,113 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
         gevp->solve(N, num_psi, hmlt.get_ptr(), hmlt.ld(), ovlp.get_ptr(), ovlp.ld(), &eval[0], 
                     evec.get_ptr(), evec.ld());
         t2.stop();
-        
-        Timer t3("sirius::Band::solve_fv_iterative_diagonalization:residuals");
-        // compute residuals
-        // 1. O\Psi_{i} = O\phi_{mu} * Z_{mu, i}
-        blas<cpu>::gemm(0, 0, kp->num_gkvec(), num_psi, N, &ophi(0, 0), ophi.ld(), &evec(0, 0), evec.ld(), 
-                        &res(0, 0), res.ld());
-        // 2. multiply O\Psi_{i} with energy
-        for (int i = 0; i < num_psi; i++)
-        {
-            for (int igk = 0; igk < kp->num_gkvec(); igk++) res(igk, i) *= eval[i];
-        }
-        // 3. r_{i} = H\Psi_{i} - E_{i}O\Psi_{i}
-        blas<cpu>::gemm(0, 0, kp->num_gkvec(), num_psi, N, complex16(1, 0), &hphi(0, 0), hphi.ld(), 
-                        &evec(0, 0), evec.ld(), complex16(-1, 0), &res(0, 0), res.ld());
 
-        // compute norm and apply preconditioner
-        #pragma omp parallel for
-        for (int i = 0; i < num_psi; i++)
+        Timer t3("sirius::Band::solve_fv_iterative_diagonalization:residuals");
+        /* Quantum Espresso way of estimating basis update: residuals for which |e - e_old| > eps 
+           are accepted as the additional basis functions */
+        if (convergence_by_energy)
         {
-            double r = 0;
-            for (int igk = 0; igk < kp->num_gkvec(); igk++) r += real(conj(res(igk, i)) * res(igk, i));
-            res_norm[i] = r;
-            
-            // apply preconditioner
-            for (int igk = 0; igk < kp->num_gkvec(); igk++)
+            n = 0;
+            // check eigen-values for convergence
+            for (int i = 0; i < num_psi; i++)
             {
-                complex16 z = h_diag[igk] - eval[i] * o_diag[igk];
-                if (abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
-                res(igk, i) /= z;
+                if (fabs(eval[i] - eval_old[i]) > 1e-6)
+                {
+                    res_e[n] = eval[i];
+                    
+                    // use hmlt as a temporary storage for evec
+                    memcpy(&hmlt(0, n), &evec(0, i), N * sizeof(complex16));
+ 
+                    n++;
+                }
+                eval_old[i] = eval[i];
+            }
+
+            // if we have unconverged eigen-states
+            if (n != 0)
+            {
+                // compute residuals
+                // 1. O\Psi_{i} = O\phi_{mu} * Z_{mu, i}
+                blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, N, &ophi(0, 0), ophi.ld(), &hmlt(0, 0), hmlt.ld(), 
+                                &res(0, 0), res.ld());
+                // 2. multiply O\Psi_{i} with energy
+                for (int i = 0; i < n; i++)
+                {
+                    for (int igk = 0; igk < kp->num_gkvec(); igk++) res(igk, i) *= eval[i];
+                }
+                // 3. r_{i} = H\Psi_{i} - E_{i}O\Psi_{i}
+                blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, N, complex16(1, 0), &hphi(0, 0), hphi.ld(), 
+                                &hmlt(0, 0), hmlt.ld(), complex16(-1, 0), &res(0, 0), res.ld());
+
+                // apply preconditioner
+                #pragma omp parallel for
+                for (int i = 0; i < n; i++)
+                {
+                    // apply preconditioner
+                    for (int igk = 0; igk < kp->num_gkvec(); igk++)
+                    {
+                        //complex16 z = h_diag[igk] - res_e[i] * o_diag[igk];
+                        //if (abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
+                        double d = real(h_diag[igk] - res_e[i] * o_diag[igk]);
+                        if (fabs(d) < 1e-4) error_local(__FILE__, __LINE__, "problematic division");
+                        res(igk, i) /= d;
+                    }
+                }
             }
         }
-
-        // check which residuals are converged
-        n = 0;
-        double max_res = 0;
-        for (int i = 0; i < num_psi; i++)
+        /* Alternative way to estimate basis update: take residuals with norm > eps */
+        else
         {
-            max_res = std::max(max_res, res_norm[i]);
-            // take the residual if it's norm is above the threshold
-            if (res_norm[i] > 1e-5) 
+            // compute residuals
+            // 1. O\Psi_{i} = O\phi_{mu} * Z_{mu, i}
+            blas<cpu>::gemm(0, 0, kp->num_gkvec(), num_psi, N, &ophi(0, 0), ophi.ld(), &evec(0, 0), evec.ld(), 
+                            &res(0, 0), res.ld());
+            // 2. multiply O\Psi_{i} with energy
+            for (int i = 0; i < num_psi; i++)
             {
-                // shift unconverged residuals to the beginning of array
-                if (n != i) memcpy(&res(0, n), &res(0, i), kp->num_gkvec() * sizeof(complex16));
-                n++;
+                for (int igk = 0; igk < kp->num_gkvec(); igk++) res(igk, i) *= eval[i];
+            }
+            // 3. r_{i} = H\Psi_{i} - E_{i}O\Psi_{i}
+            blas<cpu>::gemm(0, 0, kp->num_gkvec(), num_psi, N, complex16(1, 0), &hphi(0, 0), hphi.ld(), 
+                            &evec(0, 0), evec.ld(), complex16(-1, 0), &res(0, 0), res.ld());
+
+            // compute norm and apply preconditioner
+            #pragma omp parallel for
+            for (int i = 0; i < num_psi; i++)
+            {
+                double r = 0;
+                for (int igk = 0; igk < kp->num_gkvec(); igk++) r += real(conj(res(igk, i)) * res(igk, i));
+                res_norm[i] = r;
+                
+                // apply preconditioner
+                for (int igk = 0; igk < kp->num_gkvec(); igk++)
+                {
+                    complex16 z = h_diag[igk] - eval[i] * o_diag[igk];
+                    if (abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
+                    res(igk, i) /= z;
+                }
+            }
+
+            // check which residuals are converged
+            n = 0;
+            for (int i = 0; i < num_psi; i++)
+            {
+                // take the residual if it's norm is above the threshold
+                if (res_norm[i] > 1e-5) 
+                {
+                    // shift unconverged residuals to the beginning of array
+                    if (n != i) memcpy(&res(0, n), &res(0, i), kp->num_gkvec() * sizeof(complex16));
+                    n++;
+                }
             }
         }
         t3.stop();
-        if (Platform::mpi_rank() == 0)
-        {
-            std::cout << "current eigen-value size = " << N << ", number of added residuals = " << n << ", maximum residual = " << max_res << std::endl;
-        }
+
+        //if (Platform::mpi_rank() == 0)
+        //{
+        //    std::cout << "iteration:" << k << ", current eigen-value size = " << N << ", number of added residuals = " << n << std::endl;
+        //    //printf("lower and upper eigen-values : %16.8f %16.8f\n", eval[0], eval[num_psi - 1]);
+        //}
 
         // check if we run out of variational space or eigen-vectors are converged or it's a last iteration
         if (N + n > num_phi || n == 0 || k == (max_iter - 1))
@@ -2060,7 +2120,7 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
 
             if (n == 0 || k == (max_iter - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
             {
-                std::cout << "converged in " << k << " iterations" << std::endl;
+                //std::cout << "converged in " << k << " iterations" << std::endl;
                 break;
             }
             else // otherwise set psi as a new trial basis

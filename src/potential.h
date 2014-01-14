@@ -138,6 +138,8 @@ class Potential
         /// Generate plane-wave coefficients of the potential in the interstitial region
         void generate_pw_coefs();
 
+        void generate_d_mtrx();
+
         double value(double* vc);
 
         void check_potential_continuity_at_mt();

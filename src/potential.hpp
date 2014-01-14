@@ -1000,7 +1000,12 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho, Per
     // synchronize effective potential
     effective_potential_->sync(false, true);
     for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->sync(false, true);
-    
+}
+
+void Potential::generate_d_mtrx()
+{   
+    Timer t("sirius::Potential::generate_d_mtrx");
+
     // get plane-wave coefficients of effective potential
     fft_->input(&effective_potential_->f_it<global>(0));
     fft_->transform(-1);
@@ -1045,10 +1050,12 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho, Per
         for (int xi2 = 0; xi2 < nbf; xi2++)
         {
             int idxrf2 = atom_type->indexb(xi2).idxrf;
+            int lm2 =  atom_type->indexb(xi2).lm;
             for (int xi1 = 0; xi1 < nbf; xi1++)
             {
                 int idxrf1 = atom_type->indexb(xi1).idxrf;
-                parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
+                int lm1 =  atom_type->indexb(xi1).lm;
+                if (lm1 == lm2) parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
             }
         }
     }

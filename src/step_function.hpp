@@ -30,6 +30,8 @@ Step_function::Step_function(Unit_cell* unit_cell__, Reciprocal_lattice* recipro
 {
     Timer t("sirius::Step_function::Step_function");
 
+    if (unit_cell__->num_atoms() == 0) return;
+
     auto fft = reciprocal_lattice_->fft();
     
     mdarray<double, 2> ffac(unit_cell_->num_atom_types(), (int)reciprocal_lattice_->num_gvec_shells_total());

@@ -49,6 +49,10 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         parameters_.unit_cell()->generate_radial_functions();
         parameters_.unit_cell()->generate_radial_integrals();
     }
+    if (precompute && parameters_.potential_type() == ultrasoft_pseudopotential)
+    {
+        potential->generate_d_mtrx();
+    }
     
     // solve secular equation and generate wave functions
     for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
