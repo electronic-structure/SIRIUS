@@ -157,7 +157,8 @@ class Global
         {
             std::string fname("sirius.json");
             
-            int num_fft_threads = Platform::max_num_threads();
+            int num_fft_threads = Platform::num_fft_threads();
+            if (num_fft_threads == -1) num_fft_threads = Platform::max_num_threads();
 
             if (Utils::file_exists(fname))
             {
