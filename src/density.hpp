@@ -313,6 +313,55 @@ std::vector< std::pair<int, double> > Density::get_occupied_bands_list(Band* ban
     return bands;
 }
 
+//== // memory-conservative implementation
+//== void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
+//==                                          mdarray<complex16, 4>& pp_complex_density_matrix)
+//== {
+//==     Timer t("sirius::Density::add_kpoint_contribution_pp");
+//== 
+//==     if (occupied_bands.size() == 0) return;
+//== 
+//==     // take only occupied wave-functions
+//==     mdarray<complex16, 2> wfs(kp->num_gkvec(), (int)occupied_bands.size());
+//==     for (int i = 0; i < (int)occupied_bands.size(); i++)
+//==     {
+//==         memcpy(&wfs(0, i), &kp->spinor_wave_function(0, 0, occupied_bands[i].first), kp->num_gkvec() * sizeof(complex16));
+//==     }
+//== 
+//==     mdarray<complex16, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
+//== 
+//==     mdarray<complex16, 2> beta_psi(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+//== 
+//==     // auxiliary arrays
+//==     mdarray<complex16, 2> bp1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+//==     mdarray<complex16, 2> bp2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+//== 
+//==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//==     {   
+//==         // number of beta functions for a given atom
+//==         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+//== 
+//==         kp->generate_beta_pw(&beta_pw(0, 0), ia);
+//==         
+//==         // compute <beta|Psi>
+//==         blas<cpu>::gemm(2, 0, nbf, (int)occupied_bands.size(), kp->num_gkvec(), &beta_pw(0, 0), beta_pw.ld(), 
+//==                         &wfs(0, 0), wfs.ld(), &beta_psi(0, 0), beta_psi.ld());
+//==         
+//==         for (int i = 0; i < (int)occupied_bands.size(); i++)
+//==         {
+//==             for (int xi = 0; xi < nbf; xi++)
+//==             {
+//==                 bp1(xi, i) = beta_psi(xi, i);
+//==                 bp2(xi, i) = conj(beta_psi(xi, i)) * occupied_bands[i].second;
+//==             }
+//==         }
+//== 
+//==         blas<cpu>::gemm(0, 1, nbf, nbf, (int)occupied_bands.size(), complex16(1, 0), &bp1(0, 0), bp1.ld(),
+//==                         &bp2(0, 0), bp2.ld(), complex16(1, 0), &pp_complex_density_matrix(0, 0, 0, ia), pp_complex_density_matrix.ld());
+//==     }
+//== }
+
+// memory-greedy implementation
 void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
                                          mdarray<complex16, 4>& pp_complex_density_matrix)
 {
@@ -327,36 +376,54 @@ void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int
         memcpy(&wfs(0, i), &kp->spinor_wave_function(0, 0, occupied_bands[i].first), kp->num_gkvec() * sizeof(complex16));
     }
 
-    mdarray<complex16, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
-
-    mdarray<complex16, 2> beta_psi(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
-
-    // auxiliary arrays
-    mdarray<complex16, 2> bp1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
-    mdarray<complex16, 2> bp2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
-
+    int nbf_tot = 0;
+    std::vector<int> offsets(parameters_.unit_cell()->num_atoms());
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {   
-        // number of beta functions for a given atom
-        int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+        offsets[ia] = nbf_tot;
+        // add number of beta functions for a given atom
+        nbf_tot += parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+    }
 
-        kp->generate_beta_pw(&beta_pw(0, 0), ia);
-        
-        // compute <beta|Psi>
-        blas<cpu>::gemm(2, 0, nbf, (int)occupied_bands.size(), kp->num_gkvec(), &beta_pw(0, 0), beta_pw.ld(), 
-                        &wfs(0, 0), wfs.ld(), &beta_psi(0, 0), beta_psi.ld());
-        
-        for (int i = 0; i < (int)occupied_bands.size(); i++)
-        {
-            for (int xi = 0; xi < nbf; xi++)
+    // <G+k|\beta_{\xi}^{\alpha}>
+    mdarray<complex16, 2> beta_pw(kp->num_gkvec(), nbf_tot);
+
+    // <\beta_{\xi}^{\alpha}|\Psi_j>
+    mdarray<complex16, 2> beta_psi(nbf_tot, (int)occupied_bands.size());
+    
+    // collect all |beta>
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {   
+        kp->generate_beta_pw(&beta_pw(0, offsets[ia]), ia);
+    }
+    // compute <beta|Psi>
+    blas<cpu>::gemm(2, 0, nbf_tot, (int)occupied_bands.size(), kp->num_gkvec(), &beta_pw(0, 0), beta_pw.ld(), 
+                    &wfs(0, 0), wfs.ld(), &beta_psi(0, 0), beta_psi.ld());
+    
+    #pragma omp parallel
+    {
+        // auxiliary arrays
+        mdarray<complex16, 2> bp1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+        mdarray<complex16, 2> bp2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+        #pragma omp for
+        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        {   
+            // number of beta functions for a given atom
+            int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+
+            for (int i = 0; i < (int)occupied_bands.size(); i++)
             {
-                bp1(xi, i) = beta_psi(xi, i);
-                bp2(xi, i) = conj(beta_psi(xi, i)) * occupied_bands[i].second;
+                for (int xi = 0; xi < nbf; xi++)
+                {
+                    bp1(xi, i) = beta_psi(offsets[ia] + xi, i);
+                    bp2(xi, i) = conj(beta_psi(offsets[ia] + xi, i)) * occupied_bands[i].second;
+                }
             }
-        }
 
-        blas<cpu>::gemm(0, 1, nbf, nbf, (int)occupied_bands.size(), complex16(1, 0), &bp1(0, 0), bp1.ld(),
-                        &bp2(0, 0), bp2.ld(), complex16(1, 0), &pp_complex_density_matrix(0, 0, 0, ia), pp_complex_density_matrix.ld());
+            blas<cpu>::gemm(0, 1, nbf, nbf, (int)occupied_bands.size(), complex16(1, 0), &bp1(0, 0), bp1.ld(),
+                            &bp2(0, 0), bp2.ld(), complex16(1, 0), &pp_complex_density_matrix(0, 0, 0, ia), 
+                            pp_complex_density_matrix.ld());
+        }
     }
 }
 
