@@ -84,7 +84,7 @@ int main(int argn, char** argv)
         K_set ks(parameters);
         ks.add_kpoints(kpoints, &kpoint_weights[0]);
         ks.initialize();
-
+        
         Density* density = new Density(parameters);
         density->allocate();
         
