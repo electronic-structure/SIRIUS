@@ -1563,6 +1563,22 @@ void K_point::generate_beta_pw(complex16* beta_pw__, int ia)
     }
 }
 
+void K_point::generate_beta_pw(complex16* beta_pw__, Atom_type* atom_type)
+{
+    Timer t("sirius::K_point::generate_beta_pw");
+    int iat = atom_type->id();
+    
+    mdarray<complex16, 2> beta_pw(beta_pw__, num_gkvec(), atom_type->mt_basis_size());
+    
+    for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
+    {
+        for (int igk = 0; igk < num_gkvec(); igk++)
+        {
+            beta_pw(igk, xi) = beta_pw_(igk, xi, iat);
+        }
+    }
+}
+
 
 
 

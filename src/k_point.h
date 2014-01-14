@@ -275,6 +275,8 @@ class K_point
         
         void generate_beta_pw(complex16* beta_pw__, int ia);
         
+        void generate_beta_pw(complex16* beta_pw__, Atom_type* atom_type);
+        
         void save(int id);
 
         void load(HDF5_tree h5in, int id);

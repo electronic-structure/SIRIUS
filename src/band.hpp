@@ -1736,6 +1736,47 @@ void Band::apply_h_local(K_point* kp, Periodic_function<double>* effective_poten
     }
 }
 
+//== // slow
+//== void Band::get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
+//==                         std::vector<complex16>& h_diag, std::vector<complex16>& o_diag)
+//== {
+//==     Timer t("sirius::Band::get_h_o_diag");
+//== 
+//==     h_diag.resize(kp->num_gkvec());
+//==     o_diag.resize(kp->num_gkvec());
+//==     
+//==     // compute V_{loc}(G=0)
+//==     double v0 = 0;
+//==     for (int ir = 0; ir < fft_->size(); ir++) v0 += effective_potential->f_it<global>(ir);
+//==     v0 /= parameters_.unit_cell()->omega();
+//==     
+//==     for (int igk = 0; igk < kp->num_gkvec(); igk++) h_diag[igk] = pw_ekin[igk] + v0;
+//== 
+//==     mdarray<complex16, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
+//==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//==     {   
+//==         // number of beta functions for a given atom
+//==         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+//== 
+//==         kp->generate_beta_pw(&beta_pw(0, 0), ia);
+//== 
+//==         for (int xi2 = 0; xi2 < nbf; xi2++)
+//==         {
+//==             for (int xi1 = 0; xi1 < nbf; xi1++)
+//==             {
+//==                 for (int igk = 0; igk < kp->num_gkvec(); igk++)
+//==                 {
+//==                     h_diag[igk] += beta_pw(igk, xi1) * conj(beta_pw(igk, xi2)) * 
+//==                                    parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2);
+//== 
+//==                     o_diag[igk] += beta_pw(igk, xi1) * conj(beta_pw(igk, xi2)) * 
+//==                                    parameters_.unit_cell()->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
+//==                 }
+//==             }
+//==         }
+//==     }
+//== }
+
 void Band::get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
                         std::vector<complex16>& h_diag, std::vector<complex16>& o_diag)
 {
@@ -1752,25 +1793,58 @@ void Band::get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potent
     for (int igk = 0; igk < kp->num_gkvec(); igk++) h_diag[igk] = pw_ekin[igk] + v0;
 
     mdarray<complex16, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    {   
-        // number of beta functions for a given atom
-        int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+    mdarray<complex16, 2> beta_pw_tmp(parameters_.unit_cell()->max_mt_basis_size(), kp->num_gkvec());
+    for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+    {
+        auto atom_type = parameters_.unit_cell()->atom_type(iat);
+        int nbf = atom_type->mt_basis_size();
+        mdarray<complex16, 2> d_sum(nbf, nbf);
+        mdarray<complex16, 2> q_sum(nbf, nbf);
+        d_sum.zero();
+        q_sum.zero();
+        
+        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        {
+            if (parameters_.unit_cell()->atom(ia)->type_id() == iat)
+            {
+                for (int xi2 = 0; xi2 < nbf; xi2++)
+                {
+                    for (int xi1 = 0; xi1 < nbf; xi1++)
+                    {
+                        d_sum(xi1, xi2) += parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2);
+                        q_sum(xi1, xi2) += parameters_.unit_cell()->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
+                    }
+                }
+            }
+        }
 
-        kp->generate_beta_pw(&beta_pw(0, 0), ia);
+        kp->generate_beta_pw(&beta_pw(0, 0), atom_type);
+        for (int igk = 0; igk < kp->num_gkvec(); igk++)
+        {
+            for (int xi = 0; xi < nbf; xi++) beta_pw_tmp(xi, igk) = beta_pw(igk, xi);
+        }
 
+        std::vector< std::pair<int, int> > idx(nbf * nbf);
+        int n = 0;
         for (int xi2 = 0; xi2 < nbf; xi2++)
         {
             for (int xi1 = 0; xi1 < nbf; xi1++)
             {
-                for (int igk = 0; igk < kp->num_gkvec(); igk++)
-                {
-                    h_diag[igk] += beta_pw(igk, xi1) * conj(beta_pw(igk, xi2)) * 
-                                   parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2);
+                idx[n++] = std::pair<int, int>(xi1, xi2);
+            }
+        }
 
-                    o_diag[igk] += beta_pw(igk, xi1) * conj(beta_pw(igk, xi2)) * 
-                                   parameters_.unit_cell()->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
-                }
+        #pragma omp parallel for
+        for (int igk = 0; igk < kp->num_gkvec(); igk++)
+        {
+            for (int i = 0; i < n; i++)
+            {
+                int xi1 = idx[i].first;
+                int xi2 = idx[i].second;
+                complex16 z = beta_pw_tmp(xi1, igk) * conj(beta_pw_tmp(xi2, igk));
+
+                h_diag[igk] += z * d_sum(xi1, xi2);
+                o_diag[igk] += z * q_sum(xi1, xi2);
             }
         }
     }
