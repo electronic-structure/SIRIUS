@@ -406,9 +406,9 @@ class K_point
             return fv_eigen_values_[i];
         }
 
-        inline std::vector<double>& fv_eigen_values()
+        void set_fv_eigen_values(double* eval)
         {
-            return fv_eigen_values_;
+            memcpy(&fv_eigen_values_[0], eval, parameters_.num_fv_states() * sizeof(double));
         }
         
         inline double weight()

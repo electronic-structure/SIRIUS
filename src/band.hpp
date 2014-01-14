@@ -1675,7 +1675,9 @@ void Band::solve_fv_exact_diagonalization(K_point* kp, Periodic_function<double>
     }
     else
     {
-        solve_fv_evp_1stage(kp, h, o, kp->fv_eigen_values(), kp->fv_eigen_vectors());
+        std::vector<double> eval(parameters_.num_fv_states());
+        solve_fv_evp_1stage(kp, h, o, eval, kp->fv_eigen_vectors());
+        kp->set_fv_eigen_values(&eval[0]);
     }
         
     #ifdef _MAGMA_
@@ -1912,7 +1914,7 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
     std::vector<complex16> o_diag;
     get_h_o_diag(kp, effective_potential, pw_ekin, h_diag, o_diag);
 
-    int max_iter = 20;
+    int max_iter = 10;
     int num_phi = std::min(4 * num_psi, kp->num_gkvec());
 
     mdarray<complex16, 2> phi(kp->num_gkvec(), num_phi);
@@ -1939,8 +1941,6 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
     int N; // current eigen-value problem size
     int n; // number of added residuals
 
-    bool full_hmlt_update = true;
-    
     // trial basis functions
     assert(phi.size(0) == psi.size(0));
     for (int i = 0; i < num_psi; i++) memcpy(&phi(0, i), &psi(0, i), kp->num_gkvec() * sizeof(complex16));
@@ -1949,7 +1949,7 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
     for (int k = 0; k < max_iter; k++)
     {
         Timer t1("sirius::Band::solve_fv_iterative_diagonalization:set_gevp");
-        if (full_hmlt_update)
+        if (k == 0) // initial eigen-value problem setup
         {
             N = num_psi; // intial eigen-value problem size
 
@@ -1961,8 +1961,6 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
             
             // compute overlap matrix <phi|O|phi>
             blas<cpu>::gemm(2, 0, N, N, kp->num_gkvec(), &phi(0, 0), phi.ld(), &ophi(0, 0), ophi.ld(), &ovlp(0, 0), ovlp.ld());
-       
-            full_hmlt_update = false;
         }
         else
         {
@@ -2103,11 +2101,11 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
         }
         t3.stop();
 
-        //if (Platform::mpi_rank() == 0)
-        //{
-        //    std::cout << "iteration:" << k << ", current eigen-value size = " << N << ", number of added residuals = " << n << std::endl;
-        //    //printf("lower and upper eigen-values : %16.8f %16.8f\n", eval[0], eval[num_psi - 1]);
-        //}
+        //== if (Platform::mpi_rank() == 0)
+        //== {
+        //==     std::cout << "iteration:" << k << ", current eigen-value size = " << N << ", number of added residuals = " << n << std::endl;
+        //==     //printf("lower and upper eigen-values : %16.8f %16.8f\n", eval[0], eval[num_psi - 1]);
+        //== }
 
         // check if we run out of variational space or eigen-vectors are converged or it's a last iteration
         if (N + n > num_phi || n == 0 || k == (max_iter - 1))
@@ -2116,7 +2114,6 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
             // \Psi_{i} = \phi_{mu} * Z_{mu, i}
             blas<cpu>::gemm(0, 0, kp->num_gkvec(), num_psi, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), 
                             &psi(0, 0), psi.ld());
-            t3.stop();
 
             if (n == 0 || k == (max_iter - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
             {
@@ -2125,17 +2122,35 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
             }
             else // otherwise set psi as a new trial basis
             {
+                // use phi as a temporary vector
+
+                blas<cpu>::gemm(0, 0, kp->num_gkvec(), num_psi, N, &hphi(0, 0), hphi.ld(), 
+                                &evec(0, 0), evec.ld(), &phi(0, 0), phi.ld());
+                
+                // compute the Hamiltonian matrix: <phi|H|phi>
+                blas<cpu>::gemm(2, 0, num_psi, num_psi, kp->num_gkvec(), &psi(0, 0), psi.ld(), &phi(0, 0), phi.ld(), &hmlt_old(0, 0), hmlt_old.ld());
+             
+                memcpy(hphi.get_ptr(), phi.get_ptr(), num_psi * kp->num_gkvec() * sizeof(complex16));
+
+
+
+                blas<cpu>::gemm(0, 0, kp->num_gkvec(), num_psi, N, &ophi(0, 0), ophi.ld(), 
+                                &evec(0, 0), evec.ld(), &phi(0, 0), phi.ld());
+                
+                // compute the overlap matrix: <phi|O|phi>
+                blas<cpu>::gemm(2, 0, num_psi, num_psi, kp->num_gkvec(), &psi(0, 0), psi.ld(), &phi(0, 0), phi.ld(), &ovlp_old(0, 0), ovlp_old.ld());
+            
+                memcpy(ophi.get_ptr(), phi.get_ptr(), num_psi * kp->num_gkvec() * sizeof(complex16));
+            
                 memcpy(phi.get_ptr(), psi.get_ptr(), num_psi * kp->num_gkvec() * sizeof(complex16));
-                full_hmlt_update = true;
+                N = num_psi;
             }
         }
     }
 
     delete gevp;
 
-    std::vector<double> eval_out(num_psi);
-    memcpy(&eval_out[0], &eval[0], num_psi * sizeof(double));
-    kp->fv_eigen_values() = eval_out;
+    kp->set_fv_eigen_values(&eval[0]);
 }
 
 void Band::solve_fv(K_point* kp, Periodic_function<double>* effective_potential)
