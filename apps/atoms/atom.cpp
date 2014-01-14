@@ -27,7 +27,7 @@ class atom : public sirius::Atom_type
     
         double NIST_LDA_Etot;
     
-        atom(const char* symbol, const char* name, int zn, double mass, std::vector<sirius::atomic_level_descriptor>& levels_nl) : 
+        atom(const char* symbol, const char* name, int zn, double mass, std::vector<atomic_level_descriptor>& levels_nl) : 
             Atom_type(symbol, name, zn, mass, levels_nl), NIST_LDA_Etot(0.0)
         {
         }
@@ -38,10 +38,10 @@ atom* init_atom_configuration(const std::string& label)
     JSON_tree jin("atoms.json");
     
     int nl_occ[7][4];
-    sirius::atomic_level_descriptor nlk;
-    sirius::atomic_level_descriptor nl;
-    std::vector<sirius::atomic_level_descriptor> levels_nl;
-    std::vector<sirius::atomic_level_descriptor> levels_nlk;
+    atomic_level_descriptor nlk;
+    atomic_level_descriptor nl;
+    std::vector<atomic_level_descriptor> levels_nl;
+    std::vector<atomic_level_descriptor> levels_nlk;
     
     atom* a;
 
@@ -115,8 +115,8 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type)
     jw.single("rmax", a->radial_grid(a->radial_grid().size() - 1));
     jw.single("nrmt", a->num_mt_points());
 
-    std::vector<sirius::atomic_level_descriptor> core;
-    std::vector<sirius::atomic_level_descriptor> valence;
+    std::vector<atomic_level_descriptor> core;
+    std::vector<atomic_level_descriptor> valence;
     std::string level_symb[] = {"s", "p", "d", "f"};
     
     printf("Core / valence partitioning\n");
@@ -201,7 +201,8 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type)
     int lmax = 0;
     for (int i = 0; i < (int)valence.size(); i++) lmax = std::max(lmax, valence[i].l); 
     lmax = std::min(lmax + 1, 3);
-    int nmax[4];
+    //lmax = 8;
+    int nmax[9];
     for (int l = 0; l <= lmax; l++)
     {
         int n = l + 1;
