@@ -152,6 +152,8 @@ class Global
 
         Unit_cell* unit_cell_;
 
+        double iterative_solver_tolerance_;
+
         /// read from the input file if it exists
         void read_input()
         {
@@ -294,7 +296,8 @@ class Global
               potential_type_(full_potential), 
               basis_type_(apwlo), 
               step_function_(NULL),
-              reciprocal_lattice_(NULL)
+              reciprocal_lattice_(NULL),
+              iterative_solver_tolerance_(0.01)
         {
             gettimeofday(&start_time_, NULL); // measure the start time
             read_input(); // read initial data from sirius.json
@@ -1080,6 +1083,16 @@ class Global
                 }
             }
         } mixer_input_section_;
+
+        inline double iterative_solver_tolerance()
+        {
+            return iterative_solver_tolerance_;
+        }
+
+        inline void set_iterative_solver_tolerance(double tol)
+        {
+            iterative_solver_tolerance_ = tol;
+        }
 };
 
 };

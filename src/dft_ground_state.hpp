@@ -124,11 +124,22 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         
         if (Platform::mpi_rank() == 0)
         {
-            printf("iteration : %3i, potential RMS %12.6f, energy difference : %12.6f, beta : %12.6f\n", 
-                    iter, rms, fabs(eold - etot), mx->beta());
+            printf("iteration : %3i, potential RMS %12.6f, energy difference : %12.6f", 
+                    iter, rms, fabs(eold - etot));
+            if (parameters_.potential_type() == ultrasoft_pseudopotential)
+                printf(", tolerance : %12.6f", parameters_.iterative_solver_tolerance());
+            printf("\n");
         }
         
         if (fabs(eold - etot) < energy_tol && rms < potential_tol) break;
+
+        if (iter > 0 && parameters_.potential_type() == ultrasoft_pseudopotential)
+        {
+            double tol = parameters_.iterative_solver_tolerance();
+            tol = std::min(tol, 0.1 * rms / std::max(1.0, parameters_.unit_cell()->num_electrons()));
+            tol = std::max(tol, 1e-10);
+            parameters_.set_iterative_solver_tolerance(tol);
+        }
 
         eold = etot;
     }

@@ -2083,7 +2083,7 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
             // check eigen-values for convergence
             for (int i = 0; i < num_psi; i++)
             {
-                if (fabs(eval[i] - eval_old[i]) > 1e-6)
+                if (fabs(eval[i] - eval_old[i]) > parameters_.iterative_solver_tolerance())
                 {
                     res_e[n] = eval[i];
                     
