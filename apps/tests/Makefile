@@ -6,7 +6,7 @@ INCLUDE = -I./../../src
 
 .SUFFIXES: .cpp
 
-all: hdf5 allgather mt_function mt_kinetic spline splindex hydrogen read_atom fft
+all: hdf5 allgather mt_function mt_kinetic spline splindex hydrogen read_atom fft fft_t
 
 hdf5:
 	$(CXX) $(CXX_OPT) $(INCLUDE) hdf5.cpp           $(LIB_SIRIUS) $(LIBS) -o hdf5
@@ -43,6 +43,9 @@ read_atom:
 fft:
 	$(CXX) $(CXX_OPT) $(INCLUDE) fft.cpp           $(LIB_SIRIUS) $(LIBS) -o fft
 	
+fft_t:
+	$(CXX) $(CXX_OPT) $(INCLUDE) fft_t.cpp           $(LIB_SIRIUS) $(LIBS) -o fft_t
+	
 
 clean:
-	rm -f *.o *.h5 *.txt *.dat *.pdf timers.json out.json splindex hdf5 hydrogen read_atom fft fft1k spline allgather cuda_zgemm mt_function mt_kinetic spline_gpu
+	rm -f *.o *.h5 *.txt *.dat *.pdf timers.json out.json splindex hdf5 hydrogen read_atom fft fft1k spline allgather cuda_zgemm mt_function mt_kinetic spline_gpu fft_t
