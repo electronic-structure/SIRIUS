@@ -176,11 +176,10 @@ void Density::initial_density()
                     s[ir] = jl(ir, 0, iat) * atom_type->uspp().total_charge_density[ir];
                 rho_radial_integrals(iat, igs) = s.interpolate().integrate(0) / fourpi; // atomic density from UPF file is multiplied by 4*PI
                                                                                         // we don't need this
-
-                if (igs == 0) 
-                {
-                    std::cout << "radial_integral : " <<  rho_radial_integrals(iat, 0) * fourpi << std::endl;
-                }
+                //== if (igs == 0) 
+                //== {
+                //==     std::cout << "radial_integral : " <<  rho_radial_integrals(iat, 0) * fourpi << std::endl;
+                //== }
             }
         }
 
