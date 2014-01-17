@@ -37,10 +37,9 @@ def apply_symmetry(sym_ops_list, initial_atoms_list):
         for sym in sym_ops_list:
             coord = [0, 0, 0]
             for i in range(3): 
-                coord[i] = sym[i][0] * atom[sym[i][1]] + sym[i][2]
-                if coord[i] < 0: coord[i] += 1
-                if abs(coord[i] - 1) < 1e-10: coord[i] = 0
-            
+                x = sym[i][0] * atom[sym[i][1]] + sym[i][2]
+                if x < 0: x += 1
+                coord[i] = float("%.8f"%x)
             found = False
             for c in full_atoms_list:
                 if (abs(c[0] - coord[0]) + abs(c[1] - coord[1]) + abs(c[2] - coord[2])) < 1e-10: found = True
@@ -48,6 +47,8 @@ def apply_symmetry(sym_ops_list, initial_atoms_list):
 
     return full_atoms_list
 
+def remove_ending_braces(string):
+    return re.sub(r"\([0-9]+\)", r" ", string)
 
 def main():
     
@@ -59,18 +60,20 @@ def main():
 
     cb = cf.first_block()
 
-
     atoms = cb.GetLoop("_atom_site_label")
     
     initial_atoms_list = {}
 
     for atom in atoms:
-        
-        if not atom._atom_site_type_symbol in initial_atoms_list: initial_atoms_list[atom._atom_site_type_symbol] = []
-        
-        initial_atoms_list[atom._atom_site_type_symbol].append({"x" : float(atom._atom_site_fract_x), \
-                                                                "y" : float(atom._atom_site_fract_y), \
-                                                                "z" : float(atom._atom_site_fract_z)})
+
+        label = atom._atom_site_label
+        label = re.sub(r"[0-9]+", r" ", label).strip()
+
+        if not label in initial_atoms_list: initial_atoms_list[label] = []
+
+        initial_atoms_list[label].append({"x" : float(remove_ending_braces(atom._atom_site_fract_x)), \
+                                          "y" : float(remove_ending_braces(atom._atom_site_fract_y)), \
+                                          "z" : float(remove_ending_braces(atom._atom_site_fract_z))})
 
 
     sym_ops = cb.GetLoop("_symmetry_equiv_pos_as_xyz")
@@ -83,19 +86,28 @@ def main():
 
     
     au2ang = 0.52917721092
-    a = float(cb["_cell_length_a"])
-    b = float(cb["_cell_length_b"])
-    c = float(cb["_cell_length_c"])
+    a = float(remove_ending_braces(cb["_cell_length_a"]))
+    b = float(remove_ending_braces(cb["_cell_length_b"]))
+    c = float(remove_ending_braces(cb["_cell_length_c"]))
     alpha = float(cb["_cell_angle_alpha"]) * math.pi / 180
     beta = float(cb["_cell_angle_beta"]) * math.pi / 180
     gamma = float(cb["_cell_angle_gamma"]) * math.pi / 180
 
   
     x2 = b * math.cos(gamma)
+    x2 = 0 if (abs(x2)) < 1e-8 else x2
+
     y2 = b * math.sin(gamma)
+    y2 = 0 if (abs(y2)) < 1e-8 else y2
+
     x3 = c * math.cos(beta)
+    x3 = 0 if abs(x3) < 1e-8 else x3
+
     y3 = (a * b * math.cos(alpha) - x2 * x3) / y2
+    y3 = 0 if abs(y3) < 1e-8 else y3
+
     z3 = math.sqrt(c * c - x3 * x3 - y3 * y3)
+    z3 = 0 if abs(z3) < 1e-8 else z3
 
     avec = [[a, 0, 0], 
             [x2, y2, 0], 
@@ -111,20 +123,72 @@ def main():
     fout.write("%i\n"%len(initial_atoms_list.keys()))
     
     json_atoms = []
-
+    
+    natoms = 0
     for key in initial_atoms_list.keys():
         atom_list = apply_symmetry(sym_ops_list, initial_atoms_list[key])
         json_atoms.append([key,atom_list])
         fout.write("'%s.in'\n"%key)
         fout.write("%i\n"%len(atom_list))
         for a in atom_list:
+            natoms += 1
             fout.write("%18.10f %18.10f %18.10f\n"%(a[0], a[1], a[2]))
 
     fout.close()
 
+
     fout = open("sirius.json", "w")
-    fout.write(re.sub(r"(?<=[0-9]),\s\n\s*(?=[-|0-9])", r", ", json.dumps({"mpi_grid_dims" : [1], "lattice_vectors" : avec, "atoms" : json_atoms}, indent=2)))
+    fout.write(re.sub(r"(?<=[0-9]),\s\n\s*(?=[-|0-9])", r", ", \
+        json.dumps({"mpi_grid_dims" : [1], "lattice_vectors" : avec, "lattice_vectors_scale" : 1 / au2ang, "atoms" : json_atoms}, indent=2)))
     fout.close()
+
+
+    fout = open("pw.in", "w")
+    fout.write("""
+&control
+  calculation='scf',
+  restart_mode='from_scratch',
+  pseudo_dir = './',
+  outdir='./',
+  prefix = 'scf_'
+/""")
+    fout.write("""
+&system
+  ibrav=0, celldm(1)=1, ecutwfc=40, ecutrho = 300,
+  occupations = 'smearing', smearing = 'gauss', degauss = 0.002, nosym=.false.,\n""")
+    fout.write("  nat=" + str(natoms) + ", ntyp=" + str(len(initial_atoms_list.keys())))
+    fout.write("\n/")
+    fout.write("""
+&electrons
+  conv_thr =  1.0d-8,
+  mixing_beta = 0.7,
+  electron_maxstep = 10
+/""")
+    fout.write("\n")
+    fout.write("ATOMIC_SPECIES\n")
+    for key in initial_atoms_list.keys():
+        fout.write("  %s 0.0 %s.UPF\n"%(key, key))
+
+    fout.write("\n")
+    fout.write("CELL_PARAMETERS\n")
+    for i in range(3):
+        fout.write("%18.10f %18.10f %18.10f\n"%(avec[i][0] / au2ang, avec[i][1] / au2ang, avec[i][2] / au2ang))
+    
+    fout.write("\n")
+    fout.write("ATOMIC_POSITIONS (crystal)\n")
+    for key in initial_atoms_list.keys():
+        atom_list = apply_symmetry(sym_ops_list, initial_atoms_list[key])
+        for a in atom_list:
+            fout.write("%s  %18.10f %18.10f %18.10f\n"%(key, a[0], a[1], a[2]))
+
+    fout.write("\n")
+    fout.write("K_POINTS (automatic)\n")
+    fout.write("2 2 2  0 0 0\n")
+
+    fout.close()
+
+
+    print "Total number of atoms in the unit cell : ", natoms
 
     return
 
