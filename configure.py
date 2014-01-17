@@ -10,7 +10,7 @@ packages = {
               ["--disable-fortran", "--disable-mpi", "--disable-openmp", "--disable-threads"]
              ],
     "gsl"  : ["ftp://ftp.gnu.org/gnu/gsl/gsl-1.16.tar.gz", 
-              []
+              ["--enable-shared=no"]
              ],
     "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.11.tar.gz",
               ["--enable-fortran", "--enable-shared=no", "--enable-static=yes", 
