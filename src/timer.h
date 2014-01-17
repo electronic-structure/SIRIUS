@@ -17,7 +17,7 @@ class Timer
         /// true if timer is running
         bool active_;
 
-        /// mapping between timer name and timer descriptor pointer
+        /// mapping between timer name and timer values
         static std::map<std::string, std::vector<double> > timers_;
     
     public:
@@ -93,7 +93,8 @@ class Timer
                         maxval = std::max(maxval, it->second[i]);
                     }
                     double average = (count == 0) ? 0.0 : total / count;
-                    
+                    if (count == 0) minval = 0.0;
+
                     printf("%-60s :    %5i %10.4f %10.4f %10.4f %10.4f\n", it->first.c_str(), count, total, minval, maxval, average);
                 }
             }
@@ -113,7 +114,7 @@ class Timer
             } while (d < dsec);
         }
 
-        static std::map<std::string, std::vector<double> >& timer_descriptors()
+        static std::map<std::string, std::vector<double> >& timers()
         {
             return timers_;
         }

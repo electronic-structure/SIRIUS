@@ -31,11 +31,9 @@ void DFT_ground_state::move_atoms(int istep)
 
     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
     {
-        double pos[3];
-        parameters_.atom(ia)->get_position(pos);
+        vector3d<double> pos = parameters_.atom(ia)->position();
 
-        double forcef[3];
-        parameters_.get_coordinates<fractional, direct>(&atom_force(0, ia), &forcef[0]);
+        vector3d<double> forcef = parameters_.get_coordinates<fractional, direct>(vector3d<double>(&atom_force(0, ia)));
 
         for (int x = 0; x < 3; x++) pos[x] += 1.0 * forcef[x];
         
@@ -50,109 +48,45 @@ void DFT_ground_state::update()
     kset_->update();
 }
 
-void DFT_ground_state::forces(mdarray<double, 2>& atom_force)
+void DFT_ground_state::forces(mdarray<double, 2>& forces)
 {
-    mdarray<double, 2> forcehf(3, parameters_.num_atoms());
-    mdarray<double, 2> forcerho(3, parameters_.num_atoms());
-
-    kset_->force(atom_force);
-
-    //** pstdout pout;
-    //** for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-    //** {
-    //**     pout.printf("atom : %i  forcek : %f %f %f\n", ia, atom_force(0, ia), atom_force(1, ia), atom_force(2, ia));
-    //** }
-    
-    MT_function<double>* g[3];
-    for (int x = 0; x < 3; x++) 
-    {
-        g[x] = new MT_function<double>(Argument(arg_lm, parameters_.lmmax_pot()), 
-                                       Argument(arg_radial, parameters_.max_num_mt_points()));
-    }
-    
-    forcehf.zero();
-    for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
-    {
-        int ia = parameters_.spl_num_atoms(ialoc);
-        gradient(parameters_.atom(ia)->type()->radial_grid(), potential_->coulomb_potential_mt(ialoc), g[0], g[1], g[2]);
-        for (int x = 0; x < 3; x++) forcehf(x, ia) = parameters_.atom(ia)->type()->zn() * (*g[x])(0, 0) * y00;
-    }
-    Platform::allreduce(&forcehf(0, 0), (int)forcehf.size());
-    
-    //** for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-    //** {
-    //**     pout.printf("atom : %i  forcehf : %f %f %f\n", ia, forcehf(0, ia), forcehf(1, ia), forcehf(2, ia));
-    //** }
-    
-    for (int x = 0; x < 3; x++) 
-    {
-        delete g[x];
-        g[x] = new MT_function<double>(Argument(arg_lm, parameters_.lmmax_rho()), 
-                                       Argument(arg_radial, parameters_.max_num_mt_points()));
-    }
-
-    forcerho.zero();
-    for (int ialoc = 0; ialoc < parameters_.spl_num_atoms().local_size(); ialoc++)
-    {
-        int ia = parameters_.spl_num_atoms(ialoc);
-        gradient(parameters_.atom(ia)->type()->radial_grid(), density_->density_mt(ialoc), g[0], g[1], g[2]);
-        for (int x = 0; x < 3; x++)
-        {
-            forcerho(x, ia) = inner(parameters_.atom(ia)->type()->radial_grid(), 
-                                    potential_->effective_potential_mt(ialoc), g[x]);
-        }
-    }
-    Platform::allreduce(&forcerho(0, 0), (int)forcerho.size());
-    
-    //** for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-    //** {
-    //**     pout.printf("atom : %i  forcerho : %f %f %f\n", ia, forcerho(0, ia), forcerho(1, ia), forcerho(2, ia));
-    //** }
-    
-    
-    for (int x = 0; x < 3; x++) delete g[x];
-
-    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-    {
-        for (int x = 0; x < 3; x++) atom_force(x, ia) += (forcehf(x, ia) + forcerho(x, ia));
-    }
-    
-    //** for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-    //** {
-    //**     pout.printf("atom : %i  force : %f %f %f\n", ia, atom_force(0, ia), atom_force(1, ia), atom_force(2, ia));
-    //** }
-    //** pout.printf("===\n");
-
-    //** pout.flush(0);
-    //** 
-    //** stop_here
+    Force::total_force(parameters_, potential_, density_, kset_, forces);
 }
 
-void DFT_ground_state::scf_loop(double charge_tol, double energy_tol)
+void DFT_ground_state::scf_loop(double charge_tol, double energy_tol, int num_dft_iter)
 {
+    Timer t("sirius::DFT_ground_state::scf_loop");
+
     density_mixer* mx = new density_mixer(density_->rho(), density_->magnetization(), parameters_.num_mag_dims());
     mx->load();
     
     double eold = 0.0;
 
-    for (int iter = 0; iter < 100; iter++)
+    for (int iter = 0; iter < num_dft_iter; iter++)
     {
+        Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
+
         kset_->find_eigen_states(potential_, true);
         kset_->find_band_occupancies();
         kset_->valence_eval_sum();
         density_->generate(*kset_);
 
         double rms = mx->mix();
-        
+
+        Platform::bcast(&rms, 1, 0);
+
         potential_->generate_effective_potential(density_->rho(), density_->magnetization());
         
         double etot = total_energy();
         
+        print_info();
+        
         if (Platform::mpi_rank() == 0)
         {
-            printf("iteration : %3i, total energy : %16.8f, charge RMS %12.6f, energy difference : %12.6f\n", 
-                   iter, etot, rms, fabs(eold - etot));
+            printf("iteration : %3i, charge RMS %12.6f, energy difference : %12.6f, beta : %12.6f\n", 
+                    iter, rms, fabs(eold - etot), mx->beta());
         }
+        
         if (fabs(eold - etot) < energy_tol && rms < charge_tol) break;
 
         eold = etot;
@@ -169,7 +103,7 @@ void DFT_ground_state::relax_atom_positions()
 {
     for (int i = 0; i < 5; i++)
     {
-        scf_loop(1e-4, 1e-4);
+        scf_loop(1e-4, 1e-4, 100);
         move_atoms(i);
         update();
     }

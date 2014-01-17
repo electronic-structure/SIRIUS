@@ -12,9 +12,9 @@ packages = {
     "gsl"  : ["ftp://ftp.gnu.org/gnu/gsl/gsl-1.16.tar.gz", 
               ["--enable-shared=no"]
              ],
-    "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.11.tar.gz",
+    "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.12.tar.gz",
               ["--enable-fortran", "--enable-shared=no", "--enable-static=yes", 
-               "--disable-deprecated-symbols", "--enable-filters=none","--disable-parallel"]
+               "--disable-deprecated-symbols", "--disable-filters","--disable-parallel", "--with-zlib=no","--with-szlib=no"]
              ],
     "xc"   : ["http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.0.2.tar.gz",
               []
@@ -102,93 +102,91 @@ def configure_package(package_name, platform):
 
 def main():
 
-    if (len(sys.argv) < 2):
+    if "--help" in sys.argv:
         print ""
         print "SIRIUS configuration script"
         print ""
-        print "First, edit 'platform.json' and specify your system compilers and libraries. Then run:"
+        print "First, edit 'platform.json' and specify your system compilers, system libraries and"
+        print "libraries that you want to install. Then run:"
         print ""
-        print "  python configure.py install [packages]"
+        print "  python configure.py"
         print ""
-        print "where [packages] is the list of packages which are currently missing on your system"
-        print "and which will be downloaded and configured by the script. The following package can be"
-        print "specified:"
+        print "The \"install\" element in 'platform.json' contains the list of packages which are currently"
+        print "missing on your system and which will be downloaded and configured by the script."
+        print "The following package can be specified:"
         print ""
-        print "  fftw - FFTW library"
-        print "  gsl  - GNU scientific library"
-        print "  hdf5 - HDF5 library"
-        print "  xc   - XC library"
-        print "  spg  - Spglib"
-        print ""
-        print "Example: download and configure all the necessary packages:"
-        print ""
-        print "  python configure.py install fftw gsl hdf5 xc spg"
+        print "  \"fftw\" - FFTW library"
+        print "  \"gsl\"  - GNU scientific library"
+        print "  \"hdf5\" - HDF5 library"
+        print "  \"xc\"   - XC library"
+        print "  \"spg\"  - Spglib"
         print ""
         sys.exit(0)
     
-    if sys.argv[1] == "install":
-        fin = open("platform.json", "r");
-        platform = json.load(fin)
-        fin.close()
+    fin = open("platform.json", "r");
+    platform = json.load(fin)
+    fin.close()
 
-        makeinc = open("make.inc", "w")
-        if ("MPI_CXX") in platform: 
-            makeinc.write("CXX = " + platform["MPI_CXX"] + "\n")
-        else:
-            makeinc.write("CXX = " + platform["CXX"] + "\n")
+    makeinc = open("make.inc", "w")
+    if ("MPI_CXX") in platform: 
+        makeinc.write("CXX = " + platform["MPI_CXX"] + "\n")
+    else:
+        makeinc.write("CXX = " + platform["CXX"] + "\n")
 
-        if ("MPI_CXX_OPT") in platform:
-            makeinc.write("CXX_OPT = " + platform["MPI_CXX_OPT"] + "\n")
-        else:
-            makeinc.write("CXX_OPT = " + platform["CXX_OPT"] + "\n")
+    if ("MPI_CXX_OPT") in platform:
+        makeinc.write("CXX_OPT = " + platform["MPI_CXX_OPT"] + "\n")
+    else:
+        makeinc.write("CXX_OPT = " + platform["CXX_OPT"] + "\n")
 
-        if "NVCC" in platform: makeinc.write("NVCC = " + platform["NVCC"] + "\n")
-        if "NVCC_OPT" in platform: makeinc.write("NVCC_OPT = " + platform["NVCC_OPT"] + "\n")
-        
-        make_packages = []
-        clean_packages = []
-        for i in range(len(sys.argv) - 2):
-            opts = configure_package(sys.argv[i + 2], platform)
+    if "NVCC" in platform: makeinc.write("NVCC = " + platform["NVCC"] + "\n")
+    if "NVCC_OPT" in platform: makeinc.write("NVCC_OPT = " + platform["NVCC_OPT"] + "\n")
+    
+    make_packages = []
+    clean_packages = []
+
+    if "install" in platform:
+        for name in platform["install"]:
+            opts = configure_package(name, platform)
             makeinc.write("CXX_OPT := $(CXX_OPT) " + opts[0] + "\n")
             makeinc.write("LIBS := $(LIBS) " + opts[1] + "\n")
             make_packages.append(opts[2])
             clean_packages.append(opts[3])
 
-        makeinc.write("CXX_OPT := $(CXX_OPT) -I" + os.getcwd() + "/libs/libjson\n")
-        makeinc.write("LIBS := $(LIBS) " + os.getcwd() + "/libs/libjson/libjson.a\n")
-        makeinc.write("LIBS := $(LIBS) " + platform["SYSTEM_LIBS"] + "\n")
+    makeinc.write("CXX_OPT := $(CXX_OPT) -I" + os.getcwd() + "/libs/libjson\n")
+    makeinc.write("LIBS := $(LIBS) " + os.getcwd() + "/libs/libjson/libjson.a\n")
+    makeinc.write("LIBS := $(LIBS) " + platform["SYSTEM_LIBS"] + "\n")
 
-        makeinc.close()
+    makeinc.close()
 
-        makef = open("Makefile", "w")
-        makef.write("include ./make.inc \n")
-        makef.write("\n")
-        makef.write(".PHONY: apps\n")
-        makef.write("\n")
-        makef.write("all: packages sirius apps\n")
-        makef.write("\n")
-        makef.write("sirius:\n")
-        makef.write("\tcd src; make\n")
-        makef.write("\n")
-        makef.write("apps:\n")
-        makef.write("\tcd apps; make\n")
-        makef.write("\n")
-        makef.write("packages:\n")
-        for i in range(len(make_packages)):
-            makef.write(make_packages[i])
-        makef.write("\tcd ./libs/libjson; make\n")
-        
-        makef.write("clean_packages:\n")
-        for i in range(len(clean_packages)):
-            makef.write(clean_packages[i])
-        makef.write("\tcd ./libs/libjson; make clean\n")
+    makef = open("Makefile", "w")
+    makef.write("include ./make.inc \n")
+    makef.write("\n")
+    makef.write(".PHONY: apps\n")
+    makef.write("\n")
+    makef.write("all: packages sirius apps\n")
+    makef.write("\n")
+    makef.write("sirius:\n")
+    makef.write("\tcd src; make\n")
+    makef.write("\n")
+    makef.write("apps:\n")
+    makef.write("\tcd apps; make\n")
+    makef.write("\n")
+    makef.write("packages:\n")
+    for i in range(len(make_packages)):
+        makef.write(make_packages[i])
+    makef.write("\tcd ./libs/libjson; make\n")
+    
+    makef.write("clean_packages:\n")
+    for i in range(len(clean_packages)):
+        makef.write(clean_packages[i])
+    makef.write("\tcd ./libs/libjson; make clean\n")
 
-        makef.write("\n")
-        makef.write("clean:\n")
-        makef.write("\tcd src; make clean\n")
-        makef.write("\tcd apps; make clean\n")
+    makef.write("\n")
+    makef.write("clean:\n")
+    makef.write("\tcd src; make clean\n")
+    makef.write("\tcd apps; make clean\n")
 
-        makef.close()
+    makef.close()
 
 if __name__ == "__main__":
     main()

@@ -374,24 +374,37 @@ class JSON_write
             fprintf(fout_, "]");
         }
         
-        //** inline void single(const char* name, std::map<std::string, std::vector<double> >& timer_descriptors)
-        //** {
-        //**     new_line();
-        //**     fprintf(fout_, "\"%s\" : {", name);
-        //**     
-        //**     indent_level_ += indent_step_;
-        //**     std::map<std::string, sirius::timer_descriptor*>::iterator it;
-        //**     new_block_ = true;
-        //**     for (it = timer_descriptors.begin(); it != timer_descriptors.end(); it++)
-        //**     {
-        //**         std::vector<double> tv(2);
-        //**         tv[0] = it->second->total;
-        //**         tv[1] = (it->second->count == 0) ? 0.0 : it->second->total / it->second->count;
-        //**         single(it->first.c_str(), tv);
-        //**     }
-        //**     
-        //**     end_set();
-        //** }
+        inline void single(const char* name, std::map<std::string, std::vector<double> >& timers)
+        {
+            new_line();
+            fprintf(fout_, "\"%s\" : {", name);
+            
+            indent_level_ += indent_step_;
+            std::map<std::string, std::vector<double> >::iterator it;
+            new_block_ = true;
+            for (it = timers.begin(); it != timers.end(); it++)
+            {
+                int count = (int)it->second.size();
+                double total = 0.0;
+                double minval = 1e100;
+                double maxval = 0.0;
+                for (int i = 0; i < count; i++)
+                {
+                    total += it->second[i];
+                    minval = std::min(minval, it->second[i]);
+                    maxval = std::max(maxval, it->second[i]);
+                }
+                double average = (count == 0) ? 0.0 : total / count;
+                std::vector<double> values(4); // total,min,max,average
+                values[0] = total;
+                values[1] = minval;
+                values[2] = maxval;
+                values[3] = average;
+                single(it->first.c_str(), values);
+            }
+            
+            end_set();
+        }
 
         inline void begin_array(const char* name)
         {

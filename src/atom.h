@@ -18,10 +18,10 @@ class Atom
         Atom_symmetry_class* symmetry_class_;
         
         /// position in fractional coordinates
-        double position_[3];
+        vector3d<double> position_;
        
         /// vector field associated with the current site
-        double vector_field_[3];
+        vector3d<double> vector_field_;
 
         /// MT potential
         mdarray<double, 2> veff_;
@@ -83,6 +83,7 @@ class Atom
                   V_{\ell m}(r) & \ell > 0 \end{array} \right.
             \f]
         */
+        void generate_radial_integrals(MPI_Comm& comm);
         void generate_radial_integrals();
         
         inline Atom_type* type()
@@ -100,19 +101,14 @@ class Atom
             return type_->id();
         }
 
-        inline void get_position(double position__[3])
-        {
-            for (int i = 0; i < 3; i++) position__[i] = position_[i];
-        }
-
-        inline void set_position(double position__[3])
-        {
-            for (int i = 0; i < 3; i++) position_[i] = position__[i];
-        }
-        
-        inline double* position()
+        inline vector3d<double> position()
         {
             return position_;
+        }
+
+        inline void set_position(vector3d<double> position__)
+        {
+            position_ = position__;
         }
         
         inline double position(int i)
@@ -120,7 +116,7 @@ class Atom
             return position_[i];
         }
         
-        inline double* vector_field()
+        inline vector3d<double> vector_field()
         {
             return vector_field_;
         }
@@ -188,6 +184,51 @@ class Atom
             return &b_radial_integrals_(0, idxrf1, idxrf2, x);
         }
         
+        /** \todo this is not good because the similar code exists in gaunt.h */
+        template <spin_block_t sblock>
+        inline complex16 hb_radial_integrals_sum_L3(int idxrf1, int idxrf2, std::vector<complex_gaunt_L3>& gnt)
+        {
+            complex16 zsum(0, 0);
+
+            for (int i = 0; i < (int)gnt.size(); i++)
+            {
+                switch (sblock)
+                {
+                    case nm:
+                    {
+                        zsum += gnt[i].cg * h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2);
+                        break;
+                    }
+                    case uu:
+                    {
+                        zsum += gnt[i].cg * (h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2) + 
+                                             b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 0));
+                        break;
+                    }
+                    case dd:
+                    {
+                        zsum += gnt[i].cg * (h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2) -
+                                             b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 0));
+                        break;
+                    }
+                    case ud:
+                    {
+                        zsum += gnt[i].cg * complex16(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
+                                                     -b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
+                        break;
+                    }
+                    case du:
+                    {
+                        zsum += gnt[i].cg * complex16(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
+                                                      b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
+                        break;
+                    }
+                }
+
+            }
+            return zsum;
+        }
+
         inline int num_mt_points()
         {
             return type_->num_mt_points();

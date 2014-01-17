@@ -79,11 +79,11 @@ class SHT
         //}
 
         /// Transform Cartesian coordinates [x,y,z] to spherical coordinates [r,theta,phi]
-        static inline void spherical_coordinates(double* vc, double* vs)
+        static inline void spherical_coordinates(vector3d<double> vc, double* vs)
         {
             double eps = 1e-12;
         
-            vs[0] = Utils::vector_length(vc);
+            vs[0] = vc.length();
         
             if (vs[0] <= eps)
             {
@@ -385,7 +385,7 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
             
             double vs[3];
 
-            spherical_coordinates(&coord_(0, itp), vs);
+            spherical_coordinates(vector3d<double>(x[itp], y[itp], z[itp]), vs);
             spherical_harmonics(lmax_, vs[1], vs[2], &ylm_backward_(0, itp));
             spherical_harmonics(lmax_, vs[1], vs[2], &rlm_backward_(0, itp));
             for (int lm = 0; lm < lmmax_; lm++)

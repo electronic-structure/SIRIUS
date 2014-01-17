@@ -8,26 +8,32 @@ class pstdout
 {
     private:
         
-        mdarray<char, 1> buffer_;
+        std::vector<char> buffer_;
 
         int offset_;
 
     public:
 
-        pstdout(int size = 8192)
+        pstdout()
         {
-            buffer_.set_dimensions(size);
-            buffer_.allocate();
-            buffer_.zero();
+            buffer_.resize(8129);
             offset_ = 0;
         }
 
         void printf(const char* fmt, ...)
         {
+            std::vector<char> str(1024); // assume that one printf will not output more than this
+
             std::va_list arg;
             va_start(arg, fmt);
-            offset_ += vsnprintf(&buffer_(offset_), buffer_.size() - offset_, fmt, arg);
+            int n = vsnprintf(&str[0], str.size(), fmt, arg);
             va_end(arg);
+
+            n = std::min(n, (int)str.size());
+            
+            if ((int)buffer_.size() - offset_ < n) buffer_.resize(buffer_.size() + str.size());
+            memcpy(&buffer_[offset_], &str[0], n);
+            offset_ += n;
         }
 
         void flush(int rank)
@@ -37,20 +43,32 @@ class pstdout
             Platform::allgather(&offset_, &offsets(0, 0), Platform::mpi_rank(), 1); 
             
             for (int i = 1; i < Platform::num_mpi_ranks(); i++) offsets(i, 1) = offsets(i - 1, 1) + offsets(i - 1, 0);
+            
+            // total size of the output buffer
+            int sz = 0;
+            for (int i = 0; i < Platform::num_mpi_ranks(); i++) sz += offsets(i, 0);
 
-            mdarray<char, 1> outb((int)buffer_.size() * Platform::num_mpi_ranks());
-            outb.zero();
+            std::vector<char> outb(sz + 1);
+            Platform::allgather(&buffer_[0], &outb[0], offsets(Platform::mpi_rank(), 1), offset_);
+            outb[sz] = 0;
 
-            Platform::allgather(&buffer_(0), &outb(0), offsets(Platform::mpi_rank(), 1), offset_);  
-
-            if (Platform::mpi_rank() == rank) std::printf("%s", outb.get_ptr());
+            if (Platform::mpi_rank() == rank) std::printf("%s", &outb[0]);
 
             offset_ = 0;
-            buffer_.zero();
         }
+
+        //== static void printf(const char* fmt, ...)
+        //== {
+        //==     if (Platform::mpi_rank() == 0)
+        //==     {
+        //==         std::va_list arg;
+        //==         va_start(arg, fmt);
+        //==         printf(fmt, arg);
+        //==         va_end(arg);
+        //==     }
+        //== }
 };
             
-
 class sirius_io
 {
     public:

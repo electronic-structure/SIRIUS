@@ -47,6 +47,80 @@ void Atom::init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_
     uj_correction_matrix_.allocate();
 }
 
+void Atom::generate_radial_integrals(MPI_Comm& comm)
+{
+    Timer t("sirius::Atom::generate_radial_integrals");
+    
+    int lmmax = Utils::lmmax(lmax_pot_);
+    int nmtp = type()->num_mt_points();
+
+    splindex<block> spl_lm(lmmax, Platform::num_mpi_ranks(comm), Platform::mpi_rank(comm));
+
+    std::vector<int> l_by_lm = Utils::l_by_lm(lmax_pot_);
+
+    h_radial_integrals_.zero();
+    if (num_mag_dims_) b_radial_integrals_.zero();
+
+    // interpolate radial functions
+    std::vector< Spline<double> > rf_spline(type()->indexr().size(), Spline<double>(nmtp, type()->radial_grid()));
+    for (int i = 0; i < type()->indexr().size(); i++)
+    {
+        for (int ir = 0; ir < nmtp; ir++) rf_spline[i][ir] = symmetry_class()->radial_function(ir, i);
+        rf_spline[i].interpolate();
+    }
+    
+    #pragma omp parallel default(shared)
+    {
+        std::vector< Spline<double> > vrf_spline(1 + num_mag_dims_, Spline<double>(nmtp, type()->radial_grid()));
+
+        for (int lm_loc = 0; lm_loc < spl_lm.local_size(); lm_loc++)
+        {
+            int lm = spl_lm[lm_loc];
+            int l = l_by_lm[lm];
+
+            #pragma omp for
+            for (int i2 = 0; i2 < type()->indexr().size(); i2++)
+            {
+                int l2 = type()->indexr(i2).l;
+
+                for (int ir = 0; ir < nmtp; ir++) vrf_spline[0][ir] = symmetry_class()->radial_function(ir, i2) * veff_(lm, ir);
+                vrf_spline[0].interpolate();
+                for (int j = 0; j < num_mag_dims_; j++)
+                {
+                    for (int ir = 0; ir < nmtp; ir++) vrf_spline[1 + j][ir] = symmetry_class()->radial_function(ir, i2) * beff_[j](lm, ir);
+                    vrf_spline[1 + j].interpolate();
+                }
+                
+                for (int i1 = 0; i1 <= i2; i1++)
+                {
+                    int l1 = type()->indexr(i1).l;
+                    if ((l + l1 + l2) % 2 == 0)
+                    {
+                        if (lm)
+                        {
+                            h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = 
+                                Spline<double>::integrate(&rf_spline[i1], &vrf_spline[0]);
+                        }
+                        else
+                        {
+                            h_radial_integrals_(0, i1, i2) = symmetry_class()->h_spherical_integral(i1, i2);
+                            h_radial_integrals_(0, i2, i1) = symmetry_class()->h_spherical_integral(i2, i1);
+                        }
+                        for (int j = 0; j < num_mag_dims_; j++)
+                        {
+                            b_radial_integrals_(lm, i1, i2, j) = b_radial_integrals_(lm, i2, i1, j) = 
+                                Spline<double>::integrate(&rf_spline[i1], &vrf_spline[1 + j]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Platform::reduce(h_radial_integrals_.get_ptr(), (int)h_radial_integrals_.size(), comm, 0);
+    if (num_mag_dims_) Platform::reduce(b_radial_integrals_.get_ptr(), (int)b_radial_integrals_.size(), comm, 0);
+}
+
 void Atom::generate_radial_integrals()
 {
     Timer t("sirius::Atom::generate_radial_integrals");

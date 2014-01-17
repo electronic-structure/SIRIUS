@@ -1,11 +1,16 @@
 {
-    "mpi_grid_dims" : [1],
     "cyclic_block_size" : 16,
     "processing_unit" : "cpu",
     "eigen_value_solver" : "lapack",
     "num_fv_states" : 64,
     
     "auto_rmt" : 1,
+    
+    "num_mag_dims" : 1,
+    
+    "ngridk" : [2,2,2],
+    
+    "num_dft_iter" : 2,
     
     "lattice_vectors" : [ [0.5, 0.5, 1.0], 
                           [0.5, 1.0, 0.5], 

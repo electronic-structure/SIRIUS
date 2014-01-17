@@ -1,6 +1,7 @@
 namespace sirius
 {
 
+/** \note density and potenaitl are allocated as global function because it's easier to load and save them. */
 class Density
 {
     private:
@@ -59,6 +60,9 @@ class Density
         /// Add band contribution to the muffin-tin density
         void add_band_contribution_mt(Band* band, double weight, mdarray<complex16, 3>& fylm, 
                                       std::vector<Periodic_function<double>*>& dens);
+        
+        /// Generate charge density of core states
+        void generate_core_charge_density();
 
     public:
 
@@ -114,15 +118,15 @@ class Density
             return magnetization_[i];
         }
 
-        MT_function<double>* density_mt(int ialoc)
+        Spheric_function<double>& density_mt(int ialoc)
         {
             return rho_->f_mt(ialoc);
         }
 
         void allocate()
         {
-            rho_->allocate(true);
-            for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->allocate(true);
+            rho_->allocate(true, true);
+            for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->allocate(true, true);
         }
 };
 

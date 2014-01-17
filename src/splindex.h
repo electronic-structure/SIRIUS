@@ -148,8 +148,8 @@ template<> class splindex<block>: public splindex_base
             assert((rank__ >= 0) && (rank__ < num_ranks__));
             assert(global_index_size__ >= 0);
 
-            if (global_index_size__ == 0)
-                error_local(__FILE__, __LINE__, "need to think what to do with zero index size");
+            //if (global_index_size__ == 0)
+            //    error_local(__FILE__, __LINE__, "need to think what to do with zero index size");
 
             rank_ = rank__;
             num_ranks_ = num_ranks__;

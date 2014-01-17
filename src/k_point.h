@@ -35,21 +35,39 @@ namespace sirius
 */
 struct apwlo_basis_descriptor
 {
-    // TODO: add G+k vector in lattice and Cartesian coordinates
+    /// global index of the descriptor
     int idxglob;
+
+    /// index of G+k vector
     int igk;
+
+    /// G+k vector in lattice coordinates
+    vector3d<double> gkvec;
+
+    /// G+k vector in Cartesian coordinates
+    vector3d<double> gkvec_cart;
+
+    /// G vector index for the G+k vector
     int ig;
+
+    /// index of atom if this is a local orbital descriptor
     int ia;
+
+    /// index of l
     int l;
+
+    /// combined lm index
     int lm;
+
+    /// order of a lo radial function for a given orbital quantum number l
     int order;
+
+    /// index of a lo radial function
     int idxrf;
-
-    double gkvec[3];
-    double gkvec_cart[3];
-
 };
 
+/// K-point related variables and methods
+/** \image html wf_storage.png "Wave-function storage" */
 class K_point
 {
     private:
@@ -61,7 +79,7 @@ class K_point
         double weight_;
 
         /// fractional k-point coordinates
-        double vk_[3];
+        vector3d<double> vk_;
         
         /// G+k vectors
         mdarray<double, 2> gkvec_;
@@ -77,6 +95,9 @@ class K_point
         
         /// second-variational eigen vectors
         mdarray<complex16, 2> sv_eigen_vectors_;
+
+        /// full-diagonalization eigen vectors
+        mdarray<complex16, 2> fd_eigen_vectors_;
 
         /// position of the G vector (from the G+k set) inside the FFT buffer 
         std::vector<int> fft_index_;
@@ -111,93 +132,57 @@ class K_point
         /// number of G+k vectors distributed along rows of MPI grid
         int num_gkvec_row_;
         
-        /// Number of G+k vectors distributed along columns of MPI grid
+        /// number of G+k vectors distributed along columns of MPI grid
         int num_gkvec_col_;
 
-        /// Short information about each APW+lo basis function
+        /// short information about each APW+lo basis function
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_;
 
-        /// Row APW+lo basis descriptors
+        /// row APW+lo basis descriptors
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_row_;
         
-        /// Column APW+lo basis descriptors
+        /// column APW+lo basis descriptors
         std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_col_;
             
-        /// List of columns (lo block) for a given atom
-        std::vector< std::vector<int> > icol_by_atom_;
+        /// list of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom
+        std::vector< std::vector<int> > atom_lo_cols_;
 
-        /// List of rows (lo block) for a given atom
-        std::vector< std::vector<int> > irow_by_atom_;
+        /// list of rows of the Hamiltonian and overlap matrix lo block (local index) for a given atom
+        std::vector< std::vector<int> > atom_lo_rows_;
 
-        /// Imaginary unit to the power of l
+        /// imaginary unit to the power of l
         std::vector<complex16> zil_;
 
-        /// Mapping between lm and l
+        /// mapping between lm and l
         std::vector<int> l_by_lm_;
 
-        /// Spherical bessel functions for G+k vectors  
+        /// spherical bessel functions for G+k vectors  
         std::vector< sbessel_pw<double>* > sbessel_;
+        
+        /// column rank of the processors of ScaLAPACK/ELPA diagonalization grid
+        int rank_col_;
+
+        /// number of processors along columns of the diagonalization grid
+        int num_ranks_col_;
+
+        int rank_row_;
+
+        int num_ranks_row_;
+
+        int num_ranks_;
         
         /// Generate matching coefficients for specific l-value
         template <int order, bool conjugate>
         void generate_matching_coefficients_l(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
                                               mdarray<double, 2>& A, mdarray<complex16, 2>& alm);
         
-        /// Apply the muffin-tin part of the first-variational Hamiltonian to the apw basis function
-        /** The following vector is computed:
-            \f[
-              b_{L_2 \nu_2}^{\alpha}({\bf G'}) = \sum_{L_1 \nu_1} \sum_{L_3} 
-                a_{L_1\nu_1}^{\alpha*}({\bf G'}) 
-                \langle u_{\ell_1\nu_1}^{\alpha} | h_{L3}^{\alpha} |  u_{\ell_2\nu_2}^{\alpha}  
-                \rangle  \langle Y_{L_1} | R_{L_3} | Y_{L_2} \rangle +  
-                \frac{1}{2} \sum_{\nu_1} a_{L_2\nu_1}^{\alpha *}({\bf G'})
-                u_{\ell_2\nu_1}^{\alpha}(R_{\alpha})
-                u_{\ell_2\nu_2}^{'\alpha}(R_{\alpha})R_{\alpha}^{2}
-            \f] 
-        */
-        void apply_hmt_to_apw(int num_gkvec_row, int ia, mdarray<complex16, 2>& alm, mdarray<complex16, 2>& halm);
-
         void check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm);
+
+        /// Copy lo block from eigen-vector to wave-function
+        inline void copy_lo_blocks(const complex16* z, complex16* vec);
         
-        void set_fv_h_o_apw_lo(Atom_type* type, Atom* atom, int ia, int apw_offset_col, mdarray<complex16, 2>& alm, 
-                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
-
-        void set_fv_h_o_it(Periodic_function<double>* effective_potential, 
-                           mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
-
-        void set_fv_h_o_lo_lo(mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
-
-        template <processing_unit_t pu>
-        void set_fv_h_o_pw_lo(Periodic_function<double>* effective_potential, int num_ranks,
-                              mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
-
-        void solve_fv_evp_1stage(Band* band, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
-
-        void solve_fv_evp_2stage(mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
-
-        /// Generate first-variational states
-        /** 1. setup H and O \n 
-            2. solve \$ H\psi = E\psi \$ \n
-            3. senerate wave-functions from eigen-vectors
-
-            \param [in] band Pointer to Band class
-            \param [in] effective_potential Pointer to effective potential 
-
-        */
-        void generate_fv_states(Band* band, Periodic_function<double>* effective_potential);
-
-        inline void copy_lo_blocks(const int apwlo_basis_size_row, const int num_gkvec_row, 
-                                   const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
-                                   const complex16* z, complex16* vec);
-        
-        inline void copy_pw_block(const int num_gkvec, const int num_gkvec_row, 
-                                  const std::vector<apwlo_basis_descriptor>& apwlo_basis_descriptors_row, 
-                                  const complex16* z, complex16* vec);
-
-        void generate_spinor_wave_functions(Band* band);
-
-        /// Find G+k vectors within the cutoff
-        void generate_gkvec();
+        /// Copy plane wave block from eigen-vector to wave-function
+        inline void copy_pw_block(const complex16* z, complex16* vec);
 
         /// Initialize G+k related data
         void init_gkvec();
@@ -206,13 +191,11 @@ class K_point
         void build_apwlo_basis_descriptors();
 
         /// Block-cyclic distribution of relevant arrays 
-        void distribute_block_cyclic(Band* band);
+        void distribute_block_cyclic();
         
-        void test_fv_states(Band* band, int use_fft);
-
-        void test_spinor_wave_functions(int use_fft);
-
-        void distribute_fv_states_row(Band* band);
+        /// Test orthonormalization of first-variational states
+        /** Important: distribute_fv_states_row() must be called prior to calling this function.*/
+        void test_fv_states(int use_fft);
 
     public:
 
@@ -223,6 +206,14 @@ class K_point
 
             band_occupancies_.resize(parameters_.num_bands());
             memset(&band_occupancies_[0], 0, parameters_.num_bands() * sizeof(double));
+            
+            num_ranks_row_ = parameters_.mpi_grid().dimension_size(_dim_row_);
+            num_ranks_col_ = parameters_.mpi_grid().dimension_size(_dim_col_);
+
+            num_ranks_ = num_ranks_row_ * num_ranks_col_;
+
+            rank_row_ = parameters_.mpi_grid().coordinate(_dim_row_);
+            rank_col_ = parameters_.mpi_grid().coordinate(_dim_col_);
         }
 
         ~K_point()
@@ -233,84 +224,52 @@ class K_point
             }
         }
 
-        void initialize(Band* band);
+        /// Initialize the k-point related arrays and data
+        void initialize();
 
-        void update(Band* band);
+        /// Update the relevant arrays in case of atom positions have been changed.
+        void update();
         
+        /// Find G+k vectors within the cutoff
+        void generate_gkvec(double gk_cutoff);
+
         /// Generate plane-wave matching coefficents for the radial solutions 
-        /** The matching coefficients are conjugated!. This is done in favor of the convenient overlap 
-            matrix construnction.
+        /** At some point we need to compute the radial derivatives of the spherical Bessel functions at the 
+            muffin-tin boundary. The following formula is used:
+            \f[
+                j_{{n}}^{{\prime}}(z)=-j_{{n+1}}(z)+(n/z)j_{{n}}(z)
+            \f]
         */
         template <bool conjugate>
         void generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm);
         
-        /// Setup the Hamiltonian and overlap matrices in APW+lo basis
-        /** The Hamiltonian matrix has the following expression:
-            \f[
-                H_{\mu' \mu} = \langle \varphi_{\mu'} | \hat H | \varphi_{\mu} \rangle
-            \f]
+        /// Generate first-variational states from eigen-vectors
+        void generate_fv_states();
 
-            \f[
-                H_{\mu' \mu}=\langle \varphi_{\mu' } | \hat H | \varphi_{\mu } \rangle  = 
-                \left( \begin{array}{cc} 
-                   H_{\bf G'G} & H_{{\bf G'}j} \\
-                   H_{j'{\bf G}} & H_{j'j}
-                \end{array} \right)
-            \f]
-            
-            The overlap matrix has the following expression:
-            \f[
-                O_{\mu' \mu} = \langle \varphi_{\mu'} | \varphi_{\mu} \rangle
-            \f]
-            APW-APW block:
-            \f[
-                O_{{\bf G'} {\bf G}}^{\bf k} = \sum_{\alpha} \sum_{L\nu} a_{L\nu}^{\alpha *}({\bf G'+k}) 
-                a_{L\nu}^{\alpha}({\bf G+k})
-            \f]
-            
-            APW-lo block:
-            \f[
-                O_{{\bf G'} j}^{\bf k} = \sum_{\nu'} a_{\ell_j m_j \nu'}^{\alpha_j *}({\bf G'+k}) 
-                \langle u_{\ell_j \nu'}^{\alpha_j} | \phi_{\ell_j}^{\zeta_j \alpha_j} \rangle
-            \f]
-
-            lo-APW block:
-            \f[
-                O_{j' {\bf G}}^{\bf k} = 
-                \sum_{\nu'} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} | u_{\ell_{j'} \nu'}^{\alpha_{j'}} \rangle
-                a_{\ell_{j'} m_{j'} \nu'}^{\alpha_{j'}}({\bf G+k}) 
-            \f]
-
-            lo-lo block:
-            \f[
-                O_{j' j}^{\bf k} = \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} | 
-                \phi_{\ell_{j}}^{\zeta_{j} \alpha_{j}} \rangle \delta_{\alpha_{j'} \alpha_j} 
-                \delta_{\ell_{j'} \ell_j} \delta_{m_{j'} m_j}
-            \f]
-
-        */
-        template <processing_unit_t pu, basis_t basis>
-        void set_fv_h_o(Periodic_function<double>* effective_potential, int num_ranks,
-                        mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
+        /// Distribute fv states over rows of the MPI grid 
+        void distribute_fv_states_row();
         
-        /// Solve \f$ \hat H \psi = E \psi \f$ and find the eigen-states of the Hamiltonian
-        void find_eigen_states(Band* band, Periodic_function<double>* effective_potential, 
-                               Periodic_function<double>* effective_magnetic_field[3]);
+        /// Generate two-component spinor wave functions 
+        void generate_spinor_wave_functions();
 
-        template <processing_unit_t pu, basis_t basis>
-        void ibs_force(Band* band, mdarray<double, 2>& ffac, mdarray<double, 2>& force);
+        Periodic_function<complex16>* spinor_wave_function_component(int lmax, int ispn, int j);
 
-        Periodic_function<complex16>* spinor_wave_function_component(Band* band, int lmax, int ispn, int j);
-
-        void spinor_wave_function_component_mt(Band* band, int lmax, int ispn, int jloc, mt_functions<complex16>& psilm);
+        //== void spinor_wave_function_component_mt(int lmax, int ispn, int jloc, mt_functions<complex16>& psilm);
         
-        void save_wave_functions(int id, Band* band);
+        void save(int id);
 
-        void load_wave_functions(int id, Band* band);
+        void load(HDF5_tree h5in, int id);
 
-        void get_fv_eigen_vectors(Band* band, mdarray<complex16, 2>& fv_evec);
+        //== void save_wave_functions(int id);
+
+        //== void load_wave_functions(int id);
+
+        void get_fv_eigen_vectors(mdarray<complex16, 2>& fv_evec);
         
-        void get_sv_eigen_vectors(Band* band, mdarray<complex16, 2>& sv_evec);
+        void get_sv_eigen_vectors(mdarray<complex16, 2>& sv_evec);
+        
+        /// Test orthonormalization of spinor wave-functions
+        void test_spinor_wave_functions(int use_fft);
         
         /// APW+lo basis size
         /** Total number of APW+lo basis functions is equal to the number of augmented plane-waves plus
@@ -328,12 +287,17 @@ class K_point
             return gvec_index_[igk];
         }
         
-        /// Pointer to G+k vector
-        inline double* gkvec(int igk)
+        /// Return G+k vector in fractional coordinates
+        inline vector3d<double> gkvec(int igk)
         {
             assert(igk >= 0 && igk < gkvec_.size(1));
 
-            return &gkvec_(0, igk);
+            return vector3d<double>(gkvec_(0, igk), gkvec_(1, igk), gkvec_(2, igk));
+        }
+
+        inline vector3d<double> gkvec_cart(int igk)
+        {
+            return parameters_.get_coordinates<cartesian, reciprocal>(gkvec(igk));
         }
 
         inline complex16 gkvec_phase_factor(int igk, int ia)
@@ -349,7 +313,7 @@ class K_point
             return gkvec_.size(1);
         }
 
-        /// Total number of muffin-tin and plane-wave expansion coefficients for the first-variational state
+        /// Total number of muffin-tin and plane-wave expansion coefficients for the wave-functions.
         /** APW+lo basis \f$ \varphi_{\mu {\bf k}}({\bf r}) = \{ \varphi_{\bf G+k}({\bf r}),
             \varphi_{j{\bf k}}({\bf r}) \} \f$ is used to expand first-variational wave-functions:
 
@@ -367,11 +331,11 @@ class K_point
                 Y_{\ell m}(\hat {\bf r}) & {\bf r} \in MT_{\alpha} \end{array}
             \f]
 
-            Thus, the total number of coefficients representing a first-variational state is equal
-            to the number of muffi-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r) 
+            Thus, the total number of coefficients representing a wave-funstion is equal
+            to the number of muffin-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r) 
             Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves. 
         */ 
-        inline int mtgk_size() // TODO: find a better name for this
+        inline int wf_size()
         {
             return (parameters_.mt_basis_size() + num_gkvec());
         }
@@ -417,6 +381,11 @@ class K_point
             return fv_eigen_values_[i];
         }
 
+        inline std::vector<double>& fv_eigen_values()
+        {
+            return fv_eigen_values_;
+        }
+        
         inline double weight()
         {
             return weight_;
@@ -432,7 +401,7 @@ class K_point
             return &fft_index_[0];
         }
 
-        inline double* vk()
+        inline vector3d<double> vk()
         {
             return vk_;
         }
@@ -508,9 +477,110 @@ class K_point
             }
         }
 
+        inline apwlo_basis_descriptor& apwlo_basis_descriptors_col(int idx)
+        {
+            return apwlo_basis_descriptors_col_[idx];
+        }
+        
         inline apwlo_basis_descriptor& apwlo_basis_descriptors_row(int idx)
         {
             return apwlo_basis_descriptors_row_[idx];
+        }
+        
+        inline int num_ranks_row()
+        {
+            return num_ranks_row_;
+        }
+        
+        inline int rank_row()
+        {
+            return rank_row_;
+        }
+        
+        inline int num_ranks_col()
+        {
+            return num_ranks_col_;
+        }
+        
+        inline int rank_col()
+        {
+            return rank_col_;
+        }
+       
+        /// Number of MPI ranks for a given k-point
+        inline int num_ranks()
+        {
+            return num_ranks_;
+        }
+
+        /// Offset of column matching coefficients in the array. 
+        /** In case of distributed matrix setup row and column apw coefficients are combined. Row coefficients are first.*/
+        inline int apw_offset_col()
+        {
+            return (num_ranks() > 1) ? num_gkvec_row() : 0;
+        }
+
+        /// Return number of lo columns for a given atom
+        inline int num_atom_lo_cols(int ia)
+        {
+            return (int)atom_lo_cols_[ia].size();
+        }
+
+        /// Return local index (for the current MPI rank) of a column for a given atom and column index within an atom
+        inline int lo_col(int ia, int i)
+        {
+            return atom_lo_cols_[ia][i];
+        }
+        
+        /// Return number of lo rows for a given atom
+        inline int num_atom_lo_rows(int ia)
+        {
+            return (int)atom_lo_rows_[ia].size();
+        }
+
+        /// Return local index (for the current MPI rank) of a row for a given atom and row index within an atom
+        inline int lo_row(int ia, int i)
+        {
+            return atom_lo_rows_[ia][i];
+        }
+
+        inline mdarray<complex16, 2>& fv_eigen_vectors()
+        {
+            return fv_eigen_vectors_;
+        }
+        
+        inline mdarray<complex16, 2>& fv_states_col()
+        {
+            return fv_states_col_;
+        }
+        
+        inline mdarray<complex16, 2>& fv_states_row()
+        {
+            return fv_states_row_;
+        }
+
+        inline mdarray<complex16, 2>& sv_eigen_vectors()
+        {
+            return sv_eigen_vectors_;
+        }
+        
+        inline mdarray<complex16, 2>& fd_eigen_vectors()
+        {
+            return fd_eigen_vectors_;
+        }
+
+        void bypass_sv()
+        {
+            memcpy(&band_energies_[0], &fv_eigen_values_[0], parameters_.num_fv_states() * sizeof(double));
+            sv_eigen_vectors_.zero();
+            for (int icol = 0; icol < parameters_.spl_fv_states_col().local_size(); icol++)
+            {
+                int i = parameters_.spl_fv_states_col(icol);
+                for (int irow = 0; irow < parameters_.spl_fv_states_row().local_size(); irow++)
+                {
+                    if (parameters_.spl_fv_states_row(irow) == i) sv_eigen_vectors_(irow, icol) = complex16(1, 0);
+                }
+            }
         }
 };
 

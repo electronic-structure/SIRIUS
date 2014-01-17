@@ -129,7 +129,7 @@ class radial_functions_index
 
             for (int l = 0; l <= lmax_aw_; l++)
             {
-                assert(aw_descriptors[l].size() <= 2);
+                assert(aw_descriptors[l].size() <= 3);
 
                 num_rf_[l] = (int)aw_descriptors[l].size();
                 for (int order = 0; order < (int)aw_descriptors[l].size(); order++)
@@ -336,7 +336,7 @@ class basis_functions_index
 class Atom_type
 {
     private:
-        
+
         /// unique id of atom type
         int id_;
     
@@ -432,9 +432,7 @@ class Atom_type
         
         void init(int lmax_apw);
 
-        void create_radial_grid();
-        
-        void set_radial_grid(int num_points, double* points);
+        void set_radial_grid(int num_points = -1, double* points = NULL);
 
         /// Add augmented-wave descriptor.
         void add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu);
@@ -624,6 +622,11 @@ class Atom_type
         inline double free_atom_radial_function(int ir, int ist)
         {
             return free_atom_radial_functions_(ir, ist);
+        }
+
+        inline std::vector<double>& free_atom_potential()
+        {
+            return free_atom_potential_;
         }
 
         inline void set_symbol(const std::string symbol__)

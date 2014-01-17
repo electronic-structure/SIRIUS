@@ -1,9 +1,9 @@
 template <lattice_t Tl>
-void Unit_cell::find_translation_limits(double radius, int* limits)
+vector3d<int> Unit_cell::find_translation_limits(double radius)
 {
     Timer t("sirius::Unit_cell::find_translation_limits");
 
-    limits[0] = limits[1] = limits[2] = 0;
+    vector3d<int> limits;
 
     int n = 0;
     while(true)
@@ -17,10 +17,9 @@ void Unit_cell::find_translation_limits(double radius, int* limits)
                 {
                     if (abs(i0) == n || abs(i1) == n || abs(i2) == n)
                     {
-                        int vgf[] = {i0, i1, i2};
-                        double vgc[3];
-                        get_coordinates<cartesian, Tl>(vgf, vgc);
-                        double len = Utils::vector_length(vgc);
+                        vector3d<int> vgf(i0, i1, i2);
+                        vector3d<double> vgc = get_coordinates<cartesian, Tl>(vgf);
+                        double len = vgc.length();
                         if (len <= radius)
                         {
                             found = true;
@@ -37,15 +36,15 @@ void Unit_cell::find_translation_limits(double radius, int* limits)
         }
         else 
         {
-            return;
+            return limits;
         }
     }
 }
 
 template <lattice_t Tl>
-void Unit_cell::reduce_coordinates(double vc[3], int ntr[3], double vf[3])
+void Unit_cell::reduce_coordinates(vector3d<double>coord, vector3d<int>& ntr, vector3d<double>& vf)
 {
-    get_coordinates<fractional, Tl>(vc, vf);
+    vf = get_coordinates<fractional, Tl>(coord);
     for (int i = 0; i < 3; i++)
     {
         ntr[i] = (int)floor(vf[i]);
@@ -54,14 +53,28 @@ void Unit_cell::reduce_coordinates(double vc[3], int ntr[3], double vf[3])
     }
 }
 
-template<coordinates_t cT, lattice_t lT, typename T>
-void Unit_cell::get_coordinates(T* a, double* b)
+std::pair< vector3d<double>, vector3d<int> > Unit_cell::reduce_coordinates(vector3d<double> coord)
 {
-    b[0] = b[1] = b[2] = 0.0;
+    std::pair< vector3d<double>, vector3d<int> > v; 
     
-    if (lT == direct)
+    v.first = coord;
+    for (int i = 0; i < 3; i++)
     {
-        if (cT == fractional)
+        v.second[i] = (int)floor(v.first[i]);
+        v.first[i] -= v.second[i];
+        if (v.first[i] < 0.0 || v.first[i] >= 1.0) error_local(__FILE__, __LINE__, "wrong fractional coordinates");
+    }
+    return v;
+}
+
+template<coordinates_t Tc, lattice_t Tl, typename T>
+vector3d<double> Unit_cell::get_coordinates(vector3d<T> a)
+{
+    vector3d<double> b;
+    
+    if (Tl == direct)
+    {
+        if (Tc == fractional)
         {    
             for (int l = 0; l < 3; l++)
             {
@@ -69,7 +82,7 @@ void Unit_cell::get_coordinates(T* a, double* b)
             }
         }
 
-        if (cT == cartesian)
+        if (Tc == cartesian)
         {
             for (int x = 0; x < 3; x++)
             {
@@ -78,9 +91,9 @@ void Unit_cell::get_coordinates(T* a, double* b)
         }
     }
 
-    if (lT == reciprocal)
+    if (Tl == reciprocal)
     {
-        if (cT == fractional)
+        if (Tc == fractional)
         {
             for (int l = 0; l < 3; l++)
             {
@@ -88,7 +101,7 @@ void Unit_cell::get_coordinates(T* a, double* b)
             }
         }
 
-        if (cT == cartesian)
+        if (Tc == cartesian)
         {
             for (int x = 0; x < 3; x++)
             {
@@ -96,6 +109,8 @@ void Unit_cell::get_coordinates(T* a, double* b)
             }
         }
     }
+
+    return b;
 }
 
 void Unit_cell::add_atom_type(int atom_type_id, const std::string label)
@@ -113,7 +128,6 @@ void Unit_cell::add_atom_type(int atom_type_id, const std::string label)
 void Unit_cell::add_atom(int atom_type_id, double* position, double* vector_field)
 {
     double eps = 1e-10;
-    double pos[3];
     
     if (atom_type_index_by_id_.count(atom_type_id) == 0)
     {
@@ -124,7 +138,7 @@ void Unit_cell::add_atom(int atom_type_id, double* position, double* vector_fiel
 
     for (int i = 0; i < num_atoms(); i++)
     {
-        atom(i)->get_position(pos);
+        vector3d<double> pos = atom(i)->position();
         if (fabs(pos[0] - position[0]) < eps && fabs(pos[1] - position[1]) < eps && fabs(pos[2] - position[2]) < eps)
         {
             std::stringstream s;
@@ -148,7 +162,7 @@ void Unit_cell::get_symmetry()
 {
     Timer t("sirius::Unit_cell::get_symmetry");
     
-    if (num_atoms() == 0) error_local(__FILE__, __LINE__, "no atoms");
+    if (num_atoms() == 0) return; //error_local(__FILE__, __LINE__, "no atoms");
     
     if (spg_dataset_) spg_free_dataset(spg_dataset_);
         
@@ -173,7 +187,7 @@ void Unit_cell::get_symmetry()
 
     for (int i = 0; i < num_atoms(); i++)
     {
-        atoms_[i]->get_position(&positions(0, i));
+        for (int x = 0; x < 3; x++) positions(x, i) = atoms_[i]->position(x);
         types[i] = atoms_[i]->type_id();
     }
     spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions(0, 0), &types[0], num_atoms(), 1e-5);
@@ -287,7 +301,7 @@ std::vector<double> Unit_cell::find_mt_radii()
 
 bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
 {
-    if (nearest_neighbours_.size() == 0) error_local(__FILE__, __LINE__, "array of nearest neighbours is empty");
+    if (num_atoms() != 0 && nearest_neighbours_.size() == 0) error_local(__FILE__, __LINE__, "array of nearest neighbours is empty");
 
     for (int ia = 0; ia < num_atoms(); ia++)
     {
@@ -314,9 +328,9 @@ bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
 
 void Unit_cell::init(int lmax_apw, int lmax_pot, int num_mag_dims)
 {
-    // =====================
+    //======================
     // initialize atom types
-    // =====================
+    //======================
     max_num_mt_points_ = 0;
     for (int i = 0; i < num_atom_types(); i++)
     {
@@ -324,9 +338,9 @@ void Unit_cell::init(int lmax_apw, int lmax_pot, int num_mag_dims)
          max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(i)->num_mt_points());
     }
     
-    // ================
+    //=================
     // find the charges
-    // ================
+    //=================
     total_nuclear_charge_ = 0;
     num_core_electrons_ = 0;
     num_valence_electrons_ = 0;
@@ -338,9 +352,9 @@ void Unit_cell::init(int lmax_apw, int lmax_pot, int num_mag_dims)
     }
     num_electrons_ = num_core_electrons_ + num_valence_electrons_;
    
-    // ================
+    //=================
     // initialize atoms
-    // ================
+    //=================
     mt_basis_size_ = 0;
     mt_aw_basis_size_ = 0;
     mt_lo_basis_size_ = 0;
@@ -359,8 +373,8 @@ void Unit_cell::init(int lmax_apw, int lmax_pot, int num_mag_dims)
     }
 
     assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
-    assert(num_atoms() != 0);
-    assert(num_atom_types() != 0);
+    //assert(num_atoms() != 0);
+    //assert(num_atom_types() != 0);
 
     update();
             
@@ -369,9 +383,11 @@ void Unit_cell::init(int lmax_apw, int lmax_pot, int num_mag_dims)
 
 void Unit_cell::update()
 {
-    find_nearest_neighbours(Utils::vector_length(&lattice_vectors_[0][0]) +
-                            Utils::vector_length(&lattice_vectors_[1][0]) +
-                            Utils::vector_length(&lattice_vectors_[2][0]));
+    vector3d<double> v0(lattice_vectors_[0]);
+    vector3d<double> v1(lattice_vectors_[1]);
+    vector3d<double> v2(lattice_vectors_[2]);
+
+    find_nearest_neighbours(v0.length() + v1.length() + v2.length());
 
     // find new MT radii and initialize radial grid 
     if (auto_rmt())
@@ -380,7 +396,7 @@ void Unit_cell::update()
         for (int iat = 0; iat < num_atom_types(); iat++) 
         {
             atom_type(iat)->set_mt_radius(Rmt[iat]);
-            atom_type(iat)->create_radial_grid();
+            atom_type(iat)->set_radial_grid();
         }
     }
     
@@ -490,25 +506,28 @@ void Unit_cell::print_info()
         printf("\n");
     }
 
-    printf("\n");
-    printf("space group number   : %i\n", spg_dataset_->spacegroup_number);
-    printf("international symbol : %s\n", spg_dataset_->international_symbol);
-    printf("Hall symbol          : %s\n", spg_dataset_->hall_symbol);
-    printf("number of operations : %i\n", spg_dataset_->n_operations);
-    printf("symmetry operations  : \n");
-    for (int isym = 0; isym < spg_dataset_->n_operations; isym++)
+    if (spg_dataset_)
     {
-        printf("isym : %i\n", isym);
-        printf("R : ");
-        for (int i = 0; i < 3; i++)
+        printf("\n");
+        printf("space group number   : %i\n", spg_dataset_->spacegroup_number);
+        printf("international symbol : %s\n", spg_dataset_->international_symbol);
+        printf("Hall symbol          : %s\n", spg_dataset_->hall_symbol);
+        printf("number of operations : %i\n", spg_dataset_->n_operations);
+        printf("symmetry operations  : \n");
+        for (int isym = 0; isym < spg_dataset_->n_operations; isym++)
         {
-            if (i) printf("    ");
-            for (int j = 0; j < 3; j++) printf("%3i ",spg_dataset_->rotations[isym][i][j]);
+            printf("isym : %i\n", isym);
+            printf("R : ");
+            for (int i = 0; i < 3; i++)
+            {
+                if (i) printf("    ");
+                for (int j = 0; j < 3; j++) printf("%3i ",spg_dataset_->rotations[isym][i][j]);
+                printf("\n");
+            }
+            printf("T : ");
+            for (int j = 0; j < 3; j++) printf("%f ",spg_dataset_->translations[isym][j]);
             printf("\n");
         }
-        printf("T : ");
-        for (int j = 0; j < 3; j++) printf("%f ",spg_dataset_->translations[isym][j]);
-        printf("\n");
     }
     
     printf("\n");
@@ -523,17 +542,21 @@ void Unit_cell::write_cif()
     if (Platform::mpi_rank() == 0)
     {
         FILE* fout = fopen("unit_cell.cif", "w");
+        
+        vector3d<double> v0(lattice_vectors_[0]);
+        vector3d<double> v1(lattice_vectors_[1]);
+        vector3d<double> v2(lattice_vectors_[2]);
 
-        double a = Utils::vector_length(lattice_vectors_[0]);
-        double b = Utils::vector_length(lattice_vectors_[1]);
-        double c = Utils::vector_length(lattice_vectors_[2]);
+        double a = v0.length();
+        double b = v1.length();
+        double c = v2.length();
         fprintf(fout, "_cell_length_a %f\n", a);
         fprintf(fout, "_cell_length_b %f\n", b);
         fprintf(fout, "_cell_length_c %f\n", c);
 
-        double alpha = acos(Utils::scalar_product(lattice_vectors_[1], lattice_vectors_[2]) / b / c) * 180 / pi;
-        double beta = acos(Utils::scalar_product(lattice_vectors_[0], lattice_vectors_[2]) / a / c) * 180 / pi;
-        double gamma = acos(Utils::scalar_product(lattice_vectors_[0], lattice_vectors_[1]) / a / b) * 180 / pi;
+        double alpha = acos(Utils::scalar_product(v1, v2) / b / c) * 180 / pi;
+        double beta = acos(Utils::scalar_product(v0, v2) / a / c) * 180 / pi;
+        double gamma = acos(Utils::scalar_product(v0, v1) / a / b) * 180 / pi;
         fprintf(fout, "_cell_angle_alpha %f\n", alpha);
         fprintf(fout, "_cell_angle_beta %f\n", beta);
         fprintf(fout, "_cell_angle_gamma %f\n", gamma);
@@ -603,8 +626,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
 {
     Timer t("sirius::Unit_cell::find_nearest_neighbours");
 
-    int max_frac_coord[3];
-    find_translation_limits<direct>(cluster_radius, max_frac_coord);
+    vector3d<int> max_frac_coord = find_translation_limits<direct>(cluster_radius);
    
     nearest_neighbours_.clear();
     nearest_neighbours_.resize(num_atoms());
@@ -612,8 +634,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
     #pragma omp parallel for default(shared)
     for (int ia = 0; ia < num_atoms(); ia++)
     {
-        double iapos[3];
-        get_coordinates<cartesian, direct>(atom(ia)->position(), iapos);
+        vector3d<double> iapos = get_coordinates<cartesian, direct>(atom(ia)->position());
         
         std::vector<nearest_neighbour_descriptor> nn;
 
@@ -630,20 +651,18 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
                     nnd.translation[1] = i1;
                     nnd.translation[2] = i2;
                     
-                    double vt[3];
-                    get_coordinates<cartesian, direct>(nnd.translation, vt);
+                    vector3d<double> vt = get_coordinates<cartesian, direct>(nnd.translation);
                     
                     for (int ja = 0; ja < num_atoms(); ja++)
                     {
                         nnd.atom_id = ja;
 
-                        double japos[3];
-                        get_coordinates<cartesian, direct>(atom(ja)->position(), japos);
+                        vector3d<double> japos = get_coordinates<cartesian, direct>(atom(ja)->position());
 
-                        double v[3];
+                        vector3d<double> v;
                         for (int x = 0; x < 3; x++) v[x] = japos[x] + vt[x] - iapos[x];
 
-                        nnd.distance = Utils::vector_length(v);
+                        nnd.distance = v.length();
                         
                         if (nnd.distance <= cluster_radius)
                         {
@@ -687,11 +706,11 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
 
 bool Unit_cell::is_point_in_mt(double vc[3], int& ja, int& jr, double& dr, double tp[2])
 {
-    int ntr[3];
-    double vf[3];
+    vector3d<int> ntr;
+    vector3d<double> vf;
     
     // reduce coordinates to the primitive unit cell
-    reduce_coordinates<direct>(vc, ntr, vf);
+    reduce_coordinates<direct>(vector3d<double>(vc), ntr, vf);
 
     for (int ia = 0; ia < num_atoms(); ia++)
     {
@@ -702,18 +721,18 @@ bool Unit_cell::is_point_in_mt(double vc[3], int& ja, int& jr, double& dr, doubl
                 for (int i2 = -1; i2 <= 1; i2++)
                 {
                     // atom position
-                    double posf[] = {double(i0), double(i1), double(i2)};
+                    vector3d<double> posf(i0, i1, i2); 
+
                     for (int i = 0; i < 3; i++) posf[i] += atom(ia)->position(i);
                     
                     // vector connecting center of atom and reduced point
-                    double vf1[3];
+                    vector3d<double> vf1;
                     for (int i = 0; i < 3; i++) vf1[i] = vf[i] - posf[i];
                     
                     // convert to Cartesian coordinates
-                    double vc1[3];
-                    get_coordinates<cartesian, direct>(vf1, vc1);
+                    vector3d<double> vc1 = get_coordinates<cartesian, direct>(vf1);
 
-                    double r = Utils::vector_length(vc1);
+                    double r = vc1.length();
 
                     if (r <= atom(ia)->type()->mt_radius())
                     {

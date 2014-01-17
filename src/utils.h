@@ -29,13 +29,8 @@ class Utils
             return false;
         }
 
-        static inline double vector_length(double v[3])
-        {
-            return sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-        }
-
         template <typename U, typename V>
-        static inline double scalar_product(U a[3], V b[3])
+        static inline double scalar_product(vector3d<U> a, vector3d<V> b)
         {
             return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
         }
@@ -63,9 +58,13 @@ class Utils
             return 0.5 * (1 - gsl_sf_erf(e)) - 1 - 0.25 * exp(-e * e) * (a + 2 * e - 2 * a * e * e) / sqrt(pi);
         }
 
-        static void write_matrix(const std::string& fname, bool write_all, mdarray<complex16, 2>& matrix)
+        static void write_matrix(const std::string& fname, mdarray<complex16, 2>& matrix, int nrow, int ncol,
+                                 bool write_upper_only = true, bool write_abs_only = false, std::string fmt = "%18.12f")
         {
             static int icount = 0;
+
+            if (nrow < 0 || nrow > matrix.size(0) || ncol < 0 || ncol > matrix.size(1))
+                error_local(__FILE__, __LINE__, "wrong number of rows or columns");
         
             icount++;
             std::stringstream s;
@@ -74,20 +73,35 @@ class Utils
         
             FILE* fout = fopen(full_name.c_str(), "w");
         
-            for (int icol = 0; icol < matrix.size(1); icol++)
+            for (int icol = 0; icol < ncol; icol++)
             {
                 fprintf(fout, "column : %4i\n", icol);
                 for (int i = 0; i < 80; i++) fprintf(fout, "-");
                 fprintf(fout, "\n");
-                fprintf(fout, " row                real               imag                abs \n");
+                if (write_abs_only)
+                {
+                    fprintf(fout, " row, absolute value\n");
+                }
+                else
+                {
+                    fprintf(fout, " row, real part, imaginary part, absolute value\n");
+                }
                 for (int i = 0; i < 80; i++) fprintf(fout, "-");
                 fprintf(fout, "\n");
                 
-                int max_row = (write_all) ? (matrix.size(0) - 1) : std::min(icol, matrix.size(0) - 1);
+                int max_row = (write_upper_only) ? std::min(icol, nrow - 1) : (nrow - 1);
                 for (int j = 0; j <= max_row; j++)
                 {
-                    fprintf(fout, "%4i  %18.12f %18.12f %18.12f\n", j, real(matrix(j, icol)), imag(matrix(j, icol)), 
-                                                                    abs(matrix(j, icol)));
+                    if (write_abs_only)
+                    {
+                        std::string s = "%4i  " + fmt + "\n";
+                        fprintf(fout, s.c_str(), j, abs(matrix(j, icol)));
+                    }
+                    else
+                    {
+                        fprintf(fout, "%4i  %18.12f %18.12f %18.12f\n", j, real(matrix(j, icol)), imag(matrix(j, icol)), 
+                                                                        abs(matrix(j, icol)));
+                    }
                 }
                 fprintf(fout,"\n");
             }
@@ -158,30 +172,6 @@ class Utils
             }
         }
 
-        static inline std::vector<int> intvec(int i0)
-        {
-            std::vector<int> iv(1);
-            iv[0] = i0;
-            return iv;
-        }
-
-        static inline std::vector<int> intvec(int i0, int i1)
-        {
-            std::vector<int> iv(2);
-            iv[0] = i0;
-            iv[1] = i1;
-            return iv;
-        }
-
-        static inline std::vector<int> intvec(int i0, int i1, int i2)
-        {
-            std::vector<int> iv(3);
-            iv[0] = i0;
-            iv[1] = i1;
-            iv[2] = i2;
-            return iv;
-        }
-        
         /// Convert variable of type T to a string
         template <typename T>
         static std::string to_string(T argument)

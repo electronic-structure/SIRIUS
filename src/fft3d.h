@@ -46,7 +46,9 @@
 namespace sirius
 {
 
-class FFT3D
+template <processing_unit_t> class FFT3D;
+
+template<> class FFT3D<cpu>
 {
     private:
 
@@ -54,7 +56,7 @@ class FFT3D
         int grid_size_[3];
 
         /// reciprocal space range
-        int grid_limits_[3][2];
+        std::pair<int, int> grid_limits_[3];
         
         /// backward transformation plan for each thread
         std::vector<fftw_plan> plan_backward_;
@@ -110,8 +112,8 @@ class FFT3D
             {
                 grid_size_[i] = find_grid_size(dims[i]);
                 
-                grid_limits_[i][1] = grid_size_[i] / 2;
-                grid_limits_[i][0] = grid_limits_[i][1] - grid_size_[i] + 1;
+                grid_limits_[i].second = grid_size_[i] / 2;
+                grid_limits_[i].first = grid_limits_[i].second - grid_size_[i] + 1;
             }
         }
 
@@ -236,9 +238,9 @@ class FFT3D
             for (int i = 0; i < n; i++) data[i] = fftw_output_buffer_(map[i], thread_id);
         }
         
-        inline int grid_limits(int d, int i)
+        inline const std::pair<int, int>& grid_limits(int idim)
         {
-            return grid_limits_[d][i];
+            return grid_limits_[idim];
         }
 
         /// Total size of the FFT grid.
@@ -274,7 +276,73 @@ class FFT3D
         {
             return fftw_input_buffer_(i, thread_id);
         }
+
+        vector3d<int> grid_size()
+        {
+            return vector3d<int>(grid_size_);
+        }
 };
+
+#ifdef _GPU_
+template<> class FFT3D<gpu>
+{
+    private:
+
+        vector3d<int> grid_size_;
+
+        void* fft_buffer_device_ptr;
+
+    public:
+
+        FFT3D(vector3d<int> grid_size__) : grid_size_(grid_size__)
+        {
+        }
+
+        int nfft_max(int min_block_size = 1 << 20)
+        {
+            int nfft = (int)(cuda_get_free_mem() / size() / 10 / sizeof(complex16));
+            return std::min(nfft, min_block_size);
+        }
+
+        void allocate_batch_fft_buffer(int nfft_max)
+        {
+            cuda_malloc(&fft_buffer_device_ptr, size() * nfft_max * sizeof(complex16));
+        }
+
+        void deallocate_batch_fft_buffer()
+        {
+            cuda_free(fft_buffer_device_ptr);
+        }
+
+        void create_batch_plan(int nfft)
+        {
+             cufft_create_batch_plan(grid_size_[0], grid_size_[1], grid_size_[2], nfft);
+        }
+
+        void destroy_batch_plan()
+        {
+            cufft_destroy_batch_plan();
+        }
+
+        void batch_apply_v(int num_gkvec, int num_phi, int* map, complex16* v_r, complex16* phi)
+        {
+            cufft_batch_apply_v(size(), num_gkvec, num_phi, fft_buffer_device_ptr, map, v_r, phi);
+        }
+
+        /// Total size of the FFT grid.
+        inline int size()
+        {
+            return grid_size_[0] * grid_size_[1] * grid_size_[2]; 
+        }
+
+        /// Size of a given dimension.
+        inline int size(int d)
+        {
+            assert(d >= 0 && d < 3);
+            return grid_size_[d]; 
+        }
+};
+#endif
 
 };
 

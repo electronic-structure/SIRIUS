@@ -4,6 +4,7 @@ sys.dont_write_bytecode = True
 import CifFile
 import re
 import math
+import json
 
 def parse_symmetry_op(op):
     result = re.search("(-?|\+?)[0-9]{1,10}/[0-9]{1,10}", op)
@@ -108,14 +109,21 @@ def main():
     fout.write("\n")
     fout.write("atoms\n")
     fout.write("%i\n"%len(initial_atoms_list.keys()))
+    
+    json_atoms = []
 
     for key in initial_atoms_list.keys():
         atom_list = apply_symmetry(sym_ops_list, initial_atoms_list[key])
+        json_atoms.append([key,atom_list])
         fout.write("'%s.in'\n"%key)
         fout.write("%i\n"%len(atom_list))
         for a in atom_list:
             fout.write("%18.10f %18.10f %18.10f\n"%(a[0], a[1], a[2]))
 
+    fout.close()
+
+    fout = open("sirius.json", "w")
+    json.dump({"mpi_grid_dims" : [1], "lattice_vectors" : avec, "atoms" : json_atoms}, fout, indent=2)
     fout.close()
 
     return

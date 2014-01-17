@@ -215,11 +215,12 @@ class Radial_grid
 
     public:
         
-        /// Constructor for empty radial grid
-        /** The actual grid points must be set with the subsequent call to set_radial_points() */
-        Radial_grid(int num_mt_points__, double mt_radius__) : 
+        /// Constructor for user provided radial grid
+        /** The actual grid points must are set with the subsequent call to set_radial_points() */
+        Radial_grid(int num_points, int num_mt_points__, double mt_radius__, double* points__) : 
             mt_radius_(mt_radius__), num_mt_points_(num_mt_points__), grid_type_name_("custom")
         {
+            set_radial_points(num_points, points__);
         }
 
         /// Constructor for muffin-tin radial grids
@@ -295,10 +296,11 @@ class Radial_grid
         }
 
         /// Get all radial points.
-        inline void get_radial_points(double* radial_points)
-        {
-            memcpy(radial_points, &points_[0], points_.size() * sizeof(real8));
-        }
+        /// \todo make it safe and universal
+        //== inline void get_radial_points(double* radial_points)
+        //== {
+        //==     memcpy(radial_points, &points_[0], points_.size() * sizeof(real8));
+        //== }
 
         /// Get muffin-tin radial points and deltas.
         inline void get_r_dr(double* array, int lda)

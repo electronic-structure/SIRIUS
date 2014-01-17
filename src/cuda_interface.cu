@@ -4,36 +4,56 @@
 #include <assert.h>
 #include <cuda.h>
 #include <cublas_v2.h>
+#include <cufft.h>
+//#include <map>
+//#include <string>
 
-cublasHandle_t& cublas_handle()
+//=====================
+// Auxiliary functions
+//=====================
+
+__device__ size_t array2D_offset(int i0, int i1, int ld0)
 {
-    static cublasHandle_t handle;
-    static bool init = false;
-
-    if (!init)
-    {
-        if (cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS)
-        {
-            printf("cublasCreate() failed \n");
-            exit(-1);
-        }
-        init = true;
-    }
-    
-    return handle;
+    return i0 + i1 * ld0;
 }
 
-/*extern "C" void cuda_init()
+// TODO: can be optimized in terms of multiplication
+__device__ size_t array3D_offset(int i0, int i1, int i2, int ld0, int ld1)
 {
-    if (cuInit(0) != CUDA_SUCCESS)
-    {
-        printf("cuInit failed\n");
-    }
-}*/
+    return i0 + i1 * ld0 + i2 * ld0 * ld1;
+}
 
-extern "C" void cublas_init()
+// TODO: can be optimized in terms of multiplication
+__device__ size_t array4D_offset(int i0, int i1, int i2, int i3, int ld0, int ld1, int ld2)
 {
-    cublas_handle();
+    return i0 + i1 * ld0 + i2 * ld0 * ld1 + i3 * ld0 * ld1 * ld2;
+}
+
+int num_blocks(int length, int block_size)
+{
+    return (length / block_size) + min(length % block_size, 1);
+}
+
+//================
+// CUDA functions
+//================
+
+extern "C" void cuda_malloc(void** ptr, size_t size)
+{
+    if (cudaMalloc(ptr, size) != cudaSuccess)
+    {
+        printf("failed to execute cudaMalloc() \n");
+        exit(0);
+    }
+}
+
+extern "C" void cuda_free(void* ptr)
+{
+    if (cudaFree(ptr) != cudaSuccess)
+    {
+        printf("failed to execute cudaFree() \n");
+        exit(0);
+    }
 }
 
 extern "C" void cuda_malloc_host(void** ptr, size_t size)
@@ -54,25 +74,7 @@ extern "C" void cuda_free_host(void** ptr)
     }
 }
 
-extern "C" void cuda_malloc(void **ptr, size_t size)
-{
-    if (cudaMalloc(ptr, size) != cudaSuccess)
-    {
-        printf("failed to execute cudaMalloc() \n");
-        exit(0);
-    }
-}
-
-extern "C" void cuda_free(void *ptr)
-{
-    if (cudaFree(ptr) != cudaSuccess)
-    {
-        printf("failed to execute cudaFree() \n");
-        exit(0);
-    }
-}
-
-extern "C" void cuda_copy_to_device(void *target, void *source, size_t size)
+extern "C" void cuda_copy_to_device(void* target, void* source, size_t size)
 {
     if (cudaMemcpy(target, source, size, cudaMemcpyHostToDevice) != cudaSuccess)
     {
@@ -81,7 +83,7 @@ extern "C" void cuda_copy_to_device(void *target, void *source, size_t size)
     }
 }
 
-extern "C" void cuda_copy_to_host(void *target, void *source, size_t size)
+extern "C" void cuda_copy_to_host(void* target, void* source, size_t size)
 {
     if (cudaMemcpy(target, source, size, cudaMemcpyDeviceToHost) != cudaSuccess)
     {
@@ -89,6 +91,16 @@ extern "C" void cuda_copy_to_host(void *target, void *source, size_t size)
         exit(0);
     }
 }
+
+extern "C" void cuda_device_synchronize()
+{
+    if (cudaDeviceSynchronize() != cudaSuccess)
+    {
+        printf("failed to execute cudaDeviceSynchronize()\n");
+        exit(0);
+    }
+}
+        
 
 cudaStream_t* streams;
 
@@ -113,7 +125,7 @@ extern "C" void cuda_stream_synchronize(int stream_id)
     }
 }
 
-extern "C" void cuda_async_copy_to_device(void *target, void *source, size_t size, int stream_id)
+extern "C" void cuda_async_copy_to_device(void* target, void* source, size_t size, int stream_id)
 {
     cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
 
@@ -124,7 +136,7 @@ extern "C" void cuda_async_copy_to_device(void *target, void *source, size_t siz
     }
 }
 
-extern "C" void cuda_async_copy_to_host(void *target, void *source, size_t size, int stream_id)
+extern "C" void cuda_async_copy_to_host(void* target, void* source, size_t size, int stream_id)
 {
     cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
 
@@ -135,7 +147,7 @@ extern "C" void cuda_async_copy_to_host(void *target, void *source, size_t size,
     }
 }
 
-extern "C" void cuda_memset(void *ptr,int value, size_t size)
+extern "C" void cuda_memset(void* ptr,int value, size_t size)
 {
     if (cudaMemset(ptr, value, size) != cudaSuccess)
     {
@@ -229,19 +241,81 @@ extern "C" void cuda_device_info()
     printf("totalGlobalMem              : %li kB \n", devprop.totalGlobalMem/1024);
 }
 
+extern "C" size_t cuda_get_free_mem()
+{
+    size_t free, total;
+    
+    cudaMemGetInfo(&free, &total);
+
+    return free;
+}
+
+//==================
+// CUBLAS functions
+//==================
+
+cublasHandle_t& cublas_handle()
+{
+    static cublasHandle_t handle;
+    static bool init = false;
+
+    if (!init)
+    {
+        if (cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS)
+        {
+            printf("cublasCreate() failed \n");
+            exit(-1);
+        }
+        init = true;
+    }
+    
+    return handle;
+}
+
+extern "C" void cublas_init()
+{
+    cublas_handle();
+}
 
 extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                              void* alpha, void* a, int32_t lda, void* b, 
                              int32_t ldb, void* beta, void* c, int32_t ldc)
 {
     const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
+    
+    
+    cublasStatus_t status = cublasZgemm(cublas_handle(), trans[transa], trans[transb], m, n, k, (cuDoubleComplex*)alpha, 
+                                        (cuDoubleComplex*)a, lda, (cuDoubleComplex*)b, ldb, (cuDoubleComplex*)beta, 
+                                        (cuDoubleComplex*)c, ldc);
+    if (status == CUBLAS_STATUS_SUCCESS) return;
 
-    if (cublasZgemm(cublas_handle(), trans[transa], trans[transb], m, n, k, (cuDoubleComplex*)alpha, (cuDoubleComplex*)a, lda, 
-                   (cuDoubleComplex*)b, ldb, (cuDoubleComplex*)beta, (cuDoubleComplex*)c, ldc) != CUBLAS_STATUS_SUCCESS)
+    printf("failed to execute cublasZgemm\n");
+    
+    switch (status)
     {
-        printf("failed to execute cublasZgemm() \n");
-        exit(-1);
+        case CUBLAS_STATUS_NOT_INITIALIZED:
+        {
+            printf("the library was not initialized\n");
+            break;
+        }
+        case CUBLAS_STATUS_INVALID_VALUE:
+        {
+            printf("the parameters m,n,k<0\n");
+            break;
+        }
+        case CUBLAS_STATUS_ARCH_MISMATCH:
+        {
+            printf("he device does not support double-precision\n");
+            break;
+        }
+        case CUBLAS_STATUS_EXECUTION_FAILED:
+        {
+            printf("the function failed to launch on the GPU\n");
+            break;
+        }
     }
+
+    exit(-1);
 }
 
 // A(GPU) => B(CPU)
@@ -264,23 +338,88 @@ extern "C" void cublas_set_matrix(int rows, int cols, int elemSize, const void *
     }
 }
 
+//=================
+// CUFFT functions
+//=================
 
-__device__ size_t array2D_offset(int i0, int i1, int ld0)
+cufftHandle plan;
+
+extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft)
 {
-    return i0 + i1 * ld0;
+    int fft_size = nx * ny * nz;
+    int n[] = {nz, ny, nx};
+
+    cufftResult result = cufftPlanMany(&plan, 3, n, n, 1, fft_size, n, 1, fft_size, CUFFT_Z2Z, nfft);
+    if (result != CUFFT_SUCCESS)
+    {
+        printf("failed to execute cufftPlanMany()\n");
+        exit(0);
+    }
 }
 
-// TODO: can be optimized in terms of multiplication
-__device__ size_t array3D_offset(int i0, int i1, int i2, int ld0, int ld1)
+extern "C" void cufft_destroy_batch_plan()
 {
-    return i0 + i1 * ld0 + i2 * ld0 * ld1;
+    cufftDestroy(plan);
 }
 
-// TODO: can be optimized in terms of multiplication
-__device__ size_t array4D_offset(int i0, int i1, int i2, int i3, int ld0, int ld1, int ld2)
+__global__ void cufft_batch_load_kernel(int fft_size, int num_gkvec, int* map, cuDoubleComplex* phi, 
+                                        cuDoubleComplex* fft_buffer)
 {
-    return i0 + i1 * ld0 + i2 * ld0 * ld1 + i3 * ld0 * ld1 * ld2;
+    int i = blockIdx.y;
+    int ig = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (ig < num_gkvec) fft_buffer[array2D_offset(map[ig], i, fft_size)] = phi[array2D_offset(ig, i, num_gkvec)];
 }
+
+__global__ void cufft_batch_apply_v_kernel(int fft_size, cuDoubleComplex* v_r, cuDoubleComplex* fft_buffer)
+{
+    int i = blockIdx.y;
+    int ir = blockDim.x * blockIdx.x + threadIdx.x;
+    if (ir < fft_size) 
+    {
+        fft_buffer[array2D_offset(ir, i, fft_size)] = 
+            cuCmul(fft_buffer[array2D_offset(ir, i, fft_size)], v_r[ir]);
+    }
+}
+
+__global__ void cufft_batch_unload_kernel(int fft_size, int num_gkvec, int* map, cuDoubleComplex* fft_buffer,
+                                          cuDoubleComplex* phi)
+{
+    int i = blockIdx.y;
+    int ig = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (ig < num_gkvec) 
+    {
+        phi[array2D_offset(ig, i, num_gkvec)] = 
+            cuCdiv(fft_buffer[array2D_offset(map[ig], i, fft_size)], make_cuDoubleComplex(double(fft_size), 0));
+    }
+}
+
+extern "C" void cufft_batch_apply_v(int fft_size, int num_gkvec, int num_phi, void* buffer, int* map, void* v_r, void* p)
+{
+    dim3 threadsPerBlock(64);
+    dim3 numBlocks(num_blocks(num_gkvec, 64), num_phi);
+    
+    cuda_memset(buffer, 0, fft_size * num_phi * sizeof(cuDoubleComplex));
+
+    cufft_batch_load_kernel<<<numBlocks, threadsPerBlock>>>
+        (fft_size, num_gkvec, map, (cuDoubleComplex*)p, (cuDoubleComplex*)buffer);
+    
+    cufftExecZ2Z(plan, (cufftDoubleComplex*)buffer, (cufftDoubleComplex*)buffer, CUFFT_INVERSE);
+    
+    dim3 numBlocks_r(num_blocks(fft_size, 64), num_phi);
+    cufft_batch_apply_v_kernel<<<numBlocks_r, threadsPerBlock>>>
+        (fft_size, (cuDoubleComplex*)v_r, (cuDoubleComplex*)buffer);
+    
+    cufftExecZ2Z(plan, (cufftDoubleComplex*)buffer, (cufftDoubleComplex*)buffer, CUFFT_FORWARD);
+
+    cufft_batch_unload_kernel<<<numBlocks, threadsPerBlock>>>
+        (fft_size, num_gkvec, map, (cuDoubleComplex*)buffer, (cuDoubleComplex*)p);
+}
+
+//==================================
+// High-level functions and kernels
+//==================================
 
 template <typename T, typename U>
 __device__ U spline_inner_product_gpu_function(int ld, int size, double* r_dr, T* s1_coefs, U* s2_coefs)
@@ -693,6 +832,24 @@ void add_band_density_gpu(int lmmax_rho, int lmmax_wf, int max_nmtp, int num_ato
     
 
 
+__global__ void scale_matrix_columns_gpu_kernel(int nrow, int ncol, cuDoubleComplex* mtrx, double* a)
+{
+    int icol = blockIdx.y;
+    int irow = blockIdx.x * blockDim.x + threadIdx.x;
+    if (irow < nrow) 
+    {
+        mtrx[array2D_offset(irow, icol, nrow)] =
+            cuCmul(mtrx[array2D_offset(irow, icol, nrow)], make_cuDoubleComplex(a[icol], 0));
+    }
+}
+
+void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a)
+{
+    dim3 threadsPerBlock(64);
+    dim3 numBlocks((nrow / 64) + min(nrow % 64, 1), ncol);
+    scale_matrix_columns_gpu_kernel<<<numBlocks, threadsPerBlock>>>
+        (nrow, ncol, (cuDoubleComplex*)mtrx, a);
+}
 
 
 

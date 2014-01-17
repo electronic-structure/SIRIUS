@@ -22,9 +22,11 @@ mt_kinetic:
 	
 spline:
 	$(CXX) $(CXX_OPT) $(INCLUDE) spline.cpp        $(LIB_SIRIUS) $(LIBS) -o spline
-	
+
 cuda_zgemm:
-#	$(CXX) $(CXX_OPT) $(INCLUDE) cuda_zgemm.cpp    $(LIB_SIRIUS) $(LIBS) -o cuda_zgemm
+ifneq (,$(findstring D_GPU_,$(CXX_OPT)))
+	$(CXX) $(CXX_OPT) $(INCLUDE) cuda_zgemm.cpp    $(LIB_SIRIUS) $(LIBS) -o cuda_zgemm
+endif
 	
 spline_gpu:
 #	$(CXX) $(CXX_OPT) $(INCLUDE) spline_gpu.cpp    $(LIB_SIRIUS) $(LIBS) -o spline_gpu

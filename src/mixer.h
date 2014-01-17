@@ -91,16 +91,15 @@ class density_mixer: public mixer<double>
             }
             this->beta_ = std::min(this->beta_, 0.9);
 
-            //printf("[periodic_function_mixer]\n");
-            //printf("beta = %f\n", this->beta_);
-
             this->rms_prev_ = rms;
             
             return rms;
         }
 
-        
-
+        inline double beta()
+        {
+            return beta_;
+        }
 };
 
 

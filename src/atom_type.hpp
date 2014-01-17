@@ -53,8 +53,8 @@ void Atom_type::init(int lmax_apw)
 
     if (zn_ == 0) error_local(__FILE__, __LINE__, "zero atom charge");
 
-    // create radial grid if it was not set
-    if (radial_grid_ == NULL) create_radial_grid();
+    // set default radial grid if it was not done by user
+    if (radial_grid_ == NULL) set_radial_grid();
 
     // initialize aw descriptors if they were not set manually
     if (aw_descriptors_.size() == 0) init_aw_descriptors(lmax_apw);
@@ -64,13 +64,10 @@ void Atom_type::init(int lmax_apw)
     max_aw_order_ = 0;
     for (int l = 0; l <= lmax_apw; l++) max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
 
-    if (max_aw_order_ == 0 || max_aw_order_ > 2) error_local(__FILE__, __LINE__, "maximum aw order is zero or greater than two");
+    if (max_aw_order_ == 0 || max_aw_order_ > 3) error_local(__FILE__, __LINE__, "maximum aw order is zero or greater than three");
 
     indexr_.init(aw_descriptors_, lo_descriptors_);
     indexb_.init(indexr_);
-    
-    free_atom_density_.resize(radial_grid_->size());
-    free_atom_potential_.resize(radial_grid_->size());
     
     num_core_electrons_ = 0;
     for (int i = 0; i < (int)atomic_levels_.size(); i++) 
@@ -83,19 +80,20 @@ void Atom_type::init(int lmax_apw)
     initialized_ = true;
 }
 
-void Atom_type::create_radial_grid()
-{
-    if (num_mt_points_ == 0) error_local(__FILE__, __LINE__, "number of muffin-tin points is zero");
-    if (radial_grid_) delete radial_grid_;
-    radial_grid_ = new Radial_grid(default_radial_grid_t, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
-}
-
 void Atom_type::set_radial_grid(int num_points, double* points)
 {
     if (num_mt_points_ == 0) error_local(__FILE__, __LINE__, "number of muffin-tin points is zero");
     if (radial_grid_) delete radial_grid_;
-    radial_grid_ = new Radial_grid(num_mt_points_, mt_radius_);
-    radial_grid_->set_radial_points(num_points, points);
+    if (num_points < 0 && points == NULL)
+    {
+        radial_grid_ = new Radial_grid(default_radial_grid_t, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
+    }
+    else
+    {
+        radial_grid_ = new Radial_grid(num_points, num_mt_points_, mt_radius_, points);
+    }
+    free_atom_density_.resize(radial_grid_->size());
+    free_atom_potential_.resize(radial_grid_->size());
 }
 
 void Atom_type::init_aw_descriptors(int lmax)
@@ -336,6 +334,7 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
 
 void Atom_type::print_info()
 {
+    printf("\n");
     printf("symbol         : %s\n", symbol_.c_str());
     printf("name           : %s\n", name_.c_str());
     printf("zn             : %i\n", zn_);
@@ -407,7 +406,6 @@ void Atom_type::print_info()
     printf("number of aw basis functions : %i\n", indexb().size_aw());
     printf("number of lo basis functions : %i\n", indexb().size_lo());
     radial_grid().print_info();
-    printf("\n");
 }
         
 void Atom_type::read_input_core(JSON_tree& parser)
@@ -581,6 +579,7 @@ void Atom_type::read_input_lo(JSON_tree& parser)
 void Atom_type::read_input(const std::string& fname)
 {
     JSON_tree parser(fname);
+
     parser["name"] >> name_;
     parser["symbol"] >> symbol_;
     parser["mass"] >> mass_;

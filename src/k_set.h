@@ -30,6 +30,15 @@
 namespace sirius 
 {
 
+struct kq
+{
+    // index of reduced k+q vector
+    int jk;
+
+    // vector which reduces k+q to first BZ
+    vector3d<int> K;
+};
+
 class K_set
 {
     private:
@@ -64,7 +73,7 @@ class K_set
 
         void update();
         
-        /// Find eigen-states
+        /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian
         void find_eigen_states(Potential* potential, bool precompute);
 
         /// Find Fermi energy and band occupation numbers
@@ -77,10 +86,10 @@ class K_set
 
         void sync_band_energies();
         
-        void save_wave_functions();
+        void save();
 
-        void load_wave_functions();
-        
+        void load();
+
         int max_num_gkvec();
 
         void force(mdarray<double, 2>& forcek);
@@ -152,6 +161,34 @@ class K_set
         inline double band_gap()
         {
             return band_gap_;
+        }
+
+        /// Find index of k-point.
+        inline int find_kpoint(vector3d<double> vk)
+        {
+            for (int ik = 0; ik < num_kpoints(); ik++) 
+            {
+                if ((kpoints_[ik]->vk() - vk).length() < 1e-12) return ik;
+            }
+            return -1;
+        }
+
+        void generate_Gq_matrix_elements(vector3d<double> vq)
+        {
+            std::vector<kq> kpq(num_kpoints());
+            for (int ik = 0; ik < num_kpoints(); ik++)
+            {
+                // reduce k+q to first BZ: k+q=k"+K; k"=k+q-K
+                std::pair< vector3d<double>, vector3d<int> > vkqr = parameters_.reduce_coordinates(kpoints_[ik]->vk() + vq);
+                
+                if ((kpq[ik].jk = find_kpoint(vkqr.first)) == -1) 
+                    error_local(__FILE__, __LINE__, "index of reduced k+q point is not found");
+
+                kpq[ik].K = vkqr.second;
+            }
+
+
+
         }
 };
 

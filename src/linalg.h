@@ -721,11 +721,8 @@ class generalized_evp_magma: public generalized_evp
 
             assert(nevec <= matrix_size);
             
-            std::vector<double> w(matrix_size);
-            
             magma_zhegvdx_2stage_wrapper(matrix_size, nevec, a, lda, b, ldb, eval);
             
-            memcpy(eval, &w[0], nevec * sizeof(real8));
             for (int i = 0; i < nevec; i++) memcpy(&z[ldz * i], &a[lda * i], matrix_size * sizeof(complex16));
         }
         #endif
