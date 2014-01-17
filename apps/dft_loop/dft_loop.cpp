@@ -34,7 +34,7 @@ int main(int argn, char** argv)
         {
             std::string label;
             parser["atoms"][iat][0] >> label;
-            parameters.unit_cell()->add_atom_type(iat, label, parameters.potential_type());
+            parameters.unit_cell()->add_atom_type(iat, label, parameters.esm_type());
             for (int ia = 0; ia < parser["atoms"][iat][1].size(); ia++)
             {
                 std::vector<double> v;
