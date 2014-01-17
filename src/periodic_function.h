@@ -53,6 +53,8 @@ class Periodic_function
         /// alias for FFT driver
         FFT3D<cpu>* fft_;
 
+        electronic_structure_method_t esm_type_;
+
         /// local part of muffin-tin functions 
         mdarray<Spheric_function<T>*, 1> f_mt_local_;
         

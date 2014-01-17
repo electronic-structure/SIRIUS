@@ -14,6 +14,8 @@ class Reciprocal_lattice
 
         /// pointer to corresponding Unit_cell class 
         Unit_cell* unit_cell_;
+
+        electronic_structure_method_t esm_type_;
         
         /// three direct lattice vectors
         double lattice_vectors_[3][3];
@@ -24,15 +26,20 @@ class Reciprocal_lattice
         /// plane wave cutoff radius (in inverse a.u. of length)
         /** Plane-wave cutoff controls the size of the FFT grid used in the interstitial region. */
         double pw_cutoff_;
+
+        double gk_cutoff_;
         
         /// FFT wrapper
         FFT3D<cpu>* fft_;
+        FFT3D<cpu>* fft_coarse_;
 
         /// list of G-vector fractional coordinates
         mdarray<int, 2> gvec_;
 
         /// number of G-vectors within plane wave cutoff
         int num_gvec_;
+
+        int num_gvec_coarse_;
 
         /// mapping between index of a G-shell and a list of G-vectors belonging to the shell 
         //std::vector< std::vector<int> > ig_by_igs_;
@@ -45,6 +52,10 @@ class Reciprocal_lattice
 
         /// mapping betwee linear G-vector index and position in FFT buffer
         std::vector<int> fft_index_; // TODO: move to FFT? what to do with sorting of G-vectors?
+
+        std::vector<int> fft_index_coarse_;
+
+        std::vector<int> gvec_index_;
 
         /// split index of G-vectors
         splindex<block> spl_num_gvec_;
@@ -68,10 +79,14 @@ class Reciprocal_lattice
 
     public:
         
-        Reciprocal_lattice(Unit_cell* unit_cell__, double pw_cutoff__, int lmax__) 
+        Reciprocal_lattice(Unit_cell* unit_cell__, electronic_structure_method_t esm_type__, double pw_cutoff__, 
+                           double gk_cutoff__, int lmax__) 
             : unit_cell_(unit_cell__), 
+              esm_type_(esm_type__),
               pw_cutoff_(pw_cutoff__), 
-              num_gvec_(0)
+              gk_cutoff_(gk_cutoff__),
+              num_gvec_(0),
+              num_gvec_coarse_(0)
         {
             for (int l = 0; l < 3; l++)
             {
@@ -84,6 +99,13 @@ class Reciprocal_lattice
 
             vector3d<int> max_frac_coord = Utils::find_translation_limits(pw_cutoff_, reciprocal_lattice_vectors_);
             fft_ = new FFT3D<cpu>(max_frac_coord);
+            
+            if (esm_type_ == ultrasoft_pseudopotential)
+            {
+                vector3d<int> max_frac_coord_coarse = Utils::find_translation_limits(gk_cutoff__ * 2, 
+                                                                                     reciprocal_lattice_vectors_);
+                fft_coarse_ = new FFT3D<cpu>(max_frac_coord_coarse);
+            }
 
             init(lmax__);
         }
@@ -91,6 +113,7 @@ class Reciprocal_lattice
         ~Reciprocal_lattice()
         {
             delete fft_;
+            if (esm_type_ == ultrasoft_pseudopotential) delete fft_coarse_;
         }
   
         void update();
@@ -122,6 +145,11 @@ class Reciprocal_lattice
             return fft_;
         }
 
+        inline FFT3D<cpu>* fft_coarse()
+        {
+            return fft_coarse_;
+        }
+
         inline int index_by_gvec(int i0, int i1, int i2)
         {
             return index_by_gvec_(i0, i1, i2);
@@ -137,6 +165,11 @@ class Reciprocal_lattice
         inline int* fft_index()
         {
             return &fft_index_[0];
+        }
+
+        inline int* fft_index_coarse()
+        {
+            return &fft_index_coarse_[0];
         }
         
         /// G-vector in integer fractional coordinates
@@ -188,6 +221,17 @@ class Reciprocal_lattice
         inline int num_gvec()
         {
             return num_gvec_;
+        }
+
+        inline int num_gvec_coarse()
+        {
+            return num_gvec_coarse_;
+        }
+
+        inline int gvec_index(int igc)
+        {
+            assert(igc >= 0 && igc < (int)gvec_index_.size());
+            return gvec_index_[igc];
         }
 
         /// Number of G-vector shells within plane-wave cutoff

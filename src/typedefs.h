@@ -1,6 +1,11 @@
 #ifndef __TYPEDEFS_H__
 #define __TYPEDEFS_H__
 
+/** \file typedefs.h
+
+    \brief Contains typedefs, enums and primitive_type_wrapper class
+*/
+
 typedef std::complex<double> complex16;
 
 typedef double real8;
@@ -19,9 +24,14 @@ enum linalg_t {lapack, scalapack, elpa, magma};
 
 enum splindex_t {block, block_cyclic};
 
-enum basis_t {apwlo, pwlo, pw};
-
-enum potential_t {full_potential, ultrasoft_pseudopotential, norm_conserving_pseudopotential};
+/** Types of electronic structure methods
+    
+    The following types are supported:
+        - \b full_potential_apwlo: full potential linearized augmented plane waves with local orbitals
+        - \b full_potential_pwlo: full potential plane waves with local orbitals (heavily experimental and not completely implemented)
+        - \b ultrasoft_pseudopotential: ultrasoft pseudopotential with plane wave basis
+*/
+enum electronic_structure_method_t {full_potential_lapwlo, full_potential_pwlo, ultrasoft_pseudopotential};
 
 enum index_domain_t {global, local};
 
@@ -174,6 +184,7 @@ template<> class primitive_type_wrapper<char>
         }*/
 };
 
+// TODO: move to a separate file
 /// Simple implementation of 3d vector
 template <typename T> class vector3d
 {

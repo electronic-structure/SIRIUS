@@ -367,8 +367,8 @@ class Atom_type
 
         uspp_descriptor uspp_;
 
-        /// type of atomic potential
-        potential_t potential_type_;
+        /// type of electronic structure method used
+        electronic_structure_method_t esm_type_;
 
         bool initialized_;
        
@@ -393,7 +393,7 @@ class Atom_type
         Atom_type(const char* symbol__, const char* name__, int zn__, double mass__, 
                   std::vector<atomic_level_descriptor>& levels__);
  
-        Atom_type(int id__, const std::string label, potential_t potential_type__);
+        Atom_type(int id__, const std::string label, electronic_structure_method_t esm_type__);
 
         Atom_type(int id__);
 
@@ -611,11 +611,6 @@ class Atom_type
         inline std::vector<double>& free_atom_potential()
         {
             return free_atom_potential_;
-        }
-
-        inline potential_t potential_type()
-        {
-            return potential_type_;
         }
 
         inline uspp_descriptor& uspp()

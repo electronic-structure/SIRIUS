@@ -94,7 +94,7 @@ class DFT_ground_state
               density_(density__), 
               kset_(kset__)
         {
-            if (parameters_.potential_type() == ultrasoft_pseudopotential) ewald_energy_ = ewald_energy();
+            if (parameters_.esm_type() == ultrasoft_pseudopotential) ewald_energy_ = ewald_energy();
         }
 
         void move_atoms(int istep);
@@ -129,7 +129,7 @@ class DFT_ground_state
                 printf("\n"); 
 
                 printf("valence_eval_sum          : %18.8f\n", evalsum1);
-                if (parameters_.potential_type() == full_potential)
+                if (parameters_.unit_cell()->full_potential())
                 {
                     printf("core_eval_sum             : %18.8f\n", evalsum2);
                     printf("kinetic energy            : %18.8f\n", ekin);
@@ -138,7 +138,7 @@ class DFT_ground_state
                 printf("<rho|E^{XC}>              : %18.8f\n", eexc);
                 printf("<mag|B^{XC}>              : %18.8f\n", ebxc);
                 printf("<rho|V^{H}>               : %18.8f\n", evha);
-                if (parameters_.potential_type() == ultrasoft_pseudopotential)
+                if (parameters_.esm_type() == ultrasoft_pseudopotential)
                 {
                     printf("one-electron contribution : %18.8f\n", evalsum1 - (evxc + evha)); // eband + deband in QE
                     printf("hartree contribution      : %18.8f\n", 0.5 * evha);
@@ -151,7 +151,7 @@ class DFT_ground_state
                 printf("band gap (eV) : %18.8f\n", gap);
                 printf("Efermi        : %18.8f\n", ef);
                 printf("\n");
-                if (parameters_.potential_type() == full_potential) printf("core leakage : %18.8f\n", core_leak);
+                if (parameters_.unit_cell()->full_potential()) printf("core leakage : %18.8f\n", core_leak);
             }
         }
 
@@ -176,7 +176,7 @@ class DFT_ground_state
         inline double energy_exc()
         {
             double exc = inner(parameters_, density_->rho(), potential_->xc_energy_density());
-            if (parameters_.potential_type() == ultrasoft_pseudopotential) 
+            if (parameters_.esm_type() == ultrasoft_pseudopotential) 
                 exc += inner(parameters_, density_->rho_pseudo_core(), potential_->xc_energy_density());
             return exc;
         }
@@ -234,9 +234,10 @@ class DFT_ground_state
         */
         inline double total_energy()
         {
-            switch (parameters_.potential_type())
+            switch (parameters_.esm_type())
             {
-                case full_potential:
+                case full_potential_lapwlo:
+                case full_potential_pwlo:
                 {
                     return (energy_kin() + energy_exc() + 0.5 * energy_vha() + energy_enuc());
                 }

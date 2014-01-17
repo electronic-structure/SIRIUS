@@ -288,7 +288,7 @@ class Broyden_mixer: public Mixer
                 mdarray<double, 2> gamma_k(2 * max_history_, max_history_);
                 gamma_k.zero();
                 // initial gamma_0
-                for (int i = 0; i < max_history_; i++) gamma_k(i, i) = 0.5;
+                for (int i = 0; i < max_history_; i++) gamma_k(i, i) = 0.25;
 
                 std::vector<double> v1(max_history_);
                 std::vector<double> v2(max_history_ * 2);

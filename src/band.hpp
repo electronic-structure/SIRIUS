@@ -1188,8 +1188,8 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 //=====================================================================================================================
 // CPU code, (L)APW+lo basis
 //=====================================================================================================================
-template<> void Band::set_fv_h_o<cpu, apwlo>(K_point* kp, Periodic_function<double>* effective_potential,
-                                             mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+template<> void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp, Periodic_function<double>* effective_potential,
+                                                             mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
 {
     Timer t("sirius::Band::set_fv_h_o");
    
@@ -1508,7 +1508,7 @@ void Band::solve_fv_exact_diagonalization(K_point* kp, Periodic_function<double>
     {
         case cpu:
         {
-            set_fv_h_o<cpu, apwlo>(kp, effective_potential, h, o);
+            set_fv_h_o<cpu, full_potential_lapwlo>(kp, effective_potential, h, o);
             break;
         }
         #ifdef _GPU_
@@ -1704,81 +1704,84 @@ void Band::solve_fv_exact_diagonalization(K_point* kp, Periodic_function<double>
     log_function_exit(__func__);
 }
 
-void Band::apply_h_local(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
+void Band::apply_h_local(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
                          int n, complex16* phi__, complex16* hphi__)
 {
     Timer t("sirius::Band::apply_h_local");
 
     mdarray<complex16, 2> phi(phi__, kp->num_gkvec(), n);
     mdarray<complex16, 2> hphi(hphi__, kp->num_gkvec(), n);
+
+    auto fft = parameters_.reciprocal_lattice()->fft_coarse();
     
     int num_fft_threads = Platform::num_fft_threads();
     #pragma omp parallel default(shared) num_threads(num_fft_threads)
     {        
         int thread_id = omp_get_thread_num();
-        std::vector<complex16> phi_r(fft_->size());
+        std::vector<complex16> phi_r(fft->size());
         
         #pragma omp for
         for (int i = 0; i < n; i++)
         {
-            fft_->input(kp->num_gkvec(), kp->fft_index(), &phi(0, i), thread_id);
-            fft_->transform(1, thread_id);
-            fft_->output(&phi_r[0], thread_id);
+            fft->input(kp->num_gkvec(), kp->fft_index_coarse(), &phi(0, i), thread_id);
+            fft->transform(1, thread_id);
+            fft->output(&phi_r[0], thread_id);
 
-            for (int ir = 0; ir < fft_->size(); ir++) phi_r[ir] *= effective_potential->f_it<global>(ir);
+            for (int ir = 0; ir < fft->size(); ir++) phi_r[ir] *= effective_potential[ir];
 
-            fft_->input(&phi_r[0], thread_id);
-            fft_->transform(-1, thread_id);
-            fft_->output(kp->num_gkvec(), kp->fft_index(), &hphi(0, i), thread_id);
+            fft->input(&phi_r[0], thread_id);
+            fft->transform(-1, thread_id);
+            fft->output(kp->num_gkvec(), kp->fft_index_coarse(), &hphi(0, i), thread_id);
             
             for (int igk = 0; igk < kp->num_gkvec(); igk++) hphi(igk, i) += phi(igk, i) * pw_ekin[igk];
         }
     }
 }
 
-//== // slow
-//== void Band::get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
-//==                         std::vector<complex16>& h_diag, std::vector<complex16>& o_diag)
-//== {
-//==     Timer t("sirius::Band::get_h_o_diag");
-//== 
-//==     h_diag.resize(kp->num_gkvec());
-//==     o_diag.resize(kp->num_gkvec());
-//==     
-//==     // compute V_{loc}(G=0)
-//==     double v0 = 0;
-//==     for (int ir = 0; ir < fft_->size(); ir++) v0 += effective_potential->f_it<global>(ir);
-//==     v0 /= parameters_.unit_cell()->omega();
-//==     
-//==     for (int igk = 0; igk < kp->num_gkvec(); igk++) h_diag[igk] = pw_ekin[igk] + v0;
-//== 
-//==     mdarray<complex16, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
-//==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-//==     {   
-//==         // number of beta functions for a given atom
-//==         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
-//== 
-//==         kp->generate_beta_pw(&beta_pw(0, 0), ia);
-//== 
-//==         for (int xi2 = 0; xi2 < nbf; xi2++)
-//==         {
-//==             for (int xi1 = 0; xi1 < nbf; xi1++)
-//==             {
-//==                 for (int igk = 0; igk < kp->num_gkvec(); igk++)
-//==                 {
-//==                     h_diag[igk] += beta_pw(igk, xi1) * conj(beta_pw(igk, xi2)) * 
-//==                                    parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2);
-//== 
-//==                     o_diag[igk] += beta_pw(igk, xi1) * conj(beta_pw(igk, xi2)) * 
-//==                                    parameters_.unit_cell()->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
-//==                 }
-//==             }
-//==         }
-//==     }
-//== }
+template<>
+void Band::get_h_o_diag<0>(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
+                           std::vector<complex16>& h_diag, std::vector<complex16>& o_diag)
+{
+    Timer t("sirius::Band::get_h_o_diag");
 
-void Band::get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
-                        std::vector<complex16>& h_diag, std::vector<complex16>& o_diag)
+    h_diag.resize(kp->num_gkvec());
+    o_diag.resize(kp->num_gkvec());
+    
+    // compute V_{loc}(G=0)
+    double v0 = 0;
+    for (int ir = 0; ir < fft_->size(); ir++) v0 += effective_potential->f_it<global>(ir);
+    v0 /= parameters_.unit_cell()->omega();
+    
+    for (int igk = 0; igk < kp->num_gkvec(); igk++) h_diag[igk] = pw_ekin[igk] + v0;
+
+    mdarray<complex16, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {   
+        // number of beta functions for a given atom
+        int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+
+        kp->generate_beta_pw(&beta_pw(0, 0), ia);
+
+        for (int xi2 = 0; xi2 < nbf; xi2++)
+        {
+            for (int xi1 = 0; xi1 < nbf; xi1++)
+            {
+                for (int igk = 0; igk < kp->num_gkvec(); igk++)
+                {
+                    h_diag[igk] += beta_pw(igk, xi1) * conj(beta_pw(igk, xi2)) * 
+                                   parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2);
+
+                    o_diag[igk] += beta_pw(igk, xi1) * conj(beta_pw(igk, xi2)) * 
+                                   parameters_.unit_cell()->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
+                }
+            }
+        }
+    }
+}
+
+template<>
+void Band::get_h_o_diag<1>(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
+                           std::vector<complex16>& h_diag, std::vector<complex16>& o_diag)
 {
     Timer t("sirius::Band::get_h_o_diag");
 
@@ -1901,9 +1904,14 @@ void Band::get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potent
 //== }
 
 // memory-greedy implementation
-void Band::apply_h_o(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, int n,
+void Band::apply_h_o(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
                      complex16* phi__, complex16* hphi__, complex16* ophi__)
 {
+    //== static size_t ntot = 0;
+    //== ntot += n;
+
+    //== std::cout << "cumulitive apply_h_o size : " << ntot << std::endl;
+
     Timer t("sirius::Band::apply_h_o");
 
     mdarray<complex16, 2> phi(phi__, kp->num_gkvec(), n);
@@ -1984,6 +1992,22 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
 {
     Timer t("sirius::Band::solve_fv_iterative_diagonalization");
 
+    // map effective potential to a corase grid
+    std::vector<double> veff_it_coarse(parameters_.reciprocal_lattice()->fft_coarse()->size());
+    std::vector<complex16> veff_pw_coarse(parameters_.reciprocal_lattice()->num_gvec_coarse());
+
+    // take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi
+    for (int igc = 0; igc < parameters_.reciprocal_lattice()->num_gvec_coarse(); igc++)
+    {
+        int ig = parameters_.reciprocal_lattice()->gvec_index(igc);
+        veff_pw_coarse[igc] = effective_potential->f_pw(ig);
+    }
+    parameters_.reciprocal_lattice()->fft_coarse()->input(parameters_.reciprocal_lattice()->num_gvec_coarse(), 
+                                                          parameters_.reciprocal_lattice()->fft_index_coarse(),
+                                                          &veff_pw_coarse[0]);
+    parameters_.reciprocal_lattice()->fft_coarse()->transform(1);
+    parameters_.reciprocal_lattice()->fft_coarse()->output(&veff_it_coarse[0]);
+
     // short notation for target wave-functions
     mdarray<complex16, 2>& psi = kp->fv_states_col();
 
@@ -1996,10 +2020,10 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
     // get diagonal elements for preconditioning
     std::vector<complex16> h_diag;
     std::vector<complex16> o_diag;
-    get_h_o_diag(kp, effective_potential, pw_ekin, h_diag, o_diag);
-
-    int max_iter = 10;
-    int num_phi = std::min(4 * num_psi, kp->num_gkvec());
+    get_h_o_diag<1>(kp, effective_potential, pw_ekin, h_diag, o_diag);
+    
+    int max_iter = 20;
+    int num_phi = std::min(5 * num_psi, kp->num_gkvec());
 
     mdarray<complex16, 2> phi(kp->num_gkvec(), num_phi);
     mdarray<complex16, 2> hphi(kp->num_gkvec(), num_phi);
@@ -2039,7 +2063,7 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
             N = num_psi; // intial eigen-value problem size
 
             // apply Hamiltonian and overlap operators
-            apply_h_o(kp, effective_potential, pw_ekin, N, &phi(0, 0), &hphi(0, 0), &ophi(0, 0));
+            apply_h_o(kp, veff_it_coarse, pw_ekin, N, &phi(0, 0), &hphi(0, 0), &ophi(0, 0));
 
             // compute the Hamiltonian matrix: <phi|H|phi>
             blas<cpu>::gemm(2, 0, N, N, kp->num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
@@ -2053,7 +2077,7 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
             memcpy(&phi(0, N), &res(0, 0), n * kp->num_gkvec() * sizeof(complex16));
 
             // apply Hamiltonian and overlap operators to the new basis functions
-            apply_h_o(kp, effective_potential, pw_ekin, n, &phi(0, N), &hphi(0, N), &ophi(0, N));
+            apply_h_o(kp, veff_it_coarse, pw_ekin, n, &phi(0, N), &hphi(0, N), &ophi(0, N));
 
             // copy old Hamiltonian and overlap
             for (int i = 0; i < N; i++)
@@ -2090,20 +2114,28 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
            are accepted as the additional basis functions */
         if (convergence_by_energy)
         {
-            n = 0;
-            // check eigen-values for convergence
-            for (int i = 0; i < num_psi; i++)
+            if (k == 0)
             {
-                if (fabs(eval[i] - eval_old[i]) > parameters_.iterative_solver_tolerance())
+                n = num_psi;
+                memcpy(&hmlt(0, 0), &evec(0, 0), N * n * sizeof(complex16));
+            }
+            else
+            {
+                n = 0;
+                // check eigen-values for convergence
+                for (int i = 0; i < num_psi; i++)
                 {
-                    res_e[n] = eval[i];
-                    
-                    // use hmlt as a temporary storage for evec
-                    memcpy(&hmlt(0, n), &evec(0, i), N * sizeof(complex16));
+                    if (fabs(eval[i] - eval_old[i]) > parameters_.iterative_solver_tolerance())
+                    {
+                        res_e[n] = eval[i];
+                        
+                        // use hmlt as a temporary storage for evec
+                        memcpy(&hmlt(0, n), &evec(0, i), N * sizeof(complex16));
  
-                    n++;
+                        n++;
+                    }
+                    eval_old[i] = eval[i];
                 }
-                eval_old[i] = eval[i];
             }
 
             // if we have unconverged eigen-states
@@ -2132,7 +2164,7 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
                         //complex16 z = h_diag[igk] - res_e[i] * o_diag[igk];
                         //if (abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
                         double d = real(h_diag[igk] - res_e[i] * o_diag[igk]);
-                        if (fabs(d) < 1e-4) error_local(__FILE__, __LINE__, "problematic division");
+                        if (fabs(d) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
                         res(igk, i) /= d;
                     }
                 }
@@ -2167,31 +2199,38 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
                 for (int igk = 0; igk < kp->num_gkvec(); igk++)
                 {
                     complex16 z = h_diag[igk] - eval[i] * o_diag[igk];
-                    if (abs(z) < 1e-4) error_local(__FILE__, __LINE__, "problematic division");
+                    if (abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
                     res(igk, i) /= z;
                 }
             }
 
             // check which residuals are converged
-            n = 0;
-            for (int i = 0; i < num_psi; i++)
+            if (k == 0) 
             {
-                // take the residual if it's norm is above the threshold
-                if (res_rms[i] > parameters_.iterative_solver_tolerance()) 
+                n = num_psi;
+            }
+            else
+            {
+                n = 0;
+                for (int i = 0; i < num_psi; i++)
                 {
-                    // shift unconverged residuals to the beginning of array
-                    if (n != i) memcpy(&res(0, n), &res(0, i), kp->num_gkvec() * sizeof(complex16));
-                    n++;
+                    // take the residual if it's norm is above the threshold
+                    if (res_rms[i] > parameters_.iterative_solver_tolerance()) 
+                    {
+                        // shift unconverged residuals to the beginning of array
+                        if (n != i) memcpy(&res(0, n), &res(0, i), kp->num_gkvec() * sizeof(complex16));
+                        n++;
+                    }
                 }
             }
         }
         t3.stop();
 
-        if (Platform::mpi_rank() == 0)
-        {
-            std::cout << "iteration:" << k << ", current eigen-value size = " << N << ", number of added residuals = " << n << std::endl;
-            //printf("lower and upper eigen-values : %16.8f %16.8f\n", eval[0], eval[num_psi - 1]);
-        }
+        //if (Platform::mpi_rank() == 0)
+        //{
+        //    std::cout << "iteration:" << k << ", current eigen-value size = " << N << ", number of added residuals = " << n << std::endl;
+        //    //printf("lower and upper eigen-values : %16.8f %16.8f\n", eval[0], eval[num_psi - 1]);
+        //}
 
         // check if we run out of variational space or eigen-vectors are converged or it's a last iteration
         if (N + n > num_phi || n == 0 || k == (max_iter - 1))
@@ -2244,15 +2283,15 @@ void Band::solve_fv(K_point* kp, Periodic_function<double>* effective_potential)
     if (kp->num_gkvec() < parameters_.num_fv_states())
         error_global(__FILE__, __LINE__, "number of G+k vectors is too small");
 
-    switch (parameters_.basis_type())
+    switch (parameters_.esm_type())
     {
-        case apwlo:
-        case pwlo:
+        case full_potential_pwlo:
+        case full_potential_lapwlo:
         {
             solve_fv_exact_diagonalization(kp, effective_potential);
             break;
         }
-        case pw:
+        case ultrasoft_pseudopotential:
         {
             solve_fv_iterative_diagonalization(kp, effective_potential);
         }

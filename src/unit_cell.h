@@ -108,7 +108,7 @@ class Unit_cell
 
         int lmax_beta_;
 
-        potential_t potential_type_;
+        electronic_structure_method_t esm_type_;
 
         MPI_group mpi_group_atom_;
         
@@ -134,11 +134,11 @@ class Unit_cell
 
     public:
     
-        Unit_cell(potential_t potential_type__) 
+        Unit_cell(electronic_structure_method_t esm_type__) 
             : spg_dataset_(NULL), 
               auto_rmt_(0), 
               lmax_beta_(-1),
-              potential_type_(potential_type__)
+              esm_type_(esm_type__)
         {
         }
         
@@ -180,7 +180,7 @@ class Unit_cell
         void clear();
        
         /// Add new atom type to the list of atom types and read necessary data from the .json file
-        void add_atom_type(int atom_type_external_id, const std::string label, potential_t potential_type);
+        void add_atom_type(int atom_type_external_id, const std::string label, electronic_structure_method_t esm_type);
         
         /// Add new empty atom type to the list of atom types.
         void add_atom_type(int atom_type_external_id);
@@ -430,9 +430,9 @@ class Unit_cell
             return lmax_beta_;
         }
 
-        inline int potential_type()
+        inline bool full_potential()
         {
-            return potential_type_;
+            return (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo);
         }
 
         inline int num_nearest_neighbours(int ia)

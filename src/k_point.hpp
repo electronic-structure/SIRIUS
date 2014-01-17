@@ -24,9 +24,9 @@ void K_point::initialize()
 void K_point::update()
 {
     double gk_cutoff = 0;
-    switch (parameters_.basis_type())
+    switch (parameters_.esm_type())
     {
-        case pw:
+        case ultrasoft_pseudopotential:
         {
             gk_cutoff = parameters_.gk_cutoff();
             break;
@@ -39,7 +39,7 @@ void K_point::update()
 
     generate_gkvec(gk_cutoff);
     
-    if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
+    if (parameters_.unit_cell()->full_potential())
     {
         build_apwlo_basis_descriptors();
         distribute_block_cyclic();
@@ -61,23 +61,23 @@ void K_point::update()
             int ia = apwlo_basis_descriptors_row(irow).ia;
             atom_lo_rows_[ia].push_back(irow);
         }
-        
+    }
+    if (parameters_.esm_type() == full_potential_pwlo)
+    {
         /** \todo Correct the memory leak */
-        if (parameters_.basis_type() == pwlo)
+        stop_here
+        sbessel_.resize(num_gkvec_loc()); 
+        for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
         {
-            sbessel_.resize(num_gkvec_loc()); 
-            for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
-            {
-                sbessel_[igkloc] = new sbessel_pw<double>(parameters_.unit_cell(), parameters_.lmax_pw());
-                sbessel_[igkloc]->interpolate(gkvec_len_[igkloc]);
-            }
+            sbessel_[igkloc] = new sbessel_pw<double>(parameters_.unit_cell(), parameters_.lmax_pw());
+            sbessel_[igkloc]->interpolate(gkvec_len_[igkloc]);
         }
     }
     
     init_gkvec();
     
     // cache "b" vector of linear equations Ax=b for matching coefficients (A will be a matrix of radial derivatives)
-    if (parameters_.basis_type() == apwlo)
+    if (parameters_.esm_type() == full_potential_lapwlo)
     {
         alm_b_.set_dimensions(3, num_gkvec_loc(), parameters_.lmax_apw() + 1, parameters_.unit_cell()->num_atom_types());
         alm_b_.allocate();
@@ -123,7 +123,7 @@ void K_point::update()
     }
 
     // compute radial integrals of |beta> functions
-    if (parameters_.potential_type() == ultrasoft_pseudopotential)
+    if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
         Timer t1("sirius::K_point::update|beta_pw");
 
@@ -191,7 +191,7 @@ void K_point::update()
     if (use_second_variation)
     {
         // allocate memory for first-variational eigen vectors
-        if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
+        if (parameters_.unit_cell()->full_potential())
         {
             fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), parameters_.spl_fv_states_col().local_size());
             fv_eigen_vectors_.allocate();
@@ -201,7 +201,7 @@ void K_point::update()
         fv_states_col_.set_dimensions(wf_size(), parameters_.spl_fv_states_col().local_size());
         fv_states_col_.allocate();
 
-        if (parameters_.basis_type() == pw)
+        if (parameters_.esm_type() == ultrasoft_pseudopotential)
         {
             fv_states_col_.zero();
             for (int i = 0; i < parameters_.num_fv_states(); i++)
@@ -235,7 +235,7 @@ void K_point::update()
     }
     else
     {
-        if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
+        if (parameters_.unit_cell()->full_potential())
         {
             fd_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), parameters_.spl_spinor_wf_col().local_size());
             fd_eigen_vectors_.allocate();
@@ -571,7 +571,7 @@ void K_point::generate_fv_states()
 
     mdarray<complex16, 2> alm(num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
     
-    if (parameters_.basis_type() == apwlo)
+    if (parameters_.esm_type() == full_potential_lapwlo)
     {
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
@@ -677,7 +677,8 @@ void K_point::generate_spinor_wave_functions()
 
 void K_point::generate_gkvec(double gk_cutoff)
 {
-    if ((gk_cutoff * parameters_.unit_cell()->max_mt_radius() > double(parameters_.lmax_apw())) && parameters_.basis_type() == apwlo)
+    if ((gk_cutoff * parameters_.unit_cell()->max_mt_radius() > double(parameters_.lmax_apw())) && 
+        parameters_.unit_cell()->full_potential())
     {
         std::stringstream s;
         s << "G+k cutoff (" << gk_cutoff << ") is too large for a given lmax (" 
@@ -723,7 +724,20 @@ void K_point::generate_gkvec(double gk_cutoff)
     }
     
     fft_index_.resize(num_gkvec());
-    for (int ig = 0; ig < num_gkvec(); ig++) fft_index_[ig] = parameters_.reciprocal_lattice()->fft_index(gvec_index_[ig]);
+    for (int igk = 0; igk < num_gkvec(); igk++) fft_index_[igk] = parameters_.reciprocal_lattice()->fft_index(gvec_index_[igk]);
+
+    if (parameters_.esm_type() == ultrasoft_pseudopotential)
+    {
+        fft_index_coarse_.resize(num_gkvec());
+        for (int igk = 0; igk < num_gkvec(); igk++)
+        {
+            int ig = gvec_index_[igk]; // G-vector index in the fine mesh
+            vector3d<int> gvec = parameters_.reciprocal_lattice()->gvec(ig); // G-vector lattice coordinates
+
+            // linear index inside coarse FFT buffer
+            fft_index_coarse_[igk] = parameters_.reciprocal_lattice()->fft_coarse()->index(gvec[0], gvec[1], gvec[2]);
+        }
+    }
 }
 
 template <index_domain_t index_domain> 
@@ -773,19 +787,19 @@ void K_point::init_gkvec()
 {
     int lmax = -1;
     
-    switch (parameters_.basis_type())
+    switch (parameters_.esm_type())
     {
-        case apwlo:
+        case full_potential_lapwlo:
         {
             lmax = parameters_.lmax_apw();
             break;
         }
-        case pwlo:
+        case full_potential_pwlo:
         {
             lmax =  parameters_.lmax_pw();
             break;
         }
-        case pw:
+        case ultrasoft_pseudopotential:
         {
             lmax = parameters_.lmax_beta();
             break;
@@ -793,39 +807,18 @@ void K_point::init_gkvec()
     }
     
     // spherical harmonics of G+k vectors
-    if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
+    if (parameters_.unit_cell()->full_potential())
     {
         init_gkvec_ylm_and_len<local>(lmax, num_gkvec_loc());
         init_gkvec_phase_factors<local>(num_gkvec_loc());
     }
 
-    if (parameters_.basis_type() == pw)
+    if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
         if (num_gkvec() != wf_size()) error_local(__FILE__, __LINE__, "wrong size of wave-functions");
         init_gkvec_ylm_and_len<global>(lmax, num_gkvec());
         init_gkvec_phase_factors<global>(num_gkvec());
     }
-    
-    //== // TODO: check if phase factors are needed for PW basis
-    //== if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
-    //== {
-    //==     gkvec_phase_factors_.set_dimensions(num_gkvec_loc(), parameters_.unit_cell()->num_atoms());
-    //==     gkvec_phase_factors_.allocate();
-
-    //==     #pragma omp parallel for default(shared)
-    //==     for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
-    //==     {
-    //==         int igk = igkglob(igkloc);
-
-    //==         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    //==         {
-    //==             double phase = twopi * Utils::scalar_product(gkvec(igk), parameters_.unit_cell()->atom(ia)->position());
-
-    //==             gkvec_phase_factors_(igkloc, ia) = exp(complex16(0.0, phase));
-    //==         }
-    //==     }
-    //== }
-    
 }
 
 void K_point::build_apwlo_basis_descriptors()

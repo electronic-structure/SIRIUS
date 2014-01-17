@@ -64,15 +64,16 @@ class Band
        
         void solve_fv_exact_diagonalization(K_point* kp, Periodic_function<double>* effective_potential);
 
-        void apply_h_local(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
+        void apply_h_local(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
                            int n, complex16* phi__, complex16* hphi__);
 
         void solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<double>* effective_potential);
         
+        template<int N>
         void get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
                           std::vector<complex16>& h_diag, std::vector<complex16>& o_diag);
 
-        void apply_h_o(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, int n,
+        void apply_h_o(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
                        complex16* phi__, complex16* hphi__, complex16* ophi__);
     public:
         
@@ -161,7 +162,7 @@ class Band
             \f]
 
         */
-        template <processing_unit_t pu, basis_t basis>
+        template <processing_unit_t pu, electronic_structure_method_t basis>
         void set_fv_h_o(K_point* kp, Periodic_function<double>* effective_potential, mdarray<complex16, 2>& h, 
                         mdarray<complex16, 2>& o);
 

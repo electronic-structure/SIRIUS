@@ -9,9 +9,9 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
     
     fft_ = parameters_.reciprocal_lattice()->fft();
 
-    switch (parameters_.potential_type())
+    switch (parameters_.esm_type())
     {
-        case full_potential:
+        case full_potential_lapwlo:
         {
             lmax_ = std::max(parameters_.lmax_rho(), parameters_.lmax_pot());
             sht_ = new SHT(lmax_);
@@ -55,7 +55,7 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
     xc_energy_density_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot());
     xc_energy_density_->allocate(false, false);
 
-    if (parameters_.potential_type() == ultrasoft_pseudopotential)
+    if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
         local_potential_ = new Periodic_function<double>(parameters_, 0);
         local_potential_->allocate(false, true);
@@ -71,16 +71,16 @@ Potential::~Potential()
 {
     delete effective_potential_; 
     for (int j = 0; j < parameters_.num_mag_dims(); j++) delete effective_magnetic_field_[j];
-    if (parameters_.potential_type() == full_potential) delete sht_;
+    if (parameters_.esm_type() == full_potential_lapwlo) delete sht_;
     delete coulomb_potential_;
     delete xc_potential_;
     delete xc_energy_density_;
-    if (parameters_.potential_type() == ultrasoft_pseudopotential) delete local_potential_;
+    if (parameters_.esm_type() == ultrasoft_pseudopotential) delete local_potential_;
 }
 
 void Potential::update()
 {
-    if (parameters_.potential_type() == full_potential)
+    if (parameters_.esm_type() == full_potential_lapwlo)
     {
         // compute values of spherical Bessel functions at MT boundary
         sbessel_mt_.set_dimensions(lmax_ + pseudo_density_order + 2, parameters_.unit_cell()->num_atom_types(), 
@@ -587,7 +587,7 @@ void Potential::generate_pw_coefs()
         }
     }
 
-    if (parameters_.basis_type() == pwlo) 
+    if (parameters_.esm_type() == full_potential_pwlo) 
     {
         switch (parameters_.processing_unit())
         {
@@ -659,7 +659,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     mdarray<Spheric_function<complex16>*, 1> vh_ylm(parameters_.unit_cell()->spl_num_atoms().local_size());
 
     // in case of full potential we need to do pseudo-charge multipoles
-    if (parameters_.potential_type() == full_potential)
+    if (parameters_.unit_cell()->full_potential())
     {
         for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
         {
@@ -702,7 +702,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / pow(parameters_.reciprocal_lattice()->gvec_len(ig), 2));
     
     // boundary condition for muffin-tins
-    if (parameters_.potential_type() == full_potential)
+    if (parameters_.unit_cell()->full_potential())
     {
         // compute V_lm at the MT boundary
         mdarray<complex16, 2> vmtlm(parameters_.lmmax_pot(), parameters_.unit_cell()->num_atoms());
@@ -749,13 +749,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     fft_->transform(1);
     fft_->output(&vh->f_it<global>(0));
 
-    //== for (int irloc = 0; irloc < fft_->local_size(); irloc++)
-    //== {
-    //==     int ir = fft_->global_index(irloc);
-    //==     vh->f_it<local>(irloc) = real(fft_->output_buffer(ir));
-    //== }
-   
-    if (parameters_.potential_type() == full_potential)
+    if (parameters_.unit_cell()->full_potential())
     {
         for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
         {
@@ -772,7 +766,7 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
 
     libxc_interface xci;
    
-    if (parameters_.potential_type() == full_potential)
+    if (parameters_.unit_cell()->full_potential())
     {
         Timer t2("sirius::Potential::xc:mt");
 
@@ -1265,11 +1259,9 @@ void Potential::load()
         effective_magnetic_field_[j]->hdf5_read(fout["effective_magnetic_field"][j]);
     
     for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
-    {
         fout["effective_potential"]["free_atom_potential"].read(iat, parameters_.unit_cell()->atom_type(iat)->free_atom_potential());
-    }
 
-    if (parameters_.unit_cell()->potential_type() == full_potential) update_atomic_potential();
+    if (parameters_.unit_cell()->full_potential()) update_atomic_potential();
 }
 
 void Potential::generate_local_potential()

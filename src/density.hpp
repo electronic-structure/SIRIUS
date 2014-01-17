@@ -10,7 +10,7 @@ Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_
     rho_ = new Periodic_function<double>(parameters_, parameters_.lmmax_rho(), parameters_.reciprocal_lattice()->num_gvec());
 
     // core density of the pseudopotential method
-    if (parameters_.potential_type() == ultrasoft_pseudopotential)
+    if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
         rho_pseudo_core_ = new Periodic_function<double>(parameters_, 0);
         rho_pseudo_core_->allocate(false, true);
@@ -29,21 +29,21 @@ Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_
     dmat_spins_.push_back(std::pair<int, int>(1, 1));
     dmat_spins_.push_back(std::pair<int, int>(0, 1));
     
-    switch (parameters_.basis_type())
+    switch (parameters_.esm_type())
     {
-        case apwlo:
+        case full_potential_lapwlo:
         {
             gaunt_coefs_ = new Gaunt_coefficients<complex16>(parameters_.lmax_apw(), parameters_.lmax_rho(), 
                                                              parameters_.lmax_apw());
             break;
         }
-        case pwlo:
+        case full_potential_pwlo:
         {
             gaunt_coefs_ = new Gaunt_coefficients<complex16>(parameters_.lmax_pw(), parameters_.lmax_rho(), 
                                                              parameters_.lmax_pw());
             break;
         }
-        case pw:
+        case ultrasoft_pseudopotential:
         {
             break;
         }
@@ -56,7 +56,7 @@ Density::~Density()
 {
     delete rho_;
     for (int j = 0; j < parameters_.num_mag_dims(); j++) delete magnetization_[j];
-    if (parameters_.potential_type() == ultrasoft_pseudopotential) delete rho_pseudo_core_;
+    if (parameters_.esm_type() == ultrasoft_pseudopotential) delete rho_pseudo_core_;
     if (gaunt_coefs_) delete gaunt_coefs_;
 }
 
@@ -112,7 +112,7 @@ void Density::initial_density()
     auto rl = parameters_.reciprocal_lattice();
     auto uc = parameters_.unit_cell();
 
-    if (parameters_.potential_type() == full_potential)
+    if (parameters_.unit_cell()->full_potential())
     {
         uc->solve_free_atoms();
         
@@ -158,7 +158,7 @@ void Density::initial_density()
             rho_->f_it<global>(ir) = (uc->num_electrons() - mt_charge) / uc->volume_it();
     }
 
-    if (parameters_.potential_type() == ultrasoft_pseudopotential)
+    if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
         mdarray<double, 2> rho_radial_integrals(uc->num_atom_types(), rl->num_gvec_shells_inner());
 
@@ -905,14 +905,14 @@ void Density::generate(K_set& ks)
     generate_valence_density_it(ks);
    
     // for muffin-tin part
-    switch (parameters_.basis_type())
+    switch (parameters_.esm_type())
     {
-        case apwlo:
+        case full_potential_lapwlo:
         {
             generate_valence_density_mt(ks);
             break;
         }
-        case pwlo:
+        case full_potential_pwlo:
         {
             switch (parameters_.processing_unit())
             {
@@ -934,14 +934,14 @@ void Density::generate(K_set& ks)
             }
             break;
         }
-        case pw:
+        case ultrasoft_pseudopotential:
         {
             add_q_contribution_to_valence_density(ks);
             break;
         }
     }
     
-    if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
+    if (parameters_.unit_cell()->full_potential())
     {
         generate_core_charge_density();
 
@@ -980,7 +980,7 @@ void Density::generate(K_set& ks)
           << "obtained value : " << nel << std::endl 
           << "target value : " << parameters_.unit_cell()->num_electrons() << std::endl
           << "difference : " << fabs(nel - parameters_.unit_cell()->num_electrons()) << std::endl;
-        if (parameters_.potential_type() == full_potential)
+        if (parameters_.unit_cell()->full_potential())
         {
             s << "total core leakage : " << core_leakage();
             for (int ic = 0; ic < parameters_.unit_cell()->num_atom_symmetry_classes(); ic++) 

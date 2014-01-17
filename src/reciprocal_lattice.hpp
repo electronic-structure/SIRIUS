@@ -94,7 +94,7 @@ void Reciprocal_lattice::init(int lmax)
         t2.stop();
     }
     
-    if (unit_cell_->potential_type() == ultrasoft_pseudopotential)
+    if (esm_type_ == ultrasoft_pseudopotential)
     {
         int nbeta = unit_cell_->max_mt_radial_basis_size();
 
@@ -111,6 +111,32 @@ void Reciprocal_lattice::init(int lmax)
         generate_q_radial_integrals(lmax, q_radial_functions, q_radial_integrals);
 
         generate_q_pw(lmax, q_radial_integrals);
+        
+        // get the number of G-vectors within the cutoff in the coarse grid
+        num_gvec_coarse_ = 0;
+        fft_index_coarse_.clear();
+        gvec_index_.clear();
+        for (int i0 = fft_coarse_->grid_limits(0).first; i0 <= fft_coarse_->grid_limits(0).second; i0++)
+        {
+            for (int i1 = fft_coarse_->grid_limits(1).first; i1 <= fft_coarse_->grid_limits(1).second; i1++)
+            {
+                for (int i2 = fft_coarse_->grid_limits(2).first; i2 <= fft_coarse_->grid_limits(2).second; i2++)
+                {
+                    vector3d<double> vc = get_cartesian_coordinates(vector3d<int>(i0, i1, i2));
+
+                    if (vc.length() <= 2 * gk_cutoff_) 
+                    {
+                        // linear index inside coarse FFT buffer
+                        fft_index_coarse_.push_back(fft_coarse_->index(i0, i1, i2));
+                        
+                        // corresponding G-vector index in the fine mesh
+                        gvec_index_.push_back(index_by_gvec(i0, i1, i2));
+
+                        num_gvec_coarse_++;
+                    }
+                }
+            }
+        }
     }
 
     update();
@@ -139,6 +165,15 @@ void Reciprocal_lattice::print_info()
     printf("FFT grid limits : %i %i   %i %i   %i %i\n", fft_->grid_limits(0).first, fft_->grid_limits(0).second,
                                                         fft_->grid_limits(1).first, fft_->grid_limits(1).second,
                                                         fft_->grid_limits(2).first, fft_->grid_limits(2).second);
+    
+    if (esm_type_ == ultrasoft_pseudopotential)
+    {
+        printf("number of G-vectors on the coarse grid within the cutoff : %i\n", num_gvec_coarse());
+        printf("FFT coarse grid size : %i %i %i   total : %i\n", fft_coarse_->size(0), fft_coarse_->size(1), fft_coarse_->size(2), fft_coarse_->size());
+        printf("FFT coarse grid limits : %i %i   %i %i   %i %i\n", fft_coarse_->grid_limits(0).first, fft_coarse_->grid_limits(0).second,
+                                                                   fft_coarse_->grid_limits(1).first, fft_coarse_->grid_limits(1).second,
+                                                                   fft_coarse_->grid_limits(2).first, fft_coarse_->grid_limits(2).second);
+    }
 }
 
 template <index_domain_t index_domain>

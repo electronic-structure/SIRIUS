@@ -119,7 +119,7 @@ void FORTRAN(sirius_set_auto_rmt)(int32_t* auto_rmt)
 void FORTRAN(sirius_add_atom_type)(int32_t* atom_type_id, char* label, int32_t label_len)
 {
     log_function_enter(__func__);
-    global_parameters.unit_cell()->add_atom_type(*atom_type_id, std::string(label, label_len), global_parameters.potential_type());
+    global_parameters.unit_cell()->add_atom_type(*atom_type_id, std::string(label, label_len), global_parameters.esm_type());
     log_function_exit(__func__);
 }
 

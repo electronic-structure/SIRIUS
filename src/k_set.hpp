@@ -42,14 +42,14 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
 {
     Timer t("sirius::K_set::find_eigen_states");
     
-    if (precompute && (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo))
+    if (precompute && parameters_.unit_cell()->full_potential())
     {
         potential->generate_pw_coefs();
         potential->update_atomic_potential();
         parameters_.unit_cell()->generate_radial_functions();
         parameters_.unit_cell()->generate_radial_integrals();
     }
-    if (precompute && parameters_.potential_type() == ultrasoft_pseudopotential)
+    if (precompute && parameters_.esm_type() == ultrasoft_pseudopotential)
     {
         potential->generate_d_mtrx();
     }
@@ -61,7 +61,7 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         if (use_second_variation)
         {
             band_->solve_fv(kpoints_[ik], potential->effective_potential());
-            if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
+            if (parameters_.unit_cell()->full_potential())
             {
                 kpoints_[ik]->generate_fv_states();
                 kpoints_[ik]->distribute_fv_states_row();
@@ -206,7 +206,7 @@ void K_set::print_info()
         for (int i = 0; i < 80; i++) printf("-");
         printf("\n");
         printf("  ik                vk                    weight  num_gkvec");
-        if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo) printf("  apwlo_basis_size");
+        if (parameters_.unit_cell()->full_potential()) printf(" lapwlo_basis_size");
         printf("\n");
         for (int i = 0; i < 80; i++) printf("-");
         printf("\n");
@@ -222,8 +222,7 @@ void K_set::print_info()
                         ik, kpoints_[ik]->vk()[0], kpoints_[ik]->vk()[1], kpoints_[ik]->vk()[2], 
                         kpoints_[ik]->weight(), kpoints_[ik]->num_gkvec());
 
-            if (parameters_.basis_type() == apwlo || parameters_.basis_type() == pwlo)
-                pout.printf("            %6i", kpoints_[ik]->apwlo_basis_size());
+            if (parameters_.unit_cell()->full_potential()) pout.printf("            %6i", kpoints_[ik]->apwlo_basis_size());
             
             pout.printf("\n");
         }

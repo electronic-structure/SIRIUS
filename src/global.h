@@ -139,11 +139,7 @@ class Global
         /// smearing function width
         double smearing_width_;
         
-        /// type of potential
-        potential_t potential_type_;
-
-        /// type of basis
-        basis_t basis_type_;
+        electronic_structure_method_t esm_type_;
         
         /// step function is used in full-potential methods
         Step_function* step_function_;
@@ -215,41 +211,28 @@ class Global
                     }
                 }
 
-                if (parser.exist("potential_type"))
+                if (parser.exist("electronic_structure_method"))
                 {
                     std::string str;
-                    parser["potential_type"] >> str;
-                    if (str == "full_potential")
+                    parser["electronic_structure_method"] >> str;
+                    if (str == "full_potential_lapwlo")
                     {
-                        potential_type_ = full_potential;
+                        esm_type_ = full_potential_lapwlo;
+                    }
+                    else if (str == "full_potential_pwlo")
+                    {
+                        esm_type_ = full_potential_pwlo;
                     }
                     else if (str == "ultrasoft_pseudopotential")
                     {
-                        potential_type_ = ultrasoft_pseudopotential;
+                        esm_type_ = ultrasoft_pseudopotential;
                     }
                     else
                     {
-                        error_local(__FILE__, __LINE__, "wrong type of potential");
+                        error_local(__FILE__, __LINE__, "wrong type of electronic structure method");
                     }
                 }
 
-                if (parser.exist("basis_type"))
-                {
-                    std::string str;
-                    parser["basis_type"] >> str;
-                    if (str == "apwlo")
-                    {
-                        basis_type_ = apwlo;
-                    }
-                    else if (str == "pw")
-                    {
-                        basis_type_ = pw;
-                    }
-                    else
-                    {
-                        error_local(__FILE__, __LINE__, "wrong type of basis");
-                    }
-                }
                 mixer_input_section_.read(parser);
             }
 
@@ -293,15 +276,14 @@ class Global
               blacs_context_(-1),
               #endif
               smearing_width_(0.001), 
-              potential_type_(full_potential), 
-              basis_type_(apwlo), 
+              esm_type_(full_potential_lapwlo),
               step_function_(NULL),
               reciprocal_lattice_(NULL),
               iterative_solver_tolerance_(0.01)
         {
             gettimeofday(&start_time_, NULL); // measure the start time
             read_input(); // read initial data from sirius.json
-            unit_cell_ = new Unit_cell(potential_type_); // create new empty unit cell
+            unit_cell_ = new Unit_cell(esm_type_); // create new empty unit cell
         }
             
         ~Global()
@@ -572,19 +554,19 @@ class Global
         {
             if (initialized_) error_local(__FILE__, __LINE__, "Can't initialize global variables more than once.");
 
-            switch (basis_type())
+            switch (esm_type())
             {
-                case apwlo:
+                case full_potential_lapwlo:
                 {
                     break;
                 }
-                case pwlo:
+                case full_potential_pwlo:
                 {
                     lmax_pw_ = lmax_apw_;
                     lmax_apw_ = -1;
                     break;
                 }
-                case pw:
+                case ultrasoft_pseudopotential:
                 {
                     lmax_apw_ = lmax_rho_ = lmax_pot_ = -1;
                     break;
@@ -596,26 +578,26 @@ class Global
 
             // create a reciprocal lattice
             int lmax = -1;
-            switch (basis_type())
+            switch (esm_type())
             {
-                case apwlo:
+                case full_potential_lapwlo:
                 {
                     lmax = lmax_pot_;
                     break;
                 }
-                case pwlo:
+                case full_potential_pwlo:
                 {
                     stop_here
                 }
-                case pw:
+                case ultrasoft_pseudopotential:
                 {
                     lmax = 2 * unit_cell_->lmax_beta();
                     break;
                 }
             }
-            reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, pw_cutoff(), lmax);
+            reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, esm_type(), pw_cutoff(), gk_cutoff(), lmax);
 
-            if (basis_type() == apwlo || basis_type() == pwlo) step_function_ = new Step_function(unit_cell_, reciprocal_lattice_);
+            if (unit_cell_->full_potential()) step_function_ = new Step_function(unit_cell_, reciprocal_lattice_);
 
             // check MPI grid dimensions and set a default grid if needed
             if (!mpi_grid_dims_.size()) 
@@ -1032,14 +1014,19 @@ class Global
             #endif
         }
 
-        inline potential_t potential_type()
-        {
-            return potential_type_;
-        }
+        //inline potential_t potential_type()
+        //{
+        //    return potential_type_;
+        //}
 
-        inline basis_t basis_type()
+        //inline basis_t basis_type()
+        //{
+        //    return basis_type_;
+        //}
+
+        inline electronic_structure_method_t esm_type()
         {
-            return basis_type_;
+            return esm_type_;
         }
 
         inline Step_function* step_function()

@@ -33,7 +33,7 @@ namespace sirius
         u_{\ell \nu}^{\alpha}(r) = \frac{\partial^{m_{\nu}}}{\partial^{m_{\nu}}E}u_{\ell}^{\alpha}(r,E)\Big|_{E=E_{\nu}}
     \f]
 */
-struct apwlo_basis_descriptor
+struct apwlo_basis_descriptor // TODO: rename to gklo_basis_descriptor
 {
     /// global index of the descriptor
     int idxglob;
@@ -104,6 +104,8 @@ class K_point
 
         /// position of the G vector (from the G+k set) inside the FFT buffer 
         std::vector<int> fft_index_;
+
+        std::vector<int> fft_index_coarse_;
        
         /// first-variational states, distributed along the columns of the MPI grid
         mdarray<complex16, 2> fv_states_col_;
@@ -235,7 +237,7 @@ class K_point
 
         ~K_point()
         {
-            if (parameters_.basis_type() == pwlo)
+            if (parameters_.esm_type() == full_potential_pwlo)
             {
                 for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) delete sbessel_[igkloc];
             }
@@ -295,7 +297,7 @@ class K_point
         /// APW+lo basis size
         /** Total number of APW+lo basis functions is equal to the number of augmented plane-waves plus
             the number of local orbitals. */
-        inline int apwlo_basis_size()
+        inline int apwlo_basis_size() // TODO: more universal name, probalby gklo_basis_size
         {
             return (int)apwlo_basis_descriptors_.size();
         }
@@ -426,6 +428,11 @@ class K_point
         inline int* fft_index()
         {
             return &fft_index_[0];
+        }
+
+        inline int* fft_index_coarse()
+        {
+            return &fft_index_coarse_[0];
         }
 
         inline vector3d<double> vk()

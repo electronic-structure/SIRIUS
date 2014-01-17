@@ -1,3 +1,13 @@
+Atom_type::Atom_type(int id__) 
+    : id_(id__), 
+      zn_(0), 
+      num_mt_points_(0), 
+      radial_grid_(NULL), 
+      esm_type_(full_potential_lapwlo), 
+      initialized_(false)
+{
+}
+
 Atom_type::Atom_type(const char* symbol__, const char* name__, int zn__, double mass__, 
                      std::vector<atomic_level_descriptor>& levels__) 
     : symbol_(std::string(symbol__)), 
@@ -7,19 +17,19 @@ Atom_type::Atom_type(const char* symbol__, const char* name__, int zn__, double 
       mt_radius_(2.0), 
       num_mt_points_(2000 + zn__ * 50), 
       atomic_levels_(levels__), 
-      potential_type_(full_potential), 
+      esm_type_(full_potential_lapwlo), 
       initialized_(false)
 {
     radial_grid_ = new Radial_grid(default_radial_grid_t, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
 }
 
-Atom_type::Atom_type(int id__, const std::string label, potential_t potential_type__) 
+Atom_type::Atom_type(int id__, const std::string label, electronic_structure_method_t esm_type__) 
     : id_(id__), 
       zn_(0), 
       mass_(0), 
       num_mt_points_(0), 
       radial_grid_(NULL), 
-      potential_type_(potential_type__), 
+      esm_type_(esm_type__), 
       initialized_(false)
 {
     std::string fname = label + ".json";
@@ -58,16 +68,6 @@ Atom_type::Atom_type(int id__, const std::string label, potential_t potential_ty
     }
 }
 
-Atom_type::Atom_type(int id__) 
-    : id_(id__), 
-      zn_(0), 
-      num_mt_points_(0), 
-      radial_grid_(NULL), 
-      potential_type_(full_potential), 
-      initialized_(false)
-{
-}
-
 Atom_type::~Atom_type()
 {
     delete radial_grid_;
@@ -82,7 +82,7 @@ void Atom_type::init(int lmax)
     // set default radial grid if it was not done by user
     if (radial_grid_ == NULL) set_radial_grid();
     
-    if (potential_type_ == full_potential) // TODO: this is related to the basis type, not to a potential type
+    if (esm_type_ == full_potential_lapwlo)
     {
         // initialize aw descriptors if they were not set manually
         if (aw_descriptors_.size() == 0) init_aw_descriptors(lmax);
@@ -99,7 +99,7 @@ void Atom_type::init(int lmax)
     indexb_.init(indexr_);
     
     // allocate Q matrix
-    if (potential_type_ == ultrasoft_pseudopotential)
+    if (esm_type_ == ultrasoft_pseudopotential)
     {
         uspp_.q_mtrx.set_dimensions(mt_basis_size(), mt_basis_size());
         uspp_.q_mtrx.allocate();
@@ -107,7 +107,7 @@ void Atom_type::init(int lmax)
    
     // get the number of core electrons
     num_core_electrons_ = 0;
-    if (potential_type_ == full_potential)
+    if (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo)
     {
         for (int i = 0; i < (int)atomic_levels_.size(); i++) 
         {
@@ -384,7 +384,8 @@ void Atom_type::print_info()
     printf("\n");
     printf("number of core electrons    : %f\n", num_core_electrons_);
     printf("number of valence electrons : %f\n", num_valence_electrons_);
-    if (potential_type_ == full_potential)
+
+    if (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo)
     {
         printf("\n");
         printf("atomic levels (n, l, k, occupancy, core)\n");
@@ -393,24 +394,7 @@ void Atom_type::print_info()
             printf("%i  %i  %i  %8.4f %i\n", atomic_levels_[i].n, atomic_levels_[i].l, atomic_levels_[i].k,
                                               atomic_levels_[i].occupancy, atomic_levels_[i].core);
         }
-
-        printf("augmented wave basis\n");
-        for (int j = 0; j < (int)aw_descriptors_.size(); j++)
-        {
-            printf("[");
-            for (int order = 0; order < (int)aw_descriptors_[j].size(); order++)
-            { 
-                if (order) printf(", ");
-                printf("{l : %2i, n : %2i, enu : %f, dme : %i, auto : %i}", aw_descriptors_[j][order].l,
-                                                                            aw_descriptors_[j][order].n,
-                                                                            aw_descriptors_[j][order].enu,
-                                                                            aw_descriptors_[j][order].dme,
-                                                                            aw_descriptors_[j][order].auto_enu);
-            }
-            printf("]\n");
-        }
-        printf("maximum order of aw : %i\n", max_aw_order_);
-
+        printf("\n");
         printf("local orbitals\n");
         for (int j = 0; j < (int)lo_descriptors_.size(); j++)
         {
@@ -440,6 +424,27 @@ void Atom_type::print_info()
                 }
             }
         }
+    }
+
+    if (esm_type_ == full_potential_lapwlo)
+    {
+        printf("\n");
+        printf("augmented wave basis\n");
+        for (int j = 0; j < (int)aw_descriptors_.size(); j++)
+        {
+            printf("[");
+            for (int order = 0; order < (int)aw_descriptors_[j].size(); order++)
+            { 
+                if (order) printf(", ");
+                printf("{l : %2i, n : %2i, enu : %f, dme : %i, auto : %i}", aw_descriptors_[j][order].l,
+                                                                            aw_descriptors_[j][order].n,
+                                                                            aw_descriptors_[j][order].enu,
+                                                                            aw_descriptors_[j][order].dme,
+                                                                            aw_descriptors_[j][order].auto_enu);
+            }
+            printf("]\n");
+        }
+        printf("maximum order of aw : %i\n", max_aw_order_);
     }
 
     printf("\n");
@@ -623,7 +628,7 @@ void Atom_type::read_input(const std::string& fname)
 {
     JSON_tree parser(fname);
 
-    if (potential_type_ == ultrasoft_pseudopotential)
+    if (esm_type_ == ultrasoft_pseudopotential)
     {
         parser["uspp"]["header"]["element"] >> symbol_;
 
@@ -749,7 +754,7 @@ void Atom_type::read_input(const std::string& fname)
         
     }
 
-    if (potential_type_ == full_potential)
+    if (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo)
     {
         parser["name"] >> name_;
         parser["symbol"] >> symbol_;

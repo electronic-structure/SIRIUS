@@ -31,10 +31,10 @@ int Unit_cell::next_atom_type_id(int atom_type_external_id)
     return atom_type_id_map_[atom_type_external_id];
 }
 
-void Unit_cell::add_atom_type(int atom_type_external_id, const std::string label, potential_t potential_type)
+void Unit_cell::add_atom_type(int atom_type_external_id, const std::string label, electronic_structure_method_t esm_type)
 {
     int id = next_atom_type_id(atom_type_external_id);
-    atom_types_.push_back(new Atom_type(id, label, potential_type));
+    atom_types_.push_back(new Atom_type(id, label, esm_type));
 }
 
 void Unit_cell::add_atom_type(int atom_type_external_id)
@@ -285,12 +285,16 @@ void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
     mt_lo_basis_size_ = 0;
     for (int ia = 0; ia < num_atoms(); ia++)
     {
-        atom(ia)->init(lmax_pot, num_mag_dims, mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
-        if (atom(ia)->type()->potential_type() == full_potential)
+        if (full_potential())
         {
+            atom(ia)->init(lmax_pot, num_mag_dims, mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
             mt_aw_basis_size_ += atom(ia)->type()->mt_aw_basis_size();
             mt_lo_basis_size_ += atom(ia)->type()->mt_lo_basis_size();
             mt_basis_size_ += atom(ia)->type()->mt_basis_size();
+        }
+        if (esm_type_ == ultrasoft_pseudopotential)
+        {
+            atom(ia)->init();
         }
     }
 
@@ -324,7 +328,7 @@ void Unit_cell::update()
 
     find_nearest_neighbours(v0.length() + v1.length() + v2.length());
 
-    if (potential_type_ == full_potential) // TODO: think of a possiblity to mix full-potential and pseudopotential atoms
+    if (full_potential())
     {
         // find new MT radii and initialize radial grid 
         if (auto_rmt())
@@ -363,9 +367,12 @@ void Unit_cell::update()
     spl_num_atom_symmetry_classes_.split(num_atom_symmetry_classes(), Platform::num_mpi_ranks(), Platform::mpi_rank());
     
     volume_mt_ = 0.0;
-    for (int ia = 0; ia < num_atoms(); ia++)
+    if (full_potential())
     {
-        if (atom(ia)->type()->potential_type() == full_potential) volume_mt_ += fourpi * pow(atom(ia)->mt_radius(), 3) / 3.0; 
+        for (int ia = 0; ia < num_atoms(); ia++)
+        {
+            volume_mt_ += fourpi * pow(atom(ia)->mt_radius(), 3) / 3.0; 
+        }
     }
     
     volume_it_ = omega() - volume_mt_;
