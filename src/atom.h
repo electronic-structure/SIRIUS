@@ -73,6 +73,8 @@ class Atom
         Atom(Atom_type* type__, double* position__, double* vector_field__);
         
         void init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_lo__, int offset_wf__);
+
+        void init();
         
         /// Generate radial Hamiltonian and effective magnetic field integrals
         /** Hamiltonian operator has the following representation inside muffin-tins:
