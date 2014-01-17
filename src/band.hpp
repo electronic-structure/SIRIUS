@@ -2022,7 +2022,7 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
     std::vector<complex16> o_diag;
     get_h_o_diag<1>(kp, effective_potential, pw_ekin, h_diag, o_diag);
     
-    int max_iter = 20;
+    int max_iter = 10;
     int num_phi = std::min(5 * num_psi, kp->num_gkvec());
 
     mdarray<complex16, 2> phi(kp->num_gkvec(), num_phi);
@@ -2205,17 +2205,29 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
             }
 
             // check which residuals are converged
-            if (k == 0) 
+            n = 0;
+            std::vector< std::pair<double, int> > res_rms_sorted;
+            for (int i = 0; i < num_psi; i++)
             {
-                n = num_psi;
+                res_rms_sorted.push_back(std::pair<double, int>(res_rms[i], i));
+
+                // take the residual if it's norm is above the threshold
+                if (res_rms[i] > parameters_.iterative_solver_tolerance()) n++;
             }
-            else
+            
+            if (n > 0 && n < num_psi)
             {
+                n = std::max(n, (num_psi - 1) / (k + 1));
+
+                std::sort(res_rms_sorted.begin(), res_rms_sorted.end());
+
+                double tol = res_rms_sorted[num_psi - n].first;
+
                 n = 0;
                 for (int i = 0; i < num_psi; i++)
                 {
                     // take the residual if it's norm is above the threshold
-                    if (res_rms[i] > parameters_.iterative_solver_tolerance()) 
+                    if (res_rms[i] > tol) 
                     {
                         // shift unconverged residuals to the beginning of array
                         if (n != i) memcpy(&res(0, n), &res(0, i), kp->num_gkvec() * sizeof(complex16));
@@ -2223,6 +2235,18 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
                     }
                 }
             }
+ 
+            //== n = 0;
+            //== for (int i = 0; i < num_psi; i++)
+            //== {
+            //==     // take the residual if it's norm is above the threshold
+            //==     if (res_rms[i] > parameters_.iterative_solver_tolerance()) 
+            //==     {
+            //==         // shift unconverged residuals to the beginning of array
+            //==         if (n != i) memcpy(&res(0, n), &res(0, i), kp->num_gkvec() * sizeof(complex16));
+            //==         n++;
+            //==     }
+            //== }
         }
         t3.stop();
 
