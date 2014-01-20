@@ -595,9 +595,9 @@ void block_davidson_gpu(Global& parameters, K_point& kp, std::vector<complex16>&
             hphi_gpu.deallocate_on_device();
 
             #ifdef _MAGMA_
-            for (int i = 0; i < M; i++)
+            for (int i = 0; i < N; i++)
             {
-                for (int j = M; j < N; j++)
+                for (int j = N; j < N; j++)
                 {
                     hmlt(j, i) = conj(hmlt(i, j));
                     ovlp(j, i) = conj(ovlp(i, j));
