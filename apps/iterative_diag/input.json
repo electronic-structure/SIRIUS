@@ -1,0 +1,7 @@
+{
+  "num_bands" : 800,
+  "max_iter" : 10,
+  "gk_cutoff" : 7,
+  "pw_cutoff" : 17.32,
+  "device" : "cpu"
+}
