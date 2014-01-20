@@ -4,9 +4,9 @@
 
 using namespace sirius;
 
-void apply_h(Global& parameters, K_point& kp, int n, std::vector<complex16>& v_r, complex16* phi__, complex16* hphi__)
+void apply_h_cpu(Global& parameters, K_point& kp, int n, std::vector<complex16>& v_r, complex16* phi__, complex16* hphi__)
 {
-    Timer t("apply_h");
+    Timer t("apply_h_cpu");
 
     auto fft = parameters.reciprocal_lattice()->fft();
 
@@ -145,7 +145,7 @@ void* exec_cpu_fft(void* args__)
 
 void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<complex16>& v_r, complex16* phi__, complex16* hphi__)
 {
-    Timer t("apply_h");
+    Timer t("apply_h_gpu");
 
     pthread_mutex_init(&exec_fft_mutex, NULL);
 
@@ -239,67 +239,67 @@ void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<complex16>&
 //==         }
 //==     }
 //== }
+//== 
+//== void expand_subspace_v2(K_point& kp, int N, int num_bands, mdarray<complex16, 2>& phi, mdarray<complex16, 2>& res)
+//== {
+//==     Timer t("expand_subspace");
+//== 
+//==     assert(phi.size(0) == res.size(0));
+//==     assert(phi.size(0) == kp.num_gkvec());
+//==     memcpy(&phi(0, N), &res(0, 0), num_bands * kp.num_gkvec() * sizeof(complex16));
+//== }
+//==
+//== void check_degeneracy(K_point& kp, int N, int n, mdarray<complex16, 2>& phi, mdarray<complex16, 2>& res)
+//== {
+//==     Timer t("check_degeneracy");
+//== 
+//==     std::vector<bool> drop_res(n, false);
+//==     // normalize residuals or discard converged
+//==     for (int i = 0; i < n; i++)
+//==     {
+//==         double norm = 0;
+//==         for (int ig = 0; ig < kp.num_gkvec(); ig++) norm += real(conj(res(ig, i)) * res(ig, i));
+//==         if (norm < 1e-8)
+//==         {
+//==             drop_res[i] = true;
+//==         }
+//==         else
+//==         {
+//==             for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, i) /= sqrt(norm);
+//==         }
+//==     }
+//== 
+//==     // overlap between new addisional basis vectors and old basis vectors
+//==     mdarray<complex16, 2> ovlp(N, n);
+//==     blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &res(0, 0), res.ld(), &ovlp(0, 0), ovlp.ld());
+//==     
+//==     // project out the the old subspace
+//==     blas<cpu>::gemm(0, 0, kp.num_gkvec(), n, N, complex16(-1, 0), &phi(0, 0), phi.ld(), &ovlp(0, 0), ovlp.ld(), 
+//==                     complex16(1, 0), &res(0, 0), res.ld());
+//==     
+//==     // orthogonalize
+//==     for (int j = 0; j < n; j++)
+//==     {
+//==         std::vector<complex16> v(kp.num_gkvec());
+//==         memcpy(&v[0], &res(0, j), kp.num_gkvec() * sizeof(complex16));
+//==         for (int j1 = 0; j1 < j; j1++)
+//==         {
+//==             complex16 z(0, 0);
+//==             for (int ig = 0; ig < kp.num_gkvec(); ig++) z += conj(res(ig, j1)) * v[ig];
+//==             for (int ig = 0; ig < kp.num_gkvec(); ig++) v[ig] -= z * res(ig, j1);
+//==         }
+//==         double norm = 0;
+//==         for (int ig = 0; ig < kp.num_gkvec(); ig++) norm += real(conj(v[ig]) * v[ig]);
+//==         if (norm < 1e-10) error_local(__FILE__, __LINE__, "final residual norm is small");
+//==         for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, j) = v[ig] / sqrt(norm);
+//==     }
+//== }
 
-void expand_subspace_v2(K_point& kp, int N, int num_bands, mdarray<complex16, 2>& phi, mdarray<complex16, 2>& res)
+
+void block_davidson_cpu(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, int max_iter,
+                        mdarray<complex16, 2>& psi, std::vector<double>& eval_out)
 {
-    Timer t("expand_subspace");
-
-    assert(phi.size(0) == res.size(0));
-    assert(phi.size(0) == kp.num_gkvec());
-    memcpy(&phi(0, N), &res(0, 0), num_bands * kp.num_gkvec() * sizeof(complex16));
-}
-
-void check_degeneracy(K_point& kp, int N, int n, mdarray<complex16, 2>& phi, mdarray<complex16, 2>& res)
-{
-    Timer t("check_degeneracy");
-
-    std::vector<bool> drop_res(n, false);
-    // normalize residuals or discard converged
-    for (int i = 0; i < n; i++)
-    {
-        double norm = 0;
-        for (int ig = 0; ig < kp.num_gkvec(); ig++) norm += real(conj(res(ig, i)) * res(ig, i));
-        if (norm < 1e-8)
-        {
-            drop_res[i] = true;
-        }
-        else
-        {
-            for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, i) /= sqrt(norm);
-        }
-    }
-
-    // overlap between new addisional basis vectors and old basis vectors
-    mdarray<complex16, 2> ovlp(N, n);
-    blas<cpu>::gemm(2, 0, N, n, kp.num_gkvec(), &phi(0, 0), phi.ld(), &res(0, 0), res.ld(), &ovlp(0, 0), ovlp.ld());
-    
-    // project out the the old subspace
-    blas<cpu>::gemm(0, 0, kp.num_gkvec(), n, N, complex16(-1, 0), &phi(0, 0), phi.ld(), &ovlp(0, 0), ovlp.ld(), 
-                    complex16(1, 0), &res(0, 0), res.ld());
-    
-    // orthogonalize
-    for (int j = 0; j < n; j++)
-    {
-        std::vector<complex16> v(kp.num_gkvec());
-        memcpy(&v[0], &res(0, j), kp.num_gkvec() * sizeof(complex16));
-        for (int j1 = 0; j1 < j; j1++)
-        {
-            complex16 z(0, 0);
-            for (int ig = 0; ig < kp.num_gkvec(); ig++) z += conj(res(ig, j1)) * v[ig];
-            for (int ig = 0; ig < kp.num_gkvec(); ig++) v[ig] -= z * res(ig, j1);
-        }
-        double norm = 0;
-        for (int ig = 0; ig < kp.num_gkvec(); ig++) norm += real(conj(v[ig]) * v[ig]);
-        if (norm < 1e-10) error_local(__FILE__, __LINE__, "final residual norm is small");
-        for (int ig = 0; ig < kp.num_gkvec(); ig++) res(ig, j) = v[ig] / sqrt(norm);
-    }
-}
-
-
-void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, int max_iter,
-                      mdarray<complex16, 2>& psi, std::vector<double>& eval_out)
-{
-    Timer t("diag_davidson");
+    Timer t("block_davidson_cpu");
 
     auto fft = parameters.reciprocal_lattice()->fft();
 
@@ -340,12 +340,12 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
 
     for (int k = 0; k < max_iter; k++)
     {
-        Timer t1("setup_evp");
+        Timer t1("block_davidson_cpu|setup_evp");
         if (k == 0)
         {
             N = num_bands;
 
-            apply_h(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
+            apply_h_cpu(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
 
             // compute the Hamiltonian matrix: <phi|H|phi>
             blas<cpu>::gemm(2, 0, N, N, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
@@ -358,7 +358,7 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
         {
             memcpy(&phi(0, N), &res(0, 0), n * kp.num_gkvec() * sizeof(complex16));
 
-            apply_h(parameters, kp, n, v_r, &phi(0, N), &hphi(0, N));
+            apply_h_cpu(parameters, kp, n, v_r, &phi(0, N), &hphi(0, N));
 
             // copy old Hamiltonian and overlap
             for (int i = 0; i < N; i++)
@@ -384,7 +384,7 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
         }
         t1.stop();
         
-        Timer t2("solve_evp");
+        Timer t2("block_davidson_cpu|solve_evp");
         gevp->solve(N, num_bands, hmlt.get_ptr(), hmlt.ld(), ovlp.get_ptr(), ovlp.ld(), &eval[0], 
                     evec.get_ptr(), evec.ld());
         t2.stop();
@@ -393,7 +393,7 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
         printf("Iteration : %i, subspace size : %i\n", k, N);
         printf("lower and upper eigen-values : %16.8f %16.8f\n", eval[0], eval[num_bands - 1]);
 
-        Timer t3("residuals");
+        Timer t3("block_davidson_cpu|residuals");
         // compute residuals
         // 1. \Psi_{i} = \phi_{mu} * Z_{mu, i}
         blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), &res(0, 0), res.ld());
@@ -443,7 +443,7 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
         // check if we run out of variational space or eigen-vectors are converged or it's a last iteration
         if (N + n > num_phi || n == 0 || k == (max_iter - 1))
         {   
-            Timer t3("update_phi");
+            Timer t3("block_davidson_cpu|update_phi");
             // \Psi_{i} = \phi_{mu} * Z_{mu, i}
             blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), 
                             &psi(0, 0), psi.ld());
@@ -475,11 +475,11 @@ void diag_davidson_v2(Global& parameters, K_point& kp, std::vector<complex16>& v
     memcpy(&eval_out[0], &eval[0], num_bands * sizeof(double));
 }
 
-void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, int max_iter,
-                          mdarray<complex16, 2>& psi, std::vector<double>& eval_out)
+void block_davidson_gpu(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, int max_iter,
+                        mdarray<complex16, 2>& psi, std::vector<double>& eval_out)
 {
 #ifdef _GPU_
-    Timer t("diag_davidson");
+    Timer t("block_davidson_gpu");
 
     auto fft = parameters.reciprocal_lattice()->fft();
 
@@ -519,19 +519,16 @@ void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16
     generalized_evp* gevp = new generalized_evp_magma();
     #endif
 
-    int N = num_bands; // intial eigen-value problem size
+    int N = -1; // intial eigen-value problem size
     int n = 0; // number of added residuals
-
-    bool full_hmlt_update = true;
 
     for (int k = 0; k < max_iter; k++)
     {
-        std::cout << std::endl;
-        std::cout << "Iteration : " << k << ", subspace size : " << N << std::endl;
-        
-        Timer t1("setup_evp");
-        if (full_hmlt_update)
+        Timer t1("block_davidson_gpu|setup_evp");
+        if (k == 0)
         {
+            N = num_bands;
+
             apply_h_gpu(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
 
             mdarray<complex16, 2> mtrx_gpu(NULL, N, N);
@@ -555,19 +552,20 @@ void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16
             // compute overlap matrix <phi|phi>
             ovlp.zero();
             for (int i = 0; i < N; i++) ovlp(i, i) = complex16(1, 0);
-
-            full_hmlt_update = false;
         }
         else
         {
-            int M = N - n;
-            // copy old Hamiltonian and overlap
-            for (int i = 0; i < M; i++)
-            {
-                memcpy(&hmlt(0, i), &hmlt_old(0, i), M * sizeof(complex16));
-                memcpy(&ovlp(0, i), &ovlp_old(0, i), M * sizeof(complex16));
-            }
+            memcpy(&phi(0, N), &res(0, 0), n * kp.num_gkvec() * sizeof(complex16));
 
+            apply_h_gpu(parameters, kp, n, v_r, &phi(0, N), &hphi(0, N));
+
+            // copy old Hamiltonian and overlap
+            for (int i = 0; i < N; i++)
+            {
+                memcpy(&hmlt(0, i), &hmlt_old(0, i), N * sizeof(complex16));
+                memcpy(&ovlp(0, i), &ovlp_old(0, i), N * sizeof(complex16));
+            }
+            
             mdarray<complex16, 2> mtrx_gpu(NULL, N, n);
             mtrx_gpu.allocate_on_device();
 
@@ -575,22 +573,22 @@ void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16
             phi_gpu.allocate_on_device();
             phi_gpu.copy_to_device();
             
-            mdarray<complex16, 2> hphi_gpu(&hphi(0, M), kp.num_gkvec(), n);
+            mdarray<complex16, 2> hphi_gpu(&hphi(0, N), kp.num_gkvec(), n);
             hphi_gpu.allocate_on_device();
             hphi_gpu.copy_to_device();
 
             complex16 zone(1, 0);
             complex16 zzero(0, 0);
-            blas<gpu>::gemm(2, 0, N, n, kp.num_gkvec(), &zone, phi_gpu.get_ptr_device(), phi_gpu.ld(),
+            blas<gpu>::gemm(2, 0, N + n, n, kp.num_gkvec(), &zone, phi_gpu.get_ptr_device(), phi_gpu.ld(),
                             hphi_gpu.get_ptr_device(), hphi_gpu.ld(), &zzero, mtrx_gpu.get_ptr_device(), mtrx_gpu.ld());
             
-            cublas_get_matrix(N, n, sizeof(complex16), mtrx_gpu.get_ptr_device(), mtrx_gpu.ld(), &hmlt(0, M), hmlt.ld());
+            cublas_get_matrix(N + n, n, sizeof(complex16), mtrx_gpu.get_ptr_device(), mtrx_gpu.ld(), &hmlt(0, N), hmlt.ld());
             
-            blas<gpu>::gemm(2, 0, N, n, kp.num_gkvec(), &zone, phi_gpu.get_ptr_device(), phi_gpu.ld(),
-                            &phi_gpu.get_ptr_device()[kp.num_gkvec() * M], phi_gpu.ld(), &zzero, 
+            blas<gpu>::gemm(2, 0, N + n, n, kp.num_gkvec(), &zone, phi_gpu.get_ptr_device(), phi_gpu.ld(),
+                            &phi_gpu.get_ptr_device()[kp.num_gkvec() * N], phi_gpu.ld(), &zzero, 
                             mtrx_gpu.get_ptr_device(), mtrx_gpu.ld());
             
-            cublas_get_matrix(N, n, sizeof(complex16), mtrx_gpu.get_ptr_device(), mtrx_gpu.ld(), &ovlp(0, M), ovlp.ld());
+            cublas_get_matrix(N + n, n, sizeof(complex16), mtrx_gpu.get_ptr_device(), mtrx_gpu.ld(), &ovlp(0, N), ovlp.ld());
 
             mtrx_gpu.deallocate_on_device();
             phi_gpu.deallocate_on_device();
@@ -606,6 +604,8 @@ void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16
                 }
             }
             #endif
+
+            N += n;
         }
         
         // save Hamiltonian and overlap
@@ -616,14 +616,16 @@ void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16
         }
         t1.stop();
         
-        Timer t2("solve_evp");
+        Timer t2("block_davidson_gpu|solve_evp");
         gevp->solve(N, num_bands, hmlt.get_ptr(), hmlt.ld(), ovlp.get_ptr(), ovlp.ld(), &eval[0], 
                     evec.get_ptr(), evec.ld());
         t2.stop();
-        
-        printf("lower and upper eigen-values : %16.8f %16.8f\n", eval[0], eval[num_bands - 1]);
 
-        Timer t3("residuals");
+        printf("\n");
+        printf("Iteration : %i, subspace size : %i\n", k, N);
+        printf("lower and upper eigen-values : %16.8f %16.8f\n", eval[0], eval[num_bands - 1]);
+        
+        Timer t3("block_davidson_gpu|residuals");
         
         // compute residuals
         // 1. \Psi_{i} = \phi_{mu} * Z_{mu, i}
@@ -706,11 +708,11 @@ void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16
         t3.stop();
 
         //== check_degeneracy(kp, N, n, phi, res);
-
+        
         // check if we run out of variational space or eigen-vectors are converged or it's a last iteration
         if (N + n > num_phi || n == 0 || k == (max_iter - 1))
         {   
-            Timer t3("update_phi");
+            Timer t3("block_davidson_cpu|update_phi");
             // \Psi_{i} = \phi_{mu} * Z_{mu, i}
             blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), 
                             &psi(0, 0), psi.ld());
@@ -720,25 +722,20 @@ void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16
             {
                 break;
             }
-            else // otherwise set psi as a new trial basis
+            else
             {
+                // TODO: to GPU
+                blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, N, &hphi(0, 0), hphi.ld(), 
+                                &evec(0, 0), evec.ld(), &phi(0, 0), phi.ld());
+                
+                // compute the Hamiltonian matrix: <phi|H|phi>
+                blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &psi(0, 0), psi.ld(), &phi(0, 0), phi.ld(), &hmlt_old(0, 0), hmlt_old.ld());
+             
+                memcpy(hphi.get_ptr(), phi.get_ptr(), num_bands * kp.num_gkvec() * sizeof(complex16));
+
                 memcpy(phi.get_ptr(), psi.get_ptr(), num_bands * kp.num_gkvec() * sizeof(complex16));
                 N = num_bands;
-                full_hmlt_update = true;
             }
-        }
-        else
-        {
-            //apply_p(kp, res_active);
-        
-            // expand variational subspace with new basis vectors obtatined from residuals
-            expand_subspace_v2(kp, N, n, phi, res);
-
-            // apply Hamiltonian to the new basis functions
-            apply_h_gpu(parameters, kp, n, v_r, &phi(0, N), &hphi(0, N));
-        
-            // increase the size of the variation space
-            N += n;
         }
     }
 
@@ -827,7 +824,7 @@ void diag_davidson_v2_gpu(Global& parameters, K_point& kp, std::vector<complex16
 
 
 
-void test_davidson()
+void test_iterative_diag()
 {
     int num_bands = 100;
     int max_iter = 8;
@@ -877,12 +874,12 @@ void test_davidson()
     if (device == "cpu")
     {
         std::cout << "calling CPU version" << std::endl;
-        diag_davidson_v2(parameters, kp, v_pw, num_bands, max_iter, psi, eval);
+        block_davidson_cpu(parameters, kp, v_pw, num_bands, max_iter, psi, eval);
     } 
     else if (device == "gpu")
     {
         std::cout << "calling GPU version" << std::endl;
-        diag_davidson_v2_gpu(parameters, kp, v_pw, num_bands, max_iter, psi, eval);
+        block_davidson_gpu(parameters, kp, v_pw, num_bands, max_iter, psi, eval);
     }
     else
     {
@@ -905,7 +902,7 @@ int main(int argn, char** argv)
 {
     Platform::initialize(true);
 
-    test_davidson();
+    test_iterative_diag();
 
     Timer::print();
 
