@@ -63,6 +63,10 @@ extern "C" void cufft_destroy_batch_plan();
 
 extern "C" void cufft_batch_apply_v(int fft_size, int num_gkvec, int num_phi, void* buffer, int* map, void* v_r, void* p);
 
+extern "C" void cufft_forward_transform(void* buf);
+
+extern "C" void cufft_backward_transform(void* buf);
+
 //=================
 // MAGMA functions
 //=================
@@ -98,7 +102,9 @@ void add_band_density_gpu(int lmmax_rho, int lmmax_wf, int max_nmtp, int num_ato
                           int* gaunt12_lm1_by_lm3, int* gaunt12_lm2_by_lm3, void* gaunt12_cg, void* fylm, 
                           double weight, double* dens);
 
-void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a);
+extern "C" void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a);
+
+extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double* v);
 
 #endif // _GPU_INTERFACE_H_
 

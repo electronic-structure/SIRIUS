@@ -5,8 +5,6 @@
 #include <cuda.h>
 #include <cublas_v2.h>
 #include <cufft.h>
-//#include <map>
-//#include <string>
 
 //=====================
 // Auxiliary functions
@@ -195,6 +193,15 @@ extern "C" void cuda_host_unregister(void* ptr)
 //*     return devprop;
 //* }
 
+extern "C" size_t cuda_get_free_mem()
+{
+    size_t free, total;
+    
+    cudaMemGetInfo(&free, &total);
+
+    return free;
+}
+
 extern "C" void cuda_device_info()
 {
     int count;
@@ -239,15 +246,7 @@ extern "C" void cuda_device_info()
     printf("sharedMemPerBlock           : %li kB \n", devprop.sharedMemPerBlock/1024);
     printf("totalConstMem               : %li kB \n", devprop.totalConstMem/1024);
     printf("totalGlobalMem              : %li kB \n", devprop.totalGlobalMem/1024);
-}
-
-extern "C" size_t cuda_get_free_mem()
-{
-    size_t free, total;
-    
-    cudaMemGetInfo(&free, &total);
-
-    return free;
+    printf("available memory            : %li kB \n", cuda_get_free_mem() / 1024);
 }
 
 //==================
@@ -343,6 +342,8 @@ extern "C" void cublas_set_matrix(int rows, int cols, int elemSize, const void *
 //=================
 
 cufftHandle plan;
+int nfft_of_plan;
+int size_of_plan;
 
 extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft)
 {
@@ -355,6 +356,9 @@ extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft)
         printf("failed to execute cufftPlanMany()\n");
         exit(0);
     }
+
+    nfft_of_plan = nfft;
+    size_of_plan = fft_size;
 }
 
 extern "C" void cufft_destroy_batch_plan()
@@ -362,59 +366,87 @@ extern "C" void cufft_destroy_batch_plan()
     cufftDestroy(plan);
 }
 
-__global__ void cufft_batch_load_kernel(int fft_size, int num_gkvec, int* map, cuDoubleComplex* phi, 
-                                        cuDoubleComplex* fft_buffer)
-{
-    int i = blockIdx.y;
-    int ig = blockDim.x * blockIdx.x + threadIdx.x;
+//== __global__ void cufft_batch_load_kernel(int fft_size, int num_gkvec, int* map, cuDoubleComplex* phi, 
+//==                                         cuDoubleComplex* fft_buffer)
+//== {
+//==     int i = blockIdx.y;
+//==     int ig = blockDim.x * blockIdx.x + threadIdx.x;
+//== 
+//==     if (ig < num_gkvec) fft_buffer[array2D_offset(map[ig], i, fft_size)] = phi[array2D_offset(ig, i, num_gkvec)];
+//== }
 
-    if (ig < num_gkvec) fft_buffer[array2D_offset(map[ig], i, fft_size)] = phi[array2D_offset(ig, i, num_gkvec)];
-}
+//= __global__ void cufft_batch_apply_v_kernel(int fft_size, cuDoubleComplex* v_r, cuDoubleComplex* fft_buffer)
+//= {
+//=     int i = blockIdx.y;
+//=     int ir = blockDim.x * blockIdx.x + threadIdx.x;
+//=     if (ir < fft_size) 
+//=     {
+//=         fft_buffer[array2D_offset(ir, i, fft_size)] = 
+//=             cuCmul(fft_buffer[array2D_offset(ir, i, fft_size)], v_r[ir]);
+//=     }
+//= }
 
-__global__ void cufft_batch_apply_v_kernel(int fft_size, cuDoubleComplex* v_r, cuDoubleComplex* fft_buffer)
+//== __global__ void cufft_batch_unload_kernel(int fft_size, int num_gkvec, int* map, cuDoubleComplex* fft_buffer,
+//==                                           cuDoubleComplex* phi)
+//== {
+//==     int i = blockIdx.y;
+//==     int ig = blockDim.x * blockIdx.x + threadIdx.x;
+//== 
+//==     if (ig < num_gkvec) 
+//==     {
+//==         phi[array2D_offset(ig, i, num_gkvec)] = 
+//==             cuCdiv(fft_buffer[array2D_offset(map[ig], i, fft_size)], make_cuDoubleComplex(double(fft_size), 0));
+//==     }
+//== }
+
+//== extern "C" void cufft_batch_apply_v(int fft_size, int num_gkvec, int num_phi, void* buffer, int* map, void* v_r, void* p)
+//== {
+//==     dim3 threadsPerBlock(64);
+//==     dim3 numBlocks(num_blocks(num_gkvec, 64), num_phi);
+//==     
+//==     cuda_memset(buffer, 0, fft_size * num_phi * sizeof(cuDoubleComplex));
+//== 
+//==     cufft_batch_load_kernel<<<numBlocks, threadsPerBlock>>>
+//==         (fft_size, num_gkvec, map, (cuDoubleComplex*)p, (cuDoubleComplex*)buffer);
+//==     
+//==     cufftExecZ2Z(plan, (cufftDoubleComplex*)buffer, (cufftDoubleComplex*)buffer, CUFFT_INVERSE);
+//==     
+//==     //dim3 numBlocks_r(num_blocks(fft_size, 64), num_phi);
+//==     //cufft_batch_apply_v_kernel<<<numBlocks_r, threadsPerBlock>>>
+//==     //    (fft_size, (cuDoubleComplex*)v_r, (cuDoubleComplex*)buffer);
+//==     
+//==     cufftExecZ2Z(plan, (cufftDoubleComplex*)buffer, (cufftDoubleComplex*)buffer, CUFFT_FORWARD);
+//== 
+//==     cufft_batch_unload_kernel<<<numBlocks, threadsPerBlock>>>
+//==         (fft_size, num_gkvec, map, (cuDoubleComplex*)buffer, (cuDoubleComplex*)p);
+//== }
+
+
+
+__global__ void cufft_normalize(int size, cuDoubleComplex* buffer)
 {
     int i = blockIdx.y;
     int ir = blockDim.x * blockIdx.x + threadIdx.x;
-    if (ir < fft_size) 
+
+    if (ir < size) 
     {
-        fft_buffer[array2D_offset(ir, i, fft_size)] = 
-            cuCmul(fft_buffer[array2D_offset(ir, i, fft_size)], v_r[ir]);
+        buffer[array2D_offset(ir, i, size)] = 
+            cuCdiv(buffer[array2D_offset(ir, i, size)], make_cuDoubleComplex(double(size), 0));
     }
 }
 
-__global__ void cufft_batch_unload_kernel(int fft_size, int num_gkvec, int* map, cuDoubleComplex* fft_buffer,
-                                          cuDoubleComplex* phi)
+extern "C" void cufft_forward_transform(void* buffer)
 {
-    int i = blockIdx.y;
-    int ig = blockDim.x * blockIdx.x + threadIdx.x;
-
-    if (ig < num_gkvec) 
-    {
-        phi[array2D_offset(ig, i, num_gkvec)] = 
-            cuCdiv(fft_buffer[array2D_offset(map[ig], i, fft_size)], make_cuDoubleComplex(double(fft_size), 0));
-    }
-}
-
-extern "C" void cufft_batch_apply_v(int fft_size, int num_gkvec, int num_phi, void* buffer, int* map, void* v_r, void* p)
-{
-    dim3 threadsPerBlock(64);
-    dim3 numBlocks(num_blocks(num_gkvec, 64), num_phi);
-    
-    cuda_memset(buffer, 0, fft_size * num_phi * sizeof(cuDoubleComplex));
-
-    cufft_batch_load_kernel<<<numBlocks, threadsPerBlock>>>
-        (fft_size, num_gkvec, map, (cuDoubleComplex*)p, (cuDoubleComplex*)buffer);
-    
-    cufftExecZ2Z(plan, (cufftDoubleComplex*)buffer, (cufftDoubleComplex*)buffer, CUFFT_INVERSE);
-    
-    dim3 numBlocks_r(num_blocks(fft_size, 64), num_phi);
-    cufft_batch_apply_v_kernel<<<numBlocks_r, threadsPerBlock>>>
-        (fft_size, (cuDoubleComplex*)v_r, (cuDoubleComplex*)buffer);
-    
     cufftExecZ2Z(plan, (cufftDoubleComplex*)buffer, (cufftDoubleComplex*)buffer, CUFFT_FORWARD);
+    
+    dim3 threadsPerBlock(64);
+    dim3 numBlocks(num_blocks(size_of_plan, 64), nfft_of_plan);
+    cufft_normalize<<<numBlocks, threadsPerBlock>>>(size_of_plan, (cufftDoubleComplex*)buffer);
+}
 
-    cufft_batch_unload_kernel<<<numBlocks, threadsPerBlock>>>
-        (fft_size, num_gkvec, map, (cuDoubleComplex*)buffer, (cuDoubleComplex*)p);
+extern "C" void cufft_backward_transform(void* buffer)
+{
+    cufftExecZ2Z(plan, (cufftDoubleComplex*)buffer, (cufftDoubleComplex*)buffer, CUFFT_INVERSE);
 }
 
 //==================================
@@ -832,7 +864,7 @@ void add_band_density_gpu(int lmmax_rho, int lmmax_wf, int max_nmtp, int num_ato
     
 
 
-__global__ void scale_matrix_columns_gpu_kernel(int nrow, int ncol, cuDoubleComplex* mtrx, double* a)
+__global__ void scale_matrix_columns_gpu_kernel(int nrow, cuDoubleComplex* mtrx, double* a)
 {
     int icol = blockIdx.y;
     int irow = blockIdx.x * blockDim.x + threadIdx.x;
@@ -843,15 +875,33 @@ __global__ void scale_matrix_columns_gpu_kernel(int nrow, int ncol, cuDoubleComp
     }
 }
 
-void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a)
+// scale each column of the matrix by a column-dependent constant
+extern "C" void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a)
 {
     dim3 threadsPerBlock(64);
-    dim3 numBlocks((nrow / 64) + min(nrow % 64, 1), ncol);
-    scale_matrix_columns_gpu_kernel<<<numBlocks, threadsPerBlock>>>
-        (nrow, ncol, (cuDoubleComplex*)mtrx, a);
+    dim3 numBlocks(num_blocks(nrow, 64), ncol);
+    scale_matrix_columns_gpu_kernel<<<numBlocks, threadsPerBlock>>>(nrow, (cuDoubleComplex*)mtrx, a);
 }
 
+__global__ void scale_matrix_rows_gpu_kernel(int nrow, cuDoubleComplex* mtrx, double* v)
+{
+    int icol = blockIdx.y;
+    int irow = blockDim.x * blockIdx.x + threadIdx.x;
+    if (irow < nrow) 
+    {
+        mtrx[array2D_offset(irow, icol, nrow)] = 
+            cuCmul(mtrx[array2D_offset(irow, icol, nrow)], make_cuDoubleComplex(v[irow], 0));
+    }
+}
 
+// scale each row of the matrix by a row-dependent constant
+extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double* v)
+{
+    dim3 threadsPerBlock(64);
+    dim3 numBlocks(num_blocks(nrow, 64), ncol);
+
+    scale_matrix_rows_gpu_kernel<<<numBlocks, threadsPerBlock>>>(nrow, (cuDoubleComplex*)mtrx, v);
+}
 
 
 

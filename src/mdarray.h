@@ -49,10 +49,14 @@ template <typename T, int ND> class mdarray_base
 {
     public:
     
-        mdarray_base() : mdarray_ptr(NULL), allocated_(false)
-                         #ifdef _GPU_
-                         ,mdarray_ptr_device(NULL), allocated_on_device(false), pinned_(false)
-                         #endif
+        mdarray_base() 
+            : mdarray_ptr(NULL), 
+              allocated_(false)
+              #ifdef _GPU_
+              ,mdarray_ptr_device(NULL), 
+              allocated_on_device(false), 
+              pinned_(false)
+              #endif
         { 
         }
         
@@ -195,7 +199,15 @@ template <typename T, int ND> class mdarray_base
             deallocate_on_device();
             
             size_t sz = size();
-            if (sz == 0) throw std::runtime_error("can't allocate a zero sized array");
+            if (sz == 0) 
+            {
+                std::stringstream s;
+                s <<  "can't allocate a zero sized array" << std::endl
+                  <<  "  array dimensions : ";
+                for (int i = 0; i < ND; i++) s << d[i].size() << " ";
+
+                error_local(__FILE__, __LINE__, s);
+            }
              
             cuda_malloc((void**)(&mdarray_ptr_device), sz * sizeof(T));
             allocated_on_device = true;
