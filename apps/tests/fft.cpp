@@ -155,4 +155,5 @@ int main(int argn, char **argv)
     test1();
     test2();
     test3();
+    Platform::finalize();
 }
