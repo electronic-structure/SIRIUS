@@ -58,7 +58,7 @@ void* exec_gpu_fft(void* args__)
 
     FFT3D<gpu> fft(args->parameters->reciprocal_lattice()->fft()->grid_size());
 
-    int nfft_max = fft.num_fft_max(16);
+    int nfft_max = fft.num_fft_max();
     
     fft.initialize(nfft_max);
 
@@ -580,7 +580,7 @@ void block_davidson_gpu(Global& parameters, K_point& kp, std::vector<double>& v_
             #ifdef _MAGMA_
             for (int i = 0; i < N; i++)
             {
-                for (int j = N; j < N; j++)
+                for (int j = N; j < N + n; j++)
                 {
                     hmlt(j, i) = conj(hmlt(i, j));
                     ovlp(j, i) = conj(ovlp(i, j));
