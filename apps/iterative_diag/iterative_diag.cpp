@@ -4,7 +4,7 @@
 
 using namespace sirius;
 
-void apply_h_cpu(Global& parameters, K_point& kp, int n, std::vector<complex16>& v_r, complex16* phi__, complex16* hphi__)
+void apply_h_cpu(Global& parameters, K_point& kp, int n, std::vector<double>& v_r, complex16* phi__, complex16* hphi__)
 {
     Timer t("apply_h_cpu");
 
@@ -45,8 +45,7 @@ struct exec_fft_args
     int n;
     mdarray<complex16, 2>* phi;
     mdarray<complex16, 2>* hphi;
-    mdarray<int, 1>* map;
-    mdarray<complex16, 1>* v_r_gpu;
+    mdarray<double, 1>* v_r;
 };
 
 pthread_mutex_t exec_fft_mutex;
@@ -59,13 +58,9 @@ void* exec_gpu_fft(void* args__)
 
     FFT3D<gpu> fft(args->parameters->reciprocal_lattice()->fft()->grid_size());
 
-    int nfft_max = fft.nfft_max(16);
+    int nfft_max = fft.num_fft_max(16);
     
-    mdarray<complex16, 2> p(NULL, args->kp->num_gkvec(), nfft_max); 
-    p.allocate_on_device();
-    
-    fft.allocate_batch_fft_buffer(nfft_max);
-    fft.create_batch_plan(nfft_max);
+    fft.initialize(nfft_max);
 
     bool done = false;
 
@@ -85,20 +80,19 @@ void* exec_gpu_fft(void* args__)
 
         if (!done)
         {
-            p.set_ptr(&(*args->phi)(0, i));
-            p.copy_to_device();
+            for (int k = 0; k < nfft_max; k++) fft.input(args->kp->num_gkvec(), args->kp->fft_index(), &(*args->phi)(0, i + k), k);
+            fft.copy_to_device();
+            fft.transform(1);
+            scale_matrix_rows_gpu(fft.size(), nfft_max, fft.fft_buffer().get_ptr_device(), args->v_r->get_ptr_device());
+            fft.transform(-1);
+            fft.copy_to_host();
             
-            fft.batch_apply_v(args->kp->num_gkvec(), nfft_max, args->map->get_ptr_device(), 
-                              args->v_r_gpu->get_ptr_device(), p.get_ptr_device());
-
-            p.set_ptr(&(*args->hphi)(0, i));
-            p.copy_to_host();
+            for (int k = 0; k < nfft_max; k++) fft.output(args->kp->num_gkvec(), args->kp->fft_index(), &(*args->hphi)(0, i + k), k);
         }
     }
+
+    fft.finalize();
     
-    fft.destroy_batch_plan();
-    fft.deallocate_batch_fft_buffer();
-    p.deallocate_on_device();
     return NULL;
 }
 
@@ -108,7 +102,6 @@ void* exec_cpu_fft(void* args__)
     
     auto fft = args->parameters->reciprocal_lattice()->fft();
 
-    std::vector<complex16> phi_r(fft->size());
     int thread_id = args->thread_id;
 
     bool done = false;
@@ -130,11 +123,10 @@ void* exec_cpu_fft(void* args__)
         {
             fft->input(args->kp->num_gkvec(), args->kp->fft_index(), &(*args->phi)(0, i), thread_id);
             fft->transform(1, thread_id);
-            fft->output(&phi_r[0], thread_id);
 
-            for (int ir = 0; ir < fft->size(); ir++) phi_r[ir] *= (*args->v_r_gpu)(ir);
+            for (int ir = 0; ir < fft->size(); ir++) fft->output_buffer(ir, thread_id) *= (*args->v_r)(ir);
 
-            fft->input(&phi_r[0], thread_id);
+            fft->input(&fft->output_buffer(0, thread_id), thread_id);
             fft->transform(-1, thread_id);
             fft->output(args->kp->num_gkvec(), args->kp->fft_index(), &(*args->hphi)(0, i), thread_id);
         }
@@ -143,28 +135,24 @@ void* exec_cpu_fft(void* args__)
     return NULL;
 }
 
-void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<complex16>& v_r, complex16* phi__, complex16* hphi__)
+void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<double>& v_r__, complex16* phi__, complex16* hphi__)
 {
     Timer t("apply_h_gpu");
 
     pthread_mutex_init(&exec_fft_mutex, NULL);
 
-    // send arrays to GPU
-    mdarray<int, 1> map(kp.fft_index(), kp.num_gkvec());
-    map.allocate_on_device();
-    map.copy_to_device();
+    mdarray<double, 1> v_r(&v_r__[0], parameters.reciprocal_lattice()->fft()->size());
 
-    mdarray<complex16, 1> v_r_gpu(&v_r[0], parameters.reciprocal_lattice()->fft()->size());
-    v_r_gpu.allocate_on_device();
-    v_r_gpu.copy_to_device();
+    v_r.allocate_on_device();
+    v_r.copy_to_device();
    
     mdarray<complex16, 2> phi(phi__, kp.num_gkvec(), n);
     mdarray<complex16, 2> hphi(hphi__, kp.num_gkvec(), n);
 
     idxfft = 0;
     
-    int num_fft_threads = std::min(Platform::num_fft_threads(), Platform::num_threads() - 1);
-
+    int num_fft_threads = std::min(Platform::num_fft_threads(), Platform::max_num_threads() - 1);
+    
     std::vector<pthread_t> pthread_id(num_fft_threads + 1);
     std::vector<exec_fft_args> args(num_fft_threads + 1);
 
@@ -176,8 +164,7 @@ void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<complex16>&
         args[i].n = n;
         args[i].phi = &phi;
         args[i].hphi = &hphi;
-        args[i].map = &map;
-        args[i].v_r_gpu = &v_r_gpu;
+        args[i].v_r = &v_r;
         if (i < num_fft_threads)
         {
             pthread_create(&pthread_id[i], NULL, exec_cpu_fft, &args[i]);
@@ -190,6 +177,14 @@ void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<complex16>&
 
     // sync threads
     for (int i = 0; i <= num_fft_threads; i++) pthread_join(pthread_id[i], NULL);
+
+    if (idxfft != n) 
+    {
+        std::stringstream s;
+        s << "not all FFTs are executed" << std::endl
+          << " number of FFTS : " << n << ", number of executed FFTs : " << idxfft;
+        error_local(__FILE__, __LINE__, s);
+    }
 
     pthread_mutex_destroy(&exec_fft_mutex);
     
@@ -296,22 +291,16 @@ void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<complex16>&
 //== }
 
 
-void block_davidson_cpu(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, int max_iter,
+void block_davidson_cpu(Global& parameters, K_point& kp, std::vector<double>& v_r, int num_bands, int max_iter,
                         mdarray<complex16, 2>& psi, std::vector<double>& eval_out)
 {
     Timer t("block_davidson_cpu");
 
     auto fft = parameters.reciprocal_lattice()->fft();
-
-    std::vector<complex16> v_r(fft->size());
-    fft->input(parameters.reciprocal_lattice()->num_gvec(), parameters.reciprocal_lattice()->fft_index(), &v_pw[0]);
-    fft->transform(1);
-    fft->output(&v_r[0]);
-
-    for (int ir = 0; ir < fft->size(); ir++)
-    {
-        if (fabs(imag(v_r[ir])) > 1e-10) error_local(__FILE__, __LINE__, "potential is complex");
-    }
+    
+    double v0 = 0;
+    for (int ir = 0; ir < fft->size(); ir++) v0 += v_r[ir];
+    v0 /= parameters.unit_cell()->omega();
 
     int num_phi = num_bands * 5;
 
@@ -417,7 +406,7 @@ void block_davidson_cpu(Global& parameters, K_point& kp, std::vector<complex16>&
             // apply preconditioner
             for (int ig = 0; ig < kp.num_gkvec(); ig++)
             {
-                complex16 t = pow(kp.gkvec_cart(ig).length(), 2) / 2.0 + v_pw[0] - eval[i];
+                complex16 t = pow(kp.gkvec_cart(ig).length(), 2) / 2.0 + v0 - eval[i];
                 if (abs(t) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
                 res(ig, i) /= t;
             }
@@ -475,23 +464,17 @@ void block_davidson_cpu(Global& parameters, K_point& kp, std::vector<complex16>&
     memcpy(&eval_out[0], &eval[0], num_bands * sizeof(double));
 }
 
-void block_davidson_gpu(Global& parameters, K_point& kp, std::vector<complex16>& v_pw, int num_bands, int max_iter,
+void block_davidson_gpu(Global& parameters, K_point& kp, std::vector<double>& v_r, int num_bands, int max_iter,
                         mdarray<complex16, 2>& psi, std::vector<double>& eval_out)
 {
 #ifdef _GPU_
     Timer t("block_davidson_gpu");
 
     auto fft = parameters.reciprocal_lattice()->fft();
-
-    std::vector<complex16> v_r(fft->size());
-    fft->input(parameters.reciprocal_lattice()->num_gvec(), parameters.reciprocal_lattice()->fft_index(), &v_pw[0]);
-    fft->transform(1);
-    fft->output(&v_r[0]);
-
-    for (int ir = 0; ir < fft->size(); ir++)
-    {
-        if (fabs(imag(v_r[ir])) > 1e-10) error_local(__FILE__, __LINE__, "potential is complex");
-    }
+    
+    double v0 = 0;
+    for (int ir = 0; ir < fft->size(); ir++) v0 += v_r[ir];
+    v0 /= parameters.unit_cell()->omega();
 
     int num_phi = num_bands * 5;
 
@@ -566,10 +549,10 @@ void block_davidson_gpu(Global& parameters, K_point& kp, std::vector<complex16>&
                 memcpy(&ovlp(0, i), &ovlp_old(0, i), N * sizeof(complex16));
             }
             
-            mdarray<complex16, 2> mtrx_gpu(NULL, N, n);
+            mdarray<complex16, 2> mtrx_gpu(NULL, N + n, n);
             mtrx_gpu.allocate_on_device();
 
-            mdarray<complex16, 2> phi_gpu(&phi(0, 0), kp.num_gkvec(), N);
+            mdarray<complex16, 2> phi_gpu(&phi(0, 0), kp.num_gkvec(), N + n);
             phi_gpu.allocate_on_device();
             phi_gpu.copy_to_device();
             
@@ -686,7 +669,7 @@ void block_davidson_gpu(Global& parameters, K_point& kp, std::vector<complex16>&
             // apply preconditioner
             for (int ig = 0; ig < kp.num_gkvec(); ig++)
             {
-                complex16 t = pow(kp.gkvec_cart(ig).length(), 2) / 2.0 + v_pw[0] - eval[i];
+                complex16 t = pow(kp.gkvec_cart(ig).length(), 2) / 2.0 + v0 - eval[i];
                 if (abs(t) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
                 res(ig, i) /= t;
             }
@@ -864,8 +847,18 @@ void test_iterative_diag()
     std::vector<complex16> v_pw(parameters.reciprocal_lattice()->num_gvec());
     for (int ig = 0; ig < parameters.reciprocal_lattice()->num_gvec(); ig++) 
         v_pw[ig] = complex16(1.0 / pow(parameters.reciprocal_lattice()->gvec_len(ig) + 1.0, 1), 0.0);
+   
+    // transform potential to real space
+    auto fft = parameters.reciprocal_lattice()->fft();
+    std::vector<double> v_r(fft->size());
+    fft->input(parameters.reciprocal_lattice()->num_gvec(), parameters.reciprocal_lattice()->fft_index(), &v_pw[0]);
+    fft->transform(1);
+    for (int i = 0; i < fft->size(); i++)
+    {
+        if (fabs(imag(fft->output_buffer(i))) > 1e-10) error_local(__FILE__, __LINE__, "potential is complex");
+        v_r[i] = real(fft->output_buffer(i));
+    }
 
-    
     mdarray<complex16, 2> psi(kp.num_gkvec(), num_bands);
     std::vector<double> eval;
 
@@ -874,12 +867,12 @@ void test_iterative_diag()
     if (device == "cpu")
     {
         std::cout << "calling CPU version" << std::endl;
-        block_davidson_cpu(parameters, kp, v_pw, num_bands, max_iter, psi, eval);
+        block_davidson_cpu(parameters, kp, v_r, num_bands, max_iter, psi, eval);
     } 
     else if (device == "gpu")
     {
         std::cout << "calling GPU version" << std::endl;
-        block_davidson_gpu(parameters, kp, v_pw, num_bands, max_iter, psi, eval);
+        block_davidson_gpu(parameters, kp, v_r, num_bands, max_iter, psi, eval);
     }
     else
     {
