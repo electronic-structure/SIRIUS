@@ -928,7 +928,7 @@ __global__ void create_beta_pw_gpu_kernel(int num_gkvec,
         double cosp = cos(p);
 
         beta_pw[array2D_offset(igk, i, num_gkvec)] = 
-            cuCmul(beta_pw_type[array2D_offset(igk, offset_t, num_gkvec)], make_cuDoubleComplex(cosp, sinp));
+            cuCmul(beta_pw_type[array2D_offset(igk, offset_t, num_gkvec)], make_cuDoubleComplex(cosp, -sinp));
     }
 }
 

@@ -2000,7 +2000,7 @@ extern "C" void create_beta_pw_gpu(int num_gkvec,
 void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
                               complex16* phi__, complex16* hphi__, complex16* ophi__)
 {
-    Timer t("sirius::Band::apply_h_o");
+    Timer t("sirius::Band::apply_h_o_uspp_gpu");
 
     mdarray<complex16, 2> phi(phi__, kp->num_gkvec(), n);
     mdarray<complex16, 2> hphi(hphi__, kp->num_gkvec(), n);
@@ -2220,8 +2220,8 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
 
     bool convergence_by_energy = false;
 
-    int N; // current eigen-value problem size
-    int n; // number of added residuals
+    int N = -1; // current eigen-value problem size
+    int n = -1; // number of added residuals
 
     // trial basis functions
     assert(phi.size(0) == psi.size(0));
@@ -2263,9 +2263,23 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
         {
             // expand variational subspace with new basis vectors obtatined from residuals
             memcpy(&phi(0, N), &res(0, 0), n * kp->num_gkvec() * sizeof(complex16));
-
             // apply Hamiltonian and overlap operators to the new basis functions
-            apply_h_o(kp, veff_it_coarse, pw_ekin, n, &phi(0, N), &hphi(0, N), &ophi(0, N));
+            switch (parameters_.processing_unit())
+            {
+                case cpu:
+                {
+                    apply_h_o(kp, veff_it_coarse, pw_ekin, n, &phi(0, N), &hphi(0, N), &ophi(0, N));
+                    break;
+                }
+                case gpu:
+                {
+                    #ifdef _GPU_
+                    apply_h_o_uspp_gpu(kp, veff_it_coarse, pw_ekin, n, &phi(0, N), &hphi(0, N), &ophi(0, N));
+                    #else
+                    error_local(__FILE__, __LINE__, "not compiled with GPU support");
+                    #endif
+                }
+            }
 
             // copy old Hamiltonian and overlap
             for (int i = 0; i < N; i++)
