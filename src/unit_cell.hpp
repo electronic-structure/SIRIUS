@@ -318,6 +318,48 @@ void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
             }
         }
     }
+
+    if (esm_type_ == ultrasoft_pseudopotential)
+    {
+        beta_t_ofs_.set_dimensions(num_atom_types());
+        beta_t_ofs_.allocate();
+        num_beta_t_ = 0;
+        for (int iat = 0; iat < num_atom_types(); iat++)
+        {
+            beta_t_ofs_(iat) = num_beta_t_;
+            num_beta_t_ += atom_type(iat)->mt_basis_size();
+        }
+
+        beta_a_ofs_.set_dimensions(num_atoms()); // TODO: this is mt_basis_size() 
+        beta_a_ofs_.allocate();
+        num_beta_a_ = 0;
+        for (int ia = 0; ia < num_atoms(); ia++)
+        {   
+            beta_a_ofs_(ia) = num_beta_a_;
+            num_beta_a_ += atom(ia)->type()->mt_basis_size();
+        }
+
+        atom_pos_.set_dimensions(3, num_atoms());
+        atom_pos_.allocate();
+        for (int ia = 0; ia < num_atoms(); ia++)
+        {
+            for (int x = 0; x < 3; x++) atom_pos_(x, ia) = atom(ia)->position(x);
+        }
+
+        beta_t_idx_.set_dimensions(2, num_beta_a_);
+        beta_t_idx_.allocate();
+
+        int n = 0;
+        for (int ia = 0; ia < num_atoms(); ia++)
+        {
+            int iat = atom(ia)->type_id();
+            for (int xi = 0; xi < atom_type(iat)->mt_basis_size(); xi++, n++)
+            {
+                beta_t_idx_(0, n) = ia;
+                beta_t_idx_(1, n) = beta_t_ofs_(iat) + xi;
+            }
+        }
+    }
 }
 
 void Unit_cell::update()

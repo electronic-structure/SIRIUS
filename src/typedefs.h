@@ -45,10 +45,17 @@ enum radial_grid_t {linear_grid, exponential_grid, linear_exponential_grid, pow_
     lo_cp - confined polynomial local orbital */
 enum local_orbital_t {lo_rs, lo_cp};
 
-/// Wrapper for primitive data types
-template <typename T> class primitive_type_wrapper;
+/// Wrapper for data types
+template <typename T> class type_wrapper
+{
+    public:
+        static bool is_primitive()
+        {
+            return false;
+        }
+};
 
-template<> class primitive_type_wrapper<double>
+template<> class type_wrapper<double>
 {
     public:
         typedef std::complex<double> complex_t;
@@ -88,16 +95,21 @@ template<> class primitive_type_wrapper<double>
         {
             return fabs(val);
         }
+
+        static bool is_primitive()
+        {
+            return true;
+        }
 };
 
-template<> class primitive_type_wrapper<float>
+template<> class type_wrapper<float>
 {
     public:
         typedef std::complex<float> complex_t;
         typedef float real_t;
 };
 
-template<> class primitive_type_wrapper< std::complex<double> >
+template<> class type_wrapper< std::complex<double> >
 {
     public:
         typedef std::complex<double> complex_t;
@@ -137,16 +149,21 @@ template<> class primitive_type_wrapper< std::complex<double> >
         {
             return std::abs(val);
         }
+
+        static bool is_primitive()
+        {
+            return true;
+        }
 };
 
-/*template<> class primitive_type_wrapper< std::complex<float> >
+/*template<> class type_wrapper< std::complex<float> >
 {
     public:
         typedef std::complex<float> complex_t;
         typedef float real_t;
 };*/
 
-template<> class primitive_type_wrapper<int>
+template<> class type_wrapper<int>
 {
     public:
         static hid_t hdf5_type_id()
@@ -159,13 +176,18 @@ template<> class primitive_type_wrapper<int>
             return MPI_INT;
         }
 
+        static bool is_primitive()
+        {
+            return true;
+        }
+
         /*static bool is_complex()
         {
             return false;
         }*/
 };
 
-template<> class primitive_type_wrapper<char>
+template<> class type_wrapper<char>
 {
     public:
         /*static hid_t hdf5_type_id()

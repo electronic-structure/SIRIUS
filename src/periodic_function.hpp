@@ -270,14 +270,14 @@ T inner(Global& parameters_, Periodic_function<T>* f1, Periodic_function<T>* f2)
     if (parameters_.step_function() == NULL)
     {
         for (int irloc = 0; irloc < fft_->local_size(); irloc++)
-            result += primitive_type_wrapper<T>::conjugate(f1->template f_it<local>(irloc)) * f2->template f_it<local>(irloc);
+            result += type_wrapper<T>::conjugate(f1->template f_it<local>(irloc)) * f2->template f_it<local>(irloc);
     }
     else
     {
         for (int irloc = 0; irloc < fft_->local_size(); irloc++)
         {
             int ir = fft_->global_index(irloc);
-            result += primitive_type_wrapper<T>::conjugate(f1->template f_it<local>(irloc)) * f2->template f_it<local>(irloc) * 
+            result += type_wrapper<T>::conjugate(f1->template f_it<local>(irloc)) * f2->template f_it<local>(irloc) * 
                       parameters_.step_function(ir);
         }
     }

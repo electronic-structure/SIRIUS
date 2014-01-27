@@ -111,22 +111,41 @@ template <typename T, int ND> class mdarray_base
         void allocate()
         {
             deallocate();
-            
-            size_t sz = size();
-             
-            if (sz && (!mdarray_ptr)) 
+
+            if (type_wrapper<T>::is_primitive())
             {
-                try
+                size_t num_bytes = size() * sizeof(T);
+
+                if (num_bytes)
                 {
-                    mdarray_ptr = new T[sz];
+                    mdarray_ptr = (T*)malloc(num_bytes);
+                    if (mdarray_ptr == NULL)
+                    {
+                        std::stringstream s;
+                        s << "Error allocating " << ND << "-dimensional array of size " << num_bytes << " bytes";
+                        error_local(__FILE__, __LINE__, s);
+                    }
+                    allocated_ = true;
                 }
-                catch(...)
+            }
+            else
+            {
+                size_t sz = size();
+                 
+                if (sz && (!mdarray_ptr)) 
                 {
-                    std::stringstream s;
-                    s << "Error allocating " << ND << "-dimensional array of size " << sz * sizeof(T);
-                    error_local(__FILE__, __LINE__, s);
+                    try
+                    {
+                        mdarray_ptr = new T[sz];
+                    }
+                    catch(...)
+                    {
+                        std::stringstream s;
+                        s << "Error allocating " << ND << "-dimensional array of size " << sz * sizeof(T);
+                        error_local(__FILE__, __LINE__, s);
+                    }
+                    allocated_ = true;
                 }
-                allocated_ = true;
             }
         }
 
@@ -137,7 +156,14 @@ template <typename T, int ND> class mdarray_base
                 #ifdef _GPU_
                 unpin_memory();
                 #endif
-                delete[] mdarray_ptr;
+                if (type_wrapper<T>::is_primitive())
+                {
+                    free(mdarray_ptr);
+                }
+                else
+                {
+                    delete[] mdarray_ptr;
+                }
                 mdarray_ptr = NULL;
                 allocated_ = false;
             }
@@ -252,6 +278,11 @@ template <typename T, int ND> class mdarray_base
         inline T* get_ptr_device()
         {
             return mdarray_ptr_device;
+        }
+
+        inline T* get_ptr_device(int idx)
+        {
+            return &mdarray_ptr_device[idx];
         }
 
         void zero_on_device()

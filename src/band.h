@@ -75,6 +75,12 @@ class Band
 
         void apply_h_o(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
                        complex16* phi__, complex16* hphi__, complex16* ophi__);
+
+        #ifdef _GPU_
+        void apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
+                                complex16* phi__, complex16* hphi__, complex16* ophi__);
+        #endif
+
     public:
         
         /// Constructor

@@ -24,12 +24,12 @@ void Spheric_function<T>::sh_convert(Spheric_function<U>& f)
         for (int m = -l; m <= l; m++) 
         {
             int lm = Utils::lm_by_l_m(l, m);
-            if (primitive_type_wrapper<T>::is_real() && primitive_type_wrapper<U>::is_complex())
+            if (type_wrapper<T>::is_real() && type_wrapper<U>::is_complex())
             {
                 tpp[lm] = SHT::ylm_dot_rlm(l, m, m);
                 tpm[lm] = SHT::ylm_dot_rlm(l, m, -m);
             }
-            if (primitive_type_wrapper<T>::is_complex() && primitive_type_wrapper<U>::is_real())
+            if (type_wrapper<T>::is_complex() && type_wrapper<U>::is_real())
             {
                 tpp[lm] = SHT::rlm_dot_ylm(l, m, m);
                 tpm[lm] = SHT::rlm_dot_ylm(l, m, -m);
@@ -47,15 +47,14 @@ void Spheric_function<T>::sh_convert(Spheric_function<U>& f)
             {
                 if (m == 0)
                 {
-                    for (int ir = 0; ir < radial_domain_size_; ir++) f(ir, lm) = primitive_type_wrapper<U>::sift(this->data_(ir, lm));
+                    for (int ir = 0; ir < radial_domain_size_; ir++) f(ir, lm) = type_wrapper<U>::sift(this->data_(ir, lm));
                 }
                 else 
                 {
                     int lm1 = Utils::lm_by_l_m(l, -m);
                     for (int ir = 0; ir < radial_domain_size_; ir++)
                     {
-                        f(ir, lm) = primitive_type_wrapper<U>::sift(tpp[lm] * this->data_(ir, lm) + 
-                                                                    tpm[lm] * this->data_(ir, lm1));
+                        f(ir, lm) = type_wrapper<U>::sift(tpp[lm] * this->data_(ir, lm) + tpm[lm] * this->data_(ir, lm1));
                     }
                 }
                 lm++;
@@ -73,13 +72,12 @@ void Spheric_function<T>::sh_convert(Spheric_function<U>& f)
                 {
                     if (m == 0)
                     {
-                        f(lm, ir) = primitive_type_wrapper<U>::sift(this->data_(lm, ir));
+                        f(lm, ir) = type_wrapper<U>::sift(this->data_(lm, ir));
                     }
                     else 
                     {
                         int lm1 = Utils::lm_by_l_m(l, -m);
-                        f(lm, ir) = primitive_type_wrapper<U>::sift(tpp[lm] * this->data_(lm, ir) + 
-                                                                    tpm[lm] * this->data_(lm1, ir));
+                        f(lm, ir) = type_wrapper<U>::sift(tpp[lm] * this->data_(lm, ir) + tpm[lm] * this->data_(lm1, ir));
                     }
                     lm++;
                 }
@@ -140,7 +138,7 @@ T inner(Spheric_function<T>& f1, Spheric_function<T>& f2)
         for (int lm = 0; lm < f1.angular_domain_size(); lm++)
         {
             for (int ir = 0; ir < f1.radial_domain_size(); ir++)
-                s[ir] += primitive_type_wrapper<T>::conjugate(f1(ir, lm)) * f2(ir, lm);
+                s[ir] += type_wrapper<T>::conjugate(f1(ir, lm)) * f2(ir, lm);
         }
     }
     else
@@ -148,7 +146,7 @@ T inner(Spheric_function<T>& f1, Spheric_function<T>& f2)
         for (int ir = 0; ir < f1.radial_domain_size(); ir++)
         {
             for (int lm = 0; lm < f1.angular_domain_size(); lm++)
-                s[ir] += primitive_type_wrapper<T>::conjugate(f1(lm, ir)) * f2(lm, ir);
+                s[ir] += type_wrapper<T>::conjugate(f1(lm, ir)) * f2(lm, ir);
         }
     }
     return s.interpolate().integrate(2);

@@ -114,6 +114,18 @@ class Unit_cell
         
         splindex<block> spl_atoms_;
 
+        //mdarray<int, 2> beta_t_idx_;
+        mdarray<int, 1> beta_t_ofs_;
+        int num_beta_t_;
+
+        mdarray<int, 1> beta_a_ofs_;
+        int num_beta_a_;
+
+        mdarray<int, 2> beta_t_idx_;
+
+        mdarray<double, 2> atom_pos_;
+
+
         /// Get crystal symmetries and equivalent atoms.
         /** Makes a call to spglib providing the basic unit cell information: lattice vectors and atomic types 
             and positions. Gets back symmetry operations and a table of equivalent atoms. The table of equivalent 
@@ -443,6 +455,36 @@ class Unit_cell
         inline nearest_neighbour_descriptor& nearest_neighbour(int i, int ia)
         {
             return nearest_neighbours_[ia][i];
+        }
+
+        inline int num_beta_t()
+        {
+            return num_beta_t_;
+        }
+
+        inline int beta_t_ofs(int iat)
+        {
+            return beta_t_ofs_(iat);
+        }
+
+        inline int num_beta_a()
+        {
+            return num_beta_a_;
+        }
+
+        inline int beta_a_ofs(int ia)
+        {
+            return beta_a_ofs_(ia);
+        }
+
+        inline mdarray<double, 2>& atom_pos()
+        {
+            return atom_pos_;
+        }
+
+        inline mdarray<int, 2>& beta_t_idx()
+        {
+            return beta_t_idx_;
         }
 };
 

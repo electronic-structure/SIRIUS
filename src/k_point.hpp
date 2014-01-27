@@ -129,7 +129,7 @@ void K_point::update()
 
         auto uc = parameters_.unit_cell();
 
-        beta_pw_.set_dimensions(num_gkvec(), uc->max_mt_basis_size(), uc->num_atom_types());
+        beta_pw_.set_dimensions(num_gkvec(), uc->num_beta_t()); 
         beta_pw_.allocate();
 
         #pragma omp parallel
@@ -171,7 +171,7 @@ void K_point::update()
                         int idxrf = atom_type->indexb(xi).idxrf;
 
                         complex16 z = pow(complex16(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
-                        beta_pw_(igk, xi, iat) = z * gkvec_ylm_(lm, igk) * beta_radial_integrals_[idxrf];
+                        beta_pw_(igk, uc->beta_t_ofs(iat) + xi) = z * gkvec_ylm_(lm, igk) * beta_radial_integrals_[idxrf];
                     }
                 }
             }
@@ -1551,7 +1551,7 @@ void K_point::generate_beta_pw(complex16* beta_pw__, int ia)
         {
             //== beta_pw(igk, xi) = z * gkvec_ylm_(lm, igk) * beta_radial_integrals_(igk, idxrf, iat) * 
             //==                    conj(gkvec_phase_factors_(igk, ia));
-            beta_pw(igk, xi) = beta_pw_(igk, xi, iat) * conj(gkvec_phase_factors_(igk, ia));
+            beta_pw(igk, xi) = beta_pw_(igk, parameters_.unit_cell()->beta_t_ofs(iat) + xi) * conj(gkvec_phase_factors_(igk, ia));
         }
     }
 }
@@ -1567,7 +1567,7 @@ void K_point::generate_beta_pw(complex16* beta_pw__, Atom_type* atom_type)
     {
         for (int igk = 0; igk < num_gkvec(); igk++)
         {
-            beta_pw(igk, xi) = beta_pw_(igk, xi, iat);
+            beta_pw(igk, xi) = beta_pw_(igk, parameters_.unit_cell()->beta_t_ofs(iat) + xi);
         }
     }
 }

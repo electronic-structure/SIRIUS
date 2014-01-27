@@ -1924,49 +1924,46 @@ void Band::apply_h_o(K_point* kp, std::vector<double>& effective_potential, std:
     // set intial ophi
     memcpy(ophi__, phi__, kp->num_gkvec() * n * sizeof(complex16));
 
-    int nbf_tot = 0;
-    std::vector<int> offsets(parameters_.unit_cell()->num_atoms());
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    {   
-        offsets[ia] = nbf_tot;
-        // add number of beta functions for a given atom
-        nbf_tot += parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
-    }
-
     // <G+k|\beta_{\xi}^{\alpha}>
-    mdarray<complex16, 2> beta_pw(kp->num_gkvec(), nbf_tot);
+    mdarray<complex16, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->num_beta_a());
 
     // <\beta_{\xi}^{\alpha}|\phi_j>
-    mdarray<complex16, 2> beta_phi(nbf_tot, n);
+    mdarray<complex16, 2> beta_phi(parameters_.unit_cell()->num_beta_a(), n);
     
     // Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j>
-    mdarray<complex16, 2> tmp(nbf_tot, n);
+    mdarray<complex16, 2> tmp(parameters_.unit_cell()->num_beta_a(), n);
 
     Timer t1("sirius::Band::apply_h_o|beta_phi");
     // collect all |beta>
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {   
-        kp->generate_beta_pw(&beta_pw(0, offsets[ia]), ia);
+        kp->generate_beta_pw(&beta_pw(0, parameters_.unit_cell()->beta_a_ofs(ia)), ia);
     }
     // compute <beta|phi>
-    blas<cpu>::gemm(2, 0, nbf_tot, n, kp->num_gkvec(), &beta_pw(0, 0), beta_pw.ld(), &phi(0, 0), phi.ld(), 
-                    &beta_phi(0, 0), beta_phi.ld());
+    blas<cpu>::gemm(2, 0, parameters_.unit_cell()->num_beta_a(), n, kp->num_gkvec(), &beta_pw(0, 0), beta_pw.ld(), 
+                    &phi(0, 0), phi.ld(), &beta_phi(0, 0), beta_phi.ld());
     t1.stop();
+    
+    //// temporary here
+    //#ifdef _GPU_
+    //mdarray<complex16, 2> beta_pw_gpu(kp->num_gkvec(), nbf_tot);
+    //#endif
 
     Timer t2("sirius::Band::apply_h_o|D_beta_phi");
     // compute D*<beta|phi>
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {   
+        int ofs = parameters_.unit_cell()->beta_a_ofs(ia);
         // number of beta functions for a given atom
         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
         blas<cpu>::gemm(0, 0, nbf, n, nbf, &parameters_.unit_cell()->atom(ia)->d_mtrx(0, 0), nbf, 
-                        &beta_phi(offsets[ia], 0), beta_phi.ld(), &tmp(offsets[ia], 0), tmp.ld());
+                        &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
     }
     t2.stop();
 
     Timer t3("sirius::Band::apply_h_o|beta_D_beta_phi");
     // compute <G+k|beta> * D*<beta|phi> and add to hphi
-    blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, nbf_tot, complex16(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
+    blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), complex16(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
                     &tmp(0, 0), tmp.ld(), complex16(1, 0), &hphi(0, 0), hphi.ld());
     t3.stop();
 
@@ -1974,19 +1971,195 @@ void Band::apply_h_o(K_point* kp, std::vector<double>& effective_potential, std:
     // compute Q*<beta|phi>
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {   
+        int ofs = parameters_.unit_cell()->beta_a_ofs(ia);
         // number of beta functions for a given atom
         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
         blas<cpu>::gemm(0, 0, nbf, n, nbf, &parameters_.unit_cell()->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
-                        &beta_phi(offsets[ia], 0), beta_phi.ld(), &tmp(offsets[ia], 0), tmp.ld());
+                        &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
     }
     t4.stop();
 
     Timer t5("sirius::Band::apply_h_o|beta_Q_beta_phi");
     // computr <G+k|beta> * Q*<beta|phi> and add to ophi
-    blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, nbf_tot, complex16(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
+    blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), complex16(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
                     &tmp(0, 0), tmp.ld(), complex16(1, 0), &ophi(0, 0), ophi.ld());
     t5.stop();
 }
+
+#ifdef _GPU_
+
+extern "C" void create_beta_pw_gpu(int num_gkvec, 
+                                   int num_beta_atot, 
+                                   int* beta_t_idx,
+                                   void* beta_pw_type,
+                                   double* gkvec,
+                                   double* atom_pos,
+                                   void* beta_pw);
+
+// memory-greedy implementation
+void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
+                              complex16* phi__, complex16* hphi__, complex16* ophi__)
+{
+    Timer t("sirius::Band::apply_h_o");
+
+    mdarray<complex16, 2> phi(phi__, kp->num_gkvec(), n);
+    mdarray<complex16, 2> hphi(hphi__, kp->num_gkvec(), n);
+    mdarray<complex16, 2> ophi(ophi__, kp->num_gkvec(), n);
+
+    // apply local part of Hamiltonian
+    apply_h_local(kp, effective_potential, pw_ekin, n, phi__, hphi__);
+    
+    // set intial ophi
+    memcpy(ophi__, phi__, kp->num_gkvec() * n * sizeof(complex16));
+    
+    
+    
+    
+    
+    // We are going to use the same buffer for phi, hphi and ophi 
+    mdarray<complex16, 2> phi_gpu(kp->num_gkvec(), n);
+    memcpy(&phi_gpu(0, 0), phi__,  kp->num_gkvec() * n * sizeof(complex16));
+    phi_gpu.allocate_on_device();
+    phi_gpu.copy_to_device();
+
+
+
+    mdarray<int, 1> mtrx_ofs(parameters_.unit_cell()->num_atoms()); // offset in the packed array of on-site matrices
+    int packed_mtrx_size = 0;
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {   
+        int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+        mtrx_ofs(ia) = packed_mtrx_size;
+        packed_mtrx_size += nbf * nbf;
+    }
+
+    mdarray<complex16, 1> d_mtrx_packed(packed_mtrx_size);
+    mdarray<complex16, 1> q_mtrx_packed(packed_mtrx_size);
+
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {
+        int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+        for (int xi2 = 0; xi2 < nbf; xi2++)
+        {
+            for (int xi1 = 0; xi1 < nbf; xi1++)
+            {
+                d_mtrx_packed(mtrx_ofs(ia) + xi2 * nbf + xi1) = parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2);
+                q_mtrx_packed(mtrx_ofs(ia) + xi2 * nbf + xi1) = parameters_.unit_cell()->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
+            }
+        }
+    }
+
+
+
+
+
+    // <G+k|\beta_{\xi}^{\alpha}>
+    mdarray<complex16, 2> beta_pw(NULL, kp->num_gkvec(), parameters_.unit_cell()->num_beta_a());
+    beta_pw.allocate_on_device();
+
+    kp->beta_pw().allocate_on_device();
+    kp->beta_pw().copy_to_device();
+
+    kp->gkvec().allocate_on_device(); 
+    kp->gkvec().copy_to_device();
+
+    parameters_.unit_cell()->atom_pos().allocate_on_device(); 
+    parameters_.unit_cell()->atom_pos().copy_to_device();
+
+    parameters_.unit_cell()->beta_t_idx().allocate_on_device(); 
+    parameters_.unit_cell()->beta_t_idx().copy_to_device();
+
+    create_beta_pw_gpu(kp->num_gkvec(), 
+                       parameters_.unit_cell()->num_beta_a(), 
+                       parameters_.unit_cell()->beta_t_idx().get_ptr_device(),
+                       kp->beta_pw().get_ptr_device(),
+                       kp->gkvec().get_ptr_device(),
+                       parameters_.unit_cell()->atom_pos().get_ptr_device(),
+                       beta_pw.get_ptr_device());
+
+
+    parameters_.unit_cell()->beta_t_idx().deallocate_on_device();
+    parameters_.unit_cell()->atom_pos().deallocate_on_device();
+    kp->gkvec().deallocate_on_device();
+    kp->beta_pw().deallocate_on_device();
+
+    // <\beta_{\xi}^{\alpha}|\phi_j>
+    mdarray<complex16, 2> beta_phi(NULL, parameters_.unit_cell()->num_beta_a(), n);
+    beta_phi.allocate_on_device();
+    
+    //Timer t1("sirius::Band::apply_h_o|beta_phi");
+    blas<gpu>::gemm(2, 0, parameters_.unit_cell()->num_beta_a(), n, kp->num_gkvec(), beta_pw.get_ptr_device(), beta_pw.ld(), 
+                    phi_gpu.get_ptr_device(), phi_gpu.ld(), beta_phi.get_ptr_device(), beta_phi.ld());
+
+    // Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j>
+    mdarray<complex16, 2> tmp(NULL, parameters_.unit_cell()->num_beta_a(), n);
+    tmp.allocate_on_device();
+
+    //t1.stop();
+
+    //Timer t2("sirius::Band::apply_h_o|D_beta_phi");
+    d_mtrx_packed.allocate_on_device();
+    d_mtrx_packed.copy_to_device();
+    // compute D*<beta|phi>
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {   
+        int ofs = parameters_.unit_cell()->beta_a_ofs(ia);
+        // number of beta functions for a given atom
+        int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+        blas<gpu>::gemm(0, 0, nbf, n, nbf, d_mtrx_packed.get_ptr_device(mtrx_ofs(ia)), nbf, 
+                        beta_phi.get_ptr_device(ofs), beta_phi.ld(), tmp.get_ptr_device(ofs), tmp.ld());
+    }
+    d_mtrx_packed.deallocate_on_device();
+
+    //t2.stop();
+
+    //Timer t3("sirius::Band::apply_h_o|beta_D_beta_phi");
+    // compute <G+k|beta> * D*<beta|phi> and add to hphi
+    blas<gpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), beta_pw.get_ptr_device(), beta_pw.ld(), 
+                    tmp.get_ptr_device(), tmp.ld(), phi_gpu.get_ptr_device(), phi_gpu.ld());
+    phi_gpu.copy_to_host();
+    for (int j = 0; j < n; j++)
+    {
+        for (int igk = 0; igk < kp->num_gkvec(); igk++) hphi(igk, j) += phi_gpu(igk, j);
+    }
+
+    //t3.stop();
+
+    //Timer t4("sirius::Band::apply_h_o|Q_beta_phi");
+    
+    q_mtrx_packed.allocate_on_device();
+    q_mtrx_packed.copy_to_device();
+
+    // compute Q*<beta|phi>
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {   
+        int ofs = parameters_.unit_cell()->beta_a_ofs(ia);
+        // number of beta functions for a given atom
+        int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+        blas<gpu>::gemm(0, 0, nbf, n, nbf, q_mtrx_packed.get_ptr_device(mtrx_ofs(ia)), nbf, 
+                        beta_phi.get_ptr_device(ofs), beta_phi.ld(), tmp.get_ptr_device(ofs), tmp.ld());
+    }
+    q_mtrx_packed.deallocate_on_device();
+    //t4.stop();
+
+    //Timer t5("sirius::Band::apply_h_o|beta_Q_beta_phi");
+    // computr <G+k|beta> * Q*<beta|phi> and add to ophi
+    blas<gpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), beta_pw.get_ptr_device(), beta_pw.ld(), 
+                    tmp.get_ptr_device(), tmp.ld(), phi_gpu.get_ptr_device(), phi_gpu.ld());
+    phi_gpu.copy_to_host();
+    for (int j = 0; j < n; j++)
+    {
+        for (int igk = 0; igk < kp->num_gkvec(); igk++) ophi(igk, j) += phi_gpu(igk, j);
+    }
+    phi_gpu.deallocate_on_device();
+    tmp.deallocate_on_device();
+    beta_phi.deallocate_on_device();
+    beta_pw.deallocate_on_device();
+
+
+    //t5.stop();
+}
+#endif
 
 void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<double>* effective_potential)
 {
@@ -2063,7 +2236,22 @@ void Band::solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<dou
             N = num_psi; // intial eigen-value problem size
 
             // apply Hamiltonian and overlap operators
-            apply_h_o(kp, veff_it_coarse, pw_ekin, N, &phi(0, 0), &hphi(0, 0), &ophi(0, 0));
+            switch (parameters_.processing_unit())
+            {
+                case cpu:
+                {
+                    apply_h_o(kp, veff_it_coarse, pw_ekin, N, &phi(0, 0), &hphi(0, 0), &ophi(0, 0));
+                    break;
+                }
+                case gpu:
+                {
+                    #ifdef _GPU_
+                    apply_h_o_uspp_gpu(kp, veff_it_coarse, pw_ekin, N, &phi(0, 0), &hphi(0, 0), &ophi(0, 0));
+                    #else
+                    error_local(__FILE__, __LINE__, "not compiled with GPU support");
+                    #endif
+                }
+            }
 
             // compute the Hamiltonian matrix: <phi|H|phi>
             blas<cpu>::gemm(2, 0, N, N, kp->num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());

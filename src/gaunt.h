@@ -82,7 +82,7 @@ class Gaunt_coefficients
                     {
                         int lm3 = Utils::lm_by_l_m(l3, m3);
                         T gc = SHT::gaunt<T>(l1, l3, l2, m1, m3, m2);
-                        if (primitive_type_wrapper<T>::abs(gc) > 1e-12) 
+                        if (type_wrapper<T>::abs(gc) > 1e-12) 
                         {
                             g12.lm1 = lm1;
                             g12.lm2 = lm2;

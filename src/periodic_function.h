@@ -44,7 +44,7 @@ class Periodic_function
 
     private:
         
-        typedef typename primitive_type_wrapper<T>::complex_t complex_t; 
+        typedef typename type_wrapper<T>::complex_t complex_t; 
         
         Unit_cell* unit_cell_;
 

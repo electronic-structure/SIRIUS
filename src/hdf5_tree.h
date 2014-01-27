@@ -183,10 +183,10 @@ class HDF5_tree
             HDF5_dataspace dataspace(dims);
 
             /// create new dataset
-            HDF5_dataset dataset(group, dataspace, name, primitive_type_wrapper<T>::hdf5_type_id());
+            HDF5_dataset dataset(group, dataspace, name, type_wrapper<T>::hdf5_type_id());
 
             // write data
-            if (H5Dwrite(dataset.id(), primitive_type_wrapper<T>::hdf5_type_id(), dataspace.id(), H5S_ALL, 
+            if (H5Dwrite(dataset.id(), type_wrapper<T>::hdf5_type_id(), dataspace.id(), H5S_ALL, 
                          H5P_DEFAULT, data) < 0)
             {
                 error_local(__FILE__, __LINE__, "error in H5Dwrite()");
@@ -203,7 +203,7 @@ class HDF5_tree
 
             HDF5_dataset dataset(group.id(), name);
 
-            if (H5Dread(dataset.id(), primitive_type_wrapper<T>::hdf5_type_id(), dataspace.id(), H5S_ALL, 
+            if (H5Dread(dataset.id(), type_wrapper<T>::hdf5_type_id(), dataspace.id(), H5S_ALL, 
                         H5P_DEFAULT, data) < 0)
             {
                 error_local(__FILE__, __LINE__, "error in H5Dread()");
@@ -300,12 +300,12 @@ class HDF5_tree
         template <typename T, int N>
         void write_mdarray(const std::string& name, mdarray<T, N>& data)
         {
-            if (primitive_type_wrapper<T>::is_complex())
+            if (type_wrapper<T>::is_complex())
             {
                 std::vector<int> dims(N + 1);
                 dims[0] = 2; 
                 for (int i = 0; i < N; i++) dims[i + 1] = data.size(i);
-                write(name, (typename primitive_type_wrapper<T>::real_t*)data.get_ptr(), dims);
+                write(name, (typename type_wrapper<T>::real_t*)data.get_ptr(), dims);
             }
             else
             {
@@ -349,12 +349,12 @@ class HDF5_tree
         template <typename T, int N>
         void read_mdarray(const std::string& name, mdarray<T, N>& data)
         {
-            if (primitive_type_wrapper<T>::is_complex())
+            if (type_wrapper<T>::is_complex())
             {
                 std::vector<int> dims(N + 1);
                 dims[0] = 2; 
                 for (int i = 0; i < N; i++) dims[i + 1] = data.size(i);
-                read(name, (typename primitive_type_wrapper<T>::real_t*)data.get_ptr(), dims);
+                read(name, (typename type_wrapper<T>::real_t*)data.get_ptr(), dims);
             }
             else
             {

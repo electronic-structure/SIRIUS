@@ -103,7 +103,7 @@ class Platform
         template <typename T>
         static void bcast(T* buffer, int count, const MPI_Comm& comm, int root)
         {
-            MPI_Bcast(buffer, count, primitive_type_wrapper<T>::mpi_type_id(), root, comm); 
+            MPI_Bcast(buffer, count, type_wrapper<T>::mpi_type_id(), root, comm); 
         }
         
         /// Broadcast array 
@@ -118,7 +118,7 @@ class Platform
         static void reduce(T* buf, int count, const MPI_Comm& comm, int root)
         {
             T* buf_tmp = (T*)malloc(count * sizeof(T));
-            MPI_Reduce(buf, buf_tmp, count, primitive_type_wrapper<T>::mpi_type_id(), MPI_SUM, root, comm);
+            MPI_Reduce(buf, buf_tmp, count, type_wrapper<T>::mpi_type_id(), MPI_SUM, root, comm);
             memcpy(buf, buf_tmp, count * sizeof(T));
             free(buf_tmp);
         }
@@ -127,7 +127,7 @@ class Platform
         template<typename T>
         static void reduce(T* sendbuf, T* recvbuf, int count, const MPI_Comm& comm, int root)
         {
-            MPI_Reduce(sendbuf, recvbuf, count, primitive_type_wrapper<T>::mpi_type_id(), MPI_SUM, root, comm);
+            MPI_Reduce(sendbuf, recvbuf, count, type_wrapper<T>::mpi_type_id(), MPI_SUM, root, comm);
         }
         
         /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
@@ -135,7 +135,7 @@ class Platform
         static void allreduce(T* buffer, int count, const MPI_Comm& comm)
         {
             if (comm != MPI_COMM_NULL)
-                MPI_Allreduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), MPI_SUM, comm);
+                MPI_Allreduce(MPI_IN_PLACE, buffer, count, type_wrapper<T>::mpi_type_id(), MPI_SUM, comm);
         }
 
         /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
@@ -148,13 +148,13 @@ class Platform
                 {
                     case op_sum:
                     {
-                        MPI_Allreduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), 
+                        MPI_Allreduce(MPI_IN_PLACE, buffer, count, type_wrapper<T>::mpi_type_id(), 
                                       MPI_SUM, comm);
                         break;
                     }
                     case op_max:
                     {
-                        MPI_Allreduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), 
+                        MPI_Allreduce(MPI_IN_PLACE, buffer, count, type_wrapper<T>::mpi_type_id(), 
                                       MPI_MAX, comm);
                         break;
                     }
@@ -181,16 +181,16 @@ class Platform
         {
             std::vector<int> counts(num_mpi_ranks());
             counts[mpi_rank()] = count;
-            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &counts[0], 1, primitive_type_wrapper<int>::mpi_type_id(), 
+            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &counts[0], 1, type_wrapper<int>::mpi_type_id(), 
                           MPI_COMM_WORLD);
             
             std::vector<int> offsets(num_mpi_ranks());
             offsets[mpi_rank()] = offset;
-            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &offsets[0], 1, primitive_type_wrapper<int>::mpi_type_id(), 
+            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &offsets[0], 1, type_wrapper<int>::mpi_type_id(), 
                           MPI_COMM_WORLD);
 
-            MPI_Allgatherv(sendbuf, count, primitive_type_wrapper<T>::mpi_type_id(), recvbuf, &counts[0], &offsets[0],
-                           primitive_type_wrapper<T>::mpi_type_id(), MPI_COMM_WORLD);
+            MPI_Allgatherv(sendbuf, count, type_wrapper<T>::mpi_type_id(), recvbuf, &counts[0], &offsets[0],
+                           type_wrapper<T>::mpi_type_id(), MPI_COMM_WORLD);
         }
         
         template<typename T>
@@ -201,7 +201,7 @@ class Platform
             v[2 * mpi_rank(comm)] = count;
             v[2 * mpi_rank(comm) + 1] = offset;
 
-            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &v[0], 2, primitive_type_wrapper<int>::mpi_type_id(), comm);
+            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &v[0], 2, type_wrapper<int>::mpi_type_id(), comm);
 
             std::vector<int> counts(num_mpi_ranks(comm));
             std::vector<int> offsets(num_mpi_ranks(comm));
@@ -213,7 +213,7 @@ class Platform
             }
 
             MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, buf, &counts[0], &offsets[0],
-                           primitive_type_wrapper<T>::mpi_type_id(), comm);
+                           type_wrapper<T>::mpi_type_id(), comm);
         }
 };
 

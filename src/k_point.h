@@ -176,11 +176,8 @@ class K_point
 
         int num_ranks_;
 
-        /// in case of pseudopotential: radial integrals of |beta> functions
-        //mdarray<double, 3> beta_radial_integrals_;
-        
         /// phase-factor independent plane-wave coefficients of |beta> functions 
-        mdarray<complex16, 3> beta_pw_;
+        mdarray<complex16, 2> beta_pw_;
 
         /// Generate matching coefficients for specific l-value
         template <int order, bool conjugate>
@@ -622,6 +619,16 @@ class K_point
             std::vector<double> pw_ekin(num_gkvec());
             for (int igk = 0; igk < num_gkvec(); igk++) pw_ekin[igk] = 0.5 * pow(gkvec_len(igk), 2);
             return pw_ekin; 
+        }
+
+        inline mdarray<double, 2>& gkvec()
+        {
+            return gkvec_;
+        }
+
+        inline mdarray<complex16, 2>& beta_pw()
+        {
+            return beta_pw_;
         }
 };
 
