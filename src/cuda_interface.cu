@@ -6,6 +6,8 @@
 #include <cublas_v2.h>
 #include <cufft.h>
 
+const double twopi = 6.2831853071795864769;
+
 //=====================
 // Auxiliary functions
 //=====================
@@ -27,7 +29,7 @@ __device__ size_t array4D_offset(int i0, int i1, int i2, int i3, int ld0, int ld
     return i0 + i1 * ld0 + i2 * ld0 * ld1 + i3 * ld0 * ld1 * ld2;
 }
 
-int num_blocks(int length, int block_size)
+inline __host__ __device__ int num_blocks(int length, int block_size)
 {
     return (length / block_size) + min(length % block_size, 1);
 }
@@ -903,53 +905,53 @@ extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double* v)
     scale_matrix_rows_gpu_kernel<<<numBlocks, threadsPerBlock>>>(nrow, (cuDoubleComplex*)mtrx, v);
 }
 
-__global__ void create_beta_pw_gpu_kernel(int num_gkvec, 
-                                          int* beta_t_idx, 
-                                          cuDoubleComplex* beta_pw_type, 
-                                          double* gkvec, 
-                                          double* atom_pos,
-                                          cuDoubleComplex* beta_pw)
-{
-    const double twopi = 6.2831853071795864769;
-
-    int i = blockIdx.y;
-    int ia = beta_t_idx[array2D_offset(0, i, 2)];
-    int offset_t = beta_t_idx[array2D_offset(1, i, 2)];
-
-    int igk = blockDim.x * blockIdx.x + threadIdx.x;
-    
-    if (igk < num_gkvec)
-    {
-        double p = 0;
-        for (int x = 0; x < 3; x++) p += atom_pos[array2D_offset(x, ia, 3)] * gkvec[array2D_offset(x, igk, 3)];
-        p *= twopi;
-        
-        double sinp = sin(p);
-        double cosp = cos(p);
-
-        beta_pw[array2D_offset(igk, i, num_gkvec)] = 
-            cuCmul(beta_pw_type[array2D_offset(igk, offset_t, num_gkvec)], make_cuDoubleComplex(cosp, -sinp));
-    }
-}
-
-extern "C" void create_beta_pw_gpu(int num_gkvec, 
-                                   int num_beta_atot, 
-                                   int* beta_t_idx,
-                                   void* beta_pw_type,
-                                   double* gkvec,
-                                   double* atom_pos,
-                                   void* beta_pw)
-{
-    dim3 threadsPerBlock(64);
-    dim3 numBlocks(num_blocks(num_gkvec, 64), num_beta_atot);
-
-    create_beta_pw_gpu_kernel<<<numBlocks, threadsPerBlock>>>(num_gkvec, 
-                                                              beta_t_idx, 
-                                                              (cuDoubleComplex*)beta_pw_type,
-                                                              gkvec,
-                                                              atom_pos,
-                                                              (cuDoubleComplex*)beta_pw);
-}
+//== __global__ void create_beta_pw_gpu_kernel(int num_gkvec, 
+//==                                           int* beta_t_idx, 
+//==                                           cuDoubleComplex* beta_pw_type, 
+//==                                           double* gkvec, 
+//==                                           double* atom_pos,
+//==                                           cuDoubleComplex* beta_pw)
+//== {
+//==     const double twopi = 6.2831853071795864769;
+//== 
+//==     int i = blockIdx.y;
+//==     int ia = beta_t_idx[array2D_offset(0, i, 2)];
+//==     int offset_t = beta_t_idx[array2D_offset(1, i, 2)];
+//== 
+//==     int igk = blockDim.x * blockIdx.x + threadIdx.x;
+//==     
+//==     if (igk < num_gkvec)
+//==     {
+//==         double p = 0;
+//==         for (int x = 0; x < 3; x++) p += atom_pos[array2D_offset(x, ia, 3)] * gkvec[array2D_offset(x, igk, 3)];
+//==         p *= twopi;
+//==         
+//==         double sinp = sin(p);
+//==         double cosp = cos(p);
+//== 
+//==         beta_pw[array2D_offset(igk, i, num_gkvec)] = 
+//==             cuCmul(beta_pw_type[array2D_offset(igk, offset_t, num_gkvec)], make_cuDoubleComplex(cosp, -sinp));
+//==     }
+//== }
+//== 
+//== extern "C" void create_beta_pw_gpu(int num_gkvec, 
+//==                                    int num_beta_atot, 
+//==                                    int* beta_t_idx,
+//==                                    void* beta_pw_type,
+//==                                    double* gkvec,
+//==                                    double* atom_pos,
+//==                                    void* beta_pw)
+//== {
+//==     dim3 threadsPerBlock(64);
+//==     dim3 numBlocks(num_blocks(num_gkvec, 64), num_beta_atot);
+//== 
+//==     create_beta_pw_gpu_kernel<<<numBlocks, threadsPerBlock>>>(num_gkvec, 
+//==                                                               beta_t_idx, 
+//==                                                               (cuDoubleComplex*)beta_pw_type,
+//==                                                               gkvec,
+//==                                                               atom_pos,
+//==                                                               (cuDoubleComplex*)beta_pw);
+//== }
 
 
 
@@ -961,7 +963,6 @@ __global__ void create_beta_pw_gpu_kernel(int num_gkvec,
                                           double* atom_pos,
                                           cuDoubleComplex* beta_pw)
 {
-    const double twopi = 6.2831853071795864769;
 
     int i = blockIdx.y;
     int ia = beta_t_idx[array2D_offset(0, i + beta_a_ofs, 2)];
@@ -972,7 +973,7 @@ __global__ void create_beta_pw_gpu_kernel(int num_gkvec,
     if (igk < num_gkvec)
     {
         double p = 0;
-        for (int x = 0; x < 3; x++) p += atom_pos[array2D_offset(x, ia, 3)] * gkvec[array2D_offset(x, igk, 3)];
+        for (int x = 0; x < 3; x++) p += atom_pos[array2D_offset(x, ia, 3)] * gkvec[array2D_offset(igk, x, num_gkvec)];
         p *= twopi;
         
         double sinp = sin(p);
@@ -1004,4 +1005,99 @@ extern "C" void create_single_beta_pw_gpu(int num_gkvec,
                                                               (cuDoubleComplex*)beta_pw);
 }
 
+#define BLOCK_SIZE 32
+
+__global__ void generate_beta_phi_gpu_kernel(int num_gkvec, 
+                                             int num_beta,
+                                             int num_phi,
+                                             int* beta_t_idx, 
+                                             double* atom_pos, 
+                                             double* gkvec, 
+                                             cuDoubleComplex* beta_pw_type,
+                                             cuDoubleComplex* phi,
+                                             cuDoubleComplex* beta_phi)
+{
+    int idx_beta = blockDim.x * blockIdx.x + threadIdx.x;
+    int idx_phi = blockDim.y * blockIdx.y + threadIdx.y;
+    int ia, offset_t;
+    double x0, y0, z0;
+
+    if (idx_beta < num_beta)
+    {
+        ia = beta_t_idx[array2D_offset(0, idx_beta, 2)];
+        offset_t = beta_t_idx[array2D_offset(1, idx_beta, 2)];
+        x0 = atom_pos[array2D_offset(0, ia, 3)];
+        y0 = atom_pos[array2D_offset(1, ia, 3)];
+        z0 = atom_pos[array2D_offset(2, ia, 3)];
+    }
+
+    int N = num_blocks(num_gkvec, BLOCK_SIZE);
+
+    cuDoubleComplex val = make_cuDoubleComplex(0.0, 0.0);
+
+    for (int m = 0; m < N; m++)
+    {
+        __shared__ cuDoubleComplex beta_pw_tile[BLOCK_SIZE][BLOCK_SIZE];
+        __shared__ cuDoubleComplex phi_tile[BLOCK_SIZE][BLOCK_SIZE];
+
+        int bs = (m + 1) * BLOCK_SIZE > num_gkvec ? num_gkvec - m * BLOCK_SIZE : BLOCK_SIZE;
+
+        int igk = m * BLOCK_SIZE + threadIdx.y;
+
+        if (igk < num_gkvec && idx_beta < num_beta)
+        {
+            double x1 = gkvec[array2D_offset(igk, 0, num_gkvec)];
+            double y1 = gkvec[array2D_offset(igk, 1, num_gkvec)];
+            double z1 = gkvec[array2D_offset(igk, 2, num_gkvec)];
+
+            double p = twopi * (x0 * x1 + y0 * y1 + z0 * z1);
+            double sinp = sin(p);
+            double cosp = cos(p);
+
+            beta_pw_tile[threadIdx.x][threadIdx.y] = cuCmul(cuConj(beta_pw_type[array2D_offset(igk, offset_t, num_gkvec)]), 
+                                                            make_cuDoubleComplex(cosp, sinp));
+
+        }
+        
+        igk = m * BLOCK_SIZE + threadIdx.x;
+
+        if (igk < num_gkvec && idx_phi < num_phi)
+            phi_tile[threadIdx.y][threadIdx.x] = phi[array2D_offset(igk, idx_phi, num_gkvec)];
+
+        __syncthreads();
+
+        for (int i = 0; i < bs; i++) val = cuCadd(val, cuCmul(beta_pw_tile[threadIdx.x][i], phi_tile[threadIdx.y][i]));
+
+        __syncthreads();
+    }
+
+    if (idx_beta < num_beta && idx_phi < num_phi) beta_phi[array2D_offset(idx_beta, idx_phi, num_beta)] = val;
+}
+
+
+extern "C" void generate_beta_phi_gpu(int num_gkvec, 
+                                      int num_beta, 
+                                      int num_phi, 
+                                      int* beta_t_idx, 
+                                      double* atom_pos,
+                                      double* gkvec,
+                                      void* beta_pw_type,
+                                      void* phi,
+                                      void* beta_phi)
+{
+
+    dim3 threadsPerBlock(BLOCK_SIZE, BLOCK_SIZE);
+    dim3 numBlocks(num_blocks(num_beta, BLOCK_SIZE), num_blocks(num_phi, BLOCK_SIZE));
+
+    generate_beta_phi_gpu_kernel<<<numBlocks, 
+                                   threadsPerBlock>>>(num_gkvec, 
+                                                      num_beta,
+                                                      num_phi,
+                                                      beta_t_idx, 
+                                                      atom_pos,
+                                                      gkvec, 
+                                                      (cuDoubleComplex*)beta_pw_type,
+                                                      (cuDoubleComplex*)phi,
+                                                      (cuDoubleComplex*)beta_phi);
+}
 

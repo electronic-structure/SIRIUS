@@ -79,6 +79,8 @@ class Band
         #ifdef _GPU_
         void apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
                                 complex16* phi__, complex16* hphi__, complex16* ophi__);
+
+        void diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_potential);
         #endif
 
     public:

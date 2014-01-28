@@ -715,12 +715,19 @@ void K_point::generate_gkvec(double gk_cutoff)
     gkvec_.set_dimensions(3, (int)gkmap.size());
     gkvec_.allocate();
 
+    gkvec_gpu_.set_dimensions((int)gkmap.size(), 3);
+    gkvec_gpu_.allocate();
+
     gvec_index_.resize(gkmap.size());
 
     for (int ig = 0; ig < (int)gkmap.size(); ig++)
     {
         gvec_index_[ig] = gkmap[ig].second;
-        for (int x = 0; x < 3; x++) gkvec_(x, ig) = parameters_.reciprocal_lattice()->gvec(gkmap[ig].second)[x] + vk_[x];
+        for (int x = 0; x < 3; x++)
+        {
+            gkvec_(x, ig) = parameters_.reciprocal_lattice()->gvec(gkmap[ig].second)[x] + vk_[x];
+            gkvec_gpu_(ig, x) = gkvec_(x, ig);
+        }
     }
     
     fft_index_.resize(num_gkvec());
