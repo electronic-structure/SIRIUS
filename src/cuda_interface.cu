@@ -952,3 +952,56 @@ extern "C" void create_beta_pw_gpu(int num_gkvec,
 }
 
 
+
+__global__ void create_beta_pw_gpu_kernel(int num_gkvec, 
+                                          int beta_a_ofs,
+                                          int* beta_t_idx, 
+                                          cuDoubleComplex* beta_pw_type, 
+                                          double* gkvec, 
+                                          double* atom_pos,
+                                          cuDoubleComplex* beta_pw)
+{
+    const double twopi = 6.2831853071795864769;
+
+    int i = blockIdx.y;
+    int ia = beta_t_idx[array2D_offset(0, i + beta_a_ofs, 2)];
+    int offset_t = beta_t_idx[array2D_offset(1, i + beta_a_ofs, 2)];
+
+    int igk = blockDim.x * blockIdx.x + threadIdx.x;
+    
+    if (igk < num_gkvec)
+    {
+        double p = 0;
+        for (int x = 0; x < 3; x++) p += atom_pos[array2D_offset(x, ia, 3)] * gkvec[array2D_offset(x, igk, 3)];
+        p *= twopi;
+        
+        double sinp = sin(p);
+        double cosp = cos(p);
+
+        beta_pw[array2D_offset(igk, i, num_gkvec)] = 
+            cuCmul(beta_pw_type[array2D_offset(igk, offset_t, num_gkvec)], make_cuDoubleComplex(cosp, -sinp));
+    }
+}
+
+extern "C" void create_single_beta_pw_gpu(int num_gkvec, 
+                                          int num_beta_a, 
+                                          int beta_a_ofs, 
+                                          int* beta_t_idx,
+                                          void* beta_pw_type,
+                                          double* gkvec,
+                                          double* atom_pos,
+                                          void* beta_pw)
+{
+    dim3 threadsPerBlock(64);
+    dim3 numBlocks(num_blocks(num_gkvec, 64), num_beta_a);
+
+    create_beta_pw_gpu_kernel<<<numBlocks, threadsPerBlock>>>(num_gkvec,
+                                                              beta_a_ofs,
+                                                              beta_t_idx, 
+                                                              (cuDoubleComplex*)beta_pw_type,
+                                                              gkvec,
+                                                              atom_pos,
+                                                              (cuDoubleComplex*)beta_pw);
+}
+
+

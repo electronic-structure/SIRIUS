@@ -73,8 +73,8 @@ class Band
         void get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
                           std::vector<complex16>& h_diag, std::vector<complex16>& o_diag);
 
-        void apply_h_o(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
-                       complex16* phi__, complex16* hphi__, complex16* ophi__);
+        void apply_h_o_uspp_cpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
+                                complex16* phi__, complex16* hphi__, complex16* ophi__);
 
         #ifdef _GPU_
         void apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,

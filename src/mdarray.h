@@ -264,6 +264,14 @@ template <typename T, int ND> class mdarray_base
             
             cuda_copy_to_host(mdarray_ptr, mdarray_ptr_device, size() * sizeof(T));
         }
+
+        void copy_to_host(void* ptr_device__) 
+        {
+            assert(mdarray_ptr != NULL);
+            assert(ptr_device__ != NULL);
+            
+            cuda_copy_to_host(mdarray_ptr, ptr_device__, size() * sizeof(T));
+        }
         
         void async_copy_to_device(int stream_id = -1) 
         {
