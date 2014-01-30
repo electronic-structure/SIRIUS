@@ -77,6 +77,9 @@ class Band
                                 complex16* phi__, complex16* hphi__, complex16* ophi__);
 
         #ifdef _GPU_
+        void apply_h_local_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
+                               int num_phi, complex16* phi__, complex16* hphi__);
+
         void apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
                                 mdarray<complex16, 2>& gamma, mdarray<complex16, 2>& kappa, complex16* phi__, 
                                 complex16* hphi__, complex16* ophi__);
