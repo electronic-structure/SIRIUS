@@ -18,6 +18,7 @@ class Platform
             #ifdef _GPU_
             if (call_cublas_init) cublas_init();
             if (mpi_rank() == 0) cuda_device_info();
+            cuda_create_streams(max_num_threads());
             #endif
             #ifdef _MAGMA_
             magma_init_wrapper();
@@ -32,6 +33,10 @@ class Platform
             MPI_Finalize();
             #ifdef _MAGMA_
             magma_finalize_wrapper();
+            #endif
+            #ifdef _GPU_
+            cuda_destroy_streams(max_num_threads());
+            cuda_device_reset();
             #endif
         }
 

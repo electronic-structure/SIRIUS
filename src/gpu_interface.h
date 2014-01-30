@@ -39,6 +39,8 @@ extern "C" void cuda_async_copy_to_host(void *target, void *source, size_t size,
 
 extern "C" size_t cuda_get_free_mem();
 
+extern "C" void cuda_device_reset();
+
 //==================
 // CUBLAS functions
 //==================
@@ -51,7 +53,11 @@ extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32
 
 extern "C" void cublas_get_matrix(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb);
 
+extern "C" void cublas_get_matrix_async(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb, int stream_id);
+
 extern "C" void cublas_set_matrix(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb);
+
+extern "C" void cublas_set_matrix_async(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb, int stream_id);
 
 //=================
 // CUFFT functions

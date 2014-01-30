@@ -628,6 +628,11 @@ class K_point
             return gkvec_gpu_;
         }
 
+        inline mdarray<double, 2>& gkvec()
+        {
+            return gkvec_;
+        }
+
         inline mdarray<complex16, 2>& beta_pw()
         {
             return beta_pw_;

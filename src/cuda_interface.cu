@@ -100,14 +100,22 @@ extern "C" void cuda_device_synchronize()
         exit(0);
     }
 }
-        
+
+extern "C" void cuda_device_reset()
+{
+    if (cudaDeviceReset() != cudaSuccess)
+    {
+        printf("faile to execute cudaDeviceReset()\n");
+        exit(0);
+    }
+}
 
 cudaStream_t* streams;
 
 extern "C" void cuda_create_streams(int num_streams)
 {
     streams = (cudaStream_t*)malloc(num_streams * sizeof(cudaStream_t));
-    for (int i = 0; i < num_streams; i++) cudaStreamCreate(&streams[i]);
+    for (int i = 0; i < num_streams; i++) cudaStreamCreateWithFlags(&streams[i], cudaStreamNonBlocking);
 }
 
 extern "C" void cuda_destroy_streams(int num_streams)
@@ -320,9 +328,20 @@ extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32
 }
 
 // A(GPU) => B(CPU)
-extern "C" void cublas_get_matrix(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb)
+extern "C" void cublas_get_matrix(int rows, int cols, int elemSize, const void *A_device, int lda, void *B_host, int ldb)
 {
-    if (cublasGetMatrix(rows, cols, elemSize, A, lda, B, ldb) != CUBLAS_STATUS_SUCCESS)
+    if (cublasGetMatrix(rows, cols, elemSize, A_device, lda, B_host, ldb) != CUBLAS_STATUS_SUCCESS)
+    {
+        printf("failed to execute cublasGetMatrix\n");
+        exit(-1);
+    }
+}
+
+extern "C" void cublas_get_matrix_async(int rows, int cols, int elemSize, const void *A_device, int lda, void *B_host, int ldb, int stream_id)
+{
+    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
+
+    if (cublasGetMatrixAsync(rows, cols, elemSize, A_device, lda, B_host, ldb, stream) != CUBLAS_STATUS_SUCCESS)
     {
         printf("failed to execute cublasGetMatrix\n");
         exit(-1);
@@ -330,9 +349,20 @@ extern "C" void cublas_get_matrix(int rows, int cols, int elemSize, const void *
 }
 
 // A(CPU) => B(GPU)
-extern "C" void cublas_set_matrix(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb)
+extern "C" void cublas_set_matrix(int rows, int cols, int elemSize, const void *A_host, int lda, void *B_device, int ldb)
 {
-    if (cublasSetMatrix(rows, cols, elemSize, A, lda, B, ldb) != CUBLAS_STATUS_SUCCESS)
+    if (cublasSetMatrix(rows, cols, elemSize, A_host, lda, B_device, ldb) != CUBLAS_STATUS_SUCCESS)
+    {
+        printf("failed to execute cublasSetMatrix\n");
+        exit(-1);
+    }
+}
+
+extern "C" void cublas_set_matrix_async(int rows, int cols, int elemSize, const void *A_host, int lda, void *B_device, int ldb, int stream_id)
+{
+    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
+
+    if (cublasSetMatrixAsync(rows, cols, elemSize, A_host, lda, B_device, ldb, stream) != CUBLAS_STATUS_SUCCESS)
     {
         printf("failed to execute cublasSetMatrix\n");
         exit(-1);
@@ -905,53 +935,53 @@ extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double* v)
     scale_matrix_rows_gpu_kernel<<<numBlocks, threadsPerBlock>>>(nrow, (cuDoubleComplex*)mtrx, v);
 }
 
-//== __global__ void create_beta_pw_gpu_kernel(int num_gkvec, 
-//==                                           int* beta_t_idx, 
-//==                                           cuDoubleComplex* beta_pw_type, 
-//==                                           double* gkvec, 
-//==                                           double* atom_pos,
-//==                                           cuDoubleComplex* beta_pw)
-//== {
-//==     const double twopi = 6.2831853071795864769;
-//== 
-//==     int i = blockIdx.y;
-//==     int ia = beta_t_idx[array2D_offset(0, i, 2)];
-//==     int offset_t = beta_t_idx[array2D_offset(1, i, 2)];
-//== 
-//==     int igk = blockDim.x * blockIdx.x + threadIdx.x;
-//==     
-//==     if (igk < num_gkvec)
-//==     {
-//==         double p = 0;
-//==         for (int x = 0; x < 3; x++) p += atom_pos[array2D_offset(x, ia, 3)] * gkvec[array2D_offset(x, igk, 3)];
-//==         p *= twopi;
-//==         
-//==         double sinp = sin(p);
-//==         double cosp = cos(p);
-//== 
-//==         beta_pw[array2D_offset(igk, i, num_gkvec)] = 
-//==             cuCmul(beta_pw_type[array2D_offset(igk, offset_t, num_gkvec)], make_cuDoubleComplex(cosp, -sinp));
-//==     }
-//== }
-//== 
-//== extern "C" void create_beta_pw_gpu(int num_gkvec, 
-//==                                    int num_beta_atot, 
-//==                                    int* beta_t_idx,
-//==                                    void* beta_pw_type,
-//==                                    double* gkvec,
-//==                                    double* atom_pos,
-//==                                    void* beta_pw)
-//== {
-//==     dim3 threadsPerBlock(64);
-//==     dim3 numBlocks(num_blocks(num_gkvec, 64), num_beta_atot);
-//== 
-//==     create_beta_pw_gpu_kernel<<<numBlocks, threadsPerBlock>>>(num_gkvec, 
-//==                                                               beta_t_idx, 
-//==                                                               (cuDoubleComplex*)beta_pw_type,
-//==                                                               gkvec,
-//==                                                               atom_pos,
-//==                                                               (cuDoubleComplex*)beta_pw);
-//== }
+__global__ void create_beta_pw_gpu_kernel(int num_gkvec, 
+                                          int* beta_t_idx, 
+                                          cuDoubleComplex* beta_pw_type, 
+                                          double* gkvec, 
+                                          double* atom_pos,
+                                          cuDoubleComplex* beta_pw)
+{
+    const double twopi = 6.2831853071795864769;
+
+    int i = blockIdx.y;
+    int ia = beta_t_idx[array2D_offset(0, i, 2)];
+    int offset_t = beta_t_idx[array2D_offset(1, i, 2)];
+
+    int igk = blockDim.x * blockIdx.x + threadIdx.x;
+    
+    if (igk < num_gkvec)
+    {
+        double p = 0;
+        for (int x = 0; x < 3; x++) p += atom_pos[array2D_offset(x, ia, 3)] * gkvec[array2D_offset(x, igk, 3)];
+        p *= twopi;
+        
+        double sinp = sin(p);
+        double cosp = cos(p);
+
+        beta_pw[array2D_offset(igk, i, num_gkvec)] = 
+            cuCmul(beta_pw_type[array2D_offset(igk, offset_t, num_gkvec)], make_cuDoubleComplex(cosp, -sinp));
+    }
+}
+
+extern "C" void create_beta_pw_gpu(int num_gkvec, 
+                                   int num_beta_atot, 
+                                   int* beta_t_idx,
+                                   void* beta_pw_type,
+                                   double* gkvec,
+                                   double* atom_pos,
+                                   void* beta_pw)
+{
+    dim3 threadsPerBlock(64);
+    dim3 numBlocks(num_blocks(num_gkvec, 64), num_beta_atot);
+
+    create_beta_pw_gpu_kernel<<<numBlocks, threadsPerBlock>>>(num_gkvec, 
+                                                              beta_t_idx, 
+                                                              (cuDoubleComplex*)beta_pw_type,
+                                                              gkvec,
+                                                              atom_pos,
+                                                              (cuDoubleComplex*)beta_pw);
+}
 
 
 

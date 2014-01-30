@@ -67,7 +67,7 @@ class Band
         void apply_h_local(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
                            int n, complex16* phi__, complex16* hphi__);
 
-        void solve_fv_iterative_diagonalization(K_point* kp, Periodic_function<double>* effective_potential);
+        void diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_potential);
         
         template<int N>
         void get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
@@ -78,7 +78,8 @@ class Band
 
         #ifdef _GPU_
         void apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
-                                complex16* phi__, complex16* hphi__, complex16* ophi__);
+                                mdarray<complex16, 2>& gamma, mdarray<complex16, 2>& kappa, complex16* phi__, 
+                                complex16* hphi__, complex16* ophi__);
 
         void diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_potential);
         #endif
