@@ -559,7 +559,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                 // add diagonal term
                 for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
                 {
-                    // D_{xi2,xix} * Q(G)_{xi2, xi2}
+                    // D_{xi2,xi1} * Q(G)_{xi2, xi2}
                     f_pw_pt[igloc] += pp_complex_density_matrix(xi2, xi2, 0, ia) * 
                                       conj(rl->gvec_phase_factor<local>(igloc, ia)) * 
                                       atom_type->uspp().q_pw(igloc, idx12 + xi2);
@@ -594,6 +594,116 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     fft_->transform(1);
     for (int ir = 0; ir < fft_->size(); ir++) rho_->f_it<global>(ir) += real(fft_->output_buffer(ir));
 }
+
+#ifdef _GPU_
+
+extern "C" void restore_valence_density_gpu(int num_atoms, 
+                                            int num_gvec_loc,
+                                            int* atom_type,
+                                            int* num_beta, 
+                                            double* atom_pos, 
+                                            int* gvec,
+                                            void* pp_complex_density_matrix,
+                                            int ldm,
+                                            void** q_pw,
+                                            void* rho_pw);
+
+void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
+{
+    Timer t("sirius::Density::add_q_contribution_to_valence_density_gpu");
+
+    //========================================================================================
+    // if we have ud and du spin blocks, don't compute one of them (du in this implementation)
+    // because density matrix is symmetric
+    //========================================================================================
+    int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
+
+    // complex density matrix
+    mdarray<complex16, 4> pp_complex_density_matrix(parameters_.unit_cell()->max_mt_basis_size(), 
+                                                    parameters_.unit_cell()->max_mt_basis_size(),
+                                                    num_zdmat, parameters_.unit_cell()->num_atoms());
+    pp_complex_density_matrix.zero();
+    
+    //=========================
+    // add k-point contribution
+    //=========================
+    for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
+    {
+        int ik = ks.spl_num_kpoints(ikloc);
+        std::vector< std::pair<int, double> > occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
+
+        add_kpoint_contribution_pp(ks[ik], occupied_bands, pp_complex_density_matrix);
+    }
+    Platform::allreduce(pp_complex_density_matrix.get_ptr(), (int)pp_complex_density_matrix.size());
+
+    auto rl = parameters_.reciprocal_lattice();
+
+    pp_complex_density_matrix.allocate_on_device();
+    pp_complex_density_matrix.copy_to_device();
+
+    mdarray<int, 1> atom_type(parameters_.unit_cell()->num_atoms());
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        atom_type(ia) = parameters_.unit_cell()->atom(ia)->type_id();
+    atom_type.allocate_on_device();
+    atom_type.copy_to_device();
+
+    mdarray<int, 1> num_beta(parameters_.unit_cell()->num_atom_types());
+    mdarray<complex16*, 1> q_pw_ptr(parameters_.unit_cell()->num_atom_types());
+    for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+    {
+         auto type = parameters_.unit_cell()->atom_type(iat);
+         num_beta(iat) = type->mt_basis_size();
+         type->uspp().q_pw.allocate_on_device();
+         type->uspp().q_pw.copy_to_device();
+         q_pw_ptr(iat) = type->uspp().q_pw.get_ptr_device();
+    }
+    num_beta.allocate_on_device();
+    num_beta.copy_to_device();
+    q_pw_ptr.allocate_on_device();
+    q_pw_ptr.copy_to_device();
+
+    parameters_.unit_cell()->atom_pos().allocate_on_device();
+    parameters_.unit_cell()->atom_pos().copy_to_device();
+
+    mdarray<int, 2> gvec(3, rl->spl_num_gvec().local_size());
+    for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
+    {
+        for (int x = 0; x < 3; x++) gvec(x, igloc) = rl->gvec(rl->spl_num_gvec(igloc))[x];
+    }
+    gvec.allocate_on_device();
+    gvec.copy_to_device();
+
+    std::vector<complex16> f_pw(rl->num_gvec(), complex16(0, 0));
+    mdarray<complex16, 1> f_pw_gpu(&f_pw[rl->spl_num_gvec().global_offset()], rl->spl_num_gvec().local_size());
+    f_pw_gpu.allocate_on_device();
+    
+    restore_valence_density_gpu(parameters_.unit_cell()->num_atoms(),
+                                rl->spl_num_gvec().local_size(),
+                                atom_type.get_ptr_device(),
+                                num_beta.get_ptr_device(),
+                                parameters_.unit_cell()->atom_pos().get_ptr_device(), 
+                                gvec.get_ptr_device(),
+                                pp_complex_density_matrix.get_ptr_device(),
+                                parameters_.unit_cell()->max_mt_basis_size(),
+                                (void**)q_pw_ptr.get_ptr_device(),
+                                f_pw_gpu.get_ptr_device());
+
+    f_pw_gpu.copy_to_host();
+
+    Platform::allgather(&f_pw[0], rl->spl_num_gvec().global_offset(), rl->spl_num_gvec().local_size());
+    
+    fft_->input(rl->num_gvec(), rl->fft_index(), &f_pw[0]);
+    fft_->transform(1);
+    for (int ir = 0; ir < fft_->size(); ir++) rho_->f_it<global>(ir) += real(fft_->output_buffer(ir));
+    
+    parameters_.unit_cell()->atom_pos().deallocate_on_device();
+    for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+    {
+         auto type = parameters_.unit_cell()->atom_type(iat);
+         type->uspp().q_pw.deallocate_on_device();
+    }
+}
+#endif
 
 void Density::generate_valence_density_mt(K_set& ks)
 {
@@ -936,7 +1046,25 @@ void Density::generate(K_set& ks)
         }
         case ultrasoft_pseudopotential:
         {
-            add_q_contribution_to_valence_density(ks);
+            switch (parameters_.processing_unit())
+            {
+                case cpu:
+                {
+                    add_q_contribution_to_valence_density(ks);
+                    break;
+                }
+                #ifdef _GPU_
+                case gpu:
+                {
+                    add_q_contribution_to_valence_density_gpu(ks);
+                    break;
+                }
+                #endif
+                default:
+                {
+                    error_local(__FILE__, __LINE__, "wrong processing unit");
+                }
+            }
             break;
         }
     }
