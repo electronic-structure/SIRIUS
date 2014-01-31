@@ -376,8 +376,9 @@ extern "C" void cublas_set_matrix_async(int rows, int cols, int elemSize, const 
 cufftHandle plan;
 int nfft_of_plan;
 int size_of_plan;
+cuDoubleComplex* fft_buffer = NULL;
 
-extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft)
+extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft, void* fft_buffer__)
 {
     int fft_size = nx * ny * nz;
     int n[] = {nz, ny, nx};
@@ -391,6 +392,8 @@ extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft)
 
     nfft_of_plan = nfft;
     size_of_plan = fft_size;
+
+    fft_buffer = (cuDoubleComplex*)fft_buffer__;
 }
 
 extern "C" void cufft_destroy_batch_plan()
@@ -453,7 +456,59 @@ extern "C" void cufft_destroy_batch_plan()
 //==         (fft_size, num_gkvec, map, (cuDoubleComplex*)buffer, (cuDoubleComplex*)p);
 //== }
 
+__global__ void cufft_batch_load_gpu_kernel(int fft_size, 
+                                            int num_elements, 
+                                            int* map, 
+                                            cuDoubleComplex* data, 
+                                            cuDoubleComplex* fft_buffer)
+{
+    int i = blockIdx.y;
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
 
+    if (idx < num_elements) fft_buffer[array2D_offset(map[idx], i, fft_size)] = data[array2D_offset(idx, i, num_elements)];
+}
+
+extern "C" void cufft_batch_load_gpu(int num_elements, int* map, void* data)
+{
+    dim3 threadsPerBlock(64);
+    dim3 numBlocks(num_blocks(num_elements, 64), nfft_of_plan);
+    
+    cuda_memset(fft_buffer, 0, size_of_plan * nfft_of_plan * sizeof(cuDoubleComplex));
+
+    cufft_batch_load_gpu_kernel<<<numBlocks, threadsPerBlock>>>(size_of_plan, 
+                                                                num_elements, 
+                                                                map, 
+                                                                (cuDoubleComplex*)data, 
+                                                                fft_buffer);
+}
+
+__global__ void cufft_batch_unload_gpu_kernel(int fft_size, 
+                                              int num_elements, 
+                                              int* map, 
+                                              cuDoubleComplex* data, 
+                                              cuDoubleComplex* fft_buffer)
+{
+    int i = blockIdx.y;
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (idx < num_elements) 
+    {
+        data[array2D_offset(idx, i, num_elements)] = 
+            cuCdiv(fft_buffer[array2D_offset(map[idx], i, fft_size)], make_cuDoubleComplex(double(fft_size), 0));
+    }
+}
+
+extern "C" void cufft_batch_unload_gpu(int num_elements, int* map, void* data)
+{
+    dim3 threadsPerBlock(64);
+    dim3 numBlocks(num_blocks(num_elements, 64), nfft_of_plan);
+    
+    cufft_batch_unload_gpu_kernel<<<numBlocks, threadsPerBlock>>>(size_of_plan, 
+                                                                  num_elements, 
+                                                                  map, 
+                                                                  (cuDoubleComplex*)data, 
+                                                                  fft_buffer);
+}
 
 __global__ void cufft_normalize(int size, cuDoubleComplex* buffer)
 {
@@ -467,18 +522,18 @@ __global__ void cufft_normalize(int size, cuDoubleComplex* buffer)
     }
 }
 
-extern "C" void cufft_forward_transform(void* buffer)
+extern "C" void cufft_forward_transform()
 {
-    cufftExecZ2Z(plan, (cufftDoubleComplex*)buffer, (cufftDoubleComplex*)buffer, CUFFT_FORWARD);
+    cufftExecZ2Z(plan, fft_buffer, fft_buffer, CUFFT_FORWARD);
     
-    dim3 threadsPerBlock(64);
-    dim3 numBlocks(num_blocks(size_of_plan, 64), nfft_of_plan);
-    cufft_normalize<<<numBlocks, threadsPerBlock>>>(size_of_plan, (cufftDoubleComplex*)buffer);
+    //== dim3 threadsPerBlock(64);
+    //== dim3 numBlocks(num_blocks(size_of_plan, 64), nfft_of_plan);
+    //== cufft_normalize<<<numBlocks, threadsPerBlock>>>(size_of_plan, (cufftDoubleComplex*)buffer);
 }
 
-extern "C" void cufft_backward_transform(void* buffer)
+extern "C" void cufft_backward_transform()
 {
-    cufftExecZ2Z(plan, (cufftDoubleComplex*)buffer, (cufftDoubleComplex*)buffer, CUFFT_INVERSE);
+    cufftExecZ2Z(plan, fft_buffer, fft_buffer, CUFFT_INVERSE);
 }
 
 //==================================

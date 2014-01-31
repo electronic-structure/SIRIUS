@@ -1748,6 +1748,8 @@ struct exec_fft_args
     mdarray<complex16, 2>* phi;
     mdarray<complex16, 2>* hphi;
     mdarray<double, 1>* veff;
+    mdarray<complex16, 2>* gamma;
+    mdarray<complex16, 2>* kappa;
 };
 
 pthread_mutex_t exec_fft_mutex;
@@ -1759,9 +1761,19 @@ void* exec_gpu_fft(void* args__)
 
     FFT3D<gpu> fft(args->fft->grid_size());
 
-    int nfft_max = std::min(fft.num_fft_max(), args->num_phi / 4);
-    
-    fft.initialize(nfft_max);
+    mdarray<int, 1> fft_index_coarse(args->kp->fft_index_coarse(), args->kp->num_gkvec());
+    fft_index_coarse.allocate_on_device();
+    fft_index_coarse.copy_to_device();
+
+    int nfft_buf = (int)(args->gamma->size() / fft.size());
+    if (nfft_buf == 0)
+    {
+        error_local(__FILE__, __LINE__, "something went wrong");
+    }
+
+    int nfft_max = std::min(fft.num_fft_max(), std::min(args->num_phi / 4, nfft_buf));
+   
+    fft.initialize(nfft_max, args->gamma->get_ptr_device());
 
     bool done = false;
 
@@ -1781,14 +1793,20 @@ void* exec_gpu_fft(void* args__)
 
         if (!done)
         {
-            for (int k = 0; k < nfft_max; k++) fft.input(args->kp->num_gkvec(), args->kp->fft_index_coarse(), &(*args->phi)(0, i + k), k);
-            fft.copy_to_device();
+            cublas_set_matrix(args->kp->num_gkvec(), nfft_max, sizeof(complex16), &(*args->phi)(0, i), args->phi->ld(), 
+                              args->kappa->get_ptr_device(), args->kappa->ld());
+
+            cufft_batch_load_gpu(args->kp->num_gkvec(), fft_index_coarse.get_ptr_device(), args->kappa->get_ptr_device());
+
             fft.transform(1);
-            scale_matrix_rows_gpu(fft.size(), nfft_max, fft.fft_buffer().get_ptr_device(), args->veff->get_ptr_device());
+            scale_matrix_rows_gpu(fft.size(), nfft_max, args->gamma->get_ptr_device(), args->veff->get_ptr_device());
             fft.transform(-1);
-            fft.copy_to_host();
-            
-            for (int k = 0; k < nfft_max; k++) fft.output(args->kp->num_gkvec(), args->kp->fft_index_coarse(), &(*args->hphi)(0, i + k), k);
+
+            cufft_batch_unload_gpu(args->kp->num_gkvec(), fft_index_coarse.get_ptr_device(), args->kappa->get_ptr_device());
+
+            cublas_get_matrix(args->kp->num_gkvec(), nfft_max, sizeof(complex16), 
+                              args->kappa->get_ptr_device(), args->kappa->ld(),
+                              &(*args->hphi)(0, i), args->hphi->ld());
         }
     }
 
@@ -1837,7 +1855,8 @@ void* exec_cpu_fft(void* args__)
 }
 
 void Band::apply_h_local_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
-                         int num_phi, complex16* phi__, complex16* hphi__)
+                             int num_phi, mdarray<complex16, 2>& gamma, mdarray<complex16, 2>& kappa,
+                             complex16* phi__, complex16* hphi__)
 {
     Timer t("sirius::Band::apply_h_local_gpu");
 
@@ -1868,6 +1887,8 @@ void Band::apply_h_local_gpu(K_point* kp, std::vector<double>& effective_potenti
         args[i].phi = &phi;
         args[i].hphi = &hphi;
         args[i].veff = &veff;
+        args[i].gamma = &gamma;
+        args[i].kappa = &kappa;
         if (i == 0 && num_fft_threads > 1)
         {
             pthread_create(&pthread_id[i], NULL, exec_gpu_fft, &args[i]);
@@ -2149,8 +2170,8 @@ extern "C" void create_beta_pw_gpu(int num_gkvec,
 
 // memory-greedy implementation
 void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
-                              mdarray<complex16, 2>& gamma, mdarray<complex16, 2>& kappa, complex16* phi__, 
-                              complex16* hphi__, complex16* ophi__)
+                              mdarray<complex16, 2>& gamma, mdarray<complex16, 2>& kappa, 
+                              complex16* phi__, complex16* hphi__, complex16* ophi__)
 {
     Timer t("sirius::Band::apply_h_o_uspp_gpu");
 
@@ -2159,7 +2180,7 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
     mdarray<complex16, 2> ophi(ophi__, kp->num_gkvec(), n);
 
     // apply local part of Hamiltonian
-    apply_h_local_gpu(kp, effective_potential, pw_ekin, n, phi__, hphi__);
+    apply_h_local_gpu(kp, effective_potential, pw_ekin, n, gamma, kappa, phi__, hphi__);
     
     // load hphi to the first part of kappa; TODO: apply_h_local_gpu must return hpi on gpu
     cublas_set_matrix(kp->num_gkvec(), n, sizeof(complex16), hphi.get_ptr(), hphi.ld(), 

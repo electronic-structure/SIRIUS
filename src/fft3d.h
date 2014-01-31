@@ -324,7 +324,7 @@ template<> class FFT3D<gpu>
 
         vector3d<int> grid_size_;
 
-        //void* fft_buffer_device_ptr;
+        void* fft_buffer_ptr_device_;
 
         mdarray<complex16, 2> fft_buffer_;
 
@@ -332,7 +332,7 @@ template<> class FFT3D<gpu>
 
     public:
 
-        FFT3D(vector3d<int> grid_size__) : grid_size_(grid_size__), num_fft_(-1)
+        FFT3D(vector3d<int> grid_size__) : grid_size_(grid_size__), fft_buffer_ptr_device_(NULL), num_fft_(-1)
         {
         }
 
@@ -344,7 +344,7 @@ template<> class FFT3D<gpu>
                cufftDoubleComplex elements (where batch denotes the number of transforms that will be executed in 
                parallel, rank is the number of dimensions of the input data (see Multidimensional transforms) and n[] 
                is the array of transform dimensions) for single and double- precision transforms respectively. */
-            int num_fft = (int)(cuda_get_free_mem() / size() / 10 / sizeof(complex16));
+            int num_fft = (int)(cuda_get_free_mem() / size() / 8 / sizeof(complex16));
             if (num_fft == 0)
             {
                 std::stringstream s;
@@ -356,13 +356,22 @@ template<> class FFT3D<gpu>
             return std::min(num_fft, num_fft_min);
         }
 
-        inline void initialize(int num_fft__)
+        inline void initialize(int num_fft__, void* fft_buffer_ptr_device__)
         {
             num_fft_ = num_fft__;
             fft_buffer_.set_dimensions(size(), num_fft_);
-            fft_buffer_.allocate();
-            fft_buffer_.allocate_on_device();
-            cufft_create_batch_plan(grid_size_[0], grid_size_[1], grid_size_[2], num_fft_);
+            if (fft_buffer_ptr_device__) 
+            {
+                fft_buffer_ptr_device_ = fft_buffer_ptr_device__;
+            }
+            else
+            {
+                fft_buffer_.allocate();
+                fft_buffer_.allocate_on_device();
+                fft_buffer_ptr_device_ = fft_buffer_.get_ptr_device();
+            }
+            cufft_create_batch_plan(grid_size_[0], grid_size_[1], grid_size_[2], num_fft_, fft_buffer_ptr_device_);
+
         }
 
         inline void finalize()
@@ -400,12 +409,12 @@ template<> class FFT3D<gpu>
             {
                 case 1:
                 {
-                    cufft_backward_transform(fft_buffer_.get_ptr_device());
+                    cufft_backward_transform();
                     break;
                 }
                 case -1:
                 {
-                    cufft_forward_transform(fft_buffer_.get_ptr_device());
+                    cufft_forward_transform();
                     break;
                 }
                 default:
