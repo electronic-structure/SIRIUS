@@ -2866,7 +2866,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
     mdarray<complex16, 2> phi(kp->num_gkvec(), num_phi);
     mdarray<complex16, 2> hphi(kp->num_gkvec(), num_phi);
     mdarray<complex16, 2> ophi(kp->num_gkvec(), num_phi);
-
+    
     mdarray<complex16, 2> hmlt(num_phi, num_phi);
     mdarray<complex16, 2> ovlp(num_phi, num_phi);
     mdarray<complex16, 2> hmlt_old(num_phi, num_phi);
@@ -2883,7 +2883,28 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
     std::vector<double> res_rms(num_bands); // RMS of residual
     std::vector<double> res_e(num_bands);
 
-    generalized_evp* gevp = new generalized_evp_lapack(-1.0);
+    generalized_evp* gevp = NULL; //new generalized_evp_lapack(-1.0);
+    switch (parameters_.eigen_value_solver())
+    {
+        case lapack:
+        {
+            gevp = new generalized_evp_lapack(-1.0);
+            break;
+        }
+        #ifdef _MAGMA_
+        case magma:
+        {
+            gevp = new generalized_evp_magma();
+            hmlt.pin_memory();
+            ovlp.pin_memory();
+            break;
+        }
+        #endif
+        default:
+        {
+            error_local(__FILE__, __LINE__, "eigen value solver is not defined");
+        }
+    }
 
     bool convergence_by_energy = false;
 
@@ -2929,6 +2950,18 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
         cublas_get_matrix(N + n, n, sizeof(complex16), tmp.get_ptr_device(), tmp.ld(), &ovlp(0, N), ovlp.ld());
 
         tmp.deallocate_on_device();
+
+        // MAGMA works with lower triangular part
+        #ifdef _MAGMA_
+        for (int i = 0; i < N; i++)
+        {
+            for (int j = N; j < N + n; j++)
+            {
+                hmlt(j, i) = conj(hmlt(i, j));
+                ovlp(j, i) = conj(ovlp(i, j));
+            }
+        }
+        #endif
 
         // increase the size of the variation space
         N += n;
