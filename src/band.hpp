@@ -1766,10 +1766,7 @@ void* exec_gpu_fft(void* args__)
     fft_index_coarse.copy_to_device();
 
     int nfft_buf = (int)(args->gamma->size() / fft.size());
-    if (nfft_buf == 0)
-    {
-        error_local(__FILE__, __LINE__, "something went wrong");
-    }
+    if (nfft_buf == 0) return NULL; // TODO: fix this
 
     int nfft_max = std::min(fft.num_fft_max(), std::min(args->num_phi / 4, nfft_buf));
    

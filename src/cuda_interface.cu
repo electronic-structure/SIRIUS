@@ -155,7 +155,7 @@ extern "C" void cuda_async_copy_to_host(void* target, void* source, size_t size,
     }
 }
 
-extern "C" void cuda_memset(void* ptr,int value, size_t size)
+extern "C" void cuda_memset(void* ptr, int value, size_t size)
 {
     if (cudaMemset(ptr, value, size) != cudaSuccess)
     {
@@ -987,7 +987,11 @@ extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double* v)
     dim3 threadsPerBlock(64);
     dim3 numBlocks(num_blocks(nrow, 64), ncol);
 
-    scale_matrix_rows_gpu_kernel<<<numBlocks, threadsPerBlock>>>(nrow, (cuDoubleComplex*)mtrx, v);
+    scale_matrix_rows_gpu_kernel<<<
+        numBlocks, 
+        threadsPerBlock>>>(nrow, 
+                           (cuDoubleComplex*)mtrx, 
+                           v);
 }
 
 __global__ void create_beta_pw_gpu_kernel(int num_gkvec, 
@@ -997,7 +1001,7 @@ __global__ void create_beta_pw_gpu_kernel(int num_gkvec,
                                           double* atom_pos,
                                           cuDoubleComplex* beta_pw)
 {
-    const double twopi = 6.2831853071795864769;
+    //const double twopi = 6.2831853071795864769;
 
     int i = blockIdx.y;
     int ia = beta_t_idx[array2D_offset(0, i, 2)];
@@ -1030,159 +1034,298 @@ extern "C" void create_beta_pw_gpu(int num_gkvec,
     dim3 threadsPerBlock(64);
     dim3 numBlocks(num_blocks(num_gkvec, 64), num_beta_atot);
 
-    create_beta_pw_gpu_kernel<<<numBlocks, threadsPerBlock>>>(num_gkvec, 
-                                                              beta_t_idx, 
-                                                              (cuDoubleComplex*)beta_pw_type,
-                                                              gkvec,
-                                                              atom_pos,
-                                                              (cuDoubleComplex*)beta_pw);
+    create_beta_pw_gpu_kernel<<<
+        numBlocks, 
+        threadsPerBlock>>>(num_gkvec, 
+                           beta_t_idx, 
+                           (cuDoubleComplex*)beta_pw_type,
+                           gkvec,
+                           atom_pos,
+                           (cuDoubleComplex*)beta_pw);
 }
 
+//== __global__ void create_beta_pw_gpu_kernel(int num_gkvec, 
+//==                                           int beta_a_ofs,
+//==                                           int* beta_t_idx, 
+//==                                           cuDoubleComplex* beta_pw_type, 
+//==                                           double* gkvec, 
+//==                                           double* atom_pos,
+//==                                           cuDoubleComplex* beta_pw)
+//== {
+//== 
+//==     int i = blockIdx.y;
+//==     int ia = beta_t_idx[array2D_offset(0, i + beta_a_ofs, 2)];
+//==     int offset_t = beta_t_idx[array2D_offset(1, i + beta_a_ofs, 2)];
+//== 
+//==     int igk = blockDim.x * blockIdx.x + threadIdx.x;
+//==     
+//==     if (igk < num_gkvec)
+//==     {
+//==         double p = 0;
+//==         for (int x = 0; x < 3; x++) p += atom_pos[array2D_offset(x, ia, 3)] * gkvec[array2D_offset(igk, x, num_gkvec)];
+//==         p *= twopi;
+//==         
+//==         double sinp = sin(p);
+//==         double cosp = cos(p);
+//== 
+//==         beta_pw[array2D_offset(igk, i, num_gkvec)] = 
+//==             cuCmul(beta_pw_type[array2D_offset(igk, offset_t, num_gkvec)], make_cuDoubleComplex(cosp, -sinp));
+//==     }
+//== }
+//== 
+//== extern "C" void create_single_beta_pw_gpu(int num_gkvec, 
+//==                                           int num_beta_a, 
+//==                                           int beta_a_ofs, 
+//==                                           int* beta_t_idx,
+//==                                           void* beta_pw_type,
+//==                                           double* gkvec,
+//==                                           double* atom_pos,
+//==                                           void* beta_pw)
+//== {
+//==     dim3 threadsPerBlock(64);
+//==     dim3 numBlocks(num_blocks(num_gkvec, 64), num_beta_a);
+//== 
+//==     create_beta_pw_gpu_kernel<<<numBlocks, threadsPerBlock>>>(num_gkvec,
+//==                                                               beta_a_ofs,
+//==                                                               beta_t_idx, 
+//==                                                               (cuDoubleComplex*)beta_pw_type,
+//==                                                               gkvec,
+//==                                                               atom_pos,
+//==                                                               (cuDoubleComplex*)beta_pw);
+//== }
 
+//== #define BLOCK_SIZE 32
+//== 
+//== __global__ void generate_beta_phi_gpu_kernel(int num_gkvec, 
+//==                                              int num_beta,
+//==                                              int num_phi,
+//==                                              int* beta_t_idx, 
+//==                                              double* atom_pos, 
+//==                                              double* gkvec, 
+//==                                              cuDoubleComplex* beta_pw_type,
+//==                                              cuDoubleComplex* phi,
+//==                                              cuDoubleComplex* beta_phi)
+//== {
+//==     int idx_beta = blockDim.x * blockIdx.x + threadIdx.x;
+//==     int idx_phi = blockDim.y * blockIdx.y + threadIdx.y;
+//==     int ia, offset_t;
+//==     double x0, y0, z0;
+//== 
+//==     if (idx_beta < num_beta)
+//==     {
+//==         ia = beta_t_idx[array2D_offset(0, idx_beta, 2)];
+//==         offset_t = beta_t_idx[array2D_offset(1, idx_beta, 2)];
+//==         x0 = atom_pos[array2D_offset(0, ia, 3)];
+//==         y0 = atom_pos[array2D_offset(1, ia, 3)];
+//==         z0 = atom_pos[array2D_offset(2, ia, 3)];
+//==     }
+//== 
+//==     int N = num_blocks(num_gkvec, BLOCK_SIZE);
+//== 
+//==     cuDoubleComplex val = make_cuDoubleComplex(0.0, 0.0);
+//== 
+//==     for (int m = 0; m < N; m++)
+//==     {
+//==         __shared__ cuDoubleComplex beta_pw_tile[BLOCK_SIZE][BLOCK_SIZE];
+//==         __shared__ cuDoubleComplex phi_tile[BLOCK_SIZE][BLOCK_SIZE];
+//== 
+//==         int bs = (m + 1) * BLOCK_SIZE > num_gkvec ? num_gkvec - m * BLOCK_SIZE : BLOCK_SIZE;
+//== 
+//==         int igk = m * BLOCK_SIZE + threadIdx.y;
+//== 
+//==         if (igk < num_gkvec && idx_beta < num_beta)
+//==         {
+//==             double x1 = gkvec[array2D_offset(igk, 0, num_gkvec)];
+//==             double y1 = gkvec[array2D_offset(igk, 1, num_gkvec)];
+//==             double z1 = gkvec[array2D_offset(igk, 2, num_gkvec)];
+//== 
+//==             double p = twopi * (x0 * x1 + y0 * y1 + z0 * z1);
+//==             double sinp = sin(p);
+//==             double cosp = cos(p);
+//== 
+//==             beta_pw_tile[threadIdx.x][threadIdx.y] = cuCmul(cuConj(beta_pw_type[array2D_offset(igk, offset_t, num_gkvec)]), 
+//==                                                             make_cuDoubleComplex(cosp, sinp));
+//== 
+//==         }
+//==         
+//==         igk = m * BLOCK_SIZE + threadIdx.x;
+//== 
+//==         if (igk < num_gkvec && idx_phi < num_phi)
+//==             phi_tile[threadIdx.y][threadIdx.x] = phi[array2D_offset(igk, idx_phi, num_gkvec)];
+//== 
+//==         __syncthreads();
+//== 
+//==         for (int i = 0; i < bs; i++) val = cuCadd(val, cuCmul(beta_pw_tile[threadIdx.x][i], phi_tile[threadIdx.y][i]));
+//== 
+//==         __syncthreads();
+//==     }
+//== 
+//==     if (idx_beta < num_beta && idx_phi < num_phi) beta_phi[array2D_offset(idx_beta, idx_phi, num_beta)] = val;
+//== }
+//== 
+//== 
+//== extern "C" void generate_beta_phi_gpu(int num_gkvec, 
+//==                                       int num_beta, 
+//==                                       int num_phi, 
+//==                                       int* beta_t_idx, 
+//==                                       double* atom_pos,
+//==                                       double* gkvec,
+//==                                       void* beta_pw_type,
+//==                                       void* phi,
+//==                                       void* beta_phi)
+//== {
+//== 
+//==     dim3 threadsPerBlock(BLOCK_SIZE, BLOCK_SIZE);
+//==     dim3 numBlocks(num_blocks(num_beta, BLOCK_SIZE), num_blocks(num_phi, BLOCK_SIZE));
+//== 
+//==     generate_beta_phi_gpu_kernel<<<
+//==         numBlocks, 
+//==         threadsPerBlock>>>(num_gkvec, 
+//==                            num_beta,
+//==                            num_phi,
+//==                            beta_t_idx, 
+//==                            atom_pos,
+//==                            gkvec, 
+//==                            (cuDoubleComplex*)beta_pw_type,
+//==                            (cuDoubleComplex*)phi,
+//==                            (cuDoubleComplex*)beta_phi);
+//== }
 
-__global__ void create_beta_pw_gpu_kernel(int num_gkvec, 
-                                          int beta_a_ofs,
-                                          int* beta_t_idx, 
-                                          cuDoubleComplex* beta_pw_type, 
-                                          double* gkvec, 
-                                          double* atom_pos,
-                                          cuDoubleComplex* beta_pw)
+__global__ void restore_valence_density_gpu_kernel(int num_gvec_loc,
+                                                   int* atom_type,
+                                                   int* num_beta, 
+                                                   double* atom_pos,
+                                                   int* gvec,
+                                                   cuDoubleComplex* pp_complex_density_matrix,
+                                                   int ldm,
+                                                   cuDoubleComplex** q_pw,
+                                                   cuDoubleComplex* f_pw)
 {
+    extern __shared__ char sdata_ptr[];
+    cuDoubleComplex* sdata = (cuDoubleComplex*)&sdata_ptr[0];
 
-    int i = blockIdx.y;
-    int ia = beta_t_idx[array2D_offset(0, i + beta_a_ofs, 2)];
-    int offset_t = beta_t_idx[array2D_offset(1, i + beta_a_ofs, 2)];
+    int ia = blockIdx.x;
 
-    int igk = blockDim.x * blockIdx.x + threadIdx.x;
-    
-    if (igk < num_gkvec)
+    int iat = atom_type[ia];
+
+    int nbf = num_beta[iat];
+
+    cuDoubleComplex* q_pw_t = q_pw[iat];
+    //printf("ia : %i, type : %i, nbf : %i, q_pw : %p", ia, iat, nbf, q_pw_t);
+
+    double ax = atom_pos[array2D_offset(0, ia, 3)];
+    double ay = atom_pos[array2D_offset(1, ia, 3)];
+    double az = atom_pos[array2D_offset(2, ia, 3)];
+
+    if (threadIdx.x == 0)
     {
-        double p = 0;
-        for (int x = 0; x < 3; x++) p += atom_pos[array2D_offset(x, ia, 3)] * gkvec[array2D_offset(igk, x, num_gkvec)];
-        p *= twopi;
-        
-        double sinp = sin(p);
-        double cosp = cos(p);
-
-        beta_pw[array2D_offset(igk, i, num_gkvec)] = 
-            cuCmul(beta_pw_type[array2D_offset(igk, offset_t, num_gkvec)], make_cuDoubleComplex(cosp, -sinp));
-    }
-}
-
-extern "C" void create_single_beta_pw_gpu(int num_gkvec, 
-                                          int num_beta_a, 
-                                          int beta_a_ofs, 
-                                          int* beta_t_idx,
-                                          void* beta_pw_type,
-                                          double* gkvec,
-                                          double* atom_pos,
-                                          void* beta_pw)
-{
-    dim3 threadsPerBlock(64);
-    dim3 numBlocks(num_blocks(num_gkvec, 64), num_beta_a);
-
-    create_beta_pw_gpu_kernel<<<numBlocks, threadsPerBlock>>>(num_gkvec,
-                                                              beta_a_ofs,
-                                                              beta_t_idx, 
-                                                              (cuDoubleComplex*)beta_pw_type,
-                                                              gkvec,
-                                                              atom_pos,
-                                                              (cuDoubleComplex*)beta_pw);
-}
-
-#define BLOCK_SIZE 32
-
-__global__ void generate_beta_phi_gpu_kernel(int num_gkvec, 
-                                             int num_beta,
-                                             int num_phi,
-                                             int* beta_t_idx, 
-                                             double* atom_pos, 
-                                             double* gkvec, 
-                                             cuDoubleComplex* beta_pw_type,
-                                             cuDoubleComplex* phi,
-                                             cuDoubleComplex* beta_phi)
-{
-    int idx_beta = blockDim.x * blockIdx.x + threadIdx.x;
-    int idx_phi = blockDim.y * blockIdx.y + threadIdx.y;
-    int ia, offset_t;
-    double x0, y0, z0;
-
-    if (idx_beta < num_beta)
-    {
-        ia = beta_t_idx[array2D_offset(0, idx_beta, 2)];
-        offset_t = beta_t_idx[array2D_offset(1, idx_beta, 2)];
-        x0 = atom_pos[array2D_offset(0, ia, 3)];
-        y0 = atom_pos[array2D_offset(1, ia, 3)];
-        z0 = atom_pos[array2D_offset(2, ia, 3)];
-    }
-
-    int N = num_blocks(num_gkvec, BLOCK_SIZE);
-
-    cuDoubleComplex val = make_cuDoubleComplex(0.0, 0.0);
-
-    for (int m = 0; m < N; m++)
-    {
-        __shared__ cuDoubleComplex beta_pw_tile[BLOCK_SIZE][BLOCK_SIZE];
-        __shared__ cuDoubleComplex phi_tile[BLOCK_SIZE][BLOCK_SIZE];
-
-        int bs = (m + 1) * BLOCK_SIZE > num_gkvec ? num_gkvec - m * BLOCK_SIZE : BLOCK_SIZE;
-
-        int igk = m * BLOCK_SIZE + threadIdx.y;
-
-        if (igk < num_gkvec && idx_beta < num_beta)
+        for (int xi2 = 0; xi2 < nbf; xi2++)
         {
-            double x1 = gkvec[array2D_offset(igk, 0, num_gkvec)];
-            double y1 = gkvec[array2D_offset(igk, 1, num_gkvec)];
-            double z1 = gkvec[array2D_offset(igk, 2, num_gkvec)];
+            for (int xi1 = 0; xi1 <= xi2; xi1++)
+            {
+                int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+                sdata[idx12] = pp_complex_density_matrix[array4D_offset(xi2, xi1, 0, ia, ldm, ldm, 1)];
+            }
+        }
+    }
+    __syncthreads();
 
-            double p = twopi * (x0 * x1 + y0 * y1 + z0 * z1);
+    cuDoubleComplex* f_pw_a = &f_pw[array2D_offset(0, ia, num_gvec_loc)];
+    
+    int N = num_blocks(num_gvec_loc, blockDim.x);
+
+    for (int n = 0; n < N; n++)
+    {
+        int igloc = n * blockDim.x + threadIdx.x;
+        if (igloc < num_gvec_loc)
+        {
+            int gvx = gvec[array2D_offset(0, igloc, 3)];
+            int gvy = gvec[array2D_offset(1, igloc, 3)];
+            int gvz = gvec[array2D_offset(2, igloc, 3)];
+
+            double p = twopi * (ax * gvx + ay * gvy + az * gvz);
+            
             double sinp = sin(p);
             double cosp = cos(p);
 
-            beta_pw_tile[threadIdx.x][threadIdx.y] = cuCmul(cuConj(beta_pw_type[array2D_offset(igk, offset_t, num_gkvec)]), 
-                                                            make_cuDoubleComplex(cosp, sinp));
+            // \sum_{xi1, xi2} D_{xi2,xi1} * Q(G)_{xi1, xi2}
+            for (int xi2 = 0; xi2 < nbf; xi2++)
+            {
+                int idx12 = xi2 * (xi2 + 1) / 2;
 
+                cuDoubleComplex q = cuCmul(make_cuDoubleComplex(cosp, -sinp), q_pw_t[array2D_offset(igloc, idx12 + xi2, num_gvec_loc)]);
+
+                // add diagonal term
+                f_pw_a[igloc] = cuCadd(f_pw_a[igloc], cuCmul(sdata[idx12 + xi2], q));
+                
+                // add non-diagonal terms
+                for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
+                {
+                    q = cuCmul(make_cuDoubleComplex(cosp, -sinp), q_pw_t[array2D_offset(igloc, idx12, num_gvec_loc)]);
+                    
+                    double d = 2 * cuCreal(cuCmul(sdata[idx12], q));
+
+                    f_pw_a[igloc] = cuCadd(f_pw_a[igloc], make_cuDoubleComplex(d, 0));
+                }
+            }
         }
-        
-        igk = m * BLOCK_SIZE + threadIdx.x;
-
-        if (igk < num_gkvec && idx_phi < num_phi)
-            phi_tile[threadIdx.y][threadIdx.x] = phi[array2D_offset(igk, idx_phi, num_gkvec)];
-
-        __syncthreads();
-
-        for (int i = 0; i < bs; i++) val = cuCadd(val, cuCmul(beta_pw_tile[threadIdx.x][i], phi_tile[threadIdx.y][i]));
-
-        __syncthreads();
     }
-
-    if (idx_beta < num_beta && idx_phi < num_phi) beta_phi[array2D_offset(idx_beta, idx_phi, num_beta)] = val;
 }
 
-
-extern "C" void generate_beta_phi_gpu(int num_gkvec, 
-                                      int num_beta, 
-                                      int num_phi, 
-                                      int* beta_t_idx, 
-                                      double* atom_pos,
-                                      double* gkvec,
-                                      void* beta_pw_type,
-                                      void* phi,
-                                      void* beta_phi)
+__global__ void reduce_rho_pw_kernel(int num_atoms, int num_gvec_loc, cuDoubleComplex* f_pw, cuDoubleComplex* rho_pw)
 {
+    int igloc = blockDim.x * blockIdx.x + threadIdx.x;
 
-    dim3 threadsPerBlock(BLOCK_SIZE, BLOCK_SIZE);
-    dim3 numBlocks(num_blocks(num_beta, BLOCK_SIZE), num_blocks(num_phi, BLOCK_SIZE));
-
-    generate_beta_phi_gpu_kernel<<<numBlocks, 
-                                   threadsPerBlock>>>(num_gkvec, 
-                                                      num_beta,
-                                                      num_phi,
-                                                      beta_t_idx, 
-                                                      atom_pos,
-                                                      gkvec, 
-                                                      (cuDoubleComplex*)beta_pw_type,
-                                                      (cuDoubleComplex*)phi,
-                                                      (cuDoubleComplex*)beta_phi);
+    if (igloc < num_gvec_loc)
+    {
+        for (int ia = 0; ia < num_atoms; ia++) 
+            rho_pw[igloc] = cuCadd(rho_pw[igloc], f_pw[array2D_offset(igloc, ia, num_gvec_loc)]);
+    }
 }
+
+
+extern "C" void restore_valence_density_gpu(int num_atoms, 
+                                            int num_gvec_loc,
+                                            int* atom_type,
+                                            int* num_beta, 
+                                            double* atom_pos, 
+                                            int* gvec,
+                                            void* pp_complex_density_matrix,
+                                            int ldm,
+                                            void** q_pw,
+                                            void* rho_pw)
+{
+    dim3 threadsPerBlock(128);
+    dim3 numBlocks(num_atoms);
+
+    cuDoubleComplex* f_pw;
+    cuda_malloc((void**)&f_pw, num_gvec_loc * num_atoms * sizeof(cuDoubleComplex));
+    cuda_memset(f_pw, 0, num_gvec_loc * num_atoms * sizeof(cuDoubleComplex));
+
+    restore_valence_density_gpu_kernel<<<
+        numBlocks,
+        threadsPerBlock,
+        sizeof(cuDoubleComplex) * ldm * (ldm + 1) / 2>>>(num_gvec_loc,
+                                                         atom_type,
+                                                         num_beta, 
+                                                         atom_pos, 
+                                                         gvec, 
+                                                         (cuDoubleComplex*)pp_complex_density_matrix,
+                                                         ldm,
+                                                         (cuDoubleComplex**)q_pw,
+                                                         f_pw);
+    
+    cuda_memset(rho_pw, 0, num_gvec_loc * sizeof(cuDoubleComplex));
+
+    numBlocks = dim3(num_gvec_loc);
+    reduce_rho_pw_kernel<<<
+        numBlocks,
+        threadsPerBlock>>>(num_atoms, num_gvec_loc, f_pw, (cuDoubleComplex*)rho_pw);
+    
+    cuda_device_synchronize();
+    cuda_free(f_pw);
+}
+
+
+
 

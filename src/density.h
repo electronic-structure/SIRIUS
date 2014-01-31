@@ -166,6 +166,10 @@ class Density
                                         mdarray<complex16, 4>& pp_complex_density_matrix);
         
         void add_q_contribution_to_valence_density(K_set& kset);
+        
+        #ifdef _GPU_
+        void add_q_contribution_to_valence_density_gpu(K_set& ks);
+        #endif
 
         /// Generate valence density in the muffin-tins 
         void generate_valence_density_mt(K_set& ks);
