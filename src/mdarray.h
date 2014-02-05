@@ -378,6 +378,28 @@ template <typename T> class mdarray<T, 1> : public mdarray_base<T, 1>
             assert(this->mdarray_ptr);
             return this->mdarray_ptr[i];
         }
+
+        #ifdef _GPU_
+        inline T* ptr_device(const int i0)
+        {
+            assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
+            size_t i = this->offset[0] + i0;
+            
+            assert(this->mdarray_ptr_device);
+            return &this->mdarray_ptr_device[i];
+        }
+        #endif
+
+        //inline T& operator()(const int i0, processing_unit_t pu) 
+        //{
+        //    assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
+        //    size_t i = this->offset[0] + i0;
+        //    
+        //    assert(this->mdarray_ptr);
+
+        //    if (pu == gpu) return this->mdarray_ptr_device[i];
+        //    return this->mdarray_ptr[i];
+        //}
 };
 
 // 2d specialization
@@ -418,6 +440,18 @@ template <typename T> class mdarray<T, 2> : public mdarray_base<T, 2>
             assert(this->mdarray_ptr);
             return this->mdarray_ptr[i];
         }
+    
+        #ifdef _GPU_
+        inline T* ptr_device(const int i0, const int i1) 
+        {
+            assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
+            assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
+            size_t i = this->offset[0] + i0 + i1 * this->offset[1];
+            
+            assert(this->mdarray_ptr_device);
+            return &this->mdarray_ptr_device[i];
+        }
+        #endif
 };
 
 // 3d specialization

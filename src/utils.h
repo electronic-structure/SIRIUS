@@ -9,6 +9,7 @@
 #include "constants.h"
 #include "mdarray.h"
 #include "timer.h"
+#include "vector3d.h"
 
 class Utils
 {

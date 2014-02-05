@@ -2180,12 +2180,10 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
     apply_h_local_gpu(kp, effective_potential, pw_ekin, n, gamma, kappa, phi__, hphi__);
     
     // load hphi to the first part of kappa; TODO: apply_h_local_gpu must return hpi on gpu
-    cublas_set_matrix(kp->num_gkvec(), n, sizeof(complex16), hphi.get_ptr(), hphi.ld(), 
-                      kappa.get_ptr_device(), kappa.ld());
+    cublas_set_matrix(kp->num_gkvec(), n, sizeof(complex16), hphi.get_ptr(), hphi.ld(), kappa.ptr_device(0, 0), kappa.ld());
 
     // load phi to the second part of kappa; this will be the initial ophi
-    cublas_set_matrix(kp->num_gkvec(), n, sizeof(complex16), phi.get_ptr(), phi.ld(), 
-                      kappa.get_ptr_device(kp->num_gkvec() * n), kappa.ld());
+    cublas_set_matrix(kp->num_gkvec(), n, sizeof(complex16), phi.get_ptr(), phi.ld(), kappa.ptr_device(0, n), kappa.ld());
     
     
     // offset in the packed array of on-site matrices
@@ -2251,8 +2249,8 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
     beta_phi.allocate_on_device();
     
     //Timer t1("sirius::Band::apply_h_o|beta_phi");
-    blas<gpu>::gemm(2, 0, parameters_.unit_cell()->num_beta_a(), n, kp->num_gkvec(), gamma.get_ptr_device(), gamma.ld(), 
-                    kappa.get_ptr_device(kp->num_gkvec() * n), kappa.ld(), beta_phi.get_ptr_device(), beta_phi.ld());
+    blas<gpu>::gemm(2, 0, parameters_.unit_cell()->num_beta_a(), n, kp->num_gkvec(), gamma.ptr_device(0, 0), gamma.ld(), 
+                    kappa.ptr_device(0, n), kappa.ld(), beta_phi.ptr_device(0, 0), beta_phi.ld());
 
     // Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j>
     mdarray<complex16, 2> tmp(NULL, parameters_.unit_cell()->num_beta_a(), n);
@@ -2269,8 +2267,8 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
         int ofs = parameters_.unit_cell()->beta_a_ofs(ia);
         // number of beta functions for a given atom
         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
-        blas<gpu>::gemm(0, 0, nbf, n, nbf, d_mtrx_packed.get_ptr_device(mtrx_ofs(ia)), nbf, 
-                        beta_phi.get_ptr_device(ofs), beta_phi.ld(), tmp.get_ptr_device(ofs), tmp.ld());
+        blas<gpu>::gemm(0, 0, nbf, n, nbf, d_mtrx_packed.ptr_device(mtrx_ofs(ia)), nbf, 
+                        beta_phi.ptr_device(ofs, 0), beta_phi.ld(), tmp.ptr_device(ofs, 0), tmp.ld());
     }
     d_mtrx_packed.deallocate_on_device();
 
