@@ -115,7 +115,8 @@ cudaStream_t* streams;
 extern "C" void cuda_create_streams(int num_streams)
 {
     streams = (cudaStream_t*)malloc(num_streams * sizeof(cudaStream_t));
-    for (int i = 0; i < num_streams; i++) cudaStreamCreateWithFlags(&streams[i], cudaStreamNonBlocking);
+    //for (int i = 0; i < num_streams; i++) cudaStreamCreateWithFlags(&streams[i], cudaStreamNonBlocking);
+    for (int i = 0; i < num_streams; i++) cudaStreamCreate(&streams[i]);
 }
 
 extern "C" void cuda_destroy_streams(int num_streams)
@@ -1248,26 +1249,34 @@ __global__ void restore_valence_density_gpu_kernel(int num_gvec_loc,
             double sinp = sin(p);
             double cosp = cos(p);
 
+            cuDoubleComplex zval = make_cuDoubleComplex(0.0, 0.0);
+
             // \sum_{xi1, xi2} D_{xi2,xi1} * Q(G)_{xi1, xi2}
             for (int xi2 = 0; xi2 < nbf; xi2++)
             {
                 int idx12 = xi2 * (xi2 + 1) / 2;
 
-                cuDoubleComplex q = cuCmul(make_cuDoubleComplex(cosp, -sinp), q_pw_t[array2D_offset(igloc, idx12 + xi2, num_gvec_loc)]);
+                //cuDoubleComplex q = cuCmul(make_cuDoubleComplex(cosp, -sinp), q_pw_t[array2D_offset(igloc, idx12 + xi2, num_gvec_loc)]);
 
                 // add diagonal term
-                f_pw_a[igloc] = cuCadd(f_pw_a[igloc], cuCmul(sdata[idx12 + xi2], q));
-                
+                //f_pw_a[igloc] = cuCadd(f_pw_a[igloc], cuCmul(sdata[idx12 + xi2], q));
+                zval = cuCadd(zval, cuCmul(sdata[idx12 + xi2], q_pw_t[array2D_offset(igloc, idx12 + xi2, num_gvec_loc)]));
+
                 // add non-diagonal terms
                 for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
                 {
-                    q = cuCmul(make_cuDoubleComplex(cosp, -sinp), q_pw_t[array2D_offset(igloc, idx12, num_gvec_loc)]);
+                    cuDoubleComplex q = q_pw_t[array2D_offset(igloc, idx12, num_gvec_loc)];
+                    //q = cuCmul(make_cuDoubleComplex(cosp, -sinp), q_pw_t[array2D_offset(igloc, idx12, num_gvec_loc)]);
                     
-                    double d = 2 * cuCreal(cuCmul(sdata[idx12], q));
+                    //double d = 2 * cuCreal(cuCmul(sdata[idx12], q));
 
-                    f_pw_a[igloc] = cuCadd(f_pw_a[igloc], make_cuDoubleComplex(d, 0));
+                    //f_pw_a[igloc] = cuCadd(f_pw_a[igloc], make_cuDoubleComplex(d, 0));
+                    //double d = 2 * cuCreal(cuCmul(sdata[idx12], q_pw_t[array2D_offset(igloc, idx12, num_gvec_loc)])
+                    zval.x += 2 * (sdata[idx12].x * q.x - sdata[idx12].y * q.y);
+                    //zval = cuCadd(zval, make_cuDoubleComplex(2 * cuCreal(cuCmul(sdata[idx12], q_pw_t[array2D_offset(igloc, idx12, num_gvec_loc)])), 0.0));
                 }
             }
+            f_pw_a[igloc] = cuCadd(f_pw_a[igloc], cuCmul(zval, make_cuDoubleComplex(cosp, -sinp))); 
         }
     }
 }
@@ -1295,7 +1304,7 @@ extern "C" void restore_valence_density_gpu(int num_atoms,
                                             void** q_pw,
                                             void* rho_pw)
 {
-    dim3 threadsPerBlock(128);
+    dim3 threadsPerBlock(1024);
     dim3 numBlocks(num_atoms);
 
     cuDoubleComplex* f_pw;
@@ -1316,16 +1325,126 @@ extern "C" void restore_valence_density_gpu(int num_atoms,
                                                          f_pw);
     
     cuda_memset(rho_pw, 0, num_gvec_loc * sizeof(cuDoubleComplex));
-
-    numBlocks = dim3(num_gvec_loc);
-    reduce_rho_pw_kernel<<<
-        numBlocks,
-        threadsPerBlock>>>(num_atoms, num_gvec_loc, f_pw, (cuDoubleComplex*)rho_pw);
+    
+    dim3 grid_t(128);
+    dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x));
+    reduce_rho_pw_kernel<<<grid_b, grid_t>>>
+        (num_atoms, num_gvec_loc, f_pw, (cuDoubleComplex*)rho_pw);
     
     cuda_device_synchronize();
     cuda_free(f_pw);
 }
 
+__global__ void mul_veff_with_phase_factors_kernel(int num_gvec_loc,
+                                                   cuDoubleComplex* veff, 
+                                                   int* gvec, 
+                                                   double ax, 
+                                                   double ay, 
+                                                   double az, 
+                                                   cuDoubleComplex* vtmp)
+{
+    int igloc = blockDim.x * blockIdx.x + threadIdx.x;
+    if (igloc < num_gvec_loc)
+    {
+        int gvx = gvec[array2D_offset(0, igloc, 3)];
+        int gvy = gvec[array2D_offset(1, igloc, 3)];
+        int gvz = gvec[array2D_offset(2, igloc, 3)];
+
+        double p = twopi * (ax * gvx + ay * gvy + az * gvz);
+            
+        vtmp[igloc] = cuCmul(veff[igloc], make_cuDoubleComplex(cos(p), sin(p)));
+    }
+}
+ 
+extern "C" void mul_veff_with_phase_factors(int num_gvec_loc, 
+                                            void* veff, 
+                                            int* gvec, 
+                                            double ax,
+                                            double ay,
+                                            double az,
+                                            void* vtmp)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x));
+
+    mul_veff_with_phase_factors_kernel<<<grid_b, grid_t>>>
+        (num_gvec_loc, (cuDoubleComplex*)veff, gvec, ax, ay, az, (cuDoubleComplex*)vtmp);
+}
+
+__global__ void compute_d_mtrx_gpu_kernel(int num_gvec_loc, 
+                                          cuDoubleComplex* vtmp, 
+                                          cuDoubleComplex* q_pw, 
+                                          cuDoubleComplex* d_mtrx_gpu)
+{
+    int idx = blockIdx.x;
+
+    int N = num_blocks(num_gvec_loc, blockDim.x);
+
+    extern __shared__ char sdata_ptr[];
+    cuDoubleComplex* sdata = (cuDoubleComplex*)&sdata_ptr[0];
+
+    sdata[threadIdx.x] = make_cuDoubleComplex(0.0, 0.0);
+
+    for (int n = 0; n < N; n++)
+    {
+        int igloc = n * blockDim.x + threadIdx.x;
+        if (igloc < num_gvec_loc)
+        {
+            sdata[threadIdx.x] = cuCadd(sdata[threadIdx.x], 
+                                        cuCmul(vtmp[igloc], 
+                                               cuConj(q_pw[array2D_offset(igloc, idx,  num_gvec_loc)])));
+        }
+    }
+    
+    __syncthreads();
+
+    for (int s = 1; s < blockDim.x; s *= 2) 
+    {
+        if (threadIdx.x % (2 * s) == 0) sdata[threadIdx.x] = cuCadd(sdata[threadIdx.x], sdata[threadIdx.x + s]);
+        __syncthreads();
+    }
+
+    d_mtrx_gpu[idx] = sdata[0];
+}
+
+extern "C" void compute_d_mtrx_gpu(int num_gvec_loc,
+                                   int num_elements,
+                                   void* vtmp,
+                                   void* q_pw, 
+                                   void* d_mtrx_gpu)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_elements);
+
+    compute_d_mtrx_gpu_kernel<<<grid_b, grid_t, grid_t.x * sizeof(cuDoubleComplex)>>>
+        (num_gvec_loc, (cuDoubleComplex*)vtmp, (cuDoubleComplex*)q_pw, (cuDoubleComplex*)d_mtrx_gpu);
+}
+
+
+extern "C" void compute_d_mtrx_valence_gpu(int num_gvec_loc,
+                                           int num_elements,
+                                           void* veff, 
+                                           int* gvec, 
+                                           double ax,
+                                           double ay,
+                                           double az,
+                                           void* vtmp,
+                                           void* q_pw_t,
+                                           void* d_mtrx,
+                                           int stream_id)
+{
+    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
+
+    dim3 grid_t(64);
+
+    dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x));
+    mul_veff_with_phase_factors_kernel<<<grid_b, grid_t, 0, stream>>>
+        (num_gvec_loc, (cuDoubleComplex*)veff, gvec, ax, ay, az, (cuDoubleComplex*)vtmp);
+
+    grid_b = dim3(num_elements);
+    compute_d_mtrx_gpu_kernel<<<grid_b, grid_t, grid_t.x * sizeof(cuDoubleComplex), stream>>>
+        (num_gvec_loc, (cuDoubleComplex*)vtmp, (cuDoubleComplex*)q_pw_t, (cuDoubleComplex*)d_mtrx);
+}
 
 
 

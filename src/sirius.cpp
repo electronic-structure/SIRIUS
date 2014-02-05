@@ -674,17 +674,19 @@ void FORTRAN(sirius_print_timers)(void)
 
 void FORTRAN(sirius_start_timer)(char* name_, int32_t name_len)
 {
+    extern std::map<std::string, sirius::Timer*> ftimers;
     log_function_enter(__func__);
     std::string name(name_, name_len);
-    sirius::ftimers[name] = new sirius::Timer(name);
+    ftimers[name] = new sirius::Timer(name);
     log_function_exit(__func__);
 }
 
 void FORTRAN(sirius_stop_timer)(char* name_, int32_t name_len)
 {
+    extern std::map<std::string, sirius::Timer*> ftimers;
     log_function_enter(__func__);
     std::string name(name_, name_len);
-    if (sirius::ftimers.count(name)) delete sirius::ftimers[name];
+    if (ftimers.count(name)) delete ftimers[name];
     log_function_exit(__func__);
 }
 

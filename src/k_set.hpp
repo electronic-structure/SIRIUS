@@ -50,8 +50,24 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         parameters_.unit_cell()->generate_radial_integrals();
     }
     if (precompute && parameters_.esm_type() == ultrasoft_pseudopotential)
-    {
-        potential->generate_d_mtrx();
+    {   
+        switch (parameters_.processing_unit())
+        {
+            case cpu:
+            {
+                potential->generate_d_mtrx();
+                break;
+            }
+            case gpu:
+            {
+                #ifdef _GPU_
+                potential->generate_d_mtrx_gpu();
+                #else 
+                error_local(__FILE__, __LINE__, "not configured with GPU support");
+                #endif
+                break;
+            }
+        }
     }
     
     // solve secular equation and generate wave functions

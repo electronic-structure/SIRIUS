@@ -31,7 +31,7 @@
 #include "atomic_symb.h"
 
 const int major_version = 14;
-const int minor_version = 1;
+const int minor_version = 2;
 
 // NIST value for the inverse fine structure (http://physics.nist.gov/cuu/Constants/index.html)
 const double speed_of_light = 137.035999074; 
@@ -56,7 +56,7 @@ const int lmax_rho_default = 7;
 
 const int lmax_pot_default = 7;
 
-const char* storage_file_name = "sirius.h5";
+const char* const storage_file_name = "sirius.h5";
 
 const int _dim_k_ = 0;
 

@@ -1,6 +1,11 @@
 #ifndef __TYPEDEFS_H__
 #define __TYPEDEFS_H__
 
+#include <hdf5.h>
+#include <mpi.h>
+#include <assert.h>
+#include <complex>
+
 /** \file typedefs.h
 
     \brief Contains typedefs, enums and primitive_type_wrapper class

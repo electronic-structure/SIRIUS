@@ -3,6 +3,18 @@
     \brief Contains definition and implementation of Platform class.
 */
 
+#ifndef __PLATFORM_H__
+#define __PLATFORM_H__
+
+#include <mpi.h>
+#include <omp.h>
+#include <signal.h>
+#ifdef _GPU_
+#include "gpu_interface.h"
+#endif
+#include <vector>
+#include "typedefs.h"
+
 class Platform
 {
     private:
@@ -11,89 +23,43 @@ class Platform
     
     public:
 
-        static void initialize(bool call_mpi_init, bool call_cublas_init = true)
-        {
-            if (call_mpi_init) MPI_Init(NULL, NULL);
+        static void initialize(bool call_mpi_init, bool call_cublas_init = true);
 
-            #ifdef _GPU_
-            if (call_cublas_init) cublas_init();
-            if (mpi_rank() == 0) cuda_device_info();
-            cuda_create_streams(max_num_threads());
-            #endif
-            #ifdef _MAGMA_
-            magma_init_wrapper();
-            #endif
+        static void finalize();
 
-            assert(sizeof(int) == 4);
-            assert(sizeof(double) == 8);
-        }
+        static int mpi_rank(MPI_Comm comm = MPI_COMM_WORLD);
 
-        static void finalize()
-        {
-            MPI_Finalize();
-            #ifdef _MAGMA_
-            magma_finalize_wrapper();
-            #endif
-            #ifdef _GPU_
-            cuda_destroy_streams(max_num_threads());
-            cuda_device_reset();
-            #endif
-        }
+        static int num_mpi_ranks(MPI_Comm comm = MPI_COMM_WORLD);
 
-        static int mpi_rank(MPI_Comm comm = MPI_COMM_WORLD)
-        {
-            int rank;
-            MPI_Comm_rank(comm, &rank);
-            return rank;
-        }
-
-        static int num_mpi_ranks(MPI_Comm comm = MPI_COMM_WORLD)
-        {
-            int size;
-            MPI_Comm_size(comm, &size);
-            return size;
-        }
-
-        static void abort()
-        {
-            if (num_mpi_ranks() == 1)
-            {
-                raise(SIGTERM);
-            }
-            else
-            {   
-                MPI_Abort(MPI_COMM_WORLD, -13);
-            }
-            exit(-13);
-        }
+        static void abort();
 
         /// Returm maximum number of OMP threads.
         /** Maximum number of OMP threads is controlled by environment variable OMP_NUM_THREADS */
-        static int max_num_threads()
+        static inline int max_num_threads()
         {
             return omp_get_max_threads();
         }
 
         /// Returm number of actually running OMP threads. 
-        static int num_threads()
+        static inline int num_threads()
         {
             return omp_get_num_threads();
         }
         
         /// Return thread id.
-        static int thread_id()
+        static inline int thread_id()
         {
             return omp_get_thread_num();
         }
         
         /// Return number of threads for independent FFT transformations.
-        static int num_fft_threads()
+        static inline int num_fft_threads()
         {
             return num_fft_threads_;
         }
         
         /// Set the number of FFT threads
-        static void set_num_fft_threads(int num_fft_threads__)
+        static inline void set_num_fft_threads(int num_fft_threads__)
         {
             num_fft_threads_ = num_fft_threads__;
         }
@@ -222,5 +188,4 @@ class Platform
         }
 };
 
-int Platform::num_fft_threads_ = -1;
-
+#endif

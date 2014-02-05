@@ -140,6 +140,10 @@ class Potential
 
         void generate_d_mtrx();
 
+        #ifdef _GPU_
+        void generate_d_mtrx_gpu();
+        #endif
+
         double value(double* vc);
 
         void check_potential_continuity_at_mt();

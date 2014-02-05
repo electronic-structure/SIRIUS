@@ -1,6 +1,9 @@
 #ifndef _MDARRAY_H_
 #define _MDARRAY_H_
 
+#include <vector>
+#include "error_handling.h"
+
 /** \todo change to long int64_t for indices */
 
 class dimension 
