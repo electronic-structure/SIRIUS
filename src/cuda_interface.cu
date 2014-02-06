@@ -1531,5 +1531,104 @@ extern "C" void compute_d_mtrx_valence_gpu(int num_gvec_loc,
         (num_gvec_loc, (cuDoubleComplex*)vtmp, (cuDoubleComplex*)q_pw_t, (cuDoubleComplex*)d_mtrx);
 }
 
+__global__ void add_to_dm_g_gpu_kernel(int num_gvec_loc, 
+                                       int num_beta,
+                                       double ax, 
+                                       double ay, 
+                                       double az, 
+                                       int* gvec,
+                                       cuDoubleComplex* pp_complex_density_matrix,
+                                       int ldm,
+                                       cuDoubleComplex* dm_g)
+{
+    int igloc = blockIdx.x * blockDim.x + threadIdx.x;
+    if (igloc < num_gvec_loc)
+    {
+        int gvx = gvec[array2D_offset(0, igloc, 3)];
+        int gvy = gvec[array2D_offset(1, igloc, 3)];
+        int gvz = gvec[array2D_offset(2, igloc, 3)];
+
+        double p = twopi * (ax * gvx + ay * gvy + az * gvz);
+
+        double sinp = sin(p);
+        double cosp = cos(p);
+        
+        for (int xi2 = 0; xi2 < num_beta; xi2++)
+        {
+            for (int xi1 = 0; xi1 <= xi2; xi1++)
+            {
+                int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+                dm_g[array2D_offset(igloc, idx12, num_gvec_loc)] = 
+                    cuCadd(dm_g[array2D_offset(igloc, idx12, num_gvec_loc)],   
+                           cuCmul(pp_complex_density_matrix[array3D_offset(xi2, xi1, 0, ldm, ldm)], 
+                                  make_cuDoubleComplex(cosp, -sinp)));
+            }
+        }
+    }
+}
 
 
+
+extern "C" void add_to_dm_g_gpu(int num_gvec_loc,
+                                int num_beta,
+                                double ax, 
+                                double ay,
+                                double az,
+                                int* gvec,
+                                void* pp_complex_density_matrix,
+                                int ldm,
+                                void* dm_g)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x));
+
+    add_to_dm_g_gpu_kernel<<<grid_b, grid_t>>>
+        (num_gvec_loc, num_beta, ax, ay, az, gvec, (cuDoubleComplex*)pp_complex_density_matrix, ldm, (cuDoubleComplex*)dm_g);
+
+}
+
+__global__ void sum_q_pw_dm_gpu_kernel(int num_gvec_loc,
+                                       int num_beta,
+                                       cuDoubleComplex* q_pw_t,
+                                       cuDoubleComplex* dm_g,
+                                       cuDoubleComplex* rho_pw)
+{
+    int igloc = blockIdx.x * blockDim.x + threadIdx.x;
+    if (igloc < num_gvec_loc)
+    {
+        cuDoubleComplex zval = make_cuDoubleComplex(0.0, 0.0);
+
+        // \sum_{xi1, xi2} D_{xi2,xi1} * Q(G)_{xi1, xi2}
+        for (int xi2 = 0; xi2 < num_beta; xi2++)
+        {
+            int idx12 = xi2 * (xi2 + 1) / 2;
+
+            // add diagonal term
+            zval = cuCadd(zval, cuCmul(dm_g[array2D_offset(igloc, idx12 + xi2, num_gvec_loc)], 
+                                       q_pw_t[array2D_offset(igloc, idx12 + xi2, num_gvec_loc)]));
+
+            // add non-diagonal terms
+            for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
+            {
+                cuDoubleComplex q = q_pw_t[array2D_offset(igloc, idx12, num_gvec_loc)];
+                cuDoubleComplex d = dm_g[array2D_offset(igloc, idx12, num_gvec_loc)];
+                zval.x += 2 * (d.x * q.x - d.y * q.y);
+            }
+        }
+        rho_pw[igloc] = cuCadd(rho_pw[igloc], zval);
+    }
+}
+
+extern "C" void sum_q_pw_dm_gpu(int num_gvec_loc,
+                                int num_beta,
+                                void* q_pw_t,
+                                void* dm_g,
+                                void* rho_pw)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x));
+
+    sum_q_pw_dm_gpu_kernel<<<grid_b, grid_t>>>
+        (num_gvec_loc, num_beta, (cuDoubleComplex*)q_pw_t, (cuDoubleComplex*)dm_g, (cuDoubleComplex*)rho_pw);
+
+}

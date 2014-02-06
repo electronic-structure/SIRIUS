@@ -583,10 +583,60 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
         #pragma omp critical
         for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
         {
-            int ig = rl->spl_num_gvec(igloc);
-            f_pw[ig] += f_pw_pt[igloc];
+            f_pw[rl->spl_num_gvec(igloc)] += f_pw_pt[igloc];
         }
     }
+    
+    //for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+    //{
+    //    auto type = parameters_.unit_cell()->atom_type(iat);
+    //    int nbf = type->mt_basis_size();
+    //    mdarray<complex16, 2> tmp(rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2);
+    //    tmp.zero();
+    //    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    //    {
+    //        if (parameters_.unit_cell()->atom(ia)->type_id() == iat)
+    //        {
+    //            for (int xi2 = 0; xi2 < nbf; xi2++)
+    //            {
+    //                for (int xi1 = 0; xi1 <= xi2; xi1++)
+    //                {
+    //                    int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+    //                    #pragma omp parallel for
+    //                    for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
+    //                    {
+    //                        tmp(igloc, idx12) += conj(rl->gvec_phase_factor<local>(igloc, ia)) * 
+    //                                             pp_complex_density_matrix(xi2, xi1, 0, ia);
+    //                    }
+    //                }
+    //            }
+    //        }
+    //    }
+
+    //    for (int xi2 = 0; xi2 < nbf; xi2++)
+    //    {
+    //        int idx12 = xi2 * (xi2 + 1) / 2;
+
+    //        // add diagonal term
+    //        #pragma omp parallel for
+    //        for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
+    //        {
+    //            // D_{xi2,xi1} * Q(G)_{xi2, xi2}
+    //            f_pw[rl->spl_num_gvec(igloc)] += tmp(igloc, idx12 + xi2) * type->uspp().q_pw(igloc, idx12 + xi2);
+
+    //        }
+    //        // add non-diagonal terms
+    //        for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
+    //        {
+    //            #pragma omp parallel for
+    //            for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
+    //            {
+    //                // D_{xi2,xi1} * Q(G)_{xi1, xi2}
+    //                f_pw[rl->spl_num_gvec(igloc)] += 2 * real(tmp(igloc, idx12) * type->uspp().q_pw(igloc, idx12));
+    //            }
+    //        }
+    //    }
+    //}
     
     Platform::allgather(&f_pw[0], rl->spl_num_gvec().global_offset(), rl->spl_num_gvec().local_size());
 
@@ -619,6 +669,22 @@ extern "C" void restore_valence_density_gpu_v2(int num_gvec_loc,
                                                void* q_pw_t,
                                                void* rho_pw,
                                                int stream_id);
+
+extern "C" void add_to_dm_g_gpu(int num_gvec_loc,
+                                int num_beta,
+                                double ax, 
+                                double ay,
+                                double az,
+                                int* gvec,
+                                void* pp_complex_density_matrix,
+                                int ldm,
+                                void* dm_g);
+
+extern "C" void sum_q_pw_dm_gpu(int num_gvec_loc,
+                                int num_beta,
+                                void* q_pw_t,
+                                void* dm_g,
+                                void* rho_pw);
 
 void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 {
@@ -685,53 +751,96 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     gvec.allocate_on_device();
     gvec.copy_to_device();
 
-    std::vector<complex16> f_pw(rl->num_gvec(), complex16(0, 0));
-    mdarray<complex16, 1> f_pw_gpu(&f_pw[rl->spl_num_gvec().global_offset()], rl->spl_num_gvec().local_size());
-    f_pw_gpu.allocate_on_device();
 
-    mdarray<complex16, 2> rho_pw_tmp(rl->spl_num_gvec().local_size(), Platform::max_num_threads());
-    rho_pw_tmp.allocate_on_device();
-    rho_pw_tmp.zero_on_device();
-    #pragma omp parallel
+    std::vector<complex16> rho_pw(rl->num_gvec(), complex16(0, 0));
+    mdarray<complex16, 1> rho_pw_gpu(&rho_pw[rl->spl_num_gvec().global_offset()], rl->spl_num_gvec().local_size());
+    rho_pw_gpu.allocate_on_device();
+    rho_pw_gpu.zero_on_device();
+    for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
     {
-        int thread_id = Platform::thread_id();
-
-        #pragma omp for
+        auto type = parameters_.unit_cell()->atom_type(iat);
+        int nbf = type->mt_basis_size();
+        mdarray<complex16, 2> dm_g(NULL, rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2);
+        dm_g.allocate_on_device();
+        dm_g.zero_on_device();
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
-            auto type = parameters_.unit_cell()->atom(ia)->type();
-            int nbf = type->mt_basis_size();
             vector3d<double> apos = parameters_.unit_cell()->atom(ia)->position();
-
-            restore_valence_density_gpu_v2(rl->spl_num_gvec().local_size(),
-                                           nbf,
-                                           apos[0],
-                                           apos[1],
-                                           apos[2],
-                                           gvec.get_ptr_device(),
-                                           pp_complex_density_matrix.ptr_device(0, 0, 0, ia),
-                                           parameters_.unit_cell()->max_mt_basis_size(),
-                                           type->uspp().q_pw.get_ptr_device(),
-                                           rho_pw_tmp.ptr_device(0, thread_id),
-                                           thread_id);
-
-            cuda_stream_synchronize(thread_id);
+            if (parameters_.unit_cell()->atom(ia)->type_id() == iat) 
+            {
+                add_to_dm_g_gpu(rl->spl_num_gvec().local_size(),
+                                nbf,
+                                apos[0], 
+                                apos[1], 
+                                apos[2], 
+                                gvec.get_ptr_device(), 
+                                pp_complex_density_matrix.ptr_device(0, 0, 0, ia),
+                                parameters_.unit_cell()->max_mt_basis_size(),
+                                dm_g.get_ptr_device());
+            }
         }
-    }
-    cuda_device_synchronize();
-
-    rho_pw_tmp.copy_to_host();
-    for (int i = 0; i < Platform::max_num_threads(); i++)
-    {
-        for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++) 
-            f_pw[rl->spl_num_gvec(igloc)] += rho_pw_tmp(igloc, i);
+        sum_q_pw_dm_gpu(rl->spl_num_gvec().local_size(), 
+                        nbf,
+                        type->uspp().q_pw.get_ptr_device(),
+                        dm_g.get_ptr_device(),
+                        rho_pw_gpu.get_ptr_device());
     }
 
-    //f_pw_gpu.copy_to_host();
 
-    Platform::allgather(&f_pw[0], rl->spl_num_gvec().global_offset(), rl->spl_num_gvec().local_size());
+
+
+
+
+
+
+
+
+
+
+
+    //== mdarray<complex16, 2> rho_pw_tmp(rl->spl_num_gvec().local_size(), Platform::max_num_threads());
+    //== rho_pw_tmp.allocate_on_device();
+    //== rho_pw_tmp.zero_on_device();
+    //== #pragma omp parallel
+    //== {
+    //==     int thread_id = Platform::thread_id();
+
+    //==     #pragma omp for
+    //==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    //==     {
+    //==         auto type = parameters_.unit_cell()->atom(ia)->type();
+    //==         int nbf = type->mt_basis_size();
+    //==         vector3d<double> apos = parameters_.unit_cell()->atom(ia)->position();
+
+    //==         restore_valence_density_gpu_v2(rl->spl_num_gvec().local_size(),
+    //==                                        nbf,
+    //==                                        apos[0],
+    //==                                        apos[1],
+    //==                                        apos[2],
+    //==                                        gvec.get_ptr_device(),
+    //==                                        pp_complex_density_matrix.ptr_device(0, 0, 0, ia),
+    //==                                        parameters_.unit_cell()->max_mt_basis_size(),
+    //==                                        type->uspp().q_pw.get_ptr_device(),
+    //==                                        rho_pw_tmp.ptr_device(0, thread_id),
+    //==                                        thread_id);
+
+    //==         cuda_stream_synchronize(thread_id);
+    //==     }
+    //== }
+    //== cuda_device_synchronize();
+
+    //== rho_pw_tmp.copy_to_host();
+    //== for (int i = 0; i < Platform::max_num_threads(); i++)
+    //== {
+    //==     for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++) 
+    //==         f_pw[rl->spl_num_gvec(igloc)] += rho_pw_tmp(igloc, i);
+    //== }
+
+    rho_pw_gpu.copy_to_host();
+
+    Platform::allgather(&rho_pw[0], rl->spl_num_gvec().global_offset(), rl->spl_num_gvec().local_size());
     
-    fft_->input(rl->num_gvec(), rl->fft_index(), &f_pw[0]);
+    fft_->input(rl->num_gvec(), rl->fft_index(), &rho_pw[0]);
     fft_->transform(1);
     for (int ir = 0; ir < fft_->size(); ir++) rho_->f_it<global>(ir) += real(fft_->output_buffer(ir));
     
