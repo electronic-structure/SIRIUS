@@ -1531,17 +1531,18 @@ extern "C" void compute_d_mtrx_valence_gpu(int num_gvec_loc,
         (num_gvec_loc, (cuDoubleComplex*)vtmp, (cuDoubleComplex*)q_pw_t, (cuDoubleComplex*)d_mtrx);
 }
 
-__global__ void add_to_dm_g_gpu_kernel(int num_gvec_loc, 
+__global__ void add_to_d_mtrx_pw_gpu_kernel(int num_gvec_loc, 
                                        int num_beta,
                                        double ax, 
                                        double ay, 
                                        double az, 
                                        int* gvec,
-                                       cuDoubleComplex* pp_complex_density_matrix,
-                                       int ldm,
-                                       cuDoubleComplex* dm_g)
+                                       cuDoubleComplex* d_mtrx_packed,
+                                       cuDoubleComplex* d_mtrx_pw)
 {
+    int idx12 = blockIdx.y;
     int igloc = blockIdx.x * blockDim.x + threadIdx.x;
+
     if (igloc < num_gvec_loc)
     {
         int gvx = gvec[array2D_offset(0, igloc, 3)];
@@ -1553,45 +1554,47 @@ __global__ void add_to_dm_g_gpu_kernel(int num_gvec_loc,
         double sinp = sin(p);
         double cosp = cos(p);
         
-        //for (int xi2 = 0; xi2 < num_beta; xi2++)
-        //{
-        //    for (int xi1 = 0; xi1 <= xi2; xi1++)
-        //    {
-                int idx12 = blockIdx.y; //xi2 * (xi2 + 1) / 2 + xi1;
-                dm_g[array2D_offset(igloc, idx12, num_gvec_loc)] = 
-                    cuCadd(dm_g[array2D_offset(igloc, idx12, num_gvec_loc)],   
-                           cuCmul(pp_complex_density_matrix[idx12], //array3D_offset(xi2, xi1, 0, ldm, ldm)], 
-                                  make_cuDoubleComplex(cosp, -sinp)));
-        //    }
-        //}
+        d_mtrx_pw[array2D_offset(igloc, idx12, num_gvec_loc)] = 
+            cuCadd(d_mtrx_pw[array2D_offset(igloc, idx12, num_gvec_loc)],   
+                   cuCmul(d_mtrx_packed[idx12], make_cuDoubleComplex(cosp, -sinp)));
     }
 }
 
-
-
-extern "C" void add_to_dm_g_gpu(int num_gvec_loc,
-                                int num_beta,
-                                double ax, 
-                                double ay,
-                                double az,
-                                int* gvec,
-                                void* pp_complex_density_matrix,
-                                int ldm,
-                                void* dm_g)
+extern "C" void add_to_d_mtrx_pw_gpu(int num_gvec_loc,
+                                     int num_beta,
+                                     double ax, 
+                                     double ay,
+                                     double az,
+                                     int* gvec,
+                                     void* d_mtrx_packed,
+                                     void* d_mtrx_pw)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x), num_beta * (num_beta + 1) / 2);
 
-    add_to_dm_g_gpu_kernel<<<grid_b, grid_t>>>
-        (num_gvec_loc, num_beta, ax, ay, az, gvec, (cuDoubleComplex*)pp_complex_density_matrix, ldm, (cuDoubleComplex*)dm_g);
+    cudaEvent_t start, stop;
+    float time;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+ 
+    cudaEventRecord(start, 0);
+ 
+    add_to_d_mtrx_pw_gpu_kernel<<<grid_b, grid_t>>>
+        (num_gvec_loc, num_beta, ax, ay, az, gvec, (cuDoubleComplex*)d_mtrx_packed, (cuDoubleComplex*)d_mtrx_pw);
 
+    cudaEventRecord(stop, 0);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&time, start, stop);
+    printf ("Time for add_to_d_mtrx_pw_gpu_kernel: %f ms\n", time); 
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
 }
 
-__global__ void sum_q_pw_dm_gpu_kernel(int num_gvec_loc,
-                                       int num_beta,
-                                       cuDoubleComplex* q_pw_t,
-                                       cuDoubleComplex* dm_g,
-                                       cuDoubleComplex* rho_pw)
+__global__ void sum_q_pw_d_mtrx_pw_gpu_kernel(int num_gvec_loc,
+                                              int num_beta,
+                                              cuDoubleComplex* q_pw_t,
+                                              cuDoubleComplex* d_mtrx_pw,
+                                              cuDoubleComplex* rho_pw)
 {
     int igloc = blockIdx.x * blockDim.x + threadIdx.x;
     if (igloc < num_gvec_loc)
@@ -1604,14 +1607,14 @@ __global__ void sum_q_pw_dm_gpu_kernel(int num_gvec_loc,
             int idx12 = xi2 * (xi2 + 1) / 2;
 
             // add diagonal term
-            zval = cuCadd(zval, cuCmul(dm_g[array2D_offset(igloc, idx12 + xi2, num_gvec_loc)], 
+            zval = cuCadd(zval, cuCmul(d_mtrx_pw[array2D_offset(igloc, idx12 + xi2, num_gvec_loc)], 
                                        q_pw_t[array2D_offset(igloc, idx12 + xi2, num_gvec_loc)]));
 
             // add non-diagonal terms
             for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
             {
                 cuDoubleComplex q = q_pw_t[array2D_offset(igloc, idx12, num_gvec_loc)];
-                cuDoubleComplex d = dm_g[array2D_offset(igloc, idx12, num_gvec_loc)];
+                cuDoubleComplex d = d_mtrx_pw[array2D_offset(igloc, idx12, num_gvec_loc)];
                 zval.x += 2 * (d.x * q.x - d.y * q.y);
             }
         }
@@ -1619,16 +1622,30 @@ __global__ void sum_q_pw_dm_gpu_kernel(int num_gvec_loc,
     }
 }
 
-extern "C" void sum_q_pw_dm_gpu(int num_gvec_loc,
-                                int num_beta,
-                                void* q_pw_t,
-                                void* dm_g,
-                                void* rho_pw)
+extern "C" void sum_q_pw_d_mtrx_pw_gpu(int num_gvec_loc,
+                                       int num_beta,
+                                       void* q_pw_t,
+                                       void* d_mtrx_pw,
+                                       void* rho_pw)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x));
+    
+    cudaEvent_t start, stop;
+    float time;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+ 
+    cudaEventRecord(start, 0);
 
-    sum_q_pw_dm_gpu_kernel<<<grid_b, grid_t>>>
-        (num_gvec_loc, num_beta, (cuDoubleComplex*)q_pw_t, (cuDoubleComplex*)dm_g, (cuDoubleComplex*)rho_pw);
+    sum_q_pw_d_mtrx_pw_gpu_kernel<<<grid_b, grid_t>>>
+        (num_gvec_loc, num_beta, (cuDoubleComplex*)q_pw_t, (cuDoubleComplex*)d_mtrx_pw, (cuDoubleComplex*)rho_pw);
+
+    cudaEventRecord(stop, 0);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&time, start, stop);
+    printf ("Time for sum_q_pw_d_mtrx_pw_gpu_kernel: %f ms\n", time); 
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
 
 }

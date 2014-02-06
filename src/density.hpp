@@ -670,21 +670,20 @@ extern "C" void restore_valence_density_gpu_v2(int num_gvec_loc,
                                                void* rho_pw,
                                                int stream_id);
 
-extern "C" void add_to_dm_g_gpu(int num_gvec_loc,
-                                int num_beta,
-                                double ax, 
-                                double ay,
-                                double az,
-                                int* gvec,
-                                void* pp_complex_density_matrix,
-                                int ldm,
-                                void* dm_g);
+extern "C" void add_to_d_mtrx_pw_gpu(int num_gvec_loc,
+                                     int num_beta,
+                                     double ax, 
+                                     double ay,
+                                     double az,
+                                     int* gvec,
+                                     void* d_mtrx_packed,
+                                     void* d_mtrx_pw);
 
-extern "C" void sum_q_pw_dm_gpu(int num_gvec_loc,
-                                int num_beta,
-                                void* q_pw_t,
-                                void* dm_g,
-                                void* rho_pw);
+extern "C" void sum_q_pw_d_mtrx_pw_gpu(int num_gvec_loc,
+                                       int num_beta,
+                                       void* q_pw_t,
+                                       void* dm_g,
+                                       void* rho_pw);
 
 void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 {
@@ -796,30 +795,29 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     {
         auto type = parameters_.unit_cell()->atom_type(iat);
         int nbf = type->mt_basis_size();
-        mdarray<complex16, 2> dm_g(NULL, rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2);
-        dm_g.allocate_on_device();
-        dm_g.zero_on_device();
+        mdarray<complex16, 2> d_mtrx_pw(NULL, rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2);
+        d_mtrx_pw.allocate_on_device();
+        d_mtrx_pw.zero_on_device();
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
             vector3d<double> apos = parameters_.unit_cell()->atom(ia)->position();
             if (parameters_.unit_cell()->atom(ia)->type_id() == iat) 
             {
-                add_to_dm_g_gpu(rl->spl_num_gvec().local_size(),
-                                nbf,
-                                apos[0], 
-                                apos[1], 
-                                apos[2], 
-                                gvec.get_ptr_device(), 
-                                d_mtrx_packed.ptr_device(mtrx_ofs(ia)),
-                                parameters_.unit_cell()->max_mt_basis_size(),
-                                dm_g.get_ptr_device());
+                add_to_d_mtrx_pw_gpu(rl->spl_num_gvec().local_size(),
+                                     nbf,
+                                     apos[0], 
+                                     apos[1], 
+                                     apos[2], 
+                                     gvec.get_ptr_device(), 
+                                     d_mtrx_packed.ptr_device(mtrx_ofs(ia)),
+                                     d_mtrx_pw.get_ptr_device());
             }
         }
-        sum_q_pw_dm_gpu(rl->spl_num_gvec().local_size(), 
-                        nbf,
-                        type->uspp().q_pw.get_ptr_device(),
-                        dm_g.get_ptr_device(),
-                        rho_pw_gpu.get_ptr_device());
+        sum_q_pw_d_mtrx_pw_gpu(rl->spl_num_gvec().local_size(), 
+                               nbf,
+                               type->uspp().q_pw.get_ptr_device(),
+                               d_mtrx_pw.get_ptr_device(),
+                               rho_pw_gpu.get_ptr_device());
     }
 
 
