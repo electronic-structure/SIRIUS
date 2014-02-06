@@ -50,6 +50,32 @@ class dimension
 
 template <typename T, int ND> class mdarray_base
 {
+    private:
+
+        // forbid copy constructor
+        mdarray_base(const mdarray_base<T, ND>& src);
+        
+        // forbid assignment operator
+        mdarray_base<T, ND>& operator=(const mdarray_base<T, ND>& src); 
+
+    protected:
+    
+        T* mdarray_ptr;
+        
+        bool allocated_;
+       
+        #ifdef _GPU_
+        T* mdarray_ptr_device;  
+        
+        bool allocated_on_device;
+
+        bool pinned_;
+        #endif
+        
+        dimension d[ND];
+        
+        size_t offset[ND];
+
     public:
     
         mdarray_base() 
@@ -310,32 +336,6 @@ template <typename T, int ND> class mdarray_base
         }
         #endif
  
-    protected:
-    
-        T* mdarray_ptr;
-        
-        bool allocated_;
-       
-        #ifdef _GPU_
-        T* mdarray_ptr_device;  
-        
-        bool allocated_on_device;
-
-        bool pinned_;
-        #endif
-        
-        dimension d[ND];
-        
-        size_t offset[ND];
-
-    private:
-
-        // forbid copy constructor
-        mdarray_base(const mdarray_base<T, ND>& src);
-        
-        // forbid assignment operator
-        mdarray_base<T, ND>& operator=(const mdarray_base<T, ND>& src); 
-        
 };
 
 template <typename T, int ND> class mdarray : public mdarray_base<T, ND>
@@ -389,17 +389,6 @@ template <typename T> class mdarray<T, 1> : public mdarray_base<T, 1>
             return &this->mdarray_ptr_device[i];
         }
         #endif
-
-        //inline T& operator()(const int i0, processing_unit_t pu) 
-        //{
-        //    assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
-        //    size_t i = this->offset[0] + i0;
-        //    
-        //    assert(this->mdarray_ptr);
-
-        //    if (pu == gpu) return this->mdarray_ptr_device[i];
-        //    return this->mdarray_ptr[i];
-        //}
 };
 
 // 2d specialization

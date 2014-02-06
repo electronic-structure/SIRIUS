@@ -62,8 +62,9 @@ class Spline
         template <typename U> 
         friend class Spline;
         
-        Spline(int num_points__, sirius::Radial_grid& radial_grid__) : 
-            num_points_(num_points__), radial_grid_(radial_grid__)
+        Spline(int num_points__, sirius::Radial_grid& radial_grid__) 
+            : num_points_(num_points__), 
+              radial_grid_(radial_grid__)
         {
             a = std::vector<T>(num_points_);
             b = std::vector<T>(num_points_ - 1);
@@ -356,7 +357,7 @@ class Spline
             return g[num_points_ - 1];
         }
 
-        std::vector<T>& data_points()
+        inline std::vector<T>& data_points()
         {
             return a;
         }
@@ -366,12 +367,12 @@ class Spline
             return num_points_;
         }
 
-        T operator()(const int i, double dx)
+        inline T operator()(const int i, double dx)
         {
             return a[i] + dx * (b[i] + dx * (c[i] + dx * d[i]));
         }
         
-        T& operator[](const int i)
+        inline T& operator[](const int i)
         {
             return a[i];
         }
