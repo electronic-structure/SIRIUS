@@ -527,6 +527,20 @@ template <typename T> class mdarray<T, 4> : public mdarray_base<T, 4>
             size_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2] + i3 * this->offset[3];
             return this->mdarray_ptr[i];
         }
+
+        #ifdef _GPU_
+        inline T* ptr_device(const int i0, const int i1, const int i2, const int i3) 
+        {
+            assert(this->mdarray_ptr_device);
+            assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
+            assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
+            assert(i2 >= this->d[2].start() && i2 <= this->d[2].end());
+            assert(i3 >= this->d[3].start() && i3 <= this->d[3].end());
+            
+            size_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2] + i3 * this->offset[3];
+            return &this->mdarray_ptr_device[i];
+        }
+        #endif
 };
 
 #if 0

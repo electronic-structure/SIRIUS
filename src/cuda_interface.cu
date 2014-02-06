@@ -1335,6 +1335,91 @@ extern "C" void restore_valence_density_gpu(int num_atoms,
     cuda_free(f_pw);
 }
 
+
+
+
+__global__ void restore_valence_density_gpu_kernel_v2(int num_gvec_loc,
+                                                      int num_beta, 
+                                                      double ax,
+                                                      double ay,
+                                                      double az,
+                                                      int* gvec,
+                                                      cuDoubleComplex* pp_complex_density_matrix,
+                                                      int ldm,
+                                                      cuDoubleComplex* q_pw_t,
+                                                      cuDoubleComplex* rho_pw)
+{
+    extern __shared__ char sdata_ptr[];
+    cuDoubleComplex* sdata = (cuDoubleComplex*)&sdata_ptr[0];
+
+    if (threadIdx.x == 0)
+    {
+        for (int xi2 = 0; xi2 < num_beta; xi2++)
+        {
+            for (int xi1 = 0; xi1 <= xi2; xi1++)
+            {
+                int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+                sdata[idx12] = pp_complex_density_matrix[array3D_offset(xi2, xi1, 0, ldm, ldm)];
+            }
+        }
+    }
+    __syncthreads();
+
+    int igloc = blockIdx.x * blockDim.x + threadIdx.x;
+    if (igloc < num_gvec_loc)
+    {
+        int gvx = gvec[array2D_offset(0, igloc, 3)];
+        int gvy = gvec[array2D_offset(1, igloc, 3)];
+        int gvz = gvec[array2D_offset(2, igloc, 3)];
+
+        double p = twopi * (ax * gvx + ay * gvy + az * gvz);
+        
+        double sinp = sin(p);
+        double cosp = cos(p);
+
+        cuDoubleComplex zval = make_cuDoubleComplex(0.0, 0.0);
+
+        // \sum_{xi1, xi2} D_{xi2,xi1} * Q(G)_{xi1, xi2}
+        for (int xi2 = 0; xi2 < num_beta; xi2++)
+        {
+            int idx12 = xi2 * (xi2 + 1) / 2;
+
+            // add diagonal term
+            zval = cuCadd(zval, cuCmul(sdata[idx12 + xi2], q_pw_t[array2D_offset(igloc, idx12 + xi2, num_gvec_loc)]));
+
+            // add non-diagonal terms
+            for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
+            {
+                cuDoubleComplex q = q_pw_t[array2D_offset(igloc, idx12, num_gvec_loc)];
+                zval.x += 2 * (sdata[idx12].x * q.x - sdata[idx12].y * q.y);
+            }
+        }
+        rho_pw[igloc] = cuCadd(rho_pw[igloc], cuCmul(zval, make_cuDoubleComplex(cosp, -sinp))); 
+    }
+}
+
+extern "C" void restore_valence_density_gpu_v2(int num_gvec_loc,
+                                               int num_beta,
+                                               double ax,
+                                               double ay,
+                                               double az,
+                                               int* gvec,
+                                               void* pp_complex_density_matrix,
+                                               int ldm,
+                                               void* q_pw_t,
+                                               void* rho_pw,
+                                               int stream_id)
+{
+    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
+
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x));
+
+    restore_valence_density_gpu_kernel_v2<<<grid_b, grid_t, sizeof(cuDoubleComplex) * ldm * (ldm + 1) / 2, stream>>>
+        (num_gvec_loc, num_beta, ax, ay, az, gvec, (cuDoubleComplex*)pp_complex_density_matrix, ldm,
+         (cuDoubleComplex*)q_pw_t, (cuDoubleComplex*)rho_pw);
+}
+
 __global__ void mul_veff_with_phase_factors_kernel(int num_gvec_loc,
                                                    cuDoubleComplex* veff, 
                                                    int* gvec, 
