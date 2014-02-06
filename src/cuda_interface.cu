@@ -1553,17 +1553,17 @@ __global__ void add_to_dm_g_gpu_kernel(int num_gvec_loc,
         double sinp = sin(p);
         double cosp = cos(p);
         
-        for (int xi2 = 0; xi2 < num_beta; xi2++)
-        {
-            for (int xi1 = 0; xi1 <= xi2; xi1++)
-            {
-                int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+        //for (int xi2 = 0; xi2 < num_beta; xi2++)
+        //{
+        //    for (int xi1 = 0; xi1 <= xi2; xi1++)
+        //    {
+                int idx12 = blockIdx.y; //xi2 * (xi2 + 1) / 2 + xi1;
                 dm_g[array2D_offset(igloc, idx12, num_gvec_loc)] = 
                     cuCadd(dm_g[array2D_offset(igloc, idx12, num_gvec_loc)],   
-                           cuCmul(pp_complex_density_matrix[array3D_offset(xi2, xi1, 0, ldm, ldm)], 
+                           cuCmul(pp_complex_density_matrix[idx12], //array3D_offset(xi2, xi1, 0, ldm, ldm)], 
                                   make_cuDoubleComplex(cosp, -sinp)));
-            }
-        }
+        //    }
+        //}
     }
 }
 
@@ -1580,7 +1580,7 @@ extern "C" void add_to_dm_g_gpu(int num_gvec_loc,
                                 void* dm_g)
 {
     dim3 grid_t(64);
-    dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x));
+    dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x), num_beta * (num_beta + 1) / 2);
 
     add_to_dm_g_gpu_kernel<<<grid_b, grid_t>>>
         (num_gvec_loc, num_beta, ax, ay, az, gvec, (cuDoubleComplex*)pp_complex_density_matrix, ldm, (cuDoubleComplex*)dm_g);

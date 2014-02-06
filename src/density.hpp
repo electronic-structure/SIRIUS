@@ -716,8 +716,44 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 
     auto rl = parameters_.reciprocal_lattice();
 
-    pp_complex_density_matrix.allocate_on_device();
-    pp_complex_density_matrix.copy_to_device();
+    //pp_complex_density_matrix.allocate_on_device();
+    //pp_complex_density_matrix.copy_to_device();
+
+
+
+
+
+
+
+    // offset in the packed array of on-site matrices
+    mdarray<int, 1> mtrx_ofs(parameters_.unit_cell()->num_atoms());     
+    int packed_mtrx_size = 0;
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {   
+        int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+        mtrx_ofs(ia) = packed_mtrx_size;
+        packed_mtrx_size += nbf * (nbf + 1) / 2;
+    }
+
+    mdarray<complex16, 1> d_mtrx_packed(packed_mtrx_size);
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {
+        int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+        for (int xi2 = 0; xi2 < nbf; xi2++)
+        {
+            for (int xi1 = 0; xi1 <= xi2; xi1++)
+            {
+                d_mtrx_packed(mtrx_ofs(ia) + xi2 * (xi2 + 1) / 2 + xi1) = pp_complex_density_matrix(xi2, xi1, 0, ia);
+            }
+        }
+    }
+    d_mtrx_packed.allocate_on_device();
+    d_mtrx_packed.copy_to_device();
+
+
+
+
+
 
     mdarray<int, 1> atom_type(parameters_.unit_cell()->num_atoms());
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
@@ -774,7 +810,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
                                 apos[1], 
                                 apos[2], 
                                 gvec.get_ptr_device(), 
-                                pp_complex_density_matrix.ptr_device(0, 0, 0, ia),
+                                d_mtrx_packed.ptr_device(mtrx_ofs(ia)),
                                 parameters_.unit_cell()->max_mt_basis_size(),
                                 dm_g.get_ptr_device());
             }
