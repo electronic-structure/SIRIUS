@@ -1685,14 +1685,112 @@ extern "C" void add_to_d_mtrx_pw_gpu(int num_gvec_loc,
     cudaEventDestroy(stop);
 }
 
+//== __global__ void generate_d_mtrx_pw_gpu_kernel(int num_atoms, 
+//==                                               int num_gvec_loc, 
+//==                                               const double* atom_pos, 
+//==                                               const int* gvec,
+//==                                               const cuDoubleComplex* d_mtrx_packed,
+//==                                               cuDoubleComplex* d_mtrx_pw)
+//== {
+//==     int idx12 = blockIdx.y;
+//==     int igloc = blockIdx.x * blockDim.x + threadIdx.x;
+//== 
+//==     if (igloc < num_gvec_loc)
+//==     {
+//==         int gvx = gvec[array2D_offset(0, igloc, 3)];
+//==         int gvy = gvec[array2D_offset(1, igloc, 3)];
+//==         int gvz = gvec[array2D_offset(2, igloc, 3)];
+//==     
+//==         cuDoubleComplex zval = make_cuDoubleComplex(0.0, 0.0);
+//==         for (int ia = 0; ia < num_atoms; ia++)
+//==         {
+//==             double ax = atom_pos[array2D_offset(ia, 0, num_atoms)];
+//==             double ay = atom_pos[array2D_offset(ia, 1, num_atoms)];
+//==             double az = atom_pos[array2D_offset(ia, 2, num_atoms)];
+//== 
+//==             double p = twopi * (ax * gvx + ay * gvy + az * gvz);
+//== 
+//==             double sinp = sin(p);
+//==             double cosp = cos(p);
+//== 
+//==             zval = cuCadd(zval, cuCmul(d_mtrx_packed[array2D_offset(ia, idx12, num_atoms)], 
+//==                                        make_cuDoubleComplex(cosp, -sinp)));
+//== 
+//==         }
+//==         
+//==         d_mtrx_pw[array2D_offset(igloc, idx12, num_gvec_loc)] = zval;
+//==     }
+//== }
+
 __global__ void generate_d_mtrx_pw_gpu_kernel(int num_atoms, 
                                               int num_gvec_loc, 
-                                              double* atom_pos, 
-                                              int* gvec,
-                                              cuDoubleComplex* d_mtrx_packed,
+                                              int num_gvec_in_block,
+                                              const double* atom_pos, 
+                                              const int* gvec,
+                                              const cuDoubleComplex* d_mtrx_packed,
                                               cuDoubleComplex* d_mtrx_pw)
 {
+    extern __shared__ char sdata_ptr[];
+    double* sdata = (double*)&sdata_ptr[0];
+    
     int idx12 = blockIdx.y;
+
+    if (threadIdx.x == 0)
+    {
+        for (int ia = 0; ia < num_atoms; ia++)
+        {
+            double ax = atom_pos[array2D_offset(ia, 0, num_atoms)];
+            double ay = atom_pos[array2D_offset(ia, 1, num_atoms)];
+            double az = atom_pos[array2D_offset(ia, 2, num_atoms)];
+
+            sdata[ia * 5 + 0] = ax;
+            sdata[ia * 5 + 1] = ay;
+            sdata[ia * 5 + 2] = az;
+            sdata[ia * 5 + 3] = cuCreal(d_mtrx_packed[array2D_offset(ia, idx12, num_atoms)]);
+            sdata[ia * 5 + 4] = cuCimag(d_mtrx_packed[array2D_offset(ia, idx12, num_atoms)]);
+        }
+    }
+    __syncthreads();
+
+    int N = num_blocks(num_gvec_in_block, blockDim.x);
+    
+    for (int n = 0; n < N; n++)
+    {
+        int igloc = blockIdx.x * num_gvec_in_block + n * blockDim.x + threadIdx.x;
+
+        if (igloc < num_gvec_loc)
+        {
+            int gvx = gvec[array2D_offset(0, igloc, 3)];
+            int gvy = gvec[array2D_offset(1, igloc, 3)];
+            int gvz = gvec[array2D_offset(2, igloc, 3)];
+        
+            cuDoubleComplex zval = make_cuDoubleComplex(0.0, 0.0);
+            for (int ia = 0; ia < num_atoms; ia++)
+            {
+                double ax = sdata[ia * 5 + 0]; 
+                double ay = sdata[ia * 5 + 1]; 
+                double az = sdata[ia * 5 + 2];
+
+                double p = twopi * (ax * gvx + ay * gvy + az * gvz);
+
+                double sinp = sin(p);
+                double cosp = cos(p);
+
+                //zval = cuCadd(zval, cuCmul(d_mtrx_packed[array2D_offset(ia, idx12, num_atoms)], 
+                //                           make_cuDoubleComplex(cosp, -sinp)));
+                zval = cuCadd(zval, cuCmul(make_cuDoubleComplex(sdata[ia * 5 + 3], sdata[ia * 5 + 4]),
+                                           make_cuDoubleComplex(cosp, -sinp)));
+
+            }
+            
+            d_mtrx_pw[array2D_offset(igloc, idx12, num_gvec_loc)] = zval;
+        }
+    }
+}
+
+__global__ void generate_phase_factors_gpu_kernel(int num_gvec_loc, int num_atoms, double* atom_pos, int* gvec, cuDoubleComplex* phase_factors)
+{
+    int ia = blockIdx.y;
     int igloc = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (igloc < num_gvec_loc)
@@ -1701,24 +1799,16 @@ __global__ void generate_d_mtrx_pw_gpu_kernel(int num_atoms,
         int gvy = gvec[array2D_offset(1, igloc, 3)];
         int gvz = gvec[array2D_offset(2, igloc, 3)];
     
-        cuDoubleComplex zval = make_cuDoubleComplex(0.0, 0.0);
-        for (int ia = 0; ia < num_atoms; ia++)
-        {
-            double ax = atom_pos[array2D_offset(ia, 0, num_atoms)];
-            double ay = atom_pos[array2D_offset(ia, 1, num_atoms)];
-            double az = atom_pos[array2D_offset(ia, 2, num_atoms)];
+        double ax = atom_pos[array2D_offset(ia, 0, num_atoms)];
+        double ay = atom_pos[array2D_offset(ia, 1, num_atoms)];
+        double az = atom_pos[array2D_offset(ia, 2, num_atoms)];
 
-            double p = twopi * (ax * gvx + ay * gvy + az * gvz);
+        double p = twopi * (ax * gvx + ay * gvy + az * gvz);
 
-            double sinp = sin(p);
-            double cosp = cos(p);
+        double sinp = sin(p);
+        double cosp = cos(p);
 
-            zval = cuCadd(zval, cuCmul(d_mtrx_packed[array2D_offset(ia, idx12, num_atoms)], 
-                                       make_cuDoubleComplex(cosp, -sinp)));
-
-        }
-        
-        d_mtrx_pw[array2D_offset(igloc, idx12, num_gvec_loc)] = zval;
+        phase_factors[array2D_offset(igloc, ia, num_gvec_loc)] = make_cuDoubleComplex(cosp, -sinp);
     }
 }
 
@@ -1733,11 +1823,30 @@ extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
 {
     cuda_timer t("generate_d_mtrx_pw_gpu");
 
-    dim3 grid_t(64);
-    dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x), num_beta * (num_beta + 1) / 2);
+    //== dim3 grid_t(32);
+    //== //dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x), num_beta * (num_beta + 1) / 2);
+    //== dim3 grid_b(4, num_beta * (num_beta + 1) / 2);
 
-    generate_d_mtrx_pw_gpu_kernel<<<grid_b, grid_t>>>
-        (num_atoms, num_gvec_loc, atom_pos, gvec, (cuDoubleComplex*)d_mtrx_packed, (cuDoubleComplex*)d_mtrx_pw);
+    //== generate_d_mtrx_pw_gpu_kernel<<<grid_b, grid_t, 5 * num_atoms * sizeof(double)>>>
+    //==     (num_atoms, num_gvec_loc, num_blocks(num_gvec_loc, 4), atom_pos, gvec, (cuDoubleComplex*)d_mtrx_packed, (cuDoubleComplex*)d_mtrx_pw);
+
+    cuDoubleComplex* phase_factors;
+    cuda_malloc((void**)&phase_factors, num_gvec_loc * num_atoms * sizeof (cuDoubleComplex));
+
+    dim3 grid_t(32);
+    dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x), num_atoms);
+
+    generate_phase_factors_gpu_kernel<<<grid_b, grid_t>>>
+        (num_gvec_loc, num_atoms, atom_pos, gvec, phase_factors);
+    
+    cuDoubleComplex zone = make_cuDoubleComplex(1.0, 0.0);
+    cuDoubleComplex zzero = make_cuDoubleComplex(0.0, 0.0);
+
+    cublas_zgemm(0, 0, num_gvec_loc, num_beta * (num_beta + 1) / 2, num_atoms, (void*)&zone, 
+                 (void*)phase_factors, num_gvec_loc, (void*)d_mtrx_packed, num_atoms, (void*)&zzero,
+                 d_mtrx_pw, num_gvec_loc);
+
+    cuda_free(phase_factors);
 }
 
 __global__ void sum_q_pw_d_mtrx_pw_gpu_kernel(int num_gvec_loc,
