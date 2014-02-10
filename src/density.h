@@ -164,10 +164,12 @@ class Density
         */
         void add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
                                         mdarray<complex16, 4>& pp_complex_density_matrix);
-        
         void add_q_contribution_to_valence_density(K_set& kset);
         
         #ifdef _GPU_
+        void add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
+                                            mdarray<complex16, 4>& pp_complex_density_matrix);
+        
         void add_q_contribution_to_valence_density_gpu(K_set& ks);
         #endif
 

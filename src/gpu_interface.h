@@ -114,5 +114,14 @@ extern "C" void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double*
 
 extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double* v);
 
+
+extern "C" void create_beta_pw_gpu(int num_gkvec, 
+                                   int num_beta_atot, 
+                                   int* beta_t_idx,
+                                   void* beta_pw_type,
+                                   double* gkvec,
+                                   double* atom_pos,
+                                   void* beta_pw);
+
 #endif // _GPU_INTERFACE_H_
 

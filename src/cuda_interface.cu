@@ -1097,8 +1097,6 @@ __global__ void create_beta_pw_gpu_kernel(int num_gkvec,
                                           double* atom_pos,
                                           cuDoubleComplex* beta_pw)
 {
-    //const double twopi = 6.2831853071795864769;
-
     int i = blockIdx.y;
     int ia = beta_t_idx[array2D_offset(0, i, 2)];
     int offset_t = beta_t_idx[array2D_offset(1, i, 2)];

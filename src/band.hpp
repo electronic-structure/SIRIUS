@@ -2157,14 +2157,6 @@ void Band::apply_h_o_uspp_cpu(K_point* kp, std::vector<double>& effective_potent
 
 #ifdef _GPU_
 
-extern "C" void create_beta_pw_gpu(int num_gkvec, 
-                                   int num_beta_atot, 
-                                   int* beta_t_idx,
-                                   void* beta_pw_type,
-                                   double* gkvec,
-                                   double* atom_pos,
-                                   void* beta_pw);
-
 // memory-greedy implementation
 void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
                               mdarray<complex16, 2>& gamma, mdarray<complex16, 2>& kappa, 

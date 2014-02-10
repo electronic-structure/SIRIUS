@@ -377,7 +377,7 @@ void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int
 
     int nbf_tot = 0;
     std::vector<int> offsets(parameters_.unit_cell()->num_atoms());
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++) // TODO: this is already in the API
     {   
         offsets[ia] = nbf_tot;
         // add number of beta functions for a given atom
@@ -425,6 +425,98 @@ void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int
         }
     }
 }
+
+#ifdef _GPU_
+void Density::add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
+                                             mdarray<complex16, 4>& pp_complex_density_matrix)
+{
+    Timer t("sirius::Density::add_kpoint_contribution_pp_gpu");
+
+    if (occupied_bands.size() == 0) return;
+
+    // take only occupied wave-functions
+    mdarray<complex16, 2> wfs(kp->num_gkvec(), (int)occupied_bands.size());
+    for (int i = 0; i < (int)occupied_bands.size(); i++)
+    {
+        memcpy(&wfs(0, i), &kp->spinor_wave_function(0, 0, occupied_bands[i].first), kp->num_gkvec() * sizeof(complex16));
+    }
+    wfs.allocate_on_device();
+    wfs.copy_to_device();
+
+    // <G+k|\beta_{\xi}^{\alpha}>
+    mdarray<complex16, 2> beta_pw(NULL, kp->num_gkvec(), parameters_.unit_cell()->num_beta_a());
+    beta_pw.allocate_on_device();
+    
+    kp->beta_pw().allocate_on_device();
+    kp->beta_pw().copy_to_device();
+
+    kp->gkvec().allocate_on_device(); 
+    kp->gkvec().copy_to_device();
+
+    parameters_.unit_cell()->atom_pos().allocate_on_device(); 
+    parameters_.unit_cell()->atom_pos().copy_to_device();
+
+    parameters_.unit_cell()->beta_t_idx().allocate_on_device(); 
+    parameters_.unit_cell()->beta_t_idx().copy_to_device();
+
+    // create <G+k|beta>
+    create_beta_pw_gpu(kp->num_gkvec(), 
+                       parameters_.unit_cell()->num_beta_a(), 
+                       parameters_.unit_cell()->beta_t_idx().get_ptr_device(),
+                       kp->beta_pw().get_ptr_device(),
+                       kp->gkvec().get_ptr_device(),
+                       parameters_.unit_cell()->atom_pos().get_ptr_device(),
+                       beta_pw.get_ptr_device());
+
+    parameters_.unit_cell()->beta_t_idx().deallocate_on_device();
+    parameters_.unit_cell()->atom_pos().deallocate_on_device();
+    kp->gkvec().deallocate_on_device();
+    kp->beta_pw().deallocate_on_device();
+
+    // <\beta_{\xi}^{\alpha}|\Psi_j>
+    mdarray<complex16, 2> beta_psi(parameters_.unit_cell()->num_beta_a(), (int)occupied_bands.size());
+    beta_psi.allocate_on_device();
+
+    // compute <beta|Psi>
+    blas<gpu>::gemm(2, 0, parameters_.unit_cell()->num_beta_a(), (int)occupied_bands.size(), kp->num_gkvec(), 
+                    beta_pw.get_ptr_device(), beta_pw.ld(), wfs.get_ptr_device(), wfs.ld(), 
+                    beta_psi.get_ptr_device(), beta_psi.ld());
+    
+
+    beta_psi.copy_to_host();
+    wfs.deallocate_on_device();
+    beta_pw.deallocate_on_device();
+    beta_psi.deallocate_on_device();
+    
+    #pragma omp parallel
+    {
+        // auxiliary arrays
+        mdarray<complex16, 2> bp1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+        mdarray<complex16, 2> bp2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+        #pragma omp for
+        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        {   
+            // number of beta functions for a given atom
+            int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+            int ofs = parameters_.unit_cell()->beta_a_ofs(ia);
+
+            for (int i = 0; i < (int)occupied_bands.size(); i++)
+            {
+                for (int xi = 0; xi < nbf; xi++)
+                {
+                    bp1(xi, i) = beta_psi(ofs + xi, i);
+                    bp2(xi, i) = conj(beta_psi(ofs + xi, i)) * occupied_bands[i].second;
+                }
+            }
+
+            blas<cpu>::gemm(0, 1, nbf, nbf, (int)occupied_bands.size(), complex16(1, 0), &bp1(0, 0), bp1.ld(),
+                            &bp2(0, 0), bp2.ld(), complex16(1, 0), &pp_complex_density_matrix(0, 0, 0, ia), 
+                            pp_complex_density_matrix.ld());
+        }
+    }
+}
+#endif
+
 
 void Density::add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands)
 {
@@ -717,42 +809,11 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
         int ik = ks.spl_num_kpoints(ikloc);
         std::vector< std::pair<int, double> > occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
 
-        add_kpoint_contribution_pp(ks[ik], occupied_bands, pp_complex_density_matrix);
+        add_kpoint_contribution_pp_gpu(ks[ik], occupied_bands, pp_complex_density_matrix);
     }
     Platform::allreduce(pp_complex_density_matrix.get_ptr(), (int)pp_complex_density_matrix.size());
 
     auto rl = parameters_.reciprocal_lattice();
-
-
-
-
-    //// offset in the packed array of on-site matrices
-    //mdarray<int, 1> mtrx_ofs(parameters_.unit_cell()->num_atoms());     
-    //int packed_mtrx_size = 0;
-    //for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    //{   
-    //    int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
-    //    mtrx_ofs(ia) = packed_mtrx_size;
-    //    packed_mtrx_size += nbf * (nbf + 1) / 2;
-    //}
-
-    //mdarray<complex16, 1> d_mtrx_packed(packed_mtrx_size);
-    //for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    //{
-    //    int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
-    //    for (int xi2 = 0; xi2 < nbf; xi2++)
-    //    {
-    //        for (int xi1 = 0; xi1 <= xi2; xi1++)
-    //        {
-    //            d_mtrx_packed(mtrx_ofs(ia) + xi2 * (xi2 + 1) / 2 + xi1) = pp_complex_density_matrix(xi2, xi1, 0, ia);
-    //        }
-    //    }
-    //}
-    //d_mtrx_packed.allocate_on_device();
-    //d_mtrx_packed.copy_to_device();
-
-
-
 
 
 
