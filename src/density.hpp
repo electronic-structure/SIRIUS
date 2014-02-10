@@ -427,6 +427,18 @@ void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int
 }
 
 #ifdef _GPU_
+
+extern "C" void copy_beta_psi_gpu(int num_beta_atot, 
+                                  int num_bands, 
+                                  int ld,
+                                  int num_beta,
+                                  int offset,
+                                  void* beta_psi,
+                                  double* wo,
+                                  void* bp1,
+                                  void* bp2,
+                                  int stream_id);
+
 void Density::add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
                                              mdarray<complex16, 4>& pp_complex_density_matrix)
 {
@@ -474,7 +486,7 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair
     kp->beta_pw().deallocate_on_device();
 
     // <\beta_{\xi}^{\alpha}|\Psi_j>
-    mdarray<complex16, 2> beta_psi(parameters_.unit_cell()->num_beta_a(), (int)occupied_bands.size());
+    mdarray<complex16, 2> beta_psi(NULL, parameters_.unit_cell()->num_beta_a(), (int)occupied_bands.size());
     beta_psi.allocate_on_device();
 
     // compute <beta|Psi>
@@ -482,17 +494,23 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair
                     beta_pw.get_ptr_device(), beta_pw.ld(), wfs.get_ptr_device(), wfs.ld(), 
                     beta_psi.get_ptr_device(), beta_psi.ld());
     
-
-    beta_psi.copy_to_host();
     wfs.deallocate_on_device();
     beta_pw.deallocate_on_device();
-    beta_psi.deallocate_on_device();
+
+    mdarray<double, 1> wo((int)occupied_bands.size());
+    for (int i = 0; i < (int)occupied_bands.size(); i++) wo(i) = occupied_bands[i].second;
+    wo.allocate_on_device();
+    wo.copy_to_device();
     
+    complex16 zone(1, 0);
     #pragma omp parallel
     {
+        int thread_id = Platform::thread_id();
         // auxiliary arrays
         mdarray<complex16, 2> bp1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
         mdarray<complex16, 2> bp2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+        bp1.allocate_on_device();
+        bp2.allocate_on_device();
         #pragma omp for
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {   
@@ -500,20 +518,61 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair
             int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
             int ofs = parameters_.unit_cell()->beta_a_ofs(ia);
 
-            for (int i = 0; i < (int)occupied_bands.size(); i++)
+            copy_beta_psi_gpu(parameters_.unit_cell()->num_beta_a(), 
+                              (int)occupied_bands.size(), 
+                              parameters_.unit_cell()->max_mt_basis_size(),
+                              nbf,
+                              ofs,
+                              beta_psi.get_ptr_device(),
+                              wo.get_ptr_device(),
+                              bp1.get_ptr_device(),
+                              bp2.get_ptr_device(),
+                              thread_id);
+            
+            #pragma omp critical
             {
-                for (int xi = 0; xi < nbf; xi++)
-                {
-                    bp1(xi, i) = beta_psi(ofs + xi, i);
-                    bp2(xi, i) = conj(beta_psi(ofs + xi, i)) * occupied_bands[i].second;
-                }
+                cublas_set_stream(thread_id);
+
+                blas<gpu>::gemm(0, 1, nbf, nbf, (int)occupied_bands.size(), &zone, bp1.get_ptr_device(), bp1.ld(),
+                                bp2.get_ptr_device(), bp2.ld(), &zone, pp_complex_density_matrix.ptr_device(0, 0, 0, ia), 
+                                pp_complex_density_matrix.ld());
             }
 
-            blas<cpu>::gemm(0, 1, nbf, nbf, (int)occupied_bands.size(), complex16(1, 0), &bp1(0, 0), bp1.ld(),
-                            &bp2(0, 0), bp2.ld(), complex16(1, 0), &pp_complex_density_matrix(0, 0, 0, ia), 
-                            pp_complex_density_matrix.ld());
+            cuda_stream_synchronize(thread_id);
         }
     }
+    cuda_device_synchronize();
+    cublas_set_stream(-1);
+    wo.deallocate_on_device();
+    beta_psi.deallocate_on_device();
+
+
+    //== #pragma omp parallel
+    //== {
+    //==     // auxiliary arrays
+    //==     mdarray<complex16, 2> bp1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+    //==     mdarray<complex16, 2> bp2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+    //==     #pragma omp for
+    //==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    //==     {   
+    //==         // number of beta functions for a given atom
+    //==         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+    //==         int ofs = parameters_.unit_cell()->beta_a_ofs(ia);
+
+    //==         for (int i = 0; i < (int)occupied_bands.size(); i++)
+    //==         {
+    //==             for (int xi = 0; xi < nbf; xi++)
+    //==             {
+    //==                 bp1(xi, i) = beta_psi(ofs + xi, i);
+    //==                 bp2(xi, i) = conj(beta_psi(ofs + xi, i)) * occupied_bands[i].second;
+    //==             }
+    //==         }
+
+    //==         blas<cpu>::gemm(0, 1, nbf, nbf, (int)occupied_bands.size(), complex16(1, 0), &bp1(0, 0), bp1.ld(),
+    //==                         &bp2(0, 0), bp2.ld(), complex16(1, 0), &pp_complex_density_matrix(0, 0, 0, ia), 
+    //==                         pp_complex_density_matrix.ld());
+    //==     }
+    //== }
 }
 #endif
 
@@ -799,7 +858,8 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     mdarray<complex16, 4> pp_complex_density_matrix(parameters_.unit_cell()->max_mt_basis_size(), 
                                                     parameters_.unit_cell()->max_mt_basis_size(),
                                                     num_zdmat, parameters_.unit_cell()->num_atoms());
-    pp_complex_density_matrix.zero();
+    pp_complex_density_matrix.allocate_on_device();
+    pp_complex_density_matrix.zero_on_device();
     
     //=========================
     // add k-point contribution
@@ -811,10 +871,12 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 
         add_kpoint_contribution_pp_gpu(ks[ik], occupied_bands, pp_complex_density_matrix);
     }
+    pp_complex_density_matrix.copy_to_host();
+    pp_complex_density_matrix.deallocate_on_device();
+
     Platform::allreduce(pp_complex_density_matrix.get_ptr(), (int)pp_complex_density_matrix.size());
 
     auto rl = parameters_.reciprocal_lattice();
-
 
 
     mdarray<int, 1> atom_type(parameters_.unit_cell()->num_atoms());

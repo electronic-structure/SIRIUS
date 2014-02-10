@@ -47,6 +47,8 @@ extern "C" void cuda_device_reset();
 
 extern "C" void cublas_init();
 
+extern "C" void cublas_set_stream(int stream_id);
+
 extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                              void* alpha, void* a, int32_t lda, void* b, 
                              int32_t ldb, void* beta, void* c, int32_t ldc);
