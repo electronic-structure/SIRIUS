@@ -68,6 +68,7 @@ void Unit_cell::add_atom(int atom_type_external_id, double* position, double* ve
     }
 
     atoms_.push_back(new Atom(atom_type_by_external_id(atom_type_external_id), position, vector_field));
+    atom_type_by_external_id(atom_type_external_id)->add_atom_id((int)atoms_.size() - 1);
 }
 
 void Unit_cell::add_atom(int atom_type_id, double* position)

@@ -5,8 +5,103 @@
 #include <cuda.h>
 #include <cublas_v2.h>
 #include <cufft.h>
+#include <map>
+#include <string>
+#include <vector>
 
 const double twopi = 6.2831853071795864769;
+
+class cuda_timers_wrapper
+{
+    private:
+
+        std::map<std::string, std::vector<float> > cuda_timers_;
+
+    public:
+
+        void add_measurment(const std::string& label, float value)
+        {
+            cuda_timers_[label].push_back(value);
+        }
+
+        void print()
+        {
+            printf("\n");
+            printf("CUDA timers (ms)\n");
+            for (int i = 0; i < 115; i++) printf("-");
+            printf("\n");
+            printf("name                                                              count      total        min        max    average\n");
+            for (int i = 0; i < 115; i++) printf("-");
+            printf("\n");
+
+            std::map<std::string, std::vector<float> >::iterator it;
+            for (it = cuda_timers_.begin(); it != cuda_timers_.end(); it++)
+            {
+                int count = (int)it->second.size();
+                double total = 0.0;
+                float minval = 1e10;
+                float maxval = 0.0;
+                for (int i = 0; i < count; i++)
+                {
+                    total += it->second[i];
+                    minval = std::min(minval, it->second[i]);
+                    maxval = std::max(maxval, it->second[i]);
+                }
+                double average = (count == 0) ? 0.0 : total / count;
+                if (count == 0) minval = 0.0;
+
+                printf("%-60s :    %5i %10.4f %10.4f %10.4f %10.4f\n", it->first.c_str(), count, total, minval, maxval, average);
+            }
+        }
+};
+
+cuda_timers_wrapper cuda_timers;
+
+class cuda_timer
+{
+    private:
+
+        cudaEvent_t e_start_;
+        cudaEvent_t e_stop_;
+        bool active_;
+        std::string label_;
+
+        void start()
+        {
+            cudaEventCreate(&e_start_);
+            cudaEventCreate(&e_stop_);
+            cudaEventRecord(e_start_, 0);
+        }
+
+        void stop()
+        {
+            float time;
+            cudaEventRecord(e_stop_, 0);
+            cudaEventSynchronize(e_stop_);
+            cudaEventElapsedTime(&time, e_start_, e_stop_);
+            cudaEventDestroy(e_start_);
+            cudaEventDestroy(e_stop_);
+            cuda_timers.add_measurment(label_, time);
+            active_ = false;
+        }
+
+    public:
+
+        cuda_timer(const std::string& label__) : label_(label__), active_(false)
+        {
+            start();
+        }
+
+        ~cuda_timer()
+        {
+            stop();
+        }
+};
+
+extern "C" void print_cuda_timers()
+{
+    cuda_timers.print();
+}
 
 //=====================
 // Auxiliary functions
@@ -1590,6 +1685,61 @@ extern "C" void add_to_d_mtrx_pw_gpu(int num_gvec_loc,
     cudaEventDestroy(stop);
 }
 
+__global__ void generate_d_mtrx_pw_gpu_kernel(int num_atoms, 
+                                              int num_gvec_loc, 
+                                              double* atom_pos, 
+                                              int* gvec,
+                                              cuDoubleComplex* d_mtrx_packed,
+                                              cuDoubleComplex* d_mtrx_pw)
+{
+    int idx12 = blockIdx.y;
+    int igloc = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (igloc < num_gvec_loc)
+    {
+        int gvx = gvec[array2D_offset(0, igloc, 3)];
+        int gvy = gvec[array2D_offset(1, igloc, 3)];
+        int gvz = gvec[array2D_offset(2, igloc, 3)];
+    
+        cuDoubleComplex zval = make_cuDoubleComplex(0.0, 0.0);
+        for (int ia = 0; ia < num_atoms; ia++)
+        {
+            double ax = atom_pos[array2D_offset(ia, 0, num_atoms)];
+            double ay = atom_pos[array2D_offset(ia, 1, num_atoms)];
+            double az = atom_pos[array2D_offset(ia, 2, num_atoms)];
+
+            double p = twopi * (ax * gvx + ay * gvy + az * gvz);
+
+            double sinp = sin(p);
+            double cosp = cos(p);
+
+            zval = cuCadd(zval, cuCmul(d_mtrx_packed[array2D_offset(ia, idx12, num_atoms)], 
+                                       make_cuDoubleComplex(cosp, -sinp)));
+
+        }
+        
+        d_mtrx_pw[array2D_offset(igloc, idx12, num_gvec_loc)] = zval;
+    }
+}
+
+
+extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
+                                       int num_gvec_loc,
+                                       int num_beta,
+                                       double* atom_pos,
+                                       int* gvec,
+                                       void* d_mtrx_packed,
+                                       void* d_mtrx_pw)
+{
+    cuda_timer t("generate_d_mtrx_pw_gpu");
+
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x), num_beta * (num_beta + 1) / 2);
+
+    generate_d_mtrx_pw_gpu_kernel<<<grid_b, grid_t>>>
+        (num_atoms, num_gvec_loc, atom_pos, gvec, (cuDoubleComplex*)d_mtrx_packed, (cuDoubleComplex*)d_mtrx_pw);
+}
+
 __global__ void sum_q_pw_d_mtrx_pw_gpu_kernel(int num_gvec_loc,
                                               int num_beta,
                                               cuDoubleComplex* q_pw_t,
@@ -1628,24 +1778,11 @@ extern "C" void sum_q_pw_d_mtrx_pw_gpu(int num_gvec_loc,
                                        void* d_mtrx_pw,
                                        void* rho_pw)
 {
+    cuda_timer t("sum_q_pw_d_mtrx_pw_gpu");
+
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x));
     
-    cudaEvent_t start, stop;
-    float time;
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
- 
-    cudaEventRecord(start, 0);
-
     sum_q_pw_d_mtrx_pw_gpu_kernel<<<grid_b, grid_t>>>
         (num_gvec_loc, num_beta, (cuDoubleComplex*)q_pw_t, (cuDoubleComplex*)d_mtrx_pw, (cuDoubleComplex*)rho_pw);
-
-    cudaEventRecord(stop, 0);
-    cudaEventSynchronize(stop);
-    cudaEventElapsedTime(&time, start, stop);
-    printf ("Time for sum_q_pw_d_mtrx_pw_gpu_kernel: %f ms\n", time); 
-    cudaEventDestroy(start);
-    cudaEventDestroy(stop);
-
 }

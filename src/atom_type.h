@@ -367,6 +367,8 @@ class Atom_type
 
         uspp_descriptor uspp_;
 
+        std::vector<int> atom_id_;
+
         /// type of electronic structure method used
         electronic_structure_method_t esm_type_;
 
@@ -662,6 +664,21 @@ class Atom_type
             level.occupancy = occupancy;
             level.core = core;
             atomic_levels_.push_back(level);
+        }
+
+        inline int num_atoms()
+        {
+            return (int)atom_id_.size();
+        }
+
+        inline int atom_id(int idx)
+        {
+            return atom_id_[idx];
+        }
+
+        inline void add_atom_id(int atom_id__)
+        {
+            atom_id_.push_back(atom_id__);
         }
 };
 

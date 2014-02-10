@@ -35,6 +35,8 @@ void Timer::stop()
     active_ = false;
 }
 
+extern "C" void print_cuda_timers();
+
 void Timer::print()
 {
     if (Platform::mpi_rank() == 0)
@@ -65,6 +67,10 @@ void Timer::print()
 
             printf("%-60s :    %5i %10.4f %10.4f %10.4f %10.4f\n", it->first.c_str(), count, total, minval, maxval, average);
         }
+        
+        #ifdef _GPU_
+        print_cuda_timers();
+        #endif
     }
 }
 

@@ -685,6 +685,14 @@ extern "C" void sum_q_pw_d_mtrx_pw_gpu(int num_gvec_loc,
                                        void* dm_g,
                                        void* rho_pw);
 
+extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
+                                       int num_gvec_loc,
+                                       int num_beta,
+                                       double* atom_pos,
+                                       int* gvec,
+                                       void* d_mtrx_packed,
+                                       void* d_mtrx_pw);
+
 void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 {
     Timer t("sirius::Density::add_q_contribution_to_valence_density_gpu");
@@ -715,39 +723,33 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 
     auto rl = parameters_.reciprocal_lattice();
 
-    //pp_complex_density_matrix.allocate_on_device();
-    //pp_complex_density_matrix.copy_to_device();
 
 
 
+    //// offset in the packed array of on-site matrices
+    //mdarray<int, 1> mtrx_ofs(parameters_.unit_cell()->num_atoms());     
+    //int packed_mtrx_size = 0;
+    //for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    //{   
+    //    int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+    //    mtrx_ofs(ia) = packed_mtrx_size;
+    //    packed_mtrx_size += nbf * (nbf + 1) / 2;
+    //}
 
-
-
-
-    // offset in the packed array of on-site matrices
-    mdarray<int, 1> mtrx_ofs(parameters_.unit_cell()->num_atoms());     
-    int packed_mtrx_size = 0;
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    {   
-        int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
-        mtrx_ofs(ia) = packed_mtrx_size;
-        packed_mtrx_size += nbf * (nbf + 1) / 2;
-    }
-
-    mdarray<complex16, 1> d_mtrx_packed(packed_mtrx_size);
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    {
-        int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
-        for (int xi2 = 0; xi2 < nbf; xi2++)
-        {
-            for (int xi1 = 0; xi1 <= xi2; xi1++)
-            {
-                d_mtrx_packed(mtrx_ofs(ia) + xi2 * (xi2 + 1) / 2 + xi1) = pp_complex_density_matrix(xi2, xi1, 0, ia);
-            }
-        }
-    }
-    d_mtrx_packed.allocate_on_device();
-    d_mtrx_packed.copy_to_device();
+    //mdarray<complex16, 1> d_mtrx_packed(packed_mtrx_size);
+    //for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    //{
+    //    int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+    //    for (int xi2 = 0; xi2 < nbf; xi2++)
+    //    {
+    //        for (int xi1 = 0; xi1 <= xi2; xi1++)
+    //        {
+    //            d_mtrx_packed(mtrx_ofs(ia) + xi2 * (xi2 + 1) / 2 + xi1) = pp_complex_density_matrix(xi2, xi1, 0, ia);
+    //        }
+    //    }
+    //}
+    //d_mtrx_packed.allocate_on_device();
+    //d_mtrx_packed.copy_to_device();
 
 
 
@@ -795,24 +797,58 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     {
         auto type = parameters_.unit_cell()->atom_type(iat);
         int nbf = type->mt_basis_size();
+
+        mdarray<complex16, 2> d_mtrx_packed(type->num_atoms(), nbf * (nbf + 1) / 2);
+        mdarray<double, 2> atom_pos(type->num_atoms(), 3);
+        for (int i = 0; i < type->num_atoms(); i++)
+        {
+            int ia = type->atom_id(i);
+
+            for (int xi2 = 0; xi2 < nbf; xi2++)
+            {
+                for (int xi1 = 0; xi1 <= xi2; xi1++)
+                {
+                    d_mtrx_packed(i, xi2 * (xi2 + 1) / 2 + xi1) = pp_complex_density_matrix(xi2, xi1, 0, ia);
+                }
+            }
+            for (int x = 0; x < 3; x++) atom_pos(i, x) = parameters_.unit_cell()->atom(ia)->position(x);
+        }
+        d_mtrx_packed.allocate_on_device();
+        d_mtrx_packed.copy_to_device();
+        atom_pos.allocate_on_device();
+        atom_pos.copy_to_device();
+            
+
+
+
+
         mdarray<complex16, 2> d_mtrx_pw(NULL, rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2);
         d_mtrx_pw.allocate_on_device();
         d_mtrx_pw.zero_on_device();
-        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-        {
-            vector3d<double> apos = parameters_.unit_cell()->atom(ia)->position();
-            if (parameters_.unit_cell()->atom(ia)->type_id() == iat) 
-            {
-                add_to_d_mtrx_pw_gpu(rl->spl_num_gvec().local_size(),
-                                     nbf,
-                                     apos[0], 
-                                     apos[1], 
-                                     apos[2], 
-                                     gvec.get_ptr_device(), 
-                                     d_mtrx_packed.ptr_device(mtrx_ofs(ia)),
-                                     d_mtrx_pw.get_ptr_device());
-            }
-        }
+        //for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        //{
+        //    vector3d<double> apos = parameters_.unit_cell()->atom(ia)->position();
+        //    if (parameters_.unit_cell()->atom(ia)->type_id() == iat) 
+        //    {
+        //        add_to_d_mtrx_pw_gpu(rl->spl_num_gvec().local_size(),
+        //                             nbf,
+        //                             apos[0], 
+        //                             apos[1], 
+        //                             apos[2], 
+        //                             gvec.get_ptr_device(), 
+        //                             d_mtrx_packed.ptr_device(mtrx_ofs(ia)),
+        //                             d_mtrx_pw.get_ptr_device());
+        //    }
+        //}
+        generate_d_mtrx_pw_gpu(type->num_atoms(),
+                               rl->spl_num_gvec().local_size(),
+                               nbf,
+                               atom_pos.get_ptr_device(),
+                               gvec.get_ptr_device(),
+                               d_mtrx_packed.get_ptr_device(),
+                               d_mtrx_pw.get_ptr_device());
+
+
         sum_q_pw_d_mtrx_pw_gpu(rl->spl_num_gvec().local_size(), 
                                nbf,
                                type->uspp().q_pw.get_ptr_device(),

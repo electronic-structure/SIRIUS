@@ -129,9 +129,9 @@ class Atom_symmetry_class
         }
 
         /// Add atom id to the current class
-        inline void add_atom_id(int _atom_id)
+        inline void add_atom_id(int atom_id__)
         {
-            atom_id_.push_back(_atom_id);
+            atom_id_.push_back(atom_id__);
         }
         
         /// Return number of atoms belonging to the current symmetry class
