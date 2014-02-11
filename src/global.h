@@ -811,6 +811,11 @@ class Global
                     printf("MAGMA\n");
                     break;
                 }
+                case plasma:
+                {
+                    printf("PLASMA\n");
+                    break;
+                }
             }
             printf("processing unit : ");
             switch (processing_unit())

@@ -25,7 +25,7 @@ enum coordinates_t {cartesian, fractional};
 
 enum mpi_op_t {op_sum, op_max};
 
-enum linalg_t {lapack, scalapack, elpa, magma};
+enum linalg_t {lapack, scalapack, elpa, magma, plasma};
 
 enum splindex_t {block, block_cyclic};
 
