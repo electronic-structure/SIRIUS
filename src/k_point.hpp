@@ -3,7 +3,7 @@ void K_point::initialize()
     Timer t("sirius::K_point::initialize");
     
     zil_.resize(parameters_.lmax_apw() + 1);
-    for (int l = 0; l <= parameters_.lmax_apw(); l++) zil_[l] = pow(complex16(0, 1), l);
+    for (int l = 0; l <= parameters_.lmax_apw(); l++) zil_[l] = pow(double_complex(0, 1), l);
    
     l_by_lm_ = Utils::l_by_lm(parameters_.lmax_apw());
 
@@ -170,7 +170,7 @@ void K_point::update()
                         int lm = atom_type->indexb(xi).lm;
                         int idxrf = atom_type->indexb(xi).idxrf;
 
-                        complex16 z = pow(complex16(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
+                        double_complex z = pow(double_complex(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
                         beta_pw_(igk, uc->beta_t_ofs(iat) + xi) = z * gkvec_ylm_(lm, igk) * beta_radial_integrals_[idxrf];
                     }
                 }
@@ -251,7 +251,7 @@ void K_point::update()
 */
 template<> 
 void K_point::generate_matching_coefficients_l<1, true>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
-                                                        mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
+                                                        mdarray<double, 2>& A, mdarray<double_complex, 2>& alm)
 {
     if ((fabs(A(0, 0)) < 1.0 / sqrt(parameters_.unit_cell()->omega())) && (debug_level >= 1))
     {   
@@ -264,7 +264,7 @@ void K_point::generate_matching_coefficients_l<1, true>(int ia, int iat, Atom_ty
     
     A(0, 0) = 1.0 / A(0, 0);
 
-    complex16 zt;
+    double_complex zt;
     for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
     {
         zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat) * A(0, 0);
@@ -277,7 +277,7 @@ void K_point::generate_matching_coefficients_l<1, true>(int ia, int iat, Atom_ty
 /// First order matching coefficients, non-conjugated
 template<> 
 void K_point::generate_matching_coefficients_l<1, false>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
-                                                         mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
+                                                         mdarray<double, 2>& A, mdarray<double_complex, 2>& alm)
 {
     if ((fabs(A(0, 0)) < 1.0 / sqrt(parameters_.unit_cell()->omega())) && (debug_level >= 1))
     {   
@@ -290,7 +290,7 @@ void K_point::generate_matching_coefficients_l<1, false>(int ia, int iat, Atom_t
     
     A(0, 0) = 1.0 / A(0, 0);
 
-    complex16 zt;
+    double_complex zt;
     for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
     {
         zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat) * A(0, 0);
@@ -305,7 +305,7 @@ void K_point::generate_matching_coefficients_l<1, false>(int ia, int iat, Atom_t
     single matrix-matrix multiplication without further conjugation.
 */
 template<> void K_point::generate_matching_coefficients_l<2, true>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
-                                                                   mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
+                                                                   mdarray<double, 2>& A, mdarray<double_complex, 2>& alm)
 {
     double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
     
@@ -323,8 +323,8 @@ template<> void K_point::generate_matching_coefficients_l<2, true>(int ia, int i
     A(0, 1) = -A(0, 1) / det;
     A(1, 0) = -A(1, 0) / det;
     
-    complex16 zt[2];
-    complex16 zb[2];
+    double_complex zt[2];
+    double_complex zb[2];
     for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
     {
         zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat);
@@ -346,7 +346,7 @@ template<> void K_point::generate_matching_coefficients_l<2, true>(int ia, int i
 
 /// Second order matching coefficients, non-conjugated
 template<> void K_point::generate_matching_coefficients_l<2, false>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
-                                                                    mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
+                                                                    mdarray<double, 2>& A, mdarray<double_complex, 2>& alm)
 {
     double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
     
@@ -364,8 +364,8 @@ template<> void K_point::generate_matching_coefficients_l<2, false>(int ia, int 
     A(0, 1) = -A(0, 1) / det;
     A(1, 0) = -A(1, 0) / det;
     
-    complex16 zt[2];
-    complex16 zb[2];
+    double_complex zt[2];
+    double_complex zb[2];
     for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
     {
         zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat);
@@ -386,12 +386,12 @@ template<> void K_point::generate_matching_coefficients_l<2, false>(int ia, int 
 }
 
 template<> void K_point::generate_matching_coefficients_l<3, true>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
-                                                                   mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
+                                                                   mdarray<double, 2>& A, mdarray<double_complex, 2>& alm)
 {
     linalg<lapack>::invert_ge(&A(0, 0), 3);
     
-    complex16 zt[3];
-    complex16 zb[3];
+    double_complex zt[3];
+    double_complex zb[3];
     for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
     {
         zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat);
@@ -416,12 +416,12 @@ template<> void K_point::generate_matching_coefficients_l<3, true>(int ia, int i
 }
 
 template<> void K_point::generate_matching_coefficients_l<3, false>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
-                                                                    mdarray<double, 2>& A, mdarray<complex16, 2>& alm)
+                                                                    mdarray<double, 2>& A, mdarray<double_complex, 2>& alm)
 {
     linalg<lapack>::invert_ge(&A(0, 0), 3);
     
-    complex16 zt[3];
-    complex16 zb[3];
+    double_complex zt[3];
+    double_complex zb[3];
     for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
     {
         zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat);
@@ -446,7 +446,7 @@ template<> void K_point::generate_matching_coefficients_l<3, false>(int ia, int 
 }
 
 template<bool conjugate>
-void K_point::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
+void K_point::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)
 {
     Timer t("sirius::K_point::generate_matching_coefficients");
 
@@ -500,7 +500,7 @@ void K_point::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<
     if (debug_level > 1) check_alm(num_gkvec_loc, ia, alm);
 }
 
-void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
+void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)
 {
     static SHT* sht = NULL;
     if (!sht) sht = new SHT(parameters_.lmax_apw());
@@ -508,7 +508,7 @@ void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
     Atom* atom = parameters_.unit_cell()->atom(ia);
     Atom_type* type = atom->type();
 
-    mdarray<complex16, 2> z1(sht->num_points(), type->mt_aw_basis_size());
+    mdarray<double_complex, 2> z1(sht->num_points(), type->mt_aw_basis_size());
     for (int i = 0; i < type->mt_aw_basis_size(); i++)
     {
         int lm = type->indexb(i).lm;
@@ -520,7 +520,7 @@ void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
         }
     }
 
-    mdarray<complex16, 2> z2(sht->num_points(), num_gkvec_loc);
+    mdarray<double_complex, 2> z2(sht->num_points(), num_gkvec_loc);
     blas<cpu>::gemm(0, 2, sht->num_points(), num_gkvec_loc, type->mt_aw_basis_size(), z1.get_ptr(), z1.ld(),
                     alm.get_ptr(), alm.ld(), z2.get_ptr(), z2.ld());
 
@@ -532,10 +532,10 @@ void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
         vector3d<double> gkc = gkvec_cart(igkglob(igloc));
         for (int itp = 0; itp < sht->num_points(); itp++)
         {
-            complex16 aw_value = z2(itp, igloc);
+            double_complex aw_value = z2(itp, igloc);
             vector3d<double> r;
             for (int x = 0; x < 3; x++) r[x] = vc[x] + sht->coord(x, itp) * type->mt_radius();
-            complex16 pw_value = exp(complex16(0, Utils::scalar_product(r, gkc))) / sqrt(parameters_.unit_cell()->omega());
+            double_complex pw_value = exp(double_complex(0, Utils::scalar_product(r, gkc))) / sqrt(parameters_.unit_cell()->omega());
             tdiff += abs(pw_value - aw_value);
         }
     }
@@ -544,7 +544,7 @@ void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm)
            ia, tdiff, tdiff / (num_gkvec_loc * sht->num_points()));
 }
 
-inline void K_point::copy_lo_blocks(const complex16* z, complex16* vec)
+inline void K_point::copy_lo_blocks(const double_complex* z, double_complex* vec)
 {
     for (int j = num_gkvec_row(); j < apwlo_basis_size_row(); j++)
     {
@@ -555,9 +555,9 @@ inline void K_point::copy_lo_blocks(const complex16* z, complex16* vec)
     }
 }
 
-inline void K_point::copy_pw_block(const complex16* z, complex16* vec)
+inline void K_point::copy_pw_block(const double_complex* z, double_complex* vec)
 {
-    memset(vec, 0, num_gkvec() * sizeof(complex16));
+    memset(vec, 0, num_gkvec() * sizeof(double_complex));
 
     for (int j = 0; j < num_gkvec_row(); j++) vec[apwlo_basis_descriptors_row(j).igk] = z[j];
 }
@@ -569,7 +569,7 @@ void K_point::generate_fv_states()
 
     fv_states_col_.zero();
 
-    mdarray<complex16, 2> alm(num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    mdarray<double_complex, 2> alm(num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
     
     if (parameters_.esm_type() == full_potential_lapwlo)
     {
@@ -639,7 +639,7 @@ void K_point::generate_spinor_wave_functions()
     }
     else
     {
-        mdarray<complex16, 2> alm(num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
+        mdarray<double_complex, 2> alm(num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
 
         /** \todo generalize for non-collinear case */
         spinor_wave_functions_.zero();
@@ -785,7 +785,7 @@ void K_point::init_gkvec_phase_factors(int ngk)
         {
             double phase = twopi * Utils::scalar_product(gkvec(igk_glob), parameters_.unit_cell()->atom(ia)->position());
 
-            gkvec_phase_factors_(igk, ia) = exp(complex16(0.0, phase));
+            gkvec_phase_factors_(igk, ia) = exp(double_complex(0.0, phase));
         }
     }
 }
@@ -937,14 +937,14 @@ void K_point::distribute_block_cyclic()
     }
 }
 
-//Periodic_function<complex16>* K_point::spinor_wave_function_component(Band* band, int lmax, int ispn, int jloc)
+//Periodic_function<double_complex>* K_point::spinor_wave_function_component(Band* band, int lmax, int ispn, int jloc)
 //{
 //    Timer t("sirius::K_point::spinor_wave_function_component");
 //
 //    int lmmax = Utils::lmmax_by_lmax(lmax);
 //
-//    Periodic_function<complex16, index_order>* func = 
-//        new Periodic_function<complex16, index_order>(parameters_, lmax);
+//    Periodic_function<double_complex, index_order>* func = 
+//        new Periodic_function<double_complex, index_order>(parameters_, lmax);
 //    func->allocate(ylm_component | it_component);
 //    func->zero();
 //    
@@ -957,19 +957,19 @@ void K_point::distribute_block_cyclic()
 //        for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
 //        {
 //            int igk = igkglob(igkloc);
-//            complex16 z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
+//            double_complex z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
 //
 //            // TODO: possilbe optimization with zgemm
 //            for (int ia = 0; ia < parameters_.num_atoms(); ia++)
 //            {
 //                int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-//                complex16 z2 = z1 * gkvec_phase_factors_(igkloc, ia);
+//                double_complex z2 = z1 * gkvec_phase_factors_(igkloc, ia);
 //                
 //                #pragma omp parallel for default(shared)
 //                for (int lm = 0; lm < lmmax; lm++)
 //                {
 //                    int l = l_by_lm_(lm);
-//                    complex16 z3 = z2 * zil_[l] * conj(gkvec_ylm_(lm, igkloc)); 
+//                    double_complex z3 = z2 * zil_[l] * conj(gkvec_ylm_(lm, igkloc)); 
 //                    for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
 //                        func->f_ylm(ir, lm, ia) += z3 * (*sbessel_[igkloc])(ir, l, iat);
 //                }
@@ -1026,7 +1026,7 @@ void K_point::distribute_block_cyclic()
 //    return func;
 //}
 
-//== void K_point::spinor_wave_function_component_mt(int lmax, int ispn, int jloc, mt_functions<complex16>& psilm)
+//== void K_point::spinor_wave_function_component_mt(int lmax, int ispn, int jloc, mt_functions<double_complex>& psilm)
 //== {
 //==     Timer t("sirius::K_point::spinor_wave_function_component_mt");
 //== 
@@ -1040,7 +1040,7 @@ void K_point::distribute_block_cyclic()
 //== 
 //==     //    double fourpi_omega = fourpi / sqrt(parameters_.omega());
 //== 
-//==     //    mdarray<complex16, 2> zm(parameters_.max_num_mt_points(),  num_gkvec_row());
+//==     //    mdarray<double_complex, 2> zm(parameters_.max_num_mt_points(),  num_gkvec_row());
 //== 
 //==     //    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
 //==     //    {
@@ -1051,8 +1051,8 @@ void K_point::distribute_block_cyclic()
 //==     //            for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
 //==     //            {
 //==     //                int igk = igkglob(igkloc);
-//==     //                complex16 z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
-//==     //                complex16 z2 = z1 * gkvec_phase_factors_(igkloc, ia) * zil_[l];
+//==     //                double_complex z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
+//==     //                double_complex z2 = z1 * gkvec_phase_factors_(igkloc, ia) * zil_[l];
 //==     //                for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
 //==     //                    zm(ir, igkloc) = z2 * (*sbessel_[igkloc])(ir, l, iat);
 //==     //            }
@@ -1064,19 +1064,19 @@ void K_point::distribute_block_cyclic()
 //==     //    //for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
 //==     //    //{
 //==     //    //    int igk = igkglob(igkloc);
-//==     //    //    complex16 z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
+//==     //    //    double_complex z1 = spinor_wave_functions_(parameters_.mt_basis_size() + igk, ispn, jloc) * fourpi_omega;
 //== 
 //==     //    //    // TODO: possilbe optimization with zgemm
 //==     //    //    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
 //==     //    //    {
 //==     //    //        int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
-//==     //    //        complex16 z2 = z1 * gkvec_phase_factors_(igkloc, ia);
+//==     //    //        double_complex z2 = z1 * gkvec_phase_factors_(igkloc, ia);
 //==     //    //        
 //==     //    //        #pragma omp parallel for default(shared)
 //==     //    //        for (int lm = 0; lm < lmmax; lm++)
 //==     //    //        {
 //==     //    //            int l = l_by_lm_(lm);
-//==     //    //            complex16 z3 = z2 * zil_[l] * conj(gkvec_ylm_(lm, igkloc)); 
+//==     //    //            double_complex z3 = z2 * zil_[l] * conj(gkvec_ylm_(lm, igkloc)); 
 //==     //    //            for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
 //==     //    //                fylm(ir, lm, ia) += z3 * (*sbessel_[igkloc])(ir, l, iat);
 //==     //    //        }
@@ -1108,8 +1108,8 @@ void K_point::distribute_block_cyclic()
 
 void K_point::test_fv_states(int use_fft)
 {
-    std::vector<complex16> v1;
-    std::vector<complex16> v2;
+    std::vector<double_complex> v1;
+    std::vector<double_complex> v2;
     
     if (use_fft == 0) 
     {
@@ -1150,7 +1150,7 @@ void K_point::test_fv_states(int use_fft)
        
         for (int j2 = 0; j2 < parameters_.spl_fv_states_row().local_size(); j2++)
         {
-            complex16 zsum(0, 0);
+            double_complex zsum(0, 0);
             for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
             {
                 int offset_wf = parameters_.unit_cell()->atom(ia)->offset_wf();
@@ -1205,7 +1205,7 @@ void K_point::test_fv_states(int use_fft)
                }
             }
 
-            if (parameters_.spl_fv_states_col(j1) == parameters_.spl_fv_states_row(j2)) zsum = zsum - complex16(1, 0);
+            if (parameters_.spl_fv_states_col(j1) == parameters_.spl_fv_states_row(j2)) zsum = zsum - double_complex(1, 0);
            
             maxerr = std::max(maxerr, abs(zsum));
         }
@@ -1224,8 +1224,8 @@ void K_point::test_spinor_wave_functions(int use_fft)
 {
     if (num_ranks() > 1) error_local(__FILE__, __LINE__, "test of spinor wave functions on multiple ranks is not implemented");
 
-    std::vector<complex16> v1[2];
-    std::vector<complex16> v2;
+    std::vector<double_complex> v1[2];
+    std::vector<double_complex> v2;
 
     if (use_fft == 0 || use_fft == 1) v2.resize(fft_->size());
     
@@ -1273,7 +1273,7 @@ void K_point::test_spinor_wave_functions(int use_fft)
        
         for (int j2 = 0; j2 < parameters_.num_bands(); j2++)
         {
-            complex16 zsum(0, 0);
+            double_complex zsum(0, 0);
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
                 for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
@@ -1341,7 +1341,7 @@ void K_point::test_spinor_wave_functions(int use_fft)
                }
            }
 
-           zsum = (j1 == j2) ? zsum - complex16(1.0, 0.0) : zsum;
+           zsum = (j1 == j2) ? zsum - double_complex(1.0, 0.0) : zsum;
            maxerr = std::max(maxerr, abs(zsum));
         }
     }
@@ -1370,7 +1370,7 @@ void K_point::save(int id)
     
     Platform::barrier(parameters_.mpi_grid().communicator(1 << _dim_col_));
     
-    mdarray<complex16, 2> wfj(NULL, wf_size(), parameters_.num_spins()); 
+    mdarray<double_complex, 2> wfj(NULL, wf_size(), parameters_.num_spins()); 
     for (int j = 0; j < parameters_.num_bands(); j++)
     {
         int rank = parameters_.spl_spinor_wf_col().location(_splindex_rank_, j);
@@ -1413,7 +1413,7 @@ void K_point::load(HDF5_tree h5in, int id)
 //==     
 //==     Platform::barrier(parameters_.mpi_grid().communicator(1 << _dim_col_));
 //==     
-//==     mdarray<complex16, 2> wfj(NULL, mtgk_size(), parameters_.num_spins()); 
+//==     mdarray<double_complex, 2> wfj(NULL, mtgk_size(), parameters_.num_spins()); 
 //==     for (int j = 0; j < parameters_.num_bands(); j++)
 //==     {
 //==         int rank = parameters_.spl_spinor_wf_col().location(_splindex_rank_, j);
@@ -1446,7 +1446,7 @@ void K_point::load(HDF5_tree h5in, int id)
 //==                                           parameters_.spl_spinor_wf_col().local_size());
 //==     spinor_wave_functions_.allocate();
 //== 
-//==     mdarray<complex16, 2> wfj(NULL, mtgk_size(), parameters_.num_spins()); 
+//==     mdarray<double_complex, 2> wfj(NULL, mtgk_size(), parameters_.num_spins()); 
 //==     for (int jloc = 0; jloc < parameters_.spl_spinor_wf_col().local_size(); jloc++)
 //==     {
 //==         int j = parameters_.spl_spinor_wf_col(jloc);
@@ -1455,7 +1455,7 @@ void K_point::load(HDF5_tree h5in, int id)
 //==     }
 //== }
 
-void K_point::get_fv_eigen_vectors(mdarray<complex16, 2>& fv_evec)
+void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec)
 {
     assert(fv_evec.size(0) >= apwlo_basis_size());
     assert(fv_evec.size(1) == parameters_.num_fv_states());
@@ -1475,7 +1475,7 @@ void K_point::get_fv_eigen_vectors(mdarray<complex16, 2>& fv_evec)
                         parameters_.mpi_grid().communicator((1 << _dim_row_) | (1 << _dim_col_)));
 }
 
-void K_point::get_sv_eigen_vectors(mdarray<complex16, 2>& sv_evec)
+void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
 {
     assert(sv_evec.size(0) == parameters_.num_bands());
     assert(sv_evec.size(1) == parameters_.num_bands());
@@ -1504,7 +1504,7 @@ void K_point::get_sv_eigen_vectors(mdarray<complex16, 2>& sv_evec)
             {
                 memcpy(&sv_evec(ispn * parameters_.num_fv_states(), ispn * parameters_.num_fv_states() + i), 
                        &sv_eigen_vectors_(0, ispn * parameters_.num_fv_states() + i), 
-                       sv_eigen_vectors_.size(0) * sizeof(complex16));
+                       sv_eigen_vectors_.size(0) * sizeof(double_complex));
             }
         }
     }
@@ -1512,7 +1512,7 @@ void K_point::get_sv_eigen_vectors(mdarray<complex16, 2>& sv_evec)
     {
         assert(sv_eigen_vectors_.size(0) == parameters_.num_bands());
         for (int i = 0; i < parameters_.num_bands(); i++)
-            memcpy(&sv_evec(0, i), &sv_eigen_vectors_(0, i), sv_eigen_vectors_.size(0) * sizeof(complex16));
+            memcpy(&sv_evec(0, i), &sv_eigen_vectors_(0, i), sv_eigen_vectors_.size(0) * sizeof(double_complex));
     }
     
     Platform::allreduce(sv_evec.get_ptr(), (int)sv_evec.size(), 
@@ -1532,20 +1532,20 @@ void K_point::distribute_fv_states_row()
         int root_col = parameters_.spl_fv_states_col().location(_splindex_rank_, ist);
         
         // find column MPI rank which stores this fv state and copy fv state if this rank stores it
-        if (rank_col() == root_col) memcpy(&fv_states_row_(0, i), &fv_states_col_(0, offset_col), wf_size() * sizeof(complex16));
+        if (rank_col() == root_col) memcpy(&fv_states_row_(0, i), &fv_states_col_(0, offset_col), wf_size() * sizeof(double_complex));
         
         // send fv state to all column MPI ranks; communication happens between the columns of the MPI grid
         Platform::bcast(&fv_states_row_(0, i), wf_size(), parameters_.mpi_grid().communicator(1 << _dim_col_), root_col); 
     }
 }
 
-void K_point::generate_beta_pw(complex16* beta_pw__, int ia)
+void K_point::generate_beta_pw(double_complex* beta_pw__, int ia)
 {
     Timer t("sirius::K_point::generate_beta_pw");
     auto atom_type = parameters_.unit_cell()->atom(ia)->type();
     int iat = atom_type->id();
     
-    mdarray<complex16, 2> beta_pw(beta_pw__, num_gkvec(), atom_type->mt_basis_size());
+    mdarray<double_complex, 2> beta_pw(beta_pw__, num_gkvec(), atom_type->mt_basis_size());
     
     for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
     {
@@ -1553,7 +1553,7 @@ void K_point::generate_beta_pw(complex16* beta_pw__, int ia)
         //== int lm = atom_type->indexb(xi).lm;
         //== int idxrf = atom_type->indexb(xi).idxrf;
 
-        //== complex16 z = pow(complex16(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
+        //== double_complex z = pow(double_complex(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
         for (int igk = 0; igk < num_gkvec(); igk++)
         {
             //== beta_pw(igk, xi) = z * gkvec_ylm_(lm, igk) * beta_radial_integrals_(igk, idxrf, iat) * 
@@ -1563,12 +1563,12 @@ void K_point::generate_beta_pw(complex16* beta_pw__, int ia)
     }
 }
 
-void K_point::generate_beta_pw(complex16* beta_pw__, Atom_type* atom_type)
+void K_point::generate_beta_pw(double_complex* beta_pw__, Atom_type* atom_type)
 {
     Timer t("sirius::K_point::generate_beta_pw");
     int iat = atom_type->id();
     
-    mdarray<complex16, 2> beta_pw(beta_pw__, num_gkvec(), atom_type->mt_basis_size());
+    mdarray<double_complex, 2> beta_pw(beta_pw__, num_gkvec(), atom_type->mt_basis_size());
     
     for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
     {

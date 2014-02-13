@@ -1,11 +1,11 @@
 template <typename T>
-void Spheric_function_gradient<T>::gradient(Spheric_function<complex16>& f)
+void Spheric_function_gradient<T>::gradient(Spheric_function<double_complex>& f)
 {
     for (int i = 0; i < 3; i++) grad_[i]->zero();
 
     int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
 
-    Spline<complex16> s(f.radial_domain_size(), f.radial_grid());
+    Spline<double_complex> s(f.radial_domain_size(), f.radial_grid());
 
     for (int l = 0; l <= lmax; l++)
     {
@@ -63,8 +63,8 @@ void Spheric_function_gradient<T>::gradient(Spheric_function<complex16>& f)
         }
     }
 
-    complex16 d1(1.0 / sqrt(2.0), 0);
-    complex16 d2(0, 1.0 / sqrt(2.0));
+    double_complex d1(1.0 / sqrt(2.0), 0);
+    double_complex d2(0, 1.0 / sqrt(2.0));
 
     if (f.radial_domain_idx() == 0)
     {
@@ -72,8 +72,8 @@ void Spheric_function_gradient<T>::gradient(Spheric_function<complex16>& f)
         {
             for (int ir = 0; ir < f.radial_domain_size(); ir++)
             {
-                complex16 g_p = (*grad_[0])(ir, lm);
-                complex16 g_m = (*grad_[1])(ir, lm);
+                double_complex g_p = (*grad_[0])(ir, lm);
+                double_complex g_m = (*grad_[1])(ir, lm);
                 (*grad_[0])(ir, lm) = d1 * (g_m - g_p);
                 (*grad_[1])(ir, lm) = d2 * (g_m + g_p);
             }
@@ -85,8 +85,8 @@ void Spheric_function_gradient<T>::gradient(Spheric_function<complex16>& f)
         {
             for (int lm = 0; lm < f.angular_domain_size(); lm++)
             {
-                complex16 g_p = (*grad_[0])(lm, ir);
-                complex16 g_m = (*grad_[1])(lm, ir);
+                double_complex g_p = (*grad_[0])(lm, ir);
+                double_complex g_m = (*grad_[1])(lm, ir);
                 (*grad_[0])(lm, ir) = d1 * (g_m - g_p);
                 (*grad_[1])(lm, ir) = d2 * (g_m + g_p);
             }
@@ -97,8 +97,8 @@ void Spheric_function_gradient<T>::gradient(Spheric_function<complex16>& f)
 template <typename T>
 void Spheric_function_gradient<T>::gradient(Spheric_function<double>& f)
 {
-    Spheric_function<complex16> zf(f, true);
-    Spheric_function_gradient<complex16> zg(zf);
+    Spheric_function<double_complex> zf(f, true);
+    Spheric_function_gradient<double_complex> zg(zf);
 
     for (int i = 0; i < 3; i++) zg[i].sh_convert(*grad_[i]);
 }

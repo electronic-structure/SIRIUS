@@ -33,13 +33,13 @@ Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_
     {
         case full_potential_lapwlo:
         {
-            gaunt_coefs_ = new Gaunt_coefficients<complex16>(parameters_.lmax_apw(), parameters_.lmax_rho(), 
+            gaunt_coefs_ = new Gaunt_coefficients<double_complex>(parameters_.lmax_apw(), parameters_.lmax_rho(), 
                                                              parameters_.lmax_apw());
             break;
         }
         case full_potential_pwlo:
         {
-            gaunt_coefs_ = new Gaunt_coefficients<complex16>(parameters_.lmax_pw(), parameters_.lmax_rho(), 
+            gaunt_coefs_ = new Gaunt_coefficients<double_complex>(parameters_.lmax_pw(), parameters_.lmax_rho(), 
                                                              parameters_.lmax_pw());
             break;
         }
@@ -183,9 +183,9 @@ void Density::initial_density()
             }
         }
 
-        std::vector<complex16> v = rl->make_periodic_function(rho_radial_integrals, rl->num_gvec());
+        std::vector<double_complex> v = rl->make_periodic_function(rho_radial_integrals, rl->num_gvec());
 
-        memcpy(&rho_->f_pw(0), &v[0], rl->num_gvec() * sizeof(complex16));
+        memcpy(&rho_->f_pw(0), &v[0], rl->num_gvec() * sizeof(double_complex));
 
         if (fabs(rho_->f_pw(0) * uc->omega() - uc->num_valence_electrons()) > 1e-6)
         {
@@ -216,14 +216,14 @@ void Density::initial_density()
 }
 
 void Density::add_kpoint_contribution_mt(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
-                                         mdarray<complex16, 4>& mt_complex_density_matrix)
+                                         mdarray<double_complex, 4>& mt_complex_density_matrix)
 {
     Timer t("sirius::Density::add_kpoint_contribution_mt");
     
     if (occupied_bands.size() == 0) return;
    
-    mdarray<complex16, 3> wf1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size(), parameters_.num_spins());
-    mdarray<complex16, 3> wf2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size(), parameters_.num_spins());
+    mdarray<double_complex, 3> wf1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size(), parameters_.num_spins());
+    mdarray<double_complex, 3> wf2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size(), parameters_.num_spins());
 
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
@@ -244,16 +244,16 @@ void Density::add_kpoint_contribution_mt(K_point* kp, std::vector< std::pair<int
 
         for (int j = 0; j < mt_complex_density_matrix.size(2); j++)
         {
-            blas<cpu>::gemm(0, 1, mt_basis_size, mt_basis_size, (int)occupied_bands.size(), complex16(1, 0), 
+            blas<cpu>::gemm(0, 1, mt_basis_size, mt_basis_size, (int)occupied_bands.size(), double_complex(1, 0), 
                             &wf1(0, 0, dmat_spins_[j].first), wf1.ld(), 
-                            &wf2(0, 0, dmat_spins_[j].second), wf2.ld(), complex16(1, 0), 
+                            &wf2(0, 0, dmat_spins_[j].second), wf2.ld(), double_complex(1, 0), 
                             &mt_complex_density_matrix(0, 0, j, ia), mt_complex_density_matrix.ld());
         }
     }
 }
 
 template <int num_mag_dims> 
-void Density::reduce_zdens(Atom_type* atom_type, int ialoc, mdarray<complex16, 4>& zdens, mdarray<double, 3>& mt_density_matrix)
+void Density::reduce_zdens(Atom_type* atom_type, int ialoc, mdarray<double_complex, 4>& zdens, mdarray<double, 3>& mt_density_matrix)
 {
     mt_density_matrix.zero();
     
@@ -275,7 +275,7 @@ void Density::reduce_zdens(Atom_type* atom_type, int ialoc, mdarray<complex16, 4
                     for (int k = 0; k < gaunt_coefs_->num_gaunt(lm1, lm2); k++)
                     {
                         int lm3 = gaunt_coefs_->gaunt(lm1, lm2, k).lm3;
-                        complex16 gc = gaunt_coefs_->gaunt(lm1, lm2, k).coef;
+                        double_complex gc = gaunt_coefs_->gaunt(lm1, lm2, k).coef;
                         switch (num_mag_dims)
                         {
                             case 3:
@@ -314,26 +314,26 @@ std::vector< std::pair<int, double> > Density::get_occupied_bands_list(Band* ban
 
 //== // memory-conservative implementation
 //== void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
-//==                                          mdarray<complex16, 4>& pp_complex_density_matrix)
+//==                                          mdarray<double_complex, 4>& pp_complex_density_matrix)
 //== {
 //==     Timer t("sirius::Density::add_kpoint_contribution_pp");
 //== 
 //==     if (occupied_bands.size() == 0) return;
 //== 
 //==     // take only occupied wave-functions
-//==     mdarray<complex16, 2> wfs(kp->num_gkvec(), (int)occupied_bands.size());
+//==     mdarray<double_complex, 2> wfs(kp->num_gkvec(), (int)occupied_bands.size());
 //==     for (int i = 0; i < (int)occupied_bands.size(); i++)
 //==     {
-//==         memcpy(&wfs(0, i), &kp->spinor_wave_function(0, 0, occupied_bands[i].first), kp->num_gkvec() * sizeof(complex16));
+//==         memcpy(&wfs(0, i), &kp->spinor_wave_function(0, 0, occupied_bands[i].first), kp->num_gkvec() * sizeof(double_complex));
 //==     }
 //== 
-//==     mdarray<complex16, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
+//==     mdarray<double_complex, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
 //== 
-//==     mdarray<complex16, 2> beta_psi(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+//==     mdarray<double_complex, 2> beta_psi(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
 //== 
 //==     // auxiliary arrays
-//==     mdarray<complex16, 2> bp1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
-//==     mdarray<complex16, 2> bp2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+//==     mdarray<double_complex, 2> bp1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+//==     mdarray<double_complex, 2> bp2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
 //== 
 //==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
 //==     {   
@@ -355,24 +355,24 @@ std::vector< std::pair<int, double> > Density::get_occupied_bands_list(Band* ban
 //==             }
 //==         }
 //== 
-//==         blas<cpu>::gemm(0, 1, nbf, nbf, (int)occupied_bands.size(), complex16(1, 0), &bp1(0, 0), bp1.ld(),
-//==                         &bp2(0, 0), bp2.ld(), complex16(1, 0), &pp_complex_density_matrix(0, 0, 0, ia), pp_complex_density_matrix.ld());
+//==         blas<cpu>::gemm(0, 1, nbf, nbf, (int)occupied_bands.size(), double_complex(1, 0), &bp1(0, 0), bp1.ld(),
+//==                         &bp2(0, 0), bp2.ld(), double_complex(1, 0), &pp_complex_density_matrix(0, 0, 0, ia), pp_complex_density_matrix.ld());
 //==     }
 //== }
 
 // memory-greedy implementation
 void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
-                                         mdarray<complex16, 4>& pp_complex_density_matrix)
+                                         mdarray<double_complex, 4>& pp_complex_density_matrix)
 {
     Timer t("sirius::Density::add_kpoint_contribution_pp");
 
     if (occupied_bands.size() == 0) return;
 
     // take only occupied wave-functions
-    mdarray<complex16, 2> wfs(kp->num_gkvec(), (int)occupied_bands.size());
+    mdarray<double_complex, 2> wfs(kp->num_gkvec(), (int)occupied_bands.size());
     for (int i = 0; i < (int)occupied_bands.size(); i++)
     {
-        memcpy(&wfs(0, i), &kp->spinor_wave_function(0, 0, occupied_bands[i].first), kp->num_gkvec() * sizeof(complex16));
+        memcpy(&wfs(0, i), &kp->spinor_wave_function(0, 0, occupied_bands[i].first), kp->num_gkvec() * sizeof(double_complex));
     }
 
     int nbf_tot = 0;
@@ -385,10 +385,10 @@ void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int
     }
 
     // <G+k|\beta_{\xi}^{\alpha}>
-    mdarray<complex16, 2> beta_pw(kp->num_gkvec(), nbf_tot);
+    mdarray<double_complex, 2> beta_pw(kp->num_gkvec(), nbf_tot);
 
     // <\beta_{\xi}^{\alpha}|\Psi_j>
-    mdarray<complex16, 2> beta_psi(nbf_tot, (int)occupied_bands.size());
+    mdarray<double_complex, 2> beta_psi(nbf_tot, (int)occupied_bands.size());
     
     // collect all |beta>
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
@@ -402,8 +402,8 @@ void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int
     #pragma omp parallel
     {
         // auxiliary arrays
-        mdarray<complex16, 2> bp1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
-        mdarray<complex16, 2> bp2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+        mdarray<double_complex, 2> bp1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+        mdarray<double_complex, 2> bp2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
         #pragma omp for
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {   
@@ -419,8 +419,8 @@ void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int
                 }
             }
 
-            blas<cpu>::gemm(0, 1, nbf, nbf, (int)occupied_bands.size(), complex16(1, 0), &bp1(0, 0), bp1.ld(),
-                            &bp2(0, 0), bp2.ld(), complex16(1, 0), &pp_complex_density_matrix(0, 0, 0, ia), 
+            blas<cpu>::gemm(0, 1, nbf, nbf, (int)occupied_bands.size(), double_complex(1, 0), &bp1(0, 0), bp1.ld(),
+                            &bp2(0, 0), bp2.ld(), double_complex(1, 0), &pp_complex_density_matrix(0, 0, 0, ia), 
                             pp_complex_density_matrix.ld());
         }
     }
@@ -440,23 +440,23 @@ extern "C" void copy_beta_psi_gpu(int num_beta_atot,
                                   int stream_id);
 
 void Density::add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
-                                             mdarray<complex16, 4>& pp_complex_density_matrix)
+                                             mdarray<double_complex, 4>& pp_complex_density_matrix)
 {
     Timer t("sirius::Density::add_kpoint_contribution_pp_gpu");
 
     if (occupied_bands.size() == 0) return;
 
     // take only occupied wave-functions
-    mdarray<complex16, 2> wfs(kp->num_gkvec(), (int)occupied_bands.size());
+    mdarray<double_complex, 2> wfs(kp->num_gkvec(), (int)occupied_bands.size());
     for (int i = 0; i < (int)occupied_bands.size(); i++)
     {
-        memcpy(&wfs(0, i), &kp->spinor_wave_function(0, 0, occupied_bands[i].first), kp->num_gkvec() * sizeof(complex16));
+        memcpy(&wfs(0, i), &kp->spinor_wave_function(0, 0, occupied_bands[i].first), kp->num_gkvec() * sizeof(double_complex));
     }
     wfs.allocate_on_device();
     wfs.copy_to_device();
 
     // <G+k|\beta_{\xi}^{\alpha}>
-    mdarray<complex16, 2> beta_pw(NULL, kp->num_gkvec(), parameters_.unit_cell()->num_beta_a());
+    mdarray<double_complex, 2> beta_pw(NULL, kp->num_gkvec(), parameters_.unit_cell()->num_beta_a());
     beta_pw.allocate_on_device();
     
     kp->beta_pw().allocate_on_device();
@@ -486,7 +486,7 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair
     kp->beta_pw().deallocate_on_device();
 
     // <\beta_{\xi}^{\alpha}|\Psi_j>
-    mdarray<complex16, 2> beta_psi(NULL, parameters_.unit_cell()->num_beta_a(), (int)occupied_bands.size());
+    mdarray<double_complex, 2> beta_psi(NULL, parameters_.unit_cell()->num_beta_a(), (int)occupied_bands.size());
     beta_psi.allocate_on_device();
 
     // compute <beta|Psi>
@@ -502,13 +502,13 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair
     wo.allocate_on_device();
     wo.copy_to_device();
     
-    complex16 zone(1, 0);
+    double_complex zone(1, 0);
     #pragma omp parallel
     {
         int thread_id = Platform::thread_id();
         // auxiliary arrays
-        mdarray<complex16, 2> bp1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
-        mdarray<complex16, 2> bp2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+        mdarray<double_complex, 2> bp1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+        mdarray<double_complex, 2> bp2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
         bp1.allocate_on_device();
         bp2.allocate_on_device();
         #pragma omp for
@@ -562,7 +562,7 @@ void Density::add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int
         mdarray<double, 2> it_density_matrix(fft_->size(), parameters_.num_mag_dims() + 1);
         it_density_matrix.zero();
         
-        mdarray<complex16, 2> wfit(fft_->size(), parameters_.num_spins());
+        mdarray<double_complex, 2> wfit(fft_->size(), parameters_.num_spins());
 
         #pragma omp for
         for (int i = 0; i < (int)occupied_bands.size(); i++)
@@ -584,7 +584,7 @@ void Density::add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int
                 {
                     for (int ir = 0; ir < fft_->size(); ir++)
                     {
-                        complex16 z = wfit(ir, 0) * conj(wfit(ir, 1)) * w;
+                        double_complex z = wfit(ir, 0) * conj(wfit(ir, 1)) * w;
                         it_density_matrix(ir, 2) += 2.0 * real(z);
                         it_density_matrix(ir, 3) -= 2.0 * imag(z);
                     }
@@ -644,7 +644,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
 
     // complex density matrix
-    mdarray<complex16, 4> pp_complex_density_matrix(parameters_.unit_cell()->max_mt_basis_size(), 
+    mdarray<double_complex, 4> pp_complex_density_matrix(parameters_.unit_cell()->max_mt_basis_size(), 
                                                     parameters_.unit_cell()->max_mt_basis_size(),
                                                     num_zdmat, parameters_.unit_cell()->num_atoms());
     pp_complex_density_matrix.zero();
@@ -663,11 +663,11 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 
     auto rl = parameters_.reciprocal_lattice();
 
-    std::vector<complex16> f_pw(rl->num_gvec(), complex16(0, 0));
+    std::vector<double_complex> f_pw(rl->num_gvec(), double_complex(0, 0));
     
     #pragma omp parallel
     {
-        std::vector<complex16> f_pw_pt(rl->spl_num_gvec().local_size(), complex16(0, 0));
+        std::vector<double_complex> f_pw_pt(rl->spl_num_gvec().local_size(), double_complex(0, 0));
 
         #pragma omp for
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
@@ -714,7 +714,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     //{
     //    auto type = parameters_.unit_cell()->atom_type(iat);
     //    int nbf = type->mt_basis_size();
-    //    mdarray<complex16, 2> tmp(rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2);
+    //    mdarray<double_complex, 2> tmp(rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2);
     //    tmp.zero();
     //    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     //    {
@@ -827,7 +827,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
 
     // complex density matrix
-    mdarray<complex16, 4> pp_complex_density_matrix(parameters_.unit_cell()->max_mt_basis_size(), 
+    mdarray<double_complex, 4> pp_complex_density_matrix(parameters_.unit_cell()->max_mt_basis_size(), 
                                                     parameters_.unit_cell()->max_mt_basis_size(),
                                                     num_zdmat, parameters_.unit_cell()->num_atoms());
     pp_complex_density_matrix.allocate_on_device();
@@ -865,8 +865,8 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     gvec.allocate_on_device();
     gvec.copy_to_device();
 
-    std::vector<complex16> rho_pw(rl->num_gvec(), complex16(0, 0));
-    mdarray<complex16, 1> rho_pw_gpu(&rho_pw[rl->spl_num_gvec().global_offset()], rl->spl_num_gvec().local_size());
+    std::vector<double_complex> rho_pw(rl->num_gvec(), double_complex(0, 0));
+    mdarray<double_complex, 1> rho_pw_gpu(&rho_pw[rl->spl_num_gvec().global_offset()], rl->spl_num_gvec().local_size());
     rho_pw_gpu.allocate_on_device();
     rho_pw_gpu.zero_on_device();
 
@@ -875,7 +875,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
         auto type = parameters_.unit_cell()->atom_type(iat);
         int nbf = type->mt_basis_size();
 
-        mdarray<complex16, 2> d_mtrx_packed(type->num_atoms(), nbf * (nbf + 1) / 2);
+        mdarray<double_complex, 2> d_mtrx_packed(type->num_atoms(), nbf * (nbf + 1) / 2);
         mdarray<double, 2> atom_pos(type->num_atoms(), 3);
         for (int i = 0; i < type->num_atoms(); i++)
         {
@@ -895,7 +895,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
         atom_pos.allocate_on_device();
         atom_pos.copy_to_device();
 
-        mdarray<complex16, 2> d_mtrx_pw(NULL, rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2);
+        mdarray<double_complex, 2> d_mtrx_pw(NULL, rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2);
         d_mtrx_pw.allocate_on_device();
         d_mtrx_pw.zero_on_device();
 
@@ -938,7 +938,7 @@ void Density::generate_valence_density_mt(K_set& ks)
     int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
 
     // complex density matrix
-    mdarray<complex16, 4> mt_complex_density_matrix(parameters_.unit_cell()->max_mt_basis_size(), 
+    mdarray<double_complex, 4> mt_complex_density_matrix(parameters_.unit_cell()->max_mt_basis_size(), 
                                                     parameters_.unit_cell()->max_mt_basis_size(),
                                                     num_zdmat, parameters_.unit_cell()->num_atoms());
     mt_complex_density_matrix.zero();
@@ -953,7 +953,7 @@ void Density::generate_valence_density_mt(K_set& ks)
         add_kpoint_contribution_mt(ks[ik], occupied_bands, mt_complex_density_matrix);
     }
     
-    mdarray<complex16, 4> mt_complex_density_matrix_loc(parameters_.unit_cell()->max_mt_basis_size(), 
+    mdarray<double_complex, 4> mt_complex_density_matrix_loc(parameters_.unit_cell()->max_mt_basis_size(), 
                                                         parameters_.unit_cell()->max_mt_basis_size(),
                                                         num_zdmat, parameters_.unit_cell()->spl_num_atoms().local_size(0));
    
@@ -975,7 +975,7 @@ void Density::generate_valence_density_mt(K_set& ks)
     {
         Timer* t3 = new Timer("sirius::Density::generate:om");
         
-        mdarray<complex16, 4> occupation_matrix(16, 16, 2, 2); 
+        mdarray<double_complex, 4> occupation_matrix(16, 16, 2, 2); 
         
         for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
         {
@@ -1199,7 +1199,7 @@ void Density::generate_pseudo_core_charge_density()
         }
     }
 
-    std::vector<complex16> v = rl->make_periodic_function(rho_core_radial_integrals, rl->num_gvec());
+    std::vector<double_complex> v = rl->make_periodic_function(rho_core_radial_integrals, rl->num_gvec());
     
     fft_->input(rl->num_gvec(), rl->fft_index(), &v[0]);
     fft_->transform(1);
@@ -1377,7 +1377,7 @@ void Density::generate(K_set& ks)
 //            {
 //                double vgc[3];
 //                parameters_.get_coordinates<cartesian, reciprocal>(parameters_.gvec(ig), vgc);
-//                val_it += real(rho_->f_pw(ig) * exp(complex16(0.0, Utils::scalar_product(vc, vgc))));
+//                val_it += real(rho_->f_pw(ig) * exp(double_complex(0.0, Utils::scalar_product(vc, vgc))));
 //            }
 //
 //            double val_mt = 0.0;

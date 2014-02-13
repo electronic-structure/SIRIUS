@@ -150,9 +150,9 @@ class Gaunt_coefficients
             \f]
             Result is assumed to be complex.
         */
-        inline complex16 sum_L3_gaunt(int lm1, int lm2, complex16* v)
+        inline double_complex sum_L3_gaunt(int lm1, int lm2, double_complex* v)
         {
-            complex16 zsum(0, 0);
+            double_complex zsum(0, 0);
             for (int k = 0; k < (int)gaunt_packed_L3_(lm1, lm2).size(); k++)
                 zsum += gaunt_packed_L3_(lm1, lm2)[k].coef * v[gaunt_packed_L3_(lm1, lm2)[k].lm3];
             return zsum;

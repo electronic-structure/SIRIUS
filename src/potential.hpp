@@ -32,7 +32,7 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
 
     // precompute i^l
     zil_.resize(lmax_ + 1);
-    for (int l = 0; l <= lmax_; l++) zil_[l] = pow(complex16(0, 1), l);
+    for (int l = 0; l <= lmax_; l++) zil_[l] = pow(double_complex(0, 1), l);
     
     zilm_.resize(Utils::lmmax(lmax_));
     for (int l = 0, lm = 0; l <= lmax_; l++)
@@ -158,8 +158,8 @@ void Potential::update()
     }
 }
 
-void Potential::poisson_vmt(mdarray<Spheric_function<complex16>*, 1>& rho_ylm, mdarray<Spheric_function<complex16>*, 1>& vh_ylm, 
-                            mdarray<complex16, 2>& qmt)
+void Potential::poisson_vmt(mdarray<Spheric_function<double_complex>*, 1>& rho_ylm, mdarray<Spheric_function<double_complex>*, 1>& vh_ylm, 
+                            mdarray<double_complex, 2>& qmt)
 {
     Timer t("sirius::Potential::poisson:vmt");
 
@@ -174,10 +174,10 @@ void Potential::poisson_vmt(mdarray<Spheric_function<complex16>*, 1>& rho_ylm, m
        
         #pragma omp parallel default(shared)
         {
-            std::vector<complex16> g1;
-            std::vector<complex16> g2;
+            std::vector<double_complex> g1;
+            std::vector<double_complex> g2;
 
-            Spline<complex16> rholm(nmtp, parameters_.unit_cell()->atom(ia)->type()->radial_grid());
+            Spline<double_complex> rholm(nmtp, parameters_.unit_cell()->atom(ia)->type()->radial_grid());
 
             #pragma omp for
             for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
@@ -200,7 +200,7 @@ void Potential::poisson_vmt(mdarray<Spheric_function<complex16>*, 1>& rho_ylm, m
                     {
                         double r = parameters_.unit_cell()->atom(ia)->type()->radial_grid(ir);
 
-                        complex16 vlm = (1.0 - pow(r / R, 2 * l + 1)) * g1[ir] / pow(r, l + 1) +
+                        double_complex vlm = (1.0 - pow(r / R, 2 * l + 1)) * g1[ir] / pow(r, l + 1) +
                                         (g2[nmtp - 1] - g2[ir]) * pow(r, l) - 
                                         (g1[nmtp - 1] - g1[ir]) * pow(r, l) * d1;
 
@@ -224,13 +224,13 @@ void Potential::poisson_vmt(mdarray<Spheric_function<complex16>*, 1>& rho_ylm, m
     Platform::allreduce(&qmt(0, 0), (int)qmt.size());
 }
 
-void Potential::poisson_sum_G(complex16* fpw, mdarray<double, 3>& fl, mdarray<complex16, 2>& flm)
+void Potential::poisson_sum_G(double_complex* fpw, mdarray<double, 3>& fl, mdarray<double_complex, 2>& flm)
 {
     Timer t("sirius::Potential::poisson_sum_G");
     
     flm.zero();
 
-    mdarray<complex16, 2> zm1(parameters_.reciprocal_lattice()->spl_num_gvec().local_size(), parameters_.lmmax_rho());
+    mdarray<double_complex, 2> zm1(parameters_.reciprocal_lattice()->spl_num_gvec().local_size(), parameters_.lmmax_rho());
 
     #pragma omp parallel for default(shared)
     for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
@@ -239,7 +239,7 @@ void Potential::poisson_sum_G(complex16* fpw, mdarray<double, 3>& fl, mdarray<co
             zm1(igloc, lm) = parameters_.reciprocal_lattice()->gvec_ylm(lm, igloc) * conj(fpw[parameters_.reciprocal_lattice()->spl_num_gvec(igloc)] * zilm_[lm]);
     }
 
-    mdarray<complex16, 2> zm2(parameters_.reciprocal_lattice()->spl_num_gvec().local_size(), parameters_.unit_cell()->num_atoms());
+    mdarray<double_complex, 2> zm2(parameters_.reciprocal_lattice()->spl_num_gvec().local_size(), parameters_.unit_cell()->num_atoms());
 
     for (int l = 0; l <= parameters_.lmax_rho(); l++)
     {
@@ -263,11 +263,11 @@ void Potential::poisson_sum_G(complex16* fpw, mdarray<double, 3>& fl, mdarray<co
     Platform::allreduce(&flm(0, 0), (int)flm.size());
 }
 
-void Potential::poisson_add_pseudo_pw(mdarray<complex16, 2>& qmt, mdarray<complex16, 2>& qit, complex16* rho_pw)
+void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw)
 {
     Timer t("sirius::Potential::poisson_pw");
-    std::vector<complex16> pseudo_pw(parameters_.reciprocal_lattice()->num_gvec());
-    memset(&pseudo_pw[0], 0, parameters_.reciprocal_lattice()->num_gvec() * sizeof(complex16));
+    std::vector<double_complex> pseudo_pw(parameters_.reciprocal_lattice()->num_gvec());
+    memset(&pseudo_pw[0], 0, parameters_.reciprocal_lattice()->num_gvec() * sizeof(double_complex));
     
     // The following term is added to the plane-wave coefficients of the charge density:
     // Integrate[SphericalBesselJ[l,a*x]*p[x,R]*x^2,{x,0,R},Assumptions->{l>=0,n>=0,R>0,a>0}] / 
@@ -278,7 +278,7 @@ void Potential::poisson_add_pseudo_pw(mdarray<complex16, 2>& qmt, mdarray<comple
     
     #pragma omp parallel default(shared)
     {
-        std::vector<complex16> pseudo_pw_pt(parameters_.reciprocal_lattice()->spl_num_gvec().local_size(), complex16(0, 0));
+        std::vector<double_complex> pseudo_pw_pt(parameters_.reciprocal_lattice()->spl_num_gvec().local_size(), double_complex(0, 0));
 
         #pragma omp for
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
@@ -288,7 +288,7 @@ void Potential::poisson_add_pseudo_pw(mdarray<complex16, 2>& qmt, mdarray<comple
             double R = parameters_.unit_cell()->atom(ia)->mt_radius();
 
             // compute G-vector independent prefactor
-            std::vector<complex16> zp(parameters_.lmmax_rho());
+            std::vector<double_complex> zp(parameters_.lmmax_rho());
             for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
             {
                 for (int m = -l; m <= l; m++, lm++)
@@ -301,17 +301,17 @@ void Potential::poisson_add_pseudo_pw(mdarray<complex16, 2>& qmt, mdarray<comple
                 
                 double gR = parameters_.reciprocal_lattice()->gvec_len(ig) * R;
                 
-                complex16 zt = fourpi * conj(parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia)) / parameters_.unit_cell()->omega();
+                double_complex zt = fourpi * conj(parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia)) / parameters_.unit_cell()->omega();
 
                 // TODO: add to documentation
                 // (2^(1/2+n) Sqrt[\[Pi]] R^-l (a R)^(-(3/2)-n) BesselJ[3/2+l+n,a R] * 
                 //   Gamma[5/2+l+n])/Gamma[3/2+l] and BesselJ is expressed in terms of SphericalBesselJ
                 if (ig)
                 {
-                    complex16 zt2(0, 0);
+                    double_complex zt2(0, 0);
                     for (int l = 0, lm = 0; l <= parameters_.lmax_rho(); l++)
                     {
-                        complex16 zt1(0, 0);
+                        double_complex zt1(0, 0);
                         for (int m = -l; m <= l; m++, lm++) zt1 += parameters_.reciprocal_lattice()->gvec_ylm(lm, igloc) * zp[lm];
 
                         zt2 += zt1 * sbessel_mt_(l + pseudo_density_order + 1, iat, parameters_.reciprocal_lattice()->gvec_shell(ig));
@@ -341,7 +341,7 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
 {
     Timer t("sirius::Potential::add_mt_contribution_to_pw");
 
-    mdarray<complex16, 1> fpw(parameters_.reciprocal_lattice()->num_gvec());
+    mdarray<double_complex, 1> fpw(parameters_.reciprocal_lattice()->num_gvec());
     fpw.zero();
 
     mdarray<Spline<double>*, 2> svlm(parameters_.lmmax_pot(), parameters_.unit_cell()->num_atoms());
@@ -379,10 +379,10 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
                 for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
                 {
                     int l = l_by_lm_[lm];
-                    vjlm(lm) = Spline<double>::integrate(jl(l, iat), svlm(lm, ia));
+                    vjlm(lm) = Spline<double>::integrate(jl(l, iat), svlm(lm, ia), 2);
                 }
 
-                complex16 zt(0, 0);
+                double_complex zt(0, 0);
                 for (int l = 0; l <= parameters_.lmax_pot(); l++)
                 {
                     for (int m = -l; m <= l; m++)
@@ -421,7 +421,7 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
 //==     //                                     2) MPI reduction over thousands of shell may be slow
 //==     Timer t("sirius::Potential::add_mt_contribution_to_pw");
 //== 
-//==     mdarray<complex16, 1> fpw(parameters_.num_gvec());
+//==     mdarray<double_complex, 1> fpw(parameters_.num_gvec());
 //==     fpw.zero();
 //==     
 //==     mdarray<int, 1> kargs(4);
@@ -537,7 +537,7 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
 //== 
 //==         for (int ia = 0; ia < parameters_.num_atoms(); ia++)
 //==         {
-//==             complex16 zt(0, 0);
+//==             double_complex zt(0, 0);
 //==             for (int l = 0; l <= parameters_.lmax_pot(); l++)
 //==             {
 //==                 for (int m = -l; m <= l; m++)
@@ -633,7 +633,7 @@ void Potential::generate_pw_coefs()
 //            {
 //                double vgc[3];
 //                parameters_.get_coordinates<cartesian, reciprocal>(parameters_.gvec(ig), vgc);
-//                val_it += real(effective_potential_->f_pw(ig) * exp(complex16(0.0, Utils::scalar_product(vc, vgc))));
+//                val_it += real(effective_potential_->f_pw(ig) * exp(double_complex(0.0, Utils::scalar_product(vc, vgc))));
 //            }
 //
 //            double val_mt = 0.0;
@@ -655,24 +655,24 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     fft_->transform(-1);
     fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &rho->f_pw(0));
 
-    mdarray<Spheric_function<complex16>*, 1> rho_ylm(parameters_.unit_cell()->spl_num_atoms().local_size());
-    mdarray<Spheric_function<complex16>*, 1> vh_ylm(parameters_.unit_cell()->spl_num_atoms().local_size());
+    mdarray<Spheric_function<double_complex>*, 1> rho_ylm(parameters_.unit_cell()->spl_num_atoms().local_size());
+    mdarray<Spheric_function<double_complex>*, 1> vh_ylm(parameters_.unit_cell()->spl_num_atoms().local_size());
 
     // in case of full potential we need to do pseudo-charge multipoles
     if (parameters_.unit_cell()->full_potential())
     {
         for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
         {
-            rho_ylm(ialoc) = new Spheric_function<complex16>(rho->f_mt(ialoc), true);
-            vh_ylm(ialoc) = new Spheric_function<complex16>(vh->f_mt(ialoc), false);
+            rho_ylm(ialoc) = new Spheric_function<double_complex>(rho->f_mt(ialoc), true);
+            vh_ylm(ialoc) = new Spheric_function<double_complex>(vh->f_mt(ialoc), false);
         }
         
         // true multipole moments
-        mdarray<complex16, 2> qmt(parameters_.lmmax_rho(), parameters_.unit_cell()->num_atoms());
+        mdarray<double_complex, 2> qmt(parameters_.lmmax_rho(), parameters_.unit_cell()->num_atoms());
         poisson_vmt(rho_ylm, vh_ylm, qmt);
         
         // compute multipoles of interstitial density in MT region
-        mdarray<complex16, 2> qit(parameters_.lmmax_rho(), parameters_.unit_cell()->num_atoms());
+        mdarray<double_complex, 2> qit(parameters_.lmmax_rho(), parameters_.unit_cell()->num_atoms());
         poisson_sum_G(&rho->f_pw(0), sbessel_mom_, qit);
         
         // add contribution from the pseudo-charge
@@ -705,7 +705,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     if (parameters_.unit_cell()->full_potential())
     {
         // compute V_lm at the MT boundary
-        mdarray<complex16, 2> vmtlm(parameters_.lmmax_pot(), parameters_.unit_cell()->num_atoms());
+        mdarray<double_complex, 2> vmtlm(parameters_.lmmax_pot(), parameters_.unit_cell()->num_atoms());
         poisson_sum_G(&vh->f_pw(0), sbessel_mt_, vmtlm);
         
         // add boundary condition and convert to Rlm
@@ -1018,7 +1018,7 @@ void Potential::generate_d_mtrx()
             {
                 int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
 
-                complex16 z(0, 0);
+                double_complex z(0, 0);
 
                 for (int igloc = 0; igloc < parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
                 {
@@ -1080,7 +1080,7 @@ void Potential::generate_d_mtrx_gpu()
 
     auto rl = parameters_.reciprocal_lattice();
 
-    mdarray<complex16, 1> veff_gpu(&effective_potential_->f_pw(rl->spl_num_gvec().global_offset()), 
+    mdarray<double_complex, 1> veff_gpu(&effective_potential_->f_pw(rl->spl_num_gvec().global_offset()), 
                                    rl->spl_num_gvec().local_size());
     veff_gpu.allocate_on_device();
     veff_gpu.copy_to_device();
@@ -1102,10 +1102,10 @@ void Potential::generate_d_mtrx_gpu()
 
     #pragma omp parallel
     {
-        mdarray<complex16, 1> vtmp_gpu(NULL, rl->spl_num_gvec().local_size());
+        mdarray<double_complex, 1> vtmp_gpu(NULL, rl->spl_num_gvec().local_size());
         vtmp_gpu.allocate_on_device();
 
-        mdarray<complex16, 1> d_mtrx_gpu(parameters_.unit_cell()->max_mt_basis_size() * 
+        mdarray<double_complex, 1> d_mtrx_gpu(parameters_.unit_cell()->max_mt_basis_size() * 
                                          (parameters_.unit_cell()->max_mt_basis_size() + 1) / 2);
         d_mtrx_gpu.allocate_on_device();
         d_mtrx_gpu.pin_memory();
@@ -1321,7 +1321,7 @@ void Potential::zero()
 //        {
 //            double vgc[3];
 //            parameters_.get_coordinates<cartesian, reciprocal>(parameters_.gvec(ig), vgc);
-//            p += real(effective_potential_->f_pw(ig) * exp(complex16(0.0, Utils::scalar_product(vc, vgc))));
+//            p += real(effective_potential_->f_pw(ig) * exp(double_complex(0.0, Utils::scalar_product(vc, vgc))));
 //        }
 //        return p;
 //    }
@@ -1429,7 +1429,7 @@ void Potential::generate_local_potential()
          }
     }
 
-    std::vector<complex16> v = rl->make_periodic_function(vloc_radial_integrals, rl->num_gvec());
+    std::vector<double_complex> v = rl->make_periodic_function(vloc_radial_integrals, rl->num_gvec());
     
     fft_->input(rl->num_gvec(), rl->fft_index(), &v[0]); 
     fft_->transform(1);

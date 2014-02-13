@@ -77,12 +77,12 @@ class Utils
             return s.str();
         }
 
-        static void write_matrix(const std::string& fname, mdarray<complex16, 2>& matrix, int nrow, int ncol,
+        static void write_matrix(const std::string& fname, mdarray<double_complex, 2>& matrix, int nrow, int ncol,
                                  bool write_upper_only = true, bool write_abs_only = false, std::string fmt = "%18.12f");
         
         static void write_matrix(const std::string& fname, bool write_all, mdarray<double, 2>& matrix);
 
-        static void check_hermitian(const std::string& name, mdarray<complex16, 2>& mtrx);
+        static void check_hermitian(const std::string& name, mdarray<double_complex, 2>& mtrx);
 
         static double confined_polynomial(double r, double R, int p1, int p2, int dm);
 

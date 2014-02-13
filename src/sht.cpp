@@ -90,7 +90,7 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
         for (int lm1 = 0; lm1 < lmmax_; lm1++)
         {
             double t = 0;
-            complex16 zt(0, 0);
+            double_complex zt(0, 0);
             for (int itp = 0; itp < num_points_; itp++)
             {
                 zt += ylm_forward_(itp, lm) * ylm_backward_(lm1, itp);
@@ -170,14 +170,14 @@ void SHT::spherical_coordinates(vector3d<double> vc, double* vs)
     }
 }
 
-void SHT::spherical_harmonics(int lmax, double theta, double phi, complex16* ylm)
+void SHT::spherical_harmonics(int lmax, double theta, double phi, double_complex* ylm)
 {
     double x = cos(theta);
     std::vector<double> result_array(lmax + 1);
 
     for (int m = 0; m <= lmax; m++)
     {
-        complex16 z = exp(complex16(0.0, m * phi)); 
+        double_complex z = exp(double_complex(0.0, m * phi)); 
         
         gsl_sf_legendre_sphPlm_array(lmax, m, x, &result_array[0]);
 
@@ -199,7 +199,7 @@ void SHT::spherical_harmonics(int lmax, double theta, double phi, complex16* ylm
 void SHT::spherical_harmonics(int lmax, double theta, double phi, double* rlm)
 {
     int lmmax = (lmax + 1) * (lmax + 1);
-    std::vector<complex16> ylm(lmmax);
+    std::vector<double_complex> ylm(lmmax);
     spherical_harmonics(lmax, theta, phi, &ylm[0]);
     
     double t = sqrt(2.0);
@@ -218,25 +218,25 @@ void SHT::spherical_harmonics(int lmax, double theta, double phi, double* rlm)
     }
 }
                 
-complex16 SHT::ylm_dot_rlm(int l, int m1, int m2)
+double_complex SHT::ylm_dot_rlm(int l, int m1, int m2)
 {
     const double isqrt2 = 0.70710678118654752440;
 
     assert(l >= 0 && abs(m1) <= l && abs(m2) <= l);
 
-    if (!((m1 == m2) || (m1 == -m2))) return complex16(0, 0);
+    if (!((m1 == m2) || (m1 == -m2))) return double_complex(0, 0);
 
-    if (m1 == 0) return complex16(1, 0);
+    if (m1 == 0) return double_complex(1, 0);
 
     if (m1 < 0)
     {
-        if (m2 < 0) return -complex16(0, isqrt2);
-        else return pow(-1.0, m2) * complex16(isqrt2, 0);
+        if (m2 < 0) return -double_complex(0, isqrt2);
+        else return pow(-1.0, m2) * double_complex(isqrt2, 0);
     }
     else
     {
-        if (m2 < 0) return pow(-1.0, m1) * complex16(0, isqrt2);
-        else return complex16(isqrt2, 0);
+        if (m2 < 0) return pow(-1.0, m1) * double_complex(0, isqrt2);
+        else return double_complex(isqrt2, 0);
     }
 }
 

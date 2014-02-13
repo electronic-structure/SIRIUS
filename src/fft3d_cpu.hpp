@@ -16,10 +16,10 @@ class FFT3D<cpu>
         std::vector<fftw_plan> plan_forward_;
     
         /// inout buffer for each thread
-        mdarray<complex16, 2> fftw_input_buffer_;
+        mdarray<double_complex, 2> fftw_input_buffer_;
         
         /// output buffer for each thread
-        mdarray<complex16, 2> fftw_output_buffer_;
+        mdarray<double_complex, 2> fftw_output_buffer_;
 
         /// split index of FFT buffer
         splindex<block> spl_fft_size_;
@@ -109,7 +109,7 @@ class FFT3D<cpu>
         {
             assert(thread_id < Platform::num_fft_threads());
 
-            memset(&fftw_input_buffer_(0, thread_id), 0, size() * sizeof(complex16));
+            memset(&fftw_input_buffer_(0, thread_id), 0, size() * sizeof(double_complex));
         }
 
         template<typename T>
@@ -129,11 +129,11 @@ class FFT3D<cpu>
             for (int i = 0; i < size(); i++) fftw_input_buffer_(i, thread_id) = data[i];
         }
         
-        inline void input(complex16* data, int thread_id = 0)
+        inline void input(double_complex* data, int thread_id = 0)
         {
             assert(thread_id < Platform::num_fft_threads());
             
-            memcpy(&fftw_input_buffer_(0, thread_id), data, size() * sizeof(complex16));
+            memcpy(&fftw_input_buffer_(0, thread_id), data, size() * sizeof(double_complex));
         }
         
         /// Execute the transformation for a given thread.
@@ -167,14 +167,14 @@ class FFT3D<cpu>
             for (int i = 0; i < size(); i++) data[i] = real(fftw_output_buffer_(i, thread_id));
         }
         
-        inline void output(complex16* data, int thread_id = 0)
+        inline void output(double_complex* data, int thread_id = 0)
         {
             assert(thread_id < Platform::num_fft_threads());
 
-            memcpy(data, &fftw_output_buffer_(0, thread_id), size() * sizeof(complex16));
+            memcpy(data, &fftw_output_buffer_(0, thread_id), size() * sizeof(double_complex));
         }
         
-        inline void output(int n, int* map, complex16* data, int thread_id = 0)
+        inline void output(int n, int* map, double_complex* data, int thread_id = 0)
         {
             assert(thread_id < Platform::num_fft_threads());
 
@@ -224,13 +224,13 @@ class FFT3D<cpu>
         }
         
         /// Direct access of the output buffer
-        inline complex16& output_buffer(int i, int thread_id = 0)
+        inline double_complex& output_buffer(int i, int thread_id = 0)
         {
             return fftw_output_buffer_(i, thread_id);
         }
         
         /// Direct access of the input buffer
-        inline complex16& input_buffer(int i, int thread_id = 0)
+        inline double_complex& input_buffer(int i, int thread_id = 0)
         {
             return fftw_input_buffer_(i, thread_id);
         }

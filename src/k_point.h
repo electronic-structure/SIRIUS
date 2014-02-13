@@ -96,13 +96,13 @@ class K_point
         std::vector<double> fv_eigen_values_;
 
         /// first-variational eigen vectors
-        mdarray<complex16, 2> fv_eigen_vectors_;
+        mdarray<double_complex, 2> fv_eigen_vectors_;
         
         /// second-variational eigen vectors
-        mdarray<complex16, 2> sv_eigen_vectors_;
+        mdarray<double_complex, 2> sv_eigen_vectors_;
 
         /// full-diagonalization eigen vectors
-        mdarray<complex16, 2> fd_eigen_vectors_;
+        mdarray<double_complex, 2> fd_eigen_vectors_;
 
         /// position of the G vector (from the G+k set) inside the FFT buffer 
         std::vector<int> fft_index_;
@@ -110,13 +110,13 @@ class K_point
         std::vector<int> fft_index_coarse_;
        
         /// first-variational states, distributed along the columns of the MPI grid
-        mdarray<complex16, 2> fv_states_col_;
+        mdarray<double_complex, 2> fv_states_col_;
        
         /// first-variational states, distributed along the rows of the MPI grid
-        mdarray<complex16, 2> fv_states_row_;
+        mdarray<double_complex, 2> fv_states_row_;
 
         /// two-component (spinor) wave functions describing the bands
-        mdarray<complex16, 3> spinor_wave_functions_;
+        mdarray<double_complex, 3> spinor_wave_functions_;
 
         /// band occupation numbers
         std::vector<double> band_occupancies_;
@@ -125,13 +125,13 @@ class K_point
         std::vector<double> band_energies_; 
 
         /// phase factors \f$ e^{i ({\bf G+k}) {\bf r}_{\alpha}} \f$
-        mdarray<complex16, 2> gkvec_phase_factors_;
+        mdarray<double_complex, 2> gkvec_phase_factors_;
 
         /// spherical harmonics of G+k vectors
-        mdarray<complex16, 2> gkvec_ylm_;
+        mdarray<double_complex, 2> gkvec_ylm_;
 
         /// precomputed values for the linear equations for matching coefficients
-        mdarray<complex16, 4> alm_b_;
+        mdarray<double_complex, 4> alm_b_;
 
         /// length of G+k vectors
         std::vector<double> gkvec_len_;
@@ -158,7 +158,7 @@ class K_point
         std::vector< std::vector<int> > atom_lo_rows_;
 
         /// imaginary unit to the power of l
-        std::vector<complex16> zil_;
+        std::vector<double_complex> zil_;
 
         /// mapping between lm and l
         std::vector<int> l_by_lm_;
@@ -179,20 +179,20 @@ class K_point
         int num_ranks_;
 
         /// phase-factor independent plane-wave coefficients of |beta> functions 
-        mdarray<complex16, 2> beta_pw_;
+        mdarray<double_complex, 2> beta_pw_;
 
         /// Generate matching coefficients for specific l-value
         template <int order, bool conjugate>
         void generate_matching_coefficients_l(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
-                                              mdarray<double, 2>& A, mdarray<complex16, 2>& alm);
+                                              mdarray<double, 2>& A, mdarray<double_complex, 2>& alm);
         
-        void check_alm(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm);
+        void check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm);
 
         /// Copy lo block from eigen-vector to wave-function
-        inline void copy_lo_blocks(const complex16* z, complex16* vec);
+        inline void copy_lo_blocks(const double_complex* z, double_complex* vec);
         
         /// Copy plane wave block from eigen-vector to wave-function
-        inline void copy_pw_block(const complex16* z, complex16* vec);
+        inline void copy_pw_block(const double_complex* z, double_complex* vec);
 
         /// Initialize G+k related data
         void init_gkvec();
@@ -259,7 +259,7 @@ class K_point
             \f]
         */
         template <bool conjugate>
-        void generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<complex16, 2>& alm);
+        void generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm);
         
         /// Generate first-variational states from eigen-vectors
         void generate_fv_states();
@@ -270,13 +270,13 @@ class K_point
         /// Generate two-component spinor wave functions 
         void generate_spinor_wave_functions();
 
-        Periodic_function<complex16>* spinor_wave_function_component(int lmax, int ispn, int j);
+        Periodic_function<double_complex>* spinor_wave_function_component(int lmax, int ispn, int j);
 
-        //== void spinor_wave_function_component_mt(int lmax, int ispn, int jloc, mt_functions<complex16>& psilm);
+        //== void spinor_wave_function_component_mt(int lmax, int ispn, int jloc, mt_functions<double_complex>& psilm);
         
-        void generate_beta_pw(complex16* beta_pw__, int ia);
+        void generate_beta_pw(double_complex* beta_pw__, int ia);
         
-        void generate_beta_pw(complex16* beta_pw__, Atom_type* atom_type);
+        void generate_beta_pw(double_complex* beta_pw__, Atom_type* atom_type);
         
         void save(int id);
 
@@ -286,9 +286,9 @@ class K_point
 
         //== void load_wave_functions(int id);
 
-        void get_fv_eigen_vectors(mdarray<complex16, 2>& fv_evec);
+        void get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec);
         
-        void get_sv_eigen_vectors(mdarray<complex16, 2>& sv_evec);
+        void get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec);
         
         /// Test orthonormalization of spinor wave-functions
         void test_spinor_wave_functions(int use_fft);
@@ -322,7 +322,7 @@ class K_point
             return parameters_.reciprocal_lattice()->get_cartesian_coordinates(gkvec(igk));
         }
 
-        inline complex16 gkvec_phase_factor(int igk, int ia)
+        inline double_complex gkvec_phase_factor(int igk, int ia)
         {
             return gkvec_phase_factors_(igk, ia);
         }
@@ -419,7 +419,7 @@ class K_point
             return weight_;
         }
 
-        inline complex16& spinor_wave_function(int idxwf, int ispn, int j)
+        inline double_complex& spinor_wave_function(int idxwf, int ispn, int j)
         {
             return spinor_wave_functions_(idxwf, ispn, j);
         }
@@ -577,27 +577,27 @@ class K_point
             return atom_lo_rows_[ia][i];
         }
 
-        inline mdarray<complex16, 2>& fv_eigen_vectors()
+        inline mdarray<double_complex, 2>& fv_eigen_vectors()
         {
             return fv_eigen_vectors_;
         }
         
-        inline mdarray<complex16, 2>& fv_states_col()
+        inline mdarray<double_complex, 2>& fv_states_col()
         {
             return fv_states_col_;
         }
         
-        inline mdarray<complex16, 2>& fv_states_row()
+        inline mdarray<double_complex, 2>& fv_states_row()
         {
             return fv_states_row_;
         }
 
-        inline mdarray<complex16, 2>& sv_eigen_vectors()
+        inline mdarray<double_complex, 2>& sv_eigen_vectors()
         {
             return sv_eigen_vectors_;
         }
         
-        inline mdarray<complex16, 2>& fd_eigen_vectors()
+        inline mdarray<double_complex, 2>& fd_eigen_vectors()
         {
             return fd_eigen_vectors_;
         }
@@ -611,7 +611,7 @@ class K_point
                 int i = parameters_.spl_fv_states_col(icol);
                 for (int irow = 0; irow < parameters_.spl_fv_states_row().local_size(); irow++)
                 {
-                    if (parameters_.spl_fv_states_row(irow) == i) sv_eigen_vectors_(irow, icol) = complex16(1, 0);
+                    if (parameters_.spl_fv_states_row(irow) == i) sv_eigen_vectors_(irow, icol) = double_complex(1, 0);
                 }
             }
         }
@@ -633,7 +633,7 @@ class K_point
             return gkvec_;
         }
 
-        inline mdarray<complex16, 2>& beta_pw()
+        inline mdarray<double_complex, 2>& beta_pw()
         {
             return beta_pw_;
         }

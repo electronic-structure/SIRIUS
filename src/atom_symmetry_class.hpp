@@ -247,7 +247,7 @@ void Atom_symmetry_class::check_lo_linear_independence()
     
     Spline<double> s(nmtp, atom_type_->radial_grid());
     mdarray<double, 2> loprod(num_lo_descriptors(), num_lo_descriptors());
-    mdarray<complex16, 2> loprod_tmp(num_lo_descriptors(), num_lo_descriptors());
+    mdarray<double_complex, 2> loprod_tmp(num_lo_descriptors(), num_lo_descriptors());
     for (int idxlo1 = 0; idxlo1 < num_lo_descriptors(); idxlo1++)
     {
         int idxrf1 = atom_type_->indexr().index_by_idxlo(idxlo1);
@@ -268,14 +268,14 @@ void Atom_symmetry_class::check_lo_linear_independence()
             {
                 loprod(idxlo1, idxlo2) = 0.0;
             }
-            loprod_tmp(idxlo1, idxlo2) = complex16(loprod(idxlo1, idxlo2), 0);
+            loprod_tmp(idxlo1, idxlo2) = double_complex(loprod(idxlo1, idxlo2), 0);
         }
     }
         
     standard_evp_lapack stdevp;
 
     std::vector<double> loprod_eval(num_lo_descriptors());
-    mdarray<complex16, 2> loprod_evec(num_lo_descriptors(), num_lo_descriptors());
+    mdarray<double_complex, 2> loprod_evec(num_lo_descriptors(), num_lo_descriptors());
 
     stdevp.solve(num_lo_descriptors(), loprod_tmp.get_ptr(), loprod_tmp.ld(), &loprod_eval[0], 
                  loprod_evec.get_ptr(), loprod_evec.ld());

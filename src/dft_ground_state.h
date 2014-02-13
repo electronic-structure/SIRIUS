@@ -47,7 +47,7 @@ class DFT_ground_state
 
             for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
             {
-                complex16 rho(0, 0);
+                double_complex rho(0, 0);
                 for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
                 {
                     rho += parameters_.reciprocal_lattice()->gvec_phase_factor<global>(ig, ia) * 

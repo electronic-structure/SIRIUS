@@ -24,7 +24,7 @@ class Force
                 q_{ij} = \sum_{l\sigma}n_{l{\bf k}} c_{\sigma i}^{l{\bf k}*}c_{\sigma j}^{l{\bf k}}
             \f]
         */
-        static void compute_dmat(Global& parameters_, K_point* kp, mdarray<complex16, 2>& dm);
+        static void compute_dmat(Global& parameters_, K_point* kp, mdarray<double_complex, 2>& dm);
 
         static void ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<double, 2>& ffac, mdarray<double, 2>& force);
 

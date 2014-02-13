@@ -61,10 +61,10 @@ class Reciprocal_lattice
         splindex<block> spl_num_gvec_;
         
         /// cached Ylm components of G-vectors
-        mdarray<complex16, 2> gvec_ylm_;
+        mdarray<double_complex, 2> gvec_ylm_;
         
         /// cached values of G-vector phase factors 
-        mdarray<complex16, 2> gvec_phase_factors_;
+        mdarray<double_complex, 2> gvec_phase_factors_;
 
         /// length of G-vectors belonging to the same shell
         std::vector<double> gvec_shell_len_;
@@ -123,15 +123,15 @@ class Reciprocal_lattice
         
         /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
         template <index_domain_t index_domain>
-        inline complex16 gvec_phase_factor(int ig, int ia);
+        inline double_complex gvec_phase_factor(int ig, int ia);
        
         /// Ylm components of G-vector
         template <index_domain_t index_domain>
-        inline void gvec_ylm_array(int ig, complex16* ylm, int lmax);
+        inline void gvec_ylm_array(int ig, double_complex* ylm, int lmax);
 
         /// Make periodic function out of form factors
         /** Return vector of plane-wave coefficients */
-        std::vector<complex16> make_periodic_function(mdarray<double, 2>& ffac, int ngv);
+        std::vector<double_complex> make_periodic_function(mdarray<double, 2>& ffac, int ngv);
         
         /// Index of G-vector shell
         inline int gvec_shell(int ig)
@@ -278,7 +278,7 @@ class Reciprocal_lattice
             return spl_num_gvec_[igloc];
         }
         
-        inline complex16 gvec_ylm(int lm, int igloc)
+        inline double_complex gvec_ylm(int lm, int igloc)
         {
             return gvec_ylm_(lm, igloc);
         }

@@ -16,12 +16,12 @@ class Band
         /// alias for FFT driver
         FFT3D<cpu>* fft_;
 
-        Gaunt_coefficients<complex16>* gaunt_coefs_;
+        Gaunt_coefficients<double_complex>* gaunt_coefs_;
     
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
-        void apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size, int num_gkvec, int* fft_index, 
-                                  Periodic_function<double>* effective_magnetic_field[3], mdarray<complex16, 3>& hpsi);
+        void apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_size, int num_gkvec, int* fft_index, 
+                                  Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 3>& hpsi);
 
         /// Apply SO correction to the first-variational states.
         /** Raising and lowering operators:
@@ -29,61 +29,61 @@ class Band
                 L_{\pm} Y_{\ell m}= (L_x \pm i L_y) Y_{\ell m}  = \sqrt{\ell(\ell+1) - m(m \pm 1)} Y_{\ell m \pm 1}
             \f]
         */
-        void apply_so_correction(mdarray<complex16, 2>& fv_states, mdarray<complex16, 3>& hpsi);
+        void apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi);
         
         /// Apply UJ correction to scalar wave functions
         template <spin_block_t sblock>
-        void apply_uj_correction(mdarray<complex16, 2>& fv_states, mdarray<complex16, 3>& hpsi);
+        void apply_uj_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi);
 
         /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap
         void set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_potential, 
-                           mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
+                           mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o);
 
-        void set_o_it(K_point* kp, mdarray<complex16, 2>& o);
+        void set_o_it(K_point* kp, mdarray<double_complex, 2>& o);
 
         template <spin_block_t sblock>
         void set_h_it(K_point* kp, Periodic_function<double>* effective_potential, 
-                      Periodic_function<double>* effective_magnetic_field[3], mdarray<complex16, 2>& h);
+                      Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h);
         
         /// Setup lo-lo block of Hamiltonian and overlap matrices
-        void set_fv_h_o_lo_lo(K_point* kp, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
+        void set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o);
 
         template <spin_block_t sblock>
-        void set_h_lo_lo(K_point* kp, mdarray<complex16, 2>& h);
+        void set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h);
         
-        void set_o_lo_lo(K_point* kp, mdarray<complex16, 2>& o);
+        void set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o);
        
-        void solve_fv_evp_1stage(K_point* kp, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o, 
-                                 std::vector<double>& fv_eigen_values, mdarray<complex16, 2>& fv_eigen_vectors);
+        void solve_fv_evp_1stage(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o, 
+                                 std::vector<double>& fv_eigen_values, mdarray<double_complex, 2>& fv_eigen_vectors);
 
-        void set_o(K_point* kp, mdarray<complex16, 2>& o);
+        void set_o(K_point* kp, mdarray<double_complex, 2>& o);
     
         template <spin_block_t sblock> 
         void set_h(K_point* kp, Periodic_function<double>* effective_potential, 
-                   Periodic_function<double>* effective_magnetic_field[3], mdarray<complex16, 2>& h);
+                   Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h);
        
         void solve_fv_exact_diagonalization(K_point* kp, Periodic_function<double>* effective_potential);
 
         void apply_h_local(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
-                           int n, complex16* phi__, complex16* hphi__);
+                           int n, double_complex* phi__, double_complex* hphi__);
 
         void diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_potential);
         
         template<int N>
         void get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
-                          std::vector<complex16>& h_diag, std::vector<complex16>& o_diag);
+                          std::vector<double_complex>& h_diag, std::vector<double_complex>& o_diag);
 
         void apply_h_o_uspp_cpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
-                                complex16* phi__, complex16* hphi__, complex16* ophi__);
+                                double_complex* phi__, double_complex* hphi__, double_complex* ophi__);
 
         #ifdef _GPU_
         void apply_h_local_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
-                               int num_phi, mdarray<complex16, 2>& gamma, mdarray<complex16, 2>& kappa, complex16* phi__, 
-                               complex16* hphi__);
+                               int num_phi, mdarray<double_complex, 2>& gamma, mdarray<double_complex, 2>& kappa, double_complex* phi__, 
+                               double_complex* hphi__);
 
         void apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
-                                mdarray<complex16, 2>& gamma, mdarray<complex16, 2>& kappa, complex16* phi__, 
-                                complex16* hphi__, complex16* ophi__);
+                                mdarray<double_complex, 2>& gamma, mdarray<double_complex, 2>& kappa, double_complex* phi__, 
+                                double_complex* hphi__, double_complex* ophi__);
 
         void diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_potential);
         #endif
@@ -95,7 +95,7 @@ class Band
         {
             fft_ = parameters_.reciprocal_lattice()->fft();
 
-            gaunt_coefs_ = new Gaunt_coefficients<complex16>(parameters_.lmax_apw(), parameters_.lmax_pot(), 
+            gaunt_coefs_ = new Gaunt_coefficients<double_complex>(parameters_.lmax_apw(), parameters_.lmax_pot(), 
                                                              parameters_.lmax_apw());
         }
 
@@ -117,18 +117,18 @@ class Band
             \f] 
         */
         template <spin_block_t sblock>
-        void apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, mdarray<complex16, 2>& halm);
+        void apply_hmt_to_apw(int num_gkvec, int ia, mdarray<double_complex, 2>& alm, mdarray<double_complex, 2>& halm);
  
         /// Setup apw-lo and lo-apw blocs of Hamiltonian and overlap matrices
-        void set_fv_h_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<complex16, 2>& alm, 
-                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o);
+        void set_fv_h_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 
+                               mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o);
         
         template <spin_block_t sblock>
-        void set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<complex16, 2>& alm, 
-                          mdarray<complex16, 2>& h);
+        void set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 
+                          mdarray<double_complex, 2>& h);
 
-        void set_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<complex16, 2>& alm, 
-                          mdarray<complex16, 2>& o);
+        void set_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 
+                          mdarray<double_complex, 2>& o);
 
         /// Setup the Hamiltonian and overlap matrices in APW+lo basis
         /** The Hamiltonian matrix has the following expression:
@@ -176,8 +176,8 @@ class Band
 
         */
         template <processing_unit_t pu, electronic_structure_method_t basis>
-        void set_fv_h_o(K_point* kp, Periodic_function<double>* effective_potential, mdarray<complex16, 2>& h, 
-                        mdarray<complex16, 2>& o);
+        void set_fv_h_o(K_point* kp, Periodic_function<double>* effective_potential, mdarray<double_complex, 2>& h, 
+                        mdarray<double_complex, 2>& o);
 
         /// Solve first-variational problem
         void solve_fv(K_point* kp, Periodic_function<double>* effective_potential);

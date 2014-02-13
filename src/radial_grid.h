@@ -134,8 +134,8 @@ class Radial_grid
         /// Get muffin-tin radial points and deltas.
         inline void get_r_dr(double* array, int lda)
         {
-            memcpy(&array[0], &points_[0], num_mt_points_ * sizeof(real8));
-            memcpy(&array[lda], &deltas_[0], (num_mt_points_ - 1) * sizeof(real8));
+            memcpy(&array[0], &points_[0], num_mt_points_ * sizeof(double));
+            memcpy(&array[lda], &deltas_[0], (num_mt_points_ - 1) * sizeof(double));
         }
        
         inline std::string grid_type_name()

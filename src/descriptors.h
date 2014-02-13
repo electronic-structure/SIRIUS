@@ -114,13 +114,13 @@ class uspp_descriptor
 
         std::vector<double> total_charge_density;
 
-        mdarray<complex16, 2> d_mtrx_ion;
+        mdarray<double_complex, 2> d_mtrx_ion;
 
-        mdarray<complex16, 2> d_mtrx;
+        mdarray<double_complex, 2> d_mtrx;
 
-        mdarray<complex16, 2> q_mtrx;
+        mdarray<double_complex, 2> q_mtrx;
 
-        mdarray<complex16, 2> q_pw;
+        mdarray<double_complex, 2> q_pw;
 };
 
 struct nearest_neighbour_descriptor

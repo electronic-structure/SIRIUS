@@ -53,7 +53,7 @@ void FORTRAN(sirius_platform_initialize)(int32_t* call_mpi_init_)
         call sirius_set_lattice_vectors(a1, a2, a3)
     \endcode
 */
-void FORTRAN(sirius_set_lattice_vectors)(real8* a1, real8* a2, real8* a3)
+void FORTRAN(sirius_set_lattice_vectors)(double* a1, double* a2, double* a3)
 {
     log_function_enter(__func__);
     global_parameters.unit_cell()->set_lattice_vectors(a1, a2, a3);
@@ -70,7 +70,7 @@ void FORTRAN(sirius_set_lattice_vectors)(real8* a1, real8* a2, real8* a3)
         call sirius_set_pw_cutoff(gmaxvr)
     \endcode
 */
-void FORTRAN(sirius_set_pw_cutoff)(real8* pw_cutoff)
+void FORTRAN(sirius_set_pw_cutoff)(double* pw_cutoff)
 {
     log_function_enter(__func__);
     global_parameters.set_pw_cutoff(*pw_cutoff);
@@ -142,9 +142,9 @@ void FORTRAN(sirius_add_atom_type)(int32_t* atom_type_id, char* label, int32_t l
         enddo
     \endcode
 */ 
-void FORTRAN(sirius_set_atom_type_properties)(int32_t* atom_type_id, char* symbol, int32_t* zn, real8* mass, 
-                                              real8* mt_radius, int32_t* num_mt_points, real8* radial_grid_origin, 
-                                              real8* radial_grid_infinity, int32_t symbol_len)
+void FORTRAN(sirius_set_atom_type_properties)(int32_t* atom_type_id, char* symbol, int32_t* zn, double* mass, 
+                                              double* mt_radius, int32_t* num_mt_points, double* radial_grid_origin, 
+                                              double* radial_grid_infinity, int32_t symbol_len)
 {
     log_function_enter(__func__);
     sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id);
@@ -171,7 +171,7 @@ void FORTRAN(sirius_set_atom_type_properties)(int32_t* atom_type_id, char* symbo
     \endcode
 */
 void FORTRAN(sirius_set_atom_type_radial_grid)(int32_t* atom_type_id, int32_t* num_radial_points, 
-                                               real8* radial_points)
+                                               double* radial_points)
 {
     sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id);
     type->set_radial_grid(*num_radial_points, radial_points);
@@ -199,7 +199,7 @@ void FORTRAN(sirius_set_atom_type_radial_grid)(int32_t* atom_type_id, int32_t* n
     \endcode
 */
 void FORTRAN(sirius_set_atom_type_configuration)(int32_t* atom_type_id, int32_t* n, int32_t* l, int32_t* k, 
-                                                 real8* occupancy, int32_t* core_)
+                                                 double* occupancy, int32_t* core_)
 {
     log_function_enter(__func__);
     sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id);
@@ -222,7 +222,7 @@ void FORTRAN(sirius_set_atom_type_configuration)(int32_t* atom_type_id, int32_t*
         enddo
     \endcode
 */
-void FORTRAN(sirius_add_atom)(int32_t* atom_type_id, real8* position, real8* vector_field)
+void FORTRAN(sirius_add_atom)(int32_t* atom_type_id, double* position, double* vector_field)
 {
     log_function_enter(__func__);
     global_parameters.unit_cell()->add_atom(*atom_type_id, position, vector_field);
@@ -259,7 +259,7 @@ void FORTRAN(sirius_set_equivalent_atoms)(int32_t* equivalent_atoms)
          call sirius_set_aw_cutoff(rgkmax)
      \endcode
 */
-void FORTRAN(sirius_set_aw_cutoff)(real8* aw_cutoff)
+void FORTRAN(sirius_set_aw_cutoff)(double* aw_cutoff)
 {
     log_function_enter(__func__);
     global_parameters.set_aw_cutoff(*aw_cutoff);
@@ -304,7 +304,7 @@ void FORTRAN(sirius_global_initialize)(int32_t* lmax_apw, int32_t* lmax_rho, int
     \param [in] magmt pointer to the muffin-tin part of the magnetization
     \param [in] magit pointer to the interstitial part of the magnetization
 */
-void FORTRAN(sirius_density_initialize)(real8* rhomt, real8* rhoit, real8* magmt, real8* magit)
+void FORTRAN(sirius_density_initialize)(double* rhomt, double* rhoit, double* magmt, double* magit)
 {
     log_function_enter(__func__);
     density = new sirius::Density(global_parameters);
@@ -319,7 +319,7 @@ void FORTRAN(sirius_density_initialize)(real8* rhomt, real8* rhoit, real8* magmt
     \param [in] beffmt pointer to the muffin-tin part of effective magnetic field
     \param [in] beffit pointer to the interstitial part of the effective magnetic field
 */
-void FORTRAN(sirius_potential_initialize)(real8* veffmt, real8* veffit, real8* beffmt, real8* beffit)
+void FORTRAN(sirius_potential_initialize)(double* veffmt, double* veffit, double* beffmt, double* beffit)
 {
     log_function_enter(__func__);
     potential = new sirius::Potential(global_parameters);
@@ -349,7 +349,7 @@ void FORTRAN(sirius_get_num_mt_points)(int32_t* atom_type_id, int32_t* num_mt_po
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_mt_points)(int32_t* atom_type_id, real8* mt_points)
+void FORTRAN(sirius_get_mt_points)(int32_t* atom_type_id, double* mt_points)
 {
     log_function_enter(__func__);
     sirius::Atom_type* atom = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id);
@@ -434,7 +434,7 @@ void FORTRAN(sirius_get_gvec)(int32_t* gvec__)
 }
 
 /// Get list of G-vectors in Cartesian coordinates
-void FORTRAN(sirius_get_gvec_cart)(real8* gvec_cart__)
+void FORTRAN(sirius_get_gvec_cart)(double* gvec_cart__)
 {
     log_function_enter(__func__);
     mdarray<double, 2> gvec_cart(gvec_cart__, 3,  global_parameters.reciprocal_lattice()->fft()->size());
@@ -447,7 +447,7 @@ void FORTRAN(sirius_get_gvec_cart)(real8* gvec_cart__)
 }
 
 /// Get lengh of G-vectors
-void FORTRAN(sirius_get_gvec_len)(real8* gvec_len)
+void FORTRAN(sirius_get_gvec_len)(double* gvec_len)
 {
     log_function_enter(__func__);
     for (int ig = 0; ig <  global_parameters.reciprocal_lattice()->fft()->size(); ig++) gvec_len[ig] = global_parameters.reciprocal_lattice()->gvec_len(ig);
@@ -476,10 +476,10 @@ void FORTRAN(sirius_get_index_by_gvec)(int32_t* index_by_gvec__)
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_gvec_ylm)(complex16* gvec_ylm__, int* ld, int* lmax)
+void FORTRAN(sirius_get_gvec_ylm)(double_complex* gvec_ylm__, int* ld, int* lmax)
 {
     log_function_enter(__func__);
-    mdarray<complex16, 2> gvec_ylm(gvec_ylm__, *ld, global_parameters.reciprocal_lattice()->num_gvec());
+    mdarray<double_complex, 2> gvec_ylm(gvec_ylm__, *ld, global_parameters.reciprocal_lattice()->num_gvec());
     for (int ig = 0; ig < global_parameters.reciprocal_lattice()->num_gvec(); ig++)
     {
         global_parameters.reciprocal_lattice()->gvec_ylm_array<global>(ig, &gvec_ylm(0, ig), *lmax);
@@ -487,10 +487,10 @@ void FORTRAN(sirius_get_gvec_ylm)(complex16* gvec_ylm__, int* ld, int* lmax)
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_gvec_phase_factors)(complex16* sfacg__)
+void FORTRAN(sirius_get_gvec_phase_factors)(double_complex* sfacg__)
 {
     log_function_enter(__func__);
-    mdarray<complex16, 2> sfacg(sfacg__, global_parameters.reciprocal_lattice()->num_gvec(), global_parameters.unit_cell()->num_atoms());
+    mdarray<double_complex, 2> sfacg(sfacg__, global_parameters.reciprocal_lattice()->num_gvec(), global_parameters.unit_cell()->num_atoms());
     for (int ia = 0; ia < global_parameters.unit_cell()->num_atoms(); ia++)
     {
         for (int ig = 0; ig < global_parameters.reciprocal_lattice()->num_gvec(); ig++)
@@ -499,7 +499,7 @@ void FORTRAN(sirius_get_gvec_phase_factors)(complex16* sfacg__)
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_step_function)(complex16* cfunig, real8* cfunir)
+void FORTRAN(sirius_get_step_function)(double_complex* cfunig, double* cfunir)
 {
     log_function_enter(__func__);
     for (int i = 0; i < global_parameters.reciprocal_lattice()->fft()->size(); i++)
@@ -511,7 +511,7 @@ void FORTRAN(sirius_get_step_function)(complex16* cfunig, real8* cfunir)
 }
 
 /// Get the total number of electrons
-void FORTRAN(sirius_get_num_electrons)(real8* num_electrons)
+void FORTRAN(sirius_get_num_electrons)(double* num_electrons)
 {
     log_function_enter(__func__);
     *num_electrons = global_parameters.unit_cell()->num_electrons();
@@ -519,7 +519,7 @@ void FORTRAN(sirius_get_num_electrons)(real8* num_electrons)
 }
 
 /// Get the number of valence electrons
-void FORTRAN(sirius_get_num_valence_electrons)(real8* num_valence_electrons)
+void FORTRAN(sirius_get_num_valence_electrons)(double* num_valence_electrons)
 {
     log_function_enter(__func__);
     *num_valence_electrons = global_parameters.unit_cell()->num_valence_electrons();
@@ -527,7 +527,7 @@ void FORTRAN(sirius_get_num_valence_electrons)(real8* num_valence_electrons)
 }
 
 /// Get the number of core electrons
-void FORTRAN(sirius_get_num_core_electrons)(real8* num_core_electrons)
+void FORTRAN(sirius_get_num_core_electrons)(double* num_core_electrons)
 {
     log_function_enter(__func__);
     *num_core_electrons = global_parameters.unit_cell()->num_core_electrons();
@@ -626,7 +626,7 @@ void FORTRAN(sirius_find_band_occupancies)(int32_t* kset_id)
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_set_band_occupancies)(int32_t* kset_id, int32_t* ik_, real8* band_occupancies)
+void FORTRAN(sirius_set_band_occupancies)(int32_t* kset_id, int32_t* ik_, double* band_occupancies)
 {
     log_function_enter(__func__);
     int ik = *ik_ - 1;
@@ -634,7 +634,7 @@ void FORTRAN(sirius_set_band_occupancies)(int32_t* kset_id, int32_t* ik_, real8*
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_band_energies)(int32_t* kset_id, int32_t* ik__, real8* band_energies)
+void FORTRAN(sirius_get_band_energies)(int32_t* kset_id, int32_t* ik__, double* band_energies)
 {
     log_function_enter(__func__);
     int ik = *ik__ - 1;
@@ -642,7 +642,7 @@ void FORTRAN(sirius_get_band_energies)(int32_t* kset_id, int32_t* ik__, real8* b
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_band_occupancies)(int32_t* kset_id, int32_t* ik_, real8* band_occupancies)
+void FORTRAN(sirius_get_band_occupancies)(int32_t* kset_id, int32_t* ik_, double* band_occupancies)
 {
     log_function_enter(__func__);
     int ik = *ik_ - 1;
@@ -921,7 +921,7 @@ void FORTRAN(sirius_write_json_output)(void)
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_occupation_matrix)(int32_t* atom_id, complex16* occupation_matrix)
+void FORTRAN(sirius_get_occupation_matrix)(int32_t* atom_id, double_complex* occupation_matrix)
 {
     log_function_enter(__func__);
     int ia = *atom_id - 1;
@@ -929,7 +929,7 @@ void FORTRAN(sirius_get_occupation_matrix)(int32_t* atom_id, complex16* occupati
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_set_uj_correction_matrix)(int32_t* atom_id, int32_t* l, complex16* uj_correction_matrix)
+void FORTRAN(sirius_set_uj_correction_matrix)(int32_t* atom_id, int32_t* l, double_complex* uj_correction_matrix)
 {
     log_function_enter(__func__);
     int ia = *atom_id - 1;
@@ -1007,7 +1007,7 @@ void FORTRAN(sirius_platform_barrier)(void)
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_total_energy)(real8* total_energy)
+void FORTRAN(sirius_get_total_energy)(double* total_energy)
 {
     log_function_enter(__func__);
     *total_energy = dft_ground_state->total_energy();
@@ -1015,7 +1015,7 @@ void FORTRAN(sirius_get_total_energy)(real8* total_energy)
 }
 
 
-void FORTRAN(sirius_add_atom_type_aw_descriptor)(int32_t* atom_type_id, int32_t* n, int32_t* l, real8* enu, 
+void FORTRAN(sirius_add_atom_type_aw_descriptor)(int32_t* atom_type_id, int32_t* n, int32_t* l, double* enu, 
                                                  int32_t* dme, int32_t* auto_enu)
 {
     log_function_enter(__func__);
@@ -1025,7 +1025,7 @@ void FORTRAN(sirius_add_atom_type_aw_descriptor)(int32_t* atom_type_id, int32_t*
 }
 
 void FORTRAN(sirius_add_atom_type_lo_descriptor)(int32_t* atom_type_id, int32_t* ilo, int32_t* n, int32_t* l, 
-                                                 real8* enu, int32_t* dme, int32_t* auto_enu)
+                                                 double* enu, int32_t* dme, int32_t* auto_enu)
 {
     log_function_enter(__func__);
     sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id);
@@ -1033,28 +1033,28 @@ void FORTRAN(sirius_add_atom_type_lo_descriptor)(int32_t* atom_type_id, int32_t*
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_set_aw_enu)(int32_t* ia, int32_t* l, int32_t* order, real8* enu)
+void FORTRAN(sirius_set_aw_enu)(int32_t* ia, int32_t* l, int32_t* order, double* enu)
 {
     log_function_enter(__func__);
     global_parameters.unit_cell()->atom(*ia - 1)->symmetry_class()->set_aw_enu(*l, *order - 1, *enu);
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_aw_enu)(int32_t* ia, int32_t* l, int32_t* order, real8* enu)
+void FORTRAN(sirius_get_aw_enu)(int32_t* ia, int32_t* l, int32_t* order, double* enu)
 {
     log_function_enter(__func__);
     *enu = global_parameters.unit_cell()->atom(*ia - 1)->symmetry_class()->get_aw_enu(*l, *order - 1);
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_set_lo_enu)(int32_t* ia, int32_t* idxlo, int32_t* order, real8* enu)
+void FORTRAN(sirius_set_lo_enu)(int32_t* ia, int32_t* idxlo, int32_t* order, double* enu)
 {
     log_function_enter(__func__);
     global_parameters.unit_cell()->atom(*ia - 1)->symmetry_class()->set_lo_enu(*idxlo - 1, *order - 1, *enu);
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_lo_enu)(int32_t* ia, int32_t* idxlo, int32_t* order, real8* enu)
+void FORTRAN(sirius_get_lo_enu)(int32_t* ia, int32_t* idxlo, int32_t* order, double* enu)
 {
     log_function_enter(__func__);
     *enu = global_parameters.unit_cell()->atom(*ia - 1)->symmetry_class()->get_lo_enu(*idxlo - 1, *order - 1);
@@ -1218,8 +1218,8 @@ void FORTRAN(sirius_get_max_num_gkvec)(int32_t* kset_id, int32_t* max_num_gkvec)
 
 /// Get all G+k vector related arrays
 void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* num_gkvec, int32_t* gvec_index, 
-                                      real8* gkvec__, real8* gkvec_cart__, real8* gkvec_len, real8* gkvec_tp__, 
-                                      complex16* gkvec_phase_factors__, int32_t* ld)
+                                      double* gkvec__, double* gkvec_cart__, double* gkvec_len, double* gkvec_tp__, 
+                                      double_complex* gkvec_phase_factors__, int32_t* ld)
 {
     log_function_enter(__func__);
     // position of processors which store a given k-point
@@ -1248,7 +1248,7 @@ void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* nu
             gkvec_tp(1, igk) = rtp[2];
         }
         
-        mdarray<complex16, 2> gkvec_phase_factors(gkvec_phase_factors__, *ld, global_parameters.unit_cell()->num_atoms());
+        mdarray<double_complex, 2> gkvec_phase_factors(gkvec_phase_factors__, *ld, global_parameters.unit_cell()->num_atoms());
         gkvec_phase_factors.zero();
         for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++)
         {
@@ -1269,7 +1269,7 @@ void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* nu
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, complex16* apwalm__, 
+void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, double_complex* apwalm__, 
                                                int32_t* ngkmax, int32_t* apwordmax)
 {
     log_function_enter(__func__);
@@ -1280,11 +1280,11 @@ void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, co
     {
         sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
         
-        mdarray<complex16, 4> apwalm(apwalm__, *ngkmax, *apwordmax, global_parameters.lmmax_apw(), 
+        mdarray<double_complex, 4> apwalm(apwalm__, *ngkmax, *apwordmax, global_parameters.lmmax_apw(), 
                                      global_parameters.unit_cell()->num_atoms());
         apwalm.zero();
 
-        mdarray<complex16, 2> alm(kp->num_gkvec_row(), global_parameters.unit_cell()->max_mt_aw_basis_size());
+        mdarray<double_complex, 2> alm(kp->num_gkvec_row(), global_parameters.unit_cell()->max_mt_aw_basis_size());
 
         for (int ia = 0; ia < global_parameters.unit_cell()->num_atoms(); ia++)
         {
@@ -1320,7 +1320,7 @@ void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, co
 /// Get first-variational matrices of Hamiltonian and overlap
 /** Radial integrals and plane-wave coefficients of the interstitial potential must be calculated prior to
     Hamiltonian and overlap matrix construction. */
-//** void FORTRAN(sirius_get_fv_h_o)(int32_t* kset_id, int32_t* ik, int32_t* size, complex16* h__, complex16* o__)
+//** void FORTRAN(sirius_get_fv_h_o)(int32_t* kset_id, int32_t* ik, int32_t* size, double_complex* h__, double_complex* o__)
 //** {
 //**     int rank = kset_list[*kset_id]->spl_num_kpoints().location(_splindex_rank_, *ik - 1);
 //**     
@@ -1333,8 +1333,8 @@ void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, co
 //**             error_local(__FILE__, __LINE__, "wrong matrix size");
 //**         }
 //** 
-//**         mdarray<complex16, 2> h(h__, kp->apwlo_basis_size(), kp->apwlo_basis_size());
-//**         mdarray<complex16, 2> o(o__, kp->apwlo_basis_size(), kp->apwlo_basis_size());
+//**         mdarray<double_complex, 2> h(h__, kp->apwlo_basis_size(), kp->apwlo_basis_size());
+//**         mdarray<double_complex, 2> o(o__, kp->apwlo_basis_size(), kp->apwlo_basis_size());
 //**         kp->set_fv_h_o<cpu, apwlo>(potential->effective_potential(), kset_list[*kset_id]->band()->num_ranks(), h, o);
 //**     }
 //** }
@@ -1347,25 +1347,25 @@ void FORTRAN(sirius_get_mtgk_size)(int32_t* kset_id, int32_t* ik, int32_t* mtgk_
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_spinor_wave_functions)(int32_t* kset_id, int32_t* ik, complex16* spinor_wave_functions__)
+void FORTRAN(sirius_get_spinor_wave_functions)(int32_t* kset_id, int32_t* ik, double_complex* spinor_wave_functions__)
 {
     log_function_enter(__func__);
     assert(global_parameters.num_bands() == global_parameters.spl_spinor_wf_col().local_size());
 
     sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
     
-    mdarray<complex16, 3> spinor_wave_functions(spinor_wave_functions__, kp->wf_size(), global_parameters.num_spins(), 
+    mdarray<double_complex, 3> spinor_wave_functions(spinor_wave_functions__, kp->wf_size(), global_parameters.num_spins(), 
                                                 global_parameters.spl_spinor_wf_col().local_size());
 
     for (int j = 0; j < global_parameters.spl_spinor_wf_col().local_size(); j++)
     {
         memcpy(&spinor_wave_functions(0, 0, j), &kp->spinor_wave_function(0, 0, j), 
-               kp->wf_size() * global_parameters.num_spins() * sizeof(complex16));
+               kp->wf_size() * global_parameters.num_spins() * sizeof(double_complex));
     }
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_apply_step_function_gk)(int32_t* kset_id, int32_t* ik, complex16* wf__)
+void FORTRAN(sirius_apply_step_function_gk)(int32_t* kset_id, int32_t* ik, double_complex* wf__)
 {
     log_function_enter(__func__);
     int thread_id = Platform::thread_id();
@@ -1398,56 +1398,56 @@ void FORTRAN(sirius_get_gkvec_cart)(int32_t* kset_id, int32_t* ik, double* gkvec
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_evalsum)(real8* evalsum)
+void FORTRAN(sirius_get_evalsum)(double* evalsum)
 {
     log_function_enter(__func__);
     *evalsum = dft_ground_state->eval_sum();
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_energy_exc)(real8* energy_exc)
+void FORTRAN(sirius_get_energy_exc)(double* energy_exc)
 {
     log_function_enter(__func__);
     *energy_exc = dft_ground_state->energy_exc();
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_energy_vxc)(real8* energy_vxc)
+void FORTRAN(sirius_get_energy_vxc)(double* energy_vxc)
 {
     log_function_enter(__func__);
     *energy_vxc = dft_ground_state->energy_vxc();
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_energy_bxc)(real8* energy_bxc)
+void FORTRAN(sirius_get_energy_bxc)(double* energy_bxc)
 {
     log_function_enter(__func__);
     *energy_bxc = dft_ground_state->energy_bxc();
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_energy_veff)(real8* energy_veff)
+void FORTRAN(sirius_get_energy_veff)(double* energy_veff)
 {
     log_function_enter(__func__);
     *energy_veff = dft_ground_state->energy_veff();
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_energy_vha)(real8* energy_vha)
+void FORTRAN(sirius_get_energy_vha)(double* energy_vha)
 {
     log_function_enter(__func__);
     *energy_vha = dft_ground_state->energy_vha();
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_energy_enuc)(real8* energy_enuc)
+void FORTRAN(sirius_get_energy_enuc)(double* energy_enuc)
 {
     log_function_enter(__func__);
     *energy_enuc = dft_ground_state->energy_enuc();
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_energy_kin)(real8* energy_kin)
+void FORTRAN(sirius_get_energy_kin)(double* energy_kin)
 {
     log_function_enter(__func__);
     *energy_kin = dft_ground_state->energy_kin();
@@ -1455,7 +1455,7 @@ void FORTRAN(sirius_get_energy_kin)(real8* energy_kin)
 }
 
 /// Generate XC potential and magnetic field
-void FORTRAN(sirius_generate_xc_potential)(real8* vxcmt, real8* vxcit, real8* bxcmt, real8* bxcit)
+void FORTRAN(sirius_generate_xc_potential)(double* vxcmt, double* vxcit, double* bxcmt, double* bxcit)
 {
     log_function_enter(__func__);
     using namespace sirius;
@@ -1491,7 +1491,7 @@ void FORTRAN(sirius_generate_xc_potential)(real8* vxcmt, real8* vxcit, real8* bx
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_generate_coulomb_potential)(real8* vclmt, real8* vclit)
+void FORTRAN(sirius_generate_coulomb_potential)(double* vclmt, double* vclit)
 {
     log_function_enter(__func__);
     using namespace sirius;
@@ -1509,31 +1509,31 @@ void FORTRAN(sirius_update_atomic_potential)()
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_scalar_radial_solver)(int32_t* zn, int32_t* l, int32_t* dme, real8* enu, int32_t* nr, real8* r, 
-                                          real8* v__, int32_t* nn, real8* p0__, real8* p1__, real8* q0__, real8* q1__)
+void FORTRAN(sirius_scalar_radial_solver)(int32_t* zn, int32_t* l, int32_t* dme, double* enu, int32_t* nr, double* r, 
+                                          double* v__, int32_t* nn, double* p0__, double* p1__, double* q0__, double* q1__)
 {
     log_function_enter(__func__);
     sirius::Radial_grid rgrid(*nr, *nr, r[*nr - 1], r);
     sirius::Radial_solver solver(false, *zn, rgrid);
 
-    std::vector<real8> v(*nr);
-    std::vector<real8> p0;
-    std::vector<real8> p1;
-    std::vector<real8> q0;
-    std::vector<real8> q1;
+    std::vector<double> v(*nr);
+    std::vector<double> p0;
+    std::vector<double> p1;
+    std::vector<double> q0;
+    std::vector<double> q1;
 
-    memcpy(&v[0], v__, (*nr) * sizeof(real8));
+    memcpy(&v[0], v__, (*nr) * sizeof(double));
 
     *nn = solver.solve_in_mt(*l, *enu, *dme, v, p0, p1, q0, q1);
 
-    memcpy(p0__, &p0[0], (*nr) * sizeof(real8));
-    memcpy(p1__, &p1[0], (*nr) * sizeof(real8));
-    memcpy(q0__, &q0[0], (*nr) * sizeof(real8));
-    memcpy(q1__, &q1[0], (*nr) * sizeof(real8));
+    memcpy(p0__, &p0[0], (*nr) * sizeof(double));
+    memcpy(p1__, &p1[0], (*nr) * sizeof(double));
+    memcpy(q0__, &q0[0], (*nr) * sizeof(double));
+    memcpy(q1__, &q1[0], (*nr) * sizeof(double));
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_aw_radial_function)(int32_t* ia__, int32_t* l, int32_t* io__, real8* awrf)
+void FORTRAN(sirius_get_aw_radial_function)(int32_t* ia__, int32_t* l, int32_t* io__, double* awrf)
 {
     log_function_enter(__func__);
     int ia = *ia__ - 1;
@@ -1544,7 +1544,7 @@ void FORTRAN(sirius_get_aw_radial_function)(int32_t* ia__, int32_t* l, int32_t* 
     log_function_exit(__func__);
 }
     
-void FORTRAN(sirius_get_aw_h_radial_function)(int32_t* ia__, int32_t* l, int32_t* io__, real8* hawrf)
+void FORTRAN(sirius_get_aw_h_radial_function)(int32_t* ia__, int32_t* l, int32_t* io__, double* hawrf)
 {
     log_function_enter(__func__);
     int ia = *ia__ - 1;
@@ -1558,14 +1558,14 @@ void FORTRAN(sirius_get_aw_h_radial_function)(int32_t* ia__, int32_t* l, int32_t
     log_function_exit(__func__);
 }
     
-void FORTRAN(sirius_get_aw_surface_derivative)(int32_t* ia, int32_t* l, int32_t* io, real8* dawrf)
+void FORTRAN(sirius_get_aw_surface_derivative)(int32_t* ia, int32_t* l, int32_t* io, double* dawrf)
 {
     log_function_enter(__func__);
     *dawrf = global_parameters.unit_cell()->atom(*ia - 1)->symmetry_class()->aw_surface_dm(*l, *io - 1, 1); 
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_lo_radial_function)(int32_t* ia__, int32_t* idxlo__, real8* lorf)
+void FORTRAN(sirius_get_lo_radial_function)(int32_t* ia__, int32_t* idxlo__, double* lorf)
 {
     log_function_enter(__func__);
     int ia = *ia__ - 1;
@@ -1576,7 +1576,7 @@ void FORTRAN(sirius_get_lo_radial_function)(int32_t* ia__, int32_t* idxlo__, rea
     log_function_exit(__func__);
 }
     
-void FORTRAN(sirius_get_lo_h_radial_function)(int32_t* ia__, int32_t* idxlo__, real8* hlorf)
+void FORTRAN(sirius_get_lo_h_radial_function)(int32_t* ia__, int32_t* idxlo__, double* hlorf)
 {
     log_function_enter(__func__);
     int ia = *ia__ - 1;
@@ -1591,7 +1591,7 @@ void FORTRAN(sirius_get_lo_h_radial_function)(int32_t* ia__, int32_t* idxlo__, r
 }
     
 void FORTRAN(sirius_get_aw_lo_o_radial_integral)(int32_t* ia__, int32_t* l, int32_t* io1, int32_t* ilo2, 
-                                                 real8* oalo)
+                                                 double* oalo)
 {
     log_function_enter(__func__);
     int ia = *ia__ - 1;
@@ -1604,7 +1604,7 @@ void FORTRAN(sirius_get_aw_lo_o_radial_integral)(int32_t* ia__, int32_t* l, int3
 }
 
 void FORTRAN(sirius_get_lo_lo_o_radial_integral)(int32_t* ia__, int32_t* l, int32_t* ilo1, int32_t* ilo2, 
-                                                 real8* ololo)
+                                                 double* ololo)
 {
     log_function_enter(__func__);
     int ia = *ia__ - 1;
@@ -1619,7 +1619,7 @@ void FORTRAN(sirius_get_lo_lo_o_radial_integral)(int32_t* ia__, int32_t* l, int3
 }
 
 void FORTRAN(sirius_get_aw_aw_h_radial_integral)(int32_t* ia__, int32_t* l1, int32_t* io1, int32_t* l2, 
-                                                 int32_t* io2, int32_t* lm3, real8* haa)
+                                                 int32_t* io2, int32_t* lm3, double* haa)
 {
     log_function_enter(__func__);
     int ia = *ia__ - 1;
@@ -1631,7 +1631,7 @@ void FORTRAN(sirius_get_aw_aw_h_radial_integral)(int32_t* ia__, int32_t* l1, int
 }
 
 void FORTRAN(sirius_get_lo_aw_h_radial_integral)(int32_t* ia__, int32_t* ilo1, int32_t* l2, int32_t* io2, int32_t* lm3, 
-                                                 real8* hloa)
+                                                 double* hloa)
 {
     log_function_enter(__func__);
     int ia = *ia__ - 1;
@@ -1644,7 +1644,7 @@ void FORTRAN(sirius_get_lo_aw_h_radial_integral)(int32_t* ia__, int32_t* ilo1, i
 
 
 void FORTRAN(sirius_get_lo_lo_h_radial_integral)(int32_t* ia__, int32_t* ilo1, int32_t* ilo2, int32_t* lm3, 
-                                                 real8* hlolo)
+                                                 double* hlolo)
 {
     log_function_enter(__func__);
     int ia = *ia__ - 1;
@@ -1664,21 +1664,21 @@ void FORTRAN(sirius_generate_potential_pw_coefs)(void)
 
 /// Get first-variational eigen-vectors
 /** Assume that the Fortran side holds the whole array */
-void FORTRAN(sirius_get_fv_eigen_vectors)(int32_t* kset_id, int32_t* ik, complex16* fv_evec__, int32_t* ld, 
+void FORTRAN(sirius_get_fv_eigen_vectors)(int32_t* kset_id, int32_t* ik, double_complex* fv_evec__, int32_t* ld, 
                                           int32_t* num_fv_evec)
 {
     log_function_enter(__func__);
-    mdarray<complex16, 2> fv_evec(fv_evec__, *ld, *num_fv_evec);
+    mdarray<double_complex, 2> fv_evec(fv_evec__, *ld, *num_fv_evec);
     (*kset_list[*kset_id])[*ik - 1]->get_fv_eigen_vectors(fv_evec);
     log_function_exit(__func__);
 }
 
 /// Get second-variational eigen-vectors
 /** Assume that the Fortran side holds the whole array */
-void FORTRAN(sirius_get_sv_eigen_vectors)(int32_t* kset_id, int32_t* ik, complex16* sv_evec__, int32_t* size)
+void FORTRAN(sirius_get_sv_eigen_vectors)(int32_t* kset_id, int32_t* ik, double_complex* sv_evec__, int32_t* size)
 {
     log_function_enter(__func__);
-    mdarray<complex16, 2> sv_evec(sv_evec__, *size, *size);
+    mdarray<double_complex, 2> sv_evec(sv_evec__, *size, *size);
     (*kset_list[*kset_id])[*ik - 1]->get_sv_eigen_vectors(sv_evec);
     log_function_exit(__func__);
 }
@@ -1714,7 +1714,7 @@ void FORTRAN(sirius_get_mpi_comm)(int32_t* directions, int32_t* fcomm)
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_forces)(real8* forces__)
+void FORTRAN(sirius_forces)(double* forces__)
 {
     log_function_enter(__func__);
     mdarray<double, 2> forces(forces__, 3, global_parameters.unit_cell()->num_atoms()); 
@@ -1722,7 +1722,7 @@ void FORTRAN(sirius_forces)(real8* forces__)
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_set_atom_pos)(int32_t* atom_id, real8* pos)
+void FORTRAN(sirius_set_atom_pos)(int32_t* atom_id, double* pos)
 {
     log_function_enter(__func__);
     global_parameters.unit_cell()->atom(*atom_id - 1)->set_position(pos);
@@ -1738,7 +1738,7 @@ void FORTRAN(sirius_update)(int32_t* kset_id)
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_core_leakage)(real8* core_leakage)
+void FORTRAN(sirius_core_leakage)(double* core_leakage)
 {
     *core_leakage = density->core_leakage();
 }
@@ -1763,7 +1763,7 @@ void FORTRAN(sirius_test_spinor_wave_functions)(int32_t* kset_id)
     }
 }
 
-void FORTRAN(sirius_generate_gq_matrix_elements)(int32_t* kset_id, real8* vq)
+void FORTRAN(sirius_generate_gq_matrix_elements)(int32_t* kset_id, double* vq)
 {
      kset_list[*kset_id]->generate_Gq_matrix_elements(vq);
 }

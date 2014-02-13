@@ -31,10 +31,10 @@ class SHT
         std::vector<double> w_;
 
         /// backward transformation from Ylm to spherical coordinates
-        mdarray<complex16, 2> ylm_backward_;
+        mdarray<double_complex, 2> ylm_backward_;
         
         /// forward transformation from spherical coordinates to Ylm
-        mdarray<complex16, 2> ylm_forward_;
+        mdarray<double_complex, 2> ylm_forward_;
         
         /// backward transformation from Rlm to spherical coordinates
         mdarray<double, 2> rlm_backward_;
@@ -50,10 +50,10 @@ class SHT
         SHT(int lmax_);
         
         template <typename T>
-        void backward_transform(T* flm, int lmmax, int ncol, T* ftp);
+        inline void backward_transform(T* flm, int lmmax, int ncol, T* ftp);
         
         template <typename T>
-        void forward_transform(T* ftp, int lmmax, int ncol, T* flm);
+        inline void forward_transform(T* ftp, int lmmax, int ncol, T* flm);
         
         //void rlm_forward_iterative_transform(double *ftp__, int lmmax, int ncol, double* flm)
         //{
@@ -94,7 +94,7 @@ class SHT
         static void spherical_coordinates(vector3d<double> vc, double* vs);
 
         /// Generate complex spherical harmonics Ylm
-        static void spherical_harmonics(int lmax, double theta, double phi, complex16* ylm);
+        static void spherical_harmonics(int lmax, double theta, double phi, double_complex* ylm);
         
         /// Generate real spherical harmonics Rlm
         /** Mathematica code:
@@ -138,7 +138,7 @@ class SHT
             R[l_, m_, t_, p_] := Sum[a[m1, m]*SphericalHarmonicY[l, m1, t, p], {m1, -l, l}]
             \endverbatim
         */
-        static complex16 ylm_dot_rlm(int l, int m1, int m2);
+        static double_complex ylm_dot_rlm(int l, int m1, int m2);
         
         /// Return real or complex Gaunt coefficent.
         template <typename T>
@@ -162,7 +162,7 @@ class SHT
                    gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 2 * m1, 2 * m2, -2 * m3);
         }
 
-        inline complex16 ylm_backward(int lm,  int itp)
+        inline double_complex ylm_backward(int lm,  int itp)
         {
             return ylm_backward_(lm, itp);
         }
@@ -177,7 +177,7 @@ class SHT
             return coord_(x, itp);
         }
 
-        static inline complex16 rlm_dot_ylm(int l, int m1, int m2)
+        static inline double_complex rlm_dot_ylm(int l, int m1, int m2)
         {
             return conj(ylm_dot_rlm(l, m2, m1));
         }

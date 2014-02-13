@@ -14,7 +14,7 @@ class Spheric_function_gradient
         // forbid assigment operator
         Spheric_function_gradient& operator=(const Spheric_function_gradient& src);
 
-        void gradient(Spheric_function<complex16>& f);
+        void gradient(Spheric_function<double_complex>& f);
         
         void gradient(Spheric_function<double>& f);
 

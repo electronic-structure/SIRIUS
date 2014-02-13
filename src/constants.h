@@ -64,5 +64,11 @@ const int _dim_col_ = 1;
 
 const int _dim_row_ = 2;
 
+const std::complex<double> complex_one(1, 0);
+
+const std::complex<double> complex_i(0, 1);
+
+const std::complex<double> complex_zero(0, 0);
+
 #endif // __CONSTANTS_H__
 

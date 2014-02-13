@@ -9,8 +9,8 @@
     \todo GPU implementation
 */
 
-void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size, int num_gkvec, int* fft_index, 
-                                Periodic_function<double>* effective_magnetic_field[3], mdarray<complex16, 3>& hpsi)
+void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_size, int num_gkvec, int* fft_index, 
+                                Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 3>& hpsi)
 {
     assert(hpsi.size(2) >= 2);
     assert(fv_states.size(0) == hpsi.size(0));
@@ -18,11 +18,11 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
 
     Timer t("sirius::Band::apply_magnetic_field");
 
-    complex16 zzero = complex16(0, 0);
-    complex16 zone = complex16(1, 0);
-    complex16 zi = complex16(0, 1);
+    double_complex zzero = double_complex(0, 0);
+    double_complex zone = double_complex(1, 0);
+    double_complex zi = double_complex(0, 1);
 
-    mdarray<complex16, 3> zm(parameters_.unit_cell()->max_mt_basis_size(), parameters_.unit_cell()->max_mt_basis_size(), 
+    mdarray<double_complex, 3> zm(parameters_.unit_cell()->max_mt_basis_size(), parameters_.unit_cell()->max_mt_basis_size(), 
                              parameters_.num_mag_dims());
 
     // column fv states are further distributed over rows to make use of all row processors
@@ -95,7 +95,7 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
     
     Timer *t1 = new Timer("sirius::Band::apply_magnetic_field:it");
 
-    mdarray<complex16, 3> hpsi_pw(num_gkvec, parameters_.spl_fv_states_col().local_size(), hpsi.size(2));
+    mdarray<double_complex, 3> hpsi_pw(num_gkvec, parameters_.spl_fv_states_col().local_size(), hpsi.size(2));
     hpsi_pw.zero();
 
     int num_fft_threads = Platform::num_fft_threads();
@@ -103,8 +103,8 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
     {        
         int thread_id = omp_get_thread_num();
         
-        std::vector<complex16> psi_it(fft_->size());
-        std::vector<complex16> hpsi_it(fft_->size());
+        std::vector<double_complex> psi_it(fft_->size());
+        std::vector<double_complex> hpsi_it(fft_->size());
         
         #pragma omp for
         for (int iloc = 0; iloc < num_fv_local; iloc++)
@@ -166,7 +166,7 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
             for (int iloc = 0; iloc < num_fv_local; iloc++)
             {
                 int i = parameters_.sub_spl_fv_states_col(iloc);
-                memcpy(&hpsi(parameters_.unit_cell()->mt_basis_size(), i, n), &hpsi_pw(0, i, n), num_gkvec * sizeof(complex16));
+                memcpy(&hpsi(parameters_.unit_cell()->mt_basis_size(), i, n), &hpsi_pw(0, i, n), num_gkvec * sizeof(double_complex));
             }
         }
         else
@@ -187,7 +187,7 @@ void Band::apply_magnetic_field(mdarray<complex16, 2>& fv_states, int mtgk_size,
     }
 }
 
-void Band::apply_so_correction(mdarray<complex16, 2>& fv_states, mdarray<complex16, 3>& hpsi)
+void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi)
 {
     Timer t("sirius::Band::apply_so_correction");
 
@@ -216,7 +216,7 @@ void Band::apply_so_correction(mdarray<complex16, 2>& fv_states, mdarray<complex
 
                         for (int ist = 0; ist < parameters_.spl_fv_states_col().local_size(); ist++)
                         {
-                            complex16 z1 = fv_states(offset + idx2, ist) * double(m) * sori;
+                            double_complex z1 = fv_states(offset + idx2, ist) * double(m) * sori;
                             hpsi(offset + idx1, ist, 0) += z1;
                             hpsi(offset + idx1, ist, 1) -= z1;
                             // apply L_{-} operator
@@ -234,7 +234,7 @@ void Band::apply_so_correction(mdarray<complex16, 2>& fv_states, mdarray<complex
 }
 
 template <spin_block_t sblock>
-void Band::apply_uj_correction(mdarray<complex16, 2>& fv_states, mdarray<complex16, 3>& hpsi)
+void Band::apply_uj_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi)
 {
     Timer t("sirius::Band::apply_uj_correction");
 
@@ -264,7 +264,7 @@ void Band::apply_uj_correction(mdarray<complex16, 2>& fv_states, mdarray<complex
                             for (int lm1 = Utils::lm_by_l_m(l, -l); lm1 <= Utils::lm_by_l_m(l, l); lm1++)
                             {
                                 int idx1 = type->indexb_by_lm_order(lm1, order1);
-                                complex16 z1 = fv_states(offset + idx1, ist) * ori;
+                                double_complex z1 = fv_states(offset + idx1, ist) * ori;
 
                                 if (sblock == uu)
                                 {
@@ -320,12 +320,12 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     int ncol = parameters_.spl_fv_states_col().local_size();
     int fvsz = kp->wf_size();
 
-    mdarray<complex16, 2>& fv_states_row = kp->fv_states_row();
-    mdarray<complex16, 2>& sv_eigen_vectors = kp->sv_eigen_vectors();
+    mdarray<double_complex, 2>& fv_states_row = kp->fv_states_row();
+    mdarray<double_complex, 2>& sv_eigen_vectors = kp->sv_eigen_vectors();
     std::vector<double> band_energies(parameters_.num_bands());
 
     // product of the second-variational Hamiltonian and a wave-function
-    mdarray<complex16, 3> hpsi(fvsz, ncol, nhpsi);
+    mdarray<double_complex, 3> hpsi(fvsz, ncol, nhpsi);
     hpsi.zero();
 
     // compute product of magnetic field and wave-function 
@@ -381,7 +381,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     
     if (parameters_.num_mag_dims() == 1)
     {
-        mdarray<complex16, 2> h(nrow, ncol);
+        mdarray<double_complex, 2> h(nrow, ncol);
         
         //perform two consecutive diagonalizations
         for (int ispn = 0; ispn < 2; ispn++)
@@ -409,7 +409,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
 
     if (parameters_.num_mag_dims() == 3)
     {
-        mdarray<complex16, 2> h(2 * nrow, 2 * ncol);
+        mdarray<double_complex, 2> h(2 * nrow, 2 * ncol);
         h.zero();
 
         // compute <fv_i | (h * fv_j)> for up-up block
@@ -459,7 +459,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
 }
 
 template <spin_block_t sblock>
-void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, mdarray<complex16, 2>& halm)
+void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<double_complex, 2>& alm, mdarray<double_complex, 2>& halm)
 {
     Timer t("sirius::Band::apply_hmt_to_apw");
     
@@ -468,12 +468,12 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
     
     #pragma omp parallel default(shared)
     {
-        std::vector<complex16> zv(num_gkvec);
+        std::vector<double_complex> zv(num_gkvec);
         
         #pragma omp for
         for (int j2 = 0; j2 < type->mt_aw_basis_size(); j2++)
         {
-            memset(&zv[0], 0, num_gkvec * sizeof(complex16));
+            memset(&zv[0], 0, num_gkvec * sizeof(double_complex));
 
             int lm2 = type->indexb(j2).lm;
             int idxrf2 = type->indexb(j2).idxrf;
@@ -482,7 +482,7 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
             {
                 int lm1 = type->indexb(j1).lm;
                 int idxrf1 = type->indexb(j1).idxrf;
-                complex16 zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
+                double_complex zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
 
                 if (abs(zsum) > 1e-14) 
                 {
@@ -507,7 +507,7 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
                 }
             }
             
-            memcpy(&halm(0, j2), &zv[0], num_gkvec * sizeof(complex16));
+            memcpy(&halm(0, j2), &zv[0], num_gkvec * sizeof(double_complex));
         } // j2
     }
 }
@@ -516,7 +516,7 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 // CPU code, plane-wave basis
 //=====================================================================================================================
 //** template<> void Band::set_fv_h_o<cpu, pwlo>(K_point* kp, Periodic_function<double>* effective_potential, 
-//**                                             mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+//**                                             mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 //** {
 //**     Timer t("sirius::Band::set_fv_h_o");
 //**     
@@ -531,7 +531,7 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 //**             if (kp->apwlo_basis_descriptors_row(igkloc1).idxglob == apwlo_basis_descriptors_col_[igkloc2].idxglob) 
 //**             {
 //**                 h(igkloc1, igkloc2) = 0.5 * pow(gkvec_len_[igkloc1], 2);
-//**                 o(igkloc1, igkloc2) = complex16(1, 0);
+//**                 o(igkloc1, igkloc2) = double_complex(1, 0);
 //**             }
 //**                                
 //**             int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row_[igkloc1].ig,
@@ -546,13 +546,13 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 //** }
 //**
 //** template<> void K_point::set_fv_h_o_pw_lo<cpu>(Periodic_function<double>* effective_potential, int num_ranks, 
-//**                                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+//**                                               mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 //** {
 //**     Timer t("sirius::K_point::set_fv_h_o_pw_lo");
 //**     
 //**     int offset_col = (num_ranks > 1) ? num_gkvec_row() : 0;
 //**     
-//**     mdarray<Spline<complex16>*, 2> svlo(parameters_.lmmax_pw(), std::max(num_lo_col(), num_lo_row()));
+//**     mdarray<Spline<double_complex>*, 2> svlo(parameters_.lmmax_pw(), std::max(num_lo_col(), num_lo_row()));
 //** 
 //**     // first part: compute <G+k|H|lo> and <G+k|lo>
 //** 
@@ -570,13 +570,13 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 //**         
 //**         for (int lm1 = 0; lm1 < parameters_.lmmax_pw(); lm1++)
 //**         {
-//**             svlo(lm1, icol) = new Spline<complex16>(parameters_.atom(ia)->num_mt_points(), 
+//**             svlo(lm1, icol) = new Spline<double_complex>(parameters_.atom(ia)->num_mt_points(), 
 //**                                                     parameters_.atom(ia)->radial_grid());
 //** 
 //**             for (int k = 0; k < parameters_.gaunt().complex_gaunt_packed_L3_size(lm1, lm); k++)
 //**             {
 //**                 int lm3 = parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm, k).lm3;
-//**                 complex16 cg = parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm, k).cg;
+//**                 double_complex cg = parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm, k).cg;
 //** 
 //**                 for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
 //**                 {
@@ -648,14 +648,14 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 //**             //*h(igkloc, icol) = 0.5 * pow(gkvec_len_[igkloc], 2) * o(igkloc, icol);
 //** 
 //**             // add <G+k|V|lo>
-//**             complex16 zt1(0, 0);
+//**             double_complex zt1(0, 0);
 //**             for (int l1 = 0; l1 <= parameters_.lmax_pw(); l1++)
 //**             {
 //**                 for (int m1 = -l1; m1 <= l1; m1++)
 //**                 {
 //**                     int lm1 = Utils::lm_by_l_m(l1, m1);
 //** 
-//**                     zt1 += Spline<complex16>::integrate(svlo(lm1, icol - num_gkvec_col()), 
+//**                     zt1 += Spline<double_complex>::integrate(svlo(lm1, icol - num_gkvec_col()), 
 //**                                                         (*sbessel_[igkloc])(l1, iat)) * 
 //**                            conj(zil_[l1]) * gkvec_ylm_(lm1, igkloc);
 //**                 }
@@ -698,13 +698,13 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 //**         
 //**         for (int lm1 = 0; lm1 < parameters_.lmmax_pw(); lm1++)
 //**         {
-//**             svlo(lm1, irow) = new Spline<complex16>(parameters_.atom(ia)->num_mt_points(), 
+//**             svlo(lm1, irow) = new Spline<double_complex>(parameters_.atom(ia)->num_mt_points(), 
 //**                                                     parameters_.atom(ia)->radial_grid());
 //** 
 //**             for (int k = 0; k < parameters_.gaunt().complex_gaunt_packed_L3_size(lm1, lm); k++)
 //**             {
 //**                 int lm3 = parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm, k).lm3;
-//**                 complex16 cg = parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm, k).cg;
+//**                 double_complex cg = parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm, k).cg;
 //** 
 //**                 for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
 //**                 {
@@ -776,14 +776,14 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 //**             //*h(irow, igkloc) = 0.5 * pow(gkvec_len_[offset_col + igkloc], 2) * o(irow, igkloc);
 //** 
 //**             // add <lo|V|G+k>
-//**             complex16 zt1(0, 0);
+//**             double_complex zt1(0, 0);
 //**             for (int l1 = 0; l1 <= parameters_.lmax_pw(); l1++)
 //**             {
 //**                 for (int m1 = -l1; m1 <= l1; m1++)
 //**                 {
 //**                     int lm1 = Utils::lm_by_l_m(l1, m1);
 //** 
-//**                     zt1 += conj(Spline<complex16>::integrate(svlo(lm1, irow - num_gkvec_row()), 
+//**                     zt1 += conj(Spline<double_complex>::integrate(svlo(lm1, irow - num_gkvec_row()), 
 //**                                                              (*sbessel_[offset_col + igkloc])(l1, iat))) * 
 //**                            zil_[l1] * conj(gkvec_ylm_(lm1, offset_col + igkloc));
 //**                 }
@@ -801,7 +801,7 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 //** }
 //** 
 //** template<> void K_point::set_fv_h_o<cpu, pwlo>(Periodic_function<double>* effective_potential, int num_ranks,
-//**                                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+//**                                               mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 //** {
 //**     Timer t("sirius::K_point::set_fv_h_o");
 //**     
@@ -816,7 +816,7 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 //**             if (apwlo_basis_descriptors_row_[igkloc1].idxglob == apwlo_basis_descriptors_col_[igkloc2].idxglob) 
 //**             {
 //**                 h(igkloc1, igkloc2) = 0.5 * pow(gkvec_len_[igkloc1], 2);
-//**                 o(igkloc1, igkloc2) = complex16(1, 0);
+//**                 o(igkloc1, igkloc2) = double_complex(1, 0);
 //**             }
 //**                                
 //**             int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row_[igkloc1].ig,
@@ -837,7 +837,7 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 // GPU code, plane-wave basis
 //=====================================================================================================================
 //** template<> void K_point::set_fv_h_o<gpu, pwlo>(Periodic_function<double>* effective_potential, int num_ranks,
-//**                                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+//**                                               mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 //** {
 //**     Timer t("sirius::K_point::set_fv_h_o");
 //**     
@@ -852,7 +852,7 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 //**             if (apwlo_basis_descriptors_row_[igkloc1].idxglob == apwlo_basis_descriptors_col_[igkloc2].idxglob) 
 //**             {
 //**                 h(igkloc1, igkloc2) = 0.5 * pow(gkvec_len_[igkloc1], 2);
-//**                 o(igkloc1, igkloc2) = complex16(1, 0);
+//**                 o(igkloc1, igkloc2) = double_complex(1, 0);
 //**             }
 //**                                
 //**             int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row_[igkloc1].ig,
@@ -868,7 +868,7 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 //** #endif
 //** 
 //** template<> void K_point::set_fv_h_o_pw_lo<gpu>(Periodic_function<double>* effective_potential, int num_ranks, 
-//**                                               mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+//**                                               mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 //** {
 //**     Timer t("sirius::K_point::set_fv_h_o_pw_lo");
 //**     
@@ -892,7 +892,7 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 //**     // compute V|lo> for columns
 //**     // =========================
 //**     t1.start();
-//**     mdarray<complex16, 3> vlo_coefs(parameters_.max_num_mt_points() * 4, parameters_.lmmax_pw(), num_lo_col());
+//**     mdarray<double_complex, 3> vlo_coefs(parameters_.max_num_mt_points() * 4, parameters_.lmmax_pw(), num_lo_col());
 //**     #pragma omp parallel for default(shared)
 //**     for (int icol = 0; icol < num_lo_col(); icol++)
 //**     {
@@ -902,12 +902,12 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 //**         
 //**         for (int lm1 = 0; lm1 < parameters_.lmmax_pw(); lm1++)
 //**         {
-//**             Spline<complex16> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
+//**             Spline<double_complex> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
 //** 
 //**             for (int k = 0; k < parameters_.gaunt().complex_gaunt_packed_L3_size(lm1, lm); k++)
 //**             {
 //**                 int lm3 = parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm, k).lm3;
-//**                 complex16 cg = parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm, k).cg;
+//**                 double_complex cg = parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm, k).cg;
 //** 
 //**                 for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
 //**                 {
@@ -1016,7 +1016,7 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 //**     l_by_lm_.allocate_on_device();
 //**     l_by_lm_.copy_to_device();
 //** 
-//**     mdarray<complex16, 3> jvlo(parameters_.lmmax_pw(), num_gkvec_row(), num_lo_col());
+//**     mdarray<double_complex, 3> jvlo(parameters_.lmmax_pw(), num_gkvec_row(), num_lo_col());
 //**     jvlo.allocate_on_device();
 //**     
 //**     t3.start();
@@ -1036,7 +1036,7 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 //**             int ia = apwlo_basis_descriptors_col_[icol].ia;
 //** 
 //**             // add <G+k|V|lo>
-//**             complex16 zt1(0, 0);
+//**             double_complex zt1(0, 0);
 //**             for (int l = 0; l <= parameters_.lmax_pw(); l++)
 //**             {
 //**                 for (int m = -l; m <= l; m++)
@@ -1078,13 +1078,13 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 //**     //**     
 //**     //**     for (int lm1 = 0; lm1 < parameters_.lmmax_pw(); lm1++)
 //**     //**     {
-//**     //**         svlo(lm1, irow) = new Spline<complex16>(parameters_.atom(ia)->num_mt_points(), 
+//**     //**         svlo(lm1, irow) = new Spline<double_complex>(parameters_.atom(ia)->num_mt_points(), 
 //**     //**                                                 parameters_.atom(ia)->radial_grid());
 //** 
 //**     //**         for (int k = 0; k < parameters_.gaunt().complex_gaunt_packed_L3_size(lm1, lm); k++)
 //**     //**         {
 //**     //**             int lm3 = parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm, k).lm3;
-//**     //**             complex16 cg = parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm, k).cg;
+//**     //**             double_complex cg = parameters_.gaunt().complex_gaunt_packed_L3(lm1, lm, k).cg;
 //** 
 //**     //**             for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
 //**     //**             {
@@ -1156,14 +1156,14 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 //**     //**         //*h(irow, igkloc) = 0.5 * pow(gkvec_len_[offset_col + igkloc], 2) * o(irow, igkloc);
 //** 
 //**     //**         // add <lo|V|G+k>
-//**     //**         complex16 zt1(0, 0);
+//**     //**         double_complex zt1(0, 0);
 //**     //**         for (int l1 = 0; l1 <= parameters_.lmax_pw(); l1++)
 //**     //**         {
 //**     //**             for (int m1 = -l1; m1 <= l1; m1++)
 //**     //**             {
 //**     //**                 int lm1 = Utils::lm_by_l_m(l1, m1);
 //** 
-//**     //**                 zt1 += conj(Spline<complex16>::integrate(svlo(lm1, irow - num_gkvec_row()), 
+//**     //**                 zt1 += conj(Spline<double_complex>::integrate(svlo(lm1, irow - num_gkvec_row()), 
 //**     //**                                                          (*sbessel_[offset_col + igkloc])(l1, iat))) * 
 //**     //**                        zil_[l1] * conj(gkvec_ylm_(lm1, offset_col + igkloc));
 //**     //**             }
@@ -1189,20 +1189,20 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<complex16, 2>& alm, m
 // CPU code, (L)APW+lo basis
 //=====================================================================================================================
 template<> void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp, Periodic_function<double>* effective_potential,
-                                                             mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+                                                             mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 {
     Timer t("sirius::Band::set_fv_h_o");
    
     // index of column apw coefficients in apw array
     int apw_offset_col = kp->apw_offset_col();
     
-    mdarray<complex16, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
-    mdarray<complex16, 2> halm(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    mdarray<double_complex, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    mdarray<double_complex, 2> halm(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
 
     h.zero();
     o.zero();
 
-    complex16 zone(1, 0);
+    double_complex zone(1, 0);
     
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
@@ -1235,8 +1235,8 @@ template<> void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp, Period
     halm.deallocate();
 }
 
-void Band::set_fv_h_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<complex16, 2>& alm, 
-                             mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+void Band::set_fv_h_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 
+                             mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 {
     Timer t("sirius::Band::set_fv_h_o_apw_lo");
     
@@ -1257,7 +1257,7 @@ void Band::set_fv_h_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, m
             int lm1 = type->indexb(j1).lm;
             int idxrf1 = type->indexb(j1).idxrf;
                     
-            complex16 zsum = gaunt_coefs_->sum_L3_gaunt(lm1, lm, atom->h_radial_integrals(idxrf, idxrf1));
+            double_complex zsum = gaunt_coefs_->sum_L3_gaunt(lm1, lm, atom->h_radial_integrals(idxrf, idxrf1));
 
             if (abs(zsum) > 1e-14)
             {
@@ -1275,7 +1275,7 @@ void Band::set_fv_h_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, m
         }
     }
 
-    std::vector<complex16> ztmp(kp->num_gkvec_col());
+    std::vector<double_complex> ztmp(kp->num_gkvec_col());
     // lo-apw block
     for (int i = 0; i < kp->num_atom_lo_rows(ia); i++)
     {
@@ -1286,14 +1286,14 @@ void Band::set_fv_h_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, m
         int idxrf = kp->apwlo_basis_descriptors_row(irow).idxrf;
         int order = kp->apwlo_basis_descriptors_row(irow).order;
 
-        memset(&ztmp[0], 0, kp->num_gkvec_col() * sizeof(complex16));
+        memset(&ztmp[0], 0, kp->num_gkvec_col() * sizeof(double_complex));
     
         for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++) 
         {
             int lm1 = type->indexb(j1).lm;
             int idxrf1 = type->indexb(j1).idxrf;
                     
-            complex16 zsum = gaunt_coefs_->sum_L3_gaunt(lm, lm1, atom->h_radial_integrals(idxrf, idxrf1));
+            double_complex zsum = gaunt_coefs_->sum_L3_gaunt(lm, lm1, atom->h_radial_integrals(idxrf, idxrf1));
 
             if (abs(zsum) > 1e-14)
             {
@@ -1316,7 +1316,7 @@ void Band::set_fv_h_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, m
 }
 
 void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_potential, 
-                         mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+                         mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 {
     Timer t("sirius::Band::set_fv_h_o_it");
 
@@ -1338,7 +1338,7 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
     }
 }
 
-void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 {
     Timer t("sirius::Band::set_fv_h_o_lo_lo");
 
@@ -1372,8 +1372,8 @@ void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<complex16, 2>& h, mdarray<compl
     }
 }
 
-void Band::solve_fv_evp_1stage(K_point* kp, mdarray<complex16, 2>& h, mdarray<complex16, 2>& o, 
-                               std::vector<double>& fv_eigen_values, mdarray<complex16, 2>& fv_eigen_vectors)
+void Band::solve_fv_evp_1stage(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o, 
+                               std::vector<double>& fv_eigen_values, mdarray<double_complex, 2>& fv_eigen_vectors)
 {
     Timer t("sirius::Band::solve_fv_evp");
     generalized_evp* solver = NULL;
@@ -1419,7 +1419,7 @@ void Band::solve_fv_evp_1stage(K_point* kp, mdarray<complex16, 2>& h, mdarray<co
     delete solver;
 }
 
-//== void K_point::solve_fv_evp_2stage(mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+//== void K_point::solve_fv_evp_2stage(mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 //== {
 //==     if (parameters_.eigen_value_solver() != lapack) error_local(__FILE__, __LINE__, "implemented for LAPACK only");
 //==     
@@ -1427,9 +1427,9 @@ void Band::solve_fv_evp_1stage(K_point* kp, mdarray<complex16, 2>& h, mdarray<co
 //== 
 //==     std::vector<double> o_eval(apwlo_basis_size());
 //==     
-//==     mdarray<complex16, 2> o_tmp(apwlo_basis_size(), apwlo_basis_size());
-//==     memcpy(o_tmp.get_ptr(), o.get_ptr(), o.size() * sizeof(complex16));
-//==     mdarray<complex16, 2> o_evec(apwlo_basis_size(), apwlo_basis_size());
+//==     mdarray<double_complex, 2> o_tmp(apwlo_basis_size(), apwlo_basis_size());
+//==     memcpy(o_tmp.get_ptr(), o.get_ptr(), o.size() * sizeof(double_complex));
+//==     mdarray<double_complex, 2> o_evec(apwlo_basis_size(), apwlo_basis_size());
 //==  
 //==     s.solve(apwlo_basis_size(), o_tmp.get_ptr(), o_tmp.ld(), &o_eval[0], o_evec.get_ptr(), o_evec.ld());
 //== 
@@ -1448,7 +1448,7 @@ void Band::solve_fv_evp_1stage(K_point* kp, mdarray<complex16, 2>& h, mdarray<co
 //== 
 //==     //std::cout << "num_dependent_apwlo = " << num_dependent_apwlo << std::endl;
 //== 
-//==     mdarray<complex16, 2> h_tmp(apwlo_basis_size(), apwlo_basis_size());
+//==     mdarray<double_complex, 2> h_tmp(apwlo_basis_size(), apwlo_basis_size());
 //==     // compute h_tmp = Z^{h.c.} * H
 //==     blas<cpu>::gemm(2, 0, apwlo_basis_size(), apwlo_basis_size(), apwlo_basis_size(), o_evec.get_ptr(), 
 //==                     o_evec.ld(), h.get_ptr(), h.ld(), h_tmp.get_ptr(), h_tmp.ld());
@@ -1491,8 +1491,8 @@ void Band::solve_fv_exact_diagonalization(K_point* kp, Periodic_function<double>
     if (kp->num_ranks() > 1 && (parameters_.eigen_value_solver() == lapack || parameters_.eigen_value_solver() == magma))
         error_local(__FILE__, __LINE__, "Can't use more than one MPI rank for LAPACK or MAGMA eigen-value solver");
 
-    mdarray<complex16, 2> h(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
-    mdarray<complex16, 2> o(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
+    mdarray<double_complex, 2> h(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
+    mdarray<double_complex, 2> o(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
     
     // Magma requires special allocation
     #ifdef _MAGMA_
@@ -1635,9 +1635,9 @@ void Band::solve_fv_exact_diagonalization(K_point* kp, Periodic_function<double>
     //** if ((debug_level > 2) && 
     //**     (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa))
     //** {
-    //**     mdarray<complex16, 2> h_glob(apwlo_basis_size(), apwlo_basis_size());
-    //**     mdarray<complex16, 2> o_glob(apwlo_basis_size(), apwlo_basis_size());
-    //**     mdarray<complex16, 2> fv_eigen_vectors_glob(apwlo_basis_size(), parameters_.num_fv_states());
+    //**     mdarray<double_complex, 2> h_glob(apwlo_basis_size(), apwlo_basis_size());
+    //**     mdarray<double_complex, 2> o_glob(apwlo_basis_size(), apwlo_basis_size());
+    //**     mdarray<double_complex, 2> fv_eigen_vectors_glob(apwlo_basis_size(), parameters_.num_fv_states());
 
     //**     h_glob.zero();
     //**     o_glob.zero();
@@ -1705,12 +1705,12 @@ void Band::solve_fv_exact_diagonalization(K_point* kp, Periodic_function<double>
 }
 
 void Band::apply_h_local(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
-                         int n, complex16* phi__, complex16* hphi__)
+                         int n, double_complex* phi__, double_complex* hphi__)
 {
     Timer t("sirius::Band::apply_h_local");
 
-    mdarray<complex16, 2> phi(phi__, kp->num_gkvec(), n);
-    mdarray<complex16, 2> hphi(hphi__, kp->num_gkvec(), n);
+    mdarray<double_complex, 2> phi(phi__, kp->num_gkvec(), n);
+    mdarray<double_complex, 2> hphi(hphi__, kp->num_gkvec(), n);
 
     auto fft = parameters_.reciprocal_lattice()->fft_coarse();
     
@@ -1718,7 +1718,7 @@ void Band::apply_h_local(K_point* kp, std::vector<double>& effective_potential, 
     #pragma omp parallel default(shared) num_threads(num_fft_threads)
     {        
         int thread_id = omp_get_thread_num();
-        std::vector<complex16> phi_r(fft->size());
+        std::vector<double_complex> phi_r(fft->size());
         
         #pragma omp for
         for (int i = 0; i < n; i++)
@@ -1745,11 +1745,11 @@ struct exec_fft_args
     int num_phi;
     K_point* kp;
     FFT3D<cpu>* fft;
-    mdarray<complex16, 2>* phi;
-    mdarray<complex16, 2>* hphi;
+    mdarray<double_complex, 2>* phi;
+    mdarray<double_complex, 2>* hphi;
     mdarray<double, 1>* veff;
-    mdarray<complex16, 2>* gamma;
-    mdarray<complex16, 2>* kappa;
+    mdarray<double_complex, 2>* gamma;
+    mdarray<double_complex, 2>* kappa;
 };
 
 pthread_mutex_t exec_fft_mutex;
@@ -1790,7 +1790,7 @@ void* exec_gpu_fft(void* args__)
 
         if (!done)
         {
-            cublas_set_matrix(args->kp->num_gkvec(), nfft_max, sizeof(complex16), &(*args->phi)(0, i), args->phi->ld(), 
+            cublas_set_matrix(args->kp->num_gkvec(), nfft_max, sizeof(double_complex), &(*args->phi)(0, i), args->phi->ld(), 
                               args->kappa->get_ptr_device(), args->kappa->ld());
 
             cufft_batch_load_gpu(args->kp->num_gkvec(), fft_index_coarse.get_ptr_device(), args->kappa->get_ptr_device());
@@ -1801,7 +1801,7 @@ void* exec_gpu_fft(void* args__)
 
             cufft_batch_unload_gpu(args->kp->num_gkvec(), fft_index_coarse.get_ptr_device(), args->kappa->get_ptr_device());
 
-            cublas_get_matrix(args->kp->num_gkvec(), nfft_max, sizeof(complex16), 
+            cublas_get_matrix(args->kp->num_gkvec(), nfft_max, sizeof(double_complex), 
                               args->kappa->get_ptr_device(), args->kappa->ld(),
                               &(*args->hphi)(0, i), args->hphi->ld());
         }
@@ -1852,8 +1852,8 @@ void* exec_cpu_fft(void* args__)
 }
 
 void Band::apply_h_local_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
-                             int num_phi, mdarray<complex16, 2>& gamma, mdarray<complex16, 2>& kappa,
-                             complex16* phi__, complex16* hphi__)
+                             int num_phi, mdarray<double_complex, 2>& gamma, mdarray<double_complex, 2>& kappa,
+                             double_complex* phi__, double_complex* hphi__)
 {
     Timer t("sirius::Band::apply_h_local_gpu");
 
@@ -1865,8 +1865,8 @@ void Band::apply_h_local_gpu(K_point* kp, std::vector<double>& effective_potenti
     veff.allocate_on_device();
     veff.copy_to_device();
 
-    mdarray<complex16, 2> phi(phi__, kp->num_gkvec(), num_phi);
-    mdarray<complex16, 2> hphi(hphi__, kp->num_gkvec(), num_phi);
+    mdarray<double_complex, 2> phi(phi__, kp->num_gkvec(), num_phi);
+    mdarray<double_complex, 2> hphi(hphi__, kp->num_gkvec(), num_phi);
 
     idxfft = 0;
 
@@ -1919,7 +1919,7 @@ void Band::apply_h_local_gpu(K_point* kp, std::vector<double>& effective_potenti
 
 template<>
 void Band::get_h_o_diag<0>(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
-                           std::vector<complex16>& h_diag, std::vector<complex16>& o_diag)
+                           std::vector<double_complex>& h_diag, std::vector<double_complex>& o_diag)
 {
     Timer t("sirius::Band::get_h_o_diag");
 
@@ -1933,7 +1933,7 @@ void Band::get_h_o_diag<0>(K_point* kp, Periodic_function<double>* effective_pot
     
     for (int igk = 0; igk < kp->num_gkvec(); igk++) h_diag[igk] = pw_ekin[igk] + v0;
 
-    mdarray<complex16, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
+    mdarray<double_complex, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {   
         // number of beta functions for a given atom
@@ -1960,7 +1960,7 @@ void Band::get_h_o_diag<0>(K_point* kp, Periodic_function<double>* effective_pot
 
 template<>
 void Band::get_h_o_diag<1>(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
-                           std::vector<complex16>& h_diag, std::vector<complex16>& o_diag)
+                           std::vector<double_complex>& h_diag, std::vector<double_complex>& o_diag)
 {
     Timer t("sirius::Band::get_h_o_diag");
 
@@ -1974,14 +1974,14 @@ void Band::get_h_o_diag<1>(K_point* kp, Periodic_function<double>* effective_pot
     
     for (int igk = 0; igk < kp->num_gkvec(); igk++) h_diag[igk] = pw_ekin[igk] + v0;
 
-    mdarray<complex16, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
-    mdarray<complex16, 2> beta_pw_tmp(parameters_.unit_cell()->max_mt_basis_size(), kp->num_gkvec());
+    mdarray<double_complex, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
+    mdarray<double_complex, 2> beta_pw_tmp(parameters_.unit_cell()->max_mt_basis_size(), kp->num_gkvec());
     for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
     {
         auto atom_type = parameters_.unit_cell()->atom_type(iat);
         int nbf = atom_type->mt_basis_size();
-        mdarray<complex16, 2> d_sum(nbf, nbf);
-        mdarray<complex16, 2> q_sum(nbf, nbf);
+        mdarray<double_complex, 2> d_sum(nbf, nbf);
+        mdarray<double_complex, 2> q_sum(nbf, nbf);
         d_sum.zero();
         q_sum.zero();
         
@@ -2023,7 +2023,7 @@ void Band::get_h_o_diag<1>(K_point* kp, Periodic_function<double>* effective_pot
             {
                 int xi1 = idx[i].first;
                 int xi2 = idx[i].second;
-                complex16 z = beta_pw_tmp(xi1, igk) * conj(beta_pw_tmp(xi2, igk));
+                double_complex z = beta_pw_tmp(xi1, igk) * conj(beta_pw_tmp(xi2, igk));
 
                 h_diag[igk] += z * d_sum(xi1, xi2);
                 o_diag[igk] += z * q_sum(xi1, xi2);
@@ -2034,24 +2034,24 @@ void Band::get_h_o_diag<1>(K_point* kp, Periodic_function<double>* effective_pot
 
 //== // memory-conservative implementation
 //== void Band::apply_h_o(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, int n,
-//==                      complex16* phi__, complex16* hphi__, complex16* ophi__)
+//==                      double_complex* phi__, double_complex* hphi__, double_complex* ophi__)
 //== {
 //==     Timer t("sirius::Band::apply_h_o");
 //== 
-//==     mdarray<complex16, 2> phi(phi__, kp->num_gkvec(), n);
-//==     mdarray<complex16, 2> hphi(hphi__, kp->num_gkvec(), n);
-//==     mdarray<complex16, 2> ophi(ophi__, kp->num_gkvec(), n);
+//==     mdarray<double_complex, 2> phi(phi__, kp->num_gkvec(), n);
+//==     mdarray<double_complex, 2> hphi(hphi__, kp->num_gkvec(), n);
+//==     mdarray<double_complex, 2> ophi(ophi__, kp->num_gkvec(), n);
 //==     
 //==     // apply local part of Hamiltonian
 //==     apply_h_local(kp, effective_potential, pw_ekin, n, phi__, hphi__);
 //==    
 //==     // set intial ophi
-//==     memcpy(ophi__, phi__, kp->num_gkvec() * n * sizeof(complex16));
+//==     memcpy(ophi__, phi__, kp->num_gkvec() * n * sizeof(double_complex));
 //== 
-//==     mdarray<complex16, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
-//==     mdarray<complex16, 2> beta_phi(parameters_.unit_cell()->max_mt_basis_size(), n);
-//==     mdarray<complex16, 2> d_beta_phi(parameters_.unit_cell()->max_mt_basis_size(), n);
-//==     mdarray<complex16, 2> q_beta_phi(parameters_.unit_cell()->max_mt_basis_size(), n);
+//==     mdarray<double_complex, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
+//==     mdarray<double_complex, 2> beta_phi(parameters_.unit_cell()->max_mt_basis_size(), n);
+//==     mdarray<double_complex, 2> d_beta_phi(parameters_.unit_cell()->max_mt_basis_size(), n);
+//==     mdarray<double_complex, 2> q_beta_phi(parameters_.unit_cell()->max_mt_basis_size(), n);
 //== 
 //==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
 //==     {   
@@ -2069,43 +2069,43 @@ void Band::get_h_o_diag<1>(K_point* kp, Periodic_function<double>* effective_pot
 //==                         &beta_phi(0, 0), beta_phi.ld(), &d_beta_phi(0, 0), d_beta_phi.ld());
 //==         
 //==         // multiply by <G+k|beta> and add to hphi
-//==         blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, nbf, complex16(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
-//==                         &d_beta_phi(0, 0), d_beta_phi.ld(), complex16(1, 0), &hphi(0, 0), hphi.ld());
+//==         blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, nbf, double_complex(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
+//==                         &d_beta_phi(0, 0), d_beta_phi.ld(), double_complex(1, 0), &hphi(0, 0), hphi.ld());
 //==         
 //==         // compute Q*<beta|phi>
 //==         blas<cpu>::gemm(0, 0, nbf, n, nbf, &parameters_.unit_cell()->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
 //==                         &beta_phi(0, 0), beta_phi.ld(), &q_beta_phi(0, 0), q_beta_phi.ld());
 //==         
 //==         // multiply by <G+k|beta> and add to ophi
-//==         blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, nbf, complex16(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
-//==                         &q_beta_phi(0, 0), q_beta_phi.ld(), complex16(1, 0), &ophi(0, 0), ophi.ld());
+//==         blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, nbf, double_complex(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
+//==                         &q_beta_phi(0, 0), q_beta_phi.ld(), double_complex(1, 0), &ophi(0, 0), ophi.ld());
 //==     }
 //== }
 
 // memory-greedy implementation
 void Band::apply_h_o_uspp_cpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
-                              complex16* phi__, complex16* hphi__, complex16* ophi__)
+                              double_complex* phi__, double_complex* hphi__, double_complex* ophi__)
 {
     Timer t("sirius::Band::apply_h_o");
 
-    mdarray<complex16, 2> phi(phi__, kp->num_gkvec(), n);
-    mdarray<complex16, 2> hphi(hphi__, kp->num_gkvec(), n);
-    mdarray<complex16, 2> ophi(ophi__, kp->num_gkvec(), n);
+    mdarray<double_complex, 2> phi(phi__, kp->num_gkvec(), n);
+    mdarray<double_complex, 2> hphi(hphi__, kp->num_gkvec(), n);
+    mdarray<double_complex, 2> ophi(ophi__, kp->num_gkvec(), n);
     
     // apply local part of Hamiltonian
     apply_h_local(kp, effective_potential, pw_ekin, n, phi__, hphi__);
    
     // set intial ophi
-    memcpy(ophi__, phi__, kp->num_gkvec() * n * sizeof(complex16));
+    memcpy(ophi__, phi__, kp->num_gkvec() * n * sizeof(double_complex));
 
     // <G+k|\beta_{\xi}^{\alpha}>
-    mdarray<complex16, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->num_beta_a());
+    mdarray<double_complex, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->num_beta_a());
 
     // <\beta_{\xi}^{\alpha}|\phi_j>
-    mdarray<complex16, 2> beta_phi(parameters_.unit_cell()->num_beta_a(), n);
+    mdarray<double_complex, 2> beta_phi(parameters_.unit_cell()->num_beta_a(), n);
     
     // Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j>
-    mdarray<complex16, 2> tmp(parameters_.unit_cell()->num_beta_a(), n);
+    mdarray<double_complex, 2> tmp(parameters_.unit_cell()->num_beta_a(), n);
 
     Timer t1("sirius::Band::apply_h_o|beta_phi");
     // collect all |beta>
@@ -2132,8 +2132,8 @@ void Band::apply_h_o_uspp_cpu(K_point* kp, std::vector<double>& effective_potent
 
     Timer t3("sirius::Band::apply_h_o|beta_D_beta_phi");
     // compute <G+k|beta> * D*<beta|phi> and add to hphi
-    blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), complex16(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
-                    &tmp(0, 0), tmp.ld(), complex16(1, 0), &hphi(0, 0), hphi.ld());
+    blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), double_complex(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
+                    &tmp(0, 0), tmp.ld(), double_complex(1, 0), &hphi(0, 0), hphi.ld());
     t3.stop();
 
     Timer t4("sirius::Band::apply_h_o|Q_beta_phi");
@@ -2150,8 +2150,8 @@ void Band::apply_h_o_uspp_cpu(K_point* kp, std::vector<double>& effective_potent
 
     Timer t5("sirius::Band::apply_h_o|beta_Q_beta_phi");
     // computr <G+k|beta> * Q*<beta|phi> and add to ophi
-    blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), complex16(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
-                    &tmp(0, 0), tmp.ld(), complex16(1, 0), &ophi(0, 0), ophi.ld());
+    blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), double_complex(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
+                    &tmp(0, 0), tmp.ld(), double_complex(1, 0), &ophi(0, 0), ophi.ld());
     t5.stop();
 }
 
@@ -2159,23 +2159,23 @@ void Band::apply_h_o_uspp_cpu(K_point* kp, std::vector<double>& effective_potent
 
 // memory-greedy implementation
 void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
-                              mdarray<complex16, 2>& gamma, mdarray<complex16, 2>& kappa, 
-                              complex16* phi__, complex16* hphi__, complex16* ophi__)
+                              mdarray<double_complex, 2>& gamma, mdarray<double_complex, 2>& kappa, 
+                              double_complex* phi__, double_complex* hphi__, double_complex* ophi__)
 {
     Timer t("sirius::Band::apply_h_o_uspp_gpu");
 
-    mdarray<complex16, 2> phi(phi__, kp->num_gkvec(), n);
-    mdarray<complex16, 2> hphi(hphi__, kp->num_gkvec(), n);
-    mdarray<complex16, 2> ophi(ophi__, kp->num_gkvec(), n);
+    mdarray<double_complex, 2> phi(phi__, kp->num_gkvec(), n);
+    mdarray<double_complex, 2> hphi(hphi__, kp->num_gkvec(), n);
+    mdarray<double_complex, 2> ophi(ophi__, kp->num_gkvec(), n);
 
     // apply local part of Hamiltonian
     apply_h_local_gpu(kp, effective_potential, pw_ekin, n, gamma, kappa, phi__, hphi__);
     
     // load hphi to the first part of kappa; TODO: apply_h_local_gpu must return hpi on gpu
-    cublas_set_matrix(kp->num_gkvec(), n, sizeof(complex16), hphi.get_ptr(), hphi.ld(), kappa.ptr_device(0, 0), kappa.ld());
+    cublas_set_matrix(kp->num_gkvec(), n, sizeof(double_complex), hphi.get_ptr(), hphi.ld(), kappa.ptr_device(0, 0), kappa.ld());
 
     // load phi to the second part of kappa; this will be the initial ophi
-    cublas_set_matrix(kp->num_gkvec(), n, sizeof(complex16), phi.get_ptr(), phi.ld(), kappa.ptr_device(0, n), kappa.ld());
+    cublas_set_matrix(kp->num_gkvec(), n, sizeof(double_complex), phi.get_ptr(), phi.ld(), kappa.ptr_device(0, n), kappa.ld());
     
     
     // offset in the packed array of on-site matrices
@@ -2189,8 +2189,8 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
     }
 
     // pack D and Q matrices
-    mdarray<complex16, 1> d_mtrx_packed(packed_mtrx_size);
-    mdarray<complex16, 1> q_mtrx_packed(packed_mtrx_size);
+    mdarray<double_complex, 1> d_mtrx_packed(packed_mtrx_size);
+    mdarray<double_complex, 1> q_mtrx_packed(packed_mtrx_size);
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
@@ -2237,7 +2237,7 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 
 
     // <\beta_{\xi}^{\alpha}|\phi_j>
-    mdarray<complex16, 2> beta_phi(NULL, parameters_.unit_cell()->num_beta_a(), n);
+    mdarray<double_complex, 2> beta_phi(NULL, parameters_.unit_cell()->num_beta_a(), n);
     beta_phi.allocate_on_device();
     
     //Timer t1("sirius::Band::apply_h_o|beta_phi");
@@ -2245,7 +2245,7 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
                     kappa.ptr_device(0, n), kappa.ld(), beta_phi.ptr_device(0, 0), beta_phi.ld());
 
     // Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j>
-    mdarray<complex16, 2> tmp(NULL, parameters_.unit_cell()->num_beta_a(), n);
+    mdarray<double_complex, 2> tmp(NULL, parameters_.unit_cell()->num_beta_a(), n);
     tmp.allocate_on_device();
 
     //t1.stop();
@@ -2266,7 +2266,7 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 
     //t2.stop();
     
-    complex16 zone(1, 0);
+    double_complex zone(1, 0);
     //Timer t3("sirius::Band::apply_h_o|beta_D_beta_phi");
     // compute <G+k|beta> * D*<beta|phi> and add to hphi
     blas<gpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), &zone, gamma.get_ptr_device(), gamma.ld(), 
@@ -2340,13 +2340,13 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 //== 
 //== // memory-safe implementation
 //== void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
-//==                               complex16* phi__, complex16* hphi__, complex16* ophi__)
+//==                               double_complex* phi__, double_complex* hphi__, double_complex* ophi__)
 //== {
 //==     Timer t("sirius::Band::apply_h_o_uspp_gpu");
 //== 
-//==     mdarray<complex16, 2> phi(phi__, kp->num_gkvec(), n);
-//==     mdarray<complex16, 2> hphi(hphi__, kp->num_gkvec(), n);
-//==     mdarray<complex16, 2> ophi(ophi__, kp->num_gkvec(), n);
+//==     mdarray<double_complex, 2> phi(phi__, kp->num_gkvec(), n);
+//==     mdarray<double_complex, 2> hphi(hphi__, kp->num_gkvec(), n);
+//==     mdarray<double_complex, 2> ophi(ophi__, kp->num_gkvec(), n);
 //== 
 //==     phi.allocate_on_device();
 //==     phi.copy_to_device();
@@ -2370,8 +2370,8 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 //==         packed_mtrx_size += nbf * nbf;
 //==     }
 //== 
-//==     mdarray<complex16, 1> d_mtrx_packed(packed_mtrx_size);
-//==     mdarray<complex16, 1> q_mtrx_packed(packed_mtrx_size);
+//==     mdarray<double_complex, 1> d_mtrx_packed(packed_mtrx_size);
+//==     mdarray<double_complex, 1> q_mtrx_packed(packed_mtrx_size);
 //== 
 //==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
 //==     {
@@ -2392,17 +2392,17 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 //==     q_mtrx_packed.copy_to_device();
 //== 
 //==     // <G+k|\beta_{\xi}^{\alpha}>
-//==     mdarray<complex16, 2> beta_pw(NULL, kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
+//==     mdarray<double_complex, 2> beta_pw(NULL, kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
 //==     beta_pw.allocate_on_device();
 //== 
 //==     // <\beta_{\xi}^{\alpha}|\phi_j>
-//==     //== mdarray<complex16, 2> beta_phi(NULL, parameters_.unit_cell()->max_mt_basis_size(), n);
+//==     //== mdarray<double_complex, 2> beta_phi(NULL, parameters_.unit_cell()->max_mt_basis_size(), n);
 //==     //== beta_phi.allocate_on_device();
-//==     mdarray<complex16, 2> beta_phi(NULL, parameters_.unit_cell()->num_beta_a(), n);
+//==     mdarray<double_complex, 2> beta_phi(NULL, parameters_.unit_cell()->num_beta_a(), n);
 //==     beta_phi.allocate_on_device();
 //== 
 //==     // Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j>
-//==     mdarray<complex16, 2> tmp(NULL, parameters_.unit_cell()->max_mt_basis_size(), n);
+//==     mdarray<double_complex, 2> tmp(NULL, parameters_.unit_cell()->max_mt_basis_size(), n);
 //==     tmp.allocate_on_device();
 //== 
 //==     kp->beta_pw().allocate_on_device();
@@ -2429,7 +2429,7 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 //== 
 //== 
 //==     
-//==     complex16 zone(1, 0);
+//==     double_complex zone(1, 0);
 //==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
 //==     {
 //==         int ofs = parameters_.unit_cell()->beta_a_ofs(ia);
@@ -2506,7 +2506,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
 
     // map effective potential to a corase grid
     std::vector<double> veff_it_coarse(parameters_.reciprocal_lattice()->fft_coarse()->size());
-    std::vector<complex16> veff_pw_coarse(parameters_.reciprocal_lattice()->num_gvec_coarse());
+    std::vector<double_complex> veff_pw_coarse(parameters_.reciprocal_lattice()->num_gvec_coarse());
 
     // take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi
     for (int igc = 0; igc < parameters_.reciprocal_lattice()->num_gvec_coarse(); igc++)
@@ -2521,7 +2521,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
     parameters_.reciprocal_lattice()->fft_coarse()->output(&veff_it_coarse[0]);
 
     // short notation for target wave-functions
-    mdarray<complex16, 2>& psi = kp->fv_states_col();
+    mdarray<double_complex, 2>& psi = kp->fv_states_col();
 
     // short notation for number of target wave-functions
     int num_bands = parameters_.num_fv_states();     
@@ -2530,26 +2530,26 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
     std::vector<double> pw_ekin = kp->get_pw_ekin();
 
     // get diagonal elements for preconditioning
-    std::vector<complex16> h_diag;
-    std::vector<complex16> o_diag;
+    std::vector<double_complex> h_diag;
+    std::vector<double_complex> o_diag;
     get_h_o_diag<1>(kp, effective_potential, pw_ekin, h_diag, o_diag);
     
     int max_iter = 10;
     int num_phi = std::min(4 * num_bands, kp->num_gkvec());
 
-    mdarray<complex16, 2> phi(kp->num_gkvec(), num_phi);
-    mdarray<complex16, 2> hphi(kp->num_gkvec(), num_phi);
-    mdarray<complex16, 2> ophi(kp->num_gkvec(), num_phi);
+    mdarray<double_complex, 2> phi(kp->num_gkvec(), num_phi);
+    mdarray<double_complex, 2> hphi(kp->num_gkvec(), num_phi);
+    mdarray<double_complex, 2> ophi(kp->num_gkvec(), num_phi);
 
-    mdarray<complex16, 2> hmlt(num_phi, num_phi);
-    mdarray<complex16, 2> ovlp(num_phi, num_phi);
-    mdarray<complex16, 2> hmlt_old(num_phi, num_phi);
-    mdarray<complex16, 2> ovlp_old(num_phi, num_phi);
-    mdarray<complex16, 2> evec(num_phi, num_phi);
+    mdarray<double_complex, 2> hmlt(num_phi, num_phi);
+    mdarray<double_complex, 2> ovlp(num_phi, num_phi);
+    mdarray<double_complex, 2> hmlt_old(num_phi, num_phi);
+    mdarray<double_complex, 2> ovlp_old(num_phi, num_phi);
+    mdarray<double_complex, 2> evec(num_phi, num_phi);
     std::vector<double> eval(num_bands);
     std::vector<double> eval_old(num_bands, 1e100);
     
-    mdarray<complex16, 2> res(kp->num_gkvec(), num_bands); // residuals
+    mdarray<double_complex, 2> res(kp->num_gkvec(), num_bands); // residuals
 
     std::vector<double> res_norm(num_bands); // norm of residuals
     std::vector<double> res_rms(num_bands); // RMS of residual
@@ -2564,7 +2564,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
 
     // trial basis functions
     assert(phi.size(0) == psi.size(0));
-    for (int i = 0; i < num_bands; i++) memcpy(&phi(0, i), &psi(0, i), kp->num_gkvec() * sizeof(complex16));
+    for (int i = 0; i < num_bands; i++) memcpy(&phi(0, i), &psi(0, i), kp->num_gkvec() * sizeof(double_complex));
     
     // start iterative diagonalization
     for (int k = 0; k < max_iter; k++)
@@ -2575,8 +2575,8 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
             // copy old Hamiltonian and overlap
             for (int i = 0; i < N; i++)
             {
-                memcpy(&hmlt(0, i), &hmlt_old(0, i), N * sizeof(complex16));
-                memcpy(&ovlp(0, i), &ovlp_old(0, i), N * sizeof(complex16));
+                memcpy(&hmlt(0, i), &hmlt_old(0, i), N * sizeof(double_complex));
+                memcpy(&ovlp(0, i), &ovlp_old(0, i), N * sizeof(double_complex));
             }
 
             // apply Hamiltonian and overlap operators to the new basis functions
@@ -2594,8 +2594,8 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
             // save Hamiltonian and overlap
             for (int i = 0; i < N; i++)
             {
-                memcpy(&hmlt_old(0, i), &hmlt(0, i), N * sizeof(complex16));
-                memcpy(&ovlp_old(0, i), &ovlp(0, i), N * sizeof(complex16));
+                memcpy(&hmlt_old(0, i), &hmlt(0, i), N * sizeof(double_complex));
+                memcpy(&ovlp_old(0, i), &ovlp(0, i), N * sizeof(double_complex));
             }
         }
         
@@ -2613,7 +2613,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
             if (k == 0)
             {
                 n = num_bands;
-                memcpy(&hmlt(0, 0), &evec(0, 0), N * n * sizeof(complex16));
+                memcpy(&hmlt(0, 0), &evec(0, 0), N * n * sizeof(double_complex));
             }
             else
             {
@@ -2626,7 +2626,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
                         res_e[n] = eval[i];
                         
                         // use hmlt as a temporary storage for evec
-                        memcpy(&hmlt(0, n), &evec(0, i), N * sizeof(complex16));
+                        memcpy(&hmlt(0, n), &evec(0, i), N * sizeof(double_complex));
  
                         n++;
                     }
@@ -2647,8 +2647,8 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
                     for (int igk = 0; igk < kp->num_gkvec(); igk++) res(igk, i) *= eval[i];
                 }
                 // 3. r_{i} = H\Psi_{i} - E_{i}O\Psi_{i}
-                blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, N, complex16(1, 0), &hphi(0, 0), hphi.ld(), 
-                                &hmlt(0, 0), hmlt.ld(), complex16(-1, 0), &res(0, 0), res.ld());
+                blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, N, double_complex(1, 0), &hphi(0, 0), hphi.ld(), 
+                                &hmlt(0, 0), hmlt.ld(), double_complex(-1, 0), &res(0, 0), res.ld());
 
                 // apply preconditioner
                 #pragma omp parallel for
@@ -2657,7 +2657,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
                     // apply preconditioner
                     for (int igk = 0; igk < kp->num_gkvec(); igk++)
                     {
-                        //complex16 z = h_diag[igk] - res_e[i] * o_diag[igk];
+                        //double_complex z = h_diag[igk] - res_e[i] * o_diag[igk];
                         //if (abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
                         double d = real(h_diag[igk] - res_e[i] * o_diag[igk]);
                         if (fabs(d) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
@@ -2679,8 +2679,8 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
                 for (int igk = 0; igk < kp->num_gkvec(); igk++) res(igk, i) *= eval[i];
             }
             // 3. r_{i} = H\Psi_{i} - E_{i}O\Psi_{i}
-            blas<cpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, complex16(1, 0), &hphi(0, 0), hphi.ld(), 
-                            &evec(0, 0), evec.ld(), complex16(-1, 0), &res(0, 0), res.ld());
+            blas<cpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, double_complex(1, 0), &hphi(0, 0), hphi.ld(), 
+                            &evec(0, 0), evec.ld(), double_complex(-1, 0), &res(0, 0), res.ld());
 
             // compute norm and apply preconditioner
             #pragma omp parallel for
@@ -2694,7 +2694,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
                 // apply preconditioner
                 for (int igk = 0; igk < kp->num_gkvec(); igk++)
                 {
-                    complex16 z = h_diag[igk] - eval[i] * o_diag[igk];
+                    double_complex z = h_diag[igk] - eval[i] * o_diag[igk];
                     if (abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
                     res(igk, i) /= z;
                 }
@@ -2726,7 +2726,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
                     if (res_rms[i] > tol) 
                     {
                         // shift unconverged residuals to the beginning of array
-                        if (n != i) memcpy(&res(0, n), &res(0, i), kp->num_gkvec() * sizeof(complex16));
+                        if (n != i) memcpy(&res(0, n), &res(0, i), kp->num_gkvec() * sizeof(double_complex));
                         n++;
                     }
                 }
@@ -2739,7 +2739,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
             //==     if (res_rms[i] > parameters_.iterative_solver_tolerance()) 
             //==     {
             //==         // shift unconverged residuals to the beginning of array
-            //==         if (n != i) memcpy(&res(0, n), &res(0, i), kp->num_gkvec() * sizeof(complex16));
+            //==         if (n != i) memcpy(&res(0, n), &res(0, i), kp->num_gkvec() * sizeof(double_complex));
             //==         n++;
             //==     }
             //== }
@@ -2775,7 +2775,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
                 blas<cpu>::gemm(2, 0, num_bands, num_bands, kp->num_gkvec(), &psi(0, 0), psi.ld(), &phi(0, 0), phi.ld(), 
                                 &hmlt_old(0, 0), hmlt_old.ld());
              
-                memcpy(hphi.get_ptr(), phi.get_ptr(), num_bands * kp->num_gkvec() * sizeof(complex16));
+                memcpy(hphi.get_ptr(), phi.get_ptr(), num_bands * kp->num_gkvec() * sizeof(double_complex));
 
                 // use phi as a temporary vector to compute O\Psi
                 blas<cpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), 
@@ -2785,15 +2785,15 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
                 blas<cpu>::gemm(2, 0, num_bands, num_bands, kp->num_gkvec(), &psi(0, 0), psi.ld(), &phi(0, 0), phi.ld(), 
                                 &ovlp_old(0, 0), ovlp_old.ld());
             
-                memcpy(ophi.get_ptr(), phi.get_ptr(), num_bands * kp->num_gkvec() * sizeof(complex16));
+                memcpy(ophi.get_ptr(), phi.get_ptr(), num_bands * kp->num_gkvec() * sizeof(double_complex));
                 
                 // set new basis functions
-                memcpy(phi.get_ptr(), psi.get_ptr(), num_bands * kp->num_gkvec() * sizeof(complex16));
+                memcpy(phi.get_ptr(), psi.get_ptr(), num_bands * kp->num_gkvec() * sizeof(double_complex));
                 N = num_bands;
             }
         }
         // expand variational subspace with new basis vectors obtatined from residuals
-        memcpy(&phi(0, N), &res(0, 0), n * kp->num_gkvec() * sizeof(complex16));
+        memcpy(&phi(0, N), &res(0, 0), n * kp->num_gkvec() * sizeof(double_complex));
     }
 
     delete gevp;
@@ -2808,7 +2808,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
 
     // map effective potential to a corase grid
     std::vector<double> veff_it_coarse(parameters_.reciprocal_lattice()->fft_coarse()->size());
-    std::vector<complex16> veff_pw_coarse(parameters_.reciprocal_lattice()->num_gvec_coarse());
+    std::vector<double_complex> veff_pw_coarse(parameters_.reciprocal_lattice()->num_gvec_coarse());
 
     // take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi
     for (int igc = 0; igc < parameters_.reciprocal_lattice()->num_gvec_coarse(); igc++)
@@ -2823,7 +2823,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
     parameters_.reciprocal_lattice()->fft_coarse()->output(&veff_it_coarse[0]);
 
     // short notation for target wave-functions
-    mdarray<complex16, 2>& psi = kp->fv_states_col();
+    mdarray<double_complex, 2>& psi = kp->fv_states_col();
 
     // short notation for number of target wave-functions
     int num_bands = parameters_.num_fv_states();     
@@ -2832,34 +2832,34 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
     std::vector<double> pw_ekin = kp->get_pw_ekin();
 
     // get diagonal elements for preconditioning
-    std::vector<complex16> h_diag;
-    std::vector<complex16> o_diag;
+    std::vector<double_complex> h_diag;
+    std::vector<double_complex> o_diag;
     get_h_o_diag<1>(kp, effective_potential, pw_ekin, h_diag, o_diag);
     
     int max_iter = 10;
     int num_phi = std::min(4 * num_bands, kp->num_gkvec());
 
     // big array to store one of the beta, phi, hphi or ophi on the GPU
-    mdarray<complex16, 2> gamma(NULL, kp->num_gkvec(), std::max(num_phi, parameters_.unit_cell()->num_beta_a()));
+    mdarray<double_complex, 2> gamma(NULL, kp->num_gkvec(), std::max(num_phi, parameters_.unit_cell()->num_beta_a()));
     gamma.allocate_on_device();
 
     // small array to store residuals, wave-functions and updates to hphi and ophi
-    mdarray<complex16, 2> kappa(kp->num_gkvec(), 2 * num_bands);
+    mdarray<double_complex, 2> kappa(kp->num_gkvec(), 2 * num_bands);
     kappa.allocate_on_device();
     kappa.pin_memory();
 
 
 
-    mdarray<complex16, 2> phi(kp->num_gkvec(), num_phi);
-    mdarray<complex16, 2> hphi(kp->num_gkvec(), num_phi);
-    mdarray<complex16, 2> ophi(kp->num_gkvec(), num_phi);
+    mdarray<double_complex, 2> phi(kp->num_gkvec(), num_phi);
+    mdarray<double_complex, 2> hphi(kp->num_gkvec(), num_phi);
+    mdarray<double_complex, 2> ophi(kp->num_gkvec(), num_phi);
     
-    mdarray<complex16, 2> hmlt(num_phi, num_phi);
-    mdarray<complex16, 2> ovlp(num_phi, num_phi);
-    mdarray<complex16, 2> hmlt_old(num_phi, num_phi);
-    mdarray<complex16, 2> ovlp_old(num_phi, num_phi);
+    mdarray<double_complex, 2> hmlt(num_phi, num_phi);
+    mdarray<double_complex, 2> ovlp(num_phi, num_phi);
+    mdarray<double_complex, 2> hmlt_old(num_phi, num_phi);
+    mdarray<double_complex, 2> ovlp_old(num_phi, num_phi);
     
-    mdarray<complex16, 2> evec(num_phi, num_phi);
+    mdarray<double_complex, 2> evec(num_phi, num_phi);
     evec.allocate_on_device();
     evec.pin_memory();
 
@@ -2900,7 +2900,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
 
     // trial basis functions
     assert(phi.size(0) == psi.size(0));
-    for (int i = 0; i < num_bands; i++) memcpy(&phi(0, i), &psi(0, i), kp->num_gkvec() * sizeof(complex16));
+    for (int i = 0; i < num_bands; i++) memcpy(&phi(0, i), &psi(0, i), kp->num_gkvec() * sizeof(double_complex));
     
     // start iterative diagonalization
     for (int k = 0; k < max_iter; k++)
@@ -2910,31 +2910,31 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
         // copy old Hamiltonian and overlap
         for (int i = 0; i < N; i++)
         {
-            memcpy(&hmlt(0, i), &hmlt_old(0, i), N * sizeof(complex16));
-            memcpy(&ovlp(0, i), &ovlp_old(0, i), N * sizeof(complex16));
+            memcpy(&hmlt(0, i), &hmlt_old(0, i), N * sizeof(double_complex));
+            memcpy(&ovlp(0, i), &ovlp_old(0, i), N * sizeof(double_complex));
         }
 
         // apply Hamiltonian and overlap operators
         apply_h_o_uspp_gpu(kp, veff_it_coarse, pw_ekin, n, gamma, kappa, &phi(0, N), &hphi(0, N), &ophi(0, N));
 
         // copy all phi to GPU
-        cublas_set_matrix(kp->num_gkvec(), n + N, sizeof(complex16), phi.get_ptr(), phi.ld(), gamma.get_ptr_device(), gamma.ld());
+        cublas_set_matrix(kp->num_gkvec(), n + N, sizeof(double_complex), phi.get_ptr(), phi.ld(), gamma.get_ptr_device(), gamma.ld());
 
         // temporary storage for Hamiltonian and overlap 
-        mdarray<complex16, 2> tmp(NULL, N + n, n);
+        mdarray<double_complex, 2> tmp(NULL, N + n, n);
         tmp.allocate_on_device();
 
         // compute the Hamiltonian matrix: <phi|H|phi>
         blas<gpu>::gemm(2, 0, N + n, n, kp->num_gkvec(), gamma.get_ptr_device(), gamma.ld(), 
                         kappa.get_ptr_device(), kappa.ld(), tmp.get_ptr_device(), tmp.ld());
 
-        cublas_get_matrix(N + n, n, sizeof(complex16), tmp.get_ptr_device(), tmp.ld(), &hmlt(0, N), hmlt.ld());
+        cublas_get_matrix(N + n, n, sizeof(double_complex), tmp.get_ptr_device(), tmp.ld(), &hmlt(0, N), hmlt.ld());
 
         // compute overlap matrix <phi|O|phi>
         blas<gpu>::gemm(2, 0, N + n, n, kp->num_gkvec(), gamma.get_ptr_device(), gamma.ld(), 
                         kappa.get_ptr_device(kp->num_gkvec() * n), kappa.ld(), tmp.get_ptr_device(), tmp.ld());
 
-        cublas_get_matrix(N + n, n, sizeof(complex16), tmp.get_ptr_device(), tmp.ld(), &ovlp(0, N), ovlp.ld());
+        cublas_get_matrix(N + n, n, sizeof(double_complex), tmp.get_ptr_device(), tmp.ld(), &ovlp(0, N), ovlp.ld());
 
         tmp.deallocate_on_device();
 
@@ -2956,8 +2956,8 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
         // save Hamiltonian and overlap
         for (int i = 0; i < N; i++)
         {
-            memcpy(&hmlt_old(0, i), &hmlt(0, i), N * sizeof(complex16));
-            memcpy(&ovlp_old(0, i), &ovlp(0, i), N * sizeof(complex16));
+            memcpy(&hmlt_old(0, i), &hmlt(0, i), N * sizeof(double_complex));
+            memcpy(&ovlp_old(0, i), &ovlp(0, i), N * sizeof(double_complex));
         }
         t1.stop();
         
@@ -2974,7 +2974,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
             //== if (k == 0)
             //== {
             //==     n = num_bands;
-            //==     memcpy(&hmlt(0, 0), &evec(0, 0), N * n * sizeof(complex16));
+            //==     memcpy(&hmlt(0, 0), &evec(0, 0), N * n * sizeof(double_complex));
             //== }
             //== else
             //== {
@@ -2987,7 +2987,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
             //==             res_e[n] = eval[i];
             //==             
             //==             // use hmlt as a temporary storage for evec
-            //==             memcpy(&hmlt(0, n), &evec(0, i), N * sizeof(complex16));
+            //==             memcpy(&hmlt(0, n), &evec(0, i), N * sizeof(double_complex));
  
             //==             n++;
             //==         }
@@ -3008,8 +3008,8 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
             //==         for (int igk = 0; igk < kp->num_gkvec(); igk++) res(igk, i) *= eval[i];
             //==     }
             //==     // 3. r_{i} = H\Psi_{i} - E_{i}O\Psi_{i}
-            //==     blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, N, complex16(1, 0), &hphi(0, 0), hphi.ld(), 
-            //==                     &hmlt(0, 0), hmlt.ld(), complex16(-1, 0), &res(0, 0), res.ld());
+            //==     blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, N, double_complex(1, 0), &hphi(0, 0), hphi.ld(), 
+            //==                     &hmlt(0, 0), hmlt.ld(), double_complex(-1, 0), &res(0, 0), res.ld());
 
             //==     // apply preconditioner
             //==     #pragma omp parallel for
@@ -3018,7 +3018,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
             //==         // apply preconditioner
             //==         for (int igk = 0; igk < kp->num_gkvec(); igk++)
             //==         {
-            //==             //complex16 z = h_diag[igk] - res_e[i] * o_diag[igk];
+            //==             //double_complex z = h_diag[igk] - res_e[i] * o_diag[igk];
             //==             //if (abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
             //==             double d = real(h_diag[igk] - res_e[i] * o_diag[igk]);
             //==             if (fabs(d) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
@@ -3030,10 +3030,10 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
         /* Alternative way to estimate basis update: take residuals with norm > eps */
         else
         {
-            cublas_set_matrix(N, N, sizeof(complex16), evec.get_ptr(), evec.ld(), evec.get_ptr_device(), evec.ld());
+            cublas_set_matrix(N, N, sizeof(double_complex), evec.get_ptr(), evec.ld(), evec.get_ptr_device(), evec.ld());
 
             // copy all ophi to GPU
-            cublas_set_matrix(kp->num_gkvec(), N, sizeof(complex16), ophi.get_ptr(), ophi.ld(), gamma.get_ptr_device(), gamma.ld());
+            cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), ophi.get_ptr(), ophi.ld(), gamma.get_ptr_device(), gamma.ld());
             
             // O\Psi_{i} = O\phi_{mu} * Z_{mu, i}
             blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.get_ptr_device(), gamma.ld(), 
@@ -3047,16 +3047,16 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
             eval_gpu.deallocate_on_device();
             
             // copy all hphi to GPU
-            cublas_set_matrix(kp->num_gkvec(), N, sizeof(complex16), hphi.get_ptr(), hphi.ld(), gamma.get_ptr_device(), gamma.ld());
+            cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), hphi.get_ptr(), hphi.ld(), gamma.get_ptr_device(), gamma.ld());
             
-            complex16 zone(1, 0);
-            complex16 mzone(-1, 0);
+            double_complex zone(1, 0);
+            double_complex mzone(-1, 0);
             // r_{i} = H\Psi_{i} - E_{i}O\Psi_{i}
             blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, &zone, gamma.get_ptr_device(), gamma.ld(), 
                             evec.get_ptr_device(), evec.ld(), &mzone, kappa.get_ptr_device(), kappa.ld());
            
             // copy residuals to the host memory
-            cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(complex16), kappa.get_ptr_device(), kappa.ld(), 
+            cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex), kappa.get_ptr_device(), kappa.ld(), 
                               kappa.get_ptr(), kappa.ld());
 
             Timer t("sirius::Band::diag_fv_uspp_gpu:residuals:cpu_part");
@@ -3072,7 +3072,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
                 // apply preconditioner
                 for (int igk = 0; igk < kp->num_gkvec(); igk++)
                 {
-                    complex16 z = h_diag[igk] - eval[i] * o_diag[igk];
+                    double_complex z = h_diag[igk] - eval[i] * o_diag[igk];
                     if (abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
                     kappa(igk, i) /= z;
                 }
@@ -3104,7 +3104,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
                     if (res_rms[i] > tol) 
                     {
                         // shift unconverged residuals to the beginning of array
-                        if (n != i) memcpy(&kappa(0, n), &kappa(0, i), kp->num_gkvec() * sizeof(complex16));
+                        if (n != i) memcpy(&kappa(0, n), &kappa(0, i), kp->num_gkvec() * sizeof(double_complex));
                         n++;
                     }
                 }
@@ -3118,7 +3118,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
             //==     if (res_rms[i] > parameters_.iterative_solver_tolerance()) 
             //==     {
             //==         // shift unconverged residuals to the beginning of array
-            //==         if (n != i) memcpy(&res(0, n), &res(0, i), kp->num_gkvec() * sizeof(complex16));
+            //==         if (n != i) memcpy(&res(0, n), &res(0, i), kp->num_gkvec() * sizeof(double_complex));
             //==         n++;
             //==     }
             //== }
@@ -3136,13 +3136,13 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
         {   
             Timer t3("sirius::Band::diag_fv_uspp_gpu:update_phi");
             // copy all phi to GPU
-            cublas_set_matrix(kp->num_gkvec(), N, sizeof(complex16), phi.get_ptr(), phi.ld(), 
+            cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), phi.get_ptr(), phi.ld(), 
                               gamma.get_ptr_device(), gamma.ld());
             // \Psi_{i} = \phi_{mu} * Z_{mu, i}
             blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.get_ptr_device(), gamma.ld(), 
                             evec.get_ptr_device(), evec.ld(), kappa.get_ptr_device(), kappa.ld());
 
-            cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(complex16), 
+            cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex), 
                               kappa.get_ptr_device(), kappa.ld(), psi.get_ptr(), psi.ld());
             t3.stop();
 
@@ -3156,18 +3156,18 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
                 Timer t("sirius::Band::diag_fv_uspp_gpu:update_h_o");
 
                 // temporary storage for Hamiltonian and overlap 
-                mdarray<complex16, 2> tmp(NULL, num_bands, num_bands);
+                mdarray<double_complex, 2> tmp(NULL, num_bands, num_bands);
                 tmp.allocate_on_device();
 
                 // compute H\Psi
-                cublas_set_matrix(kp->num_gkvec(), N, sizeof(complex16), hphi.get_ptr(), hphi.ld(), 
+                cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), hphi.get_ptr(), hphi.ld(), 
                                   gamma.get_ptr_device(), gamma.ld());
 
                 blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.get_ptr_device(), gamma.ld(), 
                                 evec.get_ptr_device(), evec.ld(), kappa.get_ptr_device(kp->num_gkvec() * num_bands), kappa.ld());
                 
                 // copy H\Psi to host memory
-                cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(complex16),
+                cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex),
                                   kappa.get_ptr_device(kp->num_gkvec() * num_bands), kappa.ld(), 
                                   hphi.get_ptr(), hphi.ld());
 
@@ -3177,18 +3177,18 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
                                 tmp.get_ptr_device(), tmp.ld());
 
                 // copy Hamiltonian to host
-                cublas_get_matrix(num_bands, num_bands, sizeof(complex16), tmp.get_ptr_device(), tmp.ld(), 
+                cublas_get_matrix(num_bands, num_bands, sizeof(double_complex), tmp.get_ptr_device(), tmp.ld(), 
                                   hmlt_old.get_ptr(), hmlt_old.ld());
                 
                 // compute O\Psi
-                cublas_set_matrix(kp->num_gkvec(), N, sizeof(complex16), ophi.get_ptr(), ophi.ld(), 
+                cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), ophi.get_ptr(), ophi.ld(), 
                                   gamma.get_ptr_device(), gamma.ld());
 
                 blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.get_ptr_device(), gamma.ld(), 
                                 evec.get_ptr_device(), evec.ld(), kappa.get_ptr_device(kp->num_gkvec() * num_bands), kappa.ld());
 
                 // copy O\Psi to host memory
-                cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(complex16),
+                cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex),
                                   kappa.get_ptr_device(kp->num_gkvec() * num_bands), kappa.ld(), 
                                   ophi.get_ptr(), ophi.ld());
 
@@ -3198,11 +3198,11 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
                                 tmp.get_ptr_device(), tmp.ld());
 
                 // copy overlap matrix to host
-                cublas_get_matrix(num_bands, num_bands, sizeof(complex16), tmp.get_ptr_device(), tmp.ld(), 
+                cublas_get_matrix(num_bands, num_bands, sizeof(double_complex), tmp.get_ptr_device(), tmp.ld(), 
                                   ovlp_old.get_ptr(), ovlp_old.ld());
              
                 // update phi with Psi
-                memcpy(phi.get_ptr(), psi.get_ptr(), num_bands * kp->num_gkvec() * sizeof(complex16));
+                memcpy(phi.get_ptr(), psi.get_ptr(), num_bands * kp->num_gkvec() * sizeof(double_complex));
 
                 // new size of eigen-value problem 
                 N = num_bands;
@@ -3211,7 +3211,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
             }
         }
         // expand variational space with new preconditioned residuals
-        memcpy(&phi(0, N), &kappa(0, 0), n * kp->num_gkvec() * sizeof(complex16));
+        memcpy(&phi(0, N), &kappa(0, 0), n * kp->num_gkvec() * sizeof(double_complex));
     }
 
     delete gevp;
@@ -3262,15 +3262,15 @@ void Band::solve_fv(K_point* kp, Periodic_function<double>* effective_potential)
 //=====================================================================================================================
 //** #ifdef _GPU_
 //** template<> void K_point::set_fv_h_o<gpu, apwlo>(Periodic_function<double>* effective_potential, int num_ranks,
-//**                                                mdarray<complex16, 2>& h, mdarray<complex16, 2>& o)
+//**                                                mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 //** 
 //** {
 //**     Timer t("sirius::K_point::set_fv_h_o");
 //**     
 //**     int apw_offset_col = (num_ranks > 1) ? num_gkvec_row() : 0;
 //**     
-//**     mdarray<complex16, 2> alm(num_gkvec_loc(), parameters_.max_mt_aw_basis_size());
-//**     mdarray<complex16, 2> halm(num_gkvec_row(), parameters_.max_mt_aw_basis_size());
+//**     mdarray<double_complex, 2> alm(num_gkvec_loc(), parameters_.max_mt_aw_basis_size());
+//**     mdarray<double_complex, 2> halm(num_gkvec_row(), parameters_.max_mt_aw_basis_size());
 //**     
 //**     alm.pin_memory();
 //**     alm.allocate_on_device();
@@ -3281,7 +3281,7 @@ void Band::solve_fv(K_point* kp, Periodic_function<double>* effective_potential)
 //**     o.allocate_on_device();
 //**     o.zero_on_device();
 //** 
-//**     complex16 zone(1, 0);
+//**     double_complex zone(1, 0);
 //**     
 //**     for (int ia = 0; ia < parameters_.num_atoms(); ia++)
 //**     {
@@ -3306,10 +3306,10 @@ void Band::solve_fv(K_point* kp, Periodic_function<double>* effective_potential)
 //**         set_fv_h_o_apw_lo(type, atom, ia, apw_offset_col, alm, h, o);
 //**     } //ia
 //** 
-//**     cublas_get_matrix(num_gkvec_row(), num_gkvec_col(), sizeof(complex16), h.get_ptr_device(), h.ld(), 
+//**     cublas_get_matrix(num_gkvec_row(), num_gkvec_col(), sizeof(double_complex), h.get_ptr_device(), h.ld(), 
 //**                       h.get_ptr(), h.ld());
 //**     
-//**     cublas_get_matrix(num_gkvec_row(), num_gkvec_col(), sizeof(complex16), o.get_ptr_device(), o.ld(), 
+//**     cublas_get_matrix(num_gkvec_row(), num_gkvec_col(), sizeof(double_complex), o.get_ptr_device(), o.ld(), 
 //**                       o.get_ptr(), o.ld());
 //** 
 //**     set_fv_h_o_it(effective_potential, h, o);

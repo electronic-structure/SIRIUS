@@ -37,23 +37,23 @@ class Potential
 
         int pseudo_density_order;
 
-        std::vector<complex16> zil_;
+        std::vector<double_complex> zil_;
         
-        std::vector<complex16> zilm_;
+        std::vector<double_complex> zilm_;
 
         std::vector<int> l_by_lm_;
 
         /// Compute MT part of the potential and MT multipole moments
-        void poisson_vmt(mdarray<Spheric_function<complex16>*, 1>& rho_ylm, mdarray<Spheric_function<complex16>*, 1>& vh, 
-                         mdarray<complex16, 2>& qmt);
+        void poisson_vmt(mdarray<Spheric_function<double_complex>*, 1>& rho_ylm, mdarray<Spheric_function<double_complex>*, 1>& vh, 
+                         mdarray<double_complex, 2>& qmt);
 
         /// Compute multipole momenst of the interstitial charge density
         /** Also, compute the MT boundary condition 
         */
-        void poisson_sum_G(complex16* fpw, mdarray<double, 3>& fl, mdarray<complex16, 2>& flm);
+        void poisson_sum_G(double_complex* fpw, mdarray<double, 3>& fl, mdarray<double_complex, 2>& flm);
         
         /// Add contribution from the pseudocharge to the plane-wave expansion
-        void poisson_add_pseudo_pw(mdarray<complex16, 2>& qmt, mdarray<complex16, 2>& qit, complex16* rho_pw);
+        void poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw);
 
         void generate_local_potential();
 

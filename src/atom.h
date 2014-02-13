@@ -53,10 +53,10 @@ class Atom
         int offset_wf_;
 
         /// unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method
-        mdarray<complex16, 4> occupation_matrix_;
+        mdarray<double_complex, 4> occupation_matrix_;
         
         /// U,J correction matrix of the L(S)DA+U method
-        mdarray<complex16, 4> uj_correction_matrix_;
+        mdarray<double_complex, 4> uj_correction_matrix_;
 
         /// true if UJ correction is applied for the current atom
         bool apply_uj_correction_;
@@ -65,7 +65,7 @@ class Atom
         int uj_correction_l_;
 
         /// D_{ij} matrix of the pseudo-potential method
-        mdarray<complex16, 2> d_mtrx_;
+        mdarray<double_complex, 2> d_mtrx_;
     
     public:
     
@@ -192,9 +192,9 @@ class Atom
         }
         
         template <spin_block_t sblock>
-        inline complex16 hb_radial_integrals_sum_L3(int idxrf1, int idxrf2, std::vector<gaunt_L3<complex16> >& gnt)
+        inline double_complex hb_radial_integrals_sum_L3(int idxrf1, int idxrf2, std::vector<gaunt_L3<double_complex> >& gnt)
         {
-            complex16 zsum(0, 0);
+            double_complex zsum(0, 0);
 
             for (int i = 0; i < (int)gnt.size(); i++)
             {
@@ -219,13 +219,13 @@ class Atom
                     }
                     case ud:
                     {
-                        zsum += gnt[i].coef * complex16(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
+                        zsum += gnt[i].coef * double_complex(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
                                                        -b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
                         break;
                     }
                     case du:
                     {
-                        zsum += gnt[i].coef * complex16(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
+                        zsum += gnt[i].coef * double_complex(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
                                                         b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
                         break;
                     }
@@ -255,21 +255,21 @@ class Atom
             return type_->zn();
         }
 
-        inline void set_occupation_matrix(const complex16* source)
+        inline void set_occupation_matrix(const double_complex* source)
         {
-            memcpy(occupation_matrix_.get_ptr(), source, 16 * 16 * 2 * 2 * sizeof(complex16));
+            memcpy(occupation_matrix_.get_ptr(), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
             apply_uj_correction_ = false;
         }
         
-        inline void get_occupation_matrix(complex16* destination)
+        inline void get_occupation_matrix(double_complex* destination)
         {
-            memcpy(destination, occupation_matrix_.get_ptr(), 16 * 16 * 2 * 2 * sizeof(complex16));
+            memcpy(destination, occupation_matrix_.get_ptr(), 16 * 16 * 2 * 2 * sizeof(double_complex));
         }
 
-        inline void set_uj_correction_matrix(const int l, const complex16* source)
+        inline void set_uj_correction_matrix(const int l, const double_complex* source)
         {
             uj_correction_l_ = l;
-            memcpy(uj_correction_matrix_.get_ptr(), source, 16 * 16 * 2 * 2 * sizeof(complex16));
+            memcpy(uj_correction_matrix_.get_ptr(), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
             apply_uj_correction_ = true;
         }
 
@@ -283,17 +283,17 @@ class Atom
             return uj_correction_l_;
         }
 
-        inline complex16 uj_correction_matrix(int lm1, int lm2, int ispn1, int ispn2)
+        inline double_complex uj_correction_matrix(int lm1, int lm2, int ispn1, int ispn2)
         {
              return uj_correction_matrix_(lm1, lm2, ispn1, ispn2);
         }
 
-        inline complex16& d_mtrx(int xi1, int xi2)
+        inline double_complex& d_mtrx(int xi1, int xi2)
         {
             return d_mtrx_(xi1, xi2);
         }
         
-        inline mdarray<complex16, 2>& d_mtrx()
+        inline mdarray<double_complex, 2>& d_mtrx()
         {
             return d_mtrx_;
         }

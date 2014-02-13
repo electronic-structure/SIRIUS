@@ -75,7 +75,7 @@ class Step_function
         Reciprocal_lattice* reciprocal_lattice_;
     
         /// plane wave expansion coefficients of the step function
-        std::vector<complex16> step_function_pw_;
+        std::vector<double_complex> step_function_pw_;
         
         /// step function on the real-space grid
         std::vector<double> step_function_;
@@ -96,7 +96,7 @@ class Step_function
         void get_step_function_form_factors(mdarray<double, 2>& ffac);
        
         /// Return plane-wave coefficient of the step function.
-        inline complex16 theta_pw(int ig)
+        inline double_complex theta_pw(int ig)
         {
             return step_function_pw_[ig];
         }

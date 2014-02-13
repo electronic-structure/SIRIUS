@@ -110,7 +110,7 @@ class Density
         std::vector< std::pair<int, int> > dmat_spins_;
 
         /// non-zero Gaunt coefficients
-        Gaunt_coefficients<complex16>* gaunt_coefs_;
+        Gaunt_coefficients<double_complex>* gaunt_coefs_;
         
         /// fast mapping between composite lm index and corresponding orbital quantum number
         std::vector<int> l_by_lm_;
@@ -131,7 +131,7 @@ class Density
             \f]
         */
         template <int num_mag_dims> 
-        void reduce_zdens(Atom_type* atom_type, int ialoc, mdarray<complex16, 4>& zdens, mdarray<double, 3>& mt_density_matrix);
+        void reduce_zdens(Atom_type* atom_type, int ialoc, mdarray<double_complex, 4>& zdens, mdarray<double, 3>& mt_density_matrix);
         
         /// Add k-point contribution to the auxiliary muffin-tin density matrix
         /** Complex density matrix has the following expression:
@@ -147,7 +147,7 @@ class Density
             \f] 
         */
         void add_kpoint_contribution_mt(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
-                                        mdarray<complex16, 4>& mt_complex_density_matrix);
+                                        mdarray<double_complex, 4>& mt_complex_density_matrix);
         
         /// Add k-point contribution to the interstitial density and magnetization
         void add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands);
@@ -163,12 +163,12 @@ class Density
             the occupancy operator written in spectral representation. 
         */
         void add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
-                                        mdarray<complex16, 4>& pp_complex_density_matrix);
+                                        mdarray<double_complex, 4>& pp_complex_density_matrix);
         void add_q_contribution_to_valence_density(K_set& kset);
         
         #ifdef _GPU_
         void add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
-                                            mdarray<complex16, 4>& pp_complex_density_matrix);
+                                            mdarray<double_complex, 4>& pp_complex_density_matrix);
         
         void add_q_contribution_to_valence_density_gpu(K_set& ks);
         #endif
@@ -186,7 +186,7 @@ class Density
         void generate_valence_density_it(K_set& ks);
        
         /// Add band contribution to the muffin-tin density
-        void add_band_contribution_mt(Band* band, double weight, mdarray<complex16, 3>& fylm, 
+        void add_band_contribution_mt(Band* band, double weight, mdarray<double_complex, 3>& fylm, 
                                       std::vector<Periodic_function<double>*>& dens);
         
         /// Generate charge density of core states

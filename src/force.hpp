@@ -1,4 +1,4 @@
-void Force::compute_dmat(Global& parameters_, K_point* kp, mdarray<complex16, 2>& dm)
+void Force::compute_dmat(Global& parameters_, K_point* kp, mdarray<double_complex, 2>& dm)
 {
     Timer t("sirius::Force::compute_dmat");
 
@@ -23,8 +23,8 @@ void Force::compute_dmat(Global& parameters_, K_point* kp, mdarray<complex16, 2>
     else
     {
         // multiply second-variational eigen-vectors with band occupancies
-        mdarray<complex16, 2>& sv_evec = kp->sv_eigen_vectors();
-        mdarray<complex16, 2> evq(sv_evec.size(0), sv_evec.size(1));
+        mdarray<double_complex, 2>& sv_evec = kp->sv_eigen_vectors();
+        mdarray<double_complex, 2> evq(sv_evec.size(0), sv_evec.size(1));
         for (int i = 0; i < parameters_.spl_spinor_wf_col().local_size(); i++)
         {
             int n = parameters_.spl_spinor_wf_col(i);
@@ -47,8 +47,8 @@ void Force::compute_dmat(Global& parameters_, K_point* kp, mdarray<complex16, 2>
             //==     for (int ispn = 0; ispn < 2; ispn++)
             //==     {
             //==         blas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
-            //==                         complex16(1, 0), &sv_evec(ispn * parameters_.num_fv_states(), 0), sv_evec.ld(), 
-            //==                         &evq(ispn * parameters_.num_fv_states(), 0), evq.ld(), complex16(1, 0), &dm(0, 0), dm.ld());
+            //==                         double_complex(1, 0), &sv_evec(ispn * parameters_.num_fv_states(), 0), sv_evec.ld(), 
+            //==                         &evq(ispn * parameters_.num_fv_states(), 0), evq.ld(), double_complex(1, 0), &dm(0, 0), dm.ld());
             //==     }
 
 
@@ -57,8 +57,8 @@ void Force::compute_dmat(Global& parameters_, K_point* kp, mdarray<complex16, 2>
             for (int s = 0; s < ns; s++)
             {
                 blas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
-                                complex16(1, 0), &sv_evec(s * parameters_.num_fv_states(), 0), sv_evec.ld(), 
-                                &evq(s * parameters_.num_fv_states(), 0), evq.ld(), complex16(1, 0), &dm(0, 0), dm.ld());
+                                double_complex(1, 0), &sv_evec(s * parameters_.num_fv_states(), 0), sv_evec.ld(), 
+                                &evq(s * parameters_.num_fv_states(), 0), evq.ld(), double_complex(1, 0), &dm(0, 0), dm.ld());
             }
         }
         else
@@ -67,8 +67,8 @@ void Force::compute_dmat(Global& parameters_, K_point* kp, mdarray<complex16, 2>
             for (int s = 0; s < ns; s++)
             {
                 pblas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
-                                 complex16(1, 0), &sv_evec(s * nsrow, 0), sv_evec.ld(), &evq(s * nsrow, 0), evq.ld(),
-                                 complex16(1, 0), &dm(0, 0), dm.ld(), parameters_.cyclic_block_size(), 
+                                 double_complex(1, 0), &sv_evec(s * nsrow, 0), sv_evec.ld(), &evq(s * nsrow, 0), evq.ld(),
+                                 double_complex(1, 0), &dm(0, 0), dm.ld(), parameters_.cyclic_block_size(), 
                                  parameters_.blacs_context());
             }
             #else
@@ -94,16 +94,16 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
     int nsrow = parameters_.spl_fv_states_row().local_size();
     int nscol = parameters_.spl_fv_states_col().local_size();
 
-    mdarray<complex16, 2> h(nfrow, nfcol);
-    mdarray<complex16, 2> o(nfrow, nfcol);
+    mdarray<double_complex, 2> h(nfrow, nfcol);
+    mdarray<double_complex, 2> o(nfrow, nfcol);
     
-    mdarray<complex16, 2> vh(nfrow, nfcol);
-    mdarray<complex16, 2> vo(nfrow, nfcol);
+    mdarray<double_complex, 2> vh(nfrow, nfcol);
+    mdarray<double_complex, 2> vo(nfrow, nfcol);
     
-    mdarray<complex16, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
-    mdarray<complex16, 2> halm(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    mdarray<double_complex, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    mdarray<double_complex, 2> halm(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
     
-    mdarray<complex16, 2> dm(nsrow, nscol);
+    mdarray<double_complex, 2> dm(nsrow, nscol);
 
     compute_dmat(parameters_, kp, dm);
 
@@ -124,8 +124,8 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
     //== else
     //== {
     //==     // multiply second-variational eigen-vectors with band occupancies
-    //==     mdarray<complex16, 2>& sv_evec = kp->sv_eigen_vectors();
-    //==     mdarray<complex16, 2> evq(sv_evec.size(0), sv_evec.size(1));
+    //==     mdarray<double_complex, 2>& sv_evec = kp->sv_eigen_vectors();
+    //==     mdarray<double_complex, 2> evq(sv_evec.size(0), sv_evec.size(1));
     //==     for (int i = 0; i < parameters_.spl_spinor_wf_col().local_size(); i++)
     //==     {
     //==         int n = parameters_.spl_spinor_wf_col(i);
@@ -146,8 +146,8 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
     //==             for (int ispn = 0; ispn < 2; ispn++)
     //==             {
     //==                 blas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
-    //==                                 complex16(1, 0), &sv_evec(ispn * parameters_.num_fv_states(), 0), sv_evec.ld(), 
-    //==                                 &evq(ispn * parameters_.num_fv_states(), 0), evq.ld(), complex16(1, 0), &dm(0, 0), dm.ld());
+    //==                                 double_complex(1, 0), &sv_evec(ispn * parameters_.num_fv_states(), 0), sv_evec.ld(), 
+    //==                                 &evq(ispn * parameters_.num_fv_states(), 0), evq.ld(), double_complex(1, 0), &dm(0, 0), dm.ld());
     //==             }
 
 
@@ -161,8 +161,8 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
     //==         for (int s = 0; s < ns; s++)
     //==         {
     //==             pblas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
-    //==                              complex16(1, 0), &sv_evec(s * nsrow, 0), sv_evec.ld(), &evq(s * nsrow, 0), evq.ld(),
-    //==                              complex16(1, 0), &dm(0, 0), dm.ld(), parameters_.cyclic_block_size(), 
+    //==                              double_complex(1, 0), &sv_evec(s * nsrow, 0), sv_evec.ld(), &evq(s * nsrow, 0), evq.ld(),
+    //==                              double_complex(1, 0), &dm(0, 0), dm.ld(), parameters_.cyclic_block_size(), 
     //==                              parameters_.blacs_context());
     //==         }
     //==         #else
@@ -191,9 +191,9 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
     //==     //}
     //== }
 
-    mdarray<complex16, 2>& fv_evec = kp->fv_eigen_vectors();
-    mdarray<complex16, 2> zm1(nfrow, nscol);
-    mdarray<complex16, 2> zf(nsrow, nscol);
+    mdarray<double_complex, 2>& fv_evec = kp->fv_eigen_vectors();
+    mdarray<double_complex, 2> zm1(nfrow, nscol);
+    mdarray<double_complex, 2> zf(nsrow, nscol);
 
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
@@ -228,7 +228,7 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
                                                  kp->apwlo_basis_descriptors_col(igk_col).ig);
                 int igs = parameters_.reciprocal_lattice()->gvec_shell(ig12);
 
-                complex16 zt = conj(parameters_.reciprocal_lattice()->gvec_phase_factor<global>(ig12, ia)) * ffac(igs, iat);
+                double_complex zt = conj(parameters_.reciprocal_lattice()->gvec_phase_factor<global>(ig12, ia)) * ffac(igs, iat);
 
                 double t1 = 0.5 * Utils::scalar_product(kp->apwlo_basis_descriptors_row(igk_row).gkvec_cart, 
                                                         kp->apwlo_basis_descriptors_col(igk_col).gkvec_cart);
@@ -248,8 +248,8 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
                                                      kp->apwlo_basis_descriptors_col(igk_col).ig);
 
                     vector3d<double> vg = parameters_.reciprocal_lattice()->gvec_cart(ig12);
-                    vh(igk_row, igk_col) = complex16(0.0, vg[x]) * h(igk_row, igk_col);
-                    vo(igk_row, igk_col) = complex16(0.0, vg[x]) * o(igk_row, igk_col);
+                    vh(igk_row, igk_col) = double_complex(0.0, vg[x]) * h(igk_row, igk_col);
+                    vo(igk_row, igk_col) = double_complex(0.0, vg[x]) * o(igk_row, igk_col);
                 }
             }
 
@@ -258,8 +258,8 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
                 for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++)
                 {
                     vector3d<double>& vgk = kp->apwlo_basis_descriptors_row(igk_row).gkvec_cart;
-                    vh(igk_row, icol) = complex16(0.0, vgk[x]) * h(igk_row, icol);
-                    vo(igk_row, icol) = complex16(0.0, vgk[x]) * o(igk_row, icol);
+                    vh(igk_row, icol) = double_complex(0.0, vgk[x]) * h(igk_row, icol);
+                    vo(igk_row, icol) = double_complex(0.0, vgk[x]) * o(igk_row, icol);
                 }
             }
                     
@@ -268,8 +268,8 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
                 for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++)
                 {
                     vector3d<double>& vgk = kp->apwlo_basis_descriptors_col(igk_col).gkvec_cart;
-                    vh(irow, igk_col) = complex16(0.0, -vgk[x]) * h(irow, igk_col);
-                    vo(irow, igk_col) = complex16(0.0, -vgk[x]) * o(irow, igk_col);
+                    vh(irow, igk_col) = double_complex(0.0, -vgk[x]) * h(irow, igk_col);
+                    vo(irow, igk_col) = double_complex(0.0, -vgk[x]) * o(irow, igk_col);
                 }
             }
 
@@ -295,7 +295,7 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
 
                 // F = F - V^{+} * zm1 = F - V^{+} * O * (E*V)
                 blas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), kp->apwlo_basis_size(),
-                                complex16(-1, 0), &fv_evec(0, 0), fv_evec.ld(), &zm1(0, 0), zm1.ld(), complex16(1, 0), 
+                                double_complex(-1, 0), &fv_evec(0, 0), fv_evec.ld(), &zm1(0, 0), zm1.ld(), double_complex(1, 0), 
                                 &zf(0, 0), zf.ld());
 
                 for (int i = 0; i < parameters_.num_fv_states(); i++)
@@ -309,20 +309,20 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
                 #ifdef _SCALAPACK_
                 // zm1 = H * V
                 pblas<cpu>::gemm(0, 0, kp->apwlo_basis_size(), parameters_.num_fv_states(), kp->apwlo_basis_size(), 
-                                 complex16(1, 0), &vh(0, 0), vh.ld(), &fv_evec(0, 0), fv_evec.ld(), 
-                                 complex16(0, 0), &zm1(0, 0), zm1.ld(), parameters_.cyclic_block_size(), 
+                                 double_complex(1, 0), &vh(0, 0), vh.ld(), &fv_evec(0, 0), fv_evec.ld(), 
+                                 double_complex(0, 0), &zm1(0, 0), zm1.ld(), parameters_.cyclic_block_size(), 
                                  parameters_.blacs_context());
 
                 // F = V^{+} * zm1 = V^{+} * H * V
                 pblas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), kp->apwlo_basis_size(),
-                                 complex16(1, 0), &fv_evec(0, 0), fv_evec.ld(), &zm1(0, 0), zm1.ld(), 
-                                 complex16(0, 0), &zf(0, 0), zf.ld(), parameters_.cyclic_block_size(), 
+                                 double_complex(1, 0), &fv_evec(0, 0), fv_evec.ld(), &zm1(0, 0), zm1.ld(), 
+                                 double_complex(0, 0), &zf(0, 0), zf.ld(), parameters_.cyclic_block_size(), 
                                  parameters_.blacs_context());
 
                 // zm1 = O * V
                 pblas<cpu>::gemm(0, 0, kp->apwlo_basis_size(), parameters_.num_fv_states(), kp->apwlo_basis_size(), 
-                                 complex16(1, 0), &vo(0, 0), vo.ld(), &fv_evec(0, 0), fv_evec.ld(),
-                                 complex16(0, 0), &zm1(0, 0), zm1.ld(), parameters_.cyclic_block_size(), 
+                                 double_complex(1, 0), &vo(0, 0), vo.ld(), &fv_evec(0, 0), fv_evec.ld(),
+                                 double_complex(0, 0), &zm1(0, 0), zm1.ld(), parameters_.cyclic_block_size(), 
                                  parameters_.blacs_context());
 
                 // multiply by energy
@@ -334,8 +334,8 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
 
                 // F = F - V^{+} * zm1 = F - V^{+} * O * (E*V)
                 pblas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), kp->apwlo_basis_size(),
-                                 complex16(-1, 0), &fv_evec(0, 0), fv_evec.ld(), &zm1(0, 0), zm1.ld(), 
-                                 complex16(1, 0), &zf(0, 0), zf.ld(), parameters_.cyclic_block_size(), 
+                                 double_complex(-1, 0), &fv_evec(0, 0), fv_evec.ld(), &zm1(0, 0), zm1.ld(), 
+                                 double_complex(1, 0), &zf(0, 0), zf.ld(), parameters_.cyclic_block_size(), 
                                  parameters_.blacs_context());
 
                 // TODO: this can be combined with the previous code

@@ -17,8 +17,8 @@ void Spheric_function<T>::sh_convert(Spheric_function<U>& f)
     int lmax = Utils::lmax_by_lmmax(angular_domain_size_);
 
     // cache transformation arrays
-    std::vector<complex16> tpp(angular_domain_size_);
-    std::vector<complex16> tpm(angular_domain_size_);
+    std::vector<double_complex> tpp(angular_domain_size_);
+    std::vector<double_complex> tpm(angular_domain_size_);
     for (int l = 0; l <= lmax; l++)
     {
         for (int m = -l; m <= l; m++) 

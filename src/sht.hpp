@@ -1,22 +1,22 @@
-template<> void SHT::backward_transform<double>(double* flm, int lmmax, int ncol, double* ftp)
+template<> inline void SHT::backward_transform<double>(double* flm, int lmmax, int ncol, double* ftp)
 {
     assert(lmmax <= lmmax_);
     blas<cpu>::gemm(1, 0, num_points_, ncol, lmmax, &rlm_backward_(0, 0), lmmax_, flm, lmmax, ftp, num_points_);
 }
 
-template<> void SHT::backward_transform<complex16>(complex16* flm, int lmmax, int ncol, complex16* ftp)
+template<> inline void SHT::backward_transform<double_complex>(double_complex* flm, int lmmax, int ncol, double_complex* ftp)
 {
     assert(lmmax <= lmmax_);
     blas<cpu>::gemm(1, 0, num_points_, ncol, lmmax, &ylm_backward_(0, 0), lmmax_, flm, lmmax, ftp, num_points_);
 }
 
-template<> void SHT::forward_transform<double>(double* ftp, int lmmax, int ncol, double* flm)
+template<> inline void SHT::forward_transform<double>(double* ftp, int lmmax, int ncol, double* flm)
 {
     assert(lmmax <= lmmax_);
     blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, &rlm_forward_(0, 0), num_points_, ftp, num_points_, flm, lmmax);
 }
 
-template<> void SHT::forward_transform<complex16>(complex16* ftp, int lmmax, int ncol, complex16* flm)
+template<> inline void SHT::forward_transform<double_complex>(double_complex* ftp, int lmmax, int ncol, double_complex* flm)
 {
     assert(lmmax <= lmmax_);
     blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, &ylm_forward_(0, 0), num_points_, ftp, num_points_, flm, lmmax);
@@ -27,7 +27,7 @@ template<> void SHT::forward_transform<complex16>(complex16* ftp, int lmmax, int
         \langle Y_{\ell_1 m_1} | Y_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
     \f]
 */
-template<> double SHT::gaunt<double>(int l1, int l2, int l3, int m1, int m2, int m3)
+template<> inline double SHT::gaunt<double>(int l1, int l2, int l3, int m1, int m2, int m3)
 {
     assert(l1 >= 0);
     assert(l2 >= 0);
@@ -46,7 +46,7 @@ template<> double SHT::gaunt<double>(int l1, int l2, int l3, int m1, int m2, int
         \langle Y_{\ell_1 m_1} | R_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
     \f]
 */
-template<> complex16 SHT::gaunt<complex16>(int l1, int l2, int l3, int m1, int m2, int m3)
+template<> inline double_complex SHT::gaunt<double_complex>(int l1, int l2, int l3, int m1, int m2, int m3)
 {
     assert(l1 >= 0);
     assert(l2 >= 0);
@@ -57,7 +57,7 @@ template<> complex16 SHT::gaunt<complex16>(int l1, int l2, int l3, int m1, int m
 
     if (m2 == 0) 
     {
-        return complex16(gaunt<double>(l1, l2, l3, m1, m2, m3), 0.0);
+        return double_complex(gaunt<double>(l1, l2, l3, m1, m2, m3), 0.0);
     }
     else 
     {

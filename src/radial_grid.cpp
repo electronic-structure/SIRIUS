@@ -161,7 +161,7 @@ void Radial_grid::set_radial_points(int num_points__, double* points__)
     assert(num_points__ > 0);
 
     points_.resize(num_points__);
-    memcpy(&points_[0], points__, num_points__ * sizeof(real8));
+    memcpy(&points_[0], points__, num_points__ * sizeof(double));
 
     // check if the last MT point is equal to the MT radius
     if (fabs(points_[num_mt_points_ - 1] - mt_radius_) > 1e-10) 

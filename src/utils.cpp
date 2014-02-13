@@ -1,6 +1,6 @@
 #include "utils.h"
 
-void Utils::write_matrix(const std::string& fname, mdarray<complex16, 2>& matrix, int nrow, int ncol,
+void Utils::write_matrix(const std::string& fname, mdarray<double_complex, 2>& matrix, int nrow, int ncol,
                          bool write_upper_only, bool write_abs_only, std::string fmt)
 {
     static int icount = 0;
@@ -82,7 +82,7 @@ void Utils::write_matrix(const std::string& fname, bool write_all, mdarray<doubl
     fclose(fout);
 }
 
-void Utils::check_hermitian(const std::string& name, mdarray<complex16, 2>& mtrx)
+void Utils::check_hermitian(const std::string& name, mdarray<double_complex, 2>& mtrx)
 {
     assert(mtrx.size(0) == mtrx.size(1));
 

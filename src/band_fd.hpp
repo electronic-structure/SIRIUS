@@ -4,8 +4,8 @@
 */
 
 template <spin_block_t sblock>
-void Band::set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<complex16, 2>& alm, 
-                        mdarray<complex16, 2>& h)
+void Band::set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 
+                        mdarray<double_complex, 2>& h)
 {
     Timer t("sirius::Band::set_h_apw_lo");
     
@@ -27,7 +27,7 @@ void Band::set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarra
                 int lm1 = type->indexb(j1).lm;
                 int idxrf1 = type->indexb(j1).idxrf;
                         
-                complex16 zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf, idxrf1, gaunt_coefs_->gaunt_vector(lm1, lm));
+                double_complex zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf, idxrf1, gaunt_coefs_->gaunt_vector(lm1, lm));
                 
                 if (abs(zsum) > 1e-14)
                 {
@@ -39,7 +39,7 @@ void Band::set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarra
     
     #pragma omp parallel default(shared)
     {
-        std::vector<complex16> ztmp(kp->num_gkvec_col());
+        std::vector<double_complex> ztmp(kp->num_gkvec_col());
         // lo-apw block
         #pragma omp for
         for (int i = 0; i < kp->num_atom_lo_rows(ia); i++)
@@ -49,14 +49,14 @@ void Band::set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarra
             int lm = kp->apwlo_basis_descriptors_row(irow).lm;
             int idxrf = kp->apwlo_basis_descriptors_row(irow).idxrf;
 
-            memset(&ztmp[0], 0, kp->num_gkvec_col() * sizeof(complex16));
+            memset(&ztmp[0], 0, kp->num_gkvec_col() * sizeof(double_complex));
         
             for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++) 
             {
                 int lm1 = type->indexb(j1).lm;
                 int idxrf1 = type->indexb(j1).idxrf;
                         
-                complex16 zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf, idxrf1, gaunt_coefs_->gaunt_vector(lm, lm1));
+                double_complex zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf, idxrf1, gaunt_coefs_->gaunt_vector(lm, lm1));
 
                 if (abs(zsum) > 1e-14)
                 {
@@ -70,8 +70,8 @@ void Band::set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarra
     }
 }
 
-void Band::set_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<complex16, 2>& alm, 
-                        mdarray<complex16, 2>& o)
+void Band::set_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 
+                        mdarray<double_complex, 2>& o)
 {
     Timer t("sirius::Band::set_o_apw_lo");
     
@@ -96,7 +96,7 @@ void Band::set_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarra
         }
     }
 
-    std::vector<complex16> ztmp(kp->num_gkvec_col());
+    std::vector<double_complex> ztmp(kp->num_gkvec_col());
     // lo-apw block
     for (int i = 0; i < kp->num_atom_lo_rows(ia); i++)
     {
@@ -119,7 +119,7 @@ void Band::set_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarra
 
 template <spin_block_t sblock>
 void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential, 
-                    Periodic_function<double>* effective_magnetic_field[3], mdarray<complex16, 2>& h)
+                    Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h)
 {
     Timer t("sirius::Band::set_h_it");
 
@@ -157,13 +157,13 @@ void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential,
                 case ud:
                 {
                     h(igk_row, igk_col) += (effective_magnetic_field[1]->f_pw(ig12) - 
-                                            complex16(0, 1) * effective_magnetic_field[2]->f_pw(ig12));
+                                            double_complex(0, 1) * effective_magnetic_field[2]->f_pw(ig12));
                     break;
                 }
                 case du:
                 {
                     h(igk_row, igk_col) += (effective_magnetic_field[1]->f_pw(ig12) + 
-                                            complex16(0, 1) * effective_magnetic_field[2]->f_pw(ig12));
+                                            double_complex(0, 1) * effective_magnetic_field[2]->f_pw(ig12));
                     break;
                 }
             }
@@ -171,7 +171,7 @@ void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential,
     }
 }
 
-void Band::set_o_it(K_point* kp, mdarray<complex16, 2>& o)
+void Band::set_o_it(K_point* kp, mdarray<double_complex, 2>& o)
 {
     Timer t("sirius::Band::set_o_it");
 
@@ -189,7 +189,7 @@ void Band::set_o_it(K_point* kp, mdarray<complex16, 2>& o)
 }
 
 template <spin_block_t sblock>
-void Band::set_h_lo_lo(K_point* kp, mdarray<complex16, 2>& h)
+void Band::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h)
 {
     Timer t("sirius::Band::set_h_lo_lo");
 
@@ -215,7 +215,7 @@ void Band::set_h_lo_lo(K_point* kp, mdarray<complex16, 2>& h)
     }
 }
 
-void Band::set_o_lo_lo(K_point* kp, mdarray<complex16, 2>& o)
+void Band::set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o)
 {
     Timer t("sirius::Band::set_o_lo_lo");
 
@@ -247,19 +247,19 @@ void Band::set_o_lo_lo(K_point* kp, mdarray<complex16, 2>& o)
 
 template <spin_block_t sblock> 
 void Band::set_h(K_point* kp, Periodic_function<double>* effective_potential, 
-                 Periodic_function<double>* effective_magnetic_field[3], mdarray<complex16, 2>& h)
+                 Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h)
 {
     Timer t("sirius::Band::set_h");
    
     // index of column apw coefficients in apw array
     int apw_offset_col = kp->apw_offset_col();
     
-    mdarray<complex16, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
-    mdarray<complex16, 2> halm(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    mdarray<double_complex, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    mdarray<double_complex, 2> halm(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
 
     h.zero();
 
-    complex16 zone(1, 0);
+    double_complex zone(1, 0);
     
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
@@ -288,17 +288,17 @@ void Band::set_h(K_point* kp, Periodic_function<double>* effective_potential,
     halm.deallocate();
 }
 
-void Band::set_o(K_point* kp, mdarray<complex16, 2>& o)
+void Band::set_o(K_point* kp, mdarray<double_complex, 2>& o)
 {
     Timer t("sirius::Band::set_o");
    
     // index of column apw coefficients in apw array
     int apw_offset_col = kp->apw_offset_col();
     
-    mdarray<complex16, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    mdarray<double_complex, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
     o.zero();
 
-    complex16 zone(1, 0);
+    double_complex zone(1, 0);
     
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
@@ -369,13 +369,13 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
         }
     }
 
-    mdarray<complex16, 2> h(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
-    mdarray<complex16, 2> o(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
+    mdarray<double_complex, 2> h(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
+    mdarray<double_complex, 2> o(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
     
     set_o(kp, o);
 
     std::vector<double> eval(parameters_.num_bands());
-    mdarray<complex16, 2>& fd_evec = kp->fd_eigen_vectors();
+    mdarray<double_complex, 2>& fd_evec = kp->fd_eigen_vectors();
 
     Timer t2("sirius::Band::solve_fd|diag", false);
 
@@ -394,8 +394,8 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
     {
         assert(kp->apwlo_basis_size() >= parameters_.num_fv_states());
 
-        mdarray<complex16, 2> o1(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
-        memcpy(&o1(0, 0), &o(0, 0), o.size() * sizeof(complex16));
+        mdarray<double_complex, 2> o1(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
+        memcpy(&o1(0, 0), &o(0, 0), o.size() * sizeof(double_complex));
 
         set_h<uu>(kp, effective_potential, effective_magnetic_field, h);
        

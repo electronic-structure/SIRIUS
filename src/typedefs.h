@@ -11,9 +11,7 @@
     \brief Contains typedefs, enums and primitive_type_wrapper class
 */
 
-typedef std::complex<double> complex16;
-
-typedef double real8;
+typedef std::complex<double> double_complex;
 
 enum spin_block_t {nm, uu, ud, dd, du};
 

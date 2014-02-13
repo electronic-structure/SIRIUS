@@ -389,8 +389,8 @@ extern "C" void cublas_set_stream(int stream_id)
 }
 
 extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                             void* alpha, void* a, int32_t lda, void* b, 
-                             int32_t ldb, void* beta, void* c, int32_t ldc)
+                             const void* alpha, void* a, int32_t lda, void* b, 
+                             int32_t ldb, const void* beta, void* c, int32_t ldc)
 {
     const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
     

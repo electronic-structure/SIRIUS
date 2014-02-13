@@ -2,7 +2,7 @@ include ../make.inc
 
 .SUFFIXES: .cpp .cu
 
-SRC = ./LebedevLaikov.cpp utils.cpp error_handling.cpp timer.cpp platform.cpp radial_grid.cpp radial_solver.cpp sht.cpp
+SRC = ./LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platform.cpp radial_grid.cpp radial_solver.cpp sht.cpp
       
 OBJ = $(SRC:.cpp=.o) 
       

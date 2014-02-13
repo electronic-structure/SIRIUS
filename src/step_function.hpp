@@ -40,7 +40,7 @@ Step_function::Step_function(Unit_cell* unit_cell__, Reciprocal_lattice* recipro
     step_function_pw_.resize(fft->size());
     step_function_.resize(fft->size());
     
-    std::vector<complex16> f_pw = reciprocal_lattice_->make_periodic_function(ffac, fft->size());
+    std::vector<double_complex> f_pw = reciprocal_lattice_->make_periodic_function(ffac, fft->size());
     for (int ig = 0; ig < fft->size(); ig++) step_function_pw_[ig] = -f_pw[ig];
     step_function_pw_[0] += 1.0;
 

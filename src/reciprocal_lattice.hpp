@@ -177,13 +177,13 @@ void Reciprocal_lattice::print_info()
 }
 
 template <index_domain_t index_domain>
-inline complex16 Reciprocal_lattice::gvec_phase_factor(int ig, int ia)
+inline double_complex Reciprocal_lattice::gvec_phase_factor(int ig, int ia)
 {
     switch (index_domain)
     {
         case global:
         {
-            return exp(complex16(0.0, twopi * Utils::scalar_product(vector3d<int>(gvec(ig)), unit_cell_->atom(ia)->position())));
+            return exp(double_complex(0.0, twopi * Utils::scalar_product(vector3d<int>(gvec(ig)), unit_cell_->atom(ia)->position())));
             break;
         }
         case local:
@@ -195,7 +195,7 @@ inline complex16 Reciprocal_lattice::gvec_phase_factor(int ig, int ia)
 }
 
 template <index_domain_t index_domain>
-inline void Reciprocal_lattice::gvec_ylm_array(int ig, complex16* ylm, int lmax)
+inline void Reciprocal_lattice::gvec_ylm_array(int ig, double_complex* ylm, int lmax)
 {
     switch (index_domain)
     {
@@ -203,7 +203,7 @@ inline void Reciprocal_lattice::gvec_ylm_array(int ig, complex16* ylm, int lmax)
         {
             int lmmax = Utils::lmmax(lmax);
             assert(lmmax <= gvec_ylm_.size(0));
-            memcpy(ylm, &gvec_ylm_(0, ig), lmmax * sizeof(complex16));
+            memcpy(ylm, &gvec_ylm_(0, ig), lmmax * sizeof(double_complex));
             return;
         }
         case global:
@@ -216,11 +216,11 @@ inline void Reciprocal_lattice::gvec_ylm_array(int ig, complex16* ylm, int lmax)
     }
 }
 
-std::vector<complex16> Reciprocal_lattice::make_periodic_function(mdarray<double, 2>& form_factors, int ngv)
+std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<double, 2>& form_factors, int ngv)
 {
     assert(form_factors.size(0) == unit_cell_->num_atom_types());
     
-    std::vector<complex16> f_pw(ngv, complex16(0, 0));
+    std::vector<double_complex> f_pw(ngv, double_complex(0, 0));
 
     double fourpi_omega = fourpi / unit_cell_->omega();
 
@@ -325,10 +325,10 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
     
     std::vector<int> l_by_lm = Utils::l_by_lm(lmax);
 
-    std::vector<complex16> zilm(Utils::lmmax(lmax));
+    std::vector<double_complex> zilm(Utils::lmmax(lmax));
     for (int l = 0, lm = 0; l <= lmax; l++)
     {
-        for (int m = -l; m <= l; m++, lm++) zilm[lm] = pow(complex16(0, 1), l);
+        for (int m = -l; m <= l; m++, lm++) zilm[lm] = pow(double_complex(0, 1), l);
     }
 
     for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
@@ -359,7 +359,7 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
                 
                 #pragma omp parallel
                 {
-                    std::vector<complex16> v(lmmax);
+                    std::vector<double_complex> v(lmmax);
                     for (auto it = spl_num_gvec_.begin(); it.valid(); it++)
                     {
                         int igs = gvec_shell(it.idx());
