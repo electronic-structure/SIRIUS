@@ -19,10 +19,9 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file step_function.hpp
+#include "step_function.h"
 
-    \brief Contains remaining implementation of sirius::Step_function class. 
-*/
+namespace sirius {
 
 Step_function::Step_function(Unit_cell* unit_cell__, Reciprocal_lattice* reciprocal_lattice__)
     : unit_cell_(unit_cell__), 
@@ -85,4 +84,6 @@ void Step_function::get_step_function_form_factors(mdarray<double, 2>& ffac)
 
     Platform::allgather(&ffac(0, 0), unit_cell_->num_atom_types() * spl_num_gvec_shells.global_offset(), 
                         unit_cell_->num_atom_types() * spl_num_gvec_shells.local_size());
+}
+
 }

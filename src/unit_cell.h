@@ -1,21 +1,21 @@
+#ifndef __UNIT_CELL_H__
+#define __UNIT_CELL_H__
+
+extern "C" {
+#include <spglib.h>
+}
+
+#include <algorithm>
+#include "descriptors.h"
+#include "atom_type.h"
+#include "atom_symmetry_class.h"
+#include "atom.h"
+#include "mpi_grid.h"
+
 namespace sirius {
-
-//== class Unit_cell_test;
-
-struct unit_cell_parameters_descriptor
-{
-    double a;
-    double b;
-    double c;
-    double alpha;
-    double beta;
-    double gamma;
-};
 
 class Unit_cell
 {
-    //== friend class Unit_cell_test;
-
     private:
         
         /// mapping between external atom type id and an ordered internal id in the range [0, N_{types} - 1]
@@ -221,16 +221,34 @@ class Unit_cell
 
         bool is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr, double tp[2]);
         
-        template <typename T>
-        inline vector3d<double> get_cartesian_coordinates(vector3d<T> a);
-        
-        inline vector3d<double> get_fractional_coordinates(vector3d<double> a);
-        
         void generate_radial_functions();
 
         void generate_radial_integrals();
         
         void solve_free_atoms();
+
+        std::string chemical_formula();
+        
+        template <typename T>
+        inline vector3d<double> get_cartesian_coordinates(vector3d<T> a)
+        {
+            vector3d<double> b;
+            for (int x = 0; x < 3; x++)
+            {
+                for (int l = 0; l < 3; l++) b[x] += a[l] * lattice_vectors_[l][x];
+            }
+            return b;
+        }
+
+        inline vector3d<double> get_fractional_coordinates(vector3d<double> a)
+        {
+            vector3d<double> b;
+            for (int l = 0; l < 3; l++)
+            {
+                for (int x = 0; x < 3; x++) b[l] += a[x] * inverse_lattice_vectors_[x][l];
+            }
+            return b;
+        }
         
         /// Get x coordinate of lattice vector l
         inline double lattice_vectors(int l, int x)
@@ -405,28 +423,6 @@ class Unit_cell
             return spl_num_atom_symmetry_classes_[i];
         }
 
-        std::string chemical_formula()
-        {
-            std::string name;
-            for (int iat = 0; iat < num_atom_types(); iat++)
-            {
-                name += atom_type(iat)->symbol();
-                int n = 0;
-                for (int ia = 0; ia < num_atoms(); ia++)
-                {
-                    if (atom(ia)->type_id() == atom_type(iat)->id()) n++;
-                }
-                if (n != 1) 
-                {
-                    std::stringstream s;
-                    s << n;
-                    name = (name + s.str());
-                }
-            }
-
-            return name;
-        }
-
         inline double volume_mt()
         {
             return volume_mt_;
@@ -487,51 +483,8 @@ class Unit_cell
             return beta_t_idx_;
         }
 };
-
-#include "unit_cell.hpp"
-
-//== class Unit_cell_test
-//== {
-//==     public:
-//== 
-//==         Unit_cell_test()
-//==         {
-//==             Unit_cell unit_cell;
-//==             
-//==             double a0[] = {0.5, 0.5, 0.0};
-//==             double a1[] = {0.5, 0.0, 0.5};
-//==             double a2[] = {0.0, 0.5, 0.5};
-//==             unit_cell.set_lattice_vectors(&a0[0], &a1[0], &a2[0]);
-//==             
-//==             unit_cell.set_auto_rmt(1);
-//== 
-//==             unit_cell.add_atom_type(1, "C", full_potential);
-//== 
-//==             {
-//==             double pos0[] = {0, 0, 0};
-//==             double pos1[] = {0.25, 0.25, 0.25};
-//==             unit_cell.add_atom(1, pos0);
-//==             unit_cell.add_atom(1, pos1);
-//==             }
-//== 
-//==             unit_cell.init(10, 10, 0);
-//==             unit_cell.print_info();
-//== 
-//==             {
-//==             double pos1[] = {0.251, 0.251, 0.251};
-//==             unit_cell.atom(1)->set_position(pos1);
-//==             }
-//==             unit_cell.update();
-//==             unit_cell.print_info();
-//==             
-//==             {
-//==             double pos1[] = {0.251, 0.252, 0.253};
-//==             unit_cell.atom(1)->set_position(pos1);
-//==             }
-//==             unit_cell.update();
-//==             unit_cell.print_info();
-//==         }
-//== };
     
 };
+
+#endif // __UNIT_CELL_H__
 

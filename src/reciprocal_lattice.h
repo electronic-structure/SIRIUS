@@ -6,6 +6,10 @@
     \brief Contains definition and partial implementation of sirius::Reciprocal_lattice class. 
 */
 
+#include "unit_cell.h"
+#include "fft3d.h"
+#include "sbessel_pw.h"
+
 namespace sirius {
 
 class Reciprocal_lattice
@@ -80,58 +84,61 @@ class Reciprocal_lattice
     public:
         
         Reciprocal_lattice(Unit_cell* unit_cell__, electronic_structure_method_t esm_type__, double pw_cutoff__, 
-                           double gk_cutoff__, int lmax__) 
-            : unit_cell_(unit_cell__), 
-              esm_type_(esm_type__),
-              pw_cutoff_(pw_cutoff__), 
-              gk_cutoff_(gk_cutoff__),
-              num_gvec_(0),
-              num_gvec_coarse_(0)
-        {
-            for (int l = 0; l < 3; l++)
-            {
-                for (int x = 0; x < 3; x++)
-                {
-                    lattice_vectors_[l][x] = unit_cell_->lattice_vectors(l, x);
-                    reciprocal_lattice_vectors_[l][x] = unit_cell_->reciprocal_lattice_vectors(l, x);
-                }
-            }
+                           double gk_cutoff__, int lmax__);
 
-            vector3d<int> max_frac_coord = Utils::find_translation_limits(pw_cutoff_, reciprocal_lattice_vectors_);
-            fft_ = new FFT3D<cpu>(max_frac_coord);
-            
-            if (esm_type_ == ultrasoft_pseudopotential)
-            {
-                vector3d<int> max_frac_coord_coarse = Utils::find_translation_limits(gk_cutoff__ * 2, 
-                                                                                     reciprocal_lattice_vectors_);
-                fft_coarse_ = new FFT3D<cpu>(max_frac_coord_coarse);
-            }
-
-            init(lmax__);
-        }
-
-        ~Reciprocal_lattice()
-        {
-            delete fft_;
-            if (esm_type_ == ultrasoft_pseudopotential) delete fft_coarse_;
-        }
+        ~Reciprocal_lattice();
   
         void update();
 
         /// Print basic info
         void print_info();
-        
-        /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
-        template <index_domain_t index_domain>
-        inline double_complex gvec_phase_factor(int ig, int ia);
-       
-        /// Ylm components of G-vector
-        template <index_domain_t index_domain>
-        inline void gvec_ylm_array(int ig, double_complex* ylm, int lmax);
 
         /// Make periodic function out of form factors
         /** Return vector of plane-wave coefficients */
         std::vector<double_complex> make_periodic_function(mdarray<double, 2>& ffac, int ngv);
+        
+        /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
+        template <index_domain_t index_domain>
+        inline double_complex gvec_phase_factor(int ig, int ia)
+        {
+            switch (index_domain)
+            {
+                case global:
+                {
+                    return exp(double_complex(0.0, twopi * Utils::scalar_product(vector3d<int>(gvec(ig)), unit_cell_->atom(ia)->position())));
+                    break;
+                }
+                case local:
+                {
+                    return gvec_phase_factors_(ig, ia);
+                    break;
+                }
+            }
+        }
+       
+        /// Ylm components of G-vector
+        template <index_domain_t index_domain>
+        inline void gvec_ylm_array(int ig, double_complex* ylm, int lmax)
+        {
+            switch (index_domain)
+            {
+                case local:
+                {
+                    int lmmax = Utils::lmmax(lmax);
+                    assert(lmmax <= gvec_ylm_.size(0));
+                    memcpy(ylm, &gvec_ylm_(0, ig), lmmax * sizeof(double_complex));
+                    return;
+                }
+                case global:
+                {
+                    double rtp[3];
+                    SHT::spherical_coordinates(gvec_cart(ig), rtp);
+                    SHT::spherical_harmonics(lmax, rtp[1], rtp[2], ylm);
+                    return;
+                }
+            }
+        }
+
         
         /// Index of G-vector shell
         inline int gvec_shell(int ig)
@@ -319,8 +326,6 @@ class Reciprocal_lattice
             //== fclose(fout);
         }
 };
-
-#include "reciprocal_lattice.hpp"
 
 };
 

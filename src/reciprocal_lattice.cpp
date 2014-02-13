@@ -1,7 +1,43 @@
-/** \file reciprocal_lattice.hpp
+#include "reciprocal_lattice.h"
 
-    \brief Contains remaining implementation of sirius::Reciprocal_lattice class. 
-*/
+namespace sirius {
+        
+Reciprocal_lattice::Reciprocal_lattice(Unit_cell* unit_cell__, electronic_structure_method_t esm_type__, double pw_cutoff__, 
+                                       double gk_cutoff__, int lmax__) 
+    : unit_cell_(unit_cell__), 
+      esm_type_(esm_type__),
+      pw_cutoff_(pw_cutoff__), 
+      gk_cutoff_(gk_cutoff__),
+      num_gvec_(0),
+      num_gvec_coarse_(0)
+{
+    for (int l = 0; l < 3; l++)
+    {
+        for (int x = 0; x < 3; x++)
+        {
+            lattice_vectors_[l][x] = unit_cell_->lattice_vectors(l, x);
+            reciprocal_lattice_vectors_[l][x] = unit_cell_->reciprocal_lattice_vectors(l, x);
+        }
+    }
+
+    vector3d<int> max_frac_coord = Utils::find_translation_limits(pw_cutoff_, reciprocal_lattice_vectors_);
+    fft_ = new FFT3D<cpu>(max_frac_coord);
+    
+    if (esm_type_ == ultrasoft_pseudopotential)
+    {
+        vector3d<int> max_frac_coord_coarse = Utils::find_translation_limits(gk_cutoff__ * 2, 
+                                                                             reciprocal_lattice_vectors_);
+        fft_coarse_ = new FFT3D<cpu>(max_frac_coord_coarse);
+    }
+
+    init(lmax__);
+}
+
+Reciprocal_lattice::~Reciprocal_lattice()
+{
+    delete fft_;
+    if (esm_type_ == ultrasoft_pseudopotential) delete fft_coarse_;
+}
 
 void Reciprocal_lattice::init(int lmax)
 {
@@ -176,46 +212,6 @@ void Reciprocal_lattice::print_info()
     }
 }
 
-template <index_domain_t index_domain>
-inline double_complex Reciprocal_lattice::gvec_phase_factor(int ig, int ia)
-{
-    switch (index_domain)
-    {
-        case global:
-        {
-            return exp(double_complex(0.0, twopi * Utils::scalar_product(vector3d<int>(gvec(ig)), unit_cell_->atom(ia)->position())));
-            break;
-        }
-        case local:
-        {
-            return gvec_phase_factors_(ig, ia);
-            break;
-        }
-    }
-}
-
-template <index_domain_t index_domain>
-inline void Reciprocal_lattice::gvec_ylm_array(int ig, double_complex* ylm, int lmax)
-{
-    switch (index_domain)
-    {
-        case local:
-        {
-            int lmmax = Utils::lmmax(lmax);
-            assert(lmmax <= gvec_ylm_.size(0));
-            memcpy(ylm, &gvec_ylm_(0, ig), lmmax * sizeof(double_complex));
-            return;
-        }
-        case global:
-        {
-            double rtp[3];
-            SHT::spherical_coordinates(gvec_cart(ig), rtp);
-            SHT::spherical_harmonics(lmax, rtp[1], rtp[2], ylm);
-            return;
-        }
-    }
-}
-
 std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<double, 2>& form_factors, int ngv)
 {
     assert(form_factors.size(0) == unit_cell_->num_atom_types());
@@ -382,4 +378,6 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
         }
         Platform::bcast(&atom_type->uspp().q_mtrx(0, 0), (int)atom_type->uspp().q_mtrx.size(), 0);
     }
+}
+
 }

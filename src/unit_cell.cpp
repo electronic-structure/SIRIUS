@@ -1,23 +1,6 @@
-template <typename T>
-vector3d<double> Unit_cell::get_cartesian_coordinates(vector3d<T> a)
-{
-    vector3d<double> b;
-    for (int x = 0; x < 3; x++)
-    {
-        for (int l = 0; l < 3; l++) b[x] += a[l] * lattice_vectors_[l][x];
-    }
-    return b;
-}
+#include "unit_cell.h"
 
-vector3d<double> Unit_cell::get_fractional_coordinates(vector3d<double> a)
-{
-    vector3d<double> b;
-    for (int l = 0; l < 3; l++)
-    {
-        for (int x = 0; x < 3; x++) b[l] += a[x] * inverse_lattice_vectors_[x][l];
-    }
-    return b;
-}
+namespace sirius {
 
 int Unit_cell::next_atom_type_id(int atom_type_external_id)
 {
@@ -81,7 +64,7 @@ void Unit_cell::get_symmetry()
 {
     Timer t("sirius::Unit_cell::get_symmetry");
     
-    if (num_atoms() == 0) return; //error_local(__FILE__, __LINE__, "no atoms");
+    if (num_atoms() == 0) return;
     
     if (spg_dataset_) spg_free_dataset(spg_dataset_);
         
@@ -857,3 +840,26 @@ void Unit_cell::solve_free_atoms()
     }
 }
 
+std::string Unit_cell::chemical_formula()
+{
+    std::string name;
+    for (int iat = 0; iat < num_atom_types(); iat++)
+    {
+        name += atom_type(iat)->symbol();
+        int n = 0;
+        for (int ia = 0; ia < num_atoms(); ia++)
+        {
+            if (atom(ia)->type_id() == atom_type(iat)->id()) n++;
+        }
+        if (n != 1) 
+        {
+            std::stringstream s;
+            s << n;
+            name = (name + s.str());
+        }
+    }
+
+    return name;
+}
+
+}

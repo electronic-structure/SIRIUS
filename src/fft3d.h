@@ -43,6 +43,25 @@
     of using threaded implementation for each transform. 
 */
 
+#include <fftw3.h>
+#include <vector>
+
+namespace sirius
+{
+
+template <processing_unit_t> 
+class FFT3D;
+
+#include "fft3d_cpu.hpp"
+
+#ifdef _GPU_
+#include "fft3d_gpu.hpp"
+#endif
+
+};
+
+#endif // __FFT3D_H__
+
 /** \page ft_pw Fourier transform and plane wave normalization
 
     We use plane waves in two different cases: a) plane waves (or augmented plane waves in the case of APW+lo method)
@@ -70,18 +89,3 @@
     i.e. with such convention the plane-wave expansion coefficients are obtained with a normalized FFT.
 */
 
-namespace sirius
-{
-
-template <processing_unit_t> 
-class FFT3D;
-
-#include "fft3d_cpu.hpp"
-
-#ifdef _GPU_
-#include "fft3d_gpu.hpp"
-#endif
-
-};
-
-#endif // __FFT3D_H__

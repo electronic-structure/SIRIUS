@@ -1,6 +1,8 @@
 #ifndef __SBESSEL_PW_H__
 #define __SBESSEL_PW_H__
 
+#include <gsl/gsl_sf_bessel.h>
+
 namespace sirius
 {
 

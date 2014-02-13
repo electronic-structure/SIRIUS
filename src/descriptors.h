@@ -187,4 +187,14 @@ struct basis_function_index_descriptor
     }
 };
 
+struct unit_cell_parameters_descriptor
+{
+    double a;
+    double b;
+    double c;
+    double alpha;
+    double beta;
+    double gamma;
+};
+
 #endif

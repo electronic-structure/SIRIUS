@@ -3,7 +3,9 @@ include ../make.inc
 .SUFFIXES: .cpp .cu
 
 SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platform.cpp radial_grid.cpp \
-       radial_solver.cpp sht.cpp atom_type.cpp atom_symmetry_class.cpp atom.cpp
+       radial_solver.cpp sht.cpp atom_type.cpp atom_symmetry_class.cpp atom.cpp unit_cell.cpp           \
+       reciprocal_lattice.cpp step_function.cpp
+       
       
 OBJ = $(SRC:.cpp=.o) 
       

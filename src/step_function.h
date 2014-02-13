@@ -26,6 +26,10 @@
 
     \brief Contains definition and partial implementation of sirius::Step_function class. 
 */
+
+#include "unit_cell.h"
+#include "reciprocal_lattice.h"
+
 namespace sirius {
 
 /// Unit step function is defined to be 1 in the interstitial and 0 inside muffin-tins.
@@ -107,8 +111,6 @@ class Step_function
             return step_function_[ir];
         }
 };
-
-#include "step_function.hpp"
 
 };
 
