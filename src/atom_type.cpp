@@ -1,3 +1,7 @@
+#include "atom_type.h"
+
+namespace sirius {
+
 Atom_type::Atom_type(int id__) 
     : id_(id__), 
       zn_(0), 
@@ -782,3 +786,19 @@ void Atom_type::sync_free_atom(int rank)
     Platform::bcast(&free_atom_potential_[0], radial_grid().size(), rank);
 }
 
+void Atom_type::fix_q_radial_function(int l, int i, int j, double* qrf)
+{
+    for (int ir = 0; ir < num_mt_points(); ir++)
+    {
+        double x = radial_grid(ir);
+        double x2 = x * x;
+        if (x < uspp_.q_functions_inner_radii[l])
+        {
+            qrf[ir] = uspp_.q_coefs(0, l, i, j);
+            for (int n = 1; n < uspp_.num_q_coefs; n++) qrf[ir] += uspp_.q_coefs(n, l, i, j) * pow(x2, n);
+            qrf[ir] *= pow(x, l + 2);
+        }
+    }
+}
+
+}

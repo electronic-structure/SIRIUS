@@ -1,6 +1,10 @@
 #ifndef __GAUNT_H__
 #define __GAUNT_H__
 
+#include "mdarray.h"
+#include "utils.h"
+#include "sht.h"
+
 namespace sirius
 {
 

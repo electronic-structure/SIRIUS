@@ -22,6 +22,10 @@
 #ifndef __DESCRIPTORS_H__
 #define __DESCRIPTORS_H__
 
+#include "mdarray.h"
+#include "vector3d.h"
+#include "utils.h"
+
 /** \file descriptors.h
 
     \brief Descriptors for various data structures
@@ -133,6 +137,54 @@ struct nearest_neighbour_descriptor
 
     /// distance from the central atom
     double distance;
+};
+
+struct radial_function_index_descriptor
+{
+    int l;
+
+    int order;
+
+    int idxlo;
+
+    radial_function_index_descriptor(int l, int order, int idxlo = -1) 
+        : l(l), 
+          order(order), 
+          idxlo(idxlo)
+    {
+        assert(l >= 0);
+        assert(order >= 0);
+    }
+};
+
+struct basis_function_index_descriptor
+{
+    int l;
+
+    int m;
+
+    int lm;
+
+    int order;
+
+    int idxlo;
+
+    int idxrf;
+    
+    basis_function_index_descriptor(int l, int m, int order, int idxlo, int idxrf) 
+        : l(l), 
+          m(m), 
+          order(order), 
+          idxlo(idxlo), 
+          idxrf(idxrf) 
+    {
+        assert(l >= 0);
+        assert(m >= -l && m <= l);
+        assert(order >= 0);
+        assert(idxrf >= 0);
+
+        lm = Utils::lm_by_l_m(l, m);
+    }
 };
 
 #endif

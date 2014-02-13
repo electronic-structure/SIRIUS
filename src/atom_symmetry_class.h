@@ -9,6 +9,9 @@
     same spherical part of the on-site potential and, as a consequence, the same radial functions. 
 */
 
+#include "sirius_io.h"
+#include "atom_type.h"
+
 namespace sirius {
 
 class Atom_symmetry_class
@@ -231,10 +234,7 @@ class Atom_symmetry_class
         {
             return lo_descriptors_[idxlo].rsd_set[order].enu;
         }
-            
 };
-
-#include "atom_symmetry_class.hpp"
 
 };
 

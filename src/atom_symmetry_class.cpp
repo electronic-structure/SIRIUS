@@ -1,3 +1,7 @@
+#include "atom_symmetry_class.h"
+
+namespace sirius {
+
 void Atom_symmetry_class::generate_aw_radial_functions()
 {
     int nmtp = atom_type_->num_mt_points();
@@ -531,7 +535,7 @@ void Atom_symmetry_class::generate_radial_functions()
     //** }
 }
 
-inline void Atom_symmetry_class::sync_radial_functions(int rank)
+void Atom_symmetry_class::sync_radial_functions(int rank)
 {
     // don't broadcast Hamiltonian radial functions, because they are used locally
     int size = (int)radial_functions_.size(0) * radial_functions_.size(1);
@@ -539,7 +543,7 @@ inline void Atom_symmetry_class::sync_radial_functions(int rank)
     Platform::bcast(aw_surface_derivatives_.get_ptr(), (int)aw_surface_derivatives_.size(), rank);
 }
 
-inline void Atom_symmetry_class::sync_radial_integrals(int rank)
+void Atom_symmetry_class::sync_radial_integrals(int rank)
 {
     Platform::bcast(h_spherical_integrals_.get_ptr(), (int)h_spherical_integrals_.size(), rank);
     Platform::bcast(o_radial_integrals_.get_ptr(), (int)o_radial_integrals_.size(), rank);
@@ -852,7 +856,7 @@ void Atom_symmetry_class::generate_core_charge_density()
     assert(core_eval_sum_ == core_eval_sum_);
 }
 
-inline void Atom_symmetry_class::sync_core_charge_density(int rank)
+void Atom_symmetry_class::sync_core_charge_density(int rank)
 {
     assert(core_charge_density_.size() != 0);
     assert(&core_charge_density_[0] != NULL);
@@ -860,4 +864,6 @@ inline void Atom_symmetry_class::sync_core_charge_density(int rank)
     Platform::bcast(&core_charge_density_[0], atom_type_->radial_grid().size(), rank);
     Platform::bcast(&core_leakage_, 1, rank);
     Platform::bcast(&core_eval_sum_, 1, rank);
+}
+
 }

@@ -1,30 +1,21 @@
 #ifndef __ATOM_TYPE_H__
 #define __ATOM_TYPE_H__
 
+#include <string.h>
+#include <vector>
+#include "mdarray.h"
+#include "descriptors.h"
+#include "vector3d.h"
+#include "utils.h"
+#include "radial_grid.h"
+#include "radial_solver.h"
+#include "json_tree.h"
+#include "libxc_interface.h"
+
 namespace sirius {
 
 class radial_functions_index
 {
-    public:
-
-        struct radial_function_index_descriptor
-        {
-            int l;
-
-            int order;
-
-            int idxlo;
-
-            radial_function_index_descriptor(int l, int order, int idxlo = -1) 
-                : l(l), 
-                  order(order), 
-                  idxlo(idxlo)
-            {
-                assert(l >= 0);
-                assert(order >= 0);
-            }
-        };
-
     private: 
 
         std::vector<radial_function_index_descriptor> radial_function_index_descriptors_;
@@ -164,38 +155,6 @@ class radial_functions_index
 
 class basis_functions_index
 {
-    public: 
-
-        struct basis_function_index_descriptor
-        {
-            int l;
-
-            int m;
-
-            int lm;
-
-            int order;
-
-            int idxlo;
-
-            int idxrf;
-            
-            basis_function_index_descriptor(int l, int m, int order, int idxlo, int idxrf) 
-                : l(l), 
-                  m(m), 
-                  order(order), 
-                  idxlo(idxlo), 
-                  idxrf(idxrf) 
-            {
-                assert(l >= 0);
-                assert(m >= -l && m <= l);
-                assert(order >= 0);
-                assert(idxrf >= 0);
-
-                lm = Utils::lm_by_l_m(l, m);
-            }
-        };
-
     private:
 
         std::vector<basis_function_index_descriptor> basis_function_index_descriptors_; 
@@ -420,20 +379,7 @@ class Atom_type
         
         void sync_free_atom(int rank);
 
-        void fix_q_radial_function(int l, int i, int j, double* qrf)
-        {
-            for (int ir = 0; ir < num_mt_points(); ir++)
-            {
-                double x = radial_grid(ir);
-                double x2 = x * x;
-                if (x < uspp_.q_functions_inner_radii[l])
-                {
-                    qrf[ir] = uspp_.q_coefs(0, l, i, j);
-                    for (int n = 1; n < uspp_.num_q_coefs; n++) qrf[ir] += uspp_.q_coefs(n, l, i, j) * pow(x2, n);
-                    qrf[ir] *= pow(x, l + 2);
-                }
-            }
-        }
+        void fix_q_radial_function(int l, int i, int j, double* qrf);
         
         inline int id()
         {
@@ -548,7 +494,7 @@ class Atom_type
             return indexr_;
         }
         
-        inline radial_functions_index::radial_function_index_descriptor& indexr(int i)
+        inline radial_function_index_descriptor& indexr(int i)
         {
             assert(i >= 0 && i < (int)indexr_.size());
             return indexr_[i];
@@ -569,7 +515,7 @@ class Atom_type
             return indexb_;
         }
 
-        inline basis_functions_index::basis_function_index_descriptor& indexb(int i)
+        inline basis_function_index_descriptor& indexb(int i)
         {
             assert(i >= 0 && i < (int)indexb_.size());
             return indexb_[i];
@@ -681,8 +627,6 @@ class Atom_type
             atom_id_.push_back(atom_id__);
         }
 };
-
-#include "atom_type.hpp"
 
 };
 

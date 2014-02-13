@@ -1,6 +1,12 @@
 #ifndef __ATOM_H__
 #define __ATOM_H__
 
+#include <vector>
+#include "gaunt.h"
+#include "atom_type.h"
+#include "atom_symmetry_class.h"
+#include "splindex.h"
+
 /** \file atom.h
     
     \brief Data and methods specific to each atom in the unit cell.
@@ -298,8 +304,6 @@ class Atom
             return d_mtrx_;
         }
 };
-
-#include "atom.hpp"
 
 };
 

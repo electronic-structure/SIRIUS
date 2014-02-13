@@ -27,6 +27,12 @@
     \brief Contains definition and implementation of sirius::HDF5_tree class.
 */
 
+#include <hdf5.h>
+#include <string>
+#include <vector>
+#include "mdarray.h"
+#include "utils.h"
+
 namespace sirius
 {
 

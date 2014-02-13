@@ -1,6 +1,10 @@
 #ifndef __SIRIUS_IO_H__
 #define __SIRIUS_IO_H__
 
+#include <cstdarg>
+#include "hdf5_tree.h"
+#include "mdarray.h"
+
 namespace sirius
 {
 

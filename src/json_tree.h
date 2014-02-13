@@ -1,6 +1,9 @@
 #ifndef __JSON_TREE_H__
 #define __JSON_TREE_H__
 
+#include <sys/stat.h>
+#include <libjson.h>
+
 /// Auxiliary class for parsing JSONNode of the libjson
 class JSON_value_parser 
 {
@@ -109,7 +112,7 @@ class JSON_tree
         template <typename T> 
         inline T parse_value()
         {
-            T val;
+            T val = T();
             JSON_value_parser jvp(node_, val);
             if (!jvp.is_valid())
             {
@@ -126,7 +129,7 @@ class JSON_tree
         template <typename T> 
         inline T parse_value(T& default_val)
         {
-            T val;
+            T val = T();
             JSON_value_parser jvp(node_, val);
             if (!jvp.is_valid())
             {

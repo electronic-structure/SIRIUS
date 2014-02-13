@@ -1,7 +1,6 @@
-/** \file atom.hpp
-    
-    \brief Implementation of methods for Atom class.
-*/
+#include "atom.h"
+
+namespace sirius {
 
 Atom::Atom(Atom_type* type__, double* position__, double* vector_field__) 
     : type_(type__), 
@@ -211,5 +210,7 @@ void Atom::generate_radial_integrals()
             }
         }
     }
+}
+
 }
 

@@ -1,6 +1,7 @@
 #ifndef _MDARRAY_H_
 #define _MDARRAY_H_
 
+#include <string.h>
 #include <vector>
 #include "error_handling.h"
 

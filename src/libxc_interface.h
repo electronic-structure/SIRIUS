@@ -1,3 +1,8 @@
+#ifndef __LIBXC_INTERFACE_H__
+#define __LIBXC_INTERFACE_H__
+
+#include <xc.h>
+
 namespace sirius
 {
 
@@ -132,3 +137,5 @@ class libxc_interface
 };
 
 };
+
+#endif // __LIBXC_INTERFACE_H__
