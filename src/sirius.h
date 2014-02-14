@@ -34,17 +34,14 @@ extern "C" {
 #include <libjson.h>
 
 #include "typedefs.h"
-#include "config.h"
 #include "LebedevLaikov.h"
 #ifdef _GPU_
 #include "gpu_interface.h"
 #endif
 #include "platform.h"
-#include "version.h"
-#include "error_handling.h"
 #include "timer.h"
+#include "error_handling.h"
 
-#define stop_here Timer::print(); error_local(__FILE__, __LINE__, "stop_here macros is called");
 
 #include "constants.h"
 #include "mdarray.h"
@@ -56,7 +53,6 @@ extern "C" {
 #include "sht.h"
 #include "gaunt.h"
 #include "splindex.h"
-#include "fft3d.h"
 #include "json_tree.h"
 #include "hdf5_tree.h" 
 #include "libxc_interface.h"

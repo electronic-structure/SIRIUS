@@ -28,6 +28,8 @@
            block_cyclic distributions.
 */
 
+#include "mdarray.h"
+
 const int _splindex_offs_ = 0;
 const int _splindex_rank_ = 1;
 

@@ -38,6 +38,10 @@
 /** \image html mpi_grid_comm.png "Communication along dimension d0 (between ranks of d0)." 
     In the provided example the corresponding communicator is MPI_grid::communicator(1 << d0), where d0 is the integer 
     index of dimension. */
+
+#include <mpi.h>
+#include "error_handling.h"
+
 class MPI_grid
 {
     private:

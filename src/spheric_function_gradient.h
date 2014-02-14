@@ -1,3 +1,6 @@
+#ifndef __SPHERIC_FUNCTION_GRADIENT_H__
+#define __SPHERIC_FUNCTION_GRADIENT_H__
+
 namespace sirius
 {
 
@@ -44,3 +47,5 @@ class Spheric_function_gradient
 #include "spheric_function_gradient.hpp"
 
 }
+
+#endif // __SPHERIC_FUNCTION_GRADIENT_H__

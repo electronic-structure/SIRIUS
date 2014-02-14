@@ -27,6 +27,7 @@
 #include <string>
 #include "config.h"
 #include "platform.h"
+#include "timer.h"
 
 /** \file error_handling.h
     
@@ -79,6 +80,8 @@ void warning_local(const char* file_name, int line_number, const std::stringstre
 void log_function_enter(const char* func_name);
 
 void log_function_exit(const char* func_name);
+
+#define stop_here Timer::print(); error_local(__FILE__, __LINE__, "stop_here macros is called");
 
 #endif // __ERROR_HANDLING_H__
 

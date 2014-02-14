@@ -9,7 +9,11 @@ std::map<std::string, std::vector<double> > Timer::timers_;
 
 void Timer::start()
 {
-    if (active_) error_local(__FILE__, __LINE__, "timer is already running");
+    if (active_)
+    {
+        printf("timer %s is already running\n", label_.c_str());
+        Platform::abort();
+    }
 
     gettimeofday(&starting_time_, NULL);
     active_ = true;
@@ -19,9 +23,8 @@ void Timer::stop()
 {
     if (!active_)
     {
-        std::stringstream s;
-        s << "Timer " << label_ << " was not running";
-        error_local(__FILE__, __LINE__, s);
+        printf("timer %s was not running\n", label_.c_str());
+        Platform::abort();
     }
 
     timeval end;

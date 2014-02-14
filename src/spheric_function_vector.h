@@ -1,3 +1,6 @@
+#ifndef __SPHERIC_FUNCTION_VECTOR_H__
+#define __SPHERIC_FUNCTION_VECTOR_H__
+
 namespace sirius
 {
 
@@ -27,3 +30,5 @@ class Spheric_function_vector
 };
 
 }
+
+#endif // __SPHERIC_FUNCTION_VECTOR_H__

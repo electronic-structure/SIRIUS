@@ -1,3 +1,6 @@
+#ifndef __SPHERIC_FUNCTION_H__
+#define __SPHERIC_FUNCTION_H__
+
 namespace sirius
 {
 
@@ -186,3 +189,5 @@ class Spheric_function
 #include "spheric_function.hpp"
 
 }
+
+#endif // __SPHERIC_FUNCTION_H__
