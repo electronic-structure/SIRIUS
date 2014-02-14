@@ -2,6 +2,10 @@
 
 int Platform::num_fft_threads_ = -1;
 
+#ifdef _PLASMA_
+extern "C" void plasma_init(int num_cores);
+#endif
+
 void Platform::initialize(bool call_mpi_init, bool call_cublas_init)
 {
     if (call_mpi_init) MPI_Init(NULL, NULL);
@@ -13,6 +17,9 @@ void Platform::initialize(bool call_mpi_init, bool call_cublas_init)
     #endif
     #ifdef _MAGMA_
     magma_init_wrapper();
+    #endif
+    #ifdef _PLASMA_
+    plasma_init();
     #endif
 
     assert(sizeof(int) == 4);

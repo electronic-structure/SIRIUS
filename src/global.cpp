@@ -38,6 +38,10 @@ void Global::read_input()
             {
                 eigen_value_solver_ = magma;
             }
+            else if (ev_solver_name == "plasma")
+            {
+                eigen_value_solver_ = plasma;
+            }
             else
             {
                 error_local(__FILE__, __LINE__, "wrong eigen value solver");

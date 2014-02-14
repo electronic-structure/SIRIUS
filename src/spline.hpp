@@ -60,10 +60,9 @@ Spline<T>& Spline<T>::interpolate()
 
 template <typename T> 
 template <typename U>
-T Spline<T>::integrate(Spline<T>* f, Spline<U>* g, int m)
+T Spline<T>::integrate(Spline<T>* f, Spline<U>* g, int m, int num_points)
 {
-    if ((&f->radial_grid_ != &g->radial_grid_) || (f->num_points_ != g->num_points_)) 
-        error_local(__FILE__, __LINE__, "radial grids don't match");
+    if (&f->radial_grid_ != &g->radial_grid_) error_local(__FILE__, __LINE__, "radial grids don't match");
     
     T result = 0;
 
@@ -71,7 +70,7 @@ T Spline<T>::integrate(Spline<T>* f, Spline<U>* g, int m)
     {
         case 1:
         {
-            for (int i = 0; i < f->num_points_ - 1; i++)
+            for (int i = 0; i < num_points - 1; i++)
             {
                 double x0 = f->radial_grid_[i];
                 double dx = f->radial_grid_.dr(i);
@@ -99,7 +98,7 @@ T Spline<T>::integrate(Spline<T>* f, Spline<U>* g, int m)
         }
         case 2:
         {
-            for (int i = 0; i < f->num_points_ - 1; i++)
+            for (int i = 0; i < num_points - 1; i++)
             {
                 double x0 = f->radial_grid_[i];
                 double dx = f->radial_grid_.dr(i);
@@ -132,6 +131,15 @@ T Spline<T>::integrate(Spline<T>* f, Spline<U>* g, int m)
     }
 
     return result;
+}
+
+template <typename T> 
+template <typename U>
+T Spline<T>::integrate(Spline<T>* f, Spline<U>* g, int m)
+{
+    if (f->num_points_ != g->num_points_) error_local(__FILE__, __LINE__, "number of points doesn't match");
+
+    return Spline<T>::integrate(f, g, m, f->num_points_); 
 }
 
 template <typename T>

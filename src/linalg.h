@@ -386,6 +386,34 @@ class standard_evp_lapack: public standard_evp
         }
 };
 
+#ifdef _PLASMA_
+extern "C" void plasma_zheevd_wrapper(int32_t matrix_size, void* a, int32_t lda, void* z,
+                                      int32_t ldz, double* eval);
+#endif
+
+class standard_evp_plasma: public standard_evp
+{
+    public:
+
+        standard_evp_plasma()
+        {
+        }
+
+        #ifdef _PLASMA_
+        void solve(int32_t matrix_size, complex16* a, int32_t lda, real8* eval, complex16* z, int32_t ldz)
+        {
+            plasma_set_num_threads(1);
+            omp_set_num_threads(1);
+            printf("before call to plasma_zheevd_wrapper\n");
+            plasma_zheevd_wrapper(matrix_size, a, lda, z, lda, eval);
+            printf("after call to plasma_zheevd_wrapper\n");
+            plasma_set_num_threads(8);
+            omp_set_num_threads(8);
+        }
+        #endif
+};
+
+
 class standard_evp_scalapack: public standard_evp
 {
     private:

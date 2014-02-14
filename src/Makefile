@@ -17,6 +17,11 @@ endif
 ifneq (,$(findstring D_MAGMA_,$(CXX_OPT)))
 	OBJ := $(OBJ) magma_interface.o
 endif
+
+ifneq (,$(findstring D_PLASMA_,$(CXX_OPT)))
+	OBJ := $(OBJ) plasma_interface.o
+endif
+
 	
 .cpp.o:
 	$(CXX) $(CXX_OPT) -c -o $(*D)/$(*F).o $<

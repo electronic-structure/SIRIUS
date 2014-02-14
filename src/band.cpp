@@ -301,6 +301,11 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
             solver = new standard_evp_lapack();
             break;
         }
+        case plasma:
+        {
+            solver = new standard_evp_plasma();
+            break;
+        }
         default:
         {
             error_local(__FILE__, __LINE__, "eigen value solver is not defined");
@@ -1281,6 +1286,11 @@ void Band::solve_fv_evp_1stage(K_point* kp, mdarray<double_complex, 2>& h, mdarr
             solver = new generalized_evp_magma();
             break;
         }
+        case plasma:
+        {
+            solver = new generalized_evp_lapack(-1.0);
+            break;
+        }
         default:
         {
             error_local(__FILE__, __LINE__, "eigen value solver is not defined");
@@ -1357,10 +1367,10 @@ void Band::solve_fv_evp_1stage(K_point* kp, mdarray<double_complex, 2>& h, mdarr
 //==                     fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
 //== }
 
-void Band::solve_fv_exact_diagonalization(K_point* kp, Periodic_function<double>* effective_potential)
+void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effective_potential)
 {
     log_function_enter(__func__);
-    Timer t("sirius::Band::solve_fv_exact_diagonalization");
+    Timer t("sirius::Band::diag_fv_full_potential");
 
     if (kp->num_ranks() > 1 && (parameters_.eigen_value_solver() == lapack || parameters_.eigen_value_solver() == magma))
         error_local(__FILE__, __LINE__, "Can't use more than one MPI rank for LAPACK or MAGMA eigen-value solver");
@@ -3104,7 +3114,7 @@ void Band::solve_fv(K_point* kp, Periodic_function<double>* effective_potential)
         case full_potential_pwlo:
         case full_potential_lapwlo:
         {
-            solve_fv_exact_diagonalization(kp, effective_potential);
+            diag_fv_full_potential(kp, effective_potential);
             break;
         }
         case ultrasoft_pseudopotential:

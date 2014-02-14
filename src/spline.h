@@ -179,9 +179,13 @@ class Spline
 
         T integrate(std::vector<T>& g, int m = 0);
 
-        /// Integrate two splines with r^2 weight
+        /// Integrate two splines with r^1 or r^2 weight
         template <typename U>
         static T integrate(Spline<T>* f, Spline<U>* g, int m);
+
+        /// Integrate two splines with r^1 or r^2 weight up to a given number of points
+        template <typename U>
+        static T integrate(Spline<T>* f, Spline<U>* g, int m, int num_points);
 };
 
 #include "spline.hpp"

@@ -136,36 +136,37 @@ void K_point::update()
         beta_pw_.set_dimensions(num_gkvec(), uc->num_beta_t()); 
         beta_pw_.allocate();
 
+        mdarray<Spline<double>*, 2> beta_rf(uc->max_mt_radial_basis_size(), uc->num_atom_types());
+        for (int iat = 0; iat < uc->num_atom_types(); iat++)
+        {
+            auto atom_type = uc->atom_type(iat);
+            for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
+            {
+                int nr = atom_type->uspp().num_beta_radial_points[idxrf];
+                beta_rf(idxrf, iat) = new Spline<double>(nr, atom_type->radial_grid());
+                for (int ir = 0; ir < nr; ir++) 
+                    (*beta_rf(idxrf, iat))[ir] = atom_type->uspp().beta_radial_functions(ir, idxrf);
+                beta_rf(idxrf, iat)->interpolate();
+            }
+        }
+
         #pragma omp parallel
         {
-            mdarray<Spline<double>*, 2> splines(uc->max_mt_radial_basis_size(), uc->num_atom_types());
-            for (int iat = 0; iat < uc->num_atom_types(); iat++)
-            {
-                auto atom_type = uc->atom_type(iat);
-                for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
-                {
-                    int nr = atom_type->uspp().num_beta_radial_points[idxrf];
-                    splines(idxrf, iat) = new Spline<double>(nr, atom_type->radial_grid());
-                }
-            }
-
             std::vector<double> beta_radial_integrals_(uc->max_mt_radial_basis_size());
             sbessel_pw<double> jl(uc, parameters_.lmax_beta());
             #pragma omp for
             for (int igk = 0; igk < num_gkvec(); igk++)
             {
-                jl.load(gkvec_len_[igk]);
+                jl.interpolate(gkvec_len_[igk]);
 
                 for (int iat = 0; iat < uc->num_atom_types(); iat++)
                 {
                     auto atom_type = uc->atom_type(iat);
                     for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
                     {
-                        int nr = atom_type->uspp().num_beta_radial_points[idxrf];
                         int l = atom_type->indexr(idxrf).l;
-                        for (int ir = 0; ir < nr; ir++) 
-                            (*splines(idxrf, iat))[ir] = jl(ir, l, iat) * atom_type->uspp().beta_radial_functions(ir, idxrf);
-                        beta_radial_integrals_[idxrf] = splines(idxrf, iat)->interpolate().integrate(1);
+                        int nr = atom_type->uspp().num_beta_radial_points[idxrf];
+                        beta_radial_integrals_[idxrf] = Spline<double>::integrate(jl(l, iat), beta_rf(idxrf, iat), 1, nr);
                     }
 
                     for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
@@ -179,13 +180,14 @@ void K_point::update()
                     }
                 }
             }
-            for (int iat = 0; iat < uc->num_atom_types(); iat++)
+        }
+
+        for (int iat = 0; iat < uc->num_atom_types(); iat++)
+        {
+            auto atom_type = uc->atom_type(iat);
+            for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
             {
-                auto atom_type = uc->atom_type(iat);
-                for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
-                {
-                    delete splines(idxrf, iat);
-                }
+                delete beta_rf(idxrf, iat);
             }
         }
     }

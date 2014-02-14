@@ -13,6 +13,10 @@
 namespace sirius
 {
 
+// TODO: Band problem is a mess and needs more formal organizaiton. We have different basis functions. 
+//       We can do first- and second-variation or a full variation. We can do iterative or exact diagonalization.
+//       This has to be organized. 
+
 class Band
 {
     private:
@@ -70,7 +74,7 @@ class Band
         void set_h(K_point* kp, Periodic_function<double>* effective_potential, 
                    Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h);
        
-        void solve_fv_exact_diagonalization(K_point* kp, Periodic_function<double>* effective_potential);
+        void diag_fv_full_potential(K_point* kp, Periodic_function<double>* effective_potential);
 
         void apply_h_local(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
                            int n, double_complex* phi__, double_complex* hphi__);
