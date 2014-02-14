@@ -1,11 +1,18 @@
+#ifndef __DENSITY_H__
+#define __DENSITY_H__
+
 /** \file density.h
     
     \brief Contains definition and partial implementation of sirius::Density class.
 */
 
+#include "global.h"
+#include "periodic_function.h"
+#include "band.h"
+#include "k_set.h"
+
 namespace sirius
 {
-
 
 /// Generate charge density and magnetization from occupied spinor wave-functions.
 /** Let's start from the definition of the complex density matrix:
@@ -284,6 +291,6 @@ class Density
         }
 };
 
-#include "density.hpp"
+}
 
-};
+#endif // __DENSITY_H__

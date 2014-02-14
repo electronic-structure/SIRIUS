@@ -1,6 +1,8 @@
 #ifndef _GPU_INTERFACE_H_
 #define _GPU_INTERFACE_H_
 
+#include <stdlib.h>
+
 //================
 // CUDA functions
 //================

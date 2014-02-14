@@ -27,6 +27,11 @@
     \brief Set of k-points
 */
 
+#include "global.h"
+#include "band.h"
+#include "potential.h"
+#include "k_point.h"
+
 namespace sirius 
 {
 
@@ -191,8 +196,6 @@ class K_set
 
         }
 };
-
-#include "k_set.hpp"
 
 };
 

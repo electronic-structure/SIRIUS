@@ -1,3 +1,9 @@
+#ifndef __K_POINT_H__
+#define __K_POINT_H__
+
+#include "global.h"
+#include "periodic_function.h"
+
 namespace sirius
 {
 
@@ -639,7 +645,9 @@ class K_point
         }
 };
 
-#include "k_point.hpp"
+//#include "k_point.hpp"
 
-};
+}
+
+#endif // __K_POINT_H__
 

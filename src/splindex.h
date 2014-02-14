@@ -78,7 +78,11 @@ class splindex_iterator
         }
         
         /// Incremental operator
-        splindex_iterator& operator++(int);
+        splindex_iterator& operator++(int)
+        {
+            this->idx_local_ += inc_;
+            return *this;
+        }
 
         /// Update the global index and check if it is valid.
         /** Global index is updated using the current value of the local index. Return true if the index is valid,
@@ -197,12 +201,6 @@ class splindex_base
             return global_index_size_;
         }
 };
-
-splindex_iterator& splindex_iterator::operator++(int)
-{
-    this->idx_local_ += inc_;
-    return *this;
-}
 
 inline bool splindex_iterator::valid()
 {

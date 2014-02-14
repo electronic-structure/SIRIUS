@@ -1,3 +1,7 @@
+#include "potential.h"
+
+namespace sirius {
+
 // TODO: everything here must be documented
 // TODO: rename coulomb potential to hartree potential
 // TODO: better naming convention: q is meaningless
@@ -1436,3 +1440,4 @@ void Potential::generate_local_potential()
     fft_->output(&local_potential_->f_it<global>(0));
 }
 
+}

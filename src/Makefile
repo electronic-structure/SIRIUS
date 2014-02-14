@@ -4,7 +4,8 @@ include ../make.inc
 
 SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platform.cpp radial_grid.cpp \
        radial_solver.cpp sht.cpp atom_type.cpp atom_symmetry_class.cpp atom.cpp unit_cell.cpp \
-       reciprocal_lattice.cpp step_function.cpp global.cpp
+       reciprocal_lattice.cpp step_function.cpp global.cpp k_point.cpp band.cpp potential.cpp \
+       k_set.cpp density.cpp
        
       
 OBJ = $(SRC:.cpp=.o) 
@@ -29,8 +30,11 @@ all: log $(OBJ) sirius.o
 
 # TODO: platform-independent python script
 log:
-	@echo "const char* git_hash = \"$(shell git rev-parse HEAD)\";" > version.h 
-	@echo "const char* build_date = \"$(shell date)\";" >> version.h 
+	@echo "#ifndef __VERSION_H__" > version.h
+	@echo "#define __VERSION_H__" >> version.h
+	@echo "const char* const git_hash = \"$(shell git rev-parse HEAD)\";" >> version.h 
+	@echo "const char* const build_date = \"$(shell date)\";" >> version.h 
+	@echo "#endif" >> version.h
 
 clean:
 	rm -f $(OBJ) *.o *.a

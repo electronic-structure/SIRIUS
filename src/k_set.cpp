@@ -1,3 +1,7 @@
+#include "k_set.h"
+
+namespace sirius {
+
 void K_set::initialize()
 {
     // ============================================================
@@ -382,3 +386,4 @@ int K_set::max_num_gkvec()
     return max_num_gkvec_;
 }
 
+}

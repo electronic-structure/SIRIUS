@@ -1,6 +1,8 @@
 #ifndef __SPHERIC_FUNCTION_GRADIENT_H__
 #define __SPHERIC_FUNCTION_GRADIENT_H__
 
+#include "spline.h"
+
 namespace sirius
 {
 

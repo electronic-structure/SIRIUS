@@ -1,6 +1,8 @@
 #ifndef __VECTOR3D_H__
 #define __VECTOR3D_H__
 
+#include <assert.h>
+
 /// Simple implementation of 3d vector
 template <typename T> class vector3d
 {

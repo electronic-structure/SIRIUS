@@ -1,3 +1,7 @@
+#include "k_point.h"
+
+namespace sirius {
+
 void K_point::initialize()
 {
     Timer t("sirius::K_point::initialize");
@@ -1579,6 +1583,5 @@ void K_point::generate_beta_pw(double_complex* beta_pw__, Atom_type* atom_type)
     }
 }
 
-
-
+}
 

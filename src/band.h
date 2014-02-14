@@ -1,7 +1,14 @@
+#ifndef __BAND_H__
+#define __BAND_H__
+
 /** \file band.h
     
     \brief Setup and solve eigen value problem.
 */
+
+#include "global.h"
+#include "periodic_function.h"
+#include "k_point.h"
 
 namespace sirius
 {
@@ -15,7 +22,8 @@ class Band
 
         /// alias for FFT driver
         FFT3D<cpu>* fft_;
-
+        
+        /// Non-zero Gaunt coefficients
         Gaunt_coefficients<double_complex>* gaunt_coefs_;
     
         /// Apply effective magentic field to the first-variational state.
@@ -96,7 +104,7 @@ class Band
             fft_ = parameters_.reciprocal_lattice()->fft();
 
             gaunt_coefs_ = new Gaunt_coefficients<double_complex>(parameters_.lmax_apw(), parameters_.lmax_pot(), 
-                                                             parameters_.lmax_apw());
+                                                                  parameters_.lmax_apw());
         }
 
         ~Band()
@@ -187,10 +195,10 @@ class Band
 
         void solve_fd(K_point* kp, Periodic_function<double>* effective_potential, 
                       Periodic_function<double>* effective_magnetic_field[3]);
-
-        
 };
 
 #include "band.hpp"
-#include "band_fd.hpp"
-};
+
+}
+
+#endif // __BAND_H__

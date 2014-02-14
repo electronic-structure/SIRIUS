@@ -6,6 +6,9 @@
     \brief Lattice periodic function
 */
 
+#include "mdarray.h"
+#include "spheric_function.h"
+
 // TODO: this implementation is better, however the distinction between local and global periodic functions is
 //       still not very clear
 namespace sirius

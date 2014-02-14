@@ -49,6 +49,9 @@ void blas<cpu>::hemm<double_complex>(int side, int uplo, int32_t m, int32_t n, d
 }
 
 #ifdef _GPU_
+double_complex blas<gpu>::zone = double_complex(1, 0);
+double_complex blas<gpu>::zzero = double_complex(0, 0);
+
 template<> 
 void blas<gpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                                      double_complex* alpha, double_complex* a, int32_t lda, double_complex* b, 
@@ -62,7 +65,7 @@ void blas<gpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
                                      double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
                                      double_complex* c, int32_t ldc)
 {
-    cublas_zgemm(transa, transb, m, n, k, &complex_one, a, lda, b, ldb, &complex_zero, c, ldc);
+    cublas_zgemm(transa, transb, m, n, k, &zone, a, lda, b, ldb, &zzero, c, ldc);
 }
 #endif
 

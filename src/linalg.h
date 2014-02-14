@@ -181,6 +181,10 @@ template<> class blas<cpu>
 #ifdef _GPU_
 template<> class blas<gpu>
 {
+    private:
+        static double_complex zone;
+        static double_complex zzero;
+
     public:
 
         template <typename T>

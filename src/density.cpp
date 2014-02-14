@@ -1,7 +1,6 @@
-/** \file density.hpp
-    
-    \brief Contains remaining implementation of sirius::Density class.
-*/
+#include "density.h"
+
+namespace sirius {
 
 Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_(NULL)
 {
@@ -710,57 +709,6 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
         }
     }
     
-    //for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
-    //{
-    //    auto type = parameters_.unit_cell()->atom_type(iat);
-    //    int nbf = type->mt_basis_size();
-    //    mdarray<double_complex, 2> tmp(rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2);
-    //    tmp.zero();
-    //    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    //    {
-    //        if (parameters_.unit_cell()->atom(ia)->type_id() == iat)
-    //        {
-    //            for (int xi2 = 0; xi2 < nbf; xi2++)
-    //            {
-    //                for (int xi1 = 0; xi1 <= xi2; xi1++)
-    //                {
-    //                    int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
-    //                    #pragma omp parallel for
-    //                    for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
-    //                    {
-    //                        tmp(igloc, idx12) += conj(rl->gvec_phase_factor<local>(igloc, ia)) * 
-    //                                             pp_complex_density_matrix(xi2, xi1, 0, ia);
-    //                    }
-    //                }
-    //            }
-    //        }
-    //    }
-
-    //    for (int xi2 = 0; xi2 < nbf; xi2++)
-    //    {
-    //        int idx12 = xi2 * (xi2 + 1) / 2;
-
-    //        // add diagonal term
-    //        #pragma omp parallel for
-    //        for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
-    //        {
-    //            // D_{xi2,xi1} * Q(G)_{xi2, xi2}
-    //            f_pw[rl->spl_num_gvec(igloc)] += tmp(igloc, idx12 + xi2) * type->uspp().q_pw(igloc, idx12 + xi2);
-
-    //        }
-    //        // add non-diagonal terms
-    //        for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
-    //        {
-    //            #pragma omp parallel for
-    //            for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
-    //            {
-    //                // D_{xi2,xi1} * Q(G)_{xi1, xi2}
-    //                f_pw[rl->spl_num_gvec(igloc)] += 2 * real(tmp(igloc, idx12) * type->uspp().q_pw(igloc, idx12));
-    //            }
-    //        }
-    //    }
-    //}
-    
     Platform::allgather(&f_pw[0], rl->spl_num_gvec().global_offset(), rl->spl_num_gvec().local_size());
 
     fft_->input(rl->num_gvec(), rl->fft_index(), &f_pw[0]);
@@ -769,38 +717,6 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 }
 
 #ifdef _GPU_
-
-extern "C" void restore_valence_density_gpu(int num_atoms, 
-                                            int num_gvec_loc,
-                                            int* atom_type,
-                                            int* num_beta, 
-                                            double* atom_pos, 
-                                            int* gvec,
-                                            void* pp_complex_density_matrix,
-                                            int ldm,
-                                            void** q_pw,
-                                            void* rho_pw);
-
-extern "C" void restore_valence_density_gpu_v2(int num_gvec_loc,
-                                               int num_beta,
-                                               double ax,
-                                               double ay,
-                                               double az,
-                                               int* gvec,
-                                               void* pp_complex_density_matrix,
-                                               int ldm,
-                                               void* q_pw_t,
-                                               void* rho_pw,
-                                               int stream_id);
-
-extern "C" void add_to_d_mtrx_pw_gpu(int num_gvec_loc,
-                                     int num_beta,
-                                     double ax, 
-                                     double ay,
-                                     double az,
-                                     int* gvec,
-                                     void* d_mtrx_packed,
-                                     void* d_mtrx_pw);
 
 extern "C" void sum_q_pw_d_mtrx_pw_gpu(int num_gvec_loc,
                                        int num_beta,
@@ -1410,3 +1326,4 @@ void Density::load()
         magnetization_[j]->hdf5_read(fout["magnetization"][j]);
 }
 
+}
