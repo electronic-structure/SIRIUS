@@ -130,6 +130,14 @@ void K_point::update()
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
         Timer t1("sirius::K_point::update|beta_pw");
+        
+        std::vector< std::vector<int> > gkvec_shells_;
+    
+        for (int igk = 0; igk < num_gkvec(); igk++)
+        {
+            if (igk == 0 || fabs(gkvec_len_[igk] - gkvec_len_[igk - 1]) > 1e-10) gkvec_shells_.push_back(std::vector<int>());
+            gkvec_shells_.back().push_back(igk);
+        }
 
         auto uc = parameters_.unit_cell();
 
@@ -155,28 +163,32 @@ void K_point::update()
             std::vector<double> beta_radial_integrals_(uc->max_mt_radial_basis_size());
             sbessel_pw<double> jl(uc, parameters_.lmax_beta());
             #pragma omp for
-            for (int igk = 0; igk < num_gkvec(); igk++)
+            for (int ish = 0; ish < (int)gkvec_shells_.size(); ish++)
             {
-                jl.interpolate(gkvec_len_[igk]);
-
-                for (int iat = 0; iat < uc->num_atom_types(); iat++)
+                jl.interpolate(gkvec_len_[gkvec_shells_[ish][0]]);
+                for (int i = 0; i < (int)gkvec_shells_[ish].size(); i++)
                 {
-                    auto atom_type = uc->atom_type(iat);
-                    for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
-                    {
-                        int l = atom_type->indexr(idxrf).l;
-                        int nr = atom_type->uspp().num_beta_radial_points[idxrf];
-                        beta_radial_integrals_[idxrf] = Spline<double>::integrate(jl(l, iat), beta_rf(idxrf, iat), 1, nr);
-                    }
+                    int igk = gkvec_shells_[ish][i];
 
-                    for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
+                    for (int iat = 0; iat < uc->num_atom_types(); iat++)
                     {
-                        int l = atom_type->indexb(xi).l;
-                        int lm = atom_type->indexb(xi).lm;
-                        int idxrf = atom_type->indexb(xi).idxrf;
+                        auto atom_type = uc->atom_type(iat);
+                        for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
+                        {
+                            int l = atom_type->indexr(idxrf).l;
+                            int nr = atom_type->uspp().num_beta_radial_points[idxrf];
+                            beta_radial_integrals_[idxrf] = Spline<double>::integrate(jl(l, iat), beta_rf(idxrf, iat), 1, nr);
+                        }
 
-                        double_complex z = pow(double_complex(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
-                        beta_pw_(igk, uc->beta_t_ofs(iat) + xi) = z * gkvec_ylm_(lm, igk) * beta_radial_integrals_[idxrf];
+                        for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
+                        {
+                            int l = atom_type->indexb(xi).l;
+                            int lm = atom_type->indexb(xi).lm;
+                            int idxrf = atom_type->indexb(xi).idxrf;
+
+                            double_complex z = pow(double_complex(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
+                            beta_pw_(igk, uc->beta_t_ofs(iat) + xi) = z * gkvec_ylm_(lm, igk) * beta_radial_integrals_[idxrf];
+                        }
                     }
                 }
             }

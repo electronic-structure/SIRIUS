@@ -22,12 +22,13 @@
 #ifndef __SPLINE_H__
 #define __SPLINE_H__
 
-#include "linalg.h"
-
 /** \file spline.h
     
     \brief Implementation of cubic spline.
 */
+
+#include "linalg.h"
+
 namespace sirius {
 
 /// Cubic spline with a not-a-knot boundary conditions.
