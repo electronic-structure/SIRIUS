@@ -19,7 +19,7 @@ void Platform::initialize(bool call_mpi_init, bool call_cublas_init)
     magma_init_wrapper();
     #endif
     #ifdef _PLASMA_
-    plasma_init();
+    plasma_init(max_num_threads());
     #endif
 
     assert(sizeof(int) == 4);
