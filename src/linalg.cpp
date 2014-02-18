@@ -48,6 +48,16 @@ void blas<cpu>::hemm<double_complex>(int side, int uplo, int32_t m, int32_t n, d
                    (int32_t)1);
 }
 
+template<>
+void blas<cpu>::gemv<double_complex>(int trans, int32_t m, int32_t n, double_complex alpha, double_complex* a, 
+                                     int32_t lda, double_complex* x, int32_t incx, double_complex beta, 
+                                     double_complex* y, int32_t incy)
+{
+    const char *trans_c[] = {"N", "T", "C"};
+
+    FORTRAN(zgemv)(trans_c[trans], &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy, 1);
+}
+
 #ifdef _GPU_
 double_complex blas<gpu>::zone = double_complex(1, 0);
 double_complex blas<gpu>::zzero = double_complex(0, 0);
