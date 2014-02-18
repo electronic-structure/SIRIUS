@@ -389,4 +389,92 @@ int K_set::max_num_gkvec()
     return max_num_gkvec_;
 }
 
+//== void K_set::fixed_band_occupancies()
+//== {
+//==     Timer t("sirius::Density::fixed_band_occupancies");
+//== 
+//==     if (parameters_.num_mag_dims() != 1) error_local(__FILE__, __LINE__, "works only for collinear magnetism");
+//== 
+//==     double n_up = (parameters_.num_valence_electrons() + parameters_.fixed_moment()) / 2.0;
+//==     double n_dn = (parameters_.num_valence_electrons() - parameters_.fixed_moment()) / 2.0;
+//==     
+//==     mdarray<double, 2> bnd_occ(parameters_.num_bands(), num_kpoints());
+//==     bnd_occ.zero();
+//== 
+//==     int j = 0;
+//==     while (n_up > 0)
+//==     {
+//==         for (int ik = 0; ik < num_kpoints(); ik++) bnd_occ(j, ik) = std::min(double(parameters_.max_occupancy()), n_up);
+//==         j++;
+//==         n_up -= parameters_.max_occupancy();
+//==     }
+//==             
+//==     j = parameters_.num_fv_states();
+//==     while (n_dn > 0)
+//==     {
+//==         for (int ik = 0; ik < num_kpoints(); ik++) bnd_occ(j, ik) = std::min(double(parameters_.max_occupancy()), n_dn);
+//==         j++;
+//==         n_dn -= parameters_.max_occupancy();
+//==     }
+//==             
+//==     for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_occupancies(&bnd_occ(0, ik));
+//== 
+//==     double gap = 0.0;
+//==     
+//==     int nve = int(parameters_.num_valence_electrons() + 1e-12);
+//==     if ((parameters_.num_spins() == 2) || 
+//==         ((fabs(nve - parameters_.num_valence_electrons()) < 1e-12) && nve % 2 == 0))
+//==     {
+//==         // find band gap
+//==         std::vector< std::pair<double, double> > eband;
+//==         std::pair<double, double> eminmax;
+//== 
+//==         for (int j = 0; j < parameters_.num_bands(); j++)
+//==         {
+//==             eminmax.first = 1e10;
+//==             eminmax.second = -1e10;
+//== 
+//==             for (int ik = 0; ik < num_kpoints(); ik++)
+//==             {
+//==                 eminmax.first = std::min(eminmax.first, kpoints_[ik]->band_energy(j));
+//==                 eminmax.second = std::max(eminmax.second, kpoints_[ik]->band_energy(j));
+//==             }
+//== 
+//==             eband.push_back(eminmax);
+//==         }
+//==         
+//==         std::sort(eband.begin(), eband.end());
+//== 
+//==         int ist = nve;
+//==         if (parameters_.num_spins() == 1) ist /= 2; 
+//== 
+//==         if (eband[ist].first > eband[ist - 1].second) gap = eband[ist].first - eband[ist - 1].second;
+//== 
+//==         band_gap_ = gap;
+//==     }
+//==     
+//==     if (Platform::mpi_rank() == 0 && verbosity_level >= 5)
+//==     {
+//==         printf("Lowest band occupancies\n");
+//==         for (int ik = 0; ik < num_kpoints(); ik++)
+//==         {
+//==             printf("ik : %2i, ", ik); 
+//==             if (parameters_.num_mag_dims() != 1)
+//==             {
+//==                 for (int j = 0; j < std::min(10, parameters_.num_bands()); j++) 
+//==                     printf("%12.6f", kpoints_[ik]->band_occupancy(j));
+//==             }
+//==             else
+//==             {
+//==                 for (int j = 0; j < std::min(10, parameters_.num_fv_states()); j++) 
+//==                     printf("%12.6f", kpoints_[ik]->band_occupancy(j));
+//==                 printf("\n         ");
+//==                 for (int j = 0; j < std::min(10, parameters_.num_fv_states()); j++) 
+//==                     printf("%12.6f", kpoints_[ik]->band_occupancy(parameters_.num_fv_states() + j));
+//==             }
+//==             printf("\n");
+//==         }
+//==     }
+//== }
+
 }
