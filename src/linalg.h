@@ -19,6 +19,13 @@
 #include "constants.h"
 #include "error_handling.h"
 
+/* 
+    matrix-vector operations
+*/
+extern "C" void FORTRAN(zgemv)(const char* trans, int32_t* m, int32_t* n, double_complex* alpha, 
+                               double_complex* a, int32_t* lda, double_complex* x, int32_t* incx,
+                               double_complex* beta, double_complex* y, int32_t* incy, int32_t translen);
+
 /*
     matrix-matrix operations
 */
@@ -176,6 +183,10 @@ template<> class blas<cpu>
         template<typename T>
         static void hemm(int side, int uplo, int32_t m, int32_t n, T alpha, T* a, int32_t lda, 
                          T* b, int32_t ldb, T beta, T* c, int32_t ldc);
+
+        template<typename T>
+        static void gemv(int trans, int32_t m, int32_t n, T alpha, T* a, int32_t lda, T* x, int32_t incx, 
+                         T beta, T* y, int32_t incy);
 };
 
 #ifdef _GPU_

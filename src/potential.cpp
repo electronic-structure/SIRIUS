@@ -1004,35 +1004,44 @@ void Potential::generate_d_mtrx()
 {   
     Timer t("sirius::Potential::generate_d_mtrx");
 
+    auto rl = parameters_.reciprocal_lattice();
+
     // get plane-wave coefficients of effective potential
     fft_->input(&effective_potential_->f_it<global>(0));
     fft_->transform(-1);
-    fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), 
-                 &effective_potential_->f_pw(0));
-   
-    #pragma omp parallel for
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    fft_->output(rl->num_gvec(), rl->fft_index(), &effective_potential_->f_pw(0));
+
+    #pragma omp parallel
     {
-        auto atom_type = parameters_.unit_cell()->atom(ia)->type();
-        int nbf = atom_type->mt_basis_size();
-
-        for (int xi2 = 0; xi2 < nbf; xi2++)
+        mdarray<double_complex, 1> veff_tmp(rl->spl_num_gvec().local_size());
+        mdarray<double_complex, 1> dm_packed(parameters_.unit_cell()->max_mt_basis_size() * 
+                                             (parameters_.unit_cell()->max_mt_basis_size() + 1) / 2);
+        
+        #pragma omp for
+        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
-            for (int xi1 = 0; xi1 <= xi2; xi1++)
+            auto atom_type = parameters_.unit_cell()->atom(ia)->type();
+            int nbf = atom_type->mt_basis_size();
+            
+            for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
             {
-                int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+                int ig = rl->spl_num_gvec(igloc);
+                veff_tmp(igloc) = effective_potential_->f_pw(ig) * rl->gvec_phase_factor<local>(igloc, ia);
+            }
 
-                double_complex z(0, 0);
+            blas<cpu>::gemv(2, rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, complex_one, 
+                            &atom_type->uspp().q_pw(0, 0), rl->spl_num_gvec().local_size(),  
+                            &veff_tmp(0), 1, complex_zero, &dm_packed(0), 1);
 
-                for (int igloc = 0; igloc < parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
+            for (int xi2 = 0; xi2 < nbf; xi2++)
+            {
+                for (int xi1 = 0; xi1 <= xi2; xi1++)
                 {
-                    int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
-                    z += conj(atom_type->uspp().q_pw(igloc, idx12)) * effective_potential_->f_pw(ig) * 
-                         parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia);
-                }
+                    int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
 
-                parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) = z * parameters_.unit_cell()->omega();
-                parameters_.unit_cell()->atom(ia)->d_mtrx(xi2, xi1) = conj(z) * parameters_.unit_cell()->omega();
+                    parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) = dm_packed(idx12) * parameters_.unit_cell()->omega();
+                    parameters_.unit_cell()->atom(ia)->d_mtrx(xi2, xi1) = conj(dm_packed(idx12)) * parameters_.unit_cell()->omega();
+                }
             }
         }
     }
