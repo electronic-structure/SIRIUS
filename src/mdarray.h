@@ -374,9 +374,9 @@ template <typename T> class mdarray<T, 1> : public mdarray_base<T, 1>
         inline T& operator()(const int i0) 
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
-            size_t i = this->offset[0] + i0;
-            
             assert(this->mdarray_ptr);
+            
+            size_t i = this->offset[0] + i0;
             return this->mdarray_ptr[i];
         }
 
@@ -384,9 +384,9 @@ template <typename T> class mdarray<T, 1> : public mdarray_base<T, 1>
         inline T* ptr_device(const int i0)
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
-            size_t i = this->offset[0] + i0;
-            
             assert(this->mdarray_ptr_device);
+            
+            size_t i = this->offset[0] + i0;
             return &this->mdarray_ptr_device[i];
         }
         #endif
@@ -425,9 +425,9 @@ template <typename T> class mdarray<T, 2> : public mdarray_base<T, 2>
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
-            size_t i = this->offset[0] + i0 + i1 * this->offset[1];
-            
             assert(this->mdarray_ptr);
+            
+            size_t i = this->offset[0] + i0 + i1 * this->offset[1];
             return this->mdarray_ptr[i];
         }
     
@@ -436,9 +436,9 @@ template <typename T> class mdarray<T, 2> : public mdarray_base<T, 2>
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
-            size_t i = this->offset[0] + i0 + i1 * this->offset[1];
-            
             assert(this->mdarray_ptr_device);
+            
+            size_t i = this->offset[0] + i0 + i1 * this->offset[1];
             return &this->mdarray_ptr_device[i];
         }
         #endif
@@ -476,14 +476,27 @@ template <typename T> class mdarray<T, 3> : public mdarray_base<T, 3>
     
         inline T& operator()(const int i0, const int i1, const int i2) 
         {
-            assert(this->mdarray_ptr);
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
             assert(i2 >= this->d[2].start() && i2 <= this->d[2].end());
+            assert(this->mdarray_ptr);
             
             size_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2];
             return this->mdarray_ptr[i];
         }
+
+        #ifdef _GPU_
+        inline T* ptr_device(const int i0, const int i1, const int i2) 
+        {
+            assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
+            assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
+            assert(i2 >= this->d[2].start() && i2 <= this->d[2].end());
+            assert(this->mdarray_ptr_device);
+            
+            size_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2];
+            return &this->mdarray_ptr_device[i];
+        }
+        #endif
 };
 
 // 4d specialization
@@ -519,11 +532,11 @@ template <typename T> class mdarray<T, 4> : public mdarray_base<T, 4>
     
         inline T& operator()(const int i0, const int i1, const int i2, const int i3) 
         {
-            assert(this->mdarray_ptr);
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
             assert(i2 >= this->d[2].start() && i2 <= this->d[2].end());
             assert(i3 >= this->d[3].start() && i3 <= this->d[3].end());
+            assert(this->mdarray_ptr);
             
             size_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2] + i3 * this->offset[3];
             return this->mdarray_ptr[i];
@@ -532,11 +545,11 @@ template <typename T> class mdarray<T, 4> : public mdarray_base<T, 4>
         #ifdef _GPU_
         inline T* ptr_device(const int i0, const int i1, const int i2, const int i3) 
         {
-            assert(this->mdarray_ptr_device);
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
             assert(i2 >= this->d[2].start() && i2 <= this->d[2].end());
             assert(i3 >= this->d[3].start() && i3 <= this->d[3].end());
+            assert(this->mdarray_ptr_device);
             
             size_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2] + i3 * this->offset[3];
             return &this->mdarray_ptr_device[i];

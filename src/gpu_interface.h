@@ -67,17 +67,17 @@ extern "C" void cublas_set_matrix_async(int rows, int cols, int elemSize, const 
 // CUFFT functions
 //=================
 
-extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft, void* fft_buffer__);
+extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft);
 
 extern "C" void cufft_destroy_batch_plan();
 
-extern "C" void cufft_forward_transform();
+extern "C" void cufft_forward_transform(void* fft_buffer);
 
-extern "C" void cufft_backward_transform();
+extern "C" void cufft_backward_transform(void* fft_buffer);
 
-extern "C" void cufft_batch_load_gpu(int num_elements, int* map, void* data);
+extern "C" void cufft_batch_load_gpu(int num_elements, int* map, void* data, void* fft_buffer);
 
-extern "C" void cufft_batch_unload_gpu(int num_elements, int* map, void* data);
+extern "C" void cufft_batch_unload_gpu(int num_elements, int* map, void* fft_buffer, void* data);
 
 //=================
 // MAGMA functions

@@ -625,12 +625,367 @@ void Density::add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int
             case 0:
             {
                 #pragma omp critical
-                for (int ir = 0; ir < fft_->size(); ir++) 
-                    rho_->f_it<global>(ir) += it_density_matrix(ir, 0);
+                for (int ir = 0; ir < fft_->size(); ir++) rho_->f_it<global>(ir) += it_density_matrix(ir, 0);
             }
         }
     }
 }
+
+#ifdef _GPU_
+
+struct exec_fft_args
+{
+    int thread_id;
+    int num_psi;
+    int num_mag_dims;
+    int num_spins;
+    int wf_pw_offset;
+    K_point* kp;
+    FFT3D<cpu>* fft;
+    mdarray<double_complex, 3>* psi;
+    mdarray<double, 1>* wt;
+    mdarray<double, 2>* it_density_matrix_gpu;
+    mdarray<double, 3>* it_density_matrix;
+};
+
+pthread_mutex_t exec_fft_density_mutex;
+int idxfft_density;
+
+extern "C" void update_it_density_matrix_gpu(int fft_size, 
+                                             int nfft_max, 
+                                             int num_spins, 
+                                             int num_mag_dims, 
+                                             void* psi_it, 
+                                             double* wt, 
+                                             void* it_density_matrix);
+void* exec_fft_density_gpu(void* args__)
+{
+    exec_fft_args* args = (exec_fft_args*)args__;
+
+    FFT3D<gpu> fft(args->fft->grid_size());
+
+    mdarray<int, 1> fft_index(args->kp->fft_index(), args->kp->num_gkvec());
+    fft_index.allocate_on_device();
+    fft_index.copy_to_device();
+
+    int sz = (fft.size() * args->num_spins + args->kp->num_gkvec() + fft.size() * 8) * (int)sizeof(double_complex);
+
+    int nfft_max = (int)(cuda_get_free_mem() / sz);
+    if (nfft_max == 0) return NULL;
+
+    nfft_max = std::min(nfft_max, args->num_psi / 4);
+
+    mdarray<double_complex, 2> psi_pw_gpu(NULL, args->kp->num_gkvec(), nfft_max); 
+    psi_pw_gpu.allocate_on_device();
+
+    mdarray<double_complex, 3> psi_it_gpu(NULL, fft.size(), nfft_max, args->num_spins);
+    psi_it_gpu.allocate_on_device();
+
+    fft.initialize(nfft_max);
+
+    bool done = false;
+
+    while (!done)
+    {
+        pthread_mutex_lock(&exec_fft_density_mutex);
+        int i = idxfft_density;
+        if (idxfft_density + nfft_max > args->num_psi) 
+        {
+            done = true;
+        }
+        else
+        {
+            idxfft_density += nfft_max;
+        }
+        pthread_mutex_unlock(&exec_fft_density_mutex);
+
+        if (!done)
+        {
+            for (int ispn = 0; ispn < args->num_spins; ispn++)
+            {
+                cublas_set_matrix(args->kp->num_gkvec(), nfft_max, sizeof(double_complex), 
+                                  &(*args->psi)(args->wf_pw_offset, ispn, i), args->psi->ld() * args->num_spins, 
+                                  psi_pw_gpu.get_ptr_device(), psi_pw_gpu.ld());
+
+                fft.batch_load(args->kp->num_gkvec(), fft_index.get_ptr_device(), psi_pw_gpu.get_ptr_device(), 
+                               psi_it_gpu.ptr_device(0, 0, ispn));
+
+                fft.transform(1, psi_it_gpu.ptr_device(0, 0, ispn));
+            }
+
+            update_it_density_matrix_gpu(fft.size(), nfft_max, args->num_spins, args->num_mag_dims, 
+                                         psi_it_gpu.get_ptr_device(), args->wt->ptr_device(i), 
+                                         args->it_density_matrix_gpu->get_ptr_device());
+        }
+    }
+
+    fft.finalize();
+    
+    return NULL;
+}
+
+void* exec_fft_density_cpu(void* args__)
+{
+    exec_fft_args* args = (exec_fft_args*)args__;
+    
+    auto fft = args->fft;
+
+    int thread_id = args->thread_id;
+    
+    mdarray<double_complex, 2> psi_it(fft->size(), args->num_spins);
+
+    bool done = false;
+    while (!done)
+    {
+        pthread_mutex_lock(&exec_fft_density_mutex);
+        int i = idxfft_density;
+        if (idxfft_density + 1 > args->num_psi)
+        {
+            done = true;
+        }
+        else
+        {
+            idxfft_density++;
+        }
+        pthread_mutex_unlock(&exec_fft_density_mutex);
+
+        if (!done)
+        {
+            for (int ispn = 0; ispn < args->num_spins; ispn++)
+            {
+                fft->input(args->kp->num_gkvec(), args->kp->fft_index(), &(*args->psi)(args->wf_pw_offset, ispn, i), thread_id);
+                fft->transform(1, thread_id);
+                fft->output(&psi_it(0, ispn), thread_id);
+            }
+           
+            switch (args->num_mag_dims)
+            {
+                case 3:
+                {
+                    for (int ir = 0; ir < fft->size(); ir++)
+                    {
+                        double_complex z = psi_it(ir, 0) * conj(psi_it(ir, 1)) * (*args->wt)(i);
+                        (*args->it_density_matrix)(ir, 2, thread_id) += 2.0 * real(z);
+                        (*args->it_density_matrix)(ir, 3, thread_id) -= 2.0 * imag(z);
+                    }
+                }
+                case 1:
+                {
+                    for (int ir = 0; ir < fft->size(); ir++)
+                        (*args->it_density_matrix)(ir, 1, thread_id) += real(psi_it(ir, 1) * conj(psi_it(ir, 1))) * (*args->wt)(i);
+                }
+                case 0:
+                {
+                    for (int ir = 0; ir < fft->size(); ir++)
+                        (*args->it_density_matrix)(ir, 0, thread_id) += real(psi_it(ir, 0) * conj(psi_it(ir, 0))) * (*args->wt)(i);
+                }
+            }
+        }
+    }
+   
+    return NULL;
+}
+
+
+void Density::add_kpoint_contribution_it_gpu(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands)
+{
+    Timer t("sirius::Density::add_kpoint_contribution_it_gpu");
+    
+    if (occupied_bands.size() == 0) return;
+    
+    pthread_mutex_init(&exec_fft_density_mutex, NULL);
+    idxfft_density = 0;
+
+    int num_fft_threads = std::min(Platform::num_fft_threads() + 1, Platform::max_num_threads());
+    
+    mdarray<double, 3> it_density_matrix(fft_->size(), parameters_.num_mag_dims() + 1, num_fft_threads);
+    it_density_matrix.zero();
+
+    mdarray<double, 2> it_density_matrix_gpu(NULL, fft_->size(), parameters_.num_mag_dims() + 1);
+    if (num_fft_threads > 1)
+    {
+        it_density_matrix_gpu.set_ptr(&it_density_matrix(0, 0, 0));
+        it_density_matrix_gpu.allocate_on_device();
+        it_density_matrix_gpu.zero_on_device();
+    }
+
+    mdarray<double, 1> wt((int)occupied_bands.size());
+    for (int i = 0; i < (int)occupied_bands.size(); i++) wt(i) = occupied_bands[i].second / parameters_.unit_cell()->omega();
+    wt.allocate_on_device();
+    wt.copy_to_device();
+
+    std::vector<pthread_t> pthread_id(num_fft_threads);
+    std::vector<exec_fft_args> args(num_fft_threads);
+
+    for (int i = 0; i < num_fft_threads; i++)
+    {
+        args[i].thread_id = i;
+        args[i].num_psi = (int)occupied_bands.size();
+        args[i].num_mag_dims = parameters_.num_mag_dims();
+        args[i].num_spins = parameters_.num_spins();
+        args[i].wf_pw_offset = parameters_.unit_cell()->mt_basis_size();
+        args[i].kp = kp;
+        args[i].fft = fft_;
+        args[i].psi = &kp->spinor_wave_functions();
+        args[i].wt = &wt;
+        args[i].it_density_matrix_gpu = &it_density_matrix_gpu;
+        args[i].it_density_matrix = &it_density_matrix;
+    
+        if (i == 0 && num_fft_threads > 1)
+        {
+            pthread_create(&pthread_id[i], NULL, exec_fft_density_gpu, &args[i]);
+        }
+        else
+        {
+            pthread_create(&pthread_id[i], NULL, exec_fft_density_cpu, &args[i]);
+        }
+    }
+
+    // sync threads
+    for (int i = 0; i < num_fft_threads; i++) pthread_join(pthread_id[i], NULL);
+
+    if (idxfft_density != (int)occupied_bands.size()) 
+    {
+        std::stringstream s;
+        s << "not all FFTs are executed" << std::endl
+          << " number of wave-functions : " << occupied_bands.size() << ", number of executed FFTs : " << idxfft_density;
+        error_local(__FILE__, __LINE__, s);
+    }
+
+    pthread_mutex_destroy(&exec_fft_density_mutex);
+
+    if (num_fft_threads > 1)
+    {
+        it_density_matrix_gpu.copy_to_host();
+        it_density_matrix_gpu.deallocate_on_device();
+    }
+    
+    switch (parameters_.num_mag_dims())
+    {
+        case 3:
+        {
+            for (int i = 0; i < num_fft_threads; i++)
+            {
+                for (int ir = 0; ir < fft_->size(); ir++)
+                {
+                    magnetization_[1]->f_it<global>(ir) += it_density_matrix(ir, 2, i);
+                    magnetization_[2]->f_it<global>(ir) += it_density_matrix(ir, 3, i);
+                }
+            }
+        }
+        case 1:
+        {
+            for (int i = 0; i < num_fft_threads; i++)
+            {
+                for (int ir = 0; ir < fft_->size(); ir++)
+                {
+                    rho_->f_it<global>(ir) += (it_density_matrix(ir, 0, i) + it_density_matrix(ir, 1, i));
+                    magnetization_[0]->f_it<global>(ir) += (it_density_matrix(ir, 0, i) - it_density_matrix(ir, 1, i));
+                }
+            }
+            break;
+        }
+        case 0:
+        {
+            for (int i = 0; i < num_fft_threads; i++)
+            {
+                for (int ir = 0; ir < fft_->size(); ir++) rho_->f_it<global>(ir) += it_density_matrix(ir, 0, i);
+            }
+        }
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    ///#pragma omp parallel default(shared) num_threads(Platform::num_fft_threads())
+    ///{
+    ///    int thread_id = Platform::thread_id();
+
+    ///    mdarray<double, 2> it_density_matrix(fft_->size(), parameters_.num_mag_dims() + 1);
+    ///    it_density_matrix.zero();
+    ///    
+    ///    mdarray<double_complex, 2> wfit(fft_->size(), parameters_.num_spins());
+
+    ///    #pragma omp for
+    ///    for (int i = 0; i < (int)occupied_bands.size(); i++)
+    ///    {
+    ///        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+    ///        {
+    ///            fft_->input(kp->num_gkvec(), kp->fft_index(), 
+    ///                        &kp->spinor_wave_function(parameters_.unit_cell()->mt_basis_size(), ispn, occupied_bands[i].first), 
+    ///                        thread_id);
+    ///            fft_->transform(1, thread_id);
+    ///            fft_->output(&wfit(0, ispn), thread_id);
+    ///        }
+    ///        
+    ///        double w = occupied_bands[i].second / parameters_.unit_cell()->omega();
+    ///        
+    ///        switch (parameters_.num_mag_dims())
+    ///        {
+    ///            case 3:
+    ///            {
+    ///                for (int ir = 0; ir < fft_->size(); ir++)
+    ///                {
+    ///                    double_complex z = wfit(ir, 0) * conj(wfit(ir, 1)) * w;
+    ///                    it_density_matrix(ir, 2) += 2.0 * real(z);
+    ///                    it_density_matrix(ir, 3) -= 2.0 * imag(z);
+    ///                }
+    ///            }
+    ///            case 1:
+    ///            {
+    ///                for (int ir = 0; ir < fft_->size(); ir++)
+    ///                    it_density_matrix(ir, 1) += real(wfit(ir, 1) * conj(wfit(ir, 1))) * w;
+    ///            }
+    ///            case 0:
+    ///            {
+    ///                for (int ir = 0; ir < fft_->size(); ir++)
+    ///                    it_density_matrix(ir, 0) += real(wfit(ir, 0) * conj(wfit(ir, 0))) * w;
+    ///            }
+    ///        }
+    ///    }
+
+    ///    switch (parameters_.num_mag_dims())
+    ///    {
+    ///        case 3:
+    ///        {
+    ///            #pragma omp critical
+    ///            for (int ir = 0; ir < fft_->size(); ir++)
+    ///            {
+    ///                magnetization_[1]->f_it<global>(ir) += it_density_matrix(ir, 2);
+    ///                magnetization_[2]->f_it<global>(ir) += it_density_matrix(ir, 3);
+    ///            }
+    ///        }
+    ///        case 1:
+    ///        {
+    ///            #pragma omp critical
+    ///            for (int ir = 0; ir < fft_->size(); ir++)
+    ///            {
+    ///                rho_->f_it<global>(ir) += (it_density_matrix(ir, 0) + it_density_matrix(ir, 1));
+    ///                magnetization_[0]->f_it<global>(ir) += (it_density_matrix(ir, 0) - it_density_matrix(ir, 1));
+    ///            }
+    ///            break;
+    ///        }
+    ///        case 0:
+    ///        {
+    ///            #pragma omp critical
+    ///            for (int ir = 0; ir < fft_->size(); ir++) 
+    ///                rho_->f_it<global>(ir) += it_density_matrix(ir, 0);
+    ///        }
+    ///    }
+    ///}
+}
+#endif
 
 void Density::add_q_contribution_to_valence_density(K_set& ks)
 {
@@ -726,51 +1081,6 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
             }
         }
     }
-
-    //== #pragma omp parallel
-    //== {
-    //==     std::vector<double_complex> f_pw_pt(rl->spl_num_gvec().local_size(), double_complex(0, 0));
-
-    //==     #pragma omp for
-    //==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    //==     {
-    //==         auto atom_type = parameters_.unit_cell()->atom(ia)->type();
-    //==         int nbf = atom_type->mt_basis_size();
-
-    //==         for (int xi2 = 0; xi2 < nbf; xi2++)
-    //==         {
-    //==             int idx12 = xi2 * (xi2 + 1) / 2;
-
-    //==             // add diagonal term
-    //==             for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
-    //==             {
-    //==                 // D_{xi2,xi1} * Q(G)_{xi2, xi2}
-    //==                 f_pw_pt[igloc] += pp_complex_density_matrix(xi2, xi2, 0, ia) * 
-    //==                                   conj(rl->gvec_phase_factor<local>(igloc, ia)) * 
-    //==                                   atom_type->uspp().q_pw(igloc, idx12 + xi2);
-
-    //==             }
-    //==             // add non-diagonal terms
-    //==             for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
-    //==             {
-    //==                 for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
-    //==                 {
-    //==                     // D_{xi2,xi1} * Q(G)_{xi1, xi2}
-    //==                     f_pw_pt[igloc] += 2 * real(pp_complex_density_matrix(xi2, xi1, 0, ia) * 
-    //==                                                conj(rl->gvec_phase_factor<local>(igloc, ia)) * 
-    //==                                                atom_type->uspp().q_pw(igloc, idx12));
-    //==                 }
-    //==             }
-    //==         }
-    //==     }
-    //==     
-    //==     // sum contribution from different atoms
-    //==     #pragma omp critical
-    //==     for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
-    //==     {
-    //==         f_pw[rl->spl_num_gvec(igloc)] += f_pw_pt[igloc];
-    //==     }
-    //== }
     
     Platform::allgather(&f_pw[0], rl->spl_num_gvec().global_offset(), rl->spl_num_gvec().local_size());
 
@@ -1110,7 +1420,23 @@ void Density::generate_valence_density_it(K_set& ks)
     {
         int ik = ks.spl_num_kpoints(ikloc);
         std::vector< std::pair<int, double> > occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
-        add_kpoint_contribution_it(ks[ik], occupied_bands);
+        switch (parameters_.processing_unit())
+        {
+            case cpu:
+            {
+                add_kpoint_contribution_it(ks[ik], occupied_bands);
+                break;
+            }
+            case gpu:
+            {
+                #ifdef _GPU_
+                add_kpoint_contribution_it_gpu(ks[ik], occupied_bands);
+                #else
+                error_local(__FILE__, __LINE__, "wrong processing unit");
+                #endif
+                break;
+            }
+        }
     }
     
     //==========================================================================

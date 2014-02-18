@@ -430,6 +430,11 @@ class K_point
             return spinor_wave_functions_(idxwf, ispn, j);
         }
 
+        inline mdarray<double_complex, 3>& spinor_wave_functions()
+        {
+            return spinor_wave_functions_;
+        }
+
         inline int* fft_index()
         {
             return &fft_index_[0];

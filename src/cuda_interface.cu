@@ -21,13 +21,13 @@ class cuda_timers_wrapper
 
         void add_measurment(const std::string& label, float value)
         {
-            cuda_timers_[label].push_back(value);
+            cuda_timers_[label].push_back(value / 1000);
         }
 
         void print()
         {
             printf("\n");
-            printf("CUDA timers (ms)\n");
+            printf("CUDA timers \n");
             for (int i = 0; i < 115; i++) printf("-");
             printf("\n");
             printf("name                                                              count      total        min        max    average\n");
@@ -478,9 +478,8 @@ extern "C" void cublas_set_matrix_async(int rows, int cols, int elemSize, const 
 cufftHandle plan;
 int nfft_of_plan;
 int size_of_plan;
-cuDoubleComplex* fft_buffer = NULL;
 
-extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft, void* fft_buffer__)
+extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft)
 {
     int fft_size = nx * ny * nz;
     int n[] = {nz, ny, nx};
@@ -494,23 +493,12 @@ extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft, void* 
 
     nfft_of_plan = nfft;
     size_of_plan = fft_size;
-
-    fft_buffer = (cuDoubleComplex*)fft_buffer__;
 }
 
 extern "C" void cufft_destroy_batch_plan()
 {
     cufftDestroy(plan);
 }
-
-//== __global__ void cufft_batch_load_kernel(int fft_size, int num_gkvec, int* map, cuDoubleComplex* phi, 
-//==                                         cuDoubleComplex* fft_buffer)
-//== {
-//==     int i = blockIdx.y;
-//==     int ig = blockDim.x * blockIdx.x + threadIdx.x;
-//== 
-//==     if (ig < num_gkvec) fft_buffer[array2D_offset(map[ig], i, fft_size)] = phi[array2D_offset(ig, i, num_gkvec)];
-//== }
 
 //= __global__ void cufft_batch_apply_v_kernel(int fft_size, cuDoubleComplex* v_r, cuDoubleComplex* fft_buffer)
 //= {
@@ -570,7 +558,10 @@ __global__ void cufft_batch_load_gpu_kernel(int fft_size,
     if (idx < num_elements) fft_buffer[array2D_offset(map[idx], i, fft_size)] = data[array2D_offset(idx, i, num_elements)];
 }
 
-extern "C" void cufft_batch_load_gpu(int num_elements, int* map, void* data)
+extern "C" void cufft_batch_load_gpu(int num_elements, 
+                                     int* map, 
+                                     void* data, 
+                                     void* fft_buffer)
 {
     dim3 threadsPerBlock(64);
     dim3 numBlocks(num_blocks(num_elements, 64), nfft_of_plan);
@@ -581,14 +572,14 @@ extern "C" void cufft_batch_load_gpu(int num_elements, int* map, void* data)
                                                                 num_elements, 
                                                                 map, 
                                                                 (cuDoubleComplex*)data, 
-                                                                fft_buffer);
+                                                                (cuDoubleComplex*)fft_buffer);
 }
 
 __global__ void cufft_batch_unload_gpu_kernel(int fft_size, 
                                               int num_elements, 
                                               int* map, 
-                                              cuDoubleComplex* data, 
-                                              cuDoubleComplex* fft_buffer)
+                                              cuDoubleComplex* fft_buffer,
+                                              cuDoubleComplex* data)
 {
     int i = blockIdx.y;
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -600,7 +591,10 @@ __global__ void cufft_batch_unload_gpu_kernel(int fft_size,
     }
 }
 
-extern "C" void cufft_batch_unload_gpu(int num_elements, int* map, void* data)
+extern "C" void cufft_batch_unload_gpu(int num_elements, 
+                                       int* map, 
+                                       void* fft_buffer, 
+                                       void* data)
 {
     dim3 threadsPerBlock(64);
     dim3 numBlocks(num_blocks(num_elements, 64), nfft_of_plan);
@@ -608,8 +602,8 @@ extern "C" void cufft_batch_unload_gpu(int num_elements, int* map, void* data)
     cufft_batch_unload_gpu_kernel<<<numBlocks, threadsPerBlock>>>(size_of_plan, 
                                                                   num_elements, 
                                                                   map, 
-                                                                  (cuDoubleComplex*)data, 
-                                                                  fft_buffer);
+                                                                  (cuDoubleComplex*)fft_buffer,
+                                                                  (cuDoubleComplex*)data);
 }
 
 __global__ void cufft_normalize(int size, cuDoubleComplex* buffer)
@@ -624,18 +618,16 @@ __global__ void cufft_normalize(int size, cuDoubleComplex* buffer)
     }
 }
 
-extern "C" void cufft_forward_transform()
+extern "C" void cufft_forward_transform(void* fft_buffer)
 {
-    cufftExecZ2Z(plan, fft_buffer, fft_buffer, CUFFT_FORWARD);
-    
-    //== dim3 threadsPerBlock(64);
-    //== dim3 numBlocks(num_blocks(size_of_plan, 64), nfft_of_plan);
-    //== cufft_normalize<<<numBlocks, threadsPerBlock>>>(size_of_plan, (cufftDoubleComplex*)buffer);
+    cuda_timer t("cufft_forward_transform");
+    cufftExecZ2Z(plan, (cuDoubleComplex*)fft_buffer, (cuDoubleComplex*)fft_buffer, CUFFT_FORWARD);
 }
 
-extern "C" void cufft_backward_transform()
+extern "C" void cufft_backward_transform(void* fft_buffer)
 {
-    cufftExecZ2Z(plan, fft_buffer, fft_buffer, CUFFT_INVERSE);
+    cuda_timer t("cufft_backward_transform");
+    cufftExecZ2Z(plan, (cuDoubleComplex*)fft_buffer, (cuDoubleComplex*)fft_buffer, CUFFT_INVERSE);
 }
 
 //==================================
@@ -1944,6 +1936,62 @@ extern "C" void copy_beta_psi_gpu(int num_beta_atot,
                                                             (cuDoubleComplex*)bp2);
 }
 
+__global__ void update_it_density_matrix_0_gpu_kernel(int fft_size, 
+                                                      int nfft_max, 
+                                                      cuDoubleComplex* psi_it, 
+                                                      double* wt,
+                                                      double* it_density_matrix)
+{
+    int ir = blockIdx.x * blockDim.x + threadIdx.x;
+    for (int i = 0; i < nfft_max; i++)
+    {
+        if (ir < fft_size)
+        {
+            cuDoubleComplex z = psi_it[array3D_offset(ir, i, 0, fft_size, nfft_max)];
+            it_density_matrix[array2D_offset(ir, 0, fft_size)] += (z.x * z.x + z.y * z.y) * wt[i];
+        }
+    }
+}
 
+
+extern "C" void update_it_density_matrix_gpu(int fft_size, 
+                                             int nfft_max, 
+                                             int num_spins, 
+                                             int num_mag_dims, 
+                                             void* psi_it, 
+                                             double* wt, 
+                                             double* it_density_matrix)
+{
+    cuda_timer t("update_it_density_matrix_gpu");
+
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(fft_size, grid_t.x));
+
+    switch (num_mag_dims)
+    {
+        //== case 3:
+        //== {
+        //==     for (int ir = 0; ir < fft_->size(); ir++)
+        //==     {
+        //==         double_complex z = wfit(ir, 0) * conj(wfit(ir, 1)) * w;
+        //==         it_density_matrix(ir, 2) += 2.0 * real(z);
+        //==         it_density_matrix(ir, 3) -= 2.0 * imag(z);
+        //==     }
+        //== }
+        //== case 1:
+        //== {
+        //==     for (int ir = 0; ir < fft_->size(); ir++)
+        //==         it_density_matrix(ir, 1) += real(wfit(ir, 1) * conj(wfit(ir, 1))) * w;
+        //== }
+        case 0:
+        {
+            update_it_density_matrix_0_gpu_kernel<<<grid_b, grid_t>>>(fft_size,
+                                                                      nfft_max,
+                                                                      (cuDoubleComplex*)psi_it,
+                                                                      wt,
+                                                                      it_density_matrix);
+        }
+    }
+}
 
 

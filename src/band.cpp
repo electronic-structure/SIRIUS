@@ -1654,7 +1654,7 @@ void* exec_gpu_fft(void* args__)
 
     int nfft_max = std::min(fft.num_fft_max(), std::min(args->num_phi / 4, nfft_buf));
    
-    fft.initialize(nfft_max, args->gamma->get_ptr_device());
+    fft.initialize(nfft_max); 
 
     bool done = false;
 
@@ -1676,14 +1676,17 @@ void* exec_gpu_fft(void* args__)
         {
             cublas_set_matrix(args->kp->num_gkvec(), nfft_max, sizeof(double_complex), &(*args->phi)(0, i), args->phi->ld(), 
                               args->kappa->get_ptr_device(), args->kappa->ld());
+            
+            // use gamma as fft buffer
+            fft.batch_load(args->kp->num_gkvec(), fft_index_coarse.get_ptr_device(), args->kappa->get_ptr_device(), 
+                           args->gamma->get_ptr_device());
 
-            cufft_batch_load_gpu(args->kp->num_gkvec(), fft_index_coarse.get_ptr_device(), args->kappa->get_ptr_device());
-
-            fft.transform(1);
+            fft.transform(1, args->gamma->get_ptr_device());
             scale_matrix_rows_gpu(fft.size(), nfft_max, args->gamma->get_ptr_device(), args->veff->get_ptr_device());
-            fft.transform(-1);
+            fft.transform(-1, args->gamma->get_ptr_device());
 
-            cufft_batch_unload_gpu(args->kp->num_gkvec(), fft_index_coarse.get_ptr_device(), args->kappa->get_ptr_device());
+            fft.batch_unload(args->kp->num_gkvec(), fft_index_coarse.get_ptr_device(), args->gamma->get_ptr_device(), 
+                             args->kappa->get_ptr_device());
 
             cublas_get_matrix(args->kp->num_gkvec(), nfft_max, sizeof(double_complex), 
                               args->kappa->get_ptr_device(), args->kappa->ld(),

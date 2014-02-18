@@ -158,6 +158,10 @@ class Density
         
         /// Add k-point contribution to the interstitial density and magnetization
         void add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands);
+
+        #ifdef _GPU_
+        void add_kpoint_contribution_it_gpu(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands);
+        #endif
         
         /// Add k-point contribution to the density matrix in case of ultrasoft pseudo-potential
         /** The following density matrix has to be computed for each atom:
