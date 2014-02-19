@@ -274,7 +274,6 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
 
     if (parameters_.so_correction()) apply_so_correction(kp->fv_states_col(), hpsi);
 
-    Timer t1("sirius::Band::solve_sv:stdevp", false);
 
     standard_evp* solver = NULL;
     switch (parameters_.eigen_value_solver())
@@ -332,11 +331,10 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
                 }
             }
         
-            t1.start();
+            Timer t1("sirius::Band::solve_sv|stdevp");
             solver->solve(parameters_.num_fv_states(), h.get_ptr(), h.ld(),
                           &band_energies[ispn * parameters_.num_fv_states()],
                           &sv_eigen_vectors(0, ispn * ncol), sv_eigen_vectors.ld());
-            t1.stop();
         }
     }
 
@@ -380,10 +378,9 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
             }
         }
     
-        t1.start();
+        Timer t1("sirius::Band::solve_sv|stdevp");
         solver->solve(parameters_.num_bands(), h.get_ptr(), h.ld(), &band_energies[0], 
                       sv_eigen_vectors.get_ptr(), sv_eigen_vectors.ld());
-        t1.stop();
     }
     delete solver;
 
@@ -1804,50 +1801,8 @@ void Band::apply_h_local_gpu(K_point* kp, std::vector<double>& effective_potenti
 }
 #endif
 
-template<>
-void Band::get_h_o_diag<0>(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
-                           std::vector<double_complex>& h_diag, std::vector<double_complex>& o_diag)
-{
-    Timer t("sirius::Band::get_h_o_diag");
-
-    h_diag.resize(kp->num_gkvec());
-    o_diag.resize(kp->num_gkvec());
-    
-    // compute V_{loc}(G=0)
-    double v0 = 0;
-    for (int ir = 0; ir < fft_->size(); ir++) v0 += effective_potential->f_it<global>(ir);
-    v0 /= parameters_.unit_cell()->omega();
-    
-    for (int igk = 0; igk < kp->num_gkvec(); igk++) h_diag[igk] = pw_ekin[igk] + v0;
-
-    mdarray<double_complex, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    {   
-        // number of beta functions for a given atom
-        int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
-
-        kp->generate_beta_pw(&beta_pw(0, 0), ia);
-
-        for (int xi2 = 0; xi2 < nbf; xi2++)
-        {
-            for (int xi1 = 0; xi1 < nbf; xi1++)
-            {
-                for (int igk = 0; igk < kp->num_gkvec(); igk++)
-                {
-                    h_diag[igk] += beta_pw(igk, xi1) * conj(beta_pw(igk, xi2)) * 
-                                   parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2);
-
-                    o_diag[igk] += beta_pw(igk, xi1) * conj(beta_pw(igk, xi2)) * 
-                                   parameters_.unit_cell()->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
-                }
-            }
-        }
-    }
-}
-
-template<>
-void Band::get_h_o_diag<1>(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
-                           std::vector<double_complex>& h_diag, std::vector<double_complex>& o_diag)
+void Band::get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
+                        std::vector<double_complex>& h_diag, std::vector<double_complex>& o_diag)
 {
     Timer t("sirius::Band::get_h_o_diag");
 
@@ -1871,26 +1826,26 @@ void Band::get_h_o_diag<1>(K_point* kp, Periodic_function<double>* effective_pot
         mdarray<double_complex, 2> q_sum(nbf, nbf);
         d_sum.zero();
         q_sum.zero();
-        
-        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+
+        for (int i = 0; i < atom_type->num_atoms(); i++)
         {
-            if (parameters_.unit_cell()->atom(ia)->type_id() == iat)
+            int ia = atom_type->atom_id(i);
+        
+            for (int xi2 = 0; xi2 < nbf; xi2++)
             {
-                for (int xi2 = 0; xi2 < nbf; xi2++)
+                for (int xi1 = 0; xi1 < nbf; xi1++)
                 {
-                    for (int xi1 = 0; xi1 < nbf; xi1++)
-                    {
-                        d_sum(xi1, xi2) += parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2);
-                        q_sum(xi1, xi2) += parameters_.unit_cell()->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
-                    }
+                    d_sum(xi1, xi2) += parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2);
+                    q_sum(xi1, xi2) += parameters_.unit_cell()->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
                 }
             }
         }
 
-        kp->generate_beta_pw(&beta_pw(0, 0), atom_type);
+        //kp->generate_beta_pw(&beta_pw(0, 0), atom_type);
+        int ofs = parameters_.unit_cell()->beta_t_ofs(iat);
         for (int igk = 0; igk < kp->num_gkvec(); igk++)
         {
-            for (int xi = 0; xi < nbf; xi++) beta_pw_tmp(xi, igk) = beta_pw(igk, xi);
+            for (int xi = 0; xi < nbf; xi++) beta_pw_tmp(xi, igk) = kp->beta_pw_t(igk, ofs + xi);
         }
 
         std::vector< std::pair<int, int> > idx(nbf * nbf);
@@ -1973,7 +1928,7 @@ void Band::get_h_o_diag<1>(K_point* kp, Periodic_function<double>* effective_pot
 void Band::apply_h_o_uspp_cpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
                               double_complex* phi__, double_complex* hphi__, double_complex* ophi__)
 {
-    Timer t("sirius::Band::apply_h_o");
+    Timer t("sirius::Band::apply_h_o", _global_timer_);
 
     mdarray<double_complex, 2> phi(phi__, kp->num_gkvec(), n);
     mdarray<double_complex, 2> hphi(hphi__, kp->num_gkvec(), n);
@@ -1985,9 +1940,6 @@ void Band::apply_h_o_uspp_cpu(K_point* kp, std::vector<double>& effective_potent
     // set intial ophi
     memcpy(ophi__, phi__, kp->num_gkvec() * n * sizeof(double_complex));
 
-    // <G+k|\beta_{\xi}^{\alpha}>
-    mdarray<double_complex, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->num_beta_a());
-
     // <\beta_{\xi}^{\alpha}|\phi_j>
     mdarray<double_complex, 2> beta_phi(parameters_.unit_cell()->num_beta_a(), n);
     
@@ -1995,17 +1947,12 @@ void Band::apply_h_o_uspp_cpu(K_point* kp, std::vector<double>& effective_potent
     mdarray<double_complex, 2> tmp(parameters_.unit_cell()->num_beta_a(), n);
 
     Timer t1("sirius::Band::apply_h_o|beta_phi");
-    // collect all |beta>
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    {   
-        kp->generate_beta_pw(&beta_pw(0, parameters_.unit_cell()->beta_a_ofs(ia)), ia);
-    }
+
     // compute <beta|phi>
-    blas<cpu>::gemm(2, 0, parameters_.unit_cell()->num_beta_a(), n, kp->num_gkvec(), &beta_pw(0, 0), beta_pw.ld(), 
+    blas<cpu>::gemm(2, 0, parameters_.unit_cell()->num_beta_a(), n, kp->num_gkvec(), &kp->beta_pw_a(0, 0), kp->num_gkvec(), 
                     &phi(0, 0), phi.ld(), &beta_phi(0, 0), beta_phi.ld());
     t1.stop();
     
-    Timer t2("sirius::Band::apply_h_o|D_beta_phi");
     // compute D*<beta|phi>
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {   
@@ -2015,15 +1962,13 @@ void Band::apply_h_o_uspp_cpu(K_point* kp, std::vector<double>& effective_potent
         blas<cpu>::gemm(0, 0, nbf, n, nbf, &parameters_.unit_cell()->atom(ia)->d_mtrx(0, 0), nbf, 
                         &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
     }
-    t2.stop();
 
     Timer t3("sirius::Band::apply_h_o|beta_D_beta_phi");
     // compute <G+k|beta> * D*<beta|phi> and add to hphi
-    blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), double_complex(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
-                    &tmp(0, 0), tmp.ld(), double_complex(1, 0), &hphi(0, 0), hphi.ld());
+    blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), complex_one, 
+                    &kp->beta_pw_a(0, 0), kp->num_gkvec(), &tmp(0, 0), tmp.ld(), complex_one, &hphi(0, 0), hphi.ld());
     t3.stop();
 
-    Timer t4("sirius::Band::apply_h_o|Q_beta_phi");
     // compute Q*<beta|phi>
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {   
@@ -2033,12 +1978,11 @@ void Band::apply_h_o_uspp_cpu(K_point* kp, std::vector<double>& effective_potent
         blas<cpu>::gemm(0, 0, nbf, n, nbf, &parameters_.unit_cell()->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
                         &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
     }
-    t4.stop();
 
     Timer t5("sirius::Band::apply_h_o|beta_Q_beta_phi");
     // computr <G+k|beta> * Q*<beta|phi> and add to ophi
-    blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), double_complex(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
-                    &tmp(0, 0), tmp.ld(), double_complex(1, 0), &ophi(0, 0), ophi.ld());
+    blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), complex_one, 
+                    &kp->beta_pw_a(0, 0), kp->num_gkvec(), &tmp(0, 0), tmp.ld(), complex_one, &ophi(0, 0), ophi.ld());
     t5.stop();
 }
 
@@ -2091,9 +2035,8 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
         }
     }
 
-
-    kp->beta_pw().allocate_on_device();
-    kp->beta_pw().copy_to_device();
+    kp->beta_pw_t().allocate_on_device();
+    kp->beta_pw_t().copy_to_device();
 
     kp->gkvec().allocate_on_device(); 
     kp->gkvec().copy_to_device();
@@ -2108,7 +2051,7 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
     create_beta_pw_gpu(kp->num_gkvec(), 
                        parameters_.unit_cell()->num_beta_a(), 
                        parameters_.unit_cell()->beta_t_idx().get_ptr_device(),
-                       kp->beta_pw().get_ptr_device(),
+                       kp->beta_pw_t().get_ptr_device(),
                        kp->gkvec().get_ptr_device(),
                        parameters_.unit_cell()->atom_pos().get_ptr_device(),
                        gamma.get_ptr_device());
@@ -2116,18 +2059,12 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
     parameters_.unit_cell()->beta_t_idx().deallocate_on_device();
     parameters_.unit_cell()->atom_pos().deallocate_on_device();
     kp->gkvec().deallocate_on_device();
-    kp->beta_pw().deallocate_on_device();
-
-
-
-
-
+    kp->beta_pw_t().deallocate_on_device();
 
     // <\beta_{\xi}^{\alpha}|\phi_j>
     mdarray<double_complex, 2> beta_phi(NULL, parameters_.unit_cell()->num_beta_a(), n);
     beta_phi.allocate_on_device();
     
-    //Timer t1("sirius::Band::apply_h_o|beta_phi");
     blas<gpu>::gemm(2, 0, parameters_.unit_cell()->num_beta_a(), n, kp->num_gkvec(), gamma.ptr_device(0, 0), gamma.ld(), 
                     kappa.ptr_device(0, n), kappa.ld(), beta_phi.ptr_device(0, 0), beta_phi.ld());
 
@@ -2135,9 +2072,6 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
     mdarray<double_complex, 2> tmp(NULL, parameters_.unit_cell()->num_beta_a(), n);
     tmp.allocate_on_device();
 
-    //t1.stop();
-
-    //Timer t2("sirius::Band::apply_h_o|D_beta_phi");
     d_mtrx_packed.allocate_on_device();
     d_mtrx_packed.copy_to_device();
     // compute D*<beta|phi>
@@ -2151,24 +2085,10 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
     }
     d_mtrx_packed.deallocate_on_device();
 
-    //t2.stop();
-    
     double_complex zone(1, 0);
-    //Timer t3("sirius::Band::apply_h_o|beta_D_beta_phi");
     // compute <G+k|beta> * D*<beta|phi> and add to hphi
     blas<gpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), &zone, gamma.get_ptr_device(), gamma.ld(), 
                     tmp.get_ptr_device(), tmp.ld(), &zone, kappa.get_ptr_device(), kappa.ld());
-
-
-
-
-    //t3.stop();
-
-    //Timer t4("sirius::Band::apply_h_o|Q_beta_phi");
-   
-
-
-
 
     q_mtrx_packed.allocate_on_device();
     q_mtrx_packed.copy_to_device();
@@ -2183,9 +2103,7 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
                         beta_phi.get_ptr_device(ofs), beta_phi.ld(), tmp.get_ptr_device(ofs), tmp.ld());
     }
     q_mtrx_packed.deallocate_on_device();
-    //t4.stop();
 
-    //Timer t5("sirius::Band::apply_h_o|beta_Q_beta_phi");
     // computr <G+k|beta> * Q*<beta|phi> and add to ophi
     blas<gpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), &zone, gamma.get_ptr_device(), gamma.ld(), 
                     tmp.get_ptr_device(), tmp.ld(), &zone, kappa.get_ptr_device(n * kp->num_gkvec()), kappa.ld());
@@ -2201,9 +2119,6 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
     }
     tmp.deallocate_on_device();
     beta_phi.deallocate_on_device();
-
-
-    //t5.stop();
 }
 
 //== extern "C" void create_single_beta_pw_gpu(int num_gkvec, 
@@ -2389,7 +2304,7 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 
 void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_potential)
 {
-    Timer t("sirius::Band::diag_fv_uspp_cpu");
+    Timer t("sirius::Band::diag_fv_uspp_cpu", _global_timer_);
 
     // map effective potential to a corase grid
     std::vector<double> veff_it_coarse(parameters_.reciprocal_lattice()->fft_coarse()->size());
@@ -2419,7 +2334,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
     // get diagonal elements for preconditioning
     std::vector<double_complex> h_diag;
     std::vector<double_complex> o_diag;
-    get_h_o_diag<1>(kp, effective_potential, pw_ekin, h_diag, o_diag);
+    get_h_o_diag(kp, effective_potential, pw_ekin, h_diag, o_diag);
     
     int max_iter = 10;
     int num_phi = std::min(4 * num_bands, kp->num_gkvec());
@@ -2457,7 +2372,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
     for (int k = 0; k < max_iter; k++)
     {
         {
-            Timer t1("sirius::Band::diag_fv_uspp_cpu:set_gevp");
+            Timer t1("sirius::Band::diag_fv_uspp_cpu|set_gevp");
 
             // copy old Hamiltonian and overlap
             for (int i = 0; i < N; i++)
@@ -2487,12 +2402,12 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
         }
         
         {
-            Timer t2("sirius::Band::diag_fv_uspp_cpu:solve_gevp");
+            Timer t2("sirius::Band::diag_fv_uspp_cpu|solve_gevp");
             gevp->solve(N, num_bands, hmlt.get_ptr(), hmlt.ld(), ovlp.get_ptr(), ovlp.ld(), &eval[0], 
                         evec.get_ptr(), evec.ld());
         }
 
-        Timer t3("sirius::Band::diag_fv_uspp_cpu:residuals");
+        Timer t3("sirius::Band::diag_fv_uspp_cpu|residuals");
         /* Quantum Espresso way of estimating basis update: residuals for which |e - e_old| > eps 
            are accepted as the additional basis functions */
         if (convergence_by_energy)
@@ -2642,7 +2557,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
         // check if we run out of variational space or eigen-vectors are converged or it's a last iteration
         if (N + n > num_phi || n == 0 || k == (max_iter - 1))
         {   
-            Timer t3("sirius::Band::diag_fv_uspp_cpu:update_phi");
+            Timer t3("sirius::Band::diag_fv_uspp_cpu|update_phi");
             // \Psi_{i} = \phi_{mu} * Z_{mu, i}
             blas<cpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), 
                             &psi(0, 0), psi.ld());
@@ -2721,7 +2636,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
     // get diagonal elements for preconditioning
     std::vector<double_complex> h_diag;
     std::vector<double_complex> o_diag;
-    get_h_o_diag<1>(kp, effective_potential, pw_ekin, h_diag, o_diag);
+    get_h_o_diag(kp, effective_potential, pw_ekin, h_diag, o_diag);
     
     int max_iter = 10;
     int num_phi = std::min(4 * num_bands, kp->num_gkvec());
@@ -2757,7 +2672,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
     std::vector<double> res_rms(num_bands); // RMS of residual
     std::vector<double> res_e(num_bands);
 
-    generalized_evp* gevp = NULL; //new generalized_evp_lapack(-1.0);
+    generalized_evp* gevp = NULL;
     switch (parameters_.eigen_value_solver())
     {
         case lapack:
@@ -2792,7 +2707,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
     // start iterative diagonalization
     for (int k = 0; k < max_iter; k++)
     {
-        Timer t1("sirius::Band::diag_fv_uspp_gpu:set_gevp");
+        Timer t1("sirius::Band::diag_fv_uspp_gpu|set_gevp");
 
         // copy old Hamiltonian and overlap
         for (int i = 0; i < N; i++)
@@ -2848,12 +2763,12 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
         }
         t1.stop();
         
-        Timer t2("sirius::Band::diag_fv_uspp_gpu:solve_gevp");
+        Timer t2("sirius::Band::diag_fv_uspp_gpu|solve_gevp");
         gevp->solve(N, num_bands, hmlt.get_ptr(), hmlt.ld(), ovlp.get_ptr(), ovlp.ld(), &eval[0], 
                     evec.get_ptr(), evec.ld());
         t2.stop();
 
-        Timer t3("sirius::Band::diag_fv_uspp_gpu:residuals");
+        Timer t3("sirius::Band::diag_fv_uspp_gpu|residuals");
         /* Quantum Espresso way of estimating basis update: residuals for which |e - e_old| > eps 
            are accepted as the additional basis functions */
         if (convergence_by_energy)
@@ -2946,7 +2861,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
             cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex), kappa.get_ptr_device(), kappa.ld(), 
                               kappa.get_ptr(), kappa.ld());
 
-            Timer t("sirius::Band::diag_fv_uspp_gpu:residuals:cpu_part");
+            Timer t("sirius::Band::diag_fv_uspp_gpu|residuals|cpu_part");
             // compute norm and apply preconditioner
             #pragma omp parallel for
             for (int i = 0; i < num_bands; i++)
@@ -3021,7 +2936,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
         // check if we run out of variational space or eigen-vectors are converged or it's a last iteration
         if (N + n > num_phi || n == 0 || k == (max_iter - 1))
         {   
-            Timer t3("sirius::Band::diag_fv_uspp_gpu:update_phi");
+            Timer t3("sirius::Band::diag_fv_uspp_gpu|update_phi");
             // copy all phi to GPU
             cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), phi.get_ptr(), phi.ld(), 
                               gamma.get_ptr_device(), gamma.ld());
@@ -3040,7 +2955,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
             }
             else // otherwise set \Psi as a new trial basis and update related arrays
             {
-                Timer t("sirius::Band::diag_fv_uspp_gpu:update_h_o");
+                Timer t("sirius::Band::diag_fv_uspp_gpu|update_h_o");
 
                 // temporary storage for Hamiltonian and overlap 
                 mdarray<double_complex, 2> tmp(NULL, num_bands, num_bands);
@@ -3397,17 +3312,14 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
     std::vector<double> eval(parameters_.num_bands());
     mdarray<double_complex, 2>& fd_evec = kp->fd_eigen_vectors();
 
-    Timer t2("sirius::Band::solve_fd|diag", false);
-
     if (parameters_.num_mag_dims() == 0)
     {
         assert(kp->apwlo_basis_size() >= parameters_.num_fv_states());
         set_h<nm>(kp, effective_potential, effective_magnetic_field, h);
        
-        t2.start();
+        Timer t2("sirius::Band::solve_fd|diag");
         solver->solve(kp->apwlo_basis_size(), parameters_.num_fv_states(), h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), 
                       &eval[0], fd_evec.get_ptr(), fd_evec.ld());
-        t2.stop();
     }
     
     if (parameters_.num_mag_dims() == 1)
@@ -3419,7 +3331,7 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
 
         set_h<uu>(kp, effective_potential, effective_magnetic_field, h);
        
-        t2.start();
+        Timer t2("sirius::Band::solve_fd|diag");
         solver->solve(kp->apwlo_basis_size(), parameters_.num_fv_states(), h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), 
                       &eval[0], &fd_evec(0, 0), fd_evec.ld());
         t2.stop();

@@ -74,7 +74,6 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         }
     }
     
-    Timer t1("sirius::K_set::find_eigen_states|band");
     // solve secular equation and generate wave functions
     for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
     {
@@ -96,7 +95,6 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         kpoints_[ik]->generate_spinor_wave_functions();
     }
     Platform::barrier();
-    t1.stop();
 
     // synchronize eigen-values
     sync_band_energies();
