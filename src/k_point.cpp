@@ -141,8 +141,8 @@ void K_point::update()
 
         auto uc = parameters_.unit_cell();
 
-        beta_pw_.set_dimensions(num_gkvec(), uc->num_beta_t()); 
-        beta_pw_.allocate();
+        beta_pw_t_.set_dimensions(num_gkvec(), uc->num_beta_t()); 
+        beta_pw_t_.allocate();
 
         mdarray<Spline<double>*, 2> beta_rf(uc->max_mt_radial_basis_size(), uc->num_atom_types());
         for (int iat = 0; iat < uc->num_atom_types(); iat++)
@@ -187,7 +187,7 @@ void K_point::update()
                             int idxrf = atom_type->indexb(xi).idxrf;
 
                             double_complex z = pow(double_complex(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
-                            beta_pw_(igk, uc->beta_t_ofs(iat) + xi) = z * gkvec_ylm_(lm, igk) * beta_radial_integrals_[idxrf];
+                            beta_pw_t_(igk, uc->beta_t_ofs(iat) + xi) = z * gkvec_ylm_(lm, igk) * beta_radial_integrals_[idxrf];
                         }
                     }
                 }
@@ -200,6 +200,24 @@ void K_point::update()
             for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
             {
                 delete beta_rf(idxrf, iat);
+            }
+        }
+
+        beta_pw_a_.set_dimensions(num_gkvec(), uc->num_beta_a()); 
+        beta_pw_a_.allocate();
+        
+        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        {
+            auto atom_type = parameters_.unit_cell()->atom(ia)->type();
+            int iat = atom_type->id();
+     
+            for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
+            {
+                for (int igk = 0; igk < num_gkvec(); igk++)
+                {
+                    beta_pw_a_(igk, parameters_.unit_cell()->beta_a_ofs(ia) + xi) = 
+                        beta_pw_t_(igk, parameters_.unit_cell()->beta_t_ofs(iat) + xi) * conj(gkvec_phase_factors_(igk, ia));
+                }
             }
         }
     }
@@ -1554,46 +1572,6 @@ void K_point::distribute_fv_states_row()
         
         // send fv state to all column MPI ranks; communication happens between the columns of the MPI grid
         Platform::bcast(&fv_states_row_(0, i), wf_size(), parameters_.mpi_grid().communicator(1 << _dim_col_), root_col); 
-    }
-}
-
-void K_point::generate_beta_pw(double_complex* beta_pw__, int ia)
-{
-    Timer t("sirius::K_point::generate_beta_pw");
-    auto atom_type = parameters_.unit_cell()->atom(ia)->type();
-    int iat = atom_type->id();
-    
-    mdarray<double_complex, 2> beta_pw(beta_pw__, num_gkvec(), atom_type->mt_basis_size());
-    
-    for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
-    {
-        //== int l = atom_type->indexb(xi).l;
-        //== int lm = atom_type->indexb(xi).lm;
-        //== int idxrf = atom_type->indexb(xi).idxrf;
-
-        //== double_complex z = pow(double_complex(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
-        for (int igk = 0; igk < num_gkvec(); igk++)
-        {
-            //== beta_pw(igk, xi) = z * gkvec_ylm_(lm, igk) * beta_radial_integrals_(igk, idxrf, iat) * 
-            //==                    conj(gkvec_phase_factors_(igk, ia));
-            beta_pw(igk, xi) = beta_pw_(igk, parameters_.unit_cell()->beta_t_ofs(iat) + xi) * conj(gkvec_phase_factors_(igk, ia));
-        }
-    }
-}
-
-void K_point::generate_beta_pw(double_complex* beta_pw__, Atom_type* atom_type)
-{
-    Timer t("sirius::K_point::generate_beta_pw");
-    int iat = atom_type->id();
-    
-    mdarray<double_complex, 2> beta_pw(beta_pw__, num_gkvec(), atom_type->mt_basis_size());
-    
-    for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
-    {
-        for (int igk = 0; igk < num_gkvec(); igk++)
-        {
-            beta_pw(igk, xi) = beta_pw_(igk, parameters_.unit_cell()->beta_t_ofs(iat) + xi);
-        }
     }
 }
 

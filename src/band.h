@@ -81,7 +81,6 @@ class Band
 
         void diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_potential);
         
-        template<int N>
         void get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
                           std::vector<double_complex>& h_diag, std::vector<double_complex>& o_diag);
 

@@ -184,8 +184,11 @@ class K_point
 
         int num_ranks_;
 
-        /// phase-factor independent plane-wave coefficients of |beta> functions 
-        mdarray<double_complex, 2> beta_pw_;
+        /// phase-factor independent plane-wave coefficients of |beta> functions for atom types
+        mdarray<double_complex, 2> beta_pw_t_;
+
+        /// plane-wave coefficients of |beta> functions for atoms
+        mdarray<double_complex, 2> beta_pw_a_;
 
         /// Generate matching coefficients for specific l-value
         template <int order, bool conjugate>
@@ -278,12 +281,6 @@ class K_point
 
         Periodic_function<double_complex>* spinor_wave_function_component(int lmax, int ispn, int j);
 
-        //== void spinor_wave_function_component_mt(int lmax, int ispn, int jloc, mt_functions<double_complex>& psilm);
-        
-        void generate_beta_pw(double_complex* beta_pw__, int ia);
-        
-        void generate_beta_pw(double_complex* beta_pw__, Atom_type* atom_type);
-        
         void save(int id);
 
         void load(HDF5_tree h5in, int id);
@@ -644,13 +641,21 @@ class K_point
             return gkvec_;
         }
 
-        inline mdarray<double_complex, 2>& beta_pw()
+        inline mdarray<double_complex, 2>& beta_pw_t()
         {
-            return beta_pw_;
+            return beta_pw_t_;
+        }
+
+        inline double_complex& beta_pw_t(int igk, int idx)
+        {
+            return beta_pw_t_(igk, idx);
+        }
+
+        inline double_complex& beta_pw_a(int igk, int idx)
+        {
+            return beta_pw_a_(igk, idx);
         }
 };
-
-//#include "k_point.hpp"
 
 }
 
