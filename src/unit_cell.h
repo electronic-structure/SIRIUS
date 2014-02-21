@@ -11,6 +11,7 @@ extern "C" {
 #include "atom_symmetry_class.h"
 #include "atom.h"
 #include "mpi_grid.h"
+#include "symmetry.h"
 
 namespace sirius {
 

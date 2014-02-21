@@ -184,6 +184,11 @@ template<> class type_wrapper<int>
             return true;
         }
 
+        static int abs(int val)
+        {
+            return abs(val);
+        }
+
         /*static bool is_complex()
         {
             return false;

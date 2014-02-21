@@ -2650,8 +2650,6 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
     kappa.allocate_on_device();
     kappa.pin_memory();
 
-
-
     mdarray<double_complex, 2> phi(kp->num_gkvec(), num_phi);
     mdarray<double_complex, 2> hphi(kp->num_gkvec(), num_phi);
     mdarray<double_complex, 2> ophi(kp->num_gkvec(), num_phi);
@@ -3057,7 +3055,6 @@ void Band::solve_fv(K_point* kp, Periodic_function<double>* effective_potential)
         }
     }
 }
-
 
 //=====================================================================================================================
 // GPU code, (L)APW+lo basis
