@@ -39,6 +39,7 @@ def apply_symmetry(sym_ops_list, initial_atoms_list):
             for i in range(3): 
                 x = sym[i][0] * atom[sym[i][1]] + sym[i][2]
                 if x < 0: x += 1
+                if x >= 1: x -= 1
                 coord[i] = float("%.8f"%x)
             found = False
             for c in full_atoms_list:
@@ -74,7 +75,12 @@ def main():
         initial_atoms_list[label].append({"x" : float(remove_ending_braces(atom._atom_site_fract_x)), \
                                           "y" : float(remove_ending_braces(atom._atom_site_fract_y)), \
                                           "z" : float(remove_ending_braces(atom._atom_site_fract_z))})
+    print "Initial list of atoms : "
+    for atom in initial_atoms_list:
+        print atom, " at ", initial_atoms_list[atom][0]["x"], " ", initial_atoms_list[atom][0]["y"], " ", initial_atoms_list[atom][0]["z"]
 
+
+        
 
     sym_ops = cb.GetLoop("_symmetry_equiv_pos_as_xyz")
     
