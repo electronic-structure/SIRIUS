@@ -19,12 +19,12 @@ void test1()
     global.initialize();
     
     auto fft = global.reciprocal_lattice()->fft();
-    std::vector<complex16> fft1(fft->size());
-    std::vector<complex16> fft2(fft->size());
+    std::vector<double_complex> fft1(fft->size());
+    std::vector<double_complex> fft2(fft->size());
     
     for (int i = 0; i < fft->size(); i++)
     {
-        fft1[i] = complex16(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
+        fft1[i] = double_complex(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
         fft2[i] = fft1[i];
     }
     
@@ -71,7 +71,7 @@ void test2()
     
     auto fft = global.reciprocal_lattice()->fft();
 
-    std::vector<complex16> fft1(fft->size());
+    std::vector<double_complex> fft1(fft->size());
 
     // loop over lowest harmonics in reciprocal space
     for (int i0 = -2; i0 <= 2; i0++)
@@ -82,9 +82,9 @@ void test2()
             {
                 double d = 0.0;
                 
-                memset(&fft1[0], 0, fft1.size() * sizeof(complex16));
+                memset(&fft1[0], 0, fft1.size() * sizeof(double_complex));
                 // load a single harmonic
-                fft1[fft->index(i0, i1, i2)] = complex16(1.0, 0.0);
+                fft1[fft->index(i0, i1, i2)] = double_complex(1.0, 0.0);
                 fft->input(&fft1[0]);
                 fft->transform(1);
                 fft->output(&fft1[0]);
@@ -92,7 +92,7 @@ void test2()
                 vector3d<double> gv = global.reciprocal_lattice()->get_cartesian_coordinates(vector3d<int>(i0, i1, i2));
 
                 // map FFT buffer to a 3D array
-                mdarray<complex16, 3> fft2(&fft1[0], fft->size(0), fft->size(1), fft->size(2));
+                mdarray<double_complex, 3> fft2(&fft1[0], fft->size(0), fft->size(1), fft->size(2));
 
                 // loop over 3D array (real space)
                 for (int j0 = 0; j0 < fft->size(0); j0++)
@@ -106,7 +106,7 @@ void test2()
                                             double(j1) / fft->size(1), 
                                             double(j2) / fft->size(2)};
                             vector3d<double> rv = global.unit_cell()->get_cartesian_coordinates(vector3d<double>(frv));
-                            d += pow(abs(fft2(j0, j1, j2) - exp(complex16(0.0, Utils::scalar_product(rv, gv)))), 2);
+                            d += pow(abs(fft2(j0, j1, j2) - exp(double_complex(0.0, Utils::scalar_product(rv, gv)))), 2);
                         }
                     }
                 }

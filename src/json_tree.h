@@ -270,6 +270,30 @@ class JSON_write
 
         bool new_block_;
 
+        inline void new_indent_level(int shift)
+        {
+            indent_level_ += shift;
+            new_block_ = true;
+        }
+
+    public:
+        
+        JSON_write(const std::string fname__) 
+            : fname_(fname__), 
+              indent_step_(4), 
+              new_block_(true)
+        {
+            fout_ = fopen(fname_.c_str(), "w");
+            fprintf(fout_, "{");
+            indent_level_ = indent_step_;
+        }
+
+        ~JSON_write()
+        {
+            fprintf(fout_, "\n}\n");
+            fclose(fout_);
+        }
+
         inline void new_line()
         {
             std::string s(indent_level_, ' ');
@@ -284,25 +308,22 @@ class JSON_write
             }
         }
 
-        inline void new_indent_level(int shift)
+        inline void write(std::vector<double>& v)
         {
-            indent_level_ += shift;
-            new_block_ = true;
-        }
+            new_line();
+            fprintf(fout_, "[");
+            for (int i = 0; i < (int)v.size(); i++)
+            {
+                if (i != 0) fprintf(fout_, ", ");
+                fprintf(fout_, "%s", Utils::to_string(v[i]).c_str());
+            }
+            fprintf(fout_, "]");
+        } 
 
-    public:
-        
-        JSON_write(const std::string fname__) : fname_(fname__), indent_step_(4), new_block_(true)
+        inline void write(std::string s)
         {
-            fout_ = fopen(fname_.c_str(), "w");
-            fprintf(fout_, "{");
-            indent_level_ = indent_step_;
-        }
-
-        ~JSON_write()
-        {
-            fprintf(fout_, "\n}\n");
-            fclose(fout_);
+            new_line();
+            fprintf(fout_, "\"%s\"", s.c_str());
         }
 
         inline void single(const char* name, int value)
@@ -411,10 +432,24 @@ class JSON_write
             end_set();
         }
 
+        inline void key(const char* name)
+        {
+            new_line();
+            fprintf(fout_, "\"%s\" : ", name);
+        }
+            
         inline void begin_array(const char* name)
         {
             new_line();
             fprintf(fout_, "\"%s\" : [", name);
+            
+            new_indent_level(indent_step_);
+        }
+
+        inline void begin_array()
+        {
+            new_line();
+            fprintf(fout_, "[");
             
             new_indent_level(indent_step_);
         }
@@ -426,6 +461,14 @@ class JSON_write
             fprintf(fout_, "]");
         }
         
+        inline void begin_set(const char* name)
+        {
+            new_line();
+            fprintf(fout_, "\"%s\" : {", name);
+            
+            new_indent_level(indent_step_);
+        }
+
         inline void begin_set()
         {
             new_line();

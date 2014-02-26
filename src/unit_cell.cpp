@@ -28,26 +28,19 @@ void Unit_cell::add_atom_type(int atom_type_external_id)
 
 void Unit_cell::add_atom(int atom_type_external_id, double* position, double* vector_field)
 {
-    double eps = 1e-10;
-    
     if (atom_type_id_map_.count(atom_type_external_id) == 0)
     {
         std::stringstream s;
         s << "atom type with external id " << atom_type_external_id << " is not found";
         error_local(__FILE__, __LINE__, s);
     }
-
-    for (int i = 0; i < num_atoms(); i++)
+    if (atom_id_by_position(position) >= 0)
     {
-        vector3d<double> pos = atom(i)->position();
-        if (fabs(pos[0] - position[0]) < eps && fabs(pos[1] - position[1]) < eps && fabs(pos[2] - position[2]) < eps)
-        {
-            std::stringstream s;
-            s << "atom with the same position is already in list" << std::endl
-              << "  position : " << position[0] << " " << position[1] << " " << position[2];
-            
-            error_local(__FILE__, __LINE__, s);
-        }
+        std::stringstream s;
+        s << "atom with the same position is already in list" << std::endl
+          << "  position : " << position[0] << " " << position[1] << " " << position[2];
+        
+        error_local(__FILE__, __LINE__, s);
     }
 
     atoms_.push_back(new Atom(atom_type_by_external_id(atom_type_external_id), position, vector_field));
@@ -96,86 +89,84 @@ void Unit_cell::get_symmetry()
 
     Symmetry s(lattice_vectors_, spg_dataset_);
 
-    for (int isym = 0; isym < s.num_sym_op(); isym++)
-    {
-        std::cout << std::endl;
-        std::cout << "symmetry operation : " << isym << std::endl;
+    //== for (int isym = 0; isym < s.num_sym_op(); isym++)
+    //== {
+    //==     std::cout << std::endl;
+    //==     std::cout << "symmetry operation : " << isym << std::endl;
 
-        vector3d<double> ang = s.euler_angles(isym);
+    //==     vector3d<double> ang = s.euler_angles(isym);
 
-        std::cout << "Euler angles : " << ang[0] / pi << " " << ang[1] / pi << " " << ang[2] / pi << std::endl;
+    //==     std::cout << "Euler angles : " << ang[0] / pi << " " << ang[1] / pi << " " << ang[2] / pi << std::endl;
 
-        //ang[0] = -ang[0];
-        //ang[1] = -ang[1];
-        //ang[2] = -ang[2];
-        int proper_rotation = s.proper_rotation(isym);
+    //==     //ang[0] = -ang[0];
+    //==     //ang[1] = -ang[1];
+    //==     //ang[2] = -ang[2];
+    //==     int proper_rotation = s.proper_rotation(isym);
 
-        
-        vector3d<double> coord(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
-        vector3d<double> scoord;
-        SHT::spherical_coordinates(coord, &scoord[0]);
+    //==     
+    //==     vector3d<double> coord(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
+    //==     vector3d<double> scoord;
+    //==     SHT::spherical_coordinates(coord, &scoord[0]);
 
-        int lmax = 10;
-        mdarray<double_complex, 1> ylm(Utils::lmmax(lmax));
-        SHT::spherical_harmonics(lmax, scoord[1], scoord[2], &ylm(0));
+    //==     int lmax = 10;
+    //==     mdarray<double_complex, 1> ylm(Utils::lmmax(lmax));
+    //==     SHT::spherical_harmonics(lmax, scoord[1], scoord[2], &ylm(0));
 
-        matrix3d<double> rotm = inverse(s.rot_mtrx(isym));
-        printf("3x3 rotation matrix\n");
-        for (int i = 0; i < 3; i++)
-        {
-            for (int j = 0; j < 3; j++) printf("%8.4f ", rotm(i, j));
-            printf("\n");
-        }
+    //==     matrix3d<double> rotm = inverse(s.rot_mtrx(isym));
+    //==     printf("3x3 rotation matrix\n");
+    //==     for (int i = 0; i < 3; i++)
+    //==     {
+    //==         for (int j = 0; j < 3; j++) printf("%8.4f ", rotm(i, j));
+    //==         printf("\n");
+    //==     }
 
-        vector3d<double> coord2;
-        for (int i = 0; i < 3; i++)
-        {
-            for (int j = 0; j < 3; j++) coord2[i] += rotm(i, j) * coord[j];
-        }
+    //==     vector3d<double> coord2;
+    //==     for (int i = 0; i < 3; i++)
+    //==     {
+    //==         for (int j = 0; j < 3; j++) coord2[i] += rotm(i, j) * coord[j];
+    //==     }
 
-        //std::cout << "initial coordinates : " << coord[0] << " " << coord[1] << " " << coord[2] << std::endl;
-        //std::cout << "rotated coordinates : " << coord2[0] << " " << coord2[1] << " " << coord2[2] << std::endl;
+    //==     //std::cout << "initial coordinates : " << coord[0] << " " << coord[1] << " " << coord[2] << std::endl;
+    //==     //std::cout << "rotated coordinates : " << coord2[0] << " " << coord2[1] << " " << coord2[2] << std::endl;
 
-        vector3d<double> scoord2;
-        SHT::spherical_coordinates(coord2, &scoord2[0]);
+    //==     vector3d<double> scoord2;
+    //==     SHT::spherical_coordinates(coord2, &scoord2[0]);
 
-        mdarray<double_complex, 1> ylm2(Utils::lmmax(lmax));
-        SHT::spherical_harmonics(lmax, scoord2[1], scoord2[2], &ylm2(0));
+    //==     mdarray<double_complex, 1> ylm2(Utils::lmmax(lmax));
+    //==     SHT::spherical_harmonics(lmax, scoord2[1], scoord2[2], &ylm2(0));
 
-        mdarray<double_complex, 2> ylm_rot_mtrx(Utils::lmmax(lmax), Utils::lmmax(lmax));
-        SHT::rotation_matrix(lmax, ang, proper_rotation, ylm_rot_mtrx); 
+    //==     mdarray<double_complex, 2> ylm_rot_mtrx(Utils::lmmax(lmax), Utils::lmmax(lmax));
+    //==     SHT::rotation_matrix(lmax, ang, proper_rotation, ylm_rot_mtrx); 
 
-        //== printf("Ylm rotation matrix\n");
-        //== for (int i = 0; i < Utils::lmmax(lmax); i++)
-        //== {
-        //==     for (int j = 0; j < Utils::lmmax(lmax); j++) 
-        //==         printf("(%12.6f, %12.6f)  ", real(ylm_rot_mtrx(i, j)), imag(ylm_rot_mtrx(i, j)));
-        //==     printf("\n");
-        //== }
-            
-
-
+    //==     //== printf("Ylm rotation matrix\n");
+    //==     //== for (int i = 0; i < Utils::lmmax(lmax); i++)
+    //==     //== {
+    //==     //==     for (int j = 0; j < Utils::lmmax(lmax); j++) 
+    //==     //==         printf("(%12.6f, %12.6f)  ", real(ylm_rot_mtrx(i, j)), imag(ylm_rot_mtrx(i, j)));
+    //==     //==     printf("\n");
+    //==     //== }
+    //==         
 
 
 
-        mdarray<double_complex, 1> ylm1(Utils::lmmax(lmax));
-        ylm1.zero();
-
-        for (int i = 0; i < Utils::lmmax(lmax); i++)
-        {
-            for (int j = 0; j < Utils::lmmax(lmax); j++) ylm1(i) += ylm_rot_mtrx(j, i) * ylm(j);
-        }
-
-        double d = 0;
-        for (int i = 0; i < Utils::lmmax(lmax); i++) d += abs(ylm1(i) - ylm2(i));
-
-        std::cout << "symmetry op : " << isym << ", defference of Ylm : " << d << ", proper_rotation : " << proper_rotation << std::endl;
 
 
-            
-                
+    //==     mdarray<double_complex, 1> ylm1(Utils::lmmax(lmax));
+    //==     ylm1.zero();
+
+    //==     for (int i = 0; i < Utils::lmmax(lmax); i++)
+    //==     {
+    //==         for (int j = 0; j < Utils::lmmax(lmax); j++) ylm1(i) += ylm_rot_mtrx(j, i) * ylm(j);
+    //==     }
+
+    //==     double d = 0;
+    //==     for (int i = 0; i < Utils::lmmax(lmax); i++) d += abs(ylm1(i) - ylm2(i));
+
+    //==     std::cout << "symmetry op : " << isym << ", defference of Ylm : " << d << ", proper_rotation : " << proper_rotation << std::endl;
 
 
+    //==         
+    //==             
 
 
 
@@ -192,7 +183,9 @@ void Unit_cell::get_symmetry()
 
 
 
-    }
+
+
+    //== }
 
     if (spg_dataset_->spacegroup_number == 0)
         error_local(__FILE__, __LINE__, "spg_get_dataset() returned 0 for the space group");
@@ -596,21 +589,32 @@ void Unit_cell::print_info()
         printf("international symbol : %s\n", spg_dataset_->international_symbol);
         printf("Hall symbol          : %s\n", spg_dataset_->hall_symbol);
         printf("number of operations : %i\n", spg_dataset_->n_operations);
-        printf("symmetry operations  : \n");
-        for (int isym = 0; isym < spg_dataset_->n_operations; isym++)
+        printf("transformation matrix : \n");
+        for (int i = 0; i < 3; i++)
         {
-            printf("isym : %i\n", isym);
-            printf("R : ");
-            for (int i = 0; i < 3; i++)
-            {
-                if (i) printf("    ");
-                for (int j = 0; j < 3; j++) printf("%3i ", spg_dataset_->rotations[isym][i][j]);
-                printf("\n");
-            }
-            printf("T : ");
-            for (int j = 0; j < 3; j++) printf("%f ", spg_dataset_->translations[isym][j]);
+            for (int j = 0; j < 3; j++) printf("%12.6f ", spg_dataset_->transformation_matrix[i][j]);
             printf("\n");
         }
+        printf("origin shift : \n");
+        printf("%12.6f %12.6f %12.6f\n", spg_dataset_->origin_shift[0], 
+                                         spg_dataset_->origin_shift[1], 
+                                         spg_dataset_->origin_shift[2]);
+
+        //== printf("symmetry operations  : \n");
+        //== for (int isym = 0; isym < spg_dataset_->n_operations; isym++)
+        //== {
+        //==     printf("isym : %i\n", isym);
+        //==     printf("R : ");
+        //==     for (int i = 0; i < 3; i++)
+        //==     {
+        //==         if (i) printf("    ");
+        //==         for (int j = 0; j < 3; j++) printf("%3i ", spg_dataset_->rotations[isym][i][j]);
+        //==         printf("\n");
+        //==     }
+        //==     printf("T : ");
+        //==     for (int j = 0; j < 3; j++) printf("%f ", spg_dataset_->translations[isym][j]);
+        //==     printf("\n");
+        //== }
     }
     
     printf("\n");
@@ -671,6 +675,42 @@ void Unit_cell::write_cif()
             fprintf(fout,"%s\n",s.str().c_str());
         }
         fclose(fout);
+    }
+}
+
+void Unit_cell::write_json()
+{
+    if (Platform::mpi_rank() == 0)
+    {
+        JSON_write out("unit_cell.json");
+
+        out.begin_set("unit_cell");
+        out.begin_array("lattice_vectors");
+        for (int i = 0; i < 3; i++)
+        {
+            std::vector<double> v(3);
+            for (int x = 0; x < 3; x++) v[x] = lattice_vectors(i, x);
+            out.write(v);
+        }
+        out.end_array();
+        out.begin_array("atoms");
+        for (int iat = 0; iat < num_atom_types(); iat++)
+        {
+            out.begin_array();
+            out.write(atom_type(iat)->label());
+            out.begin_array();
+            for (int i = 0; i < atom_type(iat)->num_atoms(); i++)
+            {
+                int ia = atom_type(iat)->atom_id(i);
+                std::vector<double> v(3);
+                for (int x = 0; x < 3; x++) v[x] = atom(ia)->position(x);
+                out.write(v);
+            }
+            out.end_array();
+            out.end_array();
+        }
+        out.end_array();
+        out.end_set();
     }
 }
 

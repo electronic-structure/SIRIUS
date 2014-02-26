@@ -95,6 +95,27 @@ void Global::read_input()
     Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::max_num_threads()));
 }
 
+void Global::read_unit_cell_input()
+{
+    std::string fname("sirius.json");
+    JSON_tree parser(fname);
+    unit_cell_input_section_.read(parser);
+        
+    for (int iat = 0; iat < (int)unit_cell_input_section_.labels_.size(); iat++)
+    {
+        unit_cell()->add_atom_type(iat, unit_cell_input_section_.labels_[iat], esm_type());
+        for (int ia = 0; ia < (int)unit_cell_input_section_.coordinates_[iat].size(); ia++)
+        {
+            std::vector<double> v = unit_cell_input_section_.coordinates_[iat][ia];
+            unit_cell()->add_atom(iat, &v[0], &v[3]);
+        }
+    }
+
+    unit_cell()->set_lattice_vectors(unit_cell_input_section_.lattice_vectors_[0], 
+                                     unit_cell_input_section_.lattice_vectors_[1], 
+                                     unit_cell_input_section_.lattice_vectors_[2]);
+}
+
 std::string Global::start_time(const char* fmt)
 {
     char buf[100]; 

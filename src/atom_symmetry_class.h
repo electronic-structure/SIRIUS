@@ -85,7 +85,7 @@ class Atom_symmetry_class
               core_eval_sum_(0.0), 
               core_leakage_(0.0)
         {
-            initialize();
+            if (atom_type_->initialized()) initialize();
         }
 
         /// Initialize the symmetry class

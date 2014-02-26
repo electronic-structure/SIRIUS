@@ -39,8 +39,8 @@ void test1()
     f2.interpolate();
     g2.interpolate();
 
-    std::cout << " <g|nabla^2|f> = " << Spline<double>::integrate(&f2, &g) - g[N - 1] * f.deriv(1, N - 1) * x1 * x1 << std::endl;
-    std::cout << " <f|nabla^2|g> = " << Spline<double>::integrate(&g2, &f) - f[N - 1] * g.deriv(1, N - 1) * x1 * x1 << std::endl;
+    std::cout << " <g|nabla^2|f> = " << Spline<double>::integrate(&f2, &g, 2) - g[N - 1] * f.deriv(1, N - 1) * x1 * x1 << std::endl;
+    std::cout << " <f|nabla^2|g> = " << Spline<double>::integrate(&g2, &f, 2) - f[N - 1] * g.deriv(1, N - 1) * x1 * x1 << std::endl;
 }
 
 void test2()

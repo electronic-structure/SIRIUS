@@ -53,10 +53,10 @@ void test2()
     int num_fft = fft_gpu.num_fft_max();
     printf("maximum number of cuFFT transforms : %i\n", num_fft);
 
-    fft_gpu.initialize(num_fft);
+    fft_gpu.initialize(num_fft, NULL);
 
-    std::vector<complex16> fft1(fft->size());
-    std::vector<complex16> fft2(fft->size());
+    std::vector<double_complex> fft1(fft->size());
+    std::vector<double_complex> fft2(fft->size());
 
     // loop over lowest harmonics in reciprocal space
     for (int i0 = -2; i0 <= 2; i0++)
@@ -65,9 +65,9 @@ void test2()
         {
             for (int i2 = -2; i2 <= 2; i2++)
             {
-                memset(&fft1[0], 0, fft1.size() * sizeof(complex16));
+                memset(&fft1[0], 0, fft1.size() * sizeof(double_complex));
                 // load a single harmonic
-                fft1[fft->index(i0, i1, i2)] = complex16(1.0, 0.0);
+                fft1[fft->index(i0, i1, i2)] = double_complex(1.0, 0.0);
                 fft->input(&fft1[0]);
                 for (int k = 0; k < num_fft; k++) fft_gpu.input(&fft1[0], k);
                 fft_gpu.copy_to_device();

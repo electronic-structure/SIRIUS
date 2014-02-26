@@ -330,6 +330,9 @@ class Atom_type
 
         /// type of electronic structure method used
         electronic_structure_method_t esm_type_;
+        
+        /// atom type label
+        std::string label_;
 
         bool initialized_;
        
@@ -625,6 +628,16 @@ class Atom_type
         inline void add_atom_id(int atom_id__)
         {
             atom_id_.push_back(atom_id__);
+        }
+
+        inline bool initialized()
+        {
+            return initialized_;
+        }
+
+        inline std::string label()
+        {
+            return label_;
         }
 };
 
