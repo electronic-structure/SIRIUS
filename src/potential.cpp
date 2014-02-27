@@ -165,7 +165,7 @@ void Potential::update()
 void Potential::poisson_vmt(mdarray<Spheric_function<double_complex>*, 1>& rho_ylm, mdarray<Spheric_function<double_complex>*, 1>& vh_ylm, 
                             mdarray<double_complex, 2>& qmt)
 {
-    Timer t("sirius::Potential::poisson:vmt");
+    Timer t("sirius::Potential::poisson_vmt");
 
     qmt.zero();
     
@@ -713,7 +713,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         poisson_sum_G(&vh->f_pw(0), sbessel_mt_, vmtlm);
         
         // add boundary condition and convert to Rlm
-        Timer t1("sirius::Potential::poisson:bc");
+        Timer t1("sirius::Potential::poisson|bc");
         mdarray<double, 2> rRl(parameters_.unit_cell()->max_num_mt_points(), parameters_.lmax_pot() + 1);
         int type_id_prev = -1;
 

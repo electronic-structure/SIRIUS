@@ -63,6 +63,8 @@ extern "C" void cublas_set_matrix(int rows, int cols, int elemSize, const void *
 
 extern "C" void cublas_set_matrix_async(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb, int stream_id);
 
+extern "C" void cublas_set_vector(int n, int elemSize, const void *x, int incx, void *y, int incy);
+
 //=================
 // CUFFT functions
 //=================

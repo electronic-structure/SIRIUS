@@ -275,6 +275,20 @@ class JSON_write
             indent_level_ += shift;
             new_block_ = true;
         }
+        
+        inline void new_line()
+        {
+            std::string s(indent_level_, ' ');
+            if (new_block_)
+            {
+                fprintf(fout_, "\n%s", s.c_str());
+                new_block_ = false;
+            }
+            else
+            {
+                fprintf(fout_, ",\n%s", s.c_str());
+            }
+        }
 
     public:
         
@@ -292,20 +306,6 @@ class JSON_write
         {
             fprintf(fout_, "\n}\n");
             fclose(fout_);
-        }
-
-        inline void new_line()
-        {
-            std::string s(indent_level_, ' ');
-            if (new_block_)
-            {
-                fprintf(fout_, "\n%s", s.c_str());
-                new_block_ = false;
-            }
-            else
-            {
-                fprintf(fout_, ",\n%s", s.c_str());
-            }
         }
 
         inline void write(std::vector<double>& v)
@@ -484,7 +484,5 @@ class JSON_write
             fprintf(fout_, "}");
         }
 };
-
-
 
 #endif // __JSON_TREE_H__

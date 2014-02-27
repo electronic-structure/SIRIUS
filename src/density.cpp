@@ -625,6 +625,7 @@ struct exec_fft_args
     K_point* kp;
     FFT3D<cpu>* fft;
     mdarray<double_complex, 3>* psi;
+    mdarray<int, 1>* band_idx;
     mdarray<double, 1>* wt;
     mdarray<double, 2>* it_density_matrix_gpu;
     mdarray<double, 3>* it_density_matrix;
@@ -685,9 +686,15 @@ void* exec_fft_density_gpu(void* args__)
         {
             for (int ispn = 0; ispn < args->num_spins; ispn++)
             {
-                cublas_set_matrix(args->kp->num_gkvec(), nfft_max, sizeof(double_complex), 
-                                  &(*args->psi)(args->wf_pw_offset, ispn, i), args->psi->ld() * args->num_spins, 
-                                  psi_pw_gpu.get_ptr_device(), psi_pw_gpu.ld());
+                for (int j = 0; j < nfft_max; j++)
+                {
+                    cublas_set_vector(args->kp->num_gkvec(), sizeof(double_complex), 
+                                      &(*args->psi)(args->wf_pw_offset, ispn, (*args->band_idx)(i + j)), 1, 
+                                      psi_pw_gpu.ptr_device(0, j), 1);
+                }
+                //== cublas_set_matrix(args->kp->num_gkvec(), nfft_max, sizeof(double_complex), 
+                //==                   &(*args->psi)(args->wf_pw_offset, ispn, i), args->psi->ld() * args->num_spins, 
+                //==                   psi_pw_gpu.get_ptr_device(), psi_pw_gpu.ld());
 
                 fft.batch_load(args->kp->num_gkvec(), fft_index.get_ptr_device(), psi_pw_gpu.get_ptr_device(), 
                                psi_it_gpu.ptr_device(0, 0, ispn));
@@ -735,7 +742,8 @@ void* exec_fft_density_cpu(void* args__)
         {
             for (int ispn = 0; ispn < args->num_spins; ispn++)
             {
-                fft->input(args->kp->num_gkvec(), args->kp->fft_index(), &(*args->psi)(args->wf_pw_offset, ispn, i), thread_id);
+                fft->input(args->kp->num_gkvec(), args->kp->fft_index(), &(*args->psi)(args->wf_pw_offset, ispn, 
+                           (*args->band_idx)(i)), thread_id);
                 fft->transform(1, thread_id);
                 fft->output(&psi_it(0, ispn), thread_id);
             }
@@ -791,8 +799,13 @@ void Density::add_kpoint_contribution_it_gpu(K_point* kp, std::vector< std::pair
         it_density_matrix_gpu.zero_on_device();
     }
 
+    mdarray<int, 1> band_idx((int)occupied_bands.size());
     mdarray<double, 1> wt((int)occupied_bands.size());
-    for (int i = 0; i < (int)occupied_bands.size(); i++) wt(i) = occupied_bands[i].second / parameters_.unit_cell()->omega();
+    for (int i = 0; i < (int)occupied_bands.size(); i++)
+    {
+        band_idx(i) = occupied_bands[i].first;
+        wt(i) = occupied_bands[i].second / parameters_.unit_cell()->omega();
+    }
     wt.allocate_on_device();
     wt.copy_to_device();
 
@@ -809,6 +822,7 @@ void Density::add_kpoint_contribution_it_gpu(K_point* kp, std::vector< std::pair
         args[i].kp = kp;
         args[i].fft = fft_;
         args[i].psi = &kp->spinor_wave_functions();
+        args[i].band_idx = &band_idx;
         args[i].wt = &wt;
         args[i].it_density_matrix_gpu = &it_density_matrix_gpu;
         args[i].it_density_matrix = &it_density_matrix;
@@ -1307,7 +1321,7 @@ void Density::generate_valence_density_it(K_set& ks)
     for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks.spl_num_kpoints(ikloc);
-        std::vector< std::pair<int, double> > occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
+        auto occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
         switch (parameters_.processing_unit())
         {
             case cpu:

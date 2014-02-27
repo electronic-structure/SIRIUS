@@ -225,7 +225,8 @@ vector3d<int> Utils::find_translation_limits(double radius, double lattice_vecto
     }
 }
 
-template<> std::string Utils::to_string<double>(double argument)
+template<> 
+std::string Utils::to_string<double>(double argument)
 {
     char buf[100];
     int len = snprintf(buf, 100, "%.14f", argument);

@@ -445,7 +445,7 @@ extern "C" void cublas_get_matrix_async(int rows, int cols, int elemSize, const 
 
     if (cublasGetMatrixAsync(rows, cols, elemSize, A_device, lda, B_host, ldb, stream) != CUBLAS_STATUS_SUCCESS)
     {
-        printf("failed to execute cublasGetMatrix\n");
+        printf("failed to execute cublasGetMatrixAsync\n");
         exit(-1);
     }
 }
@@ -466,7 +466,17 @@ extern "C" void cublas_set_matrix_async(int rows, int cols, int elemSize, const 
 
     if (cublasSetMatrixAsync(rows, cols, elemSize, A_host, lda, B_device, ldb, stream) != CUBLAS_STATUS_SUCCESS)
     {
-        printf("failed to execute cublasSetMatrix\n");
+        printf("failed to execute cublasSetMatrixAsync\n");
+        exit(-1);
+    }
+}
+
+// x(CPU) => y(GPU)
+extern "C" void cublas_set_vector(int n, int elemSize, const void *x, int incx, void *y, int incy)
+{
+    if (cublasSetVector(n, elemSize, x, incx, y, incy) != CUBLAS_STATUS_SUCCESS)
+    {
+        printf("failed to execute cublasSetVector\n");
         exit(-1);
     }
 }
@@ -1777,6 +1787,23 @@ __global__ void update_it_density_matrix_0_gpu_kernel(int fft_size,
     }
 }
 
+__global__ void update_it_density_matrix_1_gpu_kernel(int fft_size, 
+                                                      int nfft_max, 
+                                                      cuDoubleComplex* psi_it, 
+                                                      double* wt,
+                                                      double* it_density_matrix)
+{
+    int ir = blockIdx.x * blockDim.x + threadIdx.x;
+    for (int i = 0; i < nfft_max; i++)
+    {
+        if (ir < fft_size)
+        {
+            cuDoubleComplex z = psi_it[array3D_offset(ir, i, 1, fft_size, nfft_max)];
+            it_density_matrix[array2D_offset(ir, 1, fft_size)] += (z.x * z.x + z.y * z.y) * wt[i];
+        }
+    }
+}
+
 
 extern "C" void update_it_density_matrix_gpu(int fft_size, 
                                              int nfft_max, 
@@ -1807,6 +1834,14 @@ extern "C" void update_it_density_matrix_gpu(int fft_size,
         //==     for (int ir = 0; ir < fft_->size(); ir++)
         //==         it_density_matrix(ir, 1) += real(wfit(ir, 1) * conj(wfit(ir, 1))) * w;
         //== }
+        case 1:
+        {
+            update_it_density_matrix_1_gpu_kernel<<<grid_b, grid_t>>>(fft_size,
+                                                                      nfft_max,
+                                                                      (cuDoubleComplex*)psi_it,
+                                                                      wt,
+                                                                      it_density_matrix);
+        }
         case 0:
         {
             update_it_density_matrix_0_gpu_kernel<<<grid_b, grid_t>>>(fft_size,

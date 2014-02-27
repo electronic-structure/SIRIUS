@@ -5,7 +5,10 @@
 #include <vector>
 #include "error_handling.h"
 
-/** \todo change to long int64_t for indices */
+/** \todo change to long int64_t for indices 
+    \todo rename get_ptr_device() to ptr_device()
+    \todo rename get_ptr() to ptr()
+*/
 
 class dimension 
 {
@@ -237,7 +240,6 @@ template <typename T, int ND> class mdarray_base
             return h;
         }
         
-
         /// Copy the content of the array to dest
         void operator>>(mdarray_base<T, ND>& dest)
         {
