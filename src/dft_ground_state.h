@@ -120,9 +120,79 @@ class DFT_ground_state
             double gap = kset_->band_gap() * ha2ev;
             double ef = kset_->energy_fermi();
             double core_leak = density_->core_leakage();
+
+            std::vector<double> mt_charge;
+            double it_charge;
+            double total_charge = density_->rho()->integrate(mt_charge, it_charge); 
+            
+            double total_mag[3];
+            std::vector<double> mt_mag[3];
+            double it_mag[3];
+            for (int j = 0; j < parameters_.num_mag_dims(); j++) 
+                total_mag[j] = density_->magnetization(j)->integrate(mt_mag[j], it_mag[j]);
             
             if (Platform::mpi_rank() == 0)
             {
+                double total_core_leakage = 0.0;
+                printf("\n");
+                printf("Charges and magnetic moments\n");
+                for (int i = 0; i < 80; i++) printf("-");
+                printf("\n"); 
+                printf("atom      charge    core leakage");
+                if (parameters_.num_mag_dims()) printf("              moment                |moment|");
+                printf("\n");
+                for (int i = 0; i < 80; i++) printf("-");
+                printf("\n"); 
+ 
+                for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+                {
+                    double core_leakage = parameters_.unit_cell()->atom(ia)->symmetry_class()->core_leakage();
+                    total_core_leakage += core_leakage;
+                    printf("%4i  %10.6f  %10.8e", ia, mt_charge[ia], core_leakage);
+                    if (parameters_.num_mag_dims())
+                    {
+                        vector3d<double> v;
+                        v[2] = mt_mag[0][ia];
+                        if (parameters_.num_mag_dims() == 3)
+                        {
+                            v[0] = mt_mag[1][ia];
+                            v[1] = mt_mag[2][ia];
+                        }
+                        printf("  [%8.4f, %8.4f, %8.4f]  %10.6f", v[0], v[1], v[2], v.length());
+                    }
+                    printf("\n");
+                }
+                
+                printf("\n");
+                printf("interstitial charge   : %10.6f\n", it_charge);
+                if (parameters_.num_mag_dims())
+                {
+                    vector3d<double> v;
+                    v[2] = it_mag[0];
+                    if (parameters_.num_mag_dims() == 3)
+                    {
+                        v[0] = it_mag[1];
+                        v[1] = it_mag[2];
+                    }
+                    printf("interstitial moment   : [%8.4f, %8.4f, %8.4f], vector length : %10.6f\n", 
+                           v[0], v[1], v[2], v.length());
+                }
+                
+                printf("\n");
+                printf("total charge          : %10.6f\n", total_charge);
+                printf("total core leakage    : %10.8e\n", total_core_leakage);
+                if (parameters_.num_mag_dims())
+                {
+                    vector3d<double> v;
+                    v[2] = total_mag[0];
+                    if (parameters_.num_mag_dims() == 3)
+                    {
+                        v[0] = total_mag[1];
+                        v[1] = total_mag[2];
+                    }
+                    printf("total moment          : [%8.4f, %8.4f, %8.4f], vector length : %10.6f\n", 
+                           v[0], v[1], v[2], v.length());
+                }
                 printf("\n");
                 printf("Energy\n");
                 for (int i = 0; i < 80; i++) printf("-");

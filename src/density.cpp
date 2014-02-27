@@ -1549,19 +1549,6 @@ void Density::generate(K_set& ks)
     //if (debug_level > 1) check_density_continuity_at_mt();
 }
 
-//** void Density::integrate()
-//** {
-//**     Timer t("sirius::Density::integrate");
-//** 
-//**     //** parameters_.rti().total_charge = rho_->integrate(parameters_.rti().mt_charge, parameters_.rti().it_charge); 
-//** 
-//**     //** for (int j = 0; j < parameters_.num_mag_dims(); j++)
-//**     //** {
-//**     //**     parameters_.rti().total_magnetization[j] = 
-//**     //**         magnetization_[j]->integrate(parameters_.rti().mt_magnetization[j], parameters_.rti().it_magnetization[j]);
-//**     //** }
-//** }
-
 //void Density::check_density_continuity_at_mt()
 //{
 //    // generate plane-wave coefficients of the potential in the interstitial region

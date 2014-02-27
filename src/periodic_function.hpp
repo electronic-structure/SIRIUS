@@ -180,15 +180,6 @@ inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
 }
 
 template <typename T>
-T Periodic_function<T>::integrate(int flg)
-{
-    std::vector<T> mt_val;
-    T it_val;
-
-    return integrate(flg, mt_val, it_val);
-}
-
-template <typename T>
 void Periodic_function<T>::hdf5_write(HDF5_tree h5f)
 {
     if (unit_cell_->full_potential()) h5f.write_mdarray("f_mt", f_mt_);

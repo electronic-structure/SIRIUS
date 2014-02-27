@@ -119,8 +119,6 @@ class Periodic_function
 
         T integrate(std::vector<T>& mt_val, T& it_val);
 
-        T integrate(int flg);
-        
         template <index_domain_t index_domain>
         inline T& f_mt(int idx0, int idx1, int ia);
         
