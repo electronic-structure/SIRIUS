@@ -174,7 +174,7 @@ class DFT_ground_state
                         v[0] = it_mag[1];
                         v[1] = it_mag[2];
                     }
-                    printf("interstitial moment   : [%8.4f, %8.4f, %8.4f], vector length : %10.6f\n", 
+                    printf("interstitial moment   : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n", 
                            v[0], v[1], v[2], v.length());
                 }
                 
@@ -190,7 +190,7 @@ class DFT_ground_state
                         v[0] = total_mag[1];
                         v[1] = total_mag[2];
                     }
-                    printf("total moment          : [%8.4f, %8.4f, %8.4f], vector length : %10.6f\n", 
+                    printf("total moment          : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n", 
                            v[0], v[1], v[2], v.length());
                 }
                 printf("\n");

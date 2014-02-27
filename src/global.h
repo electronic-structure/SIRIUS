@@ -561,9 +561,10 @@ class Global
 
             void read(JSON_tree parser)
             {
-                std::vector<double> a0 = parser["unit_cell"]["lattice_vectors"][0].get(std::vector<double>(3, 0)); 
-                std::vector<double> a1 = parser["unit_cell"]["lattice_vectors"][1].get(std::vector<double>(3, 0)); 
-                std::vector<double> a2 = parser["unit_cell"]["lattice_vectors"][2].get(std::vector<double>(3, 0));
+                std::vector<double> a0, a1, a2;
+                parser["unit_cell"]["lattice_vectors"][0] >> a0;
+                parser["unit_cell"]["lattice_vectors"][1] >> a1;
+                parser["unit_cell"]["lattice_vectors"][2] >> a2;
 
                 double scale = parser["unit_cell"]["lattice_vectors_scale"].get(1.0);
 
