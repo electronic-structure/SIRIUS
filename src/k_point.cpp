@@ -252,7 +252,7 @@ void K_point::update()
         if (num_ranks() == 1)
         {
             fv_states_row_.set_dimensions(wf_size(), parameters_.num_fv_states());
-            fv_states_row_.set_ptr(fv_states_col_.get_ptr());
+            fv_states_row_.set_ptr(fv_states_col_.ptr());
         }
         else
         {
@@ -266,7 +266,7 @@ void K_point::update()
         }
         else
         {
-            spinor_wave_functions_.set_ptr(fv_states_col_.get_ptr());
+            spinor_wave_functions_.set_ptr(fv_states_col_.ptr());
         }
     }
     else
@@ -557,8 +557,8 @@ void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& a
     }
 
     mdarray<double_complex, 2> z2(sht->num_points(), num_gkvec_loc);
-    blas<cpu>::gemm(0, 2, sht->num_points(), num_gkvec_loc, type->mt_aw_basis_size(), z1.get_ptr(), z1.ld(),
-                    alm.get_ptr(), alm.ld(), z2.get_ptr(), z2.ld());
+    blas<cpu>::gemm(0, 2, sht->num_points(), num_gkvec_loc, type->mt_aw_basis_size(), z1.ptr(), z1.ld(),
+                    alm.ptr(), alm.ld(), z2.ptr(), z2.ld());
 
     vector3d<double> vc = parameters_.unit_cell()->get_cartesian_coordinates(parameters_.unit_cell()->atom(ia)->position());
     
@@ -1507,7 +1507,7 @@ void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec)
             fv_evec(j, i) = fv_eigen_vectors_(jloc, iloc);
         }
     }
-    Platform::allreduce(fv_evec.get_ptr(), (int)fv_evec.size(), 
+    Platform::allreduce(fv_evec.ptr(), (int)fv_evec.size(), 
                         parameters_.mpi_grid().communicator((1 << _dim_row_) | (1 << _dim_col_)));
 }
 
@@ -1551,7 +1551,7 @@ void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
             memcpy(&sv_evec(0, i), &sv_eigen_vectors_(0, i), sv_eigen_vectors_.size(0) * sizeof(double_complex));
     }
     
-    Platform::allreduce(sv_evec.get_ptr(), (int)sv_evec.size(), 
+    Platform::allreduce(sv_evec.ptr(), (int)sv_evec.size(), 
                         parameters_.mpi_grid().communicator((1 << _dim_row_) | (1 << _dim_col_)));
 }
 

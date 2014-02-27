@@ -918,7 +918,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 
         add_kpoint_contribution_pp(ks[ik], occupied_bands, pp_complex_density_matrix);
     }
-    Platform::allreduce(pp_complex_density_matrix.get_ptr(), (int)pp_complex_density_matrix.size());
+    Platform::allreduce(pp_complex_density_matrix.ptr(), (int)pp_complex_density_matrix.size());
 
     auto rl = parameters_.reciprocal_lattice();
 
@@ -1040,7 +1040,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     pp_complex_density_matrix.copy_to_host();
     pp_complex_density_matrix.deallocate_on_device();
 
-    Platform::allreduce(pp_complex_density_matrix.get_ptr(), (int)pp_complex_density_matrix.size());
+    Platform::allreduce(pp_complex_density_matrix.ptr(), (int)pp_complex_density_matrix.size());
 
     auto rl = parameters_.reciprocal_lattice();
 

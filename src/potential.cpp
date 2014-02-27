@@ -409,7 +409,7 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
             }
         }
     }
-    Platform::allreduce(fpw.get_ptr(), (int)fpw.size());
+    Platform::allreduce(fpw.ptr(), (int)fpw.size());
     for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
     
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
@@ -564,7 +564,7 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
 //==         }
 //==     }
 //== 
-//==     Platform::allreduce(fpw.get_ptr(), (int)fpw.size());
+//==     Platform::allreduce(fpw.ptr(), (int)fpw.size());
 //==     for (int ig = 0; ig < parameters_.num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
 //== 
 //==     l_by_lm_.deallocate_on_device();
@@ -1048,7 +1048,7 @@ void Potential::generate_d_mtrx()
 
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
-        Platform::allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().get_ptr(),
+        Platform::allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().ptr(),
                             (int)parameters_.unit_cell()->atom(ia)->d_mtrx().size());
 
         auto atom_type = parameters_.unit_cell()->atom(ia)->type();
@@ -1168,9 +1168,10 @@ void Potential::generate_d_mtrx_gpu()
          type->uspp().q_pw.deallocate_on_device();
     }
 
+    // TODO: this is common with cpu code
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
-        Platform::allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().get_ptr(),
+        Platform::allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().ptr(),
                             (int)parameters_.unit_cell()->atom(ia)->d_mtrx().size());
 
         auto atom_type = parameters_.unit_cell()->atom(ia)->type();

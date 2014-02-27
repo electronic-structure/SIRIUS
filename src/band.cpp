@@ -1007,10 +1007,10 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp, Periodic_function
     }
     
     cublas_get_matrix_async(kp->num_gkvec_row(), kp->num_gkvec_col(), sizeof(double_complex), h.get_ptr_device(), h.ld(), 
-                            h.get_ptr(), h.ld(), -1);
+                            h.ptr(), h.ld(), -1);
     
     cublas_get_matrix_async(kp->num_gkvec_row(), kp->num_gkvec_col(), sizeof(double_complex), o.get_ptr_device(), o.ld(), 
-                            o.get_ptr(), o.ld(), -1);
+                            o.ptr(), o.ld(), -1);
 
     set_fv_h_o_lo_lo(kp, h, o);
 
@@ -1214,8 +1214,8 @@ void Band::solve_fv_evp_1stage(K_point* kp, mdarray<double_complex, 2>& h, mdarr
         }
     }
 
-    solver->solve(kp->apwlo_basis_size(), parameters_.num_fv_states(), h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), 
-                  &fv_eigen_values[0], fv_eigen_vectors.get_ptr(), fv_eigen_vectors.ld());
+    solver->solve(kp->apwlo_basis_size(), parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
+                  &fv_eigen_values[0], fv_eigen_vectors.ptr(), fv_eigen_vectors.ld());
 
     delete solver;
 }
@@ -1776,7 +1776,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
             }
         
             Timer t1("sirius::Band::solve_sv|stdevp");
-            solver->solve(parameters_.num_fv_states(), h.get_ptr(), h.ld(),
+            solver->solve(parameters_.num_fv_states(), h.ptr(), h.ld(),
                           &band_energies[ispn * parameters_.num_fv_states()],
                           &sv_eigen_vectors(0, ispn * ncol), sv_eigen_vectors.ld());
         }
@@ -1823,8 +1823,8 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         }
     
         Timer t1("sirius::Band::solve_sv|stdevp");
-        solver->solve(parameters_.num_bands(), h.get_ptr(), h.ld(), &band_energies[0], 
-                      sv_eigen_vectors.get_ptr(), sv_eigen_vectors.ld());
+        solver->solve(parameters_.num_bands(), h.ptr(), h.ld(), &band_energies[0], 
+                      sv_eigen_vectors.ptr(), sv_eigen_vectors.ld());
     }
     delete solver;
 
@@ -1892,8 +1892,8 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
         set_h<nm>(kp, effective_potential, effective_magnetic_field, h);
        
         Timer t2("sirius::Band::solve_fd|diag");
-        solver->solve(kp->apwlo_basis_size(), parameters_.num_fv_states(), h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), 
-                      &eval[0], fd_evec.get_ptr(), fd_evec.ld());
+        solver->solve(kp->apwlo_basis_size(), parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
+                      &eval[0], fd_evec.ptr(), fd_evec.ld());
     }
     
     if (parameters_.num_mag_dims() == 1)
@@ -1906,14 +1906,14 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
         set_h<uu>(kp, effective_potential, effective_magnetic_field, h);
        
         Timer t2("sirius::Band::solve_fd|diag");
-        solver->solve(kp->apwlo_basis_size(), parameters_.num_fv_states(), h.get_ptr(), h.ld(), o.get_ptr(), o.ld(), 
+        solver->solve(kp->apwlo_basis_size(), parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
                       &eval[0], &fd_evec(0, 0), fd_evec.ld());
         t2.stop();
 
         set_h<dd>(kp, effective_potential, effective_magnetic_field, h);
         
         t2.start();
-        solver->solve(kp->apwlo_basis_size(), parameters_.num_fv_states(), h.get_ptr(), h.ld(), o1.get_ptr(), o1.ld(), 
+        solver->solve(kp->apwlo_basis_size(), parameters_.num_fv_states(), h.ptr(), h.ld(), o1.ptr(), o1.ld(), 
                       &eval[parameters_.num_fv_states()], &fd_evec(0, parameters_.spl_fv_states_col().local_size()), fd_evec.ld());
         t2.stop();
     }

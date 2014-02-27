@@ -66,9 +66,9 @@ void Periodic_function<T>::allocate(bool allocate_global_mt, bool allocate_globa
 template <typename T>
 void Periodic_function<T>::zero()
 {
-    if (f_mt_.get_ptr()) f_mt_.zero();
-    if (f_it_.get_ptr()) f_it_.zero();
-    if (f_pw_.get_ptr()) f_pw_.zero();
+    if (f_mt_.ptr()) f_mt_.zero();
+    if (f_it_.ptr()) f_it_.zero();
+    if (f_pw_.ptr()) f_pw_.zero();
     if (unit_cell_->full_potential())
     {
         for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc)->zero();
@@ -97,12 +97,12 @@ inline void Periodic_function<T>::sync(bool sync_mt, bool sync_it)
 {
     Timer t("sirius::Periodic_function::sync");
 
-    if (f_it_.get_ptr() != NULL && sync_it)
+    if (f_it_.ptr() != NULL && sync_it)
     {
         Platform::allgather(&f_it_(0), fft_->global_offset(), fft_->local_size());
     }
     
-    if (f_mt_.get_ptr() != NULL && sync_mt)
+    if (f_mt_.ptr() != NULL && sync_mt)
     {
         Platform::allgather(&f_mt_(0, 0, 0), 
                             f_mt_.size(0) * f_mt_.size(1) * unit_cell_->spl_num_atoms().global_offset(), 

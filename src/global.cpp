@@ -219,7 +219,7 @@ void Global::initialize()
                 map_ranks(i, j) = mpi_grid().cart_rank(comm, xy);
             }
         }
-        linalg<scalapack>::gridmap(&blacs_context_, map_ranks.get_ptr(), map_ranks.ld(), nrow, ncol);
+        linalg<scalapack>::gridmap(&blacs_context_, map_ranks.ptr(), map_ranks.ld(), nrow, ncol);
 
         // check the grid
         int nrow1, ncol1, irow1, icol1;

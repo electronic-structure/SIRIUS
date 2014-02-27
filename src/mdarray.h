@@ -174,7 +174,7 @@ template <typename T, int ND> class mdarray_base
                     catch(...)
                     {
                         std::stringstream s;
-                        s << "Error allocating " << ND << "-dimensional array of size " << sz * sizeof(T);
+                        s << "Error allocating " << ND << "-dimensional array of size " << sz * sizeof(T) << " bytes";
                         error_local(__FILE__, __LINE__, s);
                     }
                     allocated_ = true;
@@ -219,7 +219,7 @@ template <typename T, int ND> class mdarray_base
             mdarray_ptr = ptr;
         }
         
-        T* get_ptr()
+        T* ptr()
         {
             return mdarray_ptr;
         }
@@ -248,7 +248,7 @@ template <typename T, int ND> class mdarray_base
                 if (dest.d[i].start() != d[i].start() || dest.d[i].end() != d[i].end())
                     error_local(__FILE__, __LINE__, "array dimensions don't match");
             }
-            memcpy(dest.get_ptr(), get_ptr(), size() * sizeof(T));
+            memcpy(dest.ptr(), ptr(), size() * sizeof(T));
         }
 
         #ifdef _GPU_
