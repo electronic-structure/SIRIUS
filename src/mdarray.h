@@ -6,8 +6,6 @@
 #include "error_handling.h"
 
 /** \todo change to long int64_t for indices 
-    \todo rename get_ptr_device() to ptr_device()
-    \todo rename get_ptr() to ptr()
 */
 
 class dimension 
@@ -307,10 +305,10 @@ template <typename T, int ND> class mdarray_base
             cuda_async_copy_to_host(mdarray_ptr, mdarray_ptr_device, size() * sizeof(T), stream_id);
         }
 
-        inline T* get_ptr_device()
-        {
-            return mdarray_ptr_device;
-        }
+        //== inline T* ptr_device()
+        //== {
+        //==     return mdarray_ptr_device;
+        //== }
 
         void zero_on_device()
         {
@@ -378,6 +376,11 @@ template <typename T> class mdarray<T, 1> : public mdarray_base<T, 1>
         }
 
         #ifdef _GPU_
+        inline T* ptr_device()
+        {
+            return this->mdarray_ptr_device;
+        }
+
         inline T* ptr_device(const int i0)
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
@@ -429,6 +432,11 @@ template <typename T> class mdarray<T, 2> : public mdarray_base<T, 2>
         }
     
         #ifdef _GPU_
+        inline T* ptr_device()
+        {
+            return this->mdarray_ptr_device;
+        }
+
         inline T* ptr_device(const int i0, const int i1) 
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
@@ -483,6 +491,11 @@ template <typename T> class mdarray<T, 3> : public mdarray_base<T, 3>
         }
 
         #ifdef _GPU_
+        inline T* ptr_device()
+        {
+            return this->mdarray_ptr_device;
+        }
+
         inline T* ptr_device(const int i0, const int i1, const int i2) 
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
@@ -540,6 +553,11 @@ template <typename T> class mdarray<T, 4> : public mdarray_base<T, 4>
         }
 
         #ifdef _GPU_
+        inline T* ptr_device()
+        {
+            return this->mdarray_ptr_device;
+        }
+
         inline T* ptr_device(const int i0, const int i1, const int i2, const int i3) 
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());

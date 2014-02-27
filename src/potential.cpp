@@ -515,10 +515,10 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
 //==             }
 //==             jl_coefs.async_copy_to_device(thread_id);
 //== 
-//==             sbessel_vlm_inner_product_gpu(kargs.get_ptr_device(), parameters_.lmmax_pot(), parameters_.num_atoms(), 
-//==                                           iat_by_ia.get_ptr_device(), l_by_lm_.get_ptr_device(), 
-//==                                           nmtp_by_iat.get_ptr_device(), r_dr.get_ptr_device(), 
-//==                                           jl_coefs.get_ptr_device(), vlm_coefs.get_ptr_device(), jvlm_loc.get_ptr_device(), 
+//==             sbessel_vlm_inner_product_gpu(kargs.ptr_device(), parameters_.lmmax_pot(), parameters_.num_atoms(), 
+//==                                           iat_by_ia.ptr_device(), l_by_lm_.ptr_device(), 
+//==                                           nmtp_by_iat.ptr_device(), r_dr.ptr_device(), 
+//==                                           jl_coefs.ptr_device(), vlm_coefs.ptr_device(), jvlm_loc.ptr_device(), 
 //==                                           thread_id);
 //== 
 //==             jvlm_loc.async_copy_to_host(thread_id);
@@ -1135,14 +1135,14 @@ void Potential::generate_d_mtrx_gpu()
 
             compute_d_mtrx_valence_gpu(rl->spl_num_gvec().local_size(), 
                                        nbf * (nbf + 1) / 2, 
-                                       veff_gpu.get_ptr_device(), 
-                                       gvec.get_ptr_device(), 
+                                       veff_gpu.ptr_device(), 
+                                       gvec.ptr_device(), 
                                        apos[0], 
                                        apos[1], 
                                        apos[2], 
-                                       vtmp_gpu.get_ptr_device(),
-                                       atom_type->uspp().q_pw.get_ptr_device(),
-                                       d_mtrx_gpu.get_ptr_device(), 
+                                       vtmp_gpu.ptr_device(),
+                                       atom_type->uspp().q_pw.ptr_device(),
+                                       d_mtrx_gpu.ptr_device(), 
                                        thread_id);
                                        
             d_mtrx_gpu.async_copy_to_host(thread_id);

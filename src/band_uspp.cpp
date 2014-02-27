@@ -89,21 +89,21 @@ void* exec_gpu_fft(void* args__)
         if (!done)
         {
             cublas_set_matrix(args->kp->num_gkvec(), nfft_max, sizeof(double_complex), &(*args->phi)(0, i), args->phi->ld(), 
-                              args->kappa->get_ptr_device(), args->kappa->ld());
+                              args->kappa->ptr_device(), args->kappa->ld());
             
             // use gamma as fft buffer
-            fft.batch_load(args->kp->num_gkvec(), fft_index_coarse.get_ptr_device(), args->kappa->get_ptr_device(), 
-                           args->gamma->get_ptr_device());
+            fft.batch_load(args->kp->num_gkvec(), fft_index_coarse.ptr_device(), args->kappa->ptr_device(), 
+                           args->gamma->ptr_device());
 
-            fft.transform(1, args->gamma->get_ptr_device());
-            scale_matrix_rows_gpu(fft.size(), nfft_max, args->gamma->get_ptr_device(), args->veff->get_ptr_device());
-            fft.transform(-1, args->gamma->get_ptr_device());
+            fft.transform(1, args->gamma->ptr_device());
+            scale_matrix_rows_gpu(fft.size(), nfft_max, args->gamma->ptr_device(), args->veff->ptr_device());
+            fft.transform(-1, args->gamma->ptr_device());
 
-            fft.batch_unload(args->kp->num_gkvec(), fft_index_coarse.get_ptr_device(), args->gamma->get_ptr_device(), 
-                             args->kappa->get_ptr_device());
+            fft.batch_unload(args->kp->num_gkvec(), fft_index_coarse.ptr_device(), args->gamma->ptr_device(), 
+                             args->kappa->ptr_device());
 
             cublas_get_matrix(args->kp->num_gkvec(), nfft_max, sizeof(double_complex), 
-                              args->kappa->get_ptr_device(), args->kappa->ld(),
+                              args->kappa->ptr_device(), args->kappa->ld(),
                               &(*args->hphi)(0, i), args->hphi->ld());
         }
     }
@@ -467,11 +467,11 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
     // create <G+k|beta> and store it in gamma matrix
     create_beta_pw_gpu(kp->num_gkvec(), 
                        parameters_.unit_cell()->num_beta_a(), 
-                       parameters_.unit_cell()->beta_t_idx().get_ptr_device(),
-                       kp->beta_pw_t().get_ptr_device(),
-                       kp->gkvec().get_ptr_device(),
-                       parameters_.unit_cell()->atom_pos().get_ptr_device(),
-                       gamma.get_ptr_device());
+                       parameters_.unit_cell()->beta_t_idx().ptr_device(),
+                       kp->beta_pw_t().ptr_device(),
+                       kp->gkvec().ptr_device(),
+                       parameters_.unit_cell()->atom_pos().ptr_device(),
+                       gamma.ptr_device());
 
     parameters_.unit_cell()->beta_t_idx().deallocate_on_device();
     parameters_.unit_cell()->atom_pos().deallocate_on_device();
@@ -504,8 +504,8 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 
     double_complex zone(1, 0);
     // compute <G+k|beta> * D*<beta|phi> and add to hphi
-    blas<gpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), &zone, gamma.get_ptr_device(), gamma.ld(), 
-                    tmp.get_ptr_device(), tmp.ld(), &zone, kappa.get_ptr_device(), kappa.ld());
+    blas<gpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), &zone, gamma.ptr_device(), gamma.ld(), 
+                    tmp.ptr_device(), tmp.ld(), &zone, kappa.ptr_device(), kappa.ld());
 
     q_mtrx_packed.allocate_on_device();
     q_mtrx_packed.copy_to_device();
@@ -522,8 +522,8 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
     q_mtrx_packed.deallocate_on_device();
 
     // computr <G+k|beta> * Q*<beta|phi> and add to ophi
-    blas<gpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), &zone, gamma.get_ptr_device(), gamma.ld(), 
-                    tmp.get_ptr_device(), tmp.ld(), &zone, kappa.ptr_device(0, n), kappa.ld());
+    blas<gpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), &zone, gamma.ptr_device(), gamma.ld(), 
+                    tmp.ptr_device(), tmp.ld(), &zone, kappa.ptr_device(0, n), kappa.ld());
     
     kappa.copy_to_host();
     for (int j = 0; j < n; j++)
@@ -639,12 +639,12 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 //==     generate_beta_phi_gpu(kp->num_gkvec(), 
 //==                           parameters_.unit_cell()->num_beta_a(), 
 //==                           n, 
-//==                           parameters_.unit_cell()->beta_t_idx().get_ptr_device(),
-//==                           parameters_.unit_cell()->atom_pos().get_ptr_device(),
-//==                           kp->gkvec_gpu().get_ptr_device(),
-//==                           kp->beta_pw().get_ptr_device(),
-//==                           phi.get_ptr_device(),
-//==                           beta_phi.get_ptr_device());
+//==                           parameters_.unit_cell()->beta_t_idx().ptr_device(),
+//==                           parameters_.unit_cell()->atom_pos().ptr_device(),
+//==                           kp->gkvec_gpu().ptr_device(),
+//==                           kp->beta_pw().ptr_device(),
+//==                           phi.ptr_device(),
+//==                           beta_phi.ptr_device());
 //== 
 //== 
 //==     
@@ -658,33 +658,33 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 //==         create_single_beta_pw_gpu(kp->num_gkvec(), 
 //==                                   nbf,
 //==                                   ofs,
-//==                                   parameters_.unit_cell()->beta_t_idx().get_ptr_device(),
-//==                                   kp->beta_pw().get_ptr_device(),
-//==                                   kp->gkvec_gpu().get_ptr_device(),
-//==                                   parameters_.unit_cell()->atom_pos().get_ptr_device(),
-//==                                   beta_pw.get_ptr_device());
+//==                                   parameters_.unit_cell()->beta_t_idx().ptr_device(),
+//==                                   kp->beta_pw().ptr_device(),
+//==                                   kp->gkvec_gpu().ptr_device(),
+//==                                   parameters_.unit_cell()->atom_pos().ptr_device(),
+//==                                   beta_pw.ptr_device());
 //== 
 //== 
 //==         // compute <beta|phi>
-//==         //blas<gpu>::gemm(2, 0, nbf, n, kp->num_gkvec(), beta_pw.get_ptr_device(), beta_pw.ld(), 
-//==         //                phi.get_ptr_device(), phi.ld(), beta_phi.get_ptr_device(), beta_phi.ld());
+//==         //blas<gpu>::gemm(2, 0, nbf, n, kp->num_gkvec(), beta_pw.ptr_device(), beta_pw.ld(), 
+//==         //                phi.ptr_device(), phi.ld(), beta_phi.ptr_device(), beta_phi.ld());
 //== 
 //== 
 //==         // compute D*<beta|phi>
-//==         blas<gpu>::gemm(0, 0, nbf, n, nbf, d_mtrx_packed.get_ptr_device(mtrx_ofs(ia)), nbf, 
-//==                         beta_phi.get_ptr_device(ofs), beta_phi.ld(), tmp.get_ptr_device(), tmp.ld());
+//==         blas<gpu>::gemm(0, 0, nbf, n, nbf, d_mtrx_packed.ptr_device(mtrx_ofs(ia)), nbf, 
+//==                         beta_phi.ptr_device(ofs), beta_phi.ld(), tmp.ptr_device(), tmp.ld());
 //== 
 //==         // multiply by <G+k|beta> and add to hphi
-//==         blas<gpu>::gemm(0, 0, kp->num_gkvec(), n, nbf, &zone, beta_pw.get_ptr_device(), beta_pw.ld(), 
-//==                         tmp.get_ptr_device(), tmp.ld(), &zone, hphi.get_ptr_device(), hphi.ld());
+//==         blas<gpu>::gemm(0, 0, kp->num_gkvec(), n, nbf, &zone, beta_pw.ptr_device(), beta_pw.ld(), 
+//==                         tmp.ptr_device(), tmp.ld(), &zone, hphi.ptr_device(), hphi.ld());
 //== 
 //==         // compute Q*<beta|phi>
-//==         blas<gpu>::gemm(0, 0, nbf, n, nbf, q_mtrx_packed.get_ptr_device(mtrx_ofs(ia)), nbf, 
-//==                         beta_phi.get_ptr_device(ofs), beta_phi.ld(), tmp.get_ptr_device(), tmp.ld());
+//==         blas<gpu>::gemm(0, 0, nbf, n, nbf, q_mtrx_packed.ptr_device(mtrx_ofs(ia)), nbf, 
+//==                         beta_phi.ptr_device(ofs), beta_phi.ld(), tmp.ptr_device(), tmp.ld());
 //==         
 //==         // multiply by <G+k|beta> and add to ophi
-//==         blas<gpu>::gemm(0, 0, kp->num_gkvec(), n, nbf, &zone, beta_pw.get_ptr_device(), beta_pw.ld(), 
-//==                         tmp.get_ptr_device(), tmp.ld(), &zone, ophi.get_ptr_device(), ophi.ld());
+//==         blas<gpu>::gemm(0, 0, kp->num_gkvec(), n, nbf, &zone, beta_pw.ptr_device(), beta_pw.ld(), 
+//==                         tmp.ptr_device(), tmp.ld(), &zone, ophi.ptr_device(), ophi.ld());
 //==     }
 //== 
 //==     parameters_.unit_cell()->beta_t_idx().deallocate_on_device();
@@ -700,7 +700,7 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 //==     d_mtrx_packed.deallocate_on_device();
 //== 
 //== 
-//==     ophi.copy_to_host(hphi.get_ptr_device());
+//==     ophi.copy_to_host(hphi.ptr_device());
 //== 
 //==     for (int j = 0; j < n; j++)
 //==     {
@@ -1134,23 +1134,23 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
         apply_h_o_uspp_gpu(kp, veff_it_coarse, pw_ekin, n, gamma, kappa, &phi(0, N), &hphi(0, N), &ophi(0, N));
 
         // copy all phi to GPU
-        cublas_set_matrix(kp->num_gkvec(), n + N, sizeof(double_complex), phi.ptr(), phi.ld(), gamma.get_ptr_device(), gamma.ld());
+        cublas_set_matrix(kp->num_gkvec(), n + N, sizeof(double_complex), phi.ptr(), phi.ld(), gamma.ptr_device(), gamma.ld());
 
         // temporary storage for Hamiltonian and overlap 
         mdarray<double_complex, 2> tmp(NULL, N + n, n);
         tmp.allocate_on_device();
 
         // compute the Hamiltonian matrix: <phi|H|phi>
-        blas<gpu>::gemm(2, 0, N + n, n, kp->num_gkvec(), gamma.get_ptr_device(), gamma.ld(), 
-                        kappa.get_ptr_device(), kappa.ld(), tmp.get_ptr_device(), tmp.ld());
+        blas<gpu>::gemm(2, 0, N + n, n, kp->num_gkvec(), gamma.ptr_device(), gamma.ld(), 
+                        kappa.ptr_device(), kappa.ld(), tmp.ptr_device(), tmp.ld());
 
-        cublas_get_matrix(N + n, n, sizeof(double_complex), tmp.get_ptr_device(), tmp.ld(), &hmlt(0, N), hmlt.ld());
+        cublas_get_matrix(N + n, n, sizeof(double_complex), tmp.ptr_device(), tmp.ld(), &hmlt(0, N), hmlt.ld());
 
         // compute overlap matrix <phi|O|phi>
-        blas<gpu>::gemm(2, 0, N + n, n, kp->num_gkvec(), gamma.get_ptr_device(), gamma.ld(), 
-                        kappa.ptr_device(0, n), kappa.ld(), tmp.get_ptr_device(), tmp.ld());
+        blas<gpu>::gemm(2, 0, N + n, n, kp->num_gkvec(), gamma.ptr_device(), gamma.ld(), 
+                        kappa.ptr_device(0, n), kappa.ld(), tmp.ptr_device(), tmp.ld());
 
-        cublas_get_matrix(N + n, n, sizeof(double_complex), tmp.get_ptr_device(), tmp.ld(), &ovlp(0, N), ovlp.ld());
+        cublas_get_matrix(N + n, n, sizeof(double_complex), tmp.ptr_device(), tmp.ld(), &ovlp(0, N), ovlp.ld());
 
         tmp.deallocate_on_device();
 
@@ -1245,33 +1245,33 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
         /* Alternative way to estimate basis update: take residuals with norm > eps */
         else
         {
-            cublas_set_matrix(N, N, sizeof(double_complex), evec.ptr(), evec.ld(), evec.get_ptr_device(), evec.ld());
+            cublas_set_matrix(N, N, sizeof(double_complex), evec.ptr(), evec.ld(), evec.ptr_device(), evec.ld());
 
             // copy all ophi to GPU
-            cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), ophi.ptr(), ophi.ld(), gamma.get_ptr_device(), gamma.ld());
+            cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), ophi.ptr(), ophi.ld(), gamma.ptr_device(), gamma.ld());
             
             // O\Psi_{i} = O\phi_{mu} * Z_{mu, i}
-            blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.get_ptr_device(), gamma.ld(), 
-                            evec.get_ptr_device(), evec.ld(), kappa.get_ptr_device(), kappa.ld());
+            blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.ptr_device(), gamma.ld(), 
+                            evec.ptr_device(), evec.ld(), kappa.ptr_device(), kappa.ld());
         
             mdarray<double, 1> eval_gpu(&eval[0], num_bands);
             eval_gpu.allocate_on_device();
             eval_gpu.copy_to_device();
             // multiply O\Psi_{i} with energy
-            scale_matrix_columns_gpu(kp->num_gkvec(), num_bands, kappa.get_ptr_device(), eval_gpu.get_ptr_device());
+            scale_matrix_columns_gpu(kp->num_gkvec(), num_bands, kappa.ptr_device(), eval_gpu.ptr_device());
             eval_gpu.deallocate_on_device();
             
             // copy all hphi to GPU
-            cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), hphi.ptr(), hphi.ld(), gamma.get_ptr_device(), gamma.ld());
+            cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), hphi.ptr(), hphi.ld(), gamma.ptr_device(), gamma.ld());
             
             double_complex zone(1, 0);
             double_complex mzone(-1, 0);
             // r_{i} = H\Psi_{i} - E_{i}O\Psi_{i}
-            blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, &zone, gamma.get_ptr_device(), gamma.ld(), 
-                            evec.get_ptr_device(), evec.ld(), &mzone, kappa.get_ptr_device(), kappa.ld());
+            blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, &zone, gamma.ptr_device(), gamma.ld(), 
+                            evec.ptr_device(), evec.ld(), &mzone, kappa.ptr_device(), kappa.ld());
            
             // copy residuals to the host memory
-            cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex), kappa.get_ptr_device(), kappa.ld(), 
+            cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex), kappa.ptr_device(), kappa.ld(), 
                               kappa.ptr(), kappa.ld());
 
             Timer t("sirius::Band::diag_fv_uspp_gpu|residuals|cpu_part");
@@ -1352,13 +1352,13 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
             Timer t3("sirius::Band::diag_fv_uspp_gpu|update_phi");
             // copy all phi to GPU
             cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), phi.ptr(), phi.ld(), 
-                              gamma.get_ptr_device(), gamma.ld());
+                              gamma.ptr_device(), gamma.ld());
             // \Psi_{i} = \phi_{mu} * Z_{mu, i}
-            blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.get_ptr_device(), gamma.ld(), 
-                            evec.get_ptr_device(), evec.ld(), kappa.get_ptr_device(), kappa.ld());
+            blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.ptr_device(), gamma.ld(), 
+                            evec.ptr_device(), evec.ld(), kappa.ptr_device(), kappa.ld());
 
             cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex), 
-                              kappa.get_ptr_device(), kappa.ld(), psi.ptr(), psi.ld());
+                              kappa.ptr_device(), kappa.ld(), psi.ptr(), psi.ld());
             t3.stop();
 
             if (n == 0 || k == (max_iter - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
@@ -1376,40 +1376,40 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
 
                 // compute H\Psi
                 cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), hphi.ptr(), hphi.ld(), 
-                                  gamma.get_ptr_device(), gamma.ld());
+                                  gamma.ptr_device(), gamma.ld());
 
-                blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.get_ptr_device(), gamma.ld(), 
-                                evec.get_ptr_device(), evec.ld(), kappa.ptr_device(0, num_bands), kappa.ld());
+                blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.ptr_device(), gamma.ld(), 
+                                evec.ptr_device(), evec.ld(), kappa.ptr_device(0, num_bands), kappa.ld());
                 
                 // copy H\Psi to host memory
                 cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex),
                                   kappa.ptr_device(0, num_bands), kappa.ld(), hphi.ptr(), hphi.ld());
 
                 // compute the Hamiltonian matrix: <Psi|H|Psi>
-                blas<gpu>::gemm(2, 0, num_bands, num_bands, kp->num_gkvec(), kappa.get_ptr_device(), kappa.ld(), 
-                                kappa.ptr_device(0, num_bands), kappa.ld(), tmp.get_ptr_device(), tmp.ld());
+                blas<gpu>::gemm(2, 0, num_bands, num_bands, kp->num_gkvec(), kappa.ptr_device(), kappa.ld(), 
+                                kappa.ptr_device(0, num_bands), kappa.ld(), tmp.ptr_device(), tmp.ld());
 
                 // copy Hamiltonian to host
-                cublas_get_matrix(num_bands, num_bands, sizeof(double_complex), tmp.get_ptr_device(), tmp.ld(), 
+                cublas_get_matrix(num_bands, num_bands, sizeof(double_complex), tmp.ptr_device(), tmp.ld(), 
                                   hmlt_old.ptr(), hmlt_old.ld());
                 
                 // compute O\Psi
                 cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), ophi.ptr(), ophi.ld(), 
-                                  gamma.get_ptr_device(), gamma.ld());
+                                  gamma.ptr_device(), gamma.ld());
 
-                blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.get_ptr_device(), gamma.ld(), 
-                                evec.get_ptr_device(), evec.ld(), kappa.ptr_device(0, num_bands), kappa.ld());
+                blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.ptr_device(), gamma.ld(), 
+                                evec.ptr_device(), evec.ld(), kappa.ptr_device(0, num_bands), kappa.ld());
 
                 // copy O\Psi to host memory
                 cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex),
                                   kappa.ptr_device(0, num_bands), kappa.ld(), ophi.ptr(), ophi.ld());
 
                 // compute the overlap matrix: <Psi|O|Psi>
-                blas<gpu>::gemm(2, 0, num_bands, num_bands, kp->num_gkvec(), kappa.get_ptr_device(), kappa.ld(), 
-                                kappa.ptr_device(0, num_bands), kappa.ld(), tmp.get_ptr_device(), tmp.ld());
+                blas<gpu>::gemm(2, 0, num_bands, num_bands, kp->num_gkvec(), kappa.ptr_device(), kappa.ld(), 
+                                kappa.ptr_device(0, num_bands), kappa.ld(), tmp.ptr_device(), tmp.ld());
 
                 // copy overlap matrix to host
-                cublas_get_matrix(num_bands, num_bands, sizeof(double_complex), tmp.get_ptr_device(), tmp.ld(), 
+                cublas_get_matrix(num_bands, num_bands, sizeof(double_complex), tmp.ptr_device(), tmp.ld(), 
                                   ovlp_old.ptr(), ovlp_old.ld());
              
                 // update phi with Psi

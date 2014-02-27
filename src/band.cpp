@@ -989,8 +989,8 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp, Periodic_function
         alm.async_copy_to_device(-1); // TODO: copy exact ammount of data
 
         blas<gpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
-                        alm.get_ptr_device(), alm.ld(), alm.ptr_device(apw_offset_col, 0), alm.ld(), &zone, 
-                        o.get_ptr_device(), o.ld()); 
+                        alm.ptr_device(), alm.ld(), alm.ptr_device(apw_offset_col, 0), alm.ld(), &zone, 
+                        o.ptr_device(), o.ld()); 
 
         // apply muffin-tin part to <bra|
         apply_hmt_to_apw<nm>(kp->num_gkvec_row(), ia, alm, halm);
@@ -999,17 +999,17 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp, Periodic_function
         
         // generate <apw|H|apw> block; |ket> is conjugated, so it is "unconjugated" back
         blas<gpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
-                        halm.get_ptr_device(), halm.ld(), alm.ptr_device(apw_offset_col, 0), alm.ld(), &zone,
-                        h.get_ptr_device(), h.ld());
+                        halm.ptr_device(), halm.ld(), alm.ptr_device(apw_offset_col, 0), alm.ld(), &zone,
+                        h.ptr_device(), h.ld());
         
         // setup apw-lo blocks
         set_fv_h_o_apw_lo(kp, type, atom, ia, alm, h, o);
     }
     
-    cublas_get_matrix_async(kp->num_gkvec_row(), kp->num_gkvec_col(), sizeof(double_complex), h.get_ptr_device(), h.ld(), 
+    cublas_get_matrix_async(kp->num_gkvec_row(), kp->num_gkvec_col(), sizeof(double_complex), h.ptr_device(), h.ld(), 
                             h.ptr(), h.ld(), -1);
     
-    cublas_get_matrix_async(kp->num_gkvec_row(), kp->num_gkvec_col(), sizeof(double_complex), o.get_ptr_device(), o.ld(), 
+    cublas_get_matrix_async(kp->num_gkvec_row(), kp->num_gkvec_col(), sizeof(double_complex), o.ptr_device(), o.ld(), 
                             o.ptr(), o.ld(), -1);
 
     set_fv_h_o_lo_lo(kp, h, o);
