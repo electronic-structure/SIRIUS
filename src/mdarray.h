@@ -312,11 +312,6 @@ template <typename T, int ND> class mdarray_base
             return mdarray_ptr_device;
         }
 
-        inline T* get_ptr_device(int idx)
-        {
-            return &mdarray_ptr_device[idx];
-        }
-
         void zero_on_device()
         {
             cuda_memset(mdarray_ptr_device, 0, size() * sizeof(T));
