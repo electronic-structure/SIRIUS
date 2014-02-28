@@ -1316,6 +1316,23 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
         case gpu:
         {
             set_fv_h_o<gpu, full_potential_lapwlo>(kp, effective_potential, h, o);
+            
+            mdarray<double_complex, 2> h1(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
+            mdarray<double_complex, 2> o1(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
+            set_fv_h_o<cpu, full_potential_lapwlo>(kp, effective_potential, h1, o1);
+
+            double diff_h = 0;
+            double diff_o = 0;
+            for (int j = 0; j < kp->apwlo_basis_size_col(); j++)
+            {
+                for (int i = 0; i < kp->apwlo_basis_size_row(); i++)
+                {
+                    diff_h += std::abs(h(i, j) - h1(i, j));
+                    diff_o += std::abs(o(i, j) - o1(i, j));
+                }
+            }
+            std::cout << "diff_h = " << diff_h << " diff_o = " << diff_o << std::endl;
+
             break;
         }
         #endif
