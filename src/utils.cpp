@@ -151,6 +151,8 @@ std::vector<int> Utils::l_by_lm(int lmax)
 
 std::pair< vector3d<double>, vector3d<int> > Utils::reduce_coordinates(vector3d<double> coord)
 {
+    const double eps = 1e-10;
+
     std::pair< vector3d<double>, vector3d<int> > v; 
     
     v.first = coord;
@@ -158,7 +160,19 @@ std::pair< vector3d<double>, vector3d<int> > Utils::reduce_coordinates(vector3d<
     {
         v.second[i] = (int)floor(v.first[i]);
         v.first[i] -= v.second[i];
-        if (v.first[i] < 0.0 || v.first[i] >= 1.0) error_local(__FILE__, __LINE__, "wrong fractional coordinates");
+        if (v.first[i] < -eps || v.first[i] > 1.0 + eps)
+        {
+            std::stringstream s;
+            s << "wrong fractional coordinates" << std::endl
+              << v.first[0] << " " << v.first[1] << " " << v.first[2];
+            error_local(__FILE__, __LINE__, s);
+        }
+        if (v.first[i] < 0) v.first[i] = 0;
+        if (v.first[i] >= (1 - eps))
+        {
+            v.first[i] = 0;
+            v.second[i] += 1;
+        }
     }
     return v;
 }
@@ -210,4 +224,16 @@ vector3d<int> Utils::find_translation_limits(double radius, double lattice_vecto
         }
     }
 }
+
+template<> 
+std::string Utils::to_string<double>(double argument)
+{
+    char buf[100];
+    int len = snprintf(buf, 100, "%.14f", argument);
+    for (int i = len; i >= 1; i--) if (buf[i] == '0' && buf[i - 1] == '0') buf[i] = 0;
+    return std::string(buf);
+}
+
+
+
 

@@ -68,6 +68,7 @@ class Utils
 
             return 0.5 * (1 - gsl_sf_erf(e)) - 1 - 0.25 * exp(-e * e) * (a + 2 * e - 2 * a * e * e) / sqrt(pi);
         }
+
         /// Convert variable of type T to a string
         template <typename T>
         static std::string to_string(T argument)
@@ -75,6 +76,22 @@ class Utils
             std::stringstream s;
             s << argument;
             return s.str();
+        }
+
+        static inline double phi_by_sin_cos(double sinp, double cosp)
+        {
+            double phi = atan2(sinp, cosp);
+            if (phi < 0) phi += twopi;
+            return phi;
+        }
+
+        static inline long double factorial(int n)
+        {
+            assert(n >= 0);
+
+            long double result = 1.0L;
+            for (int i = 1; i <= n; i++) result *= i;
+            return result;
         }
 
         static void write_matrix(const std::string& fname, mdarray<double_complex, 2>& matrix, int nrow, int ncol,

@@ -160,13 +160,13 @@ class Atom
 
         void sync_radial_integrals(int rank)
         {
-            Platform::bcast(h_radial_integrals_.get_ptr(), (int)h_radial_integrals_.size(), rank);
-            if (num_mag_dims_) Platform::bcast(b_radial_integrals_.get_ptr(), (int)b_radial_integrals_.size(), rank);
+            Platform::bcast(h_radial_integrals_.ptr(), (int)h_radial_integrals_.size(), rank);
+            if (num_mag_dims_) Platform::bcast(b_radial_integrals_.ptr(), (int)b_radial_integrals_.size(), rank);
         }
 
         void sync_occupation_matrix(int rank)
         {
-            Platform::bcast(occupation_matrix_.get_ptr(), (int)occupation_matrix_.size(), rank);
+            Platform::bcast(occupation_matrix_.ptr(), (int)occupation_matrix_.size(), rank);
         }
 
         inline int offset_aw()
@@ -263,19 +263,19 @@ class Atom
 
         inline void set_occupation_matrix(const double_complex* source)
         {
-            memcpy(occupation_matrix_.get_ptr(), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
+            memcpy(occupation_matrix_.ptr(), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
             apply_uj_correction_ = false;
         }
         
         inline void get_occupation_matrix(double_complex* destination)
         {
-            memcpy(destination, occupation_matrix_.get_ptr(), 16 * 16 * 2 * 2 * sizeof(double_complex));
+            memcpy(destination, occupation_matrix_.ptr(), 16 * 16 * 2 * 2 * sizeof(double_complex));
         }
 
         inline void set_uj_correction_matrix(const int l, const double_complex* source)
         {
             uj_correction_l_ = l;
-            memcpy(uj_correction_matrix_.get_ptr(), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
+            memcpy(uj_correction_matrix_.ptr(), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
             apply_uj_correction_ = true;
         }
 

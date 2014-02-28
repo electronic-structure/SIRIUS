@@ -11,6 +11,7 @@ extern "C" {
 #include "atom_symmetry_class.h"
 #include "atom.h"
 #include "mpi_grid.h"
+#include "symmetry.h"
 
 namespace sirius {
 
@@ -125,14 +126,6 @@ class Unit_cell
 
         mdarray<double, 2> atom_pos_;
 
-
-        /// Get crystal symmetries and equivalent atoms.
-        /** Makes a call to spglib providing the basic unit cell information: lattice vectors and atomic types 
-            and positions. Gets back symmetry operations and a table of equivalent atoms. The table of equivalent 
-            atoms is then used to make a list of atom symmetry classes and related data.
-        */
-        void get_symmetry();
-        
         /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
         /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
             bethween nearest atoms. Initial values of the muffin-tin radii (provided in the input file) 
@@ -148,6 +141,9 @@ class Unit_cell
     
         Unit_cell(electronic_structure_method_t esm_type__) 
             : spg_dataset_(NULL), 
+              total_nuclear_charge_(0),
+              num_core_electrons_(0),
+              num_valence_electrons_(0),
               auto_rmt_(0), 
               lmax_beta_(-1),
               esm_type_(esm_type__)
@@ -207,9 +203,18 @@ class Unit_cell
         void print_info();
 
         unit_cell_parameters_descriptor unit_cell_parameters();
+        
+        /// Get crystal symmetries and equivalent atoms.
+        /** Makes a call to spglib providing the basic unit cell information: lattice vectors and atomic types 
+            and positions. Gets back symmetry operations and a table of equivalent atoms. The table of equivalent 
+            atoms is then used to make a list of atom symmetry classes and related data.
+        */
+        void get_symmetry();
 
         /// Write structure to CIF file
         void write_cif();
+
+        void write_json();
         
         /// Set lattice vectors.
         /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the
@@ -228,7 +233,21 @@ class Unit_cell
         void solve_free_atoms();
 
         std::string chemical_formula();
-        
+
+        int atom_id_by_position(vector3d<double> position__)
+        {
+            const double eps = 1e-10;
+
+            for (int ia = 0; ia < num_atoms(); ia++)
+            {
+                vector3d<double> pos = atom(ia)->position();
+                if (fabs(pos[0] - position__[0]) < eps && 
+                    fabs(pos[1] - position__[1]) < eps && 
+                    fabs(pos[2] - position__[2]) < eps) return ia;
+            }
+            return -1;
+        } 
+
         template <typename T>
         inline vector3d<double> get_cartesian_coordinates(vector3d<T> a)
         {

@@ -37,7 +37,7 @@ void apply_h_cpu(Global& parameters, K_point& kp, int n, std::vector<double>& v_
     }
 }
 
-struct exec_fft_args
+struct exec_fft_args_v1
 {
     int thread_id;
     Global* parameters;
@@ -48,19 +48,19 @@ struct exec_fft_args
     mdarray<double, 1>* v_r;
 };
 
-pthread_mutex_t exec_fft_mutex;
-int idxfft;
+//pthread_mutex_t exec_fft_mutex;
+//int idxfft;
 
 #ifdef _GPU_
-void* exec_gpu_fft(void* args__)
+void* exec_gpu_fft_v1(void* args__)
 {
-    exec_fft_args* args = (exec_fft_args*)args__;
+    exec_fft_args_v1* args = (exec_fft_args_v1*)args__;
 
     FFT3D<gpu> fft(args->parameters->reciprocal_lattice()->fft()->grid_size());
 
     int nfft_max = fft.num_fft_max();
     
-    fft.initialize(nfft_max);
+    fft.initialize(nfft_max, NULL);
 
     bool done = false;
 
@@ -96,9 +96,9 @@ void* exec_gpu_fft(void* args__)
     return NULL;
 }
 
-void* exec_cpu_fft(void* args__)
+void* exec_cpu_fft_v1(void* args__)
 {
-    exec_fft_args* args = (exec_fft_args*)args__;
+    exec_fft_args_v1* args = (exec_fft_args_v1*)args__;
     
     auto fft = args->parameters->reciprocal_lattice()->fft();
 
@@ -154,7 +154,7 @@ void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<double>& v_
     int num_fft_threads = std::min(Platform::num_fft_threads(), Platform::max_num_threads() - 1);
     
     std::vector<pthread_t> pthread_id(num_fft_threads + 1);
-    std::vector<exec_fft_args> args(num_fft_threads + 1);
+    std::vector<exec_fft_args_v1> args(num_fft_threads + 1);
 
     for (int i = 0; i <= num_fft_threads; i++)
     {
@@ -165,7 +165,7 @@ void apply_h_gpu(Global& parameters, K_point& kp, int n, std::vector<double>& v_
         args[i].phi = &phi;
         args[i].hphi = &hphi;
         args[i].v_r = &v_r;
-        if (i < num_fft_threads)
+        if (i < num_fft_threads || num_fft_threads == 0)
         {
             pthread_create(&pthread_id[i], NULL, exec_cpu_fft, &args[i]);
         }

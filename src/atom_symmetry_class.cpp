@@ -281,8 +281,8 @@ void Atom_symmetry_class::check_lo_linear_independence()
     std::vector<double> loprod_eval(num_lo_descriptors());
     mdarray<double_complex, 2> loprod_evec(num_lo_descriptors(), num_lo_descriptors());
 
-    stdevp.solve(num_lo_descriptors(), loprod_tmp.get_ptr(), loprod_tmp.ld(), &loprod_eval[0], 
-                 loprod_evec.get_ptr(), loprod_evec.ld());
+    stdevp.solve(num_lo_descriptors(), loprod_tmp.ptr(), loprod_tmp.ld(), &loprod_eval[0], 
+                 loprod_evec.ptr(), loprod_evec.ld());
 
     if (fabs(loprod_eval[0]) < 0.001) 
     {
@@ -539,15 +539,15 @@ void Atom_symmetry_class::sync_radial_functions(int rank)
 {
     // don't broadcast Hamiltonian radial functions, because they are used locally
     int size = (int)radial_functions_.size(0) * radial_functions_.size(1);
-    Platform::bcast(radial_functions_.get_ptr(), size, rank);
-    Platform::bcast(aw_surface_derivatives_.get_ptr(), (int)aw_surface_derivatives_.size(), rank);
+    Platform::bcast(radial_functions_.ptr(), size, rank);
+    Platform::bcast(aw_surface_derivatives_.ptr(), (int)aw_surface_derivatives_.size(), rank);
 }
 
 void Atom_symmetry_class::sync_radial_integrals(int rank)
 {
-    Platform::bcast(h_spherical_integrals_.get_ptr(), (int)h_spherical_integrals_.size(), rank);
-    Platform::bcast(o_radial_integrals_.get_ptr(), (int)o_radial_integrals_.size(), rank);
-    Platform::bcast(so_radial_integrals_.get_ptr(), (int)so_radial_integrals_.size(), rank);
+    Platform::bcast(h_spherical_integrals_.ptr(), (int)h_spherical_integrals_.size(), rank);
+    Platform::bcast(o_radial_integrals_.ptr(), (int)o_radial_integrals_.size(), rank);
+    Platform::bcast(so_radial_integrals_.ptr(), (int)so_radial_integrals_.size(), rank);
 }
 
 /** \todo OMP for radial integrals */

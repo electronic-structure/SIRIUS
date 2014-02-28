@@ -118,7 +118,7 @@ class Spheric_function
                 }
                 else
                 {
-                    memcpy(this->data_.get_ptr(), &f(0, 0), this->data_.size() * sizeof(T));
+                    memcpy(this->data_.ptr(), &f(0, 0), this->data_.size() * sizeof(T));
                 }
             }
         }

@@ -534,6 +534,73 @@ class Global
             }
         } mixer_input_section_;
 
+        /** The following part of the input file is parsed:
+            \code{.json}
+                "unit_cell" : {
+                    "atoms" : [ [label_A, [coordinates_A_1, 
+                                           coordinates_A_2,
+                                           ...
+                                          ]
+                                ],
+                                [label_B, [coordinates_B_1,
+                                           coordinates_B_2,
+                                           ...
+                                          ]
+                                ]
+                                ...
+                              ]
+                }
+            \endcode
+        */
+        struct unit_cell_input_section
+        {
+            double lattice_vectors_[3][3];
+
+            std::vector<std::string> labels_;
+            std::vector< std::vector< std::vector<double> > > coordinates_;
+
+            void read(JSON_tree parser)
+            {
+                std::vector<double> a0, a1, a2;
+                parser["unit_cell"]["lattice_vectors"][0] >> a0;
+                parser["unit_cell"]["lattice_vectors"][1] >> a1;
+                parser["unit_cell"]["lattice_vectors"][2] >> a2;
+
+                double scale = parser["unit_cell"]["lattice_vectors_scale"].get(1.0);
+
+                for (int x = 0; x < 3; x++)
+                {
+                    lattice_vectors_[0][x] = a0[x] * scale;
+                    lattice_vectors_[1][x] = a1[x] * scale;
+                    lattice_vectors_[2][x] = a2[x] * scale;
+                }
+
+                labels_.clear();
+                coordinates_.clear();
+
+                for (int iat = 0; iat < parser["unit_cell"]["atoms"].size(); iat++)
+                {
+                    std::string label;
+                    parser["unit_cell"]["atoms"][iat][0] >> label;
+                    labels_.push_back(label);
+                    coordinates_.push_back(std::vector< std::vector<double> >());
+                    for (int ia = 0; ia < parser["unit_cell"]["atoms"][iat][1].size(); ia++)
+                    {
+                        std::vector<double> v;
+                        parser["unit_cell"]["atoms"][iat][1][ia] >> v;
+
+                        if (!(v.size() == 3 || v.size() == 6)) error_global(__FILE__, __LINE__, "wrong coordinates size");
+                        if (v.size() == 3) v.resize(6, 0.0);
+
+                        coordinates_[iat].push_back(v);
+                    }
+                }
+            }
+
+        } unit_cell_input_section_;
+
+        void read_unit_cell_input();
+
         inline double iterative_solver_tolerance()
         {
             return iterative_solver_tolerance_;

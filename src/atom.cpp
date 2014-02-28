@@ -127,8 +127,8 @@ void Atom::generate_radial_integrals(MPI_Comm& comm)
         }
     }
 
-    Platform::reduce(h_radial_integrals_.get_ptr(), (int)h_radial_integrals_.size(), comm, 0);
-    if (num_mag_dims_) Platform::reduce(b_radial_integrals_.get_ptr(), (int)b_radial_integrals_.size(), comm, 0);
+    Platform::reduce(h_radial_integrals_.ptr(), (int)h_radial_integrals_.size(), comm, 0);
+    if (num_mag_dims_) Platform::reduce(b_radial_integrals_.ptr(), (int)b_radial_integrals_.size(), comm, 0);
 }
 
 void Atom::generate_radial_integrals()

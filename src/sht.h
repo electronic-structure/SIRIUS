@@ -1,6 +1,7 @@
 #ifndef __SHT_H__
 #define __SHT_H__
 
+#include <math.h>
 #include <gsl/gsl_sf_coupling.h>
 #include <gsl/gsl_sf_legendre.h>
 #include <string.h>
@@ -195,6 +196,64 @@ class SHT
         inline int lmmax()
         {
             return lmmax_;
+        }
+
+        static void wigner_d_matrix(int l, double beta, double* d_mtrx__, int ld)
+        {
+            mdarray<double, 2> d_mtrx(d_mtrx__, ld, 2 * l + 1);
+
+            long double cos_b2 = std::cos((long double)beta / 2.0L);
+            long double sin_b2 = std::sin((long double)beta / 2.0L);
+            
+            for (int m1 = -l; m1 <= l; m1++)
+            {
+                for (int m2 = -l; m2 <= l; m2++)
+                {
+                    long double d = 0;
+                    for (int j = 0; j <= std::min(l + m1, l - m2); j++)
+                    {
+                        if ((l - m2 - j) >= 0 && (l + m1 - j) >= 0 && (j + m2 - m1) >= 0)
+                        {
+                            long double g = (std::sqrt(Utils::factorial(l + m1)) / Utils::factorial(l - m2 - j)) *
+                                            (std::sqrt(Utils::factorial(l - m1)) / Utils::factorial(l + m1 - j)) * 
+                                            (std::sqrt(Utils::factorial(l - m2)) / Utils::factorial(j + m2 - m1)) * 
+                                            (std::sqrt(Utils::factorial(l + m2)) / Utils::factorial(j));
+                            d += g * pow(-1, j) * std::pow(cos_b2, 2 * l + m1 - m2 - 2 * j) * std::pow(sin_b2, 2 * j + m2 - m1);
+                        }
+                    }
+                    d_mtrx(m1 + l, m2 + l) = (double)d;
+                }
+            }
+        }
+
+        static void rotation_matrix_l(int l, vector3d<double> euler_angles, int proper_rotation, 
+                                      double_complex* rot_mtrx__, int ld)
+        {
+            mdarray<double_complex, 2> rot_mtrx(rot_mtrx__, ld, 2 * l + 1);
+
+            mdarray<double, 2> d_mtrx(2 * l + 1, 2 * l + 1);
+            wigner_d_matrix(l, euler_angles[1], &d_mtrx(0, 0), 2 * l + 1);
+
+            double p = (proper_rotation == -1) ? pow(-1.0, l) : 1.0; 
+            for (int m1 = -l; m1 <= l; m1++)
+            {
+                for (int m2 = -l; m2 <= l; m2++)
+                {
+                    rot_mtrx(m1 + l, m2 + l) = exp(double_complex(0, -euler_angles[0] * m1 - euler_angles[2] * m2)) * 
+                                               d_mtrx(m1 + l, m2 + l) * p;
+                }
+            }
+        }
+
+        static void rotation_matrix(int lmax, vector3d<double> euler_angles, int proper_rotation, 
+                                    mdarray<double_complex, 2>& rotm)
+        {
+            rotm.zero();
+
+            for (int l = 0; l <= lmax; l++)
+            {
+                rotation_matrix_l(l, euler_angles, proper_rotation, &rotm(l * l, l * l), rotm.ld());
+            }
         }
 };
 

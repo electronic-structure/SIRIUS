@@ -165,7 +165,7 @@ void Potential::update()
 void Potential::poisson_vmt(mdarray<Spheric_function<double_complex>*, 1>& rho_ylm, mdarray<Spheric_function<double_complex>*, 1>& vh_ylm, 
                             mdarray<double_complex, 2>& qmt)
 {
-    Timer t("sirius::Potential::poisson:vmt");
+    Timer t("sirius::Potential::poisson_vmt");
 
     qmt.zero();
     
@@ -409,7 +409,7 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
             }
         }
     }
-    Platform::allreduce(fpw.get_ptr(), (int)fpw.size());
+    Platform::allreduce(fpw.ptr(), (int)fpw.size());
     for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
     
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
@@ -515,10 +515,10 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
 //==             }
 //==             jl_coefs.async_copy_to_device(thread_id);
 //== 
-//==             sbessel_vlm_inner_product_gpu(kargs.get_ptr_device(), parameters_.lmmax_pot(), parameters_.num_atoms(), 
-//==                                           iat_by_ia.get_ptr_device(), l_by_lm_.get_ptr_device(), 
-//==                                           nmtp_by_iat.get_ptr_device(), r_dr.get_ptr_device(), 
-//==                                           jl_coefs.get_ptr_device(), vlm_coefs.get_ptr_device(), jvlm_loc.get_ptr_device(), 
+//==             sbessel_vlm_inner_product_gpu(kargs.ptr_device(), parameters_.lmmax_pot(), parameters_.num_atoms(), 
+//==                                           iat_by_ia.ptr_device(), l_by_lm_.ptr_device(), 
+//==                                           nmtp_by_iat.ptr_device(), r_dr.ptr_device(), 
+//==                                           jl_coefs.ptr_device(), vlm_coefs.ptr_device(), jvlm_loc.ptr_device(), 
 //==                                           thread_id);
 //== 
 //==             jvlm_loc.async_copy_to_host(thread_id);
@@ -564,7 +564,7 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
 //==         }
 //==     }
 //== 
-//==     Platform::allreduce(fpw.get_ptr(), (int)fpw.size());
+//==     Platform::allreduce(fpw.ptr(), (int)fpw.size());
 //==     for (int ig = 0; ig < parameters_.num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
 //== 
 //==     l_by_lm_.deallocate_on_device();
@@ -713,7 +713,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         poisson_sum_G(&vh->f_pw(0), sbessel_mt_, vmtlm);
         
         // add boundary condition and convert to Rlm
-        Timer t1("sirius::Potential::poisson:bc");
+        Timer t1("sirius::Potential::poisson|bc");
         mdarray<double, 2> rRl(parameters_.unit_cell()->max_num_mt_points(), parameters_.lmax_pot() + 1);
         int type_id_prev = -1;
 
@@ -1048,7 +1048,7 @@ void Potential::generate_d_mtrx()
 
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
-        Platform::allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().get_ptr(),
+        Platform::allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().ptr(),
                             (int)parameters_.unit_cell()->atom(ia)->d_mtrx().size());
 
         auto atom_type = parameters_.unit_cell()->atom(ia)->type();
@@ -1135,14 +1135,14 @@ void Potential::generate_d_mtrx_gpu()
 
             compute_d_mtrx_valence_gpu(rl->spl_num_gvec().local_size(), 
                                        nbf * (nbf + 1) / 2, 
-                                       veff_gpu.get_ptr_device(), 
-                                       gvec.get_ptr_device(), 
+                                       veff_gpu.ptr_device(), 
+                                       gvec.ptr_device(), 
                                        apos[0], 
                                        apos[1], 
                                        apos[2], 
-                                       vtmp_gpu.get_ptr_device(),
-                                       atom_type->uspp().q_pw.get_ptr_device(),
-                                       d_mtrx_gpu.get_ptr_device(), 
+                                       vtmp_gpu.ptr_device(),
+                                       atom_type->uspp().q_pw.ptr_device(),
+                                       d_mtrx_gpu.ptr_device(), 
                                        thread_id);
                                        
             d_mtrx_gpu.async_copy_to_host(thread_id);
@@ -1168,9 +1168,10 @@ void Potential::generate_d_mtrx_gpu()
          type->uspp().q_pw.deallocate_on_device();
     }
 
+    // TODO: this is common with cpu code
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
-        Platform::allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().get_ptr(),
+        Platform::allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().ptr(),
                             (int)parameters_.unit_cell()->atom(ia)->d_mtrx().size());
 
         auto atom_type = parameters_.unit_cell()->atom(ia)->type();

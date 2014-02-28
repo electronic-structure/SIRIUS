@@ -71,7 +71,36 @@ void test3(double x0, double x1, double exact_val)
     s3.interpolate();
 
     double v1 = s3.integrate(2);
-    double v2 = Spline<double>::integrate(&s1, &s2);
+    double v2 = Spline<double>::integrate(&s1, &s2, 2);
+
+    printf("interpolate product of two functions and then integrate with spline   : %16.12f\n", v1);
+    printf("interpolate two functions and then integrate the product analytically : %16.12f\n", v2);
+    printf("                                                           difference : %16.12f\n", fabs(v1 - v2));
+    printf("                                                         exact result : %16.12f\n", exact_val);
+}
+
+void test4(double x0, double x1, double exact_val)
+{
+    printf("\n");
+    printf("test4\n");
+    
+    Radial_grid r(exponential_grid, 2000, x0, x1);
+    Spline<double> s1(2000, r);
+    Spline<double> s2(2000, r);
+    Spline<double> s3(2000, r);
+
+    for (int i = 0; i < 2000; i++)
+    {
+        s1[i] = sin(r[i]) / r[i];
+        s2[i] = exp(-r[i]) * pow(r[i], 8.0 / 3.0);
+        s3[i] = s1[i] * s2[i];
+    }
+    s1.interpolate();
+    s2.interpolate();
+    s3.interpolate();
+
+    double v1 = s3.integrate(1);
+    double v2 = Spline<double>::integrate(&s1, &s2, 1);
 
     printf("interpolate product of two functions and then integrate with spline   : %16.12f\n", v1);
     printf("interpolate two functions and then integrate the product analytically : %16.12f\n", v2);
@@ -116,6 +145,7 @@ int main(int argn, char **argv)
     //test2(hyperbolic_grid, x0, 2.0);
 
     test3(0.0001, 2.0, 1.0365460153117974);
+    test4(0.0001, 2.0, 0.7029943796175838);
 
     //test4(0.0001, 1.892184);
 }

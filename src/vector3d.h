@@ -4,7 +4,8 @@
 #include <assert.h>
 
 /// Simple implementation of 3d vector
-template <typename T> class vector3d
+template <typename T> 
+class vector3d
 {
     private:
 

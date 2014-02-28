@@ -5,7 +5,8 @@
 #include <vector>
 #include "error_handling.h"
 
-/** \todo change to long int64_t for indices */
+/** \todo change to long int64_t for indices 
+*/
 
 class dimension 
 {
@@ -171,7 +172,7 @@ template <typename T, int ND> class mdarray_base
                     catch(...)
                     {
                         std::stringstream s;
-                        s << "Error allocating " << ND << "-dimensional array of size " << sz * sizeof(T);
+                        s << "Error allocating " << ND << "-dimensional array of size " << sz * sizeof(T) << " bytes";
                         error_local(__FILE__, __LINE__, s);
                     }
                     allocated_ = true;
@@ -216,7 +217,7 @@ template <typename T, int ND> class mdarray_base
             mdarray_ptr = ptr;
         }
         
-        T* get_ptr()
+        T* ptr()
         {
             return mdarray_ptr;
         }
@@ -237,7 +238,6 @@ template <typename T, int ND> class mdarray_base
             return h;
         }
         
-
         /// Copy the content of the array to dest
         void operator>>(mdarray_base<T, ND>& dest)
         {
@@ -246,7 +246,7 @@ template <typename T, int ND> class mdarray_base
                 if (dest.d[i].start() != d[i].start() || dest.d[i].end() != d[i].end())
                     error_local(__FILE__, __LINE__, "array dimensions don't match");
             }
-            memcpy(dest.get_ptr(), get_ptr(), size() * sizeof(T));
+            memcpy(dest.ptr(), ptr(), size() * sizeof(T));
         }
 
         #ifdef _GPU_
@@ -305,15 +305,10 @@ template <typename T, int ND> class mdarray_base
             cuda_async_copy_to_host(mdarray_ptr, mdarray_ptr_device, size() * sizeof(T), stream_id);
         }
 
-        inline T* get_ptr_device()
-        {
-            return mdarray_ptr_device;
-        }
-
-        inline T* get_ptr_device(int idx)
-        {
-            return &mdarray_ptr_device[idx];
-        }
+        //== inline T* ptr_device()
+        //== {
+        //==     return mdarray_ptr_device;
+        //== }
 
         void zero_on_device()
         {
@@ -381,6 +376,11 @@ template <typename T> class mdarray<T, 1> : public mdarray_base<T, 1>
         }
 
         #ifdef _GPU_
+        inline T* ptr_device()
+        {
+            return this->mdarray_ptr_device;
+        }
+
         inline T* ptr_device(const int i0)
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
@@ -432,6 +432,11 @@ template <typename T> class mdarray<T, 2> : public mdarray_base<T, 2>
         }
     
         #ifdef _GPU_
+        inline T* ptr_device()
+        {
+            return this->mdarray_ptr_device;
+        }
+
         inline T* ptr_device(const int i0, const int i1) 
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
@@ -486,6 +491,11 @@ template <typename T> class mdarray<T, 3> : public mdarray_base<T, 3>
         }
 
         #ifdef _GPU_
+        inline T* ptr_device()
+        {
+            return this->mdarray_ptr_device;
+        }
+
         inline T* ptr_device(const int i0, const int i1, const int i2) 
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
@@ -543,6 +553,11 @@ template <typename T> class mdarray<T, 4> : public mdarray_base<T, 4>
         }
 
         #ifdef _GPU_
+        inline T* ptr_device()
+        {
+            return this->mdarray_ptr_device;
+        }
+
         inline T* ptr_device(const int i0, const int i1, const int i2, const int i3) 
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
