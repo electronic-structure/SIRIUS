@@ -10,18 +10,8 @@ int main(int argn, char** argv)
         Global parameters;
 
         JSON_tree parser("sirius.json");
-        std::vector<double> a0 = parser["lattice_vectors"][0].get(std::vector<double>(3, 0)); 
-        std::vector<double> a1 = parser["lattice_vectors"][1].get(std::vector<double>(3, 0)); 
-        std::vector<double> a2 = parser["lattice_vectors"][2].get(std::vector<double>(3, 0));
 
-        double scale =  parser["lattice_vectors_scale"].get(1.0);
-        for (int x = 0; x < 3; x++)
-        {
-            a0[x] *= scale;
-            a1[x] *= scale;
-            a2[x] *= scale;
-        }
-        parameters.unit_cell()->set_lattice_vectors(&a0[0], &a1[0], &a2[0]);
+        parameters.read_unit_cell_input();
 
         parameters.set_lmax_apw(parser["lmax_apw"].get(10));
         parameters.set_lmax_pot(parser["lmax_pot"].get(10));
@@ -30,23 +20,6 @@ int main(int argn, char** argv)
         parameters.set_aw_cutoff(parser["aw_cutoff"].get(7.0));
         parameters.set_gk_cutoff(parser["gk_cutoff"].get(7.0));
         
-        for (int iat = 0; iat < parser["atoms"].size(); iat++)
-        {
-            std::string label;
-            parser["atoms"][iat][0] >> label;
-            parameters.unit_cell()->add_atom_type(iat, label, parameters.esm_type());
-            for (int ia = 0; ia < parser["atoms"][iat][1].size(); ia++)
-            {
-                std::vector<double> v;
-                parser["atoms"][iat][1][ia] >> v;
-
-                if (!(v.size() == 3 || v.size() == 6)) error_global(__FILE__, __LINE__, "wrong coordinates size");
-                if (v.size() == 3) v.resize(6, 0.0);
-                
-                parameters.unit_cell()->add_atom(iat, &v[0], &v[3]);
-            }
-        }
-
         parameters.unit_cell()->set_auto_rmt(parser["auto_rmt"].get(0));
         int num_mag_dims = parser["num_mag_dims"].get(0);
         int num_spins = (num_mag_dims == 0) ? 1 : 2;
