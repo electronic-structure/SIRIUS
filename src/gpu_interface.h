@@ -7,6 +7,8 @@
 // CUDA functions
 //================
 
+extern "C" void cuda_initialize();
+
 extern "C" void cuda_device_info();
 
 extern "C" void cuda_malloc(void** ptr, size_t size);

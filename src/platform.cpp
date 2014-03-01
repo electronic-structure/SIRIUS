@@ -11,6 +11,7 @@ void Platform::initialize(bool call_mpi_init, bool call_cublas_init)
     if (call_mpi_init) MPI_Init(NULL, NULL);
 
     #ifdef _GPU_
+    cuda_initialize();
     if (call_cublas_init) cublas_init();
     if (mpi_rank() == 0) cuda_device_info();
     cuda_create_streams(max_num_threads());

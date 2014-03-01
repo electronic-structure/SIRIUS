@@ -133,6 +133,15 @@ inline __host__ __device__ int num_blocks(int length, int block_size)
 // CUDA functions
 //================
 
+extern "C" void cuda_initialize()
+{
+    if (cudaSetDeviceFlags(cudaDeviceMapHost) != cudaSuccess)
+    {
+        printf("failed to execute cudaSetDeviceFlags()\n");
+        exit(0);
+    }
+}
+
 extern "C" void cuda_malloc(void** ptr, size_t size)
 {
     if (cudaMalloc(ptr, size) != cudaSuccess)
@@ -264,7 +273,7 @@ extern "C" void cuda_host_register(void* ptr, size_t size)
 {
     assert(ptr);
     
-    cudaError_t err = cudaHostRegister(ptr, size, 0);
+    cudaError_t err = cudaHostRegister(ptr, size, cudaHostRegisterMapped);
     if (err != cudaSuccess)
     {
         printf("failed to execute cudaHostRegister\n");
