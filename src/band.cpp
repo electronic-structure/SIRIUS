@@ -977,7 +977,7 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp, Periodic_function
     o.zero_on_device();
 
     double_complex zone(1, 0);
-    
+
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
         Atom* atom = parameters_.unit_cell()->atom(ia);
@@ -986,7 +986,7 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp, Periodic_function
         // generate conjugated coefficients
         kp->generate_matching_coefficients<true>(kp->num_gkvec_loc(), ia, alm);
         
-        alm.async_copy_to_device(-1); // TODO: copy exact ammount of data
+        alm.async_copy_to_device(_null_stream_); // TODO: copy exact ammount of data
 
         blas<gpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
                         alm.ptr_device(), alm.ld(), alm.ptr_device(apw_offset_col, 0), alm.ld(), &zone, 
@@ -995,7 +995,7 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp, Periodic_function
         // apply muffin-tin part to <bra|
         apply_hmt_to_apw<nm>(kp->num_gkvec_row(), ia, alm, halm);
 
-        halm.async_copy_to_device(-1);
+        halm.async_copy_to_device(_null_stream_);
         
         // generate <apw|H|apw> block; |ket> is conjugated, so it is "unconjugated" back
         blas<gpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
@@ -1004,17 +1004,19 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp, Periodic_function
         
         // setup apw-lo blocks
         set_fv_h_o_apw_lo(kp, type, atom, ia, alm, h, o);
+
+        cuda_stream_synchronize(_null_stream_);
     }
     
     cublas_get_matrix_async(kp->num_gkvec_row(), kp->num_gkvec_col(), sizeof(double_complex), h.ptr_device(), h.ld(), 
-                            h.ptr(), h.ld(), -1);
+                            h.ptr(), h.ld(), _null_stream_);
     
     cublas_get_matrix_async(kp->num_gkvec_row(), kp->num_gkvec_col(), sizeof(double_complex), o.ptr_device(), o.ld(), 
-                            o.ptr(), o.ld(), -1);
+                            o.ptr(), o.ld(), _null_stream_);
 
     set_fv_h_o_lo_lo(kp, h, o);
 
-    cuda_device_synchronize();
+    cuda_stream_synchronize(_null_stream_);
 
     set_fv_h_o_it(kp, effective_potential, h, o);
 
