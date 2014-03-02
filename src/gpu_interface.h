@@ -3,6 +3,8 @@
 
 #include <stdlib.h>
 
+const int _null_stream_ = -1;
+
 //================
 // CUDA functions
 //================

@@ -279,6 +279,16 @@ template <typename T, int ND> class mdarray_base
             }
         }
 
+        void allocate_page_locked()
+        {
+            cuda_malloc_host((void**)(&mdarray_ptr), size() * sizeof(T));
+        }
+
+        void deallocate_page_locked()
+        {
+            cuda_free_host((void**)(&mdarray_ptr));
+        }
+
         void copy_to_device() 
         {
             assert(mdarray_ptr != NULL);
