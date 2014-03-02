@@ -144,7 +144,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
             double tol = parameters_.iterative_solver_tolerance();
             //tol = std::min(tol, 0.1 * fabs(eold - etot) / std::max(1.0, parameters_.unit_cell()->num_electrons()));
             //tol = std::min(tol, fabs(eold - etot));
-            tol /= 1.2;
+            tol /= 1.22;
             tol = std::max(tol, 1e-10);
             parameters_.set_iterative_solver_tolerance(tol);
         }

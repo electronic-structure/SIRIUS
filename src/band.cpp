@@ -1296,8 +1296,8 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     mdarray<double_complex, 2> o(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
     
     // MAGMA requires pinned memory
-    #ifdef _MAGMA_
-    if (parameters_.eigen_value_solver() == magma)
+    #ifdef _GPU_
+    if (parameters_.processing_unit() == gpu)
     {
         h.pin_memory();
         o.pin_memory();
