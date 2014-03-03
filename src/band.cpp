@@ -963,10 +963,8 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp, Periodic_function
     mdarray<double_complex, 2> alm(NULL, kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
     mdarray<double_complex, 2> halm(NULL, kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
     
-    //alm.pin_memory();
     alm.allocate_page_locked();
     alm.allocate_on_device();
-    //halm.pin_memory();
     halm.allocate_page_locked();
     halm.allocate_on_device();
     
@@ -988,7 +986,7 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp, Periodic_function
         // generate conjugated coefficients
         kp->generate_matching_coefficients<true>(kp->num_gkvec_loc(), ia, alm);
         
-        alm.async_copy_to_device(_null_stream_); // TODO: copy exact ammount of data
+        alm.copy_to_device(); // TODO: copy exact ammount of data
 
         blas<gpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
                         alm.ptr_device(), alm.ld(), alm.ptr_device(apw_offset_col, 0), alm.ld(), &zone, 
@@ -997,7 +995,7 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp, Periodic_function
         // apply muffin-tin part to <bra|
         apply_hmt_to_apw<nm>(kp->num_gkvec_row(), ia, alm, halm);
 
-        halm.async_copy_to_device(_null_stream_);
+        halm.copy_to_device();
         
         // generate <apw|H|apw> block; |ket> is conjugated, so it is "unconjugated" back
         blas<gpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
@@ -1007,18 +1005,16 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp, Periodic_function
         // setup apw-lo blocks
         set_fv_h_o_apw_lo(kp, type, atom, ia, alm, h, o);
 
-        cuda_stream_synchronize(_null_stream_);
+        //cuda_stream_synchronize(_null_stream_);
     }
     
-    cublas_get_matrix_async(kp->num_gkvec_row(), kp->num_gkvec_col(), sizeof(double_complex), h.ptr_device(), h.ld(), 
-                            h.ptr(), h.ld(), _null_stream_);
+    cublas_get_matrix(kp->num_gkvec_row(), kp->num_gkvec_col(), sizeof(double_complex), h.ptr_device(), h.ld(), 
+                      h.ptr(), h.ld());
     
-    cublas_get_matrix_async(kp->num_gkvec_row(), kp->num_gkvec_col(), sizeof(double_complex), o.ptr_device(), o.ld(), 
-                            o.ptr(), o.ld(), _null_stream_);
+    cublas_get_matrix(kp->num_gkvec_row(), kp->num_gkvec_col(), sizeof(double_complex), o.ptr_device(), o.ld(), 
+                      o.ptr(), o.ld());
 
     set_fv_h_o_lo_lo(kp, h, o);
-
-    cuda_stream_synchronize(_null_stream_);
 
     set_fv_h_o_it(kp, effective_potential, h, o);
 
@@ -1027,13 +1023,9 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp, Periodic_function
 
     alm.deallocate_on_device();
     alm.deallocate_page_locked();
-    //alm.unpin_memory();
-    //alm.deallocate();
 
     halm.deallocate_on_device();
     halm.deallocate_page_locked();
-    //halm.unpin_memory();
-    //halm.deallocate();
 }
 #endif
 
@@ -1327,21 +1319,20 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
         {
             set_fv_h_o<gpu, full_potential_lapwlo>(kp, effective_potential, h, o);
             
-            mdarray<double_complex, 2> h1(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
-            mdarray<double_complex, 2> o1(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
-            set_fv_h_o<cpu, full_potential_lapwlo>(kp, effective_potential, h1, o1);
-
-            double diff_h = 0;
-            double diff_o = 0;
-            for (int j = 0; j < kp->apwlo_basis_size_col(); j++)
-            {
-                for (int i = 0; i < kp->apwlo_basis_size_row(); i++)
-                {
-                    diff_h += std::abs(h(i, j) - h1(i, j));
-                    diff_o += std::abs(o(i, j) - o1(i, j));
-                }
-            }
-            std::cout << "diff_h = " << diff_h << " diff_o = " << diff_o << std::endl;
+            //== mdarray<double_complex, 2> h1(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
+            //== mdarray<double_complex, 2> o1(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
+            //== set_fv_h_o<cpu, full_potential_lapwlo>(kp, effective_potential, h1, o1);
+            //== double diff_h = 0;
+            //== double diff_o = 0;
+            //== for (int j = 0; j < kp->apwlo_basis_size_col(); j++)
+            //== {
+            //==     for (int i = 0; i < kp->apwlo_basis_size_row(); i++)
+            //==     {
+            //==         diff_h += std::abs(h(i, j) - h1(i, j));
+            //==         diff_o += std::abs(o(i, j) - o1(i, j));
+            //==     }
+            //== }
+            //== std::cout << "diff_h = " << diff_h << " diff_o = " << diff_o << std::endl;
 
             break;
         }
