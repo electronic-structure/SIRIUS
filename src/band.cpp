@@ -960,12 +960,14 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp, Periodic_function
     
     int apw_offset_col = kp->apw_offset_col();
     
-    mdarray<double_complex, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
-    mdarray<double_complex, 2> halm(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    mdarray<double_complex, 2> alm(NULL, kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    mdarray<double_complex, 2> halm(NULL, kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
     
-    alm.pin_memory();
+    //alm.pin_memory();
+    alm.allocate_page_locked();
     alm.allocate_on_device();
-    halm.pin_memory();
+    //halm.pin_memory();
+    halm.allocate_page_locked();
     halm.allocate_on_device();
     
     h.zero();
@@ -1024,12 +1026,14 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp, Periodic_function
     o.deallocate_on_device();
 
     alm.deallocate_on_device();
-    alm.unpin_memory();
-    alm.deallocate();
+    alm.deallocate_page_locked();
+    //alm.unpin_memory();
+    //alm.deallocate();
 
     halm.deallocate_on_device();
-    halm.unpin_memory();
-    halm.deallocate();
+    halm.deallocate_page_locked();
+    //halm.unpin_memory();
+    //halm.deallocate();
 }
 #endif
 
