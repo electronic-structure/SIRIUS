@@ -48,6 +48,44 @@ void Global::read_input()
             }
         }
 
+        if (parser.exist("gevp_solver"))
+        {
+            std::string name;
+            parser["gevp_solver"] >> name;
+            if (name == "lapack") 
+            {
+                gevp_solver_ = gevp_lapack;
+            }
+            else if (name == "scalapack") 
+            {
+                gevp_solver_ = gevp_scalapack;
+            }
+            else if (name == "elpa1") 
+            {
+                gevp_solver_ = gevp_elpa1;
+            }
+            else if (name == "elpa2") 
+            {
+                gevp_solver_ = gevp_elpa2;
+            }
+            else if (name == "magma") 
+            {
+                gevp_solver_ = gevp_magma;
+            }
+            else if (name == "plasma")
+            {
+                gevp_solver_ = gevp_plasma;
+            }
+            else if (name == "rs_gpu")
+            {
+                gevp_solver_ = gevp_rs_gpu;
+            }
+            else
+            {
+                error_local(__FILE__, __LINE__, "wrong eigen value solver");
+            }
+        }
+
         if (parser.exist("processing_unit"))
         {
             std::string pu;
@@ -389,6 +427,46 @@ void Global::print_info()
         case plasma:
         {
             printf("PLASMA\n");
+            break;
+        }
+    }
+    printf("\n");
+    printf("generalized eigen-value solver: ");
+    switch (gevp_solver())
+    {
+        case gevp_lapack:
+        {
+            printf("lapack\n");
+            break;
+        }
+        case gevp_scalapack:
+        {
+            printf("scalapack, block size %i\n", cyclic_block_size());
+            break;
+        }
+        case gevp_elpa1:
+        {
+            printf("elpa1, block size %i\n", cyclic_block_size());
+            break;
+        }
+        case gevp_elpa2:
+        {
+            printf("elpa2, block size %i\n", cyclic_block_size());
+            break;
+        }
+        case gevp_magma:
+        {
+            printf("magma\n");
+            break;
+        }
+        case gevp_plasma:
+        {
+            printf("plasma\n");
+            break;
+        }
+        case gevp_rs_gpu:
+        {
+            printf("rs_gpu\n");
             break;
         }
     }

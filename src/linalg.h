@@ -700,10 +700,66 @@ class generalized_evp_scalapack: public generalized_evp
                 error_local(__FILE__, __LINE__, "Not all eigen-vectors or eigen-values are found.");
 
             memcpy(eval, &w[0], nevec * sizeof(double));
-
         }
         #endif
 
+};
+
+#ifdef _RS_GEN_EIG_
+void my_gen_eig(char uplo, int n, int nev, double_complex* a, int ia, int ja, int* desca,
+                double_complex* b, int ib, int jb, int* descb, double* d,
+                double_complex* q, int iq, int jq, int* descq, int* info);
+#endif
+
+class generalized_evp_gpu: public generalized_evp
+{
+    private:
+
+        int32_t block_size_;
+        int num_ranks_row_;
+        int num_ranks_col_;
+        int blacs_context_;
+        
+    public:
+
+        generalized_evp_gpu(int32_t block_size__, int num_ranks_row__, int num_ranks_col__, int blacs_context__)
+            : block_size_(block_size__), 
+              num_ranks_row_(num_ranks_row__), 
+              num_ranks_col_(num_ranks_col__), 
+              blacs_context_(blacs_context__)
+        {
+        }
+
+        #ifdef _RS_GEN_EIG_
+        void solve(int32_t matrix_size, int32_t nevec, double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
+                   double* eval, double_complex* z, int32_t ldz)
+        {
+        
+            assert(nevec <= matrix_size);
+            
+            int32_t desca[9];
+            linalg<scalapack>::descinit(desca, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+                                        blacs_context_, lda);
+
+            int32_t descb[9];
+            linalg<scalapack>::descinit(descb, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+                                        blacs_context_, ldb); 
+
+            int32_t descz[9];
+            linalg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+                                        blacs_context_, ldz); 
+        
+            int info;
+            my_gen_eig('U', matrix_size, nevec, a, 1, 1, desca, b, 1, 1, descb, eval, z, 1, 1, descz, &info);
+
+            if (info)
+            {
+                std::stringstream s;
+                s << "my_gen_eig " << info; 
+                error_local(__FILE__, __LINE__, s);
+            }
+        }
+        #endif
 };
 
 class generalized_evp_elpa: public generalized_evp

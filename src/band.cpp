@@ -1172,20 +1172,20 @@ void Band::solve_fv_evp_1stage(K_point* kp, mdarray<double_complex, 2>& h, mdarr
     Timer t("sirius::Band::solve_fv_evp");
     generalized_evp* solver = NULL;
 
-    switch (parameters_.eigen_value_solver())
+    switch (parameters_.gevp_solver())
     {
-        case lapack:
+        case gevp_lapack:
         {
             solver = new generalized_evp_lapack(-1.0);
             break;
         }
-        case scalapack:
+        case gevp_scalapack:
         {
             solver = new generalized_evp_scalapack(parameters_.cyclic_block_size(), kp->num_ranks_row(), 
                                                    kp->num_ranks_col(), parameters_.blacs_context(), -1.0);
             break;
         }
-        case elpa:
+        case gevp_elpa2:
         {
             solver = new generalized_evp_elpa(parameters_.cyclic_block_size(), 
                                               kp->apwlo_basis_size_row(), kp->num_ranks_row(), kp->rank_row(),
@@ -1196,14 +1196,20 @@ void Band::solve_fv_evp_1stage(K_point* kp, mdarray<double_complex, 2>& h, mdarr
                                               parameters_.mpi_grid().communicator(1 << _dim_col_ | 1 << _dim_row_));
             break;
         }
-        case magma:
+        case gevp_magma:
         {
             solver = new generalized_evp_magma();
             break;
         }
-        case plasma:
+        case gevp_plasma:
         {
             solver = new generalized_evp_lapack(-1.0);
+            break;
+        }
+        case gevp_rs_gpu:
+        {
+            solver = new generalized_evp_gpu(parameters_.cyclic_block_size(), kp->num_ranks_row(), 
+                                             kp->num_ranks_col(), parameters_.blacs_context());
             break;
         }
         default:

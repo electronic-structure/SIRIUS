@@ -15,7 +15,15 @@ typedef std::complex<double> double_complex;
 
 enum spin_block_t {nm, uu, ud, dd, du};
 
-enum processing_unit_t {cpu, gpu};
+/// Type of the main processing unit
+enum processing_unit_t 
+{
+    /// use CPU
+    cpu, 
+
+    /// use GPU (with CUDA programming model)
+    gpu
+};
 
 enum lattice_t {direct, reciprocal};
 
@@ -25,16 +33,45 @@ enum mpi_op_t {op_sum, op_max};
 
 enum linalg_t {lapack, scalapack, elpa, magma, plasma};
 
+/// Type of the solver to use for the generalized eigen-value problem
+enum gevp_solver_t 
+{
+    /// use LAPACK (\b zhegvx function)
+    gevp_lapack, 
+
+    /// use ScaLAPACK (\b pzhegvx function)
+    gevp_scalapack,
+
+    /// use ELPA1 solver
+    gevp_elpa1,
+
+    /// use ELPA2 (2-stage) solver
+    gevp_elpa2,
+
+    /// use MAGMA
+    gevp_magma,
+
+    /// use PLASMA
+    gevp_plasma,
+
+    /// 
+    gevp_rs_gpu
+};
+
 enum splindex_t {block, block_cyclic};
 
-/** Types of electronic structure methods
-    
-    The following types are supported:
-        - \b full_potential_apwlo: full potential linearized augmented plane waves with local orbitals
-        - \b full_potential_pwlo: full potential plane waves with local orbitals (heavily experimental and not completely implemented)
-        - \b ultrasoft_pseudopotential: ultrasoft pseudopotential with plane wave basis
-*/
-enum electronic_structure_method_t {full_potential_lapwlo, full_potential_pwlo, ultrasoft_pseudopotential};
+/// Type of electronic structure methods
+enum electronic_structure_method_t 
+{
+    /// full potential linearized augmented plane waves with local orbitals
+    full_potential_lapwlo, 
+
+    /// full potential plane waves with local orbitals (heavily experimental and not completely implemented)
+    full_potential_pwlo, 
+
+    /// ultrasoft pseudopotential with plane wave basis (experimental)
+    ultrasoft_pseudopotential
+};
 
 enum index_domain_t {global, local};
 

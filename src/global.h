@@ -120,6 +120,8 @@ class Global
 
         /// type of eigen-value solver
         linalg_t eigen_value_solver_; 
+
+        gevp_solver_t gevp_solver_;
         
         /// type of the processing unit
         processing_unit_t processing_unit_;
@@ -182,6 +184,7 @@ class Global
               uj_correction_(false), 
               cyclic_block_size_(64), 
               eigen_value_solver_(lapack),
+              gevp_solver_(gevp_lapack),
               #ifdef _GPU_
               processing_unit_(gpu),
               #else
@@ -391,6 +394,11 @@ class Global
         inline linalg_t eigen_value_solver()
         {
             return eigen_value_solver_;
+        }
+
+        inline gevp_solver_t gevp_solver()
+        {
+            return gevp_solver_;
         }
 
         inline processing_unit_t processing_unit()
