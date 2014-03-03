@@ -1298,17 +1298,21 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     if (kp->num_ranks() > 1 && (parameters_.eigen_value_solver() == lapack || parameters_.eigen_value_solver() == magma))
         error_local(__FILE__, __LINE__, "Can't use more than one MPI rank for LAPACK or MAGMA eigen-value solver");
 
-    mdarray<double_complex, 2> h(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
-    mdarray<double_complex, 2> o(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
+    mdarray<double_complex, 2> h(NULL, kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
+    mdarray<double_complex, 2> o(NULL, kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
     
-    // MAGMA requires pinned memory
-    #ifdef _GPU_
-    if (parameters_.processing_unit() == gpu)
+    if (parameters_.processing_unit() == cpu)
     {
-        h.pin_memory();
-        o.pin_memory();
+        h.allocate();
+        o.allocate();
+    } 
+    else if (parameters_.processing_unit() == gpu)
+    {
+        #ifdef _GPU_
+        h.allocate_page_locked();
+        o.allocate_page_locked();
+        #endif
     }
-    #endif
    
     // setup Hamiltonian and overlap
     switch (parameters_.processing_unit())
@@ -1503,18 +1507,20 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
         solve_fv_evp_1stage(kp, h, o, eval, kp->fv_eigen_vectors());
         kp->set_fv_eigen_values(&eval[0]);
     }
-        
-    #ifdef _MAGMA_
-    if (parameters_.eigen_value_solver() == magma)
+    
+    if (parameters_.processing_unit() == cpu)
     {
-        h.unpin_memory();
-        o.unpin_memory();
+        h.deallocate();
+        o.deallocate();
+    } 
+    else if (parameters_.processing_unit() == gpu)
+    {
+        #ifdef _GPU_
+        h.deallocate_page_locked();
+        o.deallocate_page_locked();
+        #endif
     }
-    #endif
-   
-    h.deallocate();
-    o.deallocate();
-
+        
     //** if ((debug_level > 2) && (parameters_.eigen_value_solver() == scalapack))
     //** {
     //**     double d = 0.0;
