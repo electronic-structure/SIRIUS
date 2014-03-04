@@ -709,6 +709,10 @@ class generalized_evp_scalapack: public generalized_evp
 void my_gen_eig(char uplo, int n, int nev, double_complex* a, int ia, int ja, int* desca,
                 double_complex* b, int ib, int jb, int* descb, double* d,
                 double_complex* q, int iq, int jq, int* descq, int* info);
+
+void my_gen_eig_cpu(char uplo, int n, int nev, double_complex* a, int ia, int ja, int* desca,
+                    double_complex* b, int ib, int jb, int* descb, double* d,
+                    double_complex* q, int iq, int jq, int* descq, int* info);
 #endif
 
 class generalized_evp_gpu: public generalized_evp
@@ -750,7 +754,7 @@ class generalized_evp_gpu: public generalized_evp
                                         blacs_context_, ldz); 
         
             int info;
-            my_gen_eig('U', matrix_size, nevec, a, 1, 1, desca, b, 1, 1, descb, eval, z, 1, 1, descz, &info);
+            my_gen_eig_cpu('L', matrix_size, nevec, a, 1, 1, desca, b, 1, 1, descb, eval, z, 1, 1, descz, &info);
 
             if (info)
             {

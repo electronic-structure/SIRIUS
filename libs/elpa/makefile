@@ -1,5 +1,5 @@
 all:
-	mpif90 -c -O3 *.f90
+	ftn -c -O3 *90
 	ar -r elpa_api.a *.o
 	
 clean:

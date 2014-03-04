@@ -232,7 +232,8 @@ void Global::initialize()
     int irow = mpi_grid().coordinate(_dim_row_);
     int icol = mpi_grid().coordinate(_dim_col_);
 
-    if (eigen_value_solver() == scalapack || eigen_value_solver() == elpa)
+    if (eigen_value_solver() == scalapack || eigen_value_solver() == elpa || gevp_solver() == gevp_scalapack || 
+        gevp_solver() == gevp_elpa1 || gevp_solver() == gevp_elpa2 || gevp_solver() == gevp_rs_gpu)
     {
         int n = num_fv_states_ / (ncol * cyclic_block_size()) + 
                 std::min(1, num_fv_states_ % (ncol * cyclic_block_size()));

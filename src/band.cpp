@@ -1293,8 +1293,10 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     log_function_enter(__func__);
     Timer t("sirius::Band::diag_fv_full_potential");
 
-    if (kp->num_ranks() > 1 && (parameters_.eigen_value_solver() == lapack || parameters_.eigen_value_solver() == magma))
-        error_local(__FILE__, __LINE__, "Can't use more than one MPI rank for LAPACK or MAGMA eigen-value solver");
+    if (kp->num_ranks() > 1 && (parameters_.gevp_solver() == gevp_lapack || 
+                                parameters_.gevp_solver() == gevp_magma  || 
+                                parameters_.gevp_solver() == gevp_plasma))
+        error_local(__FILE__, __LINE__, "Can't use more than one MPI rank for lapack, magma or plasma eigen-value solver");
 
     mdarray<double_complex, 2> h(NULL, kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
     mdarray<double_complex, 2> o(NULL, kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
@@ -1662,8 +1664,8 @@ void Band::set_o(K_point* kp, mdarray<double_complex, 2>& o)
 
 void Band::solve_fv(K_point* kp, Periodic_function<double>* effective_potential)
 {
-    if (kp->num_gkvec() < parameters_.num_fv_states())
-        error_global(__FILE__, __LINE__, "number of G+k vectors is too small");
+    if (kp->apwlo_basis_size() < parameters_.num_fv_states())
+        error_global(__FILE__, __LINE__, "basis size is too small");
 
     switch (parameters_.esm_type())
     {
@@ -1708,7 +1710,9 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         return;
     }
     
-    if (kp->num_ranks() > 1 && (parameters_.eigen_value_solver() == lapack || parameters_.eigen_value_solver() == magma))
+    if (kp->num_ranks() > 1 && (parameters_.gevp_solver() == gevp_lapack || 
+                                parameters_.gevp_solver() == gevp_magma  || 
+                                parameters_.gevp_solver() == gevp_plasma))
         error_local(__FILE__, __LINE__, "Can't use more than one MPI rank for LAPACK or MAGMA eigen-value solver");
 
     // number of h|\psi> components 
