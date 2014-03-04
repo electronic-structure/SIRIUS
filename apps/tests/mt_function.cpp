@@ -19,8 +19,7 @@ void test1_radial_angular()
     {
         for (int ir = 0; ir < r.num_mt_points(); ir++) 
         {
-            f1(ir, lm) = type_wrapper<T>::sift(double_complex(double(rand()) / RAND_MAX, 
-                                               double(rand()) / RAND_MAX));
+            f1(ir, lm) = type_wrapper<T>::sift(double_complex(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX));
         }
     }
     f1.sh_convert(f2);

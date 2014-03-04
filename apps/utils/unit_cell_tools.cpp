@@ -63,11 +63,11 @@ int main(int argn, char** argv)
                 {
                     vector3d<double> va(&p.unit_cell_input_section_.coordinates_[iat][ia][0]);
 
-                    for (int i0 = -4; i0 <= 4; i0++)
+                    for (int i0 = -10; i0 <= 10; i0++)
                     {
-                        for (int i1 = -4; i1 <= 4; i1++)
+                        for (int i1 = -10; i1 <= 10; i1++)
                         {
-                            for (int i2 = -4; i2 <= 4; i2++)
+                            for (int i2 = -10; i2 <= 10; i2++)
                             {
                                 vector3d<double> T(i0, i1, i2);
                                 vector3d<double> vc = p.unit_cell()->get_cartesian_coordinates(va + T);
