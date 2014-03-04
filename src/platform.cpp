@@ -6,12 +6,16 @@ int Platform::num_fft_threads_ = -1;
 extern "C" void plasma_init(int num_cores);
 #endif
 
+#ifdef _RS_GEN_EIG_
+extern "C" void libsci_acc_init();
+#endif
+
 void Platform::initialize(bool call_mpi_init, bool call_cublas_init)
 {
     if (call_mpi_init) MPI_Init(NULL, NULL);
 
     #ifdef _GPU_
-    cuda_initialize();
+    //cuda_initialize();
     if (call_cublas_init) cublas_init();
     if (mpi_rank() == 0) cuda_device_info();
     cuda_create_streams(max_num_threads());
@@ -21,6 +25,9 @@ void Platform::initialize(bool call_mpi_init, bool call_cublas_init)
     #endif
     #ifdef _PLASMA_
     plasma_init(max_num_threads());
+    #endif
+    #ifdef _RS_GEN_EIG_
+    libsci_acc_init();
     #endif
 
     assert(sizeof(int) == 4);
