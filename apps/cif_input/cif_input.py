@@ -1,7 +1,9 @@
 import sys
 sys.dont_write_bytecode = True
 
+sys.path.append("./PyCifRW")
 import CifFile
+
 import re
 import math
 import json
@@ -49,7 +51,7 @@ def apply_symmetry(sym_ops_list, initial_atoms_list):
     return full_atoms_list
 
 def remove_ending_braces(string):
-    return re.sub(r"\([0-9]+\)", r" ", string)
+    return re.sub(r"\([0-9]+\)", "", string)
 
 def main():
     
@@ -68,7 +70,7 @@ def main():
     for atom in atoms:
 
         label = atom._atom_site_label
-        label = re.sub(r"[0-9]+", r" ", label).strip()
+        label = re.sub("[0-9]+", " ", label).strip()
 
         if not label in initial_atoms_list: initial_atoms_list[label] = []
 
@@ -76,10 +78,9 @@ def main():
                                           "y" : float(remove_ending_braces(atom._atom_site_fract_y)), \
                                           "z" : float(remove_ending_braces(atom._atom_site_fract_z))})
     print "Initial list of atoms : "
-    for atom in initial_atoms_list:
-        print atom, " at ", initial_atoms_list[atom][0]["x"], " ", initial_atoms_list[atom][0]["y"], " ", initial_atoms_list[atom][0]["z"]
-
-
+    for label in initial_atoms_list:
+        for atom in initial_atoms_list[label]:
+            print label, "at", atom["x"], atom["y"], atom["z"]
         
 
     sym_ops = cb.GetLoop("_symmetry_equiv_pos_as_xyz")
@@ -128,12 +129,12 @@ def main():
     fout.write("atoms\n")
     fout.write("%i\n"%len(initial_atoms_list.keys()))
     
-    json_atoms = []
+    atom_dict = {}
     
     natoms = 0
     for key in initial_atoms_list.keys():
         atom_list = apply_symmetry(sym_ops_list, initial_atoms_list[key])
-        json_atoms.append([key,atom_list])
+        atom_dict[key] = atom_list
         fout.write("'%s.in'\n"%key)
         fout.write("%i\n"%len(atom_list))
         for a in atom_list:
@@ -141,11 +142,21 @@ def main():
             fout.write("%18.10f %18.10f %18.10f\n"%(a[0], a[1], a[2]))
 
     fout.close()
+   
+    atom_files = {}
+    for label in initial_atoms_list:
+        atom_files[label] = label + ".json"
 
+    unit_cell = {}
+    unit_cell["lattice_vectors"] = avec
+    unit_cell["lattice_vectors_scale"] = 1 / au2ang
+    unit_cell["atoms"] = atom_dict
+    unit_cell["atom_types"] = initial_atoms_list.keys()
+    unit_cell["atom_files"] = atom_files
 
     fout = open("sirius.json", "w")
-    fout.write(re.sub(r"(?<=[0-9]),\s\n\s*(?=[-|0-9])", r", ", \
-        json.dumps({"mpi_grid_dims" : [1], "lattice_vectors" : avec, "lattice_vectors_scale" : 1 / au2ang, "atoms" : json_atoms}, indent=2)))
+    fout.write(re.sub(r"(?<=[0-9]),\s\n\s*(?=[-|0-9])", ", ", \
+        json.dumps({"unit_cell" : unit_cell}, indent = 4)))
     fout.close()
 
 
