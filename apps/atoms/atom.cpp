@@ -84,7 +84,7 @@ atom* init_atom_configuration(const std::string& label)
     return a;
 }
 
-void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type)
+void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, int apw_order)
 {
     std::vector<double> enu;
     
@@ -195,7 +195,14 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type)
     jw.single("core", core_str);
     jw.begin_array("valence");
     jw.begin_set();
-    jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 0}]");
+    if (apw_order == 1)
+    {
+        jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}]");
+    }
+    if (apw_order == 2)
+    {
+        jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 0}]");
+    }
     jw.end_set();
     
     int lmax = 0;
@@ -221,8 +228,14 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type)
         jw.begin_set();
         jw.single("l", l);
         jw.single("n", n);
-        jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}]");
-
+        if (apw_order == 1)
+        {
+            jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]");
+        }
+        if (apw_order == 2)
+        {
+            jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}]");
+        }
         jw.end_set();
     }
     jw.end_array();
@@ -329,12 +342,19 @@ int main(int argn, char **argv)
 
     double core_cutoff_energy = -10.0;
     std::string lo_type = "lo";
+    int apw_order = 1;
    
     std::string label = "";
     int i = 1;
     while (i < argn)
     {
         std::string s(argv[i]);
+        if (s == "-order")
+        {
+            std::istringstream iss((std::string(argv[i + 1])));
+            iss >> apw_order;
+            i += 2;
+        }
         if (s == "-type")
         {
             lo_type = std::string(argv[i + 1]);
@@ -358,7 +378,7 @@ int main(int argn, char **argv)
     
     atom* a = init_atom_configuration(label);
     
-    solve_atom(a, core_cutoff_energy, lo_type);
+    solve_atom(a, core_cutoff_energy, lo_type, apw_order);
 
     delete a;
 }
