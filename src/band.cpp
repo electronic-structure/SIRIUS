@@ -16,7 +16,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
     double_complex zi = double_complex(0, 1);
 
     mdarray<double_complex, 3> zm(parameters_.unit_cell()->max_mt_basis_size(), parameters_.unit_cell()->max_mt_basis_size(), 
-                             parameters_.num_mag_dims());
+                                  parameters_.num_mag_dims());
 
     // column fv states are further distributed over rows to make use of all row processors
     int num_fv_local = parameters_.sub_spl_fv_states_col().local_size();
@@ -69,8 +69,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
         }
         
         // compute bwf = (B_x + iB_y)|wf_j>
-        if ((hpsi.size(2) == 4) && 
-            (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa))
+        if (hpsi.size(2) == 4 && parameters_.ev_solver_is_parallel())
         {
             // reuse first (z) component of zm matrix to store (Bx + iBy)
             for (int j2 = 0; j2 < mt_basis_size; j2++)
@@ -133,8 +132,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
                 fft_->output(num_gkvec, fft_index, &hpsi_pw(0, i, 2), thread_id); 
             }
             
-            if ((hpsi.size(2)) == 4 && 
-                (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa))
+            if (hpsi.size(2) == 4 && parameters_.ev_solver_is_parallel())
             {
                 for (int ir = 0; ir < fft_->size(); ir++)
                 {
@@ -1172,20 +1170,20 @@ void Band::solve_fv_evp_1stage(K_point* kp, mdarray<double_complex, 2>& h, mdarr
     Timer t("sirius::Band::solve_fv_evp");
     generalized_evp* solver = NULL;
 
-    switch (parameters_.gevp_solver())
+    switch (parameters_.gev_solver())
     {
-        case gevp_lapack:
+        case ev_lapack:
         {
             solver = new generalized_evp_lapack(-1.0);
             break;
         }
-        case gevp_scalapack:
+        case ev_scalapack:
         {
             solver = new generalized_evp_scalapack(parameters_.cyclic_block_size(), kp->num_ranks_row(), 
                                                    kp->num_ranks_col(), parameters_.blacs_context(), -1.0);
             break;
         }
-        case gevp_elpa2:
+        case ev_elpa2:
         {
             solver = new generalized_evp_elpa(parameters_.cyclic_block_size(), 
                                               kp->apwlo_basis_size_row(), kp->num_ranks_row(), kp->rank_row(),
@@ -1196,17 +1194,17 @@ void Band::solve_fv_evp_1stage(K_point* kp, mdarray<double_complex, 2>& h, mdarr
                                               parameters_.mpi_grid().communicator(1 << _dim_col_ | 1 << _dim_row_));
             break;
         }
-        case gevp_magma:
+        case ev_magma:
         {
             solver = new generalized_evp_magma();
             break;
         }
-        case gevp_plasma:
+        case ev_plasma:
         {
             solver = new generalized_evp_lapack(-1.0);
             break;
         }
-        case gevp_rs_gpu:
+        case ev_rs_gpu:
         {
             solver = new generalized_evp_gpu(parameters_.cyclic_block_size(), kp->num_ranks_row(), 
                                              kp->num_ranks_col(), parameters_.blacs_context());
@@ -1293,10 +1291,8 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     log_function_enter(__func__);
     Timer t("sirius::Band::diag_fv_full_potential");
 
-    if (kp->num_ranks() > 1 && (parameters_.gevp_solver() == gevp_lapack || 
-                                parameters_.gevp_solver() == gevp_magma  || 
-                                parameters_.gevp_solver() == gevp_plasma))
-        error_local(__FILE__, __LINE__, "Can't use more than one MPI rank for lapack, magma or plasma eigen-value solver");
+    if (kp->num_ranks() > 1 && !parameters_.gev_solver_is_parallel())
+        error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
     mdarray<double_complex, 2> h(NULL, kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
     mdarray<double_complex, 2> o(NULL, kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
@@ -1352,7 +1348,7 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     }
     
     // TODO: move debug code to a separate function
-    if (debug_level > 0 && parameters_.eigen_value_solver() == lapack)
+    if (debug_level > 0 && parameters_.gev_solver() == ev_lapack)
     {
         Utils::check_hermitian("h", h);
         Utils::check_hermitian("o", o);
@@ -1710,10 +1706,8 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         return;
     }
     
-    if (kp->num_ranks() > 1 && (parameters_.gevp_solver() == gevp_lapack || 
-                                parameters_.gevp_solver() == gevp_magma  || 
-                                parameters_.gevp_solver() == gevp_plasma))
-        error_local(__FILE__, __LINE__, "Can't use more than one MPI rank for LAPACK or MAGMA eigen-value solver");
+    if (kp->num_ranks() > 1 && !parameters_.ev_solver_is_parallel())
+        error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
     // number of h|\psi> components 
     int nhpsi = parameters_.num_mag_dims() + 1;
@@ -1741,8 +1735,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         if (parameters_.num_mag_dims() == 3) 
         {
             apply_uj_correction<ud>(kp->fv_states_col(), hpsi);
-            if (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa)
-                apply_uj_correction<du>(kp->fv_states_col(), hpsi);
+            if (parameters_.ev_solver_is_parallel()) apply_uj_correction<du>(kp->fv_states_col(), hpsi);
         }
     }
 
@@ -1750,31 +1743,31 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
 
 
     standard_evp* solver = NULL;
-    switch (parameters_.eigen_value_solver())
+    switch (parameters_.ev_solver())
     {
-        case lapack:
+        case ev_lapack:
         {
             solver = new standard_evp_lapack();
             break;
         }
-        case scalapack:
+        case ev_scalapack:
         {
             solver = new standard_evp_scalapack(parameters_.cyclic_block_size(), kp->num_ranks_row(), 
                                                 kp->num_ranks_col(), parameters_.blacs_context());
             break;
         }
-        case elpa:
+        case ev_elpa2:
         {
             solver = new standard_evp_scalapack(parameters_.cyclic_block_size(), kp->num_ranks_row(), 
                                                 kp->num_ranks_col(), parameters_.blacs_context());
             break;
         }
-        case magma:
+        case ev_magma:
         {
             solver = new standard_evp_lapack();
             break;
         }
-        case plasma:
+        case ev_plasma:
         {
             solver = new standard_evp_plasma();
             break;
@@ -1829,7 +1822,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 1), hpsi.ld(), 
                         &h(nrow, ncol), h.ld());
 
-        if (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa)
+        if (parameters_.ev_solver_is_parallel())
         {
             // compute <fv_i | (h * fv_j)> for dn-up block
             blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 3), hpsi.ld(), 
@@ -1867,26 +1860,26 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
 {
     Timer t("sirius::Band::solve_fd");
 
-    if (kp->num_ranks() > 1 && (parameters_.eigen_value_solver() == lapack || parameters_.eigen_value_solver() == magma))
-        error_local(__FILE__, __LINE__, "Can't use more than one MPI rank for LAPACK or MAGMA eigen-value solver");
+    if (kp->num_ranks() > 1 && !parameters_.gev_solver_is_parallel())
+        error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
     generalized_evp* solver = NULL;
 
     // create eigen-value solver
-    switch (parameters_.eigen_value_solver())
+    switch (parameters_.gev_solver())
     {
-        case lapack:
+        case ev_lapack:
         {
             solver = new generalized_evp_lapack(-1.0);
             break;
         }
-        case scalapack:
+        case ev_scalapack:
         {
             solver = new generalized_evp_scalapack(parameters_.cyclic_block_size(), kp->num_ranks_row(), 
                                                    kp->num_ranks_col(), parameters_.blacs_context(), -1.0);
             break;
         }
-        case elpa:
+        case ev_elpa2:
         {
             solver = new generalized_evp_elpa(parameters_.cyclic_block_size(), 
                                               kp->apwlo_basis_size_row(), kp->num_ranks_row(), kp->rank_row(),
@@ -1897,7 +1890,7 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
                                               parameters_.mpi_grid().communicator(1 << _dim_col_ | 1 << _dim_row_));
             break;
         }
-        case magma:
+        case ev_magma:
         {
             solver = new generalized_evp_magma();
             break;

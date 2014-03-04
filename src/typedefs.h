@@ -31,31 +31,32 @@ enum coordinates_t {cartesian, fractional};
 
 enum mpi_op_t {op_sum, op_max};
 
-enum linalg_t {lapack, scalapack, elpa, magma, plasma};
+/// Type of the linear algebra package
+enum linalg_t {lapack, scalapack};
 
-/// Type of the solver to use for the generalized eigen-value problem
-enum gevp_solver_t 
+/// Type of the solver to use for the standard or generalized eigen-value problem
+enum ev_solver_t 
 {
-    /// use LAPACK (\b zhegvx function)
-    gevp_lapack, 
+    /// use LAPACK
+    ev_lapack, 
 
-    /// use ScaLAPACK (\b pzhegvx function)
-    gevp_scalapack,
+    /// use ScaLAPACK
+    ev_scalapack,
 
     /// use ELPA1 solver
-    gevp_elpa1,
+    ev_elpa1,
 
     /// use ELPA2 (2-stage) solver
-    gevp_elpa2,
+    ev_elpa2,
 
     /// use MAGMA
-    gevp_magma,
+    ev_magma,
 
     /// use PLASMA
-    gevp_plasma,
+    ev_plasma,
 
     /// 
-    gevp_rs_gpu
+    ev_rs_gpu
 };
 
 enum splindex_t {block, block_cyclic};

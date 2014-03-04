@@ -1087,15 +1087,15 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
     std::vector<double> res_e(num_bands);
 
     generalized_evp* gevp = NULL;
-    switch (parameters_.eigen_value_solver())
+    switch (parameters_.gev_solver())
     {
-        case lapack:
+        case ev_lapack:
         {
             gevp = new generalized_evp_lapack(-1.0);
             break;
         }
         #ifdef _MAGMA_
-        case magma:
+        case ev_magma:
         {
             gevp = new generalized_evp_magma();
             hmlt.pin_memory();

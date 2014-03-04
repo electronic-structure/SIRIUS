@@ -119,9 +119,11 @@ class Global
         timeval start_time_;
 
         /// type of eigen-value solver
-        linalg_t eigen_value_solver_; 
+        //linalg_t eigen_value_solver_; 
 
-        gevp_solver_t gevp_solver_;
+        ev_solver_t ev_solver_;
+
+        ev_solver_t gev_solver_;
         
         /// type of the processing unit
         processing_unit_t processing_unit_;
@@ -142,7 +144,7 @@ class Global
 
         splindex<block> sub_spl_fv_states_col_;
 
-        #if defined(_SCALAPACK_) || defined(_ELPA_)
+        #ifdef _SCALAPACK_
         /// BLACS communication context for an eigen-value solver and related operations
         int blacs_context_; // TODO: if more contexts are necessary, they should be moved to mpi_grid.h 
         #endif
@@ -183,14 +185,14 @@ class Global
               so_correction_(false), 
               uj_correction_(false), 
               cyclic_block_size_(64), 
-              eigen_value_solver_(lapack),
-              gevp_solver_(gevp_lapack),
+              ev_solver_(ev_lapack),
+              gev_solver_(ev_lapack),
               #ifdef _GPU_
               processing_unit_(gpu),
               #else
               processing_unit_(cpu),
               #endif
-              #if defined(_SCALAPACK_) || defined(_ELPA_)
+              #ifdef _SCALAPACK_
               blacs_context_(-1),
               #endif
               smearing_width_(0.001), 
@@ -208,10 +210,6 @@ class Global
         {
             clear();
             delete unit_cell_;
-            #if defined(_SCALAPACK_) || defined(_ELPA_)
-            if (eigen_value_solver() == scalapack || eigen_value_solver() == elpa) 
-                linalg<scalapack>::free_blacs_context(blacs_context_);
-            #endif
         }
 
         void set_lmax_apw(int lmax_apw__)
@@ -391,14 +389,14 @@ class Global
             return initialized_;
         }
 
-        inline linalg_t eigen_value_solver()
+        inline ev_solver_t ev_solver()
         {
-            return eigen_value_solver_;
+            return ev_solver_;
         }
 
-        inline gevp_solver_t gevp_solver()
+        inline ev_solver_t gev_solver()
         {
-            return gevp_solver_;
+            return gev_solver_;
         }
 
         inline processing_unit_t processing_unit()
@@ -493,6 +491,30 @@ class Global
             #else
             return -1;
             #endif
+        }
+
+        inline bool ev_solver_is_parallel()
+        {
+            if (ev_solver() == ev_scalapack || ev_solver() == ev_elpa1 || ev_solver() == ev_elpa2 || ev_solver() == ev_rs_gpu)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        inline bool gev_solver_is_parallel()
+        {
+            if (gev_solver() == ev_scalapack || gev_solver() == ev_elpa1 || gev_solver() == ev_elpa2 || gev_solver() == ev_rs_gpu)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         inline electronic_structure_method_t esm_type()

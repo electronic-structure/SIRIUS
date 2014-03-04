@@ -168,7 +168,8 @@ template<processing_unit_t>
 class blas;
 
 // CPU
-template<> class blas<cpu>
+template<> 
+class blas<cpu>
 {
     public:
 
@@ -190,7 +191,8 @@ template<> class blas<cpu>
 };
 
 #ifdef _GPU_
-template<> class blas<gpu>
+template<> 
+class blas<gpu>
 {
     private:
         static double_complex zone;
@@ -212,7 +214,8 @@ template<> class blas<gpu>
 template<processing_unit_t> 
 class pblas;
 
-template<> class pblas<cpu>
+template<> 
+class pblas<cpu>
 {
     public:
 
@@ -226,7 +229,8 @@ template<> class pblas<cpu>
 template<linalg_t> 
 class linalg;
 
-template<> class linalg<lapack>
+template<> 
+class linalg<lapack>
 {
     public:
 
@@ -275,7 +279,8 @@ template<> class linalg<lapack>
 };
 
 #ifdef _SCALAPACK_
-template<> class linalg<scalapack>
+template<> 
+class linalg<scalapack>
 {
     public:
 
@@ -340,6 +345,7 @@ template<> class linalg<scalapack>
 };
 #endif
 
+/// Base class for the standard eigen-value problem
 class standard_evp
 {
     public:
