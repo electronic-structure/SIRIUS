@@ -27,7 +27,7 @@ Atom_type::Atom_type(const char* symbol__, const char* name__, int zn__, double 
     radial_grid_ = new Radial_grid(default_radial_grid_t, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
 }
 
-Atom_type::Atom_type(int id__, const std::string label__, electronic_structure_method_t esm_type__) 
+Atom_type::Atom_type(int id__, const std::string label__, const std::string file_name__, electronic_structure_method_t esm_type__) 
     : id_(id__), 
       zn_(0), 
       mass_(0), 
@@ -35,6 +35,7 @@ Atom_type::Atom_type(int id__, const std::string label__, electronic_structure_m
       radial_grid_(NULL), 
       esm_type_(esm_type__), 
       label_(label__),
+      file_name_(file_name__),
       initialized_(false)
 {
 }
@@ -48,15 +49,19 @@ void Atom_type::init(int lmax)
 {
     if (initialized_) error_local(__FILE__, __LINE__, "can't initialize twice");
     
-    std::string input_file_name = label_ + ".json";
-        
-    if (!Utils::file_exists(input_file_name))
+    if (file_name_.length() > 0)
     {
-        std::stringstream s;
-        s << "file " + input_file_name + " doesn't exist";
-        error_global(__FILE__, __LINE__, s);
+        if (!Utils::file_exists(file_name_))
+        {
+            std::stringstream s;
+            s << "file " + file_name_ + " doesn't exist";
+            error_global(__FILE__, __LINE__, s);
+        }
+        else
+        {
+            read_input(file_name_);
+        }
     }
-    read_input(input_file_name);
 
     //==============================================
     // add valence levels to the list of core levels

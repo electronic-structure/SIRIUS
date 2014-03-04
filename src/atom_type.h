@@ -334,6 +334,8 @@ class Atom_type
         /// atom type label
         std::string label_;
 
+        std::string file_name_;
+
         bool initialized_;
        
         // forbid copy constructor
@@ -357,7 +359,7 @@ class Atom_type
         Atom_type(const char* symbol__, const char* name__, int zn__, double mass__, 
                   std::vector<atomic_level_descriptor>& levels__);
  
-        Atom_type(int id__, const std::string label, electronic_structure_method_t esm_type__);
+        Atom_type(int id__, const std::string label, const std::string file_name__, electronic_structure_method_t esm_type__);
 
         Atom_type(int id__);
 

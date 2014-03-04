@@ -188,7 +188,8 @@ class Unit_cell
         void clear();
        
         /// Add new atom type to the list of atom types and read necessary data from the .json file
-        void add_atom_type(int atom_type_external_id, const std::string label, electronic_structure_method_t esm_type);
+        void add_atom_type(int atom_type_external_id, const std::string label, const std::string file_name, 
+                           electronic_structure_method_t esm_type);
         
         /// Add new empty atom type to the list of atom types.
         void add_atom_type(int atom_type_external_id);

@@ -14,10 +14,11 @@ int Unit_cell::next_atom_type_id(int atom_type_external_id)
     return atom_type_id_map_[atom_type_external_id];
 }
 
-void Unit_cell::add_atom_type(int atom_type_external_id, const std::string label, electronic_structure_method_t esm_type)
+void Unit_cell::add_atom_type(int atom_type_external_id, const std::string label, const std::string file_name, 
+                              electronic_structure_method_t esm_type)
 {
     int id = next_atom_type_id(atom_type_external_id);
-    atom_types_.push_back(new Atom_type(id, label, esm_type));
+    atom_types_.push_back(new Atom_type(id, label, file_name, esm_type));
 }
 
 void Unit_cell::add_atom_type(int atom_type_external_id)

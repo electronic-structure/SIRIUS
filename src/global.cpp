@@ -129,7 +129,6 @@ void Global::read_input()
         mixer_input_section_.read(parser);
     }
 
-
     Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::max_num_threads()));
 }
 
@@ -141,7 +140,9 @@ void Global::read_unit_cell_input()
         
     for (int iat = 0; iat < (int)unit_cell_input_section_.labels_.size(); iat++)
     {
-        unit_cell()->add_atom_type(iat, unit_cell_input_section_.labels_[iat], esm_type());
+        std::string label = unit_cell_input_section_.labels_[iat];
+        std::string fname = unit_cell_input_section_.atom_files_[label];
+        unit_cell()->add_atom_type(iat, label, fname, esm_type());
         for (int ia = 0; ia < (int)unit_cell_input_section_.coordinates_[iat].size(); ia++)
         {
             std::vector<double> v = unit_cell_input_section_.coordinates_[iat][ia];
