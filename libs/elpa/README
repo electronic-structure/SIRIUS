@@ -1,0 +1,189 @@
+Welcome to the git-based distribution of the ELPA eigensolver library.
+
+If you are reading this file, you have obtained the ELPA library
+through the git repository that hosts the source code and also allows
+you to contribute improvements to the project if necessary.
+
+In your use of ELPA, please respect the copyright restrictions
+found below and in the "COPYING" directory in this repository. In a
+nutshell, if you make improvements to ELPA, copyright for such
+improvements remains with you, but we request that you relicense any
+such improvements under the same exact terms of the (modified) LGPL v3
+that we are using here. Please do not simply absorb ELPA into your own
+project and then redistribute binary-only without making your exact
+version of the ELPA source code (unmodified or MODIFIED) available as
+well. 
+
+
+*** Citing:
+
+  A description of some algorithms present in ELPA can be found in:
+
+  T. Auckenthaler, V. Blum, H.-J. Bungartz, T. Huckle, R. Johanni,
+  L. Kr\"amer, B. Lang, H. Lederer, and P. R. Willems, 
+  "Parallel solution of partial symmetric eigenvalue problems from
+  electronic structure calculations", 
+  Parallel Computing 37, 783-794 (2011).
+  doi:10.1016/j.parco.2011.05.002. 
+
+  Please cite this paper when using ELPA. We also intend to publish an
+  overview description of the ELPA library as such, and ask you to
+  make appropriate reference to that as well, once it appears.
+
+
+*** Copyright: 
+
+Copyright of the original code rests with the authors inside the ELPA
+consortium. The code is distributed under the terms of the GNU Lesser General 
+Public License version 3 (LGPL).
+
+Please also note the express "NO WARRANTY" disclaimers in the GPL.
+
+Please see the file "COPYING" for details, and the files "gpl.txt" and
+"lgpl.txt" for further information.
+
+
+*** Using ELPA: 
+
+ELPA is designed to be compiled (Fortran) on its own, to be later
+linked to your own application. In order to use ELPA, you must still
+have a set of separate libraries that provide
+
+  - Basic Linear Algebra Subroutines (BLAS)
+  - Lapack routines
+  - Basic Linear Algebra Communication Subroutines (BLACS)
+  - Scalapack routines
+  - a working MPI library
+
+Appropriate libraries can be obtained and compiled separately on many
+architectures as free software. Alternatively, pre-packaged libraries
+are usually available from any HPC proprietary compiler vendors.
+
+For example, Intel's ifort compiler contains the "math kernel library"
+(MKL), providing BLAS/Lapack/BLACS/Scalapack functionality. (except on
+Mac OS X, where the BLACS and Scalapack part must still be obtained
+and compiled separately). 
+
+A very usable general-purpose MPI library is OpenMPI (ELPA was tested
+with OpenMPI 1.4.3 for example). Intel MPI seems to be a very well
+performing option on Intel platforms.
+
+Examples of how to use ELPA are included in the accompanying
+test_*.f90 subroutines in the "test" directory. An example makefile 
+"Makefile.example" is also included as a minimal example of how to 
+build and link ELPA to any other piece of code. In general, however,
+we suggest to use the build environment in order to install ELPA
+as library to your system. 
+
+
+*** Structure of this repository:
+
+* README file - this file. Please also consult the ELPA Wiki, and
+  consider adding any useful information that you may have.
+
+* COPYING directory - the copyright and licensing information for ELPA.
+
+* src directory - contains all the files that are needed for the
+  actual ELPA subroutines. If you are attempting to use ELPA in your
+  own application, these are the files which you need. 
+
+- elpa1.f90 contains routines for the one-stage solver,
+  The 1 stage solver (elpa1.f90) can be used standalone without elpa2.
+
+- elpa2.f90 - ADDITIONAL routines needed for the two-stage solver
+  elpa2.f90 requires elpa1.f90 and a version of elpa2_kernels.f90, so
+  always compile them together.
+
+- elpa2_kernels.f90 - optimized linear algebra kernels for ELPA.
+  This file is a generic version of optimized linear algebra kernels
+  for use with the ELPA library. The standard elpa2_kernels.f90 runs
+  on every platform but it is optimized for the Intel SSE instruction
+  set. Best perfomance is achieved with the Intel ifort compiler and 
+  compile flags -O3 -xSSE4.2
+
+  For optimum performance on special architectures, you may wish to
+  investigate whether hand-tuned versions of this file give additional
+  gains. If so, simply remove elpa2_kernels.f90 from your compilation
+  and replace with the version of your choice. It would be great if
+  you could contribute such hand-tuned versions back to the
+  repository. (LGPL requirement for redistribution holds in any case)
+
+- elpa2_kernels_bg.f90
+  Example of optimized ELPA kernels for the BlueGene/P
+  architecture. Use instead of the standard elpa2_kernels.f90
+  file. elpa2_kernels_bg.f90 contains assembler instructions for the
+  BlueGene/P processor which IBM's xlf Fortran compiler can handle.
+
+* test directory
+
+- Contains the Makefile that demonstrates how to compile and link to
+  the ELPA routines
+
+- All files starting with test_... are for demonstrating the use
+  of the elpa library (but not needed for using it).
+
+- All test programs solve a eigenvalue problem and check the correctnes
+  of the result by evaluating || A*x - x*lamba || and checking the
+  orthogonality of the eigenvectors
+
+  test_real         Real eigenvalue problem, 1 stage solver
+  test_real_gen     Real generalized eigenvalue problem, 1 stage solver
+  test_complex      Complex eigenvalue problem, 1 stage solver
+  test_complex_gen  Complex generalized eigenvalue problem, 1 stage solver
+  test_real2        Real eigenvalue problem, 2 stage solver
+  test_complex2     Complex eigenvalue problem, 2 stage solver
+
+- There are two programs which read matrices from a file, solve the
+  eigenvalue problem, print the eigenvalues and check the correctness
+  of the result (all using elpa1 only)
+
+  read_real         for the real eigenvalue problem
+  read_real_gen     for the real generalized eigenvalue problem
+                    A*x - B*x*lambda = 0
+
+  read_real has to be called with 1 command line argument (the file
+  containing the matrix). The file must be in ASCII (formatted) form.
+
+  read_real_gen has to be called with 3 command line arguments. The
+  first argument is either 'asc' or 'bin' (without quotes) and
+  determines the format of the following files. 'asc' refers to ASCII
+  (formatted) and 'bin' to binary (unformatted). Command line
+  arguments 2 and 3 are the names of the files which contain matrices
+  A and B.
+
+  The structure of the matrix files for read_real and read_real_gen
+  depends on the format of the files:
+
+  * ASCII format (both read_real and read_real_gen):
+
+    The files must contain the following lines:
+
+      - 1st line containing the matrix size
+      - then following the upper half of the matrix in column-major
+        (i.e. Fortran) order, one number per line:
+        a(1,1)
+        a(1,2)
+        a(2,2)
+        ...
+        a(1,i)
+        ...
+        a(i,i)
+        ...
+        a(1,n)
+        ...
+        a(n,n)
+
+
+  * Binary format (read_real_gen only):
+
+    The files must contain the following records:
+
+      - 1st record:  matrix size  (type integer)
+      - 2nd record:  a(1,1)
+      - 3rd record:  a(1,2)  a(2,2)
+      - ...
+      - ...          a(1,i)   ...   a(i,i)
+      - ...
+      - ...          a(1,n)      ...         a(n,n)
+
+    The type of the matrix elements a(i,j) is real*8.
