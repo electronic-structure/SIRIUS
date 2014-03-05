@@ -251,6 +251,13 @@ void Global::initialize()
             gen_evp_solver_ = new generalized_evp_scalapack(cyclic_block_size(), nrow, ncol, blacs_context_, -1.0);
             break;
         }
+        case ev_elpa1:
+        {
+            gen_evp_solver_ = new generalized_evp_elpa1(cyclic_block_size(), nrow, irow, ncol, icol, blacs_context_, 
+                                                        mpi_grid().communicator(1 << _dim_row_),
+                                                        mpi_grid().communicator(1 << _dim_col_));
+            break;
+        }
         case ev_elpa2:
         {
             gen_evp_solver_ = new generalized_evp_elpa2(cyclic_block_size(), nrow, irow, ncol, icol, blacs_context_, 
@@ -421,7 +428,7 @@ void Global::print_info()
     printf("lmax_beta                          : %i\n", lmax_beta());
 
     std::string evsn[] = {"standard eigen-value solver: ", "generalized eigen-value solver: "};
-    ev_solver_t evst[] = {std_evp_solver_type_, gen_evp_solver_type_};
+    ev_solver_t evst[] = {std_evp_solver_->type(), gen_evp_solver_->type()};
     for (int i = 0; i < 2; i++)
     {
         printf("\n");
@@ -430,37 +437,37 @@ void Global::print_info()
         {
             case ev_lapack:
             {
-                printf("lapack\n");
+                printf("LAPACK\n");
                 break;
             }
             case ev_scalapack:
             {
-                printf("scalapack, block size %i\n", cyclic_block_size());
+                printf("ScaLAPACK, block size %i\n", cyclic_block_size());
                 break;
             }
             case ev_elpa1:
             {
-                printf("elpa1, block size %i\n", cyclic_block_size());
+                printf("ELPA1, block size %i\n", cyclic_block_size());
                 break;
             }
             case ev_elpa2:
             {
-                printf("elpa2, block size %i\n", cyclic_block_size());
+                printf("ELPA2, block size %i\n", cyclic_block_size());
                 break;
             }
             case ev_magma:
             {
-                printf("magma\n");
+                printf("MAGMA\n");
                 break;
             }
             case ev_plasma:
             {
-                printf("plasma\n");
+                printf("PLASMA\n");
                 break;
             }
             case ev_rs_gpu:
             {
-                printf("rs_gpu\n");
+                printf("RS_gpu\n");
                 break;
             }
         }
