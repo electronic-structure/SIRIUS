@@ -275,10 +275,10 @@ void Global::initialize()
         }
     }
 
-    if (std_evp_solver_->is_parallel() != gen_evp_solver_->is_parallel())
+    if (std_evp_solver_->parallel() != gen_evp_solver_->parallel())
         error_global(__FILE__, __LINE__, "both eigen-value solvers must be serial or parallel");
 
-    if (gen_evp_solver_->is_parallel())
+    if (gen_evp_solver_->parallel())
     {
         // TODO: aligment of fv_states is too restrictive and should be removed; 
         //       code must be able to work with arbitrary number of fv_states

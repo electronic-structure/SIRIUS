@@ -942,21 +942,15 @@ void K_point::distribute_block_cyclic()
     for (int i = 0; i < spl_col.local_size(); i++)
         apwlo_basis_descriptors_col_[i] = apwlo_basis_descriptors_[spl_col[i]];
     
-    #if defined(_SCALAPACK) || defined(_ELPA_)
-    if (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa)
-    {
-        int nr = linalg<scalapack>::numroc(apwlo_basis_size(), parameters_.cyclic_block_size(), 
-                                           band->rank_row(), 0, band->num_ranks_row());
-        
-        if (nr != apwlo_basis_size_row()) 
-            error_local(__FILE__, __LINE__, "numroc returned a different local row size");
+    #ifdef _SCALAPACK_
+    int bs = parameters_.cyclic_block_size();
+    int nr = linalg<scalapack>::numroc(apwlo_basis_size(), bs, rank_row(), 0, num_ranks_row());
+    
+    if (nr != apwlo_basis_size_row()) error_local(__FILE__, __LINE__, "numroc returned a different local row size");
 
-        int nc = linalg<scalapack>::numroc(apwlo_basis_size(), parameters_.cyclic_block_size(), 
-                                           band->rank_col(), 0, band->num_ranks_col());
-        
-        if (nc != apwlo_basis_size_col()) 
-            error_local(__FILE__, __LINE__, "numroc returned a different local column size");
-    }
+    int nc = linalg<scalapack>::numroc(apwlo_basis_size(), bs, rank_col(), 0, num_ranks_col());
+    
+    if (nc != apwlo_basis_size_col()) error_local(__FILE__, __LINE__, "numroc returned a different local column size");
     #endif
 
     // get the number of row- and column- G+k-vectors

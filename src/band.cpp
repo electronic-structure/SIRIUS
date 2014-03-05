@@ -65,7 +65,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
         }
         
         // compute bwf = (B_x + iB_y)|wf_j>
-        if (hpsi.size(2) == 4 && parameters_.std_evp_solver()->is_parallel())
+        if (hpsi.size(2) == 4 && parameters_.std_evp_solver()->parallel())
         {
             // reuse first (z) component of zm matrix to store (Bx + iBy)
             for (int j2 = 0; j2 < mt_basis_size; j2++)
@@ -128,7 +128,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
                 fft_->output(num_gkvec, fft_index, &hpsi_pw(0, i, 2), thread_id); 
             }
             
-            if (hpsi.size(2) == 4 && parameters_.std_evp_solver()->is_parallel())
+            if (hpsi.size(2) == 4 && parameters_.std_evp_solver()->parallel())
             {
                 for (int ir = 0; ir < fft_->size(); ir++)
                 {
@@ -1239,7 +1239,7 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     log_function_enter(__func__);
     Timer t("sirius::Band::diag_fv_full_potential");
 
-    if (kp->num_ranks() > 1 && !parameters_.gen_evp_solver()->is_parallel())
+    if (kp->num_ranks() > 1 && !parameters_.gen_evp_solver()->parallel())
         error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
     mdarray<double_complex, 2> h(NULL, kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
@@ -1296,7 +1296,7 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     }
     
     // TODO: move debug code to a separate function
-    if (debug_level > 0 && !parameters_.gen_evp_solver()->is_parallel())
+    if (debug_level > 0 && !parameters_.gen_evp_solver()->parallel())
     {
         Utils::check_hermitian("h", h);
         Utils::check_hermitian("o", o);
@@ -1654,7 +1654,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         return;
     }
     
-    if (kp->num_ranks() > 1 && !parameters_.std_evp_solver()->is_parallel())
+    if (kp->num_ranks() > 1 && !parameters_.std_evp_solver()->parallel())
         error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
     // number of h|\psi> components 
@@ -1683,7 +1683,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         if (parameters_.num_mag_dims() == 3) 
         {
             apply_uj_correction<ud>(kp->fv_states_col(), hpsi);
-            if (parameters_.std_evp_solver()->is_parallel()) apply_uj_correction<du>(kp->fv_states_col(), hpsi);
+            if (parameters_.std_evp_solver()->parallel()) apply_uj_correction<du>(kp->fv_states_col(), hpsi);
         }
     }
 
@@ -1733,7 +1733,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 1), hpsi.ld(), 
                         &h(nrow, ncol), h.ld());
 
-        if (parameters_.std_evp_solver()->is_parallel())
+        if (parameters_.std_evp_solver()->parallel())
         {
             // compute <fv_i | (h * fv_j)> for dn-up block
             blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 3), hpsi.ld(), 
@@ -1770,7 +1770,7 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
 {
     Timer t("sirius::Band::solve_fd");
 
-    if (kp->num_ranks() > 1 && !parameters_.gen_evp_solver()->is_parallel())
+    if (kp->num_ranks() > 1 && !parameters_.gen_evp_solver()->parallel())
         error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
     mdarray<double_complex, 2> h(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
