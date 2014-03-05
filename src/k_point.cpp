@@ -603,22 +603,22 @@ void K_point::generate_fv_states()
     log_function_enter(__func__);
     Timer t("sirius::K_point::generate_fv_states");
 
-    if (parameters_.processing_unit() == gpu)
+    if (parameters_.esm_type() == full_potential_lapwlo)
     {
-        #ifdef _GPU_
-        generate_fv_states_aw_mt_gpu();
-        #else
-        stop_here
-        #endif
-    }
-    else
-    {
-        fv_states_col_.zero();
-
-        mdarray<double_complex, 2> alm(num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
-        
-        if (parameters_.esm_type() == full_potential_lapwlo)
+        if (parameters_.processing_unit() == gpu)
         {
+            #ifdef _GPU_
+            generate_fv_states_aw_mt_gpu();
+            #else
+            stop_here
+            #endif
+        }
+        else
+        {
+            fv_states_col_.zero();
+
+            mdarray<double_complex, 2> alm(num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
+        
             for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
             {
                 Atom* atom = parameters_.unit_cell()->atom(ia);
@@ -636,7 +636,8 @@ void K_point::generate_fv_states()
 
     for (int j = 0; j < parameters_.spl_fv_states_col().local_size(); j++)
     {
-        copy_lo_blocks(&fv_eigen_vectors_(0, j), &fv_states_col_(0, j));
+        if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
+            copy_lo_blocks(&fv_eigen_vectors_(0, j), &fv_states_col_(0, j));
 
         copy_pw_block(&fv_eigen_vectors_(0, j), &fv_states_col_(parameters_.unit_cell()->mt_basis_size(), j));
     }
@@ -668,21 +669,18 @@ void K_point::generate_fv_states_aw_mt_gpu()
     mdarray<double_complex, 2> alm(num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
     alm.allocate_on_device();
     
-    if (parameters_.esm_type() == full_potential_lapwlo)
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
-        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-        {
-            Atom* atom = parameters_.unit_cell()->atom(ia);
-            Atom_type* type = atom->type();
-            
-            generate_matching_coefficients<true>(num_gkvec_row(), ia, alm);
-            alm.copy_to_device(); // TODO: copy only necessary fraction of the data
+        Atom* atom = parameters_.unit_cell()->atom(ia);
+        Atom_type* type = atom->type();
+        
+        generate_matching_coefficients<true>(num_gkvec_row(), ia, alm);
+        alm.copy_to_device(); // TODO: copy only necessary fraction of the data
 
-            blas<gpu>::gemm(2, 0, type->mt_aw_basis_size(), num_fv_loc, num_gkvec_row(), 
-                            alm.ptr_device(), alm.ld(), 
-                            fv_eigen_vectors_gpu_.ptr_device(), fv_eigen_vectors_gpu_.ld(), 
-                            fv_states_col_gpu_.ptr_device(atom->offset_wf(), 0), fv_states_col_gpu_.ld());
-        }
+        blas<gpu>::gemm(2, 0, type->mt_aw_basis_size(), num_fv_loc, num_gkvec_row(), 
+                        alm.ptr_device(), alm.ld(), 
+                        fv_eigen_vectors_gpu_.ptr_device(), fv_eigen_vectors_gpu_.ld(), 
+                        fv_states_col_gpu_.ptr_device(atom->offset_wf(), 0), fv_states_col_gpu_.ld());
     }
 
     cublas_get_matrix(parameters_.unit_cell()->mt_basis_size(), num_fv_loc, sizeof(double_complex), 
