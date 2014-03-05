@@ -81,7 +81,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
         }
     }
     
-    Timer *t1 = new Timer("sirius::Band::apply_magnetic_field:it");
+    Timer *t1 = new Timer("sirius::Band::apply_magnetic_field|it");
 
     mdarray<double_complex, 3> hpsi_pw(num_gkvec, parameters_.spl_fv_states_col().local_size(), hpsi.size(2));
     hpsi_pw.zero();
