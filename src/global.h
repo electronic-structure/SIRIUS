@@ -118,12 +118,13 @@ class Global
         /// starting time of the program
         timeval start_time_;
 
-        /// type of eigen-value solver
-        //linalg_t eigen_value_solver_; 
+        ev_solver_t std_evp_solver_type_;
 
-        ev_solver_t ev_solver_;
+        standard_evp* std_evp_solver_; 
 
-        ev_solver_t gev_solver_;
+        ev_solver_t gen_evp_solver_type_;
+
+        generalized_evp* gen_evp_solver_;
         
         /// type of the processing unit
         processing_unit_t processing_unit_;
@@ -146,7 +147,7 @@ class Global
 
         #ifdef _SCALAPACK_
         /// BLACS communication context for an eigen-value solver and related operations
-        int blacs_context_; // TODO: if more contexts are necessary, they should be moved to mpi_grid.h 
+        int blacs_context_;
         #endif
         
         /// smearing function width
@@ -185,8 +186,10 @@ class Global
               so_correction_(false), 
               uj_correction_(false), 
               cyclic_block_size_(64), 
-              ev_solver_(ev_lapack),
-              gev_solver_(ev_lapack),
+              std_evp_solver_type_(ev_lapack),
+              std_evp_solver_(NULL),
+              gen_evp_solver_type_(ev_lapack),
+              gen_evp_solver_(NULL),
               #ifdef _GPU_
               processing_unit_(gpu),
               #else
@@ -389,16 +392,6 @@ class Global
             return initialized_;
         }
 
-        inline ev_solver_t ev_solver()
-        {
-            return ev_solver_;
-        }
-
-        inline ev_solver_t gev_solver()
-        {
-            return gev_solver_;
-        }
-
         inline processing_unit_t processing_unit()
         {
             return processing_unit_;
@@ -491,30 +484,6 @@ class Global
             #else
             return -1;
             #endif
-        }
-
-        inline bool ev_solver_is_parallel()
-        {
-            if (ev_solver() == ev_scalapack || ev_solver() == ev_elpa1 || ev_solver() == ev_elpa2 || ev_solver() == ev_rs_gpu)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-        inline bool gev_solver_is_parallel()
-        {
-            if (gev_solver() == ev_scalapack || gev_solver() == ev_elpa1 || gev_solver() == ev_elpa2 || gev_solver() == ev_rs_gpu)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
         }
 
         inline electronic_structure_method_t esm_type()
@@ -666,6 +635,20 @@ class Global
         inline void set_iterative_solver_tolerance(double tol)
         {
             iterative_solver_tolerance_ = tol;
+        }
+
+        #ifdef _SCALAPACK_
+        int create_blacs_context();
+        #endif
+
+        inline standard_evp* std_evp_solver()
+        {
+            return std_evp_solver_;
+        }
+
+        inline generalized_evp* gen_evp_solver()
+        {
+            return gen_evp_solver_;
         }
 };
 

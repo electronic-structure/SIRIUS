@@ -1,7 +1,10 @@
 {
     "cyclic_block_size" : 16,
     "processing_unit" : "gpu",
-    "eigen_value_solver" : "lapack",
+    
+    "std_evp_solver_type" : "lapack",
+    "gen_evp_solver_type" : "lapack",
+    
     "num_fv_states" : 64,
 
     "auto_rmt" : 1,

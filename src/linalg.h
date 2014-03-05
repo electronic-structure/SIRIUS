@@ -349,16 +349,20 @@ class linalg<scalapack>
 class standard_evp
 {
     public:
+
         virtual ~standard_evp()
         {
         }
 
         virtual void solve(int32_t matrix_size, double_complex* a, int32_t lda, double* eval, double_complex* z, int32_t ldz)
         {
-            error_local(__FILE__, __LINE__, "eigen-value solver is not configured");
+            error_local(__FILE__, __LINE__, "standard eigen-value solver is not configured");
         }
+
+        virtual bool is_parallel() = 0;
 };
 
+/// Interface for LAPACK standard eigen-value solver
 class standard_evp_lapack: public standard_evp
 {
     private:
@@ -401,6 +405,11 @@ class standard_evp_lapack: public standard_evp
                 error_local(__FILE__, __LINE__, s);
             }
         }
+
+        bool is_parallel()
+        {
+            return false;
+        }
 };
 
 #ifdef _PLASMA_
@@ -408,6 +417,7 @@ extern "C" void plasma_zheevd_wrapper(int32_t matrix_size, void* a, int32_t lda,
                                       int32_t ldz, double* eval);
 #endif
 
+/// Interface for PLASMA standard eigen-value solver
 class standard_evp_plasma: public standard_evp
 {
     public:
@@ -428,12 +438,18 @@ class standard_evp_plasma: public standard_evp
             //omp_set_num_threads(8);
         }
         #endif
+        
+        bool is_parallel()
+        {
+            return false;
+        }
 };
 
-
+/// Interface for ScaLAPACK standard eigen-value solver
 class standard_evp_scalapack: public standard_evp
 {
     private:
+
         int32_t block_size_;
         int num_ranks_row_;
         int num_ranks_col_;
@@ -503,22 +519,33 @@ class standard_evp_scalapack: public standard_evp
             }
         }
         #endif
+
+        bool is_parallel()
+        {
+            return true;
+        }
 };
 
+/// Base class for generalized eigen-value problem
 class generalized_evp
 {
     public:
+
         virtual ~generalized_evp()
         {
         }
 
-        virtual void solve(int32_t matrix_size, int32_t nevec, double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
-                           double* eval, double_complex* z, int32_t ldz)
+        virtual void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                           double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                           double_complex* z, int32_t ldz)
         {
-            error_local(__FILE__, __LINE__, "eigen-value solver is not configured");
+            error_local(__FILE__, __LINE__, "generalized eigen-value solver is not configured");
         }
+
+        virtual bool is_parallel() = 0;
 };
 
+/// Interface for LAPACK generalized eigen-value solver
 class generalized_evp_lapack: public generalized_evp
 {
     private:
@@ -531,15 +558,16 @@ class generalized_evp_lapack: public generalized_evp
         {
         }
 
-        void solve(int32_t matrix_size, int32_t nevec, double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
-                   double* eval, double_complex* z, int32_t ldz)
+        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                   double_complex* z, int32_t ldz)
         {
             assert(nevec <= matrix_size);
 
             int nb = linalg<lapack>::ilaenv(1, "ZHETRD", "U", matrix_size, 0, 0, 0);
-            int lwork = (nb + 1) * matrix_size; // lwork
-            int lrwork = 7 * matrix_size; // lrwork
-            int liwork = 5 * matrix_size; // liwork
+            int lwork = (nb + 1) * matrix_size;
+            int lrwork = 7 * matrix_size;
+            int liwork = 5 * matrix_size;
             
             std::vector<double_complex> work(lwork);
             std::vector<double> rwork(lrwork);
@@ -568,9 +596,13 @@ class generalized_evp_lapack: public generalized_evp
             memcpy(eval, &w[0], nevec * sizeof(double));
         }
 
-
+        bool is_parallel()
+        {
+            return false;
+        }
 };
 
+/// Interface for ScaLAPACK generalized eigen-value solver
 class generalized_evp_scalapack: public generalized_evp
 {
     private:
@@ -631,10 +663,10 @@ class generalized_evp_scalapack: public generalized_evp
         }
 
         #ifdef _SCALAPACK_
-        void solve(int32_t matrix_size, int32_t nevec, double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
-                   double* eval, double_complex* z, int32_t ldz)
+        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                   double_complex* z, int32_t ldz)
         {
-        
             assert(nevec <= matrix_size);
             
             int32_t desca[9];
@@ -709,6 +741,10 @@ class generalized_evp_scalapack: public generalized_evp
         }
         #endif
 
+        bool is_parallel()
+        {
+            return true;
+        }
 };
 
 #ifdef _RS_GEN_EIG_
@@ -741,8 +777,9 @@ class generalized_evp_gpu: public generalized_evp
         }
 
         #ifdef _RS_GEN_EIG_
-        void solve(int32_t matrix_size, int32_t nevec, double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
-                   double* eval, double_complex* z, int32_t ldz)
+        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                   double_complex* z, int32_t ldz)
         {
         
             assert(nevec <= matrix_size);
@@ -770,17 +807,21 @@ class generalized_evp_gpu: public generalized_evp
             }
         }
         #endif
+
+        bool is_parallel()
+        {
+            return true;
+        }
 };
 
-class generalized_evp_elpa: public generalized_evp
+/// Interface for ELPA 2-stage generalized eigen-value solver
+class generalized_evp_elpa2: public generalized_evp
 {
     private:
         
         int32_t block_size_;
-        int32_t na_rows_;
         int32_t num_ranks_row_;
         int32_t rank_row_;
-        int32_t na_cols_;
         int32_t num_ranks_col_;
         int32_t rank_col_;
         int blacs_context_;
@@ -790,27 +831,25 @@ class generalized_evp_elpa: public generalized_evp
 
     public:
         
-        generalized_evp_elpa(int32_t block_size__, int32_t na_rows__, int32_t num_ranks_row__, int32_t rank_row__,
-                             int32_t na_cols__, int32_t num_ranks_col__, int32_t rank_col__, int blacs_context__, 
-                             MPI_Comm comm_row__, MPI_Comm comm_col__, MPI_Comm comm_all__) 
+        generalized_evp_elpa2(int32_t block_size__, int32_t num_ranks_row__, int32_t rank_row__,
+                              int32_t num_ranks_col__, int32_t rank_col__, int blacs_context__, 
+                              MPI_Comm comm_row__, MPI_Comm comm_col__, MPI_Comm comm_all__) 
             : block_size_(block_size__), 
-              na_rows_(na_rows__), 
               num_ranks_row_(num_ranks_row__), 
               rank_row_(rank_row__),
-              na_cols_(na_cols__), 
               num_ranks_col_(num_ranks_col__), 
               rank_col_(rank_col__),
               blacs_context_(blacs_context__), 
               comm_row_(comm_row__), 
               comm_col_(comm_col__), 
               comm_all_(comm_all__)
-
         {
         }
         
         #ifdef _ELPA_
-        void solve(int32_t matrix_size, int32_t nevec, double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
-                   double* eval, double_complex* z, int32_t ldz)
+        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                   double_complex* z, int32_t ldz)
         {
 
             assert(nevec <= matrix_size);
@@ -877,8 +916,14 @@ class generalized_evp_elpa: public generalized_evp
             memcpy(eval, &w[0], nevec * sizeof(double));
         }
         #endif
+
+        bool is_parallel()
+        {
+            return true;
+        }
 };
 
+/// Interface for MAGMA generalized eigen-value solver
 class generalized_evp_magma: public generalized_evp
 {
     private:
@@ -889,10 +934,10 @@ class generalized_evp_magma: public generalized_evp
         }
 
         #ifdef _MAGMA_
-        void solve(int32_t matrix_size, int32_t nevec, double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
-                   double* eval, double_complex* z, int32_t ldz)
+        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                   double_complex* z, int32_t ldz)
         {
-
             assert(nevec <= matrix_size);
             
             magma_zhegvdx_2stage_wrapper(matrix_size, nevec, a, lda, b, ldb, eval);
@@ -900,6 +945,11 @@ class generalized_evp_magma: public generalized_evp
             for (int i = 0; i < nevec; i++) memcpy(&z[ldz * i], &a[lda * i], matrix_size * sizeof(double_complex));
         }
         #endif
+
+        bool is_parallel()
+        {
+            return false;
+        }
 };
 
 #endif // __LINALG_H__
