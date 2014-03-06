@@ -11,12 +11,8 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
 
     Timer t("sirius::Band::apply_magnetic_field");
 
-    double_complex zzero = double_complex(0, 0);
-    double_complex zone = double_complex(1, 0);
-    double_complex zi = double_complex(0, 1);
-
     mdarray<double_complex, 3> zm(parameters_.unit_cell()->max_mt_basis_size(), parameters_.unit_cell()->max_mt_basis_size(), 
-                             parameters_.num_mag_dims());
+                                  parameters_.num_mag_dims());
 
     // column fv states are further distributed over rows to make use of all row processors
     int num_fv_local = parameters_.sub_spl_fv_states_col().local_size();
@@ -48,8 +44,8 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
             }
         }
         // compute bwf = B_z*|wf_j>
-        blas<cpu>::hemm(0, 0, mt_basis_size, num_fv_local, zone, &zm(0, 0, 0), zm.ld(), 
-                        &fv_states(offset, idx_fv_local), fv_states.ld(), zzero, 
+        blas<cpu>::hemm(0, 0, mt_basis_size, num_fv_local, complex_one, &zm(0, 0, 0), zm.ld(), 
+                        &fv_states(offset, idx_fv_local), fv_states.ld(), complex_zero, 
                         &hpsi(offset, idx_fv_local, 0), hpsi.ld());
         
         // compute bwf = (B_x - iB_y)|wf_j>
@@ -58,9 +54,9 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
             // reuse first (z) component of zm matrix to store (Bx - iBy)
             for (int j2 = 0; j2 < mt_basis_size; j2++)
             {
-                for (int j1 = 0; j1 <= j2; j1++) zm(j1, j2, 0) = zm(j1, j2, 1) - zi * zm(j1, j2, 2);
+                for (int j1 = 0; j1 <= j2; j1++) zm(j1, j2, 0) = zm(j1, j2, 1) - complex_i * zm(j1, j2, 2);
                 
-                for (int j1 = j2 + 1; j1 < mt_basis_size; j1++) zm(j1, j2, 0) = conj(zm(j2, j1, 1)) - zi * conj(zm(j2, j1, 2));
+                for (int j1 = j2 + 1; j1 < mt_basis_size; j1++) zm(j1, j2, 0) = conj(zm(j2, j1, 1)) - complex_i * conj(zm(j2, j1, 2));
             }
               
             blas<cpu>::gemm(0, 0, mt_basis_size, num_fv_local, mt_basis_size, &zm(0, 0, 0), zm.ld(), 
@@ -69,15 +65,14 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
         }
         
         // compute bwf = (B_x + iB_y)|wf_j>
-        if ((hpsi.size(2) == 4) && 
-            (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa))
+        if (hpsi.size(2) == 4 && parameters_.std_evp_solver()->parallel())
         {
             // reuse first (z) component of zm matrix to store (Bx + iBy)
             for (int j2 = 0; j2 < mt_basis_size; j2++)
             {
-                for (int j1 = 0; j1 <= j2; j1++) zm(j1, j2, 0) = zm(j1, j2, 1) + zi * zm(j1, j2, 2);
+                for (int j1 = 0; j1 <= j2; j1++) zm(j1, j2, 0) = zm(j1, j2, 1) + complex_i * zm(j1, j2, 2);
                 
-                for (int j1 = j2 + 1; j1 < mt_basis_size; j1++) zm(j1, j2, 0) = conj(zm(j2, j1, 1)) + zi * conj(zm(j2, j1, 2));
+                for (int j1 = j2 + 1; j1 < mt_basis_size; j1++) zm(j1, j2, 0) = conj(zm(j2, j1, 1)) + complex_i * conj(zm(j2, j1, 2));
             }
               
             blas<cpu>::gemm(0, 0, mt_basis_size, num_fv_local, mt_basis_size, &zm(0, 0, 0), zm.ld(), 
@@ -86,7 +81,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
         }
     }
     
-    Timer *t1 = new Timer("sirius::Band::apply_magnetic_field:it");
+    Timer *t1 = new Timer("sirius::Band::apply_magnetic_field|it");
 
     mdarray<double_complex, 3> hpsi_pw(num_gkvec, parameters_.spl_fv_states_col().local_size(), hpsi.size(2));
     hpsi_pw.zero();
@@ -125,7 +120,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
                     // hpsi(r) = psi(r) * (Bx(r) - iBy(r)) * Theta(r)
                     hpsi_it[ir] = psi_it[ir] * parameters_.step_function(ir) * 
                                   (effective_magnetic_field[1]->f_it<global>(ir) - 
-                                   zi * effective_magnetic_field[2]->f_it<global>(ir));
+                                   complex_i * effective_magnetic_field[2]->f_it<global>(ir));
                 }
                 
                 fft_->input(&hpsi_it[0], thread_id);
@@ -133,15 +128,14 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
                 fft_->output(num_gkvec, fft_index, &hpsi_pw(0, i, 2), thread_id); 
             }
             
-            if ((hpsi.size(2)) == 4 && 
-                (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa))
+            if (hpsi.size(2) == 4 && parameters_.std_evp_solver()->parallel())
             {
                 for (int ir = 0; ir < fft_->size(); ir++)
                 {
                     // hpsi(r) = psi(r) * (Bx(r) + iBy(r)) * Theta(r)
                     hpsi_it[ir] = psi_it[ir] * parameters_.step_function(ir) *
                                   (effective_magnetic_field[1]->f_it<global>(ir) + 
-                                   zi * effective_magnetic_field[2]->f_it<global>(ir));
+                                   complex_i * effective_magnetic_field[2]->f_it<global>(ir));
                 }
                 
                 fft_->input(&hpsi_it[0], thread_id);
@@ -1170,58 +1164,10 @@ void Band::solve_fv_evp_1stage(K_point* kp, mdarray<double_complex, 2>& h, mdarr
                                std::vector<double>& fv_eigen_values, mdarray<double_complex, 2>& fv_eigen_vectors)
 {
     Timer t("sirius::Band::solve_fv_evp");
-    generalized_evp* solver = NULL;
-
-    switch (parameters_.gevp_solver())
-    {
-        case gevp_lapack:
-        {
-            solver = new generalized_evp_lapack(-1.0);
-            break;
-        }
-        case gevp_scalapack:
-        {
-            solver = new generalized_evp_scalapack(parameters_.cyclic_block_size(), kp->num_ranks_row(), 
-                                                   kp->num_ranks_col(), parameters_.blacs_context(), -1.0);
-            break;
-        }
-        case gevp_elpa2:
-        {
-            solver = new generalized_evp_elpa(parameters_.cyclic_block_size(), 
-                                              kp->apwlo_basis_size_row(), kp->num_ranks_row(), kp->rank_row(),
-                                              kp->apwlo_basis_size_col(), kp->num_ranks_col(), kp->rank_col(), 
-                                              parameters_.blacs_context(), 
-                                              parameters_.mpi_grid().communicator(1 << _dim_row_),
-                                              parameters_.mpi_grid().communicator(1 << _dim_col_),
-                                              parameters_.mpi_grid().communicator(1 << _dim_col_ | 1 << _dim_row_));
-            break;
-        }
-        case gevp_magma:
-        {
-            solver = new generalized_evp_magma();
-            break;
-        }
-        case gevp_plasma:
-        {
-            solver = new generalized_evp_lapack(-1.0);
-            break;
-        }
-        case gevp_rs_gpu:
-        {
-            solver = new generalized_evp_gpu(parameters_.cyclic_block_size(), kp->num_ranks_row(), 
-                                             kp->num_ranks_col(), parameters_.blacs_context());
-            break;
-        }
-        default:
-        {
-            error_local(__FILE__, __LINE__, "eigen value solver is not defined");
-        }
-    }
-
-    solver->solve(kp->apwlo_basis_size(), parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
-                  &fv_eigen_values[0], fv_eigen_vectors.ptr(), fv_eigen_vectors.ld());
-
-    delete solver;
+    
+    parameters_.gen_evp_solver()->solve(kp->apwlo_basis_size(), kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col(),
+                                        parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
+                                        &fv_eigen_values[0], fv_eigen_vectors.ptr(), fv_eigen_vectors.ld());
 }
 
 //== void K_point::solve_fv_evp_2stage(mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
@@ -1293,10 +1239,8 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     log_function_enter(__func__);
     Timer t("sirius::Band::diag_fv_full_potential");
 
-    if (kp->num_ranks() > 1 && (parameters_.gevp_solver() == gevp_lapack || 
-                                parameters_.gevp_solver() == gevp_magma  || 
-                                parameters_.gevp_solver() == gevp_plasma))
-        error_local(__FILE__, __LINE__, "Can't use more than one MPI rank for lapack, magma or plasma eigen-value solver");
+    if (kp->num_ranks() > 1 && !parameters_.gen_evp_solver()->parallel())
+        error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
     mdarray<double_complex, 2> h(NULL, kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
     mdarray<double_complex, 2> o(NULL, kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
@@ -1352,7 +1296,7 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     }
     
     // TODO: move debug code to a separate function
-    if (debug_level > 0 && parameters_.eigen_value_solver() == lapack)
+    if (debug_level > 0 && !parameters_.gen_evp_solver()->parallel())
     {
         Utils::check_hermitian("h", h);
         Utils::check_hermitian("o", o);
@@ -1710,10 +1654,8 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         return;
     }
     
-    if (kp->num_ranks() > 1 && (parameters_.gevp_solver() == gevp_lapack || 
-                                parameters_.gevp_solver() == gevp_magma  || 
-                                parameters_.gevp_solver() == gevp_plasma))
-        error_local(__FILE__, __LINE__, "Can't use more than one MPI rank for LAPACK or MAGMA eigen-value solver");
+    if (kp->num_ranks() > 1 && !parameters_.std_evp_solver()->parallel())
+        error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
     // number of h|\psi> components 
     int nhpsi = parameters_.num_mag_dims() + 1;
@@ -1741,50 +1683,12 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         if (parameters_.num_mag_dims() == 3) 
         {
             apply_uj_correction<ud>(kp->fv_states_col(), hpsi);
-            if (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa)
-                apply_uj_correction<du>(kp->fv_states_col(), hpsi);
+            if (parameters_.std_evp_solver()->parallel()) apply_uj_correction<du>(kp->fv_states_col(), hpsi);
         }
     }
 
     if (parameters_.so_correction()) apply_so_correction(kp->fv_states_col(), hpsi);
 
-
-    standard_evp* solver = NULL;
-    switch (parameters_.eigen_value_solver())
-    {
-        case lapack:
-        {
-            solver = new standard_evp_lapack();
-            break;
-        }
-        case scalapack:
-        {
-            solver = new standard_evp_scalapack(parameters_.cyclic_block_size(), kp->num_ranks_row(), 
-                                                kp->num_ranks_col(), parameters_.blacs_context());
-            break;
-        }
-        case elpa:
-        {
-            solver = new standard_evp_scalapack(parameters_.cyclic_block_size(), kp->num_ranks_row(), 
-                                                kp->num_ranks_col(), parameters_.blacs_context());
-            break;
-        }
-        case magma:
-        {
-            solver = new standard_evp_lapack();
-            break;
-        }
-        case plasma:
-        {
-            solver = new standard_evp_plasma();
-            break;
-        }
-        default:
-        {
-            error_local(__FILE__, __LINE__, "eigen value solver is not defined");
-        }
-    }
-    
     if (parameters_.num_mag_dims() == 1)
     {
         mdarray<double_complex, 2> h(nrow, ncol);
@@ -1806,9 +1710,9 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
             }
         
             Timer t1("sirius::Band::solve_sv|stdevp");
-            solver->solve(parameters_.num_fv_states(), h.ptr(), h.ld(),
-                          &band_energies[ispn * parameters_.num_fv_states()],
-                          &sv_eigen_vectors(0, ispn * ncol), sv_eigen_vectors.ld());
+            parameters_.std_evp_solver()->solve(parameters_.num_fv_states(), h.ptr(), h.ld(),
+                                                &band_energies[ispn * parameters_.num_fv_states()],
+                                                &sv_eigen_vectors(0, ispn * ncol), sv_eigen_vectors.ld());
         }
     }
 
@@ -1829,7 +1733,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 1), hpsi.ld(), 
                         &h(nrow, ncol), h.ld());
 
-        if (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa)
+        if (parameters_.std_evp_solver()->parallel())
         {
             // compute <fv_i | (h * fv_j)> for dn-up block
             blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 3), hpsi.ld(), 
@@ -1853,10 +1757,9 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         }
     
         Timer t1("sirius::Band::solve_sv|stdevp");
-        solver->solve(parameters_.num_bands(), h.ptr(), h.ld(), &band_energies[0], 
-                      sv_eigen_vectors.ptr(), sv_eigen_vectors.ld());
+        parameters_.std_evp_solver()->solve(parameters_.num_bands(), h.ptr(), h.ld(), &band_energies[0], 
+                                            sv_eigen_vectors.ptr(), sv_eigen_vectors.ld());
     }
-    delete solver;
 
     kp->set_band_energies(&band_energies[0]);
     log_function_exit(__func__);
@@ -1867,46 +1770,8 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
 {
     Timer t("sirius::Band::solve_fd");
 
-    if (kp->num_ranks() > 1 && (parameters_.eigen_value_solver() == lapack || parameters_.eigen_value_solver() == magma))
-        error_local(__FILE__, __LINE__, "Can't use more than one MPI rank for LAPACK or MAGMA eigen-value solver");
-
-    generalized_evp* solver = NULL;
-
-    // create eigen-value solver
-    switch (parameters_.eigen_value_solver())
-    {
-        case lapack:
-        {
-            solver = new generalized_evp_lapack(-1.0);
-            break;
-        }
-        case scalapack:
-        {
-            solver = new generalized_evp_scalapack(parameters_.cyclic_block_size(), kp->num_ranks_row(), 
-                                                   kp->num_ranks_col(), parameters_.blacs_context(), -1.0);
-            break;
-        }
-        case elpa:
-        {
-            solver = new generalized_evp_elpa(parameters_.cyclic_block_size(), 
-                                              kp->apwlo_basis_size_row(), kp->num_ranks_row(), kp->rank_row(),
-                                              kp->apwlo_basis_size_col(), kp->num_ranks_col(), kp->rank_col(), 
-                                              parameters_.blacs_context(), 
-                                              parameters_.mpi_grid().communicator(1 << _dim_row_),
-                                              parameters_.mpi_grid().communicator(1 << _dim_col_),
-                                              parameters_.mpi_grid().communicator(1 << _dim_col_ | 1 << _dim_row_));
-            break;
-        }
-        case magma:
-        {
-            solver = new generalized_evp_magma();
-            break;
-        }
-        default:
-        {
-            error_local(__FILE__, __LINE__, "eigen value solver is not defined");
-        }
-    }
+    if (kp->num_ranks() > 1 && !parameters_.gen_evp_solver()->parallel())
+        error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
     mdarray<double_complex, 2> h(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
     mdarray<double_complex, 2> o(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
@@ -1922,8 +1787,9 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
         set_h<nm>(kp, effective_potential, effective_magnetic_field, h);
        
         Timer t2("sirius::Band::solve_fd|diag");
-        solver->solve(kp->apwlo_basis_size(), parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
-                      &eval[0], fd_evec.ptr(), fd_evec.ld());
+        parameters_.gen_evp_solver()->solve(kp->apwlo_basis_size(), kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col(), 
+                                            parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
+                                            &eval[0], fd_evec.ptr(), fd_evec.ld());
     }
     
     if (parameters_.num_mag_dims() == 1)
@@ -1936,21 +1802,22 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
         set_h<uu>(kp, effective_potential, effective_magnetic_field, h);
        
         Timer t2("sirius::Band::solve_fd|diag");
-        solver->solve(kp->apwlo_basis_size(), parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
-                      &eval[0], &fd_evec(0, 0), fd_evec.ld());
+        parameters_.gen_evp_solver()->solve(kp->apwlo_basis_size(), kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col(), 
+                                            parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
+                                            &eval[0], &fd_evec(0, 0), fd_evec.ld());
         t2.stop();
 
         set_h<dd>(kp, effective_potential, effective_magnetic_field, h);
         
         t2.start();
-        solver->solve(kp->apwlo_basis_size(), parameters_.num_fv_states(), h.ptr(), h.ld(), o1.ptr(), o1.ld(), 
-                      &eval[parameters_.num_fv_states()], &fd_evec(0, parameters_.spl_fv_states_col().local_size()), fd_evec.ld());
+        parameters_.gen_evp_solver()->solve(kp->apwlo_basis_size(), kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col(), 
+                                            parameters_.num_fv_states(), h.ptr(), h.ld(), o1.ptr(), o1.ld(), 
+                                            &eval[parameters_.num_fv_states()], 
+                                            &fd_evec(0, parameters_.spl_fv_states_col().local_size()), fd_evec.ld());
         t2.stop();
     }
 
     kp->set_band_energies(&eval[0]);
-
-    delete solver;
 }
 
 }

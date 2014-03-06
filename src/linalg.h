@@ -18,6 +18,7 @@
 #endif
 #include "constants.h"
 #include "error_handling.h"
+#include "mdarray.h"
 
 /* 
     matrix-vector operations
@@ -156,8 +157,9 @@ extern "C" void FORTRAN(elpa_mult_ah_b_complex)(const char* uplo_a, const char* 
                                                 int32_t* mpi_comm_rows, int32_t* mpi_comm_cols, double_complex* c, int32_t* ldc,
                                                 int32_t uplo_a_len, int32_t uplo_c_len);
 
-extern "C" void FORTRAN(elpa_solve_evp_complex)(int32_t* na, int32_t* nev, double_complex* a, int32_t* lda, double* ev, double_complex* q, 
-                                                int32_t* ldq, int32_t* nblk, int32_t* mpi_comm_rows, int32_t* mpi_comm_cols);
+extern "C" void FORTRAN(elpa_solve_evp_complex)(int32_t* na, int32_t* nev, double_complex* a, int32_t* lda, double* ev, 
+                                                double_complex* q, int32_t* ldq, int32_t* nblk, int32_t* mpi_comm_rows, 
+                                                int32_t* mpi_comm_cols);
 
 extern "C" void FORTRAN(elpa_solve_evp_complex_2stage)(int32_t* na, int32_t* nev, double_complex* a, int32_t* lda, double* ev, 
                                                        double_complex* q, int32_t* ldq, int32_t* nblk, int32_t* mpi_comm_rows, 
@@ -168,7 +170,8 @@ template<processing_unit_t>
 class blas;
 
 // CPU
-template<> class blas<cpu>
+template<> 
+class blas<cpu>
 {
     public:
 
@@ -190,7 +193,8 @@ template<> class blas<cpu>
 };
 
 #ifdef _GPU_
-template<> class blas<gpu>
+template<> 
+class blas<gpu>
 {
     private:
         static double_complex zone;
@@ -212,7 +216,8 @@ template<> class blas<gpu>
 template<processing_unit_t> 
 class pblas;
 
-template<> class pblas<cpu>
+template<> 
+class pblas<cpu>
 {
     public:
 
@@ -226,7 +231,8 @@ template<> class pblas<cpu>
 template<linalg_t> 
 class linalg;
 
-template<> class linalg<lapack>
+template<> 
+class linalg<lapack>
 {
     public:
 
@@ -275,7 +281,8 @@ template<> class linalg<lapack>
 };
 
 #ifdef _SCALAPACK_
-template<> class linalg<scalapack>
+template<> 
+class linalg<scalapack>
 {
     public:
 
@@ -340,19 +347,26 @@ template<> class linalg<scalapack>
 };
 #endif
 
+/// Base class for the standard eigen-value problem
 class standard_evp
 {
     public:
+
         virtual ~standard_evp()
         {
         }
 
         virtual void solve(int32_t matrix_size, double_complex* a, int32_t lda, double* eval, double_complex* z, int32_t ldz)
         {
-            error_local(__FILE__, __LINE__, "eigen-value solver is not configured");
+            error_local(__FILE__, __LINE__, "standard eigen-value solver is not configured");
         }
+
+        virtual bool parallel() = 0;
+
+        virtual ev_solver_t type() = 0;
 };
 
+/// Interface for LAPACK standard eigen-value solver
 class standard_evp_lapack: public standard_evp
 {
     private:
@@ -395,6 +409,16 @@ class standard_evp_lapack: public standard_evp
                 error_local(__FILE__, __LINE__, s);
             }
         }
+
+        bool parallel()
+        {
+            return false;
+        }
+
+        ev_solver_t type()
+        {
+            return ev_lapack;
+        }
 };
 
 #ifdef _PLASMA_
@@ -402,6 +426,7 @@ extern "C" void plasma_zheevd_wrapper(int32_t matrix_size, void* a, int32_t lda,
                                       int32_t ldz, double* eval);
 #endif
 
+/// Interface for PLASMA standard eigen-value solver
 class standard_evp_plasma: public standard_evp
 {
     public:
@@ -422,12 +447,23 @@ class standard_evp_plasma: public standard_evp
             //omp_set_num_threads(8);
         }
         #endif
+        
+        bool parallel()
+        {
+            return false;
+        }
+
+        ev_solver_t type()
+        {
+            return ev_plasma;
+        }
 };
 
-
+/// Interface for ScaLAPACK standard eigen-value solver
 class standard_evp_scalapack: public standard_evp
 {
     private:
+
         int32_t block_size_;
         int num_ranks_row_;
         int num_ranks_col_;
@@ -497,22 +533,40 @@ class standard_evp_scalapack: public standard_evp
             }
         }
         #endif
+
+        bool parallel()
+        {
+            return true;
+        }
+
+        ev_solver_t type()
+        {
+            return ev_scalapack;
+        }
 };
 
+/// Base class for generalized eigen-value problem
 class generalized_evp
 {
     public:
+
         virtual ~generalized_evp()
         {
         }
 
-        virtual void solve(int32_t matrix_size, int32_t nevec, double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
-                           double* eval, double_complex* z, int32_t ldz)
+        virtual void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                           double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                           double_complex* z, int32_t ldz)
         {
-            error_local(__FILE__, __LINE__, "eigen-value solver is not configured");
+            error_local(__FILE__, __LINE__, "generalized eigen-value solver is not configured");
         }
+
+        virtual bool parallel() = 0;
+
+        virtual ev_solver_t type() = 0;
 };
 
+/// Interface for LAPACK generalized eigen-value solver
 class generalized_evp_lapack: public generalized_evp
 {
     private:
@@ -525,15 +579,16 @@ class generalized_evp_lapack: public generalized_evp
         {
         }
 
-        void solve(int32_t matrix_size, int32_t nevec, double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
-                   double* eval, double_complex* z, int32_t ldz)
+        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                   double_complex* z, int32_t ldz)
         {
             assert(nevec <= matrix_size);
 
             int nb = linalg<lapack>::ilaenv(1, "ZHETRD", "U", matrix_size, 0, 0, 0);
-            int lwork = (nb + 1) * matrix_size; // lwork
-            int lrwork = 7 * matrix_size; // lrwork
-            int liwork = 5 * matrix_size; // liwork
+            int lwork = (nb + 1) * matrix_size;
+            int lrwork = 7 * matrix_size;
+            int liwork = 5 * matrix_size;
             
             std::vector<double_complex> work(lwork);
             std::vector<double> rwork(lrwork);
@@ -562,9 +617,18 @@ class generalized_evp_lapack: public generalized_evp
             memcpy(eval, &w[0], nevec * sizeof(double));
         }
 
+        bool parallel()
+        {
+            return false;
+        }
 
+        ev_solver_t type()
+        {
+            return ev_lapack;
+        }
 };
 
+/// Interface for ScaLAPACK generalized eigen-value solver
 class generalized_evp_scalapack: public generalized_evp
 {
     private:
@@ -625,10 +689,10 @@ class generalized_evp_scalapack: public generalized_evp
         }
 
         #ifdef _SCALAPACK_
-        void solve(int32_t matrix_size, int32_t nevec, double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
-                   double* eval, double_complex* z, int32_t ldz)
+        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                   double_complex* z, int32_t ldz)
         {
-        
             assert(nevec <= matrix_size);
             
             int32_t desca[9];
@@ -703,6 +767,15 @@ class generalized_evp_scalapack: public generalized_evp
         }
         #endif
 
+        bool parallel()
+        {
+            return true;
+        }
+
+        ev_solver_t type()
+        {
+            return ev_scalapack;
+        }
 };
 
 #ifdef _RS_GEN_EIG_
@@ -735,8 +808,9 @@ class generalized_evp_gpu: public generalized_evp
         }
 
         #ifdef _RS_GEN_EIG_
-        void solve(int32_t matrix_size, int32_t nevec, double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
-                   double* eval, double_complex* z, int32_t ldz)
+        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                   double_complex* z, int32_t ldz)
         {
         
             assert(nevec <= matrix_size);
@@ -764,17 +838,137 @@ class generalized_evp_gpu: public generalized_evp
             }
         }
         #endif
+
+        bool parallel()
+        {
+            return true;
+        }
+
+        ev_solver_t type()
+        {
+            return ev_rs_gpu;
+        }
 };
 
-class generalized_evp_elpa: public generalized_evp
+/// Interface for ELPA single stage generalized eigen-value solver
+class generalized_evp_elpa1: public generalized_evp
 {
     private:
         
         int32_t block_size_;
-        int32_t na_rows_;
         int32_t num_ranks_row_;
         int32_t rank_row_;
-        int32_t na_cols_;
+        int32_t num_ranks_col_;
+        int32_t rank_col_;
+        int blacs_context_;
+        MPI_Comm comm_row_;
+        MPI_Comm comm_col_;
+
+    public:
+        
+        generalized_evp_elpa1(int32_t block_size__, int32_t num_ranks_row__, int32_t rank_row__,
+                              int32_t num_ranks_col__, int32_t rank_col__, int blacs_context__, 
+                              MPI_Comm comm_row__, MPI_Comm comm_col__) 
+            : block_size_(block_size__), 
+              num_ranks_row_(num_ranks_row__), 
+              rank_row_(rank_row__),
+              num_ranks_col_(num_ranks_col__), 
+              rank_col_(rank_col__),
+              blacs_context_(blacs_context__), 
+              comm_row_(comm_row__), 
+              comm_col_(comm_col__)
+        {
+        }
+        
+        #ifdef _ELPA_
+        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                   double_complex* z, int32_t ldz)
+        {
+
+            assert(nevec <= matrix_size);
+
+            int32_t mpi_comm_rows = MPI_Comm_c2f(comm_row_);
+            int32_t mpi_comm_cols = MPI_Comm_c2f(comm_col_);
+
+            sirius::Timer *t;
+
+            t = new sirius::Timer("elpa::ort");
+            FORTRAN(elpa_cholesky_complex)(&matrix_size, b, &ldb, &block_size_, &mpi_comm_rows, &mpi_comm_cols);
+            FORTRAN(elpa_invert_trm_complex)(&matrix_size, b, &ldb, &block_size_, &mpi_comm_rows, &mpi_comm_cols);
+       
+            mdarray<double_complex, 2> tmp1(num_rows_loc, num_cols_loc);
+            mdarray<double_complex, 2> tmp2(num_rows_loc, num_cols_loc);
+
+            FORTRAN(elpa_mult_ah_b_complex)("U", "L", &matrix_size, &matrix_size, b, &ldb, a, &lda, &block_size_, 
+                                            &mpi_comm_rows, &mpi_comm_cols, tmp1.ptr(), &num_rows_loc, (int32_t)1, 
+                                            (int32_t)1);
+
+            int32_t descc[9];
+            linalg<scalapack>::descinit(descc, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+                                        blacs_context_, lda);
+
+            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, tmp1.ptr(), 1, 1, descc, 
+                                       complex_zero, tmp2.ptr(), 1, 1, descc);
+
+            FORTRAN(elpa_mult_ah_b_complex)("U", "U", &matrix_size, &matrix_size, b, &ldb, tmp2.ptr(), &num_rows_loc, 
+                                            &block_size_, &mpi_comm_rows, &mpi_comm_cols, a, &lda, (int32_t)1, 
+                                            (int32_t)1);
+
+            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, a, 1, 1, descc, complex_zero, 
+                                       tmp1.ptr(), 1, 1, descc);
+
+            for (int i = 0; i < num_cols_loc; i++)
+            {
+                int32_t n_col = linalg<scalapack>::indxl2g(i + 1, block_size_, rank_col_, 0, num_ranks_col_);
+                int32_t n_row = linalg<scalapack>::numroc(n_col, block_size_, rank_row_, 0, num_ranks_row_);
+                for (int j = n_row; j < num_rows_loc; j++) 
+                {
+                    assert(j < num_rows_loc);
+                    assert(i < num_cols_loc);
+                    a[j + i * lda] = tmp1(j, i);
+                }
+            }
+            delete t;
+            
+            t = new sirius::Timer("elpa::diag");
+            std::vector<double> w(matrix_size);
+            FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, a, &lda, &w[0], tmp1.ptr(), &num_rows_loc, 
+                                            &block_size_, &mpi_comm_rows, &mpi_comm_cols);
+            delete t;
+
+            t = new sirius::Timer("elpa::bt");
+            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, b, 1, 1, descc, complex_zero, 
+                                       tmp2.ptr(), 1, 1, descc);
+
+            FORTRAN(elpa_mult_ah_b_complex)("L", "N", &matrix_size, &nevec, tmp2.ptr(), &num_rows_loc, tmp1.ptr(), 
+                                            &num_rows_loc, &block_size_, &mpi_comm_rows, &mpi_comm_cols, z, &ldz, 
+                                            (int32_t)1, (int32_t)1);
+            delete t;
+
+            memcpy(eval, &w[0], nevec * sizeof(double));
+        }
+        #endif
+
+        bool parallel()
+        {
+            return true;
+        }
+
+        ev_solver_t type()
+        {
+            return ev_elpa1;
+        }
+};
+
+/// Interface for ELPA 2-stage generalized eigen-value solver
+class generalized_evp_elpa2: public generalized_evp
+{
+    private:
+        
+        int32_t block_size_;
+        int32_t num_ranks_row_;
+        int32_t rank_row_;
         int32_t num_ranks_col_;
         int32_t rank_col_;
         int blacs_context_;
@@ -784,27 +978,25 @@ class generalized_evp_elpa: public generalized_evp
 
     public:
         
-        generalized_evp_elpa(int32_t block_size__, int32_t na_rows__, int32_t num_ranks_row__, int32_t rank_row__,
-                             int32_t na_cols__, int32_t num_ranks_col__, int32_t rank_col__, int blacs_context__, 
-                             MPI_Comm comm_row__, MPI_Comm comm_col__, MPI_Comm comm_all__) 
+        generalized_evp_elpa2(int32_t block_size__, int32_t num_ranks_row__, int32_t rank_row__,
+                              int32_t num_ranks_col__, int32_t rank_col__, int blacs_context__, 
+                              MPI_Comm comm_row__, MPI_Comm comm_col__, MPI_Comm comm_all__) 
             : block_size_(block_size__), 
-              na_rows_(na_rows__), 
               num_ranks_row_(num_ranks_row__), 
               rank_row_(rank_row__),
-              na_cols_(na_cols__), 
               num_ranks_col_(num_ranks_col__), 
               rank_col_(rank_col__),
               blacs_context_(blacs_context__), 
               comm_row_(comm_row__), 
               comm_col_(comm_col__), 
               comm_all_(comm_all__)
-
         {
         }
         
         #ifdef _ELPA_
-        void solve(int32_t matrix_size, int32_t nevec, double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
-                   double* eval, double_complex* z, int32_t ldz)
+        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                   double_complex* z, int32_t ldz)
         {
 
             assert(nevec <= matrix_size);
@@ -819,35 +1011,35 @@ class generalized_evp_elpa: public generalized_evp
             FORTRAN(elpa_cholesky_complex)(&matrix_size, b, &ldb, &block_size_, &mpi_comm_rows, &mpi_comm_cols);
             FORTRAN(elpa_invert_trm_complex)(&matrix_size, b, &ldb, &block_size_, &mpi_comm_rows, &mpi_comm_cols);
        
-            mdarray<double_complex, 2> tmp1(na_rows_, na_cols_);
-            mdarray<double_complex, 2> tmp2(na_rows_, na_cols_);
+            mdarray<double_complex, 2> tmp1(num_rows_loc, num_cols_loc);
+            mdarray<double_complex, 2> tmp2(num_rows_loc, num_cols_loc);
 
             FORTRAN(elpa_mult_ah_b_complex)("U", "L", &matrix_size, &matrix_size, b, &ldb, a, &lda, &block_size_, 
-                                            &mpi_comm_rows, &mpi_comm_cols, tmp1.get_ptr(), &na_rows_, (int32_t)1, 
+                                            &mpi_comm_rows, &mpi_comm_cols, tmp1.ptr(), &num_rows_loc, (int32_t)1, 
                                             (int32_t)1);
 
             int32_t descc[9];
             linalg<scalapack>::descinit(descc, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, lda);
 
-            linalg<scalapack>::pztranc(matrix_size, matrix_size, double_complex(1, 0), tmp1.get_ptr(), 1, 1, descc, 
-                                       double_complex(0, 0), tmp2.get_ptr(), 1, 1, descc);
+            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, tmp1.ptr(), 1, 1, descc, 
+                                       complex_zero, tmp2.ptr(), 1, 1, descc);
 
-            FORTRAN(elpa_mult_ah_b_complex)("U", "U", &matrix_size, &matrix_size, b, &ldb, tmp2.get_ptr(), &na_rows_, 
+            FORTRAN(elpa_mult_ah_b_complex)("U", "U", &matrix_size, &matrix_size, b, &ldb, tmp2.ptr(), &num_rows_loc, 
                                             &block_size_, &mpi_comm_rows, &mpi_comm_cols, a, &lda, (int32_t)1, 
                                             (int32_t)1);
 
-            linalg<scalapack>::pztranc(matrix_size, matrix_size, double_complex(1, 0), a, 1, 1, descc, double_complex(0, 0), 
-                                       tmp1.get_ptr(), 1, 1, descc);
+            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, a, 1, 1, descc, complex_zero, 
+                                       tmp1.ptr(), 1, 1, descc);
 
-            for (int i = 0; i < na_cols_; i++)
+            for (int i = 0; i < num_cols_loc; i++)
             {
                 int32_t n_col = linalg<scalapack>::indxl2g(i + 1, block_size_, rank_col_, 0, num_ranks_col_);
                 int32_t n_row = linalg<scalapack>::numroc(n_col, block_size_, rank_row_, 0, num_ranks_row_);
-                for (int j = n_row; j < na_rows_; j++) 
+                for (int j = n_row; j < num_rows_loc; j++) 
                 {
-                    assert(j < na_rows_);
-                    assert(i < na_cols_);
+                    assert(j < num_rows_loc);
+                    assert(i < num_cols_loc);
                     a[j + i * lda] = tmp1(j, i);
                 }
             }
@@ -855,24 +1047,35 @@ class generalized_evp_elpa: public generalized_evp
             
             t = new sirius::Timer("elpa::diag");
             std::vector<double> w(matrix_size);
-            FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size, &nevec, a, &lda, &w[0], tmp1.get_ptr(), &na_rows_, 
+            FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size, &nevec, a, &lda, &w[0], tmp1.ptr(), &num_rows_loc, 
                                                    &block_size_, &mpi_comm_rows, &mpi_comm_cols, &mpi_comm_all);
             delete t;
 
             t = new sirius::Timer("elpa::bt");
-            linalg<scalapack>::pztranc(matrix_size, matrix_size, double_complex(1, 0), b, 1, 1, descc, double_complex(0, 0), 
-                                       tmp2.get_ptr(), 1, 1, descc);
+            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, b, 1, 1, descc, complex_zero, 
+                                       tmp2.ptr(), 1, 1, descc);
 
-            FORTRAN(elpa_mult_ah_b_complex)("L", "N", &matrix_size, &nevec, tmp2.get_ptr(), &na_rows_, tmp1.get_ptr(), 
-                                            &na_rows_, &block_size_, &mpi_comm_rows, &mpi_comm_cols, z, &ldz, 
+            FORTRAN(elpa_mult_ah_b_complex)("L", "N", &matrix_size, &nevec, tmp2.ptr(), &num_rows_loc, tmp1.ptr(), 
+                                            &num_rows_loc, &block_size_, &mpi_comm_rows, &mpi_comm_cols, z, &ldz, 
                                             (int32_t)1, (int32_t)1);
             delete t;
 
             memcpy(eval, &w[0], nevec * sizeof(double));
         }
         #endif
+
+        bool parallel()
+        {
+            return true;
+        }
+
+        ev_solver_t type()
+        {
+            return ev_elpa2;
+        }
 };
 
+/// Interface for MAGMA generalized eigen-value solver
 class generalized_evp_magma: public generalized_evp
 {
     private:
@@ -883,10 +1086,10 @@ class generalized_evp_magma: public generalized_evp
         }
 
         #ifdef _MAGMA_
-        void solve(int32_t matrix_size, int32_t nevec, double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
-                   double* eval, double_complex* z, int32_t ldz)
+        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                   double_complex* z, int32_t ldz)
         {
-
             assert(nevec <= matrix_size);
             
             magma_zhegvdx_2stage_wrapper(matrix_size, nevec, a, lda, b, ldb, eval);
@@ -894,6 +1097,16 @@ class generalized_evp_magma: public generalized_evp
             for (int i = 0; i < nevec; i++) memcpy(&z[ldz * i], &a[lda * i], matrix_size * sizeof(double_complex));
         }
         #endif
+
+        bool parallel()
+        {
+            return false;
+        }
+
+        ev_solver_t type()
+        {
+            return ev_magma;
+        }
 };
 
 #endif // __LINALG_H__

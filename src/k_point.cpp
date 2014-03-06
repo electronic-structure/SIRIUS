@@ -603,29 +603,41 @@ void K_point::generate_fv_states()
     log_function_enter(__func__);
     Timer t("sirius::K_point::generate_fv_states");
 
-    fv_states_col_.zero();
-
-    mdarray<double_complex, 2> alm(num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
-    
     if (parameters_.esm_type() == full_potential_lapwlo)
     {
-        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        if (parameters_.processing_unit() == gpu)
         {
-            Atom* atom = parameters_.unit_cell()->atom(ia);
-            Atom_type* type = atom->type();
-            
-            generate_matching_coefficients<true>(num_gkvec_row(), ia, alm);
+            #ifdef _GPU_
+            generate_fv_states_aw_mt_gpu();
+            #else
+            stop_here
+            #endif
+        }
+        else
+        {
+            fv_states_col_.zero();
 
-            blas<cpu>::gemm(2, 0, type->mt_aw_basis_size(), parameters_.spl_fv_states_col().local_size(),
-                            num_gkvec_row(), &alm(0, 0), alm.ld(), &fv_eigen_vectors_(0, 0), 
-                            fv_eigen_vectors_.ld(), &fv_states_col_(atom->offset_wf(), 0), 
-                            fv_states_col_.ld());
+            mdarray<double_complex, 2> alm(num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
+        
+            for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+            {
+                Atom* atom = parameters_.unit_cell()->atom(ia);
+                Atom_type* type = atom->type();
+                
+                generate_matching_coefficients<true>(num_gkvec_row(), ia, alm);
+
+                blas<cpu>::gemm(2, 0, type->mt_aw_basis_size(), parameters_.spl_fv_states_col().local_size(),
+                                num_gkvec_row(), &alm(0, 0), alm.ld(), &fv_eigen_vectors_(0, 0), 
+                                fv_eigen_vectors_.ld(), &fv_states_col_(atom->offset_wf(), 0), 
+                                fv_states_col_.ld());
+            }
         }
     }
 
     for (int j = 0; j < parameters_.spl_fv_states_col().local_size(); j++)
     {
-        copy_lo_blocks(&fv_eigen_vectors_(0, j), &fv_states_col_(0, j));
+        if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
+            copy_lo_blocks(&fv_eigen_vectors_(0, j), &fv_states_col_(0, j));
 
         copy_pw_block(&fv_eigen_vectors_(0, j), &fv_states_col_(parameters_.unit_cell()->mt_basis_size(), j));
     }
@@ -637,6 +649,49 @@ void K_point::generate_fv_states()
 
     log_function_exit(__func__);
 }
+
+#ifdef _GPU_
+void K_point::generate_fv_states_aw_mt_gpu()
+{
+    int num_fv_loc = parameters_.spl_fv_states_col().local_size();
+
+    mdarray<double_complex, 2> fv_eigen_vectors_gpu_(NULL, num_gkvec_row(), num_fv_loc);
+    fv_eigen_vectors_gpu_.allocate_on_device();
+
+    cublas_set_matrix(num_gkvec_row(), num_fv_loc, sizeof(double_complex),
+                      fv_eigen_vectors_.ptr(), fv_eigen_vectors_.ld(), 
+                      fv_eigen_vectors_gpu_.ptr_device(), fv_eigen_vectors_gpu_.ld());
+
+    mdarray<double_complex, 2> fv_states_col_gpu_(NULL, parameters_.unit_cell()->mt_basis_size(), num_fv_loc);
+    fv_states_col_gpu_.allocate_on_device();
+    fv_states_col_gpu_.zero_on_device();
+
+    mdarray<double_complex, 2> alm(num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    alm.allocate_on_device();
+    
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {
+        Atom* atom = parameters_.unit_cell()->atom(ia);
+        Atom_type* type = atom->type();
+        
+        generate_matching_coefficients<true>(num_gkvec_row(), ia, alm);
+        alm.copy_to_device(); // TODO: copy only necessary fraction of the data
+
+        blas<gpu>::gemm(2, 0, type->mt_aw_basis_size(), num_fv_loc, num_gkvec_row(), 
+                        alm.ptr_device(), alm.ld(), 
+                        fv_eigen_vectors_gpu_.ptr_device(), fv_eigen_vectors_gpu_.ld(), 
+                        fv_states_col_gpu_.ptr_device(atom->offset_wf(), 0), fv_states_col_gpu_.ld());
+    }
+
+    cublas_get_matrix(parameters_.unit_cell()->mt_basis_size(), num_fv_loc, sizeof(double_complex), 
+                      fv_states_col_gpu_.ptr_device(), fv_states_col_gpu_.ld(),
+                      fv_states_col_.ptr(), fv_states_col_.ld());
+
+    alm.deallocate_on_device();
+    fv_states_col_gpu_.deallocate_on_device();
+    fv_eigen_vectors_gpu_.deallocate_on_device();
+}
+#endif
 
 void K_point::generate_spinor_wave_functions()
 {
@@ -942,21 +997,15 @@ void K_point::distribute_block_cyclic()
     for (int i = 0; i < spl_col.local_size(); i++)
         apwlo_basis_descriptors_col_[i] = apwlo_basis_descriptors_[spl_col[i]];
     
-    #if defined(_SCALAPACK) || defined(_ELPA_)
-    if (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa)
-    {
-        int nr = linalg<scalapack>::numroc(apwlo_basis_size(), parameters_.cyclic_block_size(), 
-                                           band->rank_row(), 0, band->num_ranks_row());
-        
-        if (nr != apwlo_basis_size_row()) 
-            error_local(__FILE__, __LINE__, "numroc returned a different local row size");
+    #ifdef _SCALAPACK_
+    int bs = parameters_.cyclic_block_size();
+    int nr = linalg<scalapack>::numroc(apwlo_basis_size(), bs, rank_row(), 0, num_ranks_row());
+    
+    if (nr != apwlo_basis_size_row()) error_local(__FILE__, __LINE__, "numroc returned a different local row size");
 
-        int nc = linalg<scalapack>::numroc(apwlo_basis_size(), parameters_.cyclic_block_size(), 
-                                           band->rank_col(), 0, band->num_ranks_col());
-        
-        if (nc != apwlo_basis_size_col()) 
-            error_local(__FILE__, __LINE__, "numroc returned a different local column size");
-    }
+    int nc = linalg<scalapack>::numroc(apwlo_basis_size(), bs, rank_col(), 0, num_ranks_col());
+    
+    if (nc != apwlo_basis_size_col()) error_local(__FILE__, __LINE__, "numroc returned a different local column size");
     #endif
 
     // get the number of row- and column- G+k-vectors

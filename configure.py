@@ -19,7 +19,7 @@ packages = {
     "xc"   : ["http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.0.2.tar.gz",
               []
              ],
-    "spg"  : ["http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.4/spglib-1.4.1.tar.gz",
+    "spg"  : ["http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.6/spglib-1.6.0.tar.gz",
               []
              ]
 }

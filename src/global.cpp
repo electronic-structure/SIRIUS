@@ -17,72 +17,48 @@ void Global::read_input()
         num_fft_threads = parser["num_fft_threads"].get(num_fft_threads);
         num_fv_states_ = parser["num_fv_states"].get(num_fv_states_);
         smearing_width_ = parser["smearing_width"].get(smearing_width_);
-        
-        if (parser.exist("eigen_value_solver"))
-        {
-            std::string ev_solver_name;
-            parser["eigen_value_solver"] >> ev_solver_name;
-            if (ev_solver_name == "lapack") 
-            {
-                eigen_value_solver_ = lapack;
-            }
-            else if (ev_solver_name == "scalapack") 
-            {
-                eigen_value_solver_ = scalapack;
-            }
-            else if (ev_solver_name == "elpa") 
-            {
-                eigen_value_solver_ = elpa;
-            }
-            else if (ev_solver_name == "magma") 
-            {
-                eigen_value_solver_ = magma;
-            }
-            else if (ev_solver_name == "plasma")
-            {
-                eigen_value_solver_ = plasma;
-            }
-            else
-            {
-                error_local(__FILE__, __LINE__, "wrong eigen value solver");
-            }
-        }
 
-        if (parser.exist("gevp_solver"))
+        std::string evsn[] = {"std_evp_solver_type", "gen_evp_solver_type"};
+        ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
+
+        for (int i = 0; i < 2; i++)
         {
-            std::string name;
-            parser["gevp_solver"] >> name;
-            if (name == "lapack") 
+            if (parser.exist(evsn[i]))
             {
-                gevp_solver_ = gevp_lapack;
-            }
-            else if (name == "scalapack") 
-            {
-                gevp_solver_ = gevp_scalapack;
-            }
-            else if (name == "elpa1") 
-            {
-                gevp_solver_ = gevp_elpa1;
-            }
-            else if (name == "elpa2") 
-            {
-                gevp_solver_ = gevp_elpa2;
-            }
-            else if (name == "magma") 
-            {
-                gevp_solver_ = gevp_magma;
-            }
-            else if (name == "plasma")
-            {
-                gevp_solver_ = gevp_plasma;
-            }
-            else if (name == "rs_gpu")
-            {
-                gevp_solver_ = gevp_rs_gpu;
-            }
-            else
-            {
-                error_local(__FILE__, __LINE__, "wrong eigen value solver");
+                std::string name;
+                parser[evsn[i]] >> name;
+                if (name == "lapack") 
+                {
+                    *evst[i] = ev_lapack;
+                }
+                else if (name == "scalapack") 
+                {
+                    *evst[i] = ev_scalapack;
+                }
+                else if (name == "elpa1") 
+                {
+                    *evst[i] = ev_elpa1;
+                }
+                else if (name == "elpa2") 
+                {
+                    *evst[i] = ev_elpa2;
+                }
+                else if (name == "magma") 
+                {
+                    *evst[i] = ev_magma;
+                }
+                else if (name == "plasma")
+                {
+                    *evst[i] = ev_plasma;
+                }
+                else if (name == "rs_gpu")
+                {
+                    *evst[i] = ev_rs_gpu;
+                }
+                else
+                {
+                    error_local(__FILE__, __LINE__, "wrong eigen value solver");
+                }
             }
         }
 
@@ -224,57 +200,101 @@ void Global::initialize()
     mpi_grid_.initialize(mpi_grid_dims_);
     
     if (num_fv_states_ < 0) num_fv_states_ = int(unit_cell_->num_valence_electrons() / 2.0) + 20;
+
     if (num_fv_states_ < int(unit_cell_->num_valence_electrons() / 2.0))
         error_global(__FILE__, __LINE__, "not enough first-variational states");
 
+    #ifdef _SCALAPACK_
+    blacs_context_ = create_blacs_context();
+    #endif
+    
     int nrow = mpi_grid().dimension_size(_dim_row_);
     int ncol = mpi_grid().dimension_size(_dim_col_);
     
     int irow = mpi_grid().coordinate(_dim_row_);
     int icol = mpi_grid().coordinate(_dim_col_);
 
-    if (eigen_value_solver() == scalapack || eigen_value_solver() == elpa || gevp_solver() == gevp_scalapack || 
-        gevp_solver() == gevp_elpa1 || gevp_solver() == gevp_elpa2 || gevp_solver() == gevp_rs_gpu)
+    // create standard eigen-value solver
+    switch (std_evp_solver_type_)
     {
+        case ev_lapack:
+        {
+            std_evp_solver_ = new standard_evp_lapack();
+            break;
+        }
+        case ev_scalapack:
+        {
+            std_evp_solver_ = new standard_evp_scalapack(cyclic_block_size(), nrow, ncol, blacs_context_); 
+            break;
+        }
+        case ev_plasma:
+        {
+            std_evp_solver_ = new standard_evp_plasma();
+            break;
+        }
+        default:
+        {
+            error_local(__FILE__, __LINE__, "wrong standard eigen-value solver");
+        }
+    }
+    
+    // create generalized eign-value solver
+    switch (gen_evp_solver_type_)
+    {
+        case ev_lapack:
+        {
+            gen_evp_solver_ = new generalized_evp_lapack(-1.0);
+            break;
+        }
+        case ev_scalapack:
+        {
+            gen_evp_solver_ = new generalized_evp_scalapack(cyclic_block_size(), nrow, ncol, blacs_context_, -1.0);
+            break;
+        }
+        case ev_elpa1:
+        {
+            gen_evp_solver_ = new generalized_evp_elpa1(cyclic_block_size(), nrow, irow, ncol, icol, blacs_context_, 
+                                                        mpi_grid().communicator(1 << _dim_row_),
+                                                        mpi_grid().communicator(1 << _dim_col_));
+            break;
+        }
+        case ev_elpa2:
+        {
+            gen_evp_solver_ = new generalized_evp_elpa2(cyclic_block_size(), nrow, irow, ncol, icol, blacs_context_, 
+                                                        mpi_grid().communicator(1 << _dim_row_),
+                                                        mpi_grid().communicator(1 << _dim_col_),
+                                                        mpi_grid().communicator(1 << _dim_col_ | 1 << _dim_row_));
+            break;
+        }
+        case ev_magma:
+        {
+            gen_evp_solver_ = new generalized_evp_magma();
+            break;
+        }
+        case ev_rs_gpu:
+        {
+            gen_evp_solver_ = new generalized_evp_gpu(cyclic_block_size(), nrow, ncol, blacs_context_);
+            break;
+        }
+        default:
+        {
+            error_local(__FILE__, __LINE__, "wrong generalized eigen-value solver");
+        }
+    }
+
+    if (std_evp_solver_->parallel() != gen_evp_solver_->parallel())
+        error_global(__FILE__, __LINE__, "both eigen-value solvers must be serial or parallel");
+
+    if (gen_evp_solver_->parallel())
+    {
+        // TODO: aligment of fv_states is too restrictive and should be removed; 
+        //       code must be able to work with arbitrary number of fv_states
         int n = num_fv_states_ / (ncol * cyclic_block_size()) + 
                 std::min(1, num_fv_states_ % (ncol * cyclic_block_size()));
 
         while ((n * ncol) % nrow) n++;
         
         num_fv_states_ = n * ncol * cyclic_block_size();
-
-        #if defined(_SCALAPACK_) || defined(_ELPA_)
-        int rc = (1 << _dim_row_) | (1 << _dim_col_);
-        MPI_Comm comm = mpi_grid().communicator(rc);
-        blacs_context_ = linalg<scalapack>::create_blacs_context(comm);
-
-        mdarray<int, 2> map_ranks(nrow, ncol);
-        for (int i = 0; i < nrow; i++)
-        {
-            for (int j = 0; j < ncol; j++)
-            {
-                std::vector<int> xy(2);
-                xy[0] = j;
-                xy[1] = i;
-                map_ranks(i, j) = mpi_grid().cart_rank(comm, xy);
-            }
-        }
-        linalg<scalapack>::gridmap(&blacs_context_, map_ranks.ptr(), map_ranks.ld(), nrow, ncol);
-
-        // check the grid
-        int nrow1, ncol1, irow1, icol1;
-        linalg<scalapack>::gridinfo(blacs_context_, &nrow1, &ncol1, &irow1, &icol1);
-
-        if (irow != irow1 || icol != icol1 || nrow != nrow1 || ncol != ncol1) 
-        {
-            std::stringstream s;
-            s << "wrong grid" << std::endl
-              << "            row | col | nrow | ncol " << std::endl
-              << " mpi_grid " << irow << " " << icol << " " << nrow << " " << ncol << std::endl  
-              << " blacs    " << irow1 << " " << icol1 << " " << nrow1 << " " << ncol1;
-            error_local(__FILE__, __LINE__, s);
-        }
-        #endif
     }
 
     num_bands_ = num_fv_states_ * num_spins_;
@@ -360,9 +380,14 @@ void Global::clear()
 {
     if (initialized_)
     {
+        #ifdef _SCALAPACK_
+        linalg<scalapack>::free_blacs_context(blacs_context_);
+        #endif
         unit_cell_->clear();
         delete reciprocal_lattice_;
         delete step_function_;
+        delete std_evp_solver_;
+        delete gen_evp_solver_;
         mpi_grid_.finalize();
         initialized_ = false;
     }
@@ -402,76 +427,53 @@ void Global::print_info()
     printf("lmax_pot                           : %i\n", lmax_pot());
     printf("lmax_beta                          : %i\n", lmax_beta());
 
-    printf("\n");
-    printf("eigen-value solver: ");
-    switch (eigen_value_solver())
+    std::string evsn[] = {"standard eigen-value solver: ", "generalized eigen-value solver: "};
+    ev_solver_t evst[] = {std_evp_solver_->type(), gen_evp_solver_->type()};
+    for (int i = 0; i < 2; i++)
     {
-        case lapack:
+        printf("\n");
+        printf("%s", evsn[i].c_str());
+        switch (evst[i])
         {
-            printf("LAPACK\n");
-            break;
-        }
-        case scalapack:
-        {
-            printf("ScaLAPACK, block size %i\n", cyclic_block_size());
-            break;
-        }
-        case elpa:
-        {
-            printf("ELPA, block size %i\n", cyclic_block_size());
-            break;
-        }
-        case magma:
-        {
-            printf("MAGMA\n");
-            break;
-        }
-        case plasma:
-        {
-            printf("PLASMA\n");
-            break;
+            case ev_lapack:
+            {
+                printf("LAPACK\n");
+                break;
+            }
+            case ev_scalapack:
+            {
+                printf("ScaLAPACK, block size %i\n", cyclic_block_size());
+                break;
+            }
+            case ev_elpa1:
+            {
+                printf("ELPA1, block size %i\n", cyclic_block_size());
+                break;
+            }
+            case ev_elpa2:
+            {
+                printf("ELPA2, block size %i\n", cyclic_block_size());
+                break;
+            }
+            case ev_magma:
+            {
+                printf("MAGMA\n");
+                break;
+            }
+            case ev_plasma:
+            {
+                printf("PLASMA\n");
+                break;
+            }
+            case ev_rs_gpu:
+            {
+                printf("RS_gpu\n");
+                break;
+            }
         }
     }
+
     printf("\n");
-    printf("generalized eigen-value solver: ");
-    switch (gevp_solver())
-    {
-        case gevp_lapack:
-        {
-            printf("lapack\n");
-            break;
-        }
-        case gevp_scalapack:
-        {
-            printf("scalapack, block size %i\n", cyclic_block_size());
-            break;
-        }
-        case gevp_elpa1:
-        {
-            printf("elpa1, block size %i\n", cyclic_block_size());
-            break;
-        }
-        case gevp_elpa2:
-        {
-            printf("elpa2, block size %i\n", cyclic_block_size());
-            break;
-        }
-        case gevp_magma:
-        {
-            printf("magma\n");
-            break;
-        }
-        case gevp_plasma:
-        {
-            printf("plasma\n");
-            break;
-        }
-        case gevp_rs_gpu:
-        {
-            printf("rs_gpu\n");
-            break;
-        }
-    }
     printf("processing unit : ");
     switch (processing_unit())
     {
@@ -570,6 +572,50 @@ void Global::update()
     delete step_function_;
     step_function_ = new Step_function(unit_cell_, reciprocal_lattice_);
 }
+
+#ifdef _SCALAPACK_
+int Global::create_blacs_context()
+{
+    int nrow = mpi_grid().dimension_size(_dim_row_);
+    int ncol = mpi_grid().dimension_size(_dim_col_);
+    
+    int irow = mpi_grid().coordinate(_dim_row_);
+    int icol = mpi_grid().coordinate(_dim_col_);
+
+    int rc = (1 << _dim_row_) | (1 << _dim_col_);
+
+    int context = linalg<scalapack>::create_blacs_context(mpi_grid().communicator(rc));
+
+    mdarray<int, 2> map_ranks(nrow, ncol);
+    for (int i = 0; i < nrow; i++)
+    {
+        for (int j = 0; j < ncol; j++)
+        {
+            std::vector<int> xy(2);
+            xy[0] = j;
+            xy[1] = i;
+            map_ranks(i, j) = mpi_grid().cart_rank(mpi_grid().communicator(rc), xy);
+        }
+    }
+    linalg<scalapack>::gridmap(&context, map_ranks.ptr(), map_ranks.ld(), nrow, ncol);
+
+    // check the grid
+    int nrow1, ncol1, irow1, icol1;
+    linalg<scalapack>::gridinfo(context, &nrow1, &ncol1, &irow1, &icol1);
+
+    if (irow != irow1 || icol != icol1 || nrow != nrow1 || ncol != ncol1) 
+    {
+        std::stringstream s;
+        s << "wrong grid" << std::endl
+          << "            row | col | nrow | ncol " << std::endl
+          << " mpi_grid " << irow << " " << icol << " " << nrow << " " << ncol << std::endl  
+          << " blacs    " << irow1 << " " << icol1 << " " << nrow1 << " " << ncol1;
+        error_local(__FILE__, __LINE__, s);
+    }
+
+    return context;
+}
+#endif
 
 }
 

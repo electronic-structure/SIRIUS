@@ -118,10 +118,13 @@ class Global
         /// starting time of the program
         timeval start_time_;
 
-        /// type of eigen-value solver
-        linalg_t eigen_value_solver_; 
+        ev_solver_t std_evp_solver_type_;
 
-        gevp_solver_t gevp_solver_;
+        standard_evp* std_evp_solver_; 
+
+        ev_solver_t gen_evp_solver_type_;
+
+        generalized_evp* gen_evp_solver_;
         
         /// type of the processing unit
         processing_unit_t processing_unit_;
@@ -142,9 +145,9 @@ class Global
 
         splindex<block> sub_spl_fv_states_col_;
 
-        #if defined(_SCALAPACK_) || defined(_ELPA_)
+        #ifdef _SCALAPACK_
         /// BLACS communication context for an eigen-value solver and related operations
-        int blacs_context_; // TODO: if more contexts are necessary, they should be moved to mpi_grid.h 
+        int blacs_context_;
         #endif
         
         /// smearing function width
@@ -183,14 +186,16 @@ class Global
               so_correction_(false), 
               uj_correction_(false), 
               cyclic_block_size_(64), 
-              eigen_value_solver_(lapack),
-              gevp_solver_(gevp_lapack),
+              std_evp_solver_type_(ev_lapack),
+              std_evp_solver_(NULL),
+              gen_evp_solver_type_(ev_lapack),
+              gen_evp_solver_(NULL),
               #ifdef _GPU_
               processing_unit_(gpu),
               #else
               processing_unit_(cpu),
               #endif
-              #if defined(_SCALAPACK_) || defined(_ELPA_)
+              #ifdef _SCALAPACK_
               blacs_context_(-1),
               #endif
               smearing_width_(0.001), 
@@ -208,10 +213,6 @@ class Global
         {
             clear();
             delete unit_cell_;
-            #if defined(_SCALAPACK_) || defined(_ELPA_)
-            if (eigen_value_solver() == scalapack || eigen_value_solver() == elpa) 
-                linalg<scalapack>::free_blacs_context(blacs_context_);
-            #endif
         }
 
         void set_lmax_apw(int lmax_apw__)
@@ -389,16 +390,6 @@ class Global
         inline bool initialized()
         {
             return initialized_;
-        }
-
-        inline linalg_t eigen_value_solver()
-        {
-            return eigen_value_solver_;
-        }
-
-        inline gevp_solver_t gevp_solver()
-        {
-            return gevp_solver_;
         }
 
         inline processing_unit_t processing_unit()
@@ -644,6 +635,20 @@ class Global
         inline void set_iterative_solver_tolerance(double tol)
         {
             iterative_solver_tolerance_ = tol;
+        }
+
+        #ifdef _SCALAPACK_
+        int create_blacs_context();
+        #endif
+
+        inline standard_evp* std_evp_solver()
+        {
+            return std_evp_solver_;
+        }
+
+        inline generalized_evp* gen_evp_solver()
+        {
+            return gen_evp_solver_;
         }
 };
 

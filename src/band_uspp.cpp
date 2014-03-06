@@ -774,8 +774,6 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
     std::vector<double> res_rms(num_bands); // RMS of residual
     std::vector<double> res_e(num_bands);
 
-    generalized_evp* gevp = new generalized_evp_lapack(-1.0);
-
     bool convergence_by_energy = false;
 
     int N = 0; // current eigen-value problem size
@@ -820,7 +818,8 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
         
         {
             Timer t2("sirius::Band::diag_fv_uspp_cpu|solve_gevp");
-            gevp->solve(N, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), &eval[0], evec.ptr(), evec.ld());
+            parameters_.gen_evp_solver()->solve(N, num_bands, num_bands, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
+                                                &eval[0], evec.ptr(), evec.ld());
         }
 
         Timer t3("sirius::Band::diag_fv_uspp_cpu|residuals");
@@ -1014,8 +1013,6 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
         memcpy(&phi(0, N), &res(0, 0), n * kp->num_gkvec() * sizeof(double_complex));
     }
 
-    delete gevp;
-
     kp->set_fv_eigen_values(&eval[0]);
 }
 
@@ -1085,28 +1082,11 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
     std::vector<double> res_norm(num_bands); // norm of residuals
     std::vector<double> res_rms(num_bands); // RMS of residual
     std::vector<double> res_e(num_bands);
-
-    generalized_evp* gevp = NULL;
-    switch (parameters_.eigen_value_solver())
+    
+    if (parameters_.gen_evp_solver()->type() == ev_magma)
     {
-        case lapack:
-        {
-            gevp = new generalized_evp_lapack(-1.0);
-            break;
-        }
-        #ifdef _MAGMA_
-        case magma:
-        {
-            gevp = new generalized_evp_magma();
-            hmlt.pin_memory();
-            ovlp.pin_memory();
-            break;
-        }
-        #endif
-        default:
-        {
-            error_local(__FILE__, __LINE__, "eigen value solver is not defined");
-        }
+        hmlt.pin_memory();
+        ovlp.pin_memory();
     }
 
     bool convergence_by_energy = false;
@@ -1178,7 +1158,8 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
         t1.stop();
         
         Timer t2("sirius::Band::diag_fv_uspp_gpu|solve_gevp");
-        gevp->solve(N, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), &eval[0], evec.ptr(), evec.ld());
+        parameters_.gen_evp_solver()->solve(N, num_bands, num_bands, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
+                                            &eval[0], evec.ptr(), evec.ld());
         t2.stop();
 
         Timer t3("sirius::Band::diag_fv_uspp_gpu|residuals");
@@ -1424,8 +1405,6 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
         // expand variational space with new preconditioned residuals
         memcpy(&phi(0, N), &kappa(0, 0), n * kp->num_gkvec() * sizeof(double_complex));
     }
-
-    delete gevp;
 
     kp->set_fv_eigen_values(&eval[0]);
 }

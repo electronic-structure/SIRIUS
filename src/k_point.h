@@ -273,6 +273,10 @@ class K_point
         /// Generate first-variational states from eigen-vectors
         void generate_fv_states();
 
+        #ifdef _GPU_
+        void generate_fv_states_aw_mt_gpu();
+        #endif
+
         /// Distribute fv states over rows of the MPI grid 
         void distribute_fv_states_row();
         
