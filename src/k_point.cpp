@@ -54,15 +54,15 @@ void K_point::update()
         atom_lo_rows_.clear();
         atom_lo_rows_.resize(parameters_.unit_cell()->num_atoms());
 
-        for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
+        for (int icol = num_gkvec_col(); icol < gklo_basis_size_col(); icol++)
         {
-            int ia = apwlo_basis_descriptors_col(icol).ia;
+            int ia = gklo_basis_descriptor_col(icol).ia;
             atom_lo_cols_[ia].push_back(icol);
         }
         
-        for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
+        for (int irow = num_gkvec_row(); irow < gklo_basis_size_row(); irow++)
         {
-            int ia = apwlo_basis_descriptors_row(irow).ia;
+            int ia = gklo_basis_descriptor_row(irow).ia;
             atom_lo_rows_[ia].push_back(irow);
         }
     }
@@ -229,7 +229,7 @@ void K_point::update()
         // allocate memory for first-variational eigen vectors
         if (parameters_.unit_cell()->full_potential())
         {
-            fv_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), parameters_.spl_fv_states_col().local_size());
+            fv_eigen_vectors_.set_dimensions(gklo_basis_size_row(), parameters_.spl_fv_states_col().local_size());
             fv_eigen_vectors_.allocate();
         }
         
@@ -273,7 +273,7 @@ void K_point::update()
     {
         if (parameters_.unit_cell()->full_potential())
         {
-            fd_eigen_vectors_.set_dimensions(apwlo_basis_size_row(), parameters_.spl_spinor_wf_col().local_size());
+            fd_eigen_vectors_.set_dimensions(gklo_basis_size_row(), parameters_.spl_spinor_wf_col().local_size());
             fd_eigen_vectors_.allocate();
             spinor_wave_functions_.allocate();
         }
@@ -340,8 +340,9 @@ void K_point::generate_matching_coefficients_l<1, false>(int ia, int iat, Atom_t
 /** It is more convenient to store conjugated coefficients because then the overlap matrix is set with 
     single matrix-matrix multiplication without further conjugation.
 */
-template<> void K_point::generate_matching_coefficients_l<2, true>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
-                                                                   mdarray<double, 2>& A, mdarray<double_complex, 2>& alm)
+template<> 
+void K_point::generate_matching_coefficients_l<2, true>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
+                                                        mdarray<double, 2>& A, mdarray<double_complex, 2>& alm)
 {
     double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
     
@@ -381,8 +382,9 @@ template<> void K_point::generate_matching_coefficients_l<2, true>(int ia, int i
 }
 
 /// Second order matching coefficients, non-conjugated
-template<> void K_point::generate_matching_coefficients_l<2, false>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
-                                                                    mdarray<double, 2>& A, mdarray<double_complex, 2>& alm)
+template<> 
+void K_point::generate_matching_coefficients_l<2, false>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
+                                                         mdarray<double, 2>& A, mdarray<double_complex, 2>& alm)
 {
     double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
     
@@ -421,8 +423,9 @@ template<> void K_point::generate_matching_coefficients_l<2, false>(int ia, int 
     }
 }
 
-template<> void K_point::generate_matching_coefficients_l<3, true>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
-                                                                   mdarray<double, 2>& A, mdarray<double_complex, 2>& alm)
+template<> 
+void K_point::generate_matching_coefficients_l<3, true>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
+                                                        mdarray<double, 2>& A, mdarray<double_complex, 2>& alm)
 {
     linalg<lapack>::invert_ge(&A(0, 0), 3);
     
@@ -451,8 +454,9 @@ template<> void K_point::generate_matching_coefficients_l<3, true>(int ia, int i
     }
 }
 
-template<> void K_point::generate_matching_coefficients_l<3, false>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
-                                                                    mdarray<double, 2>& A, mdarray<double_complex, 2>& alm)
+template<> 
+void K_point::generate_matching_coefficients_l<3, false>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
+                                                         mdarray<double, 2>& A, mdarray<double_complex, 2>& alm)
 {
     linalg<lapack>::invert_ge(&A(0, 0), 3);
     
@@ -582,11 +586,11 @@ void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& a
 
 inline void K_point::copy_lo_blocks(const double_complex* z, double_complex* vec)
 {
-    for (int j = num_gkvec_row(); j < apwlo_basis_size_row(); j++)
+    for (int j = num_gkvec_row(); j < gklo_basis_size_row(); j++)
     {
-        int ia = apwlo_basis_descriptors_row(j).ia;
-        int lm = apwlo_basis_descriptors_row(j).lm;
-        int order = apwlo_basis_descriptors_row(j).order;
+        int ia = gklo_basis_descriptor_row(j).ia;
+        int lm = gklo_basis_descriptor_row(j).lm;
+        int order = gklo_basis_descriptor_row(j).order;
         vec[parameters_.unit_cell()->atom(ia)->offset_wf() + parameters_.unit_cell()->atom(ia)->type()->indexb_by_lm_order(lm, order)] = z[j];
     }
 }
@@ -595,7 +599,7 @@ inline void K_point::copy_pw_block(const double_complex* z, double_complex* vec)
 {
     memset(vec, 0, num_gkvec() * sizeof(double_complex));
 
-    for (int j = 0; j < num_gkvec_row(); j++) vec[apwlo_basis_descriptors_row(j).igk] = z[j];
+    for (int j = 0; j < num_gkvec_row(); j++) vec[gklo_basis_descriptor_row(j).igk] = z[j];
 }
 
 void K_point::generate_fv_states()
@@ -921,64 +925,68 @@ void K_point::init_gkvec()
 
 void K_point::build_apwlo_basis_descriptors()
 {
-    apwlo_basis_descriptors_.clear();
+    gklo_basis_descriptors_.clear();
 
-    apwlo_basis_descriptor apwlobd;
+    gklo_basis_descriptor gklo;
 
     // G+k basis functions
     for (int igk = 0; igk < num_gkvec(); igk++)
     {
-        apwlobd.igk = igk;
-        apwlobd.ig = gvec_index(igk);
-        apwlobd.ia = -1;
-        apwlobd.lm = -1;
-        apwlobd.l = -1;
-        apwlobd.order = -1;
-        apwlobd.idxrf = -1;
-        apwlobd.idxglob = (int)apwlo_basis_descriptors_.size();
+        gklo.id = (int)gklo_basis_descriptors_.size();
+        gklo.igk = igk;
+        gklo.gkvec = gkvec(igk);
+        gklo.gkvec_cart = gkvec_cart(igk);
+        gklo.ig = gvec_index(igk);
+        gklo.ia = -1;
+        gklo.l = -1;
+        gklo.lm = -1;
+        gklo.order = -1;
+        gklo.idxrf = -1;
 
-        apwlobd.gkvec = gkvec(igk);
-        apwlobd.gkvec_cart = gkvec_cart(igk);
-
-        apwlo_basis_descriptors_.push_back(apwlobd);
+        gklo_basis_descriptors_.push_back(gklo);
     }
 
-    // local orbital basis functions
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
     {
-        Atom* atom = parameters_.unit_cell()->atom(ia);
-        Atom_type* type = atom->type();
-    
-        int lo_index_offset = type->mt_aw_basis_size();
-        
-        for (int j = 0; j < type->mt_lo_basis_size(); j++) 
+        // local orbital basis functions
+        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
-            int l = type->indexb(lo_index_offset + j).l;
-            int lm = type->indexb(lo_index_offset + j).lm;
-            int order = type->indexb(lo_index_offset + j).order;
-            int idxrf = type->indexb(lo_index_offset + j).idxrf;
-            apwlobd.igk = -1;
-            apwlobd.ig = -1;
-            apwlobd.ia = ia;
-            apwlobd.lm = lm;
-            apwlobd.l = l;
-            apwlobd.order = order;
-            apwlobd.idxrf = idxrf;
-            apwlobd.idxglob = (int)apwlo_basis_descriptors_.size();
+            Atom* atom = parameters_.unit_cell()->atom(ia);
+            Atom_type* type = atom->type();
+        
+            int lo_index_offset = type->mt_aw_basis_size();
+            
+            for (int j = 0; j < type->mt_lo_basis_size(); j++) 
+            {
+                int l = type->indexb(lo_index_offset + j).l;
+                int lm = type->indexb(lo_index_offset + j).lm;
+                int order = type->indexb(lo_index_offset + j).order;
+                int idxrf = type->indexb(lo_index_offset + j).idxrf;
+                gklo.id = (int)gklo_basis_descriptors_.size();
+                gklo.igk = -1;
+                gklo.gkvec = vector3d<double>(0.0);
+                gklo.gkvec_cart = vector3d<double>(0.0);
+                gklo.ig = -1;
+                gklo.ia = ia;
+                gklo.l = l;
+                gklo.lm = lm;
+                gklo.order = order;
+                gklo.idxrf = idxrf;
 
-            apwlo_basis_descriptors_.push_back(apwlobd);
+                gklo_basis_descriptors_.push_back(gklo);
+            }
         }
-    }
     
-    // ckeck if we count basis functions correctly
-    if ((int)apwlo_basis_descriptors_.size() != (num_gkvec() + parameters_.unit_cell()->mt_lo_basis_size()))
-    {
-        std::stringstream s;
-        s << "(L)APW+lo basis descriptors array has a wrong size" << std::endl
-          << "size of apwlo_basis_descriptors_ : " << apwlo_basis_descriptors_.size() << std::endl
-          << "num_gkvec : " << num_gkvec() << std::endl 
-          << "mt_lo_basis_size : " << parameters_.unit_cell()->mt_lo_basis_size();
-        error_local(__FILE__, __LINE__, s);
+        // ckeck if we count basis functions correctly
+        if ((int)gklo_basis_descriptors_.size() != (num_gkvec() + parameters_.unit_cell()->mt_lo_basis_size()))
+        {
+            std::stringstream s;
+            s << "(L)APW+lo basis descriptors array has a wrong size" << std::endl
+              << "size of apwlo_basis_descriptors_ : " << gklo_basis_descriptors_.size() << std::endl
+              << "num_gkvec : " << num_gkvec() << std::endl 
+              << "mt_lo_basis_size : " << parameters_.unit_cell()->mt_lo_basis_size();
+            error_local(__FILE__, __LINE__, s);
+        }
     }
 }
 
@@ -986,39 +994,39 @@ void K_point::build_apwlo_basis_descriptors()
 void K_point::distribute_block_cyclic()
 {
     // distribute APW+lo basis between rows
-    splindex<block_cyclic> spl_row(apwlo_basis_size(), num_ranks_row_, rank_row_, parameters_.cyclic_block_size());
-    apwlo_basis_descriptors_row_.resize(spl_row.local_size());
+    splindex<block_cyclic> spl_row(gklo_basis_size(), num_ranks_row_, rank_row_, parameters_.cyclic_block_size());
+    gklo_basis_descriptors_row_.resize(spl_row.local_size());
     for (int i = 0; i < spl_row.local_size(); i++)
-        apwlo_basis_descriptors_row_[i] = apwlo_basis_descriptors_[spl_row[i]];
+        gklo_basis_descriptors_row_[i] = gklo_basis_descriptors_[spl_row[i]];
 
     // distribute APW+lo basis between columns
-    splindex<block_cyclic> spl_col(apwlo_basis_size(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());
-    apwlo_basis_descriptors_col_.resize(spl_col.local_size());
+    splindex<block_cyclic> spl_col(gklo_basis_size(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());
+    gklo_basis_descriptors_col_.resize(spl_col.local_size());
     for (int i = 0; i < spl_col.local_size(); i++)
-        apwlo_basis_descriptors_col_[i] = apwlo_basis_descriptors_[spl_col[i]];
+        gklo_basis_descriptors_col_[i] = gklo_basis_descriptors_[spl_col[i]];
     
     #ifdef _SCALAPACK_
     int bs = parameters_.cyclic_block_size();
-    int nr = linalg<scalapack>::numroc(apwlo_basis_size(), bs, rank_row(), 0, num_ranks_row());
+    int nr = linalg<scalapack>::numroc(gklo_basis_size(), bs, rank_row(), 0, num_ranks_row());
     
-    if (nr != apwlo_basis_size_row()) error_local(__FILE__, __LINE__, "numroc returned a different local row size");
+    if (nr != gklo_basis_size_row()) error_local(__FILE__, __LINE__, "numroc returned a different local row size");
 
-    int nc = linalg<scalapack>::numroc(apwlo_basis_size(), bs, rank_col(), 0, num_ranks_col());
+    int nc = linalg<scalapack>::numroc(gklo_basis_size(), bs, rank_col(), 0, num_ranks_col());
     
-    if (nc != apwlo_basis_size_col()) error_local(__FILE__, __LINE__, "numroc returned a different local column size");
+    if (nc != gklo_basis_size_col()) error_local(__FILE__, __LINE__, "numroc returned a different local column size");
     #endif
 
     // get the number of row- and column- G+k-vectors
     num_gkvec_row_ = 0;
-    for (int i = 0; i < apwlo_basis_size_row(); i++)
+    for (int i = 0; i < gklo_basis_size_row(); i++)
     {
-        if (apwlo_basis_descriptors_row_[i].igk != -1) num_gkvec_row_++;
+        if (gklo_basis_descriptors_row_[i].igk != -1) num_gkvec_row_++;
     }
     
     num_gkvec_col_ = 0;
-    for (int i = 0; i < apwlo_basis_size_col(); i++)
+    for (int i = 0; i < gklo_basis_size_col(); i++)
     {
-        if (apwlo_basis_descriptors_col_[i].igk != -1) num_gkvec_col_++;
+        if (gklo_basis_descriptors_col_[i].igk != -1) num_gkvec_col_++;
     }
 }
 
@@ -1550,9 +1558,9 @@ void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec)
     for (int iloc = 0; iloc < parameters_.spl_fv_states_col().local_size(); iloc++)
     {
         int i = parameters_.spl_fv_states_col(iloc);
-        for (int jloc = 0; jloc < apwlo_basis_size_row(); jloc++)
+        for (int jloc = 0; jloc < gklo_basis_size_row(); jloc++)
         {
-            int j = apwlo_basis_descriptors_row(jloc).idxglob;
+            int j = gklo_basis_descriptor_row(jloc).id;
             fv_evec(j, i) = fv_eigen_vectors_(jloc, iloc);
         }
     }

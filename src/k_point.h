@@ -7,71 +7,6 @@
 namespace sirius
 {
 
-/// Descriptor of the APW+lo basis function
-/** APW+lo basis consists of two different sets of functions: APW functions \f$ \varphi_{{\bf G+k}} \f$ defined over 
-    entire unit cell:
-    \f[
-        \varphi_{{\bf G+k}}({\bf r}) = \left\{ \begin{array}{ll}
-        \displaystyle \sum_{L} \sum_{\nu=1}^{O_{\ell}^{\alpha}} a_{L\nu}^{\alpha}({\bf G+k})u_{\ell \nu}^{\alpha}(r) 
-        Y_{\ell m}(\hat {\bf r}) & {\bf r} \in {\rm MT} \alpha \\
-        \displaystyle \frac{1}{\sqrt  \Omega} e^{i({\bf G+k}){\bf r}} & {\bf r} \in {\rm I} \end{array} \right.
-    \f]  
-    and Bloch sums of local orbitals defined inside muffin-tin spheres only:
-    \f[
-        \begin{array}{ll} \displaystyle \varphi_{j{\bf k}}({\bf r})=\sum_{{\bf T}} e^{i{\bf kT}} 
-        \varphi_{j}({\bf r - T}) & {\rm {\bf r} \in MT} \end{array}
-    \f]
-    Each local orbital is composed of radial and angular parts:
-    \f[
-        \varphi_{j}({\bf r}) = \phi_{\ell_j}^{\zeta_j,\alpha_j}(r) Y_{\ell_j m_j}(\hat {\bf r})
-    \f]
-    Radial part of local orbital is defined as a linear combination of radial functions (minimum two radial functions 
-    are required) such that local orbital vanishes at the sphere boundary:
-    \f[
-        \phi_{\ell}^{\zeta, \alpha}(r) = \sum_{p}\gamma_{p}^{\zeta,\alpha} u_{\ell \nu_p}^{\alpha}(r)  
-    \f]
-    
-    Arbitrary number of local orbitals may be introduced for each angular quantum number.
-
-    Radial functions are m-th order (with zero-order being a function itself) energy derivatives of the radial 
-    Schrödinger equation:
-    \f[
-        u_{\ell \nu}^{\alpha}(r) = \frac{\partial^{m_{\nu}}}{\partial^{m_{\nu}}E}u_{\ell}^{\alpha}(r,E)\Big|_{E=E_{\nu}}
-    \f]
-*/
-struct apwlo_basis_descriptor // TODO: rename to gklo_basis_descriptor
-{
-    /// global index of the descriptor
-    int idxglob;
-
-    /// index of G+k vector
-    int igk;
-
-    /// G+k vector in lattice coordinates
-    vector3d<double> gkvec;
-
-    /// G+k vector in Cartesian coordinates
-    vector3d<double> gkvec_cart;
-
-    /// G vector index for the G+k vector
-    int ig;
-
-    /// index of atom if this is a local orbital descriptor
-    int ia;
-
-    /// index of l
-    int l;
-
-    /// combined lm index
-    int lm;
-
-    /// order of a lo radial function for a given orbital quantum number l
-    int order;
-
-    /// index of a lo radial function
-    int idxrf;
-};
-
 /// K-point related variables and methods
 /** \image html wf_storage.png "Wave-function storage" */
 class K_point
@@ -120,6 +55,10 @@ class K_point
        
         /// first-variational states, distributed along the rows of the MPI grid
         mdarray<double_complex, 2> fv_states_row_;
+        
+        /// first-variational states, distributed over rows and columns of the MPI grid
+        /** Band index is distributed over columns and G+k index is distributed over rows of the MPI grid. */
+        mdarray<double_complex, 2> fv_states_panel_;
 
         /// two-component (spinor) wave functions describing the bands
         mdarray<double_complex, 3> spinor_wave_functions_;
@@ -148,14 +87,17 @@ class K_point
         /// number of G+k vectors distributed along columns of MPI grid
         int num_gkvec_col_;
 
-        /// short information about each APW+lo basis function
-        std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_;
+        /// short information about each G+k or lo basis function
+        /** This is a global array. Each MPI rank of the 2D grid has exactly the same copy. */
+        std::vector<gklo_basis_descriptor> gklo_basis_descriptors_;
 
-        /// row APW+lo basis descriptors
-        std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_row_;
+        /// basis descriptors distributed along rows of the 2D MPI grid
+        /** This is a local array. Only MPI ranks belonging to the same row have identical copies of this array. */
+        std::vector<gklo_basis_descriptor> gklo_basis_descriptors_row_;
         
-        /// column APW+lo basis descriptors
-        std::vector<apwlo_basis_descriptor> apwlo_basis_descriptors_col_;
+        /// basis descriptors distributed along columns of the 2D MPI grid
+        /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
+        std::vector<gklo_basis_descriptor> gklo_basis_descriptors_col_;
             
         /// list of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom
         std::vector< std::vector<int> > atom_lo_cols_;
@@ -300,14 +242,6 @@ class K_point
         /// Test orthonormalization of spinor wave-functions
         void test_spinor_wave_functions(int use_fft);
         
-        /// APW+lo basis size
-        /** Total number of APW+lo basis functions is equal to the number of augmented plane-waves plus
-            the number of local orbitals. */
-        inline int apwlo_basis_size() // TODO: more universal name, probalby gklo_basis_size
-        {
-            return (int)apwlo_basis_descriptors_.size();
-        }
-        
         /// Global index of G-vector by the index of G+k vector
         inline int gvec_index(int igk) 
         {
@@ -337,6 +271,7 @@ class K_point
         /// Return length of a G+k vector
         inline double gkvec_len(int igk)
         {
+            assert(igk >= 0 && igk < (int)gkvec_len_.size());
             return gkvec_len_[igk];
         }
                 
@@ -344,7 +279,6 @@ class K_point
         inline int num_gkvec()
         {
             assert(gkvec_.size(1) == (int)gvec_index_.size());
-
             return gkvec_.size(1);
         }
 
@@ -455,48 +389,57 @@ class K_point
         {
             return vk_[x];
         }
-        
-        /// Number of APW+lo basis functions distributed along rows of MPI grid
-        inline int apwlo_basis_size_row()
+
+        /// Basis size of our electronic structure method.
+        /** In case of full-potential LAPW+lo or PW+lo method the total number of basis functions is equal to the 
+            number of (augmented) plane-waves plus the number of local orbitals. In case of plane-wave pseudopotential
+            method this is just tne number of G+k vectors. */
+        inline int gklo_basis_size()
         {
-            return (int)apwlo_basis_descriptors_row_.size();
+            return (int)gklo_basis_descriptors_.size();
         }
         
-        /// Number of G+k vectors along the rows of the matrix
+        /// Local number of basis functions for each MPI rank in the row of the 2D MPI grid.
+        inline int gklo_basis_size_row()
+        {
+            return (int)gklo_basis_descriptors_row_.size();
+        }
+        
+        /// Local number of G+k vectors for each MPI rank in the row of the 2D MPI grid.
         inline int num_gkvec_row()
         {
             return num_gkvec_row_;
         }
 
-        /// Number of local orbitals along the rows of the matrix
+        /// Local number of local orbitals for each MPI rank in the row of the 2D MPI grid.
         inline int num_lo_row()
         {
-            return (int)apwlo_basis_descriptors_row_.size() - num_gkvec_row_;
+            return (int)gklo_basis_descriptors_row_.size() - num_gkvec_row_;
         }
 
-        /// Number of APW+lo basis functions distributed along columns of MPI grid
-        inline int apwlo_basis_size_col()
+        /// Local number of basis functions for each MPI rank in the column of the 2D MPI grid.
+        inline int gklo_basis_size_col()
         {
-            return (int)apwlo_basis_descriptors_col_.size();
+            return (int)gklo_basis_descriptors_col_.size();
         }
         
-        /// Number of G+k vectors along the columns of the matrix
+        /// Local number of G+k vectors for each MPI rank in the column of the 2D MPI grid.
         inline int num_gkvec_col()
         {
             return num_gkvec_col_;
         }
         
-        /// Number of local orbitals along the columns of the matrix
+        /// Local number of local orbitals for each MPI rank in the column of the 2D MPI grid.
         inline int num_lo_col()
         {
-            return (int)apwlo_basis_descriptors_col_.size() - num_gkvec_col_;
+            return (int)gklo_basis_descriptors_col_.size() - num_gkvec_col_;
         }
 
         /// Local fraction of G+k vectors for a given MPI rank
         /** In case of distributed matrix setup row and column G+k vectors are combined. Row G+k vectors are first.*/
         inline int num_gkvec_loc()
         {
-            if ((num_gkvec_row() == num_gkvec()) && (num_gkvec_col() == num_gkvec()))
+            if (num_gkvec_row() == num_gkvec() && num_gkvec_col() == num_gkvec())
             {
                 return num_gkvec();
             }
@@ -507,29 +450,34 @@ class K_point
         } 
         
         /// Return the global index of the G+k vector by the local index
-        inline int igkglob(int igkloc)
+        inline int igkglob(int igkloc) // TODO: change name or change the G+k storage
         {
-            if ((num_gkvec_row() == num_gkvec()) && (num_gkvec_col() == num_gkvec()))
+            assert(igkloc >= 0 && igkloc < num_gkvec_loc());
+
+            if (num_gkvec_row() == num_gkvec() && num_gkvec_col() == num_gkvec())
             {
                 return igkloc;
             }
             else
             {
-                int igk = (igkloc < num_gkvec_row()) ? apwlo_basis_descriptors_row_[igkloc].igk : 
-                                                       apwlo_basis_descriptors_col_[igkloc - num_gkvec_row()].igk;
+                // remember: row G+k vectors are first, column G+k vectors are second
+                int igk = (igkloc < num_gkvec_row()) ? gklo_basis_descriptors_row_[igkloc].igk : 
+                                                       gklo_basis_descriptors_col_[igkloc - num_gkvec_row()].igk;
                 assert(igk >= 0);
                 return igk;
             }
         }
 
-        inline apwlo_basis_descriptor& apwlo_basis_descriptors_col(int idx)
+        inline gklo_basis_descriptor& gklo_basis_descriptor_col(int idx)
         {
-            return apwlo_basis_descriptors_col_[idx];
+            assert(idx >=0 && idx < (int)gklo_basis_descriptors_col_.size());
+            return gklo_basis_descriptors_col_[idx];
         }
         
-        inline apwlo_basis_descriptor& apwlo_basis_descriptors_row(int idx)
+        inline gklo_basis_descriptor& gklo_basis_descriptor_row(int idx)
         {
-            return apwlo_basis_descriptors_row_[idx];
+            assert(idx >= 0 && idx < (int)gklo_basis_descriptors_row_.size());
+            return gklo_basis_descriptors_row_[idx];
         }
         
         inline int num_ranks_row()
@@ -662,6 +610,43 @@ class K_point
 };
 
 }
+
+/** \page basis Basis functions for Kohn-Sham wave-functions expansion
+    
+    \section basis1 LAPW+lo basis
+
+    LAPW+lo basis consists of two different sets of functions: LAPW functions \f$ \varphi_{{\bf G+k}} \f$ defined over 
+    entire unit cell:
+    \f[
+        \varphi_{{\bf G+k}}({\bf r}) = \left\{ \begin{array}{ll}
+        \displaystyle \sum_{L} \sum_{\nu=1}^{O_{\ell}^{\alpha}} a_{L\nu}^{\alpha}({\bf G+k})u_{\ell \nu}^{\alpha}(r) 
+        Y_{\ell m}(\hat {\bf r}) & {\bf r} \in {\rm MT} \alpha \\
+        \displaystyle \frac{1}{\sqrt  \Omega} e^{i({\bf G+k}){\bf r}} & {\bf r} \in {\rm I} \end{array} \right.
+    \f]  
+    and Bloch sums of local orbitals defined inside muffin-tin spheres only:
+    \f[
+        \begin{array}{ll} \displaystyle \varphi_{j{\bf k}}({\bf r})=\sum_{{\bf T}} e^{i{\bf kT}} 
+        \varphi_{j}({\bf r - T}) & {\rm {\bf r} \in MT} \end{array}
+    \f]
+    Each local orbital is composed of radial and angular parts:
+    \f[
+        \varphi_{j}({\bf r}) = \phi_{\ell_j}^{\zeta_j,\alpha_j}(r) Y_{\ell_j m_j}(\hat {\bf r})
+    \f]
+    Radial part of local orbital is defined as a linear combination of radial functions (minimum two radial functions 
+    are required) such that local orbital vanishes at the sphere boundary:
+    \f[
+        \phi_{\ell}^{\zeta, \alpha}(r) = \sum_{p}\gamma_{p}^{\zeta,\alpha} u_{\ell \nu_p}^{\alpha}(r)  
+    \f]
+    
+    Arbitrary number of local orbitals can be introduced for each angular quantum number (this is highlighted by
+    the index \f$ \zeta \f$).
+
+    Radial functions are m-th order (with zero-order being a function itself) energy derivatives of the radial 
+    Schrödinger equation:
+    \f[
+        u_{\ell \nu}^{\alpha}(r) = \frac{\partial^{m_{\nu}}}{\partial^{m_{\nu}}E}u_{\ell}^{\alpha}(r,E)\Big|_{E=E_{\nu}}
+    \f]
+*/
 
 #endif // __K_POINT_H__
 

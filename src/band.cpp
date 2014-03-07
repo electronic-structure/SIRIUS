@@ -236,14 +236,14 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //**     {
 //**         for (int igkloc1 = 0; igkloc1 < kp->num_gkvec_row(); igkloc1++) // for each column loop over rows
 //**         {
-//**             if (kp->apwlo_basis_descriptors_row(igkloc1).idxglob == apwlo_basis_descriptors_col_[igkloc2].idxglob) 
+//**             if (kp->gklo_basis_descriptor_row(igkloc1).idxglob == gklo_basis_descriptor_col_[igkloc2].idxglob) 
 //**             {
 //**                 h(igkloc1, igkloc2) = 0.5 * pow(gkvec_len_[igkloc1], 2);
 //**                 o(igkloc1, igkloc2) = double_complex(1, 0);
 //**             }
 //**                                
-//**             int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row_[igkloc1].ig,
-//**                                              apwlo_basis_descriptors_col_[igkloc2].ig);
+//**             int ig12 = parameters_.index_g12(gklo_basis_descriptor_row_[igkloc1].ig,
+//**                                              gklo_basis_descriptor_col_[igkloc2].ig);
 //**             h(igkloc1, igkloc2) += effective_potential->f_pw(ig12);
 //**         }
 //**     }
@@ -272,9 +272,9 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //**     t1.start();
 //**     for (int icol = 0; icol < num_lo_col(); icol++)
 //**     {
-//**         int ia = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].ia;
-//**         int lm = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].lm;
-//**         int idxrf = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].idxrf;
+//**         int ia = gklo_basis_descriptor_col_[num_gkvec_col() + icol].ia;
+//**         int lm = gklo_basis_descriptor_col_[num_gkvec_col() + icol].lm;
+//**         int idxrf = gklo_basis_descriptor_col_[num_gkvec_col() + icol].idxrf;
 //**         
 //**         for (int lm1 = 0; lm1 < parameters_.lmmax_pw(); lm1++)
 //**         {
@@ -302,12 +302,12 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //**     // compute overlap and kinetic energy
 //**     for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
 //**     {
-//**         int ia = apwlo_basis_descriptors_col_[icol].ia;
+//**         int ia = gklo_basis_descriptor_col_[icol].ia;
 //**         int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
 //** 
-//**         int l = apwlo_basis_descriptors_col_[icol].l;
-//**         int lm = apwlo_basis_descriptors_col_[icol].lm;
-//**         int idxrf = apwlo_basis_descriptors_col_[icol].idxrf;
+//**         int l = gklo_basis_descriptor_col_[icol].l;
+//**         int lm = gklo_basis_descriptor_col_[icol].lm;
+//**         int idxrf = gklo_basis_descriptor_col_[icol].idxrf;
 //** 
 //**         Spline<double> slo(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
 //**         for (int ir = 0; ir < slo.num_points(); ir++)
@@ -333,12 +333,12 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //**     {
 //**         for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
 //**         {
-//**             int ia = apwlo_basis_descriptors_col_[icol].ia;
+//**             int ia = gklo_basis_descriptor_col_[icol].ia;
 //**             int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
 //** 
-//**             //int l = apwlo_basis_descriptors_col_[icol].l;
-//**             //int lm = apwlo_basis_descriptors_col_[icol].lm;
-//**             //int idxrf = apwlo_basis_descriptors_col_[icol].idxrf;
+//**             //int l = gklo_basis_descriptor_col_[icol].l;
+//**             //int lm = gklo_basis_descriptor_col_[icol].lm;
+//**             //int idxrf = gklo_basis_descriptor_col_[icol].idxrf;
 //** 
 //**             //*// compue overlap <G+k|lo>
 //**             //*Spline<double> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
@@ -400,9 +400,9 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //**     t1.start();
 //**     for (int irow = 0; irow < num_lo_row(); irow++)
 //**     {
-//**         int ia = apwlo_basis_descriptors_row_[num_gkvec_row() + irow].ia;
-//**         int lm = apwlo_basis_descriptors_row_[num_gkvec_row() + irow].lm;
-//**         int idxrf = apwlo_basis_descriptors_row_[num_gkvec_row() + irow].idxrf;
+//**         int ia = gklo_basis_descriptor_row_[num_gkvec_row() + irow].ia;
+//**         int lm = gklo_basis_descriptor_row_[num_gkvec_row() + irow].lm;
+//**         int idxrf = gklo_basis_descriptor_row_[num_gkvec_row() + irow].idxrf;
 //**         
 //**         for (int lm1 = 0; lm1 < parameters_.lmmax_pw(); lm1++)
 //**         {
@@ -429,12 +429,12 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //**     t2.start();
 //**     for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
 //**     {
-//**         int ia = apwlo_basis_descriptors_row_[irow].ia;
+//**         int ia = gklo_basis_descriptor_row_[irow].ia;
 //**         int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
 //** 
-//**         int l = apwlo_basis_descriptors_row_[irow].l;
-//**         int lm = apwlo_basis_descriptors_row_[irow].lm;
-//**         int idxrf = apwlo_basis_descriptors_row_[irow].idxrf;
+//**         int l = gklo_basis_descriptor_row_[irow].l;
+//**         int lm = gklo_basis_descriptor_row_[irow].lm;
+//**         int idxrf = gklo_basis_descriptor_row_[irow].idxrf;
 //** 
 //**         // compue overlap <lo|G+k>
 //**         Spline<double> slo(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
@@ -462,12 +462,12 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //**     {
 //**         for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
 //**         {
-//**             int ia = apwlo_basis_descriptors_row_[irow].ia;
+//**             int ia = gklo_basis_descriptor_row_[irow].ia;
 //**             int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
 //** 
-//**             //int l = apwlo_basis_descriptors_row_[irow].l;
-//**             //int lm = apwlo_basis_descriptors_row_[irow].lm;
-//**             //int idxrf = apwlo_basis_descriptors_row_[irow].idxrf;
+//**             //int l = gklo_basis_descriptor_row_[irow].l;
+//**             //int lm = gklo_basis_descriptor_row_[irow].lm;
+//**             //int idxrf = gklo_basis_descriptor_row_[irow].idxrf;
 //** 
 //**             //*// compue overlap <lo|G+k>
 //**             //*Spline<double> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
@@ -521,14 +521,14 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //**     {
 //**         for (int igkloc1 = 0; igkloc1 < num_gkvec_row(); igkloc1++) // for each column loop over rows
 //**         {
-//**             if (apwlo_basis_descriptors_row_[igkloc1].idxglob == apwlo_basis_descriptors_col_[igkloc2].idxglob) 
+//**             if (gklo_basis_descriptor_row_[igkloc1].idxglob == gklo_basis_descriptor_col_[igkloc2].idxglob) 
 //**             {
 //**                 h(igkloc1, igkloc2) = 0.5 * pow(gkvec_len_[igkloc1], 2);
 //**                 o(igkloc1, igkloc2) = double_complex(1, 0);
 //**             }
 //**                                
-//**             int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row_[igkloc1].ig,
-//**                                              apwlo_basis_descriptors_col_[igkloc2].ig);
+//**             int ig12 = parameters_.index_g12(gklo_basis_descriptor_row_[igkloc1].ig,
+//**                                              gklo_basis_descriptor_col_[igkloc2].ig);
 //**             h(igkloc1, igkloc2) += effective_potential->f_pw(ig12);
 //**         }
 //**     }
@@ -557,14 +557,14 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //**     {
 //**         for (int igkloc1 = 0; igkloc1 < num_gkvec_row(); igkloc1++) // for each column loop over rows
 //**         {
-//**             if (apwlo_basis_descriptors_row_[igkloc1].idxglob == apwlo_basis_descriptors_col_[igkloc2].idxglob) 
+//**             if (gklo_basis_descriptor_row_[igkloc1].idxglob == gklo_basis_descriptor_col_[igkloc2].idxglob) 
 //**             {
 //**                 h(igkloc1, igkloc2) = 0.5 * pow(gkvec_len_[igkloc1], 2);
 //**                 o(igkloc1, igkloc2) = double_complex(1, 0);
 //**             }
 //**                                
-//**             int ig12 = parameters_.index_g12(apwlo_basis_descriptors_row_[igkloc1].ig,
-//**                                              apwlo_basis_descriptors_col_[igkloc2].ig);
+//**             int ig12 = parameters_.index_g12(gklo_basis_descriptor_row_[igkloc1].ig,
+//**                                              gklo_basis_descriptor_col_[igkloc2].ig);
 //**             h(igkloc1, igkloc2) += effective_potential->f_pw(ig12);
 //**         }
 //**     }
@@ -604,9 +604,9 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //**     #pragma omp parallel for default(shared)
 //**     for (int icol = 0; icol < num_lo_col(); icol++)
 //**     {
-//**         int ia = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].ia;
-//**         int lm = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].lm;
-//**         int idxrf = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].idxrf;
+//**         int ia = gklo_basis_descriptor_col_[num_gkvec_col() + icol].ia;
+//**         int lm = gklo_basis_descriptor_col_[num_gkvec_col() + icol].lm;
+//**         int idxrf = gklo_basis_descriptor_col_[num_gkvec_col() + icol].idxrf;
 //**         
 //**         for (int lm1 = 0; lm1 < parameters_.lmmax_pw(); lm1++)
 //**         {
@@ -660,11 +660,11 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //**     mdarray<int, 1> iat_by_ilo(num_lo_col());
 //**     for (int icol = 0; icol < num_lo_col(); icol++)
 //**     {
-//**         int ia = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].ia;
-//**         l_by_ilo(icol) = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].l;
+//**         int ia = gklo_basis_descriptor_col_[num_gkvec_col() + icol].ia;
+//**         l_by_ilo(icol) = gklo_basis_descriptor_col_[num_gkvec_col() + icol].l;
 //**         iat_by_ilo(icol) = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
 //** 
-//**         int idxrf = apwlo_basis_descriptors_col_[num_gkvec_col() + icol].idxrf;
+//**         int idxrf = gklo_basis_descriptor_col_[num_gkvec_col() + icol].idxrf;
 //** 
 //**         Spline<double> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
 //**         for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
@@ -706,9 +706,9 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //**     // compute overlap and kinetic energy
 //**     for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
 //**     {
-//**         int ia = apwlo_basis_descriptors_col_[icol].ia;
-//**         int l = apwlo_basis_descriptors_col_[icol].l;
-//**         int lm = apwlo_basis_descriptors_col_[icol].lm;
+//**         int ia = gklo_basis_descriptor_col_[icol].ia;
+//**         int l = gklo_basis_descriptor_col_[icol].l;
+//**         int lm = gklo_basis_descriptor_col_[icol].lm;
 //** 
 //**         for (int igkloc = 0; igkloc < num_gkvec_row(); igkloc++)
 //**         {
@@ -741,7 +741,7 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //**     {
 //**         for (int icol = num_gkvec_col(); icol < apwlo_basis_size_col(); icol++)
 //**         {
-//**             int ia = apwlo_basis_descriptors_col_[icol].ia;
+//**             int ia = gklo_basis_descriptor_col_[icol].ia;
 //** 
 //**             // add <G+k|V|lo>
 //**             double_complex zt1(0, 0);
@@ -780,9 +780,9 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //**     //** t1.start();
 //**     //** for (int irow = 0; irow < num_lo_row(); irow++)
 //**     //** {
-//**     //**     int ia = apwlo_basis_descriptors_row_[num_gkvec_row() + irow].ia;
-//**     //**     int lm = apwlo_basis_descriptors_row_[num_gkvec_row() + irow].lm;
-//**     //**     int idxrf = apwlo_basis_descriptors_row_[num_gkvec_row() + irow].idxrf;
+//**     //**     int ia = gklo_basis_descriptor_row_[num_gkvec_row() + irow].ia;
+//**     //**     int lm = gklo_basis_descriptor_row_[num_gkvec_row() + irow].lm;
+//**     //**     int idxrf = gklo_basis_descriptor_row_[num_gkvec_row() + irow].idxrf;
 //**     //**     
 //**     //**     for (int lm1 = 0; lm1 < parameters_.lmmax_pw(); lm1++)
 //**     //**     {
@@ -809,12 +809,12 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //**     //** t2.start();
 //**     //** for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
 //**     //** {
-//**     //**     int ia = apwlo_basis_descriptors_row_[irow].ia;
+//**     //**     int ia = gklo_basis_descriptor_row_[irow].ia;
 //**     //**     int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
 //** 
-//**     //**     int l = apwlo_basis_descriptors_row_[irow].l;
-//**     //**     int lm = apwlo_basis_descriptors_row_[irow].lm;
-//**     //**     int idxrf = apwlo_basis_descriptors_row_[irow].idxrf;
+//**     //**     int l = gklo_basis_descriptor_row_[irow].l;
+//**     //**     int lm = gklo_basis_descriptor_row_[irow].lm;
+//**     //**     int idxrf = gklo_basis_descriptor_row_[irow].idxrf;
 //** 
 //**     //**     // compue overlap <lo|G+k>
 //**     //**     Spline<double> slo(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
@@ -842,12 +842,12 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //**     //** {
 //**     //**     for (int irow = num_gkvec_row(); irow < apwlo_basis_size_row(); irow++)
 //**     //**     {
-//**     //**         int ia = apwlo_basis_descriptors_row_[irow].ia;
+//**     //**         int ia = gklo_basis_descriptor_row_[irow].ia;
 //**     //**         int iat = parameters_.atom_type_index_by_id(parameters_.atom(ia)->type_id());
 //** 
-//**     //**         //int l = apwlo_basis_descriptors_row_[irow].l;
-//**     //**         //int lm = apwlo_basis_descriptors_row_[irow].lm;
-//**     //**         //int idxrf = apwlo_basis_descriptors_row_[irow].idxrf;
+//**     //**         //int l = gklo_basis_descriptor_row_[irow].l;
+//**     //**         //int lm = gklo_basis_descriptor_row_[irow].lm;
+//**     //**         //int idxrf = gklo_basis_descriptor_row_[irow].idxrf;
 //** 
 //**     //**         //*// compue overlap <lo|G+k>
 //**     //**         //*Spline<double> s(parameters_.atom(ia)->num_mt_points(), parameters_.atom(ia)->radial_grid());
@@ -1035,10 +1035,10 @@ void Band::set_fv_h_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, m
     {
         int icol = kp->lo_col(ia, i);
 
-        int l = kp->apwlo_basis_descriptors_col(icol).l;
-        int lm = kp->apwlo_basis_descriptors_col(icol).lm;
-        int idxrf = kp->apwlo_basis_descriptors_col(icol).idxrf;
-        int order = kp->apwlo_basis_descriptors_col(icol).order;
+        int l = kp->gklo_basis_descriptor_col(icol).l;
+        int lm = kp->gklo_basis_descriptor_col(icol).lm;
+        int idxrf = kp->gklo_basis_descriptor_col(icol).idxrf;
+        int order = kp->gklo_basis_descriptor_col(icol).order;
         
         for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++) 
         {
@@ -1069,10 +1069,10 @@ void Band::set_fv_h_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, m
     {
         int irow = kp->lo_row(ia, i);
 
-        int l = kp->apwlo_basis_descriptors_row(irow).l;
-        int lm = kp->apwlo_basis_descriptors_row(irow).lm;
-        int idxrf = kp->apwlo_basis_descriptors_row(irow).idxrf;
-        int order = kp->apwlo_basis_descriptors_row(irow).order;
+        int l = kp->gklo_basis_descriptor_row(irow).l;
+        int lm = kp->gklo_basis_descriptor_row(irow).lm;
+        int idxrf = kp->gklo_basis_descriptor_row(irow).idxrf;
+        int order = kp->gklo_basis_descriptor_row(irow).order;
 
         memset(&ztmp[0], 0, kp->num_gkvec_col() * sizeof(double_complex));
     
@@ -1113,12 +1113,12 @@ void Band::set_fv_h_o_it(K_point* kp, Periodic_function<double>* effective_poten
     {
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
-            int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->apwlo_basis_descriptors_row(igk_row).ig,
-                                                                   kp->apwlo_basis_descriptors_col(igk_col).ig);
+            int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
+                                                                   kp->gklo_basis_descriptor_col(igk_col).ig);
             
             // pw kinetic energy
-            double t1 = 0.5 * Utils::scalar_product(kp->apwlo_basis_descriptors_row(igk_row).gkvec_cart, 
-                                                    kp->apwlo_basis_descriptors_col(igk_col).gkvec_cart);
+            double t1 = 0.5 * Utils::scalar_product(kp->gklo_basis_descriptor_row(igk_row).gkvec_cart, 
+                                                    kp->gklo_basis_descriptor_col(igk_col).gkvec_cart);
                                
             h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * parameters_.step_function()->theta_pw(ig12));
             o(igk_row, igk_col) += parameters_.step_function()->theta_pw(ig12);
@@ -1132,27 +1132,27 @@ void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<
 
     // lo-lo block
     #pragma omp parallel for default(shared)
-    for (int icol = kp->num_gkvec_col(); icol < kp->apwlo_basis_size_col(); icol++)
+    for (int icol = kp->num_gkvec_col(); icol < kp->gklo_basis_size_col(); icol++)
     {
-        int ia = kp->apwlo_basis_descriptors_col(icol).ia;
-        int lm2 = kp->apwlo_basis_descriptors_col(icol).lm; 
-        int idxrf2 = kp->apwlo_basis_descriptors_col(icol).idxrf; 
+        int ia = kp->gklo_basis_descriptor_col(icol).ia;
+        int lm2 = kp->gklo_basis_descriptor_col(icol).lm; 
+        int idxrf2 = kp->gklo_basis_descriptor_col(icol).idxrf; 
 
-        for (int irow = kp->num_gkvec_row(); irow < kp->apwlo_basis_size_row(); irow++)
+        for (int irow = kp->num_gkvec_row(); irow < kp->gklo_basis_size_row(); irow++)
         {
-            if (ia == kp->apwlo_basis_descriptors_row(irow).ia)
+            if (ia == kp->gklo_basis_descriptor_row(irow).ia)
             {
                 Atom* atom = parameters_.unit_cell()->atom(ia);
-                int lm1 = kp->apwlo_basis_descriptors_row(irow).lm; 
-                int idxrf1 = kp->apwlo_basis_descriptors_row(irow).idxrf; 
+                int lm1 = kp->gklo_basis_descriptor_row(irow).lm; 
+                int idxrf1 = kp->gklo_basis_descriptor_row(irow).idxrf; 
 
                 h(irow, icol) += gaunt_coefs_->sum_L3_gaunt(lm1, lm2, atom->h_radial_integrals(idxrf1, idxrf2));
 
                 if (lm1 == lm2)
                 {
-                    int l = kp->apwlo_basis_descriptors_row(irow).l;
-                    int order1 = kp->apwlo_basis_descriptors_row(irow).order; 
-                    int order2 = kp->apwlo_basis_descriptors_col(icol).order; 
+                    int l = kp->gklo_basis_descriptor_row(irow).l;
+                    int order1 = kp->gklo_basis_descriptor_row(irow).order; 
+                    int order2 = kp->gklo_basis_descriptor_col(icol).order; 
                     o(irow, icol) += atom->symmetry_class()->o_radial_integral(l, order1, order2);
                 }
             }
@@ -1165,7 +1165,7 @@ void Band::solve_fv_evp_1stage(K_point* kp, mdarray<double_complex, 2>& h, mdarr
 {
     Timer t("sirius::Band::solve_fv_evp");
     
-    parameters_.gen_evp_solver()->solve(kp->apwlo_basis_size(), kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col(),
+    parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(),
                                         parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
                                         &fv_eigen_values[0], fv_eigen_vectors.ptr(), fv_eigen_vectors.ld());
 }
@@ -1242,8 +1242,8 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     if (kp->num_ranks() > 1 && !parameters_.gen_evp_solver()->parallel())
         error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
-    mdarray<double_complex, 2> h(NULL, kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
-    mdarray<double_complex, 2> o(NULL, kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
+    mdarray<double_complex, 2> h(NULL, kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
+    mdarray<double_complex, 2> o(NULL, kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
     
     if (parameters_.processing_unit() == cpu)
     {
@@ -1320,10 +1320,10 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     //**     std::vector<double> o_diag(apwlo_basis_size(), 0);
     //**     for (int icol = 0; icol < apwlo_basis_size_col(); icol++)
     //**     {
-    //**         int idxglob = apwlo_basis_descriptors_col_[icol].idxglob;
+    //**         int idxglob = gklo_basis_descriptor_col_[icol].idxglob;
     //**         for (int irow = 0; irow < apwlo_basis_size_row(); irow++)
     //**         {
-    //**             if (apwlo_basis_descriptors_row_[irow].idxglob == idxglob)
+    //**             if (gklo_basis_descriptor_row_[irow].idxglob == idxglob)
     //**             {
     //**                 h_diag[idxglob] = abs(h(irow, icol));
     //**                 o_diag[idxglob] = abs(o(irow, icol));
@@ -1362,39 +1362,39 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
 
     //**     std::stringstream s;
     //**     s << "h_max " << h_max << " irow, icol : " << h_irow << " " << h_icol << std::endl;
-    //**     s << " (row) igk, ig, ia, l, lm, irdrf, order : " << apwlo_basis_descriptors_row_[h_irow].igk << " "  
-    //**                                                       << apwlo_basis_descriptors_row_[h_irow].ig << " "  
-    //**                                                       << apwlo_basis_descriptors_row_[h_irow].ia << " "  
-    //**                                                       << apwlo_basis_descriptors_row_[h_irow].l << " "  
-    //**                                                       << apwlo_basis_descriptors_row_[h_irow].lm << " "  
-    //**                                                       << apwlo_basis_descriptors_row_[h_irow].idxrf << " "  
-    //**                                                       << apwlo_basis_descriptors_row_[h_irow].order 
+    //**     s << " (row) igk, ig, ia, l, lm, irdrf, order : " << gklo_basis_descriptor_row_[h_irow].igk << " "  
+    //**                                                       << gklo_basis_descriptor_row_[h_irow].ig << " "  
+    //**                                                       << gklo_basis_descriptor_row_[h_irow].ia << " "  
+    //**                                                       << gklo_basis_descriptor_row_[h_irow].l << " "  
+    //**                                                       << gklo_basis_descriptor_row_[h_irow].lm << " "  
+    //**                                                       << gklo_basis_descriptor_row_[h_irow].idxrf << " "  
+    //**                                                       << gklo_basis_descriptor_row_[h_irow].order 
     //**                                                       << std::endl;
-    //**     s << " (col) igk, ig, ia, l, lm, irdrf, order : " << apwlo_basis_descriptors_col_[h_icol].igk << " "  
-    //**                                                       << apwlo_basis_descriptors_col_[h_icol].ig << " "  
-    //**                                                       << apwlo_basis_descriptors_col_[h_icol].ia << " "  
-    //**                                                       << apwlo_basis_descriptors_col_[h_icol].l << " "  
-    //**                                                       << apwlo_basis_descriptors_col_[h_icol].lm << " "  
-    //**                                                       << apwlo_basis_descriptors_col_[h_icol].idxrf << " "  
-    //**                                                       << apwlo_basis_descriptors_col_[h_icol].order 
+    //**     s << " (col) igk, ig, ia, l, lm, irdrf, order : " << gklo_basis_descriptor_col_[h_icol].igk << " "  
+    //**                                                       << gklo_basis_descriptor_col_[h_icol].ig << " "  
+    //**                                                       << gklo_basis_descriptor_col_[h_icol].ia << " "  
+    //**                                                       << gklo_basis_descriptor_col_[h_icol].l << " "  
+    //**                                                       << gklo_basis_descriptor_col_[h_icol].lm << " "  
+    //**                                                       << gklo_basis_descriptor_col_[h_icol].idxrf << " "  
+    //**                                                       << gklo_basis_descriptor_col_[h_icol].order 
     //**                                                       << std::endl;
 
     //**     s << "o_max " << o_max << " irow, icol : " << o_irow << " " << o_icol << std::endl;
-    //**     s << " (row) igk, ig, ia, l, lm, irdrf, order : " << apwlo_basis_descriptors_row_[o_irow].igk << " "  
-    //**                                                       << apwlo_basis_descriptors_row_[o_irow].ig << " "  
-    //**                                                       << apwlo_basis_descriptors_row_[o_irow].ia << " "  
-    //**                                                       << apwlo_basis_descriptors_row_[o_irow].l << " "  
-    //**                                                       << apwlo_basis_descriptors_row_[o_irow].lm << " "  
-    //**                                                       << apwlo_basis_descriptors_row_[o_irow].idxrf << " "  
-    //**                                                       << apwlo_basis_descriptors_row_[o_irow].order 
+    //**     s << " (row) igk, ig, ia, l, lm, irdrf, order : " << gklo_basis_descriptor_row_[o_irow].igk << " "  
+    //**                                                       << gklo_basis_descriptor_row_[o_irow].ig << " "  
+    //**                                                       << gklo_basis_descriptor_row_[o_irow].ia << " "  
+    //**                                                       << gklo_basis_descriptor_row_[o_irow].l << " "  
+    //**                                                       << gklo_basis_descriptor_row_[o_irow].lm << " "  
+    //**                                                       << gklo_basis_descriptor_row_[o_irow].idxrf << " "  
+    //**                                                       << gklo_basis_descriptor_row_[o_irow].order 
     //**                                                       << std::endl;
-    //**     s << " (col) igk, ig, ia, l, lm, irdrf, order : " << apwlo_basis_descriptors_col_[o_icol].igk << " "  
-    //**                                                       << apwlo_basis_descriptors_col_[o_icol].ig << " "  
-    //**                                                       << apwlo_basis_descriptors_col_[o_icol].ia << " "  
-    //**                                                       << apwlo_basis_descriptors_col_[o_icol].l << " "  
-    //**                                                       << apwlo_basis_descriptors_col_[o_icol].lm << " "  
-    //**                                                       << apwlo_basis_descriptors_col_[o_icol].idxrf << " "  
-    //**                                                       << apwlo_basis_descriptors_col_[o_icol].order 
+    //**     s << " (col) igk, ig, ia, l, lm, irdrf, order : " << gklo_basis_descriptor_col_[o_icol].igk << " "  
+    //**                                                       << gklo_basis_descriptor_col_[o_icol].ig << " "  
+    //**                                                       << gklo_basis_descriptor_col_[o_icol].ia << " "  
+    //**                                                       << gklo_basis_descriptor_col_[o_icol].l << " "  
+    //**                                                       << gklo_basis_descriptor_col_[o_icol].lm << " "  
+    //**                                                       << gklo_basis_descriptor_col_[o_icol].idxrf << " "  
+    //**                                                       << gklo_basis_descriptor_col_[o_icol].order 
     //**                                                       << std::endl;
     //**     warning(__FILE__, __LINE__, s, 0);
     //** }
@@ -1415,10 +1415,10 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
 
     //**     for (int icol = 0; icol < apwlo_basis_size_col(); icol++)
     //**     {
-    //**         int j = apwlo_basis_descriptors_col_[icol].idxglob;
+    //**         int j = gklo_basis_descriptor_col_[icol].idxglob;
     //**         for (int irow = 0; irow < apwlo_basis_size_row(); irow++)
     //**         {
-    //**             int i = apwlo_basis_descriptors_row_[irow].idxglob;
+    //**             int i = gklo_basis_descriptor_row_[irow].idxglob;
     //**             h_glob(i, j) = h(irow, icol);
     //**             o_glob(i, j) = o(irow, icol);
     //**         }
@@ -1489,9 +1489,9 @@ void Band::set_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarra
     {
         int icol = kp->lo_col(ia, i);
 
-        int l = kp->apwlo_basis_descriptors_col(icol).l;
-        int lm = kp->apwlo_basis_descriptors_col(icol).lm;
-        int order = kp->apwlo_basis_descriptors_col(icol).order;
+        int l = kp->gklo_basis_descriptor_col(icol).l;
+        int lm = kp->gklo_basis_descriptor_col(icol).lm;
+        int order = kp->gklo_basis_descriptor_col(icol).order;
         
         for (int order1 = 0; order1 < (int)type->aw_descriptor(l).size(); order1++)
         {
@@ -1509,9 +1509,9 @@ void Band::set_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarra
     {
         int irow = kp->lo_row(ia, i);
 
-        int l = kp->apwlo_basis_descriptors_row(irow).l;
-        int lm = kp->apwlo_basis_descriptors_row(irow).lm;
-        int order = kp->apwlo_basis_descriptors_row(irow).order;
+        int l = kp->gklo_basis_descriptor_row(irow).l;
+        int lm = kp->gklo_basis_descriptor_row(irow).lm;
+        int order = kp->gklo_basis_descriptor_row(irow).order;
 
         for (int order1 = 0; order1 < (int)type->aw_descriptor(l).size(); order1++)
         {
@@ -1533,8 +1533,8 @@ void Band::set_o_it(K_point* kp, mdarray<double_complex, 2>& o)
     {
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
-            int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->apwlo_basis_descriptors_row(igk_row).ig,
-                                             kp->apwlo_basis_descriptors_col(igk_col).ig);
+            int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
+                                             kp->gklo_basis_descriptor_col(igk_col).ig);
             
             o(igk_row, igk_col) += parameters_.step_function()->theta_pw(ig12);
         }
@@ -1547,23 +1547,23 @@ void Band::set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o)
 
     // lo-lo block
     #pragma omp parallel for default(shared)
-    for (int icol = kp->num_gkvec_col(); icol < kp->apwlo_basis_size_col(); icol++)
+    for (int icol = kp->num_gkvec_col(); icol < kp->gklo_basis_size_col(); icol++)
     {
-        int ia = kp->apwlo_basis_descriptors_col(icol).ia;
-        int lm2 = kp->apwlo_basis_descriptors_col(icol).lm; 
+        int ia = kp->gklo_basis_descriptor_col(icol).ia;
+        int lm2 = kp->gklo_basis_descriptor_col(icol).lm; 
 
-        for (int irow = kp->num_gkvec_row(); irow < kp->apwlo_basis_size_row(); irow++)
+        for (int irow = kp->num_gkvec_row(); irow < kp->gklo_basis_size_row(); irow++)
         {
-            if (ia == kp->apwlo_basis_descriptors_row(irow).ia)
+            if (ia == kp->gklo_basis_descriptor_row(irow).ia)
             {
                 Atom* atom = parameters_.unit_cell()->atom(ia);
-                int lm1 = kp->apwlo_basis_descriptors_row(irow).lm; 
+                int lm1 = kp->gklo_basis_descriptor_row(irow).lm; 
 
                 if (lm1 == lm2)
                 {
-                    int l = kp->apwlo_basis_descriptors_row(irow).l;
-                    int order1 = kp->apwlo_basis_descriptors_row(irow).order; 
-                    int order2 = kp->apwlo_basis_descriptors_col(icol).order; 
+                    int l = kp->gklo_basis_descriptor_row(irow).l;
+                    int order1 = kp->gklo_basis_descriptor_row(irow).order; 
+                    int order2 = kp->gklo_basis_descriptor_col(icol).order; 
                     o(irow, icol) += atom->symmetry_class()->o_radial_integral(l, order1, order2);
                 }
             }
@@ -1608,8 +1608,7 @@ void Band::set_o(K_point* kp, mdarray<double_complex, 2>& o)
 
 void Band::solve_fv(K_point* kp, Periodic_function<double>* effective_potential)
 {
-    if (kp->apwlo_basis_size() < parameters_.num_fv_states())
-        error_global(__FILE__, __LINE__, "basis size is too small");
+    if (kp->gklo_basis_size() < parameters_.num_fv_states()) error_global(__FILE__, __LINE__, "basis size is too small");
 
     switch (parameters_.esm_type())
     {
@@ -1773,8 +1772,8 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
     if (kp->num_ranks() > 1 && !parameters_.gen_evp_solver()->parallel())
         error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
-    mdarray<double_complex, 2> h(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
-    mdarray<double_complex, 2> o(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
+    mdarray<double_complex, 2> h(kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
+    mdarray<double_complex, 2> o(kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
     
     set_o(kp, o);
 
@@ -1787,7 +1786,7 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
         set_h<nm>(kp, effective_potential, effective_magnetic_field, h);
        
         Timer t2("sirius::Band::solve_fd|diag");
-        parameters_.gen_evp_solver()->solve(kp->apwlo_basis_size(), kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col(), 
+        parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(), 
                                             parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
                                             &eval[0], fd_evec.ptr(), fd_evec.ld());
     }
@@ -1796,13 +1795,13 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
     {
         assert(kp->apwlo_basis_size() >= parameters_.num_fv_states());
 
-        mdarray<double_complex, 2> o1(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
+        mdarray<double_complex, 2> o1(kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
         memcpy(&o1(0, 0), &o(0, 0), o.size() * sizeof(double_complex));
 
         set_h<uu>(kp, effective_potential, effective_magnetic_field, h);
        
         Timer t2("sirius::Band::solve_fd|diag");
-        parameters_.gen_evp_solver()->solve(kp->apwlo_basis_size(), kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col(), 
+        parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(), 
                                             parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
                                             &eval[0], &fd_evec(0, 0), fd_evec.ld());
         t2.stop();
@@ -1810,7 +1809,7 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
         set_h<dd>(kp, effective_potential, effective_magnetic_field, h);
         
         t2.start();
-        parameters_.gen_evp_solver()->solve(kp->apwlo_basis_size(), kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col(), 
+        parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(), 
                                             parameters_.num_fv_states(), h.ptr(), h.ld(), o1.ptr(), o1.ld(), 
                                             &eval[parameters_.num_fv_states()], 
                                             &fd_evec(0, parameters_.spl_fv_states_col().local_size()), fd_evec.ld());

@@ -227,7 +227,7 @@ void K_set::print_info()
         for (int i = 0; i < 80; i++) printf("-");
         printf("\n");
         printf("  ik                vk                    weight  num_gkvec");
-        if (parameters_.unit_cell()->full_potential()) printf(" lapwlo_basis_size");
+        if (parameters_.unit_cell()->full_potential()) printf(" gklo_basis_size");
         printf("\n");
         for (int i = 0; i < 80; i++) printf("-");
         printf("\n");
@@ -243,7 +243,7 @@ void K_set::print_info()
                         ik, kpoints_[ik]->vk()[0], kpoints_[ik]->vk()[1], kpoints_[ik]->vk()[2], 
                         kpoints_[ik]->weight(), kpoints_[ik]->num_gkvec());
 
-            if (parameters_.unit_cell()->full_potential()) pout.printf("            %6i", kpoints_[ik]->apwlo_basis_size());
+            if (parameters_.unit_cell()->full_potential()) pout.printf("            %6i", kpoints_[ik]->gklo_basis_size());
             
             pout.printf("\n");
         }

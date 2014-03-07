@@ -1,4 +1,5 @@
-template<> class splindex<block>: public splindex_base
+template<> 
+class splindex<block>: public splindex_base
 {
     public:
         
@@ -67,7 +68,8 @@ template<> class splindex<block>: public splindex_base
 
 };
 
-template<> class splindex<block_cyclic>: public splindex_base
+template<> 
+class splindex<block_cyclic>: public splindex_base
 {
     private:
         
