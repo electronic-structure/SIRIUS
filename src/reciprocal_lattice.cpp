@@ -223,7 +223,7 @@ std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<d
     splindex<block> spl_ngv(ngv, Platform::num_mpi_ranks(), Platform::mpi_rank());
 
     #pragma omp parallel
-    for (auto it = spl_ngv.begin(); it.valid(); it++)
+    for (auto it = splindex_iterator<block>(spl_ngv); it.valid(); it++)
     {
         int ig = it.idx();
         int igs = gvec_shell(ig);
@@ -275,7 +275,7 @@ void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4
     #pragma omp parallel
     {
         sbessel_pw<double> jl(unit_cell_, lmax);
-        for (auto it = spl_num_gvec_shells.begin(); it.valid(); it++)
+        for (auto it = splindex_iterator<block>(spl_num_gvec_shells); it.valid(); it++)
         {
             int igs = it.idx();
             jl.load(gvec_shell_len(igs));
@@ -356,7 +356,7 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
                 #pragma omp parallel
                 {
                     std::vector<double_complex> v(lmmax);
-                    for (auto it = spl_num_gvec_.begin(); it.valid(); it++)
+                    for (auto it = splindex_iterator<block>(spl_num_gvec_); it.valid(); it++)
                     {
                         int igs = gvec_shell(it.idx());
                         int igloc = it.idx_local();
