@@ -10,10 +10,10 @@ packages = {
               ["--disable-fortran", "--disable-mpi", "--disable-openmp", "--disable-threads"]
              ],
     "gsl"  : ["ftp://ftp.gnu.org/gnu/gsl/gsl-1.16.tar.gz", 
-              []
+              ["--disable-shared"]
              ],
     "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.12.tar.gz",
-              ["--enable-fortran", "--enable-shared=no", "--enable-static=yes", 
+              ["--enable-fortran", "--disable-shared", "--enable-static=yes", 
                "--disable-deprecated-symbols", "--disable-filters","--disable-parallel", "--with-zlib=no","--with-szlib=no"]
              ],
     "xc"   : ["http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.0.2.tar.gz",
