@@ -1301,7 +1301,7 @@ void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, do
                         int i = atom->type()->indexb_by_lm_order(lm, order);
                         for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++) 
                         {
-                            int igk = kp->apwlo_basis_descriptors_row(igkloc).igk;
+                            int igk = kp->gklo_basis_descriptor_row(igkloc).igk;
                             apwalm(igk, order, lm, ia) = alm(igkloc, i);
                         }
                     }

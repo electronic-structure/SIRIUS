@@ -144,8 +144,8 @@ void Band::set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarra
         {
             int icol = kp->lo_col(ia, i);
 
-            int lm = kp->apwlo_basis_descriptors_col(icol).lm;
-            int idxrf = kp->apwlo_basis_descriptors_col(icol).idxrf;
+            int lm = kp->gklo_basis_descriptor_col(icol).lm;
+            int idxrf = kp->gklo_basis_descriptor_col(icol).idxrf;
             
             for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++) 
             {
@@ -171,8 +171,8 @@ void Band::set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarra
         {
             int irow = kp->lo_row(ia, i);
 
-            int lm = kp->apwlo_basis_descriptors_row(irow).lm;
-            int idxrf = kp->apwlo_basis_descriptors_row(irow).idxrf;
+            int lm = kp->gklo_basis_descriptor_row(irow).lm;
+            int idxrf = kp->gklo_basis_descriptor_row(irow).idxrf;
 
             memset(&ztmp[0], 0, kp->num_gkvec_col() * sizeof(double_complex));
         
@@ -206,12 +206,12 @@ void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential,
     {
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
         {
-            int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->apwlo_basis_descriptors_row(igk_row).ig,
-                                             kp->apwlo_basis_descriptors_col(igk_col).ig);
+            int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
+                                                                   kp->gklo_basis_descriptor_col(igk_col).ig);
             
             // pw kinetic energy
-            double t1 = 0.5 * Utils::scalar_product(kp->apwlo_basis_descriptors_row(igk_row).gkvec_cart, 
-                                                    kp->apwlo_basis_descriptors_col(igk_col).gkvec_cart);
+            double t1 = 0.5 * Utils::scalar_product(kp->gklo_basis_descriptor_row(igk_row).gkvec_cart, 
+                                                    kp->gklo_basis_descriptor_col(igk_col).gkvec_cart);
                               
             switch (sblock)
             {
@@ -256,19 +256,19 @@ void Band::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h)
 
     // lo-lo block
     #pragma omp parallel for default(shared)
-    for (int icol = kp->num_gkvec_col(); icol < kp->apwlo_basis_size_col(); icol++)
+    for (int icol = kp->num_gkvec_col(); icol < kp->gklo_basis_size_col(); icol++)
     {
-        int ia = kp->apwlo_basis_descriptors_col(icol).ia;
-        int lm2 = kp->apwlo_basis_descriptors_col(icol).lm; 
-        int idxrf2 = kp->apwlo_basis_descriptors_col(icol).idxrf; 
+        int ia = kp->gklo_basis_descriptor_col(icol).ia;
+        int lm2 = kp->gklo_basis_descriptor_col(icol).lm; 
+        int idxrf2 = kp->gklo_basis_descriptor_col(icol).idxrf; 
 
-        for (int irow = kp->num_gkvec_row(); irow < kp->apwlo_basis_size_row(); irow++)
+        for (int irow = kp->num_gkvec_row(); irow < kp->gklo_basis_size_row(); irow++)
         {
-            if (ia == kp->apwlo_basis_descriptors_row(irow).ia)
+            if (ia == kp->gklo_basis_descriptor_row(irow).ia)
             {
                 Atom* atom = parameters_.unit_cell()->atom(ia);
-                int lm1 = kp->apwlo_basis_descriptors_row(irow).lm; 
-                int idxrf1 = kp->apwlo_basis_descriptors_row(irow).idxrf; 
+                int lm1 = kp->gklo_basis_descriptor_row(irow).lm; 
+                int idxrf1 = kp->gklo_basis_descriptor_row(irow).idxrf; 
 
                 h(irow, icol) += atom->hb_radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
             }

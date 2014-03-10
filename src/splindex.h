@@ -125,10 +125,10 @@ class splindex_base
         int global_index_size_;
 
         /// local index size for each rank
-        std::vector<int> local_size_;
+        std::vector<int> local_size_; // TODO: compute analytically
         
         /// global index by rank and local index
-        mdarray<int, 2> global_index_;
+        mdarray<int, 2> global_index_; // TODO: compute analytically
 
         /// location (local index and rank) of global index
         mdarray<int, 2> location_;
@@ -176,7 +176,7 @@ class splindex_base
 
         inline int local_size(int rank)
         {
-            assert((rank >= 0) && rank < (num_ranks_));
+            assert(rank >= 0 && rank < num_ranks_);
 
             return local_size_[rank];
         }

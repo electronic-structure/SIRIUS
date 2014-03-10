@@ -69,14 +69,23 @@ class Utils
             return 0.5 * (1 - gsl_sf_erf(e)) - 1 - 0.25 * exp(-e * e) * (a + 2 * e - 2 * a * e * e) / sqrt(pi);
         }
 
-        /// Convert variable of type T to a string
-        template <typename T>
-        static std::string to_string(T argument)
+        std::string static to_string(double argument)
         {
-            std::stringstream s;
-            s << argument;
-            return s.str();
+            char buf[100];
+        
+            int len = snprintf(buf, 100, "%.14f", argument);
+            for (int i = len; i >= 1; i--) if (buf[i] == '0' && buf[i - 1] == '0') buf[i] = 0;
+            return std::string(buf);
         }
+
+        //== /// Convert variable of type T to a string
+        //== template <typename T>
+        //== static std::string to_string(T argument)
+        //== {
+        //==     std::stringstream s;
+        //==     s << argument;
+        //==     return s.str();
+        //== }
 
         static inline double phi_by_sin_cos(double sinp, double cosp)
         {
