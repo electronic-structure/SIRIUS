@@ -641,6 +641,11 @@ class Atom_type
         {
             return label_;
         }
+
+        inline std::string file_name()
+        {
+            return file_name_;
+        }
 };
 
 };

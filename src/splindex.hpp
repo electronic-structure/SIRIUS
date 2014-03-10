@@ -61,8 +61,66 @@ class splindex<block>: public splindex_base
             init();
         }
 
+        inline int local_size()
+        {
+            return local_size(rank_);
+        }
+
+        inline int local_size(int rank) // TODO: can be cached
+        {
+            int m = global_index_size_ % num_ranks_; // first m ranks get additional element
+            return global_index_size_ / num_ranks_ + (rank < m ? 1 : 0); // minimum number of elements +1 if rank < m
+        }
+        
+        inline int location(int offset_or_rank, int idxglob) // TODO: rename
+        {
+            assert(idxglob < global_index_size_);
+
+            int m = global_index_size_ % num_ranks_; // first m ranks get additional element
+            int bs_min = global_index_size_ / num_ranks_;
+
+            int rank;
+            int offs;
+
+            if (idxglob < (bs_min + 1) * m) // TODO: can be cached
+            {
+                rank = idxglob / (bs_min + 1);
+                offs = idxglob % (bs_min + 1);
+            }
+            else
+            {
+                int k = idxglob - m * (bs_min + 1);
+                offs = k % bs_min;
+                rank = m + k / bs_min;
+            }
+
+            switch (offset_or_rank)
+            {
+                case _splindex_offs_:
+                {
+                    return offs;
+                    break;
+                }
+                case _splindex_rank_:
+                {
+                    return rank;
+                    break;
+                }
+            }
+            return -1; // make compiler happy
+        }
+
+        inline int global_index(int idxloc, int rank)
+        {
+            int m = global_index_size_ % num_ranks_; // first m ranks get additional element
+            int bs_min = global_index_size_ / num_ranks_;
+
+            return (rank < m) ? (bs_min + 1) * rank + idxloc : m + rank * bs_min + idxloc; 
+        }
+
         inline int global_offset()
         {
+            assert(rank_ >= 0);
             return global_index_(0, rank_);
         }
 
@@ -105,7 +163,6 @@ class splindex<block_cyclic>: public splindex_base
             
             local_size_.resize(num_ranks_);
 
-
             int nblocks = (global_index_size_ / block_size_) +           // number of full blocks
                           std::min(1, global_index_size_ % block_size_); // extra partial block
 
@@ -138,5 +195,66 @@ class splindex<block_cyclic>: public splindex_base
 
             init();
         }
+
+        
+        inline int local_size(int rank)
+        {
+            int num_blocks = global_index_size_ / block_size_; // number of full blocks
+
+            int n = (num_blocks / num_ranks_) * block_size_;
+
+            int rank_offs = num_blocks % num_ranks_;
+
+            if (rank < rank_offs) 
+            {
+                n += block_size_;
+            }
+            else if (rank == rank_offs)
+            {
+                n += global_index_size_ % block_size_;
+            }
+            return n;
+        }
+
+        inline int local_size()
+        {
+            return local_size(rank_);
+        }
+
+        inline int location(int offset_or_rank, int idxglob) // TODO: rename
+        {
+            assert(idxglob < global_index_size_);
+
+            int num_blocks = idxglob / block_size_; // number of full blocks
+
+            int n = (num_blocks / num_ranks_) * block_size_ + idxglob % block_size_;
+
+            int rank = num_blocks % num_ranks_;
+
+            switch (offset_or_rank)
+            {
+                case _splindex_offs_:
+                {
+                    return n;
+                    break;
+                }
+                case _splindex_rank_:
+                {
+                    return rank;
+                    break;
+                }
+            }
+            return -1; // make compiler happy
+        }
+
+        inline int global_index(int idxloc, int rank)
+        {
+            int nb = idxloc / block_size_;
+            
+            int idx = nb * num_ranks_ * block_size_ + idxloc % block_size_;
+            idx += rank * block_size_;
+            return idx;
+        }
+
 };
 
