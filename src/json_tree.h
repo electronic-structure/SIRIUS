@@ -356,22 +356,22 @@ class JSON_write
             new_line();
             fprintf(fout_, "\"%s\" : %s", name, value.c_str());
         }
-        
+       
+        /// Write array of doubles
+        /** The following data structure is written:
+            \code{.json}
+                "name" : [v1, v2, v2, ...]
+            \endcode
+        */
         inline void single(const char* name, std::vector<double>& values)
         {
             new_line();
             fprintf(fout_, "\"%s\" : [", name);
             for (int i = 0; i < (int)values.size(); i++)
             {
-                if (i) fprintf(fout_, ",");
-                if (fabs(values[i]) > 1e-6)
-                {
-                    fprintf(fout_, "%.12f", values[i]);
-                }
-                else
-                {
-                    fprintf(fout_, "%.12e", values[i]);
-                }
+                if (i) fprintf(fout_, ", ");
+                std::string s = Utils::to_string(values[i]);
+                fprintf(fout_, "%s", s.c_str());
             }
             fprintf(fout_, "]");
         }
@@ -400,32 +400,20 @@ class JSON_write
             fprintf(fout_, "]");
         }
         
-        inline void single(const char* name, std::map<std::string, std::vector<double> >& timers)
+        inline void single(const char* name, std::map<std::string, sirius::timer_stats> timers)
         {
             new_line();
             fprintf(fout_, "\"%s\" : {", name);
             
             indent_level_ += indent_step_;
-            std::map<std::string, std::vector<double> >::iterator it;
             new_block_ = true;
-            for (it = timers.begin(); it != timers.end(); it++)
+            for (auto it = timers.begin(); it != timers.end(); it++)
             {
-                int count = (int)it->second.size();
-                double total = 0.0;
-                double minval = 1e100;
-                double maxval = 0.0;
-                for (int i = 0; i < count; i++)
-                {
-                    total += it->second[i];
-                    minval = std::min(minval, it->second[i]);
-                    maxval = std::max(maxval, it->second[i]);
-                }
-                double average = (count == 0) ? 0.0 : total / count;
-                std::vector<double> values(4); // total,min,max,average
-                values[0] = total;
-                values[1] = minval;
-                values[2] = maxval;
-                values[3] = average;
+                std::vector<double> values(4); // total, min, max, average
+                values[0] = it->second.total_value;
+                values[1] = it->second.min_value;
+                values[2] = it->second.max_value;
+                values[3] = it->second.average_value;
                 single(it->first.c_str(), values);
             }
             

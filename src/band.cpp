@@ -1160,16 +1160,6 @@ void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<
     }
 }
 
-void Band::solve_fv_evp_1stage(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o, 
-                               std::vector<double>& fv_eigen_values, mdarray<double_complex, 2>& fv_eigen_vectors)
-{
-    Timer t("sirius::Band::solve_fv_evp");
-    
-    parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(),
-                                        parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
-                                        &fv_eigen_values[0], fv_eigen_vectors.ptr(), fv_eigen_vectors.ld());
-}
-
 //== void K_point::solve_fv_evp_2stage(mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 //== {
 //==     if (parameters_.eigen_value_solver() != lapack) error_local(__FILE__, __LINE__, "implemented for LAPACK only");
@@ -1447,7 +1437,12 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     else
     {
         std::vector<double> eval(parameters_.num_fv_states());
-        solve_fv_evp_1stage(kp, h, o, eval, kp->fv_eigen_vectors());
+    
+        Timer t("sirius::Band::diag_fv_full_potential|genevp");
+    
+        parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(),
+                                            parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
+                                            &eval[0], kp->fv_eigen_vectors().ptr(), kp->fv_eigen_vectors().ld());
         kp->set_fv_eigen_values(&eval[0]);
     }
     

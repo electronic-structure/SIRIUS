@@ -65,9 +65,6 @@ class Band
         
         void set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o);
        
-        void solve_fv_evp_1stage(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o, 
-                                 std::vector<double>& fv_eigen_values, mdarray<double_complex, 2>& fv_eigen_vectors);
-
         void set_o(K_point* kp, mdarray<double_complex, 2>& o);
     
         template <spin_block_t sblock> 
