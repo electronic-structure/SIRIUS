@@ -27,7 +27,7 @@ void Platform::initialize(bool call_mpi_init, bool call_cublas_init)
     plasma_init(max_num_threads());
     #endif
     #ifdef _RS_GEN_EIG_
-    //libsci_acc_init();
+    libsci_acc_init();
     #endif
 
     assert(sizeof(int) == 4);

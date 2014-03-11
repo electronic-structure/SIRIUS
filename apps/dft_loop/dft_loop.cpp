@@ -61,15 +61,17 @@ int main(int argn, char** argv)
         Density* density = new Density(parameters);
         density->allocate();
         
-        if (Utils::file_exists(storage_file_name))
-        {
-            density->load();
-            potential->load();
-        }
-        else
-        {
-            density->initial_density();
-        }
+        //if (Utils::file_exists(storage_file_name))
+        //{
+        //    density->load();
+        //    potential->load();
+        //}
+        //else
+        //{
+        //    density->initial_density();
+        //}
+        
+        density->initial_density();
 
         DFT_ground_state dft(parameters, potential, density, &ks);
         double potential_tol = parser["potential_tol"].get(1e-4);
