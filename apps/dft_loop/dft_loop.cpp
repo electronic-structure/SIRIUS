@@ -79,7 +79,7 @@ int main(int argn, char** argv)
 
         //dft.relax_atom_positions();
 
-        //parameters.write_json_output();
+        parameters.write_json_output();
 
         delete density;
         delete potential;
