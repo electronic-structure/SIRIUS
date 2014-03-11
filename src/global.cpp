@@ -542,7 +542,7 @@ void Global::write_json_output()
         //** jw.single("band_gap", rti_.band_gap);
         //** jw.single("energy_fermi", rti_.energy_fermi);
         
-        jw.single("timers", Timer::timers());
+        jw.single("timers", Timer::collect_timer_stats());
     }
 }
 

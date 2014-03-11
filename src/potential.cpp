@@ -772,7 +772,7 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
    
     if (parameters_.unit_cell()->full_potential())
     {
-        Timer t2("sirius::Potential::xc:mt");
+        Timer t2("sirius::Potential::xc|mt");
 
         int raw_size = sht_->num_points() * parameters_.unit_cell()->max_num_mt_points();
         std::vector<double> rhotp_raw(raw_size);
@@ -878,7 +878,7 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
         }
     }
   
-    Timer t3("sirius::Potential::xc:it");
+    Timer t3("sirius::Potential::xc|it");
 
     // TODO: this is unreadable and must be reimplemented
     int irloc_size = fft_->local_size();
