@@ -235,6 +235,18 @@ void Atom_type::add_lo_descriptor(int ilo, int n, int l, double enu, int dme, in
     lo_descriptors_[ilo].rsd_set.push_back(rsd);
 }
 
+void Atom_type::init_free_atom()
+{
+    free_atom_density_.resize(radial_grid_->size());
+    free_atom_potential_.resize(radial_grid_->size());
+
+    for (int i = 0; i < radial_grid_->size(); i++)
+    {
+        free_atom_potential_[i] = -1.0 * zn_ / radial_grid(i);
+        free_atom_density_[i] = zn_ * exp(-radial_grid(i)) / fourpi;
+    }
+}
+
 double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
 {
     Timer t("sirius::Atom_type::solve_free_atom");

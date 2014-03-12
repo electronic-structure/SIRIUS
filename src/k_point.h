@@ -212,6 +212,8 @@ class K_point
         template <bool conjugate>
         void generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm);
         
+        void generate_matching_coefficients(int num_gkvec_loc, mdarray<double_complex, 2>& alm);
+        
         /// Generate first-variational states from eigen-vectors
         void generate_fv_states();
 

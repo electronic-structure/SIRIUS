@@ -1389,7 +1389,7 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     //**     warning(__FILE__, __LINE__, s, 0);
     //** }
     
-    assert(kp->apwlo_basis_size() > parameters_.num_fv_states());
+    assert(kp->gklo_basis_size() > parameters_.num_fv_states());
     
     // debug scalapack
     //** std::vector<double> fv_eigen_values_glob(parameters_.num_fv_states());
@@ -1777,7 +1777,7 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
 
     if (parameters_.num_mag_dims() == 0)
     {
-        assert(kp->apwlo_basis_size() >= parameters_.num_fv_states());
+        assert(kp->gklo_basis_size() >= parameters_.num_fv_states());
         set_h<nm>(kp, effective_potential, effective_magnetic_field, h);
        
         Timer t2("sirius::Band::solve_fd|diag");
@@ -1788,7 +1788,7 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
     
     if (parameters_.num_mag_dims() == 1)
     {
-        assert(kp->apwlo_basis_size() >= parameters_.num_fv_states());
+        assert(kp->gklo_basis_size() >= parameters_.num_fv_states());
 
         mdarray<double_complex, 2> o1(kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
         memcpy(&o1(0, 0), &o(0, 0), o.size() * sizeof(double_complex));

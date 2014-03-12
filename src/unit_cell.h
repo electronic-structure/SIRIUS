@@ -1,5 +1,31 @@
+// This file is part of SIRIUS
+//
+// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #ifndef __UNIT_CELL_H__
 #define __UNIT_CELL_H__
+
+/** \file unit_cell.h
+    
+    \brief Contains definition and partial implementation of sirius::Unit_cell class.
+*/
 
 extern "C" {
 #include <spglib.h>
@@ -14,6 +40,12 @@ extern "C" {
 #include "symmetry.h"
 
 namespace sirius {
+
+struct mt_basis_descriptor
+{
+    int ia;
+    int xi;
+};
 
 class Unit_cell
 {
@@ -88,6 +120,11 @@ class Unit_cell
 
         /// total number of augmented wave basis functions in the MT (= number of matching coefficients for each plane-wave)
         int mt_aw_basis_size_;
+
+        /// list of augmented wave basis descriptors
+        /** Establishes mapping between global index in the range [0, mt_aw_basis_size_) and corresponding atom and 
+            local index \f$ \xi \f$ */
+        std::vector<mt_basis_descriptor> mt_aw_basis_descriptors_; 
         
         /// total number of local orbital basis functions
         int mt_lo_basis_size_;
@@ -115,14 +152,12 @@ class Unit_cell
         
         splindex<block> spl_atoms_;
 
-        //mdarray<int, 2> beta_t_idx_;
+        mdarray<int, 2> beta_t_idx_;
         mdarray<int, 1> beta_t_ofs_;
         int num_beta_t_;
 
         mdarray<int, 1> beta_a_ofs_;
         int num_beta_a_;
-
-        mdarray<int, 2> beta_t_idx_;
 
         mdarray<double, 2> atom_pos_;
 
@@ -501,6 +536,11 @@ class Unit_cell
         inline mdarray<int, 2>& beta_t_idx()
         {
             return beta_t_idx_;
+        }
+
+        inline mt_basis_descriptor& mt_aw_basis_descriptor(int idx)
+        {
+            return mt_aw_basis_descriptors_[idx];
         }
 };
     

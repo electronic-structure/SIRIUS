@@ -540,6 +540,42 @@ void K_point::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<
     if (debug_level > 1) check_alm(num_gkvec_loc, ia, alm);
 }
 
+void K_point::generate_matching_coefficients(int num_gkvec_loc, mdarray<double_complex, 2>& alm)
+{
+    splindex<block_cyclic> spl_mt_basis(parameters_.unit_cell()->mt_aw_basis_size(), num_ranks_col_, rank_col_, 
+                                        parameters_.cyclic_block_size());
+
+    mdarray<double, 2> A(3, 3);
+    for (int i = 0; i < spl_mt_basis.local_size(); i++)
+    {
+        int j = spl_mt_basis[i];
+        int ia = parameters_.unit_cell()->mt_aw_basis_descriptor(j).ia;
+        int xi = parameters_.unit_cell()->mt_aw_basis_descriptor(j).xi;
+        Atom* atom = parameters_.unit_cell()->atom(ia);
+        Atom_type* type = atom->type();
+        int iat = type->id();
+        int l = type->indexb(xi).l;
+        int lm = type->indexb(xi).lm;
+
+        int num_aw = (int)type->aw_descriptor(l).size();
+
+        for (int order = 0; order < num_aw; order++)
+        {
+            for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
+        }
+    
+        A(0, 0) = 1.0 / A(0, 0);
+
+        double_complex zt;
+        for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
+        {
+            zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat) * A(0, 0);
+
+            alm(igkloc, i) = conj(gkvec_ylm_(lm, igkloc)) * zt;
+        }
+    }
+}
+
 void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)
 {
     static SHT* sht = NULL;
@@ -650,6 +686,131 @@ void K_point::generate_fv_states()
     {
         Platform::allreduce(&fv_states_col_(0, j), wf_size(), parameters_.mpi_grid().communicator(1 << _dim_row_));
     }
+
+
+
+
+    splindex<block_cyclic> spl_mt_aw_basis_col(parameters_.unit_cell()->mt_aw_basis_size(), num_ranks_col_, rank_col_, 
+                                               parameters_.cyclic_block_size());
+    splindex<block_cyclic> spl_mt_aw_basis_row(parameters_.unit_cell()->mt_aw_basis_size(), num_ranks_row_, rank_row_, 
+                                               parameters_.cyclic_block_size());
+
+    mdarray<double_complex, 2> alm(num_gkvec_row(), spl_mt_aw_basis_col.local_size());
+    generate_matching_coefficients(num_gkvec_row(), alm);
+
+    mdarray<double_complex, 2> aw_coefs_panel(spl_mt_aw_basis_row.local_size(), parameters_.spl_fv_states_col().local_size());
+
+    pblas<cpu>::gemm(1, 0, parameters_.unit_cell()->mt_aw_basis_size(), parameters_.num_fv_states(), num_gkvec(), 
+                     complex_one, alm.ptr(), alm.ld(), fv_eigen_vectors_.ptr(), fv_eigen_vectors_.ld(), 
+                     complex_zero, aw_coefs_panel.ptr(), aw_coefs_panel.ld(), parameters_.cyclic_block_size(), 
+                     parameters_.blacs_context()); 
+    alm.deallocate();
+
+
+    //== double diff = 0;
+    //== for (int i = 0; i < parameters_.spl_fv_states_col().local_size(); i++)
+    //== {
+    //==     //for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    //==     for (int ia = 0; ia < 2; ia++)
+    //==     {
+    //==         for (int xi = 0; xi < parameters_.unit_cell()->atom(ia)->mt_aw_basis_size(); xi++)
+    //==         {
+    //==             diff += std::abs(fv_states_col_(parameters_.unit_cell()->atom(ia)->offset_wf() + xi, i) - 
+    //==                                             aw_coefs_panel(parameters_.unit_cell()->atom(ia)->offset_aw() + xi, i));
+    //==         }
+    //==     }
+    //== }
+    //== std::cout << "diff = " << diff << std::endl;
+
+
+
+
+
+
+
+    // time to sync fv_eigen_vectors
+    // sub_spl_fv_states_col_.split(spl_fv_states_col().local_size(), nrow, irow);
+    
+    splindex<block_cyclic> spl_gklo_row(gklo_basis_size(), num_ranks_row_, rank_row_, parameters_.cyclic_block_size());
+
+    mdarray<double_complex, 2> fv_eigen_vectors1(gklo_basis_size(), parameters_.sub_spl_fv_states_col().local_size());
+
+    for (int irow = 0; irow < num_ranks_row_; irow++)
+    {
+        mdarray<double_complex, 2> fv_eigen_vectors_panel_tmp(spl_gklo_row.local_size(irow),  
+                                                              parameters_.spl_fv_states_col().local_size());
+        
+        if (rank_row() == irow) fv_eigen_vectors_ >> fv_eigen_vectors_panel_tmp;
+        Platform::bcast(fv_eigen_vectors_panel_tmp.ptr(), (int)fv_eigen_vectors_panel_tmp.size(), 
+                        parameters_.mpi_grid().communicator(1 << _dim_row_), irow); 
+        
+        for (int i = 0; i < parameters_.sub_spl_fv_states_col().local_size(); i++)
+        {
+            int icol = parameters_.sub_spl_fv_states_col(i);
+            for (int j = 0; j < spl_gklo_row.local_size(irow); j++)
+            {
+                fv_eigen_vectors1(spl_gklo_row.global_index(j, irow), i) = fv_eigen_vectors_panel_tmp(j, icol);
+            }
+        }
+    }
+
+
+    mdarray<double_complex, 2> aw_coefs(parameters_.unit_cell()->mt_aw_basis_size(), parameters_.sub_spl_fv_states_col().local_size());
+    for (int irow = 0; irow < num_ranks_row_; irow++)
+    {
+        mdarray<double_complex, 2> aw_coefs_panel_tmp(spl_mt_aw_basis_row.local_size(irow),  
+                                                      parameters_.spl_fv_states_col().local_size());
+        
+        if (rank_row() == irow) aw_coefs_panel >> aw_coefs_panel_tmp;
+        Platform::bcast(aw_coefs_panel_tmp.ptr(), (int)aw_coefs_panel_tmp.size(), 
+                        parameters_.mpi_grid().communicator(1 << _dim_row_), irow); 
+        
+        for (int i = 0; i < parameters_.sub_spl_fv_states_col().local_size(); i++)
+        {
+            int icol = parameters_.sub_spl_fv_states_col(i);
+            for (int j = 0; j < spl_mt_aw_basis_row.local_size(irow); j++)
+            {
+                aw_coefs(spl_mt_aw_basis_row.global_index(j, irow), i) = aw_coefs_panel_tmp(j, icol);
+            }
+        }
+    }
+
+    mdarray<double_complex, 2> fv_states1(wf_size(), parameters_.sub_spl_fv_states_col().local_size());
+    fv_states1.zero();
+    for (int i = 0; i < parameters_.sub_spl_fv_states_col().local_size(); i++)
+    {
+        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        {
+            for (int xi = 0; xi < parameters_.unit_cell()->atom(ia)->mt_aw_basis_size(); xi++)
+            {
+                fv_states1(parameters_.unit_cell()->atom(ia)->offset_wf() + xi, i) = 
+                    aw_coefs(parameters_.unit_cell()->atom(ia)->offset_aw() + xi, i);
+            }
+            for (int xi = 0; xi < parameters_.unit_cell()->atom(ia)->mt_lo_basis_size(); xi++)
+            {
+                fv_states1(parameters_.unit_cell()->atom(ia)->offset_wf() + parameters_.unit_cell()->atom(ia)->mt_aw_basis_size() + xi, i) = 
+                    fv_eigen_vectors1(num_gkvec() + parameters_.unit_cell()->atom(ia)->offset_lo() + xi, i);
+            }
+            for (int igk = 0; igk < num_gkvec(); igk++)
+            {
+                fv_states1(parameters_.unit_cell()->mt_basis_size() + igk, i) = fv_eigen_vectors1(igk, i);
+            }
+        }
+    }
+
+    for (int j = 0; j < parameters_.spl_fv_states_col().local_size(); j++)
+    {
+        int rank = parameters_.sub_spl_fv_states_col().location(_splindex_rank_, j);
+        int offs = parameters_.sub_spl_fv_states_col().location(_splindex_offs_, j);
+
+        if (rank == rank_row())
+        {
+            memcpy(&fv_states_col_(0, j), &fv_states1(0, offs), wf_size() * sizeof(double_complex));
+        }
+        Platform::bcast(&fv_states_col_(0, j), wf_size(), parameters_.mpi_grid().communicator(1 << _dim_row_), rank); 
+    }
+
+
 
     log_function_exit(__func__);
 }
@@ -1550,7 +1711,7 @@ void K_point::load(HDF5_tree h5in, int id)
 
 void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec)
 {
-    assert(fv_evec.size(0) >= apwlo_basis_size());
+    assert(fv_evec.size(0) >= gklo_basis_size());
     assert(fv_evec.size(1) == parameters_.num_fv_states());
     
     fv_evec.zero();

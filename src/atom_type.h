@@ -375,6 +375,7 @@ class Atom_type
         /// Add local orbital descriptor
         void add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu);
 
+        void init_free_atom();
         /// Solve free atom and find SCF density and potential.
         /** Free atom potential is used to augment the MT potential and find the energy of the bound states which is used
             as a linearization energy (auto_enu = 1). */ 

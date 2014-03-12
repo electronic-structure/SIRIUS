@@ -314,7 +314,21 @@ class linalg<scalapack>
         
             FORTRAN(descinit)(desc, &m, &n, &mb, &nb, &irsrc, &icsrc, &ictxt, &lld, &info);
         
-            if (info) error_local(__FILE__, __LINE__, "error in descinit");
+            if (info)
+            {
+                std::stringstream s;
+                s << "error in descinit()" << std::endl
+                  << "m = " << m << std::endl
+                  << "n = " << n << std::endl
+                  << "mb = " << mb << std::endl
+                  << "nb = " << nb << std::endl
+                  << "irsrc = " << irsrc << std::endl
+                  << "icsrc = " << icsrc << std::endl
+                  << "ictxt = " << ictxt << std::endl
+                  << "lld = " << lld;
+
+                error_local(__FILE__, __LINE__, s);
+            }
         }
 
         static int pjlaenv(int32_t ictxt, int32_t ispec, const std::string& name, const std::string& opts, int32_t n1, int32_t n2, 

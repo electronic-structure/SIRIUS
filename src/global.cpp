@@ -326,51 +326,51 @@ void Global::initialize()
         }
     }
 
-    if (verbosity_level >= 3 && Platform::mpi_rank() == 0 && nrow * ncol > 1)
-    {
-        printf("\n");
-        printf("table of column distribution of first-variational states\n");
-        printf("(columns of the table correspond to column MPI ranks)\n");
-        for (int i0 = 0; i0 < spl_fv_states_col_.local_size(0); i0++)
-        {
-            for (int i1 = 0; i1 < ncol; i1++) printf("%6i", spl_fv_states_col_.global_index(i0, i1));
-            printf("\n");
-        }
-        
-        printf("\n");
-        printf("table of row distribution of first-variational states\n");
-        printf("(columns of the table correspond to row MPI ranks)\n");
-        for (int i0 = 0; i0 < spl_fv_states_row_.local_size(0); i0++)
-        {
-            for (int i1 = 0; i1 < nrow; i1++) printf("%6i", spl_fv_states_row_.global_index(i0, i1));
-            printf("\n");
-        }
+    //== if (verbosity_level >= 3 && Platform::mpi_rank() == 0 && nrow * ncol > 1)
+    //== {
+    //==     printf("\n");
+    //==     printf("table of column distribution of first-variational states\n");
+    //==     printf("(columns of the table correspond to column MPI ranks)\n");
+    //==     for (int i0 = 0; i0 < spl_fv_states_col_.local_size(0); i0++)
+    //==     {
+    //==         for (int i1 = 0; i1 < ncol; i1++) printf("%6i", spl_fv_states_col_.global_index(i0, i1));
+    //==         printf("\n");
+    //==     }
+    //==     
+    //==     printf("\n");
+    //==     printf("table of row distribution of first-variational states\n");
+    //==     printf("(columns of the table correspond to row MPI ranks)\n");
+    //==     for (int i0 = 0; i0 < spl_fv_states_row_.local_size(0); i0++)
+    //==     {
+    //==         for (int i1 = 0; i1 < nrow; i1++) printf("%6i", spl_fv_states_row_.global_index(i0, i1));
+    //==         printf("\n");
+    //==     }
 
-        printf("\n");
-        printf("First-variational states index -> (local index, rank) for column distribution\n");
-        for (int i = 0; i < num_fv_states(); i++)
-        {
-            printf("%6i -> (%6i %6i)\n", i, spl_fv_states_col_.location(_splindex_offs_, i), 
-                                            spl_fv_states_col_.location(_splindex_rank_, i));
-        }
-        
-        printf("\n");
-        printf("First-variational states index -> (local index, rank) for row distribution\n");
-        for (int i = 0; i < num_fv_states(); i++)
-        {
-            printf("%6i -> (%6i %6i)\n", i, spl_fv_states_row_.location(_splindex_offs_, i), 
-                                            spl_fv_states_row_.location(_splindex_rank_, i));
-        }
-        
-        printf("\n");
-        printf("table of column distribution of spinor wave functions\n");
-        printf("(columns of the table correspond to MPI ranks)\n");
-        for (int i0 = 0; i0 < spl_spinor_wf_col_.local_size(0); i0++)
-        {
-            for (int i1 = 0; i1 < ncol; i1++) printf("%6i", spl_spinor_wf_col_.global_index(i0, i1));
-            printf("\n");
-        }
-    }
+    //==     printf("\n");
+    //==     printf("First-variational states index -> (local index, rank) for column distribution\n");
+    //==     for (int i = 0; i < num_fv_states(); i++)
+    //==     {
+    //==         printf("%6i -> (%6i %6i)\n", i, spl_fv_states_col_.location(_splindex_offs_, i), 
+    //==                                         spl_fv_states_col_.location(_splindex_rank_, i));
+    //==     }
+    //==     
+    //==     printf("\n");
+    //==     printf("First-variational states index -> (local index, rank) for row distribution\n");
+    //==     for (int i = 0; i < num_fv_states(); i++)
+    //==     {
+    //==         printf("%6i -> (%6i %6i)\n", i, spl_fv_states_row_.location(_splindex_offs_, i), 
+    //==                                         spl_fv_states_row_.location(_splindex_rank_, i));
+    //==     }
+    //==     
+    //==     printf("\n");
+    //==     printf("table of column distribution of spinor wave functions\n");
+    //==     printf("(columns of the table correspond to MPI ranks)\n");
+    //==     for (int i0 = 0; i0 < spl_spinor_wf_col_.local_size(0); i0++)
+    //==     {
+    //==         for (int i1 = 0; i1 < ncol; i1++) printf("%6i", spl_spinor_wf_col_.global_index(i0, i1));
+    //==         printf("\n");
+    //==     }
+    //== }
     
     if (Platform::mpi_rank() == 0 && verbosity_level >= 1) print_info();
     initialized_ = true;

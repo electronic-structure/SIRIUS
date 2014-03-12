@@ -303,6 +303,21 @@ class Atom
         {
             return d_mtrx_;
         }
+
+        inline int mt_basis_size()
+        {
+            return type_->mt_basis_size();
+        }
+
+        inline int mt_aw_basis_size()
+        {
+            return type_->mt_aw_basis_size();
+        }
+
+        inline int mt_lo_basis_size()
+        {
+            return type_->mt_lo_basis_size();
+        }
 };
 
 };

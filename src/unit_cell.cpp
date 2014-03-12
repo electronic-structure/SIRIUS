@@ -439,6 +439,16 @@ void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
             }
         }
     }
+
+    mt_aw_basis_descriptors_.resize(mt_aw_basis_size_);
+    for (int ia = 0, n = 0; ia < num_atoms(); ia++)
+    {
+        for (int xi = 0; xi < atom(ia)->mt_aw_basis_size(); xi++, n++)
+        {
+            mt_aw_basis_descriptors_[n].ia = ia;
+            mt_aw_basis_descriptors_[n].xi = xi;
+        }
+    }
 }
 
 void Unit_cell::update()
@@ -978,7 +988,8 @@ void Unit_cell::solve_free_atoms()
 
     std::vector<double> enu;
     for (int i = 0; i < spl_num_atom_types.local_size(); i++)
-        atom_type(spl_num_atom_types[i])->solve_free_atom(1e-6, 1e-4, 1e-4, enu);
+        //atom_type(spl_num_atom_types[i])->solve_free_atom(1e-6, 1e-4, 1e-4, enu);
+        atom_type(spl_num_atom_types[i])->init_free_atom();
 
     for (int i = 0; i < num_atom_types(); i++)
     {
