@@ -134,16 +134,16 @@ class Global
             column MPI rank gets equal row or column fraction of the fv states. This is done in order to have a 
             simple acces to the fv states when, for example, spin blocks of the second-variational Hamiltonian are
             constructed. */
-        splindex<block_cyclic> spl_fv_states_col_;
+        splindex<block_cyclic> spl_fv_states_;
 
         /// Block-cyclic distribution of the first-variational states along rows of the MPI grid.
-        splindex<block_cyclic> spl_fv_states_row_;
+        //splindex<block_cyclic> spl_fv_states_row_;
         
-        splindex<block_cyclic> spl_spinor_wf_col_;
+        splindex<block_cyclic> spl_spinor_wf_;
         
         splindex<block> sub_spl_spinor_wf_;
 
-        splindex<block> sub_spl_fv_states_col_;
+        splindex<block> sub_spl_fv_states_;
 
         #ifdef _SCALAPACK_
         /// BLACS communication context for an eigen-value solver and related operations
@@ -408,34 +408,39 @@ class Global
             return false;
         }
         
-        inline splindex<block_cyclic>& spl_fv_states_col()
+        inline splindex<block_cyclic>& spl_fv_states()
         {
-            return spl_fv_states_col_;
+            return spl_fv_states_;
         }
         
-        inline int spl_fv_states_col(int icol_loc)
+        inline int spl_fv_states(int icol_loc)
         {
-            return spl_fv_states_col_[icol_loc];
+            return spl_fv_states_[icol_loc];
         }
 
-        inline splindex<block_cyclic>& spl_fv_states_row()
+        //== inline splindex<block_cyclic>& spl_fv_states_row()
+        //== {
+        //==     return spl_fv_states_row_;
+        //== }
+        
+        //== inline int spl_fv_states_row(int irow_loc)
+        //== {
+        //==     return spl_fv_states_row_[irow_loc];
+        //== }
+        
+        inline splindex<block_cyclic>& spl_spinor_wf()
         {
-            return spl_fv_states_row_;
+            return spl_spinor_wf_;
+        }
+
+        inline splindex<block>& sub_spl_spinor_wf()
+        {
+            return sub_spl_spinor_wf_;
         }
         
-        inline int spl_fv_states_row(int irow_loc)
+        inline int spl_spinor_wf(int jloc)
         {
-            return spl_fv_states_row_[irow_loc];
-        }
-        
-        inline splindex<block_cyclic>& spl_spinor_wf_col()
-        {
-            return spl_spinor_wf_col_;
-        }
-        
-        inline int spl_spinor_wf_col(int jloc)
-        {
-            return spl_spinor_wf_col_[jloc];
+            return spl_spinor_wf_[jloc];
         }
         
         inline int num_sub_bands()
@@ -443,19 +448,19 @@ class Global
             return sub_spl_spinor_wf_.local_size();
         }
 
-        inline splindex<block>& sub_spl_fv_states_col()
+        inline splindex<block>& sub_spl_fv_states()
         {
-            return sub_spl_fv_states_col_;
+            return sub_spl_fv_states_;
         }
         
-        inline int sub_spl_fv_states_col(int idx)
+        inline int sub_spl_fv_states(int idx)
         {
-            return sub_spl_fv_states_col_[idx];
+            return sub_spl_fv_states_[idx];
         }
 
         inline int idxbandglob(int sub_index)
         {
-            return spl_spinor_wf_col_[sub_spl_spinor_wf_[sub_index]];
+            return spl_spinor_wf_[sub_spl_spinor_wf_[sub_index]];
         }
         
         inline int idxbandloc(int sub_index)

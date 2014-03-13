@@ -35,7 +35,7 @@ void Band::apply_uj_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
                     {
                         double ori = parameters_.unit_cell()->atom(ia)->symmetry_class()->o_radial_integral(l, order2, order1);
                         
-                        for (int ist = 0; ist < parameters_.spl_fv_states_col().local_size(); ist++)
+                        for (int ist = 0; ist < parameters_.spl_fv_states().local_size(); ist++)
                         {
                             for (int lm1 = Utils::lm_by_l_m(l, -l); lm1 <= Utils::lm_by_l_m(l, l); lm1++)
                             {

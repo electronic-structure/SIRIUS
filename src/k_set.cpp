@@ -84,7 +84,7 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
             if (parameters_.unit_cell()->full_potential())
             {
                 kpoints_[ik]->generate_fv_states();
-                kpoints_[ik]->distribute_fv_states_row();
+                //kpoints_[ik]->distribute_fv_states_row();
             }
             band_->solve_sv(kpoints_[ik], potential->effective_magnetic_field());
         }

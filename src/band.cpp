@@ -15,8 +15,8 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
                                   parameters_.num_mag_dims());
 
     // column fv states are further distributed over rows to make use of all row processors
-    int num_fv_local = parameters_.sub_spl_fv_states_col().local_size();
-    int idx_fv_local = parameters_.sub_spl_fv_states_col().global_offset();
+    int num_fv_local = parameters_.sub_spl_fv_states().local_size();
+    int idx_fv_local = parameters_.sub_spl_fv_states().global_offset();
             
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
@@ -83,7 +83,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
     
     Timer *t1 = new Timer("sirius::Band::apply_magnetic_field|it");
 
-    mdarray<double_complex, 3> hpsi_pw(num_gkvec, parameters_.spl_fv_states_col().local_size(), hpsi.size(2));
+    mdarray<double_complex, 3> hpsi_pw(num_gkvec, parameters_.spl_fv_states().local_size(), hpsi.size(2));
     hpsi_pw.zero();
 
     int num_fft_threads = Platform::num_fft_threads();
@@ -97,7 +97,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
         #pragma omp for
         for (int iloc = 0; iloc < num_fv_local; iloc++)
         {
-            int i = parameters_.sub_spl_fv_states_col(iloc);
+            int i = parameters_.sub_spl_fv_states(iloc);
 
             fft_->input(num_gkvec, fft_index, &fv_states(parameters_.unit_cell()->mt_basis_size(), i), thread_id);
             fft_->transform(1, thread_id);
@@ -152,7 +152,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
         {
             for (int iloc = 0; iloc < num_fv_local; iloc++)
             {
-                int i = parameters_.sub_spl_fv_states_col(iloc);
+                int i = parameters_.sub_spl_fv_states(iloc);
                 memcpy(&hpsi(parameters_.unit_cell()->mt_basis_size(), i, n), &hpsi_pw(0, i, n), num_gkvec * sizeof(double_complex));
             }
         }
@@ -161,7 +161,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
             // copy Bz|\psi> to -Bz|\psi>
             for (int iloc = 0; iloc < num_fv_local; iloc++)
             {
-                int i = parameters_.sub_spl_fv_states_col(iloc);
+                int i = parameters_.sub_spl_fv_states(iloc);
                 for (int j = 0; j < mtgk_size; j++) hpsi(j, i, 1) = -hpsi(j, i, 0);
             }
         }
@@ -201,7 +201,7 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
                         int idx3 = (m + l != 0) ? type->indexb_by_l_m_order(l, m - 1, order2) : 0;
                         int idx4 = (m - l != 0) ? type->indexb_by_l_m_order(l, m + 1, order2) : 0;
 
-                        for (int ist = 0; ist < parameters_.spl_fv_states_col().local_size(); ist++)
+                        for (int ist = 0; ist < parameters_.spl_fv_states().local_size(); ist++)
                         {
                             double_complex z1 = fv_states(offset + idx2, ist) * double(m) * sori;
                             hpsi(offset + idx1, ist, 0) += z1;
@@ -1651,112 +1651,114 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     if (kp->num_ranks() > 1 && !parameters_.std_evp_solver()->parallel())
         error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
-    // number of h|\psi> components 
-    int nhpsi = parameters_.num_mag_dims() + 1;
+    stop_here
 
-    int nrow = parameters_.spl_fv_states_row().local_size();
-    int ncol = parameters_.spl_fv_states_col().local_size();
-    int fvsz = kp->wf_size();
+    //== // number of h|\psi> components 
+    //== int nhpsi = parameters_.num_mag_dims() + 1;
 
-    mdarray<double_complex, 2>& fv_states_row = kp->fv_states_row();
-    mdarray<double_complex, 2>& sv_eigen_vectors = kp->sv_eigen_vectors();
-    std::vector<double> band_energies(parameters_.num_bands());
+    //== int nrow = parameters_.spl_fv_states_row().local_size();
+    //== int ncol = parameters_.spl_fv_states_col().local_size();
+    //== int fvsz = kp->wf_size();
 
-    // product of the second-variational Hamiltonian and a wave-function
-    mdarray<double_complex, 3> hpsi(fvsz, ncol, nhpsi);
-    hpsi.zero();
+    //== mdarray<double_complex, 2>& fv_states_row = kp->fv_states_row();
+    //== mdarray<double_complex, 2>& sv_eigen_vectors = kp->sv_eigen_vectors();
+    //== std::vector<double> band_energies(parameters_.num_bands());
 
-    // compute product of magnetic field and wave-function 
-    if (parameters_.num_spins() == 2)
-        apply_magnetic_field(kp->fv_states_col(), kp->wf_size(), kp->num_gkvec(), kp->fft_index(), effective_magnetic_field, hpsi);
+    //== // product of the second-variational Hamiltonian and a wave-function
+    //== mdarray<double_complex, 3> hpsi(fvsz, ncol, nhpsi);
+    //== hpsi.zero();
 
-    if (parameters_.uj_correction())
-    {
-        apply_uj_correction<uu>(kp->fv_states_col(), hpsi);
-        if (parameters_.num_mag_dims() != 0) apply_uj_correction<dd>(kp->fv_states_col(), hpsi);
-        if (parameters_.num_mag_dims() == 3) 
-        {
-            apply_uj_correction<ud>(kp->fv_states_col(), hpsi);
-            if (parameters_.std_evp_solver()->parallel()) apply_uj_correction<du>(kp->fv_states_col(), hpsi);
-        }
-    }
+    //== // compute product of magnetic field and wave-function 
+    //== if (parameters_.num_spins() == 2)
+    //==     apply_magnetic_field(kp->fv_states_col(), kp->wf_size(), kp->num_gkvec(), kp->fft_index(), effective_magnetic_field, hpsi);
 
-    if (parameters_.so_correction()) apply_so_correction(kp->fv_states_col(), hpsi);
+    //== if (parameters_.uj_correction())
+    //== {
+    //==     apply_uj_correction<uu>(kp->fv_states_col(), hpsi);
+    //==     if (parameters_.num_mag_dims() != 0) apply_uj_correction<dd>(kp->fv_states_col(), hpsi);
+    //==     if (parameters_.num_mag_dims() == 3) 
+    //==     {
+    //==         apply_uj_correction<ud>(kp->fv_states_col(), hpsi);
+    //==         if (parameters_.std_evp_solver()->parallel()) apply_uj_correction<du>(kp->fv_states_col(), hpsi);
+    //==     }
+    //== }
 
-    if (parameters_.num_mag_dims() == 1)
-    {
-        mdarray<double_complex, 2> h(nrow, ncol);
-        
-        //perform two consecutive diagonalizations
-        for (int ispn = 0; ispn < 2; ispn++)
-        {
-            // compute <wf_i | (h * wf_j)> for up-up or dn-dn block
-            blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), 
-                            &hpsi(0, 0, ispn), hpsi.ld(), &h(0, 0), h.ld());
+    //== if (parameters_.so_correction()) apply_so_correction(kp->fv_states_col(), hpsi);
 
-            for (int icol = 0; icol < ncol; icol++)
-            {
-                int i = parameters_.spl_fv_states_col(icol);
-                for (int irow = 0; irow < nrow; irow++)
-                {
-                    if (parameters_.spl_fv_states_row(irow) == i) h(irow, icol) += kp->fv_eigen_value(i);
-                }
-            }
-        
-            Timer t1("sirius::Band::solve_sv|stdevp");
-            parameters_.std_evp_solver()->solve(parameters_.num_fv_states(), h.ptr(), h.ld(),
-                                                &band_energies[ispn * parameters_.num_fv_states()],
-                                                &sv_eigen_vectors(0, ispn * ncol), sv_eigen_vectors.ld());
-        }
-    }
+    //== if (parameters_.num_mag_dims() == 1)
+    //== {
+    //==     mdarray<double_complex, 2> h(nrow, ncol);
+    //==     
+    //==     //perform two consecutive diagonalizations
+    //==     for (int ispn = 0; ispn < 2; ispn++)
+    //==     {
+    //==         // compute <wf_i | (h * wf_j)> for up-up or dn-dn block
+    //==         blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), 
+    //==                         &hpsi(0, 0, ispn), hpsi.ld(), &h(0, 0), h.ld());
 
-    if (parameters_.num_mag_dims() == 3)
-    {
-        mdarray<double_complex, 2> h(2 * nrow, 2 * ncol);
-        h.zero();
+    //==         for (int icol = 0; icol < ncol; icol++)
+    //==         {
+    //==             int i = parameters_.spl_fv_states_col(icol);
+    //==             for (int irow = 0; irow < nrow; irow++)
+    //==             {
+    //==                 if (parameters_.spl_fv_states_row(irow) == i) h(irow, icol) += kp->fv_eigen_value(i);
+    //==             }
+    //==         }
+    //==     
+    //==         Timer t1("sirius::Band::solve_sv|stdevp");
+    //==         parameters_.std_evp_solver()->solve(parameters_.num_fv_states(), h.ptr(), h.ld(),
+    //==                                             &band_energies[ispn * parameters_.num_fv_states()],
+    //==                                             &sv_eigen_vectors(0, ispn * ncol), sv_eigen_vectors.ld());
+    //==     }
+    //== }
 
-        // compute <fv_i | (h * fv_j)> for up-up block
-        blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 0), hpsi.ld(), 
-                        &h(0, 0), h.ld());
+    //== if (parameters_.num_mag_dims() == 3)
+    //== {
+    //==     mdarray<double_complex, 2> h(2 * nrow, 2 * ncol);
+    //==     h.zero();
 
-        // compute <fv_i | (h * fv_j)> for up-dn block
-        blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 2), hpsi.ld(), 
-                        &h(0, ncol), h.ld());
-       
-        // compute <fv_i | (h * fv_j)> for dn-dn block
-        blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 1), hpsi.ld(), 
-                        &h(nrow, ncol), h.ld());
+    //==     // compute <fv_i | (h * fv_j)> for up-up block
+    //==     blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 0), hpsi.ld(), 
+    //==                     &h(0, 0), h.ld());
 
-        if (parameters_.std_evp_solver()->parallel())
-        {
-            // compute <fv_i | (h * fv_j)> for dn-up block
-            blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 3), hpsi.ld(), 
-                            &h(nrow, 0), h.ld());
-        }
-      
-        for (int ispn = 0; ispn < 2; ispn++)
-        {
-            for (int icol = 0; icol < ncol; icol++)
-            {
-                int i = parameters_.spl_fv_states_col(icol) + ispn * parameters_.num_fv_states();
-                for (int irow = 0; irow < nrow; irow++)
-                {
-                    int j = parameters_.spl_fv_states_row(irow) + ispn * parameters_.num_fv_states();
-                    if (j == i) 
-                    {
-                        h(irow + ispn * nrow, icol + ispn * ncol) += kp->fv_eigen_value(parameters_.spl_fv_states_col(icol));
-                    }
-                }
-            }
-        }
-    
-        Timer t1("sirius::Band::solve_sv|stdevp");
-        parameters_.std_evp_solver()->solve(parameters_.num_bands(), h.ptr(), h.ld(), &band_energies[0], 
-                                            sv_eigen_vectors.ptr(), sv_eigen_vectors.ld());
-    }
+    //==     // compute <fv_i | (h * fv_j)> for up-dn block
+    //==     blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 2), hpsi.ld(), 
+    //==                     &h(0, ncol), h.ld());
+    //==    
+    //==     // compute <fv_i | (h * fv_j)> for dn-dn block
+    //==     blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 1), hpsi.ld(), 
+    //==                     &h(nrow, ncol), h.ld());
 
-    kp->set_band_energies(&band_energies[0]);
-    log_function_exit(__func__);
+    //==     if (parameters_.std_evp_solver()->parallel())
+    //==     {
+    //==         // compute <fv_i | (h * fv_j)> for dn-up block
+    //==         blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 3), hpsi.ld(), 
+    //==                         &h(nrow, 0), h.ld());
+    //==     }
+    //==   
+    //==     for (int ispn = 0; ispn < 2; ispn++)
+    //==     {
+    //==         for (int icol = 0; icol < ncol; icol++)
+    //==         {
+    //==             int i = parameters_.spl_fv_states_col(icol) + ispn * parameters_.num_fv_states();
+    //==             for (int irow = 0; irow < nrow; irow++)
+    //==             {
+    //==                 int j = parameters_.spl_fv_states_row(irow) + ispn * parameters_.num_fv_states();
+    //==                 if (j == i) 
+    //==                 {
+    //==                     h(irow + ispn * nrow, icol + ispn * ncol) += kp->fv_eigen_value(parameters_.spl_fv_states_col(icol));
+    //==                 }
+    //==             }
+    //==         }
+    //==     }
+    //== 
+    //==     Timer t1("sirius::Band::solve_sv|stdevp");
+    //==     parameters_.std_evp_solver()->solve(parameters_.num_bands(), h.ptr(), h.ld(), &band_energies[0], 
+    //==                                         sv_eigen_vectors.ptr(), sv_eigen_vectors.ld());
+    //== }
+
+    //== kp->set_band_energies(&band_energies[0]);
+    //== log_function_exit(__func__);
 }
 
 void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential, 
@@ -1807,7 +1809,7 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
         parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(), 
                                             parameters_.num_fv_states(), h.ptr(), h.ld(), o1.ptr(), o1.ld(), 
                                             &eval[parameters_.num_fv_states()], 
-                                            &fd_evec(0, parameters_.spl_fv_states_col().local_size()), fd_evec.ld());
+                                            &fd_evec(0, parameters_.spl_fv_states().local_size()), fd_evec.ld());
         t2.stop();
     }
 

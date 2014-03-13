@@ -304,9 +304,9 @@ std::vector< std::pair<int, double> > Density::get_occupied_bands_list(Band* ban
     for (int jsub = 0; jsub < parameters_.num_sub_bands(); jsub++)
     {
         int j = parameters_.idxbandglob(jsub);
-        int jloc = parameters_.idxbandloc(jsub);
+        //int jloc = parameters_.idxbandloc(jsub);
         double wo = kp->band_occupancy(j) * kp->weight();
-        if (wo > 1e-14) bands.push_back(std::pair<int, double>(jloc, wo));
+        if (wo > 1e-14) bands.push_back(std::pair<int, double>(jsub, wo));
     }
     return bands;
 }

@@ -300,26 +300,26 @@ void Global::initialize()
     num_bands_ = num_fv_states_ * num_spins_;
 
     // distribue first-variational states along columns
-    spl_fv_states_col_.split(num_fv_states(), ncol, icol, cyclic_block_size());
+    spl_fv_states_.split(num_fv_states(), ncol, icol, cyclic_block_size());
 
     // distribue first-variational states along rows
-    spl_fv_states_row_.split(num_fv_states(), nrow, irow, cyclic_block_size());
+    //== spl_fv_states_row_.split(num_fv_states(), nrow, irow, cyclic_block_size());
 
     // distribue spinor wave-functions along columns
-    spl_spinor_wf_col_.split(num_bands(), ncol, icol, cyclic_block_size());
+    spl_spinor_wf_.split(num_bands(), ncol, icol, cyclic_block_size());
     
     // additionally split along rows 
-    sub_spl_spinor_wf_.split(spl_spinor_wf_col_.local_size(), nrow, irow);
+    sub_spl_spinor_wf_.split(spl_spinor_wf_.local_size(), nrow, irow);
     
-    sub_spl_fv_states_col_.split(spl_fv_states_col().local_size(), nrow, irow);
+    sub_spl_fv_states_.split(spl_fv_states().local_size(), nrow, irow);
 
     // check if the distribution of fv states is consistent with the distribtion of spinor wave functions
     for (int ispn = 0; ispn < num_spins(); ispn++)
     {
-        for (int i = 0; i < spl_fv_states_col_.local_size(); i++)
+        for (int i = 0; i < spl_fv_states_.local_size(); i++)
         {
-            if (spl_spinor_wf_col_[i + ispn * spl_fv_states_col_.local_size()] != 
-                spl_fv_states_col_[i] + ispn * num_fv_states())
+            if (spl_spinor_wf_[i + ispn * spl_fv_states_.local_size()] != 
+                spl_fv_states_[i] + ispn * num_fv_states())
             {
                 error_local(__FILE__, __LINE__, "Wrong distribution of wave-functions");
             }

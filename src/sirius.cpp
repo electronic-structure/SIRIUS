@@ -1350,14 +1350,14 @@ void FORTRAN(sirius_get_mtgk_size)(int32_t* kset_id, int32_t* ik, int32_t* mtgk_
 void FORTRAN(sirius_get_spinor_wave_functions)(int32_t* kset_id, int32_t* ik, double_complex* spinor_wave_functions__)
 {
     log_function_enter(__func__);
-    assert(global_parameters.num_bands() == global_parameters.spl_spinor_wf_col().local_size());
+    assert(global_parameters.num_bands() == global_parameters.spl_spinor_wf().local_size());
 
     sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
     
     mdarray<double_complex, 3> spinor_wave_functions(spinor_wave_functions__, kp->wf_size(), global_parameters.num_spins(), 
-                                                global_parameters.spl_spinor_wf_col().local_size());
+                                                global_parameters.spl_spinor_wf().local_size());
 
-    for (int j = 0; j < global_parameters.spl_spinor_wf_col().local_size(); j++)
+    for (int j = 0; j < global_parameters.spl_spinor_wf().local_size(); j++)
     {
         memcpy(&spinor_wave_functions(0, 0, j), &kp->spinor_wave_function(0, 0, j), 
                kp->wf_size() * global_parameters.num_spins() * sizeof(double_complex));

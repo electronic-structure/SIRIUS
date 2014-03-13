@@ -51,13 +51,13 @@ class K_point
         std::vector<int> fft_index_coarse_;
        
         /// first-variational states, distributed along the columns of the MPI grid
-        mdarray<double_complex, 2> fv_states_col_;
+        //mdarray<double_complex, 2> fv_states_col_;
        
         /// first-variational states, distributed along the rows of the MPI grid
-        mdarray<double_complex, 2> fv_states_row_;
+        //mdarray<double_complex, 2> fv_states_row_;
 
         /// first-variational states, distributed over all ranks of the 2D MPI grid
-        //mdarray<double_complex, 2> fv_states_;
+        mdarray<double_complex, 2> fv_states_;
         
         /// first-variational states, distributed over rows and columns of the MPI grid
         /** Band index is distributed over columns and G+k index is distributed over rows of the MPI grid. */
@@ -220,6 +220,9 @@ class K_point
         void gather_from_panels(int size_col, splindex<block_cyclic>& spl_row, mdarray<double_complex, 2>& panel, 
                                 mdarray<double_complex, 2>& full_vectors); 
         
+        void scatter_to_panels(int size_col, splindex<block_cyclic>& spl_row, mdarray<double_complex, 2>& full_vectors, 
+                               mdarray<double_complex, 2>& panel);
+
         /// Generate first-variational states from eigen-vectors
         void generate_fv_states();
 
@@ -550,14 +553,19 @@ class K_point
             return fv_eigen_vectors_panel_;
         }
         
-        inline mdarray<double_complex, 2>& fv_states_col()
+        //== inline mdarray<double_complex, 2>& fv_states_col()
+        //== {
+        //==     return fv_states_col_;
+        //== }
+        //== 
+        //== inline mdarray<double_complex, 2>& fv_states_row()
+        //== {
+        //==     return fv_states_row_;
+        //== }
+
+        inline mdarray<double_complex, 2>& fv_states()
         {
-            return fv_states_col_;
-        }
-        
-        inline mdarray<double_complex, 2>& fv_states_row()
-        {
-            return fv_states_row_;
+            return fv_states_;
         }
 
         inline mdarray<double_complex, 2>& sv_eigen_vectors()
@@ -574,12 +582,14 @@ class K_point
         {
             memcpy(&band_energies_[0], &fv_eigen_values_[0], parameters_.num_fv_states() * sizeof(double));
             sv_eigen_vectors_.zero();
-            for (int icol = 0; icol < parameters_.spl_fv_states_col().local_size(); icol++)
+            splindex<block_cyclic> spl_row(parameters_.num_fv_states(), num_ranks_row_, rank_row_, 
+                                           parameters_.cyclic_block_size());
+            for (int icol = 0; icol < parameters_.spl_fv_states().local_size(); icol++)
             {
-                int i = parameters_.spl_fv_states_col(icol);
-                for (int irow = 0; irow < parameters_.spl_fv_states_row().local_size(); irow++)
+                int i = parameters_.spl_fv_states(icol);
+                for (int irow = 0; irow < spl_row.local_size(); irow++)
                 {
-                    if (parameters_.spl_fv_states_row(irow) == i) sv_eigen_vectors_(irow, icol) = double_complex(1, 0);
+                    if (spl_row[irow] == i) sv_eigen_vectors_(irow, icol) = double_complex(1, 0);
                 }
             }
         }
