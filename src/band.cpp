@@ -1442,7 +1442,7 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     
         parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(),
                                             parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
-                                            &eval[0], kp->fv_eigen_vectors().ptr(), kp->fv_eigen_vectors().ld());
+                                            &eval[0], kp->fv_eigen_vectors_panel().ptr(), kp->fv_eigen_vectors_panel().ld());
         kp->set_fv_eigen_values(&eval[0]);
     }
     

@@ -37,7 +37,7 @@ class K_point
         std::vector<double> fv_eigen_values_;
 
         /// first-variational eigen vectors
-        mdarray<double_complex, 2> fv_eigen_vectors_;
+        mdarray<double_complex, 2> fv_eigen_vectors_panel_;
         
         /// second-variational eigen vectors
         mdarray<double_complex, 2> sv_eigen_vectors_;
@@ -55,6 +55,9 @@ class K_point
        
         /// first-variational states, distributed along the rows of the MPI grid
         mdarray<double_complex, 2> fv_states_row_;
+
+        /// first-variational states, distributed over all ranks of the 2D MPI grid
+        //mdarray<double_complex, 2> fv_states_;
         
         /// first-variational states, distributed over rows and columns of the MPI grid
         /** Band index is distributed over columns and G+k index is distributed over rows of the MPI grid. */
@@ -213,6 +216,9 @@ class K_point
         void generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm);
         
         void generate_matching_coefficients(int num_gkvec_loc, mdarray<double_complex, 2>& alm);
+
+        void gather_from_panels(int size_col, splindex<block_cyclic>& spl_row, mdarray<double_complex, 2>& panel, 
+                                mdarray<double_complex, 2>& full_vectors); 
         
         /// Generate first-variational states from eigen-vectors
         void generate_fv_states();
@@ -539,9 +545,9 @@ class K_point
             return atom_lo_rows_[ia][i];
         }
 
-        inline mdarray<double_complex, 2>& fv_eigen_vectors()
+        inline mdarray<double_complex, 2>& fv_eigen_vectors_panel()
         {
-            return fv_eigen_vectors_;
+            return fv_eigen_vectors_panel_;
         }
         
         inline mdarray<double_complex, 2>& fv_states_col()

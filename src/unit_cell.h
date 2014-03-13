@@ -41,12 +41,6 @@ extern "C" {
 
 namespace sirius {
 
-struct mt_basis_descriptor
-{
-    int ia;
-    int xi;
-};
-
 class Unit_cell
 {
     private:

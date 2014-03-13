@@ -191,7 +191,7 @@ void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<doub
     //==     //}
     //== }
 
-    mdarray<double_complex, 2>& fv_evec = kp->fv_eigen_vectors();
+    mdarray<double_complex, 2>& fv_evec = kp->fv_eigen_vectors_panel();
     mdarray<double_complex, 2> zm1(nfrow, nscol);
     mdarray<double_complex, 2> zf(nsrow, nscol);
 

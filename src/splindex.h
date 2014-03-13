@@ -56,6 +56,13 @@ class splindex_base
         splindex_base() : rank_(-1), num_ranks_(-1)
         {
         }
+
+    public:
+
+        int global_size()
+        {
+            return global_index_size_;
+        }
 };
 
 template <splindex_t type> 

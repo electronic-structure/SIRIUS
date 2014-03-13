@@ -238,4 +238,10 @@ struct gklo_basis_descriptor
     int idxrf;
 };
 
+struct mt_basis_descriptor
+{
+    int ia;
+    int xi;
+};
+
 #endif

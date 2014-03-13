@@ -229,8 +229,8 @@ void K_point::update()
         // allocate memory for first-variational eigen vectors
         if (parameters_.unit_cell()->full_potential())
         {
-            fv_eigen_vectors_.set_dimensions(gklo_basis_size_row(), parameters_.spl_fv_states_col().local_size());
-            fv_eigen_vectors_.allocate();
+            fv_eigen_vectors_panel_.set_dimensions(gklo_basis_size_row(), parameters_.spl_fv_states_col().local_size());
+            fv_eigen_vectors_panel_.allocate();
         }
         
         // allocate memory for first-variational states
@@ -542,6 +542,8 @@ void K_point::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<
 
 void K_point::generate_matching_coefficients(int num_gkvec_loc, mdarray<double_complex, 2>& alm)
 {
+    Timer t("K_point::generate_matching_coefficients_panel");
+
     splindex<block_cyclic> spl_mt_basis(parameters_.unit_cell()->mt_aw_basis_size(), num_ranks_col_, rank_col_, 
                                         parameters_.cyclic_block_size());
 
@@ -638,6 +640,44 @@ inline void K_point::copy_pw_block(const double_complex* z, double_complex* vec)
     for (int j = 0; j < num_gkvec_row(); j++) vec[gklo_basis_descriptor_row(j).igk] = z[j];
 }
 
+void K_point::gather_from_panels(int size_col, splindex<block_cyclic>& spl_row, mdarray<double_complex, 2>& panel, 
+                                 mdarray<double_complex, 2>& full_vectors) 
+{
+    Timer t("K_point::gather_from_panels");
+
+    splindex<block> spl_col(size_col, num_ranks_row(), rank_row());
+    
+    assert(panel.size(0) == spl_row.local_size());
+    assert(panel.size(1) == size_col);
+    assert(full_vectors.size(0) == spl_row.global_size());
+    assert(full_vectors.size(1) == spl_col.local_size());
+
+    for (int irow = 0; irow < num_ranks_row(); irow++)
+    {
+        mdarray<double_complex, 2> panel_tmp(spl_row.local_size(irow), size_col);
+        
+        // current rank loads panel into temporary array
+        if (rank_row() == irow) panel >> panel_tmp;
+
+        // current rank sends panel to other ranks
+        // TODO: change to non-blocking send to avoid data transfer overhead
+        Platform::bcast(panel_tmp.ptr(), (int)panel_tmp.size(), parameters_.mpi_grid().communicator(1 << _dim_row_), irow); 
+       
+        // loop over local fraction of columns
+        for (int i = 0; i < spl_col.local_size(); i++)
+        {
+            // global index of column
+            int icol = spl_col[i];
+            // loop over local fraction of rows
+            for (int j = 0; j < spl_row.local_size(irow); j++)
+            {
+                // copy necessary parts of panel to the full vector
+                full_vectors(spl_row.global_index(j, irow), i) = panel_tmp(j, icol);
+            }
+        }
+    }
+}
+
 void K_point::generate_fv_states()
 {
     log_function_enter(__func__);
@@ -667,8 +707,8 @@ void K_point::generate_fv_states()
                 generate_matching_coefficients<true>(num_gkvec_row(), ia, alm);
 
                 blas<cpu>::gemm(2, 0, type->mt_aw_basis_size(), parameters_.spl_fv_states_col().local_size(),
-                                num_gkvec_row(), &alm(0, 0), alm.ld(), &fv_eigen_vectors_(0, 0), 
-                                fv_eigen_vectors_.ld(), &fv_states_col_(atom->offset_wf(), 0), 
+                                num_gkvec_row(), &alm(0, 0), alm.ld(), &fv_eigen_vectors_panel_(0, 0), 
+                                fv_eigen_vectors_panel_.ld(), &fv_states_col_(atom->offset_wf(), 0), 
                                 fv_states_col_.ld());
             }
         }
@@ -677,16 +717,15 @@ void K_point::generate_fv_states()
     for (int j = 0; j < parameters_.spl_fv_states_col().local_size(); j++)
     {
         if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
-            copy_lo_blocks(&fv_eigen_vectors_(0, j), &fv_states_col_(0, j));
+            copy_lo_blocks(&fv_eigen_vectors_panel_(0, j), &fv_states_col_(0, j));
 
-        copy_pw_block(&fv_eigen_vectors_(0, j), &fv_states_col_(parameters_.unit_cell()->mt_basis_size(), j));
+        copy_pw_block(&fv_eigen_vectors_panel_(0, j), &fv_states_col_(parameters_.unit_cell()->mt_basis_size(), j));
     }
 
     for (int j = 0; j < parameters_.spl_fv_states_col().local_size(); j++)
     {
         Platform::allreduce(&fv_states_col_(0, j), wf_size(), parameters_.mpi_grid().communicator(1 << _dim_row_));
     }
-
 
 
 
@@ -701,79 +740,22 @@ void K_point::generate_fv_states()
     mdarray<double_complex, 2> aw_coefs_panel(spl_mt_aw_basis_row.local_size(), parameters_.spl_fv_states_col().local_size());
 
     pblas<cpu>::gemm(1, 0, parameters_.unit_cell()->mt_aw_basis_size(), parameters_.num_fv_states(), num_gkvec(), 
-                     complex_one, alm.ptr(), alm.ld(), fv_eigen_vectors_.ptr(), fv_eigen_vectors_.ld(), 
+                     complex_one, alm.ptr(), alm.ld(), fv_eigen_vectors_panel_.ptr(), fv_eigen_vectors_panel_.ld(), 
                      complex_zero, aw_coefs_panel.ptr(), aw_coefs_panel.ld(), parameters_.cyclic_block_size(), 
                      parameters_.blacs_context()); 
     alm.deallocate();
 
 
-    //== double diff = 0;
-    //== for (int i = 0; i < parameters_.spl_fv_states_col().local_size(); i++)
-    //== {
-    //==     //for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    //==     for (int ia = 0; ia < 2; ia++)
-    //==     {
-    //==         for (int xi = 0; xi < parameters_.unit_cell()->atom(ia)->mt_aw_basis_size(); xi++)
-    //==         {
-    //==             diff += std::abs(fv_states_col_(parameters_.unit_cell()->atom(ia)->offset_wf() + xi, i) - 
-    //==                                             aw_coefs_panel(parameters_.unit_cell()->atom(ia)->offset_aw() + xi, i));
-    //==         }
-    //==     }
-    //== }
-    //== std::cout << "diff = " << diff << std::endl;
-
-
-
-
-
-
-
-    // time to sync fv_eigen_vectors
-    // sub_spl_fv_states_col_.split(spl_fv_states_col().local_size(), nrow, irow);
-    
     splindex<block_cyclic> spl_gklo_row(gklo_basis_size(), num_ranks_row_, rank_row_, parameters_.cyclic_block_size());
 
     mdarray<double_complex, 2> fv_eigen_vectors1(gklo_basis_size(), parameters_.sub_spl_fv_states_col().local_size());
 
-    for (int irow = 0; irow < num_ranks_row_; irow++)
-    {
-        mdarray<double_complex, 2> fv_eigen_vectors_panel_tmp(spl_gklo_row.local_size(irow),  
-                                                              parameters_.spl_fv_states_col().local_size());
-        
-        if (rank_row() == irow) fv_eigen_vectors_ >> fv_eigen_vectors_panel_tmp;
-        Platform::bcast(fv_eigen_vectors_panel_tmp.ptr(), (int)fv_eigen_vectors_panel_tmp.size(), 
-                        parameters_.mpi_grid().communicator(1 << _dim_row_), irow); 
-        
-        for (int i = 0; i < parameters_.sub_spl_fv_states_col().local_size(); i++)
-        {
-            int icol = parameters_.sub_spl_fv_states_col(i);
-            for (int j = 0; j < spl_gklo_row.local_size(irow); j++)
-            {
-                fv_eigen_vectors1(spl_gklo_row.global_index(j, irow), i) = fv_eigen_vectors_panel_tmp(j, icol);
-            }
-        }
-    }
-
+    gather_from_panels(parameters_.spl_fv_states_col().local_size(), spl_gklo_row, fv_eigen_vectors_panel_, 
+                       fv_eigen_vectors1);
 
     mdarray<double_complex, 2> aw_coefs(parameters_.unit_cell()->mt_aw_basis_size(), parameters_.sub_spl_fv_states_col().local_size());
-    for (int irow = 0; irow < num_ranks_row_; irow++)
-    {
-        mdarray<double_complex, 2> aw_coefs_panel_tmp(spl_mt_aw_basis_row.local_size(irow),  
-                                                      parameters_.spl_fv_states_col().local_size());
-        
-        if (rank_row() == irow) aw_coefs_panel >> aw_coefs_panel_tmp;
-        Platform::bcast(aw_coefs_panel_tmp.ptr(), (int)aw_coefs_panel_tmp.size(), 
-                        parameters_.mpi_grid().communicator(1 << _dim_row_), irow); 
-        
-        for (int i = 0; i < parameters_.sub_spl_fv_states_col().local_size(); i++)
-        {
-            int icol = parameters_.sub_spl_fv_states_col(i);
-            for (int j = 0; j < spl_mt_aw_basis_row.local_size(irow); j++)
-            {
-                aw_coefs(spl_mt_aw_basis_row.global_index(j, irow), i) = aw_coefs_panel_tmp(j, icol);
-            }
-        }
-    }
+    gather_from_panels(parameters_.spl_fv_states_col().local_size(), spl_mt_aw_basis_row, aw_coefs_panel, aw_coefs);
+
 
     mdarray<double_complex, 2> fv_states1(wf_size(), parameters_.sub_spl_fv_states_col().local_size());
     fv_states1.zero();
@@ -781,20 +763,19 @@ void K_point::generate_fv_states()
     {
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
-            for (int xi = 0; xi < parameters_.unit_cell()->atom(ia)->mt_aw_basis_size(); xi++)
-            {
-                fv_states1(parameters_.unit_cell()->atom(ia)->offset_wf() + xi, i) = 
-                    aw_coefs(parameters_.unit_cell()->atom(ia)->offset_aw() + xi, i);
-            }
-            for (int xi = 0; xi < parameters_.unit_cell()->atom(ia)->mt_lo_basis_size(); xi++)
-            {
-                fv_states1(parameters_.unit_cell()->atom(ia)->offset_wf() + parameters_.unit_cell()->atom(ia)->mt_aw_basis_size() + xi, i) = 
-                    fv_eigen_vectors1(num_gkvec() + parameters_.unit_cell()->atom(ia)->offset_lo() + xi, i);
-            }
-            for (int igk = 0; igk < num_gkvec(); igk++)
-            {
-                fv_states1(parameters_.unit_cell()->mt_basis_size() + igk, i) = fv_eigen_vectors1(igk, i);
-            }
+            // apw block
+            memcpy(&fv_states1(parameters_.unit_cell()->atom(ia)->offset_wf(), i),
+                   &aw_coefs(parameters_.unit_cell()->atom(ia)->offset_aw(), i),
+                   parameters_.unit_cell()->atom(ia)->mt_aw_basis_size() * sizeof(double_complex));
+
+            // lo block
+            memcpy(&fv_states1(parameters_.unit_cell()->atom(ia)->offset_wf() + parameters_.unit_cell()->atom(ia)->mt_aw_basis_size(), i),
+                   &fv_eigen_vectors1(num_gkvec() + parameters_.unit_cell()->atom(ia)->offset_lo(), i),
+                   parameters_.unit_cell()->atom(ia)->mt_lo_basis_size() * sizeof(double_complex));
+
+            // G+k block
+            memcpy(&fv_states1(parameters_.unit_cell()->mt_basis_size(), i), &fv_eigen_vectors1(0, i), 
+                   num_gkvec() * sizeof(double_complex));
         }
     }
 
@@ -811,7 +792,6 @@ void K_point::generate_fv_states()
     }
 
 
-
     log_function_exit(__func__);
 }
 
@@ -824,7 +804,7 @@ void K_point::generate_fv_states_aw_mt_gpu()
     fv_eigen_vectors_gpu_.allocate_on_device();
 
     cublas_set_matrix(num_gkvec_row(), num_fv_loc, sizeof(double_complex),
-                      fv_eigen_vectors_.ptr(), fv_eigen_vectors_.ld(), 
+                      fv_eigen_vectors_panel_.ptr(), fv_eigen_vectors_panel_.ld(), 
                       fv_eigen_vectors_gpu_.ptr_device(), fv_eigen_vectors_gpu_.ld());
 
     mdarray<double_complex, 2> fv_states_col_gpu_(NULL, parameters_.unit_cell()->mt_basis_size(), num_fv_loc);
@@ -1617,7 +1597,7 @@ void K_point::save(int id)
         fout["K_set"][id].write("band_occupancies", band_occupancies_);
         if (num_ranks() == 1)
         {
-            fout["K_set"][id].write_mdarray("fv_eigen_vectors", fv_eigen_vectors_);
+            fout["K_set"][id].write_mdarray("fv_eigen_vectors", fv_eigen_vectors_panel_);
             fout["K_set"][id].write_mdarray("sv_eigen_vectors", sv_eigen_vectors_);
         }
     }
@@ -1647,7 +1627,7 @@ void K_point::load(HDF5_tree h5in, int id)
     band_occupancies_.resize(parameters_.num_bands());
     h5in[id].read("band_occupancies", band_occupancies_);
     
-    h5in[id].read_mdarray("fv_eigen_vectors", fv_eigen_vectors_);
+    h5in[id].read_mdarray("fv_eigen_vectors", fv_eigen_vectors_panel_);
     h5in[id].read_mdarray("sv_eigen_vectors", sv_eigen_vectors_);
 }
 
@@ -1722,7 +1702,7 @@ void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec)
         for (int jloc = 0; jloc < gklo_basis_size_row(); jloc++)
         {
             int j = gklo_basis_descriptor_row(jloc).id;
-            fv_evec(j, i) = fv_eigen_vectors_(jloc, iloc);
+            fv_evec(j, i) = fv_eigen_vectors_panel_(jloc, iloc);
         }
     }
     Platform::allreduce(fv_evec.ptr(), (int)fv_evec.size(), 
