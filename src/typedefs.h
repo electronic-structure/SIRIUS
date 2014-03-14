@@ -7,9 +7,9 @@
 #include <complex>
 
 /** \file typedefs.h
-
-    \brief Contains typedefs, enums and primitive_type_wrapper class
-*/
+ *
+ *  \brief Contains typedefs, enums and primitive_type_wrapper class
+ */
 
 typedef std::complex<double> double_complex;
 
@@ -83,20 +83,24 @@ enum radial_grid_t {linear_grid, exponential_grid, linear_exponential_grid, pow_
 
 /// type of local orbitals
 /** lo_rs - local orbital, composed of radial solutions
-    lo_cp - confined polynomial local orbital */
+ *  lo_cp - confined polynomial local orbital 
+ */
 enum local_orbital_t {lo_rs, lo_cp};
 
 /// Wrapper for data types
-template <typename T> class type_wrapper
+template <typename T> 
+class type_wrapper
 {
     public:
+
         static bool is_primitive()
         {
             return false;
         }
 };
 
-template<> class type_wrapper<double>
+template<> 
+class type_wrapper<double>
 {
     public:
         typedef std::complex<double> complex_t;
@@ -141,16 +145,23 @@ template<> class type_wrapper<double>
         {
             return true;
         }
+
+        static inline double random()
+        {
+            return double(rand()) / RAND_MAX;
+        }
 };
 
-template<> class type_wrapper<float>
+template<> 
+class type_wrapper<float>
 {
     public:
         typedef std::complex<float> complex_t;
         typedef float real_t;
 };
 
-template<> class type_wrapper< std::complex<double> >
+template<> 
+class type_wrapper< std::complex<double> >
 {
     public:
         typedef std::complex<double> complex_t;
@@ -195,6 +206,11 @@ template<> class type_wrapper< std::complex<double> >
         {
             return true;
         }
+
+        static inline std::complex<double> random()
+        {
+            return std::complex<double>(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
+        }
 };
 
 /*template<> class type_wrapper< std::complex<float> >
@@ -204,7 +220,8 @@ template<> class type_wrapper< std::complex<double> >
         typedef float real_t;
 };*/
 
-template<> class type_wrapper<int>
+template<> 
+class type_wrapper<int>
 {
     public:
         static hid_t hdf5_type_id()
@@ -233,7 +250,8 @@ template<> class type_wrapper<int>
         }*/
 };
 
-template<> class type_wrapper<char>
+template<> 
+class type_wrapper<char>
 {
     public:
         /*static hid_t hdf5_type_id()

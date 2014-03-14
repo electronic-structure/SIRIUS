@@ -23,18 +23,19 @@
 #define __SPLINE_H__
 
 /** \file spline.h
-    
-    \brief Implementation of cubic spline.
-*/
+ *   
+ *  \brief Contains definition and implementaiton of sirius::Spline class.
+ */
 
 #include "linalg.h"
 
 namespace sirius {
 
 /// Cubic spline with a not-a-knot boundary conditions.
-/** The following convention for spline coefficients is used: between points \f$ x_i \f$ and \f$ x_{i+1} \f$ the
-    value of the spline is equal to \f$ a_i + b_i(x_{i+1} - x_i) + c_i(x_{i+1}-x_i)^2 + d_i(x_{i+1}-x_i)^3 \f$. 
-*/
+/** The following convention for spline coefficients is used: between points 
+ *  \f$ x_i \f$ and \f$ x_{i+1} \f$ the value of the spline is equal to 
+ *  \f$ a_i + b_i(x_{i+1} - x_i) + c_i(x_{i+1}-x_i)^2 + d_i(x_{i+1}-x_i)^3 \f$. 
+ */
 template <typename T> 
 class Spline
 {
