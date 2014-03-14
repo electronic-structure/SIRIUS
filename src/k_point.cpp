@@ -607,7 +607,7 @@ void K_point::generate_matching_coefficients(int num_gkvec_loc, mdarray<double_c
 
                         alm(igkloc, i) = conj(gkvec_ylm_(lm, igkloc)) * zb;
                     }
-
+                    break;
                 }
                 default:
                 {
