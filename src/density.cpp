@@ -235,8 +235,8 @@ void Density::add_kpoint_contribution_mt(K_point* kp, std::vector< std::pair<int
             {
                 for (int j = 0; j < mt_basis_size; j++)
                 {
-                    wf1(j, i, ispn) = conj(kp->spinor_wave_function(offset_wf + j, ispn, occupied_bands[i].first));
-                    wf2(j, i, ispn) = kp->spinor_wave_function(offset_wf + j, ispn, occupied_bands[i].first) * occupied_bands[i].second;
+                    wf1(j, i, ispn) = conj(kp->spinor_wave_function(offset_wf + j, occupied_bands[i].first, ispn));
+                    wf2(j, i, ispn) = kp->spinor_wave_function(offset_wf + j, occupied_bands[i].first, ispn) * occupied_bands[i].second;
                 }
             }
         }
@@ -371,7 +371,7 @@ void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int
     mdarray<double_complex, 2> wfs(kp->num_gkvec(), (int)occupied_bands.size());
     for (int i = 0; i < (int)occupied_bands.size(); i++)
     {
-        memcpy(&wfs(0, i), &kp->spinor_wave_function(0, 0, occupied_bands[i].first), kp->num_gkvec() * sizeof(double_complex));
+        memcpy(&wfs(0, i), &kp->spinor_wave_function(0, occupied_bands[i].first, 0), kp->num_gkvec() * sizeof(double_complex));
     }
 
     // <\beta_{\xi}^{\alpha}|\Psi_j>
@@ -432,7 +432,7 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair
     mdarray<double_complex, 2> wfs(kp->num_gkvec(), (int)occupied_bands.size());
     for (int i = 0; i < (int)occupied_bands.size(); i++)
     {
-        memcpy(&wfs(0, i), &kp->spinor_wave_function(0, 0, occupied_bands[i].first), kp->num_gkvec() * sizeof(double_complex));
+        memcpy(&wfs(0, i), &kp->spinor_wave_function(0, occupied_bands[i].first, 0), kp->num_gkvec() * sizeof(double_complex));
     }
     wfs.allocate_on_device();
     wfs.copy_to_device();
@@ -551,7 +551,7 @@ void Density::add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
                 fft_->input(kp->num_gkvec(), kp->fft_index(), 
-                            &kp->spinor_wave_function(parameters_.unit_cell()->mt_basis_size(), ispn, occupied_bands[i].first), 
+                            &kp->spinor_wave_function(parameters_.unit_cell()->mt_basis_size(), occupied_bands[i].first, ispn), 
                             thread_id);
                 fft_->transform(1, thread_id);
                 fft_->output(&wfit(0, ispn), thread_id);
@@ -689,12 +689,9 @@ void* exec_fft_density_gpu(void* args__)
                 for (int j = 0; j < nfft_max; j++)
                 {
                     cublas_set_vector(args->kp->num_gkvec(), sizeof(double_complex), 
-                                      &(*args->psi)(args->wf_pw_offset, ispn, (*args->band_idx)(i + j)), 1, 
+                                      &(*args->psi)(args->wf_pw_offset, (*args->band_idx)(i + j), ispn), 1, 
                                       psi_pw_gpu.ptr_device(0, j), 1);
                 }
-                //== cublas_set_matrix(args->kp->num_gkvec(), nfft_max, sizeof(double_complex), 
-                //==                   &(*args->psi)(args->wf_pw_offset, ispn, i), args->psi->ld() * args->num_spins, 
-                //==                   psi_pw_gpu.ptr_device(), psi_pw_gpu.ld());
 
                 fft.batch_load(args->kp->num_gkvec(), fft_index.ptr_device(), psi_pw_gpu.ptr_device(), 
                                psi_it_gpu.ptr_device(0, 0, ispn));
@@ -742,8 +739,8 @@ void* exec_fft_density_cpu(void* args__)
         {
             for (int ispn = 0; ispn < args->num_spins; ispn++)
             {
-                fft->input(args->kp->num_gkvec(), args->kp->fft_index(), &(*args->psi)(args->wf_pw_offset, ispn, 
-                           (*args->band_idx)(i)), thread_id);
+                fft->input(args->kp->num_gkvec(), args->kp->fft_index(), 
+                           &(*args->psi)(args->wf_pw_offset, (*args->band_idx)(i), ispn), thread_id);
                 fft->transform(1, thread_id);
                 fft->output(&psi_it(0, ispn), thread_id);
             }

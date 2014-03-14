@@ -40,7 +40,11 @@ class K_point
         mdarray<double_complex, 2> fv_eigen_vectors_panel_;
         
         /// second-variational eigen vectors
-        mdarray<double_complex, 2> sv_eigen_vectors_;
+        /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
+         *  case of non-magnetic or collinear magnetic case or as a single \f$ 2 N_{fv} \times 2 N_{fv} \f$ 
+         *  matrix in case of general non-collinear magnetism.
+         */
+        mdarray<double_complex, 3> sv_eigen_vectors_;
 
         /// full-diagonalization eigen vectors
         mdarray<double_complex, 2> fd_eigen_vectors_;
@@ -50,12 +54,6 @@ class K_point
 
         std::vector<int> fft_index_coarse_;
        
-        /// first-variational states, distributed along the columns of the MPI grid
-        //mdarray<double_complex, 2> fv_states_col_;
-       
-        /// first-variational states, distributed along the rows of the MPI grid
-        //mdarray<double_complex, 2> fv_states_row_;
-
         /// first-variational states, distributed over all ranks of the 2D MPI grid
         mdarray<double_complex, 2> fv_states_;
         
@@ -315,7 +313,7 @@ class K_point
             to the number of muffin-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r) 
             Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves. 
         */ 
-        inline int wf_size()
+        inline int wf_size() // TODO: better name for this
         {
             return (parameters_.unit_cell()->mt_basis_size() + num_gkvec());
         }
@@ -568,7 +566,12 @@ class K_point
             return fv_states_;
         }
 
-        inline mdarray<double_complex, 2>& sv_eigen_vectors()
+        inline mdarray<double_complex, 2>& fv_states_panel()
+        {
+            return fv_states_panel_;
+        }
+
+        inline mdarray<double_complex, 3>& sv_eigen_vectors()
         {
             return sv_eigen_vectors_;
         }
@@ -589,7 +592,7 @@ class K_point
                 int i = parameters_.spl_fv_states(icol);
                 for (int irow = 0; irow < spl_row.local_size(); irow++)
                 {
-                    if (spl_row[irow] == i) sv_eigen_vectors_(irow, icol) = double_complex(1, 0);
+                    if (spl_row[irow] == i) sv_eigen_vectors_(irow, icol, 0) = double_complex(1, 0);
                 }
             }
         }

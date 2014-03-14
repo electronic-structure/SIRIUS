@@ -223,13 +223,13 @@ class FFT3D<cpu>
             return spl_fft_size_.global_offset();
         }
         
-        /// Direct access of the output buffer
+        /// Direct access to the output buffer
         inline double_complex& output_buffer(int i, int thread_id = 0)
         {
             return fftw_output_buffer_(i, thread_id);
         }
         
-        /// Direct access of the input buffer
+        /// Direct access to the input buffer
         inline double_complex& input_buffer(int i, int thread_id = 0)
         {
             return fftw_input_buffer_(i, thread_id);

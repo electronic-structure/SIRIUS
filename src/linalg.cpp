@@ -81,10 +81,9 @@ void blas<gpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 
 #ifdef _SCALAPACK_
 template<> 
-void pblas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                                      double_complex alpha, double_complex* a, int32_t lda, 
-                                      double_complex* b, int32_t ldb, double_complex beta, double_complex* c, int32_t ldc,
-                                      int block_size, int blacs_context)
+void pblas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
+                                      double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double_complex beta, 
+                                      double_complex* c, int32_t ldc, int block_size, int blacs_context)
 {
     const char *trans[] = {"N", "T", "C"};
     int nrow_a = (transa == 0) ? m : k;
@@ -106,6 +105,21 @@ void pblas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t
     int32_t ione = 1;
     FORTRAN(pzgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &ione, &ione, desca, b, &ione, &ione, descb,
                     &beta, c, &ione, &ione, descc, 1, 1);
+}
+
+template<> 
+void pblas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
+                                      pmatrix<double_complex>& a, int32_t ia, int32_t ja,
+                                      pmatrix<double_complex>& b, int32_t ib, int32_t jb, double_complex beta, 
+                                      pmatrix<double_complex>& c, int32_t ic, int32_t jc)
+{
+    const char *trans[] = {"N", "T", "C"};
+
+    ia++; ja++;
+    ib++; jb++;
+    ic++; jc++;
+    FORTRAN(pzgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a.ptr(), &ia, &ja, a.descriptor(), 
+                    b.ptr(), &ib, &jb, b.descriptor(), &beta, c.ptr(), &ic, &jc, c.descriptor(), 1, 1);
 }
 #endif
 

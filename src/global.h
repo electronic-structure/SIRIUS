@@ -418,16 +418,6 @@ class Global
             return spl_fv_states_[icol_loc];
         }
 
-        //== inline splindex<block_cyclic>& spl_fv_states_row()
-        //== {
-        //==     return spl_fv_states_row_;
-        //== }
-        
-        //== inline int spl_fv_states_row(int irow_loc)
-        //== {
-        //==     return spl_fv_states_row_[irow_loc];
-        //== }
-        
         inline splindex<block_cyclic>& spl_spinor_wf()
         {
             return spl_spinor_wf_;

@@ -16,11 +16,19 @@ void K_point::initialize()
     if (use_second_variation)
     {
         fv_eigen_values_.resize(parameters_.num_fv_states());
-        // in case of collinear magnetism store pure up and pure dn components, otherwise store both up and dn components
-        int ns = (parameters_.num_mag_dims() == 3) ? 2 : 1;
-        splindex<block_cyclic> spl_row(ns * parameters_.num_fv_states(), num_ranks_row_, rank_row_, 
-                                       parameters_.cyclic_block_size());
-        sv_eigen_vectors_.set_dimensions(spl_row.local_size(), parameters_.spl_spinor_wf().local_size());
+        // in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix
+        if (parameters_.num_mag_dims() == 3)
+        {
+            splindex<block_cyclic> spl_row(parameters_.num_spins() * parameters_.num_fv_states(), num_ranks_row_, rank_row_, 
+                                           parameters_.cyclic_block_size());
+            sv_eigen_vectors_.set_dimensions(spl_row.local_size(), parameters_.spl_spinor_wf().local_size(), 1);
+        }
+        else
+        {
+            splindex<block_cyclic> spl_row(parameters_.num_fv_states(), num_ranks_row_, rank_row_, 
+                                           parameters_.cyclic_block_size());
+            sv_eigen_vectors_.set_dimensions(spl_row.local_size(), parameters_.spl_fv_states().local_size(), 2);
+        }
         sv_eigen_vectors_.allocate();
     }
     
@@ -103,13 +111,14 @@ void K_point::update()
 
                 gsl_sf_bessel_jl_array(parameters_.lmax_apw() + 1, gkR, &sbessel_mt(0, 0));
                 
-                // Bessel function derivative: f_{{n}}^{{\prime}}(z)=-f_{{n+1}}(z)+(n/z)f_{{n}}(z)
-                //
-                // In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,1}]]
-                // Out[]= (n SphericalBesselJ[n,a x])/x-a SphericalBesselJ[1+n,a x]
-                //
-                // In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,2}]]
-                // Out[]= (((-1+n) n-a^2 x^2) SphericalBesselJ[n,a x]+2 a x SphericalBesselJ[1+n,a x])/x^2
+                /* Bessel function derivative: f_{{n}}^{{\prime}}(z)=-f_{{n+1}}(z)+(n/z)f_{{n}}(z)
+                
+                 * In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,1}]]
+                 * Out[]= (n SphericalBesselJ[n,a x])/x-a SphericalBesselJ[1+n,a x]
+                
+                 * In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,2}]]
+                 * Out[]= (((-1+n) n-a^2 x^2) SphericalBesselJ[n,a x]+2 a x SphericalBesselJ[1+n,a x])/x^2
+                 */
                 for (int l = 0; l <= parameters_.lmax_apw(); l++)
                 {
                     sbessel_mt(l, 1) = -sbessel_mt(l + 1, 0) * gkvec_len_[igkloc] + (l / R) * sbessel_mt(l, 0);
@@ -224,7 +233,7 @@ void K_point::update()
         }
     }
 
-    spinor_wave_functions_.set_dimensions(wf_size(), parameters_.num_spins(), parameters_.sub_spl_spinor_wf().local_size());
+    spinor_wave_functions_.set_dimensions(wf_size(), parameters_.sub_spl_spinor_wf().local_size(), parameters_.num_spins());
 
     if (use_second_variation)
     {
@@ -726,6 +735,49 @@ void K_point::scatter_to_panels(int size_col, splindex<block_cyclic>& spl_row, m
 
 }
 
+#ifdef _GPU_
+void K_point::generate_fv_states_aw_mt_gpu()
+{
+    int num_fv_loc = parameters_.spl_fv_states_col().local_size();
+
+    mdarray<double_complex, 2> fv_eigen_vectors_gpu_(NULL, num_gkvec_row(), num_fv_loc);
+    fv_eigen_vectors_gpu_.allocate_on_device();
+
+    cublas_set_matrix(num_gkvec_row(), num_fv_loc, sizeof(double_complex),
+                      fv_eigen_vectors_panel_.ptr(), fv_eigen_vectors_panel_.ld(), 
+                      fv_eigen_vectors_gpu_.ptr_device(), fv_eigen_vectors_gpu_.ld());
+
+    mdarray<double_complex, 2> fv_states_col_gpu_(NULL, parameters_.unit_cell()->mt_basis_size(), num_fv_loc);
+    fv_states_col_gpu_.allocate_on_device();
+    fv_states_col_gpu_.zero_on_device();
+
+    mdarray<double_complex, 2> alm(num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    alm.allocate_on_device();
+    
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {
+        Atom* atom = parameters_.unit_cell()->atom(ia);
+        Atom_type* type = atom->type();
+        
+        generate_matching_coefficients<true>(num_gkvec_row(), ia, alm);
+        alm.copy_to_device(); // TODO: copy only necessary fraction of the data
+
+        blas<gpu>::gemm(2, 0, type->mt_aw_basis_size(), num_fv_loc, num_gkvec_row(), 
+                        alm.ptr_device(), alm.ld(), 
+                        fv_eigen_vectors_gpu_.ptr_device(), fv_eigen_vectors_gpu_.ld(), 
+                        fv_states_col_gpu_.ptr_device(atom->offset_wf(), 0), fv_states_col_gpu_.ld());
+    }
+
+    cublas_get_matrix(parameters_.unit_cell()->mt_basis_size(), num_fv_loc, sizeof(double_complex), 
+                      fv_states_col_gpu_.ptr_device(), fv_states_col_gpu_.ld(),
+                      fv_states_col_.ptr(), fv_states_col_.ld());
+
+    alm.deallocate_on_device();
+    fv_states_col_gpu_.deallocate_on_device();
+    fv_eigen_vectors_gpu_.deallocate_on_device();
+}
+#endif
+
 void K_point::generate_fv_states()
 {
     log_function_enter(__func__);
@@ -842,86 +894,94 @@ void K_point::generate_fv_states()
     log_function_exit(__func__);
 }
 
-#ifdef _GPU_
-void K_point::generate_fv_states_aw_mt_gpu()
-{
-    int num_fv_loc = parameters_.spl_fv_states_col().local_size();
-
-    mdarray<double_complex, 2> fv_eigen_vectors_gpu_(NULL, num_gkvec_row(), num_fv_loc);
-    fv_eigen_vectors_gpu_.allocate_on_device();
-
-    cublas_set_matrix(num_gkvec_row(), num_fv_loc, sizeof(double_complex),
-                      fv_eigen_vectors_panel_.ptr(), fv_eigen_vectors_panel_.ld(), 
-                      fv_eigen_vectors_gpu_.ptr_device(), fv_eigen_vectors_gpu_.ld());
-
-    mdarray<double_complex, 2> fv_states_col_gpu_(NULL, parameters_.unit_cell()->mt_basis_size(), num_fv_loc);
-    fv_states_col_gpu_.allocate_on_device();
-    fv_states_col_gpu_.zero_on_device();
-
-    mdarray<double_complex, 2> alm(num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
-    alm.allocate_on_device();
-    
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    {
-        Atom* atom = parameters_.unit_cell()->atom(ia);
-        Atom_type* type = atom->type();
-        
-        generate_matching_coefficients<true>(num_gkvec_row(), ia, alm);
-        alm.copy_to_device(); // TODO: copy only necessary fraction of the data
-
-        blas<gpu>::gemm(2, 0, type->mt_aw_basis_size(), num_fv_loc, num_gkvec_row(), 
-                        alm.ptr_device(), alm.ld(), 
-                        fv_eigen_vectors_gpu_.ptr_device(), fv_eigen_vectors_gpu_.ld(), 
-                        fv_states_col_gpu_.ptr_device(atom->offset_wf(), 0), fv_states_col_gpu_.ld());
-    }
-
-    cublas_get_matrix(parameters_.unit_cell()->mt_basis_size(), num_fv_loc, sizeof(double_complex), 
-                      fv_states_col_gpu_.ptr_device(), fv_states_col_gpu_.ld(),
-                      fv_states_col_.ptr(), fv_states_col_.ld());
-
-    alm.deallocate_on_device();
-    fv_states_col_gpu_.deallocate_on_device();
-    fv_eigen_vectors_gpu_.deallocate_on_device();
-}
-#endif
-
 void K_point::generate_spinor_wave_functions()
 {
     log_function_enter(__func__);
     Timer t("sirius::K_point::generate_spinor_wave_functions");
 
-    //== int wfld = spinor_wave_functions_.size(0) * spinor_wave_functions_.size(1); // size of each spinor wave-function
-    //== int nrow = parameters_.spl_fv_states_row().local_size();
-    //== int ncol = parameters_.spl_fv_states_col().local_size();
+    int nfv = parameters_.num_fv_states();
 
     if (use_second_variation) 
     {
         if (!parameters_.need_sv()) return;
 
-    //==     spinor_wave_functions_.zero();
+        // serial version
+        if (num_ranks() == 1)
+        {
+            spinor_wave_functions_.zero();
+
+            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+            {
+                if (parameters_.num_mag_dims() != 3)
+                {
+                    // multiply up block for first half of the bands, dn block for second half of the bands
+                    blas<cpu>::gemm(0, 0, wf_size(), nfv, nfv, fv_states_.ptr(), fv_states_.ld(), 
+                                    &sv_eigen_vectors_(0, 0, ispn), sv_eigen_vectors_.ld(), 
+                                    &spinor_wave_functions_(0, ispn * nfv, ispn), spinor_wave_functions_.ld());
+                }
+                else
+                {
+                    // multiply up block and then dn block for all bands
+                    blas<cpu>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states_.ptr(), fv_states_.ld(), 
+                                    &sv_eigen_vectors_(ispn * nfv, 0, 0), sv_eigen_vectors_.ld(), 
+                                    &spinor_wave_functions_(0, 0, ispn), spinor_wave_functions_.ld());
+                }
+            }
+        }
+        // parallel version
+        else
+        {
+            splindex<block_cyclic> spl_wf_size_row(wf_size(), num_ranks_row(), rank_row(), parameters_.cyclic_block_size());
+
+            mdarray<double_complex, 2> spinor_wave_functions_panel_(spl_wf_size_row.local_size(), 
+                                                                    parameters_.spl_spinor_wf().local_size());
+
+            
+            // create wrapper for distributed first-variational statetes
+            pmatrix<double_complex> pm_fv_states(wf_size(), nfv, fv_states_panel_, parameters_.cyclic_block_size(), 
+                                                 parameters_.blacs_context());
+
+            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
+            {
+                spinor_wave_functions_panel_.zero();
+
+                if (parameters_.num_mag_dims() != 3)
+                {
+                    // create wrapper for distributed second-variational eigen-vectors
+                    pmatrix<double_complex> pm_sv_evec(nfv, nfv, sv_eigen_vectors_.submatrix(ispn), 
+                                                       parameters_.cyclic_block_size(), 
+                                                       parameters_.blacs_context());
+                                                                
+                    // create wrapper for spinor wave-functions
+                    pmatrix<double_complex> pm_spinor_wf(wf_size(), parameters_.num_bands(),
+                                                         spinor_wave_functions_panel_,
+                                                         parameters_.cyclic_block_size(),
+                                                         parameters_.blacs_context());
+
+                    // multiply up block for first half of the bands, dn block for second half of the bands
+                    pblas<cpu>::gemm(0, 0, wf_size(), nfv, nfv, complex_one, pm_fv_states, 0, 0, 
+                                     pm_sv_evec, 0, 0, complex_zero, pm_spinor_wf, 0, ispn * nfv);
+                    
+                }
+                //== else
+                //== {
+                //==     // multiply up block and then dn block for all bands
+                //==     blas<cpu>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states_.ptr(), fv_states_.ld(), 
+                //==                     &sv_eigen_vectors_(ispn * nfv, 0, 0), sv_eigen_vectors_.ld(), 
+                //==                     &spinor_wave_functions_(0, 0, ispn), spinor_wave_functions_.ld());
+                //== }
 
 
-    //==     for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-    //==     {
-    //==         if (parameters_.num_mag_dims() != 3)
-    //==         {
-    //==             // multiply up block for first half of the bands, dn block for second half of the bands
-    //==             blas<cpu>::gemm(0, 0, wf_size(), ncol, nrow, &fv_states_row_(0, 0), fv_states_row_.ld(), 
-    //==                             &sv_eigen_vectors_(0, ispn * ncol), sv_eigen_vectors_.ld(), 
-    //==                             &spinor_wave_functions_(0, ispn, ispn * ncol), wfld);
-    //==         }
-    //==         else
-    //==         {
-    //==             // multiply up block and then dn block for all bands
-    //==             blas<cpu>::gemm(0, 0, wf_size(), parameters_.spl_spinor_wf_col().local_size(), nrow, 
-    //==                             &fv_states_row_(0, 0), fv_states_row_.ld(), 
-    //==                             &sv_eigen_vectors_(ispn * nrow, 0), sv_eigen_vectors_.ld(), 
-    //==                             &spinor_wave_functions_(0, ispn, 0), wfld);
-    //==         }
-    //==     }
+                gather_from_panels(parameters_.spl_spinor_wf().local_size(), spl_wf_size_row, 
+                                   spinor_wave_functions_panel_, spinor_wave_functions_.submatrix(ispn));
+            }
+        }
+
+
     }
     else
     {
+        stop_here
     //==     mdarray<double_complex, 2> alm(num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
 
     //==     /** \todo generalize for non-collinear case */

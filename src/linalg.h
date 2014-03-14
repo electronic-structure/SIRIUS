@@ -2,10 +2,10 @@
 #define __LINALG_H__
 
 /** \file linalg.h
-
-    \brief Linear algebra interface
-
-*/
+  *
+  * \brief Linear algebra interface
+  *
+  */
 
 #include <stdint.h>
 #include <string.h>
@@ -20,16 +20,16 @@
 #include "error_handling.h"
 #include "mdarray.h"
 
-/* 
-    matrix-vector operations
-*/
+/*
+ *  matrix-vector operations
+ */
 extern "C" void FORTRAN(zgemv)(const char* trans, int32_t* m, int32_t* n, double_complex* alpha, 
                                double_complex* a, int32_t* lda, double_complex* x, int32_t* incx,
                                double_complex* beta, double_complex* y, int32_t* incy, int32_t translen);
 
 /*
-    matrix-matrix operations
-*/
+ *  matrix-matrix operations
+ */
 extern "C" void FORTRAN(zgemm)(const char* transa, const char* transb, int32_t* m, int32_t* n, int32_t* k, 
                                double_complex* alpha, double_complex* a, int32_t* lda, double_complex* b, int32_t* ldb, 
                                double_complex* beta, double_complex* c, int32_t* ldc, int32_t transalen, int32_t transblen);
@@ -44,8 +44,8 @@ extern "C" void FORTRAN(zhemm)(const char *side, const char* uplo, int32_t* m, i
                                int32_t sidelen, int32_t uplolen);
 
 /*
-    eigen-value problem
-*/
+ *  eigen-value problem
+ */
 extern "C" void FORTRAN(zhegvx)(int32_t* itype, const char* jobz, const char* range, const char* uplo, 
                                 int32_t* n, double_complex* a, int32_t* lda, double_complex* b, int32_t* ldb, double* vl, 
                                 double* vu, int32_t* il, int32_t* iu, double* abstol, int32_t* m, double* w, double_complex* z,
@@ -88,8 +88,8 @@ extern "C" void FORTRAN(zgetri)(int32_t* n, double_complex* a, int32_t* lda, int
 
 
 /* 
-    BLACS and ScaLAPACK related functions
-*/
+ *  BLACS and ScaLAPACK related functions
+ */
 #ifdef _SCALAPACK_
 extern "C" int Csys2blacs_handle(MPI_Comm SysCtxt);
 extern "C" MPI_Comm Cblacs2sys_handle(int BlacsCtxt);
@@ -211,22 +211,6 @@ class blas<gpu>
                          T* b, int32_t ldb, T* c, int32_t ldc);
 };
 #endif
-
-#ifdef _SCALAPACK_
-template<processing_unit_t> 
-class pblas;
-
-template<> 
-class pblas<cpu>
-{
-    public:
-
-        template <typename T>
-        static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T alpha, T* a, int32_t lda, 
-                         T* b, int32_t ldb, T beta, T* c, int32_t ldc, int block_size, int blacs_context);
-};
-#endif
-
 
 template<linalg_t> 
 class linalg;
@@ -358,6 +342,74 @@ class linalg<scalapack>
         {
             FORTRAN(pztranc)(&m, &n, &alpha, a, &ia, &ja, desca, &beta, c, &ic, &jc, descc);
         }
+};
+
+template <typename T>
+class pmatrix
+{
+    private:
+
+        /// global number of matrix rows
+        int nrows_;
+
+        /// global number of matrix columns
+        int ncols_;
+        
+        /// local part of the matrix
+        mdarray<T, 2>& panel_;
+
+        /// matrix descriptor
+        int descriptor_[9];
+
+    public:
+        
+        pmatrix(int nrows__, int ncols__, mdarray<T, 2>& panel__, int block_size__, int blacs_context__) 
+            : nrows_(nrows__),
+              ncols_(ncols__),
+              panel_(panel__)
+        {
+            linalg<scalapack>::descinit(descriptor_, nrows__, ncols__, block_size__, block_size__, 0, 0, 
+                                        blacs_context__, panel__.ld());
+        }
+
+        inline int nrows()
+        {
+            return nrows_;
+        }
+
+        inline int ncols()
+        {
+            return ncols_;
+        }
+
+        inline int* descriptor()
+        {
+            return descriptor_;
+        }
+
+        T* ptr()
+        {
+            return panel_.ptr();
+        }
+};
+
+template<processing_unit_t> 
+class pblas;
+
+template<> 
+class pblas<cpu>
+{
+    public:
+
+        /// simple interface to p?gemm: all matrices start form [1, 1] corner
+        template <typename T>
+        static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T alpha, T* a, int32_t lda, 
+                         T* b, int32_t ldb, T beta, T* c, int32_t ldc, int block_size, int blacs_context);
+        
+        template <typename T>
+        static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T alpha, 
+                         pmatrix<T>& a, int32_t ia, int32_t ja, pmatrix<T>& b, int32_t ib, int32_t jb, T beta, 
+                         pmatrix<T>& c, int32_t ic, int32_t jc);
 };
 #endif
 

@@ -462,6 +462,10 @@ template <typename T> class mdarray<T, 2> : public mdarray_base<T, 2>
 // 3d specialization
 template <typename T> class mdarray<T, 3> : public mdarray_base<T, 3> 
 {
+    private:
+
+        mdarray<T, 2> submatrix_;
+
     public:
   
         mdarray() 
@@ -517,6 +521,13 @@ template <typename T> class mdarray<T, 3> : public mdarray_base<T, 3>
             return &this->mdarray_ptr_device[i];
         }
         #endif
+
+        mdarray<T, 2>& submatrix(int idx)
+        {
+            submatrix_.set_dimensions(this->d[0], this->d[1]);
+            submatrix_.set_ptr(&(*this)(0, 0, idx));
+            return submatrix_;
+        }
 };
 
 // 4d specialization

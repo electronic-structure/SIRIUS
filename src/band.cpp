@@ -2,22 +2,20 @@
 
 namespace sirius {
 
-void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_size, int num_gkvec, int* fft_index, 
+void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_gkvec, int* fft_index, 
                                 Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 3>& hpsi)
 {
     assert(hpsi.size(2) >= 2);
     assert(fv_states.size(0) == hpsi.size(0));
     assert(fv_states.size(1) == hpsi.size(1));
 
+    int nfv = fv_states.size(1);
+
     Timer t("sirius::Band::apply_magnetic_field");
 
     mdarray<double_complex, 3> zm(parameters_.unit_cell()->max_mt_basis_size(), parameters_.unit_cell()->max_mt_basis_size(), 
                                   parameters_.num_mag_dims());
 
-    // column fv states are further distributed over rows to make use of all row processors
-    int num_fv_local = parameters_.sub_spl_fv_states().local_size();
-    int idx_fv_local = parameters_.sub_spl_fv_states().global_offset();
-            
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
         int offset = parameters_.unit_cell()->atom(ia)->offset_wf();
@@ -25,7 +23,8 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
         Atom* atom = parameters_.unit_cell()->atom(ia);
         
         zm.zero();
-
+        
+        // only upper triangular part of zm is computed because it's a hermitian matrix
         #pragma omp parallel for default(shared)
         for (int j2 = 0; j2 < mt_basis_size; j2++)
         {
@@ -44,9 +43,8 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
             }
         }
         // compute bwf = B_z*|wf_j>
-        blas<cpu>::hemm(0, 0, mt_basis_size, num_fv_local, complex_one, &zm(0, 0, 0), zm.ld(), 
-                        &fv_states(offset, idx_fv_local), fv_states.ld(), complex_zero, 
-                        &hpsi(offset, idx_fv_local, 0), hpsi.ld());
+        blas<cpu>::hemm(0, 0, mt_basis_size, nfv, complex_one, &zm(0, 0, 0), zm.ld(), 
+                        &fv_states(offset, 0), fv_states.ld(), complex_zero, &hpsi(offset, 0, 0), hpsi.ld());
         
         // compute bwf = (B_x - iB_y)|wf_j>
         if (hpsi.size(2) >= 3)
@@ -56,12 +54,12 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
             {
                 for (int j1 = 0; j1 <= j2; j1++) zm(j1, j2, 0) = zm(j1, j2, 1) - complex_i * zm(j1, j2, 2);
                 
+                // remember: zm is hermitian and we computed only the upper triangular part
                 for (int j1 = j2 + 1; j1 < mt_basis_size; j1++) zm(j1, j2, 0) = conj(zm(j2, j1, 1)) - complex_i * conj(zm(j2, j1, 2));
             }
               
-            blas<cpu>::gemm(0, 0, mt_basis_size, num_fv_local, mt_basis_size, &zm(0, 0, 0), zm.ld(), 
-                            &fv_states(offset, idx_fv_local), fv_states.ld(), 
-                            &hpsi(offset, idx_fv_local, 2), hpsi.ld());
+            blas<cpu>::gemm(0, 0, mt_basis_size, nfv, mt_basis_size, &zm(0, 0, 0), zm.ld(), 
+                            &fv_states(offset, 0), fv_states.ld(), &hpsi(offset, 0, 2), hpsi.ld());
         }
         
         // compute bwf = (B_x + iB_y)|wf_j>
@@ -75,16 +73,14 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
                 for (int j1 = j2 + 1; j1 < mt_basis_size; j1++) zm(j1, j2, 0) = conj(zm(j2, j1, 1)) + complex_i * conj(zm(j2, j1, 2));
             }
               
-            blas<cpu>::gemm(0, 0, mt_basis_size, num_fv_local, mt_basis_size, &zm(0, 0, 0), zm.ld(), 
-                            &fv_states(offset, idx_fv_local), fv_states.ld(), 
-                            &hpsi(offset, idx_fv_local, 3), hpsi.ld());
+            blas<cpu>::gemm(0, 0, mt_basis_size, nfv, mt_basis_size, &zm(0, 0, 0), zm.ld(), 
+                            &fv_states(offset, 0), fv_states.ld(), &hpsi(offset, 0, 3), hpsi.ld());
         }
     }
     
     Timer *t1 = new Timer("sirius::Band::apply_magnetic_field|it");
 
-    mdarray<double_complex, 3> hpsi_pw(num_gkvec, parameters_.spl_fv_states().local_size(), hpsi.size(2));
-    hpsi_pw.zero();
+    int offset = parameters_.unit_cell()->mt_basis_size();
 
     int num_fft_threads = Platform::num_fft_threads();
     #pragma omp parallel default(shared) num_threads(num_fft_threads)
@@ -95,11 +91,9 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
         std::vector<double_complex> hpsi_it(fft_->size());
         
         #pragma omp for
-        for (int iloc = 0; iloc < num_fv_local; iloc++)
+        for (int i = 0; i < nfv; i++)
         {
-            int i = parameters_.sub_spl_fv_states(iloc);
-
-            fft_->input(num_gkvec, fft_index, &fv_states(parameters_.unit_cell()->mt_basis_size(), i), thread_id);
+            fft_->input(num_gkvec, fft_index, &fv_states(offset, i), thread_id);
             fft_->transform(1, thread_id);
             fft_->output(&psi_it[0], thread_id);
                                         
@@ -111,7 +105,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
             
             fft_->input(&hpsi_it[0], thread_id);
             fft_->transform(-1, thread_id);
-            fft_->output(num_gkvec, fft_index, &hpsi_pw(0, i, 0), thread_id); 
+            fft_->output(num_gkvec, fft_index, &hpsi(offset, i, 0), thread_id); 
 
             if (hpsi.size(2) >= 3)
             {
@@ -125,7 +119,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
                 
                 fft_->input(&hpsi_it[0], thread_id);
                 fft_->transform(-1, thread_id);
-                fft_->output(num_gkvec, fft_index, &hpsi_pw(0, i, 2), thread_id); 
+                fft_->output(num_gkvec, fft_index, &hpsi(offset, i, 2), thread_id); 
             }
             
             if (hpsi.size(2) == 4 && parameters_.std_evp_solver()->parallel())
@@ -140,37 +134,16 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int mtgk_
                 
                 fft_->input(&hpsi_it[0], thread_id);
                 fft_->transform(-1, thread_id);
-                fft_->output(num_gkvec, fft_index, &hpsi_pw(0, i, 3), thread_id); 
+                fft_->output(num_gkvec, fft_index, &hpsi(offset, i, 3), thread_id); 
             }
         }
     }
     delete t1;
 
-    for (int n = 0; n < hpsi.size(2); n++)
+    // copy Bz|\psi> to -Bz|\psi>
+    for (int i = 0; i < nfv; i++)
     {
-        if (n != 1)
-        {
-            for (int iloc = 0; iloc < num_fv_local; iloc++)
-            {
-                int i = parameters_.sub_spl_fv_states(iloc);
-                memcpy(&hpsi(parameters_.unit_cell()->mt_basis_size(), i, n), &hpsi_pw(0, i, n), num_gkvec * sizeof(double_complex));
-            }
-        }
-        else
-        {
-            // copy Bz|\psi> to -Bz|\psi>
-            for (int iloc = 0; iloc < num_fv_local; iloc++)
-            {
-                int i = parameters_.sub_spl_fv_states(iloc);
-                for (int j = 0; j < mtgk_size; j++) hpsi(j, i, 1) = -hpsi(j, i, 0);
-            }
-        }
-    }
-
-    for (int n = 0; n < hpsi.size(2); n++)
-    {
-        Platform::allgather(&hpsi(0, 0, n), hpsi.size(0) * idx_fv_local, hpsi.size(0) * num_fv_local, 
-                            parameters_.mpi_grid().communicator(1 << _dim_row_));
+        for (int j = 0; j < fv_states.size(0); j++) hpsi(j, i, 1) = -hpsi(j, i, 0);
     }
 }
 
@@ -1651,26 +1624,28 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     if (kp->num_ranks() > 1 && !parameters_.std_evp_solver()->parallel())
         error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
-    stop_here
+    // number of h|\psi> components 
+    int nhpsi = parameters_.num_mag_dims() + 1;
+    
+    // size of the first-variational state 
+    int fvsz = kp->wf_size();
 
-    //== // number of h|\psi> components 
-    //== int nhpsi = parameters_.num_mag_dims() + 1;
+    // number of first-variational states for a given column of MPI ranks
+    int nfv = parameters_.spl_fv_states().local_size();
+    
+    // number of first-variational states for a given rank in the column 
+    int nfv_loc = parameters_.sub_spl_fv_states().local_size();
 
-    //== int nrow = parameters_.spl_fv_states_row().local_size();
-    //== int ncol = parameters_.spl_fv_states_col().local_size();
-    //== int fvsz = kp->wf_size();
+    mdarray<double_complex, 3>& sv_eigen_vectors = kp->sv_eigen_vectors();
+    std::vector<double> band_energies(parameters_.num_bands());
 
-    //== mdarray<double_complex, 2>& fv_states_row = kp->fv_states_row();
-    //== mdarray<double_complex, 2>& sv_eigen_vectors = kp->sv_eigen_vectors();
-    //== std::vector<double> band_energies(parameters_.num_bands());
+    // product of the second-variational Hamiltonian and a wave-function
+    mdarray<double_complex, 3> hpsi(fvsz, nfv_loc, nhpsi);
+    hpsi.zero();
 
-    //== // product of the second-variational Hamiltonian and a wave-function
-    //== mdarray<double_complex, 3> hpsi(fvsz, ncol, nhpsi);
-    //== hpsi.zero();
-
-    //== // compute product of magnetic field and wave-function 
-    //== if (parameters_.num_spins() == 2)
-    //==     apply_magnetic_field(kp->fv_states_col(), kp->wf_size(), kp->num_gkvec(), kp->fft_index(), effective_magnetic_field, hpsi);
+    // compute product of magnetic field and wave-function 
+    if (parameters_.num_spins() == 2)
+        apply_magnetic_field(kp->fv_states(), kp->num_gkvec(), kp->fft_index(), effective_magnetic_field, hpsi);
 
     //== if (parameters_.uj_correction())
     //== {
@@ -1684,6 +1659,66 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     //== }
 
     //== if (parameters_.so_correction()) apply_so_correction(kp->fv_states_col(), hpsi);
+
+    if (kp->num_ranks() == 1)
+    {
+
+
+    }
+    else
+    {
+        splindex<block_cyclic> spl_wf_size_row(fvsz, kp->num_ranks_row(), kp->rank_row(), parameters_.cyclic_block_size());
+
+        mdarray<double_complex, 3> hpsi_panel(spl_wf_size_row.local_size(), nfv, nhpsi);
+        
+        // change data distribution of hpsi to panels
+        for (int n = 0; n < nhpsi; n++)
+        {
+            mdarray<double_complex, 2> hpsi_tmp(&hpsi(0, 0, n), fvsz, nfv_loc);
+            mdarray<double_complex, 2> hpsi_panel_tmp(&hpsi_panel(0, 0, n), spl_wf_size_row.local_size(), nfv);
+            kp->scatter_to_panels(nfv, spl_wf_size_row, hpsi_tmp, hpsi_panel_tmp);
+        }
+        hpsi.deallocate(); // we don't need full vectors anymore
+
+
+        /*  Parallel diagonalization of the second-variational Hamiltonian 
+         *  in the case of collinear magnetism. Two consecutive diagonalizations
+         *  are performed for up-up and dn-dn spin blocks. 
+         */
+        if (parameters_.num_mag_dims() == 1)
+        {
+            splindex<block_cyclic> spl_fv_states_row(parameters_.num_fv_states(), kp->num_ranks_row(), kp->rank_row(), 
+                                                     parameters_.cyclic_block_size());
+
+            mdarray<double_complex, 2> h(spl_fv_states_row.local_size(), parameters_.spl_fv_states().local_size());
+            
+            //perform two consecutive diagonalizations
+            for (int ispn = 0; ispn < 2; ispn++)
+            {
+                // compute <wf_i | (h * wf_j)> for up-up or dn-dn block
+                pblas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, 
+                                 complex_one, kp->fv_states_panel().ptr(), kp->fv_states_panel().ld(), 
+                                 &hpsi_panel(0, 0, ispn), hpsi_panel.ld(), complex_zero, &h(0, 0), h.ld(), 
+                                 parameters_.cyclic_block_size(), parameters_.blacs_context());
+
+                for (int icol = 0; icol < parameters_.spl_fv_states().local_size(); icol++)
+                {
+                    int i = parameters_.spl_fv_states(icol);
+                    for (int irow = 0; irow < spl_fv_states_row.local_size(); irow++)
+                    {
+                        if (spl_fv_states_row[irow] == i) h(irow, icol) += kp->fv_eigen_value(i);
+                    }
+                }
+            
+                Timer t1("sirius::Band::solve_sv|stdevp");
+                parameters_.std_evp_solver()->solve(parameters_.num_fv_states(), h.ptr(), h.ld(),
+                                                    &band_energies[ispn * parameters_.num_fv_states()],
+                                                    &sv_eigen_vectors(0, 0, ispn), sv_eigen_vectors.ld());
+            }
+        }
+
+
+    }
 
     //== if (parameters_.num_mag_dims() == 1)
     //== {
@@ -1757,8 +1792,8 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     //==                                         sv_eigen_vectors.ptr(), sv_eigen_vectors.ld());
     //== }
 
-    //== kp->set_band_energies(&band_energies[0]);
-    //== log_function_exit(__func__);
+    kp->set_band_energies(&band_energies[0]);
+    log_function_exit(__func__);
 }
 
 void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential, 
