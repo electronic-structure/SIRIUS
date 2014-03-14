@@ -111,7 +111,7 @@ void Reciprocal_lattice::init(int lmax)
     }
 
     // create split index
-    spl_num_gvec_.split(num_gvec(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+    spl_num_gvec_ = splindex<block>(num_gvec(), Platform::num_mpi_ranks(), Platform::mpi_rank());
     
     if (lmax >= 0)
     {

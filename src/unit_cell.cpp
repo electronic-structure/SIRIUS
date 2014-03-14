@@ -381,13 +381,13 @@ void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
 
     update();
             
-    spl_num_atoms_.split(num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+    spl_num_atoms_ = splindex<block>(num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
 
     // TODO: this is unreadable and must be improved
     if (num_atoms() != 0)
     {
         mpi_group_atom_.split(num_atoms());
-        spl_atoms_.split(num_atoms(), mpi_group_atom_.num_groups(), mpi_group_atom_.group_id());
+        spl_atoms_ = splindex<block>(num_atoms(), mpi_group_atom_.num_groups(), mpi_group_atom_.group_id());
         for (int ia = 0; ia < num_atoms(); ia++)
         {
             int rank = spl_num_atoms().location(_splindex_rank_, ia);
@@ -496,7 +496,7 @@ void Unit_cell::update()
     
     get_symmetry();
     
-    spl_num_atom_symmetry_classes_.split(num_atom_symmetry_classes(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+    spl_num_atom_symmetry_classes_ = splindex<block>(num_atom_symmetry_classes(), Platform::num_mpi_ranks(), Platform::mpi_rank());
     
     volume_mt_ = 0.0;
     if (full_potential())

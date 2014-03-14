@@ -91,7 +91,7 @@ class FFT3D<cpu>
                                                     (fftw_complex*)&fftw_output_buffer_(0, i), -1, FFTW_MEASURE);
             }
 
-            spl_fft_size_.split(size(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+            spl_fft_size_ = splindex<block>(size(), Platform::num_mpi_ranks(), Platform::mpi_rank());
         }
 
         ~FFT3D<cpu>()

@@ -7,8 +7,8 @@ void K_set::initialize()
     // ============================================================
     // distribute k-points along the 1-st dimension of the MPI grid
     // ============================================================
-    spl_num_kpoints_.split(num_kpoints(), parameters_.mpi_grid().dimension_size(_dim_k_), 
-                           parameters_.mpi_grid().coordinate(_dim_k_));
+    spl_num_kpoints_ = splindex<block>(num_kpoints(), parameters_.mpi_grid().dimension_size(_dim_k_), 
+                                       parameters_.mpi_grid().coordinate(_dim_k_));
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
         kpoints_[spl_num_kpoints_[ikloc]]->initialize();

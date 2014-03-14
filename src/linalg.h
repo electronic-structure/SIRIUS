@@ -268,7 +268,27 @@ class linalg<lapack>
 template<> 
 class linalg<scalapack>
 {
+    private:
+
+        static int cyclic_block_size_;
+
     public:
+
+        static int cyclic_block_size()
+        {
+            return cyclic_block_size_;
+        }
+
+        static void set_cyclic_block_size(int cyclic_block_size__)
+        {
+            if (cyclic_block_size_ > 0)
+            {
+                std::stringstream s;
+                s << "cyclic_block_size is already set to " << cyclic_block_size_ << " and can't be changed";
+                error_global(__FILE__, __LINE__, s);
+            }
+            cyclic_block_size_ = cyclic_block_size__;
+        }
 
         /// Create BLACS context
         static int create_blacs_context(MPI_Comm comm)
@@ -363,13 +383,13 @@ class pmatrix
 
     public:
         
-        pmatrix(int nrows__, int ncols__, mdarray<T, 2>& panel__, int block_size__, int blacs_context__) 
+        pmatrix(int nrows__, int ncols__, mdarray<T, 2>& panel__, int blacs_context__) 
             : nrows_(nrows__),
               ncols_(ncols__),
               panel_(panel__)
         {
-            linalg<scalapack>::descinit(descriptor_, nrows__, ncols__, block_size__, block_size__, 0, 0, 
-                                        blacs_context__, panel__.ld());
+            int bs = linalg<scalapack>::cyclic_block_size();
+            linalg<scalapack>::descinit(descriptor_, nrows__, ncols__, bs, bs, 0, 0, blacs_context__, panel__.ld());
         }
 
         inline int nrows()
@@ -401,15 +421,16 @@ class pblas<cpu>
 {
     public:
 
-        /// simple interface to p?gemm: all matrices start form [1, 1] corner
-        template <typename T>
-        static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T alpha, T* a, int32_t lda, 
-                         T* b, int32_t ldb, T beta, T* c, int32_t ldc, int block_size, int blacs_context);
-        
+        /// generic interface to p?gemm
         template <typename T>
         static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T alpha, 
                          pmatrix<T>& a, int32_t ia, int32_t ja, pmatrix<T>& b, int32_t ib, int32_t jb, T beta, 
                          pmatrix<T>& c, int32_t ic, int32_t jc);
+
+        /// simple interface to p?gemm: all matrices start form (0, 0) corner
+        template <typename T>
+        static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+                         T alpha, pmatrix<T>& a, pmatrix<T>& b, T beta, pmatrix<T>& c);
 };
 #endif
 
@@ -558,12 +579,15 @@ class standard_evp_scalapack: public standard_evp
 
     public:
 
-        standard_evp_scalapack(int32_t block_size__, int num_ranks_row__, int num_ranks_col__, int blacs_context__) 
-            : block_size_(block_size__), 
+        standard_evp_scalapack(int num_ranks_row__, int num_ranks_col__, int blacs_context__) 
+            :
               num_ranks_row_(num_ranks_row__), 
               num_ranks_col_(num_ranks_col__), 
               blacs_context_(blacs_context__)
         {
+            #ifdef _SCALAPACK_
+            block_size_ = linalg<scalapack>::cyclic_block_size();
+            #endif
         }
 
         #ifdef _SCALAPACK_
@@ -744,14 +768,16 @@ class generalized_evp_scalapack: public generalized_evp
     
     public:
 
-        generalized_evp_scalapack(int32_t block_size__, int num_ranks_row__, int num_ranks_col__, int blacs_context__, 
+        generalized_evp_scalapack(int num_ranks_row__, int num_ranks_col__, int blacs_context__, 
                                   double abstol__) 
-            : block_size_(block_size__), 
-              num_ranks_row_(num_ranks_row__), 
+            : num_ranks_row_(num_ranks_row__), 
               num_ranks_col_(num_ranks_col__), 
               blacs_context_(blacs_context__),
               abstol_(abstol__)
         {
+            #ifdef _SCALAPACK_
+            block_size_ = linalg<scalapack>::cyclic_block_size();
+            #endif
         }
 
         #ifdef _SCALAPACK_
@@ -867,15 +893,17 @@ class generalized_evp_gpu: public generalized_evp
         
     public:
 
-        generalized_evp_gpu(int32_t block_size__, int num_ranks_row__, int rank_row__, int num_ranks_col__, int rank_col__, 
+        generalized_evp_gpu(int num_ranks_row__, int rank_row__, int num_ranks_col__, int rank_col__, 
                             int blacs_context__)
-            : block_size_(block_size__), 
-              num_ranks_row_(num_ranks_row__),
+            : num_ranks_row_(num_ranks_row__),
               rank_row_(rank_row__),
               num_ranks_col_(num_ranks_col__), 
               rank_col_(rank_col__),
               blacs_context_(blacs_context__)
         {
+            #ifdef _SCALAPACK_
+            block_size_ = linalg<scalapack>::cyclic_block_size();
+            #endif
         }
 
         #ifdef _RS_GEN_EIG_
@@ -944,11 +972,10 @@ class generalized_evp_elpa1: public generalized_evp
 
     public:
         
-        generalized_evp_elpa1(int32_t block_size__, int32_t num_ranks_row__, int32_t rank_row__,
+        generalized_evp_elpa1(int32_t num_ranks_row__, int32_t rank_row__,
                               int32_t num_ranks_col__, int32_t rank_col__, int blacs_context__, 
                               MPI_Comm comm_row__, MPI_Comm comm_col__) 
-            : block_size_(block_size__), 
-              num_ranks_row_(num_ranks_row__), 
+            : num_ranks_row_(num_ranks_row__), 
               rank_row_(rank_row__),
               num_ranks_col_(num_ranks_col__), 
               rank_col_(rank_col__),
@@ -956,6 +983,9 @@ class generalized_evp_elpa1: public generalized_evp
               comm_row_(comm_row__), 
               comm_col_(comm_col__)
         {
+            #ifdef _SCALAPACK_
+            block_size_ = linalg<scalapack>::cyclic_block_size();
+            #endif
         }
         
         #ifdef _ELPA_
@@ -1056,11 +1086,10 @@ class generalized_evp_elpa2: public generalized_evp
 
     public:
         
-        generalized_evp_elpa2(int32_t block_size__, int32_t num_ranks_row__, int32_t rank_row__,
+        generalized_evp_elpa2(int32_t num_ranks_row__, int32_t rank_row__,
                               int32_t num_ranks_col__, int32_t rank_col__, int blacs_context__, 
                               MPI_Comm comm_row__, MPI_Comm comm_col__, MPI_Comm comm_all__) 
-            : block_size_(block_size__), 
-              num_ranks_row_(num_ranks_row__), 
+            : num_ranks_row_(num_ranks_row__), 
               rank_row_(rank_row__),
               num_ranks_col_(num_ranks_col__), 
               rank_col_(rank_col__),
@@ -1069,6 +1098,9 @@ class generalized_evp_elpa2: public generalized_evp
               comm_col_(comm_col__), 
               comm_all_(comm_all__)
         {
+            #ifdef _SCALAPACK_
+            block_size_ = linalg<scalapack>::cyclic_block_size();
+            #endif
         }
         
         #ifdef _ELPA_

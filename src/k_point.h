@@ -8,7 +8,7 @@ namespace sirius
 {
 
 /// K-point related variables and methods
-/** \image html wf_storage.png "Wave-function storage" */
+/** \image html wf_storage.png "Wave-function storage" */ // TODO: replace with proper image
 class K_point
 {
     private:
@@ -58,7 +58,9 @@ class K_point
         mdarray<double_complex, 2> fv_states_;
         
         /// first-variational states, distributed over rows and columns of the MPI grid
-        /** Band index is distributed over columns and G+k index is distributed over rows of the MPI grid. */
+        /** Band index is distributed over columns and basis functions index is distributed 
+         *  over rows of the MPI grid. 
+         */
         mdarray<double_complex, 2> fv_states_panel_;
 
         /// two-component (spinor) wave functions describing the bands
@@ -156,7 +158,6 @@ class K_point
         void distribute_block_cyclic();
         
         /// Test orthonormalization of first-variational states
-        /** Important: distribute_fv_states_row() must be called prior to calling this function.*/
         void test_fv_states(int use_fft);
 
         template <index_domain_t index_domain> 
@@ -228,9 +229,6 @@ class K_point
         void generate_fv_states_aw_mt_gpu();
         #endif
 
-        /// Distribute fv states over rows of the MPI grid 
-        void distribute_fv_states_row();
-        
         /// Generate two-component spinor wave functions 
         void generate_spinor_wave_functions();
 
@@ -400,9 +398,11 @@ class K_point
         }
 
         /// Basis size of our electronic structure method.
-        /** In case of full-potential LAPW+lo or PW+lo method the total number of basis functions is equal to the 
-            number of (augmented) plane-waves plus the number of local orbitals. In case of plane-wave pseudopotential
-            method this is just tne number of G+k vectors. */
+        /** In case of full-potential LAPW+lo or PW+lo method the total number of 
+         *  basis functions is equal to the number of (augmented) plane-waves plus the number 
+         *  of local orbitals. In case of plane-wave pseudopotential method this is just the 
+         *  number of G+k vectors. 
+         */
         inline int gklo_basis_size()
         {
             return (int)gklo_basis_descriptors_.size();
@@ -446,7 +446,7 @@ class K_point
 
         /// Local fraction of G+k vectors for a given MPI rank
         /** In case of distributed matrix setup row and column G+k vectors are combined. Row G+k vectors are first.*/
-        inline int num_gkvec_loc()
+        inline int num_gkvec_loc() // TODO: this is probably obosolete
         {
             if (num_gkvec_row() == num_gkvec() && num_gkvec_col() == num_gkvec())
             {
@@ -459,7 +459,7 @@ class K_point
         } 
         
         /// Return the global index of the G+k vector by the local index
-        inline int igkglob(int igkloc) // TODO: change name or change the G+k storage
+        inline int igkglob(int igkloc) // TODO: change name or change the local G+k row+col storage 
         {
             assert(igkloc >= 0 && igkloc < num_gkvec_loc());
 
@@ -551,16 +551,6 @@ class K_point
             return fv_eigen_vectors_panel_;
         }
         
-        //== inline mdarray<double_complex, 2>& fv_states_col()
-        //== {
-        //==     return fv_states_col_;
-        //== }
-        //== 
-        //== inline mdarray<double_complex, 2>& fv_states_row()
-        //== {
-        //==     return fv_states_row_;
-        //== }
-
         inline mdarray<double_complex, 2>& fv_states()
         {
             return fv_states_;
@@ -585,8 +575,7 @@ class K_point
         {
             memcpy(&band_energies_[0], &fv_eigen_values_[0], parameters_.num_fv_states() * sizeof(double));
             sv_eigen_vectors_.zero();
-            splindex<block_cyclic> spl_row(parameters_.num_fv_states(), num_ranks_row_, rank_row_, 
-                                           parameters_.cyclic_block_size());
+            splindex<block_cyclic> spl_row(parameters_.num_fv_states(), num_ranks_row_, rank_row_);
             for (int icol = 0; icol < parameters_.spl_fv_states().local_size(); icol++)
             {
                 int i = parameters_.spl_fv_states(icol);
@@ -633,41 +622,41 @@ class K_point
 }
 
 /** \page basis Basis functions for Kohn-Sham wave-functions expansion
-    
-    \section basis1 LAPW+lo basis
-
-    LAPW+lo basis consists of two different sets of functions: LAPW functions \f$ \varphi_{{\bf G+k}} \f$ defined over 
-    entire unit cell:
-    \f[
-        \varphi_{{\bf G+k}}({\bf r}) = \left\{ \begin{array}{ll}
-        \displaystyle \sum_{L} \sum_{\nu=1}^{O_{\ell}^{\alpha}} a_{L\nu}^{\alpha}({\bf G+k})u_{\ell \nu}^{\alpha}(r) 
-        Y_{\ell m}(\hat {\bf r}) & {\bf r} \in {\rm MT} \alpha \\
-        \displaystyle \frac{1}{\sqrt  \Omega} e^{i({\bf G+k}){\bf r}} & {\bf r} \in {\rm I} \end{array} \right.
-    \f]  
-    and Bloch sums of local orbitals defined inside muffin-tin spheres only:
-    \f[
-        \begin{array}{ll} \displaystyle \varphi_{j{\bf k}}({\bf r})=\sum_{{\bf T}} e^{i{\bf kT}} 
-        \varphi_{j}({\bf r - T}) & {\rm {\bf r} \in MT} \end{array}
-    \f]
-    Each local orbital is composed of radial and angular parts:
-    \f[
-        \varphi_{j}({\bf r}) = \phi_{\ell_j}^{\zeta_j,\alpha_j}(r) Y_{\ell_j m_j}(\hat {\bf r})
-    \f]
-    Radial part of local orbital is defined as a linear combination of radial functions (minimum two radial functions 
-    are required) such that local orbital vanishes at the sphere boundary:
-    \f[
-        \phi_{\ell}^{\zeta, \alpha}(r) = \sum_{p}\gamma_{p}^{\zeta,\alpha} u_{\ell \nu_p}^{\alpha}(r)  
-    \f]
-    
-    Arbitrary number of local orbitals can be introduced for each angular quantum number (this is highlighted by
-    the index \f$ \zeta \f$).
-
-    Radial functions are m-th order (with zero-order being a function itself) energy derivatives of the radial 
-    Schrödinger equation:
-    \f[
-        u_{\ell \nu}^{\alpha}(r) = \frac{\partial^{m_{\nu}}}{\partial^{m_{\nu}}E}u_{\ell}^{\alpha}(r,E)\Big|_{E=E_{\nu}}
-    \f]
-*/
+ *   
+ *  \section basis1 LAPW+lo basis
+ *
+ *  LAPW+lo basis consists of two different sets of functions: LAPW functions \f$ \varphi_{{\bf G+k}} \f$ defined over 
+ *  entire unit cell:
+ *  \f[
+ *      \varphi_{{\bf G+k}}({\bf r}) = \left\{ \begin{array}{ll}
+ *      \displaystyle \sum_{L} \sum_{\nu=1}^{O_{\ell}^{\alpha}} a_{L\nu}^{\alpha}({\bf G+k})u_{\ell \nu}^{\alpha}(r) 
+ *      Y_{\ell m}(\hat {\bf r}) & {\bf r} \in {\rm MT} \alpha \\
+ *      \displaystyle \frac{1}{\sqrt  \Omega} e^{i({\bf G+k}){\bf r}} & {\bf r} \in {\rm I} \end{array} \right.
+ *  \f]  
+ *  and Bloch sums of local orbitals defined inside muffin-tin spheres only:
+ *  \f[
+ *      \begin{array}{ll} \displaystyle \varphi_{j{\bf k}}({\bf r})=\sum_{{\bf T}} e^{i{\bf kT}} 
+ *      \varphi_{j}({\bf r - T}) & {\rm {\bf r} \in MT} \end{array}
+ *  \f]
+ *  Each local orbital is composed of radial and angular parts:
+ *  \f[
+ *      \varphi_{j}({\bf r}) = \phi_{\ell_j}^{\zeta_j,\alpha_j}(r) Y_{\ell_j m_j}(\hat {\bf r})
+ *  \f]
+ *  Radial part of local orbital is defined as a linear combination of radial functions (minimum two radial functions 
+ *  are required) such that local orbital vanishes at the sphere boundary:
+ *  \f[
+ *      \phi_{\ell}^{\zeta, \alpha}(r) = \sum_{p}\gamma_{p}^{\zeta,\alpha} u_{\ell \nu_p}^{\alpha}(r)  
+ *  \f]
+ *  
+ *  Arbitrary number of local orbitals can be introduced for each angular quantum number (this is highlighted by
+ *  the index \f$ \zeta \f$).
+ *
+ *  Radial functions are m-th order (with zero-order being a function itself) energy derivatives of the radial 
+ *  Schrödinger equation:
+ *  \f[
+ *      u_{\ell \nu}^{\alpha}(r) = \frac{\partial^{m_{\nu}}}{\partial^{m_{\nu}}E}u_{\ell}^{\alpha}(r,E)\Big|_{E=E_{\nu}}
+ *  \f]
+ */
 
 #endif // __K_POINT_H__
 

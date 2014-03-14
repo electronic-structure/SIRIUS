@@ -1660,46 +1660,49 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
 
     //== if (parameters_.so_correction()) apply_so_correction(kp->fv_states_col(), hpsi);
 
+
     if (kp->num_ranks() == 1)
     {
 
 
     }
+    // parallel diagonalization
     else
     {
-        splindex<block_cyclic> spl_wf_size_row(fvsz, kp->num_ranks_row(), kp->rank_row(), parameters_.cyclic_block_size());
+        splindex<block_cyclic> spl_wf_size_row(fvsz, kp->num_ranks_row(), kp->rank_row());
 
         mdarray<double_complex, 3> hpsi_panel(spl_wf_size_row.local_size(), nfv, nhpsi);
         
         // change data distribution of hpsi to panels
         for (int n = 0; n < nhpsi; n++)
         {
-            mdarray<double_complex, 2> hpsi_tmp(&hpsi(0, 0, n), fvsz, nfv_loc);
-            mdarray<double_complex, 2> hpsi_panel_tmp(&hpsi_panel(0, 0, n), spl_wf_size_row.local_size(), nfv);
-            kp->scatter_to_panels(nfv, spl_wf_size_row, hpsi_tmp, hpsi_panel_tmp);
+            kp->scatter_to_panels(nfv, spl_wf_size_row, hpsi.submatrix(n), hpsi_panel.submatrix(n));
         }
         hpsi.deallocate(); // we don't need full vectors anymore
 
-
-        /*  Parallel diagonalization of the second-variational Hamiltonian 
-         *  in the case of collinear magnetism. Two consecutive diagonalizations
-         *  are performed for up-up and dn-dn spin blocks. 
-         */
         if (parameters_.num_mag_dims() == 1)
         {
-            splindex<block_cyclic> spl_fv_states_row(parameters_.num_fv_states(), kp->num_ranks_row(), kp->rank_row(), 
-                                                     parameters_.cyclic_block_size());
+            splindex<block_cyclic> spl_fv_states_row(parameters_.num_fv_states(), kp->num_ranks_row(), kp->rank_row());
 
             mdarray<double_complex, 2> h(spl_fv_states_row.local_size(), parameters_.spl_fv_states().local_size());
+
+            // make wrapper for fv_states
+            pmatrix<double_complex> pm_fv_states(fvsz, parameters_.num_fv_states(), kp->fv_states_panel(),
+                                                 parameters_.blacs_context());
             
-            //perform two consecutive diagonalizations
-            for (int ispn = 0; ispn < 2; ispn++)
+            // make wrapper for Hamiltonian
+            pmatrix<double_complex> pm_h(parameters_.num_fv_states(), parameters_.num_fv_states(), h, 
+                                         parameters_.blacs_context());
+            
+            // perform one or two consecutive diagonalizations
+            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
+                pmatrix<double_complex> pm_hpsi(fvsz, parameters_.num_fv_states(), hpsi_panel.submatrix(ispn),
+                                                parameters_.blacs_context());
+
                 // compute <wf_i | (h * wf_j)> for up-up or dn-dn block
                 pblas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, 
-                                 complex_one, kp->fv_states_panel().ptr(), kp->fv_states_panel().ld(), 
-                                 &hpsi_panel(0, 0, ispn), hpsi_panel.ld(), complex_zero, &h(0, 0), h.ld(), 
-                                 parameters_.cyclic_block_size(), parameters_.blacs_context());
+                                 complex_one, pm_fv_states, pm_hpsi, complex_zero, pm_h);
 
                 for (int icol = 0; icol < parameters_.spl_fv_states().local_size(); icol++)
                 {

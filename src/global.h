@@ -129,21 +129,17 @@ class Global
         /// type of the processing unit
         processing_unit_t processing_unit_;
 
-        /// Block-cyclic distribution of the first-variational states along columns of the MPI grid.
-        /** Very important! The number of first-variational states is aligned in such a way that each row or 
-            column MPI rank gets equal row or column fraction of the fv states. This is done in order to have a 
-            simple acces to the fv states when, for example, spin blocks of the second-variational Hamiltonian are
-            constructed. */
+        /// block-cyclic distribution of the first-variational states along columns of the MPI grid
         splindex<block_cyclic> spl_fv_states_;
-
-        /// Block-cyclic distribution of the first-variational states along rows of the MPI grid.
-        //splindex<block_cyclic> spl_fv_states_row_;
         
-        splindex<block_cyclic> spl_spinor_wf_;
-        
-        splindex<block> sub_spl_spinor_wf_;
-
+        /// additional splitting of the first-variational states along rows of the MPI grid
         splindex<block> sub_spl_fv_states_;
+
+        /// block-cyclic distribution of the spinor wave-functions along columns of the MPI grid
+        splindex<block_cyclic> spl_spinor_wf_;
+       
+        /// additional splitting of spinor wave-functions along rows of the MPI grid
+        splindex<block> sub_spl_spinor_wf_;
 
         #ifdef _SCALAPACK_
         /// BLACS communication context for an eigen-value solver and related operations
@@ -207,6 +203,11 @@ class Global
             gettimeofday(&start_time_, NULL); // measure the start time
             read_input(); // read initial data from sirius.json
             unit_cell_ = new Unit_cell(esm_type_); // create new empty unit cell
+
+            #ifdef _SCALAPACK_
+            if (linalg<scalapack>::cyclic_block_size() <= 0) 
+                linalg<scalapack>::set_cyclic_block_size(cyclic_block_size_);
+            #endif
         }
             
         ~Global()
@@ -380,11 +381,6 @@ class Global
         inline MPI_grid& mpi_grid()
         {
             return mpi_grid_;
-        }
-
-        inline int cyclic_block_size()
-        {
-            return cyclic_block_size_;
         }
 
         inline bool initialized()

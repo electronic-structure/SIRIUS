@@ -19,14 +19,12 @@ void K_point::initialize()
         // in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix
         if (parameters_.num_mag_dims() == 3)
         {
-            splindex<block_cyclic> spl_row(parameters_.num_spins() * parameters_.num_fv_states(), num_ranks_row_, rank_row_, 
-                                           parameters_.cyclic_block_size());
+            splindex<block_cyclic> spl_row(parameters_.num_spins() * parameters_.num_fv_states(), num_ranks_row_, rank_row_);
             sv_eigen_vectors_.set_dimensions(spl_row.local_size(), parameters_.spl_spinor_wf().local_size(), 1);
         }
         else
         {
-            splindex<block_cyclic> spl_row(parameters_.num_fv_states(), num_ranks_row_, rank_row_, 
-                                           parameters_.cyclic_block_size());
+            splindex<block_cyclic> spl_row(parameters_.num_fv_states(), num_ranks_row_, rank_row_);
             sv_eigen_vectors_.set_dimensions(spl_row.local_size(), parameters_.spl_fv_states().local_size(), 2);
         }
         sv_eigen_vectors_.allocate();
@@ -112,10 +110,10 @@ void K_point::update()
                 gsl_sf_bessel_jl_array(parameters_.lmax_apw() + 1, gkR, &sbessel_mt(0, 0));
                 
                 /* Bessel function derivative: f_{{n}}^{{\prime}}(z)=-f_{{n+1}}(z)+(n/z)f_{{n}}(z)
-                
+                 *
                  * In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,1}]]
                  * Out[]= (n SphericalBesselJ[n,a x])/x-a SphericalBesselJ[1+n,a x]
-                
+                 *
                  * In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,2}]]
                  * Out[]= (((-1+n) n-a^2 x^2) SphericalBesselJ[n,a x]+2 a x SphericalBesselJ[1+n,a x])/x^2
                  */
@@ -244,11 +242,7 @@ void K_point::update()
             fv_eigen_vectors_panel_.allocate();
         }
         
-        // allocate memory for first-variational states
-        //fv_states_col_.set_dimensions(wf_size(), parameters_.spl_fv_states_col().local_size());
-        //fv_states_col_.allocate();
-
-        splindex<block_cyclic> spl_wf_size(wf_size(), num_ranks_row_, rank_row_, parameters_.cyclic_block_size());
+        splindex<block_cyclic> spl_wf_size(wf_size(), num_ranks_row_, rank_row_);
 
         fv_states_panel_.set_dimensions(spl_wf_size.local_size(), parameters_.spl_fv_states().local_size());
         fv_states_panel_.allocate();
@@ -268,17 +262,6 @@ void K_point::update()
             //==     if (rank == rank_col_) fv_states_col_(i, iloc) = 1.0; 
             //== }
         }
-        
-        //== if (num_ranks() == 1)
-        //== {
-        //==     fv_states_row_.set_dimensions(wf_size(), parameters_.num_fv_states());
-        //==     fv_states_row_.set_ptr(fv_states_col_.ptr());
-        //== }
-        //== else
-        //== {
-        //==     fv_states_row_.set_dimensions(wf_size(), parameters_.spl_fv_states_row().local_size());
-        //==     fv_states_row_.allocate();
-        //== }
         
         if (parameters_.need_sv())
         {
@@ -302,9 +285,9 @@ void K_point::update()
 
 /// First order matching coefficients, conjugated
 /** It is more convenient to store conjugated coefficients because then the overlap matrix is set with 
-    single matrix-matrix multiplication without further conjugation.
-    \todo (l,m) -> lm++;
-*/
+ *  single matrix-matrix multiplication without further conjugation.
+ *  \todo (l,m) -> lm++;
+ */
 template<> 
 void K_point::generate_matching_coefficients_l<1, true>(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
                                                         mdarray<double, 2>& A, mdarray<double_complex, 2>& alm)
@@ -564,8 +547,7 @@ void K_point::generate_matching_coefficients(int num_gkvec_loc, mdarray<double_c
 {
     Timer t("sirius::K_point::generate_matching_coefficients_panel");
 
-    splindex<block_cyclic> spl_mt_basis(parameters_.unit_cell()->mt_aw_basis_size(), num_ranks_col_, rank_col_, 
-                                        parameters_.cyclic_block_size());
+    splindex<block_cyclic> spl_mt_basis(parameters_.unit_cell()->mt_aw_basis_size(), num_ranks_col_, rank_col_);
 
     mdarray<double, 2> A(3, 3);
     for (int i = 0; i < spl_mt_basis.local_size(); i++)
@@ -697,9 +679,9 @@ void K_point::gather_from_panels(int size_col, splindex<block_cyclic>& spl_row, 
         }
     }
 }
+
 void K_point::scatter_to_panels(int size_col, splindex<block_cyclic>& spl_row, mdarray<double_complex, 2>& full_vectors, 
                                 mdarray<double_complex, 2>& panel)
-
 {
     Timer t("sirius::K_point::scatter_to_panels");
 
@@ -834,28 +816,38 @@ void K_point::generate_fv_states()
         // total number of augmented-wave basis functions over all atoms
         int naw = parameters_.unit_cell()->mt_aw_basis_size();
 
-        // block size for pblas/scalapack
-        int bs = parameters_.cyclic_block_size();
+        splindex<block_cyclic> spl_mt_aw_basis_col(naw, num_ranks_col(), rank_col());
 
-        splindex<block_cyclic> spl_mt_aw_basis_col(naw, num_ranks_col(), rank_col(), bs);
+        splindex<block_cyclic> spl_mt_aw_basis_row(naw, num_ranks_row(), rank_row());
 
-        splindex<block_cyclic> spl_mt_aw_basis_row(naw, num_ranks_row(), rank_row(), bs);
-
-        mdarray<double_complex, 2> alm(num_gkvec_row(), spl_mt_aw_basis_col.local_size());
+        mdarray<double_complex, 2> alm_panel(num_gkvec_row(), spl_mt_aw_basis_col.local_size());
         // generate panel of matching coefficients
-        generate_matching_coefficients(num_gkvec_row(), alm);
+        generate_matching_coefficients(num_gkvec_row(), alm_panel);
+
+        // make wrapper for alm coefficients
+        pmatrix<double_complex> pm_alm(num_gkvec(), naw, alm_panel, parameters_.blacs_context());
+
+        // make wrapper for first-variational eigen vectors
+        pmatrix<double_complex> pm_fv_evec(num_gkvec(), parameters_.num_fv_states(), fv_eigen_vectors_panel_, 
+                                           parameters_.blacs_context());
 
         mdarray<double_complex, 2> aw_coefs_panel(spl_mt_aw_basis_row.local_size(), nfv);
+        // make wrapper for aw coefficients
+        pmatrix<double_complex> pm_aw_coefs(naw, parameters_.num_fv_states(), aw_coefs_panel, 
+                                            parameters_.blacs_context());
+
         // gnerate aw expansion coefficients
-        pblas<cpu>::gemm(1, 0, naw, parameters_.num_fv_states(), num_gkvec(), complex_one, 
-                         alm.ptr(), alm.ld(), fv_eigen_vectors_panel_.ptr(), fv_eigen_vectors_panel_.ld(), 
-                         complex_zero, aw_coefs_panel.ptr(), aw_coefs_panel.ld(), bs, 
-                         parameters_.blacs_context()); 
-        alm.deallocate(); // we don't need alm any more
+        pblas<cpu>::gemm(1, 0, naw, parameters_.num_fv_states(), num_gkvec(), complex_one, pm_alm, pm_fv_evec, 
+                         complex_zero, pm_aw_coefs); 
+        alm_panel.deallocate(); // we don't need alm any more
 
-
-        splindex<block_cyclic> spl_gklo_row(gklo_basis_size(), num_ranks_row(), rank_row(), bs);
-
+        splindex<block_cyclic> spl_gklo_row(gklo_basis_size(), num_ranks_row(), rank_row());
+        
+        /* We have a panel of aw coefficients and a panel of 
+         * first-variational eigen-vectors. We need to collect
+         * them as whole vectors and setup aw, lo and G+k parts
+         * of first-variational states.
+         */
         mdarray<double_complex, 2> fv_eigen_vectors(gklo_basis_size(), nfv_loc);
         // gather full first-variational eigen-vector array
         gather_from_panels(nfv, spl_gklo_row, fv_eigen_vectors_panel_, fv_eigen_vectors);
@@ -886,7 +878,7 @@ void K_point::generate_fv_states()
             }
         }
 
-        splindex<block_cyclic> spl_wf_size_row(wf_size(), num_ranks_row(), rank_row(), bs);
+        splindex<block_cyclic> spl_wf_size_row(wf_size(), num_ranks_row(), rank_row());
 
         scatter_to_panels(nfv, spl_wf_size_row, fv_states_, fv_states_panel_);
     }
@@ -931,15 +923,13 @@ void K_point::generate_spinor_wave_functions()
         // parallel version
         else
         {
-            splindex<block_cyclic> spl_wf_size_row(wf_size(), num_ranks_row(), rank_row(), parameters_.cyclic_block_size());
+            splindex<block_cyclic> spl_wf_size_row(wf_size(), num_ranks_row(), rank_row());
 
             mdarray<double_complex, 2> spinor_wave_functions_panel_(spl_wf_size_row.local_size(), 
                                                                     parameters_.spl_spinor_wf().local_size());
-
             
             // create wrapper for distributed first-variational statetes
-            pmatrix<double_complex> pm_fv_states(wf_size(), nfv, fv_states_panel_, parameters_.cyclic_block_size(), 
-                                                 parameters_.blacs_context());
+            pmatrix<double_complex> pm_fv_states(wf_size(), nfv, fv_states_panel_, parameters_.blacs_context());
 
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
@@ -949,13 +939,11 @@ void K_point::generate_spinor_wave_functions()
                 {
                     // create wrapper for distributed second-variational eigen-vectors
                     pmatrix<double_complex> pm_sv_evec(nfv, nfv, sv_eigen_vectors_.submatrix(ispn), 
-                                                       parameters_.cyclic_block_size(), 
                                                        parameters_.blacs_context());
                                                                 
                     // create wrapper for spinor wave-functions
                     pmatrix<double_complex> pm_spinor_wf(wf_size(), parameters_.num_bands(),
                                                          spinor_wave_functions_panel_,
-                                                         parameters_.cyclic_block_size(),
                                                          parameters_.blacs_context());
 
                     // multiply up block for first half of the bands, dn block for second half of the bands
@@ -963,21 +951,19 @@ void K_point::generate_spinor_wave_functions()
                                      pm_sv_evec, 0, 0, complex_zero, pm_spinor_wf, 0, ispn * nfv);
                     
                 }
-                //== else
-                //== {
+                else
+                {
+                    stop_here
                 //==     // multiply up block and then dn block for all bands
                 //==     blas<cpu>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states_.ptr(), fv_states_.ld(), 
                 //==                     &sv_eigen_vectors_(ispn * nfv, 0, 0), sv_eigen_vectors_.ld(), 
                 //==                     &spinor_wave_functions_(0, 0, ispn), spinor_wave_functions_.ld());
-                //== }
-
+                }
 
                 gather_from_panels(parameters_.spl_spinor_wf().local_size(), spl_wf_size_row, 
                                    spinor_wave_functions_panel_, spinor_wave_functions_.submatrix(ispn));
             }
         }
-
-
     }
     else
     {
@@ -1242,19 +1228,19 @@ void K_point::build_apwlo_basis_descriptors()
 void K_point::distribute_block_cyclic()
 {
     // distribute APW+lo basis between rows
-    splindex<block_cyclic> spl_row(gklo_basis_size(), num_ranks_row_, rank_row_, parameters_.cyclic_block_size());
+    splindex<block_cyclic> spl_row(gklo_basis_size(), num_ranks_row_, rank_row_);
     gklo_basis_descriptors_row_.resize(spl_row.local_size());
     for (int i = 0; i < spl_row.local_size(); i++)
         gklo_basis_descriptors_row_[i] = gklo_basis_descriptors_[spl_row[i]];
 
     // distribute APW+lo basis between columns
-    splindex<block_cyclic> spl_col(gklo_basis_size(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());
+    splindex<block_cyclic> spl_col(gklo_basis_size(), num_ranks_col_, rank_col_);
     gklo_basis_descriptors_col_.resize(spl_col.local_size());
     for (int i = 0; i < spl_col.local_size(); i++)
         gklo_basis_descriptors_col_[i] = gklo_basis_descriptors_[spl_col[i]];
     
     #ifdef _SCALAPACK_
-    int bs = parameters_.cyclic_block_size();
+    int bs = linalg<scalapack>::cyclic_block_size();
     int nr = linalg<scalapack>::numroc(gklo_basis_size(), bs, rank_row(), 0, num_ranks_row());
     
     if (nr != gklo_basis_size_row()) error_local(__FILE__, __LINE__, "numroc returned a different local row size");
@@ -1862,28 +1848,6 @@ void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
     //== 
     //== Platform::allreduce(sv_evec.ptr(), (int)sv_evec.size(), 
     //==                     parameters_.mpi_grid().communicator((1 << _dim_row_) | (1 << _dim_col_)));
-}
-
-void K_point::distribute_fv_states_row()
-{
-    if (num_ranks_ == 1) return;
-
-    stop_here
-
-    //== for (int i = 0; i < parameters_.spl_fv_states_row().local_size(); i++)
-    //== {
-    //==     int ist = parameters_.spl_fv_states_row(i);
-    //==     
-    //==     // find local column index of fv state
-    //==     int offset_col = parameters_.spl_fv_states_col().location(_splindex_offs_, ist);
-    //==     int root_col = parameters_.spl_fv_states_col().location(_splindex_rank_, ist);
-    //==     
-    //==     // find column MPI rank which stores this fv state and copy fv state if this rank stores it
-    //==     if (rank_col() == root_col) memcpy(&fv_states_row_(0, i), &fv_states_col_(0, offset_col), wf_size() * sizeof(double_complex));
-    //==     
-    //==     // send fv state to all column MPI ranks; communication happens between the columns of the MPI grid
-    //==     Platform::bcast(&fv_states_row_(0, i), wf_size(), parameters_.mpi_grid().communicator(1 << _dim_col_), root_col); 
-    //== }
 }
 
 }

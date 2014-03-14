@@ -23,9 +23,9 @@
 #define __SPLINDEX_H__
 
 /** \file splindex.h
-    
-    \brief Contains definition of splindex_base and splindex_iterator classes.
-*/
+ *   
+ *  \brief Contains definition of splindex_base and splindex_iterator classes.
+ */
 
 const int _splindex_offs_ = 0;
 const int _splindex_rank_ = 1;
@@ -39,7 +39,7 @@ class splindex_base
         splindex_base(const splindex_base& src);
 
         /// forbid assigment operator
-        splindex_base& operator=(const splindex_base& src);
+        //== splindex_base& operator=(const splindex_base& src);
     
     protected:
         
@@ -74,18 +74,18 @@ class splindex: public splindex_base
 
 /// Iterator for split index.
 /** Split index iterator is introduced to simplify the loop over local part of global index.
-
-    Example:
-    \code{.cpp}
-        splindex<block> spl(17, Platform::num_mpi_ranks(), Platform::mpi_rank());
-        #pragma omp parallel
-        for (auto it = splindex_iterator<block>(spl); it.valid(); it++)
-        {
-            printf("thread_id: %i, local index : %i, global index : %i\n", 
-                   Platform::thread_id(), it.idx_local(), it.idx());
-        }
-    \endcode
-*/ 
+ *
+ *  Example:
+ *  \code{.cpp}
+ *      splindex<block> spl(17, Platform::num_mpi_ranks(), Platform::mpi_rank());
+ *      #pragma omp parallel
+ *      for (auto it = splindex_iterator<block>(spl); it.valid(); it++)
+ *      {
+ *          printf("thread_id: %i, local index : %i, global index : %i\n", 
+ *                 Platform::thread_id(), it.idx_local(), it.idx());
+ *      }
+ *  \endcode
+ */ 
 template <splindex_t type> 
 class splindex_iterator
 {
@@ -123,8 +123,9 @@ class splindex_iterator
         }
 
         /// Update the global index and check if it is valid.
-        /** Global index is updated using the current value of the local index. Return true if the index is valid,
-            otherwise return false. */
+        /** Global index is updated using the current value of the local index. 
+         *  Return true if the index is valid, otherwise return false. 
+         */
         inline bool valid()
         {
             if (idx_local_ >= splindex_.local_size()) return false;

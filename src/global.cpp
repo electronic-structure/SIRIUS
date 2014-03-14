@@ -224,7 +224,7 @@ void Global::initialize()
         }
         case ev_scalapack:
         {
-            std_evp_solver_ = new standard_evp_scalapack(cyclic_block_size(), nrow, ncol, blacs_context_); 
+            std_evp_solver_ = new standard_evp_scalapack(nrow, ncol, blacs_context_); 
             break;
         }
         case ev_plasma:
@@ -248,19 +248,19 @@ void Global::initialize()
         }
         case ev_scalapack:
         {
-            gen_evp_solver_ = new generalized_evp_scalapack(cyclic_block_size(), nrow, ncol, blacs_context_, -1.0);
+            gen_evp_solver_ = new generalized_evp_scalapack(nrow, ncol, blacs_context_, -1.0);
             break;
         }
         case ev_elpa1:
         {
-            gen_evp_solver_ = new generalized_evp_elpa1(cyclic_block_size(), nrow, irow, ncol, icol, blacs_context_, 
+            gen_evp_solver_ = new generalized_evp_elpa1(nrow, irow, ncol, icol, blacs_context_, 
                                                         mpi_grid().communicator(1 << _dim_row_),
                                                         mpi_grid().communicator(1 << _dim_col_));
             break;
         }
         case ev_elpa2:
         {
-            gen_evp_solver_ = new generalized_evp_elpa2(cyclic_block_size(), nrow, irow, ncol, icol, blacs_context_, 
+            gen_evp_solver_ = new generalized_evp_elpa2(nrow, irow, ncol, icol, blacs_context_, 
                                                         mpi_grid().communicator(1 << _dim_row_),
                                                         mpi_grid().communicator(1 << _dim_col_),
                                                         mpi_grid().communicator(1 << _dim_col_ | 1 << _dim_row_));
@@ -273,7 +273,7 @@ void Global::initialize()
         }
         case ev_rs_gpu:
         {
-            gen_evp_solver_ = new generalized_evp_gpu(cyclic_block_size(), nrow, irow, ncol, icol, blacs_context_);
+            gen_evp_solver_ = new generalized_evp_gpu(nrow, irow, ncol, icol, blacs_context_);
             break;
         }
         default:
@@ -285,46 +285,19 @@ void Global::initialize()
     if (std_evp_solver_->parallel() != gen_evp_solver_->parallel())
         error_global(__FILE__, __LINE__, "both eigen-value solvers must be serial or parallel");
 
-    if (gen_evp_solver_->parallel())
-    {
-        // TODO: aligment of fv_states is too restrictive and should be removed; 
-        //       code must be able to work with arbitrary number of fv_states
-        int n = num_fv_states_ / (ncol * cyclic_block_size()) + 
-                std::min(1, num_fv_states_ % (ncol * cyclic_block_size()));
-
-        while ((n * ncol) % nrow) n++;
-        
-        num_fv_states_ = n * ncol * cyclic_block_size();
-    }
-
+    /// total number of bands
     num_bands_ = num_fv_states_ * num_spins_;
 
     // distribue first-variational states along columns
-    spl_fv_states_.split(num_fv_states(), ncol, icol, cyclic_block_size());
-
-    // distribue first-variational states along rows
-    //== spl_fv_states_row_.split(num_fv_states(), nrow, irow, cyclic_block_size());
+    spl_fv_states_ = splindex<block_cyclic>(num_fv_states(), ncol, icol);
 
     // distribue spinor wave-functions along columns
-    spl_spinor_wf_.split(num_bands(), ncol, icol, cyclic_block_size());
+    spl_spinor_wf_ = splindex<block_cyclic>(num_bands(), ncol, icol);
     
     // additionally split along rows 
-    sub_spl_spinor_wf_.split(spl_spinor_wf_.local_size(), nrow, irow);
+    sub_spl_spinor_wf_ = splindex<block>(spl_spinor_wf_.local_size(), nrow, irow);
     
-    sub_spl_fv_states_.split(spl_fv_states().local_size(), nrow, irow);
-
-    // check if the distribution of fv states is consistent with the distribtion of spinor wave functions
-    for (int ispn = 0; ispn < num_spins(); ispn++)
-    {
-        for (int i = 0; i < spl_fv_states_.local_size(); i++)
-        {
-            if (spl_spinor_wf_[i + ispn * spl_fv_states_.local_size()] != 
-                spl_fv_states_[i] + ispn * num_fv_states())
-            {
-                error_local(__FILE__, __LINE__, "Wrong distribution of wave-functions");
-            }
-        }
-    }
+    sub_spl_fv_states_ = splindex<block>(spl_fv_states().local_size(), nrow, irow);
 
     //== if (verbosity_level >= 3 && Platform::mpi_rank() == 0 && nrow * ncol > 1)
     //== {
@@ -440,21 +413,28 @@ void Global::print_info()
                 printf("LAPACK\n");
                 break;
             }
+            #ifdef _SCALAPACK_
             case ev_scalapack:
             {
-                printf("ScaLAPACK, block size %i\n", cyclic_block_size());
+                printf("ScaLAPACK, block size %i\n", linalg<scalapack>::cyclic_block_size());
                 break;
             }
             case ev_elpa1:
             {
-                printf("ELPA1, block size %i\n", cyclic_block_size());
+                printf("ELPA1, block size %i\n", linalg<scalapack>::cyclic_block_size());
                 break;
             }
             case ev_elpa2:
             {
-                printf("ELPA2, block size %i\n", cyclic_block_size());
+                printf("ELPA2, block size %i\n", linalg<scalapack>::cyclic_block_size());
                 break;
             }
+            case ev_rs_gpu:
+            {
+                printf("RS_gpu\n");
+                break;
+            }
+            #endif
             case ev_magma:
             {
                 printf("MAGMA\n");
@@ -465,10 +445,9 @@ void Global::print_info()
                 printf("PLASMA\n");
                 break;
             }
-            case ev_rs_gpu:
+            default:
             {
-                printf("RS_gpu\n");
-                break;
+                error_local(__FILE__, __LINE__, "wrong eigen-value solver");
             }
         }
     }
@@ -503,7 +482,7 @@ void Global::write_json_output()
         jw.single("num_ranks", Platform::num_mpi_ranks());
         jw.single("max_num_threads", Platform::max_num_threads());
         jw.single("num_fft_threads", Platform::num_fft_threads());
-        jw.single("cyclic_block_size", cyclic_block_size());
+        jw.single("cyclic_block_size", cyclic_block_size_);
         jw.single("mpi_grid", mpi_grid_dims_);
         std::vector<int> fftgrid(3);
         for (int i = 0; i < 3; i++) fftgrid[i] = reciprocal_lattice_->fft()->size(i);

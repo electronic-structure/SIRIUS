@@ -80,32 +80,36 @@ void blas<gpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 #endif
 
 #ifdef _SCALAPACK_
-template<> 
-void pblas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
-                                      double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double_complex beta, 
-                                      double_complex* c, int32_t ldc, int block_size, int blacs_context)
-{
-    const char *trans[] = {"N", "T", "C"};
-    int nrow_a = (transa == 0) ? m : k;
-    int ncol_a = (transa == 0) ? k : m;
-    int nrow_b = (transb == 0) ? k : n;
-    int ncol_b = (transb == 0) ? n : k;
-    int nrow_c = m;
-    int ncol_c = n;
+int linalg<scalapack>::cyclic_block_size_ = -1;
 
-    int desca[9];
-    linalg<scalapack>::descinit(desca, nrow_a, ncol_a, block_size, block_size, 0, 0, blacs_context, lda);
-    
-    int descb[9];
-    linalg<scalapack>::descinit(descb, nrow_b, ncol_b, block_size, block_size, 0, 0, blacs_context, ldb);
-    
-    int descc[9];
-    linalg<scalapack>::descinit(descc, nrow_c, ncol_c, block_size, block_size, 0, 0, blacs_context, ldc);
-
-    int32_t ione = 1;
-    FORTRAN(pzgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &ione, &ione, desca, b, &ione, &ione, descb,
-                    &beta, c, &ione, &ione, descc, 1, 1);
-}
+//== template<> 
+//== void pblas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
+//==                                       double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double_complex beta, 
+//==                                       double_complex* c, int32_t ldc, int blacs_context)
+//== {
+//==     const char *trans[] = {"N", "T", "C"};
+//==     int nrow_a = (transa == 0) ? m : k;
+//==     int ncol_a = (transa == 0) ? k : m;
+//==     int nrow_b = (transb == 0) ? k : n;
+//==     int ncol_b = (transb == 0) ? n : k;
+//==     int nrow_c = m;
+//==     int ncol_c = n;
+//== 
+//==     int block_size = linalg<scalapack>::cyclic_block_size();
+//== 
+//==     int desca[9];
+//==     linalg<scalapack>::descinit(desca, nrow_a, ncol_a, block_size, block_size, 0, 0, blacs_context, lda);
+//==     
+//==     int descb[9];
+//==     linalg<scalapack>::descinit(descb, nrow_b, ncol_b, block_size, block_size, 0, 0, blacs_context, ldb);
+//==     
+//==     int descc[9];
+//==     linalg<scalapack>::descinit(descc, nrow_c, ncol_c, block_size, block_size, 0, 0, blacs_context, ldc);
+//== 
+//==     int32_t ione = 1;
+//==     FORTRAN(pzgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &ione, &ione, desca, b, &ione, &ione, descb,
+//==                     &beta, c, &ione, &ione, descc, 1, 1);
+//== }
 
 template<> 
 void pblas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
@@ -121,6 +125,15 @@ void pblas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t
     FORTRAN(pzgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a.ptr(), &ia, &ja, a.descriptor(), 
                     b.ptr(), &ib, &jb, b.descriptor(), &beta, c.ptr(), &ic, &jc, c.descriptor(), 1, 1);
 }
+
+template<> 
+void pblas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
+                                      pmatrix<double_complex>& a, pmatrix<double_complex>& b, double_complex beta, 
+                                      pmatrix<double_complex>& c)
+{
+    pblas<cpu>::gemm<double_complex>(transa, transb, m, n, k, alpha, a, 0, 0, b, 0, 0, beta, c, 0, 0);
+}
+
 #endif
 
 
