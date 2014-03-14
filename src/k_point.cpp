@@ -549,33 +549,71 @@ void K_point::generate_matching_coefficients(int num_gkvec_loc, mdarray<double_c
 
     splindex<block_cyclic> spl_mt_basis(parameters_.unit_cell()->mt_aw_basis_size(), num_ranks_col_, rank_col_);
 
-    mdarray<double, 2> A(3, 3);
-    for (int i = 0; i < spl_mt_basis.local_size(); i++)
+    #pragma omp parallel
     {
-        int j = spl_mt_basis[i];
-        int ia = parameters_.unit_cell()->mt_aw_basis_descriptor(j).ia;
-        int xi = parameters_.unit_cell()->mt_aw_basis_descriptor(j).xi;
-        Atom* atom = parameters_.unit_cell()->atom(ia);
-        Atom_type* type = atom->type();
-        int iat = type->id();
-        int l = type->indexb(xi).l;
-        int lm = type->indexb(xi).lm;
-
-        int num_aw = (int)type->aw_descriptor(l).size();
-
-        for (int order = 0; order < num_aw; order++)
+        mdarray<double, 2> A(3, 3);
+        #pragma omp for
+        for (int i = 0; i < spl_mt_basis.local_size(); i++)
         {
-            for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
-        }
-    
-        A(0, 0) = 1.0 / A(0, 0);
+            int j = spl_mt_basis[i];
+            int ia = parameters_.unit_cell()->mt_aw_basis_descriptor(j).ia;
+            int xi = parameters_.unit_cell()->mt_aw_basis_descriptor(j).xi;
+            Atom* atom = parameters_.unit_cell()->atom(ia);
+            Atom_type* type = atom->type();
+            int iat = type->id();
+            int l = type->indexb(xi).l;
+            int lm = type->indexb(xi).lm;
+            int order = type->indexb(xi).order; 
 
-        double_complex zt;
-        for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
-        {
-            zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat) * A(0, 0);
+            int num_aw = (int)type->aw_descriptor(l).size();
 
-            alm(igkloc, i) = conj(gkvec_ylm_(lm, igkloc)) * zt;
+            for (int order = 0; order < num_aw; order++)
+            {
+                for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
+            }
+            
+            switch (num_aw)
+            {
+                case 1:
+                {
+                    A(0, 0) = 1.0 / A(0, 0);
+
+                    double_complex zt;
+                    for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
+                    {
+                        zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat) * A(0, 0);
+
+                        alm(igkloc, i) = conj(gkvec_ylm_(lm, igkloc)) * zt;
+                    }
+                    break;
+                }
+                case 2:
+                {
+                    double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
+                    std::swap(A(0, 0), A(1, 1));
+                    A(0, 0) /= det;
+                    A(1, 1) /= det;
+                    A(0, 1) = -A(0, 1) / det;
+                    A(1, 0) = -A(1, 0) / det;
+                    
+                    double_complex zt[2];
+                    double_complex zb;
+                    for (int igkloc = 0; igkloc < num_gkvec_loc; igkloc++)
+                    {
+                        zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat);
+                        zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(1, igkloc, l, iat);
+
+                        zb = A(order, 0) * zt[0] + A(order, 1) * zt[1];
+
+                        alm(igkloc, i) = conj(gkvec_ylm_(lm, igkloc)) * zb;
+                    }
+
+                }
+                default:
+                {
+                    stop_here
+                }
+            }
         }
     }
 }
