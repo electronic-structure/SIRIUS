@@ -36,15 +36,15 @@ class K_point
         /// first-variational eigen values
         std::vector<double> fv_eigen_values_;
 
-        /// first-variational eigen vectors
-        mdarray<double_complex, 2> fv_eigen_vectors_panel_;
+        /// first-variational eigen vectors, distributed over rows and columns of the MPI grid
+        dmatrix<double_complex> fv_eigen_vectors_panel_;
         
         /// second-variational eigen vectors
         /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
          *  case of non-magnetic or collinear magnetic case or as a single \f$ 2 N_{fv} \times 2 N_{fv} \f$ 
          *  matrix in case of general non-collinear magnetism.
          */
-        mdarray<double_complex, 3> sv_eigen_vectors_;
+        dmatrix<double_complex> sv_eigen_vectors_[2];
 
         /// full-diagonalization eigen vectors
         mdarray<double_complex, 2> fd_eigen_vectors_;
@@ -61,7 +61,7 @@ class K_point
         /** Band index is distributed over columns and basis functions index is distributed 
          *  over rows of the MPI grid. 
          */
-        mdarray<double_complex, 2> fv_states_panel_;
+        dmatrix<double_complex> fv_states_panel_;
 
         /// two-component (spinor) wave functions describing the bands
         mdarray<double_complex, 3> spinor_wave_functions_;
@@ -206,21 +206,15 @@ class K_point
 
         /// Generate plane-wave matching coefficents for the radial solutions 
         /** At some point we need to compute the radial derivatives of the spherical Bessel functions at the 
-            muffin-tin boundary. The following formula is used:
-            \f[
-                j_{{n}}^{{\prime}}(z)=-j_{{n+1}}(z)+(n/z)j_{{n}}(z)
-            \f]
-        */
+         *  muffin-tin boundary. The following formula is used:
+         *  \f[
+         *      j_{{n}}^{{\prime}}(z)=-j_{{n+1}}(z)+(n/z)j_{{n}}(z)
+         *  \f]
+         */
         template <bool conjugate>
         void generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm);
         
-        void generate_matching_coefficients(int num_gkvec_loc, mdarray<double_complex, 2>& alm);
-
-        void gather_from_panels(int size_col, splindex<block_cyclic>& spl_row, mdarray<double_complex, 2>& panel, 
-                                mdarray<double_complex, 2>& full_vectors); 
-        
-        void scatter_to_panels(int size_col, splindex<block_cyclic>& spl_row, mdarray<double_complex, 2>& full_vectors, 
-                               mdarray<double_complex, 2>& panel);
+        void generate_matching_coefficients(int num_gkvec_loc, dmatrix<double_complex>& alm);
 
         /// Generate first-variational states from eigen-vectors
         void generate_fv_states();
@@ -546,7 +540,7 @@ class K_point
             return atom_lo_rows_[ia][i];
         }
 
-        inline mdarray<double_complex, 2>& fv_eigen_vectors_panel()
+        inline dmatrix<double_complex>& fv_eigen_vectors_panel()
         {
             return fv_eigen_vectors_panel_;
         }
@@ -556,14 +550,14 @@ class K_point
             return fv_states_;
         }
 
-        inline mdarray<double_complex, 2>& fv_states_panel()
+        inline dmatrix<double_complex>& fv_states_panel()
         {
             return fv_states_panel_;
         }
 
-        inline mdarray<double_complex, 3>& sv_eigen_vectors()
+        inline dmatrix<double_complex>& sv_eigen_vectors(int ispn)
         {
-            return sv_eigen_vectors_;
+            return sv_eigen_vectors_[ispn];
         }
         
         inline mdarray<double_complex, 2>& fd_eigen_vectors()
@@ -574,16 +568,8 @@ class K_point
         void bypass_sv()
         {
             memcpy(&band_energies_[0], &fv_eigen_values_[0], parameters_.num_fv_states() * sizeof(double));
-            sv_eigen_vectors_.zero();
-            splindex<block_cyclic> spl_row(parameters_.num_fv_states(), num_ranks_row_, rank_row_);
-            for (int icol = 0; icol < parameters_.spl_fv_states().local_size(); icol++)
-            {
-                int i = parameters_.spl_fv_states(icol);
-                for (int irow = 0; irow < spl_row.local_size(); irow++)
-                {
-                    if (spl_row[irow] == i) sv_eigen_vectors_(irow, icol, 0) = double_complex(1, 0);
-                }
-            }
+            sv_eigen_vectors_[0].zero();
+            for (int i = 0; i < parameters_.num_fv_states(); i++) sv_eigen_vectors_[0].set(i, i, complex_one);
         }
 
         std::vector<double> get_pw_ekin()

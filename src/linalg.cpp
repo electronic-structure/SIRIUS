@@ -113,9 +113,9 @@ int linalg<scalapack>::cyclic_block_size_ = -1;
 
 template<> 
 void pblas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
-                                      pmatrix<double_complex>& a, int32_t ia, int32_t ja,
-                                      pmatrix<double_complex>& b, int32_t ib, int32_t jb, double_complex beta, 
-                                      pmatrix<double_complex>& c, int32_t ic, int32_t jc)
+                                      dmatrix<double_complex>& a, int32_t ia, int32_t ja,
+                                      dmatrix<double_complex>& b, int32_t ib, int32_t jb, double_complex beta, 
+                                      dmatrix<double_complex>& c, int32_t ic, int32_t jc)
 {
     const char *trans[] = {"N", "T", "C"};
 
@@ -128,8 +128,8 @@ void pblas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t
 
 template<> 
 void pblas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
-                                      pmatrix<double_complex>& a, pmatrix<double_complex>& b, double_complex beta, 
-                                      pmatrix<double_complex>& c)
+                                      dmatrix<double_complex>& a, dmatrix<double_complex>& b, double_complex beta, 
+                                      dmatrix<double_complex>& c)
 {
     pblas<cpu>::gemm<double_complex>(transa, transb, m, n, k, alpha, a, 0, 0, b, 0, 0, beta, c, 0, 0);
 }

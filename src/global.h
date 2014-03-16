@@ -141,10 +141,8 @@ class Global
         /// additional splitting of spinor wave-functions along rows of the MPI grid
         splindex<block> sub_spl_spinor_wf_;
 
-        #ifdef _SCALAPACK_
         /// BLACS communication context for an eigen-value solver and related operations
         int blacs_context_;
-        #endif
         
         /// smearing function width
         double smearing_width_;
@@ -191,9 +189,7 @@ class Global
               #else
               processing_unit_(cpu),
               #endif
-              #ifdef _SCALAPACK_
               blacs_context_(-1),
-              #endif
               smearing_width_(0.001), 
               esm_type_(full_potential_lapwlo),
               step_function_(NULL),
@@ -207,6 +203,8 @@ class Global
             #ifdef _SCALAPACK_
             if (linalg<scalapack>::cyclic_block_size() <= 0) 
                 linalg<scalapack>::set_cyclic_block_size(cyclic_block_size_);
+
+            splindex<block_cyclic>::set_cyclic_block_size(linalg<scalapack>::cyclic_block_size());
             #endif
         }
             
@@ -470,11 +468,7 @@ class Global
        
         inline int blacs_context()
         {
-            #ifdef _SCALAPACK_
             return blacs_context_;
-            #else
-            return -1;
-            #endif
         }
 
         inline electronic_structure_method_t esm_type()

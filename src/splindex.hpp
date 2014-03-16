@@ -24,8 +24,6 @@
  *  \brief Contains splindex template class specialization for block and block-cyclic data distributions.
  */
 
-#include "linalg.h"
-
 /// Specialization for the block distribution.
 template<> 
 class splindex<block>: public splindex_base
@@ -168,6 +166,8 @@ template<>
 class splindex<block_cyclic>: public splindex_base
 {
     private:
+
+        static int cyclic_block_size_;
         
         /// cyclic block size of the distribution
         int block_size_;
@@ -201,14 +201,16 @@ class splindex<block_cyclic>: public splindex_base
         //==     init(global_index_size__, num_ranks__, rank__, block_size__); 
         //== }
 
-        // Constructor with implicit cyclic block size which is taken from scalapack interface
+        // Constructor with implicit cyclic block size
         splindex(int global_index_size__, int num_ranks__, int rank__)
         {
-            int bs = -1;
-            #ifdef _SCALAPACK_
-            bs = linalg<scalapack>::cyclic_block_size();
-            #endif
+            int bs = cyclic_block_size_;
             init(global_index_size__, num_ranks__, rank__, bs); 
+        }
+
+        static void set_cyclic_block_size(int cyclic_block_size__)
+        {
+            cyclic_block_size_ = cyclic_block_size__;
         }
 
         inline int local_size(int rank)
@@ -261,6 +263,19 @@ class splindex<block_cyclic>: public splindex_base
                 }
             }
             return -1; // make compiler happy
+        }
+
+        inline std::pair<int, int> location(int idx_glob)
+        {
+            assert(idx_glob >= 0 && idx_glob < global_index_size_);
+
+            int num_blocks = idx_glob / block_size_; // number of full blocks
+
+            int n = (num_blocks / num_ranks_) * block_size_ + idx_glob % block_size_;
+
+            int rank = num_blocks % num_ranks_;
+
+            return std::pair<int, int>(n, rank);
         }
 
         inline int global_index(int idxloc, int rank)

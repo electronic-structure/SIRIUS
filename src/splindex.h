@@ -27,6 +27,9 @@
  *  \brief Contains definition of splindex_base and splindex_iterator classes.
  */
 
+#include "typedefs.h"
+#include "error_handling.h"
+
 const int _splindex_offs_ = 0;
 const int _splindex_rank_ = 1;
 
@@ -55,13 +58,6 @@ class splindex_base
         /// Default constructor.
         splindex_base() : rank_(-1), num_ranks_(-1)
         {
-        }
-
-    public:
-
-        int global_size()
-        {
-            return global_index_size_;
         }
 };
 

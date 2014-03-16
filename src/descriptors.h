@@ -27,9 +27,9 @@
 #include "utils.h"
 
 /** \file descriptors.h
-
-    \brief Descriptors for various data structures
-*/
+ *
+ *  \brief Descriptors for various data structures
+ */
 
 /// describes single atomic level
 struct atomic_level_descriptor

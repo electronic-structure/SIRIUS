@@ -234,55 +234,56 @@ class blas<gpu>
 #endif
 
 #include "lapack.h"
+#include "dmatrix.h"
 
-template <typename T>
-class pmatrix
-{
-    private:
-
-        /// global number of matrix rows
-        int nrows_;
-
-        /// global number of matrix columns
-        int ncols_;
-        
-        /// local part of the matrix
-        mdarray<T, 2>& panel_;
-
-        /// matrix descriptor
-        int descriptor_[9];
-
-    public:
-        
-        pmatrix(int nrows__, int ncols__, mdarray<T, 2>& panel__, int blacs_context__) 
-            : nrows_(nrows__),
-              ncols_(ncols__),
-              panel_(panel__)
-        {
-            int bs = linalg<scalapack>::cyclic_block_size();
-            linalg<scalapack>::descinit(descriptor_, nrows__, ncols__, bs, bs, 0, 0, blacs_context__, panel__.ld());
-        }
-
-        inline int nrows()
-        {
-            return nrows_;
-        }
-
-        inline int ncols()
-        {
-            return ncols_;
-        }
-
-        inline int* descriptor()
-        {
-            return descriptor_;
-        }
-
-        T* ptr()
-        {
-            return panel_.ptr();
-        }
-};
+//== template <typename T>
+//== class pmatrix
+//== {
+//==     private:
+//== 
+//==         /// global number of matrix rows
+//==         int nrows_;
+//== 
+//==         /// global number of matrix columns
+//==         int ncols_;
+//==         
+//==         /// local part of the matrix
+//==         mdarray<T, 2>& panel_;
+//== 
+//==         /// matrix descriptor
+//==         int descriptor_[9];
+//== 
+//==     public:
+//==         
+//==         pmatrix(int nrows__, int ncols__, mdarray<T, 2>& panel__, int blacs_context__) 
+//==             : nrows_(nrows__),
+//==               ncols_(ncols__),
+//==               panel_(panel__)
+//==         {
+//==             int bs = linalg<scalapack>::cyclic_block_size();
+//==             linalg<scalapack>::descinit(descriptor_, nrows__, ncols__, bs, bs, 0, 0, blacs_context__, panel__.ld());
+//==         }
+//== 
+//==         inline int nrows()
+//==         {
+//==             return nrows_;
+//==         }
+//== 
+//==         inline int ncols()
+//==         {
+//==             return ncols_;
+//==         }
+//== 
+//==         inline int* descriptor()
+//==         {
+//==             return descriptor_;
+//==         }
+//== 
+//==         T* ptr()
+//==         {
+//==             return panel_.ptr();
+//==         }
+//== };
 
 template<processing_unit_t> 
 class pblas;
@@ -295,13 +296,13 @@ class pblas<cpu>
         /// generic interface to p?gemm
         template <typename T>
         static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T alpha, 
-                         pmatrix<T>& a, int32_t ia, int32_t ja, pmatrix<T>& b, int32_t ib, int32_t jb, T beta, 
-                         pmatrix<T>& c, int32_t ic, int32_t jc);
+                         dmatrix<T>& a, int32_t ia, int32_t ja, dmatrix<T>& b, int32_t ib, int32_t jb, T beta, 
+                         dmatrix<T>& c, int32_t ic, int32_t jc);
 
         /// simple interface to p?gemm: all matrices start form (0, 0) corner
         template <typename T>
         static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                         T alpha, pmatrix<T>& a, pmatrix<T>& b, T beta, pmatrix<T>& c);
+                         T alpha, dmatrix<T>& a, dmatrix<T>& b, T beta, dmatrix<T>& c);
 };
 
 #include "evp_solver.h"

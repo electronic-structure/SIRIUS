@@ -1630,17 +1630,10 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     // size of the first-variational state 
     int fvsz = kp->wf_size();
 
-    // number of first-variational states for a given column of MPI ranks
-    int nfv = parameters_.spl_fv_states().local_size();
-    
-    // number of first-variational states for a given rank in the column 
-    int nfv_loc = parameters_.sub_spl_fv_states().local_size();
-
-    mdarray<double_complex, 3>& sv_eigen_vectors = kp->sv_eigen_vectors();
     std::vector<double> band_energies(parameters_.num_bands());
 
     // product of the second-variational Hamiltonian and a wave-function
-    mdarray<double_complex, 3> hpsi(fvsz, nfv_loc, nhpsi);
+    mdarray<double_complex, 3> hpsi(fvsz, parameters_.sub_spl_fv_states().local_size(), nhpsi);
     hpsi.zero();
 
     // compute product of magnetic field and wave-function 
@@ -1669,58 +1662,37 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     // parallel diagonalization
     else
     {
-        splindex<block_cyclic> spl_wf_size_row(fvsz, kp->num_ranks_row(), kp->rank_row());
-
-        mdarray<double_complex, 3> hpsi_panel(spl_wf_size_row.local_size(), nfv, nhpsi);
-        
-        // change data distribution of hpsi to panels
-        for (int n = 0; n < nhpsi; n++)
+        std::vector< dmatrix<double_complex>* > hpsi_panel(nhpsi);
+        for (int i = 0; i < nhpsi; i++)
         {
-            kp->scatter_to_panels(nfv, spl_wf_size_row, hpsi.submatrix(n), hpsi_panel.submatrix(n));
+            hpsi_panel[i] = new dmatrix<double_complex>(fvsz, parameters_.num_fv_states(), parameters_.blacs_context());
+            // change data distribution of hpsi to panels
+            hpsi_panel[i]->scatter(hpsi.submatrix(i), parameters_.mpi_grid().communicator(1 << _dim_row_));
         }
         hpsi.deallocate(); // we don't need full vectors anymore
 
-        if (parameters_.num_mag_dims() == 1)
+        if (parameters_.num_mag_dims() != 3)
         {
-            splindex<block_cyclic> spl_fv_states_row(parameters_.num_fv_states(), kp->num_ranks_row(), kp->rank_row());
+            dmatrix<double_complex> h(parameters_.num_fv_states(), parameters_.num_fv_states(), 
+                                      parameters_.blacs_context());
 
-            mdarray<double_complex, 2> h(spl_fv_states_row.local_size(), parameters_.spl_fv_states().local_size());
-
-            // make wrapper for fv_states
-            pmatrix<double_complex> pm_fv_states(fvsz, parameters_.num_fv_states(), kp->fv_states_panel(),
-                                                 parameters_.blacs_context());
-            
-            // make wrapper for Hamiltonian
-            pmatrix<double_complex> pm_h(parameters_.num_fv_states(), parameters_.num_fv_states(), h, 
-                                         parameters_.blacs_context());
-            
             // perform one or two consecutive diagonalizations
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
-                pmatrix<double_complex> pm_hpsi(fvsz, parameters_.num_fv_states(), hpsi_panel.submatrix(ispn),
-                                                parameters_.blacs_context());
-
                 // compute <wf_i | (h * wf_j)> for up-up or dn-dn block
                 pblas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, 
-                                 complex_one, pm_fv_states, pm_hpsi, complex_zero, pm_h);
-
-                for (int icol = 0; icol < parameters_.spl_fv_states().local_size(); icol++)
-                {
-                    int i = parameters_.spl_fv_states(icol);
-                    for (int irow = 0; irow < spl_fv_states_row.local_size(); irow++)
-                    {
-                        if (spl_fv_states_row[irow] == i) h(irow, icol) += kp->fv_eigen_value(i);
-                    }
-                }
+                                 complex_one, kp->fv_states_panel(), *hpsi_panel[ispn], complex_zero, h);
+                
+                for (int i = 0; i < parameters_.num_fv_states(); i++) h.add(i, i, kp->fv_eigen_value(i));
             
                 Timer t1("sirius::Band::solve_sv|stdevp");
                 parameters_.std_evp_solver()->solve(parameters_.num_fv_states(), h.ptr(), h.ld(),
                                                     &band_energies[ispn * parameters_.num_fv_states()],
-                                                    &sv_eigen_vectors(0, 0, ispn), sv_eigen_vectors.ld());
+                                                    kp->sv_eigen_vectors(ispn).ptr(), kp->sv_eigen_vectors(ispn).ld());
             }
         }
 
-
+        for (int i = 0; i < nhpsi; i++) delete hpsi_panel[i];
     }
 
     //== if (parameters_.num_mag_dims() == 1)

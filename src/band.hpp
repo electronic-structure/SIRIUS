@@ -1,12 +1,10 @@
 /** \file band.hpp
     
-    \brief Implementation of methods for Band class.
+    \brief Implementation of methods for sirius::Band class.
 
     \todo look at multithreading in apw_lo and lo_apw blocks 
 
     \todo k-independent L3 sum
-
-    \todo GPU implementation
 */
 
 template <spin_block_t sblock>
