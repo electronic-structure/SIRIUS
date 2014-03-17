@@ -826,7 +826,7 @@ void Density::add_kpoint_contribution_it_gpu(K_point* kp, std::vector< std::pair
         args[i].it_density_matrix_gpu = &it_density_matrix_gpu;
         args[i].it_density_matrix = &it_density_matrix;
     
-        if (i == 0 && num_fft_threads > 1)
+        if (i == (num_fft_threads - 1) && num_fft_threads > 1)
         {
             pthread_create(&pthread_id[i], NULL, exec_fft_density_gpu, &args[i]);
         }
