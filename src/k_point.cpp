@@ -732,16 +732,16 @@ void K_point::generate_fv_states()
     {
         if (parameters_.esm_type() == full_potential_lapwlo)
         {
-            if (parameters_.processing_unit() == gpu)
-            {
-                #ifdef _GPU_
-                generate_fv_states_aw_mt_gpu();
-                #else
-                stop_here
-                #endif
-            }
-            else
-            {
+            //== if (parameters_.processing_unit() == gpu)
+            //== {
+            //==     #ifdef _GPU_
+            //==     generate_fv_states_aw_mt_gpu();
+            //==     #else
+            //==     stop_here
+            //==     #endif
+            //== }
+            //== else
+            //== {
                 fv_states_.zero();
 
                 mdarray<double_complex, 2> alm(num_gkvec(), parameters_.unit_cell()->max_mt_aw_basis_size());
@@ -757,7 +757,7 @@ void K_point::generate_fv_states()
                                     &alm(0, 0), alm.ld(), &fv_eigen_vectors_panel_(0, 0), 
                                     fv_eigen_vectors_panel_.ld(), &fv_states_(atom->offset_wf(), 0), fv_states_.ld());
                 }
-            }
+            //== }
         }
 
         for (int j = 0; j < parameters_.spl_fv_states().local_size(); j++)
