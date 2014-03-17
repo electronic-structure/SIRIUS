@@ -545,80 +545,78 @@ void K_point::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<
     if (debug_level > 1) check_alm(num_gkvec_loc, ia, alm);
 }
 
-void K_point::generate_matching_coefficients(int num_gkvec_loc, dmatrix<double_complex>& alm)
-{
-    Timer t("sirius::K_point::generate_matching_coefficients_panel");
-
-    //splindex<block_cyclic> spl_mt_basis(parameters_.unit_cell()->mt_aw_basis_size(), num_ranks_col_, rank_col_);
-
-    #pragma omp parallel
-    {
-        mdarray<double, 2> A(3, 3);
-        #pragma omp for
-        for (int i = 0; i < alm.num_cols_local(); i++)
-        {
-            int j = alm.icol(i);
-            int ia = parameters_.unit_cell()->mt_aw_basis_descriptor(j).ia;
-            int xi = parameters_.unit_cell()->mt_aw_basis_descriptor(j).xi;
-            Atom* atom = parameters_.unit_cell()->atom(ia);
-            Atom_type* type = atom->type();
-            int iat = type->id();
-            int l = type->indexb(xi).l;
-            int lm = type->indexb(xi).lm;
-            int order = type->indexb(xi).order; 
-
-            int num_aw = (int)type->aw_descriptor(l).size();
-
-            for (int order = 0; order < num_aw; order++)
-            {
-                for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
-            }
-            
-            switch (num_aw)
-            {
-                case 1:
-                {
-                    A(0, 0) = 1.0 / A(0, 0);
-
-                    double_complex zt;
-                    for (int igkloc = 0; igkloc < alm.num_rows_local(); igkloc++)
-                    {
-                        zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat) * A(0, 0);
-
-                        alm(igkloc, i) = conj(gkvec_ylm_(lm, igkloc)) * zt;
-                    }
-                    break;
-                }
-                case 2:
-                {
-                    double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
-                    std::swap(A(0, 0), A(1, 1));
-                    A(0, 0) /= det;
-                    A(1, 1) /= det;
-                    A(0, 1) = -A(0, 1) / det;
-                    A(1, 0) = -A(1, 0) / det;
-                    
-                    double_complex zt[2];
-                    double_complex zb;
-                    for (int igkloc = 0; igkloc < alm.num_rows_local(); igkloc++)
-                    {
-                        zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat);
-                        zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(1, igkloc, l, iat);
-
-                        zb = A(order, 0) * zt[0] + A(order, 1) * zt[1];
-
-                        alm(igkloc, i) = conj(gkvec_ylm_(lm, igkloc)) * zb;
-                    }
-                    break;
-                }
-                default:
-                {
-                    stop_here
-                }
-            }
-        }
-    }
-}
+//== void K_point::generate_matching_coefficients(dmatrix<double_complex>& alm)
+//== {
+//==     Timer t("sirius::K_point::generate_matching_coefficients_panel");
+//== 
+//==     #pragma omp parallel
+//==     {
+//==         mdarray<double, 2> A(3, 3);
+//==         #pragma omp for
+//==         for (int i = 0; i < alm.num_cols_local(); i++)
+//==         {
+//==             int j = alm.icol(i);
+//==             int ia = parameters_.unit_cell()->mt_aw_basis_descriptor(j).ia;
+//==             int xi = parameters_.unit_cell()->mt_aw_basis_descriptor(j).xi;
+//==             Atom* atom = parameters_.unit_cell()->atom(ia);
+//==             Atom_type* type = atom->type();
+//==             int iat = type->id();
+//==             int l = type->indexb(xi).l;
+//==             int lm = type->indexb(xi).lm;
+//==             int order = type->indexb(xi).order; 
+//== 
+//==             int num_aw = (int)type->aw_descriptor(l).size();
+//== 
+//==             for (int order = 0; order < num_aw; order++)
+//==             {
+//==                 for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
+//==             }
+//==             
+//==             switch (num_aw)
+//==             {
+//==                 case 1:
+//==                 {
+//==                     A(0, 0) = 1.0 / A(0, 0);
+//== 
+//==                     double_complex zt;
+//==                     for (int igkloc = 0; igkloc < alm.num_rows_local(); igkloc++)
+//==                     {
+//==                         zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat) * A(0, 0);
+//== 
+//==                         alm(igkloc, i) = conj(gkvec_ylm_(lm, igkloc)) * zt;
+//==                     }
+//==                     break;
+//==                 }
+//==                 case 2:
+//==                 {
+//==                     double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
+//==                     std::swap(A(0, 0), A(1, 1));
+//==                     A(0, 0) /= det;
+//==                     A(1, 1) /= det;
+//==                     A(0, 1) = -A(0, 1) / det;
+//==                     A(1, 0) = -A(1, 0) / det;
+//==                     
+//==                     double_complex zt[2];
+//==                     double_complex zb;
+//==                     for (int igkloc = 0; igkloc < alm.num_rows_local(); igkloc++)
+//==                     {
+//==                         zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat);
+//==                         zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(1, igkloc, l, iat);
+//== 
+//==                         zb = A(order, 0) * zt[0] + A(order, 1) * zt[1];
+//== 
+//==                         alm(igkloc, i) = conj(gkvec_ylm_(lm, igkloc)) * zb;
+//==                     }
+//==                     break;
+//==                 }
+//==                 default:
+//==                 {
+//==                     stop_here
+//==                 }
+//==             }
+//==         }
+//==     }
+//== }
 
 void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)
 {
@@ -780,7 +778,7 @@ void K_point::generate_fv_states()
 
         dmatrix<double_complex> alm_panel(num_gkvec(), naw, parameters_.blacs_context());
         // generate panel of matching coefficients
-        generate_matching_coefficients(num_gkvec_row(), alm_panel);
+        generate_matching_coefficients<false>(alm_panel);
 
         dmatrix<double_complex> aw_coefs_panel(naw, parameters_.num_fv_states(), parameters_.blacs_context());
 
@@ -792,7 +790,7 @@ void K_point::generate_fv_states()
         /* We have a panel of aw coefficients and a panel of 
          * first-variational eigen-vectors. We need to collect
          * them as whole vectors and setup aw, lo and G+k parts
-         * of first-variational states.
+         * of the first-variational states.
          */
         mdarray<double_complex, 2> fv_eigen_vectors(gklo_basis_size(), nfv_loc);
         // gather full first-variational eigen-vector array

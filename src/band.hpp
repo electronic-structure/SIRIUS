@@ -127,6 +127,63 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<double_complex, 2>& a
 }
 
 template <spin_block_t sblock>
+void Band::apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_complex, 2>& halm)
+{
+    Timer t("sirius::Band::apply_hmt_to_apw");
+    
+    #pragma omp parallel default(shared)
+    {
+        std::vector<double_complex> zv(alm.size(1));
+        
+        #pragma omp for
+        for (int j = 0; j < parameters_.unit_cell()->mt_aw_basis_size(); j++)
+        {
+            int ia = parameters_.unit_cell()->mt_aw_basis_descriptor(j).ia;
+            int xi = parameters_.unit_cell()->mt_aw_basis_descriptor(j).xi;
+            Atom* atom = parameters_.unit_cell()->atom(ia);
+            Atom_type* type = atom->type();
+            int iat = type->id();
+            int l1 = type->indexb(xi).l;
+            int lm1 = type->indexb(xi).lm;
+            int idxrf1 = type->indexb(xi).idxrf; 
+            int order1 = type->indexb(xi).order; 
+
+            memset(&zv[0], 0, zv.size() * sizeof(double_complex));
+
+            for (int j2 = 0; j2 < type->mt_aw_basis_size(); j2++)
+            {
+                int lm2 = type->indexb(j2).lm;
+                int idxrf2 = type->indexb(j2).idxrf;
+                double_complex zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
+
+                if (abs(zsum) > 1e-14) 
+                {
+                    for (int igk = 0; igk < alm.size(1); igk++) zv[igk] += zsum * alm(atom->offset_aw() + j2, igk); 
+                }
+            }
+            
+            // surface contribution
+            if (sblock == nm || sblock == uu || sblock == dd)
+            {
+                for (int order2 = 0; order2 < (int)type->aw_descriptor(l1).size(); order2++)
+                {
+                    double t1 = 0.5 * pow(type->mt_radius(), 2) * 
+                                atom->symmetry_class()->aw_surface_dm(l1, order1, 0) * 
+                                atom->symmetry_class()->aw_surface_dm(l1, order2, 1);
+                    
+                    for (int igk = 0; igk < alm.size(1); igk++) 
+                        zv[igk] += t1 * alm(atom->offset_aw() + type->indexb_by_lm_order(lm1, order2), igk);
+                }
+            }
+
+            for (int igk = 0; igk < alm.size(1); igk++) halm(j, igk) = zv[igk];
+            
+            //memcpy(&halm(0, j2), &zv[0], num_gkvec * sizeof(double_complex));
+        }
+    }
+}
+
+template <spin_block_t sblock>
 void Band::set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 
                         mdarray<double_complex, 2>& h)
 {

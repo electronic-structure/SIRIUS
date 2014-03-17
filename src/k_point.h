@@ -214,7 +214,116 @@ class K_point
         template <bool conjugate>
         void generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm);
         
-        void generate_matching_coefficients(int num_gkvec_loc, dmatrix<double_complex>& alm);
+        /// Generate plane-wave matching coefficents for the radial solutions 
+        /** Normal layout of matching coefficients: G+k vectors are along rows, AW basis functions are 
+         *  along columns. This layout is used to generate first-variational states. 
+         *  Transposed layout: AW basis functions are along rows, G+k vectors are along columns. This layout
+         *  is used to setup Hamiltonian and overlap matrices.
+         */
+        template <bool transpose>
+        void generate_matching_coefficients(dmatrix<double_complex>& alm)
+        {
+            Timer t("sirius::K_point::generate_matching_coefficients_panel");
+
+            int num_mt_aw_loc = transpose ? alm.num_rows_local() : alm.num_cols_local();
+
+            #pragma omp parallel
+            {
+                mdarray<double, 2> A(3, 3);
+                #pragma omp for
+                for (int i = 0; i < num_mt_aw_loc; i++)
+                {
+                    int j = transpose ? alm.irow(i) : alm.icol(i);
+                    int ia = parameters_.unit_cell()->mt_aw_basis_descriptor(j).ia;
+                    int xi = parameters_.unit_cell()->mt_aw_basis_descriptor(j).xi;
+                    Atom* atom = parameters_.unit_cell()->atom(ia);
+                    Atom_type* type = atom->type();
+                    int iat = type->id();
+                    int l = type->indexb(xi).l;
+                    int lm = type->indexb(xi).lm;
+                    int order = type->indexb(xi).order; 
+
+                    int num_aw = (int)type->aw_descriptor(l).size();
+
+                    for (int order = 0; order < num_aw; order++)
+                    {
+                        for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
+                    }
+                    
+                    switch (num_aw)
+                    {
+                        case 1:
+                        {
+                            A(0, 0) = 1.0 / A(0, 0);
+
+                            double_complex zt;
+
+                            if (transpose)
+                            {
+                                for (int igkloc = 0; igkloc < alm.num_cols_local(); igkloc++)
+                                {
+                                    zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat) * A(0, 0);
+
+                                    alm(i, igkloc) = conj(gkvec_ylm_(lm, igkloc)) * zt;
+                                }
+                            }
+                            else
+                            {
+                                for (int igkloc = 0; igkloc < alm.num_rows_local(); igkloc++)
+                                {
+                                    zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat) * A(0, 0);
+
+                                    alm(igkloc, i) = conj(gkvec_ylm_(lm, igkloc)) * zt;
+                                }
+                            }
+                            break;
+                        }
+                        case 2:
+                        {
+                            double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
+                            std::swap(A(0, 0), A(1, 1));
+                            A(0, 0) /= det;
+                            A(1, 1) /= det;
+                            A(0, 1) = -A(0, 1) / det;
+                            A(1, 0) = -A(1, 0) / det;
+                            
+                            double_complex zt[2];
+                            double_complex zb;
+
+                            if (transpose)
+                            {
+                                for (int igkloc = 0; igkloc < alm.num_cols_local(); igkloc++)
+                                {
+                                    zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat);
+                                    zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(1, igkloc, l, iat);
+
+                                    zb = A(order, 0) * zt[0] + A(order, 1) * zt[1];
+
+                                    alm(i, igkloc) = conj(gkvec_ylm_(lm, igkloc)) * zb;
+                                }
+                            }
+                            else
+                            {
+                                for (int igkloc = 0; igkloc < alm.num_rows_local(); igkloc++)
+                                {
+                                    zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat);
+                                    zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(1, igkloc, l, iat);
+
+                                    zb = A(order, 0) * zt[0] + A(order, 1) * zt[1];
+
+                                    alm(igkloc, i) = conj(gkvec_ylm_(lm, igkloc)) * zb;
+                                }
+                            }
+                            break;
+                        }
+                        default:
+                        {
+                            stop_here
+                        }
+                    }
+                }
+            }
+        }
 
         /// Generate first-variational states from eigen-vectors
         void generate_fv_states();
