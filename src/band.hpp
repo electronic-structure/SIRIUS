@@ -130,6 +130,14 @@ template <spin_block_t sblock>
 void Band::apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_complex, 2>& halm)
 {
     Timer t("sirius::Band::apply_hmt_to_apw");
+
+    int ngk_loc = alm.size(1);
+
+    mdarray<double_complex, 2> alm_tmp(ngk_loc, alm.size(0));
+    for (int i1 = 0; i1 < ngk_loc; i1++)
+    {
+        for (int i0 = 0; i0 < alm.size(0); i0++) alm_tmp(i1, i0) = alm(i0, i1);
+    }
     
     #pragma omp parallel default(shared)
     {
@@ -142,7 +150,6 @@ void Band::apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_comp
             int xi = parameters_.unit_cell()->mt_aw_basis_descriptor(j).xi;
             Atom* atom = parameters_.unit_cell()->atom(ia);
             Atom_type* type = atom->type();
-            int iat = type->id();
             int l1 = type->indexb(xi).l;
             int lm1 = type->indexb(xi).lm;
             int idxrf1 = type->indexb(xi).idxrf; 
@@ -158,7 +165,7 @@ void Band::apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_comp
 
                 if (abs(zsum) > 1e-14) 
                 {
-                    for (int igk = 0; igk < alm.size(1); igk++) zv[igk] += zsum * alm(atom->offset_aw() + j2, igk); 
+                    for (int igk = 0; igk < ngk_loc; igk++) zv[igk] += zsum * alm_tmp(igk, atom->offset_aw() + j2); 
                 }
             }
             
@@ -171,14 +178,12 @@ void Band::apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_comp
                                 atom->symmetry_class()->aw_surface_dm(l1, order1, 0) * 
                                 atom->symmetry_class()->aw_surface_dm(l1, order2, 1);
                     
-                    for (int igk = 0; igk < alm.size(1); igk++) 
-                        zv[igk] += t1 * alm(atom->offset_aw() + type->indexb_by_lm_order(lm1, order2), igk);
+                    for (int igk = 0; igk < ngk_loc; igk++) 
+                        zv[igk] += t1 * alm_tmp(igk, atom->offset_aw() + type->indexb_by_lm_order(lm1, order2));
                 }
             }
 
-            for (int igk = 0; igk < alm.size(1); igk++) halm(j, igk) = zv[igk];
-            
-            //memcpy(&halm(0, j2), &zv[0], num_gkvec * sizeof(double_complex));
+            for (int igk = 0; igk < ngk_loc; igk++) halm(j, igk) = zv[igk];
         }
     }
 }
@@ -345,8 +350,6 @@ void Band::set_h(K_point* kp, Periodic_function<double>* effective_potential,
 
     h.zero();
 
-    double_complex zone(1, 0);
-    
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
         Atom* atom = parameters_.unit_cell()->atom(ia);
@@ -359,8 +362,8 @@ void Band::set_h(K_point* kp, Periodic_function<double>* effective_potential,
         apply_hmt_to_apw<sblock>(kp->num_gkvec_row(), ia, alm, halm);
         
         // generate <apw|H|apw> block; |ket> is conjugated, so it is "unconjugated" back
-        blas<cpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), zone, 
-                        &halm(0, 0), halm.ld(), &alm(apw_offset_col, 0), alm.ld(), zone, &h(0, 0), h.ld());
+        blas<cpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
+                        &halm(0, 0), halm.ld(), &alm(apw_offset_col, 0), alm.ld(), complex_one, &h(0, 0), h.ld());
        
         // setup apw-lo blocks
         set_h_apw_lo<sblock>(kp, type, atom, ia, alm, h);

@@ -226,6 +226,7 @@ class K_point
             Timer t("sirius::K_point::generate_matching_coefficients_panel");
 
             int num_mt_aw_loc = transpose ? alm.num_rows_local() : alm.num_cols_local();
+            int offset_col = apw_offset_col();
 
             #pragma omp parallel
             {
@@ -262,9 +263,10 @@ class K_point
                             {
                                 for (int igkloc = 0; igkloc < alm.num_cols_local(); igkloc++)
                                 {
-                                    zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat) * A(0, 0);
+                                    zt = gkvec_phase_factors_(offset_col + igkloc, ia) * 
+                                         alm_b_(0, offset_col + igkloc, l, iat) * A(0, 0);
 
-                                    alm(i, igkloc) = conj(gkvec_ylm_(lm, igkloc)) * zt;
+                                    alm(i, igkloc) = conj(gkvec_ylm_(lm, offset_col + igkloc)) * zt;
                                 }
                             }
                             else
@@ -294,12 +296,14 @@ class K_point
                             {
                                 for (int igkloc = 0; igkloc < alm.num_cols_local(); igkloc++)
                                 {
-                                    zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat);
-                                    zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(1, igkloc, l, iat);
+                                    zt[0] = gkvec_phase_factors_(offset_col + igkloc, ia) * 
+                                            alm_b_(0, offset_col + igkloc, l, iat);
+                                    zt[1] = gkvec_phase_factors_(offset_col + igkloc, ia) * 
+                                            alm_b_(1, offset_col + igkloc, l, iat);
 
                                     zb = A(order, 0) * zt[0] + A(order, 1) * zt[1];
 
-                                    alm(i, igkloc) = conj(gkvec_ylm_(lm, igkloc)) * zb;
+                                    alm(i, igkloc) = conj(gkvec_ylm_(lm, offset_col + igkloc)) * zb;
                                 }
                             }
                             else

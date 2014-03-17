@@ -187,8 +187,8 @@ class Band
          *
          */
         template <processing_unit_t pu, electronic_structure_method_t basis>
-        void set_fv_h_o(K_point* kp, Periodic_function<double>* effective_potential, mdarray<double_complex, 2>& h, 
-                        mdarray<double_complex, 2>& o);
+        void set_fv_h_o(K_point* kp, Periodic_function<double>* effective_potential, dmatrix<double_complex>& h, 
+                        dmatrix<double_complex>& o);
 
         /// Solve first-variational problem
         void solve_fv(K_point* kp, Periodic_function<double>* effective_potential);

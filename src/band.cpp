@@ -871,18 +871,34 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //=====================================================================================================================
 template<> 
 void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp, Periodic_function<double>* effective_potential,
-                                                  mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
+                                                  dmatrix<double_complex>& h, dmatrix<double_complex>& o)
 {
     Timer t("sirius::Band::set_fv_h_o");
-   
-    // index of column apw coefficients in apw array
-    int apw_offset_col = kp->apw_offset_col();
+
+    dmatrix<double_complex> alm_panel(parameters_.unit_cell()->mt_aw_basis_size(), kp->num_gkvec(), parameters_.blacs_context());
+    dmatrix<double_complex> halm_panel(parameters_.unit_cell()->mt_aw_basis_size(), kp->num_gkvec(), parameters_.blacs_context());
+
+    splindex<block> sspl_gkvec(kp->num_gkvec_col(), kp->num_ranks_row(), kp->rank_row());
+    mdarray<double_complex, 2> almv(parameters_.unit_cell()->mt_aw_basis_size(), sspl_gkvec.local_size());
+    mdarray<double_complex, 2> halmv(parameters_.unit_cell()->mt_aw_basis_size(), sspl_gkvec.local_size());
+
+    kp->generate_matching_coefficients<true>(alm_panel);
+    alm_panel.gather(almv, parameters_.mpi_grid().communicator(1 << _dim_row_));
     
-    mdarray<double_complex, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
-    mdarray<double_complex, 2> halm(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    apply_hmt_to_apw<nm>(almv, halmv);
+    halm_panel.scatter(halmv, parameters_.mpi_grid().communicator(1 << _dim_row_));
 
     h.zero();
     o.zero();
+
+    pblas<cpu>::gemm(2, 0, kp->num_gkvec(), kp->num_gkvec(), parameters_.unit_cell()->mt_aw_basis_size(),
+                     complex_one, alm_panel, halm_panel, complex_zero, h); 
+    
+    pblas<cpu>::gemm(2, 0, kp->num_gkvec(), kp->num_gkvec(), parameters_.unit_cell()->mt_aw_basis_size(),
+                     complex_one, alm_panel, alm_panel, complex_zero, o); 
+   
+    mdarray<double_complex, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    mdarray<double_complex, 2> halm(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
 
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
@@ -892,27 +908,13 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp, Periodic_function
         // generate conjugated coefficients
         kp->generate_matching_coefficients<true>(kp->num_gkvec_loc(), ia, alm);
         
-        // apply muffin-tin part to <bra|
-        apply_hmt_to_apw<nm>(kp->num_gkvec_row(), ia, alm, halm);
-        
-        // generate <apw|apw> block; |ket> is conjugated, so it is "unconjugated" back
-        blas<cpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
-                        &alm(0, 0), alm.ld(), &alm(apw_offset_col, 0), alm.ld(), complex_one, &o(0, 0), o.ld()); 
-            
-        // generate <apw|H|apw> block; |ket> is conjugated, so it is "unconjugated" back
-        blas<cpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
-                        &halm(0, 0), halm.ld(), &alm(apw_offset_col, 0), alm.ld(), complex_one, &h(0, 0), h.ld());
-       
         // setup apw-lo blocks
-        set_fv_h_o_apw_lo(kp, type, atom, ia, alm, h, o);
+        set_fv_h_o_apw_lo(kp, type, atom, ia, alm, h.data(), o.data());
     } //ia
 
-    set_fv_h_o_it(kp, effective_potential, h, o);
+    set_fv_h_o_it(kp, effective_potential, h.data(), o.data());
 
-    set_fv_h_o_lo_lo(kp, h, o);
-
-    alm.deallocate();
-    halm.deallocate();
+    set_fv_h_o_lo_lo(kp, h.data(), o.data());
 }
 
 //=====================================================================================================================
@@ -1205,53 +1207,56 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     if (kp->num_ranks() > 1 && !parameters_.gen_evp_solver()->parallel())
         error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
-    mdarray<double_complex, 2> h(NULL, kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
-    mdarray<double_complex, 2> o(NULL, kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
+    //== mdarray<double_complex, 2> h(NULL, kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
+    //== mdarray<double_complex, 2> o(NULL, kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
+    dmatrix<double_complex> h(kp->gklo_basis_size(), kp->gklo_basis_size(), parameters_.blacs_context());
+    dmatrix<double_complex> o(kp->gklo_basis_size(), kp->gklo_basis_size(), parameters_.blacs_context());
     
-    if (parameters_.processing_unit() == cpu)
-    {
-        h.allocate();
-        o.allocate();
-    } 
-    else if (parameters_.processing_unit() == gpu)
-    {
-        #ifdef _GPU_
-        h.allocate_page_locked();
-        o.allocate_page_locked();
-        #endif
-    }
+    //if (parameters_.processing_unit() == cpu)
+    //{
+    //    h.allocate();
+    //    o.allocate();
+    //} 
+    //else if (parameters_.processing_unit() == gpu)
+    //{
+    //    #ifdef _GPU_
+    //    h.allocate_page_locked();
+    //    o.allocate_page_locked();
+    //    #endif
+    //}
    
     // setup Hamiltonian and overlap
     switch (parameters_.processing_unit())
     {
         case cpu:
+        case gpu:
         {
             set_fv_h_o<cpu, full_potential_lapwlo>(kp, effective_potential, h, o);
             break;
         }
-        #ifdef _GPU_
-        case gpu:
-        {
-            set_fv_h_o<gpu, full_potential_lapwlo>(kp, effective_potential, h, o);
-            
-            //== mdarray<double_complex, 2> h1(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
-            //== mdarray<double_complex, 2> o1(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
-            //== set_fv_h_o<cpu, full_potential_lapwlo>(kp, effective_potential, h1, o1);
-            //== double diff_h = 0;
-            //== double diff_o = 0;
-            //== for (int j = 0; j < kp->apwlo_basis_size_col(); j++)
-            //== {
-            //==     for (int i = 0; i < kp->apwlo_basis_size_row(); i++)
-            //==     {
-            //==         diff_h += std::abs(h(i, j) - h1(i, j));
-            //==         diff_o += std::abs(o(i, j) - o1(i, j));
-            //==     }
-            //== }
-            //== std::cout << "diff_h = " << diff_h << " diff_o = " << diff_o << std::endl;
+        //#ifdef _GPU_
+        //case gpu:
+        //{
+        //    set_fv_h_o<gpu, full_potential_lapwlo>(kp, effective_potential, h, o);
+        //    
+        //    //== mdarray<double_complex, 2> h1(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
+        //    //== mdarray<double_complex, 2> o1(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
+        //    //== set_fv_h_o<cpu, full_potential_lapwlo>(kp, effective_potential, h1, o1);
+        //    //== double diff_h = 0;
+        //    //== double diff_o = 0;
+        //    //== for (int j = 0; j < kp->apwlo_basis_size_col(); j++)
+        //    //== {
+        //    //==     for (int i = 0; i < kp->apwlo_basis_size_row(); i++)
+        //    //==     {
+        //    //==         diff_h += std::abs(h(i, j) - h1(i, j));
+        //    //==         diff_o += std::abs(o(i, j) - o1(i, j));
+        //    //==     }
+        //    //== }
+        //    //== std::cout << "diff_h = " << diff_h << " diff_o = " << diff_o << std::endl;
 
-            break;
-        }
-        #endif
+        //    break;
+        //}
+        //#endif
         default:
         {
             error_local(__FILE__, __LINE__, "wrong processing unit");
@@ -1261,8 +1266,8 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     // TODO: move debug code to a separate function
     if (debug_level > 0 && !parameters_.gen_evp_solver()->parallel())
     {
-        Utils::check_hermitian("h", h);
-        Utils::check_hermitian("o", o);
+        Utils::check_hermitian("h", h.data());
+        Utils::check_hermitian("o", o.data());
     }
 
     //sirius_io::hdf5_write_matrix("h.h5", h);
