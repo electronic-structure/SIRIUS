@@ -102,3 +102,17 @@ void Platform::allgather(T* buf, int offset, int count, MPI_Comm comm)
     MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, buf, &counts[0], &offsets[0],
                    type_wrapper<T>::mpi_type_id(), comm);
 }
+
+template <typename T>
+void Platform::isend(T* buf, int count, int dest, int tag, MPI_Comm comm)
+{
+    MPI_Request request;
+
+    MPI_Isend(buf, count, type_wrapper<T>::mpi_type_id(), dest, tag, comm, &request);
+}
+
+template <typename T>
+void Platform::recv(T* buf, int count, int source, int tag, MPI_Comm comm)
+{
+    MPI_Recv(buf, count, type_wrapper<T>::mpi_type_id(), source, tag, comm, MPI_STATUS_IGNORE);
+}

@@ -70,6 +70,14 @@ class Platform
         
         template<typename T>
         static void allgather(T* buf, int offset, int count, MPI_Comm comm = MPI_COMM_WORLD);
+
+        /// Non-blocking send.
+        template <typename T>
+        static void isend(T* buf, int count, int dest, int tag, MPI_Comm comm);
+
+        /// Blocking recieve.
+        template <typename T>
+        static void recv(T* buf, int count, int source, int tag, MPI_Comm comm);
         
         /// Returm maximum number of OMP threads.
         /** Maximum number of OMP threads is controlled by environment variable OMP_NUM_THREADS */
