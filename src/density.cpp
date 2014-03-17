@@ -791,9 +791,10 @@ void Density::add_kpoint_contribution_it_gpu(K_point* kp, std::vector< std::pair
     it_density_matrix.zero();
 
     mdarray<double, 2> it_density_matrix_gpu(NULL, fft_->size(), parameters_.num_mag_dims() + 1);
+    // last thread is doing cuFFT 
     if (num_fft_threads > 1)
     {
-        it_density_matrix_gpu.set_ptr(&it_density_matrix(0, 0, 0));
+        it_density_matrix_gpu.set_ptr(&it_density_matrix(0, 0, num_fft_threads - 1));
         it_density_matrix_gpu.allocate_on_device();
         it_density_matrix_gpu.zero_on_device();
     }
