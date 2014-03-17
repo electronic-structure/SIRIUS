@@ -644,19 +644,21 @@ extern "C" void update_it_density_matrix_gpu(int fft_size,
 void* exec_fft_density_gpu(void* args__)
 {
     exec_fft_args* args = (exec_fft_args*)args__;
-
+ 
     FFT3D<gpu> fft(args->fft->grid_size());
-
+ 
     mdarray<int, 1> fft_index(args->kp->fft_index(), args->kp->num_gkvec());
     fft_index.allocate_on_device();
     fft_index.copy_to_device();
-
-    int sz = (fft.size() * args->num_spins + args->kp->num_gkvec() + fft.size() * 8) * (int)sizeof(double_complex);
-
-    int nfft_max = (int)(cuda_get_free_mem() / sz);
-    if (nfft_max == 0) return NULL;
-
-    nfft_max = std::min(nfft_max, args->num_psi / 4);
+ 
+    size_t sz = (fft.size() * args->num_spins + args->kp->num_gkvec() + fft.size() * 8) * sizeof(double_complex);
+    int nfft_max = std::min((int)(cuda_get_free_mem() / sz), args->num_psi / 4);
+ 
+    if (nfft_max == 0)
+    {
+        fft_index.deallocate_on_device();
+        return NULL;
+    }
 
     mdarray<double_complex, 2> psi_pw_gpu(NULL, args->kp->num_gkvec(), nfft_max); 
     psi_pw_gpu.allocate_on_device();

@@ -1038,7 +1038,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
     parameters_.reciprocal_lattice()->fft_coarse()->output(&veff_it_coarse[0]);
 
     // short notation for target wave-functions
-    mdarray<double_complex, 2>& psi = kp->fv_states_col();
+    mdarray<double_complex, 2>& psi = kp->fv_states();
 
     // short notation for number of target wave-functions
     int num_bands = parameters_.num_fv_states();     
