@@ -332,14 +332,16 @@ void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
     max_mt_radial_basis_size_ = 0;
     max_mt_aw_basis_size_ = 0;
     lmax_beta_ = -1;
-    for (int i = 0; i < num_atom_types(); i++)
+    int offs = 0;
+    for (int iat = 0; iat < num_atom_types(); iat++)
     {
-        atom_type(i)->init(lmax_apw);
-        max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(i)->num_mt_points());
-        max_mt_basis_size_ = std::max(max_mt_basis_size_, atom_type(i)->mt_basis_size());
-        max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom_type(i)->mt_radial_basis_size());
-        max_mt_aw_basis_size_ = std::max(max_mt_aw_basis_size_, atom_type(i)->mt_aw_basis_size());
-        lmax_beta_ = std::max(lmax_beta_, atom_type(i)->indexr().lmax());
+        atom_type(iat)->init(lmax_apw, offs);
+        max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(iat)->num_mt_points());
+        max_mt_basis_size_ = std::max(max_mt_basis_size_, atom_type(iat)->mt_basis_size());
+        max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom_type(iat)->mt_radial_basis_size());
+        max_mt_aw_basis_size_ = std::max(max_mt_aw_basis_size_, atom_type(iat)->mt_aw_basis_size());
+        lmax_beta_ = std::max(lmax_beta_, atom_type(iat)->indexr().lmax());
+        offs += atom_type(iat)->mt_lo_basis_size(); 
     }
     
     //=================
@@ -364,17 +366,10 @@ void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
     mt_lo_basis_size_ = 0;
     for (int ia = 0; ia < num_atoms(); ia++)
     {
-        if (full_potential())
-        {
-            atom(ia)->init(lmax_pot, num_mag_dims, mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
-            mt_aw_basis_size_ += atom(ia)->type()->mt_aw_basis_size();
-            mt_lo_basis_size_ += atom(ia)->type()->mt_lo_basis_size();
-            mt_basis_size_ += atom(ia)->type()->mt_basis_size();
-        }
-        if (esm_type_ == ultrasoft_pseudopotential)
-        {
-            atom(ia)->init();
-        }
+        atom(ia)->init(lmax_pot, num_mag_dims, mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
+        mt_aw_basis_size_ += atom(ia)->type()->mt_aw_basis_size();
+        mt_lo_basis_size_ += atom(ia)->type()->mt_lo_basis_size();
+        mt_basis_size_ += atom(ia)->type()->mt_basis_size();
     }
 
     assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);

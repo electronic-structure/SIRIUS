@@ -317,6 +317,8 @@ class Atom_type
         /// maximum number of aw radial functions across angular momentums
         int max_aw_order_;
 
+        int offset_lo_;
+
         radial_functions_index indexr_;
         
         basis_functions_index indexb_;
@@ -362,7 +364,7 @@ class Atom_type
 
         ~Atom_type();
         
-        void init(int lmax_apw);
+        void init(int lmax_apw, int offs);
 
         void set_radial_grid(int num_points = -1, double* points = NULL);
 
@@ -646,6 +648,17 @@ class Atom_type
         inline std::string file_name()
         {
             return file_name_;
+        }
+
+        inline int offset_lo()
+        {
+            assert(offset_lo_ >= 0);
+            return offset_lo_;
+        }
+
+        inline electronic_structure_method_t esm_type()
+        {
+            return esm_type_;
         }
 };
 
