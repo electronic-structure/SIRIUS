@@ -27,7 +27,8 @@ Atom_type::Atom_type(const char* symbol__, const char* name__, int zn__, double 
     radial_grid_ = new Radial_grid(default_radial_grid_t, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
 }
 
-Atom_type::Atom_type(int id__, const std::string label__, const std::string file_name__, electronic_structure_method_t esm_type__) 
+Atom_type::Atom_type(int id__, const std::string label__, const std::string file_name__, 
+                     electronic_structure_method_t esm_type__) 
     : id_(id__), 
       zn_(0), 
       mass_(0), 
@@ -47,8 +48,10 @@ Atom_type::~Atom_type()
 
 void Atom_type::init(int lmax)
 {
+    // check if the class instance was already initialized
     if (initialized_) error_local(__FILE__, __LINE__, "can't initialize twice");
-    
+   
+    // read data from file if it exists
     if (file_name_.length() > 0)
     {
         if (!Utils::file_exists(file_name_))
@@ -63,11 +66,8 @@ void Atom_type::init(int lmax)
         }
     }
 
-    //==============================================
-    // add valence levels to the list of core levels
-    //==============================================
     atomic_level_descriptor level;
-
+    // add valence levels to the list of core levels
     for (int ist = 0; ist < 28; ist++)
     {
         bool found = false;
@@ -88,7 +88,8 @@ void Atom_type::init(int lmax)
             if (!found) atomic_levels_.push_back(level);
         }
     }
-
+    
+    // check the nuclear charge
     if (zn_ == 0) error_local(__FILE__, __LINE__, "zero atom charge");
 
     // set default radial grid if it was not done by user

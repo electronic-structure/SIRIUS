@@ -84,18 +84,18 @@ class Atom
         
         /// Generate radial Hamiltonian and effective magnetic field integrals
         /** Hamiltonian operator has the following representation inside muffin-tins:
-            \f[
-                \hat H=-\frac{1}{2}\nabla^2 + \sum_{\ell m} V_{\ell m}(r) R_{\ell m}(\hat {\bf r}) =
-                  \underbrace{-\frac{1}{2} \nabla^2+V_{00}(r)R_{00}}_{H_{s}(r)} +\sum_{\ell=1} \sum_{m=-\ell}^{\ell} 
-                   V_{\ell m}(r) R_{\ell m}(\hat {\bf r}) = \sum_{\ell m} \widetilde V_{\ell m}(r) R_{\ell m}(\hat {\bf r})
-            \f]
-            where
-            \f[
-                \widetilde V_{\ell m}(r)=\left\{ \begin{array}{ll}
-                  \frac{H_{s}(r)}{R_{00}} & \ell = 0 \\
-                  V_{\ell m}(r) & \ell > 0 \end{array} \right.
-            \f]
-        */
+         *  \f[
+         *      \hat H=-\frac{1}{2}\nabla^2 + \sum_{\ell m} V_{\ell m}(r) R_{\ell m}(\hat {\bf r}) =
+         *        \underbrace{-\frac{1}{2} \nabla^2+V_{00}(r)R_{00}}_{H_{s}(r)} +\sum_{\ell=1} \sum_{m=-\ell}^{\ell} 
+         *         V_{\ell m}(r) R_{\ell m}(\hat {\bf r}) = \sum_{\ell m} \widetilde V_{\ell m}(r) R_{\ell m}(\hat {\bf r})
+         *  \f]
+         *  where
+         *  \f[
+         *      \widetilde V_{\ell m}(r)=\left\{ \begin{array}{ll}
+         *        \frac{H_{s}(r)}{R_{00}} & \ell = 0 \\
+         *        V_{\ell m}(r) & \ell > 0 \end{array} \right.
+         *  \f]
+         */
         void generate_radial_integrals(MPI_Comm& comm);
         void generate_radial_integrals();
         

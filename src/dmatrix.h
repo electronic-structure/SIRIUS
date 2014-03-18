@@ -103,12 +103,12 @@ class dmatrix
             #endif
         }
 
-        void allocate()
+        inline void allocate()
         {
             matrix_local_.allocate();
         }
 
-        void deallocate()
+        inline void deallocate()
         {
             matrix_local_.deallocate();
         }
@@ -157,6 +157,33 @@ class dmatrix
         {
             return matrix_local_.ld();
         }
+
+        #ifdef _GPU_
+        inline void allocate_on_device()
+        {
+            matrix_local_.allocate_on_device();
+        }
+
+        inline void deallocate_on_device()
+        {
+            matrix_local_.deallocate_on_device();
+        }
+
+        inline void pin_memory()
+        {
+            matrix_local_.pin_memory();
+        }
+
+        inline void unpin_memory()
+        {
+            matrix_local_.unpin_memory();
+        }
+
+        inline T* ptr_device()
+        {
+            return matrix_local_.ptr_device();
+        }
+        #endif
 
         inline T& operator()(const int irow_loc, const int icol_loc) 
         {
