@@ -488,6 +488,7 @@ class generalized_evp_gpu: public generalized_evp
                                         blacs_context_, ldb); 
 
             mdarray<double_complex, 2> ztmp(num_rows_loc, num_cols_loc);
+            ztmp.pin_memory();
             int32_t descz[9];
             linalg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, num_rows_loc); 
@@ -495,13 +496,14 @@ class generalized_evp_gpu: public generalized_evp
             std::vector<double> eval_tmp(matrix_size);
 
             int info;
-            my_gen_eig_cpu('L', matrix_size, nevec, a, 1, 1, desca, b, 1, 1, descb, &eval_tmp[0], ztmp.ptr(), 1, 1, descz, &info);
+            my_gen_eig('L', matrix_size, nevec, a, 1, 1, desca, b, 1, 1, descb, &eval_tmp[0], ztmp.ptr(), 1, 1, descz, &info);
             if (info)
             {
                 std::stringstream s;
                 s << "my_gen_eig " << info; 
                 error_local(__FILE__, __LINE__, s);
             }
+            ztmp.unpin_memory();
 
             for (int i = 0; i < linalg<scalapack>::numroc(nevec, block_size_, rank_col_, 0, num_ranks_col_); i++)
                 memcpy(&z[ldz * i], &ztmp(0, i), num_rows_loc * sizeof(double_complex));
@@ -537,9 +539,8 @@ class generalized_evp_elpa1: public generalized_evp
 
     public:
         
-        generalized_evp_elpa1(int32_t num_ranks_row__, int32_t rank_row__,
-                              int32_t num_ranks_col__, int32_t rank_col__, int blacs_context__, 
-                              MPI_Comm comm_row__, MPI_Comm comm_col__) 
+        generalized_evp_elpa1(int32_t num_ranks_row__, int32_t rank_row__, int32_t num_ranks_col__, int32_t rank_col__, 
+                              int blacs_context__, MPI_Comm comm_row__, MPI_Comm comm_col__) 
             : num_ranks_row_(num_ranks_row__), 
               rank_row_(rank_row__),
               num_ranks_col_(num_ranks_col__), 
@@ -651,9 +652,8 @@ class generalized_evp_elpa2: public generalized_evp
 
     public:
         
-        generalized_evp_elpa2(int32_t num_ranks_row__, int32_t rank_row__,
-                              int32_t num_ranks_col__, int32_t rank_col__, int blacs_context__, 
-                              MPI_Comm comm_row__, MPI_Comm comm_col__, MPI_Comm comm_all__) 
+        generalized_evp_elpa2(int32_t num_ranks_row__, int32_t rank_row__, int32_t num_ranks_col__, int32_t rank_col__, 
+                              int blacs_context__, MPI_Comm comm_row__, MPI_Comm comm_col__, MPI_Comm comm_all__) 
             : num_ranks_row_(num_ranks_row__), 
               rank_row_(rank_row__),
               num_ranks_col_(num_ranks_col__), 

@@ -1207,23 +1207,16 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     if (kp->num_ranks() > 1 && !parameters_.gen_evp_solver()->parallel())
         error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
-    //== mdarray<double_complex, 2> h(NULL, kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
-    //== mdarray<double_complex, 2> o(NULL, kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
     dmatrix<double_complex> h(kp->gklo_basis_size(), kp->gklo_basis_size(), parameters_.blacs_context());
     dmatrix<double_complex> o(kp->gklo_basis_size(), kp->gklo_basis_size(), parameters_.blacs_context());
     
-    //if (parameters_.processing_unit() == cpu)
-    //{
-    //    h.allocate();
-    //    o.allocate();
-    //} 
-    //else if (parameters_.processing_unit() == gpu)
-    //{
-    //    #ifdef _GPU_
-    //    h.allocate_page_locked();
-    //    o.allocate_page_locked();
-    //    #endif
-    //}
+    if (parameters_.processing_unit() == gpu)
+    {
+        #ifdef _GPU_
+        h.pin_memory();
+        o.pin_memory();
+        #endif
+    }
    
     // setup Hamiltonian and overlap
     switch (parameters_.processing_unit())
@@ -1423,20 +1416,15 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
                                             &eval[0], kp->fv_eigen_vectors_panel().ptr(), kp->fv_eigen_vectors_panel().ld());
         kp->set_fv_eigen_values(&eval[0]);
     }
+
+    if (parameters_.processing_unit() == gpu)
+    {
+        #ifdef _GPU_
+        h.unpin_memory();
+        o.unpin_memory();
+        #endif
+    }
     
-    //== if (parameters_.processing_unit() == cpu)
-    //== {
-    //==     h.deallocate();
-    //==     o.deallocate();
-    //== } 
-    //== else if (parameters_.processing_unit() == gpu)
-    //== {
-    //==     #ifdef _GPU_
-    //==     h.deallocate_page_locked();
-    //==     o.deallocate_page_locked();
-    //==     #endif
-    //== }
-        
     //** if ((debug_level > 2) && (parameters_.eigen_value_solver() == scalapack))
     //** {
     //**     double d = 0.0;

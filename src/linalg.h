@@ -236,55 +236,6 @@ class blas<gpu>
 #include "lapack.h"
 #include "dmatrix.h"
 
-//== template <typename T>
-//== class pmatrix
-//== {
-//==     private:
-//== 
-//==         /// global number of matrix rows
-//==         int nrows_;
-//== 
-//==         /// global number of matrix columns
-//==         int ncols_;
-//==         
-//==         /// local part of the matrix
-//==         mdarray<T, 2>& panel_;
-//== 
-//==         /// matrix descriptor
-//==         int descriptor_[9];
-//== 
-//==     public:
-//==         
-//==         pmatrix(int nrows__, int ncols__, mdarray<T, 2>& panel__, int blacs_context__) 
-//==             : nrows_(nrows__),
-//==               ncols_(ncols__),
-//==               panel_(panel__)
-//==         {
-//==             int bs = linalg<scalapack>::cyclic_block_size();
-//==             linalg<scalapack>::descinit(descriptor_, nrows__, ncols__, bs, bs, 0, 0, blacs_context__, panel__.ld());
-//==         }
-//== 
-//==         inline int nrows()
-//==         {
-//==             return nrows_;
-//==         }
-//== 
-//==         inline int ncols()
-//==         {
-//==             return ncols_;
-//==         }
-//== 
-//==         inline int* descriptor()
-//==         {
-//==             return descriptor_;
-//==         }
-//== 
-//==         T* ptr()
-//==         {
-//==             return panel_.ptr();
-//==         }
-//== };
-
 template<processing_unit_t> 
 class pblas;
 

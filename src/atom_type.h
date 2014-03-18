@@ -251,9 +251,6 @@ class basis_functions_index
         }
 };
 
-/**
-    \todo Arbitrary AW order
-*/
 class Atom_type
 {
     private:
@@ -376,9 +373,12 @@ class Atom_type
         void add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu);
 
         void init_free_atom();
+
         /// Solve free atom and find SCF density and potential.
-        /** Free atom potential is used to augment the MT potential and find the energy of the bound states which is used
-            as a linearization energy (auto_enu = 1). */ 
+        /** Free atom potential is used to augment the MT potential and 
+         *  find the energy of the bound states which is used as a linearization 
+         *  energy (auto_enu = 1). 
+         */ 
         double solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu);
 
         void print_info();

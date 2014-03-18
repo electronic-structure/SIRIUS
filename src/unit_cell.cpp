@@ -988,8 +988,7 @@ void Unit_cell::solve_free_atoms()
 
     std::vector<double> enu;
     for (int i = 0; i < spl_num_atom_types.local_size(); i++)
-        //atom_type(spl_num_atom_types[i])->solve_free_atom(1e-6, 1e-4, 1e-4, enu);
-        atom_type(spl_num_atom_types[i])->init_free_atom();
+        atom_type(spl_num_atom_types[i])->solve_free_atom(1e-6, 1e-4, 1e-4, enu);
 
     for (int i = 0; i < num_atom_types(); i++)
     {

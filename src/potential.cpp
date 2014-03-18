@@ -5,7 +5,6 @@ namespace sirius {
 // TODO: everything here must be documented
 // TODO: rename coulomb potential to hartree potential
 // TODO: better naming convention: q is meaningless
-// TODO: think what to do with phase factors: some kind of spline interpolation
 
 Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_density_order(9)
 {
