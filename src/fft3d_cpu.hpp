@@ -16,11 +16,8 @@ class FFT3D<cpu>
         std::vector<fftw_plan> plan_forward_;
     
         /// inout buffer for each thread
-        mdarray<double_complex, 2> fftw_input_buffer_;
+        mdarray<double_complex, 2> fftw_buffer_;
         
-        /// output buffer for each thread
-        mdarray<double_complex, 2> fftw_output_buffer_;
-
         /// split index of FFT buffer
         splindex<block> spl_fft_size_;
 
@@ -35,7 +32,7 @@ class FFT3D<cpu>
         {    
             fftw_execute(plan_forward_[thread_id]);
             double norm = 1.0 / size();
-            for (int i = 0; i < size(); i++) fftw_output_buffer_(i, thread_id) *= norm;
+            for (int i = 0; i < size(); i++) fftw_buffer_(i, thread_id) *= norm;
         }
 
         /// Find smallest optimal grid size starting from n.
@@ -72,23 +69,20 @@ class FFT3D<cpu>
                 grid_limits_[i].first = grid_limits_[i].second - grid_size_[i] + 1;
             }
 
-            fftw_input_buffer_.set_dimensions(size(), Platform::num_fft_threads());
-            fftw_input_buffer_.allocate();
+            fftw_buffer_.set_dimensions(size(), Platform::num_fft_threads());
+            fftw_buffer_.allocate();
 
-            fftw_output_buffer_.set_dimensions(size(), Platform::num_fft_threads());
-            fftw_output_buffer_.allocate();
- 
             plan_backward_.resize(Platform::num_fft_threads());
             plan_forward_.resize(Platform::num_fft_threads());
 
             for (int i = 0; i < Platform::num_fft_threads(); i++)
             {
                 plan_backward_[i] = fftw_plan_dft_3d(size(2), size(1), size(0), 
-                                                     (fftw_complex*)&fftw_input_buffer_(0, i), 
-                                                     (fftw_complex*)&fftw_output_buffer_(0, i), 1, FFTW_MEASURE);
+                                                     (fftw_complex*)&fftw_buffer_(0, i), 
+                                                     (fftw_complex*)&fftw_buffer_(0, i), 1, FFTW_MEASURE);
                 plan_forward_[i] = fftw_plan_dft_3d(size(2), size(1), size(0), 
-                                                    (fftw_complex*)&fftw_input_buffer_(0, i), 
-                                                    (fftw_complex*)&fftw_output_buffer_(0, i), -1, FFTW_MEASURE);
+                                                    (fftw_complex*)&fftw_buffer_(0, i), 
+                                                    (fftw_complex*)&fftw_buffer_(0, i), -1, FFTW_MEASURE);
             }
 
             spl_fft_size_ = splindex<block>(size(), Platform::num_mpi_ranks(), Platform::mpi_rank());
@@ -109,7 +103,7 @@ class FFT3D<cpu>
         {
             assert(thread_id < Platform::num_fft_threads());
 
-            memset(&fftw_input_buffer_(0, thread_id), 0, size() * sizeof(double_complex));
+            memset(&fftw_buffer_(0, thread_id), 0, size() * sizeof(double_complex));
         }
 
         template<typename T>
@@ -118,22 +112,21 @@ class FFT3D<cpu>
             assert(thread_id < Platform::num_fft_threads());
             
             zero(thread_id);
-
-            for (int i = 0; i < n; i++) fftw_input_buffer_(map[i], thread_id) = data[i];
+            for (int i = 0; i < n; i++) fftw_buffer_(map[i], thread_id) = data[i];
         }
 
         inline void input(double* data, int thread_id = 0)
         {
             assert(thread_id < Platform::num_fft_threads());
             
-            for (int i = 0; i < size(); i++) fftw_input_buffer_(i, thread_id) = data[i];
+            for (int i = 0; i < size(); i++) fftw_buffer_(i, thread_id) = data[i];
         }
         
         inline void input(double_complex* data, int thread_id = 0)
         {
             assert(thread_id < Platform::num_fft_threads());
             
-            memcpy(&fftw_input_buffer_(0, thread_id), data, size() * sizeof(double_complex));
+            memcpy(&fftw_buffer_(0, thread_id), data, size() * sizeof(double_complex));
         }
         
         /// Execute the transformation for a given thread.
@@ -164,21 +157,21 @@ class FFT3D<cpu>
         {
             assert(thread_id < Platform::num_fft_threads());
 
-            for (int i = 0; i < size(); i++) data[i] = real(fftw_output_buffer_(i, thread_id));
+            for (int i = 0; i < size(); i++) data[i] = real(fftw_buffer_(i, thread_id));
         }
         
         inline void output(double_complex* data, int thread_id = 0)
         {
             assert(thread_id < Platform::num_fft_threads());
 
-            memcpy(data, &fftw_output_buffer_(0, thread_id), size() * sizeof(double_complex));
+            memcpy(data, &fftw_buffer_(0, thread_id), size() * sizeof(double_complex));
         }
         
         inline void output(int n, int* map, double_complex* data, int thread_id = 0)
         {
             assert(thread_id < Platform::num_fft_threads());
 
-            for (int i = 0; i < n; i++) data[i] = fftw_output_buffer_(map[i], thread_id);
+            for (int i = 0; i < n; i++) data[i] = fftw_buffer_(map[i], thread_id);
         }
         
         inline const std::pair<int, int>& grid_limits(int idim)
@@ -199,6 +192,7 @@ class FFT3D<cpu>
             return grid_size_[d]; 
         }
 
+        /// lineqar index of a plane-wave harmonic with lattice coordinates (10, i1, i2) inside fft buffer
         inline int index(int i0, int i1, int i2)
         {
             if (i0 < 0) i0 += grid_size_[0];
@@ -223,18 +217,12 @@ class FFT3D<cpu>
             return spl_fft_size_.global_offset();
         }
         
-        /// Direct access to the output buffer
-        inline double_complex& output_buffer(int i, int thread_id = 0)
+        /// Direct access to the fft buffer
+        inline double_complex& buffer(int i, int thread_id = 0)
         {
-            return fftw_output_buffer_(i, thread_id);
+            return fftw_buffer_(i, thread_id);
         }
         
-        /// Direct access to the input buffer
-        inline double_complex& input_buffer(int i, int thread_id = 0)
-        {
-            return fftw_input_buffer_(i, thread_id);
-        }
-
         vector3d<int> grid_size()
         {
             return vector3d<int>(grid_size_);

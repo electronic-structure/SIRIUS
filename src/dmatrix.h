@@ -199,70 +199,109 @@ class dmatrix
             matrix_local_.zero();
         }
 
+        /// Gather full vectors from the panels
+        /** 
+         * Communication happens between rows of the MPI grid 
+         */
         void gather(mdarray<T, 2>& full_vectors, MPI_Comm comm_row)
         {
             sirius::Timer t("dmatrix::gather");
 
+            // trivial case
+            if (num_ranks_row_ * num_ranks_col_ == 1)
+            {
+                matrix_local_ >> full_vectors;
+                return;
+            }
+
             splindex<block> spl_col(num_cols_local(), num_ranks_row_, rank_row_);
             
             assert(full_vectors.size(0) == num_rows());
             assert(full_vectors.size(1) == spl_col.local_size());
 
+            std::vector<int> offsets(num_ranks_row_);
+            std::vector<int> counts(num_ranks_row_);
+
+            // each rank tosses it's local matrix to other ranks in the column
             for (int rank = 0; rank < num_ranks_row_; rank++)
             {
-                mdarray<double_complex, 2> panel_tmp(spl_row_.local_size(rank), num_cols_local());
-                
-                // current rank loads panel into temporary array
-                if (rank_row_ == rank) matrix_local_ >> panel_tmp;
+                // each rank allocates a subpanel
+                mdarray<double_complex, 2> sub_panel(spl_row_.local_size(rank), spl_col.local_size());
 
-                // current rank sends panel to other ranks
-                // TODO: change to non-blocking send to avoid data transfer overhead
-                Platform::bcast(panel_tmp.ptr(), (int)panel_tmp.size(), comm_row, rank); 
-               
+                // make a table of sizes and offsets
+                for (int i = 0; i < num_ranks_row_; i++)
+                {
+                    // offset of a sub-panel
+                    offsets[i] = spl_row_.local_size(rank) * spl_col.global_offset(i);
+                    // size of a sub-panel
+                    counts[i] = spl_row_.local_size(rank) * spl_col.local_size(i);
+                }
+
+                // scatter local matrix between ranks
+                Platform::scatter(matrix_local_.ptr(), sub_panel.ptr(), &counts[0], &offsets[0], rank, comm_row);
+                
                 // loop over local fraction of columns
                 for (int i = 0; i < spl_col.local_size(); i++)
                 {
-                    // global index of column
-                    int icol = spl_col[i];
                     // loop over local fraction of rows
                     for (int j = 0; j < spl_row_.local_size(rank); j++)
                     {
                         // copy necessary parts of panel to the full vector
-                        full_vectors(spl_row_.global_index(j, rank), i) = panel_tmp(j, icol);
+                        full_vectors(spl_row_.global_index(j, rank), i) = sub_panel(j, i);
                     }
                 }
             }
         }
-        
+
+        /// Scatter full vectors to the panels
+        /** 
+         * Communication happens between rows of the MPI grid 
+         */
         void scatter(mdarray<double_complex, 2>& full_vectors, MPI_Comm comm_row)
         {
             sirius::Timer t("dmatrix::scatter");
+
+            // trivial case
+            if (num_ranks_row_ * num_ranks_col_ == 1)
+            {
+                full_vectors >> matrix_local_;
+                return;
+            }
             
             splindex<block> spl_col(num_cols_local(), num_ranks_row_, rank_row_);
         
             assert(full_vectors.size(0) == num_rows());
             assert(full_vectors.size(1) == spl_col.local_size());
+
+            std::vector<int> offsets(num_ranks_row_);
+            std::vector<int> counts(num_ranks_row_);
         
             for (int rank = 0; rank < num_ranks_row_; rank++)
             {
-                mdarray<double_complex, 2> full_vectors_tmp(num_rows(), spl_col.local_size(rank));
-        
-                if (rank_row_ == rank) full_vectors >> full_vectors_tmp;
-        
-                Platform::bcast(full_vectors_tmp.ptr(), (int)full_vectors_tmp.size(), comm_row, rank); 
-        
-                // loop over local fraction of columns
-                for (int i = 0; i < spl_col.local_size(rank); i++)
+                // each rank allocates a subpanel
+                mdarray<double_complex, 2> sub_panel(spl_row_.local_size(rank), spl_col.local_size());
+
+                // fill the sub-panel
+                for (int i = 0; i < spl_col.local_size(); i++)
                 {
-                    // global index of column
-                    int icol = spl_col.global_index(i, rank);
                     // loop over local fraction of rows
-                    for (int j = 0; j < spl_row_.local_size(); j++)
+                    for (int j = 0; j < spl_row_.local_size(rank); j++)
                     {
-                        // copy necessary parts of the full vector to panel
-                        matrix_local_(j, icol) = full_vectors_tmp(spl_row_[j], i);
+                        sub_panel(j, i) = full_vectors(spl_row_.global_index(j, rank), i);
                     }
                 }
+
+                // make a table of sizes and offsets
+                for (int i = 0; i < num_ranks_row_; i++)
+                {
+                    // offset of a sub-panel
+                    offsets[i] = spl_row_.local_size(rank) * spl_col.global_offset(i);
+                    // size of a sub-panel
+                    counts[i] = spl_row_.local_size(rank) * spl_col.local_size(i);
+                }
+
+                // gather local matrix
+                Platform::gather(sub_panel.ptr(), matrix_local_.ptr(), &counts[0], &offsets[0], rank, comm_row);
             }
         }
 };

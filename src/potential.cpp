@@ -574,20 +574,22 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
 void Potential::generate_pw_coefs()
 {
     for (int ir = 0; ir < fft_->size(); ir++)
-        fft_->input_buffer(ir) = effective_potential()->f_it<global>(ir) * parameters_.step_function(ir);
+        fft_->buffer(ir) = effective_potential()->f_it<global>(ir) * parameters_.step_function(ir);
     
     fft_->transform(-1);
-    fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &effective_potential()->f_pw(0));
+    fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), 
+                 &effective_potential()->f_pw(0));
 
     if (!use_second_variation) // for full diagonalization we also need Beff(G)
     {
         for (int i = 0; i < parameters_.num_mag_dims(); i++)
         {
             for (int ir = 0; ir < fft_->size(); ir++)
-                fft_->input_buffer(ir) = effective_magnetic_field(i)->f_it<global>(ir) * parameters_.step_function(ir);
+                fft_->buffer(ir) = effective_magnetic_field(i)->f_it<global>(ir) * parameters_.step_function(ir);
     
             fft_->transform(-1);
-            fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &effective_magnetic_field(i)->f_pw(0));
+            fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), 
+                         &effective_magnetic_field(i)->f_pw(0));
         }
     }
 

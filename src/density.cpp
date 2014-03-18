@@ -991,7 +991,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 
     fft_->input(rl->num_gvec(), rl->fft_index(), &f_pw[0]);
     fft_->transform(1);
-    for (int ir = 0; ir < fft_->size(); ir++) rho_->f_it<global>(ir) += real(fft_->output_buffer(ir));
+    for (int ir = 0; ir < fft_->size(); ir++) rho_->f_it<global>(ir) += real(fft_->buffer(ir));
 }
 
 #ifdef _GPU_

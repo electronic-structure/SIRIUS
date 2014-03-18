@@ -1376,9 +1376,8 @@ void FORTRAN(sirius_apply_step_function_gk)(int32_t* kset_id, int32_t* ik, doubl
     global_parameters.reciprocal_lattice()->fft()->input(num_gkvec, kp->fft_index(), wf__, thread_id);
     global_parameters.reciprocal_lattice()->fft()->transform(1, thread_id);
     for (int ir = 0; ir < global_parameters.reciprocal_lattice()->fft()->size(); ir++)
-        global_parameters.reciprocal_lattice()->fft()->output_buffer(ir, thread_id) *= global_parameters.step_function()->theta_it(ir);
+        global_parameters.reciprocal_lattice()->fft()->buffer(ir, thread_id) *= global_parameters.step_function()->theta_it(ir);
 
-    global_parameters.reciprocal_lattice()->fft()->input(&global_parameters.reciprocal_lattice()->fft()->output_buffer(0, thread_id));
     global_parameters.reciprocal_lattice()->fft()->transform(-1, thread_id);
     global_parameters.reciprocal_lattice()->fft()->output(num_gkvec, kp->fft_index(), wf__, thread_id);
     log_function_exit(__func__);

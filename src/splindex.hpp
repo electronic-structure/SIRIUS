@@ -144,6 +144,9 @@ class splindex<block>: public splindex_base
         inline int global_index(int idxloc, int rank)
         {
             assert(rank >= 0 && rank < num_ranks_);
+
+            if (local_size(rank) == 0) return -1;
+
             assert(idxloc >= 0 && idxloc < local_size(rank));
 
             return (rank < num_ranks_with_extra_element_) ? (min_num_elements_+ 1) * rank + idxloc : 
@@ -153,6 +156,11 @@ class splindex<block>: public splindex_base
         inline int global_offset()
         {
             return global_index(0, rank_);
+        }
+
+        inline int global_offset(int rank__)
+        {
+            return global_index(0, rank__);
         }
 
         inline int operator[](int idxloc)

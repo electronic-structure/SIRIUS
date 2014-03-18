@@ -104,6 +104,23 @@ void Platform::allgather(T* buf, int offset, int count, MPI_Comm comm)
 }
 
 template <typename T>
+void Platform::gather(T* sendbuf, T* recvbuf, int *recvcounts, int *displs, int root, MPI_Comm comm)
+{
+    int sendcount = recvcounts[mpi_rank(comm)];
+ 
+    MPI_Gatherv(sendbuf, sendcount, type_wrapper<T>::mpi_type_id(), recvbuf, recvcounts, displs, 
+                type_wrapper<T>::mpi_type_id(), root, comm);
+}
+
+template <typename T>
+void Platform::scatter(T* sendbuf, T* recvbuf, int* sendcounts, int* displs, int root, MPI_Comm comm)
+{
+    int recvcount = sendcounts[mpi_rank(comm)];
+    MPI_Scatterv(sendbuf, sendcounts, displs, type_wrapper<T>::mpi_type_id(), recvbuf, recvcount,
+                 type_wrapper<T>::mpi_type_id(), root, comm);
+}
+
+template <typename T>
 void Platform::isend(T* buf, int count, int dest, int tag, MPI_Comm comm)
 {
     MPI_Request request;

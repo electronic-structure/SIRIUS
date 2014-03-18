@@ -42,15 +42,15 @@ class Platform
         static void bcast(T* buffer, int count, int root);
        
         /// Perform all-to-one in-place reduction
-        template<typename T>
+        template <typename T>
         static void reduce(T* buf, int count, const MPI_Comm& comm, int root);
 
         /// Perform all-to-one out-of-place reduction 
-        template<typename T>
+        template <typename T>
         static void reduce(T* sendbuf, T* recvbuf, int count, const MPI_Comm& comm, int root);
         
         /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
-        template<typename T>
+        template <typename T>
         static void allreduce(T* buffer, int count, const MPI_Comm& comm);
 
         /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
@@ -58,18 +58,24 @@ class Platform
         static void allreduce(T* buffer, int count, const MPI_Comm& comm);
         
         /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
-        template<typename T>
+        template <typename T>
         static void allreduce(T* buffer, int count);
         
         /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
         template<mpi_op_t op, typename T>
         static void allreduce(T* buffer, int count);
 
-        template<typename T>
+        template <typename T>
         static void allgather(T* sendbuf, T* recvbuf, int offset, int count);
         
-        template<typename T>
+        template <typename T>
         static void allgather(T* buf, int offset, int count, MPI_Comm comm = MPI_COMM_WORLD);
+
+        template <typename T> 
+        static void gather(T* sendbuf, T* recvbuf, int *recvcounts, int *displs, int root, MPI_Comm comm);
+
+        template <typename T>
+        static void scatter(T* sendbuf, T* recvbuf, int* sendcounts, int* displs, int root, MPI_Comm comm);
 
         /// Non-blocking send.
         template <typename T>
