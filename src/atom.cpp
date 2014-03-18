@@ -20,12 +20,6 @@ Atom::Atom(Atom_type* type__, double* position__, double* vector_field__)
     }
 }
 
-void Atom::init()
-{
-    d_mtrx_.set_dimensions(type()->mt_basis_size(), type()->mt_basis_size());
-    d_mtrx_.allocate();
-}
-
 void Atom::init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_lo__, int offset_wf__)
 {
     assert(lmax_pot__ >= -1);
@@ -38,23 +32,32 @@ void Atom::init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_
     lmax_pot_ = lmax_pot__;
     num_mag_dims_ = num_mag_dims__;
 
-    int lmmax = Utils::lmmax(lmax_pot_);
+    if (type()->esm_type() == full_potential_lapwlo || type()->esm_type() == full_potential_pwlo)
+    {
+        int lmmax = Utils::lmmax(lmax_pot_);
 
-    h_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size());
-    h_radial_integrals_.allocate();
-    
-    veff_.set_dimensions(lmmax, type()->num_mt_points());
-    
-    b_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size(), num_mag_dims_);
-    b_radial_integrals_.allocate();
-    
-    for (int j = 0; j < 3; j++) beff_[j].set_dimensions(lmmax, type()->num_mt_points());
+        h_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size());
+        h_radial_integrals_.allocate();
+        
+        veff_.set_dimensions(lmmax, type()->num_mt_points());
+        
+        b_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size(), num_mag_dims_);
+        b_radial_integrals_.allocate();
+        
+        for (int j = 0; j < 3; j++) beff_[j].set_dimensions(lmmax, type()->num_mt_points());
 
-    occupation_matrix_.set_dimensions(16, 16, 2, 2);
-    occupation_matrix_.allocate();
-    
-    uj_correction_matrix_.set_dimensions(16, 16, 2, 2);
-    uj_correction_matrix_.allocate();
+        occupation_matrix_.set_dimensions(16, 16, 2, 2);
+        occupation_matrix_.allocate();
+        
+        uj_correction_matrix_.set_dimensions(16, 16, 2, 2);
+        uj_correction_matrix_.allocate();
+    }
+
+    if (type()->esm_type() == ultrasoft_pseudopotential)
+    {
+        d_mtrx_.set_dimensions(type()->mt_lo_basis_size(), type()->mt_lo_basis_size());
+        d_mtrx_.allocate();
+    }
 }
 
 void Atom::generate_radial_integrals(MPI_Comm& comm)

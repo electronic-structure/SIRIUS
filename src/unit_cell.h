@@ -116,8 +116,9 @@ class Unit_cell
         int mt_aw_basis_size_;
 
         /// list of augmented wave basis descriptors
-        /** Establishes mapping between global index in the range [0, mt_aw_basis_size_) and corresponding atom and 
-            local index \f$ \xi \f$ */
+        /** Establishes mapping between global index in the range [0, mt_aw_basis_size_) 
+         *  and corresponding atom and local index \f$ \xi \f$ 
+         */
         std::vector<mt_basis_descriptor> mt_aw_basis_descriptors_; 
         
         /// total number of local orbital basis functions
@@ -157,8 +158,8 @@ class Unit_cell
 
         /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
         /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
-            bethween nearest atoms. Initial values of the muffin-tin radii (provided in the input file) 
-            are ignored. */
+         *  bethween nearest atoms. Initial values of the muffin-tin radii are ignored. 
+         */
         std::vector<double> find_mt_radii();
         
         /// Check if MT spheres overlap
@@ -181,36 +182,32 @@ class Unit_cell
         
         /// Initialize the unit cell data
         /** Several things must be done during this phase:
-              1. Compute number of electrons
-              2. Compute MT basis function indices
-              3. [if needed] Scale MT radii
-              4. Check MT overlap 
-              5. Create radial grid for each atom type
-              6. Find symmetry and assign symmetry class to each atom
-              7. Create split indices for atoms and atom classes
-
-            Initialization must be broken into two parts: one is called once, and the second one is called
-            each time the atoms change the position.
-
-            \todo This must be redesigned because currently initialization of the Unit_cell (which is a part of Global 
-                  class) depends on the "to be determined" parameters such as num_mag_dims. Probably Unit_cell must 
-                  become a separate object.
-        */
+         *    1. Compute number of electrons
+         *    2. Compute MT basis function indices
+         *    3. [if needed] Scale MT radii
+         *    4. Check MT overlap 
+         *    5. Create radial grid for each atom type
+         *    6. Find symmetry and assign symmetry class to each atom
+         *    7. Create split indices for atoms and atom classes
+         *
+         *  Initialization must be broken into two parts: one is called once, and the second one is called
+         *  each time the atoms change the position.
+         */
         void initialize(int lmax_apw, int lmax_pot, int num_mag_dims);
 
         /// Update the unit cell after moving the atoms.
         /** When the unit cell is initialized for the first time, or when the atoms are moved, several things
-            must be recomputed:
-              1. New atom positions may lead to a new symmetry, which can give a different number of atom 
-                 symmetry classes. Symmetry information must be updated.
-              2. New atom positions can lead to new MT radii if they are determined automatically. MT radii and 
-                 radial meshes must be updated. 
-            
-            Becasue of (1) the G and G+k phase factors must be updated. Because of (2) Bessel funcion moments
-            and G+k APW basis must be also updated. Because of (1 and 2) step function must be updated.
-
-            \todo Think how to implement this dependency in a reliable way without any handwork.
-        */
+         *  must be recomputed:
+         *    1. New atom positions may lead to a new symmetry, which can give a different number of atom 
+         *       symmetry classes. Symmetry information must be updated.
+         *    2. New atom positions can lead to new MT radii if they are determined automatically. MT radii and 
+         *       radial meshes must be updated. 
+         *  
+         *  Becasue of (1) the G and G+k phase factors must be updated. Because of (2) Bessel funcion moments
+         *  and G+k APW basis must be also updated. Because of (1 and 2) step function must be updated.
+         *
+         *  \todo Think how to implement this dependency in a reliable way without any handwork.
+         */
         void update();
 
         /// Clear the unit cell data
@@ -236,9 +233,9 @@ class Unit_cell
         
         /// Get crystal symmetries and equivalent atoms.
         /** Makes a call to spglib providing the basic unit cell information: lattice vectors and atomic types 
-            and positions. Gets back symmetry operations and a table of equivalent atoms. The table of equivalent 
-            atoms is then used to make a list of atom symmetry classes and related data.
-        */
+         *  and positions. Gets back symmetry operations and a table of equivalent atoms. The table of equivalent 
+         *  atoms is then used to make a list of atom symmetry classes and related data.
+         */
         void get_symmetry();
 
         /// Write structure to CIF file

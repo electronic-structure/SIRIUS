@@ -7,6 +7,7 @@ Atom_type::Atom_type(int id__)
       zn_(0), 
       num_mt_points_(0), 
       radial_grid_(NULL), 
+      offset_lo_(-1),
       esm_type_(full_potential_lapwlo), 
       initialized_(false)
 {
@@ -21,6 +22,7 @@ Atom_type::Atom_type(const char* symbol__, const char* name__, int zn__, double 
       mt_radius_(2.0), 
       num_mt_points_(2000 + zn__ * 50), 
       atomic_levels_(levels__), 
+      offset_lo_(-1),
       esm_type_(full_potential_lapwlo), 
       initialized_(false)
 {
@@ -34,6 +36,7 @@ Atom_type::Atom_type(int id__, const std::string label__, const std::string file
       mass_(0), 
       num_mt_points_(0), 
       radial_grid_(NULL), 
+      offset_lo_(-1),
       esm_type_(esm_type__), 
       label_(label__),
       file_name_(file_name__),
@@ -46,10 +49,12 @@ Atom_type::~Atom_type()
     delete radial_grid_;
 }
 
-void Atom_type::init(int lmax)
+void Atom_type::init(int lmax, int offset_lo__)
 {
     // check if the class instance was already initialized
     if (initialized_) error_local(__FILE__, __LINE__, "can't initialize twice");
+
+    offset_lo_ = offset_lo__;
    
     // read data from file if it exists
     if (file_name_.length() > 0)
@@ -66,26 +71,29 @@ void Atom_type::init(int lmax)
         }
     }
 
-    atomic_level_descriptor level;
     // add valence levels to the list of core levels
-    for (int ist = 0; ist < 28; ist++)
+    if (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo)
     {
-        bool found = false;
-        level.n = atomic_conf[zn_ - 1][ist][0];
-        level.l = atomic_conf[zn_ - 1][ist][1];
-        level.k = atomic_conf[zn_ - 1][ist][2];
-        level.occupancy = double(atomic_conf[zn_ - 1][ist][3]);
-        level.core = false;
-
-        if (level.n != -1)
+        atomic_level_descriptor level;
+        for (int ist = 0; ist < 28; ist++)
         {
-            for (int jst = 0; jst < (int)atomic_levels_.size(); jst++)
+            bool found = false;
+            level.n = atomic_conf[zn_ - 1][ist][0];
+            level.l = atomic_conf[zn_ - 1][ist][1];
+            level.k = atomic_conf[zn_ - 1][ist][2];
+            level.occupancy = double(atomic_conf[zn_ - 1][ist][3]);
+            level.core = false;
+
+            if (level.n != -1)
             {
-                if ((atomic_levels_[jst].n == level.n) &&
-                    (atomic_levels_[jst].l == level.l) &&
-                    (atomic_levels_[jst].k == level.k)) found = true;
+                for (int jst = 0; jst < (int)atomic_levels_.size(); jst++)
+                {
+                    if ((atomic_levels_[jst].n == level.n) &&
+                        (atomic_levels_[jst].l == level.l) &&
+                        (atomic_levels_[jst].k == level.k)) found = true;
+                }
+                if (!found) atomic_levels_.push_back(level);
             }
-            if (!found) atomic_levels_.push_back(level);
         }
     }
     
@@ -107,13 +115,18 @@ void Atom_type::init(int lmax)
 
         if (max_aw_order_ > 3) error_local(__FILE__, __LINE__, "maximum aw order > 3");
     }
-
+    
+    // initialize index of radial functions
     indexr_.init(aw_descriptors_, lo_descriptors_);
+
+    // initialize index of muffin-tin basis functions
     indexb_.init(indexr_);
     
     // allocate Q matrix
     if (esm_type_ == ultrasoft_pseudopotential)
     {
+        if (mt_basis_size() != mt_lo_basis_size()) error_local(__FILE__, __LINE__, "wrong basis size");
+
         uspp_.q_mtrx.set_dimensions(mt_basis_size(), mt_basis_size());
         uspp_.q_mtrx.allocate();
     }
