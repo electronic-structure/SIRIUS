@@ -141,9 +141,8 @@ void* exec_cpu_fft(void* args__)
             fft->input(args->kp->num_gkvec(), args->kp->fft_index_coarse(), &(*args->phi)(0, i), thread_id);
             fft->transform(1, thread_id);
 
-            for (int ir = 0; ir < fft->size(); ir++) fft->output_buffer(ir, thread_id) *= (*args->veff)(ir);
+            for (int ir = 0; ir < fft->size(); ir++) fft->buffer(ir, thread_id) *= (*args->veff)(ir);
 
-            fft->input(&fft->output_buffer(0, thread_id), thread_id);
             fft->transform(-1, thread_id);
             fft->output(args->kp->num_gkvec(), args->kp->fft_index_coarse(), &(*args->hphi)(0, i), thread_id);
         }
