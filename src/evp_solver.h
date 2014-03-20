@@ -445,7 +445,7 @@ void my_gen_eig_cpu(char uplo, int n, int nev, double_complex* a, int ia, int ja
                     double_complex* q, int iq, int jq, int* descq, int* info);
 #endif
 
-class generalized_evp_gpu: public generalized_evp
+class generalized_evp_rs_gpu: public generalized_evp
 {
     private:
 
@@ -458,8 +458,8 @@ class generalized_evp_gpu: public generalized_evp
         
     public:
 
-        generalized_evp_gpu(int num_ranks_row__, int rank_row__, int num_ranks_col__, int rank_col__, 
-                            int blacs_context__)
+        generalized_evp_rs_gpu(int num_ranks_row__, int rank_row__, int num_ranks_col__, int rank_col__, 
+                               int blacs_context__)
             : num_ranks_row_(num_ranks_row__),
               rank_row_(rank_row__),
               num_ranks_col_(num_ranks_col__), 
@@ -497,6 +497,84 @@ class generalized_evp_gpu: public generalized_evp
 
             int info;
             my_gen_eig('L', matrix_size, nevec, a, 1, 1, desca, b, 1, 1, descb, &eval_tmp[0], ztmp.ptr(), 1, 1, descz, &info);
+            if (info)
+            {
+                std::stringstream s;
+                s << "my_gen_eig " << info; 
+                error_local(__FILE__, __LINE__, s);
+            }
+            ztmp.unpin_memory();
+
+            for (int i = 0; i < linalg<scalapack>::numroc(nevec, block_size_, rank_col_, 0, num_ranks_col_); i++)
+                memcpy(&z[ldz * i], &ztmp(0, i), num_rows_loc * sizeof(double_complex));
+
+            memcpy(eval, &eval_tmp[0], nevec * sizeof(double));
+        }
+        #endif
+
+        bool parallel()
+        {
+            return true;
+        }
+
+        ev_solver_t type()
+        {
+            return ev_rs_gpu;
+        }
+};
+
+class generalized_evp_rs_cpu: public generalized_evp
+{
+    private:
+
+        int32_t block_size_;
+        int num_ranks_row_;
+        int rank_row_;
+        int num_ranks_col_;
+        int rank_col_;
+        int blacs_context_;
+        
+    public:
+
+        generalized_evp_rs_cpu(int num_ranks_row__, int rank_row__, int num_ranks_col__, int rank_col__, 
+                               int blacs_context__)
+            : num_ranks_row_(num_ranks_row__),
+              rank_row_(rank_row__),
+              num_ranks_col_(num_ranks_col__), 
+              rank_col_(rank_col__),
+              blacs_context_(blacs_context__)
+        {
+            #ifdef _SCALAPACK_
+            block_size_ = linalg<scalapack>::cyclic_block_size();
+            #endif
+        }
+
+        #ifdef _RS_GEN_EIG_
+        void solve(int32_t matrix_size, int32_t num_rows_loc, int32_t num_cols_loc, int32_t nevec, 
+                   double_complex* a, int32_t lda, double_complex* b, int32_t ldb, double* eval, 
+                   double_complex* z, int32_t ldz)
+        {
+        
+            assert(nevec <= matrix_size);
+            
+            int32_t desca[9];
+            linalg<scalapack>::descinit(desca, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+                                        blacs_context_, lda);
+
+            int32_t descb[9];
+            linalg<scalapack>::descinit(descb, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+                                        blacs_context_, ldb); 
+
+            mdarray<double_complex, 2> ztmp(num_rows_loc, num_cols_loc);
+            ztmp.pin_memory();
+            int32_t descz[9];
+            linalg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+                                        blacs_context_, num_rows_loc); 
+            
+            std::vector<double> eval_tmp(matrix_size);
+
+            int info;
+            my_gen_eig_cpu('L', matrix_size, nevec, a, 1, 1, desca, b, 1, 1, descb, &eval_tmp[0], ztmp.ptr(), 1, 1, descz, &info);
             if (info)
             {
                 std::stringstream s;

@@ -273,7 +273,7 @@ void Global::initialize()
         }
         case ev_rs_gpu:
         {
-            gen_evp_solver_ = new generalized_evp_gpu(nrow, irow, ncol, icol, blacs_context_);
+            gen_evp_solver_ = new generalized_evp_rs_gpu(nrow, irow, ncol, icol, blacs_context_);
             break;
         }
         default:

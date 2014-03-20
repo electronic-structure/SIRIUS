@@ -60,17 +60,6 @@ class pstdout
 
             offset_ = 0;
         }
-
-        //== static void printf(const char* fmt, ...)
-        //== {
-        //==     if (Platform::mpi_rank() == 0)
-        //==     {
-        //==         std::va_list arg;
-        //==         va_start(arg, fmt);
-        //==         printf(fmt, arg);
-        //==         va_end(arg);
-        //==     }
-        //== }
 };
             
 class sirius_io
