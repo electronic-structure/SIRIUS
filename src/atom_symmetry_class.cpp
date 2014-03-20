@@ -538,7 +538,7 @@ void Atom_symmetry_class::generate_radial_functions()
 void Atom_symmetry_class::sync_radial_functions(int rank)
 {
     // don't broadcast Hamiltonian radial functions, because they are used locally
-    int size = (int)radial_functions_.size(0) * radial_functions_.size(1);
+    int size = (int)(radial_functions_.size(0) * radial_functions_.size(1));
     Platform::bcast(radial_functions_.ptr(), size, rank);
     Platform::bcast(aw_surface_derivatives_.ptr(), (int)aw_surface_derivatives_.size(), rank);
 }
@@ -550,7 +550,6 @@ void Atom_symmetry_class::sync_radial_integrals(int rank)
     Platform::bcast(so_radial_integrals_.ptr(), (int)so_radial_integrals_.size(), rank);
 }
 
-/** \todo OMP for radial integrals */
 void Atom_symmetry_class::generate_radial_integrals()
 {
     Timer t("sirius::Atom_symmetry_class::generate_radial_integrals");

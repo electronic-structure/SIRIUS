@@ -268,6 +268,11 @@ class type_wrapper<char>
         {
             return false;
         }*/
+
+        static bool is_primitive()
+        {
+            return true;
+        }
 };
 
 #endif // __TYPEDEFS_H__

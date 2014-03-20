@@ -310,13 +310,13 @@ class HDF5_tree
             {
                 std::vector<int> dims(N + 1);
                 dims[0] = 2; 
-                for (int i = 0; i < N; i++) dims[i + 1] = data.size(i);
+                for (int i = 0; i < N; i++) dims[i + 1] = (int)data.size(i);
                 write(name, (typename type_wrapper<T>::real_t*)data.ptr(), dims);
             }
             else
             {
                 std::vector<int> dims(N);
-                for (int i = 0; i < N; i++) dims[i] = data.size(i);
+                for (int i = 0; i < N; i++) dims[i] = (int)data.size(i);
                 write(name, data.ptr(), dims);
             }
         }
@@ -359,13 +359,13 @@ class HDF5_tree
             {
                 std::vector<int> dims(N + 1);
                 dims[0] = 2; 
-                for (int i = 0; i < N; i++) dims[i + 1] = data.size(i);
+                for (int i = 0; i < N; i++) dims[i + 1] = (int)data.size(i);
                 read(name, (typename type_wrapper<T>::real_t*)data.ptr(), dims);
             }
             else
             {
                 std::vector<int> dims(N);
-                for (int i = 0; i < N; i++) dims[i] = data.size(i);
+                for (int i = 0; i < N; i++) dims[i] = (int)data.size(i);
                 read(name, data.ptr(), dims);
             }
         }

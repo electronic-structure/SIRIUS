@@ -105,16 +105,16 @@ void Spheric_function<T>::sh_transform(Spheric_function<T>& f)
         
     if (sht_ == NULL)
     {
-        if (data_.size(0) != f.sht_->lmmax()) error_local(__FILE__, __LINE__, "wrong lm size");
-        if (f.data_.size(0) != f.sht_->num_points()) error_local(__FILE__, __LINE__, "wrong tp size");
+        if ((int)data_.size(0) != f.sht_->lmmax()) error_local(__FILE__, __LINE__, "wrong lm size");
+        if ((int)f.data_.size(0) != f.sht_->num_points()) error_local(__FILE__, __LINE__, "wrong tp size");
         
         f.sht_->backward_transform(&data_(0, 0), angular_domain_size_, radial_domain_size_, &f(0, 0));
     }
     
     if (sht_)
     {
-        if (data_.size(0) != sht_->num_points()) error_local(__FILE__, __LINE__, "wrong tp size");
-        if (f.data_.size(0) != sht_->lmmax()) error_local(__FILE__, __LINE__, "wrong lm size");
+        if ((int)data_.size(0) != sht_->num_points()) error_local(__FILE__, __LINE__, "wrong tp size");
+        if ((int)f.data_.size(0) != sht_->lmmax()) error_local(__FILE__, __LINE__, "wrong lm size");
         
         sht_->forward_transform(&data_(0, 0), f.angular_domain_size_, radial_domain_size_, &f(0, 0));
     }

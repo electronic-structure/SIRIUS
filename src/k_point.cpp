@@ -1641,8 +1641,8 @@ void K_point::load(HDF5_tree h5in, int id)
 
 void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec)
 {
-    assert(fv_evec.size(0) >= gklo_basis_size());
-    assert(fv_evec.size(1) == parameters_.num_fv_states());
+    assert((int)fv_evec.size(0) >= gklo_basis_size());
+    assert((int)fv_evec.size(1) == parameters_.num_fv_states());
     
     fv_evec.zero();
 
@@ -1661,8 +1661,8 @@ void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec)
 
 void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
 {
-    assert(sv_evec.size(0) == parameters_.num_bands());
-    assert(sv_evec.size(1) == parameters_.num_bands());
+    assert((int)sv_evec.size(0) == parameters_.num_bands());
+    assert((int)sv_evec.size(1) == parameters_.num_bands());
 
     stop_here
 

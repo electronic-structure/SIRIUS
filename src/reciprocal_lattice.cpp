@@ -214,7 +214,7 @@ void Reciprocal_lattice::print_info()
 
 std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<double, 2>& form_factors, int ngv)
 {
-    assert(form_factors.size(0) == unit_cell_->num_atom_types());
+    assert((int)form_factors.size(0) == unit_cell_->num_atom_types());
     
     std::vector<double_complex> f_pw(ngv, double_complex(0, 0));
 
@@ -309,8 +309,8 @@ void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4
             }
         }
     }
-    int ld = qri.size(0) * qri.size(1) * qri.size(2);
-    Platform::allgather(&qri(0, 0, 0, 0), ld * spl_num_gvec_shells.global_offset(), ld* spl_num_gvec_shells.local_size());
+    int ld = (int)(qri.size(0) * qri.size(1) * qri.size(2));
+    Platform::allgather(&qri(0, 0, 0, 0), ld * spl_num_gvec_shells.global_offset(), ld * spl_num_gvec_shells.local_size());
 }
 
 void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)

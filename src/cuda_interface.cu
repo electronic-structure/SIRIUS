@@ -498,13 +498,40 @@ cufftHandle plan;
 int nfft_of_plan;
 int size_of_plan;
 
+extern "C" void cufft_create_plan_handle(void)
+{
+    if (cufftCreate(&plan) != CUFFT_SUCCESS)
+    {
+        printf("failed to execute cufftCreate()\n");
+        exit(0);
+    }
+}
+
+extern "C" size_t cufft_get_size(int nx, int ny, int nz, int nfft)
+{
+    int fft_size = nx * ny * nz;
+    int n[] = {nz, ny, nx};
+    size_t work_size;
+    if (cufftGetSizeMany(plan, 3, n, n, 1, fft_size, n, 1, fft_size, CUFFT_Z2Z, nfft, &work_size) != CUFFT_SUCCESS)
+    {
+        printf("failed to execute cufftGetSizeMany()\n");
+        exit(0);
+    }
+    return work_size;
+}
+
 extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft)
 {
     int fft_size = nx * ny * nz;
     int n[] = {nz, ny, nx};
 
-    cufftResult result = cufftPlanMany(&plan, 3, n, n, 1, fft_size, n, 1, fft_size, CUFFT_Z2Z, nfft);
-    if (result != CUFFT_SUCCESS)
+    if (cufftSetAutoAllocation(plan, false) != CUFFT_SUCCESS)
+    {
+        printf("failed to execute cufftSetAutoAllocation()\n");
+        exit(0);
+    }
+
+    if (cufftPlanMany(&plan, 3, n, n, 1, fft_size, n, 1, fft_size, CUFFT_Z2Z, nfft) != CUFFT_SUCCESS)
     {
         printf("failed to execute cufftPlanMany()\n");
         exit(0);
@@ -512,6 +539,15 @@ extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft)
 
     nfft_of_plan = nfft;
     size_of_plan = fft_size;
+}
+
+extern "C" void cufft_set_work_area(void* work_area)
+{
+    if (cufftSetWorkArea(plan, work_area) != CUFFT_SUCCESS)
+    {
+        printf("failed to execute cufftSetWorkArea()\n");
+        exit(0);
+    }
 }
 
 extern "C" void cufft_destroy_batch_plan()

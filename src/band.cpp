@@ -9,7 +9,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
     assert(fv_states.size(0) == hpsi.size(0));
     assert(fv_states.size(1) == hpsi.size(1));
 
-    int nfv = fv_states.size(1);
+    int nfv = (int)fv_states.size(1);
 
     Timer t("sirius::Band::apply_magnetic_field");
 
@@ -143,7 +143,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
     // copy Bz|\psi> to -Bz|\psi>
     for (int i = 0; i < nfv; i++)
     {
-        for (int j = 0; j < fv_states.size(0); j++) hpsi(j, i, 1) = -hpsi(j, i, 0);
+        for (int j = 0; j < (int)fv_states.size(0); j++) hpsi(j, i, 1) = -hpsi(j, i, 0);
     }
 }
 

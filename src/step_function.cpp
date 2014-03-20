@@ -61,10 +61,10 @@ Step_function::Step_function(Unit_cell* unit_cell__, Reciprocal_lattice* recipro
 
 void Step_function::get_step_function_form_factors(mdarray<double, 2>& ffac)
 {
-    assert(ffac.size(0) == unit_cell_->num_atom_types());
+    assert((int)ffac.size(0) == unit_cell_->num_atom_types());
     ffac.zero();
     
-    splindex<block> spl_num_gvec_shells(ffac.size(1), Platform::num_mpi_ranks(), Platform::mpi_rank());
+    splindex<block> spl_num_gvec_shells((int)ffac.size(1), Platform::num_mpi_ranks(), Platform::mpi_rank());
 
     #pragma omp parallel for default(shared)
     for (int igsloc = 0; igsloc < spl_num_gvec_shells.local_size(); igsloc++)

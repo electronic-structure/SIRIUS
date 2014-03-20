@@ -131,12 +131,12 @@ void Band::apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_comp
 {
     Timer t("sirius::Band::apply_hmt_to_apw");
 
-    int ngk_loc = alm.size(1);
+    int ngk_loc = (int)alm.size(1);
 
     mdarray<double_complex, 2> alm_tmp(ngk_loc, alm.size(0));
     for (int i1 = 0; i1 < ngk_loc; i1++)
     {
-        for (int i0 = 0; i0 < alm.size(0); i0++) alm_tmp(i1, i0) = alm(i0, i1);
+        for (int i0 = 0; i0 < (int)alm.size(0); i0++) alm_tmp(i1, i0) = alm(i0, i1);
     }
     
     #pragma omp parallel default(shared)

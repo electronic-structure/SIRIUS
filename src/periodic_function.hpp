@@ -105,8 +105,8 @@ inline void Periodic_function<T>::sync(bool sync_mt, bool sync_it)
     if (f_mt_.ptr() != NULL && sync_mt)
     {
         Platform::allgather(&f_mt_(0, 0, 0), 
-                            f_mt_.size(0) * f_mt_.size(1) * unit_cell_->spl_num_atoms().global_offset(), 
-                            f_mt_.size(0) * f_mt_.size(1) * unit_cell_->spl_num_atoms().local_size());
+                            (int)(f_mt_.size(0) * f_mt_.size(1) * unit_cell_->spl_num_atoms().global_offset()), 
+                            (int)(f_mt_.size(0) * f_mt_.size(1) * unit_cell_->spl_num_atoms().local_size()));
     }
 }
 

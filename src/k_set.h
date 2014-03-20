@@ -106,7 +106,7 @@ class K_set
 
         void add_kpoints(mdarray<double, 2>& kpoints__, double* weights__)
         {
-            for (int ik = 0; ik < kpoints__.size(1); ik++) add_kpoint(&kpoints__(0, ik), weights__[ik]);
+            for (int ik = 0; ik < (int)kpoints__.size(1); ik++) add_kpoint(&kpoints__(0, ik), weights__[ik]);
         }
 
         inline K_point* operator[](int i)

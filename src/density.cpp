@@ -241,7 +241,7 @@ void Density::add_kpoint_contribution_mt(K_point* kp, std::vector< std::pair<int
             }
         }
 
-        for (int j = 0; j < mt_complex_density_matrix.size(2); j++)
+        for (int j = 0; j < (int)mt_complex_density_matrix.size(2); j++)
         {
             blas<cpu>::gemm(0, 1, mt_basis_size, mt_basis_size, (int)occupied_bands.size(), double_complex(1, 0), 
                             &wf1(0, 0, dmat_spins_[j].first), wf1.ld(), 
@@ -650,9 +650,18 @@ void* exec_fft_density_gpu(void* args__)
     mdarray<int, 1> fft_index(args->kp->fft_index(), args->kp->num_gkvec());
     fft_index.allocate_on_device();
     fft_index.copy_to_device();
- 
-    size_t sz = (fft.size() * args->num_spins + args->kp->num_gkvec() + fft.size() * 8) * sizeof(double_complex);
-    int nfft_max = std::min((int)(cuda_get_free_mem() / sz), args->num_psi / 4);
+
+    // maximum available memory of the device
+    size_t max_free_mem = cuda_get_free_mem();
+    
+    // size of a single FFT: space for plane-wave coefficients + space for components of spinor wave-function
+    size_t single_fft_size = fft.size() * args->num_spins + args->kp->num_gkvec();
+    
+    // find maximum number of FFTs that we can fit into device 
+    int nfft_max = 0;
+    while (fft.num_fft_max(max_free_mem - nfft_max * single_fft_size) > nfft_max) nfft_max++;
+    
+    nfft_max = std::min(nfft_max, args->num_psi / 2);
  
     if (nfft_max == 0)
     {
@@ -660,13 +669,21 @@ void* exec_fft_density_gpu(void* args__)
         return NULL;
     }
 
+    std::cout << "[exec_fft_density_gpu] nfft_max = " << nfft_max << std::endl;
+    
+    // allocate work area array
+    mdarray<char, 1> work_area(NULL, fft.work_area_size(nfft_max));
+    work_area.allocate_on_device();
+    
+    // allocate space for plane-wave expansion coefficients
     mdarray<double_complex, 2> psi_pw_gpu(NULL, args->kp->num_gkvec(), nfft_max); 
     psi_pw_gpu.allocate_on_device();
-
+    
+    // allocate space for spinor components
     mdarray<double_complex, 3> psi_it_gpu(NULL, fft.size(), nfft_max, args->num_spins);
     psi_it_gpu.allocate_on_device();
 
-    fft.initialize(nfft_max);
+    fft.initialize(nfft_max, work_area.ptr_device());
 
     bool done = false;
 
@@ -1114,7 +1131,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     
     fft_->input(rl->num_gvec(), rl->fft_index(), &rho_pw[0]);
     fft_->transform(1);
-    for (int ir = 0; ir < fft_->size(); ir++) rho_->f_it<global>(ir) += real(fft_->output_buffer(ir));
+    for (int ir = 0; ir < fft_->size(); ir++) rho_->f_it<global>(ir) += real(fft_->buffer(ir));
     
     for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
          parameters_.unit_cell()->atom_type(iat)->uspp().q_pw.deallocate_on_device();

@@ -1,53 +1,51 @@
-#ifndef _MDARRAY_H_
-#define _MDARRAY_H_
+#ifndef __MDARRAY_H__
+#define __MDARRAY_H__
 
 #include <string.h>
 #include <vector>
 #include "error_handling.h"
 
-/** \todo change to long int64_t for indices 
-*/
-
 class dimension 
 {
+    private:
+
+        int64_t start_;
+        int64_t end_;
+        size_t size_;
+
     public:
   
         dimension() : start_(0), end_(-1), size_(0) 
         {
         }
         
-        dimension(unsigned int size__) : size_(size__)
+        dimension(size_t size__) : size_(size__)
         {
             start_ = 0;
             end_ = size_ - 1;
         }
     
-        dimension(int start_, int end_) : start_(start_), end_(end_) 
+        dimension(int64_t start_, int64_t end_) : start_(start_), end_(end_) 
         {
             assert(end_ >= start_);
             size_ = end_ - start_ + 1;
         };
 
-        inline int start() 
+        inline int64_t start() 
         {
             return start_;
         }
         
-        inline int end() 
+        inline int64_t end() 
         {
             return end_;
         }
         
-        inline unsigned int size() 
+        inline size_t size() 
         {
             return size_;
         }
         
-    private:
-
-        int start_;
-        int end_;
-        unsigned int size_;
 };
 
 template <typename T, int ND> class mdarray_base
@@ -76,7 +74,7 @@ template <typename T, int ND> class mdarray_base
         
         dimension d[ND];
         
-        size_t offset[ND];
+        int64_t offset[ND];
 
     public:
     
@@ -106,7 +104,7 @@ template <typename T, int ND> class mdarray_base
             size_t n = 1;
             for (int i = 1; i < ND; i++) 
             {
-                n *= d[i-1].size();
+                n *= d[i - 1].size();
                 offset[i] = n;
                 offset[0] -= offset[i] * d[i].start();
             }
@@ -121,22 +119,17 @@ template <typename T, int ND> class mdarray_base
             return size_;
         }
 
-        inline int size(int i)
+        inline size_t size(int i)
         {
            assert(i < ND);
            return d[i].size();
         }
-
-        inline int ld()
+    
+        inline uint32_t ld()
         {
-            return d[0].size();
-        }
+            assert(d[0].size() < size_t(1 << 31));
 
-        inline std::vector<int> dimensions()
-        {
-            std::vector<int> vd(ND);
-            for (int i = 0; i < ND; i++) vd[i] = d[i].size();
-            return vd;
+            return (int32_t)d[0].size();
         }
 
         void allocate()
@@ -315,11 +308,6 @@ template <typename T, int ND> class mdarray_base
             cuda_async_copy_to_host(mdarray_ptr, mdarray_ptr_device, size() * sizeof(T), stream_id);
         }
 
-        //== inline T* ptr_device()
-        //== {
-        //==     return mdarray_ptr_device;
-        //== }
-
         void zero_on_device()
         {
             cuda_memset(mdarray_ptr_device, 0, size() * sizeof(T));
@@ -376,12 +364,12 @@ template <typename T> class mdarray<T, 1> : public mdarray_base<T, 1>
             this->init_dimensions(vd);
         }
     
-        inline T& operator()(const int i0) 
+        inline T& operator()(const int64_t i0) 
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             assert(this->mdarray_ptr);
             
-            size_t i = this->offset[0] + i0;
+            int64_t i = this->offset[0] + i0;
             return this->mdarray_ptr[i];
         }
 
@@ -391,12 +379,12 @@ template <typename T> class mdarray<T, 1> : public mdarray_base<T, 1>
             return this->mdarray_ptr_device;
         }
 
-        inline T* ptr_device(const int i0)
+        inline T* ptr_device(const int64_t i0)
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             assert(this->mdarray_ptr_device);
             
-            size_t i = this->offset[0] + i0;
+            int64_t i = this->offset[0] + i0;
             return &this->mdarray_ptr_device[i];
         }
         #endif
@@ -431,13 +419,13 @@ template <typename T> class mdarray<T, 2> : public mdarray_base<T, 2>
             this->init_dimensions(vd);
         }
     
-        inline T& operator()(const int i0, const int i1) 
+        inline T& operator()(const int64_t i0, const int64_t i1) 
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
             assert(this->mdarray_ptr);
             
-            size_t i = this->offset[0] + i0 + i1 * this->offset[1];
+            int64_t i = this->offset[0] + i0 + i1 * this->offset[1];
             return this->mdarray_ptr[i];
         }
     
@@ -447,13 +435,13 @@ template <typename T> class mdarray<T, 2> : public mdarray_base<T, 2>
             return this->mdarray_ptr_device;
         }
 
-        inline T* ptr_device(const int i0, const int i1) 
+        inline T* ptr_device(const int64_t i0, const int64_t i1) 
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
             assert(this->mdarray_ptr_device);
             
-            size_t i = this->offset[0] + i0 + i1 * this->offset[1];
+            int64_t i = this->offset[0] + i0 + i1 * this->offset[1];
             return &this->mdarray_ptr_device[i];
         }
         #endif
@@ -493,14 +481,14 @@ template <typename T> class mdarray<T, 3> : public mdarray_base<T, 3>
             this->init_dimensions(vd);
         }
     
-        inline T& operator()(const int i0, const int i1, const int i2) 
+        inline T& operator()(const int64_t i0, const int64_t i1, const int64_t i2) 
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
             assert(i2 >= this->d[2].start() && i2 <= this->d[2].end());
             assert(this->mdarray_ptr);
             
-            size_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2];
+            int64_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2];
             return this->mdarray_ptr[i];
         }
 
@@ -510,14 +498,14 @@ template <typename T> class mdarray<T, 3> : public mdarray_base<T, 3>
             return this->mdarray_ptr_device;
         }
 
-        inline T* ptr_device(const int i0, const int i1, const int i2) 
+        inline T* ptr_device(const int64_t i0, const int64_t i1, const int64_t i2) 
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
             assert(i2 >= this->d[2].start() && i2 <= this->d[2].end());
             assert(this->mdarray_ptr_device);
             
-            size_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2];
+            int64_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2];
             return &this->mdarray_ptr_device[i];
         }
         #endif
@@ -561,7 +549,7 @@ template <typename T> class mdarray<T, 4> : public mdarray_base<T, 4>
             this->init_dimensions(vd);
         }
     
-        inline T& operator()(const int i0, const int i1, const int i2, const int i3) 
+        inline T& operator()(const int64_t i0, const int64_t i1, const int64_t i2, const int64_t i3) 
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
@@ -569,7 +557,7 @@ template <typename T> class mdarray<T, 4> : public mdarray_base<T, 4>
             assert(i3 >= this->d[3].start() && i3 <= this->d[3].end());
             assert(this->mdarray_ptr);
             
-            size_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2] + i3 * this->offset[3];
+            int64_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2] + i3 * this->offset[3];
             return this->mdarray_ptr[i];
         }
 
@@ -579,7 +567,7 @@ template <typename T> class mdarray<T, 4> : public mdarray_base<T, 4>
             return this->mdarray_ptr_device;
         }
 
-        inline T* ptr_device(const int i0, const int i1, const int i2, const int i3) 
+        inline T* ptr_device(const int64_t i0, const int64_t i1, const int64_t i2, const int64_t i3) 
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
@@ -587,103 +575,11 @@ template <typename T> class mdarray<T, 4> : public mdarray_base<T, 4>
             assert(i3 >= this->d[3].start() && i3 <= this->d[3].end());
             assert(this->mdarray_ptr_device);
             
-            size_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2] + i3 * this->offset[3];
+            int64_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2] + i3 * this->offset[3];
             return &this->mdarray_ptr_device[i];
         }
         #endif
 };
 
-#if 0
-// 5d specialization
-template <typename T> class mdarray<T, 5> : public mdarray_base<T, 5> 
-{
-    public:
-  
-        mdarray() 
-        {
-        }
-
-        mdarray(T* data_ptr, const dimension& d0, const dimension& d1, const dimension& d2, const dimension& d3, const dimension& d4)
-        {
-            set_dimensions(d0, d1, d2, d3, d4);
-            this->set_ptr(data_ptr);
-        }
-        
-        mdarray(const dimension& d0, const dimension& d1, const dimension& d2, const dimension& d3, const dimension& d4)
-        {
-            set_dimensions(d0, d1, d2, d3, d4);
-            this->allocate();
-        }
-        
-        void set_dimensions(const dimension& d0, const dimension& d1, const dimension& d2, const dimension& d3, const dimension& d4)
-        {
-            std::vector<dimension> vd;
-            vd.push_back(d0);
-            vd.push_back(d1);
-            vd.push_back(d2);
-            vd.push_back(d3);    
-            vd.push_back(d4);    
-            this->init_dimensions(vd);
-        }
-    
-        inline T& operator()(const int i0, const int i1, const int i2, const int i3, const int i4) 
-        {
-            assert(this->mdarray_ptr);
-            assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
-            assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
-            assert(i2 >= this->d[2].start() && i2 <= this->d[2].end());
-            assert(i3 >= this->d[3].start() && i3 <= this->d[3].end());
-            assert(i4 >= this->d[4].start() && i4 <= this->d[4].end());
-            
-            size_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2] + i3 * this->offset[3] + i4 * this->offset[4];
-            return this->mdarray_ptr[i];
-        }
-};
-#endif
-
-#if 0
-// 6d specialization
-template <typename T> class mdarray<T, 6> : public mdarray_base<T, 6> 
-{
-    public:
-  
-        mdarray() 
-        {
-        }
-
-        mdarray(T* data_ptr, const dimension& d0, const dimension& d1, const dimension& d2, const dimension& d3, const dimension& d4, const dimension& d5)
-        {
-            set_dimensions(d0, d1, d2, d3, d4, d5);
-            this->set_ptr(data_ptr);
-        }
-        
-        void set_dimensions(const dimension& d0, const dimension& d1, const dimension& d2, const dimension& d3, const dimension& d4, const dimension& d5)
-        {
-            std::vector<dimension> vd;
-            vd.push_back(d0);
-            vd.push_back(d1);
-            vd.push_back(d2);
-            vd.push_back(d3);
-            vd.push_back(d4);
-            vd.push_back(d5);
-            this->init_dimensions(vd);
-        }
-    
-        inline T& operator()(const int i0, const int i1, const int i2, const int i3, const int i4, const int i5) 
-        {
-            assert(this->mdarray_ptr);
-            assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
-            assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
-            assert(i2 >= this->d[2].start() && i2 <= this->d[2].end());
-            assert(i3 >= this->d[3].start() && i3 <= this->d[3].end());
-            assert(i4 >= this->d[4].start() && i4 <= this->d[4].end());
-            assert(i5 >= this->d[5].start() && i5 <= this->d[5].end());
-            
-            size_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2] + i3 * this->offset[3] + i4 * this->offset[4] + i5 * this->offset[5];
-            return this->mdarray_ptr[i];
-        }
-};
-#endif
-
-#endif // _MDARRAY_H_
+#endif // __MDARRAY_H__
 

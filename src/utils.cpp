@@ -5,7 +5,7 @@ void Utils::write_matrix(const std::string& fname, mdarray<double_complex, 2>& m
 {
     static int icount = 0;
 
-    if (nrow < 0 || nrow > matrix.size(0) || ncol < 0 || ncol > matrix.size(1))
+    if (nrow < 0 || nrow > (int)matrix.size(0) || ncol < 0 || ncol > (int)matrix.size(1))
         error_local(__FILE__, __LINE__, "wrong number of rows or columns");
 
     icount++;
@@ -62,7 +62,7 @@ void Utils::write_matrix(const std::string& fname, bool write_all, mdarray<doubl
 
     FILE* fout = fopen(full_name.c_str(), "w");
 
-    for (int icol = 0; icol < matrix.size(1); icol++)
+    for (int icol = 0; icol < (int)matrix.size(1); icol++)
     {
         fprintf(fout, "column : %4i\n", icol);
         for (int i = 0; i < 80; i++) fprintf(fout, "-");
@@ -71,7 +71,7 @@ void Utils::write_matrix(const std::string& fname, bool write_all, mdarray<doubl
         for (int i = 0; i < 80; i++) fprintf(fout, "-");
         fprintf(fout, "\n");
         
-        int max_row = (write_all) ? (matrix.size(0) - 1) : std::min(icol, matrix.size(0) - 1);
+        int max_row = (write_all) ? ((int)matrix.size(0) - 1) : std::min(icol, (int)matrix.size(0) - 1);
         for (int j = 0; j <= max_row; j++)
         {
             fprintf(fout, "%4i  %18.12f\n", j, matrix(j, icol));
@@ -90,9 +90,9 @@ void Utils::check_hermitian(const std::string& name, mdarray<double_complex, 2>&
     int i0 = -1;
     int j0 = -1;
 
-    for (int i = 0; i < mtrx.size(0); i++)
+    for (int i = 0; i < (int)mtrx.size(0); i++)
     {
-        for (int j = 0; j < mtrx.size(1); j++)
+        for (int j = 0; j < (int)mtrx.size(1); j++)
         {
             double diff = abs(mtrx(i, j) - conj(mtrx(j, i)));
             if (diff > maxdiff)

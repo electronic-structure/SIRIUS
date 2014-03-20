@@ -76,8 +76,8 @@ class sirius_io
             std::string full_name = s.str() + "_" + fname;
             
             HDF5_tree fout(full_name, true);
-            int size0 = matrix.size(0);
-            int size1 = matrix.size(1);
+            int size0 = (int)matrix.size(0);
+            int size1 = (int)matrix.size(1);
             fout.write("nrow", &size0); 
             fout.write("ncol", &size1);
             fout.write_mdarray("matrix", matrix);

@@ -55,61 +55,63 @@ int idxfft;
 
 void* exec_gpu_fft(void* args__)
 {
-    exec_fft_args* args = (exec_fft_args*)args__;
+    //== exec_fft_args* args = (exec_fft_args*)args__;
 
-    FFT3D<gpu> fft(args->fft->grid_size());
+    stop_here
 
-    mdarray<int, 1> fft_index_coarse(args->kp->fft_index_coarse(), args->kp->num_gkvec());
-    fft_index_coarse.allocate_on_device();
-    fft_index_coarse.copy_to_device();
+    //== FFT3D<gpu> fft(args->fft->grid_size());
 
-    int nfft_buf = (int)(args->gamma->size() / fft.size());
-    if (nfft_buf == 0) return NULL; // TODO: fix this
+    //== mdarray<int, 1> fft_index_coarse(args->kp->fft_index_coarse(), args->kp->num_gkvec());
+    //== fft_index_coarse.allocate_on_device();
+    //== fft_index_coarse.copy_to_device();
 
-    int nfft_max = std::min(fft.num_fft_max(), std::min(args->num_phi / 4, nfft_buf));
+    //== int nfft_buf = (int)(args->gamma->size() / fft.size());
+    //== if (nfft_buf == 0) return NULL; // TODO: fix this
+
+    //== int nfft_max = std::min(fft.num_fft_max(), std::min(args->num_phi / 4, nfft_buf));
    
-    fft.initialize(nfft_max); 
+    //== fft.initialize(nfft_max); 
 
-    bool done = false;
+    //== bool done = false;
 
-    while (!done)
-    {
-        pthread_mutex_lock(&exec_fft_mutex);
-        int i = idxfft;
-        if (idxfft + nfft_max > args->num_phi) 
-        {
-            done = true;
-        }
-        else
-        {
-            idxfft += nfft_max;
-        }
-        pthread_mutex_unlock(&exec_fft_mutex);
+    //== while (!done)
+    //== {
+    //==     pthread_mutex_lock(&exec_fft_mutex);
+    //==     int i = idxfft;
+    //==     if (idxfft + nfft_max > args->num_phi) 
+    //==     {
+    //==         done = true;
+    //==     }
+    //==     else
+    //==     {
+    //==         idxfft += nfft_max;
+    //==     }
+    //==     pthread_mutex_unlock(&exec_fft_mutex);
 
-        if (!done)
-        {
-            cublas_set_matrix(args->kp->num_gkvec(), nfft_max, sizeof(double_complex), &(*args->phi)(0, i), args->phi->ld(), 
-                              args->kappa->ptr_device(), args->kappa->ld());
-            
-            // use gamma as fft buffer
-            fft.batch_load(args->kp->num_gkvec(), fft_index_coarse.ptr_device(), args->kappa->ptr_device(), 
-                           args->gamma->ptr_device());
+    //==     if (!done)
+    //==     {
+    //==         cublas_set_matrix(args->kp->num_gkvec(), nfft_max, sizeof(double_complex), &(*args->phi)(0, i), args->phi->ld(), 
+    //==                           args->kappa->ptr_device(), args->kappa->ld());
+    //==         
+    //==         // use gamma as fft buffer
+    //==         fft.batch_load(args->kp->num_gkvec(), fft_index_coarse.ptr_device(), args->kappa->ptr_device(), 
+    //==                        args->gamma->ptr_device());
 
-            fft.transform(1, args->gamma->ptr_device());
-            scale_matrix_rows_gpu(fft.size(), nfft_max, args->gamma->ptr_device(), args->veff->ptr_device());
-            fft.transform(-1, args->gamma->ptr_device());
+    //==         fft.transform(1, args->gamma->ptr_device());
+    //==         scale_matrix_rows_gpu(fft.size(), nfft_max, args->gamma->ptr_device(), args->veff->ptr_device());
+    //==         fft.transform(-1, args->gamma->ptr_device());
 
-            fft.batch_unload(args->kp->num_gkvec(), fft_index_coarse.ptr_device(), args->gamma->ptr_device(), 
-                             args->kappa->ptr_device());
+    //==         fft.batch_unload(args->kp->num_gkvec(), fft_index_coarse.ptr_device(), args->gamma->ptr_device(), 
+    //==                          args->kappa->ptr_device());
 
-            cublas_get_matrix(args->kp->num_gkvec(), nfft_max, sizeof(double_complex), 
-                              args->kappa->ptr_device(), args->kappa->ld(),
-                              &(*args->hphi)(0, i), args->hphi->ld());
-        }
-    }
+    //==         cublas_get_matrix(args->kp->num_gkvec(), nfft_max, sizeof(double_complex), 
+    //==                           args->kappa->ptr_device(), args->kappa->ld(),
+    //==                           &(*args->hphi)(0, i), args->hphi->ld());
+    //==     }
+    //== }
 
-    fft.finalize();
-    
+    //== fft.finalize();
+    //== 
     return NULL;
 }
 

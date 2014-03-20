@@ -125,7 +125,7 @@ class Reciprocal_lattice
                 case local:
                 {
                     int lmmax = Utils::lmmax(lmax);
-                    assert(lmmax <= gvec_ylm_.size(0));
+                    assert(lmmax <= (int)gvec_ylm_.size(0));
                     memcpy(ylm, &gvec_ylm_(0, ig), lmmax * sizeof(double_complex));
                     return;
                 }

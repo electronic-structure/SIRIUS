@@ -243,8 +243,8 @@ class dmatrix
 
             splindex<block> spl_col(num_cols_local(), num_ranks_row_, rank_row_);
             
-            assert(full_vectors.size(0) == num_rows());
-            assert(full_vectors.size(1) == spl_col.local_size());
+            assert((int)full_vectors.size(0) == num_rows());
+            assert((int)full_vectors.size(1) == spl_col.local_size());
 
             std::vector<int> offsets(num_ranks_row_);
             std::vector<int> counts(num_ranks_row_);
@@ -297,8 +297,8 @@ class dmatrix
             
             splindex<block> spl_col(num_cols_local(), num_ranks_row_, rank_row_);
         
-            assert(full_vectors.size(0) == num_rows());
-            assert(full_vectors.size(1) == spl_col.local_size());
+            assert((int)full_vectors.size(0) == num_rows());
+            assert((int)full_vectors.size(1) == spl_col.local_size());
 
             std::vector<int> offsets(num_ranks_row_);
             std::vector<int> counts(num_ranks_row_);

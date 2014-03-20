@@ -367,7 +367,7 @@ class K_point
         /// Return G+k vector in fractional coordinates
         inline vector3d<double> gkvec(int igk)
         {
-            assert(igk >= 0 && igk < gkvec_.size(1));
+            assert(igk >= 0 && igk < (int)gkvec_.size(1));
 
             return vector3d<double>(gkvec_(0, igk), gkvec_(1, igk), gkvec_(2, igk));
         }
@@ -392,32 +392,32 @@ class K_point
         /// Total number of G+k vectors within the cutoff distance
         inline int num_gkvec()
         {
-            assert(gkvec_.size(1) == (int)gvec_index_.size());
-            return gkvec_.size(1);
+            assert(gkvec_.size(1) == gvec_index_.size());
+            return (int)gkvec_.size(1);
         }
 
         /// Total number of muffin-tin and plane-wave expansion coefficients for the wave-functions.
         /** APW+lo basis \f$ \varphi_{\mu {\bf k}}({\bf r}) = \{ \varphi_{\bf G+k}({\bf r}),
-            \varphi_{j{\bf k}}({\bf r}) \} \f$ is used to expand first-variational wave-functions:
-
-            \f[
-                \psi_{i{\bf k}}({\bf r}) = \sum_{\mu} c_{\mu i}^{\bf k} \varphi_{\mu \bf k}({\bf r}) = 
-                \sum_{{\bf G}}c_{{\bf G} i}^{\bf k} \varphi_{\bf G+k}({\bf r}) + 
-                \sum_{j}c_{j i}^{\bf k}\varphi_{j{\bf k}}({\bf r})
-            \f]
-
-            Inside muffin-tins the expansion is converted into the following form:
-            \f[
-                \psi_{i {\bf k}}({\bf r})= \begin{array}{ll} 
-                \displaystyle \sum_{L} \sum_{\lambda=1}^{N_{\ell}^{\alpha}} 
-                F_{L \lambda}^{i {\bf k},\alpha}f_{\ell \lambda}^{\alpha}(r) 
-                Y_{\ell m}(\hat {\bf r}) & {\bf r} \in MT_{\alpha} \end{array}
-            \f]
-
-            Thus, the total number of coefficients representing a wave-funstion is equal
-            to the number of muffin-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r) 
-            Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves. 
-        */ 
+         *  \varphi_{j{\bf k}}({\bf r}) \} \f$ is used to expand first-variational wave-functions:
+         *
+         *  \f[
+         *      \psi_{i{\bf k}}({\bf r}) = \sum_{\mu} c_{\mu i}^{\bf k} \varphi_{\mu \bf k}({\bf r}) = 
+         *      \sum_{{\bf G}}c_{{\bf G} i}^{\bf k} \varphi_{\bf G+k}({\bf r}) + 
+         *      \sum_{j}c_{j i}^{\bf k}\varphi_{j{\bf k}}({\bf r})
+         *  \f]
+         *
+         *  Inside muffin-tins the expansion is converted into the following form:
+         *  \f[
+         *      \psi_{i {\bf k}}({\bf r})= \begin{array}{ll} 
+         *      \displaystyle \sum_{L} \sum_{\lambda=1}^{N_{\ell}^{\alpha}} 
+         *      F_{L \lambda}^{i {\bf k},\alpha}f_{\ell \lambda}^{\alpha}(r) 
+         *      Y_{\ell m}(\hat {\bf r}) & {\bf r} \in MT_{\alpha} \end{array}
+         *  \f]
+         *
+         *  Thus, the total number of coefficients representing a wave-funstion is equal
+         *  to the number of muffin-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r) 
+         *  Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves. 
+         */ 
         inline int wf_size() // TODO: better name for this
         {
             return (parameters_.unit_cell()->mt_basis_size() + num_gkvec());

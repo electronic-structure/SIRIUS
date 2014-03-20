@@ -73,7 +73,13 @@ extern "C" void cublas_set_vector(int n, int elemSize, const void *x, int incx, 
 // CUFFT functions
 //=================
 
+extern "C" void cufft_create_plan_handle(void);
+
+extern "C" size_t cufft_get_size(int nx, int ny, int nz, int nfft);
+
 extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft);
+
+extern "C" void cufft_set_work_area(void* work_area);
 
 extern "C" void cufft_destroy_batch_plan();
 
