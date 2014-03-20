@@ -661,9 +661,9 @@ void* exec_fft_density_gpu(void* args__)
     int nfft_max = 0;
     while (fft.num_fft_max(max_free_mem - nfft_max * single_fft_size) > nfft_max) nfft_max++;
     
-    nfft_max = std::min(nfft_max, args->num_psi / 2);
+    nfft_max = std::min(nfft_max - 2, args->num_psi / 2);
  
-    if (nfft_max == 0)
+    if (nfft_max <= 0)
     {
         fft_index.deallocate_on_device();
         return NULL;
