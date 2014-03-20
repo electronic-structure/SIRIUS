@@ -657,7 +657,7 @@ void* exec_fft_density_gpu(void* args__)
     // size of a single FFT: space for plane-wave coefficients + space for components of spinor wave-function
     size_t single_fft_size = (fft.size() * args->num_spins + args->kp->num_gkvec()) * sizeof(double_complex);
     
-    // find maximum number of FFTs that we can fit into device 
+    // find maximum number of FFTs that can fit into device 
     int nfft_max = 0;
     while (fft.num_fft_max(max_free_mem - nfft_max * single_fft_size) > nfft_max) nfft_max++;
     
@@ -669,7 +669,10 @@ void* exec_fft_density_gpu(void* args__)
         return NULL;
     }
 
-    std::cout << "[exec_fft_density_gpu] nfft_max = " << nfft_max << std::endl;
+    std::cout << "[exec_fft_density_gpu " << Platform::mpi_rank() << "] max_free_mem (Mb) = " << (max_free_mem >> 20) << std::endl;
+    std::cout << "[exec_fft_density_gpu " << Platform::mpi_rank() << "] nfft_max = " << nfft_max << std::endl;
+    std::cout << "[exec_fft_density_gpu " << Platform::mpi_rank() << "] work_size (Mb) = " << (fft.work_area_size(nfft_max) >> 20) << std::endl;
+    std::cout << "[exec_fft_density_gpu " << Platform::mpi_rank() << "] size of wf arrays (Mb) = " << ((nfft_max * single_fft_size) >> 20) << std::endl;
     
     // allocate work area array
     mdarray<char, 1> work_area(NULL, fft.work_area_size(nfft_max));
