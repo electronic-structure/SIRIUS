@@ -566,7 +566,6 @@ class generalized_evp_rs_cpu: public generalized_evp
                                         blacs_context_, ldb); 
 
             mdarray<double_complex, 2> ztmp(num_rows_loc, num_cols_loc);
-            ztmp.pin_memory();
             int32_t descz[9];
             linalg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, num_rows_loc); 
@@ -581,7 +580,6 @@ class generalized_evp_rs_cpu: public generalized_evp
                 s << "my_gen_eig " << info; 
                 error_local(__FILE__, __LINE__, s);
             }
-            ztmp.unpin_memory();
 
             for (int i = 0; i < linalg<scalapack>::numroc(nevec, block_size_, rank_col_, 0, num_ranks_col_); i++)
                 memcpy(&z[ldz * i], &ztmp(0, i), num_rows_loc * sizeof(double_complex));

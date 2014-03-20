@@ -55,6 +55,10 @@ void Global::read_input()
                 {
                     *evst[i] = ev_rs_gpu;
                 }
+                else if (name == "rs_cpu")
+                {
+                    *evst[i] = ev_rs_cpu;
+                }
                 else
                 {
                     error_local(__FILE__, __LINE__, "wrong eigen value solver");
@@ -276,6 +280,11 @@ void Global::initialize()
             gen_evp_solver_ = new generalized_evp_rs_gpu(nrow, irow, ncol, icol, blacs_context_);
             break;
         }
+        case ev_rs_cpu:
+        {
+            gen_evp_solver_ = new generalized_evp_rs_cpu(nrow, irow, ncol, icol, blacs_context_);
+            break;
+        }
         default:
         {
             error_local(__FILE__, __LINE__, "wrong generalized eigen-value solver");
@@ -432,6 +441,11 @@ void Global::print_info()
             case ev_rs_gpu:
             {
                 printf("RS_gpu\n");
+                break;
+            }
+            case ev_rs_cpu:
+            {
+                printf("RS_cpu\n");
                 break;
             }
             #endif

@@ -56,7 +56,9 @@ enum ev_solver_t
     ev_plasma,
 
     /// 
-    ev_rs_gpu
+    ev_rs_gpu,
+
+    ev_rs_cpu
 };
 
 enum splindex_t {block, block_cyclic};
