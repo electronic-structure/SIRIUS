@@ -539,16 +539,14 @@ extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft)
 
 extern "C" void cufft_set_work_area(void* work_area)
 {
-    if (cufftSetWorkArea(plan, work_area) != CUFFT_SUCCESS)
-    {
-        printf("failed to execute cufftSetWorkArea()\n");
-        exit(0);
-    }
+    cufftSetWorkArea(plan, work_area);
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 extern "C" void cufft_destroy_batch_plan()
 {
     cufftDestroy(plan);
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 //= __global__ void cufft_batch_apply_v_kernel(int fft_size, cuDoubleComplex* v_r, cuDoubleComplex* fft_buffer)
@@ -624,6 +622,7 @@ extern "C" void cufft_batch_load_gpu(int num_elements,
                                                                 map, 
                                                                 (cuDoubleComplex*)data, 
                                                                 (cuDoubleComplex*)fft_buffer);
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 __global__ void cufft_batch_unload_gpu_kernel(int fft_size, 
@@ -655,19 +654,20 @@ extern "C" void cufft_batch_unload_gpu(int num_elements,
                                                                   map, 
                                                                   (cuDoubleComplex*)fft_buffer,
                                                                   (cuDoubleComplex*)data);
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
-__global__ void cufft_normalize(int size, cuDoubleComplex* buffer)
-{
-    int i = blockIdx.y;
-    int ir = blockDim.x * blockIdx.x + threadIdx.x;
-
-    if (ir < size) 
-    {
-        buffer[array2D_offset(ir, i, size)] = 
-            cuCdiv(buffer[array2D_offset(ir, i, size)], make_cuDoubleComplex(double(size), 0));
-    }
-}
+//== __global__ void cufft_normalize(int size, cuDoubleComplex* buffer)
+//== {
+//==     int i = blockIdx.y;
+//==     int ir = blockDim.x * blockIdx.x + threadIdx.x;
+//== 
+//==     if (ir < size) 
+//==     {
+//==         buffer[array2D_offset(ir, i, size)] = 
+//==             cuCdiv(buffer[array2D_offset(ir, i, size)], make_cuDoubleComplex(double(size), 0));
+//==     }
+//== }
 
 extern "C" void cufft_forward_transform(void* fft_buffer)
 {
@@ -1882,6 +1882,7 @@ extern "C" void update_it_density_matrix_gpu(int fft_size,
                                                                       (cuDoubleComplex*)psi_it,
                                                                       wt,
                                                                       it_density_matrix);
+            cuda_check_last_error(__FILE__, __LINE__);
         }
         case 0:
         {
@@ -1890,6 +1891,7 @@ extern "C" void update_it_density_matrix_gpu(int fft_size,
                                                                       (cuDoubleComplex*)psi_it,
                                                                       wt,
                                                                       it_density_matrix);
+            cuda_check_last_error(__FILE__, __LINE__);
         }
     }
 }
