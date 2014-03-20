@@ -137,13 +137,10 @@ inline void cuda_check_last_error(const char* file_name, const int line_number)
 {
     #if !defined(NDEBUG)
     cudaDeviceSynchronize();
-    #endif
     cudaError_t error = cudaGetLastError();
-    if (error != cudaSuccess)
-    {
+    if (error != cudaSuccess) 
         printf("CUDA error at line %i of file %s: %s\n", line_number, file_name, cudaGetErrorString(error));
-        exit(-100);
-    }
+    #endif
 }
 
 extern "C" void cuda_initialize()
