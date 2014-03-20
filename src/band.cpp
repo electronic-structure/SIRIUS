@@ -1213,8 +1213,8 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     if (parameters_.processing_unit() == gpu)
     {
         #ifdef _GPU_
-        h.pin_memory();
-        o.pin_memory();
+        //h.pin_memory();
+        //o.pin_memory();
         #endif
     }
    
@@ -1362,51 +1362,51 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     
     assert(kp->gklo_basis_size() > parameters_.num_fv_states());
     
-    // debug scalapack
-    //== std::vector<double> fv_eigen_values_glob(parameters_.num_fv_states());
-    //== if (debug_level > 2 && 
-    //==     (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa))
-    //== {
-        mdarray<double_complex, 2> h_glob(kp->gklo_basis_size(), kp->gklo_basis_size());
-        mdarray<double_complex, 2> o_glob(kp->gklo_basis_size(), kp->gklo_basis_size());
-        //== mdarray<double_complex, 2> fv_eigen_vectors_glob(apwlo_basis_size(), parameters_.num_fv_states());
+    //== // debug scalapack
+    //== //== std::vector<double> fv_eigen_values_glob(parameters_.num_fv_states());
+    //== //== if (debug_level > 2 && 
+    //== //==     (parameters_.eigen_value_solver() == scalapack || parameters_.eigen_value_solver() == elpa))
+    //== //== {
+    //==     mdarray<double_complex, 2> h_glob(kp->gklo_basis_size(), kp->gklo_basis_size());
+    //==     mdarray<double_complex, 2> o_glob(kp->gklo_basis_size(), kp->gklo_basis_size());
+    //==     //== mdarray<double_complex, 2> fv_eigen_vectors_glob(apwlo_basis_size(), parameters_.num_fv_states());
 
-        h_glob.zero();
-        o_glob.zero();
+    //==     h_glob.zero();
+    //==     o_glob.zero();
 
-        for (int icol = 0; icol < kp->gklo_basis_size_col(); icol++)
-        {
-            int j = kp->gklo_basis_descriptor_col(icol).id;
-            for (int irow = 0; irow < kp->gklo_basis_size_row(); irow++)
-            {
-                int i = kp->gklo_basis_descriptor_row(irow).id;
-                h_glob(i, j) = h(irow, icol);
-                o_glob(i, j) = o(irow, icol);
-            }
-        }
-        
-        Platform::allreduce(h_glob.ptr(), (int)h_glob.size(), 
-                            parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
-        
-        Platform::allreduce(o_glob.ptr(), (int)o_glob.size(), 
-                            parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
+    //==     for (int icol = 0; icol < kp->gklo_basis_size_col(); icol++)
+    //==     {
+    //==         int j = kp->gklo_basis_descriptor_col(icol).id;
+    //==         for (int irow = 0; irow < kp->gklo_basis_size_row(); irow++)
+    //==         {
+    //==             int i = kp->gklo_basis_descriptor_row(irow).id;
+    //==             h_glob(i, j) = h(irow, icol);
+    //==             o_glob(i, j) = o(irow, icol);
+    //==         }
+    //==     }
+    //==     
+    //==     Platform::allreduce(h_glob.ptr(), (int)h_glob.size(), 
+    //==                         parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
+    //==     
+    //==     Platform::allreduce(o_glob.ptr(), (int)o_glob.size(), 
+    //==                         parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
 
-        Utils::check_hermitian("h_glob", h_glob);
-        Utils::check_hermitian("o_glob", o_glob);
-        
-        if (Platform::mpi_rank() == 0)
-        {
-            sirius_io::hdf5_write_matrix("h.h5", h_glob);
-            sirius_io::hdf5_write_matrix("o.h5", o_glob);
-        }
-        //**     
-        //**     generalized_evp_lapack lapack_solver(-1.0);
+    //==     Utils::check_hermitian("h_glob", h_glob);
+    //==     Utils::check_hermitian("o_glob", o_glob);
+    //==     
+    //==     if (Platform::mpi_rank() == 0)
+    //==     {
+    //==         sirius_io::hdf5_write_matrix("h.h5", h_glob);
+    //==         sirius_io::hdf5_write_matrix("o.h5", o_glob);
+    //==     }
+    //==     //**     
+    //==     //**     generalized_evp_lapack lapack_solver(-1.0);
 
-        //**     lapack_solver.solve(apwlo_basis_size(), parameters_.num_fv_states(), h_glob.get_ptr(), h_glob.ld(), 
-        //**                         o_glob.get_ptr(), o_glob.ld(), &fv_eigen_values_glob[0], fv_eigen_vectors_glob.get_ptr(),
-        //**                         fv_eigen_vectors_glob.ld());
-        //**
-    //== }
+    //==     //**     lapack_solver.solve(apwlo_basis_size(), parameters_.num_fv_states(), h_glob.get_ptr(), h_glob.ld(), 
+    //==     //**                         o_glob.get_ptr(), o_glob.ld(), &fv_eigen_values_glob[0], fv_eigen_vectors_glob.get_ptr(),
+    //==     //**                         fv_eigen_vectors_glob.ld());
+    //==     //**
+    //== //== }
     
     if (fix_apwlo_linear_dependence)
     {
@@ -1427,8 +1427,8 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     if (parameters_.processing_unit() == gpu)
     {
         #ifdef _GPU_
-        h.unpin_memory();
-        o.unpin_memory();
+        //h.unpin_memory();
+        //o.unpin_memory();
         #endif
     }
     
