@@ -113,6 +113,18 @@ class dmatrix
             matrix_local_.deallocate();
         }
 
+        #ifdef _GPU_
+        inline void allocate_page_locked()
+        {
+            matrix_local_.allocate_page_locked();
+        }
+
+        inline void deallocate_page_locked()
+        {
+            matrix_local_.deallocate_page_locked();
+        }
+        #endif
+
         inline int num_rows()
         {
             return num_rows_;

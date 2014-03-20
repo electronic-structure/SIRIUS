@@ -1207,17 +1207,20 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     if (kp->num_ranks() > 1 && !parameters_.gen_evp_solver()->parallel())
         error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
-    dmatrix<double_complex> h(kp->gklo_basis_size(), kp->gklo_basis_size(), parameters_.blacs_context());
-    dmatrix<double_complex> o(kp->gklo_basis_size(), kp->gklo_basis_size(), parameters_.blacs_context());
+    dmatrix<double_complex> h;
+    h.set_dimensions(kp->gklo_basis_size(), kp->gklo_basis_size(), parameters_.blacs_context());
+
+    dmatrix<double_complex> o;
+    o.set_dimensions(kp->gklo_basis_size(), kp->gklo_basis_size(), parameters_.blacs_context());
     
-    if (parameters_.processing_unit() == gpu)
-    {
-        #ifdef _GPU_
-        //h.pin_memory();
-        //o.pin_memory();
-        #endif
-    }
-   
+    #ifdef _GPU_
+    h.allocate_page_locked();
+    o.allocate_page_locked();
+    #else
+    h.allocate();
+    o.allocate();
+    #endif
+    
     // setup Hamiltonian and overlap
     switch (parameters_.processing_unit())
     {
@@ -1424,13 +1427,14 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
         kp->set_fv_eigen_values(&eval[0]);
     }
 
-    if (parameters_.processing_unit() == gpu)
-    {
-        #ifdef _GPU_
-        //h.unpin_memory();
-        //o.unpin_memory();
-        #endif
-    }
+    #ifdef _GPU_
+    h.deallocate_page_locked();
+    o.deallocate_page_locked();
+    #else
+    h.deallocate();
+    o.deallocate();
+    #endif
+
     
     //** if ((debug_level > 2) && (parameters_.eigen_value_solver() == scalapack))
     //** {
