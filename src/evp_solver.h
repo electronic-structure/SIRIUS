@@ -504,10 +504,11 @@ class generalized_evp_rs_gpu: public generalized_evp
                 s << "my_gen_eig " << info; 
                 error_local(__FILE__, __LINE__, s);
             }
-            ztmp.deallocate_page_locked();
 
             for (int i = 0; i < linalg<scalapack>::numroc(nevec, block_size_, rank_col_, 0, num_ranks_col_); i++)
                 memcpy(&z[ldz * i], &ztmp(0, i), num_rows_loc * sizeof(double_complex));
+
+            ztmp.deallocate_page_locked();
 
             memcpy(eval, &eval_tmp[0], nevec * sizeof(double));
         }
