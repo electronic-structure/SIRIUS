@@ -655,7 +655,7 @@ void* exec_fft_density_gpu(void* args__)
     size_t max_free_mem = cuda_get_free_mem();
     
     // size of a single FFT: space for plane-wave coefficients + space for components of spinor wave-function
-    size_t single_fft_size = fft.size() * args->num_spins + args->kp->num_gkvec();
+    size_t (single_fft_size = fft.size() * args->num_spins + args->kp->num_gkvec()) * sizeof(double_complex);
     
     // find maximum number of FFTs that we can fit into device 
     int nfft_max = 0;

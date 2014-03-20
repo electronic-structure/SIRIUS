@@ -1,3 +1,4 @@
+/// \todo scapalack-based solvers can exctract grid information from blacs context
 
 /// Base class for the standard eigen-value problem
 class standard_evp
@@ -595,7 +596,7 @@ class generalized_evp_rs_cpu: public generalized_evp
 
         ev_solver_t type()
         {
-            return ev_rs_gpu;
+            return ev_rs_cpu;
         }
 };
 
