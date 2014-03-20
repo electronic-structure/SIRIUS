@@ -133,85 +133,69 @@ inline __host__ __device__ int num_blocks(int length, int block_size)
 // CUDA functions
 //================
 
+// TODO: this will not work with asynchronous calls
+inline void cuda_check_last_error(const char* file_name, const int line_number)
+{
+    cudaError_t error = cudaGetLastError();
+    if (error != cudaSuccess)
+    {
+        printf("CUDA error at line %i of file %s: %s\n", line_number, file_name, cudaGetErrorString(error));
+        exit(-100);
+    }
+}
+
 extern "C" void cuda_initialize()
 {
-    if (cudaSetDeviceFlags(cudaDeviceMapHost) != cudaSuccess)
-    {
-        printf("failed to execute cudaSetDeviceFlags()\n");
-        exit(0);
-    }
+    cudaSetDeviceFlags(cudaDeviceMapHost);
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 extern "C" void cuda_malloc(void** ptr, size_t size)
 {
-    if (cudaMalloc(ptr, size) != cudaSuccess)
-    {
-        printf("failed to execute cudaMalloc() \n");
-        exit(0);
-    }
+    cudaMalloc(ptr, size);
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 extern "C" void cuda_free(void* ptr)
 {
-    if (cudaFree(ptr) != cudaSuccess)
-    {
-        printf("failed to execute cudaFree() \n");
-        exit(0);
-    }
+    cudaFree(ptr);
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 extern "C" void cuda_malloc_host(void** ptr, size_t size)
 {
-    if (cudaMallocHost(ptr, size) != cudaSuccess)
-    {  
-        printf("cudaMallocHost failed\n");
-        exit(-1);
-    }
+    cudaMallocHost(ptr, size);
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 extern "C" void cuda_free_host(void** ptr)
 {
-    if (cudaFreeHost(*ptr) != cudaSuccess)
-    {
-        printf("cudaFreeHost failed\n");
-        exit(-1);
-    }
+    cudaFreeHost(*ptr);
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 extern "C" void cuda_copy_to_device(void* target, void* source, size_t size)
 {
-    if (cudaMemcpy(target, source, size, cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        printf("failed to execute cudaMemcpy(cudaMemcpyHostToDevice)\n");
-        exit(0);
-    }
+    cudaMemcpy(target, source, size, cudaMemcpyHostToDevice);
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 extern "C" void cuda_copy_to_host(void* target, void* source, size_t size)
 {
-    if (cudaMemcpy(target, source, size, cudaMemcpyDeviceToHost) != cudaSuccess)
-    {
-        printf("failed to execute cudaMemcpy(cudaMemcpyDeviceToHost)\n");
-        exit(0);
-    }
+    cudaMemcpy(target, source, size, cudaMemcpyDeviceToHost);
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 extern "C" void cuda_device_synchronize()
 {
-    if (cudaDeviceSynchronize() != cudaSuccess)
-    {
-        printf("failed to execute cudaDeviceSynchronize()\n");
-        exit(0);
-    }
+    cudaDeviceSynchronize();
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 extern "C" void cuda_device_reset()
 {
-    if (cudaDeviceReset() != cudaSuccess)
-    {
-        printf("faile to execute cudaDeviceReset()\n");
-        exit(0);
-    }
+    cudaDeviceReset();
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 cudaStream_t* streams;
@@ -231,74 +215,44 @@ extern "C" void cuda_destroy_streams(int num_streams)
 
 extern "C" void cuda_stream_synchronize(int stream_id)
 {
-    if (cudaStreamSynchronize(streams[stream_id]) != cudaSuccess)
-    {
-        printf("failed to execute cudaStreamSynchronize()\n");
-        exit(0);
-    }
+    cudaStreamSynchronize(streams[stream_id]);
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 extern "C" void cuda_async_copy_to_device(void* target, void* source, size_t size, int stream_id)
 {
     cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
 
-    if (cudaMemcpyAsync(target, source, size, cudaMemcpyHostToDevice, stream) != cudaSuccess)
-    {
-        printf("failed to execute cudaMemcpy(cudaMemcpyHostToDevice)\n");
-        exit(0);
-    }
+    cudaMemcpyAsync(target, source, size, cudaMemcpyHostToDevice, stream);
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 extern "C" void cuda_async_copy_to_host(void* target, void* source, size_t size, int stream_id)
 {
     cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
 
-    if (cudaMemcpyAsync(target, source, size, cudaMemcpyDeviceToHost, stream) != cudaSuccess)
-    {
-        printf("failed to execute cudaMemcpy(cudaMemcpyDeviceToHost)\n");
-        exit(0);
-    }
+    cudaMemcpyAsync(target, source, size, cudaMemcpyDeviceToHost, stream);
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 extern "C" void cuda_memset(void* ptr, int value, size_t size)
 {
-    if (cudaMemset(ptr, value, size) != cudaSuccess)
-    {
-        printf("failed to execute cudaMemset()\n");
-        exit(0);
-    }
+    cudaMemset(ptr, value, size);
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 extern "C" void cuda_host_register(void* ptr, size_t size)
 {
     assert(ptr);
     
-    cudaError_t err = cudaHostRegister(ptr, size, cudaHostRegisterMapped);
-    if (err != cudaSuccess)
-    {
-        printf("failed to execute cudaHostRegister\n");
-        switch (err)
-        {
-            case cudaErrorInvalidValue:
-                printf("cudaErrorInvalidValue\n");
-                break;
-            case cudaErrorMemoryAllocation:
-                printf("cudaErrorMemoryAllocation\n");
-                break;
-            default:
-                printf("unrecognized error\n");
-        }
-        exit(-1);
-    }
+    cudaHostRegister(ptr, size, cudaHostRegisterMapped);
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 extern "C" void cuda_host_unregister(void* ptr)
 {
-    if (cudaHostUnregister(ptr) != cudaSuccess)
-    {
-        printf("failed to execute cudaHostUnregister\n");
-        exit(-1);
-    }
+    cudaHostUnregister(ptr);
+    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 //* cudaDeviceProp& cuda_devprop()
@@ -320,11 +274,8 @@ extern "C" size_t cuda_get_free_mem()
 extern "C" void cuda_device_info()
 {
     int count;
-    if (cudaGetDeviceCount(&count) != cudaSuccess)
-    {
-        printf("failed to execute cudaGetDeviceCount() \n");
-        exit(-1);
-    }
+    cudaGetDeviceCount(&count);
+    cuda_check_last_error(__FILE__, __LINE__);
 
     if (count == 0)
     {
@@ -334,11 +285,8 @@ extern "C" void cuda_device_info()
 
     cudaDeviceProp devprop;
      
-    if (cudaGetDeviceProperties(&devprop, 0) != cudaSuccess)
-    {
-        printf("failed to execute cudaGetDeviceProperties()\n");
-        exit(-1);
-    }
+    cudaGetDeviceProperties(&devprop, 0);
+    cuda_check_last_error(__FILE__, __LINE__);
     
     printf("name                        : %s \n", devprop.name);
     printf("major                       : %i \n", devprop.major);
@@ -498,13 +446,56 @@ cufftHandle plan;
 int nfft_of_plan;
 int size_of_plan;
 
+void cufft_check_error(const char* file_name, const int line_number, cufftResult result)
+{
+    if (result == CUFFT_SUCCESS) return;
+    
+    printf("CUFFT error at line %i of file %s: ", line_number, file_name);
+    switch (result)
+    {
+        case CUFFT_INVALID_PLAN:
+        {
+            printf("CUFFT_INVALID_PLAN\n");
+            break;
+        }
+        case CUFFT_ALLOC_FAILED:
+        {
+            printf("CUFFT_ALLOC_FAILED\n");
+            break;
+        }
+        case CUFFT_INVALID_VALUE:
+        {
+            printf("CUFFT_INVALID_VALUE\n");
+            break;
+        }
+        case CUFFT_INTERNAL_ERROR:
+        {
+            printf("CUFFT_INTERNAL_ERROR\n");
+            break;
+        }
+        case CUFFT_SETUP_FAILED:
+        {
+            printf("CUFFT_SETUP_FAILED\n");
+            break;
+        }
+        case CUFFT_INVALID_SIZE:
+        {
+            printf("CUFFT_INVALID_SIZE\n");
+            break;
+        }
+        default:
+        {
+            printf("unknown error code %i\n", result);
+            break;
+        }
+    }
+    exit(-100);
+}
+
 extern "C" void cufft_create_plan_handle(void)
 {
-    if (cufftCreate(&plan) != CUFFT_SUCCESS)
-    {
-        printf("failed to execute cufftCreate()\n");
-        exit(0);
-    }
+    cufftResult result = cufftCreate(&plan);
+    cufft_check_error(__FILE__, __LINE__, result);
 }
 
 extern "C" size_t cufft_get_size(int nx, int ny, int nz, int nfft)
@@ -525,17 +516,12 @@ extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft)
     int fft_size = nx * ny * nz;
     int n[] = {nz, ny, nx};
 
-    if (cufftSetAutoAllocation(plan, false) != CUFFT_SUCCESS)
-    {
-        printf("failed to execute cufftSetAutoAllocation()\n");
-        exit(0);
-    }
-
-    if (cufftPlanMany(&plan, 3, n, n, 1, fft_size, n, 1, fft_size, CUFFT_Z2Z, nfft) != CUFFT_SUCCESS)
-    {
-        printf("failed to execute cufftPlanMany()\n");
-        exit(0);
-    }
+    cufftResult result = cufftSetAutoAllocation(plan, false);
+    cufft_check_error(__FILE__, __LINE__, result);
+    
+    size_t work_size;
+    result = cufftMakePlanMany(plan, 3, n, n, 1, fft_size, n, 1, fft_size, CUFFT_Z2Z, nfft, &work_size);
+    cufft_check_error(__FILE__, __LINE__, result);
 
     nfft_of_plan = nfft;
     size_of_plan = fft_size;
