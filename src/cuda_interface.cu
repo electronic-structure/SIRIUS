@@ -133,9 +133,11 @@ inline __host__ __device__ int num_blocks(int length, int block_size)
 // CUDA functions
 //================
 
-// TODO: this will not work with asynchronous calls
 inline void cuda_check_last_error(const char* file_name, const int line_number)
 {
+    #if !defined(NDEBUG)
+    cudaDeviceSynchronize();
+    #endif
     cudaError_t error = cudaGetLastError();
     if (error != cudaSuccess)
     {
@@ -204,12 +206,20 @@ extern "C" void cuda_create_streams(int num_streams)
 {
     streams = (cudaStream_t*)malloc(num_streams * sizeof(cudaStream_t));
     //for (int i = 0; i < num_streams; i++) cudaStreamCreateWithFlags(&streams[i], cudaStreamNonBlocking);
-    for (int i = 0; i < num_streams; i++) cudaStreamCreate(&streams[i]);
+    for (int i = 0; i < num_streams; i++)
+    {
+        cudaStreamCreate(&streams[i]);
+        cuda_check_last_error(__FILE__, __LINE__);
+    }
 }
 
 extern "C" void cuda_destroy_streams(int num_streams)
 {
-    for (int i = 0; i < num_streams; i++) cudaStreamDestroy(streams[i]);
+    for (int i = 0; i < num_streams; i++) 
+    {
+        cudaStreamDestroy(streams[i]);
+        cuda_check_last_error(__FILE__, __LINE__);
+    }
     free(streams);
 }
 
@@ -265,8 +275,8 @@ extern "C" void cuda_host_unregister(void* ptr)
 extern "C" size_t cuda_get_free_mem()
 {
     size_t free, total;
-    
     cudaMemGetInfo(&free, &total);
+    cuda_check_last_error(__FILE__, __LINE__);
 
     return free;
 }
