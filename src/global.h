@@ -517,7 +517,8 @@ class Global
                 }
             }
         } mixer_input_section_;
-
+        
+        /// Parse unit cell input section.
         /** The following part of the input file is parsed:
          *  \code{.json}
          *      "unit_cell" : {
