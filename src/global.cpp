@@ -204,7 +204,7 @@ void Global::initialize()
     mpi_grid_.initialize(mpi_grid_dims_);
     
     // take 20% of empty non-magnetic states
-    if (num_fv_states_ < 0) num_fv_states_ = 1.2 * unit_cell_->num_valence_electrons() / 2.0;
+    if (num_fv_states_ < 0) num_fv_states_ = int(1.2 * unit_cell_->num_valence_electrons() / 2.0);
 
     if (num_fv_states_ < int(unit_cell_->num_valence_electrons() / 2.0))
         error_global(__FILE__, __LINE__, "not enough first-variational states");

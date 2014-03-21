@@ -805,11 +805,7 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
             double rhomin = 0.0;
             for (int ir = 0; ir < nmtp; ir++)
             {
-                for (int itp = 0; itp < sht_->num_points(); itp++) 
-                {
-                    rhomin = std::min(rhomin, rhotp(itp, ir));
-                    if (rhotp(itp, ir) < 0.0)  rhotp(itp, ir) = 0.0;
-                }
+                for (int itp = 0; itp < sht_->num_points(); itp++) rhomin = std::min(rhomin, rhotp(itp, ir));
             }
 
             if (rhomin < 0.0)
@@ -821,7 +817,17 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
                 warning_local(__FILE__, __LINE__, s);
             }
 
-            if (parameters_.num_spins() == 2)
+            if (parameters_.num_spins() == 1)
+            {
+                for (int ir = 0; ir < nmtp; ir++)
+                {
+                    for (int itp = 0; itp < sht_->num_points(); itp++) 
+                    {
+                        if (rhotp(itp, ir) < 0.0) rhotp(itp, ir) = 0.0;
+                    }
+                }
+            }
+            else
             {
                 for (int j = 0; j < parameters_.num_mag_dims(); j++)
                     magnetization[j]->f_mt(ialoc).sh_transform(vecmagtp[j]);
@@ -833,6 +839,14 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
                         double t = 0.0;
                         for (int j = 0; j < parameters_.num_mag_dims(); j++) t += pow(vecmagtp[j](itp, ir), 2);
                         magtp(itp, ir) = sqrt(t);
+                        for (int itp = 0; itp < sht_->num_points(); itp++) 
+                        {
+                            if (rhotp(itp, ir) < 0.0)
+                            {
+                                rhotp(itp, ir) = 0.0;
+                                magtp(itp, ir) = 0.0;
+                            }
+                        }
                     }
                 }
             }

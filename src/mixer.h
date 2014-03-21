@@ -57,10 +57,11 @@ class Mixer
 
         void mix_linear()
         {
+            double b = (count_ == 1) ? 0.1 : beta_;
+
             for (int i = 0; i < spl_size_.local_size(); i++)
-            {
-                vectors_(i, offset(count_)) = beta_ * input_buffer_(i) + (1 - beta_) * vectors_(i, offset(count_ - 1));
-            }
+                vectors_(i, offset(count_)) = b * input_buffer_(i) + (1 - b) * vectors_(i, offset(count_ - 1));
+
             Platform::allgather(&vectors_(0, offset(count_)), output_buffer_.ptr(), spl_size_.global_offset(), 
                                 spl_size_.local_size());
         }
