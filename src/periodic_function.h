@@ -8,6 +8,7 @@
 
 #include "mdarray.h"
 #include "spheric_function.h"
+#include "mixer.h"
 
 // TODO: this implementation is better, however the distinction between local and global periodic functions is
 //       still not very clear
@@ -129,7 +130,8 @@ class Periodic_function
 
         size_t size();
 
-        size_t pack(T* array);
+        //size_t pack(T* array);
+        size_t pack(size_t offset, Mixer* mixer);
         
         size_t unpack(T* array);
        

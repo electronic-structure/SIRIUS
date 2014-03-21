@@ -79,7 +79,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     {
         error_global(__FILE__, __LINE__, "Wrong mixer type");
     }
-    density_->pack(mx->input_buffer());
+    density_->pack(mx);
     mx->initialize();
 
     double eold = 0.0;
@@ -125,7 +125,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         
         double etot = total_energy();
 
-        density_->pack(mx->input_buffer());
+        density_->pack(mx);
         rms = mx->mix();
         density_->unpack(mx->output_buffer());
         Platform::bcast(&rms, 1, 0);

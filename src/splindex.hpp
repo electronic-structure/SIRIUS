@@ -24,6 +24,8 @@
  *  \brief Contains splindex template class specialization for block and block-cyclic data distributions.
  */
 
+// TODO: size_t instead of int
+
 /// Specialization for the block distribution.
 template<> 
 class splindex<block>: public splindex_base
@@ -32,7 +34,7 @@ class splindex<block>: public splindex_base
 
         int min_num_elements_;
         int num_ranks_with_extra_element_;
-        int num_elements1_; 
+        int num_prime_chunk_; 
 
         void init(int global_index_size__, int num_ranks__, int rank__)
         {
@@ -49,7 +51,7 @@ class splindex<block>: public splindex_base
 
             num_ranks_with_extra_element_ = global_index_size_ % num_ranks_; 
 
-            num_elements1_ = (min_num_elements_ + 1) * num_ranks_with_extra_element_;
+            num_prime_chunk_ = (min_num_elements_ + 1) * num_ranks_with_extra_element_;
         }
         
     public:
@@ -102,15 +104,15 @@ class splindex<block>: public splindex_base
             assert(rank >= 0 && rank < num_ranks_);
             return min_num_elements_ + (rank < num_ranks_with_extra_element_ ? 1 : 0); // minimum number of elements +1 if rank < m
         }
-        
-        inline int location(int offset_or_rank, int idxglob) // TODO: rename
+
+        inline std::pair<int, int> location(int idxglob)
         {
             assert(idxglob >= 0 && idxglob < global_index_size_);
 
             int rank;
             int offs;
 
-            if (idxglob < num_elements1_)
+            if (idxglob < num_prime_chunk_)
             {
                 rank = idxglob / (min_num_elements_ + 1);
                 offs = idxglob % (min_num_elements_ + 1);
@@ -119,25 +121,33 @@ class splindex<block>: public splindex_base
             {
                 assert(min_num_elements_ != 0);
 
-                int k = idxglob - num_elements1_;
+                int k = idxglob - num_prime_chunk_;
                 offs = k % min_num_elements_;
                 rank = num_ranks_with_extra_element_ + k / min_num_elements_;
             }
 
+            return std::pair<int, int>(offs, rank);
+        }
+        
+        inline int location(int offset_or_rank, int idxglob) // TODO: rename
+        {
             switch (offset_or_rank)
             {
                 case _splindex_offs_:
                 {
-                    return offs;
+                    return location(idxglob).first;
                     break;
                 }
                 case _splindex_rank_:
                 {
-                    return rank;
+                    return location(idxglob).second;
                     break;
                 }
+                default:
+                {
+                    return -1;
+                }
             }
-            return -1; // make compiler happy
         }
         
         /// Return global index of an element by local index and rank.
@@ -279,11 +289,11 @@ class splindex<block_cyclic>: public splindex_base
 
             int num_blocks = idx_glob / block_size_; // number of full blocks
 
-            int n = (num_blocks / num_ranks_) * block_size_ + idx_glob % block_size_;
+            int offs = (num_blocks / num_ranks_) * block_size_ + idx_glob % block_size_;
 
             int rank = num_blocks % num_ranks_;
 
-            return std::pair<int, int>(n, rank);
+            return std::pair<int, int>(offs, rank);
         }
 
         inline int global_index(int idxloc, int rank)

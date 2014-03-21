@@ -210,7 +210,7 @@ size_t Periodic_function<T>::size()
 }
 
 template <typename T>
-size_t Periodic_function<T>::pack(T* array)
+size_t Periodic_function<T>::pack(size_t offset, Mixer* mixer)
 {
     size_t n = 0;
     
@@ -220,12 +220,12 @@ size_t Periodic_function<T>::pack(T* array)
         {
             for (int i1 = 0; i1 < unit_cell_->atom(ia)->num_mt_points(); i1++)
             {
-                for (int i0 = 0; i0 < angular_domain_size_; i0++) array[n++] = f_mt_(i0, i1, ia);
+                for (int i0 = 0; i0 < angular_domain_size_; i0++) mixer->input(offset + n++, f_mt_(i0, i1, ia));
             }
         }
     }
 
-    for (int ir = 0; ir < fft_->size(); ir++) array[n++] = f_it_(ir);
+    for (int ir = 0; ir < fft_->size(); ir++) mixer->input(offset + n++, f_it_(ir));
 
     return n;
 }
