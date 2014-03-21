@@ -91,9 +91,12 @@ class libxc_interface
                         std::stringstream s;
                         s << "rho_dn is negative : " << Utils::to_string(rhoud[2 * i + 1]) << std::endl
                           << "  rho : " << Utils::to_string(rho[i]) << "   mag : " << Utils::to_string(mag[i]);
-                        warning_local(__FILE__, __LINE__, s);
+                        error_local(__FILE__, __LINE__, s);
                     }
-                    rhoud[2 * i + 1] = 0.0;
+                    else
+                    {
+                        rhoud[2 * i + 1] = 0.0;
+                    }
                 }
             }
 

@@ -692,12 +692,6 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
             {
                 for (int lm = 0; lm < parameters_.lmmax_rho(); lm++) d += abs(qmt(lm, ia) - qit(lm, ia));
             }
-
-            //** parameters_.rti().pseudo_charge_error = d;
-        }
-        else
-        {
-            //** parameters_.rti().pseudo_charge_error = 0.0;
         }
     }
 
@@ -846,6 +840,7 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
                                 rhotp(itp, ir) = 0.0;
                                 magtp(itp, ir) = 0.0;
                             }
+                            magtp(itp, ir) = std::min(magtp(itp, ir), rhotp(itp, ir));
                         }
                     }
                 }
@@ -932,6 +927,7 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
                 double t = 0.0;
                 for (int j = 0; j < parameters_.num_mag_dims(); j++) t += pow(magnetization[j]->f_it<local>(pt_offs + irloc), 2);
                 magit[irloc] = sqrt(t);
+                magit[irloc] = std::min(magit[irloc], rho->f_it<local>(pt_offs + irloc));
             }
             xci.getxc(pt_nloc, &rho->f_it<local>(pt_offs), &magit[0], &vxc->f_it<local>(pt_offs), &bxcit[0], &exc->f_it<local>(pt_offs));
             

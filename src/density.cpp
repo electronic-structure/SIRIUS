@@ -1367,6 +1367,17 @@ void Density::generate_valence_density_it(K_set& ks)
     Platform::allreduce(&rho_->f_it<global>(0), fft_->size()); 
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
         Platform::allreduce(&magnetization_[j]->f_it<global>(0), fft_->size()); 
+
+    // check density
+    for (int i = 0; i < fft_->size(); i++)
+    {
+        if (rho_->f_it<global>(i) < 0.0)
+        {
+            std::stringstream s;
+            s << "[Density::generate_valence_density_it] negative interstitial density " << Utils::to_string(rho_->f_it<global>(i));
+            warning_global(__FILE__, __LINE__, s);
+        }
+    }
 }
 
 double Density::core_leakage()
