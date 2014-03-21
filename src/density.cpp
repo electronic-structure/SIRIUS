@@ -138,15 +138,15 @@ void Density::initial_density()
                 if (parameters_.num_mag_dims())
                 {
                     for (int ir = 0; ir < nmtp; ir++)
-                        magnetization_[0]->f_mt<local>(0, ir, ialoc) = 0.2 * rho_->f_mt<local>(0, ir, ialoc) * v[2] / len;
+                        magnetization_[0]->f_mt<local>(0, ir, ialoc) = 0.4 * rho_->f_mt<local>(0, ir, ialoc) * v[2] / len;
                 }
 
                 if (parameters_.num_mag_dims() == 3)
                 {
                     for (int ir = 0; ir < nmtp; ir++)
-                        magnetization_[1]->f_mt<local>(0, ir, ia) = 0.2 * rho_->f_mt<local>(0, ir, ia) * v[0] / len;
+                        magnetization_[1]->f_mt<local>(0, ir, ia) = 0.4 * rho_->f_mt<local>(0, ir, ia) * v[0] / len;
                     for (int ir = 0; ir < nmtp; ir++)
-                        magnetization_[2]->f_mt<local>(0, ir, ia) = 0.2 * rho_->f_mt<local>(0, ir, ia) * v[1] / len;
+                        magnetization_[2]->f_mt<local>(0, ir, ia) = 0.4 * rho_->f_mt<local>(0, ir, ia) * v[1] / len;
                 }
             }
         }
@@ -669,10 +669,10 @@ void* exec_fft_density_gpu(void* args__)
         return NULL;
     }
 
-    std::cout << "[exec_fft_density_gpu " << Platform::mpi_rank() << "] max_free_mem (Mb) = " << (max_free_mem >> 20) << std::endl;
-    std::cout << "[exec_fft_density_gpu " << Platform::mpi_rank() << "] nfft_max = " << nfft_max << std::endl;
-    std::cout << "[exec_fft_density_gpu " << Platform::mpi_rank() << "] work_size (Mb) = " << (fft.work_area_size(nfft_max) >> 20) << std::endl;
-    std::cout << "[exec_fft_density_gpu " << Platform::mpi_rank() << "] size of wf arrays (Mb) = " << ((nfft_max * single_fft_size) >> 20) << std::endl;
+    //== std::cout << "[exec_fft_density_gpu " << Platform::mpi_rank() << "] max_free_mem (Mb) = " << (max_free_mem >> 20) << std::endl;
+    //== std::cout << "[exec_fft_density_gpu " << Platform::mpi_rank() << "] nfft_max = " << nfft_max << std::endl;
+    //== std::cout << "[exec_fft_density_gpu " << Platform::mpi_rank() << "] work_size (Mb) = " << (fft.work_area_size(nfft_max) >> 20) << std::endl;
+    //== std::cout << "[exec_fft_density_gpu " << Platform::mpi_rank() << "] size of wf arrays (Mb) = " << ((nfft_max * single_fft_size) >> 20) << std::endl;
     
     // allocate work area array
     mdarray<char, 1> work_area(NULL, fft.work_area_size(nfft_max));

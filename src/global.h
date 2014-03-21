@@ -519,23 +519,39 @@ class Global
         } mixer_input_section_;
 
         /** The following part of the input file is parsed:
-            \code{.json}
-                "unit_cell" : {
-                    "atoms" : [ [label_A, [coordinates_A_1, 
-                                           coordinates_A_2,
-                                           ...
-                                          ]
-                                ],
-                                [label_B, [coordinates_B_1,
-                                           coordinates_B_2,
-                                           ...
-                                          ]
-                                ]
-                                ...
-                              ]
-                }
-            \endcode
-        */
+         *  \code{.json}
+         *      "unit_cell" : {
+         *          "lattice_vectors" : [
+         *              [a1_x, a1_y, a1_z],
+         *              [a2_x, a2_y, a2_z],
+         *              [a3_x, a3_y, a3_z]
+         *          ],
+         *
+         *          "lattice_vectors_scale" : scale,
+         *
+         *          "atom_types" : [label_A, label_B, ...],
+         *
+         *          "atom_files" : {
+         *              label_A : file_A, 
+         *              label_B : file_B,
+         *              ...
+         *          },
+         *
+         *          "atoms" : {
+         *              label_A: [
+         *                  coordinates_A_1, 
+         *                  coordinates_A_2,
+         *                  ...
+         *              ],
+         *              label_B : [
+         *                  coordinates_B_1,
+         *                  coordinates_B_2,
+         *                  ...
+         *              ]
+         *          }
+         *      }
+         *  \endcode
+         */
         struct unit_cell_input_section
         {
             double lattice_vectors_[3][3];

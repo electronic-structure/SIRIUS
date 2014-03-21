@@ -219,10 +219,10 @@ class Broyden_mixer: public Mixer
                     // denominator df_k^{T} S df_k
                     double d = S(k, k) + S(k + 1, k + 1) - S(k, k + 1) - S(k + 1, k);
                     // nominator
-                    memset(&v1[0], 0, max_history_ * sizeof(int));
+                    memset(&v1[0], 0, max_history_ * sizeof(double));
                     for (int j = 0; j < N; j++) v1[j] = S(k + 1, j) - S(k, j);
 
-                    memset(&v2[0], 0, 2 * max_history_ * sizeof(int));
+                    memset(&v2[0], 0, 2 * max_history_ * sizeof(double));
                     for (int j = 0; j < 2 * max_history_; j++) v2[j] = -(gamma_k(j, k + 1) - gamma_k(j, k));
                     v2[max_history_ + k] -= 1;
                     v2[max_history_ + k + 1] += 1;
@@ -233,7 +233,7 @@ class Broyden_mixer: public Mixer
                     }
                 }
  
-                memset(&v2[0], 0, 2 * max_history_ * sizeof(int));
+                memset(&v2[0], 0, 2 * max_history_ * sizeof(double));
                 for (int j = 0; j < 2 * max_history_; j++) v2[j] = -gamma_k(j, N - 1);
                 v2[max_history_ + N - 1] += 1;
                 

@@ -823,7 +823,6 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
 
             if (parameters_.num_spins() == 2)
             {
-                
                 for (int j = 0; j < parameters_.num_mag_dims(); j++)
                     magnetization[j]->f_mt(ialoc).sh_transform(vecmagtp[j]);
                 
