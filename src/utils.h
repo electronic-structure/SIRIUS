@@ -74,7 +74,7 @@ class Utils
             char buf[100];
         
             int len = snprintf(buf, 100, "%.14f", argument);
-            for (int i = len; i >= 1; i--) 
+            for (int i = len - 1; i >= 1; i--) 
             {
                 if (buf[i] == '0' && buf[i - 1] == '0') 
                 {
