@@ -130,23 +130,25 @@ void Density::initial_density()
                 rho_->f_mt<local>(0, ir, ialoc) = rho[ir] / y00;
             }
 
+            double q = fourpi * rho.interpolate().integrate(nmtp - 1, 2);
+
             // add charge of the MT sphere
-            mt_charge += fourpi * rho.interpolate().integrate(nmtp - 1, 2);
+            mt_charge += q;
 
             if (len > 1e-8)
             {
                 if (parameters_.num_mag_dims())
                 {
                     for (int ir = 0; ir < nmtp; ir++)
-                        magnetization_[0]->f_mt<local>(0, ir, ialoc) = 0.4 * rho_->f_mt<local>(0, ir, ialoc) * v[2] / len;
+                        magnetization_[0]->f_mt<local>(0, ir, ialoc) = rho_->f_mt<local>(0, ir, ialoc) * v[2] / q;
                 }
 
                 if (parameters_.num_mag_dims() == 3)
                 {
                     for (int ir = 0; ir < nmtp; ir++)
-                        magnetization_[1]->f_mt<local>(0, ir, ia) = 0.4 * rho_->f_mt<local>(0, ir, ia) * v[0] / len;
+                        magnetization_[1]->f_mt<local>(0, ir, ialoc) = rho_->f_mt<local>(0, ir, ialoc) * v[0] / q;
                     for (int ir = 0; ir < nmtp; ir++)
-                        magnetization_[2]->f_mt<local>(0, ir, ia) = 0.4 * rho_->f_mt<local>(0, ir, ia) * v[1] / len;
+                        magnetization_[2]->f_mt<local>(0, ir, ialoc) = rho_->f_mt<local>(0, ir, ialoc) * v[1] / q;
                 }
             }
         }
