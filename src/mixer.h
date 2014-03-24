@@ -57,7 +57,8 @@ class Mixer
 
         void mix_linear()
         {
-            double b = (count_ == 1) ? 0.1 : beta_;
+            //double b = (count_ == 1) ? 0.1 : beta_;
+            double b = beta_;
 
             for (int i = 0; i < spl_size_.local_size(); i++)
                 vectors_(i, offset(count_)) = b * input_buffer_(i) + (1 - b) * vectors_(i, offset(count_ - 1));
@@ -190,7 +191,7 @@ class Broyden_mixer: public Mixer
 
             if (N > 1)
             {
-                mdarray<double, 2> S(N, N);
+                mdarray<long double, 2> S(N, N);
                 S.zero();
                 // S = F^T * F, where F is the matrix of residual vectors
                 for (int j1 = 0; j1 < N; j1++)
@@ -205,38 +206,42 @@ class Broyden_mixer: public Mixer
                     }
                 }
                 Platform::allreduce(S.ptr(), (int)S.size());
+                for (int j1 = 0; j1 < N; j1++)
+                { 
+                    for (int j2 = 0; j2 < N; j2++) S(j1, j2) /= size_;
+                }
                
-                mdarray<double, 2> gamma_k(2 * max_history_, max_history_);
+                mdarray<long double, 2> gamma_k(2 * N, N);
                 gamma_k.zero();
                 // initial gamma_0
-                for (int i = 0; i < max_history_; i++) gamma_k(i, i) = 0.25;
+                for (int i = 0; i < N; i++) gamma_k(i, i) = 0.25;
 
-                std::vector<double> v1(max_history_);
-                std::vector<double> v2(max_history_ * 2);
+                std::vector<long double> v1(N);
+                std::vector<long double> v2(2 * N);
                 
                 // update gamma_k by recursion
                 for (int k = 0; k < N - 1; k++)
                 {
                     // denominator df_k^{T} S df_k
-                    double d = S(k, k) + S(k + 1, k + 1) - S(k, k + 1) - S(k + 1, k);
+                    long double d = S(k, k) + S(k + 1, k + 1) - S(k, k + 1) - S(k + 1, k);
                     // nominator
-                    memset(&v1[0], 0, max_history_ * sizeof(double));
+                    memset(&v1[0], 0, N * sizeof(long double));
                     for (int j = 0; j < N; j++) v1[j] = S(k + 1, j) - S(k, j);
 
-                    memset(&v2[0], 0, 2 * max_history_ * sizeof(double));
-                    for (int j = 0; j < 2 * max_history_; j++) v2[j] = -(gamma_k(j, k + 1) - gamma_k(j, k));
-                    v2[max_history_ + k] -= 1;
-                    v2[max_history_ + k + 1] += 1;
+                    memset(&v2[0], 0, 2 * N * sizeof(long double));
+                    for (int j = 0; j < 2 * N; j++) v2[j] = -(gamma_k(j, k + 1) - gamma_k(j, k));
+                    v2[N + k] -= 1;
+                    v2[N + k + 1] += 1;
 
-                    for (int j1 = 0; j1 < max_history_; j1++)
+                    for (int j1 = 0; j1 < N; j1++)
                     {
-                        for (int j2 = 0; j2 < 2 * max_history_; j2++) gamma_k(j2, j1) += v2[j2] * v1[j1] / d;
+                        for (int j2 = 0; j2 < 2 * N; j2++) gamma_k(j2, j1) += v2[j2] * v1[j1] / d;
                     }
                 }
  
-                memset(&v2[0], 0, 2 * max_history_ * sizeof(double));
-                for (int j = 0; j < 2 * max_history_; j++) v2[j] = -gamma_k(j, N - 1);
-                v2[max_history_ + N - 1] += 1;
+                memset(&v2[0], 0, 2 * N * sizeof(long double));
+                for (int j = 0; j < 2 * N; j++) v2[j] = -gamma_k(j, N - 1);
+                v2[2 * N - 1] += 1;
                 
                 // use input_buffer as a temporary storage 
                 input_buffer_.zero();
@@ -246,8 +251,8 @@ class Broyden_mixer: public Mixer
                 {
                     for (int i = 0; i < spl_size_.local_size(); i++) 
                     {
-                        input_buffer_(i) += (v2[j] * residuals_(i, offset(count_ - N + j)) + 
-                                             v2[j + max_history_] * vectors_(i, offset(count_ - N + j)));
+                        input_buffer_(i) += ((double)v2[j] * residuals_(i, offset(count_ - N + j)) + 
+                                             (double)v2[j + N] * vectors_(i, offset(count_ - N + j)));
                     }
                 }
             }
@@ -259,7 +264,111 @@ class Broyden_mixer: public Mixer
         }
 };
 
+class Pulay_mixer: public Mixer
+{
+    private:
+
+        mdarray<double, 2> residuals_;
+    
+    public:
+
+        Pulay_mixer(size_t size__, int max_history__, double beta__) : Mixer(size__, max_history__, beta__)
+        {
+            residuals_.set_dimensions(spl_size_.local_size(), max_history__);
+            residuals_.allocate();
+        }
+
+        double mix()
+        {
+            Timer t("sirius::Pulay_mixer::mix");
+            stop_here
+
+            //== for (int i = 0; i < spl_size_.local_size(); i++) 
+            //==     residuals_(i, offset(count_)) = input_buffer_(i) - vectors_(i, offset(count_));
+
+            //== count_++;
+
+            //== int N = std::min(count_, max_history_);
+
+            //== //if (count_ > max_history_)
+            //== if (N > 1)
+            //== {
+            //==     mdarray<double, 2> S(N, N);
+            //==     S.zero();
+
+            //==     for (int j1 = 0; j1 < N - 1; j1++)
+            //==     { 
+            //==         for (int j2 = 0; j2 <= j1; j2++)
+            //==         {
+            //==             for (int i = 0; i < spl_size_.local_size(); i++) 
+            //==             {
+            //==                 S(j1, j2) += std::pow(residuals_(i, offset(count_ - N + j1)) * residuals_(i, offset(count_ - N + j2)), 2);
+            //==             }
+            //==             S(j2, j1) = S(j1, j2);
+            //==         }
+            //==     }
+            //==     Platform::allreduce(S.ptr(), (int)S.size());
+            //==     for (int j1 = 0; j1 < N - 1; j1++)
+            //==     { 
+            //==         for (int j2 = 0; j2 < N - 1; j2++) S(j1, j2) = std::sqrt(S(j1, j2) / size_);
+            //==     }
+            //==     for (int j = 0; j < N - 1; j++) S(N - 1, j) = S(j, N - 1) = 1;
+            //==     
+            //==     if (Platform::mpi_rank() == 0)
+            //==     {
+            //==         std::cout << "S-matrix : " << std::endl;
+            //==         for (int j1 = 0; j1 < N; j1++)
+            //==         {
+            //==             for (int j2 = 0; j2 < N; j2++) printf("%18.12f ", S(j1, j2));
+            //==             std::cout << std::endl;
+            //==         }
+            //==     }
+
+            //==     linalg<lapack>::invert_ge(S.ptr(), N);
+
+            //==     if (Platform::mpi_rank() == 0)
+            //==     {
+            //==         std::cout << "S-matrix inverse : " << std::endl;
+            //==         for (int j1 = 0; j1 < N; j1++)
+            //==         {
+            //==             for (int j2 = 0; j2 < N; j2++) printf("%18.12f ", S(j1, j2));
+            //==             std::cout << std::endl;
+            //==         }
+            //==     }
+            //==    
+            //==     memset(&vectors_(0, offset(count_)), 0, spl_size_.local_size() * sizeof(double));
+
+            //==     double d = 0;
+            //==     for (int i = 0; i < N - 1; i++) d+= S(i, N - 1);
+            //==     std::cout << "Sum of weights : " << d << std::endl;
+            //==     
+            //==     for (int j = 0; j < N - 1; j++)
+            //==     {
+            //==         if (Platform::mpi_rank() == 0)
+            //==         {
+            //==             std::cout << "vector = " << j << ", position = " << offset(count_ - N + j) << ", weight = " << S(j, N - 1) << std::endl;
+            //==         }
+            //==         for (int i = 0; i < spl_size_.local_size(); i++)
+            //==         {
+            //==             //vectors_(i, offset(count_)) += S(j, N - 1) * (vectors_(i, offset(count_ - N + j)) + 
+            //==             //                                              residuals_(i, offset(count_ - N + j)));
+            //==             vectors_(i, offset(count_)) += S(j, N - 1) * vectors_(i, offset(count_ - N + j));
+            //==         }
+            //==     }
+
+            //==     Platform::allgather(&vectors_(0, offset(count_)), output_buffer_.ptr(), spl_size_.global_offset(), 
+            //==                                   spl_size_.local_size());
+            //== }
+            //== else
+            //== {
+            //==     mix_linear();
+            //== }
+
+            return rms_deviation();
+        }
 };
+
+}
 
 #endif // __MIXER_H__
 
