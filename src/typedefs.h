@@ -155,6 +155,35 @@ class type_wrapper<double>
 };
 
 template<> 
+class type_wrapper<long double>
+{
+    public:
+        typedef std::complex<long double> complex_t;
+        typedef long double real_t;
+        
+        static MPI_Datatype mpi_type_id()
+        {
+            return MPI_LONG_DOUBLE;
+        }
+
+        static bool is_complex()
+        {
+            return false;
+        }
+        
+        static bool is_real()
+        {
+            return true;
+        }
+
+        static bool is_primitive()
+        {
+            return true;
+        }
+
+};
+
+template<> 
 class type_wrapper<float>
 {
     public:
