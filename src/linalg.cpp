@@ -1,4 +1,8 @@
 #include "linalg.h"
+#include "constants.h"
+#ifdef _GPU_
+#include "gpu_interface.h"
+#endif
 
 template<> 
 void blas<cpu>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32_t k, double alpha, 
@@ -58,6 +62,51 @@ void blas<cpu>::gemv<double_complex>(int trans, int32_t m, int32_t n, double_com
     FORTRAN(zgemv)(trans_c[trans], &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy, 1);
 }
 
+#ifdef _SCALAPACK_
+int linalg<scalapack>::cyclic_block_size_ = -1;
+
+template<> 
+void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
+                                     dmatrix<double_complex>& a, int32_t ia, int32_t ja,
+                                     dmatrix<double_complex>& b, int32_t ib, int32_t jb, double_complex beta, 
+                                     dmatrix<double_complex>& c, int32_t ic, int32_t jc)
+{
+    const char *trans[] = {"N", "T", "C"};
+
+    ia++; ja++;
+    ib++; jb++;
+    ic++; jc++;
+    FORTRAN(pzgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a.ptr(), &ia, &ja, a.descriptor(), 
+                    b.ptr(), &ib, &jb, b.descriptor(), &beta, c.ptr(), &ic, &jc, c.descriptor(), 1, 1);
+}
+
+template<> 
+void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
+                                     dmatrix<double_complex>& a, dmatrix<double_complex>& b, double_complex beta, 
+                                     dmatrix<double_complex>& c)
+{
+    gemm(transa, transb, m, n, k, alpha, a, 0, 0, b, 0, 0, beta, c, 0, 0);
+}
+#else
+template<> 
+void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
+                                     dmatrix<double_complex>& a, int32_t ia, int32_t ja,
+                                     dmatrix<double_complex>& b, int32_t ib, int32_t jb, double_complex beta, 
+                                     dmatrix<double_complex>& c, int32_t ic, int32_t jc)
+{
+    gemm(transa, transb, m, n, k, alpha, &a(ia, ja), a.ld(), &b(ib, jb), b.ld(), beta, &c(ic, jc), c.ld());
+}
+
+template<> 
+void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
+                                     dmatrix<double_complex>& a, dmatrix<double_complex>& b, double_complex beta, 
+                                     dmatrix<double_complex>& c)
+{
+    gemm(transa, transb, m, n, k, alpha, a.ptr(), a.ld(), b.ptr(), b.ld(), beta, c.ptr(), c.ld());
+}
+#endif
+
+
 #ifdef _GPU_
 double_complex blas<gpu>::zone = double_complex(1, 0);
 double_complex blas<gpu>::zzero = double_complex(0, 0);
@@ -77,34 +126,6 @@ void blas<gpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 {
     cublas_zgemm(transa, transb, m, n, k, &zone, a, lda, b, ldb, &zzero, c, ldc);
 }
-#endif
-
-#ifdef _SCALAPACK_
-int linalg<scalapack>::cyclic_block_size_ = -1;
-
-template<> 
-void pblas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
-                                      dmatrix<double_complex>& a, int32_t ia, int32_t ja,
-                                      dmatrix<double_complex>& b, int32_t ib, int32_t jb, double_complex beta, 
-                                      dmatrix<double_complex>& c, int32_t ic, int32_t jc)
-{
-    const char *trans[] = {"N", "T", "C"};
-
-    ia++; ja++;
-    ib++; jb++;
-    ic++; jc++;
-    FORTRAN(pzgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a.ptr(), &ia, &ja, a.descriptor(), 
-                    b.ptr(), &ib, &jb, b.descriptor(), &beta, c.ptr(), &ic, &jc, c.descriptor(), 1, 1);
-}
-
-template<> 
-void pblas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
-                                      dmatrix<double_complex>& a, dmatrix<double_complex>& b, double_complex beta, 
-                                      dmatrix<double_complex>& c)
-{
-    pblas<cpu>::gemm<double_complex>(transa, transb, m, n, k, alpha, a, 0, 0, b, 0, 0, beta, c, 0, 0);
-}
-
 #endif
 
 

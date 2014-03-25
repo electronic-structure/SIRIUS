@@ -891,11 +891,11 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp, Periodic_function
     h.zero();
     o.zero();
 
-    pblas<cpu>::gemm(2, 0, kp->num_gkvec(), kp->num_gkvec(), parameters_.unit_cell()->mt_aw_basis_size(),
-                     complex_one, alm_panel, halm_panel, complex_zero, h); 
+    blas<cpu>::gemm(2, 0, kp->num_gkvec(), kp->num_gkvec(), parameters_.unit_cell()->mt_aw_basis_size(),
+                    complex_one, alm_panel, halm_panel, complex_zero, h); 
     
-    pblas<cpu>::gemm(2, 0, kp->num_gkvec(), kp->num_gkvec(), parameters_.unit_cell()->mt_aw_basis_size(),
-                     complex_one, alm_panel, alm_panel, complex_zero, o); 
+    blas<cpu>::gemm(2, 0, kp->num_gkvec(), kp->num_gkvec(), parameters_.unit_cell()->mt_aw_basis_size(),
+                    complex_one, alm_panel, alm_panel, complex_zero, o); 
    
     mdarray<double_complex, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
     mdarray<double_complex, 2> halm(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
@@ -1684,8 +1684,8 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
                 // compute <wf_i | (h * wf_j)> for up-up or dn-dn block
-                pblas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, 
-                                 complex_one, kp->fv_states_panel(), *hpsi_panel[ispn], complex_zero, h);
+                blas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, 
+                                complex_one, kp->fv_states_panel(), *hpsi_panel[ispn], complex_zero, h);
                 
                 for (int i = 0; i < parameters_.num_fv_states(); i++) h.add(i, i, kp->fv_eigen_value(i));
             

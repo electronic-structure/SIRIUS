@@ -29,6 +29,7 @@
  */
 
 #include "splindex.h"
+#include "mdarray.h"
 
 /// Distribued matrix.
 template <typename T>

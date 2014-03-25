@@ -710,8 +710,8 @@ void K_point::generate_fv_states()
         dmatrix<double_complex> aw_coefs_panel(naw, parameters_.num_fv_states(), parameters_.blacs_context());
 
         // gnerate aw expansion coefficients
-        pblas<cpu>::gemm(1, 0, naw, parameters_.num_fv_states(), num_gkvec(), complex_one, alm_panel, 
-                         fv_eigen_vectors_panel_, complex_zero, aw_coefs_panel); 
+        blas<cpu>::gemm(1, 0, naw, parameters_.num_fv_states(), num_gkvec(), complex_one, alm_panel, 
+                        fv_eigen_vectors_panel_, complex_zero, aw_coefs_panel); 
         alm_panel.deallocate(); // we don't need alm any more
 
         /* We have a panel of aw coefficients and a panel of 
@@ -802,8 +802,8 @@ void K_point::generate_spinor_wave_functions()
                 if (parameters_.num_mag_dims() != 3)
                 {
                     // multiply up block for first half of the bands, dn block for second half of the bands
-                    pblas<cpu>::gemm(0, 0, wf_size(), nfv, nfv, complex_one, fv_states_panel_, 0, 0, 
-                                     sv_eigen_vectors_[ispn], 0, 0, complex_zero, spinor_wave_functions_panel_, 0, ispn * nfv);
+                    blas<cpu>::gemm(0, 0, wf_size(), nfv, nfv, complex_one, fv_states_panel_, 0, 0, 
+                                    sv_eigen_vectors_[ispn], 0, 0, complex_zero, spinor_wave_functions_panel_, 0, ispn * nfv);
                     
                 }
                 else

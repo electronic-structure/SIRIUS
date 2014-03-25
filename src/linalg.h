@@ -29,17 +29,8 @@
   */
 
 #include <stdint.h>
-#include <string.h>
-#include <iostream>
-#include <complex>
-#include <vector>
 #include "config.h"
-#ifdef _GPU_
-#include "gpu_interface.h"
-#endif
-#include "constants.h"
 #include "error_handling.h"
-#include "mdarray.h"
 
 /*
  *  matrix-vector operations
@@ -187,75 +178,9 @@ extern "C" void FORTRAN(elpa_solve_evp_complex_2stage)(int32_t* na, int32_t* nev
                                                        int32_t* mpi_comm_cols, int32_t* mpi_comm_all);
 #endif
 
-template<processing_unit_t> 
-class blas;
-
-// CPU
-template<> 
-class blas<cpu>
-{
-    public:
-
-        template <typename T>
-        static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T alpha, T* a, int32_t lda, 
-                         T* b, int32_t ldb, T beta, T* c, int32_t ldc);
-        
-        template <typename T>
-        static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T* a, int32_t lda, 
-                         T* b, int32_t ldb, T* c, int32_t ldc);
-                         
-        template<typename T>
-        static void hemm(int side, int uplo, int32_t m, int32_t n, T alpha, T* a, int32_t lda, 
-                         T* b, int32_t ldb, T beta, T* c, int32_t ldc);
-
-        template<typename T>
-        static void gemv(int trans, int32_t m, int32_t n, T alpha, T* a, int32_t lda, T* x, int32_t incx, 
-                         T beta, T* y, int32_t incy);
-};
-
-#ifdef _GPU_
-template<> 
-class blas<gpu>
-{
-    private:
-        static double_complex zone;
-        static double_complex zzero;
-
-    public:
-
-        template <typename T>
-        static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T* alpha, T* a, int32_t lda, 
-                         T* b, int32_t ldb, T* beta, T* c, int32_t ldc);
-        
-        template <typename T>
-        static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T* a, int32_t lda, 
-                         T* b, int32_t ldb, T* c, int32_t ldc);
-};
-#endif
-
 #include "lapack.h"
 #include "dmatrix.h"
-
-template<processing_unit_t> 
-class pblas;
-
-template<> 
-class pblas<cpu>
-{
-    public:
-
-        /// generic interface to p?gemm
-        template <typename T>
-        static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T alpha, 
-                         dmatrix<T>& a, int32_t ia, int32_t ja, dmatrix<T>& b, int32_t ib, int32_t jb, T beta, 
-                         dmatrix<T>& c, int32_t ic, int32_t jc);
-
-        /// simple interface to p?gemm: all matrices start form (0, 0) corner
-        template <typename T>
-        static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                         T alpha, dmatrix<T>& a, dmatrix<T>& b, T beta, dmatrix<T>& c);
-};
-
+#include "blas.h"
 #include "evp_solver.h"
 
 #endif // __LINALG_H__

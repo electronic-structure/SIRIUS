@@ -75,6 +75,11 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     {
         mx = new Linear_mixer(density_->size(), parameters_.mixer_input_section_.beta_);
     }
+    else if (parameters_.mixer_input_section_.type_ == "adaptive")
+    {
+        mx = new Adaptive_mixer(density_->size(), parameters_.mixer_input_section_.max_history_, 
+                                parameters_.mixer_input_section_.beta_);
+    }
     else
     {
         error_global(__FILE__, __LINE__, "Wrong mixer type");

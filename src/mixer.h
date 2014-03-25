@@ -368,6 +368,60 @@ class Pulay_mixer: public Mixer
         }
 };
 
+class Adaptive_mixer: public Mixer
+{
+    private:
+
+        //mdarray<double, 2> residuals_;
+    
+    public:
+
+        Adaptive_mixer(size_t size__, int max_history__, double beta__) : Mixer(size__, max_history__, beta__)
+        {
+            // residuals_.set_dimensions(spl_size_.local_size(), max_history__);
+            // residuals_.allocate();
+        }
+
+        double mix()
+        {
+            Timer t("sirius::Adaptive_mixer::mix");
+
+            //== for (int i = 0; i < spl_size_.local_size(); i++) 
+            //==     residuals_(i, offset(count_)) = input_buffer_(i) - vectors_(i, offset(count_));
+
+            count_++;
+
+            int N = std::min(count_, max_history_);
+
+            if (N > 1)
+            {
+                for (int j = 0; j <= 10; j++)
+                {
+                    //==double k0 = (1 - beta_) * double(j) / 10;
+                    //==double k1 = (1 - beta_) * double(10 - j) / 10;
+                    for (int i = 0; i < spl_size_.local_size(); i++)
+                    {
+                        vectors_(i, offset(count_)) = 0.5 * (1 - beta_) * vectors_(i, offset(count_ - 2)) + 
+                                                      0.5 * (1 - beta_) * vectors_(i, offset(count_ - 1)) + 
+                                                      beta_ * input_buffer_(i); 
+                    }
+                    //==double rms = rms_deviation();
+                    //==if (Platform::mpi_rank() == 0) std::cout << " j = " << j << ", rms = " << rms << std::endl;
+
+                    Platform::allgather(&vectors_(0, offset(count_)), output_buffer_.ptr(), spl_size_.global_offset(), 
+                                        spl_size_.local_size());
+                }
+               
+            }
+            else
+            {
+                mix_linear();
+            }
+
+            return rms_deviation();
+        }
+};
+
 }
 
 #endif // __MIXER_H__
