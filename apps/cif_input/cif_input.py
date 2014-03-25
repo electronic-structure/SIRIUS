@@ -9,7 +9,8 @@ import math
 import json
 
 def parse_symmetry_op(op):
-    result = re.search("(-?|\+?)[0-9]{1,10}/[0-9]{1,10}", op)
+    # search for fractional translation
+    result = re.search(r"(-?|\+?)[0-9]{1,10}/[0-9]{1,10}", op)
     trans = 0.0
     if result:
         s = result.group(0)
@@ -18,18 +19,26 @@ def parse_symmetry_op(op):
         denom_str = s[i + 1 :].strip()
         trans = float(nom_str) / float(denom_str)
 
-    result = re.search("(-?|\+?)[xXyYzZ]", op)
-    s = result.group(0)
-    sign = 1
-    if s[0] == '-': sign = -1
-    result = re.search("[xXyYzZ]", s)
-    coord = result.group(0)
-
-    return [sign, coord, trans]
+    
+    coord_trans = []
+    for r in re.findall(r"[\+|\-]*[xXyYzZ]", op):
+        sign = 1
+        c = ''
+        if r[0] == '-': 
+            sign = -1
+            c = r[1]
+        elif r[0] == '+':
+            c = r[1]
+        else:
+            c = r[0]
+        coord_trans.append([sign, c])
+            
+    return [coord_trans, trans]
 
 
 def parse_symmetry(sym):
     op = sym.split(",")
+    # return transformation of each coordinate
     return ([parse_symmetry_op(op[0]), parse_symmetry_op(op[1]), parse_symmetry_op(op[2])])
 
 def apply_symmetry(sym_ops_list, initial_atoms_list):
@@ -37,16 +46,20 @@ def apply_symmetry(sym_ops_list, initial_atoms_list):
 
     for atom in initial_atoms_list:
         for sym in sym_ops_list:
-            coord = [0, 0, 0]
+            # initialize with fractional translation
+            x = [sym[0][1], sym[1][1], sym[2][1]]
             for i in range(3): 
-                x = sym[i][0] * atom[sym[i][1]] + sym[i][2]
-                if x < 0: x += 1
-                if x >= 1: x -= 1
-                coord[i] = float("%.8f"%x)
+                # apply all permutations of coordinates, such as +z-y
+                for coord_trans in sym[i][0]: x[i] += coord_trans[0] * atom[coord_trans[1]]
+                if x[i] < 0: x[i] += 1
+                if x[i] >= 1: x[i] -= 1
+                # roundoff
+                x[i] = float("%.8f"%x[i])
+            # search for existing atoms
             found = False
-            for c in full_atoms_list:
-                if (abs(c[0] - coord[0]) + abs(c[1] - coord[1]) + abs(c[2] - coord[2])) < 1e-10: found = True
-            if not found: full_atoms_list.append(coord)
+            for y in full_atoms_list:
+                if (abs(y[0] - x[0]) + abs(y[1] - x[1]) + abs(y[2] - x[2])) < 1e-8: found = True
+            if not found: full_atoms_list.append(x)
 
     return full_atoms_list
 
@@ -88,7 +101,6 @@ def main():
     sym_ops_list = []
     
     for sym in sym_ops:
-        
         sym_ops_list.append(parse_symmetry(sym._symmetry_equiv_pos_as_xyz))
 
     
