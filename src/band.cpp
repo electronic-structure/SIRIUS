@@ -1658,46 +1658,36 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     //== if (parameters_.so_correction()) apply_so_correction(kp->fv_states_col(), hpsi);
 
 
-    if (kp->num_ranks() == 1)
+    std::vector< dmatrix<double_complex>* > hpsi_panel(nhpsi);
+    for (int i = 0; i < nhpsi; i++)
     {
-
-
+        hpsi_panel[i] = new dmatrix<double_complex>(fvsz, parameters_.num_fv_states(), parameters_.blacs_context());
+        // change data distribution of hpsi to panels
+        hpsi_panel[i]->scatter(hpsi.submatrix(i), parameters_.mpi_grid().communicator(1 << _dim_row_));
     }
-    // parallel diagonalization
-    else
+    hpsi.deallocate(); // we don't need full vectors anymore
+
+    if (parameters_.num_mag_dims() != 3)
     {
-        std::vector< dmatrix<double_complex>* > hpsi_panel(nhpsi);
-        for (int i = 0; i < nhpsi; i++)
-        {
-            hpsi_panel[i] = new dmatrix<double_complex>(fvsz, parameters_.num_fv_states(), parameters_.blacs_context());
-            // change data distribution of hpsi to panels
-            hpsi_panel[i]->scatter(hpsi.submatrix(i), parameters_.mpi_grid().communicator(1 << _dim_row_));
-        }
-        hpsi.deallocate(); // we don't need full vectors anymore
+        dmatrix<double_complex> h(parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.blacs_context());
 
-        if (parameters_.num_mag_dims() != 3)
+        // perform one or two consecutive diagonalizations
+        for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
         {
-            dmatrix<double_complex> h(parameters_.num_fv_states(), parameters_.num_fv_states(), 
-                                      parameters_.blacs_context());
-
-            // perform one or two consecutive diagonalizations
-            for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-            {
-                // compute <wf_i | (h * wf_j)> for up-up or dn-dn block
-                blas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, 
-                                complex_one, kp->fv_states_panel(), *hpsi_panel[ispn], complex_zero, h);
-                
-                for (int i = 0; i < parameters_.num_fv_states(); i++) h.add(i, i, kp->fv_eigen_value(i));
+            // compute <wf_i | (h * wf_j)> for up-up or dn-dn block
+            blas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, complex_one, 
+                            kp->fv_states_panel(), *hpsi_panel[ispn], complex_zero, h);
             
-                Timer t1("sirius::Band::solve_sv|stdevp");
-                parameters_.std_evp_solver()->solve(parameters_.num_fv_states(), h.ptr(), h.ld(),
-                                                    &band_energies[ispn * parameters_.num_fv_states()],
-                                                    kp->sv_eigen_vectors(ispn).ptr(), kp->sv_eigen_vectors(ispn).ld());
-            }
+            for (int i = 0; i < parameters_.num_fv_states(); i++) h.add(i, i, kp->fv_eigen_value(i));
+        
+            Timer t1("sirius::Band::solve_sv|stdevp");
+            parameters_.std_evp_solver()->solve(parameters_.num_fv_states(), h.ptr(), h.ld(),
+                                                &band_energies[ispn * parameters_.num_fv_states()],
+                                                kp->sv_eigen_vectors(ispn).ptr(), kp->sv_eigen_vectors(ispn).ld());
         }
-
-        for (int i = 0; i < nhpsi; i++) delete hpsi_panel[i];
     }
+
+    for (int i = 0; i < nhpsi; i++) delete hpsi_panel[i];
 
     //== if (parameters_.num_mag_dims() == 1)
     //== {

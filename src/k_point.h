@@ -212,7 +212,59 @@ class K_point
          *  \f]
          */
         template <bool conjugate>
-        void generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm);
+        void generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)
+        {
+            Timer t("sirius::K_point::generate_matching_coefficients");
+
+            Atom* atom = parameters_.unit_cell()->atom(ia);
+            Atom_type* type = atom->type();
+
+            assert(type->max_aw_order() <= 3);
+
+            int iat = type->id();
+
+            #pragma omp parallel default(shared)
+            {
+                mdarray<double, 2> A(3, 3);
+
+                #pragma omp for
+                for (int l = 0; l <= parameters_.lmax_apw(); l++)
+                {
+                    int num_aw = (int)type->aw_descriptor(l).size();
+
+                    for (int order = 0; order < num_aw; order++)
+                    {
+                        for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
+                    }
+
+                    switch (num_aw)
+                    {
+                        case 1:
+                        {
+                            generate_matching_coefficients_l<1, conjugate>(ia, iat, type, l, num_gkvec_loc, A, alm);
+                            break;
+                        }
+                        case 2:
+                        {
+                            generate_matching_coefficients_l<2, conjugate>(ia, iat, type, l, num_gkvec_loc, A, alm);
+                            break;
+                        }
+                        case 3:
+                        {
+                            generate_matching_coefficients_l<3, conjugate>(ia, iat, type, l, num_gkvec_loc, A, alm);
+                            break;
+                        }
+                        default:
+                        {
+                            error_local(__FILE__, __LINE__, "wrong order of augmented wave");
+                        }
+                    }
+                } //l
+            }
+            
+            // check alm coefficients
+            if (debug_level > 1) check_alm(num_gkvec_loc, ia, alm);
+        }
         
         /// Generate plane-wave matching coefficents for the radial solutions 
         /** Normal layout of matching coefficients: G+k vectors are along rows, AW basis functions are 

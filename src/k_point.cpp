@@ -490,61 +490,6 @@ void K_point::generate_matching_coefficients_l<3, false>(int ia, int iat, Atom_t
     }
 }
 
-template<bool conjugate>
-void K_point::generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)
-{
-    Timer t("sirius::K_point::generate_matching_coefficients");
-
-    Atom* atom = parameters_.unit_cell()->atom(ia);
-    Atom_type* type = atom->type();
-
-    assert(type->max_aw_order() <= 3);
-
-    int iat = type->id();
-
-    #pragma omp parallel default(shared)
-    {
-        mdarray<double, 2> A(3, 3);
-
-        #pragma omp for
-        for (int l = 0; l <= parameters_.lmax_apw(); l++)
-        {
-            int num_aw = (int)type->aw_descriptor(l).size();
-
-            for (int order = 0; order < num_aw; order++)
-            {
-                for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
-            }
-
-            switch (num_aw)
-            {
-                case 1:
-                {
-                    generate_matching_coefficients_l<1, conjugate>(ia, iat, type, l, num_gkvec_loc, A, alm);
-                    break;
-                }
-                case 2:
-                {
-                    generate_matching_coefficients_l<2, conjugate>(ia, iat, type, l, num_gkvec_loc, A, alm);
-                    break;
-                }
-                case 3:
-                {
-                    generate_matching_coefficients_l<3, conjugate>(ia, iat, type, l, num_gkvec_loc, A, alm);
-                    break;
-                }
-                default:
-                {
-                    error_local(__FILE__, __LINE__, "wrong order of augmented wave");
-                }
-            }
-        } //l
-    }
-    
-    // check alm coefficients
-    if (debug_level > 1) check_alm(num_gkvec_loc, ia, alm);
-}
-
 void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)
 {
     static SHT* sht = NULL;
@@ -589,23 +534,23 @@ void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& a
            ia, tdiff, tdiff / (num_gkvec_loc * sht->num_points()));
 }
 
-inline void K_point::copy_lo_blocks(const double_complex* z, double_complex* vec)
-{
-    for (int j = num_gkvec_row(); j < gklo_basis_size_row(); j++)
-    {
-        int ia = gklo_basis_descriptor_row(j).ia;
-        int lm = gklo_basis_descriptor_row(j).lm;
-        int order = gklo_basis_descriptor_row(j).order;
-        vec[parameters_.unit_cell()->atom(ia)->offset_wf() + parameters_.unit_cell()->atom(ia)->type()->indexb_by_lm_order(lm, order)] = z[j];
-    }
-}
-
-inline void K_point::copy_pw_block(const double_complex* z, double_complex* vec)
-{
-    memset(vec, 0, num_gkvec() * sizeof(double_complex));
-
-    for (int j = 0; j < num_gkvec_row(); j++) vec[gklo_basis_descriptor_row(j).igk] = z[j];
-}
+//== inline void K_point::copy_lo_blocks(const double_complex* z, double_complex* vec)
+//== {
+//==     for (int j = num_gkvec_row(); j < gklo_basis_size_row(); j++)
+//==     {
+//==         int ia = gklo_basis_descriptor_row(j).ia;
+//==         int lm = gklo_basis_descriptor_row(j).lm;
+//==         int order = gklo_basis_descriptor_row(j).order;
+//==         vec[parameters_.unit_cell()->atom(ia)->offset_wf() + parameters_.unit_cell()->atom(ia)->type()->indexb_by_lm_order(lm, order)] = z[j];
+//==     }
+//== }
+//== 
+//== inline void K_point::copy_pw_block(const double_complex* z, double_complex* vec)
+//== {
+//==     memset(vec, 0, num_gkvec() * sizeof(double_complex));
+//== 
+//==     for (int j = 0; j < num_gkvec_row(); j++) vec[gklo_basis_descriptor_row(j).igk] = z[j];
+//== }
 
 //== #ifdef _GPU_
 //== void K_point::generate_fv_states_aw_mt_gpu()
@@ -655,102 +600,59 @@ void K_point::generate_fv_states()
     log_function_enter(__func__);
     Timer t("sirius::K_point::generate_fv_states");
 
-    if (num_ranks() == 1)
+    // local number of first-variational stattes, assigned to each MPI rank in the column
+    int nfv_loc = parameters_.sub_spl_fv_states().local_size();
+
+    // total number of augmented-wave basis functions over all atoms
+    int naw = parameters_.unit_cell()->mt_aw_basis_size();
+
+    dmatrix<double_complex> alm_panel(num_gkvec(), naw, parameters_.blacs_context());
+    // generate panel of matching coefficients
+    generate_matching_coefficients<false>(alm_panel);
+
+    dmatrix<double_complex> aw_coefs_panel(naw, parameters_.num_fv_states(), parameters_.blacs_context());
+
+    // gnerate aw expansion coefficients
+    blas<cpu>::gemm(1, 0, naw, parameters_.num_fv_states(), num_gkvec(), complex_one, alm_panel, 
+                    fv_eigen_vectors_panel_, complex_zero, aw_coefs_panel); 
+    alm_panel.deallocate(); // we don't need alm any more
+
+    /* We have a panel of aw coefficients and a panel of 
+     * first-variational eigen-vectors. We need to collect
+     * them as whole vectors and setup aw, lo and G+k parts
+     * of the first-variational states.
+     */
+    mdarray<double_complex, 2> fv_eigen_vectors(gklo_basis_size(), nfv_loc);
+    // gather full first-variational eigen-vector array
+    fv_eigen_vectors_panel_.gather(fv_eigen_vectors, parameters_.mpi_grid().communicator(1 << _dim_row_));
+
+    mdarray<double_complex, 2> aw_coefs(naw, nfv_loc);
+    // gather aw coefficients
+    aw_coefs_panel.gather(aw_coefs, parameters_.mpi_grid().communicator(1 << _dim_row_));
+
+    for (int i = 0; i < nfv_loc; i++)
     {
-        if (parameters_.esm_type() == full_potential_lapwlo)
+        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
-            //== if (parameters_.processing_unit() == gpu)
-            //== {
-            //==     #ifdef _GPU_
-            //==     generate_fv_states_aw_mt_gpu();
-            //==     #else
-            //==     stop_here
-            //==     #endif
-            //== }
-            //== else
-            //== {
-                fv_states_.zero();
+            int offset_wf = parameters_.unit_cell()->atom(ia)->offset_wf();
+            int offset_aw = parameters_.unit_cell()->atom(ia)->offset_aw();
+            int mt_aw_size = parameters_.unit_cell()->atom(ia)->mt_aw_basis_size();
 
-                mdarray<double_complex, 2> alm(num_gkvec(), parameters_.unit_cell()->max_mt_aw_basis_size());
-            
-                for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-                {
-                    Atom* atom = parameters_.unit_cell()->atom(ia);
-                    Atom_type* type = atom->type();
-                    
-                    generate_matching_coefficients<true>(num_gkvec_row(), ia, alm);
+            // apw block
+            memcpy(&fv_states_(offset_wf, i), &aw_coefs(offset_aw, i), mt_aw_size * sizeof(double_complex));
 
-                    blas<cpu>::gemm(2, 0, type->mt_aw_basis_size(), parameters_.num_fv_states(), num_gkvec(), 
-                                    &alm(0, 0), alm.ld(), &fv_eigen_vectors_panel_(0, 0), 
-                                    fv_eigen_vectors_panel_.ld(), &fv_states_(atom->offset_wf(), 0), fv_states_.ld());
-                }
-            //== }
-        }
+            // lo block
+            memcpy(&fv_states_(offset_wf + mt_aw_size, i),
+                   &fv_eigen_vectors(num_gkvec() + parameters_.unit_cell()->atom(ia)->offset_lo(), i),
+                   parameters_.unit_cell()->atom(ia)->mt_lo_basis_size() * sizeof(double_complex));
 
-        for (int j = 0; j < parameters_.spl_fv_states().local_size(); j++)
-        {
-            if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
-                copy_lo_blocks(&fv_eigen_vectors_panel_(0, j), &fv_states_(0, j));
-
-            copy_pw_block(&fv_eigen_vectors_panel_(0, j), &fv_states_(parameters_.unit_cell()->mt_basis_size(), j));
+            // G+k block
+            memcpy(&fv_states_(parameters_.unit_cell()->mt_basis_size(), i), &fv_eigen_vectors(0, i), 
+                   num_gkvec() * sizeof(double_complex));
         }
     }
-    else
-    {
-        // local number of first-variational stattes, assigned to each MPI rank in the column
-        int nfv_loc = parameters_.sub_spl_fv_states().local_size();
 
-        // total number of augmented-wave basis functions over all atoms
-        int naw = parameters_.unit_cell()->mt_aw_basis_size();
-
-        dmatrix<double_complex> alm_panel(num_gkvec(), naw, parameters_.blacs_context());
-        // generate panel of matching coefficients
-        generate_matching_coefficients<false>(alm_panel);
-
-        dmatrix<double_complex> aw_coefs_panel(naw, parameters_.num_fv_states(), parameters_.blacs_context());
-
-        // gnerate aw expansion coefficients
-        blas<cpu>::gemm(1, 0, naw, parameters_.num_fv_states(), num_gkvec(), complex_one, alm_panel, 
-                        fv_eigen_vectors_panel_, complex_zero, aw_coefs_panel); 
-        alm_panel.deallocate(); // we don't need alm any more
-
-        /* We have a panel of aw coefficients and a panel of 
-         * first-variational eigen-vectors. We need to collect
-         * them as whole vectors and setup aw, lo and G+k parts
-         * of the first-variational states.
-         */
-        mdarray<double_complex, 2> fv_eigen_vectors(gklo_basis_size(), nfv_loc);
-        // gather full first-variational eigen-vector array
-        fv_eigen_vectors_panel_.gather(fv_eigen_vectors, parameters_.mpi_grid().communicator(1 << _dim_row_));
-
-        mdarray<double_complex, 2> aw_coefs(naw, nfv_loc);
-        // gather aw coefficients
-        aw_coefs_panel.gather(aw_coefs, parameters_.mpi_grid().communicator(1 << _dim_row_));
-
-        for (int i = 0; i < nfv_loc; i++)
-        {
-            for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-            {
-                int offset_wf = parameters_.unit_cell()->atom(ia)->offset_wf();
-                int offset_aw = parameters_.unit_cell()->atom(ia)->offset_aw();
-                int mt_aw_size = parameters_.unit_cell()->atom(ia)->mt_aw_basis_size();
-
-                // apw block
-                memcpy(&fv_states_(offset_wf, i), &aw_coefs(offset_aw, i), mt_aw_size * sizeof(double_complex));
-
-                // lo block
-                memcpy(&fv_states_(offset_wf + mt_aw_size, i),
-                       &fv_eigen_vectors(num_gkvec() + parameters_.unit_cell()->atom(ia)->offset_lo(), i),
-                       parameters_.unit_cell()->atom(ia)->mt_lo_basis_size() * sizeof(double_complex));
-
-                // G+k block
-                memcpy(&fv_states_(parameters_.unit_cell()->mt_basis_size(), i), &fv_eigen_vectors(0, i), 
-                       num_gkvec() * sizeof(double_complex));
-            }
-        }
-
-        fv_states_panel_.scatter(fv_states_, parameters_.mpi_grid().communicator(1 << _dim_row_));
-    }
+    fv_states_panel_.scatter(fv_states_, parameters_.mpi_grid().communicator(1 << _dim_row_));
 
     log_function_exit(__func__);
 }

@@ -73,6 +73,11 @@ class dmatrix
         }
         
         dmatrix(int num_rows__, int num_cols__, int blacs_context__) 
+            : num_ranks_row_(1), 
+              rank_row_(0), 
+              num_ranks_col_(1), 
+              rank_col_(0)
+
         {
             set_dimensions(num_rows__, num_cols__, blacs_context__);
             matrix_local_.allocate();
@@ -88,9 +93,8 @@ class dmatrix
             num_rows_ = num_rows__;
             num_cols_ = num_cols__;
 
-            int bs = 1;
             #ifdef _SCALAPACK_
-            bs = linalg<scalapack>::cyclic_block_size();
+            int bs = linalg<scalapack>::cyclic_block_size();
             linalg<scalapack>::gridinfo(blacs_context__, &num_ranks_row_, &num_ranks_col_, &rank_row_, &rank_col_);
             #endif
 

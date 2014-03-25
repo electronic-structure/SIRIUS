@@ -66,34 +66,6 @@ class splindex<block>: public splindex_base
             init(global_index_size__, num_ranks__, rank__); 
         }
 
-        //== splindex(int global_index_size__, int num_ranks__)
-        //== {
-        //==     split(global_index_size__, num_ranks__); 
-        //== }
-        
-        //== void split(int global_index_size__, int num_ranks__, int rank__)
-        //== {
-        //==     if (rank__ < 0 || rank__ >= num_ranks__) error_local(__FILE__, __LINE__, "wrong rank");
-        //==     rank_ = rank__;
-
-        //==     split(global_index_size__, num_ranks__);
-        //== }
-
-        //== void split(int global_index_size__, int num_ranks__)
-        //== {
-        //==     if (global_index_size__ <= 0) error_local(__FILE__, __LINE__, "wrong global index size");
-        //==     if (num_ranks__ < 0) error_local(__FILE__, __LINE__, "wrong number of ranks");
-
-        //==     global_index_size_ = global_index_size__;
-        //==     num_ranks_ = num_ranks__;
-
-        //==     min_num_elements_ = global_index_size_ / num_ranks_;
-
-        //==     num_ranks_with_extra_element_ = global_index_size_ % num_ranks_; 
-
-        //==     num_elements1_ = (min_num_elements_ + 1) * num_ranks_with_extra_element_;
-        //== }
-
         inline int local_size()
         {
             return local_size(rank_);
@@ -213,12 +185,6 @@ class splindex<block_cyclic>: public splindex_base
         {
         }
         
-        //== // Constructor with explicit parameter of the cyclic block size
-        //== splindex(int global_index_size__, int num_ranks__, int rank__, int block_size__)
-        //== {
-        //==     init(global_index_size__, num_ranks__, rank__, block_size__); 
-        //== }
-
         // Constructor with implicit cyclic block size
         splindex(int global_index_size__, int num_ranks__, int rank__)
         {
