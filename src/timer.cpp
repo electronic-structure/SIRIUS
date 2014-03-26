@@ -51,6 +51,33 @@ void Timer::stop()
     active_ = false;
 }
 
+double Timer::value()
+{
+    if (active_)
+    {
+        std::stringstream s;
+        s << "timer " << label_ << " is active";
+        error_local(__FILE__, __LINE__, s);
+    }
+    std::vector<double> values;
+    switch (timer_type_)
+    {
+        case _local_timer_:
+        {
+            values = timers_[label_];
+            break;
+        }
+        case _global_timer_:
+        {
+            values = global_timers_[label_];
+            break;
+        }
+    }
+    double d = 0;
+    for (int i = 0; i < (int)values.size(); i++) d += values[i];
+    return d;
+}
+
 extern "C" void print_cuda_timers();
 
 void Timer::print()

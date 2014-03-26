@@ -88,6 +88,8 @@ class Timer
 
         void stop();
 
+        double value();
+
         static void clear()
         {
             timers_.clear();

@@ -33,13 +33,13 @@ Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_
         case full_potential_lapwlo:
         {
             gaunt_coefs_ = new Gaunt_coefficients<double_complex>(parameters_.lmax_apw(), parameters_.lmax_rho(), 
-                                                             parameters_.lmax_apw());
+                                                                  parameters_.lmax_apw());
             break;
         }
         case full_potential_pwlo:
         {
             gaunt_coefs_ = new Gaunt_coefficients<double_complex>(parameters_.lmax_pw(), parameters_.lmax_rho(), 
-                                                             parameters_.lmax_pw());
+                                                                  parameters_.lmax_pw());
             break;
         }
         case ultrasoft_pseudopotential:
@@ -1370,16 +1370,16 @@ void Density::generate_valence_density_it(K_set& ks)
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
         Platform::allreduce(&magnetization_[j]->f_it<global>(0), fft_->size()); 
 
-    // check density
-    for (int i = 0; i < fft_->size(); i++)
-    {
-        if (rho_->f_it<global>(i) < 0.0)
-        {
-            std::stringstream s;
-            s << "[Density::generate_valence_density_it] negative interstitial density " << Utils::to_string(rho_->f_it<global>(i));
-            warning_global(__FILE__, __LINE__, s);
-        }
-    }
+    //== // check density
+    //== for (int i = 0; i < fft_->size(); i++)
+    //== {
+    //==     if (rho_->f_it<global>(i) < 0.0)
+    //==     {
+    //==         std::stringstream s;
+    //==         s << "[Density::generate_valence_density_it] negative interstitial density " << Utils::to_string(rho_->f_it<global>(i));
+    //==         warning_global(__FILE__, __LINE__, s);
+    //==     }
+    //== }
 }
 
 double Density::core_leakage()
