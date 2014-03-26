@@ -16,9 +16,11 @@ void test_gemm(int M, int N, int K, mdarray<double_complex, 2>& c)
         for (int i = 0; i < K; i++) b(i, j) = type_wrapper<double_complex>::random();
     }
 
+    printf("testing zgemm with M, N, K = %i, %i, %i\n", M, N, K);
     sirius::Timer t1("gemm_only"); 
     blas<cpu>::gemm(0, 0, M, N, K, a.ptr(), a.ld(), b.ptr(), b.ld(), c.ptr(), c.ld());
     t1.stop();
+    printf("execution time (sec) : %12.6f\n", t1.value());
     printf("performance (GFlops) : %12.6f\n", double(8 * M * N * K) / 1e9 / t1.value());
 }
 
@@ -60,8 +62,11 @@ int main(int argn, char **argv)
     //== std::cout << "after zgemm" << std::endl;
     //== t.stop();
     
-    //int N = 3000;
     mdarray<double_complex, 2> c(M, N);
+    for (int j = 0; j < N; j++)
+    {
+        for (int i = 0; i < M; i++) c(i, j) = complex_zero;
+    }
     test_gemm(M, N, K, c);
 
     //sirius::Timer::print();
