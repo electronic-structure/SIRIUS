@@ -21,7 +21,7 @@ void test_gemm(int M, int N, int K, mdarray<double_complex, 2>& c)
     blas<cpu>::gemm(0, 0, M, N, K, a.ptr(), a.ld(), b.ptr(), b.ld(), c.ptr(), c.ld());
     t1.stop();
     printf("execution time (sec) : %12.6f\n", t1.value());
-    printf("performance (GFlops) : %12.6f\n", double(8 * M * N * K) / 1e9 / t1.value());
+    printf("performance (GFlops) : %12.6f\n", 8e-9 * M * N * K / t1.value());
 }
 
 int main(int argn, char **argv)
