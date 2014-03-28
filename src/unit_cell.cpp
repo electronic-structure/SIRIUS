@@ -678,7 +678,7 @@ void Unit_cell::write_cif()
         for (int ia = 0; ia < num_atoms(); ia++)
         {
             std::stringstream s;
-            s << ia + 1 << " " << atom(ia)->type()->symbol() << " " << atom(ia)->position(0) << " " << 
+            s << ia + 1 << " " << atom(ia)->type()->label() << " " << atom(ia)->position(0) << " " << 
                  atom(ia)->position(1) << " " << atom(ia)->position(2);
             fprintf(fout,"%s\n",s.str().c_str());
         }

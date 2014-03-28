@@ -873,6 +873,7 @@ template<>
 void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp, Periodic_function<double>* effective_potential,
                                                   dmatrix<double_complex>& h, dmatrix<double_complex>& o)
 {
+    log_function_enter(__func__);
     Timer t("sirius::Band::set_fv_h_o");
 
     dmatrix<double_complex> alm_panel(parameters_.unit_cell()->mt_aw_basis_size(), kp->num_gkvec(), parameters_.blacs_context());
@@ -915,6 +916,8 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp, Periodic_function
     set_fv_h_o_it(kp, effective_potential, h.data(), o.data());
 
     set_fv_h_o_lo_lo(kp, h.data(), o.data());
+
+    log_function_exit(__func__);
 }
 
 //== //=====================================================================================================================
