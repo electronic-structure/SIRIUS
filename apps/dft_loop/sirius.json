@@ -1,21 +1,23 @@
 {
     "cyclic_block_size" : 16,
-    "processing_unit" : "gpu",
+    "processing_unit" : "cpu",
     
     "std_evp_solver_type" : "lapack",
     "gen_evp_solver_type" : "lapack",
     
-    "num_fv_states" : 64,
+    "mpi_grid_dims" : [1],
+    
+    "num_fv_states" : 67,
 
     "auto_rmt" : 1,
 
     "num_mag_dims" : 1,
 
-    "num_dft_iter" : 1,
+    "num_dft_iter" : 10,
 
-    "ngridk" : [2,2,2],
+    "ngridk" : [2, 2, 2],
 
-    "aw_cutoff" : 10,
+    "aw_cutoff" : 7,
 
     "unit_cell" : {
 
@@ -30,8 +32,8 @@
 
         "atom_files" : {"Ni" : "Ni.json", "O" : "O.json"},
 
-        "atoms" : { "Ni" : [ [0,    0,    0,  0, 0,  0.1], 
-                             [0.5, 0.5, 0.5,  0, 0, -0.1] 
+        "atoms" : { "Ni" : [ [0,    0,    0,  0, 0,  1.1], 
+                             [0.5, 0.5, 0.5,  0, 0, -1.1] 
                            ],
 
                     "O" :  [ [0.25, 0.25, 0.25],
@@ -43,7 +45,7 @@
     "mixer" : {
         "beta" : 0.9,
         "type" : "broyden",
-        "max_history" : 8
+        "max_history" : 5
     }
 
 }
