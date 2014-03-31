@@ -1,3 +1,5 @@
+#include "constants.h"
+
 /// \todo scapalack-based solvers can exctract grid information from blacs context
 
 /// Base class for the standard eigen-value problem
