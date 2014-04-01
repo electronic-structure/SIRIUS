@@ -6,6 +6,7 @@
 
 namespace sirius
 {
+// TODO: cleanup the mess with matching coefficients
 
 /// K-point related variables and methods
 /** \image html wf_storage.png "Wave-function storage" */ // TODO: replace with proper image
