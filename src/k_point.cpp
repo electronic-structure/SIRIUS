@@ -1448,8 +1448,8 @@ void K_point::save(int id)
         fout["K_set"][id].write("band_occupancies", band_occupancies_);
         if (num_ranks() == 1)
         {
-            fout["K_set"][id].write_mdarray("fv_eigen_vectors", fv_eigen_vectors_panel_.data());
-            fout["K_set"][id].write_mdarray("sv_eigen_vectors", sv_eigen_vectors_[0].data());
+            fout["K_set"][id].write("fv_eigen_vectors", fv_eigen_vectors_panel_.data());
+            fout["K_set"][id].write("sv_eigen_vectors", sv_eigen_vectors_[0].data());
         }
     }
     
@@ -1464,7 +1464,7 @@ void K_point::save(int id)
         {
             HDF5_tree fout(storage_file_name, false);
             wfj.set_ptr(&spinor_wave_functions_(0, 0, offs));
-            fout["K_set"][id]["spinor_wave_functions"].write_mdarray(j, wfj);
+            fout["K_set"][id]["spinor_wave_functions"].write(j, wfj);
         }
         Platform::barrier(parameters_.mpi_grid().communicator(_dim_col_));
     }

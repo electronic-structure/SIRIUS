@@ -7,6 +7,7 @@
 #include "platform.h"
 #include "timer.h"
 #include "error_handling.h"
+#include "cmd_args.h"
 #include "constants.h"
 #include "linalg.h"
 #include "radial_grid.h"

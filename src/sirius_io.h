@@ -80,7 +80,7 @@ class sirius_io
             int size1 = (int)matrix.size(1);
             fout.write("nrow", &size0); 
             fout.write("ncol", &size1);
-            fout.write_mdarray("matrix", matrix);
+            fout.write("matrix", matrix);
         }
 
 

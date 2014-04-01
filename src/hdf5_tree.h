@@ -283,7 +283,34 @@ class HDF5_tree
             
             return (*this)[name];
         }
-       
+
+        /// Write a multidimensional array by name.
+        template <typename T, int N>
+        void write(const std::string& name, mdarray<T, N>& data)
+        {
+            if (type_wrapper<T>::is_complex())
+            {
+                std::vector<int> dims(N + 1);
+                dims[0] = 2; 
+                for (int i = 0; i < N; i++) dims[i + 1] = (int)data.size(i);
+                write(name, (typename type_wrapper<T>::real_t*)data.ptr(), dims);
+            }
+            else
+            {
+                std::vector<int> dims(N);
+                for (int i = 0; i < N; i++) dims[i] = (int)data.size(i);
+                write(name, data.ptr(), dims);
+            }
+        }
+
+        /// Write a multidimensional array by integer index.
+        template <typename T, int N>
+        void write(int name_id, mdarray<T, N>& data)
+        {
+            std::string name = Utils::to_string(name_id);
+            write(name, data);
+        }
+
         /// Write a vector.
         template <typename T>
         void write(const std::string& name, T* data, int size = 1)
@@ -300,33 +327,6 @@ class HDF5_tree
             std::vector<int> dims(1);
             dims[0] = 1;
             write(name, &data, dims);
-        }
-
-        /// Write a multidimensional array by name.
-        template <typename T, int N>
-        void write_mdarray(const std::string& name, mdarray<T, N>& data)
-        {
-            if (type_wrapper<T>::is_complex())
-            {
-                std::vector<int> dims(N + 1);
-                dims[0] = 2; 
-                for (int i = 0; i < N; i++) dims[i + 1] = (int)data.size(i);
-                write(name, (typename type_wrapper<T>::real_t*)data.ptr(), dims);
-            }
-            else
-            {
-                std::vector<int> dims(N);
-                for (int i = 0; i < N; i++) dims[i] = (int)data.size(i);
-                write(name, data.ptr(), dims);
-            }
-        }
-        
-        /// Write a multidimensional array by integer index.
-        template <typename T, int N>
-        void write_mdarray(int name_id, mdarray<T, N>& data)
-        {
-            std::string name = Utils::to_string(name_id);
-            write_mdarray(name, data);
         }
 
         template<typename T>

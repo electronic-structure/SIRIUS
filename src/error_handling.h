@@ -50,6 +50,10 @@
 const int _global_message_ = 1 << 0;
 const int _fatal_error_ = 1 << 1;
 
+void terminate(const char* file_name, int line_number, const std::string& message);
+
+void terminate(const char* file_name, int line_number, const std::stringstream& message);
+
 /// General error report
 void error_message(const char* file_name, int line_number, const std::string& message, int flags);
 

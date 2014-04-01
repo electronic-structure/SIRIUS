@@ -266,6 +266,8 @@ class Density
 
         /// Check density at MT boundary
         void check_density_continuity_at_mt();
+
+        void generate_pw_coefs();
          
         void save();
         

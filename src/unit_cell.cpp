@@ -853,9 +853,7 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
     vector3d<int> ntr;
     
     // reduce coordinates to the primitive unit cell
-    vector3d<double> vf = get_fractional_coordinates(vc);
-
-    std::pair< vector3d<double>, vector3d<int> > vr = Utils::reduce_coordinates(vf);
+    auto vr = Utils::reduce_coordinates(get_fractional_coordinates(vc));
 
     for (int ia = 0; ia < num_atoms(); ia++)
     {
@@ -868,26 +866,23 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
                     // atom position
                     vector3d<double> posf(i0, i1, i2); 
 
-                    for (int i = 0; i < 3; i++) posf[i] += atom(ia)->position(i);
+                    for (int x = 0; x < 3; x++) posf[x] += atom(ia)->position(x);
                     
                     // vector connecting center of atom and reduced point
-                    vector3d<double> vf1;
-                    for (int i = 0; i < 3; i++) vf1[i] = vr.first[i] - posf[i];
+                    vector3d<double> vf;
+                    for (int x = 0; x < 3; x++) vf[x] = vr.first[x] - posf[x];
                     
-                    // convert to Cartesian coordinates
-                    vector3d<double> vc1 = get_cartesian_coordinates(vf1);
+                    // convert to spherical coordinates
+                    double vs[3];
+                    SHT::spherical_coordinates(get_cartesian_coordinates(vf), vs);
 
-                    double r = vc1.length();
-
-                    if (r <= atom(ia)->mt_radius())
+                    if (vs[0] < atom(ia)->mt_radius())
                     {
                         ja = ia;
-                        double vs1[3];                       
-                        SHT::spherical_coordinates(vc1, vs1);
-                        tp[0] = vs1[1]; // theta
-                        tp[1] = vs1[2]; // phi
+                        tp[0] = vs[1]; // theta
+                        tp[1] = vs[2]; // phi
 
-                        if (r < atom(ia)->type()->radial_grid(0))
+                        if (vs[0] < atom(ia)->type()->radial_grid(0))
                         {
                             jr = 0;
                             dr = 0.0;
@@ -896,11 +891,10 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
                         {
                             for (int ir = 0; ir < atom(ia)->num_mt_points() - 1; ir++)
                             {
-                                if ((r >= atom(ia)->type()->radial_grid(ir)) && 
-                                    (r <= atom(ia)->type()->radial_grid(ir + 1)))
+                                if (vs[0] >= atom(ia)->type()->radial_grid(ir) && vs[0] < atom(ia)->type()->radial_grid(ir + 1))
                                 {
                                     jr = ir;
-                                    dr = r - atom(ia)->type()->radial_grid(ir);
+                                    dr = vs[0] - atom(ia)->type()->radial_grid(ir);
                                     break;
                                 }
                             }
@@ -913,7 +907,8 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
             }
         }
     }
-    
+    ja = -1;
+    jr = -1;
     return false;
 }
 

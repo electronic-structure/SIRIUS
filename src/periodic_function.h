@@ -174,6 +174,39 @@ class Periodic_function
         {
             return f_pw_(ig);
         }
+
+        double value(Global& parameters_, vector3d<double>& vc)
+        {
+            int ja, jr;
+            double dr, tp[2];
+        
+            if (unit_cell_->is_point_in_mt(vc, ja, jr, dr, tp)) 
+            {
+                int lmax = Utils::lmax_by_lmmax(angular_domain_size_);
+                std::vector<double> rlm(angular_domain_size_);
+                SHT::spherical_harmonics(lmax, tp[0], tp[1], &rlm[0]);
+                double p = 0.0;
+                for (int lm = 0; lm < angular_domain_size_; lm++)
+                {
+                    double d = (f_mt_(lm, jr + 1, ja) - f_mt_(lm, jr, ja)) / 
+                               (unit_cell_->atom(ja)->type()->radial_grid(jr + 1) - unit_cell_->atom(ja)->type()->radial_grid(jr));
+        
+                    p += rlm[lm] * (f_mt_(lm, jr, ja) + d * dr);
+                }
+                return p;
+            }
+            else
+            {
+                double p = 0.0;
+                for (int ig = 0; ig < num_gvec_; ig++)
+                {
+                    vector3d<double> vgc = parameters_.reciprocal_lattice()->gvec_cart(ig);
+                    p += real(f_pw_(ig) * exp(double_complex(0.0, Utils::scalar_product(vc, vgc))));
+                }
+                return p;
+            }
+        }
+
 };
 
 #include "periodic_function.hpp"

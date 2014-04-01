@@ -1,5 +1,3 @@
-// This file is part of SIRIUS
-//
 // Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
@@ -20,6 +18,19 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "error_handling.h"
+
+void terminate(const char* file_name, int line_number, const std::string& message)
+{
+    printf("\n=== Fatal error at line %i of file %s ===\n", line_number, file_name);
+    printf("%s\n", message.c_str());
+    raise(SIGTERM);
+    exit(-1);
+}
+
+void terminate(const char* file_name, int line_number, const std::stringstream& message)
+{
+    terminate(file_name, line_number, message.str());
+}
 
 /// General error report
 void error_message(const char* file_name, int line_number, const std::string& message, int flags)

@@ -1637,4 +1637,13 @@ void Density::load()
         magnetization_[j]->hdf5_read(fout["magnetization"][j]);
 }
 
+void Density::generate_pw_coefs()
+{
+    fft_->input(&rho_->f_it<global>(0));
+    fft_->transform(-1);
+
+    auto rl = parameters_.reciprocal_lattice();
+    fft_->output(rl->num_gvec(), rl->fft_index(), &rho_->f_pw(0));
+}
+
 }
