@@ -25,9 +25,10 @@ void test1a(void)
     printf("\n");
     printf("split 17 elements between 4 ranks in block-cyclic distribution\n");
     printf("\n");
+    splindex<block_cyclic>::set_cyclic_block_size(2);
     for (int i = 0; i < 4; i++)
     {
-        splindex<block_cyclic> spl(17, 4, i, 2);
+        splindex<block_cyclic> spl(17, 4, i);
         printf("rank : %i, local size : %i\n", i, spl.local_size());
         
         printf("local index and rank for each element:\n");
@@ -67,9 +68,9 @@ void test3()
     printf("test3\n");
     for (int num_ranks = 1; num_ranks < 17; num_ranks++)
     {
-        for (int N = 1; N < 113; N++)
+        for (int N = 0; N < 113; N++)
         {
-            splindex<block> spl(N, num_ranks);
+            splindex<block> spl(N, num_ranks, 0);
             int sz = 0;
             for (int i = 0; i < num_ranks; i++) sz += spl.local_size(i);
             if (sz != N) 
@@ -97,11 +98,12 @@ void test4()
     printf("test4\n");
     for (int bs = 1; bs < 17; bs++)
     {
+        splindex<block_cyclic>::set_cyclic_block_size(bs);
         for (int num_ranks = 1; num_ranks < 13; num_ranks++)
         {
             for (int N = 1; N < 1113; N++)
             {
-                splindex<block_cyclic> spl(N, num_ranks, bs);
+                splindex<block_cyclic> spl(N, num_ranks, 0);
                 int sz = 0;
                 for (int i = 0; i < num_ranks; i++) sz += spl.local_size(i);
                 if (sz != N) 
@@ -134,9 +136,11 @@ void test4()
 
 int main(int argn, char** argv)
 {
+    Platform::initialize(1);
     test1();
     test1a();
     test2();
     test3();
     test4();
+    Platform::finalize();
 }
