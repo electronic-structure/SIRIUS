@@ -30,7 +30,34 @@ void test_pgemm(int M, int N, int K, int nrow, int ncol)
     int context = linalg<scalapack>::create_blacs_context(MPI_COMM_WORLD);
     Cblacs_gridinit(&context, "C", nrow, ncol);
 
-    dmatrix<double_complex> a(M, K, context);
+    //== dmatrix<double_complex> a(M, K, context);
+    //== dmatrix<double_complex> b(K, N, context);
+    //== dmatrix<double_complex> c(M, N, context);
+    //== c.zero();
+
+    //== for (int ic = 0; ic < a.num_cols_local(); ic++)
+    //== {
+    //==     for (int ir = 0; ir < a.num_rows_local(); ir++) a(ir, ic) = type_wrapper<double_complex>::random();
+    //== }
+    //== for (int ic = 0; ic < b.num_cols_local(); ic++)
+    //== {
+    //==     for (int ir = 0; ir < b.num_rows_local(); ir++) b(ir, ic) = type_wrapper<double_complex>::random();
+    //== }
+
+    //== if (Platform::mpi_rank() == 0)
+    //== {
+    //==     printf("testing parallel zgemm with M, N, K = %i, %i, %i\n", M, N, K);
+    //== }
+    //== sirius::Timer t1("gemm_only"); 
+    //== blas<cpu>::gemm(0, 0, M, N, K, complex_one, a, b, complex_zero, c);
+    //== t1.stop();
+    //== if (Platform::mpi_rank() == 0)
+    //== {
+    //==     printf("execution time (sec) : %12.6f\n", t1.value());
+    //==     printf("performance (GFlops) : %12.6f\n", 8e-9 * M * N * K / t1.value() / nrow / ncol);
+    //== }
+
+    dmatrix<double_complex> a(K, M, context);
     dmatrix<double_complex> b(K, N, context);
     dmatrix<double_complex> c(M, N, context);
     c.zero();
@@ -49,7 +76,7 @@ void test_pgemm(int M, int N, int K, int nrow, int ncol)
         printf("testing parallel zgemm with M, N, K = %i, %i, %i\n", M, N, K);
     }
     sirius::Timer t1("gemm_only"); 
-    blas<cpu>::gemm(0, 0, M, N, K, complex_one, a, b, complex_zero, c);
+    blas<cpu>::gemm(2, 0, M, N, K, complex_one, a, b, complex_zero, c);
     t1.stop();
     if (Platform::mpi_rank() == 0)
     {
