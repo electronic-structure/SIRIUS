@@ -38,7 +38,7 @@ class splindex<block>: public splindex_base
 
         void init(int global_index_size__, int num_ranks__, int rank__)
         {
-            if (global_index_size__ <= 0) error_local(__FILE__, __LINE__, "wrong global index size");
+            if (global_index_size__ < 0) error_local(__FILE__, __LINE__, "wrong global index size");
             global_index_size_ = global_index_size__;
 
             if (num_ranks__ < 0) error_local(__FILE__, __LINE__, "wrong number of ranks");

@@ -1,3 +1,4 @@
+#include "vector3d.h"
 
 class cmd_args
 {
@@ -99,6 +100,11 @@ class cmd_args
 
         template <typename T> 
         T value(const std::string key);
+
+        std::string operator[](const std::string key)
+        {
+            return keys_[key];
+        }
 };
 
 template <>
@@ -116,4 +122,22 @@ int cmd_args::value<int>(const std::string key)
     std::istringstream(keys_[key]) >> v;
     return v;
 }
+
+template <>
+vector3d<double> cmd_args::value< vector3d<double> >(const std::string key)
+{
+    vector3d<double> v;
+
+    if (!exist(key))
+    {
+        std::stringstream s;
+        s << "command line parameter --" << key << " was not specified";
+        terminate(__FILE__, __LINE__, s);
+    }
+
+    std::istringstream iss(keys_[key]);
+    for (int x = 0; x < 3; x++) iss >> v[x];
+    return v;
+}
+
 
