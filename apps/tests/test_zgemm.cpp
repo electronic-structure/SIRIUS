@@ -46,7 +46,7 @@ void test_pgemm(int M, int N, int K, int nrow, int ncol)
 
     if (Platform::mpi_rank() == 0)
     {
-        printf("testing serial zgemm with M, N, K = %i, %i, %i\n", M, N, K);
+        printf("testing parallel zgemm with M, N, K = %i, %i, %i\n", M, N, K);
     }
     sirius::Timer t1("gemm_only"); 
     blas<cpu>::gemm(0, 0, M, N, K, complex_one, a, b, complex_zero, c);
