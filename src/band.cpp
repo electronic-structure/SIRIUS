@@ -909,6 +909,10 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp, Periodic_function
     
     dmatrix<double_complex> halm_panel_t(naw, kp->num_gkvec(), parameters_.blacs_context());
     halm_panel_t.scatter(halm_v, parameters_.mpi_grid().communicator(1 << _dim_row_));
+
+    #ifdef _WRITE_PROC_STATUS_
+    Platform::write_proc_status(__FILE__, __LINE__);
+    #endif
     
     /* all the above data preparation is done in order to 
      * execute "normal" pzgemm without matrix transpose 

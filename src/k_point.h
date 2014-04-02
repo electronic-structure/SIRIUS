@@ -734,8 +734,8 @@ class K_point
         void bypass_sv()
         {
             memcpy(&band_energies_[0], &fv_eigen_values_[0], parameters_.num_fv_states() * sizeof(double));
-            sv_eigen_vectors_[0].zero();
-            for (int i = 0; i < parameters_.num_fv_states(); i++) sv_eigen_vectors_[0].set(i, i, complex_one);
+            //== sv_eigen_vectors_[0].zero();
+            //== for (int i = 0; i < parameters_.num_fv_states(); i++) sv_eigen_vectors_[0].set(i, i, complex_one);
         }
 
         std::vector<double> get_pw_ekin()

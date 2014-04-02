@@ -13,9 +13,10 @@ void K_point::initialize()
 
     band_energies_.resize(parameters_.num_bands());
 
-    if (use_second_variation)
+    if (use_second_variation) fv_eigen_values_.resize(parameters_.num_fv_states());
+
+    if (use_second_variation && parameters_.need_sv())
     {
-        fv_eigen_values_.resize(parameters_.num_fv_states());
         // in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix
         if (parameters_.num_mag_dims() == 3)
         {

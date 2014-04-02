@@ -9,10 +9,12 @@
 #include <mpi.h>
 #include <omp.h>
 #include <signal.h>
+#include <unistd.h>
 #ifdef _GPU_
 #include "gpu_interface.h"
 #endif
 #include <vector>
+#include <fstream>
 #include "typedefs.h"
 
 class Platform
@@ -120,6 +122,30 @@ class Platform
         static void barrier(MPI_Comm comm = MPI_COMM_WORLD)
         {
             MPI_Barrier(comm);
+        }
+
+        static void write_proc_status(const char* src_file, const int src_line)
+        {
+            int pid = getpid();
+            
+            char hostname[1024];
+            gethostname(hostname, 1024);
+            hostname[1023] = 0;
+
+            std::stringstream fname;
+            fname << "/proc/" << pid << "/status";
+            
+            std::ifstream ifs(fname.str().c_str());
+            if (ifs.is_open())
+            {
+                printf("[%s, pid: %i] line %i of file %s \n", hostname, pid, src_line, src_file);
+                
+                std::string str; 
+                while (std::getline(ifs, str))
+                {
+                    printf("[%s, pid: %i] %s\n", hostname, pid, str.c_str());
+                } 
+            }
         }
 };
 
