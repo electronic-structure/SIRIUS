@@ -228,7 +228,7 @@ class JSON_tree
 
         inline JSON_tree operator[](const int key) const 
         {
-            std::string new_path = path_ + std::string("/") + Utils::to_string(key);
+            std::string new_path = path_ + std::string("/") + std::to_string(key);
             JSONNode n;
             try
             {
@@ -315,7 +315,7 @@ class JSON_write
             for (int i = 0; i < (int)v.size(); i++)
             {
                 if (i != 0) fprintf(fout_, ", ");
-                fprintf(fout_, "%s", Utils::to_string(v[i]).c_str());
+                fprintf(fout_, "%s", Utils::double_to_string(v[i]).c_str());
             }
             fprintf(fout_, "]");
         } 
@@ -370,7 +370,7 @@ class JSON_write
             for (int i = 0; i < (int)values.size(); i++)
             {
                 if (i) fprintf(fout_, ", ");
-                std::string s = Utils::to_string(values[i]);
+                std::string s = Utils::double_to_string(values[i]);
                 fprintf(fout_, "%s", s.c_str());
             }
             fprintf(fout_, "]");

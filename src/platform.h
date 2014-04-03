@@ -127,10 +127,10 @@ class Platform
         static void write_proc_status(const char* src_file, const int src_line)
         {
             int pid = getpid();
-            
-            char hostname[1024];
-            gethostname(hostname, 1024);
-            hostname[1023] = 0;
+            //== 
+            //== char hostname[1024];
+            //== gethostname(hostname, 1024);
+            //== hostname[1023] = 0;
 
             std::stringstream fname;
             fname << "/proc/" << pid << "/status";
@@ -138,12 +138,12 @@ class Platform
             std::ifstream ifs(fname.str().c_str());
             if (ifs.is_open())
             {
-                printf("[%s, pid: %i] line %i of file %s \n", hostname, pid, src_line, src_file);
+                printf("[mpi_rank: %i] line %i of file %s \n", mpi_rank(), src_line, src_file);
                 
                 std::string str; 
                 while (std::getline(ifs, str))
                 {
-                    printf("[%s, pid: %i] %s\n", hostname, pid, str.c_str());
+                    printf("[mpi_rank: %i] %s\n", mpi_rank(), str.c_str());
                 } 
             }
         }

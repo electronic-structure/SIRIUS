@@ -307,7 +307,7 @@ class HDF5_tree
         template <typename T, int N>
         void write(int name_id, mdarray<T, N>& data)
         {
-            std::string name = Utils::to_string(name_id);
+            std::string name = std::to_string(name_id);
             write(name, data);
         }
 
@@ -332,7 +332,7 @@ class HDF5_tree
         template<typename T>
         void write(int name_id, std::vector<T>& vec)
         {
-            std::string name = Utils::to_string(name_id);
+            std::string name = std::to_string(name_id);
             write(name, &vec[0], (int)vec.size());
         }
         
@@ -374,14 +374,14 @@ class HDF5_tree
         template <typename T, int N>
         void read_mdarray(int name_id, mdarray<T, N>& data)
         {
-            std::string name = Utils::to_string(name_id);
+            std::string name = std::to_string(name_id);
             read_mdarray(name, data);
         }
 
         template<typename T>
         void read(int name_id, std::vector<T>& vec)
         {
-            std::string name = Utils::to_string(name_id);
+            std::string name = std::to_string(name_id);
             read(name, &vec[0], (int)vec.size());
         }
 

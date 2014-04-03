@@ -89,8 +89,8 @@ class libxc_interface
                     if (fabs(rhoud[2 * i + 1]) > 1e-8)
                     {
                         std::stringstream s;
-                        s << "rho_dn is negative : " << Utils::to_string(rhoud[2 * i + 1]) << std::endl
-                          << "  rho : " << Utils::to_string(rho[i]) << "   mag : " << Utils::to_string(mag[i]);
+                        s << "rho_dn is negative : " << Utils::double_to_string(rhoud[2 * i + 1]) << std::endl
+                          << "  rho : " << Utils::double_to_string(rho[i]) << "   mag : " << Utils::double_to_string(mag[i]);
                         error_local(__FILE__, __LINE__, s);
                     }
                     else

@@ -1,5 +1,3 @@
-// This file is part of SIRIUS
-//
 // Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
@@ -86,6 +84,10 @@ void log_function_enter(const char* func_name);
 void log_function_exit(const char* func_name);
 
 #define stop_here Timer::print(); error_local(__FILE__, __LINE__, "stop_here macros is called");
+
+#define TERMINATE_NO_GPU terminate(__FILE__, __LINE__, "not compiled with GPU support");
+
+#define INFO std::cout << "[" << __func__ << ":" << Platform::mpi_rank() << "] "
 
 #endif // __ERROR_HANDLING_H__
 

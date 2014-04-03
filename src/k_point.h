@@ -473,7 +473,48 @@ class K_point
          */ 
         inline int wf_size() // TODO: better name for this
         {
-            return (parameters_.unit_cell()->mt_basis_size() + num_gkvec());
+            switch (parameters_.esm_type())
+            {
+                case full_potential_lapwlo:
+                case full_potential_pwlo:
+                {
+                    return parameters_.unit_cell()->mt_basis_size() + num_gkvec();
+                    break;
+                }
+                case ultrasoft_pseudopotential:
+                {
+                    return num_gkvec();
+                    break;
+                }
+                default:
+                {
+                    terminate(__FILE__, __LINE__, "wrong esm_type");
+                    return -1; //make compiler happy
+                }
+            }
+        }
+
+        inline int wf_pw_offset()
+        {
+            switch (parameters_.esm_type())
+            {
+                case full_potential_lapwlo:
+                case full_potential_pwlo:
+                {
+                    return parameters_.unit_cell()->mt_basis_size();
+                    break;
+                }
+                case ultrasoft_pseudopotential:
+                {
+                    return 0;
+                    break;
+                }
+                default:
+                {
+                    terminate(__FILE__, __LINE__, "wrong esm_type");
+                    return -1; //make compiler happy
+                }
+            }
         }
 
         inline void get_band_occupancies(double* band_occupancies)
@@ -676,7 +717,9 @@ class K_point
         }
 
         /// Offset of column matching coefficients in the array. 
-        /** In case of distributed matrix setup row and column apw coefficients are combined. Row coefficients are first.*/
+        /** In case of distributed matrix setup row and column apw coefficients 
+          * are combined. Row coefficients are first.
+          */
         inline int apw_offset_col()
         {
             return (num_ranks() > 1) ? num_gkvec_row() : 0;

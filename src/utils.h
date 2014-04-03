@@ -69,11 +69,32 @@ class Utils
             return 0.5 * (1 - gsl_sf_erf(e)) - 1 - 0.25 * exp(-e * e) * (a + 2 * e - 2 * a * e * e) / sqrt(pi);
         }
 
-        std::string static to_string(double argument)
+        static std::string double_to_string(double val, int precision = -1)
         {
             char buf[100];
+
+            double abs_val = std::abs(val);
+
+            if (precision == -1)
+            {
+                if (abs_val > 1.0) 
+                {
+                    precision = 6;
+                }
+                else if (abs_val > 1e-14)
+                {
+                    precision = int(-std::log(abs_val) / std::log(10.0)) + 7;
+                }
+                else
+                {
+                    return std::string("0.0");
+                }
+            }
+
+            std::stringstream fmt;
+            fmt << "%." << precision << "f";
         
-            int len = snprintf(buf, 100, "%.14f", argument);
+            int len = snprintf(buf, 100, fmt.str().c_str(), val);
             for (int i = len - 1; i >= 1; i--) 
             {
                 if (buf[i] == '0' && buf[i - 1] == '0') 
@@ -87,15 +108,6 @@ class Utils
             }
             return std::string(buf);
         }
-
-        //== /// Convert variable of type T to a string
-        //== template <typename T>
-        //== static std::string to_string(T argument)
-        //== {
-        //==     std::stringstream s;
-        //==     s << argument;
-        //==     return s.str();
-        //== }
 
         static inline double phi_by_sin_cos(double sinp, double cosp)
         {

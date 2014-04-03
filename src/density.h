@@ -163,10 +163,6 @@ class Density
         /// Add k-point contribution to the interstitial density and magnetization
         void add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands);
 
-        #ifdef _GPU_
-        void add_kpoint_contribution_it_gpu(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands);
-        #endif
-        
         /// Add k-point contribution to the density matrix in case of ultrasoft pseudo-potential
         /** The following density matrix has to be computed for each atom:
             \f[
@@ -213,12 +209,6 @@ class Density
 
         /// Generate valence density in the muffin-tins 
         void generate_valence_density_mt(K_set& ks);
-        
-        /// Generate valence density in the muffin-tins using straightforward (slow) approach
-        //** template <processing_unit_t pu> 
-        //** void generate_valence_density_mt_directly(K_set& ks);
-        
-        void generate_valence_density_mt_sht(K_set& ks);
         
         /// Generate valence density in the interstitial
         void generate_valence_density_it(K_set& ks);
