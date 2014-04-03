@@ -1,7 +1,13 @@
-FC = mpif90
+FC = mpif90 -ffree-line-length-none
 
-all:
-	$(FC) -cpp -O3 -ffree-line-length-none -fopenmp -DWITH_OPENMP -c *90
+.SUFFIXES: .f90
+
+.f90.o:
+	$(FC) -cpp -O3 -fopenmp -DWITH_OPENMP -c -c $<
+
+OBJ = elpa2_kernels_complex.o elpa2_kernels_real.o elpa1.o elpa2.o libelpa.o
+
+all: $(OBJ)
 	ar -r libelpa.a *.o
 	
 clean:
