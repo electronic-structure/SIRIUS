@@ -286,88 +286,66 @@ class Pulay_mixer: public Mixer
         double mix()
         {
             Timer t("sirius::Pulay_mixer::mix");
-            stop_here
 
-            //== for (int i = 0; i < spl_size_.local_size(); i++) 
-            //==     residuals_(i, offset(count_)) = input_buffer_(i) - vectors_(i, offset(count_));
+            for (int i = 0; i < spl_size_.local_size(); i++) 
+                residuals_(i, offset(count_)) = input_buffer_(i) - vectors_(i, offset(count_));
 
-            //== count_++;
+            count_++;
 
-            //== int N = std::min(count_, max_history_);
+            int N = std::min(count_, max_history_);
 
-            //== //if (count_ > max_history_)
-            //== if (N > 1)
-            //== {
-            //==     mdarray<double, 2> S(N, N);
-            //==     S.zero();
+            //if (count_ > max_history_)
+            if (N > 1)
+            {
+                mdarray<long double, 2> S(N, N);
+                S.zero();
 
-            //==     for (int j1 = 0; j1 < N - 1; j1++)
-            //==     { 
-            //==         for (int j2 = 0; j2 <= j1; j2++)
-            //==         {
-            //==             for (int i = 0; i < spl_size_.local_size(); i++) 
-            //==             {
-            //==                 S(j1, j2) += std::pow(residuals_(i, offset(count_ - N + j1)) * residuals_(i, offset(count_ - N + j2)), 2);
-            //==             }
-            //==             S(j2, j1) = S(j1, j2);
-            //==         }
-            //==     }
-            //==     Platform::allreduce(S.ptr(), (int)S.size());
-            //==     for (int j1 = 0; j1 < N - 1; j1++)
-            //==     { 
-            //==         for (int j2 = 0; j2 < N - 1; j2++) S(j1, j2) = std::sqrt(S(j1, j2) / size_);
-            //==     }
-            //==     for (int j = 0; j < N - 1; j++) S(N - 1, j) = S(j, N - 1) = 1;
-            //==     
-            //==     if (Platform::mpi_rank() == 0)
-            //==     {
-            //==         std::cout << "S-matrix : " << std::endl;
-            //==         for (int j1 = 0; j1 < N; j1++)
-            //==         {
-            //==             for (int j2 = 0; j2 < N; j2++) printf("%18.12f ", S(j1, j2));
-            //==             std::cout << std::endl;
-            //==         }
-            //==     }
+                for (int j1 = 0; j1 < N - 1; j1++)
+                { 
+                    for (int j2 = 0; j2 <= j1; j2++)
+                    {
+                        for (int i = 0; i < spl_size_.local_size(); i++) 
+                        {
+                            S(j1, j2) += std::pow(residuals_(i, offset(count_ - N + j1)) * residuals_(i, offset(count_ - N + j2)), 2);
+                        }
+                        S(j2, j1) = S(j1, j2);
+                    }
+                }
+                Platform::allreduce(S.ptr(), (int)S.size());
+                for (int j1 = 0; j1 < N - 1; j1++)
+                { 
+                    for (int j2 = 0; j2 < N - 1; j2++) S(j1, j2) = std::sqrt(S(j1, j2) / size_);
+                }
+                for (int j = 0; j < N - 1; j++) S(N - 1, j) = S(j, N - 1) = 1;
 
-            //==     linalg<lapack>::invert_ge(S.ptr(), N);
+                mdarray<double, 2> s(N, N);
+                s.zero();
+                for (int j = 0; j < N; j++)
+                {
+                    for (int i = 0; i < N; i++) s(i, j) = (double)S(i, j);
+                }
 
-            //==     if (Platform::mpi_rank() == 0)
-            //==     {
-            //==         std::cout << "S-matrix inverse : " << std::endl;
-            //==         for (int j1 = 0; j1 < N; j1++)
-            //==         {
-            //==             for (int j2 = 0; j2 < N; j2++) printf("%18.12f ", S(j1, j2));
-            //==             std::cout << std::endl;
-            //==         }
-            //==     }
-            //==    
-            //==     memset(&vectors_(0, offset(count_)), 0, spl_size_.local_size() * sizeof(double));
+                linalg<lapack>::invert_ge(s.ptr(), N);
 
-            //==     double d = 0;
-            //==     for (int i = 0; i < N - 1; i++) d+= S(i, N - 1);
-            //==     std::cout << "Sum of weights : " << d << std::endl;
-            //==     
-            //==     for (int j = 0; j < N - 1; j++)
-            //==     {
-            //==         if (Platform::mpi_rank() == 0)
-            //==         {
-            //==             std::cout << "vector = " << j << ", position = " << offset(count_ - N + j) << ", weight = " << S(j, N - 1) << std::endl;
-            //==         }
-            //==         for (int i = 0; i < spl_size_.local_size(); i++)
-            //==         {
-            //==             //vectors_(i, offset(count_)) += S(j, N - 1) * (vectors_(i, offset(count_ - N + j)) + 
-            //==             //                                              residuals_(i, offset(count_ - N + j)));
-            //==             vectors_(i, offset(count_)) += S(j, N - 1) * vectors_(i, offset(count_ - N + j));
-            //==         }
-            //==     }
+                memset(&vectors_(0, offset(count_)), 0, spl_size_.local_size() * sizeof(double));
 
-            //==     Platform::allgather(&vectors_(0, offset(count_)), output_buffer_.ptr(), spl_size_.global_offset(), 
-            //==                                   spl_size_.local_size());
-            //== }
-            //== else
-            //== {
-            //==     mix_linear();
-            //== }
+                for (int j = 0; j < N - 1; j++)
+                {
+                    for (int i = 0; i < spl_size_.local_size(); i++)
+                    {
+                        vectors_(i, offset(count_)) += s(j, N - 1) * (vectors_(i, offset(count_ - N + j)) + 
+                                                                      residuals_(i, offset(count_ - N + j)));
+                        //vectors_(i, offset(count_)) += s(j, N - 1) * vectors_(i, offset(count_ - N + j));
+                    }
+                }
+
+                Platform::allgather(&vectors_(0, offset(count_)), output_buffer_.ptr(), spl_size_.global_offset(), 
+                                              spl_size_.local_size());
+            }
+            else
+            {
+                mix_linear(beta_);
+            }
 
             return rms_deviation();
         }
