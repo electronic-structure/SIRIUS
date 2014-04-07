@@ -1,5 +1,29 @@
+// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #ifndef __K_POINT_H__
 #define __K_POINT_H__
+
+/** \file k_point.h
+ *   
+ *  \brief Contains definition and partial implementation of sirius::K_point class.
+ */
 
 #include "global.h"
 #include "periodic_function.h"
@@ -8,22 +32,22 @@ namespace sirius
 {
 // TODO: cleanup the mess with matching coefficients
 
-/// K-point related variables and methods
+/// K-point related variables and methods.
 /** \image html wf_storage.png "Wave-function storage" */ // TODO: replace with proper image
 class K_point
 {
     private:
 
-        /// global set of parameters
+        /// Global set of parameters.
         Global& parameters_;
 
-        /// alias for FFT driver
+        /// Alias for FFT driver.
         FFT3D<cpu>* fft_;
 
-        /// weight of k-point
+        /// Weight of k-point.
         double weight_;
 
-        /// fractional k-point coordinates
+        /// Fractional k-point coordinates.
         vector3d<double> vk_;
         
         /// G+k vectors
@@ -659,7 +683,7 @@ class K_point
             }
         } 
         
-        /// Return the global index of the G+k vector by the local index
+        /// Return the global index of the G+k vector by the local index.
         inline int igkglob(int igkloc) // TODO: change name or change the local G+k row+col storage 
         {
             assert(igkloc >= 0 && igkloc < num_gkvec_loc());
@@ -852,6 +876,18 @@ class K_point
  *      u_{\ell \nu}^{\alpha}(r) = \frac{\partial^{m_{\nu}}}{\partial^{m_{\nu}}E}u_{\ell}^{\alpha}(r,E)\Big|_{E=E_{\nu}}
  *  \f]
  */
+
+/** \page data_dist K-point data distribution
+ *
+ *  \section data_dist1 "Panel" and "full" data storage
+ *
+ *  We have to deal with big arrays (matching coefficients, eigen vectors, wave functions, etc.) which may not fit
+ *  into the memory of a single node. For some operations we need a "panel" distribution of data, where each 
+ *  MPI rank gets a local panel of block-cyclic distributed matrix. This way of storing data is necessary for the
+ *  distributed PBLAS and ScaLAPACK operations.  
+ *
+ */
+
 
 #endif // __K_POINT_H__
 

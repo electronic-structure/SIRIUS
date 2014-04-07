@@ -371,17 +371,17 @@ void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int
     if (occupied_bands.size() == 0) return;
 
     // take only occupied wave-functions
-    mdarray<double_complex, 2> wfs(kp->num_gkvec(), (int)occupied_bands.size());
+    mdarray<double_complex, 2> wfs(kp->num_gkvec(), occupied_bands.size());
     for (int i = 0; i < (int)occupied_bands.size(); i++)
     {
         memcpy(&wfs(0, i), &kp->spinor_wave_function(0, occupied_bands[i].first, 0), kp->num_gkvec() * sizeof(double_complex));
     }
 
     // <\beta_{\xi}^{\alpha}|\Psi_j>
-    mdarray<double_complex, 2> beta_psi(parameters_.unit_cell()->num_beta_a(), (int)occupied_bands.size());
+    mdarray<double_complex, 2> beta_psi(parameters_.unit_cell()->mt_lo_basis_size(), occupied_bands.size());
 
     // compute <beta|Psi>
-    blas<cpu>::gemm(2, 0, parameters_.unit_cell()->num_beta_a(), (int)occupied_bands.size(), kp->num_gkvec(), 
+    blas<cpu>::gemm(2, 0, parameters_.unit_cell()->mt_lo_basis_size(), (int)occupied_bands.size(), kp->num_gkvec(), 
                     &kp->beta_pw_a(0, 0), kp->num_gkvec(), &wfs(0, 0), wfs.ld(), &beta_psi(0, 0), beta_psi.ld());
     
     #pragma omp parallel
@@ -399,7 +399,7 @@ void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int
             {
                 for (int xi = 0; xi < nbf; xi++)
                 {
-                    bp1(xi, i) = beta_psi(parameters_.unit_cell()->beta_a_ofs(ia) + xi, i);
+                    bp1(xi, i) = beta_psi(parameters_.unit_cell()->atom(ia)->offset_lo() + xi, i);
                     bp2(xi, i) = conj(bp1(xi, i)) * occupied_bands[i].second;
                 }
             }

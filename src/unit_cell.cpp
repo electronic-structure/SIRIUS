@@ -245,9 +245,11 @@ std::vector<double> Unit_cell::find_mt_radii()
         }
     }
     
-    // Suppose we have 3 different atoms. First we determint Rmt between 1st and 2nd atom, then we determine Rmt 
-    // between (let's say) 2nd and 3rd atom and at this point we reduce the Rmt of the 2nd atom. This means that the 
-    // 1st atom gets a possibility to expand if he is far from the 3rd atom
+    /* Suppose we have 3 different atoms. First we determint Rmt between 1st and 2nd atom, 
+     * then we determine Rmt between (let's say) 2nd and 3rd atom and at this point we reduce 
+     * the Rmt of the 2nd atom. This means that the 1st atom gets a possibility to expand if 
+     * he is far from the 3rd atom.
+     */
     bool inflate = true;
     
     if (inflate)
@@ -332,16 +334,16 @@ void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
     max_mt_radial_basis_size_ = 0;
     max_mt_aw_basis_size_ = 0;
     lmax_beta_ = -1;
-    int offs = 0;
+    int offs_lo = 0;
     for (int iat = 0; iat < num_atom_types(); iat++)
     {
-        atom_type(iat)->init(lmax_apw, offs);
+        atom_type(iat)->init(lmax_apw, offs_lo);
         max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(iat)->num_mt_points());
         max_mt_basis_size_ = std::max(max_mt_basis_size_, atom_type(iat)->mt_basis_size());
         max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom_type(iat)->mt_radial_basis_size());
         max_mt_aw_basis_size_ = std::max(max_mt_aw_basis_size_, atom_type(iat)->mt_aw_basis_size());
         lmax_beta_ = std::max(lmax_beta_, atom_type(iat)->indexr().lmax());
-        offs += atom_type(iat)->mt_lo_basis_size(); 
+        offs_lo += atom_type(iat)->mt_lo_basis_size(); 
     }
     
     //=================
@@ -395,23 +397,10 @@ void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
 
     if (esm_type_ == ultrasoft_pseudopotential)
     {
-        beta_t_ofs_.set_dimensions(num_atom_types());
-        beta_t_ofs_.allocate();
-        num_beta_t_ = 0;
-        for (int iat = 0; iat < num_atom_types(); iat++)
-        {
-            beta_t_ofs_(iat) = num_beta_t_;
-            num_beta_t_ += atom_type(iat)->mt_basis_size();
-        }
+        assert(mt_basis_size_ == mt_lo_basis_size_); // in uspp those are identical because there are now APWs
 
-        beta_a_ofs_.set_dimensions(num_atoms()); // TODO: this is mt_basis_size() 
-        beta_a_ofs_.allocate();
-        num_beta_a_ = 0;
-        for (int ia = 0; ia < num_atoms(); ia++)
-        {   
-            beta_a_ofs_(ia) = num_beta_a_;
-            num_beta_a_ += atom(ia)->type()->mt_basis_size();
-        }
+        num_beta_t_ = 0;
+        for (int iat = 0; iat < num_atom_types(); iat++) num_beta_t_ += atom_type(iat)->mt_lo_basis_size();
 
         atom_pos_.set_dimensions(3, num_atoms());
         atom_pos_.allocate();
@@ -420,17 +409,17 @@ void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
             for (int x = 0; x < 3; x++) atom_pos_(x, ia) = atom(ia)->position(x);
         }
 
-        beta_t_idx_.set_dimensions(2, num_beta_a_);
+        beta_t_idx_.set_dimensions(2, mt_lo_basis_size());
         beta_t_idx_.allocate();
 
         int n = 0;
         for (int ia = 0; ia < num_atoms(); ia++)
         {
             int iat = atom(ia)->type_id();
-            for (int xi = 0; xi < atom_type(iat)->mt_basis_size(); xi++, n++)
+            for (int xi = 0; xi < atom_type(iat)->mt_lo_basis_size(); xi++, n++)
             {
                 beta_t_idx_(0, n) = ia;
-                beta_t_idx_(1, n) = beta_t_ofs_(iat) + xi;
+                beta_t_idx_(1, n) = atom_type(iat)->offset_lo() + xi;
             }
         }
     }

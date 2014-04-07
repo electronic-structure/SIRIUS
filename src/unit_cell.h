@@ -1,5 +1,3 @@
-// This file is part of SIRIUS
-//
 // Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
@@ -45,28 +43,28 @@ class Unit_cell
 {
     private:
         
-        /// mapping between external atom type id and an ordered internal id in the range [0, N_{types} - 1]
+        /// Mapping between external atom type id and an ordered internal id in the range [0, \f$ N_{types} \f$).
         std::map<int, int> atom_type_id_map_;
          
-        /// list of atom types
+        /// List of atom types.
         std::vector<Atom_type*> atom_types_;
 
-        /// list of atom classes
+        /// List of atom classes.
         std::vector<Atom_symmetry_class*> atom_symmetry_classes_;
         
-        /// list of atoms
+        /// List of atoms.
         std::vector<Atom*> atoms_;
        
-        /// split index of atoms
+        /// Split index of atoms.
         splindex<block> spl_num_atoms_;
         
-        /// split index of atom symmetry classes 
+        /// Split index of atom symmetry classes.
         splindex<block> spl_num_atom_symmetry_classes_;
 
-        /// Bravais lattice vectors in row order
+        /// Bravais lattice vectors in row order.
         double lattice_vectors_[3][3];
         
-        /// inverse Bravais lattice vectors in column order 
+        /// Inverse Bravais lattice vectors in column order.
         /** This matrix is used to find fractional coordinates by Cartesian coordinates */
         double inverse_lattice_vectors_[3][3];
         
@@ -101,7 +99,7 @@ class Unit_cell
         std::vector<int> equivalent_atoms_;
     
         /// maximum number of muffin-tin points across all atom types
-        int max_num_mt_points_;  // TODO: move this and similar values to global
+        int max_num_mt_points_;
         
         /// total number of MT basis functions
         int mt_basis_size_;
@@ -112,10 +110,10 @@ class Unit_cell
         /// maximum number of MT radial basis functions across all atoms
         int max_mt_radial_basis_size_;
 
-        /// total number of augmented wave basis functions in the MT (= number of matching coefficients for each plane-wave)
+        /// total number of augmented wave basis functions in the MTs (= total number of matching coefficients for each plane-wave)
         int mt_aw_basis_size_;
 
-        /// list of augmented wave basis descriptors
+        /// List of augmented wave basis descriptors.
         /** Establishes mapping between global index in the range [0, mt_aw_basis_size_) 
          *  and corresponding atom and local index \f$ \xi \f$ 
          */
@@ -148,11 +146,9 @@ class Unit_cell
         splindex<block> spl_atoms_;
 
         mdarray<int, 2> beta_t_idx_;
-        mdarray<int, 1> beta_t_ofs_;
+        
+        /// total number of beta-projectors among atom types
         int num_beta_t_;
-
-        mdarray<int, 1> beta_a_ofs_;
-        int num_beta_a_;
 
         mdarray<double, 2> atom_pos_;
 
@@ -170,10 +166,14 @@ class Unit_cell
     public:
     
         Unit_cell(electronic_structure_method_t esm_type__) 
-            : spg_dataset_(NULL), 
+            : omega_(0),
+              volume_mt_(0),
+              volume_it_(0),
+              spg_dataset_(NULL), 
               total_nuclear_charge_(0),
               num_core_electrons_(0),
               num_valence_electrons_(0),
+              num_electrons_(0),
               auto_rmt_(0), 
               lmax_beta_(-1),
               esm_type_(esm_type__)
@@ -502,21 +502,6 @@ class Unit_cell
         inline int num_beta_t()
         {
             return num_beta_t_;
-        }
-
-        inline int beta_t_ofs(int iat)
-        {
-            return beta_t_ofs_(iat);
-        }
-
-        inline int num_beta_a()
-        {
-            return num_beta_a_;
-        }
-
-        inline int beta_a_ofs(int ia)
-        {
-            return beta_a_ofs_(ia);
         }
 
         inline mdarray<double, 2>& atom_pos()

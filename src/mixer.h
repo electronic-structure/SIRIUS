@@ -55,13 +55,10 @@ class Mixer
             return rms;
         }
 
-        void mix_linear()
+        void mix_linear(double beta__)
         {
-            //double b = (count_ == 1) ? 0.1 : beta_;
-            double b = beta_;
-
             for (int i = 0; i < spl_size_.local_size(); i++)
-                vectors_(i, offset(count_)) = b * input_buffer_(i) + (1 - b) * vectors_(i, offset(count_ - 1));
+                vectors_(i, offset(count_)) = beta__ * input_buffer_(i) + (1 - beta__) * vectors_(i, offset(count_ - 1));
 
             Platform::allgather(&vectors_(0, offset(count_)), output_buffer_.ptr(), spl_size_.global_offset(), 
                                 spl_size_.local_size());
@@ -138,7 +135,7 @@ class Linear_mixer: public Mixer
         {
             count_++;
 
-            mix_linear();
+            mix_linear(beta_);
             
             double rms = rms_deviation();
 
@@ -189,7 +186,8 @@ class Broyden_mixer: public Mixer
             // at this point we have min(count_, max_history_) residuals and vectors from the previous iterations
             int N = std::min(count_, max_history_);
 
-            if (N > 1)
+            //if (N > 1)
+            if (count_ > max_history_)
             {
                 mdarray<long double, 2> S(N, N);
                 S.zero();
@@ -258,7 +256,14 @@ class Broyden_mixer: public Mixer
             }
             
             // mix last vector with the update vector \tilda x
-            mix_linear();
+            if (count_ > max_history_)
+            {
+                mix_linear(beta_);
+            }
+            else
+            {
+                mix_linear(beta_ / 10.0);
+            }
 
             return rms_deviation();
         }
@@ -415,7 +420,7 @@ class Adaptive_mixer: public Mixer
             }
             else
             {
-                mix_linear();
+                mix_linear(beta_);
             }
 
             return rms_deviation();

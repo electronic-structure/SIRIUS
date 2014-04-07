@@ -201,7 +201,7 @@ void K_point::update()
                             int idxrf = atom_type->indexb(xi).idxrf;
 
                             double_complex z = pow(double_complex(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
-                            beta_pw_t_(igk, uc->beta_t_ofs(iat) + xi) = z * gkvec_ylm_(lm, igk) * beta_radial_integrals_[idxrf];
+                            beta_pw_t_(igk, uc->atom_type(iat)->offset_lo() + xi) = z * gkvec_ylm_(lm, igk) * beta_radial_integrals_[idxrf];
                         }
                     }
                 }
@@ -217,7 +217,7 @@ void K_point::update()
             }
         }
 
-        beta_pw_a_.set_dimensions(num_gkvec(), uc->num_beta_a()); 
+        beta_pw_a_.set_dimensions(num_gkvec(), uc->mt_basis_size()); 
         beta_pw_a_.allocate();
         
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
@@ -229,8 +229,8 @@ void K_point::update()
             {
                 for (int igk = 0; igk < num_gkvec(); igk++)
                 {
-                    beta_pw_a_(igk, parameters_.unit_cell()->beta_a_ofs(ia) + xi) = 
-                        beta_pw_t_(igk, parameters_.unit_cell()->beta_t_ofs(iat) + xi) * conj(gkvec_phase_factors_(igk, ia));
+                    beta_pw_a_(igk, uc->atom(ia)->offset_lo() + xi) = 
+                        beta_pw_t_(igk, uc->atom_type(iat)->offset_lo() + xi) * conj(gkvec_phase_factors_(igk, ia));
                 }
             }
         }
