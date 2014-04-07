@@ -471,7 +471,7 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 
     // create <G+k|beta> and store it in gamma matrix
     create_beta_pw_gpu(kp->num_gkvec(), 
-                       parameters_.unit_cell()->num_beta_a(), 
+                       parameters_.unit_cell()->mt_lo_basis_size(), 
                        parameters_.unit_cell()->beta_t_idx().ptr_device(),
                        kp->beta_pw_t().ptr_device(),
                        kp->gkvec().ptr_device(),
@@ -484,14 +484,14 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
     kp->beta_pw_t().deallocate_on_device();
 
     // <\beta_{\xi}^{\alpha}|\phi_j>
-    mdarray<double_complex, 2> beta_phi(NULL, parameters_.unit_cell()->num_beta_a(), n);
+    mdarray<double_complex, 2> beta_phi(NULL, parameters_.unit_cell()->mt_lo_basis_size(), n);
     beta_phi.allocate_on_device();
     
-    blas<gpu>::gemm(2, 0, parameters_.unit_cell()->num_beta_a(), n, kp->num_gkvec(), gamma.ptr_device(0, 0), gamma.ld(), 
+    blas<gpu>::gemm(2, 0, parameters_.unit_cell()->mt_lo_basis_size(), n, kp->num_gkvec(), gamma.ptr_device(0, 0), gamma.ld(), 
                     kappa.ptr_device(0, n), kappa.ld(), beta_phi.ptr_device(0, 0), beta_phi.ld());
 
     // Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j>
-    mdarray<double_complex, 2> tmp(NULL, parameters_.unit_cell()->num_beta_a(), n);
+    mdarray<double_complex, 2> tmp(NULL, parameters_.unit_cell()->mt_lo_basis_size(), n);
     tmp.allocate_on_device();
 
     d_mtrx_packed.allocate_on_device();
@@ -499,7 +499,7 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
     // compute D*<beta|phi>
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {   
-        int ofs = parameters_.unit_cell()->beta_a_ofs(ia);
+        int ofs = parameters_.unit_cell()->atom(ia)->offset_lo();
         // number of beta functions for a given atom
         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
         blas<gpu>::gemm(0, 0, nbf, n, nbf, d_mtrx_packed.ptr_device(mtrx_ofs(ia)), nbf, 
@@ -509,7 +509,7 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 
     double_complex zone(1, 0);
     // compute <G+k|beta> * D*<beta|phi> and add to hphi
-    blas<gpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), &zone, gamma.ptr_device(), gamma.ld(), 
+    blas<gpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->mt_lo_basis_size(), &zone, gamma.ptr_device(), gamma.ld(), 
                     tmp.ptr_device(), tmp.ld(), &zone, kappa.ptr_device(), kappa.ld());
 
     q_mtrx_packed.allocate_on_device();
@@ -518,7 +518,7 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
     // compute Q*<beta|phi>
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {   
-        int ofs = parameters_.unit_cell()->beta_a_ofs(ia);
+        int ofs = parameters_.unit_cell()->atom(ia)->offset_lo();
         // number of beta functions for a given atom
         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
         blas<gpu>::gemm(0, 0, nbf, n, nbf, q_mtrx_packed.ptr_device(mtrx_ofs(ia)), nbf, 
@@ -527,7 +527,7 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
     q_mtrx_packed.deallocate_on_device();
 
     // computr <G+k|beta> * Q*<beta|phi> and add to ophi
-    blas<gpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->num_beta_a(), &zone, gamma.ptr_device(), gamma.ld(), 
+    blas<gpu>::gemm(0, 0, kp->num_gkvec(), n, parameters_.unit_cell()->mt_lo_basis_size(), &zone, gamma.ptr_device(), gamma.ld(), 
                     tmp.ptr_device(), tmp.ld(), &zone, kappa.ptr_device(0, n), kappa.ld());
     
     kappa.copy_to_host();
@@ -1060,7 +1060,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_po
     int num_phi = std::min(4 * num_bands, kp->num_gkvec());
 
     // big array to store one of the beta, phi, hphi or ophi on the GPU
-    mdarray<double_complex, 2> gamma(NULL, kp->num_gkvec(), std::max(num_phi, parameters_.unit_cell()->num_beta_a()));
+    mdarray<double_complex, 2> gamma(NULL, kp->num_gkvec(), std::max(num_phi, parameters_.unit_cell()->mt_lo_basis_size()));
     gamma.allocate_on_device();
 
     // small array to store residuals, wave-functions and updates to hphi and ophi

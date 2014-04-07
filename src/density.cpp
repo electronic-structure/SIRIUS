@@ -440,7 +440,7 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair
     wfs.copy_to_device();
 
     // <G+k|\beta_{\xi}^{\alpha}>
-    mdarray<double_complex, 2> beta_pw(NULL, kp->num_gkvec(), parameters_.unit_cell()->num_beta_a());
+    mdarray<double_complex, 2> beta_pw(NULL, kp->num_gkvec(), parameters_.unit_cell()->mt_lo_basis_size());
     beta_pw.allocate_on_device();
     
     kp->beta_pw_t().allocate_on_device();
@@ -457,7 +457,7 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair
 
     // create <G+k|beta>
     create_beta_pw_gpu(kp->num_gkvec(), 
-                       parameters_.unit_cell()->num_beta_a(), 
+                       parameters_.unit_cell()->mt_lo_basis_size(), 
                        parameters_.unit_cell()->beta_t_idx().ptr_device(),
                        kp->beta_pw_t().ptr_device(),
                        kp->gkvec().ptr_device(),
@@ -470,11 +470,11 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair
     kp->beta_pw_t().deallocate_on_device();
 
     // <\beta_{\xi}^{\alpha}|\Psi_j>
-    mdarray<double_complex, 2> beta_psi(NULL, parameters_.unit_cell()->num_beta_a(), (int)occupied_bands.size());
+    mdarray<double_complex, 2> beta_psi(NULL, parameters_.unit_cell()->mt_lo_basis_size(), (int)occupied_bands.size());
     beta_psi.allocate_on_device();
 
     // compute <beta|Psi>
-    blas<gpu>::gemm(2, 0, parameters_.unit_cell()->num_beta_a(), (int)occupied_bands.size(), kp->num_gkvec(), 
+    blas<gpu>::gemm(2, 0, parameters_.unit_cell()->mt_lo_basis_size(), (int)occupied_bands.size(), kp->num_gkvec(), 
                     beta_pw.ptr_device(), beta_pw.ld(), wfs.ptr_device(), wfs.ld(), 
                     beta_psi.ptr_device(), beta_psi.ld());
     
@@ -500,9 +500,9 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair
         {   
             // number of beta functions for a given atom
             int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
-            int ofs = parameters_.unit_cell()->beta_a_ofs(ia);
+            int ofs = parameters_.unit_cell()->atom(ia)->offset_lo();
 
-            copy_beta_psi_gpu(parameters_.unit_cell()->num_beta_a(), 
+            copy_beta_psi_gpu(parameters_.unit_cell()->mt_lo_basis_size(), 
                               (int)occupied_bands.size(), 
                               parameters_.unit_cell()->max_mt_basis_size(),
                               nbf,
