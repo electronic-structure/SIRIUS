@@ -184,6 +184,7 @@ void Reciprocal_lattice::update()
     // precompute G-vector phase factors
     gvec_phase_factors_.set_dimensions(spl_num_gvec_.local_size(), unit_cell_->num_atoms());
     gvec_phase_factors_.allocate();
+    #pragma omp parallel for
     for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
     {
         int ig = spl_num_gvec_[igloc];
