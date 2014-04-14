@@ -747,7 +747,7 @@ void Atom_symmetry_class::write_enu(pstdout& pout)
         for (int order = 0; order < (int)aw_descriptor(l).size(); order++)
         {
             radial_solution_descriptor& rsd = aw_descriptor(l)[order];
-            pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f\n", rsd.n, rsd.l, order, rsd.enu);
+            if (rsd.auto_enu) pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f\n", rsd.n, rsd.l, order, rsd.enu);
         }
     }
 
@@ -759,7 +759,7 @@ void Atom_symmetry_class::write_enu(pstdout& pout)
             for (int order = 0; order < (int)lo_descriptor(idxlo).rsd_set.size(); order++)
             {
                 radial_solution_descriptor& rsd = lo_descriptor(idxlo).rsd_set[order];
-                pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f\n", rsd.n, rsd.l, order, rsd.enu);
+                if (rsd.auto_enu) pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f\n", rsd.n, rsd.l, order, rsd.enu);
             }
         }
     }
