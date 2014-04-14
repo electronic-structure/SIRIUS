@@ -1,5 +1,3 @@
-// This file is part of SIRIUS
-//
 // Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
@@ -118,6 +116,31 @@ class Spline
         inline int num_points()
         {
             return num_points_;
+        }
+
+        inline T operator()(double x)
+        {
+            assert(x >= radial_grid_[0]);
+            assert(x <= radial_grid_[num_points_ - 1]);
+            
+            int j = num_points_ - 1;
+            for (int i = 0; i < num_points_ - 1; i++)
+            {
+                if (x < radial_grid_[i + 1])
+                {
+                    j = i;
+                    break;
+                }
+            }
+            if (j == num_points_ - 1) 
+            {
+                return a[num_points_ - 1];
+            }
+            else
+            {
+                double dx = radial_grid_[j + 1] - x;
+                return a[j] + dx * (b[j] + dx * (c[j] + dx * d[j]));
+            }
         }
 
         inline T operator()(const int i, double dx)
