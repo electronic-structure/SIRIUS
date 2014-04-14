@@ -1,5 +1,3 @@
-// This file is part of SIRIUS
-//
 // Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
@@ -146,6 +144,20 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
             printf("  => valence\n");
         }
     }
+
+    std::vector<double> fa_rho(a->radial_grid().size());
+    std::vector<double> fa_v(a->radial_grid().size());
+    std::vector<double> fa_r(a->radial_grid().size());
+
+    for (int i = 0; i < a->radial_grid().size(); i++)
+    {
+        fa_rho[i] = a->free_atom_density(i);
+        fa_v[i] = a->free_atom_potential(i);
+        fa_r[i] = a->radial_grid(i);
+    }
+    jw.single("free_atom_density", fa_rho);
+    jw.single("free_atom_potential", fa_v);
+    jw.single("free_atom_radial_grid", fa_r);
 
     //** FILE* fout = fopen("rho.dat", "w");
     //** for (int ir = 0; ir < a->radial_grid().size(); ir++) 
