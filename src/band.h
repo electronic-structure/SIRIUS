@@ -130,6 +130,83 @@ class Band
         template <spin_block_t sblock>
         void apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_complex, 2>& halm);
 
+
+        template <spin_block_t sblock>
+        void apply_hmt_to_apw(K_point* kp, dmatrix<double_complex>& halm_panel)
+        {
+            Timer t("sirius::Band::apply_hmt_to_apw", _global_timer_);
+
+            std::map< int, mdarray<double_complex, 2>* > alm;
+
+            /* build list of matching coefficients */
+            for (int i = 0; i < halm_panel.num_rows_local(); i++)
+            {
+                int j = halm_panel.irow(i);
+                int ia = parameters_.unit_cell()->mt_aw_basis_descriptor(j).ia;
+                if (alm.count(ia) == 0)
+                {
+                    alm[ia] = new mdarray<double_complex, 2>(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
+                    kp->generate_matching_coefficients<false>(kp->num_gkvec_loc(), ia, *alm[ia]);
+                }
+            }
+
+            int apw_offset_col = kp->apw_offset_col();
+
+            Timer t1("sirius::Band::apply_hmt_to_apw:halm", _global_timer_);
+
+            #pragma omp parallel default(shared)
+            {
+                std::vector<double_complex> zv(kp->num_gkvec_col());
+
+                #pragma omp for
+                for (int i = 0; i < halm_panel.num_rows_local(); i++)
+                {
+                    int j = halm_panel.irow(i);
+
+                    int ia = parameters_.unit_cell()->mt_aw_basis_descriptor(j).ia;
+                    int xi = parameters_.unit_cell()->mt_aw_basis_descriptor(j).xi;
+                    Atom* atom = parameters_.unit_cell()->atom(ia);
+                    Atom_type* type = atom->type();
+                    int l1 = type->indexb(xi).l;
+                    int lm1 = type->indexb(xi).lm;
+                    int idxrf1 = type->indexb(xi).idxrf;
+                    int order1 = type->indexb(xi).order;
+
+                    memset(&zv[0], 0, zv.size() * sizeof(double_complex));
+
+                    for (int j2 = 0; j2 < type->mt_aw_basis_size(); j2++)
+                    {
+                        int lm2 = type->indexb(j2).lm;
+                        int idxrf2 = type->indexb(j2).idxrf;
+                        double_complex zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
+
+                        if (abs(zsum) > 1e-14)
+                        {
+                            for (int igk = 0; igk < kp->num_gkvec_col(); igk++) zv[igk] += zsum * (*alm[ia])(apw_offset_col + igk, j2); 
+                        }
+                    }
+
+                    /* surface contribution */
+                    if (sblock == nm || sblock == uu || sblock == dd)
+                    {
+                        for (int order2 = 0; order2 < (int)type->aw_descriptor(l1).size(); order2++)
+                        {
+                            double t1 = 0.5 * pow(type->mt_radius(), 2) *
+                                        atom->symmetry_class()->aw_surface_dm(l1, order1, 0) *
+                                        atom->symmetry_class()->aw_surface_dm(l1, order2, 1);
+
+                            for (int igk = 0; igk < kp->num_gkvec_col(); igk++)
+                                zv[igk] += t1 * (*alm[ia])(apw_offset_col + igk, type->indexb_by_lm_order(lm1, order2));
+                        }
+                    }
+
+                    for (int igk = 0; igk < kp->num_gkvec_col(); igk++) halm_panel(i, igk) = zv[igk];
+                }
+            }
+
+            for (auto& a: alm) delete a.second;
+        }
+
         /// Setup apw-lo and lo-apw blocs of Hamiltonian and overlap matrices
         void set_fv_h_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 
                                mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o);
