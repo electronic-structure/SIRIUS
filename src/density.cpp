@@ -113,9 +113,13 @@ void Density::initial_density()
     auto rl = parameters_.reciprocal_lattice();
     auto uc = parameters_.unit_cell();
 
-    if (parameters_.unit_cell()->full_potential())
+    if (uc->full_potential())
     {
-        uc->solve_free_atoms();
+        for (int iat = 0; iat < uc->num_atom_types(); iat++)
+        {
+            uc->atom_type(iat)->init_free_atom();
+        }
+        //uc->solve_free_atoms();
         
         double mt_charge = 0.0;
         for (int ialoc = 0; ialoc < uc->spl_num_atoms().local_size(); ialoc++)
