@@ -90,6 +90,8 @@ int main(int argn, char** argv)
         {
             int i2 = spl_N2[j2];
 
+            std::cout << "column " << i2 << " out of " << N2 << std::endl;
+
             #pragma omp parallel for
             for (int i1 = 0; i1 < N1; i1++)
             {
