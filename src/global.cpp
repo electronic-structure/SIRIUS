@@ -487,6 +487,7 @@ void Global::print_info()
 
 void Global::write_json_output()
 {
+    auto ts = Timer::collect_timer_stats();
     if (Platform::mpi_rank() == 0)
     {
         std::string fname = std::string("output_") + start_time("%Y%m%d%H%M%S") + std::string(".json");
@@ -536,7 +537,7 @@ void Global::write_json_output()
         //** jw.single("band_gap", rti_.band_gap);
         //** jw.single("energy_fermi", rti_.energy_fermi);
         
-        jw.single("timers", Timer::collect_timer_stats());
+        jw.single("timers", ts);
     }
 }
 
