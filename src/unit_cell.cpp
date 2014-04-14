@@ -959,22 +959,26 @@ void Unit_cell::generate_radial_integrals()
     }
 }
 
-void Unit_cell::solve_free_atoms()
-{
-    Timer t("sirius::Unit_cell::solve_free_atoms");
-
-    splindex<block> spl_num_atom_types(num_atom_types(), Platform::num_mpi_ranks(), Platform::mpi_rank());
-
-    std::vector<double> enu;
-    for (int i = 0; i < spl_num_atom_types.local_size(); i++)
-        atom_type(spl_num_atom_types[i])->solve_free_atom(1e-6, 1e-4, 1e-4, enu);
-
-    for (int i = 0; i < num_atom_types(); i++)
-    {
-        int rank = spl_num_atom_types.location(_splindex_rank_, i);
-        atom_type(i)->sync_free_atom(rank);
-    }
-}
+//== void Unit_cell::solve_free_atoms()
+//== {
+//==     Timer t("sirius::Unit_cell::solve_free_atoms");
+//== 
+//==     //splindex<block> spl_num_atom_types(num_atom_types(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+//== 
+//==     //== std::vector<double> enu;
+//==     //== for (int i = 0; i < spl_num_atom_types.local_size(); i++)
+//==     //==     atom_type(spl_num_atom_types[i])->solve_free_atom(1e-6, 1e-4, 1e-4, enu);
+//== 
+//==     //== for (int i = 0; i < num_atom_types(); i++)
+//==     //== {
+//==     //==     int rank = spl_num_atom_types.location(_splindex_rank_, i);
+//==     //==     atom_type(i)->sync_free_atom(rank);
+//==     //== }
+//==     for (int i = 0; i < num_atom_types(); i++)
+//==     {
+//==         atom_type(i)->init_free_atom();
+//==     }
+//== }
 
 std::string Unit_cell::chemical_formula()
 {

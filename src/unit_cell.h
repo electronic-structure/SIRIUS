@@ -257,7 +257,7 @@ class Unit_cell
 
         void generate_radial_integrals();
         
-        void solve_free_atoms();
+        //void solve_free_atoms();
 
         std::string chemical_formula();
 
