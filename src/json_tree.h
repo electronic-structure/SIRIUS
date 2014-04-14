@@ -335,14 +335,8 @@ class JSON_write
         inline void single(const char* name, double value)
         {
             new_line();
-            if (fabs(value) > 1e-6)
-            {
-                fprintf(fout_, "\"%s\" : %.12f", name, value);
-            }
-            else
-            {
-                fprintf(fout_, "\"%s\" : %.12e", name, value);
-            }
+            std::string s = Utils::double_to_string(value);
+            fprintf(fout_, "\"%s\" : %s", name, s.c_str());
         }
 
         inline void single(const char* name, const std::string& value)
@@ -359,10 +353,10 @@ class JSON_write
        
         /// Write array of doubles
         /** The following data structure is written:
-            \code{.json}
-                "name" : [v1, v2, v2, ...]
-            \endcode
-        */
+         *  \code{.json}
+         *      "name" : [v1, v2, v2, ...]
+         *  \endcode
+         */
         inline void single(const char* name, std::vector<double>& values)
         {
             new_line();
