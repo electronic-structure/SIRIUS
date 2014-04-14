@@ -251,13 +251,33 @@ void Atom_type::add_lo_descriptor(int ilo, int n, int l, double enu, int dme, in
 
 void Atom_type::init_free_atom()
 {
+    if (!Utils::file_exists(file_name_))
+    {
+        std::stringstream s;
+        s << "file " + file_name_ + " doesn't exist";
+        error_global(__FILE__, __LINE__, s);
+    }
+
+    JSON_tree parser(file_name_);
+
+    std::vector<double> fa_rho;
+    std::vector<double> fa_v;
+    std::vector<double> fa_r;
+    parser["free_atom_density"] >> fa_rho;
+    parser["free_atom_potential"] >> fa_v;
+    parser["free_atom_radial_grid"] >> fa_r;
+
+    Radial_grid r(fa_r);
+    Spline<double> sv(r.size(), r, fa_v);
+    Spline<double> srho(r.size(), r, fa_rho);
+
     free_atom_density_.resize(radial_grid_->size());
     free_atom_potential_.resize(radial_grid_->size());
 
     for (int i = 0; i < radial_grid_->size(); i++)
     {
-        free_atom_potential_[i] = -1.0 * zn_ / radial_grid(i);
-        free_atom_density_[i] = zn_ * exp(-radial_grid(i)) / fourpi;
+        free_atom_potential_[i] = sv(radial_grid(i));
+        free_atom_density_[i] = srho(radial_grid(i));
     }
 }
 
