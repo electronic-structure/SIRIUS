@@ -897,18 +897,21 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp, Periodic_function
     dmatrix<double_complex> alm_panel_t(naw, kp->num_gkvec(), parameters_.blacs_context());
     kp->generate_matching_coefficients<true>(alm_panel_t);
 
-    /* apply Hamiltonian to |ket> states, but first, gather 
-     * alm coefficients into full vectors
-     */
-    splindex<block> sspl_gkvec(kp->num_gkvec_col(), kp->num_ranks_row(), kp->rank_row());
-    mdarray<double_complex, 2> alm_v(naw, sspl_gkvec.local_size());
-    alm_panel_t.gather(alm_v, parameters_.mpi_grid().communicator(1 << _dim_row_));
+    //== /* apply Hamiltonian to |ket> states, but first, gather 
+    //==  * alm coefficients into full vectors
+    //==  */
+    //== splindex<block> sspl_gkvec(kp->num_gkvec_col(), kp->num_ranks_row(), kp->rank_row());
+    //== mdarray<double_complex, 2> alm_v(naw, sspl_gkvec.local_size());
+    //== alm_panel_t.gather(alm_v, parameters_.mpi_grid().communicator(1 << _dim_row_));
 
-    mdarray<double_complex, 2> halm_v(naw, sspl_gkvec.local_size());
-    apply_hmt_to_apw<nm>(alm_v, halm_v);
-    
+    //== mdarray<double_complex, 2> halm_v(naw, sspl_gkvec.local_size());
+    //== apply_hmt_to_apw<nm>(alm_v, halm_v);
+
+    //== 
     dmatrix<double_complex> halm_panel_t(naw, kp->num_gkvec(), parameters_.blacs_context());
-    halm_panel_t.scatter(halm_v, parameters_.mpi_grid().communicator(1 << _dim_row_));
+    //== halm_panel_t.scatter(halm_v, parameters_.mpi_grid().communicator(1 << _dim_row_));
+    
+    apply_hmt_to_apw<nm>(kp, halm_panel_t);
 
     #ifdef _WRITE_PROC_STATUS_
     Platform::write_proc_status(__FILE__, __LINE__);
