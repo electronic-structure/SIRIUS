@@ -1,5 +1,3 @@
-// This file is part of SIRIUS
-//
 // Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
@@ -99,6 +97,14 @@ class Radial_grid
               grid_type_name_("")
         {
             initialize(grid_type, origin, mt_radius_);
+        }
+
+        Radial_grid(std::vector<double>& rgrid)
+            : grid_type_name_("custom")
+        {
+            mt_radius_ = rgrid[rgrid.size() - 1];
+            num_mt_points_ = (int)rgrid.size();
+            set_radial_points((int)rgrid.size(), &rgrid[0]);
         }
         
         inline double operator [](const int i)
