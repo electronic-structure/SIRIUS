@@ -874,16 +874,14 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp, Periodic_function
                                                   dmatrix<double_complex>& h, dmatrix<double_complex>& o)
 {
     log_function_enter(__func__);
-    Timer t("sirius::Band::set_fv_h_o");
+    Timer t("sirius::Band::set_fv_h_o", _global_timer_);
 
     h.zero();
     o.zero();
 
     int naw = parameters_.unit_cell()->mt_aw_basis_size();
 
-    /* generate and conjugate panel of matching coefficients
-     * this would be the <bra| states 
-     */
+    /* generate and conjugate panel of matching coefficients; this would be the <bra| states */
     dmatrix<double_complex> alm_panel_n(kp->num_gkvec(), naw, parameters_.blacs_context());
     kp->generate_matching_coefficients<false>(alm_panel_n);
     for (int j = 0; j < alm_panel_n.num_cols_local(); j++)
@@ -891,27 +889,26 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp, Periodic_function
         for (int i = 0; i < alm_panel_n.num_rows_local(); i++) alm_panel_n(i, j) = conj(alm_panel_n(i, j));
     }
 
-    /* generate panel of matching coefficients
-     * this would be the |ket> states
-     */
+    /* generate panel of matching coefficients; this would be the |ket> states */
     dmatrix<double_complex> alm_panel_t(naw, kp->num_gkvec(), parameters_.blacs_context());
     kp->generate_matching_coefficients<true>(alm_panel_t);
 
-    //== /* apply Hamiltonian to |ket> states, but first, gather 
-    //==  * alm coefficients into full vectors
-    //==  */
-    //== splindex<block> sspl_gkvec(kp->num_gkvec_col(), kp->num_ranks_row(), kp->rank_row());
-    //== mdarray<double_complex, 2> alm_v(naw, sspl_gkvec.local_size());
+    /* generate slice of matching coefficients */
+    splindex<block> sspl_gkvec(kp->num_gkvec_col(), kp->num_ranks_row(), kp->rank_row());
+    mdarray<double_complex, 2> alm_v(naw, sspl_gkvec.local_size());
+    kp->generate_matching_coefficients(sspl_gkvec, alm_v);
+
     //== alm_panel_t.gather(alm_v, parameters_.mpi_grid().communicator(1 << _dim_row_));
 
-    //== mdarray<double_complex, 2> halm_v(naw, sspl_gkvec.local_size());
-    //== apply_hmt_to_apw<nm>(alm_v, halm_v);
+    mdarray<double_complex, 2> halm_v(naw, sspl_gkvec.local_size());
+    /* apply muffin-tin Hamiltonian to alm slice */
+    apply_hmt_to_apw<nm>(alm_v, halm_v);
 
-    //== 
+    /* scatter halm slice to panels */
     dmatrix<double_complex> halm_panel_t(naw, kp->num_gkvec(), parameters_.blacs_context());
-    //== halm_panel_t.scatter(halm_v, parameters_.mpi_grid().communicator(1 << _dim_row_));
+    halm_panel_t.scatter(halm_v, parameters_.mpi_grid().communicator(1 << _dim_row_));
     
-    apply_hmt_to_apw<nm>(kp, halm_panel_t);
+    //== apply_hmt_to_apw<nm>(kp, halm_panel_t);
 
     #ifdef _WRITE_PROC_STATUS_
     Platform::write_proc_status(__FILE__, __LINE__);
@@ -921,7 +918,7 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp, Periodic_function
      * execute "normal" pzgemm without matrix transpose 
      * because it gives the best performance
      */
-    Timer t1("sirius::Band::set_fv_h_o|zgemm");
+    Timer t1("sirius::Band::set_fv_h_o|zgemm", _global_timer_);
     blas<cpu>::gemm(0, 0, kp->num_gkvec(), kp->num_gkvec(), naw, complex_one, alm_panel_n, halm_panel_t, 
                     complex_zero, h); 
     
