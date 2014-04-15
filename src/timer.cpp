@@ -134,69 +134,85 @@ std::map< std::string, timer_stats> Timer::collect_timer_stats()
 {
     std::map< std::string, timer_stats> tstats;
 
-    std::map<std::string, std::vector<double> >::iterator it;
-    for (it = timers_.begin(); it != timers_.end(); it++)
+    //std::map<std::string, std::vector<double> >::iterator it;
+
+    /* collect local timers */
+    for (auto& it: timers_)
     {
         timer_stats ts;
 
         ts.timer_type = _local_timer_;
-        ts.count = (int)it->second.size();
+        ts.count = (int)it.second.size();
         ts.total_value = 0.0;
         ts.min_value = 1e100;
         ts.max_value = 0.0;
         for (int i = 0; i < ts.count; i++)
         {
-            ts.total_value += it->second[i];
-            ts.min_value = std::min(ts.min_value, it->second[i]);
-            ts.max_value = std::max(ts.max_value, it->second[i]);
+            ts.total_value += it.second[i];
+            ts.min_value = std::min(ts.min_value, it.second[i]);
+            ts.max_value = std::max(ts.max_value, it.second[i]);
         }
         ts.average_value = (ts.count == 0) ? 0.0 : ts.total_value / ts.count;
         if (ts.count == 0) ts.min_value = 0.0;
 
-        tstats[it->first] = ts;
+        tstats[it.first] = ts;
     }
 
-    // collect and broadcast global timer labels from the rank 0
+    /* collect and broadcast global timer labels from rank#0 */
     std::vector< std::string > labels;
-    std::vector<char> label_str;
     std::vector<int> label_sizes;
+    std::vector<char> label_str;
     if (Platform::mpi_rank() == 0)
     {
-        for (it = global_timers_.begin(); it != global_timers_.end(); it++)
+        for (auto& it: global_timers_)
         {
-            labels.push_back(it->first);
-            label_sizes.push_back((int)it->first.size());
-            for (int i = 0; i < (int)it->first.size(); i++) label_str.push_back(it->first[i]);
+            /* save timer's label */
+            labels.push_back(it.first);
+            /* save length of the label */
+            label_sizes.push_back((int)it.first.size());
+            /* save label in the single array */ 
+            for (int i = 0; i < (int)it.first.size(); i++) label_str.push_back(it.first[i]);
         }
     }
+
+    // TODO: this can be moved to Platform::bcast
+
+    /* broadcast the number of labels from rank#0 */
     int n = (int)label_sizes.size();
-    Platform::bcast(&n, 1, 0); // broadacast from root
+    Platform::bcast(&n, 1, 0);
+    /* each MPI rank allocates space for label sizes */ 
     if (Platform::mpi_rank() != 0) label_sizes.resize(n);
+    /* broadacst label sizes from rank#0 */
     Platform::bcast(&label_sizes[0], n, 0);
-
+    
+    /* broadcast the size of labels buffer from rank#0 */
     n = (int)label_str.size();
-    Platform::bcast(&n, 1, 0); // broadacast from root
+    Platform::bcast(&n, 1, 0);
+    /* allocate space for labels buffer */
     if (Platform::mpi_rank() != 0) label_str.resize(n);
+    /* broadcast labels buffer */
     Platform::bcast(&label_str[0], n, 0);
-
+    
+    /* construct list of labels exactly like on rank#0 */
     if (Platform::mpi_rank() != 0)
     {
         int offset = 0;
-        for (int i = 0; i < (int)label_sizes.size(); i++)
+        for (int sz: label_sizes)
         {
-            int sz = label_sizes[i];
             labels.push_back(std::string(&label_str[offset], sz));
             offset += sz;
         }
     }
 
-    // now all MPI ranks loop over the same sequence of global timer labels
-    for (int i = 0; i < (int)labels.size(); i++)
+    /* now all MPI ranks loop over the same sequence of global timer labels */
+    for (auto& label: labels)
     {
         timer_stats ts;
 
         ts.timer_type = _global_timer_;
-        if (global_timers_.count(labels[i]) == 0) // this MPI rank doesn't have a corresponding timer
+
+        /* this MPI rank doesn't have a corresponding timer */
+        if (global_timers_.count(label) == 0)
         {
             ts.count = 0;
             ts.total_value = 0.0;
@@ -206,13 +222,14 @@ std::map< std::string, timer_stats> Timer::collect_timer_stats()
         }
         else
         {
-            ts.count = (int)global_timers_[labels[i]].size();
+            ts.count = (int)global_timers_[label].size();
             ts.total_value = 0.0;
             ts.min_value = 1e100;
             ts.max_value = 0.0;
+            /* loop over timer measurements and collect total, min, max, average */
             for (int k = 0; k < ts.count; k++)
             {
-                double v = global_timers_[labels[i]][k];
+                double v = global_timers_[label][k];
                 ts.total_value += v;
                 ts.min_value = std::min(ts.min_value, v);
                 ts.max_value = std::max(ts.max_value, v);
@@ -220,11 +237,13 @@ std::map< std::string, timer_stats> Timer::collect_timer_stats()
             ts.average_value = (ts.count == 0) ? 0.0 : ts.total_value / ts.count;
             if (ts.count == 0) ts.min_value = 0.0;
         }
-
+        
+        /* collect timer counts from all ranks */
         std::vector<int> counts(Platform::num_mpi_ranks());
         counts[Platform::mpi_rank()] = ts.count;
         Platform::allgather(&counts[0], Platform::mpi_rank(), 1);
-
+        
+        /* collect timer statistics from all ranks */
         std::vector<double> values(4 * Platform::num_mpi_ranks());
         values[4 * Platform::mpi_rank() + 0] = ts.total_value;
         values[4 * Platform::mpi_rank() + 1] = ts.min_value;
@@ -238,16 +257,22 @@ std::map< std::string, timer_stats> Timer::collect_timer_stats()
         int total_count = 0;
         for (int k = 0; k < Platform::num_mpi_ranks(); k++)
         {
+            /* maximum total value across all ranks */
             max_total_value = std::max(max_total_value, values[4 * k + 0]);
+            /* minimum value across all ranks */
             ts.min_value = std::min(ts.min_value, values[4 * k + 1]);
+            /* maximum value across all ranks */
             ts.max_value = std::max(ts.max_value, values[4 * k + 2]);
+            /* total global value */
             total_value += values[4 * k + 0];
+            /* total number of counts */
             total_count += counts[k];
         }
+        /* report maximum total value across all ranks */
         ts.total_value = max_total_value;
         ts.average_value = (total_count == 0) ? 0.0 : total_value / total_count;
 
-        tstats[labels[i]] = ts;
+        tstats[label] = ts;
     }
 
     return tstats;
