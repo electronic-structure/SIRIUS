@@ -129,7 +129,7 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<double_complex, 2>& a
 template <spin_block_t sblock>
 void Band::apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_complex, 2>& halm)
 {
-    Timer t("sirius::Band::apply_hmt_to_apw");
+    Timer t("sirius::Band::apply_hmt_to_apw", _global_timer_);
 
     int ngk_loc = (int)alm.size(1);
 
