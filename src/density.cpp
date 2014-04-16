@@ -115,54 +115,178 @@ void Density::initial_density()
 
     if (uc->full_potential())
     {
-        for (int iat = 0; iat < uc->num_atom_types(); iat++)
-        {
-            uc->atom_type(iat)->init_free_atom();
-        }
-        //uc->solve_free_atoms();
+        /* initialize density of free atoms */
+        for (int iat = 0; iat < uc->num_atom_types(); iat++) uc->atom_type(iat)->init_free_atom();
         
-        double mt_charge = 0.0;
-        for (int ialoc = 0; ialoc < uc->spl_num_atoms().local_size(); ialoc++)
+        /* compute radial integrals */
+        mdarray<double, 2> rho_radial_integrals(uc->num_atom_types(), rl->num_gvec_shells_inner());
+
+        Timer t1("sirius::Density::initial_density:rad_int");
+        for (int igs = 0; igs < rl->num_gvec_shells_inner(); igs++)
         {
-            int ia = uc->spl_num_atoms(ialoc);
-            vector3d<double> v = uc->atom(ia)->vector_field();
-            double len = v.length();
-
-            int nmtp = uc->atom(ia)->type()->num_mt_points();
-            Spline<double> rho(nmtp, uc->atom(ia)->type()->radial_grid());
-            for (int ir = 0; ir < nmtp; ir++)
+            for (int iat = 0; iat < uc->num_atom_types(); iat++)
             {
-                rho[ir] = uc->atom(ia)->type()->free_atom_density(ir);
-                rho_->f_mt<local>(0, ir, ialoc) = rho[ir] / y00;
-            }
-
-            double q = fourpi * rho.interpolate().integrate(nmtp - 1, 2);
-
-            // add charge of the MT sphere
-            mt_charge += q;
-
-            if (len > 1e-8)
-            {
-                if (parameters_.num_mag_dims())
+                auto atom_type = uc->atom_type(iat);
+                Spline<double> s(atom_type->radial_grid().num_points(), atom_type->radial_grid());
+                
+                if (igs == 0)
                 {
-                    for (int ir = 0; ir < nmtp; ir++)
-                        magnetization_[0]->f_mt<local>(0, ir, ialoc) = rho_->f_mt<local>(0, ir, ialoc) * v[2] / q;
+                    rho_radial_integrals(iat, igs) = atom_type->zn() / fourpi;
                 }
-
-                if (parameters_.num_mag_dims() == 3)
+                else
                 {
-                    for (int ir = 0; ir < nmtp; ir++)
-                        magnetization_[1]->f_mt<local>(0, ir, ialoc) = rho_->f_mt<local>(0, ir, ialoc) * v[0] / q;
-                    for (int ir = 0; ir < nmtp; ir++)
-                        magnetization_[2]->f_mt<local>(0, ir, ialoc) = rho_->f_mt<local>(0, ir, ialoc) * v[1] / q;
+                    double G = rl->gvec_shell_len(igs);
+                    for (int ir = 0; ir < s.num_points(); ir++) 
+                    {
+                        s[ir] = atom_type->free_atom_density(ir) *
+                                sin(G * atom_type->radial_grid(ir)) / G;
+                    }
+                    rho_radial_integrals(iat, igs) = s.interpolate().integrate(1);
                 }
             }
         }
-        Platform::allreduce(&mt_charge, 1);
+        t1.stop();
+
+        /* compute contribution from free atoms to the interstitial density */
+        std::vector<double_complex> v = rl->make_periodic_function(rho_radial_integrals, rl->num_gvec());
+
+        /* set plane-wave coefficients of the charge density */
+        memcpy(&rho_->f_pw(0), &v[0], rl->num_gvec() * sizeof(double_complex));
+
+        if (fabs(rho_->f_pw(0) * uc->omega() - uc->num_electrons()) > 1e-6)
+        {
+            std::stringstream s;
+            s << "wrong initial charge density" << std::endl
+              << "  integral of the density : " << real(rho_->f_pw(0) * uc->omega()) << std::endl
+              << "  target number of electrons : " << uc->num_electrons();
+            warning_local(__FILE__, __LINE__, s);
+        }
+
+        /* convert charge deisnty to real space mesh */
+        fft_->input(rl->num_gvec(), rl->fft_index(), &rho_->f_pw(0));
+        fft_->transform(1);
+        fft_->output(&rho_->f_it<global>(0));
+
+        ///* remove possible negative noise */
+        //for (int ir = 0; ir < fft_->size(); ir++)
+        //{
+        //    if (rho_->f_it<global>(ir) < 0) rho_->f_it<global>(ir) = 0;
+        //}
         
-        // distribute remaining charge
-        for (int ir = 0; ir < fft_->size(); ir++)
-            rho_->f_it<global>(ir) = (uc->num_electrons() - mt_charge) / uc->volume_it();
+
+        //== double mt_charge = 0.0;
+        //== for (int ialoc = 0; ialoc < uc->spl_num_atoms().local_size(); ialoc++)
+        //== {
+        //==     int ia = uc->spl_num_atoms(ialoc);
+        //==     vector3d<double> v = uc->atom(ia)->vector_field();
+        //==     double len = v.length();
+
+        //==     int nmtp = uc->atom(ia)->type()->num_mt_points();
+        //==     Spline<double> rho(nmtp, uc->atom(ia)->type()->radial_grid());
+        //==     for (int ir = 0; ir < nmtp; ir++)
+        //==     {
+        //==         rho[ir] = uc->atom(ia)->type()->free_atom_density(ir);
+        //==         rho_->f_mt<local>(0, ir, ialoc) = rho[ir] / y00;
+        //==     }
+
+        //==     double q = fourpi * rho.interpolate().integrate(nmtp - 1, 2);
+
+        //==     // add charge of the MT sphere
+        //==     mt_charge += q;
+
+        //==     if (len > 1e-8)
+        //==     {
+        //==         if (parameters_.num_mag_dims())
+        //==         {
+        //==             for (int ir = 0; ir < nmtp; ir++)
+        //==                 magnetization_[0]->f_mt<local>(0, ir, ialoc) = rho_->f_mt<local>(0, ir, ialoc) * v[2] / q;
+        //==         }
+
+        //==         if (parameters_.num_mag_dims() == 3)
+        //==         {
+        //==             for (int ir = 0; ir < nmtp; ir++)
+        //==                 magnetization_[1]->f_mt<local>(0, ir, ialoc) = rho_->f_mt<local>(0, ir, ialoc) * v[0] / q;
+        //==             for (int ir = 0; ir < nmtp; ir++)
+        //==                 magnetization_[2]->f_mt<local>(0, ir, ialoc) = rho_->f_mt<local>(0, ir, ialoc) * v[1] / q;
+        //==         }
+        //==     }
+        //== }
+        //== Platform::allreduce(&mt_charge, 1);
+        //== 
+        //== // distribute remaining charge
+        //== for (int ir = 0; ir < fft_->size(); ir++)
+        //==     rho_->f_it<global>(ir) = (uc->num_electrons() - mt_charge) / uc->volume_it();
+
+        Timer t2("sirius::Density::initial_density:rho_mt");
+        int lmax = std::min(2, parameters_.lmax_rho()); 
+        for (int ia = 0; ia < uc->num_atoms(); ia++)
+        {
+            Spheric_function<double_complex> rho_ylm(uc->atom(ia)->radial_grid(), Utils::lmmax(lmax));
+            rho_ylm.zero();
+
+            
+            #pragma omp parallel default(shared)
+            {
+                mdarray<double, 2> sbessel(uc->atom(ia)->num_mt_points(), lmax + 1);
+                std::vector<double> jl(lmax + 1);
+                double G_prev = -1; 
+                #pragma omp for
+                for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
+                {
+                    int ig = rl->spl_num_gvec(igloc);
+                    double G = rl->gvec_len(ig);
+
+                    if (std::abs(G - G_prev) > 1e-10)
+                    {
+                        /* get spherical Bessel function j_l(Gr) */ // TODO: separate call
+                        for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
+                        {
+                            double x = uc->atom(ia)->type()->radial_grid(ir) * G;
+                            gsl_sf_bessel_jl_array(lmax, x, &jl[0]);
+                            for (int l = 0; l <= lmax; l++) sbessel(ir, l) = jl[l];
+                        }
+                        G_prev = G;
+                    }
+
+                    /* compute contribution from the plane wave to the muffin-tin function */
+                    for (int l = 0; l <= lmax; l++)
+                    {
+                        double_complex z1 = rho_->f_pw(ig) * fourpi * rl->gvec_phase_factor<local>(igloc, ia) * 
+                                            std::pow(complex_one, l);
+
+                        for (int m = -l; m <= l; m++)
+                        {
+                            int lm = Utils::lm_by_l_m(l, m);
+                            double_complex z2 = z1 * conj(rl->gvec_ylm(lm, igloc));
+
+                            for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
+                            {
+                                rho_ylm(ir, lm) += z2 * sbessel(ir, l);
+                            }
+                        }
+                    }
+                }
+            }
+            Platform::allreduce(&rho_ylm(0, 0), parameters_.lmmax_rho() * uc->atom(ia)->num_mt_points());
+            
+            Spheric_function<double_complex> rho_ylm_tmp(Utils::lmmax(lmax), uc->atom(ia)->radial_grid());
+            for (int lm = 0; lm < Utils::lmmax(lmax); lm++)
+            {
+                for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
+                    rho_ylm_tmp(lm, ir) = rho_ylm(ir, lm);
+            }
+            
+            /* get local offset and rank corresponding to the global index of atom */
+            auto p = uc->spl_num_atoms().location(ia);
+            
+            /* convert from Ylm to Rlm expansion */
+            if (p.second == Platform::mpi_rank()) rho_->f_mt(p.first).sh_convert(rho_ylm_tmp);
+            
+            /* add density of the free atom */
+            for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
+                rho_->f_mt<local>(0, ir, p.first) += uc->atom(ia)->type()->free_atom_density(ir) / y00;
+        }
+        t2.stop();
     }
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
@@ -220,6 +344,22 @@ void Density::initial_density()
 
     rho_->sync(true, true);
     for (int i = 0; i < parameters_.num_mag_dims(); i++) magnetization_[i]->sync(true, true);
+
+    if (uc->full_potential())
+    {
+        /* check initial charge */
+        std::vector<double> nel_mt;
+        double nel_it;
+        double nel = rho_->integrate(nel_mt, nel_it);
+        if (std::abs(nel - uc->num_electrons()) > 1e-8)
+        {
+            std::stringstream s;
+            s << "wrong initial charge density" << std::endl
+              << "  integral of the density : " << nel << std::endl
+              << "  target number of electrons : " << uc->num_electrons();
+            warning_local(__FILE__, __LINE__, s);
+        }
+    }
 }
 
 void Density::add_kpoint_contribution_mt(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
