@@ -249,7 +249,7 @@ void Atom_type::add_lo_descriptor(int ilo, int n, int l, double enu, int dme, in
     lo_descriptors_[ilo].rsd_set.push_back(rsd);
 }
 
-void Atom_type::init_free_atom()
+void Atom_type::init_free_atom(bool smooth)
 {
     if (!Utils::file_exists(file_name_))
     {
@@ -279,6 +279,55 @@ void Atom_type::init_free_atom()
         free_atom_potential_[i] = sv(radial_grid(i));
         free_atom_density_[i] = srho(radial_grid(i));
     }
+
+    if (smooth)
+    {
+        Spline<double> s(num_mt_points(), radial_grid(), free_atom_density_);
+        s.interpolate();
+        double b[3];
+        mdarray<double, 2> A(3, 3);
+        double R = mt_radius();
+        A(0, 0) = std::pow(R, 3) / 3;
+        A(0, 1) = std::pow(R, 5) / 5;
+        A(0, 2) = std::pow(R, 6) / 6;
+        A(1, 0) = 1;
+        A(1, 1) = std::pow(R, 2);
+        A(1, 2) = std::pow(R, 3);
+        A(2, 0) = 0;
+        A(2, 1) = 2 * R;
+        A(2, 2) = 3 * std::pow(R, 2);
+
+        b[0] = 0;
+        b[1] = s[num_mt_points() - 1];
+        b[2] = s.deriv(1, num_mt_points() - 1, 0);
+
+        linalg<lapack>::gesv<double>(3, 1, A.ptr(), 3, b, 3);
+
+
+        //== std::stringstream sstr;
+        //== sstr << "free_density_" << id_ << ".dat";
+        //== FILE* fout = fopen(sstr.str().c_str(), "w");
+
+        //== for (int ir = 0; ir < radial_grid().num_points(); ir++)
+        //== {
+        //==     fprintf(fout, "%f %f \n", radial_grid(ir), free_atom_density_[ir]);
+        //== }
+        //== fclose(fout);
+        
+        /* make smooth free atom density inside muffin-tin */
+        for (int i = 0; i < num_mt_points(); i++)
+            free_atom_density_[i] = b[0] + b[1] * std::pow(radial_grid(i), 2) + b[2] * std::pow(radial_grid(i), 3);
+
+        //== sstr.str("");
+        //== sstr << "free_density_modified_" << id_ << ".dat";
+        //== fout = fopen(sstr.str().c_str(), "w");
+
+        //== for (int ir = 0; ir < radial_grid().num_points(); ir++)
+        //== {
+        //==     fprintf(fout, "%f %f \n", radial_grid(ir), free_atom_density_[ir]);
+        //== }
+        //== fclose(fout);
+   } 
 }
 
 double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
