@@ -2,19 +2,19 @@ template <typename T>
 template <typename U>
 void Spheric_function<T>::sh_convert(Spheric_function<U>& f)
 {
-    // check radial arguments
+    /* check radial arguments */
     if (radial_domain_idx_ != f.radial_domain_idx_ || &radial_grid_ != &f.radial_grid_)
     {
         error_local(__FILE__, __LINE__, "wrong radial arguments");
     }
 
-    // check angular arguments
-    if (angular_domain_idx_ != f.angular_domain_idx_ || angular_domain_size_ != f.angular_domain_size_)
+    /* check angular arguments */
+    if (angular_domain_idx_ != f.angular_domain_idx_ || angular_domain_size_ < f.angular_domain_size_)
     {
         error_local(__FILE__, __LINE__, "wrong angular argumens");
     }
     
-    int lmax = Utils::lmax_by_lmmax(angular_domain_size_);
+    int lmax = Utils::lmax_by_lmmax(f.angular_domain_size_);
 
     // cache transformation arrays
     std::vector<double_complex> tpp(angular_domain_size_);
