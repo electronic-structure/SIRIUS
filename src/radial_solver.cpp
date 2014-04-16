@@ -261,15 +261,17 @@ int Radial_solver::solve_in_mt(int l, double enu, int m, std::vector<double>& v,
 
 void Radial_solver::bound_state(int n, int l, std::vector<double>& v, double& enu, std::vector<double>& p)
 {
-    std::vector<double> ve(radial_grid_.size());
-    for (int i = 0; i < radial_grid_.size(); i++) ve[i] = v[i] - zn_ / radial_grid_[i];
+    int np = radial_grid_.num_points();
+
+    std::vector<double> ve(np);
+    for (int i = 0; i < np; i++) ve[i] = v[i] - zn_ / radial_grid_[i];
     
-    sirius::Spline<double> ve_spline(radial_grid_.size(), radial_grid_, ve);
-    sirius::Spline<double> mp_spline(radial_grid_.size(), radial_grid_);
+    sirius::Spline<double> ve_spline(np, radial_grid_, ve);
+    sirius::Spline<double> mp_spline(np, radial_grid_);
     
-    std::vector<double> q(radial_grid_.size());
-    std::vector<double> dpdr(radial_grid_.size());
-    std::vector<double> dqdr(radial_grid_.size());
+    std::vector<double> q(np);
+    std::vector<double> dpdr(np);
+    std::vector<double> dqdr(np);
     
     int s = 1;
     int sp;
@@ -277,7 +279,7 @@ void Radial_solver::bound_state(int n, int l, std::vector<double>& v, double& en
 
     for (int iter = 0; iter < 1000; iter++)
     {
-        int nn = integrate(radial_grid_.size(), l, enu, ve_spline, mp_spline, p, dpdr, q, dqdr);
+        int nn = integrate(np, l, enu, ve_spline, mp_spline, p, dpdr, q, dqdr);
         
         sp = s;
         s = (nn > (n - l - 1)) ? -1 : 1;
@@ -296,8 +298,8 @@ void Radial_solver::bound_state(int n, int l, std::vector<double>& v, double& en
     }
 
     // search for the turning point
-    int idxtp = radial_grid_.size() - 1;
-    for (int i = 0; i < radial_grid_.size(); i++)
+    int idxtp = np - 1;
+    for (int i = 0; i < np; i++)
     {
         if (v[i] > enu)
         {
@@ -308,7 +310,7 @@ void Radial_solver::bound_state(int n, int l, std::vector<double>& v, double& en
 
     // zero the tail of the wave-function
     double t1 = 1e100;
-    for (int i = idxtp; i < radial_grid_.size(); i++)
+    for (int i = idxtp; i < np; i++)
     {
         if ((fabs(p[i]) < t1) && (p[i - 1] * p[i] > 0))
         {
@@ -321,16 +323,16 @@ void Radial_solver::bound_state(int n, int l, std::vector<double>& v, double& en
         }
     }
 
-    std::vector<double> rho(radial_grid_.size());
-    for (int i = 0; i < radial_grid_.size(); i++) rho[i] = p[i] * p[i];
+    std::vector<double> rho(np);
+    for (int i = 0; i < np; i++) rho[i] = p[i] * p[i];
 
-    double norm = sirius::Spline<double>(radial_grid_.size(), radial_grid_, rho).integrate();
+    double norm = sirius::Spline<double>(np, radial_grid_, rho).integrate();
     
-    for (int i = 0; i < radial_grid_.size(); i++) p[i] /= sqrt(norm);
+    for (int i = 0; i < np; i++) p[i] /= sqrt(norm);
 
     // count number of nodes
     int nn = 0;
-    for (int i = 0; i < radial_grid_.size() - 1; i++) if (p[i] * p[i + 1] < 0.0) nn++;
+    for (int i = 0; i < np - 1; i++) if (p[i] * p[i + 1] < 0.0) nn++;
 
     if (nn != (n - l - 1))
     {
