@@ -186,10 +186,10 @@ void Radial_grid::set_radial_points(int num_points__, double* points__)
 void Radial_grid::print_info()
 {
     printf("number of muffin-tin points : %i\n", num_mt_points());
-    printf("total number of points      : %i\n", size());
+    printf("total number of points      : %i\n", num_points());
     printf("starting point              : %f\n", points_[0]);
     printf("muffin-tin point            : %f\n", points_[num_mt_points() - 1]);
-    printf("effective infinity point    : %f\n", points_[size() - 1]);
+    printf("effective infinity point    : %f\n", points_[num_points() - 1]);
 }
 
 };
