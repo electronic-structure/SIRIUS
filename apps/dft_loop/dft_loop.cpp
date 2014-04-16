@@ -69,6 +69,26 @@ int main(int argn, char** argv)
         else
         {
             density->initial_density();
+
+            switch(parameters.esm_type())
+            {
+                case full_potential_lapwlo:
+                case full_potential_pwlo:
+                {
+                    potential->generate_effective_potential(density->rho(), density->magnetization());
+                    break;
+                }
+                case ultrasoft_pseudopotential:
+                {
+                    potential->generate_effective_potential(density->rho(), density->rho_pseudo_core(), density->magnetization());
+                    break;
+                }
+                default:
+                {
+                    stop_here
+                }
+            }
+
         }
         
         DFT_ground_state dft(parameters, potential, density, &ks);
