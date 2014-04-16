@@ -156,6 +156,8 @@ class Spline
 
         inline T deriv(const int dm, const int i, const double dx)
         {
+            assert(i < num_points_ - 1);
+
             switch (dm)
             {
                 case 0:
@@ -212,6 +214,23 @@ class Spline
         /// Integrate two splines with r^1 or r^2 weight up to a given number of points
         template <typename U>
         static T integrate(Spline<T>* f, Spline<U>* g, int m, int num_points);
+
+        uint64_t hash()
+        {
+            mdarray<T, 1> v(4 * num_points_ - 3);
+            int n = 0;
+            for (int i = 0; i < num_points_; i++)
+            {
+                v(n++) = a[i];
+            }
+            for (int i = 0; i < num_points_ - 1; i++)
+            {
+                v(n++) = b[i];
+                v(n++) = c[i];
+                v(n++) = d[i];
+            }
+            return v.hash();
+        }
 };
 
 #include "spline.hpp"
