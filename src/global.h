@@ -499,10 +499,11 @@ class Global
         struct mixer_input_section
         {
             double beta_;
+            double gamma_;
             std::string type_;
             int max_history_;
 
-            mixer_input_section() : beta_(0.9), type_("broyden"), max_history_(5)
+            mixer_input_section() : beta_(0.9), gamma_(1.0), type_("broyden"), max_history_(5)
             {
             }
 
@@ -512,6 +513,7 @@ class Global
                 {
                     JSON_tree section = parser["mixer"];
                     beta_ = section["beta"].get(beta_);
+                    gamma_ = section["gamma"].get(gamma_);
                     max_history_ = section["max_history"].get(max_history_);
                     type_ = section["type"].get(type_);
                 }
