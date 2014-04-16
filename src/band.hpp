@@ -169,7 +169,7 @@ void Band::apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_comp
                 }
             }
             
-            // surface contribution
+            /* surface contribution */
             if (sblock == nm || sblock == uu || sblock == dd)
             {
                 for (int order2 = 0; order2 < (int)type->aw_descriptor(l1).size(); order2++)
