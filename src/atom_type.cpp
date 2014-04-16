@@ -159,8 +159,8 @@ void Atom_type::set_radial_grid(int num_points, double* points)
     {
         radial_grid_ = new Radial_grid(num_points, num_mt_points_, mt_radius_, points);
     }
-    free_atom_density_.resize(radial_grid_->size());
-    free_atom_potential_.resize(radial_grid_->size());
+    free_atom_density_.resize(radial_grid_->num_points());
+    free_atom_potential_.resize(radial_grid_->num_points());
 }
 
 void Atom_type::init_aw_descriptors(int lmax)
@@ -268,13 +268,13 @@ void Atom_type::init_free_atom()
     parser["free_atom_radial_grid"] >> fa_r;
 
     Radial_grid r(fa_r);
-    Spline<double> sv(r.size(), r, fa_v);
-    Spline<double> srho(r.size(), r, fa_rho);
+    Spline<double> sv(r.num_points(), r, fa_v);
+    Spline<double> srho(r.num_points(), r, fa_rho);
 
-    free_atom_density_.resize(radial_grid_->size());
-    free_atom_potential_.resize(radial_grid_->size());
+    free_atom_density_.resize(radial_grid_->num_points());
+    free_atom_potential_.resize(radial_grid_->num_points());
 
-    for (int i = 0; i < radial_grid_->size(); i++)
+    for (int i = 0; i < radial_grid_->num_points(); i++)
     {
         free_atom_potential_[i] = sv(radial_grid(i));
         free_atom_density_[i] = srho(radial_grid(i));
@@ -284,8 +284,10 @@ void Atom_type::init_free_atom()
 double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
 {
     Timer t("sirius::Atom_type::solve_free_atom");
+
+    int np = radial_grid_->num_points();
     
-    free_atom_radial_functions_.set_dimensions(radial_grid_->size(), (int)atomic_levels_.size());
+    free_atom_radial_functions_.set_dimensions(np, (int)atomic_levels_.size());
     free_atom_radial_functions_.allocate();
 
     Radial_solver solver(false, -1.0 * zn_, *radial_grid_);
@@ -293,21 +295,21 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
 
     solver.set_tolerance(solver_tol);
     
-    std::vector<double> veff(radial_grid_->size());
-    std::vector<double> vnuc(radial_grid_->size());
-    for (int i = 0; i < radial_grid_->size(); i++)
+    std::vector<double> veff(np);
+    std::vector<double> vnuc(np);
+    for (int i = 0; i < np; i++)
     {
         vnuc[i] = -1.0 * zn_ / radial_grid(i);
         veff[i] = vnuc[i];
     }
 
-    Spline<double> rho(radial_grid_->size(), *radial_grid_);
+    Spline<double> rho(np, *radial_grid_);
 
-    Spline<double> f(radial_grid_->size(), *radial_grid_);
+    Spline<double> f(np, *radial_grid_);
 
-    std::vector<double> vh(radial_grid_->size());
-    std::vector<double> vxc(radial_grid_->size());
-    std::vector<double> exc(radial_grid_->size());
+    std::vector<double> vh(np);
+    std::vector<double> vxc(np);
+    std::vector<double> exc(np);
     std::vector<double> g1;
     std::vector<double> g2;
     std::vector<double> rho_old;
@@ -342,7 +344,7 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
             {
                 solver.bound_state(atomic_levels_[ist].n, atomic_levels_[ist].l, veff, enu[ist], p);
             
-                for (int i = 0; i < radial_grid_->size(); i++)
+                for (int i = 0; i < np; i++)
                 {
                     free_atom_radial_functions_(i, ist) = p[i] * radial_grid_->rinv(i);
                     rho_t[i] += atomic_levels_[ist].occupancy * 
@@ -355,8 +357,8 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
         } 
         
         charge_rms = 0.0;
-        for (int i = 0; i < radial_grid_->size(); i++) charge_rms += pow(rho[i] - rho_old[i], 2);
-        charge_rms = sqrt(charge_rms / radial_grid_->size());
+        for (int i = 0; i < np; i++) charge_rms += pow(rho[i] - rho_old[i], 2);
+        charge_rms = sqrt(charge_rms / np);
         
         rho.interpolate();
 
@@ -364,16 +366,16 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
         rho.integrate(g2, 2);
         double t1 = rho.integrate(g1, 1);
 
-        for (int i = 0; i < radial_grid_->size(); i++) vh[i] = fourpi * (g2[i] / radial_grid(i) + t1 - g1[i]);
+        for (int i = 0; i < np; i++) vh[i] = fourpi * (g2[i] / radial_grid(i) + t1 - g1[i]);
         
         // compute XC potential and energy
         xci.getxc(rho.num_points(), &rho[0], &vxc[0], &exc[0]);
         
-        for (int i = 0; i < radial_grid_->size(); i++)
+        for (int i = 0; i < np; i++)
             veff[i] = (1 - beta) * veff[i] + beta * (vnuc[i] + vh[i] + vxc[i]);
         
         // kinetic energy
-        for (int i = 0; i < radial_grid_->size(); i++) f[i] = veff[i] * rho[i];
+        for (int i = 0; i < np; i++) f[i] = veff[i] * rho[i];
         f.interpolate();
         
         double eval_sum = 0.0;
@@ -383,17 +385,17 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
         double energy_kin = eval_sum - fourpi * f.integrate(2);
 
         // xc energy
-        for (int i = 0; i < radial_grid_->size(); i++) f[i] = exc[i] * rho[i];
+        for (int i = 0; i < np; i++) f[i] = exc[i] * rho[i];
         f.interpolate();
         double energy_xc = fourpi * f.integrate(2); 
         
         // electron-nuclear energy
-        for (int i = 0; i < radial_grid_->size(); i++) f[i] = vnuc[i] * rho[i];
+        for (int i = 0; i < np; i++) f[i] = vnuc[i] * rho[i];
         f.interpolate();
         double energy_enuc = fourpi * f.integrate(2); 
 
         // Coulomb energy
-        for (int i = 0; i < radial_grid_->size(); i++) f[i] = vh[i] * rho[i];
+        for (int i = 0; i < np; i++) f[i] = vh[i] * rho[i];
         f.interpolate();
         double energy_coul = 0.5 * fourpi * f.integrate(2);
         
@@ -836,8 +838,8 @@ void Atom_type::sync_free_atom(int rank)
     assert(free_atom_potential_.size() != 0);
     assert(free_atom_density_.size() != 0);
 
-    Platform::bcast(&free_atom_density_[0], radial_grid().size(), rank);
-    Platform::bcast(&free_atom_potential_[0], radial_grid().size(), rank);
+    Platform::bcast(&free_atom_density_[0], radial_grid().num_points(), rank);
+    Platform::bcast(&free_atom_potential_[0], radial_grid().num_points(), rank);
 }
 
 void Atom_type::fix_q_radial_function(int l, int i, int j, double* qrf)
