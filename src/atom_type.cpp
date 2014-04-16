@@ -284,7 +284,8 @@ void Atom_type::init_free_atom(bool smooth)
     {
         Spline<double> s(num_mt_points(), radial_grid(), free_atom_density_);
         s.interpolate();
-        double b[3];
+
+        mdarray<double, 1> b(3);
         mdarray<double, 2> A(3, 3);
         double R = mt_radius();
         A(0, 0) = std::pow(R, 3) / 3;
@@ -296,14 +297,13 @@ void Atom_type::init_free_atom(bool smooth)
         A(2, 0) = 0;
         A(2, 1) = 2 * R;
         A(2, 2) = 3 * std::pow(R, 2);
+        
+        b(0) = 0;
+        b(1) = s[num_mt_points() - 1];
+        b(2) = s.deriv(1, num_mt_points() - 1);
 
-        b[0] = 0;
-        b[1] = s[num_mt_points() - 1];
-        b[2] = s.deriv(1, num_mt_points() - 1, 0);
-
-        linalg<lapack>::gesv<double>(3, 1, A.ptr(), 3, b, 3);
-
-
+        linalg<lapack>::gesv<double>(3, 1, A.ptr(), 3, b.ptr(), 3);
+        
         //== std::stringstream sstr;
         //== sstr << "free_density_" << id_ << ".dat";
         //== FILE* fout = fopen(sstr.str().c_str(), "w");
@@ -316,7 +316,7 @@ void Atom_type::init_free_atom(bool smooth)
         
         /* make smooth free atom density inside muffin-tin */
         for (int i = 0; i < num_mt_points(); i++)
-            free_atom_density_[i] = b[0] + b[1] * std::pow(radial_grid(i), 2) + b[2] * std::pow(radial_grid(i), 3);
+            free_atom_density_[i] = b(0) + b(1) * std::pow(radial_grid(i), 2) + b(2) * std::pow(radial_grid(i), 3);
 
         //== sstr.str("");
         //== sstr << "free_density_modified_" << id_ << ".dat";
