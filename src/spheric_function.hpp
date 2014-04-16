@@ -9,12 +9,12 @@ void Spheric_function<T>::sh_convert(Spheric_function<U>& f)
     }
 
     /* check angular arguments */
-    if (angular_domain_idx_ != f.angular_domain_idx_ || angular_domain_size_ < f.angular_domain_size_)
+    if (angular_domain_idx_ != f.angular_domain_idx_)
     {
         error_local(__FILE__, __LINE__, "wrong angular argumens");
     }
     
-    int lmax = Utils::lmax_by_lmmax(f.angular_domain_size_);
+    int lmax = Utils::lmax_by_lmmax(std::min(angular_domain_size_, f.angular_domain_size_));
 
     // cache transformation arrays
     std::vector<double_complex> tpp(angular_domain_size_);

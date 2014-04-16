@@ -96,6 +96,13 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     density_->pack(mx);
     mx->initialize();
 
+    /* initialize potential mixer if potential is also mixed */
+    if (mx_pot)
+    {
+        potential_->pack(mx_pot);
+        mx_pot->initialize();
+    }
+
     double eold = 0.0;
     double rms = 1.0;
 
@@ -127,17 +134,8 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         if (mx_pot)
         {
             potential_->pack(mx_pot);
-            if (iter == 0)
-            {
-                /* initialize potential mixer on first iteration */
-                mx_pot->initialize();
-            }
-            else
-            {
-                /* mix potential */
-                mx_pot->mix();
-                potential_->unpack(mx_pot->output_buffer());
-            }
+            mx_pot->mix();
+            potential_->unpack(mx_pot->output_buffer());
         }
 
         /* find new wave-functions */
