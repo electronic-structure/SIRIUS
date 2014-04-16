@@ -484,8 +484,8 @@ void Atom_symmetry_class::initialize()
     lo_descriptors_.resize(atom_type_->num_lo_descriptors());
     for (int i = 0; i < num_lo_descriptors(); i++) lo_descriptors_[i] = atom_type_->lo_descriptor(i);
     
-    core_charge_density_.resize(atom_type_->radial_grid().size());
-    memset(&core_charge_density_[0], 0, atom_type_->radial_grid().size() * sizeof(double));
+    core_charge_density_.resize(atom_type_->radial_grid().num_points());
+    memset(&core_charge_density_[0], 0, atom_type_->radial_grid().num_points() * sizeof(double));
 }
 
 void Atom_symmetry_class::set_spherical_potential(std::vector<double>& veff)
@@ -493,13 +493,13 @@ void Atom_symmetry_class::set_spherical_potential(std::vector<double>& veff)
     int nmtp = atom_type_->num_mt_points();
     assert((int)veff.size() == nmtp);
 
-    spherical_potential_.resize(atom_type_->radial_grid().size());
+    spherical_potential_.resize(atom_type_->radial_grid().num_points());
     
     // take current effective potential inside MT
     for (int ir = 0; ir < nmtp; ir++) spherical_potential_[ir] = veff[ir];
 
     // take potential of the free atom outside MT
-    for (int ir = nmtp; ir < atom_type_->radial_grid().size(); ir++)
+    for (int ir = nmtp; ir < atom_type_->radial_grid().num_points(); ir++)
     {
         spherical_potential_[ir] = atom_type_->free_atom_potential(ir) - 
                                    (atom_type_->free_atom_potential(nmtp - 1) - veff[nmtp - 1]);
@@ -801,7 +801,7 @@ void Atom_symmetry_class::generate_core_charge_density()
     //Radial_solver solver(true, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
     Radial_solver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
     
-    Spline<double> rho(atom_type_->radial_grid().size(), atom_type_->radial_grid());
+    Spline<double> rho(atom_type_->radial_grid().num_points(), atom_type_->radial_grid());
     
     std::vector<double> level_energy(atom_type_->num_atomic_levels());
 
@@ -823,7 +823,7 @@ void Atom_symmetry_class::generate_core_charge_density()
                 solver.bound_state(atom_type_->atomic_level(ist).n, atom_type_->atomic_level(ist).l, 
                                    spherical_potential_, level_energy[ist], p);
         
-                for (int i = 0; i < atom_type_->radial_grid().size(); i++)
+                for (int i = 0; i < atom_type_->radial_grid().num_points(); i++)
                 {
                     rho_t[i] += atom_type_->atomic_level(ist).occupancy * 
                                 pow(y00 * p[i] / atom_type_->radial_grid(i), 2);
@@ -860,7 +860,7 @@ void Atom_symmetry_class::sync_core_charge_density(int rank)
     assert(core_charge_density_.size() != 0);
     assert(&core_charge_density_[0] != NULL);
 
-    Platform::bcast(&core_charge_density_[0], atom_type_->radial_grid().size(), rank);
+    Platform::bcast(&core_charge_density_[0], atom_type_->radial_grid().num_points(), rank);
     Platform::bcast(&core_leakage_, 1, rank);
     Platform::bcast(&core_eval_sum_, 1, rank);
 }
