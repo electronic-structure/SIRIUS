@@ -66,6 +66,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     Timer t("sirius::DFT_ground_state::scf_loop");
     
     Mixer* mx = NULL;
+    Mixer* mx_pot = NULL;
     if (parameters_.mixer_input_section_.type_ == "broyden")
     {
         mx = new Broyden_mixer(density_->size(), parameters_.mixer_input_section_.max_history_, 
@@ -74,6 +75,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     else if (parameters_.mixer_input_section_.type_ == "linear")
     {
         mx = new Linear_mixer(density_->size(), parameters_.mixer_input_section_.beta_);
+        mx_pot = new Linear_mixer(potential_->size(), parameters_.mixer_input_section_.gamma_);
     }
     else if (parameters_.mixer_input_section_.type_ == "adaptive")
     {
@@ -89,6 +91,8 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     {
         error_global(__FILE__, __LINE__, "Wrong mixer type");
     }
+    
+    /* initialize density mixer with starting density */
     density_->pack(mx);
     mx->initialize();
 
@@ -98,7 +102,8 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     for (int iter = 0; iter < num_dft_iter; iter++)
     {
         Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
-
+        
+        /* compute new potential */
         switch(parameters_.esm_type())
         {
             case full_potential_lapwlo:
@@ -117,35 +122,70 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
                 stop_here
             }
         }
-        //== parameters_.reciprocal_lattice()->fft()->input(&potential_->effective_potential()->f_it<global>(0));
-        //== parameters_.reciprocal_lattice()->fft()->transform(-1);
-        //== parameters_.reciprocal_lattice()->fft()->output(parameters_.reciprocal_lattice()->num_gvec(), 
-        //==                                                 parameters_.reciprocal_lattice()->fft_index(), 
-        //==                                                 &potential_->effective_potential()->f_pw(0));
+        
+        /* if potential is also mixed */
+        if (mx_pot)
+        {
+            potential_->pack(mx_pot);
+            if (iter == 0)
+            {
+                /* initialize potential mixer on first iteration */
+                mx_pot->initialize();
+            }
+            else
+            {
+                /* mix potential */
+                mx_pot->mix();
+                potential_->unpack(mx_pot->output_buffer());
+            }
+        }
 
-        //== parameters_.reciprocal_lattice()->fft()->input(parameters_.reciprocal_lattice()->num_gvec(), 
-        //==                                                parameters_.reciprocal_lattice()->fft_index(), 
-        //==                                                &potential_->effective_potential()->f_pw(0));
-        //== parameters_.reciprocal_lattice()->fft()->transform(1);
-        //== parameters_.reciprocal_lattice()->fft()->output(&potential_->effective_potential()->f_it<global>(0));
-
+        /* find new wave-functions */
         kset_->find_eigen_states(potential_, true);
         kset_->find_band_occupancies();
+
+        /* generate new density from the occupied wave-functions */
         density_->generate(*kset_);
         
+        /* compute new total energy for a new density */
         double etot = total_energy();
+        
+        /* write some information */
+        print_info();
 
+        //== density_->pack(mx);
+        //== mx->inc();
+        //== 
+        //== double emin = 1e100;
+        //== double bopt = 0.1;
+        //== for (int k = 0; k < 10; k++)
+        //== {
+        //==     double b = 0.01 + pow(double(k) / 10, 2);
+        //==     rms = mx->mix(b);
+        //==     density_->unpack(mx->output_buffer());
+        //==     potential_->generate_effective_potential(density_->rho(), density_->magnetization());
+        //==     //double excha = energy_exc() + 0.5 * energy_vha();
+        //==     double excha = energy_veff();
+        //==     //double excha = total_energy();
+        //==     if (excha < emin)
+        //==     {
+        //==         bopt = b;
+        //==         emin = excha;
+        //==     }
+        //==     std::cout << "beta=" << b << ", Etot=" << total_energy() << ", RMS=" << rms << ", E_Ha+E_XC="<<energy_exc()+0.5*energy_vha() <<std::endl;
+        //== }
+        //== std::cout << "optimal beta=" << bopt << std::endl;
+       
+        /* mix density */
         density_->pack(mx);
         rms = mx->mix();
         density_->unpack(mx->output_buffer());
         Platform::bcast(&rms, 1, 0);
-        
-        print_info();
-        
+
         if (Platform::mpi_rank() == 0)
         {
             printf("iteration : %3i, density RMS %12.6f, energy difference : %12.6f", 
-                    iter, rms, fabs(eold - etot));
+                    iter, rms, etot - eold);
             if (parameters_.esm_type() == ultrasoft_pseudopotential)
                 printf(", tolerance : %12.6f", parameters_.iterative_solver_tolerance());
             printf("\n");
@@ -171,6 +211,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     density_->save();
 
     delete mx;
+    delete mx_pot;
 }
 
 void DFT_ground_state::relax_atom_positions()
