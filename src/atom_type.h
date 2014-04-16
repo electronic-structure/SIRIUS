@@ -429,7 +429,7 @@ class Atom_type
         inline Radial_grid& radial_grid()
         {
             assert(num_mt_points_ > 0);
-            assert(radial_grid_->size() > 0);
+            assert(radial_grid_->num_points() > 0);
             return (*radial_grid_);
         }
         
