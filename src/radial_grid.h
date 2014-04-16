@@ -132,7 +132,7 @@ class Radial_grid
         }
         
         /// Total number of radial points.
-        inline int size()
+        inline int num_points()
         {
             return (int)points_.size();
         }
