@@ -117,7 +117,8 @@ class Spline
         {
             return num_points_;
         }
-
+        
+        // TODO: check spline iterpolation between different grids. Can it be done analytically?
         inline T operator()(double x)
         {
             assert(x >= radial_grid_[0]);
