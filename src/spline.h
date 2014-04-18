@@ -139,7 +139,7 @@ class Spline
             }
             else
             {
-                double dx = radial_grid_[j + 1] - x;
+                double dx = x - radial_grid_[j];
                 return a[j] + dx * (b[j] + dx * (c[j] + dx * d[j]));
             }
         }
