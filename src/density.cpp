@@ -214,66 +214,34 @@ void Density::initial_density()
         //== // distribute remaining charge
         //== for (int ir = 0; ir < fft_->size(); ir++)
         //==     rho_->f_it<global>(ir) = (uc->num_electrons() - mt_charge) / uc->volume_it();
-        
+
+
+        /* mapping between G-shell and a list of G-vectors */
+        std::map<int, std::vector<int> > gsh_map;
+
+        for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
+        {
+            /* global index of the G-vector */
+            int ig = rl->spl_num_gvec(igloc);
+            /* index of the G-vector shell */
+            int igsh = rl->gvec_shell(ig);
+            if (gsh_map.count(igsh) == 0) gsh_map[igsh] = std::vector<int>();
+            gsh_map[igsh].push_back(igloc);
+        }
+
+        /* list of G-shells for the curent MPI rank */
+        std::vector<std::pair<int, std::vector<int> > > gsh_list;
+        for (auto& i: gsh_map) gsh_list.push_back(std::pair<int, std::vector<int> >(i.first, i.second));
+
         Timer t2("sirius::Density::initial_density:rho_mt");
-        int lmax = std::min(4, parameters_.lmax_rho()); 
-        
-        mdarray<double_complex, 2> Mc(rl->spl_num_gvec().local_size(), 2 * lmax + 1);
-        mdarray<double_complex, 2> Mj(uc->max_num_mt_points(), rl->spl_num_gvec().local_size());
+        //int lmax = std::min(4, parameters_.lmax_rho()); 
+        int lmax = parameters_.lmax_rho();
+        auto l_by_lm = Utils::l_by_lm(lmax);
         
         for (int ia = 0; ia < uc->num_atoms(); ia++)
         {
-            int nmtp = uc->atom(ia)->num_mt_points();
-
             Spheric_function<double_complex> rho_ylm(uc->atom(ia)->radial_grid(), Utils::lmmax(lmax));
             rho_ylm.zero();
-
-            for (int l = 0; l <= lmax; l++)
-            {
-                #pragma omp parallel
-                {
-                    std::vector<double> jl(lmax + 1);
-                    std::vector<double_complex> jlx(nmtp);
-                    double G_prev = -1; 
-
-                    #pragma omp for
-                    /* create matrix of Bessel functions */
-                    for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
-                    {
-                        int ig = rl->spl_num_gvec(igloc);
-                        double G = rl->gvec_len(ig);
-                        
-                        if (std::abs(G - G_prev) > 1e-10)
-                        {
-                            /* get spherical Bessel function j_l(Gr) */ // TODO: separate call
-                            for (int ir = 0; ir < nmtp; ir++)
-                            {
-                                double x = uc->atom(ia)->type()->radial_grid(ir) * G;
-                                gsl_sf_bessel_jl_array(lmax, x, &jl[0]);
-                                jlx[ir] = double_complex(jl[l], 0);
-                            }
-                            G_prev = G;
-                        }
-                        memcpy(&Mj(0, igloc), &jlx[0], nmtp * sizeof(double_complex));
-                    }
-
-                    /* create matrix of remaining coefficients */
-                    #pragma omp for
-                    for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
-                    {
-                        int ig = rl->spl_num_gvec(igloc);
-
-                        for (int m = -l; m <= l; m++)
-                        {
-                            int lm = Utils::lm_by_l_m(l, m);
-                            Mc(igloc, l + m) = rho_->f_pw(ig) * fourpi * rl->gvec_phase_factor<local>(igloc, ia) *
-                                               conj(rl->gvec_ylm(lm, igloc)) * std::pow(complex_i, l);
-                        } 
-                    }
-                }
-                blas<cpu>::gemm(0, 0, nmtp, 2 * l + 1, rl->spl_num_gvec().local_size(),
-                                Mj.ptr(), Mj.ld(), Mc.ptr(), Mc.ld(), &rho_ylm(0, Utils::lm_by_l_m(l, -l)), nmtp);
-            }
 
             //== #pragma omp parallel default(shared)
             //== {
@@ -302,7 +270,7 @@ void Density::initial_density()
             //==         for (int l = 0; l <= lmax; l++)
             //==         {
             //==             double_complex z1 = rho_->f_pw(ig) * fourpi * rl->gvec_phase_factor<local>(igloc, ia) * 
-            //==                                 std::pow(complex_one, l);
+            //==                                 std::pow(complex_i, l);
 
             //==             for (int m = -l; m <= l; m++)
             //==             {
@@ -317,8 +285,64 @@ void Density::initial_density()
             //==         }
             //==     }
             //== }
+
+            #pragma omp parallel default(shared)
+            {
+                mdarray<double, 2> sbessel(uc->atom(ia)->num_mt_points(), lmax + 1);
+                std::vector<double> jl(lmax + 1);
+                mdarray<double_complex, 1> c(Utils::lmmax(lmax));
+                
+                /* cyclic scheduling of omp loop */
+                #pragma omp for schedule(static, 1)
+                for (int i = 0; i < (int)gsh_list.size(); i++)
+                {
+                    int igsh = gsh_list[i].first;
+                    auto& gv = gsh_list[i].second;
+
+                    c.zero();
+                    /* add contribution from the plane-waves */
+                    for (int j = 0; j < (int)gv.size(); j++)
+                    {
+                        int igloc = gv[j];
+                        int ig = rl->spl_num_gvec(igloc);
+
+                        for (int l = 0; l <= lmax; l++)
+                        {
+                            double_complex z1 = rho_->f_pw(ig) * fourpi * rl->gvec_phase_factor<local>(igloc, ia) * 
+                                                std::pow(complex_i, l);
+
+                            for (int m = -l; m <= l; m++)
+                            {
+                                int lm = Utils::lm_by_l_m(l, m);
+                                c(lm) += z1 * conj(rl->gvec_ylm(lm, igloc));
+                            }
+                        }
+                    }
+
+                    /* lengths of the G-vectors in the current shell */
+                    double G = rl->gvec_shell_len(igsh);
+                    
+                    /* get spherical Bessel function j_l(Gr) */ // TODO: separate call
+                    for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
+                    {
+                        double x = uc->atom(ia)->type()->radial_grid(ir) * G;
+                        gsl_sf_bessel_jl_array(lmax, x, &jl[0]);
+                        for (int l = 0; l <= lmax; l++) sbessel(ir, l) = jl[l];
+                    }
+
+                    /* add contribution from the current G-shell to the muffin-tin function */
+                    for (int lm = 0; lm < Utils::lmmax(lmax); lm++)
+                    {
+                        int l = l_by_lm[lm];
+                        for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++) rho_ylm(ir, lm) += c(lm) * sbessel(ir, l);
+                    }
+                }
+            }
+
+            /* get the total sum over all plane-waves */
             Platform::allreduce(&rho_ylm(0, 0), Utils::lmmax(lmax) * uc->atom(ia)->num_mt_points());
             
+            /* transpose indices */
             Spheric_function<double_complex> rho_ylm_tmp(Utils::lmmax(lmax), uc->atom(ia)->radial_grid());
             for (int lm = 0; lm < Utils::lmmax(lmax); lm++)
             {
@@ -428,6 +452,8 @@ void Density::initial_density()
             warning_local(__FILE__, __LINE__, s);
         }
     }
+
+    stop_here
 }
 
 void Density::add_kpoint_contribution_mt(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
