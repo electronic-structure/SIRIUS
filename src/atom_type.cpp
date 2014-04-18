@@ -285,24 +285,18 @@ void Atom_type::init_free_atom(bool smooth)
         Spline<double> s(num_mt_points(), radial_grid(), free_atom_density_);
         s.interpolate();
 
-        mdarray<double, 1> b(3);
-        mdarray<double, 2> A(3, 3);
+        mdarray<double, 1> b(2);
+        mdarray<double, 2> A(2, 2);
         double R = mt_radius();
-        A(0, 0) = std::pow(R, 3) / 3;
-        A(0, 1) = std::pow(R, 5) / 5;
-        A(0, 2) = std::pow(R, 6) / 6;
-        A(1, 0) = 1;
-        A(1, 1) = std::pow(R, 2);
-        A(1, 2) = std::pow(R, 3);
-        A(2, 0) = 0;
-        A(2, 1) = 2 * R;
-        A(2, 2) = 3 * std::pow(R, 2);
+        A(0, 0) = std::pow(R, 2);
+        A(0, 1) = std::pow(R, 3);
+        A(1, 0) = 2 * R;
+        A(1, 1) = 3 * std::pow(R, 2);
         
-        b(0) = 0;
-        b(1) = s[num_mt_points() - 1];
-        b(2) = s.deriv(1, num_mt_points() - 1);
+        b(0) = s[num_mt_points() - 1];
+        b(1) = s.deriv(1, num_mt_points() - 1);
 
-        linalg<lapack>::gesv<double>(3, 1, A.ptr(), 3, b.ptr(), 3);
+        linalg<lapack>::gesv<double>(2, 1, A.ptr(), 2, b.ptr(), 2);
         
         //== std::stringstream sstr;
         //== sstr << "free_density_" << id_ << ".dat";
@@ -316,7 +310,8 @@ void Atom_type::init_free_atom(bool smooth)
         
         /* make smooth free atom density inside muffin-tin */
         for (int i = 0; i < num_mt_points(); i++)
-            free_atom_density_[i] = b(0) + b(1) * std::pow(radial_grid(i), 2) + b(2) * std::pow(radial_grid(i), 3);
+            //free_atom_density_[i] = b(0) + b(1) * std::pow(radial_grid(i), 2) + b(2) * std::pow(radial_grid(i), 3);
+            free_atom_density_[i] = b(0) * std::pow(radial_grid(i), 2) + b(1) * std::pow(radial_grid(i), 3);
 
         //== sstr.str("");
         //== sstr << "free_density_modified_" << id_ << ".dat";
