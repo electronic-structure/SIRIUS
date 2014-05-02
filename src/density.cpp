@@ -171,51 +171,6 @@ void Density::initial_density()
             if (rho_->f_it<global>(ir) < 0) rho_->f_it<global>(ir) = 0;
         }
         
-
-        //== double mt_charge = 0.0;
-        //== for (int ialoc = 0; ialoc < uc->spl_num_atoms().local_size(); ialoc++)
-        //== {
-        //==     int ia = uc->spl_num_atoms(ialoc);
-        //==     vector3d<double> v = uc->atom(ia)->vector_field();
-        //==     double len = v.length();
-
-        //==     int nmtp = uc->atom(ia)->type()->num_mt_points();
-        //==     Spline<double> rho(nmtp, uc->atom(ia)->type()->radial_grid());
-        //==     for (int ir = 0; ir < nmtp; ir++)
-        //==     {
-        //==         rho[ir] = uc->atom(ia)->type()->free_atom_density(ir);
-        //==         rho_->f_mt<local>(0, ir, ialoc) = rho[ir] / y00;
-        //==     }
-
-        //==     double q = fourpi * rho.interpolate().integrate(nmtp - 1, 2);
-
-        //==     // add charge of the MT sphere
-        //==     mt_charge += q;
-
-        //==     if (len > 1e-8)
-        //==     {
-        //==         if (parameters_.num_mag_dims())
-        //==         {
-        //==             for (int ir = 0; ir < nmtp; ir++)
-        //==                 magnetization_[0]->f_mt<local>(0, ir, ialoc) = rho_->f_mt<local>(0, ir, ialoc) * v[2] / q;
-        //==         }
-
-        //==         if (parameters_.num_mag_dims() == 3)
-        //==         {
-        //==             for (int ir = 0; ir < nmtp; ir++)
-        //==                 magnetization_[1]->f_mt<local>(0, ir, ialoc) = rho_->f_mt<local>(0, ir, ialoc) * v[0] / q;
-        //==             for (int ir = 0; ir < nmtp; ir++)
-        //==                 magnetization_[2]->f_mt<local>(0, ir, ialoc) = rho_->f_mt<local>(0, ir, ialoc) * v[1] / q;
-        //==         }
-        //==     }
-        //== }
-        //== Platform::allreduce(&mt_charge, 1);
-        //== 
-        //== // distribute remaining charge
-        //== for (int ir = 0; ir < fft_->size(); ir++)
-        //==     rho_->f_it<global>(ir) = (uc->num_electrons() - mt_charge) / uc->volume_it();
-
-
         /* mapping between G-shell and a list of G-vectors */
         std::map<int, std::vector<int> > gsh_map;
 
@@ -234,133 +189,110 @@ void Density::initial_density()
         for (auto& i: gsh_map) gsh_list.push_back(std::pair<int, std::vector<int> >(i.first, i.second));
 
         Timer t2("sirius::Density::initial_density:rho_mt");
-        //int lmax = std::min(4, parameters_.lmax_rho()); 
         int lmax = parameters_.lmax_rho();
+        int lmmax = Utils::lmmax(lmax);
         auto l_by_lm = Utils::l_by_lm(lmax);
         
-        for (int ia = 0; ia < uc->num_atoms(); ia++)
+        /* cache 4 * pi * complex_i^l values */ 
+        std::vector<double_complex> cil4p(lmax + 1);
+        for (int l = 0; l <= lmax; l++) cil4p[l] = std::pow(complex_i, l) * fourpi;
+        
+        /* loop over atom types */
+        for (int iat = 0; iat < uc->num_atom_types(); iat++)
         {
-            Spheric_function<double_complex> rho_ylm(uc->atom(ia)->radial_grid(), Utils::lmmax(lmax));
+            /* number of muffin-tin points */
+            int nmtp = uc->atom_type(iat)->num_mt_points();
+            
+            /* number of atoms for the current atom type */
+            int num_atoms_t = uc->atom_type(iat)->num_atoms();
+
+            /* charge density for all atoms of the current type */
+            mdarray<double_complex, 3> rho_ylm(nmtp, lmmax, num_atoms_t);
             rho_ylm.zero();
-
-            //== #pragma omp parallel default(shared)
-            //== {
-            //==     mdarray<double, 2> sbessel(uc->atom(ia)->num_mt_points(), lmax + 1);
-            //==     std::vector<double> jl(lmax + 1);
-            //==     double G_prev = -1; 
-            //==     #pragma omp for
-            //==     for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
-            //==     {
-            //==         int ig = rl->spl_num_gvec(igloc);
-            //==         double G = rl->gvec_len(ig);
-
-            //==         if (std::abs(G - G_prev) > 1e-10)
-            //==         {
-            //==             /* get spherical Bessel function j_l(Gr) */ // TODO: separate call
-            //==             for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
-            //==             {
-            //==                 double x = uc->atom(ia)->type()->radial_grid(ir) * G;
-            //==                 gsl_sf_bessel_jl_array(lmax, x, &jl[0]);
-            //==                 for (int l = 0; l <= lmax; l++) sbessel(ir, l) = jl[l];
-            //==             }
-            //==             G_prev = G;
-            //==         }
-
-            //==         /* compute contribution from the plane wave to the muffin-tin function */
-            //==         for (int l = 0; l <= lmax; l++)
-            //==         {
-            //==             double_complex z1 = rho_->f_pw(ig) * fourpi * rl->gvec_phase_factor<local>(igloc, ia) * 
-            //==                                 std::pow(complex_i, l);
-
-            //==             for (int m = -l; m <= l; m++)
-            //==             {
-            //==                 int lm = Utils::lm_by_l_m(l, m);
-            //==                 double_complex z2 = z1 * conj(rl->gvec_ylm(lm, igloc));
-
-            //==                 for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
-            //==                 {
-            //==                     rho_ylm(ir, lm) += z2 * sbessel(ir, l);
-            //==                 }
-            //==             }
-            //==         }
-            //==     }
-            //== }
-
-            #pragma omp parallel default(shared)
+            
+            /* spherical Bessel functions */
+            mdarray<double, 2> sbessel(nmtp, lmax + 1);
+            
+            /* loop over G-vector shells */
+            for (int i = 0; i < (int)gsh_list.size(); i++)
             {
-                mdarray<double, 2> sbessel(uc->atom(ia)->num_mt_points(), lmax + 1);
-                std::vector<double> jl(lmax + 1);
-                mdarray<double_complex, 1> c(Utils::lmmax(lmax));
-                
-                /* cyclic scheduling of omp loop */
-                #pragma omp for schedule(static, 1)
-                for (int i = 0; i < (int)gsh_list.size(); i++)
-                {
-                    int igsh = gsh_list[i].first;
-                    auto& gv = gsh_list[i].second;
+                int igsh = gsh_list[i].first;
+                auto& gv = gsh_list[i].second;
 
-                    c.zero();
-                    /* add contribution from the plane-waves */
-                    for (int j = 0; j < (int)gv.size(); j++)
-                    {
-                        int igloc = gv[j];
-                        int ig = rl->spl_num_gvec(igloc);
-
-                        for (int l = 0; l <= lmax; l++)
-                        {
-                            double_complex z1 = rho_->f_pw(ig) * fourpi * rl->gvec_phase_factor<local>(igloc, ia) * 
-                                                std::pow(complex_i, l);
-
-                            for (int m = -l; m <= l; m++)
-                            {
-                                int lm = Utils::lm_by_l_m(l, m);
-                                c(lm) += z1 * conj(rl->gvec_ylm(lm, igloc));
-                            }
-                        }
-                    }
-
-                    /* lengths of the G-vectors in the current shell */
-                    double G = rl->gvec_shell_len(igsh);
+                /* lengths of the G-vectors in the current shell */
+                double G = rl->gvec_shell_len(igsh);
                     
-                    /* get spherical Bessel function j_l(Gr) */ // TODO: separate call
-                    for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
+                #pragma omp parallel
+                {
+                    /* get spherical Bessel function j_l(Gr) */
+                    std::vector<double> jl(lmax + 1);
+                    #pragma omp for
+                    for (int ir = 0; ir < nmtp; ir++)
                     {
-                        double x = uc->atom(ia)->type()->radial_grid(ir) * G;
+                        double x = uc->atom_type(iat)->radial_grid(ir) * G;
                         gsl_sf_bessel_jl_array(lmax, x, &jl[0]);
                         for (int l = 0; l <= lmax; l++) sbessel(ir, l) = jl[l];
                     }
+                    
+                    /* r-independent coefficients */
+                    mdarray<double_complex, 1> c(lmmax);
 
-                    /* add contribution from the current G-shell to the muffin-tin function */
-                    for (int lm = 0; lm < Utils::lmmax(lmax); lm++)
+                    /* loop over all atoms of the current type */
+                    #pragma omp for
+                    for (int j = 0; j < num_atoms_t; j++)
                     {
-                        int l = l_by_lm[lm];
-                        for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++) rho_ylm(ir, lm) += c(lm) * sbessel(ir, l);
+                        int ia = uc->atom_type(iat)->atom_id(j);
+                        
+                        /* add contribution from the plane-waves of the given G-shell */
+                        c.zero();
+                        for (int igloc: gv)
+                        {
+                            int ig = rl->spl_num_gvec(igloc);
+
+                            for (int l = 0; l <= lmax; l++)
+                            {
+                                double_complex z1 = rho_->f_pw(ig) * rl->gvec_phase_factor<local>(igloc, ia) * cil4p[l];
+
+                                for (int lm = Utils::lm_by_l_m(l, -l); lm <= Utils::lm_by_l_m(l, l); lm++) 
+                                    c(lm) += z1 * conj(rl->gvec_ylm(lm, igloc));
+                            }
+                        }
+
+                        /* update muffin-tin functions */
+                        for (int lm = 0; lm < lmmax; lm++)
+                        {
+                            int l = l_by_lm[lm];
+                            for (int ir = 0; ir < nmtp; ir++) rho_ylm(ir, lm, j) += c(lm) * sbessel(ir, l);
+                        }
                     }
                 }
             }
 
-            /* get the total sum over all plane-waves */
-            Platform::allreduce(&rho_ylm(0, 0), Utils::lmmax(lmax) * uc->atom(ia)->num_mt_points());
-            
-            /* transpose indices */
-            Spheric_function<double_complex> rho_ylm_tmp(Utils::lmmax(lmax), uc->atom(ia)->radial_grid());
-            for (int lm = 0; lm < Utils::lmmax(lmax); lm++)
+            Spheric_function<double_complex> rho_ylm_tmp(lmmax, uc->atom_type(iat)->radial_grid());
+            for (int j = 0; j < num_atoms_t; j++)
             {
-                for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
-                    rho_ylm_tmp(lm, ir) = rho_ylm(ir, lm);
-            }
-            
-            /* get local offset and rank corresponding to the global index of atom */
-            auto p = uc->spl_num_atoms().location(ia);
-            
-            if (p.second == Platform::mpi_rank())
-            {
-                /* convert from Ylm to Rlm expansion */
-                rho_ylm_tmp.sh_convert(rho_->f_mt(p.first));
+                int ia = uc->atom_type(iat)->atom_id(j);
+
+                /* get the total sum over all plane-waves */
+                Platform::allreduce(&rho_ylm(0, 0, j), lmmax * nmtp);
 
                 /* remove smooth density of the free atom (we need contribution only from tails) */
-                for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
-                    rho_->f_mt<local>(0, ir, p.first) -= uc->atom(ia)->type()->free_atom_density(ir) / y00;
+                for (int ir = 0; ir < nmtp; ir++) rho_ylm(ir, 0, j) -= uc->atom_type(iat)->free_atom_density(ir) / y00;
+            
+                /* transpose indices */
+                for (int lm = 0; lm < lmmax; lm++)
+                {
+                    for (int ir = 0; ir < nmtp; ir++) rho_ylm_tmp(lm, ir) = rho_ylm(ir, lm, j);
+                }
+            
+                /* get local offset and rank corresponding to the global index of atom */
+                auto p = uc->spl_num_atoms().location(ia);
+                
+                if (p.second == Platform::mpi_rank())
+                {
+                    /* convert from Ylm to Rlm expansion */
+                    rho_ylm_tmp.sh_convert(rho_->f_mt(p.first));
+                }
             }
         }
         t2.stop();
@@ -377,6 +309,53 @@ void Density::initial_density()
                 /* add density of the free atom */
                 for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
                     rho_->f_mt<local>(0, ir, p.first) += uc->atom(ia)->type()->free_atom_density(ir) / y00;
+            }
+        }
+
+        /* initialize the magnetization */
+        if (parameters_.num_mag_dims())
+        {
+            for (int ialoc = 0; ialoc < uc->spl_num_atoms().local_size(); ialoc++)
+            {
+                int ia = uc->spl_num_atoms(ialoc);
+                vector3d<double> v = uc->atom(ia)->vector_field();
+                double len = v.length();
+
+                int nmtp = uc->atom(ia)->type()->num_mt_points();
+                Spline<double> rho(nmtp, uc->atom(ia)->type()->radial_grid());
+                double R = uc->atom(ia)->type()->mt_radius();
+                for (int ir = 0; ir < nmtp; ir++)
+                {
+                    double x = uc->atom(ia)->type()->radial_grid(ir);
+                    rho[ir] = rho_->f_mt<local>(0, ir, ialoc) * y00 * (1 - 3 * std::pow(x / R, 2) + 2 * std::pow(x / R, 3));
+                }
+
+                /* maximum magnetization which can be achieved if we smooth density towards MT boundary */
+                double q = fourpi * rho.interpolate().integrate(nmtp - 1, 2);
+                
+                /* if very strong initial magnetization is given */
+                if (q < len)
+                {
+                    /* renormalize starting magnetization */
+                    for (int x = 0; x < 3; x++) v[x] *= (q / len);
+
+                    len = q;
+                }
+
+                if (len > 1e-8)
+                {
+                    for (int ir = 0; ir < nmtp; ir++)
+                        magnetization_[0]->f_mt<local>(0, ir, ialoc) = rho[ir] * v[2] / q / y00;
+
+                    if (parameters_.num_mag_dims() == 3)
+                    {
+                        for (int ir = 0; ir < nmtp; ir++)
+                        {
+                            magnetization_[1]->f_mt<local>(0, ir, ialoc) = rho[ir] * v[0] / q / y00;
+                            magnetization_[2]->f_mt<local>(0, ir, ialoc) = rho[ir] * v[1] / q / y00;
+                        }
+                    }
+                }
             }
         }
     }
@@ -443,7 +422,7 @@ void Density::initial_density()
         std::vector<double> nel_mt;
         double nel_it;
         double nel = rho_->integrate(nel_mt, nel_it);
-        if (std::abs(nel - uc->num_electrons()) > 1e-8)
+        if (uc->num_electrons() > 1e-8 && std::abs(nel - uc->num_electrons()) / uc->num_electrons()  > 1e-3)
         {
             std::stringstream s;
             s << "wrong initial charge density" << std::endl
@@ -452,8 +431,6 @@ void Density::initial_density()
             warning_local(__FILE__, __LINE__, s);
         }
     }
-
-    stop_here
 }
 
 void Density::add_kpoint_contribution_mt(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
