@@ -1,4 +1,4 @@
-// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -27,10 +27,10 @@
 
 #include "global.h"
 #include "periodic_function.h"
+#include "matching_coefficients.h"
 
 namespace sirius
 {
-// TODO: cleanup the mess with matching coefficients
 
 /// K-point related variables and methods.
 /** \image html wf_storage.png "Wave-function storage" */ // TODO: replace with proper image
@@ -61,10 +61,10 @@ class K_point
         /// first-variational eigen values
         std::vector<double> fv_eigen_values_;
 
-        /// first-variational eigen vectors, distributed over rows and columns of the MPI grid
+        /// First-variational eigen vectors, distributed over rows and columns of the MPI grid.
         dmatrix<double_complex> fv_eigen_vectors_panel_;
         
-        /// second-variational eigen vectors
+        /// Second-variational eigen vectors.
         /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
          *  case of non-magnetic or collinear magnetic case or as a single \f$ 2 N_{fv} \times 2 N_{fv} \f$ 
          *  matrix in case of general non-collinear magnetism.
@@ -103,11 +103,12 @@ class K_point
         /// spherical harmonics of G+k vectors
         mdarray<double_complex, 2> gkvec_ylm_;
 
-        /// precomputed values for the linear equations for matching coefficients
-        mdarray<double_complex, 4> alm_b_;
-
         /// length of G+k vectors
         std::vector<double> gkvec_len_;
+
+        Matching_coefficients* alm_coeffs_row_;
+
+        Matching_coefficients* alm_coeffs_col_;
 
         /// number of G+k vectors distributed along rows of MPI grid
         int num_gkvec_row_;
@@ -115,11 +116,11 @@ class K_point
         /// number of G+k vectors distributed along columns of MPI grid
         int num_gkvec_col_;
 
-        /// short information about each G+k or lo basis function
+        /// Short information about each G+k or lo basis function.
         /** This is a global array. Each MPI rank of the 2D grid has exactly the same copy. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_;
 
-        /// basis descriptors distributed along rows of the 2D MPI grid
+        /// Basis descriptors distributed along rows of the 2D MPI grid.
         /** This is a local array. Only MPI ranks belonging to the same row have identical copies of this array. */
         std::vector<gklo_basis_descriptor> gklo_basis_descriptors_row_;
         
@@ -160,12 +161,7 @@ class K_point
         /// plane-wave coefficients of |beta> functions for atoms
         mdarray<double_complex, 2> beta_pw_a_;
 
-        /// Generate matching coefficients for specific l-value
-        template <int order, bool conjugate>
-        void generate_matching_coefficients_l(int ia, int iat, Atom_type* type, int l, int num_gkvec_loc, 
-                                              mdarray<double, 2>& A, mdarray<double_complex, 2>& alm);
-        
-        void check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm);
+        // void check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm);
 
         /// Copy lo block from eigen-vector to wave-function
         inline void copy_lo_blocks(const double_complex* z, double_complex* vec);
@@ -194,7 +190,11 @@ class K_point
     public:
 
         /// Constructor
-        K_point(Global& parameters__, double* vk__, double weight__) : parameters_(parameters__), weight_(weight__)
+        K_point(Global& parameters__, double* vk__, double weight__) 
+            : parameters_(parameters__), 
+              weight_(weight__),
+              alm_coeffs_row_(NULL),
+              alm_coeffs_col_(NULL)
         {
             for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
 
@@ -218,6 +218,8 @@ class K_point
             {
                 for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) delete sbessel_[igkloc];
             }
+            if (alm_coeffs_row_) delete alm_coeffs_row_;
+            if (alm_coeffs_col_) delete alm_coeffs_col_;
         }
 
         /// Initialize the k-point related arrays and data
@@ -228,279 +230,6 @@ class K_point
         
         /// Find G+k vectors within the cutoff
         void generate_gkvec(double gk_cutoff);
-
-        /// Generate plane-wave matching coefficents for the radial solutions 
-        /** At some point we need to compute the radial derivatives of the spherical Bessel functions at the 
-         *  muffin-tin boundary. The following formula is used:
-         *  \f[
-         *      j_{{n}}^{{\prime}}(z)=-j_{{n+1}}(z)+(n/z)j_{{n}}(z)
-         *  \f]
-         */
-        template <bool conjugate>
-        void generate_matching_coefficients(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)
-        {
-            Timer t("sirius::K_point::generate_matching_coefficients");
-
-            Atom* atom = parameters_.unit_cell()->atom(ia);
-            Atom_type* type = atom->type();
-
-            assert(type->max_aw_order() <= 3);
-
-            int iat = type->id();
-
-            #pragma omp parallel default(shared)
-            {
-                mdarray<double, 2> A(3, 3);
-
-                #pragma omp for
-                for (int l = 0; l <= parameters_.lmax_apw(); l++)
-                {
-                    int num_aw = (int)type->aw_descriptor(l).size();
-
-                    for (int order = 0; order < num_aw; order++)
-                    {
-                        for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
-                    }
-
-                    switch (num_aw)
-                    {
-                        case 1:
-                        {
-                            generate_matching_coefficients_l<1, conjugate>(ia, iat, type, l, num_gkvec_loc, A, alm);
-                            break;
-                        }
-                        case 2:
-                        {
-                            generate_matching_coefficients_l<2, conjugate>(ia, iat, type, l, num_gkvec_loc, A, alm);
-                            break;
-                        }
-                        case 3:
-                        {
-                            generate_matching_coefficients_l<3, conjugate>(ia, iat, type, l, num_gkvec_loc, A, alm);
-                            break;
-                        }
-                        default:
-                        {
-                            error_local(__FILE__, __LINE__, "wrong order of augmented wave");
-                        }
-                    }
-                } //l
-            }
-            
-            // check alm coefficients
-            if (debug_level > 1) check_alm(num_gkvec_loc, ia, alm);
-        }
-        
-        /// Generate plane-wave matching coefficents for the radial solutions 
-        /** Normal layout of matching coefficients: G+k vectors are along rows, AW basis functions are 
-         *  along columns. This layout is used to generate first-variational states. 
-         *  Transposed layout: AW basis functions are along rows, G+k vectors are along columns. This layout
-         *  is used to setup Hamiltonian and overlap matrices.
-         */
-        template <bool transpose>
-        void generate_matching_coefficients(dmatrix<double_complex>& alm)
-        {
-            Timer t("sirius::K_point::generate_matching_coefficients_panel");
-
-            int num_mt_aw_loc = transpose ? alm.num_rows_local() : alm.num_cols_local();
-            int offset_col = apw_offset_col();
-
-            #pragma omp parallel
-            {
-                mdarray<double, 2> A(3, 3);
-                #pragma omp for
-                for (int i = 0; i < num_mt_aw_loc; i++)
-                {
-                    int j = transpose ? alm.irow(i) : alm.icol(i);
-                    int ia = parameters_.unit_cell()->mt_aw_basis_descriptor(j).ia;
-                    int xi = parameters_.unit_cell()->mt_aw_basis_descriptor(j).xi;
-                    Atom* atom = parameters_.unit_cell()->atom(ia);
-                    Atom_type* type = atom->type();
-                    int iat = type->id();
-                    int l = type->indexb(xi).l;
-                    int lm = type->indexb(xi).lm;
-                    int nu = type->indexb(xi).order; 
-
-                    int num_aw = (int)type->aw_descriptor(l).size();
-
-                    for (int order = 0; order < num_aw; order++)
-                    {
-                        for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
-                    }
-                    
-                    switch (num_aw)
-                    {
-                        case 1:
-                        {
-                            A(0, 0) = 1.0 / A(0, 0);
-
-                            double_complex zt;
-
-                            if (transpose)
-                            {
-                                for (int igkloc = 0; igkloc < alm.num_cols_local(); igkloc++)
-                                {
-                                    zt = gkvec_phase_factors_(offset_col + igkloc, ia) * 
-                                         alm_b_(0, offset_col + igkloc, l, iat) * A(0, 0);
-
-                                    alm(i, igkloc) = conj(gkvec_ylm_(lm, offset_col + igkloc)) * zt;
-                                }
-                            }
-                            else
-                            {
-                                for (int igkloc = 0; igkloc < alm.num_rows_local(); igkloc++)
-                                {
-                                    zt = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat) * A(0, 0);
-
-                                    alm(igkloc, i) = conj(gkvec_ylm_(lm, igkloc)) * zt;
-                                }
-                            }
-                            break;
-                        }
-                        case 2:
-                        {
-                            double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
-                            std::swap(A(0, 0), A(1, 1));
-                            A(0, 0) /= det;
-                            A(1, 1) /= det;
-                            A(0, 1) = -A(0, 1) / det;
-                            A(1, 0) = -A(1, 0) / det;
-                            
-                            double_complex zt[2];
-                            double_complex zb;
-
-                            if (transpose)
-                            {
-                                for (int igkloc = 0; igkloc < alm.num_cols_local(); igkloc++)
-                                {
-                                    zt[0] = gkvec_phase_factors_(offset_col + igkloc, ia) * 
-                                            alm_b_(0, offset_col + igkloc, l, iat);
-                                    zt[1] = gkvec_phase_factors_(offset_col + igkloc, ia) * 
-                                            alm_b_(1, offset_col + igkloc, l, iat);
-
-                                    zb = A(nu, 0) * zt[0] + A(nu, 1) * zt[1];
-
-                                    alm(i, igkloc) = conj(gkvec_ylm_(lm, offset_col + igkloc)) * zb;
-                                }
-                            }
-                            else
-                            {
-                                for (int igkloc = 0; igkloc < alm.num_rows_local(); igkloc++)
-                                {
-                                    zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat);
-                                    zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(1, igkloc, l, iat);
-
-                                    zb = A(nu, 0) * zt[0] + A(nu, 1) * zt[1];
-
-                                    alm(igkloc, i) = conj(gkvec_ylm_(lm, igkloc)) * zb;
-                                }
-                            }
-                            break;
-                        }
-                        default:
-                        {
-                            stop_here
-                        }
-                    }
-                }
-            }
-        }
-
-        void generate_matching_coefficients(splindex<block>& sspl_gkvec_col, mdarray<double_complex, 2>& alm_v)
-        {
-            Timer t("sirius::K_point::generate_matching_coefficients_slice", _global_timer_);
-
-            int naw = parameters_.unit_cell()->mt_aw_basis_size();
-            int offset_col = apw_offset_col();
-
-            #pragma omp parallel
-            {
-                mdarray<double, 2> A(3, 3);
-                #pragma omp for
-                for (int j = 0; j < naw; j++)
-                {
-                    int ia = parameters_.unit_cell()->mt_aw_basis_descriptor(j).ia;
-                    int xi = parameters_.unit_cell()->mt_aw_basis_descriptor(j).xi;
-                    Atom* atom = parameters_.unit_cell()->atom(ia);
-                    Atom_type* type = atom->type();
-                    int iat = type->id();
-                    int l = type->indexb(xi).l;
-                    int lm = type->indexb(xi).lm;
-                    //int nu = type->indexb(xi).order; 
-
-                    int num_aw = (int)type->aw_descriptor(l).size();
-
-                    for (int order = 0; order < num_aw; order++)
-                    {
-                        for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom->symmetry_class()->aw_surface_dm(l, order, dm);
-                    }
-                    
-                    switch (num_aw)
-                    {
-                        case 1:
-                        {
-                            A(0, 0) = 1.0 / A(0, 0);
-
-                            double_complex zt;
-
-                            for (int i = 0; i < sspl_gkvec_col.local_size(); i++)
-                            {
-                                int igkloc = sspl_gkvec_col[i];
-                                zt = gkvec_phase_factors_(offset_col + igkloc, ia) * 
-                                     alm_b_(0, offset_col + igkloc, l, iat) * A(0, 0);
-
-                                alm_v(j, i) = conj(gkvec_ylm_(lm, offset_col + igkloc)) * zt;
-                            }
-                            break;
-                        }
-                        //== case 2:
-                        //== {
-                        //==     double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
-                        //==     std::swap(A(0, 0), A(1, 1));
-                        //==     A(0, 0) /= det;
-                        //==     A(1, 1) /= det;
-                        //==     A(0, 1) = -A(0, 1) / det;
-                        //==     A(1, 0) = -A(1, 0) / det;
-                        //==     
-                        //==     double_complex zt[2];
-                        //==     double_complex zb;
-
-                        //==     if (transpose)
-                        //==     {
-                        //==         for (int igkloc = 0; igkloc < alm.num_cols_local(); igkloc++)
-                        //==         {
-                        //==             zt[0] = gkvec_phase_factors_(offset_col + igkloc, ia) * 
-                        //==                     alm_b_(0, offset_col + igkloc, l, iat);
-                        //==             zt[1] = gkvec_phase_factors_(offset_col + igkloc, ia) * 
-                        //==                     alm_b_(1, offset_col + igkloc, l, iat);
-
-                        //==             zb = A(order, 0) * zt[0] + A(order, 1) * zt[1];
-
-                        //==             alm(i, igkloc) = conj(gkvec_ylm_(lm, offset_col + igkloc)) * zb;
-                        //==         }
-                        //==     }
-                        //==     else
-                        //==     {
-                        //==         for (int igkloc = 0; igkloc < alm.num_rows_local(); igkloc++)
-                        //==         {
-                        //==             zt[0] = gkvec_phase_factors_(igkloc, ia) * alm_b_(0, igkloc, l, iat);
-                        //==             zt[1] = gkvec_phase_factors_(igkloc, ia) * alm_b_(1, igkloc, l, iat);
-
-                        //==             zb = A(order, 0) * zt[0] + A(order, 1) * zt[1];
-
-                        //==             alm(igkloc, i) = conj(gkvec_ylm_(lm, igkloc)) * zb;
-                        //==         }
-                        //==     }
-                        //==     break;
-                        //== }
-                        default:
-                        {
-                            stop_here
-                        }
-                    }
-                }
-            }
-        }
 
         /// Generate first-variational states from eigen-vectors
         void generate_fv_states();
@@ -931,6 +660,16 @@ class K_point
         inline double_complex& beta_pw_a(int igk, int idx)
         {
             return beta_pw_a_(igk, idx);
+        }
+
+        inline Matching_coefficients* alm_coeffs_row()
+        {
+            return alm_coeffs_row_;
+        }
+
+        inline Matching_coefficients* alm_coeffs_col()
+        {
+            return alm_coeffs_col_;
         }
 };
 

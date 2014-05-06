@@ -122,11 +122,11 @@ void Global::read_unit_cell_input()
     {
         std::string label = unit_cell_input_section_.labels_[iat];
         std::string fname = unit_cell_input_section_.atom_files_[label];
-        unit_cell()->add_atom_type(iat, label, fname, esm_type());
+        unit_cell()->add_atom_type(label, fname, esm_type());
         for (int ia = 0; ia < (int)unit_cell_input_section_.coordinates_[iat].size(); ia++)
         {
             std::vector<double> v = unit_cell_input_section_.coordinates_[iat][ia];
-            unit_cell()->add_atom(iat, &v[0], &v[3]);
+            unit_cell()->add_atom(label, &v[0], &v[3]);
         }
     }
 
@@ -482,7 +482,6 @@ void Global::print_info()
             break;
         }
     }
-    unit_cell_->write_cif();
 }
 
 void Global::write_json_output()

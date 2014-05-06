@@ -255,8 +255,11 @@ class Atom_type
 {
     private:
 
-        /// unique id of atom type
+        /// Unique id of atom type in the range [0, \f$ N_{types} \f$).
         int id_;
+
+        /// Unique string label for the atom type.
+        std::string label_;
     
         /// chemical element symbol
         std::string symbol_;
@@ -330,9 +333,6 @@ class Atom_type
         /// type of electronic structure method used
         electronic_structure_method_t esm_type_;
         
-        /// atom type label
-        std::string label_;
-
         std::string file_name_;
 
         bool initialized_;

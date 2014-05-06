@@ -32,13 +32,13 @@ Atom_type::Atom_type(const char* symbol__, const char* name__, int zn__, double 
 Atom_type::Atom_type(int id__, const std::string label__, const std::string file_name__, 
                      electronic_structure_method_t esm_type__) 
     : id_(id__), 
+      label_(label__),
       zn_(0), 
       mass_(0), 
       num_mt_points_(0), 
       radial_grid_(NULL), 
       offset_lo_(-1),
       esm_type_(esm_type__), 
-      label_(label__),
       file_name_(file_name__),
       initialized_(false)
 {
@@ -335,7 +335,10 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
     free_atom_radial_functions_.allocate();
 
     Radial_solver solver(false, -1.0 * zn_, *radial_grid_);
-    libxc_interface xci;
+    //libxc_interface xci("XC_LDA_X", "XC_LDA_C_PZ");
+
+    XC_functional Ex("XC_LDA_X", 1);
+    XC_functional Ec("XC_LDA_C_VWN", 1);
 
     solver.set_tolerance(solver_tol);
     
@@ -406,14 +409,17 @@ double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double c
         
         rho.interpolate();
 
-        // compute Hartree potential
+        /* compute Hartree potential */
         rho.integrate(g2, 2);
         double t1 = rho.integrate(g1, 1);
 
         for (int i = 0; i < np; i++) vh[i] = fourpi * (g2[i] / radial_grid(i) + t1 - g1[i]);
         
-        // compute XC potential and energy
-        xci.getxc(rho.num_points(), &rho[0], &vxc[0], &exc[0]);
+        /* compute XC potential and energy */
+        memset(&vxc[0], 0, rho.num_points() * sizeof(double));
+        memset(&exc[0], 0, rho.num_points() * sizeof(double));
+        Ex.add(rho.num_points(), &rho[0], &vxc[0], &exc[0]);
+        Ec.add(rho.num_points(), &rho[0], &vxc[0], &exc[0]);
         
         for (int i = 0; i < np; i++)
             veff[i] = (1 - beta) * veff[i] + beta * (vnuc[i] + vh[i] + vxc[i]);

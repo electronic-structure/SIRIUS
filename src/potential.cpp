@@ -763,7 +763,7 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
 {
     Timer t("sirius::Potential::xc");
 
-    libxc_interface xci;
+    libxc_interface xci("XC_LDA_X", "XC_LDA_C_PZ");
    
     if (parameters_.unit_cell()->full_potential())
     {

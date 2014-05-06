@@ -141,7 +141,7 @@ void Band::apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_comp
     
     #pragma omp parallel default(shared)
     {
-        std::vector<double_complex> zv(alm.size(1));
+        std::vector<double_complex> zv(ngk_loc);
         
         #pragma omp for
         for (int j = 0; j < parameters_.unit_cell()->mt_aw_basis_size(); j++)
@@ -336,44 +336,44 @@ void Band::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h)
     }
 }
 
-template <spin_block_t sblock> 
-void Band::set_h(K_point* kp, Periodic_function<double>* effective_potential, 
-                 Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h)
-{
-    Timer t("sirius::Band::set_h");
-   
-    // index of column apw coefficients in apw array
-    int apw_offset_col = kp->apw_offset_col();
-    
-    mdarray<double_complex, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
-    mdarray<double_complex, 2> halm(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
-
-    h.zero();
-
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    {
-        Atom* atom = parameters_.unit_cell()->atom(ia);
-        Atom_type* type = atom->type();
-       
-        // generate conjugated coefficients
-        kp->generate_matching_coefficients<true>(kp->num_gkvec_loc(), ia, alm);
-        
-        // apply muffin-tin part to <bra|
-        apply_hmt_to_apw<sblock>(kp->num_gkvec_row(), ia, alm, halm);
-        
-        // generate <apw|H|apw> block; |ket> is conjugated, so it is "unconjugated" back
-        blas<cpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
-                        &halm(0, 0), halm.ld(), &alm(apw_offset_col, 0), alm.ld(), complex_one, &h(0, 0), h.ld());
-       
-        // setup apw-lo blocks
-        set_h_apw_lo<sblock>(kp, type, atom, ia, alm, h);
-    } //ia
-
-    set_h_it<sblock>(kp, effective_potential, effective_magnetic_field, h);
-
-    set_h_lo_lo<sblock>(kp, h);
-
-    alm.deallocate();
-    halm.deallocate();
-}
+//== template <spin_block_t sblock> 
+//== void Band::set_h(K_point* kp, Periodic_function<double>* effective_potential, 
+//==                  Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h)
+//== {
+//==     Timer t("sirius::Band::set_h");
+//==    
+//==     // index of column apw coefficients in apw array
+//==     int apw_offset_col = kp->apw_offset_col();
+//==     
+//==     mdarray<double_complex, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
+//==     mdarray<double_complex, 2> halm(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
+//== 
+//==     h.zero();
+//== 
+//==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//==     {
+//==         Atom* atom = parameters_.unit_cell()->atom(ia);
+//==         Atom_type* type = atom->type();
+//==        
+//==         // generate conjugated coefficients
+//==         kp->generate_matching_coefficients<true>(kp->num_gkvec_loc(), ia, alm);
+//==         
+//==         // apply muffin-tin part to <bra|
+//==         apply_hmt_to_apw<sblock>(kp->num_gkvec_row(), ia, alm, halm);
+//==         
+//==         // generate <apw|H|apw> block; |ket> is conjugated, so it is "unconjugated" back
+//==         blas<cpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
+//==                         &halm(0, 0), halm.ld(), &alm(apw_offset_col, 0), alm.ld(), complex_one, &h(0, 0), h.ld());
+//==        
+//==         // setup apw-lo blocks
+//==         set_h_apw_lo<sblock>(kp, type, atom, ia, alm, h);
+//==     } //ia
+//== 
+//==     set_h_it<sblock>(kp, effective_potential, effective_magnetic_field, h);
+//== 
+//==     set_h_lo_lo<sblock>(kp, h);
+//== 
+//==     alm.deallocate();
+//==     halm.deallocate();
+//== }
 

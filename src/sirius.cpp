@@ -1,23 +1,29 @@
 #include "sirius.h"
 
 /** \file sirius.cpp
-    \brief Fortran API 
-*/
+ *  \brief Fortran API 
+ */
 
-/// pointer to Density class, implicitly used by Fortran side
+/// Pointer to Density class, implicitly used by Fortran side.
 sirius::Density* density = NULL;
 
-/// pointer to Potential class, implicitly used by Fortran side
+/// Pointer to Potential class, implicitly used by Fortran side.
 sirius::Potential* potential = NULL;
 
-/// set of global parameters
+/// Set of global parameters
 sirius::Global global_parameters;
 
-/// list of pointers to the sets of k-points
+/// List of pointers to the sets of k-points.
 std::vector<sirius::K_set*> kset_list;
 
 /// DFT ground state wrapper
 sirius::DFT_ground_state* dft_ground_state = NULL;
+
+/// Charge density and magnetization mixer
+sirius::Mixer* mixer_rho = NULL;
+
+/// Potential and magnetic field mixer
+sirius::Mixer* mixer_pot = NULL;
 
 extern "C" 
 {
@@ -116,10 +122,11 @@ void FORTRAN(sirius_set_auto_rmt)(int32_t* auto_rmt)
         enddo
     \endcode
 */
-void FORTRAN(sirius_add_atom_type)(int32_t* atom_type_id, char* label, int32_t label_len)
+void FORTRAN(sirius_add_atom_type)(char* label, char* fname, int32_t label_len, int32_t fname_len)
 {
     log_function_enter(__func__);
-    global_parameters.unit_cell()->add_atom_type(*atom_type_id, std::string(label, label_len), "", global_parameters.esm_type());
+    global_parameters.unit_cell()->add_atom_type(std::string(label, label_len), std::string(fname, fname_len), 
+                                                 global_parameters.esm_type());
     log_function_exit(__func__);
 }
 
@@ -142,12 +149,12 @@ void FORTRAN(sirius_add_atom_type)(int32_t* atom_type_id, char* label, int32_t l
         enddo
     \endcode
 */ 
-void FORTRAN(sirius_set_atom_type_properties)(int32_t* atom_type_id, char* symbol, int32_t* zn, double* mass, 
+void FORTRAN(sirius_set_atom_type_properties)(char* label, char* symbol, int32_t* zn, double* mass, 
                                               double* mt_radius, int32_t* num_mt_points, double* radial_grid_origin, 
-                                              double* radial_grid_infinity, int32_t symbol_len)
+                                              double* radial_grid_infinity, int32_t label_len, int32_t symbol_len)
 {
     log_function_enter(__func__);
-    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id);
+    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type(std::string(label, label_len));
     type->set_symbol(std::string(symbol, symbol_len));
     type->set_zn(*zn);
     type->set_mass(*mass);
@@ -170,10 +177,10 @@ void FORTRAN(sirius_set_atom_type_properties)(int32_t* atom_type_id, char* symbo
         enddo
     \endcode
 */
-void FORTRAN(sirius_set_atom_type_radial_grid)(int32_t* atom_type_id, int32_t* num_radial_points, 
-                                               double* radial_points)
+void FORTRAN(sirius_set_atom_type_radial_grid)(char* label, int32_t* num_radial_points, 
+                                               double* radial_points, int32_t label_len)
 {
-    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id);
+    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type(std::string(label, label_len));
     type->set_radial_grid(*num_radial_points, radial_points);
 }
 
@@ -198,11 +205,11 @@ void FORTRAN(sirius_set_atom_type_radial_grid)(int32_t* atom_type_id, int32_t* n
         enddo
     \endcode
 */
-void FORTRAN(sirius_set_atom_type_configuration)(int32_t* atom_type_id, int32_t* n, int32_t* l, int32_t* k, 
-                                                 double* occupancy, int32_t* core_)
+void FORTRAN(sirius_set_atom_type_configuration)(char* label, int32_t* n, int32_t* l, int32_t* k, 
+                                                 double* occupancy, int32_t* core_, int32_t label_len)
 {
     log_function_enter(__func__);
-    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id);
+    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type(std::string(label, label_len));
     bool core = *core_;
     type->set_configuration(*n, *l, *k, *occupancy, core);
     log_function_exit(__func__);
@@ -222,10 +229,10 @@ void FORTRAN(sirius_set_atom_type_configuration)(int32_t* atom_type_id, int32_t*
         enddo
     \endcode
 */
-void FORTRAN(sirius_add_atom)(int32_t* atom_type_id, double* position, double* vector_field)
+void FORTRAN(sirius_add_atom)(char* label, double* position, double* vector_field, int32_t label_len)
 {
     log_function_enter(__func__);
-    global_parameters.unit_cell()->add_atom(*atom_type_id, position, vector_field);
+    global_parameters.unit_cell()->add_atom(std::string(label, label_len), position, vector_field);
     log_function_exit(__func__);
 }
 
@@ -342,18 +349,18 @@ void FORTRAN(sirius_get_max_num_mt_points)(int32_t* max_num_mt_points)
 /** \param [in] atom_type_id id of the atom type
     \param [out] num_mt_points number of muffin-tin points
 */
-void FORTRAN(sirius_get_num_mt_points)(int32_t* atom_type_id, int32_t* num_mt_points)
+void FORTRAN(sirius_get_num_mt_points)(char* label, int32_t* num_mt_points, int32_t label_len)
 {
     log_function_enter(__func__);
-    *num_mt_points = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id)->num_mt_points();
+    *num_mt_points = global_parameters.unit_cell()->atom_type(std::string(label, label_len))->num_mt_points();
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_mt_points)(int32_t* atom_type_id, double* mt_points)
+void FORTRAN(sirius_get_mt_points)(char* label, double* mt_points, int32_t label_len)
 {
     log_function_enter(__func__);
-    sirius::Atom_type* atom = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id);
-    for (int i = 0; i < atom->num_mt_points(); i++) mt_points[i] = atom->radial_grid(i);
+    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type(std::string(label, label_len));
+    for (int i = 0; i < type->num_mt_points(); i++) mt_points[i] = type->radial_grid(i);
     log_function_exit(__func__);
 }
 
@@ -672,28 +679,35 @@ void FORTRAN(sirius_print_timers)(void)
     log_function_exit(__func__);
 }   
 
-void FORTRAN(sirius_start_timer)(char* name_, int32_t name_len)
-{
-    extern std::map<std::string, sirius::Timer*> ftimers;
-    log_function_enter(__func__);
-    std::string name(name_, name_len);
-    ftimers[name] = new sirius::Timer(name);
-    log_function_exit(__func__);
-}
-
-void FORTRAN(sirius_stop_timer)(char* name_, int32_t name_len)
-{
-    extern std::map<std::string, sirius::Timer*> ftimers;
-    log_function_enter(__func__);
-    std::string name(name_, name_len);
-    if (ftimers.count(name)) delete ftimers[name];
-    log_function_exit(__func__);
-}
+//== void FORTRAN(sirius_start_timer)(char* name_, int32_t name_len)
+//== {
+//==     extern std::map<std::string, sirius::Timer*> ftimers;
+//==     log_function_enter(__func__);
+//==     std::string name(name_, name_len);
+//==     ftimers[name] = new sirius::Timer(name);
+//==     log_function_exit(__func__);
+//== }
+//== 
+//== void FORTRAN(sirius_stop_timer)(char* name_, int32_t name_len)
+//== {
+//==     extern std::map<std::string, sirius::Timer*> ftimers;
+//==     log_function_enter(__func__);
+//==     std::string name(name_, name_len);
+//==     if (ftimers.count(name)) delete ftimers[name];
+//==     log_function_exit(__func__);
+//== }
 
 void FORTRAN(sirius_save_potential)(void)
 {
     log_function_enter(__func__);
     potential->save();
+    log_function_exit(__func__);
+}
+
+void FORTRAN(sirius_save_density)(void)
+{
+    log_function_enter(__func__);
+    density->save();
     log_function_exit(__func__);
 }
 
@@ -1015,20 +1029,20 @@ void FORTRAN(sirius_get_total_energy)(double* total_energy)
 }
 
 
-void FORTRAN(sirius_add_atom_type_aw_descriptor)(int32_t* atom_type_id, int32_t* n, int32_t* l, double* enu, 
-                                                 int32_t* dme, int32_t* auto_enu)
+void FORTRAN(sirius_add_atom_type_aw_descriptor)(char* label, int32_t* n, int32_t* l, double* enu, 
+                                                 int32_t* dme, int32_t* auto_enu, int32_t label_len)
 {
     log_function_enter(__func__);
-    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id);
+    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type(std::string(label, label_len));
     type->add_aw_descriptor(*n, *l, *enu, *dme, *auto_enu);
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_add_atom_type_lo_descriptor)(int32_t* atom_type_id, int32_t* ilo, int32_t* n, int32_t* l, 
-                                                 double* enu, int32_t* dme, int32_t* auto_enu)
+void FORTRAN(sirius_add_atom_type_lo_descriptor)(char* label, int32_t* ilo, int32_t* n, int32_t* l, 
+                                                 double* enu, int32_t* dme, int32_t* auto_enu, int32_t label_len)
 {
     log_function_enter(__func__);
-    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type_by_external_id(*atom_type_id);
+    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type(std::string(label, label_len));
     type->add_lo_descriptor(*ilo - 1, *n, *l, *enu, *dme, *auto_enu);
     log_function_exit(__func__);
 }
@@ -1272,49 +1286,52 @@ void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* nu
 void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, double_complex* apwalm__, 
                                                int32_t* ngkmax, int32_t* apwordmax)
 {
-    log_function_enter(__func__);
+    //stop_here
+    terminate(__FILE__, __LINE__, "fix this");
 
-    int rank = kset_list[*kset_id]->spl_num_kpoints().location(_splindex_rank_, *ik - 1);
-    
-    if (rank == global_parameters.mpi_grid().coordinate(0))
-    {
-        sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
-        
-        mdarray<double_complex, 4> apwalm(apwalm__, *ngkmax, *apwordmax, global_parameters.lmmax_apw(), 
-                                     global_parameters.unit_cell()->num_atoms());
-        apwalm.zero();
+    //== log_function_enter(__func__);
 
-        mdarray<double_complex, 2> alm(kp->num_gkvec_row(), global_parameters.unit_cell()->max_mt_aw_basis_size());
+    //== int rank = kset_list[*kset_id]->spl_num_kpoints().location(_splindex_rank_, *ik - 1);
+    //== 
+    //== if (rank == global_parameters.mpi_grid().coordinate(0))
+    //== {
+    //==     sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
+    //==     
+    //==     mdarray<double_complex, 4> apwalm(apwalm__, *ngkmax, *apwordmax, global_parameters.lmmax_apw(), 
+    //==                                  global_parameters.unit_cell()->num_atoms());
+    //==     apwalm.zero();
 
-        for (int ia = 0; ia < global_parameters.unit_cell()->num_atoms(); ia++)
-        {
-            sirius::Atom* atom = global_parameters.unit_cell()->atom(ia);
-            kp->generate_matching_coefficients<false>(kp->num_gkvec_row(), ia, alm);
+    //==     mdarray<double_complex, 2> alm(kp->num_gkvec_row(), global_parameters.unit_cell()->max_mt_aw_basis_size());
 
-            for (int l = 0; l <= global_parameters.lmax_apw(); l++)
-            {
-                for (int order = 0; order < (int)atom->type()->aw_descriptor(l).size(); order++)
-                {
-                    for (int m = -l; m <= l; m++)
-                    {
-                        int lm = Utils::lm_by_l_m(l, m);
-                        int i = atom->type()->indexb_by_lm_order(lm, order);
-                        for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++) 
-                        {
-                            int igk = kp->gklo_basis_descriptor_row(igkloc).igk;
-                            apwalm(igk, order, lm, ia) = alm(igkloc, i);
-                        }
-                    }
-                }
-            }
-        }
-        for (int ia = 0; ia < global_parameters.unit_cell()->num_atoms(); ia++)
-        {
-            Platform::allreduce(&apwalm(0, 0, 0, ia), (int)(apwalm.size(0) * apwalm.size(1) * apwalm.size(2)),
-                                global_parameters.mpi_grid().communicator(1 << _dim_row_));
-        }
-    }
-    log_function_exit(__func__);
+    //==     for (int ia = 0; ia < global_parameters.unit_cell()->num_atoms(); ia++)
+    //==     {
+    //==         sirius::Atom* atom = global_parameters.unit_cell()->atom(ia);
+    //==         kp->generate_matching_coefficients<false>(kp->num_gkvec_row(), ia, alm);
+
+    //==         for (int l = 0; l <= global_parameters.lmax_apw(); l++)
+    //==         {
+    //==             for (int order = 0; order < (int)atom->type()->aw_descriptor(l).size(); order++)
+    //==             {
+    //==                 for (int m = -l; m <= l; m++)
+    //==                 {
+    //==                     int lm = Utils::lm_by_l_m(l, m);
+    //==                     int i = atom->type()->indexb_by_lm_order(lm, order);
+    //==                     for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++) 
+    //==                     {
+    //==                         int igk = kp->gklo_basis_descriptor_row(igkloc).igk;
+    //==                         apwalm(igk, order, lm, ia) = alm(igkloc, i);
+    //==                     }
+    //==                 }
+    //==             }
+    //==         }
+    //==     }
+    //==     for (int ia = 0; ia < global_parameters.unit_cell()->num_atoms(); ia++)
+    //==     {
+    //==         Platform::allreduce(&apwalm(0, 0, 0, ia), (int)(apwalm.size(0) * apwalm.size(1) * apwalm.size(2)),
+    //==                             global_parameters.mpi_grid().communicator(1 << _dim_row_));
+    //==     }
+    //== }
+    //== log_function_exit(__func__);
 }
 
 /// Get first-variational matrices of Hamiltonian and overlap
@@ -1765,6 +1782,57 @@ void FORTRAN(sirius_test_spinor_wave_functions)(int32_t* kset_id)
 void FORTRAN(sirius_generate_gq_matrix_elements)(int32_t* kset_id, double* vq)
 {
      kset_list[*kset_id]->generate_Gq_matrix_elements(vq);
+}
+
+void FORTRAN(sirius_density_mixer_initialize)(void)
+{
+    if (global_parameters.mixer_input_section_.type_ == "broyden")
+    {
+        mixer_rho = new sirius::Broyden_mixer(density->size(), global_parameters.mixer_input_section_.max_history_, 
+                                              global_parameters.mixer_input_section_.beta_);
+    }
+    else if (global_parameters.mixer_input_section_.type_ == "linear")
+    {
+        mixer_rho = new sirius::Linear_mixer(density->size(), global_parameters.mixer_input_section_.beta_);
+    }
+    else
+    {
+        error_global(__FILE__, __LINE__, "Wrong mixer type");
+    }
+    
+    /* initialize density mixer with starting density */
+    density->pack(mixer_rho);
+    mixer_rho->initialize();
+}
+
+void FORTRAN(sirius_potential_mixer_initialize)(void)
+{
+    if (global_parameters.mixer_input_section_.type_ == "linear")
+    {
+        mixer_pot = new sirius::Linear_mixer(potential->size(), global_parameters.mixer_input_section_.gamma_);
+
+        /* initialize potential mixer */
+        potential->pack(mixer_pot);
+        mixer_pot->initialize();
+    }
+}
+
+void FORTRAN(sirius_mix_density)(double* rms)
+{
+    density->pack(mixer_rho);
+    *rms = mixer_rho->mix();
+    density->unpack(mixer_rho->output_buffer());
+    Platform::bcast(rms, 1, 0);
+}
+
+void FORTRAN(sirius_mix_potential)(void)
+{
+    if (mixer_pot)
+    {
+        potential->pack(mixer_pot);
+        mixer_pot->mix();
+        potential->unpack(mixer_pot->output_buffer());
+    }
 }
     
 

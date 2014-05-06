@@ -196,12 +196,17 @@ class Global
               reciprocal_lattice_(NULL),
               iterative_solver_tolerance_(0.01)
         {
-            gettimeofday(&start_time_, NULL); // measure the start time
-            read_input(); // read initial data from sirius.json
-            unit_cell_ = new Unit_cell(esm_type_); // create new empty unit cell
+            /* get the starting time */
+            gettimeofday(&start_time_, NULL);
+
+            /* read initial data from sirius.json */
+            read_input();
+
+            /* create new empty unit cell */
+            unit_cell_ = new Unit_cell(esm_type_);
 
             #ifdef _SCALAPACK_
-            if (linalg<scalapack>::cyclic_block_size() <= 0) 
+            if (linalg<scalapack>::cyclic_block_size() <= 0) // TODO: get rid of this
                 linalg<scalapack>::set_cyclic_block_size(cyclic_block_size_);
 
             splindex<block_cyclic>::set_cyclic_block_size(linalg<scalapack>::cyclic_block_size());

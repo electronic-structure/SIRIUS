@@ -43,8 +43,8 @@ class Unit_cell
 {
     private:
         
-        /// Mapping between external atom type id and an ordered internal id in the range [0, \f$ N_{types} \f$).
-        std::map<int, int> atom_type_id_map_;
+        /// Mapping between atom type label and an ordered internal id in the range [0, \f$ N_{types} \f$).
+        std::map<std::string, int> atom_type_id_map_;
          
         /// List of atom types.
         std::vector<Atom_type*> atom_types_;
@@ -161,7 +161,7 @@ class Unit_cell
         /// Check if MT spheres overlap
         bool check_mt_overlap(int& ia__, int& ja__);
 
-        int next_atom_type_id(int atom_type_external_id);
+        int next_atom_type_id(const std::string label);
 
     public:
     
@@ -210,23 +210,23 @@ class Unit_cell
          */
         void update();
 
-        /// Clear the unit cell data
+        /// Clear the unit cell data.
         void clear();
        
         /// Add new atom type to the list of atom types and read necessary data from the .json file
-        void add_atom_type(int atom_type_external_id, const std::string label, const std::string file_name, 
+        void add_atom_type(const std::string label, const std::string file_name, 
                            electronic_structure_method_t esm_type);
         
-        /// Add new empty atom type to the list of atom types.
-        void add_atom_type(int atom_type_external_id);
+        //== /// Add new empty atom type to the list of atom types.
+        //== void add_atom_type(const std::string label);
         
         /// Add new atom to the list of atom types.
-        void add_atom(int atom_type_id, double* position, double* vector_field);
+        void add_atom(const std::string label, double* position, double* vector_field);
 
-        /// Add new atom without vector field to the list of atom types
-        void add_atom(int atom_type_id, double* position);
+        /// Add new atom without vector field to the list of atom types.
+        void add_atom(const std::string label, double* position);
         
-        /// Print basic info
+        /// Print basic info.
         void print_info();
 
         unit_cell_parameters_descriptor unit_cell_parameters();
@@ -238,7 +238,7 @@ class Unit_cell
          */
         void get_symmetry();
 
-        /// Write structure to CIF file
+        /// Write structure to CIF file.
         void write_cif();
 
         void write_json();
@@ -328,13 +328,13 @@ class Unit_cell
             return (int)atom_types_.size();
         }
 
-        /// Pointer to atom type by external id
-        inline Atom_type* atom_type_by_external_id(int atom_type_external_id)
+        /// Pointer to atom type by label.
+        inline Atom_type* atom_type(const std::string label)
         {
-            return atom_types_[atom_type_id_map_[atom_type_external_id]];
+            return atom_types_[atom_type_id_map_[label]];
         }
  
-        /// Pointer to atom type by internal id
+        /// Pointer to atom type by internal id.
         inline Atom_type* atom_type(int id)
         {
             return atom_types_[id];

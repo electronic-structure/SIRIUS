@@ -27,7 +27,7 @@ void Atom_symmetry_class::generate_aw_radial_functions()
 
                 int idxrf = atom_type_->indexr().index_by_l_order(l, order);
 
-                // find linearization energies
+                /* find linearization energies */
                 switch (rsd.auto_enu)
                 {
                     case 1:
@@ -44,7 +44,7 @@ void Atom_symmetry_class::generate_aw_radial_functions()
 
                 solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p, hp, dpdr[order]);
 
-                // normalize
+                /* normalize */
                 for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(p[ir], 2);
                 double norm = 1.0 / sqrt(s.interpolate().integrate(0));
 
@@ -55,7 +55,7 @@ void Atom_symmetry_class::generate_aw_radial_functions()
                 }
                 dpdr[order] *= norm;
 
-                // orthogonalize
+                /* orthogonalize */
                 for (int order1 = 0; order1 < order; order1++)
                 {
                     int idxrf1 = atom_type_->indexr().index_by_l_order(l, order1);

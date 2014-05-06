@@ -66,48 +66,7 @@ class Matching_coefficients
         /// Precomputed values for the linear equations for matching coefficients.
         mdarray<double_complex, 4> alm_b_;
         
-        /// Generate first order matching coefficients for a specific \f$ \ell \f$. 
-        /** \param [in] ngk Number of G+k vectors.
-         *  \param [in] offset Offset in the G+k array.
-         *  \param [in] ia Index of atom.
-         *  \param [in] iat Index of atom type.
-         *  \param [in] l Orbital quantum nuber.
-         *  \param [in] lm Composite l,m index.
-         *  \param [inout] A Matrix of radial derivatives.
-         *  \param [out] alm Pointer to alm coefficients.
-         */
-        inline void generate_first_order(int ngk,
-                                         int offset,
-                                         int ia, 
-                                         int iat, 
-                                         int l, 
-                                         int lm, 
-                                         mdarray<double, 2>& A, 
-                                         double_complex* alm)
-        {
-            if (debug_level >= 1 && fabs(A(0, 0)) < 1.0 / sqrt(parameters_.unit_cell()->omega()))
-            {   
-                std::stringstream s;
-                s << "Ill defined plane wave matching problem for atom " << ia << ", l = " << l << std::endl
-                    << "  radial function value at the MT boundary : " << A(0, 0); 
-
-                warning_local(__FILE__, __LINE__, s);
-            }
-                            
-            /* invert matrix of radial derivatives */
-            A(0, 0) = 1.0 / A(0, 0);
-
-            double_complex zt;
-
-            for (int igk = 0; igk < ngk; igk++)
-            {
-                zt = alm_b_(0, offset + igk, l, iat) * A(0, 0);
-                
-                alm[igk] = gkvec_phase_factors_(offset + igk, ia) * conj(gkvec_ylm_(offset + igk, lm)) * zt;
-            }
-        }
-
-        /// Generate second order matching coefficients for a specific \f$ \ell \f$. 
+        /// Generate matching coefficients for a specific \f$ \ell \f$ and order. 
         /** \param [in] ngk Number of G+k vectors.
          *  \param [in] offset Offset in the G+k array.
          *  \param [in] ia Index of atom.
@@ -118,77 +77,86 @@ class Matching_coefficients
          *  \param [inout] A Matrix of radial derivatives.
          *  \param [out] alm Pointer to alm coefficients.
          */
-        inline void generate_second_order(int ngk,
-                                          int offset,
-                                          int ia, 
-                                          int iat, 
-                                          int l, 
-                                          int lm, 
-                                          int nu, 
-                                          mdarray<double, 2>& A, 
-                                          double_complex* alm)
+        template <int N>
+        inline void generate(int ngk,
+                             int offset,
+                             int ia, 
+                             int iat, 
+                             int l, 
+                             int lm, 
+                             int nu, 
+                             matrix3d<double>& A, 
+                             double_complex* alm)
         {
-            double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
-
-            if (debug_level >= 1 && fabs(det) < 1.0 / sqrt(parameters_.unit_cell()->omega()))
-            {   
-                std::stringstream s;
-                s << "Ill defined plane wave matching problem for atom " << ia << ", l = " << l << std::endl
-                    << "  radial function value at the MT boundary : " << A(0 ,0); 
-
-                warning_local(__FILE__, __LINE__, s);
-            }
-
             /* invert matrix of radial derivatives */
-            std::swap(A(0, 0), A(1, 1));
-            A(0, 0) /= det;
-            A(1, 1) /= det;
-            A(0, 1) = -A(0, 1) / det;
-            A(1, 0) = -A(1, 0) / det;
-
-            double_complex zt;
-
-            for (int igk = 0; igk < ngk; igk++)
+            switch (N)
             {
-                zt = alm_b_(0, offset + igk, l, iat) * A(nu, 0) + 
-                     alm_b_(1, offset + igk, l, iat) * A(nu, 1);
-                
-                alm[igk] = gkvec_phase_factors_(offset + igk, ia) * conj(gkvec_ylm_(offset + igk, lm)) * zt;
-            }
-        }
+                case 1:
+                {
+                    if (debug_level >= 1 && fabs(A(0, 0)) < 1.0 / sqrt(parameters_.unit_cell()->omega()))
+                    {   
+                        std::stringstream s;
+                        s << "Ill defined plane wave matching problem for atom " << ia << ", l = " << l << std::endl
+                            << "  radial function value at the MT boundary : " << A(0, 0); 
 
-        /// Generate third order matching coefficients for a specific \f$ \ell \f$. 
-        /** \param [in] ngk Number of G+k vectors.
-         *  \param [in] offset Offset in the G+k array.
-         *  \param [in] ia Index of atom.
-         *  \param [in] iat Index of atom type.
-         *  \param [in] l Orbital quantum nuber.
-         *  \param [in] lm Composite l,m index.
-         *  \param [in] nu Order of radial function \f$ u_{\ell \nu}(r) \f$ for which coefficients are generated.
-         *  \param [inout] A Matrix of radial derivatives.
-         *  \param [out] alm Pointer to alm coefficients.
-         */
-        inline void generate_third_order(int ngk,
-                                         int offset,
-                                         int ia, 
-                                         int iat, 
-                                         int l, 
-                                         int lm, 
-                                         int nu, 
-                                         mdarray<double, 2>& A, 
-                                         double_complex* alm)
-        {
-            /* invert matrix of radial derivatives */
-            linalg<lapack>::invert_ge(&A(0, 0), 3);
+                        warning_local(__FILE__, __LINE__, s);
+                    }
+                                    
+                    A(0, 0) = 1.0 / A(0, 0);
+                    break;
+                }
+                case 2:
+                {
+                    double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
+
+                    if (debug_level >= 1 && fabs(det) < 1.0 / sqrt(parameters_.unit_cell()->omega()))
+                    {   
+                        std::stringstream s;
+                        s << "Ill defined plane wave matching problem for atom " << ia << ", l = " << l << std::endl
+                            << "  radial function value at the MT boundary : " << A(0 ,0); 
+
+                        warning_local(__FILE__, __LINE__, s);
+                    }
+
+                    std::swap(A(0, 0), A(1, 1));
+                    A(0, 0) /= det;
+                    A(1, 1) /= det;
+                    A(0, 1) = -A(0, 1) / det;
+                    A(1, 0) = -A(1, 0) / det;
+                    break;
+                }
+                case 3:
+                {
+                    A = inverse(A);
+                    break;
+                }
+            }
             
             double_complex zt;
 
             for (int igk = 0; igk < ngk; igk++)
             {
-                zt = alm_b_(0, offset + igk, l, iat) * A(nu, 0) + 
-                     alm_b_(1, offset + igk, l, iat) * A(nu, 1) + 
-                     alm_b_(2, offset + igk, l, iat) * A(nu, 2);
-
+                switch (N)
+                {
+                    case 1:
+                    {
+                        zt = alm_b_(0, offset + igk, l, iat) * A(0, 0);
+                        break;
+                    }
+                    case 2:
+                    {
+                        zt = alm_b_(0, offset + igk, l, iat) * A(nu, 0) + 
+                             alm_b_(1, offset + igk, l, iat) * A(nu, 1);
+                        break;
+                    }
+                    case 3:
+                    {
+                        zt = alm_b_(0, offset + igk, l, iat) * A(nu, 0) + 
+                             alm_b_(1, offset + igk, l, iat) * A(nu, 1) + 
+                             alm_b_(2, offset + igk, l, iat) * A(nu, 2);
+                        break;
+                    }
+                }
                 alm[igk] = gkvec_phase_factors_(offset + igk, ia) * conj(gkvec_ylm_(offset + igk, lm)) * zt;
             }
         }
@@ -305,7 +273,7 @@ class Matching_coefficients
                 
             #pragma omp parallel
             {
-                mdarray<double, 2> A(3, 3);
+                matrix3d<double> A;
 
                 #pragma omp for
                 for (int xi = 0; xi < type->mt_aw_basis_size(); xi++)
@@ -328,19 +296,19 @@ class Matching_coefficients
                         /* APW */
                         case 1:
                         {
-                            generate_first_order(num_gkvec_, 0, ia, iat, l, lm, A, &alm(0, xi));
+                            generate<1>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, xi));
                             break;
                         }
                         /* LAPW */
                         case 2:
                         {
-                            generate_second_order(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, xi));
+                            generate<2>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, xi));
                             break;
                         }
                         /* Super LAPW */
                         case 3:
                         {
-                            generate_third_order(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, xi));
+                            generate<3>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, xi));
                             break;
                         }
                         default:
@@ -370,7 +338,7 @@ class Matching_coefficients
 
             #pragma omp parallel
             {
-                mdarray<double, 2> A(3, 3);
+                matrix3d<double> A;
                 std::vector<double_complex> alm_tmp;
                 if (!normal_layout) alm_tmp.resize(num_gkvec_loc);
 
@@ -401,11 +369,11 @@ class Matching_coefficients
                         {
                             if (normal_layout)
                             {
-                                generate_first_order(num_gkvec_, 0, ia, iat, l, lm, A, &alm(0, i));
+                                generate<1>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, i));
                             }
                             else
                             {
-                                generate_first_order(num_gkvec_, 0, ia, iat, l, lm, A, &alm_tmp[0]);
+                                generate<1>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm_tmp[0]);
                             }
                             break;
                         }
@@ -413,11 +381,11 @@ class Matching_coefficients
                         {
                             if (normal_layout)
                             {
-                                generate_second_order(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, i));
+                                generate<2>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, i));
                             }
                             else
                             {
-                                generate_second_order(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm_tmp[0]);
+                                generate<2>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm_tmp[0]);
                             }
                             break;
                         }
@@ -425,11 +393,11 @@ class Matching_coefficients
                         {
                             if (normal_layout)
                             {
-                                generate_third_order(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, i));
+                                generate<3>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm(0, i));
                             }
                             else
                             {
-                                generate_third_order(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm_tmp[0]);
+                                generate<3>(num_gkvec_, 0, ia, iat, l, lm, nu, A, &alm_tmp[0]);
                             }
                             break;
                         }
@@ -455,8 +423,7 @@ class Matching_coefficients
 
             #pragma omp parallel
             {
-                mdarray<double, 2> A(3, 3);
-
+                matrix3d<double> A;
                 std::vector<double_complex> alm_tmp(sspl_gkvec_col.local_size());
 
                 #pragma omp for
@@ -482,17 +449,17 @@ class Matching_coefficients
                     {
                         case 1:
                         {
-                            generate_first_order(sspl_gkvec_col.local_size(), sspl_gkvec_col.global_offset(), ia, iat, l, lm, A, &alm_tmp[0]);
+                            generate<1>(sspl_gkvec_col.local_size(), sspl_gkvec_col.global_offset(), ia, iat, l, lm, nu, A, &alm_tmp[0]);
                             break;
                         }
                         case 2:
                         {
-                            generate_second_order(sspl_gkvec_col.local_size(), sspl_gkvec_col.global_offset(), ia, iat, l, lm, nu, A, &alm_tmp[0]);
+                            generate<2>(sspl_gkvec_col.local_size(), sspl_gkvec_col.global_offset(), ia, iat, l, lm, nu, A, &alm_tmp[0]);
                             break;
                         }
                         case 3:
                         {
-                            generate_third_order(sspl_gkvec_col.local_size(), sspl_gkvec_col.global_offset(), ia, iat, l, lm, nu, A, &alm_tmp[0]);
+                            generate<3>(sspl_gkvec_col.local_size(), sspl_gkvec_col.global_offset(), ia, iat, l, lm, nu, A, &alm_tmp[0]);
                             break;
                         }
                         default:

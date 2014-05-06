@@ -2,37 +2,39 @@
 
 namespace sirius {
 
-int Unit_cell::next_atom_type_id(int atom_type_external_id)
+int Unit_cell::next_atom_type_id(const std::string label)
 {
-    if (atom_type_id_map_.count(atom_type_external_id) != 0) 
+    /* check if the label was already added */
+    if (atom_type_id_map_.count(label) != 0) 
     {   
         std::stringstream s;
-        s << "atom type with external id " << atom_type_external_id << " is already in list";
+        s << "atom type with label " << label << " is already in list";
         error_local(__FILE__, __LINE__, s);
     }
-    atom_type_id_map_[atom_type_external_id] = (int)atom_types_.size(); // internal id
-    return atom_type_id_map_[atom_type_external_id];
+    /* take text id */
+    atom_type_id_map_[label] = (int)atom_types_.size();
+    return atom_type_id_map_[label];
 }
 
-void Unit_cell::add_atom_type(int atom_type_external_id, const std::string label, const std::string file_name, 
+void Unit_cell::add_atom_type(const std::string label, const std::string file_name, 
                               electronic_structure_method_t esm_type)
 {
-    int id = next_atom_type_id(atom_type_external_id);
+    int id = next_atom_type_id(label);
     atom_types_.push_back(new Atom_type(id, label, file_name, esm_type));
 }
 
-void Unit_cell::add_atom_type(int atom_type_external_id)
-{
-    int id = next_atom_type_id(atom_type_external_id);
-    atom_types_.push_back(new Atom_type(id));
-}
+//== void Unit_cell::add_atom_type(const std::string label)
+//== {
+//==     int id = next_atom_type_id(label);
+//==     atom_types_.push_back(new Atom_type(id));
+//== }
 
-void Unit_cell::add_atom(int atom_type_external_id, double* position, double* vector_field)
+void Unit_cell::add_atom(const std::string label, double* position, double* vector_field)
 {
-    if (atom_type_id_map_.count(atom_type_external_id) == 0)
+    if (atom_type_id_map_.count(label) == 0)
     {
         std::stringstream s;
-        s << "atom type with external id " << atom_type_external_id << " is not found";
+        s << "atom type with label " << label << " is not found";
         error_local(__FILE__, __LINE__, s);
     }
     if (atom_id_by_position(position) >= 0)
@@ -44,14 +46,14 @@ void Unit_cell::add_atom(int atom_type_external_id, double* position, double* ve
         error_local(__FILE__, __LINE__, s);
     }
 
-    atoms_.push_back(new Atom(atom_type_by_external_id(atom_type_external_id), position, vector_field));
-    atom_type_by_external_id(atom_type_external_id)->add_atom_id((int)atoms_.size() - 1);
+    atoms_.push_back(new Atom(atom_type(label), position, vector_field));
+    atom_type(label)->add_atom_id((int)atoms_.size() - 1);
 }
 
-void Unit_cell::add_atom(int atom_type_id, double* position)
+void Unit_cell::add_atom(const std::string label, double* position)
 {
     double vector_field[] = {0, 0, 0};
-    add_atom(atom_type_id, position, vector_field);
+    add_atom(label, position, vector_field);
 }
 
 void Unit_cell::get_symmetry()
@@ -233,10 +235,10 @@ std::vector<double> Unit_cell::find_mt_radii()
         int id1 = atom(ia)->type_id();
         if (nearest_neighbours_[ia].size() > 1)
         {
-            // don't allow spheres to touch: take a smaller value than half a distance
+            /* don't allow spheres to touch: take a smaller value than half a distance */
             double R = 0.95 * nearest_neighbours_[ia][1].distance / 2;
 
-            // take minimal R for the given atom type
+            /* take minimal R for the given atom type */
             Rmt[id1] = std::min(R, Rmt[id1]);
         }
         else
