@@ -1,4 +1,4 @@
-// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -110,7 +110,7 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
     jw.single("number", a->zn());
     jw.single("mass", a->mass());
     jw.single("rmin", a->radial_grid(0));
-    jw.single("rmax", a->radial_grid(a->radial_grid().size() - 1));
+    jw.single("rmax", a->radial_grid(a->radial_grid().num_points() - 1));
     jw.single("nrmt", a->num_mt_points());
 
     std::vector<atomic_level_descriptor> core;
@@ -119,15 +119,15 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
     
     printf("Core / valence partitioning\n");
     printf("core cutoff energy : %f\n", core_cutoff_energy);
-    sirius::Spline <double> rho_c(a->radial_grid().size(), a->radial_grid());
-    sirius::Spline <double> rho(a->radial_grid().size(), a->radial_grid());
+    sirius::Spline <double> rho_c(a->radial_grid().num_points(), a->radial_grid());
+    sirius::Spline <double> rho(a->radial_grid().num_points(), a->radial_grid());
     for (int ist = 0; ist < (int)a->num_atomic_levels(); ist++)
     {
         printf("%i%s  occ : %8.4f  energy : %12.6f", a->atomic_level(ist).n, level_symb[a->atomic_level(ist).l].c_str(), 
                                                      a->atomic_level(ist).occupancy, enu[ist]);
         
         // total density
-        for (int ir = 0; ir < a->radial_grid().size(); ir++) 
+        for (int ir = 0; ir < a->radial_grid().num_points(); ir++) 
             rho[ir] += a->atomic_level(ist).occupancy * pow(y00 * a->free_atom_radial_function(ir, ist), 2);
 
         if (enu[ist] < core_cutoff_energy)
@@ -135,7 +135,7 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
             core.push_back(a->atomic_level(ist));
             printf("  => core \n");
 
-            for (int ir = 0; ir < a->radial_grid().size(); ir++) 
+            for (int ir = 0; ir < a->radial_grid().num_points(); ir++) 
                 rho_c[ir] += a->atomic_level(ist).occupancy * pow(y00 * a->free_atom_radial_function(ir, ist), 2);
         }
         else
@@ -144,20 +144,6 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
             printf("  => valence\n");
         }
     }
-
-    std::vector<double> fa_rho(a->radial_grid().size());
-    std::vector<double> fa_v(a->radial_grid().size());
-    std::vector<double> fa_r(a->radial_grid().size());
-
-    for (int i = 0; i < a->radial_grid().size(); i++)
-    {
-        fa_rho[i] = a->free_atom_density(i);
-        fa_v[i] = a->free_atom_potential(i);
-        fa_r[i] = a->radial_grid(i);
-    }
-    jw.single("free_atom_density", fa_rho);
-    jw.single("free_atom_potential", fa_v);
-    jw.single("free_atom_radial_grid", fa_r);
 
     //** FILE* fout = fopen("rho.dat", "w");
     //** for (int ir = 0; ir < a->radial_grid().size(); ir++) 
@@ -169,7 +155,7 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
 
     // estimate effective infinity
     double rinf = 0.0;
-    for (int ir = 0; ir < a->radial_grid().size(); ir++)
+    for (int ir = 0; ir < a->radial_grid().num_points(); ir++)
     {
         rinf = a->radial_grid(ir);
         if (rinf > 5.0 && (rho[ir] * rinf * rinf) < 1e-7) break;
@@ -183,10 +169,10 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
     double core_radius = 2.0;
     if (ncore != 0)
     {
-        for (int ir = a->radial_grid().size() - 1; ir >= 0; ir--)
+        for (int ir = a->radial_grid().num_points() - 1; ir >= 0; ir--)
         {
             //if (fourpi * fabs(g[ir] - g[a->radial_grid().size() - 1]) > 1e-5) 
-            if (fabs(g[ir] - g[a->radial_grid().size() - 1]) / fabs(g[a->radial_grid().size() - 1]) > 1e-5) 
+            if (fabs(g[ir] - g[a->radial_grid().num_points() - 1]) / fabs(g[a->radial_grid().num_points() - 1]) > 1e-5) 
             {
                 core_radius = a->radial_grid(ir);
                 break;
@@ -242,11 +228,11 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
         jw.single("n", n);
         if (apw_order == 1)
         {
-            jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]");
+            jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 2}]");
         }
         if (apw_order == 2)
         {
-            jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}]");
+            jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 2}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 2}]");
         }
         jw.end_set();
     }
@@ -256,8 +242,8 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
     {
         jw.begin_set();
         std::stringstream s;
-        s << "[{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}," 
-          << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}]";
+        s << "[{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 2}," 
+          << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : 2}]";
         jw.single("l", valence[i].l);
         jw.string("basis", s.str());
         jw.end_set();
@@ -307,6 +293,23 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
         }
     }
     jw.end_array();
+
+    std::vector<double> fa_rho(a->radial_grid().num_points());
+    std::vector<double> fa_v(a->radial_grid().num_points());
+    std::vector<double> fa_r(a->radial_grid().num_points());
+
+    for (int i = 0; i < a->radial_grid().num_points(); i++)
+    {
+        fa_rho[i] = a->free_atom_density(i);
+        fa_v[i] = a->free_atom_potential(i);
+        fa_r[i] = a->radial_grid(i);
+    }
+
+    jw.begin_set("free_atom");
+    jw.single("density", fa_rho);
+    jw.single("potential", fa_v);
+    jw.single("radial_grid", fa_r);
+    jw.end_set();
 }
 
 int main(int argn, char **argv)
