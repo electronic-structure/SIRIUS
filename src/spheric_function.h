@@ -175,17 +175,17 @@ class Spheric_function
 
         void add(Spheric_function<T>& f)
         {
-            for (int64_t i1 = 0; i1 < (int64_t)data_.size(1); i1++)
+            for (size_t i1 = 0; i1 < data_.size(1); i1++)
             {
-                for (int64_t i0 = 0; i0 < (int64_t)data_.size(0); i0++) data_(i0, i1) += f(i0, i1);
+                for (size_t i0 = 0; i0 < data_.size(0); i0++) data_(i0, i1) += f(i0, i1);
             }
         }
         
         void copy(Spheric_function<T>& f)
         {
-            for (int64_t i1 = 0; i1 < (int64_t)data_.size(1); i1++)
+            for (size_t i1 = 0; i1 < data_.size(1); i1++)
             {
-                for (int64_t i0 = 0; i0 < (int64_t)data_.size(0); i0++) data_(i0, i1) = f(i0, i1);
+                for (size_t i0 = 0; i0 < data_.size(0); i0++) data_(i0, i1) = f(i0, i1);
             }
         }
 };

@@ -57,10 +57,15 @@ class XC_functional
             return handler_.info->family;
         }
 
-        //bool need_density_gradient()
-        //{
+        bool lda()
+        {
+            return family() == XC_FAMILY_LDA;
+        }
 
-        //}
+        bool gga()
+        {
+            return family() == XC_FAMILY_GGA;
+        }
         
         /// Add LDA contribution.
         void add(int size, const double* rho, double* v, double* e)
