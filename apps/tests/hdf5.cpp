@@ -17,12 +17,12 @@ void test1()
     std::cout << "hash  = " << dat.hash() << std::endl;
     
     f.create_node("aaa");
-    f["aaa"].write_mdarray("dat_name", dat);
+    f["aaa"].write("dat_name", dat);
     dat.zero();
     f["aaa"].read_mdarray("dat_name", dat);
     std::cout << "hash  = " << dat.hash() << std::endl;
     
-    f.write_mdarray("dat_name", dat);
+    f.write("dat_name", dat);
     
 }
 

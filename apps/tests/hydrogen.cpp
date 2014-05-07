@@ -55,13 +55,13 @@ int main(int argn, char **argv)
         Radial_grid radial_grid(linear_exponential_grid, 20000,  1e-7 / z, 200.0, 200.0 + z * 3.0);
         radial_grid.print_info();
 
-        std::vector<double> v(radial_grid.size());
-        std::vector<double> p(radial_grid.size());
+        std::vector<double> v(radial_grid.num_points());
+        std::vector<double> p(radial_grid.num_points());
 
         Radial_solver solver(false, -double(z), radial_grid);
         solver.set_tolerance(1e-13 * (k + 1));
 
-        for (int i = 0; i < radial_grid.size(); i++) v[i] = -z / radial_grid[i];
+        for (int i = 0; i < radial_grid.num_points(); i++) v[i] = -z / radial_grid[i];
         
         double enu = -0.1;
 

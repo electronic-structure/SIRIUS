@@ -43,7 +43,7 @@ void test2(radial_grid_t grid_type, double x0, double x1)
 
     std::string fname = "grid_" + r.grid_type_name() + ".txt";
     FILE* fout = fopen(fname.c_str(), "w");
-    for (int i = 0; i < r.size(); i++) fprintf(fout,"%i %16.12e\n", i, r[i]);
+    for (int i = 0; i < r.num_points(); i++) fprintf(fout,"%i %16.12e\n", i, r[i]);
     fclose(fout);
     
     printf("x = %f, exp(x) = %f, exp(x) = %f, exp'(x)= %f, exp''(x) = %f\n", x0, s[0], s.deriv(0, 0), s.deriv(1, 0), s.deriv(2, 0));
