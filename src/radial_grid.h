@@ -51,9 +51,6 @@ class Radial_grid
         /// Name of the grid type.
         std::string grid_type_name_;
         
-        // Forbid copy constructor.
-        //Radial_grid(const Radial_grid& src);
-        
         /// Create array of radial grid points.
         std::vector<double> create_radial_grid_points(radial_grid_t grid_type, int num_points, double rmin, double rmax);
 
@@ -106,12 +103,6 @@ class Radial_grid
             return x_inv_[i];
         }
        
-        /// Number of grid points.
-        inline int num_mt_points() // TODO: remove this later.
-        {
-            return (int)x_.size();
-        }
-        
         /// Number of grid points.
         inline int num_points()
         {

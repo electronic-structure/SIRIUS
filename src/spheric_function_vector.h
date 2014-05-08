@@ -15,7 +15,7 @@ class Spheric_function_vector
         {
             vec_.resize(nd);
             for (int i = 0; i < nd; i++) 
-                vec_[i] = new Spheric_function<T>(&ptr[i * sht.num_points() * radial_grid.num_mt_points()], sht, radial_grid);
+                vec_[i] = new Spheric_function<T>(&ptr[i * sht.num_points() * radial_grid.num_points()], sht, radial_grid);
         }
         ~Spheric_function_vector()
         {

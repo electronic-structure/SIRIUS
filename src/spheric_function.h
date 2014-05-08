@@ -36,7 +36,7 @@ class Spheric_function
               sht_(NULL), 
               angular_domain_size_(angular_domain_size__), 
               angular_domain_idx_(1),
-              radial_domain_size_(radial_grid__.num_mt_points()), 
+              radial_domain_size_(radial_grid__.num_points()), 
               radial_domain_idx_(0)
         {
             data_.set_dimensions(radial_domain_size_, angular_domain_size_);
@@ -48,7 +48,7 @@ class Spheric_function
               sht_(NULL), 
               angular_domain_size_(angular_domain_size__), 
               angular_domain_idx_(0),
-              radial_domain_size_(radial_grid__.num_mt_points()), 
+              radial_domain_size_(radial_grid__.num_points()), 
               radial_domain_idx_(1)
         {
             data_.set_dimensions(angular_domain_size_, radial_domain_size_);
@@ -60,7 +60,7 @@ class Spheric_function
               sht_(NULL), 
               angular_domain_size_(angular_domain_size__), 
               angular_domain_idx_(0),
-              radial_domain_size_(radial_grid__.num_mt_points()), 
+              radial_domain_size_(radial_grid__.num_points()), 
               radial_domain_idx_(1)
         {
             data_.set_dimensions(angular_domain_size_, radial_domain_size_);
@@ -72,7 +72,7 @@ class Spheric_function
               sht_(&sht__), 
               angular_domain_size_(sht__.num_points()), 
               angular_domain_idx_(0),
-              radial_domain_size_(radial_grid__.num_mt_points()), 
+              radial_domain_size_(radial_grid__.num_points()), 
               radial_domain_idx_(1)
         {
             data_.set_dimensions(angular_domain_size_, radial_domain_size_);
@@ -84,7 +84,7 @@ class Spheric_function
               sht_(&sht__), 
               angular_domain_size_(sht__.num_points()), 
               angular_domain_idx_(0),
-              radial_domain_size_(radial_grid__.num_mt_points()), 
+              radial_domain_size_(radial_grid__.num_points()), 
               radial_domain_idx_(1)
         {
             data_.set_dimensions(angular_domain_size_, radial_domain_size_);
