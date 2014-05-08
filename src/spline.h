@@ -39,22 +39,19 @@ class Spline
 {
     private:
         
-        /// number of interpolating points
-        int num_points_; // TODO: remove
-    
-        /// radial grid
+        /// Radial grid.
         Radial_grid radial_grid_;
         
-        /// spline "a" coefficients
+        /// Spline "a" coefficients.
         std::vector<T> a;
         
-        /// spline "b" coefficients
+        /// Spline "b" coefficients.
         std::vector<T> b;
         
-        /// spline "c" coefficients
+        /// Spline "c" coefficients.
         std::vector<T> c;
         
-        /// spline "d" coefficients
+        /// Spline "d" coefficients.
         std::vector<T> d;
 
         // TODO: maybe add x-coordinate as an oprator. we know the radial grid and we can return x here
@@ -64,53 +61,29 @@ class Spline
         template <typename U> 
         friend class Spline;
 
-        /// Constructor of an empty object.
+        /// Constructor of an empty spline.
         Spline()
         {
         }
         
-        // TODO: will be depricated
-        Spline(int num_points__, Radial_grid radial_grid__) 
-            : num_points_(num_points__), 
-              radial_grid_(radial_grid__)
+        /// Constructor of a zero valued spline.
+        Spline(Radial_grid radial_grid__) : radial_grid_(radial_grid__)
         {
-            a = std::vector<T>(num_points_);
-            b = std::vector<T>(num_points_ - 1);
-            c = std::vector<T>(num_points_ - 1);
-            d = std::vector<T>(num_points_ - 1);
+            int np = num_points();
 
-            memset(&a[0], 0, num_points_ * sizeof(T));
-            memset(&b[0], 0, (num_points_ - 1) * sizeof(T));
-            memset(&c[0], 0, (num_points_ - 1) * sizeof(T));
-            memset(&d[0], 0, (num_points_ - 1) * sizeof(T));
-        }
+            a = std::vector<T>(np);
+            b = std::vector<T>(np - 1);
+            c = std::vector<T>(np - 1);
+            d = std::vector<T>(np - 1);
 
-        Spline(Radial_grid radial_grid__) 
-            : num_points_(radial_grid__.num_points()), 
-              radial_grid_(radial_grid__)
-        {
-            a = std::vector<T>(num_points_);
-            b = std::vector<T>(num_points_ - 1);
-            c = std::vector<T>(num_points_ - 1);
-            d = std::vector<T>(num_points_ - 1);
-
-            memset(&a[0], 0, num_points_ * sizeof(T));
-            memset(&b[0], 0, (num_points_ - 1) * sizeof(T));
-            memset(&c[0], 0, (num_points_ - 1) * sizeof(T));
-            memset(&d[0], 0, (num_points_ - 1) * sizeof(T));
+            memset(&a[0], 0, np * sizeof(T));
+            memset(&b[0], 0, (np - 1) * sizeof(T));
+            memset(&c[0], 0, (np - 1) * sizeof(T));
+            memset(&d[0], 0, (np - 1) * sizeof(T));
         }
         
-        // TODO: will be depricated
-        Spline(int num_points__, Radial_grid& radial_grid__, std::vector<T>& y) 
-            : num_points_(num_points__), 
-              radial_grid_(radial_grid__)
-        {
-            interpolate(y);
-        }
-
-        Spline(Radial_grid& radial_grid__, std::vector<T>& y) 
-            : num_points_(radial_grid__.num_points()), 
-              radial_grid_(radial_grid__)
+        /// Constructor of a spline.
+        Spline(Radial_grid& radial_grid__, std::vector<T>& y) : radial_grid_(radial_grid__)
         {
             interpolate(y);
         }
@@ -124,13 +97,13 @@ class Spline
         
         T integrate(int m = 0)
         {
-            std::vector<T> g(num_points_);
+            std::vector<T> g(num_points());
             return integrate(g, m);
         }
         
         T integrate(int n, int m)
         {
-            std::vector<T> g(num_points_);
+            std::vector<T> g(num_points());
             integrate(g, m);
             return g[n];
         }
@@ -142,12 +115,11 @@ class Spline
         
         inline int num_points()
         {
-            return num_points_;
+            return radial_grid_.num_points();
         }
 
         inline Spline<T>& operator=(std::vector<T>& y)
         {
-           // assert(radial_grid_.num_points() == y.size());
             a = y;
             return *this;
         }
@@ -155,11 +127,13 @@ class Spline
         // TODO: check spline iterpolation between different grids. Can it be done analytically?
         inline T operator()(double x)
         {
+            int np = num_points();
+
             assert(x >= radial_grid_[0]);
-            assert(x <= radial_grid_[num_points_ - 1]);
+            assert(x <= radial_grid_[np - 1]);
             
-            int j = num_points_ - 1;
-            for (int i = 0; i < num_points_ - 1; i++)
+            int j = np - 1;
+            for (int i = 0; i < np - 1; i++)
             {
                 if (x < radial_grid_[i + 1])
                 {
@@ -167,9 +141,9 @@ class Spline
                     break;
                 }
             }
-            if (j == num_points_ - 1) 
+            if (j == np - 1) 
             {
-                return a[num_points_ - 1];
+                return a[np - 1];
             }
             else
             {
@@ -228,7 +202,7 @@ class Spline
 
         inline T deriv(const int dm, const int i)
         {
-            if (i == num_points_ - 1) 
+            if (i == num_points() - 1) 
             {
                 return deriv(dm, i - 1, radial_grid_.dx(i - 1));
             }
@@ -254,13 +228,13 @@ class Spline
 
         uint64_t hash()
         {
-            mdarray<T, 1> v(4 * num_points_ - 3);
+            mdarray<T, 1> v(4 * num_points() - 3);
             int n = 0;
-            for (int i = 0; i < num_points_; i++)
+            for (int i = 0; i < num_points(); i++)
             {
                 v(n++) = a[i];
             }
-            for (int i = 0; i < num_points_ - 1; i++)
+            for (int i = 0; i < num_points() - 1; i++)
             {
                 v(n++) = b[i];
                 v(n++) = c[i];

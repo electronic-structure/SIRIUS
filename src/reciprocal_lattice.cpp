@@ -284,7 +284,7 @@ void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4
             for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
             {
                 auto atom_type = unit_cell_->atom_type(iat);
-                Spline<double> s(atom_type->num_mt_points(), atom_type->radial_grid());
+                Spline<double> s(atom_type->radial_grid());
 
                 for (int l3 = 0; l3 <= 2 * atom_type->indexr().lmax(); l3++)
                 {

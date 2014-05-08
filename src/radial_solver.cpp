@@ -2,6 +2,8 @@
 
 namespace sirius {
 
+// TODO: clean this API
+
 int Radial_solver::integrate(int nr, int l, double enu, sirius::Spline<double>& ve, sirius::Spline<double>& mp, 
                              std::vector<double>& p, std::vector<double>& dpdr, std::vector<double>& q, 
                              std::vector<double>& dqdr)
@@ -198,9 +200,9 @@ int Radial_solver::solve_in_mt(int l, double enu, int m, std::vector<double>& v,
     std::vector<double> ve(radial_grid_.num_mt_points());
     for (int i = 0; i < radial_grid_.num_mt_points(); i++) ve[i] = v[i] - zn_ / radial_grid_[i];
     
-    sirius::Spline<double> ve_spline(radial_grid_.num_mt_points(), radial_grid_, ve);
+    sirius::Spline<double> ve_spline(radial_grid_, ve);
 
-    sirius::Spline<double> mp_spline(radial_grid_.num_mt_points(), radial_grid_);
+    sirius::Spline<double> mp_spline(radial_grid_);
 
     std::vector<double> q;
     std::vector<double> dpdr;
@@ -238,9 +240,9 @@ int Radial_solver::solve_in_mt(int l, double enu, int m, std::vector<double>& v,
     std::vector<double> ve(radial_grid_.num_mt_points());
     for (int i = 0; i < radial_grid_.num_mt_points(); i++) ve[i] = v[i] - zn_ / radial_grid_[i];
     
-    sirius::Spline<double> ve_spline(radial_grid_.num_mt_points(), radial_grid_, ve);
+    sirius::Spline<double> ve_spline(radial_grid_, ve);
 
-    sirius::Spline<double> mp_spline(radial_grid_.num_mt_points(), radial_grid_);
+    sirius::Spline<double> mp_spline(radial_grid_);
 
     int nn = 0;
     
@@ -266,8 +268,8 @@ void Radial_solver::bound_state(int n, int l, std::vector<double>& v, double& en
     std::vector<double> ve(np);
     for (int i = 0; i < np; i++) ve[i] = v[i] - zn_ / radial_grid_[i];
     
-    sirius::Spline<double> ve_spline(np, radial_grid_, ve);
-    sirius::Spline<double> mp_spline(np, radial_grid_);
+    sirius::Spline<double> ve_spline(radial_grid_, ve);
+    sirius::Spline<double> mp_spline(radial_grid_);
     
     std::vector<double> q(np);
     std::vector<double> dpdr(np);
@@ -326,7 +328,7 @@ void Radial_solver::bound_state(int n, int l, std::vector<double>& v, double& en
     std::vector<double> rho(np);
     for (int i = 0; i < np; i++) rho[i] = p[i] * p[i];
 
-    double norm = sirius::Spline<double>(np, radial_grid_, rho).integrate();
+    double norm = sirius::Spline<double>(radial_grid_, rho).integrate();
     
     for (int i = 0; i < np; i++) p[i] /= sqrt(norm);
 

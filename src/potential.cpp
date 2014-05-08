@@ -180,7 +180,7 @@ void Potential::poisson_vmt(mdarray<Spheric_function<double_complex>*, 1>& rho_y
             std::vector<double_complex> g1;
             std::vector<double_complex> g2;
 
-            Spline<double_complex> rholm(nmtp, parameters_.unit_cell()->atom(ia)->type()->radial_grid());
+            Spline<double_complex> rholm(parameters_.unit_cell()->atom(ia)->type()->radial_grid());
 
             #pragma omp for
             for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
@@ -352,8 +352,7 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
     {
         for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
         {
-            svlm(lm, ia) = new Spline<double>(parameters_.unit_cell()->atom(ia)->num_mt_points(), 
-                                              parameters_.unit_cell()->atom(ia)->type()->radial_grid());
+            svlm(lm, ia) = new Spline<double>(parameters_.unit_cell()->atom(ia)->type()->radial_grid());
             
             for (int ir = 0; ir < parameters_.unit_cell()->atom(ia)->num_mt_points(); ir++)
                 (*svlm(lm, ia))[ir] = effective_potential_->f_mt<global>(lm, ir, ia);
@@ -1425,7 +1424,7 @@ void Potential::generate_local_potential()
         auto atom_type = uc->atom_type(iat);
         #pragma omp parallel
         {
-            Spline<double> s(atom_type->num_mt_points(), atom_type->radial_grid());
+            Spline<double> s(atom_type->radial_grid());
             #pragma omp for
             for (int igs = 0; igs < rl->num_gvec_shells_inner(); igs++)
             {

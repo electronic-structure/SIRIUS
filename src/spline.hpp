@@ -25,41 +25,43 @@
 template <typename T> 
 Spline<T>& Spline<T>::interpolate()
 {
-    std::vector<T> diag_main(num_points_);
-    std::vector<T> diag_lower(num_points_ - 1);
-    std::vector<T> diag_upper(num_points_ - 1);
-    std::vector<T> m(num_points_);
-    std::vector<T> dy(num_points_ - 1);
+    int np = num_points();
+
+    std::vector<T> diag_main(np);
+    std::vector<T> diag_lower(np - 1);
+    std::vector<T> diag_upper(np - 1);
+    std::vector<T> m(np);
+    std::vector<T> dy(np - 1);
     
     /* derivative of y */
-    for (int i = 0; i < num_points_ - 1; i++) dy[i] = (a[i + 1] - a[i]) / radial_grid_.dx(i);
+    for (int i = 0; i < np - 1; i++) dy[i] = (a[i + 1] - a[i]) / radial_grid_.dx(i);
     
     /* setup "B" vector of AX=B equation */
-    for (int i = 0; i < num_points_ - 2; i++) m[i + 1] = (dy[i + 1] - dy[i]) * 6.0;
+    for (int i = 0; i < np - 2; i++) m[i + 1] = (dy[i + 1] - dy[i]) * 6.0;
     
     m[0] = -m[1];
-    m[num_points_ - 1] = -m[num_points_ - 2];
+    m[np - 1] = -m[np - 2];
     
     /* main diagonal of "A" matrix */
-    for (int i = 0; i < num_points_ - 2; i++) diag_main[i + 1] = 2 * (radial_grid_.dx(i) + radial_grid_.dx(i + 1));
+    for (int i = 0; i < np - 2; i++) diag_main[i + 1] = 2 * (radial_grid_.dx(i) + radial_grid_.dx(i + 1));
     double h0 = radial_grid_.dx(0);
     double h1 = radial_grid_.dx(1);
-    double h2 = radial_grid_.dx(num_points_ - 2);
-    double h3 = radial_grid_.dx(num_points_ - 3);
+    double h2 = radial_grid_.dx(np - 2);
+    double h3 = radial_grid_.dx(np - 3);
     diag_main[0] = (h1 / h0) * h1 - h0;
-    diag_main[num_points_ - 1] = (h3 / h2) * h3 - h2;
+    diag_main[np - 1] = (h3 / h2) * h3 - h2;
     
     /* subdiagonals of "A" matrix */
-    for (int i = 0; i < num_points_ - 1; i++)
+    for (int i = 0; i < np - 1; i++)
     {
         diag_upper[i] = radial_grid_.dx(i);
         diag_lower[i] = radial_grid_.dx(i);
     }
     diag_upper[0] = -(h1 * (1 + h1 / h0) + diag_main[1]);
-    diag_lower[num_points_ - 2] = -(h3 * (1 + h3 / h2) + diag_main[num_points_ - 2]); 
+    diag_lower[np - 2] = -(h3 * (1 + h3 / h2) + diag_main[np - 2]); 
 
     /* solve tridiagonal system */
-    int info = linalg<lapack>::gtsv(num_points_, 1, &diag_lower[0], &diag_main[0], &diag_upper[0], &m[0], num_points_);
+    int info = linalg<lapack>::gtsv(np, 1, &diag_lower[0], &diag_main[0], &diag_upper[0], &m[0], np);
 
     if (info)
     {
@@ -68,11 +70,11 @@ Spline<T>& Spline<T>::interpolate()
         error_local(__FILE__, __LINE__, s);
     }
     
-    b.resize(num_points_ - 1);
-    c.resize(num_points_ - 1);
-    d.resize(num_points_ - 1);
+    b.resize(np - 1);
+    c.resize(np - 1);
+    d.resize(np - 1);
 
-    for (int i = 0; i < num_points_ - 1; i++)
+    for (int i = 0; i < np - 1; i++)
     {
         c[i] = m[i] / 2.0;
         T t = (m[i + 1] - m[i]) / 6.0;
@@ -162,7 +164,7 @@ template <typename T>
 template <typename U>
 T Spline<T>::integrate(Spline<T>* f, Spline<U>* g, int m)
 {
-    if (f->num_points_ != g->num_points_) error_local(__FILE__, __LINE__, "number of points doesn't match");
+    if (f->num_points() != g->num_points()) error_local(__FILE__, __LINE__, "number of points doesn't match");
 
     return Spline<T>::integrate(f, g, m, f->num_points()); 
 }
@@ -170,7 +172,7 @@ T Spline<T>::integrate(Spline<T>* f, Spline<U>* g, int m)
 template <typename T>
 T Spline<T>::integrate(std::vector<T>& g, int m)
 {
-    g = std::vector<T>(num_points_);
+    g = std::vector<T>(num_points());
 
     g[0] = 0.0;
 
@@ -179,7 +181,7 @@ T Spline<T>::integrate(std::vector<T>& g, int m)
         case 0:
         {
             double t = 1.0 / 3.0;
-            for (int i = 0; i < num_points_ - 1; i++)
+            for (int i = 0; i < num_points() - 1; i++)
             {
                 double dx = radial_grid_.dx(i);
                 g[i + 1] = g[i] + (((d[i] * dx * 0.25 + c[i] * t) * dx + b[i] * 0.5) * dx + a[i]) * dx;
@@ -188,7 +190,7 @@ T Spline<T>::integrate(std::vector<T>& g, int m)
         }
         case 2:
         {
-            for (int i = 0; i < num_points_ - 1; i++)
+            for (int i = 0; i < num_points() - 1; i++)
             {
                 double x0 = radial_grid_[i];
                 double x1 = radial_grid_[i + 1];
@@ -211,7 +213,7 @@ T Spline<T>::integrate(std::vector<T>& g, int m)
         }
         case -1:
         {
-            for (int i = 0; i < num_points_ - 1; i++)
+            for (int i = 0; i < num_points() - 1; i++)
             {
                 double x0 = radial_grid_[i];
                 double x1 = radial_grid_[i + 1];
@@ -231,7 +233,7 @@ T Spline<T>::integrate(std::vector<T>& g, int m)
         }
         case -2:
         {
-            for (int i = 0; i < num_points_ - 1; i++)
+            for (int i = 0; i < num_points() - 1; i++)
             {
                 double x0 = radial_grid_[i];
                 double x1 = radial_grid_[i + 1];
@@ -252,7 +254,7 @@ T Spline<T>::integrate(std::vector<T>& g, int m)
         }
         case -3:
         {
-            for (int i = 0; i < num_points_ - 1; i++)
+            for (int i = 0; i < num_points() - 1; i++)
             {
                 double x0 = radial_grid_[i];
                 double x1 = radial_grid_[i + 1];
@@ -273,7 +275,7 @@ T Spline<T>::integrate(std::vector<T>& g, int m)
         }
         case -4:
         {
-            for (int i = 0; i < num_points_ - 1; i++)
+            for (int i = 0; i < num_points() - 1; i++)
             {
                 double x0 = radial_grid_[i];
                 double x1 = radial_grid_[i + 1];
@@ -295,7 +297,7 @@ T Spline<T>::integrate(std::vector<T>& g, int m)
         }
         default:
         {
-            for (int i = 0; i < num_points_ - 1; i++)
+            for (int i = 0; i < num_points() - 1; i++)
             {
                 double x0 = radial_grid_[i];
                 double x1 = radial_grid_[i + 1];
@@ -319,19 +321,19 @@ T Spline<T>::integrate(std::vector<T>& g, int m)
         }
     }
     
-    return g[num_points_ - 1];
+    return g[num_points() - 1];
 }
 
 template <typename T>
 void Spline<T>::get_coefs(T* array, int lda)
 {
-    for (int i = 0; i < num_points_ - 1; i++)
+    for (int i = 0; i < num_points() - 1; i++)
     {
         array[0 * lda + i] = a[i];
         array[1 * lda + i] = b[i];
         array[2 * lda + i] = c[i];
         array[3 * lda + i] = d[i];
     }
-    array[num_points_ - 1] = a[num_points_ - 1];
+    array[num_points() - 1] = a[num_points() - 1];
 }
 

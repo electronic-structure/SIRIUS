@@ -97,7 +97,10 @@ void Atom_type::init(int lmax, int offset_lo__)
     
     if (esm_type_ == full_potential_lapwlo)
     {
-        // initialize aw descriptors if they were not set manually
+        /* initialize free atom density and potential */
+        init_free_atom(false);
+
+        /* initialize aw descriptors if they were not set manually */
         if (aw_descriptors_.size() == 0) init_aw_descriptors(lmax);
 
         if ((int)aw_descriptors_.size() != (lmax + 1)) error_local(__FILE__, __LINE__, "wrong size of augmented wave descriptors");
@@ -108,13 +111,13 @@ void Atom_type::init(int lmax, int offset_lo__)
         if (max_aw_order_ > 3) error_local(__FILE__, __LINE__, "maximum aw order > 3");
     }
     
-    // initialize index of radial functions
+    /* initialize index of radial functions */
     indexr_.init(aw_descriptors_, lo_descriptors_);
 
-    // initialize index of muffin-tin basis functions
+    /* initialize index of muffin-tin basis functions */
     indexb_.init(indexr_);
     
-    // allocate Q matrix
+    /* allocate Q matrix */
     if (esm_type_ == ultrasoft_pseudopotential)
     {
         if (mt_basis_size() != mt_lo_basis_size()) error_local(__FILE__, __LINE__, "wrong basis size");
@@ -123,7 +126,7 @@ void Atom_type::init(int lmax, int offset_lo__)
         uspp_.q_mtrx.allocate();
     }
    
-    // get the number of core electrons
+    /* get the number of core electrons */
     num_core_electrons_ = 0;
     if (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo)
     {
@@ -133,7 +136,7 @@ void Atom_type::init(int lmax, int offset_lo__)
         }
     }
 
-    // get number of valence electrons
+    /* get number of valence electrons */
     num_valence_electrons_ = zn_ - num_core_electrons_;
     
     initialized_ = true;
@@ -266,15 +269,7 @@ void Atom_type::init_free_atom(bool smooth)
     if (smooth)
     {
         /* find point on the grid close to the muffin-tin radius */
-        int irmt = -1;
-        for (int i = 0; i < free_atom_radial_grid_.num_points(); i++)
-        {
-            if (free_atom_radial_grid_[i] > mt_radius_) 
-            {
-                irmt = i;
-                break;
-            }
-        }
+        int irmt = idx_rmt_free_atom();
     
         mdarray<double, 1> b(2);
         mdarray<double, 2> A(2, 2);

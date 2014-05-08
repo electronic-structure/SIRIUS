@@ -27,8 +27,7 @@ template <typename T> class sbessel_pw
             {
                 for (int l = 0; l <= lmax_; l++)
                 {
-                    sjl_(l, iat) = new Spline<T>(unit_cell_->atom_type(iat)->num_mt_points(),
-                                                 unit_cell_->atom_type(iat)->radial_grid());
+                    sjl_(l, iat) = new Spline<T>(unit_cell_->atom_type(iat)->radial_grid());
                 }
             }
         }

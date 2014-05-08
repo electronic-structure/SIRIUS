@@ -329,7 +329,7 @@ void Density::initial_density()
                 double len = v.length();
 
                 int nmtp = uc->atom(ia)->type()->num_mt_points();
-                Spline<double> rho(nmtp, uc->atom(ia)->type()->radial_grid());
+                Spline<double> rho(uc->atom(ia)->type()->radial_grid());
                 double R = uc->atom(ia)->type()->mt_radius();
                 for (int ir = 0; ir < nmtp; ir++)
                 {
@@ -379,8 +379,8 @@ void Density::initial_density()
             for (int iat = 0; iat < uc->num_atom_types(); iat++)
             {
                 auto atom_type = uc->atom_type(iat);
-                Spline<double> s(atom_type->num_mt_points(), atom_type->radial_grid()); // not very efficient to create splines 
-                                                                                        // for each G-shell, but we do this only once
+                Spline<double> s(atom_type->radial_grid()); // not very efficient to create splines 
+                                                            // for each G-shell, but we do this only once
                 for (int ir = 0; ir < s.num_points(); ir++) 
                     s[ir] = jl(ir, 0, iat) * atom_type->uspp().total_charge_density[ir];
                 rho_radial_integrals(iat, igs) = s.interpolate().integrate(0) / fourpi; // atomic density from UPF file is multiplied by 4*PI
@@ -1546,8 +1546,8 @@ void Density::generate_pseudo_core_charge_density()
         for (int iat = 0; iat < uc->num_atom_types(); iat++)
         {
             auto atom_type = uc->atom_type(iat);
-            Spline<double> s(atom_type->num_mt_points(), atom_type->radial_grid()); // not very efficient to create splines 
-                                                                                    // for each G-shell, but we do this only once
+            Spline<double> s(atom_type->radial_grid()); // not very efficient to create splines 
+                                                        // for each G-shell, but we do this only once
             for (int ir = 0; ir < s.num_points(); ir++) s[ir] = jl(ir, 0, iat) * atom_type->uspp().core_charge_density[ir];
             rho_core_radial_integrals(iat, igs) = s.interpolate().integrate(2);
         }

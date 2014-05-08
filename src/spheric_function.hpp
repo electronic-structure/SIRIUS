@@ -131,7 +131,7 @@ T inner(Spheric_function<T>& f1, Spheric_function<T>& f2)
     {
         error_local(__FILE__, __LINE__, "wrong radial arguments");
     }
-    Spline<T> s(f1.radial_domain_size(), f1.radial_grid());
+    Spline<T> s(f1.radial_grid());
 
     if (f1.radial_domain_idx() == 0)
     {

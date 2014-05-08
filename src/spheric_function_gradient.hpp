@@ -5,7 +5,7 @@ void Spheric_function_gradient<T>::gradient(Spheric_function<double_complex>& f)
 
     int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
 
-    Spline<double_complex> s(f.radial_domain_size(), f.radial_grid());
+    Spline<double_complex> s(f.radial_grid());
 
     for (int l = 0; l <= lmax; l++)
     {

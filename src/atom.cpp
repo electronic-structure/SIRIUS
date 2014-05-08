@@ -74,8 +74,8 @@ void Atom::generate_radial_integrals(MPI_Comm& comm)
     h_radial_integrals_.zero();
     if (num_mag_dims_) b_radial_integrals_.zero();
 
-    // interpolate radial functions
-    std::vector< Spline<double> > rf_spline(type()->indexr().size(), Spline<double>(nmtp, type()->radial_grid()));
+    /* interpolate radial functions */
+    std::vector< Spline<double> > rf_spline(type()->indexr().size(), Spline<double>(type()->radial_grid()));
     for (int i = 0; i < type()->indexr().size(); i++)
     {
         for (int ir = 0; ir < nmtp; ir++) rf_spline[i][ir] = symmetry_class()->radial_function(ir, i);
@@ -84,7 +84,7 @@ void Atom::generate_radial_integrals(MPI_Comm& comm)
     
     #pragma omp parallel default(shared)
     {
-        std::vector< Spline<double> > vrf_spline(1 + num_mag_dims_, Spline<double>(nmtp, type()->radial_grid()));
+        std::vector< Spline<double> > vrf_spline(1 + num_mag_dims_, Spline<double>(type()->radial_grid()));
 
         for (int lm_loc = 0; lm_loc < spl_lm.local_size(); lm_loc++)
         {
@@ -155,7 +155,7 @@ void Atom::generate_radial_integrals()
 
     #pragma omp parallel default(shared)
     {
-        Spline<double> s(nmtp, type()->radial_grid());
+        Spline<double> s(type()->radial_grid());
         std::vector<double> v(nmtp);
 
         #pragma omp for
@@ -186,7 +186,7 @@ void Atom::generate_radial_integrals()
     {
         #pragma omp parallel default(shared)
         {
-            Spline<double> s(nmtp, type()->radial_grid());
+            Spline<double> s(type()->radial_grid());
             std::vector<double> v(nmtp);
 
             #pragma omp for

@@ -485,6 +485,11 @@ class Atom_type
             return free_atom_potential_(x);
         }
 
+        Spline<double>& free_atom_potential()
+        {
+            return free_atom_potential_;
+        }
+
         inline int num_aw_descriptors()
         {
             return (int)aw_descriptors_.size();
@@ -573,10 +578,15 @@ class Atom_type
             return indexr_.size();
         }
 
-        //== inline std::vector<double>& free_atom_potential()
-        //== {
-        //==     return free_atom_potential_;
-        //== }
+        /// Return index of a free atom grid point close to the muffin-tin radius.
+        inline int idx_rmt_free_atom()
+        {
+            for (int i = 0; i < free_atom_radial_grid().num_points(); i++)
+            {
+                if (free_atom_radial_grid(i) > mt_radius()) return i;
+            }
+            return -1;
+        }
 
         inline uspp_descriptor& uspp()
         {

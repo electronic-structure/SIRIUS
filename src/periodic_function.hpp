@@ -167,7 +167,7 @@ inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
             int ia = unit_cell_->spl_num_atoms(ialoc);
             int nmtp = unit_cell_->atom(ia)->num_mt_points();
             
-            Spline<T> s(nmtp, unit_cell_->atom(ia)->type()->radial_grid());
+            Spline<T> s(unit_cell_->atom(ia)->type()->radial_grid());
             for (int ir = 0; ir < nmtp; ir++) s[ir] = f_mt<local>(0, ir, ialoc);
             mt_val[ia] = s.interpolate().integrate(2) * fourpi * y00;
         }

@@ -124,7 +124,7 @@ void K_point::update()
             for (int idxrf = 0; idxrf < atom_type->mt_radial_basis_size(); idxrf++)
             {
                 int nr = atom_type->uspp().num_beta_radial_points[idxrf];
-                beta_rf(idxrf, iat) = new Spline<double>(nr, atom_type->radial_grid());
+                beta_rf(idxrf, iat) = new Spline<double>(atom_type->radial_grid());
                 for (int ir = 0; ir < nr; ir++) 
                     (*beta_rf(idxrf, iat))[ir] = atom_type->uspp().beta_radial_functions(ir, idxrf);
                 beta_rf(idxrf, iat)->interpolate();
