@@ -8,7 +8,7 @@ void test1(double x0, double x1, int m, double exact_result)
     printf("test1: integrate sin(x) * x^{%i} and compare with exact result\n", m);
     printf("       lower and upper boundaries: %f %f\n", x0, x1);
     Radial_grid r(exponential_grid, 5000, x0, x1);
-    Spline<double> s(5000, r);
+    Spline<double> s(r);
     
     for (int i = 0; i < 5000; i++) s[i] = sin(r[i]);
     
@@ -32,8 +32,8 @@ void test2(radial_grid_t grid_type, double x0, double x1)
     printf("test2: value and derivatives of exp(x)\n");
 
     int N = 5000;
-    Radial_grid r(grid_type, N, x0, x1, 3 * x1);
-    Spline<double> s(N, r);
+    Radial_grid r(grid_type, N, x0, x1);
+    Spline<double> s(r);
     
     for (int i = 0; i < N; i++) s[i] = exp(r[i]);
     
@@ -56,9 +56,9 @@ void test3(double x0, double x1, double exact_val)
     printf("test3\n");
     
     Radial_grid r(exponential_grid, 2000, x0, x1);
-    Spline<double> s1(2000, r);
-    Spline<double> s2(2000, r);
-    Spline<double> s3(2000, r);
+    Spline<double> s1(r);
+    Spline<double> s2(r);
+    Spline<double> s3(r);
 
     for (int i = 0; i < 2000; i++)
     {
@@ -85,9 +85,9 @@ void test4(double x0, double x1, double exact_val)
     printf("test4\n");
     
     Radial_grid r(exponential_grid, 2000, x0, x1);
-    Spline<double> s1(2000, r);
-    Spline<double> s2(2000, r);
-    Spline<double> s3(2000, r);
+    Spline<double> s1(r);
+    Spline<double> s2(r);
+    Spline<double> s3(r);
 
     for (int i = 0; i < 2000; i++)
     {
@@ -139,9 +139,10 @@ int main(int argn, char **argv)
     double x0 = 0.00001;
     test2(linear_grid, x0, 2.0);
     test2(exponential_grid, x0, 2.0);
-    test2(linear_exponential_grid, x0, 2.0);
-    test2(pow_grid, x0, 2.0);
-    test2(incremental_grid, x0, 2.0);
+    test2(scaled_pow_grid, x0, 2.0);
+    test2(pow2_grid, x0, 2.0);
+    test2(pow3_grid, x0, 2.0);
+    //test2(incremental_grid, x0, 2.0);
     //test2(hyperbolic_grid, x0, 2.0);
 
     test3(0.0001, 2.0, 1.0365460153117974);

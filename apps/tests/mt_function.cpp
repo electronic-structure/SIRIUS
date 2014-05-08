@@ -17,10 +17,7 @@ void test1_radial_angular()
 
     for (int lm = 0; lm < lmmax; lm++)
     {
-        for (int ir = 0; ir < r.num_mt_points(); ir++) 
-        {
-            f1(ir, lm) = type_wrapper<T>::sift(double_complex(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX));
-        }
+        for (int ir = 0; ir < r.num_points(); ir++) f1(ir, lm) = type_wrapper<T>::random();
     }
     f1.sh_convert(f2);
     f2.sh_convert(f3);
@@ -28,7 +25,7 @@ void test1_radial_angular()
     double d = 0;
     for (int lm = 0; lm < lmmax; lm++)
     {
-        for (int ir = 0; ir < r.num_mt_points(); ir++) d += type_wrapper<T>::abs(f1(ir, lm) - f3(ir, lm));
+        for (int ir = 0; ir < r.num_points(); ir++) d += type_wrapper<T>::abs(f1(ir, lm) - f3(ir, lm));
     }
     
     if (d < 1e-10)
@@ -54,19 +51,15 @@ void test1_angular_radial()
 
     srand((int)time(NULL));
 
-    for (int ir = 0; ir < r.num_mt_points(); ir++) 
+    for (int ir = 0; ir < r.num_points(); ir++) 
     {
-        for (int lm = 0; lm < lmmax; lm++)
-        {
-            f1(lm, ir) = type_wrapper<T>::sift(double_complex(double(rand()) / RAND_MAX, 
-                                                         double(rand()) / RAND_MAX));
-        }
+        for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = type_wrapper<T>::random();
     }
     f1.sh_convert(f2);
     f2.sh_convert(f3);
 
     double d = 0;
-    for (int ir = 0; ir < r.num_mt_points(); ir++) 
+    for (int ir = 0; ir < r.num_points(); ir++) 
     {
         for (int lm = 0; lm < lmmax; lm++) d += type_wrapper<T>::abs(f1(lm, ir) - f3(lm, ir));
     }
@@ -88,11 +81,7 @@ void test2(int lmax, int nr)
 
     for (int ir = 0; ir < nr; ir++)
     {
-        for (int lm = 0; lm < lmmax; lm++)
-        {
-            f1(lm, ir) = type_wrapper<T>::sift(double_complex(double(rand()) / RAND_MAX, 
-                                                         double(rand()) / RAND_MAX));
-        }
+        for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = type_wrapper<T>::random();
     }
     f1.sh_transform(f2);
     f2.sh_transform(f3);
@@ -123,7 +112,7 @@ void test3(int lmax, int nr)
 
     for (int ir = 0; ir < nr; ir++)
     {
-        for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = double(rand()) / RAND_MAX;
+        for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = type_wrapper<double>::random();
     }
     f1.sh_transform(f2);
     for (int ir = 0; ir < nr; ir++)
@@ -224,7 +213,7 @@ void test3(int lmax, int nr)
 */
 void test5()
 {
-    Radial_grid r(linear_exponential_grid, 1000, 0.01, 2.0, 2.0);
+    Radial_grid r(scaled_pow_grid, 1000, 0.01, 2.0);
 
     int lmmax = 64;
     Spheric_function<double_complex> f(r, lmmax);
@@ -250,7 +239,7 @@ void test6()
 {
     int nr = 2000;
 
-    Radial_grid r(linear_exponential_grid, nr, 0.01, 2.0, 2.0);
+    Radial_grid r(scaled_pow_grid, nr, 0.01, 2.0);
 
     Spheric_function<double> f(r, 64);
 

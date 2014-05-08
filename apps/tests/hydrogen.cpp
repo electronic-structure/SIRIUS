@@ -51,9 +51,8 @@ int main(int argn, char **argv)
         jw.begin_set();
         jw.single("label", s.str());
         
-        //Radial_grid radial_grid(linear_exponential_grid, 20000 + z * 300,  1e-7 / z, 200.0, 200.0 + z * 3.0);
-        Radial_grid radial_grid(linear_exponential_grid, 20000,  1e-7 / z, 200.0, 200.0 + z * 3.0);
-        radial_grid.print_info();
+        Radial_grid radial_grid(scaled_pow_grid, 20000, 1e-7, 200.0 + z * 3.0);
+        //radial_grid.print_info();
 
         std::vector<double> v(radial_grid.num_points());
         std::vector<double> p(radial_grid.num_points());
