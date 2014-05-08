@@ -36,12 +36,12 @@ void Spheric_function_gradient<T>::gradient(Spheric_function<double_complex>& f)
                     if (f.radial_domain_idx() == 0)
                     {
                         for (int ir = 0; ir < f.radial_domain_size(); ir++)
-                            (*grad_[j])(ir, lm1) += (s.deriv(1, ir) - f(ir, lm) * f.radial_grid().rinv(ir) * double(l)) * d;  
+                            (*grad_[j])(ir, lm1) += (s.deriv(1, ir) - f(ir, lm) * f.radial_grid().x_inv(ir) * double(l)) * d;  
                     }
                     else
                     {
                         for (int ir = 0; ir < f.radial_domain_size(); ir++)
-                            (*grad_[j])(lm1, ir) += (s.deriv(1, ir) - f(lm, ir) * f.radial_grid().rinv(ir) * double(l)) * d;  
+                            (*grad_[j])(lm1, ir) += (s.deriv(1, ir) - f(lm, ir) * f.radial_grid().x_inv(ir) * double(l)) * d;  
                     }
                 }
                 if ((l - 1) >= 0 && abs(m + mu) <= l - 1)
@@ -51,12 +51,12 @@ void Spheric_function_gradient<T>::gradient(Spheric_function<double_complex>& f)
                     if (f.radial_domain_idx() == 0)
                     {
                         for (int ir = 0; ir < f.radial_domain_size(); ir++)
-                            (*grad_[j])(ir, lm1) -= (s.deriv(1, ir) + f(ir, lm) * f.radial_grid().rinv(ir) * double(l + 1)) * d;
+                            (*grad_[j])(ir, lm1) -= (s.deriv(1, ir) + f(ir, lm) * f.radial_grid().x_inv(ir) * double(l + 1)) * d;
                     }
                     else
                     {
                         for (int ir = 0; ir < f.radial_domain_size(); ir++)
-                            (*grad_[j])(lm1, ir) -= (s.deriv(1, ir) + f(lm, ir) * f.radial_grid().rinv(ir) * double(l + 1)) * d;
+                            (*grad_[j])(lm1, ir) -= (s.deriv(1, ir) + f(lm, ir) * f.radial_grid().x_inv(ir) * double(l + 1)) * d;
                     }
                 }
             }

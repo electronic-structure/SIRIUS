@@ -27,7 +27,7 @@ class Atom_symmetry_class
         /// atom type
         Atom_type* atom_type_;
 
-        /// spherical part of effective potential 
+        /// Spherical part of the effective potential.
         std::vector<double> spherical_potential_;
 
         /// list of radial functions

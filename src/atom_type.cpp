@@ -2,18 +2,10 @@
 
 namespace sirius {
 
-Atom_type::Atom_type(int id__) 
-    : id_(id__), 
-      zn_(0), 
-      num_mt_points_(0), 
-      radial_grid_(NULL), 
-      offset_lo_(-1),
-      esm_type_(full_potential_lapwlo), 
-      initialized_(false)
-{
-}
-
-Atom_type::Atom_type(const char* symbol__, const char* name__, int zn__, double mass__, 
+Atom_type::Atom_type(const char* symbol__, 
+                     const char* name__, 
+                     int zn__, 
+                     double mass__, 
                      std::vector<atomic_level_descriptor>& levels__) 
     : symbol_(std::string(symbol__)), 
       name_(std::string(name__)), 
@@ -26,17 +18,18 @@ Atom_type::Atom_type(const char* symbol__, const char* name__, int zn__, double 
       esm_type_(full_potential_lapwlo), 
       initialized_(false)
 {
-    radial_grid_ = new Radial_grid(default_radial_grid_t, num_mt_points_, 1e-6 / zn_, mt_radius_, 20.0 + 0.25 * zn_); 
+    radial_grid_ = Radial_grid(default_radial_grid_t, num_mt_points_, 1e-6 / zn_, 20.0 + 0.25 * zn_); 
 }
 
-Atom_type::Atom_type(int id__, const std::string label__, const std::string file_name__, 
-                     electronic_structure_method_t esm_type__) 
+Atom_type::Atom_type(const int id__, 
+                     const std::string label__, 
+                     const std::string file_name__, 
+                     const electronic_structure_method_t esm_type__) 
     : id_(id__), 
       label_(label__),
       zn_(0), 
       mass_(0), 
       num_mt_points_(0), 
-      radial_grid_(NULL), 
       offset_lo_(-1),
       esm_type_(esm_type__), 
       file_name_(file_name__),
@@ -46,17 +39,16 @@ Atom_type::Atom_type(int id__, const std::string label__, const std::string file
 
 Atom_type::~Atom_type()
 {
-    delete radial_grid_;
 }
 
 void Atom_type::init(int lmax, int offset_lo__)
 {
-    // check if the class instance was already initialized
+    /* check if the class instance was already initialized */
     if (initialized_) error_local(__FILE__, __LINE__, "can't initialize twice");
 
     offset_lo_ = offset_lo__;
    
-    // read data from file if it exists
+    /* read data from file if it exists */
     if (file_name_.length() > 0)
     {
         if (!Utils::file_exists(file_name_))
@@ -71,7 +63,7 @@ void Atom_type::init(int lmax, int offset_lo__)
         }
     }
 
-    // add valence levels to the list of core levels
+    /* add valence levels to the list of core levels */
     if (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo)
     {
         atomic_level_descriptor level;
@@ -97,11 +89,11 @@ void Atom_type::init(int lmax, int offset_lo__)
         }
     }
     
-    // check the nuclear charge
+    /* check the nuclear charge */
     if (zn_ == 0) error_local(__FILE__, __LINE__, "zero atom charge");
 
-    // set default radial grid if it was not done by user
-    if (radial_grid_ == NULL) set_radial_grid();
+    /* set default radial grid if it was not done by user */
+    if (radial_grid_.num_points() == 0) set_radial_grid();
     
     if (esm_type_ == full_potential_lapwlo)
     {
@@ -150,17 +142,14 @@ void Atom_type::init(int lmax, int offset_lo__)
 void Atom_type::set_radial_grid(int num_points, double* points)
 {
     if (num_mt_points_ == 0) error_local(__FILE__, __LINE__, "number of muffin-tin points is zero");
-    if (radial_grid_) delete radial_grid_;
     if (num_points < 0 && points == NULL)
     {
-        radial_grid_ = new Radial_grid(default_radial_grid_t, num_mt_points_, radial_grid_origin_, mt_radius_, radial_grid_infinity_); 
+        radial_grid_ = Radial_grid(default_radial_grid_t, num_mt_points_, radial_grid_origin_, mt_radius_); 
     }
     else
     {
-        radial_grid_ = new Radial_grid(num_points, num_mt_points_, mt_radius_, points);
+        radial_grid_ = Radial_grid(num_points, points);
     }
-    free_atom_density_.resize(radial_grid_->num_points());
-    free_atom_potential_.resize(radial_grid_->num_points());
 }
 
 void Atom_type::init_aw_descriptors(int lmax)
@@ -251,6 +240,7 @@ void Atom_type::add_lo_descriptor(int ilo, int n, int l, double enu, int dme, in
 
 void Atom_type::init_free_atom(bool smooth)
 {
+    /* check if atomic file exists */
     if (!Utils::file_exists(file_name_))
     {
         std::stringstream s;
@@ -260,226 +250,77 @@ void Atom_type::init_free_atom(bool smooth)
 
     JSON_tree parser(file_name_);
 
-    std::vector<double> fa_rho;
-    std::vector<double> fa_v;
+    /* create free atom radial grid */
     std::vector<double> fa_r;
-    parser["free_atom_density"] >> fa_rho;
-    parser["free_atom_potential"] >> fa_v;
-    parser["free_atom_radial_grid"] >> fa_r;
+    parser["free_atom"]["radial_grid"] >> fa_r;
+    free_atom_radial_grid_ = Radial_grid(fa_r);
+    
+    /* read density and potential */
+    std::vector<double> v;
+    parser["free_atom"]["density"] >> v;
+    free_atom_density_ = Spline<double>(free_atom_radial_grid_, v);
+    parser["free_atom"]["potential"] >> v;
+    free_atom_potential_ = Spline<double>(free_atom_radial_grid_, v);
 
-    Radial_grid r(fa_r);
-    Spline<double> sv(r.num_points(), r, fa_v);
-    Spline<double> srho(r.num_points(), r, fa_rho);
-
-    free_atom_density_.resize(radial_grid_->num_points());
-    free_atom_potential_.resize(radial_grid_->num_points());
-
-    for (int i = 0; i < radial_grid_->num_points(); i++)
-    {
-        free_atom_potential_[i] = sv(radial_grid(i));
-        free_atom_density_[i] = srho(radial_grid(i));
-    }
-
+    /* smooth free atom density inside the muffin-tin sphere */
     if (smooth)
     {
-        Spline<double> s(num_mt_points(), radial_grid(), free_atom_density_);
-        s.interpolate();
-
+        /* find point on the grid close to the muffin-tin radius */
+        int irmt = -1;
+        for (int i = 0; i < free_atom_radial_grid_.num_points(); i++)
+        {
+            if (free_atom_radial_grid_[i] > mt_radius_) 
+            {
+                irmt = i;
+                break;
+            }
+        }
+    
         mdarray<double, 1> b(2);
         mdarray<double, 2> A(2, 2);
-        double R = mt_radius();
+        double R = free_atom_radial_grid_[irmt];
         A(0, 0) = std::pow(R, 2);
         A(0, 1) = std::pow(R, 3);
         A(1, 0) = 2 * R;
         A(1, 1) = 3 * std::pow(R, 2);
         
-        b(0) = s[num_mt_points() - 1];
-        b(1) = s.deriv(1, num_mt_points() - 1);
+        b(0) = free_atom_density_[irmt];
+        b(1) = free_atom_density_.deriv(1, irmt);
 
         linalg<lapack>::gesv<double>(2, 1, A.ptr(), 2, b.ptr(), 2);
-        
+       
+        //== /* write initial density */
         //== std::stringstream sstr;
         //== sstr << "free_density_" << id_ << ".dat";
         //== FILE* fout = fopen(sstr.str().c_str(), "w");
 
-        //== for (int ir = 0; ir < radial_grid().num_points(); ir++)
+        //== for (int ir = 0; ir < free_atom_radial_grid().num_points(); ir++)
         //== {
-        //==     fprintf(fout, "%f %f \n", radial_grid(ir), free_atom_density_[ir]);
+        //==     fprintf(fout, "%f %f \n", free_atom_radial_grid(ir), free_atom_density_[ir]);
         //== }
         //== fclose(fout);
         
         /* make smooth free atom density inside muffin-tin */
-        for (int i = 0; i < num_mt_points(); i++)
-            //free_atom_density_[i] = b(0) + b(1) * std::pow(radial_grid(i), 2) + b(2) * std::pow(radial_grid(i), 3);
-            free_atom_density_[i] = b(0) * std::pow(radial_grid(i), 2) + b(1) * std::pow(radial_grid(i), 3);
+        for (int i = 0; i <= irmt; i++)
+        {
+            free_atom_density_[i] = b(0) * std::pow(free_atom_radial_grid(i), 2) + 
+                                    b(1) * std::pow(free_atom_radial_grid(i), 3);
+        }
 
+        /* interpolate new smooth density */
+        free_atom_density_.interpolate();
+
+        //== /* write smoothed density */
         //== sstr.str("");
         //== sstr << "free_density_modified_" << id_ << ".dat";
         //== fout = fopen(sstr.str().c_str(), "w");
 
-        //== for (int ir = 0; ir < radial_grid().num_points(); ir++)
+        //== for (int ir = 0; ir < free_atom_radial_grid().num_points(); ir++)
         //== {
-        //==     fprintf(fout, "%f %f \n", radial_grid(ir), free_atom_density_[ir]);
+        //==     fprintf(fout, "%f %f \n", free_atom_radial_grid(ir), free_atom_density_[ir]);
         //== }
         //== fclose(fout);
-   } 
-}
-
-double Atom_type::solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
-{
-    Timer t("sirius::Atom_type::solve_free_atom");
-
-    int np = radial_grid_->num_points();
-    
-    free_atom_radial_functions_.set_dimensions(np, (int)atomic_levels_.size());
-    free_atom_radial_functions_.allocate();
-
-    Radial_solver solver(false, -1.0 * zn_, *radial_grid_);
-    //libxc_interface xci("XC_LDA_X", "XC_LDA_C_PZ");
-
-    XC_functional Ex("XC_LDA_X", 1);
-    XC_functional Ec("XC_LDA_C_VWN", 1);
-
-    solver.set_tolerance(solver_tol);
-    
-    std::vector<double> veff(np);
-    std::vector<double> vnuc(np);
-    for (int i = 0; i < np; i++)
-    {
-        vnuc[i] = -1.0 * zn_ / radial_grid(i);
-        veff[i] = vnuc[i];
-    }
-
-    Spline<double> rho(np, *radial_grid_);
-
-    Spline<double> f(np, *radial_grid_);
-
-    std::vector<double> vh(np);
-    std::vector<double> vxc(np);
-    std::vector<double> exc(np);
-    std::vector<double> g1;
-    std::vector<double> g2;
-    std::vector<double> rho_old;
-
-    enu.resize(atomic_levels_.size());
-
-    double energy_tot = 0.0;
-    double energy_tot_old;
-    double charge_rms;
-    double energy_diff;
-
-    double beta = 0.9;
-    
-    bool converged = false;
-    
-    for (int ist = 0; ist < (int)atomic_levels_.size(); ist++)
-        enu[ist] = -1.0 * zn_ / 2 / pow(double(atomic_levels_[ist].n), 2);
-    
-    for (int iter = 0; iter < 200; iter++)
-    {
-        rho_old = rho.data_points();
-        
-        memset(&rho[0], 0, rho.num_points() * sizeof(double));
-        #pragma omp parallel default(shared)
-        {
-            std::vector<double> p(rho.num_points());
-            std::vector<double> rho_t(rho.num_points());
-            memset(&rho_t[0], 0, rho.num_points() * sizeof(double));
-        
-            #pragma omp for
-            for (int ist = 0; ist < (int)atomic_levels_.size(); ist++)
-            {
-                solver.bound_state(atomic_levels_[ist].n, atomic_levels_[ist].l, veff, enu[ist], p);
-            
-                for (int i = 0; i < np; i++)
-                {
-                    free_atom_radial_functions_(i, ist) = p[i] * radial_grid_->rinv(i);
-                    rho_t[i] += atomic_levels_[ist].occupancy * 
-                                pow(y00 * free_atom_radial_functions_(i, ist), 2);
-                }
-            }
-
-            #pragma omp critical
-            for (int i = 0; i < rho.num_points(); i++) rho[i] += rho_t[i];
-        } 
-        
-        charge_rms = 0.0;
-        for (int i = 0; i < np; i++) charge_rms += pow(rho[i] - rho_old[i], 2);
-        charge_rms = sqrt(charge_rms / np);
-        
-        rho.interpolate();
-
-        /* compute Hartree potential */
-        rho.integrate(g2, 2);
-        double t1 = rho.integrate(g1, 1);
-
-        for (int i = 0; i < np; i++) vh[i] = fourpi * (g2[i] / radial_grid(i) + t1 - g1[i]);
-        
-        /* compute XC potential and energy */
-        memset(&vxc[0], 0, rho.num_points() * sizeof(double));
-        memset(&exc[0], 0, rho.num_points() * sizeof(double));
-        Ex.add(rho.num_points(), &rho[0], &vxc[0], &exc[0]);
-        Ec.add(rho.num_points(), &rho[0], &vxc[0], &exc[0]);
-        
-        for (int i = 0; i < np; i++)
-            veff[i] = (1 - beta) * veff[i] + beta * (vnuc[i] + vh[i] + vxc[i]);
-        
-        // kinetic energy
-        for (int i = 0; i < np; i++) f[i] = veff[i] * rho[i];
-        f.interpolate();
-        
-        double eval_sum = 0.0;
-        for (int ist = 0; ist < (int)atomic_levels_.size(); ist++)
-            eval_sum += atomic_levels_[ist].occupancy * enu[ist];
-
-        double energy_kin = eval_sum - fourpi * f.integrate(2);
-
-        // xc energy
-        for (int i = 0; i < np; i++) f[i] = exc[i] * rho[i];
-        f.interpolate();
-        double energy_xc = fourpi * f.integrate(2); 
-        
-        // electron-nuclear energy
-        for (int i = 0; i < np; i++) f[i] = vnuc[i] * rho[i];
-        f.interpolate();
-        double energy_enuc = fourpi * f.integrate(2); 
-
-        // Coulomb energy
-        for (int i = 0; i < np; i++) f[i] = vh[i] * rho[i];
-        f.interpolate();
-        double energy_coul = 0.5 * fourpi * f.integrate(2);
-        
-        energy_tot_old = energy_tot;
-
-        energy_tot = energy_kin + energy_xc + energy_coul + energy_enuc; 
-        
-        energy_diff = fabs(energy_tot - energy_tot_old);
-        
-        if (energy_diff < energy_tol && charge_rms < charge_tol) 
-        { 
-            converged = true;
-            printf("Free atom (id = %i) converged in %i iterations.\n", id(), iter);
-            break;
-        }
-        
-        beta = std::max(beta * 0.95, 0.005);
-    }
-
-    if (!converged)
-    {
-        printf("energy_diff : %18.10f   charge_rms : %18.10f   beta : %18.10f\n", energy_diff, charge_rms, beta);
-        std::stringstream s;
-        s << "atom " << symbol_ << " is not converged" << std::endl
-          << "  energy difference : " << energy_diff << std::endl
-          << "  charge difference : " << charge_rms;
-        error_local(__FILE__, __LINE__, s);
-    }
-    
-    free_atom_density_ = rho.data_points();
-    
-    free_atom_potential_ = veff;
-    
-    return energy_tot;
+   }
 }
 
 void Atom_type::print_info()
@@ -491,6 +332,8 @@ void Atom_type::print_info()
     printf("mass           : %f\n", mass_);
     printf("mt_radius      : %f\n", mt_radius_);
     printf("num_mt_points  : %i\n", num_mt_points_);
+    printf("grid_origin    : %f\n", radial_grid_[0]);
+    printf("grid_name      : %s\n", radial_grid_.grid_type_name().c_str());
     printf("\n");
     printf("number of core electrons    : %f\n", num_core_electrons_);
     printf("number of valence electrons : %f\n", num_valence_electrons_);
@@ -563,7 +406,6 @@ void Atom_type::print_info()
     printf("total number of basis functions : %i\n", indexb().size());
     printf("number of aw basis functions : %i\n", indexb().size_aw());
     printf("number of lo basis functions : %i\n", indexb().size_lo());
-    radial_grid().print_info();
 }
         
 void Atom_type::read_input_core(JSON_tree& parser)
@@ -871,7 +713,7 @@ void Atom_type::read_input(const std::string& fname)
         parser["mass"] >> mass_;
         parser["number"] >> zn_;
         parser["rmin"] >> radial_grid_origin_;
-        parser["rmax"] >> radial_grid_infinity_;
+        //parser["rmax"] >> radial_grid_infinity_;
         parser["rmt"] >> mt_radius_;
         parser["nrmt"] >> num_mt_points_;
 
@@ -885,8 +727,8 @@ void Atom_type::read_input(const std::string& fname)
 
 void Atom_type::sync_free_atom(int rank)
 {
-    assert(free_atom_potential_.size() != 0);
-    assert(free_atom_density_.size() != 0);
+    assert(free_atom_potential_.num_points() != 0);
+    assert(free_atom_density_.num_points() != 0);
 
     Platform::bcast(&free_atom_density_[0], radial_grid().num_points(), rank);
     Platform::bcast(&free_atom_potential_[0], radial_grid().num_points(), rank);

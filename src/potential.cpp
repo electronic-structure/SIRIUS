@@ -1387,11 +1387,11 @@ void Potential::save()
         for (int j = 0; j < parameters_.num_mag_dims(); j++)
             effective_magnetic_field_[j]->hdf5_write(fout["effective_magnetic_field"].create_node(j));
 
-        fout["effective_potential"].create_node("free_atom_potential");
-        for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
-        {
-            fout["effective_potential"]["free_atom_potential"].write(iat, parameters_.unit_cell()->atom_type(iat)->free_atom_potential());
-        }
+        //== fout["effective_potential"].create_node("free_atom_potential");
+        //== for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+        //== {
+        //==     fout["effective_potential"]["free_atom_potential"].write(iat, parameters_.unit_cell()->atom_type(iat)->free_atom_potential());
+        //== }
     }
     Platform::barrier();
 }
@@ -1405,8 +1405,8 @@ void Potential::load()
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
         effective_magnetic_field_[j]->hdf5_read(fout["effective_magnetic_field"][j]);
     
-    for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
-        fout["effective_potential"]["free_atom_potential"].read(iat, parameters_.unit_cell()->atom_type(iat)->free_atom_potential());
+    //== for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
+    //==     fout["effective_potential"]["free_atom_potential"].read(iat, parameters_.unit_cell()->atom_type(iat)->free_atom_potential());
 
     if (parameters_.unit_cell()->full_potential()) update_atomic_potential();
 }

@@ -80,8 +80,23 @@ enum index_domain_t {global, local};
 
 enum argument_t {arg_lm, arg_tp, arg_radial};
 
-/// Types of radial grid
-enum radial_grid_t {linear_grid, exponential_grid, linear_exponential_grid, pow_grid, hyperbolic_grid, incremental_grid};
+/// Types of radial grid.
+enum radial_grid_t 
+{
+    linear_grid, 
+    
+    exponential_grid, 
+    
+    pow2_grid, 
+    
+    pow3_grid,
+
+    scaled_pow_grid,
+    
+    hyperbolic_grid, 
+    
+    incremental_grid
+};
 
 /// type of local orbitals
 /** lo_rs - local orbital, composed of radial solutions

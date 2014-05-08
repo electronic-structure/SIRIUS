@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file spline.hpp
+ *   
+ *  \brief Contains remaining implementaiton of sirius::Spline class.
+ */
+
 template <typename T> 
 Spline<T>& Spline<T>::interpolate()
 {
@@ -7,34 +31,34 @@ Spline<T>& Spline<T>::interpolate()
     std::vector<T> m(num_points_);
     std::vector<T> dy(num_points_ - 1);
     
-    // derivative of y
-    for (int i = 0; i < num_points_ - 1; i++) dy[i] = (a[i + 1] - a[i]) / radial_grid_.dr(i);
+    /* derivative of y */
+    for (int i = 0; i < num_points_ - 1; i++) dy[i] = (a[i + 1] - a[i]) / radial_grid_.dx(i);
     
-    // setup "B" vector of AX=B equation
+    /* setup "B" vector of AX=B equation */
     for (int i = 0; i < num_points_ - 2; i++) m[i + 1] = (dy[i + 1] - dy[i]) * 6.0;
     
     m[0] = -m[1];
     m[num_points_ - 1] = -m[num_points_ - 2];
     
-    // main diagonal of "A" matrix
-    for (int i = 0; i < num_points_ - 2; i++) diag_main[i + 1] = 2 * (radial_grid_.dr(i) + radial_grid_.dr(i + 1));
-    double h0 = radial_grid_.dr(0);
-    double h1 = radial_grid_.dr(1);
-    double h2 = radial_grid_.dr(num_points_ - 2);
-    double h3 = radial_grid_.dr(num_points_ - 3);
+    /* main diagonal of "A" matrix */
+    for (int i = 0; i < num_points_ - 2; i++) diag_main[i + 1] = 2 * (radial_grid_.dx(i) + radial_grid_.dx(i + 1));
+    double h0 = radial_grid_.dx(0);
+    double h1 = radial_grid_.dx(1);
+    double h2 = radial_grid_.dx(num_points_ - 2);
+    double h3 = radial_grid_.dx(num_points_ - 3);
     diag_main[0] = (h1 / h0) * h1 - h0;
     diag_main[num_points_ - 1] = (h3 / h2) * h3 - h2;
     
-    // subdiagonals of "A" matrix
+    /* subdiagonals of "A" matrix */
     for (int i = 0; i < num_points_ - 1; i++)
     {
-        diag_upper[i] = radial_grid_.dr(i);
-        diag_lower[i] = radial_grid_.dr(i);
+        diag_upper[i] = radial_grid_.dx(i);
+        diag_lower[i] = radial_grid_.dx(i);
     }
     diag_upper[0] = -(h1 * (1 + h1 / h0) + diag_main[1]);
     diag_lower[num_points_ - 2] = -(h3 * (1 + h3 / h2) + diag_main[num_points_ - 2]); 
 
-    // solve tridiagonal system
+    /* solve tridiagonal system */
     int info = linalg<lapack>::gtsv(num_points_, 1, &diag_lower[0], &diag_main[0], &diag_upper[0], &m[0], num_points_);
 
     if (info)
@@ -52,8 +76,8 @@ Spline<T>& Spline<T>::interpolate()
     {
         c[i] = m[i] / 2.0;
         T t = (m[i + 1] - m[i]) / 6.0;
-        b[i] = dy[i] - (c[i] + t) * radial_grid_.dr(i);
-        d[i] = t / radial_grid_.dr(i);
+        b[i] = dy[i] - (c[i] + t) * radial_grid_.dx(i);
+        d[i] = t / radial_grid_.dx(i);
     }
     return *this;
 }
@@ -62,8 +86,9 @@ template <typename T>
 template <typename U>
 T Spline<T>::integrate(Spline<T>* f, Spline<U>* g, int m, int num_points)
 {
-    if (&f->radial_grid_ != &g->radial_grid_) error_local(__FILE__, __LINE__, "radial grids don't match");
-    
+    if (f->radial_grid_.num_points() != g->radial_grid_.num_points()) 
+        error_local(__FILE__, __LINE__, "radial grids don't match");
+ 
     T result = 0;
 
     switch (m)
@@ -73,7 +98,7 @@ T Spline<T>::integrate(Spline<T>* f, Spline<U>* g, int m, int num_points)
             for (int i = 0; i < num_points - 1; i++)
             {
                 double x0 = f->radial_grid_[i];
-                double dx = f->radial_grid_.dr(i);
+                double dx = f->radial_grid_.dx(i);
                 
                 T faga = f->a[i] * g->a[i];
                 T fdgd = f->d[i] * g->d[i];
@@ -101,7 +126,7 @@ T Spline<T>::integrate(Spline<T>* f, Spline<U>* g, int m, int num_points)
             for (int i = 0; i < num_points - 1; i++)
             {
                 double x0 = f->radial_grid_[i];
-                double dx = f->radial_grid_.dr(i);
+                double dx = f->radial_grid_.dx(i);
                 
                 T a0b0 = f->a[i] * g->a[i];
                 T a3b3 = f->d[i] * g->d[i];
@@ -139,7 +164,7 @@ T Spline<T>::integrate(Spline<T>* f, Spline<U>* g, int m)
 {
     if (f->num_points_ != g->num_points_) error_local(__FILE__, __LINE__, "number of points doesn't match");
 
-    return Spline<T>::integrate(f, g, m, f->num_points_); 
+    return Spline<T>::integrate(f, g, m, f->num_points()); 
 }
 
 template <typename T>
@@ -156,7 +181,7 @@ T Spline<T>::integrate(std::vector<T>& g, int m)
             double t = 1.0 / 3.0;
             for (int i = 0; i < num_points_ - 1; i++)
             {
-                double dx = radial_grid_.dr(i);
+                double dx = radial_grid_.dx(i);
                 g[i + 1] = g[i] + (((d[i] * dx * 0.25 + c[i] * t) * dx + b[i] * 0.5) * dx + a[i]) * dx;
             }
             break;
@@ -167,7 +192,7 @@ T Spline<T>::integrate(std::vector<T>& g, int m)
             {
                 double x0 = radial_grid_[i];
                 double x1 = radial_grid_[i + 1];
-                double dx = radial_grid_.dr(i);
+                double dx = radial_grid_.dx(i);
                 T a0 = a[i];
                 T a1 = b[i];
                 T a2 = c[i];

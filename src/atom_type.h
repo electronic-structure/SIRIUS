@@ -261,32 +261,29 @@ class Atom_type
         /// Unique string label for the atom type.
         std::string label_;
     
-        /// chemical element symbol
+        /// Chemical element symbol.
         std::string symbol_;
 
-        /// chemical element name
+        /// Chemical element name.
         std::string name_;
         
-        /// nucleus charge, treated as positive(!) integer
+        /// Nucleus charge, treated as positive(!) integer.
         int zn_;
 
-        /// atom mass
+        /// Atom mass.
         double mass_;
 
-        /// muffin-tin radius
+        /// Muffin-tin radius.
         double mt_radius_;
 
-        /// number of muffin-tin points
+        /// Number of muffin-tin points.
         int num_mt_points_;
         
-        /// beginning of the radial grid
+        /// Beginning of the radial grid.
         double radial_grid_origin_;
         
-        /// effective infinity distance
-        double radial_grid_infinity_;
-        
-        /// radial grid
-        Radial_grid* radial_grid_;
+        /// Radial grid.
+        Radial_grid radial_grid_;
 
         /// list of atomic levels 
         std::vector<atomic_level_descriptor> atomic_levels_;
@@ -309,14 +306,6 @@ class Atom_type
         /// list of radial descriptor sets used to construct local orbitals
         std::vector<local_orbital_descriptor> lo_descriptors_;
         
-        /// density of a free atom
-        std::vector<double> free_atom_density_;
-        
-        /// potential of a free atom
-        std::vector<double> free_atom_potential_;
-
-        mdarray<double, 2> free_atom_radial_functions_;
-
         /// maximum number of aw radial functions across angular momentums
         int max_aw_order_;
 
@@ -352,15 +341,30 @@ class Atom_type
         void read_input(const std::string& fname);
     
         void init_aw_descriptors(int lmax);
+    
+    protected:
+
+        /// Density of a free atom.
+        Spline<double> free_atom_density_;
+        
+        /// Potential of a free atom.
+        Spline<double> free_atom_potential_;
+
+        /// Radial grid of a free atom.
+        Radial_grid free_atom_radial_grid_;
 
     public:
         
-        Atom_type(const char* symbol__, const char* name__, int zn__, double mass__, 
+        Atom_type(const char* symbol__, 
+                  const char* name__, 
+                  int zn__, 
+                  double mass__, 
                   std::vector<atomic_level_descriptor>& levels__);
  
-        Atom_type(int id__, const std::string label, const std::string file_name__, electronic_structure_method_t esm_type__);
-
-        Atom_type(int id__);
+        Atom_type(const int id__, 
+                  const std::string label, 
+                  const std::string file_name__, 
+                  const electronic_structure_method_t esm_type__);
 
         ~Atom_type();
         
@@ -375,13 +379,6 @@ class Atom_type
         void add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu);
 
         void init_free_atom(bool smooth);
-
-        /// Solve free atom and find SCF density and potential.
-        /** Free atom potential is used to augment the MT potential and 
-         *  find the energy of the bound states which is used as a linearization 
-         *  energy (auto_enu = 1). 
-         */ 
-        double solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu);
 
         void print_info();
         
@@ -429,13 +426,23 @@ class Atom_type
         inline Radial_grid& radial_grid()
         {
             assert(num_mt_points_ > 0);
-            assert(radial_grid_->num_points() > 0);
-            return (*radial_grid_);
+            assert(radial_grid_.num_points() > 0);
+            return radial_grid_;
+        }
+
+        inline Radial_grid& free_atom_radial_grid()
+        {
+            return free_atom_radial_grid_;
         }
         
         inline double radial_grid(int ir)
         {
-            return (*radial_grid_)[ir];
+            return radial_grid_[ir];
+        }
+
+        inline double free_atom_radial_grid(int ir)
+        {
+            return free_atom_radial_grid_[ir];
         }
         
         inline int num_atomic_levels()
@@ -460,15 +467,22 @@ class Atom_type
         
         inline double free_atom_density(const int idx)
         {
-            assert(idx >= 0 && idx < (int)free_atom_density_.size());
-
             return free_atom_density_[idx];
+        }
+
+        inline double free_atom_density(double x)
+        {
+            return free_atom_density_(x);
         }
         
         inline double free_atom_potential(const int idx)
         {
-            assert(idx >= 0 && idx < (int)free_atom_potential_.size());
             return free_atom_potential_[idx];
+        }
+
+        inline double free_atom_potential(double x)
+        {
+            return free_atom_potential_(x);
         }
 
         inline int num_aw_descriptors()
@@ -559,15 +573,10 @@ class Atom_type
             return indexr_.size();
         }
 
-        inline double free_atom_radial_function(int ir, int ist)
-        {
-            return free_atom_radial_functions_(ir, ist);
-        }
-
-        inline std::vector<double>& free_atom_potential()
-        {
-            return free_atom_potential_;
-        }
+        //== inline std::vector<double>& free_atom_potential()
+        //== {
+        //==     return free_atom_potential_;
+        //== }
 
         inline uspp_descriptor& uspp()
         {
@@ -604,10 +613,10 @@ class Atom_type
             radial_grid_origin_ = radial_grid_origin__;
         }
 
-        inline void set_radial_grid_infinity(double radial_grid_infinity__)
-        {
-            radial_grid_infinity_ = radial_grid_infinity__;
-        }
+        //== inline void set_radial_grid_infinity(double radial_grid_infinity__)
+        //== {
+        //==     radial_grid_infinity_ = radial_grid_infinity__;
+        //== }
 
         inline void set_configuration(int n, int l, int k, double occupancy, bool core)
         {

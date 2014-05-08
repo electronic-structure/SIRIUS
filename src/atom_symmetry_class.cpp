@@ -28,19 +28,7 @@ void Atom_symmetry_class::generate_aw_radial_functions()
                 int idxrf = atom_type_->indexr().index_by_l_order(l, order);
 
                 /* find linearization energies */
-                switch (rsd.auto_enu)
-                {
-                    case 1:
-                    {
-                        solver.bound_state(rsd.n, rsd.l, spherical_potential_, rsd.enu, p);
-                        break;
-                    }
-                    case 2:
-                    { 
-                        rsd.enu = solver.find_enu(rsd.n, rsd.l, spherical_potential_, rsd.enu);
-                        break;
-                    }
-                }
+                if (rsd.auto_enu) rsd.enu = solver.find_enu(rsd.n, rsd.l, spherical_potential_, rsd.enu);
 
                 solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p, hp, dpdr[order]);
 
@@ -73,7 +61,7 @@ void Atom_symmetry_class::generate_aw_radial_functions()
                     dpdr[order] -= t1 * dpdr[order1];
                 }
 
-                // normalize again
+                /* normalize again */
                 for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf, 0), 2);
                 norm = s.interpolate().integrate(0);
 
@@ -88,11 +76,11 @@ void Atom_symmetry_class::generate_aw_radial_functions()
                 }
                 dpdr[order] *= norm;
 
-                // 1st radial derivative
+                /* 1st radial derivative */
                 double rderiv = dpdr[order];
                 aw_surface_derivatives_(order, l, 0) = (rderiv - radial_functions_(nmtp - 1, idxrf, 0) / R) / R;
                 
-                // 2nd radial derivative
+                /* 2nd radial derivative */
                 for (int ir = 0; ir < nmtp; ir++) s[ir] = radial_functions_(ir, idxrf, 0);
                 s.interpolate();
                 aw_surface_derivatives_(order, l, 1) = (2 * radial_functions_(nmtp - 1, idxrf, 0) / R / R - 
@@ -139,12 +127,8 @@ void Atom_symmetry_class::generate_lo_radial_functions()
                 {
                     radial_solution_descriptor& rsd = lo_descriptor(idxlo).rsd_set[order];
                     
-                    // find linearization energies
-                    if (rsd.auto_enu == 1 || rsd.auto_enu == 2) 
-                    {
-                        solver.bound_state(rsd.n, rsd.l, spherical_potential_, rsd.enu, p[order]);
-                        if (rsd.auto_enu == 2) rsd.enu = solver.find_enu(rsd.n, rsd.l, spherical_potential_, rsd.enu);
-                    }
+                    /* find linearization energies */
+                    if (rsd.auto_enu) rsd.enu = solver.find_enu(rsd.n, rsd.l, spherical_potential_, rsd.enu);
 
                     double dpdr;
                     solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p[order], hp[order], dpdr); 
@@ -434,7 +418,7 @@ void Atom_symmetry_class::transform_radial_functions(bool ort_lo, bool ort_aw)
                 
                 // this is not precise
                 double rderiv = (radial_functions_(nmtp - 1, idxrf1, 0) - radial_functions_(nmtp - 2, idxrf1, 0)) / 
-                                atom_type_->radial_grid().dr(nmtp - 2);
+                                atom_type_->radial_grid().dx(nmtp - 2);
                 double R = atom_type_->mt_radius();
 
                 aw_surface_derivatives_(order1, l, 0) = (rderiv - radial_functions_(nmtp - 1, idxrf1, 0) / R) / R;
@@ -495,15 +479,15 @@ void Atom_symmetry_class::set_spherical_potential(std::vector<double>& veff)
 
     spherical_potential_.resize(atom_type_->radial_grid().num_points());
     
-    // take current effective potential inside MT
+    /* take current effective potential inside MT */
     for (int ir = 0; ir < nmtp; ir++) spherical_potential_[ir] = veff[ir];
 
-    // take potential of the free atom outside MT
-    for (int ir = nmtp; ir < atom_type_->radial_grid().num_points(); ir++)
-    {
-        spherical_potential_[ir] = atom_type_->free_atom_potential(ir) - 
-                                   (atom_type_->free_atom_potential(nmtp - 1) - veff[nmtp - 1]);
-    }
+    //== // take potential of the free atom outside MT
+    //== for (int ir = nmtp; ir < atom_type_->radial_grid().num_points(); ir++)
+    //== {
+    //==     spherical_potential_[ir] = atom_type_->free_atom_potential(ir) - 
+    //==                                (atom_type_->free_atom_potential(nmtp - 1) - veff[nmtp - 1]);
+    //== }
 }
 
 void Atom_symmetry_class::generate_radial_functions()
@@ -835,7 +819,7 @@ void Atom_symmetry_class::generate_core_charge_density()
         for (int i = 0; i < rho.num_points(); i++) rho[i] += rho_t[i];
     } 
         
-    core_charge_density_ = rho.data_points();
+    core_charge_density_ = rho.values();
     rho.interpolate();
 
     Spline<double> rho_mt(atom_type_->num_mt_points(), atom_type_->radial_grid());

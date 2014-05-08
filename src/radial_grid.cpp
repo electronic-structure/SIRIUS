@@ -1,124 +1,129 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file radial_grid.cpp
+ *
+ *  \brief Contains remaining implementation of sirius::Radial_grid class.
+ */
+
 #include "radial_grid.h"
+#include "utils.h"
 
 namespace sirius
 {
 
-std::vector<double> Radial_grid::create_radial_grid(radial_grid_t grid_type, int num_mt_points, double origin, 
-                                                    double mt_radius, double infinity)
+std::vector<double> Radial_grid::create_radial_grid_points(radial_grid_t grid_type, int num_points, double rmin, double rmax)
 {
-    std::vector<double> grid_points;
-
-    double tol = 1e-10;
+    std::vector<double> grid_points(num_points);
 
     switch (grid_type)
     {
         case linear_grid:
         {
-            double x = origin;
-            double dx = (mt_radius - origin) / (num_mt_points - 1);
-            
-            while (x <= infinity + tol)
-            {
-               grid_points.push_back(x);
-               x += dx;
-            }
+            for (int i = 0; i < num_points; i++) grid_points[i] = rmin + (rmax - rmin) * double(i) / (num_points - 1);
             break;
         }
         case exponential_grid:
         {
-            double x = origin;
-            int i = 1;
-            
-            while (x <= infinity + tol)
+            for (int i = 0; i < num_points; i++) grid_points[i] = rmin * pow(rmax / rmin, double(i) / (num_points - 1));
+            break;
+        }
+        case pow2_grid:
+        {
+            for (int i = 0; i < num_points; i++) grid_points[i] = rmin + (rmax - rmin) * pow(double(i) / (num_points - 1), 2);
+            break; 
+        }
+        case pow3_grid:
+        {
+            for (int i = 0; i < num_points; i++) grid_points[i] = rmin + (rmax - rmin) * pow(double(i) / (num_points - 1), 3);
+            break; 
+        }
+        case scaled_pow_grid:
+        {   
+            /* ratio of last and first dx */
+            double S = rmax * 100; 
+            double alpha = pow(S, 1.0 / (num_points - 2));
+            double x = rmin;
+            for (int i = 0; i < num_points; i++)
             {
-                grid_points.push_back(x);
-                x = origin * pow((mt_radius / origin), double(i++) / (num_mt_points - 1));
+                grid_points[i] = x;
+                x += (rmax - rmin) * (alpha - 1) * pow(S, double(i) / (num_points - 2)) / (S * alpha - 1);
             }
             break;
         }
-        case linear_exponential_grid:
+        default:
         {
-            double S = 10000.0; // scale - ratio of last and first delta_x inside MT
-            double alpha = pow(S, 1.0 / (num_mt_points - 2));
-            int i = 0;
-            double x = origin;
-            while (x <= infinity + tol)
-            {
-                grid_points.push_back(x);
-                x += (mt_radius - origin) * (alpha - 1) * pow(S, double(i) / (num_mt_points - 2)) / (S * alpha - 1);
-                if (x <= mt_radius) i++;
-            }
-            break;
+            error_local(__FILE__, __LINE__, "not yet fixed");
         }
-        case pow_grid:
-        {
-            double x = origin;
-            int i = 1;
-            
-            while (x <= infinity + tol)
-            {
-                grid_points.push_back(x);
-                double t = double(i++) / double(num_mt_points - 1);
-                //x = origin + (mt_radius - origin) * pow(t, 1.0 + 1.0 / (t + 1));
-                x = origin + (mt_radius - origin) * pow(t, 2);
-            }
-            break;
-        }
-        case hyperbolic_grid:
-        {
-            double x = origin;
-            int i = 1;
-            
-            while (x <= infinity + tol)
-            {
-                grid_points.push_back(x);
-                double t = double(i++) / double(num_mt_points - 1);
-                x = origin + 2.0 * (mt_radius - origin) * t / (t + 1);
-            }
-            break;
-        }
-        case incremental_grid:
-        {
-            double D = mt_radius - origin;
-            double S = 1000.0;
-            double dx0 = 2 * D / (2 * (num_mt_points - 1) + (num_mt_points - 1) * (S - 1));
-            double alpha = (S - 1) * dx0 / (num_mt_points - 2);
 
-            int i = 0;
-            double x = origin;
-            while (x <= infinity + tol)
-            {
-                grid_points.push_back(x);
-                x = origin + (dx0 + dx0 + i * alpha) * (i + 1) / 2.0;
-                i++;
-            }
-            break;
-        }
+        //== case hyperbolic_grid:
+        //== {
+        //==     double x = origin;
+        //==     int i = 1;
+        //==     
+        //==     while (x <= infinity + tol)
+        //==     {
+        //==         grid_points.push_back(x);
+        //==         double t = double(i++) / double(num_mt_points - 1);
+        //==         x = origin + 2.0 * (mt_radius - origin) * t / (t + 1);
+        //==     }
+        //==     break;
+        //== }
+        //== case incremental_grid:
+        //== {
+        //==     double D = mt_radius - origin;
+        //==     double S = 1000.0;
+        //==     double dx0 = 2 * D / (2 * (num_mt_points - 1) + (num_mt_points - 1) * (S - 1));
+        //==     double alpha = (S - 1) * dx0 / (num_mt_points - 2);
+
+        //==     int i = 0;
+        //==     double x = origin;
+        //==     while (x <= infinity + tol)
+        //==     {
+        //==         grid_points.push_back(x);
+        //==         x = origin + (dx0 + dx0 + i * alpha) * (i + 1) / 2.0;
+        //==         i++;
+        //==     }
+        //==     break;
+        //== }
     }
    
-    // trivial check
-    if (mt_radius == infinity && num_mt_points != (int)grid_points.size()) 
+    /* trivial check */
+    if (fabs(rmax - grid_points[num_points - 1]) > 1e-10)
     {
         std::stringstream s;
         s << "Wrong radial grid" << std::endl
-          << "  num_mt_points      : " << num_mt_points << std::endl
-          << "  grid_points.size() : " <<  grid_points.size() << std::endl
-          << "  infinity        : " << infinity << std::endl
-          << "  last grid point : " << grid_points[grid_points.size() - 1]; 
+          << "  num_points      : " << num_points << std::endl
+          << "  rmax            : " << Utils::double_to_string(rmax, 12) << std::endl
+          << "  last grid point : " << Utils::double_to_string(grid_points[num_points - 1], 12); 
         error_local(__FILE__, __LINE__, s);
     }
 
     return grid_points;
 }
 
-void Radial_grid::initialize(radial_grid_t grid_type, double origin, double infinity)
+void Radial_grid::create(radial_grid_t grid_type, int num_points, double rmin, double rmax)
 {
-    assert(mt_radius_ > 0);
-    assert(num_mt_points_ > 0);
-    assert(origin > 0);
-    assert(infinity > 0 && infinity > origin && infinity >= mt_radius_);
+    assert(rmin > 0);
+    assert(rmax > 0);
 
-    std::vector<double> grid_points = create_radial_grid(grid_type, num_mt_points_, origin, mt_radius_, infinity);
+    std::vector<double> grid_points = create_radial_grid_points(grid_type, num_points, rmin, rmax);
     set_radial_points((int)grid_points.size(), &grid_points[0]);
 
     switch (grid_type)
@@ -133,14 +138,19 @@ void Radial_grid::initialize(radial_grid_t grid_type, double origin, double infi
             grid_type_name_ = "exponential";
             break;
         }
-        case linear_exponential_grid:
+        case scaled_pow_grid:
         {
-            grid_type_name_ = "linear-exponential";
+            grid_type_name_ = "scaled power grid";
             break;
         }
-        case pow_grid:
+        case pow2_grid:
         {
-            grid_type_name_ = "power";
+            grid_type_name_ = "power2";
+            break;
+        }
+        case pow3_grid:
+        {
+            grid_type_name_ = "power3";
             break;
         }
         case hyperbolic_grid:
@@ -156,40 +166,22 @@ void Radial_grid::initialize(radial_grid_t grid_type, double origin, double infi
     }
 }
 
-void Radial_grid::set_radial_points(int num_points__, double* points__)
+void Radial_grid::set_radial_points(int num_points__, double* x__)
 {
     assert(num_points__ > 0);
-
-    points_.resize(num_points__);
-    memcpy(&points_[0], points__, num_points__ * sizeof(double));
-
-    // check if the last MT point is equal to the MT radius
-    if (fabs(points_[num_mt_points_ - 1] - mt_radius_) > 1e-10) 
-    {   
-        std::stringstream s;
-        s << "Wrong radial grid" << std::endl 
-          << "  num_points     : " << num_points__ << std::endl
-          << "  num_mt_points  : " << num_mt_points_  << std::endl
-          << "  MT radius      : " << mt_radius_ << std::endl
-          << "  MT point value : " << points_[num_mt_points_ - 1];
-         
-        error_local(__FILE__, __LINE__, s);
-    }
     
-    deltas_.resize(points_.size() - 1);
-    for (int i = 0; i < (int)points_.size() - 1; i++) deltas_[i] = points_[i + 1] - points_[i];
+    /* set points */
+    x_.resize(num_points__);
+    memcpy(&x_[0], x__, num_points__ * sizeof(double));
     
-    points_inv_.resize(points_.size());
-    for (int i = 0; i < (int)points_.size(); i++) points_inv_[i] = (points_[i] == 0) ? 0 : 1.0 / points_[i];
-}
-
-void Radial_grid::print_info()
-{
-    printf("number of muffin-tin points : %i\n", num_mt_points());
-    printf("total number of points      : %i\n", num_points());
-    printf("starting point              : %f\n", points_[0]);
-    printf("muffin-tin point            : %f\n", points_[num_mt_points() - 1]);
-    printf("effective infinity point    : %f\n", points_[num_points() - 1]);
+    /* set x^{-1} */
+    x_inv_.resize(x_.size());
+    for (int i = 0; i < (int)x_.size(); i++) x_inv_[i] = (x_[i] == 0) ? 0 : 1.0 / x_[i];
+    
+    /* set dx */
+    dx_.resize(x_.size() - 1);
+    for (int i = 0; i < (int)x_.size() - 1; i++) dx_[i] = x_[i + 1] - x_[i];
+    
 }
 
 };

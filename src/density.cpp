@@ -132,7 +132,7 @@ void Density::initial_density()
             for (int iat = 0; iat < uc->num_atom_types(); iat++)
             {
                 auto atom_type = uc->atom_type(iat);
-                Spline<double> s(atom_type->radial_grid().num_points(), atom_type->radial_grid());
+                Spline<double> s(atom_type->free_atom_radial_grid());
                 
                 if (igs == 0)
                 {
@@ -145,7 +145,7 @@ void Density::initial_density()
                     for (int ir = 0; ir < s.num_points(); ir++) 
                     {
                         s[ir] = atom_type->free_atom_density(ir) *
-                                sin(G * atom_type->radial_grid(ir)) / G;
+                                sin(G * atom_type->free_atom_radial_grid(ir)) / G;
                     }
                     rho_radial_integrals(iat, igs) = s.interpolate().integrate(1);
                 }
@@ -277,7 +277,11 @@ void Density::initial_density()
                 Platform::allreduce(&rho_ylm(0, 0, j), lmmax * nmtp);
 
                 /* remove smooth density of the free atom (we need contribution only from tails) */
-                for (int ir = 0; ir < nmtp; ir++) rho_ylm(ir, 0, j) -= uc->atom_type(iat)->free_atom_density(ir) / y00;
+                for (int ir = 0; ir < nmtp; ir++)
+                {
+                    double x = uc->atom_type(iat)->radial_grid(ir);
+                    rho_ylm(ir, 0, j) -= uc->atom_type(iat)->free_atom_density(x) / y00;
+                }
             
                 /* transpose indices */
                 for (int lm = 0; lm < lmmax; lm++)
@@ -308,7 +312,10 @@ void Density::initial_density()
             {
                 /* add density of the free atom */
                 for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
-                    rho_->f_mt<local>(0, ir, p.first) += uc->atom(ia)->type()->free_atom_density(ir) / y00;
+                {
+                    double x = uc->atom(ia)->type()->radial_grid(ir);
+                    rho_->f_mt<local>(0, ir, p.first) += uc->atom(ia)->type()->free_atom_density(x) / y00;
+                }
             }
         }
 

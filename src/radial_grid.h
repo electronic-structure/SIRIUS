@@ -1,4 +1,4 @@
-// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -27,123 +27,105 @@
 #include "error_handling.h"
 
 /** \file radial_grid.h
-
-    \brief Implementation of the muffin-tin radial grids.
-*/
+ *
+ *  \brief Contains declaraion and partial implementation of sirius::Radial_grid class.
+ */
 
 namespace sirius {
 
 /// Radial grid for a muffin-tin or an isolated atom.
-/** Radial grid is used by the radial solver, spline and other related objects. The grid is constructed in such a way 
-    that the point number \f$N_{MT} - 1\f$ is equal to the muffin-tin radius. */
 class Radial_grid
 {
     private:
         
-        /// muffin-tin radius
-        double mt_radius_; 
+        /// Radial grid points.
+        std::vector<double> x_;
         
-        /// number of muffin-tin radial points
-        int num_mt_points_;
-
-        /// list of radial points
-        std::vector<double> points_;
+        /// Inverse values of radial grid points.
+        std::vector<double> x_inv_;
         
-        /// list of 1/r
-        std::vector<double> points_inv_;
+        /// Radial grid points difference.
+        /** \f$ dx_{i} = x_{i+1} - x_{i} \f$ */
+        std::vector<double> dx_;
         
-        /// intervals between points
-        std::vector<double> deltas_;
-        
-        /// string representation of grid type name
+        /// Name of the grid type.
         std::string grid_type_name_;
         
-        // forbid copy constructor
-        Radial_grid(const Radial_grid& src);
+        // Forbid copy constructor.
+        //Radial_grid(const Radial_grid& src);
         
         /// Create array of radial grid points.
-        std::vector<double> create_radial_grid(radial_grid_t grid_type, int num_mt_points, double origin, 
-                                               double mt_radius, double infinity);
+        std::vector<double> create_radial_grid_points(radial_grid_t grid_type, int num_points, double rmin, double rmax);
 
-        /// Initialize the grid
-        /** Total number of points from origin to effective infinity depends on the grid type */
-        void initialize(radial_grid_t grid_type, double origin, double infinity);
+        /// Create the predefined grid.
+        void create(radial_grid_t grid_type, int num_points, double rmin, double rmax);
 
     public:
         
-        /// Constructor for user provided radial grid
-        /** The actual grid points must are set with the subsequent call to set_radial_points() */
-        Radial_grid(int num_points, int num_mt_points__, double mt_radius__, double* points__) 
-            : mt_radius_(mt_radius__), 
-              num_mt_points_(num_mt_points__), 
-              grid_type_name_("custom")
+        /// Constructor for an empty grid.
+        Radial_grid()
         {
-            set_radial_points(num_points, points__);
-        }
-
-        /// Constructor for muffin-tin radial grids
-        Radial_grid(radial_grid_t grid_type, int num_mt_points__, double origin, double mt_radius__, double infinity) 
-            : mt_radius_(mt_radius__), 
-              num_mt_points_(num_mt_points__), 
-              grid_type_name_("")
-        {
-            initialize(grid_type, origin, infinity);
         }
         
-        /// Constructor for radial grids of isolated atoms (effective infinity is not neccessary)
-        Radial_grid(radial_grid_t grid_type, int num_mt_points__, double origin, double mt_radius__) 
-            : mt_radius_(mt_radius__), 
-              num_mt_points_(num_mt_points__), 
-              grid_type_name_("")
+        /// Constructor for user provided radial grid.
+        Radial_grid(std::vector<double>& x__) : grid_type_name_("custom")
         {
-            initialize(grid_type, origin, mt_radius_);
+            set_radial_points((int)x__.size(), &x__[0]);
         }
 
-        Radial_grid(std::vector<double>& rgrid)
-            : grid_type_name_("custom")
+        /// Constructor for user provided radial grid.
+        Radial_grid(int num_points__, double* x__) : grid_type_name_("custom")
         {
-            mt_radius_ = rgrid[rgrid.size() - 1];
-            num_mt_points_ = (int)rgrid.size();
-            set_radial_points((int)rgrid.size(), &rgrid[0]);
+            set_radial_points(num_points__, x__);
+        }
+
+        /// Constructor for a specific radial grid.
+        Radial_grid(radial_grid_t grid_type, int num_points, double rmin, double rmax) : grid_type_name_("")
+        {
+            create(grid_type, num_points, rmin, rmax);
         }
         
+        /// Return \f$ x_{i} \f$.
         inline double operator [](const int i)
         {
-            assert(i < (int)points_.size());
-            return points_[i];
+            assert(i < (int)x_.size());
+            return x_[i];
         }
         
-        inline double dr(const int i)
+        /// Return \f$ dx_{i} \f$.
+        inline double dx(const int i)
         {
-            assert(i < (int)deltas_.size());
-            return deltas_[i];
+            assert(i < (int)dx_.size());
+            return dx_[i];
         }
-
-        inline double rinv(const int i)
+        
+        /// Return \f$ x_{i}^{-1} \f$.
+        inline double x_inv(const int i)
         {
-            assert(i < (int)points_inv_.size());
-            return points_inv_[i];
+            assert(i < (int)x_inv_.size());
+            return x_inv_[i];
         }
        
-        /// Number of muffin-tin points.
-        inline int num_mt_points()
+        /// Number of grid points.
+        inline int num_mt_points() // TODO: remove this later.
         {
-            return num_mt_points_;
+            return (int)x_.size();
         }
         
-        /// Total number of radial points.
+        /// Number of grid points.
         inline int num_points()
         {
-            return (int)points_.size();
+            return (int)x_.size();
         }
                
-        /// Get muffin-tin radial points and deltas.
-        inline void get_r_dr(double* array, int lda)
+        /// Get radial points and deltas.
+        inline void get_x_dx(double* array, int ld)
         {
-            memcpy(&array[0], &points_[0], num_mt_points_ * sizeof(double));
-            memcpy(&array[lda], &deltas_[0], (num_mt_points_ - 1) * sizeof(double));
+            memcpy(&array[0], &x_[0], x_.size() * sizeof(double));
+            memcpy(&array[ld], &dx_[0], dx_.size() * sizeof(double));
         }
-       
+        
+        /// Return name of the grid type.
         inline std::string grid_type_name()
         {
             return grid_type_name_;
@@ -151,9 +133,6 @@ class Radial_grid
 
         /// Set new radial points.
         void set_radial_points(int num_points__, double* points__);
-
-        /// Print basic info.
-        void print_info();
 };
 
 };

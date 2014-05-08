@@ -124,6 +124,28 @@ int cmd_args::value<int>(const std::string key)
 }
 
 template <>
+double cmd_args::value<double>(const std::string key)
+{
+    double v;
+
+    if (!exist(key))
+    {
+        std::stringstream s;
+        s << "command line parameter --" << key << " was not specified";
+        terminate(__FILE__, __LINE__, s);
+    }
+
+    std::istringstream(keys_[key]) >> v;
+    return v;
+}
+
+template <>
+std::string cmd_args::value<std::string>(const std::string key)
+{
+    return keys_[key];
+}
+
+template <>
 vector3d<double> cmd_args::value< vector3d<double> >(const std::string key)
 {
     vector3d<double> v;

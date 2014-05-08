@@ -15,7 +15,7 @@ int Radial_solver::integrate(int nr, int l, double enu, sirius::Spline<double>& 
     double ll2 = 0.5 * l * (l + 1);
 
     double x2 = radial_grid_[0];
-    double x2inv = radial_grid_.rinv(0);
+    double x2inv = radial_grid_.x_inv(0);
     double v2 = ve[0] + zn_ / x2;
     double m2 = 1 - (v2 - enu0) * alpha2;
 
@@ -43,8 +43,8 @@ int Radial_solver::integrate(int nr, int l, double enu, sirius::Spline<double>& 
         double x0 = x2;
         x2 = radial_grid_[i + 1];
         double x0inv = x2inv;
-        x2inv = radial_grid_.rinv(i + 1);
-        double h = radial_grid_.dr(i);
+        x2inv = radial_grid_.x_inv(i + 1);
+        double h = radial_grid_.dx(i);
         double h1 = h / 2;
 
         double x1 = x0 + h1;
@@ -101,15 +101,15 @@ int Radial_solver::integrate(int nr, int l, double enu, sirius::Spline<double>& 
 
     for (int i = 0; i < nr; i++)
     {
-        double V = ve[i] + zn_ * radial_grid_.rinv(i); 
+        double V = ve[i] + zn_ * radial_grid_.x_inv(i); 
         double M = 1.0 - (V - enu0) * alpha2;
 
         // P' = 2MQ + \frac{P}{r}
-        dpdr[i] = 2 * M * q[i] + p[i] * radial_grid_.rinv(i);
+        dpdr[i] = 2 * M * q[i] + p[i] * radial_grid_.x_inv(i);
 
         // Q' = (V - E + \frac{\ell(\ell + 1)}{2 M r^2}) P - \frac{Q}{r}
         dqdr[i] = (V - enu + double(l * (l + 1)) / (2 * M * pow(radial_grid_[i], 2))) * p[i] - 
-                  q[i] * radial_grid_.rinv(i) - mp[i];
+                  q[i] * radial_grid_.x_inv(i) - mp[i];
     }
 
     return nn;

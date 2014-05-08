@@ -151,7 +151,7 @@ void FORTRAN(sirius_add_atom_type)(char* label, char* fname, int32_t label_len, 
 */ 
 void FORTRAN(sirius_set_atom_type_properties)(char* label, char* symbol, int32_t* zn, double* mass, 
                                               double* mt_radius, int32_t* num_mt_points, double* radial_grid_origin, 
-                                              double* radial_grid_infinity, int32_t label_len, int32_t symbol_len)
+                                              int32_t label_len, int32_t symbol_len)
 {
     log_function_enter(__func__);
     sirius::Atom_type* type = global_parameters.unit_cell()->atom_type(std::string(label, label_len));
@@ -160,7 +160,7 @@ void FORTRAN(sirius_set_atom_type_properties)(char* label, char* symbol, int32_t
     type->set_mass(*mass);
     type->set_num_mt_points(*num_mt_points);
     type->set_radial_grid_origin(*radial_grid_origin);
-    type->set_radial_grid_infinity(*radial_grid_infinity);
+    //type->set_radial_grid_infinity(*radial_grid_infinity);
     type->set_mt_radius(*mt_radius);
     log_function_exit(__func__);
 }
@@ -1529,7 +1529,7 @@ void FORTRAN(sirius_scalar_radial_solver)(int32_t* zn, int32_t* l, int32_t* dme,
                                           double* v__, int32_t* nn, double* p0__, double* p1__, double* q0__, double* q1__)
 {
     log_function_enter(__func__);
-    sirius::Radial_grid rgrid(*nr, *nr, r[*nr - 1], r);
+    sirius::Radial_grid rgrid(*nr, r);
     sirius::Radial_solver solver(false, *zn, rgrid);
 
     std::vector<double> v(*nr);
@@ -1568,7 +1568,7 @@ void FORTRAN(sirius_get_aw_h_radial_function)(int32_t* ia__, int32_t* l, int32_t
     int idxrf = global_parameters.unit_cell()->atom(ia)->type()->indexr_by_l_order(*l, io);
     for (int ir = 0; ir < global_parameters.unit_cell()->atom(ia)->num_mt_points(); ir++)
     {
-        double rinv = global_parameters.unit_cell()->atom(ia)->type()->radial_grid().rinv(ir);
+        double rinv = global_parameters.unit_cell()->atom(ia)->type()->radial_grid().x_inv(ir);
         hawrf[ir] = global_parameters.unit_cell()->atom(ia)->symmetry_class()->h_radial_function(ir, idxrf) * rinv;
     }
     log_function_exit(__func__);
@@ -1600,7 +1600,7 @@ void FORTRAN(sirius_get_lo_h_radial_function)(int32_t* ia__, int32_t* idxlo__, d
     int idxrf = global_parameters.unit_cell()->atom(ia)->type()->indexr_by_idxlo(idxlo);
     for (int ir = 0; ir < global_parameters.unit_cell()->atom(ia)->num_mt_points(); ir++)
     {
-        double rinv = global_parameters.unit_cell()->atom(ia)->type()->radial_grid().rinv(ir);
+        double rinv = global_parameters.unit_cell()->atom(ia)->type()->radial_grid().x_inv(ir);
         hlorf[ir] = global_parameters.unit_cell()->atom(ia)->symmetry_class()->h_radial_function(ir, idxrf) * rinv;
     }
     log_function_exit(__func__);
