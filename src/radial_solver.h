@@ -56,6 +56,7 @@ class Radial_solver
         /// Radial grid.
         Radial_grid& radial_grid_;
         
+        /// Tolerance of bound state energy. 
         double enu_tolerance_;
        
         /// Integrate system of two first-order differential equations forward starting from the origin. 
