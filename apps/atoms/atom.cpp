@@ -19,19 +19,192 @@
 
 #include <sirius.h>
 
-class atom : public sirius::Atom_type
+class Free_atom : public sirius::Atom_type
 {
+    private:
+
+        mdarray<double, 2> free_atom_radial_functions_;
+
     public:
     
         double NIST_LDA_Etot;
     
-        atom(const char* symbol, const char* name, int zn, double mass, std::vector<atomic_level_descriptor>& levels_nl) : 
-            Atom_type(symbol, name, zn, mass, levels_nl), NIST_LDA_Etot(0.0)
+        Free_atom(const char* symbol, 
+                  const char* name, 
+                  int zn, 
+                  double mass, 
+                  std::vector<atomic_level_descriptor>& levels_nl) 
+            : Atom_type(symbol, name, zn, mass, levels_nl), 
+              NIST_LDA_Etot(0.0)
         {
+        }
+
+        double ground_state(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
+        {
+            sirius::Timer t("sirius::Free_atom::ground_state");
+        
+            int np = radial_grid().num_points();
+            assert(np > 0);
+
+            free_atom_radial_functions_.set_dimensions(np, num_atomic_levels()); 
+            free_atom_radial_functions_.allocate();
+            
+            sirius::Radial_solver solver(false, -1.0 * zn(), radial_grid());
+        
+            sirius::XC_functional Ex("XC_LDA_X", 1);
+            sirius::XC_functional Ec("XC_LDA_C_VWN", 1);
+        
+            solver.set_tolerance(solver_tol);
+            
+            std::vector<double> veff(np);
+            std::vector<double> vnuc(np);
+            for (int i = 0; i < np; i++)
+            {
+                vnuc[i] = -1.0 * zn() / radial_grid(i);
+                veff[i] = vnuc[i];
+            }
+        
+            sirius::Spline<double> rho(radial_grid());
+        
+            sirius::Spline<double> f(radial_grid());
+        
+            std::vector<double> vh(np);
+            std::vector<double> vxc(np);
+            std::vector<double> exc(np);
+            std::vector<double> g1;
+            std::vector<double> g2;
+            std::vector<double> rho_old;
+        
+            enu.resize(num_atomic_levels());
+        
+            double energy_tot = 0.0;
+            double energy_tot_old;
+            double charge_rms;
+            double energy_diff;
+        
+            double beta = 0.9;
+            
+            bool converged = false;
+            
+            /* starting values for E_{nu} */
+            for (int ist = 0; ist < num_atomic_levels(); ist++)
+                enu[ist] = -1.0 * zn() / 2 / pow(double(atomic_level(ist).n), 2);
+            
+            for (int iter = 0; iter < 200; iter++)
+            {
+                rho_old = rho.values();
+                
+                memset(&rho[0], 0, rho.num_points() * sizeof(double));
+                #pragma omp parallel default(shared)
+                {
+                    std::vector<double> p(rho.num_points());
+                    std::vector<double> rho_t(rho.num_points());
+                    memset(&rho_t[0], 0, rho.num_points() * sizeof(double));
+                
+                    #pragma omp for
+                    for (int ist = 0; ist < num_atomic_levels(); ist++)
+                    {
+                        solver.bound_state(atomic_level(ist).n, atomic_level(ist).l, veff, enu[ist], p);
+                    
+                        for (int i = 0; i < np; i++)
+                        {
+                            free_atom_radial_functions_(i, ist) = p[i] * radial_grid().x_inv(i);
+                            rho_t[i] += atomic_level(ist).occupancy * pow(y00 * free_atom_radial_functions_(i, ist), 2);
+                        }
+                    }
+        
+                    #pragma omp critical
+                    for (int i = 0; i < rho.num_points(); i++) rho[i] += rho_t[i];
+                } 
+                
+                charge_rms = 0.0;
+                for (int i = 0; i < np; i++) charge_rms += pow(rho[i] - rho_old[i], 2);
+                charge_rms = sqrt(charge_rms / np);
+                
+                rho.interpolate();
+        
+                /* compute Hartree potential */
+                rho.integrate(g2, 2);
+                double t1 = rho.integrate(g1, 1);
+        
+                for (int i = 0; i < np; i++) vh[i] = fourpi * (g2[i] / radial_grid(i) + t1 - g1[i]);
+                
+                /* compute XC potential and energy */
+                memset(&vxc[0], 0, rho.num_points() * sizeof(double));
+                memset(&exc[0], 0, rho.num_points() * sizeof(double));
+                Ex.add(rho.num_points(), &rho[0], &vxc[0], &exc[0]);
+                Ec.add(rho.num_points(), &rho[0], &vxc[0], &exc[0]);
+               
+                /* mix old and new effective potential */
+                for (int i = 0; i < np; i++)
+                    veff[i] = (1 - beta) * veff[i] + beta * (vnuc[i] + vh[i] + vxc[i]);
+                
+                /* kinetic energy */
+                for (int i = 0; i < np; i++) f[i] = veff[i] * rho[i];
+                f.interpolate();
+                
+                /* sum of occupied eigen values */
+                double eval_sum = 0.0;
+                for (int ist = 0; ist < num_atomic_levels(); ist++)
+                    eval_sum += atomic_level(ist).occupancy * enu[ist];
+        
+                double energy_kin = eval_sum - fourpi * f.integrate(2);
+        
+                /* XC energy */
+                for (int i = 0; i < np; i++) f[i] = exc[i] * rho[i];
+                f.interpolate();
+                double energy_xc = fourpi * f.integrate(2); 
+                
+                /* electron-nuclear energy */
+                for (int i = 0; i < np; i++) f[i] = vnuc[i] * rho[i];
+                f.interpolate();
+                double energy_enuc = fourpi * f.integrate(2); 
+        
+                /* Coulomb energy */
+                for (int i = 0; i < np; i++) f[i] = vh[i] * rho[i];
+                f.interpolate();
+                double energy_coul = 0.5 * fourpi * f.integrate(2);
+                
+                energy_tot_old = energy_tot;
+        
+                energy_tot = energy_kin + energy_xc + energy_coul + energy_enuc; 
+                
+                energy_diff = fabs(energy_tot - energy_tot_old);
+                
+                if (energy_diff < energy_tol && charge_rms < charge_tol) 
+                { 
+                    converged = true;
+                    printf("Free atom (id = %i) converged in %i iterations.\n", id(), iter);
+                    break;
+                }
+                
+                beta = std::max(beta * 0.95, 0.005);
+            }
+        
+            if (!converged)
+            {
+                printf("energy_diff : %18.10f   charge_rms : %18.10f   beta : %18.10f\n", energy_diff, charge_rms, beta);
+                std::stringstream s;
+                s << "atom " << symbol() << " is not converged" << std::endl
+                  << "  energy difference : " << energy_diff << std::endl
+                  << "  charge difference : " << charge_rms;
+                error_local(__FILE__, __LINE__, s);
+            }
+            
+            free_atom_density_ = rho.values();
+            
+            free_atom_potential_ = veff;
+            
+            return energy_tot;
+        }
+
+        inline double free_atom_radial_function(int ir, int ist)
+        {
+            return free_atom_radial_functions_(ir, ist);
         }
 };
 
-atom* init_atom_configuration(const std::string& label)
+Free_atom* init_atom_configuration(const std::string& label)
 {
     JSON_tree jin("atoms.json");
     
@@ -41,7 +214,7 @@ atom* init_atom_configuration(const std::string& label)
     std::vector<atomic_level_descriptor> levels_nl;
     std::vector<atomic_level_descriptor> levels_nlk;
     
-    atom* a;
+    Free_atom* a;
 
     memset(&nl_occ[0][0], 0, 28 * sizeof(int));
 
@@ -77,29 +250,32 @@ atom* init_atom_configuration(const std::string& label)
     double NIST_LDA_Etot = 0.0;
     NIST_LDA_Etot = jin[label]["NIST_LDA_Etot"].get(NIST_LDA_Etot);
     
-    a = new atom(label.c_str(), name.c_str(), zn, mass, levels_nl);
+    a = new Free_atom(label.c_str(), name.c_str(), zn, mass, levels_nl);
     a->NIST_LDA_Etot = NIST_LDA_Etot;
     return a;
 }
 
-void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, int apw_order)
+void generate_atom_file(Free_atom* a, double core_cutoff_energy, const std::string& lo_type, int apw_order)
 {
     std::vector<double> enu;
-    
-    double energy_tot = a->solve_free_atom(1e-10, 1e-8, 1e-7, enu);
-    
+   
+    /* solve a free atom */
+    double energy_tot = a->ground_state(1e-10, 1e-8, 1e-7, enu);
+   
+    /* find number of core states */
     int ncore = 0;
     for (int ist = 0; ist < (int)a->num_atomic_levels(); ist++)
     {
         if (enu[ist] < core_cutoff_energy) ncore += int(a->atomic_level(ist).occupancy + 1e-12);
     }
 
-    std::cout << " atom : " << a->symbol() << "    Z : " << a->zn() << std::endl;
-    std::cout << " =================== " << std::endl;
+    printf(" atom : %s, Z = %i\n", a->symbol().c_str(), a->zn());
+    printf("----------------------------------\n");
     printf(" total energy : %12.6f, NIST value : %12.6f\n", energy_tot, a->NIST_LDA_Etot);
-    std::cout << " number of core electrons : " <<  ncore << std::endl;
-    std::cout << std::endl;
-  
+    printf(" number of core electrons : %i\n", ncore);
+    printf("\n");
+    
+    /* difference between NIST and computed total energy. Comparison is valid only for VWN XC functional. */
     double dE = double(int64_t(fabs(energy_tot - a->NIST_LDA_Etot) * 1e8)) / 1e8;
     std::cerr << a->zn() << " " << dE << std::endl;
     
@@ -110,8 +286,6 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
     jw.single("number", a->zn());
     jw.single("mass", a->mass());
     jw.single("rmin", a->radial_grid(0));
-    jw.single("rmax", a->radial_grid(a->radial_grid().num_points() - 1));
-    jw.single("nrmt", a->num_mt_points());
 
     std::vector<atomic_level_descriptor> core;
     std::vector<atomic_level_descriptor> valence;
@@ -119,14 +293,14 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
     
     printf("Core / valence partitioning\n");
     printf("core cutoff energy : %f\n", core_cutoff_energy);
-    sirius::Spline <double> rho_c(a->radial_grid().num_points(), a->radial_grid());
-    sirius::Spline <double> rho(a->radial_grid().num_points(), a->radial_grid());
-    for (int ist = 0; ist < (int)a->num_atomic_levels(); ist++)
+    sirius::Spline <double> rho_c(a->radial_grid());
+    sirius::Spline <double> rho(a->radial_grid());
+    for (int ist = 0; ist < a->num_atomic_levels(); ist++)
     {
         printf("%i%s  occ : %8.4f  energy : %12.6f", a->atomic_level(ist).n, level_symb[a->atomic_level(ist).l].c_str(), 
                                                      a->atomic_level(ist).occupancy, enu[ist]);
         
-        // total density
+        /* total density */
         for (int ir = 0; ir < a->radial_grid().num_points(); ir++) 
             rho[ir] += a->atomic_level(ist).occupancy * pow(y00 * a->free_atom_radial_function(ir, ist), 2);
 
@@ -153,7 +327,7 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
     //** }
     //** fclose(fout);
 
-    // estimate effective infinity
+    /* estimate effective infinity */
     double rinf = 0.0;
     for (int ir = 0; ir < a->radial_grid().num_points(); ir++)
     {
@@ -163,10 +337,10 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
     printf("Effective infinity : %f\n", rinf);
 
     std::vector<double> g;
-    rho_c.interpolate();
-    rho_c.integrate(g, 2);
+    rho_c.interpolate().integrate(g, 2);
 
     double core_radius = 2.0;
+    int nrmt = 1500;
     if (ncore != 0)
     {
         for (int ir = a->radial_grid().num_points() - 1; ir >= 0; ir--)
@@ -175,6 +349,7 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
             if (fabs(g[ir] - g[a->radial_grid().num_points() - 1]) / fabs(g[a->radial_grid().num_points() - 1]) > 1e-5) 
             {
                 core_radius = a->radial_grid(ir);
+                nrmt = ir;
                 break;
             }
         }
@@ -182,6 +357,7 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
 
     printf("suggested MT radius : %f\n", core_radius);
     jw.single("rmt", core_radius);
+    jw.single("nrmt", nrmt);
     
     std::string core_str;
     for (int i = 0; i < (int)core.size(); i++)
@@ -228,11 +404,11 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
         jw.single("n", n);
         if (apw_order == 1)
         {
-            jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 2}]");
+            jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]");
         }
         if (apw_order == 2)
         {
-            jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 2}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 2}]");
+            jw.string("basis", "[{\"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}, {\"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}]");
         }
         jw.end_set();
     }
@@ -242,8 +418,8 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
     {
         jw.begin_set();
         std::stringstream s;
-        s << "[{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 2}," 
-          << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : 2}]";
+        s << "[{" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}," 
+          << " {" << "\"n\" : " << valence[i].n << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : 1}]";
         jw.single("l", valence[i].l);
         jw.string("basis", s.str());
         jw.end_set();
@@ -259,7 +435,7 @@ void solve_atom(atom* a, double core_cutoff_energy, const std::string& lo_type, 
                 std::stringstream s;
                 s << "[{" << "\"n\" : " << nmax[l] + nn + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 0}," 
                   << " {" << "\"n\" : " << nmax[l] + nn + 1 << ", \"enu\" : 0.15, \"dme\" : 1, \"auto\" : 0},"
-                  << " {" << "\"n\" : " << nmax[l] + nn + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 2}]";
+                  << " {" << "\"n\" : " << nmax[l] + nn + 1 << ", \"enu\" : 0.15, \"dme\" : 0, \"auto\" : 1}]";
                 jw.single("l", l);
                 jw.string("basis", s.str());
                 jw.end_set();
@@ -316,84 +492,59 @@ int main(int argn, char **argv)
 {
     Platform::initialize(true);
 
+    /* handle command line arguments */
+    cmd_args args;
+    args.register_key("--symbol=", "{string} symbol of a chemical element");
+    args.register_key("--type=", "{lo, lo+LO, lo+SLO, lo+cp} type of local orbital basis");
+    args.register_key("--core=", "{double} cutoff energy (in Ha) for the core states");
+    args.register_key("--order=", "{int} order of augmentation");
+    args.parse_args(argn, argv);
+    
     if (argn == 1)
     {
         printf("\n");
-        printf("Atom (L)APW+lo basis generation\n");
+        printf("Atom (L)APW+lo basis generation.\n");
         printf("\n");
-        printf("Usage: ./atom [OPTIONS] symbol\n");
-        printf("  [OPTIONS]\n");
-        printf("    -type lo_type   set type of local orbital basis\n");
+        printf("Usage: ./plot [options] \n");
+        args.print_help();
         printf("\n");
-        printf("                    the following types are allowed: 'lo', 'lo+LO', 'lo+SLO', 'lo+cp'\n");
-        printf("\n");
-        printf("                    Definition:\n");
-        printf("                      'lo'  : 2nd order local orbitals composed of u(E) and udot(E),\n");
-        printf("                              where E is the energy of the bound-state level {n,l}\n");
-        printf("                      'LO'  : 3rd order local orbitals composed of u(E), udot(E) and u(E1),\n");
-        printf("                              where E and E1 are the energies of the bound-state levels {n,l} and {n+1,l}\n");
-        printf("                      'SLO' : sequence of 3rd order local orbitals composed of u(E), udot(E) and u(En),\n");
-        printf("                              where E is fixed and En is chosen in such a way that u(En) has n nodes inside the muffin-tin\n");
-        printf("                      'cp'  : confined polynomial of the form r^{l}*(1-r/R)^{p}\n");
-        printf("\n");
-        printf("                    default is 'lo'\n");
-        printf("\n");
-        printf("    -core energy    set the cutoff energy for the core states\n");
-        printf("\n");
-        printf("                    default is -10.0 Ha\n");
+        printf("Definition of the local orbital types:\n");
+        printf("  lo  : 2nd order local orbitals composed of u(E) and udot(E),\n");
+        printf("        where E is the energy of the bound-state level {n,l}\n");
+        printf("  LO  : 3rd order local orbitals composed of u(E), udot(E) and u(E1),\n");
+        printf("        where E and E1 are the energies of the bound-state levels {n,l} and {n+1,l}\n");
+        printf("  SLO : sequence of 3rd order local orbitals composed of u(E), udot(E) and u(En),\n");
+        printf("        where E is fixed and En is chosen in such a way that u(En) has n nodes inside the muffin-tin\n");
+        printf("  cp  : confined polynomial of the form r^{l}*(1-r/R)^{p}\n");
         printf("\n");
         printf("Examples:\n");
         printf("\n");
         printf("  generate default basis for lithium:\n");
-        printf("    ./atom Li\n"); 
+        printf("    ./atom --symbol=Li\n"); 
         printf("\n");
-        printf("  generate high precision basis for oxygen:\n");
-        printf("    ./atom -type lo+SLO O\n"); 
+        printf("  generate high precision basis for titanium:\n");
+        printf("    ./atom --type=lo+SLO --symbol=Ti\n"); 
         printf("\n");
         printf("  make all states of iron to be valence:\n");
-        printf("    ./atom -core -1000 Fe\n"); 
-        return -1;
+        printf("    ./atom --core=-1000 --symbol=Fe\n"); 
+        printf("\n");
+        exit(0);
     }
 
+    auto symbol = args.value<std::string>("symbol");
+
     double core_cutoff_energy = -10.0;
+    if (args.exist("core")) core_cutoff_energy = args.value<double>("core");
+
     std::string lo_type = "lo";
+    if (args.exist("type")) lo_type = args.value<std::string>("type");
+
     int apw_order = 1;
+    if (args.exist("order")) apw_order = args.value<int>("order");
    
-    std::string label = "";
-    int i = 1;
-    while (i < argn)
-    {
-        std::string s(argv[i]);
-        if (s == "-order")
-        {
-            std::istringstream iss((std::string(argv[i + 1])));
-            iss >> apw_order;
-            i += 2;
-        }
-        if (s == "-type")
-        {
-            lo_type = std::string(argv[i + 1]);
-            if (!(lo_type == "lo" || lo_type == "lo+LO" || lo_type == "lo+SLO" || lo_type == "lo+cp"))
-                error_local(__FILE__, __LINE__, "wrong type of local orbital basis");
-            i += 2;
-        }
-        else if (s == "-core")
-        {
-            std::istringstream iss((std::string(argv[i + 1])));
-            iss >> core_cutoff_energy;
-            i += 2;
-        }
-        else 
-        {
-            label = s;
-            i++;
-        }
-    }
-    if (label == "") error_local(__FILE__, __LINE__, "atom symbol was not specified");
+    Free_atom* a = init_atom_configuration(symbol);
     
-    atom* a = init_atom_configuration(label);
-    
-    solve_atom(a, core_cutoff_energy, lo_type, apw_order);
+    generate_atom_file(a, core_cutoff_energy, lo_type, apw_order);
 
     delete a;
 }
