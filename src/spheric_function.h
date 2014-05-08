@@ -13,17 +13,18 @@ class Spheric_function
 {
     private:
 
-        /// function data
+        /// Spheric function values.
         mdarray<T, 2> data_;
-
+        
+        /// Radial grid.
         Radial_grid& radial_grid_;
-
+        
+        /// Interface to spherical harmonics transformation.
         SHT* sht_;
 
         int angular_domain_size_;
         int angular_domain_idx_;
 
-        int radial_domain_size_;
         int radial_domain_idx_;
 
     public:
@@ -36,10 +37,9 @@ class Spheric_function
               sht_(NULL), 
               angular_domain_size_(angular_domain_size__), 
               angular_domain_idx_(1),
-              radial_domain_size_(radial_grid__.num_points()), 
               radial_domain_idx_(0)
         {
-            data_.set_dimensions(radial_domain_size_, angular_domain_size_);
+            data_.set_dimensions(radial_grid_.num_points(), angular_domain_size_);
             data_.allocate();
         }
         
@@ -48,10 +48,9 @@ class Spheric_function
               sht_(NULL), 
               angular_domain_size_(angular_domain_size__), 
               angular_domain_idx_(0),
-              radial_domain_size_(radial_grid__.num_points()), 
               radial_domain_idx_(1)
         {
-            data_.set_dimensions(angular_domain_size_, radial_domain_size_);
+            data_.set_dimensions(angular_domain_size_, radial_grid_.num_points());
             data_.allocate();
         }
 
@@ -60,10 +59,9 @@ class Spheric_function
               sht_(NULL), 
               angular_domain_size_(angular_domain_size__), 
               angular_domain_idx_(0),
-              radial_domain_size_(radial_grid__.num_points()), 
               radial_domain_idx_(1)
         {
-            data_.set_dimensions(angular_domain_size_, radial_domain_size_);
+            data_.set_dimensions(angular_domain_size_, radial_grid_.num_points());
             data_.set_ptr(ptr);
         }
 
@@ -72,10 +70,9 @@ class Spheric_function
               sht_(&sht__), 
               angular_domain_size_(sht__.num_points()), 
               angular_domain_idx_(0),
-              radial_domain_size_(radial_grid__.num_points()), 
               radial_domain_idx_(1)
         {
-            data_.set_dimensions(angular_domain_size_, radial_domain_size_);
+            data_.set_dimensions(angular_domain_size_, radial_grid_.num_points());
             data_.allocate();
         }
 
@@ -84,10 +81,9 @@ class Spheric_function
               sht_(&sht__), 
               angular_domain_size_(sht__.num_points()), 
               angular_domain_idx_(0),
-              radial_domain_size_(radial_grid__.num_points()), 
               radial_domain_idx_(1)
         {
-            data_.set_dimensions(angular_domain_size_, radial_domain_size_);
+            data_.set_dimensions(angular_domain_size_, radial_grid_.num_points());
             data_.set_ptr(ptr);
         }
         
@@ -97,16 +93,15 @@ class Spheric_function
               sht_(f.sht_), 
               angular_domain_size_(f.angular_domain_size_),
               angular_domain_idx_(f.angular_domain_idx_), 
-              radial_domain_size_(f.radial_domain_size_),
               radial_domain_idx_(f.radial_domain_idx_)
         {
             if (radial_domain_idx_ == 0)
             {
-                data_.set_dimensions(radial_domain_size_, angular_domain_size_);
+                data_.set_dimensions(radial_grid_.num_points(), angular_domain_size_);
             }
             else
             {
-                data_.set_dimensions(angular_domain_size_, radial_domain_size_);
+                data_.set_dimensions(angular_domain_size_, radial_grid_.num_points());
             }
             data_.allocate();
 
@@ -136,11 +131,6 @@ class Spheric_function
         inline int angular_domain_idx()
         {
             return angular_domain_idx_;
-        }
-
-        inline int radial_domain_size()
-        {
-            return radial_domain_size_;
         }
 
         inline int radial_domain_idx()

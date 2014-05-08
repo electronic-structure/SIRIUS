@@ -47,15 +47,14 @@ void Spheric_function<T>::sh_convert(Spheric_function<U>& f)
             {
                 if (m == 0)
                 {
-                    for (int ir = 0; ir < radial_domain_size_; ir++) f(ir, lm) = type_wrapper<U>::sift(this->data_(ir, lm));
+                    for (int ir = 0; ir < radial_grid_.num_points(); ir++) 
+                        f(ir, lm) = type_wrapper<U>::sift(this->data_(ir, lm));
                 }
                 else 
                 {
                     int lm1 = Utils::lm_by_l_m(l, -m);
-                    for (int ir = 0; ir < radial_domain_size_; ir++)
-                    {
+                    for (int ir = 0; ir < radial_grid_.num_points(); ir++)
                         f(ir, lm) = type_wrapper<U>::sift(tpp[lm] * this->data_(ir, lm) + tpm[lm] * this->data_(ir, lm1));
-                    }
                 }
                 lm++;
             }
@@ -63,7 +62,7 @@ void Spheric_function<T>::sh_convert(Spheric_function<U>& f)
     }
     else
     {
-        for (int ir = 0; ir < radial_domain_size_; ir++)
+        for (int ir = 0; ir < radial_grid_.num_points(); ir++)
         {
             int lm = 0;
             for (int l = 0; l <= lmax; l++)
@@ -108,7 +107,7 @@ void Spheric_function<T>::sh_transform(Spheric_function<T>& f)
         if ((int)data_.size(0) != f.sht_->lmmax()) error_local(__FILE__, __LINE__, "wrong lm size");
         if ((int)f.data_.size(0) != f.sht_->num_points()) error_local(__FILE__, __LINE__, "wrong tp size");
         
-        f.sht_->backward_transform(&data_(0, 0), angular_domain_size_, radial_domain_size_, &f(0, 0));
+        f.sht_->backward_transform(&data_(0, 0), angular_domain_size_, radial_grid_.num_points(), &f(0, 0));
     }
     
     if (sht_)
@@ -116,7 +115,7 @@ void Spheric_function<T>::sh_transform(Spheric_function<T>& f)
         if ((int)data_.size(0) != sht_->num_points()) error_local(__FILE__, __LINE__, "wrong tp size");
         if ((int)f.data_.size(0) != sht_->lmmax()) error_local(__FILE__, __LINE__, "wrong lm size");
         
-        sht_->forward_transform(&data_(0, 0), f.angular_domain_size_, radial_domain_size_, &f(0, 0));
+        sht_->forward_transform(&data_(0, 0), f.angular_domain_size_, radial_grid_.num_points(), &f(0, 0));
     }
 }
 
@@ -137,13 +136,13 @@ T inner(Spheric_function<T>& f1, Spheric_function<T>& f2)
     {
         for (int lm = 0; lm < f1.angular_domain_size(); lm++)
         {
-            for (int ir = 0; ir < f1.radial_domain_size(); ir++)
+            for (int ir = 0; ir < f1.radial_grid().num_points(); ir++)
                 s[ir] += type_wrapper<T>::conjugate(f1(ir, lm)) * f2(ir, lm);
         }
     }
     else
     {
-        for (int ir = 0; ir < f1.radial_domain_size(); ir++)
+        for (int ir = 0; ir < f1.radial_grid().num_points(); ir++)
         {
             for (int lm = 0; lm < f1.angular_domain_size(); lm++)
                 s[ir] += type_wrapper<T>::conjugate(f1(lm, ir)) * f2(lm, ir);
