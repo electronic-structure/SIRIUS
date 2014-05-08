@@ -30,7 +30,7 @@ void Atom_symmetry_class::generate_aw_radial_functions()
                 /* find linearization energies */
                 if (rsd.auto_enu) rsd.enu = solver.find_enu(rsd.n, rsd.l, spherical_potential_, rsd.enu);
 
-                solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p, hp, dpdr[order]);
+                solver.solve(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p, hp, dpdr[order]);
 
                 /* normalize */
                 for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(p[ir], 2);
@@ -131,7 +131,7 @@ void Atom_symmetry_class::generate_lo_radial_functions()
                     if (rsd.auto_enu) rsd.enu = solver.find_enu(rsd.n, rsd.l, spherical_potential_, rsd.enu);
 
                     double dpdr;
-                    solver.solve_in_mt(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p[order], hp[order], dpdr); 
+                    solver.solve(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p[order], hp[order], dpdr); 
                     double p1 = p[order][nmtp - 1]; // save last value
                     
                     // normalize radial solutions and divide by r

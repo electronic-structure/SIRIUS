@@ -1540,7 +1540,7 @@ void FORTRAN(sirius_scalar_radial_solver)(int32_t* zn, int32_t* l, int32_t* dme,
 
     memcpy(&v[0], v__, (*nr) * sizeof(double));
 
-    *nn = solver.solve_in_mt(*l, *enu, *dme, v, p0, p1, q0, q1);
+    *nn = solver.solve(*l, *enu, *dme, v, p0, p1, q0, q1);
 
     memcpy(p0__, &p0[0], (*nr) * sizeof(double));
     memcpy(p1__, &p1[0], (*nr) * sizeof(double));

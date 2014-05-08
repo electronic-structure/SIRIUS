@@ -1,5 +1,3 @@
-// This file is part of SIRIUS
-//
 // Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
@@ -28,46 +26,52 @@
 #include "constants.h"
 
 /** \file radial_solver.h
-    
-    \brief Implementation of radial solver
-*/
+ *   
+ *  \brief Contains declaration and partial implementation of sirius::Radial_solver class.
+ */
 
 namespace sirius {
 
 /// Solves a "classical" or scalar relativistic radial Schroedinger equation
 /** Second order differential equation is converted into the system of coupled first-order differential equations, 
-    which are then solved byt the Runge–Kutta 4th order method.
-
-    \f{eqnarray*}{
-       P' &=& 2 M Q + \frac{P}{r} \\
-       Q' &=& (V - E + \frac{\ell(\ell + 1)}{2 M r^2}) P - \frac{Q}{r}
-    \f}
-    
-    \todo Correct relativistic DFT 
-*/
+ *  which are then solved byt the Runge–Kutta 4th order method.
+ *
+ *  \f{eqnarray*}{
+ *     P' &=& 2 M Q + \frac{P}{r} \\
+ *     Q' &=& (V - E + \frac{\ell(\ell + 1)}{2 M r^2}) P - \frac{Q}{r}
+ *  \f}
+ *  
+ *  \todo Correct relativistic DFT 
+ */
 class Radial_solver
 {
     private:
 
-        /// true if scalar-relativistic equation is solved 
+        /// True if scalar-relativistic equation is solved.
         bool relativistic_;
         
-        /// negative charge of the nucleus
+        /// Negative charge of the nucleus.
         double zn_;
         
-        /// radial grid
-        sirius::Radial_grid& radial_grid_;
+        /// Radial grid.
+        Radial_grid& radial_grid_;
         
         double enu_tolerance_;
-        
-        int integrate(int nr, int l, double enu, sirius::Spline<double>& ve, sirius::Spline<double>& mp, 
-                      std::vector<double>& p, std::vector<double>& dpdr, 
-                      std::vector<double>& q, std::vector<double>& dqdr);
+       
+        /// Integrate system of two first-order differential equations forward starting from the origin. 
+        int integrate(int l, 
+                      double enu, 
+                      Spline<double>& ve,
+                      Spline<double>& mp, 
+                      std::vector<double>& p, 
+                      std::vector<double>& dpdr, 
+                      std::vector<double>& q, 
+                      std::vector<double>& dqdr);
 
     public:
 
         /// Constructor
-        Radial_solver(bool relativistic__, double zn__, sirius::Radial_grid& radial_grid__) 
+        Radial_solver(bool relativistic__, double zn__, Radial_grid& radial_grid__) 
             : relativistic_(relativistic__), 
               zn_(zn__), 
               radial_grid_(radial_grid__),
@@ -75,19 +79,38 @@ class Radial_solver
         {
         }
         
+        /// Explicitly specify tolerance of the solver.
         inline void set_tolerance(double tolerance__)
         {
             enu_tolerance_ = tolerance__;
         }
-
-        double find_enu(int n, int l, std::vector<double>& v, double enu0);
-                        
-        int solve_in_mt(int l, double enu, int m, std::vector<double>& v, std::vector<double>& p, 
-                        std::vector<double>& hp, double& dpdr_R);
         
-        int solve_in_mt(int l, double enu, int m, std::vector<double>& v, std::vector<double>& p0, 
-                        std::vector<double>& p1, std::vector<double>& q0, std::vector<double>& q1);
+        /// Find center of band (linearization energy).
+        double find_enu(int n, int l, std::vector<double>& v, double enu0);
 
+        /// Find m-th energy derivative of the radial solution.
+        /** Return raw data: P and Q functions and their radial derivatives */
+        int solve(int l, 
+                  double enu, 
+                  int m, 
+                  std::vector<double>& v, 
+                  std::vector<double>& p0, 
+                  std::vector<double>& p1, 
+                  std::vector<double>& q0, 
+                  std::vector<double>& q1);
+        
+        /// Find m-th energy derivative of the radial solution.
+        /** Return radial Hamiltonian applied to a solution and a surface derivative */
+        int solve(int l, 
+                  double enu, 
+                  int m, 
+                  std::vector<double>& v, 
+                  std::vector<double>& p, 
+                  std::vector<double>& hp, 
+                  double& dpdr_R);
+        
+        /// Find a bound state.
+        /** Radial grid must be large enough to fully hold the bound state. */
         void bound_state(int n, int l, std::vector<double>& v, double& enu, std::vector<double>& p);
 };
 
