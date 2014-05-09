@@ -157,7 +157,7 @@ int Radial_solver::solve(int l,
                          std::vector<double>& q0, 
                          std::vector<double>& q1)
 {
-    assert(radial_grid_.size() == (int)v.size());
+    assert(radial_grid_.num_points() == (int)v.size());
 
     /* subtract the nucleus part and keep the smooth part of the potential */
     Spline<double> vs(radial_grid_);

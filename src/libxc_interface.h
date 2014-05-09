@@ -21,6 +21,12 @@ class XC_functional
         
         xc_func_type handler_;
 
+        /* forbid copy constructor */
+        XC_functional(const XC_functional& src) = delete;
+
+        /* forbid assigment operator */
+        XC_functional& operator=(const XC_functional& src) = delete;
+
     public:
 
         XC_functional(const std::string libxc_name__, int num_spins__) 
@@ -70,6 +76,8 @@ class XC_functional
         /// Add LDA contribution.
         void add(int size, const double* rho, double* v, double* e)
         {
+            if (family() != XC_FAMILY_LDA) error_local(__FILE__, __LINE__, "wrong XC");
+
             std::vector<double> v_tmp(size);
             std::vector<double> e_tmp(size);
 
@@ -79,12 +87,10 @@ class XC_functional
                 if (rho[i] < 0.0)
                 {
                     std::stringstream s;
-                    s << "rho is negative : " << rho[i];
+                    s << "rho is negative : " << Utils::double_to_string(rho[i]);
                     error_local(__FILE__, __LINE__, s);
                 }
             }
-
-            if (family() != XC_FAMILY_LDA) error_local(__FILE__, __LINE__, "wrong XC");
 
             xc_lda_exc_vxc(&handler_, size, &rho[0], &e_tmp[0], &v_tmp[0]);
        
@@ -92,6 +98,41 @@ class XC_functional
             {
                 v[i] += v_tmp[i];
                 e[i] += e_tmp[i];
+            }
+        }
+
+        /// Add LSDA contribution.
+        void add(int size, const double* rho, const double* mag, double* vxc, double* bxc, double* exc)
+        {
+            if (family() != XC_FAMILY_LDA) error_local(__FILE__, __LINE__, "wrong XC");
+
+            std::vector<double> rhoud(size * 2);
+            for (int i = 0; i < size; i++)
+            {
+                rhoud[2 * i] = 0.5 * (rho[i] + mag[i]);
+                rhoud[2 * i + 1] = 0.5 * (rho[i] - mag[i]);
+
+                if (rhoud[2 * i] < 0.0) error_local(__FILE__, __LINE__, "rho_up is negative");
+
+                if (rhoud[2 * i + 1] < 0.0)
+                {
+                    std::stringstream s;
+                    s << "rho_dn is negative : " << Utils::double_to_string(rhoud[2 * i + 1]) << std::endl
+                        << "  rho : " << Utils::double_to_string(rho[i]) << "   mag : " << Utils::double_to_string(mag[i]);
+                    error_local(__FILE__, __LINE__, s);
+                }
+            }
+
+            std::vector<double> vxc_tmp(size * 2);
+            std::vector<double> exc_tmp(size);
+            
+            xc_lda_exc_vxc(&handler_, size, &rhoud[0], &exc_tmp[0], &vxc_tmp[0]);
+
+            for (int j = 0; j < size; j++)
+            {
+                exc[j] += exc_tmp[j];
+                vxc[j] += 0.5 * (vxc_tmp[2 * j] + vxc_tmp[2 * j + 1]);
+                bxc[j] += 0.5 * (vxc_tmp[2 * j] - vxc_tmp[2 * j + 1]);
             }
         }
 };

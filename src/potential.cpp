@@ -742,7 +742,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         }
     }
     
-    // transform Hartree potential to real space
+    /* transform Hartree potential to real space */
     fft_->input(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &vh->f_pw(0));
     fft_->transform(1);
     fft_->output(&vh->f_it<global>(0));
@@ -762,7 +762,13 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
 {
     Timer t("sirius::Potential::xc");
 
-    libxc_interface xci("XC_LDA_X", "XC_LDA_C_PZ");
+    /* create list of XC functionals */
+    std::vector<XC_functional*> xc_func;
+    for (int i = 0; i < (int)parameters_.xc_functionals_input_section_.xc_functional_names_.size(); i++)
+    {
+        std::string xc_label = parameters_.xc_functionals_input_section_.xc_functional_names_[i];
+        xc_func.push_back(new XC_functional(xc_label, parameters_.num_spins()));
+    }
    
     if (parameters_.unit_cell()->full_potential())
     {
@@ -793,8 +799,10 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
 
             int nmtp = parameters_.unit_cell()->atom(ia)->num_mt_points();
 
+            /* transform density from Rlm to (theta, phi) */
             rho->f_mt(ialoc).sh_transform(rhotp);
-
+            
+            /* check if density has negative values */
             double rhomin = 0.0;
             for (int ir = 0; ir < nmtp; ir++)
             {
@@ -814,6 +822,7 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
             {
                 for (int ir = 0; ir < nmtp; ir++)
                 {
+                    /* fix negative density */
                     for (int itp = 0; itp < sht_->num_points(); itp++) 
                     {
                         if (rhotp(itp, ir) < 0.0) rhotp(itp, ir) = 0.0;
@@ -822,6 +831,7 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
             }
             else
             {
+                /* transform magnetization from Rlm to (theta, phi) */
                 for (int j = 0; j < parameters_.num_mag_dims(); j++)
                     magnetization[j]->f_mt(ialoc).sh_transform(vecmagtp[j]);
                 
@@ -829,9 +839,12 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
                 {
                     for (int itp = 0; itp < sht_->num_points(); itp++)
                     {
+                        /* compute the magnitude of the magnetization vector */
                         double t = 0.0;
                         for (int j = 0; j < parameters_.num_mag_dims(); j++) t += pow(vecmagtp[j](itp, ir), 2);
                         magtp(itp, ir) = sqrt(t);
+
+                        /* in magnetic case fix both density and magnetization */
                         for (int itp = 0; itp < sht_->num_points(); itp++) 
                         {
                             if (rhotp(itp, ir) < 0.0)
@@ -839,37 +852,54 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
                                 rhotp(itp, ir) = 0.0;
                                 magtp(itp, ir) = 0.0;
                             }
+                            /* fix numerical noise at high values of magnetization */
                             magtp(itp, ir) = std::min(magtp(itp, ir), rhotp(itp, ir));
                         }
                     }
                 }
             }
             
-            if (parameters_.num_spins() == 1) 
+            vxctp.zero();
+            bxctp.zero();
+            exctp.zero();
+
+            /* loop over XC functionals */
+            for (auto& ixc: xc_func)
             {
-                #pragma omp parallel for default(shared)
-                for (int ir = 0; ir < nmtp; ir++)
+                /* if this is an LDA functional */
+                if (ixc->lda())
                 {
-                    xci.getxc(sht_->num_points(), &rhotp(0, ir), &vxctp(0, ir), &exctp(0, ir));
+                    /* unpolarized case */
+                    if (parameters_.num_spins() == 1) 
+                    {
+                        #pragma omp parallel for default(shared)
+                        for (int ir = 0; ir < nmtp; ir++)
+                        {
+                            ixc->add(sht_->num_points(), &rhotp(0, ir), &vxctp(0, ir), &exctp(0, ir));
+                        }
+                    }
+                    else
+                    {
+                        #pragma omp parallel for default(shared)
+                        for (int ir = 0; ir < nmtp; ir++)
+                        {
+                            ixc->add(sht_->num_points(), &rhotp(0, ir), &magtp(0, ir), &vxctp(0, ir), &bxctp(0, ir), &exctp(0, ir));
+                        }
+                    }
                 }
             }
-            else
-            {
-                #pragma omp parallel for default(shared)
-                for (int ir = 0; ir < nmtp; ir++)
-                {
-                    xci.getxc(sht_->num_points(), &rhotp(0, ir), &magtp(0, ir), &vxctp(0, ir), &bxctp(0, ir), &exctp(0, ir));
-                }
-            }
+            
+            /* convert back from (theta, phi) to Rlm */
             vxctp.sh_transform(vxc->f_mt(ialoc));
             exctp.sh_transform(exc->f_mt(ialoc));
-
+            
             if (parameters_.num_spins() == 2)
             {
                 for (int ir = 0; ir < nmtp; ir++)
                 {
                     for (int itp = 0; itp < sht_->num_points(); itp++)
                     {
+                        /* align magnetic filed parallel to magnetization */
                         if (magtp(itp, ir) > 1e-8)
                         {
                             for (int j = 0; j < parameters_.num_mag_dims(); j++)
@@ -881,6 +911,7 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
                         }
                     }       
                 }
+                /* convert magnetic field back to Rlm */
                 for (int j = 0; j < parameters_.num_mag_dims(); j++) vecbxctp[j].sh_transform(bxc[j]->f_mt(ialoc));
             }
         }
@@ -888,11 +919,12 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
   
     Timer t3("sirius::Potential::xc|it");
 
-    // TODO: this is unreadable and must be reimplemented
-    int irloc_size = fft_->local_size();
+    /* number of local points in the FFT buffer */
+    int num_loc_points = fft_->local_size();
 
+    /* check for negative values */
     double rhomin = 0.0;
-    for (int irloc = 0; irloc < irloc_size; irloc++)
+    for (int irloc = 0; irloc < num_loc_points; irloc++)
     {
         rhomin = std::min(rhomin, rho->f_it<local>(irloc));
         if (rho->f_it<local>(irloc) < 0.0)  rho->f_it<local>(irloc) = 0.0;
@@ -907,43 +939,77 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
 
     #pragma omp parallel default(shared)
     {
-        int id = Platform::thread_id(); 
-        int m = irloc_size % Platform::num_threads(); // first m threads get n+1 elements
-        int pt_nloc = irloc_size / Platform::num_threads() + (id < m ? 1 : 0); // local number of elements: +1 if id < m
-        int pt_offs = (id < m) ? pt_nloc * id : m * (pt_nloc + 1) + (id - m) * pt_nloc; // offset
+        /* split local size between threads */
+        splindex<block> spl_t(num_loc_points, Platform::num_threads(), Platform::thread_id());
 
-        if (parameters_.num_spins() == 1)
-        {
-            xci.getxc(pt_nloc, &rho->f_it<local>(pt_offs), &vxc->f_it<local>(pt_offs), &exc->f_it<local>(pt_offs));
-        }
-        else
-        {
-            std::vector<double> magit(pt_nloc);
-            std::vector<double> bxcit(pt_nloc);
+        std::vector<double> vxc_tmp(spl_t.local_size());
+        memset(&vxc_tmp[0], 0, vxc_tmp.size() * sizeof(double));
 
-            for (int irloc = 0; irloc < pt_nloc; irloc++)
+        std::vector<double> exc_tmp(spl_t.local_size());
+        memset(&exc_tmp[0], 0, exc_tmp.size() * sizeof(double));
+
+        std::vector<double> bxc_tmp;
+        std::vector<double> magit;
+
+        if (parameters_.num_spins() == 2)
+        {
+            bxc_tmp.resize(spl_t.local_size());
+            memset(&bxc_tmp[0], 0, bxc_tmp.size() * sizeof(double));
+            
+            /* compute magnetization */
+            magit.resize(spl_t.local_size());
+            for (int irloc = 0; irloc < spl_t.local_size(); irloc++)
             {
                 double t = 0.0;
-                for (int j = 0; j < parameters_.num_mag_dims(); j++) t += pow(magnetization[j]->f_it<local>(pt_offs + irloc), 2);
+                for (int j = 0; j < parameters_.num_mag_dims(); j++) 
+                    t += pow(magnetization[j]->f_it<local>(spl_t.global_offset() + irloc), 2);
                 magit[irloc] = sqrt(t);
-                magit[irloc] = std::min(magit[irloc], rho->f_it<local>(pt_offs + irloc));
+                magit[irloc] = std::min(magit[irloc], rho->f_it<local>(spl_t.global_offset() + irloc));
             }
-            xci.getxc(pt_nloc, &rho->f_it<local>(pt_offs), &magit[0], &vxc->f_it<local>(pt_offs), &bxcit[0], &exc->f_it<local>(pt_offs));
-            
-            for (int irloc = 0; irloc < pt_nloc; irloc++)
+        }
+
+        /* loop over XC functionals */
+        for (auto& ixc: xc_func)
+        {
+            /* if this is an LDA functional */
+            if (ixc->lda())
+            {
+                if (parameters_.num_spins() == 1)
+                {
+                    //ixc.add(spl_t.local_size(), &rho->f_it<local>(spl_t.global_offset()), &vxc->f_it<local>(pt_offs), &exc->f_it<local>(pt_offs));
+                    ixc->add(spl_t.local_size(), &rho->f_it<local>(spl_t.global_offset()), &vxc_tmp[0], &exc_tmp[0]);
+                }
+                else
+                {
+                    ixc->add(spl_t.local_size(), &rho->f_it<local>(spl_t.global_offset()), &magit[0], &vxc_tmp[0], 
+                             &bxc_tmp[0], &exc_tmp[0]);
+                }
+            }
+        }
+
+        for (int irloc = 0; irloc < spl_t.local_size(); irloc++)
+        {
+            vxc->f_it<local>(spl_t.global_offset() + irloc) = vxc_tmp[irloc];
+            exc->f_it<local>(spl_t.global_offset() + irloc) = exc_tmp[irloc];
+        }
+
+        if (parameters_.num_spins() == 2)
+        {
+            for (int irloc = 0; irloc < spl_t.local_size(); irloc++)
             {
                 if (magit[irloc] > 1e-8)
                 {
                     for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                        bxc[j]->f_it<local>(pt_offs + irloc) = (bxcit[irloc] / magit[irloc]) * magnetization[j]->f_it<local>(pt_offs + irloc);
+                        bxc[j]->f_it<local>(spl_t.global_offset() + irloc) = (bxc_tmp[irloc] / magit[irloc]) * magnetization[j]->f_it<local>(spl_t.global_offset() + irloc);
                 }
                 else
                 {
-                    for (int j = 0; j < parameters_.num_mag_dims(); j++) bxc[j]->f_it<local>(pt_offs + irloc) = 0.0;
+                    for (int j = 0; j < parameters_.num_mag_dims(); j++) bxc[j]->f_it<local>(spl_t.global_offset() + irloc) = 0.0;
                 }
             }
         }
     }
+    for (auto& ixc: xc_func) delete ixc;
 }
 
 void Potential::generate_effective_potential(Periodic_function<double>* rho, Periodic_function<double>* magnetization[3])

@@ -1,6 +1,4 @@
-// This file is part of SIRIUS
-//
-// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -23,25 +21,25 @@
 #define __FFT3D_H__
 
 /** \file fft3d.h
-    
-    \brief Interface to FFTW3 library.
-    
-    FFT convention:
-    \f[
-        f({\bf r}) = \sum_{{\bf G}} e^{i{\bf G}{\bf r}} f({\bf G})
-    \f]
-    is a \em backward transformation from a set of pw coefficients to a function.  
-
-    \f[
-        f({\bf G}) = \frac{1}{\Omega} \int e^{-i{\bf G}{\bf r}} f({\bf r}) d {\bf r} = 
-            \frac{1}{N} \sum_{{\bf r}_j} e^{-i{\bf G}{\bf r}_j} f({\bf r}_j)
-    \f]
-    is a \em forward transformation from a function to a set of coefficients. 
-
-    FFTW performs an "out of place" transformation, which means that we need to allocate both input and output buffers.
-    To get the most performance out of multithreading we are going to put whole FFTs into different threads instead
-    of using threaded implementation for each transform. 
-*/
+ *   
+ *  \brief Interface to FFTW3 library.
+ *  
+ *  FFT convention:
+ *  \f[
+ *      f({\bf r}) = \sum_{{\bf G}} e^{i{\bf G}{\bf r}} f({\bf G})
+ *  \f]
+ *  is a \em backward transformation from a set of pw coefficients to a function.  
+ *
+ *  \f[
+ *      f({\bf G}) = \frac{1}{\Omega} \int e^{-i{\bf G}{\bf r}} f({\bf r}) d {\bf r} = 
+ *          \frac{1}{N} \sum_{{\bf r}_j} e^{-i{\bf G}{\bf r}_j} f({\bf r}_j)
+ *  \f]
+ *  is a \em forward transformation from a function to a set of coefficients. 
+ *
+ *  FFTW performs an "out of place" transformation, which means that we need to allocate both input and output buffers.
+ *  To get the most performance out of multithreading we are going to put whole FFTs into different threads instead
+ *  of using threaded implementation for each transform. 
+ */
 
 #include <fftw3.h>
 #include <vector>

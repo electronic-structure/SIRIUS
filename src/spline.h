@@ -129,26 +129,33 @@ class Spline
         {
             int np = num_points();
 
-            assert(x >= radial_grid_[0]);
             assert(x <= radial_grid_[np - 1]);
             
-            int j = np - 1;
-            for (int i = 0; i < np - 1; i++)
+            if (x >= radial_grid_[0])
             {
-                if (x < radial_grid_[i + 1])
+                int j = np - 1;
+                for (int i = 0; i < np - 1; i++)
                 {
-                    j = i;
-                    break;
+                    if (x < radial_grid_[i + 1])
+                    {
+                        j = i;
+                        break;
+                    }
                 }
-            }
-            if (j == np - 1) 
-            {
-                return a[np - 1];
+                if (j == np - 1) 
+                {
+                    return a[np - 1];
+                }
+                else
+                {
+                    double dx = x - radial_grid_[j];
+                    return a[j] + dx * (b[j] + dx * (c[j] + dx * d[j]));
+                }
             }
             else
             {
-                double dx = x - radial_grid_[j];
-                return a[j] + dx * (b[j] + dx * (c[j] + dx * d[j]));
+                double dx = x - radial_grid_[0];
+                return a[0] + dx * (b[0] + dx * (c[0] + dx * d[0]));
             }
         }
         
@@ -167,7 +174,7 @@ class Spline
         
         inline T deriv(const int dm, const int i, const double dx)
         {
-            assert(i < num_points_ - 1);
+            assert(i < num_points() - 1);
 
             switch (dm)
             {

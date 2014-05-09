@@ -500,6 +500,31 @@ class Global
         {
             return unit_cell_;
         }
+
+        struct xc_functionals_input_section
+        {
+            std::vector<std::string> xc_functional_names_;
+
+            xc_functionals_input_section()
+            {
+                xc_functional_names_.push_back("XC_LDA_X");
+                xc_functional_names_.push_back("XC_LDA_C_VWN");
+            }
+
+            void read(JSON_tree parser)
+            {
+                if (parser.exist("xc_functionals"))
+                {
+                    xc_functional_names_.clear();
+                    for (int i = 0; i < parser["xc_functionals"].size(); i++)
+                    {
+                        std::string s;
+                        parser["xc_functionals"][i] >> s;
+                        xc_functional_names_.push_back(s);
+                    }
+                }
+            }
+        } xc_functionals_input_section_;
         
         struct mixer_input_section
         {

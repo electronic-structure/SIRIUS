@@ -583,7 +583,7 @@ class Atom_type
         {
             for (int i = 0; i < free_atom_radial_grid().num_points(); i++)
             {
-                if (free_atom_radial_grid(i) > mt_radius()) return i;
+                if (free_atom_radial_grid(i) > mt_radius()) return i - 1;
             }
             return -1;
         }

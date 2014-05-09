@@ -3,7 +3,7 @@ class FFT3D<cpu>
 {
     private:
 
-        /// size of each dimension
+        /// Size of each dimension.
         int grid_size_[3];
 
         /// reciprocal space range
@@ -18,7 +18,7 @@ class FFT3D<cpu>
         /// inout buffer for each thread
         mdarray<double_complex, 2> fftw_buffer_;
         
-        /// split index of FFT buffer
+        /// Split index of FFT buffer.
         splindex<block> spl_fft_size_;
 
         /// Execute backward transformation.

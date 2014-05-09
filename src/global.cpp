@@ -107,6 +107,7 @@ void Global::read_input()
         }
 
         mixer_input_section_.read(parser);
+        xc_functionals_input_section_.read(parser);
     }
 
     Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::max_num_threads()));
@@ -481,6 +482,18 @@ void Global::print_info()
             printf("GPU\n");
             break;
         }
+    }
+    
+    printf("\n");
+    printf("XC functionals : \n");
+    for (int i = 0; i < (int)xc_functionals_input_section_.xc_functional_names_.size(); i++)
+    {
+        std::string xc_label = xc_functionals_input_section_.xc_functional_names_[i];
+        XC_functional xc(xc_label, num_spins());
+        printf("\n");
+        printf("%s\n", xc_label.c_str());
+        printf("%s\n", xc.name().c_str());
+        printf("%s\n", xc.refs().c_str());
     }
 }
 
