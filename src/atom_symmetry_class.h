@@ -92,8 +92,7 @@ class Atom_symmetry_class
         void initialize();
 
         /// Set the spherical component of the potential
-        /** Atoms belonging to the same symmetry class have the same spherical potential.
-        */
+        /** Atoms belonging to the same symmetry class have the same spherical potential. */
         void set_spherical_potential(std::vector<double>& veff);
 
         void generate_radial_functions();
@@ -104,40 +103,42 @@ class Atom_symmetry_class
         
         void sync_core_charge_density(int rank);
        
-        /// Compute m-th order radial derivative at the MT surface
+        /// Compute m-th order radial derivative at the MT surface.
         double aw_surface_dm(int l, int order, int dm);
         
-        /// Find core states and generate core density
+        /// Find core states and generate core density.
         void generate_core_charge_density();
+
+        void find_enu();
 
         void write_enu(pstdout& pout);
         
         /// Generate radial overlap and SO integrals
         /** In the case of spin-orbit interaction the following integrals are computed:
-            \f[
-                \int f_{p}(r) \Big( \frac{1}{(2 M c)^2} \frac{1}{r} \frac{d V}{d r} \Big) f_{p'}(r) r^2 dr
-            \f]
-            
-            Relativistic mass M is defined as
-            \f[
-                M = 1 - \frac{1}{2 c^2} V
-            \f]
-        */
+         *  \f[
+         *      \int f_{p}(r) \Big( \frac{1}{(2 M c)^2} \frac{1}{r} \frac{d V}{d r} \Big) f_{p'}(r) r^2 dr
+         *  \f]
+         *  
+         *  Relativistic mass M is defined as
+         *  \f[
+         *      M = 1 - \frac{1}{2 c^2} V
+         *  \f]
+         */
         void generate_radial_integrals();
         
-        /// Return symmetry class id
+        /// Return symmetry class id.
         inline int id()
         {
             return id_;
         }
 
-        /// Add atom id to the current class
+        /// Add atom id to the current class.
         inline void add_atom_id(int atom_id__)
         {
             atom_id_.push_back(atom_id__);
         }
         
-        /// Return number of atoms belonging to the current symmetry class
+        /// Return number of atoms belonging to the current symmetry class.
         inline int num_atoms()
         {
             return (int)atom_id_.size();

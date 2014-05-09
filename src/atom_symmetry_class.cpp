@@ -27,9 +27,6 @@ void Atom_symmetry_class::generate_aw_radial_functions()
 
                 int idxrf = atom_type_->indexr().index_by_l_order(l, order);
 
-                /* find linearization energies */
-                if (rsd.auto_enu) rsd.enu = solver.find_enu(rsd.n, rsd.l, spherical_potential_, rsd.enu);
-
                 solver.solve(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p, hp, dpdr[order]);
 
                 /* normalize */
@@ -117,7 +114,7 @@ void Atom_symmetry_class::generate_lo_radial_functions()
 
             if (lo_descriptor(idxlo).type == lo_rs)
             {
-                // number of radial solutions
+                /* number of radial solutions */
                 int num_rs = (int)lo_descriptor(idxlo).rsd_set.size();
 
                 std::vector< std::vector<double> > p(num_rs);
@@ -127,31 +124,32 @@ void Atom_symmetry_class::generate_lo_radial_functions()
                 {
                     radial_solution_descriptor& rsd = lo_descriptor(idxlo).rsd_set[order];
                     
-                    /* find linearization energies */
-                    if (rsd.auto_enu) rsd.enu = solver.find_enu(rsd.n, rsd.l, spherical_potential_, rsd.enu);
-
                     double dpdr;
                     solver.solve(rsd.l, rsd.enu, rsd.dme, spherical_potential_, p[order], hp[order], dpdr); 
-                    double p1 = p[order][nmtp - 1]; // save last value
+                    /* save last value */
+                    double p_at_R = p[order][nmtp - 1];
                     
-                    // normalize radial solutions and divide by r
+                    /* find norm of the radial solution */
                     for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(p[order][ir], 2);
                     double norm = 1.0 / sqrt(s.interpolate().integrate(0));
 
+                    /* normalize radial solution and divide by r */
                     for (int ir = 0; ir < nmtp; ir++)
                     {
                         p[order][ir] *= (norm / atom_type_->radial_grid(ir));
-                        hp[order][ir] *= norm; // don't divide hp by r
+                        /* don't divide hp by r */
+                        hp[order][ir] *= norm;
                         s[ir] = p[order][ir];
                     }
                     dpdr *= norm;
-                    p1 *= norm;
+                    p_at_R *= norm;
 
                     s.interpolate();
                     
-                    // compute radial derivatives
+                    /* compute radial derivatives */
                     for (int dm = 0; dm < num_rs; dm++) a[order][dm] = s.deriv(dm, nmtp - 1);
-                    a[order][1] = (dpdr - p1 / R) / R; // replace 1st derivative with more precise value
+                    /* replace 1st derivative with more precise value */
+                    a[order][1] = (dpdr - p_at_R / R) / R;
 
                 }
 
@@ -167,7 +165,7 @@ void Atom_symmetry_class::generate_lo_radial_functions()
                     error_local(__FILE__, __LINE__, s);
                 }
                 
-                // take linear combination of radial solutions
+                /* take linear combination of radial solutions */
                 for (int order = 0; order < num_rs; order++)
                 {
                     for (int ir = 0; ir < nmtp; ir++)
@@ -177,10 +175,11 @@ void Atom_symmetry_class::generate_lo_radial_functions()
                     }
                 }
 
-                // normalize
+                /* find norm of a just constructed local orbital */
                 for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf, 0), 2);
                 double norm = 1.0 / sqrt(s.interpolate().integrate(2));
 
+                /* normalize */
                 for (int ir = 0; ir < nmtp; ir++)
                 {
                     radial_functions_(ir, idxrf, 0) *= norm;
@@ -480,11 +479,54 @@ void Atom_symmetry_class::set_spherical_potential(std::vector<double>& veff)
     spherical_potential_ = veff;
 }
 
+void Atom_symmetry_class::find_enu()
+{
+    Timer t("sirius::Atom_symmetry_class::find_enu");
+
+    std::vector<radial_solution_descriptor*> rs_with_auto_enu;
+    
+    /* find which aw functions need auto enu */
+    for (int l = 0; l < num_aw_descriptors(); l++)
+    {
+        for (int order = 0; order < (int)aw_descriptor(l).size(); order++)
+        {
+            radial_solution_descriptor& rsd = aw_descriptor(l)[order];
+            if (rsd.auto_enu) rs_with_auto_enu.push_back(&rsd);
+        }
+    }
+
+    /* find which lo functions need auto enu */
+    for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++)
+    {
+        if (lo_descriptor(idxlo).type == lo_rs)
+        {
+            /* number of radial solutions */
+            int num_rs = (int)lo_descriptor(idxlo).rsd_set.size();
+
+            for (int order = 0; order < num_rs; order++)
+            {
+                radial_solution_descriptor& rsd = lo_descriptor(idxlo).rsd_set[order];
+                if (rsd.auto_enu) rs_with_auto_enu.push_back(&rsd);
+            }
+        }
+    }
+
+    Radial_solver solver(false, -1.0 * atom_type_->zn(), atom_type_->radial_grid());
+    #pragma omp parallel for
+    for (int i = 0; i < (int)rs_with_auto_enu.size(); i++)
+    {
+        radial_solution_descriptor* rsd = rs_with_auto_enu[i];
+        rsd->enu = solver.find_enu(rsd->n, rsd->l, spherical_potential_, rsd->enu);
+    }
+}
+
 void Atom_symmetry_class::generate_radial_functions()
 {
     Timer t("sirius::Atom_symmetry_class::generate_radial_functions");
 
     radial_functions_.zero();
+
+    find_enu();
 
     generate_aw_radial_functions();
     generate_lo_radial_functions();

@@ -1,6 +1,4 @@
-// This file is part of SIRIUS
-//
-// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -31,45 +29,45 @@
  *  \brief Descriptors for various data structures
  */
 
-/// describes single atomic level
+/// Describes single atomic level.
 struct atomic_level_descriptor
 {
-    /// principal quantum number
+    /// Principal quantum number.
     int n;
 
-    /// angular momentum quantum number
+    /// Angular momentum quantum number.
     int l;
     
-    /// quantum number k
+    /// Quantum number k.
     int k;
     
-    /// level occupancy
+    /// Level occupancy.
     double occupancy;
 
-    /// true if this is a core level
+    /// True if this is a core level.
     bool core;
 };
 
-/// describes radial solution
+/// Describes radial solution.
 struct radial_solution_descriptor
 {
-    /// principal quantum number
+    /// Principal quantum number.
     int n;
     
-    /// angular momentum quantum number
+    /// Angular momentum quantum number.
     int l;
     
-    /// order of energy derivative
+    /// Order of energy derivative.
     int dme;
     
-    /// energy of the solution
+    /// Energy of the solution.
     double enu;
     
-    /// automatically determine energy
+    /// Automatically determine energy.
     int auto_enu;
 };
 
-/// set of radial solution descriptors, used to construct augmented waves or local orbitals
+/// Set of radial solution descriptors, used to construct augmented waves or local orbitals.
 typedef std::vector<radial_solution_descriptor> radial_solution_descriptor_set;
 
 /// descriptor of a local orbital radial function
