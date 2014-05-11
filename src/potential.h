@@ -64,6 +64,13 @@ class Potential
 
         void generate_local_potential();
 
+        void xc_mt(Periodic_function<double>* rho, 
+                   Periodic_function<double>* magnetization[3], 
+                   std::vector<XC_functional*>& xc_func,
+                   Periodic_function<double>* vxc, 
+                   Periodic_function<double>* bxc[3], 
+                   Periodic_function<double>* exc);
+    
     public:
 
         /// Constructor

@@ -757,6 +757,158 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     }
 }
 
+void Potential::xc_mt(Periodic_function<double>* rho, 
+                      Periodic_function<double>* magnetization[3],
+                      std::vector<XC_functional*>& xc_func,
+                      Periodic_function<double>* vxc, 
+                      Periodic_function<double>* bxc[3], 
+                      Periodic_function<double>* exc)
+{
+    Timer t2("sirius::Potential::xc_mt");
+
+    int raw_size = sht_->num_points() * parameters_.unit_cell()->max_num_mt_points();
+    std::vector<double> rhotp_raw(raw_size);
+    std::vector<double> vxctp_raw(raw_size);
+    std::vector<double> exctp_raw(raw_size);
+    std::vector<double> magtp_raw(raw_size);
+    std::vector<double> bxctp_raw(raw_size);
+    std::vector<double> vecmagtp_raw(raw_size * parameters_.num_mag_dims());
+    std::vector<double> vecbxctp_raw(raw_size * parameters_.num_mag_dims());
+
+    for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+    {
+        int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
+
+        auto& rgrid = parameters_.unit_cell()->atom(ia)->radial_grid();
+
+        Spheric_function<double> rhotp(&rhotp_raw[0], *sht_, rgrid);
+        Spheric_function<double> vxctp(&vxctp_raw[0], *sht_, rgrid);
+        Spheric_function<double> exctp(&exctp_raw[0], *sht_, rgrid);
+        Spheric_function<double> magtp(&magtp_raw[0], *sht_, rgrid);
+        Spheric_function<double> bxctp(&bxctp_raw[0], *sht_, rgrid);
+        Spheric_function_vector<double> vecmagtp(&vecmagtp_raw[0], *sht_, rgrid, parameters_.num_mag_dims());
+        Spheric_function_vector<double> vecbxctp(&vecbxctp_raw[0], *sht_, rgrid, parameters_.num_mag_dims());
+
+        int nmtp = parameters_.unit_cell()->atom(ia)->num_mt_points();
+
+        /* transform density from Rlm to (theta, phi) */
+        rho->f_mt(ialoc).sh_transform(rhotp);
+        
+        /* check if density has negative values */
+        double rhomin = 0.0;
+        for (int ir = 0; ir < nmtp; ir++)
+        {
+            for (int itp = 0; itp < sht_->num_points(); itp++) rhomin = std::min(rhomin, rhotp(itp, ir));
+        }
+
+        if (rhomin < 0.0)
+        {
+            std::stringstream s;
+            s << "Charge density for atom " << ia << " has negative values" << std::endl
+              << "most negatve value : " << rhomin << std::endl
+              << "current Rlm expansion of the charge density may be not sufficient, try to increase lmax_rho";
+            warning_local(__FILE__, __LINE__, s);
+        }
+
+        if (parameters_.num_spins() == 1)
+        {
+            for (int ir = 0; ir < nmtp; ir++)
+            {
+                /* fix negative density */
+                for (int itp = 0; itp < sht_->num_points(); itp++) 
+                {
+                    if (rhotp(itp, ir) < 0.0) rhotp(itp, ir) = 0.0;
+                }
+            }
+        }
+        else
+        {
+            /* transform magnetization from Rlm to (theta, phi) */
+            for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                magnetization[j]->f_mt(ialoc).sh_transform(vecmagtp[j]);
+            
+            for (int ir = 0; ir < nmtp; ir++)
+            {
+                for (int itp = 0; itp < sht_->num_points(); itp++)
+                {
+                    /* compute the magnitude of the magnetization vector */
+                    double t = 0.0;
+                    for (int j = 0; j < parameters_.num_mag_dims(); j++) t += pow(vecmagtp[j](itp, ir), 2);
+                    magtp(itp, ir) = sqrt(t);
+
+                    /* in magnetic case fix both density and magnetization */
+                    for (int itp = 0; itp < sht_->num_points(); itp++) 
+                    {
+                        if (rhotp(itp, ir) < 0.0)
+                        {
+                            rhotp(itp, ir) = 0.0;
+                            magtp(itp, ir) = 0.0;
+                        }
+                        /* fix numerical noise at high values of magnetization */
+                        magtp(itp, ir) = std::min(magtp(itp, ir), rhotp(itp, ir));
+                    }
+                }
+            }
+        }
+        
+        vxctp.zero();
+        bxctp.zero();
+        exctp.zero();
+
+        /* loop over XC functionals */
+        for (auto& ixc: xc_func)
+        {
+            /* if this is an LDA functional */
+            if (ixc->lda())
+            {
+                /* unpolarized case */
+                if (parameters_.num_spins() == 1) 
+                {
+                    #pragma omp parallel for default(shared)
+                    for (int ir = 0; ir < nmtp; ir++)
+                    {
+                        ixc->add(sht_->num_points(), &rhotp(0, ir), &vxctp(0, ir), &exctp(0, ir));
+                    }
+                }
+                else
+                {
+                    #pragma omp parallel for default(shared)
+                    for (int ir = 0; ir < nmtp; ir++)
+                    {
+                        ixc->add(sht_->num_points(), &rhotp(0, ir), &magtp(0, ir), &vxctp(0, ir), &bxctp(0, ir), &exctp(0, ir));
+                    }
+                }
+            }
+        }
+        
+        /* convert back from (theta, phi) to Rlm */
+        vxctp.sh_transform(vxc->f_mt(ialoc));
+        exctp.sh_transform(exc->f_mt(ialoc));
+        
+        if (parameters_.num_spins() == 2)
+        {
+            for (int ir = 0; ir < nmtp; ir++)
+            {
+                for (int itp = 0; itp < sht_->num_points(); itp++)
+                {
+                    /* align magnetic filed parallel to magnetization */
+                    if (magtp(itp, ir) > 1e-8)
+                    {
+                        for (int j = 0; j < parameters_.num_mag_dims(); j++)
+                            vecbxctp[j](itp, ir) = bxctp(itp, ir) * vecmagtp[j](itp, ir) / magtp(itp, ir);
+                    }
+                    else
+                    {
+                        for (int j = 0; j < parameters_.num_mag_dims(); j++) vecbxctp[j](itp, ir) = 0.0;
+                    }
+                }       
+            }
+            /* convert magnetic field back to Rlm */
+            for (int j = 0; j < parameters_.num_mag_dims(); j++) vecbxctp[j].sh_transform(bxc[j]->f_mt(ialoc));
+        }
+    }
+}
+
 void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* magnetization[3], 
                    Periodic_function<double>* vxc, Periodic_function<double>* bxc[3], Periodic_function<double>* exc)
 {
@@ -770,153 +922,8 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
         xc_func.push_back(new XC_functional(xc_label, parameters_.num_spins()));
     }
    
-    if (parameters_.unit_cell()->full_potential())
-    {
-        Timer t2("sirius::Potential::xc|mt");
+    if (parameters_.unit_cell()->full_potential()) xc_mt(rho, magnetization, xc_func, vxc, bxc, exc);
 
-        int raw_size = sht_->num_points() * parameters_.unit_cell()->max_num_mt_points();
-        std::vector<double> rhotp_raw(raw_size);
-        std::vector<double> vxctp_raw(raw_size);
-        std::vector<double> exctp_raw(raw_size);
-        std::vector<double> magtp_raw(raw_size);
-        std::vector<double> bxctp_raw(raw_size);
-        std::vector<double> vecmagtp_raw(raw_size * parameters_.num_mag_dims());
-        std::vector<double> vecbxctp_raw(raw_size * parameters_.num_mag_dims());
-
-        for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
-        {
-            int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
-
-            auto& rgrid = parameters_.unit_cell()->atom(ia)->radial_grid();
-
-            Spheric_function<double> rhotp(&rhotp_raw[0], *sht_, rgrid);
-            Spheric_function<double> vxctp(&vxctp_raw[0], *sht_, rgrid);
-            Spheric_function<double> exctp(&exctp_raw[0], *sht_, rgrid);
-            Spheric_function<double> magtp(&magtp_raw[0], *sht_, rgrid);
-            Spheric_function<double> bxctp(&bxctp_raw[0], *sht_, rgrid);
-            Spheric_function_vector<double> vecmagtp(&vecmagtp_raw[0], *sht_, rgrid, parameters_.num_mag_dims());
-            Spheric_function_vector<double> vecbxctp(&vecbxctp_raw[0], *sht_, rgrid, parameters_.num_mag_dims());
-
-            int nmtp = parameters_.unit_cell()->atom(ia)->num_mt_points();
-
-            /* transform density from Rlm to (theta, phi) */
-            rho->f_mt(ialoc).sh_transform(rhotp);
-            
-            /* check if density has negative values */
-            double rhomin = 0.0;
-            for (int ir = 0; ir < nmtp; ir++)
-            {
-                for (int itp = 0; itp < sht_->num_points(); itp++) rhomin = std::min(rhomin, rhotp(itp, ir));
-            }
-
-            if (rhomin < 0.0)
-            {
-                std::stringstream s;
-                s << "Charge density for atom " << ia << " has negative values" << std::endl
-                  << "most negatve value : " << rhomin << std::endl
-                  << "current Rlm expansion of the charge density may be not sufficient, try to increase lmax_rho";
-                warning_local(__FILE__, __LINE__, s);
-            }
-
-            if (parameters_.num_spins() == 1)
-            {
-                for (int ir = 0; ir < nmtp; ir++)
-                {
-                    /* fix negative density */
-                    for (int itp = 0; itp < sht_->num_points(); itp++) 
-                    {
-                        if (rhotp(itp, ir) < 0.0) rhotp(itp, ir) = 0.0;
-                    }
-                }
-            }
-            else
-            {
-                /* transform magnetization from Rlm to (theta, phi) */
-                for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                    magnetization[j]->f_mt(ialoc).sh_transform(vecmagtp[j]);
-                
-                for (int ir = 0; ir < nmtp; ir++)
-                {
-                    for (int itp = 0; itp < sht_->num_points(); itp++)
-                    {
-                        /* compute the magnitude of the magnetization vector */
-                        double t = 0.0;
-                        for (int j = 0; j < parameters_.num_mag_dims(); j++) t += pow(vecmagtp[j](itp, ir), 2);
-                        magtp(itp, ir) = sqrt(t);
-
-                        /* in magnetic case fix both density and magnetization */
-                        for (int itp = 0; itp < sht_->num_points(); itp++) 
-                        {
-                            if (rhotp(itp, ir) < 0.0)
-                            {
-                                rhotp(itp, ir) = 0.0;
-                                magtp(itp, ir) = 0.0;
-                            }
-                            /* fix numerical noise at high values of magnetization */
-                            magtp(itp, ir) = std::min(magtp(itp, ir), rhotp(itp, ir));
-                        }
-                    }
-                }
-            }
-            
-            vxctp.zero();
-            bxctp.zero();
-            exctp.zero();
-
-            /* loop over XC functionals */
-            for (auto& ixc: xc_func)
-            {
-                /* if this is an LDA functional */
-                if (ixc->lda())
-                {
-                    /* unpolarized case */
-                    if (parameters_.num_spins() == 1) 
-                    {
-                        #pragma omp parallel for default(shared)
-                        for (int ir = 0; ir < nmtp; ir++)
-                        {
-                            ixc->add(sht_->num_points(), &rhotp(0, ir), &vxctp(0, ir), &exctp(0, ir));
-                        }
-                    }
-                    else
-                    {
-                        #pragma omp parallel for default(shared)
-                        for (int ir = 0; ir < nmtp; ir++)
-                        {
-                            ixc->add(sht_->num_points(), &rhotp(0, ir), &magtp(0, ir), &vxctp(0, ir), &bxctp(0, ir), &exctp(0, ir));
-                        }
-                    }
-                }
-            }
-            
-            /* convert back from (theta, phi) to Rlm */
-            vxctp.sh_transform(vxc->f_mt(ialoc));
-            exctp.sh_transform(exc->f_mt(ialoc));
-            
-            if (parameters_.num_spins() == 2)
-            {
-                for (int ir = 0; ir < nmtp; ir++)
-                {
-                    for (int itp = 0; itp < sht_->num_points(); itp++)
-                    {
-                        /* align magnetic filed parallel to magnetization */
-                        if (magtp(itp, ir) > 1e-8)
-                        {
-                            for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                                vecbxctp[j](itp, ir) = bxctp(itp, ir) * vecmagtp[j](itp, ir) / magtp(itp, ir);
-                        }
-                        else
-                        {
-                            for (int j = 0; j < parameters_.num_mag_dims(); j++) vecbxctp[j](itp, ir) = 0.0;
-                        }
-                    }       
-                }
-                /* convert magnetic field back to Rlm */
-                for (int j = 0; j < parameters_.num_mag_dims(); j++) vecbxctp[j].sh_transform(bxc[j]->f_mt(ialoc));
-            }
-        }
-    }
-  
     Timer t3("sirius::Potential::xc|it");
 
     /* number of local points in the FFT buffer */
