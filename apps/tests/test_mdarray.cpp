@@ -29,6 +29,12 @@ int main(int argn, char **argv)
 
 
     mdarray<int, 1> a3 = a2;
+    
+    for (int i = 0; i < 4; i++)
+    {
+        std::cout << "a3(" << i << ")=" << a3(i) << std::endl;
+    }
+
     mdarray<int, 1> a4;
     a4 = a1;
 
