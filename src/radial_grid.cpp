@@ -140,7 +140,7 @@ void Radial_grid::create(radial_grid_t grid_type, int num_points, double rmin, d
         }
         case scaled_pow_grid:
         {
-            grid_type_name_ = "scaled power grid";
+            grid_type_name_ = "scaled_power_grid";
             break;
         }
         case pow2_grid:

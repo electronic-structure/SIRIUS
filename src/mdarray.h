@@ -1,6 +1,7 @@
 #ifndef __MDARRAY_H__
 #define __MDARRAY_H__
 
+#include <memory>
 #include <string.h>
 #include <vector>
 #include "error_handling.h"
@@ -53,14 +54,16 @@ template <typename T, int ND> class mdarray_base
     private:
 
         // forbid copy constructor
-        mdarray_base(const mdarray_base<T, ND>& src);
+        //mdarray_base(const mdarray_base<T, ND>& src);
         
         // forbid assignment operator
-        mdarray_base<T, ND>& operator=(const mdarray_base<T, ND>& src); 
+        //mdarray_base<T, ND>& operator=(const mdarray_base<T, ND>& src); 
 
     protected:
     
-        T* mdarray_ptr;
+        std::shared_ptr<T> mdarray_shared_ptr_;
+        
+        T* mdarray_ptr_;
         
         bool allocated_;
        
@@ -79,7 +82,7 @@ template <typename T, int ND> class mdarray_base
     public:
     
         mdarray_base() 
-            : mdarray_ptr(NULL), 
+            : mdarray_ptr_(NULL), 
               allocated_(false)
               #ifdef _GPU_
               ,mdarray_ptr_device(NULL), 
@@ -94,6 +97,25 @@ template <typename T, int ND> class mdarray_base
             deallocate();
         }
         
+        /// Copy constructor
+        mdarray_base(const mdarray_base<T, ND>& src)
+        {
+            this->mdarray_shared_ptr_ = src.mdarray_shared_ptr_; 
+            this->mdarray_ptr_ = src.mdarray_ptr_;
+            for (int i = 0; i < ND; i++)
+            {
+                this->d[i] = src.d[i];
+                this->offset[i] = src.offset[i];
+            }
+        }
+
+        /// Assigment operator
+        inline mdarray_base<T, ND>& operator=(const mdarray_base<T, ND>& src)
+        {
+            std::cout << "Assigment operator of mdarray_base()" << std::endl;
+            exit(0);
+        }
+
         void init_dimensions(const std::vector<dimension>& vd) 
         {
             assert(vd.size() == ND);
@@ -135,84 +157,94 @@ template <typename T, int ND> class mdarray_base
         void allocate()
         {
             deallocate();
+            
+            size_t sz = size();
 
-            if (type_wrapper<T>::is_primitive())
-            {
-                size_t num_bytes = size() * sizeof(T);
+            mdarray_shared_ptr_ = std::shared_ptr<T>(new T[sz], [](T* ptr){delete[] ptr;});
+            mdarray_ptr_ = mdarray_shared_ptr_.get();
 
-                if (num_bytes)
-                {
-                    mdarray_ptr = (T*)malloc(num_bytes);
-                    if (mdarray_ptr == NULL)
-                    {
-                        std::stringstream s;
-                        s << "Error allocating " << ND << "-dimensional array of size " << num_bytes << " bytes";
-                        error_local(__FILE__, __LINE__, s);
-                    }
-                    allocated_ = true;
-                }
-            }
-            else
-            {
-                size_t sz = size();
-                 
-                if (sz && (!mdarray_ptr)) 
-                {
-                    try
-                    {
-                        mdarray_ptr = new T[sz];
-                    }
-                    catch(...)
-                    {
-                        std::stringstream s;
-                        s << "Error allocating " << ND << "-dimensional array of size " << sz * sizeof(T) << " bytes";
-                        error_local(__FILE__, __LINE__, s);
-                    }
-                    allocated_ = true;
-                }
-            }
+
+
+            //== if (type_wrapper<T>::is_primitive())
+            //== {
+            //==     size_t num_bytes = size() * sizeof(T);
+
+            //==     if (num_bytes)
+            //==     {
+            //==         mdarray_ptr = (T*)malloc(num_bytes);
+            //==         if (mdarray_ptr == NULL)
+            //==         {
+            //==             std::stringstream s;
+            //==             s << "Error allocating " << ND << "-dimensional array of size " << num_bytes << " bytes";
+            //==             error_local(__FILE__, __LINE__, s);
+            //==         }
+            //==         allocated_ = true;
+            //==     }
+            //== }
+            //== else
+            //== {
+            //==     size_t sz = size();
+            //==      
+            //==     if (sz && (!mdarray_ptr)) 
+            //==     {
+            //==         try
+            //==         {
+            //==             mdarray_ptr = new T[sz];
+            //==         }
+            //==         catch(...)
+            //==         {
+            //==             std::stringstream s;
+            //==             s << "Error allocating " << ND << "-dimensional array of size " << sz * sizeof(T) << " bytes";
+            //==             error_local(__FILE__, __LINE__, s);
+            //==         }
+            //==         allocated_ = true;
+            //==     }
+            //== }
         }
 
         void deallocate()
         {
-            if (allocated_)
-            {
-                #ifdef _GPU_
-                unpin_memory();
-                #endif
-                if (type_wrapper<T>::is_primitive())
-                {
-                    free(mdarray_ptr);
-                }
-                else
-                {
-                    delete[] mdarray_ptr;
-                }
-                mdarray_ptr = NULL;
-                allocated_ = false;
-            }
-            #ifdef _GPU_
-            deallocate_on_device();
-            #endif
+            mdarray_shared_ptr_.reset();
+            mdarray_ptr_ = NULL;
+
+            //== if (allocated_)
+            //== {
+            //==     #ifdef _GPU_
+            //==     unpin_memory();
+            //==     #endif
+            //==     if (type_wrapper<T>::is_primitive())
+            //==     {
+            //==         free(mdarray_ptr);
+            //==     }
+            //==     else
+            //==     {
+            //==         delete[] mdarray_ptr;
+            //==     }
+            //==     mdarray_ptr = NULL;
+            //==     allocated_ = false;
+            //== }
+            //== #ifdef _GPU_
+            //== deallocate_on_device();
+            //== #endif
         }
         
         void zero()
         {
             if (size() != 0)
             {
-                assert(mdarray_ptr);
-                memset(mdarray_ptr, 0, size() * sizeof(T));
+                assert(mdarray_ptr_);
+                memset(mdarray_ptr_, 0, size() * sizeof(T));
             }
         }
         
         void set_ptr(T* ptr)
         {
-            mdarray_ptr = ptr;
+            mdarray_ptr_ = ptr;
         }
         
         T* ptr()
         {
-            return mdarray_ptr;
+            return mdarray_ptr_;
         }
         
         bool allocated()
@@ -226,7 +258,7 @@ template <typename T, int ND> class mdarray_base
         {
             uint64_t h = 5381;
 
-            for(size_t i = 0; i < size() * sizeof(T); i++) h = ((h << 5) + h) + ((unsigned char*)mdarray_ptr)[i];
+            for(size_t i = 0; i < size() * sizeof(T); i++) h = ((h << 5) + h) + ((unsigned char*)mdarray_ptr_)[i];
 
             return h;
         }
@@ -274,38 +306,38 @@ template <typename T, int ND> class mdarray_base
 
         void allocate_page_locked()
         {
-            cuda_malloc_host((void**)(&mdarray_ptr), size() * sizeof(T));
+            cuda_malloc_host((void**)(&mdarray_ptr_), size() * sizeof(T));
         }
 
         void deallocate_page_locked()
         {
-            cuda_free_host((void**)(&mdarray_ptr));
+            cuda_free_host((void**)(&mdarray_ptr_));
         }
 
         void copy_to_device() 
         {
-            assert(mdarray_ptr != NULL);
+            assert(mdarray_ptr_ != NULL);
             assert(mdarray_ptr_device != NULL);
 
-            cuda_copy_to_device(mdarray_ptr_device, mdarray_ptr, size() * sizeof(T));
+            cuda_copy_to_device(mdarray_ptr_device, mdarray_ptr_, size() * sizeof(T));
         }
 
         void copy_to_host() 
         {
-            assert(mdarray_ptr != NULL);
+            assert(mdarray_ptr_ != NULL);
             assert(mdarray_ptr_device != NULL);
             
-            cuda_copy_to_host(mdarray_ptr, mdarray_ptr_device, size() * sizeof(T));
+            cuda_copy_to_host(mdarray_ptr_, mdarray_ptr_device, size() * sizeof(T));
         }
 
         void async_copy_to_device(int stream_id = -1) 
         {
-            cuda_async_copy_to_device(mdarray_ptr_device, mdarray_ptr, size() * sizeof(T), stream_id);
+            cuda_async_copy_to_device(mdarray_ptr_device, mdarray_ptr_, size() * sizeof(T), stream_id);
         }
         
         void async_copy_to_host(int stream_id = -1) 
         {
-            cuda_async_copy_to_host(mdarray_ptr, mdarray_ptr_device, size() * sizeof(T), stream_id);
+            cuda_async_copy_to_host(mdarray_ptr_, mdarray_ptr_device, size() * sizeof(T), stream_id);
         }
 
         void zero_on_device()
@@ -316,7 +348,7 @@ template <typename T, int ND> class mdarray_base
         void pin_memory()
         {
             if (pinned_) error_local(__FILE__, __LINE__, "Memory is already pinned");
-            cuda_host_register(mdarray_ptr, size() * sizeof(T));
+            cuda_host_register(mdarray_ptr_, size() * sizeof(T));
             pinned_ = true;
         }
         
@@ -324,7 +356,7 @@ template <typename T, int ND> class mdarray_base
         {
             if (pinned_)
             {
-                cuda_host_unregister(mdarray_ptr);
+                cuda_host_unregister(mdarray_ptr_);
                 pinned_ = false;
             }
         }
@@ -367,10 +399,10 @@ template <typename T> class mdarray<T, 1> : public mdarray_base<T, 1>
         inline T& operator()(const int64_t i0) 
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
-            assert(this->mdarray_ptr);
+            assert(this->mdarray_ptr_);
             
             int64_t i = this->offset[0] + i0;
-            return this->mdarray_ptr[i];
+            return this->mdarray_ptr_[i];
         }
 
         #ifdef _GPU_
@@ -423,10 +455,10 @@ template <typename T> class mdarray<T, 2> : public mdarray_base<T, 2>
         {
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
-            assert(this->mdarray_ptr);
+            assert(this->mdarray_ptr_);
             
             int64_t i = this->offset[0] + i0 + i1 * this->offset[1];
-            return this->mdarray_ptr[i];
+            return this->mdarray_ptr_[i];
         }
     
         #ifdef _GPU_
@@ -486,10 +518,10 @@ template <typename T> class mdarray<T, 3> : public mdarray_base<T, 3>
             assert(i0 >= this->d[0].start() && i0 <= this->d[0].end());
             assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
             assert(i2 >= this->d[2].start() && i2 <= this->d[2].end());
-            assert(this->mdarray_ptr);
+            assert(this->mdarray_ptr_);
             
             int64_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2];
-            return this->mdarray_ptr[i];
+            return this->mdarray_ptr_[i];
         }
 
         #ifdef _GPU_
@@ -555,10 +587,10 @@ template <typename T> class mdarray<T, 4> : public mdarray_base<T, 4>
             assert(i1 >= this->d[1].start() && i1 <= this->d[1].end());
             assert(i2 >= this->d[2].start() && i2 <= this->d[2].end());
             assert(i3 >= this->d[3].start() && i3 <= this->d[3].end());
-            assert(this->mdarray_ptr);
+            assert(this->mdarray_ptr_);
             
             int64_t i = this->offset[0] + i0 + i1 * this->offset[1] + i2 * this->offset[2] + i3 * this->offset[3];
-            return this->mdarray_ptr[i];
+            return this->mdarray_ptr_[i];
         }
 
         #ifdef _GPU_
