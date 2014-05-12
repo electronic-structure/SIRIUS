@@ -4,7 +4,6 @@
 #include "global.h"
 #include "periodic_function.h"
 #include "spheric_function.h"
-#include "spheric_function_vector.h"
 
 namespace sirius {
 
@@ -51,7 +50,8 @@ class Potential
         std::vector<int> l_by_lm_;
 
         /// Compute MT part of the potential and MT multipole moments
-        void poisson_vmt(mdarray<Spheric_function<double_complex>*, 1>& rho_ylm, mdarray<Spheric_function<double_complex>*, 1>& vh, 
+        void poisson_vmt(std::vector< Spheric_function<double_complex> >& rho_ylm, 
+                         std::vector< Spheric_function<double_complex> >& vh, 
                          mdarray<double_complex, 2>& qmt);
 
         /// Compute multipole momenst of the interstitial charge density

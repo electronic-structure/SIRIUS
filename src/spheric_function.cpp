@@ -1,8 +1,26 @@
-template <typename T>
-void Spheric_function_gradient<T>::gradient(Spheric_function<double_complex>& f)
-{
-    for (int i = 0; i < 3; i++) grad_[i]->zero();
+#include "sht.h"
+#include "spheric_function.h"
+#include "utils.h"
 
+namespace sirius 
+{
+
+std::vector< Spheric_function<double_complex> > grad(Spheric_function<double_complex>& f)
+{
+    std::vector< Spheric_function<double_complex> > g(3);
+    for (int i = 0; i < 3; i++)
+    {
+        if (f.radial_domain_idx() == 0)
+        {
+            g[i] = Spheric_function<double_complex>(f.radial_grid(), f.angular_domain_idx());
+        }
+        else
+        {
+            g[i] = Spheric_function<double_complex>(f.angular_domain_idx(), f.radial_grid());
+        }
+        g[i].zero();
+    }
+            
     int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
 
     Spline<double_complex> s(f.radial_grid());
@@ -36,12 +54,12 @@ void Spheric_function_gradient<T>::gradient(Spheric_function<double_complex>& f)
                     if (f.radial_domain_idx() == 0)
                     {
                         for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
-                            (*grad_[j])(ir, lm1) += (s.deriv(1, ir) - f(ir, lm) * f.radial_grid().x_inv(ir) * double(l)) * d;  
+                            g[j](ir, lm1) += (s.deriv(1, ir) - f(ir, lm) * f.radial_grid().x_inv(ir) * double(l)) * d;  
                     }
                     else
                     {
                         for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
-                            (*grad_[j])(lm1, ir) += (s.deriv(1, ir) - f(lm, ir) * f.radial_grid().x_inv(ir) * double(l)) * d;  
+                            g[j](lm1, ir) += (s.deriv(1, ir) - f(lm, ir) * f.radial_grid().x_inv(ir) * double(l)) * d;  
                     }
                 }
                 if ((l - 1) >= 0 && abs(m + mu) <= l - 1)
@@ -51,12 +69,12 @@ void Spheric_function_gradient<T>::gradient(Spheric_function<double_complex>& f)
                     if (f.radial_domain_idx() == 0)
                     {
                         for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
-                            (*grad_[j])(ir, lm1) -= (s.deriv(1, ir) + f(ir, lm) * f.radial_grid().x_inv(ir) * double(l + 1)) * d;
+                            g[j](ir, lm1) -= (s.deriv(1, ir) + f(ir, lm) * f.radial_grid().x_inv(ir) * double(l + 1)) * d;
                     }
                     else
                     {
                         for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
-                            (*grad_[j])(lm1, ir) -= (s.deriv(1, ir) + f(lm, ir) * f.radial_grid().x_inv(ir) * double(l + 1)) * d;
+                            g[j](lm1, ir) -= (s.deriv(1, ir) + f(lm, ir) * f.radial_grid().x_inv(ir) * double(l + 1)) * d;
                     }
                 }
             }
@@ -72,10 +90,10 @@ void Spheric_function_gradient<T>::gradient(Spheric_function<double_complex>& f)
         {
             for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
             {
-                double_complex g_p = (*grad_[0])(ir, lm);
-                double_complex g_m = (*grad_[1])(ir, lm);
-                (*grad_[0])(ir, lm) = d1 * (g_m - g_p);
-                (*grad_[1])(ir, lm) = d2 * (g_m + g_p);
+                double_complex g_p = g[0](ir, lm);
+                double_complex g_m = g[1](ir, lm);
+                g[0](ir, lm) = d1 * (g_m - g_p);
+                g[1](ir, lm) = d2 * (g_m + g_p);
             }
         }
     }
@@ -85,27 +103,26 @@ void Spheric_function_gradient<T>::gradient(Spheric_function<double_complex>& f)
         {
             for (int lm = 0; lm < f.angular_domain_size(); lm++)
             {
-                double_complex g_p = (*grad_[0])(lm, ir);
-                double_complex g_m = (*grad_[1])(lm, ir);
-                (*grad_[0])(lm, ir) = d1 * (g_m - g_p);
-                (*grad_[1])(lm, ir) = d2 * (g_m + g_p);
+                double_complex g_p = g[0](lm, ir);
+                double_complex g_m = g[1](lm, ir);
+                g[0](lm, ir) = d1 * (g_m - g_p);
+                g[1](lm, ir) = d2 * (g_m + g_p);
             }
         }
     }
+
+    return g;
 }
 
-template <typename T>
-void Spheric_function_gradient<T>::gradient(Spheric_function<double>& f)
+std::vector< Spheric_function<double> > grad(Spheric_function<double>& f)
 {
-    Spheric_function<double_complex> zf(f, true);
-    Spheric_function_gradient<double_complex> zg(zf);
-
-    for (int i = 0; i < 3; i++) zg[i].sh_convert(*grad_[i]);
+    int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
+    SHT sht(lmax);
+    Spheric_function<double_complex> zf = sht.convert(f);
+    auto zg = grad(zf);
+    std::vector< Spheric_function<double> > g;
+    for (int i = 0; i < 3; i++) g[i] = sht.convert(zg[i]);
+    return g;
 }
 
-template<typename T>
-vector3d<T> inner(Spheric_function<T>& f, Spheric_function_gradient<T>& grad)
-{
-    return vector3d<T>(inner(f, grad[0]), inner(f, grad[1]), inner(f, grad[2]));
 }
-

@@ -4,8 +4,6 @@
 #include "mdarray.h"
 #include "utils.h"
 #include "sht.h"
-#include "spheric_function.h"
-#include "spheric_function_gradient.h"
 
 namespace sirius
 {

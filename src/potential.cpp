@@ -33,7 +33,7 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
 
     l_by_lm_ = Utils::l_by_lm(lmax_);
 
-    // precompute i^l
+    /* precompute i^l */
     zil_.resize(lmax_ + 1);
     for (int l = 0; l <= lmax_; l++) zil_[l] = pow(double_complex(0, 1), l);
     
@@ -85,7 +85,7 @@ void Potential::update()
 {
     if (parameters_.esm_type() == full_potential_lapwlo)
     {
-        // compute values of spherical Bessel functions at MT boundary
+        /* compute values of spherical Bessel functions at MT boundary */
         sbessel_mt_.set_dimensions(lmax_ + pseudo_density_order + 2, parameters_.unit_cell()->num_atom_types(), 
                                    parameters_.reciprocal_lattice()->num_gvec_shells_inner());
         sbessel_mt_.allocate();
@@ -161,7 +161,8 @@ void Potential::update()
     }
 }
 
-void Potential::poisson_vmt(mdarray<Spheric_function<double_complex>*, 1>& rho_ylm, mdarray<Spheric_function<double_complex>*, 1>& vh_ylm, 
+void Potential::poisson_vmt(std::vector< Spheric_function<double_complex> >& rho_ylm, 
+                            std::vector< Spheric_function<double_complex> >& vh_ylm, 
                             mdarray<double_complex, 2>& qmt)
 {
     Timer t("sirius::Potential::poisson_vmt");
@@ -187,7 +188,7 @@ void Potential::poisson_vmt(mdarray<Spheric_function<double_complex>*, 1>& rho_y
             {
                 int l = l_by_lm_[lm];
 
-                for (int ir = 0; ir < nmtp; ir++) rholm[ir] = (*rho_ylm(ialoc))(lm, ir);
+                for (int ir = 0; ir < nmtp; ir++) rholm[ir] = rho_ylm[ialoc](lm, ir);
                 rholm.interpolate();
 
                 // save multipole moment
@@ -207,20 +208,20 @@ void Potential::poisson_vmt(mdarray<Spheric_function<double_complex>*, 1>& rho_y
                                         (g2[nmtp - 1] - g2[ir]) * pow(r, l) - 
                                         (g1[nmtp - 1] - g1[ir]) * pow(r, l) * d1;
 
-                        (*vh_ylm(ialoc))(lm, ir) = fourpi * vlm * d2;
+                        vh_ylm[ialoc](lm, ir) = fourpi * vlm * d2;
                     }
                 }
             }
         }
         
-        // nuclear potential
+        /* nuclear potential */
         for (int ir = 0; ir < nmtp; ir++)
         {
             double r = parameters_.unit_cell()->atom(ia)->type()->radial_grid(ir);
-            (*vh_ylm(ialoc))(0, ir) -= fourpi * y00 * parameters_.unit_cell()->atom(ia)->type()->zn() / r;
+            vh_ylm[ialoc](0, ir) -= fourpi * y00 * parameters_.unit_cell()->atom(ia)->type()->zn() / r;
         }
 
-        // nuclear multipole moment
+        /* nuclear multipole moment */
         qmt(0, ia) -= parameters_.unit_cell()->atom(ia)->type()->zn() * y00;
     }
 
@@ -654,32 +655,37 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
 {
     Timer t("sirius::Potential::poisson");
 
-    // get plane-wave coefficients of the charge density
+    /* get plane-wave coefficients of the charge density */
     fft_->input(&rho->f_it<global>(0));
     fft_->transform(-1);
     fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &rho->f_pw(0));
 
-    mdarray<Spheric_function<double_complex>*, 1> rho_ylm(parameters_.unit_cell()->spl_num_atoms().local_size());
-    mdarray<Spheric_function<double_complex>*, 1> vh_ylm(parameters_.unit_cell()->spl_num_atoms().local_size());
+    //mdarray<Spheric_function<double_complex>*, 1> rho_ylm(parameters_.unit_cell()->spl_num_atoms().local_size());
+    //mdarray<Spheric_function<double_complex>*, 1> vh_ylm(parameters_.unit_cell()->spl_num_atoms().local_size());
 
-    // in case of full potential we need to do pseudo-charge multipoles
+    std::vector< Spheric_function<double_complex> > rho_ylm(parameters_.unit_cell()->spl_num_atoms().local_size());
+    std::vector< Spheric_function<double_complex> > vh_ylm(parameters_.unit_cell()->spl_num_atoms().local_size());
+
+    /* in case of full potential we need to do pseudo-charge multipoles */
     if (parameters_.unit_cell()->full_potential())
     {
         for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
         {
-            rho_ylm(ialoc) = new Spheric_function<double_complex>(rho->f_mt(ialoc), true);
-            vh_ylm(ialoc) = new Spheric_function<double_complex>(vh->f_mt(ialoc), false);
+            int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
+
+            rho_ylm[ialoc] = sht_->convert(rho->f_mt(ialoc));
+            vh_ylm[ialoc] = Spheric_function<double_complex>(parameters_.lmmax_rho(), parameters_.unit_cell()->atom(ia)->type()->radial_grid());
         }
         
-        // true multipole moments
+        /* true multipole moments */
         mdarray<double_complex, 2> qmt(parameters_.lmmax_rho(), parameters_.unit_cell()->num_atoms());
         poisson_vmt(rho_ylm, vh_ylm, qmt);
         
-        // compute multipoles of interstitial density in MT region
+        /* compute multipoles of interstitial density in MT region */
         mdarray<double_complex, 2> qit(parameters_.lmmax_rho(), parameters_.unit_cell()->num_atoms());
         poisson_sum_G(&rho->f_pw(0), sbessel_mom_, qit);
         
-        // add contribution from the pseudo-charge
+        /* add contribution from the pseudo-charge */
         poisson_add_pseudo_pw(qmt, qit, &rho->f_pw(0));
 
         if (check_pseudo_charge)
@@ -694,19 +700,19 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         }
     }
 
-    // compute pw coefficients of Hartree potential
+    /* compute pw coefficients of Hartree potential */
     vh->f_pw(0) = 0.0;
     for (int ig = 1; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
         vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / pow(parameters_.reciprocal_lattice()->gvec_len(ig), 2));
     
-    // boundary condition for muffin-tins
+    /* boundary condition for muffin-tins */
     if (parameters_.unit_cell()->full_potential())
     {
-        // compute V_lm at the MT boundary
+        /* compute V_lm at the MT boundary */
         mdarray<double_complex, 2> vmtlm(parameters_.lmmax_pot(), parameters_.unit_cell()->num_atoms());
         poisson_sum_G(&vh->f_pw(0), sbessel_mt_, vmtlm);
         
-        // add boundary condition and convert to Rlm
+        /* add boundary condition and convert to Rlm */
         Timer t1("sirius::Potential::poisson|bc");
         mdarray<double, 2> rRl(parameters_.unit_cell()->max_num_mt_points(), parameters_.lmax_pot() + 1);
         int type_id_prev = -1;
@@ -736,9 +742,9 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
                 int l = l_by_lm_[lm];
 
                 for (int ir = 0; ir < nmtp; ir++)
-                    (*vh_ylm(ialoc))(lm, ir) += (vmtlm(lm, ia) - (*vh_ylm(ialoc))(lm, nmtp - 1)) * rRl(ir, l);
+                    vh_ylm[ialoc](lm, ir) += (vmtlm(lm, ia) - vh_ylm[ialoc](lm, nmtp - 1)) * rRl(ir, l);
             }
-            vh_ylm(ialoc)->sh_convert(vh->f_mt(ialoc));
+            sht_->convert(vh_ylm[ialoc], vh->f_mt(ialoc));
         }
     }
     
@@ -746,15 +752,6 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     fft_->input(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &vh->f_pw(0));
     fft_->transform(1);
     fft_->output(&vh->f_it<global>(0));
-
-    if (parameters_.unit_cell()->full_potential())
-    {
-        for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
-        {
-            delete rho_ylm(ialoc);
-            delete vh_ylm(ialoc);
-        }
-    }
 }
 
 void Potential::xc_mt(Periodic_function<double>* rho, 
@@ -766,39 +763,36 @@ void Potential::xc_mt(Periodic_function<double>* rho,
 {
     Timer t2("sirius::Potential::xc_mt");
 
-    int raw_size = sht_->num_points() * parameters_.unit_cell()->max_num_mt_points();
-    std::vector<double> rhotp_raw(raw_size);
-    std::vector<double> vxctp_raw(raw_size);
-    std::vector<double> exctp_raw(raw_size);
-    std::vector<double> magtp_raw(raw_size);
-    std::vector<double> bxctp_raw(raw_size);
-    std::vector<double> vecmagtp_raw(raw_size * parameters_.num_mag_dims());
-    std::vector<double> vecbxctp_raw(raw_size * parameters_.num_mag_dims());
+    //== int raw_size = sht_->num_points() * parameters_.unit_cell()->max_num_mt_points();
+    //== std::vector<double> rhotp_raw(raw_size);
+    //== std::vector<double> vxctp_raw(raw_size);
+    //== std::vector<double> exctp_raw(raw_size);
+    //== std::vector<double> magtp_raw(raw_size);
+    //== std::vector<double> bxctp_raw(raw_size);
+    //== std::vector<double> vecmagtp_raw(raw_size * parameters_.num_mag_dims());
+    //== std::vector<double> vecbxctp_raw(raw_size * parameters_.num_mag_dims());
 
-    for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+    auto uc = parameters_.unit_cell();
+
+    for (int ialoc = 0; ialoc < uc->spl_num_atoms().local_size(); ialoc++)
     {
-        int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
+        int ia = uc->spl_num_atoms(ialoc);
 
-        auto& rgrid = parameters_.unit_cell()->atom(ia)->radial_grid();
-
-        Spheric_function<double> rhotp(&rhotp_raw[0], *sht_, rgrid);
-        Spheric_function<double> vxctp(&vxctp_raw[0], *sht_, rgrid);
-        Spheric_function<double> exctp(&exctp_raw[0], *sht_, rgrid);
-        Spheric_function<double> magtp(&magtp_raw[0], *sht_, rgrid);
-        Spheric_function<double> bxctp(&bxctp_raw[0], *sht_, rgrid);
-
-        Spheric_function_vector<double> vecmagtp(&vecmagtp_raw[0], *sht_, rgrid, parameters_.num_mag_dims());
-        Spheric_function_vector<double> vecbxctp(&vecbxctp_raw[0], *sht_, rgrid, parameters_.num_mag_dims());
-
-        int nmtp = parameters_.unit_cell()->atom(ia)->num_mt_points();
-
-        /* transform density from Rlm to (theta, phi) */
-        rho->f_mt(ialoc).sh_transform(rhotp);
-
-       // Spheric_function1<double> rhotp1 = sht_->transform<-1>(rho->f_mt(ialoc));
-
-
+        auto& rgrid = uc->atom(ia)->radial_grid();
         
+        int nmtp = uc->atom(ia)->num_mt_points();
+
+        /* backward transform density from Rlm to (theta, phi) */
+        Spheric_function<double> rhotp = sht_->transform<-1>(rho->f_mt(ialoc));
+
+        /* backward transform magnetization from Rlm to (theta, phi) */
+        std::vector< Spheric_function<double> > vecmagtp(parameters_.num_mag_dims());
+        for (int j = 0; j < parameters_.num_mag_dims(); j++)
+            vecmagtp[j] = sht_->transform<-1>(magnetization[j]->f_mt(ialoc));
+       
+        /* magnitude of magnetization vector */
+        Spheric_function<double> magtp;
+
         /* check if density has negative values */
         double rhomin = 0.0;
         for (int ir = 0; ir < nmtp; ir++)
@@ -828,10 +822,7 @@ void Potential::xc_mt(Periodic_function<double>* rho,
         }
         else
         {
-            /* transform magnetization from Rlm to (theta, phi) */
-            for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                magnetization[j]->f_mt(ialoc).sh_transform(vecmagtp[j]);
-            
+            magtp = Spheric_function<double>(sht_->num_points(), rgrid);
             for (int ir = 0; ir < nmtp; ir++)
             {
                 for (int itp = 0; itp < sht_->num_points(); itp++)
@@ -855,10 +846,20 @@ void Potential::xc_mt(Periodic_function<double>* rho,
                 }
             }
         }
-        
+
+
+        Spheric_function<double> vxctp(sht_->num_points(), rgrid);
         vxctp.zero();
-        bxctp.zero();
+
+        Spheric_function<double> exctp(sht_->num_points(), rgrid);
         exctp.zero();
+
+        Spheric_function<double> bxctp;
+        if (parameters_.num_spins() == 2)
+        {
+            bxctp = Spheric_function<double>(sht_->num_points(), rgrid);
+            bxctp.zero();
+        }
 
         /* loop over XC functionals */
         for (auto& ixc: xc_func)
@@ -886,9 +887,9 @@ void Potential::xc_mt(Periodic_function<double>* rho,
             }
         }
         
-        /* convert back from (theta, phi) to Rlm */
-        vxctp.sh_transform(vxc->f_mt(ialoc));
-        exctp.sh_transform(exc->f_mt(ialoc));
+        /* forward transform from (theta, phi) to Rlm */
+        sht_->transform<1>(vxctp, vxc->f_mt(ialoc));
+        sht_->transform<1>(exctp, exc->f_mt(ialoc));
         
         if (parameters_.num_spins() == 2)
         {
@@ -897,19 +898,20 @@ void Potential::xc_mt(Periodic_function<double>* rho,
                 for (int itp = 0; itp < sht_->num_points(); itp++)
                 {
                     /* align magnetic filed parallel to magnetization */
+                    /* use vecmagtp as temporary vector */
                     if (magtp(itp, ir) > 1e-8)
                     {
                         for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                            vecbxctp[j](itp, ir) = bxctp(itp, ir) * vecmagtp[j](itp, ir) / magtp(itp, ir);
+                            vecmagtp[j](itp, ir) = bxctp(itp, ir) * vecmagtp[j](itp, ir) / magtp(itp, ir);
                     }
                     else
                     {
-                        for (int j = 0; j < parameters_.num_mag_dims(); j++) vecbxctp[j](itp, ir) = 0.0;
+                        for (int j = 0; j < parameters_.num_mag_dims(); j++) vecmagtp[j](itp, ir) = 0.0;
                     }
                 }       
             }
             /* convert magnetic field back to Rlm */
-            for (int j = 0; j < parameters_.num_mag_dims(); j++) vecbxctp[j].sh_transform(bxc[j]->f_mt(ialoc));
+            for (int j = 0; j < parameters_.num_mag_dims(); j++) sht_->transform<1>(vecmagtp[j], bxc[j]->f_mt(ialoc));
         }
     }
 }
@@ -1287,12 +1289,13 @@ void Potential::set_effective_potential_ptr(double* veffmt, double* veffit)
 
 void Potential::copy_to_global_ptr(double* fmt, double* fit, Periodic_function<double>* src)
 {
-    Periodic_function<double>* dest = new Periodic_function<double>(parameters_, parameters_.lmmax_pot());
-    dest->set_mt_ptr(fmt);
-    dest->set_it_ptr(fit);
-    dest->copy(src);
-    dest->sync(true, true);
-    delete dest;
+    stop_here // fix thsi
+    //Periodic_function<double>* dest = new Periodic_function<double>(parameters_, parameters_.lmmax_pot());
+    //dest->set_mt_ptr(fmt);
+    //dest->set_it_ptr(fit);
+    //dest->copy(src);
+    //dest->sync(true, true);
+    //delete dest;
 }
 
 

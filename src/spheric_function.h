@@ -1,5 +1,29 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #ifndef __SPHERIC_FUNCTION_H__
 #define __SPHERIC_FUNCTION_H__
+
+/** \file spheric_function.h
+ *   
+ *  \brief Contains declaration and implementation of sirius::Spheric_function class.
+ */
 
 #include <typeinfo>
 #include "radial_grid.h"
@@ -8,6 +32,7 @@
 namespace sirius
 {
 
+/// Function in spherical harmonics or spherical coordinates representation.
 template <typename T> 
 class Spheric_function
 {
@@ -17,24 +42,22 @@ class Spheric_function
         mdarray<T, 2> data_;
         
         /// Radial grid.
-        Radial_grid& radial_grid_;
+        Radial_grid radial_grid_;
         
-        /// Interface to spherical harmonics transformation.
-        SHT* sht_;
-
         int angular_domain_size_;
+
         int angular_domain_idx_;
 
         int radial_domain_idx_;
 
     public:
 
-        template <typename U> 
-        friend class Spheric_function;
+        Spheric_function()
+        {
+        }
 
         Spheric_function(Radial_grid& radial_grid__, int angular_domain_size__) 
             : radial_grid_(radial_grid__), 
-              sht_(NULL), 
               angular_domain_size_(angular_domain_size__), 
               angular_domain_idx_(1),
               radial_domain_idx_(0)
@@ -45,7 +68,6 @@ class Spheric_function
         
         Spheric_function(int angular_domain_size__, Radial_grid& radial_grid__) 
             : radial_grid_(radial_grid__), 
-              sht_(NULL), 
               angular_domain_size_(angular_domain_size__), 
               angular_domain_idx_(0),
               radial_domain_idx_(1)
@@ -56,7 +78,6 @@ class Spheric_function
 
         Spheric_function(T* ptr, int angular_domain_size__, Radial_grid& radial_grid__) 
             : radial_grid_(radial_grid__), 
-              sht_(NULL), 
               angular_domain_size_(angular_domain_size__), 
               angular_domain_idx_(0),
               radial_domain_idx_(1)
@@ -65,63 +86,37 @@ class Spheric_function
             data_.set_ptr(ptr);
         }
 
-        Spheric_function(SHT& sht__, Radial_grid& radial_grid__) 
-            : radial_grid_(radial_grid__), 
-              sht_(&sht__), 
-              angular_domain_size_(sht__.num_points()), 
-              angular_domain_idx_(0),
-              radial_domain_idx_(1)
-        {
-            data_.set_dimensions(angular_domain_size_, radial_grid_.num_points());
-            data_.allocate();
-        }
+        //== Spheric_function(Spheric_function<T>&& src) 
+        //==     : data_(std::move(src.data_)), 
+        //==       radial_grid_(src.radial_grid_),
+        //==       angular_domain_size_(src.angular_domain_size_),
+        //==       angular_domain_idx_(src.angular_domain_idx_),
+        //==       radial_domain_idx_(src.radial_domain_idx_)
+        //== {
+        //== }
 
-        Spheric_function(T* ptr, SHT& sht__, Radial_grid& radial_grid__) 
-            : radial_grid_(radial_grid__), 
-              sht_(&sht__), 
-              angular_domain_size_(sht__.num_points()), 
-              angular_domain_idx_(0),
-              radial_domain_idx_(1)
-        {
-            data_.set_dimensions(angular_domain_size_, radial_grid_.num_points());
-            data_.set_ptr(ptr);
-        }
-        
-        template <typename U>
-        Spheric_function(Spheric_function<U>& f, bool fill) 
-            : radial_grid_(f.radial_grid_), 
-              sht_(f.sht_), 
-              angular_domain_size_(f.angular_domain_size_),
-              angular_domain_idx_(f.angular_domain_idx_), 
-              radial_domain_idx_(f.radial_domain_idx_)
-        {
-            if (radial_domain_idx_ == 0)
-            {
-                data_.set_dimensions(radial_grid_.num_points(), angular_domain_size_);
-            }
-            else
-            {
-                data_.set_dimensions(angular_domain_size_, radial_grid_.num_points());
-            }
-            data_.allocate();
+        //== inline Spheric_function<T>& operator=(Spheric_function<T>&& src)
+        //== {
+        //==     if (this != src)
+        //==     {
+        //==         data_ = std::move(src.data);
+        //==         radial_grid_ = src.radial_grid_;
+        //==         angular_domain_size_ = src.angular_domain_size_;
+        //==         angular_domain_idx_ = src.angular_domain_idx_;
+        //==         radial_domain_idx_ = src.radial_domain_idx_;
+        //==     }
+        //==     return *this;
+        //== }
 
-            if (fill)
+        inline Spheric_function<T>& operator+=(Spheric_function<T>& rhs)
+        {
+            for (size_t i1 = 0; i1 < data_.size(1); i1++)
             {
-                if (typeid(T) != typeid(U))
-                {
-                    f.sh_convert(*this);
-                }
-                else
-                {
-                    memcpy(this->data_.ptr(), &f(0, 0), this->data_.size() * sizeof(T));
-                }
+                for (size_t i0 = 0; i0 < data_.size(0); i0++) data_(i0, i1) += rhs.data_(i0, i1);
             }
+            
+            return *this;
         }
-
-        template <typename U>
-        void sh_convert(Spheric_function<U>& f);
-        
-        void sh_transform(Spheric_function<T>& f);
 
         inline int angular_domain_size()
         {
@@ -162,25 +157,46 @@ class Spheric_function
         {
             data_.set_ptr(ptr);
         }
-
-        void add(Spheric_function<T>& f)
-        {
-            for (size_t i1 = 0; i1 < data_.size(1); i1++)
-            {
-                for (size_t i0 = 0; i0 < data_.size(0); i0++) data_(i0, i1) += f(i0, i1);
-            }
-        }
-        
-        void copy(Spheric_function<T>& f)
-        {
-            for (size_t i1 = 0; i1 < data_.size(1); i1++)
-            {
-                for (size_t i0 = 0; i0 < data_.size(0); i0++) data_(i0, i1) = f(i0, i1);
-            }
-        }
 };
 
-#include "spheric_function.hpp"
+/// Inner product of two spherical functions.
+template <typename T>
+T inner(Spheric_function<T>& f1, Spheric_function<T>& f2)
+{
+    if ((f1.angular_domain_idx() != f2.angular_domain_idx()) || (f1.angular_domain_size() != f2.angular_domain_size()))
+    {
+        error_local(__FILE__, __LINE__, "wrong angular arguments");
+    }
+    if ((f1.radial_domain_idx() != f2.radial_domain_idx()) || (f1.radial_grid().num_points() != f2.radial_grid().num_points()))
+    {
+        error_local(__FILE__, __LINE__, "wrong radial arguments");
+    }
+    Spline<T> s(f1.radial_grid());
+
+    if (f1.radial_domain_idx() == 0)
+    {
+        for (int lm = 0; lm < f1.angular_domain_size(); lm++)
+        {
+            for (int ir = 0; ir < f1.radial_grid().num_points(); ir++)
+                s[ir] += type_wrapper<T>::conjugate(f1(ir, lm)) * f2(ir, lm);
+        }
+    }
+    else
+    {
+        for (int ir = 0; ir < f1.radial_grid().num_points(); ir++)
+        {
+            for (int lm = 0; lm < f1.angular_domain_size(); lm++)
+                s[ir] += type_wrapper<T>::conjugate(f1(lm, ir)) * f2(lm, ir);
+        }
+    }
+    return s.interpolate().integrate(2);
+}
+
+/// Gradient of the function in complex spherical harmonics.
+std::vector< Spheric_function<double_complex> > grad(Spheric_function<double_complex>& f);
+
+/// Gradient of the function in real spherical harmonics.
+std::vector< Spheric_function<double> > grad(Spheric_function<double>& f);
 
 }
 

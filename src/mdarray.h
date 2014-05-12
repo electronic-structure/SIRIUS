@@ -26,6 +26,7 @@
  */
 
 #include <memory>
+#include <atomic>
 #include <string.h>
 #include <vector>
 #include "error_handling.h"
@@ -84,6 +85,35 @@ class mdarray_index_descriptor
         }
 };
 
+extern std::atomic<int64_t> mdarray_mem_count;
+
+/// Simple delete handler which keeps track of allocated and deallocated memory ammount.
+template<typename T>
+struct mdarray_deleter
+{
+    /// Number of elements of the current allocation.
+    size_t size_;
+    
+    mdarray_deleter() : size_(0)
+    {
+    }
+
+    mdarray_deleter(size_t size__) : size_(size__)
+    {
+        #ifndef NDEBUG
+        mdarray_mem_count += size_ * sizeof(T);
+        #endif
+    }
+    
+    void operator()(T* p) const
+    {
+        #ifndef NDEBUG
+        mdarray_mem_count -= size_ * sizeof(T);
+        #endif
+        delete[] p;
+    }
+};
+
 /// Base class of multidimensional array.
 template <typename T, int ND> 
 class mdarray_base
@@ -91,7 +121,7 @@ class mdarray_base
     protected:
     
         /// Unique pointer to the allocated memory.
-        std::unique_ptr<T[]> unique_ptr_;
+        std::unique_ptr<T[], mdarray_deleter<T> > unique_ptr_;
         
         /// Raw pointer.
         T* ptr_;
@@ -211,9 +241,8 @@ class mdarray_base
             
             size_t sz = size();
 
-            unique_ptr_ = std::unique_ptr<T[]>(new T[sz]);
+            unique_ptr_ = std::unique_ptr<T[], mdarray_deleter<T> >(new T[sz], sz);
             ptr_ = unique_ptr_.get();
-
 
 
             //== if (type_wrapper<T>::is_primitive())
@@ -258,6 +287,7 @@ class mdarray_base
         {
             unique_ptr_.reset(nullptr);
             ptr_ = nullptr;
+            
 
             //== if (allocated_)
             //== {

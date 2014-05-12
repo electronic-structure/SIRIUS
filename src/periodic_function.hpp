@@ -15,7 +15,7 @@ Periodic_function<T>::Periodic_function(Global& parameters_, int angular_domain_
         for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_->spl_num_atoms(ialoc);
-            f_mt_local_(ialoc) = new Spheric_function<T>(NULL, angular_domain_size_, unit_cell_->atom(ia)->radial_grid());
+            f_mt_local_(ialoc) = Spheric_function<T>(NULL, angular_domain_size_, unit_cell_->atom(ia)->radial_grid());
         }
     }
     
@@ -29,10 +29,10 @@ Periodic_function<T>::Periodic_function(Global& parameters_, int angular_domain_
 template <typename T>
 Periodic_function<T>::~Periodic_function()
 {
-    if (unit_cell_->full_potential())
-    {
-        for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++) delete f_mt_local_(ialoc);
-    }
+    //if (unit_cell_->full_potential())
+    //{
+    //    for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++) delete f_mt_local_(ialoc);
+    //}
 }
 
 template <typename T>
@@ -58,7 +58,7 @@ void Periodic_function<T>::allocate(bool allocate_global_mt, bool allocate_globa
         }
         else
         {
-            for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc)->allocate();
+            for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc).allocate();
         }
     }
 }
@@ -71,7 +71,7 @@ void Periodic_function<T>::zero()
     if (f_pw_.ptr()) f_pw_.zero();
     if (unit_cell_->full_potential())
     {
-        for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc)->zero();
+        for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++) f_mt_local_(ialoc).zero();
     }
     f_it_local_.zero();
 }
@@ -83,7 +83,7 @@ inline T& Periodic_function<T>::f_mt(int idx0, int idx1, int ia)
     {
         case local:
         {
-            return (*f_mt_local_(ia))(idx0, idx1);
+            return f_mt_local_(ia)(idx0, idx1);
         }
         case global:
         {
@@ -110,18 +110,18 @@ inline void Periodic_function<T>::sync(bool sync_mt, bool sync_it)
     }
 }
 
-template <typename T>
-inline void Periodic_function<T>::copy(Periodic_function<T>* src)
-{
-    for (int irloc = 0; irloc < fft_->local_size(); irloc++)
-        f_it_local_(irloc) = src->f_it<local>(irloc);
-
-    if (unit_cell_->full_potential())
-    {
-        for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++)
-            f_mt_local_(ialoc)->copy(src->f_mt(ialoc));
-    }
-}
+//template <typename T>
+//inline void Periodic_function<T>::copy(Periodic_function<T>* src)
+//{
+//    for (int irloc = 0; irloc < fft_->local_size(); irloc++)
+//        f_it_local_(irloc) = src->f_it<local>(irloc);
+//
+//    if (unit_cell_->full_potential())
+//    {
+//        for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++)
+//            f_mt_local_(ialoc).copy(src->f_mt(ialoc));
+//    }
+//}
 
 template <typename T>
 inline void Periodic_function<T>::add(Periodic_function<T>* g)
@@ -132,7 +132,7 @@ inline void Periodic_function<T>::add(Periodic_function<T>* g)
     if (unit_cell_->full_potential())
     {
         for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++)
-            f_mt_local_(ialoc)->add(g->f_mt(ialoc));
+            f_mt_local_(ialoc) += g->f_mt(ialoc);
     }
 }
 

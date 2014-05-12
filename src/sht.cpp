@@ -81,64 +81,67 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
         linalg<lapack>::invert_ge(&ylm_forward_(0, 0), lmmax_);
         linalg<lapack>::invert_ge(&rlm_forward_(0, 0), lmmax_);
     }
-
-    double dr = 0;
-    double dy = 0;
-
-    for (int lm = 0; lm < lmmax_; lm++)
+    
+    if (debug_level > 0)
     {
-        for (int lm1 = 0; lm1 < lmmax_; lm1++)
+        double dr = 0;
+        double dy = 0;
+
+        for (int lm = 0; lm < lmmax_; lm++)
         {
-            double t = 0;
-            double_complex zt(0, 0);
-            for (int itp = 0; itp < num_points_; itp++)
+            for (int lm1 = 0; lm1 < lmmax_; lm1++)
             {
-                zt += ylm_forward_(itp, lm) * ylm_backward_(lm1, itp);
-                t += rlm_forward_(itp, lm) * rlm_backward_(lm1, itp);
+                double t = 0;
+                double_complex zt(0, 0);
+                for (int itp = 0; itp < num_points_; itp++)
+                {
+                    zt += ylm_forward_(itp, lm) * ylm_backward_(lm1, itp);
+                    t += rlm_forward_(itp, lm) * rlm_backward_(lm1, itp);
+                }
+                
+                if (lm == lm1) 
+                {
+                    zt -= 1.0;
+                    t -= 1.0;
+                }
+                dr += fabs(t);
+                dy += abs(zt);
             }
-            
-            if (lm == lm1) 
-            {
-                zt -= 1.0;
-                t -= 1.0;
-            }
-            dr += fabs(t);
-            dy += abs(zt);
         }
-    }
-    dr = dr / lmmax_ / lmmax_;
-    dy = dy / lmmax_ / lmmax_;
+        dr = dr / lmmax_ / lmmax_;
+        dy = dy / lmmax_ / lmmax_;
 
-    if (dr > 1e-15 || dy > 1e-15)
-    {
-        std::stringstream s;
-        s << "spherical mesh error is too big" << std::endl
-          << "  real spherical integration error " << dr << std::endl
-          << "  complex spherical integration error " << dy;
-        warning_local(__FILE__, __LINE__, s);
-    }
-
-    std::vector<double> flm(lmmax_);
-    std::vector<double> ftp(num_points_);
-    for (int lm = 0; lm < lmmax_; lm++)
-    {
-        memset(&flm[0], 0, lmmax_ * sizeof(double));
-        flm[lm] = 1.0;
-        backward_transform(&flm[0], lmmax_, 1, &ftp[0]);
-        forward_transform(&ftp[0], lmmax_, 1, &flm[0]);
-        flm[lm] -= 1.0;
-
-        double t = 0.0;
-        for (int lm1 = 0; lm1 < lmmax_; lm1++) t += fabs(flm[lm1]);
-
-        t /= lmmax_;
-
-        if (t > 1e-15) 
+        if (dr > 1e-15 || dy > 1e-15)
         {
             std::stringstream s;
-            s << "test of backward / forward real SHT failed" << std::endl
-              << "  total error " << t;
+            s << "spherical mesh error is too big" << std::endl
+              << "  real spherical integration error " << dr << std::endl
+              << "  complex spherical integration error " << dy;
             warning_local(__FILE__, __LINE__, s);
+        }
+
+        std::vector<double> flm(lmmax_);
+        std::vector<double> ftp(num_points_);
+        for (int lm = 0; lm < lmmax_; lm++)
+        {
+            memset(&flm[0], 0, lmmax_ * sizeof(double));
+            flm[lm] = 1.0;
+            backward_transform(&flm[0], lmmax_, 1, &ftp[0]);
+            forward_transform(&ftp[0], lmmax_, 1, &flm[0]);
+            flm[lm] -= 1.0;
+
+            double t = 0.0;
+            for (int lm1 = 0; lm1 < lmmax_; lm1++) t += fabs(flm[lm1]);
+
+            t /= lmmax_;
+
+            if (t > 1e-15) 
+            {
+                std::stringstream s;
+                s << "test of backward / forward real SHT failed" << std::endl
+                  << "  total error " << t;
+                warning_local(__FILE__, __LINE__, s);
+            }
         }
     }
 }
@@ -255,6 +258,169 @@ void SHT::uniform_coverage()
     
     tp_(0, num_points_ - 1) = 0;
     tp_(1, num_points_ - 1) = 0;
+}
+
+Spheric_function<double> SHT::convert(Spheric_function<double_complex>& f)
+{
+    Spheric_function<double> g;
+
+
+    /* radial index is first */
+    if (f.radial_domain_idx() == 0)
+    {
+        g = Spheric_function<double>(f.radial_grid(), f.angular_domain_size());
+    }
+    else
+    {
+        g = Spheric_function<double>(f.angular_domain_size(), f.radial_grid());
+    }
+
+    convert(f, g);
+
+    return g;
+}
+
+Spheric_function<double_complex> SHT::convert(Spheric_function<double>& f)
+{
+    Spheric_function<double_complex> g;
+    
+    int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
+
+    /* cache transformation arrays */
+    std::vector<double_complex> tpp(f.angular_domain_size());
+    std::vector<double_complex> tpm(f.angular_domain_size());
+    for (int l = 0; l <= lmax; l++)
+    {
+        for (int m = -l; m <= l; m++) 
+        {
+            int lm = Utils::lm_by_l_m(l, m);
+            tpp[lm] = ylm_dot_rlm(l, m, m);
+            tpm[lm] = ylm_dot_rlm(l, m, -m);
+        }
+    }
+
+    /* radial index is first */
+    if (f.radial_domain_idx() == 0)
+    {
+        g = Spheric_function<double_complex>(f.radial_grid(), f.angular_domain_size());
+
+        int lm = 0;
+        for (int l = 0; l <= lmax; l++)
+        {
+            for (int m = -l; m <= l; m++)
+            {
+                if (m == 0)
+                {
+                    for (int ir = 0; ir < f.radial_grid().num_points(); ir++) g(ir, lm) = f(ir, lm);
+                }
+                else 
+                {
+                    int lm1 = Utils::lm_by_l_m(l, -m);
+                    for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
+                        g(ir, lm) = tpp[lm] * f(ir, lm) + tpm[lm] * f(ir, lm1);
+                }
+                lm++;
+            }
+        }
+    }
+    else
+    {
+        g = Spheric_function<double_complex>(f.angular_domain_size(), f.radial_grid());
+        for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
+        {
+            int lm = 0;
+            for (int l = 0; l <= lmax; l++)
+            {
+                for (int m = -l; m <= l; m++)
+                {
+                    if (m == 0)
+                    {
+                        g(lm, ir) = f(lm, ir);
+                    }
+                    else 
+                    {
+                        int lm1 = Utils::lm_by_l_m(l, -m);
+                        g(lm, ir) = tpp[lm] * f(lm, ir) + tpm[lm] * f(lm1, ir);
+                    }
+                    lm++;
+                }
+            }
+        }
+    }
+
+    return g;
+}
+
+void SHT::convert(Spheric_function<double_complex>& f, Spheric_function<double>& g)
+{
+    if (f.radial_domain_idx() != g.radial_domain_idx())
+        error_local(__FILE__, __LINE__, "wrong radial domain index");
+    
+    if (f.radial_grid().num_points() != g.radial_grid().num_points())
+        error_local(__FILE__, __LINE__, "wrong number of radial points");
+
+    int lmmax = std::min(f.angular_domain_size(), g.angular_domain_size());
+    int lmax = Utils::lmax_by_lmmax(lmmax);
+
+    /* cache transformation arrays */
+    std::vector<double_complex> tpp(lmmax);
+    std::vector<double_complex> tpm(lmmax);
+    for (int l = 0; l <= lmax; l++)
+    {
+        for (int m = -l; m <= l; m++) 
+        {
+            int lm = Utils::lm_by_l_m(l, m);
+            tpp[lm] = rlm_dot_ylm(l, m, m);
+            tpm[lm] = rlm_dot_ylm(l, m, -m);
+        }
+    }
+
+    /* radial index is first */
+    if (f.radial_domain_idx() == 0)
+    {
+        int lm = 0;
+        for (int l = 0; l <= lmax; l++)
+        {
+            for (int m = -l; m <= l; m++)
+            {
+                if (m == 0)
+                {
+                    for (int ir = 0; ir < f.radial_grid().num_points(); ir++) 
+                        g(ir, lm) = real(f(ir, lm));
+                }
+                else 
+                {
+                    int lm1 = Utils::lm_by_l_m(l, -m);
+                    for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
+                        g(ir, lm) = real(tpp[lm] * f(ir, lm) + tpm[lm] * f(ir, lm1));
+                }
+                lm++;
+            }
+        }
+    }
+    else
+    {
+        for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
+        {
+            int lm = 0;
+            for (int l = 0; l <= lmax; l++)
+            {
+                for (int m = -l; m <= l; m++)
+                {
+                    if (m == 0)
+                    {
+                        g(lm, ir) = real(f(lm, ir));
+                    }
+                    else 
+                    {
+                        int lm1 = Utils::lm_by_l_m(l, -m);
+                        g(lm, ir) = real(tpp[lm] * f(lm, ir) + tpm[lm] * f(lm1, ir));
+                    }
+                    lm++;
+                }
+            }
+        }
+    }
 }
 
 }

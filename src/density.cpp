@@ -192,6 +192,8 @@ void Density::initial_density()
         int lmax = parameters_.lmax_rho();
         int lmmax = Utils::lmmax(lmax);
         auto l_by_lm = Utils::l_by_lm(lmax);
+
+        SHT sht(parameters_.lmax_rho());
         
         /* cache 4 * pi * complex_i^l values */ 
         std::vector<double_complex> cil4p(lmax + 1);
@@ -295,7 +297,7 @@ void Density::initial_density()
                 if (p.second == Platform::mpi_rank())
                 {
                     /* convert from Ylm to Rlm expansion */
-                    rho_ylm_tmp.sh_convert(rho_->f_mt(p.first));
+                    sht.convert(rho_ylm_tmp, rho_->f_mt(p.first));
                 }
             }
         }

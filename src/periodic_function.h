@@ -60,7 +60,7 @@ class Periodic_function
         electronic_structure_method_t esm_type_;
 
         /// local part of muffin-tin functions 
-        mdarray<Spheric_function<T>*, 1> f_mt_local_;
+        mdarray<Spheric_function<T>, 1> f_mt_local_;
         
         /// global muffin-tin array 
         mdarray<T, 3> f_mt_;
@@ -85,7 +85,7 @@ class Periodic_function
             for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++)
             {
                 int ia = unit_cell_->spl_num_atoms(ialoc);
-                f_mt_local_(ialoc)->set_ptr(&f_mt_(0, 0, ia));
+                f_mt_local_(ialoc).set_ptr(&f_mt_(0, 0, ia));
             }
         }
         
@@ -130,7 +130,6 @@ class Periodic_function
 
         size_t size();
 
-        //size_t pack(T* array);
         size_t pack(size_t offset, Mixer* mixer);
         
         size_t unpack(T* array);
@@ -151,7 +150,7 @@ class Periodic_function
 
         inline Spheric_function<T>& f_mt(int ialoc)
         {
-            return *f_mt_local_(ialoc);
+            return f_mt_local_(ialoc);
         }
 
         template <index_domain_t index_domain>
