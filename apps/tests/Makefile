@@ -6,7 +6,7 @@ INCLUDE = -I./../../src
 
 .SUFFIXES: .cpp
 
-all: hdf5 allgather mt_function mt_kinetic spline splindex hydrogen read_atom fft fft_t
+all: hdf5 allgather mt_function mt_kinetic spline splindex hydrogen read_atom fft fft_t test_mdarray
 
 hdf5:
 	$(CXX) $(CXX_OPT) $(INCLUDE) hdf5.cpp           $(LIB_SIRIUS) $(LIBS) -o hdf5
@@ -42,8 +42,11 @@ fft:
 	$(CXX) $(CXX_OPT) $(INCLUDE) fft.cpp           $(LIB_SIRIUS) $(LIBS) -o fft
 	
 fft_t:
-	$(CXX) $(CXX_OPT) $(INCLUDE) fft_t.cpp           $(LIB_SIRIUS) $(LIBS) -o fft_t
+	$(CXX) $(CXX_OPT) $(INCLUDE) fft_t.cpp         $(LIB_SIRIUS) $(LIBS) -o fft_t
+	
+test_mdarray:
+	$(CXX) $(CXX_OPT) $(INCLUDE) test_mdarray.cpp  $(LIB_SIRIUS) $(LIBS) -o test_mdarray
 	
 
 clean:
-	rm -f *.o *.h5 *.txt *.dat *.pdf timers.json out.json splindex hdf5 hydrogen read_atom fft fft1k spline allgather cuda_zgemm mt_function mt_kinetic spline_gpu fft_t
+	rm -f *.o *.h5 *.txt *.dat *.pdf timers.json out.json splindex hdf5 hydrogen read_atom fft fft1k spline allgather cuda_zgemm mt_function mt_kinetic spline_gpu fft_t test_mdarray
