@@ -11,9 +11,105 @@
 #include "constants.h"
 #include "linalg.h"
 #include "LebedevLaikov.h"
+#include "radial_grid.h"
 
 namespace sirius
 {
+
+template <typename T> 
+class Spheric_function1
+{
+    private:
+
+        /// Spheric function values.
+        mdarray<T, 2> data_;
+        
+        /// Radial grid.
+        Radial_grid radial_grid_;
+        
+        int angular_domain_size_;
+
+        int angular_domain_idx_;
+
+        int radial_domain_idx_;
+
+    public:
+
+        Spheric_function1()
+        {
+        }
+
+        Spheric_function1(Radial_grid& radial_grid__, int angular_domain_size__) 
+            : radial_grid_(radial_grid__), 
+              angular_domain_size_(angular_domain_size__), 
+              angular_domain_idx_(1),
+              radial_domain_idx_(0)
+        {
+            data_.set_dimensions(radial_grid_.num_points(), angular_domain_size_);
+            data_.allocate();
+        }
+        
+        Spheric_function1(int angular_domain_size__, Radial_grid& radial_grid__) 
+            : radial_grid_(radial_grid__), 
+              angular_domain_size_(angular_domain_size__), 
+              angular_domain_idx_(0),
+              radial_domain_idx_(1)
+        {
+            data_.set_dimensions(angular_domain_size_, radial_grid_.num_points());
+            data_.allocate();
+        }
+
+        Spheric_function1(T* ptr, int angular_domain_size__, Radial_grid& radial_grid__) 
+            : radial_grid_(radial_grid__), 
+              angular_domain_size_(angular_domain_size__), 
+              angular_domain_idx_(0),
+              radial_domain_idx_(1)
+        {
+            data_.set_dimensions(angular_domain_size_, radial_grid_.num_points());
+            data_.set_ptr(ptr);
+        }
+
+        inline int angular_domain_size()
+        {
+            return angular_domain_size_;
+        }
+
+        inline int angular_domain_idx()
+        {
+            return angular_domain_idx_;
+        }
+
+        inline int radial_domain_idx()
+        {
+            return radial_domain_idx_;
+        }
+
+        inline Radial_grid& radial_grid()
+        {
+            return radial_grid_;
+        }
+
+        inline T& operator()(const int64_t i0, const int64_t i1) 
+        {
+            return data_(i0, i1);
+        }
+
+        void zero()
+        {
+            data_.zero();
+        }
+
+        void allocate()
+        {
+            data_.allocate();
+        }
+
+        void set_ptr(T* ptr)
+        {
+            data_.set_ptr(ptr);
+        }
+};
+
 
 class SHT
 {
@@ -55,6 +151,179 @@ class SHT
         
         template <typename T>
         inline void forward_transform(T* ftp, int lmmax, int ncol, T* flm);
+
+        Spheric_function1<double> convert(Spheric_function1<double_complex>& f)
+        {
+            Spheric_function1<double> g;
+
+            int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
+
+            /* cache transformation arrays */
+            std::vector<double_complex> tpp(f.angular_domain_size());
+            std::vector<double_complex> tpm(f.angular_domain_size());
+            for (int l = 0; l <= lmax; l++)
+            {
+                for (int m = -l; m <= l; m++) 
+                {
+                    int lm = Utils::lm_by_l_m(l, m);
+                    tpp[lm] = rlm_dot_ylm(l, m, m);
+                    tpm[lm] = rlm_dot_ylm(l, m, -m);
+                }
+            }
+
+            /* radial index is first */
+            if (f.radial_domain_idx() == 0)
+            {
+                g = Spheric_function1<double>(f.radial_grid(), f.angular_domain_size());
+                int lm = 0;
+                for (int l = 0; l <= lmax; l++)
+                {
+                    for (int m = -l; m <= l; m++)
+                    {
+                        if (m == 0)
+                        {
+                            for (int ir = 0; ir < f.radial_grid().num_points(); ir++) 
+                                g(ir, lm) = real(f(ir, lm));
+                        }
+                        else 
+                        {
+                            int lm1 = Utils::lm_by_l_m(l, -m);
+                            for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
+                                g(ir, lm) = real(tpp[lm] * f(ir, lm) + tpm[lm] * f(ir, lm1));
+                        }
+                        lm++;
+                    }
+                }
+            }
+            else
+            {
+                g = Spheric_function1<double>(f.angular_domain_size(), f.radial_grid());
+                for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
+                {
+                    int lm = 0;
+                    for (int l = 0; l <= lmax; l++)
+                    {
+                        for (int m = -l; m <= l; m++)
+                        {
+                            if (m == 0)
+                            {
+                                g(lm, ir) = real(f(lm, ir));
+                            }
+                            else 
+                            {
+                                int lm1 = Utils::lm_by_l_m(l, -m);
+                                g(lm, ir) = real(tpp[lm] * f(lm, ir) + tpm[lm] * f(lm1, ir));
+                            }
+                            lm++;
+                        }
+                    }
+                }
+            }
+
+            return g;
+        }
+
+        Spheric_function1<double_complex> convert(Spheric_function1<double> f)
+        {
+            Spheric_function1<double_complex> g;
+            
+            int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
+
+            /* cache transformation arrays */
+            std::vector<double_complex> tpp(f.angular_domain_size());
+            std::vector<double_complex> tpm(f.angular_domain_size());
+            for (int l = 0; l <= lmax; l++)
+            {
+                for (int m = -l; m <= l; m++) 
+                {
+                    int lm = Utils::lm_by_l_m(l, m);
+                    tpp[lm] = ylm_dot_rlm(l, m, m);
+                    tpm[lm] = ylm_dot_rlm(l, m, -m);
+                }
+            }
+
+            /* radial index is first */
+            if (f.radial_domain_idx() == 0)
+            {
+                g = Spheric_function1<double_complex>(f.radial_grid(), f.angular_domain_size());
+
+                int lm = 0;
+                for (int l = 0; l <= lmax; l++)
+                {
+                    for (int m = -l; m <= l; m++)
+                    {
+                        if (m == 0)
+                        {
+                            for (int ir = 0; ir < f.radial_grid().num_points(); ir++) g(ir, lm) = f(ir, lm);
+                        }
+                        else 
+                        {
+                            int lm1 = Utils::lm_by_l_m(l, -m);
+                            for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
+                                g(ir, lm) = tpp[lm] * f(ir, lm) + tpm[lm] * f(ir, lm1);
+                        }
+                        lm++;
+                    }
+                }
+            }
+            else
+            {
+                g = Spheric_function1<double_complex>(f.angular_domain_size(), f.radial_grid());
+                for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
+                {
+                    int lm = 0;
+                    for (int l = 0; l <= lmax; l++)
+                    {
+                        for (int m = -l; m <= l; m++)
+                        {
+                            if (m == 0)
+                            {
+                                g(lm, ir) = f(lm, ir);
+                            }
+                            else 
+                            {
+                                int lm1 = Utils::lm_by_l_m(l, -m);
+                                g(lm, ir) = tpp[lm] * f(lm, ir) + tpm[lm] * f(lm1, ir);
+                            }
+                            lm++;
+                        }
+                    }
+                }
+            }
+
+            return g;
+        }
+
+        template <int direction, typename T>
+        Spheric_function1<T> transform(Spheric_function1<T>& f)
+        {
+            Spheric_function1<T> g;
+
+            switch (direction)
+            {
+                /* forward transform, f(t, p) -> g(l, m) */
+                case 1:
+                {
+                    g = Spheric_function1<T>(lmmax(), f.radial_grid());
+                    forward_transform(&f(0, 0), lmmax(), f.radial_grid().num_points(), &g(0, 0));
+                    break;
+                }
+                /* backward transform, f(l, m) -> g(t, p) */
+                case -1:
+                {
+                    g = Spheric_function1<T>(num_points(), f.radial_grid());
+                    backward_transform(&f(0, 0), lmmax(), f.radial_grid().num_points(), &g(0, 0));
+                    break;
+                }
+                default:
+                {
+                    error_local(__FILE__, __LINE__, "Wrong direction of transformation");
+                }
+            }
+            return g;
+        }
+
+
         
         //void rlm_forward_iterative_transform(double *ftp__, int lmmax, int ncol, double* flm)
         //{

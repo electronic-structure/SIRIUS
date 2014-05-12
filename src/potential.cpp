@@ -786,6 +786,7 @@ void Potential::xc_mt(Periodic_function<double>* rho,
         Spheric_function<double> exctp(&exctp_raw[0], *sht_, rgrid);
         Spheric_function<double> magtp(&magtp_raw[0], *sht_, rgrid);
         Spheric_function<double> bxctp(&bxctp_raw[0], *sht_, rgrid);
+
         Spheric_function_vector<double> vecmagtp(&vecmagtp_raw[0], *sht_, rgrid, parameters_.num_mag_dims());
         Spheric_function_vector<double> vecbxctp(&vecbxctp_raw[0], *sht_, rgrid, parameters_.num_mag_dims());
 
@@ -793,6 +794,10 @@ void Potential::xc_mt(Periodic_function<double>* rho,
 
         /* transform density from Rlm to (theta, phi) */
         rho->f_mt(ialoc).sh_transform(rhotp);
+
+       // Spheric_function1<double> rhotp1 = sht_->transform<-1>(rho->f_mt(ialoc));
+
+
         
         /* check if density has negative values */
         double rhomin = 0.0;
