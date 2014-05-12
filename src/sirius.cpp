@@ -469,7 +469,11 @@ void FORTRAN(sirius_get_index_by_gvec)(int32_t* index_by_gvec__)
     std::pair<int, int> d1 = fft->grid_limits(1);
     std::pair<int, int> d2 = fft->grid_limits(2);
 
-    mdarray<int, 3> index_by_gvec(index_by_gvec__, dimension(d0.first, d0.second), dimension(d1.first, d1.second), dimension(d2.first, d2.second));
+    mdarray<int, 3> index_by_gvec(index_by_gvec__, 
+                                  mdarray_index_descriptor(d0.first, d0.second), 
+                                  mdarray_index_descriptor(d1.first, d1.second), 
+                                  mdarray_index_descriptor(d2.first, d2.second));
+
     for (int i0 = d0.first; i0 <= d0.second; i0++)
     {
         for (int i1 = d1.first; i1 <= d1.second; i1++)
