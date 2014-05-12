@@ -82,9 +82,9 @@ void Reciprocal_lattice::init(int lmax)
         if (gvec_tmp_length[i].first <= pw_cutoff_) num_gvec_++;
     }
     
-    index_by_gvec_.set_dimensions(dimension(fft_->grid_limits(0).first, fft_->grid_limits(0).second),
-                                  dimension(fft_->grid_limits(1).first, fft_->grid_limits(1).second),
-                                  dimension(fft_->grid_limits(2).first, fft_->grid_limits(2).second));
+    index_by_gvec_.set_dimensions(mdarray_index_descriptor(fft_->grid_limits(0).first, fft_->grid_limits(0).second),
+                                  mdarray_index_descriptor(fft_->grid_limits(1).first, fft_->grid_limits(1).second),
+                                  mdarray_index_descriptor(fft_->grid_limits(2).first, fft_->grid_limits(2).second));
     index_by_gvec_.allocate();
     
     fft_index_.resize(fft_->size());
