@@ -112,8 +112,14 @@ template <typename T, int ND> class mdarray_base
         /// Assigment operator
         inline mdarray_base<T, ND>& operator=(const mdarray_base<T, ND>& src)
         {
-            std::cout << "Assigment operator of mdarray_base()" << std::endl;
-            exit(0);
+            mdarray_shared_ptr_ = src.mdarray_shared_ptr_;
+            mdarray_ptr_ = src.mdarray_ptr_;
+            for (int i = 0; i < ND; i++)
+            {
+                d[i] = src.d[i];
+                offset[i] = src.offset[i];
+            }
+            return *this;
         }
 
         void init_dimensions(const std::vector<dimension>& vd) 
