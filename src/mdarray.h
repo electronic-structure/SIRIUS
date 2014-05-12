@@ -51,17 +51,9 @@ class dimension
 
 template <typename T, int ND> class mdarray_base
 {
-    private:
-
-        // forbid copy constructor
-        //mdarray_base(const mdarray_base<T, ND>& src);
-        
-        // forbid assignment operator
-        //mdarray_base<T, ND>& operator=(const mdarray_base<T, ND>& src); 
-
     protected:
     
-        std::shared_ptr<T> mdarray_shared_ptr_;
+        std::unique_ptr<T[]> mdarray_shared_ptr_;
         
         T* mdarray_ptr_;
         
@@ -96,28 +88,36 @@ template <typename T, int ND> class mdarray_base
         {
             deallocate();
         }
-        
-        /// Copy constructor
-        mdarray_base(const mdarray_base<T, ND>& src)
-        {
-            this->mdarray_shared_ptr_ = src.mdarray_shared_ptr_; 
-            this->mdarray_ptr_ = src.mdarray_ptr_;
-            for (int i = 0; i < ND; i++)
-            {
-                this->d[i] = src.d[i];
-                this->offset[i] = src.offset[i];
-            }
-        }
 
-        /// Assigment operator
-        inline mdarray_base<T, ND>& operator=(const mdarray_base<T, ND>& src)
+        /// Copy constructor is forbidden
+        mdarray_base(const mdarray_base<T, ND>& src) = delete;
+        
+        /// Assignment operator is forbidden
+        mdarray_base<T, ND>& operator=(const mdarray_base<T, ND>& src) = delete;
+        
+        /// Move constructor
+        mdarray_base(mdarray_base<T, ND>&& src) : mdarray_shared_ptr_(std::move(src.mdarray_shared_ptr_))
         {
-            mdarray_shared_ptr_ = src.mdarray_shared_ptr_;
             mdarray_ptr_ = src.mdarray_ptr_;
             for (int i = 0; i < ND; i++)
             {
                 d[i] = src.d[i];
                 offset[i] = src.offset[i];
+            }
+        }
+
+        /// Move assigment operator
+        inline mdarray_base<T, ND>& operator=(mdarray_base<T, ND>&& src)
+        {
+            if (this != &src)
+            {
+                mdarray_shared_ptr_ = std::move(src.mdarray_shared_ptr_);
+                mdarray_ptr_ = src.mdarray_ptr_;
+                for (int i = 0; i < ND; i++)
+                {
+                    d[i] = src.d[i];
+                    offset[i] = src.offset[i];
+                }
             }
             return *this;
         }
@@ -166,7 +166,8 @@ template <typename T, int ND> class mdarray_base
             
             size_t sz = size();
 
-            mdarray_shared_ptr_ = std::shared_ptr<T>(new T[sz], [](T* ptr){delete[] ptr;});
+            //mdarray_shared_ptr_ = std::unique_ptr<T[]>(new T[sz], [](T* ptr){delete[] ptr;});
+            mdarray_shared_ptr_ = std::unique_ptr<T[]>(new T[sz]);
             mdarray_ptr_ = mdarray_shared_ptr_.get();
 
 
