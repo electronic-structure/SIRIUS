@@ -10,7 +10,7 @@
 #include "radial_grid.h"
 #include "radial_solver.h"
 #include "json_tree.h"
-#include "libxc_interface.h"
+#include "xc_functional.h"
 
 namespace sirius {
 

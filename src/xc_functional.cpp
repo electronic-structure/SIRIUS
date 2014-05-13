@@ -1,6 +1,6 @@
 #include <string>
 #include <map>
-#include "libxc_interface.h"
+#include "xc_functional.h"
 
 namespace sirius {
 

@@ -18,7 +18,7 @@
 #include "splindex.h"
 #include "json_tree.h"
 #include "hdf5_tree.h" 
-#include "libxc_interface.h"
+#include "xc_functional.h"
 #include "mpi_grid.h"
 #include "sirius_io.h"
 #include "descriptors.h"
