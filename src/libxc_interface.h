@@ -1,5 +1,5 @@
-#ifndef __LIBXC_INTERFACE_H__
-#define __LIBXC_INTERFACE_H__
+#ifndef __XC_FUNCTIONAL_H__
+#define __XC_FUNCTIONAL_H__
 
 #include <xc.h>
 #include <string.h>
@@ -139,4 +139,4 @@ class XC_functional
 
 };
 
-#endif // __LIBXC_INTERFACE_H__
+#endif // __XC_FUNCTIONAL_H__
