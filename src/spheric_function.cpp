@@ -5,9 +5,9 @@
 namespace sirius 
 {
 
-std::vector< Spheric_function<double_complex> > grad(Spheric_function<double_complex>& f)
+std::array<Spheric_function<double_complex>, 3> grad(Spheric_function<double_complex>& f)
 {
-    std::vector< Spheric_function<double_complex> > g(3);
+    std::array<Spheric_function<double_complex>, 3> g;
     for (int i = 0; i < 3; i++)
     {
         if (f.radial_domain_idx() == 0)
@@ -114,13 +114,13 @@ std::vector< Spheric_function<double_complex> > grad(Spheric_function<double_com
     return g;
 }
 
-std::vector< Spheric_function<double> > grad(Spheric_function<double>& f)
+std::array<Spheric_function<double>, 3> grad(Spheric_function<double>& f)
 {
     int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
     SHT sht(lmax);
     Spheric_function<double_complex> zf = sht.convert(f);
     auto zg = grad(zf);
-    std::vector< Spheric_function<double> > g;
+    std::array<Spheric_function<double>, 3> g;
     for (int i = 0; i < 3; i++) g[i] = sht.convert(zg[i]);
     return g;
 }

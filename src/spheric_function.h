@@ -193,10 +193,10 @@ T inner(Spheric_function<T>& f1, Spheric_function<T>& f2)
 }
 
 /// Gradient of the function in complex spherical harmonics.
-std::vector< Spheric_function<double_complex> > grad(Spheric_function<double_complex>& f);
+std::array<Spheric_function<double_complex>, 3> grad(Spheric_function<double_complex>& f);
 
 /// Gradient of the function in real spherical harmonics.
-std::vector< Spheric_function<double> > grad(Spheric_function<double>& f);
+std::array<Spheric_function<double>, 3> grad(Spheric_function<double>& f);
 
 }
 
