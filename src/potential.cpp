@@ -763,15 +763,6 @@ void Potential::xc_mt(Periodic_function<double>* rho,
 {
     Timer t2("sirius::Potential::xc_mt");
 
-    //== int raw_size = sht_->num_points() * parameters_.unit_cell()->max_num_mt_points();
-    //== std::vector<double> rhotp_raw(raw_size);
-    //== std::vector<double> vxctp_raw(raw_size);
-    //== std::vector<double> exctp_raw(raw_size);
-    //== std::vector<double> magtp_raw(raw_size);
-    //== std::vector<double> bxctp_raw(raw_size);
-    //== std::vector<double> vecmagtp_raw(raw_size * parameters_.num_mag_dims());
-    //== std::vector<double> vecbxctp_raw(raw_size * parameters_.num_mag_dims());
-
     auto uc = parameters_.unit_cell();
 
     for (int ialoc = 0; ialoc < uc->spl_num_atoms().local_size(); ialoc++)
