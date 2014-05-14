@@ -167,7 +167,7 @@ T inner(Spheric_function<T>& f1, Spheric_function<T>& f2)
     {
         error_local(__FILE__, __LINE__, "wrong angular arguments");
     }
-    if ((f1.radial_domain_idx() != f2.radial_domain_idx()) || (f1.radial_grid().num_points() != f2.radial_grid().num_points()))
+    if ((f1.radial_domain_idx() != f2.radial_domain_idx()) || (f1.radial_grid().hash() != f2.radial_grid().hash()))
     {
         error_local(__FILE__, __LINE__, "wrong radial arguments");
     }
@@ -192,11 +192,86 @@ T inner(Spheric_function<T>& f1, Spheric_function<T>& f2)
     return s.interpolate().integrate(2);
 }
 
+/// Compute Laplacian of the spheric function.
+/** Laplacian in spherical coordinates has the following expression:
+ *  \f[
+ *      \Delta = \frac{1}{r^2}\frac{\partial}{\partial r}\Big( r^2 \frac{\partial}{\partial r} \Big) + \frac{1}{r^2}\Delta_{\theta, \phi}
+ *  \f]
+ */
+template <typename T>
+Spheric_function<T> laplacian(Spheric_function<T>& f)
+{
+    Spheric_function<T> g;
+    if (f.angular_domain_idx() == 0)
+    {
+        auto& rgrid = f.radial_grid();
+        int lmmax = f.angular_domain_size();
+        int lmax = Utils::lmax_by_lmmax(lmmax);
+        g = Spheric_function<T>(lmmax, rgrid);
+        
+        Spline<T> s(f.radial_grid());
+        for (int l = 0; l <= lmax; l++)
+        {
+            int ll = l * (l + 1);
+            for (int m = -l; m <= l; m++)
+            {
+                int lm = Utils::lm_by_l_m(l, m);
+                for (int ir = 0; ir < s.num_points(); ir++) s[ir] = f(lm, ir);
+                s.interpolate();
+                
+                for (int ir = 0; ir < s.num_points(); ir++) 
+                    g(lm, ir) = 2 * s.deriv(1, ir) * rgrid.x_inv(ir) + s.deriv(2, ir) - f(ir, lm) * ll / pow(rgrid[ir], 2);
+            }
+        }
+
+    }
+    else
+    {
+        stop_here // need to implement this
+    }
+
+    return g;
+}
+
+template <typename T>
+class Spheric_function_gradient
+{
+    private:
+
+        Radial_grid radial_grid_;
+
+        std::array<Spheric_function<T>, 3> grad_;
+    
+    public:
+
+        Spheric_function_gradient()
+        {
+        }
+
+        Spheric_function_gradient(Radial_grid radial_grid__) : radial_grid_(radial_grid__)
+        {
+        }
+
+        inline Radial_grid& radial_grid()
+        {
+            return radial_grid_;
+        }
+
+        inline Spheric_function<T>& operator[](const int x)
+        {
+            assert(x >= 0 && x < 3);
+            assert(radial_grid_.hash() == grad_[x].radial_grid().hash());
+            return grad_[x];
+        }
+};
+
 /// Gradient of the function in complex spherical harmonics.
-std::array<Spheric_function<double_complex>, 3> grad(Spheric_function<double_complex>& f);
+Spheric_function_gradient<double_complex> gradient(Spheric_function<double_complex>& f);
 
 /// Gradient of the function in real spherical harmonics.
-std::array<Spheric_function<double>, 3> grad(Spheric_function<double>& f);
+Spheric_function_gradient<double> gradient(Spheric_function<double>& f);
+
+Spheric_function<double> operator*(Spheric_function_gradient<double>& f, Spheric_function_gradient<double>& g);
 
 }
 

@@ -25,6 +25,7 @@
 #include <string>
 #include "typedefs.h"
 #include "error_handling.h"
+#include "utils.h"
 
 /** \file radial_grid.h
  *
@@ -124,6 +125,14 @@ class Radial_grid
 
         /// Set new radial points.
         void set_radial_points(int num_points__, double* points__);
+
+        uint64_t hash()
+        {
+            uint64_t h = Utils::hash(&x_[0], x_.size() * sizeof(double));
+            h = Utils::hash(&dx_[0], dx_.size() * sizeof(double), h);
+            h = Utils::hash(&x_inv_[0], x_inv_.size() * sizeof(double), h);
+            return h;
+        }
 };
 
 };

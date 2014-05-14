@@ -72,6 +72,138 @@ class XC_functional
         {
             return family() == XC_FAMILY_GGA;
         }
+
+        /// Get LDA contribution.
+        void get_lda(const int size, const double* rho, double* v, double* e)
+        {
+            if (family() != XC_FAMILY_LDA) error_local(__FILE__, __LINE__, "wrong XC");
+
+            /* check density */
+            for (int i = 0; i < size; i++)
+            {
+                if (rho[i] < 0)
+                {
+                    std::stringstream s;
+                    s << "rho is negative : " << Utils::double_to_string(rho[i]);
+                    error_local(__FILE__, __LINE__, s);
+                }
+            }
+
+            xc_lda_exc_vxc(&handler_, size, rho, e, v);
+        }
+
+        /// Get LSDA contribution.
+        void get_lda(const int size, const double* rho_up, const double* rho_dn, double* v_up, double* v_dn, double* e)
+        {
+            if (family() != XC_FAMILY_LDA) error_local(__FILE__, __LINE__, "wrong XC");
+
+            std::vector<double> rho_ud(size * 2);
+            /* check and rearrange density */
+            for (int i = 0; i < size; i++)
+            {
+                if (rho_up[i] < 0 || rho_dn[i] < 0)
+                {
+                    std::stringstream s;
+                    s << "rho is negative : " << Utils::double_to_string(rho_up[i]) 
+                      << " " << Utils::double_to_string(rho_dn[i]);
+                    error_local(__FILE__, __LINE__, s);
+                }
+                
+                rho_ud[2 * i] = rho_up[i];
+                rho_ud[2 * i + 1] = rho_dn[i];
+            }
+            
+            std::vector<double> v_ud(size * 2);
+
+            xc_lda_exc_vxc(&handler_, size, &rho_ud[0], &e[0], &v_ud[0]);
+            
+            /* extract potential */
+            for (int i = 0; i < size; i++)
+            {
+                v_up[i] = v_ud[2 * i];
+                v_dn[i] = v_ud[2 * i + 1];
+            }
+        }
+
+        /// Get GGA contribution.
+        void get_gga(const int size,
+                     const double* rho,
+                     const double* sigma,
+                     double* vrho,
+                     double* vsigma,
+                     double* e)
+        {
+            if (family() != XC_FAMILY_GGA) error_local(__FILE__, __LINE__, "wrong XC");
+
+            /* check density */
+            for (int i = 0; i < size; i++)
+            {
+                if (rho[i] < 0.0)
+                {
+                    std::stringstream s;
+                    s << "rho is negative : " << Utils::double_to_string(rho[i]);
+                    error_local(__FILE__, __LINE__, s);
+                }
+            }
+
+            xc_gga_exc_vxc(&handler_, size, rho, sigma, e, vrho, vsigma);
+        }
+
+        /// Get spin-resolved GGA contribution.
+        void get_gga(const int size, 
+                     const double* rho_up, 
+                     const double* rho_dn, 
+                     const double* sigma_uu, 
+                     const double* sigma_ud, 
+                     const double* sigma_dd, 
+                     double* vrho_up,
+                     double* vrho_dn, 
+                     double* vsigma_uu, 
+                     double* vsigma_ud,
+                     double* vsigma_dd,
+                     double* e)
+        {
+            if (family() != XC_FAMILY_GGA) error_local(__FILE__, __LINE__, "wrong XC");
+
+            std::vector<double> rho(2 * size);
+            std::vector<double> sigma(3 * size);
+            /* check and rearrange density */
+            /* rearrange sigma as well */
+            for (int i = 0; i < size; i++)
+            {
+                if (rho_up[i] < 0 || rho_dn[i] < 0)
+                {
+                    std::stringstream s;
+                    s << "rho is negative : " << Utils::double_to_string(rho_up[i]) 
+                      << " " << Utils::double_to_string(rho_dn[i]);
+                    error_local(__FILE__, __LINE__, s);
+                }
+                
+                rho[2 * i] = rho_up[i];
+                rho[2 * i + 1] = rho_dn[i];
+
+                sigma[3 * i] = sigma_uu[i];
+                sigma[3 * i + 1] = sigma_ud[i];
+                sigma[3 * i + 2] = sigma_dd[i];
+            }
+            
+            std::vector<double> vrho(2 * size);
+            std::vector<double> vsigma(3 * size);
+
+            xc_gga_exc_vxc(&handler_, size, &rho[0], &sigma[0], e, &vrho[0], &vsigma[0]);
+
+            /* extract vrho and vsigma */
+            for (int i = 0; i < size; i++)
+            {
+                vrho_up[i] = vrho[2 * i];
+                vrho_dn[i] = vrho[2 * i + 1];
+
+                vsigma_uu[i] = vsigma[3 * i];
+                vsigma_ud[i] = vsigma[3 * i + 1];
+                vsigma_dd[i] = vsigma[3 * i + 2];
+            }
+        }
+
         
         /// Add LDA contribution.
         void add(int size, const double* rho, double* v, double* e)
@@ -92,7 +224,7 @@ class XC_functional
                 }
             }
 
-            xc_lda_exc_vxc(&handler_, size, &rho[0], &e_tmp[0], &v_tmp[0]);
+            xc_lda_exc_vxc(&handler_, size, rho, &e_tmp[0], &v_tmp[0]);
        
             for (int i = 0; i < size; i++)
             {

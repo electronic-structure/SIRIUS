@@ -97,6 +97,8 @@ Spheric_function<T> SHT::transform(Spheric_function<T>& f)
 template <int direction, typename T>
 void SHT::transform(Spheric_function<T>& f, Spheric_function<T>& g)
 {
+    assert(f.radial_grid().hash() == g.radial_grid().hash());
+
     switch (direction)
     {
         /* forward transform, f(t, p) -> g(l, m) */

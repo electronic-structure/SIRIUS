@@ -264,7 +264,6 @@ Spheric_function<double> SHT::convert(Spheric_function<double_complex>& f)
 {
     Spheric_function<double> g;
 
-
     /* radial index is first */
     if (f.radial_domain_idx() == 0)
     {
@@ -356,7 +355,7 @@ void SHT::convert(Spheric_function<double_complex>& f, Spheric_function<double>&
     if (f.radial_domain_idx() != g.radial_domain_idx())
         error_local(__FILE__, __LINE__, "wrong radial domain index");
     
-    if (f.radial_grid().num_points() != g.radial_grid().num_points())
+    if (f.radial_grid().hash() != g.radial_grid().hash())
         error_local(__FILE__, __LINE__, "wrong number of radial points");
 
     int lmmax = std::min(f.angular_domain_size(), g.angular_domain_size());

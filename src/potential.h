@@ -63,6 +63,22 @@ class Potential
         void poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw);
 
         void generate_local_potential();
+        
+        void xc_mt_nonmagnetic(Radial_grid& rgrid,
+                               std::vector<XC_functional*>& xc_func,
+                               Spheric_function<double>& rho_lm,
+                               Spheric_function<double>& rho_tp,
+                               Spheric_function<double>& vxc_tp, 
+                               Spheric_function<double>& exc_tp);
+
+        void xc_mt_magnetic(std::vector<XC_functional*>& xc_func,
+                            Spheric_function<double>& rho_up_lm, 
+                            Spheric_function<double>& rho_up_tp, 
+                            Spheric_function<double>& rho_dn_lm, 
+                            Spheric_function<double>& rho_dn_tp, 
+                            Spheric_function<double>& vxc_up_tp, 
+                            Spheric_function<double>& vxc_dn_tp, 
+                            Spheric_function<double>& exc_tp);
 
         void xc_mt(Periodic_function<double>* rho, 
                    Periodic_function<double>* magnetization[3], 
@@ -131,6 +147,48 @@ class Potential
         void poisson(Periodic_function<double>* rho, Periodic_function<double>* vh);
         
         /// Generate XC potential and energy density
+        /** In case of spin-unpolarized GGA the XC potential has the following expression:
+         *  \f[
+         *      V_{XC}({\bf r}) = \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \nabla \rho) - 
+         *        \nabla \frac{\partial}{\partial (\nabla \rho)} \varepsilon_{xc}(\rho, \nabla \rho) 
+         *  \f]
+         *  LibXC packs the gradient information into the so-called \a sigma array:
+         *  \f[
+         *      \sigma = \nabla \rho \nabla \rho
+         *  \f]
+         *  Changing variables in \f$ V_{XC} \f$ expression gives:
+         *  \f{eqnarray*}{
+         *      V_{XC}({\bf r}) &=& \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \sigma) - 
+         *        \nabla \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma}
+         *        \frac{\partial \sigma}{ \partial (\nabla \rho)} \\
+         *                      &=& \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \sigma) - 
+         *        2 \nabla \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} \nabla \rho - 
+         *        2 \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} \nabla^2 \rho
+         *  \f}
+         *  The following sequence of functions must be computed:
+         *      - density on the real space grid
+         *      - gradient of density (in spectral representation)
+         *      - gradient of density on the real space grid
+         *      - laplacian of density (in spectral representation)
+         *      - laplacian of density on the real space grid
+         *      - \a sigma array
+         *      - a call to Libxc must be performed \a sigma derivatives must be obtained
+         *      - \f$ \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} \f$ in spectral representation
+         *      - gradient of \f$ \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} \f$ in spectral representation
+         *      - gradient of \f$ \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} \f$ on the real space grid
+         *
+         *  Expression for spin-polarized potential has a bit more complicated form:
+         *  \f{eqnarray*}
+         *      V_{XC}^{\gamma} &=& \frac{\partial \varepsilon_{xc}}{\partial \rho_{\gamma}} - \nabla
+         *        \Big( 2 \frac{\partial \varepsilon_{xc}}{\partial \sigma_{\gamma \gamma}} \nabla \rho_{\gamma} +
+         *        \frac{\partial \varepsilon_{xc}}{\partial \sigma_{\gamma \delta}} \nabla \rho_{\delta} \Big) \\
+         *                      &=& \frac{\partial \varepsilon_{xc}}{\partial \rho_{\gamma}} 
+         *        -2 \nabla \frac{\partial \varepsilon_{xc}}{\partial \sigma_{\gamma \gamma}} \nabla \rho_{\gamma} 
+         *        -2 \frac{\partial \varepsilon_{xc}}{\partial \sigma_{\gamma \gamma}} \nabla^2 \rho_{\gamma} 
+         *        - \nabla \frac{\partial \varepsilon_{xc}}{\partial \sigma_{\gamma \delta}} \nabla \rho_{\delta}
+         *        - \frac{\partial \varepsilon_{xc}}{\partial \sigma_{\gamma \delta}} \nabla^2 \rho_{\delta} 
+         *  \f}
+         */
         void xc(Periodic_function<double>* rho, Periodic_function<double>* magnetization[3], 
                 Periodic_function<double>* vxc, Periodic_function<double>* bxc[3], Periodic_function<double>* exc);
         

@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file spheric_function.cpp
+ *   
+ *  \brief Contains grad() function.
+ */
+
 #include "sht.h"
 #include "spheric_function.h"
 #include "utils.h"
@@ -5,9 +29,9 @@
 namespace sirius 
 {
 
-std::array<Spheric_function<double_complex>, 3> grad(Spheric_function<double_complex>& f)
+Spheric_function_gradient<double_complex> gradient(Spheric_function<double_complex>& f)
 {
-    std::array<Spheric_function<double_complex>, 3> g;
+    Spheric_function_gradient<double_complex> g(f.radial_grid());
     for (int i = 0; i < 3; i++)
     {
         if (f.radial_domain_idx() == 0)
@@ -114,15 +138,43 @@ std::array<Spheric_function<double_complex>, 3> grad(Spheric_function<double_com
     return g;
 }
 
-std::array<Spheric_function<double>, 3> grad(Spheric_function<double>& f)
+Spheric_function_gradient<double> gradient(Spheric_function<double>& f)
 {
     int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
     SHT sht(lmax);
     Spheric_function<double_complex> zf = sht.convert(f);
-    auto zg = grad(zf);
-    std::array<Spheric_function<double>, 3> g;
+    auto zg = gradient(zf);
+    Spheric_function_gradient<double> g(f.radial_grid());
     for (int i = 0; i < 3; i++) g[i] = sht.convert(zg[i]);
     return g;
+}
+
+Spheric_function<double> operator*(Spheric_function_gradient<double>& f, Spheric_function_gradient<double>& g)
+{
+    for (int x = 0; x < 3; x++)
+    {
+        if (f[x].radial_domain_idx() != 1 || g[x].radial_domain_idx() != 1)
+            error_local(__FILE__, __LINE__, "wrong radial domain index");
+    
+        if (f[x].radial_grid().hash() != g[x].radial_grid().hash())
+            error_local(__FILE__, __LINE__, "wrong number of radial points");
+        
+        if (f[x].angular_domain_size() != g[x].angular_domain_size())
+            error_local(__FILE__, __LINE__, "wrong number of angular points");
+    }
+
+    Spheric_function<double> result(f[0].angular_domain_size(), f[0].radial_grid());
+    result.zero();
+
+    for (int x = 0; x < 3; x++)
+    {
+        for (int ir = 0; ir < f[x].radial_grid().num_points(); ir++)
+        {
+            for (int tp = 0; tp < f[x].angular_domain_size(); tp++) result(tp, ir) += f[x](tp, ir) * g[x](tp, ir);
+        }
+    }
+
+    return result;
 }
 
 }

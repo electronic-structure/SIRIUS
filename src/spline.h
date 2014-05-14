@@ -215,7 +215,7 @@ class Spline
             }
             else 
             {
-                return deriv(dm, i, 0.0);
+                return deriv(dm, i, 0);
             }
         }
 

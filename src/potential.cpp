@@ -660,9 +660,6 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     fft_->transform(-1);
     fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &rho->f_pw(0));
 
-    //mdarray<Spheric_function<double_complex>*, 1> rho_ylm(parameters_.unit_cell()->spl_num_atoms().local_size());
-    //mdarray<Spheric_function<double_complex>*, 1> vh_ylm(parameters_.unit_cell()->spl_num_atoms().local_size());
-
     std::vector< Spheric_function<double_complex> > rho_ylm(parameters_.unit_cell()->spl_num_atoms().local_size());
     std::vector< Spheric_function<double_complex> > vh_ylm(parameters_.unit_cell()->spl_num_atoms().local_size());
 
@@ -754,6 +751,318 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     fft_->output(&vh->f_it<global>(0));
 }
 
+void Potential::xc_mt_nonmagnetic(Radial_grid& rgrid,
+                                  std::vector<XC_functional*>& xc_func,
+                                  Spheric_function<double>& rho_lm, 
+                                  Spheric_function<double>& rho_tp, 
+                                  Spheric_function<double>& vxc_tp, 
+                                  Spheric_function<double>& exc_tp)
+{
+    bool is_gga = false;
+    for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
+
+    Spheric_function_gradient<double> grad_rho_lm;
+    Spheric_function_gradient<double> grad_rho_tp;
+    Spheric_function<double> lapl_rho_lm;
+    Spheric_function<double> lapl_rho_tp;
+    Spheric_function<double> grad_rho_2_tp;
+
+    if (is_gga)
+    {
+        /* compute gradient in Rlm spherical harmonics */
+        grad_rho_lm = gradient(rho_lm);
+
+        /* backward transform gradient from Rlm to (theta, phi) */
+        for (int x = 0; x < 3; x++) grad_rho_tp[x] = sht_->transform<-1>(grad_rho_lm[x]);
+
+        /* compute density gradient product */
+        grad_rho_2_tp = grad_rho_tp * grad_rho_tp;
+        
+        /* compute Laplacian in Rlm spherical harmonics */
+        lapl_rho_lm = laplacian(rho_lm);
+
+        /* backward transform Laplacian from Rlm to (theta, phi) */
+        lapl_rho_tp = sht_->transform<-1>(lapl_rho_lm);
+    }
+
+    exc_tp.zero();
+    vxc_tp.zero();
+
+    Spheric_function<double> vsigma_tp;
+    if (is_gga)
+    {
+        vsigma_tp = Spheric_function<double>(sht_->num_points(), rgrid);
+        vsigma_tp.zero();
+    }
+
+    /* loop over XC functionals */
+    for (auto& ixc: xc_func)
+    {
+        /* if this is an LDA functional */
+        if (ixc->lda())
+        {
+            #pragma omp parallel
+            {
+                std::vector<double> exc_t(sht_->num_points());
+                std::vector<double> vxc_t(sht_->num_points());
+                #pragma omp for
+                for (int ir = 0; ir < rgrid.num_points(); ir++)
+                {
+                    ixc->get_lda(sht_->num_points(), &rho_tp(0, ir), &vxc_t[0], &exc_t[0]);
+                    for (int itp = 0; itp < sht_->num_points(); itp++)
+                    {
+                        /* add Exc contribution */
+                        exc_tp(itp, ir) += exc_t[itp];
+
+                        /* directly add to Vxc */
+                        vxc_tp(itp, ir) += vxc_t[itp];
+                    }
+                }
+            }
+        }
+        if (ixc->gga())
+        {
+            #pragma omp parallel
+            {
+                std::vector<double> exc_t(sht_->num_points());
+                std::vector<double> vrho_t(sht_->num_points());
+                std::vector<double> vsigma_t(sht_->num_points());
+                #pragma omp for
+                for (int ir = 0; ir < rgrid.num_points(); ir++)
+                {
+                    ixc->get_gga(sht_->num_points(), &rho_tp(0, ir), &grad_rho_2_tp(0, ir), &vrho_t[0], &vsigma_t[0], &exc_t[0]);
+                    for (int itp = 0; itp < sht_->num_points(); itp++)
+                    {
+                        /* add Exc contribution */
+                        exc_tp(itp, ir) += exc_t[itp];
+
+                        /* directly add to Vxc available contributions */
+                        vxc_tp(itp, ir) += (vrho_t[itp] - 2 * vsigma_t[itp] * lapl_rho_tp(itp, ir));
+
+                        /* save the sigma derivative */
+                        vsigma_tp(itp, ir) += vsigma_t[itp]; 
+                    }
+                }
+            }
+        }
+    }
+
+    if (is_gga)
+    {
+        /* forward transform vsigma to Rlm */
+        Spheric_function<double> vsigma_lm = sht_->transform<1>(vsigma_tp);
+
+        /* compute gradient of vsgima in spherical harmonics */
+        Spheric_function_gradient<double> grad_vsigma_lm = gradient(vsigma_lm);
+
+        /* backward transform gradient from Rlm to (theta, phi) */
+        Spheric_function_gradient<double> grad_vsigma_tp;
+        for (int x = 0; x < 3; x++) grad_vsigma_tp[x] = sht_->transform<-1>(grad_vsigma_lm[x]);
+
+        /* compute scalar product of two gradients */
+        Spheric_function<double> grad_vsigma_grad_vrho_tp = grad_vsigma_tp * grad_rho_tp;
+
+        /* add remaining term to Vxc */
+        for (int ir = 0; ir < rgrid.num_points(); ir++)
+        {
+            for (int itp = 0; itp < sht_->num_points(); itp++)
+            {
+                vxc_tp(itp, ir) -= 2 * grad_vsigma_grad_vrho_tp(itp, ir);
+            }
+        }
+    }
+}
+
+void Potential::xc_mt_magnetic(std::vector<XC_functional*>& xc_func,
+                               Spheric_function<double>& rho_up_lm, 
+                               Spheric_function<double>& rho_up_tp, 
+                               Spheric_function<double>& rho_dn_lm, 
+                               Spheric_function<double>& rho_dn_tp, 
+                               Spheric_function<double>& vxc_up_tp, 
+                               Spheric_function<double>& vxc_dn_tp, 
+                               Spheric_function<double>& exc_tp)
+{
+    bool is_gga = false;
+    for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
+
+    Spheric_function_gradient<double> grad_rho_up_lm;
+    Spheric_function_gradient<double> grad_rho_up_tp;
+    Spheric_function_gradient<double> grad_rho_dn_lm;
+    Spheric_function_gradient<double> grad_rho_dn_tp;
+
+    Spheric_function<double> lapl_rho_up_lm;
+    Spheric_function<double> lapl_rho_up_tp;
+    Spheric_function<double> lapl_rho_dn_lm;
+    Spheric_function<double> lapl_rho_dn_tp;
+
+    Spheric_function<double> grad_rho_up_grad_rho_up_tp;
+    Spheric_function<double> grad_rho_dn_grad_rho_dn_tp;
+    Spheric_function<double> grad_rho_up_grad_rho_dn_tp;
+
+    assert(rho_up_lm.radial_grid().hash() == rho_dn_lm.radial_grid().hash());
+
+    auto& rgrid = rho_up_lm.radial_grid();
+
+    vxc_up_tp.zero();
+    vxc_dn_tp.zero();
+    exc_tp.zero();
+
+    if (is_gga)
+    {
+        /* compute gradient in Rlm spherical harmonics */
+        grad_rho_up_lm = gradient(rho_up_lm);
+        grad_rho_dn_lm = gradient(rho_dn_lm);
+
+        /* backward transform gradient from Rlm to (theta, phi) */
+        for (int x = 0; x < 3; x++)
+        {
+            grad_rho_up_tp[x] = sht_->transform<-1>(grad_rho_up_lm[x]);
+            grad_rho_dn_tp[x] = sht_->transform<-1>(grad_rho_dn_lm[x]);
+        }
+
+        /* compute density gradient products */
+        grad_rho_up_grad_rho_up_tp = grad_rho_up_tp * grad_rho_up_tp;
+        grad_rho_up_grad_rho_dn_tp = grad_rho_up_tp * grad_rho_dn_tp;
+        grad_rho_dn_grad_rho_dn_tp = grad_rho_dn_tp * grad_rho_dn_tp;
+        
+        /* compute Laplacians in Rlm spherical harmonics */
+        lapl_rho_up_lm = laplacian(rho_up_lm);
+        lapl_rho_dn_lm = laplacian(rho_dn_lm);
+
+        /* backward transform Laplacians from Rlm to (theta, phi) */
+        lapl_rho_up_tp = sht_->transform<-1>(lapl_rho_up_lm);
+        lapl_rho_dn_tp = sht_->transform<-1>(lapl_rho_dn_lm);
+    }
+
+    Spheric_function<double> vsigma_uu_tp;
+    Spheric_function<double> vsigma_ud_tp;
+    Spheric_function<double> vsigma_dd_tp;
+    if (is_gga)
+    {
+        vsigma_uu_tp = Spheric_function<double>(sht_->num_points(), rgrid);
+        vsigma_uu_tp.zero();
+
+        vsigma_ud_tp = Spheric_function<double>(sht_->num_points(), rgrid);
+        vsigma_ud_tp.zero();
+
+        vsigma_dd_tp = Spheric_function<double>(sht_->num_points(), rgrid);
+        vsigma_dd_tp.zero();
+    }
+
+    /* loop over XC functionals */
+    for (auto& ixc: xc_func)
+    {
+        /* if this is an LDA functional */
+        if (ixc->lda())
+        {
+            #pragma omp parallel
+            {
+                std::vector<double> exc_t(sht_->num_points());
+                std::vector<double> vxc_up_t(sht_->num_points());
+                std::vector<double> vxc_dn_t(sht_->num_points());
+                #pragma omp for
+                for (int ir = 0; ir < rgrid.num_points(); ir++)
+                {
+                    ixc->get_lda(sht_->num_points(), &rho_up_tp(0, ir), &rho_dn_tp(0, ir), &vxc_up_t[0], &vxc_dn_t[0], &exc_t[0]);
+                    for (int itp = 0; itp < sht_->num_points(); itp++)
+                    {
+                        /* add Exc contribution */
+                        exc_tp(itp, ir) += exc_t[itp];
+
+                        /* directly add to Vxc */
+                        vxc_up_tp(itp, ir) += vxc_up_t[itp];
+                        vxc_dn_tp(itp, ir) += vxc_dn_t[itp];
+                    }
+                }
+            }
+        }
+        if (ixc->gga())
+        {
+            #pragma omp parallel
+            {
+                std::vector<double> exc_t(sht_->num_points());
+                std::vector<double> vrho_up_t(sht_->num_points());
+                std::vector<double> vrho_dn_t(sht_->num_points());
+                std::vector<double> vsigma_uu_t(sht_->num_points());
+                std::vector<double> vsigma_ud_t(sht_->num_points());
+                std::vector<double> vsigma_dd_t(sht_->num_points());
+                #pragma omp for
+                for (int ir = 0; ir < rgrid.num_points(); ir++)
+                {
+                    ixc->get_gga(sht_->num_points(), 
+                                 &rho_up_tp(0, ir), 
+                                 &rho_dn_tp(0, ir), 
+                                 &grad_rho_up_grad_rho_up_tp(0, ir), 
+                                 &grad_rho_up_grad_rho_dn_tp(0, ir), 
+                                 &grad_rho_dn_grad_rho_dn_tp(0, ir),
+                                 &vrho_up_t[0], 
+                                 &vrho_dn_t[0],
+                                 &vsigma_uu_t[0], 
+                                 &vsigma_ud_t[0],
+                                 &vsigma_dd_t[0],
+                                 &exc_t[0]);
+
+                    for (int itp = 0; itp < sht_->num_points(); itp++)
+                    {
+                        /* add Exc contribution */
+                        exc_tp(itp, ir) += exc_t[itp];
+
+                        /* directly add to Vxc available contributions */
+                        vxc_up_tp(itp, ir) += (vrho_up_t[itp] - 2 * vsigma_uu_t[itp] * lapl_rho_up_tp(itp, ir) - vsigma_ud_t[itp] * lapl_rho_dn_tp(itp, ir));
+                        vxc_dn_tp(itp, ir) += (vrho_dn_t[itp] - 2 * vsigma_dd_t[itp] * lapl_rho_dn_tp(itp, ir) - vsigma_ud_t[itp] * lapl_rho_up_tp(itp, ir));
+
+                        /* save the sigma derivatives */
+                        vsigma_uu_tp(itp, ir) += vsigma_uu_t[itp]; 
+                        vsigma_ud_tp(itp, ir) += vsigma_ud_t[itp]; 
+                        vsigma_dd_tp(itp, ir) += vsigma_dd_t[itp]; 
+                    }
+                }
+            }
+        }
+    }
+
+    if (is_gga)
+    {
+        /* forward transform vsigma to Rlm */
+        Spheric_function<double> vsigma_uu_lm = sht_->transform<1>(vsigma_uu_tp);
+        Spheric_function<double> vsigma_ud_lm = sht_->transform<1>(vsigma_ud_tp);
+        Spheric_function<double> vsigma_dd_lm = sht_->transform<1>(vsigma_dd_tp);
+
+        /* compute gradient of vsgima in spherical harmonics */
+        Spheric_function_gradient<double> grad_vsigma_uu_lm = gradient(vsigma_uu_lm);
+        Spheric_function_gradient<double> grad_vsigma_ud_lm = gradient(vsigma_ud_lm);
+        Spheric_function_gradient<double> grad_vsigma_dd_lm = gradient(vsigma_dd_lm);
+
+        /* backward transform gradient from Rlm to (theta, phi) */
+        Spheric_function_gradient<double> grad_vsigma_uu_tp;
+        Spheric_function_gradient<double> grad_vsigma_ud_tp;
+        Spheric_function_gradient<double> grad_vsigma_dd_tp;
+        for (int x = 0; x < 3; x++)
+        {
+            grad_vsigma_uu_tp[x] = sht_->transform<-1>(grad_vsigma_uu_lm[x]);
+            grad_vsigma_ud_tp[x] = sht_->transform<-1>(grad_vsigma_ud_lm[x]);
+            grad_vsigma_dd_tp[x] = sht_->transform<-1>(grad_vsigma_dd_lm[x]);
+        }
+
+        /* compute scalar product of two gradients */
+        Spheric_function<double> grad_vsigma_uu_grad_rho_up_tp = grad_vsigma_uu_tp * grad_rho_up_tp;
+        Spheric_function<double> grad_vsigma_dd_grad_rho_dn_tp = grad_vsigma_dd_tp * grad_rho_dn_tp;
+        Spheric_function<double> grad_vsigma_ud_grad_rho_up_tp = grad_vsigma_ud_tp * grad_rho_up_tp;
+        Spheric_function<double> grad_vsigma_ud_grad_rho_dn_tp = grad_vsigma_ud_tp * grad_rho_dn_tp;
+
+        /* add remaining terms to Vxc */
+        for (int ir = 0; ir < rgrid.num_points(); ir++)
+        {
+            for (int itp = 0; itp < sht_->num_points(); itp++)
+            {
+                vxc_up_tp(itp, ir) -= (2 * grad_vsigma_uu_grad_rho_up_tp(itp, ir) + grad_vsigma_ud_grad_rho_dn_tp(itp, ir));
+                vxc_dn_tp(itp, ir) -= (2 * grad_vsigma_dd_grad_rho_dn_tp(itp, ir) + grad_vsigma_ud_grad_rho_up_tp(itp, ir));
+            }
+        }
+    }
+
+}
+
 void Potential::xc_mt(Periodic_function<double>* rho, 
                       Periodic_function<double>* magnetization[3],
                       std::vector<XC_functional*>& xc_func,
@@ -768,13 +1077,11 @@ void Potential::xc_mt(Periodic_function<double>* rho,
     for (int ialoc = 0; ialoc < uc->spl_num_atoms().local_size(); ialoc++)
     {
         int ia = uc->spl_num_atoms(ialoc);
-
         auto& rgrid = uc->atom(ia)->radial_grid();
-        
         int nmtp = uc->atom(ia)->num_mt_points();
 
         /* backward transform density from Rlm to (theta, phi) */
-        Spheric_function<double> rhotp = sht_->transform<-1>(rho->f_mt(ialoc));
+        Spheric_function<double> rho_tp = sht_->transform<-1>(rho->f_mt(ialoc));
 
         /* backward transform magnetization from Rlm to (theta, phi) */
         std::vector< Spheric_function<double> > vecmagtp(parameters_.num_mag_dims());
@@ -782,13 +1089,21 @@ void Potential::xc_mt(Periodic_function<double>* rho,
             vecmagtp[j] = sht_->transform<-1>(magnetization[j]->f_mt(ialoc));
        
         /* magnitude of magnetization vector */
-        Spheric_function<double> magtp;
+        Spheric_function<double> mag_tp;
+        
+        /* "up" component of the density */
+        Spheric_function<double> rho_up_lm;
+        Spheric_function<double> rho_up_tp;
+
+        /* "dn" component of the density */
+        Spheric_function<double> rho_dn_lm;
+        Spheric_function<double> rho_dn_tp;
 
         /* check if density has negative values */
         double rhomin = 0.0;
         for (int ir = 0; ir < nmtp; ir++)
         {
-            for (int itp = 0; itp < sht_->num_points(); itp++) rhomin = std::min(rhomin, rhotp(itp, ir));
+            for (int itp = 0; itp < sht_->num_points(); itp++) rhomin = std::min(rhomin, rho_tp(itp, ir));
         }
 
         if (rhomin < 0.0)
@@ -807,103 +1122,235 @@ void Potential::xc_mt(Periodic_function<double>* rho,
                 /* fix negative density */
                 for (int itp = 0; itp < sht_->num_points(); itp++) 
                 {
-                    if (rhotp(itp, ir) < 0.0) rhotp(itp, ir) = 0.0;
+                    if (rho_tp(itp, ir) < 0.0) rho_tp(itp, ir) = 0.0;
                 }
             }
         }
         else
         {
-            magtp = Spheric_function<double>(sht_->num_points(), rgrid);
+            mag_tp = Spheric_function<double>(sht_->num_points(), rgrid);
             for (int ir = 0; ir < nmtp; ir++)
             {
                 for (int itp = 0; itp < sht_->num_points(); itp++)
                 {
-                    /* compute the magnitude of the magnetization vector */
+                    /* compute magnitude of the magnetization vector */
                     double t = 0.0;
                     for (int j = 0; j < parameters_.num_mag_dims(); j++) t += pow(vecmagtp[j](itp, ir), 2);
-                    magtp(itp, ir) = sqrt(t);
+                    mag_tp(itp, ir) = sqrt(t);
 
                     /* in magnetic case fix both density and magnetization */
                     for (int itp = 0; itp < sht_->num_points(); itp++) 
                     {
-                        if (rhotp(itp, ir) < 0.0)
+                        if (rho_tp(itp, ir) < 0.0)
                         {
-                            rhotp(itp, ir) = 0.0;
-                            magtp(itp, ir) = 0.0;
+                            rho_tp(itp, ir) = 0.0;
+                            mag_tp(itp, ir) = 0.0;
                         }
                         /* fix numerical noise at high values of magnetization */
-                        magtp(itp, ir) = std::min(magtp(itp, ir), rhotp(itp, ir));
+                        mag_tp(itp, ir) = std::min(mag_tp(itp, ir), rho_tp(itp, ir));
                     }
                 }
             }
-        }
 
+            /* compute "up" and "dn" components */
+            rho_up_tp = Spheric_function<double>(sht_->num_points(), rgrid);
+            rho_dn_tp = Spheric_function<double>(sht_->num_points(), rgrid);
 
-        Spheric_function<double> vxctp(sht_->num_points(), rgrid);
-        vxctp.zero();
-
-        Spheric_function<double> exctp(sht_->num_points(), rgrid);
-        exctp.zero();
-
-        Spheric_function<double> bxctp;
-        if (parameters_.num_spins() == 2)
-        {
-            bxctp = Spheric_function<double>(sht_->num_points(), rgrid);
-            bxctp.zero();
-        }
-
-        /* loop over XC functionals */
-        for (auto& ixc: xc_func)
-        {
-            /* if this is an LDA functional */
-            if (ixc->lda())
+            for (int ir = 0; ir < nmtp; ir++)
             {
-                /* unpolarized case */
-                if (parameters_.num_spins() == 1) 
+                for (int itp = 0; itp < sht_->num_points(); itp++)
                 {
-                    #pragma omp parallel for default(shared)
-                    for (int ir = 0; ir < nmtp; ir++)
-                    {
-                        ixc->add(sht_->num_points(), &rhotp(0, ir), &vxctp(0, ir), &exctp(0, ir));
-                    }
-                }
-                else
-                {
-                    #pragma omp parallel for default(shared)
-                    for (int ir = 0; ir < nmtp; ir++)
-                    {
-                        ixc->add(sht_->num_points(), &rhotp(0, ir), &magtp(0, ir), &vxctp(0, ir), &bxctp(0, ir), &exctp(0, ir));
-                    }
+                    rho_up_tp(itp, ir) = 0.5 * (rho_tp(itp, ir) + mag_tp(itp, ir));
+                    rho_dn_tp(itp, ir) = 0.5 * (rho_tp(itp, ir) - mag_tp(itp, ir));
                 }
             }
+
+            /* transform from (theta, phi) to Rlm */
+            rho_up_lm = sht_->transform<1>(rho_up_tp);
+            rho_dn_lm = sht_->transform<1>(rho_dn_tp);
         }
-        
-        /* forward transform from (theta, phi) to Rlm */
-        sht_->transform<1>(vxctp, vxc->f_mt(ialoc));
-        sht_->transform<1>(exctp, exc->f_mt(ialoc));
-        
-        if (parameters_.num_spins() == 2)
+
+
+        Spheric_function<double> exc_tp(sht_->num_points(), rgrid);
+        Spheric_function<double> vxc_tp(sht_->num_points(), rgrid);
+
+        if (parameters_.num_spins() == 1)
         {
+            xc_mt_nonmagnetic(rgrid, xc_func, rho->f_mt(ialoc), rho_tp, vxc_tp, exc_tp);
+        }
+        else
+        {
+            Spheric_function<double> vxc_up_tp(sht_->num_points(), rgrid);
+            Spheric_function<double> vxc_dn_tp(sht_->num_points(), rgrid);
+
+            xc_mt_magnetic(xc_func, rho_up_lm, rho_up_tp, rho_dn_lm, rho_dn_tp, vxc_up_tp, vxc_dn_tp, exc_tp);
+
             for (int ir = 0; ir < nmtp; ir++)
             {
                 for (int itp = 0; itp < sht_->num_points(); itp++)
                 {
                     /* align magnetic filed parallel to magnetization */
                     /* use vecmagtp as temporary vector */
-                    if (magtp(itp, ir) > 1e-8)
+                    /* |Bxc| = 0.5 * (V_up - V_dn) */
+                    if (mag_tp(itp, ir) > 1e-8)
                     {
                         for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                            vecmagtp[j](itp, ir) = bxctp(itp, ir) * vecmagtp[j](itp, ir) / magtp(itp, ir);
+                            vecmagtp[j](itp, ir) = 0.5 * (vxc_up_tp(itp, ir) - vxc_dn_tp(itp, ir)) * vecmagtp[j](itp, ir) / mag_tp(itp, ir);
                     }
                     else
                     {
                         for (int j = 0; j < parameters_.num_mag_dims(); j++) vecmagtp[j](itp, ir) = 0.0;
                     }
+                    /* Vxc = 0.5 * (V_up + V_dn) */
+                    vxc_tp(itp, ir) = 0.5 * (vxc_up_tp(itp, ir) + vxc_dn_tp(itp, ir));
                 }       
             }
             /* convert magnetic field back to Rlm */
             for (int j = 0; j < parameters_.num_mag_dims(); j++) sht_->transform<1>(vecmagtp[j], bxc[j]->f_mt(ialoc));
         }
+
+        /* forward transform from (theta, phi) to Rlm */
+        sht_->transform<1>(vxc_tp, vxc->f_mt(ialoc));
+        sht_->transform<1>(exc_tp, exc->f_mt(ialoc));
+
+
+
+
+
+
+        
+
+        //== /* backward transform density from Rlm to (theta, phi) */
+        //== Spheric_function<double> rhotp = sht_->transform<-1>(rho->f_mt(ialoc));
+
+        //== /* backward transform magnetization from Rlm to (theta, phi) */
+        //== std::vector< Spheric_function<double> > vecmagtp(parameters_.num_mag_dims());
+        //== for (int j = 0; j < parameters_.num_mag_dims(); j++)
+        //==     vecmagtp[j] = sht_->transform<-1>(magnetization[j]->f_mt(ialoc));
+       
+        //== /* magnitude of magnetization vector */
+        //== Spheric_function<double> magtp;
+
+        //== /* check if density has negative values */
+        //== double rhomin = 0.0;
+        //== for (int ir = 0; ir < nmtp; ir++)
+        //== {
+        //==     for (int itp = 0; itp < sht_->num_points(); itp++) rhomin = std::min(rhomin, rhotp(itp, ir));
+        //== }
+
+        //== if (rhomin < 0.0)
+        //== {
+        //==     std::stringstream s;
+        //==     s << "Charge density for atom " << ia << " has negative values" << std::endl
+        //==       << "most negatve value : " << rhomin << std::endl
+        //==       << "current Rlm expansion of the charge density may be not sufficient, try to increase lmax_rho";
+        //==     warning_local(__FILE__, __LINE__, s);
+        //== }
+
+        //== if (parameters_.num_spins() == 1)
+        //== {
+        //==     for (int ir = 0; ir < nmtp; ir++)
+        //==     {
+        //==         /* fix negative density */
+        //==         for (int itp = 0; itp < sht_->num_points(); itp++) 
+        //==         {
+        //==             if (rhotp(itp, ir) < 0.0) rhotp(itp, ir) = 0.0;
+        //==         }
+        //==     }
+        //== }
+        //== else
+        //== {
+        //==     magtp = Spheric_function<double>(sht_->num_points(), rgrid);
+        //==     for (int ir = 0; ir < nmtp; ir++)
+        //==     {
+        //==         for (int itp = 0; itp < sht_->num_points(); itp++)
+        //==         {
+        //==             /* compute the magnitude of the magnetization vector */
+        //==             double t = 0.0;
+        //==             for (int j = 0; j < parameters_.num_mag_dims(); j++) t += pow(vecmagtp[j](itp, ir), 2);
+        //==             magtp(itp, ir) = sqrt(t);
+
+        //==             /* in magnetic case fix both density and magnetization */
+        //==             for (int itp = 0; itp < sht_->num_points(); itp++) 
+        //==             {
+        //==                 if (rhotp(itp, ir) < 0.0)
+        //==                 {
+        //==                     rhotp(itp, ir) = 0.0;
+        //==                     magtp(itp, ir) = 0.0;
+        //==                 }
+        //==                 /* fix numerical noise at high values of magnetization */
+        //==                 magtp(itp, ir) = std::min(magtp(itp, ir), rhotp(itp, ir));
+        //==             }
+        //==         }
+        //==     }
+        //== }
+
+
+        //== Spheric_function<double> vxctp(sht_->num_points(), rgrid);
+        //== vxctp.zero();
+
+        //== Spheric_function<double> exctp(sht_->num_points(), rgrid);
+        //== exctp.zero();
+
+        //== Spheric_function<double> bxctp;
+        //== if (parameters_.num_spins() == 2)
+        //== {
+        //==     bxctp = Spheric_function<double>(sht_->num_points(), rgrid);
+        //==     bxctp.zero();
+        //== }
+
+        //== /* loop over XC functionals */
+        //== for (auto& ixc: xc_func)
+        //== {
+        //==     /* if this is an LDA functional */
+        //==     if (ixc->lda())
+        //==     {
+        //==         /* unpolarized case */
+        //==         if (parameters_.num_spins() == 1) 
+        //==         {
+        //==             #pragma omp parallel for default(shared)
+        //==             for (int ir = 0; ir < nmtp; ir++)
+        //==             {
+        //==                 ixc->add(sht_->num_points(), &rhotp(0, ir), &vxctp(0, ir), &exctp(0, ir));
+        //==             }
+        //==         }
+        //==         else
+        //==         {
+        //==             #pragma omp parallel for default(shared)
+        //==             for (int ir = 0; ir < nmtp; ir++)
+        //==             {
+        //==                 ixc->add(sht_->num_points(), &rhotp(0, ir), &magtp(0, ir), &vxctp(0, ir), &bxctp(0, ir), &exctp(0, ir));
+        //==             }
+        //==         }
+        //==     }
+        //== }
+        //== 
+        //== /* forward transform from (theta, phi) to Rlm */
+        //== sht_->transform<1>(vxctp, vxc->f_mt(ialoc));
+        //== sht_->transform<1>(exctp, exc->f_mt(ialoc));
+        //== 
+        //== if (parameters_.num_spins() == 2)
+        //== {
+        //==     for (int ir = 0; ir < nmtp; ir++)
+        //==     {
+        //==         for (int itp = 0; itp < sht_->num_points(); itp++)
+        //==         {
+        //==             /* align magnetic filed parallel to magnetization */
+        //==             /* use vecmagtp as temporary vector */
+        //==             if (magtp(itp, ir) > 1e-8)
+        //==             {
+        //==                 for (int j = 0; j < parameters_.num_mag_dims(); j++)
+        //==                     vecmagtp[j](itp, ir) = bxctp(itp, ir) * vecmagtp[j](itp, ir) / magtp(itp, ir);
+        //==             }
+        //==             else
+        //==             {
+        //==                 for (int j = 0; j < parameters_.num_mag_dims(); j++) vecmagtp[j](itp, ir) = 0.0;
+        //==             }
+        //==         }       
+        //==     }
+        //==     /* convert magnetic field back to Rlm */
+        //==     for (int j = 0; j < parameters_.num_mag_dims(); j++) sht_->transform<1>(vecmagtp[j], bxc[j]->f_mt(ialoc));
+        //== }
     }
 }
 

@@ -124,6 +124,13 @@ class Utils
             for (int i = 1; i <= n; i++) result *= i;
             return result;
         }
+        
+        static uint64_t hash(void* buff, size_t size, uint64_t h = 5381)
+        {
+            unsigned char* p = static_cast<unsigned char*>(buff);
+            for(size_t i = 0; i < size; i++) h = ((h << 5) + h) + p[i];
+            return h;
+        }
 
         static void write_matrix(const std::string& fname, mdarray<double_complex, 2>& matrix, int nrow, int ncol,
                                  bool write_upper_only = true, bool write_abs_only = false, std::string fmt = "%18.12f");
