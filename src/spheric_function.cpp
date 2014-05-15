@@ -36,11 +36,11 @@ Spheric_function_gradient<double_complex> gradient(Spheric_function<double_compl
     {
         if (f.radial_domain_idx() == 0)
         {
-            g[i] = Spheric_function<double_complex>(f.radial_grid(), f.angular_domain_idx());
+            g[i] = Spheric_function<double_complex>(f.radial_grid(), f.angular_domain_size());
         }
         else
         {
-            g[i] = Spheric_function<double_complex>(f.angular_domain_idx(), f.radial_grid());
+            g[i] = Spheric_function<double_complex>(f.angular_domain_size(), f.radial_grid());
         }
         g[i].zero();
     }

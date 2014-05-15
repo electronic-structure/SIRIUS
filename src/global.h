@@ -54,6 +54,7 @@
 #include "step_function.h"
 #include "error_handling.h"
 
+/// SIRIUS namespace.
 namespace sirius {
 
 /// Global variables and methods

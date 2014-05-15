@@ -758,19 +758,19 @@ void Potential::xc_mt_nonmagnetic(Radial_grid& rgrid,
                                   Spheric_function<double>& vxc_tp, 
                                   Spheric_function<double>& exc_tp)
 {
+    Timer t("sirius::Potential::xc_mt_nonmagnetic");
+
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
 
-    Spheric_function_gradient<double> grad_rho_lm;
     Spheric_function_gradient<double> grad_rho_tp;
-    Spheric_function<double> lapl_rho_lm;
     Spheric_function<double> lapl_rho_tp;
     Spheric_function<double> grad_rho_2_tp;
 
     if (is_gga)
     {
         /* compute gradient in Rlm spherical harmonics */
-        grad_rho_lm = gradient(rho_lm);
+        auto grad_rho_lm = gradient(rho_lm);
 
         /* backward transform gradient from Rlm to (theta, phi) */
         for (int x = 0; x < 3; x++) grad_rho_tp[x] = sht_->transform<-1>(grad_rho_lm[x]);
@@ -779,7 +779,7 @@ void Potential::xc_mt_nonmagnetic(Radial_grid& rgrid,
         grad_rho_2_tp = grad_rho_tp * grad_rho_tp;
         
         /* compute Laplacian in Rlm spherical harmonics */
-        lapl_rho_lm = laplacian(rho_lm);
+        auto lapl_rho_lm = laplacian(rho_lm);
 
         /* backward transform Laplacian from Rlm to (theta, phi) */
         lapl_rho_tp = sht_->transform<-1>(lapl_rho_lm);
@@ -860,20 +860,21 @@ void Potential::xc_mt_nonmagnetic(Radial_grid& rgrid,
         for (int x = 0; x < 3; x++) grad_vsigma_tp[x] = sht_->transform<-1>(grad_vsigma_lm[x]);
 
         /* compute scalar product of two gradients */
-        Spheric_function<double> grad_vsigma_grad_vrho_tp = grad_vsigma_tp * grad_rho_tp;
+        Spheric_function<double> grad_vsigma_grad_rho_tp = grad_vsigma_tp * grad_rho_tp;
 
         /* add remaining term to Vxc */
         for (int ir = 0; ir < rgrid.num_points(); ir++)
         {
             for (int itp = 0; itp < sht_->num_points(); itp++)
             {
-                vxc_tp(itp, ir) -= 2 * grad_vsigma_grad_vrho_tp(itp, ir);
+                vxc_tp(itp, ir) -= 2 * grad_vsigma_grad_rho_tp(itp, ir);
             }
         }
     }
 }
 
-void Potential::xc_mt_magnetic(std::vector<XC_functional*>& xc_func,
+void Potential::xc_mt_magnetic(Radial_grid& rgrid,
+                               std::vector<XC_functional*>& xc_func,
                                Spheric_function<double>& rho_up_lm, 
                                Spheric_function<double>& rho_up_tp, 
                                Spheric_function<double>& rho_dn_lm, 
@@ -882,6 +883,8 @@ void Potential::xc_mt_magnetic(std::vector<XC_functional*>& xc_func,
                                Spheric_function<double>& vxc_dn_tp, 
                                Spheric_function<double>& exc_tp)
 {
+    Timer t("sirius::Potential::xc_mt_magnetic");
+
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
 
@@ -900,8 +903,6 @@ void Potential::xc_mt_magnetic(std::vector<XC_functional*>& xc_func,
     Spheric_function<double> grad_rho_up_grad_rho_dn_tp;
 
     assert(rho_up_lm.radial_grid().hash() == rho_dn_lm.radial_grid().hash());
-
-    auto& rgrid = rho_up_lm.radial_grid();
 
     vxc_up_tp.zero();
     vxc_dn_tp.zero();
@@ -1183,7 +1184,7 @@ void Potential::xc_mt(Periodic_function<double>* rho,
             Spheric_function<double> vxc_up_tp(sht_->num_points(), rgrid);
             Spheric_function<double> vxc_dn_tp(sht_->num_points(), rgrid);
 
-            xc_mt_magnetic(xc_func, rho_up_lm, rho_up_tp, rho_dn_lm, rho_dn_tp, vxc_up_tp, vxc_dn_tp, exc_tp);
+            xc_mt_magnetic(rgrid, xc_func, rho_up_lm, rho_up_tp, rho_dn_lm, rho_dn_tp, vxc_up_tp, vxc_dn_tp, exc_tp);
 
             for (int ir = 0; ir < nmtp; ir++)
             {
@@ -1354,26 +1355,18 @@ void Potential::xc_mt(Periodic_function<double>* rho,
     }
 }
 
-void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* magnetization[3], 
-                   Periodic_function<double>* vxc, Periodic_function<double>* bxc[3], Periodic_function<double>* exc)
+void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho, 
+                                  std::vector<XC_functional*>& xc_func,
+                                  Periodic_function<double>* vxc, 
+                                  Periodic_function<double>* exc)
 {
-    Timer t("sirius::Potential::xc");
+    Timer t("sirius::Potential::xc_it_nonmagnetic");
 
-    /* create list of XC functionals */
-    std::vector<XC_functional*> xc_func;
-    for (int i = 0; i < (int)parameters_.xc_functionals_input_section_.xc_functional_names_.size(); i++)
-    {
-        std::string xc_label = parameters_.xc_functionals_input_section_.xc_functional_names_[i];
-        xc_func.push_back(new XC_functional(xc_label, parameters_.num_spins()));
-    }
-   
-    if (parameters_.unit_cell()->full_potential()) xc_mt(rho, magnetization, xc_func, vxc, bxc, exc);
+    bool is_gga = false;
+    for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
 
-    Timer t3("sirius::Potential::xc|it");
-
-    /* number of local points in the FFT buffer */
     int num_loc_points = fft_->local_size();
-
+    
     /* check for negative values */
     double rhomin = 0.0;
     for (int irloc = 0; irloc < num_loc_points; irloc++)
@@ -1388,79 +1381,291 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
           << "most negatve value : " << rhomin;
         warning_local(__FILE__, __LINE__, s);
     }
+    
+    mdarray<double, 2> grad_rho_it;
+    mdarray<double, 1> lapl_rho_it;
+    mdarray<double, 1> grad_rho_grad_rho_it;
+    
+    auto rl = parameters_.reciprocal_lattice();
 
-    #pragma omp parallel default(shared)
+    if (is_gga) 
     {
-        /* split local size between threads */
-        splindex<block> spl_t(num_loc_points, Platform::num_threads(), Platform::thread_id());
+        /* get plane-wave coefficients of the density */
+        fft_->input(&rho->f_it<global>(0));
+        fft_->transform(-1);
+        fft_->output(rl->num_gvec(), rl->fft_index(), &rho->f_pw(0));
 
-        std::vector<double> vxc_tmp(spl_t.local_size());
-        memset(&vxc_tmp[0], 0, vxc_tmp.size() * sizeof(double));
-
-        std::vector<double> exc_tmp(spl_t.local_size());
-        memset(&exc_tmp[0], 0, exc_tmp.size() * sizeof(double));
-
-        std::vector<double> bxc_tmp;
-        std::vector<double> magit;
-
-        if (parameters_.num_spins() == 2)
+        /* generate pw coeffs of the gradient and laplacian */
+        mdarray<double_complex, 2> grad_rho_pw(rl->num_gvec(), 3);
+        mdarray<double_complex, 1> lapl_rho_pw(rl->num_gvec());
+        for (int ig = 0; ig < rl->num_gvec(); ig++)
         {
-            bxc_tmp.resize(spl_t.local_size());
-            memset(&bxc_tmp[0], 0, bxc_tmp.size() * sizeof(double));
-            
-            /* compute magnetization */
-            magit.resize(spl_t.local_size());
-            for (int irloc = 0; irloc < spl_t.local_size(); irloc++)
+            auto G = rl->gvec_cart(ig);
+            for (int x = 0; x < 3; x++) grad_rho_pw(ig, x) = rho->f_pw(ig) * double_complex(0, G[x]); 
+            lapl_rho_pw(ig) = rho->f_pw(ig) * double_complex(-pow(G.length(), 2), 0);
+        }
+
+        /* transform gradient to real space and compute product of gradients */
+        grad_rho_it = mdarray<double, 2>(fft_->size(), 3);
+        grad_rho_grad_rho_it = mdarray<double, 1>(fft_->size());
+        grad_rho_grad_rho_it.zero();
+        for (int x = 0; x < 3; x++) 
+        {
+            fft_->input(rl->num_gvec(), rl->fft_index(), &grad_rho_pw(0, x));
+            fft_->transform(1);
+            fft_->output(&grad_rho_it(0, x));
+            for (int ir = 0; ir < fft_->size(); ir++) grad_rho_grad_rho_it(ir) += pow(grad_rho_it(ir, x), 2);
+        }
+
+        /* transform Laplacian to real space */
+        lapl_rho_it = mdarray<double, 1>(fft_->size());
+        fft_->input(rl->num_gvec(), rl->fft_index(), &lapl_rho_pw(0));
+        fft_->transform(1);
+        fft_->output(&lapl_rho_it(0));
+    }
+
+    mdarray<double, 1> exc_tmp(num_loc_points);
+    exc_tmp.zero();
+
+    mdarray<double, 1> vxc_tmp(num_loc_points);
+    vxc_tmp.zero();
+
+    mdarray<double, 1> vsigma_tmp;
+    if (is_gga)
+    {
+        vsigma_tmp = mdarray<double, 1>(num_loc_points);
+        vsigma_tmp.zero();
+    }
+
+    /* loop over XC functionals */
+    for (auto& ixc: xc_func)
+    {
+        /* if this is an LDA functional */
+        if (ixc->lda())
+        {
+            #pragma omp parallel
             {
-                double t = 0.0;
-                for (int j = 0; j < parameters_.num_mag_dims(); j++) 
-                    t += pow(magnetization[j]->f_it<local>(spl_t.global_offset() + irloc), 2);
-                magit[irloc] = sqrt(t);
-                magit[irloc] = std::min(magit[irloc], rho->f_it<local>(spl_t.global_offset() + irloc));
+                /* split local size between threads */
+                splindex<block> spl_t(num_loc_points, Platform::num_threads(), Platform::thread_id());
+
+                std::vector<double> vxc_t(spl_t.local_size());
+                std::vector<double> exc_t(spl_t.local_size());
+
+                ixc->get_lda(spl_t.local_size(), &rho->f_it<local>(spl_t.global_offset()), &vxc_t[0], &exc_t[0]);
+
+                for (int i = 0; i < spl_t.local_size(); i++)
+                {
+                    /* add Exc contribution */
+                    exc_tmp(spl_t[i]) += exc_t[i];
+
+                    /* directly add to Vxc */
+                    vxc_tmp(spl_t[i]) += vxc_t[i];
+                }
             }
         }
-
-        /* loop over XC functionals */
-        for (auto& ixc: xc_func)
+        if (ixc->gga())
         {
-            /* if this is an LDA functional */
-            if (ixc->lda())
+            #pragma omp parallel
             {
-                if (parameters_.num_spins() == 1)
-                {
-                    //ixc.add(spl_t.local_size(), &rho->f_it<local>(spl_t.global_offset()), &vxc->f_it<local>(pt_offs), &exc->f_it<local>(pt_offs));
-                    ixc->add(spl_t.local_size(), &rho->f_it<local>(spl_t.global_offset()), &vxc_tmp[0], &exc_tmp[0]);
-                }
-                else
-                {
-                    ixc->add(spl_t.local_size(), &rho->f_it<local>(spl_t.global_offset()), &magit[0], &vxc_tmp[0], 
-                             &bxc_tmp[0], &exc_tmp[0]);
-                }
-            }
-        }
+                /* split local size between threads */
+                splindex<block> spl_t(num_loc_points, Platform::num_threads(), Platform::thread_id());
 
-        for (int irloc = 0; irloc < spl_t.local_size(); irloc++)
-        {
-            vxc->f_it<local>(spl_t.global_offset() + irloc) = vxc_tmp[irloc];
-            exc->f_it<local>(spl_t.global_offset() + irloc) = exc_tmp[irloc];
-        }
+                std::vector<double> exc_t(spl_t.local_size());
+                std::vector<double> vrho_t(spl_t.local_size());
+                std::vector<double> vsigma_t(spl_t.local_size());
+                
+                ixc->get_gga(spl_t.local_size(), 
+                             &rho->f_it<local>(spl_t.global_offset()), 
+                             &grad_rho_grad_rho_it(fft_->global_offset() + spl_t.global_offset()), 
+                             &vrho_t[0], 
+                             &vsigma_t[0], 
+                             &exc_t[0]);
 
-        if (parameters_.num_spins() == 2)
-        {
-            for (int irloc = 0; irloc < spl_t.local_size(); irloc++)
-            {
-                if (magit[irloc] > 1e-8)
+
+                for (int i = 0; i < spl_t.local_size(); i++)
                 {
-                    for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                        bxc[j]->f_it<local>(spl_t.global_offset() + irloc) = (bxc_tmp[irloc] / magit[irloc]) * magnetization[j]->f_it<local>(spl_t.global_offset() + irloc);
-                }
-                else
-                {
-                    for (int j = 0; j < parameters_.num_mag_dims(); j++) bxc[j]->f_it<local>(spl_t.global_offset() + irloc) = 0.0;
+                    /* add Exc contribution */
+                    exc_tmp(spl_t[i]) += exc_t[i];
+
+                    /* directly add to Vxc available contributions */
+                    vxc_tmp(spl_t[i]) += (vrho_t[i] - 2 * vsigma_t[i] * lapl_rho_it(fft_->global_offset() + spl_t[i]));
+
+                    /* save the sigma derivative */
+                    vsigma_tmp(spl_t[i]) += vsigma_t[i]; 
                 }
             }
         }
     }
+
+    if (is_gga)
+    {
+        /* gather vsigma */
+        mdarray<double, 1> vsigma_it(fft_->size());
+        Platform::allgather(&vsigma_tmp(0), &vsigma_it(0), fft_->global_offset(), fft_->local_size());
+
+        /* forward transform vsigma to plane-wave domain */
+        mdarray<double_complex, 1> vsigma_pw(rl->num_gvec());
+        fft_->input(&vsigma_it(0));
+        fft_->transform(-1);
+        fft_->output(rl->num_gvec(), rl->fft_index(), &vsigma_pw(0));
+        
+        /* compute gradient of vsgima in pw domain */
+        mdarray<double_complex, 2> grad_vsigma_pw(rl->num_gvec(), 3);
+        for (int ig = 0; ig < rl->num_gvec(); ig++)
+        {
+            auto G = rl->gvec_cart(ig);
+            for (int x = 0; x < 3; x++) grad_vsigma_pw(ig, x) = vsigma_pw(ig) * double_complex(0, G[x]); 
+        }
+
+        /* backward transform gradient from pw to real space */
+        mdarray<double, 2> grad_vsigma_it(fft_->size(), 3);
+        for (int x = 0; x < 3; x++)
+        {
+            fft_->input(rl->num_gvec(), rl->fft_index(), &grad_vsigma_pw(0, x));
+            fft_->transform(1);
+            fft_->output(&grad_vsigma_it(0, x));
+        }
+
+        /* compute scalar product of two gradients */
+        mdarray<double, 1> grad_vsigma_grad_rho_it(fft_->size());
+        grad_vsigma_grad_rho_it.zero();
+        for (int x = 0; x < 3; x++)
+        {
+            for (int ir = 0; ir < 3; ir++) grad_vsigma_grad_rho_it(ir) += grad_vsigma_it(ir, x) * grad_rho_it(ir, x);
+        }
+
+        /* add remaining term to Vxc */
+        for (int ir = 0; ir < num_loc_points; ir++)
+        {
+            vxc_tmp(ir) -= 2 * grad_vsigma_grad_rho_it(fft_->global_offset() + ir);
+        }
+    }
+
+    for (int irloc = 0; irloc < num_loc_points; irloc++)
+    {
+        vxc->f_it<local>(irloc) = vxc_tmp(irloc);
+        exc->f_it<local>(irloc) = exc_tmp(irloc);
+    }
+}
+
+
+void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* magnetization[3], 
+                   Periodic_function<double>* vxc, Periodic_function<double>* bxc[3], Periodic_function<double>* exc)
+{
+    Timer t("sirius::Potential::xc");
+
+    /* create list of XC functionals */
+    std::vector<XC_functional*> xc_func;
+    for (int i = 0; i < (int)parameters_.xc_functionals_input_section_.xc_functional_names_.size(); i++)
+    {
+        std::string xc_label = parameters_.xc_functionals_input_section_.xc_functional_names_[i];
+        xc_func.push_back(new XC_functional(xc_label, parameters_.num_spins()));
+    }
+   
+    if (parameters_.unit_cell()->full_potential()) xc_mt(rho, magnetization, xc_func, vxc, bxc, exc);
+    
+    if (parameters_.num_spins() == 1)
+    {
+        xc_it_nonmagnetic(rho, xc_func, vxc, exc);
+    }
+    else
+    {
+        //xc_it_magnetic(rho, magnetization, xc_func, vxc, bxc, exc);
+        stop_here
+    }
+
+    //== Timer t3("sirius::Potential::xc|it");
+
+    //== /* number of local points in the FFT buffer */
+    //== int num_loc_points = fft_->local_size();
+
+    //== /* check for negative values */
+    //== double rhomin = 0.0;
+    //== for (int irloc = 0; irloc < num_loc_points; irloc++)
+    //== {
+    //==     rhomin = std::min(rhomin, rho->f_it<local>(irloc));
+    //==     if (rho->f_it<local>(irloc) < 0.0)  rho->f_it<local>(irloc) = 0.0;
+    //== }
+    //== if (rhomin < 0.0)
+    //== {
+    //==     std::stringstream s;
+    //==     s << "Interstitial charge density has negative values" << std::endl
+    //==       << "most negatve value : " << rhomin;
+    //==     warning_local(__FILE__, __LINE__, s);
+    //== }
+
+    //== #pragma omp parallel default(shared)
+    //== {
+    //==     /* split local size between threads */
+    //==     splindex<block> spl_t(num_loc_points, Platform::num_threads(), Platform::thread_id());
+
+    //==     std::vector<double> vxc_tmp(spl_t.local_size());
+    //==     memset(&vxc_tmp[0], 0, vxc_tmp.size() * sizeof(double));
+
+    //==     std::vector<double> exc_tmp(spl_t.local_size());
+    //==     memset(&exc_tmp[0], 0, exc_tmp.size() * sizeof(double));
+
+    //==     std::vector<double> bxc_tmp;
+    //==     std::vector<double> magit;
+
+    //==     if (parameters_.num_spins() == 2)
+    //==     {
+    //==         bxc_tmp.resize(spl_t.local_size());
+    //==         memset(&bxc_tmp[0], 0, bxc_tmp.size() * sizeof(double));
+    //==         
+    //==         /* compute magnetization */
+    //==         magit.resize(spl_t.local_size());
+    //==         for (int irloc = 0; irloc < spl_t.local_size(); irloc++)
+    //==         {
+    //==             double t = 0.0;
+    //==             for (int j = 0; j < parameters_.num_mag_dims(); j++) 
+    //==                 t += pow(magnetization[j]->f_it<local>(spl_t.global_offset() + irloc), 2);
+    //==             magit[irloc] = sqrt(t);
+    //==             magit[irloc] = std::min(magit[irloc], rho->f_it<local>(spl_t.global_offset() + irloc));
+    //==         }
+    //==     }
+
+    //==     /* loop over XC functionals */
+    //==     for (auto& ixc: xc_func)
+    //==     {
+    //==         /* if this is an LDA functional */
+    //==         if (ixc->lda())
+    //==         {
+    //==             if (parameters_.num_spins() == 1)
+    //==             {
+    //==                 //ixc.add(spl_t.local_size(), &rho->f_it<local>(spl_t.global_offset()), &vxc->f_it<local>(pt_offs), &exc->f_it<local>(pt_offs));
+    //==                 ixc->add(spl_t.local_size(), &rho->f_it<local>(spl_t.global_offset()), &vxc_tmp[0], &exc_tmp[0]);
+    //==             }
+    //==             else
+    //==             {
+    //==                 ixc->add(spl_t.local_size(), &rho->f_it<local>(spl_t.global_offset()), &magit[0], &vxc_tmp[0], 
+    //==                          &bxc_tmp[0], &exc_tmp[0]);
+    //==             }
+    //==         }
+    //==     }
+
+    //==     for (int irloc = 0; irloc < spl_t.local_size(); irloc++)
+    //==     {
+    //==         vxc->f_it<local>(spl_t.global_offset() + irloc) = vxc_tmp[irloc];
+    //==         exc->f_it<local>(spl_t.global_offset() + irloc) = exc_tmp[irloc];
+    //==     }
+
+    //==     if (parameters_.num_spins() == 2)
+    //==     {
+    //==         for (int irloc = 0; irloc < spl_t.local_size(); irloc++)
+    //==         {
+    //==             if (magit[irloc] > 1e-8)
+    //==             {
+    //==                 for (int j = 0; j < parameters_.num_mag_dims(); j++)
+    //==                     bxc[j]->f_it<local>(spl_t.global_offset() + irloc) = (bxc_tmp[irloc] / magit[irloc]) * magnetization[j]->f_it<local>(spl_t.global_offset() + irloc);
+    //==             }
+    //==             else
+    //==             {
+    //==                 for (int j = 0; j < parameters_.num_mag_dims(); j++) bxc[j]->f_it<local>(spl_t.global_offset() + irloc) = 0.0;
+    //==             }
+    //==         }
+    //==     }
+    //== }
     for (auto& ixc: xc_func) delete ixc;
 }
 

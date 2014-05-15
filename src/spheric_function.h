@@ -220,7 +220,7 @@ Spheric_function<T> laplacian(Spheric_function<T>& f)
                 s.interpolate();
                 
                 for (int ir = 0; ir < s.num_points(); ir++) 
-                    g(lm, ir) = 2 * s.deriv(1, ir) * rgrid.x_inv(ir) + s.deriv(2, ir) - f(ir, lm) * ll / pow(rgrid[ir], 2);
+                    g(lm, ir) = 2 * s.deriv(1, ir) * rgrid.x_inv(ir) + s.deriv(2, ir) - f(lm, ir) * ll / pow(rgrid[ir], 2);
             }
         }
 
@@ -260,7 +260,6 @@ class Spheric_function_gradient
         inline Spheric_function<T>& operator[](const int x)
         {
             assert(x >= 0 && x < 3);
-            assert(radial_grid_.hash() == grad_[x].radial_grid().hash());
             return grad_[x];
         }
 };

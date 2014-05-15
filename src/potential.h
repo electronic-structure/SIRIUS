@@ -71,7 +71,8 @@ class Potential
                                Spheric_function<double>& vxc_tp, 
                                Spheric_function<double>& exc_tp);
 
-        void xc_mt_magnetic(std::vector<XC_functional*>& xc_func,
+        void xc_mt_magnetic(Radial_grid& rgrid, 
+                            std::vector<XC_functional*>& xc_func,
                             Spheric_function<double>& rho_up_lm, 
                             Spheric_function<double>& rho_up_tp, 
                             Spheric_function<double>& rho_dn_lm, 
@@ -87,6 +88,10 @@ class Potential
                    Periodic_function<double>* bxc[3], 
                    Periodic_function<double>* exc);
     
+        void xc_it_nonmagnetic(Periodic_function<double>* rho, 
+                               std::vector<XC_functional*>& xc_func,
+                               Periodic_function<double>* vxc, 
+                               Periodic_function<double>* exc);
     public:
 
         /// Constructor
