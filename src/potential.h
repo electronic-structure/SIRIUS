@@ -193,6 +193,24 @@ class Potential
          *        - \nabla \frac{\partial \varepsilon_{xc}}{\partial \sigma_{\gamma \delta}} \nabla \rho_{\delta}
          *        - \frac{\partial \varepsilon_{xc}}{\partial \sigma_{\gamma \delta}} \nabla^2 \rho_{\delta} 
          *  \f}
+         *  In magnetic case the "up" and "dn" density and potential decomposition is used. Using the fact that the
+         *  effective magnetic field is parallel to magnetization at each point in space, we can write the coupling
+         *  of density and magnetization with XC potential and XC magentic field as:
+         *  \f[
+         *      V_{xc}({\bf r}) \rho({\bf r}) + {\bf B}_{xc}({\bf r}){\bf m}({\bf r}) =
+         *        V_{xc}({\bf r}) \rho({\bf r}) + {\rm B}_{xc}({\bf r}) {\rm m}({\bf r}) = 
+         *        V^{\uparrow}({\bf r})\rho^{\uparrow}({\bf r}) + V^{\downarrow}({\bf r})\rho^{\downarrow}({\bf r})
+         *  \f]
+         *  where
+         *  \f{eqnarray*}{
+         *      \rho^{\uparrow}({\bf r}) &=& \frac{1}{2}\Big( \rho({\bf r}) + {\rm m}({\bf r}) \Big) \\
+         *      \rho^{\downarrow}({\bf r}) &=& \frac{1}{2}\Big( \rho({\bf r}) - {\rm m}({\bf r}) \Big)
+         *  \f}
+         *  and
+         *  \f{eqnarray*}{
+         *      V^{\uparrow}({\bf r}) &=& V_{xc}({\bf r}) + {\rm B}_{xc}({\bf r}) \\
+         *      V^{\downarrow}({\bf r}) &=& V_{xc}({\bf r}) - {\rm B}_{xc}({\bf r}) 
+         *  \f}
          */
         void xc(Periodic_function<double>* rho, Periodic_function<double>* magnetization[3], 
                 Periodic_function<double>* vxc, Periodic_function<double>* bxc[3], Periodic_function<double>* exc);

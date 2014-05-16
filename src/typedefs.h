@@ -78,7 +78,7 @@ enum electronic_structure_method_t
 
 enum index_domain_t {global, local};
 
-enum argument_t {arg_lm, arg_tp, arg_radial};
+enum function_domain_t {spatial, spectral};
 
 /// Types of radial grid.
 enum radial_grid_t 
