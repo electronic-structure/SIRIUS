@@ -74,7 +74,10 @@ class XC_functional
         }
 
         /// Get LDA contribution.
-        void get_lda(const int size, const double* rho, double* v, double* e)
+        void get_lda(const int size, 
+                     const double* rho, 
+                     double* v, 
+                     double* e)
         {
             if (family() != XC_FAMILY_LDA) error_local(__FILE__, __LINE__, "wrong XC");
 
@@ -93,7 +96,12 @@ class XC_functional
         }
 
         /// Get LSDA contribution.
-        void get_lda(const int size, const double* rho_up, const double* rho_dn, double* v_up, double* v_dn, double* e)
+        void get_lda(const int size,
+                     const double* rho_up,
+                     const double* rho_dn,
+                     double* v_up,
+                     double* v_dn,
+                     double* e)
         {
             if (family() != XC_FAMILY_LDA) error_local(__FILE__, __LINE__, "wrong XC");
 
