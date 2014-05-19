@@ -2026,39 +2026,6 @@ void Potential::zero()
     for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->zero();
 }
 
-//double Potential::value(double* vc)
-//{
-//    int ja, jr;
-//    double dr, tp[2];
-//
-//    if (parameters_.is_point_in_mt(vc, ja, jr, dr, tp)) 
-//    {
-//        double* rlm = new double[parameters_.lmmax_pot()];
-//        SHT::spherical_harmonics(parameters_.lmax_pot(), tp[0], tp[1], rlm);
-//        double p = 0.0;
-//        for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
-//        {
-//            double d = (effective_potential_->f_rlm(lm, jr + 1, ja) - effective_potential_->f_rlm(lm, jr, ja)) / 
-//                       (parameters_.atom(ja)->type()->radial_grid(jr + 1) - parameters_.atom(ja)->type()->radial_grid(jr));
-//
-//            p += rlm[lm] * (effective_potential_->f_rlm(lm, jr, ja) + d * dr);
-//        }
-//        delete rlm;
-//        return p;
-//    }
-//    else
-//    {
-//        double p = 0.0;
-//        for (int ig = 0; ig < parameters_.num_gvec(); ig++)
-//        {
-//            double vgc[3];
-//            parameters_.get_coordinates<cartesian, reciprocal>(parameters_.gvec(ig), vgc);
-//            p += real(effective_potential_->f_pw(ig) * exp(double_complex(0.0, Utils::scalar_product(vc, vgc))));
-//        }
-//        return p;
-//    }
-//}
-
 void Potential::update_atomic_potential()
 {
     for (int ic = 0; ic < parameters_.unit_cell()->num_atom_symmetry_classes(); ic++)
@@ -2073,15 +2040,25 @@ void Potential::update_atomic_potential()
        parameters_.unit_cell()->atom_symmetry_class(ic)->set_spherical_potential(veff);
     }
     
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
     {
-        double* veff = &effective_potential_->f_mt<global>(0, 0, ia);
-        
-        double* beff[] = {NULL, NULL, NULL};
-        for (int i = 0; i < parameters_.num_mag_dims(); i++) beff[i] = &effective_magnetic_field_[i]->f_mt<global>(0, 0, ia);
-        
-        parameters_.unit_cell()->atom(ia)->set_nonspherical_potential(veff, beff);
+        int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
+        Spheric_function<double>* beff[] = {nullptr, nullptr, nullptr};
+        for (int x = 0; x < parameters_.num_mag_dims(); x++) beff[x] = &effective_magnetic_field_[x]->f_mt(ialoc);
+        parameters_.unit_cell()->atom(ia)->set_nonspherical_potential(&effective_potential_->f_mt(ialoc), beff);
     }
+    
+    
+    //== for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    //== {
+    //==     //double* veff = &effective_potential_->f_mt<global>(0, 0, ia);
+    //==     
+    //==     //double* beff[] = {NULL, NULL, NULL};
+    //==     //for (int i = 0; i < parameters_.num_mag_dims(); i++) beff[i] = &effective_magnetic_field_[i]->f_mt<global>(0, 0, ia);
+    //==     
+    //==     //parameters_.unit_cell()->atom(ia)->set_nonspherical_potential(effective_potential_->f_mt<global>(ia), beff);
+    //==     stop_here
+    //== }
 }
 
 void Potential::save()

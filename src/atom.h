@@ -30,6 +30,7 @@
 #include "atom_type.h"
 #include "atom_symmetry_class.h"
 #include "splindex.h"
+#include "spheric_function.h"
 
 namespace sirius {
 
@@ -51,13 +52,15 @@ class Atom
         vector3d<double> vector_field_;
 
         /// Muffin-tin potential.
-        mdarray<double, 2> veff_;
+        //mdarray<double, 2> veff_;
+        Spheric_function<double>* veff_;
 
         /// Radial integrals of the Hamiltonian.
         mdarray<double, 3> h_radial_integrals_;
         
         /// Muffin-tin magnetic field.
-        mdarray<double, 2> beff_[3];
+        //mdarray<double, 2> beff_[3];
+        Spheric_function<double>* beff_[3];
 
         /// Radial integrals of the effective magnetic field.
         mdarray<double, 4> b_radial_integrals_;
@@ -115,7 +118,7 @@ class Atom
          *  \f]
          */
         void generate_radial_integrals(MPI_Comm& comm);
-        void generate_radial_integrals();
+        //== void generate_radial_integrals();
         
         /// Return pointer to corresponding atom type class.
         inline Atom_type* type()
@@ -179,11 +182,11 @@ class Atom
         }
         
         /// Set muffin-tin potential and magnetic field.
-        void set_nonspherical_potential(double* veff__, double* beff__[3])
+        void set_nonspherical_potential(Spheric_function<double>* veff__, Spheric_function<double>* beff__[3])
         {
-            veff_.set_ptr(veff__);
+            veff_ = veff__;
             
-            for (int j = 0; j < 3; j++) beff_[j].set_ptr(beff__[j]);
+            for (int j = 0; j < 3; j++) beff_[j] = beff__[j];
         }
 
         void sync_radial_integrals(int rank)

@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef __SPLINE_H__
-#define __SPLINE_H__
-
 /** \file spline.h
  *   
  *  \brief Contains definition and partial implementaiton of sirius::Spline class.
  */
+
+#ifndef __SPLINE_H__
+#define __SPLINE_H__
 
 #include "linalg.h"
 

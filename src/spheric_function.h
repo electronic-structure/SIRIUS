@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef __SPHERIC_FUNCTION_H__
-#define __SPHERIC_FUNCTION_H__
-
 /** \file spheric_function.h
  *   
  *  \brief Contains declaration and implementation of sirius::Spheric_function class.
  */
+
+#ifndef __SPHERIC_FUNCTION_H__
+#define __SPHERIC_FUNCTION_H__
 
 #include <typeinfo>
 #include "radial_grid.h"

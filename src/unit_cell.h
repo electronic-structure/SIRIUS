@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/** \file unit_cell.h
+ *   
+ *  \brief Contains definition and partial implementation of sirius::Unit_cell class.
+ */
+
 #ifndef __UNIT_CELL_H__
 #define __UNIT_CELL_H__
-
-/** \file unit_cell.h
-    
-    \brief Contains definition and partial implementation of sirius::Unit_cell class.
-*/
 
 extern "C" {
 #include <spglib.h>
