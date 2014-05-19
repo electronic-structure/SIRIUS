@@ -71,6 +71,10 @@ class Free_atom : public sirius::Atom_type
             std::vector<double> vh(np);
             std::vector<double> vxc(np);
             std::vector<double> exc(np);
+            std::vector<double> vx(np);
+            std::vector<double> vc(np);
+            std::vector<double> ex(np);
+            std::vector<double> ec(np);
             std::vector<double> g1;
             std::vector<double> g2;
             std::vector<double> rho_old;
@@ -130,10 +134,13 @@ class Free_atom : public sirius::Atom_type
                 for (int i = 0; i < np; i++) vh[i] = fourpi * (g2[i] / radial_grid(i) + t1 - g1[i]);
                 
                 /* compute XC potential and energy */
-                memset(&vxc[0], 0, rho.num_points() * sizeof(double));
-                memset(&exc[0], 0, rho.num_points() * sizeof(double));
-                Ex.add(rho.num_points(), &rho[0], &vxc[0], &exc[0]);
-                Ec.add(rho.num_points(), &rho[0], &vxc[0], &exc[0]);
+                Ex.get_lda(rho.num_points(), &rho[0], &vx[0], &ex[0]);
+                Ec.get_lda(rho.num_points(), &rho[0], &vc[0], &ec[0]);
+                for (int ir = 0; ir < rho.num_points(); ir++)
+                {
+                   vxc[ir] = (vc[ir] + vc[ir]);
+                   exc[ir] = (ec[ir] + ec[ir]);
+                }
                
                 /* mix old and new effective potential */
                 for (int i = 0; i < np; i++)
