@@ -86,6 +86,7 @@ class mdarray_index_descriptor
 };
 
 extern std::atomic<int64_t> mdarray_mem_count;
+extern std::atomic<int64_t> mdarray_mem_count_max;
 
 /// Simple delete handler which keeps track of allocated and deallocated memory ammount.
 template<typename T>
@@ -102,6 +103,7 @@ struct mdarray_deleter
     {
         #ifndef NDEBUG
         mdarray_mem_count += size_ * sizeof(T);
+        mdarray_mem_count_max = std::max(mdarray_mem_count.load(), mdarray_mem_count_max.load());
         #endif
     }
     

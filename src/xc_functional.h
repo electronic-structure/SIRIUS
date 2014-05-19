@@ -1,5 +1,29 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #ifndef __XC_FUNCTIONAL_H__
 #define __XC_FUNCTIONAL_H__
+
+/** \file xc_functional.h
+ *   
+ *  \brief Contains implementation of sirius::XC_functional class.
+ */
 
 #include <xc.h>
 #include <string.h>
@@ -11,6 +35,7 @@ namespace sirius
 
 extern std::map<std::string, int> libxc_functionals;
 
+/// Interface class to Libxc.
 class XC_functional
 {
     private:
@@ -209,70 +234,6 @@ class XC_functional
                 vsigma_uu[i] = vsigma[3 * i];
                 vsigma_ud[i] = vsigma[3 * i + 1];
                 vsigma_dd[i] = vsigma[3 * i + 2];
-            }
-        }
-
-        
-        /// Add LDA contribution.
-        void add(int size, const double* rho, double* v, double* e)
-        {
-            if (family() != XC_FAMILY_LDA) error_local(__FILE__, __LINE__, "wrong XC");
-
-            std::vector<double> v_tmp(size);
-            std::vector<double> e_tmp(size);
-
-            /* check density */
-            for (int i = 0; i < size; i++)
-            {
-                if (rho[i] < 0.0)
-                {
-                    std::stringstream s;
-                    s << "rho is negative : " << Utils::double_to_string(rho[i]);
-                    error_local(__FILE__, __LINE__, s);
-                }
-            }
-
-            xc_lda_exc_vxc(&handler_, size, rho, &e_tmp[0], &v_tmp[0]);
-       
-            for (int i = 0; i < size; i++)
-            {
-                v[i] += v_tmp[i];
-                e[i] += e_tmp[i];
-            }
-        }
-
-        /// Add LSDA contribution.
-        void add(int size, const double* rho, const double* mag, double* vxc, double* bxc, double* exc)
-        {
-            if (family() != XC_FAMILY_LDA) error_local(__FILE__, __LINE__, "wrong XC");
-
-            std::vector<double> rhoud(size * 2);
-            for (int i = 0; i < size; i++)
-            {
-                rhoud[2 * i] = 0.5 * (rho[i] + mag[i]);
-                rhoud[2 * i + 1] = 0.5 * (rho[i] - mag[i]);
-
-                if (rhoud[2 * i] < 0.0) error_local(__FILE__, __LINE__, "rho_up is negative");
-
-                if (rhoud[2 * i + 1] < 0.0)
-                {
-                    std::stringstream s;
-                    s << "rho_dn is negative : " << Utils::double_to_string(rhoud[2 * i + 1]) << std::endl
-                        << "  rho : " << Utils::double_to_string(rho[i]) << "   mag : " << Utils::double_to_string(mag[i]);
-                    error_local(__FILE__, __LINE__, s);
-                }
-            }
-
-            std::vector<double> vxc_tmp(size * 2);
-            std::vector<double> exc_tmp(size);
-            
-            xc_lda_exc_vxc(&handler_, size, &rhoud[0], &exc_tmp[0], &vxc_tmp[0]);
-
-            for (int j = 0; j < size; j++)
-            {
-                exc[j] += exc_tmp[j];
-                vxc[j] += 0.5 * (vxc_tmp[2 * j] + vxc_tmp[2 * j + 1]);
-                bxc[j] += 0.5 * (vxc_tmp[2 * j] - vxc_tmp[2 * j + 1]);
             }
         }
 };
