@@ -1,5 +1,3 @@
-// This file is part of SIRIUS
-//
 // Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
@@ -19,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/** \file symmetry.h
+ *   
+ *  \brief Contains definition and partial implementation of sirius::Symmetry class.
+ */
+
 #ifndef __SYMMETRY_H__
 #define __SYMMETRY_H__
-
-/** \file symmetry.h
-    
-    \brief Contains definition and partial implementation of sirius::Symmetry class.
-*/
 
 extern "C" {
 #include <spglib.h>
@@ -133,7 +131,7 @@ class Symmetry
     \f[
         {\bf x} = {\bf L}^{-1} {\bf v}
     \f]
-    Now we write rotation operation in lattice coordinates and apply the backward transformation to Cartesian 
+    Now we write rotation operation in fractional coordinates and apply the backward transformation to Cartesian 
     coordinates:
     \f[
         {\bf x'} = {\bf R}{\bf x} \rightarrow {\bf L}^{-1} {\bf v'} = {\bf R} {\bf L}^{-1} {\bf v}

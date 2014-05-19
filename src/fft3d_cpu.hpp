@@ -192,7 +192,7 @@ class FFT3D<cpu>
             return grid_size_[d]; 
         }
 
-        /// lineqar index of a plane-wave harmonic with lattice coordinates (10, i1, i2) inside fft buffer
+        /// Return linear index of a plane-wave harmonic with fractional coordinates (10, i1, i2) inside fft buffer.
         inline int index(int i0, int i1, int i2)
         {
             if (i0 < 0) i0 += grid_size_[0];

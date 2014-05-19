@@ -558,10 +558,12 @@ void K_point::generate_gkvec(double gk_cutoff)
         fft_index_coarse_.resize(num_gkvec());
         for (int igk = 0; igk < num_gkvec(); igk++)
         {
-            int ig = gvec_index_[igk]; // G-vector index in the fine mesh
-            vector3d<int> gvec = parameters_.reciprocal_lattice()->gvec(ig); // G-vector lattice coordinates
+            /* G-vector index in the fine mesh */
+            int ig = gvec_index_[igk];
+            /* G-vector fractional coordinates */
+            vector3d<int> gvec = parameters_.reciprocal_lattice()->gvec(ig);
 
-            // linear index inside coarse FFT buffer
+            /* linear index inside coarse FFT buffer */
             fft_index_coarse_[igk] = parameters_.reciprocal_lattice()->fft_coarse()->index(gvec[0], gvec[1], gvec[2]);
         }
     }

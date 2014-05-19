@@ -33,7 +33,7 @@
 
 namespace sirius {
 
-/// Data and methods specific to actual atom in the unit cell.
+/// Data and methods specific to the actual atom in the unit cell.
 class Atom
 {
     private:
@@ -97,6 +97,7 @@ class Atom
         /// Constructor.
         Atom(Atom_type* type__, double* position__, double* vector_field__);
         
+        /// Initialize atom.
         void init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_lo__, int offset_wf__);
 
         /// Generate radial Hamiltonian and effective magnetic field integrals
@@ -116,41 +117,49 @@ class Atom
         void generate_radial_integrals(MPI_Comm& comm);
         void generate_radial_integrals();
         
+        /// Return pointer to corresponding atom type class.
         inline Atom_type* type()
         {
             return type_;
         }
 
+        /// Return pointer to corresponding atom symmetry class.
         inline Atom_symmetry_class* symmetry_class()
         {
             return symmetry_class_;
         }
 
+        /// Return atom type id.
         inline int type_id()
         {
             return type_->id();
         }
-
+        
+        /// Return atom position in fractional coordinates.
         inline vector3d<double> position()
         {
             return position_;
         }
-
+        
+        /// Set atom position in fractional coordinates.
         inline void set_position(vector3d<double> position__)
         {
             position_ = position__;
         }
         
+        /// Return specific coordinate of position.
         inline double position(int i)
         {
             return position_[i];
         }
         
+        /// Return vector field.
         inline vector3d<double> vector_field()
         {
             return vector_field_;
         }
-
+        
+        /// Return id of the symmetry class.
         inline int symmetry_class_id()
         {
             if (symmetry_class()) 
@@ -163,11 +172,13 @@ class Atom
             }
         }
 
+        /// Set symmetry class of the atom.
         inline void set_symmetry_class(Atom_symmetry_class* symmetry_class__)
         {
             symmetry_class_ = symmetry_class__;
         }
-
+        
+        /// Set muffin-tin potential and magnetic field.
         void set_nonspherical_potential(double* veff__, double* beff__[3])
         {
             veff_.set_ptr(veff__);

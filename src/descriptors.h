@@ -203,25 +203,25 @@ struct unit_cell_parameters_descriptor
  */
 struct gklo_basis_descriptor
 {
-    /// id (global index) of the basis function
+    /// ID (global index) of the basis function.
     int id;
 
-    /// global index of the G+k vector
+    /// Global index of the G+k vector.
     int igk;
 
-    /// G+k vector in lattice coordinates
+    /// G+k vector in fractional coordinates.
     vector3d<double> gkvec;
 
-    /// G+k vector in Cartesian coordinates
+    /// G+k vector in Cartesian coordinates.
     vector3d<double> gkvec_cart;
 
-    /// global index of the G vector for the corresponding G+k vector
+    /// Global index of the G vector for the corresponding G+k vector.
     int ig;
 
-    /// index of atom if this is a local orbital descriptor
+    /// Index of atom if this is a local orbital descriptor.
     int ia;
 
-    /// index of orbital quantum number \f$ \ell \f$
+    /// Index of orbital quantum number \f$ \ell \f$.
     int l;
 
     /// Combined lm index.
