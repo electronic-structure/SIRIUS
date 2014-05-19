@@ -1374,7 +1374,7 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
                                Periodic_function<double>* bxc[3], 
                                Periodic_function<double>* exc)
 {
-    Timer t("sirius::Potential::xc_it_nonmagnetic");
+    Timer t("sirius::Potential::xc_it_magnetic");
 
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->gga()) is_gga = true;
