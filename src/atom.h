@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file atom.h
+ *   
+ *  \brief Contains declaration and partial implementation of sirius::Atom class.
+ */
+
 #ifndef __ATOM_H__
 #define __ATOM_H__
 
@@ -7,73 +31,70 @@
 #include "atom_symmetry_class.h"
 #include "splindex.h"
 
-/** \file atom.h
-    
-    \brief Data and methods specific to each atom in the unit cell.
-*/
 namespace sirius {
 
+/// Data and methods specific to actual atom in the unit cell.
 class Atom
 {
     private:
     
-        /// type of the given atom
+        /// Type of the given atom.
         Atom_type* type_;
 
-        /// symmetry class of the given atom
+        /// Symmetry class of the given atom.
         Atom_symmetry_class* symmetry_class_;
         
-        /// position in fractional coordinates
+        /// Position in fractional coordinates.
         vector3d<double> position_;
        
-        /// vector field associated with the current site
+        /// Vector field associated with the current site.
         vector3d<double> vector_field_;
 
-        /// MT potential
+        /// Muffin-tin potential.
         mdarray<double, 2> veff_;
 
-        /// radial integrals of the Hamiltonian 
+        /// Radial integrals of the Hamiltonian.
         mdarray<double, 3> h_radial_integrals_;
         
-        /// MT magnetic field
+        /// Muffin-tin magnetic field.
         mdarray<double, 2> beff_[3];
 
-        /// radial integrals of the effective magnetic field
+        /// Radial integrals of the effective magnetic field.
         mdarray<double, 4> b_radial_integrals_;
 
-        /// number of magnetic dimensions
+        /// Number of magnetic dimensions.
         int num_mag_dims_;
         
-        /// maximum l for potential and magnetic field 
+        /// Maximum l for potential and magnetic field.
         int lmax_pot_;
 
-        /// offset in the array of matching coefficients
+        /// Offset in the array of matching coefficients.
         int offset_aw_;
 
-        /// offset in the block of local orbitals of the Hamiltonian and overlap matrices and in the eigen-vectors
+        /// Offset in the block of local orbitals of the Hamiltonian and overlap matrices and in the eigen-vectors.
         int offset_lo_;
 
-        /// offset in the wave-function array 
+        /// Offset in the wave-function array.
         int offset_wf_;
 
-        /// unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method
+        /// Unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method.
         mdarray<double_complex, 4> occupation_matrix_;
         
         /// U,J correction matrix of the L(S)DA+U method
         mdarray<double_complex, 4> uj_correction_matrix_;
 
-        /// true if UJ correction is applied for the current atom
+        /// True if UJ correction is applied for the current atom.
         bool apply_uj_correction_;
 
-        /// orbital quantum number for UJ correction
+        /// Orbital quantum number for UJ correction.
         int uj_correction_l_;
 
-        /// D_{ij} matrix of the pseudo-potential method
+        /// D_{ij} matrix of the pseudo-potential method.
         mdarray<double_complex, 2> d_mtrx_;
     
     public:
     
-        /// Constructor
+        /// Constructor.
         Atom(Atom_type* type__, double* position__, double* vector_field__);
         
         void init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_lo__, int offset_wf__);
