@@ -13,7 +13,7 @@ inline double DFT_ground_state::energy_enuc()
             int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
             int zn = parameters_.unit_cell()->atom(ia)->type()->zn();
             double r0 = parameters_.unit_cell()->atom(ia)->type()->radial_grid(0);
-            enuc -= 0.5 * zn * (potential_->coulomb_potential()->f_mt<local>(0, 0, ialoc) * y00 + zn / r0);
+            enuc -= 0.5 * zn * (potential_->hartree_potential()->f_mt<local>(0, 0, ialoc) * y00 + zn / r0);
         }
         Platform::allreduce(&enuc, 1);
     }

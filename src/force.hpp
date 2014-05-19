@@ -391,7 +391,7 @@ void Force::total_force(Global& parameters_, Potential* potential, Density* dens
     for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
     {
         int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
-        auto g = gradient(potential->coulomb_potential_mt(ialoc));
+        auto g = gradient(potential->hartree_potential_mt(ialoc));
         for (int x = 0; x < 3; x++) forcehf(x, ia) = parameters_.unit_cell()->atom(ia)->type()->zn() * g[x](0, 0) * y00;
     }
     Platform::allreduce(&forcehf(0, 0), (int)forcehf.size());

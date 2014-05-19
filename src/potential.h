@@ -24,7 +24,7 @@ class Potential
 
         Periodic_function<double>* effective_magnetic_field_[3];
  
-        Periodic_function<double>* coulomb_potential_;
+        Periodic_function<double>* hartree_potential_;
         Periodic_function<double>* xc_potential_;
         Periodic_function<double>* xc_energy_density_;
         
@@ -295,14 +295,14 @@ class Potential
             return effective_magnetic_field_[i];
         }
 
-        Periodic_function<double>* coulomb_potential()
+        Periodic_function<double>* hartree_potential()
         {
-            return coulomb_potential_;
+            return hartree_potential_;
         }
         
-        Spheric_function<double>& coulomb_potential_mt(int ialoc)
+        Spheric_function<double>& hartree_potential_mt(int ialoc)
         {
-            return coulomb_potential_->f_mt(ialoc);
+            return hartree_potential_->f_mt(ialoc);
         }
         
         Periodic_function<double>* xc_potential()

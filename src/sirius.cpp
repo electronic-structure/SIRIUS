@@ -1516,9 +1516,9 @@ void FORTRAN(sirius_generate_coulomb_potential)(double* vclmt, double* vclit)
     log_function_enter(__func__);
     using namespace sirius;
 
-    potential->poisson(density->rho(), potential->coulomb_potential());
+    potential->poisson(density->rho(), potential->hartree_potential());
 
-    potential->copy_to_global_ptr(vclmt, vclit, potential->coulomb_potential());
+    potential->copy_to_global_ptr(vclmt, vclit, potential->hartree_potential());
     log_function_exit(__func__);
 }
 

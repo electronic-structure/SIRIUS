@@ -235,7 +235,7 @@ class DFT_ground_state
         
         inline double energy_vha()
         {
-            return inner(parameters_, density_->rho(), potential_->coulomb_potential());
+            return inner(parameters_, density_->rho(), potential_->hartree_potential());
         }
         
         inline double energy_vxc()

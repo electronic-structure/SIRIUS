@@ -28,7 +28,6 @@
 namespace sirius {
 
 // TODO: everything here must be documented
-// TODO: rename coulomb potential to hartree potential
 // TODO: better naming convention: q is meaningless
 
 Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_density_order(9)
@@ -74,8 +73,8 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
         effective_magnetic_field_[j] = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), ngv);
     
-    coulomb_potential_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), parameters_.reciprocal_lattice()->num_gvec());
-    coulomb_potential_->allocate(false, true);
+    hartree_potential_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), parameters_.reciprocal_lattice()->num_gvec());
+    hartree_potential_->allocate(false, true);
     
     xc_potential_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot());
     xc_potential_->allocate(false, false);
@@ -100,7 +99,7 @@ Potential::~Potential()
     delete effective_potential_; 
     for (int j = 0; j < parameters_.num_mag_dims(); j++) delete effective_magnetic_field_[j];
     if (parameters_.esm_type() == full_potential_lapwlo) delete sht_;
-    delete coulomb_potential_;
+    delete hartree_potential_;
     delete xc_potential_;
     delete xc_energy_density_;
     if (parameters_.esm_type() == ultrasoft_pseudopotential) delete local_potential_;
@@ -1663,10 +1662,10 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho, Per
     zero();
 
     // solve Poisson equation
-    poisson(rho, coulomb_potential_);
+    poisson(rho, hartree_potential_);
 
     // add Hartree potential to the total potential
-    effective_potential_->add(coulomb_potential_);
+    effective_potential_->add(hartree_potential_);
 
     //if (debug_level > 1) check_potential_continuity_at_mt();
    
@@ -1689,10 +1688,10 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho, Per
     zero();
 
     // solve Poisson equation with valence density
-    poisson(rho, coulomb_potential_);
+    poisson(rho, hartree_potential_);
 
     // add Hartree potential to the effective potential
-    effective_potential_->add(coulomb_potential_);
+    effective_potential_->add(hartree_potential_);
 
     // create temporary function for rho + rho_core
     Periodic_function<double>* rhovc = new Periodic_function<double>(parameters_, 0);
