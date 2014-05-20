@@ -17,10 +17,14 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file dft_ground_state.hpp
+/** \file dft_ground_state.cpp
  *
  *  \brief Contains remaining implementation of sirius::DFT_ground_state class.
  */
+
+#include "dft_ground_state.h"
+
+namespace sirius {
 
 inline double DFT_ground_state::energy_enuc()
 {
@@ -239,4 +243,6 @@ void DFT_ground_state::relax_atom_positions()
         move_atoms(i);
         update();
     }
+}
+
 }
