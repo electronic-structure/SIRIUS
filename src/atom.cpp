@@ -122,12 +122,14 @@ void Atom::generate_radial_integrals(MPI_Comm& comm)
                 int l2 = type()->indexr(i2).l;
                 
                 /* multiply potential by a radial function */
-                for (int ir = 0; ir < nmtp; ir++) vrf_spline[0][ir] = symmetry_class()->radial_function(ir, i2) * veff_(lm, ir);
+                for (int ir = 0; ir < nmtp; ir++) 
+                    vrf_spline[0][ir] = symmetry_class()->radial_function(ir, i2) * veff_(lm, ir);
                 vrf_spline[0].interpolate();
                 /* multiply magnetic field by a radial function */
                 for (int j = 0; j < num_mag_dims_; j++)
                 {
-                    for (int ir = 0; ir < nmtp; ir++) vrf_spline[1 + j][ir] = symmetry_class()->radial_function(ir, i2) * beff_[j](lm, ir);
+                    for (int ir = 0; ir < nmtp; ir++) 
+                        vrf_spline[1 + j][ir] = symmetry_class()->radial_function(ir, i2) * beff_[j](lm, ir);
                     vrf_spline[1 + j].interpolate();
                 }
                 

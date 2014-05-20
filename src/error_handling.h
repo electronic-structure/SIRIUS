@@ -17,6 +17,24 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/** \file error_handling.h
+ *  
+ *  \brief Simple error handling.
+ *  
+ *  There are two types of errors: fatal and non-fatal. A non-fatal error is a warining. Errors can be 
+ *  local (happened on a single MPI rank, for example matrix diagonalization failed on some node) 
+ *  and global (happened globally, for example charge density is incorrect after k-point summation).
+ *  Global errors are reported by a single (root) MPI rank. Local errors are reported by each failed MPI rank.
+ *
+ *  Examples:
+ *
+ *      error_local(__FILE__, __LINE__, "Every MPI rank will print this message");
+ *      
+ *      std::stringstream s;
+ *      s << "This is global warning message";
+ *      warning_global(__FILE__, __LINE__, s);
+ */
+
 #ifndef __ERROR_HANDLING_H__
 #define __ERROR_HANDLING_H__
 
@@ -26,24 +44,6 @@
 #include "config.h"
 #include "platform.h"
 #include "timer.h"
-
-/** \file error_handling.h
-    
-    \brief Simple error handling.
-    
-    There are two types of errors: fatal and non-fatal. A non-fatal error is a warining. Errors can be 
-    local (happened on a single MPI rank, for example matrix diagonalization failed on some node) 
-    and global (happened globally, for example charge density is incorrect after k-point summation).
-    Global errors are reported by a single (root) MPI rank. Local errors are reported by each failed MPI rank.
-
-    Examples:
-
-        error_local(__FILE__, __LINE__, "Every MPI rank will print this message");
-        
-        std::stringstream s;
-        s << "This is global warning message";
-        warning_global(__FILE__, __LINE__, s);
-*/
 
 const int _global_message_ = 1 << 0;
 const int _fatal_error_ = 1 << 1;

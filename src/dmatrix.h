@@ -1,5 +1,3 @@
-// This file is part of SIRIUS
-//
 // Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
@@ -19,14 +17,14 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef __DMATRIX_H__
-#define __DMATRIX_H__
-
 /** \file dmatrix.h
  *
  *  \brief Contains definition and implementaiton of dmatrix class.
  *
  */
+
+#ifndef __DMATRIX_H__
+#define __DMATRIX_H__
 
 #include "splindex.h"
 #include "mdarray.h"

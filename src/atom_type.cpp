@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file atom_type.cpp
+ *   
+ *  \brief Contains remaining declaration of sirius::Atom_type class.
+ */
+
 #include "atom_type.h"
 
 namespace sirius {
@@ -103,7 +127,8 @@ void Atom_type::init(int lmax, int offset_lo__)
         /* initialize aw descriptors if they were not set manually */
         if (aw_descriptors_.size() == 0) init_aw_descriptors(lmax);
 
-        if ((int)aw_descriptors_.size() != (lmax + 1)) error_local(__FILE__, __LINE__, "wrong size of augmented wave descriptors");
+        if ((int)aw_descriptors_.size() != (lmax + 1)) 
+            error_local(__FILE__, __LINE__, "wrong size of augmented wave descriptors");
 
         max_aw_order_ = 0;
         for (int l = 0; l <= lmax; l++) max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
@@ -708,7 +733,6 @@ void Atom_type::read_input(const std::string& fname)
         parser["mass"] >> mass_;
         parser["number"] >> zn_;
         parser["rmin"] >> radial_grid_origin_;
-        //parser["rmax"] >> radial_grid_infinity_;
         parser["rmt"] >> mt_radius_;
         parser["nrmt"] >> num_mt_points_;
 
