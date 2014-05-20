@@ -1,5 +1,30 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file cmd_args.h
+ *   
+ *  \brief Contains definition and implementation of cmd_args class.
+ */
+
 #include "vector3d.h"
 
+/// Simple command line arguments handler.
 class cmd_args
 {
     private:
@@ -13,9 +38,9 @@ class cmd_args
 
     public:
 
-        void register_key(const std::string key__, const std::string description)
+        void register_key(const std::string key__, const std::string description__)
         {
-            key_desc_.push_back(std::pair<std::string, std::string>(key__, description));
+            key_desc_.push_back(std::pair<std::string, std::string>(key__, description__));
             
             int key_type = 0;
             std::string key = key__.substr(2, key__.length());
@@ -31,11 +56,11 @@ class cmd_args
             known_keys_[key] = key_type;
         }
 
-        void parse_args(int argn, char** argv)
+        void parse_args(int argn__, char** argv__)
         {
-            for (int i = 1; i < argn; i++)
+            for (int i = 1; i < argn__; i++)
             {
-                std::string str(argv[i]);
+                std::string str(argv__[i]);
                 if (str.length() < 3 || str[0] != '-' || str[1] != '-') terminate(__FILE__, __LINE__, "wrong key");
 
                 size_t k = str.find("=");
@@ -93,71 +118,71 @@ class cmd_args
             }
         }
 
-        bool exist(const std::string key)
+        bool exist(const std::string key__)
         {
-            return keys_.count(key);
+            return keys_.count(key__);
         }
 
         template <typename T> 
-        T value(const std::string key);
+        T value(const std::string key__);
 
-        std::string operator[](const std::string key)
+        std::string operator[](const std::string key__)
         {
-            return keys_[key];
+            return keys_[key__];
         }
 };
 
 template <>
-int cmd_args::value<int>(const std::string key)
+int cmd_args::value<int>(const std::string key__)
 {
     int v;
 
-    if (!exist(key))
+    if (!exist(key__))
     {
         std::stringstream s;
-        s << "command line parameter --" << key << " was not specified";
+        s << "command line parameter --" << key__ << " was not specified";
         terminate(__FILE__, __LINE__, s);
     }
 
-    std::istringstream(keys_[key]) >> v;
+    std::istringstream(keys_[key__]) >> v;
     return v;
 }
 
 template <>
-double cmd_args::value<double>(const std::string key)
+double cmd_args::value<double>(const std::string key__)
 {
     double v;
 
-    if (!exist(key))
+    if (!exist(key__))
     {
         std::stringstream s;
-        s << "command line parameter --" << key << " was not specified";
+        s << "command line parameter --" << key__ << " was not specified";
         terminate(__FILE__, __LINE__, s);
     }
 
-    std::istringstream(keys_[key]) >> v;
+    std::istringstream(keys_[key__]) >> v;
     return v;
 }
 
 template <>
-std::string cmd_args::value<std::string>(const std::string key)
+std::string cmd_args::value<std::string>(const std::string key__)
 {
-    return keys_[key];
+    return keys_[key__];
 }
 
 template <>
-vector3d<double> cmd_args::value< vector3d<double> >(const std::string key)
+vector3d<double> cmd_args::value< vector3d<double> >(const std::string key__)
 {
     vector3d<double> v;
 
-    if (!exist(key))
+    if (!exist(key__))
     {
         std::stringstream s;
-        s << "command line parameter --" << key << " was not specified";
+        s << "command line parameter --" << key__ << " was not specified";
         terminate(__FILE__, __LINE__, s);
     }
 
-    std::istringstream iss(keys_[key]);
+    std::istringstream iss(keys_[key__]);
     for (int x = 0; x < 3; x++) iss >> v[x];
     return v;
 }

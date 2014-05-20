@@ -1,6 +1,4 @@
-// This file is part of SIRIUS
-//
-// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -19,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/** \file constants.h
+ *
+ *  \brief Various constants
+ */
+
 #ifndef __CONSTANTS_H__
 #define __CONSTANTS_H__
-
-/** \file constants.h
-
-    \brief Various constants
-*/
 
 #include "atomic_conf.h"
 #include "atomic_symb.h"
@@ -33,7 +31,7 @@
 const int major_version = 14;
 const int minor_version = 5;
 
-// NIST value for the inverse fine structure (http://physics.nist.gov/cuu/Constants/index.html)
+/// NIST value for the inverse fine structure (http://physics.nist.gov/cuu/Constants/index.html)
 const double speed_of_light = 137.035999074; 
 
 const double pi = 3.1415926535897932385;
