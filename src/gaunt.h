@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file gaunt.h
+ *   
+ *  \brief Contains definition and implementation of sirius::Gaunt class.
+ */
+
 #ifndef __GAUNT_H__
 #define __GAUNT_H__
 
@@ -27,7 +51,8 @@ struct gaunt_L1_L2
 
 /// Compact storage of non-zero Gaunt coefficients \f$ \langle \ell_1 m_1 | \ell_3 m_3 | \ell_2 m_2 \rangle \f$.
 /** Very important! The following notation is adopted and used everywhere: lm1 and lm2 represent 'bra' and 'ket' 
-    complex spherical harmonics of the Gaunt integral and lm3 represent the inner real or complex spherical harmonic. */
+ *  complex spherical harmonics of the Gaunt integral and lm3 represent the inner real or complex spherical harmonic. 
+ */
 template <typename T>
 class Gaunt_coefficients
 {
@@ -114,20 +139,20 @@ class Gaunt_coefficients
 
         /// Return a structure containing {lm1, lm2, coef} for a given lm3 and index.
         /** Example:
-            \code{.cpp}
-                for (int lm3 = 0; lm3 < lmmax3; lm3++)
+         *  \code{.cpp}
+            for (int lm3 = 0; lm3 < lmmax3; lm3++)
+            {
+                for (int i = 0; i < gaunt_coefs.num_gaunt(); i++)
                 {
-                    for (int i = 0; i < gaunt_coefs.num_gaunt(); i++)
-                    {
-                        int lm1 = gaunt_coefs.gaunt(lm3, i).lm1;
-                        int lm2 = gaunt_coefs.gaunt(lm3, i).lm2;
-                        double coef = gaunt_coefs.gaunt(lm3, i).coef;
-                        
-                        // do something with lm1,lm2,lm3 and coef
-                    }
+                    int lm1 = gaunt_coefs.gaunt(lm3, i).lm1;
+                    int lm2 = gaunt_coefs.gaunt(lm3, i).lm2;
+                    double coef = gaunt_coefs.gaunt(lm3, i).coef;
+                    
+                    // do something with lm1,lm2,lm3 and coef
                 }
+            }
             \endcode
-        */
+         */
         inline gaunt_L1_L2<T>& gaunt(int lm3, int idx)
         {
             assert(lm3 >= 0 && lm3 < lmmax3_);
@@ -149,11 +174,11 @@ class Gaunt_coefficients
 
         /// Return a sum over L3 (lm3) index of Gaunt coefficients and a complex vector.
         /** The following operation is performed:
-            \f[
-                \sum_{\ell_3 m_3} \langle \ell_1 m_1 | \ell_3 m_3 | \ell_2 m_2 \rangle v_{\ell_3 m_3}
-            \f]
-            Result is assumed to be complex.
-        */
+         *  \f[
+         *      \sum_{\ell_3 m_3} \langle \ell_1 m_1 | \ell_3 m_3 | \ell_2 m_2 \rangle v_{\ell_3 m_3}
+         *  \f]
+         *  Result is assumed to be complex.
+         */
         inline double_complex sum_L3_gaunt(int lm1, int lm2, double_complex* v)
         {
             double_complex zsum(0, 0);
@@ -164,11 +189,11 @@ class Gaunt_coefficients
         
         /// Return a sum over L3 (lm3) index of Gaunt coefficients and a real vector.
         /** The following operation is performed:
-            \f[
-                \sum_{\ell_3 m_3} \langle \ell_1 m_1 | \ell_3 m_3 | \ell_2 m_2 \rangle v_{\ell_3 m_3}
-            \f]
-            Result is assumed to be of the same type as Gaunt coefficients.
-        */
+         *  \f[
+         *      \sum_{\ell_3 m_3} \langle \ell_1 m_1 | \ell_3 m_3 | \ell_2 m_2 \rangle v_{\ell_3 m_3}
+         *  \f]
+         *  Result is assumed to be of the same type as Gaunt coefficients.
+         */
         inline T sum_L3_gaunt(int lm1, int lm2, double* v)
         {
             T sum = 0;

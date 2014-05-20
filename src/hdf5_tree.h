@@ -1,6 +1,4 @@
-// This file is part of SIRIUS
-//
-// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -19,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/** \file hdf5_tree.h
+ *   
+ *  \brief Contains definition and implementation of sirius::HDF5_tree class.
+ */
+
 #ifndef __HDF5_TREE_H__
 #define __HDF5_TREE_H__
-
-/** \file hdf5_tree.h
-    
-    \brief Contains definition and implementation of sirius::HDF5_tree class.
-*/
 
 #include <hdf5.h>
 #include <string>

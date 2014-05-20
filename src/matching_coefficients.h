@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef __MATCHING_COEFFICIENTS_H__
-#define __MATCHING_COEFFICIENTS_H__
-
 /** \file matching_coefficients.h
  *   
  *  \brief Contains definition and partial implementation of sirius::Matching_coefficients class.
  */
+
+#ifndef __MATCHING_COEFFICIENTS_H__
+#define __MATCHING_COEFFICIENTS_H__
 
 #include "global.h"
 

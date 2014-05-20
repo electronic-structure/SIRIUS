@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef __K_POINT_H__
-#define __K_POINT_H__
-
 /** \file k_point.h
  *   
  *  \brief Contains definition and partial implementation of sirius::K_point class.
  */
+
+#ifndef __K_POINT_H__
+#define __K_POINT_H__
 
 #include "global.h"
 #include "periodic_function.h"
