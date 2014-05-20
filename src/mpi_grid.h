@@ -20,7 +20,6 @@
 /** \file mpi_grid.h
  *
  *  \brief Contains declaration and implementation of MPI_grid class.
- *
  */
 
 #ifndef __MPI_GRID_H__

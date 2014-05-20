@@ -1,10 +1,29 @@
-#ifndef __PERIODIC_FUNCTION_H__
-#define __PERIODIC_FUNCTION_H__
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file periodic_function.h
-    
-    \brief Lattice periodic function
-*/
+ *   
+ *  \brief Contains declaration and partial implementation of sirius::Periodic_function class.
+ */
+
+#ifndef __PERIODIC_FUNCTION_H__
+#define __PERIODIC_FUNCTION_H__
 
 #include "mdarray.h"
 #include "spheric_function.h"
@@ -15,28 +34,28 @@
 namespace sirius
 {
 
-/// Representation of the periodical function on the muffin-tin geometry
+/// Representation of the periodical function on the muffin-tin geometry.
 /** Inside each muffin-tin the spherical expansion is used:
-    \f[
-        f({\bf r}) = \sum_{\ell m} f_{\ell m}(r) Y_{\ell m}(\hat {\bf r})
-    \f]
-    or
-    \f[
-        f({\bf r}) = \sum_{\ell m} f_{\ell m}(r) R_{\ell m}(\hat {\bf r})
-    \f]
-    In the interstitial region function is stored on the real-space grid or as a Fourier series:
-    \f[
-        f({\bf r}) = \sum_{{\bf G}} f({\bf G}) e^{i{\bf G}{\bf r}}
-    \f]
-
-    The following terminology is used to describe the distribution of the function:
-        - global function: the whole copy of the function is stored on each MPI rank. Ranks should take care about the
-          syncronization of the data.
-        - local function: the function is distributed across the MPI ranks. 
-
-    \note In order to check if the function is defined as global or as distributed, check the f_mt_ and f_it_ pointers.
-          If the function is global, the pointers should not be null.
-*/
+ *   \f[
+ *       f({\bf r}) = \sum_{\ell m} f_{\ell m}(r) Y_{\ell m}(\hat {\bf r})
+ *   \f]
+ *   or
+ *   \f[
+ *       f({\bf r}) = \sum_{\ell m} f_{\ell m}(r) R_{\ell m}(\hat {\bf r})
+ *   \f]
+ *   In the interstitial region function is stored on the real-space grid or as a Fourier series:
+ *   \f[
+ *       f({\bf r}) = \sum_{{\bf G}} f({\bf G}) e^{i{\bf G}{\bf r}}
+ *   \f]
+ *
+ *   The following terminology is used to describe the distribution of the function:
+ *       - global function: the whole copy of the function is stored on each MPI rank. Ranks should take care about the
+ *         syncronization of the data.
+ *       - local function: the function is distributed across the MPI ranks. 
+ *
+ *   \note In order to check if the function is defined as global or as distributed, check the f_mt_ and f_it_ pointers.
+ *         If the function is global, the pointers should not be null.
+ */
 template<typename T> 
 class Periodic_function
 { 

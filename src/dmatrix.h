@@ -20,7 +20,6 @@
 /** \file dmatrix.h
  *
  *  \brief Contains definition and implementaiton of dmatrix class.
- *
  */
 
 #ifndef __DMATRIX_H__

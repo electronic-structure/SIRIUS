@@ -20,7 +20,6 @@
 /** \file evp_solver.h
  *
  *  \brief Contains definition and implementaiton of various eigenvalue solver interfaces.
- *
  */
 
 #ifndef __EVP_SOLVER_H__

@@ -17,17 +17,17 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/** \file descriptors.h
+ *
+ *  \brief Descriptors for various data structures
+ */
+
 #ifndef __DESCRIPTORS_H__
 #define __DESCRIPTORS_H__
 
 #include "mdarray.h"
 #include "vector3d.h"
 #include "utils.h"
-
-/** \file descriptors.h
- *
- *  \brief Descriptors for various data structures
- */
 
 /// Describes single atomic level.
 struct atomic_level_descriptor

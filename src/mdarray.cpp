@@ -17,6 +17,11 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/** \file mdarray.cpp
+ *   
+ *  \brief Contains static variables for memory counting.
+ */
+
 #include "mdarray.h"
 
 std::atomic<int64_t> mdarray_mem_count;
