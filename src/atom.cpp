@@ -63,12 +63,12 @@ void Atom::init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_
         h_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size());
         h_radial_integrals_.allocate();
         
-        //veff_.set_dimensions(lmmax, type()->num_mt_points());
+        veff_.set_dimensions(lmmax, type()->num_mt_points());
         
         b_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size(), num_mag_dims_);
         b_radial_integrals_.allocate();
         
-        //for (int j = 0; j < 3; j++) beff_[j].set_dimensions(lmmax, type()->num_mt_points());
+        for (int j = 0; j < 3; j++) beff_[j].set_dimensions(lmmax, type()->num_mt_points());
 
         occupation_matrix_.set_dimensions(16, 16, 2, 2);
         occupation_matrix_.allocate();
@@ -122,12 +122,12 @@ void Atom::generate_radial_integrals(MPI_Comm& comm)
                 int l2 = type()->indexr(i2).l;
                 
                 /* multiply potential by a radial function */
-                for (int ir = 0; ir < nmtp; ir++) vrf_spline[0][ir] = symmetry_class()->radial_function(ir, i2) * (*veff_)(lm, ir);
+                for (int ir = 0; ir < nmtp; ir++) vrf_spline[0][ir] = symmetry_class()->radial_function(ir, i2) * veff_(lm, ir);
                 vrf_spline[0].interpolate();
                 /* multiply magnetic field by a radial function */
                 for (int j = 0; j < num_mag_dims_; j++)
                 {
-                    for (int ir = 0; ir < nmtp; ir++) vrf_spline[1 + j][ir] = symmetry_class()->radial_function(ir, i2) * (*beff_[j])(lm, ir);
+                    for (int ir = 0; ir < nmtp; ir++) vrf_spline[1 + j][ir] = symmetry_class()->radial_function(ir, i2) * beff_[j](lm, ir);
                     vrf_spline[1 + j].interpolate();
                 }
                 
@@ -160,87 +160,6 @@ void Atom::generate_radial_integrals(MPI_Comm& comm)
     Platform::reduce(h_radial_integrals_.ptr(), (int)h_radial_integrals_.size(), comm, 0);
     if (num_mag_dims_) Platform::reduce(b_radial_integrals_.ptr(), (int)b_radial_integrals_.size(), comm, 0);
 }
-
-//== void Atom::generate_radial_integrals()
-//== {
-//==     Timer t("sirius::Atom::generate_radial_integrals");
-//==     
-//==     int lmmax = Utils::lmmax(lmax_pot_);
-//==     int nmtp = type()->num_mt_points();
-//== 
-//==     std::vector<int> l_by_lm = Utils::l_by_lm(lmax_pot_);
-//== 
-//==     h_radial_integrals_.zero();
-//==     if (num_mag_dims_) b_radial_integrals_.zero();
-//==     
-//==     // copy spherical integrals
-//==     for (int i2 = 0; i2 < type()->indexr().size(); i2++)
-//==     {
-//==         for (int i1 = 0; i1 < type()->indexr().size(); i1++)
-//==             h_radial_integrals_(0, i1, i2) = symmetry_class()->h_spherical_integral(i1, i2);
-//==     }
-//== 
-//==     #pragma omp parallel default(shared)
-//==     {
-//==         Spline<double> s(type()->radial_grid());
-//==         std::vector<double> v(nmtp);
-//== 
-//==         #pragma omp for
-//==         for (int lm = 1; lm < lmmax; lm++)
-//==         {
-//==             int l = l_by_lm[lm];
-//==             for (int i2 = 0; i2 < type()->indexr().size(); i2++)
-//==             {
-//==                 int l2 = type()->indexr(i2).l;
-//==                 for (int ir = 0; ir < nmtp; ir++) v[ir] = symmetry_class()->radial_function(ir, i2) * (*veff_)(lm, ir);
-//==                 
-//==                 for (int i1 = 0; i1 <= i2; i1++)
-//==                 {
-//==                     int l1 = type()->indexr(i1).l;
-//==                     if ((l + l1 + l2) % 2 == 0)
-//==                     {
-//==                         for (int ir = 0; ir < nmtp; ir++) s[ir] = symmetry_class()->radial_function(ir, i1) * v[ir];
-//==                         
-//==                         s.interpolate();
-//==                         h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = s.integrate(2);
-//==                     }
-//==                 }
-//==             }
-//==         }
-//==     }
-//== 
-//==     for (int j = 0; j < num_mag_dims_; j++)
-//==     {
-//==         #pragma omp parallel default(shared)
-//==         {
-//==             Spline<double> s(type()->radial_grid());
-//==             std::vector<double> v(nmtp);
-//== 
-//==             #pragma omp for
-//==             for (int lm = 0; lm < lmmax; lm++)
-//==             {
-//==                 int l = l_by_lm[lm];
-//==                 for (int i2 = 0; i2 < type()->indexr().size(); i2++)
-//==                 {
-//==                     int l2 = type()->indexr(i2).l;
-//==                     for (int ir = 0; ir < nmtp; ir++) v[ir] = symmetry_class()->radial_function(ir, i2) * (*beff_[j])(lm, ir);
-//==                     
-//==                     for (int i1 = 0; i1 <= i2; i1++)
-//==                     {
-//==                         int l1 = type()->indexr(i1).l;
-//==                         if ((l + l1 + l2) % 2 == 0)
-//==                         {
-//==                             for (int ir = 0; ir < nmtp; ir++) s[ir] = symmetry_class()->radial_function(ir, i1) * v[ir];
-//==                             
-//==                             s.interpolate();
-//==                             b_radial_integrals_(lm, i1, i2, j) = b_radial_integrals_(lm, i2, i1, j) = s.integrate(2);
-//==                         }
-//==                     }
-//==                 }
-//==             }
-//==         }
-//==     }
-//== }
 
 }
 

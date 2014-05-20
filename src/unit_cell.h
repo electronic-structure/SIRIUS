@@ -141,7 +141,7 @@ class Unit_cell
 
         electronic_structure_method_t esm_type_;
 
-        MPI_group mpi_group_atom_;
+        MPI_comm_bundle mpi_atoms_;
         
         splindex<block> spl_atoms_;
 
@@ -217,9 +217,6 @@ class Unit_cell
         void add_atom_type(const std::string label, const std::string file_name, 
                            electronic_structure_method_t esm_type);
         
-        //== /// Add new empty atom type to the list of atom types.
-        //== void add_atom_type(const std::string label);
-        
         /// Add new atom to the list of atom types.
         void add_atom(const std::string label, double* position, double* vector_field);
 
@@ -245,7 +242,8 @@ class Unit_cell
         
         /// Set lattice vectors.
         /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the
-            unit cell volume. */
+         *  unit cell volume. 
+         */
         void set_lattice_vectors(double* a1, double* a2, double* a3);
        
         /// Find the cluster of nearest neighbours around each atom
@@ -257,8 +255,6 @@ class Unit_cell
 
         void generate_radial_integrals();
         
-        //void solve_free_atoms();
-
         std::string chemical_formula();
 
         int atom_id_by_position(vector3d<double> position__)

@@ -1,5 +1,3 @@
-// This file is part of SIRIUS
-//
 // Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
@@ -19,37 +17,37 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/** \file mpi_grid.h
+ *
+ *  \brief Contains declaration and implementation of MPI_grid class.
+ *
+ */
+
 #ifndef __MPI_GRID_H__
 #define __MPI_GRID_H__
-
-/** \file mpi_grid.h
-
-    \brief Interface to MPI cartesian grids
-
-    The following terminology is used. Suppose we have a 4x5 grid of MPI ranks. We say it's a two-\em dimensional
-    grid with the first dimension of the size 4 and the second dimensoion of the size 5. The \em actual number of
-    grid dimensions is two, however we may also consider the grid as being a D-dimensional (D >= 2) with implicit 
-    dimension sizes equal to one, e.g. 4x5 := 4x5x1x1x1... The communication happens along single or multiple 
-    \em directions along the grid dimensions. We specify directions wth bits, eg. directions=00000101 reads as 
-    "communication along 1-st and 3-rd dimensions".
-*/
-
-/// MPI grid interface
-/** \image html mpi_grid_comm.png "Communication along dimension d0 (between ranks of d0)." 
-    In the provided example the corresponding communicator is MPI_grid::communicator(1 << d0), where d0 is the integer 
-    index of dimension. */
 
 #include <mpi.h>
 #include "error_handling.h"
 
+/// MPI grid interface
+/** The following terminology is used. Suppose we have a 4x5 grid of MPI ranks. We say it's a two-\em dimensional
+ *  grid with the first dimension of the size 4 and the second dimensoion of the size 5. The \em actual number of
+ *  grid dimensions is two, however we may also consider the grid as being a D-dimensional (D >= 2) with implicit 
+ *  dimension sizes equal to one, e.g. 4x5 := 4x5x1x1x1... The communication happens along single or multiple 
+ *  \em directions along the grid dimensions. We specify directions wth bits, eg. directions=00000101 reads as 
+ *  "communication along 1-st and 3-rd dimensions".
+ *  \image html mpi_grid_comm.png "Communication along dimension d0 (between ranks of d0)." 
+ *  In the provided example the corresponding communicator is MPI_grid::communicator(1 << d0), where d0 is the integer 
+ *   index of dimension. 
+ */
 class MPI_grid
 {
     private:
         
-        /// dimensions of the grid
+        /// Dimensions of the grid.
         std::vector<int> dimensions_;
 
-        /// coordinates of the MPI rank in the grid
+        /// Coordinates of the MPI rank in the grid.
         std::vector<int> coordinates_;
 
         /// parent communicator
@@ -341,25 +339,30 @@ class MPI_grid
         }
 };
 
-class MPI_group
+/// A bundle of MPI communicators.
+/** Each MPI rank is assigned to one of the MPI subgroups. */
+class MPI_comm_bundle
 {
     private:
         
+        /// MPI subgroup communicator
         MPI_Comm communicator_;
-
-        int num_groups_;
-
-        int group_id_;
+        
+        /// Total number of communicators.
+        int size_;
+        
+        /// ID of a communication subgroup.
+        int id_;
 
     public:
         
-        MPI_group() : communicator_(MPI_COMM_NULL), num_groups_(-1), group_id_(-1)
+        MPI_comm_bundle() : communicator_(MPI_COMM_NULL), size_(-1), id_(-1)
         {
         }
 
-        ~MPI_group()
+        ~MPI_comm_bundle()
         {
-            if (communicator_ != MPI_COMM_NULL) MPI_Comm_free(&communicator_);
+            finalize();
         }
 
         void finalize()
@@ -368,27 +371,34 @@ class MPI_group
             communicator_ = MPI_COMM_NULL;
         }
         
-        void split(int max_num_groups, MPI_Comm base_comm = MPI_COMM_WORLD)
+        /// Split parent communicator into bundle of smaller communicators with possibly different sizes. 
+        void split(int max_size_, MPI_Comm base_comm = MPI_COMM_WORLD)
         {
-            num_groups_ = std::min(Platform::num_mpi_ranks(base_comm), max_num_groups);
+            /* number of communicators can't be larger than the number of MPI ranks */
+            size_ = std::min(Platform::num_mpi_ranks(base_comm), max_size_);
             int rank = Platform::mpi_rank(base_comm);
-            group_id_ = rank % num_groups_;
-            MPI_Comm_split(base_comm, group_id_, rank, &communicator_);
+            /* assign ID in cyclic fasion */
+            id_ = rank % size_;
+            /* split parent communicator */
+            MPI_Comm_split(base_comm, id_, rank, &communicator_);
         }
-
+        
+        /// Return sub-communicator.
         inline MPI_Comm& communicator()
         {
             return communicator_;
         }
 
-        inline int num_groups()
+        /// Return size of the communicator bundle.
+        inline int size()
         {
-            return num_groups_;
+            return size_;
         }
 
-        inline int group_id()
+        /// Return id of a subgroup for a given MPI rank.
+        inline int id()
         {
-            return group_id_;
+            return id_;
         }
 };
 

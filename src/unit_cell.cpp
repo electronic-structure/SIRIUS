@@ -346,9 +346,25 @@ bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
 
 void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
 {
-    //======================
-    // initialize atom types
-    //======================
+    /* split number of atom between all MPI ranks */
+    spl_num_atoms_ = splindex<block>(num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+
+    // TODO: this is unreadable and must be improved
+    if (num_atoms() != 0)
+    {
+        mpi_atoms_.split(num_atoms());
+        spl_atoms_ = splindex<block>(num_atoms(), mpi_atoms_.size(), mpi_atoms_.id());
+        for (int ia = 0; ia < num_atoms(); ia++)
+        {
+            int rank = spl_num_atoms().location(_splindex_rank_, ia);
+            if (Platform::mpi_rank() == rank)
+            {
+                if (Platform::mpi_rank(mpi_atoms_.communicator()) != 0) error_local(__FILE__, __LINE__, "wrong root rank");
+            }
+        }
+    }
+
+    /* initialize atom types */
     max_num_mt_points_ = 0;
     max_mt_basis_size_ = 0;
     max_mt_radial_basis_size_ = 0;
@@ -366,9 +382,7 @@ void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
         offs_lo += atom_type(iat)->mt_lo_basis_size(); 
     }
     
-    //=================
-    // find the charges
-    //=================
+    /* find the charges */
     total_nuclear_charge_ = 0;
     num_core_electrons_ = 0;
     num_valence_electrons_ = 0;
@@ -379,10 +393,8 @@ void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
         num_valence_electrons_ += atom(i)->type()->num_valence_electrons();
     }
     num_electrons_ = num_core_electrons_ + num_valence_electrons_;
-   
-    //=================
-    // initialize atoms
-    //=================
+    
+    /* initialize atoms */
     mt_basis_size_ = 0;
     mt_aw_basis_size_ = 0;
     mt_lo_basis_size_ = 0;
@@ -398,23 +410,6 @@ void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
 
     update();
             
-    spl_num_atoms_ = splindex<block>(num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
-
-    // TODO: this is unreadable and must be improved
-    if (num_atoms() != 0)
-    {
-        mpi_group_atom_.split(num_atoms());
-        spl_atoms_ = splindex<block>(num_atoms(), mpi_group_atom_.num_groups(), mpi_group_atom_.group_id());
-        for (int ia = 0; ia < num_atoms(); ia++)
-        {
-            int rank = spl_num_atoms().location(_splindex_rank_, ia);
-            if (Platform::mpi_rank() == rank)
-            {
-                if (Platform::mpi_rank(mpi_group_atom_.communicator()) != 0) error_local(__FILE__, __LINE__, "wrong root rank");
-            }
-        }
-    }
-
     if (esm_type_ == ultrasoft_pseudopotential)
     {
         assert(mt_basis_size_ == mt_lo_basis_size_); // in uspp those are identical because there are now APWs
@@ -537,7 +532,7 @@ void Unit_cell::clear()
 
     equivalent_atoms_.clear();
 
-    mpi_group_atom_.finalize();
+    mpi_atoms_.finalize();
 }
 
 void Unit_cell::print_info()
@@ -969,7 +964,7 @@ void Unit_cell::generate_radial_integrals()
     for (int ialoc = 0; ialoc < spl_atoms_.local_size(); ialoc++)
     {
         int ia = spl_atoms_[ialoc];
-        atom(ia)->generate_radial_integrals(mpi_group_atom_.communicator());
+        atom(ia)->generate_radial_integrals(mpi_atoms_.communicator());
     }
     
     for (int ia = 0; ia < num_atoms(); ia++)
@@ -978,27 +973,6 @@ void Unit_cell::generate_radial_integrals()
         atom(ia)->sync_radial_integrals(rank);
     }
 }
-
-//== void Unit_cell::solve_free_atoms()
-//== {
-//==     Timer t("sirius::Unit_cell::solve_free_atoms");
-//== 
-//==     //splindex<block> spl_num_atom_types(num_atom_types(), Platform::num_mpi_ranks(), Platform::mpi_rank());
-//== 
-//==     //== std::vector<double> enu;
-//==     //== for (int i = 0; i < spl_num_atom_types.local_size(); i++)
-//==     //==     atom_type(spl_num_atom_types[i])->solve_free_atom(1e-6, 1e-4, 1e-4, enu);
-//== 
-//==     //== for (int i = 0; i < num_atom_types(); i++)
-//==     //== {
-//==     //==     int rank = spl_num_atom_types.location(_splindex_rank_, i);
-//==     //==     atom_type(i)->sync_free_atom(rank);
-//==     //== }
-//==     for (int i = 0; i < num_atom_types(); i++)
-//==     {
-//==         atom_type(i)->init_free_atom();
-//==     }
-//== }
 
 std::string Unit_cell::chemical_formula()
 {
