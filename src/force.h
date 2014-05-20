@@ -25,6 +25,13 @@
 #ifndef __FORCE_H__
 #define __FORCE_H__
 
+#include "global.h"
+#include "k_point.h"
+#include "band.h"
+#include "potential.h"
+#include "density.h"
+#include "mdarray.h"
+
 namespace sirius
 {
 
@@ -53,8 +60,6 @@ class Force
 
         static void total_force(Global& parameters_, Potential* potential, Density* density, K_set* ks, mdarray<double, 2>& force);
 };
-
-#include "force.hpp"
 
 }
 

@@ -17,10 +17,14 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file force.hpp
+/** \file force.cpp
  *   
  *  \brief Contains implementation of sirius::Force class.
  */
+ 
+#include "force.h"
+
+namespace sirius {
 
 void Force::compute_dmat(Global& parameters_, K_point* kp, mdarray<double_complex, 2>& dm)
 {
@@ -434,5 +438,7 @@ void Force::total_force(Global& parameters_, Potential* potential, Density* dens
     {
         for (int x = 0; x < 3; x++) force(x, ia) += (forcehf(x, ia) + forcerho(x, ia));
     }
+}
+
 }
 
