@@ -22,6 +22,9 @@
  *  \brief Contains definition of templated blas class.
  */
 
+#ifndef __BLAS_H__
+#define __BLAS_H__
+
 template<processing_unit_t> 
 class blas;
 
@@ -78,3 +81,5 @@ class blas<gpu>
                          T* b, int32_t ldb, T* c, int32_t ldc);
 };
 #endif
+
+#endif // __BLAS_H__

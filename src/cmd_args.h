@@ -22,6 +22,9 @@
  *  \brief Contains definition and implementation of cmd_args class.
  */
 
+#ifndef __CMD_ARGS_H__
+#define __CMD_ARGS_H__
+
 #include "vector3d.h"
 
 /// Simple command line arguments handler.
@@ -187,4 +190,5 @@ vector3d<double> cmd_args::value< vector3d<double> >(const std::string key__)
     return v;
 }
 
+#endif // __CMD_ARGS_H__
 
