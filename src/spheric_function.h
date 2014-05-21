@@ -19,7 +19,8 @@
 
 /** \file spheric_function.h
  *   
- *  \brief Contains declaration and implementation of sirius::Spheric_function class.
+ *  \brief Contains declaration and implementation of sirius::Spheric_function and 
+ *         sirius::Spheric_function_gradient classes.
  */
 
 #ifndef __SPHERIC_FUNCTION_H__
@@ -233,6 +234,7 @@ Spheric_function<T> laplacian(Spheric_function<T>& f)
     return g;
 }
 
+/// Gradient of a spheric function.
 template <typename T>
 class Spheric_function_gradient
 {

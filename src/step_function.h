@@ -1,6 +1,4 @@
-// This file is part of SIRIUS
-//
-// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -19,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/** \file step_function.h
+ *
+ *  \brief Contains definition and partial implementation of sirius::Step_function class. 
+ */
+
 #ifndef __STEP_FUNCTION_H__
 #define __STEP_FUNCTION_H__
-
-/** \file step_function.h
-
-    \brief Contains definition and partial implementation of sirius::Step_function class. 
-*/
 
 #include "unit_cell.h"
 #include "reciprocal_lattice.h"
@@ -34,40 +32,40 @@ namespace sirius {
 
 /// Unit step function is defined to be 1 in the interstitial and 0 inside muffin-tins.
 /** Unit step function is constructed from it's plane-wave expansion coefficients which are computed
-    analytically:
-    \f[
-        \Theta({\bf r}) = \sum_{\bf G} \Theta({\bf G}) e^{i{\bf Gr}},
-    \f]
-    where
-    \f[
-        \Theta({\bf G}) = \frac{1}{\Omega} \int \Theta({\bf r}) e^{-i{\bf Gr}} d{\bf r} = 
-            \frac{1}{\Omega} \int_{\Omega} e^{-i{\bf Gr}} d{\bf r} - \frac{1}{\Omega} \int_{MT} e^{-i{\bf Gr}} d{\bf r} = 
-            \delta_{\bf G, 0} - \sum_{\alpha} \frac{1}{\Omega} \int_{MT_{\alpha}} e^{-i{\bf Gr}} d{\bf r}  
-    \f]
-    Integral of a plane-wave over the muffin-tin volume is taken using the spherical expansion of the plane-wave 
-    around central point \f$ \tau_{\alpha} \f$:
-    \f[
-        \int_{MT_{\alpha}} e^{-i{\bf Gr}} d{\bf r} = 
-            e^{-i{\bf G\tau_{\alpha}}} \int_{MT_{\alpha}} 4\pi \sum_{\ell m} (-i)^{\ell} j_{\ell}(Gr) 
-            Y_{\ell m}(\hat {\bf G}) Y_{\ell m}^{*}(\hat {\bf r}) r^2 \sin \theta dr d\phi d\theta
-    \f]
-    In the above integral only \f$ \ell=m=0 \f$ term survive. So we have:
-    \f[
-        \int_{MT_{\alpha}} e^{-i{\bf Gr}} d{\bf r} = 4\pi e^{-i{\bf G\tau_{\alpha}}} \Theta(\alpha, G)
-    \f]
-    where
-    \f[
-        \Theta(\alpha, G) = \int_{0}^{R_{\alpha}} \frac{\sin(Gr)}{Gr} r^2 dr = 
-            \left\{ \begin{array}{ll} \displaystyle R_{\alpha}^3 / 3 & G=0 \\
-            \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
-    \f]
-    are the so-called step function form factors. With this we have a final expression for the plane-wave coefficients 
-    of the unit step function:
-    \f[
-        \Theta({\bf G}) = \delta_{\bf G, 0} - \sum_{\alpha} \frac{4\pi}{\Omega} e^{-i{\bf G\tau_{\alpha}}} 
-            \Theta(\alpha, G)
-    \f]
-*/
+ *  analytically:
+ *  \f[
+ *      \Theta({\bf r}) = \sum_{\bf G} \Theta({\bf G}) e^{i{\bf Gr}},
+ *  \f]
+ *  where
+ *  \f[
+ *      \Theta({\bf G}) = \frac{1}{\Omega} \int \Theta({\bf r}) e^{-i{\bf Gr}} d{\bf r} = 
+ *          \frac{1}{\Omega} \int_{\Omega} e^{-i{\bf Gr}} d{\bf r} - \frac{1}{\Omega} \int_{MT} e^{-i{\bf Gr}} d{\bf r} = 
+ *          \delta_{\bf G, 0} - \sum_{\alpha} \frac{1}{\Omega} \int_{MT_{\alpha}} e^{-i{\bf Gr}} d{\bf r}  
+ *  \f]
+ *  Integral of a plane-wave over the muffin-tin volume is taken using the spherical expansion of the plane-wave 
+ *  around central point \f$ \tau_{\alpha} \f$:
+ *  \f[
+ *      \int_{MT_{\alpha}} e^{-i{\bf Gr}} d{\bf r} = 
+ *          e^{-i{\bf G\tau_{\alpha}}} \int_{MT_{\alpha}} 4\pi \sum_{\ell m} (-i)^{\ell} j_{\ell}(Gr) 
+ *          Y_{\ell m}(\hat {\bf G}) Y_{\ell m}^{*}(\hat {\bf r}) r^2 \sin \theta dr d\phi d\theta
+ *  \f]
+ *  In the above integral only \f$ \ell=m=0 \f$ term survive. So we have:
+ *  \f[
+ *      \int_{MT_{\alpha}} e^{-i{\bf Gr}} d{\bf r} = 4\pi e^{-i{\bf G\tau_{\alpha}}} \Theta(\alpha, G)
+ *  \f]
+ *  where
+ *  \f[
+ *      \Theta(\alpha, G) = \int_{0}^{R_{\alpha}} \frac{\sin(Gr)}{Gr} r^2 dr = 
+ *          \left\{ \begin{array}{ll} \displaystyle R_{\alpha}^3 / 3 & G=0 \\
+ *          \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
+ *  \f]
+ *  are the so-called step function form factors. With this we have a final expression for the plane-wave coefficients 
+ *  of the unit step function:
+ *  \f[
+ *      \Theta({\bf G}) = \delta_{\bf G, 0} - \sum_{\alpha} \frac{4\pi}{\Omega} e^{-i{\bf G\tau_{\alpha}}} 
+ *          \Theta(\alpha, G)
+ *  \f]
+ */
 class Step_function
 {
     private:
@@ -91,12 +89,12 @@ class Step_function
 
         /// Get \f$ \Theta(\alpha, G) \f$ form factors of the step function.
         /**
-            \f[
-                \Theta(\alpha, G) = \int_{0}^{R_{\alpha}} \frac{\sin(Gr)}{Gr} r^2 dr = 
-                    \left\{ \begin{array}{ll} \displaystyle R_{\alpha}^3 / 3 & G=0 \\
-                    \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
-            \f]
-        */
+         *  \f[
+         *      \Theta(\alpha, G) = \int_{0}^{R_{\alpha}} \frac{\sin(Gr)}{Gr} r^2 dr = 
+         *          \left\{ \begin{array}{ll} \displaystyle R_{\alpha}^3 / 3 & G=0 \\
+         *          \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
+         *  \f]
+         */
         void get_step_function_form_factors(mdarray<double, 2>& ffac);
        
         /// Return plane-wave coefficient of the step function.

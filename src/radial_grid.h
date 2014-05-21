@@ -17,6 +17,11 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/** \file radial_grid.h
+ *
+ *  \brief Contains declaraion and partial implementation of sirius::Radial_grid class.
+ */
+
 #ifndef __RADIAL_GRID_H__
 #define __RADIAL_GRID_H__
 
@@ -26,11 +31,6 @@
 #include "typedefs.h"
 #include "error_handling.h"
 #include "utils.h"
-
-/** \file radial_grid.h
- *
- *  \brief Contains declaraion and partial implementation of sirius::Radial_grid class.
- */
 
 namespace sirius {
 

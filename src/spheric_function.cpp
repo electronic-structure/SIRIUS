@@ -19,7 +19,7 @@
 
 /** \file spheric_function.cpp
  *   
- *  \brief Contains grad() function.
+ *  \brief Contains gradient() and operator*().
  */
 
 #include "sht.h"

@@ -1,7 +1,37 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file smooth_periodic_function.h
+ *   
+ *  \brief Contains declaration and implementation of sirius::Smooth_periodic_function and 
+ *         sirius::Smooth_periodic_function_gradient classes.
+ */
+
 #include "reciprocal_lattice.h"
 
 namespace sirius {
 
+/// Smooth periodic function on the real-space mesh or plane-wave domain.
+/** Main purpose of this class is to provide a storage and representation of a smooth (Fourier-transformable)
+ *  periodic function. The function is stored as a set of values on the regular grid (function_domain_t = spatial) or
+ *  a set of plane-wave coefficients (function_domain_t = spectral).
+ */
 template <function_domain_t domain_t, typename T = double_complex>
 class Smooth_periodic_function
 {
@@ -41,15 +71,15 @@ class Smooth_periodic_function
             data_.allocate();
         }
 
-        Smooth_periodic_function(Reciprocal_lattice* reciprocal_lattice__, size_t size) : reciprocal_lattice_(reciprocal_lattice__)
+        Smooth_periodic_function(Reciprocal_lattice* reciprocal_lattice__, size_t size__) : reciprocal_lattice_(reciprocal_lattice__)
         {
-            if (domain_t == spatial) data_.set_dimensions(size);
+            if (domain_t == spatial) data_.set_dimensions(size__);
             data_.allocate();
         }
 
-        inline T& operator()(const int idx)
+        inline T& operator()(const int idx__)
         {
-            return data_(idx);
+            return data_(idx__);
         }
 
         Reciprocal_lattice* reciprocal_lattice()
@@ -115,6 +145,7 @@ Smooth_periodic_function<spectral> laplacian(Smooth_periodic_function<spectral>&
     return g;
 }
 
+/// Gradient of the smooth periodic function.
 template<function_domain_t domaint_t, typename T = double_complex>
 class Smooth_periodic_function_gradient
 {
@@ -134,9 +165,9 @@ class Smooth_periodic_function_gradient
         {
         }
 
-        Smooth_periodic_function<domaint_t, T>& operator[](const int idx)
+        Smooth_periodic_function<domaint_t, T>& operator[](const int idx__)
         {
-            return grad_[idx];
+            return grad_[idx__];
         }
 
         inline Reciprocal_lattice* reciprocal_lattice()

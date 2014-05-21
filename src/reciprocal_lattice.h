@@ -1,10 +1,29 @@
-#ifndef __RECIPROCAL_LATTICE_H__
-#define __RECIPROCAL_LATTICE_H__
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file reciprocal_lattice.h
+ *
+ *  \brief Contains definition and partial implementation of sirius::Reciprocal_lattice class. 
+ */
 
-    \brief Contains definition and partial implementation of sirius::Reciprocal_lattice class. 
-*/
+#ifndef __RECIPROCAL_LATTICE_H__
+#define __RECIPROCAL_LATTICE_H__
 
 #include "unit_cell.h"
 #include "fft3d.h"
@@ -12,6 +31,7 @@
 
 namespace sirius {
 
+/// Reciprocal lattice of the crystal.
 class Reciprocal_lattice
 {
     private:
@@ -83,8 +103,11 @@ class Reciprocal_lattice
 
     public:
         
-        Reciprocal_lattice(Unit_cell* unit_cell__, electronic_structure_method_t esm_type__, double pw_cutoff__, 
-                           double gk_cutoff__, int lmax__);
+        Reciprocal_lattice(Unit_cell* unit_cell__, 
+                           electronic_structure_method_t esm_type__, 
+                           double pw_cutoff__, 
+                           double gk_cutoff__, 
+                           int lmax__);
 
         ~Reciprocal_lattice();
   

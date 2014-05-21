@@ -1,4 +1,4 @@
-// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -17,6 +17,11 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/** \file radial_solver.h
+ *   
+ *  \brief Contains declaration and partial implementation of sirius::Radial_solver class.
+ */
+
 #ifndef __RADIAL_SOLVER_H__
 #define __RADIAL_SOLVER_H__
 
@@ -24,11 +29,6 @@
 #include "radial_grid.h"
 #include "spline.h"
 #include "constants.h"
-
-/** \file radial_solver.h
- *   
- *  \brief Contains declaration and partial implementation of sirius::Radial_solver class.
- */
 
 namespace sirius {
 

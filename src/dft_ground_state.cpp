@@ -26,7 +26,7 @@
 
 namespace sirius {
 
-inline double DFT_ground_state::energy_enuc()
+double DFT_ground_state::energy_enuc()
 {
     double enuc = 0.0;
     if (parameters_.unit_cell()->full_potential())
@@ -44,7 +44,7 @@ inline double DFT_ground_state::energy_enuc()
     return enuc;
 }
 
-inline double DFT_ground_state::core_eval_sum()
+double DFT_ground_state::core_eval_sum()
 {
     double sum = 0.0;
     for (int ic = 0; ic < parameters_.unit_cell()->num_atom_symmetry_classes(); ic++)
