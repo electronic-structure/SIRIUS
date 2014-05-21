@@ -107,6 +107,7 @@ extern "C" void Cblacs_gridmap(int* ConTxt, int* usermap, int ldup, int nprow0, 
 extern "C" void Cblacs_gridinfo(int ConTxt, int* nprow, int* npcol, int* myrow, int* mycol);
 extern "C" void Cfree_blacs_system_handle(int ISysCtxt);
 extern "C" void Cblacs_barrier(int ConTxt, const char* scope);
+extern "C" void Cblacs_gridexit(int ConTxt);
 
 extern "C" void FORTRAN(descinit)(int32_t* desc, int32_t* m, int32_t* n, int32_t* mb, int32_t* nb, int32_t* irsrc, int32_t* icsrc, 
                                   int32_t* ictxt, int32_t* lld, int32_t* info);

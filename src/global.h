@@ -123,7 +123,10 @@ class Global
         /// additional splitting of spinor wave-functions along rows of the MPI grid
         splindex<block> sub_spl_spinor_wf_;
 
-        /// BLACS communication context for an eigen-value solver and related operations
+        /// BLACS communication handler for an eigen-value solver and related operations
+        int blacs_handler_;
+
+        /// BLACS context for an eigen-value solver and related operations
         int blacs_context_;
         
         /// smearing function width
@@ -190,8 +193,6 @@ class Global
             #ifdef _SCALAPACK_
             if (linalg<scalapack>::cyclic_block_size() <= 0) // TODO: get rid of this
                 linalg<scalapack>::set_cyclic_block_size(cyclic_block_size_);
-
-            //splindex<block_cyclic>::set_cyclic_block_size(linalg<scalapack>::cyclic_block_size());
             #endif
         }
             
@@ -659,7 +660,7 @@ class Global
         }
 
         #ifdef _SCALAPACK_
-        int create_blacs_context();
+        void create_blacs_context();
         #endif
 
         inline standard_evp* std_evp_solver()

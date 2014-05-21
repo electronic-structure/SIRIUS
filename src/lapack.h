@@ -103,26 +103,33 @@ class linalg<scalapack>
             cyclic_block_size_ = cyclic_block_size__;
         }
 
-        /// Create BLACS context
-        static int create_blacs_context(MPI_Comm comm)
+        /// Create BLACS handler.
+        static int create_blacs_handler(MPI_Comm comm)
         {
             return Csys2blacs_handle(comm);
         }
+        
+        /// Free BLACS handler.
+        static void free_blacs_handler(int blacs_handler)
+        {
+            Cfree_blacs_system_handle(blacs_handler);
+        }
 
-        /// create grid of MPI ranks
+        /// Create BLACS context for the grid of MPI ranks
         static void gridmap(int* blacs_context, int* map, int ld, int nrow, int ncol)
         {
             Cblacs_gridmap(blacs_context, map, ld, nrow, ncol);
+        }
+        
+        /// Destroy BLACS context.
+        static void gridexit(int blacs_context)
+        {
+            Cblacs_gridexit(blacs_context);
         }
 
         static void gridinfo(int blacs_context, int* nrow, int* ncol, int* irow, int* icol)
         {
             Cblacs_gridinfo(blacs_context, nrow, ncol, irow, icol);
-        }
-
-        static void free_blacs_context(int blacs_context)
-        {
-            Cfree_blacs_system_handle(blacs_context);
         }
 
         static void descinit(int32_t* desc, int32_t m, int32_t n, int32_t mb, int32_t nb, int32_t irsrc, int32_t icsrc, int32_t ictxt, int32_t lld)

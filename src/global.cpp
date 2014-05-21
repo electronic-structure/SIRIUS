@@ -235,7 +235,7 @@ void Global::initialize()
         error_global(__FILE__, __LINE__, "not enough first-variational states");
 
     #ifdef _SCALAPACK_
-    blacs_context_ = create_blacs_context();
+    create_blacs_context();
     #endif
     
     int nrow = mpi_grid().dimension_size(_dim_row_);
@@ -389,7 +389,8 @@ void Global::clear()
     if (initialized_)
     {
         #ifdef _SCALAPACK_
-        linalg<scalapack>::free_blacs_context(blacs_context_);
+        linalg<scalapack>::gridexit(blacs_context_);
+        linalg<scalapack>::free_blacs_handler(blacs_handler_);
         #endif
         unit_cell_->clear();
         delete reciprocal_lattice_;
@@ -605,7 +606,7 @@ void Global::update()
 }
 
 #ifdef _SCALAPACK_
-int Global::create_blacs_context()
+void Global::create_blacs_context()
 {
     int nrow = mpi_grid().dimension_size(_dim_row_);
     int ncol = mpi_grid().dimension_size(_dim_col_);
@@ -615,7 +616,8 @@ int Global::create_blacs_context()
 
     int rc = (1 << _dim_row_) | (1 << _dim_col_);
 
-    int context = linalg<scalapack>::create_blacs_context(mpi_grid().communicator(rc));
+    /* create handler first */
+    blacs_handler_ = linalg<scalapack>::create_blacs_handler(mpi_grid().communicator(rc));
 
     mdarray<int, 2> map_ranks(nrow, ncol);
     for (int i = 0; i < nrow; i++)
@@ -628,11 +630,13 @@ int Global::create_blacs_context()
             map_ranks(i, j) = mpi_grid().cart_rank(mpi_grid().communicator(rc), xy);
         }
     }
-    linalg<scalapack>::gridmap(&context, map_ranks.ptr(), map_ranks.ld(), nrow, ncol);
+    /* create context */
+    blacs_context_ = blacs_handler_;
+    linalg<scalapack>::gridmap(&blacs_context_, map_ranks.ptr(), map_ranks.ld(), nrow, ncol);
 
     // check the grid
     int nrow1, ncol1, irow1, icol1;
-    linalg<scalapack>::gridinfo(context, &nrow1, &ncol1, &irow1, &icol1);
+    linalg<scalapack>::gridinfo(blacs_context_, &nrow1, &ncol1, &irow1, &icol1);
 
     if (irow != irow1 || icol != icol1 || nrow != nrow1 || ncol != ncol1) 
     {
@@ -643,8 +647,6 @@ int Global::create_blacs_context()
           << " blacs    " << irow1 << " " << icol1 << " " << nrow1 << " " << ncol1;
         error_local(__FILE__, __LINE__, s);
     }
-
-    return context;
 }
 #endif
 
