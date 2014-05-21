@@ -1136,15 +1136,15 @@ void FORTRAN(sirius_delete_kset)(int32_t* kset_id)
 void FORTRAN(sirius_get_local_num_kpoints)(int32_t* kset_id, int32_t* nkpt_loc)
 {
     log_function_enter(__func__);
-    *nkpt_loc = kset_list[*kset_id]->spl_num_kpoints().local_size();
+    *nkpt_loc = (int)kset_list[*kset_id]->spl_num_kpoints().local_size();
     log_function_exit(__func__);
 }
 
 void FORTRAN(sirius_get_local_kpoint_rank_and_offset)(int32_t* kset_id, int32_t* ik, int32_t* rank, int32_t* ikloc)
 {
     log_function_enter(__func__);
-    *rank = kset_list[*kset_id]->spl_num_kpoints().location(_splindex_rank_, *ik - 1);
-    *ikloc = kset_list[*kset_id]->spl_num_kpoints().location(_splindex_offs_, *ik - 1) + 1;
+    *rank = kset_list[*kset_id]->spl_num_kpoints().local_rank(*ik - 1);
+    *ikloc = (int)kset_list[*kset_id]->spl_num_kpoints().local_index(*ik - 1) + 1;
     log_function_exit(__func__);
 }
 
@@ -1261,7 +1261,7 @@ void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* nu
 {
     log_function_enter(__func__);
     // position of processors which store a given k-point
-    int x0 = kset_list[*kset_id]->spl_num_kpoints().location(_splindex_rank_, *ik - 1);
+    int x0 = kset_list[*kset_id]->spl_num_kpoints().local_rank(*ik - 1);
     
     if (x0 == global_parameters.mpi_grid().coordinate(_dim_k_))
     {
@@ -1391,14 +1391,14 @@ void FORTRAN(sirius_get_mtgk_size)(int32_t* kset_id, int32_t* ik, int32_t* mtgk_
 void FORTRAN(sirius_get_spinor_wave_functions)(int32_t* kset_id, int32_t* ik, double_complex* spinor_wave_functions__)
 {
     log_function_enter(__func__);
-    assert(global_parameters.num_bands() == global_parameters.spl_spinor_wf().local_size());
+    assert(global_parameters.num_bands() == (int)global_parameters.spl_spinor_wf().local_size());
 
     sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
     
     mdarray<double_complex, 3> spinor_wave_functions(spinor_wave_functions__, kp->wf_size(), global_parameters.num_spins(), 
                                                 global_parameters.spl_spinor_wf().local_size());
 
-    for (int j = 0; j < global_parameters.spl_spinor_wf().local_size(); j++)
+    for (int j = 0; j < (int)global_parameters.spl_spinor_wf().local_size(); j++)
     {
         memcpy(&spinor_wave_functions(0, 0, j), &kp->spinor_wave_function(0, 0, j), 
                kp->wf_size() * global_parameters.num_spins() * sizeof(double_complex));
@@ -1796,7 +1796,7 @@ void FORTRAN(sirius_create_storage_file)(void)
 void FORTRAN(sirius_test_spinor_wave_functions)(int32_t* kset_id)
 {
     sirius::K_set* kset = kset_list[*kset_id];
-    for (int ikloc = 0; ikloc < kset->spl_num_kpoints().local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < (int)kset->spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = kset->spl_num_kpoints(ikloc);
         (*kset)[ik]->test_spinor_wave_functions(0);

@@ -146,9 +146,9 @@ void Reciprocal_lattice::init(int lmax)
         gvec_ylm_.allocate();
         
         Timer t2("sirius::Reciprocal_lattice::init|ylm_G");
-        for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
+        for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
         {
-            int ig = spl_num_gvec_[igloc];
+            int ig = (int)spl_num_gvec_[igloc];
             double rtp[3];
             SHT::spherical_coordinates(gvec_cart(ig), rtp);
             SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm_(0, igloc));
@@ -211,9 +211,9 @@ void Reciprocal_lattice::update()
     gvec_phase_factors_.set_dimensions(spl_num_gvec_.local_size(), unit_cell_->num_atoms());
     gvec_phase_factors_.allocate();
     #pragma omp parallel for
-    for (int igloc = 0; igloc < spl_num_gvec_.local_size(); igloc++)
+    for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
     {
-        int ig = spl_num_gvec_[igloc];
+        int ig = (int)spl_num_gvec_[igloc];
         for (int ia = 0; ia < unit_cell_->num_atoms(); ia++) gvec_phase_factors_(igloc, ia) = gvec_phase_factor<global>(ig, ia);
     }
 }
@@ -252,7 +252,7 @@ std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<d
     #pragma omp parallel
     for (auto it = splindex_iterator<block>(spl_ngv); it.valid(); it++)
     {
-        int ig = it.idx();
+        int ig = (int)it.idx();
         int igs = gvec_shell(ig);
 
         for (int ia = 0; ia < unit_cell_->num_atoms(); ia++)
@@ -262,7 +262,7 @@ std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<d
         }
     }
 
-    Platform::allgather(&f_pw[0], spl_ngv.global_offset(), spl_ngv.local_size());
+    Platform::allgather(&f_pw[0], (int)spl_ngv.global_offset(), (int)spl_ngv.local_size());
 
     return f_pw;
 }
@@ -304,7 +304,7 @@ void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4
         sbessel_pw<double> jl(unit_cell_, lmax);
         for (auto it = splindex_iterator<block>(spl_num_gvec_shells); it.valid(); it++)
         {
-            int igs = it.idx();
+            int igs = (int)it.idx();
             jl.load(gvec_shell_len(igs));
 
             for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
@@ -337,7 +337,7 @@ void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4
         }
     }
     int ld = (int)(qri.size(0) * qri.size(1) * qri.size(2));
-    Platform::allgather(&qri(0, 0, 0, 0), ld * spl_num_gvec_shells.global_offset(), ld * spl_num_gvec_shells.local_size());
+    Platform::allgather(&qri(0, 0, 0, 0), ld * (int)spl_num_gvec_shells.global_offset(), ld * (int)spl_num_gvec_shells.local_size());
 }
 
 void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
@@ -385,8 +385,8 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
                     std::vector<double_complex> v(lmmax);
                     for (auto it = splindex_iterator<block>(spl_num_gvec_); it.valid(); it++)
                     {
-                        int igs = gvec_shell(it.idx());
-                        int igloc = it.idx_local();
+                        int igs = gvec_shell((int)it.idx());
+                        int igloc = (int)it.idx_local();
                         for (int lm3 = 0; lm3 < lmmax; lm3++)
                         {
                             v[lm3] = conj(zilm[lm3]) * gvec_ylm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3], iat, igs);

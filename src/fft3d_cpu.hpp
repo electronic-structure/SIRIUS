@@ -245,17 +245,17 @@ class FFT3D<cpu>
 
         inline int local_size()
         {
-            return spl_fft_size_.local_size();
+            return static_cast<int>(spl_fft_size_.local_size());
         }
 
         inline int global_index(int irloc)
         {
-            return spl_fft_size_[irloc];
+            return static_cast<int>(spl_fft_size_[irloc]);
         }
 
         inline int global_offset()
         {
-            return spl_fft_size_.global_offset();
+            return static_cast<int>(spl_fft_size_.global_offset());
         }
         
         /// Direct access to the fft buffer

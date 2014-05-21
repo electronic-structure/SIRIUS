@@ -89,14 +89,15 @@ class dmatrix
         {
             num_rows_ = num_rows__;
             num_cols_ = num_cols__;
-
+            
+            int bs = 1;
             #ifdef _SCALAPACK_
-            int bs = linalg<scalapack>::cyclic_block_size();
+            bs = linalg<scalapack>::cyclic_block_size();
             linalg<scalapack>::gridinfo(blacs_context__, &num_ranks_row_, &num_ranks_col_, &rank_row_, &rank_col_);
             #endif
 
-            spl_row_ = splindex<block_cyclic>(num_rows_, num_ranks_row_, rank_row_);
-            spl_col_ = splindex<block_cyclic>(num_cols_, num_ranks_col_, rank_col_);
+            spl_row_ = splindex<block_cyclic>(num_rows_, num_ranks_row_, rank_row_, bs);
+            spl_col_ = splindex<block_cyclic>(num_cols_, num_ranks_col_, rank_col_, bs);
 
             matrix_local_.set_dimensions(spl_row_.local_size(), spl_col_.local_size());
 
@@ -134,12 +135,12 @@ class dmatrix
 
         inline int num_rows_local()
         {
-            return spl_row_.local_size();
+            return static_cast<int>(spl_row_.local_size());
         }
 
         inline int irow(int irow_loc)
         {
-            return spl_row_[irow_loc];
+            return static_cast<int>(spl_row_[irow_loc]);
         }
 
         inline int num_cols()
@@ -149,12 +150,12 @@ class dmatrix
 
         inline int num_cols_local()
         {
-            return spl_col_.local_size();
+            return static_cast<int>(spl_col_.local_size());
         }
 
         inline int icol(int icol_loc)
         {
-            return spl_col_[icol_loc];
+            return static_cast<int>(spl_col_[icol_loc]);
         }
 
         inline int* descriptor()
@@ -273,9 +274,9 @@ class dmatrix
                 for (int i = 0; i < num_ranks_row_; i++)
                 {
                     // offset of a sub-panel
-                    offsets[i] = spl_row_.local_size(rank) * spl_col.global_offset(i);
+                    offsets[i] = static_cast<int>(spl_row_.local_size(rank) * spl_col.global_offset(i));
                     // size of a sub-panel
-                    counts[i] = spl_row_.local_size(rank) * spl_col.local_size(i);
+                    counts[i] = static_cast<int>(spl_row_.local_size(rank) * spl_col.local_size(i));
                 }
 
                 // scatter local matrix between ranks
@@ -302,7 +303,7 @@ class dmatrix
         {
             sirius::Timer t("dmatrix::scatter");
 
-            // trivial case
+            /* trivial case */
             if (num_ranks_row_ * num_ranks_col_ == 1)
             {
                 full_vectors >> matrix_local_;
@@ -319,10 +320,10 @@ class dmatrix
         
             for (int rank = 0; rank < num_ranks_row_; rank++)
             {
-                // each rank allocates a subpanel
+                /* each rank allocates a subpanel */
                 mdarray<double_complex, 2> sub_panel(spl_row_.local_size(rank), spl_col.local_size());
 
-                // fill the sub-panel
+                /* fill the sub-panel */
                 for (int i = 0; i < spl_col.local_size(); i++)
                 {
                     // loop over local fraction of rows
@@ -332,16 +333,16 @@ class dmatrix
                     }
                 }
 
-                // make a table of sizes and offsets
+                /* make a table of sizes and offsets */
                 for (int i = 0; i < num_ranks_row_; i++)
                 {
-                    // offset of a sub-panel
-                    offsets[i] = spl_row_.local_size(rank) * spl_col.global_offset(i);
-                    // size of a sub-panel
-                    counts[i] = spl_row_.local_size(rank) * spl_col.local_size(i);
+                    /* offset of a sub-panel */
+                    offsets[i] = static_cast<int>(spl_row_.local_size(rank) * spl_col.global_offset(i));
+                    /* size of a sub-panel */
+                    counts[i] = static_cast<int>(spl_row_.local_size(rank) * spl_col.local_size(i));
                 }
 
-                // gather local matrix
+                /* gather local matrix */
                 Platform::gather(sub_panel.ptr(), matrix_local_.ptr(), &counts[0], &offsets[0], rank, comm_row);
             }
         }

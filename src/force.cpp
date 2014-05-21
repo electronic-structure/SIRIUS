@@ -402,7 +402,7 @@ void Force::total_force(Global& parameters_, Potential* potential, Density* dens
     force.zero();
 
     mdarray<double, 2> forcek(3, parameters_.unit_cell()->num_atoms());
-    for (int ikloc = 0; ikloc < ks->spl_num_kpoints().local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < (int)ks->spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks->spl_num_kpoints(ikloc);
         ibs_force(parameters_, ks->band(), (*ks)[ik], ffac, forcek);
@@ -416,7 +416,7 @@ void Force::total_force(Global& parameters_, Potential* potential, Density* dens
     mdarray<double, 2> forcehf(3, parameters_.unit_cell()->num_atoms());
 
     forcehf.zero();
-    for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+    for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
     {
         int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
         auto g = gradient(potential->hartree_potential_mt(ialoc));
@@ -426,7 +426,7 @@ void Force::total_force(Global& parameters_, Potential* potential, Density* dens
     
     mdarray<double, 2> forcerho(3, parameters_.unit_cell()->num_atoms());
     forcerho.zero();
-    for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+    for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
     {
         int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
         auto g = gradient(density->density_mt(ialoc));

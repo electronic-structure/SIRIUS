@@ -198,7 +198,7 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
                         int idx3 = (m + l != 0) ? type->indexb_by_l_m_order(l, m - 1, order2) : 0;
                         int idx4 = (m - l != 0) ? type->indexb_by_l_m_order(l, m + 1, order2) : 0;
 
-                        for (int ist = 0; ist < parameters_.spl_fv_states().local_size(); ist++)
+                        for (int ist = 0; ist < (int)parameters_.spl_fv_states().local_size(); ist++)
                         {
                             double_complex z1 = fv_states(offset + idx2, ist) * double(m) * sori;
                             hpsi(offset + idx1, ist, 0) += z1;

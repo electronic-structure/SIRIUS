@@ -68,7 +68,7 @@ class Mixer
         double rms_deviation()
         {
             double rms = 0.0;
-            for (int i = 0; i < spl_size_.local_size(); i++)
+            for (int i = 0; i < (int)spl_size_.local_size(); i++)
             {
                 //rms += pow(vectors_(i, offset(count_)) - vectors_(i, offset(count_ - 1)), 2);
                 rms += pow(vectors_(i, offset(count_)) - input_buffer_(i), 2);
@@ -80,11 +80,11 @@ class Mixer
 
         void mix_linear(double beta__)
         {
-            for (int i = 0; i < spl_size_.local_size(); i++)
+            for (int i = 0; i < (int)spl_size_.local_size(); i++)
                 vectors_(i, offset(count_)) = beta__ * input_buffer_(i) + (1 - beta__) * vectors_(i, offset(count_ - 1));
 
-            Platform::allgather(&vectors_(0, offset(count_)), output_buffer_.ptr(), spl_size_.global_offset(), 
-                                spl_size_.local_size());
+            Platform::allgather(&vectors_(0, offset(count_)), output_buffer_.ptr(), (int)spl_size_.global_offset(), 
+                                (int)spl_size_.local_size());
         }
 
     public:
@@ -218,7 +218,7 @@ class Broyden_mixer: public Mixer
             Timer t("sirius::Broyden_mixer::mix");
 
             /* curent residual f_k = x_k - g(x_k) */
-            for (int i = 0; i < spl_size_.local_size(); i++) 
+            for (int i = 0; i < (int)spl_size_.local_size(); i++) 
                 residuals_(i, offset(count_)) = vectors_(i, offset(count_)) - input_buffer_(i);
 
             double rms = rms_deviation();
@@ -238,7 +238,7 @@ class Broyden_mixer: public Mixer
                 { 
                     for (int j2 = 0; j2 <= j1; j2++)
                     {
-                        for (int i = 0; i < spl_size_.local_size(); i++) 
+                        for (int i = 0; i < (int)spl_size_.local_size(); i++) 
                         {
                             S(j1, j2) += residuals_(i, offset(count_ - N + j1)) * residuals_(i, offset(count_ - N + j2));
                         }
@@ -289,7 +289,7 @@ class Broyden_mixer: public Mixer
                 /* make linear combination of vectors and residuals; this is the update vector \tilda x */
                 for (int j = 0; j < N; j++)
                 {
-                    for (int i = 0; i < spl_size_.local_size(); i++) 
+                    for (int i = 0; i < (int)spl_size_.local_size(); i++) 
                     {
                         input_buffer_(i) += ((double)v2[j] * residuals_(i, offset(count_ - N + j)) + 
                                              (double)v2[j + N] * vectors_(i, offset(count_ - N + j)));
@@ -322,7 +322,7 @@ class Pulay_mixer: public Mixer
         {
             Timer t("sirius::Pulay_mixer::mix");
 
-            for (int i = 0; i < spl_size_.local_size(); i++) 
+            for (int i = 0; i < (int)spl_size_.local_size(); i++) 
                 residuals_(i, offset(count_)) = input_buffer_(i) - vectors_(i, offset(count_));
 
             int N = std::min(count_, max_history_ - 1);
@@ -336,7 +336,7 @@ class Pulay_mixer: public Mixer
                 {
                     for (int j2 = 0; j2 < N; j2++)
                     {
-                        for (int i = 0; i < spl_size_.local_size(); i++) 
+                        for (int i = 0; i < (int)spl_size_.local_size(); i++) 
                         {
                             S(j1, j2) += residuals_(i, offset(count_ - j1 - 1)) * residuals_(i, offset(count_ - j2 - 1));
                         }
@@ -370,15 +370,15 @@ class Pulay_mixer: public Mixer
                 memset(&vectors_(0, offset(count_ + 1)), 0, spl_size_.local_size() * sizeof(double));
                 for (int j = 0; j < N; j++)
                 {
-                    for (int i = 0; i < spl_size_.local_size(); i++)
+                    for (int i = 0; i < (int)spl_size_.local_size(); i++)
                     {
                         vectors_(i, offset(count_ + 1)) += s(j, N) * vectors_(i, offset(count_ - j - 1));
                         vectors_(i, offset(count_ + 1)) += beta_ * s(j, N) * residuals_(i, offset(count_ - j - 1));
                     }
                 }
 
-                Platform::allgather(&vectors_(0, offset(count_ + 1)), output_buffer_.ptr(), spl_size_.global_offset(), 
-                                              spl_size_.local_size());
+                Platform::allgather(&vectors_(0, offset(count_ + 1)), output_buffer_.ptr(), (int)spl_size_.global_offset(), 
+                                    (int)spl_size_.local_size());
 
 
                 count_++;
@@ -424,7 +424,7 @@ class Adaptive_mixer: public Mixer
                 {
                     //==double k0 = (1 - beta_) * double(j) / 10;
                     //==double k1 = (1 - beta_) * double(10 - j) / 10;
-                    for (int i = 0; i < spl_size_.local_size(); i++)
+                    for (int i = 0; i < (int)spl_size_.local_size(); i++)
                     {
                         vectors_(i, offset(count_)) = 0.5 * (1 - beta_) * vectors_(i, offset(count_ - 2)) + 
                                                       0.5 * (1 - beta_) * vectors_(i, offset(count_ - 1)) + 
@@ -433,8 +433,8 @@ class Adaptive_mixer: public Mixer
                     //==double rms = rms_deviation();
                     //==if (Platform::mpi_rank() == 0) std::cout << " j = " << j << ", rms = " << rms << std::endl;
 
-                    Platform::allgather(&vectors_(0, offset(count_)), output_buffer_.ptr(), spl_size_.global_offset(), 
-                                        spl_size_.local_size());
+                    Platform::allgather(&vectors_(0, offset(count_)), output_buffer_.ptr(), (int)spl_size_.global_offset(), 
+                                        (int)spl_size_.local_size());
                 }
                
             }

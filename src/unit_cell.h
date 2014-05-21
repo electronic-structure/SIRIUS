@@ -452,7 +452,7 @@ class Unit_cell
 
         inline int spl_num_atoms(int i)
         {
-            return spl_num_atoms_[i];
+            return static_cast<int>(spl_num_atoms_[i]);
         }
         
         inline splindex<block>& spl_num_atom_symmetry_classes()
@@ -462,7 +462,7 @@ class Unit_cell
 
         inline int spl_num_atom_symmetry_classes(int i)
         {
-            return spl_num_atom_symmetry_classes_[i];
+            return static_cast<int>(spl_num_atom_symmetry_classes_[i]);
         }
 
         inline double volume_mt()

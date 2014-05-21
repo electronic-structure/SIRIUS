@@ -77,7 +77,7 @@ class Smooth_periodic_function
             data_.allocate();
         }
 
-        inline T& operator()(const int idx__)
+        inline T& operator()(const int64_t idx__)
         {
             return data_(idx__);
         }

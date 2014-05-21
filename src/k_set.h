@@ -134,7 +134,7 @@ class K_set
         
         inline int spl_num_kpoints(int ikloc)
         {
-            return spl_num_kpoints_[ikloc];
+            return static_cast<int>(spl_num_kpoints_[ikloc]);
         }
 
         void set_band_occupancies(int ik, double* band_occupancies)

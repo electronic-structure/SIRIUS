@@ -191,7 +191,7 @@ class Global
             if (linalg<scalapack>::cyclic_block_size() <= 0) // TODO: get rid of this
                 linalg<scalapack>::set_cyclic_block_size(cyclic_block_size_);
 
-            splindex<block_cyclic>::set_cyclic_block_size(linalg<scalapack>::cyclic_block_size());
+            //splindex<block_cyclic>::set_cyclic_block_size(linalg<scalapack>::cyclic_block_size());
             #endif
         }
             
@@ -396,7 +396,7 @@ class Global
         
         inline int spl_fv_states(int icol_loc)
         {
-            return spl_fv_states_[icol_loc];
+            return static_cast<int>(spl_fv_states_[icol_loc]);
         }
 
         inline splindex<block_cyclic>& spl_spinor_wf()
@@ -411,12 +411,12 @@ class Global
         
         inline int spl_spinor_wf(int jloc)
         {
-            return spl_spinor_wf_[jloc];
+            return static_cast<int>(spl_spinor_wf_[jloc]);
         }
         
         inline int num_sub_bands()
         {
-            return sub_spl_spinor_wf_.local_size();
+            return static_cast<int>(sub_spl_spinor_wf_.local_size());
         }
 
         inline splindex<block>& sub_spl_fv_states()
@@ -426,17 +426,22 @@ class Global
         
         inline int sub_spl_fv_states(int idx)
         {
-            return sub_spl_fv_states_[idx];
+            return static_cast<int>(sub_spl_fv_states_[idx]);
         }
 
         inline int idxbandglob(int sub_index)
         {
-            return spl_spinor_wf_[sub_spl_spinor_wf_[sub_index]];
+            return static_cast<int>(spl_spinor_wf_[sub_spl_spinor_wf_[sub_index]]);
         }
         
         inline int idxbandloc(int sub_index)
         {
-            return sub_spl_spinor_wf_[sub_index];
+            return static_cast<int>(sub_spl_spinor_wf_[sub_index]);
+        }
+
+        inline int cyclic_block_size()
+        {
+            return cyclic_block_size_;
         }
 
         /// Initialize the global variables

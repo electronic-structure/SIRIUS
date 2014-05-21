@@ -28,13 +28,11 @@ namespace sirius {
 
 void K_set::initialize()
 {
-    // ============================================================
-    // distribute k-points along the 1-st dimension of the MPI grid
-    // ============================================================
+    /* distribute k-points along the 1-st dimension of the MPI grid */
     spl_num_kpoints_ = splindex<block>(num_kpoints(), parameters_.mpi_grid().dimension_size(_dim_k_), 
                                        parameters_.mpi_grid().coordinate(_dim_k_));
 
-    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < (int)spl_num_kpoints_.local_size(); ikloc++)
         kpoints_[spl_num_kpoints_[ikloc]]->initialize();
 
     if (verbosity_level >= 2) print_info();
@@ -42,7 +40,7 @@ void K_set::initialize()
 
 void K_set::update()
 {
-    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < (int)spl_num_kpoints_.local_size(); ikloc++)
         kpoints_[spl_num_kpoints_[ikloc]]->update();
 }
 
@@ -50,20 +48,30 @@ void K_set::sync_band_energies()
 {
     mdarray<double, 2> band_energies(parameters_.num_bands(), num_kpoints());
     band_energies.zero();
-    
-    // assume that side processors store the full e(k) array
-    if (parameters_.mpi_grid().side(1 << 0))
+
+    warning_global(__FILE__, __LINE__, "Testing new band energy synchronization");
+
+    for (int ikloc = 0; ikloc < (int)spl_num_kpoints_.local_size(); ikloc++)
     {
-        for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
-        {
-            int ik = spl_num_kpoints_[ikloc];
-            kpoints_[ik]->get_band_energies(&band_energies(0, ik));
-        }
+        int ik = (int)spl_num_kpoints_[ikloc];
+        kpoints_[ik]->get_band_energies(&band_energies(0, ik));
     }
+    Platform::allgather(band_energies.ptr(), (int)spl_num_kpoints_.global_offset(), (int)spl_num_kpoints_.local_size(),
+                        parameters_.mpi_grid().communicator(1 << _dim_k_));
+    
+    //== /* assume that side processors store the full e(k) array */
+    //== if (parameters_.mpi_grid().side(1 << _dim_k_))
+    //== {
+    //==     for (int ikloc = 0; ikloc < (int)spl_num_kpoints_.local_size(); ikloc++)
+    //==     {
+    //==         int ik = (int)spl_num_kpoints_[ikloc];
+    //==         kpoints_[ik]->get_band_energies(&band_energies(0, ik));
+    //==     }
+    //== }
 
-    Platform::allreduce(&band_energies(0, 0), parameters_.num_bands() * num_kpoints());
+    //== Platform::allreduce(&band_energies(0, 0), parameters_.num_bands() * num_kpoints());
 
-    for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_energies(&band_energies(0, ik));
+    //== for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_energies(&band_energies(0, ik));
 }
 
 void K_set::find_eigen_states(Potential* potential, bool precompute)
@@ -98,8 +106,8 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         }
     }
     
-    // solve secular equation and generate wave functions
-    for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
+    /* solve secular equation and generate wave functions */
+    for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = spl_num_kpoints(ikloc);
         if (use_second_variation)
@@ -260,7 +268,7 @@ void K_set::print_info()
     pstdout pout;
     if (parameters_.mpi_grid().side(1 << 0))
     {
-        for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
+        for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++)
         {
             int ik = spl_num_kpoints(ikloc);
             pout.printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i", 
@@ -289,7 +297,7 @@ void K_set::save()
     {
         for (int ik = 0; ik < num_kpoints(); ik++)
         {
-            int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
+            int rank = spl_num_kpoints_.local_rank(ik);
             
             if (parameters_.mpi_grid().coordinate(_dim_k_) == rank) kpoints_[ik]->save(ik);
             
@@ -326,7 +334,7 @@ void K_set::load()
 
     for (int ik = 0; ik < num_kpoints(); ik++)
     {
-        int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
+        int rank = spl_num_kpoints_.local_rank(ik);
         
         if (parameters_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->load(fin["K_set"], ikidx[ik]);
     }
@@ -402,9 +410,9 @@ void K_set::load()
 int K_set::max_num_gkvec()
 {
     int max_num_gkvec_ = 0;
-    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < (int)spl_num_kpoints_.local_size(); ikloc++)
     {
-        int ik = spl_num_kpoints_[ikloc];
+        int ik = (int)spl_num_kpoints_[ikloc];
         max_num_gkvec_ = std::max(max_num_gkvec_, kpoints_[ik]->num_gkvec());
     }
     Platform::allreduce<op_max>(&max_num_gkvec_, 1);

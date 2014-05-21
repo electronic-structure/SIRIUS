@@ -150,9 +150,9 @@ void Density::initial_density()
         splindex<block> spl_gshells(rl->num_gvec_shells_inner(), Platform::num_mpi_ranks(), Platform::mpi_rank());
 
         #pragma omp parallel for
-        for (int igsloc = 0; igsloc < spl_gshells.local_size(); igsloc++)
+        for (int igsloc = 0; igsloc < (int)spl_gshells.local_size(); igsloc++)
         {
-            int igs = spl_gshells[igsloc];
+            int igs = (int)spl_gshells[igsloc];
             for (int iat = 0; iat < uc->num_atom_types(); iat++)
             {
                 auto atom_type = uc->atom_type(iat);
@@ -198,10 +198,10 @@ void Density::initial_density()
         /* mapping between G-shell and a list of G-vectors */
         std::map<int, std::vector<int> > gsh_map;
 
-        for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
+        for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
         {
             /* global index of the G-vector */
-            int ig = rl->spl_num_gvec(igloc);
+            int ig = (int)rl->spl_num_gvec(igloc);
             /* index of the G-vector shell */
             int igsh = rl->gvec_shell(ig);
             if (gsh_map.count(igsh) == 0) gsh_map[igsh] = std::vector<int>();
@@ -321,7 +321,7 @@ void Density::initial_density()
                 if (p.second == Platform::mpi_rank())
                 {
                     /* convert from Ylm to Rlm expansion */
-                    sht.convert(rho_ylm_tmp, rho_->f_mt(p.first));
+                    sht.convert(rho_ylm_tmp, rho_->f_mt((int)p.first));
                 }
             }
         }
@@ -340,7 +340,7 @@ void Density::initial_density()
                 for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
                 {
                     double x = uc->atom(ia)->type()->radial_grid(ir);
-                    rho_->f_mt<local>(0, ir, p.first) += uc->atom(ia)->type()->free_atom_density(x) / y00;
+                    rho_->f_mt<local>(0, ir, (int)p.first) += uc->atom(ia)->type()->free_atom_density(x) / y00;
                 }
             }
         }
@@ -348,9 +348,9 @@ void Density::initial_density()
         /* initialize the magnetization */
         if (parameters_.num_mag_dims())
         {
-            for (int ialoc = 0; ialoc < uc->spl_num_atoms().local_size(); ialoc++)
+            for (int ialoc = 0; ialoc < (int)uc->spl_num_atoms().local_size(); ialoc++)
             {
-                int ia = uc->spl_num_atoms(ialoc);
+                int ia = (int)uc->spl_num_atoms(ialoc);
                 vector3d<double> v = uc->atom(ia)->vector_field();
                 double len = v.length();
 
@@ -1100,10 +1100,10 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     //=========================
     // add k-point contribution
     //=========================
-    for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
     {
-        int ik = ks.spl_num_kpoints(ikloc);
-        std::vector< std::pair<int, double> > occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
+        int ik = (int)ks.spl_num_kpoints(ikloc);
+        auto occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
 
         add_kpoint_contribution_pp(ks[ik], occupied_bands, pp_complex_density_matrix);
     }
@@ -1140,11 +1140,11 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                     d_mtrx_packed(i, xi2 * (xi2 + 1) / 2 + xi1) = pp_complex_density_matrix(xi2, xi1, 0, ia);
                 }
             }
-            for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
+            for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
                 phase_factors(igloc, i) = conj(rl->gvec_phase_factor<local>(igloc, ia));
 
         }
-        blas<cpu>::gemm(0, 0, rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, atom_type->num_atoms(),
+        blas<cpu>::gemm(0, 0, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, atom_type->num_atoms(),
                         &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0), d_mtrx_packed.ld(), 
                         &d_mtrx_pw(0, 0), d_mtrx_pw.ld());
         
@@ -1153,22 +1153,22 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
         {
             int idx12 = xi2 * (xi2 + 1) / 2;
 
-            // add diagonal term
+            /* add diagonal term */
             #pragma omp for
-            for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
+            for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
             {
-                // D_{xi2,xi1} * Q(G)_{xi2, xi2}
+                /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
                 f_pw[rl->spl_num_gvec(igloc)] += d_mtrx_pw(igloc, idx12 + xi2) * 
                                                  atom_type->uspp().q_pw(igloc, idx12 + xi2);
 
             }
-            // add non-diagonal terms
+            /* add non-diagonal terms */
             for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
             {
                 #pragma omp for
-                for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
+                for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
                 {
-                    // D_{xi2,xi1} * Q(G)_{xi1, xi2}
+                    /* D_{xi2,xi1} * Q(G)_{xi1, xi2} */
                     f_pw[rl->spl_num_gvec(igloc)] += 2 * real(d_mtrx_pw(igloc, idx12) * 
                                                               atom_type->uspp().q_pw(igloc, idx12));
                 }
@@ -1176,7 +1176,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
         }
     }
     
-    Platform::allgather(&f_pw[0], rl->spl_num_gvec().global_offset(), rl->spl_num_gvec().local_size());
+    Platform::allgather(&f_pw[0], (int)rl->spl_num_gvec().global_offset(), (int)rl->spl_num_gvec().local_size());
 
     fft_->input(rl->num_gvec(), rl->fft_index(), &f_pw[0]);
     fft_->transform(1);
@@ -1329,7 +1329,7 @@ void Density::generate_valence_density_mt(K_set& ks)
     //=========================
     // add k-point contribution
     //=========================
-    for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks.spl_num_kpoints(ikloc);
         std::vector< std::pair<int, double> > occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
@@ -1344,8 +1344,8 @@ void Density::generate_valence_density_mt(K_set& ks)
     {
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
-            int ialoc = parameters_.unit_cell()->spl_num_atoms().location(_splindex_offs_, ia);
-            int rank = parameters_.unit_cell()->spl_num_atoms().location(_splindex_rank_, ia);
+            int ialoc = (int)parameters_.unit_cell()->spl_num_atoms().local_index(ia);
+            int rank = parameters_.unit_cell()->spl_num_atoms().local_rank(ia);
 
             Platform::reduce(&mt_complex_density_matrix(0, 0, j, ia), &mt_complex_density_matrix_loc(0, 0, j, ialoc),
                              parameters_.unit_cell()->max_mt_basis_size() * parameters_.unit_cell()->max_mt_basis_size(),
@@ -1360,7 +1360,7 @@ void Density::generate_valence_density_mt(K_set& ks)
         
         mdarray<double_complex, 4> occupation_matrix(16, 16, 2, 2); 
         
-        for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
         {
             int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
             Atom_type* type = parameters_.unit_cell()->atom(ia)->type();
@@ -1403,7 +1403,7 @@ void Density::generate_valence_density_mt(K_set& ks)
 
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
-            int rank = parameters_.unit_cell()->spl_num_atoms().location(_splindex_rank_, ia);
+            int rank = parameters_.unit_cell()->spl_num_atoms().local_rank(ia);
             parameters_.unit_cell()->atom(ia)->sync_occupation_matrix(rank);
         }
 
@@ -1419,9 +1419,9 @@ void Density::generate_valence_density_mt(K_set& ks)
     mdarray<double, 2> rf_pairs(parameters_.unit_cell()->max_num_mt_points(), max_num_rf_pairs);
     mdarray<double, 3> dlm(parameters_.lmmax_rho(), parameters_.unit_cell()->max_num_mt_points(), 
                            parameters_.num_mag_dims() + 1);
-    for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+    for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
     {
-        int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
+        int ia = (int)parameters_.unit_cell()->spl_num_atoms(ialoc);
         Atom_type* atom_type = parameters_.unit_cell()->atom(ia)->type();
 
         int nmtp = atom_type->num_mt_points();
@@ -1507,7 +1507,7 @@ void Density::generate_valence_density_it(K_set& ks)
     //=========================
     // add k-point contribution
     //=========================
-    for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks.spl_num_kpoints(ikloc);
         auto occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
@@ -1542,7 +1542,7 @@ void Density::generate_core_charge_density()
 {
     Timer t("sirius::Density::generate_core_charge_density");
 
-    for (int icloc = 0; icloc < parameters_.unit_cell()->spl_num_atom_symmetry_classes().local_size(); icloc++)
+    for (int icloc = 0; icloc < (int)parameters_.unit_cell()->spl_num_atom_symmetry_classes().local_size(); icloc++)
     {
         int ic = parameters_.unit_cell()->spl_num_atom_symmetry_classes(icloc);
         parameters_.unit_cell()->atom_symmetry_class(ic)->generate_core_charge_density();
@@ -1550,7 +1550,7 @@ void Density::generate_core_charge_density()
 
     for (int ic = 0; ic < parameters_.unit_cell()->num_atom_symmetry_classes(); ic++)
     {
-        int rank = parameters_.unit_cell()->spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
+        int rank = parameters_.unit_cell()->spl_num_atom_symmetry_classes().local_rank(ic);
         parameters_.unit_cell()->atom_symmetry_class(ic)->sync_core_charge_density(rank);
     }
 }
@@ -1676,7 +1676,7 @@ void Density::generate(K_set& ks)
         generate_core_charge_density();
 
         // add core contribution
-        for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
         {
             int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
             for (int ir = 0; ir < parameters_.unit_cell()->atom(ia)->num_mt_points(); ir++)

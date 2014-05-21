@@ -111,9 +111,9 @@ void Atom::generate_radial_integrals(MPI_Comm& comm)
         /* potential or magnetic field times a radial function */
         std::vector< Spline<double> > vrf_spline(1 + num_mag_dims_, Spline<double>(type()->radial_grid()));
 
-        for (int lm_loc = 0; lm_loc < spl_lm.local_size(); lm_loc++)
+        for (int lm_loc = 0; lm_loc < (int)spl_lm.local_size(); lm_loc++)
         {
-            int lm = spl_lm[lm_loc];
+            int lm = (int)spl_lm[lm_loc];
             int l = l_by_lm[lm];
 
             #pragma omp for

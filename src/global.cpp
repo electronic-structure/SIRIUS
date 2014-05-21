@@ -324,10 +324,10 @@ void Global::initialize()
     num_bands_ = num_fv_states_ * num_spins_;
 
     // distribue first-variational states along columns
-    spl_fv_states_ = splindex<block_cyclic>(num_fv_states(), ncol, icol);
+    spl_fv_states_ = splindex<block_cyclic>(num_fv_states(), ncol, icol, cyclic_block_size_);
 
     // distribue spinor wave-functions along columns
-    spl_spinor_wf_ = splindex<block_cyclic>(num_bands(), ncol, icol);
+    spl_spinor_wf_ = splindex<block_cyclic>(num_bands(), ncol, icol, cyclic_block_size_);
     
     // additionally split along rows 
     sub_spl_spinor_wf_ = splindex<block>(spl_spinor_wf_.local_size(), nrow, irow);

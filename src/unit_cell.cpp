@@ -356,7 +356,7 @@ void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
         spl_atoms_ = splindex<block>(num_atoms(), mpi_atoms_.size(), mpi_atoms_.id());
         for (int ia = 0; ia < num_atoms(); ia++)
         {
-            int rank = spl_num_atoms().location(_splindex_rank_, ia);
+            int rank = spl_num_atoms().local_rank(ia);
             if (Platform::mpi_rank() == rank)
             {
                 if (Platform::mpi_rank(mpi_atoms_.communicator()) != 0) error_local(__FILE__, __LINE__, "wrong root rank");
@@ -920,12 +920,12 @@ void Unit_cell::generate_radial_functions()
 {
     Timer t("sirius::Unit_cell::generate_radial_functions");
    
-    for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
+    for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
         atom_symmetry_class(spl_num_atom_symmetry_classes(icloc))->generate_radial_functions();
 
     for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
     {
-        int rank = spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
+        int rank = spl_num_atom_symmetry_classes().local_rank(ic);
         atom_symmetry_class(ic)->sync_radial_functions(rank);
     }
     
@@ -933,7 +933,7 @@ void Unit_cell::generate_radial_functions()
     {
         pstdout pout;
         
-        for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
+        for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
         {
             int ic = spl_num_atom_symmetry_classes(icloc);
             atom_symmetry_class(ic)->write_enu(pout);
@@ -952,24 +952,24 @@ void Unit_cell::generate_radial_integrals()
 {
     Timer t("sirius::Unit_cell::generate_radial_integrals");
     
-    for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
+    for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
         atom_symmetry_class(spl_num_atom_symmetry_classes(icloc))->generate_radial_integrals();
 
     for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
     {
-        int rank = spl_num_atom_symmetry_classes().location(_splindex_rank_, ic);
+        int rank = spl_num_atom_symmetry_classes().local_rank(ic);
         atom_symmetry_class(ic)->sync_radial_integrals(rank);
     }
 
-    for (int ialoc = 0; ialoc < spl_atoms_.local_size(); ialoc++)
+    for (int ialoc = 0; ialoc < (int)spl_atoms_.local_size(); ialoc++)
     {
-        int ia = spl_atoms_[ialoc];
+        int ia = (int)spl_atoms_[ialoc];
         atom(ia)->generate_radial_integrals(mpi_atoms_.communicator());
     }
     
     for (int ia = 0; ia < num_atoms(); ia++)
     {
-        int rank = spl_num_atoms().location(_splindex_rank_, ia);
+        int rank = spl_num_atoms().local_rank(ia);
         atom(ia)->sync_radial_integrals(rank);
     }
 }

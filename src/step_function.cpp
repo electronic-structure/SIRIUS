@@ -70,9 +70,9 @@ void Step_function::get_step_function_form_factors(mdarray<double, 2>& ffac)
     splindex<block> spl_num_gvec_shells((int)ffac.size(1), Platform::num_mpi_ranks(), Platform::mpi_rank());
 
     #pragma omp parallel for default(shared)
-    for (int igsloc = 0; igsloc < spl_num_gvec_shells.local_size(); igsloc++)
+    for (int igsloc = 0; igsloc < (int)spl_num_gvec_shells.local_size(); igsloc++)
     {
-        int igs = spl_num_gvec_shells[igsloc];
+        int igs = (int)spl_num_gvec_shells[igsloc];
         double g = reciprocal_lattice_->gvec_shell_len(igs);
         double g3inv = (igs) ? 1.0 / pow(g, 3) : 0.0;
 
@@ -85,8 +85,8 @@ void Step_function::get_step_function_form_factors(mdarray<double, 2>& ffac)
         }
     }
 
-    Platform::allgather(&ffac(0, 0), unit_cell_->num_atom_types() * spl_num_gvec_shells.global_offset(), 
-                        unit_cell_->num_atom_types() * spl_num_gvec_shells.local_size());
+    Platform::allgather(&ffac(0, 0), int(unit_cell_->num_atom_types() * spl_num_gvec_shells.global_offset()), 
+                        int(unit_cell_->num_atom_types() * spl_num_gvec_shells.local_size()));
 }
 
 }

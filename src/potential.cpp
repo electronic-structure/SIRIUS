@@ -193,7 +193,7 @@ void Potential::poisson_vmt(std::vector< Spheric_function<double_complex> >& rho
 
     qmt.zero();
     
-    for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+    for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
     {
         int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
 
@@ -263,7 +263,7 @@ void Potential::poisson_sum_G(double_complex* fpw, mdarray<double, 3>& fl, mdarr
     #pragma omp parallel for default(shared)
     for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
     {
-        for (int igloc = 0; igloc < parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
+        for (int igloc = 0; igloc < (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
             zm1(igloc, lm) = parameters_.reciprocal_lattice()->gvec_ylm(lm, igloc) * conj(fpw[parameters_.reciprocal_lattice()->spl_num_gvec(igloc)] * zilm_[lm]);
     }
 
@@ -275,7 +275,7 @@ void Potential::poisson_sum_G(double_complex* fpw, mdarray<double, 3>& fl, mdarr
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
             int iat = parameters_.unit_cell()->atom(ia)->type_id();
-            for (int igloc = 0; igloc < parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
+            for (int igloc = 0; igloc < (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
             {
                 int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
                 zm2(igloc, ia) = fourpi * parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia) *  
@@ -283,7 +283,8 @@ void Potential::poisson_sum_G(double_complex* fpw, mdarray<double, 3>& fl, mdarr
             }
         }
 
-        blas<cpu>::gemm(2, 0, 2 * l + 1, parameters_.unit_cell()->num_atoms(), parameters_.reciprocal_lattice()->spl_num_gvec().local_size(), 
+        blas<cpu>::gemm(2, 0, 2 * l + 1, parameters_.unit_cell()->num_atoms(), 
+                        (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size(), 
                         &zm1(0, Utils::lm_by_l_m(l, -l)), zm1.ld(), &zm2(0, 0), zm2.ld(), 
                         &flm(Utils::lm_by_l_m(l, -l), 0), parameters_.lmmax_rho());
     }
@@ -323,7 +324,7 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
                     zp[lm] = (qmt(lm, ia) - qit(lm, ia)) * conj(zil_[l]) * gamma_factors_R_(l, iat);
             }
 
-            for (int igloc = 0; igloc < parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
+            for (int igloc = 0; igloc < (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
             {
                 int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
                 
@@ -354,12 +355,12 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
             }
         }
         #pragma omp critical
-        for (int igloc = 0; igloc < parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++) 
+        for (int igloc = 0; igloc < (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++) 
             pseudo_pw[parameters_.reciprocal_lattice()->spl_num_gvec(igloc)] += pseudo_pw_pt[igloc];
     }
 
-    Platform::allgather(&pseudo_pw[0], parameters_.reciprocal_lattice()->spl_num_gvec().global_offset(), 
-                        parameters_.reciprocal_lattice()->spl_num_gvec().local_size());
+    Platform::allgather(&pseudo_pw[0], (int)parameters_.reciprocal_lattice()->spl_num_gvec().global_offset(), 
+                        (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size());
         
     // add pseudo_density to interstitial charge density; now rho(G) has the correct multipole moments in the muffin-tins
     for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++) rho_pw[ig] += pseudo_pw[ig];
@@ -393,7 +394,7 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
         sbessel_pw<double> jl(parameters_.unit_cell(), parameters_.lmax_pot());
         
         #pragma omp for
-        for (int igloc = 0; igloc < parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
+        for (int igloc = 0; igloc < (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
         {
             int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
 
@@ -690,7 +691,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
     /* in case of full potential we need to do pseudo-charge multipoles */
     if (parameters_.unit_cell()->full_potential())
     {
-        for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
         {
             int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
 
@@ -738,7 +739,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         mdarray<double, 2> rRl(parameters_.unit_cell()->max_num_mt_points(), parameters_.lmax_pot() + 1);
         int type_id_prev = -1;
 
-        for (int ialoc = 0; ialoc < parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+        for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
         {
             int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
             int nmtp = parameters_.unit_cell()->atom(ia)->num_mt_points();
@@ -1094,7 +1095,7 @@ void Potential::xc_mt(Periodic_function<double>* rho,
 
     auto uc = parameters_.unit_cell();
 
-    for (int ialoc = 0; ialoc < uc->spl_num_atoms().local_size(); ialoc++)
+    for (int ialoc = 0; ialoc < (int)uc->spl_num_atoms().local_size(); ialoc++)
     {
         int ia = uc->spl_num_atoms(ialoc);
         auto& rgrid = uc->atom(ia)->radial_grid();
@@ -1305,9 +1306,9 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
             {
                 std::vector<double> vxc_t(spl_t.local_size());
 
-                ixc->get_lda(spl_t.local_size(), &rho->f_it<local>(spl_t.global_offset()), &vxc_t[0], &exc_t[0]);
+                ixc->get_lda((int)spl_t.local_size(), &rho->f_it<local>((int)spl_t.global_offset()), &vxc_t[0], &exc_t[0]);
 
-                for (int i = 0; i < spl_t.local_size(); i++)
+                for (int i = 0; i < (int)spl_t.local_size(); i++)
                 {
                     /* add Exc contribution */
                     exc_tmp(spl_t[i]) += exc_t[i];
@@ -1321,21 +1322,21 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
                 std::vector<double> vrho_t(spl_t.local_size());
                 std::vector<double> vsigma_t(spl_t.local_size());
                 
-                ixc->get_gga(spl_t.local_size(), 
-                             &rho->f_it<local>(spl_t.global_offset()), 
-                             &grad_rho_grad_rho_it(spl_t.global_offset()), 
+                ixc->get_gga((int)spl_t.local_size(), 
+                             &rho->f_it<local>((int)spl_t.global_offset()), 
+                             &grad_rho_grad_rho_it((int)spl_t.global_offset()), 
                              &vrho_t[0], 
                              &vsigma_t[0], 
                              &exc_t[0]);
 
 
-                for (int i = 0; i < spl_t.local_size(); i++)
+                for (int i = 0; i < (int)spl_t.local_size(); i++)
                 {
                     /* add Exc contribution */
                     exc_tmp(spl_t[i]) += exc_t[i];
 
                     /* directly add to Vxc available contributions */
-                    vxc_tmp(spl_t[i]) += (vrho_t[i] - 2 * vsigma_t[i] * lapl_rho_it(spl_t[i]));
+                    vxc_tmp(spl_t[i]) += (vrho_t[i] - 2 * vsigma_t[i] * lapl_rho_it((int)spl_t[i]));
 
                     /* save the sigma derivative */
                     vsigma_tmp(spl_t[i]) += vsigma_t[i]; 
@@ -1505,14 +1506,14 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
                 std::vector<double> vxc_up_t(spl_t.local_size());
                 std::vector<double> vxc_dn_t(spl_t.local_size());
 
-                ixc->get_lda(spl_t.local_size(), 
+                ixc->get_lda((int)spl_t.local_size(), 
                              &rho_up_it(fft_->global_offset() + spl_t.global_offset()), 
                              &rho_dn_it(fft_->global_offset() + spl_t.global_offset()), 
                              &vxc_up_t[0], 
                              &vxc_dn_t[0], 
                              &exc_t[0]);
 
-                for (int i = 0; i < spl_t.local_size(); i++)
+                for (int i = 0; i < (int)spl_t.local_size(); i++)
                 {
                     /* add Exc contribution */
                     exc_tmp(spl_t[i]) += exc_t[i];
@@ -1530,7 +1531,7 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
                 std::vector<double> vsigma_ud_t(spl_t.local_size());
                 std::vector<double> vsigma_dd_t(spl_t.local_size());
                 
-                ixc->get_gga(spl_t.local_size(), 
+                ixc->get_gga((int)spl_t.local_size(), 
                              &rho_up_it(fft_->global_offset() + spl_t.global_offset()), 
                              &rho_dn_it(fft_->global_offset() + spl_t.global_offset()), 
                              &grad_rho_up_grad_rho_up_it(spl_t.global_offset()), 
@@ -1543,7 +1544,7 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
                              &vsigma_dd_t[0], 
                              &exc_t[0]);
 
-                for (int i = 0; i < spl_t.local_size(); i++)
+                for (int i = 0; i < (int)spl_t.local_size(); i++)
                 {
                     /* add Exc contribution */
                     exc_tmp(spl_t[i]) += exc_t[i];
@@ -1740,14 +1741,14 @@ void Potential::generate_d_mtrx()
             auto atom_type = parameters_.unit_cell()->atom(ia)->type();
             int nbf = atom_type->mt_basis_size();
             
-            for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
+            for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
             {
                 int ig = rl->spl_num_gvec(igloc);
                 veff_tmp(igloc) = effective_potential_->f_pw(ig) * rl->gvec_phase_factor<local>(igloc, ia);
             }
 
-            blas<cpu>::gemv(2, rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, complex_one, 
-                            &atom_type->uspp().q_pw(0, 0), rl->spl_num_gvec().local_size(),  
+            blas<cpu>::gemv(2, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, complex_one, 
+                            &atom_type->uspp().q_pw(0, 0), (int)rl->spl_num_gvec().local_size(),  
                             &veff_tmp(0), 1, complex_zero, &dm_packed(0), 1);
 
             for (int xi2 = 0; xi2 < nbf; xi2++)

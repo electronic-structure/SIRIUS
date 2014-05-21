@@ -22,21 +22,26 @@
  *  \brief Contains splindex template class specialization for block and block-cyclic data distributions.
  */
 
-// TODO: size_t instead of int
+#include <limits>
 
 /// Specialization for the block distribution.
 template<> 
 class splindex<block>: public splindex_base
 {
     private:
+        
+        /// Minimum number of elements for each rank.
+        size_t min_num_elements_;
 
-        int min_num_elements_;
+        /// Number of ranks with one extra element.
         int num_ranks_with_extra_element_;
-        int num_prime_chunk_; 
 
-        void init(int global_index_size__, int num_ranks__, int rank__)
+        /// Size of the prime chunk of the global index.
+        /** This is the part of the global index stored by the number of ranks with an extra element. */
+        size_t prime_chunk_size_; 
+
+        void init(size_t global_index_size__, int num_ranks__, int rank__)
         {
-            if (global_index_size__ < 0) error_local(__FILE__, __LINE__, "wrong global index size");
             global_index_size_ = global_index_size__;
 
             if (num_ranks__ < 0) error_local(__FILE__, __LINE__, "wrong number of ranks");
@@ -47,9 +52,9 @@ class splindex<block>: public splindex_base
 
             min_num_elements_ = global_index_size_ / num_ranks_;
 
-            num_ranks_with_extra_element_ = global_index_size_ % num_ranks_; 
+            num_ranks_with_extra_element_ = static_cast<int>(global_index_size_ % num_ranks_); 
 
-            num_prime_chunk_ = (min_num_elements_ + 1) * num_ranks_with_extra_element_;
+            prime_chunk_size_ = (min_num_elements_ + 1) * num_ranks_with_extra_element_;
         }
         
     public:
@@ -59,93 +64,89 @@ class splindex<block>: public splindex_base
         {
         }
         
-        splindex(int global_index_size__, int num_ranks__, int rank__)
+        /// Constructor.
+        splindex(size_t global_index_size__, int num_ranks__, int rank__)
         {
             init(global_index_size__, num_ranks__, rank__); 
         }
 
-        inline int local_size()
+        /// Return "local index, rank" pair for a global index.
+        inline std::pair<size_t, int> location(size_t idxglob__)
         {
-            return local_size(rank_);
-        }
-
-        inline int local_size(int rank)
-        {
-            assert(rank >= 0 && rank < num_ranks_);
-            return min_num_elements_ + (rank < num_ranks_with_extra_element_ ? 1 : 0); // minimum number of elements +1 if rank < m
-        }
-
-        inline std::pair<int, int> location(int idxglob)
-        {
-            assert(idxglob >= 0 && idxglob < global_index_size_);
+            assert(idxglob__ < global_index_size_);
 
             int rank;
-            int offs;
+            size_t idxloc;
 
-            if (idxglob < num_prime_chunk_)
+            if (idxglob__ < prime_chunk_size_)
             {
-                rank = idxglob / (min_num_elements_ + 1);
-                offs = idxglob % (min_num_elements_ + 1);
+                rank = static_cast<int>(idxglob__ / (min_num_elements_ + 1));
+                idxloc = idxglob__ % (min_num_elements_ + 1);
             }
             else
             {
                 assert(min_num_elements_ != 0);
 
-                int k = idxglob - num_prime_chunk_;
-                offs = k % min_num_elements_;
-                rank = num_ranks_with_extra_element_ + k / min_num_elements_;
+                size_t k = idxglob__ - prime_chunk_size_;
+                idxloc = k % min_num_elements_;
+                rank = static_cast<int>(num_ranks_with_extra_element_ + k / min_num_elements_);
             }
 
-            return std::pair<int, int>(offs, rank);
+            return std::pair<size_t, int>(idxloc, rank);
+        }
+
+        /// Return local size of the split index for an arbitrary rank.
+        inline size_t local_size(int rank__)
+        {
+            assert(rank__ >= 0 && rank__ < num_ranks_);
+            /* minimum number of elements +1 if rank < m */
+            return min_num_elements_ + (rank__ < num_ranks_with_extra_element_ ? 1 : 0);
+        }
+
+        /// Return local size of the split index for a current rank.
+        inline size_t local_size()
+        {
+            return local_size(rank_);
         }
         
-        inline int location(int offset_or_rank, int idxglob) // TODO: rename
+        /// Return rank which holds the element with the given global index.
+        inline int local_rank(size_t idxglob__)
         {
-            switch (offset_or_rank)
-            {
-                case _splindex_offs_:
-                {
-                    return location(idxglob).first;
-                    break;
-                }
-                case _splindex_rank_:
-                {
-                    return location(idxglob).second;
-                    break;
-                }
-                default:
-                {
-                    return -1;
-                }
-            }
+            return location(idxglob__).second;
+        }
+        
+        /// Return local index of the element for the rank which handles the given global index.
+        inline size_t local_index(size_t idxglob__)
+        {
+            return location(idxglob__).first;
         }
         
         /// Return global index of an element by local index and rank.
-        inline int global_index(int idxloc, int rank)
+        inline size_t global_index(size_t idxloc__, int rank__)
         {
-            assert(rank >= 0 && rank < num_ranks_);
+            assert(rank__ >= 0 && rank__ < num_ranks_);
 
-            if (local_size(rank) == 0) return -1;
+            if (local_size(rank__) == 0) return std::numeric_limits<size_t>::max();
 
-            assert(idxloc >= 0 && idxloc < local_size(rank));
+            assert(idxloc__ < local_size(rank__));
 
-            return (rank < num_ranks_with_extra_element_) ? (min_num_elements_+ 1) * rank + idxloc : 
-                rank * min_num_elements_ + num_ranks_with_extra_element_ + idxloc; 
+            return (rank__ < num_ranks_with_extra_element_) ? (min_num_elements_+ 1) * rank__ + idxloc__ : 
+                rank__ * min_num_elements_ + num_ranks_with_extra_element_ + idxloc__; 
         }
 
-        inline int global_offset()
+        inline size_t global_offset()
         {
             return global_index(0, rank_);
         }
 
-        inline int global_offset(int rank__)
+        inline size_t global_offset(int rank__)
         {
             return global_index(0, rank__);
         }
 
-        inline int operator[](int idxloc)
+        inline size_t operator[](size_t idxloc__)
         {
-            return global_index(idxloc, rank_);
+            return global_index(idxloc__, rank_);
         }
 };
 
@@ -155,15 +156,12 @@ class splindex<block_cyclic>: public splindex_base
 {
     private:
 
-        static int cyclic_block_size_;
-        
         /// cyclic block size of the distribution
         int block_size_;
 
         // Check and initialize variables.
-        void init(int global_index_size__, int num_ranks__, int rank__, int block_size__)
+        void init(size_t global_index_size__, int num_ranks__, int rank__, int block_size__)
         {
-            if (global_index_size__ <= 0) error_local(__FILE__, __LINE__, "wrong global index size");
             global_index_size_ = global_index_size__;
 
             if (num_ranks__ < 0) error_local(__FILE__, __LINE__, "wrong number of ranks");
@@ -184,96 +182,82 @@ class splindex<block_cyclic>: public splindex_base
         }
         
         // Constructor with implicit cyclic block size
-        splindex(int global_index_size__, int num_ranks__, int rank__)
+        splindex(size_t global_index_size__, int num_ranks__, int rank__, int bs__)
         {
-            int bs = cyclic_block_size_;
-            init(global_index_size__, num_ranks__, rank__, bs); 
+            init(global_index_size__, num_ranks__, rank__, bs__); 
         }
 
-        static void set_cyclic_block_size(int cyclic_block_size__)
+        /// Return "local index, rank" pair for a global index.
+        inline std::pair<size_t, int> location(size_t idxglob__)
         {
-            cyclic_block_size_ = cyclic_block_size__;
+            assert(idxglob__ < global_index_size_);
+            
+            /* number of full blocks */
+            size_t num_blocks = idxglob__ / block_size_;
+
+            /* local index */
+            size_t idxloc = (num_blocks / num_ranks_) * block_size_ + idxglob__ % block_size_;
+            
+            /* corresponding rank */
+            int rank = static_cast<int>(num_blocks % num_ranks_);
+
+            return std::pair<size_t, int>(idxloc, rank);
         }
 
-        inline int local_size(int rank)
+        /// Return local size of the split index for an arbitrary rank.
+        inline size_t local_size(int rank__)
         {
-            assert(rank >= 0 && rank < num_ranks_);
+            assert(rank__ >= 0 && rank__ < num_ranks_);
+            
+            /* number of full blocks */
+            size_t num_blocks = global_index_size_ / block_size_;
 
-            int num_blocks = global_index_size_ / block_size_; // number of full blocks
+            size_t n = (num_blocks / num_ranks_) * block_size_;
 
-            int n = (num_blocks / num_ranks_) * block_size_;
+            int rank_offs = static_cast<int>(num_blocks % num_ranks_);
 
-            int rank_offs = num_blocks % num_ranks_;
-
-            if (rank < rank_offs) 
+            if (rank__ < rank_offs) 
             {
                 n += block_size_;
             }
-            else if (rank == rank_offs)
+            else if (rank__ == rank_offs)
             {
                 n += global_index_size_ % block_size_;
             }
             return n;
         }
 
-        inline int local_size()
+        /// Return local size of the split index for a current rank.
+        inline size_t local_size()
         {
             return local_size(rank_);
         }
 
-        inline int location(int offset_or_rank, int idxglob) // TODO: rename
+        /// Return rank which holds the element with the given global index.
+        inline int local_rank(size_t idxglob__)
         {
-            assert(idxglob >= 0 && idxglob < global_index_size_);
-
-            int num_blocks = idxglob / block_size_; // number of full blocks
-
-            int n = (num_blocks / num_ranks_) * block_size_ + idxglob % block_size_;
-
-            int rank = num_blocks % num_ranks_;
-
-            switch (offset_or_rank)
-            {
-                case _splindex_offs_:
-                {
-                    return n;
-                    break;
-                }
-                case _splindex_rank_:
-                {
-                    return rank;
-                    break;
-                }
-            }
-            return -1; // make compiler happy
+            return location(idxglob__).second;
+        }
+        
+        /// Return local index of the element for the rank which handles the given global index.
+        inline size_t local_index(size_t idxglob__)
+        {
+            return location(idxglob__).first;
         }
 
-        inline std::pair<int, int> location(int idx_glob)
+        inline size_t global_index(size_t idxloc__, int rank__)
         {
-            assert(idx_glob >= 0 && idx_glob < global_index_size_);
+            assert(rank__ >= 0 && rank__ < num_ranks_);
+            assert(idxloc__ < local_size(rank__));
 
-            int num_blocks = idx_glob / block_size_; // number of full blocks
-
-            int offs = (num_blocks / num_ranks_) * block_size_ + idx_glob % block_size_;
-
-            int rank = num_blocks % num_ranks_;
-
-            return std::pair<int, int>(offs, rank);
-        }
-
-        inline int global_index(int idxloc, int rank)
-        {
-            assert(rank >= 0 && rank < num_ranks_);
-            assert(idxloc >= 0 && idxloc < local_size(rank));
-
-            int nb = idxloc / block_size_;
+            size_t nb = idxloc__ / block_size_;
             
-            int idx = (nb * num_ranks_ + rank) * block_size_ + idxloc % block_size_;
-            return idx;
+            return (nb * num_ranks_ + rank__) * block_size_ + idxloc__ % block_size_;
         }
 
-        inline int operator[](int idxloc)
+        inline size_t operator[](size_t idxloc__)
         {
-            return global_index(idxloc, rank_);
+            return global_index(idxloc__, rank_);
         }
 };
 

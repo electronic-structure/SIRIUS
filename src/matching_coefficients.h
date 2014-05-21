@@ -449,17 +449,17 @@ class Matching_coefficients
                     {
                         case 1:
                         {
-                            generate<1>(sspl_gkvec_col.local_size(), sspl_gkvec_col.global_offset(), ia, iat, l, lm, nu, A, &alm_tmp[0]);
+                            generate<1>((int)sspl_gkvec_col.local_size(), (int)sspl_gkvec_col.global_offset(), ia, iat, l, lm, nu, A, &alm_tmp[0]);
                             break;
                         }
                         case 2:
                         {
-                            generate<2>(sspl_gkvec_col.local_size(), sspl_gkvec_col.global_offset(), ia, iat, l, lm, nu, A, &alm_tmp[0]);
+                            generate<2>((int)sspl_gkvec_col.local_size(), (int)sspl_gkvec_col.global_offset(), ia, iat, l, lm, nu, A, &alm_tmp[0]);
                             break;
                         }
                         case 3:
                         {
-                            generate<3>(sspl_gkvec_col.local_size(), sspl_gkvec_col.global_offset(), ia, iat, l, lm, nu, A, &alm_tmp[0]);
+                            generate<3>((int)sspl_gkvec_col.local_size(), (int)sspl_gkvec_col.global_offset(), ia, iat, l, lm, nu, A, &alm_tmp[0]);
                             break;
                         }
                         default:
@@ -467,7 +467,7 @@ class Matching_coefficients
                             error_local(__FILE__, __LINE__, "wrong order of augmented wave");
                         }
                     }
-                    for (int i = 0; i < sspl_gkvec_col.local_size(); i++) alm_v(j, i) = alm_tmp[i];
+                    for (int i = 0; i < (int)sspl_gkvec_col.local_size(); i++) alm_v(j, i) = alm_tmp[i];
                 }
             }
         }

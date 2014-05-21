@@ -305,7 +305,7 @@ class Reciprocal_lattice
         
         inline int spl_num_gvec(int igloc)
         {
-            return spl_num_gvec_[igloc];
+            return static_cast<int>(spl_num_gvec_[igloc]);
         }
         
         inline double_complex gvec_ylm(int lm, int igloc)

@@ -362,7 +362,7 @@ void K_point::generate_fv_states()
     Timer t("sirius::K_point::generate_fv_states");
 
     /* local number of first-variational states, assigned to each MPI rank in the column */
-    int nfv_loc = parameters_.sub_spl_fv_states().local_size();
+    int nfv_loc = (int)parameters_.sub_spl_fv_states().local_size();
 
     /* total number of augmented-wave basis functions over all atoms */
     int naw = parameters_.unit_cell()->mt_aw_basis_size();
@@ -745,15 +745,15 @@ void K_point::build_apwlo_basis_descriptors()
 void K_point::distribute_block_cyclic()
 {
     // distribute APW+lo basis between rows
-    splindex<block_cyclic> spl_row(gklo_basis_size(), num_ranks_row_, rank_row_);
+    splindex<block_cyclic> spl_row(gklo_basis_size(), num_ranks_row_, rank_row_, parameters_.cyclic_block_size());
     gklo_basis_descriptors_row_.resize(spl_row.local_size());
-    for (int i = 0; i < spl_row.local_size(); i++)
+    for (int i = 0; i < (int)spl_row.local_size(); i++)
         gklo_basis_descriptors_row_[i] = gklo_basis_descriptors_[spl_row[i]];
 
     // distribute APW+lo basis between columns
-    splindex<block_cyclic> spl_col(gklo_basis_size(), num_ranks_col_, rank_col_);
+    splindex<block_cyclic> spl_col(gklo_basis_size(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());
     gklo_basis_descriptors_col_.resize(spl_col.local_size());
-    for (int i = 0; i < spl_col.local_size(); i++)
+    for (int i = 0; i < (int)spl_col.local_size(); i++)
         gklo_basis_descriptors_col_[i] = gklo_basis_descriptors_[spl_col[i]];
     
     #ifdef _SCALAPACK_
@@ -1219,8 +1219,8 @@ void K_point::save(int id)
     mdarray<double_complex, 2> wfj(NULL, wf_size(), parameters_.num_spins()); 
     for (int j = 0; j < parameters_.num_bands(); j++)
     {
-        int rank = parameters_.spl_spinor_wf().location(_splindex_rank_, j);
-        int offs = parameters_.spl_spinor_wf().location(_splindex_offs_, j);
+        int rank = parameters_.spl_spinor_wf().local_rank(j);
+        int offs = (int)parameters_.spl_spinor_wf().local_index(j);
         if (parameters_.mpi_grid().coordinate(_dim_col_) == rank)
         {
             HDF5_tree fout(storage_file_name, false);
@@ -1309,7 +1309,7 @@ void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec)
     
     fv_evec.zero();
 
-    for (int iloc = 0; iloc < parameters_.spl_fv_states().local_size(); iloc++)
+    for (int iloc = 0; iloc < (int)parameters_.spl_fv_states().local_size(); iloc++)
     {
         int i = parameters_.spl_fv_states(iloc);
         for (int jloc = 0; jloc < gklo_basis_size_row(); jloc++)

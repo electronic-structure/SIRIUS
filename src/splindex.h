@@ -28,30 +28,27 @@
 #include "typedefs.h"
 #include "error_handling.h"
 
-const int _splindex_offs_ = 0;
-const int _splindex_rank_ = 1;
-
 /// Base class for split index.
 class splindex_base
 {
     private:
         
-        /// forbid copy constructor
+        /* forbid copy constructor */
         splindex_base(const splindex_base& src);
 
-        /// forbid assigment operator
+        /* forbid assigment operator */
         //== splindex_base& operator=(const splindex_base& src);
     
     protected:
         
-        /// rank of the block with local fraction of the global index
+        /// Rank of the block with local fraction of the global index.
         int rank_;
         
-        /// number of ranks over which the global index is distributed
+        /// Number of ranks over which the global index is distributed.
         int num_ranks_;
 
         /// size of the global index 
-        int global_index_size_;
+        size_t global_index_size_;
 
         /// Default constructor.
         splindex_base() : rank_(-1), num_ranks_(-1)
@@ -88,14 +85,14 @@ class splindex: public splindex_base
  *
  *  Example:
  *  \code{.cpp}
- *      splindex<block> spl(17, Platform::num_mpi_ranks(), Platform::mpi_rank());
- *      #pragma omp parallel
- *      for (auto it = splindex_iterator<block>(spl); it.valid(); it++)
- *      {
- *          printf("thread_id: %i, local index : %i, global index : %i\n", 
- *                 Platform::thread_id(), it.idx_local(), it.idx());
- *      }
- *  \endcode
+    splindex<block> spl(17, Platform::num_mpi_ranks(), Platform::mpi_rank());
+    #pragma omp parallel
+    for (auto it = splindex_iterator<block>(spl); it.valid(); it++)
+    {
+        printf("thread_id: %i, local index : %i, global index : %i\n", 
+               Platform::thread_id(), it.idx_local(), it.idx());
+    }
+    \endcode
  */ 
 template <splindex_t type> 
 class splindex_iterator
@@ -103,10 +100,10 @@ class splindex_iterator
     private:
         
         /// current global index
-        int idx_;
+        size_t idx_;
         
         /// current local index
-        int idx_local_;
+        size_t idx_local_;
 
         /// incremental step for operator++
         int inc_;
@@ -145,13 +142,13 @@ class splindex_iterator
         }
         
         /// Return current global index.
-        inline int idx()
+        inline size_t idx()
         {
             return idx_;
         }
 
         /// Return current local index.
-        inline int idx_local()
+        inline size_t idx_local()
         {
             return idx_local_;
         }
