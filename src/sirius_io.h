@@ -44,10 +44,19 @@ class pstdout
 
     public:
 
-        pstdout()
+        pstdout() : offset_(0)
         {
             buffer_.resize(8129);
-            offset_ = 0;
+        }
+
+        pstdout(const std::string str) : offset_(0)
+        {
+            this->printf("%s", str.c_str());
+        }
+
+        ~pstdout()
+        {
+            if (offset_) flush(0);
         }
 
         void printf(const char* fmt, ...)

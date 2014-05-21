@@ -49,29 +49,17 @@ void K_set::sync_band_energies()
     mdarray<double, 2> band_energies(parameters_.num_bands(), num_kpoints());
     band_energies.zero();
 
-    warning_global(__FILE__, __LINE__, "Testing new band energy synchronization");
-
     for (int ikloc = 0; ikloc < (int)spl_num_kpoints_.local_size(); ikloc++)
     {
         int ik = (int)spl_num_kpoints_[ikloc];
         kpoints_[ik]->get_band_energies(&band_energies(0, ik));
     }
-    Platform::allgather(band_energies.ptr(), (int)spl_num_kpoints_.global_offset(), (int)spl_num_kpoints_.local_size(),
+    Platform::allgather(band_energies.ptr(), 
+                        static_cast<int>(parameters_.num_bands() * spl_num_kpoints_.global_offset()),
+                        static_cast<int>(parameters_.num_bands() * spl_num_kpoints_.local_size()),
                         parameters_.mpi_grid().communicator(1 << _dim_k_));
-    
-    //== /* assume that side processors store the full e(k) array */
-    //== if (parameters_.mpi_grid().side(1 << _dim_k_))
-    //== {
-    //==     for (int ikloc = 0; ikloc < (int)spl_num_kpoints_.local_size(); ikloc++)
-    //==     {
-    //==         int ik = (int)spl_num_kpoints_[ikloc];
-    //==         kpoints_[ik]->get_band_energies(&band_energies(0, ik));
-    //==     }
-    //== }
 
-    //== Platform::allreduce(&band_energies(0, 0), parameters_.num_bands() * num_kpoints());
-
-    //== for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_energies(&band_energies(0, ik));
+    for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_energies(&band_energies(0, ik));
 }
 
 void K_set::find_eigen_states(Potential* potential, bool precompute)
@@ -99,7 +87,7 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
                 #ifdef _GPU_
                 potential->generate_d_mtrx_gpu();
                 #else 
-                error_local(__FILE__, __LINE__, "not configured with GPU support");
+                TERMINATE_NO_GPU
                 #endif
                 break;
             }
