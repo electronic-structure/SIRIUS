@@ -846,14 +846,19 @@ void Atom_symmetry_class::generate_core_charge_density()
     int irmt = atom_type_->idx_rmt_free_atom();
     
     /* interpolate spherical potential inside muffin-tin */
-    Spline<double> vs(atom_type_->radial_grid(), spherical_potential_);
+    Spline<double> svmt(atom_type_->radial_grid());
+    
+    /* remove nucleus contribution from Vmt */
+    for (int ir = 0; ir < atom_type_->num_mt_points(); ir++)
+        svmt[ir] = spherical_potential_[ir] + atom_type_->zn() / atom_type_->radial_grid(ir);
+    svmt.interpolate();
 
     /* cook an effective potential from muffin-tin part and free atom tail */
     std::vector<double> veff = atom_type_->free_atom_potential().values();
     for (int ir = 0; ir <= irmt; ir++)
     {
         double x = atom_type_->free_atom_radial_grid(ir);
-        veff[ir] = vs(x);
+        veff[ir] = svmt(x) - atom_type_->zn() / x;
     }
     for (int ir = irmt + 1; ir < atom_type_->free_atom_radial_grid().num_points(); ir++)
     {

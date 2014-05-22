@@ -744,15 +744,6 @@ void Atom_type::read_input(const std::string& fname)
     }
 }
 
-void Atom_type::sync_free_atom(int rank)
-{
-    assert(free_atom_potential_.num_points() != 0);
-    assert(free_atom_density_.num_points() != 0);
-
-    Platform::bcast(&free_atom_density_[0], radial_grid().num_points(), rank);
-    Platform::bcast(&free_atom_potential_[0], radial_grid().num_points(), rank);
-}
-
 void Atom_type::fix_q_radial_function(int l, int i, int j, double* qrf)
 {
     for (int ir = 0; ir < num_mt_points(); ir++)

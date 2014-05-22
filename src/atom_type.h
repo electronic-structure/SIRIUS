@@ -407,8 +407,6 @@ class Atom_type
 
         void print_info();
         
-        void sync_free_atom(int rank);
-
         void fix_q_radial_function(int l, int i, int j, double* qrf);
         
         inline int id()
