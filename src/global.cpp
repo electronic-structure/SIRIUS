@@ -630,11 +630,12 @@ void Global::create_blacs_context()
             map_ranks(i, j) = mpi_grid().cart_rank(mpi_grid().communicator(rc), xy);
         }
     }
+
     /* create context */
     blacs_context_ = blacs_handler_;
     linalg<scalapack>::gridmap(&blacs_context_, map_ranks.ptr(), map_ranks.ld(), nrow, ncol);
 
-    // check the grid
+    /* check the grid */
     int nrow1, ncol1, irow1, icol1;
     linalg<scalapack>::gridinfo(blacs_context_, &nrow1, &ncol1, &irow1, &icol1);
 
