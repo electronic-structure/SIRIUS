@@ -2,10 +2,10 @@
     "cyclic_block_size" : 16,
     "processing_unit" : "cpu",
     
-    "std_evp_solver_type" : "lapack",
-    "gen_evp_solver_type" : "lapack",
+    "std_evp_solver_type" : "scalapack",
+    "gen_evp_solver_type" : "scalapack",
     
-    "mpi_grid_dims" : [1],
+    "mpi_grid_dims" : [1, 1, 1],
     
     "num_fv_states" : 67,
 
@@ -13,12 +13,26 @@
 
     "num_mag_dims" : 1,
 
-    "num_dft_iter" : 10,
+    "num_dft_iter" : 2,
 
     "ngridk" : [2, 2, 2],
 
+    "pw_cutoff" : 20,
+
     "aw_cutoff" : 7,
 
+    "potential_tol" : 1e-5,
+    "energy_tol" : 1e-5,
+    
+    "mixer" : {
+        "beta" : 0.5,
+        "gamma" : 0.5,
+        "type" : "linear",
+        "max_history" : 5
+    },
+    
+    "xc_functionals" : ["XC_LDA_X", "XC_GGA_C_PBE"],
+    
     "unit_cell" : {
 
         "lattice_vectors" : [ [0.5, 0.5, 1.0], 
@@ -40,12 +54,5 @@
                              [0.75, 0.75, 0.75]
                            ]
                   }
-    },
-
-    "mixer" : {
-        "beta" : 0.9,
-        "type" : "broyden",
-        "max_history" : 5
     }
-
 }

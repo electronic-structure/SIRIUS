@@ -76,19 +76,21 @@ int main(int argn, char** argv)
         Density* density = new Density(parameters);
         density->allocate();
         
-        density->load();
-        potential->load();
+        //density->load();
+        //potential->load();
 
-        density->generate_pw_coefs();
+        //density->generate_pw_coefs();
+        
+        density->initial_density();
 
         splindex<block> spl_N2(N2, Platform::num_mpi_ranks(), Platform::mpi_rank());
 
         mdarray<double, 2> rho(N1, N2);
         
         Timer t1("compute_density");
-        for (int j2 = 0; j2 < spl_N2.local_size(); j2++)
+        for (int j2 = 0; j2 < (int)spl_N2.local_size(); j2++)
         {
-            int i2 = spl_N2[j2];
+            int i2 = (int)spl_N2[j2];
 
             std::cout << "column " << i2 << " out of " << N2 << std::endl;
 
@@ -106,7 +108,7 @@ int main(int argn, char** argv)
         }
         t1.stop();
 
-        Platform::allgather(&rho(0, 0), spl_N2.global_offset() * N1, spl_N2.local_size() * N1, MPI_COMM_WORLD);
+        Platform::allgather(&rho(0, 0), int(spl_N2.global_offset() * N1), int(spl_N2.local_size() * N1), MPI_COMM_WORLD);
 
         if (Platform::mpi_rank() == 0)
         {
