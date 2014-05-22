@@ -58,7 +58,8 @@ int main(int argn, char** argv)
     
             for (int iat = 0; iat < (int)p.unit_cell_input_section_.labels_.size(); iat++)
             {
-                psc.unit_cell()->add_atom_type(iat, p.unit_cell_input_section_.labels_[iat], p.esm_type());
+                std::string label = p.unit_cell_input_section_.labels_[iat];
+                psc.unit_cell()->add_atom_type(iat, label, p.unit_cell_input_section_.atom_files_[label], p.esm_type());
                 for (int ia = 0; ia < (int)p.unit_cell_input_section_.coordinates_[iat].size(); ia++)
                 {
                     vector3d<double> va(&p.unit_cell_input_section_.coordinates_[iat][ia][0]);
@@ -74,8 +75,15 @@ int main(int argn, char** argv)
                                 vector3d<double> vf = psc.unit_cell()->get_fractional_coordinates(vc);
 
                                 auto vr = Utils::reduce_coordinates(vf);
+                                //==bool add_atom = (psc.unit_cell()->atom_id_by_position(vr.first) == -1);
+                                //==if (add_atom && iat == 2)
+                                //=={
+                                //==    double r = type_wrapper<double>::random();
+                                //==    if (r < 0.99) add_atom = false;
+                                //==}
 
-                                if (psc.unit_cell()->atom_id_by_position(vr.first) == -1) psc.unit_cell()->add_atom(iat, &vr.first[0]);
+                                bool add_atom = true;
+                                if (add_atom) psc.unit_cell()->add_atom(iat, &vr.first[0]);
                             }
                         }
                     }
@@ -85,6 +93,7 @@ int main(int argn, char** argv)
             psc.unit_cell()->get_symmetry();
             psc.unit_cell()->print_info();
             psc.unit_cell()->write_json();
+            psc.unit_cell()->write_cif();
         }
     }
 
