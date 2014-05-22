@@ -8,7 +8,7 @@ void test1(double x0, double x1, int m, double exact_result)
     printf("test1: integrate sin(x) * x^{%i} and compare with exact result\n", m);
     printf("       lower and upper boundaries: %f %f\n", x0, x1);
     Radial_grid r(exponential_grid, 5000, x0, x1);
-    Spline<double> s(5000, r);
+    Spline<double> s(r);
     
     for (int i = 0; i < 5000; i++) s[i] = sin(r[i]);
     
@@ -32,8 +32,8 @@ void test2(radial_grid_t grid_type, double x0, double x1)
     printf("test2: value and derivatives of exp(x)\n");
 
     int N = 5000;
-    Radial_grid r(grid_type, N, x0, x1, 3 * x1);
-    Spline<double> s(N, r);
+    Radial_grid r(grid_type, N, x0, x1);
+    Spline<double> s(r);
     
     for (int i = 0; i < N; i++) s[i] = exp(r[i]);
     
@@ -43,7 +43,7 @@ void test2(radial_grid_t grid_type, double x0, double x1)
 
     std::string fname = "grid_" + r.grid_type_name() + ".txt";
     FILE* fout = fopen(fname.c_str(), "w");
-    for (int i = 0; i < r.size(); i++) fprintf(fout,"%i %16.12e\n", i, r[i]);
+    for (int i = 0; i < r.num_points(); i++) fprintf(fout,"%i %16.12e\n", i, r[i]);
     fclose(fout);
     
     printf("x = %f, exp(x) = %f, exp(x) = %f, exp'(x)= %f, exp''(x) = %f\n", x0, s[0], s.deriv(0, 0), s.deriv(1, 0), s.deriv(2, 0));
@@ -56,9 +56,9 @@ void test3(double x0, double x1, double exact_val)
     printf("test3\n");
     
     Radial_grid r(exponential_grid, 2000, x0, x1);
-    Spline<double> s1(2000, r);
-    Spline<double> s2(2000, r);
-    Spline<double> s3(2000, r);
+    Spline<double> s1(r);
+    Spline<double> s2(r);
+    Spline<double> s3(r);
 
     for (int i = 0; i < 2000; i++)
     {
@@ -71,7 +71,36 @@ void test3(double x0, double x1, double exact_val)
     s3.interpolate();
 
     double v1 = s3.integrate(2);
-    double v2 = Spline<double>::integrate(&s1, &s2);
+    double v2 = Spline<double>::integrate(&s1, &s2, 2);
+
+    printf("interpolate product of two functions and then integrate with spline   : %16.12f\n", v1);
+    printf("interpolate two functions and then integrate the product analytically : %16.12f\n", v2);
+    printf("                                                           difference : %16.12f\n", fabs(v1 - v2));
+    printf("                                                         exact result : %16.12f\n", exact_val);
+}
+
+void test4(double x0, double x1, double exact_val)
+{
+    printf("\n");
+    printf("test4\n");
+    
+    Radial_grid r(exponential_grid, 2000, x0, x1);
+    Spline<double> s1(r);
+    Spline<double> s2(r);
+    Spline<double> s3(r);
+
+    for (int i = 0; i < 2000; i++)
+    {
+        s1[i] = sin(r[i]) / r[i];
+        s2[i] = exp(-r[i]) * pow(r[i], 8.0 / 3.0);
+        s3[i] = s1[i] * s2[i];
+    }
+    s1.interpolate();
+    s2.interpolate();
+    s3.interpolate();
+
+    double v1 = s3.integrate(1);
+    double v2 = Spline<double>::integrate(&s1, &s2, 1);
 
     printf("interpolate product of two functions and then integrate with spline   : %16.12f\n", v1);
     printf("interpolate two functions and then integrate the product analytically : %16.12f\n", v2);
@@ -110,12 +139,14 @@ int main(int argn, char **argv)
     double x0 = 0.00001;
     test2(linear_grid, x0, 2.0);
     test2(exponential_grid, x0, 2.0);
-    test2(linear_exponential_grid, x0, 2.0);
-    test2(pow_grid, x0, 2.0);
-    test2(incremental_grid, x0, 2.0);
+    test2(scaled_pow_grid, x0, 2.0);
+    test2(pow2_grid, x0, 2.0);
+    test2(pow3_grid, x0, 2.0);
+    //test2(incremental_grid, x0, 2.0);
     //test2(hyperbolic_grid, x0, 2.0);
 
     test3(0.0001, 2.0, 1.0365460153117974);
+    test4(0.0001, 2.0, 0.7029943796175838);
 
     //test4(0.0001, 1.892184);
 }

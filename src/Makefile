@@ -2,8 +2,12 @@ include ../make.inc
 
 .SUFFIXES: .cpp .cu
 
-SRC = ./LebedevLaikov.cpp
-      
+SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platform.cpp radial_grid.cpp \
+       radial_solver.cpp sht.cpp atom_type.cpp atom_symmetry_class.cpp atom.cpp unit_cell.cpp \
+       reciprocal_lattice.cpp step_function.cpp global.cpp k_point.cpp band.cpp band_uspp.cpp potential.cpp \
+       k_set.cpp density.cpp symmetry.cpp xc_functional.cpp spheric_function.cpp mdarray.cpp \
+       force.cpp dft_ground_state.cpp
+       
 OBJ = $(SRC:.cpp=.o) 
       
 ifneq (,$(findstring D_GPU_,$(CXX_OPT)))
@@ -13,6 +17,11 @@ endif
 ifneq (,$(findstring D_MAGMA_,$(CXX_OPT)))
 	OBJ := $(OBJ) magma_interface.o
 endif
+
+ifneq (,$(findstring D_PLASMA_,$(CXX_OPT)))
+	OBJ := $(OBJ) plasma_interface.o
+endif
+
 	
 .cpp.o:
 	$(CXX) $(CXX_OPT) -c -o $(*D)/$(*F).o $<
@@ -26,8 +35,11 @@ all: log $(OBJ) sirius.o
 
 # TODO: platform-independent python script
 log:
-	@echo "const char* git_hash = \"$(shell git rev-parse HEAD)\";" > version.h 
-	@echo "const char* build_date = \"$(shell date)\";" >> version.h 
+	@echo "#ifndef __VERSION_H__" > version.h
+	@echo "#define __VERSION_H__" >> version.h
+	@echo "const char* const git_hash = \"$(shell git rev-parse HEAD)\";" >> version.h 
+	@echo "const char* const build_date = \"$(shell date)\";" >> version.h 
+	@echo "#endif" >> version.h
 
 clean:
 	rm -f $(OBJ) *.o *.a

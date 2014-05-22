@@ -6,20 +6,20 @@ import subprocess
 import json
 
 packages = {
-    "fftw" : ["http://www.fftw.org/fftw-3.3.3.tar.gz", 
+    "fftw" : ["http://www.fftw.org/fftw-3.3.4.tar.gz", 
               ["--disable-fortran", "--disable-mpi", "--disable-openmp", "--disable-threads"]
              ],
     "gsl"  : ["ftp://ftp.gnu.org/gnu/gsl/gsl-1.16.tar.gz", 
-              ["--enable-shared=no"]
+              ["--disable-shared"]
              ],
-    "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.12.tar.gz",
-              ["--enable-fortran", "--enable-shared=no", "--enable-static=yes", 
+    "hdf5" : ["http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.13.tar.gz",
+              ["--enable-fortran", "--disable-shared", "--enable-static=yes", 
                "--disable-deprecated-symbols", "--disable-filters","--disable-parallel", "--with-zlib=no","--with-szlib=no"]
              ],
-    "xc"   : ["http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.0.2.tar.gz",
+    "xc"   : ["http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.2.0.tar.gz",
               []
              ],
-    "spg"  : ["http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.4/spglib-1.4.1.tar.gz",
+    "spg"  : ["http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.6/spglib-1.6.0.tar.gz",
               []
              ]
 }

@@ -6,7 +6,7 @@ INCLUDE = -I./../../src
 
 .SUFFIXES: .cpp
 
-all: hdf5 allgather mt_function mt_kinetic spline splindex hydrogen read_atom fft
+all: hdf5 allgather mt_function mt_kinetic spline splindex hydrogen read_atom fft fft_t test_mdarray
 
 hdf5:
 	$(CXX) $(CXX_OPT) $(INCLUDE) hdf5.cpp           $(LIB_SIRIUS) $(LIBS) -o hdf5
@@ -23,10 +23,8 @@ mt_kinetic:
 spline:
 	$(CXX) $(CXX_OPT) $(INCLUDE) spline.cpp        $(LIB_SIRIUS) $(LIBS) -o spline
 
-cuda_zgemm:
-ifneq (,$(findstring D_GPU_,$(CXX_OPT)))
-	$(CXX) $(CXX_OPT) $(INCLUDE) cuda_zgemm.cpp    $(LIB_SIRIUS) $(LIBS) -o cuda_zgemm
-endif
+test_zgemm:
+	$(CXX) $(CXX_OPT) $(INCLUDE) test_zgemm.cpp    $(LIB_SIRIUS) $(LIBS) -o test_zgemm
 	
 spline_gpu:
 #	$(CXX) $(CXX_OPT) $(INCLUDE) spline_gpu.cpp    $(LIB_SIRIUS) $(LIBS) -o spline_gpu
@@ -43,6 +41,26 @@ read_atom:
 fft:
 	$(CXX) $(CXX_OPT) $(INCLUDE) fft.cpp           $(LIB_SIRIUS) $(LIBS) -o fft
 	
+fft_t:
+	$(CXX) $(CXX_OPT) $(INCLUDE) fft_t.cpp         $(LIB_SIRIUS) $(LIBS) -o fft_t
+	
+test_mdarray:
+	$(CXX) $(CXX_OPT) $(INCLUDE) test_mdarray.cpp  $(LIB_SIRIUS) $(LIBS) -o test_mdarray
+
+test_pstdout:
+	$(CXX) $(CXX_OPT) $(INCLUDE) test_pstdout.cpp  $(LIB_SIRIUS) $(LIBS) -o test_pstdout
+
+test_init:
+	$(CXX) $(CXX_OPT) $(INCLUDE) test_init.cpp  $(LIB_SIRIUS) $(LIBS) -o test_init
+
+test_blacs:
+	$(CXX) $(CXX_OPT) $(INCLUDE) test_blacs.cpp  $(LIB_SIRIUS) $(LIBS) -o test_blacs
+
+test_iallgather:
+	$(CXX) $(CXX_OPT) $(INCLUDE) test_iallgather.cpp  $(LIB_SIRIUS) $(LIBS) -o test_iallgather
+	
 
 clean:
-	rm -f *.o *.h5 *.txt *.dat *.pdf timers.json out.json splindex hdf5 hydrogen read_atom fft fft1k spline allgather cuda_zgemm mt_function mt_kinetic spline_gpu
+	rm -f *.o *.h5 *.txt *.dat *.pdf timers.json out.json splindex hdf5 hydrogen read_atom \
+	fft fft1k spline allgather cuda_zgemm mt_function mt_kinetic spline_gpu fft_t test_mdarray \
+	test_pstdout test_zgemm test_init test_blacs

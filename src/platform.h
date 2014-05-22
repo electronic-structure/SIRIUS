@@ -1,3 +1,42 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file platform.h
+ *   
+ *  \brief Contains definition and implementation of Platform class.
+ */
+
+#ifndef __PLATFORM_H__
+#define __PLATFORM_H__
+
+#include <mpi.h>
+#include <omp.h>
+#include <signal.h>
+#include <unistd.h>
+#ifdef _GPU_
+#include "gpu_interface.h"
+#endif
+#include <vector>
+#include <fstream>
+#include "typedefs.h"
+
+/// Platform specific functions.
 class Platform
 {
     private:
@@ -6,196 +45,130 @@ class Platform
     
     public:
 
-        static void initialize(bool call_mpi_init, bool call_cublas_init = true)
-        {
-            if (call_mpi_init) MPI_Init(NULL, NULL);
+        static void initialize(bool call_mpi_init, bool call_cublas_init = true);
 
-            #ifdef _GPU_
-            if (call_cublas_init) cublas_init();
-            if (mpi_rank() == 0) cuda_device_info();
-            #endif
-            #ifdef _MAGMA_
-            magma_init_wrapper();
-            #endif
-        }
+        static void finalize();
 
-        static void finalize()
-        {
-            MPI_Finalize();
-            #ifdef _MAGMA_
-            magma_finalize_wrapper();
-            #endif
-        }
+        static int mpi_rank(MPI_Comm comm = MPI_COMM_WORLD);
 
-        static int mpi_rank(MPI_Comm comm = MPI_COMM_WORLD)
-        {
-            int rank;
-            MPI_Comm_rank(comm, &rank);
-            return rank;
-        }
+        static int num_mpi_ranks(MPI_Comm comm = MPI_COMM_WORLD);
 
-        static int num_mpi_ranks(MPI_Comm comm = MPI_COMM_WORLD)
-        {
-            int size;
-            MPI_Comm_size(comm, &size);
-            return size;
-        }
+        static void abort();
 
-        static void abort()
-        {
-            if (num_mpi_ranks() == 1)
-            {
-                raise(SIGTERM);
-            }
-            else
-            {   
-                MPI_Abort(MPI_COMM_WORLD, -13);
-            }
-            exit(-13);
-        }
+        /// Broadcast array 
+        template <typename T>
+        static void bcast(T* buffer, int count, const MPI_Comm& comm, int root);
+        
+        /// Broadcast array 
+        template <typename T>
+        static void bcast(T* buffer, int count, int root);
+       
+        /// Perform all-to-one in-place reduction
+        template <typename T>
+        static void reduce(T* buf, int count, const MPI_Comm& comm, int root);
 
-        static int num_threads()
+        /// Perform all-to-one out-of-place reduction 
+        template <typename T>
+        static void reduce(T* sendbuf, T* recvbuf, int count, const MPI_Comm& comm, int root);
+        
+        /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
+        template <typename T>
+        static void allreduce(T* buffer, int count, const MPI_Comm& comm);
+
+        /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
+        template<mpi_op_t op, typename T>
+        static void allreduce(T* buffer, int count, const MPI_Comm& comm);
+        
+        /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
+        template <typename T>
+        static void allreduce(T* buffer, int count);
+        
+        /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
+        template<mpi_op_t op, typename T>
+        static void allreduce(T* buffer, int count);
+
+        template <typename T>
+        static void allgather(T* sendbuf, T* recvbuf, int offset, int count);
+        
+        template <typename T>
+        static void allgather(T* buf, int offset, int count, MPI_Comm comm = MPI_COMM_WORLD);
+
+        template <typename T> 
+        static void gather(T* sendbuf, T* recvbuf, int *recvcounts, int *displs, int root, MPI_Comm comm);
+
+        template <typename T>
+        static void scatter(T* sendbuf, T* recvbuf, int* sendcounts, int* displs, int root, MPI_Comm comm);
+
+        /// Non-blocking send.
+        template <typename T>
+        static void isend(T* buf, int count, int dest, int tag, MPI_Comm comm);
+
+        /// Blocking recieve.
+        template <typename T>
+        static void recv(T* buf, int count, int source, int tag, MPI_Comm comm);
+        
+        /// Returm maximum number of OMP threads.
+        /** Maximum number of OMP threads is controlled by environment variable OMP_NUM_THREADS */
+        static inline int max_num_threads()
         {
             return omp_get_max_threads();
         }
 
-        static int thread_id()
+        /// Returm number of actually running OMP threads. 
+        static inline int num_threads()
+        {
+            return omp_get_num_threads();
+        }
+        
+        /// Return thread id.
+        static inline int thread_id()
         {
             return omp_get_thread_num();
         }
         
-        static int num_fft_threads()
+        /// Return number of threads for independent FFT transformations.
+        static inline int num_fft_threads()
         {
             return num_fft_threads_;
         }
-
-        static void set_num_fft_threads(int num_fft_threads__)
+        
+        /// Set the number of FFT threads
+        static inline void set_num_fft_threads(int num_fft_threads__)
         {
             num_fft_threads_ = num_fft_threads__;
         }
-
+        
+        /// Global barrier
         static void barrier(MPI_Comm comm = MPI_COMM_WORLD)
         {
             MPI_Barrier(comm);
         }
 
-        /// Broadcast array 
-        template <typename T>
-        static void bcast(T* buffer, int count, const MPI_Comm& comm, int root)
+        static void write_proc_status(const char* src_file, const int src_line)
         {
-            MPI_Bcast(buffer, count, primitive_type_wrapper<T>::mpi_type_id(), root, comm); 
-        }
-        
-        /// Broadcast array 
-        template <typename T>
-        static void bcast(T* buffer, int count, int root)
-        {
-            bcast(buffer, count, MPI_COMM_WORLD, root);
-        }
-       
-        /// Perform all-to-one in-place reduction
-        template<typename T>
-        static void reduce(T* buf, int count, const MPI_Comm& comm, int root)
-        {
-            T* buf_tmp = (T*)malloc(count * sizeof(T));
-            MPI_Reduce(buf, buf_tmp, count, primitive_type_wrapper<T>::mpi_type_id(), MPI_SUM, root, comm);
-            memcpy(buf, buf_tmp, count * sizeof(T));
-            free(buf_tmp);
-        }
+            int pid = getpid();
+            //== 
+            //== char hostname[1024];
+            //== gethostname(hostname, 1024);
+            //== hostname[1023] = 0;
 
-        /// Perform all-to-one out-of-place reduction 
-        template<typename T>
-        static void reduce(T* sendbuf, T* recvbuf, int count, const MPI_Comm& comm, int root)
-        {
-            MPI_Reduce(sendbuf, recvbuf, count, primitive_type_wrapper<T>::mpi_type_id(), MPI_SUM, root, comm);
-        }
-        
-        /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
-        template<typename T>
-        static void allreduce(T* buffer, int count, const MPI_Comm& comm)
-        {
-            if (comm != MPI_COMM_NULL)
-                MPI_Allreduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), MPI_SUM, comm);
-        }
-
-        /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
-        template<mpi_op_t op, typename T>
-        static void allreduce(T* buffer, int count, const MPI_Comm& comm)
-        {
-            if (comm != MPI_COMM_NULL)
-            {
-                switch(op)
-                {
-                    case op_sum:
-                    {
-                        MPI_Allreduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), 
-                                      MPI_SUM, comm);
-                        break;
-                    }
-                    case op_max:
-                    {
-                        MPI_Allreduce(MPI_IN_PLACE, buffer, count, primitive_type_wrapper<T>::mpi_type_id(), 
-                                      MPI_MAX, comm);
-                        break;
-                    }
-                }
-            }
-        }
-        
-        /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
-        template<typename T>
-        static void allreduce(T* buffer, int count)
-        {
-            allreduce(buffer, count, MPI_COMM_WORLD);
-        }
-        
-        /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
-        template<mpi_op_t op, typename T>
-        static void allreduce(T* buffer, int count)
-        {
-            allreduce<op>(buffer, count, MPI_COMM_WORLD);
-        }
-
-        template<typename T>
-        static void allgather(T* sendbuf, T* recvbuf, int offset, int count)
-        {
-            std::vector<int> counts(num_mpi_ranks());
-            counts[mpi_rank()] = count;
-            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &counts[0], 1, primitive_type_wrapper<int>::mpi_type_id(), 
-                          MPI_COMM_WORLD);
+            std::stringstream fname;
+            fname << "/proc/" << pid << "/status";
             
-            std::vector<int> offsets(num_mpi_ranks());
-            offsets[mpi_rank()] = offset;
-            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &offsets[0], 1, primitive_type_wrapper<int>::mpi_type_id(), 
-                          MPI_COMM_WORLD);
-
-            MPI_Allgatherv(sendbuf, count, primitive_type_wrapper<T>::mpi_type_id(), recvbuf, &counts[0], &offsets[0],
-                           primitive_type_wrapper<T>::mpi_type_id(), MPI_COMM_WORLD);
-        }
-        
-        template<typename T>
-        static void allgather(T* buf, int offset, int count, MPI_Comm comm = MPI_COMM_WORLD)
-        {
-
-            std::vector<int> v(num_mpi_ranks(comm) * 2);
-            v[2 * mpi_rank(comm)] = count;
-            v[2 * mpi_rank(comm) + 1] = offset;
-
-            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &v[0], 2, primitive_type_wrapper<int>::mpi_type_id(), comm);
-
-            std::vector<int> counts(num_mpi_ranks(comm));
-            std::vector<int> offsets(num_mpi_ranks(comm));
-
-            for (int i = 0; i < num_mpi_ranks(comm); i++)
+            std::ifstream ifs(fname.str().c_str());
+            if (ifs.is_open())
             {
-                counts[i] = v[2 * i];
-                offsets[i] = v[2 * i + 1];
+                printf("[mpi_rank: %i] line %i of file %s \n", mpi_rank(), src_line, src_file);
+                
+                std::string str; 
+                while (std::getline(ifs, str))
+                {
+                    printf("[mpi_rank: %i] %s\n", mpi_rank(), str.c_str());
+                } 
             }
-
-            MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, buf, &counts[0], &offsets[0],
-                           primitive_type_wrapper<T>::mpi_type_id(), comm);
         }
 };
 
-int Platform::num_fft_threads_ = -1;
+#include "platform.hpp"
 
+#endif

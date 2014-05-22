@@ -1,773 +1,185 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file linalg.h
+ *
+ *  \brief Contains linear algebra bindings.
+ */
+
 #ifndef __LINALG_H__
 #define __LINALG_H__
 
-/** \file linalg.h
-
-    \brief Linear algebra interface
-
-*/
-
 #include <stdint.h>
-#include <iostream>
-#include <complex>
 #include "config.h"
-#include "linalg_cpu.h"
+#include "error_handling.h"
 
-template<processing_unit_t> 
-class blas;
+/*
+ *  matrix-vector operations
+ */
+extern "C" void FORTRAN(zgemv)(const char* trans, int32_t* m, int32_t* n, double_complex* alpha, 
+                               double_complex* a, int32_t* lda, double_complex* x, int32_t* incx,
+                               double_complex* beta, double_complex* y, int32_t* incy, int32_t translen);
 
-// CPU
-template<> class blas<cpu>
-{
-    public:
+/*
+ *  matrix-matrix operations
+ */
+extern "C" void FORTRAN(zgemm)(const char* transa, const char* transb, int32_t* m, int32_t* n, int32_t* k, 
+                               double_complex* alpha, double_complex* a, int32_t* lda, double_complex* b, int32_t* ldb, 
+                               double_complex* beta, double_complex* c, int32_t* ldc, int32_t transalen, int32_t transblen);
 
-        template <typename T>
-        static inline void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T alpha, T* a, int32_t lda, 
-                                T* b, int32_t ldb, T beta, T* c, int32_t ldc);
-        
-        template <typename T>
-        static inline void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T* a, int32_t lda, 
-                                T* b, int32_t ldb, T* c, int32_t ldc);
-        template<typename T>
-        static inline void hemm(int side, int uplo, int32_t m, int32_t n, T alpha, T* a, int32_t lda, 
-                                T* b, int32_t ldb, T beta, T* c, int32_t ldc);
-};
+extern "C" void FORTRAN(dgemm)(const char* transa, const char* transb, int32_t* m, int32_t* n, int32_t* k, 
+                               double* alpha, double* a, int32_t* lda, double* b, int32_t* ldb, 
+                               double* beta,double* c, int32_t* ldc, int32_t transalen, int32_t transblen);
 
-template<> inline void blas<cpu>::gemm<real8>(int transa, int transb, int32_t m, int32_t n, int32_t k, real8 alpha, 
-                                              real8* a, int32_t lda, real8* b, int32_t ldb, real8 beta, real8* c, 
-                                              int32_t ldc)
-{
-    const char *trans[] = {"N", "T", "C"};
+extern "C" void FORTRAN(zhemm)(const char *side, const char* uplo, int32_t* m, int32_t* n, 
+                               double_complex* alpha, double_complex* a, int32_t* lda, double_complex* b,
+                               int32_t* ldb, double_complex* beta, double_complex* c, int32_t* ldc,
+                               int32_t sidelen, int32_t uplolen);
 
-    FORTRAN(dgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int32_t)1, 
-                   (int32_t)1);
-}
+/*
+ *  eigen-value problem
+ */
+extern "C" void FORTRAN(zhegvx)(int32_t* itype, const char* jobz, const char* range, const char* uplo, 
+                                int32_t* n, double_complex* a, int32_t* lda, double_complex* b, int32_t* ldb, double* vl, 
+                                double* vu, int32_t* il, int32_t* iu, double* abstol, int32_t* m, double* w, double_complex* z,
+                                int32_t* ldz, double_complex* work, int32_t* lwork, double* rwork, int32_t* iwork, int32_t* ifail, 
+                                int32_t* info, int32_t jobzlen, int32_t rangelen, int32_t uplolen);
 
-template<> inline void blas<cpu>::gemm<real8>(int transa, int transb, int32_t m, int32_t n, int32_t k, real8* a, int32_t lda, 
-                                              real8* b, int32_t ldb, real8* c, int32_t ldc)
-{
-    gemm(transa, transb, m, n, k, 1.0, a, lda, b, ldb, 0.0, c, ldc);
-}
+extern "C" int32_t FORTRAN(ilaenv)(int32_t* ispec, const char* name, const char* opts, int32_t* n1, int32_t* n2, int32_t* n3, 
+                                int32_t* n4, int32_t namelen, int32_t optslen);
 
-template<> inline void blas<cpu>::gemm<complex16>(int transa, int transb, int32_t m, int32_t n, int32_t k, complex16 alpha, 
-                                                  complex16* a, int32_t lda, complex16* b, int32_t ldb, complex16 beta, 
-                                                  complex16* c, int32_t ldc)
-{
-    const char *trans[] = {"N", "T", "C"};
+extern "C" void FORTRAN(zheev)(const char* jobz, const char* uplo, int32_t* n, double_complex* a,
+                               int32_t* lda, double* w, double_complex* work, int32_t* lwork, double* rwork,
+                               int32_t* info, int32_t jobzlen, int32_t uplolen);
 
-    FORTRAN(zgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int32_t)1, 
-                   (int32_t)1);
-}
-
-template<> inline void blas<cpu>::gemm<complex16>(int transa, int transb, int32_t m, int32_t n, int32_t k, complex16* a, 
-                                                  int32_t lda, complex16* b, int32_t ldb, complex16* c, int32_t ldc)
-{
-    gemm(transa, transb, m, n, k, complex16(1, 0), a, lda, b, ldb, complex16(0, 0), c, ldc);
-}
-
-template<> inline void blas<cpu>::hemm<complex16>(int side, int uplo, int32_t m, int32_t n, complex16 alpha, complex16* a, 
-                                                  int32_t lda, complex16* b, int32_t ldb, complex16 beta, complex16* c, 
-                                                  int32_t ldc)
-{
-    const char *sidestr[] = {"L", "R"};
-    const char *uplostr[] = {"U", "L"};
-    FORTRAN(zhemm)(sidestr[side], uplostr[uplo], &m, &n, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int32_t)1, (int32_t)1);
-}
-
-// GPU
-#ifdef _GPU_
-template<> class blas<gpu>
-{
-    public:
-
-        template <typename T>
-        static inline void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T* alpha, T* a, int32_t lda, 
-                                T* b, int32_t ldb, T* beta, T* c, int32_t ldc);
-};
-
-template<> inline void blas<gpu>::gemm<complex16>(int transa, int transb, int32_t m, int32_t n, int32_t k, complex16* alpha, 
-                                                  complex16* a, int32_t lda, complex16* b, int32_t ldb, complex16* beta, 
-                                                  complex16* c, int32_t ldc)
-{
-    cublas_zgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
-}
-#endif
-
-template<linalg_t> 
-class linalg;
-
-template<> class linalg<lapack>
-{
-    public:
-
-        static int32_t ilaenv(int32_t ispec, const std::string& name, const std::string& opts, int32_t n1, int32_t n2, 
-                              int32_t n3, int32_t n4)
-        {
-            return FORTRAN(ilaenv)(&ispec, name.c_str(), opts.c_str(), &n1, &n2, &n3, &n4, (int32_t)name.length(), 
-                                   (int32_t)opts.length());
-        }
-        
-        template <typename T> 
-        static int gesv(int32_t n, int32_t nrhs, T* a, int32_t lda, T* b, int32_t ldb);
-
-        template <typename T> 
-        static int gtsv(int32_t n, int32_t nrhs, T* dl, T* d, T* du, T* b, int32_t ldb);
-
-        template <typename T>
-        static int getrf(int32_t m, int32_t n, T* a, int32_t lda, int32_t* ipiv);
-        
-        template <typename T>
-        static int getri(int32_t n, T* a, int32_t lda, int32_t* ipiv, T* work, int32_t lwork);
-
-        template <typename T>
-        static void invert_ge(T* mtrx, int size)
-        {
-            int32_t nb = std::max(ilaenv(1, "dgetri", "U", size, -1, -1, -1), ilaenv(1, "zgetri", "U", size, -1, -1, -1));
-            int32_t lwork = size * nb;
-            std::vector<T> work(lwork);
-            std::vector<int> ipiv(size);
-            int info = getrf(size, size, mtrx, size, &ipiv[0]);
-            if (info != 0)
-            {
-                std::stringstream s;
-                s << "getrf returned : " << info;
-                error_local(__FILE__, __LINE__, s);
-            }
-
-            info = getri(size, mtrx, size, &ipiv[0], &work[0], lwork);
-            if (info != 0)
-            {
-                std::stringstream s;
-                s << "getri returned : " << info;
-                error_local(__FILE__, __LINE__, s);
-            }
-        }
-};
-
-template<> int linalg<lapack>::gesv<real8>(int32_t n, int32_t nrhs, real8* a, int32_t lda, real8* b, int32_t ldb)
-{
-    int32_t info;
-    std::vector<int32_t> ipiv(n);
-    FORTRAN(dgesv)(&n, &nrhs, a, &lda, &ipiv[0], b, &ldb, &info);
-    return info;
-}
-
-template<> int linalg<lapack>::gesv<complex16>(int32_t n, int32_t nrhs, complex16* a, int32_t lda, complex16* b, int32_t ldb)
-{
-    int32_t info;
-    std::vector<int32_t> ipiv(n);
-    FORTRAN(zgesv)(&n, &nrhs, a, &lda, &ipiv[0], b, &ldb, &info);
-    return info;
-}
-
-template<> int linalg<lapack>::gtsv<real8>(int32_t n, int32_t nrhs, real8* dl, real8* d, real8* du, real8* b, int32_t ldb)
-{
-    int info;
-    FORTRAN(dgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
-    return info;
-}
-
-template<> int linalg<lapack>::gtsv<complex16>(int32_t n, int32_t nrhs, complex16* dl, complex16* d, complex16* du, 
-                                               complex16* b, int32_t ldb)
-{
-    int32_t info;                   
-    FORTRAN(zgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
-    return info;               
-}
-
-template<> int linalg<lapack>::getrf<real8>(int32_t m, int32_t n, real8* a, int32_t lda, int32_t* ipiv)
-{
-    int32_t info;
-    FORTRAN(dgetrf)(&m, &n, a, &lda, ipiv, &info);
-    return info;
-}
-    
-template<> int linalg<lapack>::getrf<complex16>(int32_t m, int32_t n, complex16* a, int32_t lda, int32_t* ipiv)
-{
-    int32_t info;
-    FORTRAN(zgetrf)(&m, &n, a, &lda, ipiv, &info);
-    return info;
-}
-
-template<> int linalg<lapack>::getri<real8>(int32_t n, real8* a, int32_t lda, int32_t* ipiv, real8* work, int32_t lwork)
-{
-    int32_t info;
-    FORTRAN(dgetri)(&n, a, &lda, ipiv, work, &lwork, &info);
-    return info;
-}
-
-template<> int linalg<lapack>::getri<complex16>(int32_t n, complex16* a, int32_t lda, int32_t* ipiv, complex16* work, 
-                                                int32_t lwork)
-{
-    int32_t info;
-    FORTRAN(zgetri)(&n, a, &lda, ipiv, work, &lwork, &info);
-    return info;
-}
+extern "C" void FORTRAN(zheevd)(const char* jobz, const char* uplo, int32_t* n, double_complex* a,
+                                int32_t* lda, double* w, double_complex* work, int32_t* lwork, double* rwork,
+                                int32_t* lrwork, int32_t* iwork, int32_t* liwork, int32_t* info, int32_t jobzlen, int32_t uplolen);
 
 
+
+
+extern "C" void FORTRAN(dptsv)(int32_t *n, int32_t *nrhs, double* d, double* *e, double* b, int32_t *ldb, int32_t *info);
+
+extern "C" void FORTRAN(dgtsv)(int32_t *n, int32_t *nrhs, double *dl, double *d, double *du, double *b, 
+                               int32_t *ldb, int32_t *info);
+
+extern "C" void FORTRAN(zgtsv)(int32_t *n, int32_t *nrhs, double_complex* dl, double_complex* d, double_complex* du, double_complex* b, 
+                               int32_t *ldb, int32_t *info);
+
+extern "C" void FORTRAN(dgesv)(int32_t* n, int32_t* nrhs, double* a, int32_t* lda, int32_t* ipiv, double* b, int32_t* ldb, int32_t* info);
+
+extern "C" void FORTRAN(zgesv)(int32_t* n, int32_t* nrhs, double_complex* a, int32_t* lda, int32_t* ipiv, double_complex* b, int32_t* ldb, int32_t* info);
+
+extern "C" void FORTRAN(dgetrf)(int32_t* m, int32_t* n, double* a, int32_t* lda, int32_t* ipiv, int32_t* info);
+
+extern "C" void FORTRAN(zgetrf)(int32_t* m, int32_t* n, double_complex* a, int32_t* lda, int32_t* ipiv, int32_t* info);
+
+extern "C" void FORTRAN(dgetri)(int32_t* n, double* a, int32_t* lda, int32_t* ipiv, double* work, int32_t* lwork, int32_t* info);
+
+extern "C" void FORTRAN(zgetri)(int32_t* n, double_complex* a, int32_t* lda, int32_t* ipiv, double_complex* work, int32_t* lwork, int32_t* info);
+
+
+/* 
+ *  BLACS and ScaLAPACK related functions
+ */
 #ifdef _SCALAPACK_
-template<> class linalg<scalapack>
-{
-    public:
+extern "C" int Csys2blacs_handle(MPI_Comm SysCtxt);
+extern "C" MPI_Comm Cblacs2sys_handle(int BlacsCtxt);
+extern "C" void Cblacs_gridinit(int* ConTxt, const char* order, int nprow, int npcol);
+extern "C" void Cblacs_gridmap(int* ConTxt, int* usermap, int ldup, int nprow0, int npcol0);
+extern "C" void Cblacs_gridinfo(int ConTxt, int* nprow, int* npcol, int* myrow, int* mycol);
+extern "C" void Cfree_blacs_system_handle(int ISysCtxt);
+extern "C" void Cblacs_barrier(int ConTxt, const char* scope);
+extern "C" void Cblacs_gridexit(int ConTxt);
 
-        /// Create BLACS context
-        static int create_blacs_context(MPI_Comm comm)
-        {
-            return Csys2blacs_handle(comm);
-        }
+extern "C" void FORTRAN(descinit)(int32_t* desc, int32_t* m, int32_t* n, int32_t* mb, int32_t* nb, int32_t* irsrc, int32_t* icsrc, 
+                                  int32_t* ictxt, int32_t* lld, int32_t* info);
 
-        /// create grid of MPI ranks
-        static void gridmap(int* blacs_context, int* map, int ld, int nrow, int ncol)
-        {
-            Cblacs_gridmap(blacs_context, map, ld, nrow, ncol);
-        }
+extern "C" void FORTRAN(pztranc)(int32_t* m, int32_t* n, double_complex* alpha, double_complex* a, int32_t* ia, int32_t* ja, int32_t* desca,
+                                 double_complex* beta, double_complex* c, int32_t* ic, int32_t* jc,int32_t* descc);
 
-        static void gridinfo(int blacs_context, int* nrow, int* ncol, int* irow, int* icol)
-        {
-            Cblacs_gridinfo(blacs_context, nrow, ncol, irow, icol);
-        }
+extern "C" void FORTRAN(pzhegvx)(int32_t* ibtype, const char* jobz, const char* range, const char* uplo, int32_t* n, 
+                                 double_complex* a, int32_t* ia, int32_t* ja, int32_t* desca, 
+                                 double_complex* b, int32_t* ib, int32_t* jb, int32_t* descb, 
+                                 double* vl, double* vu, 
+                                 int32_t* il, int32_t* iu, 
+                                 double* abstol, 
+                                 int32_t* m, int32_t* nz, double* w, double* orfac, 
+                                 double_complex* z, int32_t* iz, int32_t* jz, int32_t* descz, 
+                                 double_complex* work, int32_t* lwork, 
+                                 double* rwork, int32_t* lrwork, 
+                                 int32_t* iwork, int32_t* liwork, 
+                                 int32_t* ifail, int32_t* iclustr, double* gap, int32_t* info, 
+                                 int32_t jobz_len, int32_t range_len, int32_t uplo_len);
 
-        static void free_blacs_context(int blacs_context)
-        {
-            Cfree_blacs_system_handle(blacs_context);
-        }
+extern "C" void FORTRAN(pzheevd)(const char* jobz, const char* uplo, int32_t* n, 
+                                 double_complex* a, int32_t* ia, int32_t* ja, int32_t* desca, 
+                                 double* w, 
+                                 double_complex* z, int32_t* iz, int32_t* jz, int32_t* descz, 
+                                 double_complex* work, int32_t* lwork, double* rwork, int32_t* lrwork, int32_t* iwork, 
+                                 int32_t* liwork, int32_t* info, int32_t jobz_len, int32_t uplo_len);
 
-        static void descinit(int32_t* desc, int32_t m, int32_t n, int32_t mb, int32_t nb, int32_t irsrc, int32_t icsrc, int32_t ictxt, int32_t lld)
-        {
-            int32_t info;
-        
-            FORTRAN(descinit)(desc, &m, &n, &mb, &nb, &irsrc, &icsrc, &ictxt, &lld, &info);
-        
-            if (info) error_local(__FILE__, __LINE__, "error in descinit");
-        }
+extern "C" void FORTRAN(pzgemm)(const char* transa, const char* transb, 
+                                int32_t* m, int32_t* n, int32_t* k, 
+                                double_complex* aplha,
+                                double_complex* a, int32_t* ia, int32_t* ja, int32_t* desca, 
+                                double_complex* b, int32_t* ib, int32_t* jb, int32_t* descb,
+                                double_complex* beta,
+                                double_complex* c, int32_t* ic, int32_t* jc, int32_t* descc,
+                                int32_t transa_len, int32_t transb_len);
 
-        static int pjlaenv(int32_t ictxt, int32_t ispec, const std::string& name, const std::string& opts, int32_t n1, int32_t n2, 
-                           int32_t n3, int32_t n4)
-        {
-            return FORTRAN(pjlaenv)(&ictxt, &ispec, name.c_str(), opts.c_str(), &n1, &n2, &n3, &n4, (int32_t)name.length(),
-                                    (int32_t)opts.length());
-        }
+extern "C" int32_t FORTRAN(numroc)(int32_t* n, int32_t* nb, int32_t* iproc, int32_t* isrcproc, int32_t* nprocs);
 
-        static int32_t numroc(int32_t n, int32_t nb, int32_t iproc, int32_t isrcproc, int32_t nprocs)
-        {
-            return FORTRAN(numroc)(&n, &nb, &iproc, &isrcproc, &nprocs); 
-        }
+extern "C" int32_t FORTRAN(indxl2g)(int32_t* indxloc, int32_t* nb, int32_t* iproc, int32_t* isrcproc, int32_t* nprocs);
 
-        static int32_t indxl2g(int32_t indxloc, int32_t nb, int32_t iproc, int32_t isrcproc, int32_t nprocs)
-        {
-            return FORTRAN(indxl2g)(&indxloc, &nb, &iproc, &isrcproc, &nprocs);
-        }
+extern "C" int32_t FORTRAN(pjlaenv)(int32_t* ictxt, int32_t* ispec, const char* name, const char* opts, int32_t* n1, int32_t* n2, 
+                                 int32_t* n3, int32_t* n4, int32_t namelen, int32_t optslen);
 
-        static int32_t iceil(int32_t inum, int32_t idenom)
-        {
-            return FORTRAN(iceil)(&inum, &idenom);
-        }
-
-        static void pztranc(int32_t m, int32_t n, complex16 alpha, complex16* a, int32_t ia, int32_t ja, int32_t* desca, 
-                            complex16 beta, complex16* c, int32_t ic, int32_t jc, int32_t* descc)
-        {
-            FORTRAN(pztranc)(&m, &n, &alpha, a, &ia, &ja, desca, &beta, c, &ic, &jc, descc);
-        }
-};
+extern "C" int32_t FORTRAN(iceil)(int32_t* inum, int32_t* idenom);
 #endif
 
-class standard_evp
-{
-    public:
-        virtual ~standard_evp()
-        {
-        }
-
-        virtual void solve(int32_t matrix_size, complex16* a, int32_t lda, real8* eval, complex16* z, int32_t ldz)
-        {
-            error_local(__FILE__, __LINE__, "eigen-value solver is not configured");
-        }
-};
-
-class standard_evp_lapack: public standard_evp
-{
-    private:
-     
-        std::vector<int32_t> get_work_sizes(int32_t matrix_size)
-        {
-            std::vector<int32_t> work_sizes(3);
-            
-            work_sizes[0] = 2 * matrix_size + matrix_size * matrix_size;
-            work_sizes[1] = 1 + 5 * matrix_size + 2 * matrix_size * matrix_size;
-            work_sizes[2] = 3 + 5 * matrix_size;
-            return work_sizes;
-        }
-
-    public:
-        
-        standard_evp_lapack()
-        {
-        }
-       
-        void solve(int32_t matrix_size, complex16* a, int32_t lda, real8* eval, complex16* z, int32_t ldz)
-        {
-            std::vector<int32_t> work_sizes = get_work_sizes(matrix_size);
-            
-            std::vector<complex16> work(work_sizes[0]);
-            std::vector<real8> rwork(work_sizes[1]);
-            std::vector<int32_t> iwork(work_sizes[2]);
-            int32_t info;
-
-            FORTRAN(zheevd)("V", "U", &matrix_size, a, &lda, eval, &work[0], &work_sizes[0], &rwork[0], &work_sizes[1], 
-                            &iwork[0], &work_sizes[2], &info, (int32_t)1, (int32_t)1);
-            
-            for (int i = 0; i < matrix_size; i++)
-                memcpy(&z[ldz * i], &a[lda * i], matrix_size * sizeof(complex16));
-            
-            if (info)
-            {
-                std::stringstream s;
-                s << "zheevd returned " << info; 
-                error_local(__FILE__, __LINE__, s);
-            }
-        }
-};
-
-class standard_evp_scalapack: public standard_evp
-{
-    private:
-        int32_t block_size_;
-        int num_ranks_row_;
-        int num_ranks_col_;
-        int blacs_context_;
-        
-        #ifdef _SCALAPACK_
-        std::vector<int32_t> get_work_sizes(int32_t matrix_size, int32_t nb, int32_t nprow, int32_t npcol, 
-                                            int blacs_context)
-        {
-            std::vector<int32_t> work_sizes(3);
-            
-            int32_t nn = std::max(matrix_size, std::max(nb, 2));
-            
-            int32_t np0 = linalg<scalapack>::numroc(nn, nb, 0, 0, nprow);
-            int32_t mq0 = linalg<scalapack>::numroc(nn, nb, 0, 0, npcol);
-        
-            work_sizes[0] = matrix_size + (np0 + mq0 + nb) * nb;
-        
-            work_sizes[1] = 1 + 9 * matrix_size + 3 * np0 * mq0;
-        
-            work_sizes[2] = 7 * matrix_size + 8 * npcol + 2;
-            
-            return work_sizes;
-        }
-        #endif
-
-    public:
-
-        standard_evp_scalapack(int32_t block_size__, int num_ranks_row__, int num_ranks_col__, int blacs_context__) : 
-            block_size_(block_size__), num_ranks_row_(num_ranks_row__), num_ranks_col_(num_ranks_col__), 
-            blacs_context_(blacs_context__)
-        {
-        }
-
-        #ifdef _SCALAPACK_
-        void solve(int32_t matrix_size, complex16* a, int32_t lda, real8* eval, complex16* z, int32_t ldz)
-        {
-
-            int desca[9];
-            linalg<scalapack>::descinit(desca, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
-                                        blacs_context_, lda);
-            
-            int descz[9];
-            linalg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
-                                        blacs_context_, ldz);
-            
-            std::vector<int32_t> work_sizes = get_work_sizes(matrix_size, block_size_, num_ranks_row_, num_ranks_col_, 
-                                                             blacs_context_);
-            
-            std::vector<complex16> work(work_sizes[0]);
-            std::vector<real8> rwork(work_sizes[1]);
-            std::vector<int32_t> iwork(work_sizes[2]);
-            int32_t info;
-
-            int32_t ione = 1;
-            FORTRAN(pzheevd)("V", "U", &matrix_size, a, &ione, &ione, desca, eval, z, &ione, &ione, descz, &work[0], 
-                             &work_sizes[0], &rwork[0], &work_sizes[1], &iwork[0], &work_sizes[2], &info, (int32_t)1, 
-                             (int32_t)1);
-
-            if (info)
-            {
-                std::stringstream s;
-                s << "pzheevd returned " << info; 
-                error_local(__FILE__, __LINE__, s);
-            }
-        }
-        #endif
-};
-
-class generalized_evp
-{
-    public:
-        virtual ~generalized_evp()
-        {
-        }
-
-        virtual void solve(int32_t matrix_size, int32_t nevec, complex16* a, int32_t lda, complex16* b, int32_t ldb, 
-                           real8* eval, complex16* z, int32_t ldz)
-        {
-            error_local(__FILE__, __LINE__, "eigen-value solver is not configured");
-        }
-};
-
-class generalized_evp_lapack: public generalized_evp
-{
-    private:
-
-        real8 abstol_;
-    
-    public:
-
-        generalized_evp_lapack(real8 abstol__) : abstol_(abstol__)
-        {
-        }
-
-        void solve(int32_t matrix_size, int32_t nevec, complex16* a, int32_t lda, complex16* b, int32_t ldb, 
-                   real8* eval, complex16* z, int32_t ldz)
-        {
-            assert(nevec <= matrix_size);
-
-            int nb = linalg<lapack>::ilaenv(1, "ZHETRD", "U", matrix_size, 0, 0, 0);
-            int lwork = (nb + 1) * matrix_size; // lwork
-            int lrwork = 7 * matrix_size; // lrwork
-            int liwork = 5 * matrix_size; // liwork
-            
-            std::vector<complex16> work(lwork);
-            std::vector<real8> rwork(lrwork);
-            std::vector<int32_t> iwork(liwork);
-            std::vector<int32_t> ifail(matrix_size);
-            std::vector<real8> w(matrix_size);
-            real8 vl = 0.0;
-            real8 vu = 0.0;
-            int32_t m;
-            int32_t info;
-       
-            int32_t ione = 1;
-            FORTRAN(zhegvx)(&ione, "V", "I", "U", &matrix_size, a, &lda, b, &ldb, &vl, &vu, &ione, &nevec, &abstol_, &m, 
-                            &w[0], z, &ldz, &work[0], &lwork, &rwork[0], &iwork[0], &ifail[0], &info, (int32_t)1, 
-                            (int32_t)1, (int32_t)1);
-
-            if (m != nevec) error_local(__FILE__, __LINE__, "Not all eigen-values are found.");
-
-            if (info)
-            {
-                std::stringstream s;
-                s << "zhegvx returned " << info; 
-                error_local(__FILE__, __LINE__, s);
-            }
-
-            memcpy(eval, &w[0], nevec * sizeof(real8));
-        }
-
-
-};
-
-class generalized_evp_scalapack: public generalized_evp
-{
-    private:
-
-        int32_t block_size_;
-        int num_ranks_row_;
-        int num_ranks_col_;
-        int blacs_context_;
-        real8 abstol_;
-        
-        #ifdef _SCALAPACK_
-        std::vector<int32_t> get_work_sizes(int32_t matrix_size, int32_t nb, int32_t nprow, int32_t npcol, 
-                                            int blacs_context)
-        {
-            std::vector<int32_t> work_sizes(3);
-            
-            int32_t nn = std::max(matrix_size, std::max(nb, 2));
-            
-            int32_t neig = std::max(1024, nb);
-
-            int32_t nmax3 = std::max(neig, std::max(nb, 2));
-            
-            int32_t np = nprow * npcol;
-
-            // due to the mess in the documentation, take the maximum of np0, nq0, mq0
-            int32_t nmpq0 = std::max(linalg<scalapack>::numroc(nn, nb, 0, 0, nprow), 
-                                  std::max(linalg<scalapack>::numroc(nn, nb, 0, 0, npcol),
-                                           linalg<scalapack>::numroc(nmax3, nb, 0, 0, npcol))); 
-
-            int32_t anb = linalg<scalapack>::pjlaenv(blacs_context, 3, "PZHETTRD", "L", 0, 0, 0, 0);
-            int32_t sqnpc = (int32_t)pow(real8(np), 0.5);
-            int32_t nps = std::max(linalg<scalapack>::numroc(nn, 1, 0, 0, sqnpc), 2 * anb);
-
-            work_sizes[0] = matrix_size + (2 * nmpq0 + nb) * nb;
-            work_sizes[0] = std::max(work_sizes[0], matrix_size + 2 * (anb + 1) * (4 * nps + 2) + (nps + 1) * nps);
-            work_sizes[0] = std::max(work_sizes[0], 3 * nmpq0 * nb + nb * nb);
-
-            work_sizes[1] = 4 * matrix_size + std::max(5 * matrix_size, nmpq0 * nmpq0) + 
-                            linalg<scalapack>::iceil(neig, np) * nn + neig * matrix_size;
-
-            int32_t nnp = std::max(matrix_size, std::max(np + 1, 4));
-            work_sizes[2] = 6 * nnp;
-
-            return work_sizes;
-        }
-        #endif
-    
-    public:
-
-        generalized_evp_scalapack(int32_t block_size__, int num_ranks_row__, int num_ranks_col__, int blacs_context__, 
-                                  real8 abstol__) : block_size_(block_size__), num_ranks_row_(num_ranks_row__), 
-                                                    num_ranks_col_(num_ranks_col__), blacs_context_(blacs_context__), 
-                                                    abstol_(abstol__)
-        {
-        }
-
-        #ifdef _SCALAPACK_
-        void solve(int32_t matrix_size, int32_t nevec, complex16* a, int32_t lda, complex16* b, int32_t ldb, 
-                   real8* eval, complex16* z, int32_t ldz)
-        {
-        
-            assert(nevec <= matrix_size);
-            
-            int32_t desca[9];
-            linalg<scalapack>::descinit(desca, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
-                                        blacs_context_, lda);
-
-            int32_t descb[9];
-            linalg<scalapack>::descinit(descb, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
-                                        blacs_context_, ldb); 
-
-            int32_t descz[9];
-            linalg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
-                                        blacs_context_, ldz); 
-
-            std::vector<int32_t> work_sizes = get_work_sizes(matrix_size, block_size_, num_ranks_row_, num_ranks_col_, 
-                                                             blacs_context_);
-            
-            std::vector<complex16> work(work_sizes[0]);
-            std::vector<real8> rwork(work_sizes[1]);
-            std::vector<int32_t> iwork(work_sizes[2]);
-            
-            std::vector<int32_t> ifail(matrix_size);
-            std::vector<int32_t> iclustr(2 * num_ranks_row_ * num_ranks_col_);
-            std::vector<real8> gap(num_ranks_row_ * num_ranks_col_);
-            std::vector<real8> w(matrix_size);
-            
-            real8 orfac = 1e-6;
-            int32_t ione = 1;
-            
-            int32_t m;
-            int32_t nz;
-            real8 d1;
-            int32_t info;
-
-            FORTRAN(pzhegvx)(&ione, "V", "I", "U", &matrix_size, a, &ione, &ione, desca, b, &ione, &ione, descb, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, z, &ione, &ione, descz, &work[0], &work_sizes[0], 
-                             &rwork[0], &work_sizes[1], &iwork[0], &work_sizes[2], &ifail[0], &iclustr[0], &gap[0], &info, 
-                             (int32_t)1, (int32_t)1, (int32_t)1); 
-
-            if (info)
-            {
-                if ((info / 2) % 2)
-                {
-                    std::stringstream s;
-                    s << "eigenvectors corresponding to one or more clusters of eigenvalues" << std::endl  
-                      << "could not be reorthogonalized because of insufficient workspace" << std::endl;
-
-                    int k = num_ranks_row_ * num_ranks_col_;
-                    for (int i = 0; i < num_ranks_row_ * num_ranks_col_ - 1; i++)
-                    {
-                        if ((iclustr[2 * i + 1] != 0) && (iclustr[2 * (i + 1)] == 0))
-                        {
-                            k = i + 1;
-                            break;
-                        }
-                    }
-                   
-                    s << "number of eigenvalue clusters : " << k << std::endl;
-                    for (int i = 0; i < k; i++) s << iclustr[2 * i] << " : " << iclustr[2 * i + 1] << std::endl; 
-                    error_local(__FILE__, __LINE__, s);
-                }
-
-                std::stringstream s;
-                s << "pzhegvx returned " << info; 
-                error_local(__FILE__, __LINE__, s);
-            }
-
-            if ((m != nevec) || (nz != nevec))
-                error_local(__FILE__, __LINE__, "Not all eigen-vectors or eigen-values are found.");
-
-            memcpy(eval, &w[0], nevec * sizeof(real8));
-
-        }
-        #endif
-
-};
-
-class generalized_evp_elpa: public generalized_evp
-{
-    private:
-        
-        int32_t block_size_;
-        int32_t na_rows_;
-        int32_t num_ranks_row_;
-        int32_t rank_row_;
-        int32_t na_cols_;
-        int32_t num_ranks_col_;
-        int32_t rank_col_;
-        int blacs_context_;
-        MPI_Comm comm_row_;
-        MPI_Comm comm_col_;
-        MPI_Comm comm_all_;
-
-    public:
-        
-        generalized_evp_elpa(int32_t block_size__, int32_t na_rows__, int32_t num_ranks_row__, int32_t rank_row__,
-                             int32_t na_cols__, int32_t num_ranks_col__, int32_t rank_col__, int blacs_context__, 
-                             MPI_Comm comm_row__, MPI_Comm comm_col__, MPI_Comm comm_all__) : block_size_(block_size__), 
-                             na_rows_(na_rows__), num_ranks_row_(num_ranks_row__), rank_row_(rank_row__),
-                             na_cols_(na_cols__), num_ranks_col_(num_ranks_col__), rank_col_(rank_col__),
-                             blacs_context_(blacs_context__), comm_row_(comm_row__), comm_col_(comm_col__), 
-                             comm_all_(comm_all__)
-
-        {
-
-        }
-        
-        #ifdef _ELPA_
-        void solve(int32_t matrix_size, int32_t nevec, complex16* a, int32_t lda, complex16* b, int32_t ldb, 
-                   real8* eval, complex16* z, int32_t ldz)
-        {
-
-            assert(nevec <= matrix_size);
-
-            int32_t mpi_comm_rows = MPI_Comm_c2f(comm_row_);
-            int32_t mpi_comm_cols = MPI_Comm_c2f(comm_col_);
-            int32_t mpi_comm_all = MPI_Comm_c2f(comm_all_);
-
-            sirius::Timer *t;
-
-            t = new sirius::Timer("elpa::ort");
-            FORTRAN(elpa_cholesky_complex)(&matrix_size, b, &ldb, &block_size_, &mpi_comm_rows, &mpi_comm_cols);
-            FORTRAN(elpa_invert_trm_complex)(&matrix_size, b, &ldb, &block_size_, &mpi_comm_rows, &mpi_comm_cols);
-       
-            mdarray<complex16, 2> tmp1(na_rows_, na_cols_);
-            mdarray<complex16, 2> tmp2(na_rows_, na_cols_);
-
-            FORTRAN(elpa_mult_ah_b_complex)("U", "L", &matrix_size, &matrix_size, b, &ldb, a, &lda, &block_size_, 
-                                            &mpi_comm_rows, &mpi_comm_cols, tmp1.get_ptr(), &na_rows_, (int32_t)1, 
-                                            (int32_t)1);
-
-            int32_t descc[9];
-            linalg<scalapack>::descinit(descc, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
-                                        blacs_context_, lda);
-
-            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex16(1, 0), tmp1.get_ptr(), 1, 1, descc, 
-                                       complex16(0, 0), tmp2.get_ptr(), 1, 1, descc);
-
-            FORTRAN(elpa_mult_ah_b_complex)("U", "U", &matrix_size, &matrix_size, b, &ldb, tmp2.get_ptr(), &na_rows_, 
-                                            &block_size_, &mpi_comm_rows, &mpi_comm_cols, a, &lda, (int32_t)1, 
-                                            (int32_t)1);
-
-            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex16(1, 0), a, 1, 1, descc, complex16(0, 0), 
-                                       tmp1.get_ptr(), 1, 1, descc);
-
-            for (int i = 0; i < na_cols_; i++)
-            {
-                int32_t n_col = linalg<scalapack>::indxl2g(i + 1, block_size_, rank_col_, 0, num_ranks_col_);
-                int32_t n_row = linalg<scalapack>::numroc(n_col, block_size_, rank_row_, 0, num_ranks_row_);
-                for (int j = n_row; j < na_rows_; j++) 
-                {
-                    assert(j < na_rows_);
-                    assert(i < na_cols_);
-                    a[j + i * lda] = tmp1(j, i);
-                }
-            }
-            delete t;
-            
-            t = new sirius::Timer("elpa::diag");
-            std::vector<double> w(matrix_size);
-            FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size, &nevec, a, &lda, &w[0], tmp1.get_ptr(), &na_rows_, 
-                                                   &block_size_, &mpi_comm_rows, &mpi_comm_cols, &mpi_comm_all);
-            delete t;
-
-            t = new sirius::Timer("elpa::bt");
-            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex16(1, 0), b, 1, 1, descc, complex16(0, 0), 
-                                       tmp2.get_ptr(), 1, 1, descc);
-
-            FORTRAN(elpa_mult_ah_b_complex)("L", "N", &matrix_size, &nevec, tmp2.get_ptr(), &na_rows_, tmp1.get_ptr(), 
-                                            &na_rows_, &block_size_, &mpi_comm_rows, &mpi_comm_cols, z, &ldz, 
-                                            (int32_t)1, (int32_t)1);
-            delete t;
-
-            memcpy(eval, &w[0], nevec * sizeof(real8));
-        }
-        #endif
-};
-
-class generalized_evp_magma: public generalized_evp
-{
-    private:
-
-    public:
-        generalized_evp_magma()
-        {
-        }
-
-        #ifdef _MAGMA_
-        void solve(int32_t matrix_size, int32_t nevec, complex16* a, int32_t lda, complex16* b, int32_t ldb, 
-                   real8* eval, complex16* z, int32_t ldz)
-        {
-
-            assert(nevec <= matrix_size);
-            
-            magma_zhegvdx_2stage_wrapper(matrix_size, nevec, a, lda, b, ldb, eval);
-            
-            for (int i = 0; i < nevec; i++) memcpy(&z[ldz * i], &a[lda * i], matrix_size * sizeof(complex16));
-        }
-        #endif
-};
-
-#ifdef _SCALAPACK_
-template<processing_unit_t> 
-class pblas;
-
-template<> class pblas<cpu>
-{
-    public:
-
-        template <typename T>
-        static inline void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T alpha, T* a, int32_t lda, 
-                                T* b, int32_t ldb, T beta, T* c, int32_t ldc, int block_size, int blacs_context);
-};
-
-template<> inline void pblas<cpu>::gemm<complex16>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                                                   complex16 alpha, complex16* a, int32_t lda, 
-                                                   complex16* b, int32_t ldb, complex16 beta, complex16* c, int32_t ldc,
-                                                   int block_size, int blacs_context)
-{
-    const char *trans[] = {"N", "T", "C"};
-    int nrow_a = (transa == 0) ? m : k;
-    int ncol_a = (transa == 0) ? k : m;
-    int nrow_b = (transb == 0) ? k : n;
-    int ncol_b = (transb == 0) ? n : k;
-    int nrow_c = m;
-    int ncol_c = n;
-
-    int desca[9];
-    linalg<scalapack>::descinit(desca, nrow_a, ncol_a, block_size, block_size, 0, 0, blacs_context, lda);
-    
-    int descb[9];
-    linalg<scalapack>::descinit(descb, nrow_b, ncol_b, block_size, block_size, 0, 0, blacs_context, ldb);
-    
-    int descc[9];
-    linalg<scalapack>::descinit(descc, nrow_c, ncol_c, block_size, block_size, 0, 0, blacs_context, ldc);
-
-    int32_t ione = 1;
-    FORTRAN(pzgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &ione, &ione, desca, b, &ione, &ione, descb,
-                    &beta, c, &ione, &ione, descc, 1, 1);
-}
+#ifdef _ELPA_
+extern "C" void FORTRAN(elpa_cholesky_complex)(int32_t* na, double_complex* a, int32_t* lda, int32_t* nblk, int32_t* mpi_comm_rows, 
+                                               int32_t* mpi_comm_cols);
+
+extern "C" void FORTRAN(elpa_invert_trm_complex)(int32_t* na, double_complex* a, int32_t* lda, int32_t* nblk, int32_t* mpi_comm_rows, 
+                                                 int32_t* mpi_comm_cols);
+
+extern "C" void FORTRAN(elpa_mult_ah_b_complex)(const char* uplo_a, const char* uplo_c, int32_t* na, int32_t* ncb, 
+                                                double_complex* a, int32_t* lda, double_complex* b, int32_t* ldb, int32_t* nblk, 
+                                                int32_t* mpi_comm_rows, int32_t* mpi_comm_cols, double_complex* c, int32_t* ldc,
+                                                int32_t uplo_a_len, int32_t uplo_c_len);
+
+extern "C" void FORTRAN(elpa_solve_evp_complex)(int32_t* na, int32_t* nev, double_complex* a, int32_t* lda, double* ev, 
+                                                double_complex* q, int32_t* ldq, int32_t* nblk, int32_t* mpi_comm_rows, 
+                                                int32_t* mpi_comm_cols);
+
+extern "C" void FORTRAN(elpa_solve_evp_complex_2stage)(int32_t* na, int32_t* nev, double_complex* a, int32_t* lda, double* ev, 
+                                                       double_complex* q, int32_t* ldq, int32_t* nblk, int32_t* mpi_comm_rows, 
+                                                       int32_t* mpi_comm_cols, int32_t* mpi_comm_all);
 #endif
+
+#include "lapack.h"
+#include "dmatrix.h"
+#include "blas.h"
+#include "evp_solver.h"
 
 #endif // __LINALG_H__
 

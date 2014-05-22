@@ -1,6 +1,4 @@
-// This file is part of SIRIUS
-//
-// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -19,361 +17,165 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/** \file spline.h
+ *   
+ *  \brief Contains definition and partial implementaiton of sirius::Spline class.
+ */
+
 #ifndef __SPLINE_H__
 #define __SPLINE_H__
 
-/** \file spline.h
-    
-    \brief Implementation of cubic spline.
-*/
+#include "linalg.h"
+
 namespace sirius {
 
 /// Cubic spline with a not-a-knot boundary conditions.
-/** The following convention for spline coefficients is used: between points \f$ x_i \f$ and \f$ x_{i+1} \f$ the
-    value of the spline is equal to \f$ a_i + b_i(x_{i+1} - x_i) + c_i(x_{i+1}-x_i)^2 + d_i(x_{i+1}-x_i)^3 \f$. 
-*/
+/** The following convention for spline coefficients is used: between points 
+ *  \f$ x_i \f$ and \f$ x_{i+1} \f$ the value of the spline is equal to 
+ *  \f$ a_i + b_i(x_{i+1} - x_i) + c_i(x_{i+1}-x_i)^2 + d_i(x_{i+1}-x_i)^3 \f$. 
+ */
 template <typename T> 
 class Spline
 {
     private:
         
-        /// number of interpolating points
-        int num_points_;
-    
-        /// radial grid
-        sirius::Radial_grid& radial_grid_;
+        /// Radial grid.
+        Radial_grid radial_grid_;
         
-        /// spline "a" coefficients
+        /// Spline "a" coefficients.
         std::vector<T> a;
         
-        /// spline "b" coefficients
+        /// Spline "b" coefficients.
         std::vector<T> b;
         
-        /// spline "c" coefficients
+        /// Spline "c" coefficients.
         std::vector<T> c;
         
-        /// spline "d" coefficients
+        /// Spline "d" coefficients.
         std::vector<T> d;
+
+        // TODO: maybe add x-coordinate as an oprator. we know the radial grid and we can return x here
 
     public:
     
         template <typename U> 
         friend class Spline;
-        
-        Spline(int num_points__, sirius::Radial_grid& radial_grid__) : 
-            num_points_(num_points__), radial_grid_(radial_grid__)
-        {
-            a = std::vector<T>(num_points_);
-            b = std::vector<T>(num_points_ - 1);
-            c = std::vector<T>(num_points_ - 1);
-            d = std::vector<T>(num_points_ - 1);
 
-            memset(&a[0], 0, num_points_ * sizeof(T));
-            memset(&b[0], 0, (num_points_ - 1) * sizeof(T));
-            memset(&c[0], 0, (num_points_ - 1) * sizeof(T));
-            memset(&d[0], 0, (num_points_ - 1) * sizeof(T));
+        /// Constructor of an empty spline.
+        Spline()
+        {
         }
         
-        Spline(int num_points__, sirius::Radial_grid& radial_grid__, std::vector<T>& y) : 
-            num_points_(num_points__), radial_grid_(radial_grid__)
+        /// Constructor of a zero valued spline.
+        Spline(Radial_grid radial_grid__) : radial_grid_(radial_grid__)
+        {
+            int np = num_points();
+
+            a = std::vector<T>(np);
+            b = std::vector<T>(np - 1);
+            c = std::vector<T>(np - 1);
+            d = std::vector<T>(np - 1);
+
+            memset(&a[0], 0, np * sizeof(T));
+            memset(&b[0], 0, (np - 1) * sizeof(T));
+            memset(&c[0], 0, (np - 1) * sizeof(T));
+            memset(&d[0], 0, (np - 1) * sizeof(T));
+        }
+        
+        /// Constructor of a spline.
+        Spline(Radial_grid& radial_grid__, std::vector<T>& y) : radial_grid_(radial_grid__)
         {
             interpolate(y);
         }
         
-        Spline<T>& interpolate(std::vector<T>& y)
+        inline Spline<T>& interpolate(std::vector<T>& y)
         {
+            assert(radial_grid_.num_points() == (int)y.size());
             a = y;
             return interpolate();
         }
         
-        Spline<T>& interpolate()
-        {
-            std::vector<T> diag_main(num_points_);
-            std::vector<T> diag_lower(num_points_ - 1);
-            std::vector<T> diag_upper(num_points_ - 1);
-            std::vector<T> m(num_points_);
-            std::vector<T> dy(num_points_ - 1);
-            
-            // derivative of y
-            for (int i = 0; i < num_points_ - 1; i++) dy[i] = (a[i + 1] - a[i]) / radial_grid_.dr(i);
-            
-            // setup "B" vector of AX=B equation
-            for (int i = 0; i < num_points_ - 2; i++) m[i + 1] = (dy[i + 1] - dy[i]) * 6.0;
-            
-            m[0] = -m[1];
-            m[num_points_ - 1] = -m[num_points_ - 2];
-            
-            // main diagonal of "A" matrix
-            for (int i = 0; i < num_points_ - 2; i++) diag_main[i + 1] = 2 * (radial_grid_.dr(i) + radial_grid_.dr(i + 1));
-            double h0 = radial_grid_.dr(0);
-            double h1 = radial_grid_.dr(1);
-            double h2 = radial_grid_.dr(num_points_ - 2);
-            double h3 = radial_grid_.dr(num_points_ - 3);
-            diag_main[0] = (h1 / h0) * h1 - h0;
-            diag_main[num_points_ - 1] = (h3 / h2) * h3 - h2;
-            
-            // subdiagonals of "A" matrix
-            for (int i = 0; i < num_points_ - 1; i++)
-            {
-                diag_upper[i] = radial_grid_.dr(i);
-                diag_lower[i] = radial_grid_.dr(i);
-            }
-            diag_upper[0] = -(h1 * (1 + h1 / h0) + diag_main[1]);
-            diag_lower[num_points_ - 2] = -(h3 * (1 + h3 / h2) + diag_main[num_points_ - 2]); 
-
-            // solve tridiagonal system
-            int info = linalg<lapack>::gtsv(num_points_, 1, &diag_lower[0], &diag_main[0], &diag_upper[0], &m[0], 
-                                            num_points_);
-
-            if (info)
-            {
-                std::stringstream s;
-                s << "gtsv returned " << info;
-                error_local(__FILE__, __LINE__, s);
-            }
-            
-            b.resize(num_points_ - 1);
-            c.resize(num_points_ - 1);
-            d.resize(num_points_ - 1);
-
-            for (int i = 0; i < num_points_ - 1; i++)
-            {
-                c[i] = m[i] / 2.0;
-                T t = (m[i + 1] - m[i]) / 6.0;
-                b[i] = dy[i] - (c[i] + t) * radial_grid_.dr(i);
-                d[i] = t / radial_grid_.dr(i);
-            }
-            return *this;
-        }
-
-        template <typename U>
-        static T integrate(Spline<T>* f, Spline<U>* g)
-        {
-            if ((&f->radial_grid_ != &g->radial_grid_) || (f->num_points_ != g->num_points_)) 
-                error_local(__FILE__, __LINE__, "radial grids don't match");
-            
-            T result = 0;
-
-            for (int i = 0; i < f->num_points_ - 1; i++)
-            {
-                double x0 = f->radial_grid_[i];
-                double dx = f->radial_grid_.dr(i);
-                
-                T a0b0 = f->a[i] * g->a[i];
-                T a3b3 = f->d[i] * g->d[i];
-                
-                T k1 = f->d[i] * g->b[i] + f->c[i] * g->c[i] + f->b[i] * g->d[i];
-                T k2 = f->d[i] * g->a[i] + f->c[i] * g->b[i] + f->b[i] * g->c[i] + f->a[i] * g->d[i];
-                T k3 = f->c[i] * g->a[i] + f->b[i] * g->b[i] + f->a[i] * g->c[i];
-                T k4 = f->d[i] * g->c[i] + f->c[i] * g->d[i];
-                T k5 = f->b[i] * g->a[i] + f->a[i] * g->b[i];
-
-                result += dx * ((a0b0 * x0 * x0) + 
-                          dx * ((x0 * (2.0 * a0b0 + x0 * k5)) / 2.0 +
-                          dx * ((a0b0 + x0 * (2.0 * k5 + k3 * x0)) / 3.0 + 
-                          dx * ((k5 + x0 * (2.0 * k3 + k2 * x0)) / 4.0 +
-                          dx * ((k3 + x0 * (2.0 * k2 + k1 * x0)) / 5.0 + 
-                          dx * ((k2 + x0 * (2.0 * k1 + k4 * x0)) / 6.0 + 
-                          dx * ((k1 + x0 * (2.0 * k4 + a3b3 * x0)) / 7.0 + 
-                          dx * ((k4 + 2.0 * a3b3 * x0) / 8.0 + 
-                          dx * a3b3 / 9.0)))))))); 
-            }
-
-            return result;
-        }
-        
         T integrate(int m = 0)
         {
-            std::vector<T> g(num_points_);
-    
+            std::vector<T> g(num_points());
             return integrate(g, m);
         }
         
         T integrate(int n, int m)
         {
-            std::vector<T> g(num_points_);
-    
+            std::vector<T> g(num_points());
             integrate(g, m);
-
             return g[n];
         }
 
-        T integrate(std::vector<T>& g, int m = 0)
-        {
-            g = std::vector<T>(num_points_);
-
-            g[0] = 0.0;
-
-            switch (m)
-            {
-                case 0:
-                {
-                    double t = 1.0 / 3.0;
-                    for (int i = 0; i < num_points_ - 1; i++)
-                    {
-                        double dx = radial_grid_.dr(i);
-                        g[i + 1] = g[i] + (((d[i] * dx * 0.25 + c[i] * t) * dx + b[i] * 0.5) * dx + a[i]) * dx;
-                    }
-                    break;
-                }
-                case 2:
-                {
-                    for (int i = 0; i < num_points_ - 1; i++)
-                    {
-                        double x0 = radial_grid_[i];
-                        double x1 = radial_grid_[i + 1];
-                        double dx = radial_grid_.dr(i);
-                        T a0 = a[i];
-                        T a1 = b[i];
-                        T a2 = c[i];
-                        T a3 = d[i];
-
-                        double x0_2 = x0 * x0;
-                        double x0_3 = x0_2 * x0;
-                        double x1_2 = x1 * x1;
-                        double x1_3 = x1_2 * x1;
-
-                        g[i + 1] = g[i] + (20.0 * a0 * (x1_3 - x0_3) + 5.0 * a1 * (x0 * x0_3 + x1_3 * (3.0 * dx - x0)) - 
-                                   dx * dx * dx * (-2.0 * a2 * (x0_2 + 3.0 * x0 * x1 + 6.0 * x1_2) - 
-                                   a3 * dx * (x0_2 + 4.0 * x0 * x1 + 10.0 * x1_2))) / 60.0;
-                    }
-                    break;
-                }
-                case -1:
-                {
-                    for (int i = 0; i < num_points_ - 1; i++)
-                    {
-                        double x0 = radial_grid_[i];
-                        double x1 = radial_grid_[i + 1];
-                        T a0 = a[i];
-                        T a1 = b[i];
-                        T a2 = c[i];
-                        T a3 = d[i];
-
-                        // obtained with the following Mathematica code:
-                        //   FullSimplify[Integrate[x^(-1)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],
-                        //                          Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
-                        g[i + 1] = g[i] + (-((x0 - x1) * (6.0 * a1 - 9.0 * a2 * x0 + 11.0 * a3 * pow(x0, 2) + 
-                                   3.0 * a2 * x1 - 7.0 * a3 * x0 * x1 + 2.0 * a3 * pow(x1, 2))) / 6.0 + 
-                                   (-a0 + x0 * (a1 - a2 * x0 + a3 * pow(x0, 2))) * log(x0 / x1));
-                    }
-                    break;
-                }
-                case -2:
-                {
-                    for (int i = 0; i < num_points_ - 1; i++)
-                    {
-                        double x0 = radial_grid_[i];
-                        double x1 = radial_grid_[i + 1];
-                        T a0 = a[i];
-                        T a1 = b[i];
-                        T a2 = c[i];
-                        T a3 = d[i];
-
-                        // obtained with the following Mathematica code:
-                        //   FullSimplify[Integrate[x^(-2)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],
-                        //                          Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
-                        g[i + 1] = g[i] + (((x0 - x1) * (-2.0 * a0 + x0 * (2.0 * a1 - 2.0 * a2 * (x0 + x1) + 
-                                   a3 * (2.0 * pow(x0, 2) + 5.0 * x0 * x1 - pow(x1, 2)))) + 
-                                   2.0 * x0 * (a1 + x0 * (-2.0 * a2 + 3.0 * a3 * x0)) * x1 * log(x1 / x0)) / 
-                                   (2.0 * x0 * x1));
-                    }
-                    break;
-                }
-                case -3:
-                {
-                    for (int i = 0; i < num_points_ - 1; i++)
-                    {
-                        double x0 = radial_grid_[i];
-                        double x1 = radial_grid_[i + 1];
-                        T a0 = a[i];
-                        T a1 = b[i];
-                        T a2 = c[i];
-                        T a3 = d[i];
-
-                        // obtained with the following Mathematica code:
-                        //   FullSimplify[Integrate[x^(-3)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],
-                        //                          Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
-                        g[i + 1] = g[i] + (-((x0 - x1) * (a0 * (x0 + x1) + x0 * (a1 * (-x0 + x1) + 
-                                   x0 * (a2 * x0 - a3 * pow(x0, 2) - 3.0 * a2 * x1 + 5.0 * a3 * x0 * x1 + 
-                                   2.0 * a3 * pow(x1, 2)))) + 2.0 * pow(x0, 2) * (a2 - 3.0 * a3 * x0) * pow(x1, 2) * 
-                                   log(x0 / x1)) / (2.0 * pow(x0, 2) * pow(x1, 2)));
-                    }
-                    break;
-                }
-                case -4:
-                {
-                    for (int i = 0; i < num_points_ - 1; i++)
-                    {
-                        double x0 = radial_grid_[i];
-                        double x1 = radial_grid_[i + 1];
-                        T a0 = a[i];
-                        T a1 = b[i];
-                        T a2 = c[i];
-                        T a3 = d[i];
-
-                        // obtained with the following Mathematica code:
-                        //   FullSimplify[Integrate[x^(-4)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],
-                        //                          Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
-                        g[i + 1] = g[i] + ((2.0 * a0 * (-pow(x0, 3) + pow(x1, 3)) + 
-                                   x0 * (x0 - x1) * (a1 * (x0 - x1) * (2.0 * x0 + x1) + 
-                                   x0 * (-2.0 * a2 * pow(x0 - x1, 2) + a3 * x0 * (2.0 * pow(x0, 2) - 7.0 * x0 * x1 + 
-                                   11.0 * pow(x1, 2)))) + 6.0 * a3 * pow(x0, 3) * pow(x1, 3) * log(x1 / x0)) / 
-                                   (6.0 * pow(x0, 3) * pow(x1, 3)));
-                    }
-                    break;
-                }
-                default:
-                {
-                    for (int i = 0; i < num_points_ - 1; i++)
-                    {
-                        double x0 = radial_grid_[i];
-                        double x1 = radial_grid_[i + 1];
-                        T a0 = a[i];
-                        T a1 = b[i];
-                        T a2 = c[i];
-                        T a3 = d[i];
-
-                        // obtained with the following Mathematica code:
-                        //   FullSimplify[Integrate[x^(m)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}], 
-                        //                          Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
-                        g[i + 1] = g[i] + (pow(x0, 1 + m) * (-(a0 * double((2 + m) * (3 + m) * (4 + m))) + 
-                                   x0 * (a1 * double((3 + m) * (4 + m)) - 2.0 * a2 * double(4 + m) * x0 + 
-                                   6.0 * a3 * pow(x0, 2)))) / double((1 + m) * (2 + m) * (3 + m) * (4 + m)) + 
-                                   pow(x1, 1 + m) * ((a0 - x0 * (a1 + x0 * (-a2 + a3 * x0))) / double(1 + m) + 
-                                   ((a1 + x0 * (-2.0 * a2 + 3.0 * a3 * x0)) * x1) / double(2 + m) + 
-                                   ((a2 - 3.0 * a3 * x0) * pow(x1, 2)) / double(3 + m) + 
-                                   (a3 * pow(x1, 3)) / double(4 + m));
-                    }
-                    break;
-                }
-            }
-            
-            return g[num_points_ - 1];
-        }
-
-        std::vector<T>& data_points()
+        inline std::vector<T>& values()
         {
             return a;
         }
         
         inline int num_points()
         {
-            return num_points_;
+            return radial_grid_.num_points();
         }
 
-        T operator()(const int i, double dx)
+        inline Spline<T>& operator=(std::vector<T>& y)
         {
-            return a[i] + dx * (b[i] + dx * (c[i] + dx * d[i]));
+            a = y;
+            return *this;
+        }
+
+        // TODO: check spline iterpolation between different grids. Can it be done analytically?
+        inline T operator()(double x)
+        {
+            int np = num_points();
+
+            assert(x <= radial_grid_[np - 1]);
+            
+            if (x >= radial_grid_[0])
+            {
+                int j = np - 1;
+                for (int i = 0; i < np - 1; i++)
+                {
+                    if (x < radial_grid_[i + 1])
+                    {
+                        j = i;
+                        break;
+                    }
+                }
+                if (j == np - 1) 
+                {
+                    return a[np - 1];
+                }
+                else
+                {
+                    double dx = x - radial_grid_[j];
+                    return a[j] + dx * (b[j] + dx * (c[j] + dx * d[j]));
+                }
+            }
+            else
+            {
+                double dx = x - radial_grid_[0];
+                return a[0] + dx * (b[0] + dx * (c[0] + dx * d[0]));
+            }
         }
         
-        T& operator[](const int i)
+        /// Return value at \f$ x_i \f$.
+        inline T& operator[](const int i)
         {
+            assert(i >= 0 && i < (int)a.size());
             return a[i];
         }
 
+        inline T operator()(const int i, double dx)
+        {
+            assert(i >= 0 && i < (int)a.size() - 1);
+            return a[i] + dx * (b[i] + dx * (c[i] + dx * d[i]));
+        }
+        
         inline T deriv(const int dm, const int i, const double dx)
         {
+            assert(i < num_points() - 1);
+
             switch (dm)
             {
                 case 0:
@@ -407,28 +209,49 @@ class Spline
 
         inline T deriv(const int dm, const int i)
         {
-            if (i == num_points_ - 1) 
+            if (i == num_points() - 1) 
             {
-                return deriv(dm, i - 1, radial_grid_.dr(i - 1));
+                return deriv(dm, i - 1, radial_grid_.dx(i - 1));
             }
             else 
             {
-                return deriv(dm, i, 0.0);
+                return deriv(dm, i, 0);
             }
         }
 
-        inline void get_coefs(T* array, int lda)
+        Spline<T>& interpolate();
+
+        void get_coefs(T* array, int lda);
+
+        T integrate(std::vector<T>& g, int m = 0);
+
+        /// Integrate two splines with r^1 or r^2 weight
+        template <typename U>
+        static T integrate(Spline<T>* f, Spline<U>* g, int m);
+
+        /// Integrate two splines with r^1 or r^2 weight up to a given number of points
+        template <typename U>
+        static T integrate(Spline<T>* f, Spline<U>* g, int m, int num_points);
+
+        uint64_t hash()
         {
-            for (int i = 0; i < num_points_ - 1; i++)
+            mdarray<T, 1> v(4 * num_points() - 3);
+            int n = 0;
+            for (int i = 0; i < num_points(); i++)
             {
-                array[0 * lda + i] = a[i];
-                array[1 * lda + i] = b[i];
-                array[2 * lda + i] = c[i];
-                array[3 * lda + i] = d[i];
+                v(n++) = a[i];
             }
-            array[num_points_ - 1] = a[num_points_ - 1];
+            for (int i = 0; i < num_points() - 1; i++)
+            {
+                v(n++) = b[i];
+                v(n++) = c[i];
+                v(n++) = d[i];
+            }
+            return v.hash();
         }
 };
+
+#include "spline.hpp"
 
 };
 

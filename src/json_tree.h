@@ -1,5 +1,32 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file json_tree.h
+ *   
+ *  \brief Contains definition and implementation of JSON_value_parser, JSON_tree and JSON_write classes.
+ */
+
 #ifndef __JSON_TREE_H__
 #define __JSON_TREE_H__
+
+#include <sys/stat.h>
+#include <libjson.h>
 
 /// Auxiliary class for parsing JSONNode of the libjson
 class JSON_value_parser 
@@ -95,6 +122,7 @@ class JSON_value_parser
         }
 };
 
+/// JSON DOM tree.
 class JSON_tree
 {
     private:
@@ -109,7 +137,7 @@ class JSON_tree
         template <typename T> 
         inline T parse_value()
         {
-            T val;
+            T val = T();
             JSON_value_parser jvp(node_, val);
             if (!jvp.is_valid())
             {
@@ -126,7 +154,7 @@ class JSON_tree
         template <typename T> 
         inline T parse_value(T& default_val)
         {
-            T val;
+            T val = T();
             JSON_value_parser jvp(node_, val);
             if (!jvp.is_valid())
             {
@@ -164,8 +192,10 @@ class JSON_tree
 
     public:
     
-        JSON_tree(JSONNode& node__, std::string& path__, const std::string& fname__) : 
-            node_(node__), path_(path__), fname_(fname__)
+        JSON_tree(JSONNode& node__, std::string& path__, const std::string& fname__) 
+            : node_(node__), 
+              path_(path__), 
+              fname_(fname__)
         {
         }
 
@@ -223,7 +253,7 @@ class JSON_tree
 
         inline JSON_tree operator[](const int key) const 
         {
-            std::string new_path = path_ + std::string("/") + Utils::to_string(key);
+            std::string new_path = path_ + std::string("/") + std::to_string(key);
             JSONNode n;
             try
             {
@@ -251,6 +281,7 @@ class JSON_tree
         }
 }; 
 
+/// Simple JSON serializer.
 class JSON_write
 {
     private:
@@ -265,6 +296,12 @@ class JSON_write
 
         bool new_block_;
 
+        inline void new_indent_level(int shift)
+        {
+            indent_level_ += shift;
+            new_block_ = true;
+        }
+        
         inline void new_line()
         {
             std::string s(indent_level_, ' ');
@@ -279,15 +316,12 @@ class JSON_write
             }
         }
 
-        inline void new_indent_level(int shift)
-        {
-            indent_level_ += shift;
-            new_block_ = true;
-        }
-
     public:
         
-        JSON_write(const std::string fname__) : fname_(fname__), indent_step_(4), new_block_(true)
+        JSON_write(const std::string fname__) 
+            : fname_(fname__), 
+              indent_step_(4), 
+              new_block_(true)
         {
             fout_ = fopen(fname_.c_str(), "w");
             fprintf(fout_, "{");
@@ -300,6 +334,24 @@ class JSON_write
             fclose(fout_);
         }
 
+        inline void write(std::vector<double>& v)
+        {
+            new_line();
+            fprintf(fout_, "[");
+            for (int i = 0; i < (int)v.size(); i++)
+            {
+                if (i != 0) fprintf(fout_, ", ");
+                fprintf(fout_, "%s", Utils::double_to_string(v[i]).c_str());
+            }
+            fprintf(fout_, "]");
+        } 
+
+        inline void write(std::string s)
+        {
+            new_line();
+            fprintf(fout_, "\"%s\"", s.c_str());
+        }
+
         inline void single(const char* name, int value)
         {
             new_line();
@@ -309,14 +361,8 @@ class JSON_write
         inline void single(const char* name, double value)
         {
             new_line();
-            if (fabs(value) > 1e-6)
-            {
-                fprintf(fout_, "\"%s\" : %.12f", name, value);
-            }
-            else
-            {
-                fprintf(fout_, "\"%s\" : %.12e", name, value);
-            }
+            std::string s = Utils::double_to_string(value);
+            fprintf(fout_, "\"%s\" : %s", name, s.c_str());
         }
 
         inline void single(const char* name, const std::string& value)
@@ -330,22 +376,22 @@ class JSON_write
             new_line();
             fprintf(fout_, "\"%s\" : %s", name, value.c_str());
         }
-        
+       
+        /// Write array of doubles
+        /** The following data structure is written:
+         *  \code{.json}
+         *      "name" : [v1, v2, v2, ...]
+         *  \endcode
+         */
         inline void single(const char* name, std::vector<double>& values)
         {
             new_line();
             fprintf(fout_, "\"%s\" : [", name);
             for (int i = 0; i < (int)values.size(); i++)
             {
-                if (i) fprintf(fout_, ",");
-                if (fabs(values[i]) > 1e-6)
-                {
-                    fprintf(fout_, "%.12f", values[i]);
-                }
-                else
-                {
-                    fprintf(fout_, "%.12e", values[i]);
-                }
+                if (i) fprintf(fout_, ", ");
+                std::string s = Utils::double_to_string(values[i]);
+                fprintf(fout_, "%s", s.c_str());
             }
             fprintf(fout_, "]");
         }
@@ -374,42 +420,44 @@ class JSON_write
             fprintf(fout_, "]");
         }
         
-        inline void single(const char* name, std::map<std::string, std::vector<double> >& timers)
+        inline void single(const char* name, std::map<std::string, sirius::timer_stats> timers)
         {
             new_line();
             fprintf(fout_, "\"%s\" : {", name);
             
             indent_level_ += indent_step_;
-            std::map<std::string, std::vector<double> >::iterator it;
             new_block_ = true;
-            for (it = timers.begin(); it != timers.end(); it++)
+            for (auto it = timers.begin(); it != timers.end(); it++)
             {
-                int count = (int)it->second.size();
-                double total = 0.0;
-                double minval = 1e100;
-                double maxval = 0.0;
-                for (int i = 0; i < count; i++)
-                {
-                    total += it->second[i];
-                    minval = std::min(minval, it->second[i]);
-                    maxval = std::max(maxval, it->second[i]);
-                }
-                double average = (count == 0) ? 0.0 : total / count;
-                std::vector<double> values(4); // total,min,max,average
-                values[0] = total;
-                values[1] = minval;
-                values[2] = maxval;
-                values[3] = average;
+                std::vector<double> values(4); // total, min, max, average
+                values[0] = it->second.total_value;
+                values[1] = it->second.min_value;
+                values[2] = it->second.max_value;
+                values[3] = it->second.average_value;
                 single(it->first.c_str(), values);
             }
             
             end_set();
         }
 
+        inline void key(const char* name)
+        {
+            new_line();
+            fprintf(fout_, "\"%s\" : ", name);
+        }
+            
         inline void begin_array(const char* name)
         {
             new_line();
             fprintf(fout_, "\"%s\" : [", name);
+            
+            new_indent_level(indent_step_);
+        }
+
+        inline void begin_array()
+        {
+            new_line();
+            fprintf(fout_, "[");
             
             new_indent_level(indent_step_);
         }
@@ -421,6 +469,14 @@ class JSON_write
             fprintf(fout_, "]");
         }
         
+        inline void begin_set(const char* name)
+        {
+            new_line();
+            fprintf(fout_, "\"%s\" : {", name);
+            
+            new_indent_level(indent_step_);
+        }
+
         inline void begin_set()
         {
             new_line();
@@ -436,7 +492,5 @@ class JSON_write
             fprintf(fout_, "}");
         }
 };
-
-
 
 #endif // __JSON_TREE_H__

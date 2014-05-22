@@ -5,31 +5,26 @@ using namespace sirius;
 template<typename T, typename U>
 void test1_radial_angular()
 {
+    SHT sht(7);
     int lmmax = 64;
 
     Radial_grid r(exponential_grid, 1000, 0.01, 2.0);
 
-    Spheric_function<T> f1(r, lmmax);
-    Spheric_function<U> f2(r, lmmax);
-    Spheric_function<T> f3(r, lmmax);
+    Spheric_function<spectral, T> f1(r, lmmax);
 
     srand((int)time(NULL));
 
     for (int lm = 0; lm < lmmax; lm++)
     {
-        for (int ir = 0; ir < r.num_mt_points(); ir++) 
-        {
-            f1(ir, lm) = primitive_type_wrapper<T>::sift(complex16(double(rand()) / RAND_MAX, 
-                                                                   double(rand()) / RAND_MAX));
-        }
+        for (int ir = 0; ir < r.num_points(); ir++) f1(ir, lm) = type_wrapper<T>::random();
     }
-    f1.sh_convert(f2);
-    f2.sh_convert(f3);
+    auto f2 = sht.convert(f1);
+    auto f3 = sht.convert(f2);
 
     double d = 0;
     for (int lm = 0; lm < lmmax; lm++)
     {
-        for (int ir = 0; ir < r.num_mt_points(); ir++) d += primitive_type_wrapper<T>::abs(f1(ir, lm) - f3(ir, lm));
+        for (int ir = 0; ir < r.num_points(); ir++) d += type_wrapper<T>::abs(f1(ir, lm) - f3(ir, lm));
     }
     
     if (d < 1e-10)
@@ -45,31 +40,26 @@ void test1_radial_angular()
 template<typename T, typename U>
 void test1_angular_radial()
 {
+    SHT sht(7);
     int lmmax = 64;
 
     Radial_grid r(exponential_grid, 1000, 0.01, 2.0);
 
-    Spheric_function<T> f1(lmmax, r);
-    Spheric_function<U> f2(lmmax, r);
-    Spheric_function<T> f3(lmmax, r);
+    Spheric_function<spectral, T> f1(lmmax, r);
 
     srand((int)time(NULL));
 
-    for (int ir = 0; ir < r.num_mt_points(); ir++) 
+    for (int ir = 0; ir < r.num_points(); ir++) 
     {
-        for (int lm = 0; lm < lmmax; lm++)
-        {
-            f1(lm, ir) = primitive_type_wrapper<T>::sift(complex16(double(rand()) / RAND_MAX, 
-                                                                   double(rand()) / RAND_MAX));
-        }
+        for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = type_wrapper<T>::random();
     }
-    f1.sh_convert(f2);
-    f2.sh_convert(f3);
+    auto f2 = sht.convert(f1);
+    auto f3 = sht.convert(f2);
 
     double d = 0;
-    for (int ir = 0; ir < r.num_mt_points(); ir++) 
+    for (int ir = 0; ir < r.num_points(); ir++) 
     {
-        for (int lm = 0; lm < lmmax; lm++) d += primitive_type_wrapper<T>::abs(f1(lm, ir) - f3(lm, ir));
+        for (int lm = 0; lm < lmmax; lm++) d += type_wrapper<T>::abs(f1(lm, ir) - f3(lm, ir));
     }
 
     std::cout << "diff : " << d << std::endl;
@@ -82,28 +72,21 @@ void test2(int lmax, int nr)
     Radial_grid r(exponential_grid, nr, 0.01, 2.0);
 
     SHT sht(lmax);
-    Spheric_function<T> f1(lmmax, r);
-    Spheric_function<T> f2(sht, r);
-    Spheric_function<T> f3(lmmax, r);
-    
+    Spheric_function<spectral, T> f1(lmmax, r);
 
     for (int ir = 0; ir < nr; ir++)
     {
-        for (int lm = 0; lm < lmmax; lm++)
-        {
-            f1(lm, ir) = primitive_type_wrapper<T>::sift(complex16(double(rand()) / RAND_MAX, 
-                                                                   double(rand()) / RAND_MAX));
-        }
+        for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = type_wrapper<T>::random();
     }
-    f1.sh_transform(f2);
-    f2.sh_transform(f3);
+    auto f2 = sht.transform(f1);
+    auto f3 = sht.transform(f2);
 
     double d = 0;
     for (int ir = 0; ir < nr; ir++)
     {
         for (int lm = 0; lm < lmmax; lm++)
         {
-            d += primitive_type_wrapper<T>::abs(f1(lm, ir) - f3(lm, ir));
+            d += type_wrapper<T>::abs(f1(lm, ir) - f3(lm, ir));
         }
     }
 
@@ -116,31 +99,28 @@ void test3(int lmax, int nr)
     Radial_grid r(exponential_grid, nr, 0.01, 2.0);
     SHT sht(lmax);
 
-    Spheric_function<double> f1(lmmax, r);
-    Spheric_function<double> f2(sht, r);
-    Spheric_function<complex16> f3(sht, r);
-    Spheric_function<complex16> f4(lmmax, r);
-    Spheric_function<double> f5(lmmax, r);
+    Spheric_function<spectral, double> f1(lmmax, r);
+    Spheric_function<spatial, double_complex> f3(sht.num_points(), r);
 
     for (int ir = 0; ir < nr; ir++)
     {
-        for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = double(rand()) / RAND_MAX;
+        for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = type_wrapper<double>::random();
     }
-    f1.sh_transform(f2);
+    auto f2 = sht.transform(f1);
     for (int ir = 0; ir < nr; ir++)
     {
         for (int tp = 0; tp < sht.num_points(); tp++) f3(tp, ir) = f2(tp, ir);
     }
 
-    f3.sh_transform(f4);
-    f4.sh_convert(f5);
+    auto f4 = sht.transform(f3);
+    auto f5 = sht.convert(f4);
 
     double d = 0;
     for (int ir = 0; ir < nr; ir++)
     {
         for (int lm = 0; lm < lmmax; lm++)
         {
-            d += primitive_type_wrapper<double>::abs(f1(lm, ir) - f5(lm, ir));
+            d += type_wrapper<double>::abs(f1(lm, ir) - f5(lm, ir));
         }
     }
 
@@ -158,30 +138,30 @@ void test3(int lmax, int nr)
 ///==         f(ir, 3) = r[ir] * (-2 * sqrt(pi / 3.0));
 ///==     }
 ///==         
-///==     MT_function<complex16> zf(&f, true);
+///==     MT_function<double_complex> zf(&f, true);
 ///==     
 ///==     double v[] = {2.0, 0.0, 0.0};
 ///==     double rtp[3];
 ///==     SHT::spherical_coordinates(v, rtp);
 ///== 
-///==     std::vector<complex16> ylm(64);
+///==     std::vector<double_complex> ylm(64);
 ///==     std::vector<double> rlm(64);
 ///==     
 ///==     SHT::spherical_harmonics(7, rtp[1], rtp[2], &ylm[0]);
 ///==     SHT::spherical_harmonics(7, rtp[1], rtp[2], &rlm[0]);
 ///== 
-///==     complex16 z1(0, 0);
+///==     double_complex z1(0, 0);
 ///==     for (int lm = 0; lm < 64; lm++)
 ///==     {
 ///==         z1 += ylm[lm] * zf(999, lm);
 ///==     }
 ///==     std::cout << "Value at the MT : " << z1 << std::endl;
 ///== 
-///==     MT_function<complex16>* g[3];
+///==     MT_function<double_complex>* g[3];
 ///==     MT_function<double>* gr[3];
 ///==     for (int i = 0; i < 3; i++) 
 ///==     {
-///==         g[i] = new MT_function<complex16>(&zf, false);
+///==         g[i] = new MT_function<double_complex>(&zf, false);
 ///==         gr[i] = new MT_function<double>(&f, false);
 ///==     }
 ///== 
@@ -191,7 +171,7 @@ void test3(int lmax, int nr)
 ///==     std::cout << "Gradient value at MT : " << std::endl;
 ///==     for (int j = 0; j < 3; j++)
 ///==     {   
-///==         z1 = complex16(0, 0);
+///==         z1 = double_complex(0, 0);
 ///==         double d1 = 0.0;
 ///==         for (int lm = 0; lm < 64; lm++)
 ///==         {
@@ -225,10 +205,10 @@ void test3(int lmax, int nr)
 */
 void test5()
 {
-    Radial_grid r(linear_exponential_grid, 1000, 0.01, 2.0, 2.0);
+    Radial_grid r(scaled_pow_grid, 1000, 0.01, 2.0);
 
     int lmmax = 64;
-    Spheric_function<complex16> f(r, lmmax);
+    Spheric_function<spectral, double_complex> f(r, lmmax);
     f.zero();
     
     for (int ir = 0; ir < 1000; ir++)
@@ -238,9 +218,10 @@ void test5()
         f(ir, 4) = exp(-pow(r[ir], 2));
     }
 
-    Spheric_function_gradient<complex16> grad(f);
+    auto grad_f = gradient(f);
 
-    vector3d<complex16> v = inner(f, grad);
+    vector3d<double_complex> v;
+    for (int x = 0; x < 3; x++) v[x] = inner(f, grad_f[x]);
 
     std::cout << "grad : ";
     for (int i = 0; i < 3; i++) std::cout << v[i] << " ";
@@ -251,9 +232,9 @@ void test6()
 {
     int nr = 2000;
 
-    Radial_grid r(linear_exponential_grid, nr, 0.01, 2.0, 2.0);
+    Radial_grid r(scaled_pow_grid, nr, 0.01, 2.0);
 
-    Spheric_function<double> f(r, 64);
+    Spheric_function<spectral, double> f(r, 64);
 
     for (int l1 = 0; l1 <= 5; l1++)
     {
@@ -261,7 +242,7 @@ void test6()
         {
             f.zero();
             for (int ir = 0; ir < nr; ir++) f(ir, Utils::lm_by_l_m(l1, m1)) = exp(-r[ir]) * cos(l1 * r[ir]) * sin(m1 + r[ir]);
-            Spheric_function_gradient<double> grad(f);
+            auto grad_f = gradient(f);
 
             for (int l2 = 0; l2 <= 5; l2++)
             {
@@ -270,7 +251,8 @@ void test6()
                     f.zero();
                     for (int ir = 0; ir < nr; ir++) f(ir, Utils::lm_by_l_m(l2, m2)) = exp(-r[ir]) * cos(l2 * r[ir]) * sin(m2 + r[ir]);
                     
-                    vector3d<double> v = inner(f, grad);
+                    vector3d<double> v;
+                    for (int x = 0; x < 3; x++) v[x] = inner(f, grad_f[x]);
 
                     std::cout << "<lm2=" << Utils::lm_by_l_m(l2, m2) << "|grad|lm1=" << Utils::lm_by_l_m(l1, m1) << "> : ";
                     for (int i = 0; i < 3; i++) std::cout << v[i] << " ";
@@ -424,7 +406,7 @@ void test6()
 ///== //    mt_function<double> f2(Argument(arg_tp, sht.num_points()), Argument(arg_radial, 1000));
 ///== //    f1.sh_transform(&sht, &f2);
 ///== //
-///== //    mt_function<complex16> f3(Argument(arg_tp, sht.num_points()), Argument(arg_radial, 1000));
+///== //    mt_function<double_complex> f3(Argument(arg_tp, sht.num_points()), Argument(arg_radial, 1000));
 ///== //    for (int ir = 0; ir < 1000; ir++)
 ///== //    {
 ///== //        for (int itp = 0; itp < sht.num_points(); itp++)
@@ -432,7 +414,7 @@ void test6()
 ///== //            f3(itp, ir) = f2(itp, ir);
 ///== //        }
 ///== //    }
-///== //    mt_function<complex16> f4(Argument(arg_ylm, 64), Argument(arg_radial, 1000));
+///== //    mt_function<double_complex> f4(Argument(arg_ylm, 64), Argument(arg_radial, 1000));
 ///== //    f3.sh_transform(&sht, &f4);
 ///== //
 ///== //    mt_function<double> f5(Argument(arg_rlm, 64), Argument(arg_radial, 1000));
@@ -457,16 +439,16 @@ int main(int argn, char** argv)
     Platform::initialize(true);
 
     std::cout << "Rlm -> Ylm -> Rlm transformation, radial index first: ";
-    test1_radial_angular<double, complex16>();
+    test1_radial_angular<double, double_complex>();
     
     std::cout << "Rlm -> Ylm -> Rlm transformation, angular index first" << std::endl;
-    test1_angular_radial<double, complex16>();
+    test1_angular_radial<double, double_complex>();
     
     std::cout << "Rlm -> (t,p) -> Rlm transformation, angular index first" << std::endl;
     test2<double>(10, 1000);
 
     std::cout << "Ylm -> (t,p) -> Ylm transformation, angular index first" << std::endl;
-    test2<complex16>(10, 1000);
+    test2<double_complex>(10, 1000);
 
     std::cout << "Rlm -> (t,p) -> Ylm -> Rlm transformation" << std::endl;
     test3(10, 1000);

@@ -1,87 +1,46 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file atom_type.h
+ *   
+ *  \brief Contains definition of sirius::radial_functions_index and sirius::basis_functions_index classes
+ *         and declaration and partial implementation of sirius::Atom_type class.
+ */
+
 #ifndef __ATOM_TYPE_H__
 #define __ATOM_TYPE_H__
 
+#include <string.h>
+#include <vector>
+#include "mdarray.h"
+#include "descriptors.h"
+#include "vector3d.h"
+#include "utils.h"
+#include "radial_grid.h"
+#include "radial_solver.h"
+#include "json_tree.h"
+#include "xc_functional.h"
+
 namespace sirius {
-
-/// describes single atomic level
-struct atomic_level_descriptor
-{
-    /// principal quantum number
-    int n;
-
-    /// angular momentum quantum number
-    int l;
-    
-    /// quantum number k
-    int k;
-    
-    /// level occupancy
-    double occupancy;
-
-    /// true if this is a core level
-    bool core;
-};
-
-/// describes radial solution
-struct radial_solution_descriptor
-{
-    /// principal quantum number
-    int n;
-    
-    /// angular momentum quantum number
-    int l;
-    
-    /// order of energy derivative
-    int dme;
-    
-    /// energy of the solution
-    double enu;
-    
-    /// automatically determine energy
-    int auto_enu;
-};
-
-/// set of radial solution descriptors, used to construct augmented waves or local orbitals
-typedef std::vector<radial_solution_descriptor> radial_solution_descriptor_set;
-
-/// type of local orbitals
-/** lo_rs - local orbital, composed of radial solutions
-    lo_cp - confined polynomial local orbital 
-*/
-enum local_orbital_t {lo_rs, lo_cp};
-
-/// descriptor of a local orbital radial function
-struct local_orbital_descriptor
-{
-    local_orbital_t type;
-
-    int l;
-
-    radial_solution_descriptor_set rsd_set;
-
-    int p1;
-    int p2;
-};
 
 class radial_functions_index
 {
-    public:
-
-        struct radial_function_index_descriptor
-        {
-            int l;
-
-            int order;
-
-            int idxlo;
-
-            radial_function_index_descriptor(int l, int order, int idxlo =  -1) : l(l), order(order), idxlo(idxlo)
-            {
-                assert(l >= 0);
-                assert(order >= 0);
-            }
-        };
-
     private: 
 
         std::vector<radial_function_index_descriptor> radial_function_index_descriptors_;
@@ -131,9 +90,11 @@ class radial_functions_index
             {
                 assert(aw_descriptors[l].size() <= 3);
 
-                num_rf_[l] = (int)aw_descriptors[l].size();
                 for (int order = 0; order < (int)aw_descriptors[l].size(); order++)
-                   radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, order));
+                {
+                    radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, num_rf_[l]));
+                    num_rf_[l]++;
+                }
             }
 
             for (int idxlo = 0; idxlo < (int)lo_descriptors.size(); idxlo++)
@@ -219,39 +180,13 @@ class radial_functions_index
 
 class basis_functions_index
 {
-    public: 
-
-        struct basis_function_index_descriptor
-        {
-            int l;
-
-            int m;
-
-            int lm;
-
-            int order;
-
-            int idxlo;
-
-            int idxrf;
-            
-            basis_function_index_descriptor(int l, int m, int order, int idxlo, int idxrf) : 
-                l(l), m(m), order(order), idxlo(idxlo), idxrf(idxrf) 
-            {
-                assert(l >= 0);
-                assert(m >= -l && m <= l);
-                assert(order >= 0);
-                assert(idxrf >= 0);
-
-                lm = Utils::lm_by_l_m(l, m);
-            }
-        };
-
     private:
 
         std::vector<basis_function_index_descriptor> basis_function_index_descriptors_; 
        
-        mdarray<int,2> index_by_lm_order_;
+        mdarray<int, 2> index_by_lm_order_;
+
+        mdarray<int, 1> index_by_idxrf_;
        
         /// number of augmented wave basis functions
         int size_aw_;
@@ -269,11 +204,17 @@ class basis_functions_index
         {
             basis_function_index_descriptors_.clear();
 
+            index_by_idxrf_.set_dimensions(indexr.size());
+            index_by_idxrf_.allocate();
+
             for (int idxrf = 0; idxrf < indexr.size(); idxrf++)
             {
                 int l = indexr[idxrf].l;
                 int order = indexr[idxrf].order;
                 int idxlo = indexr[idxrf].idxlo;
+
+                index_by_idxrf_(idxrf) = (int)basis_function_index_descriptors_.size();
+
                 for (int m = -l; m <= l; m++)
                     basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, m, order, idxlo, idxrf));
             }
@@ -286,7 +227,7 @@ class basis_functions_index
                 int lm = basis_function_index_descriptors_[i].lm;
                 int order = basis_function_index_descriptors_[i].order;
                 index_by_lm_order_(lm, order) = i;
-               
+                
                 // get number of aw basis functions
                 if (basis_function_index_descriptors_[i].idxlo < 0) size_aw_ = i + 1;
             }
@@ -322,6 +263,11 @@ class basis_functions_index
         {
             return index_by_lm_order_(lm, order);
         }
+
+        inline int index_by_idxrf(int idxrf)
+        {
+            return index_by_idxrf_(idxrf);
+        }
         
         inline basis_function_index_descriptor& operator[](int i)
         {
@@ -330,42 +276,39 @@ class basis_functions_index
         }
 };
 
-/**
-    \todo Arbitrary AW order
-*/
 class Atom_type
 {
     private:
 
-        /// unique id of atom type
+        /// Unique id of atom type in the range [0, \f$ N_{types} \f$).
         int id_;
+
+        /// Unique string label for the atom type.
+        std::string label_;
     
-        /// chemical element symbol
+        /// Chemical element symbol.
         std::string symbol_;
 
-        /// chemical element name
+        /// Chemical element name.
         std::string name_;
         
-        /// nucleus charge, treated as positive(!) integer
+        /// Nucleus charge, treated as positive(!) integer.
         int zn_;
 
-        /// atom mass
+        /// Atom mass.
         double mass_;
 
-        /// muffin-tin radius
+        /// Muffin-tin radius.
         double mt_radius_;
 
-        /// number of muffin-tin points
+        /// Number of muffin-tin points.
         int num_mt_points_;
         
-        /// beginning of the radial grid
+        /// Beginning of the radial grid.
         double radial_grid_origin_;
         
-        /// effective infinity distance
-        double radial_grid_infinity_;
-        
-        /// radial grid
-        Radial_grid* radial_grid_;
+        /// Radial grid.
+        Radial_grid radial_grid_;
 
         /// list of atomic levels 
         std::vector<atomic_level_descriptor> atomic_levels_;
@@ -388,20 +331,23 @@ class Atom_type
         /// list of radial descriptor sets used to construct local orbitals
         std::vector<local_orbital_descriptor> lo_descriptors_;
         
-        /// density of a free atom
-        std::vector<double> free_atom_density_;
-        
-        /// potential of a free atom
-        std::vector<double> free_atom_potential_;
-
-        mdarray<double, 2> free_atom_radial_functions_;
-
         /// maximum number of aw radial functions across angular momentums
         int max_aw_order_;
+
+        int offset_lo_;
 
         radial_functions_index indexr_;
         
         basis_functions_index indexb_;
+
+        uspp_descriptor uspp_;
+
+        std::vector<int> atom_id_;
+
+        /// type of electronic structure method used
+        electronic_structure_method_t esm_type_;
+        
+        std::string file_name_;
 
         bool initialized_;
        
@@ -420,17 +366,34 @@ class Atom_type
         void read_input(const std::string& fname);
     
         void init_aw_descriptors(int lmax);
+    
+    protected:
+
+        /// Density of a free atom.
+        Spline<double> free_atom_density_;
+        
+        /// Potential of a free atom.
+        Spline<double> free_atom_potential_;
+
+        /// Radial grid of a free atom.
+        Radial_grid free_atom_radial_grid_;
 
     public:
         
-        Atom_type(const char* symbol__, const char* name__, int zn__, double mass__, 
+        Atom_type(const char* symbol__, 
+                  const char* name__, 
+                  int zn__, 
+                  double mass__, 
                   std::vector<atomic_level_descriptor>& levels__);
  
-        Atom_type(int id__, const std::string label);
+        Atom_type(const int id__, 
+                  const std::string label, 
+                  const std::string file_name__, 
+                  const electronic_structure_method_t esm_type__);
 
         ~Atom_type();
         
-        void init(int lmax_apw);
+        void init(int lmax_apw, int offs);
 
         void set_radial_grid(int num_points = -1, double* points = NULL);
 
@@ -440,14 +403,13 @@ class Atom_type
         /// Add local orbital descriptor
         void add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu);
 
-        /// Solve free atom and find SCF density and potential.
-        /** Free atom potential is used to augment the MT potential and find the energy of the bound states which is used
-            as a linearization energy (auto_enu = 1). */ 
-        double solve_free_atom(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu);
+        void init_free_atom(bool smooth);
 
         void print_info();
         
         void sync_free_atom(int rank);
+
+        void fix_q_radial_function(int l, int i, int j, double* qrf);
         
         inline int id()
         {
@@ -489,13 +451,23 @@ class Atom_type
         inline Radial_grid& radial_grid()
         {
             assert(num_mt_points_ > 0);
-            assert(radial_grid_->size() > 0);
-            return (*radial_grid_);
+            assert(radial_grid_.num_points() > 0);
+            return radial_grid_;
+        }
+
+        inline Radial_grid& free_atom_radial_grid()
+        {
+            return free_atom_radial_grid_;
         }
         
         inline double radial_grid(int ir)
         {
-            return (*radial_grid_)[ir];
+            return radial_grid_[ir];
+        }
+
+        inline double free_atom_radial_grid(int ir)
+        {
+            return free_atom_radial_grid_[ir];
         }
         
         inline int num_atomic_levels()
@@ -520,15 +492,27 @@ class Atom_type
         
         inline double free_atom_density(const int idx)
         {
-            assert(idx >= 0 && idx < (int)free_atom_density_.size());
-
             return free_atom_density_[idx];
+        }
+
+        inline double free_atom_density(double x)
+        {
+            return free_atom_density_(x);
         }
         
         inline double free_atom_potential(const int idx)
         {
-            assert(idx >= 0 && idx < (int)free_atom_potential_.size());
             return free_atom_potential_[idx];
+        }
+
+        inline double free_atom_potential(double x)
+        {
+            return free_atom_potential_(x);
+        }
+
+        Spline<double>& free_atom_potential()
+        {
+            return free_atom_potential_;
         }
 
         inline int num_aw_descriptors()
@@ -562,7 +546,7 @@ class Atom_type
             return indexr_;
         }
         
-        inline radial_functions_index::radial_function_index_descriptor& indexr(int i)
+        inline radial_function_index_descriptor& indexr(int i)
         {
             assert(i >= 0 && i < (int)indexr_.size());
             return indexr_[i];
@@ -583,7 +567,7 @@ class Atom_type
             return indexb_;
         }
 
-        inline basis_functions_index::basis_function_index_descriptor& indexb(int i)
+        inline basis_function_index_descriptor& indexb(int i)
         {
             assert(i >= 0 && i < (int)indexb_.size());
             return indexb_[i];
@@ -619,14 +603,19 @@ class Atom_type
             return indexr_.size();
         }
 
-        inline double free_atom_radial_function(int ir, int ist)
+        /// Return index of a free atom grid point close to the muffin-tin radius.
+        inline int idx_rmt_free_atom()
         {
-            return free_atom_radial_functions_(ir, ist);
+            for (int i = 0; i < free_atom_radial_grid().num_points(); i++)
+            {
+                if (free_atom_radial_grid(i) > mt_radius()) return i - 1;
+            }
+            return -1;
         }
 
-        inline std::vector<double>& free_atom_potential()
+        inline uspp_descriptor& uspp()
         {
-            return free_atom_potential_;
+            return uspp_;
         }
 
         inline void set_symbol(const std::string symbol__)
@@ -659,11 +648,6 @@ class Atom_type
             radial_grid_origin_ = radial_grid_origin__;
         }
 
-        inline void set_radial_grid_infinity(double radial_grid_infinity__)
-        {
-            radial_grid_infinity_ = radial_grid_infinity__;
-        }
-
         inline void set_configuration(int n, int l, int k, double occupancy, bool core)
         {
             atomic_level_descriptor level;
@@ -674,9 +658,48 @@ class Atom_type
             level.core = core;
             atomic_levels_.push_back(level);
         }
-};
 
-#include "atom_type.hpp"
+        inline int num_atoms()
+        {
+            return (int)atom_id_.size();
+        }
+
+        inline int atom_id(int idx)
+        {
+            return atom_id_[idx];
+        }
+
+        inline void add_atom_id(int atom_id__)
+        {
+            atom_id_.push_back(atom_id__);
+        }
+
+        inline bool initialized()
+        {
+            return initialized_;
+        }
+
+        inline std::string label()
+        {
+            return label_;
+        }
+
+        inline std::string file_name()
+        {
+            return file_name_;
+        }
+
+        inline int offset_lo()
+        {
+            assert(offset_lo_ >= 0);
+            return offset_lo_;
+        }
+
+        inline electronic_structure_method_t esm_type()
+        {
+            return esm_type_;
+        }
+};
 
 };
 

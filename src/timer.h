@@ -1,9 +1,55 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file timer.h
+ *   
+ *  \brief Contains definition and partial implementation of sirius::Timer class.
+ */
+
 #ifndef __TIMER_H__
 #define __TIMER_H__
+
+#include <sys/time.h>
+#include <map>
+#include <string>
+#include <iostream>
+#include <vector>
+#include "platform.h"
+#include "error_handling.h"
 
 namespace sirius 
 {
 
+const int _local_timer_ = 0;
+const int _global_timer_ = 1;
+
+struct timer_stats
+{
+    int count;
+    double min_value;
+    double max_value;
+    double total_value;
+    double average_value;
+    int timer_type;
+};
+
+/// Simple timer interface.
 class Timer
 {
     private:
@@ -17,16 +63,45 @@ class Timer
         /// true if timer is running
         bool active_;
 
+        int timer_type_;
+
         /// mapping between timer name and timer values
-        static std::map<std::string, std::vector<double> > timers_;
+        static std::map< std::string, std::vector<double> > timers_;
+
+        static std::map< std::string, std::vector<double> > global_timers_;
     
     public:
         
-        Timer(const std::string& label__, bool start__ = true) : label_(label__), active_(false)
+        Timer(const std::string& label__) 
+            : label_(label__), 
+              active_(false), 
+              timer_type_(_local_timer_)
         {
             if (timers_.count(label_) == 0) timers_[label_] = std::vector<double>();
 
-            if (start__) start();
+            start();
+        }
+
+        Timer(const std::string& label__, int timer_type__) 
+            : label_(label__), 
+              active_(false), 
+              timer_type_(timer_type__)
+        {
+            switch (timer_type_)
+            {
+                case _local_timer_:
+                {
+                    if (timers_.count(label_) == 0) timers_[label_] = std::vector<double>();
+                    break;
+                }
+                case _global_timer_:
+                {
+                    if (global_timers_.count(label_) == 0) global_timers_[label_] = std::vector<double>();
+                    break;
+                }
+            }
+
+            start();
         }
 
         ~Timer()
@@ -34,95 +109,28 @@ class Timer
             if (active_) stop();
         }
 
+        void start();
+
+        void stop();
+
+        double value();
+
         static void clear()
         {
             timers_.clear();
         }
 
-        void start()
-        {
-            if (active_) error_local(__FILE__, __LINE__, "timer is already running");
-
-            gettimeofday(&starting_time_, NULL);
-            active_ = true;
-        }
-
-        void stop()
-        {
-            if (!active_)
-            {
-                std::stringstream s;
-                s << "Timer " << label_ << " was not running";
-                error_local(__FILE__, __LINE__, s);
-            }
-
-            timeval end;
-            gettimeofday(&end, NULL);
-
-            double val = double(end.tv_sec - starting_time_.tv_sec) + 
-                         double(end.tv_usec - starting_time_.tv_usec) / 1e6;
-
-            timers_[label_].push_back(val);
-
-            active_ = false;
-        }
-
-        static void print()
-        {
-            if (Platform::mpi_rank() == 0)
-            {
-                printf("\n");
-                printf("Timers\n");
-                for (int i = 0; i < 115; i++) printf("-");
-                printf("\n");
-                printf("name                                                              count      total        min        max    average\n");
-                for (int i = 0; i < 115; i++) printf("-");
-                printf("\n");
- 
-                std::map<std::string, std::vector<double> >::iterator it;
-                for (it = timers_.begin(); it != timers_.end(); it++)
-                {
-                    int count = (int)it->second.size();
-                    double total = 0.0;
-                    double minval = 1e100;
-                    double maxval = 0.0;
-                    for (int i = 0; i < count; i++)
-                    {
-                        total += it->second[i];
-                        minval = std::min(minval, it->second[i]);
-                        maxval = std::max(maxval, it->second[i]);
-                    }
-                    double average = (count == 0) ? 0.0 : total / count;
-                    if (count == 0) minval = 0.0;
-
-                    printf("%-60s :    %5i %10.4f %10.4f %10.4f %10.4f\n", it->first.c_str(), count, total, minval, maxval, average);
-                }
-            }
-        }
-
-        static void delay(double dsec)
-        {
-            timeval t1;
-            timeval t2;
-            double d;
-
-            gettimeofday(&t1, NULL);
-            do
-            {
-                gettimeofday(&t2, NULL);
-                d = double(t2.tv_sec - t1.tv_sec) + double(t2.tv_usec - t1.tv_usec) / 1e6;
-            } while (d < dsec);
-        }
-
-        static std::map<std::string, std::vector<double> >& timers()
+        static std::map< std::string, std::vector<double> >& timers()
         {
             return timers_;
         }
+
+        static std::map< std::string, timer_stats> collect_timer_stats();
+
+        static void print();
+
+        static void delay(double dsec);
 };
-
-std::map<std::string, Timer*> ftimers;
-
-std::map<std::string, std::vector<double> > Timer::timers_;
 
 };
 

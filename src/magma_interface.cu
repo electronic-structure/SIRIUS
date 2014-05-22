@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <cuda.h>
+#include <magma.h>
 #include <magma_z.h>
 #include <magma_zbulge.h>
 #include <magma_threadsetting.h>

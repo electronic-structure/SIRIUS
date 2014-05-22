@@ -1,5 +1,5 @@
 import json
-import os, stat
+import os, stat, re
 
 fin = open("atoms.in", "r")
 
@@ -24,7 +24,7 @@ while 1:
         s1 = line.split()
         mass = float(s1[0]) # mass
 
-        fout.write("./atom " + symbol + "\n");
+        fout.write("./atom --symbol=" + symbol + "\n");
         
         atoms[symbol] = {}
         atoms[symbol]["name"] = name
@@ -59,7 +59,7 @@ fin.close()
 os.chmod("run.x", os.stat("run.x").st_mode | stat.S_IEXEC)
 
 fout = open("atoms.json", "w")
-json.dump(atoms, fout, indent=2)
+fout.write(re.sub(r"(?<=[0-9]),\s\n\s*(?=[-|0-9])", r", ", json.dumps(atoms, indent=2)))
 fout.close()
 
 

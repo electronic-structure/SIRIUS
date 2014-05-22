@@ -1,9 +1,39 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file gpu_interface.h
+ *   
+ *  \brief CUDA related functions.
+ */
+
 #ifndef _GPU_INTERFACE_H_
 #define _GPU_INTERFACE_H_
+
+#include <stdlib.h>
+
+const int _null_stream_ = -1;
 
 //================
 // CUDA functions
 //================
+
+extern "C" void cuda_initialize();
 
 extern "C" void cuda_device_info();
 
@@ -39,29 +69,51 @@ extern "C" void cuda_async_copy_to_host(void *target, void *source, size_t size,
 
 extern "C" size_t cuda_get_free_mem();
 
+extern "C" void cuda_device_reset();
+
 //==================
 // CUBLAS functions
 //==================
 
 extern "C" void cublas_init();
 
+extern "C" void cublas_set_stream(int stream_id);
+
 extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                             void* alpha, void* a, int32_t lda, void* b, 
-                             int32_t ldb, void* beta, void* c, int32_t ldc);
+                             const void* alpha, void* a, int32_t lda, void* b, 
+                             int32_t ldb, const void* beta, void* c, int32_t ldc);
 
 extern "C" void cublas_get_matrix(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb);
 
+extern "C" void cublas_get_matrix_async(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb, int stream_id);
+
 extern "C" void cublas_set_matrix(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb);
+
+extern "C" void cublas_set_matrix_async(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb, int stream_id);
+
+extern "C" void cublas_set_vector(int n, int elemSize, const void *x, int incx, void *y, int incy);
 
 //=================
 // CUFFT functions
 //=================
 
+extern "C" void cufft_create_plan_handle(void);
+
+extern "C" size_t cufft_get_size(int nx, int ny, int nz, int nfft);
+
 extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft);
+
+extern "C" void cufft_set_work_area(void* work_area);
 
 extern "C" void cufft_destroy_batch_plan();
 
-extern "C" void cufft_batch_apply_v(int fft_size, int num_gkvec, int num_phi, void* buffer, int* map, void* v_r, void* p);
+extern "C" void cufft_forward_transform(void* fft_buffer);
+
+extern "C" void cufft_backward_transform(void* fft_buffer);
+
+extern "C" void cufft_batch_load_gpu(int num_elements, int* map, void* data, void* fft_buffer);
+
+extern "C" void cufft_batch_unload_gpu(int num_elements, int* map, void* fft_buffer, void* data);
 
 //=================
 // MAGMA functions
@@ -98,7 +150,18 @@ void add_band_density_gpu(int lmmax_rho, int lmmax_wf, int max_nmtp, int num_ato
                           int* gaunt12_lm1_by_lm3, int* gaunt12_lm2_by_lm3, void* gaunt12_cg, void* fylm, 
                           double weight, double* dens);
 
-void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a);
+extern "C" void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a);
+
+extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double* v);
+
+
+extern "C" void create_beta_pw_gpu(int num_gkvec, 
+                                   int num_beta_atot, 
+                                   int* beta_t_idx,
+                                   void* beta_pw_type,
+                                   double* gkvec,
+                                   double* atom_pos,
+                                   void* beta_pw);
 
 #endif // _GPU_INTERFACE_H_
 

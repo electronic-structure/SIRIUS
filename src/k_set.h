@@ -1,6 +1,4 @@
-// This file is part of SIRIUS
-//
-// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -19,13 +17,18 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/** \file k_set.h
+ *
+ *  \brief Contains declaration and partial implementation of sirius::K_set class.
+ */
+
 #ifndef __K_SET_H__
 #define __K_SET_H__
 
-/** \file k_set.h
-
-    \brief Set of k-points
-*/
+#include "global.h"
+#include "band.h"
+#include "potential.h"
+#include "k_point.h"
 
 namespace sirius 
 {
@@ -39,6 +42,7 @@ struct kq
     vector3d<int> K;
 };
 
+/// Set of k-points.
 class K_set
 {
     private:
@@ -101,7 +105,7 @@ class K_set
 
         void add_kpoints(mdarray<double, 2>& kpoints__, double* weights__)
         {
-            for (int ik = 0; ik < kpoints__.size(1); ik++) add_kpoint(&kpoints__(0, ik), weights__[ik]);
+            for (int ik = 0; ik < (int)kpoints__.size(1); ik++) add_kpoint(&kpoints__(0, ik), weights__[ik]);
         }
 
         inline K_point* operator[](int i)
@@ -130,7 +134,7 @@ class K_set
         
         inline int spl_num_kpoints(int ikloc)
         {
-            return spl_num_kpoints_[ikloc];
+            return static_cast<int>(spl_num_kpoints_[ikloc]);
         }
 
         void set_band_occupancies(int ik, double* band_occupancies)
@@ -179,7 +183,7 @@ class K_set
             for (int ik = 0; ik < num_kpoints(); ik++)
             {
                 // reduce k+q to first BZ: k+q=k"+K; k"=k+q-K
-                std::pair< vector3d<double>, vector3d<int> > vkqr = parameters_.reduce_coordinates(kpoints_[ik]->vk() + vq);
+                std::pair< vector3d<double>, vector3d<int> > vkqr = Utils::reduce_coordinates(kpoints_[ik]->vk() + vq);
                 
                 if ((kpq[ik].jk = find_kpoint(vkqr.first)) == -1) 
                     error_local(__FILE__, __LINE__, "index of reduced k+q point is not found");
@@ -191,8 +195,6 @@ class K_set
 
         }
 };
-
-#include "k_set.hpp"
 
 };
 

@@ -1,47 +1,70 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file unit_cell.h
+ *   
+ *  \brief Contains definition and partial implementation of sirius::Unit_cell class.
+ */
+
+#ifndef __UNIT_CELL_H__
+#define __UNIT_CELL_H__
+
+extern "C" {
+#include <spglib.h>
+}
+
+#include <algorithm>
+#include "descriptors.h"
+#include "atom_type.h"
+#include "atom_symmetry_class.h"
+#include "atom.h"
+#include "mpi_grid.h"
+#include "symmetry.h"
+
 namespace sirius {
-
-struct nearest_neighbour_descriptor
-{
-    /// id of neighbour atom
-    int atom_id;
-
-    /// translation along each lattice vector
-    vector3d<int> translation;
-
-    /// distance from the central atom
-    double distance;
-};
-
-class Unit_cell_test;
 
 class Unit_cell
 {
-    friend class Unit_cell_test;
-
     private:
         
-        /// mapping between atom type id and an ordered index in the range [0, N_{types} - 1]
-        std::map<int, int> atom_type_index_by_id_;
+        /// Mapping between atom type label and an ordered internal id in the range [0, \f$ N_{types} \f$).
+        std::map<std::string, int> atom_type_id_map_;
          
-        /// list of atom types
+        /// List of atom types.
         std::vector<Atom_type*> atom_types_;
 
-        /// list of atom classes
+        /// List of atom classes.
         std::vector<Atom_symmetry_class*> atom_symmetry_classes_;
         
-        /// list of atoms
+        /// List of atoms.
         std::vector<Atom*> atoms_;
        
-        /// split index of atoms
+        /// Split index of atoms.
         splindex<block> spl_num_atoms_;
         
-        /// split index of atom symmetry classes 
+        /// Split index of atom symmetry classes.
         splindex<block> spl_num_atom_symmetry_classes_;
 
-        /// Bravais lattice vectors in row order
+        /// Bravais lattice vectors in row order.
         double lattice_vectors_[3][3];
         
-        /// inverse Bravais lattice vectors in column order 
+        /// Inverse Bravais lattice vectors in column order.
         /** This matrix is used to find fractional coordinates by Cartesian coordinates */
         double inverse_lattice_vectors_[3][3];
         
@@ -51,6 +74,12 @@ class Unit_cell
         /// volume of the unit cell; volume of Brillouin zone is (2Pi)^3 / omega
         double omega_;
        
+        /// total volume of the muffin tin spheres
+        double volume_mt_;
+        
+        /// volume of the interstitial region
+        double volume_it_;
+
         /// spglib structure with symmetry information
         SpglibDataset* spg_dataset_;
         
@@ -81,8 +110,14 @@ class Unit_cell
         /// maximum number of MT radial basis functions across all atoms
         int max_mt_radial_basis_size_;
 
-        /// total number of augmented wave basis functions in the MT (= number of matching coefficients for each plane-wave)
+        /// total number of augmented wave basis functions in the MTs (= total number of matching coefficients for each plane-wave)
         int mt_aw_basis_size_;
+
+        /// List of augmented wave basis descriptors.
+        /** Establishes mapping between global index in the range [0, mt_aw_basis_size_) 
+         *  and corresponding atom and local index \f$ \xi \f$ 
+         */
+        std::vector<mt_basis_descriptor> mt_aw_basis_descriptors_; 
         
         /// total number of local orbital basis functions
         int mt_lo_basis_size_;
@@ -102,105 +137,160 @@ class Unit_cell
         /// scale muffin-tin radii automatically
         int auto_rmt_;
 
-        /// Get crystal symmetries and equivalent atoms.
-        /** Makes a call to spglib providing the basic unit cell information: lattice vectors and atomic types 
-            and positions. Gets back symmetry operations and a table of equivalent atoms. The table of equivalent 
-            atoms is then used to make a list of atom symmetry classes and related data.
-        */
-        void get_symmetry();
+        int lmax_beta_;
+
+        electronic_structure_method_t esm_type_;
+
+        MPI_comm_bundle mpi_atoms_;
         
+        splindex<block> spl_atoms_;
+
+        mdarray<int, 2> beta_t_idx_;
+        
+        /// total number of beta-projectors among atom types
+        int num_beta_t_;
+
+        mdarray<double, 2> atom_pos_;
+
         /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
         /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
-            bethween nearest atoms. Initial values of the muffin-tin radii (provided in the input file) 
-            are ignored. */
+         *  bethween nearest atoms. Initial values of the muffin-tin radii are ignored. 
+         */
         std::vector<double> find_mt_radii();
         
         /// Check if MT spheres overlap
         bool check_mt_overlap(int& ia__, int& ja__);
 
-    protected:
+        int next_atom_type_id(const std::string label);
 
+    public:
+    
+        Unit_cell(electronic_structure_method_t esm_type__) 
+            : omega_(0),
+              volume_mt_(0),
+              volume_it_(0),
+              spg_dataset_(NULL), 
+              total_nuclear_charge_(0),
+              num_core_electrons_(0),
+              num_valence_electrons_(0),
+              num_electrons_(0),
+              auto_rmt_(0), 
+              lmax_beta_(-1),
+              esm_type_(esm_type__)
+        {
+        }
+        
         /// Initialize the unit cell data
         /** Several things must be done during this phase:
-              1. Compute number of electrons
-              2. Compute MT basis function indices
-              3. [if needed] Scale MT radii
-              4. Check MT overlap 
-              5. Create radial grid for each atom type
-              6. Find symmetry and assign symmetry class to each atom
-              7. Create split indices for atoms and atom classes
-
-            Initialization must be broken into two parts: one is called once, and the second one is called
-            each time the atoms change the position.
-
-            \todo This must be redesigned because currently initialization of the Unit_cell (which is a part of Global 
-                  class) depends on the "to be determined" parameters such as num_mag_dims. Probably Unit_cell must 
-                  become a separate object.
-        */
-        void init(int lmax_apw, int lmax_pot, int num_mag_dims);
+         *    1. Compute number of electrons
+         *    2. Compute MT basis function indices
+         *    3. [if needed] Scale MT radii
+         *    4. Check MT overlap 
+         *    5. Create radial grid for each atom type
+         *    6. Find symmetry and assign symmetry class to each atom
+         *    7. Create split indices for atoms and atom classes
+         *
+         *  Initialization must be broken into two parts: one is called once, and the second one is called
+         *  each time the atoms change the position.
+         */
+        void initialize(int lmax_apw, int lmax_pot, int num_mag_dims);
 
         /// Update the unit cell after moving the atoms.
         /** When the unit cell is initialized for the first time, or when the atoms are moved, several things
-            must be recomputed:
-              1. New atom positions may lead to a new symmetry, which can give a different number of atom 
-                 symmetry classes. Symmetry information must be updated.
-              2. New atom positions can lead to new MT radii if they are determined automatically. MT radii and 
-                 radial meshes must be updated. 
-            
-            Becasue of (1) the G and G+k phase factors must be updated. Because of (2) Bessel funcion moments
-            and G+k APW basis must be also updated. Because of (1 and 2) step function must be updated.
-
-            \todo Think how to implement this dependency in a reliable way without any handwork.
-        */
+         *  must be recomputed:
+         *    1. New atom positions may lead to a new symmetry, which can give a different number of atom 
+         *       symmetry classes. Symmetry information must be updated.
+         *    2. New atom positions can lead to new MT radii if they are determined automatically. MT radii and 
+         *       radial meshes must be updated. 
+         *  
+         *  Becasue of (1) the G and G+k phase factors must be updated. Because of (2) Bessel funcion moments
+         *  and G+k APW basis must be also updated. Because of (1 and 2) step function must be updated.
+         *
+         *  \todo Think how to implement this dependency in a reliable way without any handwork.
+         */
         void update();
 
-        /// Clear the unit cell data
+        /// Clear the unit cell data.
         void clear();
-        
-    public:
-    
-        Unit_cell() : spg_dataset_(NULL), auto_rmt_(0)
-        {
-            assert(sizeof(int) == 4);
-            assert(sizeof(double) == 8);
-        }
        
-        /// Add new atom type to the list of atom types.
-        void add_atom_type(int atom_type_id, const std::string label);
+        /// Add new atom type to the list of atom types and read necessary data from the .json file
+        void add_atom_type(const std::string label, const std::string file_name, 
+                           electronic_structure_method_t esm_type);
         
         /// Add new atom to the list of atom types.
-        void add_atom(int atom_type_id, double* position, double* vector_field);
+        void add_atom(const std::string label, double* position, double* vector_field);
 
-        /// Add new atom without vector field to the list of atom types
-        void add_atom(int atom_type_id, double* position);
+        /// Add new atom without vector field to the list of atom types.
+        void add_atom(const std::string label, double* position);
         
-        /// Print basic info
+        /// Print basic info.
         void print_info();
 
-        /// Write structure to CIF file
+        unit_cell_parameters_descriptor unit_cell_parameters();
+        
+        /// Get crystal symmetries and equivalent atoms.
+        /** Makes a call to spglib providing the basic unit cell information: lattice vectors and atomic types 
+         *  and positions. Gets back symmetry operations and a table of equivalent atoms. The table of equivalent 
+         *  atoms is then used to make a list of atom symmetry classes and related data.
+         */
+        void get_symmetry();
+
+        /// Write structure to CIF file.
         void write_cif();
+
+        void write_json();
         
         /// Set lattice vectors.
         /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the
-            unit cell volume. */
+         *  unit cell volume. 
+         */
         void set_lattice_vectors(double* a1, double* a2, double* a3);
        
         /// Find the cluster of nearest neighbours around each atom
         void find_nearest_neighbours(double cluster_radius);
 
-        bool is_point_in_mt(double vc[3], int& ja, int& jr, double& dr, double tp[2]);
+        bool is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr, double tp[2]);
         
-        template <lattice_t Tl>
-        vector3d<int> find_translation_limits(double radius);
+        void generate_radial_functions();
+
+        void generate_radial_integrals();
         
-        template <lattice_t Tl>
-        void reduce_coordinates(vector3d<double> coord, vector3d<int>& ntr, vector3d<double>& vf);
+        std::string chemical_formula();
 
-        std::pair< vector3d<double>, vector3d<int> > reduce_coordinates(vector3d<double> coord);
+        int atom_id_by_position(vector3d<double> position__)
+        {
+            const double eps = 1e-10;
 
-        /// Convert coordinates (fractional <-> Cartesian) of direct or reciprocal lattices
-        template<coordinates_t Tc, lattice_t Tl, typename T>
-        vector3d<double> get_coordinates(vector3d<T> a);
+            for (int ia = 0; ia < num_atoms(); ia++)
+            {
+                vector3d<double> pos = atom(ia)->position();
+                if (fabs(pos[0] - position__[0]) < eps && 
+                    fabs(pos[1] - position__[1]) < eps && 
+                    fabs(pos[2] - position__[2]) < eps) return ia;
+            }
+            return -1;
+        } 
+
+        template <typename T>
+        inline vector3d<double> get_cartesian_coordinates(vector3d<T> a)
+        {
+            vector3d<double> b;
+            for (int x = 0; x < 3; x++)
+            {
+                for (int l = 0; l < 3; l++) b[x] += a[l] * lattice_vectors_[l][x];
+            }
+            return b;
+        }
+
+        inline vector3d<double> get_fractional_coordinates(vector3d<double> a)
+        {
+            vector3d<double> b;
+            for (int l = 0; l < 3; l++)
+            {
+                for (int x = 0; x < 3; x++) b[l] += a[x] * inverse_lattice_vectors_[x][l];
+            }
+            return b;
+        }
         
         /// Get x coordinate of lattice vector l
         inline double lattice_vectors(int l, int x)
@@ -229,27 +319,21 @@ class Unit_cell
         /// Number of atom types.
         inline int num_atom_types()
         {
-            assert(atom_types_.size() == atom_type_index_by_id_.size());
+            assert(atom_types_.size() == atom_type_id_map_.size());
 
             return (int)atom_types_.size();
         }
 
-        /// Atom type index by atom type id.
-        inline int atom_type_index_by_id(int id)
+        /// Pointer to atom type by label.
+        inline Atom_type* atom_type(const std::string label)
         {
-            return atom_type_index_by_id_[id];
-        }
-        
-        /// Pointer to atom type by type id
-        inline Atom_type* atom_type_by_id(int id)
-        {
-            return atom_types_[atom_type_index_by_id(id)];
+            return atom_types_[atom_type_id_map_[label]];
         }
  
-        /// Pointer to atom type by type index (not(!) by atom type id)
-        inline Atom_type* atom_type(int idx)
+        /// Pointer to atom type by internal id.
+        inline Atom_type* atom_type(int id)
         {
-            return atom_types_[idx];
+            return atom_types_[id];
         }
        
         /// Number of atom symmetry classes.
@@ -309,8 +393,7 @@ class Unit_cell
         /// Total number of the muffin-tin basis functions.
         /** Total number of MT basis functions equals to the sum of the total number of augmented wave
             basis functions and the total number of local orbital basis functions across all atoms. It controls 
-            the size of the muffin-tin part of the first-variational states and second-variational wave functions.
-        */
+            the size of the muffin-tin part of the first-variational states and second-variational wave functions. */
         inline int mt_basis_size()
         {
             return mt_basis_size_;
@@ -369,7 +452,7 @@ class Unit_cell
 
         inline int spl_num_atoms(int i)
         {
-            return spl_num_atoms_[i];
+            return static_cast<int>(spl_num_atoms_[i]);
         }
         
         inline splindex<block>& spl_num_atom_symmetry_classes()
@@ -379,54 +462,61 @@ class Unit_cell
 
         inline int spl_num_atom_symmetry_classes(int i)
         {
-            return spl_num_atom_symmetry_classes_[i];
+            return static_cast<int>(spl_num_atom_symmetry_classes_[i]);
         }
-};
 
-#include "unit_cell.hpp"
-
-class Unit_cell_test
-{
-    public:
-
-        Unit_cell_test()
+        inline double volume_mt()
         {
-            Unit_cell unit_cell;
-            
-            double a0[] = {0.5, 0.5, 0.0};
-            double a1[] = {0.5, 0.0, 0.5};
-            double a2[] = {0.0, 0.5, 0.5};
-            unit_cell.set_lattice_vectors(&a0[0], &a1[0], &a2[0]);
-            
-            unit_cell.set_auto_rmt(1);
+            return volume_mt_;
+        }
 
-            unit_cell.add_atom_type(1, "C");
+        inline double volume_it()
+        {
+            return volume_it_;
+        }
 
-            {
-            double pos0[] = {0, 0, 0};
-            double pos1[] = {0.25, 0.25, 0.25};
-            unit_cell.add_atom(1, pos0);
-            unit_cell.add_atom(1, pos1);
-            }
+        inline int lmax_beta()
+        {
+            return lmax_beta_;
+        }
 
-            unit_cell.init(10, 10, 0);
-            unit_cell.print_info();
+        inline bool full_potential()
+        {
+            return (esm_type_ == full_potential_lapwlo || esm_type_ == full_potential_pwlo);
+        }
 
-            {
-            double pos1[] = {0.251, 0.251, 0.251};
-            unit_cell.atom(1)->set_position(pos1);
-            }
-            unit_cell.update();
-            unit_cell.print_info();
-            
-            {
-            double pos1[] = {0.251, 0.252, 0.253};
-            unit_cell.atom(1)->set_position(pos1);
-            }
-            unit_cell.update();
-            unit_cell.print_info();
+        inline int num_nearest_neighbours(int ia)
+        {
+            return (int)nearest_neighbours_[ia].size();
+        }
+
+        inline nearest_neighbour_descriptor& nearest_neighbour(int i, int ia)
+        {
+            return nearest_neighbours_[ia][i];
+        }
+
+        inline int num_beta_t()
+        {
+            return num_beta_t_;
+        }
+
+        inline mdarray<double, 2>& atom_pos()
+        {
+            return atom_pos_;
+        }
+
+        inline mdarray<int, 2>& beta_t_idx()
+        {
+            return beta_t_idx_;
+        }
+
+        inline mt_basis_descriptor& mt_aw_basis_descriptor(int idx)
+        {
+            return mt_aw_basis_descriptors_[idx];
         }
 };
     
 };
+
+#endif // __UNIT_CELL_H__
 

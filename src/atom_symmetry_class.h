@@ -1,16 +1,39 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file atom_symmetry_class.h
+ *   
+ *  \brief Contains declaration and partial implementation of sirius::Atom_symmetry_class class.
+ */
+
 #ifndef __ATOM_SYMMETRY_CLASS_H__
 #define __ATOM_SYMMETRY_CLASS_H__
 
-/** \file atom_symmetry_class.h
-
-    \brief Data and methods specific to each atom symmetry class. 
-
-    Atoms transforming into each other under symmetry opeartions belong to the same symmetry class. They have the
-    same spherical part of the on-site potential and, as a consequence, the same radial functions. 
-*/
+#include "sirius_io.h"
+#include "atom_type.h"
 
 namespace sirius {
 
+/// Data and methods specific to the symmetry class of the atom.
+/** Atoms transforming into each other under symmetry opeartions belong to the same symmetry class. They have the
+ *  same spherical part of the on-site potential and, as a consequence, the same radial functions. 
+ */
 class Atom_symmetry_class
 {
     private:
@@ -24,7 +47,7 @@ class Atom_symmetry_class
         /// atom type
         Atom_type* atom_type_;
 
-        /// spherical part of effective potential 
+        /// Spherical part of the effective potential.
         std::vector<double> spherical_potential_;
 
         /// list of radial functions
@@ -76,18 +99,20 @@ class Atom_symmetry_class
     public:
     
         /// Constructor
-        Atom_symmetry_class(int id_, Atom_type* atom_type_) : 
-            id_(id_), atom_type_(atom_type_), core_eval_sum_(0.0), core_leakage_(0.0)
+        Atom_symmetry_class(int id_, Atom_type* atom_type_) 
+            : id_(id_), 
+              atom_type_(atom_type_), 
+              core_eval_sum_(0.0), 
+              core_leakage_(0.0)
         {
-            initialize();
+            if (atom_type_->initialized()) initialize();
         }
 
         /// Initialize the symmetry class
         void initialize();
 
         /// Set the spherical component of the potential
-        /** Atoms belonging to the same symmetry class have the same spherical potential.
-        */
+        /** Atoms belonging to the same symmetry class have the same spherical potential. */
         void set_spherical_potential(std::vector<double>& veff);
 
         void generate_radial_functions();
@@ -98,40 +123,42 @@ class Atom_symmetry_class
         
         void sync_core_charge_density(int rank);
        
-        /// Compute m-th order radial derivative at the MT surface
+        /// Compute m-th order radial derivative at the MT surface.
         double aw_surface_dm(int l, int order, int dm);
         
-        /// Find core states and generate core density
+        /// Find core states and generate core density.
         void generate_core_charge_density();
+
+        void find_enu();
 
         void write_enu(pstdout& pout);
         
         /// Generate radial overlap and SO integrals
         /** In the case of spin-orbit interaction the following integrals are computed:
-            \f[
-                \int f_{p}(r) \Big( \frac{1}{(2 M c)^2} \frac{1}{r} \frac{d V}{d r} \Big) f_{p'}(r) r^2 dr
-            \f]
-            
-            Relativistic mass M is defined as
-            \f[
-                M = 1 - \frac{1}{2 c^2} V
-            \f]
-        */
+         *  \f[
+         *      \int f_{p}(r) \Big( \frac{1}{(2 M c)^2} \frac{1}{r} \frac{d V}{d r} \Big) f_{p'}(r) r^2 dr
+         *  \f]
+         *  
+         *  Relativistic mass M is defined as
+         *  \f[
+         *      M = 1 - \frac{1}{2 c^2} V
+         *  \f]
+         */
         void generate_radial_integrals();
         
-        /// Return symmetry class id
+        /// Return symmetry class id.
         inline int id()
         {
             return id_;
         }
 
-        /// Add atom id to the current class
-        inline void add_atom_id(int _atom_id)
+        /// Add atom id to the current class.
+        inline void add_atom_id(int atom_id__)
         {
-            atom_id_.push_back(_atom_id);
+            atom_id_.push_back(atom_id__);
         }
         
-        /// Return number of atoms belonging to the current symmetry class
+        /// Return number of atoms belonging to the current symmetry class.
         inline int num_atoms()
         {
             return (int)atom_id_.size();
@@ -228,10 +255,7 @@ class Atom_symmetry_class
         {
             return lo_descriptors_[idxlo].rsd_set[order].enu;
         }
-            
 };
-
-#include "atom_symmetry_class.hpp"
 
 };
 

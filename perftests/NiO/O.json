@@ -1,0 +1,41 @@
+{
+    "name" : "oxygen",
+    "symbol" : "O",
+    "number" : 8,
+    "mass" : 15.999400000000,
+    "rmin" : 1e-05,
+    "rmax" : 21.997383572412,
+    "nrmt" : 2000,
+    "rmt" : 1.172572228587,
+    "core" : "1s",
+    "valence" : [
+        {
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : 0}, {"enu" : 0.15, "dme" : 1, "auto" : 0}]
+        },
+        {
+            "l" : 0,
+            "n" : 2,
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : 1}, {"enu" : 0.15, "dme" : 1, "auto" : 1}]
+        },
+        {
+            "l" : 1,
+            "n" : 2,
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : 1}, {"enu" : 0.15, "dme" : 1, "auto" : 1}]
+        },
+        {
+            "l" : 2,
+            "n" : 3,
+            "basis" : [{"enu" : 0.15, "dme" : 0, "auto" : 1}, {"enu" : 0.15, "dme" : 1, "auto" : 1}]
+        }
+    ],
+    "lo" : [
+        {
+            "l" : 0,
+            "basis" : [{"n" : 2, "enu" : 0.15, "dme" : 0, "auto" : 1}, {"n" : 2, "enu" : 0.15, "dme" : 1, "auto" : 1}]
+        },
+        {
+            "l" : 1,
+            "basis" : [{"n" : 2, "enu" : 0.15, "dme" : 0, "auto" : 1}, {"n" : 2, "enu" : 0.15, "dme" : 1, "auto" : 1}]
+        }
+    ]
+}

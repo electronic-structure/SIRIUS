@@ -1,7 +1,27 @@
+# This file is part of SIRIUS
+# 
+# Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+# All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+# the following conditions are met:
+# 
+# 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+#    following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+#    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+# PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import json
 import sys
 import re
-import pprint
 
 def read_until(fin, tag):
     while True:
@@ -11,13 +31,7 @@ def read_until(fin, tag):
             sys.exit(-1)
         if tag in line: return
         
-def read_mesh_data(in_file, npoints, out_data):
-    while True:
-        s = in_file.readline().split()
-        for k in range(len(s)): out_data.append(float(s[k]))
-        if len(out_data) == npoints: return
-
-def read_mesh_data_v2(in_file, npoints):
+def read_mesh_data(in_file, npoints):
     out_data = []
     while True:
         s = in_file.readline().split()
@@ -84,8 +98,6 @@ def parse_header(upf_dict):
 #
 def parse_mesh(upf_dict):
 
-    upf_dict["mesh"] = {}
-
     upf = open(sys.argv[1], "r")
 
     read_until(upf, "<PP_R>")
@@ -95,7 +107,7 @@ def parse_mesh(upf_dict):
     # read (iunps, *, err = 100, end = 100) (upf%r(ir), ir=1,upf%mesh )
     # call scan_end (iunps, "R")  
     # =================================================================
-    upf_dict["mesh"]["r"] = read_mesh_data_v2(upf, upf_dict["header"]["nmesh"])
+    upf_dict["radial_grid"] = read_mesh_data(upf, upf_dict["header"]["nmesh"])
 
     read_until(upf, "<PP_RAB>")
 
@@ -104,7 +116,7 @@ def parse_mesh(upf_dict):
     # read (iunps, *, err = 101, end = 101) (upf%rab(ir), ir=1,upf%mesh )
     # call scan_end (iunps, "RAB")  
     # ===================================================================
-    upf_dict["mesh"]["rab"] = read_mesh_data_v2(upf, upf_dict["header"]["nmesh"])
+    #upf_dict["mesh"]["rab"] = read_mesh_data(upf, upf_dict["header"]["nmesh"])
 
     upf.close()
 
@@ -113,8 +125,6 @@ def parse_mesh(upf_dict):
 #
 def parse_nlcc(upf_dict):
     
-    upf_dict["rho_atc"] = []
-
     upf = open(sys.argv[1], "r")
 
     read_until(upf, "<PP_NLCC>")
@@ -123,7 +133,7 @@ def parse_nlcc(upf_dict):
     # ALLOCATE( upf%rho_atc( upf%mesh ) )
     # read (iunps, *, err = 100, end = 100) (upf%rho_atc(ir), ir=1,upf%mesh )
     # =======================================================================
-    read_mesh_data(upf, upf_dict["header"]["nmesh"], upf_dict["rho_atc"])
+    upf_dict["core_charge_density"] = read_mesh_data(upf, upf_dict["header"]["nmesh"])
 
     upf.close()
 
@@ -142,7 +152,9 @@ def parse_local(upf_dict):
     # ALLOCATE( upf%vloc( upf%mesh ) )
     # read (iunps, *, err=100, end=100) (upf%vloc(ir) , ir=1,upf%mesh )
     # =================================================================
-    read_mesh_data(upf, upf_dict["header"]["nmesh"], upf_dict["vloc"])
+    upf_dict["vloc"] = read_mesh_data(upf, upf_dict["header"]["nmesh"])
+    vloc_Ha = [v / 2 for v in upf_dict["vloc"]]
+    upf_dict["vloc"] = vloc_Ha
 
     upf.close()
 
@@ -153,12 +165,8 @@ def parse_non_local(upf_dict):
 
     upf_dict["non_local"] = {}
     upf_dict["non_local"]["beta"] = []
-    upf_dict["non_local"]["dij"] = []
-    upf_dict["non_local"]["qij"] = {}
-    # for i in range(upf_dict["header"]["nbeta"]):
-    #     upf_dict["non_local"]["qqq"].append([])
-    #     for j in range(upf_dict["header"]["nbeta"]):
-    #         upf_dict["non_local"]["qqq"][i].append(0.0)
+    upf_dict["non_local"]["D"] = []
+    upf_dict["non_local"]["Q"] = {}
         
     upf = open(sys.argv[1], "r")
 
@@ -187,8 +195,7 @@ def parse_non_local(upf_dict):
         s = upf.readline()
         upf_dict["non_local"]["beta"][i]["kbeta"] = int(s)
 
-        upf_dict["non_local"]["beta"][i]["beta"] = []
-        read_mesh_data(upf, upf_dict["non_local"]["beta"][i]["kbeta"], upf_dict["non_local"]["beta"][i]["beta"])
+        upf_dict["non_local"]["beta"][i]["beta"] = read_mesh_data(upf, upf_dict["non_local"]["beta"][i]["kbeta"])
         
         line = upf.readline()
         if not "</PP_BETA>" in line:
@@ -211,9 +218,9 @@ def parse_non_local(upf_dict):
     nd = int(s[0])
     for k in range(nd):
         s = upf.readline().split()
-        upf_dict["non_local"]["dij"].append({})
-        upf_dict["non_local"]["dij"][k]["ij"] = [int(s[0]) - 1, int(s[1]) - 1]
-        upf_dict["non_local"]["dij"][k]["dion"] = float(s[2])
+        upf_dict["non_local"]["D"].append({})
+        upf_dict["non_local"]["D"][k]["ij"] = [int(s[0]) - 1, int(s[1]) - 1]
+        upf_dict["non_local"]["D"][k]["d_ion"] = float(s[2]) / 2 # convert to Hartree
 
     # =============================================    
     # call scan_begin (iunps, "QIJ", .false.)  
@@ -222,7 +229,7 @@ def parse_non_local(upf_dict):
     # =============================================
     read_until(upf, "<PP_QIJ>")
     s = upf.readline().split()
-    upf_dict["non_local"]["qij"]["nqf"] = int(s[0])
+    upf_dict["non_local"]["Q"]["num_q_coefs"] = int(s[0])
     nqlc = upf_dict["header"]["lmax"] * 2 + 1
 
     # =======================================================================
@@ -232,12 +239,12 @@ def parse_non_local(upf_dict):
     #    call scan_end (iunps, "RINNER")  
     # end if
     # =======================================================================
-    if upf_dict["non_local"]["qij"]["nqf"] != 0:
+    if upf_dict["non_local"]["Q"]["num_q_coefs"] != 0:
         read_until(upf, "<PP_RINNER>")
-        upf_dict["non_local"]["qij"]["rinner"] = []
+        upf_dict["non_local"]["Q"]["q_functions_inner_radii"] = []
         for i in range(nqlc):
             s = upf.readline().split()
-            upf_dict["non_local"]["qij"]["rinner"].append(float(s[1]))
+            upf_dict["non_local"]["Q"]["q_functions_inner_radii"].append(float(s[1]))
         read_until(upf, "</PP_RINNER>")
     
     # ================================================================================== 
@@ -264,9 +271,12 @@ def parse_non_local(upf_dict):
     #          read (iunps, *, err=105, end=105) (upf%qfunc(n,ijv), n=1,upf%mesh)
     #       ENDIF
     # ==================================================================================
-    upf_dict["non_local"]["qij"]["q"] = []
-    for i in range(upf_dict["header"]["nbeta"]):
-        for j in range(i, upf_dict["header"]["nbeta"]):
+
+    nbeta = upf_dict["header"]["nbeta"]
+    qij = [[{} for x in range(nbeta)] for x in range(nbeta)] 
+
+    for i in range(nbeta):
+        for j in range(i, nbeta):
             
             s = upf.readline().split()
             if int(s[2]) != upf_dict["non_local"]["beta"][j]["lll"]:
@@ -276,15 +286,12 @@ def parse_non_local(upf_dict):
             if int(s[0]) != i + 1 or int(s[1]) != j + 1: 
                 print "inconsistent ij indices"
                 sys.exit(-1)
-
-            upf_dict["non_local"]["qij"]["q"].append({})
-            upf_dict["non_local"]["qij"]["q"][-1]["ij"] = [i, j]
-            upf_dict["non_local"]["qij"]["q"][-1]["qfunc"] = []
             
             s = upf.readline().split()
-            upf_dict["non_local"]["qij"]["q"][-1]["qqq"] = float(s[0])
+            qij[i][j]["qqq"] = float(s[0])
 
-            read_mesh_data(upf, upf_dict["header"]["nmesh"], upf_dict["non_local"]["qij"]["q"][-1]["qfunc"])
+            qij[i][j]["q_radial_function"] = read_mesh_data(upf, upf_dict["header"]["nmesh"])
+
             
             # ======================================================================
             # if ( upf%nqf > 0 ) then
@@ -299,13 +306,22 @@ def parse_non_local(upf_dict):
             #   call scan_end (iunps, "QFCOEF")  
             # end if
             #=======================================================================
-            if upf_dict["non_local"]["qij"]["nqf"] > 0:
+            if upf_dict["non_local"]["Q"]["num_q_coefs"] > 0:
                 read_until(upf, "<PP_QFCOEF>")
-                upf_dict["non_local"]["qij"]["q"][-1]["qfcoef"] = []
 
-                read_mesh_data(upf, upf_dict["non_local"]["qij"]["nqf"] * nqlc, upf_dict["non_local"]["qij"]["q"][-1]["qfcoef"])
+                qij[i][j]["q_coefs"] = read_mesh_data(upf, upf_dict["non_local"]["Q"]["num_q_coefs"] * nqlc)
 
                 read_until(upf, "</PP_QFCOEF>")
+            
+            qij[j][i] = qij[i][j]
+
+    qij_list = []
+    for j in range(upf_dict["header"]["nbeta"]):
+        for i in range(0, j + 1):
+            qij_list.append(qij[i][j])
+            qij_list[-1]["ij"] = [i, j]
+
+    upf_dict["non_local"]["Q"]["qij"] = qij_list
 
     upf.close()
 
@@ -331,17 +347,13 @@ def parse_pswfc(upf_dict):
     # =======================================================================
     for i in range(upf_dict["header"]["nwfc"]):
         upf.readline()
-        upf_dict["pswfc"].append([])
-        read_mesh_data(upf, upf_dict["header"]["nmesh"], upf_dict["pswfc"][-1])
-
+        upf_dict["pswfc"].append(read_mesh_data(upf, upf_dict["header"]["nmesh"]))
     upf.close()
 
 #
 # QE subroutine read_pseudo_rhoatom
 #
 def parse_rhoatom(upf_dict):
-
-    upf_dict["rho_at"] = []
 
     upf = open(sys.argv[1], "r")
 
@@ -351,7 +363,7 @@ def parse_rhoatom(upf_dict):
     # ALLOCATE( upf%rho_at( upf%mesh ) )
     # read (iunps,*,err=100,end=100) ( upf%rho_at(ir), ir=1,upf%mesh )
     # ================================================================
-    read_mesh_data(upf, upf_dict["header"]["nmesh"], upf_dict["rho_at"])
+    upf_dict["total_charge_density"] = read_mesh_data(upf, upf_dict["header"]["nmesh"])
 
     upf.close()
 
@@ -368,13 +380,15 @@ def main():
     parse_pswfc(upf_dict)
     parse_rhoatom(upf_dict)
 
-    fout = open("pp.json", "w")
-    # regular expression magic: match comma,space,newline ,\s\n with the follwing conditions: 
-    # digit before (?<=[0-9]) and arbitrary number of spaces and minus or digit after (?=\s*[-|0-9])
-    # fout.write(re.sub(r"(?<=[0-9]),\s\n(?=\s*[-|0-9])", r",", json.dumps(upf_dict, indent=2)))
+    pp_dict = {}
+    pp_dict["uspp"] = upf_dict
 
-    # this is even better
-    fout.write(re.sub(r"(?<=[0-9]),\s\n\s*(?=[-|0-9])", r", ", json.dumps(upf_dict, indent=2)))
+    fout = open(sys.argv[1] + ".json", "w")
+
+    # Match comma, space, newline and an arbitrary number of spaces ',\s\n\s*' with the 
+    # following conditions: a digit before (?<=[0-9]) and a minus or a digit after (?=[-|0-9]). 
+    # Replace found sequence with comma and space.
+    fout.write(re.sub(r"(?<=[0-9]),\s\n\s*(?=[-|0-9])", r", ", json.dumps(pp_dict, indent=2)))
     fout.close()
 
 if __name__ == "__main__":

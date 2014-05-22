@@ -1,6 +1,4 @@
-// This file is part of SIRIUS
-//
-// Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -19,17 +17,24 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/** \file hdf5_tree.h
+ *   
+ *  \brief Contains definition and implementation of sirius::HDF5_tree class.
+ */
+
 #ifndef __HDF5_TREE_H__
 #define __HDF5_TREE_H__
 
-/** \file hdf5_tree.h
-    
-    \brief Interface to the HDF5 library.
-*/
+#include <hdf5.h>
+#include <string>
+#include <vector>
+#include "mdarray.h"
+#include "utils.h"
 
 namespace sirius
 {
 
+/// Interface to the HDF5 library.
 class HDF5_tree
 {
     private:
@@ -182,10 +187,10 @@ class HDF5_tree
             HDF5_dataspace dataspace(dims);
 
             /// create new dataset
-            HDF5_dataset dataset(group, dataspace, name, primitive_type_wrapper<T>::hdf5_type_id());
+            HDF5_dataset dataset(group, dataspace, name, type_wrapper<T>::hdf5_type_id());
 
             // write data
-            if (H5Dwrite(dataset.id(), primitive_type_wrapper<T>::hdf5_type_id(), dataspace.id(), H5S_ALL, 
+            if (H5Dwrite(dataset.id(), type_wrapper<T>::hdf5_type_id(), dataspace.id(), H5S_ALL, 
                          H5P_DEFAULT, data) < 0)
             {
                 error_local(__FILE__, __LINE__, "error in H5Dwrite()");
@@ -202,7 +207,7 @@ class HDF5_tree
 
             HDF5_dataset dataset(group.id(), name);
 
-            if (H5Dread(dataset.id(), primitive_type_wrapper<T>::hdf5_type_id(), dataspace.id(), H5S_ALL, 
+            if (H5Dread(dataset.id(), type_wrapper<T>::hdf5_type_id(), dataspace.id(), H5S_ALL, 
                         H5P_DEFAULT, data) < 0)
             {
                 error_local(__FILE__, __LINE__, "error in H5Dread()");
@@ -276,7 +281,34 @@ class HDF5_tree
             
             return (*this)[name];
         }
-       
+
+        /// Write a multidimensional array by name.
+        template <typename T, int N>
+        void write(const std::string& name, mdarray<T, N>& data)
+        {
+            if (type_wrapper<T>::is_complex())
+            {
+                std::vector<int> dims(N + 1);
+                dims[0] = 2; 
+                for (int i = 0; i < N; i++) dims[i + 1] = (int)data.size(i);
+                write(name, (typename type_wrapper<T>::real_t*)data.ptr(), dims);
+            }
+            else
+            {
+                std::vector<int> dims(N);
+                for (int i = 0; i < N; i++) dims[i] = (int)data.size(i);
+                write(name, data.ptr(), dims);
+            }
+        }
+
+        /// Write a multidimensional array by integer index.
+        template <typename T, int N>
+        void write(int name_id, mdarray<T, N>& data)
+        {
+            std::string name = std::to_string(name_id);
+            write(name, data);
+        }
+
         /// Write a vector.
         template <typename T>
         void write(const std::string& name, T* data, int size = 1)
@@ -295,37 +327,10 @@ class HDF5_tree
             write(name, &data, dims);
         }
 
-        /// Write a multidimensional array by name.
-        template <typename T, int N>
-        void write_mdarray(const std::string& name, mdarray<T, N>& data)
-        {
-            if (primitive_type_wrapper<T>::is_complex())
-            {
-                std::vector<int> dims(N + 1);
-                dims[0] = 2; 
-                for (int i = 0; i < N; i++) dims[i + 1] = data.size(i);
-                write(name, (typename primitive_type_wrapper<T>::real_t*)data.get_ptr(), dims);
-            }
-            else
-            {
-                std::vector<int> dims(N);
-                for (int i = 0; i < N; i++) dims[i] = data.size(i);
-                write(name, data.get_ptr(), dims);
-            }
-        }
-        
-        /// Write a multidimensional array by integer index.
-        template <typename T, int N>
-        void write_mdarray(int name_id, mdarray<T, N>& data)
-        {
-            std::string name = Utils::to_string(name_id);
-            write_mdarray(name, data);
-        }
-
         template<typename T>
         void write(int name_id, std::vector<T>& vec)
         {
-            std::string name = Utils::to_string(name_id);
+            std::string name = std::to_string(name_id);
             write(name, &vec[0], (int)vec.size());
         }
         
@@ -348,18 +353,18 @@ class HDF5_tree
         template <typename T, int N>
         void read_mdarray(const std::string& name, mdarray<T, N>& data)
         {
-            if (primitive_type_wrapper<T>::is_complex())
+            if (type_wrapper<T>::is_complex())
             {
                 std::vector<int> dims(N + 1);
                 dims[0] = 2; 
-                for (int i = 0; i < N; i++) dims[i + 1] = data.size(i);
-                read(name, (typename primitive_type_wrapper<T>::real_t*)data.get_ptr(), dims);
+                for (int i = 0; i < N; i++) dims[i + 1] = (int)data.size(i);
+                read(name, (typename type_wrapper<T>::real_t*)data.ptr(), dims);
             }
             else
             {
                 std::vector<int> dims(N);
-                for (int i = 0; i < N; i++) dims[i] = data.size(i);
-                read(name, data.get_ptr(), dims);
+                for (int i = 0; i < N; i++) dims[i] = (int)data.size(i);
+                read(name, data.ptr(), dims);
             }
         }
 
@@ -367,14 +372,14 @@ class HDF5_tree
         template <typename T, int N>
         void read_mdarray(int name_id, mdarray<T, N>& data)
         {
-            std::string name = Utils::to_string(name_id);
+            std::string name = std::to_string(name_id);
             read_mdarray(name, data);
         }
 
         template<typename T>
         void read(int name_id, std::vector<T>& vec)
         {
-            std::string name = Utils::to_string(name_id);
+            std::string name = std::to_string(name_id);
             read(name, &vec[0], (int)vec.size());
         }
 

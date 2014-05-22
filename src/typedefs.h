@@ -1,13 +1,48 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file typedefs.h
+ *
+ *  \brief Contains typedefs, enums and type_wrapper class.
+ */
+
 #ifndef __TYPEDEFS_H__
 #define __TYPEDEFS_H__
 
-typedef std::complex<double> complex16;
+#include <hdf5.h>
+#include <mpi.h>
+#include <assert.h>
+#include <complex>
 
-typedef double real8;
+typedef std::complex<double> double_complex;
 
 enum spin_block_t {nm, uu, ud, dd, du};
 
-enum processing_unit_t {cpu, gpu};
+/// Type of the main processing unit
+enum processing_unit_t 
+{
+    /// use CPU
+    cpu, 
+
+    /// use GPU (with CUDA programming model)
+    gpu
+};
 
 enum lattice_t {direct, reciprocal};
 
@@ -15,25 +50,93 @@ enum coordinates_t {cartesian, fractional};
 
 enum mpi_op_t {op_sum, op_max};
 
-enum linalg_t {lapack, scalapack, elpa, magma};
+/// Type of the linear algebra package
+enum linalg_t {lapack, scalapack};
+
+/// Type of the solver to use for the standard or generalized eigen-value problem
+enum ev_solver_t 
+{
+    /// use LAPACK
+    ev_lapack, 
+
+    /// use ScaLAPACK
+    ev_scalapack,
+
+    /// use ELPA1 solver
+    ev_elpa1,
+
+    /// use ELPA2 (2-stage) solver
+    ev_elpa2,
+
+    /// use MAGMA
+    ev_magma,
+
+    /// use PLASMA
+    ev_plasma,
+
+    /// 
+    ev_rs_gpu,
+
+    ev_rs_cpu
+};
 
 enum splindex_t {block, block_cyclic};
 
-enum basis_t {apwlo, pwlo};
+/// Type of electronic structure methods
+enum electronic_structure_method_t 
+{
+    /// full potential linearized augmented plane waves with local orbitals
+    full_potential_lapwlo, 
 
-enum method_t {fp, uspp, ncpp, paw};
+    /// full potential plane waves with local orbitals (heavily experimental and not completely implemented)
+    full_potential_pwlo, 
+
+    /// ultrasoft pseudopotential with plane wave basis (experimental)
+    ultrasoft_pseudopotential
+};
 
 enum index_domain_t {global, local};
 
-enum argument_t {arg_lm, arg_tp, arg_radial};
+enum function_domain_t {spatial, spectral};
 
-/// Types of radial grid
-enum radial_grid_t {linear_grid, exponential_grid, linear_exponential_grid, pow_grid, hyperbolic_grid, incremental_grid};
+/// Types of radial grid.
+enum radial_grid_t 
+{
+    linear_grid, 
+    
+    exponential_grid, 
+    
+    pow2_grid, 
+    
+    pow3_grid,
 
-/// Wrapper for primitive data types
-template <typename T> class primitive_type_wrapper;
+    scaled_pow_grid,
+    
+    hyperbolic_grid, 
+    
+    incremental_grid
+};
 
-template<> class primitive_type_wrapper<double>
+/// type of local orbitals
+/** lo_rs - local orbital, composed of radial solutions
+ *  lo_cp - confined polynomial local orbital 
+ */
+enum local_orbital_t {lo_rs, lo_cp};
+
+/// Wrapper for data types
+template <typename T> 
+class type_wrapper
+{
+    public:
+
+        static bool is_primitive()
+        {
+            return false;
+        }
+};
+
+template<> 
+class type_wrapper<double>
 {
     public:
         typedef std::complex<double> complex_t;
@@ -73,16 +176,57 @@ template<> class primitive_type_wrapper<double>
         {
             return fabs(val);
         }
+
+        static bool is_primitive()
+        {
+            return true;
+        }
+
+        static inline double random()
+        {
+            return double(rand()) / RAND_MAX;
+        }
 };
 
-template<> class primitive_type_wrapper<float>
+template<> 
+class type_wrapper<long double>
+{
+    public:
+        typedef std::complex<long double> complex_t;
+        typedef long double real_t;
+        
+        static MPI_Datatype mpi_type_id()
+        {
+            return MPI_LONG_DOUBLE;
+        }
+
+        static bool is_complex()
+        {
+            return false;
+        }
+        
+        static bool is_real()
+        {
+            return true;
+        }
+
+        static bool is_primitive()
+        {
+            return true;
+        }
+
+};
+
+template<> 
+class type_wrapper<float>
 {
     public:
         typedef std::complex<float> complex_t;
         typedef float real_t;
 };
 
-template<> class primitive_type_wrapper< std::complex<double> >
+template<> 
+class type_wrapper< std::complex<double> >
 {
     public:
         typedef std::complex<double> complex_t;
@@ -122,16 +266,27 @@ template<> class primitive_type_wrapper< std::complex<double> >
         {
             return std::abs(val);
         }
+
+        static bool is_primitive()
+        {
+            return true;
+        }
+
+        static inline std::complex<double> random()
+        {
+            return std::complex<double>(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
+        }
 };
 
-/*template<> class primitive_type_wrapper< std::complex<float> >
+/*template<> class type_wrapper< std::complex<float> >
 {
     public:
         typedef std::complex<float> complex_t;
         typedef float real_t;
 };*/
 
-template<> class primitive_type_wrapper<int>
+template<> 
+class type_wrapper<int>
 {
     public:
         static hid_t hdf5_type_id()
@@ -144,13 +299,24 @@ template<> class primitive_type_wrapper<int>
             return MPI_INT;
         }
 
+        static bool is_primitive()
+        {
+            return true;
+        }
+
+        static int abs(int val)
+        {
+            return abs(val);
+        }
+
         /*static bool is_complex()
         {
             return false;
         }*/
 };
 
-template<> class primitive_type_wrapper<char>
+template<> 
+class type_wrapper<char>
 {
     public:
         /*static hid_t hdf5_type_id()
@@ -167,71 +333,11 @@ template<> class primitive_type_wrapper<char>
         {
             return false;
         }*/
-};
 
-/// Simple implementation of 3d vector
-template <typename T> class vector3d
-{
-    private:
-
-        T vec_[3];
-
-    public:
-        
-        /// Construct zero vector
-        vector3d()
+        static bool is_primitive()
         {
-            vec_[0] = vec_[1] = vec_[2] = 0;
-        }
-
-        /// Construct vector with the same values
-        vector3d(T v0)
-        {
-            vec_[0] = vec_[1] = vec_[2] = v0;
-        }
-
-        /// Construct arbitrary vector
-        vector3d(T x, T y, T z)
-        {
-            vec_[0] = x;
-            vec_[1] = y;
-            vec_[2] = z;
-        }
-
-        /// Construct vector from pointer
-        vector3d(T* ptr)
-        {
-            for (int i = 0; i < 3; i++) vec_[i] = ptr[i];
-        }
-
-        /// Access vector elements
-        inline T& operator[](const int i)
-        {
-            assert(i >= 0 && i <= 2);
-            return vec_[i];
-        }
-
-        /// Return vector length
-        inline double length()
-        {
-            return sqrt(vec_[0] * vec_[0] + vec_[1] * vec_[1] + vec_[2] * vec_[2]);
-        }
-
-        inline vector3d<T> operator+(const vector3d<T>& b)
-        {
-            vector3d<T> a = *this;
-            for (int x = 0; x < 3; x++) a[x] += b.vec_[x];
-            return a;
-        }
-
-        inline vector3d<T> operator-(const vector3d<T>& b)
-        {
-            vector3d<T> a = *this;
-            for (int x = 0; x < 3; x++) a[x] -= b.vec_[x];
-            return a;
+            return true;
         }
 };
-
-
 
 #endif // __TYPEDEFS_H__

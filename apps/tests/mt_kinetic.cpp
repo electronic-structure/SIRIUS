@@ -8,8 +8,8 @@ void test1()
     double x1 = 1.5;
     const int N = 5000;
     Radial_grid r(exponential_grid, N, x0, x1);
-    Spline<double> f(N, r);
-    Spline<double> g(N, r);
+    Spline<double> f(r);
+    Spline<double> g(r);
 
     for (int ir = 0; ir < N; ir++)
     {
@@ -19,8 +19,8 @@ void test1()
     f.interpolate();
     g.interpolate();
 
-    Spline<double> f1(N, r);
-    Spline<double> g1(N, r);
+    Spline<double> f1(r);
+    Spline<double> g1(r);
     for (int ir = 0; ir < N; ir++)
     {
         f1[ir] = f.deriv(1, ir) * r[ir] * r[ir];
@@ -29,8 +29,8 @@ void test1()
     f1.interpolate();
     g1.interpolate();
 
-    Spline<double> f2(N, r);
-    Spline<double> g2(N, r);
+    Spline<double> f2(r);
+    Spline<double> g2(r);
     for (int ir = 0; ir < N; ir++)
     {
         f2[ir] = f1.deriv(1, ir) / r[ir] / r[ir];
@@ -39,8 +39,8 @@ void test1()
     f2.interpolate();
     g2.interpolate();
 
-    std::cout << " <g|nabla^2|f> = " << Spline<double>::integrate(&f2, &g) - g[N - 1] * f.deriv(1, N - 1) * x1 * x1 << std::endl;
-    std::cout << " <f|nabla^2|g> = " << Spline<double>::integrate(&g2, &f) - f[N - 1] * g.deriv(1, N - 1) * x1 * x1 << std::endl;
+    std::cout << " <g|nabla^2|f> = " << Spline<double>::integrate(&f2, &g, 2) - g[N - 1] * f.deriv(1, N - 1) * x1 * x1 << std::endl;
+    std::cout << " <f|nabla^2|g> = " << Spline<double>::integrate(&g2, &f, 2) - f[N - 1] * g.deriv(1, N - 1) * x1 * x1 << std::endl;
 }
 
 void test2()
@@ -50,11 +50,11 @@ void test2()
     double x1 = 1.892184;
     const int N = 5000;
     Radial_grid r(exponential_grid, N, x0, x1);
-    Spline<double> u0(N, r);
-    Spline<double> u1(N, r);
-    Spline<double> d2_u0(N, r);
-    Spline<double> d2_u1(N, r);
-    Spline<double> s(N, r);
+    Spline<double> u0(r);
+    Spline<double> u1(r);
+    Spline<double> d2_u0(r);
+    Spline<double> d2_u1(r);
+    Spline<double> s(r);
 
     for (int ir = 0; ir < N; ir++)
     {

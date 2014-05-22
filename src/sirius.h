@@ -1,96 +1,59 @@
+// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file sirius.h
+ *   
+ *  \brief "All-in-one" include file.
+ */
+
 #ifndef __SIRIUS_H__
 #define __SIRIUS_H__
-#include <mpi.h>
-#include <assert.h>
-#include <stdio.h>
-#include <sys/time.h>
-#include <sys/stat.h>
-#include <signal.h>
-#include <omp.h>
-#include <stdint.h>
 
-#include <vector>
-#include <map>
-#include <algorithm>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <cmath>
-#include <complex>
-#include <typeinfo>
-
-extern "C" {
-#include <spglib.h>
-}
-#include <fftw3.h>
-#include <gsl/gsl_errno.h>
-#include <gsl/gsl_sf_legendre.h>
-#include <gsl/gsl_sf_bessel.h>
-#include <gsl/gsl_sf_coupling.h>
-#include <gsl/gsl_sf_erf.h>
-#include <xc.h>
-// libxc should do that
-#undef FLOAT
-
-#include <hdf5.h>
-#include <libjson.h>
-
-#include "typedefs.h"
-#include "config.h"
-#include "LebedevLaikov.h"
 #ifdef _GPU_
 #include "gpu_interface.h"
 #endif
 #include "platform.h"
-
-//============================
-// low-level stuff
-//============================
-#include "version.h"
-#include "error_handling.h"
 #include "timer.h"
-
-#define stop_here Timer::print(); error_local(__FILE__, __LINE__, "stop_here macros is called");
-
+#include "error_handling.h"
+#include "cmd_args.h"
 #include "constants.h"
-#include "mdarray.h"
 #include "linalg.h"
-#include "utils.h"
 #include "radial_grid.h"
 #include "spline.h"
 #include "radial_solver.h"
 #include "sht.h"
 #include "gaunt.h"
-#include "fft3d.h"
+#include "splindex.h"
 #include "json_tree.h"
 #include "hdf5_tree.h" 
-#include "libxc_interface.h"
+#include "xc_functional.h"
 #include "mpi_grid.h"
-#include "splindex.h"
 #include "sirius_io.h"
-
-//==============================
-// atoms        
-//==============================
+#include "descriptors.h"
+#include "mixer.h"
 #include "atom_type.h"
 #include "atom_symmetry_class.h"
 #include "atom.h"
-
-//==================================
-// stack of classes for Global class
-//==================================
 #include "unit_cell.h"
 #include "reciprocal_lattice.h"
 #include "step_function.h"
 #include "global.h"
-
-//============================
-// main classes
-//============================
-#include "sbessel_pw.h"
-#include "spheric_function.h"
-#include "spheric_function_vector.h"
-#include "spheric_function_gradient.h"
 #include "periodic_function.h"
 #include "k_point.h"
 #include "band.h"
@@ -98,8 +61,51 @@ extern "C" {
 #include "k_set.h"
 #include "density.h"
 #include "force.h"
-#include "mixer.h"
 #include "dft_ground_state.h"
 
-
 #endif // __SIRIUS_H__
+
+/** \mainpage Welcome to SIRIUS
+    \section intro Introduction
+    SIRIUS is ...
+    \section install Installation
+    ...
+*/
+
+/** \page coding Coding style
+       
+    Below are some basic style rules we try to follow:
+        - Page width is approximately 120 characters. Screens are wide nowdays and 80 characters is an 
+          obsolete restriction. Going slightly over 120 characters is allowed if it is requird for the line continuity.
+        - Identation: 4 spaces (no tabs)
+        - Spaces between most operators:
+          \code{.cpp}
+              if (i < 5) j = 5;  
+ 
+              for (int k = 0; k < 3; k++)
+ 
+              int lm = l * l + l + m;
+ 
+              double d = fabs(e);
+ 
+              int k = idx[3];
+          \endcode
+        - Spaces between function arguments:
+          \code{.cpp}
+              double d = some_func(a, b, c);
+          \endcode
+        - Curly braces start at the new line:
+          \code{.cpp}
+              for (int i = 0; i < 10; i++)
+              {
+                  ...
+              }
+  
+              inline int num_points()
+              {
+                  return num_points_;
+              }
+          \endcode
+  
+  
+ */
