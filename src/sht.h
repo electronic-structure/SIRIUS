@@ -41,7 +41,7 @@
 namespace sirius
 {
 
-/// Spherical harmonics transformation
+/// Spherical harmonics transformation.
 class SHT // TODO: better name
 {
     private:
@@ -74,27 +74,83 @@ class SHT // TODO: better name
 
     public:
         
-        /// Default constructor
+        /// Default constructor.
         SHT(int lmax_);
+       
+        /// Perform a backward transformation from spherical harmonics to spherical coordinates.
+        /** \f[
+         *      f(\theta, \phi, r) = \sum_{\ell m} f_{\ell m}(r) Y_{\ell m}(\theta, \phi)
+         *  \f]
+         *
+         *  \param [in] ld Size of leading dimension of flm.
+         *  \param [in] flm Raw pointer to \f$ f_{\ell m}(r) \f$.
+         *  \param [in] nr Number of radial points.
+         *  \param [in] lmmax Maximum number of lm- harmonics to take into sum.
+         *  \param [out] ftp Raw pointer to \f$ f(\theta, \phi, r) \f$.
+         */
+        template <typename T>
+        void backward_transform(int ld, T* flm, int nr, int lmmax, T* ftp);
+        
+        /// Perform a forward transformation from spherical coordinates to spherical harmonics.
+        /** 
+         *  \f[
+         *      f_{\ell m}(r) = \iint  f(\theta, \phi, r) Y_{\ell m}^{*}(\theta, \phi) \sin \theta d\phi d\theta = 
+         *        \sum_{i} f(\theta_i, \phi_i, r) Y_{\ell m}^{*}(\theta_i, \phi_i) w_i
+         *  \f]
+         *
+         *  \param [in] ftp Raw pointer to \f$ f(\theta, \phi, r) \f$.
+         *  \param [in] nr Number of radial points.
+         *  \param [in] lmmax Maximum number of lm- coefficients to generate.
+         *  \param [in] ld Size of leading dimension of flm.
+         *  \param [out] flm Raw pointer to \f$ f_{\ell m}(r) \f$.
+         */
+        template <typename T>
+        void forward_transform(T* ftp, int nr, int lmmax, int ld, T* flm);
+        
+        /// Convert from Ylm to Rlm representation.
+        Spheric_function<spectral, double> convert(Spheric_function<spectral, double_complex>& f);
+        
+        /// Convert form Rlm to Ylm representation.
+        Spheric_function<spectral, double_complex> convert(Spheric_function<spectral, double>& f);
+        
+        /// Convert from Ylm to Rlm representation.
+        void convert(Spheric_function<spectral, double_complex>& f, Spheric_function<spectral, double>& g);
+
+        template <typename T>
+        Spheric_function<spectral, T> transform(Spheric_function<spatial, T>& f)
+        {
+            assert(f.angular_domain_idx() == 0);
+
+            Spheric_function<spectral, T> g(lmmax(), f.radial_grid());
+            
+            forward_transform(&f(0, 0), f.radial_grid().num_points(), lmmax(), lmmax(), &g(0, 0));
+
+            return g;
+        }
         
         template <typename T>
-        void backward_transform(T* flm, int lmmax, int ncol, T* ftp);
+        Spheric_function<spatial, T> transform(Spheric_function<spectral, T>& f)
+        {
+            assert(f.angular_domain_idx() == 0);
+
+            Spheric_function<spatial, T> g(num_points(), f.radial_grid());
+            
+            backward_transform(f.angular_domain_size(), &f(0, 0), f.radial_grid().num_points(), 
+                               std::min(lmmax(), f.angular_domain_size()), &g(0, 0));
+
+            return g;
+        }
         
         template <typename T>
-        void forward_transform(T* ftp, int lmmax, int ncol, T* flm);
+        void transform(Spheric_function<spatial, T>& f, Spheric_function<spectral, T>&g)
+        {
+            assert(f.angular_domain_idx() == 0);
+            assert(g.angular_domain_idx() == 0);
+            assert(f.radial_grid().hash() == g.radial_grid().hash());
 
-        Spheric_function<double> convert(Spheric_function<double_complex>& f);
-
-        Spheric_function<double_complex> convert(Spheric_function<double>& f);
-
-        void convert(Spheric_function<double_complex>& f, Spheric_function<double>& g);
-
-        template <int direction, typename T>
-        Spheric_function<T> transform(Spheric_function<T>& f);
-        
-        template <int direction, typename T>
-        void transform(Spheric_function<T>& f, Spheric_function<T>&g);
-
+            forward_transform(&f(0, 0), f.radial_grid().num_points(), std::min(g.angular_domain_size(), lmmax()), 
+                              g.angular_domain_size(), &g(0, 0));
+        }
 
         
         //void rlm_forward_iterative_transform(double *ftp__, int lmmax, int ncol, double* flm)
@@ -140,13 +196,13 @@ class SHT // TODO: better name
         
         /// Generate real spherical harmonics Rlm
         /** Mathematica code:
-            \verbatim
+         *  \verbatim
             R[l_, m_, th_, ph_] := 
              If[m > 0, Sqrt[2]*ComplexExpand[Re[SphericalHarmonicY[l, m, th, ph]]], 
              If[m < 0, Sqrt[2]*ComplexExpand[Im[SphericalHarmonicY[l, m, th, ph]]], 
              If[m == 0, ComplexExpand[Re[SphericalHarmonicY[l, 0, th, ph]]]]]]
             \endverbatim
-        */
+         */
         static void spherical_harmonics(int lmax, double theta, double phi, double* rlm);
                         
         /// Compute element of the transformation matrix from complex to real spherical harmonics. 
@@ -190,7 +246,8 @@ class SHT // TODO: better name
 
         /// Return Clebsch-Gordan coefficient.
         /** Clebsch-Gordan coefficients arise when two angular momenta are combined into a
-            total angular momentum. */
+         *  total angular momentum. 
+         */
         static inline double clebsch_gordan(int l1, int l2, int l3, int m1, int m2, int m3)
         {
             assert(l1 >= 0);

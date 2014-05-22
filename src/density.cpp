@@ -294,7 +294,7 @@ void Density::initial_density()
                 }
             }
 
-            Spheric_function<double_complex> rho_ylm_tmp(lmmax, uc->atom_type(iat)->radial_grid());
+            Spheric_function<spectral, double_complex> rho_ylm_tmp(lmmax, uc->atom_type(iat)->radial_grid());
             for (int j = 0; j < num_atoms_t; j++)
             {
                 int ia = uc->atom_type(iat)->atom_id(j);

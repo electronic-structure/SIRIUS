@@ -34,7 +34,7 @@ namespace sirius
 {
 
 /// Function in spherical harmonics or spherical coordinates representation.
-template <typename T> 
+template <function_domain_t domain_t, typename T = double_complex>
 class Spheric_function
 {
     private:
@@ -109,7 +109,7 @@ class Spheric_function
         //==     return *this;
         //== }
 
-        inline Spheric_function<T>& operator+=(Spheric_function<T>& rhs)
+        inline Spheric_function<domain_t, T>& operator+=(Spheric_function<domain_t, T>& rhs)
         {
             for (size_t i1 = 0; i1 < data_.size(1); i1++)
             {
@@ -161,34 +161,40 @@ class Spheric_function
 };
 
 /// Inner product of two spherical functions.
-template <typename T>
-T inner(Spheric_function<T>& f1, Spheric_function<T>& f2)
+template <function_domain_t domain_t, typename T = double_complex>
+T inner(Spheric_function<domain_t, T>& f1, Spheric_function<domain_t, T>& f2)
 {
-    if ((f1.angular_domain_idx() != f2.angular_domain_idx()) || (f1.angular_domain_size() != f2.angular_domain_size()))
-    {
-        error_local(__FILE__, __LINE__, "wrong angular arguments");
-    }
-    if ((f1.radial_domain_idx() != f2.radial_domain_idx()) || (f1.radial_grid().hash() != f2.radial_grid().hash()))
-    {
+    /* check radial grid */
+    if (f1.radial_domain_idx() != f2.radial_domain_idx() || f1.radial_grid().hash() != f2.radial_grid().hash())
         error_local(__FILE__, __LINE__, "wrong radial arguments");
-    }
+
     Spline<T> s(f1.radial_grid());
 
-    if (f1.radial_domain_idx() == 0)
+    if (domain_t == spectral)
     {
-        for (int lm = 0; lm < f1.angular_domain_size(); lm++)
+        if (f1.angular_domain_idx() != f2.angular_domain_idx()) error_local(__FILE__, __LINE__, "wrong angular arguments");
+
+        int lmmax = std::min(f1.angular_domain_size(), f2.angular_domain_size());
+        if (f1.radial_domain_idx() == 0)
         {
-            for (int ir = 0; ir < f1.radial_grid().num_points(); ir++)
-                s[ir] += type_wrapper<T>::conjugate(f1(ir, lm)) * f2(ir, lm);
+            for (int lm = 0; lm < lmmax; lm++)
+            {
+                for (int ir = 0; ir < s.num_points(); ir++)
+                    s[ir] += type_wrapper<T>::conjugate(f1(ir, lm)) * f2(ir, lm);
+            }
+        }
+        else
+        {
+            for (int ir = 0; ir < s.num_points(); ir++)
+            {
+                for (int lm = 0; lm < lmmax; lm++)
+                    s[ir] += type_wrapper<T>::conjugate(f1(lm, ir)) * f2(lm, ir);
+            }
         }
     }
     else
     {
-        for (int ir = 0; ir < f1.radial_grid().num_points(); ir++)
-        {
-            for (int lm = 0; lm < f1.angular_domain_size(); lm++)
-                s[ir] += type_wrapper<T>::conjugate(f1(lm, ir)) * f2(lm, ir);
-        }
+        stop_here // and implement this
     }
     return s.interpolate().integrate(2);
 }
@@ -200,15 +206,15 @@ T inner(Spheric_function<T>& f1, Spheric_function<T>& f2)
  *  \f]
  */
 template <typename T>
-Spheric_function<T> laplacian(Spheric_function<T>& f)
+Spheric_function<spectral, T> laplacian(Spheric_function<spectral, T>& f)
 {
-    Spheric_function<T> g;
+    Spheric_function<spectral, T> g;
     if (f.angular_domain_idx() == 0)
     {
         auto& rgrid = f.radial_grid();
         int lmmax = f.angular_domain_size();
         int lmax = Utils::lmax_by_lmmax(lmmax);
-        g = Spheric_function<T>(lmmax, rgrid);
+        g = Spheric_function<spectral, T>(lmmax, rgrid);
         
         Spline<T> s(f.radial_grid());
         for (int l = 0; l <= lmax; l++)
@@ -235,14 +241,14 @@ Spheric_function<T> laplacian(Spheric_function<T>& f)
 }
 
 /// Gradient of a spheric function.
-template <typename T>
+template <function_domain_t domain_t, typename T = double_complex>
 class Spheric_function_gradient
 {
     private:
 
         Radial_grid radial_grid_;
 
-        std::array<Spheric_function<T>, 3> grad_;
+        std::array<Spheric_function<domain_t, T>, 3> grad_;
     
     public:
 
@@ -259,7 +265,7 @@ class Spheric_function_gradient
             return radial_grid_;
         }
 
-        inline Spheric_function<T>& operator[](const int x)
+        inline Spheric_function<domain_t, T>& operator[](const int x)
         {
             assert(x >= 0 && x < 3);
             return grad_[x];
@@ -267,12 +273,13 @@ class Spheric_function_gradient
 };
 
 /// Gradient of the function in complex spherical harmonics.
-Spheric_function_gradient<double_complex> gradient(Spheric_function<double_complex>& f);
+Spheric_function_gradient<spectral, double_complex> gradient(Spheric_function<spectral, double_complex>& f);
 
 /// Gradient of the function in real spherical harmonics.
-Spheric_function_gradient<double> gradient(Spheric_function<double>& f);
+Spheric_function_gradient<spectral, double> gradient(Spheric_function<spectral, double>& f);
 
-Spheric_function<double> operator*(Spheric_function_gradient<double>& f, Spheric_function_gradient<double>& g);
+Spheric_function<spatial, double> operator*(Spheric_function_gradient<spatial, double>& f, 
+                                            Spheric_function_gradient<spatial, double>& g);
 
 }
 

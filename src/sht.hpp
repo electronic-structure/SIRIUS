@@ -22,57 +22,49 @@
  *  \brief Contains templated implementation of sirius::SHT class.
  */
 
-template <int direction, typename T>
-Spheric_function<T> SHT::transform(Spheric_function<T>& f)
-{
-    Spheric_function<T> g;
+//template <typename T>
+//Spheric_function<spectral, T> SHT::transform(Spheric_function<spatial, T>& f)
+//{
+//    Spheric_function<T> g(lmmax(), f.radial_grid());
+//    
+//    forward_transform(&f(0, 0), lmmax(), f.radial_grid().num_points(), &g(0, 0));
+//
+//    return g;
+//}
+//
+//template <int direction, typename T>
+//Spheric_function<spectral, T> SHT::transform(Spheric_function<spatial, T>& f)
+//{
+//    Spheric_function<T> g(lmmax(), f.radial_grid());
+//    
+//    forward_transform(&f(0, 0), lmmax(), f.radial_grid().num_points(), &g(0, 0));
+//
+//    return g;
+//}
 
-    switch (direction)
-    {
-        /* forward transform, f(t, p) -> g(l, m) */
-        case 1:
-        {
-            g = Spheric_function<T>(lmmax(), f.radial_grid());
-            break;
-        }
-        /* backward transform, f(l, m) -> g(t, p) */
-        case -1:
-        {
-            g = Spheric_function<T>(num_points(), f.radial_grid());
-            break;
-        }
-        default:
-        {
-            error_local(__FILE__, __LINE__, "Wrong direction of transformation");
-        }
-    }
-    transform<direction, T>(f, g);
-    return g;
-}
-
-template <int direction, typename T>
-void SHT::transform(Spheric_function<T>& f, Spheric_function<T>& g)
-{
-    assert(f.radial_grid().hash() == g.radial_grid().hash());
-
-    switch (direction)
-    {
-        /* forward transform, f(t, p) -> g(l, m) */
-        case 1:
-        {
-            forward_transform(&f(0, 0), lmmax(), f.radial_grid().num_points(), &g(0, 0));
-            break;
-        }
-        /* backward transform, f(l, m) -> g(t, p) */
-        case -1:
-        {
-            backward_transform(&f(0, 0), f.angular_domain_size(), f.radial_grid().num_points(), &g(0, 0));
-            break;
-        }
-        default:
-        {
-            error_local(__FILE__, __LINE__, "Wrong direction of transformation");
-        }
-    }
-}
+//== template <int direction, typename T>
+//== void SHT::transform(Spheric_function<T>& f, Spheric_function<T>& g)
+//== {
+//==     assert(f.radial_grid().hash() == g.radial_grid().hash());
+//== 
+//==     switch (direction)
+//==     {
+//==         /* forward transform, f(t, p) -> g(l, m) */
+//==         case 1:
+//==         {
+//==             forward_transform(&f(0, 0), lmmax(), f.radial_grid().num_points(), &g(0, 0));
+//==             break;
+//==         }
+//==         /* backward transform, f(l, m) -> g(t, p) */
+//==         case -1:
+//==         {
+//==             backward_transform(&f(0, 0), f.angular_domain_size(), f.radial_grid().num_points(), &g(0, 0));
+//==             break;
+//==         }
+//==         default:
+//==         {
+//==             error_local(__FILE__, __LINE__, "Wrong direction of transformation");
+//==         }
+//==     }
+//== }
 

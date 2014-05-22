@@ -39,7 +39,7 @@ Periodic_function<T>::Periodic_function(Global& parameters_, int angular_domain_
         for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_->spl_num_atoms(ialoc);
-            f_mt_local_(ialoc) = Spheric_function<T>(NULL, angular_domain_size_, unit_cell_->atom(ia)->radial_grid());
+            f_mt_local_(ialoc) = Spheric_function<spectral, T>(NULL, angular_domain_size_, unit_cell_->atom(ia)->radial_grid());
         }
     }
     

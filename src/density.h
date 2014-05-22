@@ -321,7 +321,7 @@ class Density
             return magnetization_[i];
         }
 
-        Spheric_function<double>& density_mt(int ialoc)
+        Spheric_function<spectral, double>& density_mt(int ialoc)
         {
             return rho_->f_mt(ialoc);
         }

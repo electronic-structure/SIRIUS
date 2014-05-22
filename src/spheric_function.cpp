@@ -29,18 +29,18 @@
 namespace sirius 
 {
 
-Spheric_function_gradient<double_complex> gradient(Spheric_function<double_complex>& f)
+Spheric_function_gradient<spectral, double_complex> gradient(Spheric_function<spectral, double_complex>& f)
 {
-    Spheric_function_gradient<double_complex> g(f.radial_grid());
+    Spheric_function_gradient<spectral, double_complex> g(f.radial_grid());
     for (int i = 0; i < 3; i++)
     {
         if (f.radial_domain_idx() == 0)
         {
-            g[i] = Spheric_function<double_complex>(f.radial_grid(), f.angular_domain_size());
+            g[i] = Spheric_function<spectral, double_complex>(f.radial_grid(), f.angular_domain_size());
         }
         else
         {
-            g[i] = Spheric_function<double_complex>(f.angular_domain_size(), f.radial_grid());
+            g[i] = Spheric_function<spectral, double_complex>(f.angular_domain_size(), f.radial_grid());
         }
         g[i].zero();
     }
@@ -138,18 +138,19 @@ Spheric_function_gradient<double_complex> gradient(Spheric_function<double_compl
     return g;
 }
 
-Spheric_function_gradient<double> gradient(Spheric_function<double>& f)
+Spheric_function_gradient<spectral, double> gradient(Spheric_function<spectral, double>& f)
 {
     int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
     SHT sht(lmax);
-    Spheric_function<double_complex> zf = sht.convert(f);
+    auto zf = sht.convert(f);
     auto zg = gradient(zf);
-    Spheric_function_gradient<double> g(f.radial_grid());
+    Spheric_function_gradient<spectral, double> g(f.radial_grid());
     for (int i = 0; i < 3; i++) g[i] = sht.convert(zg[i]);
     return g;
 }
 
-Spheric_function<double> operator*(Spheric_function_gradient<double>& f, Spheric_function_gradient<double>& g)
+Spheric_function<spatial, double> operator*(Spheric_function_gradient<spatial, double>& f, 
+                                            Spheric_function_gradient<spatial, double>& g)
 {
     for (int x = 0; x < 3; x++)
     {
@@ -163,7 +164,7 @@ Spheric_function<double> operator*(Spheric_function_gradient<double>& f, Spheric
             error_local(__FILE__, __LINE__, "wrong number of angular points");
     }
 
-    Spheric_function<double> result(f[0].angular_domain_size(), f[0].radial_grid());
+    Spheric_function<spatial, double> result(f[0].angular_domain_size(), f[0].radial_grid());
     result.zero();
 
     for (int x = 0; x < 3; x++)

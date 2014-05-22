@@ -74,8 +74,8 @@ class Potential
         std::vector<int> l_by_lm_;
 
         /// Compute MT part of the potential and MT multipole moments
-        void poisson_vmt(std::vector< Spheric_function<double_complex> >& rho_ylm, 
-                         std::vector< Spheric_function<double_complex> >& vh, 
+        void poisson_vmt(std::vector< Spheric_function<spectral, double_complex> >& rho_ylm, 
+                         std::vector< Spheric_function<spectral, double_complex> >& vh, 
                          mdarray<double_complex, 2>& qmt);
 
         /// Compute multipole momenst of the interstitial charge density
@@ -90,20 +90,20 @@ class Potential
         
         void xc_mt_nonmagnetic(Radial_grid& rgrid,
                                std::vector<XC_functional*>& xc_func,
-                               Spheric_function<double>& rho_lm,
-                               Spheric_function<double>& rho_tp,
-                               Spheric_function<double>& vxc_tp, 
-                               Spheric_function<double>& exc_tp);
+                               Spheric_function<spectral, double>& rho_lm,
+                               Spheric_function<spatial, double>& rho_tp,
+                               Spheric_function<spatial, double>& vxc_tp, 
+                               Spheric_function<spatial, double>& exc_tp);
 
         void xc_mt_magnetic(Radial_grid& rgrid, 
                             std::vector<XC_functional*>& xc_func,
-                            Spheric_function<double>& rho_up_lm, 
-                            Spheric_function<double>& rho_up_tp, 
-                            Spheric_function<double>& rho_dn_lm, 
-                            Spheric_function<double>& rho_dn_tp, 
-                            Spheric_function<double>& vxc_up_tp, 
-                            Spheric_function<double>& vxc_dn_tp, 
-                            Spheric_function<double>& exc_tp);
+                            Spheric_function<spectral, double>& rho_up_lm, 
+                            Spheric_function<spatial, double>& rho_up_tp, 
+                            Spheric_function<spectral, double>& rho_dn_lm, 
+                            Spheric_function<spatial, double>& rho_dn_tp, 
+                            Spheric_function<spatial, double>& vxc_up_tp, 
+                            Spheric_function<spatial, double>& vxc_dn_tp, 
+                            Spheric_function<spatial, double>& exc_tp);
 
         void xc_mt(Periodic_function<double>* rho, 
                    Periodic_function<double>* magnetization[3], 
@@ -302,7 +302,7 @@ class Potential
             return effective_potential_;
         }
 
-        Spheric_function<double>& effective_potential_mt(int ialoc)
+        Spheric_function<spectral, double>& effective_potential_mt(int ialoc)
         {
             return effective_potential_->f_mt(ialoc);
         }
@@ -322,7 +322,7 @@ class Potential
             return hartree_potential_;
         }
         
-        Spheric_function<double>& hartree_potential_mt(int ialoc)
+        Spheric_function<spectral, double>& hartree_potential_mt(int ialoc)
         {
             return hartree_potential_->f_mt(ialoc);
         }

@@ -27,32 +27,36 @@
 namespace sirius
 {
 
-template<> 
-void SHT::backward_transform<double>(double* flm, int lmmax, int ncol, double* ftp)
+template <>
+void SHT::backward_transform<double>(int ld, double* flm, int nr, int lmmax, double* ftp)
 {
     assert(lmmax <= lmmax_);
-    blas<cpu>::gemm(1, 0, num_points_, ncol, lmmax, &rlm_backward_(0, 0), lmmax_, flm, lmmax, ftp, num_points_);
+    assert(ld >= lmmax);
+    blas<cpu>::gemm(1, 0, num_points_, nr, lmmax, &rlm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
 }
 
-template<> 
-void SHT::backward_transform<double_complex>(double_complex* flm, int lmmax, int ncol, double_complex* ftp)
+template <>
+void SHT::backward_transform<double_complex>(int ld, double_complex* flm, int nr, int lmmax, double_complex* ftp)
 {
     assert(lmmax <= lmmax_);
-    blas<cpu>::gemm(1, 0, num_points_, ncol, lmmax, &ylm_backward_(0, 0), lmmax_, flm, lmmax, ftp, num_points_);
+    assert(ld >= lmmax);
+    blas<cpu>::gemm(1, 0, num_points_, nr, lmmax, &ylm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
 }
 
-template<> 
-void SHT::forward_transform<double>(double* ftp, int lmmax, int ncol, double* flm)
+template <>
+void SHT::forward_transform<double>(double* ftp, int nr, int lmmax, int ld, double* flm)
 {
     assert(lmmax <= lmmax_);
-    blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, &rlm_forward_(0, 0), num_points_, ftp, num_points_, flm, lmmax);
+    assert(ld >= lmmax);
+    blas<cpu>::gemm(1, 0, lmmax, nr, num_points_, &rlm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
 }
 
-template<>
-void SHT::forward_transform<double_complex>(double_complex* ftp, int lmmax, int ncol, double_complex* flm)
+template <>
+void SHT::forward_transform<double_complex>(double_complex* ftp, int nr, int lmmax, int ld, double_complex* flm)
 {
     assert(lmmax <= lmmax_);
-    blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, &ylm_forward_(0, 0), num_points_, ftp, num_points_, flm, lmmax);
+    assert(ld >= lmmax);
+    blas<cpu>::gemm(1, 0, lmmax, nr, num_points_, &ylm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
 }
 
 /** Specialization for real Gaunt coefficients between three complex spherical harmonics
@@ -224,8 +228,8 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
         {
             memset(&flm[0], 0, lmmax_ * sizeof(double));
             flm[lm] = 1.0;
-            backward_transform(&flm[0], lmmax_, 1, &ftp[0]);
-            forward_transform(&ftp[0], lmmax_, 1, &flm[0]);
+            backward_transform(lmmax_, &flm[0], 1, lmmax_, &ftp[0]);
+            forward_transform(&ftp[0], 1, lmmax_, lmmax_, &flm[0]);
             flm[lm] -= 1.0;
 
             double t = 0.0;
@@ -358,18 +362,18 @@ void SHT::uniform_coverage()
     tp_(1, num_points_ - 1) = 0;
 }
 
-Spheric_function<double> SHT::convert(Spheric_function<double_complex>& f)
+Spheric_function<spectral, double> SHT::convert(Spheric_function<spectral, double_complex>& f)
 {
-    Spheric_function<double> g;
+    Spheric_function<spectral, double> g;
 
     /* radial index is first */
     if (f.radial_domain_idx() == 0)
     {
-        g = Spheric_function<double>(f.radial_grid(), f.angular_domain_size());
+        g = Spheric_function<spectral, double>(f.radial_grid(), f.angular_domain_size());
     }
     else
     {
-        g = Spheric_function<double>(f.angular_domain_size(), f.radial_grid());
+        g = Spheric_function<spectral, double>(f.angular_domain_size(), f.radial_grid());
     }
 
     convert(f, g);
@@ -377,9 +381,9 @@ Spheric_function<double> SHT::convert(Spheric_function<double_complex>& f)
     return g;
 }
 
-Spheric_function<double_complex> SHT::convert(Spheric_function<double>& f)
+Spheric_function<spectral, double_complex> SHT::convert(Spheric_function<spectral, double>& f)
 {
-    Spheric_function<double_complex> g;
+    Spheric_function<spectral, double_complex> g;
     
     int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
 
@@ -399,7 +403,7 @@ Spheric_function<double_complex> SHT::convert(Spheric_function<double>& f)
     /* radial index is first */
     if (f.radial_domain_idx() == 0)
     {
-        g = Spheric_function<double_complex>(f.radial_grid(), f.angular_domain_size());
+        g = Spheric_function<spectral, double_complex>(f.radial_grid(), f.angular_domain_size());
 
         int lm = 0;
         for (int l = 0; l <= lmax; l++)
@@ -422,7 +426,7 @@ Spheric_function<double_complex> SHT::convert(Spheric_function<double>& f)
     }
     else
     {
-        g = Spheric_function<double_complex>(f.angular_domain_size(), f.radial_grid());
+        g = Spheric_function<spectral, double_complex>(f.angular_domain_size(), f.radial_grid());
         for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
         {
             int lm = 0;
@@ -448,7 +452,7 @@ Spheric_function<double_complex> SHT::convert(Spheric_function<double>& f)
     return g;
 }
 
-void SHT::convert(Spheric_function<double_complex>& f, Spheric_function<double>& g)
+void SHT::convert(Spheric_function<spectral, double_complex>& f, Spheric_function<spectral, double>& g)
 {
     if (f.radial_domain_idx() != g.radial_domain_idx())
         error_local(__FILE__, __LINE__, "wrong radial domain index");
