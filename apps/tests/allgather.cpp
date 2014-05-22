@@ -11,7 +11,7 @@ int main(int argn, char** argv)
     
     splindex<block> spl(N, Platform::num_mpi_ranks(), Platform::mpi_rank());
 
-    for (int i = 0; i < spl.local_size(); i++)
+    for (int i = 0; i < (int)spl.local_size(); i++)
     {
         vec[spl[i]] = Platform::mpi_rank() + 1.0;
     }
@@ -26,7 +26,7 @@ int main(int argn, char** argv)
     pout.printf("\n");
     pout.flush(0);
 
-    Platform::allgather(&vec[0], spl.global_offset(), spl.local_size()); 
+    Platform::allgather(&vec[0], (int)spl.global_offset(), (int)spl.local_size()); 
  
     if (Platform::mpi_rank() == 0) pout.printf("after\n");
     pout.printf("rank : %i array : ", Platform::mpi_rank());
@@ -38,5 +38,7 @@ int main(int argn, char** argv)
     pout.flush(0);
 
     Platform::barrier();
+    
+    Platform::finalize();
 
 }

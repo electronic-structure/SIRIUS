@@ -5,13 +5,12 @@ using namespace sirius;
 template<typename T, typename U>
 void test1_radial_angular()
 {
+    SHT sht(7);
     int lmmax = 64;
 
     Radial_grid r(exponential_grid, 1000, 0.01, 2.0);
 
-    Spheric_function<T> f1(r, lmmax);
-    Spheric_function<U> f2(r, lmmax);
-    Spheric_function<T> f3(r, lmmax);
+    Spheric_function<spectral, T> f1(r, lmmax);
 
     srand((int)time(NULL));
 
@@ -19,8 +18,8 @@ void test1_radial_angular()
     {
         for (int ir = 0; ir < r.num_points(); ir++) f1(ir, lm) = type_wrapper<T>::random();
     }
-    f1.sh_convert(f2);
-    f2.sh_convert(f3);
+    auto f2 = sht.convert(f1);
+    auto f3 = sht.convert(f2);
 
     double d = 0;
     for (int lm = 0; lm < lmmax; lm++)
@@ -41,13 +40,12 @@ void test1_radial_angular()
 template<typename T, typename U>
 void test1_angular_radial()
 {
+    SHT sht(7);
     int lmmax = 64;
 
     Radial_grid r(exponential_grid, 1000, 0.01, 2.0);
 
-    Spheric_function<T> f1(lmmax, r);
-    Spheric_function<U> f2(lmmax, r);
-    Spheric_function<T> f3(lmmax, r);
+    Spheric_function<spectral, T> f1(lmmax, r);
 
     srand((int)time(NULL));
 
@@ -55,8 +53,8 @@ void test1_angular_radial()
     {
         for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = type_wrapper<T>::random();
     }
-    f1.sh_convert(f2);
-    f2.sh_convert(f3);
+    auto f2 = sht.convert(f1);
+    auto f3 = sht.convert(f2);
 
     double d = 0;
     for (int ir = 0; ir < r.num_points(); ir++) 
@@ -74,17 +72,14 @@ void test2(int lmax, int nr)
     Radial_grid r(exponential_grid, nr, 0.01, 2.0);
 
     SHT sht(lmax);
-    Spheric_function<T> f1(lmmax, r);
-    Spheric_function<T> f2(sht, r);
-    Spheric_function<T> f3(lmmax, r);
-    
+    Spheric_function<spectral, T> f1(lmmax, r);
 
     for (int ir = 0; ir < nr; ir++)
     {
         for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = type_wrapper<T>::random();
     }
-    f1.sh_transform(f2);
-    f2.sh_transform(f3);
+    auto f2 = sht.transform(f1);
+    auto f3 = sht.transform(f2);
 
     double d = 0;
     for (int ir = 0; ir < nr; ir++)
@@ -104,24 +99,21 @@ void test3(int lmax, int nr)
     Radial_grid r(exponential_grid, nr, 0.01, 2.0);
     SHT sht(lmax);
 
-    Spheric_function<double> f1(lmmax, r);
-    Spheric_function<double> f2(sht, r);
-    Spheric_function<double_complex> f3(sht, r);
-    Spheric_function<double_complex> f4(lmmax, r);
-    Spheric_function<double> f5(lmmax, r);
+    Spheric_function<spectral, double> f1(lmmax, r);
+    Spheric_function<spatial, double_complex> f3(sht.num_points(), r);
 
     for (int ir = 0; ir < nr; ir++)
     {
         for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = type_wrapper<double>::random();
     }
-    f1.sh_transform(f2);
+    auto f2 = sht.transform(f1);
     for (int ir = 0; ir < nr; ir++)
     {
         for (int tp = 0; tp < sht.num_points(); tp++) f3(tp, ir) = f2(tp, ir);
     }
 
-    f3.sh_transform(f4);
-    f4.sh_convert(f5);
+    auto f4 = sht.transform(f3);
+    auto f5 = sht.convert(f4);
 
     double d = 0;
     for (int ir = 0; ir < nr; ir++)
@@ -216,7 +208,7 @@ void test5()
     Radial_grid r(scaled_pow_grid, 1000, 0.01, 2.0);
 
     int lmmax = 64;
-    Spheric_function<double_complex> f(r, lmmax);
+    Spheric_function<spectral, double_complex> f(r, lmmax);
     f.zero();
     
     for (int ir = 0; ir < 1000; ir++)
@@ -226,9 +218,10 @@ void test5()
         f(ir, 4) = exp(-pow(r[ir], 2));
     }
 
-    Spheric_function_gradient<double_complex> grad(f);
+    auto grad_f = gradient(f);
 
-    vector3d<double_complex> v = inner(f, grad);
+    vector3d<double_complex> v;
+    for (int x = 0; x < 3; x++) v[x] = inner(f, grad_f[x]);
 
     std::cout << "grad : ";
     for (int i = 0; i < 3; i++) std::cout << v[i] << " ";
@@ -241,7 +234,7 @@ void test6()
 
     Radial_grid r(scaled_pow_grid, nr, 0.01, 2.0);
 
-    Spheric_function<double> f(r, 64);
+    Spheric_function<spectral, double> f(r, 64);
 
     for (int l1 = 0; l1 <= 5; l1++)
     {
@@ -249,7 +242,7 @@ void test6()
         {
             f.zero();
             for (int ir = 0; ir < nr; ir++) f(ir, Utils::lm_by_l_m(l1, m1)) = exp(-r[ir]) * cos(l1 * r[ir]) * sin(m1 + r[ir]);
-            Spheric_function_gradient<double> grad(f);
+            auto grad_f = gradient(f);
 
             for (int l2 = 0; l2 <= 5; l2++)
             {
@@ -258,7 +251,8 @@ void test6()
                     f.zero();
                     for (int ir = 0; ir < nr; ir++) f(ir, Utils::lm_by_l_m(l2, m2)) = exp(-r[ir]) * cos(l2 * r[ir]) * sin(m2 + r[ir]);
                     
-                    vector3d<double> v = inner(f, grad);
+                    vector3d<double> v;
+                    for (int x = 0; x < 3; x++) v[x] = inner(f, grad_f[x]);
 
                     std::cout << "<lm2=" << Utils::lm_by_l_m(l2, m2) << "|grad|lm1=" << Utils::lm_by_l_m(l1, m1) << "> : ";
                     for (int i = 0; i < 3; i++) std::cout << v[i] << " ";
