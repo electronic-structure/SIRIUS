@@ -355,8 +355,6 @@ class SHT // TODO: better name
         }
 };
 
-#include "sht.hpp"
-
 };
 
 #endif // __SHT_H__
