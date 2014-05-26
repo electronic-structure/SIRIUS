@@ -72,11 +72,16 @@ class Potential
         std::vector<double_complex> zilm_;
 
         std::vector<int> l_by_lm_;
+        
+        /// Electronic part of Hartree potential.
+        /** Used to compute electron-nuclear contribution to the total energy */
+        mdarray<double, 1> vh_el_;
 
         /// Compute MT part of the potential and MT multipole moments
         void poisson_vmt(std::vector< Spheric_function<spectral, double_complex> >& rho_ylm, 
                          std::vector< Spheric_function<spectral, double_complex> >& vh, 
-                         mdarray<double_complex, 2>& qmt);
+                         mdarray<double_complex, 2>& qmt,
+                         mdarray<double, 1>& vh_el);
 
         /// Compute multipole momenst of the interstitial charge density
         /** Also, compute the MT boundary condition 
@@ -341,6 +346,11 @@ class Potential
         {
             effective_potential_->allocate(true, true);
             for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->allocate(true, true);
+        }
+
+        inline double vh_el(int ia)
+        {
+            return vh_el_(ia);
         }
 };
 
