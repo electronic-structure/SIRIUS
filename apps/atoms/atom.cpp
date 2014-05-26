@@ -485,6 +485,7 @@ void generate_atom_file(Free_atom* a, double core_cutoff_energy, const std::stri
     {
         fa_rho[i] = a->free_atom_density(i);
         fa_v[i] = a->free_atom_potential(i);
+        //fa_v[i] = a->free_atom_potential(i) + a->zn() / a->radial_grid(i);
         fa_r[i] = a->radial_grid(i);
     }
 

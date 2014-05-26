@@ -10,4 +10,4 @@ all:
 	$(CXX) $(CXX_OPT) $(INCLUDE) atom.cpp $(LIB_SIRIUS) $(LIBS) -o atom
 
 clean:
-	rm -f *.o atom *.json run.x
+	rm -f *.o atom [A-Z]*.json run.x
