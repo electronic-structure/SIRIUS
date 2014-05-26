@@ -495,12 +495,24 @@ void Atom_symmetry_class::initialize()
     memset(&core_charge_density_[0], 0, atom_type_->num_mt_points() * sizeof(double));
 }
 
-void Atom_symmetry_class::set_spherical_potential(std::vector<double>& veff)
+void Atom_symmetry_class::set_spherical_potential(std::vector<double>& vs__)
 {
-    if (atom_type_->num_mt_points() != (int)veff.size())
+    if (atom_type_->num_mt_points() != (int)vs__.size())
         error_local(__FILE__, __LINE__, "wrong size of effective potential array");
 
-    spherical_potential_ = veff;
+    spherical_potential_ = vs__;
+
+    //== /* write spherical potential */
+    //== std::stringstream sstr;
+    //== sstr << "mt_spheric_potential_" << id_ << ".dat";
+    //== FILE* fout = fopen(sstr.str().c_str(), "w");
+
+    //== for (int ir = 0; ir < atom_type_->num_mt_points(); ir++)
+    //== {
+    //==     double r = atom_type_->radial_grid(ir);
+    //==     fprintf(fout, "%20.10f %20.10f \n", r, spherical_potential_[ir] + atom_type_->zn() / r);
+    //== }
+    //== fclose(fout);
 }
 
 void Atom_symmetry_class::find_enu()
