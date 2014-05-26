@@ -59,7 +59,7 @@ int main(int argn, char** argv)
             for (int iat = 0; iat < (int)p.unit_cell_input_section_.labels_.size(); iat++)
             {
                 std::string label = p.unit_cell_input_section_.labels_[iat];
-                psc.unit_cell()->add_atom_type(iat, label, p.unit_cell_input_section_.atom_files_[label], p.esm_type());
+                psc.unit_cell()->add_atom_type(label, p.unit_cell_input_section_.atom_files_[label], p.esm_type());
                 for (int ia = 0; ia < (int)p.unit_cell_input_section_.coordinates_[iat].size(); ia++)
                 {
                     vector3d<double> va(&p.unit_cell_input_section_.coordinates_[iat][ia][0]);
@@ -83,7 +83,7 @@ int main(int argn, char** argv)
                                 //==}
 
                                 bool add_atom = true;
-                                if (add_atom) psc.unit_cell()->add_atom(iat, &vr.first[0]);
+                                if (add_atom) psc.unit_cell()->add_atom(label, &vr.first[0]);
                             }
                         }
                     }
