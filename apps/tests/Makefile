@@ -58,9 +58,12 @@ test_blacs:
 
 test_iallgather:
 	$(CXX) $(CXX_OPT) $(INCLUDE) test_iallgather.cpp  $(LIB_SIRIUS) $(LIBS) -o test_iallgather
+
+test_enu:
+	$(CXX) $(CXX_OPT) $(INCLUDE) test_enu.cpp  $(LIB_SIRIUS) $(LIBS) -o test_enu
 	
 
 clean:
 	rm -f *.o *.h5 *.txt *.dat *.pdf timers.json out.json splindex hdf5 hydrogen read_atom \
 	fft fft1k spline allgather cuda_zgemm mt_function mt_kinetic spline_gpu fft_t test_mdarray \
-	test_pstdout test_zgemm test_init test_blacs
+	test_pstdout test_zgemm test_init test_blacs test_enu

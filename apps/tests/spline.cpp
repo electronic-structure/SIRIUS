@@ -108,6 +108,17 @@ void test4(double x0, double x1, double exact_val)
     printf("                                                         exact result : %16.12f\n", exact_val);
 }
 
+void test5()
+{
+    int N = 2000;
+    Radial_grid r(exponential_grid, N, 1e-8, 0.9);
+    Spline<double> s(r);
+    for (int ir = 0; ir < N; ir++) s[ir] = std::log(r[ir]); 
+    double true_value = -0.012395331058672921;
+    std::cout << "result    : " << Utils::double_to_string(s.interpolate().integrate(7), 10) << std::endl;
+    std::cout << "tru_value : " << Utils::double_to_string(true_value, 10) << std::endl;
+}
+
 //void test4(double x0, double x1)
 //{
 //    Radial_grid r(exponential_grid, 5000, x0, x1);
@@ -147,6 +158,8 @@ int main(int argn, char **argv)
 
     test3(0.0001, 2.0, 1.0365460153117974);
     test4(0.0001, 2.0, 0.7029943796175838);
+
+    test5();
 
     //test4(0.0001, 1.892184);
 }
