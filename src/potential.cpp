@@ -91,6 +91,9 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
         generate_local_potential();
     }
 
+    vh_el_.set_dimensions(parameters_.unit_cell()->num_atoms());
+    vh_el_.allocate();
+
     update();
 }
 
@@ -187,11 +190,13 @@ void Potential::update()
 
 void Potential::poisson_vmt(std::vector< Spheric_function<spectral, double_complex> >& rho_ylm, 
                             std::vector< Spheric_function<spectral, double_complex> >& vh_ylm, 
-                            mdarray<double_complex, 2>& qmt)
+                            mdarray<double_complex, 2>& qmt,
+                            mdarray<double, 1>& vh_el)
 {
     Timer t("sirius::Potential::poisson_vmt");
 
     qmt.zero();
+    vh_el.zero();
     
     for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
     {
@@ -205,7 +210,7 @@ void Potential::poisson_vmt(std::vector< Spheric_function<spectral, double_compl
             std::vector<double_complex> g1;
             std::vector<double_complex> g2;
 
-            Spline<double_complex> rholm(parameters_.unit_cell()->atom(ia)->type()->radial_grid());
+            Spline<double_complex> rholm(parameters_.unit_cell()->atom(ia)->radial_grid());
 
             #pragma omp for
             for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
@@ -215,7 +220,7 @@ void Potential::poisson_vmt(std::vector< Spheric_function<spectral, double_compl
                 for (int ir = 0; ir < nmtp; ir++) rholm[ir] = rho_ylm[ialoc](lm, ir);
                 rholm.interpolate();
 
-                // save multipole moment
+                /* save multipole moment */
                 qmt(lm, ia) = rholm.integrate(g1, l + 2);
                 
                 if (lm < parameters_.lmmax_pot())
@@ -226,27 +231,29 @@ void Potential::poisson_vmt(std::vector< Spheric_function<spectral, double_compl
                     double d2 = 1.0 / double(2 * l + 1); 
                     for (int ir = 0; ir < nmtp; ir++)
                     {
-                        double r = parameters_.unit_cell()->atom(ia)->type()->radial_grid(ir);
+                        double r = parameters_.unit_cell()->atom(ia)->radial_grid(ir);
 
                         double_complex vlm = (1.0 - pow(r / R, 2 * l + 1)) * g1[ir] / pow(r, l + 1) +
-                                        (g2[nmtp - 1] - g2[ir]) * pow(r, l) - 
-                                        (g1[nmtp - 1] - g1[ir]) * pow(r, l) * d1;
+                                             (g2[nmtp - 1] - g2[ir]) * pow(r, l) - 
+                                             (g1[nmtp - 1] - g1[ir]) * pow(r, l) * d1;
 
                         vh_ylm[ialoc](lm, ir) = fourpi * vlm * d2;
                     }
                 }
             }
         }
+        /* save electronic part of potential */
+        vh_el(ia) = real(vh_ylm[ialoc](0, 0));
         
         /* nuclear potential */
         for (int ir = 0; ir < nmtp; ir++)
         {
-            double r = parameters_.unit_cell()->atom(ia)->type()->radial_grid(ir);
-            vh_ylm[ialoc](0, ir) -= fourpi * y00 * parameters_.unit_cell()->atom(ia)->type()->zn() / r;
+            double r = parameters_.unit_cell()->atom(ia)->radial_grid(ir);
+            vh_ylm[ialoc](0, ir) -= parameters_.unit_cell()->atom(ia)->zn() / r / y00;
         }
-
+        
         /* nuclear multipole moment */
-        qmt(0, ia) -= parameters_.unit_cell()->atom(ia)->type()->zn() * y00;
+        qmt(0, ia) -= parameters_.unit_cell()->atom(ia)->zn() * y00;
     }
 
     Platform::allreduce(&qmt(0, 0), (int)qmt.size());
@@ -701,7 +708,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         
         /* true multipole moments */
         mdarray<double_complex, 2> qmt(parameters_.lmmax_rho(), parameters_.unit_cell()->num_atoms());
-        poisson_vmt(rho_ylm, vh_ylm, qmt);
+        poisson_vmt(rho_ylm, vh_ylm, qmt, vh_el_);
         
         /* compute multipoles of interstitial density in MT region */
         mdarray<double_complex, 2> qit(parameters_.lmmax_rho(), parameters_.unit_cell()->num_atoms());
@@ -757,6 +764,8 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
                         rRl(ir, l) = pow(parameters_.unit_cell()->atom(ia)->type()->radial_grid(ir) / R, l);
                 }
             }
+            
+            vh_el_(ia) += real((vmtlm(0, ia) - vh_ylm[ialoc](0, nmtp - 1)));
 
             #pragma omp parallel for default(shared)
             for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
@@ -769,6 +778,8 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
             sht_->convert(vh_ylm[ialoc], vh->f_mt(ialoc));
         }
     }
+
+    Platform::allreduce(vh_el_.ptr(), (int)vh_el_.size());
     
     /* transform Hartree potential to real space */
     fft_->input(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &vh->f_pw(0));
@@ -1633,6 +1644,14 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
 {
     Timer t("sirius::Potential::xc");
 
+    if (parameters_.xc_functionals_input_section_.xc_functional_names_.size() == 0)
+    {
+        vxc->zero();
+        exc->zero();
+        for (int i = 0; i < parameters_.num_mag_dims(); i++) bxc[i]->zero();
+        return;
+    }
+
     /* create list of XC functionals */
     std::vector<XC_functional*> xc_func;
     for (int i = 0; i < (int)parameters_.xc_functionals_input_section_.xc_functional_names_.size(); i++)
@@ -1655,7 +1674,8 @@ void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* ma
     for (auto& ixc: xc_func) delete ixc;
 }
 
-void Potential::generate_effective_potential(Periodic_function<double>* rho, Periodic_function<double>* magnetization[3])
+void Potential::generate_effective_potential(Periodic_function<double>* rho, 
+                                             Periodic_function<double>* magnetization[3])
 {
     Timer t("sirius::Potential::generate_effective_potential");
     
@@ -1680,7 +1700,8 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho, Per
     //if (debug_level > 1) check_potential_continuity_at_mt();
 }
 
-void Potential::generate_effective_potential(Periodic_function<double>* rho, Periodic_function<double>* rho_core, 
+void Potential::generate_effective_potential(Periodic_function<double>* rho, 
+                                             Periodic_function<double>* rho_core, 
                                              Periodic_function<double>* magnetization[3])
 {
     Timer t("sirius::Potential::generate_effective_potential");
