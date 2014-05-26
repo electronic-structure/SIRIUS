@@ -113,7 +113,7 @@ class Atom_symmetry_class
 
         /// Set the spherical component of the potential
         /** Atoms belonging to the same symmetry class have the same spherical potential. */
-        void set_spherical_potential(std::vector<double>& veff);
+        void set_spherical_potential(std::vector<double>& vs__);
 
         void generate_radial_functions();
 
