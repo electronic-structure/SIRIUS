@@ -279,6 +279,11 @@ class Atom
             return type_->radial_grid();
         }
 
+        inline double radial_grid(int idx)
+        {
+            return type_->radial_grid(idx);
+        }
+
         inline double mt_radius()
         {
             return type_->mt_radius();
