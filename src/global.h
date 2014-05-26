@@ -146,8 +146,6 @@ class Global
         /// read from the input file if it exists
         void read_input();
 
-        std::string start_time(const char* fmt);
-
     public:
     
         Global() 
@@ -445,6 +443,11 @@ class Global
             return cyclic_block_size_;
         }
 
+        inline std::vector<int>& mpi_grid_dims()
+        {
+            return mpi_grid_dims_;
+        }
+
         /// Initialize the global variables
         void initialize();
 
@@ -459,6 +462,8 @@ class Global
 
         void update(); // TODO: better way to update unit cell after relaxation
        
+        std::string start_time(const char* fmt);
+
         inline int blacs_context()
         {
             return blacs_context_;
