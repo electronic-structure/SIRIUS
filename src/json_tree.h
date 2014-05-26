@@ -358,10 +358,10 @@ class JSON_write
             fprintf(fout_, "\"%s\" : %i", name, value);
         }
 
-        inline void single(const char* name, double value)
+        inline void single(const char* name, double value, int precision = -1)
         {
             new_line();
-            std::string s = Utils::double_to_string(value);
+            std::string s = Utils::double_to_string(value, precision);
             fprintf(fout_, "\"%s\" : %s", name, s.c_str());
         }
 
