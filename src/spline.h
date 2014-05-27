@@ -66,53 +66,46 @@ class Spline
         {
         }
         
-        /// Constructor of a zero valued spline.
+        /// Constructor of a new uninitialized spline.
         Spline(Radial_grid radial_grid__) : radial_grid_(radial_grid__)
         {
+            a.resize(num_points());
+        }
+
+        /// Constructor of a constant value spline.
+        Spline(Radial_grid radial_grid__, T val__) : radial_grid_(radial_grid__)
+        {
             int np = num_points();
-
-            a = std::vector<T>(np);
-            b = std::vector<T>(np - 1);
-            c = std::vector<T>(np - 1);
-            d = std::vector<T>(np - 1);
-
-            memset(&a[0], 0, np * sizeof(T));
-            memset(&b[0], 0, (np - 1) * sizeof(T));
-            memset(&c[0], 0, (np - 1) * sizeof(T));
-            memset(&d[0], 0, (np - 1) * sizeof(T));
+            a.resize(np);
+            for (int i = 0; i < np; i++) a[i] = val__;
         }
         
         /// Constructor of a spline.
-        Spline(Radial_grid& radial_grid__, std::vector<T>& y) : radial_grid_(radial_grid__)
+        Spline(Radial_grid& radial_grid__, std::vector<T>& y__) : radial_grid_(radial_grid__)
         {
-            interpolate(y);
+            interpolate(y__);
         }
         
-        inline Spline<T>& interpolate(std::vector<T>& y)
+        inline Spline<T>& interpolate(std::vector<T>& y__)
         {
-            assert(radial_grid_.num_points() == (int)y.size());
-            a = y;
+            assert(radial_grid_.num_points() == (int)y__.size());
+            a = y__;
             return interpolate();
         }
         
-        T integrate(int m = 0)
+        /// Integrate with r^m weight.
+        T integrate(int m__)
         {
             std::vector<T> g(num_points());
-            return integrate(g, m);
+            return integrate(g, m__);
         }
         
-        T integrate(int n, int m)
-        {
-            std::vector<T> g(num_points());
-            integrate(g, m);
-            return g[n];
-        }
-
         inline std::vector<T>& values()
         {
             return a;
         }
         
+        /// Return number of spline points.
         inline int num_points()
         {
             return radial_grid_.num_points();
@@ -149,7 +142,8 @@ class Spline
                 else
                 {
                     double dx = x - radial_grid_[j];
-                    return a[j] + dx * (b[j] + dx * (c[j] + dx * d[j]));
+                    //return a[j] + dx * (b[j] + dx * (c[j] + dx * d[j]));
+                    return (*this)(j, dx);
                 }
             }
             else
@@ -168,13 +162,20 @@ class Spline
 
         inline T operator()(const int i, double dx)
         {
-            assert(i >= 0 && i < (int)a.size() - 1);
+            assert(i >= 0);
+            assert(i < (int)a.size() - 1);
+            assert(i < (int)b.size());
+            assert(i < (int)c.size());
+            assert(i < (int)d.size());
             return a[i] + dx * (b[i] + dx * (c[i] + dx * d[i]));
         }
         
         inline T deriv(const int dm, const int i, const double dx)
         {
-            assert(i < num_points() - 1);
+            assert(i < (int)a.size() - 1);
+            assert(i < (int)b.size());
+            assert(i < (int)c.size());
+            assert(i < (int)d.size());
 
             switch (dm)
             {
@@ -223,7 +224,7 @@ class Spline
 
         void get_coefs(T* array, int lda);
 
-        T integrate(std::vector<T>& g, int m = 0);
+        T integrate(std::vector<T>& g, int m);
 
         /// Integrate two splines with r^1 or r^2 weight
         template <typename U>
