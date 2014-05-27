@@ -27,6 +27,8 @@
 
 #include "vector3d.h"
 
+// TODO: val = args.value<type>("val", default_val);
+
 /// Simple command line arguments handler.
 class cmd_args
 {
