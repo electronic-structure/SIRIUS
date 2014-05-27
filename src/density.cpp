@@ -364,7 +364,7 @@ void Density::initial_density()
                 }
 
                 /* maximum magnetization which can be achieved if we smooth density towards MT boundary */
-                double q = fourpi * rho.interpolate().integrate(nmtp - 1, 2);
+                double q = fourpi * rho.interpolate().integrate(2);
                 
                 /* if very strong initial magnetization is given */
                 if (q < len)
