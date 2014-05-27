@@ -41,7 +41,15 @@ std::vector<double> Radial_grid::create_radial_grid_points(radial_grid_t grid_ty
         }
         case exponential_grid:
         {
-            for (int i = 0; i < num_points; i++) grid_points[i] = rmin * pow(rmax / rmin, double(i) / (num_points - 1));
+            double alpha = 6.0;
+            double beta = 1e-6 * num_points / (rmax - rmin);
+            for (int i = 0; i < num_points; i++)
+            {
+                double t = double(i) / (num_points - 1);
+                double f = (beta * t + std::exp(std::pow(t, alpha)) - 1) / (std::exp(1.0) - 1 + beta);
+                grid_points[i] = rmin + (rmax - rmin) * f;
+            }
+            //for (int i = 0; i < num_points; i++) grid_points[i] = rmin * pow(rmax / rmin, double(i) / (num_points - 1));
             break;
         }
         case pow2_grid:
@@ -57,7 +65,7 @@ std::vector<double> Radial_grid::create_radial_grid_points(radial_grid_t grid_ty
         case scaled_pow_grid:
         {   
             /* ratio of last and first dx */
-            double S = rmax * 100; 
+            double S = rmax * 100;
             double alpha = pow(S, 1.0 / (num_points - 2));
             double x = rmin;
             for (int i = 0; i < num_points; i++)
@@ -65,6 +73,14 @@ std::vector<double> Radial_grid::create_radial_grid_points(radial_grid_t grid_ty
                 grid_points[i] = x;
                 x += (rmax - rmin) * (alpha - 1) * pow(S, double(i) / (num_points - 2)) / (S * alpha - 1);
             }
+            break;
+            
+            //double dx0 = 1e-6;
+            //double alpha = -std::log(dx0 / (rmax - rmin)) / std::log(double(num_points - 1));
+            //for (int i = 0; i < num_points; i++)
+            //{
+            //    grid_points[i] = rmin + (rmax - rmin) * pow(double(i) / (num_points - 1), alpha);
+            //}
             break;
         }
         default:
@@ -175,13 +191,14 @@ void Radial_grid::set_radial_points(int num_points__, double* x__)
     memcpy(&x_[0], x__, num_points__ * sizeof(double));
     
     /* set x^{-1} */
-    x_inv_.resize(x_.size());
-    for (int i = 0; i < (int)x_.size(); i++) x_inv_[i] = (x_[i] == 0) ? 0 : 1.0 / x_[i];
+    x_inv_.resize(num_points__);
+    for (int i = 0; i < num_points__; i++) x_inv_[i] = (x_[i] == 0) ? 0 : 1.0 / x_[i];
     
     /* set dx */
-    dx_.resize(x_.size() - 1);
-    for (int i = 0; i < (int)x_.size() - 1; i++) dx_[i] = x_[i + 1] - x_[i];
-    
+    dx_.resize(num_points__ - 1);
+    for (int i = 0; i < num_points__ - 1; i++) dx_[i] = x_[i + 1] - x_[i];
+
+    if (dx_[0] < 1e-7) warning_global(__FILE__, __LINE__, "dx0 is really small");
 }
 
 };
