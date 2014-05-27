@@ -112,7 +112,7 @@ class Radial_solver
         
         /// Find a bound state.
         /** Radial grid must be large enough to fully hold the bound state. */
-        void bound_state(int n, int l, std::vector<double>& v, double& enu, std::vector<double>& p);
+        double bound_state(int n, int l, double enu, std::vector<double>& v, std::vector<double>& p);
 };
 
 };

@@ -162,8 +162,10 @@ int Radial_solver::solve(int l,
     /* subtract the nucleus part and keep the smooth part of the potential */
     Spline<double> vs(radial_grid_);
     for (int i = 0; i < radial_grid_.num_points(); i++) vs[i] = v[i] - zn_ / radial_grid_[i];
+    vs.interpolate();
     
-    Spline<double> mp(radial_grid_);
+    Spline<double> mp(radial_grid_, 0);
+    mp.interpolate();
 
     int nn = 0;
     
@@ -187,7 +189,8 @@ int Radial_solver::solve(int l,
                          int m, 
                          std::vector<double>& v, 
                          std::vector<double>& p, 
-                         std::vector<double>& hp, double& dpdr_R)
+                         std::vector<double>& hp, 
+                         double& dpdr_R)
 {
     std::vector<double> q;
     std::vector<double> dpdr;
@@ -287,14 +290,16 @@ double Radial_solver::find_enu(int n, int l, std::vector<double>& v, double enu0
 }
                         
         
-void Radial_solver::bound_state(int n, int l, std::vector<double>& v, double& enu, std::vector<double>& p)
+double Radial_solver::bound_state(int n, int l, double enu, std::vector<double>& v, std::vector<double>& p)
 {
     int np = radial_grid_.num_points();
 
     Spline<double> vs(radial_grid_);
     for (int i = 0; i < np; i++) vs[i] = v[i] - zn_ / radial_grid_[i];
-    
-    Spline<double> mp(radial_grid_);
+    vs.interpolate();
+
+    Spline<double> mp(radial_grid_, 0);
+    mp.interpolate();
     
     std::vector<double> q(np);
     std::vector<double> dpdr(np);
@@ -324,7 +329,7 @@ void Radial_solver::bound_state(int n, int l, std::vector<double>& v, double& en
         error_local(__FILE__, __LINE__, s);
     }
 
-    // search for the turning point
+    /* search for the turning point */
     int idxtp = np - 1;
     for (int i = 0; i < np; i++)
     {
@@ -335,7 +340,7 @@ void Radial_solver::bound_state(int n, int l, std::vector<double>& v, double& en
         }
     }
 
-    // zero the tail of the wave-function
+    /* zero the tail of the wave-function */
     double t1 = 1e100;
     for (int i = idxtp; i < np; i++)
     {
@@ -353,7 +358,8 @@ void Radial_solver::bound_state(int n, int l, std::vector<double>& v, double& en
     Spline<double> rho(radial_grid_);
     for (int i = 0; i < np; i++) rho[i] = p[i] * p[i];
 
-    double norm = rho.interpolate().integrate();
+    /* p is not divided by r, so we integrate with r^0 prefactor */
+    double norm = rho.interpolate().integrate(0);
     
     for (int i = 0; i < np; i++) p[i] /= sqrt(norm);
 
@@ -370,6 +376,8 @@ void Radial_solver::bound_state(int n, int l, std::vector<double>& v, double& en
           << "wrong number of nodes : " << nn << " instead of " << (n - l - 1);
         error_local(__FILE__, __LINE__, s);
     }
+
+    return enu;
 }
 
 }
