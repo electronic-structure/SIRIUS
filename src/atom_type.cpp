@@ -30,7 +30,8 @@ Atom_type::Atom_type(const char* symbol__,
                      const char* name__, 
                      int zn__, 
                      double mass__, 
-                     std::vector<atomic_level_descriptor>& levels__) 
+                     std::vector<atomic_level_descriptor>& levels__,
+                     radial_grid_t grid_type__) 
     : symbol_(std::string(symbol__)), 
       name_(std::string(name__)), 
       zn_(zn__), 
@@ -42,7 +43,7 @@ Atom_type::Atom_type(const char* symbol__,
       esm_type_(full_potential_lapwlo), 
       initialized_(false)
 {
-    radial_grid_ = Radial_grid(default_radial_grid_t, num_mt_points_, 1e-6 / zn_, 20.0 + 0.25 * zn_); 
+    radial_grid_ = Radial_grid(grid_type__, num_mt_points_, 1e-6 / zn_, 20.0 + 0.25 * zn_); 
 }
 
 Atom_type::Atom_type(const int id__, 

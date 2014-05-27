@@ -307,9 +307,6 @@ class Atom_type
         /// Beginning of the radial grid.
         double radial_grid_origin_;
         
-        /// Radial grid.
-        Radial_grid radial_grid_;
-
         /// list of atomic levels 
         std::vector<atomic_level_descriptor> atomic_levels_;
 
@@ -369,6 +366,9 @@ class Atom_type
     
     protected:
 
+        /// Radial grid.
+        Radial_grid radial_grid_;
+
         /// Density of a free atom.
         Spline<double> free_atom_density_;
         
@@ -384,7 +384,8 @@ class Atom_type
                   const char* name__, 
                   int zn__, 
                   double mass__, 
-                  std::vector<atomic_level_descriptor>& levels__);
+                  std::vector<atomic_level_descriptor>& levels__,
+                  radial_grid_t grid_type__);
  
         Atom_type(const int id__, 
                   const std::string label, 
