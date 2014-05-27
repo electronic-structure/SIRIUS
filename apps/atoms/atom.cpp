@@ -34,9 +34,10 @@ class Free_atom : public sirius::Atom_type
                   int zn, 
                   double mass, 
                   std::vector<atomic_level_descriptor>& levels_nl) 
-            : Atom_type(symbol, name, zn, mass, levels_nl), 
+            : Atom_type(symbol, name, zn, mass, levels_nl, scaled_pow_grid), 
               NIST_LDA_Etot(0.0)
         {
+            radial_grid_ = sirius::Radial_grid(scaled_pow_grid, 2000 + 150 * zn, 1e-7, 20.0 + 0.25 * zn); 
         }
 
         double ground_state(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu)
@@ -85,6 +86,10 @@ class Free_atom : public sirius::Atom_type
             double energy_tot_old;
             double charge_rms;
             double energy_diff;
+            double energy_enuc = 0;
+            double energy_xc = 0;
+            double energy_kin = 0;
+            double energy_coul = 0;
         
             double beta = 0.9;
             
@@ -108,7 +113,7 @@ class Free_atom : public sirius::Atom_type
                     #pragma omp for
                     for (int ist = 0; ist < num_atomic_levels(); ist++)
                     {
-                        solver.bound_state(atomic_level(ist).n, atomic_level(ist).l, veff, enu[ist], p);
+                        enu[ist] = solver.bound_state(atomic_level(ist).n, atomic_level(ist).l, enu[ist], veff, p);
                     
                         for (int i = 0; i < np; i++)
                         {
@@ -138,39 +143,33 @@ class Free_atom : public sirius::Atom_type
                 Ec.get_lda(rho.num_points(), &rho[0], &vc[0], &ec[0]);
                 for (int ir = 0; ir < rho.num_points(); ir++)
                 {
-                   vxc[ir] = (vc[ir] + vc[ir]);
-                   exc[ir] = (ec[ir] + ec[ir]);
+                   vxc[ir] = (vx[ir] + vc[ir]);
+                   exc[ir] = (ex[ir] + ec[ir]);
                 }
                
                 /* mix old and new effective potential */
                 for (int i = 0; i < np; i++)
                     veff[i] = (1 - beta) * veff[i] + beta * (vnuc[i] + vh[i] + vxc[i]);
                 
-                /* kinetic energy */
-                for (int i = 0; i < np; i++) f[i] = veff[i] * rho[i];
-                f.interpolate();
-                
                 /* sum of occupied eigen values */
                 double eval_sum = 0.0;
                 for (int ist = 0; ist < num_atomic_levels(); ist++)
                     eval_sum += atomic_level(ist).occupancy * enu[ist];
         
-                double energy_kin = eval_sum - fourpi * f.integrate(2);
-        
+                for (int i = 0; i < np; i++) f[i] = (veff[i] - vnuc[i]) * rho[i];
+                /* kinetic energy */
+                energy_kin = eval_sum - fourpi * (f.interpolate().integrate(2) - zn() * rho.integrate(1));
+                
                 /* XC energy */
                 for (int i = 0; i < np; i++) f[i] = exc[i] * rho[i];
-                f.interpolate();
-                double energy_xc = fourpi * f.integrate(2); 
+                energy_xc = fourpi * f.interpolate().integrate(2); 
                 
-                /* electron-nuclear energy */
-                for (int i = 0; i < np; i++) f[i] = vnuc[i] * rho[i];
-                f.interpolate();
-                double energy_enuc = fourpi * f.integrate(2); 
+                /* electron-nuclear energy: \int vnuc(r) * rho(r) r^2 dr */
+                energy_enuc = -fourpi * zn() * rho.integrate(1); 
         
                 /* Coulomb energy */
                 for (int i = 0; i < np; i++) f[i] = vh[i] * rho[i];
-                f.interpolate();
-                double energy_coul = 0.5 * fourpi * f.integrate(2);
+                energy_coul = 0.5 * fourpi * f.interpolate().integrate(2);
                 
                 energy_tot_old = energy_tot;
         
@@ -181,7 +180,7 @@ class Free_atom : public sirius::Atom_type
                 if (energy_diff < energy_tol && charge_rms < charge_tol) 
                 { 
                     converged = true;
-                    printf("Free atom (id = %i) converged in %i iterations.\n", id(), iter);
+                    printf("Converged in %i iterations.\n", iter);
                     break;
                 }
                 
@@ -201,6 +200,28 @@ class Free_atom : public sirius::Atom_type
             free_atom_density_ = rho.values();
             
             free_atom_potential_ = veff;
+
+            printf("\n");
+            printf("Radial gird\n");
+            printf("-----------\n");
+            printf("type             : %s\n", radial_grid().grid_type_name().c_str());
+            printf("number of points : %i\n", np);
+            printf("origin           : %20.12f\n", radial_grid(0));
+            printf("infinity         : %20.12f\n", radial_grid(np - 1));
+            printf("\n");
+            printf("Energy\n");
+            printf("------\n");
+            printf("Ekin  : %20.12f\n", energy_kin);
+            printf("Ecoul : %20.12f\n", energy_coul);
+            printf("Eenuc : %20.12f\n", energy_enuc);
+            printf("Eexc  : %20.12f\n", energy_xc);
+            printf("Total : %20.12f\n", energy_tot);
+            printf("NIST  : %20.12f\n", NIST_LDA_Etot);
+
+            /* difference between NIST and computed total energy. Comparison is valid only for VWN XC functional. */
+            double dE = double(int64_t(fabs(energy_tot - NIST_LDA_Etot) * 1e8)) / 1e8;
+            if (dE < 5e-7) dE = 0;
+            std::cerr << zn() << " " << dE << " # " << symbol() << std::endl;
             
             return energy_tot;
         }
@@ -265,9 +286,13 @@ Free_atom* init_atom_configuration(const std::string& label)
 void generate_atom_file(Free_atom* a, double core_cutoff_energy, const std::string& lo_type, int apw_order)
 {
     std::vector<double> enu;
+    
+    printf("\n");
+    printf("atom : %s, Z = %i\n", a->symbol().c_str(), a->zn());
+    printf("----------------------------------\n");
    
     /* solve a free atom */
-    double energy_tot = a->ground_state(1e-10, 1e-8, 1e-7, enu);
+    a->ground_state(1e-10, 1e-8, 1e-7, enu);
    
     /* find number of core states */
     int ncore = 0;
@@ -276,16 +301,6 @@ void generate_atom_file(Free_atom* a, double core_cutoff_energy, const std::stri
         if (enu[ist] < core_cutoff_energy) ncore += int(a->atomic_level(ist).occupancy + 1e-12);
     }
 
-    printf(" atom : %s, Z = %i\n", a->symbol().c_str(), a->zn());
-    printf("----------------------------------\n");
-    printf(" total energy : %12.6f, NIST value : %12.6f\n", energy_tot, a->NIST_LDA_Etot);
-    printf(" number of core electrons : %i\n", ncore);
-    printf("\n");
-    
-    /* difference between NIST and computed total energy. Comparison is valid only for VWN XC functional. */
-    double dE = double(int64_t(fabs(energy_tot - a->NIST_LDA_Etot) * 1e8)) / 1e8;
-    std::cerr << a->zn() << " " << dE << std::endl;
-    
     std::string fname = a->symbol() + std::string(".json");
     JSON_write jw(fname);
     jw.single("name", a->name());
@@ -298,8 +313,11 @@ void generate_atom_file(Free_atom* a, double core_cutoff_energy, const std::stri
     std::vector<atomic_level_descriptor> valence;
     std::string level_symb[] = {"s", "p", "d", "f"};
     
+    printf("\n");
     printf("Core / valence partitioning\n");
-    printf("core cutoff energy : %f\n", core_cutoff_energy);
+    printf("---------------------------\n");
+    printf("core cutoff energy       : %f\n", core_cutoff_energy);
+    printf("number of core electrons : %i\n", ncore);
     sirius::Spline <double> rho_c(a->radial_grid());
     sirius::Spline <double> rho(a->radial_grid());
     for (int ist = 0; ist < a->num_atomic_levels(); ist++)
@@ -362,7 +380,7 @@ void generate_atom_file(Free_atom* a, double core_cutoff_energy, const std::stri
         }
     }
 
-    printf("suggested MT radius : %f\n", core_radius);
+    printf("minimum MT radius : %f\n", core_radius);
     jw.single("rmt", core_radius);
     jw.single("nrmt", nrmt);
     
