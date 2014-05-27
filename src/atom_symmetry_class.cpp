@@ -908,8 +908,8 @@ void Atom_symmetry_class::generate_core_charge_density()
         {
             if (atom_type_->atomic_level(ist).core)
             {
-                solver.bound_state(atom_type_->atomic_level(ist).n, atom_type_->atomic_level(ist).l, 
-                                   veff, level_energy[ist], p);
+                level_energy[ist] = solver.bound_state(atom_type_->atomic_level(ist).n, atom_type_->atomic_level(ist).l, 
+                                                       level_energy[ist], veff, p);
         
                 for (int i = 0; i < atom_type_->free_atom_radial_grid().num_points(); i++)
                 {
