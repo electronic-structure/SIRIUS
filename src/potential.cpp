@@ -127,13 +127,14 @@ void Potential::update()
             }
         }
 
-        //===============================================================================
-        // compute moments of spherical Bessel functions 
-        //  
-        // Integrate[SphericalBesselJ[l,a*x]*x^(2+l),{x,0,R},Assumptions->{R>0,a>0,l>=0}]
-        // and use relation between Bessel and spherical Bessel functions: 
-        // Subscript[j, n](z)=Sqrt[\[Pi]/2]/Sqrt[z]Subscript[J, n+1/2](z) 
-        //===============================================================================
+        /* compute moments of spherical Bessel functions 
+         *
+         * In[]:= Integrate[SphericalBesselJ[l,G*x]*x^(2+l),{x,0,R},Assumptions->{R>0,G>0,l>=0}]
+         * Out[]= (Sqrt[\[Pi]/2] R^(3/2+l) BesselJ[3/2+l,G R])/G^(3/2)
+         *
+         * and use relation between Bessel and spherical Bessel functions: 
+         * Subscript[j, n](z)=Sqrt[\[Pi]/2]/Sqrt[z]Subscript[J, n+1/2](z) 
+         */
         sbessel_mom_.set_dimensions(parameters_.lmax_rho() + 1, parameters_.unit_cell()->num_atom_types(), 
                                     parameters_.reciprocal_lattice()->num_gvec_shells_inner());
         sbessel_mom_.allocate();
@@ -146,31 +147,29 @@ void Potential::update()
             {
                 for (int l = 0; l <= parameters_.lmax_rho(); l++)
                 {
-                    sbessel_mom_(l, iat, igs) = pow(parameters_.unit_cell()->atom_type(iat)->mt_radius(), 2 + l) * 
+                    sbessel_mom_(l, iat, igs) = pow(parameters_.unit_cell()->atom_type(iat)->mt_radius(), l + 2) * 
                                                 sbessel_mt_(l + 1, iat, igs) / parameters_.reciprocal_lattice()->gvec_shell_len(igs);
                 }
             }
         }
         
-        //==================================================
-        // compute Gamma[5/2 + n + l] / Gamma[3/2 + l] / R^l
-        //
-        // use Gamma[1/2 + p] = (2p - 1)!!/2^p Sqrt[Pi]
-        //==================================================
+        /* compute Gamma[5/2 + n + l] / Gamma[3/2 + l] / R^l
+         *
+         * use Gamma[1/2 + p] = (2p - 1)!!/2^p Sqrt[Pi]
+         */
         gamma_factors_R_.set_dimensions(parameters_.lmax_rho() + 1, parameters_.unit_cell()->num_atom_types());
         gamma_factors_R_.allocate();
         for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
         {
             for (int l = 0; l <= parameters_.lmax_rho(); l++)
             {
-                //double p = pow(2.0, pseudo_density_order + 1) * pow(parameters_.atom_type(iat)->mt_radius(), l);
-                double Rl = pow(parameters_.unit_cell()->atom_type(iat)->mt_radius(), l);
+                long double Rl = pow(parameters_.unit_cell()->atom_type(iat)->mt_radius(), l);
 
                 int n_min = (2 * l + 3);
                 int n_max = (2 * l + 1) + (2 * pseudo_density_order + 2);
-                // split factorial product into two parts to avoid overflow
-                double f1 = 1.0;
-                double f2 = 1.0;
+                /* split factorial product into two parts to avoid overflow */
+                long double f1 = 1.0;
+                long double f2 = 1.0;
                 for (int n = n_min; n <= n_max; n += 2) 
                 {
                     if (f1 < Rl) 
@@ -182,7 +181,7 @@ void Potential::update()
                         f2 *= (n / 2.0);
                     }
                 }
-                gamma_factors_R_(l, iat) = (f1 / Rl) * f2;
+                gamma_factors_R_(l, iat) = static_cast<double>((f1 / Rl) * f2);
             }
         }
     }
@@ -242,15 +241,31 @@ void Potential::poisson_vmt(std::vector< Spheric_function<spectral, double_compl
                 }
             }
         }
-        /* save electronic part of potential */
-        vh_el(ia) = real(vh_ylm[ialoc](0, 0));
         
-        /* nuclear potential */
+        /* fixed part of nuclear potential */
         for (int ir = 0; ir < nmtp; ir++)
         {
-            double r = parameters_.unit_cell()->atom(ia)->radial_grid(ir);
-            vh_ylm[ialoc](0, ir) -= parameters_.unit_cell()->atom(ia)->zn() / r / y00;
+            //double r = parameters_.unit_cell()->atom(ia)->radial_grid(ir);
+            //vh_ylm[ialoc](0, ir) -= parameters_.unit_cell()->atom(ia)->zn() * (1 / r - 1 / R) / y00;
+            vh_ylm[ialoc](0, ir) += parameters_.unit_cell()->atom(ia)->zn() / R / y00;
         }
+
+        /* save electronic part of potential at point of origin */
+        //vh_el(ia) = real(vh_ylm[ialoc](0, 0));
+
+
+        //== /* write spherical potential */
+        //== std::stringstream sstr;
+        //== sstr << "mt_spheric_potential_" << ia << ".dat";
+        //== FILE* fout = fopen(sstr.str().c_str(), "w");
+
+        //== for (int ir = 0; ir < nmtp; ir++)
+        //== {
+        //==     double r = parameters_.unit_cell()->atom(ia)->radial_grid(ir);
+        //==     fprintf(fout, "%20.10f %20.10f \n", r, real(vh_ylm[ialoc](0, ir)));
+        //== }
+        //== fclose(fout);
+        //== stop_here
         
         /* nuclear multipole moment */
         qmt(0, ia) -= parameters_.unit_cell()->atom(ia)->zn() * y00;
@@ -765,21 +780,38 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
                 }
             }
             
-            vh_el_(ia) += real((vmtlm(0, ia) - vh_ylm[ialoc](0, nmtp - 1)));
-
             #pragma omp parallel for default(shared)
             for (int lm = 0; lm < parameters_.lmmax_pot(); lm++)
             {
                 int l = l_by_lm_[lm];
 
                 for (int ir = 0; ir < nmtp; ir++)
-                    vh_ylm[ialoc](lm, ir) += (vmtlm(lm, ia) - vh_ylm[ialoc](lm, nmtp - 1)) * rRl(ir, l);
+                    vh_ylm[ialoc](lm, ir) += vmtlm(lm, ia) * rRl(ir, l);
             }
             sht_->convert(vh_ylm[ialoc], vh->f_mt(ialoc));
-        }
-    }
 
-    Platform::allreduce(vh_el_.ptr(), (int)vh_el_.size());
+            vh_el_(ia) = vh->f_mt<local>(0, 0, ialoc);
+        }
+
+        energy_vha_ = inner(parameters_, rho, vh);
+
+        /* add nucleus potential and contribution to Hartree energy */
+        for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+        {
+            int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
+            auto atom = parameters_.unit_cell()->atom(ia);
+            Spline<double> srho(atom->radial_grid());
+            for (int ir = 0; ir < atom->num_mt_points(); ir++)
+            {
+                double r = atom->radial_grid(ir);
+                hartree_potential_->f_mt<local>(0, ir, ialoc) -= atom->zn() / r / y00;
+                srho[ir] = rho->f_mt<local>(0, ir, ialoc);
+            }
+            energy_vha_ -= atom->zn() * srho.interpolate().integrate(1) / y00;
+        }
+
+        Platform::allreduce(vh_el_.ptr(), (int)vh_el_.size());
+    }
     
     /* transform Hartree potential to real space */
     fft_->input(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &vh->f_pw(0));

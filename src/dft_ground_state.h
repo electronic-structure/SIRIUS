@@ -144,7 +144,8 @@ class DFT_ground_state
         
         double energy_vha()
         {
-            return inner(parameters_, density_->rho(), potential_->hartree_potential());
+            //return inner(parameters_, density_->rho(), potential_->hartree_potential());
+            return potential_->energy_vha();
         }
         
         double energy_vxc()
@@ -170,7 +171,8 @@ class DFT_ground_state
 
         double energy_veff()
         {
-            return inner(parameters_, density_->rho(), potential_->effective_potential());
+            //return inner(parameters_, density_->rho(), potential_->effective_potential());
+            return energy_vha() + energy_vxc();
         }
 
         /// Full eigen-value sum (core + valence)

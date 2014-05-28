@@ -72,6 +72,8 @@ class Potential
         std::vector<double_complex> zilm_;
 
         std::vector<int> l_by_lm_;
+
+        double energy_vha_;
         
         /// Electronic part of Hartree potential.
         /** Used to compute electron-nuclear contribution to the total energy */
@@ -144,47 +146,146 @@ class Potential
         /// Zero effective potential and magnetic field.
         void zero();
 
-        /// Poisson solver
-        /** Plane wave expansion
-            \f[
-                e^{i{\bf g}{\bf r}}=4\pi e^{i{\bf g}{\bf r}_{\alpha}} \sum_{\ell m} i^\ell 
-                    j_{\ell}(g|{\bf r}-{\bf r}_{\alpha}|)
-                    Y_{\ell m}^{*}({\bf \hat g}) Y_{\ell m}(\widehat{{\bf r}-{\bf r}_{\alpha}})
-            \f]
-
-            Multipole moment:
-            \f[
-                q_{\ell m} = \int Y_{\ell m}^{*}(\hat {\bf r}) r^l \rho({\bf r}) d {\bf r}
-
-            \f]
-
-            Spherical Bessel function moments
-            \f[
-                \int_0^R j_{\ell}(a x)x^{2+\ell} dx = \frac{\sqrt{\frac{\pi }{2}} R^{\ell+\frac{3}{2}} 
-                    J_{\ell+\frac{3}{2}}(a R)}{a^{3/2}}
-            \f]
-            for a = 0 the integral is \f$ \frac{R^3}{3} \delta_{\ell,0} \f$
-
-            General solution to the Poisson equation with spherical boundary condition:
-            \f[
-                V({\bf x}) = \int \rho({\bf x'})G({\bf x},{\bf x'}) d{\bf x'} - \frac{1}{4 \pi} \int_{S} V({\bf x'}) 
-                    \frac{\partial G}{\partial n'} d{\bf S'}
-            \f]
-
-            Green's function for a sphere
-            \f[
-                G({\bf x},{\bf x'}) = 4\pi \sum_{\ell m} \frac{Y_{\ell m}^{*}(\hat {\bf x'}) 
-                    Y_{\ell m}(\hat {\bf x})}{2\ell + 1}
-                    \frac{r_{<}^{\ell}}{r_{>}^{\ell+1}}\Biggl(1 - \Big( \frac{r_{>}}{R} \Big)^{2\ell + 1} \Biggr)
-            \f]
-
-            Pseudodensity radial functions:
-            \f[
-                p_{\ell}(r) = r^{\ell} \left(1-\frac{r^2}{R^2}\right)^n
-            \f]
-            where n is the order of pseudo density.
-
-        */
+        /// Poisson solver.
+        /** Detailed explanation is available in:
+         *      - Weinert, M. (1981). Solution of Poisson's equation: beyond Ewald-type methods. 
+         *        Journal of Mathematical Physics, 22(11), 2433–2439. doi:10.1063/1.524800
+         *      - Classical Electrodynamics Third Edition by J. D. Jackson.
+         *
+         *  Solution of Poisson's equation for the muffin-tin geometry is carried out in several steps:
+         *      - True multipole moments \f$ q_{\ell m}^{\alpha} \f$ of the muffin-tin charge density are computed.
+         *      - Pseudocharge density is introduced. Pseudocharge density coincides with the true charge density 
+         *        in the interstitial region and it's multipole moments inside muffin-tin spheres coincide with the 
+         *        true multipole moments.
+         *      - Poisson's equation for the pseudocharge density is solved in the plane-wave domain. It gives the 
+         *        correct interstitial potential and correct muffin-tin boundary values.
+         *      - Finally, muffin-tin part of potential is found by solving Poisson's equation in spherical coordinates
+         *        with Dirichlet boundary conditions.
+         *  
+         *  We start by computing true multipole moments of the charge density inside the muffin-tin spheres:
+         *  \f[
+         *      q_{\ell m}^{\alpha} = \int Y_{\ell m}^{*}(\hat {\bf r}) r^{\ell} \rho({\bf r}) d {\bf r} = 
+         *          \int \rho_{\ell m}^{\alpha}(r) r^{\ell + 2} dr
+         *  \f]
+         *  and for the nucleus with charge density \f$ \rho(r, \theta, \phi) = -\frac{Z \delta(r)}{4 \pi r^2} \f$:
+         *  \f[
+         *      q_{00}^{\alpha} = \int Y_{0 0} \frac{-Z_{\alpha} \delta(r)}{4 \pi r^2} r^2 \sin \theta dr d\phi d\theta = 
+         *        -Z_{\alpha} Y_{00}
+         *  \f]
+         *
+         *  Now we need to get the multipole moments of the interstitial charge density \f$ \rho^{I}({\bf r}) \f$ inside 
+         *  muffin-tin spheres. We need this in order to estimate the amount of pseudocharge to be added to 
+         *  \f$ \rho^{I}({\bf r}) \f$ to get the pseudocharge multipole moments equal to the true multipole moments. 
+         *  We want to compute
+         *  \f[
+         *      q_{\ell m}^{I,\alpha} = \int Y_{\ell m}^{*}(\hat {\bf r}) r^{\ell} \rho^{I}({\bf r}) d {\bf r}
+         *  \f]
+         *  where
+         *  \f[
+         *      \rho^{I}({\bf r}) = \sum_{\bf G}e^{i{\bf Gr}} \rho({\bf G})
+         *  \f]
+         *
+         *  Recall the spherical plane wave expansion:
+         *  \f[
+         *      e^{i{\bf G r}}=4\pi e^{i{\bf G r}_{\alpha}} \sum_{\ell m} i^\ell 
+         *          j_{\ell}(G|{\bf r}-{\bf r}_{\alpha}|)
+         *          Y_{\ell m}^{*}({\bf \hat G}) Y_{\ell m}(\widehat{{\bf r}-{\bf r}_{\alpha}})
+         *  \f]
+         *  Multipole moments of each plane-wave are computed as:
+         *  \f[
+         *      q_{\ell m}^{\alpha}({\bf G}) = 4 \pi e^{i{\bf G r}_{\alpha}} Y_{\ell m}^{*}({\bf \hat G}) i^{\ell}
+         *          \int_{0}^{R} j_{\ell}(Gr) r^{\ell + 2} dr = 4 \pi e^{i{\bf G r}_{\alpha}} Y_{\ell m}^{*}({\bf \hat G}) i^{\ell}
+         *          \left\{\begin{array}{ll} \frac{R^{\ell + 2} j_{\ell + 1}(GR)}{G} & G \ne 0 \\
+         *                                   \frac{R^3}{3} \delta_{\ell 0} & G = 0 \end{array} \right.
+         *  \f]
+         *
+         *  Final expression for the muffin-tin multipole moments of the interstitial charge denisty:
+         *  \f[
+         *      q_{\ell m}^{I,\alpha} = \sum_{\bf G}\rho({\bf G}) q_{\ell m}^{\alpha}({\bf G}) 
+         *  \f]
+         *
+         *  Now we are going to modify interstitial charge density inside the muffin-tin region in order to
+         *  get the true multipole moments. We will add a pseudodensity of the form:
+         *  \f[
+         *      P({\bf r}) = \sum_{\ell m} p_{\ell m}^{\alpha} Y_{\ell m}(\hat {\bf r}) r^{\ell} \left(1-\frac{r^2}{R^2}\right)^n
+         *  \f]
+         *  Radial functions of the pseudodensity are chosen in a special way. First, they produce a confined and 
+         *  smooth functions inside muffin-tins and second (most important) plane-wave coefficients of the
+         *  pseudodensity can be computed analytically. Let's find the relation between \f$ p_{\ell m}^{\alpha} \f$
+         *  coefficients and true and interstitial multipole moments first. We are searching for the pseudodensity which restores
+         *  the true multipole moments:
+         *  \f[
+         *      \int Y_{\ell m}^{*}(\hat {\bf r}) r^{\ell} \Big(\rho^{I}({\bf r}) + P({\bf r})\Big) d {\bf r} = q_{\ell m}^{\alpha}
+         *  \f]
+         *  Then 
+         *  \f[
+         *      p_{\ell m}^{\alpha} = \frac{q_{\ell m}^{\alpha} - q_{\ell m}^{I,\alpha}}
+         *                  {\int r^{2 \ell + 2} \left(1-\frac{r^2}{R^2}\right)^n dr} = 
+         *         (q_{\ell m}^{\alpha} - q_{\ell m}^{I,\alpha}) \frac{2 \Gamma(5/2 + \ell + n)}{R^{2\ell + 3}\Gamma(3/2 + \ell) \Gamma(n + 1)} 
+         *  \f]
+         *  
+         *  
+         *  Now let's find the plane-wave coefficients of \f$ P({\bf r}) \f$ inside each muffin-tin:
+         *  \f[
+         *      P^{\alpha}({\bf G}) = \frac{4\pi e^{-i{\bf G r}_{\alpha}}}{\Omega} \sum_{\ell m} (-i)^{\ell} Y_{\ell m}({\bf \hat G})  
+         *         p_{\ell m}^{\alpha} \int_{0}^{R} j_{\ell}(G r) r^{\ell} \left(1-\frac{r^2}{R^2}\right)^n r^2 dr
+         *  \f]
+         *
+         *  Integral of the spherical Bessel function with the radial pseudodensity component is taken analytically:
+         *  \f[
+         *      \int_{0}^{R} j_{\ell}(G r) r^{\ell} \left(1-\frac{r^2}{R^2}\right)^n r^2 dr = 
+         *          2^n R^{\ell + 3} (GR)^{-n - 1} \Gamma(n + 1) j_{n + \ell + 1}(GR)
+         *  \f]
+         *
+         *  The final expression for the pseudodensity plane-wave component is:
+         *  \f[
+         *       P^{\alpha}({\bf G}) = \frac{4\pi e^{-i{\bf G r}_{\alpha}}}{\Omega} \sum_{\ell m} (-i)^{\ell} Y_{\ell m}({\bf \hat G})  
+         *          (q_{\ell m}^{\alpha} - q_{\ell m}^{I,\alpha}) \Big( \frac{2}{GR} \Big)^{n+1} 
+         *          \frac{ \Gamma(5/2 + n + \ell) } {R^{\ell} \Gamma(3/2+\ell)}
+         *  \f]
+         *
+         *  For \f$ G=0 \f$ only \f$ \ell = 0 \f$ contribution survives:
+         *  \f[
+         *       P^{\alpha}({\bf G}=0) = \frac{4\pi}{\Omega} Y_{00} (q_{00}^{\alpha} - q_{00}^{I,\alpha})
+         *  \f]
+         *
+         *  We can now sum the contributions from all muffin-tin spheres and obtain a modified charge density,
+         *  which is equal to the exact charge density in the interstitial region and which has correct multipole
+         *  moments inside muffin-tin spheres:
+         *  \f[
+         *      \tilde \rho({\bf G}) = \rho({\bf G}) + \sum_{\alpha} P^{\alpha}({\bf G})
+         *  \f]
+         *  This density is used to solve the Poisson's equation in the plane-wave domain:
+         *  \f[
+         *      V_{H}({\bf G}) = \frac{4 \pi  \tilde \rho({\bf G})}{G^2}
+         *  \f]
+         *  The potential is correct in the interstitial region and also on the muffin-tin surface. We will use
+         *  it to find the boundary conditions for the potential inside the muffin-tins. Using spherical
+         *  plane-wave expansion we get:
+         *  \f[
+         *      V^{\alpha}_{\ell m}(R) = \sum_{\bf G} V_{H}({\bf G})  
+         *          4\pi e^{i{\bf G r}_{\alpha}} i^\ell 
+         *          j_{\ell}^{\alpha}(GR) Y_{\ell m}^{*}({\bf \hat G}) 
+         *  \f]
+         *
+         *  As soon as the muffin-tin boundary conditions for the potential are known, we can find the potential 
+         *  inside spheres using Dirichlet Green's function:
+         *  \f[
+         *      V({\bf x}) = \int \rho({\bf x'})G_D({\bf x},{\bf x'}) d{\bf x'} - \frac{1}{4 \pi} \int_{S} V({\bf x'}) 
+         *          \frac{\partial G_D}{\partial n'} d{\bf S'}
+         *  \f]
+         *  where Dirichlet Green's function for the sphere is defined as:
+         *  \f[
+         *      G_D({\bf x},{\bf x'}) = 4\pi \sum_{\ell m} \frac{Y_{\ell m}^{*}({\bf \hat x'}) 
+         *          Y_{\ell m}(\hat {\bf x})}{2\ell + 1}
+         *          \frac{r_{<}^{\ell}}{r_{>}^{\ell+1}}\Biggl(1 - \Big( \frac{r_{>}}{R} \Big)^{2\ell + 1} \Biggr)
+         *  \f]
+         *  and it's normal derivative at the surface is equal to:
+         *  \f[
+         *       \frac{\partial G_D}{\partial n'} = -\frac{4 \pi}{R^2} \sum_{\ell m} \Big( \frac{r}{R} \Big)^{\ell} 
+         *          Y_{\ell m}^{*}({\bf \hat x'}) Y_{\ell m}(\hat {\bf x})
+         *  \f]
+         */
         void poisson(Periodic_function<double>* rho, Periodic_function<double>* vh);
         
         /// Generate XC potential and energy density
@@ -351,6 +452,11 @@ class Potential
         inline double vh_el(int ia)
         {
             return vh_el_(ia);
+        }
+
+        inline double energy_vha()
+        {
+            return energy_vha_;
         }
 };
 
