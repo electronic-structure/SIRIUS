@@ -82,13 +82,15 @@ class Potential
         /// Compute MT part of the potential and MT multipole moments
         void poisson_vmt(std::vector< Spheric_function<spectral, double_complex> >& rho_ylm, 
                          std::vector< Spheric_function<spectral, double_complex> >& vh, 
-                         mdarray<double_complex, 2>& qmt,
-                         mdarray<double, 1>& vh_el);
+                         mdarray<double_complex, 2>& qmt);
 
         /// Compute multipole momenst of the interstitial charge density
         /** Also, compute the MT boundary condition 
         */
-        void poisson_sum_G(double_complex* fpw, mdarray<double, 3>& fl, mdarray<double_complex, 2>& flm);
+        void poisson_sum_G(int lmmax__, 
+                           double_complex* fpw__, 
+                           mdarray<double, 3>& fl__, 
+                           mdarray<double_complex, 2>& flm__);
         
         /// Add contribution from the pseudocharge to the plane-wave expansion
         void poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw);
