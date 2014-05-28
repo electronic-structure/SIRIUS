@@ -218,17 +218,17 @@ void Global::initialize()
 
     if (unit_cell_->full_potential()) step_function_ = new Step_function(unit_cell_, reciprocal_lattice_);
 
-    // check MPI grid dimensions and set a default grid if needed
+    /* check MPI grid dimensions and set a default grid if needed */
     if (!mpi_grid_dims_.size()) 
     {
         mpi_grid_dims_ = std::vector<int>(1);
         mpi_grid_dims_[0] = Platform::num_mpi_ranks();
     }
 
-    // setup MPI grid
+    /* setup MPI grid */
     mpi_grid_.initialize(mpi_grid_dims_);
     
-    // take 20% of empty non-magnetic states
+    /* take 20% of empty non-magnetic states */
     if (num_fv_states_ < 0) num_fv_states_ = int(1.2 * unit_cell_->num_valence_electrons() / 2.0);
 
     if (num_fv_states_ < int(unit_cell_->num_valence_electrons() / 2.0))
@@ -320,10 +320,10 @@ void Global::initialize()
     if (std_evp_solver_->parallel() != gen_evp_solver_->parallel())
         error_global(__FILE__, __LINE__, "both eigen-value solvers must be serial or parallel");
 
-    /// total number of bands
+    /* total number of bands */
     num_bands_ = num_fv_states_ * num_spins_;
 
-    // distribue first-variational states along columns
+    /* distribue first-variational states along columns */
     spl_fv_states_ = splindex<block_cyclic>(num_fv_states(), ncol, icol, cyclic_block_size_);
 
     // distribue spinor wave-functions along columns
