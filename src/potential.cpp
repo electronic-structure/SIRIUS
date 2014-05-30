@@ -815,10 +815,19 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         Platform::allgather(vh_el_.ptr(), (int)parameters_.unit_cell()->spl_num_atoms().global_offset(),
                             (int)parameters_.unit_cell()->spl_num_atoms().local_size());
 
-        /* compute contribution from the smooth part of Hartree potential */
-        energy_vha_ = inner(parameters_, rho, vh);
+    }
+    
+    /* transform Hartree potential to real space */
+    fft_->input(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &vh->f_pw(0));
+    fft_->transform(1);
+    fft_->output(&vh->f_it<global>(0));
+    
+    /* compute contribution from the smooth part of Hartree potential */
+    energy_vha_ = inner(parameters_, rho, vh);
         
-        /* add nucleus potential and contribution to Hartree energy */
+    /* add nucleus potential and contribution to Hartree energy */
+    if (parameters_.unit_cell()->full_potential())
+    {
         double evha_nuc_ = 0;
         for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
         {
@@ -836,11 +845,6 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         Platform::allreduce(&evha_nuc_, 1);
         energy_vha_ += evha_nuc_;
     }
-    
-    /* transform Hartree potential to real space */
-    fft_->input(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &vh->f_pw(0));
-    fft_->transform(1);
-    fft_->output(&vh->f_it<global>(0));
 }
 
 void Potential::xc_mt_nonmagnetic(Radial_grid& rgrid,
@@ -1695,8 +1699,11 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
 }
 
 
-void Potential::xc(Periodic_function<double>* rho, Periodic_function<double>* magnetization[3], 
-                   Periodic_function<double>* vxc, Periodic_function<double>* bxc[3], Periodic_function<double>* exc)
+void Potential::xc(Periodic_function<double>* rho, 
+                   Periodic_function<double>* magnetization[3], 
+                   Periodic_function<double>* vxc, 
+                   Periodic_function<double>* bxc[3], 
+                   Periodic_function<double>* exc)
 {
     Timer t("sirius::Potential::xc");
 
@@ -1760,26 +1767,27 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
 {
     Timer t("sirius::Potential::generate_effective_potential");
     
-    // zero effective potential and magnetic field
+    /* zero effective potential and magnetic field */
     zero();
 
-    // solve Poisson equation with valence density
+    /* solve Poisson equation with valence density */
     poisson(rho, hartree_potential_);
 
-    // add Hartree potential to the effective potential
+    /* add Hartree potential to the effective potential */
     effective_potential_->add(hartree_potential_);
 
-    // create temporary function for rho + rho_core
+    /* create temporary function for rho + rho_core */
     Periodic_function<double>* rhovc = new Periodic_function<double>(parameters_, 0);
-    rhovc->allocate(false, false);
+    rhovc->allocate(false, true);
     rhovc->zero();
     rhovc->add(rho);
     rhovc->add(rho_core);
+    rhovc->sync(false, true);
 
-    // construct XC potentials from rho + rho_core
+    /* construct XC potentials from rho + rho_core */
     xc(rhovc, magnetization, xc_potential_, effective_magnetic_field_, xc_energy_density_);
     
-    // destroy temporary function
+    /* destroy temporary function */
     delete rhovc;
     
     // add XC potential to the effective potential

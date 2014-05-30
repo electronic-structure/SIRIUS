@@ -80,11 +80,11 @@ void K_point::update()
 
     generate_gkvec(gk_cutoff);
     
-    if (parameters_.unit_cell()->full_potential())
+    build_apwlo_basis_descriptors();
+    distribute_block_cyclic();
+    
+    if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
     {
-        build_apwlo_basis_descriptors();
-        distribute_block_cyclic();
-        
         atom_lo_cols_.clear();
         atom_lo_cols_.resize(parameters_.unit_cell()->num_atoms());
 
@@ -117,11 +117,14 @@ void K_point::update()
     
     init_gkvec();
     
-    if (alm_coeffs_row_) delete alm_coeffs_row_;
-    alm_coeffs_row_ = new Matching_coefficients(parameters_, num_gkvec_row(), gklo_basis_descriptors_row_);
+    if (parameters_.esm_type() == full_potential_lapwlo)
+    {
+        if (alm_coeffs_row_) delete alm_coeffs_row_;
+        alm_coeffs_row_ = new Matching_coefficients(parameters_, num_gkvec_row(), gklo_basis_descriptors_row_);
 
-    if (alm_coeffs_col_) delete alm_coeffs_col_;
-    alm_coeffs_col_ = new Matching_coefficients(parameters_, num_gkvec_col(), gklo_basis_descriptors_col_);
+        if (alm_coeffs_col_) delete alm_coeffs_col_;
+        alm_coeffs_col_ = new Matching_coefficients(parameters_, num_gkvec_col(), gklo_basis_descriptors_col_);
+    }
 
     /* compute |beta> projectors for atom types */
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
@@ -238,15 +241,14 @@ void K_point::update()
 
         if (parameters_.esm_type() == ultrasoft_pseudopotential)
         {
-            stop_here
-            //== fv_states_col_.zero();
-            //== for (int i = 0; i < parameters_.num_fv_states(); i++)
-            //== {
-            //==     int rank = parameters_.spl_fv_states_col().location(_splindex_rank_, i);
-            //==     int iloc = parameters_.spl_fv_states_col().location(_splindex_offs_, i);
-            //==     
-            //==     if (rank == rank_col_) fv_states_col_(i, iloc) = 1.0; 
-            //== }
+            fv_states_panel_.zero();
+            for (int i = 0; i < parameters_.num_fv_states(); i++) fv_states_panel_.set(i, i, complex_one);
+
+            if (num_ranks() == 1)
+            {
+                fv_states_.zero();
+                for (int i = 0; i < parameters_.num_fv_states(); i++) fv_states_(i, i) = complex_one;
+            }
         }
         
         if (parameters_.need_sv())

@@ -34,7 +34,7 @@ Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_
 
     rho_ = new Periodic_function<double>(parameters_, parameters_.lmmax_rho(), parameters_.reciprocal_lattice()->num_gvec());
 
-    // core density of the pseudopotential method
+    /* core density of the pseudopotential method */
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
         rho_pseudo_core_ = new Periodic_function<double>(parameters_, 0);

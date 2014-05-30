@@ -34,10 +34,10 @@ class dmatrix
 {
     private:
 
-        /// global number of matrix rows
+        /// Global number of matrix rows.
         int num_rows_;
 
-        /// global number of matrix columns
+        /// Global number of matrix columns.
         int num_cols_;
 
         int num_ranks_row_;
