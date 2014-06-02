@@ -589,10 +589,11 @@ void Atom_symmetry_class::generate_radial_functions()
 
 void Atom_symmetry_class::sync_radial_functions(int rank)
 {
-    // don't broadcast Hamiltonian radial functions, because they are used locally
+    /* don't broadcast Hamiltonian radial functions, because they are used locally */
     int size = (int)(radial_functions_.size(0) * radial_functions_.size(1));
     Platform::bcast(radial_functions_.ptr(), size, rank);
     Platform::bcast(aw_surface_derivatives_.ptr(), (int)aw_surface_derivatives_.size(), rank);
+    // TODO: sync enu to pass to Exciting / Elk
 }
 
 void Atom_symmetry_class::sync_radial_integrals(int rank)
