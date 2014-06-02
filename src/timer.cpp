@@ -24,10 +24,10 @@
 
 #include "timer.h"
 
+std::map<std::string, sirius::Timer*> ftimers;
+
 namespace sirius
 {
-
-std::map<std::string, Timer*> ftimers;
 
 std::map<std::string, std::vector<double> > Timer::timers_;
 std::map<std::string, std::vector<double> > Timer::global_timers_;
