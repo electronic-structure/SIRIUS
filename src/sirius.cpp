@@ -48,37 +48,37 @@ sirius::Mixer* mixer_pot = NULL;
 extern "C" 
 {
 
-/// Initialize the the library
+/// Initialize the library.
 /** \param [in] call_mpi_init .true. if the library needs to call MPI_Init()
-
-    Example:
+ *
+ *  Example:
     \code{.F90}
-        integer ierr
-        call mpi_init(ierr)
-        ! initialize low-level stuff and don't call MPI_Init() from SIRIUS
-        call sirius_platform_initialize(0)
+    integer ierr
+    call mpi_init(ierr)
+    ! initialize low-level stuff and don't call MPI_Init() from SIRIUS
+    call sirius_platform_initialize(0)
     \endcode
-*/
+ */
 void FORTRAN(sirius_platform_initialize)(int32_t* call_mpi_init_)
 {
     bool call_mpi_init = (*call_mpi_init_ != 0) ? true : false; 
     Platform::initialize(call_mpi_init);
 }
 
-/// Set lattice vectors
+/// Set lattice vectors.
 /** \param [in] a1 1st lattice vector
-    \param [in] a2 2nd lattice vector
-    \param [in] a3 3rd lattice vector
-
-    Example:
+ *  \param [in] a2 2nd lattice vector
+ *  \param [in] a3 3rd lattice vector
+ *
+ *  Example:
     \code{.F90}
-        real(8) a1(3),a2(3),a3(3)
-        a1(:) = (/5.d0, 0.d0, 0.d0/)
-        a2(:) = (/0.d0, 5.d0, 0.d0/)
-        a3(:) = (/0.d0, 0.d0, 5.d0/)
-        call sirius_set_lattice_vectors(a1, a2, a3)
+    real(8) a1(3),a2(3),a3(3)
+    a1(:) = (/5.d0, 0.d0, 0.d0/)
+    a2(:) = (/0.d0, 5.d0, 0.d0/)
+    a3(:) = (/0.d0, 0.d0, 5.d0/)
+    call sirius_set_lattice_vectors(a1, a2, a3)
     \endcode
-*/
+ */
 void FORTRAN(sirius_set_lattice_vectors)(double* a1, double* a2, double* a3)
 {
     log_function_enter(__func__);
@@ -86,7 +86,7 @@ void FORTRAN(sirius_set_lattice_vectors)(double* a1, double* a2, double* a3)
     log_function_exit(__func__);
 }
 
-/// Set plane-wave cutoff for FFT grid
+/// Set plane-wave cutoff for FFT grid.
 /** \param [in] gmaxvr maximum G-vector length 
 
     Example:
@@ -103,7 +103,7 @@ void FORTRAN(sirius_set_pw_cutoff)(double* pw_cutoff)
     log_function_exit(__func__);
 }
 
-/// Turn on or off the automatic scaling of muffin-tin spheres
+/// Turn on or off the automatic scaling of muffin-tin spheres.
 /** \param [in] auto_rmt .true. if muffin-tin spheres must be resized to the maximally allowed radii
 
     The auto_rmt flag tells the library how to proceed with the muffin-tin spheres in the case when 
@@ -123,25 +123,25 @@ void FORTRAN(sirius_set_auto_rmt)(int32_t* auto_rmt)
     log_function_exit(__func__);
 }
 
-/// Add atom type to the library
-/** \param [in] atom_type_id unique id of atom type
-    \param [in] label file label of atom type
-
-    Atom type (species in the terminology of Exciting/Elk) is a class which holds information 
-    common to the atoms of the same element: charge, number of core and valence electrons, muffin-tin
-    radius, radial grid etc. See Atom_type class for details.
-
-    Example:
+/// Add atom type to the unit cell.
+/** \param [in] label unique label of atom type
+ *  \param [in] fname name of .json atomic file
+ *
+ *  Atom type (species in the terminology of Exciting/Elk) is a class which holds information 
+ *  common to the atoms of the same element: charge, number of core and valence electrons, muffin-tin
+ *  radius, radial grid etc. See sirius::Atom_type class for details.
+ *
+ *  Example:
     \code{.F90}
-        do is = 1, nspecies
-          !======================================================
-          ! add atom type with ID=is and read the .json file with 
-          ! the symbol name if it exists
-          !======================================================
-          call sirius_add_atom_type(is, trim(spfname(is))
-        enddo
+    do is = 1, nspecies
+      !====================================================
+      ! add atom type with label equal to the file name and
+      ! read the .json file
+      !====================================================
+      call sirius_add_atom_type(trim(spfname(is)), trim(spfname(is))
+    enddo
     \endcode
-*/
+ */
 void FORTRAN(sirius_add_atom_type)(char* label, char* fname, int32_t label_len, int32_t fname_len)
 {
     log_function_enter(__func__);
@@ -150,28 +150,28 @@ void FORTRAN(sirius_add_atom_type)(char* label, char* fname, int32_t label_len, 
     log_function_exit(__func__);
 }
 
-/// Set basic properties of the atom type
-/** \param [in] atom_type_id id of the atom type
-    \param [in] symbol symbol of the element
-    \param [in] zn positive integer charge
-    \param [in] mass atomic mass
-    \param [in] mt_radius muffin-tin radius
-    \param [in] num_mt_points number of muffin-tin points
-    \param [in] radial_grid_origin origin of radial grid
-    \param [in] radial_grid_infinity effective infinity
-    
-    Example:
+/// Set basic properties of the atom type.
+/** \param [in] label unique label of the atom type
+ *  \param [in] symbol symbol of the element
+ *  \param [in] zn positive integer charge
+ *  \param [in] mass atomic mass
+ *  \param [in] mt_radius muffin-tin radius
+ *  \param [in] num_mt_points number of muffin-tin points
+ *  \param [in] radial_grid_origin origin of radial grid
+ *  \param [in] radial_grid_infinity effective infinity
+ *  
+ *  Example:
     \code{.F90}
-        do is=1,nspecies
-          call sirius_set_atom_type_properties(is, trim(spsymb(is)), nint(-spzn(is)),&
-                                              &spmass(is), rmt(is), nrmt(is), &
-                                              &sprmin(is), sprmax(is))
-        enddo
+    do is=1,nspecies
+      call sirius_set_atom_type_properties(trim(spfname(is)), trim(spsymb(is)),  &
+                                          &nint(-spzn(is)), spmass(is), rmt(is), &
+                                          &nrmt(is), sprmin(is), sprmax(is))
+    enddo
     \endcode
-*/ 
+ */ 
 void FORTRAN(sirius_set_atom_type_properties)(char* label, char* symbol, int32_t* zn, double* mass, 
                                               double* mt_radius, int32_t* num_mt_points, double* radial_grid_origin, 
-                                              int32_t label_len, int32_t symbol_len)
+                                              double* radial_grid_infinity, int32_t label_len, int32_t symbol_len)
 {
     log_function_enter(__func__);
     sirius::Atom_type* type = global_parameters.unit_cell()->atom_type(std::string(label, label_len));
@@ -179,52 +179,53 @@ void FORTRAN(sirius_set_atom_type_properties)(char* label, char* symbol, int32_t
     type->set_zn(*zn);
     type->set_mass(*mass);
     type->set_num_mt_points(*num_mt_points);
-    type->set_radial_grid_origin(*radial_grid_origin);
+    //type->set_radial_grid_origin(*radial_grid_origin);
     //type->set_radial_grid_infinity(*radial_grid_infinity);
     type->set_mt_radius(*mt_radius);
     log_function_exit(__func__);
 }
 
-/// Set the radial grid of atom type
-/** \param [in] atom_type_id id of the atom type
-    \param [in] num_radial_points number of radial points
-    \param [in] radial_points radial points
-
-    Example:
+/// Set the radial grid of atom type.
+/** \param [in] label unique label of the atom type
+ *  \param [in] num_radial_points number of radial points
+ *  \param [in] radial_points radial points
+ *
+ *  Example:
     \code{.F90}
-        do is=1,nspecies
-          call sirius_set_atom_type_radial_grid(is, spnr(is), spr(1, is))
-        enddo
+    do is=1,nspecies
+      call sirius_set_atom_type_radial_grid(trim(spfname(is)), spnr(is), spr(1, is))
+    enddo
     \endcode
-*/
+ */
 void FORTRAN(sirius_set_atom_type_radial_grid)(char* label, int32_t* num_radial_points, 
                                                double* radial_points, int32_t label_len)
 {
     sirius::Atom_type* type = global_parameters.unit_cell()->atom_type(std::string(label, label_len));
-    type->set_radial_grid(*num_radial_points, radial_points);
+    type->set_radial_grid(type->num_mt_points(), radial_points);
+    type->set_free_atom_radial_grid(*num_radial_points, radial_points);
 }
 
-/// Set the atomic level configuration of the atom type
+/// Set the atomic level configuration of the atom type.
 /** With each call to the function new atomic level is added to the list of atomic levels of the atom type.
-
-    \param [in] atom_type_id id of the atom type
-    \param [in] n principal quantum number of the atomic level
-    \param [in] l angular quantum number of the atomic level
-    \param [in] k kappa quantum number of the atomic level
-    \param [in] occupancy occupancy of the atomic level
-    \param [in] core .true. if the atomic level belongs to the core
-
-    Example
+ *
+ *  \param [in] label unique label of the atom type
+ *  \param [in] n principal quantum number of the atomic level
+ *  \param [in] l angular quantum number of the atomic level
+ *  \param [in] k kappa quantum number of the atomic level
+ *  \param [in] occupancy occupancy of the atomic level
+ *  \param [in] core .true. if the atomic level belongs to the core
+ *
+ *  Example
     \code{.F90}
-        do is=1,nspecies
-          do ist=1,spnst(is)
-            call sirius_set_atom_type_configuration(is, spn(ist, is), spl(ist, is),&
-                                                   &spk(ist, is), spocc(ist, is),&
-                                                   &spcore(ist, is)) 
-          enddo
-        enddo
+    do is=1,nspecies
+      do ist=1,spnst(is)
+        call sirius_set_atom_type_configuration(trim(spfname(is)), spn(ist, is), spl(ist, is),&
+                                               &spk(ist, is), spocc(ist, is),&
+                                               &spcore(ist, is)) 
+      enddo
+    enddo
     \endcode
-*/
+ */
 void FORTRAN(sirius_set_atom_type_configuration)(char* label, int32_t* n, int32_t* l, int32_t* k, 
                                                  double* occupancy, int32_t* core_, int32_t label_len)
 {
@@ -235,20 +236,20 @@ void FORTRAN(sirius_set_atom_type_configuration)(char* label, int32_t* n, int32_
     log_function_exit(__func__);
 }
 
-/// Add atom to the library
-/** \param [in] atom_type_id id of the atom type
-    \param [in] position atom position in fractional coordinates
-    \param [in] vector_field vector field associated with the given atom
-
-    Example:
+/// Add atom to the unit cell.
+/** \param [in] label unique label of the atom type
+ *  \param [in] position atom position in fractional coordinates
+ *  \param [in] vector_field vector field associated with the given atom
+ *
+ *  Example:
     \code{.F90}
-        do is = 1, nspecies
-          do ia = 1, natoms(is)
-            call sirius_add_atom(is, atposl(:, ia, is), bfcmt(:, ia, is))
-          enddo
-        enddo
+    do is = 1, nspecies
+      do ia = 1, natoms(is)
+        call sirius_add_atom(trim(spfname(is)), atposl(:, ia, is), bfcmt(:, ia, is))
+      enddo
+    enddo
     \endcode
-*/
+ */
 void FORTRAN(sirius_add_atom)(char* label, double* position, double* vector_field, int32_t label_len)
 {
     log_function_enter(__func__);
@@ -295,23 +296,23 @@ void FORTRAN(sirius_set_aw_cutoff)(double* aw_cutoff)
 
 /// Initialize the global variables.
 /** The function must be called after setting up the lattice vectors, plane wave-cutoff, autormt flag and loading
-    atom types and atoms into the unit cell.
-
-    \param [in] lmax_apw maximum \f$ \ell \f$ for APW functions
-    \param [in] lmax_rho maximum \f$ \ell \f$ for charge density and magnetization
-    \param [in] lmax_pot maximum \f$ \ell \f$ for potential and effective magnetic field
-    \param [in] num_mag_dims number of magnetic dimensions (0, 1 or 3)
-
-    Example:
+ *  atom types and atoms into the unit cell.
+ *
+ *  \param [in] lmax_apw maximum \f$ \ell \f$ for APW functions
+ *  \param [in] lmax_rho maximum \f$ \ell \f$ for charge density and magnetization
+ *  \param [in] lmax_pot maximum \f$ \ell \f$ for potential and effective magnetic field
+ *  \param [in] num_mag_dims number of magnetic dimensions (0, 1 or 3)
+ *
+ *  Example:
     \code{.F90}
-        integer lmaxapw, lmaxvr, ndmag
-        lmaxapw = 10
-        lmaxvr = 8
-        ndmag = 0
-        ! initialize global variables
-        call sirius_global_initialize(lmaxapw, lmaxvr, lmaxvr, ndmag)
+    integer lmaxapw, lmaxvr, ndmag
+    lmaxapw = 10
+    lmaxvr = 8
+    ndmag = 0
+    ! initialize global variables
+    call sirius_global_initialize(lmaxapw, lmaxvr, lmaxvr, ndmag)
     \endcode
-*/
+ */
 void FORTRAN(sirius_global_initialize)(int32_t* lmax_apw, int32_t* lmax_rho, int32_t* lmax_pot, int32_t* num_mag_dims)
 {
     log_function_enter(__func__);
@@ -327,10 +328,10 @@ void FORTRAN(sirius_global_initialize)(int32_t* lmax_apw, int32_t* lmax_rho, int
 
 /// Initialize the Density object.
 /** \param [in] rhomt pointer to the muffin-tin part of the density
-    \param [in] rhoit pointer to the interstitial part of the denssity
-    \param [in] magmt pointer to the muffin-tin part of the magnetization
-    \param [in] magit pointer to the interstitial part of the magnetization
-*/
+ *  \param [in] rhoit pointer to the interstitial part of the denssity
+ *  \param [in] magmt pointer to the muffin-tin part of the magnetization
+ *  \param [in] magit pointer to the interstitial part of the magnetization
+ */
 void FORTRAN(sirius_density_initialize)(double* rhomt, double* rhoit, double* magmt, double* magit)
 {
     log_function_enter(__func__);
@@ -342,10 +343,10 @@ void FORTRAN(sirius_density_initialize)(double* rhomt, double* rhoit, double* ma
 
 /// Initialize the Potential object.
 /** \param [in] veffmt pointer to the muffin-tin part of the effective potential
-    \param [in] veffit pointer to the interstitial part of the effective potential
-    \param [in] beffmt pointer to the muffin-tin part of effective magnetic field
-    \param [in] beffit pointer to the interstitial part of the effective magnetic field
-*/
+ *  \param [in] veffit pointer to the interstitial part of the effective potential
+ *  \param [in] beffmt pointer to the muffin-tin part of effective magnetic field
+ *  \param [in] beffit pointer to the interstitial part of the effective magnetic field
+ */
 void FORTRAN(sirius_potential_initialize)(double* veffmt, double* veffit, double* beffmt, double* beffit)
 {
     log_function_enter(__func__);
@@ -356,8 +357,7 @@ void FORTRAN(sirius_potential_initialize)(double* veffmt, double* veffit, double
 }
 
 /// Get maximum number of muffin-tin radial points.
-/** \param [out] max_num_mt_points maximum number of muffin-tin points
-*/
+/** \param [out] max_num_mt_points maximum number of muffin-tin points */
 void FORTRAN(sirius_get_max_num_mt_points)(int32_t* max_num_mt_points)
 {
     log_function_enter(__func__);
@@ -366,9 +366,9 @@ void FORTRAN(sirius_get_max_num_mt_points)(int32_t* max_num_mt_points)
 }
 
 /// Get number of muffin-tin radial points for a specific atom type.
-/** \param [in] atom_type_id id of the atom type
-    \param [out] num_mt_points number of muffin-tin points
-*/
+/** \param [in] label unique label of atom type
+ *  \param [out] num_mt_points number of muffin-tin points
+ */
 void FORTRAN(sirius_get_num_mt_points)(char* label, int32_t* num_mt_points, int32_t label_len)
 {
     log_function_enter(__func__);
@@ -418,16 +418,16 @@ void FORTRAN(sirius_get_fft_grid_size)(int32_t* grid_size)
 
 /// Get lower and upper limits of the FFT grid dimension
 /** \param [in] d index of dimension (1,2, or 3)
-    \param [out] lower lower (most negative) value
-    \param [out] upper upper (most positive) value
-
-    Example:
+ *  \param [out] lower lower (most negative) value
+ *  \param [out] upper upper (most positive) value
+ *
+ *  Example:
     \code{.F90}
-        do i=1,3
-          call sirius_get_fft_grid_limits(i,intgv(i,1),intgv(i,2))
-        enddo
+    do i=1,3
+      call sirius_get_fft_grid_limits(i,intgv(i,1),intgv(i,2))
+    enddo
     \endcode
-*/
+ */
 void FORTRAN(sirius_get_fft_grid_limits)(int32_t* d, int32_t* lower, int32_t* upper)
 {
     log_function_enter(__func__);
@@ -507,13 +507,15 @@ void FORTRAN(sirius_get_index_by_gvec)(int32_t* index_by_gvec__)
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_gvec_ylm)(double_complex* gvec_ylm__, int* ld, int* lmax)
+/// Get Ylm spherical harmonics of G-vectors.
+void FORTRAN(sirius_get_gvec_ylm)(double_complex* gvec_ylm__, int* ld__, int* lmax__)
 {
     log_function_enter(__func__);
-    mdarray<double_complex, 2> gvec_ylm(gvec_ylm__, *ld, global_parameters.reciprocal_lattice()->num_gvec());
+    mdarray<double_complex, 2> gvec_ylm(gvec_ylm__, *ld__, global_parameters.reciprocal_lattice()->num_gvec());
+    // TODO: can be parallelized
     for (int ig = 0; ig < global_parameters.reciprocal_lattice()->num_gvec(); ig++)
     {
-        global_parameters.reciprocal_lattice()->gvec_ylm_array<global>(ig, &gvec_ylm(0, ig), *lmax);
+        global_parameters.reciprocal_lattice()->gvec_ylm_array<global>(ig, &gvec_ylm(0, ig), *lmax__);
     }
     log_function_exit(__func__);
 }
@@ -703,23 +705,23 @@ void FORTRAN(sirius_print_timers)(void)
     log_function_exit(__func__);
 }   
 
-//== void FORTRAN(sirius_start_timer)(char* name_, int32_t name_len)
-//== {
-//==     extern std::map<std::string, sirius::Timer*> ftimers;
-//==     log_function_enter(__func__);
-//==     std::string name(name_, name_len);
-//==     ftimers[name] = new sirius::Timer(name);
-//==     log_function_exit(__func__);
-//== }
-//== 
-//== void FORTRAN(sirius_stop_timer)(char* name_, int32_t name_len)
-//== {
-//==     extern std::map<std::string, sirius::Timer*> ftimers;
-//==     log_function_enter(__func__);
-//==     std::string name(name_, name_len);
-//==     if (ftimers.count(name)) delete ftimers[name];
-//==     log_function_exit(__func__);
-//== }
+void FORTRAN(sirius_start_timer)(char* name_, int32_t name_len)
+{
+    log_function_enter(__func__);
+    extern std::map<std::string, sirius::Timer*> ftimers;
+    std::string name(name_, name_len);
+    ftimers[name] = new sirius::Timer(name);
+    log_function_exit(__func__);
+}
+
+void FORTRAN(sirius_stop_timer)(char* name_, int32_t name_len)
+{
+    log_function_enter(__func__);
+    extern std::map<std::string, sirius::Timer*> ftimers;
+    std::string name(name_, name_len);
+    if (ftimers.count(name)) delete ftimers[name];
+    log_function_exit(__func__);
+}
 
 void FORTRAN(sirius_save_potential)(void)
 {
@@ -1573,18 +1575,18 @@ void FORTRAN(sirius_scalar_radial_solver)(int32_t* zn, int32_t* l, int32_t* dme,
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_aw_radial_function)(int32_t* ia__, int32_t* l, int32_t* io__, double* awrf)
+void FORTRAN(sirius_get_aw_radial_function)(int32_t* ia__, int32_t* l, int32_t* io__, double* awrf__)
 {
     log_function_enter(__func__);
     int ia = *ia__ - 1;
     int io = *io__ - 1;
     int idxrf = global_parameters.unit_cell()->atom(ia)->type()->indexr_by_l_order(*l, io);
     for (int ir = 0; ir < global_parameters.unit_cell()->atom(ia)->num_mt_points(); ir++)
-        awrf[ir] = global_parameters.unit_cell()->atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+        awrf__[ir] = global_parameters.unit_cell()->atom(ia)->symmetry_class()->radial_function(ir, idxrf);
     log_function_exit(__func__);
 }
     
-void FORTRAN(sirius_get_aw_h_radial_function)(int32_t* ia__, int32_t* l, int32_t* io__, double* hawrf)
+void FORTRAN(sirius_get_aw_h_radial_function)(int32_t* ia__, int32_t* l, int32_t* io__, double* hawrf__)
 {
     log_function_enter(__func__);
     int ia = *ia__ - 1;
@@ -1593,7 +1595,7 @@ void FORTRAN(sirius_get_aw_h_radial_function)(int32_t* ia__, int32_t* l, int32_t
     for (int ir = 0; ir < global_parameters.unit_cell()->atom(ia)->num_mt_points(); ir++)
     {
         double rinv = global_parameters.unit_cell()->atom(ia)->type()->radial_grid().x_inv(ir);
-        hawrf[ir] = global_parameters.unit_cell()->atom(ia)->symmetry_class()->h_radial_function(ir, idxrf) * rinv;
+        hawrf__[ir] = global_parameters.unit_cell()->atom(ia)->symmetry_class()->h_radial_function(ir, idxrf) * rinv;
     }
     log_function_exit(__func__);
 }
