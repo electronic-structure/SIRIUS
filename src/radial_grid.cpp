@@ -197,8 +197,13 @@ void Radial_grid::set_radial_points(int num_points__, double* x__)
     /* set dx */
     dx_.resize(num_points__ - 1);
     for (int i = 0; i < num_points__ - 1; i++) dx_[i] = x_[i + 1] - x_[i];
-
-    if (dx_[0] < 1e-7) warning_global(__FILE__, __LINE__, "dx0 is really small");
+    
+    if (dx_[0] < 1e-7)
+    {
+        std::stringstream s;
+        s << "dx step near origin is small : " << Utils::double_to_string(dx_[0]);
+        warning_global(__FILE__, __LINE__, s);
+    }
 }
 
 };
