@@ -456,12 +456,13 @@ void Unit_cell::update()
     vector3d<double> v1(lattice_vectors_[1]);
     vector3d<double> v2(lattice_vectors_[2]);
 
-    //find_nearest_neighbours(v0.length() + v1.length() + v2.length());
-    find_nearest_neighbours(10.0);
+    //== find_nearest_neighbours(v0.length() + v1.length() + v2.length());
+    double r = std::min(v0.length(), std::min(v1.length(), v2.length()));
+    find_nearest_neighbours(r);
 
     if (full_potential())
     {
-        // find new MT radii and initialize radial grid 
+        /* find new MT radii and initialize radial grid */
         if (auto_rmt())
         {
             std::vector<double> Rmt = find_mt_radii();
