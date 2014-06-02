@@ -1,5 +1,3 @@
-# This file is part of SIRIUS
-# 
 # Copyright (c) 2013 Anton Kozhevnikov, Thomas Schulthess
 # All rights reserved.
 # 
