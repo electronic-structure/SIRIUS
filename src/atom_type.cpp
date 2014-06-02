@@ -177,8 +177,15 @@ void Atom_type::set_radial_grid(int num_points, double* points)
     }
     else
     {
+        assert(num_points == num_mt_points_);
         radial_grid_ = Radial_grid(num_points, points);
     }
+}
+
+void Atom_type::set_free_atom_radial_grid(int num_points, double* points)
+{
+    if (num_mt_points_ <= 0) error_local(__FILE__, __LINE__, "wrong number of radial points");
+    free_atom_radial_grid_ = Radial_grid(num_points, points);
 }
 
 void Atom_type::init_aw_descriptors(int lmax)
@@ -214,11 +221,11 @@ void Atom_type::add_aw_descriptor(int n, int l, double enu, int dme, int auto_en
     rsd.n = n;
     if (n == -1)
     {
-        // default pqn value for any l
+        /* default principal quantum number value for any l */
         rsd.n = l + 1;
         for (int ist = 0; ist < num_atomic_levels(); ist++)
         {
-            // take next level after the core
+            /* take next level after the core */
             if (atomic_level(ist).core && atomic_level(ist).l == l) rsd.n = atomic_level(ist).n + 1;
         }
     }
@@ -248,13 +255,13 @@ void Atom_type::add_lo_descriptor(int ilo, int n, int l, double enu, int dme, in
     rsd.n = n;
     if (n == -1)
     {
-        // default value for any l
+        /* default value for any l */
         rsd.n = l + 1;
         for (int ist = 0; ist < num_atomic_levels(); ist++)
         {
             if (atomic_level(ist).core && atomic_level(ist).l == l)
             {   
-                // take next level after the core
+                /* take next level after the core */
                 rsd.n = atomic_level(ist).n + 1;
             }
         }
@@ -272,9 +279,13 @@ void Atom_type::init_free_atom(bool smooth)
     /* check if atomic file exists */
     if (!Utils::file_exists(file_name_))
     {
+        //== std::stringstream s;
+        //== s << "file " + file_name_ + " doesn't exist";
+        //== error_global(__FILE__, __LINE__, s);
         std::stringstream s;
-        s << "file " + file_name_ + " doesn't exist";
-        error_global(__FILE__, __LINE__, s);
+        s << "Free atom density and potential for atom " << label_ << " are not initialized";
+        warning_global(__FILE__, __LINE__, s);
+        return;
     }
 
     JSON_tree parser(file_name_);
