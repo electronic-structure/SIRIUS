@@ -217,7 +217,7 @@ class Band
                         dmatrix<double_complex>& o);
 
         /// Solve first-variational problem
-        void solve_fv(K_point* kp, Periodic_function<double>* effective_potential);
+        void solve_fv(K_point* kp__, Periodic_function<double>* effective_potential__);
 
         /// Solve second-variational problem
         void solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_field[3]);

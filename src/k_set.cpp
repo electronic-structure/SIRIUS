@@ -47,7 +47,6 @@ void K_set::update()
 void K_set::sync_band_energies()
 {
     mdarray<double, 2> band_energies(parameters_.num_bands(), num_kpoints());
-    band_energies.zero();
 
     for (int ikloc = 0; ikloc < (int)spl_num_kpoints_.local_size(); ikloc++)
     {
@@ -101,11 +100,7 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         if (use_second_variation)
         {
             band_->solve_fv(kpoints_[ik], potential->effective_potential());
-            if (parameters_.unit_cell()->full_potential())
-            {
-                kpoints_[ik]->generate_fv_states();
-                //kpoints_[ik]->distribute_fv_states_row();
-            }
+            if (parameters_.unit_cell()->full_potential()) kpoints_[ik]->generate_fv_states();
             band_->solve_sv(kpoints_[ik], potential->effective_magnetic_field());
         }
         else
@@ -116,7 +111,7 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
     }
     Platform::barrier();
 
-    // synchronize eigen-values
+    /* synchronize eigen-values */
     sync_band_energies();
 
     if (Platform::mpi_rank() == 0 && verbosity_level >= 5)

@@ -1319,7 +1319,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;
-        warning_local(__FILE__, __LINE__, s);
+        warning_global(__FILE__, __LINE__, s);
     }
     
     Smooth_periodic_function_gradient<spatial, double> grad_rho_it;
@@ -1496,7 +1496,7 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;
-        warning_local(__FILE__, __LINE__, s);
+        warning_global(__FILE__, __LINE__, s);
     }
 
     Smooth_periodic_function_gradient<spatial, double> grad_rho_up_it;
@@ -1999,16 +1999,16 @@ void Potential::set_effective_potential_ptr(double* veffmt, double* veffit)
     effective_potential_->set_it_ptr(veffit);
 }
 
-void Potential::copy_to_global_ptr(double* fmt, double* fit, Periodic_function<double>* src)
-{
-    stop_here // fix thsi
-    //Periodic_function<double>* dest = new Periodic_function<double>(parameters_, parameters_.lmmax_pot());
-    //dest->set_mt_ptr(fmt);
-    //dest->set_it_ptr(fit);
-    //dest->copy(src);
-    //dest->sync(true, true);
-    //delete dest;
-}
+//void Potential::copy_to_global_ptr(double* fmt__, double* fit__, Periodic_function<double>* src)
+//{
+//    stop_here // fix thsi
+//    //Periodic_function<double>* dest = new Periodic_function<double>(parameters_, parameters_.lmmax_pot());
+//    //dest->set_mt_ptr(fmt);
+//    //dest->set_it_ptr(fit);
+//    //dest->copy(src);
+//    //dest->sync(true, true);
+//    //delete dest;
+//}
 
 
 //** void Potential::copy_xc_potential(double* vxcmt, double* vxcit)

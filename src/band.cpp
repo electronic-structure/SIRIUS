@@ -1638,16 +1638,16 @@ void Band::set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o)
 //==     alm.deallocate();
 //== }
 
-void Band::solve_fv(K_point* kp, Periodic_function<double>* effective_potential)
+void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potential__)
 {
-    if (kp->gklo_basis_size() < parameters_.num_fv_states()) error_global(__FILE__, __LINE__, "basis size is too small");
+    if (kp__->gklo_basis_size() < parameters_.num_fv_states()) error_global(__FILE__, __LINE__, "basis size is too small");
 
     switch (parameters_.esm_type())
     {
         case full_potential_pwlo:
         case full_potential_lapwlo:
         {
-            diag_fv_full_potential(kp, effective_potential);
+            diag_fv_full_potential(kp__, effective_potential__);
             break;
         }
         case ultrasoft_pseudopotential:
@@ -1656,13 +1656,13 @@ void Band::solve_fv(K_point* kp, Periodic_function<double>* effective_potential)
             {
                 case cpu:
                 {
-                    diag_fv_uspp_cpu(kp, effective_potential);
+                    diag_fv_uspp_cpu(kp__, effective_potential__);
                     break;
                 }
                 case gpu:
                 {
                     #ifdef _GPU_
-                    diag_fv_uspp_gpu(kp, effective_potential);
+                    diag_fv_uspp_gpu(kp__, effective_potential__);
                     #else
                     error_local(__FILE__, __LINE__, "not compiled with GPU support");
                     #endif

@@ -110,7 +110,8 @@ class Unit_cell
         /// maximum number of MT radial basis functions across all atoms
         int max_mt_radial_basis_size_;
 
-        /// total number of augmented wave basis functions in the MTs (= total number of matching coefficients for each plane-wave)
+        /// Total number of augmented wave basis functions in the muffin-tins.
+        /** This is equal to the total number of matching coefficients for each plane-wave. */
         int mt_aw_basis_size_;
 
         /// List of augmented wave basis descriptors.

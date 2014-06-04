@@ -132,7 +132,8 @@ class Periodic_function
         void sync(bool sync_mt, bool sync_it);
 
         /// Copy from source
-        void copy(Periodic_function<T>* src);
+        //void copy(Periodic_function<T>* src);
+        inline void copy_to_global_ptr(T* f_mt__, T* f_it__);
 
         /// Add the function
         void add(Periodic_function<T>* g);

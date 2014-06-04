@@ -192,10 +192,10 @@ void Global::initialize()
         }
     }
 
-    // initialize variables, related to the unit cell
+    /* initialize variables, related to the unit cell */
     unit_cell_->initialize(lmax_apw(), lmax_pot(), num_mag_dims());
 
-    // create a reciprocal lattice
+    /* create a reciprocal lattice */
     int lmax = -1;
     switch (esm_type())
     {
@@ -229,7 +229,11 @@ void Global::initialize()
     mpi_grid_.initialize(mpi_grid_dims_);
     
     /* take 20% of empty non-magnetic states */
-    if (num_fv_states_ < 0) num_fv_states_ = int(1.2 * unit_cell_->num_valence_electrons() / 2.0);
+    if (num_fv_states_ < 0) 
+    {
+        num_fv_states_ = int(1e-8 + unit_cell_->num_valence_electrons() / 2.0) +
+                         std::max(10, int(0.1 * unit_cell_->num_valence_electrons()));
+    }
 
     if (num_fv_states_ < int(unit_cell_->num_valence_electrons() / 2.0))
         error_global(__FILE__, __LINE__, "not enough first-variational states");
@@ -244,7 +248,7 @@ void Global::initialize()
     int irow = mpi_grid().coordinate(_dim_row_);
     int icol = mpi_grid().coordinate(_dim_col_);
 
-    // create standard eigen-value solver
+    /* create standard eigen-value solver */
     switch (std_evp_solver_type_)
     {
         case ev_lapack:
@@ -268,12 +272,12 @@ void Global::initialize()
         }
     }
     
-    // create generalized eign-value solver
+    /* create generalized eign-value solver */
     switch (gen_evp_solver_type_)
     {
         case ev_lapack:
         {
-            gen_evp_solver_ = new generalized_evp_lapack(-1.0);
+            gen_evp_solver_ = new generalized_evp_lapack(1e-15);
             break;
         }
         case ev_scalapack:

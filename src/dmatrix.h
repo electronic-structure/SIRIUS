@@ -80,6 +80,17 @@ class dmatrix
             matrix_local_.allocate();
         }
 
+        dmatrix(T* ptr__, int num_rows__, int num_cols__, int blacs_context__) 
+            : num_ranks_row_(1), 
+              rank_row_(0), 
+              num_ranks_col_(1), 
+              rank_col_(0)
+
+        {
+            set_dimensions(num_rows__, num_cols__, blacs_context__);
+            matrix_local_.set_ptr(ptr__);
+        }
+
         ~dmatrix()
         {
             matrix_local_.deallocate();

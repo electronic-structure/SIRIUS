@@ -158,6 +158,11 @@ class Spheric_function
         {
             data_.set_ptr(ptr);
         }
+
+        inline int size()
+        {
+            return angular_domain_size_ * radial_grid_.num_points();
+        }
 };
 
 /// Inner product of two spherical functions.

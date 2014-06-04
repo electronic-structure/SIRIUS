@@ -38,19 +38,19 @@ class Atom_symmetry_class
 {
     private:
         
-        /// symmetry class id in the range [0, N_class - 1]
+        /// Symmetry class id in the range [0, N_class).
         int id_;
 
-        /// list of atoms of this class
+        /// List of atoms of this class.
         std::vector<int> atom_id_;
         
-        /// atom type
+        /// Pointer to atom type.
         Atom_type* atom_type_;
 
         /// Spherical part of the effective potential.
         std::vector<double> spherical_potential_;
 
-        /// list of radial functions
+        /// List of radial functions.
         mdarray<double, 3> radial_functions_;
         
         /// surface derivatives of aw radial functions
@@ -174,7 +174,7 @@ class Atom_symmetry_class
             return radial_functions_(ir, idx, 0);
         }
 
-        inline double h_radial_function(int ir, int idx)
+        inline double r_deriv_radial_function(int ir, int idx)
         {
             return radial_functions_(ir, idx, 1);
         }

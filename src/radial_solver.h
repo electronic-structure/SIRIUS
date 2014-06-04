@@ -91,28 +91,42 @@ class Radial_solver
 
         /// Find m-th energy derivative of the radial solution.
         /** Return raw data: P and Q functions and their radial derivatives */
-        int solve(int l, 
-                  double enu, 
-                  int m, 
-                  std::vector<double>& v, 
-                  std::vector<double>& p0, 
-                  std::vector<double>& p1, 
-                  std::vector<double>& q0, 
+        int solve(int l,
+                  double enu,
+                  int m,
+                  const std::vector<double>& v,
+                  std::vector<double>& p0,
+                  std::vector<double>& p1,
+                  std::vector<double>& q0,
                   std::vector<double>& q1);
         
         /// Find m-th energy derivative of the radial solution.
-        /** Return radial Hamiltonian applied to a solution and a surface derivative */
-        int solve(int l, 
-                  double enu, 
-                  int m, 
-                  std::vector<double>& v, 
-                  std::vector<double>& p, 
-                  std::vector<double>& hp, 
-                  double& dpdr_R);
+        /** Solve radial equation and return \f$ p(r) = ru(r) \f$, \f$ ru'(r)\f$ and \f$ p'(R) \f$ at the 
+         *  muffin-tin boundary.
+         *
+         *  \param [in] l Oribtal quantum number.
+         *  \param [in] m Order of energy derivative.
+         *  \param [in] e Integration energy.
+         *  \param [in] v Spherical potential.
+         *  \param [out] p \f$ p(r) = ru(r) \f$ radial function.
+         *  \param [out] rdudr \f$ ru'(r) \f$.
+         *  \param [out] dpdr \f$ p'(R) \f$ on the sphere.
+         */
+        int solve(int l__,
+                  int m__,
+                  double e__,
+                  const std::vector<double>& v__,
+                  std::vector<double>& p__,
+                  std::vector<double>& rdudr__,
+                  double* dpdr__);
         
         /// Find a bound state.
         /** Radial grid must be large enough to fully hold the bound state. */
-        double bound_state(int n, int l, double enu, std::vector<double>& v, std::vector<double>& p);
+        double bound_state(int n__,
+                           int l__,
+                           double enu__,
+                           const std::vector<double>& v__,
+                           std::vector<double>& p__);
 };
 
 };

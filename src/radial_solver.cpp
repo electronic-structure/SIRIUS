@@ -151,7 +151,7 @@ int Radial_solver::integrate(int l,
 int Radial_solver::solve(int l, 
                          double enu, 
                          int m, 
-                         std::vector<double>& v, 
+                         const std::vector<double>& v, 
                          std::vector<double>& p0, 
                          std::vector<double>& p1, 
                          std::vector<double>& q0, 
@@ -184,29 +184,24 @@ int Radial_solver::solve(int l,
     return nn;
 }
 
-int Radial_solver::solve(int l, 
-                         double enu, 
-                         int m, 
-                         std::vector<double>& v, 
-                         std::vector<double>& p, 
-                         std::vector<double>& hp, 
-                         double& dpdr_R)
+int Radial_solver::solve(int l__, 
+                         int m__, 
+                         double enu__, 
+                         const std::vector<double>& v__, 
+                         std::vector<double>& p__, 
+                         std::vector<double>& rdudr__, 
+                         double* dpdr__)
 {
     std::vector<double> q;
     std::vector<double> dpdr;
     std::vector<double> dqdr;
 
-    int nn = solve(l, enu, m, v, p, dpdr, q, dqdr);
+    int nn = solve(l__, enu__, m__, v__, p__, dpdr, q, dqdr);
     
-    hp.resize(radial_grid_.num_points());
-    double alph2 = 0.0;
-    if (relativistic_) alph2 = pow((1.0 / speed_of_light), 2);
-    for (int i = 0; i < radial_grid_.num_points(); i++)
-    {
-        double t1 = 2.0 - v[i] * alph2;
-        hp[i] = (double(l * (l + 1)) / t1 / pow(radial_grid_[i], 2.0) + v[i]) * p[i] - q[i] / radial_grid_[i] - dqdr[i];
-    }
-    dpdr_R = dpdr[radial_grid_.num_points() - 1];
+    rdudr__.resize(radial_grid_.num_points());
+    for (int i = 0; i < radial_grid_.num_points(); i++) rdudr__[i] = dpdr[i] - p__[i] * radial_grid_.x_inv(i);
+
+    *dpdr__ = dpdr[radial_grid_.num_points() - 1];
     return nn;
 }
 
@@ -224,7 +219,7 @@ double Radial_solver::find_enu(int n, int l, std::vector<double>& v, double enu0
     int nndp = 0;
     for (int i = 0; i < 1000; i++)
     {
-        int nnd = solve(l, enu, 0, v, p, hp, dpdr) - (n - l - 1);
+        int nnd = solve(l, 0, enu, v, p, hp, &dpdr) - (n - l - 1);
         if (nnd > 0)
         {
             enu -= de;
@@ -261,7 +256,7 @@ double Radial_solver::find_enu(int n, int l, std::vector<double>& v, double enu0
     double p1p = 0;
     for (int i = 0; i < 1000; i++)
     {
-        solve(l, enu, 0, v, p, hp, dpdr);
+        solve(l, 0, enu, v, p, hp, &dpdr);
 
         if (i > 0)
         {
@@ -290,12 +285,16 @@ double Radial_solver::find_enu(int n, int l, std::vector<double>& v, double enu0
 }
                         
         
-double Radial_solver::bound_state(int n, int l, double enu, std::vector<double>& v, std::vector<double>& p)
+double Radial_solver::bound_state(int n__, 
+                                  int l__, 
+                                  double enu__, 
+                                  const std::vector<double>& v__, 
+                                  std::vector<double>& p__)
 {
     int np = radial_grid_.num_points();
 
     Spline<double> vs(radial_grid_);
-    for (int i = 0; i < np; i++) vs[i] = v[i] - zn_ / radial_grid_[i];
+    for (int i = 0; i < np; i++) vs[i] = v__[i] - zn_ / radial_grid_[i];
     vs.interpolate();
 
     Spline<double> mp(radial_grid_, 0);
@@ -311,13 +310,13 @@ double Radial_solver::bound_state(int n, int l, double enu, std::vector<double>&
 
     for (int iter = 0; iter < 1000; iter++)
     {
-        int nn = integrate(l, enu, vs, mp, p, dpdr, q, dqdr);
+        int nn = integrate(l__, enu__, vs, mp, p__, dpdr, q, dqdr);
         
         sp = s;
-        s = (nn > (n - l - 1)) ? -1 : 1;
+        s = (nn > (n__ - l__ - 1)) ? -1 : 1;
         denu = s * fabs(denu);
         denu = (s != sp) ? denu * 0.5 : denu * 1.25;
-        enu += denu;
+        enu__ += denu;
         
         if (fabs(denu) < enu_tolerance_ && iter > 4) break;
     }
@@ -325,7 +324,7 @@ double Radial_solver::bound_state(int n, int l, double enu, std::vector<double>&
     if (fabs(denu) >= enu_tolerance_) 
     {
         std::stringstream s;
-        s << "enu is not converged for n = " << n << " and l = " << l; 
+        s << "enu is not converged for n = " << n__ << " and l = " << l__; 
         error_local(__FILE__, __LINE__, s);
     }
 
@@ -333,7 +332,7 @@ double Radial_solver::bound_state(int n, int l, double enu, std::vector<double>&
     int idxtp = np - 1;
     for (int i = 0; i < np; i++)
     {
-        if (v[i] > enu)
+        if (v__[i] > enu__)
         {
             idxtp = i;
             break;
@@ -344,40 +343,40 @@ double Radial_solver::bound_state(int n, int l, double enu, std::vector<double>&
     double t1 = 1e100;
     for (int i = idxtp; i < np; i++)
     {
-        if ((fabs(p[i]) < t1) && (p[i - 1] * p[i] > 0))
+        if (fabs(p__[i]) < t1 && p__[i - 1] * p__[i] > 0)
         {
-            t1 = fabs(p[i]);
+            t1 = fabs(p__[i]);
         }
         else
         {
             t1 = 0.0;
-            p[i] = 0.0;
+            p__[i] = 0.0;
         }
     }
 
     Spline<double> rho(radial_grid_);
-    for (int i = 0; i < np; i++) rho[i] = p[i] * p[i];
+    for (int i = 0; i < np; i++) rho[i] = p__[i] * p__[i];
 
     /* p is not divided by r, so we integrate with r^0 prefactor */
     double norm = rho.interpolate().integrate(0);
     
-    for (int i = 0; i < np; i++) p[i] /= sqrt(norm);
+    for (int i = 0; i < np; i++) p__[i] /= sqrt(norm);
 
     /* count number of nodes of the function */
     int nn = 0;
-    for (int i = 0; i < np - 1; i++) if (p[i] * p[i + 1] < 0.0) nn++;
+    for (int i = 0; i < np - 1; i++) if (p__[i] * p__[i + 1] < 0.0) nn++;
 
-    if (nn != (n - l - 1))
+    if (nn != (n__ - l__ - 1))
     {
         std::stringstream s;
-        s << "n = " << n << std::endl 
-          << "l = " << l << std::endl
-          << "enu = " << enu << std::endl
-          << "wrong number of nodes : " << nn << " instead of " << (n - l - 1);
+        s << "n = " << n__ << std::endl 
+          << "l = " << l__ << std::endl
+          << "enu = " << enu__ << std::endl
+          << "wrong number of nodes : " << nn << " instead of " << (n__ - l__ - 1);
         error_local(__FILE__, __LINE__, s);
     }
 
-    return enu;
+    return enu__;
 }
 
 }

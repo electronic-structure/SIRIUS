@@ -396,9 +396,11 @@ class Atom_type
         
         void init(int lmax_apw, int offs);
 
-        void set_radial_grid(int num_points = -1, double* points = NULL);
+        void set_radial_grid(int num_points__ = -1, double* points__ = NULL);
 
-        void set_free_atom_radial_grid(int num_points, double* points);
+        void set_free_atom_radial_grid(int num_points__, double* points__);
+
+        void set_free_atom_potential(int num_points__, double* vs__);
 
         /// Add augmented-wave descriptor.
         void add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu);

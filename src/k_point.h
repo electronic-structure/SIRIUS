@@ -161,8 +161,6 @@ class K_point
         /// plane-wave coefficients of |beta> functions for atoms
         mdarray<double_complex, 2> beta_pw_a_;
 
-        // void check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm);
-
         /// Copy lo block from eigen-vector to wave-function
         inline void copy_lo_blocks(const double_complex* z, double_complex* vec);
         

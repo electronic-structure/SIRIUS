@@ -182,10 +182,17 @@ void Atom_type::set_radial_grid(int num_points, double* points)
     }
 }
 
-void Atom_type::set_free_atom_radial_grid(int num_points, double* points)
+void Atom_type::set_free_atom_radial_grid(int num_points__, double* points__)
 {
     if (num_mt_points_ <= 0) error_local(__FILE__, __LINE__, "wrong number of radial points");
-    free_atom_radial_grid_ = Radial_grid(num_points, points);
+    free_atom_radial_grid_ = Radial_grid(num_points__, points__);
+}
+
+void Atom_type::set_free_atom_potential(int num_points__, double* vs__)
+{
+    free_atom_potential_ = Spline<double>(free_atom_radial_grid_);
+    for (int i = 0; i < num_points__; i++) free_atom_potential_[i] = vs__[i];
+    free_atom_potential_.interpolate();
 }
 
 void Atom_type::init_aw_descriptors(int lmax)
@@ -282,9 +289,9 @@ void Atom_type::init_free_atom(bool smooth)
         //== std::stringstream s;
         //== s << "file " + file_name_ + " doesn't exist";
         //== error_global(__FILE__, __LINE__, s);
-        std::stringstream s;
-        s << "Free atom density and potential for atom " << label_ << " are not initialized";
-        warning_global(__FILE__, __LINE__, s);
+        //std::stringstream s;
+        //s << "Free atom density and potential for atom " << label_ << " are not initialized";
+        //warning_global(__FILE__, __LINE__, s);
         return;
     }
 

@@ -205,6 +205,12 @@ void FORTRAN(sirius_set_atom_type_radial_grid)(char* label, int32_t* num_radial_
     type->set_free_atom_radial_grid(*num_radial_points, radial_points);
 }
 
+void FORTRAN(sirius_set_free_atom_potential)(char* label__, int32_t* num_points__, double* vs__, int32_t label_len__)
+{
+    sirius::Atom_type* type = global_parameters.unit_cell()->atom_type(std::string(label__, label_len__));
+    type->set_free_atom_potential(*num_points__, vs__);
+}
+
 /// Set the atomic level configuration of the atom type.
 /** With each call to the function new atomic level is added to the list of atomic levels of the atom type.
  *
@@ -567,8 +573,6 @@ void FORTRAN(sirius_get_num_core_electrons)(double* num_core_electrons)
     log_function_exit(__func__);
 }
 
-
-
 /// Clear global variables and destroy all objects
 void FORTRAN(sirius_clear)(void)
 {
@@ -615,10 +619,10 @@ void FORTRAN(sirius_generate_effective_potential)(void)
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_generate_density)(int32_t* kset_id)
+void FORTRAN(sirius_generate_density)(int32_t* kset_id__)
 {
     log_function_enter(__func__);
-    density->generate(*kset_list[*kset_id]);
+    density->generate(*kset_list[*kset_id__]);
     log_function_exit(__func__);
 }
 
@@ -644,18 +648,18 @@ void FORTRAN(sirius_generate_density)(int32_t* kset_id)
           call sirius_find_eigen_states(kset_id, 1) 
     \endcode
 */
-void FORTRAN(sirius_find_eigen_states)(int32_t* kset_id, int32_t* precompute__)
+void FORTRAN(sirius_find_eigen_states)(int32_t* kset_id__, int32_t* precompute__)
 {
     log_function_enter(__func__);
     bool precompute = (*precompute__) ? true : false;
-    kset_list[*kset_id]->find_eigen_states(potential, precompute);
+    kset_list[*kset_id__]->find_eigen_states(potential, precompute);
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_find_band_occupancies)(int32_t* kset_id)
+void FORTRAN(sirius_find_band_occupancies)(int32_t* kset_id__)
 {
     log_function_enter(__func__);
-    kset_list[*kset_id]->find_band_occupancies();
+    kset_list[*kset_id__]->find_band_occupancies();
     log_function_exit(__func__);
 }
 
@@ -667,11 +671,11 @@ void FORTRAN(sirius_set_band_occupancies)(int32_t* kset_id, int32_t* ik_, double
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_band_energies)(int32_t* kset_id, int32_t* ik__, double* band_energies)
+void FORTRAN(sirius_get_band_energies)(int32_t* kset_id__, int32_t* ik__, double* band_energies__)
 {
     log_function_enter(__func__);
     int ik = *ik__ - 1;
-    kset_list[*kset_id]->get_band_energies(ik, band_energies);
+    kset_list[*kset_id__]->get_band_energies(ik, band_energies__);
     log_function_exit(__func__);
 }
 
@@ -1262,10 +1266,11 @@ void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* nu
                                       double_complex* gkvec_phase_factors__, int32_t* ld)
 {
     log_function_enter(__func__);
-    // position of processors which store a given k-point
-    int x0 = kset_list[*kset_id]->spl_num_kpoints().local_rank(*ik - 1);
+
+    /* position of processors which store a given k-point */
+    int rank = kset_list[*kset_id]->spl_num_kpoints().local_rank(*ik - 1);
     
-    if (x0 == global_parameters.mpi_grid().coordinate(_dim_k_))
+    if (rank == global_parameters.mpi_grid().coordinate(_dim_k_))
     {
         sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
         *num_gkvec = kp->num_gkvec();
@@ -1299,89 +1304,103 @@ void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* nu
         Platform::allreduce(&gkvec_phase_factors(0, 0), (int)gkvec_phase_factors.size(), 
                             global_parameters.mpi_grid().communicator(1 << _dim_row_));
     }
-    Platform::bcast(num_gkvec, 1, global_parameters.mpi_grid().communicator(1 << _dim_k_), x0);
-    Platform::bcast(gvec_index, *num_gkvec, global_parameters.mpi_grid().communicator(1 << _dim_k_), x0);
-    Platform::bcast(gkvec__, *num_gkvec * 3, global_parameters.mpi_grid().communicator(1 << _dim_k_), x0);
-    Platform::bcast(gkvec_cart__, *num_gkvec * 3, global_parameters.mpi_grid().communicator(1 << _dim_k_), x0);
-    Platform::bcast(gkvec_len, *num_gkvec, global_parameters.mpi_grid().communicator(1 << _dim_k_), x0);
-    Platform::bcast(gkvec_tp__, *num_gkvec * 2, global_parameters.mpi_grid().communicator(1 << _dim_k_), x0);
-    Platform::bcast(gkvec_phase_factors__, *ld * global_parameters.unit_cell()->num_atoms(), global_parameters.mpi_grid().communicator(1 << _dim_k_), x0);
+    Platform::bcast(num_gkvec, 1, global_parameters.mpi_grid().communicator(1 << _dim_k_), rank);
+    Platform::bcast(gvec_index, *num_gkvec, global_parameters.mpi_grid().communicator(1 << _dim_k_), rank);
+    Platform::bcast(gkvec__, *num_gkvec * 3, global_parameters.mpi_grid().communicator(1 << _dim_k_), rank);
+    Platform::bcast(gkvec_cart__, *num_gkvec * 3, global_parameters.mpi_grid().communicator(1 << _dim_k_), rank);
+    Platform::bcast(gkvec_len, *num_gkvec, global_parameters.mpi_grid().communicator(1 << _dim_k_), rank);
+    Platform::bcast(gkvec_tp__, *num_gkvec * 2, global_parameters.mpi_grid().communicator(1 << _dim_k_), rank);
+    Platform::bcast(gkvec_phase_factors__, *ld * global_parameters.unit_cell()->num_atoms(), global_parameters.mpi_grid().communicator(1 << _dim_k_), rank);
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id, int32_t* ik, double_complex* apwalm__, 
-                                               int32_t* ngkmax, int32_t* apwordmax)
+void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id__, int32_t* ik__, double_complex* apwalm__, 
+                                               int32_t* ngkmax__, int32_t* apwordmax__)
 {
-    //stop_here
-    terminate(__FILE__, __LINE__, "fix this");
+    log_function_enter(__func__);
 
-    //== log_function_enter(__func__);
+    int rank = kset_list[*kset_id__]->spl_num_kpoints().local_rank(*ik__ - 1);
+    
+    if (rank == global_parameters.mpi_grid().coordinate(0))
+    {
+        auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
+        
+        mdarray<double_complex, 4> apwalm(apwalm__, *ngkmax__, *apwordmax__, global_parameters.lmmax_apw(), 
+                                          global_parameters.unit_cell()->num_atoms());
 
-    //== int rank = kset_list[*kset_id]->spl_num_kpoints().location(_splindex_rank_, *ik - 1);
-    //== 
-    //== if (rank == global_parameters.mpi_grid().coordinate(0))
-    //== {
-    //==     sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
-    //==     
-    //==     mdarray<double_complex, 4> apwalm(apwalm__, *ngkmax, *apwordmax, global_parameters.lmmax_apw(), 
-    //==                                  global_parameters.unit_cell()->num_atoms());
-    //==     apwalm.zero();
 
-    //==     mdarray<double_complex, 2> alm(kp->num_gkvec_row(), global_parameters.unit_cell()->max_mt_aw_basis_size());
+        dmatrix<double_complex> alm(kp->num_gkvec_row(), global_parameters.unit_cell()->mt_aw_basis_size(), global_parameters.blacs_context());
+        kp->alm_coeffs_row()->generate<true>(alm);
 
-    //==     for (int ia = 0; ia < global_parameters.unit_cell()->num_atoms(); ia++)
-    //==     {
-    //==         sirius::Atom* atom = global_parameters.unit_cell()->atom(ia);
-    //==         kp->generate_matching_coefficients<false>(kp->num_gkvec_row(), ia, alm);
+        for (int i = 0; i < global_parameters.unit_cell()->mt_aw_basis_size(); i++)
+        {
+            int ia = global_parameters.unit_cell()->mt_aw_basis_descriptor(i).ia;
+            int xi = global_parameters.unit_cell()->mt_aw_basis_descriptor(i).xi;
+            
+            int lm = global_parameters.unit_cell()->atom(ia)->type()->indexb(xi).lm;
+            int order = global_parameters.unit_cell()->atom(ia)->type()->indexb(xi).order;
 
-    //==         for (int l = 0; l <= global_parameters.lmax_apw(); l++)
-    //==         {
-    //==             for (int order = 0; order < (int)atom->type()->aw_descriptor(l).size(); order++)
-    //==             {
-    //==                 for (int m = -l; m <= l; m++)
-    //==                 {
-    //==                     int lm = Utils::lm_by_l_m(l, m);
-    //==                     int i = atom->type()->indexb_by_lm_order(lm, order);
-    //==                     for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++) 
-    //==                     {
-    //==                         int igk = kp->gklo_basis_descriptor_row(igkloc).igk;
-    //==                         apwalm(igk, order, lm, ia) = alm(igkloc, i);
-    //==                     }
-    //==                 }
-    //==             }
-    //==         }
-    //==     }
-    //==     for (int ia = 0; ia < global_parameters.unit_cell()->num_atoms(); ia++)
-    //==     {
-    //==         Platform::allreduce(&apwalm(0, 0, 0, ia), (int)(apwalm.size(0) * apwalm.size(1) * apwalm.size(2)),
-    //==                             global_parameters.mpi_grid().communicator(1 << _dim_row_));
-    //==     }
-    //== }
-    //== log_function_exit(__func__);
+            for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++) 
+            {
+                int igk = kp->gklo_basis_descriptor_row(igkloc).igk;
+                apwalm(igk, order, lm, ia) = alm(igkloc, i);
+            }
+        }
+        //== for (int ia = 0; ia < global_parameters.unit_cell()->num_atoms(); ia++)
+        //== {
+        //==     Platform::allreduce(&apwalm(0, 0, 0, ia), (int)(apwalm.size(0) * apwalm.size(1) * apwalm.size(2)),
+        //==                         global_parameters.mpi_grid().communicator(1 << _dim_row_));
+        //== }
+    }
+    log_function_exit(__func__);
 }
 
 /// Get first-variational matrices of Hamiltonian and overlap
 /** Radial integrals and plane-wave coefficients of the interstitial potential must be calculated prior to
-    Hamiltonian and overlap matrix construction. */
-//** void FORTRAN(sirius_get_fv_h_o)(int32_t* kset_id, int32_t* ik, int32_t* size, double_complex* h__, double_complex* o__)
-//** {
-//**     int rank = kset_list[*kset_id]->spl_num_kpoints().location(_splindex_rank_, *ik - 1);
-//**     
-//**     if (rank == global_parameters.mpi_grid().coordinate(0))
-//**     {
-//**         sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
-//**         
-//**         if (*size != kp->apwlo_basis_size())
-//**         {
-//**             error_local(__FILE__, __LINE__, "wrong matrix size");
-//**         }
-//** 
-//**         mdarray<double_complex, 2> h(h__, kp->apwlo_basis_size(), kp->apwlo_basis_size());
-//**         mdarray<double_complex, 2> o(o__, kp->apwlo_basis_size(), kp->apwlo_basis_size());
-//**         kp->set_fv_h_o<cpu, apwlo>(potential->effective_potential(), kset_list[*kset_id]->band()->num_ranks(), h, o);
-//**     }
-//** }
-//** 
+ *  Hamiltonian and overlap matrix construction. 
+ */
+void FORTRAN(sirius_get_fv_h_o)(int32_t* kset_id__, int32_t* ik__, int32_t* size__, double_complex* h__, double_complex* o__)
+{
+    int rank = kset_list[*kset_id__]->spl_num_kpoints().local_rank(*ik__ - 1);
+    
+    if (rank == global_parameters.mpi_grid().coordinate(0))
+    {
+        auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
+        
+        if (*size__ != kp->gklo_basis_size())
+        {
+            error_local(__FILE__, __LINE__, "wrong matrix size");
+        }
+
+        dmatrix<double_complex> h(h__, kp->gklo_basis_size(), kp->gklo_basis_size(), global_parameters.blacs_context());
+        dmatrix<double_complex> o(o__, kp->gklo_basis_size(), kp->gklo_basis_size(), global_parameters.blacs_context());
+        kset_list[*kset_id__]->band()->set_fv_h_o<cpu, full_potential_lapwlo>(kp, potential->effective_potential(), h, o);  
+    }
+}
+
+void FORTRAN(sirius_solve_fv)(int32_t* kset_id__, int32_t* ik__, double_complex* h__, double_complex* o__, 
+                              double* eval__, double_complex* evec__, int32_t* evec_ld__)
+{
+    int rank = kset_list[*kset_id__]->spl_num_kpoints().local_rank(*ik__ - 1);
+    
+    if (rank == global_parameters.mpi_grid().coordinate(0))
+    {
+        auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
+    
+        global_parameters.gen_evp_solver()->solve(kp->gklo_basis_size(),
+                                                  kp->gklo_basis_size_row(),
+                                                  kp->gklo_basis_size_col(),
+                                                  global_parameters.num_fv_states(),
+                                                  h__,
+                                                  kp->gklo_basis_size_row(), 
+                                                  o__,
+                                                  kp->gklo_basis_size_row(),
+                                                  eval__, 
+                                                  evec__,
+                                                  *evec_ld__);
+    }
+}
+
 /// Get the total size of wave-function (number of mt coefficients + number of G+k coefficients)
 void FORTRAN(sirius_get_mtgk_size)(int32_t* kset_id, int32_t* ik, int32_t* mtgk_size)
 {
@@ -1497,50 +1516,47 @@ void FORTRAN(sirius_get_energy_kin)(double* energy_kin)
 }
 
 /// Generate XC potential and magnetic field
-void FORTRAN(sirius_generate_xc_potential)(double* vxcmt, double* vxcit, double* bxcmt, double* bxcit)
+void FORTRAN(sirius_generate_xc_potential)(double* vxcmt__, double* vxcit__, double* bxcmt__, double* bxcit__)
 {
     log_function_enter(__func__);
-    using namespace sirius;
 
     potential->xc(density->rho(), density->magnetization(), potential->xc_potential(), potential->effective_magnetic_field(), 
-                  potential->xc_energy_density()); 
+                  potential->xc_energy_density());
+
+    potential->xc_potential()->copy_to_global_ptr(vxcmt__, vxcit__);
  
-    potential->copy_to_global_ptr(vxcmt, vxcit, potential->xc_potential());
-    
     if (global_parameters.num_mag_dims() == 0) return;
     assert(global_parameters.num_spins() == 2);
-     
-    // set temporary array wrapper
-    mdarray<double,4> bxcmt_tmp(bxcmt, global_parameters.lmmax_pot(), global_parameters.unit_cell()->max_num_mt_points(), 
-                                global_parameters.unit_cell()->num_atoms(), global_parameters.num_mag_dims());
-    mdarray<double,2> bxcit_tmp(bxcit, global_parameters.reciprocal_lattice()->fft()->size(), global_parameters.num_mag_dims());
+
+    /* set temporary array wrapper */
+    mdarray<double,4> bxcmt(bxcmt__, global_parameters.lmmax_pot(), global_parameters.unit_cell()->max_num_mt_points(), 
+                            global_parameters.unit_cell()->num_atoms(), global_parameters.num_mag_dims());
+    mdarray<double,2> bxcit(bxcit__, global_parameters.reciprocal_lattice()->fft()->size(), global_parameters.num_mag_dims());
 
     if (global_parameters.num_mag_dims() == 1)
     {
-        // z
-        potential->copy_to_global_ptr(&bxcmt_tmp(0, 0, 0, 0), &bxcit_tmp(0, 0), potential->effective_magnetic_field(0));
+        /* z component */
+        potential->effective_magnetic_field(0)->copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcit(0, 0));
     }
-     
-    if (global_parameters.num_mag_dims() == 3)
+    else
     {
-        // z
-        potential->copy_to_global_ptr(&bxcmt_tmp(0, 0, 0, 2), &bxcit_tmp(0, 2), potential->effective_magnetic_field(0));
-        // x
-        potential->copy_to_global_ptr(&bxcmt_tmp(0, 0, 0, 0), &bxcit_tmp(0, 0), potential->effective_magnetic_field(1));
-        // y
-        potential->copy_to_global_ptr(&bxcmt_tmp(0, 0, 0, 1), &bxcit_tmp(0, 1), potential->effective_magnetic_field(2));
+        /* z component */
+        potential->effective_magnetic_field(0)->copy_to_global_ptr(&bxcmt(0, 0, 0, 2), &bxcit(0, 2));
+        /* x component */
+        potential->effective_magnetic_field(1)->copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcit(0, 0));
+        /* y component */
+        potential->effective_magnetic_field(2)->copy_to_global_ptr(&bxcmt(0, 0, 0, 1), &bxcit(0, 1));
     }
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_generate_coulomb_potential)(double* vclmt, double* vclit)
+void FORTRAN(sirius_generate_coulomb_potential)(double* vclmt__, double* vclit__)
 {
     log_function_enter(__func__);
-    using namespace sirius;
 
     potential->poisson(density->rho(), potential->hartree_potential());
+    potential->hartree_potential()->copy_to_global_ptr(vclmt__, vclit__);
 
-    potential->copy_to_global_ptr(vclmt, vclit, potential->hartree_potential());
     log_function_exit(__func__);
 }
 
@@ -1575,59 +1591,61 @@ void FORTRAN(sirius_scalar_radial_solver)(int32_t* zn, int32_t* l, int32_t* dme,
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_aw_radial_function)(int32_t* ia__, int32_t* l, int32_t* io__, double* awrf__)
+void FORTRAN(sirius_get_aw_radial_function)(int32_t* ia__, int32_t* l__, int32_t* io__, double* f__)
 {
     log_function_enter(__func__);
     int ia = *ia__ - 1;
     int io = *io__ - 1;
-    int idxrf = global_parameters.unit_cell()->atom(ia)->type()->indexr_by_l_order(*l, io);
-    for (int ir = 0; ir < global_parameters.unit_cell()->atom(ia)->num_mt_points(); ir++)
-        awrf__[ir] = global_parameters.unit_cell()->atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+    auto atom = global_parameters.unit_cell()->atom(ia);
+    int idxrf = atom->type()->indexr_by_l_order(*l__, io);
+    for (int ir = 0; ir < atom->num_mt_points(); ir++) f__[ir] = atom->symmetry_class()->radial_function(ir, idxrf);
     log_function_exit(__func__);
 }
     
-void FORTRAN(sirius_get_aw_h_radial_function)(int32_t* ia__, int32_t* l, int32_t* io__, double* hawrf__)
+void FORTRAN(sirius_get_aw_deriv_radial_function)(int32_t* ia__, int32_t* l__, int32_t* io__, double* dfdr__)
 {
     log_function_enter(__func__);
     int ia = *ia__ - 1;
     int io = *io__ - 1;
-    int idxrf = global_parameters.unit_cell()->atom(ia)->type()->indexr_by_l_order(*l, io);
-    for (int ir = 0; ir < global_parameters.unit_cell()->atom(ia)->num_mt_points(); ir++)
+    auto atom = global_parameters.unit_cell()->atom(ia);
+    int idxrf = atom->type()->indexr_by_l_order(*l__, io);
+    for (int ir = 0; ir < atom->num_mt_points(); ir++)
     {
-        double rinv = global_parameters.unit_cell()->atom(ia)->type()->radial_grid().x_inv(ir);
-        hawrf__[ir] = global_parameters.unit_cell()->atom(ia)->symmetry_class()->h_radial_function(ir, idxrf) * rinv;
+        double rinv = atom->type()->radial_grid().x_inv(ir);
+        dfdr__[ir] = atom->symmetry_class()->r_deriv_radial_function(ir, idxrf) * rinv;
     }
     log_function_exit(__func__);
 }
     
-void FORTRAN(sirius_get_aw_surface_derivative)(int32_t* ia, int32_t* l, int32_t* io, double* dawrf)
+void FORTRAN(sirius_get_aw_surface_derivative)(int32_t* ia__, int32_t* l__, int32_t* io__, double* dawrf__)
 {
     log_function_enter(__func__);
-    *dawrf = global_parameters.unit_cell()->atom(*ia - 1)->symmetry_class()->aw_surface_dm(*l, *io - 1, 1); 
+    *dawrf__ = global_parameters.unit_cell()->atom(*ia__ - 1)->symmetry_class()->aw_surface_dm(*l__, *io__ - 1, 1); 
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_lo_radial_function)(int32_t* ia__, int32_t* idxlo__, double* lorf)
+void FORTRAN(sirius_get_lo_radial_function)(int32_t* ia__, int32_t* idxlo__, double* f__)
 {
     log_function_enter(__func__);
     int ia = *ia__ - 1;
     int idxlo = *idxlo__ - 1;
-    int idxrf = global_parameters.unit_cell()->atom(ia)->type()->indexr_by_idxlo(idxlo);
-    for (int ir = 0; ir < global_parameters.unit_cell()->atom(ia)->num_mt_points(); ir++)
-        lorf[ir] = global_parameters.unit_cell()->atom(ia)->symmetry_class()->radial_function(ir, idxrf);
+    auto atom = global_parameters.unit_cell()->atom(ia);
+    int idxrf = atom->type()->indexr_by_idxlo(idxlo);
+    for (int ir = 0; ir < atom->num_mt_points(); ir++) f__[ir] = atom->symmetry_class()->radial_function(ir, idxrf);
     log_function_exit(__func__);
 }
     
-void FORTRAN(sirius_get_lo_h_radial_function)(int32_t* ia__, int32_t* idxlo__, double* hlorf)
+void FORTRAN(sirius_get_lo_deriv_radial_function)(int32_t* ia__, int32_t* idxlo__, double* dfdr__)
 {
     log_function_enter(__func__);
     int ia = *ia__ - 1;
     int idxlo = *idxlo__ - 1;
-    int idxrf = global_parameters.unit_cell()->atom(ia)->type()->indexr_by_idxlo(idxlo);
-    for (int ir = 0; ir < global_parameters.unit_cell()->atom(ia)->num_mt_points(); ir++)
+    auto atom = global_parameters.unit_cell()->atom(ia);
+    int idxrf = atom->type()->indexr_by_idxlo(idxlo);
+    for (int ir = 0; ir < atom->num_mt_points(); ir++)
     {
-        double rinv = global_parameters.unit_cell()->atom(ia)->type()->radial_grid().x_inv(ir);
-        hlorf[ir] = global_parameters.unit_cell()->atom(ia)->symmetry_class()->h_radial_function(ir, idxrf) * rinv;
+        double rinv = atom->type()->radial_grid().x_inv(ir);
+        dfdr__[ir] = atom->symmetry_class()->r_deriv_radial_function(ir, idxrf) * rinv;
     }
     log_function_exit(__func__);
 }
@@ -1706,12 +1724,12 @@ void FORTRAN(sirius_generate_potential_pw_coefs)(void)
 
 /// Get first-variational eigen-vectors
 /** Assume that the Fortran side holds the whole array */
-void FORTRAN(sirius_get_fv_eigen_vectors)(int32_t* kset_id, int32_t* ik, double_complex* fv_evec__, int32_t* ld, 
-                                          int32_t* num_fv_evec)
+void FORTRAN(sirius_get_fv_eigen_vectors)(int32_t* kset_id__, int32_t* ik__, double_complex* fv_evec__, int32_t* ld__, 
+                                          int32_t* num_fv_evec__)
 {
     log_function_enter(__func__);
-    mdarray<double_complex, 2> fv_evec(fv_evec__, *ld, *num_fv_evec);
-    (*kset_list[*kset_id])[*ik - 1]->get_fv_eigen_vectors(fv_evec);
+    mdarray<double_complex, 2> fv_evec(fv_evec__, *ld__, *num_fv_evec__);
+    (*kset_list[*kset_id__])[*ik__ - 1]->get_fv_eigen_vectors(fv_evec);
     log_function_exit(__func__);
 }
 
@@ -1725,10 +1743,10 @@ void FORTRAN(sirius_get_sv_eigen_vectors)(int32_t* kset_id, int32_t* ik, double_
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_num_fv_states)(int32_t* num_fv_states)
+void FORTRAN(sirius_get_num_fv_states)(int32_t* num_fv_states__)
 {
     log_function_enter(__func__);
-    *num_fv_states = global_parameters.num_fv_states();
+    *num_fv_states__ = global_parameters.num_fv_states();
     log_function_exit(__func__);
 }
 

@@ -1329,45 +1329,32 @@ void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
     assert((int)sv_evec.size(0) == parameters_.num_bands());
     assert((int)sv_evec.size(1) == parameters_.num_bands());
 
-    stop_here
+    sv_evec.zero();
 
-    //== sv_evec.zero();
+    if (!parameters_.need_sv())
+    {
+        for (int i = 0; i < parameters_.num_fv_states(); i++) sv_evec(i, i) = complex_one;
+        return;
+    }
 
-    //== if (parameters_.num_mag_dims() == 0)
-    //== {
-    //==     for (int iloc = 0; iloc < parameters_.spl_spinor_wf_col().local_size(); iloc++)
-    //==     {
-    //==         int i = parameters_.spl_spinor_wf_col(iloc);
-    //==         for (int jloc = 0; jloc < parameters_.spl_fv_states_row().local_size(); jloc++)
-    //==         {
-    //==             int j = parameters_.spl_fv_states_row(jloc);
-    //==             sv_evec(j, i) = sv_eigen_vectors_(jloc, iloc);
-    //==         }
-    //==     }
-    //== }
-    //== if (parameters_.num_mag_dims() == 1)
-    //== {
-    //==     assert(sv_eigen_vectors_.size(0) == parameters_.num_fv_states());
+    int nsp = (parameters_.num_mag_dims() == 3) ? 1 : parameters_.num_spins();
 
-    //==     for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
-    //==     {
-    //==         for (int i = 0; i < parameters_.num_fv_states(); i++)
-    //==         {
-    //==             memcpy(&sv_evec(ispn * parameters_.num_fv_states(), ispn * parameters_.num_fv_states() + i), 
-    //==                    &sv_eigen_vectors_(0, ispn * parameters_.num_fv_states() + i), 
-    //==                    sv_eigen_vectors_.size(0) * sizeof(double_complex));
-    //==         }
-    //==     }
-    //== }
-    //== if (parameters_.num_mag_dims() == 3)
-    //== {
-    //==     assert(sv_eigen_vectors_.size(0) == parameters_.num_bands());
-    //==     for (int i = 0; i < parameters_.num_bands(); i++)
-    //==         memcpy(&sv_evec(0, i), &sv_eigen_vectors_(0, i), sv_eigen_vectors_.size(0) * sizeof(double_complex));
-    //== }
-    //== 
-    //== Platform::allreduce(sv_evec.ptr(), (int)sv_evec.size(), 
-    //==                     parameters_.mpi_grid().communicator((1 << _dim_row_) | (1 << _dim_col_)));
+    for (int ispn = 0; ispn < nsp; ispn++)
+    {
+        int offs = parameters_.num_fv_states() * ispn;
+        for (int jloc = 0; jloc < sv_eigen_vectors_[ispn].num_cols_local(); jloc++)
+        {
+            int j = sv_eigen_vectors_[ispn].icol(jloc);
+            for (int iloc = 0; iloc < sv_eigen_vectors_[ispn].num_rows_local(); iloc++)
+            {
+                int i = sv_eigen_vectors_[ispn].irow(iloc);
+                sv_evec(i + offs, j + offs) = sv_eigen_vectors_[ispn](iloc, jloc);
+            }
+        }
+    }
+
+    Platform::allreduce(sv_evec.ptr(), (int)sv_evec.size(), 
+                        parameters_.mpi_grid().communicator((1 << _dim_row_) | (1 << _dim_col_)));
 }
 
 }

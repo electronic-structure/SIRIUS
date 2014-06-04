@@ -259,8 +259,7 @@ class Matching_coefficients
         /** \param [in] ia Index of atom.
          *  \param [out] alm Array of matching coefficients with dimension indices \f$ ({\bf G+k}, \xi) \f$.
          */
-        void generate(int ia, 
-                      mdarray<double_complex, 2>& alm)
+        void generate(int ia, mdarray<double_complex, 2>& alm)
         {
             Timer t("sirius::Matching_coefficients::generate:atom");
 

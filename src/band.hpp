@@ -122,23 +122,6 @@ void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<double_complex, 2>& a
                 }
             } // j1
             
-            // surface contribution
-            if (sblock == nm || sblock == uu || sblock == dd)
-            {
-                int l2 = type->indexb(j2).l;
-                int order2 = type->indexb(j2).order;
-                
-                for (int order1 = 0; order1 < (int)type->aw_descriptor(l2).size(); order1++)
-                {
-                    double t1 = 0.5 * pow(type->mt_radius(), 2) * 
-                                atom->symmetry_class()->aw_surface_dm(l2, order1, 0) * 
-                                atom->symmetry_class()->aw_surface_dm(l2, order2, 1);
-                    
-                    for (int ig = 0; ig < num_gkvec; ig++) 
-                        zv[ig] += t1 * alm(ig, type->indexb_by_lm_order(lm2, order1));
-                }
-            }
-            
             memcpy(&halm(0, j2), &zv[0], num_gkvec * sizeof(double_complex));
         } // j2
     }
@@ -168,10 +151,8 @@ void Band::apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_comp
             int xi = parameters_.unit_cell()->mt_aw_basis_descriptor(j).xi;
             Atom* atom = parameters_.unit_cell()->atom(ia);
             Atom_type* type = atom->type();
-            int l1 = type->indexb(xi).l;
             int lm1 = type->indexb(xi).lm;
             int idxrf1 = type->indexb(xi).idxrf; 
-            int order1 = type->indexb(xi).order; 
 
             memset(&zv[0], 0, zv.size() * sizeof(double_complex));
 
@@ -187,20 +168,6 @@ void Band::apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_comp
                 }
             }
             
-            /* surface contribution */
-            if (sblock == nm || sblock == uu || sblock == dd)
-            {
-                for (int order2 = 0; order2 < (int)type->aw_descriptor(l1).size(); order2++)
-                {
-                    double t1 = 0.5 * pow(type->mt_radius(), 2) * 
-                                atom->symmetry_class()->aw_surface_dm(l1, order1, 0) * 
-                                atom->symmetry_class()->aw_surface_dm(l1, order2, 1);
-                    
-                    for (int igk = 0; igk < ngk_loc; igk++) 
-                        zv[igk] += t1 * alm_tmp(igk, atom->offset_aw() + type->indexb_by_lm_order(lm1, order2));
-                }
-            }
-
             for (int igk = 0; igk < ngk_loc; igk++) halm(j, igk) = zv[igk];
         }
     }
