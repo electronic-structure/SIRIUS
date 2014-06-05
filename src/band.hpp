@@ -91,40 +91,56 @@ void Band::apply_uj_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 }
 
 template <spin_block_t sblock>
-void Band::apply_hmt_to_apw(int num_gkvec, int ia, mdarray<double_complex, 2>& alm, mdarray<double_complex, 2>& halm)
+void Band::apply_hmt_to_apw(int num_gkvec__, int ia__, mdarray<double_complex, 2>& alm__, mdarray<double_complex, 2>& halm__)
 {
-    Timer t("sirius::Band::apply_hmt_to_apw");
+    Timer t("sirius::Band::apply_hmt_to_apw|atom");
     
-    Atom* atom = parameters_.unit_cell()->atom(ia);
+    Atom* atom = parameters_.unit_cell()->atom(ia__);
     Atom_type* type = atom->type();
-    
-    #pragma omp parallel default(shared)
+
+    /* this is k-independent and can be precomputed together with radial integrals */
+    mdarray<double_complex, 2> hmt(type->mt_aw_basis_size(), type->mt_aw_basis_size());
+    for (int j2 = 0; j2 < type->mt_aw_basis_size(); j2++)
     {
-        std::vector<double_complex> zv(num_gkvec);
-        
-        #pragma omp for
-        for (int j2 = 0; j2 < type->mt_aw_basis_size(); j2++)
+        int lm2 = type->indexb(j2).lm;
+        int idxrf2 = type->indexb(j2).idxrf;
+        for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++)
         {
-            memset(&zv[0], 0, num_gkvec * sizeof(double_complex));
-
-            int lm2 = type->indexb(j2).lm;
-            int idxrf2 = type->indexb(j2).idxrf;
-
-            for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++)
-            {
-                int lm1 = type->indexb(j1).lm;
-                int idxrf1 = type->indexb(j1).idxrf;
-                double_complex zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
-
-                if (abs(zsum) > 1e-14) 
-                {
-                    for (int ig = 0; ig < num_gkvec; ig++) zv[ig] += zsum * alm(ig, j1); 
-                }
-            } // j1
-            
-            memcpy(&halm(0, j2), &zv[0], num_gkvec * sizeof(double_complex));
-        } // j2
+            int lm1 = type->indexb(j1).lm;
+            int idxrf1 = type->indexb(j1).idxrf;
+            hmt(j1, j2) = atom->hb_radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
+        }
     }
+    blas<cpu>::gemm(0, 1, num_gkvec__, type->mt_aw_basis_size(), type->mt_aw_basis_size(), alm__.ptr(), alm__.ld(), 
+                    hmt.ptr(), hmt.ld(), halm__.ptr(), halm__.ld());
+        
+    //== #pragma omp parallel default(shared)
+    //== {
+    //==     std::vector<double_complex> zv(num_gkvec__);
+    //==     
+    //==     #pragma omp for
+    //==     for (int j2 = 0; j2 < type->mt_aw_basis_size(); j2++)
+    //==     {
+    //==         memset(&zv[0], 0, num_gkvec__ * sizeof(double_complex));
+
+    //==         int lm2 = type->indexb(j2).lm;
+    //==         int idxrf2 = type->indexb(j2).idxrf;
+
+    //==         for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++)
+    //==         {
+    //==             int lm1 = type->indexb(j1).lm;
+    //==             int idxrf1 = type->indexb(j1).idxrf;
+    //==             double_complex zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf2, idxrf1, gaunt_coefs_->gaunt_vector(lm2, lm1));
+
+    //==             if (abs(zsum) > 1e-14) 
+    //==             {
+    //==                 for (int ig = 0; ig < num_gkvec__; ig++) zv[ig] += zsum * alm__(ig, j1); 
+    //==             }
+    //==         } // j1
+    //==         
+    //==         memcpy(&halm__(0, j2), &zv[0], num_gkvec__ * sizeof(double_complex));
+    //==     } // j2
+    //== }
 }
 
 template <spin_block_t sblock>
@@ -135,9 +151,9 @@ void Band::apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_comp
     int ngk_loc = (int)alm.size(1);
 
     mdarray<double_complex, 2> alm_tmp(ngk_loc, alm.size(0));
-    for (int i1 = 0; i1 < ngk_loc; i1++)
+    for (int igk = 0; igk < ngk_loc; igk++)
     {
-        for (int i0 = 0; i0 < (int)alm.size(0); i0++) alm_tmp(i1, i0) = alm(i0, i1);
+        for (int i0 = 0; i0 < (int)alm.size(0); i0++) alm_tmp(igk, i0) = alm(i0, igk);
     }
     
     #pragma omp parallel default(shared)
