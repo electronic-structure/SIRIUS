@@ -84,6 +84,9 @@ void dft_loop(cmd_args args)
 {
     std::string task_name = args.value<std::string>("task");
 
+    if (!(task_name == "gs_new" || task_name == "gs_restart" || task_name == "gs_relax"))
+        error_global(__FILE__, __LINE__, "wrong task name");
+
     Global parameters;
 
     JSON_tree parser("sirius.json");
@@ -179,14 +182,15 @@ void dft_loop(cmd_args args)
         parameters.unit_cell()->generate_radial_functions();
         dft.print_info();
     }
-    else
+    if (task_name == "gs_new" || task_name == "gs_restart")
     {
         dft.scf_loop(potential_tol, energy_tol, parser["num_dft_iter"].get(100));
     }
+    if (task_name == "gs_relax")
+    {
+        dft.relax_atom_positions();
+    }
 
-    //dft.relax_atom_positions();
-
-    //parameters.write_json_output();
     write_json_output(&parameters, &dft);
 
     delete density;
