@@ -26,417 +26,292 @@
 
 namespace sirius {
 
-void Force::compute_dmat(Global& parameters_, K_point* kp, mdarray<double_complex, 2>& dm)
+void Force::compute_dmat(Global& parameters__, K_point* kp__, dmatrix<double_complex>& dm__)
 {
     Timer t("sirius::Force::compute_dmat");
 
-    stop_here
+    dm__.zero();
 
-    //=== dm.zero();
+    /* trivial case */
+    if (!parameters__.need_sv())
+    {
+        for (int i = 0; i < parameters__.num_fv_states(); i++) dm__.set(i, i, double_complex(kp__->band_occupancy(i), 0));
+    }
+    else
+    {
+        if (parameters__.num_mag_dims() != 3)
+        {
+            dmatrix<double_complex> evq(parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.blacs_context());
+            for (int ispn = 0; ispn < parameters__.num_spins(); ispn++)
+            {
+                auto& ev = kp__->sv_eigen_vectors(ispn);
+                /* multiply second-variational eigen-vectors with band occupancies */
+                for (int j = 0; j < ev.num_cols_local(); j++)
+                {
+                    /* up- or dn- band index */
+                    int jb = ev.icol(j);
+                    for (int i = 0; i < ev.num_rows_local(); i++)
+                        evq(i, j) = ev(i, j) * kp__->band_occupancy(jb + ispn * parameters__.num_fv_states());
+                }
 
-    //=== // second-variational dimensions
-    //=== int nsrow = parameters_.spl_fv_states_row().local_size();
-    //=== int nscol = parameters_.spl_fv_states_col().local_size();
+                /* Important! Obtained with the following zgemm, density matrix is transposed */
+                blas<cpu>::gemm(0, 2, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_fv_states(),
+                                complex_one, ev, evq, complex_one, dm__);
+            }
+        }
+        else
+        {
+            dmatrix<double_complex> evq(parameters__.num_bands(), parameters__.num_bands(), parameters__.blacs_context());
+            auto& ev = kp__->sv_eigen_vectors(0);
+            /* multiply second-variational eigen-vectors with band occupancies */
+            for (int j = 0; j < ev.num_cols_local(); j++)
+            {
+                /* band index */
+                int jb = ev.icol(j);
+                for (int i = 0; i < ev.num_rows_local(); i++) evq(i, j) = ev(i, j) * kp__->band_occupancy(jb);
+            }
+            for (int ispn = 0; ispn < parameters__.num_spins(); ispn++)
+            {
+                int offs = ispn * parameters__.num_fv_states();
 
-    //=== // compute the density matrix
-    //=== if (!parameters_.need_sv())
-    //=== {
-    //===     for (int i = 0; i < nscol; i++)
-    //===     {
-    //===         int ist = parameters_.spl_fv_states_col(i);
-    //===         for (int j = 0; j < nsrow; j++)
-    //===         {
-    //===             if (parameters_.spl_fv_states_row(j) == ist) dm(j, i) = kp->band_occupancy(ist);
-    //===         }
-    //===     }
-    //=== }
-    //=== else
-    //=== {
-    //===     // multiply second-variational eigen-vectors with band occupancies
-    //===     mdarray<double_complex, 2>& sv_evec = kp->sv_eigen_vectors();
-    //===     mdarray<double_complex, 2> evq(sv_evec.size(0), sv_evec.size(1));
-    //===     for (int i = 0; i < parameters_.spl_spinor_wf_col().local_size(); i++)
-    //===     {
-    //===         int n = parameters_.spl_spinor_wf_col(i);
-    //===         for (int j = 0; j < sv_evec.size(0); j++) evq(j, i) = sv_evec(j, i) * kp->band_occupancy(n);
-    //===     }
-    //===     
-    //===     int ns = (parameters_.num_mag_dims() == 3) ? 2 : 1;
-    //===     
-    //===     // Important! Obtained with the following zgemm, density matrix is conjugated. 
-    //===     if (kp->num_ranks() == 1)
-    //===     {
-    //===         //== // TODO: this possibly can be combined
-    //===         //== if (parameters_.num_mag_dims() != 3)
-    //===         //== {
-    //===         //==     blas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
-    //===         //==                     &sv_evec(0, 0), sv_evec.ld(), &evq(0, 0), evq.ld(), &dm(0, 0), dm.ld());
-    //===         //== }
-    //===         //== else
-    //===         //== {
-    //===         //==     for (int ispn = 0; ispn < 2; ispn++)
-    //===         //==     {
-    //===         //==         blas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
-    //===         //==                         double_complex(1, 0), &sv_evec(ispn * parameters_.num_fv_states(), 0), sv_evec.ld(), 
-    //===         //==                         &evq(ispn * parameters_.num_fv_states(), 0), evq.ld(), double_complex(1, 0), &dm(0, 0), dm.ld());
-    //===         //==     }
-
-
-    //===         //== }
-
-    //===         for (int s = 0; s < ns; s++)
-    //===         {
-    //===             blas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
-    //===                             double_complex(1, 0), &sv_evec(s * parameters_.num_fv_states(), 0), sv_evec.ld(), 
-    //===                             &evq(s * parameters_.num_fv_states(), 0), evq.ld(), double_complex(1, 0), &dm(0, 0), dm.ld());
-    //===         }
-    //===     }
-    //===     else
-    //===     {
-    //===         #ifdef _SCALAPACK_
-    //===         for (int s = 0; s < ns; s++)
-    //===         {
-    //===             pblas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
-    //===                              double_complex(1, 0), &sv_evec(s * nsrow, 0), sv_evec.ld(), &evq(s * nsrow, 0), evq.ld(),
-    //===                              double_complex(1, 0), &dm(0, 0), dm.ld(), parameters_.cyclic_block_size(), 
-    //===                              parameters_.blacs_context());
-    //===         }
-    //===         #else
-    //===         error_local(__FILE__, __LINE__, "not compiled with ScaLAPACK");
-    //===         #endif
-    //===     }
-    //=== }
+                /* Important! Obtained with the following zgemm, density matrix is transposed */
+                blas<cpu>::gemm(0, 2, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_bands(),
+                                complex_one, ev, offs, 0, evq, offs, 0, complex_one, dm__, 0, 0);
+            }
+        }
+    }
 }
 
-void Force::ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<double, 2>& ffac, mdarray<double, 2>& forcek)
+void Force::ibs_force(Global& parameters__, 
+                      Band* band__, 
+                      K_point* kp__, 
+                      mdarray<double, 2>& ffac__, 
+                      mdarray<double, 2>& forcek__)
 {
     Timer timer("sirius::Force::ibs_force");
     
-    stop_here
+    forcek__.zero();
 
-    //== int apw_offset_col = kp->apw_offset_col();
+    dmatrix<double_complex> dm(parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.blacs_context());
+    compute_dmat(parameters__, kp__, dm);
 
-    //== forcek.zero();
+    auto& fv_evec = kp__->fv_eigen_vectors_panel();
 
-    //== // first-variational dimensions
-    //== int nfrow = kp->gklo_basis_size_row();
-    //== int nfcol = kp->gklo_basis_size_col();
+    dmatrix<double_complex> h(kp__->gklo_basis_size(), kp__->gklo_basis_size(), parameters__.blacs_context());
+    dmatrix<double_complex> o(kp__->gklo_basis_size(), kp__->gklo_basis_size(), parameters__.blacs_context());
+    
+    dmatrix<double_complex> h1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), parameters__.blacs_context());
+    dmatrix<double_complex> o1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), parameters__.blacs_context());
 
-    //== // second-variational dimensions
-    //== int nsrow = parameters_.spl_fv_states_row().local_size();
-    //== int nscol = parameters_.spl_fv_states_col().local_size();
+    dmatrix<double_complex> zm1(kp__->gklo_basis_size(), parameters__.num_fv_states(), parameters__.blacs_context());
+    dmatrix<double_complex> zf(parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.blacs_context());
 
-    //== mdarray<double_complex, 2> h(nfrow, nfcol);
-    //== mdarray<double_complex, 2> o(nfrow, nfcol);
-    //== 
-    //== mdarray<double_complex, 2> vh(nfrow, nfcol);
-    //== mdarray<double_complex, 2> vo(nfrow, nfcol);
-    //== 
-    //== mdarray<double_complex, 2> alm(kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
-    //== mdarray<double_complex, 2> halm(kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
-    //== 
-    //== mdarray<double_complex, 2> dm(nsrow, nscol);
+    mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), parameters__.unit_cell()->max_mt_aw_basis_size());
+    mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), parameters__.unit_cell()->max_mt_aw_basis_size());
+    mdarray<double_complex, 2> halm_col(kp__->num_gkvec_col(), parameters__.unit_cell()->max_mt_aw_basis_size());
 
-    //== compute_dmat(parameters_, kp, dm);
+    auto rl = parameters__.reciprocal_lattice();
 
-    //== //== dm.zero();
+    for (int ia = 0; ia < parameters__.unit_cell()->num_atoms(); ia++)
+    {
+        h.zero();
+        o.zero();
+        
+        Atom* atom = parameters__.unit_cell()->atom(ia);
+        Atom_type* type = atom->type();
 
-    //== //== // compute the density matrix
-    //== //== if (!parameters_.need_sv())
-    //== //== {
-    //== //==     for (int i = 0; i < nscol; i++)
-    //== //==     {
-    //== //==         int ist = parameters_.spl_fv_states_col(i);
-    //== //==         for (int j = 0; j < nsrow; j++)
-    //== //==         {
-    //== //==             if (parameters_.spl_fv_states_row(j) == ist) dm(j, i) = kp->band_occupancy(ist);
-    //== //==         }
-    //== //==     }
-    //== //== }
-    //== //== else
-    //== //== {
-    //== //==     // multiply second-variational eigen-vectors with band occupancies
-    //== //==     mdarray<double_complex, 2>& sv_evec = kp->sv_eigen_vectors();
-    //== //==     mdarray<double_complex, 2> evq(sv_evec.size(0), sv_evec.size(1));
-    //== //==     for (int i = 0; i < parameters_.spl_spinor_wf_col().local_size(); i++)
-    //== //==     {
-    //== //==         int n = parameters_.spl_spinor_wf_col(i);
-    //== //==         for (int j = 0; j < sv_evec.size(0); j++) evq(j, i) = sv_evec(j, i) * kp->band_occupancy(n);
-    //== //==     }
-    //== //==     
-    //== //==     // Important! Obtained with the following zgemm, density matrix is conjugated. 
-    //== //==     if (kp->num_ranks() == 1)
-    //== //==     {
-    //== //==         // TODO: this possibly can be combined
-    //== //==         if (parameters_.num_mag_dims() != 3)
-    //== //==         {
-    //== //==             blas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
-    //== //==                             &sv_evec(0, 0), sv_evec.ld(), &evq(0, 0), evq.ld(), &dm(0, 0), dm.ld());
-    //== //==         }
-    //== //==         else
-    //== //==         {
-    //== //==             for (int ispn = 0; ispn < 2; ispn++)
-    //== //==             {
-    //== //==                 blas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
-    //== //==                                 double_complex(1, 0), &sv_evec(ispn * parameters_.num_fv_states(), 0), sv_evec.ld(), 
-    //== //==                                 &evq(ispn * parameters_.num_fv_states(), 0), evq.ld(), double_complex(1, 0), &dm(0, 0), dm.ld());
-    //== //==             }
+        /* generate matching coefficients for current atom */
+        kp__->alm_coeffs_row()->generate(ia, alm_row);
+        kp__->alm_coeffs_col()->generate(ia, alm_col);
 
+        /* setup apw-lo and lo-apw blocks */
+        band__->set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h.data(), o.data());
 
-    //== //==         }
-    //== //==     }
-    //== //==     else
-    //== //==     {
-    //== //==         #ifdef _SCALAPACK_
-    //== //==         int ns = (parameters_.num_mag_dims() == 3) ? 2 : 1;
+        /* apply MT Hamiltonian to column coefficients */
+        band__->apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col, halm_col);
 
-    //== //==         for (int s = 0; s < ns; s++)
-    //== //==         {
-    //== //==             pblas<cpu>::gemm(0, 2, parameters_.num_fv_states(), parameters_.num_fv_states(), parameters_.num_bands(),
-    //== //==                              double_complex(1, 0), &sv_evec(s * nsrow, 0), sv_evec.ld(), &evq(s * nsrow, 0), evq.ld(),
-    //== //==                              double_complex(1, 0), &dm(0, 0), dm.ld(), parameters_.cyclic_block_size(), 
-    //== //==                              parameters_.blacs_context());
-    //== //==         }
-    //== //==         #else
-    //== //==         error_local(__FILE__, __LINE__, "not compiled with ScaLAPACK");
-    //== //==         #endif
-    //== //==     }
+        /* conjugate row (<bra|) matching coefficients */
+        for (int i = 0; i < type->mt_aw_basis_size(); i++)
+        {
+            for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row(igk, i) = conj(alm_row(igk, i));
+        }
 
-    //== //==     //// TODO: this is a zgemm or pzgemm
-    //== //==     //for (int n = 0; n < parameters_.num_bands(); n++)
-    //== //==     //{
-    //== //==     //    for (int i = 0; i < band->spl_fv_states_row().global_size(); i++)
-    //== //==     //    {
-    //== //==     //        int ist = i % parameters_.num_fv_states();
-    //== //==     //        int ispn = i / parameters_.num_fv_states();
-    //== //==     //        for (int j = 0; j < band->spl_fv_states_row().global_size(); j++)
-    //== //==     //        {
-    //== //==     //            int jst = j % parameters_.num_fv_states();
-    //== //==     //            int jspn = j / parameters_.num_fv_states();
+        /* apw-apw block of the overlap matrix */
+        blas<cpu>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), 
+                        alm_row.ptr(), alm_row.ld(), alm_col.ptr(), alm_col.ld(), o.ptr(), o.ld());
+            
+        /* apw-apw block of the Hamiltonian matrix */
+        blas<cpu>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), 
+                        alm_row.ptr(), alm_row.ld(), halm_col.ptr(), halm_col.ld(), h.ptr(), h.ld());
+        
+        int iat = type->id();
 
-    //== //==     //            if (ispn == jspn)
-    //== //==     //            {
-    //== //==     //                dm(ist, jst) += band_occupancy(n) * conj(sv_eigen_vectors_(i, n)) * sv_eigen_vectors_(j, n); 
-    //== //==     //            }
-    //== //==     //        }
-    //== //==     //    }
-    //== //==     //}
-    //== //== }
+        for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) // loop over columns
+        {
+            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) // for each column loop over rows
+            {
+                int ig12 = rl->index_g12(kp__->gklo_basis_descriptor_row(igk_row).ig,
+                                         kp__->gklo_basis_descriptor_col(igk_col).ig);
+                int igs = rl->gvec_shell(ig12);
 
-    //== mdarray<double_complex, 2>& fv_evec = kp->fv_eigen_vectors_panel();
-    //== mdarray<double_complex, 2> zm1(nfrow, nscol);
-    //== mdarray<double_complex, 2> zf(nsrow, nscol);
+                double_complex zt = conj(rl->gvec_phase_factor<global>(ig12, ia)) * ffac__(iat, igs) * fourpi / parameters__.unit_cell()->omega();
 
-    //== for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    //== {
-    //==     h.zero();
-    //==     o.zero();
-    //==     
-    //==     Atom* atom = parameters_.unit_cell()->atom(ia);
-    //==     Atom_type* type = atom->type();
+                double t1 = 0.5 * Utils::scalar_product(kp__->gklo_basis_descriptor_row(igk_row).gkvec_cart, 
+                                                        kp__->gklo_basis_descriptor_col(igk_col).gkvec_cart);
 
-    //==     int iat = type->id();
-    //==     
-    //==     kp->generate_matching_coefficients<true>(kp->num_gkvec_loc(), ia, alm);
-    //==     
-    //==     band->apply_hmt_to_apw<nm>(kp->num_gkvec_row(), ia, alm, halm);
-    //==     
-    //==     // apw-apw block of the overlap matrix
-    //==     blas<cpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), &alm(0, 0), alm.ld(), 
-    //==                     &alm(apw_offset_col, 0), alm.ld(), &o(0, 0), o.ld()); 
-    //==         
-    //==     // apw-apw block of the Hamiltonian matrix
-    //==     blas<cpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), &halm(0, 0), halm.ld(), 
-    //==                     &alm(apw_offset_col, 0), alm.ld(), &h(0, 0), h.ld());
-    //==     
-    //==     // apw-lo and lo-apw blocks of Hamiltonian and overlap
-    //==     band->set_fv_h_o_apw_lo(kp, type, atom, ia, alm, h, o);
+                h(igk_row, igk_col) -= t1 * zt;
+                o(igk_row, igk_col) -= zt;
+            }
+        }
 
-    //==     for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++) // loop over columns
-    //==     {
-    //==         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
-    //==         {
-    //==             int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
-    //==                                                                    kp->gklo_basis_descriptor_col(igk_col).ig);
-    //==             int igs = parameters_.reciprocal_lattice()->gvec_shell(ig12);
+        for (int x = 0; x < 3; x++)
+        {
+            for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) // loop over columns
+            {
+                for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) // for each column loop over rows
+                {
+                    int ig12 = rl->index_g12(kp__->gklo_basis_descriptor_row(igk_row).ig,
+                                             kp__->gklo_basis_descriptor_col(igk_col).ig);
 
-    //==             double_complex zt = conj(parameters_.reciprocal_lattice()->gvec_phase_factor<global>(ig12, ia)) * ffac(igs, iat);
+                    vector3d<double> vg = rl->gvec_cart(ig12);
+                    h1(igk_row, igk_col) = double_complex(0.0, vg[x]) * h(igk_row, igk_col);
+                    o1(igk_row, igk_col) = double_complex(0.0, vg[x]) * o(igk_row, igk_col);
+                }
+            }
 
-    //==             double t1 = 0.5 * Utils::scalar_product(kp->gklo_basis_descriptor_row(igk_row).gkvec_cart, 
-    //==                                                     kp->gklo_basis_descriptor_col(igk_col).gkvec_cart);
+            for (int icol = kp__->num_gkvec_col(); icol < kp__->gklo_basis_size_col(); icol++)
+            {
+                for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+                {
+                    vector3d<double>& vgk = kp__->gklo_basis_descriptor_row(igk_row).gkvec_cart;
+                    h1(igk_row, icol) = double_complex(0.0, vgk[x]) * h(igk_row, icol);
+                    o1(igk_row, icol) = double_complex(0.0, vgk[x]) * o(igk_row, icol);
+                }
+            }
+                    
+            for (int irow = kp__->num_gkvec_row(); irow < kp__->gklo_basis_size_row(); irow++)
+            {
+                for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++)
+                {
+                    vector3d<double>& vgk = kp__->gklo_basis_descriptor_col(igk_col).gkvec_cart;
+                    h1(irow, igk_col) = double_complex(0.0, -vgk[x]) * h(irow, igk_col);
+                    o1(irow, igk_col) = double_complex(0.0, -vgk[x]) * o(irow, igk_col);
+                }
+            }
 
-    //==             h(igk_row, igk_col) -= t1 * zt;
-    //==             o(igk_row, igk_col) -= zt;
-    //==         }
-    //==     }
+            /* zm1 = H * V */
+            blas<cpu>::gemm(0, 0, kp__->gklo_basis_size(), parameters__.num_fv_states(), kp__->gklo_basis_size(), 
+                            complex_one, h1, fv_evec, complex_zero, zm1);
 
-    //==     for (int x = 0; x < 3; x++)
-    //==     {
-    //==         for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++) // loop over columns
-    //==         {
-    //==             for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) // for each column loop over rows
-    //==             {
-    //==                 int ig12 = parameters_.reciprocal_lattice()->index_g12(kp->gklo_basis_descriptor_row(igk_row).ig,
-    //==                                                  kp->gklo_basis_descriptor_col(igk_col).ig);
+            /* F = V^{+} * zm1 = V^{+} * H * V */
+            blas<cpu>::gemm(2, 0, parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->gklo_basis_size(),
+                            complex_one, fv_evec, zm1, complex_zero, zf);
 
-    //==                 vector3d<double> vg = parameters_.reciprocal_lattice()->gvec_cart(ig12);
-    //==                 vh(igk_row, igk_col) = double_complex(0.0, vg[x]) * h(igk_row, igk_col);
-    //==                 vo(igk_row, igk_col) = double_complex(0.0, vg[x]) * o(igk_row, igk_col);
-    //==             }
-    //==         }
+            /* zm1 = O * V */
+            blas<cpu>::gemm(0, 0, kp__->gklo_basis_size(), parameters__.num_fv_states(), kp__->gklo_basis_size(), 
+                            complex_one, o1, fv_evec, complex_zero, zm1);
 
-    //==         for (int icol = kp->num_gkvec_col(); icol < kp->gklo_basis_size_col(); icol++)
-    //==         {
-    //==             for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++)
-    //==             {
-    //==                 vector3d<double>& vgk = kp->gklo_basis_descriptor_row(igk_row).gkvec_cart;
-    //==                 vh(igk_row, icol) = double_complex(0.0, vgk[x]) * h(igk_row, icol);
-    //==                 vo(igk_row, icol) = double_complex(0.0, vgk[x]) * o(igk_row, icol);
-    //==             }
-    //==         }
-    //==                 
-    //==         for (int irow = kp->num_gkvec_row(); irow < kp->gklo_basis_size_row(); irow++)
-    //==         {
-    //==             for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++)
-    //==             {
-    //==                 vector3d<double>& vgk = kp->gklo_basis_descriptor_col(igk_col).gkvec_cart;
-    //==                 vh(irow, igk_col) = double_complex(0.0, -vgk[x]) * h(irow, igk_col);
-    //==                 vo(irow, igk_col) = double_complex(0.0, -vgk[x]) * o(irow, igk_col);
-    //==             }
-    //==         }
+            /* multiply by energy */
+            for (int i = 0; i < (int)parameters__.spl_fv_states().local_size(); i++)
+            {
+                int ist = parameters__.spl_fv_states(i);
+                for (int j = 0; j < kp__->gklo_basis_size_row(); j++) zm1(j, i) = zm1(j, i) * kp__->fv_eigen_value(ist);
+            }
 
-    //==         if (kp->num_ranks() == 1)
-    //==         {
-    //==             // zm1 = H * V
-    //==             blas<cpu>::gemm(0, 0, kp->gklo_basis_size(), parameters_.num_fv_states(), kp->gklo_basis_size(), 
-    //==                             &vh(0, 0), vh.ld(), &fv_evec(0, 0), fv_evec.ld(), &zm1(0, 0), zm1.ld());
-    //==             
-    //==             // F = V^{+} * zm1 = V^{+} * H * V
-    //==             blas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), kp->gklo_basis_size(),
-    //==                             &fv_evec(0, 0), fv_evec.ld(), &zm1(0, 0), zm1.ld(), &zf(0, 0), zf.ld());
+            /* F = F - V^{+} * zm1 = F - V^{+} * O * (E*V) */
+            blas<cpu>::gemm(2, 0, parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->gklo_basis_size(),
+                            double_complex(-1, 0), fv_evec, zm1, double_complex(1, 0), zf);
 
-    //==             // zm1 = O * V
-    //==             blas<cpu>::gemm(0, 0, kp->gklo_basis_size(), parameters_.num_fv_states(), kp->gklo_basis_size(), 
-    //==                             &vo(0, 0), vo.ld(), &fv_evec(0, 0), fv_evec.ld(), &zm1(0, 0), zm1.ld());
-
-    //==             // multiply by energy
-    //==             for (int i = 0; i < parameters_.num_fv_states(); i++)
-    //==             {
-    //==                 for (int j = 0; j < kp->gklo_basis_size(); j++) zm1(j, i) = zm1(j, i) * kp->fv_eigen_value(i);
-    //==             }
-
-    //==             // F = F - V^{+} * zm1 = F - V^{+} * O * (E*V)
-    //==             blas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), kp->gklo_basis_size(),
-    //==                             double_complex(-1, 0), &fv_evec(0, 0), fv_evec.ld(), &zm1(0, 0), zm1.ld(), double_complex(1, 0), 
-    //==                             &zf(0, 0), zf.ld());
-
-    //==             for (int i = 0; i < parameters_.num_fv_states(); i++)
-    //==             {
-    //==                 for (int j = 0; j < parameters_.num_fv_states(); j++) 
-    //==                     forcek(x, ia) += kp->weight() * real(conj(dm(j, i)) * zf(j, i));
-    //==             }
-    //==         }
-    //==         else
-    //==         {
-    //==             #ifdef _SCALAPACK_
-    //==             // zm1 = H * V
-    //==             pblas<cpu>::gemm(0, 0, kp->gklo_basis_size(), parameters_.num_fv_states(), kp->gklo_basis_size(), 
-    //==                              double_complex(1, 0), &vh(0, 0), vh.ld(), &fv_evec(0, 0), fv_evec.ld(), 
-    //==                              double_complex(0, 0), &zm1(0, 0), zm1.ld(), parameters_.cyclic_block_size(), 
-    //==                              parameters_.blacs_context());
-
-    //==             // F = V^{+} * zm1 = V^{+} * H * V
-    //==             pblas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), kp->gklo_basis_size(),
-    //==                              double_complex(1, 0), &fv_evec(0, 0), fv_evec.ld(), &zm1(0, 0), zm1.ld(), 
-    //==                              double_complex(0, 0), &zf(0, 0), zf.ld(), parameters_.cyclic_block_size(), 
-    //==                              parameters_.blacs_context());
-
-    //==             // zm1 = O * V
-    //==             pblas<cpu>::gemm(0, 0, kp->gklo_basis_size(), parameters_.num_fv_states(), kp->gklo_basis_size(), 
-    //==                              double_complex(1, 0), &vo(0, 0), vo.ld(), &fv_evec(0, 0), fv_evec.ld(),
-    //==                              double_complex(0, 0), &zm1(0, 0), zm1.ld(), parameters_.cyclic_block_size(), 
-    //==                              parameters_.blacs_context());
-
-    //==             // multiply by energy
-    //==             for (int i = 0; i < parameters_.spl_fv_states_col().local_size(); i++)
-    //==             {
-    //==                 int ist = parameters_.spl_fv_states_col(i);
-    //==                 for (int j = 0; j < kp->gklo_basis_size_row(); j++) zm1(j, i) = zm1(j, i) * kp->fv_eigen_value(ist);
-    //==             }
-
-    //==             // F = F - V^{+} * zm1 = F - V^{+} * O * (E*V)
-    //==             pblas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), kp->gklo_basis_size(),
-    //==                              double_complex(-1, 0), &fv_evec(0, 0), fv_evec.ld(), &zm1(0, 0), zm1.ld(), 
-    //==                              double_complex(1, 0), &zf(0, 0), zf.ld(), parameters_.cyclic_block_size(), 
-    //==                              parameters_.blacs_context());
-
-    //==             // TODO: this can be combined with the previous code
-    //==             for (int i = 0; i < parameters_.spl_fv_states_col().local_size(); i++)
-    //==             {
-    //==                 for (int j = 0; j < parameters_.spl_fv_states_row().local_size(); j++) 
-    //==                     forcek(x, ia) += kp->weight() * real(conj(dm(j, i)) * zf(j, i));
-    //==             }
-
-    //==             #else
-    //==             error_local(__FILE__, __LINE__, "not compiled with ScaLAPACK");
-    //==             #endif
-    //==         }
-    //==     }
-    //== } //ia
-    //== 
-    //== if (kp->num_ranks() > 1)
-    //== {
-    //==     Platform::allreduce(&forcek(0, 0), (int)forcek.size(), 
-    //==                         parameters_.mpi_grid().communicator((1 << _dim_row_) | (1 << _dim_col_)));
-    //== }
+            for (int i = 0; i < dm.num_cols_local(); i++)
+            {
+                /* Remember! Density matrix was obtained as transposed, 
+                 * so we use conj(dm(j, i)) instead of dm(i, j) 
+                 */
+                for (int j = 0; j < dm.num_rows_local(); j++) 
+                    forcek__(x, ia) += kp__->weight() * real(conj(dm(j, i)) * zf(j, i));
+            }
+        }
+    } //ia
 }
 
-void Force::total_force(Global& parameters_, Potential* potential, Density* density, K_set* ks, 
-                        mdarray<double, 2>& force)
+void Force::total_force(Global& parameters__, Potential* potential__, Density* density__, K_set* ks__, 
+                        mdarray<double, 2>& force__)
 {
     Timer t("sirius::Force::total_force");
 
-    mdarray<double, 2> ffac(parameters_.reciprocal_lattice()->num_gvec_shells_inner(), parameters_.unit_cell()->num_atom_types());
-    parameters_.step_function()->get_step_function_form_factors(ffac);
+    auto uc = parameters__.unit_cell();
 
-    force.zero();
+    mdarray<double, 2> ffac(uc->num_atom_types(), parameters__.reciprocal_lattice()->num_gvec_shells_inner());
+    parameters__.step_function()->get_step_function_form_factors(ffac);
 
-    mdarray<double, 2> forcek(3, parameters_.unit_cell()->num_atoms());
-    for (int ikloc = 0; ikloc < (int)ks->spl_num_kpoints().local_size(); ikloc++)
+    force__.zero();
+
+    mdarray<double, 2> forcek(3, uc->num_atoms());
+    for (int ikloc = 0; ikloc < (int)ks__->spl_num_kpoints().local_size(); ikloc++)
     {
-        int ik = ks->spl_num_kpoints(ikloc);
-        ibs_force(parameters_, ks->band(), (*ks)[ik], ffac, forcek);
-        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        int ik = ks__->spl_num_kpoints(ikloc);
+        ibs_force(parameters__, ks__->band(), (*ks__)[ik], ffac, forcek);
+        for (int ia = 0; ia < uc->num_atoms(); ia++)
         {
-            for (int x = 0; x < 3; x++) force(x, ia) += forcek(x, ia);
+            for (int x = 0; x < 3; x++) force__(x, ia) += forcek(x, ia);
         }
     }
-    Platform::allreduce(&force(0, 0), (int)force.size(), parameters_.mpi_grid().communicator(1 << _dim_k_));
+    Platform::allreduce(&force__(0, 0), (int)force__.size());
+    
+    if (verbosity_level >= 6 && Platform::mpi_rank() == 0)
+    {
+        printf("\n");
+        printf("Forces\n");
+        printf("\n");
+        for (int ia = 0; ia < parameters__.unit_cell()->num_atoms(); ia++)
+        {
+            printf("ia : %i, IBS : %12.6f %12.6f %12.6f\n", ia, force__(0, ia), force__(1, ia), force__(2, ia));
+        }
+    }
 
-    mdarray<double, 2> forcehf(3, parameters_.unit_cell()->num_atoms());
+    mdarray<double, 2> forcehf(3, uc->num_atoms());
 
     forcehf.zero();
-    for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+    for (int ialoc = 0; ialoc < (int)uc->spl_num_atoms().local_size(); ialoc++)
     {
-        int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
-        auto g = gradient(potential->hartree_potential_mt(ialoc));
-        for (int x = 0; x < 3; x++) forcehf(x, ia) = parameters_.unit_cell()->atom(ia)->type()->zn() * g[x](0, 0) * y00;
+        int ia = uc->spl_num_atoms(ialoc);
+        auto g = gradient(potential__->hartree_potential_mt(ialoc));
+        for (int x = 0; x < 3; x++) forcehf(x, ia) = uc->atom(ia)->type()->zn() * g[x](0, 0) * y00;
     }
     Platform::allreduce(&forcehf(0, 0), (int)forcehf.size());
-    
-    mdarray<double, 2> forcerho(3, parameters_.unit_cell()->num_atoms());
-    forcerho.zero();
-    for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+
+    if (verbosity_level >= 6 && Platform::mpi_rank() == 0)
     {
-        int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
-        auto g = gradient(density->density_mt(ialoc));
-        for (int x = 0; x < 3; x++) forcerho(x, ia) = inner(potential->effective_potential_mt(ialoc), g[x]);
+        printf("\n");
+        for (int ia = 0; ia < parameters__.unit_cell()->num_atoms(); ia++)
+        {
+            printf("ia : %i, Hellmann–Feynman : %12.6f %12.6f %12.6f\n", ia, forcehf(0, ia), forcehf(1, ia), forcehf(2, ia));
+        }
+    }
+    
+    mdarray<double, 2> forcerho(3, uc->num_atoms());
+    forcerho.zero();
+    for (int ialoc = 0; ialoc < (int)uc->spl_num_atoms().local_size(); ialoc++)
+    {
+        int ia = uc->spl_num_atoms(ialoc);
+        auto g = gradient(density__->density_mt(ialoc));
+        for (int x = 0; x < 3; x++) forcerho(x, ia) = inner(potential__->effective_potential_mt(ialoc), g[x]);
     }
     Platform::allreduce(&forcerho(0, 0), (int)forcerho.size());
-    
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+
+    if (verbosity_level >= 6 && Platform::mpi_rank() == 0)
     {
-        for (int x = 0; x < 3; x++) force(x, ia) += (forcehf(x, ia) + forcerho(x, ia));
+        printf("\n");
+        printf("rho force\n");
+        for (int ia = 0; ia < parameters__.unit_cell()->num_atoms(); ia++)
+        {
+            printf("ia : %i, density contribution : %12.6f %12.6f %12.6f\n", ia, forcerho(0, ia), forcerho(1, ia), forcerho(2, ia));
+        }
+    }
+    
+    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    {
+        for (int x = 0; x < 3; x++) force__(x, ia) += (forcehf(x, ia) + forcerho(x, ia));
     }
 }
 

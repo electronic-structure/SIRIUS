@@ -87,6 +87,8 @@ void log_function_exit(const char* func_name);
 
 #define TERMINATE_NO_GPU terminate(__FILE__, __LINE__, "not compiled with GPU support");
 
+#define TERMINATE_NO_SCALAPACK terminate(__FILE__, __LINE__, "not compiled with ScaLAPACK support");
+
 #define INFO std::cout << "[" << __func__ << ":" << Platform::mpi_rank() << "] "
 
 #endif // __ERROR_HANDLING_H__

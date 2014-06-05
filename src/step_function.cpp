@@ -26,13 +26,47 @@
 
 namespace sirius {
 
-Step_function::Step_function(Unit_cell* unit_cell__, Reciprocal_lattice* reciprocal_lattice__)
+Step_function::Step_function(Unit_cell* unit_cell__, 
+                             Reciprocal_lattice* reciprocal_lattice__)
     : unit_cell_(unit_cell__), 
       reciprocal_lattice_(reciprocal_lattice__)
 {
-    Timer t("sirius::Step_function::Step_function");
+    update();
+}
 
-    if (unit_cell__->num_atoms() == 0) return;
+void Step_function::get_step_function_form_factors(mdarray<double, 2>& ffac__)
+{
+    assert((int)ffac__.size(0) == unit_cell_->num_atom_types());
+    ffac__.zero();
+    
+    splindex<block> spl_num_gvec_shells((int)ffac__.size(1), Platform::num_mpi_ranks(), Platform::mpi_rank());
+
+    #pragma omp parallel for default(shared)
+    for (int igsloc = 0; igsloc < (int)spl_num_gvec_shells.local_size(); igsloc++)
+    {
+        int igs = (int)spl_num_gvec_shells[igsloc];
+        double g = reciprocal_lattice_->gvec_shell_len(igs);
+        double g3inv = (igs) ? 1.0 / pow(g, 3) : 0.0;
+
+        for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+        {            
+            double R = unit_cell_->atom_type(iat)->mt_radius();
+            double gR = g * R;
+
+            ffac__(iat, igs) = (igs) ? (sin(gR) - gR * cos(gR)) * g3inv : pow(R, 3) / 3.0;
+        }
+    }
+    
+    int ld = unit_cell_->num_atom_types(); 
+    Platform::allgather(ffac__.ptr(), static_cast<int>(ld * spl_num_gvec_shells.global_offset()), 
+                        static_cast<int>(ld * spl_num_gvec_shells.local_size()));
+}
+
+void Step_function::update()
+{
+    Timer t("sirius::Step_function::Step_function::update");
+
+    if (unit_cell_->num_atoms() == 0) return;
 
     auto fft = reciprocal_lattice_->fft();
     
@@ -60,33 +94,6 @@ Step_function::Step_function(Unit_cell* unit_cell__, Reciprocal_lattice* recipro
           << "  difference with exact value : " << fabs(vit - unit_cell_->volume_it());
         warning_global(__FILE__, __LINE__, s);
     }
-}
-
-void Step_function::get_step_function_form_factors(mdarray<double, 2>& ffac)
-{
-    assert((int)ffac.size(0) == unit_cell_->num_atom_types());
-    ffac.zero();
-    
-    splindex<block> spl_num_gvec_shells((int)ffac.size(1), Platform::num_mpi_ranks(), Platform::mpi_rank());
-
-    #pragma omp parallel for default(shared)
-    for (int igsloc = 0; igsloc < (int)spl_num_gvec_shells.local_size(); igsloc++)
-    {
-        int igs = (int)spl_num_gvec_shells[igsloc];
-        double g = reciprocal_lattice_->gvec_shell_len(igs);
-        double g3inv = (igs) ? 1.0 / pow(g, 3) : 0.0;
-
-        for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
-        {            
-            double R = unit_cell_->atom_type(iat)->mt_radius();
-            double gR = g * R;
-
-            ffac(iat, igs) = (igs) ? (sin(gR) - gR * cos(gR)) * g3inv : pow(R, 3) / 3.0;
-        }
-    }
-
-    Platform::allgather(&ffac(0, 0), int(unit_cell_->num_atom_types() * spl_num_gvec_shells.global_offset()), 
-                        int(unit_cell_->num_atom_types() * spl_num_gvec_shells.local_size()));
 }
 
 }

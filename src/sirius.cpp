@@ -1767,10 +1767,10 @@ void FORTRAN(sirius_ground_state_clear)()
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_get_mpi_comm)(int32_t* directions, int32_t* fcomm)
+void FORTRAN(sirius_get_mpi_comm)(int32_t* directions__, int32_t* fcomm__)
 {
     log_function_enter(__func__);
-    *fcomm = MPI_Comm_c2f(global_parameters.mpi_grid().communicator(*directions));
+    *fcomm__ = MPI_Comm_c2f(global_parameters.mpi_grid().communicator(*directions__));
     log_function_exit(__func__);
 }
 

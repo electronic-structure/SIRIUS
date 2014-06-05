@@ -605,8 +605,7 @@ void Global::update()
 {
     unit_cell_->update();
     reciprocal_lattice_->update();
-    delete step_function_;
-    step_function_ = new Step_function(unit_cell_, reciprocal_lattice_);
+    step_function_->update();
 }
 
 #ifdef _SCALAPACK_

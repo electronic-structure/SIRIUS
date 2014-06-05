@@ -458,7 +458,7 @@ void SHT::convert(Spheric_function<spectral, double_complex>& f, Spheric_functio
         error_local(__FILE__, __LINE__, "wrong radial domain index");
     
     if (f.radial_grid().hash() != g.radial_grid().hash())
-        error_local(__FILE__, __LINE__, "wrong number of radial points");
+        error_local(__FILE__, __LINE__, "radial grids don't match");
 
     int lmmax = std::min(f.angular_domain_size(), g.angular_domain_size());
     int lmax = Utils::lmax_by_lmmax(lmmax);

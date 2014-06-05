@@ -49,7 +49,7 @@ namespace sirius {
  *          e^{-i{\bf G\tau_{\alpha}}} \int_{MT_{\alpha}} 4\pi \sum_{\ell m} (-i)^{\ell} j_{\ell}(Gr) 
  *          Y_{\ell m}(\hat {\bf G}) Y_{\ell m}^{*}(\hat {\bf r}) r^2 \sin \theta dr d\phi d\theta
  *  \f]
- *  In the above integral only \f$ \ell=m=0 \f$ term survive. So we have:
+ *  In the above integral only \f$ \ell=m=0 \f$ term survives. So we have:
  *  \f[
  *      \int_{MT_{\alpha}} e^{-i{\bf Gr}} d{\bf r} = 4\pi e^{-i{\bf G\tau_{\alpha}}} \Theta(\alpha, G)
  *  \f]
@@ -70,16 +70,16 @@ class Step_function
 {
     private:
         
-        /// unit cell for which step function is constructed
+        /// Unit cell for which step function is constructed.
         Unit_cell* unit_cell_;
         
-        /// reciprocal lattice for the unit cell
+        /// Reciprocal lattice for the unit cell.
         Reciprocal_lattice* reciprocal_lattice_;
     
-        /// plane wave expansion coefficients of the step function
+        /// Plane wave expansion coefficients of the step function.
         std::vector<double_complex> step_function_pw_;
         
-        /// step function on the real-space grid
+        /// Step function on the real-space grid.
         std::vector<double> step_function_;
        
     public:
@@ -95,19 +95,23 @@ class Step_function
          *          \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
          *  \f]
          */
-        void get_step_function_form_factors(mdarray<double, 2>& ffac);
+        void get_step_function_form_factors(mdarray<double, 2>& ffac__);
        
         /// Return plane-wave coefficient of the step function.
-        inline double_complex theta_pw(int ig)
+        inline double_complex theta_pw(int ig__)
         {
-            return step_function_pw_[ig];
+            assert(ig__ >= 0 && ig__ < (int)step_function_pw_.size());
+            return step_function_pw_[ig__];
         }
 
         /// Return the value of the step function for the grid point ir.
-        inline double theta_it(int ir)
+        inline double theta_it(int ir__)
         {
-            return step_function_[ir];
+            assert(ir__ >= 0 && ir__ < (int)step_function_.size());
+            return step_function_[ir__];
         }
+
+        void update();
 };
 
 };

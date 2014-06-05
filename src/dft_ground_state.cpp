@@ -35,8 +35,6 @@ double DFT_ground_state::energy_enuc()
         {
             int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
             int zn = parameters_.unit_cell()->atom(ia)->type()->zn();
-            //double r0 = parameters_.unit_cell()->atom(ia)->type()->radial_grid(0);
-            //enuc -= 0.5 * zn * (potential_->hartree_potential()->f_mt<local>(0, 0, ialoc) * y00 + zn / r0);
             enuc -= 0.5 * zn * potential_->vh_el(ia) * y00;
         }
         Platform::allreduce(&enuc, 1);
@@ -60,6 +58,15 @@ void DFT_ground_state::move_atoms(int istep)
 {
     mdarray<double, 2> atom_force(3, parameters_.unit_cell()->num_atoms());
     forces(atom_force);
+    if (verbosity_level >= 6 && Platform::mpi_rank() == 0)
+    {
+        printf("\n");
+        printf("Atomic forces\n");
+        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        {
+            printf("ia : %i, force : %12.6f %12.6f %12.6f\n", ia, atom_force(0, ia), atom_force(1, ia), atom_force(2, ia));
+        }
+    }
 
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
@@ -67,7 +74,7 @@ void DFT_ground_state::move_atoms(int istep)
 
         vector3d<double> forcef = parameters_.unit_cell()->get_fractional_coordinates(vector3d<double>(&atom_force(0, ia)));
 
-        for (int x = 0; x < 3; x++) pos[x] += 1.0 * forcef[x];
+        for (int x = 0; x < 3; x++) pos[x] += forcef[x];
         
         parameters_.unit_cell()->atom(ia)->set_position(pos);
     }
@@ -80,9 +87,9 @@ void DFT_ground_state::update()
     kset_->update();
 }
 
-void DFT_ground_state::forces(mdarray<double, 2>& forces)
+void DFT_ground_state::forces(mdarray<double, 2>& forces__)
 {
-    Force::total_force(parameters_, potential_, density_, kset_, forces);
+    Force::total_force(parameters_, potential_, density_, kset_, forces__);
 }
 
 void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num_dft_iter)
@@ -243,6 +250,7 @@ void DFT_ground_state::relax_atom_positions()
         scf_loop(1e-4, 1e-4, 100);
         move_atoms(i);
         update();
+        parameters_.print_info();
     }
 }
 
