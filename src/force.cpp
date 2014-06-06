@@ -1,14 +1,14 @@
 // Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
 // the following conditions are met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
 //    following disclaimer.
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
 // WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
 // PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
@@ -18,7 +18,7 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file force.cpp
- *   
+ *
  *  \brief Contains implementation of sirius::Force class.
  */
  
@@ -26,8 +26,8 @@
 
 namespace sirius {
 
-void Force::compute_dmat(Global& parameters__, 
-                         K_point* kp__, 
+void Force::compute_dmat(Global& parameters__,
+                         K_point* kp__,
                          dmatrix<double_complex>& dm__)
 {
     Timer t("sirius::Force::compute_dmat");
@@ -82,14 +82,14 @@ void Force::compute_dmat(Global& parameters__,
     }
 }
 
-void Force::ibs_force(Global& parameters__, 
-                      Band* band__, 
-                      K_point* kp__, 
-                      mdarray<double, 2>& ffac__, 
+void Force::ibs_force(Global& parameters__,
+                      Band* band__,
+                      K_point* kp__,
+                      mdarray<double, 2>& ffac__,
                       mdarray<double, 2>& forcek__)
 {
     Timer timer("sirius::Force::ibs_force");
-    
+
     forcek__.zero();
 
     dmatrix<double_complex> dm(parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.blacs_context());
@@ -99,7 +99,7 @@ void Force::ibs_force(Global& parameters__,
 
     dmatrix<double_complex> h(kp__->gklo_basis_size(), kp__->gklo_basis_size(), parameters__.blacs_context());
     dmatrix<double_complex> o(kp__->gklo_basis_size(), kp__->gklo_basis_size(), parameters__.blacs_context());
-    
+
     dmatrix<double_complex> h1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), parameters__.blacs_context());
     dmatrix<double_complex> o1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), parameters__.blacs_context());
 
@@ -116,7 +116,7 @@ void Force::ibs_force(Global& parameters__,
     {
         h.zero();
         o.zero();
-        
+
         Atom* atom = parameters__.unit_cell()->atom(ia);
         Atom_type* type = atom->type();
 
@@ -224,17 +224,17 @@ void Force::ibs_force(Global& parameters__,
 
             for (int i = 0; i < dm.num_cols_local(); i++)
             {
-                for (int j = 0; j < dm.num_rows_local(); j++) 
+                for (int j = 0; j < dm.num_rows_local(); j++)
                     forcek__(x, ia) += kp__->weight() * real(dm(j, i) * zf(j, i));
             }
         }
     } //ia
 }
 
-void Force::total_force(Global& parameters__, 
-                        Potential* potential__, 
-                        Density* density__, 
-                        K_set* ks__, 
+void Force::total_force(Global& parameters__,
+                        Potential* potential__,
+                        Density* density__,
+                        K_set* ks__,
                         mdarray<double, 2>& force__)
 {
     Timer t("sirius::Force::total_force");
