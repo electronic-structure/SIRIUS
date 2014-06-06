@@ -748,8 +748,169 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 //== }
 #endif
 
+void Band::apply_h_local_parallel(K_point* kp__,
+                                  std::vector<double>& effective_potential__,
+                                  std::vector<double>& pw_ekin__,
+                                  int n__,
+                                  dmatrix<double_complex>& phi__,
+                                  dmatrix<double_complex>& hphi__)
+{
+    Timer t("sirius::Band::apply_h_local_parallel");
+
+    auto fft = parameters_.reciprocal_lattice()->fft_coarse();
+
+    splindex<block_cyclic> spl_n(n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+    splindex<block> sub_spl_n(spl_n.local_size(), kp__->num_ranks_row(), kp__->rank_row());
+
+    mdarray<double_complex, 2> phi_slice(kp__->num_gkvec(), sub_spl_n.local_size());
+    phi__.gather(n__, 0, phi_slice, parameters_.mpi_grid().communicator(1 << _dim_row_));
+
+    mdarray<double_complex, 2> hphi_slice(kp__->num_gkvec(), sub_spl_n.local_size());
+
+    int num_fft_threads = Platform::num_fft_threads();
+    #pragma omp parallel default(shared) num_threads(num_fft_threads)
+    {        
+        int thread_id = omp_get_thread_num();
+        std::vector<double_complex> phi_r(fft->size());
+        
+        /* loop over local fraction of wave-functions */
+        #pragma omp for
+        for (int i = 0; i < (int)sub_spl_n.local_size(); i++)
+        {
+            fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi_slice(0, i), thread_id);
+            fft->transform(1, thread_id);
+            fft->output(&phi_r[0], thread_id);
+
+            for (int ir = 0; ir < fft->size(); ir++) phi_r[ir] *= effective_potential__[ir];
+
+            fft->input(&phi_r[0], thread_id);
+            fft->transform(-1, thread_id);
+            fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi_slice(0, i), thread_id);
+            
+            for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi_slice(igk, i) += phi_slice(igk, i) * pw_ekin__[igk];
+        }
+    }
+
+    hphi__.scatter(n__, 0, hphi_slice, parameters_.mpi_grid().communicator(1 << _dim_row_));
+}
+
+void Band::apply_h_o_uspp_cpu_parallel(K_point* kp__,
+                                       std::vector<double>& effective_potential__,
+                                       std::vector<double>& pw_ekin__,
+                                       int N__,
+                                       int n__,
+                                       dmatrix<double_complex>& phi__,
+                                       dmatrix<double_complex>& hphi__,
+                                       dmatrix<double_complex>& ophi__)
+{
+    /* apply local part of Hamiltonian */
+    apply_h_local_parallel(kp__, effective_potential__, pw_ekin__, n__, phi__, hphi__);
+
+    stop_here
+   
+    //== // set intial ophi
+    //== memcpy(ophi__, phi__, kp->num_gkvec() * n * sizeof(double_complex));
+
+    //== // <\beta_{\xi}^{\alpha}|\phi_j>
+    //== mdarray<double_complex, 2> beta_phi(uc->mt_lo_basis_size(), n);
+    //== 
+    //== // Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j>
+    //== mdarray<double_complex, 2> tmp(uc->mt_lo_basis_size(), n);
+
+    //== Timer t1("sirius::Band::apply_h_o|beta_phi");
+
+    //== // compute <beta|phi>
+    //== blas<cpu>::gemm(2, 0, uc->mt_lo_basis_size(), n, kp->num_gkvec(), &kp->beta_pw_a(0, 0), kp->num_gkvec(), 
+    //==                 &phi(0, 0), phi.ld(), &beta_phi(0, 0), beta_phi.ld());
+    //== t1.stop();
+    //== 
+    //== // compute D*<beta|phi>
+    //== for (int ia = 0; ia < uc->num_atoms(); ia++)
+    //== {   
+    //==     int ofs = uc->atom(ia)->offset_lo();
+    //==     // number of beta functions for a given atom
+    //==     int nbf = uc->atom(ia)->type()->mt_lo_basis_size();
+    //==     blas<cpu>::gemm(0, 0, nbf, n, nbf, &uc->atom(ia)->d_mtrx(0, 0), nbf, 
+    //==                     &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
+    //== }
+
+    //== Timer t3("sirius::Band::apply_h_o|beta_D_beta_phi");
+    //== // compute <G+k|beta> * D*<beta|phi> and add to hphi
+    //== blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, uc->mt_lo_basis_size(), complex_one, 
+    //==                 &kp->beta_pw_a(0, 0), kp->num_gkvec(), &tmp(0, 0), tmp.ld(), complex_one, &hphi(0, 0), hphi.ld());
+    //== t3.stop();
+
+    //== // compute Q*<beta|phi>
+    //== for (int ia = 0; ia < uc->num_atoms(); ia++)
+    //== {   
+    //==     int ofs = uc->atom(ia)->offset_lo();
+    //==     // number of beta functions for a given atom
+    //==     int nbf = uc->atom(ia)->type()->mt_basis_size();
+    //==     blas<cpu>::gemm(0, 0, nbf, n, nbf, &uc->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
+    //==                     &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
+    //== }
+
+    //== Timer t5("sirius::Band::apply_h_o|beta_Q_beta_phi");
+    //== // computr <G+k|beta> * Q*<beta|phi> and add to ophi
+    //== blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, uc->mt_lo_basis_size(), complex_one, 
+    //==                 &kp->beta_pw_a(0, 0), kp->num_gkvec(), &tmp(0, 0), tmp.ld(), complex_one, &ophi(0, 0), ophi.ld());
+    //== t5.stop();
+
+}
+
+void Band::diag_fv_uspp_cpu_parallel(K_point* kp__, Periodic_function<double>* effective_potential__)
+{
+    Timer t("sirius::Band::diag_fv_uspp_cpu_parallel", _global_timer_);
+
+    auto rl = parameters_.reciprocal_lattice();
+
+    /* map effective potential to a corase grid */
+    std::vector<double> veff_it_coarse(rl->fft_coarse()->size());
+    std::vector<double_complex> veff_pw_coarse(rl->num_gvec_coarse());
+
+    /* take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi */
+    for (int igc = 0; igc < rl->num_gvec_coarse(); igc++)
+    {
+        int ig = rl->gvec_index(igc);
+        veff_pw_coarse[igc] = effective_potential__->f_pw(ig);
+    }
+    rl->fft_coarse()->input(rl->num_gvec_coarse(), rl->fft_index_coarse(), &veff_pw_coarse[0]);
+    rl->fft_coarse()->transform(1);
+    rl->fft_coarse()->output(&veff_it_coarse[0]);
+
+    /* short notation for number of target wave-functions */
+    int num_bands = parameters_.num_fv_states();     
+
+    /* cache kinetic energy */
+    std::vector<double> pw_ekin = kp__->get_pw_ekin();
+
+
+    int num_phi = std::min(4 * num_bands, kp__->num_gkvec());
+
+    dmatrix<double_complex> phi(kp__->num_gkvec(), num_phi, parameters_.blacs_context());
+    dmatrix<double_complex> hphi(kp__->num_gkvec(), num_phi, parameters_.blacs_context());
+    dmatrix<double_complex> ophi(kp__->num_gkvec(), num_phi, parameters_.blacs_context());
+
+    int N = 0;
+
+    /* number of newly added basis functions */
+    int n = num_bands;
+
+    /* apply Hamiltonian and overlap operators to the new basis functions */
+    apply_h_o_uspp_cpu_parallel(kp__, veff_it_coarse, pw_ekin, N, n, phi, hphi, ophi);
+    
+    stop_here
+
+}
+
 void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_potential)
 {
+    if (kp->num_ranks() > 1)
+    {
+        diag_fv_uspp_cpu_parallel(kp, effective_potential);
+        return;
+    }
+
     Timer t("sirius::Band::diag_fv_uspp_cpu", _global_timer_);
 
     // map effective potential to a corase grid

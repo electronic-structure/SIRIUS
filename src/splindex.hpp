@@ -176,12 +176,12 @@ class splindex<block_cyclic>: public splindex_base
 
     public:
         
-        // Default constructor
+        /// Default constructor
         splindex() : block_size_(-1)
         {
         }
         
-        // Constructor with implicit cyclic block size
+        /// Constructor with implicit cyclic block size
         splindex(size_t global_index_size__, int num_ranks__, int rank__, int bs__)
         {
             init(global_index_size__, num_ranks__, rank__, bs__); 

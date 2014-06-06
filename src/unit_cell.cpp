@@ -344,7 +344,7 @@ bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
     return false;
 }
 
-void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
+void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
 {
     /* split number of atom between all MPI ranks */
     spl_num_atoms_ = splindex<block>(num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
@@ -373,7 +373,7 @@ void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
     int offs_lo = 0;
     for (int iat = 0; iat < num_atom_types(); iat++)
     {
-        atom_type(iat)->init(lmax_apw, offs_lo);
+        atom_type(iat)->init(lmax_apw__, offs_lo);
         max_num_mt_points_ = std::max(max_num_mt_points_, atom_type(iat)->num_mt_points());
         max_mt_basis_size_ = std::max(max_mt_basis_size_, atom_type(iat)->mt_basis_size());
         max_mt_radial_basis_size_ = std::max(max_mt_radial_basis_size_, atom_type(iat)->mt_radial_basis_size());
@@ -400,7 +400,7 @@ void Unit_cell::initialize(int lmax_apw, int lmax_pot, int num_mag_dims)
     mt_lo_basis_size_ = 0;
     for (int ia = 0; ia < num_atoms(); ia++)
     {
-        atom(ia)->init(lmax_pot, num_mag_dims, mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
+        atom(ia)->init(lmax_pot__, num_mag_dims__, mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
         mt_aw_basis_size_ += atom(ia)->type()->mt_aw_basis_size();
         mt_lo_basis_size_ += atom(ia)->type()->mt_lo_basis_size();
         mt_basis_size_ += atom(ia)->type()->mt_basis_size();

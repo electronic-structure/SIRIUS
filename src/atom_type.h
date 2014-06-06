@@ -394,7 +394,7 @@ class Atom_type
 
         ~Atom_type();
         
-        void init(int lmax_apw, int offs);
+        void init(int lmax__, int offset_lo__);
 
         void set_radial_grid(int num_points__ = -1, double* points__ = NULL);
 

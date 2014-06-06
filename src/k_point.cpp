@@ -743,16 +743,15 @@ void K_point::build_apwlo_basis_descriptors()
     }
 }
 
-/// Block-cyclic distribution of relevant arrays 
 void K_point::distribute_block_cyclic()
 {
-    // distribute APW+lo basis between rows
+    /* distribute Gk+lo basis between rows */
     splindex<block_cyclic> spl_row(gklo_basis_size(), num_ranks_row_, rank_row_, parameters_.cyclic_block_size());
     gklo_basis_descriptors_row_.resize(spl_row.local_size());
     for (int i = 0; i < (int)spl_row.local_size(); i++)
         gklo_basis_descriptors_row_[i] = gklo_basis_descriptors_[spl_row[i]];
 
-    // distribute APW+lo basis between columns
+    /* distribute Gk+lo basis between columns */
     splindex<block_cyclic> spl_col(gklo_basis_size(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());
     gklo_basis_descriptors_col_.resize(spl_col.local_size());
     for (int i = 0; i < (int)spl_col.local_size(); i++)
@@ -769,7 +768,7 @@ void K_point::distribute_block_cyclic()
     if (nc != gklo_basis_size_col()) error_local(__FILE__, __LINE__, "numroc returned a different local column size");
     #endif
 
-    // get the number of row- and column- G+k-vectors
+    /* get the number of row- and column- G+k-vectors */
     num_gkvec_row_ = 0;
     for (int i = 0; i < gklo_basis_size_row(); i++)
     {

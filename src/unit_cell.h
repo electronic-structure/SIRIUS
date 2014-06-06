@@ -393,8 +393,9 @@ class Unit_cell
 
         /// Total number of the muffin-tin basis functions.
         /** Total number of MT basis functions equals to the sum of the total number of augmented wave
-            basis functions and the total number of local orbital basis functions across all atoms. It controls 
-            the size of the muffin-tin part of the first-variational states and second-variational wave functions. */
+         *  basis functions and the total number of local orbital basis functions across all atoms. It controls 
+         *  the size of the muffin-tin part of the first-variational states and second-variational wave functions. 
+         */
         inline int mt_basis_size()
         {
             return mt_basis_size_;

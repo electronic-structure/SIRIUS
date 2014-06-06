@@ -66,7 +66,7 @@ Atom_type::~Atom_type()
 {
 }
 
-void Atom_type::init(int lmax, int offset_lo__)
+void Atom_type::init(int lmax__, int offset_lo__)
 {
     /* check if the class instance was already initialized */
     if (initialized_) error_local(__FILE__, __LINE__, "can't initialize twice");
@@ -126,13 +126,13 @@ void Atom_type::init(int lmax, int offset_lo__)
         init_free_atom(false);
 
         /* initialize aw descriptors if they were not set manually */
-        if (aw_descriptors_.size() == 0) init_aw_descriptors(lmax);
+        if (aw_descriptors_.size() == 0) init_aw_descriptors(lmax__);
 
-        if ((int)aw_descriptors_.size() != (lmax + 1)) 
+        if ((int)aw_descriptors_.size() != (lmax__ + 1)) 
             error_local(__FILE__, __LINE__, "wrong size of augmented wave descriptors");
 
         max_aw_order_ = 0;
-        for (int l = 0; l <= lmax; l++) max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
+        for (int l = 0; l <= lmax__; l++) max_aw_order_ = std::max(max_aw_order_, (int)aw_descriptors_[l].size());
 
         if (max_aw_order_ > 3) error_local(__FILE__, __LINE__, "maximum aw order > 3");
     }

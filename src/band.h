@@ -98,12 +98,30 @@ class Band
 
         void diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_potential);
         
+        void diag_fv_uspp_cpu_parallel(K_point* kp__, Periodic_function<double>* effective_potential__);
+ 
         void get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
                           std::vector<double_complex>& h_diag, std::vector<double_complex>& o_diag);
 
         void apply_h_o_uspp_cpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
                                 double_complex* phi__, double_complex* hphi__, double_complex* ophi__);
 
+        void apply_h_local_parallel(K_point* kp__,
+                                    std::vector<double>& effective_potential__,
+                                    std::vector<double>& pw_ekin__,
+                                    int n__,
+                                    dmatrix<double_complex>& phi__,
+                                    dmatrix<double_complex>& hphi__);
+
+        void apply_h_o_uspp_cpu_parallel(K_point* kp__,
+                                         std::vector<double>& effective_potential__,
+                                         std::vector<double>& pw_ekin__,
+                                         int N__,
+                                         int n__,
+                                         dmatrix<double_complex>& phi__,
+                                         dmatrix<double_complex>& hphi__,
+                                         dmatrix<double_complex>& ophi__);
+        
         #ifdef _GPU_
         void apply_h_local_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
                                int num_phi, mdarray<double_complex, 2>& gamma, mdarray<double_complex, 2>& kappa, double_complex* phi__, 
