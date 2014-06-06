@@ -396,27 +396,38 @@ void Density::initial_density()
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
         mdarray<double, 2> rho_radial_integrals(uc->num_atom_types(), rl->num_gvec_shells_inner());
+        
+        splindex<block> spl_gsh(rl->num_gvec_shells_inner(), Platform::num_mpi_ranks(), Platform::mpi_rank());
 
-        sbessel_pw<double> jl(uc, 0);
-        for (int igs = 0; igs < rl->num_gvec_shells_inner(); igs++)
+        // TODO: unify with  generate_pseudo_core_charge_density() 
+        #pragma omp parallel
         {
-            jl.load(rl->gvec_shell_len(igs));
+            /* splines for all atom types */
+            std::vector< Spline<double> > sa(uc->num_atom_types());
+            for (int iat = 0; iat < uc->num_atom_types(); iat++) sa[iat] = Spline<double>(uc->atom_type(iat)->radial_grid());
 
-            for (int iat = 0; iat < uc->num_atom_types(); iat++)
+            /* spherical Bessl functions */
+            sbessel_pw<double> jl(uc, 0);
+
+            #pragma omp for
+            for (int igsloc = 0; igsloc < (int)spl_gsh.local_size(); igsloc++)
             {
-                auto atom_type = uc->atom_type(iat);
-                Spline<double> s(atom_type->radial_grid()); // not very efficient to create splines 
-                                                            // for each G-shell, but we do this only once
-                for (int ir = 0; ir < s.num_points(); ir++) 
-                    s[ir] = jl(ir, 0, iat) * atom_type->uspp().total_charge_density[ir];
-                rho_radial_integrals(iat, igs) = s.interpolate().integrate(0) / fourpi; // atomic density from UPF file is multiplied by 4*PI
-                                                                                        // we don't need this
-                //== if (igs == 0) 
-                //== {
-                //==     std::cout << "radial_integral : " <<  rho_radial_integrals(iat, 0) * fourpi << std::endl;
-                //== }
+                int igs = (int)spl_gsh[igsloc];
+
+                jl.load(rl->gvec_shell_len(igs));
+
+                for (int iat = 0; iat < uc->num_atom_types(); iat++)
+                {
+                    auto atom_type = uc->atom_type(iat);
+                    for (int ir = 0; ir < atom_type->num_mt_points(); ir++) 
+                        sa[iat][ir] = jl(ir, 0, iat) * atom_type->uspp().total_charge_density[ir];
+                    rho_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(0) / fourpi;
+                }
             }
         }
+        int ld = uc->num_atom_types();
+        Platform::allgather(rho_radial_integrals.ptr(), static_cast<int>(ld * spl_gsh.global_offset()), 
+                            static_cast<int>(ld * spl_gsh.local_size()));
 
         std::vector<double_complex> v = rl->make_periodic_function(rho_radial_integrals, rl->num_gvec());
 
@@ -1566,7 +1577,6 @@ void Density::generate_pseudo_core_charge_density()
 
     splindex<block> spl_gsh(rl->num_gvec_shells_inner(), Platform::num_mpi_ranks(), Platform::mpi_rank());
 
-    //for (int igs = 0; igs < rl->num_gvec_shells_inner(); igs++)
     #pragma omp parallel
     {
         /* splines for all atom types */
