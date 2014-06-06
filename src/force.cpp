@@ -26,7 +26,9 @@
 
 namespace sirius {
 
-void Force::compute_dmat(Global& parameters__, K_point* kp__, dmatrix<double_complex>& dm__)
+void Force::compute_dmat(Global& parameters__, 
+                         K_point* kp__, 
+                         dmatrix<double_complex>& dm__)
 {
     Timer t("sirius::Force::compute_dmat");
 
@@ -41,7 +43,7 @@ void Force::compute_dmat(Global& parameters__, K_point* kp__, dmatrix<double_com
     {
         if (parameters__.num_mag_dims() != 3)
         {
-            dmatrix<double_complex> evq(parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.blacs_context());
+            dmatrix<double_complex> ev1(parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.blacs_context());
             for (int ispn = 0; ispn < parameters__.num_spins(); ispn++)
             {
                 auto& ev = kp__->sv_eigen_vectors(ispn);
@@ -51,32 +53,30 @@ void Force::compute_dmat(Global& parameters__, K_point* kp__, dmatrix<double_com
                     /* up- or dn- band index */
                     int jb = ev.icol(j);
                     for (int i = 0; i < ev.num_rows_local(); i++)
-                        evq(i, j) = ev(i, j) * kp__->band_occupancy(jb + ispn * parameters__.num_fv_states());
+                        ev1(i, j) = conj(ev(i, j)) * kp__->band_occupancy(jb + ispn * parameters__.num_fv_states());
                 }
 
-                /* Important! Obtained with the following zgemm, density matrix is transposed */
-                blas<cpu>::gemm(0, 2, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_fv_states(),
-                                complex_one, ev, evq, complex_one, dm__);
+                blas<cpu>::gemm(0, 1, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_fv_states(),
+                                complex_one, ev1, ev, complex_one, dm__);
             }
         }
         else
         {
-            dmatrix<double_complex> evq(parameters__.num_bands(), parameters__.num_bands(), parameters__.blacs_context());
+            dmatrix<double_complex> ev1(parameters__.num_bands(), parameters__.num_bands(), parameters__.blacs_context());
             auto& ev = kp__->sv_eigen_vectors(0);
             /* multiply second-variational eigen-vectors with band occupancies */
             for (int j = 0; j < ev.num_cols_local(); j++)
             {
                 /* band index */
                 int jb = ev.icol(j);
-                for (int i = 0; i < ev.num_rows_local(); i++) evq(i, j) = ev(i, j) * kp__->band_occupancy(jb);
+                for (int i = 0; i < ev.num_rows_local(); i++) ev1(i, j) = conj(ev(i, j)) * kp__->band_occupancy(jb);
             }
             for (int ispn = 0; ispn < parameters__.num_spins(); ispn++)
             {
                 int offs = ispn * parameters__.num_fv_states();
 
-                /* Important! Obtained with the following zgemm, density matrix is transposed */
-                blas<cpu>::gemm(0, 2, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_bands(),
-                                complex_one, ev, offs, 0, evq, offs, 0, complex_one, dm__, 0, 0);
+                blas<cpu>::gemm(0, 1, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_bands(),
+                                complex_one, ev1, offs, 0, ev, offs, 0, complex_one, dm__, 0, 0);
             }
         }
     }
@@ -224,17 +224,17 @@ void Force::ibs_force(Global& parameters__,
 
             for (int i = 0; i < dm.num_cols_local(); i++)
             {
-                /* Remember! Density matrix was obtained as transposed, 
-                 * so we use conj(dm(j, i)) instead of dm(i, j) 
-                 */
                 for (int j = 0; j < dm.num_rows_local(); j++) 
-                    forcek__(x, ia) += kp__->weight() * real(conj(dm(j, i)) * zf(j, i));
+                    forcek__(x, ia) += kp__->weight() * real(dm(j, i) * zf(j, i));
             }
         }
     } //ia
 }
 
-void Force::total_force(Global& parameters__, Potential* potential__, Density* density__, K_set* ks__, 
+void Force::total_force(Global& parameters__, 
+                        Potential* potential__, 
+                        Density* density__, 
+                        K_set* ks__, 
                         mdarray<double, 2>& force__)
 {
     Timer t("sirius::Force::total_force");

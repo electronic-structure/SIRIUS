@@ -35,7 +35,7 @@
 namespace sirius
 {
 
-/// Compute Hellmann–Feynman forces.
+/// Compute atomic forces.
 class Force
 {
     private:
@@ -52,13 +52,23 @@ class Force
          *      q_{ij} = \sum_{l\sigma}n_{l{\bf k}} c_{\sigma i}^{l{\bf k}*}c_{\sigma j}^{l{\bf k}}
          *  \f]
          */
-        static void compute_dmat(Global& parameters__, K_point* kp__, dmatrix<double_complex>& dm__);
+        static void compute_dmat(Global& parameters__, 
+                                 K_point* kp__, 
+                                 dmatrix<double_complex>& dm__);
 
-        static void ibs_force(Global& parameters_, Band* band, K_point* kp, mdarray<double, 2>& ffac, mdarray<double, 2>& force);
+        static void ibs_force(Global& parameters__, 
+                              Band* band__, 
+                              K_point* kp__, 
+                              mdarray<double, 2>& ffac__, 
+                              mdarray<double, 2>& force__);
 
     public:
 
-        static void total_force(Global& parameters_, Potential* potential, Density* density, K_set* ks, mdarray<double, 2>& force);
+        static void total_force(Global& parameters__, 
+                                Potential* potential__, 
+                                Density* density__, 
+                                K_set* ks__, 
+                                mdarray<double, 2>& force__);
 };
 
 }
