@@ -70,42 +70,64 @@ class DFT_ground_state
             
             double ewald_g = 0;
 
-            for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
+            auto rl = parameters_.reciprocal_lattice();
+
+            #pragma omp parallel
             {
-                double_complex rho(0, 0);
-                for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+                double ewald_g_pt = 0;
+
+                #pragma omp for
+                for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
                 {
-                    rho += parameters_.reciprocal_lattice()->gvec_phase_factor<global>(ig, ia) * 
-                           double(parameters_.unit_cell()->atom(ia)->zn());
+                    int ig = rl->spl_num_gvec(igloc);
+
+                    double_complex rho(0, 0);
+                    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+                    {
+                        rho += rl->gvec_phase_factor<local>(igloc, ia) * double(parameters_.unit_cell()->atom(ia)->zn());
+                    }
+                    double g2 = pow(rl->gvec_len(ig), 2);
+                    if (ig)
+                    {
+                        ewald_g_pt += pow(abs(rho), 2) * exp(-g2 / 4 / alpha) / g2;
+                    }
+                    else
+                    {
+                        ewald_g_pt -= pow(parameters_.unit_cell()->num_electrons(), 2) / alpha / 4; // constant term in QE comments
+                    }
                 }
-                double g2 = pow(parameters_.reciprocal_lattice()->gvec_len(ig), 2);
-                if (ig)
-                {
-                    ewald_g += pow(abs(rho), 2) * exp(-g2 / 4 / alpha) / g2;
-                }
-                else
-                {
-                    ewald_g -= pow(parameters_.unit_cell()->num_electrons(), 2) / alpha / 4; // constant term in QE comments
-                }
+
+                #pragma omp critical
+                ewald_g += ewald_g_pt;
             }
+            Platform::allreduce(&ewald_g, 1);
             ewald_g *= (twopi / parameters_.unit_cell()->omega());
 
-            // remove self-interaction
+            /* remove self-interaction */
             for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
             {
-                ewald_g -= sqrt(alpha / pi) * pow(parameters_.unit_cell()->atom(ia)->zn(), 2);
+                ewald_g -= sqrt(alpha / pi) * std::pow(parameters_.unit_cell()->atom(ia)->zn(), 2);
             }
 
             double ewald_r = 0;
-            for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+            #pragma omp parallel
             {
-                for (int i = 1; i < parameters_.unit_cell()->num_nearest_neighbours(ia); i++)
+                double ewald_r_pt = 0;
+
+                #pragma omp for
+                for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
                 {
-                    int ja = parameters_.unit_cell()->nearest_neighbour(i, ia).atom_id;
-                    double d = parameters_.unit_cell()->nearest_neighbour(i, ia).distance;
-                    ewald_r += 0.5 * parameters_.unit_cell()->atom(ia)->zn() * parameters_.unit_cell()->atom(ja)->zn() * 
-                               gsl_sf_erfc(sqrt(alpha) * d) / d;
+                    for (int i = 1; i < parameters_.unit_cell()->num_nearest_neighbours(ia); i++)
+                    {
+                        int ja = parameters_.unit_cell()->nearest_neighbour(i, ia).atom_id;
+                        double d = parameters_.unit_cell()->nearest_neighbour(i, ia).distance;
+                        ewald_r_pt += 0.5 * parameters_.unit_cell()->atom(ia)->zn() * 
+                                            parameters_.unit_cell()->atom(ja)->zn() * gsl_sf_erfc(sqrt(alpha) * d) / d;
+                    }
                 }
+
+                #pragma omp critical
+                ewald_r += ewald_r_pt;
             }
 
             return (ewald_g + ewald_r);
