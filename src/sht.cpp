@@ -147,9 +147,7 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
             coord_(1, itp) = y[itp];
             coord_(2, itp) = z[itp];
             
-            double vs[3];
-
-            spherical_coordinates(vector3d<double>(x[itp], y[itp], z[itp]), vs);
+            auto vs = spherical_coordinates(vector3d<double>(x[itp], y[itp], z[itp]));
             spherical_harmonics(lmax_, vs[1], vs[2], &ylm_backward_(0, itp));
             spherical_harmonics(lmax_, vs[1], vs[2], &rlm_backward_(0, itp));
             for (int lm = 0; lm < lmmax_; lm++)
@@ -248,8 +246,10 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
     }
 }
 
-void SHT::spherical_coordinates(vector3d<double> vc, double* vs)
+vector3d<double> SHT::spherical_coordinates(vector3d<double> vc)
 {
+    vector3d<double> vs;
+
     double eps = 1e-12;
 
     vs[0] = vc.length();
@@ -273,6 +273,8 @@ void SHT::spherical_coordinates(vector3d<double> vc, double* vs)
             vs[2] = 0.0;
         }
     }
+
+    return vs;
 }
 
 void SHT::spherical_harmonics(int lmax, double theta, double phi, double_complex* ylm)

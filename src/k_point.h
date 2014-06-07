@@ -141,7 +141,7 @@ class K_point
         std::vector<int> l_by_lm_;
 
         /// spherical bessel functions for G+k vectors  
-        std::vector< sbessel_pw<double>* > sbessel_;
+        //std::vector< sbessel_pw<double>* > sbessel_;
         
         /// column rank of the processors of ScaLAPACK/ELPA diagonalization grid
         int rank_col_;
@@ -179,11 +179,9 @@ class K_point
         /// Test orthonormalization of first-variational states
         void test_fv_states(int use_fft);
 
-        template <index_domain_t index_domain> 
-        void init_gkvec_ylm_and_len(int lmax, int ngk);
+        void init_gkvec_ylm_and_len(int lmax__);
         
-        template <index_domain_t index_domain> 
-        void init_gkvec_phase_factors(int ngk);
+        void init_gkvec_phase_factors();
 
     public:
 
@@ -212,10 +210,10 @@ class K_point
 
         ~K_point()
         {
-            if (parameters_.esm_type() == full_potential_pwlo)
-            {
-                for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) delete sbessel_[igkloc];
-            }
+            //== if (parameters_.esm_type() == full_potential_pwlo)
+            //== {
+            //==     for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) delete sbessel_[igkloc];
+            //== }
             if (alm_coeffs_row_) delete alm_coeffs_row_;
             if (alm_coeffs_col_) delete alm_coeffs_col_;
         }
@@ -492,38 +490,38 @@ class K_point
             return (int)gklo_basis_descriptors_col_.size() - num_gkvec_col_;
         }
 
-        /// Local fraction of G+k vectors for a given MPI rank
-        /** In case of distributed matrix setup row and column G+k vectors are combined. Row G+k vectors are first.*/
-        inline int num_gkvec_loc() // TODO: this is probably obosolete
-        {
-            if (num_gkvec_row() == num_gkvec() && num_gkvec_col() == num_gkvec())
-            {
-                return num_gkvec();
-            }
-            else
-            {
-                return (num_gkvec_row() + num_gkvec_col());
-            }
-        } 
-        
-        /// Return the global index of the G+k vector by the local index.
-        inline int igkglob(int igkloc) // TODO: change name or change the local G+k row+col storage 
-        {
-            assert(igkloc >= 0 && igkloc < num_gkvec_loc());
+        //== /// Local fraction of G+k vectors for a given MPI rank
+        //== /** In case of distributed matrix setup row and column G+k vectors are combined. Row G+k vectors are first.*/
+        //== inline int num_gkvec_loc() // TODO: this is probably obosolete
+        //== {
+        //==     if (num_gkvec_row() == num_gkvec() && num_gkvec_col() == num_gkvec())
+        //==     {
+        //==         return num_gkvec();
+        //==     }
+        //==     else
+        //==     {
+        //==         return (num_gkvec_row() + num_gkvec_col());
+        //==     }
+        //== } 
+        //== 
+        //== /// Return the global index of the G+k vector by the local index.
+        //== inline int igkglob(int igkloc) // TODO: change name or change the local G+k row+col storage 
+        //== {
+        //==     assert(igkloc >= 0 && igkloc < num_gkvec_loc());
 
-            if (num_gkvec_row() == num_gkvec() && num_gkvec_col() == num_gkvec())
-            {
-                return igkloc;
-            }
-            else
-            {
-                // remember: row G+k vectors are first, column G+k vectors are second
-                int igk = (igkloc < num_gkvec_row()) ? gklo_basis_descriptors_row_[igkloc].igk : 
-                                                       gklo_basis_descriptors_col_[igkloc - num_gkvec_row()].igk;
-                assert(igk >= 0);
-                return igk;
-            }
-        }
+        //==     if (num_gkvec_row() == num_gkvec() && num_gkvec_col() == num_gkvec())
+        //==     {
+        //==         return igkloc;
+        //==     }
+        //==     else
+        //==     {
+        //==         // remember: row G+k vectors are first, column G+k vectors are second
+        //==         int igk = (igkloc < num_gkvec_row()) ? gklo_basis_descriptors_row_[igkloc].igk : 
+        //==                                                gklo_basis_descriptors_col_[igkloc - num_gkvec_row()].igk;
+        //==         assert(igk >= 0);
+        //==         return igk;
+        //==     }
+        //== }
 
         inline gklo_basis_descriptor& gklo_basis_descriptor_col(int idx)
         {

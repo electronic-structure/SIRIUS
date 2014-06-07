@@ -107,12 +107,12 @@ void K_point::update()
     {
         /** \todo Correct the memory leak */
         stop_here
-        sbessel_.resize(num_gkvec_loc()); 
-        for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
-        {
-            sbessel_[igkloc] = new sbessel_pw<double>(parameters_.unit_cell(), parameters_.lmax_pw());
-            sbessel_[igkloc]->interpolate(gkvec_len_[igkloc]);
-        }
+        //== sbessel_.resize(num_gkvec_loc()); 
+        //== for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
+        //== {
+        //==     sbessel_[igkloc] = new sbessel_pw<double>(parameters_.unit_cell(), parameters_.lmax_pw());
+        //==     sbessel_[igkloc]->interpolate(gkvec_len_[igkloc]);
+        //== }
     }
     
     init_gkvec();
@@ -133,15 +133,17 @@ void K_point::update()
         
         std::vector< std::vector<int> > gkvec_shells_;
     
-        for (int igk = 0; igk < num_gkvec(); igk++)
+        for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
         {
-            if (igk == 0 || fabs(gkvec_len_[igk] - gkvec_len_[igk - 1]) > 1e-10) gkvec_shells_.push_back(std::vector<int>());
-            gkvec_shells_.back().push_back(igk);
+            int igk = gklo_basis_descriptors_row_[igk_row].igk;
+            if (gkvec_shells_.empty() || fabs(gkvec_len_[igk] - gkvec_len_[igk - 1]) > 1e-10) 
+                gkvec_shells_.push_back(std::vector<int>());
+            gkvec_shells_.back().push_back(igk_row);
         }
 
         auto uc = parameters_.unit_cell();
 
-        beta_pw_t_.set_dimensions(num_gkvec(), uc->num_beta_t()); 
+        beta_pw_t_.set_dimensions(num_gkvec_row(), uc->num_beta_t()); 
         beta_pw_t_.allocate();
 
         mdarray<Spline<double>*, 2> beta_rf(uc->max_mt_radial_basis_size(), uc->num_atom_types());
@@ -168,7 +170,7 @@ void K_point::update()
                 jl.interpolate(gkvec_len_[gkvec_shells_[ish][0]]);
                 for (int i = 0; i < (int)gkvec_shells_[ish].size(); i++)
                 {
-                    int igk = gkvec_shells_[ish][i];
+                    int igk_row = gkvec_shells_[ish][i];
 
                     for (int iat = 0; iat < uc->num_atom_types(); iat++)
                     {
@@ -187,7 +189,7 @@ void K_point::update()
                             int idxrf = atom_type->indexb(xi).idxrf;
 
                             double_complex z = pow(double_complex(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
-                            beta_pw_t_(igk, uc->atom_type(iat)->offset_lo() + xi) = z * gkvec_ylm_(lm, igk) * beta_radial_integrals_[idxrf];
+                            beta_pw_t_(igk_row, uc->atom_type(iat)->offset_lo() + xi) = z * gkvec_ylm_(lm, igk_row) * beta_radial_integrals_[idxrf];
                         }
                     }
                 }
@@ -203,23 +205,23 @@ void K_point::update()
             }
         }
 
-        beta_pw_a_.set_dimensions(num_gkvec(), uc->mt_basis_size()); 
-        beta_pw_a_.allocate();
-        
-        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-        {
-            auto atom_type = parameters_.unit_cell()->atom(ia)->type();
-            int iat = atom_type->id();
+        //== beta_pw_a_.set_dimensions(num_gkvec(), uc->mt_basis_size()); 
+        //== beta_pw_a_.allocate();
+        //== 
+        //== for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        //== {
+        //==     auto atom_type = parameters_.unit_cell()->atom(ia)->type();
+        //==     int iat = atom_type->id();
      
-            for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
-            {
-                for (int igk = 0; igk < num_gkvec(); igk++)
-                {
-                    beta_pw_a_(igk, uc->atom(ia)->offset_lo() + xi) = 
-                        beta_pw_t_(igk, uc->atom_type(iat)->offset_lo() + xi) * conj(gkvec_phase_factors_(igk, ia));
-                }
-            }
-        }
+        //==     for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
+        //==     {
+        //==         for (int igk = 0; igk < num_gkvec(); igk++)
+        //==         {
+        //==             beta_pw_a_(igk, uc->atom(ia)->offset_lo() + xi) = 
+        //==                 beta_pw_t_(igk, uc->atom_type(iat)->offset_lo() + xi) * conj(gkvec_phase_factors_(igk, ia));
+        //==         }
+        //==     }
+        //== }
     }
 
     spinor_wave_functions_.set_dimensions(wf_size(), parameters_.sub_spl_spinor_wf().local_size(), parameters_.num_spins());
@@ -595,45 +597,42 @@ void K_point::generate_gkvec(double gk_cutoff)
     }
 }
 
-template <index_domain_t index_domain> 
-void K_point::init_gkvec_ylm_and_len(int lmax, int ngk)
+void K_point::init_gkvec_ylm_and_len(int lmax__)
 {
-    gkvec_ylm_.set_dimensions(Utils::lmmax(lmax), ngk);
+    gkvec_ylm_.set_dimensions(Utils::lmmax(lmax__), num_gkvec_row());
     gkvec_ylm_.allocate();
-    
-    gkvec_len_.resize(ngk);
+
+    gkvec_len_.resize(num_gkvec_row());
 
     #pragma omp parallel for default(shared)
-    for (int igk = 0; igk < ngk; igk++)
+    for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
     {
-        int igk_glob = (index_domain == global) ? igk : igkglob(igk);
+        int igk = gklo_basis_descriptor_row(igk_row).igk;
 
-        double vs[3];
-
-        SHT::spherical_coordinates(gkvec_cart(igk_glob), vs); // vs = {r, theta, phi}
+        /* vs = {r, theta, phi} */
+        auto vs = SHT::spherical_coordinates(gkvec_cart(igk));
         
-        SHT::spherical_harmonics(lmax, vs[1], vs[2], &gkvec_ylm_(0, igk));
+        SHT::spherical_harmonics(lmax__, vs[1], vs[2], &gkvec_ylm_(0, igk_row));
         
-        gkvec_len_[igk] = vs[0];
+        gkvec_len_[igk_row] = vs[0];
     }
 }
 
-template <index_domain_t index_domain> 
-void K_point::init_gkvec_phase_factors(int ngk)
+void K_point::init_gkvec_phase_factors()
 {
-    gkvec_phase_factors_.set_dimensions(ngk, parameters_.unit_cell()->num_atoms());
+    gkvec_phase_factors_.set_dimensions(num_gkvec_row(), parameters_.unit_cell()->num_atoms());
     gkvec_phase_factors_.allocate();
 
     #pragma omp parallel for default(shared)
-    for (int igk = 0; igk < ngk; igk++)
+    for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
     {
-        int igk_glob = (index_domain == global) ? igk : igkglob(igk);
+        int igk = gklo_basis_descriptor_row(igk_row).igk;
 
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
-            double phase = twopi * Utils::scalar_product(gkvec(igk_glob), parameters_.unit_cell()->atom(ia)->position());
+            double phase = twopi * Utils::scalar_product(gkvec(igk), parameters_.unit_cell()->atom(ia)->position());
 
-            gkvec_phase_factors_(igk, ia) = exp(double_complex(0.0, phase));
+            gkvec_phase_factors_(igk_row, ia) = exp(double_complex(0.0, phase));
         }
     }
 }
@@ -661,18 +660,11 @@ void K_point::init_gkvec()
         }
     }
     
-    // spherical harmonics of G+k vectors
-    if (parameters_.unit_cell()->full_potential())
-    {
-        init_gkvec_ylm_and_len<local>(lmax, num_gkvec_loc());
-        init_gkvec_phase_factors<local>(num_gkvec_loc());
-    }
-
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
         if (num_gkvec() != wf_size()) error_local(__FILE__, __LINE__, "wrong size of wave-functions");
-        init_gkvec_ylm_and_len<global>(lmax, num_gkvec());
-        init_gkvec_phase_factors<global>(num_gkvec());
+        init_gkvec_ylm_and_len(lmax);
+        init_gkvec_phase_factors();
     }
 }
 

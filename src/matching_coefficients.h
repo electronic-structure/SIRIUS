@@ -180,6 +180,7 @@ class Matching_coefficients
             
             gkvec_len_.resize(num_gkvec_);
 
+            /* get length and Ylm harmonics of G+k vectors */
             #pragma omp parallel
             {
                 std::vector<double_complex> ylm(lmmax);
@@ -187,11 +188,8 @@ class Matching_coefficients
                 #pragma omp for
                 for (int igk = 0; igk < num_gkvec_; igk++)
                 {
-                    /* get length and Ylm harmonics of G+k vectors */
-                    double vs[3];
-
                     /* get r, theta, phi */
-                    SHT::spherical_coordinates(gklo_basis_descriptors[igk].gkvec_cart, vs);
+                    auto vs = SHT::spherical_coordinates(gklo_basis_descriptors[igk].gkvec_cart);
 
                     /* get spherical harmonics */
                     SHT::spherical_harmonics(lmax, vs[1], vs[2], &ylm[0]);

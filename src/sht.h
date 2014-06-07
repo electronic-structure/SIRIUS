@@ -189,7 +189,7 @@ class SHT // TODO: better name
         //}
 
         /// Transform Cartesian coordinates [x,y,z] to spherical coordinates [r,theta,phi]
-        static void spherical_coordinates(vector3d<double> vc, double* vs);
+        static vector3d<double> spherical_coordinates(vector3d<double> vc);
 
         /// Generate complex spherical harmonics Ylm
         static void spherical_harmonics(int lmax, double theta, double phi, double_complex* ylm);

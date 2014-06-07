@@ -1280,14 +1280,13 @@ void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* nu
 
         for (int igk = 0; igk < kp->num_gkvec(); igk++)
         {
-            gvec_index[igk] = kp->gvec_index(igk) + 1; //Fortran counst form 1
+            gvec_index[igk] = kp->gvec_index(igk) + 1; //Fortran counts form 1
             for (int x = 0; x < 3; x++) 
             {
                 gkvec(x, igk) = kp->gkvec(igk)[x];
                 gkvec_cart(x, igk) = kp->gkvec_cart(igk)[x];
             }
-            double rtp[3];
-            sirius::SHT::spherical_coordinates(kp->gkvec_cart(igk), rtp);
+            auto rtp = sirius::SHT::spherical_coordinates(kp->gkvec_cart(igk));
             gkvec_len[igk] = rtp[0];
             gkvec_tp(0, igk) = rtp[1];
             gkvec_tp(1, igk) = rtp[2];
@@ -1297,7 +1296,7 @@ void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* nu
         gkvec_phase_factors.zero();
         for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++)
         {
-            int igk = kp->igkglob(igkloc);
+            int igk = kp->gklo_basis_descriptor_row(igkloc).igk;
             for (int ia = 0; ia < global_parameters.unit_cell()->num_atoms(); ia++)
                 gkvec_phase_factors(igk, ia) = kp->gkvec_phase_factor(igkloc, ia);
         }

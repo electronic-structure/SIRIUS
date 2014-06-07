@@ -149,8 +149,7 @@ void Reciprocal_lattice::init(int lmax)
         for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
         {
             int ig = (int)spl_num_gvec_[igloc];
-            double rtp[3];
-            SHT::spherical_coordinates(gvec_cart(ig), rtp);
+            auto rtp = SHT::spherical_coordinates(gvec_cart(ig));
             SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm_(0, igloc));
         }
         t2.stop();

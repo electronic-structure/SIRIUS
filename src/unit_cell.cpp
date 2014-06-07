@@ -877,9 +877,8 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
                     vector3d<double> vf;
                     for (int x = 0; x < 3; x++) vf[x] = vr.first[x] - posf[x];
                     
-                    // convert to spherical coordinates
-                    double vs[3];
-                    SHT::spherical_coordinates(get_cartesian_coordinates(vf), vs);
+                    /* convert to spherical coordinates */
+                    auto vs = SHT::spherical_coordinates(get_cartesian_coordinates(vf));
 
                     if (vs[0] < atom(ia)->mt_radius())
                     {
