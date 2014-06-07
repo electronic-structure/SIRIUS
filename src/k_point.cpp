@@ -135,8 +135,7 @@ void K_point::update()
     
         for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
         {
-            int igk = gklo_basis_descriptors_row_[igk_row].igk;
-            if (gkvec_shells_.empty() || fabs(gkvec_len_[igk] - gkvec_len_[igk - 1]) > 1e-10) 
+            if (gkvec_shells_.empty() || fabs(gkvec_len_[igk_row] - gkvec_len_[igk_row - 1]) > 1e-10) 
                 gkvec_shells_.push_back(std::vector<int>());
             gkvec_shells_.back().push_back(igk_row);
         }
