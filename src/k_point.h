@@ -629,7 +629,7 @@ class K_point
         std::vector<double> get_pw_ekin()
         {
             std::vector<double> pw_ekin(num_gkvec());
-            for (int igk = 0; igk < num_gkvec(); igk++) pw_ekin[igk] = 0.5 * pow(gkvec_len(igk), 2);
+            for (int igk = 0; igk < num_gkvec(); igk++) pw_ekin[igk] = 0.5 * std::pow(gkvec_cart(igk).length(), 2);
             return pw_ekin; 
         }
 
