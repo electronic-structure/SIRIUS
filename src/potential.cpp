@@ -275,63 +275,68 @@ void Potential::poisson_sum_G(int lmmax__,
 {
     Timer t("sirius::Potential::poisson_sum_G");
     
-    //== flm.zero();
-
-    //== mdarray<double_complex, 2> zm1(parameters_.reciprocal_lattice()->spl_num_gvec().local_size(), parameters_.lmmax_rho());
-
-    //== #pragma omp parallel for default(shared)
-    //== for (int lm = 0; lm < parameters_.lmmax_rho(); lm++)
-    //== {
-    //==     for (int igloc = 0; igloc < (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
-    //==         zm1(igloc, lm) = parameters_.reciprocal_lattice()->gvec_ylm(lm, igloc) * conj(fpw[parameters_.reciprocal_lattice()->spl_num_gvec(igloc)] * zilm_[lm]);
-    //== }
-
-    //== mdarray<double_complex, 2> zm2(parameters_.reciprocal_lattice()->spl_num_gvec().local_size(), parameters_.unit_cell()->num_atoms());
-
-    //== for (int l = 0; l <= parameters_.lmax_rho(); l++)
-    //== {
-    //==     #pragma omp parallel for default(shared)
-    //==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    //==     {
-    //==         int iat = parameters_.unit_cell()->atom(ia)->type_id();
-    //==         for (int igloc = 0; igloc < (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size(); igloc++)
-    //==         {
-    //==             int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
-    //==             zm2(igloc, ia) = fourpi * parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia) *  
-    //==                              fl(l, iat, parameters_.reciprocal_lattice()->gvec_shell(ig));
-    //==         }
-    //==     }
-
-    //==     blas<cpu>::gemm(2, 0, 2 * l + 1, parameters_.unit_cell()->num_atoms(), 
-    //==                     (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size(), 
-    //==                     &zm1(0, Utils::lm_by_l_m(l, -l)), zm1.ld(), &zm2(0, 0), zm2.ld(), 
-    //==                     &flm(Utils::lm_by_l_m(l, -l), 0), parameters_.lmmax_rho());
-    //== }
-
     int ngv_loc = (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size();
-    #pragma omp parallel
+
+    flm__.zero();
+
+    int lmax = Utils::lmax_by_lmmax(lmmax__);
+
+    mdarray<double_complex, 2> zm1(ngv_loc, parameters_.lmmax_rho());
+
+    #pragma omp parallel for default(shared)
+    for (int lm = 0; lm < lmmax__; lm++)
     {
-        mdarray<double_complex, 2> zm(lmmax__, ngv_loc);
-        #pragma omp for
+        for (int igloc = 0; igloc < ngv_loc; igloc++)
+        {
+            zm1(igloc, lm) = parameters_.reciprocal_lattice()->gvec_ylm(lm, igloc) * 
+                             conj(fpw__[parameters_.reciprocal_lattice()->spl_num_gvec(igloc)] * zilm_[lm]);
+        }
+    }
+
+    mdarray<double_complex, 2> zm2(ngv_loc, parameters_.unit_cell()->num_atoms());
+
+    for (int l = 0; l <= lmax; l++)
+    {
+        #pragma omp parallel for default(shared)
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
             int iat = parameters_.unit_cell()->atom(ia)->type_id();
             for (int igloc = 0; igloc < ngv_loc; igloc++)
             {
                 int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
-                for (int lm = 0; lm < lmmax__; lm++)
-                {
-                    int l = l_by_lm_[lm];
-                    zm(lm, igloc) = fourpi * parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia) * 
-                                    zilm_[lm] * conj(parameters_.reciprocal_lattice()->gvec_ylm(lm, igloc)) * 
-                                    fl__(l, iat, parameters_.reciprocal_lattice()->gvec_shell(ig));
-                }
+                zm2(igloc, ia) = fourpi * parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia) *  
+                                 fl__(l, iat, parameters_.reciprocal_lattice()->gvec_shell(ig));
             }
-            blas<cpu>::gemv(0, lmmax__, ngv_loc, complex_one, zm.ptr(), zm.ld(), 
-                            &fpw__[parameters_.reciprocal_lattice()->spl_num_gvec().global_offset()], 1, complex_zero, 
-                            &flm__(0, ia), 1);
         }
+
+        blas<cpu>::gemm(2, 0, 2 * l + 1, parameters_.unit_cell()->num_atoms(), ngv_loc, 
+                        &zm1(0, Utils::lm_by_l_m(l, -l)), zm1.ld(), &zm2(0, 0), zm2.ld(), 
+                        &flm__(Utils::lm_by_l_m(l, -l), 0), flm__.ld());
     }
+
+    //== #pragma omp parallel
+    //== {
+    //==     mdarray<double_complex, 2> zm(lmmax__, ngv_loc);
+    //==     #pragma omp for
+    //==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    //==     {
+    //==         int iat = parameters_.unit_cell()->atom(ia)->type_id();
+    //==         for (int igloc = 0; igloc < ngv_loc; igloc++)
+    //==         {
+    //==             int ig = parameters_.reciprocal_lattice()->spl_num_gvec(igloc);
+    //==             for (int lm = 0; lm < lmmax__; lm++)
+    //==             {
+    //==                 int l = l_by_lm_[lm];
+    //==                 zm(lm, igloc) = fourpi * parameters_.reciprocal_lattice()->gvec_phase_factor<local>(igloc, ia) * 
+    //==                                 zilm_[lm] * conj(parameters_.reciprocal_lattice()->gvec_ylm(lm, igloc)) * 
+    //==                                 fl__(l, iat, parameters_.reciprocal_lattice()->gvec_shell(ig));
+    //==             }
+    //==         }
+    //==         blas<cpu>::gemv(0, lmmax__, ngv_loc, complex_one, zm.ptr(), zm.ld(), 
+    //==                         &fpw__[parameters_.reciprocal_lattice()->spl_num_gvec().global_offset()], 1, complex_zero, 
+    //==                         &flm__(0, ia), 1);
+    //==     }
+    //== }
     
     Platform::allreduce(&flm__(0, 0), (int)flm__.size());
 }
