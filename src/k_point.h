@@ -104,7 +104,7 @@ class K_point
         mdarray<double_complex, 2> gkvec_ylm_;
 
         /// length of G+k vectors
-        std::vector<double> gkvec_len_;
+        //std::vector<double> gkvec_len_;
 
         Matching_coefficients* alm_coeffs_row_;
 
@@ -280,12 +280,12 @@ class K_point
             return gkvec_phase_factors_(igk, ia);
         }
 
-        /// Return length of a G+k vector
-        inline double gkvec_len(int igk)
-        {
-            assert(igk >= 0 && igk < (int)gkvec_len_.size());
-            return gkvec_len_[igk];
-        }
+        //== /// Return length of a G+k vector
+        //== inline double gkvec_len(int igk)
+        //== {
+        //==     assert(igk >= 0 && igk < (int)gkvec_len_.size());
+        //==     return gkvec_len_[igk];
+        //== }
                 
         /// Total number of G+k vectors within the cutoff distance
         inline int num_gkvec()

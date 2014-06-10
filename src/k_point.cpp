@@ -131,13 +131,16 @@ void K_point::update()
     {
         Timer t1("sirius::K_point::update|beta_pw");
         
-        std::vector< std::vector<int> > gkvec_shells_;
-    
+        std::vector<std::pair<double, std::vector<int> > > gkvec_shells_;
+        
         for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
         {
-            if (gkvec_shells_.empty() || fabs(gkvec_len_[igk_row] - gkvec_len_[igk_row - 1]) > 1e-10) 
-                gkvec_shells_.push_back(std::vector<int>());
-            gkvec_shells_.back().push_back(igk_row);
+            int igk = gklo_basis_descriptors_row_[igk_row].igk;
+            double gk_len = gkvec_cart(igk).length();
+
+            if (gkvec_shells_.empty() || std::abs(gkvec_shells_.back().first - gk_len) > 1e-10) 
+                gkvec_shells_.push_back(std::pair<double, std::vector<int> >(gk_len, std::vector<int>()));
+            gkvec_shells_.back().second.push_back(igk_row);
         }
 
         auto uc = parameters_.unit_cell();
@@ -166,10 +169,10 @@ void K_point::update()
             #pragma omp for
             for (int ish = 0; ish < (int)gkvec_shells_.size(); ish++)
             {
-                jl.interpolate(gkvec_len_[gkvec_shells_[ish][0]]);
-                for (int i = 0; i < (int)gkvec_shells_[ish].size(); i++)
+                jl.interpolate(gkvec_shells_[ish].first);
+                for (int i = 0; i < (int)gkvec_shells_[ish].second.size(); i++)
                 {
-                    int igk_row = gkvec_shells_[ish][i];
+                    int igk_row = gkvec_shells_[ish].second[i];
 
                     for (int iat = 0; iat < uc->num_atom_types(); iat++)
                     {
@@ -601,7 +604,7 @@ void K_point::init_gkvec_ylm_and_len(int lmax__)
     gkvec_ylm_.set_dimensions(Utils::lmmax(lmax__), num_gkvec_row());
     gkvec_ylm_.allocate();
 
-    gkvec_len_.resize(num_gkvec_row());
+    //gkvec_len_.resize(num_gkvec_row());
 
     #pragma omp parallel for default(shared)
     for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
@@ -613,7 +616,7 @@ void K_point::init_gkvec_ylm_and_len(int lmax__)
         
         SHT::spherical_harmonics(lmax__, vs[1], vs[2], &gkvec_ylm_(0, igk_row));
         
-        gkvec_len_[igk_row] = vs[0];
+        //gkvec_len_[igk_row] = vs[0];
     }
 }
 
