@@ -189,7 +189,9 @@ class mdarray_base
         ~mdarray_base()
         {
             deallocate();
+            #ifdef _GPU_
             deallocate_on_device();
+            #endif
         }
 
         /// Copy constructor is forbidden
