@@ -1487,14 +1487,8 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
         kp->set_fv_eigen_values(&eval[0]);
     }
 
-    #ifdef _GPU_
-    h.deallocate_page_locked();
-    o.deallocate_page_locked();
-    #else
     h.deallocate();
     o.deallocate();
-    #endif
-
     
     //** if ((debug_level > 2) && (parameters_.eigen_value_solver() == scalapack))
     //** {

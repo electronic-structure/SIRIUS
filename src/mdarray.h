@@ -94,12 +94,14 @@ struct mdarray_deleter
 {
     /// Number of elements of the current allocation.
     size_t size_;
+
+    int mode_;
     
-    mdarray_deleter() : size_(0)
+    mdarray_deleter() : size_(0), mode_(0)
     {
     }
 
-    mdarray_deleter(size_t size__) : size_(size__)
+    mdarray_deleter(size_t size__, int mode__) : size_(size__), mode_(mode__)
     {
         #ifndef NDEBUG
         mdarray_mem_count += size_ * sizeof(T);
@@ -112,47 +114,31 @@ struct mdarray_deleter
         #ifndef NDEBUG
         mdarray_mem_count -= size_ * sizeof(T);
         #endif
-        delete[] p__;
-    }
-};
-
-#ifdef _GPU_
-template<typename T>
-struct mdarray_gpu_deleter
-{
-    /// Number of elements of the current allocation.
-    size_t size_;
-
-    bool page_locked_;
-    
-    mdarray_gpu_deleter() : size_(0), page_locked_(false)
-    {
-    }
-
-    mdarray_gpu_deleter(size_t size__, bool page_locked__) : size_(size__), page_locked_(page_locked__)
-    {
-        //== #ifndef NDEBUG
-        //== mdarray_mem_count += size_ * sizeof(T);
-        //== mdarray_mem_count_max = std::max(mdarray_mem_count.load(), mdarray_mem_count_max.load());
-        //== #endif
-    }
-    
-    void operator()(T* p__) const
-    {
-        //#ifndef NDEBUG
-        //mdarray_mem_count -= size_ * sizeof(T);
-        //#endif
-        if (page_locked_)
+        switch (mode_)
         {
-            cuda_free_host(p__);
-        }
-        else
-        {
-            cuda_free(p__);
+            case 0:
+            {
+                delete[] p__;
+                break;
+            }
+            #ifdef _GPU_
+            case 1:
+            {
+                cuda_free_host(p__);
+                break;
+            }
+            case 2:
+            {
+                cuda_free(p__);
+            }
+            #endif
+            default:
+            {
+                error_local(__FILE__, __LINE__, "wrong delete mode");
+            }
         }
     }
 };
-#endif
 
 /// Base class of multidimensional array.
 template <typename T, int ND> 
@@ -168,7 +154,7 @@ class mdarray_base
         
         #ifdef _GPU_
         /// Unique pointer to the allocated GPU memory.
-        std::unique_ptr<T[], mdarray_gpu_deleter<T> > unique_ptr_device_;
+        std::unique_ptr<T[], mdarray_deleter<T> > unique_ptr_device_;
         
         /// Raw pointer to GPU memory
         T* ptr_device_;  
@@ -203,6 +189,7 @@ class mdarray_base
         ~mdarray_base()
         {
             deallocate();
+            deallocate_on_device();
         }
 
         /// Copy constructor is forbidden
@@ -286,7 +273,7 @@ class mdarray_base
             
             size_t sz = size();
 
-            unique_ptr_ = std::unique_ptr<T[], mdarray_deleter<T> >(new T[sz], sz);
+            unique_ptr_ = std::unique_ptr<T[], mdarray_deleter<T> >(new T[sz], mdarray_deleter<T>(sz, 0));
             ptr_ = unique_ptr_.get();
 
 
@@ -333,10 +320,6 @@ class mdarray_base
             unique_ptr_.reset(nullptr);
             ptr_ = nullptr;
             
-            #ifdef _GPU_
-            deallocate_on_device();
-            #endif
-
             //== if (allocated_)
             //== {
             //==     #ifdef _GPU_
@@ -408,7 +391,7 @@ class mdarray_base
 
             cuda_malloc((void**)(&ptr_device_), sz * sizeof(T));
 
-            unique_ptr_device_ = std::unique_ptr<T[], mdarray_gpu_deleter<T> >(ptr_device_, mdarray_gpu_deleter<T>(sz, false));
+            unique_ptr_device_ = std::unique_ptr<T[], mdarray_deleter<T> >(ptr_device_, mdarray_deleter<T>(sz, 2));
         }
 
         void deallocate_on_device()
@@ -421,15 +404,15 @@ class mdarray_base
         {
             size_t sz = size();
 
-            cuda_malloc_host((void**)(&ptr_device_), sz * sizeof(T));
+            cuda_malloc_host((void**)(&ptr_), sz * sizeof(T));
 
-            unique_ptr_device_ = std::unique_ptr<T[], mdarray_gpu_deleter<T> >(ptr_device_, mdarray_gpu_deleter<T>(sz, true));
+            unique_ptr_ = std::unique_ptr<T[], mdarray_deleter<T> >(ptr_, mdarray_deleter<T>(sz, 1));
         }
 
-        void deallocate_page_locked()
-        {
-            deallocate_on_device();
-        }
+        //== void deallocate_page_locked()
+        //== {
+        //==     deallocate();
+        //== }
 
         void copy_to_device() 
         {
