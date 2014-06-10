@@ -1894,8 +1894,8 @@ void Potential::generate_d_mtrx_gpu()
 
     auto rl = parameters_.reciprocal_lattice();
 
-    mdarray<double_complex, 1> veff_gpu(&effective_potential_->f_pw(rl->spl_num_gvec().global_offset()), 
-                                   rl->spl_num_gvec().local_size());
+    mdarray<double_complex, 1> veff_gpu(&effective_potential_->f_pw(static_cast<int>(rl->spl_num_gvec().global_offset())), 
+                                        static_cast<int>(rl->spl_num_gvec().local_size()));
     veff_gpu.allocate_on_device();
     veff_gpu.copy_to_device();
 
@@ -1907,7 +1907,7 @@ void Potential::generate_d_mtrx_gpu()
     }
     
     mdarray<int, 2> gvec(3, rl->spl_num_gvec().local_size());
-    for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
+    for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
     {
         for (int x = 0; x < 3; x++) gvec(x, igloc) = rl->gvec(rl->spl_num_gvec(igloc))[x];
     }
@@ -1934,7 +1934,7 @@ void Potential::generate_d_mtrx_gpu()
 
             vector3d<double> apos = parameters_.unit_cell()->atom(ia)->position();
 
-            compute_d_mtrx_valence_gpu(rl->spl_num_gvec().local_size(), 
+            compute_d_mtrx_valence_gpu((int)rl->spl_num_gvec().local_size(), 
                                        nbf * (nbf + 1) / 2, 
                                        veff_gpu.ptr_device(), 
                                        gvec.ptr_device(), 

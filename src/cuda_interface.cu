@@ -167,9 +167,9 @@ extern "C" void cuda_malloc_host(void** ptr, size_t size)
     cuda_check_last_error(__FILE__, __LINE__);
 }
 
-extern "C" void cuda_free_host(void** ptr)
+extern "C" void cuda_free_host(void* ptr)
 {
-    cudaFreeHost(*ptr);
+    cudaFreeHost(ptr);
     cuda_check_last_error(__FILE__, __LINE__);
 }
 

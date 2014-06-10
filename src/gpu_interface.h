@@ -41,7 +41,7 @@ extern "C" void cuda_malloc(void** ptr, size_t size);
 
 extern "C" void cuda_malloc_host(void** ptr, size_t size);
 
-extern "C" void cuda_free_host(void** ptr);
+extern "C" void cuda_free_host(void* ptr);
 
 extern "C" void cuda_free(void* ptr);
 

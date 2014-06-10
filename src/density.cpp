@@ -1230,7 +1230,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     //=========================
     // add k-point contribution
     //=========================
-    for (int ikloc = 0; ikloc < ks.spl_num_kpoints().local_size(); ikloc++)
+    for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks.spl_num_kpoints(ikloc);
         std::vector< std::pair<int, double> > occupied_bands = get_occupied_bands_list(ks.band(), ks[ik]);
@@ -1252,7 +1252,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     }
 
     mdarray<int, 2> gvec(3, rl->spl_num_gvec().local_size());
-    for (int igloc = 0; igloc < rl->spl_num_gvec().local_size(); igloc++)
+    for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
     {
         for (int x = 0; x < 3; x++) gvec(x, igloc) = rl->gvec(rl->spl_num_gvec(igloc))[x];
     }
@@ -1294,14 +1294,14 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
         d_mtrx_pw.zero_on_device();
 
         generate_d_mtrx_pw_gpu(type->num_atoms(),
-                               rl->spl_num_gvec().local_size(),
+                               (int)rl->spl_num_gvec().local_size(),
                                nbf,
                                atom_pos.ptr_device(),
                                gvec.ptr_device(),
                                d_mtrx_packed.ptr_device(),
                                d_mtrx_pw.ptr_device());
 
-        sum_q_pw_d_mtrx_pw_gpu(rl->spl_num_gvec().local_size(), 
+        sum_q_pw_d_mtrx_pw_gpu((int)rl->spl_num_gvec().local_size(), 
                                nbf,
                                type->uspp().q_pw.ptr_device(),
                                d_mtrx_pw.ptr_device(),
@@ -1310,7 +1310,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 
     rho_pw_gpu.copy_to_host();
 
-    Platform::allgather(&rho_pw[0], rl->spl_num_gvec().global_offset(), rl->spl_num_gvec().local_size());
+    Platform::allgather(&rho_pw[0], (int)rl->spl_num_gvec().global_offset(), (int)rl->spl_num_gvec().local_size());
     
     fft_->input(rl->num_gvec(), rl->fft_index(), &rho_pw[0]);
     fft_->transform(1);
