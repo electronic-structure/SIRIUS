@@ -41,7 +41,8 @@ void test_gemm(int M, int N, int K, int transa, mdarray<double_complex, 2>& c)
 #ifdef _SCALAPACK_
 void test_pgemm(int M, int N, int K, int nrow, int ncol, int transa)
 {
-    int context = linalg<scalapack>::create_blacs_context(MPI_COMM_WORLD);
+    int blacs_handler = linalg<scalapack>::create_blacs_handler(MPI_COMM_WORLD);
+    int context = blacs_handler;
     Cblacs_gridinit(&context, "C", nrow, ncol);
 
     dmatrix<double_complex> a;
@@ -81,8 +82,8 @@ void test_pgemm(int M, int N, int K, int nrow, int ncol, int transa)
         printf("execution time (sec) : %12.6f\n", t1.value());
         printf("performance (GFlops) : %12.6f\n", 8e-9 * M * N * K / t1.value() / nrow / ncol);
     }
-
-    linalg<scalapack>::free_blacs_context(context);
+    Cblacs_gridexit(context);
+    linalg<scalapack>::free_blacs_handler(blacs_handler);
 }
 #endif
 
@@ -134,7 +135,6 @@ int main(int argn, char **argv)
         #ifdef _SCALAPACK_
         int bs = args.value<int>("bs");
         linalg<scalapack>::set_cyclic_block_size(bs);
-        splindex<block_cyclic>::set_cyclic_block_size(bs);
         test_pgemm(M, N, K, nrow, ncol, transa);
         #else
         terminate(__FILE__, __LINE__, "not compiled with ScaLAPACK support");
