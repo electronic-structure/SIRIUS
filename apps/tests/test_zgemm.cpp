@@ -1,34 +1,45 @@
 #include <sirius.h>
 
-void test_gemm(int M, int N, int K, int transa, mdarray<double_complex, 2>& c)
+void test_gemm(int M, int N, int K, int transa)
 {
     sirius::Timer t("test_gemm"); 
     
-    mdarray<double_complex, 2> a;
+    mdarray<double_complex, 2> a, b, c;
+    int imax, jmax;
     if (transa == 0)
     {
-        a.set_dimensions(N, K);
-        a.allocate();
-        for (int j = 0; j < K; j++)
-        {
-            for (int i = 0; i < N; i++) a(i, j) = type_wrapper<double_complex>::random();
-        }
+        imax = N;
+        jmax = K;
     }
     else
     {
-        a.set_dimensions(K, N);
-        a.allocate();
-        for (int j = 0; j < N; j++)
-        {
-            for (int i = 0; i < K; i++) a(i, j) = type_wrapper<double_complex>::random();
-        }
+        imax = K;
+        jmax = N;
+    }
+    a.set_dimensions(imax, jmax);
+    b.set_dimensions(K, N);
+    c.set_dimensions(M, N);
+    #ifdef _GPU_
+    a.allocate_page_locked();
+    b.allocate_page_locked();
+    c.allocate_page_locked();
+    #else
+    a.allocate();
+    b.allocate();
+    c.allocate();
+    #endif
+
+    for (int j = 0; j < jmax; j++)
+    {
+        for (int i = 0; i < imax; i++) a(i, j) = type_wrapper<double_complex>::random();
     }
 
-    mdarray<double_complex, 2> b(K, N);
     for (int j = 0; j < N; j++)
     {
         for (int i = 0; i < K; i++) b(i, j) = type_wrapper<double_complex>::random();
     }
+
+    c.zero();
 
     printf("testing serial zgemm with M, N, K = %i, %i, %i, opA = %i\n", M, N, K, transa);
     sirius::Timer t1("gemm_only"); 
@@ -45,7 +56,7 @@ void test_pgemm(int M, int N, int K, int nrow, int ncol, int transa)
     int context = blacs_handler;
     Cblacs_gridinit(&context, "C", nrow, ncol);
 
-    dmatrix<double_complex> a;
+    dmatrix<double_complex> a, b, c;
     if (transa == 0)
     {
         a.set_dimensions(M, K, context);
@@ -54,20 +65,29 @@ void test_pgemm(int M, int N, int K, int nrow, int ncol, int transa)
     {
         a.set_dimensions(K, M, context);
     }
+    b.set_dimensions(K, N, context);
+    c.set_dimensions(M, N, context);
+    #ifdef _GPU_
+    a.allocate_page_locked();
+    b.allocate_page_locked();
+    c.allocate_page_locked();
+    #else
     a.allocate();
-
-    dmatrix<double_complex> b(K, N, context);
-    dmatrix<double_complex> c(M, N, context);
-    c.zero();
+    b.allocate();
+    c.allocate();
+    #endif
 
     for (int ic = 0; ic < a.num_cols_local(); ic++)
     {
         for (int ir = 0; ir < a.num_rows_local(); ir++) a(ir, ic) = type_wrapper<double_complex>::random();
     }
+
     for (int ic = 0; ic < b.num_cols_local(); ic++)
     {
         for (int ir = 0; ir < b.num_rows_local(); ir++) b(ir, ic) = type_wrapper<double_complex>::random();
     }
+
+    c.zero();
 
     if (Platform::mpi_rank() == 0)
     {
@@ -123,12 +143,7 @@ int main(int argn, char **argv)
 
     if (nrow * ncol == 1)
     {
-        mdarray<double_complex, 2> c(M, N);
-        for (int j = 0; j < N; j++)
-        {
-            for (int i = 0; i < M; i++) c(i, j) = complex_zero;
-        }
-        test_gemm(M, N, K, transa, c);
+        test_gemm(M, N, K, transa);
     }
     else
     {
