@@ -52,6 +52,12 @@ void test_gemm(int M, int N, int K, int transa)
 #ifdef _SCALAPACK_
 void test_pgemm(int M, int N, int K, int nrow, int ncol, int transa)
 {
+    //== #ifdef _GPU_
+    //== sirius::pstdout pout;
+    //== pout.printf("rank : %3i, free GPU memory (Mb) : %10.2f\n", Platform::mpi_rank(), cuda_get_free_mem() / double(1 << 20));
+    //== pout.flush(0);
+    //== #endif
+
     int blacs_handler = linalg<scalapack>::create_blacs_handler(MPI_COMM_WORLD);
     int context = blacs_handler;
     Cblacs_gridinit(&context, "C", nrow, ncol);
@@ -94,8 +100,13 @@ void test_pgemm(int M, int N, int K, int nrow, int ncol, int transa)
         printf("testing parallel zgemm with M, N, K = %i, %i, %i, opA = %i\n", M, N, K, transa);
         printf("nrow, ncol = %i, %i, bs = %i\n", nrow, ncol, linalg<scalapack>::cyclic_block_size());
     }
+    Platform::barrier();
     sirius::Timer t1("gemm_only"); 
     blas<cpu>::gemm(transa, 0, M, N, K, complex_one, a, b, complex_zero, c);
+    #ifdef _GPU_
+    cuda_device_synchronize();
+    #endif
+    Platform::barrier();
     t1.stop();
     if (Platform::mpi_rank() == 0)
     {
@@ -150,7 +161,8 @@ int main(int argn, char **argv)
         #ifdef _SCALAPACK_
         int bs = args.value<int>("bs");
         linalg<scalapack>::set_cyclic_block_size(bs);
-        test_pgemm(M, N, K, nrow, ncol, transa);
+        int n = 4;
+        for (int i = 0; i < n; i++) test_pgemm(M, N, K, nrow, ncol, transa);
         #else
         terminate(__FILE__, __LINE__, "not compiled with ScaLAPACK support");
         #endif
