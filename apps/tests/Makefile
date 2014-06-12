@@ -61,6 +61,9 @@ test_iallgather:
 
 test_enu:
 	$(CXX) $(CXX_OPT) $(INCLUDE) test_enu.cpp  $(LIB_SIRIUS) $(LIBS) -o test_enu
+
+test_diag:
+	$(CXX) $(CXX_OPT) $(INCLUDE) test_diag.cpp  $(LIB_SIRIUS) $(LIBS) -o test_diag
 	
 
 clean:
