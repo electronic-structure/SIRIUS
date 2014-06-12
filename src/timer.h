@@ -111,7 +111,7 @@ class Timer
 
         void start();
 
-        void stop();
+        double stop();
 
         double value();
 

@@ -44,7 +44,7 @@ void Timer::start()
     active_ = true;
 }
 
-void Timer::stop()
+double Timer::stop()
 {
     if (!active_)
     {
@@ -73,6 +73,8 @@ void Timer::stop()
     }
 
     active_ = false;
+
+    return val;
 }
 
 double Timer::value()
