@@ -213,11 +213,11 @@ void Density::initial_density()
         for (auto& i: gsh_map) gsh_list.push_back(std::pair<int, std::vector<int> >(i.first, i.second));
 
         Timer t2("sirius::Density::initial_density:rho_mt");
-        int lmax = parameters_.lmax_rho();
+        int lmax = 2; //parameters_.lmax_rho();
         int lmmax = Utils::lmmax(lmax);
         auto l_by_lm = Utils::l_by_lm(lmax);
 
-        SHT sht(parameters_.lmax_rho());
+        SHT sht(lmax);
         
         /* cache 4 * pi * complex_i^l values */ 
         std::vector<double_complex> cil4p(lmax + 1);
