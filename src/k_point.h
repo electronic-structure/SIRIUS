@@ -155,17 +155,17 @@ class K_point
 
         int num_ranks_;
 
-        /// phase-factor independent plane-wave coefficients of |beta> functions for atom types
+        /// Phase-factor independent plane-wave coefficients of |beta> functions for atom types.
         mdarray<double_complex, 2> beta_pw_t_;
 
-        /// plane-wave coefficients of |beta> functions for atoms
-        mdarray<double_complex, 2> beta_pw_a_;
+        /// Plane-wave coefficients of |beta> functions for atoms.
+        dmatrix<double_complex> beta_pw_panel_;
 
         /// Copy lo block from eigen-vector to wave-function
-        inline void copy_lo_blocks(const double_complex* z, double_complex* vec);
+        //== inline void copy_lo_blocks(const double_complex* z, double_complex* vec);
         
         /// Copy plane wave block from eigen-vector to wave-function
-        inline void copy_pw_block(const double_complex* z, double_complex* vec);
+        //== inline void copy_pw_block(const double_complex* z, double_complex* vec);
 
         /// Initialize G+k related data
         void init_gkvec();
@@ -648,14 +648,19 @@ class K_point
             return beta_pw_t_;
         }
 
-        inline double_complex& beta_pw_t(int igk, int idx)
+        //== inline double_complex& beta_pw_t(int igk, int idx)
+        //== {
+        //==     return beta_pw_t_(igk, idx);
+        //== }
+
+        inline double_complex& beta_pw(int igk, int idx)
         {
-            return beta_pw_t_(igk, idx);
+            return beta_pw_panel_(igk, idx);
         }
 
-        inline double_complex& beta_pw_a(int igk, int idx)
+        inline dmatrix<double_complex>& beta_pw_panel()
         {
-            return beta_pw_a_(igk, idx);
+            return beta_pw_panel_;
         }
 
         inline Matching_coefficients* alm_coeffs_row()

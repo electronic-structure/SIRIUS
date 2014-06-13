@@ -119,6 +119,8 @@ class Unit_cell
          *  and corresponding atom and local index \f$ \xi \f$ 
          */
         std::vector<mt_basis_descriptor> mt_aw_basis_descriptors_; 
+
+        std::vector<mt_basis_descriptor> mt_lo_basis_descriptors_; 
         
         /// total number of local orbital basis functions
         int mt_lo_basis_size_;
@@ -497,24 +499,29 @@ class Unit_cell
             return nearest_neighbours_[ia][i];
         }
 
-        inline int num_beta_t()
-        {
-            return num_beta_t_;
-        }
+        //== inline int num_beta_t()
+        //== {
+        //==     return num_beta_t_;
+        //== }
 
         inline mdarray<double, 2>& atom_pos()
         {
             return atom_pos_;
         }
 
-        inline mdarray<int, 2>& beta_t_idx()
-        {
-            return beta_t_idx_;
-        }
+        //inline mdarray<int, 2>& beta_t_idx()
+        //{
+        //    return beta_t_idx_;
+        //}
 
         inline mt_basis_descriptor& mt_aw_basis_descriptor(int idx)
         {
             return mt_aw_basis_descriptors_[idx];
+        }
+
+        inline mt_basis_descriptor& mt_lo_basis_descriptor(int idx)
+        {
+            return mt_lo_basis_descriptors_[idx];
         }
 };
     
