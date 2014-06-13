@@ -128,6 +128,94 @@ void Density::zero()
     for (int i = 0; i < parameters_.num_mag_dims(); i++) magnetization_[i]->zero();
 }
 
+mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
+{
+    Timer t("sirius::Density::generate_rho_radial_integrals");
+
+    auto rl = parameters_.reciprocal_lattice();
+    auto uc = parameters_.unit_cell();
+
+    mdarray<double, 2> rho_radial_integrals(uc->num_atom_types(), rl->num_gvec_shells_inner());
+
+    /* split G-shells between MPI ranks */
+    splindex<block> spl_gshells(rl->num_gvec_shells_inner(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+
+    #pragma omp parallel
+    {
+        /* splines for all atom types */
+        std::vector< Spline<double> > sa(uc->num_atom_types());
+        
+        for (int iat = 0; iat < uc->num_atom_types(); iat++) 
+        {
+            /* full potential radial integrals requre a free atom grid */
+            if (type__ == 0) 
+            {
+                sa[iat] = Spline<double>(uc->atom_type(iat)->free_atom_radial_grid());
+            }
+            else
+            {
+                sa[iat] = Spline<double>(uc->atom_type(iat)->radial_grid());
+            }
+        }
+        
+        /* spherical Bessl functions */
+        sbessel_pw<double> jl(uc, 0);
+
+        #pragma omp for
+        for (int igsloc = 0; igsloc < (int)spl_gshells.local_size(); igsloc++)
+        {
+            int igs = (int)spl_gshells[igsloc];
+
+            /* for pseudopotential valence or core charge density */
+            if (type__ == 1 || type__ == 2) jl.load(rl->gvec_shell_len(igs));
+
+            for (int iat = 0; iat < uc->num_atom_types(); iat++)
+            {
+                auto atom_type = uc->atom_type(iat);
+
+                if (type__ == 0)
+                {
+                    if (igs == 0)
+                    {
+                        for (int ir = 0; ir < sa[iat].num_points(); ir++) sa[iat][ir] = atom_type->free_atom_density(ir);
+                        rho_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(2);
+                    }
+                    else
+                    {
+                        double G = rl->gvec_shell_len(igs);
+                        for (int ir = 0; ir < sa[iat].num_points(); ir++) 
+                        {
+                            sa[iat][ir] = atom_type->free_atom_density(ir) *
+                                          sin(G * atom_type->free_atom_radial_grid(ir)) / G;
+                        }
+                        rho_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(1);
+                    }
+                }
+
+                if (type__ == 1)
+                {
+                    for (int ir = 0; ir < sa[iat].num_points(); ir++) 
+                        sa[iat][ir] = jl(ir, 0, iat) * atom_type->uspp().total_charge_density[ir];
+                    rho_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(0) / fourpi;
+                }
+
+                if (type__ == 2)
+                {
+                    for (int ir = 0; ir < sa[iat].num_points(); ir++) 
+                        sa[iat][ir] = jl(ir, 0, iat) * atom_type->uspp().core_charge_density[ir];
+                    rho_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(2);
+                }
+            }
+        }
+    }
+
+    int ld = uc->num_atom_types();
+    Platform::allgather(rho_radial_integrals.ptr(), static_cast<int>(ld * spl_gshells.global_offset()), 
+                        static_cast<int>(ld * spl_gshells.local_size()));
+
+    return rho_radial_integrals;
+}
+
 void Density::initial_density()
 {
     Timer t("sirius::Density::initial_density");
@@ -143,40 +231,42 @@ void Density::initial_density()
         for (int iat = 0; iat < uc->num_atom_types(); iat++) uc->atom_type(iat)->init_free_atom(true);
 
         /* compute radial integrals */
-        mdarray<double, 2> rho_radial_integrals(uc->num_atom_types(), rl->num_gvec_shells_inner());
-        rho_radial_integrals.zero();
+        //== mdarray<double, 2> rho_radial_integrals(uc->num_atom_types(), rl->num_gvec_shells_inner());
+        //== rho_radial_integrals.zero();
 
-        Timer t1("sirius::Density::initial_density:rad_int");
-        splindex<block> spl_gshells(rl->num_gvec_shells_inner(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+        //== Timer t1("sirius::Density::initial_density:rad_int");
+        //== splindex<block> spl_gshells(rl->num_gvec_shells_inner(), Platform::num_mpi_ranks(), Platform::mpi_rank());
 
-        #pragma omp parallel for
-        for (int igsloc = 0; igsloc < (int)spl_gshells.local_size(); igsloc++)
-        {
-            int igs = (int)spl_gshells[igsloc];
-            for (int iat = 0; iat < uc->num_atom_types(); iat++)
-            {
-                auto atom_type = uc->atom_type(iat);
-                Spline<double> s(atom_type->free_atom_radial_grid());
-                
-                if (igs == 0)
-                {
-                    for (int ir = 0; ir < s.num_points(); ir++) s[ir] = atom_type->free_atom_density(ir);
-                    rho_radial_integrals(iat, igs) = s.interpolate().integrate(2);
-                }
-                else
-                {
-                    double G = rl->gvec_shell_len(igs);
-                    for (int ir = 0; ir < s.num_points(); ir++) 
-                    {
-                        s[ir] = atom_type->free_atom_density(ir) *
-                                sin(G * atom_type->free_atom_radial_grid(ir)) / G;
-                    }
-                    rho_radial_integrals(iat, igs) = s.interpolate().integrate(1);
-                }
-            }
-        }
-        Platform::allreduce(rho_radial_integrals.ptr(), (int)rho_radial_integrals.size());
-        t1.stop();
+        //== #pragma omp parallel for
+        //== for (int igsloc = 0; igsloc < (int)spl_gshells.local_size(); igsloc++)
+        //== {
+        //==     int igs = (int)spl_gshells[igsloc];
+        //==     for (int iat = 0; iat < uc->num_atom_types(); iat++)
+        //==     {
+        //==         auto atom_type = uc->atom_type(iat);
+        //==         Spline<double> s(atom_type->free_atom_radial_grid());
+        //==         
+        //==         if (igs == 0)
+        //==         {
+        //==             for (int ir = 0; ir < s.num_points(); ir++) s[ir] = atom_type->free_atom_density(ir);
+        //==             rho_radial_integrals(iat, igs) = s.interpolate().integrate(2);
+        //==         }
+        //==         else
+        //==         {
+        //==             double G = rl->gvec_shell_len(igs);
+        //==             for (int ir = 0; ir < s.num_points(); ir++) 
+        //==             {
+        //==                 s[ir] = atom_type->free_atom_density(ir) *
+        //==                         sin(G * atom_type->free_atom_radial_grid(ir)) / G;
+        //==             }
+        //==             rho_radial_integrals(iat, igs) = s.interpolate().integrate(1);
+        //==         }
+        //==     }
+        //== }
+        //== Platform::allreduce(rho_radial_integrals.ptr(), (int)rho_radial_integrals.size());
+        //== t1.stop();
+
+        auto rho_radial_integrals = generate_rho_radial_integrals(0);
 
         /* compute contribution from free atoms to the interstitial density */
         std::vector<double_complex> v = rl->make_periodic_function(rho_radial_integrals, rl->num_gvec());
@@ -395,39 +485,41 @@ void Density::initial_density()
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
-        mdarray<double, 2> rho_radial_integrals(uc->num_atom_types(), rl->num_gvec_shells_inner());
+        //== mdarray<double, 2> rho_radial_integrals(uc->num_atom_types(), rl->num_gvec_shells_inner());
+        //== 
+        //== splindex<block> spl_gsh(rl->num_gvec_shells_inner(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+
+        //== // TODO: unify with  generate_pseudo_core_charge_density() 
+        //== #pragma omp parallel
+        //== {
+        //==     /* splines for all atom types */
+        //==     std::vector< Spline<double> > sa(uc->num_atom_types());
+        //==     for (int iat = 0; iat < uc->num_atom_types(); iat++) sa[iat] = Spline<double>(uc->atom_type(iat)->radial_grid());
+
+        //==     /* spherical Bessl functions */
+        //==     sbessel_pw<double> jl(uc, 0);
+
+        //==     #pragma omp for
+        //==     for (int igsloc = 0; igsloc < (int)spl_gsh.local_size(); igsloc++)
+        //==     {
+        //==         int igs = (int)spl_gsh[igsloc];
+
+        //==         jl.load(rl->gvec_shell_len(igs));
+
+        //==         for (int iat = 0; iat < uc->num_atom_types(); iat++)
+        //==         {
+        //==             auto atom_type = uc->atom_type(iat);
+        //==             for (int ir = 0; ir < atom_type->num_mt_points(); ir++) 
+        //==                 sa[iat][ir] = jl(ir, 0, iat) * atom_type->uspp().total_charge_density[ir];
+        //==             rho_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(0) / fourpi;
+        //==         }
+        //==     }
+        //== }
+        //== int ld = uc->num_atom_types();
+        //== Platform::allgather(rho_radial_integrals.ptr(), static_cast<int>(ld * spl_gsh.global_offset()), 
+        //==                     static_cast<int>(ld * spl_gsh.local_size()));
         
-        splindex<block> spl_gsh(rl->num_gvec_shells_inner(), Platform::num_mpi_ranks(), Platform::mpi_rank());
-
-        // TODO: unify with  generate_pseudo_core_charge_density() 
-        #pragma omp parallel
-        {
-            /* splines for all atom types */
-            std::vector< Spline<double> > sa(uc->num_atom_types());
-            for (int iat = 0; iat < uc->num_atom_types(); iat++) sa[iat] = Spline<double>(uc->atom_type(iat)->radial_grid());
-
-            /* spherical Bessl functions */
-            sbessel_pw<double> jl(uc, 0);
-
-            #pragma omp for
-            for (int igsloc = 0; igsloc < (int)spl_gsh.local_size(); igsloc++)
-            {
-                int igs = (int)spl_gsh[igsloc];
-
-                jl.load(rl->gvec_shell_len(igs));
-
-                for (int iat = 0; iat < uc->num_atom_types(); iat++)
-                {
-                    auto atom_type = uc->atom_type(iat);
-                    for (int ir = 0; ir < atom_type->num_mt_points(); ir++) 
-                        sa[iat][ir] = jl(ir, 0, iat) * atom_type->uspp().total_charge_density[ir];
-                    rho_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(0) / fourpi;
-                }
-            }
-        }
-        int ld = uc->num_atom_types();
-        Platform::allgather(rho_radial_integrals.ptr(), static_cast<int>(ld * spl_gsh.global_offset()), 
-                            static_cast<int>(ld * spl_gsh.local_size()));
+        auto rho_radial_integrals = generate_rho_radial_integrals(1);
 
         std::vector<double_complex> v = rl->make_periodic_function(rho_radial_integrals, rl->num_gvec());
 
@@ -641,7 +733,7 @@ void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int
 
     // compute <beta|Psi>
     blas<cpu>::gemm(2, 0, parameters_.unit_cell()->mt_lo_basis_size(), (int)occupied_bands.size(), kp->num_gkvec(), 
-                    &kp->beta_pw_a(0, 0), kp->num_gkvec(), &wfs(0, 0), wfs.ld(), &beta_psi(0, 0), beta_psi.ld());
+                    &kp->beta_pw(0, 0), kp->num_gkvec(), &wfs(0, 0), wfs.ld(), &beta_psi(0, 0), beta_psi.ld());
     
     #pragma omp parallel
     {
@@ -1571,40 +1663,42 @@ void Density::generate_pseudo_core_charge_density()
     Timer t("sirius::Density::generate_pseudo_core_charge_density");
 
     auto rl = parameters_.reciprocal_lattice();
-    auto uc = parameters_.unit_cell();
+    auto rho_core_radial_integrals = generate_rho_radial_integrals(2);
 
-    mdarray<double, 2> rho_core_radial_integrals(uc->num_atom_types(), rl->num_gvec_shells_inner());
+    //==auto uc = parameters_.unit_cell();
 
-    splindex<block> spl_gsh(rl->num_gvec_shells_inner(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+    //==mdarray<double, 2> rho_core_radial_integrals(uc->num_atom_types(), rl->num_gvec_shells_inner());
 
-    #pragma omp parallel
-    {
-        /* splines for all atom types */
-        std::vector< Spline<double> > sa(uc->num_atom_types());
-        for (int iat = 0; iat < uc->num_atom_types(); iat++) sa[iat] = Spline<double>(uc->atom_type(iat)->radial_grid());
+    //==splindex<block> spl_gsh(rl->num_gvec_shells_inner(), Platform::num_mpi_ranks(), Platform::mpi_rank());
 
-        /* spherical Bessl functions */
-        sbessel_pw<double> jl(uc, 0);
+    //==#pragma omp parallel
+    //=={
+    //==    /* splines for all atom types */
+    //==    std::vector< Spline<double> > sa(uc->num_atom_types());
+    //==    for (int iat = 0; iat < uc->num_atom_types(); iat++) sa[iat] = Spline<double>(uc->atom_type(iat)->radial_grid());
 
-        #pragma omp for
-        for (int igsloc = 0; igsloc < (int)spl_gsh.local_size(); igsloc++)
-        {
-            int igs = (int)spl_gsh[igsloc];
+    //==    /* spherical Bessl functions */
+    //==    sbessel_pw<double> jl(uc, 0);
 
-            jl.load(rl->gvec_shell_len(igs));
+    //==    #pragma omp for
+    //==    for (int igsloc = 0; igsloc < (int)spl_gsh.local_size(); igsloc++)
+    //==    {
+    //==        int igs = (int)spl_gsh[igsloc];
 
-            for (int iat = 0; iat < uc->num_atom_types(); iat++)
-            {
-                auto atom_type = uc->atom_type(iat);
-                for (int ir = 0; ir < atom_type->num_mt_points(); ir++) 
-                    sa[iat][ir] = jl(ir, 0, iat) * atom_type->uspp().core_charge_density[ir];
-                rho_core_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(2);
-            }
-        }
-    }
-    int ld = uc->num_atom_types();
-    Platform::allgather(rho_core_radial_integrals.ptr(), static_cast<int>(ld * spl_gsh.global_offset()), 
-                        static_cast<int>(ld * spl_gsh.local_size()));
+    //==        jl.load(rl->gvec_shell_len(igs));
+
+    //==        for (int iat = 0; iat < uc->num_atom_types(); iat++)
+    //==        {
+    //==            auto atom_type = uc->atom_type(iat);
+    //==            for (int ir = 0; ir < atom_type->num_mt_points(); ir++) 
+    //==                sa[iat][ir] = jl(ir, 0, iat) * atom_type->uspp().core_charge_density[ir];
+    //==            rho_core_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(2);
+    //==        }
+    //==    }
+    //==}
+    //==int ld = uc->num_atom_types();
+    //==Platform::allgather(rho_core_radial_integrals.ptr(), static_cast<int>(ld * spl_gsh.global_offset()), 
+    //==                    static_cast<int>(ld * spl_gsh.local_size()));
 
     std::vector<double_complex> v = rl->make_periodic_function(rho_core_radial_integrals, rl->num_gvec());
     

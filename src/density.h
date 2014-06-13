@@ -282,6 +282,8 @@ class Density
         
         void load();
 
+        mdarray<double, 2> generate_rho_radial_integrals(int type__);
+
         inline size_t size()
         {
             size_t s = rho_->size();

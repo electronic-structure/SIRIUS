@@ -162,12 +162,14 @@ class dmatrix
         {
             return num_cols_;
         }
-
+        
+        /// Local number of columns.
         inline int num_cols_local()
         {
             return static_cast<int>(spl_col_.local_size());
         }
-
+        
+        /// Inindex of column in global matrix.
         inline int icol(int icol_loc)
         {
             return static_cast<int>(spl_col_[icol_loc]);
@@ -215,7 +217,7 @@ class dmatrix
         }
         #endif
 
-        inline T& operator()(const int irow_loc, const int icol_loc) 
+        inline T& operator()(const int64_t irow_loc, const int64_t icol_loc) 
         {
             return matrix_local_(irow_loc, icol_loc);
         }
@@ -451,6 +453,11 @@ class dmatrix
                 /* gather local matrix */
                 Platform::gather(sub_panel.ptr(), matrix_local_.ptr(), &counts[0], &offsets[0], rank, comm_row__);
             }
+        }
+
+        inline splindex<block_cyclic>& spl_col()
+        {
+            return spl_col_;
         }
 };
 

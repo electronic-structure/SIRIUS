@@ -145,7 +145,10 @@ void K_point::update()
 
         auto uc = parameters_.unit_cell();
 
-        beta_pw_t_.set_dimensions(num_gkvec_row(), uc->num_beta_t()); 
+        int num_beta_t = 0;
+        for (int iat = 0; iat < uc->num_atom_types(); iat++) num_beta_t += uc->atom_type(iat)->mt_lo_basis_size();
+
+        beta_pw_t_.set_dimensions(num_gkvec_row(), num_beta_t); 
         beta_pw_t_.allocate();
 
         mdarray<Spline<double>*, 2> beta_rf(uc->max_mt_radial_basis_size(), uc->num_atom_types());
@@ -191,7 +194,7 @@ void K_point::update()
                             int idxrf = atom_type->indexb(xi).idxrf;
 
                             double_complex z = pow(double_complex(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
-                            beta_pw_t_(igk_row, uc->atom_type(iat)->offset_lo() + xi) = z * gkvec_ylm_(lm, igk_row) * beta_radial_integrals_[idxrf];
+                            beta_pw_t_(igk_row, atom_type->offset_lo() + xi) = z * gkvec_ylm_(lm, igk_row) * beta_radial_integrals_[idxrf];
                         }
                     }
                 }
@@ -207,23 +210,23 @@ void K_point::update()
             }
         }
 
-        //== beta_pw_a_.set_dimensions(num_gkvec(), uc->mt_basis_size()); 
-        //== beta_pw_a_.allocate();
-        //== 
-        //== for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-        //== {
-        //==     auto atom_type = parameters_.unit_cell()->atom(ia)->type();
-        //==     int iat = atom_type->id();
-     
-        //==     for (int xi = 0; xi < atom_type->mt_basis_size(); xi++)
-        //==     {
-        //==         for (int igk = 0; igk < num_gkvec(); igk++)
-        //==         {
-        //==             beta_pw_a_(igk, uc->atom(ia)->offset_lo() + xi) = 
-        //==                 beta_pw_t_(igk, uc->atom_type(iat)->offset_lo() + xi) * conj(gkvec_phase_factors_(igk, ia));
-        //==         }
-        //==     }
-        //== }
+        beta_pw_panel_.set_dimensions(num_gkvec(), uc->mt_basis_size(), parameters_.blacs_context()); 
+        beta_pw_panel_.allocate(); // TODO: allocate page locked if needed
+
+        for (int i = 0; i < beta_pw_panel_.num_cols_local(); i++)
+        {
+            int icol = beta_pw_panel_.icol(i);
+
+            int ia = uc->mt_lo_basis_descriptor(icol).ia;
+            int xi = uc->mt_lo_basis_descriptor(icol).xi;
+
+            auto atom_type = parameters_.unit_cell()->atom(ia)->type();
+
+            for (int igk = 0; igk < num_gkvec_row(); igk++)
+            {
+                beta_pw_panel_(igk, i) = beta_pw_t_(igk, atom_type->offset_lo() + xi) * conj(gkvec_phase_factors_(igk, ia));
+            }
+        }
     }
 
     spinor_wave_functions_.set_dimensions(wf_size(), parameters_.sub_spl_spinor_wf().local_size(), parameters_.num_spins());

@@ -410,34 +410,34 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
 
     update();
             
-    if (esm_type_ == ultrasoft_pseudopotential)
-    {
-        assert(mt_basis_size_ == mt_lo_basis_size_); // in uspp those are identical because there are now APWs
+    //== if (esm_type_ == ultrasoft_pseudopotential)
+    //== {
+    //==     assert(mt_basis_size_ == mt_lo_basis_size_); // in uspp those are identical because there are no APWs
 
-        num_beta_t_ = 0;
-        for (int iat = 0; iat < num_atom_types(); iat++) num_beta_t_ += atom_type(iat)->mt_lo_basis_size();
+    //==     num_beta_t_ = 0;
+    //==     for (int iat = 0; iat < num_atom_types(); iat++) num_beta_t_ += atom_type(iat)->mt_lo_basis_size();
 
-        atom_pos_.set_dimensions(3, num_atoms());
-        atom_pos_.allocate();
-        for (int ia = 0; ia < num_atoms(); ia++)
-        {
-            for (int x = 0; x < 3; x++) atom_pos_(x, ia) = atom(ia)->position(x);
-        }
+    //==     atom_pos_.set_dimensions(3, num_atoms());
+    //==     atom_pos_.allocate();
+    //==     for (int ia = 0; ia < num_atoms(); ia++)
+    //==     {
+    //==         for (int x = 0; x < 3; x++) atom_pos_(x, ia) = atom(ia)->position(x);
+    //==     }
 
-        beta_t_idx_.set_dimensions(2, mt_lo_basis_size());
-        beta_t_idx_.allocate();
+    //==     beta_t_idx_.set_dimensions(2, mt_lo_basis_size());
+    //==     beta_t_idx_.allocate();
 
-        int n = 0;
-        for (int ia = 0; ia < num_atoms(); ia++)
-        {
-            int iat = atom(ia)->type_id();
-            for (int xi = 0; xi < atom_type(iat)->mt_lo_basis_size(); xi++, n++)
-            {
-                beta_t_idx_(0, n) = ia;
-                beta_t_idx_(1, n) = atom_type(iat)->offset_lo() + xi;
-            }
-        }
-    }
+    //==     int n = 0;
+    //==     for (int ia = 0; ia < num_atoms(); ia++)
+    //==     {
+    //==         int iat = atom(ia)->type_id();
+    //==         for (int xi = 0; xi < atom_type(iat)->mt_lo_basis_size(); xi++, n++)
+    //==         {
+    //==             beta_t_idx_(0, n) = ia;
+    //==             beta_t_idx_(1, n) = atom_type(iat)->offset_lo() + xi;
+    //==         }
+    //==     }
+    //== }
 
     mt_aw_basis_descriptors_.resize(mt_aw_basis_size_);
     for (int ia = 0, n = 0; ia < num_atoms(); ia++)
@@ -446,6 +446,16 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
         {
             mt_aw_basis_descriptors_[n].ia = ia;
             mt_aw_basis_descriptors_[n].xi = xi;
+        }
+    }
+
+    mt_lo_basis_descriptors_.resize(mt_lo_basis_size_);
+    for (int ia = 0, n = 0; ia < num_atoms(); ia++)
+    {
+        for (int xi = 0; xi < atom(ia)->mt_lo_basis_size(); xi++, n++)
+        {
+            mt_lo_basis_descriptors_[n].ia = ia;
+            mt_lo_basis_descriptors_[n].xi = xi;
         }
     }
 }
