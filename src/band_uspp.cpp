@@ -765,6 +765,7 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 void Band::apply_h_local_parallel(K_point* kp__,
                                   std::vector<double>& effective_potential__,
                                   std::vector<double>& pw_ekin__,
+                                  int N__,
                                   int n__,
                                   dmatrix<double_complex>& phi__,
                                   dmatrix<double_complex>& hphi__)
@@ -773,11 +774,13 @@ void Band::apply_h_local_parallel(K_point* kp__,
 
     auto fft = parameters_.reciprocal_lattice()->fft_coarse();
 
-    splindex<block_cyclic> spl_n(n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
-    splindex<block> sub_spl_n(spl_n.local_size(), kp__->num_ranks_row(), kp__->rank_row());
+    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+
+    splindex<block> sub_spl_n(s1.local_size() - s0.local_size(), kp__->num_ranks_row(), kp__->rank_row());
 
     mdarray<double_complex, 2> phi_slice(kp__->num_gkvec(), sub_spl_n.local_size());
-    phi__.gather(n__, 0, phi_slice, parameters_.mpi_grid().communicator(1 << _dim_row_));
+    phi__.gather(n__, N__, phi_slice, parameters_.mpi_grid().communicator(1 << _dim_row_));
 
     mdarray<double_complex, 2> hphi_slice(kp__->num_gkvec(), sub_spl_n.local_size());
 
@@ -805,7 +808,7 @@ void Band::apply_h_local_parallel(K_point* kp__,
         }
     }
 
-    hphi__.scatter(n__, 0, hphi_slice, parameters_.mpi_grid().communicator(1 << _dim_row_));
+    hphi__.scatter(n__, N__, hphi_slice, parameters_.mpi_grid().communicator(1 << _dim_row_));
 }
 
 void Band::apply_h_o_uspp_cpu_parallel(K_point* kp__,
@@ -819,13 +822,13 @@ void Band::apply_h_o_uspp_cpu_parallel(K_point* kp__,
 {
     auto uc = parameters_.unit_cell();
 
-    splindex<block_cyclic> s0(N__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
     splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
 
     int nloc = static_cast<int>(s1.local_size() - s0.local_size());
 
     /* apply local part of Hamiltonian */
-    apply_h_local_parallel(kp__, effective_potential__, pw_ekin__, n__, phi__, hphi__);
+    apply_h_local_parallel(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__);
 
     /* set intial ophi */
     memcpy(&ophi__(s0.local_size(), 0), &phi__(s0.local_size(), 0), kp__->num_gkvec_row() * nloc * sizeof(double_complex));

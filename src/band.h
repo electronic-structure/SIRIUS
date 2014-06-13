@@ -109,6 +109,7 @@ class Band
         void apply_h_local_parallel(K_point* kp__,
                                     std::vector<double>& effective_potential__,
                                     std::vector<double>& pw_ekin__,
+                                    int N__,
                                     int n__,
                                     dmatrix<double_complex>& phi__,
                                     dmatrix<double_complex>& hphi__);

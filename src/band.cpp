@@ -908,7 +908,14 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp,
     int naw = parameters_.unit_cell()->mt_aw_basis_size();
 
     /* generate and conjugate panel of matching coefficients; this would be the <bra| states */
-    dmatrix<double_complex> alm_panel_n(kp->num_gkvec(), naw, parameters_.blacs_context());
+    dmatrix<double_complex> alm_panel_n;
+    alm_panel_n.set_dimensions(kp->num_gkvec(), naw, parameters_.blacs_context());
+    #ifdef _GPU_
+    alm_panel_n.allocate_page_locked();
+    #else
+    alm_panel_n.allocate();
+    #endif
+
     kp->alm_coeffs_row()->generate<true>(alm_panel_n);
     for (int j = 0; j < alm_panel_n.num_cols_local(); j++)
     {
@@ -916,7 +923,13 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp,
     }
 
     /* generate another panel of matching coefficients; this would be the |ket> states */
-    dmatrix<double_complex> alm_panel_t(naw, kp->num_gkvec(), parameters_.blacs_context());
+    dmatrix<double_complex> alm_panel_t;
+    alm_panel_t.set_dimensions(naw, kp->num_gkvec(), parameters_.blacs_context());
+    #ifdef _GPU_
+    alm_panel_t.allocate_page_locked();
+    #else
+    alm_panel_t.allocate();
+    #endif
     kp->alm_coeffs_col()->generate<false>(alm_panel_t);
 
     /* generate slice of matching coefficients */
@@ -929,7 +942,13 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp,
     apply_hmt_to_apw<nm>(alm_v, halm_v);
 
     /* scatter halm slice to panels */
-    dmatrix<double_complex> halm_panel_t(naw, kp->num_gkvec(), parameters_.blacs_context());
+    dmatrix<double_complex> halm_panel_t;
+    halm_panel_t.set_dimensions(naw, kp->num_gkvec(), parameters_.blacs_context());
+    #ifdef _GPU_
+    halm_panel_t.allocate_page_locked();
+    #else
+    halm_panel_t.allocate();
+    #endif
     halm_panel_t.scatter(halm_v, parameters_.mpi_grid().communicator(1 << _dim_row_));
     
     #ifdef _WRITE_PROC_STATUS_
