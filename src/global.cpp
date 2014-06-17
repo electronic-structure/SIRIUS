@@ -282,7 +282,7 @@ void Global::initialize()
         }
         case ev_scalapack:
         {
-            gen_evp_solver_ = new generalized_evp_scalapack(nrow, ncol, blacs_context_, -1.0);
+            gen_evp_solver_ = new generalized_evp_scalapack(nrow, ncol, blacs_context_, 1e-15);
             break;
         }
         case ev_elpa1:
