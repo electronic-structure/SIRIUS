@@ -114,6 +114,32 @@ class Band
                                     dmatrix<double_complex>& phi__,
                                     dmatrix<double_complex>& hphi__);
 
+        void set_fv_h_o_uspp_cpu_parallel(int N__,
+                                          int n__,
+                                          K_point* kp__,
+                                          std::vector<double>& veff_it_coarse__,
+                                          std::vector<double>& pw_ekin__,
+                                          dmatrix<double_complex>& phi__,
+                                          dmatrix<double_complex>& hphi__,
+                                          dmatrix<double_complex>& ophi__,
+                                          dmatrix<double_complex>& h__,
+                                          dmatrix<double_complex>& o__,
+                                          dmatrix<double_complex>& h_old__,
+                                          dmatrix<double_complex>& o_old__);
+
+        void uspp_cpu_residuals_parallel(int N__,
+                                         int num_bands__,
+                                         K_point* kp__,
+                                         dmatrix<double_complex>& res__,
+                                         dmatrix<double_complex>& hphi__,
+                                         dmatrix<double_complex>& ophi__,
+                                         dmatrix<double_complex>& evec__,
+                                         std::vector<double>& eval__,
+                                         std::vector<double_complex>& h_diag__,
+                                         std::vector<double_complex>& o_diag__,
+                                         std::vector<double>& res_norm__,
+                                         std::vector<double>& res_rms__);
+
         void apply_h_o_uspp_cpu_parallel(K_point* kp__,
                                          std::vector<double>& effective_potential__,
                                          std::vector<double>& pw_ekin__,
