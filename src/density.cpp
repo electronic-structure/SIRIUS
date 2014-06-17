@@ -531,7 +531,7 @@ void Density::initial_density()
             s << "wrong initial charge density" << std::endl
               << "  integral of the density : " << real(rho_->f_pw(0) * uc->omega()) << std::endl
               << "  target number of electrons : " << uc->num_valence_electrons();
-            warning_local(__FILE__, __LINE__, s);
+            warning_global(__FILE__, __LINE__, s);
         }
 
         fft_->input(rl->num_gvec(), rl->fft_index(), &rho_->f_pw(0));
@@ -564,7 +564,7 @@ void Density::initial_density()
             s << "wrong initial charge density" << std::endl
               << "  integral of the density : " << nel << std::endl
               << "  target number of electrons : " << uc->num_electrons();
-            warning_local(__FILE__, __LINE__, s);
+            warning_global(__FILE__, __LINE__, s);
         }
     }
 }

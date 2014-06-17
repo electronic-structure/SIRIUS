@@ -255,11 +255,7 @@ void K_point::update()
             fv_states_panel_.zero();
             for (int i = 0; i < parameters_.num_fv_states(); i++) fv_states_panel_.set(i, i, complex_one);
 
-            if (num_ranks() == 1)
-            {
-                fv_states_.zero();
-                for (int i = 0; i < parameters_.num_fv_states(); i++) fv_states_(i, i) = complex_one;
-            }
+            fv_states_panel_.gather(fv_states_, parameters_.mpi_grid().communicator(1 << _dim_row_));
         }
         
         if (parameters_.need_sv())
