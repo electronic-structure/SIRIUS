@@ -41,6 +41,7 @@ void Global::read_input()
         num_fft_threads = parser["num_fft_threads"].get(num_fft_threads);
         num_fv_states_ = parser["num_fv_states"].get(num_fv_states_);
         smearing_width_ = parser["smearing_width"].get(smearing_width_);
+        iterative_solver_tolerance_ = parser["iterative_solver_tolerance"].get(iterative_solver_tolerance_);
 
         std::string evsn[] = {"std_evp_solver_type", "gen_evp_solver_type"};
         ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};

@@ -134,8 +134,6 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         mx_pot->initialize();
     }
 
-    parameters_.set_iterative_solver_tolerance(1e-6);
-
     double eold = 0.0;
     double rms = 1.0;
 
