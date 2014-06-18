@@ -665,6 +665,7 @@ std::vector< std::pair<int, double> > Density::get_occupied_bands_list(Band* ban
     return bands;
 }
 
+
 //== // memory-conservative implementation
 //== void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
 //==                                          mdarray<double_complex, 4>& pp_complex_density_matrix)
@@ -714,52 +715,98 @@ std::vector< std::pair<int, double> > Density::get_occupied_bands_list(Band* ban
 //== }
 
 // memory-greedy implementation
-void Density::add_kpoint_contribution_pp(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
-                                         mdarray<double_complex, 4>& pp_complex_density_matrix)
+void Density::add_kpoint_contribution_pp(K_point* kp__, 
+                                         std::vector< std::pair<int, double> >& occupied_bands__, 
+                                         mdarray<double_complex, 4>& pp_complex_density_matrix__)
 {
     Timer t("sirius::Density::add_kpoint_contribution_pp");
 
-    if (occupied_bands.size() == 0) return;
+    int nbnd = num_occupied_bands(kp__);
 
-    // take only occupied wave-functions
-    mdarray<double_complex, 2> wfs(kp->num_gkvec(), occupied_bands.size());
-    for (int i = 0; i < (int)occupied_bands.size(); i++)
-    {
-        memcpy(&wfs(0, i), &kp->spinor_wave_function(0, occupied_bands[i].first, 0), kp->num_gkvec() * sizeof(double_complex));
-    }
+    if (nbnd == 0) return;
 
-    // <\beta_{\xi}^{\alpha}|\Psi_j>
-    mdarray<double_complex, 2> beta_psi(parameters_.unit_cell()->mt_lo_basis_size(), occupied_bands.size());
+    auto uc = parameters_.unit_cell();
 
-    // compute <beta|Psi>
-    blas<cpu>::gemm(2, 0, parameters_.unit_cell()->mt_lo_basis_size(), (int)occupied_bands.size(), kp->num_gkvec(), 
-                    &kp->beta_pw(0, 0), kp->num_gkvec(), &wfs(0, 0), wfs.ld(), &beta_psi(0, 0), beta_psi.ld());
-    
+    dmatrix<double_complex> beta_psi(uc->mt_basis_size(), nbnd, parameters_.blacs_context());
+
+    /* compute <beta|Psi> */
+    blas<cpu>::gemm(2, 0, uc->mt_basis_size(), nbnd, kp__->num_gkvec(), complex_one, 
+                    kp__->beta_pw_panel(), kp__->fv_states_panel(), complex_zero, beta_psi);
+
+    splindex<block> sub_spl_col(beta_psi.num_cols_local(), kp__->num_ranks_row(), kp__->rank_row());
+
+    mdarray<double_complex, 2> beta_psi_slice(uc->mt_basis_size(), sub_spl_col.local_size());
+    beta_psi.gather(beta_psi_slice, parameters_.mpi_grid().communicator(1 << _dim_row_));
+
     #pragma omp parallel
     {
-        // auxiliary arrays
-        mdarray<double_complex, 2> bp1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
-        mdarray<double_complex, 2> bp2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+        /* auxiliary arrays */
+        mdarray<double_complex, 2> bp1(uc->max_mt_basis_size(), (int)sub_spl_col.local_size());
+        mdarray<double_complex, 2> bp2(uc->max_mt_basis_size(), (int)sub_spl_col.local_size());
         #pragma omp for
-        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        for (int ia = 0; ia < uc->num_atoms(); ia++)
         {   
-            // number of beta functions for a given atom
-            int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+            /* number of beta functions for a given atom */
+            int nbf = uc->atom(ia)->mt_basis_size();
 
-            for (int i = 0; i < (int)occupied_bands.size(); i++)
+            for (int i = 0; i < (int)sub_spl_col.local_size(); i++)
             {
+                int j = beta_psi.icol((int)sub_spl_col[i]);
                 for (int xi = 0; xi < nbf; xi++)
                 {
-                    bp1(xi, i) = beta_psi(parameters_.unit_cell()->atom(ia)->offset_lo() + xi, i);
-                    bp2(xi, i) = conj(bp1(xi, i)) * occupied_bands[i].second;
+                    bp1(xi, i) = beta_psi_slice(uc->atom(ia)->offset_lo() + xi, i);
+                    bp2(xi, i) = conj(bp1(xi, i)) * kp__->band_occupancy(j) * kp__->weight();
                 }
             }
 
-            blas<cpu>::gemm(0, 1, nbf, nbf, (int)occupied_bands.size(), complex_one, &bp1(0, 0), bp1.ld(),
-                            &bp2(0, 0), bp2.ld(), complex_one, &pp_complex_density_matrix(0, 0, 0, ia), 
-                            pp_complex_density_matrix.ld());
+            blas<cpu>::gemm(0, 1, nbf, nbf, (int)sub_spl_col.local_size(), complex_one, &bp1(0, 0), bp1.ld(),
+                            &bp2(0, 0), bp2.ld(), complex_one, &pp_complex_density_matrix__(0, 0, 0, ia), 
+                            pp_complex_density_matrix__.ld());
         }
     }
+
+
+    //== if (occupied_bands.size() == 0) return;
+
+    //== // take only occupied wave-functions
+    //== mdarray<double_complex, 2> wfs(kp->num_gkvec(), occupied_bands.size());
+    //== for (int i = 0; i < (int)occupied_bands.size(); i++)
+    //== {
+    //==     memcpy(&wfs(0, i), &kp->spinor_wave_function(0, occupied_bands[i].first, 0), kp->num_gkvec() * sizeof(double_complex));
+    //== }
+
+    //== // <\beta_{\xi}^{\alpha}|\Psi_j>
+    //== mdarray<double_complex, 2> beta_psi(parameters_.unit_cell()->mt_lo_basis_size(), occupied_bands.size());
+
+    //== // compute <beta|Psi>
+    //== blas<cpu>::gemm(2, 0, parameters_.unit_cell()->mt_lo_basis_size(), (int)occupied_bands.size(), kp->num_gkvec(), 
+    //==                 &kp->beta_pw(0, 0), kp->num_gkvec(), &wfs(0, 0), wfs.ld(), &beta_psi(0, 0), beta_psi.ld());
+    //== 
+    //== #pragma omp parallel
+    //== {
+    //==     // auxiliary arrays
+    //==     mdarray<double_complex, 2> bp1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+    //==     mdarray<double_complex, 2> bp2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+    //==     #pragma omp for
+    //==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    //==     {   
+    //==         // number of beta functions for a given atom
+    //==         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+
+    //==         for (int i = 0; i < (int)occupied_bands.size(); i++)
+    //==         {
+    //==             for (int xi = 0; xi < nbf; xi++)
+    //==             {
+    //==                 bp1(xi, i) = beta_psi(parameters_.unit_cell()->atom(ia)->offset_lo() + xi, i);
+    //==                 bp2(xi, i) = conj(bp1(xi, i)) * occupied_bands[i].second;
+    //==             }
+    //==         }
+
+    //==         blas<cpu>::gemm(0, 1, nbf, nbf, (int)occupied_bands.size(), complex_one, &bp1(0, 0), bp1.ld(),
+    //==                         &bp2(0, 0), bp2.ld(), complex_one, &pp_complex_density_matrix(0, 0, 0, ia), 
+    //==                         pp_complex_density_matrix.ld());
+    //==     }
+    //== }
 }
 
 #ifdef _GPU_
@@ -1188,21 +1235,18 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 {
     Timer t("sirius::Density::add_q_contribution_to_valence_density");
 
-    //========================================================================================
-    // if we have ud and du spin blocks, don't compute one of them (du in this implementation)
-    // because density matrix is symmetric
-    //========================================================================================
+    /* If we have ud and du spin blocks, don't compute one of them (du in this implementation)
+     * because density matrix is symmetric.
+     */
     int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
 
-    // complex density matrix
+    /* complex density matrix */
     mdarray<double_complex, 4> pp_complex_density_matrix(parameters_.unit_cell()->max_mt_basis_size(), 
                                                          parameters_.unit_cell()->max_mt_basis_size(),
                                                          num_zdmat, parameters_.unit_cell()->num_atoms());
     pp_complex_density_matrix.zero();
     
-    //=========================
-    // add k-point contribution
-    //=========================
+    /* add k-point contribution */
     for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = (int)ks.spl_num_kpoints(ikloc);
@@ -1214,7 +1258,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 
     auto rl = parameters_.reciprocal_lattice();
 
-    std::vector<double_complex> f_pw(rl->num_gvec(), double_complex(0, 0));
+    std::vector<double_complex> f_pw(rl->num_gvec(), complex_zero);
 
     int max_num_atoms = 0;
     for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
@@ -1607,9 +1651,7 @@ void Density::generate_valence_density_it(K_set& ks)
 {
     Timer t("sirius::Density::generate_valence_density_it");
 
-    //=========================
-    // add k-point contribution
-    //=========================
+    /* add k-point contribution */
     for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks.spl_num_kpoints(ikloc);
@@ -1617,9 +1659,7 @@ void Density::generate_valence_density_it(K_set& ks)
         add_kpoint_contribution_it(ks[ik], occupied_bands);
     }
     
-    //==========================================================================
-    // reduce arrays; assume that each rank did it's own fraction of the density
-    //==========================================================================
+    /* reduce arrays; assume that each rank did it's own fraction of the density */
     Platform::allreduce(&rho_->f_it<global>(0), fft_->size()); 
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
         Platform::allreduce(&magnetization_[j]->f_it<global>(0), fft_->size()); 
@@ -1665,41 +1705,6 @@ void Density::generate_pseudo_core_charge_density()
     auto rl = parameters_.reciprocal_lattice();
     auto rho_core_radial_integrals = generate_rho_radial_integrals(2);
 
-    //==auto uc = parameters_.unit_cell();
-
-    //==mdarray<double, 2> rho_core_radial_integrals(uc->num_atom_types(), rl->num_gvec_shells_inner());
-
-    //==splindex<block> spl_gsh(rl->num_gvec_shells_inner(), Platform::num_mpi_ranks(), Platform::mpi_rank());
-
-    //==#pragma omp parallel
-    //=={
-    //==    /* splines for all atom types */
-    //==    std::vector< Spline<double> > sa(uc->num_atom_types());
-    //==    for (int iat = 0; iat < uc->num_atom_types(); iat++) sa[iat] = Spline<double>(uc->atom_type(iat)->radial_grid());
-
-    //==    /* spherical Bessl functions */
-    //==    sbessel_pw<double> jl(uc, 0);
-
-    //==    #pragma omp for
-    //==    for (int igsloc = 0; igsloc < (int)spl_gsh.local_size(); igsloc++)
-    //==    {
-    //==        int igs = (int)spl_gsh[igsloc];
-
-    //==        jl.load(rl->gvec_shell_len(igs));
-
-    //==        for (int iat = 0; iat < uc->num_atom_types(); iat++)
-    //==        {
-    //==            auto atom_type = uc->atom_type(iat);
-    //==            for (int ir = 0; ir < atom_type->num_mt_points(); ir++) 
-    //==                sa[iat][ir] = jl(ir, 0, iat) * atom_type->uspp().core_charge_density[ir];
-    //==            rho_core_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(2);
-    //==        }
-    //==    }
-    //==}
-    //==int ld = uc->num_atom_types();
-    //==Platform::allgather(rho_core_radial_integrals.ptr(), static_cast<int>(ld * spl_gsh.global_offset()), 
-    //==                    static_cast<int>(ld * spl_gsh.local_size()));
-
     std::vector<double_complex> v = rl->make_periodic_function(rho_core_radial_integrals, rl->num_gvec());
     
     fft_->input(rl->num_gvec(), rl->fft_index(), &v[0]);
@@ -1731,13 +1736,24 @@ void Density::generate(K_set& ks)
         warning_local(__FILE__, __LINE__, s);
     }
 
-    // zero density and magnetization
+    /* zero density and magnetization */
     zero();
 
-    // interstitial part is independent of basis type
+    /* interstitial part is independent of basis type */
     generate_valence_density_it(ks);
-   
-    // for muffin-tin part
+
+    //== double d = 0; 
+    //== for (int ir = 0; ir < parameters_.reciprocal_lattice()->fft()->size(); ir++)
+    //== {
+    //==     d += rho_->f_it<global>(ir);
+    //== }
+    //== d /= parameters_.unit_cell()->omega();
+    //== std::cout << "num_electrons = " << d << std::endl;
+
+    //== stop_here
+
+
+    /* for muffin-tin part */
     switch (parameters_.esm_type())
     {
         case full_potential_lapwlo:
@@ -1791,12 +1807,12 @@ void Density::generate(K_set& ks)
             break;
         }
     }
-    
+
     if (parameters_.unit_cell()->full_potential())
     {
         generate_core_charge_density();
 
-        // add core contribution
+        /* add core contribution */
         for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
         {
             int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
@@ -1804,7 +1820,7 @@ void Density::generate(K_set& ks)
                 rho_->f_mt<local>(0, ir, ialoc) += parameters_.unit_cell()->atom(ia)->symmetry_class()->core_charge_density(ir) / y00;
         }
 
-        // synctronize muffin-tin part (interstitial is already syncronized with allreduce)
+        /* synchronize muffin-tin part (interstitial is already syncronized with allreduce) */
         rho_->sync(true, false);
         for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync(true, false);
     }

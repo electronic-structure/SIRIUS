@@ -375,66 +375,74 @@ void Band::get_h_o_diag(K_point* kp__,
 //== }
 
 // memory-greedy implementation
-void Band::apply_h_o_uspp_cpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
-                              double_complex* phi__, double_complex* hphi__, double_complex* ophi__)
+void Band::apply_h_o_uspp_cpu(K_point* kp__, 
+                              std::vector<double>& effective_potential__, 
+                              std::vector<double>& pw_ekin__, 
+                              int n__,
+                              double_complex* phi__, 
+                              double_complex* hphi__, 
+                              double_complex* ophi__)
 {
     Timer t("sirius::Band::apply_h_o", _global_timer_);
 
     auto uc = parameters_.unit_cell();
 
-    mdarray<double_complex, 2> phi(phi__, kp->num_gkvec(), n);
-    mdarray<double_complex, 2> hphi(hphi__, kp->num_gkvec(), n);
-    mdarray<double_complex, 2> ophi(ophi__, kp->num_gkvec(), n);
+    mdarray<double_complex, 2> phi(phi__, kp__->num_gkvec(), n__);
+    mdarray<double_complex, 2> hphi(hphi__, kp__->num_gkvec(), n__);
+    mdarray<double_complex, 2> ophi(ophi__, kp__->num_gkvec(), n__);
     
     // apply local part of Hamiltonian
-    apply_h_local(kp, effective_potential, pw_ekin, n, phi__, hphi__);
+    apply_h_local(kp__, effective_potential__, pw_ekin__, n__, phi__, hphi__);
    
     // set intial ophi
-    memcpy(ophi__, phi__, kp->num_gkvec() * n * sizeof(double_complex));
+    memcpy(ophi__, phi__, kp__->num_gkvec() * n__ * sizeof(double_complex));
 
     // <\beta_{\xi}^{\alpha}|\phi_j>
-    mdarray<double_complex, 2> beta_phi(uc->mt_lo_basis_size(), n);
+    mdarray<double_complex, 2> beta_phi(uc->mt_lo_basis_size(), n__);
     
     // Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j>
-    mdarray<double_complex, 2> tmp(uc->mt_lo_basis_size(), n);
+    mdarray<double_complex, 2> tmp(uc->mt_lo_basis_size(), n__);
 
     Timer t1("sirius::Band::apply_h_o|beta_phi");
 
-    // compute <beta|phi>
-    blas<cpu>::gemm(2, 0, uc->mt_lo_basis_size(), n, kp->num_gkvec(), &kp->beta_pw(0, 0), kp->num_gkvec(), 
+    /* compute <beta|phi> */
+    blas<cpu>::gemm(2, 0, uc->mt_lo_basis_size(), n__, kp__->num_gkvec(), 
+                    kp__->beta_pw_panel().data().ptr(), kp__->num_gkvec(), 
                     &phi(0, 0), phi.ld(), &beta_phi(0, 0), beta_phi.ld());
     t1.stop();
     
-    // compute D*<beta|phi>
+    /* compute D*<beta|phi> */
     for (int ia = 0; ia < uc->num_atoms(); ia++)
     {   
         int ofs = uc->atom(ia)->offset_lo();
-        // number of beta functions for a given atom
+        /* number of beta functions for a given atom */
         int nbf = uc->atom(ia)->type()->mt_lo_basis_size();
-        blas<cpu>::gemm(0, 0, nbf, n, nbf, &uc->atom(ia)->d_mtrx(0, 0), nbf, 
+        blas<cpu>::gemm(0, 0, nbf, n__, nbf, &uc->atom(ia)->d_mtrx(0, 0), nbf, 
                         &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
     }
 
     Timer t3("sirius::Band::apply_h_o|beta_D_beta_phi");
-    // compute <G+k|beta> * D*<beta|phi> and add to hphi
-    blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, uc->mt_lo_basis_size(), complex_one, 
-                    &kp->beta_pw(0, 0), kp->num_gkvec(), &tmp(0, 0), tmp.ld(), complex_one, &hphi(0, 0), hphi.ld());
+    /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
+    blas<cpu>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_lo_basis_size(), complex_one, 
+                    kp__->beta_pw_panel().data().ptr(), kp__->num_gkvec(), 
+                    &tmp(0, 0), tmp.ld(), complex_one, &hphi(0, 0), hphi.ld());
     t3.stop();
 
-    // compute Q*<beta|phi>
+    /* compute Q*<beta|phi> */
     for (int ia = 0; ia < uc->num_atoms(); ia++)
     {   
         int ofs = uc->atom(ia)->offset_lo();
-        // number of beta functions for a given atom
+        /* number of beta functions for a given atom */
         int nbf = uc->atom(ia)->type()->mt_basis_size();
-        blas<cpu>::gemm(0, 0, nbf, n, nbf, &uc->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
+        blas<cpu>::gemm(0, 0, nbf, n__, nbf, &uc->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
                         &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
     }
 
     Timer t5("sirius::Band::apply_h_o|beta_Q_beta_phi");
-    // computr <G+k|beta> * Q*<beta|phi> and add to ophi
-    blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, uc->mt_lo_basis_size(), complex_one, 
-                    &kp->beta_pw(0, 0), kp->num_gkvec(), &tmp(0, 0), tmp.ld(), complex_one, &ophi(0, 0), ophi.ld());
+    /* computr <G+k|beta> * Q*<beta|phi> and add to ophi */
+    blas<cpu>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_lo_basis_size(), complex_one, 
+                    kp__->beta_pw_panel().data().ptr(), kp__->num_gkvec(), 
+                    &tmp(0, 0), tmp.ld(), complex_one, &ophi(0, 0), ophi.ld());
     t5.stop();
 }
 
@@ -823,9 +831,9 @@ void Band::apply_h_o_uspp_cpu_parallel(K_point* kp__,
 
     /* apply local part of Hamiltonian */
     apply_h_local_parallel(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__);
-
+    
     /* set intial ophi */
-    memcpy(&ophi__(0, s0.local_size()), &phi__(0, s0.local_size()), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
+    if (nloc > 0) memcpy(&ophi__(0, s0.local_size()), &phi__(0, s0.local_size()), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
 
     /* <\beta_{\xi}^{\alpha}|\phi_j> */
     dmatrix<double_complex> beta_phi(uc->mt_basis_size(), n__, parameters_.blacs_context());
@@ -1101,7 +1109,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__, Periodic_function<double>* e
         /* set H and O for the variational subspace */
         set_fv_h_o_uspp_cpu_parallel(N, n, kp__, veff_it_coarse, pw_ekin, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
         
-        /* increase the size of the variation space */
+        /* increase size of the variation space */
         N += n;
 
         {
@@ -1110,12 +1118,12 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__, Periodic_function<double>* e
                                             hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
                                             &eval[0], evec.ptr(), evec.ld());
         
-        if (Platform::mpi_rank() == 0)
-        {
-            printf("subspace size : %i, eigen-values:\n", N);
-            for (int i = 0; i < std::min(num_bands, 10); i++) printf("%18.12f ", eval[i]);
-            printf("\n");
-        }
+        //== if (Platform::mpi_rank() == 0)
+        //== {
+        //==     printf("subspace size : %i, eigen-values:\n", N);
+        //==     for (int i = 0; i < std::min(num_bands, 10); i++) printf("%18.12f ", eval[i]);
+        //==     printf("\n");
+        //== }
         }
 
         uspp_cpu_residuals_parallel(N, num_bands, kp__, res, hphi, ophi, evec, eval, h_diag, o_diag, res_norm, res_rms);
@@ -1139,10 +1147,8 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__, Periodic_function<double>* e
             }
         }
 
+        /* number of additional basis functions */
         n = (int)res_list.size();
-
-        //n = 0;
-        //for (int i = 0; i < num_bands; i++) if (res_rms[i] > tol) n++;
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n == 0 || k == (max_iter - 1))
@@ -1192,23 +1198,14 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__, Periodic_function<double>* e
             N = num_bands;
         }
         
-        /* And immediately expand variational space with extra basis functions */
-        //n = 0;
-        //for (int i = 0; i < num_bands; i++) 
-        //{
-        //    if (res_rms[i] > parameters_.iterative_solver_tolerance())
-        //    {
-        //        dmatrix<double_complex>::copy_col(res, i, phi, N + n, parameters_.mpi_grid().communicator(1 << _dim_col_));
-        //        n++;
-        //    }
-        //}
-        for (int i = 0; i < (int)res_list.size(); i++)
+        /* Expand variational space with extra basis functions */
+        for (int i = 0; i < n; i++)
         {
             dmatrix<double_complex>::copy_col(res, res_list[i], phi, N + i, parameters_.mpi_grid().communicator(1 << _dim_col_));
         }
     }
-        
-    stop_here
+
+    kp__->set_fv_eigen_values(&eval[0]);
 }
 
 void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_potential)
@@ -1513,6 +1510,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
     }
 
     kp->set_fv_eigen_values(&eval[0]);
+    kp->fv_states_panel().scatter(psi, parameters_.mpi_grid().communicator(1 << _dim_row_));
 }
 
 #ifdef _GPU_

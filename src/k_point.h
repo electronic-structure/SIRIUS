@@ -653,11 +653,6 @@ class K_point
         //==     return beta_pw_t_(igk, idx);
         //== }
 
-        inline double_complex& beta_pw(int igk, int idx)
-        {
-            return beta_pw_panel_(igk, idx);
-        }
-
         inline dmatrix<double_complex>& beta_pw_panel()
         {
             return beta_pw_panel_;
