@@ -50,7 +50,7 @@ void test_gemm(int M, int N, int K, int transa)
 }
 
 #ifdef _SCALAPACK_
-void test_pgemm(int M, int N, int K, int nrow, int ncol, int transa)
+void test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
 {
     //== #ifdef _GPU_
     //== sirius::pstdout pout;
@@ -72,7 +72,7 @@ void test_pgemm(int M, int N, int K, int nrow, int ncol, int transa)
         a.set_dimensions(K, M, context);
     }
     b.set_dimensions(K, N, context);
-    c.set_dimensions(M, N, context);
+    c.set_dimensions(M, N - n, context);
     #ifdef _GPU_
     a.allocate_page_locked();
     b.allocate_page_locked();
@@ -102,16 +102,16 @@ void test_pgemm(int M, int N, int K, int nrow, int ncol, int transa)
     }
     Platform::barrier();
     sirius::Timer t1("gemm_only"); 
-    blas<cpu>::gemm(transa, 0, M, N, K, complex_one, a, b, complex_zero, c);
-    #ifdef _GPU_
-    cuda_device_synchronize();
-    #endif
+    blas<cpu>::gemm(transa, 0, M, N - n, K, complex_one, a, 0, 0, b, 0, n, complex_zero, c, 0, 0);
+    //== #ifdef _GPU_
+    //== cuda_device_synchronize();
+    //== #endif
     Platform::barrier();
-    t1.stop();
+    double tval = t1.stop();
     if (Platform::mpi_rank() == 0)
     {
-        printf("execution time (sec) : %12.6f\n", t1.value());
-        printf("performance (GFlops) : %12.6f\n", 8e-9 * M * N * K / t1.value() / nrow / ncol);
+        printf("execution time (sec) : %12.6f\n", tval);
+        printf("performance (GFlops) : %12.6f\n", 8e-9 * M * N * K / tval / nrow / ncol);
     }
     Cblacs_gridexit(context);
     linalg<scalapack>::free_blacs_handler(blacs_handler);
@@ -125,6 +125,7 @@ int main(int argn, char **argv)
     args.register_key("--N=", "{int} N");
     args.register_key("--K=", "{int} K");
     args.register_key("--opA=", "{0|1|2} 0: op(A) = A, 1: op(A) = A', 2: op(A) = conjg(A')");
+    args.register_key("--n=", "{int} skip first n elements in N index");
     args.register_key("--nrow=", "{int} number of row MPI ranks");
     args.register_key("--ncol=", "{int} number of column MPI ranks");
     args.register_key("--bs=", "{int} cyclic block size");
@@ -150,6 +151,9 @@ int main(int argn, char **argv)
     int transa = 0;
     if (args.exist("opA")) transa = args.value<int>("opA");
 
+    int n = 0;
+    if (args.exist("n")) n = args.value<int>("n");
+
     Platform::initialize(true);
 
     if (nrow * ncol == 1)
@@ -161,8 +165,7 @@ int main(int argn, char **argv)
         #ifdef _SCALAPACK_
         int bs = args.value<int>("bs");
         linalg<scalapack>::set_cyclic_block_size(bs);
-        int n = 4;
-        for (int i = 0; i < n; i++) test_pgemm(M, N, K, nrow, ncol, transa);
+        for (int i = 0; i < 4; i++) test_pgemm(M, N, K, nrow, ncol, transa, n);
         #else
         terminate(__FILE__, __LINE__, "not compiled with ScaLAPACK support");
         #endif
