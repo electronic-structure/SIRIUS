@@ -244,7 +244,7 @@ void Band::apply_h_local_gpu(K_point* kp, std::vector<double>& effective_potenti
 #endif
 
 void Band::get_h_o_diag(K_point* kp__,
-                        Periodic_function<double>* effective_potential__,
+                        double v0__,
                         std::vector<double>& pw_ekin__,
                         std::vector<double_complex>& h_diag__,
                         std::vector<double_complex>& o_diag__)
@@ -256,16 +256,11 @@ void Band::get_h_o_diag(K_point* kp__,
 
     auto uc = parameters_.unit_cell();
     
-    /* compute V_{loc}(G=0) */
-    double v0 = 0;
-    for (int ir = 0; ir < fft_->size(); ir++) v0 += effective_potential__->f_it<global>(ir);
-    v0 /= uc->omega();
-
     /* local H contribution */
     for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
     {
         int igk = kp__->gklo_basis_descriptor_row(igk_row).igk;
-        h_diag__[igk_row] = pw_ekin__[igk] + v0;
+        h_diag__[igk_row] = pw_ekin__[igk] + v0__;
         o_diag__[igk_row] = 1.0;
     }
 
@@ -391,16 +386,16 @@ void Band::apply_h_o_uspp_cpu(K_point* kp__,
     mdarray<double_complex, 2> hphi(hphi__, kp__->num_gkvec(), n__);
     mdarray<double_complex, 2> ophi(ophi__, kp__->num_gkvec(), n__);
     
-    // apply local part of Hamiltonian
+    /* apply local part of Hamiltonian */
     apply_h_local(kp__, effective_potential__, pw_ekin__, n__, phi__, hphi__);
    
-    // set intial ophi
+    /* set intial ophi */
     memcpy(ophi__, phi__, kp__->num_gkvec() * n__ * sizeof(double_complex));
 
-    // <\beta_{\xi}^{\alpha}|\phi_j>
+    /* <\beta_{\xi}^{\alpha}|\phi_j> */
     mdarray<double_complex, 2> beta_phi(uc->mt_lo_basis_size(), n__);
     
-    // Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j>
+    /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
     mdarray<double_complex, 2> tmp(uc->mt_lo_basis_size(), n__);
 
     Timer t1("sirius::Band::apply_h_o|beta_phi");
@@ -1034,26 +1029,12 @@ void Band::uspp_cpu_residuals_parallel(int N__,
     }
 }
 
-void Band::diag_fv_uspp_cpu_parallel(K_point* kp__, Periodic_function<double>* effective_potential__)
+void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
+                                     double v0__,
+                                     std::vector<double>& veff_it_coarse__)
 {
     log_function_enter(__func__);
     Timer t("sirius::Band::diag_fv_uspp_cpu_parallel", _global_timer_);
-
-    auto rl = parameters_.reciprocal_lattice();
-
-    /* map effective potential to a corase grid */
-    std::vector<double> veff_it_coarse(rl->fft_coarse()->size());
-    std::vector<double_complex> veff_pw_coarse(rl->num_gvec_coarse());
-
-    /* take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi */
-    for (int igc = 0; igc < rl->num_gvec_coarse(); igc++)
-    {
-        int ig = rl->gvec_index(igc);
-        veff_pw_coarse[igc] = effective_potential__->f_pw(ig);
-    }
-    rl->fft_coarse()->input(rl->num_gvec_coarse(), rl->fft_index_coarse(), &veff_pw_coarse[0]);
-    rl->fft_coarse()->transform(1);
-    rl->fft_coarse()->output(&veff_it_coarse[0]);
 
     /* cache kinetic energy */
     std::vector<double> pw_ekin = kp__->get_pw_ekin();
@@ -1061,7 +1042,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__, Periodic_function<double>* e
     /* get diagonal elements for preconditioning */
     std::vector<double_complex> h_diag;
     std::vector<double_complex> o_diag;
-    get_h_o_diag(kp__, effective_potential__, pw_ekin, h_diag, o_diag);
+    get_h_o_diag(kp__, v0__, pw_ekin, h_diag, o_diag);
 
     /* short notation for number of target wave-functions */
     int num_bands = parameters_.num_fv_states();     
@@ -1107,7 +1088,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__, Periodic_function<double>* e
     for (int k = 0; k < max_iter; k++)
     {
         /* set H and O for the variational subspace */
-        set_fv_h_o_uspp_cpu_parallel(N, n, kp__, veff_it_coarse, pw_ekin, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
+        set_fv_h_o_uspp_cpu_parallel(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
         
         /* increase size of the variation space */
         N += n;
@@ -1144,6 +1125,12 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__, Periodic_function<double>* e
                 (res_rms_sorted[num_bands - i - 1].first > tol * 1e-2 && (res_list.size() % nmin) != 0))
             {
                 res_list.push_back(res_rms_sorted[num_bands - i - 1].second);
+
+                //== if (Platform::mpi_rank() == 0)
+                //== {
+                //==     int j = res_rms_sorted[num_bands - i - 1].second;
+                //==     printf("residual %3i with rms %12.6f (norm %12.6f) is added\n", j, res_rms[j], res_norm[j]);
+                //== }
             }
         }
 
@@ -1153,6 +1140,8 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__, Periodic_function<double>* e
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n == 0 || k == (max_iter - 1))
         {   
+            Timer t3("sirius::Band::diag_fv_uspp_cpu_parallel|flush");
+
             /* recompute wave-functions: \Psi_{i} = \phi_{mu} * Z_{mu, i} */
             blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, complex_one, phi, evec, complex_zero, psi); 
             
@@ -1208,52 +1197,30 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__, Periodic_function<double>* e
     kp__->set_fv_eigen_values(&eval[0]);
 }
 
-void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_potential)
+void Band::diag_fv_uspp_cpu_serial(K_point* kp__,
+                                   double v0__,
+                                   std::vector<double>& veff_it_coarse__)
 {
-    if (parameters_.gen_evp_solver()->parallel())
-    {
-        diag_fv_uspp_cpu_parallel(kp, effective_potential);
-        return;
-    }
+    /* short notation for target wave-functions */
+    mdarray<double_complex, 2>& psi = kp__->fv_states();
 
-    Timer t("sirius::Band::diag_fv_uspp_cpu", _global_timer_);
-
-    // map effective potential to a corase grid
-    std::vector<double> veff_it_coarse(parameters_.reciprocal_lattice()->fft_coarse()->size());
-    std::vector<double_complex> veff_pw_coarse(parameters_.reciprocal_lattice()->num_gvec_coarse());
-
-    // take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi
-    for (int igc = 0; igc < parameters_.reciprocal_lattice()->num_gvec_coarse(); igc++)
-    {
-        int ig = parameters_.reciprocal_lattice()->gvec_index(igc);
-        veff_pw_coarse[igc] = effective_potential->f_pw(ig);
-    }
-    parameters_.reciprocal_lattice()->fft_coarse()->input(parameters_.reciprocal_lattice()->num_gvec_coarse(), 
-                                                          parameters_.reciprocal_lattice()->fft_index_coarse(),
-                                                          &veff_pw_coarse[0]);
-    parameters_.reciprocal_lattice()->fft_coarse()->transform(1);
-    parameters_.reciprocal_lattice()->fft_coarse()->output(&veff_it_coarse[0]);
-
-    // short notation for target wave-functions
-    mdarray<double_complex, 2>& psi = kp->fv_states();
-
-    // short notation for number of target wave-functions
+    /* short notation for number of target wave-functions */
     int num_bands = parameters_.num_fv_states();     
 
-    // cache kinetic energy,
-    std::vector<double> pw_ekin = kp->get_pw_ekin();
+    /* cache kinetic energy */
+    std::vector<double> pw_ekin = kp__->get_pw_ekin();
 
-    // get diagonal elements for preconditioning
+    /* get diagonal elements for preconditioning */
     std::vector<double_complex> h_diag;
     std::vector<double_complex> o_diag;
-    get_h_o_diag(kp, effective_potential, pw_ekin, h_diag, o_diag);
+    get_h_o_diag(kp__, v0__, pw_ekin, h_diag, o_diag);
     
     int max_iter = 10;
-    int num_phi = std::min(4 * num_bands, kp->num_gkvec());
+    int num_phi = std::min(4 * num_bands, kp__->num_gkvec());
 
-    mdarray<double_complex, 2> phi(kp->num_gkvec(), num_phi);
-    mdarray<double_complex, 2> hphi(kp->num_gkvec(), num_phi);
-    mdarray<double_complex, 2> ophi(kp->num_gkvec(), num_phi);
+    mdarray<double_complex, 2> phi(kp__->num_gkvec(), num_phi);
+    mdarray<double_complex, 2> hphi(kp__->num_gkvec(), num_phi);
+    mdarray<double_complex, 2> ophi(kp__->num_gkvec(), num_phi);
 
     mdarray<double_complex, 2> hmlt(num_phi, num_phi);
     mdarray<double_complex, 2> ovlp(num_phi, num_phi);
@@ -1263,7 +1230,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
     std::vector<double> eval(num_bands);
     std::vector<double> eval_old(num_bands, 1e100);
     
-    mdarray<double_complex, 2> res(kp->num_gkvec(), num_bands); // residuals
+    mdarray<double_complex, 2> res(kp__->num_gkvec(), num_bands); // residuals
 
     std::vector<double> res_norm(num_bands); // norm of residuals
     std::vector<double> res_rms(num_bands); // RMS of residual
@@ -1276,7 +1243,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
 
     // trial basis functions
     assert(phi.size(0) == psi.size(0));
-    for (int i = 0; i < num_bands; i++) memcpy(&phi(0, i), &psi(0, i), kp->num_gkvec() * sizeof(double_complex));
+    for (int i = 0; i < num_bands; i++) memcpy(&phi(0, i), &psi(0, i), kp__->num_gkvec() * sizeof(double_complex));
 
     // start iterative diagonalization
     for (int k = 0; k < max_iter; k++)
@@ -1292,13 +1259,13 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
             }
 
             // apply Hamiltonian and overlap operators to the new basis functions
-            apply_h_o_uspp_cpu(kp, veff_it_coarse, pw_ekin, n, &phi(0, N), &hphi(0, N), &ophi(0, N));
+            apply_h_o_uspp_cpu(kp__, veff_it_coarse__, pw_ekin, n, &phi(0, N), &hphi(0, N), &ophi(0, N));
             
             // <{phi,res}|H|res>
-            blas<cpu>::gemm(2, 0, N + n, n, kp->num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, N), hphi.ld(), &hmlt(0, N), hmlt.ld());
+            blas<cpu>::gemm(2, 0, N + n, n, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, N), hphi.ld(), &hmlt(0, N), hmlt.ld());
             
             // <{phi,res}|O|res>
-            blas<cpu>::gemm(2, 0, N + n, n, kp->num_gkvec(), &phi(0, 0), phi.ld(), &ophi(0, N), ophi.ld(), &ovlp(0, N), ovlp.ld());
+            blas<cpu>::gemm(2, 0, N + n, n, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &ophi(0, N), ophi.ld(), &ovlp(0, N), ovlp.ld());
             
             // increase the size of the variation space
             N += n;
@@ -1351,15 +1318,15 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
             {
                 // compute residuals
                 // 1. O\Psi_{i} = O\phi_{mu} * Z_{mu, i}
-                blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, N, &ophi(0, 0), ophi.ld(), &hmlt(0, 0), hmlt.ld(), 
+                blas<cpu>::gemm(0, 0, kp__->num_gkvec(), n, N, &ophi(0, 0), ophi.ld(), &hmlt(0, 0), hmlt.ld(), 
                                 &res(0, 0), res.ld());
                 // 2. multiply O\Psi_{i} with energy
                 for (int i = 0; i < n; i++)
                 {
-                    for (int igk = 0; igk < kp->num_gkvec(); igk++) res(igk, i) *= eval[i];
+                    for (int igk = 0; igk < kp__->num_gkvec(); igk++) res(igk, i) *= eval[i];
                 }
                 // 3. r_{i} = H\Psi_{i} - E_{i}O\Psi_{i}
-                blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, N, double_complex(1, 0), &hphi(0, 0), hphi.ld(), 
+                blas<cpu>::gemm(0, 0, kp__->num_gkvec(), n, N, double_complex(1, 0), &hphi(0, 0), hphi.ld(), 
                                 &hmlt(0, 0), hmlt.ld(), double_complex(-1, 0), &res(0, 0), res.ld());
 
                 // apply preconditioner
@@ -1367,7 +1334,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
                 for (int i = 0; i < n; i++)
                 {
                     // apply preconditioner
-                    for (int igk = 0; igk < kp->num_gkvec(); igk++)
+                    for (int igk = 0; igk < kp__->num_gkvec(); igk++)
                     {
                         //double_complex z = h_diag[igk] - res_e[i] * o_diag[igk];
                         //if (abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
@@ -1383,15 +1350,15 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
         {
             // compute residuals
             // 1. O\Psi_{i} = O\phi_{mu} * Z_{mu, i}
-            blas<cpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), &evec(0, 0), evec.ld(), 
+            blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), &evec(0, 0), evec.ld(), 
                             &res(0, 0), res.ld());
             // 2. multiply O\Psi_{i} with energy
             for (int i = 0; i < num_bands; i++)
             {
-                for (int igk = 0; igk < kp->num_gkvec(); igk++) res(igk, i) *= eval[i];
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++) res(igk, i) *= eval[i];
             }
             // 3. r_{i} = H\Psi_{i} - E_{i}O\Psi_{i}
-            blas<cpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, double_complex(1, 0), &hphi(0, 0), hphi.ld(), 
+            blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, double_complex(1, 0), &hphi(0, 0), hphi.ld(), 
                             &evec(0, 0), evec.ld(), double_complex(-1, 0), &res(0, 0), res.ld());
 
             // compute norm and apply preconditioner
@@ -1399,12 +1366,12 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
             for (int i = 0; i < num_bands; i++)
             {
                 double r = 0;
-                for (int igk = 0; igk < kp->num_gkvec(); igk++) r += real(conj(res(igk, i)) * res(igk, i));
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++) r += real(conj(res(igk, i)) * res(igk, i));
                 res_norm[i] = r;
-                res_rms[i] = sqrt(r / kp->num_gkvec());
+                res_rms[i] = sqrt(r / kp__->num_gkvec());
                 
                 // apply preconditioner
-                for (int igk = 0; igk < kp->num_gkvec(); igk++)
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++)
                 {
                     double_complex z = h_diag[igk] - eval[i] * o_diag[igk];
                     if (abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
@@ -1438,7 +1405,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
                     if (res_rms[i] > tol) 
                     {
                         // shift unconverged residuals to the beginning of array
-                        if (n != i) memcpy(&res(0, n), &res(0, i), kp->num_gkvec() * sizeof(double_complex));
+                        if (n != i) memcpy(&res(0, n), &res(0, i), kp__->num_gkvec() * sizeof(double_complex));
                         n++;
                     }
                 }
@@ -1470,7 +1437,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
         {   
             Timer t3("sirius::Band::diag_fv_uspp_cpu|update_phi");
             // \Psi_{i} = \phi_{mu} * Z_{mu, i}
-            blas<cpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), 
+            blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), 
                             &psi(0, 0), psi.ld());
 
             if (n == 0 || k == (max_iter - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
@@ -1481,36 +1448,68 @@ void Band::diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_po
             else // otherwise set Psi as a new trial basis
             {
                 // use phi as a temporary vector to compute H\Psi
-                blas<cpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, &hphi(0, 0), hphi.ld(), 
+                blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &hphi(0, 0), hphi.ld(), 
                                 &evec(0, 0), evec.ld(), &phi(0, 0), phi.ld());
                 
                 // compute the Hamiltonian matrix: <Psi|H|Psi>
-                blas<cpu>::gemm(2, 0, num_bands, num_bands, kp->num_gkvec(), &psi(0, 0), psi.ld(), &phi(0, 0), phi.ld(), 
+                blas<cpu>::gemm(2, 0, num_bands, num_bands, kp__->num_gkvec(), &psi(0, 0), psi.ld(), &phi(0, 0), phi.ld(), 
                                 &hmlt_old(0, 0), hmlt_old.ld());
              
-                memcpy(hphi.ptr(), phi.ptr(), num_bands * kp->num_gkvec() * sizeof(double_complex));
+                memcpy(hphi.ptr(), phi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
 
                 // use phi as a temporary vector to compute O\Psi
-                blas<cpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), 
+                blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), 
                                 &evec(0, 0), evec.ld(), &phi(0, 0), phi.ld());
                 
                 // compute the overlap matrix: <Psi|O|Psi>
-                blas<cpu>::gemm(2, 0, num_bands, num_bands, kp->num_gkvec(), &psi(0, 0), psi.ld(), &phi(0, 0), phi.ld(), 
+                blas<cpu>::gemm(2, 0, num_bands, num_bands, kp__->num_gkvec(), &psi(0, 0), psi.ld(), &phi(0, 0), phi.ld(), 
                                 &ovlp_old(0, 0), ovlp_old.ld());
             
-                memcpy(ophi.ptr(), phi.ptr(), num_bands * kp->num_gkvec() * sizeof(double_complex));
+                memcpy(ophi.ptr(), phi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
                 
                 // set new basis functions
-                memcpy(phi.ptr(), psi.ptr(), num_bands * kp->num_gkvec() * sizeof(double_complex));
+                memcpy(phi.ptr(), psi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
                 N = num_bands;
             }
         }
         // expand variational subspace with new basis vectors obtatined from residuals
-        memcpy(&phi(0, N), &res(0, 0), n * kp->num_gkvec() * sizeof(double_complex));
+        memcpy(&phi(0, N), &res(0, 0), n * kp__->num_gkvec() * sizeof(double_complex));
     }
 
-    kp->set_fv_eigen_values(&eval[0]);
-    kp->fv_states_panel().scatter(psi, parameters_.mpi_grid().communicator(1 << _dim_row_));
+    kp__->set_fv_eigen_values(&eval[0]);
+    kp__->fv_states_panel().scatter(psi, parameters_.mpi_grid().communicator(1 << _dim_row_));
+}
+
+
+void Band::diag_fv_uspp_cpu(K_point* kp__, 
+                            Periodic_function<double>* effective_potential__)
+{
+    auto rl = parameters_.reciprocal_lattice();
+
+    /* map effective potential to a corase grid */
+    std::vector<double> veff_it_coarse(rl->fft_coarse()->size());
+    std::vector<double_complex> veff_pw_coarse(rl->num_gvec_coarse());
+
+    /* take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi */
+    for (int igc = 0; igc < rl->num_gvec_coarse(); igc++)
+    {
+        int ig = rl->gvec_index(igc);
+        veff_pw_coarse[igc] = effective_potential__->f_pw(ig);
+    }
+    rl->fft_coarse()->input(rl->num_gvec_coarse(), rl->fft_index_coarse(), &veff_pw_coarse[0]);
+    rl->fft_coarse()->transform(1);
+    rl->fft_coarse()->output(&veff_it_coarse[0]);
+
+    double v0 = real(effective_potential__->f_pw(0));
+
+    if (parameters_.gen_evp_solver()->parallel())
+    {
+        diag_fv_uspp_cpu_parallel(kp__, v0, veff_it_coarse);
+    }
+    else
+    {
+        diag_fv_uspp_cpu_serial(kp__, v0, veff_it_coarse);
+    }
 }
 
 #ifdef _GPU_

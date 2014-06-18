@@ -134,6 +134,8 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         mx_pot->initialize();
     }
 
+    parameters_.set_iterative_solver_tolerance(1e-6);
+
     double eold = 0.0;
     double rms = 1.0;
 
@@ -222,15 +224,15 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         
         if (fabs(eold - etot) < energy_tol && rms < potential_tol) break;
 
-        if (parameters_.esm_type() == ultrasoft_pseudopotential)
-        {
-            double tol = parameters_.iterative_solver_tolerance();
-            //tol = std::min(tol, 0.1 * fabs(eold - etot) / std::max(1.0, parameters_.unit_cell()->num_electrons()));
-            //tol = std::min(tol, fabs(eold - etot));
-            tol /= 1.22;
-            tol = std::max(tol, 1e-10);
-            parameters_.set_iterative_solver_tolerance(tol);
-        }
+        //if (parameters_.esm_type() == ultrasoft_pseudopotential)
+        //{
+        //    double tol = parameters_.iterative_solver_tolerance();
+        //    //tol = std::min(tol, 0.1 * fabs(eold - etot) / std::max(1.0, parameters_.unit_cell()->num_electrons()));
+        //    //tol = std::min(tol, fabs(eold - etot));
+        //    tol /= 1.22;
+        //    tol = std::max(tol, 1e-10);
+        //    parameters_.set_iterative_solver_tolerance(tol);
+        //}
 
         eold = etot;
     }
