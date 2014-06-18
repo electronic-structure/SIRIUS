@@ -1201,14 +1201,43 @@ void Band::diag_fv_uspp_cpu_serial(K_point* kp__,
                                    double v0__,
                                    std::vector<double>& veff_it_coarse__)
 {
+    /* cache kinetic energy */
+    std::vector<double> pw_ekin = kp__->get_pw_ekin();
+
     /* short notation for target wave-functions */
     mdarray<double_complex, 2>& psi = kp__->fv_states();
 
     /* short notation for number of target wave-functions */
     int num_bands = parameters_.num_fv_states();     
 
-    /* cache kinetic energy */
-    std::vector<double> pw_ekin = kp__->get_pw_ekin();
+    if (true)
+    {
+        int ngk = kp__->num_gkvec();
+        mdarray<double_complex, 2> phi(ngk, ngk);
+        mdarray<double_complex, 2> hphi(ngk, ngk);
+        mdarray<double_complex, 2> ophi(ngk, ngk);
+        mdarray<double_complex, 2> hmlt(ngk, ngk);
+        mdarray<double_complex, 2> ovlp(ngk, ngk);
+        
+        std::vector<double> eval(ngk);
+
+        phi.zero();
+        for (int i = 0; i < ngk; i++) phi(i, i) = complex_one;
+        
+        apply_h_o_uspp_cpu(kp__, veff_it_coarse__, pw_ekin, ngk, &phi(0, 0), &hphi(0, 0), &ophi(0, 0));
+            
+        blas<cpu>::gemm(2, 0, ngk, ngk, ngk, &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
+        
+        blas<cpu>::gemm(2, 0, ngk, ngk, ngk, &phi(0, 0), phi.ld(), &ophi(0, 0), ophi.ld(), &ovlp(0, 0), ovlp.ld());
+
+        parameters_.gen_evp_solver()->solve(ngk, num_bands, num_bands, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
+                                            &eval[0], psi.ptr(), psi.ld());
+
+        kp__->set_fv_eigen_values(&eval[0]);
+        kp__->fv_states_panel().scatter(psi, parameters_.mpi_grid().communicator(1 << _dim_row_));
+
+        return;
+    }
 
     /* get diagonal elements for preconditioning */
     std::vector<double_complex> h_diag;
