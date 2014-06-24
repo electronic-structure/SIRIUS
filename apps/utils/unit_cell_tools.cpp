@@ -75,14 +75,13 @@ int main(int argn, char** argv)
                                 vector3d<double> vf = psc.unit_cell()->get_fractional_coordinates(vc);
 
                                 auto vr = Utils::reduce_coordinates(vf);
-                                //==bool add_atom = (psc.unit_cell()->atom_id_by_position(vr.first) == -1);
+                                bool add_atom = (psc.unit_cell()->atom_id_by_position(vr.first) == -1);
                                 //==if (add_atom && iat == 2)
                                 //=={
                                 //==    double r = type_wrapper<double>::random();
                                 //==    if (r < 0.99) add_atom = false;
                                 //==}
 
-                                bool add_atom = true;
                                 if (add_atom) psc.unit_cell()->add_atom(label, &vr.first[0]);
                             }
                         }
