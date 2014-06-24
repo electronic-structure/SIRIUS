@@ -194,8 +194,7 @@ class K_point
         {
             for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
 
-            band_occupancies_.resize(parameters_.num_bands());
-            memset(&band_occupancies_[0], 0, parameters_.num_bands() * sizeof(double));
+            band_occupancies_ = std::vector<double>(parameters_.num_bands(), 1);
             
             num_ranks_row_ = parameters_.mpi_grid().dimension_size(_dim_row_);
             num_ranks_col_ = parameters_.mpi_grid().dimension_size(_dim_col_);
