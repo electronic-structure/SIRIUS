@@ -1354,7 +1354,8 @@ void Band::diag_fv_uspp_cpu_serial_v1(K_point* kp__,
             for (int i = 0; i < num_bands; i++)
             {
                 /* take the residual if it's norm is above the threshold */
-                if ((res_norm[i] > itso.tolerance_ && kp__->band_occupancy(i) > 1e-10) || (res_norm[i] > itso.extra_tolerance_ && n != 0))
+                if (kp__->band_occupancy(i) > 1e-12 &&
+                    (res_norm[i] > itso.tolerance_ || (res_norm[i] > itso.extra_tolerance_ && n != 0)))
                 {
                     /* shift unconverged residuals to the beginning of array */
                     if (n != i) memcpy(&res(0, n), &res(0, i), kp__->num_gkvec() * sizeof(double_complex));
@@ -1513,12 +1514,12 @@ void Band::diag_fv_uspp_cpu_serial_v2(K_point* kp__,
                 res(igk, i) /= z;
             }
         }
-
         n = 0;
         for (int i = 0; i < num_bands; i++)
         {
             /* take the residual if it's norm is above the threshold */
-            if (res_norm[i] > itso.tolerance_ || (res_norm[i] > itso.extra_tolerance_ && n != 0))
+            if (kp__->band_occupancy(i) > 1e-12 &&
+                (res_norm[i] > itso.tolerance_ || (res_norm[i] > itso.extra_tolerance_ && n != 0)))
             {
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i) memcpy(&res(0, n), &res(0, i), kp__->num_gkvec() * sizeof(double_complex));
