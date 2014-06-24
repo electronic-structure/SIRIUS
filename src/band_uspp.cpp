@@ -1146,7 +1146,11 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
             blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, complex_one, phi, evec, complex_zero, psi); 
             
             /* exit loop if the eigen-vectors are converged or this is the last iteration */
-            if (n == 0 || k == (max_iter - 1)) break;
+            if (n == 0 || k == (max_iter - 1))
+            {
+                std::cout << "Converged in " << k << " iterations" << std::endl;
+                break;
+            }
 
             /* We need to "flush" the basis if we run out of the variational space. We will use best 
              * available approximation to the wavefunctions \Psi as a new basis \phi.
@@ -1244,7 +1248,7 @@ void Band::diag_fv_uspp_cpu_serial(K_point* kp__,
     std::vector<double_complex> o_diag;
     get_h_o_diag(kp__, v0__, pw_ekin, h_diag, o_diag);
     
-    int max_iter = 10;
+    int max_iter = 100;
     int num_phi = std::min(4 * num_bands, kp__->num_gkvec());
 
     mdarray<double_complex, 2> phi(kp__->num_gkvec(), num_phi);
@@ -1396,7 +1400,7 @@ void Band::diag_fv_uspp_cpu_serial(K_point* kp__,
             {
                 double r = 0;
                 for (int igk = 0; igk < kp__->num_gkvec(); igk++) r += real(conj(res(igk, i)) * res(igk, i));
-                res_norm[i] = r;
+                res_norm[i] = std::sqrt(r);
                 res_rms[i] = sqrt(r / kp__->num_gkvec());
                 
                 // apply preconditioner
@@ -1408,50 +1412,55 @@ void Band::diag_fv_uspp_cpu_serial(K_point* kp__,
                 }
             }
 
-            // check which residuals are converged
-            n = 0;
-            std::vector< std::pair<double, int> > res_rms_sorted;
             for (int i = 0; i < num_bands; i++)
             {
-                res_rms_sorted.push_back(std::pair<double, int>(res_rms[i], i));
-
-                // take the residual if it's norm is above the threshold
-                if (res_rms[i] > parameters_.iterative_solver_tolerance()) n++;
+                std::cout << "res : " << i << ", norm : " << res_norm[i] << ", rms : " << res_rms[i] << std::endl;
             }
-            
-            if (n > 0 && n < num_bands)
-            {
-                n = std::max(n, (num_bands - 1) / (k + 1));
 
-                std::sort(res_rms_sorted.begin(), res_rms_sorted.end());
-
-                double tol = res_rms_sorted[num_bands - n].first;
-
-                n = 0; // TODO: this last lines can be simplified. We already know n -> jsut take this number of residuals.
-                for (int i = 0; i < num_bands; i++)
-                {
-                    // take the residual if it's norm is above the threshold
-                    if (res_rms[i] > tol) 
-                    {
-                        // shift unconverged residuals to the beginning of array
-                        if (n != i) memcpy(&res(0, n), &res(0, i), kp__->num_gkvec() * sizeof(double_complex));
-                        n++;
-                    }
-                }
-            }
- 
+            //// check which residuals are converged
             //n = 0;
+            //std::vector< std::pair<double, int> > res_rms_sorted;
             //for (int i = 0; i < num_bands; i++)
             //{
+            //    res_rms_sorted.push_back(std::pair<double, int>(res_rms[i], i));
+
             //    // take the residual if it's norm is above the threshold
-            //    if (res_rms[i] > parameters_.iterative_solver_tolerance()) 
+            //    if (res_rms[i] > parameters_.iterative_solver_tolerance()) n++;
+            //}
+            //
+            //if (n > 0 && n < num_bands)
+            //{
+            //    n = std::max(n, (num_bands - 1) / (k + 1));
+
+            //    std::sort(res_rms_sorted.begin(), res_rms_sorted.end());
+
+            //    double tol = res_rms_sorted[num_bands - n].first;
+
+            //    n = 0; // TODO: this last lines can be simplified. We already know n -> jsut take this number of residuals.
+            //    for (int i = 0; i < num_bands; i++)
             //    {
-            //        printf("res : %i, rms : %f\n", i, res_rms[i]);
-            //        // shift unconverged residuals to the beginning of array
-            //        if (n != i) memcpy(&res(0, n), &res(0, i), kp->num_gkvec() * sizeof(double_complex));
-            //        n++;
+            //        // take the residual if it's norm is above the threshold
+            //        if (res_rms[i] > tol) 
+            //        {
+            //            // shift unconverged residuals to the beginning of array
+            //            if (n != i) memcpy(&res(0, n), &res(0, i), kp__->num_gkvec() * sizeof(double_complex));
+            //            n++;
+            //        }
             //    }
             //}
+ 
+            n = 0;
+            for (int i = 0; i < num_bands; i++)
+            {
+                // take the residual if it's norm is above the threshold
+                if (res_norm[i] > parameters_.iterative_solver_tolerance()) 
+                {
+                    //printf("res : %i, rms : %f\n", i, res_rms[i]);
+                    // shift unconverged residuals to the beginning of array
+                    if (n != i) memcpy(&res(0, n), &res(0, i), kp__->num_gkvec() * sizeof(double_complex));
+                    n++;
+                }
+            }
         }
         t3.stop();
 
@@ -1480,9 +1489,12 @@ void Band::diag_fv_uspp_cpu_serial(K_point* kp__,
                 blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &hphi(0, 0), hphi.ld(), 
                                 &evec(0, 0), evec.ld(), &phi(0, 0), phi.ld());
                 
-                // compute the Hamiltonian matrix: <Psi|H|Psi>
-                blas<cpu>::gemm(2, 0, num_bands, num_bands, kp__->num_gkvec(), &psi(0, 0), psi.ld(), &phi(0, 0), phi.ld(), 
-                                &hmlt_old(0, 0), hmlt_old.ld());
+                //// compute the Hamiltonian matrix: <Psi|H|Psi>
+                //blas<cpu>::gemm(2, 0, num_bands, num_bands, kp__->num_gkvec(), &psi(0, 0), psi.ld(), &phi(0, 0), phi.ld(), 
+                //                &hmlt_old(0, 0), hmlt_old.ld());
+
+                hmlt_old.zero();
+                for (int i = 0; i < num_bands; i++) hmlt_old(i, i) = eval[i];
              
                 memcpy(hphi.ptr(), phi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
 
@@ -1490,9 +1502,12 @@ void Band::diag_fv_uspp_cpu_serial(K_point* kp__,
                 blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), 
                                 &evec(0, 0), evec.ld(), &phi(0, 0), phi.ld());
                 
-                // compute the overlap matrix: <Psi|O|Psi>
-                blas<cpu>::gemm(2, 0, num_bands, num_bands, kp__->num_gkvec(), &psi(0, 0), psi.ld(), &phi(0, 0), phi.ld(), 
-                                &ovlp_old(0, 0), ovlp_old.ld());
+                //// compute the overlap matrix: <Psi|O|Psi>
+                //blas<cpu>::gemm(2, 0, num_bands, num_bands, kp__->num_gkvec(), &psi(0, 0), psi.ld(), &phi(0, 0), phi.ld(), 
+                //                &ovlp_old(0, 0), ovlp_old.ld());
+
+                ovlp_old.zero();
+                for (int i = 0; i < num_bands; i++) ovlp_old(i, i) = complex_one;
             
                 memcpy(ophi.ptr(), phi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
                 
@@ -1507,6 +1522,8 @@ void Band::diag_fv_uspp_cpu_serial(K_point* kp__,
 
     kp__->set_fv_eigen_values(&eval[0]);
     kp__->fv_states_panel().scatter(psi, parameters_.mpi_grid().communicator(1 << _dim_row_));
+
+    stop_here
 }
 
 
