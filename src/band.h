@@ -103,6 +103,17 @@ class Band
                                      double v0__,
                                      std::vector<double>& veff_it_coarse__);
 
+        void diag_fv_uspp_cpu_serial_v0(K_point* kp__,
+                                        std::vector<double>& veff_it_coarse__);
+
+        void diag_fv_uspp_cpu_serial_v1(K_point* kp__,
+                                        double v0__,
+                                        std::vector<double>& veff_it_coarse__);
+
+        void diag_fv_uspp_cpu_serial_v2(K_point* kp__,
+                                        double v0__,
+                                        std::vector<double>& veff_it_coarse__);
+
         void diag_fv_uspp_cpu_parallel(K_point* kp__,
                                      double v0__,
                                      std::vector<double>& veff_it_coarse__);

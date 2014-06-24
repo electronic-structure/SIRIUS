@@ -134,16 +134,14 @@ class Global
         
         electronic_structure_method_t esm_type_;
         
-        /// step function is used in full-potential methods
+        /// Step function is used in full-potential methods.
         Step_function* step_function_;
 
         Reciprocal_lattice* reciprocal_lattice_;
 
         Unit_cell* unit_cell_;
 
-        double iterative_solver_tolerance_;
-
-        /// read from the input file if it exists
+        /// Read from the input file if it exists.
         void read_input();
 
     public:
@@ -176,8 +174,7 @@ class Global
               smearing_width_(0.001), 
               esm_type_(full_potential_lapwlo),
               step_function_(NULL),
-              reciprocal_lattice_(NULL),
-              iterative_solver_tolerance_(0.01)
+              reciprocal_lattice_(NULL)
         {
             /* get the starting time */
             gettimeofday(&start_time_, NULL);
@@ -652,17 +649,35 @@ class Global
 
         } unit_cell_input_section_;
 
+        struct iterative_solver_input_section
+        {
+            int num_steps_;
+            int subspace_size_;
+            double tolerance_;
+            double extra_tolerance_;
+            int version_;
+
+            iterative_solver_input_section() 
+                : num_steps_(10),
+                  subspace_size_(4),
+                  tolerance_(1e-4),
+                  extra_tolerance_(1e-4),
+                  version_(1)
+            {
+            }
+
+            void read(JSON_tree parser)
+            {
+                num_steps_ = parser["iterative_solver"]["num_steps"].get(num_steps_);
+                subspace_size_ = parser["iterative_solver"]["subspace_size"].get(subspace_size_);
+                tolerance_ = parser["iterative_solver"]["tolerance"].get(tolerance_);
+                extra_tolerance_ = parser["iterative_solver"]["extra_tolerance"].get(extra_tolerance_);
+                version_ = parser["iterative_solver"]["version"].get(version_);
+            }
+
+        } iterative_solver_input_section_;
+
         void read_unit_cell_input();
-
-        inline double iterative_solver_tolerance()
-        {
-            return iterative_solver_tolerance_;
-        }
-
-        inline void set_iterative_solver_tolerance(double tol)
-        {
-            iterative_solver_tolerance_ = tol;
-        }
 
         #ifdef _SCALAPACK_
         void create_blacs_context();

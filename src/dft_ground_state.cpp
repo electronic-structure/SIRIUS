@@ -215,8 +215,6 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         {
             printf("iteration : %3i, density RMS %12.6f, energy difference : %12.6f", 
                     iter, rms, etot - eold);
-            if (parameters_.esm_type() == ultrasoft_pseudopotential)
-                printf(", tolerance : %12.6f", parameters_.iterative_solver_tolerance());
             printf("\n");
         }
         
