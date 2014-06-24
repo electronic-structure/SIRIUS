@@ -1254,12 +1254,14 @@ void Band::diag_fv_uspp_cpu_serial(K_point* kp__,
     mdarray<double_complex, 2> phi(kp__->num_gkvec(), num_phi);
     mdarray<double_complex, 2> hphi(kp__->num_gkvec(), num_phi);
     mdarray<double_complex, 2> ophi(kp__->num_gkvec(), num_phi);
+    mdarray<double_complex, 2> hpsi(kp__->num_gkvec(), num_bands);
+    mdarray<double_complex, 2> opsi(kp__->num_gkvec(), num_bands);
 
     mdarray<double_complex, 2> hmlt(num_phi, num_phi);
     mdarray<double_complex, 2> ovlp(num_phi, num_phi);
     mdarray<double_complex, 2> hmlt_old(num_phi, num_phi);
     mdarray<double_complex, 2> ovlp_old(num_phi, num_phi);
-    mdarray<double_complex, 2> evec(num_phi, num_phi);
+    mdarray<double_complex, 2> evec(num_phi, num_bands);
     std::vector<double> eval(num_bands);
     std::vector<double> eval_old(num_bands, 1e100);
     
@@ -1381,18 +1383,30 @@ void Band::diag_fv_uspp_cpu_serial(K_point* kp__,
         /* Alternative way to estimate basis update: take residuals with norm > eps */
         else
         {
-            // compute residuals
-            // 1. O\Psi_{i} = O\phi_{mu} * Z_{mu, i}
+            blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &hphi(0, 0), hphi.ld(), &evec(0, 0), evec.ld(), 
+                            &hpsi(0, 0), hpsi.ld());
+
             blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), &evec(0, 0), evec.ld(), 
-                            &res(0, 0), res.ld());
-            // 2. multiply O\Psi_{i} with energy
+                            &opsi(0, 0), opsi.ld());
+
             for (int i = 0; i < num_bands; i++)
             {
-                for (int igk = 0; igk < kp__->num_gkvec(); igk++) res(igk, i) *= eval[i];
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++) res(igk, i) = hpsi(igk, i) - eval[i] * opsi(igk, i);
             }
-            // 3. r_{i} = H\Psi_{i} - E_{i}O\Psi_{i}
-            blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, double_complex(1, 0), &hphi(0, 0), hphi.ld(), 
-                            &evec(0, 0), evec.ld(), double_complex(-1, 0), &res(0, 0), res.ld());
+
+//            // compute residuals
+//            // 1. O\Psi_{i} = O\phi_{mu} * Z_{mu, i}
+//            blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), &evec(0, 0), evec.ld(), 
+//                            &res(0, 0), res.ld());
+//            // 2. multiply O\Psi_{i} with energy
+//            for (int i = 0; i < num_bands; i++)
+//            {
+//                for (int igk = 0; igk < kp__->num_gkvec(); igk++) res(igk, i) *= eval[i];
+//            }
+//            // 3. r_{i} = H\Psi_{i} - E_{i}O\Psi_{i}
+//            blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, double_complex(1, 0), &hphi(0, 0), hphi.ld(), 
+//                            &evec(0, 0), evec.ld(), double_complex(-1, 0), &res(0, 0), res.ld());
+//
 
             // compute norm and apply preconditioner
             #pragma omp parallel for
@@ -1401,21 +1415,21 @@ void Band::diag_fv_uspp_cpu_serial(K_point* kp__,
                 double r = 0;
                 for (int igk = 0; igk < kp__->num_gkvec(); igk++) r += real(conj(res(igk, i)) * res(igk, i));
                 res_norm[i] = std::sqrt(r);
-                res_rms[i] = sqrt(r / kp__->num_gkvec());
+                //res_rms[i] = std::sqrt(r / kp__->num_gkvec());
                 
                 // apply preconditioner
                 for (int igk = 0; igk < kp__->num_gkvec(); igk++)
                 {
                     double_complex z = h_diag[igk] - eval[i] * o_diag[igk];
-                    if (abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
+                    if (std::abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
                     res(igk, i) /= z;
                 }
             }
 
-            for (int i = 0; i < num_bands; i++)
-            {
-                std::cout << "res : " << i << ", norm : " << res_norm[i] << ", rms : " << res_rms[i] << std::endl;
-            }
+            //for (int i = 0; i < num_bands; i++)
+            //{
+            //    std::cout << "res : " << i << ", norm : " << res_norm[i] << ", rms : " << res_rms[i] << std::endl;
+            //}
 
             //// check which residuals are converged
             //n = 0;
@@ -1453,7 +1467,8 @@ void Band::diag_fv_uspp_cpu_serial(K_point* kp__,
             for (int i = 0; i < num_bands; i++)
             {
                 // take the residual if it's norm is above the threshold
-                if (res_norm[i] > parameters_.iterative_solver_tolerance()) 
+                if (res_norm[i] > parameters_.iterative_solver_tolerance() || 
+                    (res_norm[i] > parameters_.iterative_solver_tolerance() * 1.0 && n != 0))
                 {
                     //printf("res : %i, rms : %f\n", i, res_rms[i]);
                     // shift unconverged residuals to the beginning of array
@@ -1486,22 +1501,25 @@ void Band::diag_fv_uspp_cpu_serial(K_point* kp__,
             else // otherwise set Psi as a new trial basis
             {
                 // use phi as a temporary vector to compute H\Psi
-                blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &hphi(0, 0), hphi.ld(), 
-                                &evec(0, 0), evec.ld(), &phi(0, 0), phi.ld());
+                //blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &hphi(0, 0), hphi.ld(), 
+                //                &evec(0, 0), evec.ld(), &phi(0, 0), phi.ld());
+                //memcpy(hphi.ptr(), phi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
                 
                 //// compute the Hamiltonian matrix: <Psi|H|Psi>
                 //blas<cpu>::gemm(2, 0, num_bands, num_bands, kp__->num_gkvec(), &psi(0, 0), psi.ld(), &phi(0, 0), phi.ld(), 
                 //                &hmlt_old(0, 0), hmlt_old.ld());
 
+
                 hmlt_old.zero();
                 for (int i = 0; i < num_bands; i++) hmlt_old(i, i) = eval[i];
              
-                memcpy(hphi.ptr(), phi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
 
-                // use phi as a temporary vector to compute O\Psi
-                blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), 
-                                &evec(0, 0), evec.ld(), &phi(0, 0), phi.ld());
-                
+                //// use phi as a temporary vector to compute O\Psi
+                //blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), 
+                //                &evec(0, 0), evec.ld(), &phi(0, 0), phi.ld());
+                //
+                //memcpy(ophi.ptr(), phi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
+                //
                 //// compute the overlap matrix: <Psi|O|Psi>
                 //blas<cpu>::gemm(2, 0, num_bands, num_bands, kp__->num_gkvec(), &psi(0, 0), psi.ld(), &phi(0, 0), phi.ld(), 
                 //                &ovlp_old(0, 0), ovlp_old.ld());
@@ -1509,9 +1527,10 @@ void Band::diag_fv_uspp_cpu_serial(K_point* kp__,
                 ovlp_old.zero();
                 for (int i = 0; i < num_bands; i++) ovlp_old(i, i) = complex_one;
             
-                memcpy(ophi.ptr(), phi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
                 
                 // set new basis functions
+                memcpy(hphi.ptr(), hpsi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
+                memcpy(ophi.ptr(), opsi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
                 memcpy(phi.ptr(), psi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
                 N = num_bands;
             }
@@ -1522,8 +1541,6 @@ void Band::diag_fv_uspp_cpu_serial(K_point* kp__,
 
     kp__->set_fv_eigen_values(&eval[0]);
     kp__->fv_states_panel().scatter(psi, parameters_.mpi_grid().communicator(1 << _dim_row_));
-
-    stop_here
 }
 
 
