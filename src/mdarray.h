@@ -269,51 +269,27 @@ class mdarray_base
         }
 
         /// Allocate memory for array.
-        void allocate()
+        void allocate(int mode__ = 0)
         {
             deallocate();
-            
+
             size_t sz = size();
 
-            unique_ptr_ = std::unique_ptr<T[], mdarray_deleter<T> >(new T[sz], mdarray_deleter<T>(sz, 0));
-            ptr_ = unique_ptr_.get();
+            if (mode__ == 0)
+            {
+                unique_ptr_ = std::unique_ptr<T[], mdarray_deleter<T> >(new T[sz], mdarray_deleter<T>(sz, 0));
+                ptr_ = unique_ptr_.get();
+            }
 
-
-            //== if (type_wrapper<T>::is_primitive())
-            //== {
-            //==     size_t num_bytes = size() * sizeof(T);
-
-            //==     if (num_bytes)
-            //==     {
-            //==         mdarray_ptr = (T*)malloc(num_bytes);
-            //==         if (mdarray_ptr == NULL)
-            //==         {
-            //==             std::stringstream s;
-            //==             s << "Error allocating " << ND << "-dimensional array of size " << num_bytes << " bytes";
-            //==             error_local(__FILE__, __LINE__, s);
-            //==         }
-            //==         allocated_ = true;
-            //==     }
-            //== }
-            //== else
-            //== {
-            //==     size_t sz = size();
-            //==      
-            //==     if (sz && (!mdarray_ptr)) 
-            //==     {
-            //==         try
-            //==         {
-            //==             mdarray_ptr = new T[sz];
-            //==         }
-            //==         catch(...)
-            //==         {
-            //==             std::stringstream s;
-            //==             s << "Error allocating " << ND << "-dimensional array of size " << sz * sizeof(T) << " bytes";
-            //==             error_local(__FILE__, __LINE__, s);
-            //==         }
-            //==         allocated_ = true;
-            //==     }
-            //== }
+            if (mode__ == 1)
+            {
+                #ifdef _GPU_
+                cuda_malloc_host((void**)(&ptr_), sz * sizeof(T));
+                unique_ptr_ = std::unique_ptr<T[], mdarray_deleter<T> >(ptr_, mdarray_deleter<T>(sz, 1));
+                #else
+                TERMINATE_NO_GPU
+                #endif
+            }
         }
         
         /// Deallocate memory and reset pointers.
@@ -321,26 +297,6 @@ class mdarray_base
         {
             unique_ptr_.reset(nullptr);
             ptr_ = nullptr;
-            
-            //== if (allocated_)
-            //== {
-            //==     #ifdef _GPU_
-            //==     unpin_memory();
-            //==     #endif
-            //==     if (type_wrapper<T>::is_primitive())
-            //==     {
-            //==         free(mdarray_ptr);
-            //==     }
-            //==     else
-            //==     {
-            //==         delete[] mdarray_ptr;
-            //==     }
-            //==     mdarray_ptr = NULL;
-            //==     allocated_ = false;
-            //== }
-            //== #ifdef _GPU_
-            //== deallocate_on_device();
-            //== #endif
         }
         
         inline void zero()
@@ -404,30 +360,21 @@ class mdarray_base
 
         void allocate_page_locked()
         {
-            size_t sz = size();
-
-            cuda_malloc_host((void**)(&ptr_), sz * sizeof(T));
-
-            unique_ptr_ = std::unique_ptr<T[], mdarray_deleter<T> >(ptr_, mdarray_deleter<T>(sz, 1));
+            allocate(1);
         }
-
-        //== void deallocate_page_locked()
-        //== {
-        //==     deallocate();
-        //== }
 
         void copy_to_device() 
         {
-            assert(mdarray_ptr_ != nullptr);
-            assert(mdarray_ptr_device != nullptr);
+            assert(ptr_ != nullptr);
+            assert(ptr_device_ != nullptr);
 
             cuda_copy_to_device(ptr_device_, ptr_, size() * sizeof(T));
         }
 
         void copy_to_host() 
         {
-            assert(mdarray_ptr_ != nullptr);
-            assert(mdarray_ptr_device != nullptr);
+            assert(ptr_ != nullptr);
+            assert(ptr_device_ != nullptr);
             
             cuda_copy_to_host(ptr_, ptr_device_, size() * sizeof(T));
         }

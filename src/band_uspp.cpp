@@ -930,11 +930,8 @@ void Band::set_fv_h_o_uspp_cpu_parallel(int N__,
 
     if (N__ != 0)
     {
-        /* <res|H|phi> */
-        blas<cpu>::gemm(2, 0, n__, N__, kp__->num_gkvec(), complex_one, phi__, 0, N__, hphi__, 0, 0, complex_zero, h__, N__, 0);
-
-        /* <res|O|phi> */
-        blas<cpu>::gemm(2, 0, n__, N__, kp__->num_gkvec(), complex_one, phi__, 0, N__, ophi__, 0, 0, complex_zero, o__, N__, 0);
+        dmatrix<double_complex>::tranc(n__, N__, h__, 0, N__, h__, N__, 0);
+        dmatrix<double_complex>::tranc(n__, N__, o__, 0, N__, o__, N__, 0);
     }
 
     /* save Hamiltonian and overlap */
