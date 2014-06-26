@@ -202,6 +202,17 @@ void apply_p(K_point& kp, mdarray<double_complex, 2>& r)
     }
 }
 
+void apply_p(K_point& kp, mdarray<double_complex, 2>& r, std::vector<double>& h_diag, std::vector<double>& eval)
+{
+    for (int i = 0; i < (int)r.size(1); i++)
+    {
+        for (int ig = 0; ig < kp.num_gkvec(); ig++)
+        {
+            r(ig, i) = r(ig, i) / (h_diag[ig] - eval[i]);
+        }
+    }
+}
+
 void diag_lobpcg(Global& parameters, K_point& kp, std::vector<double_complex>& v_pw, int num_bands)
 {
     auto fft = parameters.reciprocal_lattice()->fft();
@@ -215,145 +226,237 @@ void diag_lobpcg(Global& parameters, K_point& kp, std::vector<double_complex>& v
         if (fabs(imag(v_r[ir])) > 1e-10) error_local(__FILE__, __LINE__, "potential is complex");
     }
 
+    // initial wave-functions
+    mdarray<double_complex, 2> psi(kp.num_gkvec(), num_bands);
+    psi.zero();
+    for (int j = 0; j < num_bands; j++) psi(j, j) = complex_one;
+
+
     // initial basis functions
-    mdarray<double_complex, 2> phi(kp.num_gkvec(), num_bands);
+    mdarray<double_complex, 2> phi(kp.num_gkvec(), 3 * num_bands);
     phi.zero();
-    for (int i = 0; i < num_bands; i++) phi(i, i) = 1.0;
+    for (int j = 0; j < num_bands; j++)
+    {
+        memcpy(&phi(0, j), &psi(0, j), kp.num_gkvec() * sizeof(double_complex));
+    }
 
-    mdarray<double_complex, 2> hphi(kp.num_gkvec(), num_bands);
-
-    apply_h(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
-
-    mdarray<double_complex, 2> ovlp(3 * num_bands, 3 * num_bands);
+    mdarray<double_complex, 2> p(kp.num_gkvec(), num_bands);
 
     mdarray<double_complex, 2> hmlt(3 * num_bands, 3 * num_bands);
-    blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
+    mdarray<double_complex, 2> ovlp(3 * num_bands, 3 * num_bands);
+    mdarray<double_complex, 2> evec(3 * num_bands, num_bands);
 
-    std::vector<double> eval(3 * num_bands);
-    mdarray<double_complex, 2> evec(3 * num_bands, 3 * num_bands);
-    
-    standard_evp* solver = new standard_evp_lapack();
-    solver->solve(num_bands, hmlt.ptr(), hmlt.ld(), &eval[0], evec.ptr(), evec.ld());
-    delete solver;
+    std::vector<double> eval(num_bands);
+    std::vector<double> eval_tmp(num_bands);
+    std::vector<double> res_norm(num_bands);
 
-    mdarray<double_complex, 2> zm(kp.num_gkvec(), num_bands);
-    blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, num_bands, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), &zm(0, 0), zm.ld());
-    zm >> phi;
+    mdarray<double_complex, 2> hphi(kp.num_gkvec(), 3 * num_bands);
 
-    mdarray<double_complex, 2> res(kp.num_gkvec(), num_bands);
-    mdarray<double_complex, 2> hres(kp.num_gkvec(), num_bands);
+    std::vector<double> h_diag(kp.num_gkvec());
+    for (int igk = 0; igk < kp.num_gkvec(); igk++)
+        h_diag[igk] = std::pow(kp.gkvec_cart(igk).length(), 2) / 2 + real(v_pw[0]);
 
-    mdarray<double_complex, 2> grad(kp.num_gkvec(), num_bands);
-    grad.zero();
-    mdarray<double_complex, 2> hgrad(kp.num_gkvec(), num_bands);
-    
     generalized_evp* gevp = new generalized_evp_lapack(-1.0);
 
-    for (int k = 1; k < 300; k++)
+    for (int k = 0; k < 300; k++)
     {
         apply_h(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
-        // res = H|phi> - E|phi>
-        for (int i = 0; i < num_bands; i++)
+
+        // Rayleigh–Ritz values
+        for (int j = 0; j < num_bands; j++)
         {
-            for (int ig = 0; ig < kp.num_gkvec(); ig++) 
+            double a(0), b(0);
+            for (int igk = 0; igk < kp.num_gkvec(); igk++)
             {
-                //double_complex t = pow(kp.gkvec_cart(ig).length(), 2) / 2.0 + v_pw[0] - eval[i];
-                res(ig, i) = hphi(ig, i) - eval[i] * phi(ig, i);
-                
-                //if (abs(t) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
-                //res(ig, i) /= t;
+                a += real(conj(phi(igk, j)) * hphi(igk, j));
+                b += real(conj(phi(igk, j)) * phi(igk, j));
             }
+            eval[j] = a / b;
         }
 
-        std::cout << "Iteration : " << k << std::endl;
-        for (int i = 0; i< num_bands; i++)
+        // res = H|phi> - E|phi>
+        for (int j = 0; j < num_bands; j++)
         {
             double r = 0;
-            for (int ig = 0; ig < kp.num_gkvec(); ig++) r += real(conj(res(ig, i)) * res(ig, i));
-            std::cout << "band : " << i << " residiual : " << r << " eigen-value : " << eval[i] << std::endl;
+            for (int igk = 0; igk < kp.num_gkvec(); igk++) 
+            {
+                phi(igk, num_bands + j) = hphi(igk, j) - eval[j] * phi(igk, j);
+                r += std::pow(std::abs(phi(igk, num_bands + j)), 2);
+            }
+            res_norm[j] = std::sqrt(r);
+        }
+        mdarray<double_complex, 2> res(&phi(0, num_bands), kp.num_gkvec(), num_bands);
+        if (k > 2) apply_p(kp, res, h_diag, eval);
+
+        std::cout << "Iteration : " << k << std::endl;
+        for (int j = 0; j < num_bands; j++)
+        {
+            printf("band : %2i, residual : %12.8f, eval : %12.8f\n", j, res_norm[j], eval[j]);
         }
 
-        //apply_p(kp, res);
+        int gevp_size = (k == 0) ? 2 * num_bands : 3 * num_bands;
 
-        //orthonormalize(res);
-        apply_h(parameters, kp, num_bands, v_r, &res(0, 0), &hres(0, 0));
+        int num_happ = (k == 0) ? num_bands : 2 * num_bands;
 
-        hmlt.zero();
-        ovlp.zero();
-        for (int i = 0; i < 3 * num_bands; i++) ovlp(i, i) = double_complex(1, 0);
-
-        // <phi|H|phi>
-        blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), 
+        apply_h(parameters, kp, num_happ, v_r, &phi(0, num_bands), &hphi(0, num_bands));
+        
+        blas<cpu>::gemm(2, 0, gevp_size, gevp_size, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), 
                         &hmlt(0, 0), hmlt.ld());
-        // <phi|H|res>
-        blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hres(0, 0), hres.ld(), 
-                        &hmlt(0, num_bands), hmlt.ld());
-        // <res|H|res>
-        blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &res(0, 0), res.ld(), &hres(0, 0), hres.ld(), 
-                        &hmlt(num_bands, num_bands), hmlt.ld());
-
-        // <phi|res> 
-        blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &phi(0, 0), phi.ld(), &res(0, 0), res.ld(), 
-                        &ovlp(0, num_bands), ovlp.ld());
         
-        // <res|res> 
-        blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &res(0, 0), res.ld(), &res(0, 0), res.ld(), 
-                        &ovlp(num_bands, num_bands), ovlp.ld());
+        blas<cpu>::gemm(2, 0, gevp_size, gevp_size, kp.num_gkvec(), &phi(0, 0), phi.ld(), &phi(0, 0), phi.ld(), 
+                        &ovlp(0, 0), ovlp.ld());
 
-        if (k == 1)
-        {
-            gevp->solve(2 * num_bands, 2 * num_bands, 2 * num_bands, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
-                        &eval[0], evec.ptr(), evec.ld());
-        } 
-        else
-        {
-            //orthonormalize(grad);
-            apply_h(parameters, kp, num_bands, v_r, &grad(0, 0), &hgrad(0, 0));
+        gevp->solve(gevp_size, gevp_size, gevp_size, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
+                    &eval_tmp[0], evec.ptr(), evec.ld());
+            
+        blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, gevp_size, &phi(0, 0), phi.ld(), 
+                        &evec(0, 0), evec.ld(), &psi(0, 0), psi.ld());
 
-            // <phi|H|grad>
-            blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hgrad(0, 0), hgrad.ld(), 
-                            &hmlt(0, 2 * num_bands), hmlt.ld());
-            // <res|H|grad>
-            blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &res(0, 0), res.ld(), &hgrad(0, 0), hgrad.ld(), 
-                            &hmlt(num_bands, 2 * num_bands), hmlt.ld());
-            // <grad|H|grad>
-            blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &grad(0, 0), grad.ld(), &hgrad(0, 0), hgrad.ld(), 
-                            &hmlt(2 * num_bands, 2 * num_bands), hmlt.ld());
-            
-            // <phi|grad> 
-            blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &phi(0, 0), phi.ld(), &grad(0, 0), grad.ld(), 
-                            &ovlp(0, 2 * num_bands), ovlp.ld());
-            // <res|grad> 
-            blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &res(0, 0), res.ld(), &grad(0, 0), grad.ld(), 
-                            &ovlp(num_bands, 2 * num_bands), ovlp.ld());
-            // <grad|grad> 
-            blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &grad(0, 0), grad.ld(), &grad(0, 0), grad.ld(), 
-                            &ovlp(2 * num_bands, 2 * num_bands), ovlp.ld());
-            
-            gevp->solve(3 * num_bands, 3 * num_bands, 3 * num_bands, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
-                        &eval[0], evec.ptr(), evec.ld());
-            
+        blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, num_happ, &phi(0, num_bands), phi.ld(), 
+                        &evec(num_bands, 0), evec.ld(), &p(0, 0), p.ld());
+
+        for (int j = 0; j < num_bands; j++)
+        {
+            memcpy(&phi(0, j), &psi(0, j), kp.num_gkvec() * sizeof(double_complex));
+            memcpy(&phi(0, 2 * num_bands + j), &p(0, j), kp.num_gkvec() * sizeof(double_complex));
         }
-        
-        grad >> zm;
-        // P^{k+1} = P^{k} * Z_{grad} + res^{k} * Z_{res}
-        blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, num_bands, &res(0, 0), res.ld(), 
-                        &evec(num_bands, 0), evec.ld(), &grad(0, 0), grad.ld());
-        if (k > 1) 
-        {
-            blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, num_bands, double_complex(1, 0), &zm(0, 0), zm.ld(), 
-                            &evec(2 * num_bands, 0), evec.ld(), double_complex(1, 0), &grad(0, 0), grad.ld());
-        }
-
-        // phi^{k+1} = phi^{k} * Z_{phi} + P^{k+1}
-        phi >> zm;
-        grad >> phi;
-        blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, num_bands, double_complex(1, 0), &zm(0, 0), zm.ld(), 
-                        &evec(0, 0), evec.ld(), double_complex(1, 0), &phi(0, 0), phi.ld());
-
-        //check_orth(phi);    
     }
-    
+
+
+
+
+    //apply_h(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
+
+    //mdarray<double_complex, 2> ovlp(3 * num_bands, 3 * num_bands);
+
+    //mdarray<double_complex, 2> hmlt(3 * num_bands, 3 * num_bands);
+    //blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
+
+    //std::vector<double> eval(3 * num_bands);
+    //mdarray<double_complex, 2> evec(3 * num_bands, 3 * num_bands);
+    //
+    //standard_evp* solver = new standard_evp_lapack();
+    //solver->solve(num_bands, hmlt.ptr(), hmlt.ld(), &eval[0], evec.ptr(), evec.ld());
+    //delete solver;
+
+    //mdarray<double_complex, 2> zm(kp.num_gkvec(), num_bands);
+    //blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, num_bands, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), &zm(0, 0), zm.ld());
+    //zm >> phi;
+
+    //mdarray<double_complex, 2> res(kp.num_gkvec(), num_bands);
+    //mdarray<double_complex, 2> hres(kp.num_gkvec(), num_bands);
+
+    //mdarray<double_complex, 2> grad(kp.num_gkvec(), num_bands);
+    //grad.zero();
+    //mdarray<double_complex, 2> hgrad(kp.num_gkvec(), num_bands);
+    //
+    //generalized_evp* gevp = new generalized_evp_lapack(-1.0);
+
+    //for (int k = 1; k < 300; k++)
+    //{
+    //    apply_h(parameters, kp, num_bands, v_r, &phi(0, 0), &hphi(0, 0));
+    //    // res = H|phi> - E|phi>
+    //    for (int i = 0; i < num_bands; i++)
+    //    {
+    //        for (int ig = 0; ig < kp.num_gkvec(); ig++) 
+    //        {
+    //            //double_complex t = pow(kp.gkvec_cart(ig).length(), 2) / 2.0 + v_pw[0] - eval[i];
+    //            res(ig, i) = hphi(ig, i) - eval[i] * phi(ig, i);
+    //            
+    //            //if (abs(t) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
+    //            //res(ig, i) /= t;
+    //        }
+    //    }
+
+    //    std::cout << "Iteration : " << k << std::endl;
+    //    for (int i = 0; i< num_bands; i++)
+    //    {
+    //        double r = 0;
+    //        for (int ig = 0; ig < kp.num_gkvec(); ig++) r += real(conj(res(ig, i)) * res(ig, i));
+    //        std::cout << "band : " << i << " residiual : " << r << " eigen-value : " << eval[i] << std::endl;
+    //    }
+
+    //    //apply_p(kp, res);
+
+    //    //orthonormalize(res);
+    //    apply_h(parameters, kp, num_bands, v_r, &res(0, 0), &hres(0, 0));
+
+    //    hmlt.zero();
+    //    ovlp.zero();
+    //    for (int i = 0; i < 3 * num_bands; i++) ovlp(i, i) = double_complex(1, 0);
+
+    //    // <phi|H|phi>
+    //    blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), 
+    //                    &hmlt(0, 0), hmlt.ld());
+    //    // <phi|H|res>
+    //    blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hres(0, 0), hres.ld(), 
+    //                    &hmlt(0, num_bands), hmlt.ld());
+    //    // <res|H|res>
+    //    blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &res(0, 0), res.ld(), &hres(0, 0), hres.ld(), 
+    //                    &hmlt(num_bands, num_bands), hmlt.ld());
+
+    //    // <phi|res> 
+    //    blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &phi(0, 0), phi.ld(), &res(0, 0), res.ld(), 
+    //                    &ovlp(0, num_bands), ovlp.ld());
+    //    
+    //    // <res|res> 
+    //    blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &res(0, 0), res.ld(), &res(0, 0), res.ld(), 
+    //                    &ovlp(num_bands, num_bands), ovlp.ld());
+
+    //    if (k == 1)
+    //    {
+    //        gevp->solve(2 * num_bands, 2 * num_bands, 2 * num_bands, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
+    //                    &eval[0], evec.ptr(), evec.ld());
+    //    } 
+    //    else
+    //    {
+    //        //orthonormalize(grad);
+    //        apply_h(parameters, kp, num_bands, v_r, &grad(0, 0), &hgrad(0, 0));
+
+    //        // <phi|H|grad>
+    //        blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &phi(0, 0), phi.ld(), &hgrad(0, 0), hgrad.ld(), 
+    //                        &hmlt(0, 2 * num_bands), hmlt.ld());
+    //        // <res|H|grad>
+    //        blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &res(0, 0), res.ld(), &hgrad(0, 0), hgrad.ld(), 
+    //                        &hmlt(num_bands, 2 * num_bands), hmlt.ld());
+    //        // <grad|H|grad>
+    //        blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &grad(0, 0), grad.ld(), &hgrad(0, 0), hgrad.ld(), 
+    //                        &hmlt(2 * num_bands, 2 * num_bands), hmlt.ld());
+    //        
+    //        // <phi|grad> 
+    //        blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &phi(0, 0), phi.ld(), &grad(0, 0), grad.ld(), 
+    //                        &ovlp(0, 2 * num_bands), ovlp.ld());
+    //        // <res|grad> 
+    //        blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &res(0, 0), res.ld(), &grad(0, 0), grad.ld(), 
+    //                        &ovlp(num_bands, 2 * num_bands), ovlp.ld());
+    //        // <grad|grad> 
+    //        blas<cpu>::gemm(2, 0, num_bands, num_bands, kp.num_gkvec(), &grad(0, 0), grad.ld(), &grad(0, 0), grad.ld(), 
+    //                        &ovlp(2 * num_bands, 2 * num_bands), ovlp.ld());
+    //        
+    //        gevp->solve(3 * num_bands, 3 * num_bands, 3 * num_bands, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
+    //                    &eval[0], evec.ptr(), evec.ld());
+    //        
+    //    }
+    //    
+    //    grad >> zm;
+    //    // P^{k+1} = P^{k} * Z_{grad} + res^{k} * Z_{res}
+    //    blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, num_bands, &res(0, 0), res.ld(), 
+    //                    &evec(num_bands, 0), evec.ld(), &grad(0, 0), grad.ld());
+    //    if (k > 1) 
+    //    {
+    //        blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, num_bands, double_complex(1, 0), &zm(0, 0), zm.ld(), 
+    //                        &evec(2 * num_bands, 0), evec.ld(), double_complex(1, 0), &grad(0, 0), grad.ld());
+    //    }
+
+    //    // phi^{k+1} = phi^{k} * Z_{phi} + P^{k+1}
+    //    phi >> zm;
+    //    grad >> phi;
+    //    blas<cpu>::gemm(0, 0, kp.num_gkvec(), num_bands, num_bands, double_complex(1, 0), &zm(0, 0), zm.ld(), 
+    //                    &evec(0, 0), evec.ld(), double_complex(1, 0), &phi(0, 0), phi.ld());
+
+    //    //check_orth(phi);    
+    //}
+    //
 
     delete gevp;
 
@@ -527,7 +630,7 @@ void test_lobpcg()
 
     //== delete solver;
     
-    int num_bands = 20;
+    int num_bands = 30;
 
     //== printf("\n");
     //== printf("Lowest eigen-values (exact): \n");
