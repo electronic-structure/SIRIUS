@@ -1562,11 +1562,341 @@ void Band::diag_fv_uspp_cpu_serial_v2(K_point* kp__,
     kp__->fv_states_panel().scatter(psi, parameters_.mpi_grid().communicator(1 << _dim_row_));
 }
 
+void Band::diag_fv_uspp_cpu_serial_v3(K_point* kp__,
+                                      double v0__,
+                                      std::vector<double>& veff_it_coarse__)
+{
+    /* cache kinetic energy */
+    std::vector<double> pw_ekin = kp__->get_pw_ekin();
+
+    /* short notation for target wave-functions */
+    mdarray<double_complex, 2>& psi = kp__->fv_states();
+
+    /* short notation for number of target wave-functions */
+    int num_bands = parameters_.num_fv_states();     
+
+    auto& itso = parameters_.iterative_solver_input_section_;
+
+    /* get diagonal elements for preconditioning */
+    std::vector<double_complex> h_diag;
+    std::vector<double_complex> o_diag;
+    get_h_o_diag(kp__, v0__, pw_ekin, h_diag, o_diag);
+    
+    mdarray<double_complex, 2> phi(kp__->num_gkvec(), 3 * num_bands);
+    mdarray<double_complex, 2> hphi(kp__->num_gkvec(), 3 * num_bands);
+    mdarray<double_complex, 2> ophi(kp__->num_gkvec(), 3 * num_bands);
+
+    mdarray<double_complex, 2> hpsi(kp__->num_gkvec(), num_bands);
+    mdarray<double_complex, 2> opsi(kp__->num_gkvec(), num_bands);
+
+    mdarray<double_complex, 2> hmlt(3 * num_bands, 3 * num_bands);
+    mdarray<double_complex, 2> ovlp(3 * num_bands, 3 * num_bands);
+    mdarray<double_complex, 2> evec(3 * num_bands, num_bands);
+
+    std::vector<double> eval(num_bands);
+    std::vector<double> eval_tmp(num_bands);
+    
+    //mdarray<double_complex, 2> res(kp__->num_gkvec(), num_bands); // residuals
+
+    std::vector<double> res_norm(num_bands); // norm of residuals
+
+    //int N = 0; // current eigen-value problem size
+    //int n = num_bands; // number of added residuals
+
+    // trial basis functions
+    assert(phi.size(0) == psi.size(0));
+    for (int i = 0; i < num_bands; i++) memcpy(&phi(0, i), &psi(0, i), kp__->num_gkvec() * sizeof(double_complex));
+
+    // start iterative diagonalization
+    for (int k = 0; k < itso.num_steps_; k++)
+    {
+        // apply Hamiltonian and overlap operators to the new basis functions
+        apply_h_o_uspp_cpu(kp__, veff_it_coarse__, pw_ekin, num_bands, &phi(0, 0), &hphi(0, 0), &ophi(0, 0));
+
+
+        for (int i = 0; i < num_bands; i++)
+        {
+            double a(0), b(0);
+            for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+            {
+                a += real(conj(phi(igk, i)) * hphi(igk, i));
+                b += real(conj(phi(igk, i)) * ophi(igk, i));
+            }
+            eval[i] = a / b;
+        }
+
+        for (int i = 0; i < num_bands; i++)
+        {
+            double r = 0;
+            for (int igk = 0; igk < kp__->num_gkvec(); igk++) 
+            {
+                phi(igk, num_bands + i) = hphi(igk, i) - eval[i] * ophi(igk, i);
+                r += std::pow(std::abs(phi(igk, num_bands + i)), 2);
+
+                double_complex z = h_diag[igk] - eval[i] * o_diag[igk];
+                if (std::abs(z) > 1e-10) phi(igk, num_bands + i) /= z;
+            }
+            res_norm[i] = std::sqrt(r);
+        }
+
+        int m = (k == 0) ? num_bands : 2 * num_bands;
+        
+        apply_h_o_uspp_cpu(kp__, veff_it_coarse__, pw_ekin, m, &phi(0, num_bands), &hphi(0, num_bands), &ophi(0, num_bands));
+
+        
+//        mdarray<double_complex, 2> zm(num_bands, m);
+//
+//        blas<cpu>::gemm(2, 0, num_bands, m, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &ophi(0, num_bands), ophi.ld(), 
+//                        &zm(0, 0), zm.ld());
+//
+//        blas<cpu>::gemm(0, 0, kp__->num_gkvec(), m, num_bands, double_complex(-1, 0), &zm(0, 0), zm.ld(), &phi(0, 0), phi.ld(), 
+//                        double_complex(1, 0), 
+//
+        Timer t1("sirius::Band::diag_fv_uspp_cpu_serial_v3:orth");
+        int n = 0;
+        for (int i = 0; i < m; i++)
+        {
+            //std::vector<double_complex> z(num_bands + n, complex_zero);
+            //blas<cpu>::gemv(2, kp__->num_gkvec(), num_bands + n, complex_one, phi.ptr(), phi.ld(), 
+            //                &ophi(0, num_bands + i), 1, complex_zero, &z[0], 1); 
+
+            for (int j = 0; j < num_bands + n; j++)
+            {
+                double_complex z(0, 0);
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++) z += conj(phi(igk, j)) * ophi(igk, num_bands + i);
+            
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+                {
+                    phi(igk, num_bands + i) -= z * phi(igk, j);
+                    ophi(igk, num_bands + i) -= z * ophi(igk, j);
+                    hphi(igk, num_bands + i) -= z * hphi(igk, j);
+                }
+            }
+
+            double norm = 0;
+            for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+            {
+                norm += real(conj(phi(igk, num_bands + i)) * ophi(igk, num_bands + i));
+            }
+            norm = std::sqrt(norm);
+            if (norm > 1e-5)
+            {
+                norm = 1 / norm;
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+                {
+                    phi(igk, num_bands + n) = phi(igk, num_bands + i) * norm;
+                    ophi(igk, num_bands + n) = ophi(igk, num_bands + i) * norm;
+                    hphi(igk, num_bands + n) = hphi(igk, num_bands + i) * norm;
+                }
+                n++;
+            }
+        }
+        t1.stop();
+
+        int N = num_bands + n;
+
+
+        std::cout << "Iteration: " << k << ", subspace size : " << N << std::endl;
+        //for (int i = 0; i < std::min(10, num_bands); i++) std::cout << "eval["<<i<<"] = " << eval[i] << std::endl;
+        //for (int i = 0; i < std::min(10, num_bands); i++) std::cout << "res["<<i<<"] = " << res_norm[i] << std::endl;
+
+        Timer t2("sirius::Band::diag_fv_uspp_cpu_serial_v3:gevp");
+
+        blas<cpu>::gemm(2, 0, N, N, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
+          
+        blas<cpu>::gemm(2, 0, N, N, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &ophi(0, 0), ophi.ld(), &ovlp(0, 0), ovlp.ld());
+
+        //== {
+        //==     mdarray<double_complex, 2> o1(3 * num_bands, 3 * num_bands);
+        //==     mdarray<double_complex, 2> ev1(3 * num_bands, 3 * num_bands);
+        //==     std::vector<double> e1(3 * num_bands);
+        //==     ovlp >> o1;
+
+        //==     parameters_.std_evp_solver()->solve(N, o1.ptr(), o1.ld(), &e1[0], ev1.ptr(), ev1.ld());
+
+        //==     for (int i = 0; i < N; i++) std::cout << "eval_o["<<i<<"] = " << e1[i] << std::endl;
+        //== }
+        
+        parameters_.gen_evp_solver()->solve(N, N, N, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
+                                            &eval_tmp[0], evec.ptr(), evec.ld());
+        t2.stop();
+
+        
+        Timer t3("sirius::Band::diag_fv_uspp_cpu_serial_v3:update");
+        blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), 
+                        &evec(0, 0), evec.ld(), &psi(0, 0), psi.ld());
+
+        blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, n, &phi(0, num_bands), phi.ld(), 
+                        &evec(num_bands, 0), evec.ld(), &phi(0, 0), phi.ld());
+        t3.stop();
+        for (int j = 0; j < num_bands; j++)
+        {
+            memcpy(&phi(0, 2 * num_bands + j), &phi(0, j), kp__->num_gkvec() * sizeof(double_complex));
+            memcpy(&phi(0, j), &psi(0, j), kp__->num_gkvec() * sizeof(double_complex));
+        }
+    }
+
+    kp__->set_fv_eigen_values(&eval[0]);
+    kp__->fv_states_panel().scatter(psi, parameters_.mpi_grid().communicator(1 << _dim_row_));
+}
+
+void Band::diag_fv_uspp_cpu_serial_v4(K_point* kp__,
+                                      double v0__,
+                                      std::vector<double>& veff_it_coarse__)
+{
+    /* cache kinetic energy */
+    std::vector<double> pw_ekin = kp__->get_pw_ekin();
+
+    /* short notation for target wave-functions */
+    mdarray<double_complex, 2>& psi = kp__->fv_states();
+
+    /* short notation for number of target wave-functions */
+    int num_bands = parameters_.num_fv_states();     
+
+    auto& itso = parameters_.iterative_solver_input_section_;
+
+    /* get diagonal elements for preconditioning */
+    std::vector<double_complex> h_diag;
+    std::vector<double_complex> o_diag;
+    get_h_o_diag(kp__, v0__, pw_ekin, h_diag, o_diag);
+    
+    mdarray<double_complex, 2> phi(kp__->num_gkvec(), 2 * num_bands);
+    mdarray<double_complex, 2> hphi(kp__->num_gkvec(), 2 * num_bands);
+    mdarray<double_complex, 2> ophi(kp__->num_gkvec(), 2 * num_bands);
+
+    mdarray<double_complex, 2> hpsi(kp__->num_gkvec(), num_bands);
+    mdarray<double_complex, 2> opsi(kp__->num_gkvec(), num_bands);
+
+    mdarray<double_complex, 2> hmlt(2 * num_bands, 2 * num_bands);
+    mdarray<double_complex, 2> ovlp(2 * num_bands, 2 * num_bands);
+    mdarray<double_complex, 2> evec(2 * num_bands, num_bands);
+
+    std::vector<double> eval(num_bands);
+    std::vector<double> eval_tmp(num_bands);
+    
+    std::vector<double> res_norm(num_bands); // norm of residuals
+
+    // trial basis functions
+    assert(phi.size(0) == psi.size(0));
+    for (int i = 0; i < num_bands; i++) memcpy(&phi(0, i), &psi(0, i), kp__->num_gkvec() * sizeof(double_complex));
+    
+    // start iterative diagonalization
+    for (int k = 0; k < itso.num_steps_; k++)
+    {
+        // apply Hamiltonian and overlap operators to the new basis functions
+        if (k == 0) apply_h_o_uspp_cpu(kp__, veff_it_coarse__, pw_ekin, num_bands, &phi(0, 0), &hphi(0, 0), &ophi(0, 0));
+
+
+        for (int i = 0; i < num_bands; i++)
+        {
+            double a(0), b(0);
+            for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+            {
+                a += real(conj(phi(igk, i)) * hphi(igk, i));
+                b += real(conj(phi(igk, i)) * ophi(igk, i));
+            }
+            eval[i] = a / b;
+        }
+
+        for (int i = 0; i < num_bands; i++)
+        {
+            double r = 0;
+            for (int igk = 0; igk < kp__->num_gkvec(); igk++) 
+            {
+                phi(igk, num_bands + i) = hphi(igk, i) - eval[i] * ophi(igk, i);
+                r += std::pow(std::abs(phi(igk, num_bands + i)), 2);
+
+                double_complex z = h_diag[igk] - eval[i] * o_diag[igk];
+                if (std::abs(z) > 1e-10) phi(igk, num_bands + i) /= z;
+            }
+            res_norm[i] = std::sqrt(r);
+        }
+
+        int n = 0;
+        for (int i = 0; i < num_bands; i++)
+        {
+            /* take the residual if it's norm is above the threshold */
+            if (kp__->band_occupancy(i) > 1e-12 &&
+                (res_norm[i] > itso.tolerance_ || (res_norm[i] > itso.extra_tolerance_ && n != 0)))
+            {
+                /* shift unconverged residuals to the beginning of array */
+                if (n != i) memcpy(&phi(0, num_bands + n), &phi(0, num_bands + i), kp__->num_gkvec() * sizeof(double_complex));
+                n++;
+            }
+        }
+
+        if (n == 0)
+        {
+            std::cout << "converged in " << k << " iterations" << std::endl;
+            break;
+        }
+
+        apply_h_o_uspp_cpu(kp__, veff_it_coarse__, pw_ekin, n, &phi(0, num_bands), &hphi(0, num_bands), &ophi(0, num_bands));
+
+        int N = num_bands + n;
+
+        //std::cout << "Iteration: " << k << ", subspace size : " << N << std::endl;
+        //for (int i = 0; i < std::min(10, num_bands); i++) std::cout << "eval["<<i<<"] = " << eval[i] << std::endl;
+        //for (int i = 0; i < std::min(10, num_bands); i++) std::cout << "res["<<i<<"] = " << res_norm[i] << std::endl;
+
+        Timer t2("sirius::Band::diag_fv_uspp_cpu_serial_v3:gevp");
+
+        blas<cpu>::gemm(2, 0, N, N, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
+          
+        blas<cpu>::gemm(2, 0, N, N, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &ophi(0, 0), ophi.ld(), &ovlp(0, 0), ovlp.ld());
+
+        //== {
+        //==     mdarray<double_complex, 2> o1(3 * num_bands, 3 * num_bands);
+        //==     mdarray<double_complex, 2> ev1(3 * num_bands, 3 * num_bands);
+        //==     std::vector<double> e1(3 * num_bands);
+        //==     ovlp >> o1;
+
+        //==     parameters_.std_evp_solver()->solve(N, o1.ptr(), o1.ld(), &e1[0], ev1.ptr(), ev1.ld());
+
+        //==     for (int i = 0; i < N; i++) std::cout << "eval_o["<<i<<"] = " << e1[i] << std::endl;
+        //== }
+        
+        parameters_.gen_evp_solver()->solve(N, N, N, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
+                                            &eval_tmp[0], evec.ptr(), evec.ld());
+        t2.stop();
+
+        
+        Timer t3("sirius::Band::diag_fv_uspp_cpu_serial_v3:update");
+        
+        blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &hphi(0, 0), hphi.ld(), 
+                        &evec(0, 0), evec.ld(), &psi(0, 0), psi.ld());
+        for (int j = 0; j < num_bands; j++)
+        {
+            memcpy(&hphi(0, j), &psi(0, j), kp__->num_gkvec() * sizeof(double_complex));
+        }
+
+        blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), 
+                        &evec(0, 0), evec.ld(), &psi(0, 0), psi.ld());
+        for (int j = 0; j < num_bands; j++)
+        {
+            memcpy(&ophi(0, j), &psi(0, j), kp__->num_gkvec() * sizeof(double_complex));
+        }
+
+        blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), 
+                        &evec(0, 0), evec.ld(), &psi(0, 0), psi.ld());
+        for (int j = 0; j < num_bands; j++)
+        {
+            memcpy(&phi(0, j), &psi(0, j), kp__->num_gkvec() * sizeof(double_complex));
+        }
+        t3.stop();
+    }
+
+    kp__->set_fv_eigen_values(&eval[0]);
+    kp__->fv_states_panel().scatter(psi, parameters_.mpi_grid().communicator(1 << _dim_row_));
+}
+
 
 
 void Band::diag_fv_uspp_cpu(K_point* kp__, 
                             Periodic_function<double>* effective_potential__)
 {
+    Timer t("sirius::Band::diag_fv_uspp_cpu");
+
     auto rl = parameters_.reciprocal_lattice();
 
     /* map effective potential to a corase grid */
@@ -1591,9 +1921,34 @@ void Band::diag_fv_uspp_cpu(K_point* kp__,
     }
     else
     {
-        if (parameters_.iterative_solver_input_section_.version_ == 0) diag_fv_uspp_cpu_serial_v0(kp__, veff_it_coarse);
-        if (parameters_.iterative_solver_input_section_.version_ == 1) diag_fv_uspp_cpu_serial_v1(kp__, v0, veff_it_coarse);
-        if (parameters_.iterative_solver_input_section_.version_ == 2) diag_fv_uspp_cpu_serial_v2(kp__, v0, veff_it_coarse);
+        switch (parameters_.iterative_solver_input_section_.version_)
+        {
+            case 0:
+            {
+                diag_fv_uspp_cpu_serial_v0(kp__, veff_it_coarse);
+                break;
+            }
+            case 1:
+            {
+                diag_fv_uspp_cpu_serial_v1(kp__, v0, veff_it_coarse);
+                break;
+            }
+            case 2:
+            {
+                diag_fv_uspp_cpu_serial_v2(kp__, v0, veff_it_coarse);
+                break;
+            }
+            case 3:
+            {
+                diag_fv_uspp_cpu_serial_v3(kp__, v0, veff_it_coarse);
+                break;
+            }
+            case 4:
+            {
+                diag_fv_uspp_cpu_serial_v4(kp__, v0, veff_it_coarse);
+                break;
+            }
+        }
     }
 }
 
