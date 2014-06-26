@@ -28,8 +28,6 @@
 #include "splindex.h"
 #include "mdarray.h"
 
-// TODO: unified scatter / gather interface with template
-
 const int _panel_to_slice_ = 0;
 const int _slice_to_panel_ = 1;
 
@@ -287,7 +285,8 @@ class dmatrix
             std::vector<int> offsets(num_ranks_row_);
             std::vector<int> counts(num_ranks_row_);
 
-            T* ptr = (matrix_local_.size() == 0) ? nullptr : &matrix_local_(0, s0.local_size());
+            //T* ptr = (matrix_local_.size() == 0) ? nullptr : &matrix_local_(0, s0.local_size());
+            T* ptr = (nloc == 0) ? nullptr : &matrix_local_(0, s0.local_size());
 
             for (int rank = 0; rank < num_ranks_row_; rank++)
             {

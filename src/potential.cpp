@@ -1812,7 +1812,7 @@ void Potential::generate_d_mtrx()
 
     auto rl = parameters_.reciprocal_lattice();
 
-    // get plane-wave coefficients of effective potential
+    /* get plane-wave coefficients of effective potential */
     fft_->input(&effective_potential_->f_it<global>(0));
     fft_->transform(-1);
     fft_->output(rl->num_gvec(), rl->fft_index(), &effective_potential_->f_pw(0));
@@ -2183,39 +2183,53 @@ void Potential::generate_local_potential()
     auto uc = parameters_.unit_cell();
 
     mdarray<double, 2> vloc_radial_integrals(uc->num_atom_types(), rl->num_gvec_shells_inner());
-    
-    for (int iat = 0; iat < uc->num_atom_types(); iat++)
+
+    /* split G-shells between MPI ranks */
+    splindex<block> spl_gshells(rl->num_gvec_shells_inner(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+
+    #pragma omp parallel
     {
-        auto atom_type = uc->atom_type(iat);
-        #pragma omp parallel
+        /* splines for all atom types */
+        std::vector< Spline<double> > sa(uc->num_atom_types());
+        
+        for (int iat = 0; iat < uc->num_atom_types(); iat++) sa[iat] = Spline<double>(uc->atom_type(iat)->radial_grid());
+    
+        #pragma omp for
+        for (int igsloc = 0; igsloc < (int)spl_gshells.local_size(); igsloc++)
         {
-            Spline<double> s(atom_type->radial_grid());
-            #pragma omp for
-            for (int igs = 0; igs < rl->num_gvec_shells_inner(); igs++)
+            int igs = (int)spl_gshells[igsloc];
+
+            for (int iat = 0; iat < uc->num_atom_types(); iat++)
             {
+                auto atom_type = uc->atom_type(iat);
+
                 if (igs == 0)
                 {
-                    for (int ir = 0; ir < s.num_points(); ir++) 
+                    for (int ir = 0; ir < atom_type->num_mt_points(); ir++) 
                     {
                         double x = atom_type->radial_grid(ir);
-                        s[ir] = (x * atom_type->uspp().vloc[ir] + atom_type->zn()) * x;
+                        sa[iat][ir] = (x * atom_type->uspp().vloc[ir] + atom_type->zn()) * x;
                     }
-                    vloc_radial_integrals(iat, igs) = s.interpolate().integrate(0);
+                    vloc_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(0);
                 }
                 else
                 {
                     double g = rl->gvec_shell_len(igs);
-                    double g2 = pow(g, 2);
-                    for (int ir = 0; ir < s.num_points(); ir++) 
+                    double g2 = std::pow(g, 2);
+                    for (int ir = 0; ir < atom_type->num_mt_points(); ir++) 
                     {
                         double x = atom_type->radial_grid(ir);
-                        s[ir] = (x * atom_type->uspp().vloc[ir] + atom_type->zn() * gsl_sf_erf(x)) * sin(g * x);
+                        sa[iat][ir] = (x * atom_type->uspp().vloc[ir] + atom_type->zn() * gsl_sf_erf(x)) * sin(g * x);
                     }
-                    vloc_radial_integrals(iat, igs) = (s.interpolate().integrate(0) / g - atom_type->zn() * exp(-g2 / 4) / g2);
+                    vloc_radial_integrals(iat, igs) = (sa[iat].interpolate().integrate(0) / g - atom_type->zn() * exp(-g2 / 4) / g2);
                 }
             }
-         }
+        }
     }
+
+    int ld = uc->num_atom_types();
+    Platform::allgather(vloc_radial_integrals.ptr(), static_cast<int>(ld * spl_gshells.global_offset()), 
+                        static_cast<int>(ld * spl_gshells.local_size()));
 
     std::vector<double_complex> v = rl->make_periodic_function(vloc_radial_integrals, rl->num_gvec());
     

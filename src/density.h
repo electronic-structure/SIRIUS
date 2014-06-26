@@ -241,6 +241,21 @@ class Density
 
         void generate_pseudo_core_charge_density();
 
+        int num_occupied_bands(K_point* kp__)
+        {
+            if (parameters_.num_spins() == 2)
+            {
+                stop_here
+            }
+            int n = 0;
+            for (int j = 0; j < parameters_.num_fv_states(); j++)
+            {
+                double wo = kp__->band_occupancy(j) * kp__->weight();
+                if (wo > 1e-14) n++;
+            }
+            return n;
+        }
+
     public:
 
         /// Constructor

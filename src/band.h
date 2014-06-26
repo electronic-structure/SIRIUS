@@ -96,15 +96,41 @@ class Band
         void apply_h_local(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
                            int n, double_complex* phi__, double_complex* hphi__);
 
-        void diag_fv_uspp_cpu(K_point* kp, Periodic_function<double>* effective_potential);
+        void diag_fv_uspp_cpu(K_point* kp__,
+                              Periodic_function<double>* effective_potential__);
         
-        void diag_fv_uspp_cpu_parallel(K_point* kp__, Periodic_function<double>* effective_potential__);
- 
-        void get_h_o_diag(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, 
-                          std::vector<double_complex>& h_diag, std::vector<double_complex>& o_diag);
+        void diag_fv_uspp_cpu_serial(K_point* kp__,
+                                     double v0__,
+                                     std::vector<double>& veff_it_coarse__);
 
-        void apply_h_o_uspp_cpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
-                                double_complex* phi__, double_complex* hphi__, double_complex* ophi__);
+        void diag_fv_uspp_cpu_serial_v0(K_point* kp__,
+                                        std::vector<double>& veff_it_coarse__);
+
+        void diag_fv_uspp_cpu_serial_v1(K_point* kp__,
+                                        double v0__,
+                                        std::vector<double>& veff_it_coarse__);
+
+        void diag_fv_uspp_cpu_serial_v2(K_point* kp__,
+                                        double v0__,
+                                        std::vector<double>& veff_it_coarse__);
+
+        void diag_fv_uspp_cpu_parallel(K_point* kp__,
+                                     double v0__,
+                                     std::vector<double>& veff_it_coarse__);
+ 
+        void get_h_o_diag(K_point* kp__,
+                          double v0__,
+                          std::vector<double>& pw_ekin__,
+                          std::vector<double_complex>& h_diag__,
+                          std::vector<double_complex>& o_diag__);
+
+        void apply_h_o_uspp_cpu(K_point* kp__, 
+                                std::vector<double>& effective_potential__,
+                                std::vector<double>& pw_ekin__,
+                                int n__,
+                                double_complex* phi__, 
+                                double_complex* hphi__, 
+                                double_complex* ophi__);
 
         void apply_h_local_parallel(K_point* kp__,
                                     std::vector<double>& effective_potential__,

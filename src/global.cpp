@@ -132,6 +132,7 @@ void Global::read_input()
 
         mixer_input_section_.read(parser);
         xc_functionals_input_section_.read(parser);
+        iterative_solver_input_section_.read(parser);
     }
 
     Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::max_num_threads()));
