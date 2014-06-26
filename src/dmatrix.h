@@ -122,27 +122,15 @@ class dmatrix
             #endif
         }
 
-        inline void allocate()
+        inline void allocate(int mode__ = 0)
         {
-            matrix_local_.allocate();
+            matrix_local_.allocate(mode__);
         }
 
         inline void deallocate()
         {
             matrix_local_.deallocate();
         }
-
-        #ifdef _GPU_
-        inline void allocate_page_locked()
-        {
-            matrix_local_.allocate_page_locked();
-        }
-
-        inline void deallocate_page_locked()
-        {
-            matrix_local_.deallocate_page_locked();
-        }
-        #endif
 
         inline int num_rows()
         {
@@ -490,6 +478,15 @@ class dmatrix
                 Platform::recv(&dest__.matrix_local_(0, dest_location.first), dest__.num_rows_local(), src_location.second, 
                                tag, comm_col__);
             }
+        }
+
+        static void tranc(int32_t m, int32_t n, dmatrix<double_complex>& a, int ia, int ja, dmatrix<double_complex>& c, int ic, int jc)
+        {
+            ia++; ja++;
+            ic++; jc++;
+
+            linalg<scalapack>::pztranc(m, n, double_complex(1, 0), a.ptr(), ia, ja, a.descriptor(), double_complex(0, 0), 
+                                       c.ptr(), ic, jc, c.descriptor());
         }
 };
 

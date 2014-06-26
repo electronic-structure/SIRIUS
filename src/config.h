@@ -29,6 +29,20 @@
 
 #define FORTRAN(x) x##_
 
+//== #if !defined(NDEBUG)
+//== #pragma message("NDEBUG is not defined. Assert statements are enabled.")
+//== #endif
+
+#if defined(_LIBSCI_ACC_) && !defined(_GPU_)
+#error "GPU interface must be enabled for libsci_acc"
+#endif
+
+#ifdef _LIBSCI_ACC_
+const int alloc_mode = 1;
+#else
+const int alloc_mode = 0;
+#endif
+
 const bool test_spinor_wf = false;
 
 const bool hdf5_trace_errors = false;
