@@ -927,7 +927,8 @@ void Band::set_fv_h_o_uspp_cpu_parallel(int N__,
 
     /* <{phi,res}|O|res> */
     blas<cpu>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), complex_one, phi__, 0, 0, ophi__, 0, N__, complex_zero, o__, 0, N__);
-
+    
+    /* restore the bottom block of the matrix */
     if (N__ != 0)
     {
         dmatrix<double_complex>::tranc(n__, N__, h__, 0, N__, h__, N__, 0);
@@ -945,51 +946,44 @@ void Band::set_fv_h_o_uspp_cpu_parallel(int N__,
 void Band::uspp_cpu_residuals_parallel(int N__,
                                        int num_bands__,
                                        K_point* kp__,
-                                       dmatrix<double_complex>& res__,
+                                       std::vector<double>& eval__,
+                                       dmatrix<double_complex>& evec__,
                                        dmatrix<double_complex>& hphi__,
                                        dmatrix<double_complex>& ophi__,
-                                       dmatrix<double_complex>& evec__,
-                                       std::vector<double>& eval__,
+                                       dmatrix<double_complex>& hpsi__,
+                                       dmatrix<double_complex>& opsi__,
+                                       dmatrix<double_complex>& res__,
                                        std::vector<double_complex>& h_diag__,
                                        std::vector<double_complex>& o_diag__,
-                                       std::vector<double>& res_norm__,
-                                       std::vector<double>& res_rms__)
+                                       std::vector<double>& res_norm__)
 
 {
     Timer t("sirius::Band::uspp_cpu_residuals_parallel");
 
-    /* compute residuals */
-    /* First, compute O\Psi_{i} = O\phi_{mu} * Z_{mu, i} */
-    blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, ophi__, evec__, complex_zero, res__);
+    /* Compute H\Psi_{i} = H\phi_{mu} * Z_{mu, i} */
+    blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, hphi__, evec__, complex_zero, hpsi__);
     
-    /* Second, multiply O\Psi_{i} with negative energy */
-    for (int i = 0; i < res__.num_cols_local(); i++)
-    {
-        int ires = res__.icol(i);
-        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) res__(igk_row, i) *= (-eval__[ires]);
-    }
-    /* Finally, compute r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
-    blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, hphi__, evec__, complex_one, res__);
-    
+    /* Compute O\Psi_{i} = O\phi_{mu} * Z_{mu, i} */
+    blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, ophi__, evec__, complex_zero, opsi__);
+
     memset(&res_norm__[0], 0, num_bands__ * sizeof(double));
-    /* compute norm squared */
+    /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm suared*/
     #pragma omp parallel for
     for (int i = 0; i < res__.num_cols_local(); i++)
     {
         int ires = res__.icol(i);
-        double r = 0;
+        double norm2 = 0;
         for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
-            r += real(conj(res__(igk_row, i)) * res__(igk_row, i));
-        res_norm__[ires] = r;
+        {
+            res__(igk_row, i) = hpsi__(igk_row, i) - eval__[ires] * opsi__(igk_row, i);
+            norm2 += real(conj(res__(igk_row, i)) * res__(igk_row, i));
+        }
+        res_norm__[ires] = norm2;
     }
     Platform::allreduce(&res_norm__[0], num_bands__, parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
     
-    /* compute rms and norm */
-    for (int i = 0; i < num_bands__; i++)
-    {
-        res_rms__[i] = std::sqrt(res_norm__[i] / kp__->num_gkvec());
-        res_norm__[i] = std::sqrt(res_norm__[i]);
-    }
+    /* compute norm */
+    for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
     
     /* apply preconditioner */
     #pragma omp parallel for
@@ -1005,7 +999,7 @@ void Band::uspp_cpu_residuals_parallel(int N__,
         }
     }
     
-    std::vector<double> norm(num_bands__, 0);
+    std::vector<double> norm2(num_bands__, 0);
     /* Normalize new basis functions */
     #pragma omp parallel for
     for (int i = 0; i < res__.num_cols_local(); i++)
@@ -1014,14 +1008,14 @@ void Band::uspp_cpu_residuals_parallel(int N__,
         double d = 0;
         for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
             d += real(conj(res__(igk_row, i)) * res__(igk_row, i));
-        norm[ires] = d;
+        norm2[ires] = d;
     }
-    Platform::allreduce(&norm[0], num_bands__, parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
+    Platform::allreduce(&norm2[0], num_bands__, parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
     #pragma omp parallel for
     for (int i = 0; i < res__.num_cols_local(); i++)
     {
         int ires = res__.icol(i);
-        double d = 1.0 / std::sqrt(norm[ires]);
+        double d = 1.0 / std::sqrt(norm2[ires]);
         for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) res__(igk_row, i) *= d;
     }
 }
@@ -1060,16 +1054,18 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
 
     dmatrix<double_complex> hmlt(num_phi, num_phi, parameters_.blacs_context());
     dmatrix<double_complex> ovlp(num_phi, num_phi, parameters_.blacs_context());
-    dmatrix<double_complex> evec(num_phi, num_bands, parameters_.blacs_context());
     dmatrix<double_complex> hmlt_old(num_phi, num_phi, parameters_.blacs_context());
     dmatrix<double_complex> ovlp_old(num_phi, num_phi, parameters_.blacs_context());
-
-    dmatrix<double_complex> res(kp__->num_gkvec(), num_bands, parameters_.blacs_context());
-
+    
+    dmatrix<double_complex> evec(num_phi, num_bands, parameters_.blacs_context());
     std::vector<double> eval(num_bands);
 
     /* alias for wave-functions */
     dmatrix<double_complex>& psi = kp__->fv_states_panel();
+    
+    dmatrix<double_complex> hpsi(kp__->num_gkvec(), num_bands, parameters_.blacs_context());
+    dmatrix<double_complex> opsi(kp__->num_gkvec(), num_bands, parameters_.blacs_context());
+    dmatrix<double_complex> res(kp__->num_gkvec(), num_bands, parameters_.blacs_context());
 
     /* trial basis functions */
     assert(phi.num_rows_local() == psi.num_rows_local());
@@ -1101,30 +1097,16 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
         //== }
         }
 
-        uspp_cpu_residuals_parallel(N, num_bands, kp__, res, hphi, ophi, evec, eval, h_diag, o_diag, res_norm, res_rms);
-
-
-        
-        std::vector< std::pair<double, int> > res_rms_sorted;
-        for (int i = 0; i < num_bands; i++) res_rms_sorted.push_back(std::pair<double, int>(res_rms[i], i));
-        std::sort(res_rms_sorted.begin(), res_rms_sorted.end());
-        
-        double tol = itso.tolerance_;
-        int nmin = std::min(num_bands, parameters_.cyclic_block_size() * kp__->num_ranks_col());
+        uspp_cpu_residuals_parallel(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm);
 
         std::vector<int> res_list;
         for (int i = 0; i < num_bands; i++)
         {
-            if (res_rms_sorted[num_bands - i - 1].first > tol || 
-                (res_rms_sorted[num_bands - i - 1].first > tol * 1e-2 && (res_list.size() % nmin) != 0))
+            /* take the residual if it's norm is above the threshold */
+            if (kp__->band_occupancy(i) > 1e-12 &&
+                (res_norm[i] > itso.tolerance_ || (res_norm[i] > itso.extra_tolerance_ && n != 0)))
             {
-                res_list.push_back(res_rms_sorted[num_bands - i - 1].second);
-
-                //== if (Platform::mpi_rank() == 0)
-                //== {
-                //==     int j = res_rms_sorted[num_bands - i - 1].second;
-                //==     printf("residual %3i with rms %12.6f (norm %12.6f) is added\n", j, res_rms[j], res_norm[j]);
-                //== }
+                res_list.push_back(i);
             }
         }
 
@@ -1134,7 +1116,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n == 0 || k == (itso.num_steps_ - 1))
         {   
-            Timer t3("sirius::Band::diag_fv_uspp_cpu_parallel|flush");
+            Timer t3("sirius::Band::diag_fv_uspp_cpu_parallel|update_phi");
 
             /* recompute wave-functions: \Psi_{i} = \phi_{mu} * Z_{mu, i} */
             blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, complex_one, phi, evec, complex_zero, psi); 
@@ -1142,44 +1124,28 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
             /* exit loop if the eigen-vectors are converged or this is the last iteration */
             if (n == 0 || k == (itso.num_steps_ - 1))
             {
-                std::cout << "Converged in " << k << " iterations" << std::endl;
+                std::cout << "converged in " << k << " iterations" << std::endl;
                 break;
             }
 
-            /* We need to "flush" the basis if we run out of the variational space. We will use best 
-             * available approximation to the wavefunctions \Psi as a new basis \phi.
-             */
-
-            /* First, recompute H\phi and O\phi from the known data. This is done in order to skip application 
-             * of H and O to the new basis functions. 
-             */
-
-            /* use phi as a temporary vector to compute H\phi_new = H\Psi */
-            blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, complex_one, hphi, evec, complex_zero, phi); 
-
-            /* save H\phi */
             for (int i = 0; i < psi.num_cols_local(); i++) 
-                memcpy(&hphi(0, i), &phi(0, i), kp__->num_gkvec_row() * sizeof(double_complex));
-
-            /* use phi as a temporary vector to compute O\phi_new = O\Psi */
-            blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, complex_one, ophi, evec, complex_zero, phi);
-            
-            /* save O\phi */
-            for (int i = 0; i < psi.num_cols_local(); i++) 
-                memcpy(&ophi(0, i), &phi(0, i), kp__->num_gkvec_row() * sizeof(double_complex));
-
-            /* Second, update H and O matrices. */
-
-            /* use ovlp_old as temporary matrix and compute H = Z^{*} H Z*/
-            blas<cpu>::gemm(0, 0, N, num_bands, N, complex_one, hmlt_old, evec, complex_zero, ovlp_old);
-            blas<cpu>::gemm(2, 0, num_bands, num_bands, N, complex_one, evec, ovlp_old, complex_zero, hmlt_old);
-
-            ovlp_old.zero();
-            for (int i = 0; i < num_bands; i++) ovlp_old.set(i, i, complex_one);
-            
-            /* Finally, set new basis functions */
-            for (int i = 0; i < psi.num_cols_local(); i++) 
+            {
+                /* update \phi */
                 memcpy(&phi(0, i), &psi(0, i), kp__->num_gkvec_row() * sizeof(double_complex));
+                /* update H\phi */
+                memcpy(&hphi(0, i), &hpsi(0, i), kp__->num_gkvec_row() * sizeof(double_complex));
+                /* update O\phi */
+                memcpy(&ophi(0, i), &opsi(0, i), kp__->num_gkvec_row() * sizeof(double_complex));
+            }
+
+            /* update H and O matrices. */
+            hmlt_old.zero();
+            ovlp_old.zero();
+            for (int i = 0; i < num_bands; i++)
+            {
+                hmlt_old.set(i, i, eval[i]);
+                ovlp_old.set(i, i, complex_one);
+            }
             
             /* set new size of the variational space */
             N = num_bands;
