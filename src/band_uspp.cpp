@@ -1134,21 +1134,25 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
         //== }
         }
 
-        uspp_cpu_residuals_parallel(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm);
-
-        std::vector<int> res_list;
-        for (int i = 0; i < num_bands; i++)
+        /* don't recompute residuals if we are going to exit on the last iteration */
+        if (k != itso.num_steps_ - 1)
         {
-            /* take the residual if it's norm is above the threshold */
-            if (kp__->band_occupancy(i) > 1e-12 &&
-                (res_norm[i] > itso.tolerance_ || (res_norm[i] > itso.extra_tolerance_ && n != 0)))
-            {
-                res_list.push_back(i);
-            }
-        }
+            uspp_cpu_residuals_parallel(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm);
 
-        /* number of additional basis functions */
-        n = (int)res_list.size();
+            std::vector<int> res_list;
+            for (int i = 0; i < num_bands; i++)
+            {
+                /* take the residual if it's norm is above the threshold */
+                if (kp__->band_occupancy(i) > 1e-12 &&
+                    (res_norm[i] > itso.tolerance_ || (res_norm[i] > itso.extra_tolerance_ && n != 0)))
+                {
+                    res_list.push_back(i);
+                }
+            }
+
+            /* number of additional basis functions */
+            n = (int)res_list.size();
+        }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n == 0 || k == (itso.num_steps_ - 1))
