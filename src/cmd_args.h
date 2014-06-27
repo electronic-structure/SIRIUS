@@ -27,8 +27,6 @@
 
 #include "vector3d.h"
 
-// TODO: val = args.value<type>("val", default_val);
-
 /// Simple command line arguments handler.
 class cmd_args
 {
@@ -129,7 +127,10 @@ class cmd_args
         }
 
         template <typename T> 
-        T value(const std::string key__);
+        inline T value(const std::string key__);
+
+        template <typename T> 
+        inline T value(const std::string key__, T default_val__);
 
         std::string operator[](const std::string key__)
         {
@@ -138,7 +139,7 @@ class cmd_args
 };
 
 template <>
-int cmd_args::value<int>(const std::string key__)
+inline int cmd_args::value<int>(const std::string key__)
 {
     int v;
 
@@ -154,7 +155,17 @@ int cmd_args::value<int>(const std::string key__)
 }
 
 template <>
-double cmd_args::value<double>(const std::string key__)
+inline int cmd_args::value<int>(const std::string key__, int default_val__)
+{
+    if (!exist(key__)) return default_val__;
+
+    int v;
+    std::istringstream(keys_[key__]) >> v;
+    return v;
+}
+
+template <>
+inline double cmd_args::value<double>(const std::string key__)
 {
     double v;
 
@@ -170,13 +181,23 @@ double cmd_args::value<double>(const std::string key__)
 }
 
 template <>
-std::string cmd_args::value<std::string>(const std::string key__)
+inline double cmd_args::value<double>(const std::string key__, double default_val__)
+{
+    if (!exist(key__)) return default_val__;
+
+    double v;
+    std::istringstream(keys_[key__]) >> v;
+    return v;
+}
+
+template <>
+inline std::string cmd_args::value<std::string>(const std::string key__)
 {
     return keys_[key__];
 }
 
 template <>
-vector3d<double> cmd_args::value< vector3d<double> >(const std::string key__)
+inline vector3d<double> cmd_args::value< vector3d<double> >(const std::string key__)
 {
     vector3d<double> v;
 
