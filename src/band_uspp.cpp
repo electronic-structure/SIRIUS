@@ -1135,11 +1135,11 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
         }
 
         /* don't recompute residuals if we are going to exit on the last iteration */
+        std::vector<int> res_list;
         if (k != itso.num_steps_ - 1)
         {
             uspp_cpu_residuals_parallel(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm);
 
-            std::vector<int> res_list;
             for (int i = 0; i < num_bands; i++)
             {
                 /* take the residual if it's norm is above the threshold */
