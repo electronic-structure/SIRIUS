@@ -111,7 +111,7 @@ void test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
     if (Platform::mpi_rank() == 0)
     {
         printf("execution time (sec) : %12.6f\n", tval);
-        printf("performance (GFlops) : %12.6f\n", 8e-9 * M * N * K / tval / nrow / ncol);
+        printf("performance (GFlops) : %12.6f\n", 8e-9 * M * (N - n) * K / tval / nrow / ncol);
     }
     Cblacs_gridexit(context);
     linalg<scalapack>::free_blacs_handler(blacs_handler);
