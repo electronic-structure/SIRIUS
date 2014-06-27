@@ -943,7 +943,7 @@ void Band::set_fv_h_o_uspp_cpu_parallel(int N__,
     /* apply Hamiltonian and overlap operators to the new basis functions */
     apply_h_o_uspp_cpu_parallel(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__);
     
-    Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel|ho");
+    Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel|zgemm");
     /* <{phi,res}|H|res> */
     blas<cpu>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), complex_one, phi__, 0, 0, hphi__, 0, N__, complex_zero, h__, 0, N__);
     /* <{phi,res}|O|res> */
@@ -988,12 +988,20 @@ void Band::uspp_cpu_residuals_parallel(int N__,
 
 {
     Timer t("sirius::Band::uspp_cpu_residuals_parallel");
-
+    
+    Timer t2("sirius::Band::uspp_cpu_residuals_parallel|zgemm");
     /* Compute H\Psi_{i} = H\phi_{mu} * Z_{mu, i} */
     blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, hphi__, evec__, complex_zero, hpsi__);
-    
     /* Compute O\Psi_{i} = O\phi_{mu} * Z_{mu, i} */
     blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, ophi__, evec__, complex_zero, opsi__);
+    double tval = t2.stop();
+
+    if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
+    {
+        printf("pzgemm #6&7 with M, N, K: %6i %6i %6i,                        %12.4f sec, %12.4f GFlops/node\n",
+               kp__->num_gkvec(), num_bands__, N__,
+               tval, 2 * 8e-9 * kp__->num_gkvec() * num_bands__ * N__ / tval / kp__->num_ranks());
+    }
 
     memset(&res_norm__[0], 0, num_bands__ * sizeof(double));
     /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm suared*/
