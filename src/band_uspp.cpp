@@ -840,7 +840,14 @@ void Band::apply_h_o_uspp_cpu_parallel(K_point* kp__,
     /* compute <beta|phi> */
     blas<cpu>::gemm(2, 0, uc->mt_basis_size(), n__, kp__->num_gkvec(), complex_one, 
                     kp__->beta_pw_panel(), 0, 0, phi__, 0, N__, complex_zero, beta_phi, 0, 0);
-    t1.stop();
+    double tval = t1.stop();
+
+    if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
+    {
+        printf("pzgemm #1   with M, N, K: %6i %6i %6i,   offset in B: %6i, %12.4f sec, %12.4f GFlops/node\n",
+               uc->mt_basis_size(), n__, kp__->num_gkvec(), N__, 
+               tval, 8e-9 * uc->mt_basis_size() * n__ * kp__->num_gkvec() / tval / kp__->num_ranks());
+    }
 
     splindex<block> sub_spl_col(beta_phi.spl_col().local_size(), kp__->num_ranks_row(), kp__->rank_row());
     mdarray<double_complex, 2> beta_phi_slice(uc->mt_basis_size(), sub_spl_col.local_size());
@@ -867,7 +874,14 @@ void Band::apply_h_o_uspp_cpu_parallel(K_point* kp__,
     /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
     blas<cpu>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_basis_size(), complex_one,
                     kp__->beta_pw_panel(), 0, 0, tmp, 0, 0, complex_one, hphi__, 0, N__);
-    t3.stop();
+    tval = t3.stop();
+     
+    //if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
+    //{
+    //    printf("pzgemm #2 with M, N, K: %i %i %i, offset in C: %i, performance (GFlop/s/node): %f\n",
+    //           kp__->num_gkvec(), n__, uc->mt_basis_size(), N__,
+    //           8e-9 * kp__->num_gkvec() * n__ * uc->mt_basis_size() / tval / kp__->num_ranks());
+    //}
 
     if (sub_spl_col.local_size() != 0)
     {
@@ -887,7 +901,14 @@ void Band::apply_h_o_uspp_cpu_parallel(K_point* kp__,
     /* computr <G+k|beta> * Q*<beta|phi> and add to ophi */
     blas<cpu>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_basis_size(), complex_one, 
                     kp__->beta_pw_panel(), 0, 0, tmp, 0, 0, complex_one, ophi__, 0, N__);
-    t5.stop();
+    tval += t5.stop();
+
+    if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
+    {
+        printf("pzgemm #2&3 with M, N, K: %6i %6i %6i,   offset in C: %6i, %12.4f sec, %12.4f GFlops/node\n",
+               kp__->num_gkvec(), n__, uc->mt_basis_size(), N__,
+               tval, 2 * 8e-9 * kp__->num_gkvec() * n__ * uc->mt_basis_size() / tval / kp__->num_ranks());
+    }
 
     log_function_exit(__func__);
 }
@@ -921,12 +942,20 @@ void Band::set_fv_h_o_uspp_cpu_parallel(int N__,
 
     /* apply Hamiltonian and overlap operators to the new basis functions */
     apply_h_o_uspp_cpu_parallel(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__);
-
+    
+    Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel|ho");
     /* <{phi,res}|H|res> */
     blas<cpu>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), complex_one, phi__, 0, 0, hphi__, 0, N__, complex_zero, h__, 0, N__);
-
     /* <{phi,res}|O|res> */
     blas<cpu>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), complex_one, phi__, 0, 0, ophi__, 0, N__, complex_zero, o__, 0, N__);
+    double tval = t2.stop();
+
+    if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
+    {
+        printf("pzgemm #4&5 with M, N, K: %6i %6i %6i, offset in B&C: %6i, %12.4f sec, %12.4f GFlops/node\n",
+               N__ + n__, n__, kp__->num_gkvec(), N__,
+               tval, 2 * 8e-9 * (N__ + n__) * n__ * kp__->num_gkvec() / tval / kp__->num_ranks());
+    }
     
     /* restore the bottom block of the matrix */
     if (N__ != 0)
