@@ -1096,6 +1096,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
     
     dmatrix<double_complex> evec(num_phi, num_bands, parameters_.blacs_context());
     std::vector<double> eval(num_bands);
+    std::vector<double> eval_old(num_bands);
 
     /* alias for wave-functions */
     dmatrix<double_complex>& psi = kp__->fv_states_panel();
@@ -1122,6 +1123,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
 
         {
         Timer t2("sirius::Band::diag_fv_uspp_cpu_parallel|solve_gevp");
+        eval_old = eval;
         parameters_.gen_evp_solver()->solve(N, hmlt.num_rows_local(), hmlt.num_cols_local(), num_bands, 
                                             hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
                                             &eval[0], evec.ptr(), evec.ld());
@@ -1165,7 +1167,16 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
             /* exit loop if the eigen-vectors are converged or this is the last iteration */
             if (n == 0 || k == (itso.num_steps_ - 1))
             {
-                std::cout << "converged in " << k << " iterations" << std::endl;
+                if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
+                {
+                    double demax = 0;
+                    for (int i = 0; i < num_bands; i++)
+                    {
+                         if (kp__->band_occupancy(i) > 1e-12) demax = std::max(demax, std::abs(eval_old[i] - eval[i]));
+                    }
+                    if (k == 0) demax = 0.0;
+                    printf("converged in %i iterations with maximum eigen-value error %18.12e\n", k, demax);
+                }
                 break;
             }
 
