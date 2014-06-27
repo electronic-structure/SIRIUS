@@ -50,7 +50,7 @@ void test_gemm(int M, int N, int K, int transa)
 }
 
 #ifdef _SCALAPACK_
-void test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
+double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
 {
     //== #ifdef _GPU_
     //== sirius::pstdout pout;
@@ -97,7 +97,7 @@ void test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
 
     if (Platform::mpi_rank() == 0)
     {
-        printf("testing parallel zgemm with M, N, K = %i, %i, %i, opA = %i\n", M, N, K, transa);
+        printf("testing parallel zgemm with M, N, K = %i, %i, %i, opA = %i\n", M, N - n, K, transa);
         printf("nrow, ncol = %i, %i, bs = %i\n", nrow, ncol, linalg<scalapack>::cyclic_block_size());
     }
     Platform::barrier();
@@ -108,13 +108,16 @@ void test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
     //== #endif
     Platform::barrier();
     double tval = t1.stop();
+    double perf = 8e-9 * M * (N - n) * K / tval / nrow / ncol;
     if (Platform::mpi_rank() == 0)
     {
-        printf("execution time (sec) : %12.6f\n", tval);
-        printf("performance (GFlops) : %12.6f\n", 8e-9 * M * (N - n) * K / tval / nrow / ncol);
+        printf("execution time : %12.6f seconds\n", tval);
+        printf("performance    : %12.6f GFlops / node\n", perf);
     }
     Cblacs_gridexit(context);
     linalg<scalapack>::free_blacs_handler(blacs_handler);
+
+    return perf;
 }
 #endif
 
@@ -129,6 +132,7 @@ int main(int argn, char **argv)
     args.register_key("--nrow=", "{int} number of row MPI ranks");
     args.register_key("--ncol=", "{int} number of column MPI ranks");
     args.register_key("--bs=", "{int} cyclic block size");
+    args.register_key("--repeat=", "{int} repeat test number of times");
 
     args.parse_args(argn, argv);
     if (argn == 1)
@@ -138,21 +142,18 @@ int main(int argn, char **argv)
         exit(0);
     }
 
-    int nrow = 1;
-    int ncol = 1;
-
-    if (args.exist("nrow")) nrow = args.value<int>("nrow");
-    if (args.exist("ncol")) ncol = args.value<int>("ncol");
+    int nrow = args.value<int>("nrow", 1);
+    int ncol = args.value<int>("ncol", 1);
 
     int M = args.value<int>("M");
     int N = args.value<int>("N");
     int K = args.value<int>("K");
 
-    int transa = 0;
-    if (args.exist("opA")) transa = args.value<int>("opA");
+    int transa = args.value<int>("opA", 0);
 
-    int n = 0;
-    if (args.exist("n")) n = args.value<int>("n");
+    int n = args.value<int>("n", 0);
+
+    int repeat = args.value<int>("repeat", 1);
 
     Platform::initialize(true);
 
@@ -165,7 +166,13 @@ int main(int argn, char **argv)
         #ifdef _SCALAPACK_
         int bs = args.value<int>("bs");
         linalg<scalapack>::set_cyclic_block_size(bs);
-        for (int i = 0; i < 4; i++) test_pgemm(M, N, K, nrow, ncol, transa, n);
+        double perf = 0;
+        for (int i = 0; i < repeat; i++) perf += test_pgemm(M, N, K, nrow, ncol, transa, n);
+        if (Platform::mpi_rank() == 0)
+        {
+            printf("\n");
+            printf("average performance    : %12.6f GFlops / node\n", perf / repeat);
+        }
         #else
         terminate(__FILE__, __LINE__, "not compiled with ScaLAPACK support");
         #endif
