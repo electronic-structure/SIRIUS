@@ -183,6 +183,15 @@ class Band
                                          dmatrix<double_complex>& phi__,
                                          dmatrix<double_complex>& hphi__,
                                          dmatrix<double_complex>& ophi__);
+
+        void apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
+                                         std::vector<double>& effective_potential__,
+                                         std::vector<double>& pw_ekin__,
+                                         int N__,
+                                         int n__,
+                                         dmatrix<double_complex>& phi__,
+                                         dmatrix<double_complex>& hphi__,
+                                         dmatrix<double_complex>& ophi__);
         
         #ifdef _GPU_
         void apply_h_local_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 

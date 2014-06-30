@@ -913,6 +913,130 @@ void Band::apply_h_o_uspp_cpu_parallel(K_point* kp__,
     log_function_exit(__func__);
 }
 
+void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
+                                       std::vector<double>& effective_potential__,
+                                       std::vector<double>& pw_ekin__,
+                                       int N__,
+                                       int n__,
+                                       dmatrix<double_complex>& phi__,
+                                       dmatrix<double_complex>& hphi__,
+                                       dmatrix<double_complex>& ophi__)
+{
+    Timer t("sirius::Band::apply_h_o_uspp_cpu_parallel");
+    log_function_enter(__func__);
+    auto uc = parameters_.unit_cell();
+
+    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+
+    int nloc = static_cast<int>(s1.local_size() - s0.local_size());
+
+    if (nloc == 0) return;
+
+    /* apply local part of Hamiltonian */
+    apply_h_local_parallel(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__);
+    
+    /* set intial ophi */
+    if (nloc > 0) memcpy(&ophi__(0, s0.local_size()), &phi__(0, s0.local_size()), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
+
+
+
+
+
+    int num_atoms_in_block = 32;
+    int num_atom_blocks = parameters_.unit_cell()->num_atoms() / num_atoms_in_block + 
+                          std::min(1, parameters_.unit_cell()->num_atoms() % num_atoms_in_block);
+
+    splindex<block> atom_blocks(parameters_.unit_cell()->num_atoms(), num_atom_blocks, 0);
+    
+    auto& beta_pw_t = kp__->beta_pw_t();
+
+    for (int iab = 0; iab < num_atom_blocks; iab++)
+    {
+        std::vector<int> bf_offset_in_block(atom_blocks.local_size(iab));
+        int nbf_in_block = 0;
+
+        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
+        {
+            int ia = (int)atom_blocks.global_offset(iab) + i;
+            bf_offset_in_block[i] = nbf_in_block;
+            nbf_in_block += parameters_.unit_cell()->atom(ia)->mt_basis_size();
+        }
+        mdarray<double_complex, 2> beta_phi(nbf_in_block, nloc);
+
+        // create beta projectors
+        mdarray<double_complex, 2> beta_pw(kp__->num_gkvec_row(), nbf_in_block);
+
+        int n = 0;
+        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
+        {
+            int ia = (int)atom_blocks.global_offset(iab) + i;
+            auto type = parameters_.unit_cell()->atom(ia)->type();
+            for (int xi = 0; xi < type->mt_basis_size(); xi++)
+            {
+                for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+                {
+                    beta_pw(igk_row, n) = beta_pw_t(igk_row, type->offset_lo() + xi) * 
+                                          conj(kp__->gkvec_phase_factor(igk_row, ia));
+                }
+                n++;
+            }
+        }
+
+        mdarray<double_complex, 2> tmp(nbf_in_block, nloc);
+
+        Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel|beta_phi");
+        /* compute <beta|phi> */
+        blas<cpu>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
+                        beta_pw.ptr(), beta_pw.ld(), &phi__(0, s0.local_size()), phi__.ld(), beta_phi.ptr(), beta_phi.ld());
+        Platform::allreduce(beta_phi.ptr(), (int)beta_phi.size(), parameters_.mpi_grid().communicator(1 << _dim_row_));
+        t1.stop();
+
+
+        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
+        {
+            int ia = (int)atom_blocks.global_offset(iab) + i;
+            int ofs = bf_offset_in_block[i];
+            
+            /* number of beta functions for a given atom */
+            int nbf = uc->atom(ia)->mt_basis_size();
+
+            /* compute D*<beta|phi> */
+            blas<cpu>::gemm(0, 0, nbf, nloc, nbf, &uc->atom(ia)->d_mtrx(0, 0), nbf, 
+                            &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
+        }
+
+        Timer t3("sirius::Band::apply_h_o_uspp_cpu_parallel|beta_D_beta_phi");
+        /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
+        blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
+                        beta_pw.ptr(), beta_pw.ld(), tmp.ptr(), tmp.ld(), complex_one, &hphi__(0, s0.local_size()), hphi__.ld());
+        t3.stop();
+
+
+
+        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
+        {
+            int ia = (int)atom_blocks.global_offset(iab) + i;
+            int ofs = bf_offset_in_block[i];
+            
+            /* number of beta functions for a given atom */
+            int nbf = uc->atom(ia)->mt_basis_size();
+
+            /* compute Q*<beta|phi> */
+            blas<cpu>::gemm(0, 0, nbf, nloc, nbf, &uc->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
+                            &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
+        }
+
+        Timer t4("sirius::Band::apply_h_o_uspp_cpu_parallel|beta_Q_beta_phi");
+        /* compute <G+k|beta> * Q*<beta|phi> and add to hphi */
+        blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
+                        beta_pw.ptr(), beta_pw.ld(), tmp.ptr(), tmp.ld(), complex_one, &ophi__(0, s0.local_size()), ophi__.ld());
+        t4.stop();
+    }
+
+    log_function_exit(__func__);
+}
+
 void Band::set_fv_h_o_uspp_cpu_parallel(int N__,
                                         int n__,
                                         K_point* kp__,
@@ -941,7 +1065,7 @@ void Band::set_fv_h_o_uspp_cpu_parallel(int N__,
     }
 
     /* apply Hamiltonian and overlap operators to the new basis functions */
-    apply_h_o_uspp_cpu_parallel(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__);
+    apply_h_o_uspp_cpu_parallel_v2(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__);
     
     Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel|zgemm");
     /* <{phi,res}|H|res> */
