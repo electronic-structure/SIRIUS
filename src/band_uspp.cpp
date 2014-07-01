@@ -952,7 +952,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
     auto& beta_pw_t = kp__->beta_pw_t();
 
     int nbf_max = uc->max_mt_basis_size() * num_atoms_in_block;
-    mdarray<double_complex, 2> beta_phi(nbf_max, nloc);
+    std::vector<double_complex> beta_phi_tmp(nbf_max * nloc);
     mdarray<double_complex, 2> tmp(nbf_max, nloc);
     mdarray<double_complex, 2> beta_pw(kp__->num_gkvec_row(), nbf_max);
 
@@ -987,7 +987,8 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
             }
         }
         t0.stop();
-
+        
+        mdarray<double_complex, 2> beta_phi(&beta_phi_tmp[0], nbf_in_block, nloc);
         Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel|beta_phi", _global_timer_);
         /* compute <beta|phi> */
         blas<cpu>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
@@ -1083,6 +1084,101 @@ void Band::set_fv_h_o_uspp_cpu_parallel(int N__,
     }
     
     /* restore the bottom block of the matrix */
+    if (N__ != 0)
+    {
+        dmatrix<double_complex>::tranc(n__, N__, h__, 0, N__, h__, N__, 0);
+        dmatrix<double_complex>::tranc(n__, N__, o__, 0, N__, o__, N__, 0);
+    }
+
+    /* save Hamiltonian and overlap */
+    for (int i = 0; i < (int)s1_col.local_size(); i++)
+    {
+        memcpy(&h_old__(0, i), &h__(0, i), s1_row.local_size() * sizeof(double_complex));
+        memcpy(&o_old__(0, i), &o__(0, i), s1_row.local_size() * sizeof(double_complex));
+    }
+}
+
+void Band::set_fv_h_o_uspp_cpu_parallel_v2(int N__,
+                                        int n__,
+                                        K_point* kp__,
+                                        std::vector<double>& veff_it_coarse__,
+                                        std::vector<double>& pw_ekin__,
+                                        dmatrix<double_complex>& phi__,
+                                        dmatrix<double_complex>& hphi__,
+                                        dmatrix<double_complex>& ophi__,
+                                        dmatrix<double_complex>& h__,
+                                        dmatrix<double_complex>& o__,
+                                        dmatrix<double_complex>& h_old__,
+                                        dmatrix<double_complex>& o_old__)
+{
+    Timer t1("sirius::Band::set_fv_h_o_uspp_cpu_parallel", _global_timer_);
+
+    splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s0_row(N__,       kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s1_row(N__ + n__, kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
+
+    /* copy old Hamiltonian and overlap */
+    for (int i = 0; i < (int)s0_col.local_size(); i++)
+    {
+        memcpy(&h__(0, i), &h_old__(0, i), s0_row.local_size() * sizeof(double_complex));
+        memcpy(&o__(0, i), &o_old__(0, i), s0_row.local_size() * sizeof(double_complex));
+    }
+
+    /* apply Hamiltonian and overlap operators to the new basis functions */
+    apply_h_o_uspp_cpu_parallel_v2(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__);
+
+    int nloc = static_cast<int>(s1_col.local_size() - s0_col.local_size());
+    
+    Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel|zgemm", _global_timer_);
+    int max_num_phi = (int)s1_col.local_size(0);
+    
+    mdarray<double_complex, 2> phi_tmp(kp__->num_gkvec_row(), max_num_phi);
+    std::vector<double_complex> h_tmp(max_num_phi * nloc);
+    std::vector<double_complex> o_tmp(max_num_phi * nloc);
+
+    for (int icol = 0; icol < kp__->num_ranks_col(); icol++)
+    {
+        int num_phi = (int)s1_col.local_size(icol);
+        if (kp__->rank_col() == icol)
+        {
+            for (int i = 0; i < num_phi; i++)
+                memcpy(&phi_tmp(0, i), &phi__(0, i), kp__->num_gkvec_row() * sizeof(double_complex));
+        }
+        Platform::bcast(phi_tmp.ptr(), num_phi * kp__->num_gkvec_row(), 
+                        parameters_.mpi_grid().communicator(1 << _dim_col_), icol);
+       
+        if (nloc > 0)
+        {
+            mdarray<double_complex, 2> h(&h_tmp[0], num_phi, nloc);
+            mdarray<double_complex, 2> o(&o_tmp[0], num_phi, nloc);
+
+            blas<cpu>::gemm(2, 0, num_phi, nloc, kp__->num_gkvec_row(), phi_tmp.ptr(), phi_tmp.ld(), 
+                            &hphi__(0, s0_col.local_size()), hphi__.ld(), h.ptr(), h.ld());
+            
+            blas<cpu>::gemm(2, 0, num_phi, nloc, kp__->num_gkvec_row(), phi_tmp.ptr(), phi_tmp.ld(), 
+                            &ophi__(0, s0_col.local_size()), ophi__.ld(), o.ptr(), o.ld());
+
+            Platform::allreduce(h.ptr(), (int)h.size(), parameters_.mpi_grid().communicator(1 << _dim_row_));
+            Platform::allreduce(o.ptr(), (int)o.size(), parameters_.mpi_grid().communicator(1 << _dim_row_));
+
+            for (int iloc = 0; iloc < num_phi; iloc++)
+            {
+                int i = (int)s1_col.global_index(iloc, icol);
+                auto p = s1_row.location(i);
+                if (p.second == kp__->rank_row()) 
+                {
+                    for (int j = 0; j < nloc; j++)
+                    {
+                        h__(p.first, s0_col.local_size() + j) = h(iloc, j);
+                        o__(p.first, s0_col.local_size() + j) = o(iloc, j);
+                    }
+                }
+            }
+        }
+    }
+
+    /* restore bottom block of the matrix */
     if (N__ != 0)
     {
         dmatrix<double_complex>::tranc(n__, N__, h__, 0, N__, h__, N__, 0);
@@ -1241,7 +1337,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
     for (int k = 0; k < itso.num_steps_; k++)
     {
         /* set H and O for the variational subspace */
-        set_fv_h_o_uspp_cpu_parallel(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
+        set_fv_h_o_uspp_cpu_parallel_v2(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
         
         /* increase size of the variation space */
         N += n;
