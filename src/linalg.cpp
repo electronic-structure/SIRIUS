@@ -222,3 +222,10 @@ int linalg<lapack>::getri<double_complex>(int32_t n, double_complex* a, int32_t 
     return info;
 }
 
+#if defined(_SCALAPACK_) && defined(_PILAENV_BLOCKSIZE_)
+extern "C" int pilaenv_(int* ctxt, char* prec) 
+{
+    return _PILAENV_BLOCKSIZE_;
+}
+#endif
+
