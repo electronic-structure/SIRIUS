@@ -938,7 +938,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
     /* set intial ophi */
     memcpy(&ophi__(0, s0.local_size()), &phi__(0, s0.local_size()), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
 
-    int num_atoms_in_block = 64;
+    int num_atoms_in_block = 128;
     int num_atom_blocks = parameters_.unit_cell()->num_atoms() / num_atoms_in_block + 
                           std::min(1, parameters_.unit_cell()->num_atoms() % num_atoms_in_block);
 
@@ -964,7 +964,6 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
         for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
         {
             int ia = (int)atom_blocks.global_index(i, iab);
-            //int ia = (int)atom_blocks.global_offset(iab) + i;
             bf_offset_in_block[i] = nbf_in_block;
             nbf_in_block += parameters_.unit_cell()->atom(ia)->mt_basis_size();
         }
@@ -972,16 +971,17 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
 
         Timer t0("sirius::Band::apply_h_o_uspp_cpu_parallel|beta_pw", _global_timer_);
         // create beta projectors
-        for (int i = 0, n = 0; i < (int)atom_blocks.local_size(iab); i++)
+        #pragma omp parallel
+        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
         {
-            int ia = (int)atom_blocks.global_offset(iab) + i;
+            int ia = (int)atom_blocks.global_index(i, iab);
             auto type = parameters_.unit_cell()->atom(ia)->type();
-            for (int xi = 0; xi < type->mt_basis_size(); xi++)
+            for (int xi = 0, n = 0; xi < type->mt_basis_size(); xi++)
             {
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
                 {
-                    beta_pw(igk_row, n) = beta_pw_t(igk_row, type->offset_lo() + xi) * 
-                                          conj(kp__->gkvec_phase_factor(igk_row, ia));
+                    beta_pw(igk_row, bf_offset_in_block[i] + n) = beta_pw_t(igk_row, type->offset_lo() + xi) * 
+                                                                  conj(kp__->gkvec_phase_factor(igk_row, ia));
                 }
                 n++;
             }
