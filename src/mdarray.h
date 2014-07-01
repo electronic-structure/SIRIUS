@@ -26,7 +26,7 @@
 #define __MDARRAY_H__
 
 #include <memory>
-#include <atomic>
+//#include <atomic>
 #include <string.h>
 #include <vector>
 #include "error_handling.h"
