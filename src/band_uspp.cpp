@@ -1247,6 +1247,11 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
         /* increase size of the variation space */
         N += n;
 
+        if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
+        {
+            printf("iteration : %i, subspace size : %i\n", k, N);
+        }
+
         {
         Timer t2("sirius::Band::diag_fv_uspp_cpu_parallel|solve_gevp");
         eval_old = eval;
@@ -1285,7 +1290,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n == 0 || k == (itso.num_steps_ - 1))
         {   
-            Timer t3("sirius::Band::diag_fv_uspp_cpu_parallel|update_phi");
+            Timer t3("sirius::Band::diag_fv_uspp_cpu_parallel|update_phi", _global_timer_);
 
             /* recompute wave-functions: \Psi_{i} = \phi_{mu} * Z_{mu, i} */
             blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, complex_one, phi, evec, complex_zero, psi); 
