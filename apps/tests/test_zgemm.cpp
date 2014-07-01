@@ -8,13 +8,13 @@ void test_gemm(int M, int N, int K, int transa)
     int imax, jmax;
     if (transa == 0)
     {
-        imax = N;
+        imax = M;
         jmax = K;
     }
     else
     {
         imax = K;
-        jmax = N;
+        jmax = M;
     }
     a.set_dimensions(imax, jmax);
     b.set_dimensions(K, N);
@@ -42,6 +42,9 @@ void test_gemm(int M, int N, int K, int transa)
     c.zero();
 
     printf("testing serial zgemm with M, N, K = %i, %i, %i, opA = %i\n", M, N, K, transa);
+    printf("a.ld() = %i\n", a.ld());
+    printf("b.ld() = %i\n", b.ld());
+    printf("c.ld() = %i\n", c.ld());
     sirius::Timer t1("gemm_only"); 
     blas<cpu>::gemm(transa, 0, M, N, K, a.ptr(), a.ld(), b.ptr(), b.ld(), c.ptr(), c.ld());
     t1.stop();
