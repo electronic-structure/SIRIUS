@@ -112,30 +112,10 @@ void dft_loop(cmd_args args)
     Potential* potential = new Potential(parameters);
     potential->allocate();
 
-    std::vector<int> ngridk = parser["ngridk"].get(std::vector<int>(3, 1));
-        
-    int numkp = ngridk[0] * ngridk[1] * ngridk[2];
-    int ik = 0;
-    mdarray<double, 2> kpoints(3, numkp);
-    std::vector<double> kpoint_weights(numkp);
+    auto ngridk = parser["ngridk"].get(std::vector<int>(3, 1));
 
-    for (int i0 = 0; i0 < ngridk[0]; i0++) 
-    {
-        for (int i1 = 0; i1 < ngridk[1]; i1++) 
-        {
-            for (int i2 = 0; i2 < ngridk[2]; i2++)
-            {
-                kpoints(0, ik) = double(i0) / ngridk[0];
-                kpoints(1, ik) = double(i1) / ngridk[1];
-                kpoints(2, ik) = double(i2) / ngridk[2];
-                kpoint_weights[ik] = 1.0 / numkp;
-                ik++;
-            }
-        }
-    }
+    K_set ks(parameters, ngridk, parser["use_symmetry"].get(0));
 
-    K_set ks(parameters);
-    ks.add_kpoints(kpoints, &kpoint_weights[0]);
     ks.initialize();
     
     Density* density = new Density(parameters);
