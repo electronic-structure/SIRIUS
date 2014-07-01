@@ -39,8 +39,11 @@ void Timer::start()
         printf("timer %s is already running\n", label_.c_str());
         Platform::abort();
     }
-
+    #if defined(_TIMER_TIMEOFDAY_)
     gettimeofday(&starting_time_, NULL);
+    #elif defined(_TIMER_MPI_WTIME_)
+    starting_time_ = MPI_Wtime();
+    #endif
     active_ = true;
 }
 
@@ -52,11 +55,14 @@ double Timer::stop()
         Platform::abort();
     }
 
+    #if defined(_TIMER_TIMEOFDAY_)
     timeval end;
     gettimeofday(&end, NULL);
-
     double val = double(end.tv_sec - starting_time_.tv_sec) + 
                  double(end.tv_usec - starting_time_.tv_usec) / 1e6;
+    #elif defined(_TIMER_MPI_WTIME_)
+    double val = MPI_Wtime() - starting_time_;
+    #endif
     
     switch (timer_type_)
     {

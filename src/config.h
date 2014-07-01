@@ -29,6 +29,9 @@
 
 #define FORTRAN(x) x##_
 
+//== #define _TIMER_TIMEOFDAY_
+#define _TIMER_MPI_WTIME_
+
 //== #if !defined(NDEBUG)
 //== #pragma message("NDEBUG is not defined. Assert statements are enabled.")
 //== #endif

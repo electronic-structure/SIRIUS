@@ -58,7 +58,11 @@ class Timer
         std::string label_;
         
         /// starting time
+        #if defined(_TIMER_TIMEOFDAY_)
         timeval starting_time_;
+        #elif defined (_TIMER_MPI_WTIME_)
+        double starting_time_;
+        #endif
 
         /// true if timer is running
         bool active_;
