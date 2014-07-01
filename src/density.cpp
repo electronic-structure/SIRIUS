@@ -730,8 +730,10 @@ void Density::add_kpoint_contribution_pp(K_point* kp__,
     dmatrix<double_complex> beta_psi(uc->mt_basis_size(), nbnd, parameters_.blacs_context());
 
     /* compute <beta|Psi> */
+    Timer t1("sirius::Density::add_kpoint_contribution_pp|beta_psi");
     blas<cpu>::gemm(2, 0, uc->mt_basis_size(), nbnd, kp__->num_gkvec(), complex_one, 
                     kp__->beta_pw_panel(), kp__->fv_states_panel(), complex_zero, beta_psi);
+    t1.stop();
 
     splindex<block> sub_spl_col(beta_psi.num_cols_local(), kp__->num_ranks_row(), kp__->rank_row());
 
@@ -1276,6 +1278,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
         int nbf = atom_type->mt_basis_size();
 
         mdarray<double_complex, 2> d_mtrx_packed(atom_type->num_atoms(), nbf * (nbf + 1) / 2);
+        #pragma omp parallel for
         for (int i = 0; i < atom_type->num_atoms(); i++)
         {
             int ia = atom_type->atom_id(i);
