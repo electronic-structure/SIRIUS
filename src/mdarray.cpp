@@ -24,7 +24,7 @@
 
 #include "mdarray.h"
 
-std::atomic<int64_t> mdarray_mem_count;
-
-std::atomic<int64_t> mdarray_mem_count_max(0);
+//std::atomic<int64_t> mdarray_mem_count;
+//
+//std::atomic<int64_t> mdarray_mem_count_max(0);
 

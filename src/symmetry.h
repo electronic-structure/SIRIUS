@@ -48,6 +48,10 @@ class Symmetry
 
     public:
 
+        Symmetry()
+        {
+        }
+
         Symmetry(double lattice_vectors__[3][3], SpglibDataset* spg_dataset__);
         
         inline int num_sym_op()
@@ -57,37 +61,41 @@ class Symmetry
 
         int proper_rotation(int isym);
 
-        matrix3d<double> rot_mtrx(int isym);
+        /// Rotation matrix in Cartesian coordinates.
+        matrix3d<double> rot_mtrx_cart(int isym__);
+
+        /// Rotation matrix in fractional coordinates.
+        matrix3d<double> rot_mtrx(int isym__);
         
         /// Generate rotation matrix from three Euler angles
         /** Euler angles \f$ \alpha, \beta, \gamma \f$ define the general rotation as three consecutive rotations:
-                - about \f$ \hat e_z \f$ through the angle \f$ \gamma \f$ (\f$ 0 \le \gamma < 2\pi \f$)
-                - about \f$ \hat e_y \f$ through the angle \f$ \beta \f$ (\f$ 0 \le \beta \le \pi \f$) 
-                - about \f$ \hat e_z \f$ through the angle \f$ \alpha \f$ (\f$ 0 \le \gamma < 2\pi \f$)
-            
-            The total rotation matrix is defined as a product of three rotation matrices:
-            \f[
-                R(\alpha, \beta, \gamma) = 
-                    \left( \begin{array}{ccc} \cos(\alpha) & -\sin(\alpha) & 0 \\
-                                              \sin(\alpha) & \cos(\alpha) & 0 \\
-                                              0 & 0 & 1 \end{array} \right) 
-                    \left( \begin{array}{ccc} \cos(\beta) & 0 & \sin(\beta) \\
-                                              0 & 1 & 0 \\
-                                              -\sin(\beta) & 0 & \cos(\beta) \end{array} \right)  
-                    \left( \begin{array}{ccc} \cos(\gamma) & -\sin(\gamma) & 0 \\
-                                              \sin(\gamma) & \cos(\gamma) & 0 \\
-                                              0 & 0 & 1 \end{array} \right) = 
-                \left( \begin{array}{ccc} \cos(\alpha) \cos(\beta) \cos(\gamma) - \sin(\alpha) \sin(\gamma) & 
-                                          -\sin(\alpha) \cos(\gamma) - \cos(\alpha) \cos(\beta) \sin(\gamma) & 
-                                          \cos(\alpha) \sin(\beta) \\
-                                          \sin(\alpha) \cos(\beta) \cos(\gamma) + \cos(\alpha) \sin(\gamma) & 
-                                          \cos(\alpha) \cos(\gamma) - \sin(\alpha) \cos(\beta) \sin(\gamma) & 
-                                          \sin(\alpha) \sin(\beta) \\
-                                          -\sin(\beta) \cos(\gamma) & 
-                                          \sin(\beta) \sin(\gamma) & 
-                                          \cos(\beta) \end{array} \right)
-            \f]
-        */
+         *      - about \f$ \hat e_z \f$ through the angle \f$ \gamma \f$ (\f$ 0 \le \gamma < 2\pi \f$)
+         *      - about \f$ \hat e_y \f$ through the angle \f$ \beta \f$ (\f$ 0 \le \beta \le \pi \f$) 
+         *      - about \f$ \hat e_z \f$ through the angle \f$ \alpha \f$ (\f$ 0 \le \gamma < 2\pi \f$)
+         *  
+         *  The total rotation matrix is defined as a product of three rotation matrices:
+         *  \f[
+         *      R(\alpha, \beta, \gamma) = 
+         *          \left( \begin{array}{ccc} \cos(\alpha) & -\sin(\alpha) & 0 \\
+         *                                    \sin(\alpha) & \cos(\alpha) & 0 \\
+         *                                    0 & 0 & 1 \end{array} \right) 
+         *          \left( \begin{array}{ccc} \cos(\beta) & 0 & \sin(\beta) \\
+         *                                    0 & 1 & 0 \\
+         *                                    -\sin(\beta) & 0 & \cos(\beta) \end{array} \right)  
+         *          \left( \begin{array}{ccc} \cos(\gamma) & -\sin(\gamma) & 0 \\
+         *                                    \sin(\gamma) & \cos(\gamma) & 0 \\
+         *                                    0 & 0 & 1 \end{array} \right) = 
+         *      \left( \begin{array}{ccc} \cos(\alpha) \cos(\beta) \cos(\gamma) - \sin(\alpha) \sin(\gamma) & 
+         *                                -\sin(\alpha) \cos(\gamma) - \cos(\alpha) \cos(\beta) \sin(\gamma) & 
+         *                                \cos(\alpha) \sin(\beta) \\
+         *                                \sin(\alpha) \cos(\beta) \cos(\gamma) + \cos(\alpha) \sin(\gamma) & 
+         *                                \cos(\alpha) \cos(\gamma) - \sin(\alpha) \cos(\beta) \sin(\gamma) & 
+         *                                \sin(\alpha) \sin(\beta) \\
+         *                                -\sin(\beta) \cos(\gamma) & 
+         *                                \sin(\beta) \sin(\gamma) & 
+         *                                \cos(\beta) \end{array} \right)
+         *  \f]
+         */
         matrix3d<double> rot_mtrx(vector3d<double> euler_angles);
         
         /// Compute Euler angles corresponding to the proper rotation part of the given symmetry.
@@ -102,7 +110,7 @@ class Symmetry
 /** \page sym Symmetry
     \section section1 Definition of symmetry operation
 
-    SIRIUS uses Spglib to find the spacial symmetry operations. Spglib defines symmetry operation in lattice 
+    SIRIUS uses Spglib to find the spacial symmetry operations. Spglib defines symmetry operation in fractional 
     coordinates:
     \f[
         {\bf x'} = \{ {\bf R} | {\bf t} \} {\bf x} \equiv {\bf R}{\bf x} + {\bf t}

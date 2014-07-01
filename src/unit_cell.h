@@ -155,6 +155,8 @@ class Unit_cell
 
         mdarray<double, 2> atom_pos_;
 
+        Symmetry symmetry_;
+
         /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
         /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
          *  bethween nearest atoms. Initial values of the muffin-tin radii are ignored. 
@@ -522,6 +524,11 @@ class Unit_cell
         inline mt_basis_descriptor& mt_lo_basis_descriptor(int idx)
         {
             return mt_lo_basis_descriptors_[idx];
+        }
+
+        inline Symmetry& symmetry()
+        {
+            return symmetry_;
         }
 };
     

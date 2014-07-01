@@ -66,6 +66,33 @@ class K_set
             band_ = new Band(parameters_);
         }
 
+        K_set(Global& parameters__, std::vector<int> ngridk__, int use_symmetry__) : parameters_(parameters__)
+        {
+            band_ = new Band(parameters_);
+
+            int nk = ngridk__[0] * ngridk__[1] * ngridk__[2];
+            mdarray<double, 2> vk(3, nk);
+            std::vector<double> wk(nk);
+
+            int ik = 0;
+            for (int i0 = 0; i0 < ngridk__[0]; i0++) 
+            {
+                for (int i1 = 0; i1 < ngridk__[1]; i1++) 
+                {
+                    for (int i2 = 0; i2 < ngridk__[2]; i2++)
+                    {
+                        vk(0, ik) = double(i0) / ngridk__[0];
+                        vk(1, ik) = double(i1) / ngridk__[1];
+                        vk(2, ik) = double(i2) / ngridk__[2];
+                        wk[ik] = 1.0 / nk;
+                        ik++;
+                    }
+                }
+            }
+
+            for (int ik = 0; ik < nk; ik++) add_kpoint(&vk(0, ik), wk[ik]);
+        }
+
         ~K_set()
         {
             clear();
