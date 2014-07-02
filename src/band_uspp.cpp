@@ -977,14 +977,13 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
             int ia = (int)atom_blocks.global_index(i, iab);
             auto type = parameters_.unit_cell()->atom(ia)->type();
             #pragma omp for
-            for (int xi = 0, n = 0; xi < type->mt_basis_size(); xi++)
+            for (int xi = 0; xi < type->mt_basis_size(); xi++)
             {
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
                 {
-                    beta_pw(igk_row, bf_offset_in_block[i] + n) = beta_pw_t(igk_row, type->offset_lo() + xi) * 
-                                                                  conj(kp__->gkvec_phase_factor(igk_row, ia));
+                    beta_pw(igk_row, bf_offset_in_block[i] + xi) = beta_pw_t(igk_row, type->offset_lo() + xi) * 
+                                                                   conj(kp__->gkvec_phase_factor(igk_row, ia));
                 }
-                n++;
             }
         }
         t0.stop();
