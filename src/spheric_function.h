@@ -26,6 +26,7 @@
 #ifndef __SPHERIC_FUNCTION_H__
 #define __SPHERIC_FUNCTION_H__
 
+#include <array>
 #include <typeinfo>
 #include "radial_grid.h"
 #include "spline.h"
