@@ -971,7 +971,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
 
         Timer t0("sirius::Band::apply_h_o_uspp_cpu_parallel|beta_pw", _global_timer_);
         // create beta projectors
-        #pragma omp parallel
+        #pragma omp paralleli for
         for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
         {
             int ia = (int)atom_blocks.global_index(i, iab);
