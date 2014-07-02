@@ -971,11 +971,12 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
 
         Timer t0("sirius::Band::apply_h_o_uspp_cpu_parallel|beta_pw", _global_timer_);
         // create beta projectors
-        #pragma omp paralleli for
+        #pragma omp parallel
         for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
         {
             int ia = (int)atom_blocks.global_index(i, iab);
             auto type = parameters_.unit_cell()->atom(ia)->type();
+            #pragma omp for
             for (int xi = 0, n = 0; xi < type->mt_basis_size(); xi++)
             {
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
