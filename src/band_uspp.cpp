@@ -22,6 +22,7 @@
  *  \brief Contains ultrasoft pseudopotential -related implementation of sirius::Band class.
  */
 
+#include <thread>
 #include "band.h"
 
 namespace sirius {
@@ -1194,6 +1195,145 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v2(int N__,
     }
 }
 
+void bcast_column(Global& parameters__,
+                  K_point* kp__, 
+                  splindex<block_cyclic>& s1_col__, 
+                  int icol__, 
+                  dmatrix<double_complex>& phi__, 
+                  mdarray<double_complex, 3>& phi_tmp__)
+{
+    int num_phi = (int)s1_col__.local_size(icol__);
+    if (kp__->rank_col() == icol__)
+    {
+        for (int i = 0; i < num_phi; i++)
+            memcpy(&phi_tmp__(0, i, icol__ % 2), &phi__(0, i), kp__->num_gkvec_row() * sizeof(double_complex));
+    }
+    Platform::bcast(&phi_tmp__(0, 0, icol__ % 2), num_phi * kp__->num_gkvec_row(), 
+                    parameters__.mpi_grid().communicator(1 << _dim_col_), icol__);
+}
+
+void comm_thread_worker(Global& parameters__, 
+                        K_point* kp__, 
+                        splindex<block_cyclic>& s1_col__, 
+                        int* icol__,
+                        std::vector<bool>& done__,
+                        dmatrix<double_complex>& phi__, 
+                        mdarray<double_complex, 3>& phi_tmp__)
+{
+    while(true)
+    {
+        int i = *icol__;
+        for (int j = 0; j < 2; j++)
+        {
+            if (i < kp__->num_ranks_col() && !done__[i])
+            {
+                bcast_column(parameters__, kp__, s1_col__, i, phi__, phi_tmp__);
+                done__[i] = true;
+            }
+            i++;
+        }
+        if (i >= kp__->num_ranks_col()) break;
+    }
+}
+
+void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
+                                        int n__,
+                                        K_point* kp__,
+                                        std::vector<double>& veff_it_coarse__,
+                                        std::vector<double>& pw_ekin__,
+                                        dmatrix<double_complex>& phi__,
+                                        dmatrix<double_complex>& hphi__,
+                                        dmatrix<double_complex>& ophi__,
+                                        dmatrix<double_complex>& h__,
+                                        dmatrix<double_complex>& o__,
+                                        dmatrix<double_complex>& h_old__,
+                                        dmatrix<double_complex>& o_old__)
+{
+    Timer t1("sirius::Band::set_fv_h_o_uspp_cpu_parallel", _global_timer_);
+
+    splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s0_row(N__,       kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s1_row(N__ + n__, kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
+
+    /* copy old Hamiltonian and overlap */
+    for (int i = 0; i < (int)s0_col.local_size(); i++)
+    {
+        memcpy(&h__(0, i), &h_old__(0, i), s0_row.local_size() * sizeof(double_complex));
+        memcpy(&o__(0, i), &o_old__(0, i), s0_row.local_size() * sizeof(double_complex));
+    }
+
+    /* apply Hamiltonian and overlap operators to the new basis functions */
+    apply_h_o_uspp_cpu_parallel_v2(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__);
+
+    int nloc = static_cast<int>(s1_col.local_size() - s0_col.local_size());
+    
+    int max_num_phi = (int)s1_col.local_size(0);
+    
+    mdarray<double_complex, 3> phi_tmp(kp__->num_gkvec_row(), max_num_phi, 2);
+    std::vector<double_complex> h_tmp(max_num_phi * nloc);
+    std::vector<double_complex> o_tmp(max_num_phi * nloc);
+    
+    std::vector<bool> done(kp__->num_ranks_col(), false);
+    int icol = 0;
+
+    std::thread comm_thread(comm_thread_worker, std::ref(parameters_), kp__, std::ref(s1_col), &icol, std::ref(done), 
+                            std::ref(phi__), std::ref(phi_tmp));
+
+    for (; icol < kp__->num_ranks_col(); icol++)
+    {
+        int num_phi = (int)s1_col.local_size(icol);
+
+        while (!done[icol]);
+       
+        if (nloc > 0)
+        {
+            mdarray<double_complex, 2> h(&h_tmp[0], num_phi, nloc);
+            mdarray<double_complex, 2> o(&o_tmp[0], num_phi, nloc);
+
+            Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel|zgemm", _global_timer_);
+            blas<cpu>::gemm(2, 0, num_phi, nloc, kp__->num_gkvec_row(), &phi_tmp(0, 0, icol % 2), phi_tmp.ld(), 
+                            &hphi__(0, s0_col.local_size()), hphi__.ld(), h.ptr(), h.ld());
+            
+            blas<cpu>::gemm(2, 0, num_phi, nloc, kp__->num_gkvec_row(), &phi_tmp(0, 0, icol % 2), phi_tmp.ld(), 
+                            &ophi__(0, s0_col.local_size()), ophi__.ld(), o.ptr(), o.ld());
+            t2.stop();
+
+            Platform::allreduce(h.ptr(), (int)h.size(), parameters_.mpi_grid().communicator(1 << _dim_row_));
+            Platform::allreduce(o.ptr(), (int)o.size(), parameters_.mpi_grid().communicator(1 << _dim_row_));
+
+            for (int iloc = 0; iloc < num_phi; iloc++)
+            {
+                int i = (int)s1_col.global_index(iloc, icol);
+                auto p = s1_row.location(i);
+                if (p.second == kp__->rank_row()) 
+                {
+                    for (int j = 0; j < nloc; j++)
+                    {
+                        h__(p.first, s0_col.local_size() + j) = h(iloc, j);
+                        o__(p.first, s0_col.local_size() + j) = o(iloc, j);
+                    }
+                }
+            }
+        }
+    }
+    comm_thread.join();
+
+    /* restore bottom block of the matrix */
+    if (N__ != 0)
+    {
+        dmatrix<double_complex>::tranc(n__, N__, h__, 0, N__, h__, N__, 0);
+        dmatrix<double_complex>::tranc(n__, N__, o__, 0, N__, o__, N__, 0);
+    }
+
+    /* save Hamiltonian and overlap */
+    for (int i = 0; i < (int)s1_col.local_size(); i++)
+    {
+        memcpy(&h_old__(0, i), &h__(0, i), s1_row.local_size() * sizeof(double_complex));
+        memcpy(&o_old__(0, i), &o__(0, i), s1_row.local_size() * sizeof(double_complex));
+    }
+}
+
 void Band::uspp_cpu_residuals_parallel(int N__,
                                        int num_bands__,
                                        K_point* kp__,
@@ -1338,7 +1478,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
     for (int k = 0; k < itso.num_steps_; k++)
     {
         /* set H and O for the variational subspace */
-        set_fv_h_o_uspp_cpu_parallel_v2(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
+        set_fv_h_o_uspp_cpu_parallel_v3(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
         
         /* increase size of the variation space */
         N += n;

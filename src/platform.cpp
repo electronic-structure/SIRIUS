@@ -36,7 +36,16 @@ extern "C" void libsci_acc_init();
 
 void Platform::initialize(bool call_mpi_init, bool call_cublas_init)
 {
-    if (call_mpi_init) MPI_Init(NULL, NULL);
+    //if (call_mpi_init) MPI_Init(NULL, NULL);
+    int provided;
+    if (call_mpi_init) 
+    {
+        MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &provided);
+        if (provided != MPI_THREAD_MULTIPLE)
+        {
+            printf("MPI_Init_thread didn't provide MPI_THREAD_MULTIPLE\n");
+        }
+    }
 
     #ifdef _GPU_
     //cuda_initialize();
