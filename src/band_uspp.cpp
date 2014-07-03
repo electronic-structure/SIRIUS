@@ -1130,7 +1130,6 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v2(int N__,
 
     int nloc = static_cast<int>(s1_col.local_size() - s0_col.local_size());
     
-    Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel|zgemm", _global_timer_);
     int max_num_phi = (int)s1_col.local_size(0);
     
     mdarray<double_complex, 2> phi_tmp(kp__->num_gkvec_row(), max_num_phi);
@@ -1153,11 +1152,13 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v2(int N__,
             mdarray<double_complex, 2> h(&h_tmp[0], num_phi, nloc);
             mdarray<double_complex, 2> o(&o_tmp[0], num_phi, nloc);
 
+            Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel|zgemm", _global_timer_);
             blas<cpu>::gemm(2, 0, num_phi, nloc, kp__->num_gkvec_row(), phi_tmp.ptr(), phi_tmp.ld(), 
                             &hphi__(0, s0_col.local_size()), hphi__.ld(), h.ptr(), h.ld());
             
             blas<cpu>::gemm(2, 0, num_phi, nloc, kp__->num_gkvec_row(), phi_tmp.ptr(), phi_tmp.ld(), 
                             &ophi__(0, s0_col.local_size()), ophi__.ld(), o.ptr(), o.ld());
+            t2.stop();
 
             Platform::allreduce(h.ptr(), (int)h.size(), parameters_.mpi_grid().communicator(1 << _dim_row_));
             Platform::allreduce(o.ptr(), (int)o.size(), parameters_.mpi_grid().communicator(1 << _dim_row_));
