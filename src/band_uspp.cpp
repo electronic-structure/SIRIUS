@@ -1203,6 +1203,8 @@ void bcast_column(Global& parameters__,
                   dmatrix<double_complex>& phi__, 
                   mdarray<double_complex, 3>& phi_tmp__)
 {
+    Timer t("sirius::bcast_column");
+
     int num_phi = (int)s1_col__.local_size(icol__);
     if (kp__->rank_col() == icol__)
     {
@@ -1339,6 +1341,9 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
     bcast_column(parameters_, kp__, s1_col, icol, phi__, phi_tmp);
     lock_phi[0].store(true);
 
+    int nthread = omp_get_max_threads();
+    if (nthread > 1) omp_set_num_threads(nthread - 1);
+
     std::thread comm_thread(comm_thread_worker,
                             std::ref(parameters_),
                             kp__,
@@ -1386,6 +1391,7 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
         }
     }
     comm_thread.join();
+    omp_set_num_threads(nthread);
 
     double tval = t1.stop();
 
