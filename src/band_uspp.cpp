@@ -1341,8 +1341,8 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
     bcast_column(parameters_, kp__, s1_col, icol, phi__, phi_tmp);
     lock_phi[0].store(true);
 
-    int nthread = omp_get_max_threads();
-    if (nthread > 1) omp_set_num_threads(nthread - 1);
+    //int nthread = omp_get_max_threads();
+    //if (nthread > 1) omp_set_num_threads(nthread - 1);
 
     std::thread comm_thread(comm_thread_worker,
                             std::ref(parameters_),
@@ -1382,7 +1382,7 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
             //printf("#6 zgemm for column %i\n", icol);
             t2.start();
             blas<cpu>::gemm(2, 0, nloc, num_phi, kp__->num_gkvec_row(), &ophi__(0, s0_col.local_size()), ophi__.ld(),
-                            &phi_tmp(0, 0, icol % 2), phi_tmp.ld(),&o_tmp(0, 0, icol % 2), o_tmp.ld());
+                            &phi_tmp(0, 0, icol % 2), phi_tmp.ld(), &o_tmp(0, 0, icol % 2), o_tmp.ld());
             lock_o[icol % 2].store(true);
             t2.stop();
 
@@ -1391,13 +1391,13 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
         }
     }
     comm_thread.join();
-    omp_set_num_threads(nthread);
+    //omp_set_num_threads(nthread);
 
     double tval = t1.stop();
 
     if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
     {
-        printf("effective zgemm #8   with M, N, K: %6i %6i %6i,                        %12.4f sec, %12.4f GFlops/node\n",
+        printf("effective zgemm #4&5 with M, N, K: %6i %6i %6i,                        %12.4f sec, %12.4f GFlops/node\n",
                N__ + n__, n__, kp__->num_gkvec(),
                tval, 2 * 8e-9 * (N__ + n__) * n__ * kp__->num_gkvec() / tval / kp__->num_ranks());
     }
