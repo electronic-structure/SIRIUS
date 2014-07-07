@@ -71,10 +71,10 @@ class K_point
          */
         dmatrix<double_complex> sv_eigen_vectors_[2];
 
-        /// full-diagonalization eigen vectors
+        /// Full-diagonalization eigen vectors.
         mdarray<double_complex, 2> fd_eigen_vectors_;
 
-        /// position of the G vector (from the G+k set) inside the FFT buffer 
+        /// Position of the G vector (from the G+k set) inside the FFT buffer.
         std::vector<int> fft_index_;
 
         std::vector<int> fft_index_coarse_;
@@ -161,6 +161,10 @@ class K_point
         /// Plane-wave coefficients of |beta> functions for atoms.
         dmatrix<double_complex> beta_pw_panel_;
 
+        Communicator comm_;
+        Communicator comm_row_;
+        Communicator comm_col_;
+
         /// Copy lo block from eigen-vector to wave-function
         //== inline void copy_lo_blocks(const double_complex* z, double_complex* vec);
         
@@ -195,16 +199,21 @@ class K_point
             for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
 
             band_occupancies_ = std::vector<double>(parameters_.num_bands(), 1);
+
+            comm_ = Communicator(parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
+            comm_row_ = Communicator(parameters_.mpi_grid().communicator(1 << _dim_row_));
+            comm_col_ = Communicator(parameters_.mpi_grid().communicator(1 << _dim_col_));
             
-            num_ranks_row_ = parameters_.mpi_grid().dimension_size(_dim_row_);
-            num_ranks_col_ = parameters_.mpi_grid().dimension_size(_dim_col_);
+            num_ranks_row_ = comm_row_.size(); //parameters_.mpi_grid().dimension_size(_dim_row_);
+            num_ranks_col_ = comm_col_.size(); //parameters_.mpi_grid().dimension_size(_dim_col_);
 
-            num_ranks_ = num_ranks_row_ * num_ranks_col_;
+            num_ranks_ = comm_.size(); //num_ranks_row_ * num_ranks_col_;
 
-            rank_row_ = parameters_.mpi_grid().coordinate(_dim_row_);
-            rank_col_ = parameters_.mpi_grid().coordinate(_dim_col_);
+            rank_row_ = comm_row_.rank(); //parameters_.mpi_grid().coordinate(_dim_row_);
+            rank_col_ = comm_col_.rank(); //parameters_.mpi_grid().coordinate(_dim_col_);
 
             fft_ = parameters_.reciprocal_lattice()->fft();
+
         }
 
         ~K_point()
@@ -489,39 +498,6 @@ class K_point
             return (int)gklo_basis_descriptors_col_.size() - num_gkvec_col_;
         }
 
-        //== /// Local fraction of G+k vectors for a given MPI rank
-        //== /** In case of distributed matrix setup row and column G+k vectors are combined. Row G+k vectors are first.*/
-        //== inline int num_gkvec_loc() // TODO: this is probably obosolete
-        //== {
-        //==     if (num_gkvec_row() == num_gkvec() && num_gkvec_col() == num_gkvec())
-        //==     {
-        //==         return num_gkvec();
-        //==     }
-        //==     else
-        //==     {
-        //==         return (num_gkvec_row() + num_gkvec_col());
-        //==     }
-        //== } 
-        //== 
-        //== /// Return the global index of the G+k vector by the local index.
-        //== inline int igkglob(int igkloc) // TODO: change name or change the local G+k row+col storage 
-        //== {
-        //==     assert(igkloc >= 0 && igkloc < num_gkvec_loc());
-
-        //==     if (num_gkvec_row() == num_gkvec() && num_gkvec_col() == num_gkvec())
-        //==     {
-        //==         return igkloc;
-        //==     }
-        //==     else
-        //==     {
-        //==         // remember: row G+k vectors are first, column G+k vectors are second
-        //==         int igk = (igkloc < num_gkvec_row()) ? gklo_basis_descriptors_row_[igkloc].igk : 
-        //==                                                gklo_basis_descriptors_col_[igkloc - num_gkvec_row()].igk;
-        //==         assert(igk >= 0);
-        //==         return igk;
-        //==     }
-        //== }
-
         inline gklo_basis_descriptor& gklo_basis_descriptor_col(int idx)
         {
             assert(idx >=0 && idx < (int)gklo_basis_descriptors_col_.size());
@@ -560,14 +536,14 @@ class K_point
             return num_ranks_;
         }
 
-        /// Offset of column matching coefficients in the array. 
-        /** In case of distributed matrix setup row and column apw coefficients 
-          * are combined. Row coefficients are first.
-          */
-        inline int apw_offset_col()
-        {
-            return (num_ranks() > 1) ? num_gkvec_row() : 0;
-        }
+        ///// Offset of column matching coefficients in the array. 
+        ///** In case of distributed matrix setup row and column apw coefficients 
+        //  * are combined. Row coefficients are first.
+        //  */
+        //inline int apw_offset_col()
+        //{
+        //    return (num_ranks() > 1) ? num_gkvec_row() : 0;
+        //}
 
         /// Return number of lo columns for a given atom
         inline int num_atom_lo_cols(int ia)
@@ -665,6 +641,21 @@ class K_point
         inline Matching_coefficients* alm_coeffs_col()
         {
             return alm_coeffs_col_;
+        }
+
+        inline Communicator& comm()
+        {
+            return comm_;
+        }
+
+        inline Communicator& comm_row()
+        {
+            return comm_row_;
+        }
+
+        inline Communicator& comm_col()
+        {
+            return comm_col_;
         }
 };
 

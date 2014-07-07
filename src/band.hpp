@@ -189,72 +189,72 @@ void Band::apply_hmt_to_apw(mdarray<double_complex, 2>& alm, mdarray<double_comp
     }
 }
 
-template <spin_block_t sblock>
-void Band::set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 
-                        mdarray<double_complex, 2>& h)
-{
-    Timer t("sirius::Band::set_h_apw_lo");
-    
-    int apw_offset_col = kp->apw_offset_col();
-    
-    #pragma omp parallel default(shared)
-    {
-        // apw-lo block
-        #pragma omp for
-        for (int i = 0; i < kp->num_atom_lo_cols(ia); i++)
-        {
-            int icol = kp->lo_col(ia, i);
-
-            int lm = kp->gklo_basis_descriptor_col(icol).lm;
-            int idxrf = kp->gklo_basis_descriptor_col(icol).idxrf;
-            
-            for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++) 
-            {
-                int lm1 = type->indexb(j1).lm;
-                int idxrf1 = type->indexb(j1).idxrf;
-                        
-                double_complex zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf, idxrf1, gaunt_coefs_->gaunt_vector(lm1, lm));
-                
-                if (abs(zsum) > 1e-14)
-                {
-                    for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++) h(igkloc, icol) += zsum * alm(igkloc, j1);
-                }
-            }
-        }
-    }
-    
-    #pragma omp parallel default(shared)
-    {
-        std::vector<double_complex> ztmp(kp->num_gkvec_col());
-        // lo-apw block
-        #pragma omp for
-        for (int i = 0; i < kp->num_atom_lo_rows(ia); i++)
-        {
-            int irow = kp->lo_row(ia, i);
-
-            int lm = kp->gklo_basis_descriptor_row(irow).lm;
-            int idxrf = kp->gklo_basis_descriptor_row(irow).idxrf;
-
-            memset(&ztmp[0], 0, kp->num_gkvec_col() * sizeof(double_complex));
-        
-            for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++) 
-            {
-                int lm1 = type->indexb(j1).lm;
-                int idxrf1 = type->indexb(j1).idxrf;
-                        
-                double_complex zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf, idxrf1, gaunt_coefs_->gaunt_vector(lm, lm1));
-
-                if (abs(zsum) > 1e-14)
-                {
-                    for (int igkloc = 0; igkloc < kp->num_gkvec_col(); igkloc++)
-                        ztmp[igkloc] += zsum * conj(alm(apw_offset_col + igkloc, j1));
-                }
-            }
-
-            for (int igkloc = 0; igkloc < kp->num_gkvec_col(); igkloc++) h(irow, igkloc) += ztmp[igkloc]; 
-        }
-    }
-}
+//template <spin_block_t sblock>
+//void Band::set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 
+//                        mdarray<double_complex, 2>& h)
+//{
+//    Timer t("sirius::Band::set_h_apw_lo");
+//    
+//    int apw_offset_col = kp->apw_offset_col();
+//    
+//    #pragma omp parallel default(shared)
+//    {
+//        // apw-lo block
+//        #pragma omp for
+//        for (int i = 0; i < kp->num_atom_lo_cols(ia); i++)
+//        {
+//            int icol = kp->lo_col(ia, i);
+//
+//            int lm = kp->gklo_basis_descriptor_col(icol).lm;
+//            int idxrf = kp->gklo_basis_descriptor_col(icol).idxrf;
+//            
+//            for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++) 
+//            {
+//                int lm1 = type->indexb(j1).lm;
+//                int idxrf1 = type->indexb(j1).idxrf;
+//                        
+//                double_complex zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf, idxrf1, gaunt_coefs_->gaunt_vector(lm1, lm));
+//                
+//                if (abs(zsum) > 1e-14)
+//                {
+//                    for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++) h(igkloc, icol) += zsum * alm(igkloc, j1);
+//                }
+//            }
+//        }
+//    }
+//    
+//    #pragma omp parallel default(shared)
+//    {
+//        std::vector<double_complex> ztmp(kp->num_gkvec_col());
+//        // lo-apw block
+//        #pragma omp for
+//        for (int i = 0; i < kp->num_atom_lo_rows(ia); i++)
+//        {
+//            int irow = kp->lo_row(ia, i);
+//
+//            int lm = kp->gklo_basis_descriptor_row(irow).lm;
+//            int idxrf = kp->gklo_basis_descriptor_row(irow).idxrf;
+//
+//            memset(&ztmp[0], 0, kp->num_gkvec_col() * sizeof(double_complex));
+//        
+//            for (int j1 = 0; j1 < type->mt_aw_basis_size(); j1++) 
+//            {
+//                int lm1 = type->indexb(j1).lm;
+//                int idxrf1 = type->indexb(j1).idxrf;
+//                        
+//                double_complex zsum = atom->hb_radial_integrals_sum_L3<sblock>(idxrf, idxrf1, gaunt_coefs_->gaunt_vector(lm, lm1));
+//
+//                if (abs(zsum) > 1e-14)
+//                {
+//                    for (int igkloc = 0; igkloc < kp->num_gkvec_col(); igkloc++)
+//                        ztmp[igkloc] += zsum * conj(alm(apw_offset_col + igkloc, j1));
+//                }
+//            }
+//
+//            for (int igkloc = 0; igkloc < kp->num_gkvec_col(); igkloc++) h(irow, igkloc) += ztmp[igkloc]; 
+//        }
+//    }
+//}
 
 template <spin_block_t sblock>
 void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential, 

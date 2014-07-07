@@ -401,5 +401,118 @@ class MPI_comm_bundle
         }
 };
 
+#define CALL_MPI(func__, args__)      \
+{                                     \
+    if (func__ args__ != MPI_SUCCESS) \
+    {                                 \
+        std::stringstream s;          \
+        s << "error in " << #func__;  \
+        TERMINATE(s);                 \
+    }                                 \
+}
+
+class Communicator
+{
+    private:
+
+        MPI_Comm comm_;
+
+        inline void set_comm(MPI_Comm mpi_comm__)
+        {
+            assert(mpi_comm__ != MPI_COMM_NULL);
+            CALL_MPI(MPI_Comm_dup, (mpi_comm__, &comm_));
+        }
+
+    public:
+    
+        Communicator() : comm_(MPI_COMM_NULL)
+        {
+        }
+
+        Communicator(const MPI_Comm& mpi_comm__)
+        {
+            set_comm(mpi_comm__);
+        }
+
+        Communicator(const Communicator& comm__)
+        {
+            set_comm(comm__.comm_);
+        }
+
+        Communicator& operator=(const Communicator& comm__)
+        {
+            set_comm(comm__.comm_);
+            return *this;
+        }
+
+        ~Communicator()
+        {
+            if (comm_ != MPI_COMM_NULL) 
+            {
+                CALL_MPI(MPI_Comm_free, (&comm_));
+            }
+        }
+
+        inline int rank()
+        {
+            assert(comm_ != MPI_COMM_NULL);
+
+            int r;
+            CALL_MPI(MPI_Comm_rank, (comm_, &r));
+            return r;
+        }
+
+        inline int size()
+        {
+            assert(comm_ != MPI_COMM_NULL);
+
+            int s;
+            CALL_MPI(MPI_Comm_size, (comm_, &s));
+            return s;
+        }
+
+        inline void barrier()
+        {
+            assert(comm_ != MPI_COMM_NULL);
+            CALL_MPI(MPI_Barrier, (comm_));
+        }
+
+        template<typename T, mpi_op_t op = op_sum>
+        inline void allreduce(T* buffer__, int count__)
+        {
+            MPI_Op op1;
+            switch(op)
+            {
+                case op_sum:
+                {
+                    op1 = MPI_SUM;
+                    break;
+                }
+                case op_max:
+                {
+                    op1 = MPI_MAX;
+                    break;
+                }
+                default:
+                {
+                    TERMINATE("wrong operation");
+                }
+            }
+
+            CALL_MPI(MPI_Allreduce, (MPI_IN_PLACE, buffer__, count__, type_wrapper<T>::mpi_type_id(), op1, comm_));
+        }
+
+        template <typename T, mpi_op_t op = op_sum>
+        inline void allreduce(std::vector<T>& buffer__)
+        {
+            allreduce<T, op>(&buffer__[0], (int)buffer__.size());
+        }
+
+        template <typename T>
+        inline void bcast(T* buffer__, int count__, int root__)
+        {
+            CALL_MPI(MPI_Bcast, (buffer__, count__, type_wrapper<T>::mpi_type_id(), root__, comm_));
+        }
+};
 
 #endif // __MPI_GRID_H__

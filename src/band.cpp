@@ -1522,52 +1522,52 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     log_function_exit(__func__);
 }
 
-void Band::set_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 
-                        mdarray<double_complex, 2>& o)
-{
-    Timer t("sirius::Band::set_o_apw_lo");
-    
-    int apw_offset_col = kp->apw_offset_col();
-    
-    // apw-lo block
-    for (int i = 0; i < kp->num_atom_lo_cols(ia); i++)
-    {
-        int icol = kp->lo_col(ia, i);
-
-        int l = kp->gklo_basis_descriptor_col(icol).l;
-        int lm = kp->gklo_basis_descriptor_col(icol).lm;
-        int order = kp->gklo_basis_descriptor_col(icol).order;
-        
-        for (int order1 = 0; order1 < (int)type->aw_descriptor(l).size(); order1++)
-        {
-            for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++)
-            {
-                o(igkloc, icol) += atom->symmetry_class()->o_radial_integral(l, order1, order) * 
-                                   alm(igkloc, type->indexb_by_lm_order(lm, order1));
-            }
-        }
-    }
-
-    std::vector<double_complex> ztmp(kp->num_gkvec_col());
-    // lo-apw block
-    for (int i = 0; i < kp->num_atom_lo_rows(ia); i++)
-    {
-        int irow = kp->lo_row(ia, i);
-
-        int l = kp->gklo_basis_descriptor_row(irow).l;
-        int lm = kp->gklo_basis_descriptor_row(irow).lm;
-        int order = kp->gklo_basis_descriptor_row(irow).order;
-
-        for (int order1 = 0; order1 < (int)type->aw_descriptor(l).size(); order1++)
-        {
-            for (int igkloc = 0; igkloc < kp->num_gkvec_col(); igkloc++)
-            {
-                o(irow, igkloc) += atom->symmetry_class()->o_radial_integral(l, order, order1) * 
-                                   conj(alm(apw_offset_col + igkloc, type->indexb_by_lm_order(lm, order1)));
-            }
-        }
-    }
-}
+//void Band::set_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 
+//                        mdarray<double_complex, 2>& o)
+//{
+//    Timer t("sirius::Band::set_o_apw_lo");
+//    
+//    int apw_offset_col = kp->apw_offset_col();
+//    
+//    // apw-lo block
+//    for (int i = 0; i < kp->num_atom_lo_cols(ia); i++)
+//    {
+//        int icol = kp->lo_col(ia, i);
+//
+//        int l = kp->gklo_basis_descriptor_col(icol).l;
+//        int lm = kp->gklo_basis_descriptor_col(icol).lm;
+//        int order = kp->gklo_basis_descriptor_col(icol).order;
+//        
+//        for (int order1 = 0; order1 < (int)type->aw_descriptor(l).size(); order1++)
+//        {
+//            for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++)
+//            {
+//                o(igkloc, icol) += atom->symmetry_class()->o_radial_integral(l, order1, order) * 
+//                                   alm(igkloc, type->indexb_by_lm_order(lm, order1));
+//            }
+//        }
+//    }
+//
+//    std::vector<double_complex> ztmp(kp->num_gkvec_col());
+//    // lo-apw block
+//    for (int i = 0; i < kp->num_atom_lo_rows(ia); i++)
+//    {
+//        int irow = kp->lo_row(ia, i);
+//
+//        int l = kp->gklo_basis_descriptor_row(irow).l;
+//        int lm = kp->gklo_basis_descriptor_row(irow).lm;
+//        int order = kp->gklo_basis_descriptor_row(irow).order;
+//
+//        for (int order1 = 0; order1 < (int)type->aw_descriptor(l).size(); order1++)
+//        {
+//            for (int igkloc = 0; igkloc < kp->num_gkvec_col(); igkloc++)
+//            {
+//                o(irow, igkloc) += atom->symmetry_class()->o_radial_integral(l, order, order1) * 
+//                                   conj(alm(apw_offset_col + igkloc, type->indexb_by_lm_order(lm, order1)));
+//            }
+//        }
+//    }
+//}
 
 void Band::set_o_it(K_point* kp, mdarray<double_complex, 2>& o)
 {

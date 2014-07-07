@@ -85,6 +85,8 @@ void log_function_exit(const char* func_name);
 
 #define stop_here Timer::print(); error_local(__FILE__, __LINE__, "stop_here macros is called");
 
+#define TERMINATE(msg) terminate(__FILE__, __LINE__, msg);
+
 #define TERMINATE_NO_GPU terminate(__FILE__, __LINE__, "not compiled with GPU support");
 
 #define TERMINATE_NO_SCALAPACK terminate(__FILE__, __LINE__, "not compiled with ScaLAPACK support");
