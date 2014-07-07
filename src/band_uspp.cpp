@@ -817,8 +817,9 @@ void Band::apply_h_o_uspp_cpu_parallel(K_point* kp__,
                                        dmatrix<double_complex>& hphi__,
                                        dmatrix<double_complex>& ophi__)
 {
-    Timer t("sirius::Band::apply_h_o_uspp_cpu_parallel");
-    log_function_enter(__func__);
+    Platform::barrier(parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
+    Timer t("sirius::Band::apply_h_o_uspp_cpu_parallel", _global_timer_);
+
     auto uc = parameters_.unit_cell();
 
     splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
@@ -878,13 +879,6 @@ void Band::apply_h_o_uspp_cpu_parallel(K_point* kp__,
                     kp__->beta_pw_panel(), 0, 0, tmp, 0, 0, complex_one, hphi__, 0, N__);
     tval = t3.stop();
      
-    //if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
-    //{
-    //    printf("pzgemm #2 with M, N, K: %i %i %i, offset in C: %i, performance (GFlop/s/node): %f\n",
-    //           kp__->num_gkvec(), n__, uc->mt_basis_size(), N__,
-    //           8e-9 * kp__->num_gkvec() * n__ * uc->mt_basis_size() / tval / kp__->num_ranks());
-    //}
-
     if (sub_spl_col.local_size() != 0)
     {
         /* compute Q*<beta|phi> */
@@ -912,133 +906,138 @@ void Band::apply_h_o_uspp_cpu_parallel(K_point* kp__,
                tval, 2 * 8e-9 * kp__->num_gkvec() * n__ * uc->mt_basis_size() / tval / kp__->num_ranks());
     }
 
-    log_function_exit(__func__);
+    Platform::barrier(parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
 }
 
 void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
-                                       std::vector<double>& effective_potential__,
-                                       std::vector<double>& pw_ekin__,
-                                       int N__,
-                                       int n__,
-                                       dmatrix<double_complex>& phi__,
-                                       dmatrix<double_complex>& hphi__,
-                                       dmatrix<double_complex>& ophi__)
+                                          std::vector<double>& effective_potential__,
+                                          std::vector<double>& pw_ekin__,
+                                          int N__,
+                                          int n__,
+                                          dmatrix<double_complex>& phi__,
+                                          dmatrix<double_complex>& hphi__,
+                                          dmatrix<double_complex>& ophi__)
 {
+    Platform::barrier(parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
+    Timer t("sirius::Band::apply_h_o_uspp_cpu_parallel_v2", _global_timer_);
+
     splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
     splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
 
     int nloc = static_cast<int>(s1.local_size() - s0.local_size());
 
-    if (nloc == 0) return;
-
-    Timer t("sirius::Band::apply_h_o_uspp_cpu_parallel", _global_timer_);
-    auto uc = parameters_.unit_cell();
-
-    /* apply local part of Hamiltonian */
-    apply_h_local_parallel(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__);
-    
-    /* set intial ophi */
-    memcpy(&ophi__(0, s0.local_size()), &phi__(0, s0.local_size()), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
-
-    int num_atoms_in_block = 128;
-    int num_atom_blocks = parameters_.unit_cell()->num_atoms() / num_atoms_in_block + 
-                          std::min(1, parameters_.unit_cell()->num_atoms() % num_atoms_in_block);
-
-    if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
+    if (nloc > 0)
     {
-        printf("num_atom_blocks : %i\n", num_atom_blocks);
-    }
+        auto uc = parameters_.unit_cell();
 
-    splindex<block> atom_blocks(parameters_.unit_cell()->num_atoms(), num_atom_blocks, 0);
-    
-    auto& beta_pw_t = kp__->beta_pw_t();
+        /* apply local part of Hamiltonian */
+        apply_h_local_parallel(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__);
+        
+        /* set intial ophi */
+        memcpy(&ophi__(0, s0.local_size()), &phi__(0, s0.local_size()), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
 
-    int nbf_max = uc->max_mt_basis_size() * num_atoms_in_block;
-    std::vector<double_complex> beta_phi_tmp(nbf_max * nloc);
-    mdarray<double_complex, 2> tmp(nbf_max, nloc);
-    mdarray<double_complex, 2> beta_pw(kp__->num_gkvec_row(), nbf_max);
+        int num_atoms_in_block = 128;
+        int num_atom_blocks = parameters_.unit_cell()->num_atoms() / num_atoms_in_block + 
+                              std::min(1, parameters_.unit_cell()->num_atoms() % num_atoms_in_block);
 
-    for (int iab = 0; iab < num_atom_blocks; iab++)
-    {
-        std::vector<int> bf_offset_in_block(atom_blocks.local_size(iab));
-        int nbf_in_block = 0;
-
-        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
+        if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
         {
-            int ia = (int)atom_blocks.global_index(i, iab);
-            bf_offset_in_block[i] = nbf_in_block;
-            nbf_in_block += parameters_.unit_cell()->atom(ia)->mt_basis_size();
+            printf("num_atom_blocks : %i\n", num_atom_blocks);
         }
 
+        splindex<block> atom_blocks(parameters_.unit_cell()->num_atoms(), num_atom_blocks, 0);
+        
+        auto& beta_pw_t = kp__->beta_pw_t();
 
-        Timer t0("sirius::Band::apply_h_o_uspp_cpu_parallel|beta_pw", _global_timer_);
-        // create beta projectors
-        #pragma omp parallel
-        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
+        int nbf_max = uc->max_mt_basis_size() * num_atoms_in_block;
+        std::vector<double_complex> beta_phi_tmp(nbf_max * nloc);
+        mdarray<double_complex, 2> tmp(nbf_max, nloc);
+        mdarray<double_complex, 2> beta_pw(kp__->num_gkvec_row(), nbf_max);
+
+        for (int iab = 0; iab < num_atom_blocks; iab++)
         {
-            int ia = (int)atom_blocks.global_index(i, iab);
-            auto type = parameters_.unit_cell()->atom(ia)->type();
-            #pragma omp for
-            for (int xi = 0; xi < type->mt_basis_size(); xi++)
+            std::vector<int> bf_offset_in_block(atom_blocks.local_size(iab));
+            int nbf_in_block = 0;
+
+            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
             {
-                for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+                int ia = (int)atom_blocks.global_index(i, iab);
+                bf_offset_in_block[i] = nbf_in_block;
+                nbf_in_block += parameters_.unit_cell()->atom(ia)->mt_basis_size();
+            }
+
+
+            Timer t0("sirius::Band::apply_h_o_uspp_cpu_parallel|beta_pw", _global_timer_);
+            // create beta projectors
+            #pragma omp parallel
+            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
+            {
+                int ia = (int)atom_blocks.global_index(i, iab);
+                auto type = parameters_.unit_cell()->atom(ia)->type();
+                #pragma omp for
+                for (int xi = 0; xi < type->mt_basis_size(); xi++)
                 {
-                    beta_pw(igk_row, bf_offset_in_block[i] + xi) = beta_pw_t(igk_row, type->offset_lo() + xi) * 
-                                                                   conj(kp__->gkvec_phase_factor(igk_row, ia));
+                    for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+                    {
+                        beta_pw(igk_row, bf_offset_in_block[i] + xi) = beta_pw_t(igk_row, type->offset_lo() + xi) * 
+                                                                       conj(kp__->gkvec_phase_factor(igk_row, ia));
+                    }
                 }
             }
-        }
-        t0.stop();
-        
-        mdarray<double_complex, 2> beta_phi(&beta_phi_tmp[0], nbf_in_block, nloc);
-        Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel|beta_phi", _global_timer_);
-        /* compute <beta|phi> */
-        blas<cpu>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-                        beta_pw.ptr(), beta_pw.ld(), &phi__(0, s0.local_size()), phi__.ld(), beta_phi.ptr(), beta_phi.ld());
-        Platform::allreduce(beta_phi.ptr(), (int)beta_phi.size(), parameters_.mpi_grid().communicator(1 << _dim_row_));
-        t1.stop();
-
-
-        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-        {
-            int ia = (int)atom_blocks.global_offset(iab) + i;
-            int ofs = bf_offset_in_block[i];
+            t0.stop();
             
-            /* number of beta functions for a given atom */
-            int nbf = uc->atom(ia)->mt_basis_size();
+            mdarray<double_complex, 2> beta_phi(&beta_phi_tmp[0], nbf_in_block, nloc);
+            Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel|beta_phi", _global_timer_);
+            /* compute <beta|phi> */
+            blas<cpu>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
+                            beta_pw.ptr(), beta_pw.ld(), &phi__(0, s0.local_size()), phi__.ld(), beta_phi.ptr(), beta_phi.ld());
+            Platform::allreduce(beta_phi.ptr(), (int)beta_phi.size(), parameters_.mpi_grid().communicator(1 << _dim_row_));
+            t1.stop();
 
-            /* compute D*<beta|phi> */
-            blas<cpu>::gemm(0, 0, nbf, nloc, nbf, &uc->atom(ia)->d_mtrx(0, 0), nbf, 
-                            &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
+
+            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
+            {
+                int ia = (int)atom_blocks.global_offset(iab) + i;
+                int ofs = bf_offset_in_block[i];
+                
+                /* number of beta functions for a given atom */
+                int nbf = uc->atom(ia)->mt_basis_size();
+
+                /* compute D*<beta|phi> */
+                blas<cpu>::gemm(0, 0, nbf, nloc, nbf, &uc->atom(ia)->d_mtrx(0, 0), nbf, 
+                                &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
+            }
+
+            Timer t3("sirius::Band::apply_h_o_uspp_cpu_parallel|beta_D_beta_phi", _global_timer_);
+            /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
+            blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
+                            beta_pw.ptr(), beta_pw.ld(), tmp.ptr(), tmp.ld(), complex_one, &hphi__(0, s0.local_size()), hphi__.ld());
+            t3.stop();
+
+
+
+            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
+            {
+                int ia = (int)atom_blocks.global_offset(iab) + i;
+                int ofs = bf_offset_in_block[i];
+                
+                /* number of beta functions for a given atom */
+                int nbf = uc->atom(ia)->mt_basis_size();
+
+                /* compute Q*<beta|phi> */
+                blas<cpu>::gemm(0, 0, nbf, nloc, nbf, &uc->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
+                                &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
+            }
+
+            Timer t4("sirius::Band::apply_h_o_uspp_cpu_parallel|beta_Q_beta_phi", _global_timer_);
+            /* compute <G+k|beta> * Q*<beta|phi> and add to hphi */
+            blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
+                            beta_pw.ptr(), beta_pw.ld(), tmp.ptr(), tmp.ld(), complex_one, &ophi__(0, s0.local_size()), ophi__.ld());
+            t4.stop();
         }
-
-        Timer t3("sirius::Band::apply_h_o_uspp_cpu_parallel|beta_D_beta_phi", _global_timer_);
-        /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
-        blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
-                        beta_pw.ptr(), beta_pw.ld(), tmp.ptr(), tmp.ld(), complex_one, &hphi__(0, s0.local_size()), hphi__.ld());
-        t3.stop();
-
-
-
-        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-        {
-            int ia = (int)atom_blocks.global_offset(iab) + i;
-            int ofs = bf_offset_in_block[i];
-            
-            /* number of beta functions for a given atom */
-            int nbf = uc->atom(ia)->mt_basis_size();
-
-            /* compute Q*<beta|phi> */
-            blas<cpu>::gemm(0, 0, nbf, nloc, nbf, &uc->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
-                            &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
-        }
-
-        Timer t4("sirius::Band::apply_h_o_uspp_cpu_parallel|beta_Q_beta_phi", _global_timer_);
-        /* compute <G+k|beta> * Q*<beta|phi> and add to hphi */
-        blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
-                        beta_pw.ptr(), beta_pw.ld(), tmp.ptr(), tmp.ld(), complex_one, &ophi__(0, s0.local_size()), ophi__.ld());
-        t4.stop();
     }
+
+    Platform::barrier(parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
 }
 
 void Band::set_fv_h_o_uspp_cpu_parallel(int N__,
@@ -1054,7 +1053,8 @@ void Band::set_fv_h_o_uspp_cpu_parallel(int N__,
                                         dmatrix<double_complex>& h_old__,
                                         dmatrix<double_complex>& o_old__)
 {
-    Timer t1("sirius::Band::set_fv_h_o_uspp_cpu_parallel", _global_timer_);
+    Platform::barrier(parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
+    Timer t("sirius::Band::set_fv_h_o_uspp_cpu_parallel", _global_timer_);
 
     splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
     splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
@@ -1069,7 +1069,7 @@ void Band::set_fv_h_o_uspp_cpu_parallel(int N__,
     }
 
     /* apply Hamiltonian and overlap operators to the new basis functions */
-    apply_h_o_uspp_cpu_parallel_v2(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__);
+    apply_h_o_uspp_cpu_parallel(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__);
     
     Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel|zgemm", _global_timer_);
     /* <{phi,res}|H|res> */
@@ -1098,6 +1098,8 @@ void Band::set_fv_h_o_uspp_cpu_parallel(int N__,
         memcpy(&h_old__(0, i), &h__(0, i), s1_row.local_size() * sizeof(double_complex));
         memcpy(&o_old__(0, i), &o__(0, i), s1_row.local_size() * sizeof(double_complex));
     }
+
+    Platform::barrier(parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
 }
 
 void Band::set_fv_h_o_uspp_cpu_parallel_v2(int N__,
@@ -1321,6 +1323,7 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
                                         dmatrix<double_complex>& h_old__,
                                         dmatrix<double_complex>& o_old__)
 {
+    Platform::barrier(parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
     Timer t("sirius::Band::set_fv_h_o_uspp_cpu_parallel", _global_timer_);
 
     splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
@@ -1336,7 +1339,7 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
     }
 
     /* apply Hamiltonian and overlap operators to the new basis functions */
-    apply_h_o_uspp_cpu_parallel_v2(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__);
+    apply_h_o_uspp_cpu_parallel(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__);
 
     int max_num_hphi = 0;
     for (int icol = 0; icol < kp__->num_ranks_col(); icol++)
@@ -1450,6 +1453,8 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
         memcpy(&h_old__(0, i), &h__(0, i), s1_row.local_size() * sizeof(double_complex));
         memcpy(&o_old__(0, i), &o__(0, i), s1_row.local_size() * sizeof(double_complex));
     }
+
+    Platform::barrier(parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
 }
 
 void Band::uspp_cpu_residuals_parallel(int N__,
@@ -1596,7 +1601,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
     for (int k = 0; k < itso.num_steps_; k++)
     {
         /* set H and O for the variational subspace */
-        set_fv_h_o_uspp_cpu_parallel_v3(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
+        set_fv_h_o_uspp_cpu_parallel(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
         
         /* increase size of the variation space */
         N += n;
