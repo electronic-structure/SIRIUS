@@ -144,28 +144,92 @@ class Platform
             MPI_Barrier(comm);
         }
 
-        static void write_proc_status(const char* src_file, const int src_line)
+        //static void write_proc_status(const char* src_file, const int src_line)
+        //{
+        //    int pid = getpid();
+        //    //== 
+        //    //== char hostname[1024];
+        //    //== gethostname(hostname, 1024);
+        //    //== hostname[1023] = 0;
+
+        //    std::stringstream fname;
+        //    fname << "/proc/" << pid << "/status";
+        //    
+        //    std::ifstream ifs(fname.str().c_str());
+        //    if (ifs.is_open())
+        //    {
+        //        printf("[mpi_rank: %i] line %i of file %s \n", mpi_rank(), src_line, src_file);
+        //        
+        //        std::string str; 
+        //        while (std::getline(ifs, str))
+        //        {
+        //            printf("[mpi_rank: %i] %s\n", mpi_rank(), str.c_str());
+        //        } 
+        //    }
+        //}
+
+        //static void memory_usage_info(const char* src_file, const int src_line)
+        //{
+        //    int pid = getpid();
+        //    std::stringstream fname;
+        //    fname << "/proc/" << pid << "/status";
+        //    
+        //    std::ifstream ifs(fname.str().c_str());
+        //    if (ifs.is_open())
+        //    {
+
+        //    }
+
+        //}
+
+        static void get_proc_status(size_t* VmHWM, size_t* VmRSS)
         {
-            int pid = getpid();
-            //== 
-            //== char hostname[1024];
-            //== gethostname(hostname, 1024);
-            //== hostname[1023] = 0;
+            *VmHWM = 0;
+            *VmRSS = 0;
 
             std::stringstream fname;
-            fname << "/proc/" << pid << "/status";
+            fname << "/proc/" << getpid() << "/status";
             
             std::ifstream ifs(fname.str().c_str());
             if (ifs.is_open())
             {
-                printf("[mpi_rank: %i] line %i of file %s \n", mpi_rank(), src_line, src_file);
-                
+                size_t tmp;
                 std::string str; 
+                std::string units;
                 while (std::getline(ifs, str))
                 {
-                    printf("[mpi_rank: %i] %s\n", mpi_rank(), str.c_str());
+                    auto p = str.find("VmHWM:");
+                    if (p != std::string::npos)
+                    {
+                        std::stringstream s(str.substr(p + 7));
+                        s >> tmp;
+                        s >> units;
+        
+                        if (units != "kB")
+                        {
+                            printf("Platform::get_proc_status(): wrong units");
+                            abort();
+                        }
+                        *VmHWM = tmp * 1024;
+                    }
+        
+                    p = str.find("VmRSS:");
+                    if (p != std::string::npos)
+                    {
+                        std::stringstream s(str.substr(p + 7));
+                        s >> tmp;
+                        s >> units;
+        
+                        if (units != "kB")
+                        {
+                            printf("Platform::get_proc_status(): wrong units");
+                            abort();
+                        }
+                        *VmRSS = tmp * 1024;
+                    }
                 } 
             }
+        
         }
 };
 

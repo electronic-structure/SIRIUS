@@ -951,10 +951,11 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp,
     #endif
     halm_panel_t.scatter(halm_v, parameters_.mpi_grid().communicator(1 << _dim_row_));
     
-    #ifdef _WRITE_PROC_STATUS_
-    Platform::write_proc_status(__FILE__, __LINE__);
-    #endif
+    //#ifdef _WRITE_PROC_STATUS_
+    //Platform::write_proc_status(__FILE__, __LINE__);
+    //#endif
     
+    // TODO: this depends on implementation and will possibly be simplified
     /* all the above data preparation is done in order to 
      * execute "normal" pzgemm without matrix transpose 
      * because it gives the best performance
