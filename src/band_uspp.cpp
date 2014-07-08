@@ -1549,7 +1549,11 @@ void Band::uspp_cpu_residuals_parallel_v2(int N__,
 {
     Timer t("sirius::Band::uspp_cpu_residuals_parallel_v2");
 
-    Timer t2("sirius::Band::uspp_cpu_residuals_parallel|zgemm_eff");
+    Timer t2("sirius::Band::uspp_cpu_residuals_parallel_v2|zgemm_eff");
+
+    #ifdef _WRITE_PROC_STATUS_
+    Platform::write_proc_status(__FILE__, __LINE__);
+    #endif
 
     splindex<block> sub_spl_gkvec(kp__->num_gkvec_row(), kp__->num_ranks_col(), kp__->rank_col());
 
@@ -1587,7 +1591,7 @@ void Band::uspp_cpu_residuals_parallel_v2(int N__,
         }
         kp__->comm_row().bcast(evec_tmp.ptr(), (int)evec_tmp.size(), irow);
 
-        Timer t3("sirius::Band::uspp_cpu_residuals_parallel|zgemm_loc");
+        Timer t3("sirius::Band::uspp_cpu_residuals_parallel_v2|zgemm_loc");
         blas<cpu>::gemm(0, 0, (int)spl_bands.local_size(irow), (int)sub_spl_gkvec.local_size(), N__, 
                         evec_tmp.ptr(), evec_tmp.ld(), hphi_slice.ptr(), hphi_slice.ld(), 
                         hpsi_slice_tmp.ptr(), hpsi_slice_tmp.ld());
