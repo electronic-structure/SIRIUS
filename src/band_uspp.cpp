@@ -1549,7 +1549,7 @@ void Band::uspp_cpu_residuals_parallel_v2(int N__,
 {
     Timer t("sirius::Band::uspp_cpu_residuals_parallel_v2");
 
-    Timer t2("sirius::Band::uspp_cpu_residuals_parallel|zgemm");
+    Timer t2("sirius::Band::uspp_cpu_residuals_parallel|zgemm_eff");
 
     splindex<block> sub_spl_gkvec(kp__->num_gkvec_row(), kp__->num_ranks_col(), kp__->rank_col());
 
@@ -1559,10 +1559,6 @@ void Band::uspp_cpu_residuals_parallel_v2(int N__,
     mdarray<double_complex, 2> ophi_slice(N__, sub_spl_gkvec.local_size());
     ophi__.shuffle_horizontal<_panel_to_slice_>(N__, ophi_slice, kp__->comm_col().comm());
 
-    //DUMP("hash(hphi) : %16llX", hphi__.data().hash());
-    //DUMP("hash(ophi) : %16llX", ophi__.data().hash());
-
-    
     mdarray<double_complex, 2> hpsi_slice(num_bands__, sub_spl_gkvec.local_size());
     mdarray<double_complex, 2> opsi_slice(num_bands__, sub_spl_gkvec.local_size());
 
@@ -1591,6 +1587,7 @@ void Band::uspp_cpu_residuals_parallel_v2(int N__,
         }
         kp__->comm_row().bcast(evec_tmp.ptr(), (int)evec_tmp.size(), irow);
 
+        Timer t3("sirius::Band::uspp_cpu_residuals_parallel|zgemm_loc");
         blas<cpu>::gemm(0, 0, (int)spl_bands.local_size(irow), (int)sub_spl_gkvec.local_size(), N__, 
                         evec_tmp.ptr(), evec_tmp.ld(), hphi_slice.ptr(), hphi_slice.ld(), 
                         hpsi_slice_tmp.ptr(), hpsi_slice_tmp.ld());
@@ -1598,7 +1595,7 @@ void Band::uspp_cpu_residuals_parallel_v2(int N__,
         blas<cpu>::gemm(0, 0, (int)spl_bands.local_size(irow), (int)sub_spl_gkvec.local_size(), N__, 
                         evec_tmp.ptr(), evec_tmp.ld(), ophi_slice.ptr(), ophi_slice.ld(), 
                         opsi_slice_tmp.ptr(), opsi_slice_tmp.ld());
-
+        t3.stop();
         for (int j = 0; j < (int)sub_spl_gkvec.local_size(); j++)
         {
             for (int i = 0; i < (int)spl_bands.local_size(irow); i++)
