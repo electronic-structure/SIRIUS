@@ -146,7 +146,7 @@ void dft_loop(cmd_args args)
             }
             default:
             {
-                stop_here
+                STOP();
             }
         }
 
@@ -155,6 +155,13 @@ void dft_loop(cmd_args args)
     DFT_ground_state dft(parameters, potential, density, &ks);
     double potential_tol = parser["potential_tol"].get(1e-4);
     double energy_tol = parser["energy_tol"].get(1e-4);
+
+    #ifdef _MEMORY_USAGE_INFO_
+    size_t VmRSS, VmHWM;
+    Platform::get_proc_status(&VmHWM, &VmRSS);
+    printf("[rank %i at line %i of file %s] VmHWM: %lu (Mb), VmRSS: %lu (Mb)\n", 
+           Platform::mpi_rank(), __LINE__, __FILE__, VmHWM >> 20, VmRSS >> 20);
+    #endif
 
     if (task_name == "test_init")
     {
