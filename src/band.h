@@ -201,6 +201,20 @@ class Band
                                          std::vector<double_complex>& o_diag__,
                                          std::vector<double>& res_norm__);
 
+        void uspp_cpu_residuals_parallel_v2(int N__,
+                                            int num_bands__,
+                                            K_point* kp__,
+                                            std::vector<double>& eval__,
+                                            dmatrix<double_complex>& evec__,
+                                            dmatrix<double_complex>& hphi__,
+                                            dmatrix<double_complex>& ophi__,
+                                            dmatrix<double_complex>& hpsi__,
+                                            dmatrix<double_complex>& opsi__,
+                                            dmatrix<double_complex>& res__,
+                                            std::vector<double_complex>& h_diag__,
+                                            std::vector<double_complex>& o_diag__,
+                                            std::vector<double>& res_norm__);
+
         void apply_h_o_uspp_cpu_parallel(K_point* kp__,
                                          std::vector<double>& effective_potential__,
                                          std::vector<double>& pw_ekin__,

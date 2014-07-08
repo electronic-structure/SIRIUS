@@ -200,7 +200,7 @@ T inner(Spheric_function<domain_t, T>& f1, Spheric_function<domain_t, T>& f2)
     }
     else
     {
-        stop_here // and implement this
+        STOP(); // and implement this
     }
     return s.interpolate().integrate(2);
 }
@@ -240,7 +240,7 @@ Spheric_function<spectral, T> laplacian(Spheric_function<spectral, T>& f)
     }
     else
     {
-        stop_here // need to implement this
+        STOP(); // need to implement this
     }
 
     return g;

@@ -1768,7 +1768,7 @@ void Density::generate(K_set& ks)
         {
             switch (parameters_.processing_unit())
             {
-                stop_here
+                STOP();
                 case cpu:
                 {
                     break;

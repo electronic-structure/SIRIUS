@@ -83,7 +83,11 @@ void log_function_enter(const char* func_name);
 
 void log_function_exit(const char* func_name);
 
-#define stop_here Timer::print(); error_local(__FILE__, __LINE__, "stop_here macros is called");
+#define STOP()                                              \
+{                                                           \
+    Timer::print();                                         \
+    terminate(__FILE__, __LINE__, "terminated by request"); \
+}
 
 #define TERMINATE(msg) terminate(__FILE__, __LINE__, msg);
 
@@ -92,6 +96,14 @@ void log_function_exit(const char* func_name);
 #define TERMINATE_NO_SCALAPACK terminate(__FILE__, __LINE__, "not compiled with ScaLAPACK support");
 
 #define INFO std::cout << "[" << __func__ << ":" << Platform::mpi_rank() << "] "
+
+#define DUMP(...)                                                                    \
+{                                                                                    \
+    char str__[1024];                                                                \
+    int x__ = snprintf(str__, 1024, "[%s:rank%i] ", __func__, Platform::mpi_rank()); \
+    x__ += snprintf(&str__[x__], 1024, __VA_ARGS__ );                                \
+    printf("%s\n", str__);                                                           \
+}
 
 #endif // __ERROR_HANDLING_H__
 

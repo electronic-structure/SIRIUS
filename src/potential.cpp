@@ -51,7 +51,7 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
         }
         default:
         {
-            stop_here
+            STOP();
         }
     }
 

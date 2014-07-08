@@ -207,7 +207,7 @@ void Global::initialize()
         }
         case full_potential_pwlo:
         {
-            stop_here
+            STOP();
         }
         case ultrasoft_pseudopotential:
         {

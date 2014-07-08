@@ -453,6 +453,11 @@ class Communicator
             }
         }
 
+        inline MPI_Comm comm()
+        {
+            return comm_;
+        }
+
         inline int rank()
         {
             assert(comm_ != MPI_COMM_NULL);

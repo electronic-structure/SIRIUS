@@ -162,7 +162,11 @@ class K_point
         dmatrix<double_complex> beta_pw_panel_;
 
         Communicator comm_;
+
+        /// Communicator between(!!) rows.
         Communicator comm_row_;
+
+        /// Communicator between(!!) columns.
         Communicator comm_col_;
 
         /// Copy lo block from eigen-vector to wave-function

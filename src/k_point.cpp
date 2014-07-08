@@ -106,7 +106,7 @@ void K_point::update()
     if (parameters_.esm_type() == full_potential_pwlo)
     {
         /** \todo Correct the memory leak */
-        stop_here
+        STOP();
         //== sbessel_.resize(num_gkvec_loc()); 
         //== for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
         //== {
@@ -498,7 +498,7 @@ void K_point::generate_spinor_wave_functions()
     }
     else
     {
-        stop_here
+        STOP();
     //==     mdarray<double_complex, 2> alm(num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
 
     //==     /** \todo generalize for non-collinear case */
@@ -957,7 +957,7 @@ void K_point::distribute_block_cyclic()
 
 void K_point::test_fv_states(int use_fft)
 {
-    stop_here
+    STOP();
 
     //== std::vector<double_complex> v1;
     //== std::vector<double_complex> v2;
@@ -1238,7 +1238,7 @@ void K_point::save(int id)
 
 void K_point::load(HDF5_tree h5in, int id)
 {
-    stop_here
+    STOP();
     //== band_energies_.resize(parameters_.num_bands());
     //== h5in[id].read("band_energies", band_energies_);
 

@@ -157,7 +157,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
             }
             default:
             {
-                stop_here
+                STOP();
             }
         }
         

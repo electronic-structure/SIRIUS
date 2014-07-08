@@ -222,7 +222,7 @@ void Atom_symmetry_class::generate_lo_radial_functions()
 
             if (lo_descriptor(idxlo).type == lo_cp)
             {
-                stop_here // need to compute rdudr instead of Hu
+                STOP(); // need to compute rdudr instead of Hu
                 int l = lo_descriptor(idxlo).l;
                 int p1 = lo_descriptor(idxlo).p1;
                 int p2 = lo_descriptor(idxlo).p2;

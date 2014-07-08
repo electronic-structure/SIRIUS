@@ -777,8 +777,7 @@ void Band::apply_h_local_parallel(K_point* kp__,
     splindex<block> sub_spl_n(s1.local_size() - s0.local_size(), kp__->num_ranks_row(), kp__->rank_row());
 
     mdarray<double_complex, 2> phi_slice(kp__->num_gkvec(), sub_spl_n.local_size());
-    phi__.gather(n__, N__, phi_slice, parameters_.mpi_grid().communicator(1 << _dim_row_));
-
+    phi__.gather(n__, N__, phi_slice, kp__->comm_row().comm());
     mdarray<double_complex, 2> hphi_slice(kp__->num_gkvec(), sub_spl_n.local_size());
 
     int num_fft_threads = Platform::num_fft_threads();
@@ -845,7 +844,7 @@ void Band::apply_h_o_uspp_cpu_parallel(K_point* kp__,
                     kp__->beta_pw_panel(), 0, 0, phi__, 0, N__, complex_zero, beta_phi, 0, 0);
     double tval = t1.stop();
 
-    if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
+    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
         printf("pzgemm #1   with M, N, K: %6i %6i %6i,   offset in B: %6i, %12.4f sec, %12.4f GFlops/node\n",
                uc->mt_basis_size(), n__, kp__->num_gkvec(), N__, 
@@ -899,7 +898,7 @@ void Band::apply_h_o_uspp_cpu_parallel(K_point* kp__,
                     kp__->beta_pw_panel(), 0, 0, tmp, 0, 0, complex_one, ophi__, 0, N__);
     tval += t5.stop();
 
-    if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
+    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
         printf("pzgemm #2&3 with M, N, K: %6i %6i %6i,   offset in C: %6i, %12.4f sec, %12.4f GFlops/node\n",
                kp__->num_gkvec(), n__, uc->mt_basis_size(), N__,
@@ -940,7 +939,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
         int num_atom_blocks = parameters_.unit_cell()->num_atoms() / num_atoms_in_block + 
                               std::min(1, parameters_.unit_cell()->num_atoms() % num_atoms_in_block);
 
-        if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
+        if (verbosity_level >= 6 && kp__->comm().rank() == 0)
         {
             printf("num_atom_blocks : %i\n", num_atom_blocks);
         }
@@ -1075,7 +1074,7 @@ void Band::set_fv_h_o_uspp_cpu_parallel(int N__,
     blas<cpu>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), complex_one, phi__, 0, 0, ophi__, 0, N__, complex_zero, o__, 0, N__);
     double tval = t2.stop();
 
-    if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
+    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
         printf("pzgemm #4&5 with M, N, K: %6i %6i %6i, offset in B&C: %6i, %12.4f sec, %12.4f GFlops/node\n",
                N__ + n__, n__, kp__->num_gkvec(), N__,
@@ -1424,7 +1423,7 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
 
     double tval = t1.stop();
 
-    if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
+    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
         printf("effective zgemm #4&5 with M, N, K: %6i %6i %6i,                        %12.4f sec, %12.4f GFlops/node\n",
                N__ + n__, n__, kp__->num_gkvec(),
@@ -1472,7 +1471,7 @@ void Band::uspp_cpu_residuals_parallel(int N__,
     blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, ophi__, evec__, complex_zero, opsi__);
     double tval = t2.stop();
 
-    if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
+    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
         printf("pzgemm #6&7 with M, N, K: %6i %6i %6i,                        %12.4f sec, %12.4f GFlops/node\n",
                kp__->num_gkvec(), num_bands__, N__,
@@ -1480,7 +1479,7 @@ void Band::uspp_cpu_residuals_parallel(int N__,
     }
 
     memset(&res_norm__[0], 0, num_bands__ * sizeof(double));
-    /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm suared*/
+    /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm squared */
     #pragma omp parallel for
     for (int i = 0; i < res__.num_cols_local(); i++)
     {
@@ -1523,7 +1522,156 @@ void Band::uspp_cpu_residuals_parallel(int N__,
             d += real(conj(res__(igk_row, i)) * res__(igk_row, i));
         norm2[ires] = d;
     }
-    Platform::allreduce(&norm2[0], num_bands__, parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
+    kp__->comm().allreduce(norm2);
+    #pragma omp parallel for
+    for (int i = 0; i < res__.num_cols_local(); i++)
+    {
+        int ires = res__.icol(i);
+        double d = 1.0 / std::sqrt(norm2[ires]);
+        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) res__(igk_row, i) *= d;
+    }
+}
+
+void Band::uspp_cpu_residuals_parallel_v2(int N__,
+                                          int num_bands__,
+                                          K_point* kp__,
+                                          std::vector<double>& eval__,
+                                          dmatrix<double_complex>& evec__,
+                                          dmatrix<double_complex>& hphi__,
+                                          dmatrix<double_complex>& ophi__,
+                                          dmatrix<double_complex>& hpsi__,
+                                          dmatrix<double_complex>& opsi__,
+                                          dmatrix<double_complex>& res__,
+                                          std::vector<double_complex>& h_diag__,
+                                          std::vector<double_complex>& o_diag__,
+                                          std::vector<double>& res_norm__)
+
+{
+    Timer t("sirius::Band::uspp_cpu_residuals_parallel_v2");
+
+    Timer t2("sirius::Band::uspp_cpu_residuals_parallel|zgemm");
+
+    splindex<block> sub_spl_gkvec(kp__->num_gkvec_row(), kp__->num_ranks_col(), kp__->rank_col());
+
+    mdarray<double_complex, 2> hphi_slice(N__, sub_spl_gkvec.local_size());
+    hphi__.shuffle_horizontal<_panel_to_slice_>(N__, hphi_slice, kp__->comm_col().comm());
+
+    mdarray<double_complex, 2> ophi_slice(N__, sub_spl_gkvec.local_size());
+    ophi__.shuffle_horizontal<_panel_to_slice_>(N__, ophi_slice, kp__->comm_col().comm());
+
+    //DUMP("hash(hphi) : %16llX", hphi__.data().hash());
+    //DUMP("hash(ophi) : %16llX", ophi__.data().hash());
+
+    
+    mdarray<double_complex, 2> hpsi_slice(num_bands__, sub_spl_gkvec.local_size());
+    mdarray<double_complex, 2> opsi_slice(num_bands__, sub_spl_gkvec.local_size());
+
+    dmatrix<double_complex> evec_t(num_bands__, N__, parameters_.blacs_context());
+    dmatrix<double_complex>::tranc(num_bands__, N__, evec__, 0, 0, evec_t, 0, 0);
+
+    splindex<block_cyclic> spl_bands(num_bands__, kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
+
+    mdarray<double_complex, 2> hpsi_slice_tmp(spl_bands.local_size(0), sub_spl_gkvec.local_size());
+    mdarray<double_complex, 2> opsi_slice_tmp(spl_bands.local_size(0), sub_spl_gkvec.local_size());
+
+    for (int irow = 0; irow < kp__->num_ranks_row(); irow++)
+    {
+        mdarray<double_complex, 2> evec_tmp(spl_bands.local_size(irow), N__);
+        evec_tmp.zero();
+        if (irow == kp__->rank_row())
+        {
+            for (int j = 0; j < evec_t.num_cols_local(); j++)
+            {
+                for (int i = 0; i < (int)spl_bands.local_size(irow); i++)
+                {
+                    evec_tmp(i, evec_t.icol(j)) = evec_t(i, j);
+                }
+            }
+            kp__->comm_col().allreduce(evec_tmp.ptr(), (int)evec_tmp.size());
+        }
+        kp__->comm_row().bcast(evec_tmp.ptr(), (int)evec_tmp.size(), irow);
+
+        blas<cpu>::gemm(0, 0, (int)spl_bands.local_size(irow), (int)sub_spl_gkvec.local_size(), N__, 
+                        evec_tmp.ptr(), evec_tmp.ld(), hphi_slice.ptr(), hphi_slice.ld(), 
+                        hpsi_slice_tmp.ptr(), hpsi_slice_tmp.ld());
+        
+        blas<cpu>::gemm(0, 0, (int)spl_bands.local_size(irow), (int)sub_spl_gkvec.local_size(), N__, 
+                        evec_tmp.ptr(), evec_tmp.ld(), ophi_slice.ptr(), ophi_slice.ld(), 
+                        opsi_slice_tmp.ptr(), opsi_slice_tmp.ld());
+
+        for (int j = 0; j < (int)sub_spl_gkvec.local_size(); j++)
+        {
+            for (int i = 0; i < (int)spl_bands.local_size(irow); i++)
+            {
+                hpsi_slice(spl_bands.global_index(i, irow), j) = hpsi_slice_tmp(i, j);
+                opsi_slice(spl_bands.global_index(i, irow), j) = opsi_slice_tmp(i, j);
+            }
+        }
+    }
+    
+    hpsi__.shuffle_horizontal<_slice_to_panel_>(num_bands__, hpsi_slice, kp__->comm_col().comm());
+    opsi__.shuffle_horizontal<_slice_to_panel_>(num_bands__, opsi_slice, kp__->comm_col().comm());
+        
+
+
+    /* Compute H\Psi_{i} = H\phi_{mu} * Z_{mu, i} */
+    //blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, hphi__, evec__, complex_zero, hpsi__);
+    /* Compute O\Psi_{i} = O\phi_{mu} * Z_{mu, i} */
+    //blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, ophi__, evec__, complex_zero, opsi__);
+    double tval = t2.stop();
+
+    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+    {
+        printf("effective zgemm #6&7 with M, N, K: %6i %6i %6i,                        %12.4f sec, %12.4f GFlops/node\n",
+               kp__->num_gkvec(), num_bands__, N__,
+               tval, 2 * 8e-9 * kp__->num_gkvec() * num_bands__ * N__ / tval / kp__->num_ranks());
+    }
+
+    memset(&res_norm__[0], 0, num_bands__ * sizeof(double));
+    /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm squared */
+    #pragma omp parallel for
+    for (int i = 0; i < res__.num_cols_local(); i++)
+    {
+        int ires = res__.icol(i);
+        double norm2 = 0;
+        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
+        {
+            res__(igk_row, i) = hpsi__(igk_row, i) - eval__[ires] * opsi__(igk_row, i);
+            norm2 += real(conj(res__(igk_row, i)) * res__(igk_row, i));
+        }
+        res_norm__[ires] = norm2;
+    }
+    kp__->comm().allreduce(res_norm__);
+    
+    /* compute norm */
+    for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
+    
+    /* apply preconditioner */
+    #pragma omp parallel for
+    for (int i = 0; i < res__.num_cols_local(); i++)
+    {
+        int ires = res__.icol(i);
+    
+        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+        {
+            double_complex z = h_diag__[igk_row] - eval__[ires] * o_diag__[igk_row];
+            if (std::abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
+            res__(igk_row, i) /= z;
+        }
+    }
+    
+    std::vector<double> norm2(num_bands__, 0);
+    /* Normalize new basis functions */
+    #pragma omp parallel for
+    for (int i = 0; i < res__.num_cols_local(); i++)
+    {
+        int ires = res__.icol(i);
+        double d = 0;
+        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
+            d += real(conj(res__(igk_row, i)) * res__(igk_row, i));
+        norm2[ires] = d;
+    }
+    kp__->comm().allreduce(norm2);
     #pragma omp parallel for
     for (int i = 0; i < res__.num_cols_local(); i++)
     {
@@ -1597,7 +1745,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
         /* increase size of the variation space */
         N += n;
 
-        if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
+        if (verbosity_level >= 6 && kp__->comm().rank() == 0)
         {
             printf("iteration : %i, subspace size : %i\n", k, N);
         }
@@ -1621,7 +1769,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
         std::vector<int> res_list;
         if (k != itso.num_steps_ - 1)
         {
-            uspp_cpu_residuals_parallel(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm);
+            uspp_cpu_residuals_parallel_v2(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm);
 
             for (int i = 0; i < num_bands; i++)
             {
@@ -1648,7 +1796,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
             /* exit loop if the eigen-vectors are converged or this is the last iteration */
             if (n == 0 || k == (itso.num_steps_ - 1))
             {
-                if (verbosity_level >= 6 && parameters_.mpi_grid().root(1 << _dim_row_ | 1 << _dim_col_))
+                if (verbosity_level >= 6 && kp__->comm().rank() == 0)
                 {
                     double demax = 0;
                     for (int i = 0; i < num_bands; i++)

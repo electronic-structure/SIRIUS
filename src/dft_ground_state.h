@@ -251,7 +251,7 @@ class DFT_ground_state
                 }
                 default:
                 {
-                    stop_here
+                    STOP();
                 }
             }
             return 0; // make compiler happy

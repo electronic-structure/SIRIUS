@@ -245,7 +245,7 @@ class Density
         {
             if (parameters_.num_spins() == 2)
             {
-                stop_here
+                STOP();
             }
             int n = 0;
             for (int j = 0; j < parameters_.num_fv_states(); j++)
