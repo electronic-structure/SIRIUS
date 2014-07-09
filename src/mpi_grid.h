@@ -415,17 +415,17 @@ class Communicator
 {
     private:
 
-        MPI_Comm comm_;
+        MPI_Comm mpi_comm_;
 
-        inline void set_comm(MPI_Comm mpi_comm__)
+        inline void set_comm(MPI_Comm mpi_comm_orig__)
         {
-            assert(mpi_comm__ != MPI_COMM_NULL);
-            CALL_MPI(MPI_Comm_dup, (mpi_comm__, &comm_));
+            assert(mpi_comm_orig__ != MPI_COMM_NULL);
+            CALL_MPI(MPI_Comm_dup, (mpi_comm_orig__, &mpi_comm_));
         }
 
     public:
     
-        Communicator() : comm_(MPI_COMM_NULL)
+        Communicator() : mpi_comm_(MPI_COMM_NULL)
         {
         }
 
@@ -436,66 +436,66 @@ class Communicator
 
         Communicator(const Communicator& comm__)
         {
-            set_comm(comm__.comm_);
+            set_comm(comm__.mpi_comm_);
         }
 
         Communicator& operator=(const Communicator& comm__)
         {
-            set_comm(comm__.comm_);
+            set_comm(comm__.mpi_comm_);
             return *this;
         }
 
         ~Communicator()
         {
-            if (comm_ != MPI_COMM_NULL) 
+            if (mpi_comm_ != MPI_COMM_NULL) 
             {
-                CALL_MPI(MPI_Comm_free, (&comm_));
+                CALL_MPI(MPI_Comm_free, (&mpi_comm_));
             }
         }
 
-        inline MPI_Comm comm()
+        inline MPI_Comm mpi_comm()
         {
-            return comm_;
+            return mpi_comm_;
         }
 
         inline int rank()
         {
-            assert(comm_ != MPI_COMM_NULL);
+            assert(mpi_comm_ != MPI_COMM_NULL);
 
             int r;
-            CALL_MPI(MPI_Comm_rank, (comm_, &r));
+            CALL_MPI(MPI_Comm_rank, (mpi_comm_, &r));
             return r;
         }
 
         inline int size()
         {
-            assert(comm_ != MPI_COMM_NULL);
+            assert(mpi_comm_ != MPI_COMM_NULL);
 
             int s;
-            CALL_MPI(MPI_Comm_size, (comm_, &s));
+            CALL_MPI(MPI_Comm_size, (mpi_comm_, &s));
             return s;
         }
 
         inline void barrier()
         {
-            assert(comm_ != MPI_COMM_NULL);
-            CALL_MPI(MPI_Barrier, (comm_));
+            assert(mpi_comm_ != MPI_COMM_NULL);
+            CALL_MPI(MPI_Barrier, (mpi_comm_));
         }
 
-        template<typename T, mpi_op_t op = op_sum>
+        template<typename T, mpi_op_t mpi_op = op_sum>
         inline void allreduce(T* buffer__, int count__)
         {
-            MPI_Op op1;
-            switch(op)
+            MPI_Op op;
+            switch (mpi_op)
             {
                 case op_sum:
                 {
-                    op1 = MPI_SUM;
+                    op = MPI_SUM;
                     break;
                 }
                 case op_max:
                 {
-                    op1 = MPI_MAX;
+                    op = MPI_MAX;
                     break;
                 }
                 default:
@@ -504,7 +504,7 @@ class Communicator
                 }
             }
 
-            CALL_MPI(MPI_Allreduce, (MPI_IN_PLACE, buffer__, count__, type_wrapper<T>::mpi_type_id(), op1, comm_));
+            CALL_MPI(MPI_Allreduce, (MPI_IN_PLACE, buffer__, count__, type_wrapper<T>::mpi_type_id(), op, mpi_comm_));
         }
 
         template <typename T, mpi_op_t op = op_sum>
@@ -516,7 +516,7 @@ class Communicator
         template <typename T>
         inline void bcast(T* buffer__, int count__, int root__)
         {
-            CALL_MPI(MPI_Bcast, (buffer__, count__, type_wrapper<T>::mpi_type_id(), root__, comm_));
+            CALL_MPI(MPI_Bcast, (buffer__, count__, type_wrapper<T>::mpi_type_id(), root__, mpi_comm_));
         }
 };
 

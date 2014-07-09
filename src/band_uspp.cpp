@@ -777,7 +777,7 @@ void Band::apply_h_local_parallel(K_point* kp__,
     splindex<block> sub_spl_n(s1.local_size() - s0.local_size(), kp__->num_ranks_row(), kp__->rank_row());
 
     mdarray<double_complex, 2> phi_slice(kp__->num_gkvec(), sub_spl_n.local_size());
-    phi__.gather(n__, N__, phi_slice, kp__->comm_row().comm());
+    phi__.gather(n__, N__, phi_slice, kp__->comm_row().mpi_comm());
     mdarray<double_complex, 2> hphi_slice(kp__->num_gkvec(), sub_spl_n.local_size());
 
     int num_fft_threads = Platform::num_fft_threads();
@@ -1549,7 +1549,7 @@ void Band::uspp_cpu_residuals_parallel_v2(int N__,
 {
     Timer t("sirius::Band::uspp_cpu_residuals_parallel_v2");
 
-    Timer t2("sirius::Band::uspp_cpu_residuals_parallel_v2|zgemm_eff");
+    Timer t1("sirius::Band::uspp_cpu_residuals_parallel_v2|zgemm_eff");
 
     //#ifdef _WRITE_PROC_STATUS_
     //Platform::write_proc_status(__FILE__, __LINE__);
@@ -1558,10 +1558,10 @@ void Band::uspp_cpu_residuals_parallel_v2(int N__,
     splindex<block> sub_spl_gkvec(kp__->num_gkvec_row(), kp__->num_ranks_col(), kp__->rank_col());
 
     mdarray<double_complex, 2> hphi_slice(N__, sub_spl_gkvec.local_size());
-    hphi__.shuffle_horizontal<_panel_to_slice_>(N__, hphi_slice, kp__->comm_col().comm());
+    hphi__.shuffle_horizontal<_panel_to_slice_>(N__, hphi_slice, kp__->comm_col().mpi_comm());
 
     mdarray<double_complex, 2> ophi_slice(N__, sub_spl_gkvec.local_size());
-    ophi__.shuffle_horizontal<_panel_to_slice_>(N__, ophi_slice, kp__->comm_col().comm());
+    ophi__.shuffle_horizontal<_panel_to_slice_>(N__, ophi_slice, kp__->comm_col().mpi_comm());
 
     mdarray<double_complex, 2> hpsi_slice(num_bands__, sub_spl_gkvec.local_size());
     mdarray<double_complex, 2> opsi_slice(num_bands__, sub_spl_gkvec.local_size());
@@ -1573,7 +1573,8 @@ void Band::uspp_cpu_residuals_parallel_v2(int N__,
 
     mdarray<double_complex, 2> hpsi_slice_tmp(spl_bands.local_size(0), sub_spl_gkvec.local_size());
     mdarray<double_complex, 2> opsi_slice_tmp(spl_bands.local_size(0), sub_spl_gkvec.local_size());
-
+    
+    Timer t2("sirius::Band::uspp_cpu_residuals_parallel_v2|zgemm_loop");
     for (int irow = 0; irow < kp__->num_ranks_row(); irow++)
     {
         mdarray<double_complex, 2> evec_tmp(spl_bands.local_size(irow), N__);
@@ -1609,9 +1610,10 @@ void Band::uspp_cpu_residuals_parallel_v2(int N__,
             }
         }
     }
+    t2.stop();
     
-    hpsi__.shuffle_horizontal<_slice_to_panel_>(num_bands__, hpsi_slice, kp__->comm_col().comm());
-    opsi__.shuffle_horizontal<_slice_to_panel_>(num_bands__, opsi_slice, kp__->comm_col().comm());
+    hpsi__.shuffle_horizontal<_slice_to_panel_>(num_bands__, hpsi_slice, kp__->comm_col().mpi_comm());
+    opsi__.shuffle_horizontal<_slice_to_panel_>(num_bands__, opsi_slice, kp__->comm_col().mpi_comm());
         
 
 
@@ -1619,7 +1621,7 @@ void Band::uspp_cpu_residuals_parallel_v2(int N__,
     //blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, hphi__, evec__, complex_zero, hpsi__);
     /* Compute O\Psi_{i} = O\phi_{mu} * Z_{mu, i} */
     //blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, ophi__, evec__, complex_zero, opsi__);
-    double tval = t2.stop();
+    double tval = t1.stop();
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {

@@ -226,7 +226,6 @@ class Potential
          *         (q_{\ell m}^{\alpha} - q_{\ell m}^{I,\alpha}) \frac{2 \Gamma(5/2 + \ell + n)}{R^{2\ell + 3}\Gamma(3/2 + \ell) \Gamma(n + 1)} 
          *  \f]
          *  
-         *  
          *  Now let's find the plane-wave coefficients of \f$ P({\bf r}) \f$ inside each muffin-tin:
          *  \f[
          *      P^{\alpha}({\bf G}) = \frac{4\pi e^{-i{\bf G r}_{\alpha}}}{\Omega} \sum_{\ell m} (-i)^{\ell} Y_{\ell m}({\bf \hat G})  
@@ -259,7 +258,7 @@ class Potential
          *  \f]
          *  This density is used to solve the Poisson's equation in the plane-wave domain:
          *  \f[
-         *      V_{H}({\bf G}) = \frac{4 \pi  \tilde \rho({\bf G})}{G^2}
+         *      V_{H}({\bf G}) = \frac{4 \pi \tilde \rho({\bf G})}{G^2}
          *  \f]
          *  The potential is correct in the interstitial region and also on the muffin-tin surface. We will use
          *  it to find the boundary conditions for the potential inside the muffin-tins. Using spherical
