@@ -1551,10 +1551,6 @@ void Band::uspp_cpu_residuals_parallel_v2(int N__,
 
     Timer t1("sirius::Band::uspp_cpu_residuals_parallel_v2|zgemm_eff");
 
-    //#ifdef _WRITE_PROC_STATUS_
-    //Platform::write_proc_status(__FILE__, __LINE__);
-    //#endif
-
     splindex<block> sub_spl_gkvec(kp__->num_gkvec_row(), kp__->num_ranks_col(), kp__->rank_col());
 
     mdarray<double_complex, 2> hphi_slice(N__, sub_spl_gkvec.local_size());

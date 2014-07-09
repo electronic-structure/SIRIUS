@@ -359,53 +359,60 @@ class dmatrix
 
             assert(N__ == (int)matrix_slice__.size(0));
             assert(sub_spl_row.local_size() == (int)matrix_slice__.size(1));
-
-            std::vector<int> offsets(num_ranks_col_);
-            std::vector<int> counts(num_ranks_col_);
-
-            for (int rank = 0; rank < num_ranks_col_; rank++)
+            
+            #pragma omp parallel num_threads(2)
             {
-                /* each rank allocates a subpanel */
-                mdarray<double_complex, 2> sub_panel(spl_N.local_size(rank), sub_spl_row.local_size());
+                std::vector<int> offsets(num_ranks_col_);
+                std::vector<int> counts(num_ranks_col_);
 
-                /* make a table of sizes and offsets */
-                for (int i = 0; i < num_ranks_col_; i++)
-                {
-                    /* offset of a sub-panel */
-                    offsets[i] = static_cast<int>(spl_N.local_size(rank) * sub_spl_row.global_offset(i));
-                    /* size of a sub-panel */
-                    counts[i] = static_cast<int>(spl_N.local_size(rank) * sub_spl_row.local_size(i));
-                }
+                std::vector<double_complex> sub_panel_tmp(spl_N.local_size(0) * sub_spl_row.local_size());
                 
-                if (direction__ == _slice_to_panel_)
+                #pragma omp for
+                for (int rank = 0; rank < num_ranks_col_; rank++)
                 {
-                    /* fill the sub-panel */
-                    for (int i = 0; i < sub_spl_row.local_size(); i++)
+                    /* each rank allocates a subpanel */
+                    //mdarray<double_complex, 2> sub_panel(spl_N.local_size(rank), sub_spl_row.local_size());
+                    mdarray<double_complex, 2> sub_panel(&sub_panel_tmp[0], spl_N.local_size(rank), sub_spl_row.local_size());
+
+                    /* make a table of sizes and offsets */
+                    for (int i = 0; i < num_ranks_col_; i++)
                     {
-                        /* loop over local fraction of rows */
-                        for (int j = 0; j < spl_N.local_size(rank); j++)
+                        /* offset of a sub-panel */
+                        offsets[i] = static_cast<int>(spl_N.local_size(rank) * sub_spl_row.global_offset(i));
+                        /* size of a sub-panel */
+                        counts[i] = static_cast<int>(spl_N.local_size(rank) * sub_spl_row.local_size(i));
+                    }
+                    
+                    if (direction__ == _slice_to_panel_)
+                    {
+                        /* fill the sub-panel */
+                        for (int i = 0; i < sub_spl_row.local_size(); i++)
                         {
-                            sub_panel(j, i) = matrix_slice__(spl_N.global_index(j, rank), i);
+                            /* loop over local fraction of rows */
+                            for (int j = 0; j < spl_N.local_size(rank); j++)
+                            {
+                                sub_panel(j, i) = matrix_slice__(spl_N.global_index(j, rank), i);
+                            }
                         }
+
+                        /* gather local matrix */
+                        Platform::gather(sub_panel.ptr(), ptr, &counts[0], &offsets[0], rank, comm_col__);
                     }
 
-                    /* gather local matrix */
-                    Platform::gather(sub_panel.ptr(), ptr, &counts[0], &offsets[0], rank, comm_col__);
-                }
-
-                if (direction__ == _panel_to_slice_)
-                {
-                    /* scatter local matrix between ranks */
-                    Platform::scatter(ptr, sub_panel.ptr(), &counts[0], &offsets[0], rank, comm_col__);
-                    
-                    /* loop over local fraction of columns */
-                    for (int i = 0; i < sub_spl_row.local_size(); i++)
+                    if (direction__ == _panel_to_slice_)
                     {
-                        /* loop over local fraction of rows */
-                        for (int j = 0; j < spl_N.local_size(rank); j++)
+                        /* scatter local matrix between ranks */
+                        Platform::scatter(ptr, sub_panel.ptr(), &counts[0], &offsets[0], rank, comm_col__);
+                        
+                        /* loop over local fraction of columns */
+                        for (int i = 0; i < sub_spl_row.local_size(); i++)
                         {
-                            /* copy necessary parts of panel to the full vector */
-                            matrix_slice__(spl_N.global_index(j, rank), i) = sub_panel(j, i);
+                            /* loop over local fraction of rows */
+                            for (int j = 0; j < spl_N.local_size(rank); j++)
+                            {
+                                /* copy necessary parts of panel to the full vector */
+                                matrix_slice__(spl_N.global_index(j, rank), i) = sub_panel(j, i);
+                            }
                         }
                     }
                 }
