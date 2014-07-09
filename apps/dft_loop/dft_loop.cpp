@@ -108,9 +108,17 @@ void dft_loop(cmd_args args)
     parameters.set_num_spins(num_spins);
 
     parameters.initialize();
+
+    #ifdef _MEMORY_USAGE_INFO_
+    MEMORY_USAGE_INFO();
+    #endif
     
     Potential* potential = new Potential(parameters);
     potential->allocate();
+
+    #ifdef _MEMORY_USAGE_INFO_
+    MEMORY_USAGE_INFO();
+    #endif
 
     auto ngridk = parser["ngridk"].get(std::vector<int>(3, 1));
 
@@ -118,8 +126,16 @@ void dft_loop(cmd_args args)
 
     ks.initialize();
     
+    #ifdef _MEMORY_USAGE_INFO_
+    MEMORY_USAGE_INFO();
+    #endif
+    
     Density* density = new Density(parameters);
     density->allocate();
+    
+    #ifdef _MEMORY_USAGE_INFO_
+    MEMORY_USAGE_INFO();
+    #endif
     
     if (task_name == "gs_restart")
     {
@@ -155,13 +171,6 @@ void dft_loop(cmd_args args)
     DFT_ground_state dft(parameters, potential, density, &ks);
     double potential_tol = parser["potential_tol"].get(1e-4);
     double energy_tol = parser["energy_tol"].get(1e-4);
-
-    #ifdef _MEMORY_USAGE_INFO_
-    size_t VmRSS, VmHWM;
-    Platform::get_proc_status(&VmHWM, &VmRSS);
-    printf("[rank %i at line %i of file %s] VmHWM: %i Mb, VmRSS: %i Mb, mdarray: %i Mb\n", 
-           Platform::mpi_rank(), __LINE__, __FILE__, int(VmHWM >> 20), int(VmRSS >> 20), int(mdarray_mem_count >> 20));
-    #endif
 
     if (task_name == "test_init")
     {
