@@ -26,7 +26,7 @@
 #define __MDARRAY_H__
 
 #include <memory>
-//#include <atomic>
+#include <atomic>
 #include <string.h>
 #include <vector>
 #include "error_handling.h"
@@ -85,8 +85,8 @@ class mdarray_index_descriptor
         }
 };
 
-//extern std::atomic<int64_t> mdarray_mem_count;
-//extern std::atomic<int64_t> mdarray_mem_count_max;
+extern std::atomic<int64_t> mdarray_mem_count;
+extern std::atomic<int64_t> mdarray_mem_count_max;
 
 /// Simple delete handler which keeps track of allocated and deallocated memory ammount.
 template<typename T>
@@ -103,17 +103,13 @@ struct mdarray_deleter
 
     mdarray_deleter(size_t size__, int mode__) : size_(size__), mode_(mode__)
     {
-        //#ifndef NDEBUG
-        //mdarray_mem_count += size_ * sizeof(T);
-        //mdarray_mem_count_max = std::max(mdarray_mem_count.load(), mdarray_mem_count_max.load());
-        //#endif
+        mdarray_mem_count += size_ * sizeof(T);
+        mdarray_mem_count_max = std::max(mdarray_mem_count.load(), mdarray_mem_count_max.load());
     }
     
     void operator()(T* p__) const
     {
-        //#ifndef NDEBUG
-        //mdarray_mem_count -= size_ * sizeof(T);
-        //#endif
+        mdarray_mem_count -= size_ * sizeof(T);
         switch (mode_)
         {
             case 0:

@@ -159,8 +159,8 @@ void dft_loop(cmd_args args)
     #ifdef _MEMORY_USAGE_INFO_
     size_t VmRSS, VmHWM;
     Platform::get_proc_status(&VmHWM, &VmRSS);
-    printf("[rank %i at line %i of file %s] VmHWM: %lu (Mb), VmRSS: %lu (Mb)\n", 
-           Platform::mpi_rank(), __LINE__, __FILE__, VmHWM >> 20, VmRSS >> 20);
+    printf("[rank %i at line %i of file %s] VmHWM: %i Mb, VmRSS: %i Mb, mdarray: %i Mb\n", 
+           Platform::mpi_rank(), __LINE__, __FILE__, int(VmHWM >> 20), int(VmRSS >> 20), int(mdarray_mem_count >> 20));
     #endif
 
     if (task_name == "test_init")

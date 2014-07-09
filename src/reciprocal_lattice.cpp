@@ -206,7 +206,8 @@ void Reciprocal_lattice::init(int lmax)
 void Reciprocal_lattice::update()
 {
     Timer t2("sirius::Reciprocal_lattice::update");
-    // precompute G-vector phase factors
+    /* Precompute G-vector phase factors */
+    #ifdef _CACHE_GVEC_PHASE_FACTORS_
     gvec_phase_factors_.set_dimensions(spl_num_gvec_.local_size(), unit_cell_->num_atoms());
     gvec_phase_factors_.allocate();
     #pragma omp parallel for
@@ -215,6 +216,7 @@ void Reciprocal_lattice::update()
         int ig = (int)spl_num_gvec_[igloc];
         for (int ia = 0; ia < unit_cell_->num_atoms(); ia++) gvec_phase_factors_(igloc, ia) = gvec_phase_factor<global>(ig, ia);
     }
+    #endif
 }
 
 void Reciprocal_lattice::print_info()
