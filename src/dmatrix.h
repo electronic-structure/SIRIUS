@@ -502,6 +502,15 @@ class dmatrix
             linalg<scalapack>::pztranc(m, n, double_complex(1, 0), a.ptr(), ia, ja, a.descriptor(), double_complex(0, 0), 
                                        c.ptr(), ic, jc, c.descriptor());
         }
+
+        static void tranu(int32_t m, int32_t n, dmatrix<double_complex>& a, int ia, int ja, dmatrix<double_complex>& c, int ic, int jc)
+        {
+            ia++; ja++;
+            ic++; jc++;
+
+            linalg<scalapack>::pztranu(m, n, double_complex(1, 0), a.ptr(), ia, ja, a.descriptor(), double_complex(0, 0), 
+                                       c.ptr(), ic, jc, c.descriptor());
+        }
 };
 
 #endif // __DMATRIX_H__

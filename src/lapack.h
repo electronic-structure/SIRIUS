@@ -182,6 +182,12 @@ class linalg<scalapack>
         {
             FORTRAN(pztranc)(&m, &n, &alpha, a, &ia, &ja, desca, &beta, c, &ic, &jc, descc);
         }
+        
+        static void pztranu(int32_t m, int32_t n, double_complex alpha, double_complex* a, int32_t ia, int32_t ja, int32_t* desca, 
+                            double_complex beta, double_complex* c, int32_t ic, int32_t jc, int32_t* descc)
+        {
+            FORTRAN(pztranu)(&m, &n, &alpha, a, &ia, &ja, desca, &beta, c, &ic, &jc, descc);
+        }
 };
 #endif
 

@@ -115,6 +115,9 @@ extern "C" void FORTRAN(descinit)(int32_t* desc, int32_t* m, int32_t* n, int32_t
 extern "C" void FORTRAN(pztranc)(int32_t* m, int32_t* n, double_complex* alpha, double_complex* a, int32_t* ia, int32_t* ja, int32_t* desca,
                                  double_complex* beta, double_complex* c, int32_t* ic, int32_t* jc,int32_t* descc);
 
+extern "C" void FORTRAN(pztranu)(int32_t* m, int32_t* n, double_complex* alpha, double_complex* a, int32_t* ia, int32_t* ja, int32_t* desca,
+                                 double_complex* beta, double_complex* c, int32_t* ic, int32_t* jc,int32_t* descc);
+
 extern "C" void FORTRAN(pzhegvx)(int32_t* ibtype, const char* jobz, const char* range, const char* uplo, int32_t* n, 
                                  double_complex* a, int32_t* ia, int32_t* ja, int32_t* desca, 
                                  double_complex* b, int32_t* ib, int32_t* jb, int32_t* descb, 

@@ -1563,7 +1563,7 @@ void Band::uspp_cpu_residuals_parallel_v2(int N__,
     mdarray<double_complex, 2> opsi_slice(num_bands__, sub_spl_gkvec.local_size());
 
     dmatrix<double_complex> evec_t(num_bands__, N__, parameters_.blacs_context());
-    dmatrix<double_complex>::tranc(num_bands__, N__, evec__, 0, 0, evec_t, 0, 0);
+    dmatrix<double_complex>::tranu(num_bands__, N__, evec__, 0, 0, evec_t, 0, 0);
 
     splindex<block_cyclic> spl_bands(num_bands__, kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
 
