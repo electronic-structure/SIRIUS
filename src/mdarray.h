@@ -303,6 +303,11 @@ class mdarray_base
                 memset(ptr_, 0, size() * sizeof(T));
             }
         }
+
+        inline void randomize()
+        {
+            for (size_t i = 0; i < size(); i++) ptr_[i] = type_wrapper<T>::random();
+        }
         
         /// Set raw pointer.
         inline void set_ptr(T* ptr__)

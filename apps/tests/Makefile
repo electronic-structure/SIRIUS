@@ -64,6 +64,9 @@ test_enu:
 
 test_diag:
 	$(CXX) $(CXX_OPT) $(INCLUDE) test_diag.cpp  $(LIB_SIRIUS) $(LIBS) -o test_diag
+
+test_rank2:
+	$(CXX) $(CXX_OPT) $(INCLUDE) test_rank2.cpp  $(LIB_SIRIUS) $(LIBS) -o test_rank2
 	
 
 clean:
