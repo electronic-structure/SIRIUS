@@ -998,7 +998,8 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
                        nbf_in_block, nloc, kp__->num_gkvec(),
                        tval, 8e-9 * nbf_in_block * nloc * kp__->num_gkvec() / tval / kp__->num_ranks());
             }
-
+            
+            #pragma omp parallel for
             for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
             {
                 int ia = (int)atom_blocks.global_index(i, iab);
@@ -1018,6 +1019,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
                             beta_pw.ptr(), beta_pw.ld(), tmp.ptr(), tmp.ld(), complex_one, &hphi__(0, s0.local_size()), hphi__.ld());
             t3.stop();
 
+            #pragma omp parallel for
             for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
             {
                 int ia = (int)atom_blocks.global_index(i, iab);
