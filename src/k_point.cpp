@@ -237,11 +237,7 @@ void K_point::update()
         if (parameters_.unit_cell()->full_potential())
         {
             fv_eigen_vectors_panel_.set_dimensions(gklo_basis_size(), parameters_.num_fv_states(), parameters_.blacs_context());
-            #ifdef _GPU_
-            fv_eigen_vectors_panel_.allocate_page_locked();
-            #else
-            fv_eigen_vectors_panel_.allocate();
-            #endif
+            fv_eigen_vectors_panel_.allocate(alloc_mode);
         }
         
         fv_states_panel_.set_dimensions(wf_size(), parameters_.num_fv_states(), parameters_.blacs_context());
