@@ -910,11 +910,7 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp,
     /* generate and conjugate panel of matching coefficients; this would be the <bra| states */
     dmatrix<double_complex> alm_panel_n;
     alm_panel_n.set_dimensions(kp->num_gkvec(), naw, parameters_.blacs_context());
-    #ifdef _GPU_
-    alm_panel_n.allocate_page_locked();
-    #else
-    alm_panel_n.allocate();
-    #endif
+    alm_panel_n.allocate(alloc_mode);
 
     kp->alm_coeffs_row()->generate<true>(alm_panel_n);
     for (int j = 0; j < alm_panel_n.num_cols_local(); j++)
@@ -925,11 +921,7 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp,
     /* generate another panel of matching coefficients; this would be the |ket> states */
     dmatrix<double_complex> alm_panel_t;
     alm_panel_t.set_dimensions(naw, kp->num_gkvec(), parameters_.blacs_context());
-    #ifdef _GPU_
-    alm_panel_t.allocate_page_locked();
-    #else
-    alm_panel_t.allocate();
-    #endif
+    alm_panel_t.allocate(alloc_mode);
     kp->alm_coeffs_col()->generate<false>(alm_panel_t);
 
     /* generate slice of matching coefficients */
@@ -944,11 +936,7 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp,
     /* scatter halm slice to panels */
     dmatrix<double_complex> halm_panel_t;
     halm_panel_t.set_dimensions(naw, kp->num_gkvec(), parameters_.blacs_context());
-    #ifdef _GPU_
-    halm_panel_t.allocate_page_locked();
-    #else
-    halm_panel_t.allocate();
-    #endif
+    halm_panel_t.allocate(alloc_mode);
     halm_panel_t.scatter(halm_v, parameters_.mpi_grid().communicator(1 << _dim_row_));
     
     //#ifdef _WRITE_PROC_STATUS_
@@ -1293,13 +1281,8 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     dmatrix<double_complex> o;
     o.set_dimensions(kp->gklo_basis_size(), kp->gklo_basis_size(), parameters_.blacs_context());
     
-    #ifdef _GPU_
-    h.allocate_page_locked();
-    o.allocate_page_locked();
-    #else
-    h.allocate();
-    o.allocate();
-    #endif
+    h.allocate(alloc_mode);
+    o.allocate(alloc_mode);
     
     // setup Hamiltonian and overlap
     switch (parameters_.processing_unit())
