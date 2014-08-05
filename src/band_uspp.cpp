@@ -83,7 +83,7 @@ void* exec_gpu_fft(void* args__)
 {
     //== exec_fft_args* args = (exec_fft_args*)args__;
 
-    stop_here
+    STOP();
 
     //== FFT3D<gpu> fft(args->fft->grid_size());
 
