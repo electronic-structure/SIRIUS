@@ -935,7 +935,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
         /* set intial ophi */
         memcpy(&ophi__(0, s0.local_size()), &phi__(0, s0.local_size()), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
 
-        int num_atoms_in_block = 128;
+        int num_atoms_in_block = 256;
         int num_atom_blocks = parameters_.unit_cell()->num_atoms() / num_atoms_in_block + 
                               std::min(1, parameters_.unit_cell()->num_atoms() % num_atoms_in_block);
 
@@ -990,7 +990,14 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
             blas<cpu>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
                             beta_pw.ptr(), beta_pw.ld(), &phi__(0, s0.local_size()), phi__.ld(), beta_phi.ptr(), beta_phi.ld());
             kp__->comm_row().allreduce(beta_phi.ptr(), (int)beta_phi.size());
-            t1.stop();
+            double tval = t1.stop();
+
+            if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+            {
+                printf("<beta|phi> effective zgemm with M, N, K: %6i %6i %6i, %12.4f sec, %12.4f GFlops/node\n",
+                       nbf_in_block, nloc, kp__->num_gkvec(),
+                       tval, 8e-9 * nbf_in_block * nloc * kp__->num_gkvec() / tval / kp__->num_ranks());
+            }
 
             for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
             {
