@@ -846,7 +846,7 @@ void Band::apply_h_o_uspp_cpu_parallel(K_point* kp__,
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
-        printf("pzgemm #1   with M, N, K: %6i %6i %6i,   offset in B: %6i, %12.4f sec, %12.4f GFlops/node\n",
+        printf("<beta|phi> pzgemm with M, N, K: %6i %6i %6i,   offset in B: %6i, %12.4f sec, %12.4f GFlops/node\n",
                uc->mt_basis_size(), n__, kp__->num_gkvec(), N__, 
                tval, 8e-9 * uc->mt_basis_size() * n__ * kp__->num_gkvec() / tval / kp__->num_ranks());
     }
@@ -965,7 +965,6 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
                 nbf_in_block += parameters_.unit_cell()->atom(ia)->mt_basis_size();
             }
 
-
             Timer t0("sirius::Band::apply_h_o_uspp_cpu_parallel|beta_pw", _global_timer_);
             // create beta projectors
             #pragma omp parallel
@@ -995,7 +994,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
 
             for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
             {
-                int ia = (int)atom_blocks.global_offset(iab) + i;
+                int ia = (int)atom_blocks.global_index(i, iab);
                 int ofs = bf_offset_in_block[i];
                 
                 /* number of beta functions for a given atom */
@@ -1014,7 +1013,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
 
             for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
             {
-                int ia = (int)atom_blocks.global_offset(iab) + i;
+                int ia = (int)atom_blocks.global_index(i, iab);
                 int ofs = bf_offset_in_block[i];
                 
                 /* number of beta functions for a given atom */
@@ -1331,7 +1330,7 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
     }
 
     /* apply Hamiltonian and overlap operators to the new basis functions */
-    apply_h_o_uspp_cpu_parallel_v2(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__);
+    apply_h_o_uspp_cpu_parallel(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__);
 
     int max_num_hphi = 0;
     for (int icol = 0; icol < kp__->num_ranks_col(); icol++)

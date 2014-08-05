@@ -29,7 +29,8 @@ namespace sirius {
 Reciprocal_lattice::Reciprocal_lattice(Unit_cell* unit_cell__, 
                                        electronic_structure_method_t esm_type__, 
                                        double pw_cutoff__, 
-                                       double gk_cutoff__, int lmax__) 
+                                       double gk_cutoff__, 
+                                       int lmax__) 
     : unit_cell_(unit_cell__), 
       esm_type_(esm_type__),
       pw_cutoff_(pw_cutoff__), 
