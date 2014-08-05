@@ -996,7 +996,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
             {
                 printf("<beta|phi> effective zgemm with M, N, K: %6i %6i %6i, %12.4f sec, %12.4f GFlops/node\n",
                        nbf_in_block, nloc, kp__->num_gkvec(),
-                       tval, 8e-9 * nbf_in_block * nloc * kp__->num_gkvec() / tval / kp__->num_ranks());
+                       tval, 8e-9 * nbf_in_block * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
             }
             
             #pragma omp parallel for
