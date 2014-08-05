@@ -265,6 +265,9 @@ class mdarray_base
         }
 
         /// Allocate memory for array.
+        /** mode = 0: normal allocation of CPU memory \n
+         *  mode = 1: page-locked allocation of CPU memory \n
+         */
         void allocate(int mode__ = 0)
         {
             deallocate();
@@ -273,7 +276,7 @@ class mdarray_base
 
             if (mode__ == 0)
             {
-                unique_ptr_ = std::unique_ptr<T[], mdarray_deleter<T> >(new T[sz], mdarray_deleter<T>(sz, 0));
+                unique_ptr_ = std::unique_ptr< T[], mdarray_deleter<T> >(new T[sz], mdarray_deleter<T>(sz, 0));
                 ptr_ = unique_ptr_.get();
             }
 
@@ -281,7 +284,7 @@ class mdarray_base
             {
                 #ifdef _GPU_
                 cuda_malloc_host((void**)(&ptr_), sz * sizeof(T));
-                unique_ptr_ = std::unique_ptr<T[], mdarray_deleter<T> >(ptr_, mdarray_deleter<T>(sz, 1));
+                unique_ptr_ = std::unique_ptr< T[], mdarray_deleter<T> >(ptr_, mdarray_deleter<T>(sz, 1));
                 #else
                 TERMINATE_NO_GPU
                 #endif

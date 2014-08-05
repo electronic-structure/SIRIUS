@@ -30,7 +30,7 @@ int Platform::num_fft_threads_ = -1;
 extern "C" void plasma_init(int num_cores);
 #endif
 
-#ifdef _RS_GEN_EIG_
+#ifdef _LIBSCI_ACC_
 extern "C" void libsci_acc_init();
 #endif
 
@@ -59,7 +59,7 @@ void Platform::initialize(bool call_mpi_init, bool call_cublas_init)
     #ifdef _PLASMA_
     plasma_init(max_num_threads());
     #endif
-    #ifdef _RS_GEN_EIG_
+    #ifdef _LIBSCI_ACC_
     libsci_acc_init();
     #endif
 
