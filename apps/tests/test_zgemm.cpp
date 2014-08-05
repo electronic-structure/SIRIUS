@@ -19,15 +19,9 @@ void test_gemm(int M, int N, int K, int transa)
     a.set_dimensions(imax, jmax);
     b.set_dimensions(K, N);
     c.set_dimensions(M, N);
-    #ifdef _GPU_
-    a.allocate_page_locked();
-    b.allocate_page_locked();
-    c.allocate_page_locked();
-    #else
-    a.allocate();
-    b.allocate();
-    c.allocate();
-    #endif
+    a.allocate(alloc_mode);
+    b.allocate(alloc_mode);
+    c.allocate(alloc_mode);
 
     for (int j = 0; j < jmax; j++)
     {
@@ -76,15 +70,9 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
     }
     b.set_dimensions(K, N, context);
     c.set_dimensions(M, N - n, context);
-    #ifdef _GPU_
-    a.allocate_page_locked();
-    b.allocate_page_locked();
-    c.allocate_page_locked();
-    #else
-    a.allocate();
-    b.allocate();
-    c.allocate();
-    #endif
+    a.allocate(alloc_mode);
+    b.allocate(alloc_mode);
+    c.allocate(alloc_mode);
 
     for (int ic = 0; ic < a.num_cols_local(); ic++)
     {
