@@ -826,109 +826,109 @@ extern "C" void copy_beta_psi_gpu(int num_beta_atot,
 void Density::add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
                                              mdarray<double_complex, 4>& pp_complex_density_matrix)
 {
-    Timer t("sirius::Density::add_kpoint_contribution_pp_gpu");
+    //== Timer t("sirius::Density::add_kpoint_contribution_pp_gpu");
 
-    if (occupied_bands.size() == 0) return;
+    //== if (occupied_bands.size() == 0) return;
 
-    // take only occupied wave-functions
-    mdarray<double_complex, 2> wfs(kp->num_gkvec(), (int)occupied_bands.size());
-    for (int i = 0; i < (int)occupied_bands.size(); i++)
-    {
-        memcpy(&wfs(0, i), &kp->spinor_wave_function(0, occupied_bands[i].first, 0), kp->num_gkvec() * sizeof(double_complex));
-    }
-    wfs.allocate_on_device();
-    wfs.copy_to_device();
+    //== // take only occupied wave-functions
+    //== mdarray<double_complex, 2> wfs(kp->num_gkvec(), (int)occupied_bands.size());
+    //== for (int i = 0; i < (int)occupied_bands.size(); i++)
+    //== {
+    //==     memcpy(&wfs(0, i), &kp->spinor_wave_function(0, occupied_bands[i].first, 0), kp->num_gkvec() * sizeof(double_complex));
+    //== }
+    //== wfs.allocate_on_device();
+    //== wfs.copy_to_device();
 
-    // <G+k|\beta_{\xi}^{\alpha}>
-    mdarray<double_complex, 2> beta_pw(NULL, kp->num_gkvec(), parameters_.unit_cell()->mt_lo_basis_size());
-    beta_pw.allocate_on_device();
-    
-    kp->beta_pw_t().allocate_on_device();
-    kp->beta_pw_t().copy_to_device();
+    //== // <G+k|\beta_{\xi}^{\alpha}>
+    //== mdarray<double_complex, 2> beta_pw(NULL, kp->num_gkvec(), parameters_.unit_cell()->mt_lo_basis_size());
+    //== beta_pw.allocate_on_device();
+    //== 
+    //== kp->beta_pw_t().allocate_on_device();
+    //== kp->beta_pw_t().copy_to_device();
 
-    kp->gkvec().allocate_on_device(); 
-    kp->gkvec().copy_to_device();
+    //== kp->gkvec().allocate_on_device(); 
+    //== kp->gkvec().copy_to_device();
 
-    parameters_.unit_cell()->atom_pos().allocate_on_device(); 
-    parameters_.unit_cell()->atom_pos().copy_to_device();
+    //== parameters_.unit_cell()->atom_pos().allocate_on_device(); 
+    //== parameters_.unit_cell()->atom_pos().copy_to_device();
 
-    parameters_.unit_cell()->beta_t_idx().allocate_on_device(); 
-    parameters_.unit_cell()->beta_t_idx().copy_to_device();
+    //== parameters_.unit_cell()->beta_t_idx().allocate_on_device(); 
+    //== parameters_.unit_cell()->beta_t_idx().copy_to_device();
 
-    // create <G+k|beta>
-    create_beta_pw_gpu(kp->num_gkvec(), 
-                       parameters_.unit_cell()->mt_lo_basis_size(), 
-                       parameters_.unit_cell()->beta_t_idx().ptr_device(),
-                       kp->beta_pw_t().ptr_device(),
-                       kp->gkvec().ptr_device(),
-                       parameters_.unit_cell()->atom_pos().ptr_device(),
-                       beta_pw.ptr_device());
+    //== // create <G+k|beta>
+    //== create_beta_pw_gpu(kp->num_gkvec(), 
+    //==                    parameters_.unit_cell()->mt_lo_basis_size(), 
+    //==                    parameters_.unit_cell()->beta_t_idx().ptr_device(),
+    //==                    kp->beta_pw_t().ptr_device(),
+    //==                    kp->gkvec().ptr_device(),
+    //==                    parameters_.unit_cell()->atom_pos().ptr_device(),
+    //==                    beta_pw.ptr_device());
 
-    parameters_.unit_cell()->beta_t_idx().deallocate_on_device();
-    parameters_.unit_cell()->atom_pos().deallocate_on_device();
-    kp->gkvec().deallocate_on_device();
-    kp->beta_pw_t().deallocate_on_device();
+    //== parameters_.unit_cell()->beta_t_idx().deallocate_on_device();
+    //== parameters_.unit_cell()->atom_pos().deallocate_on_device();
+    //== kp->gkvec().deallocate_on_device();
+    //== kp->beta_pw_t().deallocate_on_device();
 
-    // <\beta_{\xi}^{\alpha}|\Psi_j>
-    mdarray<double_complex, 2> beta_psi(NULL, parameters_.unit_cell()->mt_lo_basis_size(), (int)occupied_bands.size());
-    beta_psi.allocate_on_device();
+    //== // <\beta_{\xi}^{\alpha}|\Psi_j>
+    //== mdarray<double_complex, 2> beta_psi(NULL, parameters_.unit_cell()->mt_lo_basis_size(), (int)occupied_bands.size());
+    //== beta_psi.allocate_on_device();
 
-    // compute <beta|Psi>
-    blas<gpu>::gemm(2, 0, parameters_.unit_cell()->mt_lo_basis_size(), (int)occupied_bands.size(), kp->num_gkvec(), 
-                    beta_pw.ptr_device(), beta_pw.ld(), wfs.ptr_device(), wfs.ld(), 
-                    beta_psi.ptr_device(), beta_psi.ld());
-    
-    wfs.deallocate_on_device();
-    beta_pw.deallocate_on_device();
+    //== // compute <beta|Psi>
+    //== blas<gpu>::gemm(2, 0, parameters_.unit_cell()->mt_lo_basis_size(), (int)occupied_bands.size(), kp->num_gkvec(), 
+    //==                 beta_pw.ptr_device(), beta_pw.ld(), wfs.ptr_device(), wfs.ld(), 
+    //==                 beta_psi.ptr_device(), beta_psi.ld());
+    //== 
+    //== wfs.deallocate_on_device();
+    //== beta_pw.deallocate_on_device();
 
-    mdarray<double, 1> wo((int)occupied_bands.size());
-    for (int i = 0; i < (int)occupied_bands.size(); i++) wo(i) = occupied_bands[i].second;
-    wo.allocate_on_device();
-    wo.copy_to_device();
-    
-    double_complex zone(1, 0);
-    #pragma omp parallel
-    {
-        int thread_id = Platform::thread_id();
-        // auxiliary arrays
-        mdarray<double_complex, 2> bp1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
-        mdarray<double_complex, 2> bp2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
-        bp1.allocate_on_device();
-        bp2.allocate_on_device();
-        #pragma omp for
-        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-        {   
-            // number of beta functions for a given atom
-            int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
-            int ofs = parameters_.unit_cell()->atom(ia)->offset_lo();
+    //== mdarray<double, 1> wo((int)occupied_bands.size());
+    //== for (int i = 0; i < (int)occupied_bands.size(); i++) wo(i) = occupied_bands[i].second;
+    //== wo.allocate_on_device();
+    //== wo.copy_to_device();
+    //== 
+    //== double_complex zone(1, 0);
+    //== #pragma omp parallel
+    //== {
+    //==     int thread_id = Platform::thread_id();
+    //==     // auxiliary arrays
+    //==     mdarray<double_complex, 2> bp1(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+    //==     mdarray<double_complex, 2> bp2(parameters_.unit_cell()->max_mt_basis_size(), (int)occupied_bands.size());
+    //==     bp1.allocate_on_device();
+    //==     bp2.allocate_on_device();
+    //==     #pragma omp for
+    //==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    //==     {   
+    //==         // number of beta functions for a given atom
+    //==         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+    //==         int ofs = parameters_.unit_cell()->atom(ia)->offset_lo();
 
-            copy_beta_psi_gpu(parameters_.unit_cell()->mt_lo_basis_size(), 
-                              (int)occupied_bands.size(), 
-                              parameters_.unit_cell()->max_mt_basis_size(),
-                              nbf,
-                              ofs,
-                              beta_psi.ptr_device(),
-                              wo.ptr_device(),
-                              bp1.ptr_device(),
-                              bp2.ptr_device(),
-                              thread_id);
-            
-            #pragma omp critical
-            {
-                cublas_set_stream(thread_id);
+    //==         copy_beta_psi_gpu(parameters_.unit_cell()->mt_lo_basis_size(), 
+    //==                           (int)occupied_bands.size(), 
+    //==                           parameters_.unit_cell()->max_mt_basis_size(),
+    //==                           nbf,
+    //==                           ofs,
+    //==                           beta_psi.ptr_device(),
+    //==                           wo.ptr_device(),
+    //==                           bp1.ptr_device(),
+    //==                           bp2.ptr_device(),
+    //==                           thread_id);
+    //==         
+    //==         #pragma omp critical
+    //==         {
+    //==             cublas_set_stream(thread_id);
 
-                blas<gpu>::gemm(0, 1, nbf, nbf, (int)occupied_bands.size(), &zone, bp1.ptr_device(), bp1.ld(),
-                                bp2.ptr_device(), bp2.ld(), &zone, pp_complex_density_matrix.ptr_device(0, 0, 0, ia), 
-                                pp_complex_density_matrix.ld());
-            }
+    //==             blas<gpu>::gemm(0, 1, nbf, nbf, (int)occupied_bands.size(), &zone, bp1.ptr_device(), bp1.ld(),
+    //==                             bp2.ptr_device(), bp2.ld(), &zone, pp_complex_density_matrix.ptr_device(0, 0, 0, ia), 
+    //==                             pp_complex_density_matrix.ld());
+    //==         }
 
-            cuda_stream_synchronize(thread_id);
-        }
-    }
-    cuda_device_synchronize();
-    cublas_set_stream(-1);
-    wo.deallocate_on_device();
-    beta_psi.deallocate_on_device();
+    //==         cuda_stream_synchronize(thread_id);
+    //==     }
+    //== }
+    //== cuda_device_synchronize();
+    //== cublas_set_stream(-1);
+    //== wo.deallocate_on_device();
+    //== beta_psi.deallocate_on_device();
 }
 #endif
 
