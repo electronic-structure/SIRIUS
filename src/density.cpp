@@ -259,6 +259,7 @@ void Density::initial_density()
 
         int ngv_loc = (int)rl->spl_num_gvec().local_size();
         
+        Timer t1("sirius::Density::initial_density|tails");
         for (int ia = 0; ia < uc->num_atoms(); ia++)
         {
             auto p = uc->spl_num_atoms().location(ia);
@@ -306,7 +307,9 @@ void Density::initial_density()
                 }
             }
         }
+        t1.stop();
 
+        Timer t2("sirius::Density::initial_density|nonsph");
         /* compute values of spherical Bessel functions at MT boundary */
         mdarray<double, 3> sbessel_mt(lmax + 1, uc->num_atom_types(), rl->num_gvec_shells_inner());
         
@@ -358,6 +361,7 @@ void Density::initial_density()
         Spheric_function<spectral, double> rhorlm_tmp(lmmax, rg_tmp);
         SHT sht(lmax);
         sht.convert(rhoylm_tmp, rhorlm_tmp);
+        t2.stop();
 
         /* initialize density of free atoms (not smoothed) */
         for (int iat = 0; iat < uc->num_atom_types(); iat++) uc->atom_type(iat)->init_free_atom(false);
