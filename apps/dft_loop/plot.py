@@ -11,12 +11,12 @@ f = h5py.File("rho.h5", "r")
 d = f["/rho"]
 
 
-plt.plot(d[0], "-", linewidth = 1.0)
-plt.axis([0, 300, 0, 10])
+#plt.plot(d[0], "-", linewidth = 1.0)
+#plt.axis([0, 100, 0, 10])
 
-#plt.axis('off')
+plt.axis('off')
 #plt.imshow(d, cmap = cmap, norm = norm, origin = 'lower', aspect=1.73, interpolation="bicubic")
-#plt.imshow(d, cmap = cmap, norm = norm, origin = 'lower', aspect=1, interpolation="bicubic")
+plt.imshow(d, cmap = cmap, norm = norm, origin = 'lower', aspect=1, interpolation="bicubic")
 #plt.colorbar()
 #plt.contour(d, [0.016], colors="#000000")
 

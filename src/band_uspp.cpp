@@ -19,7 +19,7 @@
 
 /** \file band_uspp.cpp
  *   
- *  \brief Contains ultrasoft pseudopotential -related implementation of sirius::Band class.
+ *  \brief Contains ultrasoft pseudopotential related implementation of sirius::Band class.
  */
 
 #include <thread>

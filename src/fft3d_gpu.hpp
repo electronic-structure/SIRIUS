@@ -36,7 +36,8 @@ class FFT3D<gpu>
         {
             cufft_create_plan_handle();
         }
-
+        
+        /** Maximum number of simultaneous FFTs that can fit into free memory of a GPU */
         int num_fft_max(size_t free_mem)
         {
             int nfft = 0;

@@ -84,7 +84,7 @@ void dft_loop(cmd_args args)
 {
     std::string task_name = args.value<std::string>("task");
 
-    if (!(task_name == "gs_new" || task_name == "gs_restart" || task_name == "gs_relax"))
+    if (!(task_name == "gs_new" || task_name == "gs_restart" || task_name == "gs_relax" || task_name == "test_init"))
         error_global(__FILE__, __LINE__, "wrong task name");
 
     Global parameters;
@@ -177,6 +177,8 @@ void dft_loop(cmd_args args)
         potential->update_atomic_potential();
         parameters.unit_cell()->generate_radial_functions();
         dft.print_info();
+        parameters.create_storage_file();
+        density->save();
     }
     if (task_name == "gs_new" || task_name == "gs_restart")
     {

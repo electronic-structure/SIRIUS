@@ -505,6 +505,7 @@ extern "C" void cufft_create_plan_handle(void)
     cufft_check_error(__FILE__, __LINE__, result);
 }
 
+/** Get the work size for cuFFT */
 extern "C" size_t cufft_get_size(int nx, int ny, int nz, int nfft)
 {
     int fft_size = nx * ny * nz;

@@ -939,10 +939,6 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp,
     halm_panel_t.allocate(alloc_mode);
     halm_panel_t.scatter(halm_v, parameters_.mpi_grid().communicator(1 << _dim_row_));
     
-    //#ifdef _WRITE_PROC_STATUS_
-    //Platform::write_proc_status(__FILE__, __LINE__);
-    //#endif
-    
     // TODO: this depends on implementation and will possibly be simplified
     /* all the above data preparation is done in order to 
      * execute "normal" pzgemm without matrix transpose 
@@ -966,6 +962,10 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp,
        
         /* generate matching coefficients for current atom */
         kp->alm_coeffs_row()->generate(ia, alm_row);
+        for (int xi = 0; xi < type->mt_aw_basis_size(); xi++)
+        {
+            for (int igk = 0; igk < kp->num_gkvec_row(); igk++) alm_row(igk, xi) = conj(alm_row(igk, xi));
+        }
         kp->alm_coeffs_col()->generate(ia, alm_col);
         
         /* setup apw-lo and lo-apw blocks */
@@ -981,92 +981,99 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp,
     log_function_exit(__func__);
 }
 
-//== //=====================================================================================================================
-//== // GPU code, (L)APW+lo basis
-//== //=====================================================================================================================
-//== #ifdef _GPU_
-//== template<> 
-//== void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp, Periodic_function<double>* effective_potential,
-//==                                                   mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
-//== {
-//==     Timer t("sirius::Band::set_fv_h_o");
-//==     
-//==     int apw_offset_col = kp->apw_offset_col();
-//==     
-//==     mdarray<double_complex, 2> alm(NULL, kp->num_gkvec_loc(), parameters_.unit_cell()->max_mt_aw_basis_size());
-//==     mdarray<double_complex, 2> halm(NULL, kp->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
-//==     
-//==     alm.allocate_page_locked();
-//==     alm.allocate_on_device();
-//==     halm.allocate_page_locked();
-//==     halm.allocate_on_device();
-//==     
-//==     h.zero();
-//==     h.allocate_on_device();
-//==     h.zero_on_device();
-//== 
-//==     o.zero();
-//==     o.allocate_on_device();
-//==     o.zero_on_device();
-//== 
-//==     double_complex zone(1, 0);
-//== 
-//==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-//==     {
-//==         Atom* atom = parameters_.unit_cell()->atom(ia);
-//==         Atom_type* type = atom->type();
-//==        
-//==         // generate conjugated coefficients
-//==         kp->generate_matching_coefficients<true>(kp->num_gkvec_loc(), ia, alm);
-//==         
-//==         alm.copy_to_device(); // TODO: copy exact ammount of data
-//== 
-//==         blas<gpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
-//==                         alm.ptr_device(), alm.ld(), alm.ptr_device(apw_offset_col, 0), alm.ld(), &zone, 
-//==                         o.ptr_device(), o.ld()); 
-//== 
-//==         // apply muffin-tin part to <bra|
-//==         apply_hmt_to_apw<nm>(kp->num_gkvec_row(), ia, alm, halm);
-//== 
-//==         halm.copy_to_device();
-//==         
-//==         // generate <apw|H|apw> block; |ket> is conjugated, so it is "unconjugated" back
-//==         blas<gpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
-//==                         halm.ptr_device(), halm.ld(), alm.ptr_device(apw_offset_col, 0), alm.ld(), &zone,
-//==                         h.ptr_device(), h.ld());
-//==         
-//==         // setup apw-lo blocks
-//==         set_fv_h_o_apw_lo(kp, type, atom, ia, alm, h, o);
-//== 
-//==         //cuda_stream_synchronize(_null_stream_);
-//==     }
-//==     
-//==     cublas_get_matrix(kp->num_gkvec_row(), kp->num_gkvec_col(), sizeof(double_complex), h.ptr_device(), h.ld(), 
-//==                       h.ptr(), h.ld());
-//==     
-//==     cublas_get_matrix(kp->num_gkvec_row(), kp->num_gkvec_col(), sizeof(double_complex), o.ptr_device(), o.ld(), 
-//==                       o.ptr(), o.ld());
-//== 
-//==     set_fv_h_o_lo_lo(kp, h, o);
-//== 
-//==     set_fv_h_o_it(kp, effective_potential, h, o);
-//== 
-//==     h.deallocate_on_device();
-//==     o.deallocate_on_device();
-//== 
-//==     alm.deallocate_on_device();
-//==     alm.deallocate_page_locked();
-//== 
-//==     halm.deallocate_on_device();
-//==     halm.deallocate_page_locked();
-//== }
-//== #endif
+//=====================================================================================================================
+// GPU code, (L)APW+lo basis
+//=====================================================================================================================
+#ifdef _GPU_
+template<> 
+void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp__,
+                                                  Periodic_function<double>* effective_potential__,
+                                                  dmatrix<double_complex>& h__,
+                                                  dmatrix<double_complex>& o__)
+{
+    Timer t("sirius::Band::set_fv_h_o");
+    
+    h__.zero();
+    h__.allocate_on_device();
+    h__.zero_on_device();
+
+    o__.zero();
+    o__.allocate_on_device();
+    o__.zero_on_device();
+
+    double_complex zone(1, 0);
+
+    mdarray<double_complex, 2> alm_row(nullptr, kp__->num_gkvec_row(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    alm_row.allocate(1);
+    alm_row.allocate_on_device();
+
+    mdarray<double_complex, 2> alm_col(nullptr, kp__->num_gkvec_col(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    alm_col.allocate(1);
+    alm_col.allocate_on_device();
+
+    mdarray<double_complex, 2> halm_col(nullptr, kp__->num_gkvec_col(), parameters_.unit_cell()->max_mt_aw_basis_size());
+    halm_col.allocate(1);
+    halm_col.allocate_on_device();
+
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {
+        Atom* atom = parameters_.unit_cell()->atom(ia);
+        Atom_type* type = atom->type();
+       
+        /* generate matching coefficients for current atom */
+        kp__->alm_coeffs_row()->generate(ia, alm_row);
+        for (int xi = 0; xi < type->mt_aw_basis_size(); xi++)
+        {
+            for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row(igk, xi) = conj(alm_row(igk, xi));
+        }
+        alm_row.copy_to_device();
+
+        kp__->alm_coeffs_col()->generate(ia, alm_col);
+        alm_col.copy_to_device();
+
+        apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col, halm_col);
+        halm_col.copy_to_device();
+
+        blas<gpu>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
+                        alm_row.ptr_device(), alm_row.ld(), alm_col.ptr_device(), alm_col.ld(), &zone, 
+                        o__.ptr_device(), o__.ld()); 
+
+        blas<gpu>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
+                        alm_row.ptr_device(), alm_row.ld(), halm_col.ptr_device(), halm_col.ld(), &zone,
+                        h__.ptr_device(), h__.ld());
+
+        /* setup apw-lo and lo-apw blocks */
+        set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h__.data(), o__.data());
+    }
+
+    cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), h__.ptr_device(), h__.ld(), 
+                      h__.ptr(), h__.ld());
+    
+    cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), o__.ptr_device(), o__.ld(), 
+                      o__.ptr(), o__.ld());
+    
+    /* add interstitial contributon */
+    set_fv_h_o_it(kp__, effective_potential__, h__.data(), o__.data());
+
+    /* setup lo-lo block */
+    set_fv_h_o_lo_lo(kp__, h__.data(), o__.data());
+
+    h__.deallocate_on_device();
+    o__.deallocate_on_device();
+
+    //== alm.deallocate_on_device();
+    //== alm.deallocate_page_locked();
+
+    //== halm.deallocate_on_device();
+    //== halm.deallocate_page_locked();
+}
+#endif
 
 void Band::set_fv_h_o_apw_lo(K_point* kp, 
                              Atom_type* type, 
                              Atom* atom, 
                              int ia, 
-                             mdarray<double_complex, 2>& alm_row, 
+                             mdarray<double_complex, 2>& alm_row, // alm_row comes conjugated 
                              mdarray<double_complex, 2>& alm_col, 
                              mdarray<double_complex, 2>& h, 
                              mdarray<double_complex, 2>& o)
@@ -1092,7 +1099,7 @@ void Band::set_fv_h_o_apw_lo(K_point* kp,
 
             if (abs(zsum) > 1e-14)
             {
-                for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++) h(igkloc, icol) += zsum * conj(alm_row(igkloc, j1));
+                for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++) h(igkloc, icol) += zsum * alm_row(igkloc, j1);
             }
         }
 
@@ -1101,7 +1108,7 @@ void Band::set_fv_h_o_apw_lo(K_point* kp,
             for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++)
             {
                 o(igkloc, icol) += atom->symmetry_class()->o_radial_integral(l, order1, order) * 
-                                   conj(alm_row(igkloc, type->indexb_by_lm_order(lm, order1)));
+                                   alm_row(igkloc, type->indexb_by_lm_order(lm, order1));
             }
         }
     }
@@ -1284,44 +1291,43 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     h.allocate(alloc_mode);
     o.allocate(alloc_mode);
     
-    // setup Hamiltonian and overlap
+    /* setup Hamiltonian and overlap */
     switch (parameters_.processing_unit())
     {
         case cpu:
-        case gpu:
         {
             set_fv_h_o<cpu, full_potential_lapwlo>(kp, effective_potential, h, o);
             break;
         }
-        //#ifdef _GPU_
-        //case gpu:
-        //{
-        //    set_fv_h_o<gpu, full_potential_lapwlo>(kp, effective_potential, h, o);
-        //    
-        //    //== mdarray<double_complex, 2> h1(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
-        //    //== mdarray<double_complex, 2> o1(kp->apwlo_basis_size_row(), kp->apwlo_basis_size_col());
-        //    //== set_fv_h_o<cpu, full_potential_lapwlo>(kp, effective_potential, h1, o1);
-        //    //== double diff_h = 0;
-        //    //== double diff_o = 0;
-        //    //== for (int j = 0; j < kp->apwlo_basis_size_col(); j++)
-        //    //== {
-        //    //==     for (int i = 0; i < kp->apwlo_basis_size_row(); i++)
-        //    //==     {
-        //    //==         diff_h += std::abs(h(i, j) - h1(i, j));
-        //    //==         diff_o += std::abs(o(i, j) - o1(i, j));
-        //    //==     }
-        //    //== }
-        //    //== std::cout << "diff_h = " << diff_h << " diff_o = " << diff_o << std::endl;
+        #ifdef _GPU_
+        case gpu:
+        {
+            set_fv_h_o<gpu, full_potential_lapwlo>(kp, effective_potential, h, o);
+            
+            //== dmatrix<double_complex> h1(kp->gklo_basis_size_row(), kp->gklo_basis_size_col(), parameters_.blacs_context());
+            //== dmatrix<double_complex> o1(kp->gklo_basis_size_row(), kp->gklo_basis_size_col(), parameters_.blacs_context());
+            //== set_fv_h_o<cpu, full_potential_lapwlo>(kp, effective_potential, h1, o1);
+            //== double diff_h = 0;
+            //== double diff_o = 0;
+            //== for (int j = 0; j < kp->gklo_basis_size_col(); j++)
+            //== {
+            //==     for (int i = 0; i < kp->gklo_basis_size_row(); i++)
+            //==     {
+            //==         diff_h += std::abs(h(i, j) - h1(i, j));
+            //==         diff_o += std::abs(o(i, j) - o1(i, j));
+            //==     }
+            //== }
+            //== std::cout << "diff_h = " << diff_h << " diff_o = " << diff_o << std::endl;
 
-        //    break;
-        //}
-        //#endif
+            break;
+        }
+        #endif
         default:
         {
-            error_local(__FILE__, __LINE__, "wrong processing unit");
+            TERMINATE("wrong processing unit");
         }
     }
-    
+
     // TODO: move debug code to a separate function
     if (debug_level > 0 && !parameters_.gen_evp_solver()->parallel())
     {
@@ -1661,7 +1667,7 @@ void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potentia
                     #ifdef _GPU_
                     diag_fv_uspp_gpu(kp__, effective_potential__);
                     #else
-                    error_local(__FILE__, __LINE__, "not compiled with GPU support");
+                    TERMINATE_NO_GPU
                     #endif
                     break;
                 }

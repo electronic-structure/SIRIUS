@@ -204,6 +204,11 @@ class dmatrix
         {
             return matrix_local_.ptr_device();
         }
+
+        inline void zero_on_device()
+        {
+            matrix_local_.zero_on_device();
+        }
         #endif
 
         inline T& operator()(const int64_t irow_loc, const int64_t icol_loc) 

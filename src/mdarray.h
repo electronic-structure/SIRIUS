@@ -126,11 +126,12 @@ struct mdarray_deleter
             case 2:
             {
                 cuda_free(p__);
+                break;
             }
             #endif
             default:
             {
-                error_local(__FILE__, __LINE__, "wrong delete mode");
+                TERMINATE("wrong delete mode");
             }
         }
     }
@@ -319,7 +320,7 @@ class mdarray_base
         }
         
         /// Return raw pointer.
-        T* ptr()
+        inline T* ptr()
         {
             return ptr_;
         }
