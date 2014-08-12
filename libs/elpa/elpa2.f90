@@ -5094,7 +5094,7 @@ contains
 #if defined(WITH_COMPLEX_GENERIC_SIMPLE_KERNEL)
       use complex_generic_simple_kernel, only : single_hh_trafo_complex_generic_simple
 #endif
-#if defined(WITH_COMPLEX_GENERIC_SIMPLE_KERNEL)
+#if defined(WITH_COMPLEX_GENERIC_KERNEL)
       use complex_generic_kernel, only : single_hh_trafo_complex_generic
 #endif
       implicit none
