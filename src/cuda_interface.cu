@@ -346,9 +346,9 @@ extern "C" void cublas_init()
     cublas_handle();
 }
 
-extern "C" void cublas_set_stream(int stream_id)
+extern "C" void cublas_set_stream(int stream_id__)
 {
-    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
+    cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
     cublasSetStream(cublas_handle(), stream);
 }
 

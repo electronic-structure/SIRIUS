@@ -1015,6 +1015,7 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp__,
     halm_col.allocate(1);
     halm_col.allocate_on_device();
 
+    cublas_set_stream(0);
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
         Atom* atom = parameters_.unit_cell()->atom(ia);
@@ -1026,17 +1027,17 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp__,
         {
             for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) alm_row(igk, xi) = conj(alm_row(igk, xi));
         }
-        alm_row.copy_to_device();
+        alm_row.async_copy_to_device(0);
 
         kp__->alm_coeffs_col()->generate(ia, alm_col);
-        alm_col.copy_to_device();
-
-        apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col, halm_col);
-        halm_col.copy_to_device();
+        alm_col.async_copy_to_device(0);
 
         blas<gpu>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
                         alm_row.ptr_device(), alm_row.ld(), alm_col.ptr_device(), alm_col.ld(), &zone, 
                         o__.ptr_device(), o__.ld()); 
+
+        apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col, halm_col);
+        halm_col.async_copy_to_device(0);
 
         blas<gpu>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
                         alm_row.ptr_device(), alm_row.ld(), halm_col.ptr_device(), halm_col.ld(), &zone,
@@ -1045,6 +1046,7 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp__,
         /* setup apw-lo and lo-apw blocks */
         set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h__.data(), o__.data());
     }
+    cublas_set_stream(-1);
 
     cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), h__.ptr_device(), h__.ld(), 
                       h__.ptr(), h__.ld());

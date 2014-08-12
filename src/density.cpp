@@ -258,6 +258,23 @@ void Density::initial_density()
         int lmmax = Utils::lmmax(lmax);
 
         int ngv_loc = (int)rl->spl_num_gvec().local_size();
+
+        /* mapping between G-shell and a list of G-vectors */
+        std::map<int, std::vector<int> > gsh_map;
+
+        for (int igloc = 0; igloc < ngv_loc; igloc++)
+        {
+            /* global index of the G-vector */
+            int ig = (int)rl->spl_num_gvec(igloc);
+            /* index of the G-vector shell */
+            int igsh = rl->gvec_shell(ig);
+            if (gsh_map.count(igsh) == 0) gsh_map[igsh] = std::vector<int>();
+            gsh_map[igsh].push_back(igloc);
+        }
+
+        /* list of G-shells for the curent MPI rank */
+        std::vector<std::pair<int, std::vector<int> > > gsh_list;
+        for (auto& i: gsh_map) gsh_list.push_back(std::pair<int, std::vector<int> >(i.first, i.second));
         
         Timer t1("sirius::Density::initial_density|tails");
         for (int ia = 0; ia < uc->num_atoms(); ia++)
@@ -269,28 +286,38 @@ void Density::initial_density()
             #pragma omp parallel
             {
                 std::vector<double_complex> v0_pt(uc->atom(ia)->num_mt_points(), complex_zero);
-                #pragma omp for
-                for (int igloc = 0; igloc < ngv_loc; igloc++)
+
+                /* loop over G-vector shells */
+                #pragma omp for schedule(static)
+                for (int i = 0; i < (int)gsh_list.size(); i++)
                 {
-                    int ig = rl->spl_num_gvec(igloc);
-                    double_complex gvpf = rl->gvec_phase_factor<local>(igloc, ia);
-                    if (ig == 0)
+                    int igsh = gsh_list[i].first;
+                    auto& gv = gsh_list[i].second;
+
+                    /* lengths of the G-vectors in the current shell */
+                    double G = rl->gvec_shell_len(igsh);
+                    
+                    double_complex z(0, 0);
+                    for (int igloc: gv)
                     {
-                        for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
-                        {
-                            v0_pt[ir] += gvpf * v[ig];
-                        }
+                        int ig = rl->spl_num_gvec(igloc);
+                        z += v[ig] * rl->gvec_phase_factor<local>(igloc, ia);
+                    }
+
+                    if (igsh == 0) 
+                    {
+                         for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++) v0_pt[ir] += z;
                     }
                     else
                     {
-                        double G = rl->gvec_len(ig);
                         for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
                         {
                             double x = uc->atom(ia)->radial_grid(ir);
-                            v0_pt[ir] += gvpf * v[ig] * sin(G * x) / (G * x);
+                            v0_pt[ir] += z * sin(G * x) / (G * x);
                         }
                     }
                 }
+
                 #pragma omp critical
                 for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++) v0[ir] += v0_pt[ir];
 

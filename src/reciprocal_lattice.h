@@ -262,7 +262,7 @@ class Reciprocal_lattice
             return num_gvec_coarse_;
         }
         
-        // TODO: giva a better name
+        // TODO: give a better name
         /// Return index of G-vector by index of coarse-grid G-vector 
         inline int gvec_index(int igc)
         {
