@@ -339,6 +339,11 @@ class type_wrapper<char>
         {
             return true;
         }
+
+        static inline char random()
+        {
+            return static_cast<char>(255 * (double(rand()) / RAND_MAX));
+        }
 };
 
 #endif // __TYPEDEFS_H__

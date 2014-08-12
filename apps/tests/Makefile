@@ -67,6 +67,9 @@ test_diag:
 
 test_rank2:
 	$(CXX) $(CXX_OPT) $(INCLUDE) test_rank2.cpp  $(LIB_SIRIUS) $(LIBS) -o test_rank2
+
+test_copy_gpu:
+	$(CXX) $(CXX_OPT) $(INCLUDE) test_copy_gpu.cpp  $(LIB_SIRIUS) $(LIBS) -o test_copy_gpu
 	
 
 clean:
