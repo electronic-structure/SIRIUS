@@ -1,5 +1,7 @@
 #define HAVE_DLFCN_H 1
+#define HAVE_ENVIRONMENT_CHECKING 1
 #define HAVE_INTTYPES_H 1
+#define HAVE_ISO_FORTRAN_ENV 1
 #define HAVE_MEMORY_H 1
 #define HAVE_STDINT_H 1
 #define HAVE_STDLIB_H 1
@@ -12,11 +14,13 @@
 #define PACKAGE "elpa"
 #define PACKAGE_BUGREPORT "elpa-library@rzg.mpg.de"
 #define PACKAGE_NAME "elpa"
-#define PACKAGE_STRING "elpa 2013.11.006"
+#define PACKAGE_STRING "elpa 2014.06.002"
 #define PACKAGE_TARNAME "elpa"
 #define PACKAGE_URL ""
-#define PACKAGE_VERSION "2013.11.006"
+#define PACKAGE_VERSION "2014.06.002"
 #define STDC_HEADERS 1
-#define VERSION "2013.11.006"
-#define WITH_GENERIC_SIMPLE 1
+#define VERSION "2014.06.002"
+#define WITH_COMPLEX_GENERIC_KERNEL 1
 #define WITH_OPENMP 1
+#define WITH_REAL_GENERIC_KERNEL 1
+

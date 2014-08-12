@@ -3,8 +3,9 @@ use elpa1
 implicit none
 integer na, lda, nblk, mpi_comm_rows, mpi_comm_cols
 complex*16 a(lda,*)
+logical success
     
-call cholesky_complex(na, a, lda, nblk, mpi_comm_rows, mpi_comm_cols)
+call cholesky_complex(na, a, lda, nblk, mpi_comm_rows, mpi_comm_cols, success)
 
 end subroutine
 
@@ -14,8 +15,9 @@ use elpa1
 implicit none
 integer na, lda, nblk, mpi_comm_rows, mpi_comm_cols
 complex*16 a(lda,*)
+logical success
 
-call invert_trm_complex(na, a, lda, nblk, mpi_comm_rows, mpi_comm_cols)
+call invert_trm_complex(na, a, lda, nblk, mpi_comm_rows, mpi_comm_cols, success)
 
 end subroutine
 
@@ -38,8 +40,9 @@ implicit none
 integer, intent(in) :: na, nev, lda, ldq, nblk, mpi_comm_rows, mpi_comm_cols
 complex*16 :: a(lda,*), q(ldq,*)
 real*8 :: ev(na)
+logical success
 
-call solve_evp_complex(na, nev, a, lda, ev, q, ldq, nblk, mpi_comm_rows, mpi_comm_cols)
+success = solve_evp_complex(na, nev, a, lda, ev, q, ldq, nblk, mpi_comm_rows, mpi_comm_cols)
 
 end subroutine
 
@@ -50,8 +53,8 @@ implicit none
 integer, intent(in) :: na, nev, lda, ldq, nblk, mpi_comm_rows, mpi_comm_cols, mpi_comm_all
 complex*16, intent(inout) :: a(lda,*), q(ldq,*)
 real*8, intent(inout) :: ev(na)
-
-call solve_evp_complex_2stage(na, nev, a, lda, ev, q, ldq, nblk, mpi_comm_rows, mpi_comm_cols, mpi_comm_all)
+logical success
+success = solve_evp_complex_2stage(na, nev, a, lda, ev, q, ldq, nblk, mpi_comm_rows, mpi_comm_cols, mpi_comm_all)
 
 end subroutine
 
