@@ -199,7 +199,7 @@ class JSON_tree
         {
         }
 
-        JSON_tree(const std::string& fname__) : fname_(fname__)
+        JSON_tree(std::string const& fname__) : fname_(fname__)
         {
             parse_file(fname_);
         }
@@ -213,7 +213,7 @@ class JSON_tree
             return node_.empty();
         }
 
-        inline bool exist(const std::string& name) const
+        inline bool exist(std::string const& name) const
         {
             if (node_.find(name) == node_.end()) return false;
             return true;
@@ -231,12 +231,7 @@ class JSON_tree
             }
         }
 
-        inline JSON_tree operator[](const char *key) const 
-        {
-            return (*this)[std::string(key)];
-        }
-
-        inline JSON_tree operator[](const std::string& key) const 
+        inline JSON_tree operator[](std::string const& key) const 
         {
             std::string new_path = path_ + std::string("/") + key;
             JSONNode n;
@@ -251,7 +246,7 @@ class JSON_tree
             return JSON_tree(n, new_path, fname_);
         }
 
-        inline JSON_tree operator[](const int key) const 
+        inline JSON_tree operator[](int const key) const 
         {
             std::string new_path = path_ + std::string("/") + std::to_string(key);
             JSONNode n;
