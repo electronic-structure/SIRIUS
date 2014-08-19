@@ -102,6 +102,103 @@ class sbessel_pw
         }
 };
 
+class sbessel_approx
+{
+    private:
+
+        static double sbessel_l2norm(double nu, int l, double R)
+        {
+            double d1;
+            if (l == 0)
+            {
+                d1 = -gsl_sf_bessel_Ynu(0.5, nu * R);
+            }
+            else
+            {
+                d1 = gsl_sf_bessel_Jnu(l - 0.5, nu * R);
+            }
+            return R * std::sqrt(pi * (std::pow(gsl_sf_bessel_Jnu(0.5 + l, nu * R), 2) - d1 * gsl_sf_bessel_Jnu(l + 1.5, nu * R)) / 4 / nu);
+        }
+
+    public:
+        
+        // \int_0^{R} j(nu1*r) * j(nu2 * r) * r^2 dr
+        // this integral can be computed analytically
+        static double overlap(double nu1, double nu2, int l, double R)
+        {
+            if (std::abs(nu1 - nu2) < 1e-12)
+            {
+                double d1;
+                if (l == 0)
+                {
+                    d1 = -gsl_sf_bessel_Ynu(0.5, nu1 * R);
+                }
+                else
+                {
+                    d1 = gsl_sf_bessel_Jnu(l - 0.5, nu1 * R);
+                }
+                return pi * R * R * (std::pow(gsl_sf_bessel_Jnu(0.5 + l, nu1 * R), 2) - d1 * gsl_sf_bessel_Jnu(l + 1.5, nu1 * R)) / 4 / nu1;
+            }
+            else
+            {
+                double d1, d2;
+                if (l == 0)
+                {
+                    d1 = -gsl_sf_bessel_Ynu(0.5, nu1 * R);
+                    d2 = -gsl_sf_bessel_Ynu(0.5, nu2 * R);
+                }
+                else
+                {
+                    d1 = gsl_sf_bessel_Jnu(l - 0.5, nu1 * R);
+                    d2 = gsl_sf_bessel_Jnu(l - 0.5, nu2 * R);
+                }
+                
+                double d = nu2 * d2 * gsl_sf_bessel_Jnu(l + 0.5, nu1 * R) - nu1 * d1 * gsl_sf_bessel_Jnu(l + 0.5, nu2 * R);
+                return (pi * R * d / ( 2 * (std::pow(nu1, 2) - std::pow(nu2, 2)) * std::sqrt(nu1 * nu2)));
+            }
+        }
+
+        static void build_approx_freq(double const qmin__,
+                                      double const qmax__,
+                                      int const l__,
+                                      double const R__,
+                                      double const eps__,
+                                      std::vector<double>& nu__)
+        {
+            double min_val = 1e10;
+            int n = 2;
+
+            do
+            {
+                n++;
+                nu__.resize(n);
+                for (int i = 0; i < n; i++) nu__[i] = qmin__ + (qmax__ - qmin__) * i / (n - 1);
+                
+                mdarray<double_complex, 2> ovlp(n, n);
+                for (int i = 0; i < n; i++)
+                {
+                    for (int j = 0; j <= i; j++)
+                    {
+                        ovlp(j, i) = overlap(nu__[j], nu__[i], l__, R__) / sbessel_l2norm(nu__[i], l__, R__) / sbessel_l2norm(nu__[j], l__, R__);
+                    }
+
+                }
+                
+                std::vector<double> eval(n);
+                mdarray<double_complex, 2> z(n, n);
+
+                standard_evp_lapack solver;
+                solver.solve(n, ovlp.ptr(), n, &eval[0], z.ptr(), n);
+                min_val = eval[0];
+
+            } while (min_val > eps__);
+        }
+            
+
+
+};
+
+
 };
 
 #endif

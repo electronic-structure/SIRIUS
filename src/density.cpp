@@ -254,12 +254,9 @@ void Density::initial_density()
             if (rho_->f_it<global>(ir) < 0) rho_->f_it<global>(ir) = 0;
         }
 
-        int lmax = parameters_.lmax_rho();
-        int lmmax = Utils::lmmax(lmax);
-
         int ngv_loc = (int)rl->spl_num_gvec().local_size();
 
-        /* mapping between G-shell and a list of G-vectors */
+        /* mapping between G-shell (global index) and a list of G-vectors (local index) */
         std::map<int, std::vector<int> > gsh_map;
 
         for (int igloc = 0; igloc < ngv_loc; igloc++)
@@ -275,120 +272,152 @@ void Density::initial_density()
         /* list of G-shells for the curent MPI rank */
         std::vector<std::pair<int, std::vector<int> > > gsh_list;
         for (auto& i: gsh_map) gsh_list.push_back(std::pair<int, std::vector<int> >(i.first, i.second));
-        
-        Timer t1("sirius::Density::initial_density|tails");
-        for (int ia = 0; ia < uc->num_atoms(); ia++)
+
+        int lmax = parameters_.lmax_rho();
+        int lmmax = Utils::lmmax(lmax);
+
+        mdarray< mdarray<double, 2>*, 2> sbessel_coeffs(lmax + 1, uc->num_atom_types());
+        mdarray< std::vector<double>, 2> sbessel_qnu(lmax + 1, uc->num_atom_types());
+
+        Timer t2("sirius::Density::initial_density|coefs");
+        int nqnu_max = 0;
+        #pragma omp parallel for
+        for (int l = 0; l <= lmax; l++)
         {
-            auto p = uc->spl_num_atoms().location(ia);
-
-            /* compute spherical part of the superposition of the free atomic density tails */
-            std::vector<double_complex> v0(uc->atom(ia)->num_mt_points(), complex_zero);
-            #pragma omp parallel
+            for (int iat = 0; iat < uc->num_atom_types(); iat++)
             {
-                std::vector<double_complex> v0_pt(uc->atom(ia)->num_mt_points(), complex_zero);
+                sbessel_approx::build_approx_freq(rl->gvec_shell_len(1),
+                                                  rl->gvec_shell_len(rl->num_gvec_shells_inner() - 1),
+                                                  l,
+                                                  uc->atom_type(iat)->mt_radius(),
+                                                  1e-6,
+                                                  sbessel_qnu(l, iat));
+                
+                int nqnu = static_cast<int>(sbessel_qnu(l, iat).size());
+                #pragma omp critical
+                nqnu_max = std::max(nqnu_max, nqnu);
 
-                /* loop over G-vector shells */
-                #pragma omp for schedule(static)
-                for (int i = 0; i < (int)gsh_list.size(); i++)
-                {
-                    int igsh = gsh_list[i].first;
-                    auto& gv = gsh_list[i].second;
+                sbessel_coeffs(l, iat) = new mdarray<double, 2>(nqnu, gsh_list.size());
 
-                    /* lengths of the G-vectors in the current shell */
-                    double G = rl->gvec_shell_len(igsh);
-                    
-                    double_complex z(0, 0);
-                    for (int igloc: gv)
+                mdarray<double, 2> A(nqnu, nqnu);
+                for (int iq = 0; iq < nqnu; iq++)
+                { 
+                    for (int jq = 0; jq <= iq; jq++)
                     {
-                        int ig = rl->spl_num_gvec(igloc);
-                        z += v[ig] * rl->gvec_phase_factor<local>(igloc, ia);
+                        A(jq, iq) = A(iq, jq) = sbessel_approx::overlap(sbessel_qnu(l, iat)[jq],
+                                                                        sbessel_qnu(l, iat)[iq],
+                                                                        l,
+                                                                        uc->atom_type(iat)->mt_radius());
                     }
 
-                    if (igsh == 0) 
+                    for (int i = 0; i < (int)gsh_list.size(); i++)
                     {
-                         for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++) v0_pt[ir] += z;
-                    }
-                    else
-                    {
-                        for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
+                        int igsh = gsh_list[i].first;
+                        if (igsh == 0)
                         {
-                            double x = uc->atom(ia)->radial_grid(ir);
-                            v0_pt[ir] += z * sin(G * x) / (G * x);
+                             (*sbessel_coeffs(l, iat))(iq, i) = 0;
+                        }
+                        else
+                        {
+                            (*sbessel_coeffs(l, iat))(iq, i) = sbessel_approx::overlap(sbessel_qnu(l, iat)[iq],
+                                                                                       rl->gvec_shell_len(igsh),
+                                                                                       l,
+                                                                                       uc->atom_type(iat)->mt_radius());
                         }
                     }
                 }
-
-                #pragma omp critical
-                for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++) v0[ir] += v0_pt[ir];
-
-            }
-            Platform::allreduce(&v0[0], uc->atom(ia)->num_mt_points());
-            
-            /* add spherical part of the superposition of tails and remove contribution from the smooth density */
-            if (p.second == Platform::mpi_rank())
-            {
-                for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
-                {
-                    double x = uc->atom(ia)->radial_grid(ir);
-                    rho_->f_mt<local>(0, ir, (int)p.first) = (real(v0[ir]) - uc->atom(ia)->type()->free_atom_density(x)) / y00;
-                }
+                linalg<lapack>::gesv(nqnu, static_cast<int>(gsh_list.size()), A.ptr(), A.ld(), 
+                                     sbessel_coeffs(l, iat)->ptr(), sbessel_coeffs(l, iat)->ld());
             }
         }
-        t1.stop();
-
-        Timer t2("sirius::Density::initial_density|nonsph");
-        /* compute values of spherical Bessel functions at MT boundary */
-        mdarray<double, 3> sbessel_mt(lmax + 1, uc->num_atom_types(), rl->num_gvec_shells_inner());
-        
-        for (int iat = 0; iat < uc->num_atom_types(); iat++)
-        {
-            for (int igs = 0; igs < rl->num_gvec_shells_inner(); igs++)
-            {
-                gsl_sf_bessel_jl_array(lmax, rl->gvec_shell_len(igs) * uc->atom_type(iat)->mt_radius(), 
-                                       &sbessel_mt(0, iat, igs));
-            }
-        }
+        t2.stop();
 
         auto l_by_lm = Utils::l_by_lm(lmax);
 
         std::vector<double_complex> zil(lmax + 1);
         for (int l = 0; l <= lmax; l++) zil[l] = pow(double_complex(0, 1), l);
 
-        /* this is a small hack to perform a transformation from Ylm to Rlm using Spheric_function class */
-        std::vector<double> x_tmp(uc->num_atoms());
-        for (int ia = 0; ia < uc->num_atoms(); ia++) x_tmp[ia] = ia;
-        Radial_grid rg_tmp(x_tmp);
-        Spheric_function<spectral, double_complex> rhoylm_tmp(lmmax, rg_tmp);
+        Timer t3("sirius::Density::initial_density|rholm");
+
+        mdarray<double_complex, 3> znulm(nqnu_max, lmmax, uc->num_atoms());
+        znulm.zero();
         
-        /* compute MT boundary values of the density */
-        #pragma omp parallel
+        #pragma omp parallel for
+        for (int ia = 0; ia < uc->num_atoms(); ia++)
         {
-            mdarray<double_complex, 2> zm(lmmax, ngv_loc);
-            #pragma omp for
-            for (int ia = 0; ia < uc->num_atoms(); ia++)
+            int iat = uc->atom(ia)->type_id();
+
+            for (int lm = 0; lm < lmmax; lm++)
             {
-                int iat = uc->atom(ia)->type_id();
-                for (int igloc = 0; igloc < ngv_loc; igloc++)
+                int l = l_by_lm[lm];
+                
+                /* number of expansion coefficients */
+                int nqnu = (int)sbessel_coeffs(l, iat)->size(0);
+
+                /* loop over local fraction of G-shells */
+                for (int i = 0; i < (int)gsh_list.size(); i++)
                 {
-                    int ig = rl->spl_num_gvec(igloc);
-                    for (int lm = 0; lm < lmmax; lm++)
+                    auto& gv = gsh_list[i].second;
+                    
+                    /* loop over G-vectors */
+                    for (int igloc: gv)
                     {
-                        int l = l_by_lm_[lm];
-                        zm(lm, igloc) = fourpi * zil[l] * rl->gvec_phase_factor<local>(igloc, ia) *
-                                        conj(rl->gvec_ylm(lm, igloc)) * sbessel_mt(l, iat, rl->gvec_shell(ig));
+                        /* global index of the G-vector */
+                        int ig = rl->spl_num_gvec(igloc);
+
+                        double_complex z = v[ig] * rl->gvec_phase_factor<local>(igloc, ia) * zil[l] * rl->gvec_ylm(lm, igloc) * fourpi;
+                    
+                        for (int iq = 0; iq < nqnu; iq++) 
+                        {
+                            znulm(iq, lm, ia) += z * (*sbessel_coeffs(l, iat))(iq, i);
+                        }
                     }
                 }
-                blas<cpu>::gemv(0, lmmax, ngv_loc, complex_one, zm.ptr(), zm.ld(), 
-                                &v[rl->spl_num_gvec().global_offset()], 1, complex_zero, &rhoylm_tmp(0, ia), 1);
             }
         }
-        
-        Platform::allreduce(&rhoylm_tmp(0, 0), (int)rhoylm_tmp.size());
+        Platform::allreduce(znulm.ptr(), (int)znulm.size());
 
-        Spheric_function<spectral, double> rhorlm_tmp(lmmax, rg_tmp);
+        for (int l = 0; l <= lmax; l++)
+        {
+            for (int iat = 0; iat < uc->num_atom_types(); iat++)
+            {
+                delete sbessel_coeffs(l, iat);
+            }
+        }
+
         SHT sht(lmax);
-        sht.convert(rhoylm_tmp, rhorlm_tmp);
-        t2.stop();
+
+        for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
+        {
+            int ia = parameters_.unit_cell()->spl_num_atoms(ialoc);
+            int iat = uc->atom(ia)->type_id();
+
+            Spheric_function<spectral, double_complex> rhoylm(lmmax, uc->atom(ia)->radial_grid());
+            rhoylm.zero();
+            #pragma omp parallel for
+            for (int lm = 0; lm < lmmax; lm++)
+            {
+                int l = l_by_lm[lm];
+                for (int i = 0; i < (int)sbessel_qnu(l, iat).size(); i++)
+                {
+                    double qnu = sbessel_qnu(l, iat)[i];
+
+                    for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
+                    {
+                        double x = uc->atom(ia)->radial_grid(ir);
+                        rhoylm(lm, ir) += znulm(i, lm, ia) * gsl_sf_bessel_jl(l, x * qnu);
+                    }
+                }
+            }
+            for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
+            {
+                double x = uc->atom(ia)->radial_grid(ir);
+                rhoylm(0, ir) += (v[0] - uc->atom(ia)->type()->free_atom_density(x)) / y00;
+            }
+            sht.convert(rhoylm, rho_->f_mt(ialoc));
+        }
+
+        t3.stop();
 
         /* initialize density of free atoms (not smoothed) */
         for (int iat = 0; iat < uc->num_atom_types(); iat++) uc->atom_type(iat)->init_free_atom(false);
@@ -404,18 +433,6 @@ void Density::initial_density()
                 {
                     double x = uc->atom(ia)->type()->radial_grid(ir);
                     rho_->f_mt<local>(0, ir, (int)p.first) += uc->atom(ia)->type()->free_atom_density(x) / y00;
-                }
-                
-                /* add a simple term to match a boundary condition for non-spherical part */
-                double R = uc->atom(ia)->mt_radius();
-                for (int lm = 1; lm < parameters_.lmmax_pot(); lm++)
-                {
-                    int l = l_by_lm_[lm];
-                    for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
-                    {
-                        double x = uc->atom(ia)->type()->radial_grid(ir);
-                        rho_->f_mt<local>(lm, ir, (int)p.first) += rhorlm_tmp(lm, ia) * std::pow(x / R, l);
-                    }
                 }
             }
         }
