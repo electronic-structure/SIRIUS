@@ -482,8 +482,6 @@ void Density::initial_density()
             warning_global(__FILE__, __LINE__, s);
         }
     }
-
-    STOP();
 }
 
 void Density::add_kpoint_contribution_mt(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 
