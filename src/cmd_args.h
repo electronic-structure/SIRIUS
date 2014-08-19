@@ -54,7 +54,7 @@ class cmd_args
                 key_type = 1;
             }
 
-            if (known_keys_.count(key) != 0) terminate(__FILE__, __LINE__, "key is already added");
+            if (known_keys_.count(key) != 0) TERMINATE("key is already added");
 
             known_keys_[key] = key_type;
         }
@@ -64,7 +64,7 @@ class cmd_args
             for (int i = 1; i < argn__; i++)
             {
                 std::string str(argv__[i]);
-                if (str.length() < 3 || str[0] != '-' || str[1] != '-') terminate(__FILE__, __LINE__, "wrong key");
+                if (str.length() < 3 || str[0] != '-' || str[1] != '-') TERMINATE("wrong key");
 
                 size_t k = str.find("=");
 
@@ -83,20 +83,20 @@ class cmd_args
                 {
                     std::stringstream s;
                     s << "key " << key << " is not found";
-                    terminate(__FILE__, __LINE__, s);
+                    TERMINATE(s);
                 }
 
                 if (known_keys_[key] == 0 && k != std::string::npos)
                 {
-                    terminate(__FILE__, __LINE__, "this key must not have a value");
+                    TERMINATE("this key must not have a value");
                 }
 
                 if (known_keys_[key] == 1 && k == std::string::npos)
                 {
-                    terminate(__FILE__, __LINE__, "this key must have a value");
+                    TERMINATE("this key must have a value");
                 }
 
-                if (keys_.count(key) != 0) terminate(__FILE__, __LINE__, "key is already added");
+                if (keys_.count(key) != 0) TERMINATE("key is already added");
 
                 keys_[key] = val;
             }
@@ -147,7 +147,7 @@ inline int cmd_args::value<int>(const std::string key__)
     {
         std::stringstream s;
         s << "command line parameter --" << key__ << " was not specified";
-        terminate(__FILE__, __LINE__, s);
+        TERMINATE(s);
     }
 
     std::istringstream(keys_[key__]) >> v;
@@ -173,7 +173,7 @@ inline double cmd_args::value<double>(const std::string key__)
     {
         std::stringstream s;
         s << "command line parameter --" << key__ << " was not specified";
-        terminate(__FILE__, __LINE__, s);
+        TERMINATE(s);
     }
 
     std::istringstream(keys_[key__]) >> v;
@@ -205,11 +205,28 @@ inline vector3d<double> cmd_args::value< vector3d<double> >(const std::string ke
     {
         std::stringstream s;
         s << "command line parameter --" << key__ << " was not specified";
-        terminate(__FILE__, __LINE__, s);
+        TERMINATE(s);
     }
 
     std::istringstream iss(keys_[key__]);
     for (int x = 0; x < 3; x++) iss >> v[x];
+    return v;
+}
+
+template<>
+inline std::vector<int> cmd_args::value< std::vector<int> >(std::string const key__, std::vector<int> const default_val__)
+{
+    if (!exist(key__)) return default_val__;
+
+    std::istringstream iss(keys_[key__]);
+    std::vector<int> v;
+    while (!iss.eof())
+    {
+        int k;
+        iss >> k;
+        v.push_back(k);
+    }
+
     return v;
 }
 

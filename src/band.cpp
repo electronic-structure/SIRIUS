@@ -977,6 +977,7 @@ void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<do
 //==     set_fv_h_o_lo_lo(kp, h.data(), o.data());
 //== 
 //==     log_function_exit(__func__);
+//==     kp->comm().barrier();
 //== }
 
 template<> 
@@ -985,7 +986,7 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp__,
                                                   dmatrix<double_complex>& h__,
                                                   dmatrix<double_complex>& o__)
 {
-    Timer t("sirius::Band::set_fv_h_o");
+    Timer t("sirius::Band::set_fv_h_o", _global_timer_);
     
     h__.zero();
     o__.zero();
@@ -1025,6 +1026,8 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp__,
 
     /* setup lo-lo block */
     set_fv_h_o_lo_lo(kp__, h__.data(), o__.data());
+
+    kp__->comm().barrier();
 }
 
 //=====================================================================================================================

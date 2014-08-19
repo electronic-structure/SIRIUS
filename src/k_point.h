@@ -197,8 +197,8 @@ class K_point
         K_point(Global& parameters__, double* vk__, double weight__) 
             : parameters_(parameters__), 
               weight_(weight__),
-              alm_coeffs_row_(NULL),
-              alm_coeffs_col_(NULL)
+              alm_coeffs_row_(nullptr),
+              alm_coeffs_col_(nullptr)
         {
             for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
 
@@ -208,13 +208,13 @@ class K_point
             comm_row_ = Communicator(parameters_.mpi_grid().communicator(1 << _dim_row_));
             comm_col_ = Communicator(parameters_.mpi_grid().communicator(1 << _dim_col_));
             
-            num_ranks_row_ = comm_row_.size(); //parameters_.mpi_grid().dimension_size(_dim_row_);
-            num_ranks_col_ = comm_col_.size(); //parameters_.mpi_grid().dimension_size(_dim_col_);
+            num_ranks_row_ = comm_row_.size();
+            num_ranks_col_ = comm_col_.size();
 
-            num_ranks_ = comm_.size(); //num_ranks_row_ * num_ranks_col_;
+            num_ranks_ = comm_.size();
 
-            rank_row_ = comm_row_.rank(); //parameters_.mpi_grid().coordinate(_dim_row_);
-            rank_col_ = comm_col_.rank(); //parameters_.mpi_grid().coordinate(_dim_col_);
+            rank_row_ = comm_row_.rank();
+            rank_col_ = comm_col_.rank();
 
             fft_ = parameters_.reciprocal_lattice()->fft();
 

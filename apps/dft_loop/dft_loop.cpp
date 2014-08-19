@@ -86,8 +86,10 @@ void dft_loop(cmd_args args)
 
     if (!(task_name == "gs_new" || task_name == "gs_restart" || task_name == "gs_relax" || task_name == "test_init"))
         error_global(__FILE__, __LINE__, "wrong task name");
-
-    Global parameters;
+    
+    std::vector<int> mpi_grid_dims;
+    mpi_grid_dims = args.value< std::vector<int> >("mpi_grid", mpi_grid_dims);
+    Global parameters(mpi_grid_dims);
 
     JSON_tree parser("sirius.json");
 
@@ -206,6 +208,7 @@ int main(int argn, char** argv)
 
     cmd_args args;
     args.register_key("--task=", "{string} name of the task");
+    args.register_key("--mpi_grid=", "{vector int} MPI grid dimensions");
     args.parse_args(argn, argv);
 
     if (argn == 1)

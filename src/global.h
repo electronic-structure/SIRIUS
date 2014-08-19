@@ -146,7 +146,7 @@ class Global
 
     public:
     
-        Global() 
+        Global(std::vector<int> const mpi_grid_dims__ = std::vector<int>())
             : initialized_(false), 
               lmax_apw_(lmax_apw_default), 
               lmax_pw_(-1), 
@@ -159,12 +159,13 @@ class Global
               num_spins_(1), 
               num_mag_dims_(0), 
               so_correction_(false), 
-              uj_correction_(false), 
+              uj_correction_(false),
+              mpi_grid_dims_(mpi_grid_dims__),
               cyclic_block_size_(64), 
               std_evp_solver_type_(ev_lapack),
-              std_evp_solver_(NULL),
+              std_evp_solver_(nullptr),
               gen_evp_solver_type_(ev_lapack),
-              gen_evp_solver_(NULL),
+              gen_evp_solver_(nullptr),
               #ifdef _GPU_
               processing_unit_(gpu),
               #else
@@ -173,8 +174,8 @@ class Global
               blacs_context_(-1),
               smearing_width_(0.001), 
               esm_type_(full_potential_lapwlo),
-              step_function_(NULL),
-              reciprocal_lattice_(NULL)
+              step_function_(nullptr),
+              reciprocal_lattice_(nullptr)
         {
             /* get the starting time */
             gettimeofday(&start_time_, NULL);
