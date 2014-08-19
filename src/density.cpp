@@ -300,27 +300,29 @@ void Density::initial_density()
         {
             int iat = uc->atom(ia)->type_id();
 
-            for (int lm = 0; lm < lmmax; lm++)
+            /* loop over local fraction of G-shells */
+            for (int i = 0; i < (int)gsh_list.size(); i++)
             {
-                int l = l_by_lm[lm];
+                auto& gv = gsh_list[i].second;
                 
-                /* number of expansion coefficients */
-                int nqnu = sba.nqnu(l, iat);
-
-                /* loop over local fraction of G-shells */
-                for (int i = 0; i < (int)gsh_list.size(); i++)
+                /* loop over G-vectors */
+                for (int igloc: gv)
                 {
-                    auto& gv = gsh_list[i].second;
-                    
-                    /* loop over G-vectors */
-                    for (int igloc: gv)
-                    {
-                        /* global index of the G-vector */
-                        int ig = rl->spl_num_gvec(igloc);
+                    /* global index of the G-vector */
+                    int ig = rl->spl_num_gvec(igloc);
 
-                        double_complex z = v[ig] * rl->gvec_phase_factor<local>(igloc, ia) * zil[l] * rl->gvec_ylm(lm, igloc) * fourpi;
+                    double_complex z1 = rl->gvec_phase_factor<local>(igloc, ia) * v[ig] * fourpi; 
+
+                    for (int lm = 0; lm < lmmax; lm++)
+                    {
+                        int l = l_by_lm[lm];
+                        
+                        /* number of expansion coefficients */
+                        int nqnu = sba.nqnu(l, iat);
+
+                        double_complex z2 = z1 * zil[l] * rl->gvec_ylm(lm, igloc);
                     
-                        for (int iq = 0; iq < nqnu; iq++) znulm(iq, lm, ia) += z * sba.coeff(iq, i, l, iat);
+                        for (int iq = 0; iq < nqnu; iq++) znulm(iq, lm, ia) += z2 * sba.coeff(iq, i, l, iat);
                     }
                 }
             }
