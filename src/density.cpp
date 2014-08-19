@@ -275,71 +275,24 @@ void Density::initial_density()
 
         int lmax = parameters_.lmax_rho();
         int lmmax = Utils::lmmax(lmax);
-
-        mdarray< mdarray<double, 2>*, 2> sbessel_coeffs(lmax + 1, uc->num_atom_types());
-        mdarray< std::vector<double>, 2> sbessel_qnu(lmax + 1, uc->num_atom_types());
-
-        Timer t2("sirius::Density::initial_density|coefs");
-        int nqnu_max = 0;
-        #pragma omp parallel for
-        for (int l = 0; l <= lmax; l++)
+        
+        sbessel_approx sba(uc, lmax, rl->gvec_shell_len(1), rl->gvec_shell_len(rl->num_gvec_shells_inner() - 1), 1e-6);
+        
+        std::vector<double> gvec_len(gsh_list.size());
+        for (int i = 0; i < (int)gsh_list.size(); i++)
         {
-            for (int iat = 0; iat < uc->num_atom_types(); iat++)
-            {
-                sbessel_approx::build_approx_freq(rl->gvec_shell_len(1),
-                                                  rl->gvec_shell_len(rl->num_gvec_shells_inner() - 1),
-                                                  l,
-                                                  uc->atom_type(iat)->mt_radius(),
-                                                  1e-6,
-                                                  sbessel_qnu(l, iat));
-                
-                int nqnu = static_cast<int>(sbessel_qnu(l, iat).size());
-                #pragma omp critical
-                nqnu_max = std::max(nqnu_max, nqnu);
-
-                sbessel_coeffs(l, iat) = new mdarray<double, 2>(nqnu, gsh_list.size());
-
-                mdarray<double, 2> A(nqnu, nqnu);
-                for (int iq = 0; iq < nqnu; iq++)
-                { 
-                    for (int jq = 0; jq <= iq; jq++)
-                    {
-                        A(jq, iq) = A(iq, jq) = sbessel_approx::overlap(sbessel_qnu(l, iat)[jq],
-                                                                        sbessel_qnu(l, iat)[iq],
-                                                                        l,
-                                                                        uc->atom_type(iat)->mt_radius());
-                    }
-
-                    for (int i = 0; i < (int)gsh_list.size(); i++)
-                    {
-                        int igsh = gsh_list[i].first;
-                        if (igsh == 0)
-                        {
-                             (*sbessel_coeffs(l, iat))(iq, i) = 0;
-                        }
-                        else
-                        {
-                            (*sbessel_coeffs(l, iat))(iq, i) = sbessel_approx::overlap(sbessel_qnu(l, iat)[iq],
-                                                                                       rl->gvec_shell_len(igsh),
-                                                                                       l,
-                                                                                       uc->atom_type(iat)->mt_radius());
-                        }
-                    }
-                }
-                linalg<lapack>::gesv(nqnu, static_cast<int>(gsh_list.size()), A.ptr(), A.ld(), 
-                                     sbessel_coeffs(l, iat)->ptr(), sbessel_coeffs(l, iat)->ld());
-            }
+            gvec_len[i] = rl->gvec_shell_len(gsh_list[i].first);
         }
-        t2.stop();
+        sba.approximate(gvec_len);
 
         auto l_by_lm = Utils::l_by_lm(lmax);
 
         std::vector<double_complex> zil(lmax + 1);
         for (int l = 0; l <= lmax; l++) zil[l] = pow(double_complex(0, 1), l);
 
-        Timer t3("sirius::Density::initial_density|rholm");
+        Timer t3("sirius::Density::initial_density|znulm");
 
-        mdarray<double_complex, 3> znulm(nqnu_max, lmmax, uc->num_atoms());
+        mdarray<double_complex, 3> znulm(sba.nqnu_max(), lmmax, uc->num_atoms());
         znulm.zero();
         
         #pragma omp parallel for
@@ -352,7 +305,7 @@ void Density::initial_density()
                 int l = l_by_lm[lm];
                 
                 /* number of expansion coefficients */
-                int nqnu = (int)sbessel_coeffs(l, iat)->size(0);
+                int nqnu = sba.nqnu(l, iat);
 
                 /* loop over local fraction of G-shells */
                 for (int i = 0; i < (int)gsh_list.size(); i++)
@@ -367,24 +320,16 @@ void Density::initial_density()
 
                         double_complex z = v[ig] * rl->gvec_phase_factor<local>(igloc, ia) * zil[l] * rl->gvec_ylm(lm, igloc) * fourpi;
                     
-                        for (int iq = 0; iq < nqnu; iq++) 
-                        {
-                            znulm(iq, lm, ia) += z * (*sbessel_coeffs(l, iat))(iq, i);
-                        }
+                        for (int iq = 0; iq < nqnu; iq++) znulm(iq, lm, ia) += z * sba.coeff(iq, i, l, iat);
                     }
                 }
             }
         }
         Platform::allreduce(znulm.ptr(), (int)znulm.size());
+        t3.stop();
 
-        for (int l = 0; l <= lmax; l++)
-        {
-            for (int iat = 0; iat < uc->num_atom_types(); iat++)
-            {
-                delete sbessel_coeffs(l, iat);
-            }
-        }
-
+        Timer t4("sirius::Density::initial_density|rholm");
+        
         SHT sht(lmax);
 
         for (int ialoc = 0; ialoc < (int)parameters_.unit_cell()->spl_num_atoms().local_size(); ialoc++)
@@ -398,14 +343,14 @@ void Density::initial_density()
             for (int lm = 0; lm < lmmax; lm++)
             {
                 int l = l_by_lm[lm];
-                for (int i = 0; i < (int)sbessel_qnu(l, iat).size(); i++)
+                for (int iq = 0; iq < sba.nqnu(l, iat); iq++)
                 {
-                    double qnu = sbessel_qnu(l, iat)[i];
+                    double qnu = sba.qnu(iq, l, iat);
 
                     for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
                     {
                         double x = uc->atom(ia)->radial_grid(ir);
-                        rhoylm(lm, ir) += znulm(i, lm, ia) * gsl_sf_bessel_jl(l, x * qnu);
+                        rhoylm(lm, ir) += znulm(iq, lm, ia) * gsl_sf_bessel_jl(l, x * qnu);
                     }
                 }
             }
@@ -416,8 +361,8 @@ void Density::initial_density()
             }
             sht.convert(rhoylm, rho_->f_mt(ialoc));
         }
-
-        t3.stop();
+        
+        t4.stop();
 
         /* initialize density of free atoms (not smoothed) */
         for (int iat = 0; iat < uc->num_atom_types(); iat++) uc->atom_type(iat)->init_free_atom(false);
@@ -535,6 +480,8 @@ void Density::initial_density()
             warning_global(__FILE__, __LINE__, s);
         }
     }
+
+    STOP();
 }
 
 void Density::add_kpoint_contribution_mt(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands, 

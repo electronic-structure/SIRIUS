@@ -120,7 +120,110 @@ class sbessel_approx
             return R * std::sqrt(pi * (std::pow(gsl_sf_bessel_Jnu(0.5 + l, nu * R), 2) - d1 * gsl_sf_bessel_Jnu(l + 1.5, nu * R)) / 4 / nu);
         }
 
+        Unit_cell* unit_cell_;
+
+        int lmax_;
+
+        mdarray<std::vector<double>, 2> qnu_;
+        mdarray<double, 4> coeffs_; 
+
+        int nqnu_max_;
+
+
     public:
+
+        sbessel_approx(Unit_cell* const unit_cell__,
+                       int lmax__,
+                       double const qmin__,
+                       double const qmax__,
+                       double const eps__)
+            : unit_cell_(unit_cell__),
+              lmax_(lmax__)
+        {
+            Timer t("sirius::sbessel_approx");
+
+            qnu_.set_dimensions(lmax_ + 1, unit_cell_->num_atom_types());
+            qnu_.allocate();
+
+            #pragma omp parallel for
+            for (int l = 0; l <= lmax_; l++)
+            {
+                for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+                {
+                    qnu_(l, iat) = build_approx_freq(qmin__, qmax__, l, unit_cell_->atom_type(iat)->mt_radius(), eps__);
+                }
+            }
+
+            nqnu_max_ = 0;
+            for (int l = 0; l <= lmax_; l++)
+            {
+                for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+                {
+                    nqnu_max_ = std::max(nqnu_max_, static_cast<int>(qnu_(l, iat).size()));
+                }
+            }
+        }
+
+        void approximate(std::vector<double> const& q__)
+        {
+            Timer t("sirius::sbessel_approx::approximate");
+
+            coeffs_.set_dimensions(nqnu_max_, q__.size(), lmax_ + 1, unit_cell_->num_atom_types());
+            coeffs_.allocate();
+            
+            #pragma omp parallel for
+            for (int l = 0; l <= lmax_; l++)
+            {
+                for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+                {
+                    int n = nqnu(l, iat);
+
+                    mdarray<double, 2> A(n, n);
+                    for (int iq = 0; iq < n; iq++)
+                    { 
+                        for (int jq = 0; jq <= iq; jq++)
+                        {
+                            A(jq, iq) = A(iq, jq) = overlap(qnu_(l, iat)[jq], qnu_(l, iat)[iq], l,
+                                                            unit_cell_->atom_type(iat)->mt_radius());
+                        }
+
+                        for (int j = 0; j < (int)q__.size(); j++)
+                        {
+                            if (std::abs(q__[j]) < 1e-12)
+                            {
+                                coeffs_(iq, j, l, iat) = 0;
+                            }
+                            else
+                            {
+                                coeffs_(iq, j, l, iat) = overlap(qnu_(l, iat)[iq], q__[j], l, 
+                                                                 unit_cell_->atom_type(iat)->mt_radius());
+                            }
+                        }
+                    }
+                    linalg<lapack>::gesv(n, (int)q__.size(), A.ptr(), A.ld(), &coeffs_(0, 0, l, iat), coeffs_.ld());
+                }
+            }
+        }
+
+        inline double qnu(int const iq, int const l, int const iat)
+        {
+            return qnu_(l, iat)[iq];
+        }
+
+        inline int nqnu(int const l, int const iat)
+        {
+            return static_cast<int>(qnu_(l, iat).size());
+        }
+
+        inline int nqnu_max()
+        {
+            return nqnu_max_;
+        }
+
+        inline double coeff(int const iq, int const j, int const l, int const iat)
+        {
+            return coeffs_(iq, j, l, iat);
+        }
         
         // \int_0^{R} j(nu1*r) * j(nu2 * r) * r^2 dr
         // this integral can be computed analytically
@@ -158,30 +261,30 @@ class sbessel_approx
             }
         }
 
-        static void build_approx_freq(double const qmin__,
-                                      double const qmax__,
-                                      int const l__,
-                                      double const R__,
-                                      double const eps__,
-                                      std::vector<double>& nu__)
+        std::vector<double> build_approx_freq(double const qmin__,
+                                              double const qmax__,
+                                              int const l__,
+                                              double const R__,
+                                              double const eps__)
         {
-            double min_val = 1e10;
+            std::vector<double> qnu;
+
+            double min_val;
             int n = 2;
 
             do
             {
                 n++;
-                nu__.resize(n);
-                for (int i = 0; i < n; i++) nu__[i] = qmin__ + (qmax__ - qmin__) * i / (n - 1);
+                qnu.resize(n);
+                for (int i = 0; i < n; i++) qnu[i] = qmin__ + (qmax__ - qmin__) * i / (n - 1);
                 
                 mdarray<double_complex, 2> ovlp(n, n);
                 for (int i = 0; i < n; i++)
                 {
                     for (int j = 0; j <= i; j++)
                     {
-                        ovlp(j, i) = overlap(nu__[j], nu__[i], l__, R__) / sbessel_l2norm(nu__[i], l__, R__) / sbessel_l2norm(nu__[j], l__, R__);
+                        ovlp(j, i) = overlap(qnu[j], qnu[i], l__, R__) / sbessel_l2norm(qnu[i], l__, R__) / sbessel_l2norm(qnu[j], l__, R__);
                     }
-
                 }
                 
                 std::vector<double> eval(n);
@@ -192,10 +295,9 @@ class sbessel_approx
                 min_val = eval[0];
 
             } while (min_val > eps__);
+
+            return qnu;
         }
-            
-
-
 };
 
 
