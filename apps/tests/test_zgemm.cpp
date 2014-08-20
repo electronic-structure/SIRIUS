@@ -46,6 +46,12 @@ void test_gemm(int M, int N, int K, int transa)
     printf("performance (GFlops) : %12.6f\n", 8e-9 * M * N * K / t1.value());
 }
 
+#ifdef _TEST_REAL_
+typedef double gemm_type;
+#else
+typedef double_complex gemm_type;
+#endif
+
 #ifdef _SCALAPACK_
 double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
 {
@@ -59,7 +65,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
     int context = blacs_handler;
     Cblacs_gridinit(&context, "C", nrow, ncol);
 
-    dmatrix<double_complex> a, b, c;
+    dmatrix<gemm_type> a, b, c;
     if (transa == 0)
     {
         a.set_dimensions(M, K, context);
@@ -76,12 +82,12 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
 
     for (int ic = 0; ic < a.num_cols_local(); ic++)
     {
-        for (int ir = 0; ir < a.num_rows_local(); ir++) a(ir, ic) = type_wrapper<double_complex>::random();
+        for (int ir = 0; ir < a.num_rows_local(); ir++) a(ir, ic) = type_wrapper<gemm_type>::random();
     }
 
     for (int ic = 0; ic < b.num_cols_local(); ic++)
     {
-        for (int ir = 0; ir < b.num_rows_local(); ir++) b(ir, ic) = type_wrapper<double_complex>::random();
+        for (int ir = 0; ir < b.num_rows_local(); ir++) b(ir, ic) = type_wrapper<gemm_type>::random();
     }
 
     c.zero();
@@ -93,7 +99,9 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
     }
     Platform::barrier();
     sirius::Timer t1("gemm_only"); 
-    blas<cpu>::gemm(transa, 0, M, N - n, K, complex_one, a, 0, 0, b, 0, n, complex_zero, c, 0, 0);
+    gemm_type one = 1;
+    gemm_type zero = 0;
+    blas<cpu>::gemm(transa, 0, M, N - n, K, one, a, 0, 0, b, 0, n, zero, c, 0, 0);
     //== #ifdef _GPU_
     //== cuda_device_synchronize();
     //== #endif
