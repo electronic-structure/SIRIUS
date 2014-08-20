@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import json
 import sys
 import os
@@ -8,16 +9,17 @@ import subprocess
 import time
 
 def main():
+    
+    if len(sys.argv) != 2:
+        print("Usage: run_job_py34.py [mpi_grid]")
+        sys.exit(0)
 
-    #if len(sys.argv) != 2:
-    #    print("Usage: python ./submit_job.py [mpi_grid]")
-    #    sys.exit(0)
-
-    #grid = list(map(int, sys.argv[1].split()))
-
+    grid = list(map(int, sys.argv[1].split()))
+    
     num_ranks = 1
-    #for i in grid: num_ranks *= i
+    for i in grid: num_ranks *= i
 
+    print(os.environ)
 
     new_env = copy.deepcopy(os.environ)
     new_env["OMP_NUM_THREADS"] = "8"
@@ -30,7 +32,7 @@ def main():
     new_env["CRAY_LIBSCI_ACC_MODE"] = "1"
 
     aprun_command = "aprun -n " + str(num_ranks) + " -N1 -d8 -cc none"
-    job_command = "./test_zgemm --M=100 --N=100 --K=100"
+    job_command = "./test_zgemm --M=4000 --N=4000 --K=4000"
 
     command = aprun_command + " " + job_command
 
@@ -40,7 +42,7 @@ def main():
     proc.wait()
     job_duration += time.time()
 
-    print("job duration" + str(job_duration))
+    print("job duration: " + str(job_duration))
 
 if __name__ == "__main__":
     main()
