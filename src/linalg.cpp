@@ -105,9 +105,32 @@ void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 }
 
 template<> 
+void blas<cpu>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32_t k, double alpha, 
+                             dmatrix<double>& a, int32_t ia, int32_t ja,
+                             dmatrix<double>& b, int32_t ib, int32_t jb, double beta, 
+                             dmatrix<double>& c, int32_t ic, int32_t jc)
+{
+    const char *trans[] = {"N", "T", "C"};
+
+    ia++; ja++;
+    ib++; jb++;
+    ic++; jc++;
+    FORTRAN(pdgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a.ptr(), &ia, &ja, a.descriptor(), 
+                    b.ptr(), &ib, &jb, b.descriptor(), &beta, c.ptr(), &ic, &jc, c.descriptor(), 1, 1);
+}
+
+template<> 
 void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
                                      dmatrix<double_complex>& a, dmatrix<double_complex>& b, double_complex beta, 
                                      dmatrix<double_complex>& c)
+{
+    gemm(transa, transb, m, n, k, alpha, a, 0, 0, b, 0, 0, beta, c, 0, 0);
+}
+
+template<> 
+void blas<cpu>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32_t k, double alpha, 
+                             dmatrix<double>& a, dmatrix<double>& b, double beta, 
+                             dmatrix<double>& c)
 {
     gemm(transa, transb, m, n, k, alpha, a, 0, 0, b, 0, 0, beta, c, 0, 0);
 }

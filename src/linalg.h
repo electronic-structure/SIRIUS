@@ -148,6 +148,15 @@ extern "C" void FORTRAN(pzgemm)(const char* transa, const char* transb,
                                 double_complex* c, int32_t* ic, int32_t* jc, int32_t* descc,
                                 int32_t transa_len, int32_t transb_len);
 
+extern "C" void FORTRAN(pdgemm)(const char* transa, const char* transb, 
+                                int32_t* m, int32_t* n, int32_t* k, 
+                                double* aplha,
+                                double* a, int32_t* ia, int32_t* ja, int32_t* desca, 
+                                double* b, int32_t* ib, int32_t* jb, int32_t* descb,
+                                double* beta,
+                                double* c, int32_t* ic, int32_t* jc, int32_t* descc,
+                                int32_t transa_len, int32_t transb_len);
+
 extern "C" int32_t FORTRAN(numroc)(int32_t* n, int32_t* nb, int32_t* iproc, int32_t* isrcproc, int32_t* nprocs);
 
 extern "C" int32_t FORTRAN(indxl2g)(int32_t* indxloc, int32_t* nb, int32_t* iproc, int32_t* isrcproc, int32_t* nprocs);
