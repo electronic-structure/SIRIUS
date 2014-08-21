@@ -55,14 +55,6 @@ class Platform
 
         static void abort();
 
-        /// Broadcast array 
-        template <typename T>
-        static void bcast(T* buffer, int count, const MPI_Comm& comm, int root);
-        
-        /// Broadcast array 
-        template <typename T>
-        static void bcast(T* buffer, int count, int root);
-       
         /// Perform all-to-one in-place reduction
         template <typename T>
         static void reduce(T* buf, int count, const MPI_Comm& comm, int root);

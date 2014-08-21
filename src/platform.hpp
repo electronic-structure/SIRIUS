@@ -22,18 +22,6 @@
  *  \brief Contains templated implementation of Platform class.
  */
 
-template <typename T>
-void Platform::bcast(T* buffer, int count, const MPI_Comm& comm, int root)
-{
-    MPI_Bcast(buffer, count, type_wrapper<T>::mpi_type_id(), root, comm); 
-}
-        
-template <typename T>
-void Platform::bcast(T* buffer, int count, int root)
-{
-    bcast(buffer, count, MPI_COMM_WORLD, root);
-}
-       
 template<typename T>
 void Platform::reduce(T* buf, int count, const MPI_Comm& comm, int root)
 {
