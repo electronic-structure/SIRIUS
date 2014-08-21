@@ -1474,7 +1474,7 @@ void Density::generate_valence_density_mt(K_set& ks)
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
             int rank = parameters_.unit_cell()->spl_num_atoms().local_rank(ia);
-            parameters_.unit_cell()->atom(ia)->sync_occupation_matrix(rank);
+            parameters_.unit_cell()->atom(ia)->sync_occupation_matrix(parameters_.comm(), rank);
         }
 
         delete t3;
@@ -1617,7 +1617,7 @@ void Density::generate_core_charge_density()
     for (int ic = 0; ic < parameters_.unit_cell()->num_atom_symmetry_classes(); ic++)
     {
         int rank = parameters_.unit_cell()->spl_num_atom_symmetry_classes().local_rank(ic);
-        parameters_.unit_cell()->atom_symmetry_class(ic)->sync_core_charge_density(rank);
+        parameters_.unit_cell()->atom_symmetry_class(ic)->sync_core_charge_density(parameters_.comm(), rank);
     }
 }
 
