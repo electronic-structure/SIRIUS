@@ -93,6 +93,8 @@ class Reciprocal_lattice
         /// length of G-vectors belonging to the same shell
         std::vector<double> gvec_shell_len_;
 
+        Communicator comm_;
+
         void init(int lmax);
 
         void fix_q_radial_functions(mdarray<double, 4>& qrf);
@@ -107,7 +109,8 @@ class Reciprocal_lattice
                            electronic_structure_method_t esm_type__, 
                            double pw_cutoff__, 
                            double gk_cutoff__, 
-                           int lmax__);
+                           int lmax__,
+                           Communicator& comm__);
 
         ~Reciprocal_lattice();
   

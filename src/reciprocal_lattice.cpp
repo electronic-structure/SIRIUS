@@ -30,13 +30,15 @@ Reciprocal_lattice::Reciprocal_lattice(Unit_cell* unit_cell__,
                                        electronic_structure_method_t esm_type__, 
                                        double pw_cutoff__, 
                                        double gk_cutoff__, 
-                                       int lmax__) 
+                                       int lmax__,
+                                       Communicator& comm__)
     : unit_cell_(unit_cell__), 
       esm_type_(esm_type__),
       pw_cutoff_(pw_cutoff__), 
       gk_cutoff_(gk_cutoff__),
       num_gvec_(0),
-      num_gvec_coarse_(0)
+      num_gvec_coarse_(0),
+      comm_(comm__)
 {
     for (int l = 0; l < 3; l++)
     {
@@ -405,7 +407,7 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
                 }
             }
         }
-        Platform::bcast(&atom_type->uspp().q_mtrx(0, 0), (int)atom_type->uspp().q_mtrx.size(), 0);
+        comm_.bcast(&atom_type->uspp().q_mtrx(0, 0), (int)atom_type->uspp().q_mtrx.size(), 0);
     }
 }
 
