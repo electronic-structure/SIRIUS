@@ -186,15 +186,15 @@ class Atom
             for (int j = 0; j < 3; j++) beff_[j].set_ptr(beff__[j]);
         }
 
-        void sync_radial_integrals(int rank)
+        void sync_radial_integrals(Communicator const& comm__, int const rank__)
         {
-            Platform::bcast(h_radial_integrals_.ptr(), (int)h_radial_integrals_.size(), rank);
-            if (num_mag_dims_) Platform::bcast(b_radial_integrals_.ptr(), (int)b_radial_integrals_.size(), rank);
+            comm__.bcast(h_radial_integrals_.ptr(), (int)h_radial_integrals_.size(), rank__);
+            if (num_mag_dims_) comm__.bcast(b_radial_integrals_.ptr(), (int)b_radial_integrals_.size(), rank__);
         }
 
-        void sync_occupation_matrix(int rank)
+        void sync_occupation_matrix(Communicator const& comm__, int const rank__)
         {
-            Platform::bcast(occupation_matrix_.ptr(), (int)occupation_matrix_.size(), rank);
+            comm__.bcast(occupation_matrix_.ptr(), (int)occupation_matrix_.size(), rank__);
         }
 
         inline int offset_aw()
