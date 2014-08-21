@@ -215,7 +215,7 @@ void Global::initialize()
             break;
         }
     }
-    reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, esm_type(), pw_cutoff(), gk_cutoff(), lmax);
+    reciprocal_lattice_ = new Reciprocal_lattice(unit_cell_, esm_type(), pw_cutoff(), gk_cutoff(), lmax, comm_);
 
     if (unit_cell_->full_potential()) step_function_ = new Step_function(unit_cell_, reciprocal_lattice_);
 
