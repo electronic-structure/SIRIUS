@@ -141,12 +141,15 @@ class Global
 
         Unit_cell* unit_cell_;
 
+        Communicator comm_;
+
         /// Read from the input file if it exists.
         void read_input();
 
     public:
     
-        Global(std::vector<int> const mpi_grid_dims__ = std::vector<int>())
+        Global(MPI_Comm mpi_comm__,
+               std::vector<int> const mpi_grid_dims__ = std::vector<int>())
             : initialized_(false), 
               lmax_apw_(lmax_apw_default), 
               lmax_pw_(-1), 
@@ -177,6 +180,8 @@ class Global
               step_function_(nullptr),
               reciprocal_lattice_(nullptr)
         {
+            comm_ = Communicator(mpi_comm__);
+
             /* get the starting time */
             gettimeofday(&start_time_, NULL);
 
@@ -184,7 +189,7 @@ class Global
             read_input();
 
             /* create new empty unit cell */
-            unit_cell_ = new Unit_cell(esm_type_);
+            unit_cell_ = new Unit_cell(esm_type_, comm_);
 
             #ifdef _SCALAPACK_
             if (linalg<scalapack>::cyclic_block_size() <= 0) // TODO: get rid of this
@@ -490,6 +495,11 @@ class Global
         inline Unit_cell* unit_cell()
         {
             return unit_cell_;
+        }
+
+        inline Communicator& comm()
+        {
+            return comm_;
         }
 
         struct xc_functionals_input_section
