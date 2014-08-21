@@ -157,6 +157,8 @@ class Unit_cell
 
         Symmetry symmetry_;
 
+        Communicator comm_;
+
         /// Automatically determine new muffin-tin radii as a half distance between neighbor atoms.
         /** In order to guarantee a unique solution muffin-tin radii are dermined as a half distance
          *  bethween nearest atoms. Initial values of the muffin-tin radii are ignored. 
@@ -170,7 +172,8 @@ class Unit_cell
 
     public:
     
-        Unit_cell(electronic_structure_method_t esm_type__) 
+        Unit_cell(electronic_structure_method_t esm_type__, 
+                  Communicator& comm__)
             : omega_(0),
               volume_mt_(0),
               volume_it_(0),
@@ -181,7 +184,8 @@ class Unit_cell
               num_electrons_(0),
               auto_rmt_(0), 
               lmax_beta_(-1),
-              esm_type_(esm_type__)
+              esm_type_(esm_type__),
+              comm_(comm__)
         {
         }
         
