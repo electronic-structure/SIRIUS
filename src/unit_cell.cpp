@@ -347,7 +347,7 @@ bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
 void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
 {
     /* split number of atom between all MPI ranks */
-    spl_num_atoms_ = splindex<block>(num_atoms(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+    spl_num_atoms_ = splindex<block>(num_atoms(), comm_.size(), comm_.rank());
 
     // TODO: this is unreadable and must be improved
     if (num_atoms() != 0)
@@ -357,7 +357,7 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
         for (int ia = 0; ia < num_atoms(); ia++)
         {
             int rank = spl_num_atoms().local_rank(ia);
-            if (Platform::mpi_rank() == rank)
+            if (comm_.rank() == rank)
             {
                 if (Platform::mpi_rank(mpi_atoms_.communicator()) != 0) error_local(__FILE__, __LINE__, "wrong root rank");
             }
@@ -506,7 +506,7 @@ void Unit_cell::update()
     
     get_symmetry();
     
-    spl_num_atom_symmetry_classes_ = splindex<block>(num_atom_symmetry_classes(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+    spl_num_atom_symmetry_classes_ = splindex<block>(num_atom_symmetry_classes(), comm_.size(), comm_.rank());
     
     volume_mt_ = 0.0;
     if (full_potential())
@@ -668,7 +668,7 @@ unit_cell_parameters_descriptor Unit_cell::unit_cell_parameters()
 
 void Unit_cell::write_cif()
 {
-    if (Platform::mpi_rank() == 0)
+    if (comm_.rank() == 0)
     {
         FILE* fout = fopen("unit_cell.cif", "w");
 
@@ -703,7 +703,7 @@ void Unit_cell::write_cif()
 
 void Unit_cell::write_json()
 {
-    if (Platform::mpi_rank() == 0)
+    if (comm_.rank() == 0)
     {
         JSON_write out("unit_cell.json");
 
@@ -936,7 +936,7 @@ void Unit_cell::generate_radial_functions()
     for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
     {
         int rank = spl_num_atom_symmetry_classes().local_rank(ic);
-        atom_symmetry_class(ic)->sync_radial_functions(rank);
+        atom_symmetry_class(ic)->sync_radial_functions(comm_, rank);
     }
     
     if (verbosity_level >= 4)
@@ -949,7 +949,7 @@ void Unit_cell::generate_radial_functions()
             atom_symmetry_class(ic)->write_enu(pout);
         }
 
-        if (Platform::mpi_rank() == 0)
+        if (comm_.rank() == 0)
         {
             printf("\n");
             printf("Linearization energies\n");
@@ -968,7 +968,7 @@ void Unit_cell::generate_radial_integrals()
     for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
     {
         int rank = spl_num_atom_symmetry_classes().local_rank(ic);
-        atom_symmetry_class(ic)->sync_radial_integrals(rank);
+        atom_symmetry_class(ic)->sync_radial_integrals(comm_, rank);
     }
 
     for (int ialoc = 0; ialoc < (int)spl_atoms_.local_size(); ialoc++)
@@ -980,7 +980,7 @@ void Unit_cell::generate_radial_integrals()
     for (int ia = 0; ia < num_atoms(); ia++)
     {
         int rank = spl_num_atoms().local_rank(ia);
-        atom(ia)->sync_radial_integrals(rank);
+        atom(ia)->sync_radial_integrals(comm_, rank);
     }
 }
 
