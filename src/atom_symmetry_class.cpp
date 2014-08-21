@@ -588,20 +588,30 @@ void Atom_symmetry_class::generate_radial_functions()
     //** }
 }
 
-void Atom_symmetry_class::sync_radial_functions(int rank)
+void Atom_symmetry_class::sync_radial_functions(Communicator const& comm__, int const rank__)
 {
     /* don't broadcast Hamiltonian radial functions, because they are used locally */
     int size = (int)(radial_functions_.size(0) * radial_functions_.size(1));
-    Platform::bcast(radial_functions_.ptr(), size, rank);
-    Platform::bcast(aw_surface_derivatives_.ptr(), (int)aw_surface_derivatives_.size(), rank);
+    comm__.bcast(radial_functions_.ptr(), size, rank__);
+    comm__.bcast(aw_surface_derivatives_.ptr(), (int)aw_surface_derivatives_.size(), rank__);
     // TODO: sync enu to pass to Exciting / Elk
 }
 
-void Atom_symmetry_class::sync_radial_integrals(int rank)
+void Atom_symmetry_class::sync_radial_integrals(Communicator const& comm__, int const rank__)
 {
-    Platform::bcast(h_spherical_integrals_.ptr(), (int)h_spherical_integrals_.size(), rank);
-    Platform::bcast(o_radial_integrals_.ptr(), (int)o_radial_integrals_.size(), rank);
-    Platform::bcast(so_radial_integrals_.ptr(), (int)so_radial_integrals_.size(), rank);
+    comm__.bcast(h_spherical_integrals_.ptr(), (int)h_spherical_integrals_.size(), rank__);
+    comm__.bcast(o_radial_integrals_.ptr(), (int)o_radial_integrals_.size(), rank__);
+    comm__.bcast(so_radial_integrals_.ptr(), (int)so_radial_integrals_.size(), rank__);
+}
+
+void Atom_symmetry_class::sync_core_charge_density(Communicator const& comm__, int const rank__)
+{
+    assert(core_charge_density_.size() != 0);
+    assert(&core_charge_density_[0] != NULL);
+    
+    comm__.bcast(&core_charge_density_[0], atom_type_->radial_grid().num_points(), rank__);
+    comm__.bcast(&core_leakage_, 1, rank__);
+    comm__.bcast(&core_eval_sum_, 1, rank__);
 }
 
 void Atom_symmetry_class::generate_radial_integrals()
@@ -949,16 +959,6 @@ void Atom_symmetry_class::generate_core_charge_density()
     {
         if (atom_type_->atomic_level(ist).core) core_eval_sum_ += level_energy[ist] * atom_type_->atomic_level(ist).occupancy;
     }
-}
-
-void Atom_symmetry_class::sync_core_charge_density(int rank)
-{
-    assert(core_charge_density_.size() != 0);
-    assert(&core_charge_density_[0] != NULL);
-
-    Platform::bcast(&core_charge_density_[0], atom_type_->radial_grid().num_points(), rank);
-    Platform::bcast(&core_leakage_, 1, rank);
-    Platform::bcast(&core_eval_sum_, 1, rank);
 }
 
 }
