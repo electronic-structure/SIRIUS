@@ -1152,8 +1152,7 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v2(int N__,
             for (int i = 0; i < num_phi; i++)
                 memcpy(&phi_tmp(0, i), &phi__(0, i), kp__->num_gkvec_row() * sizeof(double_complex));
         }
-        Platform::bcast(phi_tmp.ptr(), num_phi * kp__->num_gkvec_row(), 
-                        parameters_.mpi_grid().communicator(1 << _dim_col_), icol);
+        kp__->comm_col().bcast(phi_tmp.ptr(), num_phi * kp__->num_gkvec_row(), icol);
        
         if (nloc > 0)
         {
