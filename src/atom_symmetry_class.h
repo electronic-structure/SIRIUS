@@ -27,6 +27,7 @@
 
 #include "sirius_io.h"
 #include "atom_type.h"
+#include "communicator.h"
 
 namespace sirius {
 
@@ -117,11 +118,11 @@ class Atom_symmetry_class
 
         void generate_radial_functions();
 
-        void sync_radial_functions(int rank);
+        void sync_radial_functions(Communicator const& comm__, int const rank__);
       
-        void sync_radial_integrals(int rank);
+        void sync_radial_integrals(Communicator const& comm__, int const rank__);
         
-        void sync_core_charge_density(int rank);
+        void sync_core_charge_density(Communicator const& comm__, int const rank__);
        
         /// Compute m-th order radial derivative at the MT surface.
         double aw_surface_dm(int l, int order, int dm);
