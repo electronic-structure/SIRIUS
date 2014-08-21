@@ -23,6 +23,7 @@
  */
 
 #include "timer.h"
+#include "communicator.h"
 
 std::map<std::string, sirius::Timer*> ftimers;
 
@@ -115,8 +116,10 @@ extern "C" void print_cuda_timers();
 void Timer::print()
 {
     std::map< std::string, timer_stats> tstats = collect_timer_stats();
+
+    Communicator comm(MPI_COMM_WORLD);
     
-    if (Platform::mpi_rank() == 0)
+    if (comm.rank() == 0)
     {
         printf("\n");
         printf("Timers\n");
@@ -166,7 +169,7 @@ std::map< std::string, timer_stats> Timer::collect_timer_stats()
 {
     std::map< std::string, timer_stats> tstats;
 
-    //std::map<std::string, std::vector<double> >::iterator it;
+    Communicator comm(MPI_COMM_WORLD);
 
     /* collect local timers */
     for (auto& it: timers_)
@@ -194,7 +197,7 @@ std::map< std::string, timer_stats> Timer::collect_timer_stats()
     std::vector< std::string > labels;
     std::vector<int> label_sizes;
     std::vector<char> label_str;
-    if (Platform::mpi_rank() == 0)
+    if (comm.rank() == 0)
     {
         for (auto& it: global_timers_)
         {
@@ -207,26 +210,25 @@ std::map< std::string, timer_stats> Timer::collect_timer_stats()
         }
     }
 
-    // TODO: this can be moved to Platform::bcast
-
+    // TODO: this can be moved to comm::bcast
     /* broadcast the number of labels from rank#0 */
     int n = (int)label_sizes.size();
-    Platform::bcast(&n, 1, 0);
+    comm.bcast(&n, 1, 0);
     /* each MPI rank allocates space for label sizes */ 
-    if (Platform::mpi_rank() != 0) label_sizes.resize(n);
+    if (comm.rank() != 0) label_sizes.resize(n);
     /* broadacst label sizes from rank#0 */
-    Platform::bcast(&label_sizes[0], n, 0);
+    comm.bcast(&label_sizes[0], n, 0);
     
     /* broadcast the size of labels buffer from rank#0 */
     n = (int)label_str.size();
-    Platform::bcast(&n, 1, 0);
+    comm.bcast(&n, 1, 0);
     /* allocate space for labels buffer */
-    if (Platform::mpi_rank() != 0) label_str.resize(n);
+    if (comm.rank() != 0) label_str.resize(n);
     /* broadcast labels buffer */
-    Platform::bcast(&label_str[0], n, 0);
+    comm.bcast(&label_str[0], n, 0);
     
     /* construct list of labels exactly like on rank#0 */
-    if (Platform::mpi_rank() != 0)
+    if (comm.rank() != 0)
     {
         int offset = 0;
         for (int sz: label_sizes)
@@ -271,23 +273,23 @@ std::map< std::string, timer_stats> Timer::collect_timer_stats()
         }
         
         /* collect timer counts from all ranks */
-        std::vector<int> counts(Platform::num_mpi_ranks());
-        counts[Platform::mpi_rank()] = ts.count;
-        Platform::allgather(&counts[0], Platform::mpi_rank(), 1);
+        std::vector<int> counts(comm.size());
+        counts[comm.rank()] = ts.count;
+        comm.allgather(&counts[0], comm.rank(), 1);
         
         /* collect timer statistics from all ranks */
-        std::vector<double> values(4 * Platform::num_mpi_ranks());
-        values[4 * Platform::mpi_rank() + 0] = ts.total_value;
-        values[4 * Platform::mpi_rank() + 1] = ts.min_value;
-        values[4 * Platform::mpi_rank() + 2] = ts.max_value;
-        values[4 * Platform::mpi_rank() + 3] = ts.average_value;
+        std::vector<double> values(4 * comm.size());
+        values[4 * comm.rank() + 0] = ts.total_value;
+        values[4 * comm.rank() + 1] = ts.min_value;
+        values[4 * comm.rank() + 2] = ts.max_value;
+        values[4 * comm.rank() + 3] = ts.average_value;
 
-        Platform::allgather(&values[0], 4 * Platform::mpi_rank(), 4);
+        comm.allgather(&values[0], 4 * comm.rank(), 4);
 
         double max_total_value = 0;
         double total_value = 0;
         int total_count = 0;
-        for (int k = 0; k < Platform::num_mpi_ranks(); k++)
+        for (int k = 0; k < comm.size(); k++)
         {
             /* maximum total value across all ranks */
             max_total_value = std::max(max_total_value, values[4 * k + 0]);
