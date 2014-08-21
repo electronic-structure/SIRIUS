@@ -209,9 +209,9 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         density_->pack(mx);
         rms = mx->mix();
         density_->unpack(mx->output_buffer());
-        Platform::bcast(&rms, 1, 0);
+        parameters_.comm().bcast(&rms, 1, 0);
 
-        if (Platform::mpi_rank() == 0)
+        if (parameters_.comm().rank() == 0)
         {
             printf("iteration : %3i, density RMS %12.6f, energy difference : %12.6f", 
                     iter, rms, etot - eold);
