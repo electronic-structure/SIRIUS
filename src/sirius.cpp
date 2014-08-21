@@ -31,7 +31,7 @@ sirius::Density* density = NULL;
 sirius::Potential* potential = NULL;
 
 /// Set of global parameters
-sirius::Global global_parameters;
+sirius::Global global_parameters(MPI_COMM_WORLD);
 
 /// List of pointers to the sets of k-points.
 std::vector<sirius::K_set*> kset_list;
@@ -1303,13 +1303,14 @@ void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* nu
         Platform::allreduce(&gkvec_phase_factors(0, 0), (int)gkvec_phase_factors.size(), 
                             global_parameters.mpi_grid().communicator(1 << _dim_row_));
     }
-    Platform::bcast(num_gkvec, 1, global_parameters.mpi_grid().communicator(1 << _dim_k_), rank);
-    Platform::bcast(gvec_index, *num_gkvec, global_parameters.mpi_grid().communicator(1 << _dim_k_), rank);
-    Platform::bcast(gkvec__, *num_gkvec * 3, global_parameters.mpi_grid().communicator(1 << _dim_k_), rank);
-    Platform::bcast(gkvec_cart__, *num_gkvec * 3, global_parameters.mpi_grid().communicator(1 << _dim_k_), rank);
-    Platform::bcast(gkvec_len, *num_gkvec, global_parameters.mpi_grid().communicator(1 << _dim_k_), rank);
-    Platform::bcast(gkvec_tp__, *num_gkvec * 2, global_parameters.mpi_grid().communicator(1 << _dim_k_), rank);
-    Platform::bcast(gkvec_phase_factors__, *ld * global_parameters.unit_cell()->num_atoms(), global_parameters.mpi_grid().communicator(1 << _dim_k_), rank);
+    Communicator comm(global_parameters.mpi_grid().communicator(1 << _dim_k_));
+    comm.bcast(num_gkvec, 1, rank);
+    comm.bcast(gvec_index, *num_gkvec, rank);
+    comm.bcast(gkvec__, *num_gkvec * 3, rank);
+    comm.bcast(gkvec_cart__, *num_gkvec * 3, rank);
+    comm.bcast(gkvec_len, *num_gkvec, rank);
+    comm.bcast(gkvec_tp__, *num_gkvec * 2, rank);
+    comm.bcast(gkvec_phase_factors__, *ld * global_parameters.unit_cell()->num_atoms(), rank);
     log_function_exit(__func__);
 }
 
@@ -1865,7 +1866,8 @@ void FORTRAN(sirius_mix_density)(double* rms)
     density->pack(mixer_rho);
     *rms = mixer_rho->mix();
     density->unpack(mixer_rho->output_buffer());
-    Platform::bcast(rms, 1, 0);
+    Communicator comm(MPI_COMM_WORLD);
+    comm.bcast(rms, 1, 0);
 }
 
 void FORTRAN(sirius_mix_potential)(void)
