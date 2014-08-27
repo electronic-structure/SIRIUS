@@ -50,13 +50,13 @@ Reciprocal_lattice::Reciprocal_lattice(Unit_cell* unit_cell__,
     }
 
     vector3d<int> max_frac_coord = Utils::find_translation_limits(pw_cutoff_, reciprocal_lattice_vectors_);
-    fft_ = new FFT3D<cpu>(max_frac_coord);
+    fft_ = new FFT3D<cpu>(max_frac_coord, comm__);
     
     if (esm_type_ == ultrasoft_pseudopotential)
     {
         vector3d<int> max_frac_coord_coarse = Utils::find_translation_limits(gk_cutoff__ * 2, 
                                                                              reciprocal_lattice_vectors_);
-        fft_coarse_ = new FFT3D<cpu>(max_frac_coord_coarse);
+        fft_coarse_ = new FFT3D<cpu>(max_frac_coord_coarse, comm__);
     }
 
     init(lmax__);
@@ -140,7 +140,7 @@ void Reciprocal_lattice::init(int lmax)
     }
 
     // create split index
-    spl_num_gvec_ = splindex<block>(num_gvec(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+    spl_num_gvec_ = splindex<block>(num_gvec(), comm_.size(), comm_.rank());
     
     if (lmax >= 0)
     {
@@ -251,7 +251,7 @@ std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<d
 
     double fourpi_omega = fourpi / unit_cell_->omega();
 
-    splindex<block> spl_ngv(ngv, Platform::num_mpi_ranks(), Platform::mpi_rank());
+    splindex<block> spl_ngv(ngv, comm_.size(), comm_.rank());
 
     #pragma omp parallel
     for (auto it = splindex_iterator<block>(spl_ngv); it.valid(); it++)
@@ -266,7 +266,7 @@ std::vector<double_complex> Reciprocal_lattice::make_periodic_function(mdarray<d
         }
     }
 
-    Platform::allgather(&f_pw[0], (int)spl_ngv.global_offset(), (int)spl_ngv.local_size());
+    comm_.allgather(&f_pw[0], (int)spl_ngv.global_offset(), (int)spl_ngv.local_size());
 
     return f_pw;
 }
@@ -301,7 +301,7 @@ void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4
 
     qri.zero();
     
-    splindex<block> spl_num_gvec_shells(num_gvec_shells_inner(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+    splindex<block> spl_num_gvec_shells(num_gvec_shells_inner(), comm_.size(), comm_.rank());
     
     #pragma omp parallel
     {
@@ -341,7 +341,7 @@ void Reciprocal_lattice::generate_q_radial_integrals(int lmax, mdarray<double, 4
         }
     }
     int ld = (int)(qri.size(0) * qri.size(1) * qri.size(2));
-    Platform::allgather(&qri(0, 0, 0, 0), ld * (int)spl_num_gvec_shells.global_offset(), ld * (int)spl_num_gvec_shells.local_size());
+    comm_.allgather(&qri(0, 0, 0, 0), ld * (int)spl_num_gvec_shells.global_offset(), ld * (int)spl_num_gvec_shells.local_size());
 }
 
 void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
