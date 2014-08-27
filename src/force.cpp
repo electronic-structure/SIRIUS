@@ -43,7 +43,7 @@ void Force::compute_dmat(Global& parameters__,
     {
         if (parameters__.num_mag_dims() != 3)
         {
-            dmatrix<double_complex> ev1(parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.blacs_context());
+            dmatrix<double_complex> ev1(parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->blacs_grid());
             for (int ispn = 0; ispn < parameters__.num_spins(); ispn++)
             {
                 auto& ev = kp__->sv_eigen_vectors(ispn);
@@ -62,7 +62,7 @@ void Force::compute_dmat(Global& parameters__,
         }
         else
         {
-            dmatrix<double_complex> ev1(parameters__.num_bands(), parameters__.num_bands(), parameters__.blacs_context());
+            dmatrix<double_complex> ev1(parameters__.num_bands(), parameters__.num_bands(), kp__->blacs_grid());
             auto& ev = kp__->sv_eigen_vectors(0);
             /* multiply second-variational eigen-vectors with band occupancies */
             for (int j = 0; j < ev.num_cols_local(); j++)
@@ -92,19 +92,19 @@ void Force::ibs_force(Global& parameters__,
 
     forcek__.zero();
 
-    dmatrix<double_complex> dm(parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.blacs_context());
+    dmatrix<double_complex> dm(parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->blacs_grid());
     compute_dmat(parameters__, kp__, dm);
 
     auto& fv_evec = kp__->fv_eigen_vectors_panel();
 
-    dmatrix<double_complex> h(kp__->gklo_basis_size(), kp__->gklo_basis_size(), parameters__.blacs_context());
-    dmatrix<double_complex> o(kp__->gklo_basis_size(), kp__->gklo_basis_size(), parameters__.blacs_context());
+    dmatrix<double_complex> h(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid());
+    dmatrix<double_complex> o(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid());
 
-    dmatrix<double_complex> h1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), parameters__.blacs_context());
-    dmatrix<double_complex> o1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), parameters__.blacs_context());
+    dmatrix<double_complex> h1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid());
+    dmatrix<double_complex> o1(kp__->gklo_basis_size(), kp__->gklo_basis_size(), kp__->blacs_grid());
 
-    dmatrix<double_complex> zm1(kp__->gklo_basis_size(), parameters__.num_fv_states(), parameters__.blacs_context());
-    dmatrix<double_complex> zf(parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.blacs_context());
+    dmatrix<double_complex> zm1(kp__->gklo_basis_size(), parameters__.num_fv_states(), kp__->blacs_grid());
+    dmatrix<double_complex> zf(parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->blacs_grid());
 
     mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), parameters__.unit_cell()->max_mt_aw_basis_size());
     mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), parameters__.unit_cell()->max_mt_aw_basis_size());
@@ -212,9 +212,9 @@ void Force::ibs_force(Global& parameters__,
                             complex_one, o1, fv_evec, complex_zero, zm1);
 
             /* multiply by energy */
-            for (int i = 0; i < (int)parameters__.spl_fv_states().local_size(); i++)
+            for (int i = 0; i < (int)kp__->spl_fv_states().local_size(); i++)
             {
-                int ist = parameters__.spl_fv_states(i);
+                int ist = kp__->spl_fv_states(i);
                 for (int j = 0; j < kp__->gklo_basis_size_row(); j++) zm1(j, i) = zm1(j, i) * kp__->fv_eigen_value(ist);
             }
 
@@ -241,8 +241,7 @@ void Force::total_force(Global& parameters__,
 
     auto uc = parameters__.unit_cell();
 
-    mdarray<double, 2> ffac(uc->num_atom_types(), parameters__.reciprocal_lattice()->num_gvec_shells_inner());
-    parameters__.step_function()->get_step_function_form_factors(ffac);
+    auto ffac = parameters__.step_function()->get_step_function_form_factors(parameters__.reciprocal_lattice()->num_gvec_shells_inner());
 
     force__.zero();
 
@@ -256,9 +255,9 @@ void Force::total_force(Global& parameters__,
             for (int x = 0; x < 3; x++) force__(x, ia) += forcek(x, ia);
         }
     }
-    Platform::allreduce(&force__(0, 0), (int)force__.size());
+    parameters__.comm().allreduce(&force__(0, 0), (int)force__.size());
     
-    if (verbosity_level >= 6 && Platform::mpi_rank() == 0)
+    if (verbosity_level >= 6 && parameters__.comm().rank() == 0)
     {
         printf("\n");
         printf("Forces\n");
@@ -278,9 +277,9 @@ void Force::total_force(Global& parameters__,
         auto g = gradient(potential__->hartree_potential_mt(ialoc));
         for (int x = 0; x < 3; x++) forcehf(x, ia) = uc->atom(ia)->type()->zn() * g[x](0, 0) * y00;
     }
-    Platform::allreduce(&forcehf(0, 0), (int)forcehf.size());
+    parameters__.comm().allreduce(&forcehf(0, 0), (int)forcehf.size());
 
-    if (verbosity_level >= 6 && Platform::mpi_rank() == 0)
+    if (verbosity_level >= 6 && parameters__.comm().rank() == 0)
     {
         printf("\n");
         for (int ia = 0; ia < parameters__.unit_cell()->num_atoms(); ia++)
@@ -297,9 +296,9 @@ void Force::total_force(Global& parameters__,
         auto g = gradient(density__->density_mt(ialoc));
         for (int x = 0; x < 3; x++) forcerho(x, ia) = inner(potential__->effective_potential_mt(ialoc), g[x]);
     }
-    Platform::allreduce(&forcerho(0, 0), (int)forcerho.size());
+    parameters__.comm().allreduce(&forcerho(0, 0), (int)forcerho.size());
 
-    if (verbosity_level >= 6 && Platform::mpi_rank() == 0)
+    if (verbosity_level >= 6 && parameters__.comm().rank() == 0)
     {
         printf("\n");
         printf("rho force\n");
