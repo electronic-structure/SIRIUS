@@ -29,6 +29,7 @@
 #include "band.h"
 #include "potential.h"
 #include "k_point.h"
+#include "blacs_grid.h"
 
 namespace sirius 
 {
@@ -59,16 +60,36 @@ class K_set
 
         double band_gap_;
 
-    public:
+        Communicator comm_k_;
 
-        K_set(Global& parameters__) : parameters_(parameters__)
+        BLACS_grid const& blacs_grid_;
+
+        void init()
         {
-            band_ = new Band(parameters_);
+            band_ = new Band(parameters_, blacs_grid_);
         }
 
-        K_set(Global& parameters__, std::vector<int> ngridk__, int use_symmetry__) : parameters_(parameters__)
+    public:
+
+        K_set(Global& parameters__,
+              Communicator const& comm_k_,
+              BLACS_grid const& blacs_grid__)
+            : parameters_(parameters__),
+              blacs_grid_(blacs_grid__)
         {
-            band_ = new Band(parameters_);
+            init();
+        }
+
+        K_set(Global& parameters__,
+              Communicator const& comm_k__,
+              BLACS_grid const& blacs_grid__,
+              std::vector<int> ngridk__,
+              int use_symmetry__) 
+            : parameters_(parameters__),
+              comm_k_(comm_k__),
+              blacs_grid_(blacs_grid__)
+        {
+            init();
 
             int nk = ngridk__[0] * ngridk__[1] * ngridk__[2];
             mdarray<double, 2> vk(3, nk);
@@ -127,7 +148,7 @@ class K_set
         
         void add_kpoint(double* vk__, double weight__)
         {
-            kpoints_.push_back(new K_point(parameters_, vk__, weight__));
+            kpoints_.push_back(new K_point(parameters_, vk__, weight__, blacs_grid_));
         }
 
         void add_kpoints(mdarray<double, 2>& kpoints__, double* weights__)
