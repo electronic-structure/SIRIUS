@@ -44,17 +44,13 @@ void K_point::initialize()
         /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix */
         if (parameters_.num_mag_dims() == 3)
         {
-            sv_eigen_vectors_[0].set_dimensions(parameters_.num_bands(), parameters_.num_bands(), 
-                                                parameters_.blacs_context());
-            sv_eigen_vectors_[0].allocate();
+            sv_eigen_vectors_[0] = dmatrix<double_complex>(parameters_.num_bands(), parameters_.num_bands(), blacs_grid_);
         }
         else
         {
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
-                sv_eigen_vectors_[ispn].set_dimensions(parameters_.num_fv_states(), parameters_.num_fv_states(), 
-                                                       parameters_.blacs_context());
-                sv_eigen_vectors_[ispn].allocate();
+                sv_eigen_vectors_[ispn] = dmatrix<double_complex>(parameters_.num_fv_states(), parameters_.num_fv_states(), blacs_grid_);
             }
         }
     }
@@ -210,7 +206,7 @@ void K_point::update()
             }
         }
 
-        beta_pw_panel_.set_dimensions(num_gkvec(), uc->mt_basis_size(), parameters_.blacs_context()); 
+        beta_pw_panel_ = dmatrix<double_complex>(nullptr, num_gkvec(), uc->mt_basis_size(), blacs_grid_);
         beta_pw_panel_.allocate(); // TODO: allocate page locked if needed
 
         for (int i = 0; i < beta_pw_panel_.num_cols_local(); i++)
@@ -229,21 +225,20 @@ void K_point::update()
         }
     }
 
-    spinor_wave_functions_.set_dimensions(wf_size(), parameters_.sub_spl_spinor_wf().local_size(), parameters_.num_spins());
+    spinor_wave_functions_.set_dimensions(wf_size(), sub_spl_spinor_wf_.local_size(), parameters_.num_spins());
 
     if (use_second_variation)
     {
         /* allocate memory for first-variational eigen vectors */
         if (parameters_.unit_cell()->full_potential())
         {
-            fv_eigen_vectors_panel_.set_dimensions(gklo_basis_size(), parameters_.num_fv_states(), parameters_.blacs_context());
+            fv_eigen_vectors_panel_ = dmatrix<double_complex>(nullptr, gklo_basis_size(), parameters_.num_fv_states(), blacs_grid_);
             fv_eigen_vectors_panel_.allocate(alloc_mode);
         }
         
-        fv_states_panel_.set_dimensions(wf_size(), parameters_.num_fv_states(), parameters_.blacs_context());
-        fv_states_panel_.allocate();
+        fv_states_panel_ = dmatrix<double_complex>(wf_size(), parameters_.num_fv_states(), blacs_grid_);
 
-        fv_states_.set_dimensions(wf_size(), parameters_.sub_spl_fv_states().local_size());
+        fv_states_.set_dimensions(wf_size(), sub_spl_fv_states_.local_size());
         fv_states_.allocate();
 
         if (parameters_.esm_type() == ultrasoft_pseudopotential)
@@ -251,7 +246,7 @@ void K_point::update()
             fv_states_panel_.zero();
             for (int i = 0; i < parameters_.num_fv_states(); i++) fv_states_panel_.set(i, i, complex_one);
 
-            fv_states_panel_.gather(fv_states_, parameters_.mpi_grid().communicator(1 << _dim_row_));
+            fv_states_panel_.gather(fv_states_);
         }
         
         if (parameters_.need_sv())
@@ -267,7 +262,7 @@ void K_point::update()
     {
         if (parameters_.unit_cell()->full_potential())
         {
-            fd_eigen_vectors_.set_dimensions(gklo_basis_size_row(), parameters_.spl_spinor_wf().local_size());
+            fd_eigen_vectors_.set_dimensions(gklo_basis_size_row(), spl_spinor_wf_.local_size());
             fd_eigen_vectors_.allocate();
             spinor_wave_functions_.allocate();
         }
@@ -369,16 +364,16 @@ void K_point::generate_fv_states()
     if (parameters_.unit_cell()->full_potential())
     {
         /* local number of first-variational states, assigned to each MPI rank in the column */
-        int nfv_loc = (int)parameters_.sub_spl_fv_states().local_size();
+        int nfv_loc = (int)sub_spl_fv_states_.local_size();
 
         /* total number of augmented-wave basis functions over all atoms */
         int naw = parameters_.unit_cell()->mt_aw_basis_size();
 
-        dmatrix<double_complex> alm_panel(num_gkvec(), naw, parameters_.blacs_context());
+        dmatrix<double_complex> alm_panel(num_gkvec(), naw, blacs_grid_);
         /* generate panel of matching coefficients, normal layout */
         alm_coeffs_row_->generate<true>(alm_panel);
 
-        dmatrix<double_complex> aw_coefs_panel(naw, parameters_.num_fv_states(), parameters_.blacs_context());
+        dmatrix<double_complex> aw_coefs_panel(naw, parameters_.num_fv_states(), blacs_grid_);
         /* gnerate aw expansion coefficients */
         blas<cpu>::gemm(1, 0, naw, parameters_.num_fv_states(), num_gkvec(), complex_one, alm_panel, 
                         fv_eigen_vectors_panel_, complex_zero, aw_coefs_panel); 
@@ -391,11 +386,11 @@ void K_point::generate_fv_states()
          */
         mdarray<double_complex, 2> fv_eigen_vectors(gklo_basis_size(), nfv_loc);
         /* gather full first-variational eigen-vector array */
-        fv_eigen_vectors_panel_.gather(fv_eigen_vectors, parameters_.mpi_grid().communicator(1 << _dim_row_));
+        fv_eigen_vectors_panel_.gather(fv_eigen_vectors);
 
         mdarray<double_complex, 2> aw_coefs(naw, nfv_loc);
         /* gather aw coefficients */
-        aw_coefs_panel.gather(aw_coefs, parameters_.mpi_grid().communicator(1 << _dim_row_));
+        aw_coefs_panel.gather(aw_coefs);
 
         for (int i = 0; i < nfv_loc; i++)
         {
@@ -419,11 +414,11 @@ void K_point::generate_fv_states()
             }
         }
 
-        fv_states_panel_.scatter(fv_states_, parameters_.mpi_grid().communicator(1 << _dim_row_));
+        fv_states_panel_.scatter(fv_states_);
     }
     else
     {
-        fv_states_panel_.gather(fv_states_, parameters_.mpi_grid().communicator(1 << _dim_row_));
+        fv_states_panel_.gather(fv_states_);
     }
 
     log_function_exit(__func__);
@@ -467,7 +462,7 @@ void K_point::generate_spinor_wave_functions()
         else
         {
             /* spin component of spinor wave functions */
-            dmatrix<double_complex> spin_component_panel_(wf_size(), parameters_.num_bands(), parameters_.blacs_context());
+            dmatrix<double_complex> spin_component_panel_(wf_size(), parameters_.num_bands(), blacs_grid_);
             
             for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
             {
@@ -487,8 +482,7 @@ void K_point::generate_spinor_wave_functions()
                                     sv_eigen_vectors_[0], ispn * nfv, 0, complex_zero, spin_component_panel_, 0, 0);
 
                 }
-                spin_component_panel_.gather(spinor_wave_functions_.submatrix(ispn), 
-                                             parameters_.mpi_grid().communicator(1 << _dim_row_));
+                spin_component_panel_.gather(spinor_wave_functions_.submatrix(ispn));
             }
         }
     }
@@ -1199,37 +1193,39 @@ void K_point::save(int id)
 {
     if (num_ranks() > 1) error_local(__FILE__, __LINE__, "writing of distributed eigen-vectors is not implemented");
 
-    if (parameters_.mpi_grid().root(1 << _dim_col_))
-    {
-        HDF5_tree fout(storage_file_name, false);
+    STOP();
 
-        fout["K_set"].create_node(id);
-        fout["K_set"][id].create_node("spinor_wave_functions");
-        fout["K_set"][id].write("coordinates", &vk_[0], 3);
-        fout["K_set"][id].write("band_energies", band_energies_);
-        fout["K_set"][id].write("band_occupancies", band_occupancies_);
-        if (num_ranks() == 1)
-        {
-            fout["K_set"][id].write("fv_eigen_vectors", fv_eigen_vectors_panel_.data());
-            fout["K_set"][id].write("sv_eigen_vectors", sv_eigen_vectors_[0].data());
-        }
-    }
-    
-    Platform::barrier(parameters_.mpi_grid().communicator(1 << _dim_col_));
-    
-    mdarray<double_complex, 2> wfj(NULL, wf_size(), parameters_.num_spins()); 
-    for (int j = 0; j < parameters_.num_bands(); j++)
-    {
-        int rank = parameters_.spl_spinor_wf().local_rank(j);
-        int offs = (int)parameters_.spl_spinor_wf().local_index(j);
-        if (parameters_.mpi_grid().coordinate(_dim_col_) == rank)
-        {
-            HDF5_tree fout(storage_file_name, false);
-            wfj.set_ptr(&spinor_wave_functions_(0, 0, offs));
-            fout["K_set"][id]["spinor_wave_functions"].write(j, wfj);
-        }
-        Platform::barrier(parameters_.mpi_grid().communicator(_dim_col_));
-    }
+    //if (parameters_.mpi_grid().root(1 << _dim_col_))
+    //{
+    //    HDF5_tree fout(storage_file_name, false);
+
+    //    fout["K_set"].create_node(id);
+    //    fout["K_set"][id].create_node("spinor_wave_functions");
+    //    fout["K_set"][id].write("coordinates", &vk_[0], 3);
+    //    fout["K_set"][id].write("band_energies", band_energies_);
+    //    fout["K_set"][id].write("band_occupancies", band_occupancies_);
+    //    if (num_ranks() == 1)
+    //    {
+    //        fout["K_set"][id].write("fv_eigen_vectors", fv_eigen_vectors_panel_.data());
+    //        fout["K_set"][id].write("sv_eigen_vectors", sv_eigen_vectors_[0].data());
+    //    }
+    //}
+    //
+    //comm_col_.barrier();
+    //
+    //mdarray<double_complex, 2> wfj(NULL, wf_size(), parameters_.num_spins()); 
+    //for (int j = 0; j < parameters_.num_bands(); j++)
+    //{
+    //    int rank = parameters_.spl_spinor_wf().local_rank(j);
+    //    int offs = (int)parameters_.spl_spinor_wf().local_index(j);
+    //    if (parameters_.mpi_grid().coordinate(_dim_col_) == rank)
+    //    {
+    //        HDF5_tree fout(storage_file_name, false);
+    //        wfj.set_ptr(&spinor_wave_functions_(0, 0, offs));
+    //        fout["K_set"][id]["spinor_wave_functions"].write(j, wfj);
+    //    }
+    //    comm_col_.barrier();
+    //}
 }
 
 void K_point::load(HDF5_tree h5in, int id)
@@ -1310,17 +1306,16 @@ void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec)
     
     fv_evec.zero();
 
-    for (int iloc = 0; iloc < (int)parameters_.spl_fv_states().local_size(); iloc++)
+    for (int iloc = 0; iloc < (int)spl_fv_states_.local_size(); iloc++)
     {
-        int i = parameters_.spl_fv_states(iloc);
+        int i = (int)spl_fv_states_[iloc];
         for (int jloc = 0; jloc < gklo_basis_size_row(); jloc++)
         {
             int j = gklo_basis_descriptor_row(jloc).id;
             fv_evec(j, i) = fv_eigen_vectors_panel_(jloc, iloc);
         }
     }
-    Platform::allreduce(fv_evec.ptr(), (int)fv_evec.size(), 
-                        parameters_.mpi_grid().communicator((1 << _dim_row_) | (1 << _dim_col_)));
+    comm_.allreduce(fv_evec.ptr(), (int)fv_evec.size());
 }
 
 void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
@@ -1352,8 +1347,7 @@ void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
         }
     }
 
-    Platform::allreduce(sv_evec.ptr(), (int)sv_evec.size(), 
-                        parameters_.mpi_grid().communicator((1 << _dim_row_) | (1 << _dim_col_)));
+    comm_.allreduce(sv_evec.ptr(), (int)sv_evec.size());
 }
 
 }
