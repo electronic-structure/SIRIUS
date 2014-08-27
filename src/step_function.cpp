@@ -26,52 +26,54 @@
 
 namespace sirius {
 
-Step_function::Step_function(Unit_cell* unit_cell__, 
-                             Reciprocal_lattice* reciprocal_lattice__)
-    : unit_cell_(unit_cell__), 
-      reciprocal_lattice_(reciprocal_lattice__)
+Step_function::Step_function(Reciprocal_lattice* reciprocal_lattice__,
+                             Communicator const& comm__)
+    : reciprocal_lattice_(reciprocal_lattice__),
+      comm_(comm__)
 {
     update();
 }
 
-void Step_function::get_step_function_form_factors(mdarray<double, 2>& ffac__)
+mdarray<double, 2> Step_function::get_step_function_form_factors(int num_gsh)
 {
-    assert((int)ffac__.size(0) == unit_cell_->num_atom_types());
-    ffac__.zero();
     
-    splindex<block> spl_num_gvec_shells((int)ffac__.size(1), Platform::num_mpi_ranks(), Platform::mpi_rank());
+    auto uc = reciprocal_lattice_->unit_cell();
+    mdarray<double, 2> ffac(uc->num_atom_types(), num_gsh);
+    
+    splindex<block> spl_num_gvec_shells(num_gsh, comm_.size(), comm_.rank());
 
     #pragma omp parallel for default(shared)
     for (int igsloc = 0; igsloc < (int)spl_num_gvec_shells.local_size(); igsloc++)
     {
         int igs = (int)spl_num_gvec_shells[igsloc];
-        double g = reciprocal_lattice_->gvec_shell_len(igs);
-        double g3inv = (igs) ? 1.0 / pow(g, 3) : 0.0;
+        double G = reciprocal_lattice_->gvec_shell_len(igs);
+        double g3inv = (igs) ? 1.0 / pow(G, 3) : 0.0;
 
-        for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
+        for (int iat = 0; iat < uc->num_atom_types(); iat++)
         {            
-            double R = unit_cell_->atom_type(iat)->mt_radius();
-            double gR = g * R;
+            double R = uc->atom_type(iat)->mt_radius();
+            double GR = G * R;
 
-            ffac__(iat, igs) = (igs) ? (sin(gR) - gR * cos(gR)) * g3inv : pow(R, 3) / 3.0;
+            ffac(iat, igs) = (igs) ? (sin(GR) - GR * cos(GR)) * g3inv : pow(R, 3) / 3.0;
         }
     }
     
-    int ld = unit_cell_->num_atom_types(); 
-    Platform::allgather(ffac__.ptr(), static_cast<int>(ld * spl_num_gvec_shells.global_offset()), 
-                        static_cast<int>(ld * spl_num_gvec_shells.local_size()));
+    int ld = uc->num_atom_types(); 
+    comm_.allgather(ffac.ptr(), static_cast<int>(ld * spl_num_gvec_shells.global_offset()), 
+                    static_cast<int>(ld * spl_num_gvec_shells.local_size()));
+    return ffac;
 }
 
 void Step_function::update()
 {
     Timer t("sirius::Step_function::Step_function::update");
 
-    if (unit_cell_->num_atoms() == 0) return;
-
+    auto uc = reciprocal_lattice_->unit_cell();
     auto fft = reciprocal_lattice_->fft();
+
+    if (uc->num_atoms() == 0) return;
     
-    mdarray<double, 2> ffac(unit_cell_->num_atom_types(), (int)reciprocal_lattice_->num_gvec_shells_total());
-    get_step_function_form_factors(ffac);
+    auto ffac = get_step_function_form_factors(reciprocal_lattice_->num_gvec_shells_total());
 
     step_function_pw_.resize(fft->size());
     step_function_.resize(fft->size());
@@ -85,13 +87,13 @@ void Step_function::update()
     fft->output(&step_function_[0]);
     
     double vit = 0.0;
-    for (int i = 0; i < fft->size(); i++) vit += step_function_[i] * unit_cell_->omega() / fft->size();
+    for (int i = 0; i < fft->size(); i++) vit += step_function_[i] * uc->omega() / fft->size();
     
-    if (fabs(vit - unit_cell_->volume_it()) > 1e-10)
+    if (fabs(vit - uc->volume_it()) > 1e-10)
     {
         std::stringstream s;
         s << "step function gives a wrong volume for IT region" << std::endl
-          << "  difference with exact value : " << fabs(vit - unit_cell_->volume_it());
+          << "  difference with exact value : " << fabs(vit - uc->volume_it());
         warning_global(__FILE__, __LINE__, s);
     }
 }
