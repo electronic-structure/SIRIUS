@@ -85,9 +85,6 @@ class Global
         /// true if UJ correction is applied
         bool uj_correction_;
 
-        /// general purpose synchronization flag
-        int sync_flag_;
-
         /// MPI grid dimensions
         std::vector<int> mpi_grid_dims_;
         
@@ -102,33 +99,11 @@ class Global
 
         ev_solver_t std_evp_solver_type_;
 
-        standard_evp* std_evp_solver_; 
-
         ev_solver_t gen_evp_solver_type_;
 
-        generalized_evp* gen_evp_solver_;
-        
         /// type of the processing unit
         processing_unit_t processing_unit_;
 
-        /// block-cyclic distribution of the first-variational states along columns of the MPI grid
-        splindex<block_cyclic> spl_fv_states_;
-        
-        /// additional splitting of the first-variational states along rows of the MPI grid
-        splindex<block> sub_spl_fv_states_;
-
-        /// block-cyclic distribution of the spinor wave-functions along columns of the MPI grid
-        splindex<block_cyclic> spl_spinor_wf_;
-       
-        /// additional splitting of spinor wave-functions along rows of the MPI grid
-        splindex<block> sub_spl_spinor_wf_;
-
-        /// BLACS communication handler for an eigen-value solver and related operations
-        int blacs_handler_;
-
-        /// BLACS context for an eigen-value solver and related operations
-        int blacs_context_;
-        
         /// smearing function width
         double smearing_width_;
         
@@ -148,7 +123,7 @@ class Global
 
     public:
     
-        Global(MPI_Comm mpi_comm__,
+        Global(Communicator const& comm__,
                std::vector<int> const mpi_grid_dims__ = std::vector<int>())
             : initialized_(false), 
               lmax_apw_(lmax_apw_default), 
@@ -166,22 +141,18 @@ class Global
               mpi_grid_dims_(mpi_grid_dims__),
               cyclic_block_size_(64), 
               std_evp_solver_type_(ev_lapack),
-              std_evp_solver_(nullptr),
               gen_evp_solver_type_(ev_lapack),
-              gen_evp_solver_(nullptr),
               #ifdef _GPU_
               processing_unit_(gpu),
               #else
               processing_unit_(cpu),
               #endif
-              blacs_context_(-1),
               smearing_width_(0.001), 
               esm_type_(full_potential_lapwlo),
               step_function_(nullptr),
-              reciprocal_lattice_(nullptr)
+              reciprocal_lattice_(nullptr),
+              comm_(comm__)
         {
-            comm_ = Communicator(mpi_comm__);
-
             /* get the starting time */
             gettimeofday(&start_time_, NULL);
 
@@ -354,17 +325,6 @@ class Global
             return uj_correction_;
         }
 
-        inline void set_sync_flag(int flg)
-        {
-            sync_flag_ = flg;
-            Platform::allreduce<op_max>(&sync_flag_, 1);
-        }
-
-        inline int sync_flag()
-        {
-            return sync_flag_;
-        }
-        
         inline MPI_grid& mpi_grid()
         {
             return mpi_grid_;
@@ -391,56 +351,6 @@ class Global
             return false;
         }
         
-        inline splindex<block_cyclic>& spl_fv_states()
-        {
-            return spl_fv_states_;
-        }
-        
-        inline int spl_fv_states(int icol_loc)
-        {
-            return static_cast<int>(spl_fv_states_[icol_loc]);
-        }
-
-        inline splindex<block_cyclic>& spl_spinor_wf()
-        {
-            return spl_spinor_wf_;
-        }
-
-        inline splindex<block>& sub_spl_spinor_wf()
-        {
-            return sub_spl_spinor_wf_;
-        }
-        
-        inline int spl_spinor_wf(int jloc)
-        {
-            return static_cast<int>(spl_spinor_wf_[jloc]);
-        }
-        
-        inline int num_sub_bands()
-        {
-            return static_cast<int>(sub_spl_spinor_wf_.local_size());
-        }
-
-        inline splindex<block>& sub_spl_fv_states()
-        {
-            return sub_spl_fv_states_;
-        }
-        
-        inline int sub_spl_fv_states(int idx)
-        {
-            return static_cast<int>(sub_spl_fv_states_[idx]);
-        }
-
-        inline int idxbandglob(int sub_index)
-        {
-            return static_cast<int>(spl_spinor_wf_[sub_spl_spinor_wf_[sub_index]]);
-        }
-        
-        inline int idxbandloc(int sub_index)
-        {
-            return static_cast<int>(sub_spl_spinor_wf_[sub_index]);
-        }
-
         inline int cyclic_block_size()
         {
             return cyclic_block_size_;
@@ -466,11 +376,6 @@ class Global
         void update(); // TODO: better way to update unit cell after relaxation
        
         std::string start_time(const char* fmt);
-
-        inline int blacs_context()
-        {
-            return blacs_context_;
-        }
 
         inline electronic_structure_method_t esm_type()
         {
@@ -690,18 +595,14 @@ class Global
 
         void read_unit_cell_input();
 
-        #ifdef _SCALAPACK_
-        void create_blacs_context();
-        #endif
-
-        inline standard_evp* std_evp_solver()
+        inline ev_solver_t std_evp_solver_type()
         {
-            return std_evp_solver_;
+            return std_evp_solver_type_;
         }
 
-        inline generalized_evp* gen_evp_solver()
+        inline ev_solver_t gen_evp_solver_type()
         {
-            return gen_evp_solver_;
+            return gen_evp_solver_type_;
         }
 };
 
