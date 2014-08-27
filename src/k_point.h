@@ -28,6 +28,7 @@
 #include "global.h"
 #include "periodic_function.h"
 #include "matching_coefficients.h"
+#include "blacs_grid.h"
 
 namespace sirius
 {
@@ -40,6 +41,8 @@ class K_point
 
         /// Global set of parameters.
         Global& parameters_;
+
+        BLACS_grid const& blacs_grid_;
 
         /// Alias for FFT driver.
         FFT3D<cpu>* fft_;
@@ -169,11 +172,17 @@ class K_point
         /// Communicator between(!!) columns.
         Communicator comm_col_;
 
-        /// Copy lo block from eigen-vector to wave-function
-        //== inline void copy_lo_blocks(const double_complex* z, double_complex* vec);
+        /// block-cyclic distribution of the first-variational states along columns of the MPI grid
+        splindex<block_cyclic> spl_fv_states_;
         
-        /// Copy plane wave block from eigen-vector to wave-function
-        //== inline void copy_pw_block(const double_complex* z, double_complex* vec);
+        /// additional splitting of the first-variational states along rows of the MPI grid
+        splindex<block> sub_spl_fv_states_;
+
+        /// block-cyclic distribution of the spinor wave-functions along columns of the MPI grid
+        splindex<block_cyclic> spl_spinor_wf_;
+       
+        /// additional splitting of spinor wave-functions along rows of the MPI grid
+        splindex<block> sub_spl_spinor_wf_;
 
         /// Initialize G+k related data
         void init_gkvec();
@@ -194,8 +203,9 @@ class K_point
     public:
 
         /// Constructor
-        K_point(Global& parameters__, double* vk__, double weight__) 
+        K_point(Global& parameters__, double* vk__, double weight__, BLACS_grid const& blacs_grid__) 
             : parameters_(parameters__), 
+              blacs_grid_(blacs_grid__),
               weight_(weight__),
               alm_coeffs_row_(nullptr),
               alm_coeffs_col_(nullptr)
@@ -204,20 +214,28 @@ class K_point
 
             band_occupancies_ = std::vector<double>(parameters_.num_bands(), 1);
 
-            comm_ = Communicator(parameters_.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_));
-            comm_row_ = Communicator(parameters_.mpi_grid().communicator(1 << _dim_row_));
-            comm_col_ = Communicator(parameters_.mpi_grid().communicator(1 << _dim_col_));
+            comm_ = blacs_grid_.comm();
+            comm_row_ = blacs_grid_.comm_row();
+            comm_col_ = blacs_grid_.comm_col();
             
+            num_ranks_ = comm_.size();
             num_ranks_row_ = comm_row_.size();
             num_ranks_col_ = comm_col_.size();
-
-            num_ranks_ = comm_.size();
 
             rank_row_ = comm_row_.rank();
             rank_col_ = comm_col_.rank();
 
             fft_ = parameters_.reciprocal_lattice()->fft();
 
+            /* distribue first-variational states along columns */
+            spl_fv_states_ = splindex<block_cyclic>(parameters_.num_fv_states(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());
+
+            /* distribue spinor wave-functions along columns */
+            spl_spinor_wf_ = splindex<block_cyclic>(parameters_.num_bands(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());
+            
+            /* additionally split along rows */
+            sub_spl_fv_states_ = splindex<block>(spl_fv_states_.local_size(), num_ranks_row_, rank_row_);
+            sub_spl_spinor_wf_ = splindex<block>(spl_spinor_wf_.local_size(), num_ranks_row_, rank_row_);
         }
 
         ~K_point()
@@ -540,15 +558,6 @@ class K_point
             return num_ranks_;
         }
 
-        ///// Offset of column matching coefficients in the array. 
-        ///** In case of distributed matrix setup row and column apw coefficients 
-        //  * are combined. Row coefficients are first.
-        //  */
-        //inline int apw_offset_col()
-        //{
-        //    return (num_ranks() > 1) ? num_gkvec_row() : 0;
-        //}
-
         /// Return number of lo columns for a given atom
         inline int num_atom_lo_cols(int ia)
         {
@@ -661,6 +670,63 @@ class K_point
         {
             return comm_col_;
         }
+
+        inline BLACS_grid const& blacs_grid() const
+        {
+            return blacs_grid_;
+        }
+
+        inline splindex<block_cyclic>& spl_fv_states()
+        {
+            return spl_fv_states_;
+        }
+
+        inline int spl_fv_states(int icol_loc)
+        {
+            return static_cast<int>(spl_fv_states_[icol_loc]);
+        }
+
+        //== inline splindex<block_cyclic>& spl_spinor_wf()
+        //== {
+        //==     return spl_spinor_wf_;
+        //== }
+
+        //== inline splindex<block>& sub_spl_spinor_wf()
+        //== {
+        //==     return sub_spl_spinor_wf_;
+        //== }
+        //== 
+        //== inline int spl_spinor_wf(int jloc)
+        //== {
+        //==     return static_cast<int>(spl_spinor_wf_[jloc]);
+        //== }
+        //== 
+        inline splindex<block>& sub_spl_fv_states()
+        {
+            return sub_spl_fv_states_;
+        }
+
+        inline int num_sub_bands()
+        {
+            return static_cast<int>(sub_spl_spinor_wf_.local_size());
+        }
+
+        inline int idxbandglob(int sub_index)
+        {
+            return static_cast<int>(spl_spinor_wf_[sub_spl_spinor_wf_[sub_index]]);
+        }
+
+        //== 
+        //== inline int sub_spl_fv_states(int idx)
+        //== {
+        //==     return static_cast<int>(sub_spl_fv_states_[idx]);
+        //== }
+
+        //== 
+        //== inline int idxbandloc(int sub_index)
+        //== {
+        //==     return static_cast<int>(sub_spl_spinor_wf_[sub_index]);
+        //== }
 };
 
 }
