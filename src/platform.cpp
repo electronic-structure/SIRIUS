@@ -50,7 +50,7 @@ void Platform::initialize(bool call_mpi_init, bool call_cublas_init)
     #ifdef _GPU_
     //cuda_initialize();
     if (call_cublas_init) cublas_init();
-    if (mpi_rank() == 0) cuda_device_info();
+    if (comm_world().rank() == 0) cuda_device_info();
     cuda_create_streams(max_num_threads());
     #endif
     #ifdef _MAGMA_
@@ -79,23 +79,9 @@ void Platform::finalize()
     #endif
 }
 
-int Platform::mpi_rank(MPI_Comm comm)
-{
-    int rank;
-    MPI_Comm_rank(comm, &rank);
-    return rank;
-}
-
-int Platform::num_mpi_ranks(MPI_Comm comm)
-{
-    int size;
-    MPI_Comm_size(comm, &size);
-    return size;
-}
-
 void Platform::abort()
 {
-    if (num_mpi_ranks() == 1)
+    if (comm_world().size() == 1)
     {
         raise(SIGTERM);
     }

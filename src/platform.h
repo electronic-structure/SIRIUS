@@ -35,6 +35,7 @@
 #include <vector>
 #include <fstream>
 #include "typedefs.h"
+#include "communicator.h"
 
 /// Platform specific functions.
 class Platform
@@ -49,56 +50,20 @@ class Platform
 
         static void finalize();
 
-        static int mpi_rank(MPI_Comm comm = MPI_COMM_WORLD);
-
-        static int num_mpi_ranks(MPI_Comm comm = MPI_COMM_WORLD);
-
         static void abort();
 
-        /// Perform all-to-one in-place reduction
-        template <typename T>
-        static void reduce(T* buf, int count, const MPI_Comm& comm, int root);
+        static Communicator const& comm_world()
+        {
+            static bool initialized = false;
+            static Communicator comm;
+            if (!initialized)
+            {
+                comm = Communicator(MPI_COMM_WORLD);
+                initialized = true;
+            }
+            return comm;
+        }
 
-        /// Perform all-to-one out-of-place reduction 
-        template <typename T>
-        static void reduce(T* sendbuf, T* recvbuf, int count, const MPI_Comm& comm, int root);
-        
-        /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
-        template <typename T>
-        static void allreduce(T* buffer, int count, const MPI_Comm& comm);
-
-        /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
-        template<mpi_op_t op, typename T>
-        static void allreduce(T* buffer, int count, const MPI_Comm& comm);
-        
-        /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
-        template <typename T>
-        static void allreduce(T* buffer, int count);
-        
-        /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction 
-        template<mpi_op_t op, typename T>
-        static void allreduce(T* buffer, int count);
-
-        template <typename T>
-        static void allgather(T* sendbuf, T* recvbuf, int offset, int count);
-        
-        template <typename T>
-        static void allgather(T* buf, int offset, int count, MPI_Comm comm = MPI_COMM_WORLD);
-
-        template <typename T> 
-        static void gather(T* sendbuf, T* recvbuf, int *recvcounts, int *displs, int root, MPI_Comm comm);
-
-        template <typename T>
-        static void scatter(T* sendbuf, T* recvbuf, int* sendcounts, int* displs, int root, MPI_Comm comm);
-
-        /// Non-blocking send.
-        template <typename T>
-        static void isend(T* buf, int count, int dest, int tag, MPI_Comm comm);
-
-        /// Blocking recieve.
-        template <typename T>
-        static void recv(T* buf, int count, int source, int tag, MPI_Comm comm);
-        
         /// Returm maximum number of OMP threads.
         /** Maximum number of OMP threads is controlled by environment variable OMP_NUM_THREADS */
         static inline int max_num_threads()
@@ -130,50 +95,6 @@ class Platform
             num_fft_threads_ = num_fft_threads__;
         }
         
-        /// Global barrier
-        static void barrier(MPI_Comm comm = MPI_COMM_WORLD)
-        {
-            MPI_Barrier(comm);
-        }
-
-        //static void write_proc_status(const char* src_file, const int src_line)
-        //{
-        //    int pid = getpid();
-        //    //== 
-        //    //== char hostname[1024];
-        //    //== gethostname(hostname, 1024);
-        //    //== hostname[1023] = 0;
-
-        //    std::stringstream fname;
-        //    fname << "/proc/" << pid << "/status";
-        //    
-        //    std::ifstream ifs(fname.str().c_str());
-        //    if (ifs.is_open())
-        //    {
-        //        printf("[mpi_rank: %i] line %i of file %s \n", mpi_rank(), src_line, src_file);
-        //        
-        //        std::string str; 
-        //        while (std::getline(ifs, str))
-        //        {
-        //            printf("[mpi_rank: %i] %s\n", mpi_rank(), str.c_str());
-        //        } 
-        //    }
-        //}
-
-        //static void memory_usage_info(const char* src_file, const int src_line)
-        //{
-        //    int pid = getpid();
-        //    std::stringstream fname;
-        //    fname << "/proc/" << pid << "/status";
-        //    
-        //    std::ifstream ifs(fname.str().c_str());
-        //    if (ifs.is_open())
-        //    {
-
-        //    }
-
-        //}
-
         static void get_proc_status(size_t* VmHWM, size_t* VmRSS)
         {
             *VmHWM = 0;
