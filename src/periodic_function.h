@@ -98,6 +98,8 @@ class Periodic_function
         /// number of plane-wave expansion coefficients
         int num_gvec_;
 
+        Communicator comm_;
+
         /// Set pointer to local part of muffin-tin functions
         void set_local_mt_ptr()
         {
@@ -117,7 +119,7 @@ class Periodic_function
     public:
 
         /// Constructor
-        Periodic_function(Global& parameters__, int angular_domain_size, int num_gvec);
+        Periodic_function(Global& parameters__, int angular_domain_size, int num_gvec, Communicator const& comm__);
         
         /// Destructor
         ~Periodic_function();

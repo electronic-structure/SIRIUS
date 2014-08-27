@@ -23,13 +23,17 @@
  */
 
 template <typename T>
-Periodic_function<T>::Periodic_function(Global& parameters_, int angular_domain_size__, int num_gvec__ = 0) 
+Periodic_function<T>::Periodic_function(Global& parameters_,
+                                        int angular_domain_size__,
+                                        int num_gvec__,
+                                        Communicator const& comm__)
     : unit_cell_(parameters_.unit_cell()), 
       step_function_(parameters_.step_function()),
       fft_(parameters_.reciprocal_lattice()->fft()),
       esm_type_(parameters_.esm_type()),
       angular_domain_size_(angular_domain_size__),
-      num_gvec_(num_gvec__)
+      num_gvec_(num_gvec__),
+      comm_(comm__)
 {
     if (unit_cell_->full_potential())
     {
@@ -119,21 +123,21 @@ inline void Periodic_function<T>::sync(bool sync_mt, bool sync_it)
 
     if (f_it_.ptr() != NULL && sync_it)
     {
-        Platform::allgather(&f_it_(0), fft_->global_offset(), fft_->local_size());
+        comm_.allgather(&f_it_(0), fft_->global_offset(), fft_->local_size());
     }
     
     if (f_mt_.ptr() != NULL && sync_mt)
     {
-        Platform::allgather(&f_mt_(0, 0, 0), 
-                            (int)(f_mt_.size(0) * f_mt_.size(1) * unit_cell_->spl_num_atoms().global_offset()), 
-                            (int)(f_mt_.size(0) * f_mt_.size(1) * unit_cell_->spl_num_atoms().local_size()));
+        comm_.allgather(&f_mt_(0, 0, 0), 
+                        (int)(f_mt_.size(0) * f_mt_.size(1) * unit_cell_->spl_num_atoms().global_offset()), 
+                        (int)(f_mt_.size(0) * f_mt_.size(1) * unit_cell_->spl_num_atoms().local_size()));
     }
 }
 
 template <typename T>
 inline void Periodic_function<T>::copy_to_global_ptr(T* f_mt__, T* f_it__)
 {
-    Platform::allgather(f_it_local_.ptr(), f_it__, fft_->global_offset(), fft_->local_size());
+    comm_.allgather(f_it_local_.ptr(), f_it__, fft_->global_offset(), fft_->local_size());
 
     if (unit_cell_->full_potential()) 
     {
@@ -144,8 +148,8 @@ inline void Periodic_function<T>::copy_to_global_ptr(T* f_mt__, T* f_it__)
             memcpy(&f_mt(0, 0, ia), &f_mt_local_(ialoc)(0, 0), f_mt_local_(ialoc).size() * sizeof(T));
         }
         int ld = angular_domain_size_ * unit_cell_->max_num_mt_points();
-        Platform::allgather(f_mt__, static_cast<int>(ld * unit_cell_->spl_num_atoms().global_offset()),
-                            static_cast<int>(ld * unit_cell_->spl_num_atoms().local_size()));
+        comm_.allgather(f_mt__, static_cast<int>(ld * unit_cell_->spl_num_atoms().global_offset()),
+                        static_cast<int>(ld * unit_cell_->spl_num_atoms().local_size()));
     }
     
 
@@ -191,7 +195,7 @@ inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
         }
     }
     it_val *= (unit_cell_->omega() / fft_->size());
-    Platform::allreduce(&it_val, 1);
+    comm_.allreduce(&it_val, 1);
     T total = it_val;
     
     if (unit_cell_->full_potential())
@@ -209,7 +213,7 @@ inline T Periodic_function<T>::integrate(std::vector<T>& mt_val, T& it_val)
             mt_val[ia] = s.interpolate().integrate(2) * fourpi * y00;
         }
         
-        Platform::allreduce(&mt_val[0], unit_cell_->num_atoms());
+        comm_.allreduce(&mt_val[0], unit_cell_->num_atoms());
         for (int ia = 0; ia < unit_cell_->num_atoms(); ia++) total += mt_val[ia];
     }
 
@@ -320,7 +324,7 @@ T inner(Global& parameters_, Periodic_function<T>* f1, Periodic_function<T>* f2)
             result += inner(f1->f_mt(ialoc), f2->f_mt(ialoc));
     }
 
-    Platform::allreduce(&result, 1);
+    parameters_.comm().allreduce(&result, 1);
 
     return result;
 }
