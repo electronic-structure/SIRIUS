@@ -70,9 +70,6 @@ class Step_function
 {
     private:
         
-        /// Unit cell for which step function is constructed.
-        Unit_cell* unit_cell_;
-        
         /// Reciprocal lattice for the unit cell.
         Reciprocal_lattice* reciprocal_lattice_;
     
@@ -81,11 +78,13 @@ class Step_function
         
         /// Step function on the real-space grid.
         std::vector<double> step_function_;
+
+        Communicator comm_;
        
     public:
         
         /// Constructor
-        Step_function(Unit_cell* unit_cell__, Reciprocal_lattice* reciprocal_lattice__);
+        Step_function(Reciprocal_lattice* reciprocal_lattice__, Communicator const& comm__);
 
         /// Get \f$ \Theta(\alpha, G) \f$ form factors of the step function.
         /**
@@ -95,7 +94,7 @@ class Step_function
          *          \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
          *  \f]
          */
-        void get_step_function_form_factors(mdarray<double, 2>& ffac__);
+        mdarray<double, 2> get_step_function_form_factors(int num_gsh);
        
         /// Return plane-wave coefficient of the step function.
         inline double_complex theta_pw(int ig__)
