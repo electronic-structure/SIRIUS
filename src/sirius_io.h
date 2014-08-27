@@ -28,6 +28,7 @@
 #include <cstdarg>
 #include "hdf5_tree.h"
 #include "mdarray.h"
+#include "communicator.h"
 
 namespace sirius
 {
@@ -40,23 +41,20 @@ class pstdout
         
         std::vector<char> buffer_;
 
-        int offset_;
+        int fill_;
+
+        Communicator comm_;
 
     public:
 
-        pstdout() : offset_(0)
+        pstdout(Communicator const& comm__) : fill_(0), comm_(comm__)
         {
             buffer_.resize(8129);
         }
 
-        pstdout(const std::string str) : offset_(0)
-        {
-            this->printf("%s", str.c_str());
-        }
-
         ~pstdout()
         {
-            if (offset_) flush(0);
+            flush();
         }
 
         void printf(const char* fmt, ...)
@@ -70,30 +68,32 @@ class pstdout
 
             n = std::min(n, (int)str.size());
             
-            if ((int)buffer_.size() - offset_ < n) buffer_.resize(buffer_.size() + str.size());
-            memcpy(&buffer_[offset_], &str[0], n);
-            offset_ += n;
+            if ((int)buffer_.size() - fill_ < n) buffer_.resize(buffer_.size() + str.size());
+            memcpy(&buffer_[fill_], &str[0], n);
+            fill_ += n;
         }
 
-        void flush(int rank)
+        void flush()
         {
-            mdarray<int, 2> offsets(Platform::num_mpi_ranks(), 2);
-            offsets.zero();
-            Platform::allgather(&offset_, &offsets(0, 0), Platform::mpi_rank(), 1); 
+            std::vector<int> local_fills(comm_.size());
+            comm_.allgather(&fill_, &local_fills[0], comm_.rank(), 1); 
             
-            for (int i = 1; i < Platform::num_mpi_ranks(); i++) offsets(i, 1) = offsets(i - 1, 1) + offsets(i - 1, 0);
+            int offset = 0;
+            for (int i = 0; i < comm_.rank(); i++) offset += local_fills[i];
             
-            // total size of the output buffer
-            int sz = 0;
-            for (int i = 0; i < Platform::num_mpi_ranks(); i++) sz += offsets(i, 0);
+            /* total size of the output buffer */
+            int sz = fill_;
+            comm_.allreduce(&sz, 1);
+            
+            if (sz != 0)
+            {
+                std::vector<char> outb(sz + 1);
+                comm_.allgather(&buffer_[0], &outb[0], offset, fill_);
+                outb[sz] = 0;
 
-            std::vector<char> outb(sz + 1);
-            Platform::allgather(&buffer_[0], &outb[0], offsets(Platform::mpi_rank(), 1), offset_);
-            outb[sz] = 0;
-
-            if (Platform::mpi_rank() == rank) std::printf("%s", &outb[0]);
-
-            offset_ = 0;
+                if (comm_.rank() == 0) std::printf("%s", &outb[0]);
+            }
+            fill_ = 0;
         }
 };
 
