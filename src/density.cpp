@@ -32,12 +32,12 @@ Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_
 {
     fft_ = parameters_.reciprocal_lattice()->fft();
 
-    rho_ = new Periodic_function<double>(parameters_, parameters_.lmmax_rho(), parameters_.reciprocal_lattice()->num_gvec());
+    rho_ = new Periodic_function<double>(parameters_, parameters_.lmmax_rho(), parameters_.reciprocal_lattice()->num_gvec(), parameters_.comm());
 
     /* core density of the pseudopotential method */
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
-        rho_pseudo_core_ = new Periodic_function<double>(parameters_, 0);
+        rho_pseudo_core_ = new Periodic_function<double>(parameters_, 0, 0, parameters_.comm());
         rho_pseudo_core_->allocate(false, true);
         rho_pseudo_core_->zero();
 
@@ -46,7 +46,7 @@ Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_
 
     for (int i = 0; i < parameters_.num_mag_dims(); i++)
     {
-        magnetization_[i] = new Periodic_function<double>(parameters_, parameters_.lmmax_rho());
+        magnetization_[i] = new Periodic_function<double>(parameters_, parameters_.lmmax_rho(), 0, parameters_.comm());
     }
 
     dmat_spins_.clear();
@@ -142,7 +142,7 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
     mdarray<double, 2> rho_radial_integrals(uc->num_atom_types(), rl->num_gvec_shells_inner());
 
     /* split G-shells between MPI ranks */
-    splindex<block> spl_gshells(rl->num_gvec_shells_inner(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+    splindex<block> spl_gshells(rl->num_gvec_shells_inner(), parameters_.comm().size(), parameters_.comm().rank());
 
     #pragma omp parallel
     {
@@ -214,8 +214,8 @@ mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
     }
 
     int ld = uc->num_atom_types();
-    Platform::allgather(rho_radial_integrals.ptr(), static_cast<int>(ld * spl_gshells.global_offset()), 
-                        static_cast<int>(ld * spl_gshells.local_size()));
+    parameters_.comm().allgather(rho_radial_integrals.ptr(), static_cast<int>(ld * spl_gshells.global_offset()), 
+                                 static_cast<int>(ld * spl_gshells.local_size()));
 
     return rho_radial_integrals;
 }
@@ -327,7 +327,7 @@ void Density::initial_density()
                 }
             }
         }
-        Platform::allreduce(znulm.ptr(), (int)znulm.size());
+        parameters_.comm().allreduce(znulm.ptr(), (int)znulm.size());
         t3.stop();
 
         Timer t4("sirius::Density::initial_density|rholm");
@@ -373,7 +373,7 @@ void Density::initial_density()
         {
             auto p = uc->spl_num_atoms().location(ia);
             
-            if (p.second == Platform::mpi_rank())
+            if (p.second == parameters_.comm().rank())
             {
                 /* add density of a free atom */
                 for (int ir = 0; ir < uc->atom(ia)->num_mt_points(); ir++)
@@ -571,9 +571,9 @@ void Density::reduce_zdens(Atom_type* atom_type, int ialoc, mdarray<double_compl
 std::vector< std::pair<int, double> > Density::get_occupied_bands_list(Band* band, K_point* kp)
 {
     std::vector< std::pair<int, double> > bands;
-    for (int jsub = 0; jsub < parameters_.num_sub_bands(); jsub++)
+    for (int jsub = 0; jsub < kp->num_sub_bands(); jsub++)
     {
-        int j = parameters_.idxbandglob(jsub);
+        int j = kp->idxbandglob(jsub);
         double wo = kp->band_occupancy(j) * kp->weight();
         if (wo > 1e-14) bands.push_back(std::pair<int, double>(jsub, wo));
     }
@@ -642,7 +642,7 @@ void Density::add_kpoint_contribution_pp(K_point* kp__,
 
     auto uc = parameters_.unit_cell();
 
-    dmatrix<double_complex> beta_psi(uc->mt_basis_size(), nbnd, parameters_.blacs_context());
+    dmatrix<double_complex> beta_psi(uc->mt_basis_size(), nbnd, kp__->blacs_grid());
 
     /* compute <beta|Psi> */
     Timer t1("sirius::Density::add_kpoint_contribution_pp|beta_psi");
@@ -653,7 +653,7 @@ void Density::add_kpoint_contribution_pp(K_point* kp__,
     splindex<block> sub_spl_col(beta_psi.num_cols_local(), kp__->num_ranks_row(), kp__->rank_row());
 
     mdarray<double_complex, 2> beta_psi_slice(uc->mt_basis_size(), sub_spl_col.local_size());
-    beta_psi.gather(beta_psi_slice, parameters_.mpi_grid().communicator(1 << _dim_row_));
+    beta_psi.gather(beta_psi_slice);
 
     #pragma omp parallel
     {
@@ -1176,7 +1176,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 
         add_kpoint_contribution_pp(ks[ik], occupied_bands, pp_complex_density_matrix);
     }
-    Platform::allreduce(pp_complex_density_matrix.ptr(), (int)pp_complex_density_matrix.size());
+    parameters_.comm().allreduce(pp_complex_density_matrix.ptr(), (int)pp_complex_density_matrix.size());
 
     auto rl = parameters_.reciprocal_lattice();
 
@@ -1246,7 +1246,7 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
         }
     }
     
-    Platform::allgather(&f_pw[0], (int)rl->spl_num_gvec().global_offset(), (int)rl->spl_num_gvec().local_size());
+    parameters_.comm().allgather(&f_pw[0], (int)rl->spl_num_gvec().global_offset(), (int)rl->spl_num_gvec().local_size());
 
     fft_->input(rl->num_gvec(), rl->fft_index(), &f_pw[0]);
     fft_->transform(1);
@@ -1299,7 +1299,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
     pp_complex_density_matrix.copy_to_host();
     pp_complex_density_matrix.deallocate_on_device();
 
-    Platform::allreduce(pp_complex_density_matrix.ptr(), (int)pp_complex_density_matrix.size());
+    parameters_.comm().allreduce(pp_complex_density_matrix.ptr(), (int)pp_complex_density_matrix.size());
 
     auto rl = parameters_.reciprocal_lattice();
 
@@ -1369,7 +1369,7 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 
     rho_pw_gpu.copy_to_host();
 
-    Platform::allgather(&rho_pw[0], (int)rl->spl_num_gvec().global_offset(), (int)rl->spl_num_gvec().local_size());
+    parameters_.comm().allgather(&rho_pw[0], (int)rl->spl_num_gvec().global_offset(), (int)rl->spl_num_gvec().local_size());
     
     fft_->input(rl->num_gvec(), rl->fft_index(), &rho_pw[0]);
     fft_->transform(1);
@@ -1417,9 +1417,9 @@ void Density::generate_valence_density_mt(K_set& ks)
             int ialoc = (int)parameters_.unit_cell()->spl_num_atoms().local_index(ia);
             int rank = parameters_.unit_cell()->spl_num_atoms().local_rank(ia);
 
-            Platform::reduce(&mt_complex_density_matrix(0, 0, j, ia), &mt_complex_density_matrix_loc(0, 0, j, ialoc),
-                             parameters_.unit_cell()->max_mt_basis_size() * parameters_.unit_cell()->max_mt_basis_size(),
-                             parameters_.mpi_grid().communicator(), rank);
+           parameters_.comm().reduce(&mt_complex_density_matrix(0, 0, j, ia), &mt_complex_density_matrix_loc(0, 0, j, ialoc),
+                                     parameters_.unit_cell()->max_mt_basis_size() * parameters_.unit_cell()->max_mt_basis_size(),
+                                     rank);
         }
     }
    
@@ -1583,9 +1583,9 @@ void Density::generate_valence_density_it(K_set& ks)
     }
     
     /* reduce arrays; assume that each rank did it's own fraction of the density */
-    Platform::allreduce(&rho_->f_it<global>(0), fft_->size()); 
+    parameters_.comm().allreduce(&rho_->f_it<global>(0), fft_->size()); 
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
-        Platform::allreduce(&magnetization_[j]->f_it<global>(0), fft_->size()); 
+        parameters_.comm().allreduce(&magnetization_[j]->f_it<global>(0), fft_->size()); 
 }
 
 double Density::core_leakage()
@@ -1809,13 +1809,14 @@ void Density::generate(K_set& ks)
 
 void Density::save()
 {
-    if (Platform::mpi_rank() == 0)
+    if (parameters_.comm().rank() == 0)
     {
         HDF5_tree fout(storage_file_name, false);
         rho_->hdf5_write(fout["density"]);
         for (int j = 0; j < parameters_.num_mag_dims(); j++)
             magnetization_[j]->hdf5_write(fout["magnetization"].create_node(j));
     }
+    parameters_.comm().barrier();
 }
 
 void Density::load()
