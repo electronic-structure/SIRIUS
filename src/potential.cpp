@@ -69,22 +69,22 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
 
     int ngv = (use_second_variation) ? 0 : parameters_.reciprocal_lattice()->num_gvec();
 
-    effective_potential_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), parameters_.reciprocal_lattice()->num_gvec());
+    effective_potential_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), parameters_.reciprocal_lattice()->num_gvec(), parameters_.comm());
     for (int j = 0; j < parameters_.num_mag_dims(); j++)
-        effective_magnetic_field_[j] = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), ngv);
+        effective_magnetic_field_[j] = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), ngv, parameters_.comm());
     
-    hartree_potential_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), parameters_.reciprocal_lattice()->num_gvec());
+    hartree_potential_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), parameters_.reciprocal_lattice()->num_gvec(), parameters_.comm());
     hartree_potential_->allocate(false, true);
     
-    xc_potential_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot());
+    xc_potential_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), 0, parameters_.comm());
     xc_potential_->allocate(false, false);
     
-    xc_energy_density_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot());
+    xc_energy_density_ = new Periodic_function<double>(parameters_, parameters_.lmmax_pot(), 0, parameters_.comm());
     xc_energy_density_->allocate(false, false);
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
-        local_potential_ = new Periodic_function<double>(parameters_, 0);
+        local_potential_ = new Periodic_function<double>(parameters_, 0, 0, parameters_.comm());
         local_potential_->allocate(false, true);
         local_potential_->zero();
 
@@ -265,7 +265,7 @@ void Potential::poisson_vmt(std::vector< Spheric_function<spectral, double_compl
         qmt(0, ia) -= parameters_.unit_cell()->atom(ia)->zn() * y00;
     }
 
-    Platform::allreduce(&qmt(0, 0), (int)qmt.size());
+    parameters_.comm().allreduce(&qmt(0, 0), (int)qmt.size());
 }
 
 void Potential::poisson_sum_G(int lmmax__,
@@ -338,7 +338,7 @@ void Potential::poisson_sum_G(int lmmax__,
     //==     }
     //== }
     
-    Platform::allreduce(&flm__(0, 0), (int)flm__.size());
+    parameters_.comm().allreduce(&flm__(0, 0), (int)flm__.size());
 }
 
 void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw)
@@ -405,8 +405,8 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
             pseudo_pw[parameters_.reciprocal_lattice()->spl_num_gvec(igloc)] += pseudo_pw_pt[igloc];
     }
 
-    Platform::allgather(&pseudo_pw[0], (int)parameters_.reciprocal_lattice()->spl_num_gvec().global_offset(), 
-                        (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size());
+    parameters_.comm().allgather(&pseudo_pw[0], (int)parameters_.reciprocal_lattice()->spl_num_gvec().global_offset(), 
+                                 (int)parameters_.reciprocal_lattice()->spl_num_gvec().local_size());
         
     // add pseudo_density to interstitial charge density; now rho(G) has the correct multipole moments in the muffin-tins
     for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++) rho_pw[ig] += pseudo_pw[ig];
@@ -479,7 +479,7 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
             }
         }
     }
-    Platform::allreduce(fpw.ptr(), (int)fpw.size());
+    parameters_.comm().allreduce(fpw.ptr(), (int)fpw.size());
     for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++) effective_potential_->f_pw(ig) += fpw(ig);
     
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
@@ -817,8 +817,8 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
             /* save electronic part of potential at point of origin */
             vh_el_(ia) = vh->f_mt<local>(0, 0, ialoc);
         }
-        Platform::allgather(vh_el_.ptr(), (int)parameters_.unit_cell()->spl_num_atoms().global_offset(),
-                            (int)parameters_.unit_cell()->spl_num_atoms().local_size());
+        parameters_.comm().allgather(vh_el_.ptr(), (int)parameters_.unit_cell()->spl_num_atoms().global_offset(),
+                                     (int)parameters_.unit_cell()->spl_num_atoms().local_size());
 
     }
     
@@ -847,7 +847,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
             }
             evha_nuc_ -= atom->zn() * srho.interpolate().integrate(1) / y00;
         }
-        Platform::allreduce(&evha_nuc_, 1);
+        parameters_.comm().allreduce(&evha_nuc_, 1);
         energy_vha_ += evha_nuc_;
     }
 }
@@ -1425,7 +1425,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho,
     {
         /* gather vsigma */
         Smooth_periodic_function<spatial, double> vsigma_it(rl);
-        Platform::allgather(&vsigma_tmp(0), &vsigma_it(0), fft_->global_offset(), fft_->local_size());
+        parameters_.comm().allgather(&vsigma_tmp(0), &vsigma_it(0), fft_->global_offset(), fft_->local_size());
 
         /* forward transform vsigma to plane-wave domain */
         Smooth_periodic_function<spectral> vsigma_pw = transform(vsigma_it);
@@ -1644,9 +1644,9 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
         Smooth_periodic_function<spatial, double> vsigma_uu_it(rl);
         Smooth_periodic_function<spatial, double> vsigma_ud_it(rl);
         Smooth_periodic_function<spatial, double> vsigma_dd_it(rl);
-        Platform::allgather(&vsigma_uu_tmp(0), &vsigma_uu_it(0), fft_->global_offset(), fft_->local_size());
-        Platform::allgather(&vsigma_ud_tmp(0), &vsigma_ud_it(0), fft_->global_offset(), fft_->local_size());
-        Platform::allgather(&vsigma_dd_tmp(0), &vsigma_dd_it(0), fft_->global_offset(), fft_->local_size());
+        parameters_.comm().allgather(&vsigma_uu_tmp(0), &vsigma_uu_it(0), fft_->global_offset(), fft_->local_size());
+        parameters_.comm().allgather(&vsigma_ud_tmp(0), &vsigma_ud_it(0), fft_->global_offset(), fft_->local_size());
+        parameters_.comm().allgather(&vsigma_dd_tmp(0), &vsigma_dd_it(0), fft_->global_offset(), fft_->local_size());
 
         /* forward transform vsigma to plane-wave domain */
         Smooth_periodic_function<spectral> vsigma_uu_pw = transform(vsigma_uu_it);
@@ -1782,7 +1782,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
     effective_potential_->add(hartree_potential_);
 
     /* create temporary function for rho + rho_core */
-    Periodic_function<double>* rhovc = new Periodic_function<double>(parameters_, 0);
+    Periodic_function<double>* rhovc = new Periodic_function<double>(parameters_, 0, 0, parameters_.comm());
     rhovc->allocate(false, true);
     rhovc->zero();
     rhovc->add(rho);
@@ -1854,8 +1854,8 @@ void Potential::generate_d_mtrx()
 
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
-        Platform::allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().ptr(),
-                            (int)parameters_.unit_cell()->atom(ia)->d_mtrx().size());
+        parameters_.comm().allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().ptr(),
+                                     (int)parameters_.unit_cell()->atom(ia)->d_mtrx().size());
 
         auto atom_type = parameters_.unit_cell()->atom(ia)->type();
         int nbf = atom_type->mt_basis_size();
@@ -1977,8 +1977,8 @@ void Potential::generate_d_mtrx_gpu()
     // TODO: this is common with cpu code
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
-        Platform::allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().ptr(),
-                            (int)parameters_.unit_cell()->atom(ia)->d_mtrx().size());
+        parameters_.comm().allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().ptr(),
+                                     (int)parameters_.unit_cell()->atom(ia)->d_mtrx().size());
 
         auto atom_type = parameters_.unit_cell()->atom(ia)->type();
         int nbf = atom_type->mt_basis_size();
@@ -2142,7 +2142,7 @@ void Potential::update_atomic_potential()
 
 void Potential::save()
 {
-    if (Platform::mpi_rank() == 0)
+    if (parameters_.comm().rank() == 0)
     {
         HDF5_tree fout(storage_file_name, false);
 
@@ -2157,7 +2157,7 @@ void Potential::save()
         //==     fout["effective_potential"]["free_atom_potential"].write(iat, parameters_.unit_cell()->atom_type(iat)->free_atom_potential());
         //== }
     }
-    Platform::barrier();
+    parameters_.comm().barrier();
 }
 
 void Potential::load()
@@ -2185,7 +2185,7 @@ void Potential::generate_local_potential()
     mdarray<double, 2> vloc_radial_integrals(uc->num_atom_types(), rl->num_gvec_shells_inner());
 
     /* split G-shells between MPI ranks */
-    splindex<block> spl_gshells(rl->num_gvec_shells_inner(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+    splindex<block> spl_gshells(rl->num_gvec_shells_inner(), parameters_.comm().size(), parameters_.comm().rank());
 
     #pragma omp parallel
     {
@@ -2228,8 +2228,8 @@ void Potential::generate_local_potential()
     }
 
     int ld = uc->num_atom_types();
-    Platform::allgather(vloc_radial_integrals.ptr(), static_cast<int>(ld * spl_gshells.global_offset()), 
-                        static_cast<int>(ld * spl_gshells.local_size()));
+    parameters_.comm().allgather(vloc_radial_integrals.ptr(), static_cast<int>(ld * spl_gshells.global_offset()), 
+                                 static_cast<int>(ld * spl_gshells.local_size()));
 
     std::vector<double_complex> v = rl->make_periodic_function(vloc_radial_integrals, rl->num_gvec());
     
