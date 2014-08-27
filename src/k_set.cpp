@@ -29,8 +29,7 @@ namespace sirius {
 void K_set::initialize()
 {
     /* distribute k-points along the 1-st dimension of the MPI grid */
-    spl_num_kpoints_ = splindex<block>(num_kpoints(), parameters_.mpi_grid().dimension_size(_dim_k_), 
-                                       parameters_.mpi_grid().coordinate(_dim_k_));
+    spl_num_kpoints_ = splindex<block>(num_kpoints(), comm_k_.size(), comm_k_.rank());
 
     for (int ikloc = 0; ikloc < (int)spl_num_kpoints_.local_size(); ikloc++)
         kpoints_[spl_num_kpoints_[ikloc]]->initialize();
@@ -53,10 +52,9 @@ void K_set::sync_band_energies()
         int ik = (int)spl_num_kpoints_[ikloc];
         kpoints_[ik]->get_band_energies(&band_energies(0, ik));
     }
-    Platform::allgather(band_energies.ptr(), 
-                        static_cast<int>(parameters_.num_bands() * spl_num_kpoints_.global_offset()),
-                        static_cast<int>(parameters_.num_bands() * spl_num_kpoints_.local_size()),
-                        parameters_.mpi_grid().communicator(1 << _dim_k_));
+    comm_k_.allgather(band_energies.ptr(), 
+                      static_cast<int>(parameters_.num_bands() * spl_num_kpoints_.global_offset()),
+                      static_cast<int>(parameters_.num_bands() * spl_num_kpoints_.local_size()));
 
     for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_energies(&band_energies(0, ik));
 }
@@ -109,12 +107,12 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         }
         kpoints_[ik]->generate_spinor_wave_functions();
     }
-    Platform::barrier();
+    comm_k_.barrier();
 
     /* synchronize eigen-values */
     sync_band_energies();
 
-    if (Platform::mpi_rank() == 0 && verbosity_level >= 5)
+    if (comm_k_.rank() == 0 && blacs_grid_.comm().rank() == 0 && verbosity_level >= 5)
     {
         printf("Lowest band energies\n");
         for (int ik = 0; ik < num_kpoints(); ik++)
@@ -231,22 +229,22 @@ void K_set::find_band_occupancies()
 
 void K_set::print_info()
 {
-    if (Platform::mpi_rank() == 0)
+    if (comm_k_.rank() == 0 && blacs_grid_.comm().rank() == 0)
     {
         printf("\n");
         printf("total number of k-points : %i\n", num_kpoints());
         for (int i = 0; i < 80; i++) printf("-");
         printf("\n");
         printf("  ik                vk                    weight  num_gkvec");
-        if (parameters_.unit_cell()->full_potential()) printf(" gklo_basis_size");
+        if (parameters_.unit_cell()->full_potential()) printf("   gklo_basis_size");
         printf("\n");
         for (int i = 0; i < 80; i++) printf("-");
         printf("\n");
     }
 
-    pstdout pout;
-    if (parameters_.mpi_grid().side(1 << 0))
+    if (blacs_grid_.comm().rank() == 0)
     {
+        pstdout pout(comm_k_);
         for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++)
         {
             int ik = spl_num_kpoints(ikloc);
@@ -259,64 +257,68 @@ void K_set::print_info()
             pout.printf("\n");
         }
     }
-    pout.flush(0);
 }
 
 void K_set::save()
 {
-    if (Platform::mpi_rank() == 0)
-    {
-        HDF5_tree fout(storage_file_name, false);
-        fout.create_node("K_set");
-        fout["K_set"].write("num_kpoints", num_kpoints());
-    }
-    Platform::barrier();
-    
-    if (parameters_.mpi_grid().side(1 << _dim_k_ | 1 << _dim_col_))
-    {
-        for (int ik = 0; ik < num_kpoints(); ik++)
-        {
-            int rank = spl_num_kpoints_.local_rank(ik);
-            
-            if (parameters_.mpi_grid().coordinate(_dim_k_) == rank) kpoints_[ik]->save(ik);
-            
-            parameters_.mpi_grid().barrier(1 << _dim_k_ | 1 << _dim_col_);
-        }
-    }
+    warning_local(__FILE__, __LINE__, "fix me");
+    STOP();
+
+    //==if (comm_.rank() == 0)
+    //=={
+    //==    HDF5_tree fout(storage_file_name, false);
+    //==    fout.create_node("K_set");
+    //==    fout["K_set"].write("num_kpoints", num_kpoints());
+    //==}
+    //==comm_.barrier();
+    //==
+    //==if (parameters_.mpi_grid().side(1 << _dim_k_ | 1 << _dim_col_))
+    //=={
+    //==    for (int ik = 0; ik < num_kpoints(); ik++)
+    //==    {
+    //==        int rank = spl_num_kpoints_.local_rank(ik);
+    //==        
+    //==        if (parameters_.mpi_grid().coordinate(_dim_k_) == rank) kpoints_[ik]->save(ik);
+    //==        
+    //==        parameters_.mpi_grid().barrier(1 << _dim_k_ | 1 << _dim_col_);
+    //==    }
+    //==}
 }
 
 /// \todo check parameters of saved data in a separate function
 void K_set::load()
 {
-    HDF5_tree fin(storage_file_name, false);
+    STOP();
 
-    int num_kpoints_in;
-    fin["K_set"].read("num_kpoints", &num_kpoints_in);
+    //== HDF5_tree fin(storage_file_name, false);
 
-    std::vector<int> ikidx(num_kpoints(), -1); 
-    // read available k-points
-    double vk_in[3];
-    for (int jk = 0; jk < num_kpoints_in; jk++)
-    {
-        fin["K_set"][jk].read("coordinates", vk_in, 3);
-        for (int ik = 0; ik < num_kpoints(); ik++)
-        {
-            vector3d<double> dvk; 
-            for (int x = 0; x < 3; x++) dvk[x] = vk_in[x] - kpoints_[ik]->vk(x);
-            if (dvk.length() < 1e-12)
-            {
-                ikidx[ik] = jk;
-                break;
-            }
-        }
-    }
+    //== int num_kpoints_in;
+    //== fin["K_set"].read("num_kpoints", &num_kpoints_in);
 
-    for (int ik = 0; ik < num_kpoints(); ik++)
-    {
-        int rank = spl_num_kpoints_.local_rank(ik);
-        
-        if (parameters_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->load(fin["K_set"], ikidx[ik]);
-    }
+    //== std::vector<int> ikidx(num_kpoints(), -1); 
+    //== // read available k-points
+    //== double vk_in[3];
+    //== for (int jk = 0; jk < num_kpoints_in; jk++)
+    //== {
+    //==     fin["K_set"][jk].read("coordinates", vk_in, 3);
+    //==     for (int ik = 0; ik < num_kpoints(); ik++)
+    //==     {
+    //==         vector3d<double> dvk; 
+    //==         for (int x = 0; x < 3; x++) dvk[x] = vk_in[x] - kpoints_[ik]->vk(x);
+    //==         if (dvk.length() < 1e-12)
+    //==         {
+    //==             ikidx[ik] = jk;
+    //==             break;
+    //==         }
+    //==     }
+    //== }
+
+    //== for (int ik = 0; ik < num_kpoints(); ik++)
+    //== {
+    //==     int rank = spl_num_kpoints_.local_rank(ik);
+    //==     
+    //==     if (comm_.rank() == rank) kpoints_[ik]->load(fin["K_set"], ikidx[ik]);
+    //== }
 }
 
 //== void K_set::save_wave_functions()
@@ -394,7 +396,7 @@ int K_set::max_num_gkvec()
         int ik = (int)spl_num_kpoints_[ikloc];
         max_num_gkvec_ = std::max(max_num_gkvec_, kpoints_[ik]->num_gkvec());
     }
-    Platform::allreduce<op_max>(&max_num_gkvec_, 1);
+    comm_k_.allreduce<int, op_max>(&max_num_gkvec_, 1);
     return max_num_gkvec_;
 }
 
