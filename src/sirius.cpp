@@ -45,6 +45,8 @@ sirius::Mixer* mixer_rho = NULL;
 /// Potential and magnetic field mixer
 sirius::Mixer* mixer_pot = NULL;
 
+BLACS_grid* blacs_grid = nullptr;
+
 extern "C" 
 {
 
@@ -329,6 +331,9 @@ void FORTRAN(sirius_global_initialize)(int32_t* lmax_apw, int32_t* lmax_rho, int
     global_parameters.set_num_spins(num_spins);
     global_parameters.set_num_mag_dims(*num_mag_dims);
     global_parameters.initialize();
+    blacs_grid = new BLACS_grid(global_parameters.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_),
+                                global_parameters.mpi_grid().dimension_size(_dim_row_),
+                                global_parameters.mpi_grid().dimension_size(_dim_col_));
     log_function_exit(__func__);
 }
 
@@ -592,6 +597,11 @@ void FORTRAN(sirius_clear)(void)
     {
         delete dft_ground_state;
         dft_ground_state = NULL;
+    }
+    if (blacs_grid)
+    {
+        delete blacs_grid;
+        blacs_grid = nullptr;
     }
     for (int i = 0; i < (int)kset_list.size(); i++)
     {
@@ -1012,7 +1022,7 @@ void FORTRAN(sirius_set_uj_correction)(int32_t* uj_correction)
 void FORTRAN(sirius_platform_mpi_rank)(int32_t* rank)
 {
     log_function_enter(__func__);
-    *rank = Platform::mpi_rank();
+    *rank = global_parameters.comm().rank();
     log_function_exit(__func__);
 }
 
@@ -1023,31 +1033,31 @@ void FORTRAN(sirius_platform_mpi_grid_rank)(int32_t* dimension, int32_t* rank)
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_platform_mpi_grid_barrier)(int32_t* dimension)
-{
-    log_function_enter(__func__);
-    global_parameters.mpi_grid().barrier(1 << (*dimension));
-    log_function_exit(__func__);
-}
+//== void FORTRAN(sirius_platform_mpi_grid_barrier)(int32_t* dimension)
+//== {
+//==     log_function_enter(__func__);
+//==     global_parameters.mpi_grid().barrier(1 << (*dimension));
+//==     log_function_exit(__func__);
+//== }
 
-void FORTRAN(sirius_global_set_sync_flag)(int32_t* flag)
-{
-    log_function_enter(__func__);
-    global_parameters.set_sync_flag(*flag);
-    log_function_exit(__func__);
-}
-
-void FORTRAN(sirius_global_get_sync_flag)(int32_t* flag)
-{
-    log_function_enter(__func__);
-    *flag = global_parameters.sync_flag();
-    log_function_exit(__func__);
-}
+//void FORTRAN(sirius_global_set_sync_flag)(int32_t* flag)
+//{
+//    log_function_enter(__func__);
+//    global_parameters.set_sync_flag(*flag);
+//    log_function_exit(__func__);
+//}
+//
+//void FORTRAN(sirius_global_get_sync_flag)(int32_t* flag)
+//{
+//    log_function_enter(__func__);
+//    *flag = global_parameters.sync_flag();
+//    log_function_exit(__func__);
+//}
 
 void FORTRAN(sirius_platform_barrier)(void)
 {
     log_function_enter(__func__);
-    Platform::barrier();
+    global_parameters.comm().barrier();
     log_function_exit(__func__);
 }
 
@@ -1112,7 +1122,7 @@ void FORTRAN(sirius_create_kset)(int32_t* num_kpoints, double* kpoints__, double
     log_function_enter(__func__);
     mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints); 
     
-    sirius::K_set* new_kset = new sirius::K_set(global_parameters);
+    sirius::K_set* new_kset = new sirius::K_set(global_parameters, global_parameters.mpi_grid().communicator(1 << _dim_k_), *blacs_grid);
     new_kset->add_kpoints(kpoints, kpoint_weights);
     if (*init_kset) new_kset->initialize();
     
@@ -1270,7 +1280,10 @@ void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* nu
     /* position of processors which store a given k-point */
     int rank = kset_list[*kset_id]->spl_num_kpoints().local_rank(*ik - 1);
     
-    if (rank == global_parameters.mpi_grid().coordinate(_dim_k_))
+    Communicator comm_r(global_parameters.mpi_grid().communicator(1 << _dim_row_));
+    Communicator comm_k(global_parameters.mpi_grid().communicator(1 << _dim_k_));
+
+    if (rank == comm_k.rank())
     {
         sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
         *num_gkvec = kp->num_gkvec();
@@ -1300,17 +1313,15 @@ void FORTRAN(sirius_get_gkvec_arrays)(int32_t* kset_id, int32_t* ik, int32_t* nu
             for (int ia = 0; ia < global_parameters.unit_cell()->num_atoms(); ia++)
                 gkvec_phase_factors(igk, ia) = kp->gkvec_phase_factor(igkloc, ia);
         }
-        Platform::allreduce(&gkvec_phase_factors(0, 0), (int)gkvec_phase_factors.size(), 
-                            global_parameters.mpi_grid().communicator(1 << _dim_row_));
+        comm_r.allreduce(&gkvec_phase_factors(0, 0), (int)gkvec_phase_factors.size()); 
     }
-    Communicator comm(global_parameters.mpi_grid().communicator(1 << _dim_k_));
-    comm.bcast(num_gkvec, 1, rank);
-    comm.bcast(gvec_index, *num_gkvec, rank);
-    comm.bcast(gkvec__, *num_gkvec * 3, rank);
-    comm.bcast(gkvec_cart__, *num_gkvec * 3, rank);
-    comm.bcast(gkvec_len, *num_gkvec, rank);
-    comm.bcast(gkvec_tp__, *num_gkvec * 2, rank);
-    comm.bcast(gkvec_phase_factors__, *ld * global_parameters.unit_cell()->num_atoms(), rank);
+    comm_k.bcast(num_gkvec, 1, rank);
+    comm_k.bcast(gvec_index, *num_gkvec, rank);
+    comm_k.bcast(gkvec__, *num_gkvec * 3, rank);
+    comm_k.bcast(gkvec_cart__, *num_gkvec * 3, rank);
+    comm_k.bcast(gkvec_len, *num_gkvec, rank);
+    comm_k.bcast(gkvec_tp__, *num_gkvec * 2, rank);
+    comm_k.bcast(gkvec_phase_factors__, *ld * global_parameters.unit_cell()->num_atoms(), rank);
     log_function_exit(__func__);
 }
 
@@ -1329,7 +1340,7 @@ void FORTRAN(sirius_get_matching_coefficients)(int32_t* kset_id__, int32_t* ik__
                                           global_parameters.unit_cell()->num_atoms());
 
 
-        dmatrix<double_complex> alm(kp->num_gkvec_row(), global_parameters.unit_cell()->mt_aw_basis_size(), global_parameters.blacs_context());
+        dmatrix<double_complex> alm(kp->num_gkvec_row(), global_parameters.unit_cell()->mt_aw_basis_size(), *blacs_grid);
         kp->alm_coeffs_row()->generate<true>(alm);
 
         for (int i = 0; i < global_parameters.unit_cell()->mt_aw_basis_size(); i++)
@@ -1372,8 +1383,8 @@ void FORTRAN(sirius_get_fv_h_o)(int32_t* kset_id__, int32_t* ik__, int32_t* size
             error_local(__FILE__, __LINE__, "wrong matrix size");
         }
 
-        dmatrix<double_complex> h(h__, kp->gklo_basis_size(), kp->gklo_basis_size(), global_parameters.blacs_context());
-        dmatrix<double_complex> o(o__, kp->gklo_basis_size(), kp->gklo_basis_size(), global_parameters.blacs_context());
+        dmatrix<double_complex> h(h__, kp->gklo_basis_size(), kp->gklo_basis_size(), *blacs_grid);
+        dmatrix<double_complex> o(o__, kp->gklo_basis_size(), kp->gklo_basis_size(), *blacs_grid);
         kset_list[*kset_id__]->band()->set_fv_h_o<cpu, full_potential_lapwlo>(kp, potential->effective_potential(), h, o);  
     }
 }
@@ -1387,17 +1398,17 @@ void FORTRAN(sirius_solve_fv)(int32_t* kset_id__, int32_t* ik__, double_complex*
     {
         auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
     
-        global_parameters.gen_evp_solver()->solve(kp->gklo_basis_size(),
-                                                  kp->gklo_basis_size_row(),
-                                                  kp->gklo_basis_size_col(),
-                                                  global_parameters.num_fv_states(),
-                                                  h__,
-                                                  kp->gklo_basis_size_row(), 
-                                                  o__,
-                                                  kp->gklo_basis_size_row(),
-                                                  eval__, 
-                                                  evec__,
-                                                  *evec_ld__);
+        kset_list[*kset_id__]->band()->gen_evp_solver()->solve(kp->gklo_basis_size(),
+                                                               kp->gklo_basis_size_row(),
+                                                               kp->gklo_basis_size_col(),
+                                                               global_parameters.num_fv_states(),
+                                                               h__,
+                                                               kp->gklo_basis_size_row(), 
+                                                               o__,
+                                                               kp->gklo_basis_size_row(),
+                                                               eval__, 
+                                                               evec__,
+                                                               *evec_ld__);
     }
 }
 
@@ -1412,18 +1423,19 @@ void FORTRAN(sirius_get_mtgk_size)(int32_t* kset_id, int32_t* ik, int32_t* mtgk_
 void FORTRAN(sirius_get_spinor_wave_functions)(int32_t* kset_id, int32_t* ik, double_complex* spinor_wave_functions__)
 {
     log_function_enter(__func__);
-    assert(global_parameters.num_bands() == (int)global_parameters.spl_spinor_wf().local_size());
+    TERMINATE("fix this for distributed WF storage");
+    //== assert(global_parameters.num_bands() == (int)global_parameters.spl_spinor_wf().local_size());
 
-    sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
-    
-    mdarray<double_complex, 3> spinor_wave_functions(spinor_wave_functions__, kp->wf_size(), global_parameters.num_spins(), 
-                                                global_parameters.spl_spinor_wf().local_size());
+    //== sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
+    //== 
+    //== mdarray<double_complex, 3> spinor_wave_functions(spinor_wave_functions__, kp->wf_size(), global_parameters.num_spins(), 
+    //==                                             global_parameters.spl_spinor_wf().local_size());
 
-    for (int j = 0; j < (int)global_parameters.spl_spinor_wf().local_size(); j++)
-    {
-        memcpy(&spinor_wave_functions(0, 0, j), &kp->spinor_wave_function(0, 0, j), 
-               kp->wf_size() * global_parameters.num_spins() * sizeof(double_complex));
-    }
+    //== for (int j = 0; j < (int)global_parameters.spl_spinor_wf().local_size(); j++)
+    //== {
+    //==     memcpy(&spinor_wave_functions(0, 0, j), &kp->spinor_wave_function(0, 0, j), 
+    //==            kp->wf_size() * global_parameters.num_spins() * sizeof(double_complex));
+    //== }
     log_function_exit(__func__);
 }
 
@@ -1770,7 +1782,7 @@ void FORTRAN(sirius_ground_state_clear)()
 void FORTRAN(sirius_get_mpi_comm)(int32_t* directions__, int32_t* fcomm__)
 {
     log_function_enter(__func__);
-    *fcomm__ = MPI_Comm_c2f(global_parameters.mpi_grid().communicator(*directions__));
+    *fcomm__ = MPI_Comm_c2f(global_parameters.mpi_grid().communicator(*directions__).mpi_comm());
     log_function_exit(__func__);
 }
 
@@ -1833,11 +1845,11 @@ void FORTRAN(sirius_density_mixer_initialize)(void)
     if (global_parameters.mixer_input_section_.type_ == "broyden")
     {
         mixer_rho = new sirius::Broyden_mixer(density->size(), global_parameters.mixer_input_section_.max_history_, 
-                                              global_parameters.mixer_input_section_.beta_);
+                                              global_parameters.mixer_input_section_.beta_, global_parameters.comm());
     }
     else if (global_parameters.mixer_input_section_.type_ == "linear")
     {
-        mixer_rho = new sirius::Linear_mixer(density->size(), global_parameters.mixer_input_section_.beta_);
+        mixer_rho = new sirius::Linear_mixer(density->size(), global_parameters.mixer_input_section_.beta_, global_parameters.comm());
     }
     else
     {
@@ -1853,7 +1865,7 @@ void FORTRAN(sirius_potential_mixer_initialize)(void)
 {
     if (global_parameters.mixer_input_section_.type_ == "linear")
     {
-        mixer_pot = new sirius::Linear_mixer(potential->size(), global_parameters.mixer_input_section_.gamma_);
+        mixer_pot = new sirius::Linear_mixer(potential->size(), global_parameters.mixer_input_section_.gamma_, global_parameters.comm());
 
         /* initialize potential mixer */
         potential->pack(mixer_pot);
@@ -1866,8 +1878,7 @@ void FORTRAN(sirius_mix_density)(double* rms)
     density->pack(mixer_rho);
     *rms = mixer_rho->mix();
     density->unpack(mixer_rho->output_buffer());
-    Communicator comm(MPI_COMM_WORLD);
-    comm.bcast(rms, 1, 0);
+    global_parameters.comm().bcast(rms, 1, 0);
 }
 
 void FORTRAN(sirius_mix_potential)(void)
