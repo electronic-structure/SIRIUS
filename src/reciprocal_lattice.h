@@ -36,7 +36,7 @@ class Reciprocal_lattice
 {
     private:
 
-        /// pointer to corresponding Unit_cell class 
+        /// Pointer to the corresponding Unit_cell class instance.
         Unit_cell* unit_cell_;
 
         electronic_structure_method_t esm_type_;
@@ -356,6 +356,11 @@ class Reciprocal_lattice
             //==     }
             //== }
             //== fclose(fout);
+        }
+
+        inline Unit_cell* unit_cell()
+        {
+            return unit_cell_;
         }
 };
 
