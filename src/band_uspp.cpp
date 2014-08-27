@@ -1843,7 +1843,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
         /* Expand variational space with extra basis functions */
         for (int i = 0; i < n; i++)
         {
-            dmatrix<double_complex>::copy_col(res, res_list[i], phi, N + i, kp__->comm_col().mpi_comm());
+            dmatrix<double_complex>::copy_col(res, res_list[i], phi, N + i);
         }
     }
 

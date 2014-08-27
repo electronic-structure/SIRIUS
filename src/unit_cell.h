@@ -144,7 +144,7 @@ class Unit_cell
 
         electronic_structure_method_t esm_type_;
 
-        MPI_comm_bundle mpi_atoms_;
+        Communicator_bundle comm_bundle_atoms_;
         
         splindex<block> spl_atoms_;
 
