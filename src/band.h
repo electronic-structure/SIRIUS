@@ -44,12 +44,18 @@ class Band
         /// global set of parameters
         Global& parameters_;
 
+        BLACS_grid const& blacs_grid_;
+
         /// alias for FFT driver
         FFT3D<cpu>* fft_;
         
         /// Non-zero Gaunt coefficients
         Gaunt_coefficients<double_complex>* gaunt_coefs_;
-    
+
+        standard_evp* std_evp_solver_; 
+
+        generalized_evp* gen_evp_solver_;
+
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
         void apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_gkvec, int* fft_index, 
@@ -248,17 +254,93 @@ class Band
     public:
         
         /// Constructor
-        Band(Global& parameters__) : parameters_(parameters__)
+        Band(Global& parameters__, BLACS_grid const& blacs_grid__) 
+            : parameters_(parameters__),
+              blacs_grid_(blacs_grid__)
         {
             fft_ = parameters_.reciprocal_lattice()->fft();
 
-            gaunt_coefs_ = new Gaunt_coefficients<double_complex>(parameters_.lmax_apw(), parameters_.lmax_pot(), 
+            gaunt_coefs_ = new Gaunt_coefficients<double_complex>(parameters_.lmax_apw(), 
+                                                                  parameters_.lmax_pot(), 
                                                                   parameters_.lmax_apw());
+
+            /* create standard eigen-value solver */
+            switch (parameters_.std_evp_solver_type())
+            {
+                case ev_lapack:
+                {
+                    std_evp_solver_ = new standard_evp_lapack();
+                    break;
+                }
+                case ev_scalapack:
+                {
+                    std_evp_solver_ = new standard_evp_scalapack(blacs_grid_);
+                    break;
+                }
+                case ev_plasma:
+                {
+                    std_evp_solver_ = new standard_evp_plasma();
+                    break;
+                }
+                default:
+                {
+                    TERMINATE("wrong standard eigen-value solver");
+                }
+            }
+            
+            /* create generalized eign-value solver */
+            switch (parameters_.gen_evp_solver_type())
+            {
+                case ev_lapack:
+                {
+                    gen_evp_solver_ = new generalized_evp_lapack(1e-15);
+                    break;
+                }
+                case ev_scalapack:
+                {
+                    gen_evp_solver_ = new generalized_evp_scalapack(blacs_grid_, 1e-15);
+                    break;
+                }
+                case ev_elpa1:
+                {
+                    gen_evp_solver_ = new generalized_evp_elpa1(blacs_grid_);
+                    break;
+                }
+                case ev_elpa2:
+                {
+                    gen_evp_solver_ = new generalized_evp_elpa2(blacs_grid_);
+                    break;
+                }
+                case ev_magma:
+                {
+                    gen_evp_solver_ = new generalized_evp_magma();
+                    break;
+                }
+                case ev_rs_gpu:
+                {
+                    gen_evp_solver_ = new generalized_evp_rs_gpu(blacs_grid_);
+                    break;
+                }
+                case ev_rs_cpu:
+                {
+                    gen_evp_solver_ = new generalized_evp_rs_cpu(blacs_grid_);
+                    break;
+                }
+                default:
+                {
+                    TERMINATE("wrong generalized eigen-value solver");
+                }
+            }
+
+            if (std_evp_solver_->parallel() != gen_evp_solver_->parallel())
+                error_global(__FILE__, __LINE__, "both eigen-value solvers must be serial or parallel");
         }
 
         ~Band()
         {
             delete gaunt_coefs_;
+            delete std_evp_solver_;
+            delete gen_evp_solver_;
         }
 
         /// Apply the muffin-tin part of the first-variational Hamiltonian to the apw basis function
@@ -353,6 +435,16 @@ class Band
 
         void solve_fd(K_point* kp, Periodic_function<double>* effective_potential, 
                       Periodic_function<double>* effective_magnetic_field[3]);
+
+        inline standard_evp* std_evp_solver()
+        {
+            return std_evp_solver_;
+        }
+
+        inline generalized_evp* gen_evp_solver()
+        {
+            return gen_evp_solver_;
+        }
 };
 
 #include "band.hpp"

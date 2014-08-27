@@ -25,70 +25,70 @@
 // TODO: look at multithreading in apw_lo and lo_apw blocks 
 // TODO: k-independent L3 sum
 
-template <spin_block_t sblock>
-void Band::apply_uj_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi)
-{
-    Timer t("sirius::Band::apply_uj_correction");
-
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    {
-        if (parameters_.unit_cell()->atom(ia)->apply_uj_correction())
-        {
-            Atom_type* type = parameters_.unit_cell()->atom(ia)->type();
-
-            int offset = parameters_.unit_cell()->atom(ia)->offset_wf();
-
-            int l = parameters_.unit_cell()->atom(ia)->uj_correction_l();
-
-            int nrf = type->indexr().num_rf(l);
-
-            for (int order2 = 0; order2 < nrf; order2++)
-            {
-                for (int lm2 = Utils::lm_by_l_m(l, -l); lm2 <= Utils::lm_by_l_m(l, l); lm2++)
-                {
-                    int idx2 = type->indexb_by_lm_order(lm2, order2);
-                    for (int order1 = 0; order1 < nrf; order1++)
-                    {
-                        double ori = parameters_.unit_cell()->atom(ia)->symmetry_class()->o_radial_integral(l, order2, order1);
-                        
-                        for (int ist = 0; ist < parameters_.spl_fv_states().local_size(); ist++)
-                        {
-                            for (int lm1 = Utils::lm_by_l_m(l, -l); lm1 <= Utils::lm_by_l_m(l, l); lm1++)
-                            {
-                                int idx1 = type->indexb_by_lm_order(lm1, order1);
-                                double_complex z1 = fv_states(offset + idx1, ist) * ori;
-
-                                if (sblock == uu)
-                                {
-                                    hpsi(offset + idx2, ist, 0) += z1 * 
-                                        parameters_.unit_cell()->atom(ia)->uj_correction_matrix(lm2, lm1, 0, 0);
-                                }
-
-                                if (sblock == dd)
-                                {
-                                    hpsi(offset + idx2, ist, 1) += z1 *
-                                        parameters_.unit_cell()->atom(ia)->uj_correction_matrix(lm2, lm1, 1, 1);
-                                }
-
-                                if (sblock == ud)
-                                {
-                                    hpsi(offset + idx2, ist, 2) += z1 *
-                                        parameters_.unit_cell()->atom(ia)->uj_correction_matrix(lm2, lm1, 0, 1);
-                                }
-                                
-                                if (sblock == du)
-                                {
-                                    hpsi(offset + idx2, ist, 3) += z1 *
-                                        parameters_.unit_cell()->atom(ia)->uj_correction_matrix(lm2, lm1, 1, 0);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+//== template <spin_block_t sblock>
+//== void Band::apply_uj_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi)
+//== {
+//==     Timer t("sirius::Band::apply_uj_correction");
+//== 
+//==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+//==     {
+//==         if (parameters_.unit_cell()->atom(ia)->apply_uj_correction())
+//==         {
+//==             Atom_type* type = parameters_.unit_cell()->atom(ia)->type();
+//== 
+//==             int offset = parameters_.unit_cell()->atom(ia)->offset_wf();
+//== 
+//==             int l = parameters_.unit_cell()->atom(ia)->uj_correction_l();
+//== 
+//==             int nrf = type->indexr().num_rf(l);
+//== 
+//==             for (int order2 = 0; order2 < nrf; order2++)
+//==             {
+//==                 for (int lm2 = Utils::lm_by_l_m(l, -l); lm2 <= Utils::lm_by_l_m(l, l); lm2++)
+//==                 {
+//==                     int idx2 = type->indexb_by_lm_order(lm2, order2);
+//==                     for (int order1 = 0; order1 < nrf; order1++)
+//==                     {
+//==                         double ori = parameters_.unit_cell()->atom(ia)->symmetry_class()->o_radial_integral(l, order2, order1);
+//==                         
+//==                         for (int ist = 0; ist < parameters_.spl_fv_states().local_size(); ist++)
+//==                         {
+//==                             for (int lm1 = Utils::lm_by_l_m(l, -l); lm1 <= Utils::lm_by_l_m(l, l); lm1++)
+//==                             {
+//==                                 int idx1 = type->indexb_by_lm_order(lm1, order1);
+//==                                 double_complex z1 = fv_states(offset + idx1, ist) * ori;
+//== 
+//==                                 if (sblock == uu)
+//==                                 {
+//==                                     hpsi(offset + idx2, ist, 0) += z1 * 
+//==                                         parameters_.unit_cell()->atom(ia)->uj_correction_matrix(lm2, lm1, 0, 0);
+//==                                 }
+//== 
+//==                                 if (sblock == dd)
+//==                                 {
+//==                                     hpsi(offset + idx2, ist, 1) += z1 *
+//==                                         parameters_.unit_cell()->atom(ia)->uj_correction_matrix(lm2, lm1, 1, 1);
+//==                                 }
+//== 
+//==                                 if (sblock == ud)
+//==                                 {
+//==                                     hpsi(offset + idx2, ist, 2) += z1 *
+//==                                         parameters_.unit_cell()->atom(ia)->uj_correction_matrix(lm2, lm1, 0, 1);
+//==                                 }
+//==                                 
+//==                                 if (sblock == du)
+//==                                 {
+//==                                     hpsi(offset + idx2, ist, 3) += z1 *
+//==                                         parameters_.unit_cell()->atom(ia)->uj_correction_matrix(lm2, lm1, 1, 0);
+//==                                 }
+//==                             }
+//==                         }
+//==                     }
+//==                 }
+//==             }
+//==         }
+//==     }
+//== }
 
 template <spin_block_t sblock>
 void Band::apply_hmt_to_apw(int num_gkvec__,
