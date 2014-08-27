@@ -100,7 +100,7 @@ class DFT_ground_state
                 #pragma omp critical
                 ewald_g += ewald_g_pt;
             }
-            Platform::allreduce(&ewald_g, 1);
+            parameters_.comm().allreduce(&ewald_g, 1);
             ewald_g *= (twopi / parameters_.unit_cell()->omega());
 
             /* remove self-interaction */

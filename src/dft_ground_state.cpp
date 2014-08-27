@@ -37,7 +37,7 @@ double DFT_ground_state::energy_enuc()
             int zn = parameters_.unit_cell()->atom(ia)->type()->zn();
             enuc -= 0.5 * zn * potential_->vh_el(ia) * y00;
         }
-        Platform::allreduce(&enuc, 1);
+        parameters_.comm().allreduce(&enuc, 1);
     }
     
     return enuc;
@@ -58,7 +58,7 @@ void DFT_ground_state::move_atoms(int istep)
 {
     mdarray<double, 2> atom_force(3, parameters_.unit_cell()->num_atoms());
     forces(atom_force);
-    if (verbosity_level >= 6 && Platform::mpi_rank() == 0)
+    if (verbosity_level >= 6 && parameters_.comm().rank() == 0)
     {
         printf("\n");
         printf("Atomic forces\n");
@@ -101,23 +101,23 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     if (parameters_.mixer_input_section_.type_ == "broyden")
     {
         mx = new Broyden_mixer(density_->size(), parameters_.mixer_input_section_.max_history_, 
-                               parameters_.mixer_input_section_.beta_);
+                               parameters_.mixer_input_section_.beta_, parameters_.comm());
     }
     else if (parameters_.mixer_input_section_.type_ == "linear")
     {
-        mx = new Linear_mixer(density_->size(), parameters_.mixer_input_section_.beta_);
-        mx_pot = new Linear_mixer(potential_->size(), parameters_.mixer_input_section_.gamma_);
+        mx = new Linear_mixer(density_->size(), parameters_.mixer_input_section_.beta_, parameters_.comm());
+        mx_pot = new Linear_mixer(potential_->size(), parameters_.mixer_input_section_.gamma_, parameters_.comm());
     }
-    else if (parameters_.mixer_input_section_.type_ == "adaptive")
-    {
-        mx = new Adaptive_mixer(density_->size(), parameters_.mixer_input_section_.max_history_, 
-                                parameters_.mixer_input_section_.beta_);
-    }
-    else if (parameters_.mixer_input_section_.type_ == "pulay")
-    {
-        mx = new Pulay_mixer(density_->size(), parameters_.mixer_input_section_.max_history_, 
-                             parameters_.mixer_input_section_.beta_);
-    }
+    //==else if (parameters_.mixer_input_section_.type_ == "adaptive")
+    //=={
+    //==    mx = new Adaptive_mixer(density_->size(), parameters_.mixer_input_section_.max_history_, 
+    //==                            parameters_.mixer_input_section_.beta_);
+    //==}
+    //==else if (parameters_.mixer_input_section_.type_ == "pulay")
+    //=={
+    //==    mx = new Pulay_mixer(density_->size(), parameters_.mixer_input_section_.max_history_, 
+    //==                         parameters_.mixer_input_section_.beta_);
+    //==}
     else
     {
         error_global(__FILE__, __LINE__, "Wrong mixer type");
@@ -277,7 +277,7 @@ void DFT_ground_state::print_info()
     for (int j = 0; j < parameters_.num_mag_dims(); j++) 
         total_mag[j] = density_->magnetization(j)->integrate(mt_mag[j], it_mag[j]);
     
-    if (Platform::mpi_rank() == 0)
+    if (parameters_.comm().rank() == 0)
     {
         if (parameters_.unit_cell()->full_potential())
         {
