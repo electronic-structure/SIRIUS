@@ -26,6 +26,7 @@
 #define __EVP_SOLVER_H__
 
 #include "constants.h"
+#include "blacs_grid.h"
 
 /// \todo scapalack-based solvers can exctract grid information from blacs context
 
@@ -174,11 +175,11 @@ class standard_evp_scalapack: public standard_evp
 
     public:
 
-        standard_evp_scalapack(int num_ranks_row__, int num_ranks_col__, int blacs_context__) 
-            :
-              num_ranks_row_(num_ranks_row__), 
-              num_ranks_col_(num_ranks_col__), 
-              blacs_context_(blacs_context__)
+        //standard_evp_scalapack(int num_ranks_row__, int num_ranks_col__, int blacs_context__) 
+        standard_evp_scalapack(BLACS_grid const& blacs_grid__) 
+            : num_ranks_row_(blacs_grid__.num_ranks_row()), 
+              num_ranks_col_(blacs_grid__.num_ranks_col()), 
+              blacs_context_(blacs_grid__.context())
         {
             #ifdef _SCALAPACK_
             block_size_ = linalg<scalapack>::cyclic_block_size();
@@ -363,11 +364,10 @@ class generalized_evp_scalapack: public generalized_evp
     
     public:
 
-        generalized_evp_scalapack(int num_ranks_row__, int num_ranks_col__, int blacs_context__, 
-                                  double abstol__) 
-            : num_ranks_row_(num_ranks_row__), 
-              num_ranks_col_(num_ranks_col__), 
-              blacs_context_(blacs_context__),
+        generalized_evp_scalapack(BLACS_grid const& blacs_grid__, double abstol__) 
+            : num_ranks_row_(blacs_grid__.num_ranks_row()), 
+              num_ranks_col_(blacs_grid__.num_ranks_col()), 
+              blacs_context_(blacs_grid__.context()),
               abstol_(abstol__)
         {
             #ifdef _SCALAPACK_
@@ -488,13 +488,12 @@ class generalized_evp_rs_gpu: public generalized_evp
         
     public:
 
-        generalized_evp_rs_gpu(int num_ranks_row__, int rank_row__, int num_ranks_col__, int rank_col__, 
-                               int blacs_context__)
-            : num_ranks_row_(num_ranks_row__),
-              rank_row_(rank_row__),
-              num_ranks_col_(num_ranks_col__), 
-              rank_col_(rank_col__),
-              blacs_context_(blacs_context__)
+        generalized_evp_rs_gpu(BLACS_grid const& blacs_grid__) 
+            : num_ranks_row_(blacs_grid__.num_ranks_row()),
+              rank_row_(blacs_grid__.rank_row()),
+              num_ranks_col_(blacs_grid__.num_ranks_col()), 
+              rank_col_(blacs_grid__.rank_col()),
+              blacs_context_(blacs_grid__.context())
         {
             #ifdef _SCALAPACK_
             block_size_ = linalg<scalapack>::cyclic_block_size();
@@ -567,13 +566,12 @@ class generalized_evp_rs_cpu: public generalized_evp
         
     public:
 
-        generalized_evp_rs_cpu(int num_ranks_row__, int rank_row__, int num_ranks_col__, int rank_col__, 
-                               int blacs_context__)
-            : num_ranks_row_(num_ranks_row__),
-              rank_row_(rank_row__),
-              num_ranks_col_(num_ranks_col__), 
-              rank_col_(rank_col__),
-              blacs_context_(blacs_context__)
+        generalized_evp_rs_cpu(BLACS_grid const& blacs_grid__) 
+            : num_ranks_row_(blacs_grid__.num_ranks_row()),
+              rank_row_(blacs_grid__.rank_row()),
+              num_ranks_col_(blacs_grid__.num_ranks_col()), 
+              rank_col_(blacs_grid__.rank_col()),
+              blacs_context_(blacs_grid__.context())
         {
             #ifdef _SCALAPACK_
             block_size_ = linalg<scalapack>::cyclic_block_size();
@@ -641,20 +639,19 @@ class generalized_evp_elpa1: public generalized_evp
         int32_t num_ranks_col_;
         int32_t rank_col_;
         int blacs_context_;
-        MPI_Comm comm_row_;
-        MPI_Comm comm_col_;
+        Communicator comm_row_;
+        Communicator comm_col_;
 
     public:
         
-        generalized_evp_elpa1(int32_t num_ranks_row__, int32_t rank_row__, int32_t num_ranks_col__, int32_t rank_col__, 
-                              int blacs_context__, MPI_Comm comm_row__, MPI_Comm comm_col__) 
-            : num_ranks_row_(num_ranks_row__), 
-              rank_row_(rank_row__),
-              num_ranks_col_(num_ranks_col__), 
-              rank_col_(rank_col__),
-              blacs_context_(blacs_context__), 
-              comm_row_(comm_row__), 
-              comm_col_(comm_col__)
+        generalized_evp_elpa1(BLACS_grid const& blacs_grid__)
+            : num_ranks_row_(blacs_grid__.num_ranks_row()), 
+              rank_row_(blacs_grid__.rank_row()),
+              num_ranks_col_(blacs_grid__.num_ranks_col()), 
+              rank_col_(blacs_grid__.rank_col()),
+              blacs_context_(blacs_grid__.context()), 
+              comm_row_(blacs_grid__.comm_row()), 
+              comm_col_(blacs_grid__.comm_col())
         {
             #ifdef _SCALAPACK_
             block_size_ = linalg<scalapack>::cyclic_block_size();
@@ -669,8 +666,8 @@ class generalized_evp_elpa1: public generalized_evp
 
             assert(nevec <= matrix_size);
 
-            int32_t mpi_comm_rows = MPI_Comm_c2f(comm_row_);
-            int32_t mpi_comm_cols = MPI_Comm_c2f(comm_col_);
+            int32_t mpi_comm_rows = MPI_Comm_c2f(comm_row_.mpi_comm());
+            int32_t mpi_comm_cols = MPI_Comm_c2f(comm_col_.mpi_comm());
 
             sirius::Timer *t;
 
@@ -753,22 +750,21 @@ class generalized_evp_elpa2: public generalized_evp
         int32_t num_ranks_col_;
         int32_t rank_col_;
         int blacs_context_;
-        MPI_Comm comm_row_;
-        MPI_Comm comm_col_;
-        MPI_Comm comm_all_;
+        Communicator comm_row_;
+        Communicator comm_col_;
+        Communicator comm_all_;
 
     public:
         
-        generalized_evp_elpa2(int32_t num_ranks_row__, int32_t rank_row__, int32_t num_ranks_col__, int32_t rank_col__, 
-                              int blacs_context__, MPI_Comm comm_row__, MPI_Comm comm_col__, MPI_Comm comm_all__) 
-            : num_ranks_row_(num_ranks_row__), 
-              rank_row_(rank_row__),
-              num_ranks_col_(num_ranks_col__), 
-              rank_col_(rank_col__),
-              blacs_context_(blacs_context__), 
-              comm_row_(comm_row__), 
-              comm_col_(comm_col__), 
-              comm_all_(comm_all__)
+        generalized_evp_elpa2(BLACS_grid const& blacs_grid__)
+            : num_ranks_row_(blacs_grid__.num_ranks_row()), 
+              rank_row_(blacs_grid__.rank_row()),
+              num_ranks_col_(blacs_grid__.num_ranks_col()), 
+              rank_col_(blacs_grid__.rank_col()),
+              blacs_context_(blacs_grid__.context()), 
+              comm_row_(blacs_grid__.comm_row()), 
+              comm_col_(blacs_grid__.comm_col()),
+              comm_all_(blacs_grid__.comm())
         {
             #ifdef _SCALAPACK_
             block_size_ = linalg<scalapack>::cyclic_block_size();
@@ -783,9 +779,9 @@ class generalized_evp_elpa2: public generalized_evp
 
             assert(nevec <= matrix_size);
 
-            int32_t mpi_comm_rows = MPI_Comm_c2f(comm_row_);
-            int32_t mpi_comm_cols = MPI_Comm_c2f(comm_col_);
-            int32_t mpi_comm_all = MPI_Comm_c2f(comm_all_);
+            int32_t mpi_comm_rows = MPI_Comm_c2f(comm_row_.mpi_comm());
+            int32_t mpi_comm_cols = MPI_Comm_c2f(comm_col_.mpi_comm());
+            int32_t mpi_comm_all = MPI_Comm_c2f(comm_all_.mpi_comm());
 
             sirius::Timer *t;
 
