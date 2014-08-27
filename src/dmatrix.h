@@ -27,6 +27,8 @@
 
 #include "splindex.h"
 #include "mdarray.h"
+#include "communicator.h"
+#include "blacs_grid.h"
 
 const int _panel_to_slice_ = 0;
 const int _slice_to_panel_ = 1;
@@ -53,6 +55,8 @@ class dmatrix
 
         int bs_;
 
+        BLACS_grid const* blacs_grid_;
+
         splindex<block_cyclic> spl_row_;
 
         splindex<block_cyclic> spl_col_;
@@ -63,53 +67,10 @@ class dmatrix
         /// Matrix descriptor.
         int descriptor_[9];
 
-    public:
-        
-        // Default constructor assumes a 1x1 MPI grid.
-        dmatrix() 
-            : num_ranks_row_(1), 
-              rank_row_(0), 
-              num_ranks_col_(1), 
-              rank_col_(0),
-              bs_(1)
+        void init()
         {
-        }
-        
-        dmatrix(int num_rows__, int num_cols__, int blacs_context__) 
-            : num_ranks_row_(1), 
-              rank_row_(0), 
-              num_ranks_col_(1), 
-              rank_col_(0),
-              bs_(1)
-        {
-            set_dimensions(num_rows__, num_cols__, blacs_context__);
-            matrix_local_.allocate();
-        }
-
-        dmatrix(T* ptr__, int num_rows__, int num_cols__, int blacs_context__) 
-            : num_ranks_row_(1), 
-              rank_row_(0), 
-              num_ranks_col_(1), 
-              rank_col_(0),
-              bs_(1)
-        {
-            set_dimensions(num_rows__, num_cols__, blacs_context__);
-            matrix_local_.set_ptr(ptr__);
-        }
-
-        ~dmatrix()
-        {
-            matrix_local_.deallocate();
-        }
-
-        void set_dimensions(int num_rows__, int num_cols__, int blacs_context__)
-        {
-            num_rows_ = num_rows__;
-            num_cols_ = num_cols__;
-            
             #ifdef _SCALAPACK_
             bs_ = linalg<scalapack>::cyclic_block_size();
-            linalg<scalapack>::gridinfo(blacs_context__, &num_ranks_row_, &num_ranks_col_, &rank_row_, &rank_col_);
             #endif
 
             spl_row_ = splindex<block_cyclic>(num_rows_, num_ranks_row_, rank_row_, bs_);
@@ -118,8 +79,51 @@ class dmatrix
             matrix_local_.set_dimensions(spl_row_.local_size(), spl_col_.local_size());
 
             #ifdef _SCALAPACK_
-            linalg<scalapack>::descinit(descriptor_, num_rows_, num_cols_, bs_, bs_, 0, 0, blacs_context__, matrix_local_.ld());
+            linalg<scalapack>::descinit(descriptor_, num_rows_, num_cols_, bs_, bs_, 0, 0, blacs_grid_->context(), matrix_local_.ld());
             #endif
+        }
+
+    public:
+        
+        // Default constructor
+        dmatrix()
+            : num_rows_(0),
+              num_cols_(0),
+              num_ranks_row_(1), 
+              rank_row_(0), 
+              num_ranks_col_(1), 
+              rank_col_(0),
+              bs_(1),
+              blacs_grid_(nullptr)
+        {
+        }
+        
+        dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__) 
+            : num_rows_(num_rows__),
+              num_cols_(num_cols__),
+              num_ranks_row_(blacs_grid__.num_ranks_row()), 
+              rank_row_(blacs_grid__.rank_row()), 
+              num_ranks_col_(blacs_grid__.num_ranks_col()), 
+              rank_col_(blacs_grid__.rank_col()),
+              bs_(1),
+              blacs_grid_(&blacs_grid__)
+        {
+            init();
+            matrix_local_.allocate();
+        }
+
+        dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__) 
+            : num_rows_(num_rows__),
+              num_cols_(num_cols__),
+              num_ranks_row_(blacs_grid__.num_ranks_row()), 
+              rank_row_(blacs_grid__.rank_row()), 
+              num_ranks_col_(blacs_grid__.num_ranks_col()), 
+              rank_col_(blacs_grid__.rank_col()),
+              bs_(1),
+              blacs_grid_(&blacs_grid__)
+        {
+            init();
+            matrix_local_.set_ptr(ptr__);
         }
 
         inline void allocate(int mode__ = 0)
@@ -253,7 +257,7 @@ class dmatrix
         }
 
         template<int direction__>
-        void shuffle(int offset__, int size__, mdarray<T, 2>& matrix_slice__, MPI_Comm comm_row__)
+        void shuffle_vertical(int offset__, int size__, mdarray<T, 2>& matrix_slice__)
         {
             sirius::Timer t("dmatrix::shuffle");
 
@@ -308,13 +312,13 @@ class dmatrix
                     }
 
                     /* gather local matrix */
-                    Platform::gather(sub_panel.ptr(), ptr, &counts[0], &offsets[0], rank, comm_row__);
+                    blacs_grid_->comm_row().gather(sub_panel.ptr(), ptr, &counts[0], &offsets[0], rank);
                 }
 
                 if (direction__ == _panel_to_slice_)
                 {
                     /* scatter local matrix between ranks */
-                    Platform::scatter(ptr, sub_panel.ptr(), &counts[0], &offsets[0], rank, comm_row__);
+                    blacs_grid_->comm_row().scatter(ptr, sub_panel.ptr(), &counts[0], &offsets[0], rank);
                     
                     /* loop over local fraction of columns */
                     for (int i = 0; i < sub_spl_col.local_size(); i++)
@@ -331,7 +335,7 @@ class dmatrix
         }
 
         template<int direction__>
-        void shuffle_horizontal(int N__, mdarray<T, 2>& matrix_slice__, MPI_Comm comm_col__)
+        void shuffle_horizontal(int N__, mdarray<T, 2>& matrix_slice__)
         {
             // TODO: fix comments
 
@@ -401,13 +405,13 @@ class dmatrix
                         }
 
                         /* gather local matrix */
-                        Platform::gather(sub_panel.ptr(), ptr, &counts[0], &offsets[0], rank, comm_col__);
+                        blacs_grid_->comm_col().gather(sub_panel.ptr(), ptr, &counts[0], &offsets[0], rank);
                     }
 
                     if (direction__ == _panel_to_slice_)
                     {
                         /* scatter local matrix between ranks */
-                        Platform::scatter(ptr, sub_panel.ptr(), &counts[0], &offsets[0], rank, comm_col__);
+                        blacs_grid_->comm_col().scatter(ptr, sub_panel.ptr(), &counts[0], &offsets[0], rank);
                         
                         /* loop over local fraction of columns */
                         for (int i = 0; i < sub_spl_row.local_size(); i++)
@@ -437,28 +441,28 @@ class dmatrix
         /** 
          * Communication happens between rows of the MPI grid 
          */
-        void gather(mdarray<T, 2>& full_vectors__, MPI_Comm comm_row__)
+        void gather(mdarray<T, 2>& full_vectors__)
         {
-            shuffle<_panel_to_slice_>(0, num_cols_, full_vectors__, comm_row__);
+            shuffle_vertical<_panel_to_slice_>(0, num_cols_, full_vectors__);
         }
 
-        void gather(int n__, int offs__, mdarray<T, 2>& matrix_slice__, MPI_Comm comm_row__)
+        void gather(int n__, int offs__, mdarray<T, 2>& matrix_slice__)
         {
-            shuffle<_panel_to_slice_>(offs__, n__, matrix_slice__, comm_row__);
+            shuffle_vertical<_panel_to_slice_>(offs__, n__, matrix_slice__);
         }
 
         /// Scatter full vectors to the panels
         /** 
          * Communication happens between rows of the MPI grid 
          */
-        void scatter(mdarray<double_complex, 2>& full_vectors__, MPI_Comm comm_row__)
+        void scatter(mdarray<double_complex, 2>& full_vectors__)
         {
-            shuffle<_slice_to_panel_>(0, num_cols_, full_vectors__, comm_row__);
+            shuffle_vertical<_slice_to_panel_>(0, num_cols_, full_vectors__);
         }
 
-        void scatter(int n__, int offs__, mdarray<T, 2>& matrix_slice__, MPI_Comm comm_row__)
+        void scatter(int n__, int offs__, mdarray<T, 2>& matrix_slice__)
         {
-            shuffle<_slice_to_panel_>(offs__, n__, matrix_slice__, comm_row__);
+            shuffle_vertical<_slice_to_panel_>(offs__, n__, matrix_slice__);
         }
 
         inline splindex<block_cyclic>& spl_col()
@@ -471,9 +475,10 @@ class dmatrix
             return rank_col_;
         }
 
-        static void copy_col(dmatrix<T>& src__, int icol_src__, dmatrix<T>& dest__, int icol_dest__, MPI_Comm comm_col__)
+        static void copy_col(dmatrix<T>& src__, int icol_src__, dmatrix<T>& dest__, int icol_dest__)
         {
             assert(src__.num_rows_local() == dest__.num_rows_local());
+            assert(src__.blacs_grid_ == dest__.blacs_grid_);
 
             auto src_location = src__.spl_col().location(icol_src__);
             auto dest_location = dest__.spl_col().location(icol_dest__);
@@ -482,16 +487,16 @@ class dmatrix
             if (src_location.second == src__.rank_col()) 
             {
                 int tag = icol_src__;
-                Platform::isend(&src__.matrix_local_(0, src_location.first), src__.num_rows_local(), dest_location.second, 
-                                tag, comm_col__);
+                src__.blacs_grid_->comm_col().isend(&src__.matrix_local_(0, src_location.first), src__.num_rows_local(), 
+                                                    dest_location.second, tag);
             }
 
             /* blocking recieve */
             if (dest_location.second == dest__.rank_col())
             {
                 int tag = icol_src__;
-                Platform::recv(&dest__.matrix_local_(0, dest_location.first), dest__.num_rows_local(), src_location.second, 
-                               tag, comm_col__);
+                src__.blacs_grid_->comm_col().recv(&dest__.matrix_local_(0, dest_location.first), dest__.num_rows_local(),
+                                                   src_location.second, tag);
             }
         }
 
