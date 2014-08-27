@@ -115,7 +115,7 @@ class Atom
          *        V_{\ell m}(r) & \ell > 0 \end{array} \right.
          *  \f]
          */
-        void generate_radial_integrals(MPI_Comm& comm);
+        void generate_radial_integrals(Communicator const& comm__);
         
         /// Return pointer to corresponding atom type class.
         inline Atom_type* type()

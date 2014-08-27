@@ -84,14 +84,14 @@ void Atom::init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_
     }
 }
 
-void Atom::generate_radial_integrals(MPI_Comm& comm)
+void Atom::generate_radial_integrals(Communicator const& comm__)
 {
     Timer t("sirius::Atom::generate_radial_integrals");
     
     int lmmax = Utils::lmmax(lmax_pot_);
     int nmtp = type()->num_mt_points();
 
-    splindex<block> spl_lm(lmmax, Platform::num_mpi_ranks(comm), Platform::mpi_rank(comm));
+    splindex<block> spl_lm(lmmax, comm__.size(), comm__.rank());
 
     std::vector<int> l_by_lm = Utils::l_by_lm(lmax_pot_);
 
@@ -159,8 +159,8 @@ void Atom::generate_radial_integrals(MPI_Comm& comm)
         }
     }
 
-    Platform::reduce(h_radial_integrals_.ptr(), (int)h_radial_integrals_.size(), comm, 0);
-    if (num_mag_dims_) Platform::reduce(b_radial_integrals_.ptr(), (int)b_radial_integrals_.size(), comm, 0);
+    comm__.reduce(h_radial_integrals_.ptr(), (int)h_radial_integrals_.size(), 0);
+    if (num_mag_dims_) comm__.reduce(b_radial_integrals_.ptr(), (int)b_radial_integrals_.size(), 0);
 }
 
 }
