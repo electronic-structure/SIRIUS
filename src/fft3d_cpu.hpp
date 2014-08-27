@@ -99,7 +99,7 @@ class FFT3D<cpu>
         
     public:
 
-        FFT3D<cpu>(vector3d<int> dims)
+        FFT3D<cpu>(vector3d<int> dims, Communicator const& comm__)
         {
             Timer t("sirius::FFT3D<cpu>::FFT3D<cpu>");
             for (int i = 0; i < 3; i++)
@@ -126,7 +126,7 @@ class FFT3D<cpu>
                                                     (fftw_complex*)&fftw_buffer_(0, i), -1, FFTW_MEASURE);
             }
 
-            spl_fft_size_ = splindex<block>(size(), Platform::num_mpi_ranks(), Platform::mpi_rank());
+            spl_fft_size_ = splindex<block>(size(), comm__.size(), comm__.rank());
         }
 
         ~FFT3D<cpu>()
