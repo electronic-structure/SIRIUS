@@ -349,17 +349,16 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
     /* split number of atom between all MPI ranks */
     spl_num_atoms_ = splindex<block>(num_atoms(), comm_.size(), comm_.rank());
 
-    // TODO: this is unreadable and must be improved
     if (num_atoms() != 0)
     {
-        mpi_atoms_.split(num_atoms());
-        spl_atoms_ = splindex<block>(num_atoms(), mpi_atoms_.size(), mpi_atoms_.id());
+        comm_bundle_atoms_ = Communicator_bundle(comm_, num_atoms());
+        spl_atoms_ = splindex<block>(num_atoms(), comm_bundle_atoms_.size(), comm_bundle_atoms_.id());
         for (int ia = 0; ia < num_atoms(); ia++)
         {
             int rank = spl_num_atoms().local_rank(ia);
             if (comm_.rank() == rank)
             {
-                if (Platform::mpi_rank(mpi_atoms_.communicator()) != 0) error_local(__FILE__, __LINE__, "wrong root rank");
+                if (comm_bundle_atoms_.comm().rank() != 0) error_local(__FILE__, __LINE__, "wrong root rank");
             }
         }
     }
@@ -542,8 +541,6 @@ void Unit_cell::clear()
     atoms_.clear();
 
     equivalent_atoms_.clear();
-
-    mpi_atoms_.finalize();
 }
 
 void Unit_cell::print_info()
@@ -941,7 +938,7 @@ void Unit_cell::generate_radial_functions()
     
     if (verbosity_level >= 4)
     {
-        pstdout pout;
+        pstdout pout(comm_);
         
         for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
         {
@@ -954,7 +951,6 @@ void Unit_cell::generate_radial_functions()
             printf("\n");
             printf("Linearization energies\n");
         }
-        pout.flush(0);
     }
 }
 
@@ -974,7 +970,7 @@ void Unit_cell::generate_radial_integrals()
     for (int ialoc = 0; ialoc < (int)spl_atoms_.local_size(); ialoc++)
     {
         int ia = (int)spl_atoms_[ialoc];
-        atom(ia)->generate_radial_integrals(mpi_atoms_.communicator());
+        atom(ia)->generate_radial_integrals(comm_bundle_atoms_.comm());
     }
     
     for (int ia = 0; ia < num_atoms(); ia++)
