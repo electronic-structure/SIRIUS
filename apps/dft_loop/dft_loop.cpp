@@ -18,14 +18,14 @@ void write_json_output(Global* p, DFT_ground_state* gs)
     double enuc = gs->energy_enuc();
 
     auto ts = Timer::collect_timer_stats();
-    if (Platform::mpi_rank() == 0)
+    if (p->comm().rank() == 0)
     {
         std::string fname = std::string("output_") + p->start_time("%Y%m%d%H%M%S") + std::string(".json");
         JSON_write jw(fname);
         
         jw.single("git_hash", git_hash);
         jw.single("build_date", build_date);
-        jw.single("num_ranks", Platform::num_mpi_ranks());
+        jw.single("num_ranks", p->comm().size());
         jw.single("max_num_threads", Platform::max_num_threads());
         jw.single("num_fft_threads", Platform::num_fft_threads());
         jw.single("cyclic_block_size", p->cyclic_block_size());
@@ -89,7 +89,7 @@ void dft_loop(cmd_args args)
     
     std::vector<int> mpi_grid_dims;
     mpi_grid_dims = args.value< std::vector<int> >("mpi_grid", mpi_grid_dims);
-    Global parameters(mpi_grid_dims);
+    Global parameters(MPI_COMM_WORLD, mpi_grid_dims);
 
     JSON_tree parser("sirius.json");
 
@@ -110,6 +110,10 @@ void dft_loop(cmd_args args)
     parameters.set_num_spins(num_spins);
 
     parameters.initialize();
+    
+    BLACS_grid blacs_grid(parameters.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_), 
+                          parameters.mpi_grid().dimension_size(_dim_row_),
+                          parameters.mpi_grid().dimension_size(_dim_col_));
 
     #ifdef _MEMORY_USAGE_INFO_
     MEMORY_USAGE_INFO();
@@ -123,8 +127,8 @@ void dft_loop(cmd_args args)
     #endif
 
     auto ngridk = parser["ngridk"].get(std::vector<int>(3, 1));
-
-    K_set ks(parameters, ngridk, parser["use_symmetry"].get(0));
+    
+    K_set ks(parameters, parameters.mpi_grid().communicator(1 << _dim_k_), blacs_grid, ngridk, parser["use_symmetry"].get(0));
 
     ks.initialize();
     
@@ -220,6 +224,5 @@ int main(int argn, char** argv)
 
     dft_loop(args);
     
-    Platform::barrier();
     Platform::finalize();
 }
