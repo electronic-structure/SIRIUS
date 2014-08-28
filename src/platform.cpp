@@ -69,6 +69,7 @@ void Platform::initialize(bool call_mpi_init, bool call_cublas_init)
 
 void Platform::finalize()
 {
+    comm_world().~Communicator();
     MPI_Finalize();
     #ifdef _MAGMA_
     magma_finalize_wrapper();

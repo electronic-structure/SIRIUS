@@ -142,10 +142,7 @@ class Platform
                     }
                 } 
             }
-        
         }
 };
-
-#include "platform.hpp"
 
 #endif
