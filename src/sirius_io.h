@@ -102,7 +102,7 @@ class sirius_io
 {
     public:
 
-        static void hdf5_write_matrix(const std::string& fname, mdarray<double_complex, 2>& matrix)
+        static void hdf5_write_matrix(std::string const& fname, mdarray<double_complex, 2>& matrix)
         {
             static int icount = 0;
 

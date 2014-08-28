@@ -1382,8 +1382,8 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
         Utils::check_hermitian("o", o.data());
     }
 
-    //sirius_io::hdf5_write_matrix("h.h5", h);
-    //sirius_io::hdf5_write_matrix("o.h5", o);
+    sirius_io::hdf5_write_matrix("h.h5", h.data());
+    sirius_io::hdf5_write_matrix("o.h5", o.data());
     
     //Utils::write_matrix("h.txt", true, h);
     //Utils::write_matrix("o.txt", true, o);
