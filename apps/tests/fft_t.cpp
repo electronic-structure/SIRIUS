@@ -7,7 +7,7 @@ void test1()
     double a1[] = {24, 0, 0};
     double a2[] = {0, 24, 0};
     double a3[] = {0, 0, 24};
-    Global global;
+    Global global(Platform::comm_world());
     
     global.unit_cell()->set_lattice_vectors(a1, a2, a3);
     global.set_pw_cutoff(17.0);
@@ -42,7 +42,7 @@ void test2()
     double a1[] = {20, 0, 0};
     double a2[] = {0, 22, 0};
     double a3[] = {0, 0, 24};
-    Global global;
+    Global global(Platform::comm_world());
     
     global.unit_cell()->set_lattice_vectors(a1, a2, a3);
     global.set_pw_cutoff(12.0);
@@ -50,13 +50,30 @@ void test2()
 
     auto fft = global.reciprocal_lattice()->fft();
     FFT3D<gpu> fft_gpu(fft->grid_size());
-    int num_fft = fft_gpu.num_fft_max();
-    printf("maximum number of cuFFT transforms : %i\n", num_fft);
 
-    fft_gpu.initialize(num_fft, NULL);
+    /* maximum available memory of the device */
+    size_t max_free_mem = cuda_get_free_mem();
+    
+    size_t single_fft_size = fft_gpu.size() * sizeof(double_complex);
+    
+    /* find maximum number of FFTs that can fit into device */
+    int nfft_max = 0;
+    while (fft_gpu.num_fft_max(max_free_mem - nfft_max * single_fft_size) > nfft_max) nfft_max++;
+
+    printf("maximum number of cuFFT transforms : %i\n", nfft_max);
+
+    /* allocate work area array */
+    mdarray<char, 1> work_area(nullptr, fft_gpu.work_area_size(nfft_max));
+    work_area.allocate_on_device();
+    
+    /* allocate space for spinor components */
+    mdarray<double_complex, 2> buff(fft_gpu.size(), nfft_max);
+    buff.allocate_on_device();
+    
+    /* initialize cuFFT transform */
+    fft_gpu.initialize(nfft_max, work_area.ptr_device());
 
     std::vector<double_complex> fft1(fft->size());
-    std::vector<double_complex> fft2(fft->size());
 
     // loop over lowest harmonics in reciprocal space
     for (int i0 = -2; i0 <= 2; i0++)
@@ -69,21 +86,22 @@ void test2()
                 // load a single harmonic
                 fft1[fft->index(i0, i1, i2)] = double_complex(1.0, 0.0);
                 fft->input(&fft1[0]);
-                for (int k = 0; k < num_fft; k++) fft_gpu.input(&fft1[0], k);
-                fft_gpu.copy_to_device();
-
                 fft->transform(1);
-                fft_gpu.transform(1);
-
                 fft->output(&fft1[0]);
-                fft_gpu.copy_to_host();
+                
+                buff.zero();
+                for (int k = 0; k < nfft_max; k++)
+                {
+                    buff(fft->index(i0, i1, i2), k) = double_complex(1.0, 0.0);
+                }
+                buff.copy_to_device();
+                fft_gpu.transform(1, buff.ptr_device());
+                buff.copy_to_host();
                 
                 double diff = 0.0;
-                for (int k = 0; k < num_fft; k++)
+                for (int k = 0; k < nfft_max; k++)
                 {
-                    fft_gpu.output(&fft2[0], k);
-
-                    for (int i = 0; i < fft->size(); i++) diff += abs(fft1[i] - fft2[i]);
+                    for (int i = 0; i < fft->size(); i++) diff += abs(fft1[i] - buff(i, k));
                 }
                 printf("harmonic : %i %i %i, diff : %f\n", i0, i1, i2, diff);
             }

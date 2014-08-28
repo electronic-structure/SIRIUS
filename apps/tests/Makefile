@@ -24,7 +24,7 @@ spline:
 	$(CXX) $(CXX_OPT) $(INCLUDE) spline.cpp        $(LIB_SIRIUS) $(LIBS) -o spline
 
 test_zgemm:
-	$(CXX) $(CXX_OPT) $(INCLUDE) test_zgemm.cpp    $(LIB_SIRIUS) $(LIBS) -o test_zgemm
+	$(CXX) $(CXX_OPT) $(INCLUDE) -D_TEST_REAL_ test_zgemm.cpp    $(LIB_SIRIUS) $(LIBS) -o test_zgemm
 	
 spline_gpu:
 #	$(CXX) $(CXX_OPT) $(INCLUDE) spline_gpu.cpp    $(LIB_SIRIUS) $(LIBS) -o spline_gpu
