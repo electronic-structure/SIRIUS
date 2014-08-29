@@ -97,12 +97,12 @@ void log_function_exit(const char* func_name);
 
 #define INFO std::cout << "[" << __func__ << ":" << Platform::mpi_rank() << "] "
 
-#define DUMP(...)                                                                    \
-{                                                                                    \
-    char str__[1024];                                                                \
-    int x__ = snprintf(str__, 1024, "[%s:rank%i] ", __func__, Platform::mpi_rank()); \
-    x__ += snprintf(&str__[x__], 1024, __VA_ARGS__ );                                \
-    printf("%s\n", str__);                                                           \
+#define DUMP(...)                                                                             \
+{                                                                                             \
+    char str__[1024];                                                                         \
+    int x__ = snprintf(str__, 1024, "[%s:rank%i] ", __func__, Platform::comm_world().rank()); \
+    x__ += snprintf(&str__[x__], 1024, __VA_ARGS__ );                                         \
+    printf("%s\n", str__);                                                                    \
 }
 
 #endif // __ERROR_HANDLING_H__
