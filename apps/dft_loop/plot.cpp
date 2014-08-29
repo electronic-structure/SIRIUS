@@ -48,7 +48,7 @@ int main(int argn, char** argv)
     Platform::initialize(1);
 
     {
-        Global parameters;
+        Global parameters(Platform::comm_world());
 
         JSON_tree parser("sirius.json");
 
@@ -83,7 +83,7 @@ int main(int argn, char** argv)
         
         density->initial_density();
 
-        splindex<block> spl_N2(N2, Platform::num_mpi_ranks(), Platform::mpi_rank());
+        splindex<block> spl_N2(N2, parameters.comm().size(), parameters.comm().rank());
 
         mdarray<double, 2> rho(N1, N2);
         
@@ -108,9 +108,9 @@ int main(int argn, char** argv)
         }
         t1.stop();
 
-        Platform::allgather(&rho(0, 0), int(spl_N2.global_offset() * N1), int(spl_N2.local_size() * N1), MPI_COMM_WORLD);
+        parameters.comm().allgather(&rho(0, 0), int(spl_N2.global_offset() * N1), int(spl_N2.local_size() * N1));
 
-        if (Platform::mpi_rank() == 0)
+        if (parameters.comm().rank() == 0)
         {
             HDF5_tree h5out("rho.h5", true);
             h5out.write("rho", rho);
@@ -122,8 +122,9 @@ int main(int argn, char** argv)
         parameters.clear();
 
         Timer::print();
+        
+        parameters.comm().barrier();
     }
 
-    Platform::barrier();
     Platform::finalize();
 }
