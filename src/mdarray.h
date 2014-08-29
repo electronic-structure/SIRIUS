@@ -25,11 +25,14 @@
 #ifndef __MDARRAY_H__
 #define __MDARRAY_H__
 
+#include <cassert>
 #include <memory>
 #include <atomic>
-#include <string.h>
 #include <vector>
-#include "error_handling.h"
+#include <cstring>
+#ifdef _GPU_
+#include "gpu_interface.h"
+#endif
 
 /// Index descriptor of mdarray.
 class mdarray_index_descriptor
@@ -131,7 +134,8 @@ struct mdarray_deleter
             #endif
             default:
             {
-                TERMINATE("wrong delete mode");
+                printf("error at line %i of file %s: wrong delete mode\n", __LINE__, __FILE__);
+                exit(-1);
             }
         }
     }
@@ -156,8 +160,6 @@ class mdarray_base
         /// Raw pointer to GPU memory
         T* ptr_device_;  
         
-        //bool allocated_on_device;
-
         bool pinned_;
         #endif
         
@@ -166,7 +168,7 @@ class mdarray_base
         
         /// List of offsets to compute the element location by dimension indices. 
         int64_t offsets_[ND];
-
+        
     public:
         
         /// Constructor of an empty array.
@@ -174,9 +176,8 @@ class mdarray_base
             : unique_ptr_(nullptr),
               ptr_(nullptr)
               #ifdef _GPU_
-             ,unique_ptr_device_(nullptr),
+              ,unique_ptr_device_(nullptr),
               ptr_device_(nullptr), 
-              //allocated_on_device(false), 
               pinned_(false)
               #endif
         { 
@@ -284,10 +285,11 @@ class mdarray_base
             if (mode__ == 1)
             {
                 #ifdef _GPU_
-                cuda_malloc_host((void**)(&ptr_), sz * sizeof(T));
+                ptr_ = static_cast<T*>(cuda_malloc_host(sz * sizeof(T)));
                 unique_ptr_ = std::unique_ptr< T[], mdarray_deleter<T> >(ptr_, mdarray_deleter<T>(sz, 1));
                 #else
-                TERMINATE_NO_GPU
+                printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
+                exit(0);
                 #endif
             }
         }
@@ -308,11 +310,6 @@ class mdarray_base
             }
         }
 
-        inline void randomize()
-        {
-            for (size_t i = 0; i < size(); i++) ptr_[i] = type_wrapper<T>::random();
-        }
-        
         /// Set raw pointer.
         inline void set_ptr(T* ptr__)
         {
@@ -342,7 +339,10 @@ class mdarray_base
             for (int i = 0; i < ND; i++) 
             {
                 if (dest__.dims_[i].begin() != dims_[i].begin() || dest__.dims_[i].end() != dims_[i].end())
-                    error_local(__FILE__, __LINE__, "array dimensions don't match");
+                {
+                    printf("error at line %i of file %s: array dimensions don't match\n", __LINE__, __FILE__);
+                    exit(-1);
+                }
             }
             memcpy(dest__.ptr(), ptr(), size() * sizeof(T));
         }
@@ -401,7 +401,11 @@ class mdarray_base
 
         void pin_memory()
         {
-            if (pinned_) error_local(__FILE__, __LINE__, "Memory is already pinned");
+            if (pinned_)
+            {
+                printf("error at line %i of file %s: array is already pinned\n", __LINE__, __FILE__);
+                exit(-1);
+            }
             cuda_host_register(ptr_, size() * sizeof(T));
             pinned_ = true;
         }

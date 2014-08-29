@@ -43,7 +43,6 @@
 #include <string>
 #include "config.h"
 #include "platform.h"
-#include "timer.h"
 
 const int _global_message_ = 1 << 0;
 const int _fatal_error_ = 1 << 1;

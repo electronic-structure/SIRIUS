@@ -29,6 +29,7 @@
 #include "mdarray.h"
 #include "communicator.h"
 #include "blacs_grid.h"
+#include "timer.h"
 
 const int _panel_to_slice_ = 0;
 const int _slice_to_panel_ = 1;

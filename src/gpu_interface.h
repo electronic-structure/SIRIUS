@@ -39,7 +39,7 @@ extern "C" void cuda_device_info();
 
 extern "C" void cuda_malloc(void** ptr, size_t size);
 
-extern "C" void cuda_malloc_host(void** ptr, size_t size);
+extern "C" void* cuda_malloc_host(size_t size);
 
 extern "C" void cuda_free_host(void* ptr);
 

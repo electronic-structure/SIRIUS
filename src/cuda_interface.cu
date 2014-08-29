@@ -161,10 +161,12 @@ extern "C" void cuda_free(void* ptr)
     cuda_check_last_error(__FILE__, __LINE__);
 }
 
-extern "C" void cuda_malloc_host(void** ptr, size_t size)
+extern "C" void* cuda_malloc_host(size_t size)
 {
-    cudaMallocHost(ptr, size);
+    void* ptr;
+    cudaMallocHost(&ptr, size);
     cuda_check_last_error(__FILE__, __LINE__);
+    return ptr;
 }
 
 extern "C" void cuda_free_host(void* ptr)
@@ -380,7 +382,7 @@ extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32
         }
         case CUBLAS_STATUS_ARCH_MISMATCH:
         {
-            printf("he device does not support double-precision\n");
+            printf("the device does not support double-precision\n");
             break;
         }
         case CUBLAS_STATUS_EXECUTION_FAILED:
