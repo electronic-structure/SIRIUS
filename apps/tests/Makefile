@@ -53,6 +53,9 @@ test_pstdout:
 test_init:
 	$(CXX) $(CXX_OPT) $(INCLUDE) test_init.cpp  $(LIB_SIRIUS) $(LIBS) -o test_init
 
+test_init_global:
+	$(CXX) $(CXX_OPT) $(INCLUDE) test_init_global.cpp  $(LIB_SIRIUS) $(LIBS) -o test_init_global
+
 test_blacs:
 	$(CXX) $(CXX_OPT) $(INCLUDE) test_blacs.cpp  $(LIB_SIRIUS) $(LIBS) -o test_blacs
 
@@ -70,6 +73,9 @@ test_rank2:
 
 test_copy_gpu:
 	$(CXX) $(CXX_OPT) $(INCLUDE) test_copy_gpu.cpp  $(LIB_SIRIUS) $(LIBS) -o test_copy_gpu
+
+test_gen_eig:
+	$(CXX) $(CXX_OPT) $(INCLUDE) test_gen_eig.cpp  $(LIB_SIRIUS) $(LIBS) -o test_gen_eig
 	
 
 clean:
