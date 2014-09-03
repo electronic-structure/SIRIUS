@@ -938,28 +938,30 @@ void add_kpoint_contribution_gpu(int thread_id, K_point* kp, Global& parameters,
     fft_index.allocate_on_device();
     fft_index.copy_to_device();
 
-    /* maximum available memory of the device */
-    size_t max_free_mem = cuda_get_free_mem();
-    
-    /* size of a single FFT: space for plane-wave coefficients + space for components of spinor wave-function */
-    size_t single_fft_size = (fft.size() * parameters.num_spins() + kp->num_gkvec()) * sizeof(double_complex);
-    
-    /* find maximum number of FFTs that can fit into device;
-     * take into account nfft_max double weights
-     */
-    int nfft_max = 0;
-    while (fft.num_fft_max(max_free_mem - nfft_max * single_fft_size - nfft_max * sizeof(double)) > nfft_max) nfft_max++;
-    
-    /* sum at maximum half of the bands on the GPU;
-     * the second half is done by CPU
-     */
-    nfft_max = std::min(nfft_max, (int)occupied_bands.size() / 2);
+    //== /* maximum available memory of the device */
+    //== size_t max_free_mem = cuda_get_free_mem();
+    //== 
+    //== /* size of a single FFT: space for plane-wave coefficients + space for components of spinor wave-function */
+    //== size_t single_fft_size = (fft.size() * parameters.num_spins() + kp->num_gkvec()) * sizeof(double_complex);
+    //== 
+    //== /* find maximum number of FFTs that can fit into device;
+    //==  * take into account nfft_max double weights
+    //==  */
+    //== int nfft_max = 0;
+    //== while (fft.num_fft_max(max_free_mem - nfft_max * single_fft_size - nfft_max * sizeof(double)) > nfft_max) nfft_max++;
+
+    //== /* sum at maximum half of the bands on the GPU;
+    //==  * the second half is done by CPU
+    //==  */
+    //== nfft_max = std::min(nfft_max, (int)occupied_bands.size() / 2);
+
+    int nfft_max = 4;
  
-    if (nfft_max <= 0)
-    {
-        fft_index.deallocate_on_device();
-        return;
-    }
+    //== if (nfft_max <= 0)
+    //== {
+    //==     fft_index.deallocate_on_device();
+    //==     return;
+    //== }
 
     #ifdef _WRITE_GPU_INFO_
     INFO << "max_free_mem (Mb) = " << (max_free_mem >> 20) << std::endl;
@@ -986,7 +988,7 @@ void add_kpoint_contribution_gpu(int thread_id, K_point* kp, Global& parameters,
 
     /* initialize cuFFT transform */
     fft.initialize(nfft_max, work_area.ptr_device());
-
+    
     bool done = false;
 
     while (!done)
