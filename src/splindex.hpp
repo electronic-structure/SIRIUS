@@ -261,3 +261,16 @@ class splindex<block_cyclic>: public splindex_base
         }
 };
 
+template<> 
+class splindex<dyadic>: public splindex_base
+{
+    private:
+        splindex<block_cyclic> spl_col_;
+        splindex<block> sub_spl_row_;
+    
+    public:
+        splindex()
+        {
+        }
+    
+};
