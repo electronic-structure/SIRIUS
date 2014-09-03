@@ -418,6 +418,13 @@ class mdarray_base
                 pinned_ = false;
             }
         }
+
+        /// Set raw device pointer.
+        inline void set_ptr_device(T* ptr_device__)
+        {
+            ptr_device_ = ptr_device__;
+        }
+
         #endif
 };
 
