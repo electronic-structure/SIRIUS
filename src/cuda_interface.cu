@@ -513,11 +513,11 @@ extern "C" size_t cufft_get_size(int nx, int ny, int nz, int nfft)
     int fft_size = nx * ny * nz;
     int n[] = {nz, ny, nx};
     size_t work_size;
-    if (cufftGetSizeMany(plan, 3, n, n, 1, fft_size, n, 1, fft_size, CUFFT_Z2Z, nfft, &work_size) != CUFFT_SUCCESS)
-    {
-        printf("failed to execute cufftGetSizeMany()\n");
-        exit(0);
-    }
+    //== cufftResult result = cufftGetSizeMany(plan, 3, n, n, 1, fft_size, n, 1, fft_size, CUFFT_Z2Z, nfft, &work_size);
+    //cufftResult result = cufftGetSizeMany(plan, 3, n, NULL, 1, fft_size, NULL, 1, fft_size, CUFFT_Z2Z, nfft, &work_size);
+    cufftResult result = cufftEstimateMany(plan, n, NULL, 1, fft_size, NULL, 1, fft_size, CUFFT_Z2Z, nfft, &work_size);
+    cufft_check_error(__FILE__, __LINE__, result);
+    
     return work_size;
 }
 
@@ -1185,6 +1185,65 @@ extern "C" void create_beta_pw_gpu(int num_gkvec,
                            gkvec,
                            atom_pos,
                            (cuDoubleComplex*)beta_pw);
+}
+
+__global__ void create_beta_pw_gpu_kernel_v2
+(
+    int num_gkvec, 
+    int* beta_pw_desc,
+    cuDoubleComplex* beta_pw_type, 
+    double* gkvec, 
+    double* atom_pos,
+    cuDoubleComplex* beta_pw
+)
+{
+    int igk = blockDim.x * blockIdx.x + threadIdx.x;
+    int ia = blockIdx.y;
+
+    int nbf = beta_pw_desc[array2D_offset(0, ia, 3)];
+    int offset_beta_pw = beta_pw_desc[array2D_offset(1, ia, 3)];
+    int offset_beta_pw_t = beta_pw_desc[array2D_offset(2, ia, 3)];
+
+    if (igk < num_gkvec)
+    {
+        double p = 0;
+        for (int x = 0; x < 3; x++) p += atom_pos[array2D_offset(x, ia, 3)] * gkvec[array2D_offset(x, igk, 3)];
+        p *= twopi;
+
+        double sinp = sin(p);
+        double cosp = cos(p);
+
+        for (int xi = 0; xi < nbf; xi++)
+        {
+            beta_pw[array2D_offset(igk, offset_beta_pw + xi, num_gkvec)] =
+                cuCmul(beta_pw_type[array2D_offset(igk, offset_beta_pw_t + xi, num_gkvec)], make_cuDoubleComplex(cosp, -sinp));
+        }
+    }
+}
+
+
+extern "C" void create_beta_pw_gpu_v2(int num_atoms,
+                                      int num_gkvec,
+                                      int* beta_pw_desc,
+                                      cuDoubleComplex* beta_pw_type,
+                                      double* gkvec,
+                                      double* atom_pos,
+                                      cuDoubleComplex* beta_pw)
+{
+    cuda_timer t("create_beta_pw_gpu_v2");
+
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(num_gkvec, grid_t.x), num_atoms);
+
+    create_beta_pw_gpu_kernel_v2 <<<grid_b, grid_t>>> 
+    (
+        num_gkvec,
+        beta_pw_desc,
+        beta_pw_type,
+        gkvec,
+        atom_pos,
+        beta_pw
+    );
 }
 
 //== __global__ void create_beta_pw_gpu_kernel(int num_gkvec, 
