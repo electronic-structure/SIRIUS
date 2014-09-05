@@ -34,6 +34,7 @@ class FFT3D<gpu>
 
         FFT3D(vector3d<int> grid_size__) : grid_size_(grid_size__)
         {
+            Timer t("sirius::FFT3D<gpu>::FFT3D()");
             cufft_create_plan_handle();
         }
         

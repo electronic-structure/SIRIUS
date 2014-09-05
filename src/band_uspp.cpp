@@ -769,6 +769,7 @@ void Band::apply_h_local_parallel(K_point* kp__,
                                   dmatrix<double_complex>& phi__,
                                   dmatrix<double_complex>& hphi__)
 {
+    kp__->comm().barrier();
     Timer t("sirius::Band::apply_h_local_parallel");
 
     auto fft = parameters_.reciprocal_lattice()->fft_coarse();
