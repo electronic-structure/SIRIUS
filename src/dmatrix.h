@@ -127,6 +127,33 @@ class dmatrix
             matrix_local_.set_ptr(ptr__);
         }
 
+        // forbid copy constructor
+        dmatrix(dmatrix<T> const& src) = delete;
+        // forbid move constructor
+        dmatrix(dmatrix<T>&& src) = delete;
+        // forbid assigment operator
+        dmatrix<T>& operator=(dmatrix<T> const& src) = delete;
+
+        inline dmatrix<T>& operator=(dmatrix<T>&& src)
+        {
+            if (this != &src)
+            {
+                num_rows_      = src.num_rows_;
+                num_cols_      = src.num_cols_;
+                num_ranks_row_ = src.num_ranks_row_;
+                rank_row_      = src.rank_row_;
+                num_ranks_col_ = src.num_ranks_col_;
+                rank_col_      = src.rank_col_;
+                bs_            = src.bs_;
+                blacs_grid_    = src.blacs_grid_;
+                spl_row_       = src.spl_row_;
+                spl_col_       = src.spl_col_;
+                matrix_local_  = std::move(src.matrix_local_);
+                for (int i = 0; i < 9; i++) descriptor_[i] = src.descriptor_[i];
+            }
+            return *this;
+        }
+
         inline void allocate(int mode__ = 0)
         {
             matrix_local_.allocate(mode__);
