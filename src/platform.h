@@ -46,7 +46,7 @@ class Platform
     
     public:
 
-        static void initialize(bool call_mpi_init, bool call_cublas_init = true);
+        static void initialize(bool call_mpi_init);
 
         static void finalize();
 

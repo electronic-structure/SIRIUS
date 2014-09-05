@@ -1224,7 +1224,8 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                    nbf_in_block, nloc, kp__->num_gkvec(),
                    tval, 8e-9 * nbf_in_block * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
         }
-        
+       
+        #pragma omp parallel for
         for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
         {
             int ia = (int)atom_blocks.global_index(i, iab);
@@ -1235,9 +1236,11 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
 
             /* compute D*<beta|phi> */
             blas<gpu>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed.ptr_device(packed_mtrx_offset(ia)), nbf, 
-                            beta_phi.ptr_device(ofs, 0), beta_phi.ld(), tmp.ptr_device(ofs, 0), tmp.ld());
+                            beta_phi.ptr_device(ofs, 0), beta_phi.ld(), tmp.ptr_device(ofs, 0), tmp.ld(), 
+                            Platform::thread_id());
 
         }
+        cuda_device_synchronize();
         
         double_complex alpha = complex_one;
         /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
@@ -1245,6 +1248,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                         beta_pw.ptr_device(), beta_pw.ld(), tmp.ptr_device(), tmp.ld(), &alpha, 
                         hphi_gpu.ptr_device(), hphi_gpu.ld());
 
+        #pragma omp parallel for
         for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
         {
             int ia = (int)atom_blocks.global_index(i, iab);
@@ -1255,8 +1259,10 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
 
             /* compute Q*<beta|phi> */
             blas<gpu>::gemm(0, 0, nbf, nloc, nbf, q_mtrx_packed.ptr_device(packed_mtrx_offset(ia)), nbf,
-                            beta_phi.ptr_device(ofs, 0), beta_phi.ld(), tmp.ptr_device(ofs, 0), tmp.ld());
+                            beta_phi.ptr_device(ofs, 0), beta_phi.ld(), tmp.ptr_device(ofs, 0), tmp.ld(), 
+                            Platform::thread_id());
         }
+        cuda_device_synchronize();
 
         /* compute <G+k|beta> * Q*<beta|phi> and add to ophi */
         blas<gpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,

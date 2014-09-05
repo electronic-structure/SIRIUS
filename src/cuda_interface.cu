@@ -325,43 +325,73 @@ extern "C" void cuda_device_info()
 // CUBLAS functions
 //==================
 
-cublasHandle_t& cublas_handle()
-{
-    static cublasHandle_t handle;
-    static bool init = false;
+cublasHandle_t cublas_null_stream_handle;
+cublasHandle_t* cublas_stream_handles;
 
-    if (!init)
+
+//== cublasHandle_t& cublas_handle()
+//== {
+//==     static cublasHandle_t handle;
+//==     static bool init = false;
+//== 
+//==     if (!init)
+//==     {
+//==         if (cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS)
+//==         {
+//==             printf("cublasCreate() failed \n");
+//==             exit(-1);
+//==         }
+//==         init = true;
+//==     }
+//==     
+//==     return handle;
+//== }
+
+extern "C" void cublas_create_handles(int num_handles)
+{
+    if (cublasCreate(&cublas_null_stream_handle) != CUBLAS_STATUS_SUCCESS)
     {
-        if (cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS)
+        printf("cublasCreate() failed \n");
+        exit(-1);
+    }
+    cublas_stream_handles = (cublasHandle_t*)malloc(num_handles * sizeof(cublasHandle_t));
+    for (int i = 0; i < num_handles; i++)
+    {
+        if (cublasCreate(&cublas_stream_handles[i]) != CUBLAS_STATUS_SUCCESS)
         {
             printf("cublasCreate() failed \n");
             exit(-1);
         }
-        init = true;
+
+        cublasSetStream(cublas_stream_handles[i], streams[i]);
     }
-    
-    return handle;
 }
 
-extern "C" void cublas_init()
+extern "C" void cublas_destroy_handles(int num_handles)
 {
-    cublas_handle();
+    cublasDestroy(cublas_null_stream_handle);
+    for (int i = 0; i < num_handles; i++) cublasDestroy(cublas_stream_handles[i]);
 }
 
-extern "C" void cublas_set_stream(int stream_id__)
-{
-    cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
-    cublasSetStream(cublas_handle(), stream);
-}
+//== extern "C" void cublas_init()
+//== {
+//==     cublas_handle();
+//== }
+
+//== extern "C" void cublas_set_stream(int stream_id__)
+//== {
+//==     cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
+//==     cublasSetStream(cublas_handle(), stream);
+//== }
 
 extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                              const void* alpha, void* a, int32_t lda, void* b, 
-                             int32_t ldb, const void* beta, void* c, int32_t ldc)
+                             int32_t ldb, const void* beta, void* c, int32_t ldc, int stream_id)
 {
     const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
+    cublasHandle_t handle = (stream_id == -1) ? cublas_null_stream_handle : cublas_stream_handles[stream_id];
     
-    
-    cublasStatus_t status = cublasZgemm(cublas_handle(), trans[transa], trans[transb], m, n, k, (cuDoubleComplex*)alpha, 
+    cublasStatus_t status = cublasZgemm(handle, trans[transa], trans[transb], m, n, k, (cuDoubleComplex*)alpha, 
                                         (cuDoubleComplex*)a, lda, (cuDoubleComplex*)b, ldb, (cuDoubleComplex*)beta, 
                                         (cuDoubleComplex*)c, ldc);
     if (status == CUBLAS_STATUS_SUCCESS) return;
@@ -1774,7 +1804,7 @@ extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
 
     cublas_zgemm(0, 0, num_gvec_loc, num_beta * (num_beta + 1) / 2, num_atoms, (void*)&zone, 
                  (void*)phase_factors, num_gvec_loc, (void*)d_mtrx_packed, num_atoms, (void*)&zzero,
-                 d_mtrx_pw, num_gvec_loc);
+                 d_mtrx_pw, num_gvec_loc, -1);
 
     cuda_free(phase_factors);
 }

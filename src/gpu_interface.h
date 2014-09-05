@@ -75,13 +75,17 @@ extern "C" void cuda_device_reset();
 // CUBLAS functions
 //==================
 
-extern "C" void cublas_init();
+extern "C" void cublas_create_handles(int num_handles);
 
-extern "C" void cublas_set_stream(int stream_id);
+extern "C" void cublas_destroy_handles(int num_handles);
+
+//extern "C" void cublas_init();
+
+//extern "C" void cublas_set_stream(int stream_id);
 
 extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                              const void* alpha, void* a, int32_t lda, void* b, 
-                             int32_t ldb, const void* beta, void* c, int32_t ldc);
+                             int32_t ldb, const void* beta, void* c, int32_t ldc, int stream_id);
 
 extern "C" void cublas_get_matrix(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb);
 
