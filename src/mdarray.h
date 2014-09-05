@@ -193,10 +193,10 @@ class mdarray_base
         }
 
         /// Copy constructor is forbidden
-        mdarray_base(const mdarray_base<T, ND>& src) = delete;
+        mdarray_base(mdarray_base<T, ND> const& src) = delete;
         
         /// Assignment operator is forbidden
-        mdarray_base<T, ND>& operator=(const mdarray_base<T, ND>& src) = delete;
+        mdarray_base<T, ND>& operator=(mdarray_base<T, ND> const& src) = delete;
         
         /// Move constructor
         mdarray_base(mdarray_base<T, ND>&& src) : unique_ptr_(std::move(src.unique_ptr_))
