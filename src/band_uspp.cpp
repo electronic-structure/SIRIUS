@@ -785,7 +785,6 @@ void Band::apply_h_local_parallel(K_point* kp__,
     phi__.gather(n__, N__, phi_slice);
     mdarray<double_complex, 2> hphi_slice(kp__->num_gkvec(), sub_spl_n.local_size());
 
-
     int num_fft_threads = -1;
     switch (parameters_.processing_unit())
     {
@@ -809,13 +808,16 @@ void Band::apply_h_local_parallel(K_point* kp__,
     int nphi = (int)sub_spl_n.local_size();
     int nfft_gpu_max = 8;
 
+    int count_fft_cpu = 0;
+    int count_fft_gpu = 0;
+
     for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
     {
         if (thread_id == (num_fft_threads - 1) && num_fft_threads > 1 && parameters_.processing_unit() == gpu)
         {
             #ifdef _GPU_
             fft_threads.push_back(std::thread([thread_id, nphi, &idx_phi, &idx_phi_mutex, &fft_gpu, kp__, &phi_slice, 
-                                               &hphi_slice, &effective_potential__, &pw_ekin__, nfft_gpu_max]()
+                                               &hphi_slice, &effective_potential__, &pw_ekin__, nfft_gpu_max, &count_fft_gpu]()
             {
                 Timer t("sirius::Band::gpu_fft_worker");
                 
@@ -856,6 +858,7 @@ void Band::apply_h_local_parallel(K_point* kp__,
                     else
                     {
                         idx_phi += nfft_gpu_max;
+                        count_fft_gpu += nfft_gpu_max;
                     }
                     idx_phi_mutex.unlock();
 
@@ -896,7 +899,7 @@ void Band::apply_h_local_parallel(K_point* kp__,
         else
         {
             fft_threads.push_back(std::thread([thread_id, nphi, &idx_phi, &idx_phi_mutex, &fft, kp__, &phi_slice, 
-                                               &hphi_slice, &effective_potential__, &pw_ekin__]()
+                                               &hphi_slice, &effective_potential__, &pw_ekin__, &count_fft_cpu]()
             {
                 bool done = false;
                 while (!done)
@@ -911,6 +914,7 @@ void Band::apply_h_local_parallel(K_point* kp__,
                     else
                     {
                         idx_phi++;
+                        count_fft_cpu++;
                     }
                     idx_phi_mutex.unlock();
                 
@@ -930,6 +934,8 @@ void Band::apply_h_local_parallel(K_point* kp__,
         }
     }
     for (auto& thread: fft_threads) thread.join();
+
+    std::cout << "CPU / GPU fft count : " << count_fft_cpu << " " << count_fft_gpu << std::endl;
 
     //#pragma omp parallel default(shared) num_threads(num_fft_threads)
     //{        
