@@ -655,11 +655,14 @@ extern "C" void cufft_batch_load_gpu(int num_elements,
     cuda_check_last_error(__FILE__, __LINE__);
 }
 
-__global__ void cufft_batch_unload_gpu_kernel(int fft_size, 
-                                              int num_elements, 
-                                              int* map, 
-                                              cuDoubleComplex* fft_buffer,
-                                              cuDoubleComplex* data)
+__global__ void cufft_batch_unload_gpu_kernel
+(
+    int fft_size, 
+    int num_elements, 
+    int* map, 
+    cuDoubleComplex* fft_buffer,
+    cuDoubleComplex* data
+)
 {
     int i = blockIdx.y;
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -673,17 +676,20 @@ __global__ void cufft_batch_unload_gpu_kernel(int fft_size,
 
 extern "C" void cufft_batch_unload_gpu(int num_elements, 
                                        int* map, 
-                                       void* fft_buffer, 
-                                       void* data)
+                                       cuDoubleComplex* fft_buffer, 
+                                       cuDoubleComplex* data)
 {
-    dim3 threadsPerBlock(64);
-    dim3 numBlocks(num_blocks(num_elements, 64), nfft_of_plan);
-    
-    cufft_batch_unload_gpu_kernel<<<numBlocks, threadsPerBlock>>>(size_of_plan, 
-                                                                  num_elements, 
-                                                                  map, 
-                                                                  (cuDoubleComplex*)fft_buffer,
-                                                                  (cuDoubleComplex*)data);
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(num_elements, grid_t.x), nfft_of_plan);
+
+    cufft_batch_unload_gpu_kernel <<<grid_b, grid_t>>>
+    (
+        size_of_plan, 
+        num_elements, 
+        map, 
+        fft_buffer,
+        data
+    );
     cuda_check_last_error(__FILE__, __LINE__);
 }
 

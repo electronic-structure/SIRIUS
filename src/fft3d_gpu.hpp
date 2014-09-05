@@ -61,14 +61,14 @@ class FFT3D<gpu>
             cufft_destroy_batch_plan();
         }
 
-        inline void batch_load(int num_elements, int* map, void* data, void* fft_buffer)
+        inline void batch_load(int num_pw_components, int* map, void* data, void* fft_buffer)
         {
-            cufft_batch_load_gpu(num_elements, map, data, fft_buffer);
+            cufft_batch_load_gpu(num_pw_components, map, data, fft_buffer);
         }
 
-        inline void batch_unload(int num_elements, int* map, void* fft_buffer, void* data)
+        inline void batch_unload(int num_pw_components, int* map, double_complex* fft_buffer, double_complex* data)
         {
-            cufft_batch_unload_gpu(num_elements, map, fft_buffer, data);
+            cufft_batch_unload_gpu(num_pw_components, map, fft_buffer, data);
         }
 
         inline void transform(int direction, void* fft_buffer)

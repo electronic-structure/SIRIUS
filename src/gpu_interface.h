@@ -25,7 +25,8 @@
 #ifndef _GPU_INTERFACE_H_
 #define _GPU_INTERFACE_H_
 
-#include <stdlib.h>
+#include <complex>
+#include <cstdlib>
 
 const int _null_stream_ = -1;
 
@@ -117,7 +118,7 @@ extern "C" void cufft_backward_transform(void* fft_buffer);
 
 extern "C" void cufft_batch_load_gpu(int num_elements, int* map, void* data, void* fft_buffer);
 
-extern "C" void cufft_batch_unload_gpu(int num_elements, int* map, void* fft_buffer, void* data);
+extern "C" void cufft_batch_unload_gpu(int num_elements, int* map, std::complex<double>* fft_buffer, std::complex<double>* data);
 
 //=================
 // MAGMA functions
