@@ -23,6 +23,7 @@
  */
 
 #include <thread>
+#include <mutex>
 #include <atomic>
 #include "band.h"
 
@@ -47,6 +48,7 @@ void Band::apply_h_local(K_point* kp, std::vector<double>& effective_potential, 
         #pragma omp for
         for (int i = 0; i < n; i++)
         {
+            // TODO: get rid of unnecessary copies to and from fft buffer
             fft->input(kp->num_gkvec(), kp->fft_index_coarse(), &phi(0, i), thread_id);
             fft->transform(1, thread_id);
             fft->output(&phi_r[0], thread_id);
@@ -780,29 +782,101 @@ void Band::apply_h_local_parallel(K_point* kp__,
     phi__.gather(n__, N__, phi_slice);
     mdarray<double_complex, 2> hphi_slice(kp__->num_gkvec(), sub_spl_n.local_size());
 
-    int num_fft_threads = Platform::num_fft_threads();
-    #pragma omp parallel default(shared) num_threads(num_fft_threads)
-    {        
-        int thread_id = omp_get_thread_num();
-        std::vector<double_complex> phi_r(fft->size());
-        
-        /* loop over local fraction of wave-functions */
-        #pragma omp for
-        for (int i = 0; i < (int)sub_spl_n.local_size(); i++)
+
+    int num_fft_threads = -1;
+    switch (parameters_.processing_unit())
+    {
+        case cpu:
         {
-            fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi_slice(0, i), thread_id);
-            fft->transform(1, thread_id);
-            fft->output(&phi_r[0], thread_id);
-
-            for (int ir = 0; ir < fft->size(); ir++) phi_r[ir] *= effective_potential__[ir];
-
-            fft->input(&phi_r[0], thread_id);
-            fft->transform(-1, thread_id);
-            fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi_slice(0, i), thread_id);
-            
-            for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi_slice(igk, i) += phi_slice(igk, i) * pw_ekin__[igk];
+            num_fft_threads = Platform::num_fft_threads();
+            break;
+        }
+        case gpu:
+        {
+            num_fft_threads = std::min(Platform::num_fft_threads() + 1, Platform::max_num_threads());
+            break;
         }
     }
+
+    std::vector<std::thread> fft_threads;
+
+    /* index of the wave-function */
+    int idx_phi = 0;
+    std::mutex idx_phi_mutex;
+    int nphi = (int)sub_spl_n.local_size();
+
+    for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
+    {
+        //if (i == (num_fft_threads - 1) && num_fft_threads > 1 && parameters_.processing_unit() == gpu)
+        //{
+        //    #ifdef _GPU_
+        //    fft_threads.push_back(std::thread(add_kpoint_contribution_gpu, i, kp, std::ref(parameters_), 
+        //                                      std::ref(occupied_bands), std::ref(it_density_matrix_gpu), 
+        //                                      &idx_band, &idx_band_mutex));
+        //    #else
+        //    TERMINATE_NO_GPU
+        //    #endif
+        //}
+        //else
+        //{
+            fft_threads.push_back(std::thread([thread_id, nphi, &idx_phi, &idx_phi_mutex, &fft, kp__, &phi_slice, 
+                                               &hphi_slice, &effective_potential__, &pw_ekin__]()
+            {
+                bool done = false;
+                while (!done)
+                {
+                    /* increment the band index */
+                    idx_phi_mutex.lock();
+                    int i = idx_phi;
+                    if (idx_phi + 1 > nphi) 
+                    {
+                        done = true;
+                    }
+                    else
+                    {
+                        idx_phi++;
+                    }
+                    idx_phi_mutex.unlock();
+                
+                    if (!done)
+                    {
+                        fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi_slice(0, i), thread_id);
+                        fft->transform(1, thread_id);
+                        for (int ir = 0; ir < fft->size(); ir++) fft->buffer(ir, thread_id) *= effective_potential__[ir];
+                        fft->transform(-1, thread_id);
+                        fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi_slice(0, i), thread_id);
+                        
+                        for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi_slice(igk, i) += phi_slice(igk, i) * pw_ekin__[igk];
+                    }
+                }
+
+            }));
+        //}
+    }
+    for (auto& thread: fft_threads) thread.join();
+
+    //#pragma omp parallel default(shared) num_threads(num_fft_threads)
+    //{        
+    //    int thread_id = omp_get_thread_num();
+    //    std::vector<double_complex> phi_r(fft->size());
+    //    
+    //    /* loop over local fraction of wave-functions */
+    //    #pragma omp for
+    //    for (int i = 0; i < (int)sub_spl_n.local_size(); i++)
+    //    {
+    //        fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi_slice(0, i), thread_id);
+    //        fft->transform(1, thread_id);
+    //        fft->output(&phi_r[0], thread_id);
+
+    //        for (int ir = 0; ir < fft->size(); ir++) phi_r[ir] *= effective_potential__[ir];
+
+    //        fft->input(&phi_r[0], thread_id);
+    //        fft->transform(-1, thread_id);
+    //        fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi_slice(0, i), thread_id);
+    //        
+    //        for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi_slice(igk, i) += phi_slice(igk, i) * pw_ekin__[igk];
+    //    }
+    //}
 
     hphi__.scatter(n__, N__, hphi_slice);
 }
