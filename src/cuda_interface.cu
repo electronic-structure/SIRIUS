@@ -515,7 +515,7 @@ extern "C" size_t cufft_get_size(int nx, int ny, int nz, int nfft)
     size_t work_size;
     //== cufftResult result = cufftGetSizeMany(plan, 3, n, n, 1, fft_size, n, 1, fft_size, CUFFT_Z2Z, nfft, &work_size);
     //cufftResult result = cufftGetSizeMany(plan, 3, n, NULL, 1, fft_size, NULL, 1, fft_size, CUFFT_Z2Z, nfft, &work_size);
-    cufftResult result = cufftEstimateMany(plan, n, NULL, 1, fft_size, NULL, 1, fft_size, CUFFT_Z2Z, nfft, &work_size);
+    cufftResult result = cufftEstimateMany(3, n, NULL, 1, fft_size, NULL, 1, fft_size, CUFFT_Z2Z, nfft, &work_size);
     cufft_check_error(__FILE__, __LINE__, result);
     
     return work_size;
