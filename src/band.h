@@ -99,6 +99,13 @@ class Band
        
         void diag_fv_full_potential(K_point* kp, Periodic_function<double>* effective_potential);
 
+        void apply_h_local_slice(K_point* kp__,
+                                 std::vector<double>& effective_potential__,
+                                 std::vector<double>& pw_ekin__,
+                                 int num_phi__,
+                                 mdarray<double_complex, 2>& phi__,
+                                 mdarray<double_complex, 2>& hphi__);
+
         void apply_h_local(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
                            int n, double_complex* phi__, double_complex* hphi__);
 
