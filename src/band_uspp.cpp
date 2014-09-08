@@ -29,224 +29,6 @@
 
 namespace sirius {
 
-void Band::apply_h_local(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
-                         int n, double_complex* phi__, double_complex* hphi__)
-{
-    Timer t("sirius::Band::apply_h_local");
-
-    mdarray<double_complex, 2> phi(phi__, kp->num_gkvec(), n);
-    mdarray<double_complex, 2> hphi(hphi__, kp->num_gkvec(), n);
-
-    auto fft = parameters_.reciprocal_lattice()->fft_coarse();
-    
-    int num_fft_threads = Platform::num_fft_threads();
-    #pragma omp parallel default(shared) num_threads(num_fft_threads)
-    {        
-        int thread_id = omp_get_thread_num();
-        std::vector<double_complex> phi_r(fft->size());
-        
-        #pragma omp for
-        for (int i = 0; i < n; i++)
-        {
-            // TODO: get rid of unnecessary copies to and from fft buffer
-            fft->input(kp->num_gkvec(), kp->fft_index_coarse(), &phi(0, i), thread_id);
-            fft->transform(1, thread_id);
-            fft->output(&phi_r[0], thread_id);
-
-            for (int ir = 0; ir < fft->size(); ir++) phi_r[ir] *= effective_potential[ir];
-
-            fft->input(&phi_r[0], thread_id);
-            fft->transform(-1, thread_id);
-            fft->output(kp->num_gkvec(), kp->fft_index_coarse(), &hphi(0, i), thread_id);
-            
-            for (int igk = 0; igk < kp->num_gkvec(); igk++) hphi(igk, i) += phi(igk, i) * pw_ekin[igk];
-        }
-    }
-}
-
-#ifdef _GPU_
-struct exec_fft_args
-{
-    int thread_id;
-    int num_phi;
-    K_point* kp;
-    FFT3D<cpu>* fft;
-    mdarray<double_complex, 2>* phi;
-    mdarray<double_complex, 2>* hphi;
-    mdarray<double, 1>* veff;
-    mdarray<double_complex, 2>* gamma;
-    mdarray<double_complex, 2>* kappa;
-};
-
-pthread_mutex_t exec_fft_mutex;
-int idxfft;
-
-void* exec_gpu_fft(void* args__)
-{
-    //== exec_fft_args* args = (exec_fft_args*)args__;
-
-    STOP();
-
-    //== FFT3D<gpu> fft(args->fft->grid_size());
-
-    //== mdarray<int, 1> fft_index_coarse(args->kp->fft_index_coarse(), args->kp->num_gkvec());
-    //== fft_index_coarse.allocate_on_device();
-    //== fft_index_coarse.copy_to_device();
-
-    //== int nfft_buf = (int)(args->gamma->size() / fft.size());
-    //== if (nfft_buf == 0) return NULL; // TODO: fix this
-
-    //== int nfft_max = std::min(fft.num_fft_max(), std::min(args->num_phi / 4, nfft_buf));
-   
-    //== fft.initialize(nfft_max); 
-
-    //== bool done = false;
-
-    //== while (!done)
-    //== {
-    //==     pthread_mutex_lock(&exec_fft_mutex);
-    //==     int i = idxfft;
-    //==     if (idxfft + nfft_max > args->num_phi) 
-    //==     {
-    //==         done = true;
-    //==     }
-    //==     else
-    //==     {
-    //==         idxfft += nfft_max;
-    //==     }
-    //==     pthread_mutex_unlock(&exec_fft_mutex);
-
-    //==     if (!done)
-    //==     {
-    //==         cublas_set_matrix(args->kp->num_gkvec(), nfft_max, sizeof(double_complex), &(*args->phi)(0, i), args->phi->ld(), 
-    //==                           args->kappa->ptr_device(), args->kappa->ld());
-    //==         
-    //==         // use gamma as fft buffer
-    //==         fft.batch_load(args->kp->num_gkvec(), fft_index_coarse.ptr_device(), args->kappa->ptr_device(), 
-    //==                        args->gamma->ptr_device());
-
-    //==         fft.transform(1, args->gamma->ptr_device());
-    //==         scale_matrix_rows_gpu(fft.size(), nfft_max, args->gamma->ptr_device(), args->veff->ptr_device());
-    //==         fft.transform(-1, args->gamma->ptr_device());
-
-    //==         fft.batch_unload(args->kp->num_gkvec(), fft_index_coarse.ptr_device(), args->gamma->ptr_device(), 
-    //==                          args->kappa->ptr_device());
-
-    //==         cublas_get_matrix(args->kp->num_gkvec(), nfft_max, sizeof(double_complex), 
-    //==                           args->kappa->ptr_device(), args->kappa->ld(),
-    //==                           &(*args->hphi)(0, i), args->hphi->ld());
-    //==     }
-    //== }
-
-    //== fft.finalize();
-    //== 
-    return NULL;
-}
-
-void* exec_cpu_fft(void* args__)
-{
-    exec_fft_args* args = (exec_fft_args*)args__;
-    
-    auto fft = args->fft;
-
-    int thread_id = args->thread_id;
-
-    bool done = false;
-    while (!done)
-    {
-        pthread_mutex_lock(&exec_fft_mutex);
-        int i = idxfft;
-        if (idxfft + 1 > args->num_phi)
-        {
-            done = true;
-        }
-        else
-        {
-            idxfft++;
-        }
-        pthread_mutex_unlock(&exec_fft_mutex);
-
-        if (!done)
-        {
-            fft->input(args->kp->num_gkvec(), args->kp->fft_index_coarse(), &(*args->phi)(0, i), thread_id);
-            fft->transform(1, thread_id);
-
-            for (int ir = 0; ir < fft->size(); ir++) fft->buffer(ir, thread_id) *= (*args->veff)(ir);
-
-            fft->transform(-1, thread_id);
-            fft->output(args->kp->num_gkvec(), args->kp->fft_index_coarse(), &(*args->hphi)(0, i), thread_id);
-        }
-    }
-
-    return NULL;
-}
-
-void Band::apply_h_local_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
-                             int num_phi, mdarray<double_complex, 2>& gamma, mdarray<double_complex, 2>& kappa,
-                             double_complex* phi__, double_complex* hphi__)
-{
-    Timer t("sirius::Band::apply_h_local_gpu");
-
-    auto fft = parameters_.reciprocal_lattice()->fft_coarse();
-
-    pthread_mutex_init(&exec_fft_mutex, NULL);
-
-    mdarray<double, 1> veff(&effective_potential[0], fft->size());
-    veff.allocate_on_device();
-    veff.copy_to_device();
-
-    mdarray<double_complex, 2> phi(phi__, kp->num_gkvec(), num_phi);
-    mdarray<double_complex, 2> hphi(hphi__, kp->num_gkvec(), num_phi);
-
-    idxfft = 0;
-
-    int num_fft_threads = std::min(Platform::num_fft_threads() + 1, Platform::max_num_threads());
-    
-    std::vector<pthread_t> pthread_id(num_fft_threads);
-    std::vector<exec_fft_args> args(num_fft_threads);
-
-    for (int i = 0; i < num_fft_threads; i++)
-    {
-        args[i].thread_id = i;
-        args[i].num_phi = num_phi;
-        args[i].kp = kp;
-        args[i].fft = fft;
-        args[i].phi = &phi;
-        args[i].hphi = &hphi;
-        args[i].veff = &veff;
-        args[i].gamma = &gamma;
-        args[i].kappa = &kappa;
-        if (i == 0 && num_fft_threads > 1)
-        {
-            pthread_create(&pthread_id[i], NULL, exec_gpu_fft, &args[i]);
-        }
-        else
-        {
-            pthread_create(&pthread_id[i], NULL, exec_cpu_fft, &args[i]);
-        }
-    }
-
-    // sync threads
-    for (int i = 0; i < num_fft_threads; i++) pthread_join(pthread_id[i], NULL);
-
-    if (idxfft != num_phi) 
-    {
-        std::stringstream s;
-        s << "not all FFTs are executed" << std::endl
-          << " number of FFTS : " << num_phi << ", number of executed FFTs : " << idxfft;
-        error_local(__FILE__, __LINE__, s);
-    }
-
-    pthread_mutex_destroy(&exec_fft_mutex);
-    
-    #pragma omp parallel for
-    for (int i = 0; i < num_phi; i++)
-    {
-        for (int igk = 0; igk < kp->num_gkvec(); igk++) hphi(igk, i) += phi(igk, i) * pw_ekin[igk];
-    }
-}
-#endif
-
 void Band::get_h_o_diag(K_point* kp__,
                         double v0__,
                         std::vector<double>& pw_ekin__,
@@ -391,7 +173,9 @@ void Band::apply_h_o_uspp_cpu(K_point* kp__,
     mdarray<double_complex, 2> ophi(ophi__, kp__->num_gkvec(), n__);
     
     /* apply local part of Hamiltonian */
-    apply_h_local(kp__, effective_potential__, pw_ekin__, n__, phi__, hphi__);
+    //apply_h_local(kp__, effective_potential__, pw_ekin__, n__, phi__, hphi__);
+
+    apply_h_local_slice(kp__, effective_potential__, pw_ekin__, n__, phi, hphi);
    
     /* set intial ophi */
     memcpy(ophi__, phi__, kp__->num_gkvec() * n__ * sizeof(double_complex));
@@ -761,30 +545,22 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 //== }
 #endif
 
-void Band::apply_h_local_parallel(K_point* kp__,
-                                  std::vector<double>& effective_potential__,
-                                  std::vector<double>& pw_ekin__,
-                                  int N__,
-                                  int n__,
-                                  dmatrix<double_complex>& phi__,
-                                  dmatrix<double_complex>& hphi__)
+void Band::apply_h_local_slice(K_point* kp__,
+                               std::vector<double>& effective_potential__,
+                               std::vector<double>& pw_ekin__,
+                               int num_phi__,
+                               mdarray<double_complex, 2>& phi__,
+                               mdarray<double_complex, 2>& hphi__)
 {
-    kp__->comm().barrier();
-    Timer t("sirius::Band::apply_h_local_parallel");
+    Timer t("sirius::Band::apply_h_local_slice");
+
+    assert(phi__.size(0) == (size_t)kp__->num_gkvec() && hphi__.size(0) == (size_t)kp__->num_gkvec());
+    assert(phi__.size(1) == (size_t)num_phi__ && hphi__.size(1) == (size_t)num_phi__);
 
     auto fft = parameters_.reciprocal_lattice()->fft_coarse();
     #ifdef _GPU_
-    FFT3D<gpu> fft_gpu(fft->grid_size());
+    FFT3D<gpu>* fft_gpu = parameters_.reciprocal_lattice()->fft_gpu_coarse();
     #endif
-
-    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
-    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
-
-    splindex<block> sub_spl_n(s1.local_size() - s0.local_size(), kp__->num_ranks_row(), kp__->rank_row());
-
-    mdarray<double_complex, 2> phi_slice(kp__->num_gkvec(), sub_spl_n.local_size());
-    phi__.gather(n__, N__, phi_slice);
-    mdarray<double_complex, 2> hphi_slice(kp__->num_gkvec(), sub_spl_n.local_size());
 
     int num_fft_threads = -1;
     switch (parameters_.processing_unit())
@@ -806,20 +582,17 @@ void Band::apply_h_local_parallel(K_point* kp__,
     /* index of the wave-function */
     int idx_phi = 0;
     std::mutex idx_phi_mutex;
-    int nphi = (int)sub_spl_n.local_size();
-    int nfft_gpu_max = 8;
 
     int count_fft_cpu = 0;
     int count_fft_gpu = 0;
     
-    Timer t1("sirius::Band::apply_h_local_parallel|ffts");
     for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
     {
         if (thread_id == (num_fft_threads - 1) && num_fft_threads > 1 && parameters_.processing_unit() == gpu)
         {
             #ifdef _GPU_
-            fft_threads.push_back(std::thread([thread_id, nphi, &idx_phi, &idx_phi_mutex, &fft_gpu, kp__, &phi_slice, 
-                                               &hphi_slice, &effective_potential__, &pw_ekin__, nfft_gpu_max, &count_fft_gpu]()
+            fft_threads.push_back(std::thread([thread_id, num_phi__, &idx_phi, &idx_phi_mutex, &fft_gpu, kp__, &phi__, 
+                                               &hphi__, &effective_potential__, &pw_ekin__, &count_fft_gpu]()
             {
                 Timer t("sirius::Band::apply_h_local_parallel|gpu");
                 
@@ -829,68 +602,70 @@ void Band::apply_h_local_parallel(K_point* kp__,
                 fft_index.copy_to_device();
 
                 /* allocate work area array */
-                mdarray<char, 1> work_area(nullptr, fft_gpu.work_area_size(nfft_gpu_max));
+                mdarray<char, 1> work_area(nullptr, fft_gpu->work_area_size());
                 work_area.allocate_on_device();
+                fft_gpu->set_work_area_ptr(work_area.ptr_device());
                 
                 /* allocate space for plane-wave expansion coefficients */
-                mdarray<double_complex, 2> phi_pw_gpu(nullptr, kp__->num_gkvec(), nfft_gpu_max); 
+                mdarray<double_complex, 2> phi_pw_gpu(nullptr, kp__->num_gkvec(), fft_gpu->num_fft()); 
                 phi_pw_gpu.allocate_on_device();
                 
                 /* allocate space for FFT buffers */
-                mdarray<double_complex, 2> phi_gpu(nullptr, fft_gpu.size(), nfft_gpu_max); 
+                mdarray<double_complex, 2> phi_gpu(nullptr, fft_gpu->size(), fft_gpu->num_fft()); 
                 phi_gpu.allocate_on_device();
                 
-                /* initialize cuFFT transform */
-                fft_gpu.initialize(nfft_gpu_max, work_area.ptr_device());
-
-                mdarray<double, 1> veff_gpu(&effective_potential__[0], fft_gpu.size());
+                mdarray<double, 1> veff_gpu(&effective_potential__[0], fft_gpu->size());
                 veff_gpu.allocate_on_device();
                 veff_gpu.copy_to_device();
 
+                mdarray<double, 1> pw_ekin_gpu(&pw_ekin__[0], kp__->num_gkvec());
+                pw_ekin_gpu.allocate_on_device();
+                pw_ekin_gpu.copy_to_device();
+
+                Timer t1("sirius::Band::apply_h_local_parallel|gpu_loop");
                 bool done = false;
                 while (!done)
                 {
                     /* increment the band index */
                     idx_phi_mutex.lock();
                     int i = idx_phi;
-                    if (idx_phi + nfft_gpu_max > nphi) 
+                    if (idx_phi + fft_gpu->num_fft() > num_phi__) 
                     {
                         done = true;
                     }
                     else
                     {
-                        idx_phi += nfft_gpu_max;
-                        count_fft_gpu += nfft_gpu_max;
+                        idx_phi += fft_gpu->num_fft();
+                        count_fft_gpu += fft_gpu->num_fft();
                     }
                     idx_phi_mutex.unlock();
 
                     if (!done)
                     {
-                        cublas_set_matrix(kp__->num_gkvec(), nfft_gpu_max, sizeof(double_complex), 
-                                          &phi_slice(0, i), phi_slice.ld(), phi_pw_gpu.ptr_device(), phi_pw_gpu.ld());
+                        cublas_set_matrix(kp__->num_gkvec(), fft_gpu->num_fft(), sizeof(double_complex), 
+                                          &phi__(0, i), phi__.ld(), phi_pw_gpu.ptr_device(), phi_pw_gpu.ld());
 
                         /* set PW coefficients into proper positions inside FFT buffer */
-                        fft_gpu.batch_load(kp__->num_gkvec(), fft_index.ptr_device(), phi_pw_gpu.ptr_device(), 
-                                           phi_gpu.ptr_device());
+                        fft_gpu->batch_load(kp__->num_gkvec(), fft_index.ptr_device(), phi_pw_gpu.ptr_device(), 
+                                            phi_gpu.ptr_device());
 
+                        /* phi(G) *= Ekin(G) */
+                        scale_matrix_rows_gpu(kp__->num_gkvec(), fft_gpu->num_fft(), phi_pw_gpu.ptr_device(),
+                                              pw_ekin_gpu.ptr_device());
                         /* execute batch FFT */
-                        fft_gpu.transform(1, phi_gpu.ptr_device());
+                        fft_gpu->transform(1, phi_gpu.ptr_device());
                         /* multimply by potential */
-                        scale_matrix_rows_gpu(fft_gpu.size(), nfft_gpu_max, phi_gpu.ptr_device(), veff_gpu.ptr_device());
+                        scale_matrix_rows_gpu(fft_gpu->size(), fft_gpu->num_fft(), phi_gpu.ptr_device(), 
+                                              veff_gpu.ptr_device());
                         /* transform back */
-                        fft_gpu.transform(-1, phi_gpu.ptr_device());
-
-                        fft_gpu.batch_unload(kp__->num_gkvec(), fft_index.ptr_device(), phi_gpu.ptr_device(),
-                                             phi_pw_gpu.ptr_device());
+                        fft_gpu->transform(-1, phi_gpu.ptr_device());
                         
-                        cublas_get_matrix(kp__->num_gkvec(), nfft_gpu_max, sizeof(double_complex), 
-                                          phi_pw_gpu.ptr_device(), phi_pw_gpu.ld(), &hphi_slice(0, i), hphi_slice.ld());
+                        /* phi(G) += fft_buffer(G) */
+                        fft_gpu->batch_unload(kp__->num_gkvec(), fft_index.ptr_device(), phi_gpu.ptr_device(),
+                                              phi_pw_gpu.ptr_device(), 1.0);
                         
-                        for (int k = 0; k < nfft_gpu_max; k++)
-                        {
-                            for (int igk = 0; igk < kp__->num_gkvec(); igk++) 
-                                hphi_slice(igk, i + k) += phi_slice(igk, i + k) * pw_ekin__[igk];
-                        }
+                        cublas_get_matrix(kp__->num_gkvec(), fft_gpu->num_fft(), sizeof(double_complex), 
+                                          phi_pw_gpu.ptr_device(), phi_pw_gpu.ld(), &hphi__(0, i), hphi__.ld());
                     }
                 }
             }));
@@ -900,8 +675,8 @@ void Band::apply_h_local_parallel(K_point* kp__,
         }
         else
         {
-            fft_threads.push_back(std::thread([thread_id, nphi, &idx_phi, &idx_phi_mutex, &fft, kp__, &phi_slice, 
-                                               &hphi_slice, &effective_potential__, &pw_ekin__, &count_fft_cpu]()
+            fft_threads.push_back(std::thread([thread_id, num_phi__, &idx_phi, &idx_phi_mutex, &fft, kp__, &phi__, 
+                                               &hphi__, &effective_potential__, &pw_ekin__, &count_fft_cpu]()
             {
                 bool done = false;
                 while (!done)
@@ -909,7 +684,7 @@ void Band::apply_h_local_parallel(K_point* kp__,
                     /* increment the band index */
                     idx_phi_mutex.lock();
                     int i = idx_phi;
-                    if (idx_phi + 1 > nphi) 
+                    if (idx_phi + 1 > num_phi__) 
                     {
                         done = true;
                     }
@@ -922,13 +697,13 @@ void Band::apply_h_local_parallel(K_point* kp__,
                 
                     if (!done)
                     {
-                        fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi_slice(0, i), thread_id);
+                        fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi__(0, i), thread_id);
                         fft->transform(1, thread_id);
                         for (int ir = 0; ir < fft->size(); ir++) fft->buffer(ir, thread_id) *= effective_potential__[ir];
                         fft->transform(-1, thread_id);
-                        fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi_slice(0, i), thread_id);
+                        fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi__(0, i), thread_id);
                         
-                        for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi_slice(igk, i) += phi_slice(igk, i) * pw_ekin__[igk];
+                        for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi__(igk, i) += phi__(igk, i) * pw_ekin__[igk];
                     }
                 }
 
@@ -936,9 +711,33 @@ void Band::apply_h_local_parallel(K_point* kp__,
         }
     }
     for (auto& thread: fft_threads) thread.join();
-    t1.stop();
 
     std::cout << "CPU / GPU fft count : " << count_fft_cpu << " " << count_fft_gpu << std::endl;
+}
+
+void Band::apply_h_local_parallel(K_point* kp__,
+                                  std::vector<double>& effective_potential__,
+                                  std::vector<double>& pw_ekin__,
+                                  int N__,
+                                  int n__,
+                                  dmatrix<double_complex>& phi__,
+                                  dmatrix<double_complex>& hphi__)
+{
+    kp__->comm().barrier();
+    Timer t("sirius::Band::apply_h_local_parallel");
+
+    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+
+    splindex<block> sub_spl_n(s1.local_size() - s0.local_size(), kp__->num_ranks_row(), kp__->rank_row());
+    
+    int nphi = (int)sub_spl_n.local_size();
+
+    mdarray<double_complex, 2> phi_slice(kp__->num_gkvec(), nphi);
+    phi__.gather(n__, N__, phi_slice);
+    mdarray<double_complex, 2> hphi_slice(kp__->num_gkvec(), nphi);
+
+    apply_h_local_slice(kp__, effective_potential__, pw_ekin__, nphi, phi_slice, hphi_slice);
 
     //#pragma omp parallel default(shared) num_threads(num_fft_threads)
     //{        
@@ -2701,8 +2500,6 @@ void Band::diag_fv_uspp_cpu_serial_v4(K_point* kp__,
     kp__->set_fv_eigen_values(&eval[0]);
     kp__->fv_states_panel().scatter(psi);
 }
-
-
 
 void Band::diag_fv_uspp_cpu(K_point* kp__, 
                             Periodic_function<double>* effective_potential__)
