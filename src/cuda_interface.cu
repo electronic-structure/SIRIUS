@@ -1183,7 +1183,12 @@ void add_band_density_gpu(int lmmax_rho, int lmmax_wf, int max_nmtp, int num_ato
     
 
 
-__global__ void scale_matrix_columns_gpu_kernel(int nrow, cuDoubleComplex* mtrx, double* a)
+__global__ void scale_matrix_columns_gpu_kernel
+(
+    int nrow,
+    cuDoubleComplex* mtrx,
+    double* a
+)
 {
     int icol = blockIdx.y;
     int irow = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1195,14 +1200,28 @@ __global__ void scale_matrix_columns_gpu_kernel(int nrow, cuDoubleComplex* mtrx,
 }
 
 // scale each column of the matrix by a column-dependent constant
-extern "C" void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a)
+extern "C" void scale_matrix_columns_gpu(int nrow,
+                                        int ncol,
+                                        cuDoubleComplex* mtrx,
+                                        double* a)
 {
-    dim3 threadsPerBlock(64);
-    dim3 numBlocks(num_blocks(nrow, 64), ncol);
-    scale_matrix_columns_gpu_kernel<<<numBlocks, threadsPerBlock>>>(nrow, (cuDoubleComplex*)mtrx, a);
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(nrow, grid_t.x), ncol);
+
+    scale_matrix_columns_gpu_kernel <<<grid_b, grid_t>>>
+    (
+        nrow,
+        mtrx,
+        a
+    );
 }
 
-__global__ void scale_matrix_rows_gpu_kernel(int nrow, cuDoubleComplex* mtrx, double* v)
+__global__ void scale_matrix_rows_gpu_kernel
+(
+    int nrow,
+    cuDoubleComplex* mtrx,
+    double* v
+)
 {
     int icol = blockIdx.y;
     int irow = blockDim.x * blockIdx.x + threadIdx.x;
@@ -1214,16 +1233,20 @@ __global__ void scale_matrix_rows_gpu_kernel(int nrow, cuDoubleComplex* mtrx, do
 }
 
 // scale each row of the matrix by a row-dependent constant
-extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double* v)
+extern "C" void scale_matrix_rows_gpu(int nrow,
+                                      int ncol,
+                                      cuDoubleComplex* mtrx,
+                                      double* v)
 {
-    dim3 threadsPerBlock(64);
-    dim3 numBlocks(num_blocks(nrow, 64), ncol);
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(nrow, grid_t.x), ncol);
 
-    scale_matrix_rows_gpu_kernel<<<
-        numBlocks, 
-        threadsPerBlock>>>(nrow, 
-                           (cuDoubleComplex*)mtrx, 
-                           v);
+    scale_matrix_rows_gpu_kernel <<<grid_b, grid_t>>>
+    (
+        nrow,
+        mtrx,
+        v
+    );
 }
 
 __global__ void create_beta_pw_gpu_kernel(int num_gkvec, 
