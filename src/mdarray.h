@@ -352,7 +352,7 @@ class mdarray_base
         {
             size_t sz = size();
 
-            cuda_malloc((void**)(&ptr_device_), sz * sizeof(T));
+            ptr_device_ = (T*)cuda_malloc(sz * sizeof(T));
 
             unique_ptr_device_ = std::unique_ptr<T[], mdarray_deleter<T> >(ptr_device_, mdarray_deleter<T>(sz, 2));
         }
