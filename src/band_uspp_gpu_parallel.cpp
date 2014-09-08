@@ -62,24 +62,19 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
 
     /* apply local part of Hamiltonian */
     apply_h_local_parallel(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__);
+
+    #ifdef _GPU_
+    cublas_set_matrix(kp__->num_gkvec_row(), nloc, sizeof(double_complex), &hphi__(0, s0.local_size()), hphi__.ld(), 
+                      hphi__.ptr_device(0, s0.local_size()), hphi__.ld());
+    #endif
     
+    #if !defined(_GPU_)
     /* set intial ophi */
     memcpy(&ophi__(0, s0.local_size()), &phi__(0, s0.local_size()), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
-
-    /* copy phi to device */
-    mdarray<double_complex, 2> phi_gpu(&phi__(0, s0.local_size()),  kp__->num_gkvec_row(), nloc);
-    phi_gpu.allocate_on_device();
-    phi_gpu.copy_to_device();
-
-    /* copy hphi to device */
-    mdarray<double_complex, 2> hphi_gpu(&hphi__(0, s0.local_size()),  kp__->num_gkvec_row(), nloc);
-    hphi_gpu.allocate_on_device();
-    hphi_gpu.copy_to_device();
-    
-    /* copy ophi to device */
-    mdarray<double_complex, 2> ophi_gpu(&ophi__(0, s0.local_size()),  kp__->num_gkvec_row(), nloc);
-    ophi_gpu.allocate_on_device();
-    ophi_gpu.copy_to_device();
+    #else
+    cuda_copy_device_to_device(ophi__.ptr_device(0, s0.local_size()), phi__.ptr_device(0, s0.local_size()), 
+                               kp__->num_gkvec_row() * nloc * sizeof(double_complex));
+    #endif
 
     /* offset in the packed array of on-site matrices */
     mdarray<int, 1> packed_mtrx_offset(uc->num_atoms());
@@ -193,7 +188,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
         /* compute <beta|phi> */
         blas<gpu>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
                         beta_pw.ptr_device(), beta_pw.ld(), 
-                        phi_gpu.ptr_device(), phi_gpu.ld(), 
+                        phi__.ptr_device(0, s0.local_size()), phi__.ld(), 
                         beta_phi.ptr_device(), beta_phi.ld());
 
         beta_phi.copy_to_host();
@@ -230,7 +225,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
         /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
         blas<gpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,
                         beta_pw.ptr_device(), beta_pw.ld(), tmp.ptr_device(), tmp.ld(), &alpha, 
-                        hphi_gpu.ptr_device(), hphi_gpu.ld());
+                        hphi__.ptr_device(0, s0.local_size()), hphi__.ld());
 
         #pragma omp parallel for
         for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
@@ -251,10 +246,8 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
         /* compute <G+k|beta> * Q*<beta|phi> and add to ophi */
         blas<gpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,
                         beta_pw.ptr_device(), beta_pw.ld(), tmp.ptr_device(), tmp.ld(), &alpha,
-                        ophi_gpu.ptr_device(), ophi_gpu.ld());
+                        ophi__.ptr_device(0, s0.local_size()), ophi__.ld());
     }
-    hphi_gpu.copy_to_host();
-    ophi_gpu.copy_to_host();
     
     kp__->comm().barrier();
 }
@@ -274,6 +267,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
 {
     kp__->comm().barrier();
     Timer t("sirius::Band::set_fv_h_o_uspp_cpu_parallel", _global_timer_);
+    
 
     splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
     splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
@@ -287,9 +281,23 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
         memcpy(&o__(0, i), &o_old__(0, i), s0_row.local_size() * sizeof(double_complex));
     }
 
+    #ifdef _GPU_
+    cublas_set_matrix(kp__->num_gkvec_row(), (int)(s1_col.local_size() - s0_col.local_size()), sizeof(double_complex),
+                      &phi__(0, s0_col.local_size()), phi__.ld(), 
+                      phi__.ptr_device(0, s0_col.local_size()), phi__.ld());
+    #endif
+
     /* apply Hamiltonian and overlap operators to the new basis functions */
     apply_h_o_uspp_gpu_parallel_v2(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__);
 
+    #ifdef _GPU_
+    cublas_get_matrix(kp__->num_gkvec_row(), (int)(s1_col.local_size() - s0_col.local_size()), sizeof(double_complex), 
+                      hphi__.ptr_device(0, s0_col.local_size()), hphi__.ld(),
+                      &hphi__(0, s0_col.local_size()), hphi__.ld());
+    cublas_get_matrix(kp__->num_gkvec_row(), (int)(s1_col.local_size() - s0_col.local_size()), sizeof(double_complex), 
+                      ophi__.ptr_device(0, s0_col.local_size()), ophi__.ld(),
+                      &ophi__(0, s0_col.local_size()), ophi__.ld());
+    #endif
     int max_num_hphi = 0;
     for (int icol = 0; icol < kp__->num_ranks_col(); icol++)
         max_num_hphi = std::max(max_num_hphi, (int)(s1_col.local_size(icol) - s0_col.local_size(icol)));
@@ -430,6 +438,12 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
     dmatrix<double_complex> hphi(kp__->num_gkvec(), num_phi, kp__->blacs_grid());
     dmatrix<double_complex> ophi(kp__->num_gkvec(), num_phi, kp__->blacs_grid());
 
+    #ifdef _GPU_
+    phi.allocate_on_device();
+    hphi.allocate_on_device();
+    ophi.allocate_on_device();
+    #endif
+
     /* current diagonalziation subspace size */
     int N = 0;
 
@@ -454,7 +468,12 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
 
     /* trial basis functions */
     assert(phi.num_rows_local() == psi.num_rows_local());
-    for (int i = 0; i < psi.num_cols_local(); i++) memcpy(&phi(0, i), &psi(0, i), kp__->num_gkvec_row() * sizeof(double_complex));
+    for (int i = 0; i < psi.num_cols_local(); i++) 
+        memcpy(&phi(0, i), &psi(0, i), kp__->num_gkvec_row() * sizeof(double_complex));
+    //#ifdef _GPU_
+    //cublas_set_matrix(kp__->num_gkvec_row(), psi.num_cols_local(), sizeof(double_complex), phi.ptr(), phi.ld(), 
+    //                  phi.ptr_device(), phi.ld());
+    //#endif
 
     std::vector<double> res_norm(num_bands);
     std::vector<double> res_rms(num_bands);
@@ -542,6 +561,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
                 /* update O\phi */
                 memcpy(&ophi(0, i), &opsi(0, i), kp__->num_gkvec_row() * sizeof(double_complex));
             }
+            STOP();
 
             /* update H and O matrices. */
             hmlt_old.zero();
