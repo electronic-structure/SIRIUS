@@ -17,7 +17,7 @@ int main(int argn, char** argv)
     }
 
     Platform::initialize(1);
-    Global p;
+    Global p(Platform::comm_world());
     p.read_unit_cell_input();
 
     if (args.exist("supercell"))
@@ -59,7 +59,7 @@ int main(int argn, char** argv)
 
         std::cout << "volume ratio : " << std::abs(matrix3d<int>(scell).det()) << std::endl;
 
-        Global psc;
+        Global psc(Platform::comm_world());
         psc.unit_cell()->set_lattice_vectors(scell_lattice_vectors[0], scell_lattice_vectors[1], scell_lattice_vectors[2]);
     
         for (int iat = 0; iat < (int)p.unit_cell_input_section_.labels_.size(); iat++)
