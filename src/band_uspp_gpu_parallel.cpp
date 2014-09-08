@@ -499,12 +499,12 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
                                 hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
                                 &eval[0], evec.ptr(), evec.ld());
         
-        //== if (Platform::mpi_rank() == 0)
-        //== {
-        //==     printf("subspace size : %i, eigen-values:\n", N);
-        //==     for (int i = 0; i < std::min(num_bands, 10); i++) printf("%18.12f ", eval[i]);
-        //==     printf("\n");
-        //== }
+        if (kp__->comm().rank() == 0)
+        {
+            printf("subspace size : %i, eigen-values:\n", N);
+            for (int i = 0; i < std::min(num_bands, 10); i++) printf("%18.12f ", eval[i]);
+            printf("\n");
+        }
         }
 
         /* don't recompute residuals if we are going to exit on the last iteration */
