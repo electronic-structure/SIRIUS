@@ -51,12 +51,20 @@ Reciprocal_lattice::Reciprocal_lattice(Unit_cell* unit_cell__,
 
     vector3d<int> max_frac_coord = Utils::find_translation_limits(pw_cutoff_, reciprocal_lattice_vectors_);
     fft_ = new FFT3D<cpu>(max_frac_coord, comm__);
+
+    #ifdef _GPU_
+    fft_gpu_ = new FFT3D<gpu>(fft_->grid_size(), 4);
+    #endif
     
     if (esm_type_ == ultrasoft_pseudopotential)
     {
         vector3d<int> max_frac_coord_coarse = Utils::find_translation_limits(gk_cutoff__ * 2, 
                                                                              reciprocal_lattice_vectors_);
         fft_coarse_ = new FFT3D<cpu>(max_frac_coord_coarse, comm__);
+        
+        #ifdef _GPU_
+        fft_gpu_coarse_ = new FFT3D<gpu>(fft_coarse_->grid_size(), 8);
+        #endif
     }
 
     init(lmax__);
@@ -65,7 +73,16 @@ Reciprocal_lattice::Reciprocal_lattice(Unit_cell* unit_cell__,
 Reciprocal_lattice::~Reciprocal_lattice()
 {
     delete fft_;
-    if (esm_type_ == ultrasoft_pseudopotential) delete fft_coarse_;
+    #ifdef _GPU_
+    delete fft_gpu_;
+    #endif
+    if (esm_type_ == ultrasoft_pseudopotential)
+    {
+        delete fft_coarse_;
+        #ifdef _GPU_
+        delete fft_gpu_coarse_;
+        #endif
+    }
 }
 
 void Reciprocal_lattice::init(int lmax)

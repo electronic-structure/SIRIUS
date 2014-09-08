@@ -57,6 +57,11 @@ class Reciprocal_lattice
         FFT3D<cpu>* fft_;
         FFT3D<cpu>* fft_coarse_;
 
+        #ifdef _GPU_
+        FFT3D<gpu>* fft_gpu_;
+        FFT3D<gpu>* fft_gpu_coarse_;
+        #endif
+
         /// list of G-vector fractional coordinates
         mdarray<int, 2> gvec_;
 
@@ -186,6 +191,18 @@ class Reciprocal_lattice
         {
             return fft_coarse_;
         }
+
+        #ifdef _GPU_
+        inline FFT3D<gpu>* fft_gpu()
+        {
+            return fft_gpu_;
+        }
+
+        inline FFT3D<gpu>* fft_gpu_coarse()
+        {
+            return fft_gpu_coarse_;
+        }
+        #endif
 
         inline int index_by_gvec(int i0, int i1, int i2)
         {
