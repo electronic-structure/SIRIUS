@@ -237,6 +237,11 @@ class dmatrix
             return matrix_local_.ptr_device();
         }
 
+        inline T* ptr_device(int64_t const i0, int64_t const i1)
+        {
+            return matrix_local_.ptr_device(i0, i1);
+        }
+
         inline void zero_on_device()
         {
             matrix_local_.zero_on_device();
