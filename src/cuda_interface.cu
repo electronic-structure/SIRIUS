@@ -481,9 +481,9 @@ extern "C" void cublas_set_vector(int n, int elemSize, const void *x, int incx, 
 // CUFFT functions
 //=================
 
-cufftHandle plan;
-int nfft_of_plan;
-int size_of_plan;
+//== cufftHandle plan;
+//== int nfft_of_plan;
+//== int size_of_plan;
 
 void cufft_check_error(const char* file_name, const int line_number, cufftResult result)
 {
@@ -531,10 +531,67 @@ void cufft_check_error(const char* file_name, const int line_number, cufftResult
     exit(-100);
 }
 
-extern "C" void cufft_create_plan_handle(void)
+void cufft_error_message(cufftResult result)
 {
-    cufftResult result = cufftCreate(&plan);
-    cufft_check_error(__FILE__, __LINE__, result);
+    switch (result)
+    {
+        case CUFFT_INVALID_PLAN:
+        {
+            printf("CUFFT_INVALID_PLAN\n");
+            break;
+        }
+        case CUFFT_ALLOC_FAILED:
+        {
+            printf("CUFFT_ALLOC_FAILED\n");
+            break;
+        }
+        case CUFFT_INVALID_VALUE:
+        {
+            printf("CUFFT_INVALID_VALUE\n");
+            break;
+        }
+        case CUFFT_INTERNAL_ERROR:
+        {
+            printf("CUFFT_INTERNAL_ERROR\n");
+            break;
+        }
+        case CUFFT_SETUP_FAILED:
+        {
+            printf("CUFFT_SETUP_FAILED\n");
+            break;
+        }
+        case CUFFT_INVALID_SIZE:
+        {
+            printf("CUFFT_INVALID_SIZE\n");
+            break;
+        }
+        default:
+        {
+            printf("unknown error code %i\n", result);
+            break;
+        }
+    }
+}
+
+#define CALL_CUFFT(func__, args__)                                         \
+{                                                                          \
+    cufftResult result;                                                    \
+    if ((result = func__ args__) != CUFFT_SUCCESS)                         \
+    {                                                                      \
+        printf("CUFFT error at line %i of file %s: ", __LINE__, __FILE__); \
+        cufft_error_message(result);                                       \
+        exit(-100);                                                        \
+    }                                                                      \
+}
+
+extern "C" void cufft_create_plan_handle(cufftHandle* plan)
+{
+    CALL_CUFFT(cufftCreate, (plan));
+}
+
+extern "C" void cufft_destroy_plan_handle(cufftHandle plan)
+{
+    CALL_CUFFT(cufftDestroy, (plan));
 }
 
 /** Get the work size for cuFFT */
@@ -543,41 +600,30 @@ extern "C" size_t cufft_get_size(int nx, int ny, int nz, int nfft)
     int fft_size = nx * ny * nz;
     int n[] = {nz, ny, nx};
     size_t work_size;
-    //== cufftResult result = cufftGetSizeMany(plan, 3, n, n, 1, fft_size, n, 1, fft_size, CUFFT_Z2Z, nfft, &work_size);
-    //cufftResult result = cufftGetSizeMany(plan, 3, n, NULL, 1, fft_size, NULL, 1, fft_size, CUFFT_Z2Z, nfft, &work_size);
-    cufftResult result = cufftEstimateMany(3, n, NULL, 1, fft_size, NULL, 1, fft_size, CUFFT_Z2Z, nfft, &work_size);
-    cufft_check_error(__FILE__, __LINE__, result);
+
+    CALL_CUFFT(cufftEstimateMany, (3, n, NULL, 1, fft_size, NULL, 1, fft_size, CUFFT_Z2Z, nfft, &work_size));
     
     return work_size;
 }
 
-extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft)
+extern "C" size_t cufft_create_batch_plan(cufftHandle plan, int nx, int ny, int nz, int nfft)
 {
     int fft_size = nx * ny * nz;
     int n[] = {nz, ny, nx};
 
-    cufftResult result = cufftSetAutoAllocation(plan, false);
-    cufft_check_error(__FILE__, __LINE__, result);
+    CALL_CUFFT(cufftSetAutoAllocation, (plan, false));
     
     size_t work_size;
-    result = cufftMakePlanMany(plan, 3, n, n, 1, fft_size, n, 1, fft_size, CUFFT_Z2Z, nfft, &work_size);
-    cufft_check_error(__FILE__, __LINE__, result);
+    CALL_CUFFT(cufftMakePlanMany, (plan, 3, n, n, 1, fft_size, n, 1, fft_size, CUFFT_Z2Z, nfft, &work_size));
 
-    nfft_of_plan = nfft;
-    size_of_plan = fft_size;
+    return work_size;
 }
 
-extern "C" void cufft_set_work_area(void* work_area)
+extern "C" void cufft_set_work_area(cufftHandle plan, void* work_area)
 {
-    cufftSetWorkArea(plan, work_area);
-    cuda_check_last_error(__FILE__, __LINE__);
+    CALL_CUFFT(cufftSetWorkArea, (plan, work_area));
 }
 
-extern "C" void cufft_destroy_batch_plan()
-{
-    cufftDestroy(plan);
-    cuda_check_last_error(__FILE__, __LINE__);
-}
 
 //= __global__ void cufft_batch_apply_v_kernel(int fft_size, cuDoubleComplex* v_r, cuDoubleComplex* fft_buffer)
 //= {
@@ -625,96 +671,101 @@ extern "C" void cufft_destroy_batch_plan()
 //==         (fft_size, num_gkvec, map, (cuDoubleComplex*)buffer, (cuDoubleComplex*)p);
 //== }
 
-__global__ void cufft_batch_load_gpu_kernel(int fft_size, 
-                                            int num_elements, 
-                                            int* map, 
-                                            cuDoubleComplex* data, 
-                                            cuDoubleComplex* fft_buffer)
+__global__ void cufft_batch_load_gpu_kernel
+(
+    int fft_size, 
+    int num_pw_components, 
+    int* map, 
+    cuDoubleComplex* data, 
+    cuDoubleComplex* fft_buffer
+)
 {
     int i = blockIdx.y;
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
 
-    if (idx < num_elements) fft_buffer[array2D_offset(map[idx], i, fft_size)] = data[array2D_offset(idx, i, num_elements)];
+    if (idx < num_pw_components)
+    {
+        fft_buffer[array2D_offset(map[idx], i, fft_size)] = data[array2D_offset(idx, i, num_pw_components)];
+    }
 }
 
-extern "C" void cufft_batch_load_gpu(int num_elements, 
+extern "C" void cufft_batch_load_gpu(int fft_size,
+                                     int num_pw_components, 
+                                     int num_fft,
                                      int* map, 
-                                     void* data, 
-                                     void* fft_buffer)
+                                     cuDoubleComplex* data, 
+                                     cuDoubleComplex* fft_buffer)
 {
-    dim3 threadsPerBlock(64);
-    dim3 numBlocks(num_blocks(num_elements, 64), nfft_of_plan);
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(num_pw_components, grid_t.x), num_fft);
     
-    cuda_memset(fft_buffer, 0, size_of_plan * nfft_of_plan * sizeof(cuDoubleComplex));
+    cuda_memset(fft_buffer, 0, fft_size * num_fft * sizeof(cuDoubleComplex));
 
-    cufft_batch_load_gpu_kernel<<<numBlocks, threadsPerBlock>>>(size_of_plan, 
-                                                                num_elements, 
-                                                                map, 
-                                                                (cuDoubleComplex*)data, 
-                                                                (cuDoubleComplex*)fft_buffer);
+    cufft_batch_load_gpu_kernel <<<grid_b, grid_t>>>
+    (
+        fft_size,
+        num_pw_components,
+        map,
+        data, 
+        fft_buffer
+    );
     cuda_check_last_error(__FILE__, __LINE__);
 }
 
 __global__ void cufft_batch_unload_gpu_kernel
 (
     int fft_size, 
-    int num_elements, 
+    int num_pw_components, 
     int* map, 
     cuDoubleComplex* fft_buffer,
-    cuDoubleComplex* data
+    cuDoubleComplex* data,
+    double beta
 )
 {
     int i = blockIdx.y;
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
 
-    if (idx < num_elements) 
+    if (idx < num_pw_components) 
     {
-        data[array2D_offset(idx, i, num_elements)] = 
-            cuCdiv(fft_buffer[array2D_offset(map[idx], i, fft_size)], make_cuDoubleComplex(double(fft_size), 0));
+        data[array2D_offset(idx, i, num_pw_components)] = cuCadd(
+            cuCmul(make_cuDoubleComplex(beta, 0), data[array2D_offset(idx, i, num_pw_components)]),
+            cuCdiv(fft_buffer[array2D_offset(map[idx], i, fft_size)], make_cuDoubleComplex(double(fft_size), 0)));
     }
 }
 
-extern "C" void cufft_batch_unload_gpu(int num_elements, 
+extern "C" void cufft_batch_unload_gpu(int fft_size,
+                                       int num_pw_components,
+                                       int num_fft,
                                        int* map, 
                                        cuDoubleComplex* fft_buffer, 
-                                       cuDoubleComplex* data)
+                                       cuDoubleComplex* data,
+                                       double beta)
 {
     dim3 grid_t(64);
-    dim3 grid_b(num_blocks(num_elements, grid_t.x), nfft_of_plan);
+    dim3 grid_b(num_blocks(num_pw_components, grid_t.x), num_fft);
 
     cufft_batch_unload_gpu_kernel <<<grid_b, grid_t>>>
     (
-        size_of_plan, 
-        num_elements, 
+        fft_size, 
+        num_pw_components, 
         map, 
         fft_buffer,
-        data
+        data,
+        beta
     );
     cuda_check_last_error(__FILE__, __LINE__);
 }
 
-//== __global__ void cufft_normalize(int size, cuDoubleComplex* buffer)
-//== {
-//==     int i = blockIdx.y;
-//==     int ir = blockDim.x * blockIdx.x + threadIdx.x;
-//== 
-//==     if (ir < size) 
-//==     {
-//==         buffer[array2D_offset(ir, i, size)] = 
-//==             cuCdiv(buffer[array2D_offset(ir, i, size)], make_cuDoubleComplex(double(size), 0));
-//==     }
-//== }
-
-extern "C" void cufft_forward_transform(void* fft_buffer)
+extern "C" void cufft_forward_transform(cufftHandle plan, cuDoubleComplex* fft_buffer)
 {
     cuda_timer t("cufft_forward_transform");
-    cufftExecZ2Z(plan, (cuDoubleComplex*)fft_buffer, (cuDoubleComplex*)fft_buffer, CUFFT_FORWARD);
+    CALL_CUFFT(cufftExecZ2Z, (plan, fft_buffer, fft_buffer, CUFFT_FORWARD));
 }
 
-extern "C" void cufft_backward_transform(void* fft_buffer)
+extern "C" void cufft_backward_transform(cufftHandle plan, cuDoubleComplex* fft_buffer)
 {
     cuda_timer t("cufft_backward_transform");
-    cufftExecZ2Z(plan, (cuDoubleComplex*)fft_buffer, (cuDoubleComplex*)fft_buffer, CUFFT_INVERSE);
+    CALL_CUFFT(cufftExecZ2Z, (plan, fft_buffer, fft_buffer, CUFFT_INVERSE));
 }
 
 //==================================
@@ -1945,7 +1996,7 @@ extern "C" void update_it_density_matrix_gpu(int fft_size,
                                              int nfft_max, 
                                              int num_spins, 
                                              int num_mag_dims, 
-                                             void* psi_it, 
+                                             cuDoubleComplex* psi_it, 
                                              double* wt, 
                                              double* it_density_matrix)
 {
@@ -1965,11 +2016,6 @@ extern "C" void update_it_density_matrix_gpu(int fft_size,
         //==         it_density_matrix(ir, 3) -= 2.0 * imag(z);
         //==     }
         //== }
-        //== case 1:
-        //== {
-        //==     for (int ir = 0; ir < fft_->size(); ir++)
-        //==         it_density_matrix(ir, 1) += real(wfit(ir, 1) * conj(wfit(ir, 1))) * w;
-        //== }
         case 1:
         {
             update_it_density_matrix_1_gpu_kernel<<<grid_b, grid_t>>>(fft_size,
@@ -1981,11 +2027,14 @@ extern "C" void update_it_density_matrix_gpu(int fft_size,
         }
         case 0:
         {
-            update_it_density_matrix_0_gpu_kernel<<<grid_b, grid_t>>>(fft_size,
-                                                                      nfft_max,
-                                                                      (cuDoubleComplex*)psi_it,
-                                                                      wt,
-                                                                      it_density_matrix);
+            update_it_density_matrix_0_gpu_kernel <<<grid_b, grid_t>>>
+            (
+                fft_size,
+                nfft_max,
+                psi_it,
+                wt,
+                it_density_matrix
+            );
             cuda_check_last_error(__FILE__, __LINE__);
         }
     }
