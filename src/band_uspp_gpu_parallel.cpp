@@ -556,7 +556,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             N = num_bands;
         }
         
-        /* Expand variational space with extra basis functions */
+        /* expand variational space with extra basis functions */
         for (int i = 0; i < n; i++)
         {
             dmatrix<double_complex>::copy_col(res, res_list[i], phi, N + i);
