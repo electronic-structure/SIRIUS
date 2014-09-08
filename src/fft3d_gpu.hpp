@@ -27,63 +27,80 @@ template<>
 class FFT3D<gpu>
 {
     private:
+        
+        cufftHandle plan_;
+        
+        size_t work_size_;
 
         vector3d<int> grid_size_;
 
+        int num_fft_;
+
     public:
 
-        FFT3D(vector3d<int> grid_size__) : grid_size_(grid_size__)
+        FFT3D(vector3d<int> grid_size__, int num_fft__) 
+            : grid_size_(grid_size__),
+              num_fft_(num_fft__)
         {
-            Timer t("sirius::FFT3D<gpu>::FFT3D()");
-            cufft_create_plan_handle();
+            Timer t("sirius::FFT3D<gpu>::FFT3D");
+            cufft_create_plan_handle(&plan_);
+            cufft_create_batch_plan(plan_, grid_size_[0], grid_size_[1], grid_size_[2], num_fft_);
+            work_size_ = cufft_get_size(grid_size_[0], grid_size_[1], grid_size_[2], num_fft_);
+        }
+
+        ~FFT3D()
+        {
+            cufft_destroy_plan_handle(plan_);
         }
         
-        /** Maximum number of simultaneous FFTs that can fit into free memory of a GPU */
-        int num_fft_max(size_t free_mem)
+        //== /** Maximum number of simultaneous FFTs that can fit into free memory of a GPU */
+        //== int num_fft_max(size_t free_mem)
+        //== {
+        //==     int nfft = 0;
+        //==     while (cufft_get_size(grid_size_[0], grid_size_[1], grid_size_[2], nfft + 1) < free_mem) nfft++;
+        //==     return nfft;
+        //== }
+
+        inline size_t work_area_size()
         {
-            int nfft = 0;
-            while (cufft_get_size(grid_size_[0], grid_size_[1], grid_size_[2], nfft + 1) < free_mem) nfft++;
-            return nfft;
+            //return cufft_get_size(grid_size_[0], grid_size_[1], grid_size_[2], nfft__);
+            return work_size_;
         }
 
-        inline size_t work_area_size(int nfft)
+        //inline void initialize(int num_fft__, void* work_area__)
+        //{
+        //    num_fft_ = num_fft__;
+        //    cufft_create_batch_plan(plan_, grid_size_[0], grid_size_[1], grid_size_[2], num_fft_);
+        //    cufft_set_work_area(plan_, work_area__);
+        //}
+
+        inline void set_work_area_ptr(void* ptr__)
         {
-            return cufft_get_size(grid_size_[0], grid_size_[1], grid_size_[2], nfft);
+            cufft_set_work_area(plan_, ptr__);
         }
 
-        inline void initialize(int num_fft, void* work_area)
+        inline void batch_load(int num_pw_components__, int* map__, double_complex* data__, double_complex* fft_buffer__)
         {
-            cufft_create_batch_plan(grid_size_[0], grid_size_[1], grid_size_[2], num_fft);
-            cufft_set_work_area(work_area);
+            cufft_batch_load_gpu(size(), num_pw_components__, num_fft_, map__, data__, fft_buffer__);
         }
 
-        inline void finalize()
+        inline void batch_unload(int num_pw_components__, int* map__, double_complex* fft_buffer__, double_complex* data__, double beta__)
         {
-            cufft_destroy_batch_plan();
+            cufft_batch_unload_gpu(size(), num_pw_components__, num_fft_, map__, fft_buffer__, data__, beta__);
         }
 
-        inline void batch_load(int num_pw_components, int* map, void* data, void* fft_buffer)
+        inline void transform(int direction__, double_complex* fft_buffer__)
         {
-            cufft_batch_load_gpu(num_pw_components, map, data, fft_buffer);
-        }
-
-        inline void batch_unload(int num_pw_components, int* map, double_complex* fft_buffer, double_complex* data)
-        {
-            cufft_batch_unload_gpu(num_pw_components, map, fft_buffer, data);
-        }
-
-        inline void transform(int direction, void* fft_buffer)
-        {
-            switch (direction)
+            switch (direction__)
             {
                 case 1:
                 {
-                    cufft_backward_transform(fft_buffer);
+                    cufft_backward_transform(plan_, fft_buffer__);
                     break;
                 }
                 case -1:
                 {
-                    cufft_forward_transform(fft_buffer);
+                    cufft_forward_transform(plan_, fft_buffer__);
                     break;
                 }
                 default:
@@ -103,5 +120,10 @@ class FFT3D<gpu>
         inline int size(int d)
         {
             return grid_size_[d]; 
+        }
+
+        inline int num_fft()
+        {
+            return num_fft_;
         }
 };
