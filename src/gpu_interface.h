@@ -102,23 +102,39 @@ extern "C" void cublas_set_vector(int n, int elemSize, const void *x, int incx, 
 // CUFFT functions
 //=================
 
-extern "C" void cufft_create_plan_handle(void);
+// cufftHandle is a handle type used to store and access CUFFT plans.
+typedef int cufftHandle;
+
+typedef std::complex<double> cuDoubleComplex;
+
+extern "C" void cufft_create_plan_handle(cufftHandle* plan);
+
+extern "C" void cufft_destroy_plan_handle(cufftHandle plan);
 
 extern "C" size_t cufft_get_size(int nx, int ny, int nz, int nfft);
 
-extern "C" void cufft_create_batch_plan(int nx, int ny, int nz, int nfft);
+extern "C" size_t cufft_create_batch_plan(cufftHandle plan, int nx, int ny, int nz, int nfft);
 
-extern "C" void cufft_set_work_area(void* work_area);
+extern "C" void cufft_set_work_area(cufftHandle plan, void* work_area);
 
-extern "C" void cufft_destroy_batch_plan();
+extern "C" void cufft_batch_load_gpu(int fft_size,
+                                     int num_pw_components, 
+                                     int num_fft,
+                                     int* map, 
+                                     cuDoubleComplex* data, 
+                                     cuDoubleComplex* fft_buffer);
 
-extern "C" void cufft_forward_transform(void* fft_buffer);
+extern "C" void cufft_batch_unload_gpu(int fft_size,
+                                       int num_pw_components,
+                                       int num_fft,
+                                       int* map, 
+                                       cuDoubleComplex* fft_buffer, 
+                                       cuDoubleComplex* data,
+                                       double beta);
 
-extern "C" void cufft_backward_transform(void* fft_buffer);
+extern "C" void cufft_forward_transform(cufftHandle plan, cuDoubleComplex* fft_buffer);
 
-extern "C" void cufft_batch_load_gpu(int num_elements, int* map, void* data, void* fft_buffer);
-
-extern "C" void cufft_batch_unload_gpu(int num_elements, int* map, std::complex<double>* fft_buffer, std::complex<double>* data);
+extern "C" void cufft_backward_transform(cufftHandle plan, cuDoubleComplex* fft_buffer);
 
 //=================
 // MAGMA functions
