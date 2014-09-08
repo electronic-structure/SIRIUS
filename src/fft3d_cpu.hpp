@@ -99,9 +99,9 @@ class FFT3D<cpu>
         
     public:
 
-        FFT3D<cpu>(vector3d<int> dims, Communicator const& comm__)
+        FFT3D(vector3d<int> dims, Communicator const& comm__)
         {
-            Timer t("sirius::FFT3D<cpu>::FFT3D<cpu>");
+            Timer t("sirius::FFT3D<cpu>::FFT3D");
             for (int i = 0; i < 3; i++)
             {
                 grid_size_[i] = find_grid_size(dims[i]);
@@ -129,7 +129,7 @@ class FFT3D<cpu>
             spl_fft_size_ = splindex<block>(size(), comm__.size(), comm__.rank());
         }
 
-        ~FFT3D<cpu>()
+        ~FFT3D()
         {
             for (int i = 0; i < Platform::num_fft_threads(); i++)
             {
