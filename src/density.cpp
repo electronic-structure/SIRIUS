@@ -847,72 +847,6 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp, std::vector< std::pair
 }
 #endif
 
-void add_kpoint_contribution_cpu(int thread_id, K_point* kp, Global& parameters, 
-                                 std::vector< std::pair<int, double> >& occupied_bands, 
-                                 mdarray<double, 3>& it_density_matrix,
-                                 int* idx_band, std::mutex* idx_band_mutex)
-{
-    bool done = false;
-
-    auto fft = parameters.reciprocal_lattice()->fft();
-
-    int wf_pw_offset = kp->wf_pw_offset();
-    
-    mdarray<double_complex, 2> psi_it(fft->size(), parameters.num_spins());
-
-    while (!done)
-    {
-        // increment the band index
-        idx_band_mutex->lock();
-        int i = *idx_band;
-        if ((*idx_band) + 1 > (int)occupied_bands.size()) 
-        {
-            done = true;
-        }
-        else
-        {
-            (*idx_band)++;
-        }
-        idx_band_mutex->unlock();
-
-        if (!done)
-        {
-            for (int ispn = 0; ispn < parameters.num_spins(); ispn++)
-            {
-                fft->input(kp->num_gkvec(), kp->fft_index(), 
-                           &kp->spinor_wave_function(wf_pw_offset, occupied_bands[i].first, ispn), thread_id);
-                fft->transform(1, thread_id);
-                fft->output(&psi_it(0, ispn), thread_id);
-            }
-            double w = occupied_bands[i].second / parameters.unit_cell()->omega();
-           
-            switch (parameters.num_mag_dims())
-            {
-                case 3:
-                {
-                    for (int ir = 0; ir < fft->size(); ir++)
-                    {
-                        double_complex z = psi_it(ir, 0) * conj(psi_it(ir, 1)) * w;
-                        it_density_matrix(ir, 2, thread_id) += 2.0 * real(z);
-                        it_density_matrix(ir, 3, thread_id) -= 2.0 * imag(z);
-                    }
-                }
-                case 1:
-                {
-                    for (int ir = 0; ir < fft->size(); ir++)
-                        it_density_matrix(ir, 1, thread_id) += real(psi_it(ir, 1) * conj(psi_it(ir, 1))) * w;
-                }
-                case 0:
-                {
-                    for (int ir = 0; ir < fft->size(); ir++)
-                        it_density_matrix(ir, 0, thread_id) += real(psi_it(ir, 0) * conj(psi_it(ir, 0))) * w;
-                }
-            }
-        }
-    }
-
-}
-
 #ifdef _GPU_
 extern "C" void update_it_density_matrix_gpu(int fft_size, 
                                              int nfft_max, 
@@ -921,123 +855,6 @@ extern "C" void update_it_density_matrix_gpu(int fft_size,
                                              void* psi_it, 
                                              double* wt, 
                                              void* it_density_matrix);
-
-void add_kpoint_contribution_gpu(int thread_id, K_point* kp, Global& parameters, 
-                                 std::vector< std::pair<int, double> >& occupied_bands, 
-                                 mdarray<double, 2>& it_density_matrix_gpu,
-                                 int* idx_band, std::mutex* idx_band_mutex)
-{
-    Timer t("sirius::add_kpoint_contribution_gpu");
-
-    FFT3D<gpu> fft(parameters.reciprocal_lattice()->fft()->grid_size());
-
-    int wf_pw_offset = kp->wf_pw_offset();
-    
-    /* move fft index to GPU */
-    mdarray<int, 1> fft_index(kp->fft_index(), kp->num_gkvec());
-    fft_index.allocate_on_device();
-    fft_index.copy_to_device();
-
-    //== /* maximum available memory of the device */
-    //== size_t max_free_mem = cuda_get_free_mem();
-    //== 
-    //== /* size of a single FFT: space for plane-wave coefficients + space for components of spinor wave-function */
-    //== size_t single_fft_size = (fft.size() * parameters.num_spins() + kp->num_gkvec()) * sizeof(double_complex);
-    //== 
-    //== /* find maximum number of FFTs that can fit into device;
-    //==  * take into account nfft_max double weights
-    //==  */
-    //== int nfft_max = 0;
-    //== while (fft.num_fft_max(max_free_mem - nfft_max * single_fft_size - nfft_max * sizeof(double)) > nfft_max) nfft_max++;
-
-    //== /* sum at maximum half of the bands on the GPU;
-    //==  * the second half is done by CPU
-    //==  */
-    //== nfft_max = std::min(nfft_max, (int)occupied_bands.size() / 2);
-
-    int nfft_max = 4;
- 
-    //== if (nfft_max <= 0)
-    //== {
-    //==     fft_index.deallocate_on_device();
-    //==     return;
-    //== }
-
-    #ifdef _WRITE_GPU_INFO_
-    INFO << "max_free_mem (Mb) = " << (max_free_mem >> 20) << std::endl;
-    INFO << "nfft_max = " << nfft_max << std::endl;
-    INFO << "work_size (Mb) = " << (fft.work_area_size(nfft_max) >> 20) << std::endl;
-    INFO << "size of wf arrays (Mb) = " << ((nfft_max * single_fft_size) >> 20) << std::endl;
-    #endif
-    
-    /* allocate work area array */
-    mdarray<char, 1> work_area(nullptr, fft.work_area_size(nfft_max));
-    work_area.allocate_on_device();
-    
-    /* allocate space for plane-wave expansion coefficients */
-    mdarray<double_complex, 2> psi_pw_gpu(nullptr, kp->num_gkvec(), nfft_max); 
-    psi_pw_gpu.allocate_on_device();
-    
-    /* allocate space for spinor components */
-    mdarray<double_complex, 3> psi_it_gpu(nullptr, fft.size(), nfft_max, parameters.num_spins());
-    psi_it_gpu.allocate_on_device();
-    
-    /* allocate space for weights */
-    mdarray<double, 1> w(nfft_max);
-    w.allocate_on_device();
-
-    /* initialize cuFFT transform */
-    fft.initialize(nfft_max, work_area.ptr_device());
-    
-    bool done = false;
-
-    while (!done)
-    {
-        idx_band_mutex->lock();
-        int i = *idx_band;
-        if ((*idx_band) + nfft_max > (int)occupied_bands.size()) 
-        {
-            done = true;
-        }
-        else
-        {
-            (*idx_band) += nfft_max;
-        }
-        idx_band_mutex->unlock();
-
-        if (!done)
-        {
-            for (int ispn = 0; ispn < parameters.num_spins(); ispn++)
-            {
-                /* copy PW coefficients to GPU */
-                for (int j = 0; j < nfft_max; j++)
-                {
-                    w(j) = occupied_bands[i + j].second / parameters.unit_cell()->omega();
-
-                    cublas_set_vector(kp->num_gkvec(), sizeof(double_complex), 
-                                      &kp->spinor_wave_function(wf_pw_offset, occupied_bands[i + j].first, ispn), 1, 
-                                      psi_pw_gpu.ptr_device(0, j), 1);
-                }
-                w.copy_to_device();
-                
-                /* set PW coefficients into proper positions inside FFT buffer */
-                fft.batch_load(kp->num_gkvec(), fft_index.ptr_device(), psi_pw_gpu.ptr_device(), 
-                               psi_it_gpu.ptr_device(0, 0, ispn));
-
-                #ifdef _WRITE_GPU_INFO_
-                INFO << "about to execute cuFFT" << std::endl;
-                #endif
-                /* execute batch FFT */
-                fft.transform(1, psi_it_gpu.ptr_device(0, 0, ispn));
-            }
-
-            update_it_density_matrix_gpu(fft.size(), nfft_max, parameters.num_spins(), parameters.num_mag_dims(), 
-                                         psi_it_gpu.ptr_device(), w.ptr_device(), it_density_matrix_gpu.ptr_device());
-        }
-    }
-
-    fft.finalize();
-}
 #endif
 
 void Density::add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int, double> >& occupied_bands)
@@ -1077,27 +894,162 @@ void Density::add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int
         it_density_matrix_gpu.allocate_on_device();
         it_density_matrix_gpu.zero_on_device();
     }
+    auto fft_gpu = parameters_.reciprocal_lattice()->fft_gpu();
     #endif
 
     std::vector<std::thread> fft_threads;
 
-    for (int i = 0; i < num_fft_threads; i++)
+    auto fft = parameters_.reciprocal_lattice()->fft();
+    int num_spins = parameters_.num_spins();
+    int num_mag_dims = parameters_.num_mag_dims();
+    double omega = parameters_.unit_cell()->omega();
+
+    for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
     {
-        if (i == (num_fft_threads - 1) && num_fft_threads > 1 && parameters_.processing_unit() == gpu)
+        if (thread_id == (num_fft_threads - 1) && num_fft_threads > 1 && parameters_.processing_unit() == gpu)
         {
             #ifdef _GPU_
-            fft_threads.push_back(std::thread(add_kpoint_contribution_gpu, i, kp, std::ref(parameters_), 
-                                              std::ref(occupied_bands), std::ref(it_density_matrix_gpu), 
-                                              &idx_band, &idx_band_mutex));
+            fft_threads.push_back(std::thread([thread_id, kp, fft_gpu, &idx_band, &idx_band_mutex, num_spins, num_mag_dims, 
+                                               omega, &occupied_bands, &it_density_matrix_gpu]()
+            {
+                Timer t("sirius::Density::add_kpoint_contribution_it|gpu");
+
+                int wf_pw_offset = kp->wf_pw_offset();
+                
+                /* move fft index to GPU */
+                mdarray<int, 1> fft_index(kp->fft_index(), kp->num_gkvec());
+                fft_index.allocate_on_device();
+                fft_index.copy_to_device();
+
+                int nfft_max = fft_gpu->num_fft();
+ 
+                /* allocate work area array */
+                mdarray<char, 1> work_area(nullptr, fft_gpu->work_area_size());
+                work_area.allocate_on_device();
+                fft_gpu->set_work_area_ptr(work_area.ptr_device());
+                
+                /* allocate space for plane-wave expansion coefficients */
+                mdarray<double_complex, 2> psi_pw_gpu(nullptr, kp->num_gkvec(), nfft_max); 
+                psi_pw_gpu.allocate_on_device();
+                
+                /* allocate space for spinor components */
+                mdarray<double_complex, 3> psi_it_gpu(nullptr, fft_gpu->size(), nfft_max, num_spins);
+                psi_it_gpu.allocate_on_device();
+                
+                /* allocate space for weights */
+                mdarray<double, 1> w(nfft_max);
+                w.allocate_on_device();
+
+                bool done = false;
+
+                while (!done)
+                {
+                    idx_band_mutex.lock();
+                    int i = idx_band;
+                    if (idx_band + nfft_max > (int)occupied_bands.size()) 
+                    {
+                        done = true;
+                    }
+                    else
+                    {
+                        idx_band += nfft_max;
+                    }
+                    idx_band_mutex.unlock();
+
+                    if (!done)
+                    {
+                        for (int ispn = 0; ispn < num_spins; ispn++)
+                        {
+                            /* copy PW coefficients to GPU */
+                            for (int j = 0; j < nfft_max; j++)
+                            {
+                                w(j) = occupied_bands[i + j].second / omega;
+
+                                cublas_set_vector(kp->num_gkvec(), sizeof(double_complex), 
+                                                  &kp->spinor_wave_function(wf_pw_offset, occupied_bands[i + j].first, ispn), 1, 
+                                                  psi_pw_gpu.ptr_device(0, j), 1);
+                            }
+                            w.copy_to_device();
+                            
+                            /* set PW coefficients into proper positions inside FFT buffer */
+                            fft_gpu->batch_load(kp->num_gkvec(), fft_index.ptr_device(), psi_pw_gpu.ptr_device(), 
+                                                psi_it_gpu.ptr_device(0, 0, ispn));
+
+                            /* execute batch FFT */
+                            fft_gpu->transform(1, psi_it_gpu.ptr_device(0, 0, ispn));
+                        }
+
+                        update_it_density_matrix_gpu(fft_gpu->size(), nfft_max, num_spins, num_mag_dims, 
+                                                     psi_it_gpu.ptr_device(), w.ptr_device(), it_density_matrix_gpu.ptr_device());
+                    }
+                }
+            }));
             #else
             TERMINATE_NO_GPU
             #endif
         }
         else
         {
-            fft_threads.push_back(std::thread(add_kpoint_contribution_cpu, i, kp, std::ref(parameters_), 
-                                              std::ref(occupied_bands), std::ref(it_density_matrix), 
-                                              &idx_band, &idx_band_mutex));
+            fft_threads.push_back(std::thread([thread_id, kp, fft, &idx_band, &idx_band_mutex, num_spins, num_mag_dims, 
+                                               omega, &occupied_bands, &it_density_matrix]()
+            {
+                bool done = false;
+
+                int wf_pw_offset = kp->wf_pw_offset();
+                
+                mdarray<double_complex, 2> psi_it(fft->size(), num_spins);
+
+                while (!done)
+                {
+                    // increment the band index
+                    idx_band_mutex.lock();
+                    int i = idx_band;
+                    if (idx_band + 1 > (int)occupied_bands.size()) 
+                    {
+                        done = true;
+                    }
+                    else
+                    {
+                        idx_band++;
+                    }
+                    idx_band_mutex.unlock();
+
+                    if (!done)
+                    {
+                        for (int ispn = 0; ispn < num_spins; ispn++)
+                        {
+                            fft->input(kp->num_gkvec(), kp->fft_index(), 
+                                       &kp->spinor_wave_function(wf_pw_offset, occupied_bands[i].first, ispn), thread_id);
+                            fft->transform(1, thread_id);
+                            fft->output(&psi_it(0, ispn), thread_id);
+                        }
+                        double w = occupied_bands[i].second / omega;
+                       
+                        switch (num_mag_dims)
+                        {
+                            case 3:
+                            {
+                                for (int ir = 0; ir < fft->size(); ir++)
+                                {
+                                    double_complex z = psi_it(ir, 0) * conj(psi_it(ir, 1)) * w;
+                                    it_density_matrix(ir, 2, thread_id) += 2.0 * real(z);
+                                    it_density_matrix(ir, 3, thread_id) -= 2.0 * imag(z);
+                                }
+                            }
+                            case 1:
+                            {
+                                for (int ir = 0; ir < fft->size(); ir++)
+                                    it_density_matrix(ir, 1, thread_id) += real(psi_it(ir, 1) * conj(psi_it(ir, 1))) * w;
+                            }
+                            case 0:
+                            {
+                                for (int ir = 0; ir < fft->size(); ir++)
+                                    it_density_matrix(ir, 0, thread_id) += real(psi_it(ir, 0) * conj(psi_it(ir, 0))) * w;
+                            }
+                        }
+                    }
+                }
+            }));
         }
     }
 
