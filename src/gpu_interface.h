@@ -76,6 +76,8 @@ size_t cuda_get_free_mem();
 
 void cuda_device_reset();
 
+void cuda_check_last_error();
+
 }
 
 //==================

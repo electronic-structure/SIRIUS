@@ -318,6 +318,16 @@ void cuda_device_info()
     printf("available memory            : %li kB \n", cuda_get_free_mem() / 1024);
 }
 
+void cuda_check_last_error()
+{
+    cudaDeviceSynchronize();                                                                                       \
+    cudaError_t error = cudaGetLastError();                                                                                    \
+    if (error != cudaSuccess)                                                                                      \
+    {
+        printf("CUDA error != cudaSuccess\n");
+    }
+}
+
 }
 
 //==================
