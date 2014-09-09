@@ -1252,7 +1252,6 @@ __global__ void create_beta_pw_gpu_kernel_v2
     }
 }
 
-
 extern "C" void create_beta_pw_gpu_v2(int num_atoms,
                                       int num_gkvec,
                                       int* beta_pw_desc,

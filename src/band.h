@@ -247,6 +247,20 @@ class Band
                                          dmatrix<double_complex>& ophi__);
         
         #ifdef _GPU_
+        void uspp_residuals_gpu_parallel(int N__,
+                                         int num_bands__,
+                                         K_point* kp__,
+                                         std::vector<double>& eval__,
+                                         dmatrix<double_complex>& evec__,
+                                         dmatrix<double_complex>& hphi__,
+                                         dmatrix<double_complex>& ophi__,
+                                         dmatrix<double_complex>& hpsi__,
+                                         dmatrix<double_complex>& opsi__,
+                                         dmatrix<double_complex>& res__,
+                                         std::vector<double_complex>& h_diag__,
+                                         std::vector<double_complex>& o_diag__,
+                                         std::vector<double>& res_norm__);
+
         void set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                                              int n__,
                                              K_point* kp__,
