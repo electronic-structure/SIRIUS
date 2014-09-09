@@ -1160,8 +1160,7 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v2(int N__,
     }
 }
 
-void bcast_column(Global& parameters__,
-                  K_point* kp__, 
+void bcast_column(K_point* kp__, 
                   splindex<block_cyclic>& s0_col__, 
                   splindex<block_cyclic>& s1_col__, 
                   int icol__, 
@@ -1214,12 +1213,12 @@ void comm_thread_worker(Global& parameters__,
         {
             while (lock_hphi__[(icol + 1) % 2].load());
             //printf("#1 broadcasting column %i\n", icol);
-            bcast_column(parameters__, kp__, s0_col__, s1_col__, icol + 1, hphi__, hphi_tmp__);
+            bcast_column(kp__, s0_col__, s1_col__, icol + 1, hphi__, hphi_tmp__);
             lock_hphi__[(icol + 1) % 2].store(true);
             
             while (lock_ophi__[(icol + 1) % 2].load());
             //printf("#1 broadcasting column %i\n", icol);
-            bcast_column(parameters__, kp__, s0_col__, s1_col__, icol + 1, ophi__, ophi_tmp__);
+            bcast_column(kp__, s0_col__, s1_col__, icol + 1, ophi__, ophi_tmp__);
             lock_ophi__[(icol + 1) % 2].store(true);
         }
         t1.stop();
@@ -1326,8 +1325,8 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
     
     Timer t1("sirius::Band::set_fv_h_o_uspp_cpu_parallel|zgemm_eff", _global_timer_);
     
-    bcast_column(parameters_, kp__, s0_col, s1_col, icol, hphi__, hphi_tmp);
-    bcast_column(parameters_, kp__, s0_col, s1_col, icol, ophi__, ophi_tmp);
+    bcast_column(kp__, s0_col, s1_col, icol, hphi__, hphi_tmp);
+    bcast_column(kp__, s0_col, s1_col, icol, ophi__, ophi_tmp);
     lock_hphi[0].store(true);
     lock_ophi[0].store(true);
 

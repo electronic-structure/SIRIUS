@@ -1,5 +1,5 @@
 // This file must be compiled with nvcc
-
+#include <signal.h>
 #include <stdio.h>
 #include <assert.h>
 #include <cuda.h>
@@ -140,6 +140,7 @@ inline __host__ __device__ int num_blocks(int length, int block_size)
     if (error != cudaSuccess)                                                                                      \
     {                                                                                                              \
         printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
+        raise(SIGTERM);                                                                                            \
         exit(-100);                                                                                                \
     }                                                                                                              \
 }
@@ -153,6 +154,7 @@ inline __host__ __device__ int num_blocks(int length, int block_size)
     if (error != cudaSuccess)                                                                                      \
     {                                                                                                              \
         printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
+        raise(SIGTERM);                                                                                            \
         exit(-100);                                                                                                \
     }                                                                                                              \
 }
@@ -320,9 +322,9 @@ void cuda_device_info()
 
 void cuda_check_last_error()
 {
-    cudaDeviceSynchronize();                                                                                       \
-    cudaError_t error = cudaGetLastError();                                                                                    \
-    if (error != cudaSuccess)                                                                                      \
+    cudaDeviceSynchronize();
+    cudaError_t error = cudaGetLastError();
+    if (error != cudaSuccess)
     {
         printf("CUDA error != cudaSuccess\n");
     }

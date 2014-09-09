@@ -4,13 +4,12 @@
 
 namespace sirius {
 
-void bcast_column(Global& parameters__,
-                  K_point* kp__, 
-                  splindex<block_cyclic>& s0_col__, 
-                  splindex<block_cyclic>& s1_col__, 
-                  int icol__, 
-                  dmatrix<double_complex>& m__, 
-                  mdarray<double_complex, 3>& m_tmp__);
+//== void bcast_column(K_point* kp__, 
+//==                   splindex<block_cyclic>& s0_col__, 
+//==                   splindex<block_cyclic>& s1_col__, 
+//==                   int icol__, 
+//==                   dmatrix<double_complex>& m__, 
+//==                   mdarray<double_complex, 3>& m_tmp__);
 
 void comm_thread_worker(Global& parameters__, 
                         K_point* kp__, 
@@ -191,6 +190,8 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                         phi__.ptr_device(0, s0.local_size()), phi__.ld(), 
                         beta_phi.ptr_device(), beta_phi.ld());
 
+        // TODO: GPU direct MUST(!!!) work here but it doesn't. Standalone tests work, but 
+        // here the allreduce fails with a wrong result and a next crash somewhere in ELPA comm.
         beta_phi.copy_to_host();
         kp__->comm_row().allreduce(beta_phi.ptr(), (int)beta_phi.size());
         beta_phi.copy_to_device();
@@ -252,6 +253,32 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
     kp__->comm().barrier();
 }
 
+void bcast_column_gpu(K_point* kp__, 
+                      splindex<block_cyclic>& s0_col__, 
+                      splindex<block_cyclic>& s1_col__, 
+                      int icol__, 
+                      dmatrix<double_complex>& m__, 
+                      mdarray<double_complex, 3>& m_tmp__)
+{
+    Timer t("sirius::bcast_column_gpu");
+
+    int n = (int)(s1_col__.local_size(icol__) - s0_col__.local_size(icol__));
+
+    if (n > 0 && kp__->rank_col() == icol__)
+    {
+        for (int i = 0; i < n; i++)
+        {
+            memcpy(&m_tmp__(0, i, icol__ % 2), &m__(0, s0_col__.local_size(icol__) + i), 
+                   kp__->num_gkvec_row() * sizeof(double_complex));
+        }
+    }
+    kp__->comm_col().bcast(&m_tmp__(0, 0, icol__ % 2), kp__->num_gkvec_row() * n, icol__);
+    #ifdef _GPU_
+    cublas_set_matrix(kp__->num_gkvec_row(), n, sizeof(double_complex), &m_tmp__(0, 0, icol__ % 2), m_tmp__.ld(), 
+                      m_tmp__.ptr_device(0, 0, icol__ % 2), m_tmp__.ld());
+    #endif
+}
+
 void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                                            int n__,
                                            K_point* kp__,
@@ -268,7 +295,6 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
     kp__->comm().barrier();
     Timer t("sirius::Band::set_fv_h_o_uspp_cpu_parallel", _global_timer_);
     
-
     splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
     splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
     splindex<block_cyclic> s0_row(N__,       kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
@@ -309,6 +335,13 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
     mdarray<double_complex, 3> h_tmp(num_phi, max_num_hphi, 2);
     mdarray<double_complex, 3> o_tmp(num_phi, max_num_hphi, 2);
 
+    #ifdef _GPU_
+    hphi_tmp.allocate_on_device();
+    ophi_tmp.allocate_on_device();
+    h_tmp.allocate_on_device();
+    o_tmp.allocate_on_device();
+    #endif
+
     std::array<std::atomic_bool, 2> lock_hphi;
     std::array<std::atomic_bool, 2> lock_ophi;
     std::array<std::atomic_bool, 2> lock_h;
@@ -325,33 +358,84 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
     
     Timer t1("sirius::Band::set_fv_h_o_uspp_cpu_parallel|zgemm_eff", _global_timer_);
     
-    bcast_column(parameters_, kp__, s0_col, s1_col, icol, hphi__, hphi_tmp);
-    bcast_column(parameters_, kp__, s0_col, s1_col, icol, ophi__, ophi_tmp);
+    bcast_column_gpu(kp__, s0_col, s1_col, icol, hphi__, hphi_tmp);
+    bcast_column_gpu(kp__, s0_col, s1_col, icol, ophi__, ophi_tmp);
     lock_hphi[0].store(true);
     lock_ophi[0].store(true);
 
     int nthread = omp_get_max_threads();
     if (nthread > 1) omp_set_num_threads(nthread - 1);
 
-    std::thread comm_thread(comm_thread_worker,
-                            std::ref(parameters_),
-                            kp__,
-                            std::ref(s0_col),
-                            std::ref(s1_col), 
-                            std::ref(s1_row),
-                            std::ref(hphi__),
-                            std::ref(ophi__),
-                            std::ref(h__),
-                            std::ref(o__),
-                            std::ref(hphi_tmp),
-                            std::ref(ophi_tmp),
-                            std::ref(h_tmp), 
-                            std::ref(o_tmp),
-                            std::ref(lock_hphi),
-                            std::ref(lock_ophi),
-                            std::ref(lock_h),
-                            std::ref(lock_o));
+    std::thread comm_thread([kp__, &s0_col, &s1_col, &s0_row, &s1_row, &lock_hphi, &lock_ophi, &lock_h, &lock_o, 
+                             &hphi__, &ophi__, &hphi_tmp, &ophi_tmp, &h_tmp, &o_tmp, &h__, &o__]()
+    {
+        int num_phi = (int)s1_col.local_size();
     
+        for (int icol = 0; icol < kp__->num_ranks_col(); icol++)
+        {
+            /* local number of new basis functions */
+            int n = (int)(s1_col.local_size(icol) - s0_col.local_size(icol));
+            
+            Timer t1("sirius::Band::set_fv_h_o_uspp_gpu_parallel_v3|comm_thread|1");
+            /* broadcast next column */
+            if (icol + 1 < kp__->num_ranks_col())
+            {
+                while (lock_hphi[(icol + 1) % 2].load());
+                //printf("#1 broadcasting column %i\n", icol);
+                bcast_column_gpu(kp__, s0_col, s1_col, icol + 1, hphi__, hphi_tmp);
+                lock_hphi[(icol + 1) % 2].store(true);
+                
+                while (lock_ophi[(icol + 1) % 2].load());
+                //printf("#1 broadcasting column %i\n", icol);
+                bcast_column_gpu(kp__, s0_col, s1_col, icol + 1, ophi__, ophi_tmp);
+                lock_ophi[(icol + 1) % 2].store(true);
+            }
+            t1.stop();
+    
+            Timer t2("sirius::Band::set_fv_h_o_uspp_gpu_parallel_v3|comm_thread|2");
+            if (n > 0)
+            {
+                while (!lock_h[icol % 2].load());
+                //printf("#2 reducing h for column %i\n", icol);
+                kp__->comm_row().allreduce(&h_tmp(0, 0, icol % 2), num_phi * n);
+    
+                for (int j = 0; j < n; j++)
+                {
+                    int idx_hphi_glob = (int)s1_col.global_index(s0_col.local_size(icol) + j, icol);
+                    auto p = s1_row.location(idx_hphi_glob);
+                    if (p.second == kp__->rank_row())
+                    {
+                        for (int i = 0; i < num_phi; i++)
+                        {
+                            h__(p.first, i) = conj(h_tmp(i, j, icol % 2));
+                        }
+                    }
+                }
+                /* remove lock from h buffer */
+                lock_h[icol % 2].store(false);
+    
+                while (!lock_o[icol % 2].load());
+                kp__->comm_row().allreduce(&o_tmp(0, 0, icol % 2), num_phi * n);
+    
+                for (int j = 0; j < n; j++)
+                {
+                    int idx_hphi_glob = (int)s1_col.global_index(s0_col.local_size(icol) + j, icol);
+                    auto p = s1_row.location(idx_hphi_glob);
+                    if (p.second == kp__->rank_row())
+                    {
+                        for (int i = 0; i < num_phi; i++)
+                        {
+                            o__(p.first, i) = conj(o_tmp(i, j, icol % 2));
+                        }
+                    }
+                }
+                /* remove lock from o buffer */
+                lock_o[icol % 2].store(false);
+            }
+            t2.stop();
+        }
+    });
+
     for (int icol = 0; icol < kp__->num_ranks_col(); icol++)
     {
         int n = (int)(s1_col.local_size(icol) - s0_col.local_size(icol));
@@ -365,8 +449,9 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
         {
             //printf("#5 zgemm for column %i\n", icol);
             Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel|zgemm_loc", _global_timer_);
-            blas<cpu>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), &phi__(0, 0), phi__.ld(),
-                            &hphi_tmp(0, 0, icol % 2), hphi_tmp.ld(), &h_tmp(0, 0, icol % 2), h_tmp.ld());
+            blas<gpu>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.ptr_device(), phi__.ld(),
+                            hphi_tmp.ptr_device(0, 0, icol % 2), hphi_tmp.ld(), h_tmp.ptr_device(0, 0, icol % 2), h_tmp.ld());
+            h_tmp.copy_to_host();
             lock_h[icol % 2].store(true);
             lock_hphi[icol % 2].store(false);
         }
@@ -377,8 +462,9 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
         {
             Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel|zgemm_loc", _global_timer_);
             //printf("#6 zgemm for column %i\n", icol);
-            blas<cpu>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), &phi__(0, 0), phi__.ld(),
-                            &ophi_tmp(0, 0, icol % 2), ophi_tmp.ld(), &o_tmp(0, 0, icol % 2), o_tmp.ld());
+            blas<gpu>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.ptr_device(), phi__.ld(),
+                            ophi_tmp.ptr_device(0, 0, icol % 2), ophi_tmp.ld(), o_tmp.ptr_device(0, 0, icol % 2), o_tmp.ld());
+            o_tmp.copy_to_host();
             lock_o[icol % 2].store(true);
             lock_ophi[icol % 2].store(false);
         }
