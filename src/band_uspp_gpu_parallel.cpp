@@ -253,6 +253,27 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
     kp__->comm().barrier();
 }
 
+#ifdef _GPU_DIRECT_
+void bcast_column_gpu(K_point* kp__, 
+                      splindex<block_cyclic>& s0_col__, 
+                      splindex<block_cyclic>& s1_col__, 
+                      int icol__, 
+                      dmatrix<double_complex>& m__, 
+                      mdarray<double_complex, 3>& m_tmp__)
+{
+    Timer t("sirius::bcast_column_gpu");
+
+    int n = (int)(s1_col__.local_size(icol__) - s0_col__.local_size(icol__));
+
+    if (n > 0 && kp__->rank_col() == icol__)
+    {
+        cuda_copy_device_to_device(m_tmp__.ptr_device(0, 0, icol__ % 2), m__.ptr_device(0, s0_col__.local_size(icol__)), 
+                                   kp__->num_gkvec_row() * n * sizeof(double_complex));
+
+    }
+    kp__->comm_col().bcast(m_tmp__.ptr_device(0, 0, icol__ % 2), kp__->num_gkvec_row() * n, icol__);
+}
+#else
 void bcast_column_gpu(K_point* kp__, 
                       splindex<block_cyclic>& s0_col__, 
                       splindex<block_cyclic>& s1_col__, 
@@ -278,6 +299,7 @@ void bcast_column_gpu(K_point* kp__,
                       m_tmp__.ptr_device(0, 0, icol__ % 2), m_tmp__.ld());
     #endif
 }
+#endif
 
 void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                                            int n__,
