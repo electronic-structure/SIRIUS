@@ -104,7 +104,7 @@ struct mdarray_deleter
     {
     }
 
-    mdarray_deleter(size_t size__, int mode__) : size_(size__), mode_(mode__)
+    mdarray_deleter(size_t const size__, int const mode__) : size_(size__), mode_(mode__)
     {
         mdarray_mem_count += size_ * sizeof(T);
         mdarray_mem_count_max = std::max(mdarray_mem_count.load(), mdarray_mem_count_max.load());
@@ -225,7 +225,7 @@ class mdarray_base
             return *this;
         }
 
-        void init_dimensions(const std::vector<mdarray_index_descriptor>& vd) 
+        void init_dimensions(std::vector<mdarray_index_descriptor> const& vd)
         {
             assert(vd.size() == ND);
             
@@ -242,7 +242,7 @@ class mdarray_base
         }
  
         /// Return total size (number of elements) of the array.
-        inline size_t size()
+        inline size_t size() const
         {
             size_t size_ = 1;
 
@@ -252,14 +252,14 @@ class mdarray_base
         }
         
         /// Return size of particular dimension.
-        inline size_t size(int i)
+        inline size_t size(int i) const
         {
            assert(i < ND);
            return dims_[i].size();
         }
         
         /// Return leading dimension size.
-        inline uint32_t ld()
+        inline uint32_t ld() const
         {
             assert(dims_[0].size() < size_t(1 << 31));
 
@@ -317,14 +317,14 @@ class mdarray_base
         }
         
         /// Return raw pointer.
-        inline T* ptr()
+        inline T* ptr() const
         {
             return ptr_;
         }
         
         /// Compute hash of the array
         /** Example: printf("hash(h) : %16llX\n", h.hash()); */
-        uint64_t hash()
+        uint64_t hash() const
         {
             uint64_t h = 5381;
 
