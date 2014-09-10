@@ -161,31 +161,31 @@ class Band
                                     dmatrix<double_complex>& phi__,
                                     dmatrix<double_complex>& hphi__);
 
-        void set_fv_h_o_uspp_cpu_parallel(int N__,
-                                          int n__,
-                                          K_point* kp__,
-                                          std::vector<double>& veff_it_coarse__,
-                                          std::vector<double>& pw_ekin__,
-                                          dmatrix<double_complex>& phi__,
-                                          dmatrix<double_complex>& hphi__,
-                                          dmatrix<double_complex>& ophi__,
-                                          dmatrix<double_complex>& h__,
-                                          dmatrix<double_complex>& o__,
-                                          dmatrix<double_complex>& h_old__,
-                                          dmatrix<double_complex>& o_old__);
+        void set_fv_h_o_uspp_cpu_parallel_simple(int N__,
+                                                 int n__,
+                                                 K_point* kp__,
+                                                 std::vector<double>& veff_it_coarse__,
+                                                 std::vector<double>& pw_ekin__,
+                                                 dmatrix<double_complex>& phi__,
+                                                 dmatrix<double_complex>& hphi__,
+                                                 dmatrix<double_complex>& ophi__,
+                                                 dmatrix<double_complex>& h__,
+                                                 dmatrix<double_complex>& o__,
+                                                 dmatrix<double_complex>& h_old__,
+                                                 dmatrix<double_complex>& o_old__);
 
-        void set_fv_h_o_uspp_cpu_parallel_v2(int N__,
-                                          int n__,
-                                          K_point* kp__,
-                                          std::vector<double>& veff_it_coarse__,
-                                          std::vector<double>& pw_ekin__,
-                                          dmatrix<double_complex>& phi__,
-                                          dmatrix<double_complex>& hphi__,
-                                          dmatrix<double_complex>& ophi__,
-                                          dmatrix<double_complex>& h__,
-                                          dmatrix<double_complex>& o__,
-                                          dmatrix<double_complex>& h_old__,
-                                          dmatrix<double_complex>& o_old__);
+        //= void set_fv_h_o_uspp_cpu_parallel_v2(int N__,
+        //=                                   int n__,
+        //=                                   K_point* kp__,
+        //=                                   std::vector<double>& veff_it_coarse__,
+        //=                                   std::vector<double>& pw_ekin__,
+        //=                                   dmatrix<double_complex>& phi__,
+        //=                                   dmatrix<double_complex>& hphi__,
+        //=                                   dmatrix<double_complex>& ophi__,
+        //=                                   dmatrix<double_complex>& h__,
+        //=                                   dmatrix<double_complex>& o__,
+        //=                                   dmatrix<double_complex>& h_old__,
+        //=                                   dmatrix<double_complex>& o_old__);
 
         void set_fv_h_o_uspp_cpu_parallel_v3(int N__,
                                           int n__,
@@ -200,19 +200,19 @@ class Band
                                           dmatrix<double_complex>& h_old__,
                                           dmatrix<double_complex>& o_old__);
 
-        void uspp_cpu_residuals_parallel(int N__,
-                                         int num_bands__,
-                                         K_point* kp__,
-                                         std::vector<double>& eval__,
-                                         dmatrix<double_complex>& evec__,
-                                         dmatrix<double_complex>& hphi__,
-                                         dmatrix<double_complex>& ophi__,
-                                         dmatrix<double_complex>& hpsi__,
-                                         dmatrix<double_complex>& opsi__,
-                                         dmatrix<double_complex>& res__,
-                                         std::vector<double_complex>& h_diag__,
-                                         std::vector<double_complex>& o_diag__,
-                                         std::vector<double>& res_norm__);
+        void uspp_residuals_cpu_parallel_simple(int N__,
+                                                int num_bands__,
+                                                K_point* kp__,
+                                                std::vector<double>& eval__,
+                                                dmatrix<double_complex>& evec__,
+                                                dmatrix<double_complex>& hphi__,
+                                                dmatrix<double_complex>& ophi__,
+                                                dmatrix<double_complex>& hpsi__,
+                                                dmatrix<double_complex>& opsi__,
+                                                dmatrix<double_complex>& res__,
+                                                std::vector<double_complex>& h_diag__,
+                                                std::vector<double_complex>& o_diag__,
+                                                std::vector<double>& res_norm__);
 
         void uspp_cpu_residuals_parallel_v2(int N__,
                                             int num_bands__,
@@ -228,14 +228,14 @@ class Band
                                             std::vector<double_complex>& o_diag__,
                                             std::vector<double>& res_norm__);
 
-        void apply_h_o_uspp_cpu_parallel(K_point* kp__,
-                                         std::vector<double>& effective_potential__,
-                                         std::vector<double>& pw_ekin__,
-                                         int N__,
-                                         int n__,
-                                         dmatrix<double_complex>& phi__,
-                                         dmatrix<double_complex>& hphi__,
-                                         dmatrix<double_complex>& ophi__);
+        void apply_h_o_uspp_cpu_parallel_simple(K_point* kp__,
+                                                std::vector<double>& effective_potential__,
+                                                std::vector<double>& pw_ekin__,
+                                                int N__,
+                                                int n__,
+                                                dmatrix<double_complex>& phi__,
+                                                dmatrix<double_complex>& hphi__,
+                                                dmatrix<double_complex>& ophi__);
 
         void apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
                                          std::vector<double>& effective_potential__,
@@ -245,6 +245,20 @@ class Band
                                          dmatrix<double_complex>& phi__,
                                          dmatrix<double_complex>& hphi__,
                                          dmatrix<double_complex>& ophi__);
+
+        void uspp_residuals_cpu_parallel_v3(int N__,
+                                            int num_bands__,
+                                            K_point* kp__,
+                                            std::vector<double>& eval__,
+                                            dmatrix<double_complex>& evec__,
+                                            dmatrix<double_complex>& hphi__,
+                                            dmatrix<double_complex>& ophi__,
+                                            dmatrix<double_complex>& hpsi__,
+                                            dmatrix<double_complex>& opsi__,
+                                            dmatrix<double_complex>& res__,
+                                            std::vector<double_complex>& h_diag__,
+                                            std::vector<double_complex>& o_diag__,
+                                            std::vector<double>& res_norm__);
         
         #ifdef _GPU_
         void uspp_residuals_gpu_parallel(int N__,

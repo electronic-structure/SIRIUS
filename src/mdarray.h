@@ -51,17 +51,17 @@ class mdarray_index_descriptor
     public:
   
         /// Constructor of empty descriptor.
-        mdarray_index_descriptor() : begin_(0), end_(-1), size_(0) 
+        mdarray_index_descriptor() : begin_(0), end_(-1), size_(0)
         {
         }
         
         /// Constructor for index range [0, size).
-        mdarray_index_descriptor(size_t size__) : begin_(0), end_(size__ - 1), size_(size__)
+        mdarray_index_descriptor(size_t const size__) : begin_(0), end_(size__ - 1), size_(size__)
         {
         }
     
         /// Constructor for index range [begin, end]
-        mdarray_index_descriptor(int64_t begin__, int64_t end__) 
+        mdarray_index_descriptor(int64_t const begin__, int64_t const end__)
             : begin_(begin__), 
               end_(end__) , 
               size_(end_ - begin_ + 1)
@@ -70,19 +70,19 @@ class mdarray_index_descriptor
         };
         
         /// Return first index value.
-        inline int64_t begin() 
+        inline int64_t begin() const
         {
             return begin_;
         }
         
         /// Return last index value.
-        inline int64_t end() 
+        inline int64_t end() const
         {
             return end_;
         }
         
         /// Return index size.
-        inline size_t size() 
+        inline size_t size() const
         {
             return size_;
         }
