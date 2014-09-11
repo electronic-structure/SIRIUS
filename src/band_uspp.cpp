@@ -725,7 +725,7 @@ void Band::apply_h_local_parallel(K_point* kp__,
                                   dmatrix<double_complex>& hphi__)
 {
     kp__->comm().barrier();
-    Timer t("sirius::Band::apply_h_local_parallel");
+    Timer t("sirius::Band::apply_h_local_parallel", _global_timer_);
 
     splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
     splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
@@ -764,6 +764,7 @@ void Band::apply_h_local_parallel(K_point* kp__,
     //}
 
     hphi__.scatter(n__, N__, hphi_slice);
+    kp__->comm().barrier();
 }
 
 void Band::apply_h_o_uspp_cpu_parallel_simple(K_point* kp__,
@@ -797,7 +798,7 @@ void Band::apply_h_o_uspp_cpu_parallel_simple(K_point* kp__,
     /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
     dmatrix<double_complex> tmp(uc->mt_basis_size(), n__, kp__->blacs_grid());
 
-    Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel_simple|beta_phi");
+    Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel_simple|beta_phi", _global_timer_);
     /* compute <beta|phi> */
     blas<cpu>::gemm(2, 0, uc->mt_basis_size(), n__, kp__->num_gkvec(), complex_one, 
                     kp__->beta_pw_panel(), 0, 0, phi__, 0, N__, complex_zero, beta_phi, 0, 0);
@@ -831,7 +832,7 @@ void Band::apply_h_o_uspp_cpu_parallel_simple(K_point* kp__,
     }
     tmp.scatter(tmp_slice);
 
-    Timer t3("sirius::Band::apply_h_o_uspp_cpu_parallel_simple|beta_D_beta_phi");
+    Timer t3("sirius::Band::apply_h_o_uspp_cpu_parallel_simple|beta_D_beta_phi", _global_timer_);
     /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
     blas<cpu>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_basis_size(), complex_one,
                     kp__->beta_pw_panel(), 0, 0, tmp, 0, 0, complex_one, hphi__, 0, N__);
@@ -851,7 +852,7 @@ void Band::apply_h_o_uspp_cpu_parallel_simple(K_point* kp__,
     }
     tmp.scatter(tmp_slice);
 
-    Timer t5("sirius::Band::apply_h_o_uspp_cpu_parallel_simple|beta_Q_beta_phi");
+    Timer t5("sirius::Band::apply_h_o_uspp_cpu_parallel_simple|beta_Q_beta_phi", _global_timer_);
     /* computr <G+k|beta> * Q*<beta|phi> and add to ophi */
     blas<cpu>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_basis_size(), complex_one, 
                     kp__->beta_pw_panel(), 0, 0, tmp, 0, 0, complex_one, ophi__, 0, N__);
