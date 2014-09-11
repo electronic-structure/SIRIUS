@@ -516,8 +516,8 @@ class generalized_evp_rs_gpu: public generalized_evp
             linalg<scalapack>::descinit(descb, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, ldb); 
 
-            mdarray<double_complex, 2> ztmp(NULL, num_rows_loc, num_cols_loc);
-            ztmp.allocate_page_locked();
+            mdarray<double_complex, 2> ztmp(nullptr, num_rows_loc, num_cols_loc);
+            ztmp.allocate(1);
             int32_t descz[9];
             linalg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, num_rows_loc); 
@@ -535,8 +535,6 @@ class generalized_evp_rs_gpu: public generalized_evp
 
             for (int i = 0; i < linalg<scalapack>::numroc(nevec, block_size_, rank_col_, 0, num_ranks_col_); i++)
                 memcpy(&z[ldz * i], &ztmp(0, i), num_rows_loc * sizeof(double_complex));
-
-            ztmp.deallocate_page_locked();
 
             memcpy(eval, &eval_tmp[0], nevec * sizeof(double));
         }
