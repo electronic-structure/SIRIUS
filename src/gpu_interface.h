@@ -34,43 +34,51 @@ const int _null_stream_ = -1;
 // CUDA functions
 //================
 
-extern "C" void cuda_initialize();
+extern "C" {
 
-extern "C" void cuda_device_info();
+void cuda_initialize();
 
-extern "C" void cuda_malloc(void** ptr, size_t size);
+void cuda_device_info();
 
-extern "C" void* cuda_malloc_host(size_t size);
+void* cuda_malloc(size_t size);
 
-extern "C" void cuda_free_host(void* ptr);
+void* cuda_malloc_host(size_t size);
 
-extern "C" void cuda_free(void* ptr);
+void cuda_free_host(void* ptr);
 
-extern "C" void cuda_copy_to_device(void *target, void *source, size_t size);
+void cuda_free(void* ptr);
 
-extern "C" void cuda_copy_to_host(void *target, void *source, size_t size);
+void cuda_copy_to_device(void *target, void *source, size_t size);
 
-extern "C" void cuda_memset(void *ptr, int value, size_t size);
+void cuda_copy_to_host(void *target, void *source, size_t size);
 
-extern "C" void cuda_host_register(void* ptr, size_t size);
+void cuda_copy_device_to_device(void* target, void* source, size_t size);
 
-extern "C" void cuda_host_unregister(void* ptr);
+void cuda_memset(void *ptr, int value, size_t size);
 
-extern "C" void cuda_device_synchronize();
+void cuda_host_register(void* ptr, size_t size);
 
-extern "C" void cuda_create_streams(int num_streams);
+void cuda_host_unregister(void* ptr);
 
-extern "C" void cuda_destroy_streams(int num_streams);
+void cuda_device_synchronize();
 
-extern "C" void cuda_stream_synchronize(int stream_id);
+void cuda_create_streams(int num_streams);
 
-extern "C" void cuda_async_copy_to_device(void *target, void *source, size_t size, int stream_id);
+void cuda_destroy_streams(int num_streams);
 
-extern "C" void cuda_async_copy_to_host(void *target, void *source, size_t size, int stream_id);
+void cuda_stream_synchronize(int stream_id);
 
-extern "C" size_t cuda_get_free_mem();
+void cuda_async_copy_to_device(void *target, void *source, size_t size, int stream_id);
 
-extern "C" void cuda_device_reset();
+void cuda_async_copy_to_host(void *target, void *source, size_t size, int stream_id);
+
+size_t cuda_get_free_mem();
+
+void cuda_device_reset();
+
+void cuda_check_last_error();
+
+}
 
 //==================
 // CUBLAS functions

@@ -1,5 +1,5 @@
 // This file must be compiled with nvcc
-
+#include <signal.h>
 #include <stdio.h>
 #include <assert.h>
 #include <cuda.h>
@@ -133,169 +133,168 @@ inline __host__ __device__ int num_blocks(int length, int block_size)
 // CUDA functions
 //================
 
-inline void cuda_check_last_error(const char* file_name, const int line_number)
-{
-    #if !defined(NDEBUG)
-    cudaDeviceSynchronize();
-    cudaError_t error = cudaGetLastError();
-    if (error != cudaSuccess) 
-        printf("CUDA error at line %i of file %s: %s\n", line_number, file_name, cudaGetErrorString(error));
-    #endif
+#ifdef NDEBUG
+#define CALL_CUDA(func__, args__)                                                                                  \
+{                                                                                                                  \
+    cudaError_t error = func__ args__;                                                                             \
+    if (error != cudaSuccess)                                                                                      \
+    {                                                                                                              \
+        printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
+        raise(SIGTERM);                                                                                            \
+        exit(-100);                                                                                                \
+    }                                                                                                              \
 }
-
-extern "C" void cuda_initialize()
-{
-    cudaSetDeviceFlags(cudaDeviceMapHost);
-    cuda_check_last_error(__FILE__, __LINE__);
+#else
+#define CALL_CUDA(func__, args__)                                                                                  \
+{                                                                                                                  \
+    cudaError_t error;                                                                                             \
+    func__ args__;                                                                                                 \
+    cudaDeviceSynchronize();                                                                                       \
+    error = cudaGetLastError();                                                                                    \
+    if (error != cudaSuccess)                                                                                      \
+    {                                                                                                              \
+        printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
+        raise(SIGTERM);                                                                                            \
+        exit(-100);                                                                                                \
+    }                                                                                                              \
 }
-
-extern "C" void cuda_malloc(void** ptr, size_t size)
-{
-    cudaMalloc(ptr, size);
-    cuda_check_last_error(__FILE__, __LINE__);
-}
-
-extern "C" void cuda_free(void* ptr)
-{
-    cudaFree(ptr);
-    cuda_check_last_error(__FILE__, __LINE__);
-}
-
-extern "C" void* cuda_malloc_host(size_t size)
-{
-    void* ptr;
-    cudaMallocHost(&ptr, size);
-    cuda_check_last_error(__FILE__, __LINE__);
-    return ptr;
-}
-
-extern "C" void cuda_free_host(void* ptr)
-{
-    cudaFreeHost(ptr);
-    cuda_check_last_error(__FILE__, __LINE__);
-}
-
-extern "C" void cuda_copy_to_device(void* target, void* source, size_t size)
-{
-    cudaMemcpy(target, source, size, cudaMemcpyHostToDevice);
-    cuda_check_last_error(__FILE__, __LINE__);
-}
-
-extern "C" void cuda_copy_to_host(void* target, void* source, size_t size)
-{
-    cudaMemcpy(target, source, size, cudaMemcpyDeviceToHost);
-    cuda_check_last_error(__FILE__, __LINE__);
-}
-
-extern "C" void cuda_device_synchronize()
-{
-    cudaDeviceSynchronize();
-    cuda_check_last_error(__FILE__, __LINE__);
-}
-
-extern "C" void cuda_device_reset()
-{
-    cudaDeviceReset();
-    cuda_check_last_error(__FILE__, __LINE__);
-}
+#endif
 
 cudaStream_t* streams;
 
-extern "C" void cuda_create_streams(int num_streams)
+extern "C" {
+
+void cuda_initialize()
+{
+    CALL_CUDA(cudaSetDeviceFlags, (cudaDeviceMapHost));
+}
+
+void* cuda_malloc(size_t size)
+{
+    void* ptr;
+    CALL_CUDA(cudaMalloc, (&ptr, size));
+    return ptr;
+}
+
+void cuda_free(void* ptr)
+{
+    CALL_CUDA(cudaFree, (ptr));
+}
+
+void* cuda_malloc_host(size_t size)
+{
+    void* ptr;
+    CALL_CUDA(cudaMallocHost, (&ptr, size));
+    return ptr;
+}
+
+void cuda_free_host(void* ptr)
+{
+    CALL_CUDA(cudaFreeHost, (ptr));
+}
+
+void cuda_copy_to_device(void* target, void* source, size_t size)
+{
+    CALL_CUDA(cudaMemcpy, (target, source, size, cudaMemcpyHostToDevice));
+}
+
+void cuda_copy_to_host(void* target, void* source, size_t size)
+{
+    CALL_CUDA(cudaMemcpy, (target, source, size, cudaMemcpyDeviceToHost));
+}
+
+void cuda_copy_device_to_device(void* target, void* source, size_t size)
+{
+    CALL_CUDA(cudaMemcpy, (target, source, size, cudaMemcpyDeviceToDevice));
+}
+
+void cuda_device_synchronize()
+{
+    CALL_CUDA(cudaDeviceSynchronize, ());
+}
+
+void cuda_device_reset()
+{
+    CALL_CUDA(cudaDeviceReset, ());
+}
+
+void cuda_create_streams(int num_streams)
 {
     streams = (cudaStream_t*)malloc(num_streams * sizeof(cudaStream_t));
     //for (int i = 0; i < num_streams; i++) cudaStreamCreateWithFlags(&streams[i], cudaStreamNonBlocking);
     for (int i = 0; i < num_streams; i++)
     {
-        cudaStreamCreate(&streams[i]);
-        cuda_check_last_error(__FILE__, __LINE__);
+        CALL_CUDA(cudaStreamCreate, (&streams[i]));
     }
 }
 
-extern "C" void cuda_destroy_streams(int num_streams)
+void cuda_destroy_streams(int num_streams)
 {
     for (int i = 0; i < num_streams; i++) 
     {
-        cudaStreamDestroy(streams[i]);
-        cuda_check_last_error(__FILE__, __LINE__);
+        CALL_CUDA(cudaStreamDestroy, (streams[i]));
     }
     free(streams);
 }
 
-extern "C" void cuda_stream_synchronize(int stream_id)
+void cuda_stream_synchronize(int stream_id)
 {
-    cudaStreamSynchronize(streams[stream_id]);
-    cuda_check_last_error(__FILE__, __LINE__);
+    CALL_CUDA(cudaStreamSynchronize, (streams[stream_id]));
 }
 
-extern "C" void cuda_async_copy_to_device(void* target, void* source, size_t size, int stream_id)
-{
-    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
-
-    cudaMemcpyAsync(target, source, size, cudaMemcpyHostToDevice, stream);
-    cuda_check_last_error(__FILE__, __LINE__);
-}
-
-extern "C" void cuda_async_copy_to_host(void* target, void* source, size_t size, int stream_id)
+void cuda_async_copy_to_device(void* target, void* source, size_t size, int stream_id)
 {
     cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
 
-    cudaMemcpyAsync(target, source, size, cudaMemcpyDeviceToHost, stream);
-    cuda_check_last_error(__FILE__, __LINE__);
+    CALL_CUDA(cudaMemcpyAsync, (target, source, size, cudaMemcpyHostToDevice, stream));
 }
 
-extern "C" void cuda_memset(void* ptr, int value, size_t size)
+void cuda_async_copy_to_host(void* target, void* source, size_t size, int stream_id)
 {
-    cudaMemset(ptr, value, size);
-    cuda_check_last_error(__FILE__, __LINE__);
+    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
+
+    CALL_CUDA(cudaMemcpyAsync, (target, source, size, cudaMemcpyDeviceToHost, stream));
 }
 
-extern "C" void cuda_host_register(void* ptr, size_t size)
+void cuda_memset(void* ptr, int value, size_t size)
+{
+    CALL_CUDA(cudaMemset, (ptr, value, size));
+}
+
+void cuda_host_register(void* ptr, size_t size)
 {
     assert(ptr);
     
-    cudaHostRegister(ptr, size, cudaHostRegisterMapped);
-    cuda_check_last_error(__FILE__, __LINE__);
+    CALL_CUDA(cudaHostRegister, (ptr, size, cudaHostRegisterMapped));
 }
 
-extern "C" void cuda_host_unregister(void* ptr)
+void cuda_host_unregister(void* ptr)
 {
-    cudaHostUnregister(ptr);
-    cuda_check_last_error(__FILE__, __LINE__);
+    CALL_CUDA(cudaHostUnregister, (ptr));
 }
 
-//* cudaDeviceProp& cuda_devprop()
-//* {
-//*     static cudaDeviceProp devprop;
-//* 
-//*     return devprop;
-//* }
-
-extern "C" size_t cuda_get_free_mem()
+size_t cuda_get_free_mem()
 {
     size_t free, total;
-    cudaMemGetInfo(&free, &total);
-    cuda_check_last_error(__FILE__, __LINE__);
+    CALL_CUDA(cudaMemGetInfo, (&free, &total));
 
     return free;
 }
 
-extern "C" void cuda_device_info()
+void cuda_device_info()
 {
     int count;
-    cudaGetDeviceCount(&count);
-    cuda_check_last_error(__FILE__, __LINE__);
+    CALL_CUDA(cudaGetDeviceCount, (&count));
 
     if (count == 0)
     {
-        printf("no avaiable devices\n");
-        exit(-1);
+        printf("CUDA devices not found\n");
+        exit(-100);
     }
 
     cudaDeviceProp devprop;
      
-    cudaGetDeviceProperties(&devprop, 0);
-    cuda_check_last_error(__FILE__, __LINE__);
+    CALL_CUDA(cudaGetDeviceProperties, (&devprop, 0));
     
     printf("name                        : %s \n", devprop.name);
     printf("major                       : %i \n", devprop.major);
@@ -321,6 +320,18 @@ extern "C" void cuda_device_info()
     printf("available memory            : %li kB \n", cuda_get_free_mem() / 1024);
 }
 
+void cuda_check_last_error()
+{
+    cudaDeviceSynchronize();
+    cudaError_t error = cudaGetLastError();
+    if (error != cudaSuccess)
+    {
+        printf("CUDA error != cudaSuccess\n");
+    }
+}
+
+}
+
 //==================
 // CUBLAS functions
 //==================
@@ -328,76 +339,8 @@ extern "C" void cuda_device_info()
 cublasHandle_t cublas_null_stream_handle;
 cublasHandle_t* cublas_stream_handles;
 
-
-//== cublasHandle_t& cublas_handle()
-//== {
-//==     static cublasHandle_t handle;
-//==     static bool init = false;
-//== 
-//==     if (!init)
-//==     {
-//==         if (cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS)
-//==         {
-//==             printf("cublasCreate() failed \n");
-//==             exit(-1);
-//==         }
-//==         init = true;
-//==     }
-//==     
-//==     return handle;
-//== }
-
-extern "C" void cublas_create_handles(int num_handles)
+void cublas_error_message(cublasStatus_t status)
 {
-    if (cublasCreate(&cublas_null_stream_handle) != CUBLAS_STATUS_SUCCESS)
-    {
-        printf("cublasCreate() failed \n");
-        exit(-1);
-    }
-    cublas_stream_handles = (cublasHandle_t*)malloc(num_handles * sizeof(cublasHandle_t));
-    for (int i = 0; i < num_handles; i++)
-    {
-        if (cublasCreate(&cublas_stream_handles[i]) != CUBLAS_STATUS_SUCCESS)
-        {
-            printf("cublasCreate() failed \n");
-            exit(-1);
-        }
-
-        cublasSetStream(cublas_stream_handles[i], streams[i]);
-    }
-}
-
-extern "C" void cublas_destroy_handles(int num_handles)
-{
-    cublasDestroy(cublas_null_stream_handle);
-    for (int i = 0; i < num_handles; i++) cublasDestroy(cublas_stream_handles[i]);
-}
-
-//== extern "C" void cublas_init()
-//== {
-//==     cublas_handle();
-//== }
-
-//== extern "C" void cublas_set_stream(int stream_id__)
-//== {
-//==     cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
-//==     cublasSetStream(cublas_handle(), stream);
-//== }
-
-extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                             const void* alpha, void* a, int32_t lda, void* b, 
-                             int32_t ldb, const void* beta, void* c, int32_t ldc, int stream_id)
-{
-    const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
-    cublasHandle_t handle = (stream_id == -1) ? cublas_null_stream_handle : cublas_stream_handles[stream_id];
-    
-    cublasStatus_t status = cublasZgemm(handle, trans[transa], trans[transb], m, n, k, (cuDoubleComplex*)alpha, 
-                                        (cuDoubleComplex*)a, lda, (cuDoubleComplex*)b, ldb, (cuDoubleComplex*)beta, 
-                                        (cuDoubleComplex*)c, ldc);
-    if (status == CUBLAS_STATUS_SUCCESS) return;
-
-    printf("failed to execute cublasZgemm\n");
-    
     switch (status)
     {
         case CUBLAS_STATUS_NOT_INITIALIZED:
@@ -420,116 +363,96 @@ extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32
             printf("the function failed to launch on the GPU\n");
             break;
         }
+        default:
+        {
+            printf("cublas status unknown");
+        }
     }
+}
 
-    exit(-1);
+#define CALL_CUBLAS(func__, args__)                                                 \
+{                                                                                   \
+    cublasStatus_t status;                                                          \
+    if ((status = func__ args__) != CUBLAS_STATUS_SUCCESS)                          \
+    {   cublas_error_message(status);                                               \
+        printf("Error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__); \
+        exit(-100);                                                                 \
+    }                                                                               \
+}
+
+extern "C" void cublas_create_handles(int num_handles)
+{
+    CALL_CUBLAS(cublasCreate, (&cublas_null_stream_handle));
+    
+    cublas_stream_handles = (cublasHandle_t*)malloc(num_handles * sizeof(cublasHandle_t));
+    for (int i = 0; i < num_handles; i++)
+    {
+        CALL_CUBLAS(cublasCreate, (&cublas_stream_handles[i]));
+
+        CALL_CUBLAS(cublasSetStream, (cublas_stream_handles[i], streams[i]));
+    }
+}
+
+extern "C" void cublas_destroy_handles(int num_handles)
+{
+    CALL_CUBLAS(cublasDestroy, (cublas_null_stream_handle));
+    for (int i = 0; i < num_handles; i++)
+    {
+        CALL_CUBLAS(cublasDestroy, (cublas_stream_handles[i]));
+    }
+}
+
+//== extern "C" void cublas_set_stream(int stream_id__)
+//== {
+//==     cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
+//==     cublasSetStream(cublas_handle(), stream);
+//== }
+
+extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+                             cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, cuDoubleComplex* b, 
+                             int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc, int stream_id)
+{
+    const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
+    cublasHandle_t handle = (stream_id == -1) ? cublas_null_stream_handle : cublas_stream_handles[stream_id];
+    
+    CALL_CUBLAS(cublasZgemm, (handle, trans[transa], trans[transb], m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 
 // A(GPU) => B(CPU)
 extern "C" void cublas_get_matrix(int rows, int cols, int elemSize, const void *A_device, int lda, void *B_host, int ldb)
 {
-    if (cublasGetMatrix(rows, cols, elemSize, A_device, lda, B_host, ldb) != CUBLAS_STATUS_SUCCESS)
-    {
-        printf("failed to execute cublasGetMatrix\n");
-        exit(-1);
-    }
+    CALL_CUBLAS(cublasGetMatrix, (rows, cols, elemSize, A_device, lda, B_host, ldb));
 }
 
 extern "C" void cublas_get_matrix_async(int rows, int cols, int elemSize, const void *A_device, int lda, void *B_host, int ldb, int stream_id)
 {
     cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
 
-    if (cublasGetMatrixAsync(rows, cols, elemSize, A_device, lda, B_host, ldb, stream) != CUBLAS_STATUS_SUCCESS)
-    {
-        printf("failed to execute cublasGetMatrixAsync\n");
-        exit(-1);
-    }
+    CALL_CUBLAS(cublasGetMatrixAsync, (rows, cols, elemSize, A_device, lda, B_host, ldb, stream));
 }
 
 // A(CPU) => B(GPU)
 extern "C" void cublas_set_matrix(int rows, int cols, int elemSize, const void *A_host, int lda, void *B_device, int ldb)
 {
-    if (cublasSetMatrix(rows, cols, elemSize, A_host, lda, B_device, ldb) != CUBLAS_STATUS_SUCCESS)
-    {
-        printf("failed to execute cublasSetMatrix\n");
-        exit(-1);
-    }
+    CALL_CUBLAS(cublasSetMatrix, (rows, cols, elemSize, A_host, lda, B_device, ldb));
 }
 
 extern "C" void cublas_set_matrix_async(int rows, int cols, int elemSize, const void *A_host, int lda, void *B_device, int ldb, int stream_id)
 {
     cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
 
-    if (cublasSetMatrixAsync(rows, cols, elemSize, A_host, lda, B_device, ldb, stream) != CUBLAS_STATUS_SUCCESS)
-    {
-        printf("failed to execute cublasSetMatrixAsync\n");
-        exit(-1);
-    }
+    CALL_CUBLAS(cublasSetMatrixAsync, (rows, cols, elemSize, A_host, lda, B_device, ldb, stream));
 }
 
 // x(CPU) => y(GPU)
 extern "C" void cublas_set_vector(int n, int elemSize, const void *x, int incx, void *y, int incy)
 {
-    if (cublasSetVector(n, elemSize, x, incx, y, incy) != CUBLAS_STATUS_SUCCESS)
-    {
-        printf("failed to execute cublasSetVector\n");
-        exit(-1);
-    }
+    CALL_CUBLAS(cublasSetVector, (n, elemSize, x, incx, y, incy));
 }
 
 //=================
 // CUFFT functions
 //=================
-
-//== cufftHandle plan;
-//== int nfft_of_plan;
-//== int size_of_plan;
-
-void cufft_check_error(const char* file_name, const int line_number, cufftResult result)
-{
-    if (result == CUFFT_SUCCESS) return;
-    
-    printf("CUFFT error at line %i of file %s: ", line_number, file_name);
-    switch (result)
-    {
-        case CUFFT_INVALID_PLAN:
-        {
-            printf("CUFFT_INVALID_PLAN\n");
-            break;
-        }
-        case CUFFT_ALLOC_FAILED:
-        {
-            printf("CUFFT_ALLOC_FAILED\n");
-            break;
-        }
-        case CUFFT_INVALID_VALUE:
-        {
-            printf("CUFFT_INVALID_VALUE\n");
-            break;
-        }
-        case CUFFT_INTERNAL_ERROR:
-        {
-            printf("CUFFT_INTERNAL_ERROR\n");
-            break;
-        }
-        case CUFFT_SETUP_FAILED:
-        {
-            printf("CUFFT_SETUP_FAILED\n");
-            break;
-        }
-        case CUFFT_INVALID_SIZE:
-        {
-            printf("CUFFT_INVALID_SIZE\n");
-            break;
-        }
-        default:
-        {
-            printf("unknown error code %i\n", result);
-            break;
-        }
-    }
-    exit(-100);
-}
 
 void cufft_error_message(cufftResult result)
 {
@@ -573,15 +496,15 @@ void cufft_error_message(cufftResult result)
     }
 }
 
-#define CALL_CUFFT(func__, args__)                                         \
-{                                                                          \
-    cufftResult result;                                                    \
-    if ((result = func__ args__) != CUFFT_SUCCESS)                         \
-    {                                                                      \
-        printf("CUFFT error at line %i of file %s: ", __LINE__, __FILE__); \
-        cufft_error_message(result);                                       \
-        exit(-100);                                                        \
-    }                                                                      \
+#define CALL_CUFFT(func__, args__)                                                  \
+{                                                                                   \
+    cufftResult result;                                                             \
+    if ((result = func__ args__) != CUFFT_SUCCESS)                                  \
+    {                                                                               \
+        printf("Error in %s at line %i of file %s: ", #func__, __LINE__, __FILE__); \
+        cufft_error_message(result);                                                \
+        exit(-100);                                                                 \
+    }                                                                               \
 }
 
 extern "C" void cufft_create_plan_handle(cufftHandle* plan)
@@ -709,7 +632,6 @@ extern "C" void cufft_batch_load_gpu(int fft_size,
         data, 
         fft_buffer
     );
-    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 __global__ void cufft_batch_unload_gpu_kernel
@@ -753,7 +675,6 @@ extern "C" void cufft_batch_unload_gpu(int fft_size,
         data,
         beta
     );
-    cuda_check_last_error(__FILE__, __LINE__);
 }
 
 extern "C" void cufft_forward_transform(cufftHandle plan, cuDoubleComplex* fft_buffer)
@@ -1331,7 +1252,6 @@ __global__ void create_beta_pw_gpu_kernel_v2
     }
 }
 
-
 extern "C" void create_beta_pw_gpu_v2(int num_atoms,
                                       int num_gkvec,
                                       int* beta_pw_desc,
@@ -1619,7 +1539,7 @@ extern "C" void restore_valence_density_gpu(int num_atoms,
     dim3 numBlocks(num_atoms);
 
     cuDoubleComplex* f_pw;
-    cuda_malloc((void**)&f_pw, num_gvec_loc * num_atoms * sizeof(cuDoubleComplex));
+    f_pw = (cuDoubleComplex*)cuda_malloc(num_gvec_loc * num_atoms * sizeof(cuDoubleComplex));
     cuda_memset(f_pw, 0, num_gvec_loc * num_atoms * sizeof(cuDoubleComplex));
 
     restore_valence_density_gpu_kernel<<<
@@ -1862,13 +1782,13 @@ extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
                                        int num_beta,
                                        double* atom_pos,
                                        int* gvec,
-                                       void* d_mtrx_packed,
-                                       void* d_mtrx_pw)
+                                       cuDoubleComplex* d_mtrx_packed,
+                                       cuDoubleComplex* d_mtrx_pw)
 {
     cuda_timer t("generate_d_mtrx_pw_gpu");
 
     cuDoubleComplex* phase_factors;
-    cuda_malloc((void**)&phase_factors, num_gvec_loc * num_atoms * sizeof (cuDoubleComplex));
+    phase_factors = (cuDoubleComplex*)cuda_malloc(num_gvec_loc * num_atoms * sizeof (cuDoubleComplex));
 
     dim3 grid_t(32);
     dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x), num_atoms);
@@ -1882,8 +1802,8 @@ extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
     cuDoubleComplex zone = make_cuDoubleComplex(1.0, 0.0);
     cuDoubleComplex zzero = make_cuDoubleComplex(0.0, 0.0);
 
-    cublas_zgemm(0, 0, num_gvec_loc, num_beta * (num_beta + 1) / 2, num_atoms, (void*)&zone, 
-                 (void*)phase_factors, num_gvec_loc, (void*)d_mtrx_packed, num_atoms, (void*)&zzero,
+    cublas_zgemm(0, 0, num_gvec_loc, num_beta * (num_beta + 1) / 2, num_atoms, &zone, 
+                 phase_factors, num_gvec_loc, d_mtrx_packed, num_atoms, &zzero,
                  d_mtrx_pw, num_gvec_loc, -1);
 
     cuda_free(phase_factors);
@@ -2041,12 +1961,14 @@ extern "C" void update_it_density_matrix_gpu(int fft_size,
         //== }
         case 1:
         {
-            update_it_density_matrix_1_gpu_kernel<<<grid_b, grid_t>>>(fft_size,
-                                                                      nfft_max,
-                                                                      (cuDoubleComplex*)psi_it,
-                                                                      wt,
-                                                                      it_density_matrix);
-            cuda_check_last_error(__FILE__, __LINE__);
+            update_it_density_matrix_1_gpu_kernel <<<grid_b, grid_t>>>
+            (
+                fft_size,
+                nfft_max,
+                psi_it,
+                wt,
+                it_density_matrix
+            );
         }
         case 0:
         {
@@ -2058,7 +1980,6 @@ extern "C" void update_it_density_matrix_gpu(int fft_size,
                 wt,
                 it_density_matrix
             );
-            cuda_check_last_error(__FILE__, __LINE__);
         }
     }
 }

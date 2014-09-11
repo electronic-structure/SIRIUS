@@ -128,18 +128,21 @@ def main():
     fin.close()
 
     makeinc = open("make.inc", "w")
-    if ("MPI_CXX") in platform: 
+    if "MPI_CXX" in platform: 
         makeinc.write("CXX = " + platform["MPI_CXX"] + "\n")
     else:
         makeinc.write("CXX = " + platform["CXX"] + "\n")
 
-    if ("MPI_CXX_OPT") in platform:
+    if "MPI_CXX_OPT" in platform:
         makeinc.write("CXX_OPT = " + platform["MPI_CXX_OPT"] + "\n")
     else:
         makeinc.write("CXX_OPT = " + platform["CXX_OPT"] + "\n")
 
     if "NVCC" in platform: makeinc.write("NVCC = " + platform["NVCC"] + "\n")
     if "NVCC_OPT" in platform: makeinc.write("NVCC_OPT = " + platform["NVCC_OPT"] + "\n")
+
+    if "MPI_FC" in platform: makeinc.write("MPI_FC = " + platform["MPI_FC"] + "\n")
+    if "MPI_FC_OPT" in platform: makeinc.write("MPI_FC_OPT = " + platform["MPI_FC_OPT"] + "\n")
     
     make_packages = []
     clean_packages = []
@@ -151,6 +154,11 @@ def main():
             makeinc.write("LIBS := $(LIBS) " + opts[1] + "\n")
             make_packages.append(opts[2])
             clean_packages.append(opts[3])
+   
+    build_elpa = False
+    if "-D_ELPA_" in platform["MPI_CXX_OPT"]:
+        build_elpa = True
+        makeinc.write("LIBS := $(LIBS) " + os.getcwd() + "/libs/elpa/libelpa.a\n")
 
     makeinc.write("CXX_OPT := $(CXX_OPT) -I" + os.getcwd() + "/libs/libjson\n")
     makeinc.write("LIBS := $(LIBS) " + os.getcwd() + "/libs/libjson/libjson.a\n")
@@ -175,11 +183,13 @@ def main():
     for i in range(len(make_packages)):
         makef.write(make_packages[i])
     makef.write("\tcd ./libs/libjson; make\n")
+    if build_elpa: makef.write("\tcd ./libs/elpa; make\n")
     
     makef.write("clean_packages:\n")
     for i in range(len(clean_packages)):
         makef.write(clean_packages[i])
     makef.write("\tcd ./libs/libjson; make clean\n")
+    if build_elpa: makef.write("\tcd ./libs/elpa; make clean\n")
 
     makef.write("\n")
     makef.write("clean:\n")

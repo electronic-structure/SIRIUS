@@ -76,6 +76,9 @@ test_copy_gpu:
 
 test_gen_eig:
 	$(CXX) $(CXX_OPT) $(INCLUDE) test_gen_eig.cpp  $(LIB_SIRIUS) $(LIBS) -o test_gen_eig
+
+test_gpudirect: test_gpudirect.cpp
+	$(CXX) $(CXX_OPT) $(INCLUDE) test_gpudirect.cpp  $(LIB_SIRIUS) $(LIBS) -o test_gpudirect
 	
 
 clean:
