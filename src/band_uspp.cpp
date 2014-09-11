@@ -959,6 +959,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
                        tval, 8e-9 * nbf_in_block * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
             }
             
+            Timer t2("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|D_beta_phi", _global_timer_);
             #pragma omp parallel for
             for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
             {
@@ -972,13 +973,15 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
                 blas<cpu>::gemm(0, 0, nbf, nloc, nbf, &uc->atom(ia)->d_mtrx(0, 0), nbf, 
                                 &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
             }
+            t2.stop();
 
             Timer t3("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_D_beta_phi", _global_timer_);
             /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
             blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
                             beta_pw.ptr(), beta_pw.ld(), tmp.ptr(), tmp.ld(), complex_one, &hphi__(0, s0.local_size()), hphi__.ld());
             t3.stop();
-
+            
+            Timer t4("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|Q_beta_phi", _global_timer_);
             #pragma omp parallel for
             for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
             {
@@ -992,12 +995,13 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
                 blas<cpu>::gemm(0, 0, nbf, nloc, nbf, &uc->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
                                 &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
             }
+            t4.stop();
 
-            Timer t4("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_Q_beta_phi", _global_timer_);
+            Timer t5("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_Q_beta_phi", _global_timer_);
             /* compute <G+k|beta> * Q*<beta|phi> and add to ophi */
             blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
                             beta_pw.ptr(), beta_pw.ld(), tmp.ptr(), tmp.ld(), complex_one, &ophi__(0, s0.local_size()), ophi__.ld());
-            t4.stop();
+            t5.stop();
         }
     }
     
