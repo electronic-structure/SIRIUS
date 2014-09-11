@@ -325,43 +325,73 @@ extern "C" void cuda_device_info()
 // CUBLAS functions
 //==================
 
-cublasHandle_t& cublas_handle()
-{
-    static cublasHandle_t handle;
-    static bool init = false;
+cublasHandle_t cublas_null_stream_handle;
+cublasHandle_t* cublas_stream_handles;
 
-    if (!init)
+
+//== cublasHandle_t& cublas_handle()
+//== {
+//==     static cublasHandle_t handle;
+//==     static bool init = false;
+//== 
+//==     if (!init)
+//==     {
+//==         if (cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS)
+//==         {
+//==             printf("cublasCreate() failed \n");
+//==             exit(-1);
+//==         }
+//==         init = true;
+//==     }
+//==     
+//==     return handle;
+//== }
+
+extern "C" void cublas_create_handles(int num_handles)
+{
+    if (cublasCreate(&cublas_null_stream_handle) != CUBLAS_STATUS_SUCCESS)
     {
-        if (cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS)
+        printf("cublasCreate() failed \n");
+        exit(-1);
+    }
+    cublas_stream_handles = (cublasHandle_t*)malloc(num_handles * sizeof(cublasHandle_t));
+    for (int i = 0; i < num_handles; i++)
+    {
+        if (cublasCreate(&cublas_stream_handles[i]) != CUBLAS_STATUS_SUCCESS)
         {
             printf("cublasCreate() failed \n");
             exit(-1);
         }
-        init = true;
+
+        cublasSetStream(cublas_stream_handles[i], streams[i]);
     }
-    
-    return handle;
 }
 
-extern "C" void cublas_init()
+extern "C" void cublas_destroy_handles(int num_handles)
 {
-    cublas_handle();
+    cublasDestroy(cublas_null_stream_handle);
+    for (int i = 0; i < num_handles; i++) cublasDestroy(cublas_stream_handles[i]);
 }
 
-extern "C" void cublas_set_stream(int stream_id__)
-{
-    cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
-    cublasSetStream(cublas_handle(), stream);
-}
+//== extern "C" void cublas_init()
+//== {
+//==     cublas_handle();
+//== }
+
+//== extern "C" void cublas_set_stream(int stream_id__)
+//== {
+//==     cudaStream_t stream = (stream_id__ == -1) ? NULL : streams[stream_id__];
+//==     cublasSetStream(cublas_handle(), stream);
+//== }
 
 extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                              const void* alpha, void* a, int32_t lda, void* b, 
-                             int32_t ldb, const void* beta, void* c, int32_t ldc)
+                             int32_t ldb, const void* beta, void* c, int32_t ldc, int stream_id)
 {
     const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
+    cublasHandle_t handle = (stream_id == -1) ? cublas_null_stream_handle : cublas_stream_handles[stream_id];
     
-    
-    cublasStatus_t status = cublasZgemm(cublas_handle(), trans[transa], trans[transb], m, n, k, (cuDoubleComplex*)alpha, 
+    cublasStatus_t status = cublasZgemm(handle, trans[transa], trans[transb], m, n, k, (cuDoubleComplex*)alpha, 
                                         (cuDoubleComplex*)a, lda, (cuDoubleComplex*)b, ldb, (cuDoubleComplex*)beta, 
                                         (cuDoubleComplex*)c, ldc);
     if (status == CUBLAS_STATUS_SUCCESS) return;
@@ -513,11 +543,11 @@ extern "C" size_t cufft_get_size(int nx, int ny, int nz, int nfft)
     int fft_size = nx * ny * nz;
     int n[] = {nz, ny, nx};
     size_t work_size;
-    if (cufftGetSizeMany(plan, 3, n, n, 1, fft_size, n, 1, fft_size, CUFFT_Z2Z, nfft, &work_size) != CUFFT_SUCCESS)
-    {
-        printf("failed to execute cufftGetSizeMany()\n");
-        exit(0);
-    }
+    //== cufftResult result = cufftGetSizeMany(plan, 3, n, n, 1, fft_size, n, 1, fft_size, CUFFT_Z2Z, nfft, &work_size);
+    //cufftResult result = cufftGetSizeMany(plan, 3, n, NULL, 1, fft_size, NULL, 1, fft_size, CUFFT_Z2Z, nfft, &work_size);
+    cufftResult result = cufftEstimateMany(3, n, NULL, 1, fft_size, NULL, 1, fft_size, CUFFT_Z2Z, nfft, &work_size);
+    cufft_check_error(__FILE__, __LINE__, result);
+    
     return work_size;
 }
 
@@ -625,11 +655,14 @@ extern "C" void cufft_batch_load_gpu(int num_elements,
     cuda_check_last_error(__FILE__, __LINE__);
 }
 
-__global__ void cufft_batch_unload_gpu_kernel(int fft_size, 
-                                              int num_elements, 
-                                              int* map, 
-                                              cuDoubleComplex* fft_buffer,
-                                              cuDoubleComplex* data)
+__global__ void cufft_batch_unload_gpu_kernel
+(
+    int fft_size, 
+    int num_elements, 
+    int* map, 
+    cuDoubleComplex* fft_buffer,
+    cuDoubleComplex* data
+)
 {
     int i = blockIdx.y;
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -643,17 +676,20 @@ __global__ void cufft_batch_unload_gpu_kernel(int fft_size,
 
 extern "C" void cufft_batch_unload_gpu(int num_elements, 
                                        int* map, 
-                                       void* fft_buffer, 
-                                       void* data)
+                                       cuDoubleComplex* fft_buffer, 
+                                       cuDoubleComplex* data)
 {
-    dim3 threadsPerBlock(64);
-    dim3 numBlocks(num_blocks(num_elements, 64), nfft_of_plan);
-    
-    cufft_batch_unload_gpu_kernel<<<numBlocks, threadsPerBlock>>>(size_of_plan, 
-                                                                  num_elements, 
-                                                                  map, 
-                                                                  (cuDoubleComplex*)fft_buffer,
-                                                                  (cuDoubleComplex*)data);
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(num_elements, grid_t.x), nfft_of_plan);
+
+    cufft_batch_unload_gpu_kernel <<<grid_b, grid_t>>>
+    (
+        size_of_plan, 
+        num_elements, 
+        map, 
+        fft_buffer,
+        data
+    );
     cuda_check_last_error(__FILE__, __LINE__);
 }
 
@@ -1187,6 +1223,65 @@ extern "C" void create_beta_pw_gpu(int num_gkvec,
                            (cuDoubleComplex*)beta_pw);
 }
 
+__global__ void create_beta_pw_gpu_kernel_v2
+(
+    int num_gkvec, 
+    int* beta_pw_desc,
+    cuDoubleComplex* beta_pw_type, 
+    double* gkvec, 
+    double* atom_pos,
+    cuDoubleComplex* beta_pw
+)
+{
+    int igk = blockDim.x * blockIdx.x + threadIdx.x;
+    int ia = blockIdx.y;
+
+    int nbf = beta_pw_desc[array2D_offset(0, ia, 3)];
+    int offset_beta_pw = beta_pw_desc[array2D_offset(1, ia, 3)];
+    int offset_beta_pw_t = beta_pw_desc[array2D_offset(2, ia, 3)];
+
+    if (igk < num_gkvec)
+    {
+        double p = 0;
+        for (int x = 0; x < 3; x++) p += atom_pos[array2D_offset(x, ia, 3)] * gkvec[array2D_offset(x, igk, 3)];
+        p *= twopi;
+
+        double sinp = sin(p);
+        double cosp = cos(p);
+
+        for (int xi = 0; xi < nbf; xi++)
+        {
+            beta_pw[array2D_offset(igk, offset_beta_pw + xi, num_gkvec)] =
+                cuCmul(beta_pw_type[array2D_offset(igk, offset_beta_pw_t + xi, num_gkvec)], make_cuDoubleComplex(cosp, -sinp));
+        }
+    }
+}
+
+
+extern "C" void create_beta_pw_gpu_v2(int num_atoms,
+                                      int num_gkvec,
+                                      int* beta_pw_desc,
+                                      cuDoubleComplex* beta_pw_type,
+                                      double* gkvec,
+                                      double* atom_pos,
+                                      cuDoubleComplex* beta_pw)
+{
+    cuda_timer t("create_beta_pw_gpu_v2");
+
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(num_gkvec, grid_t.x), num_atoms);
+
+    create_beta_pw_gpu_kernel_v2 <<<grid_b, grid_t>>> 
+    (
+        num_gkvec,
+        beta_pw_desc,
+        beta_pw_type,
+        gkvec,
+        atom_pos,
+        beta_pw
+    );
+}
+
 //== __global__ void create_beta_pw_gpu_kernel(int num_gkvec, 
 //==                                           int beta_a_ofs,
 //==                                           int* beta_t_idx, 
@@ -1715,7 +1810,7 @@ extern "C" void generate_d_mtrx_pw_gpu(int num_atoms,
 
     cublas_zgemm(0, 0, num_gvec_loc, num_beta * (num_beta + 1) / 2, num_atoms, (void*)&zone, 
                  (void*)phase_factors, num_gvec_loc, (void*)d_mtrx_packed, num_atoms, (void*)&zzero,
-                 d_mtrx_pw, num_gvec_loc);
+                 d_mtrx_pw, num_gvec_loc, -1);
 
     cuda_free(phase_factors);
 }

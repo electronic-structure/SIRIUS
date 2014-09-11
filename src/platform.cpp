@@ -34,7 +34,7 @@ extern "C" void plasma_init(int num_cores);
 extern "C" void libsci_acc_init();
 #endif
 
-void Platform::initialize(bool call_mpi_init, bool call_cublas_init)
+void Platform::initialize(bool call_mpi_init)
 {
     //if (call_mpi_init) MPI_Init(NULL, NULL);
     if (call_mpi_init) 
@@ -49,9 +49,9 @@ void Platform::initialize(bool call_mpi_init, bool call_cublas_init)
 
     #ifdef _GPU_
     //cuda_initialize();
-    if (call_cublas_init) cublas_init();
     if (comm_world().rank() == 0) cuda_device_info();
     cuda_create_streams(max_num_threads());
+    cublas_create_handles(max_num_threads());
     #endif
     #ifdef _MAGMA_
     magma_init_wrapper();
@@ -75,6 +75,7 @@ void Platform::finalize()
     magma_finalize_wrapper();
     #endif
     #ifdef _GPU_
+    cublas_destroy_handles(max_num_threads());
     cuda_destroy_streams(max_num_threads());
     cuda_device_reset();
     #endif

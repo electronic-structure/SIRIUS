@@ -81,7 +81,7 @@ enum ev_solver_t
     ev_rs_cpu
 };
 
-enum splindex_t {block, block_cyclic};
+enum splindex_t {block, block_cyclic, dyadic};
 
 /// Type of electronic structure methods
 enum electronic_structure_method_t 

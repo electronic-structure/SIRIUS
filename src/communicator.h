@@ -77,6 +77,7 @@ class Communicator
             if (mpi_comm_ != MPI_COMM_NULL) 
             {
                 CALL_MPI(MPI_Comm_free, (&mpi_comm_));
+                mpi_comm_ = MPI_COMM_NULL;
             }
         }
 

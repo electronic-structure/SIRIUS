@@ -23,6 +23,7 @@
  */
 
 #include <thread>
+#include <mutex>
 #include <atomic>
 #include "band.h"
 
@@ -47,6 +48,7 @@ void Band::apply_h_local(K_point* kp, std::vector<double>& effective_potential, 
         #pragma omp for
         for (int i = 0; i < n; i++)
         {
+            // TODO: get rid of unnecessary copies to and from fft buffer
             fft->input(kp->num_gkvec(), kp->fft_index_coarse(), &phi(0, i), thread_id);
             fft->transform(1, thread_id);
             fft->output(&phi_r[0], thread_id);
@@ -767,9 +769,13 @@ void Band::apply_h_local_parallel(K_point* kp__,
                                   dmatrix<double_complex>& phi__,
                                   dmatrix<double_complex>& hphi__)
 {
+    kp__->comm().barrier();
     Timer t("sirius::Band::apply_h_local_parallel");
 
     auto fft = parameters_.reciprocal_lattice()->fft_coarse();
+    #ifdef _GPU_
+    FFT3D<gpu> fft_gpu(fft->grid_size());
+    #endif
 
     splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
     splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
@@ -780,29 +786,182 @@ void Band::apply_h_local_parallel(K_point* kp__,
     phi__.gather(n__, N__, phi_slice);
     mdarray<double_complex, 2> hphi_slice(kp__->num_gkvec(), sub_spl_n.local_size());
 
-    int num_fft_threads = Platform::num_fft_threads();
-    #pragma omp parallel default(shared) num_threads(num_fft_threads)
-    {        
-        int thread_id = omp_get_thread_num();
-        std::vector<double_complex> phi_r(fft->size());
-        
-        /* loop over local fraction of wave-functions */
-        #pragma omp for
-        for (int i = 0; i < (int)sub_spl_n.local_size(); i++)
+    int num_fft_threads = -1;
+    switch (parameters_.processing_unit())
+    {
+        case cpu:
         {
-            fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi_slice(0, i), thread_id);
-            fft->transform(1, thread_id);
-            fft->output(&phi_r[0], thread_id);
-
-            for (int ir = 0; ir < fft->size(); ir++) phi_r[ir] *= effective_potential__[ir];
-
-            fft->input(&phi_r[0], thread_id);
-            fft->transform(-1, thread_id);
-            fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi_slice(0, i), thread_id);
-            
-            for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi_slice(igk, i) += phi_slice(igk, i) * pw_ekin__[igk];
+            num_fft_threads = Platform::num_fft_threads();
+            break;
+        }
+        case gpu:
+        {
+            num_fft_threads = std::min(Platform::num_fft_threads() + 1, Platform::max_num_threads());
+            break;
         }
     }
+
+    std::vector<std::thread> fft_threads;
+
+    /* index of the wave-function */
+    int idx_phi = 0;
+    std::mutex idx_phi_mutex;
+    int nphi = (int)sub_spl_n.local_size();
+    int nfft_gpu_max = 8;
+
+    int count_fft_cpu = 0;
+    int count_fft_gpu = 0;
+    
+    Timer t1("sirius::Band::apply_h_local_parallel|ffts");
+    for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
+    {
+        if (thread_id == (num_fft_threads - 1) && num_fft_threads > 1 && parameters_.processing_unit() == gpu)
+        {
+            #ifdef _GPU_
+            fft_threads.push_back(std::thread([thread_id, nphi, &idx_phi, &idx_phi_mutex, &fft_gpu, kp__, &phi_slice, 
+                                               &hphi_slice, &effective_potential__, &pw_ekin__, nfft_gpu_max, &count_fft_gpu]()
+            {
+                Timer t("sirius::Band::apply_h_local_parallel|gpu");
+                
+                /* move fft index to GPU */
+                mdarray<int, 1> fft_index(kp__->fft_index_coarse(), kp__->num_gkvec());
+                fft_index.allocate_on_device();
+                fft_index.copy_to_device();
+
+                /* allocate work area array */
+                mdarray<char, 1> work_area(nullptr, fft_gpu.work_area_size(nfft_gpu_max));
+                work_area.allocate_on_device();
+                
+                /* allocate space for plane-wave expansion coefficients */
+                mdarray<double_complex, 2> phi_pw_gpu(nullptr, kp__->num_gkvec(), nfft_gpu_max); 
+                phi_pw_gpu.allocate_on_device();
+                
+                /* allocate space for FFT buffers */
+                mdarray<double_complex, 2> phi_gpu(nullptr, fft_gpu.size(), nfft_gpu_max); 
+                phi_gpu.allocate_on_device();
+                
+                /* initialize cuFFT transform */
+                fft_gpu.initialize(nfft_gpu_max, work_area.ptr_device());
+
+                mdarray<double, 1> veff_gpu(&effective_potential__[0], fft_gpu.size());
+                veff_gpu.allocate_on_device();
+                veff_gpu.copy_to_device();
+
+                bool done = false;
+                while (!done)
+                {
+                    /* increment the band index */
+                    idx_phi_mutex.lock();
+                    int i = idx_phi;
+                    if (idx_phi + nfft_gpu_max > nphi) 
+                    {
+                        done = true;
+                    }
+                    else
+                    {
+                        idx_phi += nfft_gpu_max;
+                        count_fft_gpu += nfft_gpu_max;
+                    }
+                    idx_phi_mutex.unlock();
+
+                    if (!done)
+                    {
+                        cublas_set_matrix(kp__->num_gkvec(), nfft_gpu_max, sizeof(double_complex), 
+                                          &phi_slice(0, i), phi_slice.ld(), phi_pw_gpu.ptr_device(), phi_pw_gpu.ld());
+
+                        /* set PW coefficients into proper positions inside FFT buffer */
+                        fft_gpu.batch_load(kp__->num_gkvec(), fft_index.ptr_device(), phi_pw_gpu.ptr_device(), 
+                                           phi_gpu.ptr_device());
+
+                        /* execute batch FFT */
+                        fft_gpu.transform(1, phi_gpu.ptr_device());
+                        /* multimply by potential */
+                        scale_matrix_rows_gpu(fft_gpu.size(), nfft_gpu_max, phi_gpu.ptr_device(), veff_gpu.ptr_device());
+                        /* transform back */
+                        fft_gpu.transform(-1, phi_gpu.ptr_device());
+
+                        fft_gpu.batch_unload(kp__->num_gkvec(), fft_index.ptr_device(), phi_gpu.ptr_device(),
+                                             phi_pw_gpu.ptr_device());
+                        
+                        cublas_get_matrix(kp__->num_gkvec(), nfft_gpu_max, sizeof(double_complex), 
+                                          phi_pw_gpu.ptr_device(), phi_pw_gpu.ld(), &hphi_slice(0, i), hphi_slice.ld());
+                        
+                        for (int k = 0; k < nfft_gpu_max; k++)
+                        {
+                            for (int igk = 0; igk < kp__->num_gkvec(); igk++) 
+                                hphi_slice(igk, i + k) += phi_slice(igk, i + k) * pw_ekin__[igk];
+                        }
+                    }
+                }
+            }));
+            #else
+            TERMINATE_NO_GPU
+            #endif
+        }
+        else
+        {
+            fft_threads.push_back(std::thread([thread_id, nphi, &idx_phi, &idx_phi_mutex, &fft, kp__, &phi_slice, 
+                                               &hphi_slice, &effective_potential__, &pw_ekin__, &count_fft_cpu]()
+            {
+                bool done = false;
+                while (!done)
+                {
+                    /* increment the band index */
+                    idx_phi_mutex.lock();
+                    int i = idx_phi;
+                    if (idx_phi + 1 > nphi) 
+                    {
+                        done = true;
+                    }
+                    else
+                    {
+                        idx_phi++;
+                        count_fft_cpu++;
+                    }
+                    idx_phi_mutex.unlock();
+                
+                    if (!done)
+                    {
+                        fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi_slice(0, i), thread_id);
+                        fft->transform(1, thread_id);
+                        for (int ir = 0; ir < fft->size(); ir++) fft->buffer(ir, thread_id) *= effective_potential__[ir];
+                        fft->transform(-1, thread_id);
+                        fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi_slice(0, i), thread_id);
+                        
+                        for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi_slice(igk, i) += phi_slice(igk, i) * pw_ekin__[igk];
+                    }
+                }
+
+            }));
+        }
+    }
+    for (auto& thread: fft_threads) thread.join();
+    t1.stop();
+
+    std::cout << "CPU / GPU fft count : " << count_fft_cpu << " " << count_fft_gpu << std::endl;
+
+    //#pragma omp parallel default(shared) num_threads(num_fft_threads)
+    //{        
+    //    int thread_id = omp_get_thread_num();
+    //    std::vector<double_complex> phi_r(fft->size());
+    //    
+    //    /* loop over local fraction of wave-functions */
+    //    #pragma omp for
+    //    for (int i = 0; i < (int)sub_spl_n.local_size(); i++)
+    //    {
+    //        fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi_slice(0, i), thread_id);
+    //        fft->transform(1, thread_id);
+    //        fft->output(&phi_r[0], thread_id);
+
+    //        for (int ir = 0; ir < fft->size(); ir++) phi_r[ir] *= effective_potential__[ir];
+
+    //        fft->input(&phi_r[0], thread_id);
+    //        fft->transform(-1, thread_id);
+    //        fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi_slice(0, i), thread_id);
+    //        
+    //        for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi_slice(igk, i) += phi_slice(igk, i) * pw_ekin__[igk];
+    //    }
+    //}
 
     hphi__.scatter(n__, N__, hphi_slice);
 }
@@ -923,6 +1082,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
     splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
     splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
 
+    /* local number of states to which Hamiltonian has to be applied */
     int nloc = static_cast<int>(s1.local_size() - s0.local_size());
 
     if (nloc > 0)
@@ -966,7 +1126,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
             }
 
             Timer t0("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_pw", _global_timer_);
-            // create beta projectors
+            /* create beta projectors */
             #pragma omp parallel
             for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
             {
@@ -1034,7 +1194,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
             }
 
             Timer t4("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_Q_beta_phi", _global_timer_);
-            /* compute <G+k|beta> * Q*<beta|phi> and add to hphi */
+            /* compute <G+k|beta> * Q*<beta|phi> and add to ophi */
             blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
                             beta_pw.ptr(), beta_pw.ld(), tmp.ptr(), tmp.ld(), complex_one, &ophi__(0, s0.local_size()), ophi__.ld());
             t4.stop();
@@ -2605,397 +2765,430 @@ void Band::diag_fv_uspp_cpu(K_point* kp__,
 }
 
 #ifdef _GPU_
-void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_potential)
+void Band::diag_fv_uspp_gpu(K_point* kp__, 
+                            Periodic_function<double>* effective_potential__)
 {
-    //== Timer t("sirius::Band::diag_fv_uspp_gpu");
+    Timer t("sirius::Band::diag_fv_uspp_gpu");
 
-    //== // map effective potential to a corase grid
-    //== std::vector<double> veff_it_coarse(parameters_.reciprocal_lattice()->fft_coarse()->size());
-    //== std::vector<double_complex> veff_pw_coarse(parameters_.reciprocal_lattice()->num_gvec_coarse());
+    auto rl = parameters_.reciprocal_lattice();
 
-    //== // take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi
-    //== for (int igc = 0; igc < parameters_.reciprocal_lattice()->num_gvec_coarse(); igc++)
-    //== {
-    //==     int ig = parameters_.reciprocal_lattice()->gvec_index(igc);
-    //==     veff_pw_coarse[igc] = effective_potential->f_pw(ig);
-    //== }
-    //== parameters_.reciprocal_lattice()->fft_coarse()->input(parameters_.reciprocal_lattice()->num_gvec_coarse(), 
-    //==                                                       parameters_.reciprocal_lattice()->fft_index_coarse(),
-    //==                                                       &veff_pw_coarse[0]);
-    //== parameters_.reciprocal_lattice()->fft_coarse()->transform(1);
-    //== parameters_.reciprocal_lattice()->fft_coarse()->output(&veff_it_coarse[0]);
+    /* map effective potential to a corase grid */
+    std::vector<double> veff_it_coarse(rl->fft_coarse()->size());
+    std::vector<double_complex> veff_pw_coarse(rl->num_gvec_coarse());
 
-    //== // short notation for target wave-functions
-    //== mdarray<double_complex, 2>& psi = kp->fv_states();
+    /* take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi */
+    for (int igc = 0; igc < rl->num_gvec_coarse(); igc++)
+    {
+        int ig = rl->gvec_index(igc);
+        veff_pw_coarse[igc] = effective_potential__->f_pw(ig);
+    }
+    rl->fft_coarse()->input(rl->num_gvec_coarse(), rl->fft_index_coarse(), &veff_pw_coarse[0]);
+    rl->fft_coarse()->transform(1);
+    rl->fft_coarse()->output(&veff_it_coarse[0]);
 
-    //== // short notation for number of target wave-functions
-    //== int num_bands = parameters_.num_fv_states();     
+    double v0 = real(effective_potential__->f_pw(0));
 
-    //== // cache kinetic energy,
-    //== std::vector<double> pw_ekin = kp->get_pw_ekin();
-
-    //== // get diagonal elements for preconditioning
-    //== std::vector<double_complex> h_diag;
-    //== std::vector<double_complex> o_diag;
-    //== get_h_o_diag(kp, effective_potential, pw_ekin, h_diag, o_diag);
-    //== 
-    //== int max_iter = 10;
-    //== int num_phi = std::min(4 * num_bands, kp->num_gkvec());
-
-    //== // big array to store one of the beta, phi, hphi or ophi on the GPU
-    //== mdarray<double_complex, 2> gamma(NULL, kp->num_gkvec(), std::max(num_phi, parameters_.unit_cell()->mt_lo_basis_size()));
-    //== gamma.allocate_on_device();
-
-    //== // small array to store residuals, wave-functions and updates to hphi and ophi
-    //== mdarray<double_complex, 2> kappa(kp->num_gkvec(), 2 * num_bands);
-    //== kappa.allocate_on_device();
-    //== kappa.pin_memory();
-
-    //== mdarray<double_complex, 2> phi(kp->num_gkvec(), num_phi);
-    //== mdarray<double_complex, 2> hphi(kp->num_gkvec(), num_phi);
-    //== mdarray<double_complex, 2> ophi(kp->num_gkvec(), num_phi);
-    //== 
-    //== mdarray<double_complex, 2> hmlt(num_phi, num_phi);
-    //== mdarray<double_complex, 2> ovlp(num_phi, num_phi);
-    //== mdarray<double_complex, 2> hmlt_old(num_phi, num_phi);
-    //== mdarray<double_complex, 2> ovlp_old(num_phi, num_phi);
-    //== 
-    //== mdarray<double_complex, 2> evec(num_phi, num_phi);
-    //== evec.allocate_on_device();
-    //== evec.pin_memory();
-
-    //== std::vector<double> eval(num_bands);
-    //== std::vector<double> eval_old(num_bands, 1e100);
-    //== 
-    //== std::vector<double> res_norm(num_bands); // norm of residuals
-    //== std::vector<double> res_rms(num_bands); // RMS of residual
-    //== std::vector<double> res_e(num_bands);
-    //== 
-    //== if (parameters_.gen_evp_solver()->type() == ev_magma)
-    //== {
-    //==     hmlt.pin_memory();
-    //==     ovlp.pin_memory();
-    //== }
-
-    //== bool convergence_by_energy = false;
-
-    //== int N = 0; // current eigen-value problem size
-    //== int n = num_bands; // number of added residuals
-
-    //== // trial basis functions
-    //== assert(phi.size(0) == psi.size(0));
-    //== for (int i = 0; i < num_bands; i++) memcpy(&phi(0, i), &psi(0, i), kp->num_gkvec() * sizeof(double_complex));
-    //== 
-    //== // start iterative diagonalization
-    //== for (int k = 0; k < max_iter; k++)
-    //== {
-    //==     Timer t1("sirius::Band::diag_fv_uspp_gpu|set_gevp");
-
-    //==     // copy old Hamiltonian and overlap
-    //==     for (int i = 0; i < N; i++)
-    //==     {
-    //==         memcpy(&hmlt(0, i), &hmlt_old(0, i), N * sizeof(double_complex));
-    //==         memcpy(&ovlp(0, i), &ovlp_old(0, i), N * sizeof(double_complex));
-    //==     }
-
-    //==     // apply Hamiltonian and overlap operators
-    //==     apply_h_o_uspp_gpu(kp, veff_it_coarse, pw_ekin, n, gamma, kappa, &phi(0, N), &hphi(0, N), &ophi(0, N));
-
-    //==     // copy all phi to GPU
-    //==     cublas_set_matrix(kp->num_gkvec(), n + N, sizeof(double_complex), phi.ptr(), phi.ld(), gamma.ptr_device(), gamma.ld());
-
-    //==     // temporary storage for Hamiltonian and overlap 
-    //==     mdarray<double_complex, 2> tmp(NULL, N + n, n);
-    //==     tmp.allocate_on_device();
-
-    //==     // compute the Hamiltonian matrix: <phi|H|phi>
-    //==     blas<gpu>::gemm(2, 0, N + n, n, kp->num_gkvec(), gamma.ptr_device(), gamma.ld(), 
-    //==                     kappa.ptr_device(), kappa.ld(), tmp.ptr_device(), tmp.ld());
-
-    //==     cublas_get_matrix(N + n, n, sizeof(double_complex), tmp.ptr_device(), tmp.ld(), &hmlt(0, N), hmlt.ld());
-
-    //==     // compute overlap matrix <phi|O|phi>
-    //==     blas<gpu>::gemm(2, 0, N + n, n, kp->num_gkvec(), gamma.ptr_device(), gamma.ld(), 
-    //==                     kappa.ptr_device(0, n), kappa.ld(), tmp.ptr_device(), tmp.ld());
-
-    //==     cublas_get_matrix(N + n, n, sizeof(double_complex), tmp.ptr_device(), tmp.ld(), &ovlp(0, N), ovlp.ld());
-
-    //==     tmp.deallocate_on_device();
-
-    //==     // MAGMA works with lower triangular part
-    //==     #ifdef _MAGMA_
-    //==     for (int i = 0; i < N; i++)
-    //==     {
-    //==         for (int j = N; j < N + n; j++)
-    //==         {
-    //==             hmlt(j, i) = conj(hmlt(i, j));
-    //==             ovlp(j, i) = conj(ovlp(i, j));
-    //==         }
-    //==     }
-    //==     #endif
-
-    //==     // increase the size of the variation space
-    //==     N += n;
-
-    //==     // save Hamiltonian and overlap
-    //==     for (int i = 0; i < N; i++)
-    //==     {
-    //==         memcpy(&hmlt_old(0, i), &hmlt(0, i), N * sizeof(double_complex));
-    //==         memcpy(&ovlp_old(0, i), &ovlp(0, i), N * sizeof(double_complex));
-    //==     }
-    //==     t1.stop();
-    //==     
-    //==     Timer t2("sirius::Band::diag_fv_uspp_gpu|solve_gevp");
-    //==     parameters_.gen_evp_solver()->solve(N, num_bands, num_bands, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
-    //==                                         &eval[0], evec.ptr(), evec.ld());
-    //==     t2.stop();
-
-    //==     Timer t3("sirius::Band::diag_fv_uspp_gpu|residuals");
-    //==     /* Quantum Espresso way of estimating basis update: residuals for which |e - e_old| > eps 
-    //==        are accepted as the additional basis functions */
-    //==     if (convergence_by_energy)
-    //==     {
-    //==         //== if (k == 0)
-    //==         //== {
-    //==         //==     n = num_bands;
-    //==         //==     memcpy(&hmlt(0, 0), &evec(0, 0), N * n * sizeof(double_complex));
-    //==         //== }
-    //==         //== else
-    //==         //== {
-    //==         //==     n = 0;
-    //==         //==     // check eigen-values for convergence
-    //==         //==     for (int i = 0; i < num_bands; i++)
-    //==         //==     {
-    //==         //==         if (fabs(eval[i] - eval_old[i]) > parameters_.iterative_solver_tolerance())
-    //==         //==         {
-    //==         //==             res_e[n] = eval[i];
-    //==         //==             
-    //==         //==             // use hmlt as a temporary storage for evec
-    //==         //==             memcpy(&hmlt(0, n), &evec(0, i), N * sizeof(double_complex));
- 
-    //==         //==             n++;
-    //==         //==         }
-    //==         //==         eval_old[i] = eval[i];
-    //==         //==     }
-    //==         //== }
-
-    //==         //== // if we have unconverged eigen-states
-    //==         //== if (n != 0)
-    //==         //== {
-    //==         //==     // compute residuals
-    //==         //==     // 1. O\Psi_{i} = O\phi_{mu} * Z_{mu, i}
-    //==         //==     blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, N, &ophi(0, 0), ophi.ld(), &hmlt(0, 0), hmlt.ld(), 
-    //==         //==                     &res(0, 0), res.ld());
-    //==         //==     // 2. multiply O\Psi_{i} with energy
-    //==         //==     for (int i = 0; i < n; i++)
-    //==         //==     {
-    //==         //==         for (int igk = 0; igk < kp->num_gkvec(); igk++) res(igk, i) *= eval[i];
-    //==         //==     }
-    //==         //==     // 3. r_{i} = H\Psi_{i} - E_{i}O\Psi_{i}
-    //==         //==     blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, N, double_complex(1, 0), &hphi(0, 0), hphi.ld(), 
-    //==         //==                     &hmlt(0, 0), hmlt.ld(), double_complex(-1, 0), &res(0, 0), res.ld());
-
-    //==         //==     // apply preconditioner
-    //==         //==     #pragma omp parallel for
-    //==         //==     for (int i = 0; i < n; i++)
-    //==         //==     {
-    //==         //==         // apply preconditioner
-    //==         //==         for (int igk = 0; igk < kp->num_gkvec(); igk++)
-    //==         //==         {
-    //==         //==             //double_complex z = h_diag[igk] - res_e[i] * o_diag[igk];
-    //==         //==             //if (abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
-    //==         //==             double d = real(h_diag[igk] - res_e[i] * o_diag[igk]);
-    //==         //==             if (fabs(d) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
-    //==         //==             res(igk, i) /= d;
-    //==         //==         }
-    //==         //==     }
-    //==         //== }
-    //==     }
-    //==     /* Alternative way to estimate basis update: take residuals with norm > eps */
-    //==     else
-    //==     {
-    //==         cublas_set_matrix(N, N, sizeof(double_complex), evec.ptr(), evec.ld(), evec.ptr_device(), evec.ld());
-
-    //==         // copy all ophi to GPU
-    //==         cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), ophi.ptr(), ophi.ld(), gamma.ptr_device(), gamma.ld());
-    //==         
-    //==         // O\Psi_{i} = O\phi_{mu} * Z_{mu, i}
-    //==         blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.ptr_device(), gamma.ld(), 
-    //==                         evec.ptr_device(), evec.ld(), kappa.ptr_device(), kappa.ld());
-    //==     
-    //==         mdarray<double, 1> eval_gpu(&eval[0], num_bands);
-    //==         eval_gpu.allocate_on_device();
-    //==         eval_gpu.copy_to_device();
-    //==         // multiply O\Psi_{i} with energy
-    //==         scale_matrix_columns_gpu(kp->num_gkvec(), num_bands, kappa.ptr_device(), eval_gpu.ptr_device());
-    //==         eval_gpu.deallocate_on_device();
-    //==         
-    //==         // copy all hphi to GPU
-    //==         cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), hphi.ptr(), hphi.ld(), gamma.ptr_device(), gamma.ld());
-    //==         
-    //==         double_complex zone(1, 0);
-    //==         double_complex mzone(-1, 0);
-    //==         // r_{i} = H\Psi_{i} - E_{i}O\Psi_{i}
-    //==         blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, &zone, gamma.ptr_device(), gamma.ld(), 
-    //==                         evec.ptr_device(), evec.ld(), &mzone, kappa.ptr_device(), kappa.ld());
-    //==        
-    //==         // copy residuals to the host memory
-    //==         cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex), kappa.ptr_device(), kappa.ld(), 
-    //==                           kappa.ptr(), kappa.ld());
-
-    //==         Timer t("sirius::Band::diag_fv_uspp_gpu|residuals|cpu_part");
-    //==         // compute norm and apply preconditioner
-    //==         #pragma omp parallel for
-    //==         for (int i = 0; i < num_bands; i++)
-    //==         {
-    //==             double r = 0;
-    //==             for (int igk = 0; igk < kp->num_gkvec(); igk++) r += real(conj(kappa(igk, i)) * kappa(igk, i));
-    //==             res_norm[i] = r;
-    //==             res_rms[i] = sqrt(r / kp->num_gkvec());
-    //==             
-    //==             // apply preconditioner
-    //==             for (int igk = 0; igk < kp->num_gkvec(); igk++)
-    //==             {
-    //==                 double_complex z = h_diag[igk] - eval[i] * o_diag[igk];
-    //==                 if (abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
-    //==                 kappa(igk, i) /= z;
-    //==             }
-    //==         }
-
-    //==         // check which residuals are converged
-    //==         n = 0;
-    //==         std::vector< std::pair<double, int> > res_rms_sorted;
-    //==         for (int i = 0; i < num_bands; i++)
-    //==         {
-    //==             res_rms_sorted.push_back(std::pair<double, int>(res_rms[i], i));
-
-    //==             // take the residual if it's norm is above the threshold
-    //==             if (res_rms[i] > parameters_.iterative_solver_tolerance()) n++;
-    //==         }
-    //==         
-    //==         if (n > 0 && n < num_bands)
-    //==         {
-    //==             n = std::max(n, (num_bands - 1) / (k + 1));
-
-    //==             std::sort(res_rms_sorted.begin(), res_rms_sorted.end());
-
-    //==             double tol = res_rms_sorted[num_bands - n].first;
-
-    //==             n = 0;
-    //==             for (int i = 0; i < num_bands; i++)
-    //==             {
-    //==                 // take the residual if it's norm is above the threshold
-    //==                 if (res_rms[i] > tol) 
-    //==                 {
-    //==                     // shift unconverged residuals to the beginning of array
-    //==                     if (n != i) memcpy(&kappa(0, n), &kappa(0, i), kp->num_gkvec() * sizeof(double_complex));
-    //==                     n++;
-    //==                 }
-    //==             }
-    //==         }
-    //==         t.stop();
- 
-    //==         //== n = 0;
-    //==         //== for (int i = 0; i < num_bands; i++)
-    //==         //== {
-    //==         //==     // take the residual if it's norm is above the threshold
-    //==         //==     if (res_rms[i] > parameters_.iterative_solver_tolerance()) 
-    //==         //==     {
-    //==         //==         // shift unconverged residuals to the beginning of array
-    //==         //==         if (n != i) memcpy(&res(0, n), &res(0, i), kp->num_gkvec() * sizeof(double_complex));
-    //==         //==         n++;
-    //==         //==     }
-    //==         //== }
-    //==     }
-    //==     t3.stop();
-
-    //==     //if (Platform::mpi_rank() == 0)
-    //==     //{
-    //==     //    std::cout << "iteration:" << k << ", current eigen-value size = " << N << ", number of added residuals = " << n << std::endl;
-    //==     //    //printf("lower and upper eigen-values : %16.8f %16.8f\n", eval[0], eval[num_bands - 1]);
-    //==     //}
-
-    //==     // check if we run out of variational space or eigen-vectors are converged or it's a last iteration
-    //==     if (N + n > num_phi || n == 0 || k == (max_iter - 1))
-    //==     {   
-    //==         Timer t3("sirius::Band::diag_fv_uspp_gpu|update_phi");
-    //==         // copy all phi to GPU
-    //==         cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), phi.ptr(), phi.ld(), 
-    //==                           gamma.ptr_device(), gamma.ld());
-    //==         // \Psi_{i} = \phi_{mu} * Z_{mu, i}
-    //==         blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.ptr_device(), gamma.ld(), 
-    //==                         evec.ptr_device(), evec.ld(), kappa.ptr_device(), kappa.ld());
-
-    //==         cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex), 
-    //==                           kappa.ptr_device(), kappa.ld(), psi.ptr(), psi.ld());
-    //==         t3.stop();
-
-    //==         if (n == 0 || k == (max_iter - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
-    //==         {
-    //==             std::cout << "converged in " << k << " iterations" << std::endl;
-    //==             break;
-    //==         }
-    //==         else // otherwise set \Psi as a new trial basis and update related arrays
-    //==         {
-    //==             Timer t("sirius::Band::diag_fv_uspp_gpu|update_h_o");
-
-    //==             // temporary storage for Hamiltonian and overlap 
-    //==             mdarray<double_complex, 2> tmp(NULL, num_bands, num_bands);
-    //==             tmp.allocate_on_device();
-
-    //==             // compute H\Psi
-    //==             cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), hphi.ptr(), hphi.ld(), 
-    //==                               gamma.ptr_device(), gamma.ld());
-
-    //==             blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.ptr_device(), gamma.ld(), 
-    //==                             evec.ptr_device(), evec.ld(), kappa.ptr_device(0, num_bands), kappa.ld());
-    //==             
-    //==             // copy H\Psi to host memory
-    //==             cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex),
-    //==                               kappa.ptr_device(0, num_bands), kappa.ld(), hphi.ptr(), hphi.ld());
-
-    //==             // compute the Hamiltonian matrix: <Psi|H|Psi>
-    //==             blas<gpu>::gemm(2, 0, num_bands, num_bands, kp->num_gkvec(), kappa.ptr_device(), kappa.ld(), 
-    //==                             kappa.ptr_device(0, num_bands), kappa.ld(), tmp.ptr_device(), tmp.ld());
-
-    //==             // copy Hamiltonian to host
-    //==             cublas_get_matrix(num_bands, num_bands, sizeof(double_complex), tmp.ptr_device(), tmp.ld(), 
-    //==                               hmlt_old.ptr(), hmlt_old.ld());
-    //==             
-    //==             // compute O\Psi
-    //==             cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), ophi.ptr(), ophi.ld(), 
-    //==                               gamma.ptr_device(), gamma.ld());
-
-    //==             blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.ptr_device(), gamma.ld(), 
-    //==                             evec.ptr_device(), evec.ld(), kappa.ptr_device(0, num_bands), kappa.ld());
-
-    //==             // copy O\Psi to host memory
-    //==             cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex),
-    //==                               kappa.ptr_device(0, num_bands), kappa.ld(), ophi.ptr(), ophi.ld());
-
-    //==             // compute the overlap matrix: <Psi|O|Psi>
-    //==             blas<gpu>::gemm(2, 0, num_bands, num_bands, kp->num_gkvec(), kappa.ptr_device(), kappa.ld(), 
-    //==                             kappa.ptr_device(0, num_bands), kappa.ld(), tmp.ptr_device(), tmp.ld());
-
-    //==             // copy overlap matrix to host
-    //==             cublas_get_matrix(num_bands, num_bands, sizeof(double_complex), tmp.ptr_device(), tmp.ld(), 
-    //==                               ovlp_old.ptr(), ovlp_old.ld());
-    //==          
-    //==             // update phi with Psi
-    //==             memcpy(phi.ptr(), psi.ptr(), num_bands * kp->num_gkvec() * sizeof(double_complex));
-
-    //==             // new size of eigen-value problem 
-    //==             N = num_bands;
-
-    //==             tmp.deallocate_on_device();
-    //==         }
-    //==     }
-    //==     // expand variational space with new preconditioned residuals
-    //==     memcpy(&phi(0, N), &kappa(0, 0), n * kp->num_gkvec() * sizeof(double_complex));
-    //== }
-
-    //== kp->set_fv_eigen_values(&eval[0]);
+    if (gen_evp_solver()->parallel())
+    {
+        diag_fv_uspp_gpu_parallel(kp__, v0, veff_it_coarse);
+    }
+    else
+    {
+        STOP();
+    }
 }
+
+//== void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_potential)
+//== {
+//==     //== Timer t("sirius::Band::diag_fv_uspp_gpu");
+//== 
+//==     //== // map effective potential to a corase grid
+//==     //== std::vector<double> veff_it_coarse(parameters_.reciprocal_lattice()->fft_coarse()->size());
+//==     //== std::vector<double_complex> veff_pw_coarse(parameters_.reciprocal_lattice()->num_gvec_coarse());
+//== 
+//==     //== // take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi
+//==     //== for (int igc = 0; igc < parameters_.reciprocal_lattice()->num_gvec_coarse(); igc++)
+//==     //== {
+//==     //==     int ig = parameters_.reciprocal_lattice()->gvec_index(igc);
+//==     //==     veff_pw_coarse[igc] = effective_potential->f_pw(ig);
+//==     //== }
+//==     //== parameters_.reciprocal_lattice()->fft_coarse()->input(parameters_.reciprocal_lattice()->num_gvec_coarse(), 
+//==     //==                                                       parameters_.reciprocal_lattice()->fft_index_coarse(),
+//==     //==                                                       &veff_pw_coarse[0]);
+//==     //== parameters_.reciprocal_lattice()->fft_coarse()->transform(1);
+//==     //== parameters_.reciprocal_lattice()->fft_coarse()->output(&veff_it_coarse[0]);
+//== 
+//==     //== // short notation for target wave-functions
+//==     //== mdarray<double_complex, 2>& psi = kp->fv_states();
+//== 
+//==     //== // short notation for number of target wave-functions
+//==     //== int num_bands = parameters_.num_fv_states();     
+//== 
+//==     //== // cache kinetic energy,
+//==     //== std::vector<double> pw_ekin = kp->get_pw_ekin();
+//== 
+//==     //== // get diagonal elements for preconditioning
+//==     //== std::vector<double_complex> h_diag;
+//==     //== std::vector<double_complex> o_diag;
+//==     //== get_h_o_diag(kp, effective_potential, pw_ekin, h_diag, o_diag);
+//==     //== 
+//==     //== int max_iter = 10;
+//==     //== int num_phi = std::min(4 * num_bands, kp->num_gkvec());
+//== 
+//==     //== // big array to store one of the beta, phi, hphi or ophi on the GPU
+//==     //== mdarray<double_complex, 2> gamma(NULL, kp->num_gkvec(), std::max(num_phi, parameters_.unit_cell()->mt_lo_basis_size()));
+//==     //== gamma.allocate_on_device();
+//== 
+//==     //== // small array to store residuals, wave-functions and updates to hphi and ophi
+//==     //== mdarray<double_complex, 2> kappa(kp->num_gkvec(), 2 * num_bands);
+//==     //== kappa.allocate_on_device();
+//==     //== kappa.pin_memory();
+//== 
+//==     //== mdarray<double_complex, 2> phi(kp->num_gkvec(), num_phi);
+//==     //== mdarray<double_complex, 2> hphi(kp->num_gkvec(), num_phi);
+//==     //== mdarray<double_complex, 2> ophi(kp->num_gkvec(), num_phi);
+//==     //== 
+//==     //== mdarray<double_complex, 2> hmlt(num_phi, num_phi);
+//==     //== mdarray<double_complex, 2> ovlp(num_phi, num_phi);
+//==     //== mdarray<double_complex, 2> hmlt_old(num_phi, num_phi);
+//==     //== mdarray<double_complex, 2> ovlp_old(num_phi, num_phi);
+//==     //== 
+//==     //== mdarray<double_complex, 2> evec(num_phi, num_phi);
+//==     //== evec.allocate_on_device();
+//==     //== evec.pin_memory();
+//== 
+//==     //== std::vector<double> eval(num_bands);
+//==     //== std::vector<double> eval_old(num_bands, 1e100);
+//==     //== 
+//==     //== std::vector<double> res_norm(num_bands); // norm of residuals
+//==     //== std::vector<double> res_rms(num_bands); // RMS of residual
+//==     //== std::vector<double> res_e(num_bands);
+//==     //== 
+//==     //== if (parameters_.gen_evp_solver()->type() == ev_magma)
+//==     //== {
+//==     //==     hmlt.pin_memory();
+//==     //==     ovlp.pin_memory();
+//==     //== }
+//== 
+//==     //== bool convergence_by_energy = false;
+//== 
+//==     //== int N = 0; // current eigen-value problem size
+//==     //== int n = num_bands; // number of added residuals
+//== 
+//==     //== // trial basis functions
+//==     //== assert(phi.size(0) == psi.size(0));
+//==     //== for (int i = 0; i < num_bands; i++) memcpy(&phi(0, i), &psi(0, i), kp->num_gkvec() * sizeof(double_complex));
+//==     //== 
+//==     //== // start iterative diagonalization
+//==     //== for (int k = 0; k < max_iter; k++)
+//==     //== {
+//==     //==     Timer t1("sirius::Band::diag_fv_uspp_gpu|set_gevp");
+//== 
+//==     //==     // copy old Hamiltonian and overlap
+//==     //==     for (int i = 0; i < N; i++)
+//==     //==     {
+//==     //==         memcpy(&hmlt(0, i), &hmlt_old(0, i), N * sizeof(double_complex));
+//==     //==         memcpy(&ovlp(0, i), &ovlp_old(0, i), N * sizeof(double_complex));
+//==     //==     }
+//== 
+//==     //==     // apply Hamiltonian and overlap operators
+//==     //==     apply_h_o_uspp_gpu(kp, veff_it_coarse, pw_ekin, n, gamma, kappa, &phi(0, N), &hphi(0, N), &ophi(0, N));
+//== 
+//==     //==     // copy all phi to GPU
+//==     //==     cublas_set_matrix(kp->num_gkvec(), n + N, sizeof(double_complex), phi.ptr(), phi.ld(), gamma.ptr_device(), gamma.ld());
+//== 
+//==     //==     // temporary storage for Hamiltonian and overlap 
+//==     //==     mdarray<double_complex, 2> tmp(NULL, N + n, n);
+//==     //==     tmp.allocate_on_device();
+//== 
+//==     //==     // compute the Hamiltonian matrix: <phi|H|phi>
+//==     //==     blas<gpu>::gemm(2, 0, N + n, n, kp->num_gkvec(), gamma.ptr_device(), gamma.ld(), 
+//==     //==                     kappa.ptr_device(), kappa.ld(), tmp.ptr_device(), tmp.ld());
+//== 
+//==     //==     cublas_get_matrix(N + n, n, sizeof(double_complex), tmp.ptr_device(), tmp.ld(), &hmlt(0, N), hmlt.ld());
+//== 
+//==     //==     // compute overlap matrix <phi|O|phi>
+//==     //==     blas<gpu>::gemm(2, 0, N + n, n, kp->num_gkvec(), gamma.ptr_device(), gamma.ld(), 
+//==     //==                     kappa.ptr_device(0, n), kappa.ld(), tmp.ptr_device(), tmp.ld());
+//== 
+//==     //==     cublas_get_matrix(N + n, n, sizeof(double_complex), tmp.ptr_device(), tmp.ld(), &ovlp(0, N), ovlp.ld());
+//== 
+//==     //==     tmp.deallocate_on_device();
+//== 
+//==     //==     // MAGMA works with lower triangular part
+//==     //==     #ifdef _MAGMA_
+//==     //==     for (int i = 0; i < N; i++)
+//==     //==     {
+//==     //==         for (int j = N; j < N + n; j++)
+//==     //==         {
+//==     //==             hmlt(j, i) = conj(hmlt(i, j));
+//==     //==             ovlp(j, i) = conj(ovlp(i, j));
+//==     //==         }
+//==     //==     }
+//==     //==     #endif
+//== 
+//==     //==     // increase the size of the variation space
+//==     //==     N += n;
+//== 
+//==     //==     // save Hamiltonian and overlap
+//==     //==     for (int i = 0; i < N; i++)
+//==     //==     {
+//==     //==         memcpy(&hmlt_old(0, i), &hmlt(0, i), N * sizeof(double_complex));
+//==     //==         memcpy(&ovlp_old(0, i), &ovlp(0, i), N * sizeof(double_complex));
+//==     //==     }
+//==     //==     t1.stop();
+//==     //==     
+//==     //==     Timer t2("sirius::Band::diag_fv_uspp_gpu|solve_gevp");
+//==     //==     parameters_.gen_evp_solver()->solve(N, num_bands, num_bands, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
+//==     //==                                         &eval[0], evec.ptr(), evec.ld());
+//==     //==     t2.stop();
+//== 
+//==     //==     Timer t3("sirius::Band::diag_fv_uspp_gpu|residuals");
+//==     //==     /* Quantum Espresso way of estimating basis update: residuals for which |e - e_old| > eps 
+//==     //==        are accepted as the additional basis functions */
+//==     //==     if (convergence_by_energy)
+//==     //==     {
+//==     //==         //== if (k == 0)
+//==     //==         //== {
+//==     //==         //==     n = num_bands;
+//==     //==         //==     memcpy(&hmlt(0, 0), &evec(0, 0), N * n * sizeof(double_complex));
+//==     //==         //== }
+//==     //==         //== else
+//==     //==         //== {
+//==     //==         //==     n = 0;
+//==     //==         //==     // check eigen-values for convergence
+//==     //==         //==     for (int i = 0; i < num_bands; i++)
+//==     //==         //==     {
+//==     //==         //==         if (fabs(eval[i] - eval_old[i]) > parameters_.iterative_solver_tolerance())
+//==     //==         //==         {
+//==     //==         //==             res_e[n] = eval[i];
+//==     //==         //==             
+//==     //==         //==             // use hmlt as a temporary storage for evec
+//==     //==         //==             memcpy(&hmlt(0, n), &evec(0, i), N * sizeof(double_complex));
+//==  
+//==     //==         //==             n++;
+//==     //==         //==         }
+//==     //==         //==         eval_old[i] = eval[i];
+//==     //==         //==     }
+//==     //==         //== }
+//== 
+//==     //==         //== // if we have unconverged eigen-states
+//==     //==         //== if (n != 0)
+//==     //==         //== {
+//==     //==         //==     // compute residuals
+//==     //==         //==     // 1. O\Psi_{i} = O\phi_{mu} * Z_{mu, i}
+//==     //==         //==     blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, N, &ophi(0, 0), ophi.ld(), &hmlt(0, 0), hmlt.ld(), 
+//==     //==         //==                     &res(0, 0), res.ld());
+//==     //==         //==     // 2. multiply O\Psi_{i} with energy
+//==     //==         //==     for (int i = 0; i < n; i++)
+//==     //==         //==     {
+//==     //==         //==         for (int igk = 0; igk < kp->num_gkvec(); igk++) res(igk, i) *= eval[i];
+//==     //==         //==     }
+//==     //==         //==     // 3. r_{i} = H\Psi_{i} - E_{i}O\Psi_{i}
+//==     //==         //==     blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, N, double_complex(1, 0), &hphi(0, 0), hphi.ld(), 
+//==     //==         //==                     &hmlt(0, 0), hmlt.ld(), double_complex(-1, 0), &res(0, 0), res.ld());
+//== 
+//==     //==         //==     // apply preconditioner
+//==     //==         //==     #pragma omp parallel for
+//==     //==         //==     for (int i = 0; i < n; i++)
+//==     //==         //==     {
+//==     //==         //==         // apply preconditioner
+//==     //==         //==         for (int igk = 0; igk < kp->num_gkvec(); igk++)
+//==     //==         //==         {
+//==     //==         //==             //double_complex z = h_diag[igk] - res_e[i] * o_diag[igk];
+//==     //==         //==             //if (abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
+//==     //==         //==             double d = real(h_diag[igk] - res_e[i] * o_diag[igk]);
+//==     //==         //==             if (fabs(d) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
+//==     //==         //==             res(igk, i) /= d;
+//==     //==         //==         }
+//==     //==         //==     }
+//==     //==         //== }
+//==     //==     }
+//==     //==     /* Alternative way to estimate basis update: take residuals with norm > eps */
+//==     //==     else
+//==     //==     {
+//==     //==         cublas_set_matrix(N, N, sizeof(double_complex), evec.ptr(), evec.ld(), evec.ptr_device(), evec.ld());
+//== 
+//==     //==         // copy all ophi to GPU
+//==     //==         cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), ophi.ptr(), ophi.ld(), gamma.ptr_device(), gamma.ld());
+//==     //==         
+//==     //==         // O\Psi_{i} = O\phi_{mu} * Z_{mu, i}
+//==     //==         blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.ptr_device(), gamma.ld(), 
+//==     //==                         evec.ptr_device(), evec.ld(), kappa.ptr_device(), kappa.ld());
+//==     //==     
+//==     //==         mdarray<double, 1> eval_gpu(&eval[0], num_bands);
+//==     //==         eval_gpu.allocate_on_device();
+//==     //==         eval_gpu.copy_to_device();
+//==     //==         // multiply O\Psi_{i} with energy
+//==     //==         scale_matrix_columns_gpu(kp->num_gkvec(), num_bands, kappa.ptr_device(), eval_gpu.ptr_device());
+//==     //==         eval_gpu.deallocate_on_device();
+//==     //==         
+//==     //==         // copy all hphi to GPU
+//==     //==         cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), hphi.ptr(), hphi.ld(), gamma.ptr_device(), gamma.ld());
+//==     //==         
+//==     //==         double_complex zone(1, 0);
+//==     //==         double_complex mzone(-1, 0);
+//==     //==         // r_{i} = H\Psi_{i} - E_{i}O\Psi_{i}
+//==     //==         blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, &zone, gamma.ptr_device(), gamma.ld(), 
+//==     //==                         evec.ptr_device(), evec.ld(), &mzone, kappa.ptr_device(), kappa.ld());
+//==     //==        
+//==     //==         // copy residuals to the host memory
+//==     //==         cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex), kappa.ptr_device(), kappa.ld(), 
+//==     //==                           kappa.ptr(), kappa.ld());
+//== 
+//==     //==         Timer t("sirius::Band::diag_fv_uspp_gpu|residuals|cpu_part");
+//==     //==         // compute norm and apply preconditioner
+//==     //==         #pragma omp parallel for
+//==     //==         for (int i = 0; i < num_bands; i++)
+//==     //==         {
+//==     //==             double r = 0;
+//==     //==             for (int igk = 0; igk < kp->num_gkvec(); igk++) r += real(conj(kappa(igk, i)) * kappa(igk, i));
+//==     //==             res_norm[i] = r;
+//==     //==             res_rms[i] = sqrt(r / kp->num_gkvec());
+//==     //==             
+//==     //==             // apply preconditioner
+//==     //==             for (int igk = 0; igk < kp->num_gkvec(); igk++)
+//==     //==             {
+//==     //==                 double_complex z = h_diag[igk] - eval[i] * o_diag[igk];
+//==     //==                 if (abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
+//==     //==                 kappa(igk, i) /= z;
+//==     //==             }
+//==     //==         }
+//== 
+//==     //==         // check which residuals are converged
+//==     //==         n = 0;
+//==     //==         std::vector< std::pair<double, int> > res_rms_sorted;
+//==     //==         for (int i = 0; i < num_bands; i++)
+//==     //==         {
+//==     //==             res_rms_sorted.push_back(std::pair<double, int>(res_rms[i], i));
+//== 
+//==     //==             // take the residual if it's norm is above the threshold
+//==     //==             if (res_rms[i] > parameters_.iterative_solver_tolerance()) n++;
+//==     //==         }
+//==     //==         
+//==     //==         if (n > 0 && n < num_bands)
+//==     //==         {
+//==     //==             n = std::max(n, (num_bands - 1) / (k + 1));
+//== 
+//==     //==             std::sort(res_rms_sorted.begin(), res_rms_sorted.end());
+//== 
+//==     //==             double tol = res_rms_sorted[num_bands - n].first;
+//== 
+//==     //==             n = 0;
+//==     //==             for (int i = 0; i < num_bands; i++)
+//==     //==             {
+//==     //==                 // take the residual if it's norm is above the threshold
+//==     //==                 if (res_rms[i] > tol) 
+//==     //==                 {
+//==     //==                     // shift unconverged residuals to the beginning of array
+//==     //==                     if (n != i) memcpy(&kappa(0, n), &kappa(0, i), kp->num_gkvec() * sizeof(double_complex));
+//==     //==                     n++;
+//==     //==                 }
+//==     //==             }
+//==     //==         }
+//==     //==         t.stop();
+//==  
+//==     //==         //== n = 0;
+//==     //==         //== for (int i = 0; i < num_bands; i++)
+//==     //==         //== {
+//==     //==         //==     // take the residual if it's norm is above the threshold
+//==     //==         //==     if (res_rms[i] > parameters_.iterative_solver_tolerance()) 
+//==     //==         //==     {
+//==     //==         //==         // shift unconverged residuals to the beginning of array
+//==     //==         //==         if (n != i) memcpy(&res(0, n), &res(0, i), kp->num_gkvec() * sizeof(double_complex));
+//==     //==         //==         n++;
+//==     //==         //==     }
+//==     //==         //== }
+//==     //==     }
+//==     //==     t3.stop();
+//== 
+//==     //==     //if (Platform::mpi_rank() == 0)
+//==     //==     //{
+//==     //==     //    std::cout << "iteration:" << k << ", current eigen-value size = " << N << ", number of added residuals = " << n << std::endl;
+//==     //==     //    //printf("lower and upper eigen-values : %16.8f %16.8f\n", eval[0], eval[num_bands - 1]);
+//==     //==     //}
+//== 
+//==     //==     // check if we run out of variational space or eigen-vectors are converged or it's a last iteration
+//==     //==     if (N + n > num_phi || n == 0 || k == (max_iter - 1))
+//==     //==     {   
+//==     //==         Timer t3("sirius::Band::diag_fv_uspp_gpu|update_phi");
+//==     //==         // copy all phi to GPU
+//==     //==         cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), phi.ptr(), phi.ld(), 
+//==     //==                           gamma.ptr_device(), gamma.ld());
+//==     //==         // \Psi_{i} = \phi_{mu} * Z_{mu, i}
+//==     //==         blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.ptr_device(), gamma.ld(), 
+//==     //==                         evec.ptr_device(), evec.ld(), kappa.ptr_device(), kappa.ld());
+//== 
+//==     //==         cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex), 
+//==     //==                           kappa.ptr_device(), kappa.ld(), psi.ptr(), psi.ld());
+//==     //==         t3.stop();
+//== 
+//==     //==         if (n == 0 || k == (max_iter - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
+//==     //==         {
+//==     //==             std::cout << "converged in " << k << " iterations" << std::endl;
+//==     //==             break;
+//==     //==         }
+//==     //==         else // otherwise set \Psi as a new trial basis and update related arrays
+//==     //==         {
+//==     //==             Timer t("sirius::Band::diag_fv_uspp_gpu|update_h_o");
+//== 
+//==     //==             // temporary storage for Hamiltonian and overlap 
+//==     //==             mdarray<double_complex, 2> tmp(NULL, num_bands, num_bands);
+//==     //==             tmp.allocate_on_device();
+//== 
+//==     //==             // compute H\Psi
+//==     //==             cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), hphi.ptr(), hphi.ld(), 
+//==     //==                               gamma.ptr_device(), gamma.ld());
+//== 
+//==     //==             blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.ptr_device(), gamma.ld(), 
+//==     //==                             evec.ptr_device(), evec.ld(), kappa.ptr_device(0, num_bands), kappa.ld());
+//==     //==             
+//==     //==             // copy H\Psi to host memory
+//==     //==             cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex),
+//==     //==                               kappa.ptr_device(0, num_bands), kappa.ld(), hphi.ptr(), hphi.ld());
+//== 
+//==     //==             // compute the Hamiltonian matrix: <Psi|H|Psi>
+//==     //==             blas<gpu>::gemm(2, 0, num_bands, num_bands, kp->num_gkvec(), kappa.ptr_device(), kappa.ld(), 
+//==     //==                             kappa.ptr_device(0, num_bands), kappa.ld(), tmp.ptr_device(), tmp.ld());
+//== 
+//==     //==             // copy Hamiltonian to host
+//==     //==             cublas_get_matrix(num_bands, num_bands, sizeof(double_complex), tmp.ptr_device(), tmp.ld(), 
+//==     //==                               hmlt_old.ptr(), hmlt_old.ld());
+//==     //==             
+//==     //==             // compute O\Psi
+//==     //==             cublas_set_matrix(kp->num_gkvec(), N, sizeof(double_complex), ophi.ptr(), ophi.ld(), 
+//==     //==                               gamma.ptr_device(), gamma.ld());
+//== 
+//==     //==             blas<gpu>::gemm(0, 0, kp->num_gkvec(), num_bands, N, gamma.ptr_device(), gamma.ld(), 
+//==     //==                             evec.ptr_device(), evec.ld(), kappa.ptr_device(0, num_bands), kappa.ld());
+//== 
+//==     //==             // copy O\Psi to host memory
+//==     //==             cublas_get_matrix(kp->num_gkvec(), num_bands, sizeof(double_complex),
+//==     //==                               kappa.ptr_device(0, num_bands), kappa.ld(), ophi.ptr(), ophi.ld());
+//== 
+//==     //==             // compute the overlap matrix: <Psi|O|Psi>
+//==     //==             blas<gpu>::gemm(2, 0, num_bands, num_bands, kp->num_gkvec(), kappa.ptr_device(), kappa.ld(), 
+//==     //==                             kappa.ptr_device(0, num_bands), kappa.ld(), tmp.ptr_device(), tmp.ld());
+//== 
+//==     //==             // copy overlap matrix to host
+//==     //==             cublas_get_matrix(num_bands, num_bands, sizeof(double_complex), tmp.ptr_device(), tmp.ld(), 
+//==     //==                               ovlp_old.ptr(), ovlp_old.ld());
+//==     //==          
+//==     //==             // update phi with Psi
+//==     //==             memcpy(phi.ptr(), psi.ptr(), num_bands * kp->num_gkvec() * sizeof(double_complex));
+//== 
+//==     //==             // new size of eigen-value problem 
+//==     //==             N = num_bands;
+//== 
+//==     //==             tmp.deallocate_on_device();
+//==     //==         }
+//==     //==     }
+//==     //==     // expand variational space with new preconditioned residuals
+//==     //==     memcpy(&phi(0, N), &kappa(0, 0), n * kp->num_gkvec() * sizeof(double_complex));
+//==     //== }
+//== 
+//==     //== kp->set_fv_eigen_values(&eval[0]);
+//== }
 #endif
 
 }
