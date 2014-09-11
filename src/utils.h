@@ -34,6 +34,7 @@
 #include "mdarray.h"
 #include "timer.h"
 #include "vector3d.h"
+#include "error_handling.h"
 
 /// Utility class.
 class Utils

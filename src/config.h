@@ -29,8 +29,9 @@
 
 #define FORTRAN(x) x##_
 
-#define _TIMER_TIMEOFDAY_
+//== #define _TIMER_TIMEOFDAY_
 //== #define _TIMER_MPI_WTIME_
+#define _TIMER_CHRONO_
 
 //== #define _CACHE_GVEC_PHASE_FACTORS_
 

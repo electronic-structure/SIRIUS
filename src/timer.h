@@ -30,8 +30,11 @@
 #include <string>
 #include <iostream>
 #include <vector>
-#include "platform.h"
-#include "error_handling.h"
+#include "config.h"
+#include "communicator.h"
+#ifdef _TIMER_CHRONO_
+#include <chrono>
+#endif
 
 namespace sirius 
 {
@@ -60,9 +63,13 @@ class Timer
         /// starting time
         #if defined(_TIMER_TIMEOFDAY_)
         timeval starting_time_;
-        #elif defined (_TIMER_MPI_WTIME_)
+        #elif defined(_TIMER_MPI_WTIME_)
         double starting_time_;
+        #elif defined(_TIMER_CHRONO_)
+        std::chrono::high_resolution_clock::time_point starting_time_;
         #endif
+
+        Communicator const* comm_;
 
         /// true if timer is running
         bool active_;
@@ -76,9 +83,10 @@ class Timer
     
     public:
         
-        Timer(const std::string& label__) 
-            : label_(label__), 
-              active_(false), 
+        Timer(std::string const& label__) 
+            : label_(label__),
+              comm_(nullptr),
+              active_(false),
               timer_type_(_local_timer_)
         {
             if (timers_.count(label_) == 0) timers_[label_] = std::vector<double>();
@@ -86,9 +94,10 @@ class Timer
             start();
         }
 
-        Timer(const std::string& label__, int timer_type__) 
-            : label_(label__), 
-              active_(false), 
+        Timer(std::string const& label__, int timer_type__) 
+            : label_(label__),
+              comm_(nullptr),
+              active_(false),
               timer_type_(timer_type__)
         {
             switch (timer_type_)
@@ -104,6 +113,17 @@ class Timer
                     break;
                 }
             }
+
+            start();
+        }
+
+        Timer(std::string const& label__, Communicator const& comm__) 
+            : label_(label__),
+              comm_(&comm__),
+              active_(false),
+              timer_type_(_local_timer_)
+        {
+            if (timers_.count(label_) == 0) timers_[label_] = std::vector<double>();
 
             start();
         }

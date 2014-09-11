@@ -877,8 +877,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
                                           dmatrix<double_complex>& hphi__,
                                           dmatrix<double_complex>& ophi__)
 {
-    kp__->comm().barrier();
-    Timer t("sirius::Band::apply_h_o_uspp_cpu_parallel_v2", _global_timer_);
+    Timer t("sirius::Band::apply_h_o_uspp_cpu_parallel_v2", kp__->comm());
 
     splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
     splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
@@ -926,7 +925,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
                 nbf_in_block += parameters_.unit_cell()->atom(ia)->mt_basis_size();
             }
 
-            Timer t0("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_pw", _global_timer_);
+            Timer t0("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_pw", kp__->comm_row());
             /* create beta projectors */
             #pragma omp parallel
             for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
@@ -946,7 +945,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
             t0.stop();
             
             mdarray<double_complex, 2> beta_phi(&beta_phi_tmp[0], nbf_in_block, nloc);
-            Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_phi", _global_timer_);
+            Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_phi", kp__->comm_row());
             /* compute <beta|phi> */
             blas<cpu>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
                             beta_pw.ptr(), beta_pw.ld(), &phi__(0, s0.local_size()), phi__.ld(), beta_phi.ptr(), beta_phi.ld());
@@ -960,7 +959,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
                        tval, 8e-9 * nbf_in_block * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
             }
             
-            Timer t2("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|D_beta_phi", _global_timer_);
+            Timer t2("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|D_beta_phi", kp__->comm_row());
             #pragma omp parallel for
             for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
             {
@@ -976,13 +975,13 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
             }
             t2.stop();
 
-            Timer t3("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_D_beta_phi", _global_timer_);
+            Timer t3("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_D_beta_phi", kp__->comm_row());
             /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
             blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
                             beta_pw.ptr(), beta_pw.ld(), tmp.ptr(), tmp.ld(), complex_one, &hphi__(0, s0.local_size()), hphi__.ld());
             t3.stop();
             
-            Timer t4("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|Q_beta_phi", _global_timer_);
+            Timer t4("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|Q_beta_phi", kp__->comm_row());
             #pragma omp parallel for
             for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
             {
@@ -998,15 +997,13 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
             }
             t4.stop();
 
-            Timer t5("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_Q_beta_phi", _global_timer_);
+            Timer t5("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_Q_beta_phi", kp__->comm_row());
             /* compute <G+k|beta> * Q*<beta|phi> and add to ophi */
             blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
                             beta_pw.ptr(), beta_pw.ld(), tmp.ptr(), tmp.ld(), complex_one, &ophi__(0, s0.local_size()), ophi__.ld());
             t5.stop();
         }
     }
-    
-    kp__->comm().barrier();
 }
 
 void Band::set_fv_h_o_uspp_cpu_parallel_simple(int N__,

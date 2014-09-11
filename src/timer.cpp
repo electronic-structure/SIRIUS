@@ -38,12 +38,15 @@ void Timer::start()
     if (active_)
     {
         printf("timer %s is already running\n", label_.c_str());
-        Platform::abort();
+        exit(-2);
     }
+    if (comm_) comm_->barrier();
     #if defined(_TIMER_TIMEOFDAY_)
     gettimeofday(&starting_time_, NULL);
     #elif defined(_TIMER_MPI_WTIME_)
     starting_time_ = MPI_Wtime();
+    #elif defined (_TIMER_CHRONO_)
+    starting_time_ = std::chrono::high_resolution_clock::now();
     #endif
     active_ = true;
 }
@@ -53,8 +56,9 @@ double Timer::stop()
     if (!active_)
     {
         printf("timer %s was not running\n", label_.c_str());
-        Platform::abort();
+        exit(-2);
     }
+    if (comm_) comm_->barrier();
 
     #if defined(_TIMER_TIMEOFDAY_)
     timeval end;
@@ -63,6 +67,10 @@ double Timer::stop()
                  double(end.tv_usec - starting_time_.tv_usec) / 1e6;
     #elif defined(_TIMER_MPI_WTIME_)
     double val = MPI_Wtime() - starting_time_;
+    #elif defined(_TIMER_CHRONO_)
+    auto t2 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> tdiff = std::chrono::duration_cast< std::chrono::duration<double> >(t2 - starting_time_);
+    double val = tdiff.count();
     #endif
     
     switch (timer_type_)
@@ -88,9 +96,8 @@ double Timer::value()
 {
     if (active_)
     {
-        std::stringstream s;
-        s << "timer " << label_ << " is active";
-        error_local(__FILE__, __LINE__, s);
+        std::cout << "timer " << label_ << " is active";
+        exit(-2);
     }
     std::vector<double> values;
     switch (timer_type_)
