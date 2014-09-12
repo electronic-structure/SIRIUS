@@ -1,9 +1,9 @@
-FC = mpif90 -ffree-line-length-none
+include ../../../make.inc
 
 .SUFFIXES: .f90
 
 .f90.o:
-	$(FC) -cpp -O3 -fopenmp -DWITH_OPENMP -c -c $<
+	$(MPI_FC) $(MPI_FC_OPT) -DWITH_OPENMP -c $<
 
 OBJ = elpa2_kernels_complex.o elpa2_kernels_real.o elpa1.o elpa2.o libelpa.o
 
