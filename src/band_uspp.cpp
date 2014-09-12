@@ -1844,7 +1844,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
     mdarray<double_complex, 2> kappa(kp__->num_gkvec_row(), kappa_size);
     if (kp__->comm().rank() == 0)
     {
-        printf("size of kappa array: %f GB\n", 16 * double(kappa.size() / 1073741824));
+        printf("size of kappa array: %f GB\n", 16 * double(kappa.size()) / 1073741824);
     }
 
     /* start iterative diagonalization */
