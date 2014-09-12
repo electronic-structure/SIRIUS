@@ -23,7 +23,6 @@
  */
 
 #include "timer.h"
-#include "communicator.h"
 
 std::map<std::string, sirius::Timer*> ftimers;
 
@@ -40,7 +39,7 @@ void Timer::start()
         printf("timer %s is already running\n", label_.c_str());
         exit(-2);
     }
-    if (comm_) comm_->barrier();
+    if (comm_ != nullptr) comm_->barrier();
     #if defined(_TIMER_TIMEOFDAY_)
     gettimeofday(&starting_time_, NULL);
     #elif defined(_TIMER_MPI_WTIME_)
@@ -58,7 +57,7 @@ double Timer::stop()
         printf("timer %s was not running\n", label_.c_str());
         exit(-2);
     }
-    if (comm_) comm_->barrier();
+    if (comm_ != nullptr) comm_->barrier();
 
     #if defined(_TIMER_TIMEOFDAY_)
     timeval end;
