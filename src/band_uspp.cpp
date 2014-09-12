@@ -1177,10 +1177,9 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
                                            dmatrix<double_complex>& h_old__,
                                            dmatrix<double_complex>& o_old__,
                                            int num_atoms_in_block__,
-                                           mdarray<double_complex, 2>& beta_pw__)
+                                           mdarray<double_complex, 2>& kappa__)
 {
-    kp__->comm().barrier();
-    Timer t("sirius::Band::set_fv_h_o_uspp_cpu_parallel_v3", _global_timer_);
+    Timer t("sirius::Band::set_fv_h_o_uspp_cpu_parallel_v3", kp__->comm());
 
     splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
     splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
@@ -1196,18 +1195,18 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
 
     /* apply Hamiltonian and overlap operators to the new basis functions */
     apply_h_o_uspp_cpu_parallel_v2(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__,
-                                   num_atoms_in_block__, beta_pw__);
+                                   num_atoms_in_block__, kappa__);
 
-    int max_num_hphi = 0;
+    int max_num_phi_new = 0;
     for (int icol = 0; icol < kp__->num_ranks_col(); icol++)
-        max_num_hphi = std::max(max_num_hphi, (int)(s1_col.local_size(icol) - s0_col.local_size(icol)));
+        max_num_phi_new = std::max(max_num_phi_new, (int)(s1_col.local_size(icol) - s0_col.local_size(icol)));
     
     int num_phi = (int)s1_col.local_size();
  
-    mdarray<double_complex, 3> hphi_tmp(kp__->num_gkvec_row(), max_num_hphi, 2);
-    mdarray<double_complex, 3> ophi_tmp(kp__->num_gkvec_row(), max_num_hphi, 2);
-    mdarray<double_complex, 3> h_tmp(num_phi, max_num_hphi, 2);
-    mdarray<double_complex, 3> o_tmp(num_phi, max_num_hphi, 2);
+    mdarray<double_complex, 3> hphi_tmp(&kappa__(0, 0), kp__->num_gkvec_row(), max_num_phi_new, 2);
+    mdarray<double_complex, 3> ophi_tmp(&kappa__(0, 2 * max_num_phi_new), kp__->num_gkvec_row(), max_num_phi_new, 2);
+    mdarray<double_complex, 3> h_tmp(num_phi, max_num_phi_new, 2);
+    mdarray<double_complex, 3> o_tmp(num_phi, max_num_phi_new, 2);
 
     std::array<std::atomic_bool, 2> lock_hphi;
     std::array<std::atomic_bool, 2> lock_ophi;
@@ -1371,8 +1370,6 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
         memcpy(&h_old__(0, i), &h__(0, i), s1_row.local_size() * sizeof(double_complex));
         memcpy(&o_old__(0, i), &o__(0, i), s1_row.local_size() * sizeof(double_complex));
     }
-
-    kp__->comm().barrier();
 }
 
 void Band::uspp_residuals_cpu_parallel_simple(int N__,
@@ -1620,8 +1617,8 @@ void Band::uspp_residuals_cpu_parallel_v3(int N__,
                                           dmatrix<double_complex>& res__,
                                           std::vector<double_complex>& h_diag__,
                                           std::vector<double_complex>& o_diag__,
-                                          std::vector<double>& res_norm__)
-
+                                          std::vector<double>& res_norm__,
+                                          mdarray<double_complex, 2>& kappa__)
 {
     Timer t("sirius::Band::uspp_residuals_cpu_parallel_v3");
 
@@ -1648,8 +1645,8 @@ void Band::uspp_residuals_cpu_parallel_v3(int N__,
     lock_hpsi_tmp.store(false);
     lock_opsi_tmp.store(false);
 
-    mdarray<double_complex, 2> hpsi_tmp(kp__->num_gkvec_row(), spl_num_bands_col.local_size(0));
-    mdarray<double_complex, 2> opsi_tmp(kp__->num_gkvec_row(), spl_num_bands_col.local_size(0));
+    mdarray<double_complex, 2> hpsi_tmp(&kappa__(0, 0), kp__->num_gkvec_row(), spl_num_bands_col.local_size(0));
+    mdarray<double_complex, 2> opsi_tmp(&kappa__(0, spl_num_bands_col.local_size(0)), kp__->num_gkvec_row(), spl_num_bands_col.local_size(0));
 
     auto get_evec = [kp__, &spl_num_bands_col, &spl_num_bands_row, &evec_t, &evec_tmp, num_phi_loc](int icol) -> void 
     {
@@ -1789,7 +1786,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
                                      std::vector<double>& veff_it_coarse__)
 {
     log_function_enter(__func__);
-    Timer t("sirius::Band::diag_fv_uspp_cpu_parallel", _global_timer_);
+    Timer t("sirius::Band::diag_fv_uspp_cpu_parallel", kp__->comm());
 
     /* cache kinetic energy */
     std::vector<double> pw_ekin = kp__->get_pw_ekin();
@@ -1834,20 +1831,28 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
 
     /* trial basis functions */
     assert(phi.num_rows_local() == psi.num_rows_local());
-    for (int i = 0; i < psi.num_cols_local(); i++) memcpy(&phi(0, i), &psi(0, i), kp__->num_gkvec_row() * sizeof(double_complex));
+    for (int i = 0; i < psi.num_cols_local(); i++) 
+        memcpy(&phi(0, i), &psi(0, i), kp__->num_gkvec_row() * sizeof(double_complex));
 
     std::vector<double> res_norm(num_bands);
     std::vector<double> res_rms(num_bands);
 
     int num_atoms_in_block = 256;
-    mdarray<double_complex, 2> beta_pw(kp__->num_gkvec_row(), parameters_.unit_cell()->max_mt_basis_size() * num_atoms_in_block);
+    int num_bands_local = (int)kp__->spl_fv_states().local_size(0);
+    int kappa_size = std::max(parameters_.unit_cell()->max_mt_basis_size() * num_atoms_in_block, 4 * num_bands_local);
+    /* large temporary array for <G+k|beta>, hphi_tmp, ophi_tmp, hpsi_tmp, opsi_tmp */
+    mdarray<double_complex, 2> kappa(kp__->num_gkvec_row(), kappa_size);
+    if (kp__->comm().rank() == 0)
+    {
+        printf("size of kappa array: %f GB\n", 16 * double(kappa.size() / 1073741824));
+    }
 
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++)
     {
         /* set H and O for the variational subspace */
         set_fv_h_o_uspp_cpu_parallel_v3(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp,
-                                        hmlt_old, ovlp_old, num_atoms_in_block, beta_pw);
+                                        hmlt_old, ovlp_old, num_atoms_in_block, kappa);
         //set_fv_h_o_uspp_cpu_parallel_simple(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, hmlt_old, ovlp_old);
         
         /* increase size of the variation space */
@@ -1879,7 +1884,8 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
         {
             //uspp_residuals_cpu_parallel_simple(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm);
             //uspp_cpu_residuals_parallel_v2(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm);
-            uspp_residuals_cpu_parallel_v3(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm);
+            uspp_residuals_cpu_parallel_v3(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, 
+                                           res_norm, kappa);
 
             for (int i = 0; i < num_bands; i++)
             {
@@ -1898,7 +1904,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n == 0 || k == (itso.num_steps_ - 1))
         {   
-            Timer t3("sirius::Band::diag_fv_uspp_cpu_parallel|update_phi", _global_timer_);
+            Timer t3("sirius::Band::diag_fv_uspp_cpu_parallel|update_phi", kp__->comm());
 
             /* recompute wave-functions: \Psi_{i} = \phi_{mu} * Z_{mu, i} */
             blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, complex_one, phi, evec, complex_zero, psi); 

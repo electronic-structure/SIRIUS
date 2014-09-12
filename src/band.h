@@ -262,7 +262,8 @@ class Band
                                             dmatrix<double_complex>& res__,
                                             std::vector<double_complex>& h_diag__,
                                             std::vector<double_complex>& o_diag__,
-                                            std::vector<double>& res_norm__);
+                                            std::vector<double>& res_norm__,
+                                            mdarray<double_complex, 2>& kappa__);
         
         #ifdef _GPU_
         void uspp_residuals_gpu_parallel(int N__,
