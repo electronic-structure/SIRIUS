@@ -99,14 +99,32 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
         beta_pw_desc.copy_to_device();
         atom_pos.copy_to_device();
         
-        create_beta_pw_gpu_v2((int)atom_blocks.local_size(iab),
-                              kp__->num_gkvec_row(),
-                              beta_pw_desc.ptr_device(),
-                              beta_pw_t__.ptr_device(),
-                              gkvec_row__.ptr_device(),
-                              atom_pos.ptr_device(),
-                              kappa__.ptr_device());
-
+        /* create beta projectors */
+        #pragma omp parallel
+        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
+        {
+            int ia = (int)atom_blocks.global_index(i, iab);
+            auto type = parameters_.unit_cell()->atom(ia)->type();
+            #pragma omp for
+            for (int xi = 0; xi < type->mt_basis_size(); xi++)
+            {
+                for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+                {
+                    kappa__(igk_row, beta_pw_desc(1, i) + xi) = beta_pw_t__(igk_row, beta_pw_desc(2, i) + xi) * 
+                                                                conj(kp__->gkvec_phase_factor(igk_row, ia));
+                }
+            }
+        }
+        kappa__.copy_to_device();
+        
+//        create_beta_pw_gpu_v2((int)atom_blocks.local_size(iab),
+//                              kp__->num_gkvec_row(),
+//                              beta_pw_desc.ptr_device(),
+//                              beta_pw_t__.ptr_device(),
+//                              gkvec_row__.ptr_device(),
+//                              atom_pos.ptr_device(),
+//                              kappa__.ptr_device());
+//
         /* wrapper for <beta|phi> with required dimensions */
         mdarray<double_complex, 2> beta_phi(beta_phi_tmp.ptr(), nbf_in_block, nloc);
         beta_phi.set_ptr_device(beta_phi_tmp.ptr_device());
