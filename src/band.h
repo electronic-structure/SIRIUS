@@ -198,7 +198,9 @@ class Band
                                           dmatrix<double_complex>& h__,
                                           dmatrix<double_complex>& o__,
                                           dmatrix<double_complex>& h_old__,
-                                          dmatrix<double_complex>& o_old__);
+                                          dmatrix<double_complex>& o_old__,
+                                          int num_atoms_in_block__,
+                                          mdarray<double_complex, 2>& beta_pw__);
 
         void uspp_residuals_cpu_parallel_simple(int N__,
                                                 int num_bands__,
@@ -244,7 +246,9 @@ class Band
                                          int n__,
                                          dmatrix<double_complex>& phi__,
                                          dmatrix<double_complex>& hphi__,
-                                         dmatrix<double_complex>& ophi__);
+                                         dmatrix<double_complex>& ophi__,
+                                         int num_atoms_in_block__,
+                                         mdarray<double_complex, 2>& beta_pw__);
 
         void uspp_residuals_cpu_parallel_v3(int N__,
                                             int num_bands__,
