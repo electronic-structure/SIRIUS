@@ -185,7 +185,7 @@ def main():
     makef.write("\tcd ./libs/libjson; make\n")
     if build_elpa: makef.write("\tcd ./libs/elpa/2013.11; make\n")
     
-    makef.write("clean_packages:\n")
+    makef.write("cleanall:\n")
     for i in range(len(clean_packages)):
         makef.write(clean_packages[i])
     makef.write("\tcd ./libs/libjson; make clean\n")
