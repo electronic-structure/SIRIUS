@@ -22,7 +22,12 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                                           dmatrix<double_complex>& hphi__,
                                           dmatrix<double_complex>& ophi__,
                                           int num_atoms_in_block__,
-                                          mdarray<double_complex, 2>& kappa__)
+                                          matrix<double_complex>& kappa__,
+                                          matrix<double_complex>& beta_pw_t__,
+                                          matrix<double>& gkvec_row__,
+                                          mdarray<int, 1>& packed_mtrx_offset__,
+                                          mdarray<double_complex, 1>& d_mtrx_packed__,
+                                          mdarray<double_complex, 1>& q_mtrx_packed__)
 {
     Timer t("sirius::Band::apply_h_o_uspp_gpu_parallel_v2", kp__->comm());
 
@@ -53,51 +58,10 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                                kp__->num_gkvec_row() * nloc * sizeof(double_complex));
     #endif
 
-    /* offset in the packed array of on-site matrices */
-    mdarray<int, 1> packed_mtrx_offset(uc->num_atoms());
-    int packed_mtrx_size = 0;
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
-    {   
-        int nbf = uc->atom(ia)->mt_basis_size();
-        packed_mtrx_offset(ia) = packed_mtrx_size;
-        packed_mtrx_size += nbf * nbf;
-    }
-    
-    /* pack Q and D matrices and send them to GPU */
-    mdarray<double_complex, 1> d_mtrx_packed(packed_mtrx_size);
-    mdarray<double_complex, 1> q_mtrx_packed(packed_mtrx_size);
-
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
-    {
-        int nbf = uc->atom(ia)->mt_basis_size();
-        for (int xi2 = 0; xi2 < nbf; xi2++)
-        {
-            for (int xi1 = 0; xi1 < nbf; xi1++)
-            {
-                d_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->d_mtrx(xi1, xi2);
-                q_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
-            }
-        }
-    }
-
-    d_mtrx_packed.allocate_on_device();
-    d_mtrx_packed.copy_to_device();
-    q_mtrx_packed.allocate_on_device();
-    q_mtrx_packed.copy_to_device();
-
     int num_atom_blocks = uc->num_atoms() / num_atoms_in_block__ + std::min(1, uc->num_atoms() % num_atoms_in_block__);
 
-    //== if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-    //== {
-    //==     printf("num_atom_blocks : %i\n", num_atom_blocks);
-    //== }
-    
     splindex<block> atom_blocks(uc->num_atoms(), num_atom_blocks, 0);
     
-    auto& beta_pw_t = kp__->beta_pw_t();
-    beta_pw_t.allocate_on_device();
-    beta_pw_t.copy_to_device();
-
     /* allocate space for <beta|phi> array */
     int nbf_max = uc->max_mt_basis_size() * num_atoms_in_block__;
     mdarray<double_complex, 1> beta_phi_tmp(nbf_max * nloc);
@@ -107,24 +71,11 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
     mdarray<double_complex, 2> tmp(nullptr, nbf_max, nloc);
     tmp.allocate_on_device();
 
-    //== /* allocate space for beta-projectors */
-    //== mdarray<double_complex, 2> beta_pw(nullptr, kp__->num_gkvec_row(), nbf_max);
-    //== beta_pw.allocate_on_device();
-    
     mdarray<int, 2> beta_pw_desc(3, atom_blocks.local_size(0));
     beta_pw_desc.allocate_on_device();
 
     mdarray<double, 2> atom_pos(3, atom_blocks.local_size(0));
     atom_pos.allocate_on_device();
-
-    /* copy G+k vectors to device */
-    mdarray<double, 2> gkvec_row(3, kp__->num_gkvec_row());
-    gkvec_row.allocate_on_device();
-    for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-    {
-        for (int x = 0; x < 3; x++) gkvec_row(x, igk_row) = kp__->gklo_basis_descriptor_row(igk_row).gkvec[x];
-    }
-    gkvec_row.copy_to_device();
 
     for (int iab = 0; iab < num_atom_blocks; iab++)
     {
@@ -151,8 +102,8 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
         create_beta_pw_gpu_v2((int)atom_blocks.local_size(iab),
                               kp__->num_gkvec_row(),
                               beta_pw_desc.ptr_device(),
-                              beta_pw_t.ptr_device(),
-                              gkvec_row.ptr_device(),
+                              beta_pw_t__.ptr_device(),
+                              gkvec_row__.ptr_device(),
                               atom_pos.ptr_device(),
                               kappa__.ptr_device());
 
@@ -192,7 +143,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
             int nbf = beta_pw_desc(0, i);
 
             /* compute D*<beta|phi> */
-            blas<gpu>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed.ptr_device(packed_mtrx_offset(ia)), nbf, 
+            blas<gpu>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed__.ptr_device(packed_mtrx_offset__(ia)), nbf, 
                             beta_phi.ptr_device(ofs, 0), beta_phi.ld(), tmp.ptr_device(ofs, 0), tmp.ld(), 
                             Platform::thread_id());
 
@@ -215,7 +166,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
             int nbf = beta_pw_desc(0, i);
 
             /* compute Q*<beta|phi> */
-            blas<gpu>::gemm(0, 0, nbf, nloc, nbf, q_mtrx_packed.ptr_device(packed_mtrx_offset(ia)), nbf,
+            blas<gpu>::gemm(0, 0, nbf, nloc, nbf, q_mtrx_packed__.ptr_device(packed_mtrx_offset__(ia)), nbf,
                             beta_phi.ptr_device(ofs, 0), beta_phi.ld(), tmp.ptr_device(ofs, 0), tmp.ld(), 
                             Platform::thread_id());
         }
@@ -288,8 +239,12 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                                            dmatrix<double_complex>& h_old__,
                                            dmatrix<double_complex>& o_old__,
                                            int num_atoms_in_block__,
-                                           mdarray<double_complex, 2>& kappa__)
-
+                                           mdarray<double_complex, 2>& kappa__,
+                                           matrix<double_complex>& beta_pw_t__,
+                                           matrix<double>& gkvec_row__,
+                                           mdarray<int, 1>& packed_mtrx_offset__,
+                                           mdarray<double_complex, 1>& d_mtrx_packed__,
+                                           mdarray<double_complex, 1>& q_mtrx_packed__)
 {
     Timer t("sirius::Band::set_fv_h_o_uspp_cpu_parallel", kp__->comm());
     
@@ -314,7 +269,8 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
 
     /* apply Hamiltonian and overlap operators to the new basis functions */
     apply_h_o_uspp_gpu_parallel_v2(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__,
-                                   num_atoms_in_block__, kappa__);
+                                   num_atoms_in_block__, kappa__, beta_pw_t__, gkvec_row__, packed_mtrx_offset__,
+                                   d_mtrx_packed__, q_mtrx_packed__);
 
     #ifdef _GPU_
     cublas_get_matrix(kp__->num_gkvec_row(), (int)(s1_col.local_size() - s0_col.local_size()), sizeof(double_complex), 
@@ -775,13 +731,60 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
     {
         printf("size of kappa array: %f GB\n", 16 * double(kappa.size()) / 1073741824);
     }
+    
+    auto uc = parameters_.unit_cell();
+    /* offset in the packed array of on-site matrices */
+    mdarray<int, 1> packed_mtrx_offset(uc->num_atoms());
+    int packed_mtrx_size = 0;
+    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    {   
+        int nbf = uc->atom(ia)->mt_basis_size();
+        packed_mtrx_offset(ia) = packed_mtrx_size;
+        packed_mtrx_size += nbf * nbf;
+    }
+    
+    /* pack Q and D matrices and send them to GPU */
+    mdarray<double_complex, 1> d_mtrx_packed(packed_mtrx_size);
+    mdarray<double_complex, 1> q_mtrx_packed(packed_mtrx_size);
+
+    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    {
+        int nbf = uc->atom(ia)->mt_basis_size();
+        for (int xi2 = 0; xi2 < nbf; xi2++)
+        {
+            for (int xi1 = 0; xi1 < nbf; xi1++)
+            {
+                d_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->d_mtrx(xi1, xi2);
+                q_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
+            }
+        }
+    }
+
+    d_mtrx_packed.allocate_on_device();
+    d_mtrx_packed.copy_to_device();
+    q_mtrx_packed.allocate_on_device();
+    q_mtrx_packed.copy_to_device();
+
+    /* copy G+k vectors to device */
+    matrix<double> gkvec_row(3, kp__->num_gkvec_row());
+    gkvec_row.allocate_on_device();
+    for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+    {
+        for (int x = 0; x < 3; x++) gkvec_row(x, igk_row) = kp__->gklo_basis_descriptor_row(igk_row).gkvec[x];
+    }
+    gkvec_row.copy_to_device();
+
+    auto& beta_pw_t = kp__->beta_pw_t();
+    beta_pw_t.allocate_on_device();
+    beta_pw_t.copy_to_device();
 
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++)
     {
         /* set H and O for the variational subspace */
         set_fv_h_o_uspp_gpu_parallel_v3(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, 
-                                        hmlt_old, ovlp_old, num_atoms_in_block, kappa);
+                                        hmlt_old, ovlp_old, num_atoms_in_block, kappa, beta_pw_t, gkvec_row,
+                                        packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed);
         
         /* increase size of the variation space */
         N += n;

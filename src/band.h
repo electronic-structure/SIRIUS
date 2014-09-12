@@ -294,7 +294,12 @@ class Band
                                              dmatrix<double_complex>& h_old__,
                                              dmatrix<double_complex>& o_old__,
                                              int num_atoms_in_block__,
-                                             mdarray<double_complex, 2>& kappa__);
+                                             mdarray<double_complex, 2>& kappa__,
+                                             matrix<double_complex>& beta_pw_t__,
+                                             matrix<double>& gkvec_row__,
+                                             mdarray<int, 1>& packed_mtrx_offset__,
+                                             mdarray<double_complex, 1>& d_mtrx_packed__,
+                                             mdarray<double_complex, 1>& q_mtrx_packed__);
 
         void diag_fv_uspp_gpu_parallel(K_point* kp__,
                                        double v0__,
@@ -316,16 +321,20 @@ class Band
         void diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_potential);
 
         void apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
-                                         std::vector<double>& effective_potential__,
-                                         std::vector<double>& pw_ekin__,
-                                         int N__,
-                                         int n__,
-                                         dmatrix<double_complex>& phi__,
-                                         dmatrix<double_complex>& hphi__,
-                                         dmatrix<double_complex>& ophi__,
-                                         int num_atoms_in_block__,
-                                         mdarray<double_complex, 2>& kappa__);
-        
+                                            std::vector<double>& effective_potential__,
+                                            std::vector<double>& pw_ekin__,
+                                            int N__,
+                                            int n__,
+                                            dmatrix<double_complex>& phi__,
+                                            dmatrix<double_complex>& hphi__,
+                                            dmatrix<double_complex>& ophi__,
+                                            int num_atoms_in_block__,
+                                            matrix<double_complex>& kappa__,
+                                            matrix<double_complex>& beta_pw_t__,
+                                            matrix<double>& gkvec_row__,
+                                            mdarray<int, 1>& packed_mtrx_offset__,
+                                            mdarray<double_complex, 1>& d_mtrx_packed__,
+                                            mdarray<double_complex, 1>& q_mtrx_packed__);
         #endif
 
     public:

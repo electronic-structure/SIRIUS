@@ -546,6 +546,9 @@ template <typename T> class mdarray<T, 2> : public mdarray_base<T, 2>
         #endif
 };
 
+// Alias for matrix
+template <typename T> using matrix = mdarray<T, 2>;
+
 // 3d specialization
 template <typename T> class mdarray<T, 3> : public mdarray_base<T, 3> 
 {
