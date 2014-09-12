@@ -885,6 +885,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
 
     if (nloc > 0)
     {
+        Timer tt0("tt0", kp__->comm_row());
         auto uc = parameters_.unit_cell();
 
         /* apply local part of Hamiltonian */
@@ -910,7 +911,9 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
         std::vector<double_complex> beta_phi_tmp(nbf_max * nloc);
         mdarray<double_complex, 2> tmp(nbf_max, nloc);
         mdarray<double_complex, 2> beta_pw(kp__->num_gkvec_row(), nbf_max);
-
+        tt0.stop();
+        
+        Timer tt1("tt1", kp__->comm_row());
         for (int iab = 0; iab < num_atom_blocks; iab++)
         {
             std::vector<int> bf_offset_in_block(atom_blocks.local_size(iab));
@@ -1001,6 +1004,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
                             beta_pw.ptr(), beta_pw.ld(), tmp.ptr(), tmp.ld(), complex_one, &ophi__(0, s0.local_size()), ophi__.ld());
             t5.stop();
         }
+        tt1.stop();
     }
 }
 
