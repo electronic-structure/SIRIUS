@@ -278,7 +278,8 @@ class Band
                                          dmatrix<double_complex>& res__,
                                          std::vector<double_complex>& h_diag__,
                                          std::vector<double_complex>& o_diag__,
-                                         std::vector<double>& res_norm__);
+                                         std::vector<double>& res_norm__,
+                                         mdarray<double_complex, 2>& kappa__);
 
         void set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                                              int n__,
@@ -291,7 +292,9 @@ class Band
                                              dmatrix<double_complex>& h__,
                                              dmatrix<double_complex>& o__,
                                              dmatrix<double_complex>& h_old__,
-                                             dmatrix<double_complex>& o_old__);
+                                             dmatrix<double_complex>& o_old__,
+                                             int num_atoms_in_block__,
+                                             mdarray<double_complex, 2>& kappa__);
 
         void diag_fv_uspp_gpu_parallel(K_point* kp__,
                                        double v0__,
@@ -319,7 +322,9 @@ class Band
                                          int n__,
                                          dmatrix<double_complex>& phi__,
                                          dmatrix<double_complex>& hphi__,
-                                         dmatrix<double_complex>& ophi__);
+                                         dmatrix<double_complex>& ophi__,
+                                         int num_atoms_in_block__,
+                                         mdarray<double_complex, 2>& kappa__);
         
         #endif
 

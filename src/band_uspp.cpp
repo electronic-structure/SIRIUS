@@ -885,125 +885,124 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
     /* local number of states to which Hamiltonian has to be applied */
     int nloc = static_cast<int>(s1.local_size() - s0.local_size());
 
-    if (nloc > 0)
+    if (!nloc) return;
+
+    auto uc = parameters_.unit_cell();
+
+    /* apply local part of Hamiltonian */
+    apply_h_local_parallel(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__);
+    
+    /* set intial ophi */
+    memcpy(&ophi__(0, s0.local_size()), &phi__(0, s0.local_size()), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
+
+    int num_atom_blocks = uc->num_atoms() / num_atoms_in_block__ + std::min(1, uc->num_atoms() % num_atoms_in_block__);
+
+    //== if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+    //== {
+    //==     printf("num_atom_blocks : %i\n", num_atom_blocks);
+    //== }
+
+    splindex<block> atom_blocks(parameters_.unit_cell()->num_atoms(), num_atom_blocks, 0);
+    
+    auto& beta_pw_t = kp__->beta_pw_t();
+
+    int nbf_max = uc->max_mt_basis_size() * num_atoms_in_block__;
+    std::vector<double_complex> beta_phi_tmp(nbf_max * nloc);
+    mdarray<double_complex, 2> tmp(nbf_max, nloc);
+    
+    for (int iab = 0; iab < num_atom_blocks; iab++)
     {
-        auto uc = parameters_.unit_cell();
+        std::vector<int> bf_offset_in_block(atom_blocks.local_size(iab));
+        int nbf_in_block = 0;
 
-        /* apply local part of Hamiltonian */
-        apply_h_local_parallel(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__);
-        
-        /* set intial ophi */
-        memcpy(&ophi__(0, s0.local_size()), &phi__(0, s0.local_size()), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
-
-        int num_atom_blocks = uc->num_atoms() / num_atoms_in_block__ + std::min(1, uc->num_atoms() % num_atoms_in_block__);
-
-        //== if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-        //== {
-        //==     printf("num_atom_blocks : %i\n", num_atom_blocks);
-        //== }
-
-        splindex<block> atom_blocks(parameters_.unit_cell()->num_atoms(), num_atom_blocks, 0);
-        
-        auto& beta_pw_t = kp__->beta_pw_t();
-
-        int nbf_max = uc->max_mt_basis_size() * num_atoms_in_block__;
-        std::vector<double_complex> beta_phi_tmp(nbf_max * nloc);
-        mdarray<double_complex, 2> tmp(nbf_max, nloc);
-        
-        for (int iab = 0; iab < num_atom_blocks; iab++)
+        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
         {
-            std::vector<int> bf_offset_in_block(atom_blocks.local_size(iab));
-            int nbf_in_block = 0;
+            int ia = (int)atom_blocks.global_index(i, iab);
+            bf_offset_in_block[i] = nbf_in_block;
+            nbf_in_block += parameters_.unit_cell()->atom(ia)->mt_basis_size();
+        }
 
-            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
+        Timer t0("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_pw", kp__->comm_row());
+        /* create beta projectors */
+        #pragma omp parallel
+        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
+        {
+            int ia = (int)atom_blocks.global_index(i, iab);
+            auto type = parameters_.unit_cell()->atom(ia)->type();
+            #pragma omp for
+            for (int xi = 0; xi < type->mt_basis_size(); xi++)
             {
-                int ia = (int)atom_blocks.global_index(i, iab);
-                bf_offset_in_block[i] = nbf_in_block;
-                nbf_in_block += parameters_.unit_cell()->atom(ia)->mt_basis_size();
-            }
-
-            Timer t0("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_pw", kp__->comm_row());
-            /* create beta projectors */
-            #pragma omp parallel
-            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-            {
-                int ia = (int)atom_blocks.global_index(i, iab);
-                auto type = parameters_.unit_cell()->atom(ia)->type();
-                #pragma omp for
-                for (int xi = 0; xi < type->mt_basis_size(); xi++)
+                for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
                 {
-                    for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-                    {
-                        beta_pw__(igk_row, bf_offset_in_block[i] + xi) = beta_pw_t(igk_row, type->offset_lo() + xi) * 
-                                                                         conj(kp__->gkvec_phase_factor(igk_row, ia));
-                    }
+                    beta_pw__(igk_row, bf_offset_in_block[i] + xi) = beta_pw_t(igk_row, type->offset_lo() + xi) * 
+                                                                     conj(kp__->gkvec_phase_factor(igk_row, ia));
                 }
             }
-            t0.stop();
-            
-            mdarray<double_complex, 2> beta_phi(&beta_phi_tmp[0], nbf_in_block, nloc);
-            Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_phi", kp__->comm_row());
-            /* compute <beta|phi> */
-            blas<cpu>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-                            beta_pw__.ptr(), beta_pw__.ld(),
-                            &phi__(0, s0.local_size()), phi__.ld(),
-                            beta_phi.ptr(), beta_phi.ld());
-            kp__->comm_row().allreduce(beta_phi.ptr(), (int)beta_phi.size());
-            double tval = t1.stop();
-
-            if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-            {
-                printf("<beta|phi> effective zgemm with M, N, K: %6i %6i %6i, %12.4f sec, %12.4f GFlops/node\n",
-                       nbf_in_block, nloc, kp__->num_gkvec(),
-                       tval, 8e-9 * nbf_in_block * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
-            }
-            
-            Timer t2("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|D_beta_phi", kp__->comm_row());
-            #pragma omp parallel for
-            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-            {
-                int ia = (int)atom_blocks.global_index(i, iab);
-                int ofs = bf_offset_in_block[i];
-                
-                /* number of beta functions for a given atom */
-                int nbf = uc->atom(ia)->mt_basis_size();
-
-                /* compute D*<beta|phi> */
-                blas<cpu>::gemm(0, 0, nbf, nloc, nbf, &uc->atom(ia)->d_mtrx(0, 0), nbf, 
-                                &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
-            }
-            t2.stop();
-
-            Timer t3("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_D_beta_phi", kp__->comm_row());
-            /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
-            blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
-                            beta_pw__.ptr(), beta_pw__.ld(), tmp.ptr(), tmp.ld(), complex_one,
-                            &hphi__(0, s0.local_size()), hphi__.ld());
-            t3.stop();
-            
-            Timer t4("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|Q_beta_phi", kp__->comm_row());
-            #pragma omp parallel for
-            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-            {
-                int ia = (int)atom_blocks.global_index(i, iab);
-                int ofs = bf_offset_in_block[i];
-                
-                /* number of beta functions for a given atom */
-                int nbf = uc->atom(ia)->mt_basis_size();
-
-                /* compute Q*<beta|phi> */
-                blas<cpu>::gemm(0, 0, nbf, nloc, nbf, &uc->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
-                                &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
-            }
-            t4.stop();
-
-            Timer t5("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_Q_beta_phi", kp__->comm_row());
-            /* compute <G+k|beta> * Q*<beta|phi> and add to ophi */
-            blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
-                            beta_pw__.ptr(), beta_pw__.ld(), tmp.ptr(), tmp.ld(), complex_one,
-                            &ophi__(0, s0.local_size()), ophi__.ld());
-            t5.stop();
         }
+        t0.stop();
+        
+        mdarray<double_complex, 2> beta_phi(&beta_phi_tmp[0], nbf_in_block, nloc);
+        Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_phi", kp__->comm_row());
+        /* compute <beta|phi> */
+        blas<cpu>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
+                        beta_pw__.ptr(), beta_pw__.ld(),
+                        &phi__(0, s0.local_size()), phi__.ld(),
+                        beta_phi.ptr(), beta_phi.ld());
+        kp__->comm_row().allreduce(beta_phi.ptr(), (int)beta_phi.size());
+        double tval = t1.stop();
+
+        if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+        {
+            printf("<beta|phi> effective zgemm with M, N, K: %6i %6i %6i, %12.4f sec, %12.4f GFlops/node\n",
+                   nbf_in_block, nloc, kp__->num_gkvec(),
+                   tval, 8e-9 * nbf_in_block * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
+        }
+        
+        Timer t2("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|D_beta_phi", kp__->comm_row());
+        #pragma omp parallel for
+        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
+        {
+            int ia = (int)atom_blocks.global_index(i, iab);
+            int ofs = bf_offset_in_block[i];
+            
+            /* number of beta functions for a given atom */
+            int nbf = uc->atom(ia)->mt_basis_size();
+
+            /* compute D*<beta|phi> */
+            blas<cpu>::gemm(0, 0, nbf, nloc, nbf, &uc->atom(ia)->d_mtrx(0, 0), nbf, 
+                            &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
+        }
+        t2.stop();
+
+        Timer t3("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_D_beta_phi", kp__->comm_row());
+        /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
+        blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
+                        beta_pw__.ptr(), beta_pw__.ld(), tmp.ptr(), tmp.ld(), complex_one,
+                        &hphi__(0, s0.local_size()), hphi__.ld());
+        t3.stop();
+        
+        Timer t4("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|Q_beta_phi", kp__->comm_row());
+        #pragma omp parallel for
+        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
+        {
+            int ia = (int)atom_blocks.global_index(i, iab);
+            int ofs = bf_offset_in_block[i];
+            
+            /* number of beta functions for a given atom */
+            int nbf = uc->atom(ia)->mt_basis_size();
+
+            /* compute Q*<beta|phi> */
+            blas<cpu>::gemm(0, 0, nbf, nloc, nbf, &uc->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
+                            &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
+        }
+        t4.stop();
+
+        Timer t5("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_Q_beta_phi", kp__->comm_row());
+        /* compute <G+k|beta> * Q*<beta|phi> and add to ophi */
+        blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
+                        beta_pw__.ptr(), beta_pw__.ld(), tmp.ptr(), tmp.ld(), complex_one,
+                        &ophi__(0, s0.local_size()), ophi__.ld());
+        t5.stop();
     }
 }
 
