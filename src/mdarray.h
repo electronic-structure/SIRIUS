@@ -25,6 +25,7 @@
 #ifndef __MDARRAY_H__
 #define __MDARRAY_H__
 
+#include <signal.h>
 #include <cassert>
 #include <memory>
 #include <atomic>
@@ -137,6 +138,7 @@ struct mdarray_deleter
             default:
             {
                 printf("error at line %i of file %s: wrong delete mode\n", __LINE__, __FILE__);
+                raise(SIGTERM);
                 exit(-1);
             }
         }
@@ -161,9 +163,9 @@ class mdarray
         
         /// Raw pointer to GPU memory
         T* ptr_device_;  
-        
-        bool pinned_;
         #endif
+
+        bool pinned_;
         
         /// Array dimensions.
         mdarray_index_descriptor dims_[N];
@@ -176,12 +178,12 @@ class mdarray
         /// Constructor of an empty array.
         mdarray() 
             : unique_ptr_(nullptr),
-              ptr_(nullptr)
+              ptr_(nullptr),
               #ifdef _GPU_
-              ,unique_ptr_device_(nullptr),
+              unique_ptr_device_(nullptr),
               ptr_device_(nullptr), 
-              pinned_(false)
               #endif
+              pinned_(false)
         { 
         }
         
@@ -204,6 +206,8 @@ class mdarray
         mdarray(mdarray<T, N>&& src) : unique_ptr_(std::move(src.unique_ptr_))
         {
             ptr_ = src.ptr_;
+            pinned_ = src.pinned_;
+            src.pinned_ = false;
             for (int i = 0; i < N; i++)
             {
                 dims_[i] = src.dims_[i];
@@ -218,6 +222,8 @@ class mdarray
             {
                 unique_ptr_ = std::move(src.unique_ptr_);
                 ptr_ = src.ptr_;
+                pinned_ = src.pinned_;
+                src.pinned_ = false;
                 for (int i = 0; i < N; i++)
                 {
                     dims_[i] = src.dims_[i];
@@ -227,60 +233,60 @@ class mdarray
             return *this;
         }
 
-        mdarray(mdarray_index_descriptor const& d0)
+        mdarray(mdarray_index_descriptor const& d0) : pinned_(false)
         {
             this->init_dimensions({d0});
             this->allocate();
         }
 
-        mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
+        mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1) : pinned_(false)
         {
             init_dimensions({d0, d1});
             allocate();
         }
 
         mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1,
-                     mdarray_index_descriptor const& d2)
+                     mdarray_index_descriptor const& d2) : pinned_(false)
         {
             init_dimensions({d0, d1, d2});
             allocate();
         }
 
         mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1,
-                     mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3)
+                     mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3) : pinned_(false)
         {
             init_dimensions({d0, d1, d2, d3});
             allocate();
         }
 
-        mdarray(T* ptr__, mdarray_index_descriptor const& d0)
+        mdarray(T* ptr__, mdarray_index_descriptor const& d0) : pinned_(false)
         {
             this->init_dimensions({d0});
             this->set_ptr(ptr__);
         }
 
-        mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
+        mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1) : pinned_(false)
         {
             this->init_dimensions({d0, d1});
             this->set_ptr(ptr__);
         }
 
         mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, 
-                mdarray_index_descriptor const& d2)
+                mdarray_index_descriptor const& d2) : pinned_(false)
         {
             this->init_dimensions({d0, d1, d2});
             this->set_ptr(ptr__);
         }
 
         mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, 
-                mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3)
+                mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3) : pinned_(false)
         {
             this->init_dimensions({d0, d1, d2, d3});
             this->set_ptr(ptr__);
         }
 
         #ifdef _GPU_
-        mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
+        mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1) : pinned_(false)
         {
             this->init_dimensions({d0, d1});
             this->set_ptr(ptr__);
@@ -499,6 +505,7 @@ class mdarray
         /// Deallocate memory and reset pointers.
         void deallocate()
         {
+            unpin_memory();
             unique_ptr_.reset(nullptr);
             ptr_ = nullptr;
         }
@@ -543,6 +550,7 @@ class mdarray
                 if (dest__.dims_[i].begin() != dims_[i].begin() || dest__.dims_[i].end() != dims_[i].end())
                 {
                     printf("error at line %i of file %s: array dimensions don't match\n", __LINE__, __FILE__);
+                    raise(SIGTERM);
                     exit(-1);
                 }
             }
@@ -606,6 +614,7 @@ class mdarray
             if (pinned_)
             {
                 printf("error at line %i of file %s: array is already pinned\n", __LINE__, __FILE__);
+                raise(SIGTERM);                                                                                            \
                 exit(-1);
             }
             cuda_host_register(ptr_, size() * sizeof(T));
