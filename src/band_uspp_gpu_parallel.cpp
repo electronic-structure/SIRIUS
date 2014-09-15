@@ -212,10 +212,10 @@ void bcast_column_gpu(K_point* kp__,
 
     if (n > 0 && kp__->rank_col() == icol__)
     {
-        cuda_copy_device_to_device(m_tmp__.ptr_device(0, 0, icol__ % 2), m__.ptr_device(0, s0_col__.local_size(icol__)),
+        cuda_copy_device_to_device(m_tmp__.at<gpu>(0, 0, icol__ % 2), m__.at<gpu>(0, s0_col__.local_size(icol__)),
                                    kp__->num_gkvec_row() * n * sizeof(double_complex));
     }
-    kp__->comm_col().bcast(m_tmp__.ptr_device(0, 0, icol__ % 2), kp__->num_gkvec_row() * n, icol__);
+    kp__->comm_col().bcast(m_tmp__.at<gpu>(0, 0, icol__ % 2), kp__->num_gkvec_row() * n, icol__);
 }
 #else
 void bcast_column_gpu(K_point* kp__,
