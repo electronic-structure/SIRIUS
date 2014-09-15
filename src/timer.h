@@ -151,6 +151,15 @@ class Timer
 
         static std::map< std::string, timer_stats> collect_timer_stats();
 
+        static double value(std::string const& label__)
+        {
+            auto values = timers_[label__];
+
+            double d = 0;
+            for (int i = 0; i < (int)values.size(); i++) d += values[i];
+            return d;
+        }
+
         static void print();
 
         static void delay(double dsec);
