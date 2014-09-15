@@ -1,4 +1,5 @@
 // This file must be compiled with nvcc
+#include <unistd.h>
 #include <signal.h>
 #include <stdio.h>
 #include <assert.h>
@@ -139,6 +140,9 @@ inline __host__ __device__ int num_blocks(int length, int block_size)
     cudaError_t error = func__ args__;                                                                             \
     if (error != cudaSuccess)                                                                                      \
     {                                                                                                              \
+        char nm[1024];                                                                                             \
+        gethostname(nm, 1024);                                                                                     \
+        printf("hostname: %s\n", nm);                                                                              \
         printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
         raise(SIGTERM);                                                                                            \
         exit(-100);                                                                                                \
@@ -153,6 +157,9 @@ inline __host__ __device__ int num_blocks(int length, int block_size)
     error = cudaGetLastError();                                                                                    \
     if (error != cudaSuccess)                                                                                      \
     {                                                                                                              \
+        char nm[1024];                                                                                             \
+        gethostname(nm, 1024);                                                                                     \
+        printf("hostname: %s\n", nm);                                                                              \
         printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
         raise(SIGTERM);                                                                                            \
         exit(-100);                                                                                                \
@@ -374,7 +381,11 @@ void cublas_error_message(cublasStatus_t status)
 {                                                                                   \
     cublasStatus_t status;                                                          \
     if ((status = func__ args__) != CUBLAS_STATUS_SUCCESS)                          \
-    {   cublas_error_message(status);                                               \
+    {                                                                               \
+        cublas_error_message(status);                                               \
+        char nm[1024];                                                              \
+        gethostname(nm, 1024);                                                      \
+        printf("hostname: %s\n", nm);                                               \
         printf("Error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__); \
         exit(-100);                                                                 \
     }                                                                               \
@@ -501,6 +512,9 @@ void cufft_error_message(cufftResult result)
     cufftResult result;                                                             \
     if ((result = func__ args__) != CUFFT_SUCCESS)                                  \
     {                                                                               \
+        char nm[1024];                                                              \
+        gethostname(nm, 1024);                                                      \
+        printf("hostname: %s\n", nm);                                               \
         printf("Error in %s at line %i of file %s: ", #func__, __LINE__, __FILE__); \
         cufft_error_message(result);                                                \
         exit(-100);                                                                 \
