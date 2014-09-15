@@ -739,8 +739,6 @@ void Band::apply_h_local_parallel(K_point* kp__,
     phi__.gather(n__, N__, phi_slice);
     mdarray<double_complex, 2> hphi_slice(kp__->num_gkvec(), nphi);
 
-    Timer::print();
-
     apply_h_local_slice(kp__, effective_potential__, pw_ekin__, nphi, phi_slice, hphi_slice);
 
     //#pragma omp parallel default(shared) num_threads(num_fft_threads)
