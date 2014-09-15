@@ -172,11 +172,9 @@ class Matching_coefficients
             int lmax = parameters_.lmax_apw();
             int lmmax = Utils::lmmax(lmax);
 
-            gkvec_phase_factors_.set_dimensions(num_gkvec_, parameters_.unit_cell()->num_atoms());
-            gkvec_phase_factors_.allocate();
+            gkvec_phase_factors_ = mdarray<double_complex, 2>(num_gkvec_, parameters_.unit_cell()->num_atoms());
 
-            gkvec_ylm_.set_dimensions(num_gkvec_, lmmax);
-            gkvec_ylm_.allocate();
+            gkvec_ylm_ = mdarray<double_complex, 2>(num_gkvec_, lmmax);
             
             gkvec_len_.resize(num_gkvec_);
 
@@ -208,8 +206,7 @@ class Matching_coefficients
                 }
             }
             
-            alm_b_.set_dimensions(3, num_gkvec_, lmax + 1, parameters_.unit_cell()->num_atom_types());
-            alm_b_.allocate();
+            alm_b_ = mdarray<double_complex, 4>(3, num_gkvec_, lmax + 1, parameters_.unit_cell()->num_atom_types());
             alm_b_.zero();
             
             /* value and first two derivatives of spherical Bessel functions */

@@ -63,7 +63,7 @@ class dmatrix
         splindex<block_cyclic> spl_col_;
 
         /// Local part of the distributed matrix.
-        mdarray<T, 2> matrix_local_;
+        matrix<T> matrix_local_;
 
         /// Matrix descriptor.
         int descriptor_[9];
@@ -77,7 +77,7 @@ class dmatrix
             spl_row_ = splindex<block_cyclic>(num_rows_, num_ranks_row_, rank_row_, bs_);
             spl_col_ = splindex<block_cyclic>(num_cols_, num_ranks_col_, rank_col_, bs_);
 
-            matrix_local_.set_dimensions(spl_row_.local_size(), spl_col_.local_size());
+            matrix_local_ = matrix<T>(nullptr, spl_row_.local_size(), spl_col_.local_size());
 
             #ifdef _SCALAPACK_
             linalg<scalapack>::descinit(descriptor_, num_rows_, num_cols_, bs_, bs_, 0, 0, blacs_grid_->context(), matrix_local_.ld());
@@ -232,16 +232,6 @@ class dmatrix
             matrix_local_.unpin_memory();
         }
 
-        inline T* ptr_device()
-        {
-            return matrix_local_.ptr_device();
-        }
-
-        inline T* ptr_device(int64_t const i0, int64_t const i1)
-        {
-            return matrix_local_.ptr_device(i0, i1);
-        }
-
         inline void zero_on_device()
         {
             matrix_local_.zero_on_device();
@@ -251,6 +241,18 @@ class dmatrix
         inline T& operator()(const int64_t irow_loc, const int64_t icol_loc) 
         {
             return matrix_local_(irow_loc, icol_loc);
+        }
+        
+        template <processing_unit_t pu>
+        inline T* at() 
+        {
+            return matrix_local_.at<pu>();
+        }
+
+        template <processing_unit_t pu>
+        inline T* at(int64_t const irow_loc, int64_t const icol_loc) 
+        {
+            return matrix_local_.at<pu>(irow_loc, icol_loc);
         }
 
         inline void set(const int irow_glob, const int icol_glob, T val)

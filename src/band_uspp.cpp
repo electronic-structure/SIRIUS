@@ -604,7 +604,7 @@ void Band::apply_h_local_slice(K_point* kp__,
                 /* allocate work area array */
                 mdarray<char, 1> work_area(nullptr, fft_gpu->work_area_size());
                 work_area.allocate_on_device();
-                fft_gpu->set_work_area_ptr(work_area.ptr_device());
+                fft_gpu->set_work_area_ptr(work_area.at<gpu>());
                 
                 /* allocate space for plane-wave expansion coefficients */
                 mdarray<double_complex, 2> phi_pw_gpu(nullptr, kp__->num_gkvec(), fft_gpu->num_fft()); 
@@ -644,29 +644,29 @@ void Band::apply_h_local_slice(K_point* kp__,
                     {
                         /* copy phi to GPU */
                         cublas_set_matrix(kp__->num_gkvec(), fft_gpu->num_fft(), sizeof(double_complex), 
-                                          &phi__(0, i), phi__.ld(), phi_pw_gpu.ptr_device(), phi_pw_gpu.ld());
+                                          phi__.at<cpu>(0, i), phi__.ld(), phi_pw_gpu.at<gpu>(), phi_pw_gpu.ld());
 
                         /* set PW coefficients into proper positions inside FFT buffer */
-                        fft_gpu->batch_load(kp__->num_gkvec(), fft_index.ptr_device(), phi_pw_gpu.ptr_device(), 
-                                            phi_gpu.ptr_device());
+                        fft_gpu->batch_load(kp__->num_gkvec(), fft_index.at<gpu>(), phi_pw_gpu.at<gpu>(), 
+                                            phi_gpu.at<gpu>());
 
                         /* phi(G) *= Ekin(G) */
-                        scale_matrix_rows_gpu(kp__->num_gkvec(), fft_gpu->num_fft(), phi_pw_gpu.ptr_device(),
-                                              pw_ekin_gpu.ptr_device());
+                        scale_matrix_rows_gpu(kp__->num_gkvec(), fft_gpu->num_fft(), phi_pw_gpu.at<gpu>(),
+                                              pw_ekin_gpu.at<gpu>());
                         /* execute batch FFT */
-                        fft_gpu->transform(1, phi_gpu.ptr_device());
+                        fft_gpu->transform(1, phi_gpu.at<gpu>());
                         /* multimply by potential */
-                        scale_matrix_rows_gpu(fft_gpu->size(), fft_gpu->num_fft(), phi_gpu.ptr_device(), 
-                                              veff_gpu.ptr_device());
+                        scale_matrix_rows_gpu(fft_gpu->size(), fft_gpu->num_fft(), phi_gpu.at<gpu>(), 
+                                              veff_gpu.at<gpu>());
                         /* transform back */
-                        fft_gpu->transform(-1, phi_gpu.ptr_device());
+                        fft_gpu->transform(-1, phi_gpu.at<gpu>());
                         
                         /* phi(G) += fft_buffer(G) */
-                        fft_gpu->batch_unload(kp__->num_gkvec(), fft_index.ptr_device(), phi_gpu.ptr_device(),
-                                              phi_pw_gpu.ptr_device(), 1.0);
+                        fft_gpu->batch_unload(kp__->num_gkvec(), fft_index.at<gpu>(), phi_gpu.at<gpu>(),
+                                              phi_pw_gpu.at<gpu>(), 1.0);
                         
                         cublas_get_matrix(kp__->num_gkvec(), fft_gpu->num_fft(), sizeof(double_complex), 
-                                          phi_pw_gpu.ptr_device(), phi_pw_gpu.ld(), &hphi__(0, i), hphi__.ld());
+                                          phi_pw_gpu.at<gpu>(), phi_pw_gpu.ld(), &hphi__(0, i), hphi__.ld());
                     }
                 }
             }));

@@ -148,8 +148,7 @@ void Atom_type::init(int lmax__, int offset_lo__)
     {
         if (mt_basis_size() != mt_lo_basis_size()) error_local(__FILE__, __LINE__, "wrong basis size");
 
-        uspp_.q_mtrx.set_dimensions(mt_basis_size(), mt_basis_size());
-        uspp_.q_mtrx.allocate();
+        uspp_.q_mtrx = mdarray<double_complex, 2>(mt_basis_size(), mt_basis_size());
     }
    
     /* get the number of core electrons */
@@ -662,12 +661,10 @@ void Atom_type::read_input(const std::string& fname)
 
         parser["uspp"]["non_local"]["Q"]["q_functions_inner_radii"] >> uspp_.q_functions_inner_radii;
 
-        uspp_.q_coefs.set_dimensions(uspp_.num_q_coefs, 2 * uspp_.lmax + 1, 
-                                     uspp_.num_beta_radial_functions,  uspp_.num_beta_radial_functions); 
-        uspp_.q_coefs.allocate();
+        uspp_.q_coefs = mdarray<double, 4>(uspp_.num_q_coefs, 2 * uspp_.lmax + 1, 
+                                           uspp_.num_beta_radial_functions,  uspp_.num_beta_radial_functions); 
 
-        uspp_.q_radial_functions.set_dimensions(num_mt_points_, uspp_.num_beta_radial_functions * (uspp_.num_beta_radial_functions + 1) / 2);
-        uspp_.q_radial_functions.allocate();
+        uspp_.q_radial_functions = mdarray<double, 2>(num_mt_points_, uspp_.num_beta_radial_functions * (uspp_.num_beta_radial_functions + 1) / 2);
 
         for (int j = 0; j < uspp_.num_beta_radial_functions; j++)
         {
@@ -706,8 +703,7 @@ void Atom_type::read_input(const std::string& fname)
             }
         }
 
-        uspp_.beta_radial_functions.set_dimensions(num_mt_points_, uspp_.num_beta_radial_functions);
-        uspp_.beta_radial_functions.allocate();
+        uspp_.beta_radial_functions = mdarray<double, 2>(num_mt_points_, uspp_.num_beta_radial_functions);
         uspp_.beta_radial_functions.zero();
 
         uspp_.num_beta_radial_points.resize(uspp_.num_beta_radial_functions);
@@ -729,8 +725,7 @@ void Atom_type::read_input(const std::string& fname)
             lo_descriptors_.push_back(lod);
         }
 
-        uspp_.d_mtrx_ion.set_dimensions(uspp_.num_beta_radial_functions, uspp_.num_beta_radial_functions);
-        uspp_.d_mtrx_ion.allocate();
+        uspp_.d_mtrx_ion = mdarray<double_complex, 2>(uspp_.num_beta_radial_functions, uspp_.num_beta_radial_functions);
         uspp_.d_mtrx_ion.zero();
 
         for (int k = 0; k < parser["uspp"]["non_local"]["D"].size(); k++)

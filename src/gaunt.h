@@ -91,8 +91,7 @@ class Gaunt_coefficients
             gaunt_packed_L1_L2_.resize(lmmax3_);
             gaunt_L1_L2<T> g12;
             
-            gaunt_packed_L3_.set_dimensions(lmmax1_, lmmax2_);
-            gaunt_packed_L3_.allocate();
+            gaunt_packed_L3_ = mdarray<std::vector<gaunt_L3<T> >, 2>(lmmax1_, lmmax2_);
             gaunt_L3<T> g3;
 
             for (int l1 = 0; l1 <= lmax1_; l1++) 

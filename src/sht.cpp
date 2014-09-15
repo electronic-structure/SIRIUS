@@ -116,28 +116,22 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
     std::vector<double> y(num_points_);
     std::vector<double> z(num_points_);
 
-    coord_.set_dimensions(3, num_points_);
-    coord_.allocate();
+    coord_ = mdarray<double, 2>(3, num_points_);
 
-    tp_.set_dimensions(2, num_points_);
-    tp_.allocate();
+    tp_ = mdarray<double, 2>(2, num_points_);
 
     w_.resize(num_points_);
 
     if (mesh_type_ == 0) Lebedev_Laikov_sphere(num_points_, &x[0], &y[0], &z[0], &w_[0]);
     if (mesh_type_ == 1) uniform_coverage();
 
-    ylm_backward_.set_dimensions(lmmax_, num_points_);
-    ylm_backward_.allocate();
+    ylm_backward_ = mdarray<double_complex, 2>(lmmax_, num_points_);
 
-    ylm_forward_.set_dimensions(num_points_, lmmax_);
-    ylm_forward_.allocate();
+    ylm_forward_ = mdarray<double_complex, 2>(num_points_, lmmax_);
 
-    rlm_backward_.set_dimensions(lmmax_, num_points_);
-    rlm_backward_.allocate();
+    rlm_backward_ = mdarray<double, 2>(lmmax_, num_points_);
 
-    rlm_forward_.set_dimensions(num_points_, lmmax_);
-    rlm_forward_.allocate();
+    rlm_forward_ = mdarray<double, 2>(num_points_, lmmax_);
 
     for (int itp = 0; itp < num_points_; itp++)
     {

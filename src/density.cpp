@@ -926,7 +926,7 @@ void Density::add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int
                 /* allocate work area array */
                 mdarray<char, 1> work_area(nullptr, fft_gpu->work_area_size());
                 work_area.allocate_on_device();
-                fft_gpu->set_work_area_ptr(work_area.ptr_device());
+                fft_gpu->set_work_area_ptr(work_area.at<gpu>());
                 
                 /* allocate space for plane-wave expansion coefficients */
                 mdarray<double_complex, 2> psi_pw_gpu(nullptr, kp->num_gkvec(), nfft_max); 
@@ -967,20 +967,21 @@ void Density::add_kpoint_contribution_it(K_point* kp, std::vector< std::pair<int
 
                                 cublas_set_vector(kp->num_gkvec(), sizeof(double_complex), 
                                                   &kp->spinor_wave_function(wf_pw_offset, occupied_bands[i + j].first, ispn), 1, 
-                                                  psi_pw_gpu.ptr_device(0, j), 1);
+                                                  psi_pw_gpu.at<gpu>(0, j), 1);
                             }
                             w.copy_to_device();
                             
                             /* set PW coefficients into proper positions inside FFT buffer */
-                            fft_gpu->batch_load(kp->num_gkvec(), fft_index.ptr_device(), psi_pw_gpu.ptr_device(), 
-                                                psi_it_gpu.ptr_device(0, 0, ispn));
+                            fft_gpu->batch_load(kp->num_gkvec(), fft_index.at<gpu>(), psi_pw_gpu.at<gpu>(0, 0), 
+                                                psi_it_gpu.at<gpu>(0, 0, ispn));
 
                             /* execute batch FFT */
-                            fft_gpu->transform(1, psi_it_gpu.ptr_device(0, 0, ispn));
+                            fft_gpu->transform(1, psi_it_gpu.at<gpu>(0, 0, ispn));
                         }
 
                         update_it_density_matrix_gpu(fft_gpu->size(), nfft_max, num_spins, num_mag_dims, 
-                                                     psi_it_gpu.ptr_device(), w.ptr_device(), it_density_matrix_gpu.ptr_device());
+                                                     psi_it_gpu.at<gpu>(), w.at<gpu>(),
+                                                     it_density_matrix_gpu.at<gpu>(0, 0));
                     }
                 }
             }));
@@ -1309,16 +1310,16 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
         generate_d_mtrx_pw_gpu(type->num_atoms(),
                                (int)rl->spl_num_gvec().local_size(),
                                nbf,
-                               atom_pos.ptr_device(),
-                               gvec.ptr_device(),
-                               d_mtrx_packed.ptr_device(),
-                               d_mtrx_pw.ptr_device());
+                               atom_pos.at<gpu>(0, 0),
+                               gvec.at<gpu>(0, 0),
+                               d_mtrx_packed.at<gpu>(0, 0),
+                               d_mtrx_pw.at<gpu>(0, 0));
 
         sum_q_pw_d_mtrx_pw_gpu((int)rl->spl_num_gvec().local_size(), 
                                nbf,
-                               type->uspp().q_pw.ptr_device(),
-                               d_mtrx_pw.ptr_device(),
-                               rho_pw_gpu.ptr_device());
+                               type->uspp().q_pw.at<gpu>(0, 0),
+                               d_mtrx_pw.at<gpu>(0, 0),
+                               rho_pw_gpu.at<gpu>());
     }
 
     rho_pw_gpu.copy_to_host();

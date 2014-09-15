@@ -100,14 +100,11 @@ class Mixer
         {
             spl_size_ = splindex<block>((int)size_, comm_.size(), comm_.rank());
             /* allocate input buffer (local size) */
-            input_buffer_.set_dimensions(spl_size_.local_size());
-            input_buffer_.allocate();
+            input_buffer_ = mdarray<double, 1>(spl_size_.local_size());
             /* allocate output bffer (global size) */
-            output_buffer_.set_dimensions(size_);
-            output_buffer_.allocate();
+            output_buffer_ = mdarray<double, 1>(size_);
             /* allocate storage for previous vectors (local size) */
-            vectors_.set_dimensions(spl_size_.local_size(), max_history_);
-            vectors_.allocate();
+            vectors_ = mdarray<double, 2>(spl_size_.local_size(), max_history_);
         }
 
         virtual ~Mixer()
@@ -216,8 +213,7 @@ class Broyden_mixer: public Mixer
         Broyden_mixer(size_t size__, int max_history__, double beta__, Communicator const& comm__) 
             : Mixer(size__, max_history__, beta__, comm__)
         {
-            residuals_.set_dimensions(spl_size_.local_size(), max_history__);
-            residuals_.allocate();
+            residuals_ = mdarray<double, 2>(spl_size_.local_size(), max_history__);
         }
 
         double mix()

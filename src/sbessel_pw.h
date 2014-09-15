@@ -46,8 +46,7 @@ class sbessel_pw
 
         sbessel_pw(Unit_cell* unit_cell__, int lmax__) : unit_cell_(unit_cell__), lmax_(lmax__)
         {
-            sjl_.set_dimensions(lmax_ + 1, unit_cell_->num_atom_types());
-            sjl_.allocate();
+            sjl_ = mdarray<Spline<T>*, 2>(lmax_ + 1, unit_cell_->num_atom_types());
 
             for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
             {
@@ -142,8 +141,7 @@ class sbessel_approx
         {
             Timer t("sirius::sbessel_approx");
 
-            qnu_.set_dimensions(lmax_ + 1, unit_cell_->num_atom_types());
-            qnu_.allocate();
+            qnu_ = mdarray<std::vector<double>, 2>(lmax_ + 1, unit_cell_->num_atom_types());
 
             #pragma omp parallel for
             for (int l = 0; l <= lmax_; l++)
@@ -168,8 +166,7 @@ class sbessel_approx
         {
             Timer t("sirius::sbessel_approx::approximate");
 
-            coeffs_.set_dimensions(nqnu_max_, q__.size(), lmax_ + 1, unit_cell_->num_atom_types());
-            coeffs_.allocate();
+            coeffs_ = mdarray<double, 4>(nqnu_max_, q__.size(), lmax_ + 1, unit_cell_->num_atom_types());
             
             #pragma omp parallel for
             for (int l = 0; l <= lmax_; l++)

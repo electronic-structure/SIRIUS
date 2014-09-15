@@ -110,8 +110,7 @@ class FFT3D<cpu>
                 grid_limits_[i].first = grid_limits_[i].second - grid_size_[i] + 1;
             }
 
-            fftw_buffer_.set_dimensions(size(), Platform::num_fft_threads());
-            fftw_buffer_.allocate();
+            fftw_buffer_ = mdarray<double_complex, 2>(size(), Platform::num_fft_threads());
 
             plan_backward_.resize(Platform::num_fft_threads());
             plan_forward_.resize(Platform::num_fft_threads());

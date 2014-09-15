@@ -49,8 +49,11 @@ class Smooth_periodic_function
         
         Smooth_periodic_function(T* ptr__, Reciprocal_lattice* reciprocal_lattice__) : reciprocal_lattice_(reciprocal_lattice__)
         {
-            if (domain_t == spatial) data_.set_dimensions(reciprocal_lattice_->fft()->size());
-            data_.set_ptr(ptr__);
+            if (domain_t == spatial)
+            {
+                data_ = mdarray<T, 1>(nullptr, reciprocal_lattice_->fft()->size());
+                data_.set_ptr(ptr__);
+            }
         }
 
         Smooth_periodic_function(Reciprocal_lattice* reciprocal_lattice__) : reciprocal_lattice_(reciprocal_lattice__)
@@ -59,22 +62,20 @@ class Smooth_periodic_function
             {
                 case spectral:
                 {
-                    data_.set_dimensions(reciprocal_lattice_->num_gvec());
+                    data_ = mdarray<T, 1>(reciprocal_lattice_->num_gvec());
                     break;
                 }
                 case spatial:
                 {
-                    data_.set_dimensions(reciprocal_lattice_->fft()->size());
+                    data_ = mdarray<T, 1>(reciprocal_lattice_->fft()->size());
                     break;
                 }
             }
-            data_.allocate();
         }
 
         Smooth_periodic_function(Reciprocal_lattice* reciprocal_lattice__, size_t size__) : reciprocal_lattice_(reciprocal_lattice__)
         {
-            if (domain_t == spatial) data_.set_dimensions(size__);
-            data_.allocate();
+            if (domain_t == spatial) data_ = mdarray<T, 1>(size__);
         }
 
         inline T& operator()(const int64_t idx__)

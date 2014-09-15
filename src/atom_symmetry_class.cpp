@@ -467,23 +467,17 @@ void Atom_symmetry_class::transform_radial_functions(bool ort_lo, bool ort_aw)
 
 void Atom_symmetry_class::initialize()
 {
-    aw_surface_derivatives_.set_dimensions(atom_type_->max_aw_order(), atom_type_->num_aw_descriptors(), 2);
-    aw_surface_derivatives_.allocate();
+    aw_surface_derivatives_ = mdarray<double, 3>(atom_type_->max_aw_order(), atom_type_->num_aw_descriptors(), 2);
 
-    radial_functions_.set_dimensions(atom_type_->num_mt_points(), atom_type_->mt_radial_basis_size(), 2);
-    radial_functions_.allocate();
+    radial_functions_ = mdarray<double, 3>(atom_type_->num_mt_points(), atom_type_->mt_radial_basis_size(), 2);
 
-    h_spherical_integrals_.set_dimensions(atom_type_->mt_radial_basis_size(), 
-                                          atom_type_->mt_radial_basis_size());
-    h_spherical_integrals_.allocate();
+    h_spherical_integrals_ = mdarray<double, 2>(atom_type_->mt_radial_basis_size(), atom_type_->mt_radial_basis_size());
     
-    o_radial_integrals_.set_dimensions(atom_type_->indexr().lmax() + 1, atom_type_->indexr().max_num_rf(), 
-                                       atom_type_->indexr().max_num_rf());
-    o_radial_integrals_.allocate();
+    o_radial_integrals_ = mdarray<double, 3>(atom_type_->indexr().lmax() + 1, atom_type_->indexr().max_num_rf(), 
+                                             atom_type_->indexr().max_num_rf());
     
-    so_radial_integrals_.set_dimensions(atom_type_->indexr().lmax() + 1, atom_type_->indexr().max_num_rf(), 
-                                        atom_type_->indexr().max_num_rf());
-    so_radial_integrals_.allocate();
+    so_radial_integrals_ = mdarray<double, 3>(atom_type_->indexr().lmax() + 1, atom_type_->indexr().max_num_rf(), 
+                                              atom_type_->indexr().max_num_rf());
 
     /* copy descriptors because enu is defferent between atom classes */
     aw_descriptors_.resize(atom_type_->num_aw_descriptors());

@@ -46,15 +46,17 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
 
     #ifdef _GPU_
     /* copy hphi do device */
-    cublas_set_matrix(kp__->num_gkvec_row(), nloc, sizeof(double_complex), &hphi__(0, s0.local_size()), hphi__.ld(), 
-                      hphi__.ptr_device(0, s0.local_size()), hphi__.ld());
+    cuda_copy_to_device(hphi__.at<gpu>(0, s0.local_size()), hphi__.at<cpu>(0, s0.local_size()), 
+                        kp__->num_gkvec_row() * nloc * sizeof(double_complex));
+    //cublas_set_matrix(kp__->num_gkvec_row(), nloc, sizeof(double_complex), hphi__.at<cpu>(0, s0.local_size()), hphi__.ld(), 
+    //                  hphi__.at<gpu>(0, s0.local_size()), hphi__.ld());
     #endif
     
     #if !defined(_GPU_)
     /* set intial ophi */
     memcpy(&ophi__(0, s0.local_size()), &phi__(0, s0.local_size()), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
     #else
-    cuda_copy_device_to_device(ophi__.ptr_device(0, s0.local_size()), phi__.ptr_device(0, s0.local_size()), 
+    cuda_copy_device_to_device(ophi__.at<gpu>(0, s0.local_size()), phi__.at<gpu>(0, s0.local_size()), 
                                kp__->num_gkvec_row() * nloc * sizeof(double_complex));
     #endif
 
@@ -68,7 +70,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
     beta_phi_tmp.allocate_on_device();
 
     /* result of Q or D multiplied by <beta|phi> */
-    mdarray<double_complex, 2> tmp(nullptr, nbf_max, nloc);
+    matrix<double_complex> tmp(nullptr, nbf_max, nloc);
     tmp.allocate_on_device();
 
     mdarray<int, 2> beta_pw_desc(3, atom_blocks.local_size(0));
@@ -99,42 +101,41 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
         beta_pw_desc.copy_to_device();
         atom_pos.copy_to_device();
         
-        /* create beta projectors */
-        #pragma omp parallel
-        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-        {
-            int ia = (int)atom_blocks.global_index(i, iab);
-            auto type = parameters_.unit_cell()->atom(ia)->type();
-            #pragma omp for
-            for (int xi = 0; xi < type->mt_basis_size(); xi++)
-            {
-                for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-                {
-                    kappa__(igk_row, beta_pw_desc(1, i) + xi) = beta_pw_t__(igk_row, beta_pw_desc(2, i) + xi) * 
-                                                                conj(kp__->gkvec_phase_factor(igk_row, ia));
-                }
-            }
-        }
-        kappa__.copy_to_device();
+        ///* create beta projectors */
+        //#pragma omp parallel
+        //for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
+        //{
+        //    int ia = (int)atom_blocks.global_index(i, iab);
+        //    auto type = parameters_.unit_cell()->atom(ia)->type();
+        //    #pragma omp for
+        //    for (int xi = 0; xi < type->mt_basis_size(); xi++)
+        //    {
+        //        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+        //        {
+        //            kappa__(igk_row, beta_pw_desc(1, i) + xi) = beta_pw_t__(igk_row, beta_pw_desc(2, i) + xi) * 
+        //                                                        conj(kp__->gkvec_phase_factor(igk_row, ia));
+        //        }
+        //    }
+        //}
+        //kappa__.copy_to_device();
         
-//        create_beta_pw_gpu_v2((int)atom_blocks.local_size(iab),
-//                              kp__->num_gkvec_row(),
-//                              beta_pw_desc.ptr_device(),
-//                              beta_pw_t__.ptr_device(),
-//                              gkvec_row__.ptr_device(),
-//                              atom_pos.ptr_device(),
-//                              kappa__.ptr_device());
-//
+        create_beta_pw_gpu_v2((int)atom_blocks.local_size(iab),
+                              kp__->num_gkvec_row(),
+                              beta_pw_desc.at<gpu>(),
+                              beta_pw_t__.at<gpu>(),
+                              gkvec_row__.at<gpu>(),
+                              atom_pos.at<gpu>(),
+                              kappa__.at<gpu>());
+
         /* wrapper for <beta|phi> with required dimensions */
-        mdarray<double_complex, 2> beta_phi(beta_phi_tmp.ptr(), nbf_in_block, nloc);
-        beta_phi.set_ptr_device(beta_phi_tmp.ptr_device());
+        matrix<double_complex> beta_phi(beta_phi_tmp.ptr(), beta_phi_tmp.at<gpu>(), nbf_in_block, nloc);
 
         Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_phi", kp__->comm_row());
         /* compute <beta|phi> */
         blas<gpu>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-                        kappa__.ptr_device(), kappa__.ld(), 
-                        phi__.ptr_device(0, s0.local_size()), phi__.ld(), 
-                        beta_phi.ptr_device(), beta_phi.ld());
+                        kappa__.at<gpu>(), kappa__.ld(), 
+                        phi__.at<gpu>(0, s0.local_size()), phi__.ld(), 
+                        beta_phi.at<gpu>(), beta_phi.ld());
 
         // TODO: GPU direct MUST(!!!) work here but it doesn't. Standalone tests work, but 
         // here the allreduce fails with a wrong result and a next crash somewhere in ELPA comm.
@@ -161,8 +162,8 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
             int nbf = beta_pw_desc(0, i);
 
             /* compute D*<beta|phi> */
-            blas<gpu>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed__.ptr_device(packed_mtrx_offset__(ia)), nbf, 
-                            beta_phi.ptr_device(ofs, 0), beta_phi.ld(), tmp.ptr_device(ofs, 0), tmp.ld(), 
+            blas<gpu>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed__.at<gpu>(packed_mtrx_offset__(ia)), nbf, 
+                            beta_phi.at<gpu>(ofs, 0), beta_phi.ld(), tmp.at<gpu>(ofs, 0), tmp.ld(), 
                             Platform::thread_id());
 
         }
@@ -171,8 +172,8 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
         double_complex alpha = complex_one;
         /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
         blas<gpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,
-                        kappa__.ptr_device(), kappa__.ld(), tmp.ptr_device(), tmp.ld(), &alpha, 
-                        hphi__.ptr_device(0, s0.local_size()), hphi__.ld());
+                        kappa__.at<gpu>(), kappa__.ld(), tmp.at<gpu>(), tmp.ld(), &alpha, 
+                        hphi__.at<gpu>(0, s0.local_size()), hphi__.ld());
 
         #pragma omp parallel for
         for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
@@ -184,16 +185,16 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
             int nbf = beta_pw_desc(0, i);
 
             /* compute Q*<beta|phi> */
-            blas<gpu>::gemm(0, 0, nbf, nloc, nbf, q_mtrx_packed__.ptr_device(packed_mtrx_offset__(ia)), nbf,
-                            beta_phi.ptr_device(ofs, 0), beta_phi.ld(), tmp.ptr_device(ofs, 0), tmp.ld(), 
+            blas<gpu>::gemm(0, 0, nbf, nloc, nbf, q_mtrx_packed__.at<gpu>(packed_mtrx_offset__(ia)), nbf,
+                            beta_phi.at<gpu>(ofs, 0), beta_phi.ld(), tmp.at<gpu>(ofs, 0), tmp.ld(), 
                             Platform::thread_id());
         }
         cuda_device_synchronize();
 
         /* compute <G+k|beta> * Q*<beta|phi> and add to ophi */
         blas<gpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,
-                        kappa__.ptr_device(), kappa__.ld(), tmp.ptr_device(), tmp.ld(), &alpha,
-                        ophi__.ptr_device(0, s0.local_size()), ophi__.ld());
+                        kappa__.at<gpu>(), kappa__.ld(), tmp.at<gpu>(), tmp.ld(), &alpha,
+                        ophi__.at<gpu>(0, s0.local_size()), ophi__.ld());
     }
 }
 
@@ -238,8 +239,10 @@ void bcast_column_gpu(K_point* kp__,
     }
     kp__->comm_col().bcast(&m_tmp__(0, 0, icol__ % 2), kp__->num_gkvec_row() * n, icol__);
     #ifdef _GPU_
-    cublas_set_matrix(kp__->num_gkvec_row(), n, sizeof(double_complex), &m_tmp__(0, 0, icol__ % 2), m_tmp__.ld(),
-                      m_tmp__.ptr_device(0, 0, icol__ % 2), m_tmp__.ld());
+    cuda_copy_to_host(m_tmp__.at<cpu>(0, 0, icol__ % 2), m_tmp__.at<gpu>(0, 0, icol__ % 2),
+                      kp__->num_gkvec_row() * n * sizeof(double_complex));
+    //cublas_set_matrix(kp__->num_gkvec_row(), n, sizeof(double_complex), &m_tmp__(0, 0, icol__ % 2), m_tmp__.ld(),
+    //                  m_tmp__.at<gpu>(0, 0, icol__ % 2), m_tmp__.ld());
     #endif
 }
 #endif
@@ -278,11 +281,13 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
         memcpy(&o__(0, i), &o_old__(0, i), s0_row.local_size() * sizeof(double_complex));
     }
 
+    int panel_size = int(kp__->num_gkvec_row() * (s1_col.local_size() - s0_col.local_size()) * sizeof(double_complex));
     #ifdef _GPU_
     /* copy phi to device */
-    cublas_set_matrix(kp__->num_gkvec_row(), (int)(s1_col.local_size() - s0_col.local_size()), sizeof(double_complex),
-                      &phi__(0, s0_col.local_size()), phi__.ld(), 
-                      phi__.ptr_device(0, s0_col.local_size()), phi__.ld());
+    cuda_copy_to_device(phi__.at<gpu>(0, s0_col.local_size()), phi__.at<cpu>(0, s0_col.local_size()), panel_size);
+    //cublas_set_matrix(kp__->num_gkvec_row(), (int)(s1_col.local_size() - s0_col.local_size()), sizeof(double_complex),
+    //                  &phi__(0, s0_col.local_size()), phi__.ld(), 
+    //                  phi__.at<gpu>(0, s0_col.local_size()), phi__.ld());
     #endif
 
     /* apply Hamiltonian and overlap operators to the new basis functions */
@@ -291,12 +296,15 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                                    d_mtrx_packed__, q_mtrx_packed__);
 
     #ifdef _GPU_
-    cublas_get_matrix(kp__->num_gkvec_row(), (int)(s1_col.local_size() - s0_col.local_size()), sizeof(double_complex), 
-                      hphi__.ptr_device(0, s0_col.local_size()), hphi__.ld(),
-                      &hphi__(0, s0_col.local_size()), hphi__.ld());
-    cublas_get_matrix(kp__->num_gkvec_row(), (int)(s1_col.local_size() - s0_col.local_size()), sizeof(double_complex), 
-                      ophi__.ptr_device(0, s0_col.local_size()), ophi__.ld(),
-                      &ophi__(0, s0_col.local_size()), ophi__.ld());
+    cuda_copy_to_host(hphi__.at<cpu>(0, s0_col.local_size()), hphi__.at<gpu>(0, s0_col.local_size()), panel_size);
+    cuda_copy_to_host(ophi__.at<cpu>(0, s0_col.local_size()), ophi__.at<gpu>(0, s0_col.local_size()), panel_size);
+                      
+    //cublas_get_matrix(kp__->num_gkvec_row(), (int)(s1_col.local_size() - s0_col.local_size()), sizeof(double_complex), 
+    //                  hphi__.at<gpu>(0, s0_col.local_size()), hphi__.ld(),
+    //                  &hphi__(0, s0_col.local_size()), hphi__.ld());
+    //cublas_get_matrix(kp__->num_gkvec_row(), (int)(s1_col.local_size() - s0_col.local_size()), sizeof(double_complex), 
+    //                  ophi__.at<gpu>(0, s0_col.local_size()), ophi__.ld(),
+    //                  &ophi__(0, s0_col.local_size()), ophi__.ld());
     #endif
     int max_num_hphi = 0;
     for (int icol = 0; icol < kp__->num_ranks_col(); icol++)
@@ -311,8 +319,8 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
     mdarray<double_complex, 3> o_tmp(num_phi, max_num_hphi, 2);
 
     #ifdef _GPU_
-    hphi_tmp.set_ptr_device(kappa__.ptr_device());
-    ophi_tmp.set_ptr_device(kappa__.ptr_device(0, 2 * max_num_hphi));
+    hphi_tmp.set_ptr_device(kappa__.at<gpu>());
+    ophi_tmp.set_ptr_device(kappa__.at<gpu>(0, 2 * max_num_hphi));
     h_tmp.allocate_on_device();
     o_tmp.allocate_on_device();
     #endif
@@ -425,8 +433,8 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
         {
             //printf("#5 zgemm for column %i\n", icol);
             Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel|zgemm_loc");
-            blas<gpu>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.ptr_device(), phi__.ld(),
-                            hphi_tmp.ptr_device(0, 0, icol % 2), hphi_tmp.ld(), h_tmp.ptr_device(0, 0, icol % 2), h_tmp.ld());
+            blas<gpu>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.at<gpu>(), phi__.ld(),
+                            hphi_tmp.at<gpu>(0, 0, icol % 2), hphi_tmp.ld(), h_tmp.at<gpu>(0, 0, icol % 2), h_tmp.ld());
             h_tmp.copy_to_host();
             lock_h[icol % 2].store(true);
             lock_hphi[icol % 2].store(false);
@@ -438,8 +446,8 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
         {
             Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel|zgemm_loc");
             //printf("#6 zgemm for column %i\n", icol);
-            blas<gpu>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.ptr_device(), phi__.ld(),
-                            ophi_tmp.ptr_device(0, 0, icol % 2), ophi_tmp.ld(), o_tmp.ptr_device(0, 0, icol % 2), o_tmp.ld());
+            blas<gpu>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.at<gpu>(), phi__.ld(),
+                            ophi_tmp.at<gpu>(0, 0, icol % 2), ophi_tmp.ld(), o_tmp.at<gpu>(0, 0, icol % 2), o_tmp.ld());
             o_tmp.copy_to_host();
             lock_o[icol % 2].store(true);
             lock_ophi[icol % 2].store(false);
@@ -514,10 +522,12 @@ void Band::uspp_residuals_gpu_parallel(int N__,
     lock_hpsi_tmp.store(false);
     lock_opsi_tmp.store(false);
 
-    mdarray<double_complex, 2> hpsi_tmp(&kappa__(0, 0), kp__->num_gkvec_row(), spl_num_bands_col.local_size(0));
-    hpsi_tmp.set_ptr_device(kappa__.ptr_device());
-    mdarray<double_complex, 2> opsi_tmp(&kappa__(0, spl_num_bands_col.local_size(0)), kp__->num_gkvec_row(), spl_num_bands_col.local_size(0));
-    opsi_tmp.set_ptr_device(kappa__.ptr_device(0, spl_num_bands_col.local_size(0)));
+    int num_bnd_max = (int)spl_num_bands_col.local_size(0);
+
+    mdarray<double_complex, 2> hpsi_tmp(kappa__.at<cpu>(0, 0), kappa__.at<gpu>(0, 0),
+                                        kp__->num_gkvec_row(), num_bnd_max);
+    mdarray<double_complex, 2> opsi_tmp(kappa__.at<cpu>(0, num_bnd_max), kappa__.at<gpu>(0, num_bnd_max), 
+                                        kp__->num_gkvec_row(), num_bnd_max);
 
     auto get_evec = [kp__, &spl_num_bands_col, &spl_num_bands_row, &evec_t, &evec_tmp, num_phi_loc](int icol) -> void 
     {
@@ -535,7 +545,7 @@ void Band::uspp_residuals_gpu_parallel(int N__,
         }
         kp__->comm_row().allreduce(&evec_tmp(0, 0, icol % 2), num_phi_loc * num_bands_of_col);
         /* send evec to gpu */
-        cuda_copy_to_device(evec_tmp.ptr_device(0, 0, icol % 2), &evec_tmp(0, 0, icol % 2), 
+        cuda_copy_to_device(evec_tmp.at<gpu>(0, 0, icol % 2), &evec_tmp(0, 0, icol % 2), 
                             num_phi_loc * num_bands_of_col * sizeof(double_complex));
     };
 
@@ -558,11 +568,11 @@ void Band::uspp_residuals_gpu_parallel(int N__,
             }
             
             while (!lock_hpsi_tmp.load());
-            kp__->comm_col().reduce(hpsi_tmp.ptr_device(), hpsi__.ptr_device(), kp__->num_gkvec_row() * num_bands_of_col, icol);
+            kp__->comm_col().reduce(hpsi_tmp.at<gpu>(), hpsi__.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
             lock_hpsi_tmp.store(false);
 
             while (!lock_opsi_tmp.load());
-            kp__->comm_col().reduce(opsi_tmp.ptr_device(), opsi__.ptr_device(), kp__->num_gkvec_row() * num_bands_of_col, icol);
+            kp__->comm_col().reduce(opsi_tmp.at<gpu>(), opsi__.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
             lock_opsi_tmp.store(false);
         }
     });
@@ -578,14 +588,14 @@ void Band::uspp_residuals_gpu_parallel(int N__,
         
         while (lock_hpsi_tmp.load());
         blas<gpu>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
-                        hphi__.ptr_device(), hphi__.ld(), evec_tmp.ptr_device(0, 0, rank_col % 2), evec_tmp.ld(), 
-                        hpsi_tmp.ptr_device(), hpsi_tmp.ld());
+                        hphi__.at<gpu>(), hphi__.ld(), evec_tmp.at<gpu>(0, 0, rank_col % 2), evec_tmp.ld(), 
+                        hpsi_tmp.at<gpu>(), hpsi_tmp.ld());
         lock_hpsi_tmp.store(true);
        
         while (lock_opsi_tmp.load());
         blas<gpu>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
-                        ophi__.ptr_device(), ophi__.ld(), evec_tmp.ptr_device(0, 0, rank_col % 2), evec_tmp.ld(), 
-                        opsi_tmp.ptr_device(), opsi_tmp.ld());
+                        ophi__.at<gpu>(), ophi__.ld(), evec_tmp.at<gpu>(0, 0, rank_col % 2), evec_tmp.ld(), 
+                        opsi_tmp.at<gpu>(), opsi_tmp.ld());
         lock_opsi_tmp.store(true);
 
         lock_evec_tmp[rank_col % 2].store(false);
@@ -599,10 +609,10 @@ void Band::uspp_residuals_gpu_parallel(int N__,
     #ifdef _GPU_
     /* copy hpsi to host memory */
     cublas_get_matrix(kp__->num_gkvec_row(), (int)spl_num_bands_col.local_size(), sizeof(double_complex), 
-                      hpsi__.ptr_device(), hpsi__.ld(), hpsi__.ptr(), hpsi__.ld());
+                      hpsi__.at<gpu>(), hpsi__.ld(), hpsi__.ptr(), hpsi__.ld());
     /* copy opsi to host memory */
     cublas_get_matrix(kp__->num_gkvec_row(), (int)spl_num_bands_col.local_size(), sizeof(double_complex), 
-                      opsi__.ptr_device(), opsi__.ld(), opsi__.ptr(), opsi__.ld());
+                      opsi__.at<gpu>(), opsi__.ld(), opsi__.ptr(), opsi__.ld());
     #endif
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)

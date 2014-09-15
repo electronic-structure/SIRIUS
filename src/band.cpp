@@ -1081,24 +1081,24 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp__,
         alm_col.copy_to_device();
 
         blas<gpu>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
-                        alm_row.ptr_device(), alm_row.ld(), alm_col.ptr_device(), alm_col.ld(), &zone, 
-                        o__.ptr_device(), o__.ld()); 
+                        alm_row.at<cpu>(0, 0), alm_row.ld(), alm_col.at<gpu>(0, 0), alm_col.ld(), &zone, 
+                        o__.at<gpu>(0, 0), o__.ld()); 
 
         apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col, halm_col);
         halm_col.copy_to_device();
 
         blas<gpu>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
-                        alm_row.ptr_device(), alm_row.ld(), halm_col.ptr_device(), halm_col.ld(), &zone,
-                        h__.ptr_device(), h__.ld());
+                        alm_row.at<gpu>(0, 0), alm_row.ld(), halm_col.at<gpu>(0, 0), halm_col.ld(), &zone,
+                        h__.at<gpu>(0, 0), h__.ld());
 
         /* setup apw-lo and lo-apw blocks */
         set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h__.data(), o__.data());
     }
 
-    cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), h__.ptr_device(), h__.ld(), 
+    cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), h__.at<gpu>(0, 0), h__.ld(), 
                       h__.ptr(), h__.ld());
     
-    cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), o__.ptr_device(), o__.ld(), 
+    cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), o__.at<gpu>(0, 0), o__.ld(), 
                       o__.ptr(), o__.ld());
     
     /* add interstitial contributon */
@@ -1382,8 +1382,8 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
         Utils::check_hermitian("o", o.data());
     }
 
-    sirius_io::hdf5_write_matrix("h.h5", h.data());
-    sirius_io::hdf5_write_matrix("o.h5", o.data());
+    //sirius_io::hdf5_write_matrix("h.h5", h.data());
+    //sirius_io::hdf5_write_matrix("o.h5", o.data());
     
     //Utils::write_matrix("h.txt", true, h);
     //Utils::write_matrix("o.txt", true, o);
@@ -1773,7 +1773,8 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     {
         hpsi_panel[i] = new dmatrix<double_complex>(fvsz, parameters_.num_fv_states(), kp->blacs_grid());
         // change data distribution of hpsi to panels
-        hpsi_panel[i]->scatter(hpsi.submatrix(i));
+        auto sm = hpsi.submatrix(i);
+        hpsi_panel[i]->scatter(sm);
     }
     hpsi.deallocate(); // we don't need full vectors anymore
 

@@ -64,8 +64,7 @@ class Spheric_function
               angular_domain_idx_(1),
               radial_domain_idx_(0)
         {
-            data_.set_dimensions(radial_grid_.num_points(), angular_domain_size_);
-            data_.allocate();
+            data_ = mdarray<T, 2>(radial_grid_.num_points(), angular_domain_size_);
         }
         
         Spheric_function(int angular_domain_size__, Radial_grid& radial_grid__) 
@@ -74,8 +73,7 @@ class Spheric_function
               angular_domain_idx_(0),
               radial_domain_idx_(1)
         {
-            data_.set_dimensions(angular_domain_size_, radial_grid_.num_points());
-            data_.allocate();
+            data_ = mdarray<T, 2>(angular_domain_size_, radial_grid_.num_points());
         }
 
         Spheric_function(T* ptr, int angular_domain_size__, Radial_grid& radial_grid__) 
@@ -84,8 +82,7 @@ class Spheric_function
               angular_domain_idx_(0),
               radial_domain_idx_(1)
         {
-            data_.set_dimensions(angular_domain_size_, radial_grid_.num_points());
-            data_.set_ptr(ptr);
+            data_ = mdarray<T, 2>(ptr, angular_domain_size_, radial_grid_.num_points());
         }
 
         //== Spheric_function(Spheric_function<T>&& src) 

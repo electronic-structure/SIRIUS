@@ -37,9 +37,8 @@ Periodic_function<T>::Periodic_function(Global& parameters_,
 {
     if (unit_cell_->full_potential())
     {
-        f_mt_.set_dimensions(angular_domain_size_, unit_cell_->max_num_mt_points(), unit_cell_->num_atoms());
-        f_mt_local_.set_dimensions(unit_cell_->spl_num_atoms().local_size());
-        f_mt_local_.allocate();
+        f_mt_.init_dimensions({(size_t)angular_domain_size_, (size_t)unit_cell_->max_num_mt_points(), (size_t)unit_cell_->num_atoms()});
+        f_mt_local_ = mdarray<Spheric_function<spectral, T>, 1>(unit_cell_->spl_num_atoms().local_size());
         for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++)
         {
             int ia = unit_cell_->spl_num_atoms(ialoc);
@@ -47,11 +46,7 @@ Periodic_function<T>::Periodic_function(Global& parameters_,
         }
     }
     
-    f_it_.set_dimensions(fft_->size());
-    f_it_local_.set_dimensions(fft_->local_size());
-
-    f_pw_.set_dimensions(num_gvec_);
-    f_pw_.allocate();
+    f_pw_ = mdarray<double_complex, 1>(num_gvec_);
 }
 
 template <typename T>
@@ -64,13 +59,14 @@ void Periodic_function<T>::allocate(bool allocate_global_mt, bool allocate_globa
 {
     if (allocate_global_it)
     {
-        f_it_.allocate();
+        f_it_ = mdarray<T, 1>(fft_->size());
+        f_it_local_ = mdarray<T, 1>(nullptr, fft_->local_size());
         set_local_it_ptr();
     }
     else
     {   
         if (num_gvec_) error_global(__FILE__, __LINE__, "Function requires global array for interstitial storage");
-        f_it_local_.allocate();
+        f_it_local_ = mdarray<T, 1>(fft_->local_size());
     }
 
     if (unit_cell_->full_potential())

@@ -107,13 +107,11 @@ class radial_functions_index
 
             for (int l = 0; l <= lmax_; l++) max_num_rf_ = std::max(max_num_rf_, num_rf_[l]);
 
-            index_by_l_order_.set_dimensions(lmax_ + 1, max_num_rf_);
-            index_by_l_order_.allocate();
+            index_by_l_order_ = mdarray<int, 2>(lmax_ + 1, max_num_rf_);
 
             if (lo_descriptors.size())
             {
-                index_by_idxlo_.set_dimensions((int)lo_descriptors.size());
-                index_by_idxlo_.allocate();
+                index_by_idxlo_ = mdarray<int, 1>(lo_descriptors.size());
             }
 
             for (int i = 0; i < (int)radial_function_index_descriptors_.size(); i++)
@@ -204,8 +202,7 @@ class basis_functions_index
         {
             basis_function_index_descriptors_.clear();
 
-            index_by_idxrf_.set_dimensions(indexr.size());
-            index_by_idxrf_.allocate();
+            index_by_idxrf_ = mdarray<int, 1>(indexr.size());
 
             for (int idxrf = 0; idxrf < indexr.size(); idxrf++)
             {
@@ -219,8 +216,7 @@ class basis_functions_index
                     basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, m, order, idxlo, idxrf));
             }
 
-            index_by_lm_order_.set_dimensions(Utils::lmmax(indexr.lmax()), indexr.max_num_rf());
-            index_by_lm_order_.allocate();
+            index_by_lm_order_ = mdarray<int, 2>(Utils::lmmax(indexr.lmax()), indexr.max_num_rf());
 
             for (int i = 0; i < (int)basis_function_index_descriptors_.size(); i++)
             {

@@ -60,27 +60,22 @@ void Atom::init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_
     {
         int lmmax = Utils::lmmax(lmax_pot_);
 
-        h_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size());
-        h_radial_integrals_.allocate();
+        h_radial_integrals_ = mdarray<double, 3>(lmmax, type()->indexr().size(), type()->indexr().size());
         
-        veff_.set_dimensions(lmmax, type()->num_mt_points());
+        veff_ = mdarray<double, 2>(nullptr, lmmax, type()->num_mt_points());
         
-        b_radial_integrals_.set_dimensions(lmmax, type()->indexr().size(), type()->indexr().size(), num_mag_dims_);
-        b_radial_integrals_.allocate();
+        b_radial_integrals_ = mdarray<double, 4>(lmmax, type()->indexr().size(), type()->indexr().size(), num_mag_dims_);
         
-        for (int j = 0; j < 3; j++) beff_[j].set_dimensions(lmmax, type()->num_mt_points());
+        for (int j = 0; j < 3; j++) beff_[j] = mdarray<double, 2>(nullptr, lmmax, type()->num_mt_points());
 
-        occupation_matrix_.set_dimensions(16, 16, 2, 2);
-        occupation_matrix_.allocate();
+        occupation_matrix_ = mdarray<double_complex, 4>(16, 16, 2, 2);
         
-        uj_correction_matrix_.set_dimensions(16, 16, 2, 2);
-        uj_correction_matrix_.allocate();
+        uj_correction_matrix_ = mdarray<double_complex, 4>(16, 16, 2, 2);
     }
 
     if (type()->esm_type() == ultrasoft_pseudopotential)
     {
-        d_mtrx_.set_dimensions(type()->mt_lo_basis_size(), type()->mt_lo_basis_size());
-        d_mtrx_.allocate();
+        d_mtrx_ = mdarray<double_complex, 2>(type()->mt_lo_basis_size(), type()->mt_lo_basis_size());
     }
 }
 

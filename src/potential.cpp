@@ -91,8 +91,7 @@ Potential::Potential(Global& parameters__) : parameters_(parameters__), pseudo_d
         generate_local_potential();
     }
 
-    vh_el_.set_dimensions(parameters_.unit_cell()->num_atoms());
-    vh_el_.allocate();
+    vh_el_ = mdarray<double, 1>(parameters_.unit_cell()->num_atoms());
 
     update();
 }
@@ -113,8 +112,8 @@ void Potential::update()
     if (parameters_.esm_type() == full_potential_lapwlo)
     {
         /* compute values of spherical Bessel functions at MT boundary */
-        sbessel_mt_.set_dimensions(lmax_ + pseudo_density_order + 2, parameters_.unit_cell()->num_atom_types(), 
-                                   parameters_.reciprocal_lattice()->num_gvec_shells_inner());
+        sbessel_mt_ = mdarray<double, 3>(lmax_ + pseudo_density_order + 2, parameters_.unit_cell()->num_atom_types(), 
+                                         parameters_.reciprocal_lattice()->num_gvec_shells_inner());
         sbessel_mt_.allocate();
 
         for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
@@ -135,8 +134,8 @@ void Potential::update()
          * and use relation between Bessel and spherical Bessel functions: 
          * Subscript[j, n](z)=Sqrt[\[Pi]/2]/Sqrt[z]Subscript[J, n+1/2](z) 
          */
-        sbessel_mom_.set_dimensions(parameters_.lmax_rho() + 1, parameters_.unit_cell()->num_atom_types(), 
-                                    parameters_.reciprocal_lattice()->num_gvec_shells_inner());
+        sbessel_mom_ = mdarray<double, 3>(parameters_.lmax_rho() + 1, parameters_.unit_cell()->num_atom_types(), 
+                                          parameters_.reciprocal_lattice()->num_gvec_shells_inner());
         sbessel_mom_.allocate();
         sbessel_mom_.zero();
 
@@ -157,8 +156,7 @@ void Potential::update()
          *
          * use Gamma[1/2 + p] = (2p - 1)!!/2^p Sqrt[Pi]
          */
-        gamma_factors_R_.set_dimensions(parameters_.lmax_rho() + 1, parameters_.unit_cell()->num_atom_types());
-        gamma_factors_R_.allocate();
+        gamma_factors_R_ = mdarray<double, 2>(parameters_.lmax_rho() + 1, parameters_.unit_cell()->num_atom_types());
         for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
         {
             for (int l = 0; l <= parameters_.lmax_rho(); l++)
@@ -1941,14 +1939,14 @@ void Potential::generate_d_mtrx_gpu()
 
             compute_d_mtrx_valence_gpu((int)rl->spl_num_gvec().local_size(), 
                                        nbf * (nbf + 1) / 2, 
-                                       veff_gpu.ptr_device(), 
-                                       gvec.ptr_device(), 
+                                       veff_gpu.at<gpu>(), 
+                                       gvec.at<gpu>(0, 0), 
                                        apos[0], 
                                        apos[1], 
                                        apos[2], 
-                                       vtmp_gpu.ptr_device(),
-                                       atom_type->uspp().q_pw.ptr_device(),
-                                       d_mtrx_gpu.ptr_device(), 
+                                       vtmp_gpu.at<gpu>(),
+                                       atom_type->uspp().q_pw.at<gpu>(0, 0),
+                                       d_mtrx_gpu.at<gpu>(), 
                                        thread_id);
                                        
             d_mtrx_gpu.async_copy_to_host(thread_id);

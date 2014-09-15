@@ -116,8 +116,7 @@ void Reciprocal_lattice::init(int lmax)
     t1.stop();
 
     // create sorted list of G-vectors
-    gvec_.set_dimensions(3, fft_->size());
-    gvec_.allocate();
+    gvec_ = mdarray<int, 2>(3, fft_->size());
 
     // find number of G-vectors within the cutoff
     num_gvec_ = 0;
@@ -128,9 +127,9 @@ void Reciprocal_lattice::init(int lmax)
         if (gvec_tmp_length[i].first <= pw_cutoff_) num_gvec_++;
     }
     
-    index_by_gvec_.set_dimensions(mdarray_index_descriptor(fft_->grid_limits(0).first, fft_->grid_limits(0).second),
-                                  mdarray_index_descriptor(fft_->grid_limits(1).first, fft_->grid_limits(1).second),
-                                  mdarray_index_descriptor(fft_->grid_limits(2).first, fft_->grid_limits(2).second));
+    index_by_gvec_ = mdarray<int, 3>(mdarray_index_descriptor(fft_->grid_limits(0).first, fft_->grid_limits(0).second),
+                                     mdarray_index_descriptor(fft_->grid_limits(1).first, fft_->grid_limits(1).second),
+                                     mdarray_index_descriptor(fft_->grid_limits(2).first, fft_->grid_limits(2).second));
     index_by_gvec_.allocate();
     
     fft_index_.resize(fft_->size());
@@ -162,8 +161,7 @@ void Reciprocal_lattice::init(int lmax)
     if (lmax >= 0)
     {
         // precompute spherical harmonics of G-vectors 
-        gvec_ylm_.set_dimensions(Utils::lmmax(lmax), spl_num_gvec_.local_size());
-        gvec_ylm_.allocate();
+        gvec_ylm_ = mdarray<double_complex, 2>(Utils::lmmax(lmax), spl_num_gvec_.local_size());
         
         Timer t2("sirius::Reciprocal_lattice::init|ylm_G");
         for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
@@ -385,8 +383,7 @@ void Reciprocal_lattice::generate_q_pw(int lmax, mdarray<double, 4>& qri)
 
         atom_type->uspp().q_mtrx.zero();
         
-        atom_type->uspp().q_pw.set_dimensions(spl_num_gvec_.local_size(), nbf * (nbf + 1) / 2);
-        atom_type->uspp().q_pw.allocate();
+        atom_type->uspp().q_pw = mdarray<double_complex, 2>(spl_num_gvec_.local_size(), nbf * (nbf + 1) / 2);
 
         for (int xi2 = 0; xi2 < nbf; xi2++)
         {
