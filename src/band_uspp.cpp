@@ -606,13 +606,13 @@ void Band::apply_h_local_slice(K_point* kp__,
                 work_area.allocate_on_device();
                 fft_gpu->set_work_area_ptr(work_area.at<gpu>());
                 
-                /* allocate space for plane-wave expansion coefficients */
-                mdarray<double_complex, 2> phi_pw_gpu(nullptr, kp__->num_gkvec(), fft_gpu->num_fft()); 
-                phi_pw_gpu.allocate_on_device();
+                //== /* allocate space for plane-wave expansion coefficients */
+                //== mdarray<double_complex, 2> phi_pw_gpu(nullptr, kp__->num_gkvec(), fft_gpu->num_fft()); 
+                //== phi_pw_gpu.allocate_on_device();
                 
                 /* allocate space for FFT buffers */
-                mdarray<double_complex, 2> phi_gpu(nullptr, fft_gpu->size(), fft_gpu->num_fft()); 
-                phi_gpu.allocate_on_device();
+                matrix<double_complex> fft_buf(nullptr, fft_gpu->size(), fft_gpu->num_fft()); 
+                fft_buf.allocate_on_device();
                 
                 mdarray<double, 1> veff_gpu(&effective_potential__[0], fft_gpu->size());
                 veff_gpu.allocate_on_device();
@@ -642,31 +642,36 @@ void Band::apply_h_local_slice(K_point* kp__,
 
                     if (!done)
                     {
+                        int size_of_panel = int(kp__->num_gkvec() * fft_gpu->num_fft() * sizeof(double_complex));
+
                         /* copy phi to GPU */
-                        cublas_set_matrix(kp__->num_gkvec(), fft_gpu->num_fft(), sizeof(double_complex), 
-                                          phi__.at<cpu>(0, i), phi__.ld(), phi_pw_gpu.at<gpu>(), phi_pw_gpu.ld());
+                        //cublas_set_matrix(kp__->num_gkvec(), fft_gpu->num_fft(), sizeof(double_complex), 
+                        //                  phi__.at<cpu>(0, i), phi__.ld(), phi_pw_gpu.at<gpu>(), phi_pw_gpu.ld());
+                        
+                        cuda_copy_to_device(phi__.at<gpu>(0, i), phi__.at<cpu>(0, i), size_of_panel);
+
+                        cuda_copy_device_to_device(hphi__.at<gpu>(0, i), phi__.at<gpu>(0, i), size_of_panel);
 
                         /* set PW coefficients into proper positions inside FFT buffer */
-                        fft_gpu->batch_load(kp__->num_gkvec(), fft_index.at<gpu>(), phi_pw_gpu.at<gpu>(), 
-                                            phi_gpu.at<gpu>());
+                        fft_gpu->batch_load(kp__->num_gkvec(), fft_index.at<gpu>(), phi__.at<gpu>(0, i), fft_buf.at<gpu>());
 
                         /* phi(G) *= Ekin(G) */
-                        scale_matrix_rows_gpu(kp__->num_gkvec(), fft_gpu->num_fft(), phi_pw_gpu.at<gpu>(),
+                        scale_matrix_rows_gpu(kp__->num_gkvec(), fft_gpu->num_fft(), hphi__.at<gpu>(0, i),
                                               pw_ekin_gpu.at<gpu>());
                         /* execute batch FFT */
-                        fft_gpu->transform(1, phi_gpu.at<gpu>());
+                        fft_gpu->transform(1, fft_buf.at<gpu>());
                         /* multimply by potential */
-                        scale_matrix_rows_gpu(fft_gpu->size(), fft_gpu->num_fft(), phi_gpu.at<gpu>(), 
-                                              veff_gpu.at<gpu>());
+                        scale_matrix_rows_gpu(fft_gpu->size(), fft_gpu->num_fft(), fft_buf.at<gpu>(), veff_gpu.at<gpu>());
                         /* transform back */
-                        fft_gpu->transform(-1, phi_gpu.at<gpu>());
+                        fft_gpu->transform(-1, fft_buf.at<gpu>());
                         
                         /* phi(G) += fft_buffer(G) */
-                        fft_gpu->batch_unload(kp__->num_gkvec(), fft_index.at<gpu>(), phi_gpu.at<gpu>(),
-                                              phi_pw_gpu.at<gpu>(), 1.0);
+                        fft_gpu->batch_unload(kp__->num_gkvec(), fft_index.at<gpu>(), fft_buf.at<gpu>(),
+                                              hphi__.at<gpu>(0, i), 1.0);
                         
-                        cublas_get_matrix(kp__->num_gkvec(), fft_gpu->num_fft(), sizeof(double_complex), 
-                                          phi_pw_gpu.at<gpu>(), phi_pw_gpu.ld(), &hphi__(0, i), hphi__.ld());
+                        //cublas_get_matrix(kp__->num_gkvec(), fft_gpu->num_fft(), sizeof(double_complex), 
+                        //                  phi_pw_gpu.at<gpu>(), phi_pw_gpu.ld(), &hphi__(0, i), hphi__.ld());
+                        cuda_copy_to_host(hphi__.at<cpu>(0, i), hphi__.at<gpu>(0, i), size_of_panel);
                     }
                 }
             }));
