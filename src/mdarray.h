@@ -30,9 +30,11 @@
 #include <atomic>
 #include <vector>
 #include <cstring>
+#include <initializer_list>
 #ifdef _GPU_
 #include "gpu_interface.h"
 #endif
+#include "typedefs.h"
 
 /// Index descriptor of mdarray.
 class mdarray_index_descriptor
@@ -142,7 +144,7 @@ struct mdarray_deleter
 };
 
 /// Base class of multidimensional array.
-template <typename T, int ND> 
+template <typename T, int N> 
 class mdarray_base
 {
     protected:
@@ -164,10 +166,10 @@ class mdarray_base
         #endif
         
         /// Array dimensions.
-        mdarray_index_descriptor dims_[ND];
+        mdarray_index_descriptor dims_[N];
         
         /// List of offsets to compute the element location by dimension indices. 
-        int64_t offsets_[ND];
+        int64_t offsets_[N];
         
     public:
         
@@ -193,16 +195,16 @@ class mdarray_base
         }
 
         /// Copy constructor is forbidden
-        mdarray_base(mdarray_base<T, ND> const& src) = delete;
+        mdarray_base(mdarray_base<T, N> const& src) = delete;
         
         /// Assignment operator is forbidden
-        mdarray_base<T, ND>& operator=(mdarray_base<T, ND> const& src) = delete;
+        mdarray_base<T, N>& operator=(mdarray_base<T, N> const& src) = delete;
         
         /// Move constructor
-        mdarray_base(mdarray_base<T, ND>&& src) : unique_ptr_(std::move(src.unique_ptr_))
+        mdarray_base(mdarray_base<T, N>&& src) : unique_ptr_(std::move(src.unique_ptr_))
         {
             ptr_ = src.ptr_;
-            for (int i = 0; i < ND; i++)
+            for (int i = 0; i < N; i++)
             {
                 dims_[i] = src.dims_[i];
                 offsets_[i] = src.offsets_[i];
@@ -210,13 +212,13 @@ class mdarray_base
         }
 
         /// Move assigment operator
-        inline mdarray_base<T, ND>& operator=(mdarray_base<T, ND>&& src)
+        inline mdarray_base<T, N>& operator=(mdarray_base<T, N>&& src)
         {
             if (this != &src)
             {
                 unique_ptr_ = std::move(src.unique_ptr_);
                 ptr_ = src.ptr_;
-                for (int i = 0; i < ND; i++)
+                for (int i = 0; i < N; i++)
                 {
                     dims_[i] = src.dims_[i];
                     offsets_[i] = src.offsets_[i];
@@ -225,15 +227,32 @@ class mdarray_base
             return *this;
         }
 
-        void init_dimensions(std::vector<mdarray_index_descriptor> const& vd)
+        //== void init_dimensions(std::vector<mdarray_index_descriptor> const& vd)
+        //== {
+        //==     assert(vd.size() == N);
+        //==     
+        //==     for (int i = 0; i < N; i++) dims_[i] = vd[i];
+        //==     
+        //==     offsets_[0] = -dims_[0].begin();
+        //==     size_t n = 1;
+        //==     for (int i = 1; i < N; i++) 
+        //==     {
+        //==         n *= dims_[i - 1].size();
+        //==         offsets_[i] = n;
+        //==         offsets_[0] -= offsets_[i] * dims_[i].begin();
+        //==     }
+        //== }
+
+        void init_dimensions(std::initializer_list<mdarray_index_descriptor> args)
         {
-            assert(vd.size() == ND);
-            
-            for (int i = 0; i < ND; i++) dims_[i] = vd[i];
+            assert(args.size() == N);
+
+            int i = 0;
+            for (auto d: args) dims_[i++] = d;
             
             offsets_[0] = -dims_[0].begin();
             size_t n = 1;
-            for (int i = 1; i < ND; i++) 
+            for (int i = 1; i < N; i++) 
             {
                 n *= dims_[i - 1].size();
                 offsets_[i] = n;
@@ -246,7 +265,7 @@ class mdarray_base
         {
             size_t size_ = 1;
 
-            for (int i = 0; i < ND; i++) size_ *= dims_[i].size();
+            for (int i = 0; i < N; i++) size_ *= dims_[i].size();
 
             return size_;
         }
@@ -254,7 +273,7 @@ class mdarray_base
         /// Return size of particular dimension.
         inline size_t size(int i) const
         {
-           assert(i < ND);
+           assert(i < N);
            return dims_[i].size();
         }
         
@@ -334,9 +353,9 @@ class mdarray_base
         }
         
         /// Copy the content of the array to dest
-        void operator>>(mdarray_base<T, ND>& dest__)
+        void operator>>(mdarray_base<T, N>& dest__)
         {
-            for (int i = 0; i < ND; i++) 
+            for (int i = 0; i < N; i++) 
             {
                 if (dest__.dims_[i].begin() != dims_[i].begin() || dest__.dims_[i].end() != dims_[i].end())
                 {
@@ -429,14 +448,14 @@ class mdarray_base
 };
 
 /// Muldidimensional array implementation.
-template <typename T, int ND> 
-class mdarray : public mdarray_base<T, ND>
+template <typename T, int N> 
+class mdarray : public mdarray_base<T, N>
 {
 };
 
 // 1d specialization of multidimensional array.
 template <typename T> 
-class mdarray<T, 1> : public mdarray_base<T, 1> 
+class mdarray<T, 1>: public mdarray_base<T, 1> 
 {
     public:
   
@@ -444,26 +463,19 @@ class mdarray<T, 1> : public mdarray_base<T, 1>
         {
         }
 
-        mdarray(T* data_ptr, const mdarray_index_descriptor& d0)
+        mdarray(T* ptr__, mdarray_index_descriptor const& d0)
         {
-            set_dimensions(d0);
-            this->set_ptr(data_ptr);
+            this->init_dimensions({d0});
+            this->set_ptr(ptr__);
         }
         
-        mdarray(const mdarray_index_descriptor& d0)
+        mdarray(mdarray_index_descriptor const& d0)
         {
-            set_dimensions(d0);
+            this->init_dimensions({d0});
             this->allocate();
         }
 
-        void set_dimensions(const mdarray_index_descriptor& d0)
-        {
-            std::vector<mdarray_index_descriptor> vd;
-            vd.push_back(d0);
-            this->init_dimensions(vd);
-        }
-    
-        inline T& operator()(const int64_t i0) 
+        inline T& operator()(int64_t const i0) 
         {
             assert(i0 >= this->dims_[0].begin() && i0 <= this->dims_[0].end());
             assert(this->ptr_ != nullptr);
@@ -472,25 +484,62 @@ class mdarray<T, 1> : public mdarray_base<T, 1>
             return this->ptr_[i];
         }
 
-        #ifdef _GPU_
-        inline T* ptr_device()
+        template <processing_unit_t pu>
+        inline T* at()
         {
-            return this->ptr_device_;
+            switch (pu)
+            {
+                case cpu:
+                {
+                    assert(this->ptr_ != nullptr);
+                    return this->ptr_;
+                }
+                case gpu:
+                {
+                    #ifdef _GPU_
+                    assert(this->ptr_device_ != nullptr);
+                    return this->ptr_device_;
+                    #else
+                    printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
+                    exit(0);
+                    #endif
+                }
+            }
+            return nullptr;
         }
 
-        inline T* ptr_device(const int64_t i0)
+        template <processing_unit_t pu>
+        inline T* at(int64_t const i0)
         {
             assert(i0 >= this->dims_[0].begin() && i0 <= this->dims_[0].end());
-            assert(this->ptr_device_ != nullptr);
-            
+
             int64_t i = this->offsets_[0] + i0;
-            return &this->ptr_device_[i];
+
+            switch (pu)
+            {
+                case cpu:
+                {
+                    assert(this->ptr_ != nullptr);
+                    return &this->ptr_[i];
+                }
+                case gpu:
+                {
+                    #ifdef _GPU_
+                    assert(this->ptr_device_ != nullptr);
+                    return &this->ptr_device_[i];
+                    #else
+                    printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
+                    exit(0);
+                    #endif
+                }
+            }
+            return nullptr;
         }
-        #endif
 };
 
 // 2d specialization
-template <typename T> class mdarray<T, 2> : public mdarray_base<T, 2> 
+template <typename T> 
+class mdarray<T, 2>: public mdarray_base<T, 2> 
 {
     public:
   
@@ -498,24 +547,80 @@ template <typename T> class mdarray<T, 2> : public mdarray_base<T, 2>
         {
         }
 
-        mdarray(T* data_ptr, const mdarray_index_descriptor& d0, const mdarray_index_descriptor& d1)
+        mdarray(T* data_ptr, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
         {
             set_dimensions(d0, d1);
             this->set_ptr(data_ptr);
         }
+
+        #ifdef _GPU_
+        mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
+        {
+            set_dimensions(d0, d1);
+            this->set_ptr(ptr__);
+            this->set_ptr_device(ptr_device__);
+        }
+        #endif
         
-        mdarray(const mdarray_index_descriptor& d0, const mdarray_index_descriptor& d1)
+        mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
         {
             set_dimensions(d0, d1);
             this->allocate();
         }
         
-        void set_dimensions(const mdarray_index_descriptor& d0, const mdarray_index_descriptor& d1)
+        void set_dimensions(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
         {
-            std::vector<mdarray_index_descriptor> vd;
-            vd.push_back(d0);
-            vd.push_back(d1);
-            this->init_dimensions(vd);
+            //std::vector<mdarray_index_descriptor> vd;
+            //vd.push_back(d0);
+            //vd.push_back(d1);
+            //this->init_dimensions(vd);
+            this->init_dimensions({d0, d1});
+        }
+        template <processing_unit_t pu>
+        inline T* at()
+        {
+            if (pu == cpu)
+            {
+                assert(this->ptr_ != nullptr);
+                return this->ptr_;
+            }
+            #ifdef _GPU_
+            else if (pu == gpu)
+            {
+                assert(this->ptr_device_ != nullptr);
+                return this->ptr_device_;
+            }
+            #endif
+            else
+            {
+                return nullptr;
+            }
+        }
+        
+        template <processing_unit_t pu>
+        inline T* at(int64_t const i0, int64_t const i1)
+        {
+            assert(i0 >= this->dims_[0].begin() && i0 <= this->dims_[0].end());
+            assert(i1 >= this->dims_[1].begin() && i1 <= this->dims_[1].end());
+
+            int64_t i = this->offsets_[0] + i0 + i1 * this->offsets_[1];
+
+            if (pu == cpu)
+            {
+                assert(this->ptr_ != nullptr);
+                return &this->ptr_[i];
+            }
+            #ifdef _GPU_
+            else if (pu == gpu)
+            {
+                assert(this->ptr_device_ != nullptr);
+                return &this->ptr_device_[i];
+            }
+            #endif
+            else
+            {
+                return nullptr;
+            }
         }
     
         inline T& operator()(const int64_t i0, const int64_t i1) 
@@ -529,20 +634,34 @@ template <typename T> class mdarray<T, 2> : public mdarray_base<T, 2>
         }
     
         #ifdef _GPU_
-        inline T* ptr_device()
-        {
-            return this->ptr_device_;
-        }
+        //==inline T* ptr_device()
+        //=={
+        //==    return this->ptr_device_;
+        //==}
 
-        inline T* ptr_device(const int64_t i0, const int64_t i1) 
-        {
-            assert(i0 >= this->dims_[0].begin() && i0 <= this->dims_[0].end());
-            assert(i1 >= this->dims_[1].begin() && i1 <= this->dims_[1].end());
-            assert(this->ptr_device_ != nullptr);
-            
-            int64_t i = this->offsets_[0] + i0 + i1 * this->offsets_[1];
-            return &this->ptr_device_[i];
-        }
+        //==inline T* ptr_device(const int64_t i0, const int64_t i1) 
+        //=={
+        //==    assert(i0 >= this->dims_[0].begin() && i0 <= this->dims_[0].end());
+        //==    assert(i1 >= this->dims_[1].begin() && i1 <= this->dims_[1].end());
+        //==    assert(this->ptr_device_ != nullptr);
+        //==    
+        //==    int64_t i = this->offsets_[0] + i0 + i1 * this->offsets_[1];
+        //==    return &this->ptr_device_[i];
+        //==}
+
+        //== inline void copy_to_device() 
+        //== {
+        //==     assert(this->ptr_ != nullptr);
+        //==     assert(this->ptr_device_ != nullptr);
+
+        //==     cuda_copy_to_device(this->ptr_device_, this->ptr_, this->size() * sizeof(T));
+        //== }
+
+        //== inline void copy_to_device(int irow, int icol, int nrow, int ncol)
+        //== {
+        //==     cublas_set_matrix(nrow, ncol, sizeof(T), this->at<cpu>(irow, icol), this->ld(), 
+        //==                       this->at<gpu>(irow, icol), this->ld());
+        //== }
         #endif
 };
 
@@ -550,7 +669,8 @@ template <typename T> class mdarray<T, 2> : public mdarray_base<T, 2>
 template <typename T> using matrix = mdarray<T, 2>;
 
 // 3d specialization
-template <typename T> class mdarray<T, 3> : public mdarray_base<T, 3> 
+template <typename T> 
+class mdarray<T, 3>: public mdarray_base<T, 3> 
 {
     private:
 
@@ -576,11 +696,12 @@ template <typename T> class mdarray<T, 3> : public mdarray_base<T, 3>
         
         void set_dimensions(const mdarray_index_descriptor& d0, const mdarray_index_descriptor& d1, const mdarray_index_descriptor& d2)
         {
-            std::vector<mdarray_index_descriptor> vd;
-            vd.push_back(d0);
-            vd.push_back(d1);
-            vd.push_back(d2);
-            this->init_dimensions(vd);
+            //std::vector<mdarray_index_descriptor> vd;
+            //vd.push_back(d0);
+            //vd.push_back(d1);
+            //vd.push_back(d2);
+            //this->init_dimensions(vd);
+            this->init_dimensions({d0, d1, d2});
         }
     
         inline T& operator()(const int64_t i0, const int64_t i1, const int64_t i2) 
@@ -621,7 +742,8 @@ template <typename T> class mdarray<T, 3> : public mdarray_base<T, 3>
 };
 
 // 4d specialization
-template <typename T> class mdarray<T, 4> : public mdarray_base<T, 4> 
+template <typename T> 
+class mdarray<T, 4>: public mdarray_base<T, 4> 
 {
     public:
   
@@ -643,12 +765,13 @@ template <typename T> class mdarray<T, 4> : public mdarray_base<T, 4>
          
         void set_dimensions(const mdarray_index_descriptor& d0, const mdarray_index_descriptor& d1, const mdarray_index_descriptor& d2, const mdarray_index_descriptor& d3)
         {
-            std::vector<mdarray_index_descriptor> vd;
-            vd.push_back(d0);
-            vd.push_back(d1);
-            vd.push_back(d2);
-            vd.push_back(d3);            
-            this->init_dimensions(vd);
+            //std::vector<mdarray_index_descriptor> vd;
+            //vd.push_back(d0);
+            //vd.push_back(d1);
+            //vd.push_back(d2);
+            //vd.push_back(d3);            
+            //this->init_dimensions(vd);
+            this->init_dimensions({d0, d1, d2, d3});
         }
     
         inline T& operator()(const int64_t i0, const int64_t i1, const int64_t i2, const int64_t i3) 
