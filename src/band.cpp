@@ -1712,7 +1712,7 @@ void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potentia
                 case gpu:
                 {
                     #ifdef _GPU_
-                    diag_fv_uspp_cpu(kp__, effective_potential__);
+                    diag_fv_uspp_gpu(kp__, effective_potential__);
                     #else
                     TERMINATE_NO_GPU
                     #endif

@@ -37,7 +37,7 @@ Periodic_function<T>::Periodic_function(Global& parameters_,
 {
     if (unit_cell_->full_potential())
     {
-        f_mt_.init_dimensions({(size_t)angular_domain_size_, (size_t)unit_cell_->max_num_mt_points(), (size_t)unit_cell_->num_atoms()});
+        f_mt_ = mdarray<T, 3>(nullptr, angular_domain_size_, unit_cell_->max_num_mt_points(), unit_cell_->num_atoms());
         f_mt_local_ = mdarray<Spheric_function<spectral, T>, 1>(unit_cell_->spl_num_atoms().local_size());
         for (int ialoc = 0; ialoc < unit_cell_->spl_num_atoms().local_size(); ialoc++)
         {

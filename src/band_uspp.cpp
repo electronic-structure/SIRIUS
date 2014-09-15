@@ -607,8 +607,8 @@ void Band::apply_h_local_slice(K_point* kp__,
                 fft_gpu->set_work_area_ptr(work_area.at<gpu>());
                 
                 //== /* allocate space for plane-wave expansion coefficients */
-                //== mdarray<double_complex, 2> phi_pw_gpu(nullptr, kp__->num_gkvec(), fft_gpu->num_fft()); 
-                //== phi_pw_gpu.allocate_on_device();
+                mdarray<double_complex, 2> pw_buf(nullptr, kp__->num_gkvec(), fft_gpu->num_fft()); 
+                pw_buf.allocate_on_device();
                 
                 /* allocate space for FFT buffers */
                 matrix<double_complex> fft_buf(nullptr, fft_gpu->size(), fft_gpu->num_fft()); 
@@ -648,16 +648,13 @@ void Band::apply_h_local_slice(K_point* kp__,
                         //cublas_set_matrix(kp__->num_gkvec(), fft_gpu->num_fft(), sizeof(double_complex), 
                         //                  phi__.at<cpu>(0, i), phi__.ld(), phi_pw_gpu.at<gpu>(), phi_pw_gpu.ld());
                         
-                        cuda_copy_to_device(phi__.at<gpu>(0, i), phi__.at<cpu>(0, i), size_of_panel);
-
-                        cuda_copy_device_to_device(hphi__.at<gpu>(0, i), phi__.at<gpu>(0, i), size_of_panel);
+                        cuda_copy_to_device(pw_buf.at<gpu>(), phi__.at<cpu>(0, i), size_of_panel);
 
                         /* set PW coefficients into proper positions inside FFT buffer */
-                        fft_gpu->batch_load(kp__->num_gkvec(), fft_index.at<gpu>(), phi__.at<gpu>(0, i), fft_buf.at<gpu>());
+                        fft_gpu->batch_load(kp__->num_gkvec(), fft_index.at<gpu>(), pw_buf.at<gpu>(), fft_buf.at<gpu>());
 
                         /* phi(G) *= Ekin(G) */
-                        scale_matrix_rows_gpu(kp__->num_gkvec(), fft_gpu->num_fft(), hphi__.at<gpu>(0, i),
-                                              pw_ekin_gpu.at<gpu>());
+                        scale_matrix_rows_gpu(kp__->num_gkvec(), fft_gpu->num_fft(), pw_buf.at<gpu>(), pw_ekin_gpu.at<gpu>());
                         /* execute batch FFT */
                         fft_gpu->transform(1, fft_buf.at<gpu>());
                         /* multimply by potential */
@@ -667,11 +664,11 @@ void Band::apply_h_local_slice(K_point* kp__,
                         
                         /* phi(G) += fft_buffer(G) */
                         fft_gpu->batch_unload(kp__->num_gkvec(), fft_index.at<gpu>(), fft_buf.at<gpu>(),
-                                              hphi__.at<gpu>(0, i), 1.0);
+                                              pw_buf.at<gpu>(), 1.0);
                         
                         //cublas_get_matrix(kp__->num_gkvec(), fft_gpu->num_fft(), sizeof(double_complex), 
                         //                  phi_pw_gpu.at<gpu>(), phi_pw_gpu.ld(), &hphi__(0, i), hphi__.ld());
-                        cuda_copy_to_host(hphi__.at<cpu>(0, i), hphi__.at<gpu>(0, i), size_of_panel);
+                        cuda_copy_to_host(hphi__.at<cpu>(0, i), pw_buf.at<gpu>(), size_of_panel);
                     }
                 }
             }));
@@ -741,6 +738,8 @@ void Band::apply_h_local_parallel(K_point* kp__,
     mdarray<double_complex, 2> phi_slice(kp__->num_gkvec(), nphi);
     phi__.gather(n__, N__, phi_slice);
     mdarray<double_complex, 2> hphi_slice(kp__->num_gkvec(), nphi);
+
+    Timer::print();
 
     apply_h_local_slice(kp__, effective_potential__, pw_ekin__, nphi, phi_slice, hphi_slice);
 

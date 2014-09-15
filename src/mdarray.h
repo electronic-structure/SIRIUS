@@ -147,7 +147,7 @@ struct mdarray_deleter
 
 /// Base class of multidimensional array.
 template <typename T, int N> 
-class mdarray
+class mdarray_base
 {
     protected:
     
@@ -172,127 +172,6 @@ class mdarray
         
         /// List of offsets to compute the element location by dimension indices. 
         int64_t offsets_[N];
-        
-    public:
-        
-        /// Constructor of an empty array.
-        mdarray() 
-            : unique_ptr_(nullptr),
-              ptr_(nullptr),
-              #ifdef _GPU_
-              unique_ptr_device_(nullptr),
-              ptr_device_(nullptr), 
-              #endif
-              pinned_(false)
-        { 
-        }
-        
-        /// Destructor.
-        ~mdarray()
-        {
-            deallocate();
-            #ifdef _GPU_
-            deallocate_on_device();
-            #endif
-        }
-
-        /// Copy constructor is forbidden
-        mdarray(mdarray<T, N> const& src) = delete;
-        
-        /// Assignment operator is forbidden
-        mdarray<T, N>& operator=(mdarray<T, N> const& src) = delete;
-        
-        /// Move constructor
-        mdarray(mdarray<T, N>&& src) : unique_ptr_(std::move(src.unique_ptr_))
-        {
-            ptr_ = src.ptr_;
-            pinned_ = src.pinned_;
-            src.pinned_ = false;
-            for (int i = 0; i < N; i++)
-            {
-                dims_[i] = src.dims_[i];
-                offsets_[i] = src.offsets_[i];
-            }
-        }
-
-        /// Move assigment operator
-        inline mdarray<T, N>& operator=(mdarray<T, N>&& src)
-        {
-            if (this != &src)
-            {
-                unique_ptr_ = std::move(src.unique_ptr_);
-                ptr_ = src.ptr_;
-                pinned_ = src.pinned_;
-                src.pinned_ = false;
-                for (int i = 0; i < N; i++)
-                {
-                    dims_[i] = src.dims_[i];
-                    offsets_[i] = src.offsets_[i];
-                }
-            }
-            return *this;
-        }
-
-        mdarray(mdarray_index_descriptor const& d0) : pinned_(false)
-        {
-            this->init_dimensions({d0});
-            this->allocate();
-        }
-
-        mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1) : pinned_(false)
-        {
-            init_dimensions({d0, d1});
-            allocate();
-        }
-
-        mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1,
-                     mdarray_index_descriptor const& d2) : pinned_(false)
-        {
-            init_dimensions({d0, d1, d2});
-            allocate();
-        }
-
-        mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1,
-                     mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3) : pinned_(false)
-        {
-            init_dimensions({d0, d1, d2, d3});
-            allocate();
-        }
-
-        mdarray(T* ptr__, mdarray_index_descriptor const& d0) : pinned_(false)
-        {
-            this->init_dimensions({d0});
-            this->set_ptr(ptr__);
-        }
-
-        mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1) : pinned_(false)
-        {
-            this->init_dimensions({d0, d1});
-            this->set_ptr(ptr__);
-        }
-
-        mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, 
-                mdarray_index_descriptor const& d2) : pinned_(false)
-        {
-            this->init_dimensions({d0, d1, d2});
-            this->set_ptr(ptr__);
-        }
-
-        mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, 
-                mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3) : pinned_(false)
-        {
-            this->init_dimensions({d0, d1, d2, d3});
-            this->set_ptr(ptr__);
-        }
-
-        #ifdef _GPU_
-        mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1) : pinned_(false)
-        {
-            this->init_dimensions({d0, d1});
-            this->set_ptr(ptr__);
-            this->set_ptr_device(ptr_device__);
-        }
-        #endif
 
         void init_dimensions(std::initializer_list<mdarray_index_descriptor> const args)
         {
@@ -310,6 +189,8 @@ class mdarray
                 offsets_[0] -= ld * dims_[i].begin();
             }
         }
+
+    private:
 
         inline int64_t idx(int64_t const i0) const
         {
@@ -353,6 +234,90 @@ class mdarray
             return i;
         }
 
+        template<processing_unit_t pu>
+        inline T* at_idx(int64_t const idx__)
+        {
+            switch (pu)
+            {
+                case cpu:
+                {
+                    assert(ptr_ != nullptr);
+                    return &ptr_[idx__];
+                }
+                case gpu:
+                {
+                    #ifdef _GPU_
+                    assert(ptr_device_ != nullptr);
+                    return &ptr_device_[idx__];
+                    #else
+                    printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
+                    exit(0);
+                    #endif
+                }
+            }
+            return nullptr;
+        }
+
+    public:
+        
+        /// Constructor of an empty array.
+        mdarray_base() 
+            : unique_ptr_(nullptr),
+              ptr_(nullptr),
+              #ifdef _GPU_
+              unique_ptr_device_(nullptr),
+              ptr_device_(nullptr), 
+              #endif
+              pinned_(false)
+        { 
+        }
+        
+        /// Destructor.
+        ~mdarray_base()
+        {
+            deallocate();
+            #ifdef _GPU_
+            deallocate_on_device();
+            #endif
+        }
+
+        /// Copy constructor is forbidden
+        mdarray_base(mdarray_base<T, N> const& src) = delete;
+        
+        /// Assignment operator is forbidden
+        mdarray_base<T, N>& operator=(mdarray_base<T, N> const& src) = delete;
+        
+        /// Move constructor
+        mdarray_base(mdarray_base<T, N>&& src) : unique_ptr_(std::move(src.unique_ptr_))
+        {
+            ptr_ = src.ptr_;
+            pinned_ = src.pinned_;
+            src.pinned_ = false;
+            for (int i = 0; i < N; i++)
+            {
+                dims_[i] = src.dims_[i];
+                offsets_[i] = src.offsets_[i];
+            }
+        }
+
+        /// Move assigment operator
+        inline mdarray_base<T, N>& operator=(mdarray_base<T, N>&& src)
+        {
+            if (this != &src)
+            {
+                unique_ptr_ = std::move(src.unique_ptr_);
+                ptr_ = src.ptr_;
+                pinned_ = src.pinned_;
+                src.pinned_ = false;
+                for (int i = 0; i < N; i++)
+                {
+                    dims_[i] = src.dims_[i];
+                    offsets_[i] = src.offsets_[i];
+                }
+            }
+            return *this;
+        }
+
         inline T& operator()(int64_t const i0) 
         {
             assert(ptr_ != nullptr);
@@ -380,49 +345,7 @@ class mdarray
         template <processing_unit_t pu>
         inline T* at()
         {
-            switch (pu)
-            {
-                case cpu:
-                {
-                    assert(this->ptr_ != nullptr);
-                    return this->ptr_;
-                }
-                case gpu:
-                {
-                    #ifdef _GPU_
-                    assert(this->ptr_device_ != nullptr);
-                    return this->ptr_device_;
-                    #else
-                    printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
-                    exit(0);
-                    #endif
-                }
-            }
-            return nullptr;
-        }
-
-        template<processing_unit_t pu>
-        inline T* at_idx(int64_t const idx__)
-        {
-            switch (pu)
-            {
-                case cpu:
-                {
-                    assert(ptr_ != nullptr);
-                    return &ptr_[idx__];
-                }
-                case gpu:
-                {
-                    #ifdef _GPU_
-                    assert(ptr_device_ != nullptr);
-                    return &ptr_device_[idx__];
-                    #else
-                    printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
-                    exit(0);
-                    #endif
-                }
-            }
-            return nullptr;
+            return at_idx<pu>(0);
         }
 
         template <processing_unit_t pu>
@@ -505,7 +428,9 @@ class mdarray
         /// Deallocate memory and reset pointers.
         void deallocate()
         {
+            #ifdef _GPU_
             unpin_memory();
+            #endif
             unique_ptr_.reset(nullptr);
             ptr_ = nullptr;
         }
@@ -543,7 +468,7 @@ class mdarray
         }
         
         /// Copy the content of the array to dest
-        void operator>>(mdarray<T, N>& dest__)
+        void operator>>(mdarray_base<T, N>& dest__)
         {
             for (int i = 0; i < N; i++) 
             {
@@ -635,12 +560,84 @@ class mdarray
         {
             ptr_device_ = ptr_device__;
         }
+        #endif
+};
 
+
+template <typename T, int N> 
+class mdarray: public mdarray_base<T, N>
+{
+    public:
+
+        mdarray()
+        {
+        }
+        
+        mdarray(mdarray_index_descriptor const& d0)
+        {
+            this->init_dimensions({d0});
+            this->allocate();
+        }
+
+        mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
+        {
+            this->init_dimensions({d0, d1});
+            this->allocate();
+        }
+
+        mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1,
+                mdarray_index_descriptor const& d2)
+        {
+            this->init_dimensions({d0, d1, d2});
+            this->allocate();
+        }
+
+        mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1,
+                mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3)
+        {
+            this->init_dimensions({d0, d1, d2, d3});
+            this->allocate();
+        }
+
+        mdarray(T* ptr__, mdarray_index_descriptor const& d0)
+        {
+            this->init_dimensions({d0});
+            this->set_ptr(ptr__);
+        }
+
+        mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
+        {
+            this->init_dimensions({d0, d1});
+            this->set_ptr(ptr__);
+        }
+
+        mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, 
+                mdarray_index_descriptor const& d2)
+        {
+            this->init_dimensions({d0, d1, d2});
+            this->set_ptr(ptr__);
+        }
+
+        mdarray(T* ptr__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, 
+                mdarray_index_descriptor const& d2, mdarray_index_descriptor const& d3)
+        {
+            this->init_dimensions({d0, d1, d2, d3});
+            this->set_ptr(ptr__);
+        }
+
+        #ifdef _GPU_
+        mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
+        {
+            this->init_dimensions({d0, d1});
+            this->set_ptr(ptr__);
+            this->set_ptr_device(ptr_device__);
+        }
         #endif
 
         mdarray<T, 2> submatrix(int idx)
         {
-            return mdarray<T, 2>(at<cpu>(0, 0, idx), dims_[0], dims_[1]);
+            T* ptr = &(*this)(0, 0, idx);
+            return mdarray<T, 2>(ptr, this->dims_[0], this->dims_[1]);
         }
 };
 
