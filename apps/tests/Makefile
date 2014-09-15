@@ -74,7 +74,7 @@ test_rank2:
 test_copy_gpu:
 	$(CXX) $(CXX_OPT) $(INCLUDE) test_copy_gpu.cpp  $(LIB_SIRIUS) $(LIBS) -o test_copy_gpu
 
-test_gen_eig:
+test_gen_eig: test_gen_eig.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) test_gen_eig.cpp  $(LIB_SIRIUS) $(LIBS) -o test_gen_eig
 
 test_gpudirect: test_gpudirect.cpp

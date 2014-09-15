@@ -267,7 +267,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                                            mdarray<double_complex, 1>& d_mtrx_packed__,
                                            mdarray<double_complex, 1>& q_mtrx_packed__)
 {
-    Timer t("sirius::Band::set_fv_h_o_uspp_cpu_parallel", kp__->comm());
+    Timer t("sirius::Band::set_fv_h_o_uspp_cpu_parallel_v3", kp__->comm());
     
     splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
     splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
@@ -339,7 +339,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
    
     int icol = 0;
     
-    Timer t1("sirius::Band::set_fv_h_o_uspp_cpu_parallel|zgemm_eff", kp__->comm());
+    Timer t1("sirius::Band::set_fv_h_o_uspp_cpu_parallel_v3|zgemm_eff", kp__->comm());
     
     bcast_column_gpu(kp__, s0_col, s1_col, icol, hphi__, hphi_tmp);
     bcast_column_gpu(kp__, s0_col, s1_col, icol, ophi__, ophi_tmp);
@@ -432,7 +432,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
         if (n > 0)
         {
             //printf("#5 zgemm for column %i\n", icol);
-            Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel|zgemm_loc");
+            Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel_v3|zgemm_loc");
             blas<gpu>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.at<gpu>(), phi__.ld(),
                             hphi_tmp.at<gpu>(0, 0, icol % 2), hphi_tmp.ld(), h_tmp.at<gpu>(0, 0, icol % 2), h_tmp.ld());
             h_tmp.copy_to_host();
@@ -444,7 +444,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
         while (lock_o[icol % 2].load());
         if (n > 0)
         {
-            Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel|zgemm_loc");
+            Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel_v3|zgemm_loc");
             //printf("#6 zgemm for column %i\n", icol);
             blas<gpu>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.at<gpu>(), phi__.ld(),
                             ophi_tmp.at<gpu>(0, 0, icol % 2), ophi_tmp.ld(), o_tmp.at<gpu>(0, 0, icol % 2), o_tmp.ld());
