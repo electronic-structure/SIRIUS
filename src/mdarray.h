@@ -37,6 +37,17 @@
 #endif
 #include "typedefs.h"
 
+#define my_assert(condition__)                                              \
+{                                                                           \
+    if (!(condition__))                                                     \
+    {                                                                       \
+        printf("Assertion (%s) failed ", #condition__);                     \
+        printf("at line %i of file %s\n", __LINE__, __FILE__);              \
+        raise(SIGTERM);                                                     \
+        exit(-13);                                                          \
+    }                                                                       \
+}
+
 /// Index descriptor of mdarray.
 class mdarray_index_descriptor
 {
@@ -247,7 +258,7 @@ class mdarray_base
                 case gpu:
                 {
                     #ifdef _GPU_
-                    assert(ptr_device_ != nullptr);
+                    my_assert(ptr_device_ != nullptr);
                     return &ptr_device_[idx__];
                     #else
                     printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);

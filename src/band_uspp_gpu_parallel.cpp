@@ -336,7 +336,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
     }
     #endif
  
-    mdarray<double_complex, 3> hphi_tmp(kappa__.at<cpu>(0, 0), hphi_ptr_gpu, kp__->num_gkvec_row(), max_num_hphi, 2);
+    mdarray<double_complex, 3> hphi_tmp(kappa__.at<cpu>(0, 0),                hphi_ptr_gpu, kp__->num_gkvec_row(), max_num_hphi, 2);
     mdarray<double_complex, 3> ophi_tmp(kappa__.at<cpu>(0, 2 * max_num_hphi), ophi_ptr_gpu, kp__->num_gkvec_row(), max_num_hphi, 2);
     
     mdarray<double_complex, 3> h_tmp(num_phi, max_num_hphi, 2);
