@@ -787,7 +787,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
     for (int i = 0; i < psi.num_cols_local(); i++) 
         memcpy(&phi(0, i), &psi(0, i), kp__->num_gkvec_row() * sizeof(double_complex));
     #ifdef _GPU_
-    cuda_copy_to_device(phi.at<gpu>(), phi.at<gpu>(), kp__->num_gkvec_row() * psi.num_cols_local() * sizeof(double_complex));
+    cuda_copy_to_device(phi.at<gpu>(), phi.at<cpu>(), kp__->num_gkvec_row() * psi.num_cols_local() * sizeof(double_complex));
     #endif
 
     std::vector<double> res_norm(num_bands);
