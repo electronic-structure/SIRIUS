@@ -606,7 +606,7 @@ void Band::apply_h_local_slice(K_point* kp__,
                 work_area.allocate_on_device();
                 fft_gpu->set_work_area_ptr(work_area.at<gpu>());
                 
-                //== /* allocate space for plane-wave expansion coefficients */
+                /* allocate space for plane-wave expansion coefficients */
                 mdarray<double_complex, 2> pw_buf(nullptr, kp__->num_gkvec(), fft_gpu->num_fft()); 
                 pw_buf.allocate_on_device();
                 
@@ -645,9 +645,6 @@ void Band::apply_h_local_slice(K_point* kp__,
                         int size_of_panel = int(kp__->num_gkvec() * fft_gpu->num_fft() * sizeof(double_complex));
 
                         /* copy phi to GPU */
-                        //cublas_set_matrix(kp__->num_gkvec(), fft_gpu->num_fft(), sizeof(double_complex), 
-                        //                  phi__.at<cpu>(0, i), phi__.ld(), phi_pw_gpu.at<gpu>(), phi_pw_gpu.ld());
-                        
                         cuda_copy_to_device(pw_buf.at<gpu>(), phi__.at<cpu>(0, i), size_of_panel);
 
                         /* set PW coefficients into proper positions inside FFT buffer */
@@ -666,8 +663,6 @@ void Band::apply_h_local_slice(K_point* kp__,
                         fft_gpu->batch_unload(kp__->num_gkvec(), fft_index.at<gpu>(), fft_buf.at<gpu>(),
                                               pw_buf.at<gpu>(), 1.0);
                         
-                        //cublas_get_matrix(kp__->num_gkvec(), fft_gpu->num_fft(), sizeof(double_complex), 
-                        //                  phi_pw_gpu.at<gpu>(), phi_pw_gpu.ld(), &hphi__(0, i), hphi__.ld());
                         cuda_copy_to_host(hphi__.at<cpu>(0, i), pw_buf.at<gpu>(), size_of_panel);
                     }
                 }
@@ -1222,7 +1217,7 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
     }
 
     auto bcast_column = [kp__, &s0_col, &s1_col](int icol, dmatrix<double_complex>& m, 
-        mdarray<double_complex, 3>& m_tmp) -> void
+                                                 mdarray<double_complex, 3>& m_tmp) -> void
     {
         Timer t("sirius::bcast_column");
  
