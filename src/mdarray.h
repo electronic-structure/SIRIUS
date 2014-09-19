@@ -632,6 +632,13 @@ class mdarray: public mdarray_base<T, N>
             this->set_ptr(ptr__);
             this->set_ptr_device(ptr_device__);
         }
+        mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, 
+                mdarray_index_descriptor const& d2)
+        {
+            this->init_dimensions({d0, d1, d2});
+            this->set_ptr(ptr__);
+            this->set_ptr_device(ptr_device__);
+        }
         #endif
 
         mdarray<T, 2> submatrix(int idx)

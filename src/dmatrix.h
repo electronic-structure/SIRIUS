@@ -509,7 +509,8 @@ class dmatrix
         {
             return rank_col_;
         }
-
+        
+        template <processing_unit_t pu>
         static void copy_col(dmatrix<T>& src__, int icol_src__, dmatrix<T>& dest__, int icol_dest__)
         {
             assert(src__.num_rows_local() == dest__.num_rows_local());
@@ -522,7 +523,7 @@ class dmatrix
             if (src_location.second == src__.rank_col()) 
             {
                 int tag = icol_src__;
-                src__.blacs_grid_->comm_col().isend(&src__.matrix_local_(0, src_location.first), src__.num_rows_local(), 
+                src__.blacs_grid_->comm_col().isend(src__.matrix_local_.at<pu>(0, src_location.first), src__.num_rows_local(), 
                                                     dest_location.second, tag);
             }
 
@@ -530,7 +531,7 @@ class dmatrix
             if (dest_location.second == dest__.rank_col())
             {
                 int tag = icol_src__;
-                src__.blacs_grid_->comm_col().recv(&dest__.matrix_local_(0, dest_location.first), dest__.num_rows_local(),
+                src__.blacs_grid_->comm_col().recv(dest__.matrix_local_.at<pu>(0, dest_location.first), dest__.num_rows_local(),
                                                    src_location.second, tag);
             }
         }

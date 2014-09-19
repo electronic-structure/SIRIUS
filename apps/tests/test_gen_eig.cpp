@@ -28,12 +28,17 @@ void test(cmd_args& args)
 
     h_in.read_mdarray("matrix", h);
     o_in.read_mdarray("matrix", o);
+
+    dmatrix<double_complex> h1(nrow, ncol, blacs_grid);
+    dmatrix<double_complex> o1(nrow, ncol, blacs_grid);
+
+    int num_bands = 1234;
+    std::vector<double> eval(num_bands);
+    dmatrix<double_complex> z1(nrow, num_bands, blacs_grid);
+    z1.zero();
     
     for (int k = 0; k < 10; k++)
     {
-        dmatrix<double_complex> h1(nrow, ncol, blacs_grid);
-        dmatrix<double_complex> o1(nrow, ncol, blacs_grid);
-
         for (int i = 0; i < ncol; i++)
         {
             for (int j = 0; j < ncol; j++) 
@@ -42,11 +47,6 @@ void test(cmd_args& args)
                 o1.set(i, j, o(i, j));
             }
         }
-
-        int num_bands = 1234;
-        std::vector<double> eval(num_bands);
-        dmatrix<double_complex> z1(nrow, num_bands, blacs_grid);
-        z1.zero();
 
         Timer t("solve_evp");
         evp.solve(nrow, h1.num_rows_local(), h1.num_cols_local(), num_bands, 
