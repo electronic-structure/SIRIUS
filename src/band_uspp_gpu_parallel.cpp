@@ -29,6 +29,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                                           mdarray<double_complex, 1>& d_mtrx_packed__,
                                           mdarray<double_complex, 1>& q_mtrx_packed__)
 {
+    log_function_enter(__func__);
     Timer t("sirius::Band::apply_h_o_uspp_gpu_parallel_v2", kp__->comm());
 
     splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
@@ -267,6 +268,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
         }
         #endif
     }
+    log_function_exit(__func__);
 }
 
 void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
@@ -289,6 +291,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                                            mdarray<double_complex, 1>& d_mtrx_packed__,
                                            mdarray<double_complex, 1>& q_mtrx_packed__)
 {
+    log_function_enter(__func__);
     Timer t("sirius::Band::set_fv_h_o_uspp_cpu_parallel_v3", kp__->comm());
     
     splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
@@ -560,6 +563,8 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
         memcpy(&h_old__(0, i), &h__(0, i), s1_row.local_size() * sizeof(double_complex));
         memcpy(&o_old__(0, i), &o__(0, i), s1_row.local_size() * sizeof(double_complex));
     }
+
+    log_function_exit(__func__);
 }
 
 extern "C" void compute_residuals_gpu(int num_gkvec_row,
@@ -1074,6 +1079,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
     #endif
 
     kp__->set_fv_eigen_values(&eval[0]);
+    log_function_exit(__func__);
 }
 #endif
 

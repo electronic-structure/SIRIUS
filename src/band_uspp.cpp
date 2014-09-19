@@ -721,6 +721,7 @@ void Band::apply_h_local_parallel(K_point* kp__,
                                   dmatrix<double_complex>& phi__,
                                   dmatrix<double_complex>& hphi__)
 {
+    log_function_enter(__func__);
     Timer t("sirius::Band::apply_h_local_parallel", kp__->comm());
 
     splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
@@ -760,6 +761,7 @@ void Band::apply_h_local_parallel(K_point* kp__,
     //}
 
     hphi__.scatter(n__, N__, hphi_slice);
+    log_function_exit(__func__);
 }
 
 void Band::apply_h_o_uspp_cpu_parallel_simple(K_point* kp__,
