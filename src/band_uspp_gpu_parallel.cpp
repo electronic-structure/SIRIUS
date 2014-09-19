@@ -189,7 +189,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
 
                 /* compute D*<beta|phi> */
                 blas<cpu>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed__.at<cpu>(packed_mtrx_offset__(ia)), nbf, 
-                                beta_phi.at<cpu>(ofs, 0), beta_phi.ld(), tmp.at<gpu>(ofs, 0), tmp.ld());
+                                beta_phi.at<cpu>(ofs, 0), beta_phi.ld(), tmp.at<cpu>(ofs, 0), tmp.ld());
 
             }
             
