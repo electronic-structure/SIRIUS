@@ -931,9 +931,9 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
 
     auto& beta_pw_t = kp__->beta_pw_t();
 
-    #ifdef _GPU_
     if (parameters_.processing_unit() == gpu)
     {
+        #ifdef _GPU_
         phi.allocate_on_device();
         res.allocate_on_device();
         hphi.allocate_on_device();
@@ -951,8 +951,10 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
         beta_pw_t.copy_to_device();
         /* initial phi on GPU */
         cuda_copy_to_device(phi.at<gpu>(), psi.at<cpu>(), kp__->num_gkvec_row() * psi.num_cols_local() * sizeof(double_complex));
+        #else
+        TERMINATE_NO_GPU
+        #endif
     }
-    #endif
 
     /* current diagonalziation subspace size */
     int N = 0;
