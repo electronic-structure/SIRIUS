@@ -1833,7 +1833,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
     std::vector<double> res_norm(num_bands);
     std::vector<double> res_rms(num_bands);
 
-    int num_atoms_in_block = 256;
+    int num_atoms_in_block = std::min(256, parameters_.unit_cell()->num_atoms());
     int num_bands_local = (int)kp__->spl_fv_states().local_size(0);
     int kappa_size = std::max(parameters_.unit_cell()->max_mt_basis_size() * num_atoms_in_block, 4 * num_bands_local);
     /* large temporary array for <G+k|beta>, hphi_tmp, ophi_tmp, hpsi_tmp, opsi_tmp */
