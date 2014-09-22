@@ -1222,6 +1222,8 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             {
                 dmatrix<double_complex>::copy_col<cpu>(res, res_list[i], phi, N + i);
             }
+            kp__->comm().barrier();
+            cuda_device_synchronize();
             phi.copy_cols_to_device(N, N + n);
             #endif
             #endif
