@@ -637,7 +637,7 @@ void Band::uspp_residuals_gpu_parallel(int N__,
     #ifdef _GPU_DIRECT_
     gpu_direct = true;
     #endif
-    gpu_direct = false;
+    //gpu_direct = false;
 
     std::array<std::atomic_bool, 2> lock_evec_tmp;
     std::atomic_bool lock_hpsi_tmp;
@@ -683,6 +683,7 @@ void Band::uspp_residuals_gpu_parallel(int N__,
             /* send evec to gpu */
             cuda_copy_to_device(evec_tmp.at<gpu>(0, 0, icol % 2), evec_tmp.at<cpu>(0, 0, icol % 2), 
                                 num_phi_loc * num_bands_of_col * sizeof(double_complex));
+            cuda_device_synchronize();
         }
         #endif
     };
