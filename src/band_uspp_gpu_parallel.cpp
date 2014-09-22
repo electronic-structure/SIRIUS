@@ -616,9 +616,9 @@ void Band::uspp_residuals_gpu_parallel(int N__,
     Timer t1("sirius::Band::uspp_residuals_gpu_parallel|zgemm_eff", kp__->comm());
 
     auto pu = parameters_.processing_unit();
-    pu = cpu;
-    hphi__.data().copy_to_host();
-    ophi__.data().copy_to_host();
+    //pu = cpu;
+    //hphi__.data().copy_to_host();
+    //ophi__.data().copy_to_host();
 
     splindex<block_cyclic> spl_num_bands_col(num_bands__, kp__->num_ranks_col(), kp__->rank_col(),
                                              parameters_.cyclic_block_size());
@@ -717,7 +717,6 @@ void Band::uspp_residuals_gpu_parallel(int N__,
                     #ifdef _GPU_DIRECT_
                     kp__->comm_col().reduce(hpsi_tmp.at<gpu>(), hpsi__.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
                     #else
-                    std::cout << "to_host#01" << std::endl;
                     cuda_copy_to_host(hpsi_tmp.at<cpu>(), hpsi_tmp.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col * sizeof(double_complex));
                     kp__->comm_col().reduce(hpsi_tmp.at<cpu>(), hpsi__.at<cpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
                     if (icol == kp__->rank_col())
@@ -745,7 +744,6 @@ void Band::uspp_residuals_gpu_parallel(int N__,
                     #ifdef _GPU_DIRECT_
                     kp__->comm_col().reduce(opsi_tmp.at<gpu>(), opsi__.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
                     #else
-                    std::cout << "to_host#02" << std::endl;
                     cuda_copy_to_host(opsi_tmp.at<cpu>(), opsi_tmp.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col * sizeof(double_complex));
                     kp__->comm_col().reduce(opsi_tmp.at<cpu>(), opsi__.at<cpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
                     if (icol == kp__->rank_col())
@@ -915,7 +913,6 @@ void Band::uspp_residuals_gpu_parallel(int N__,
 
         compute_residuals_gpu(kp__->num_gkvec_row(), res__.num_cols_local(), res_idx_gpu.at<gpu>(), eval_gpu.at<gpu>(),
                               hpsi__.at<gpu>(), opsi__.at<gpu>(), res__.at<gpu>(), res_norm_gpu.at<gpu>());
-        std::cout << "to_host#1" << std::endl;
         res_norm_gpu.copy_to_host();
 
         kp__->comm().allreduce(res_norm__);
@@ -938,7 +935,6 @@ void Band::uspp_residuals_gpu_parallel(int N__,
         apply_preconditioner_gpu(kp__->num_gkvec_row(), res__.num_cols_local(), res_idx_gpu.at<gpu>(), eval_gpu.at<gpu>(),
                                  hdiag_gpu.at<gpu>(), odiag_gpu.at<gpu>(), res__.at<gpu>(), norm2.at<gpu>());
         // TODO: test gpudirect here
-        std::cout << "to_host#2" << std::endl;
         norm2.copy_to_host();
         kp__->comm().allreduce(norm2.at<cpu>(), num_bands__);
         norm2.copy_to_device();
@@ -950,7 +946,7 @@ void Band::uspp_residuals_gpu_parallel(int N__,
         #endif
     }
 
-    res__.data().copy_to_device();
+    //res__.data().copy_to_device();
 
     log_function_exit(__func__);
 }
@@ -1140,7 +1136,6 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             Timer t3("sirius::Band::diag_fv_uspp_cpu_parallel|update_phi");
 
             #ifdef _GPU_
-            std::cout << "copy A" << std::endl;
             if (parameters_.processing_unit() == gpu) phi.copy_cols_to_host(0, N);
             #endif
 
