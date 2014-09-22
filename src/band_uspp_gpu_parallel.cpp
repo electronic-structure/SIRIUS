@@ -1137,6 +1137,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             Timer t3("sirius::Band::diag_fv_uspp_cpu_parallel|update_phi");
 
             #ifdef _GPU_
+            std::cout << "copy A" << std::endl;
             if (parameters_.processing_unit() == gpu) phi.copy_cols_to_host(0, N);
             #endif
 
@@ -1200,6 +1201,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
                 dmatrix<double_complex>::copy_col<gpu>(res, res_list[i], phi, N + i);
             }
             /* copy new phi to CPU */
+            std::cout << "copy B" << std::endl;
             phi.copy_cols_to_host(N, N + n);
             #endif
         }
