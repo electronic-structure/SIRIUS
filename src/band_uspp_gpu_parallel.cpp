@@ -1217,6 +1217,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             std::cout << "copy B" << std::endl;
             phi.copy_cols_to_host(N, N + n);
             #else
+            std::cout << "res copy to host" << std::endl;
             res.data().copy_to_host();
             for (int i = 0; i < n; i++)
             {
@@ -1224,6 +1225,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             }
             kp__->comm().barrier();
             cuda_device_synchronize();
+            std::cout << "phi copy cols to device" << std::endl;
             phi.copy_cols_to_device(N, N + n);
             #endif
             #endif
