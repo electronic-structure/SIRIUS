@@ -370,9 +370,8 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
 
     auto pu = parameters_.processing_unit();
 
-    auto bcast_column = [kp__, &s0_col, &s1_col, pu](int icol,
-                                                     dmatrix<double_complex>& m, 
-                                                     mdarray<double_complex, 3>& m_tmp) -> void
+    auto bcast_column = [kp__, &s0_col, &s1_col, pu]
+                        (int icol, dmatrix<double_complex>& m, mdarray<double_complex, 3>& m_tmp) -> void
     {
         Timer t("sirius::bcast_column");
  
@@ -619,7 +618,7 @@ void Band::uspp_residuals_gpu_parallel(int N__,
     auto pu = parameters_.processing_unit();
     pu = cpu;
     hphi__.data().copy_to_host();
-    opsi__.data().copy_to_host();
+    ophi__.data().copy_to_host();
 
     splindex<block_cyclic> spl_num_bands_col(num_bands__, kp__->num_ranks_col(), kp__->rank_col(),
                                              parameters_.cyclic_block_size());
@@ -1087,11 +1086,14 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++)
     {
+        for (int p = 0; p < 10; p++)
+        {
+        std::cout << "calling set_fv_h_o_uspp_gpu_parallel_v3() #" << p << std::endl;
         /* set H and O for the variational subspace */
         set_fv_h_o_uspp_gpu_parallel_v3(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, 
                                         hmlt_old, ovlp_old, num_atoms_in_block, kappa, beta_pw_t, gkvec_row,
                                         packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed);
-        
+        }
         /* increase size of the variation space */
         N += n;
 
