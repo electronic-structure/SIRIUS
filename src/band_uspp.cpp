@@ -557,13 +557,16 @@ void Band::apply_h_local_slice(K_point* kp__,
     assert(phi__.size(0) == (size_t)kp__->num_gkvec() && hphi__.size(0) == (size_t)kp__->num_gkvec());
     assert(phi__.size(1) == (size_t)num_phi__ && hphi__.size(1) == (size_t)num_phi__);
 
+    auto pu = parameters_.processing_unit();
+    pu = cpu;
+
     auto fft = parameters_.reciprocal_lattice()->fft_coarse();
     #ifdef _GPU_
     FFT3D<gpu>* fft_gpu = parameters_.reciprocal_lattice()->fft_gpu_coarse();
     #endif
 
     int num_fft_threads = -1;
-    switch (parameters_.processing_unit())
+    switch (pu)
     {
         case cpu:
         {
@@ -588,7 +591,7 @@ void Band::apply_h_local_slice(K_point* kp__,
     
     for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
     {
-        if (thread_id == (num_fft_threads - 1) && num_fft_threads > 1 && parameters_.processing_unit() == gpu)
+        if (thread_id == (num_fft_threads - 1) && num_fft_threads > 1 && pu == gpu)
         {
             #ifdef _GPU_
             fft_threads.push_back(std::thread([thread_id, num_phi__, &idx_phi, &idx_phi_mutex, &fft_gpu, kp__, &phi__, 
