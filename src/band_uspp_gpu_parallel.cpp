@@ -612,6 +612,8 @@ void Band::uspp_residuals_gpu_parallel(int N__,
 
     Timer t1("sirius::Band::uspp_residuals_gpu_parallel|zgemm_eff", kp__->comm());
 
+    auto pu = parameters_.processing_unit();
+
     splindex<block_cyclic> spl_num_bands_col(num_bands__, kp__->num_ranks_col(), kp__->rank_col(),
                                              parameters_.cyclic_block_size());
     splindex<block_cyclic> spl_num_bands_row(num_bands__, kp__->num_ranks_row(), kp__->rank_row(),
@@ -625,7 +627,9 @@ void Band::uspp_residuals_gpu_parallel(int N__,
     int num_phi_loc = evec_t.num_cols_local();
 
     mdarray<double_complex, 3> evec_tmp(num_phi_loc, spl_num_bands_col.local_size(0), 2);
-    evec_tmp.allocate_on_device();
+    #ifdef _GPU_
+    if (pu == gpu) evec_tmp.allocate_on_device();
+    #endif
 
     std::array<std::atomic_bool, 2> lock_evec_tmp;
     std::atomic_bool lock_hpsi_tmp;
@@ -636,12 +640,21 @@ void Band::uspp_residuals_gpu_parallel(int N__,
 
     int num_bnd_max = (int)spl_num_bands_col.local_size(0);
 
-    matrix<double_complex> hpsi_tmp(kappa__.at<cpu>(0, 0), kappa__.at<gpu>(0, 0),
-                                    kp__->num_gkvec_row(), num_bnd_max);
-    matrix<double_complex> opsi_tmp(kappa__.at<cpu>(0, num_bnd_max), kappa__.at<gpu>(0, num_bnd_max), 
-                                    kp__->num_gkvec_row(), num_bnd_max);
+    double_complex* hpsi_ptr_gpu = nullptr;
+    double_complex* opsi_ptr_gpu = nullptr;
+    #ifdef _GPU_
+    if (pu == gpu)
+    {
+        hpsi_ptr_gpu = kappa__.at<gpu>(0, 0);
+        opsi_ptr_gpu = kappa__.at<gpu>(0, num_bnd_max);
+    }
+    #endif
 
-    auto get_evec = [kp__, &spl_num_bands_col, &spl_num_bands_row, &evec_t, &evec_tmp, num_phi_loc](int icol) -> void 
+    matrix<double_complex> hpsi_tmp(kappa__.at<cpu>(0, 0),           hpsi_ptr_gpu, kp__->num_gkvec_row(), num_bnd_max);
+    matrix<double_complex> opsi_tmp(kappa__.at<cpu>(0, num_bnd_max), opsi_ptr_gpu, kp__->num_gkvec_row(), num_bnd_max);
+
+    auto get_evec = [kp__, &spl_num_bands_col, &spl_num_bands_row, &evec_t, &evec_tmp, num_phi_loc, pu]
+                    (int icol) -> void 
     {
         int num_bands_of_col = (int)spl_num_bands_col.local_size(icol);
         memset(&evec_tmp(0, 0, icol % 2), 0, num_phi_loc * num_bands_of_col * sizeof(double_complex));
@@ -656,9 +669,14 @@ void Band::uspp_residuals_gpu_parallel(int N__,
             }
         }
         kp__->comm_row().allreduce(&evec_tmp(0, 0, icol % 2), num_phi_loc * num_bands_of_col);
-        /* send evec to gpu */
-        cuda_copy_to_device(evec_tmp.at<gpu>(0, 0, icol % 2), evec_tmp.at<cpu>(0, 0, icol % 2), 
-                            num_phi_loc * num_bands_of_col * sizeof(double_complex));
+        #ifdef _GPU_
+        if (pu == gpu)
+        {
+            /* send evec to gpu */
+            cuda_copy_to_device(evec_tmp.at<gpu>(0, 0, icol % 2), evec_tmp.at<cpu>(0, 0, icol % 2), 
+                                num_phi_loc * num_bands_of_col * sizeof(double_complex));
+        }
+        #endif
     };
 
     /* get evec for first column */
@@ -667,7 +685,7 @@ void Band::uspp_residuals_gpu_parallel(int N__,
     
     /* communication thread */
     std::thread comm_thread([kp__, &lock_evec_tmp, &lock_hpsi_tmp, &hpsi_tmp, &hpsi__, 
-                             &lock_opsi_tmp, &opsi_tmp, &opsi__, &spl_num_bands_col, get_evec]()
+                             &lock_opsi_tmp, &opsi_tmp, &opsi__, &spl_num_bands_col, get_evec, pu]()
     {
         for (int icol = 0; icol < kp__->num_ranks_col(); icol++)
         {
@@ -680,11 +698,39 @@ void Band::uspp_residuals_gpu_parallel(int N__,
             }
             
             while (!lock_hpsi_tmp.load());
-            kp__->comm_col().reduce(hpsi_tmp.at<gpu>(), hpsi__.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
+            switch (pu)
+            {
+                case cpu:
+                {
+                    kp__->comm_col().reduce(hpsi_tmp.at<cpu>(), hpsi__.at<cpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
+                    break;
+                }
+                case gpu:
+                {
+                    #ifdef _GPU_
+                    kp__->comm_col().reduce(hpsi_tmp.at<gpu>(), hpsi__.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
+                    break;
+                    #endif
+                }
+            }
             lock_hpsi_tmp.store(false);
 
             while (!lock_opsi_tmp.load());
-            kp__->comm_col().reduce(opsi_tmp.at<gpu>(), opsi__.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
+            switch (pu)
+            {
+                case cpu:
+                {
+                    kp__->comm_col().reduce(opsi_tmp.at<cpu>(), opsi__.at<cpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
+                    break;
+                }
+                case gpu:
+                {
+                    #ifdef _GPU_
+                    kp__->comm_col().reduce(opsi_tmp.at<gpu>(), opsi__.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
+                    break;
+                    #endif
+                }
+            }
             lock_opsi_tmp.store(false);
         }
     });
@@ -699,15 +745,49 @@ void Band::uspp_residuals_gpu_parallel(int N__,
         while (!lock_evec_tmp[rank_col % 2].load());
         
         while (lock_hpsi_tmp.load());
-        blas<gpu>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
-                        hphi__.at<gpu>(), hphi__.ld(), evec_tmp.at<gpu>(0, 0, rank_col % 2), evec_tmp.ld(), 
-                        hpsi_tmp.at<gpu>(), hpsi_tmp.ld());
+        switch (pu)
+        {
+            case cpu:
+            {
+                blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
+                                hphi__.at<cpu>(), hphi__.ld(), evec_tmp.at<cpu>(0, 0, rank_col % 2), evec_tmp.ld(), 
+                                hpsi_tmp.at<cpu>(), hpsi_tmp.ld());
+                break;
+            }
+            case gpu:
+            {
+                #ifdef _GPU_
+                blas<gpu>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
+                                hphi__.at<gpu>(), hphi__.ld(), evec_tmp.at<gpu>(0, 0, rank_col % 2), evec_tmp.ld(), 
+                                hpsi_tmp.at<gpu>(), hpsi_tmp.ld());
+                cuda_device_synchronize();
+                break;
+                #endif
+            }
+        }
         lock_hpsi_tmp.store(true);
        
         while (lock_opsi_tmp.load());
-        blas<gpu>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
-                        ophi__.at<gpu>(), ophi__.ld(), evec_tmp.at<gpu>(0, 0, rank_col % 2), evec_tmp.ld(), 
-                        opsi_tmp.at<gpu>(), opsi_tmp.ld());
+        switch (pu)
+        {
+            case cpu:
+            {
+                blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
+                                ophi__.at<cpu>(), ophi__.ld(), evec_tmp.at<cpu>(0, 0, rank_col % 2), evec_tmp.ld(), 
+                                opsi_tmp.at<cpu>(), opsi_tmp.ld());
+                break;
+            }
+            case gpu:
+            {
+                #ifdef _GPU_
+                blas<gpu>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
+                                ophi__.at<gpu>(), ophi__.ld(), evec_tmp.at<gpu>(0, 0, rank_col % 2), evec_tmp.ld(), 
+                                opsi_tmp.at<gpu>(), opsi_tmp.ld());
+                cuda_device_synchronize();
+                break;
+                #endif
+            }
+        }
         lock_opsi_tmp.store(true);
 
         lock_evec_tmp[rank_col % 2].store(false);
@@ -736,95 +816,111 @@ void Band::uspp_residuals_gpu_parallel(int N__,
 
     memset(&res_norm__[0], 0, num_bands__ * sizeof(double));
 
-    mdarray<double, 1> res_norm_gpu(&res_norm__[0], num_bands__);
-    res_norm_gpu.allocate_on_device();
-    res_norm_gpu.zero_on_device();
+    if (pu == cpu)
+    {
+        /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm squared */
+        #pragma omp parallel for
+        for (int i = 0; i < res__.num_cols_local(); i++)
+        {
+            int ires = res__.icol(i);
+            double norm2 = 0;
+            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
+            {
+                res__(igk_row, i) = hpsi__(igk_row, i) - eval__[ires] * opsi__(igk_row, i);
+                norm2 += real(conj(res__(igk_row, i)) * res__(igk_row, i));
+            }
+            res_norm__[ires] = norm2;
+        }
+        kp__->comm().allreduce(res_norm__);
+        
+        /* compute norm */
+        for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
+        
+        /* apply preconditioner */
+        #pragma omp parallel for
+        for (int i = 0; i < res__.num_cols_local(); i++)
+        {
+            int ires = res__.icol(i);
+        
+            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+            {
+                double_complex z = h_diag__[igk_row] - eval__[ires] * o_diag__[igk_row];
+                if (std::abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
+                res__(igk_row, i) /= z;
+            }
+        }
+        
+        std::vector<double> norm2(num_bands__, 0);
+        /* Normalize new basis functions */
+        #pragma omp parallel for
+        for (int i = 0; i < res__.num_cols_local(); i++)
+        {
+            int ires = res__.icol(i);
+            double d = 0;
+            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
+                d += real(conj(res__(igk_row, i)) * res__(igk_row, i));
+            norm2[ires] = d;
+        }
+        kp__->comm().allreduce(norm2);
+        #pragma omp parallel for
+        for (int i = 0; i < res__.num_cols_local(); i++)
+        {
+            int ires = res__.icol(i);
+            double d = 1.0 / std::sqrt(norm2[ires]);
+            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) res__(igk_row, i) *= d;
+        }
+    }
 
-    mdarray<double, 1> eval_gpu(&eval__[0], num_bands__);
-    eval_gpu.allocate_on_device();
-    eval_gpu.copy_to_device();
+    if (pu == gpu)
+    {
+        #ifdef _GPU_
+        mdarray<double, 1> res_norm_gpu(&res_norm__[0], num_bands__);
+        res_norm_gpu.allocate_on_device();
+        res_norm_gpu.zero_on_device();
 
-    mdarray<int, 1> res_idx_gpu(res__.num_cols_local());
-    for (int i = 0; i < res__.num_cols_local(); i++) res_idx_gpu(i) = res__.icol(i);
-    res_idx_gpu.allocate_on_device();
-    res_idx_gpu.copy_to_device();
+        mdarray<double, 1> eval_gpu(&eval__[0], num_bands__);
+        eval_gpu.allocate_on_device();
+        eval_gpu.copy_to_device();
 
-    compute_residuals_gpu(kp__->num_gkvec_row(), res__.num_cols_local(), res_idx_gpu.at<gpu>(), eval_gpu.at<gpu>(),
-                          hpsi__.at<gpu>(), opsi__.at<gpu>(), res__.at<gpu>(), res_norm_gpu.at<gpu>());
-    res_norm_gpu.copy_to_host();
+        mdarray<int, 1> res_idx_gpu(res__.num_cols_local());
+        for (int i = 0; i < res__.num_cols_local(); i++) res_idx_gpu(i) = res__.icol(i);
+        res_idx_gpu.allocate_on_device();
+        res_idx_gpu.copy_to_device();
 
-    ///* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm squared */
-    //#pragma omp parallel for
-    //for (int i = 0; i < res__.num_cols_local(); i++)
-    //{
-    //    int ires = res__.icol(i);
-    //    double norm2 = 0;
-    //    for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
-    //    {
-    //        res__(igk_row, i) = hpsi__(igk_row, i) - eval__[ires] * opsi__(igk_row, i);
-    //        norm2 += real(conj(res__(igk_row, i)) * res__(igk_row, i));
-    //    }
-    //    res_norm__[ires] = norm2;
-    //}
-    kp__->comm().allreduce(res_norm__);
-    
-    /* compute norm */
-    for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
+        compute_residuals_gpu(kp__->num_gkvec_row(), res__.num_cols_local(), res_idx_gpu.at<gpu>(), eval_gpu.at<gpu>(),
+                              hpsi__.at<gpu>(), opsi__.at<gpu>(), res__.at<gpu>(), res_norm_gpu.at<gpu>());
+        res_norm_gpu.copy_to_host();
 
-    mdarray<double_complex, 1> hdiag_gpu(&h_diag__[0], kp__->num_gkvec_row());
-    hdiag_gpu.allocate_on_device();
-    hdiag_gpu.copy_to_device();
+        kp__->comm().allreduce(res_norm__);
+        
+        /* compute norm */
+        for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
 
-    mdarray<double_complex, 1> odiag_gpu(&o_diag__[0], kp__->num_gkvec_row());
-    odiag_gpu.allocate_on_device();
-    odiag_gpu.copy_to_device();
+        mdarray<double_complex, 1> hdiag_gpu(&h_diag__[0], kp__->num_gkvec_row());
+        hdiag_gpu.allocate_on_device();
+        hdiag_gpu.copy_to_device();
 
-    mdarray<double, 1> norm2(num_bands__);
-    norm2.allocate_on_device();
-    norm2.zero_on_device();
+        mdarray<double_complex, 1> odiag_gpu(&o_diag__[0], kp__->num_gkvec_row());
+        odiag_gpu.allocate_on_device();
+        odiag_gpu.copy_to_device();
 
-    apply_preconditioner_gpu(kp__->num_gkvec_row(), res__.num_cols_local(), res_idx_gpu.at<gpu>(), eval_gpu.at<gpu>(),
-                             hdiag_gpu.at<gpu>(), odiag_gpu.at<gpu>(), res__.at<gpu>(), norm2.at<gpu>());
-    norm2.copy_to_host();
-    kp__->comm().allreduce(norm2.at<cpu>(), num_bands__);
-    norm2.copy_to_device();
+        mdarray<double, 1> norm2(num_bands__);
+        norm2.allocate_on_device();
+        norm2.zero_on_device();
 
-    normalize_residuals_gpu(kp__->num_gkvec_row(), res__.num_cols_local(), res_idx_gpu.at<gpu>(),
-                            norm2.at<gpu>(), res__.at<gpu>());
-    
-    ///* apply preconditioner */
-    //#pragma omp parallel for
-    //for (int i = 0; i < res__.num_cols_local(); i++)
-    //{
-    //    int ires = res__.icol(i);
-    //
-    //    for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-    //    {
-    //        double_complex z = h_diag__[igk_row] - eval__[ires] * o_diag__[igk_row];
-    //        if (std::abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
-    //        res__(igk_row, i) /= z;
-    //    }
-    //}
-    //
-    //std::vector<double> norm2(num_bands__, 0);
-    ///* Normalize new basis functions */
-    //#pragma omp parallel for
-    //for (int i = 0; i < res__.num_cols_local(); i++)
-    //{
-    //    int ires = res__.icol(i);
-    //    double d = 0;
-    //    for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
-    //        d += real(conj(res__(igk_row, i)) * res__(igk_row, i));
-    //    norm2[ires] = d;
-    //}
-    //kp__->comm().allreduce(norm2);
-    //#pragma omp parallel for
-    //for (int i = 0; i < res__.num_cols_local(); i++)
-    //{
-    //    int ires = res__.icol(i);
-    //    double d = 1.0 / std::sqrt(norm2[ires]);
-    //    for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) res__(igk_row, i) *= d;
-    //}
+        apply_preconditioner_gpu(kp__->num_gkvec_row(), res__.num_cols_local(), res_idx_gpu.at<gpu>(), eval_gpu.at<gpu>(),
+                                 hdiag_gpu.at<gpu>(), odiag_gpu.at<gpu>(), res__.at<gpu>(), norm2.at<gpu>());
+        // TODO: test gpudirect here
+        norm2.copy_to_host();
+        kp__->comm().allreduce(norm2.at<cpu>(), num_bands__);
+        norm2.copy_to_device();
+
+        normalize_residuals_gpu(kp__->num_gkvec_row(), res__.num_cols_local(), res_idx_gpu.at<gpu>(),
+                                norm2.at<gpu>(), res__.at<gpu>());
+        #else
+        TERMINATE_NO_GPU
+        #endif
+    }
 }
 
 void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
@@ -834,13 +930,6 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
     log_function_enter(__func__);
     Timer t("sirius::Band::diag_fv_uspp_gpu_parallel", kp__->comm());
     
-    if (parameters_.processing_unit() == gpu)
-    {
-        #ifndef _GPU_
-        TERMINATE_NO_GPU
-        #endif
-    }
-
     /* cache kinetic energy */
     std::vector<double> pw_ekin = kp__->get_pw_ekin();
 
@@ -992,7 +1081,6 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             printf("\n");
         }
         }
-        STOP();
 
         /* don't recompute residuals if we are going to exit on the last iteration */
         std::vector<int> res_list;
@@ -1000,7 +1088,6 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
         {
             uspp_residuals_gpu_parallel(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, 
                                         res_norm, kappa);
-            //uspp_cpu_residuals_parallel(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm);
 
             for (int i = 0; i < num_bands; i++)
             {
@@ -1020,6 +1107,10 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
         if (N + n > num_phi || n == 0 || k == (itso.num_steps_ - 1))
         {   
             Timer t3("sirius::Band::diag_fv_uspp_cpu_parallel|update_phi");
+
+            #ifdef _GPU_
+            if (parameters_.processing_unit() == gpu) phi.copy_cols_to_host(0, N);
+            #endif
 
             /* recompute wave-functions: \Psi_{i} = \phi_{mu} * Z_{mu, i} */
             blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, complex_one, phi, evec, complex_zero, psi); 
@@ -1070,11 +1161,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             dmatrix<double_complex>::copy_col<gpu>(res, res_list[i], phi, N + i);
         }
         /* copy new phi to CPU */
-        splindex<block_cyclic> s0(N,     kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
-        splindex<block_cyclic> s1(N + n, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
-        int nloc = static_cast<int>(s1.local_size() - s0.local_size());
-        if (nloc) cuda_copy_to_host(phi.at<cpu>(0, s0.local_size()), phi.at<gpu>(0, s0.local_size()), 
-                                    kp__->num_gkvec_row() * nloc * sizeof(double_complex));
+        phi.copy_cols_to_host(N, N + n);
     }
     
     #ifdef _GPU_
@@ -1083,6 +1170,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
 
     kp__->set_fv_eigen_values(&eval[0]);
     log_function_exit(__func__);
+    STOP();
 }
 #endif
 
