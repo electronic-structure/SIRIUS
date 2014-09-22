@@ -240,7 +240,7 @@ class dmatrix
         inline void copy_cols_to_device(int icol_fisrt, int icol_last)
         {
             splindex<block_cyclic> s0(icol_fisrt, num_ranks_col_, rank_col_, bs_);
-            splindex<block_cyclic> s1(icol_fisrt + icol_last, num_ranks_col_, rank_col_, bs_);
+            splindex<block_cyclic> s1(icol_last,  num_ranks_col_, rank_col_, bs_);
             int nloc = static_cast<int>(s1.local_size() - s0.local_size());
             if (nloc)
             {
@@ -252,7 +252,7 @@ class dmatrix
         inline void copy_cols_to_host(int icol_fisrt, int icol_last)
         {
             splindex<block_cyclic> s0(icol_fisrt, num_ranks_col_, rank_col_, bs_);
-            splindex<block_cyclic> s1(icol_fisrt + icol_last, num_ranks_col_, rank_col_, bs_);
+            splindex<block_cyclic> s1(icol_last,  num_ranks_col_, rank_col_, bs_);
             int nloc = static_cast<int>(s1.local_size() - s0.local_size());
             if (nloc)
             {

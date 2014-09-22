@@ -1086,14 +1086,10 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++)
     {
-        for (int p = 0; p < 10; p++)
-        {
-        std::cout << "calling set_fv_h_o_uspp_gpu_parallel_v3() #" << p << std::endl;
         /* set H and O for the variational subspace */
         set_fv_h_o_uspp_gpu_parallel_v3(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, 
                                         hmlt_old, ovlp_old, num_atoms_in_block, kappa, beta_pw_t, gkvec_row,
                                         packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed);
-        }
         /* increase size of the variation space */
         N += n;
 
@@ -1121,12 +1117,8 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
         std::vector<int> res_list;
         if (k != itso.num_steps_ - 1)
         {
-            for (int p = 0; p < 10; p++)
-            {
-            std::cout << "calling uspp_residuals_gpu_parallel() #" << p << std::endl;
             uspp_residuals_gpu_parallel(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, 
                                         res_norm, kappa);
-            }
 
             for (int i = 0; i < num_bands; i++)
             {
@@ -1212,22 +1204,15 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             {
                 dmatrix<double_complex>::copy_col<gpu>(res, res_list[i], phi, N + i);
             }
-            cuda_device_synchronize();
             /* copy new phi to CPU */
-            std::cout << "copy B" << std::endl;
             phi.copy_cols_to_host(N, N + n);
             #else
-            std::cout << "res copy to host" << std::endl;
             res.data().copy_to_host();
             for (int i = 0; i < n; i++)
             {
                 dmatrix<double_complex>::copy_col<cpu>(res, res_list[i], phi, N + i);
             }
-            kp__->comm().barrier();
-            cuda_device_synchronize();
-            std::cout << "phi copy cols to device" << std::endl;
-            //phi.copy_cols_to_device(N, N + n);
-            phi.data().copy_to_device();
+            phi.copy_cols_to_device(N, N + n);
             #endif
             #endif
         }
