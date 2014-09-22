@@ -1216,7 +1216,6 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
 
     kp__->set_fv_eigen_values(&eval[0]);
     log_function_exit(__func__);
-    STOP();
 }
 #endif
 
