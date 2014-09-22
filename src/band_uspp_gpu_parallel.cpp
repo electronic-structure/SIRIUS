@@ -711,9 +711,18 @@ void Band::uspp_residuals_gpu_parallel(int N__,
                 case gpu:
                 {
                     #ifdef _GPU_
+                    #ifdef _GPU_DIRECT_
                     kp__->comm_col().reduce(hpsi_tmp.at<gpu>(), hpsi__.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
-                    break;
+                    #else
+                    cuda_copy_to_host(hpsi_tmp.at<cpu>(), hpsi_tmp.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col * sizeof(double_complex));
+                    kp__->comm_col().reduce(hpsi_tmp.at<cpu>(), hpsi__.at<cpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
+                    if (icol == kp__->rank_col())
+                    {
+                        cuda_copy_to_device(hpsi__.at<gpu>(), hpsi__.at<cpu>(), kp__->num_gkvec_row() * num_bands_of_col * sizeof(double_complex));
+                    }
                     #endif
+                    #endif
+                    break;
                 }
             }
             lock_hpsi_tmp.store(false);
@@ -729,9 +738,18 @@ void Band::uspp_residuals_gpu_parallel(int N__,
                 case gpu:
                 {
                     #ifdef _GPU_
+                    #ifdef _GPU_DIRECT_
                     kp__->comm_col().reduce(opsi_tmp.at<gpu>(), opsi__.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
-                    break;
+                    #else
+                    cuda_copy_to_host(opsi_tmp.at<cpu>(), opsi_tmp.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col * sizeof(double_complex));
+                    kp__->comm_col().reduce(opsi_tmp.at<cpu>(), opsi__.at<cpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
+                    if (icol == kp__->rank_col())
+                    {
+                        cuda_copy_to_device(opsi__.at<gpu>(), opsi__.at<cpu>(), kp__->num_gkvec_row() * num_bands_of_col * sizeof(double_complex));
+                    }
                     #endif
+                    #endif
+                    break;
                 }
             }
             lock_opsi_tmp.store(false);
