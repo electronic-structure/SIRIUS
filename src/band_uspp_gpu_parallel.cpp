@@ -1121,8 +1121,12 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
         std::vector<int> res_list;
         if (k != itso.num_steps_ - 1)
         {
+            for (int p = 0; p < 10; p++)
+            {
+            std::cout << "calling uspp_residuals_gpu_parallel() #" << p << std::endl;
             uspp_residuals_gpu_parallel(N, num_bands, kp__, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, 
                                         res_norm, kappa);
+            }
 
             for (int i = 0; i < num_bands; i++)
             {
