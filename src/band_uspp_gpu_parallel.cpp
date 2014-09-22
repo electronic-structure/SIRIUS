@@ -1161,7 +1161,9 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             dmatrix<double_complex>::copy_col<gpu>(res, res_list[i], phi, N + i);
         }
         /* copy new phi to CPU */
-        phi.copy_cols_to_host(N, N + n);
+        #ifdef _GPU_
+        if (parameters_.processing_unit() == gpu) phi.copy_cols_to_host(N, N + n);
+        #endif
     }
     
     #ifdef _GPU_
