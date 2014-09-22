@@ -715,6 +715,7 @@ void Band::uspp_residuals_gpu_parallel(int N__,
                     #ifdef _GPU_DIRECT_
                     kp__->comm_col().reduce(hpsi_tmp.at<gpu>(), hpsi__.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
                     #else
+                    std::cout << "to_host#01" << std::endl;
                     cuda_copy_to_host(hpsi_tmp.at<cpu>(), hpsi_tmp.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col * sizeof(double_complex));
                     kp__->comm_col().reduce(hpsi_tmp.at<cpu>(), hpsi__.at<cpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
                     if (icol == kp__->rank_col())
@@ -742,6 +743,7 @@ void Band::uspp_residuals_gpu_parallel(int N__,
                     #ifdef _GPU_DIRECT_
                     kp__->comm_col().reduce(opsi_tmp.at<gpu>(), opsi__.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
                     #else
+                    std::cout << "to_host#02" << std::endl;
                     cuda_copy_to_host(opsi_tmp.at<cpu>(), opsi_tmp.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col * sizeof(double_complex));
                     kp__->comm_col().reduce(opsi_tmp.at<cpu>(), opsi__.at<cpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
                     if (icol == kp__->rank_col())
