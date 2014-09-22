@@ -26,7 +26,9 @@
 #define __MDARRAY_H__
 
 #include <signal.h>
+#ifdef __GLIBC__
 #include <execinfo.h>
+#endif
 #include <cassert>
 #include <memory>
 #include <atomic>
@@ -38,6 +40,7 @@
 #endif
 #include "typedefs.h"
 
+#ifdef __GLIBC__
 #define my_assert(condition__)                                              \
 {                                                                           \
     if (!(condition__))                                                     \
@@ -57,6 +60,20 @@
         exit(-13);                                                          \
     }                                                                       \
 }
+#else
+#define my_assert(condition__)                                              \
+{                                                                           \
+    if (!(condition__))                                                     \
+    {                                                                       \
+        printf("Assertion (%s) failed ", #condition__);                     \
+        printf("at line %i of file %s\n", __LINE__, __FILE__);              \
+        for (int i = 0; i < N; i++)                                         \
+            printf("dim[%i].size = %li\n", i, dims_[i].size());             \
+        raise(SIGTERM);                                                     \
+        exit(-13);                                                          \
+    }                                                                       \
+}
+#endif
 
 /// Index descriptor of mdarray.
 class mdarray_index_descriptor
