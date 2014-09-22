@@ -371,7 +371,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
     auto pu = parameters_.processing_unit();
 
     auto bcast_column = [kp__, &s0_col, &s1_col, pu]
-                        (int icol, dmatrix<double_complex>& m, mdarray<double_complex, 3>& m_tmp) -> void
+                        (int icol, dmatrix<double_complex>& mtrx, mdarray<double_complex, 3>& mtrx_tmp) -> void
     {
         Timer t("sirius::bcast_column");
  
@@ -382,9 +382,9 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
         {
             if (nloc > 0 && kp__->rank_col() == icol)
             {
-                memcpy(m_tmp.at<cpu>(0, 0, icol % 2), m.at<cpu>(0, s0_col.local_size(icol)), panel_size);
+                memcpy(mtrx_tmp.at<cpu>(0, 0, icol % 2), mtrx.at<cpu>(0, s0_col.local_size(icol)), panel_size);
             }
-            kp__->comm_col().bcast(m_tmp.at<cpu>(0, 0, icol % 2), kp__->num_gkvec_row() * nloc, icol);
+            kp__->comm_col().bcast(mtrx_tmp.at<cpu>(0, 0, icol % 2), kp__->num_gkvec_row() * nloc, icol);
         }
         if (pu == gpu)
         {
@@ -392,17 +392,16 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
             #ifdef _GPU_DIRECT_
             if (nloc > 0 && kp__->rank_col() == icol)
             {
-                cuda_copy_device_to_device(m_tmp.at<gpu>(0, 0, icol % 2), m.at<gpu>(0, s0_col.local_size(icol)), panel_size);
+                cuda_copy_device_to_device(mtrx_tmp.at<gpu>(0, 0, icol % 2), mtrx.at<gpu>(0, s0_col.local_size(icol)), panel_size);
             }
-            kp__->comm_col().bcast(m_tmp.at<gpu>(0, 0, icol % 2), kp__->num_gkvec_row() * nloc, icol);
+            kp__->comm_col().bcast(mtrx_tmp.at<gpu>(0, 0, icol % 2), kp__->num_gkvec_row() * nloc, icol);
             #else
             if (nloc > 0 && kp__->rank_col() == icol)
             {
-                //cuda_copy_to_host(m_tmp.at<cpu>(0, 0, icol % 2), m.at<gpu>(0, s0_col.local_size(icol)), panel_size);
-                memcpy(m_tmp.at<cpu>(0, 0, icol % 2), m.at<cpu>(0, s0_col.local_size(icol)), panel_size);
+                memcpy(mtrx_tmp.at<cpu>(0, 0, icol % 2), mtrx.at<cpu>(0, s0_col.local_size(icol)), panel_size);
             }
-            kp__->comm_col().bcast(m_tmp.at<cpu>(0, 0, icol % 2), kp__->num_gkvec_row() * nloc, icol);
-            cuda_copy_to_device(m_tmp.at<gpu>(0, 0, icol % 2), m_tmp.at<cpu>(0, 0, icol % 2), panel_size); 
+            kp__->comm_col().bcast(mtrx_tmp.at<cpu>(0, 0, icol % 2), kp__->num_gkvec_row() * nloc, icol);
+            cuda_copy_to_device(mtrx_tmp.at<gpu>(0, 0, icol % 2), mtrx_tmp.at<cpu>(0, 0, icol % 2), panel_size); 
             #endif
             #else
             TERMINATE_NO_GPU
@@ -616,9 +615,6 @@ void Band::uspp_residuals_gpu_parallel(int N__,
     Timer t1("sirius::Band::uspp_residuals_gpu_parallel|zgemm_eff", kp__->comm());
 
     auto pu = parameters_.processing_unit();
-    //pu = cpu;
-    //hphi__.data().copy_to_host();
-    //ophi__.data().copy_to_host();
 
     splindex<block_cyclic> spl_num_bands_col(num_bands__, kp__->num_ranks_col(), kp__->rank_col(),
                                              parameters_.cyclic_block_size());
@@ -945,8 +941,6 @@ void Band::uspp_residuals_gpu_parallel(int N__,
         TERMINATE_NO_GPU
         #endif
     }
-
-    //res__.data().copy_to_device();
 
     log_function_exit(__func__);
 }
