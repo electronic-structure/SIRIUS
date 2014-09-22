@@ -1200,6 +1200,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             {
                 dmatrix<double_complex>::copy_col<gpu>(res, res_list[i], phi, N + i);
             }
+            cuda_device_synchronize();
             /* copy new phi to CPU */
             std::cout << "copy B" << std::endl;
             phi.copy_cols_to_host(N, N + n);
