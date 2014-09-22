@@ -558,7 +558,6 @@ void Band::apply_h_local_slice(K_point* kp__,
     assert(phi__.size(1) == (size_t)num_phi__ && hphi__.size(1) == (size_t)num_phi__);
 
     auto pu = parameters_.processing_unit();
-    pu = cpu;
 
     auto fft = parameters_.reciprocal_lattice()->fft_coarse();
     #ifdef _GPU_
