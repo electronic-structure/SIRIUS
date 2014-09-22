@@ -617,6 +617,9 @@ void Band::uspp_residuals_gpu_parallel(int N__,
     Timer t1("sirius::Band::uspp_residuals_gpu_parallel|zgemm_eff", kp__->comm());
 
     auto pu = parameters_.processing_unit();
+    pu = cpu;
+    hphi__.data().copy_to_host();
+    opsi__.data().copy_to_host();
 
     splindex<block_cyclic> spl_num_bands_col(num_bands__, kp__->num_ranks_col(), kp__->rank_col(),
                                              parameters_.cyclic_block_size());
@@ -947,6 +950,8 @@ void Band::uspp_residuals_gpu_parallel(int N__,
         TERMINATE_NO_GPU
         #endif
     }
+
+    res__.data().copy_to_device();
 
     log_function_exit(__func__);
 }
