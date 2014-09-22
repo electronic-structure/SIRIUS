@@ -1158,15 +1158,26 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             N = num_bands;
         }
         
-        /* expand variational space with extra basis functions */
-        for (int i = 0; i < n; i++)
+        if (parameters_.processing_unit() == cpu)
         {
-            dmatrix<double_complex>::copy_col<gpu>(res, res_list[i], phi, N + i);
+            /* expand variational space with extra basis functions */
+            for (int i = 0; i < n; i++)
+            {
+                dmatrix<double_complex>::copy_col<cpu>(res, res_list[i], phi, N + i);
+            }
         }
-        /* copy new phi to CPU */
-        #ifdef _GPU_
-        if (parameters_.processing_unit() == gpu) phi.copy_cols_to_host(N, N + n);
-        #endif
+        if (parameters_.processing_unit() == gpu)
+        {
+            #ifdef _GPU_
+            /* expand variational space with extra basis functions */
+            for (int i = 0; i < n; i++)
+            {
+                dmatrix<double_complex>::copy_col<gpu>(res, res_list[i], phi, N + i);
+            }
+            /* copy new phi to CPU */
+            phi.copy_cols_to_host(N, N + n);
+            #endif
+        }
     }
     
     #ifdef _GPU_
