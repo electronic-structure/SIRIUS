@@ -45,12 +45,12 @@
         printf("Assertion (%s) failed ", #condition__);                     \
         printf("at line %i of file %s\n", __LINE__, __FILE__);              \
         for (int i = 0; i < N; i++)                                         \
-            printf("dim[%i].size = %i\n", i, dims_[i].size());              \
+            printf("dim[%i].size = %li\n", i, dims_[i].size());             \
         void *array[10];                                                    \
         char **strings;                                                     \
-        size_t size = backtrace(array, 10);                                 \
+        auto size = backtrace(array, 10);                                   \
         strings = backtrace_symbols(array, size);                           \
-        printf ("Obtained %zd stack frames.\n", size);                      \
+        printf ("Stack backtrace:\n");                                      \
         for (size_t i = 0; i < size; i++)                                   \
             printf ("%s\n", strings[i]);                                    \
         raise(SIGTERM);                                                     \
@@ -262,13 +262,13 @@ class mdarray_base
             {
                 case cpu:
                 {
-                    assert(ptr_ != nullptr);
+                    my_assert(ptr_ != nullptr);
                     return &ptr_[idx__];
                 }
                 case gpu:
                 {
                     #ifdef _GPU_
-                    assert(ptr_device_ != nullptr);
+                    my_assert(ptr_device_ != nullptr);
                     return &ptr_device_[idx__];
                     #else
                     printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);

@@ -107,16 +107,19 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
 
             nbf_in_block += uc->atom(ia)->mt_basis_size();
         }
+
+        double_complex* beta_phi_gpu_ptr = nullptr;
         #ifdef _GPU_
         if (parameters_.processing_unit() == gpu)
         {
             beta_pw_desc.copy_to_device();
             atom_pos.copy_to_device();
+            beta_phi_gpu_ptr = beta_phi_tmp.at<gpu>();
         }
         #endif
 
         /* wrapper for <beta|phi> with required dimensions */
-        matrix<double_complex> beta_phi(beta_phi_tmp.at<cpu>(), beta_phi_tmp.at<gpu>(), nbf_in_block, nloc);
+        matrix<double_complex> beta_phi(beta_phi_tmp.at<cpu>(), beta_phi_gpu_ptr, nbf_in_block, nloc);
 
         Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_phi", kp__->comm_row());
         if (parameters_.processing_unit() == cpu)
