@@ -1226,7 +1226,8 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             kp__->comm().barrier();
             cuda_device_synchronize();
             std::cout << "phi copy cols to device" << std::endl;
-            phi.copy_cols_to_device(N, N + n);
+            //phi.copy_cols_to_device(N, N + n);
+            phi.data().copy_to_device();
             #endif
             #endif
         }
