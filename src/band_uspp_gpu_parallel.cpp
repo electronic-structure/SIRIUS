@@ -1206,7 +1206,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             std::cout << "copy B" << std::endl;
             phi.copy_cols_to_host(N, N + n);
             #else
-            res.copy_to_host();
+            res.data().copy_to_host();
             for (int i = 0; i < n; i++)
             {
                 dmatrix<double_complex>::copy_col<cpu>(res, res_list[i], phi, N + i);
