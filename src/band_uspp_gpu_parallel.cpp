@@ -611,6 +611,7 @@ void Band::uspp_residuals_gpu_parallel(int N__,
                                        mdarray<double_complex, 2>& kappa__)
 
 {
+    log_function_enter(__func__);
     Timer t("sirius::Band::uspp_residuals_gpu_parallel", kp__->comm());
 
     Timer t1("sirius::Band::uspp_residuals_gpu_parallel|zgemm_eff", kp__->comm());
@@ -910,6 +911,7 @@ void Band::uspp_residuals_gpu_parallel(int N__,
 
         compute_residuals_gpu(kp__->num_gkvec_row(), res__.num_cols_local(), res_idx_gpu.at<gpu>(), eval_gpu.at<gpu>(),
                               hpsi__.at<gpu>(), opsi__.at<gpu>(), res__.at<gpu>(), res_norm_gpu.at<gpu>());
+        std::cout << "to_host#1" << std::endl;
         res_norm_gpu.copy_to_host();
 
         kp__->comm().allreduce(res_norm__);
@@ -932,6 +934,7 @@ void Band::uspp_residuals_gpu_parallel(int N__,
         apply_preconditioner_gpu(kp__->num_gkvec_row(), res__.num_cols_local(), res_idx_gpu.at<gpu>(), eval_gpu.at<gpu>(),
                                  hdiag_gpu.at<gpu>(), odiag_gpu.at<gpu>(), res__.at<gpu>(), norm2.at<gpu>());
         // TODO: test gpudirect here
+        std::cout << "to_host#2" << std::endl;
         norm2.copy_to_host();
         kp__->comm().allreduce(norm2.at<cpu>(), num_bands__);
         norm2.copy_to_device();
@@ -942,6 +945,8 @@ void Band::uspp_residuals_gpu_parallel(int N__,
         TERMINATE_NO_GPU
         #endif
     }
+
+    log_function_exit(__func__);
 }
 
 void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
