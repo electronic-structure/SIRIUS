@@ -1195,6 +1195,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
         if (parameters_.processing_unit() == gpu)
         {
             #ifdef _GPU_
+            #ifdef _GPU_DIRECT_
             /* expand variational space with extra basis functions */
             for (int i = 0; i < n; i++)
             {
@@ -1204,6 +1205,14 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             /* copy new phi to CPU */
             std::cout << "copy B" << std::endl;
             phi.copy_cols_to_host(N, N + n);
+            #else
+            res.copy_to_host();
+            for (int i = 0; i < n; i++)
+            {
+                dmatrix<double_complex>::copy_col<cpu>(res, res_list[i], phi, N + i);
+            }
+            phi.copy_cols_to_device(N, N + n);
+            #endif
             #endif
         }
     }
