@@ -188,7 +188,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                             phi__.at<cpu>(0, s0.local_size()), phi__.ld(), 
                             beta_phi.at<cpu>(), beta_phi.ld());
             kp__->comm_row().allreduce(beta_phi.at<cpu>(), (int)beta_phi.size());
-            std::cout << "beta_phi(0, 0) = " << beta_phi(0, 0) << std::endl;
+            INFO << "beta_phi(0, 0) = " << beta_phi(0, 0) << std::endl;
         }
         #ifdef _GPU_
         if (parameters_.processing_unit() == gpu)
@@ -213,7 +213,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
             {
                 kp__->comm_row().allreduce(beta_phi.at<gpu>(), (int)beta_phi.size());
                 beta_phi.copy_to_host();
-                std::cout << "beta_phi(0, 0) = " << beta_phi(0, 0) << std::endl;
+                INFO << "beta_phi(0, 0) = " << beta_phi(0, 0) << std::endl;
             }
             else
             {
@@ -248,6 +248,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                                 beta_phi.at<cpu>(ofs, 0), beta_phi.ld(), tmp.at<cpu>(ofs, 0), tmp.ld());
 
             }
+            INFO << "D<beta|phi>(0, 0) = " << tmp.at<cpu>(0, 0) << std::endl;
             
             /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
             blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
@@ -293,6 +294,8 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
 
             }
             cuda_device_synchronize();
+            tmp.copy_to_host();
+            INFO << "D<beta|phi>(0, 0) = " << tmp.at<cpu>(0, 0) << std::endl;
             
             double_complex alpha = complex_one;
             /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
