@@ -265,22 +265,29 @@ class Band
                                             std::vector<double>& res_norm__,
                                             mdarray<double_complex, 2>& kappa__);
         
-        #ifdef _GPU_
-        void uspp_residuals_gpu_parallel(int N__,
-                                         int num_bands__,
-                                         K_point* kp__,
-                                         std::vector<double>& eval__,
-                                         dmatrix<double_complex>& evec__,
-                                         dmatrix<double_complex>& hphi__,
-                                         dmatrix<double_complex>& ophi__,
-                                         dmatrix<double_complex>& hpsi__,
-                                         dmatrix<double_complex>& opsi__,
-                                         dmatrix<double_complex>& res__,
-                                         std::vector<double_complex>& h_diag__,
-                                         std::vector<double_complex>& o_diag__,
-                                         std::vector<double>& res_norm__,
-                                         mdarray<double_complex, 2>& kappa__);
+        void diag_fv_uspp_gpu(K_point* kp__,
+                              Periodic_function<double>* effective_potential__);
 
+        void diag_fv_uspp_gpu_parallel(K_point* kp__,
+                                       double v0__,
+                                       std::vector<double>& veff_it_coarse__);
+
+        void apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
+                                            std::vector<double>& effective_potential__,
+                                            std::vector<double>& pw_ekin__,
+                                            int N__,
+                                            int n__,
+                                            dmatrix<double_complex>& phi__,
+                                            dmatrix<double_complex>& hphi__,
+                                            dmatrix<double_complex>& ophi__,
+                                            int num_atoms_in_block__,
+                                            matrix<double_complex>& kappa__,
+                                            matrix<double_complex>& beta_pw_t__,
+                                            matrix<double>& gkvec_row__,
+                                            mdarray<int, 1>& packed_mtrx_offset__,
+                                            mdarray<double_complex, 1>& d_mtrx_packed__,
+                                            mdarray<double_complex, 1>& q_mtrx_packed__);
+        
         void set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                                              int n__,
                                              K_point* kp__,
@@ -301,40 +308,28 @@ class Band
                                              mdarray<double_complex, 1>& d_mtrx_packed__,
                                              mdarray<double_complex, 1>& q_mtrx_packed__);
 
-        void diag_fv_uspp_gpu_parallel(K_point* kp__,
-                                       double v0__,
-                                       std::vector<double>& veff_it_coarse__);
+        void uspp_residuals_gpu_parallel(int N__,
+                                         int num_bands__,
+                                         K_point* kp__,
+                                         std::vector<double>& eval__,
+                                         dmatrix<double_complex>& evec__,
+                                         dmatrix<double_complex>& hphi__,
+                                         dmatrix<double_complex>& ophi__,
+                                         dmatrix<double_complex>& hpsi__,
+                                         dmatrix<double_complex>& opsi__,
+                                         dmatrix<double_complex>& res__,
+                                         std::vector<double_complex>& h_diag__,
+                                         std::vector<double_complex>& o_diag__,
+                                         std::vector<double>& res_norm__,
+                                         mdarray<double_complex, 2>& kappa__);
 
-        void apply_h_local_gpu(K_point* kp__,
-                               std::vector<double>& effective_potential__,
-                               std::vector<double>& pw_ekin__, 
-                               int num_phi__,
-                               mdarray<double_complex, 2>& gamma__,
-                               mdarray<double_complex, 2>& kappa__,
-                               double_complex* phi__, 
-                               double_complex* hphi__);
+        #ifdef _GPU_
 
         void apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
                                 mdarray<double_complex, 2>& gamma, mdarray<double_complex, 2>& kappa, double_complex* phi__, 
                                 double_complex* hphi__, double_complex* ophi__);
 
-        void diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_potential);
 
-        void apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
-                                            std::vector<double>& effective_potential__,
-                                            std::vector<double>& pw_ekin__,
-                                            int N__,
-                                            int n__,
-                                            dmatrix<double_complex>& phi__,
-                                            dmatrix<double_complex>& hphi__,
-                                            dmatrix<double_complex>& ophi__,
-                                            int num_atoms_in_block__,
-                                            matrix<double_complex>& kappa__,
-                                            matrix<double_complex>& beta_pw_t__,
-                                            matrix<double>& gkvec_row__,
-                                            mdarray<int, 1>& packed_mtrx_offset__,
-                                            mdarray<double_complex, 1>& d_mtrx_packed__,
-                                            mdarray<double_complex, 1>& q_mtrx_packed__);
         #endif
 
     public:

@@ -12,6 +12,7 @@ extern "C" void create_beta_pw_gpu_v2(int num_atoms,
                                       double* gkvec,
                                       double* atom_pos,
                                       double_complex* beta_pw);
+#endif
 
 void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                                           std::vector<double>& effective_potential__,
@@ -88,11 +89,13 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
     }
     #endif
 
-    bool gpu_direct = false;
+    #ifdef _GPU_
     #ifdef _GPU_DIRECT_
-    gpu_direct = true;
+    bool gpu_direct = true;
+    #else
+    bool gpu_direct = false;
     #endif
-    gpu_direct = true;
+    #endif
 
     for (int iab = 0; iab < num_atom_blocks; iab++)
     {
@@ -114,18 +117,20 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
             nbf_in_block += uc->atom(ia)->mt_basis_size();
         }
 
-        double_complex* beta_phi_gpu_ptr = nullptr;
         #ifdef _GPU_
         if (parameters_.processing_unit() == gpu)
         {
             beta_pw_desc.copy_to_device();
             atom_pos.copy_to_device();
-            beta_phi_gpu_ptr = beta_phi_tmp.at<gpu>();
         }
         #endif
 
         /* wrapper for <beta|phi> with required dimensions */
-        matrix<double_complex> beta_phi(beta_phi_tmp.at<cpu>(), beta_phi_gpu_ptr, nbf_in_block, nloc);
+        #ifdef _GPU_
+        matrix<double_complex> beta_phi(beta_phi_tmp.at<cpu>(), beta_phi_tmp.at<gpu>(), nbf_in_block, nloc);
+        #else
+        matrix<double_complex> beta_phi(beta_phi_tmp.at<cpu>(), nbf_in_block, nloc);
+        #endif
 
         Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_phi", kp__->comm_row());
         if (parameters_.processing_unit() == cpu)
@@ -350,27 +355,26 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
     }
     #endif
 
-    int max_num_hphi = 0;
+    int max_num_phi_new = 0;
     for (int icol = 0; icol < kp__->num_ranks_col(); icol++)
-        max_num_hphi = std::max(max_num_hphi, (int)(s1_col.local_size(icol) - s0_col.local_size(icol)));
+        max_num_phi_new = std::max(max_num_phi_new, (int)(s1_col.local_size(icol) - s0_col.local_size(icol)));
     
     int num_phi = (int)s1_col.local_size();
 
-    double_complex* hphi_ptr_gpu = nullptr;
-    double_complex* ophi_ptr_gpu = nullptr;
     #ifdef _GPU_
-    if (parameters_.processing_unit() == gpu)
-    {
-        hphi_ptr_gpu = kappa__.at<gpu>(0, 0);
-        ophi_ptr_gpu = kappa__.at<gpu>(0, 2 * max_num_hphi);
-    }
+    mdarray<double_complex, 3> hphi_tmp(kappa__.at<cpu>(0, 0), 
+                                        kappa__.at<gpu>(0, 0), 
+                                        kp__->num_gkvec_row(), max_num_phi_new, 2);
+    mdarray<double_complex, 3> ophi_tmp(kappa__.at<cpu>(0, 2 * max_num_phi_new),
+                                        kappa__.at<gpu>(0, 2 * max_num_phi_new),
+                                        kp__->num_gkvec_row(), max_num_phi_new, 2);
+    #else
+    mdarray<double_complex, 3> hphi_tmp(kappa__.at<cpu>(0, 0), kp__->num_gkvec_row(), max_num_phi_new, 2);
+    mdarray<double_complex, 3> ophi_tmp(kappa__.at<cpu>(0, 2 * max_num_phi_new), kp__->num_gkvec_row(), max_num_phi_new, 2);
     #endif
 
-    mdarray<double_complex, 3> hphi_tmp(kappa__.at<cpu>(0, 0),                hphi_ptr_gpu, kp__->num_gkvec_row(), max_num_hphi, 2);
-    mdarray<double_complex, 3> ophi_tmp(kappa__.at<cpu>(0, 2 * max_num_hphi), ophi_ptr_gpu, kp__->num_gkvec_row(), max_num_hphi, 2);
-
-    mdarray<double_complex, 3> h_tmp(num_phi, max_num_hphi, 2);
-    mdarray<double_complex, 3> o_tmp(num_phi, max_num_hphi, 2);
+    mdarray<double_complex, 3> h_tmp(num_phi, max_num_phi_new, 2);
+    mdarray<double_complex, 3> o_tmp(num_phi, max_num_phi_new, 2);
 
     #ifdef _GPU_
     if (parameters_.processing_unit() == gpu)
@@ -595,6 +599,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
     log_function_exit(__func__);
 }
 
+#ifdef _GPU_
 extern "C" void compute_residuals_gpu(int num_gkvec_row,
                                       int num_res_local,
                                       int* res_idx,
@@ -618,6 +623,7 @@ extern "C" void normalize_residuals_gpu(int num_gkvec_row,
                                         int* res_idx,
                                         double* norm2,
                                         double_complex* res);
+#endif
 
 void Band::uspp_residuals_gpu_parallel(int N__,
                                        int num_bands__,
@@ -633,7 +639,6 @@ void Band::uspp_residuals_gpu_parallel(int N__,
                                        std::vector<double_complex>& o_diag__,
                                        std::vector<double>& res_norm__,
                                        mdarray<double_complex, 2>& kappa__)
-
 {
     log_function_enter(__func__);
     Timer t("sirius::Band::uspp_residuals_gpu_parallel", kp__->comm());
@@ -658,13 +663,7 @@ void Band::uspp_residuals_gpu_parallel(int N__,
     #ifdef _GPU_
     if (pu == gpu) evec_tmp.allocate_on_device();
     #endif
-
-    bool gpu_direct = false;
-    #ifdef _GPU_DIRECT_
-    gpu_direct = true;
-    #endif
-    gpu_direct = false;
-
+    
     std::array<std::atomic_bool, 2> lock_evec_tmp;
     std::atomic_bool lock_hpsi_tmp;
     std::atomic_bool lock_opsi_tmp;
@@ -674,18 +673,13 @@ void Band::uspp_residuals_gpu_parallel(int N__,
 
     int num_bnd_max = (int)spl_num_bands_col.local_size(0);
 
-    double_complex* hpsi_ptr_gpu = nullptr;
-    double_complex* opsi_ptr_gpu = nullptr;
     #ifdef _GPU_
-    if (pu == gpu)
-    {
-        hpsi_ptr_gpu = kappa__.at<gpu>(0, 0);
-        opsi_ptr_gpu = kappa__.at<gpu>(0, num_bnd_max);
-    }
+    matrix<double_complex> hpsi_tmp(kappa__.at<cpu>(0, 0),           kappa__.at<gpu>(0, 0),           kp__->num_gkvec_row(), num_bnd_max);
+    matrix<double_complex> opsi_tmp(kappa__.at<cpu>(0, num_bnd_max), kappa__.at<gpu>(0, num_bnd_max), kp__->num_gkvec_row(), num_bnd_max);
+    #else
+    matrix<double_complex> hpsi_tmp(kappa__.at<cpu>(0, 0),           kp__->num_gkvec_row(), num_bnd_max);
+    matrix<double_complex> opsi_tmp(kappa__.at<cpu>(0, num_bnd_max), kp__->num_gkvec_row(), num_bnd_max);
     #endif
-
-    matrix<double_complex> hpsi_tmp(kappa__.at<cpu>(0, 0),           hpsi_ptr_gpu, kp__->num_gkvec_row(), num_bnd_max);
-    matrix<double_complex> opsi_tmp(kappa__.at<cpu>(0, num_bnd_max), opsi_ptr_gpu, kp__->num_gkvec_row(), num_bnd_max);
 
     auto get_evec = [kp__, &spl_num_bands_col, &spl_num_bands_row, &evec_t, &evec_tmp, num_phi_loc, pu]
                     (int icol) -> void 
@@ -720,8 +714,16 @@ void Band::uspp_residuals_gpu_parallel(int N__,
     
     /* communication thread */
     std::thread comm_thread([kp__, &lock_evec_tmp, &lock_hpsi_tmp, &hpsi_tmp, &hpsi__, 
-                             &lock_opsi_tmp, &opsi_tmp, &opsi__, &spl_num_bands_col, get_evec, pu, gpu_direct]()
+                             &lock_opsi_tmp, &opsi_tmp, &opsi__, &spl_num_bands_col, get_evec, pu]()
     {
+        #ifdef _GPU_
+        #ifdef _GPU_DIRECT_
+        bool gpu_direct = true;
+        #else
+        bool gpu_direct = false;
+        #endif
+        #endif
+
         for (int icol = 0; icol < kp__->num_ranks_col(); icol++)
         {
             int num_bands_of_col = (int)spl_num_bands_col.local_size(icol);
@@ -1244,6 +1246,5 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
     kp__->set_fv_eigen_values(&eval[0]);
     log_function_exit(__func__);
 }
-#endif
 
 }

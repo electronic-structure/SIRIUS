@@ -2710,7 +2710,6 @@ void Band::diag_fv_uspp_cpu(K_point* kp__,
     }
 }
 
-#ifdef _GPU_
 void Band::diag_fv_uspp_gpu(K_point* kp__, 
                             Periodic_function<double>* effective_potential__)
 {
@@ -2744,6 +2743,7 @@ void Band::diag_fv_uspp_gpu(K_point* kp__,
     }
 }
 
+#ifdef _GPU_
 //== void Band::diag_fv_uspp_gpu(K_point* kp, Periodic_function<double>* effective_potential)
 //== {
 //==     //== Timer t("sirius::Band::diag_fv_uspp_gpu");

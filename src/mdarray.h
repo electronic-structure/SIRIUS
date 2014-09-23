@@ -40,39 +40,43 @@
 #endif
 #include "typedefs.h"
 
-#ifdef __GLIBC__
-#define my_assert(condition__)                                              \
-{                                                                           \
-    if (!(condition__))                                                     \
-    {                                                                       \
-        printf("Assertion (%s) failed ", #condition__);                     \
-        printf("at line %i of file %s\n", __LINE__, __FILE__);              \
-        for (int i = 0; i < N; i++)                                         \
-            printf("dim[%i].size = %li\n", i, dims_[i].size());             \
-        void *array[10];                                                    \
-        char **strings;                                                     \
-        auto size = backtrace(array, 10);                                   \
-        strings = backtrace_symbols(array, size);                           \
-        printf ("Stack backtrace:\n");                                      \
-        for (size_t i = 0; i < size; i++)                                   \
-            printf ("%s\n", strings[i]);                                    \
-        raise(SIGTERM);                                                     \
-        exit(-13);                                                          \
-    }                                                                       \
-}
+#ifdef NDEBUG
+  #define my_assert(condition__)
 #else
-#define my_assert(condition__)                                              \
-{                                                                           \
-    if (!(condition__))                                                     \
-    {                                                                       \
-        printf("Assertion (%s) failed ", #condition__);                     \
-        printf("at line %i of file %s\n", __LINE__, __FILE__);              \
-        for (int i = 0; i < N; i++)                                         \
-            printf("dim[%i].size = %li\n", i, dims_[i].size());             \
-        raise(SIGTERM);                                                     \
-        exit(-13);                                                          \
-    }                                                                       \
-}
+  #ifdef __GLIBC__
+    #define my_assert(condition__)                                              \
+    {                                                                           \
+        if (!(condition__))                                                     \
+        {                                                                       \
+            printf("Assertion (%s) failed ", #condition__);                     \
+            printf("at line %i of file %s\n", __LINE__, __FILE__);              \
+            for (int i = 0; i < N; i++)                                         \
+                printf("dim[%i].size = %li\n", i, dims_[i].size());             \
+            void *array[10];                                                    \
+            char **strings;                                                     \
+            auto size = backtrace(array, 10);                                   \
+            strings = backtrace_symbols(array, size);                           \
+            printf ("Stack backtrace:\n");                                      \
+            for (size_t i = 0; i < size; i++)                                   \
+                printf ("%s\n", strings[i]);                                    \
+            raise(SIGTERM);                                                     \
+            exit(-13);                                                          \
+        }                                                                       \
+    }
+  #else
+    #define my_assert(condition__)                                              \
+    {                                                                           \
+        if (!(condition__))                                                     \
+        {                                                                       \
+            printf("Assertion (%s) failed ", #condition__);                     \
+            printf("at line %i of file %s\n", __LINE__, __FILE__);              \
+            for (int i = 0; i < N; i++)                                         \
+                printf("dim[%i].size = %li\n", i, dims_[i].size());             \
+            raise(SIGTERM);                                                     \
+            exit(-13);                                                          \
+        }                                                                       \
+    }
+  #endif
 #endif
 
 /// Index descriptor of mdarray.
