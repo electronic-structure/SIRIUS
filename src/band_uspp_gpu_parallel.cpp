@@ -187,7 +187,8 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                             kappa__.at<cpu>(), kappa__.ld(), 
                             phi__.at<cpu>(0, s0.local_size()), phi__.ld(), 
                             beta_phi.at<cpu>(), beta_phi.ld());
-            kp__->comm_row().allreduce(beta_phi.ptr(), (int)beta_phi.size());
+            kp__->comm_row().allreduce(beta_phi.at<cpu>(), (int)beta_phi.size());
+            std::cout << "beta_phi(0, 0) = " << beta_phi(0, 0) << std::endl;
         }
         #ifdef _GPU_
         if (parameters_.processing_unit() == gpu)
@@ -210,20 +211,14 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
             // here the allreduce fails with a wrong result and a next crash somewhere in ELPA comm.
             if (gpu_direct)
             {
-                std::cout << "comm row" << std::endl;
-                test_gpudirect(kp__->comm_row());
-                std::cout << "comm k " << std::endl;
-                test_gpudirect(kp__->comm());
-                std::cout << "comm world " << std::endl;
-                test_gpudirect(Platform::comm_world());
-
                 kp__->comm_row().allreduce(beta_phi.at<gpu>(), (int)beta_phi.size());
                 beta_phi.copy_to_host();
+                std::cout << "beta_phi(0, 0) = " << beta_phi(0, 0) << std::endl;
             }
             else
             {
                 beta_phi.copy_to_host();
-                kp__->comm_row().allreduce(beta_phi.ptr(), (int)beta_phi.size());
+                kp__->comm_row().allreduce(beta_phi.at<cpu>(), (int)beta_phi.size());
                 beta_phi.copy_to_device();
             }
         }
