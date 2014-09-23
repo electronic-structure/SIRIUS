@@ -5,8 +5,7 @@ using namespace sirius;
 mdarray<int, 1> f1()
 {
     mdarray<int, 1> aa;
-    aa.set_dimensions(4);
-    aa.allocate();
+    aa = mdarray<int, 1>(4);
     for (int i = 0; i < 4; i++) aa(i) = 200 + i;
     return aa;
 }

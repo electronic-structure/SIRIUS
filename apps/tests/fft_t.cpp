@@ -49,30 +49,18 @@ void test2()
     global.initialize();
 
     auto fft = global.reciprocal_lattice()->fft();
-    FFT3D<gpu> fft_gpu(fft->grid_size());
 
-    /* maximum available memory of the device */
-    size_t max_free_mem = cuda_get_free_mem();
-    
-    size_t single_fft_size = fft_gpu.size() * sizeof(double_complex);
-    
-    /* find maximum number of FFTs that can fit into device */
-    int nfft_max = 0;
-    while (fft_gpu.num_fft_max(max_free_mem - nfft_max * single_fft_size) > nfft_max) nfft_max++;
-
-    printf("maximum number of cuFFT transforms : %i\n", nfft_max);
+    int nfft_max = 4;
+    FFT3D<gpu> fft_gpu(fft->grid_size(), nfft_max);
 
     /* allocate work area array */
-    mdarray<char, 1> work_area(nullptr, fft_gpu.work_area_size(nfft_max));
+    mdarray<char, 1> work_area(nullptr, fft_gpu.work_area_size());
     work_area.allocate_on_device();
     
     /* allocate space for spinor components */
     mdarray<double_complex, 2> buff(fft_gpu.size(), nfft_max);
     buff.allocate_on_device();
     
-    /* initialize cuFFT transform */
-    fft_gpu.initialize(nfft_max, work_area.ptr_device());
-
     std::vector<double_complex> fft1(fft->size());
 
     // loop over lowest harmonics in reciprocal space
@@ -95,7 +83,7 @@ void test2()
                     buff(fft->index(i0, i1, i2), k) = double_complex(1.0, 0.0);
                 }
                 buff.copy_to_device();
-                fft_gpu.transform(1, buff.ptr_device());
+                fft_gpu.transform(1, buff.at<gpu>());
                 buff.copy_to_host();
                 
                 double diff = 0.0;
@@ -107,10 +95,6 @@ void test2()
             }
         }
     }
-
-
-    fft_gpu.finalize();
-
 #endif
 }
 
