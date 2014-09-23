@@ -248,12 +248,14 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                                 beta_phi.at<cpu>(ofs, 0), beta_phi.ld(), tmp.at<cpu>(ofs, 0), tmp.ld());
 
             }
-            INFO << "D<beta|phi>(0, 0) = " << tmp.at<cpu>(0, 0) << std::endl;
+            INFO << "D<beta|phi>(0, 0) = " << tmp(0, 0) << std::endl;
             
             /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
             blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
                             kappa__.at<cpu>(), kappa__.ld(), tmp.at<cpu>(), tmp.ld(), complex_one,
                             hphi__.at<cpu>(0, s0.local_size()), hphi__.ld());
+            
+            INFO << "hphi__(0, s0.local_size()) = " << hphi__(0, s0.local_size()) << std::endl;
 
             #pragma omp parallel for
             for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
@@ -295,13 +297,15 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
             }
             cuda_device_synchronize();
             tmp.copy_to_host();
-            INFO << "D<beta|phi>(0, 0) = " << tmp.at<cpu>(0, 0) << std::endl;
+            INFO << "D<beta|phi>(0, 0) = " << tmp(0, 0) << std::endl;
             
             double_complex alpha = complex_one;
             /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
             blas<gpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,
                             kappa__.at<gpu>(), kappa__.ld(), tmp.at<gpu>(), tmp.ld(), &alpha, 
                             hphi__.at<gpu>(0, s0.local_size()), hphi__.ld());
+            hphi__.data().copy_to_host();
+            INFO << "hphi__(0, s0.local_size()) = " << hphi__(0, s0.local_size()) << std::endl;
 
             #pragma omp parallel for
             for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
