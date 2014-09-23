@@ -986,7 +986,7 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp__,
                                                   dmatrix<double_complex>& h__,
                                                   dmatrix<double_complex>& o__)
 {
-    Timer t("sirius::Band::set_fv_h_o", _global_timer_);
+    Timer t("sirius::Band::set_fv_h_o", kp__->comm());
     
     h__.zero();
     o__.zero();
@@ -1026,8 +1026,6 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp__,
 
     /* setup lo-lo block */
     set_fv_h_o_lo_lo(kp__, h__.data(), o__.data());
-
-    kp__->comm().barrier();
 }
 
 //=====================================================================================================================
