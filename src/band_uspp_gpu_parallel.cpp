@@ -4,41 +4,6 @@
 
 namespace sirius {
 
-void test_gpudirect(Communicator const& comm)
-{
-    int N = 500;
-    int K = 30000;
-    mdarray<double_complex, 2> A(N, K);
-    mdarray<double_complex, 2> B(K, N);
-    mdarray<double_complex, 2> C(N, N);
-
-    for (int j = 0; j < K; j++)
-    {
-        for (int i = 0; i < N; i++)
-        {
-            A(i, j) = 1.0;
-            B(j, i) = 1.0;
-        }
-    }
-    blas<cpu>::gemm(0, 0, N, N, K, A.at<cpu>(), A.ld(), B.at<cpu>(), B.ld(), C.at<cpu>(), C.ld());
-    comm.allreduce(C.ptr(), (int)C.size());
-
-    std::cout << C(0, 0) << " " << C(N - 1, N - 1) << std::endl;
-
-    A.allocate_on_device();
-    A.copy_to_device();
-    B.allocate_on_device();
-    B.copy_to_device();
-    C.allocate_on_device();
-
-    blas<gpu>::gemm(0, 0, N, N, K, A.at<gpu>(), A.ld(), B.at<gpu>(), B.ld(), C.at<gpu>(), C.ld());
-    comm.allreduce(C.at<gpu>(), (int)C.size());
-    C.copy_to_host();
-
-    std::cout << C(0, 0) << " " << C(N - 1, N - 1) << std::endl;
-}
-
-
 #ifdef _GPU_
 extern "C" void create_beta_pw_gpu_v2(int num_atoms,
                                       int num_gkvec, 
@@ -330,6 +295,9 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
         }
         #endif
     }
+    #ifdef _GPU_
+    cuda_device_synchronize();
+    #endif
     log_function_exit(__func__);
 }
 
