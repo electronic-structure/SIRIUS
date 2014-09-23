@@ -88,6 +88,12 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
     }
     #endif
 
+    bool gpu_direct = false;
+    #ifdef _GPU_DIRECT_
+    gpu_direct = true;
+    #endif
+    gpu_direct = true;
+
     for (int iab = 0; iab < num_atom_blocks; iab++)
     {
         int nbf_in_block = 0;
@@ -167,9 +173,17 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
 
             // TODO: GPU direct MUST(!!!) work here but it doesn't. Standalone tests work, but 
             // here the allreduce fails with a wrong result and a next crash somewhere in ELPA comm.
-            beta_phi.copy_to_host();
-            kp__->comm_row().allreduce(beta_phi.ptr(), (int)beta_phi.size());
-            beta_phi.copy_to_device();
+            if (gpu_direct)
+            {
+                sleep(2);
+                kp__->comm_row().allreduce(beta_phi.at<gpu>(), (int)beta_phi.size());
+            }
+            else
+            {
+                beta_phi.copy_to_host();
+                kp__->comm_row().allreduce(beta_phi.ptr(), (int)beta_phi.size());
+                beta_phi.copy_to_device();
+            }
         }
         #endif
         double tval = t1.stop();
@@ -637,7 +651,7 @@ void Band::uspp_residuals_gpu_parallel(int N__,
     #ifdef _GPU_DIRECT_
     gpu_direct = true;
     #endif
-    //gpu_direct = false;
+    gpu_direct = false;
 
     std::array<std::atomic_bool, 2> lock_evec_tmp;
     std::atomic_bool lock_hpsi_tmp;
