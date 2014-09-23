@@ -61,7 +61,7 @@ def configure_package(package_name, platform):
     new_env["FC"] = platform["FC"]
     new_env["FCCPP"] = platform["FCCPP"]
 
-    p = subprocess.Popen(["./configure"] + package[1], cwd="./libs/"+package_dir, env=new_env)
+    p = subprocess.Popen(["./configure"] + package[1], cwd = "./libs/" + package_dir, env = new_env)
     p.wait()
 
     retval = []
@@ -158,7 +158,7 @@ def main():
     build_elpa = False
     if "-D_ELPA_" in platform["MPI_CXX_OPT"]:
         build_elpa = True
-        makeinc.write("LIBS := $(LIBS) " + os.getcwd() + "/libs/elpa/2013.11/libelpa.a\n")
+        makeinc.write("LIBS := $(LIBS) " + os.getcwd() + "/libs/elpa/2014.06/libelpa.a\n")
 
     makeinc.write("CXX_OPT := $(CXX_OPT) -I" + os.getcwd() + "/libs/libjson\n")
     makeinc.write("LIBS := $(LIBS) " + os.getcwd() + "/libs/libjson/libjson.a\n")
@@ -183,13 +183,13 @@ def main():
     for i in range(len(make_packages)):
         makef.write(make_packages[i])
     makef.write("\tcd ./libs/libjson; make\n")
-    if build_elpa: makef.write("\tcd ./libs/elpa/2013.11; make\n")
+    if build_elpa: makef.write("\tcd ./libs/elpa/2014.06; make\n")
     
     makef.write("cleanall:\n")
     for i in range(len(clean_packages)):
         makef.write(clean_packages[i])
     makef.write("\tcd ./libs/libjson; make clean\n")
-    if build_elpa: makef.write("\tcd ./libs/elpa/2013.11; make clean\n")
+    if build_elpa: makef.write("\tcd ./libs/elpa/2014.06; make clean\n")
 
     makef.write("\n")
     makef.write("clean:\n")

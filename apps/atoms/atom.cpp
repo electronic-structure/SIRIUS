@@ -47,8 +47,7 @@ class Free_atom : public sirius::Atom_type
             int np = radial_grid().num_points();
             assert(np > 0);
 
-            free_atom_radial_functions_.set_dimensions(np, num_atomic_levels()); 
-            free_atom_radial_functions_.allocate();
+            free_atom_radial_functions_ = mdarray<double, 2>(np, num_atomic_levels()); 
             
             sirius::Radial_solver solver(false, -1.0 * zn(), radial_grid());
         
