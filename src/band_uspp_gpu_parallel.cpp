@@ -190,20 +190,39 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                             kappa__.at<gpu>(), kappa__.ld(), 
                             phi__.at<gpu>(0, s0.local_size()), phi__.ld(), 
                             beta_phi.at<gpu>(), beta_phi.ld());
+            
+            beta_phi.copy_to_host();
+            kp__->comm_row().allreduce(beta_phi.at<cpu>(), (int)beta_phi.size());
+            matrix<double_complex> beta_phi_ref(nbf_in_block, nloc);
+            beta_phi >> beta_phi_ref;
 
-            if (gpu_direct)
+            kp__->comm_row().allreduce(beta_phi.at<gpu>(), (int)beta_phi.size());
+            beta_phi.copy_to_host();
+
+            for (int i = 0; i < nloc; i++)
             {
-                kp__->comm_row().allreduce(beta_phi.at<gpu>(), (int)beta_phi.size());
-                beta_phi.copy_to_host();
-                INFO << "check_sum(beta_phi) = " << check_sum(beta_phi, 0, 0, nbf_in_block, nloc) << std::endl;
+                for (int j = 0; j < nbf_in_block; j++)
+                {
+                    double d = std::abs(beta_phi(j, i) - beta_phi_ref(j, i));
+                    if (d > 1e-8) INFO << "i,j=" << i <<","<<j<<" diff=" << d << std::endl;
+                }
             }
-            else
-            {
-                beta_phi.copy_to_host();
-                kp__->comm_row().allreduce(beta_phi.at<cpu>(), (int)beta_phi.size());
-                INFO << "check_sum(beta_phi) = " << check_sum(beta_phi, 0, 0, nbf_in_block, nloc) << std::endl;
-                beta_phi.copy_to_device();
-            }
+            
+
+
+            //if (gpu_direct)
+            //{
+            //    kp__->comm_row().allreduce(beta_phi.at<gpu>(), (int)beta_phi.size());
+            //    beta_phi.copy_to_host();
+            //    INFO << "check_sum(beta_phi) = " << check_sum(beta_phi, 0, 0, nbf_in_block, nloc) << std::endl;
+            //}
+            //else
+            //{
+            //    beta_phi.copy_to_host();
+            //    kp__->comm_row().allreduce(beta_phi.at<cpu>(), (int)beta_phi.size());
+            //    INFO << "check_sum(beta_phi) = " << check_sum(beta_phi, 0, 0, nbf_in_block, nloc) << std::endl;
+            //    beta_phi.copy_to_device();
+            //}
         }
         #endif
         double tval = t1.stop();
