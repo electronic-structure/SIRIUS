@@ -504,7 +504,7 @@ class mdarray_base
         {
             uint64_t h = 5381;
 
-            for(size_t i = 0; i < size() * sizeof(T); i++) h = ((h << 5) + h) + ((unsigned char*)ptr_)[i];
+            for (size_t i = 0; i < size() * sizeof(T); i++) h = ((h << 5) + h) + ((unsigned char*)ptr_)[i];
 
             return h;
         }

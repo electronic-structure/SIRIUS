@@ -25,6 +25,8 @@ extern "C" void create_beta_pw_gpu_v2(int num_atoms,
                                       double* gkvec,
                                       double* atom_pos,
                                       double_complex* beta_pw);
+
+extern "C" void randomize_on_gpu(double* ptr, size_t size);
 #endif
 
 void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
@@ -185,12 +187,14 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                                   atom_pos.at<gpu>(),
                                   kappa__.at<gpu>());
 
-            /* compute <beta|phi> */
-            blas<gpu>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-                            kappa__.at<gpu>(), kappa__.ld(), 
-                            phi__.at<gpu>(0, s0.local_size()), phi__.ld(), 
-                            beta_phi.at<gpu>(), beta_phi.ld());
+            ///* compute <beta|phi> */
+            //blas<gpu>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
+            //                kappa__.at<gpu>(), kappa__.ld(), 
+            //                phi__.at<gpu>(0, s0.local_size()), phi__.ld(), 
+            //                beta_phi.at<gpu>(), beta_phi.ld());
             
+            randomize_on_gpu((double*)beta_phi.at<gpu>(), beta_phi.size() * 2);
+
             beta_phi.copy_to_host();
             kp__->comm_row().allreduce(beta_phi.at<cpu>(), (int)beta_phi.size());
             matrix<double_complex> beta_phi_ref(nbf_in_block, nloc);

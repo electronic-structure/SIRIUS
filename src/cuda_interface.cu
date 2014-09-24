@@ -9,6 +9,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <stdint.h>
 
 const double twopi = 6.2831853071795864769;
 
@@ -108,19 +109,19 @@ extern "C" void print_cuda_timers()
 // Auxiliary functions
 //=====================
 
-__device__ size_t array2D_offset(int i0, int i1, int ld0)
+inline __device__ size_t array2D_offset(int i0, int i1, int ld0)
 {
     return i0 + i1 * ld0;
 }
 
 // TODO: can be optimized in terms of multiplication
-__device__ size_t array3D_offset(int i0, int i1, int i2, int ld0, int ld1)
+inline __device__ size_t array3D_offset(int i0, int i1, int i2, int ld0, int ld1)
 {
     return i0 + i1 * ld0 + i2 * ld0 * ld1;
 }
 
 // TODO: can be optimized in terms of multiplication
-__device__ size_t array4D_offset(int i0, int i1, int i2, int i3, int ld0, int ld1, int ld2)
+inline __device__ size_t array4D_offset(int i0, int i1, int i2, int i3, int ld0, int ld1, int ld2)
 {
     return i0 + i1 * ld0 + i2 * ld0 * ld1 + i3 * ld0 * ld1 * ld2;
 }
@@ -2172,6 +2173,35 @@ extern "C" void normalize_residuals_gpu(int num_gkvec_row,
         res_idx,
         norm2,
         res
+    );
+}
+
+inline __device__ uint32_t random(size_t seed)
+{
+    uint32_t h = 5381;
+
+    return (h << (seed % 15)) + h;
+}
+
+__global__ void randomize_on_gpu_kernel
+(
+    double* ptr__,
+    size_t size__
+)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < size__) ptr__[i] = double(random(i)) / (1 << 31);
+}
+
+extern "C" void randomize_on_gpu(double* ptr, size_t size)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(size, grid_t.x));
+
+    randomize_on_gpu_kernel <<<grid_b, grid_t>>>
+    (
+        ptr,
+        size
     );
 }
 
