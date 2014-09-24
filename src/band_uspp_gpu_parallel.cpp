@@ -171,6 +171,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                             phi__.at<cpu>(0, s0.local_size()), phi__.ld(), 
                             beta_phi.at<cpu>(), beta_phi.ld());
             kp__->comm_row().allreduce(beta_phi.at<cpu>(), (int)beta_phi.size());
+            INFO << "check_sum(beta_phi) = " << check_sum(beta_phi, 0, 0, nbf_in_block, nloc) << std::endl;
         }
         #ifdef _GPU_
         if (parameters_.processing_unit() == gpu)
@@ -192,6 +193,8 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
             if (gpu_direct)
             {
                 kp__->comm_row().allreduce(beta_phi.at<gpu>(), (int)beta_phi.size());
+                beta_phi.copy_to_host();
+                INFO << "check_sum(beta_phi) = " << check_sum(beta_phi, 0, 0, nbf_in_block, nloc) << std::endl;
             }
             else
             {
