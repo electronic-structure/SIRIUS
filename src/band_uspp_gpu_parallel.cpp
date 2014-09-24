@@ -4,6 +4,19 @@
 
 namespace sirius {
 
+template <typename T>
+T check_sum(mdarray<T, 2>& mtrx, int irow0, int icol0, int nrow, int ncol)
+{
+    T sum = 0;
+
+    for (int j = 0; j < ncol; j++)
+    {
+        for (int i = 0; i < nrow; i++) sum += mtrx(irow0 + i, icol0 + j);
+    }
+
+    return sum;
+}
+
 #ifdef _GPU_
 extern "C" void create_beta_pw_gpu_v2(int num_atoms,
                                       int num_gkvec, 
@@ -129,7 +142,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
         #ifdef _GPU_
         matrix<double_complex> beta_phi(beta_phi_tmp.at<cpu>(), beta_phi_tmp.at<gpu>(), nbf_in_block, nloc);
         #else
-        matrix<double_complex> beta_phi(beta_phi_tmp.at<cpu>(), nbf_in_block, nloc);
+        matrix<double_complex> beta_phi(beta_phi_tmp.at<cpu>(),                         nbf_in_block, nloc);
         #endif
 
         Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_phi", kp__->comm_row());
@@ -158,7 +171,6 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                             phi__.at<cpu>(0, s0.local_size()), phi__.ld(), 
                             beta_phi.at<cpu>(), beta_phi.ld());
             kp__->comm_row().allreduce(beta_phi.at<cpu>(), (int)beta_phi.size());
-            INFO << "beta_phi(0, 0) = " << beta_phi(0, 0) << std::endl;
         }
         #ifdef _GPU_
         if (parameters_.processing_unit() == gpu)
@@ -177,13 +189,9 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                             phi__.at<gpu>(0, s0.local_size()), phi__.ld(), 
                             beta_phi.at<gpu>(), beta_phi.ld());
 
-            // TODO: GPU direct MUST(!!!) work here but it doesn't. Standalone tests work, but 
-            // here the allreduce fails with a wrong result and a next crash somewhere in ELPA comm.
             if (gpu_direct)
             {
                 kp__->comm_row().allreduce(beta_phi.at<gpu>(), (int)beta_phi.size());
-                beta_phi.copy_to_host();
-                INFO << "beta_phi(0, 0) = " << beta_phi(0, 0) << std::endl;
             }
             else
             {
@@ -218,15 +226,12 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                                 beta_phi.at<cpu>(ofs, 0), beta_phi.ld(), tmp.at<cpu>(ofs, 0), tmp.ld());
 
             }
-            INFO << "D<beta|phi>(0, 0) = " << tmp(0, 0) << std::endl;
             
             /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
             blas<cpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
                             kappa__.at<cpu>(), kappa__.ld(), tmp.at<cpu>(), tmp.ld(), complex_one,
                             hphi__.at<cpu>(0, s0.local_size()), hphi__.ld());
             
-            INFO << "hphi__(0, s0.local_size()) = " << hphi__(0, s0.local_size()) << std::endl;
-
             #pragma omp parallel for
             for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
             {
@@ -267,7 +272,6 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
             }
             cuda_device_synchronize();
             tmp.copy_to_host();
-            INFO << "D<beta|phi>(0, 0) = " << tmp(0, 0) << std::endl;
             
             double_complex alpha = complex_one;
             /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
@@ -275,7 +279,6 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                             kappa__.at<gpu>(), kappa__.ld(), tmp.at<gpu>(), tmp.ld(), &alpha, 
                             hphi__.at<gpu>(0, s0.local_size()), hphi__.ld());
             hphi__.data().copy_to_host();
-            INFO << "hphi__(0, s0.local_size()) = " << hphi__(0, s0.local_size()) << std::endl;
 
             #pragma omp parallel for
             for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
@@ -345,6 +348,16 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
     apply_h_o_uspp_gpu_parallel_v2(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__,
                                    num_atoms_in_block__, kappa__, beta_pw_t__, gkvec_row__, packed_mtrx_offset__,
                                    d_mtrx_packed__, q_mtrx_packed__);
+    #ifdef _GPU_
+    size_t panel_size = kp__->num_gkvec_row() * (s1_col.local_size() - s0_col.local_size()) * sizeof(double_complex);
+    cuda_copy_to_host(hphi__.at<cpu>(0, s0_col.local_size()), hphi__.at<gpu>(0, s0_col.local_size()), panel_size);
+    cuda_copy_to_host(ophi__.at<cpu>(0, s0_col.local_size()), ophi__.at<gpu>(0, s0_col.local_size()), panel_size);
+    #endif
+
+    INFO << "check_sum(hphi__) = " << check_sum(hphi__.data(), 0, int(s0_col.local_size()), kp__->num_gkvec_row(), 
+                                                int(s1_col.local_size() - s0_col.local_size())) << std::endl;
+    INFO << "check_sum(ophi__) = " << check_sum(ophi__.data(), 0, int(s0_col.local_size()), kp__->num_gkvec_row(), 
+                                                int(s1_col.local_size() - s0_col.local_size())) << std::endl;
 
     #if defined(_GPU_) && !defined(_GPU_DIRECT_)
     if (parameters_.processing_unit() == gpu)
