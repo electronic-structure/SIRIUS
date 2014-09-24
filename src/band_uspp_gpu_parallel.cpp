@@ -108,6 +108,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
     #else
     bool gpu_direct = false;
     #endif
+    gpu_direct = false;
     #endif
 
     for (int iab = 0; iab < num_atom_blocks; iab++)
@@ -200,6 +201,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
             {
                 beta_phi.copy_to_host();
                 kp__->comm_row().allreduce(beta_phi.at<cpu>(), (int)beta_phi.size());
+                INFO << "check_sum(beta_phi) = " << check_sum(beta_phi, 0, 0, nbf_in_block, nloc) << std::endl;
                 beta_phi.copy_to_device();
             }
         }
