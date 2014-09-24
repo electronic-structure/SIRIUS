@@ -349,9 +349,12 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                                    num_atoms_in_block__, kappa__, beta_pw_t__, gkvec_row__, packed_mtrx_offset__,
                                    d_mtrx_packed__, q_mtrx_packed__);
     #ifdef _GPU_
-    size_t panel_size = kp__->num_gkvec_row() * (s1_col.local_size() - s0_col.local_size()) * sizeof(double_complex);
-    cuda_copy_to_host(hphi__.at<cpu>(0, s0_col.local_size()), hphi__.at<gpu>(0, s0_col.local_size()), panel_size);
-    cuda_copy_to_host(ophi__.at<cpu>(0, s0_col.local_size()), ophi__.at<gpu>(0, s0_col.local_size()), panel_size);
+    if (parameters_.processing_unit() == gpu)
+    {
+        size_t panel_size = kp__->num_gkvec_row() * (s1_col.local_size() - s0_col.local_size()) * sizeof(double_complex);
+        cuda_copy_to_host(hphi__.at<cpu>(0, s0_col.local_size()), hphi__.at<gpu>(0, s0_col.local_size()), panel_size);
+        cuda_copy_to_host(ophi__.at<cpu>(0, s0_col.local_size()), ophi__.at<gpu>(0, s0_col.local_size()), panel_size);
+    } 
     #endif
 
     INFO << "check_sum(hphi__) = " << check_sum(hphi__.data(), 0, int(s0_col.local_size()), kp__->num_gkvec_row(), 
