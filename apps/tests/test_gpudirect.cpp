@@ -2,6 +2,8 @@
 
 using namespace sirius;
 
+extern "C" void randomize_on_gpu(double* ptr, size_t size);
+
 void test()
 {
     int N = 500;
@@ -36,9 +38,32 @@ void test()
     std::cout << C(0, 0) << " " << C(N - 1, N - 1) << std::endl;
 }
 
+void test1()
+{
+    mdarray<double_complex, 1> A(1000000);
+    A.allocate_on_device();
+    randomize_on_gpu((double*)A.at<gpu>(), A.size() * 2);
+
+    A.copy_to_host();
+    Platform::comm_world().allreduce(A.at<cpu>(), (int)A.size());
+    
+    mdarray<double_complex, 1> A_ref(1000000);
+    A >> A_ref;
+
+    Platform::comm_world().allreduce(A.at<gpu>(), (int)A.size());
+    A.copy_to_host();
+
+    for (int i = 0; i < 1000000; i++)
+    {
+        double d = std::abs(A(i) - A_ref(i));
+        if (d > 1e-8) INFO << "i=" << i << " diff=" << d << std::endl;
+    }
+}
+
 int main(int argn, char** argv)
 {
     Platform::initialize(1);
     test();
+    test1();
     Platform::finalize();
 }
