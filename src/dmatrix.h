@@ -164,34 +164,34 @@ class dmatrix
             matrix_local_.deallocate();
         }
 
-        inline int num_rows()
+        inline int num_rows() const
         {
             return num_rows_;
         }
 
-        inline int num_rows_local()
+        inline int num_rows_local() const
         {
             return static_cast<int>(spl_row_.local_size());
         }
 
-        inline int irow(int irow_loc)
+        inline int irow(int irow_loc) const
         {
             return static_cast<int>(spl_row_[irow_loc]);
         }
 
-        inline int num_cols()
+        inline int num_cols() const
         {
             return num_cols_;
         }
         
         /// Local number of columns.
-        inline int num_cols_local()
+        inline int num_cols_local() const
         {
             return static_cast<int>(spl_col_.local_size());
         }
         
         /// Inindex of column in global matrix.
-        inline int icol(int icol_loc)
+        inline int icol(int icol_loc) const
         {
             return static_cast<int>(spl_col_[icol_loc]);
         }
@@ -206,7 +206,7 @@ class dmatrix
             return matrix_local_.ptr();
         }
 
-        int ld()
+        int ld() const
         {
             return matrix_local_.ld();
         }
@@ -524,18 +524,18 @@ class dmatrix
             shuffle_vertical<_slice_to_panel_>(offs__, n__, matrix_slice__);
         }
 
-        inline splindex<block_cyclic>& spl_col()
+        inline splindex<block_cyclic> const& spl_col() const
         {
             return spl_col_;
         }
 
-        inline int rank_col()
+        inline int rank_col() const
         {
             return rank_col_;
         }
         
         template <processing_unit_t pu>
-        static void copy_col(dmatrix<T>& src__, int icol_src__, dmatrix<T>& dest__, int icol_dest__)
+        static void copy_col(dmatrix<T> const& src__, int icol_src__, dmatrix<T>& dest__, int icol_dest__)
         {
             assert(src__.num_rows_local() == dest__.num_rows_local());
             assert(src__.blacs_grid_ == dest__.blacs_grid_);

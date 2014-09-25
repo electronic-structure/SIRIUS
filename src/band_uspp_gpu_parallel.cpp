@@ -712,7 +712,6 @@ void Band::uspp_residuals_gpu_parallel(int N__,
             /* send evec to gpu */
             cuda_copy_to_device(evec_tmp.at<gpu>(0, 0, icol % 2), evec_tmp.at<cpu>(0, 0, icol % 2), 
                                 num_phi_loc * num_bands_of_col * sizeof(double_complex));
-            cuda_device_synchronize();
         }
         #endif
     };
@@ -727,7 +726,8 @@ void Band::uspp_residuals_gpu_parallel(int N__,
     {
         #ifdef _GPU_
         #ifdef _GPU_DIRECT_
-        bool gpu_direct = true;
+        // gpu-direct is not working at the moment
+        bool gpu_direct = false;
         #else
         bool gpu_direct = false;
         #endif

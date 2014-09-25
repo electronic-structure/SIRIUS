@@ -133,7 +133,7 @@ class Communicator
         }
 
         template <typename T>
-        void reduce(T* sendbuf__, T* recvbuf__, int count__, int root__) const
+        void reduce(T const* sendbuf__, T* recvbuf__, int count__, int root__) const
         {
             CALL_MPI(MPI_Reduce, (sendbuf__, recvbuf__, count__, type_wrapper<T>::mpi_type_id(), MPI_SUM, root__, mpi_comm_));
         }
@@ -203,7 +203,7 @@ class Communicator
         }
 
         template <typename T>
-        void allgather(T* sendbuf__, T* recvbuf__, int offset__, int count__) const
+        void allgather(T const* sendbuf__, T* recvbuf__, int offset__, int count__) const
         {
             std::vector<int> counts(size());
             counts[rank()] = count__;
@@ -218,7 +218,7 @@ class Communicator
         }
 
         template <typename T>
-        void isend(T* buffer__, int count__, int dest__, int tag__) const
+        void isend(T const* buffer__, int count__, int dest__, int tag__) const
         {
             MPI_Request request;
         
@@ -232,7 +232,7 @@ class Communicator
         }
 
         template <typename T>
-        void gather(T* sendbuf__, T* recvbuf__, int *recvcounts__, int *displs__, int root__) const
+        void gather(T const* sendbuf__, T* recvbuf__, int const* recvcounts__, int const* displs__, int root__) const
         {
             int sendcount = recvcounts__[rank()];
          
@@ -241,7 +241,7 @@ class Communicator
         }
         
         template <typename T>
-        void scatter(T* sendbuf__, T* recvbuf__, int* sendcounts__, int* displs__, int root__) const
+        void scatter(T const* sendbuf__, T* recvbuf__, int const* sendcounts__, int const* displs__, int root__) const
         {
             int recvcount = sendcounts__[rank()];
             CALL_MPI(MPI_Scatterv, (sendbuf__, sendcounts__, displs__, type_wrapper<T>::mpi_type_id(), recvbuf__, recvcount,
