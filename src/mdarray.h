@@ -133,31 +133,52 @@ class mdarray_index_descriptor
         }
 };
 
-extern std::atomic<int64_t> mdarray_mem_count;
-extern std::atomic<int64_t> mdarray_mem_count_max;
+struct mdarray_mem_count
+{
+    static std::atomic<int64_t>& allocated()
+    {
+        static std::atomic<int64_t> allocated_(0);
+        return allocated_;
+    }
 
-/// Simple delete handler which keeps track of allocated and deallocated memory ammount.
+    static std::atomic<int64_t>& allocated_max()
+    {
+        static std::atomic<int64_t> allocated_max_(0);
+        return allocated_max_;
+    }
+};
+
+/// Simple mameory manager handler which keeps track of allocated and deallocated memory.
 template<typename T>
-struct mdarray_deleter
+struct mdarray_mem_mgr
 {
     /// Number of elements of the current allocation.
     size_t size_;
 
     int mode_;
     
-    mdarray_deleter() : size_(0), mode_(0)
+    mdarray_mem_mgr() : size_(0), mode_(0)
     {
     }
 
-    mdarray_deleter(size_t const size__, int const mode__) : size_(size__), mode_(mode__)
+    mdarray_mem_mgr(size_t const size__, int const mode__) : size_(size__), mode_(mode__)
     {
-        mdarray_mem_count += size_ * sizeof(T);
-        mdarray_mem_count_max = std::max(mdarray_mem_count.load(), mdarray_mem_count_max.load());
+        if (mode_ == 0 || mode_ == 1)
+        {
+            mdarray_mem_count::allocated() += size_ * sizeof(T);
+            mdarray_mem_count::allocated_max() = std::max(mdarray_mem_count::allocated().load(), 
+                                                          mdarray_mem_count::allocated_max().load());
+        }
     }
     
+    /// Called by std::unique_ptr when the object is destroyed.
     void operator()(T* p__) const
     {
-        mdarray_mem_count -= size_ * sizeof(T);
+        if (mode_ == 0 || mode_ == 1)
+        {
+            mdarray_mem_count::allocated() -= size_ * sizeof(T);
+        }
+
         switch (mode_)
         {
             case 0:
@@ -194,14 +215,14 @@ class mdarray_base
     protected:
     
         /// Unique pointer to the allocated memory.
-        std::unique_ptr<T[], mdarray_deleter<T> > unique_ptr_;
+        std::unique_ptr<T[], mdarray_mem_mgr<T> > unique_ptr_;
         
         /// Raw pointer.
         T* ptr_;
         
         #ifdef _GPU_
         /// Unique pointer to the allocated GPU memory.
-        std::unique_ptr<T[], mdarray_deleter<T> > unique_ptr_device_;
+        std::unique_ptr<T[], mdarray_mem_mgr<T> > unique_ptr_device_;
         
         /// Raw pointer to GPU memory
         T* ptr_device_;  
@@ -300,6 +321,30 @@ class mdarray_base
             return nullptr;
         }
 
+        template<processing_unit_t pu>
+        inline T const* at_idx(int64_t const idx__) const
+        {
+            switch (pu)
+            {
+                case cpu:
+                {
+                    my_assert(ptr_ != nullptr);
+                    return &ptr_[idx__];
+                }
+                case gpu:
+                {
+                    #ifdef _GPU_
+                    my_assert(ptr_device_ != nullptr);
+                    return &ptr_device_[idx__];
+                    #else
+                    printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
+                    exit(0);
+                    #endif
+                }
+            }
+            return nullptr;
+        }
+
     public:
         
         /// Constructor of an empty array.
@@ -366,7 +411,19 @@ class mdarray_base
             return ptr_[idx(i0)];
         }
 
+        inline T const& operator()(int64_t const i0) const
+        {
+            assert(ptr_ != nullptr);
+            return ptr_[idx(i0)];
+        }
+
         inline T& operator()(int64_t const i0, int64_t const i1) 
+        {
+            assert(ptr_ != nullptr);
+            return ptr_[idx(i0, i1)];
+        }
+
+        inline T const& operator()(int64_t const i0, int64_t const i1) const
         {
             assert(ptr_ != nullptr);
             return ptr_[idx(i0, i1)];
@@ -378,7 +435,19 @@ class mdarray_base
             return ptr_[idx(i0, i1, i2)];
         }
 
+        inline T const& operator()(int64_t const i0, int64_t const i1, int64_t const i2) const
+        {
+            assert(ptr_ != nullptr);
+            return ptr_[idx(i0, i1, i2)];
+        }
+
         inline T& operator()(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3)
+        {
+            assert(ptr_ != nullptr);
+            return ptr_[idx(i0, i1, i2, i3)];
+        }
+
+        inline T const& operator()(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3) const
         {
             assert(ptr_ != nullptr);
             return ptr_[idx(i0, i1, i2, i3)];
@@ -398,6 +467,12 @@ class mdarray_base
 
         template <processing_unit_t pu>
         inline T* at(int64_t const i0, int64_t const i1)
+        {
+            return at_idx<pu>(idx(i0, i1));
+        }
+
+        template <processing_unit_t pu>
+        inline T const* at(int64_t const i0, int64_t const i1) const
         {
             return at_idx<pu>(idx(i0, i1));
         }
@@ -451,7 +526,7 @@ class mdarray_base
 
             if (mode__ == 0)
             {
-                unique_ptr_ = std::unique_ptr< T[], mdarray_deleter<T> >(new T[sz], mdarray_deleter<T>(sz, 0));
+                unique_ptr_ = std::unique_ptr< T[], mdarray_mem_mgr<T> >(new T[sz], mdarray_mem_mgr<T>(sz, 0));
                 ptr_ = unique_ptr_.get();
             }
 
@@ -459,7 +534,7 @@ class mdarray_base
             {
                 #ifdef _GPU_
                 ptr_ = static_cast<T*>(cuda_malloc_host(sz * sizeof(T)));
-                unique_ptr_ = std::unique_ptr< T[], mdarray_deleter<T> >(ptr_, mdarray_deleter<T>(sz, 1));
+                unique_ptr_ = std::unique_ptr< T[], mdarray_mem_mgr<T> >(ptr_, mdarray_mem_mgr<T>(sz, 1));
                 #else
                 printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
                 exit(0);
@@ -493,7 +568,7 @@ class mdarray_base
         }
         
         /// Return raw pointer.
-        inline T* ptr() const
+        inline T* ptr()
         {
             return ptr_;
         }
@@ -510,7 +585,7 @@ class mdarray_base
         }
         
         /// Copy the content of the array to dest
-        void operator>>(mdarray_base<T, N>& dest__)
+        void operator>>(mdarray_base<T, N>& dest__) const
         {
             for (int i = 0; i < N; i++) 
             {
@@ -521,7 +596,7 @@ class mdarray_base
                     exit(-1);
                 }
             }
-            memcpy(dest__.ptr(), ptr(), size() * sizeof(T));
+            memcpy(dest__.ptr(), ptr_, size() * sizeof(T));
         }
 
         #ifdef _GPU_
@@ -531,7 +606,7 @@ class mdarray_base
 
             ptr_device_ = (T*)cuda_malloc(sz * sizeof(T));
 
-            unique_ptr_device_ = std::unique_ptr<T[], mdarray_deleter<T> >(ptr_device_, mdarray_deleter<T>(sz, 2));
+            unique_ptr_device_ = std::unique_ptr<T[], mdarray_mem_mgr<T> >(ptr_device_, mdarray_mem_mgr<T>(sz, 2));
         }
 
         void deallocate_on_device()

@@ -5,7 +5,7 @@
 namespace sirius {
 
 template <typename T>
-T check_sum(mdarray<T, 2>& mtrx, int irow0, int icol0, int nrow, int ncol)
+T check_sum(matrix<T> const& mtrx, int irow0, int icol0, int nrow, int ncol)
 {
     T sum = 0;
 
@@ -25,12 +25,10 @@ extern "C" void create_beta_pw_gpu_v2(int num_atoms,
                                       double* gkvec,
                                       double* atom_pos,
                                       double_complex* beta_pw);
-
-extern "C" void randomize_on_gpu(double* ptr, size_t size);
 #endif
 
 void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
-                                          std::vector<double>& effective_potential__,
+                                          std::vector<double> const& effective_potential__,
                                           std::vector<double>& pw_ekin__,
                                           int N__,
                                           int n__,
@@ -106,11 +104,11 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
 
     #ifdef _GPU_
     #ifdef _GPU_DIRECT_
-    bool gpu_direct = true;
+    // allrecue with gpu-direct is broken at the moment
+    bool gpu_direct = false;
     #else
     bool gpu_direct = false;
     #endif
-    gpu_direct = false;
     #endif
 
     for (int iab = 0; iab < num_atom_blocks; iab++)
@@ -167,18 +165,17 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                     }
                 }
             }
-
             /* compute <beta|phi> */
             blas<cpu>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
                             kappa__.at<cpu>(), kappa__.ld(), 
                             phi__.at<cpu>(0, s0.local_size()), phi__.ld(), 
                             beta_phi.at<cpu>(), beta_phi.ld());
             kp__->comm_row().allreduce(beta_phi.at<cpu>(), (int)beta_phi.size());
-            INFO << "check_sum(beta_phi) = " << check_sum(beta_phi, 0, 0, nbf_in_block, nloc) << std::endl;
         }
         #ifdef _GPU_
         if (parameters_.processing_unit() == gpu)
         {
+            /* create beta projectors directly on GPU */
             create_beta_pw_gpu_v2((int)atom_blocks.local_size(iab),
                                   kp__->num_gkvec_row(),
                                   beta_pw_desc.at<gpu>(),
@@ -187,46 +184,22 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                                   atom_pos.at<gpu>(),
                                   kappa__.at<gpu>());
 
-            ///* compute <beta|phi> */
-            //blas<gpu>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-            //                kappa__.at<gpu>(), kappa__.ld(), 
-            //                phi__.at<gpu>(0, s0.local_size()), phi__.ld(), 
-            //                beta_phi.at<gpu>(), beta_phi.ld());
+            /* compute <beta|phi> */
+            blas<gpu>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
+                            kappa__.at<gpu>(), kappa__.ld(), 
+                            phi__.at<gpu>(0, s0.local_size()), phi__.ld(), 
+                            beta_phi.at<gpu>(), beta_phi.ld());
             
-            randomize_on_gpu((double*)beta_phi.at<gpu>(), beta_phi.size() * 2);
-
-            beta_phi.copy_to_host();
-            kp__->comm_row().allreduce(beta_phi.at<cpu>(), (int)beta_phi.size());
-            matrix<double_complex> beta_phi_ref(nbf_in_block, nloc);
-            beta_phi >> beta_phi_ref;
-
-            kp__->comm_row().allreduce(beta_phi.at<gpu>(), (int)beta_phi.size());
-            beta_phi.copy_to_host();
-
-            for (int i = 0; i < nloc; i++)
+            if (gpu_direct)
             {
-                for (int j = 0; j < nbf_in_block; j++)
-                {
-                    double d = std::abs(beta_phi(j, i) - beta_phi_ref(j, i));
-                    if (d > 1e-8) INFO << "i,j=" << i <<","<<j<<" diff=" << d << std::endl;
-                }
+                kp__->comm_row().allreduce(beta_phi.at<gpu>(), (int)beta_phi.size());
             }
-            
-
-
-            //if (gpu_direct)
-            //{
-            //    kp__->comm_row().allreduce(beta_phi.at<gpu>(), (int)beta_phi.size());
-            //    beta_phi.copy_to_host();
-            //    INFO << "check_sum(beta_phi) = " << check_sum(beta_phi, 0, 0, nbf_in_block, nloc) << std::endl;
-            //}
-            //else
-            //{
-            //    beta_phi.copy_to_host();
-            //    kp__->comm_row().allreduce(beta_phi.at<cpu>(), (int)beta_phi.size());
-            //    INFO << "check_sum(beta_phi) = " << check_sum(beta_phi, 0, 0, nbf_in_block, nloc) << std::endl;
-            //    beta_phi.copy_to_device();
-            //}
+            else
+            {
+                beta_phi.copy_to_host();
+                kp__->comm_row().allreduce(beta_phi.at<cpu>(), (int)beta_phi.size());
+                beta_phi.copy_to_device();
+            }
         }
         #endif
         double tval = t1.stop();
@@ -299,14 +272,12 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
 
             }
             cuda_device_synchronize();
-            tmp.copy_to_host();
             
             double_complex alpha = complex_one;
             /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
             blas<gpu>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,
                             kappa__.at<gpu>(), kappa__.ld(), tmp.at<gpu>(), tmp.ld(), &alpha, 
                             hphi__.at<gpu>(0, s0.local_size()), hphi__.ld());
-            hphi__.data().copy_to_host();
 
             #pragma omp parallel for
             for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
@@ -376,19 +347,6 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
     apply_h_o_uspp_gpu_parallel_v2(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__,
                                    num_atoms_in_block__, kappa__, beta_pw_t__, gkvec_row__, packed_mtrx_offset__,
                                    d_mtrx_packed__, q_mtrx_packed__);
-    #ifdef _GPU_
-    if (parameters_.processing_unit() == gpu)
-    {
-        size_t panel_size = kp__->num_gkvec_row() * (s1_col.local_size() - s0_col.local_size()) * sizeof(double_complex);
-        cuda_copy_to_host(hphi__.at<cpu>(0, s0_col.local_size()), hphi__.at<gpu>(0, s0_col.local_size()), panel_size);
-        cuda_copy_to_host(ophi__.at<cpu>(0, s0_col.local_size()), ophi__.at<gpu>(0, s0_col.local_size()), panel_size);
-    } 
-    #endif
-
-    INFO << "check_sum(hphi__) = " << check_sum(hphi__.data(), 0, int(s0_col.local_size()), kp__->num_gkvec_row(), 
-                                                int(s1_col.local_size() - s0_col.local_size())) << std::endl;
-    INFO << "check_sum(ophi__) = " << check_sum(ophi__.data(), 0, int(s0_col.local_size()), kp__->num_gkvec_row(), 
-                                                int(s1_col.local_size() - s0_col.local_size())) << std::endl;
 
     #if defined(_GPU_) && !defined(_GPU_DIRECT_)
     if (parameters_.processing_unit() == gpu)
@@ -413,7 +371,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                                         kappa__.at<gpu>(0, 2 * max_num_phi_new),
                                         kp__->num_gkvec_row(), max_num_phi_new, 2);
     #else
-    mdarray<double_complex, 3> hphi_tmp(kappa__.at<cpu>(0, 0), kp__->num_gkvec_row(), max_num_phi_new, 2);
+    mdarray<double_complex, 3> hphi_tmp(kappa__.at<cpu>(0, 0),                   kp__->num_gkvec_row(), max_num_phi_new, 2);
     mdarray<double_complex, 3> ophi_tmp(kappa__.at<cpu>(0, 2 * max_num_phi_new), kp__->num_gkvec_row(), max_num_phi_new, 2);
     #endif
 
@@ -448,35 +406,42 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                         (int icol, dmatrix<double_complex>& mtrx, mdarray<double_complex, 3>& mtrx_tmp) -> void
     {
         Timer t("sirius::bcast_column");
+
+        #ifdef _GPU_
+        #ifdef _GPU_DIRECT_
+        bool gpu_direct = true;
+        #else
+        bool gpu_direct = false;
+        #endif
+        #endif
  
         int nloc = (int)(s1_col.local_size(icol) - s0_col.local_size(icol));
         size_t panel_size = kp__->num_gkvec_row() * nloc * sizeof(double_complex);
+
+        if (!nloc) return;
         
         if (pu == cpu)
         {
-            if (nloc > 0 && kp__->rank_col() == icol)
-            {
+            if (kp__->rank_col() == icol)
                 memcpy(mtrx_tmp.at<cpu>(0, 0, icol % 2), mtrx.at<cpu>(0, s0_col.local_size(icol)), panel_size);
-            }
             kp__->comm_col().bcast(mtrx_tmp.at<cpu>(0, 0, icol % 2), kp__->num_gkvec_row() * nloc, icol);
         }
         if (pu == gpu)
         {
             #ifdef _GPU_
-            #ifdef _GPU_DIRECT_
-            if (nloc > 0 && kp__->rank_col() == icol)
+            if (gpu_direct)
             {
-                cuda_copy_device_to_device(mtrx_tmp.at<gpu>(0, 0, icol % 2), mtrx.at<gpu>(0, s0_col.local_size(icol)), panel_size);
-            }
-            kp__->comm_col().bcast(mtrx_tmp.at<gpu>(0, 0, icol % 2), kp__->num_gkvec_row() * nloc, icol);
-            #else
-            if (nloc > 0 && kp__->rank_col() == icol)
+                if (kp__->rank_col() == icol)
+                    cuda_copy_device_to_device(mtrx_tmp.at<gpu>(0, 0, icol % 2), mtrx.at<gpu>(0, s0_col.local_size(icol)), panel_size);
+                kp__->comm_col().bcast(mtrx_tmp.at<gpu>(0, 0, icol % 2), kp__->num_gkvec_row() * nloc, icol);
+            } 
+            else
             {
-                memcpy(mtrx_tmp.at<cpu>(0, 0, icol % 2), mtrx.at<cpu>(0, s0_col.local_size(icol)), panel_size);
+                if (kp__->rank_col() == icol)
+                    memcpy(mtrx_tmp.at<cpu>(0, 0, icol % 2), mtrx.at<cpu>(0, s0_col.local_size(icol)), panel_size);
+                kp__->comm_col().bcast(mtrx_tmp.at<cpu>(0, 0, icol % 2), kp__->num_gkvec_row() * nloc, icol);
+                cuda_copy_to_device(mtrx_tmp.at<gpu>(0, 0, icol % 2), mtrx_tmp.at<cpu>(0, 0, icol % 2), panel_size);
             }
-            kp__->comm_col().bcast(mtrx_tmp.at<cpu>(0, 0, icol % 2), kp__->num_gkvec_row() * nloc, icol);
-            cuda_copy_to_device(mtrx_tmp.at<gpu>(0, 0, icol % 2), mtrx_tmp.at<cpu>(0, 0, icol % 2), panel_size); 
-            #endif
             #else
             TERMINATE_NO_GPU
             #endif
@@ -798,9 +763,7 @@ void Band::uspp_residuals_gpu_parallel(int N__,
                         cuda_copy_to_host(hpsi_tmp.at<cpu>(), hpsi_tmp.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col * sizeof(double_complex));
                         kp__->comm_col().reduce(hpsi_tmp.at<cpu>(), hpsi__.at<cpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
                         if (icol == kp__->rank_col())
-                        {
                             cuda_copy_to_device(hpsi__.at<gpu>(), hpsi__.at<cpu>(), kp__->num_gkvec_row() * num_bands_of_col * sizeof(double_complex));
-                        }
                     }
                     #endif
                     break;
@@ -828,9 +791,7 @@ void Band::uspp_residuals_gpu_parallel(int N__,
                         cuda_copy_to_host(opsi_tmp.at<cpu>(), opsi_tmp.at<gpu>(), kp__->num_gkvec_row() * num_bands_of_col * sizeof(double_complex));
                         kp__->comm_col().reduce(opsi_tmp.at<cpu>(), opsi__.at<cpu>(), kp__->num_gkvec_row() * num_bands_of_col, icol);
                         if (icol == kp__->rank_col())
-                        {
                             cuda_copy_to_device(opsi__.at<gpu>(), opsi__.at<cpu>(), kp__->num_gkvec_row() * num_bands_of_col * sizeof(double_complex));
-                        }
                     }
                     #endif
                     break;

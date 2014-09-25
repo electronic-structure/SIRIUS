@@ -174,7 +174,7 @@ extern "C" {
 
 void cuda_initialize()
 {
-    CALL_CUDA(cudaSetDeviceFlags, (cudaDeviceMapHost));
+    //CALL_CUDA(cudaSetDeviceFlags, (cudaDeviceMapHost));
 }
 
 void* cuda_malloc(size_t size)
@@ -201,17 +201,17 @@ void cuda_free_host(void* ptr)
     CALL_CUDA(cudaFreeHost, (ptr));
 }
 
-void cuda_copy_to_device(void* target, void* source, size_t size)
+void cuda_copy_to_device(void* target, void const* source, size_t size)
 {
     CALL_CUDA(cudaMemcpy, (target, source, size, cudaMemcpyHostToDevice));
 }
 
-void cuda_copy_to_host(void* target, void* source, size_t size)
+void cuda_copy_to_host(void* target, void const* source, size_t size)
 {
     CALL_CUDA(cudaMemcpy, (target, source, size, cudaMemcpyDeviceToHost));
 }
 
-void cuda_copy_device_to_device(void* target, void* source, size_t size)
+void cuda_copy_device_to_device(void* target, void const* source, size_t size)
 {
     CALL_CUDA(cudaMemcpy, (target, source, size, cudaMemcpyDeviceToDevice));
 }

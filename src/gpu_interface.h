@@ -48,7 +48,7 @@ void cuda_free_host(void* ptr);
 
 void cuda_free(void* ptr);
 
-void cuda_copy_to_device(void *target, void *source, size_t size);
+void cuda_copy_to_device(void* target, void const* source, size_t size);
 
 void cuda_copy_to_host(void *target, void *source, size_t size);
 

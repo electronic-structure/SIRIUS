@@ -546,11 +546,11 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 #endif
 
 void Band::apply_h_local_slice(K_point* kp__,
-                               std::vector<double>& effective_potential__,
+                               std::vector<double> const& effective_potential__,
                                std::vector<double>& pw_ekin__,
                                int num_phi__,
-                               mdarray<double_complex, 2>& phi__,
-                               mdarray<double_complex, 2>& hphi__)
+                               matrix<double_complex> const& phi__,
+                               matrix<double_complex>& hphi__)
 {
     Timer t("sirius::Band::apply_h_local_slice");
 
@@ -616,7 +616,7 @@ void Band::apply_h_local_slice(K_point* kp__,
                 matrix<double_complex> fft_buf(nullptr, fft_gpu->size(), fft_gpu->num_fft()); 
                 fft_buf.allocate_on_device();
                 
-                mdarray<double, 1> veff_gpu(&effective_potential__[0], fft_gpu->size());
+                mdarray<double, 1> veff_gpu((double*)&effective_potential__[0], fft_gpu->size());
                 veff_gpu.allocate_on_device();
                 veff_gpu.copy_to_device();
 
@@ -716,7 +716,7 @@ void Band::apply_h_local_slice(K_point* kp__,
 }
 
 void Band::apply_h_local_parallel(K_point* kp__,
-                                  std::vector<double>& effective_potential__,
+                                  std::vector<double> const& effective_potential__,
                                   std::vector<double>& pw_ekin__,
                                   int N__,
                                   int n__,

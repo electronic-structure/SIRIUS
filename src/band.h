@@ -100,11 +100,11 @@ class Band
         void diag_fv_full_potential(K_point* kp, Periodic_function<double>* effective_potential);
 
         void apply_h_local_slice(K_point* kp__,
-                                 std::vector<double>& effective_potential__,
+                                 std::vector<double> const& effective_potential__,
                                  std::vector<double>& pw_ekin__,
                                  int num_phi__,
-                                 mdarray<double_complex, 2>& phi__,
-                                 mdarray<double_complex, 2>& hphi__);
+                                 matrix<double_complex> const& phi__,
+                                 matrix<double_complex>& hphi__);
 
         void apply_h_local(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
                            int n, double_complex* phi__, double_complex* hphi__);
@@ -154,7 +154,7 @@ class Band
                                 double_complex* ophi__);
 
         void apply_h_local_parallel(K_point* kp__,
-                                    std::vector<double>& effective_potential__,
+                                    std::vector<double> const& effective_potential__,
                                     std::vector<double>& pw_ekin__,
                                     int N__,
                                     int n__,
@@ -273,7 +273,7 @@ class Band
                                        std::vector<double>& veff_it_coarse__);
 
         void apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
-                                            std::vector<double>& effective_potential__,
+                                            std::vector<double> const& effective_potential__,
                                             std::vector<double>& pw_ekin__,
                                             int N__,
                                             int n__,

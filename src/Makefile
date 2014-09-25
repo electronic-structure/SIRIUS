@@ -5,8 +5,8 @@ include ../make.inc
 SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platform.cpp radial_grid.cpp \
        radial_solver.cpp sht.cpp atom_type.cpp atom_symmetry_class.cpp atom.cpp unit_cell.cpp \
        reciprocal_lattice.cpp step_function.cpp global.cpp k_point.cpp band.cpp band_uspp.cpp potential.cpp \
-       k_set.cpp density.cpp symmetry.cpp xc_functional.cpp spheric_function.cpp mdarray.cpp \
-       force.cpp dft_ground_state.cpp band_uspp_gpu_parallel.cpp
+       k_set.cpp density.cpp symmetry.cpp xc_functional.cpp spheric_function.cpp force.cpp dft_ground_state.cpp \
+       band_uspp_gpu_parallel.cpp
        
 OBJ = $(SRC:.cpp=.o) 
       
