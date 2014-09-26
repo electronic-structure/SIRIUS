@@ -1922,7 +1922,8 @@ void Potential::generate_d_mtrx_gpu()
 
     mdarray<double_complex, 2> d_mtrx(uc->max_mt_basis_size() * (uc->max_mt_basis_size() + 1) / 2, uc->num_atoms());
     d_mtrx.allocate_on_device();
-
+    
+    Timer t1("sirius::Potential::generate_d_mtrx_gpu|kernel");
     #pragma omp parallel for
     for (int ia = 0; ia < uc->num_atoms(); ia++)
     {
@@ -1944,8 +1945,10 @@ void Potential::generate_d_mtrx_gpu()
                                    d_mtrx.at<gpu>(0, ia), 
                                    thread_id);
     }
+    cuda_device_synchronize();
     
     d_mtrx.copy_to_host();
+    t1.stop();
 
     #pragma omp parallel for
     for (int ia = 0; ia < uc->num_atoms(); ia++)
