@@ -1876,26 +1876,26 @@ void Potential::generate_d_mtrx()
 
 extern "C" void compute_d_mtrx_valence_gpu(int num_gvec_loc,
                                            int num_elements,
-                                           void* veff, 
-                                           int* gvec, 
+                                           double_complex const* veff, 
+                                           int const* gvec, 
                                            double ax,
                                            double ay,
                                            double az,
-                                           void* vtmp,
-                                           void* q_pw_t,
-                                           void* d_mtrx,
+                                           double_complex* vtmp,
+                                           double_complex const* q_pw_t,
+                                           double_complex* d_mtrx,
                                            int stream_id);
 void Potential::generate_d_mtrx_gpu()
 {   
     Timer t("sirius::Potential::generate_d_mtrx_gpu");
 
+    auto rl = parameters_.reciprocal_lattice();
+    auto uc = parameters_.unit_cell();
+
     // get plane-wave coefficients of effective potential
     fft_->input(&effective_potential_->f_it<global>(0));
     fft_->transform(-1);
-    fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), 
-                 &effective_potential_->f_pw(0));
-
-    auto rl = parameters_.reciprocal_lattice();
+    fft_->output(rl->num_gvec(), rl->fft_index(), &effective_potential_->f_pw(0));
 
     mdarray<double_complex, 1> veff_gpu(&effective_potential_->f_pw(static_cast<int>(rl->spl_num_gvec().global_offset())), 
                                         static_cast<int>(rl->spl_num_gvec().local_size()));
@@ -1917,68 +1917,65 @@ void Potential::generate_d_mtrx_gpu()
     gvec.allocate_on_device();
     gvec.copy_to_device();
 
-    #pragma omp parallel
+    mdarray<double_complex, 2> vtmp(nullptr, rl->spl_num_gvec().local_size(), Platform::max_num_threads());
+    vtmp.allocate_on_device();
+
+    mdarray<double_complex, 2> d_mtrx(uc->max_mt_basis_size() * (uc->max_mt_basis_size() + 1) / 2, uc->num_atoms());
+    d_mtrx.allocate_on_device();
+
+    #pragma omp parallel for
+    for (int ia = 0; ia < uc->num_atoms(); ia++)
     {
-        mdarray<double_complex, 1> vtmp_gpu(NULL, rl->spl_num_gvec().local_size());
-        vtmp_gpu.allocate_on_device();
-
-        mdarray<double_complex, 1> d_mtrx_gpu(parameters_.unit_cell()->max_mt_basis_size() * 
-                                         (parameters_.unit_cell()->max_mt_basis_size() + 1) / 2);
-        d_mtrx_gpu.allocate_on_device();
-        d_mtrx_gpu.pin_memory();
-
+        auto atom_type = uc->atom(ia)->type();
+        int nbf = atom_type->mt_basis_size();
         int thread_id = Platform::thread_id();
-        
-        #pragma omp for
-        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+
+        vector3d<double> apos = uc->atom(ia)->position();
+
+        compute_d_mtrx_valence_gpu((int)rl->spl_num_gvec().local_size(), 
+                                   nbf * (nbf + 1) / 2, 
+                                   veff_gpu.at<gpu>(), 
+                                   gvec.at<gpu>(), 
+                                   apos[0], 
+                                   apos[1], 
+                                   apos[2], 
+                                   vtmp.at<gpu>(0, thread_id),
+                                   atom_type->uspp().q_pw.at<gpu>(0, 0),
+                                   d_mtrx.at<gpu>(0, ia), 
+                                   thread_id);
+    }
+    
+    d_mtrx.copy_to_host();
+
+    #pragma omp parallel for
+    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    {
+        auto atom_type = uc->atom(ia)->type();
+        int nbf = atom_type->mt_basis_size();
+        for (int xi2 = 0; xi2 < nbf; xi2++)
         {
-            auto atom_type = parameters_.unit_cell()->atom(ia)->type();
-            int nbf = atom_type->mt_basis_size();
-
-            vector3d<double> apos = parameters_.unit_cell()->atom(ia)->position();
-
-            compute_d_mtrx_valence_gpu((int)rl->spl_num_gvec().local_size(), 
-                                       nbf * (nbf + 1) / 2, 
-                                       veff_gpu.at<gpu>(), 
-                                       gvec.at<gpu>(0, 0), 
-                                       apos[0], 
-                                       apos[1], 
-                                       apos[2], 
-                                       vtmp_gpu.at<gpu>(),
-                                       atom_type->uspp().q_pw.at<gpu>(0, 0),
-                                       d_mtrx_gpu.at<gpu>(), 
-                                       thread_id);
-                                       
-            d_mtrx_gpu.async_copy_to_host(thread_id);
-
-            cuda_stream_synchronize(thread_id);
-
-            for (int xi2 = 0; xi2 < nbf; xi2++)
+            for (int xi1 = 0; xi1 <= xi2; xi1++)
             {
-                for (int xi1 = 0; xi1 <= xi2; xi1++)
-                {
-                    int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+                int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
 
-                    parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) = d_mtrx_gpu(idx12) * parameters_.unit_cell()->omega();
-                    parameters_.unit_cell()->atom(ia)->d_mtrx(xi2, xi1) = conj(d_mtrx_gpu(idx12)) * parameters_.unit_cell()->omega();
-                }
+                uc->atom(ia)->d_mtrx(xi1, xi2) = d_mtrx(idx12, ia) * uc->omega();
+                uc->atom(ia)->d_mtrx(xi2, xi1) = conj(uc->atom(ia)->d_mtrx(xi1, xi2));
             }
         }
     }
 
     for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
     {
-         auto type = parameters_.unit_cell()->atom_type(iat);
+         auto type = uc->atom_type(iat);
          type->uspp().q_pw.deallocate_on_device();
     }
 
     // TODO: this is common with cpu code
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
-        parameters_.comm().allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().ptr(),
-                                     (int)parameters_.unit_cell()->atom(ia)->d_mtrx().size());
+        parameters_.comm().allreduce(uc->atom(ia)->d_mtrx().ptr(), (int)uc->atom(ia)->d_mtrx().size());
 
-        auto atom_type = parameters_.unit_cell()->atom(ia)->type();
+        auto atom_type = uc->atom(ia)->type();
         int nbf = atom_type->mt_basis_size();
 
         for (int xi2 = 0; xi2 < nbf; xi2++)
@@ -1989,7 +1986,7 @@ void Potential::generate_d_mtrx_gpu()
             {
                 int lm1 = atom_type->indexb(xi1).lm;
                 int idxrf1 = atom_type->indexb(xi1).idxrf;
-                if (lm1 == lm2) parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
+                if (lm1 == lm2) uc->atom(ia)->d_mtrx(xi1, xi2) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
             }
         }
     }

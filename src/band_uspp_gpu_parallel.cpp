@@ -338,7 +338,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                                            mdarray<double_complex, 1>& q_mtrx_packed__)
 {
     log_function_enter(__func__);
-    Timer t("sirius::Band::set_fv_h_o_uspp_cpu_parallel_v3", kp__->comm());
+    Timer t("sirius::Band::set_fv_h_o_uspp_gpu_parallel_v3", kp__->comm());
     
     splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
     splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
@@ -418,7 +418,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
         lock_o[i].store(false);
     }
    
-    Timer t1("sirius::Band::set_fv_h_o_uspp_cpu_parallel_v3|zgemm_eff", kp__->comm());
+    Timer t1("sirius::Band::set_fv_h_o_uspp_gpu_parallel_v3|zgemm_eff", kp__->comm());
 
     auto pu = parameters_.processing_unit();
 
@@ -555,7 +555,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
 
         if (n > 0)
         {
-            Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel_v3|zgemm_loc");
+            Timer t2("sirius::Band::set_fv_h_o_uspp_gpu_parallel_v3|zgemm_loc");
             if (pu == gpu)
             {
                 #ifdef _GPU_
@@ -579,7 +579,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
         while (lock_o[icol % 2].load());
         if (n > 0)
         {
-            Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel_v3|zgemm_loc");
+            Timer t2("sirius::Band::set_fv_h_o_uspp_gpu_parallel_v3|zgemm_loc");
             if (pu == gpu)
             {
                 #ifdef _GPU_
