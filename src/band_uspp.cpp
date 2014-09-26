@@ -590,10 +590,10 @@ void Band::apply_h_local_slice(K_point* kp__,
     
     for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
     {
-        if (thread_id == (num_fft_threads - 1) && num_fft_threads > 1 && pu == gpu)
+        if (thread_id == 0 && num_fft_threads > 1 && pu == gpu)
         {
             #ifdef _GPU_
-            fft_threads.push_back(std::thread([thread_id, num_phi__, &idx_phi, &idx_phi_mutex, &fft_gpu, kp__, &phi__, 
+            fft_threads.push_back(std::thread([num_phi__, &idx_phi, &idx_phi_mutex, &fft_gpu, kp__, &phi__, 
                                                &hphi__, &effective_potential__, &pw_ekin__, &count_fft_gpu]()
             {
                 Timer t("sirius::Band::apply_h_local_parallel|gpu");
@@ -706,13 +706,12 @@ void Band::apply_h_local_slice(K_point* kp__,
                         for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi__(igk, i) += phi__(igk, i) * pw_ekin__[igk];
                     }
                 }
-
             }));
         }
     }
     for (auto& thread: fft_threads) thread.join();
 
-    std::cout << "CPU / GPU fft count : " << count_fft_cpu << " " << count_fft_gpu << std::endl;
+    //std::cout << "CPU / GPU fft count : " << count_fft_cpu << " " << count_fft_gpu << std::endl;
 }
 
 void Band::apply_h_local_parallel(K_point* kp__,

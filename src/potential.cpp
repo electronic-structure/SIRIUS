@@ -1960,21 +1960,6 @@ void Potential::generate_d_mtrx_gpu()
                         atom_type->uspp().q_pw.at<gpu>(), (int)rl->spl_num_gvec().local_size(),  
                         vtmp.at<gpu>(0, thread_id), 1, &beta, d_mtrx.at<gpu>(0, ia), 1, thread_id);
 
-        cuda_async_copy_to_host(d_mtrx.at<cpu>(0, ia), d_mtrx.at<gpu>(0, ia), d_mtrx.ld() * sizeof(double_complex), thread_id);
-        
-        cuda_stream_synchronize(thread_id);
-
-        for (int xi2 = 0; xi2 < nbf; xi2++)
-        {
-            for (int xi1 = 0; xi1 <= xi2; xi1++)
-            {
-                int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
-
-                uc->atom(ia)->d_mtrx(xi1, xi2) = d_mtrx(idx12, ia) * uc->omega();
-                uc->atom(ia)->d_mtrx(xi2, xi1) = conj(uc->atom(ia)->d_mtrx(xi1, xi2));
-            }
-        }
-
         //compute_d_mtrx_valence_gpu((int)rl->spl_num_gvec().local_size(), 
         //                           nbf * (nbf + 1) / 2, 
         //                           veff_gpu.at<gpu>(), 
@@ -1988,51 +1973,37 @@ void Potential::generate_d_mtrx_gpu()
         //                           thread_id);
     }
     cuda_device_synchronize();
-    //d_mtrx.copy_to_host();
+    d_mtrx.copy_to_host();
     t1.stop();
 
-    //== #pragma omp parallel for
-    //== for (int ia = 0; ia < uc->num_atoms(); ia++)
-    //== {
-    //==     auto atom_type = uc->atom(ia)->type();
-    //==     int nbf = atom_type->mt_basis_size();
-    //==     for (int xi2 = 0; xi2 < nbf; xi2++)
-    //==     {
-    //==         for (int xi1 = 0; xi1 <= xi2; xi1++)
-    //==         {
-    //==             int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+    parameters_.comm().allreduce(d_mtrx.at<cpu>(), (int)d_mtrx.size());
 
-    //==             uc->atom(ia)->d_mtrx(xi1, xi2) = d_mtrx(idx12, ia) * uc->omega();
-    //==             uc->atom(ia)->d_mtrx(xi2, xi1) = conj(uc->atom(ia)->d_mtrx(xi1, xi2));
-    //==         }
-    //==     }
-    //== }
+    #pragma omp parallel for
+    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    {
+        auto atom_type = uc->atom(ia)->type();
+        int nbf = atom_type->mt_basis_size();
+        for (int xi2 = 0; xi2 < nbf; xi2++)
+        {
+            int lm2 = atom_type->indexb(xi2).lm;
+            int idxrf2 = atom_type->indexb(xi2).idxrf;
+            for (int xi1 = 0; xi1 <= xi2; xi1++)
+            {
+                int lm1 = atom_type->indexb(xi1).lm;
+                int idxrf1 = atom_type->indexb(xi1).idxrf;
+                int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+
+                uc->atom(ia)->d_mtrx(xi1, xi2) = d_mtrx(idx12, ia) * uc->omega();
+                if (lm1 == lm2) uc->atom(ia)->d_mtrx(xi1, xi2) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
+                uc->atom(ia)->d_mtrx(xi2, xi1) = conj(uc->atom(ia)->d_mtrx(xi1, xi2));
+            }
+        }
+    }
 
     for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
     {
          auto type = uc->atom_type(iat);
          type->uspp().q_pw.deallocate_on_device();
-    }
-
-    // TODO: this is common with cpu code
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    {
-        parameters_.comm().allreduce(uc->atom(ia)->d_mtrx().ptr(), (int)uc->atom(ia)->d_mtrx().size());
-
-        auto atom_type = uc->atom(ia)->type();
-        int nbf = atom_type->mt_basis_size();
-
-        for (int xi2 = 0; xi2 < nbf; xi2++)
-        {
-            int lm2 = atom_type->indexb(xi2).lm;
-            int idxrf2 = atom_type->indexb(xi2).idxrf;
-            for (int xi1 = 0; xi1 < nbf; xi1++)
-            {
-                int lm1 = atom_type->indexb(xi1).lm;
-                int idxrf1 = atom_type->indexb(xi1).idxrf;
-                if (lm1 == lm2) uc->atom(ia)->d_mtrx(xi1, xi2) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
-            }
-        }
     }
 }
 #endif

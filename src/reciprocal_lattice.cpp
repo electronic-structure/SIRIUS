@@ -53,7 +53,7 @@ Reciprocal_lattice::Reciprocal_lattice(Unit_cell* unit_cell__,
     fft_ = new FFT3D<cpu>(max_frac_coord, comm__);
 
     #ifdef _GPU_
-    fft_gpu_ = new FFT3D<gpu>(fft_->grid_size(), 4);
+    fft_gpu_ = new FFT3D<gpu>(fft_->grid_size(), 2);
     #endif
     
     if (esm_type_ == ultrasoft_pseudopotential)
