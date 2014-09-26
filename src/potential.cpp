@@ -1903,7 +1903,7 @@ void Potential::generate_d_mtrx_gpu()
     auto rl = parameters_.reciprocal_lattice();
     auto uc = parameters_.unit_cell();
 
-    // get plane-wave coefficients of effective potential
+    /* get plane-wave coefficients of effective potential */
     fft_->input(&effective_potential_->f_it<global>(0));
     fft_->transform(-1);
     fft_->output(rl->num_gvec(), rl->fft_index(), &effective_potential_->f_pw(0));
@@ -1960,6 +1960,21 @@ void Potential::generate_d_mtrx_gpu()
                         atom_type->uspp().q_pw.at<gpu>(), (int)rl->spl_num_gvec().local_size(),  
                         vtmp.at<gpu>(0, thread_id), 1, &beta, d_mtrx.at<gpu>(0, ia), 1, thread_id);
 
+        cuda_async_copy_to_host(d_mtrx.at<cpu>(0, ia), d_mtrx.at<gpu>(0, ia), d_mtrx.ld() * sizeof(double_complex), thread_id);
+        
+        cuda_stream_synchronize(thread_id);
+
+        for (int xi2 = 0; xi2 < nbf; xi2++)
+        {
+            for (int xi1 = 0; xi1 <= xi2; xi1++)
+            {
+                int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+
+                uc->atom(ia)->d_mtrx(xi1, xi2) = d_mtrx(idx12, ia) * uc->omega();
+                uc->atom(ia)->d_mtrx(xi2, xi1) = conj(uc->atom(ia)->d_mtrx(xi1, xi2));
+            }
+        }
+
         //compute_d_mtrx_valence_gpu((int)rl->spl_num_gvec().local_size(), 
         //                           nbf * (nbf + 1) / 2, 
         //                           veff_gpu.at<gpu>(), 
@@ -1973,25 +1988,25 @@ void Potential::generate_d_mtrx_gpu()
         //                           thread_id);
     }
     cuda_device_synchronize();
-    d_mtrx.copy_to_host();
+    //d_mtrx.copy_to_host();
     t1.stop();
 
-    #pragma omp parallel for
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
-    {
-        auto atom_type = uc->atom(ia)->type();
-        int nbf = atom_type->mt_basis_size();
-        for (int xi2 = 0; xi2 < nbf; xi2++)
-        {
-            for (int xi1 = 0; xi1 <= xi2; xi1++)
-            {
-                int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+    //== #pragma omp parallel for
+    //== for (int ia = 0; ia < uc->num_atoms(); ia++)
+    //== {
+    //==     auto atom_type = uc->atom(ia)->type();
+    //==     int nbf = atom_type->mt_basis_size();
+    //==     for (int xi2 = 0; xi2 < nbf; xi2++)
+    //==     {
+    //==         for (int xi1 = 0; xi1 <= xi2; xi1++)
+    //==         {
+    //==             int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
 
-                uc->atom(ia)->d_mtrx(xi1, xi2) = d_mtrx(idx12, ia) * uc->omega();
-                uc->atom(ia)->d_mtrx(xi2, xi1) = conj(uc->atom(ia)->d_mtrx(xi1, xi2));
-            }
-        }
-    }
+    //==             uc->atom(ia)->d_mtrx(xi1, xi2) = d_mtrx(idx12, ia) * uc->omega();
+    //==             uc->atom(ia)->d_mtrx(xi2, xi1) = conj(uc->atom(ia)->d_mtrx(xi1, xi2));
+    //==         }
+    //==     }
+    //== }
 
     for (int iat = 0; iat < parameters_.unit_cell()->num_atom_types(); iat++)
     {
