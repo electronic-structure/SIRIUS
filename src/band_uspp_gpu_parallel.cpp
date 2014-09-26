@@ -140,11 +140,20 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
         #endif
 
         /* wrapper for <beta|phi> with required dimensions */
-        #ifdef _GPU_
-        matrix<double_complex> beta_phi(beta_phi_tmp.at<cpu>(), beta_phi_tmp.at<gpu>(), nbf_in_block, nloc);
-        #else
-        matrix<double_complex> beta_phi(beta_phi_tmp.at<cpu>(),                         nbf_in_block, nloc);
-        #endif
+        matrix<double_complex> beta_phi;
+        switch (parameters_.processing_unit())
+        {
+            case cpu:
+            {
+                beta_phi = matrix<double_complex>(beta_phi_tmp.at<cpu>(), nbf_in_block, nloc);
+                break;
+            }
+            case gpu:
+            {
+                beta_phi = matrix<double_complex>(beta_phi_tmp.at<cpu>(), beta_phi_tmp.at<gpu>(), nbf_in_block, nloc);
+                break;
+            }
+        }
 
         Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_phi", kp__->comm_row());
         if (parameters_.processing_unit() == cpu)
@@ -363,18 +372,29 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
     
     int num_phi = (int)s1_col.local_size();
 
-    #ifdef _GPU_
-    mdarray<double_complex, 3> hphi_tmp(kappa__.at<cpu>(0, 0), 
-                                        kappa__.at<gpu>(0, 0), 
-                                        kp__->num_gkvec_row(), max_num_phi_new, 2);
-    mdarray<double_complex, 3> ophi_tmp(kappa__.at<cpu>(0, 2 * max_num_phi_new),
-                                        kappa__.at<gpu>(0, 2 * max_num_phi_new),
-                                        kp__->num_gkvec_row(), max_num_phi_new, 2);
-    #else
-    mdarray<double_complex, 3> hphi_tmp(kappa__.at<cpu>(0, 0),                   kp__->num_gkvec_row(), max_num_phi_new, 2);
-    mdarray<double_complex, 3> ophi_tmp(kappa__.at<cpu>(0, 2 * max_num_phi_new), kp__->num_gkvec_row(), max_num_phi_new, 2);
-    #endif
-
+    mdarray<double_complex, 3> hphi_tmp, ophi_tmp;
+    switch (parameters_.processing_unit())
+    {
+        case cpu:
+        {
+            hphi_tmp = mdarray<double_complex, 3>(kappa__.at<cpu>(0, 0),
+                                                  kp__->num_gkvec_row(), max_num_phi_new, 2);
+            ophi_tmp = mdarray<double_complex, 3>(kappa__.at<cpu>(0,  2 * max_num_phi_new),
+                                                  kp__->num_gkvec_row(), max_num_phi_new, 2);
+            break;
+        }
+        case gpu:
+        {
+            hphi_tmp = mdarray<double_complex, 3>(kappa__.at<cpu>(0, 0),
+                                                  kappa__.at<gpu>(0, 0), 
+                                                  kp__->num_gkvec_row(), max_num_phi_new, 2);
+            ophi_tmp = mdarray<double_complex, 3>(kappa__.at<cpu>(0,  2 * max_num_phi_new), 
+                                                  kappa__.at<gpu>(0,  2 * max_num_phi_new), 
+                                                  kp__->num_gkvec_row(), max_num_phi_new, 2);
+            break;
+        }
+    }
+    
     mdarray<double_complex, 3> h_tmp(num_phi, max_num_phi_new, 2);
     mdarray<double_complex, 3> o_tmp(num_phi, max_num_phi_new, 2);
 
@@ -682,13 +702,25 @@ void Band::uspp_residuals_gpu_parallel(int N__,
 
     int num_bnd_max = (int)spl_num_bands_col.local_size(0);
 
-    #ifdef _GPU_
-    matrix<double_complex> hpsi_tmp(kappa__.at<cpu>(0, 0),           kappa__.at<gpu>(0, 0),           kp__->num_gkvec_row(), num_bnd_max);
-    matrix<double_complex> opsi_tmp(kappa__.at<cpu>(0, num_bnd_max), kappa__.at<gpu>(0, num_bnd_max), kp__->num_gkvec_row(), num_bnd_max);
-    #else
-    matrix<double_complex> hpsi_tmp(kappa__.at<cpu>(0, 0),           kp__->num_gkvec_row(), num_bnd_max);
-    matrix<double_complex> opsi_tmp(kappa__.at<cpu>(0, num_bnd_max), kp__->num_gkvec_row(), num_bnd_max);
-    #endif
+    matrix<double_complex> hpsi_tmp, opsi_tmp;
+
+    switch (parameters_.processing_unit())
+    {
+        case cpu:
+        {
+            hpsi_tmp = matrix<double_complex>(kappa__.at<cpu>(0, 0),           kp__->num_gkvec_row(), num_bnd_max);
+            opsi_tmp = matrix<double_complex>(kappa__.at<cpu>(0, num_bnd_max), kp__->num_gkvec_row(), num_bnd_max);
+            break;
+        }
+        case gpu:
+        {
+            hpsi_tmp = matrix<double_complex>(kappa__.at<cpu>(0, 0),           kappa__.at<gpu>(0, 0), 
+                                              kp__->num_gkvec_row(), num_bnd_max);
+            opsi_tmp = matrix<double_complex>(kappa__.at<cpu>(0, num_bnd_max), kappa__.at<gpu>(0, num_bnd_max),
+                                              kp__->num_gkvec_row(), num_bnd_max);
+            break;
+        }
+    }
 
     auto get_evec = [kp__, &spl_num_bands_col, &spl_num_bands_row, &evec_t, &evec_tmp, num_phi_loc, pu]
                     (int icol) -> void 

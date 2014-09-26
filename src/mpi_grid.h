@@ -128,7 +128,7 @@ class MPI_grid
                 int comm_size = 1;
                 std::vector<int> flg(dimensions_.size(), 0);
 
-                // each bit represents a directions
+                /* each bit represents a directions */
                 for (int j = 0; j < (int)dimensions_.size(); j++) 
                 {
                     if (i & (1 << j)) 
@@ -143,7 +143,7 @@ class MPI_grid
 
                 communicator_size_[i] = comm_size;
 
-                // subcommunicators
+                /* subcommunicators */
                 CALL_MPI(MPI_Cart_sub, (base_grid_communicator_.mpi_comm(), &flg[0], &comm));
                 communicators_[i] = Communicator(comm);
             }

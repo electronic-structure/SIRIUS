@@ -1874,45 +1874,85 @@ extern "C" void sum_q_pw_d_mtrx_pw_gpu(int num_gvec_loc,
                                                       (cuDoubleComplex*)rho_pw);
 }
 
-__global__ void copy_beta_psi_gpu_kernel(int num_beta_atot, 
-                                         int ld, 
-                                         int offset,
-                                         cuDoubleComplex* beta_psi, 
-                                         double* wo, 
-                                         cuDoubleComplex* bp1, 
-                                         cuDoubleComplex* bp2)
+//__global__ void copy_beta_psi_gpu_kernel(int num_beta_atot, 
+//                                         int ld, 
+//                                         int offset,
+//                                         cuDoubleComplex* beta_psi, 
+//                                         double* wo, 
+//                                         cuDoubleComplex* bp1, 
+//                                         cuDoubleComplex* bp2)
+//{
+//    int xi = threadIdx.x;
+//    int i = blockIdx.x;
+//
+//    bp1[array2D_offset(xi, i, ld)] = beta_psi[array2D_offset(offset + xi, i, num_beta_atot)];
+//    bp2[array2D_offset(xi, i, ld)] = cuCmul(cuConj(beta_psi[array2D_offset(offset + xi, i, num_beta_atot)]),
+//                                            make_cuDoubleComplex(wo[i], 0.0));
+//}
+//
+//extern "C" void copy_beta_psi_gpu(int num_beta_atot, 
+//                                  int num_bands, 
+//                                  int ld,
+//                                  int num_beta,
+//                                  int offset,
+//                                  void* beta_psi,
+//                                  double* wo,
+//                                  void* bp1,
+//                                  void* bp2,
+//                                  int stream_id)
+//{
+//    dim3 grid_t(num_beta);
+//    dim3 grid_b(num_bands);
+//    
+//    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
+//
+//    copy_beta_psi_gpu_kernel<<<grid_b, grid_t, 0, stream>>>(num_beta_atot, 
+//                                                            ld, 
+//                                                            offset, 
+//                                                            (cuDoubleComplex*)beta_psi, 
+//                                                            wo, 
+//                                                            (cuDoubleComplex*)bp1, 
+//                                                            (cuDoubleComplex*)bp2);
+//}
+
+__global__ void copy_beta_psi_gpu_kernel
+(
+    cuDoubleComplex const* beta_psi,
+    int beta_psi_ld, 
+    double const* wo,
+    cuDoubleComplex* beta_psi_wo,
+    int beta_psi_wo_ld
+)
 {
     int xi = threadIdx.x;
-    int i = blockIdx.x;
+    int j = blockIdx.x;
 
-    bp1[array2D_offset(xi, i, ld)] = beta_psi[array2D_offset(offset + xi, i, num_beta_atot)];
-    bp2[array2D_offset(xi, i, ld)] = cuCmul(cuConj(beta_psi[array2D_offset(offset + xi, i, num_beta_atot)]),
-                                            make_cuDoubleComplex(wo[i], 0.0));
+    beta_psi_wo[array2D_offset(xi, j, beta_psi_wo_ld)] = cuCmul(cuConj(beta_psi[array2D_offset(xi, j, beta_psi_ld)]),
+                                                                make_cuDoubleComplex(wo[j], 0.0));
 }
 
-extern "C" void copy_beta_psi_gpu(int num_beta_atot, 
-                                  int num_bands, 
-                                  int ld,
-                                  int num_beta,
-                                  int offset,
-                                  void* beta_psi,
-                                  double* wo,
-                                  void* bp1,
-                                  void* bp2,
+extern "C" void copy_beta_psi_gpu(int nbf,
+                                  int nloc,
+                                  cuDoubleComplex const* beta_psi,
+                                  int beta_psi_ld,
+                                  double const* wo,
+                                  cuDoubleComplex* beta_psi_wo,
+                                  int beta_psi_wo_ld,
                                   int stream_id)
 {
-    dim3 grid_t(num_beta);
-    dim3 grid_b(num_bands);
+    dim3 grid_t(nbf);
+    dim3 grid_b(nloc);
     
     cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
-
-    copy_beta_psi_gpu_kernel<<<grid_b, grid_t, 0, stream>>>(num_beta_atot, 
-                                                            ld, 
-                                                            offset, 
-                                                            (cuDoubleComplex*)beta_psi, 
-                                                            wo, 
-                                                            (cuDoubleComplex*)bp1, 
-                                                            (cuDoubleComplex*)bp2);
+    
+    copy_beta_psi_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
+    (
+        beta_psi,
+        beta_psi_ld,
+        wo,
+        beta_psi_wo,
+        beta_psi_wo_ld
+    );
 }
 
 __global__ void update_it_density_matrix_0_gpu_kernel(int fft_size, 

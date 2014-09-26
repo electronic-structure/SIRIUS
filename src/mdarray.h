@@ -375,10 +375,15 @@ class mdarray_base
         mdarray_base<T, N>& operator=(mdarray_base<T, N> const& src) = delete;
         
         /// Move constructor
-        mdarray_base(mdarray_base<T, N>&& src) : unique_ptr_(std::move(src.unique_ptr_))
+        mdarray_base(mdarray_base<T, N>&& src) 
+            : unique_ptr_(std::move(src.unique_ptr_)),
+              ptr_(src.ptr_),
+              #ifdef _GPU_
+              unique_ptr_device_(std::move(src.unique_ptr_device_)),
+              ptr_device_(src.ptr_device_),
+              #endif
+              pinned_(src.pinned_)
         {
-            ptr_ = src.ptr_;
-            pinned_ = src.pinned_;
             src.pinned_ = false;
             for (int i = 0; i < N; i++)
             {
@@ -394,6 +399,10 @@ class mdarray_base
             {
                 unique_ptr_ = std::move(src.unique_ptr_);
                 ptr_ = src.ptr_;
+                #ifdef _GPU_
+                unique_ptr_device_ = std::move(src.unique_ptr_device_);
+                ptr_device_ = src.ptr_device_;
+                #endif
                 pinned_ = src.pinned_;
                 src.pinned_ = false;
                 for (int i = 0; i < N; i++)
@@ -742,21 +751,23 @@ class mdarray: public mdarray_base<T, N>
             this->set_ptr(ptr__);
         }
 
-        #ifdef _GPU_
         mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1)
         {
             this->init_dimensions({d0, d1});
             this->set_ptr(ptr__);
+            #ifdef _GPU_
             this->set_ptr_device(ptr_device__);
+            #endif
         }
         mdarray(T* ptr__, T* ptr_device__, mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, 
                 mdarray_index_descriptor const& d2)
         {
             this->init_dimensions({d0, d1, d2});
             this->set_ptr(ptr__);
+            #ifdef _GPU_
             this->set_ptr_device(ptr_device__);
+            #endif
         }
-        #endif
 
         mdarray<T, 2> submatrix(int idx)
         {
