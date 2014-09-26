@@ -561,7 +561,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                 #ifdef _GPU_
                 blas<gpu>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.at<gpu>(), phi__.ld(),
                                 hphi_tmp.at<gpu>(0, 0, icol % 2), hphi_tmp.ld(), h_tmp.at<gpu>(0, 0, icol % 2), h_tmp.ld());
-                h_tmp.copy_to_host();
+                cuda_copy_to_host(h_tmp.at<cpu>(0, 0, icol % 2), h_tmp.at<gpu>(0, 0, icol % 2), num_phi * n * sizeof(double_complex));
                 #else
                 TERMINATE_NO_GPU
                 #endif
@@ -585,7 +585,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                 #ifdef _GPU_
                 blas<gpu>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.at<gpu>(), phi__.ld(),
                                 ophi_tmp.at<gpu>(0, 0, icol % 2), ophi_tmp.ld(), o_tmp.at<gpu>(0, 0, icol % 2), o_tmp.ld());
-                o_tmp.copy_to_host();
+                cuda_copy_to_host(o_tmp.at<cpu>(0, 0, icol % 2), o_tmp.at<gpu>(0, 0, icol % 2), num_phi * n * sizeof(double_complex));
                 #else
                 TERMINATE_NO_GPU
                 #endif
