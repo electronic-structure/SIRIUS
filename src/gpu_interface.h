@@ -30,6 +30,8 @@
 
 const int _null_stream_ = -1;
 
+typedef std::complex<double> cuDoubleComplex;
+
 //================
 // CUDA functions
 //================
@@ -92,6 +94,10 @@ extern "C" void cublas_destroy_handles(int num_handles);
 
 //extern "C" void cublas_set_stream(int stream_id);
 
+extern "C" void cublas_zgemv(int transa, int32_t m, int32_t n, cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, 
+                             cuDoubleComplex* x, int32_t incx, cuDoubleComplex* beta, cuDoubleComplex* y, int32_t incy, 
+                             int stream_id);
+
 extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                              const void* alpha, void* a, int32_t lda, void* b, 
                              int32_t ldb, const void* beta, void* c, int32_t ldc, int stream_id);
@@ -113,7 +119,6 @@ extern "C" void cublas_set_vector(int n, int elemSize, const void *x, int incx, 
 // cufftHandle is a handle type used to store and access CUFFT plans.
 typedef int cufftHandle;
 
-typedef std::complex<double> cuDoubleComplex;
 
 extern "C" void cufft_create_plan_handle(cufftHandle* plan);
 

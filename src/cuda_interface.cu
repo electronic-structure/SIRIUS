@@ -306,6 +306,16 @@ extern "C" void cublas_destroy_handles(int num_handles)
 //==     cublasSetStream(cublas_handle(), stream);
 //== }
 
+extern "C" void cublas_zgemv(int transa, int32_t m, int32_t n, cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, 
+                             cuDoubleComplex* x, int32_t incx, cuDoubleComplex* beta, cuDoubleComplex* y, int32_t incy, 
+                             int stream_id)
+{
+    const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
+    cublasHandle_t handle = (stream_id == -1) ? cublas_null_stream_handle : cublas_stream_handles[stream_id];
+
+    CALL_CUBLAS(cublasZgemv, (handle, trans[transa], m, n, alpha, a, lda, x, incx, beta, y, incy));
+}
+
 extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                              cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, cuDoubleComplex* b, 
                              int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc, int stream_id)

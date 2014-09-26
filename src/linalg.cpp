@@ -158,6 +158,14 @@ void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 double_complex blas<gpu>::zone = double_complex(1, 0);
 double_complex blas<gpu>::zzero = double_complex(0, 0);
 
+template<>
+void blas<gpu>::gemv<double_complex>(int trans, int32_t m, int32_t n, double_complex* alpha, double_complex* a, int32_t lda,
+                                     double_complex* x, int32_t incx, double_complex* beta, double_complex* y, int32_t incy, 
+                                     int stream_id)
+{
+    cublas_zgemv(trans, m, n, alpha, a, lda, x, incx, beta, y, incy, stream_id);
+}
+
 template<> 
 void blas<gpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                                      double_complex* alpha, double_complex* a, int32_t lda, double_complex* b, 

@@ -1815,6 +1815,7 @@ void Potential::generate_d_mtrx()
     fft_->transform(-1);
     fft_->output(rl->num_gvec(), rl->fft_index(), &effective_potential_->f_pw(0));
 
+    Timer t1("sirius::Potential::generate_d_mtrx|kernel");
     #pragma omp parallel
     {
         mdarray<double_complex, 1> veff_tmp(rl->spl_num_gvec().local_size());
@@ -1849,6 +1850,7 @@ void Potential::generate_d_mtrx()
             }
         }
     }
+    t1.stop();
 
     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
     {
@@ -1873,6 +1875,15 @@ void Potential::generate_d_mtrx()
 }
 
 #ifdef _GPU_
+
+extern "C" void mul_veff_with_phase_factors_gpu(int num_gvec_loc, 
+                                                cuDoubleComplex const* veff, 
+                                                int const* gvec, 
+                                                double ax,
+                                                double ay,
+                                                double az,
+                                                cuDoubleComplex* vtmp,
+                                                int stream_id);
 
 extern "C" void compute_d_mtrx_valence_gpu(int num_gvec_loc,
                                            int num_elements,
@@ -1923,6 +1934,9 @@ void Potential::generate_d_mtrx_gpu()
     mdarray<double_complex, 2> d_mtrx(uc->max_mt_basis_size() * (uc->max_mt_basis_size() + 1) / 2, uc->num_atoms());
     d_mtrx.allocate_on_device();
     
+    double_complex alpha(1, 0);
+    double_complex beta(0, 0);
+
     Timer t1("sirius::Potential::generate_d_mtrx_gpu|kernel");
     #pragma omp parallel for
     for (int ia = 0; ia < uc->num_atoms(); ia++)
@@ -1932,21 +1946,33 @@ void Potential::generate_d_mtrx_gpu()
         int thread_id = Platform::thread_id();
 
         vector3d<double> apos = uc->atom(ia)->position();
+        
+        mul_veff_with_phase_factors_gpu((int)rl->spl_num_gvec().local_size(),
+                                        veff_gpu.at<gpu>(),
+                                        gvec.at<gpu>(),
+                                        apos[0],
+                                        apos[1],
+                                        apos[2],
+                                        vtmp.at<gpu>(0, thread_id),
+                                        thread_id);
 
-        compute_d_mtrx_valence_gpu((int)rl->spl_num_gvec().local_size(), 
-                                   nbf * (nbf + 1) / 2, 
-                                   veff_gpu.at<gpu>(), 
-                                   gvec.at<gpu>(), 
-                                   apos[0], 
-                                   apos[1], 
-                                   apos[2], 
-                                   vtmp.at<gpu>(0, thread_id),
-                                   atom_type->uspp().q_pw.at<gpu>(0, 0),
-                                   d_mtrx.at<gpu>(0, ia), 
-                                   thread_id);
+        blas<gpu>::gemv(2, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, &alpha, 
+                        atom_type->uspp().q_pw.at<gpu>(), (int)rl->spl_num_gvec().local_size(),  
+                        vtmp.at<gpu>(0, thread_id), 1, &beta, d_mtrx.at<gpu>(0, ia), 1, thread_id);
+
+        //compute_d_mtrx_valence_gpu((int)rl->spl_num_gvec().local_size(), 
+        //                           nbf * (nbf + 1) / 2, 
+        //                           veff_gpu.at<gpu>(), 
+        //                           gvec.at<gpu>(), 
+        //                           apos[0], 
+        //                           apos[1], 
+        //                           apos[2], 
+        //                           vtmp.at<gpu>(0, thread_id),
+        //                           atom_type->uspp().q_pw.at<gpu>(0, 0),
+        //                           d_mtrx.at<gpu>(0, ia), 
+        //                           thread_id);
     }
     cuda_device_synchronize();
-    
     d_mtrx.copy_to_host();
     t1.stop();
 

@@ -441,13 +441,13 @@ extern "C" void create_beta_pw_gpu_v2(int num_atoms,
 //==          (cuDoubleComplex*)q_pw_t, (cuDoubleComplex*)rho_pw);
 //== }
 
-__global__ void mul_veff_with_phase_factors_kernel(int num_gvec_loc,
-                                                   cuDoubleComplex const* veff, 
-                                                   int const* gvec, 
-                                                   double ax, 
-                                                   double ay, 
-                                                   double az, 
-                                                   cuDoubleComplex* vtmp)
+__global__ void mul_veff_with_phase_factors_gpu_kernel(int num_gvec_loc,
+                                                       cuDoubleComplex const* veff, 
+                                                       int const* gvec, 
+                                                       double ax, 
+                                                       double ay, 
+                                                       double az, 
+                                                       cuDoubleComplex* vtmp)
 {
     int igloc = blockDim.x * blockIdx.x + threadIdx.x;
     if (igloc < num_gvec_loc)
@@ -462,20 +462,31 @@ __global__ void mul_veff_with_phase_factors_kernel(int num_gvec_loc,
     }
 }
  
-//== extern "C" void mul_veff_with_phase_factors(int num_gvec_loc, 
-//==                                             void* veff, 
-//==                                             int* gvec, 
-//==                                             double ax,
-//==                                             double ay,
-//==                                             double az,
-//==                                             void* vtmp)
-//== {
-//==     dim3 grid_t(64);
-//==     dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x));
-//== 
-//==     mul_veff_with_phase_factors_kernel<<<grid_b, grid_t>>>
-//==         (num_gvec_loc, (cuDoubleComplex*)veff, gvec, ax, ay, az, (cuDoubleComplex*)vtmp);
-//== }
+extern "C" void mul_veff_with_phase_factors_gpu(int num_gvec_loc, 
+                                                cuDoubleComplex const* veff, 
+                                                int const* gvec, 
+                                                double ax,
+                                                double ay,
+                                                double az,
+                                                cuDoubleComplex* vtmp,
+                                                int stream_id)
+{
+    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
+
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x));
+
+    mul_veff_with_phase_factors_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
+    (
+        num_gvec_loc,
+        veff,
+        gvec,
+        ax,
+        ay,
+        az,
+        vtmp
+    );
+}
 
 __global__ void compute_d_mtrx_gpu_kernel
 (
@@ -487,25 +498,35 @@ __global__ void compute_d_mtrx_gpu_kernel
 {
     int idx = blockIdx.x;
 
-    int N = num_blocks(num_gvec_loc, blockDim.x);
+    //int N = num_blocks(num_gvec_loc, blockDim.x);
 
     extern __shared__ char sdata_ptr[];
     cuDoubleComplex* sdata = (cuDoubleComplex*)&sdata_ptr[0];
 
-    sdata[threadIdx.x] = make_cuDoubleComplex(0.0, 0.0);
+    //sdata[threadIdx.x] = make_cuDoubleComplex(0.0, 0.0);
 
-    for (int n = 0; n < N; n++)
+    cuDoubleComplex z = make_cuDoubleComplex(0, 0);
+    int igloc = threadIdx.x;
+    while (igloc < num_gvec_loc)
     {
-        int igloc = n * blockDim.x + threadIdx.x;
-        if (igloc < num_gvec_loc)
-        {
-            sdata[threadIdx.x] = cuCadd(sdata[threadIdx.x], 
-                                        cuCmul(vtmp[igloc], 
-                                               cuConj(q_pw_t[array2D_offset(igloc, idx,  num_gvec_loc)])));
-        }
+        z = cuCadd(z, cuCmul(vtmp[igloc], cuConj(q_pw_t[array2D_offset(igloc, idx,  num_gvec_loc)])));
+        igloc += blockDim.x;
     }
-    
+    sdata[threadIdx.x] = z;
     __syncthreads();
+
+    //== for (int n = 0; n < N; n++)
+    //== {
+    //==     int igloc = n * blockDim.x + threadIdx.x;
+    //==     if (igloc < num_gvec_loc)
+    //==     {
+    //==         sdata[threadIdx.x] = cuCadd(sdata[threadIdx.x], 
+    //==                                     cuCmul(vtmp[igloc], 
+    //==                                            cuConj(q_pw_t[array2D_offset(igloc, idx,  num_gvec_loc)])));
+    //==     }
+    //== }
+    //== 
+    //== __syncthreads();
 
     for (int s = 1; s < blockDim.x; s *= 2) 
     {
@@ -530,11 +551,11 @@ extern "C" void compute_d_mtrx_valence_gpu(int num_gvec_loc,
 {
     cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
 
-    dim3 grid_t(64);
+    dim3 grid_t(128);
 
     dim3 grid_b(num_blocks(num_gvec_loc, grid_t.x));
 
-    mul_veff_with_phase_factors_kernel <<<grid_b, grid_t, 0, stream>>>
+    mul_veff_with_phase_factors_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
     (
         num_gvec_loc,
         veff,
@@ -554,6 +575,7 @@ extern "C" void compute_d_mtrx_valence_gpu(int num_gvec_loc,
         q_pw_t,
         d_mtrx
     );
+
 }
 
 __global__ void generate_phase_factors_gpu_kernel(int num_gvec_loc, 
