@@ -1,6 +1,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <stdio.h>
 
 extern "C" {
 
