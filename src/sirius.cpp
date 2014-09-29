@@ -31,7 +31,7 @@ sirius::Density* density = NULL;
 sirius::Potential* potential = NULL;
 
 /// Set of global parameters
-sirius::Global* global_parameters;
+sirius::Global* global_parameters = nullptr;
 
 /// List of pointers to the sets of k-points.
 std::vector<sirius::K_set*> kset_list;
@@ -583,8 +583,12 @@ void FORTRAN(sirius_get_num_core_electrons)(double* num_core_electrons)
 void FORTRAN(sirius_clear)(void)
 {
     log_function_enter(__func__);
-    global_parameters->clear();
-    delete global_parameters;
+    if (global_parameters != nullptr)
+    {
+        global_parameters->clear();
+        delete global_parameters;
+        global_parameters = nullptr;
+    }
     if (density) 
     {
         delete density;
@@ -600,7 +604,7 @@ void FORTRAN(sirius_clear)(void)
         delete dft_ground_state;
         dft_ground_state = NULL;
     }
-    if (blacs_grid)
+    if (blacs_grid != nullptr)
     {
         delete blacs_grid;
         blacs_grid = nullptr;
