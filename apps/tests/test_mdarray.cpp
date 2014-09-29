@@ -46,7 +46,7 @@ void f2()
     a4 = mdarray<int, 1>(20);
     
     #ifndef NDEBUG
-    std::cout << "Allocated memory : " << mdarray_mem_count.load() << std::endl;
+    std::cout << "Allocated memory : " << mdarray_mem_count::allocated().load() << std::endl;
     #endif
 }
 
@@ -57,7 +57,7 @@ int main(int argn, char **argv)
     f2();
     
     #ifndef NDEBUG
-    std::cout << "Allocated memory : " << mdarray_mem_count.load() << std::endl;
+    std::cout << "Allocated memory : " << mdarray_mem_count::allocated().load() << std::endl;
     #endif
 
     Platform::finalize();
