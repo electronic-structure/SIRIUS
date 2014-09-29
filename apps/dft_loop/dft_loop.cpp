@@ -89,7 +89,7 @@ void dft_loop(cmd_args args)
     
     std::vector<int> mpi_grid_dims;
     mpi_grid_dims = args.value< std::vector<int> >("mpi_grid", mpi_grid_dims);
-    Global parameters(mpi_grid_dims);
+    Global parameters(MPI_COMM_WORLD, mpi_grid_dims);
 
     JSON_tree parser("sirius.json");
 
@@ -109,7 +109,7 @@ void dft_loop(cmd_args args)
     parameters.set_num_mag_dims(num_mag_dims);
     parameters.set_num_spins(num_spins);
 
-    parameters.initialize(MPI_COMM_WORLD);
+    parameters.initialize();
     
     BLACS_grid blacs_grid(parameters.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_), 
                           parameters.mpi_grid().dimension_size(_dim_row_),

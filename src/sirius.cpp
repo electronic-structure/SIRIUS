@@ -31,7 +31,7 @@ sirius::Density* density = NULL;
 sirius::Potential* potential = NULL;
 
 /// Set of global parameters
-sirius::Global global_parameters;
+sirius::Global global_parameters(MPI_COMM_WORLD);
 
 /// List of pointers to the sets of k-points.
 std::vector<sirius::K_set*> kset_list;
@@ -330,7 +330,7 @@ void FORTRAN(sirius_global_initialize)(int32_t* lmax_apw, int32_t* lmax_rho, int
     global_parameters.set_lmax_pot(*lmax_pot);
     global_parameters.set_num_spins(num_spins);
     global_parameters.set_num_mag_dims(*num_mag_dims);
-    global_parameters.initialize(MPI_COMM_WORLD);
+    global_parameters.initialize();
     blacs_grid = new BLACS_grid(global_parameters.mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_),
                                 global_parameters.mpi_grid().dimension_size(_dim_row_),
                                 global_parameters.mpi_grid().dimension_size(_dim_col_));
