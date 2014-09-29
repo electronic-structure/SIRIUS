@@ -43,7 +43,7 @@ void Platform::initialize(bool call_mpi_init)
         MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &provided);
         if (provided != MPI_THREAD_MULTIPLE)
         {
-            printf("MPI_Init_thread() didn't provide MPI_THREAD_MULTIPLE\n");
+            printf("MPI_Init_thread() does not provide MPI_THREAD_MULTIPLE\n");
         }
     }
 

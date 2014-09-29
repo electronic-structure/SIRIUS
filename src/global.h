@@ -142,11 +142,7 @@ class Global
               cyclic_block_size_(64), 
               std_evp_solver_type_(ev_lapack),
               gen_evp_solver_type_(ev_lapack),
-              #ifdef _GPU_
-              processing_unit_(gpu),
-              #else
               processing_unit_(cpu),
-              #endif
               smearing_width_(0.001), 
               esm_type_(full_potential_lapwlo),
               step_function_(nullptr),

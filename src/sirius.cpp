@@ -149,7 +149,7 @@ void FORTRAN(sirius_add_atom_type)(char* label, char* fname, int32_t label_len, 
 {
     log_function_enter(__func__);
     global_parameters->unit_cell()->add_atom_type(std::string(label, label_len), std::string(fname, fname_len), 
-                                                 global_parameters->esm_type());
+                                                  global_parameters->esm_type());
     log_function_exit(__func__);
 }
 

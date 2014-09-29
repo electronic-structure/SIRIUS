@@ -72,9 +72,10 @@ class K_set
     public:
 
         K_set(Global& parameters__,
-              Communicator const& comm_k_,
+              Communicator const& comm_k__,
               BLACS_grid const& blacs_grid__)
             : parameters_(parameters__),
+              comm_k_(comm_k__),
               blacs_grid_(blacs_grid__)
         {
             init();

@@ -63,7 +63,7 @@ Reciprocal_lattice::Reciprocal_lattice(Unit_cell* unit_cell__,
         fft_coarse_ = new FFT3D<cpu>(max_frac_coord_coarse, comm__);
         
         #ifdef _GPU_
-        fft_gpu_coarse_ = new FFT3D<gpu>(fft_coarse_->grid_size(), 8);
+        fft_gpu_coarse_ = new FFT3D<gpu>(fft_coarse_->grid_size(), 2);
         #endif
     }
 

@@ -247,6 +247,14 @@ class Communicator
             CALL_MPI(MPI_Scatterv, (sendbuf__, sendcounts__, displs__, type_wrapper<T>::mpi_type_id(), recvbuf__, recvcount,
                                     type_wrapper<T>::mpi_type_id(), root__, mpi_comm_));
         }
+
+        template <typename T>
+        void alltoall(T const* sendbuf__, int const* sendcounts__, int const* sdispls__, 
+                      T* recvbuf__, int const* recvcounts__, int const* rdispls__) const
+        {
+            CALL_MPI(MPI_Alltoallv, (sendbuf__, sendcounts__, sdispls__, type_wrapper<T>::mpi_type_id(),
+                                     recvbuf__, recvcounts__, rdispls__, type_wrapper<T>::mpi_type_id(), mpi_comm_));
+        }
 };
 
 #endif // __COMMUNICATOR_H__
