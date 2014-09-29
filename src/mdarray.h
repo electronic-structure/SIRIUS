@@ -428,13 +428,13 @@ class mdarray_base
 
         inline T& operator()(int64_t const i0, int64_t const i1) 
         {
-            assert(ptr_ != nullptr);
+            my_assert(ptr_ != nullptr);
             return ptr_[idx(i0, i1)];
         }
 
         inline T const& operator()(int64_t const i0, int64_t const i1) const
         {
-            assert(ptr_ != nullptr);
+            my_assert(ptr_ != nullptr);
             return ptr_[idx(i0, i1)];
         }
 
