@@ -170,8 +170,10 @@ std::string Global::start_time(const char* fmt)
     return std::string(buf);
 }
 
-void Global::initialize()
+void Global::initialize(Communicator const& comm__)
 {
+    comm_ = comm__;
+
     if (initialized_) error_local(__FILE__, __LINE__, "Can't initialize global variables more than once.");
 
     switch (esm_type())

@@ -123,8 +123,7 @@ class Global
 
     public:
     
-        Global(Communicator const& comm__,
-               std::vector<int> const mpi_grid_dims__ = std::vector<int>())
+        Global(std::vector<int> const mpi_grid_dims__ = std::vector<int>())
             : initialized_(false), 
               lmax_apw_(lmax_apw_default), 
               lmax_pw_(-1), 
@@ -150,8 +149,7 @@ class Global
               smearing_width_(0.001), 
               esm_type_(full_potential_lapwlo),
               step_function_(nullptr),
-              reciprocal_lattice_(nullptr),
-              comm_(comm__)
+              reciprocal_lattice_(nullptr)
         {
             /* get the starting time */
             gettimeofday(&start_time_, NULL);
@@ -362,7 +360,7 @@ class Global
         }
 
         /// Initialize the global variables
-        void initialize();
+        void initialize(Communicator const& comm__);
 
         /// Clear global variables
         void clear();

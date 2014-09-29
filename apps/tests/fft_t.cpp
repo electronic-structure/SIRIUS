@@ -7,11 +7,11 @@ void test1()
     double a1[] = {24, 0, 0};
     double a2[] = {0, 24, 0};
     double a3[] = {0, 0, 24};
-    Global global(Platform::comm_world());
+    Global global;
     
     global.unit_cell()->set_lattice_vectors(a1, a2, a3);
     global.set_pw_cutoff(17.0);
-    global.initialize();
+    global.initialize(Platform::comm_world());
 
     Timer t("fft::transform");
     
@@ -42,11 +42,11 @@ void test2()
     double a1[] = {20, 0, 0};
     double a2[] = {0, 22, 0};
     double a3[] = {0, 0, 24};
-    Global global(Platform::comm_world());
+    Global global;
     
     global.unit_cell()->set_lattice_vectors(a1, a2, a3);
     global.set_pw_cutoff(12.0);
-    global.initialize();
+    global.initialize(Platform::comm_world());
 
     auto fft = global.reciprocal_lattice()->fft();
 
