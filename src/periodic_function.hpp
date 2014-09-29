@@ -48,6 +48,7 @@ Periodic_function<T>::Periodic_function(Global& parameters_,
     
     f_pw_ = mdarray<double_complex, 1>(num_gvec_);
     f_it_ = mdarray<T, 1>(nullptr, fft_->size());
+    f_it_local_ = mdarray<T, 1>(nullptr, fft_->local_size());
 }
 
 template <typename T>
