@@ -531,8 +531,8 @@ void K_point::generate_gkvec(double gk_cutoff)
         std::stringstream s;
         s << "G+k cutoff (" << gk_cutoff << ") is too large for a given lmax (" 
           << parameters_.lmax_apw() << ") and a maximum MT radius (" << parameters_.unit_cell()->max_mt_radius() << ")" << std::endl
-          << "minimum value for lmax : " << int(gk_cutoff * parameters_.unit_cell()->max_mt_radius()) + 1;
-        error_local(__FILE__, __LINE__, s);
+          << "suggested minimum value for lmax : " << int(gk_cutoff * parameters_.unit_cell()->max_mt_radius()) + 1;
+        warning_local(__FILE__, __LINE__, s);
     }
 
     if (gk_cutoff * 2 > parameters_.pw_cutoff())
@@ -656,11 +656,13 @@ void K_point::init_gkvec()
         }
     }
     
+    // Fortran codes need this
+    init_gkvec_phase_factors();
+
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
         if (num_gkvec() != wf_size()) error_local(__FILE__, __LINE__, "wrong size of wave-functions");
         init_gkvec_ylm_and_len(lmax);
-        init_gkvec_phase_factors();
     }
 }
 
