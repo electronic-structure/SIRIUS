@@ -65,6 +65,7 @@ void FORTRAN(sirius_platform_initialize)(int32_t* call_mpi_init_)
 {
     bool call_mpi_init = (*call_mpi_init_ != 0) ? true : false; 
     Platform::initialize(call_mpi_init);
+    global_parameters = new sirius::Global(MPI_COMM_WORLD);
 }
 
 /// Set lattice vectors.
@@ -325,7 +326,6 @@ void FORTRAN(sirius_global_initialize)(int32_t* lmax_apw, int32_t* lmax_rho, int
 {
     log_function_enter(__func__);
     int num_spins = (*num_mag_dims == 0) ? 1 : 2;
-    global_parameters = new sirius::Global(MPI_COMM_WORLD);
     global_parameters->set_lmax_apw(*lmax_apw);
     global_parameters->set_lmax_rho(*lmax_rho);
     global_parameters->set_lmax_pot(*lmax_pot);
@@ -583,12 +583,9 @@ void FORTRAN(sirius_get_num_core_electrons)(double* num_core_electrons)
 void FORTRAN(sirius_clear)(void)
 {
     log_function_enter(__func__);
-    if (global_parameters != nullptr)
-    {
-        global_parameters->clear();
-        delete global_parameters;
-        global_parameters = nullptr;
-    }
+    
+    global_parameters->clear();
+
     if (density) 
     {
         delete density;
