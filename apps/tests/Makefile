@@ -79,7 +79,9 @@ test_gen_eig: test_gen_eig.cpp $(LIB_SIRIUS)
 
 test_gpudirect: test_gpudirect.cpp
 	$(CXX) $(CXX_OPT) $(INCLUDE) test_gpudirect.cpp  $(LIB_SIRIUS) $(LIBS) -o test_gpudirect
-	
+
+test_allreduce: test_allreduce.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) $(INCLUDE) test_allreduce.cpp $(LIB_SIRIUS) $(LIBS) -o test_allreduce
 
 clean:
 	rm -f *.o *.h5 *.txt *.dat *.pdf timers.json out.json splindex hdf5 hydrogen read_atom \
