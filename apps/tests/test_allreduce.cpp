@@ -10,7 +10,12 @@ void test1()
     splindex<block> spl_ngk(num_gkvec, Platform::comm_world().size(), Platform::comm_world().rank());
 
     matrix<double_complex> A(spl_ngk.local_size(), N);
+    for (int i = 0; i < N; i++)
+    {
+        for (int j = 0; j < (int)spl_ngk.local_size(); j++) A(j, i) = 1.0 / (i + j + 1);
+    }
     matrix<double_complex> C(N, N);
+    C.zero();
 
     Timer t("allreduce");
     for (int i = 0; i < 10; i++)
