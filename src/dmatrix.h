@@ -431,12 +431,11 @@ class dmatrix
 
             if (direction__ ==_slice_to_panel_)
             {
-                int k = 0;
+                sdispls[0] = 0;
                 for (int rank = 0; rank < num_ranks_row_; rank++)
                 {
                     sendcounts[rank] = (int)sub_spl_col.local_size() * num_rows_local(rank);
-                    sdispls[rank] = k;
-                    k += sendcounts[rank];
+                    if (rank) sdispls[rank] = sdispls[rank - 1] + sendcounts[rank - 1];
                     
                     recvcounts[rank] = (int)sub_spl_col.local_size(rank) * num_rows_local();
                     rdispls[rank] = (int)sub_spl_col.global_offset(rank) * num_rows_local();
@@ -465,15 +464,14 @@ class dmatrix
 
             if (direction__ == _panel_to_slice_)
             {
-                int k = 0;
+                rdispls[0] = 0;
                 for (int rank = 0; rank < num_ranks_row_; rank++)
                 {
                     sendcounts[rank] = (int)sub_spl_col.local_size(rank) * num_rows_local();
                     sdispls[rank] = (int)sub_spl_col.global_offset(rank) * num_rows_local();
     
                     recvcounts[rank] = (int)sub_spl_col.local_size() * num_rows_local(rank);
-                    rdispls[rank] = k;
-                    k += recvcounts[rank];
+                    if (rank) rdispls[rank] = rdispls[rank - 1] + recvcounts[rank - 1];
                 }
     
                 sirius::Timer t1("dmatrix::shuffle_ata|comm");
