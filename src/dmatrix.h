@@ -65,6 +65,8 @@ class dmatrix
         /// Local part of the distributed matrix.
         matrix<T> matrix_local_;
 
+        mdarray<T, 1> ata_buffer_;
+
         /// Matrix descriptor.
         int descriptor_[9];
 
@@ -162,6 +164,12 @@ class dmatrix
         inline void deallocate()
         {
             matrix_local_.deallocate();
+        }
+
+        inline void allocate_ata_buffer()
+        {
+            int n = num_cols_local() / num_ranks_row_ + std::min(1, num_cols_local() % num_ranks_row_);
+            ata_buffer_ = mdarray<T, 1>(num_rows() * n);
         }
 
         inline int num_rows() const
@@ -427,7 +435,53 @@ class dmatrix
 
             T* ptr = (nloc == 0) ? nullptr : &matrix_local_(0, s0.local_size());
 
-            mdarray<T, 1> tmp(num_rows() * sub_spl_col.local_size());
+            mdarray<T, 1> tmp;
+            if (ata_buffer_.size() == 0)
+            {
+                tmp = mdarray<T, 1>(num_rows() * sub_spl_col.local_size());
+            }
+            else
+            {
+                tmp = mdarray<T, 1>(&ata_buffer_(0), num_rows() * sub_spl_col.local_size());
+            }
+
+            if (direction__ == _panel_to_slice_)
+            {
+                rdispls[0] = 0;
+                for (int rank = 0; rank < num_ranks_row_; rank++)
+                {
+                    /* size of the sub-panel that is sent to each rank */
+                    sendcounts[rank] = (int)sub_spl_col.local_size(rank) * num_rows_local();
+                    /* offset in the send buffer */
+                    sdispls[rank] = (int)sub_spl_col.global_offset(rank) * num_rows_local();
+    
+                    /* size of each recieved sub-panel */
+                    recvcounts[rank] = (int)sub_spl_col.local_size() * num_rows_local(rank);
+                    /* offset in the recieved buffer */
+                    if (rank) rdispls[rank] = rdispls[rank - 1] + recvcounts[rank - 1];
+                }
+    
+                sirius::Timer t1("dmatrix::shuffle_ata|comm");
+                blacs_grid_->comm_row().alltoall(ptr, &sendcounts[0], &sdispls[0], &tmp(0), &recvcounts[0], &rdispls[0]);
+                t1.stop();
+            
+                #pragma omp parallel for
+                for (int rank = 0; rank < num_ranks_row_; rank++)
+                {
+                     mdarray<double_complex, 2> sub_panel(&tmp(rdispls[rank]), num_rows_local(rank), sub_spl_col.local_size());
+    
+                     /* loop over local fraction of columns */
+                     for (int i = 0; i < sub_spl_col.local_size(); i++)
+                     {
+                         /* loop over local fraction of rows */
+                         for (int j = 0; j < num_rows_local(rank); j++)
+                         {
+                             /* copy necessary parts of panel to the full vector */
+                             matrix_slice__(spl_row_.global_index(j, rank), i) = sub_panel(j, i);
+                         }
+                     }
+                }
+            }
 
             if (direction__ ==_slice_to_panel_)
             {
@@ -461,92 +515,6 @@ class dmatrix
                 blacs_grid_->comm_row().alltoall(&tmp(0), &sendcounts[0], &sdispls[0], ptr, &recvcounts[0], &rdispls[0]);
                 t1.stop();
             }
-
-            if (direction__ == _panel_to_slice_)
-            {
-                rdispls[0] = 0;
-                for (int rank = 0; rank < num_ranks_row_; rank++)
-                {
-                    sendcounts[rank] = (int)sub_spl_col.local_size(rank) * num_rows_local();
-                    sdispls[rank] = (int)sub_spl_col.global_offset(rank) * num_rows_local();
-    
-                    recvcounts[rank] = (int)sub_spl_col.local_size() * num_rows_local(rank);
-                    if (rank) rdispls[rank] = rdispls[rank - 1] + recvcounts[rank - 1];
-                }
-    
-                sirius::Timer t1("dmatrix::shuffle_ata|comm");
-                blacs_grid_->comm_row().alltoall(ptr, &sendcounts[0], &sdispls[0], &tmp(0), &recvcounts[0], &rdispls[0]);
-                t1.stop();
-            
-                #pragma omp parallel for
-                for (int rank = 0; rank < num_ranks_row_; rank++)
-                {
-                     mdarray<double_complex, 2> sub_panel(&tmp(rdispls[rank]), num_rows_local(rank), sub_spl_col.local_size());
-    
-                     /* loop over local fraction of columns */
-                     for (int i = 0; i < sub_spl_col.local_size(); i++)
-                     {
-                         /* loop over local fraction of rows */
-                         for (int j = 0; j < num_rows_local(rank); j++)
-                         {
-                             /* copy necessary parts of panel to the full vector */
-                             matrix_slice__(spl_row_.global_index(j, rank), i) = sub_panel(j, i);
-                         }
-                     }
-                }
-            }
-    
-                
-
-
-
-            //for (int rank = 0; rank < num_ranks_row_; rank++)
-            //{
-            //    /* each rank allocates a subpanel */
-            //    mdarray<double_complex, 2> sub_panel(spl_row_.local_size(rank), sub_spl_col.local_size());
-
-            //    /* make a table of sizes and offsets */
-            //    for (int i = 0; i < num_ranks_row_; i++)
-            //    {
-            //        /* offset of a sub-panel */
-            //        offsets[i] = static_cast<int>(spl_row_.local_size(rank) * sub_spl_col.global_offset(i));
-            //        /* size of a sub-panel */
-            //        counts[i] = static_cast<int>(spl_row_.local_size(rank) * sub_spl_col.local_size(i));
-            //    }
-            //    
-            //    if (direction__ == _slice_to_panel_)
-            //    {
-            //        /* fill the sub-panel */
-            //        for (int i = 0; i < sub_spl_col.local_size(); i++)
-            //        {
-            //            /* loop over local fraction of rows */
-            //            for (int j = 0; j < spl_row_.local_size(rank); j++)
-            //            {
-            //                sub_panel(j, i) = matrix_slice__(spl_row_.global_index(j, rank), i);
-            //            }
-            //        }
-
-            //        /* gather local panel */
-            //        blacs_grid_->comm_row().gather(sub_panel.ptr(), ptr, &counts[0], &offsets[0], rank);
-            //    }
-
-            //    if (direction__ == _panel_to_slice_)
-            //    {
-            //        /* scatter local matrix between ranks */
-            //        blacs_grid_->comm_row().scatter(ptr, sub_panel.ptr(), &counts[0], &offsets[0], rank);
-            //        
-            //        /* loop over local fraction of columns */
-            //        for (int i = 0; i < sub_spl_col.local_size(); i++)
-            //        {
-            //            /* loop over local fraction of rows */
-            //            for (int j = 0; j < spl_row_.local_size(rank); j++)
-            //            {
-            //                /* copy necessary parts of panel to the full vector */
-            //                matrix_slice__(spl_row_.global_index(j, rank), i) = sub_panel(j, i);
-            //            }
-            //        }
-            //    }
-            //}
         }
 
         template<int direction__>
