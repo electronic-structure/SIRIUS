@@ -1018,14 +1018,14 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp__,
                         alm_row.ptr(), alm_row.ld(), halm_col.ptr(), halm_col.ld(), complex_one, h__.ptr(), h__.ld());
 
         /* setup apw-lo and lo-apw blocks */
-        set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h__.data(), o__.data());
+        set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h__.panel(), o__.panel());
     }
 
     /* add interstitial contributon */
-    set_fv_h_o_it(kp__, effective_potential__, h__.data(), o__.data());
+    set_fv_h_o_it(kp__, effective_potential__, h__.panel(), o__.panel());
 
     /* setup lo-lo block */
-    set_fv_h_o_lo_lo(kp__, h__.data(), o__.data());
+    set_fv_h_o_lo_lo(kp__, h__.panel(), o__.panel());
 }
 
 //=====================================================================================================================
@@ -1090,7 +1090,7 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp__,
                         h__.at<gpu>(0, 0), h__.ld());
 
         /* setup apw-lo and lo-apw blocks */
-        set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h__.data(), o__.data());
+        set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h__.panel(), o__.panel());
     }
 
     cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), h__.at<gpu>(0, 0), h__.ld(), 
@@ -1100,10 +1100,10 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp__,
                       o__.ptr(), o__.ld());
     
     /* add interstitial contributon */
-    set_fv_h_o_it(kp__, effective_potential__, h__.data(), o__.data());
+    set_fv_h_o_it(kp__, effective_potential__, h__.panel(), o__.panel());
 
     /* setup lo-lo block */
-    set_fv_h_o_lo_lo(kp__, h__.data(), o__.data());
+    set_fv_h_o_lo_lo(kp__, h__.panel(), o__.panel());
 
     h__.deallocate_on_device();
     o__.deallocate_on_device();
@@ -1376,8 +1376,8 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     // TODO: move debug code to a separate function
     if (debug_level > 0 && !gen_evp_solver()->parallel())
     {
-        Utils::check_hermitian("h", h.data());
-        Utils::check_hermitian("o", o.data());
+        Utils::check_hermitian("h", h.panel());
+        Utils::check_hermitian("o", o.panel());
     }
 
     //sirius_io::hdf5_write_matrix("h.h5", h.data());

@@ -105,6 +105,12 @@ class Band
                                  int num_phi__,
                                  matrix<double_complex> const& phi__,
                                  matrix<double_complex>& hphi__);
+        
+        void apply_h_local_slice(K_point* kp__,
+                                 std::vector<double> const& effective_potential__,
+                                 std::vector<double>& pw_ekin__,
+                                 int num_phi__,
+                                 matrix<double_complex>& hphi__);
 
         void apply_h_local(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
                            int n, double_complex* phi__, double_complex* hphi__);

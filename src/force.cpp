@@ -125,7 +125,7 @@ void Force::ibs_force(Global& parameters__,
         kp__->alm_coeffs_col()->generate(ia, alm_col);
 
         /* setup apw-lo and lo-apw blocks */
-        band__->set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h.data(), o.data());
+        band__->set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h.panel(), o.panel());
 
         /* apply MT Hamiltonian to column coefficients */
         band__->apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col, halm_col);

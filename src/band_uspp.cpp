@@ -173,8 +173,6 @@ void Band::apply_h_o_uspp_cpu(K_point* kp__,
     mdarray<double_complex, 2> ophi(ophi__, kp__->num_gkvec(), n__);
     
     /* apply local part of Hamiltonian */
-    //apply_h_local(kp__, effective_potential__, pw_ekin__, n__, phi__, hphi__);
-
     apply_h_local_slice(kp__, effective_potential__, pw_ekin__, n__, phi, hphi);
    
     /* set intial ophi */
@@ -190,7 +188,7 @@ void Band::apply_h_o_uspp_cpu(K_point* kp__,
 
     /* compute <beta|phi> */
     blas<cpu>::gemm(2, 0, uc->mt_lo_basis_size(), n__, kp__->num_gkvec(), 
-                    kp__->beta_pw_panel().data().ptr(), kp__->num_gkvec(), 
+                    kp__->beta_pw_panel().panel().ptr(), kp__->num_gkvec(), 
                     &phi(0, 0), phi.ld(), &beta_phi(0, 0), beta_phi.ld());
     t1.stop();
     
@@ -207,7 +205,7 @@ void Band::apply_h_o_uspp_cpu(K_point* kp__,
     Timer t3("sirius::Band::apply_h_o|beta_D_beta_phi");
     /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
     blas<cpu>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_lo_basis_size(), complex_one, 
-                    kp__->beta_pw_panel().data().ptr(), kp__->num_gkvec(), 
+                    kp__->beta_pw_panel().panel().ptr(), kp__->num_gkvec(), 
                     &tmp(0, 0), tmp.ld(), complex_one, &hphi(0, 0), hphi.ld());
     t3.stop();
 
@@ -224,7 +222,7 @@ void Band::apply_h_o_uspp_cpu(K_point* kp__,
     Timer t5("sirius::Band::apply_h_o|beta_Q_beta_phi");
     /* computr <G+k|beta> * Q*<beta|phi> and add to ophi */
     blas<cpu>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_lo_basis_size(), complex_one, 
-                    kp__->beta_pw_panel().data().ptr(), kp__->num_gkvec(), 
+                    kp__->beta_pw_panel().panel().ptr(), kp__->num_gkvec(), 
                     &tmp(0, 0), tmp.ld(), complex_one, &ophi(0, 0), ophi.ld());
     t5.stop();
 }
@@ -714,6 +712,174 @@ void Band::apply_h_local_slice(K_point* kp__,
     //std::cout << "CPU / GPU fft count : " << count_fft_cpu << " " << count_fft_gpu << std::endl;
 }
 
+void Band::apply_h_local_slice(K_point* kp__,
+                               std::vector<double> const& effective_potential__,
+                               std::vector<double>& pw_ekin__,
+                               int num_phi__,
+                               matrix<double_complex>& hphi__)
+{
+    Timer t("sirius::Band::apply_h_local_slice");
+
+    assert(hphi__.size(0) == (size_t)kp__->num_gkvec());
+    assert(hphi__.size(1) >= (size_t)num_phi__);
+
+    auto pu = parameters_.processing_unit();
+
+    auto fft = parameters_.reciprocal_lattice()->fft_coarse();
+    #ifdef _GPU_
+    FFT3D<gpu>* fft_gpu = parameters_.reciprocal_lattice()->fft_gpu_coarse();
+    #endif
+
+    int num_fft_threads = -1;
+    switch (pu)
+    {
+        case cpu:
+        {
+            num_fft_threads = Platform::num_fft_threads();
+            break;
+        }
+        case gpu:
+        {
+            num_fft_threads = std::min(Platform::num_fft_threads() + 1, Platform::max_num_threads());
+            break;
+        }
+    }
+
+    std::vector<std::thread> fft_threads;
+
+    /* index of the wave-function */
+    int idx_phi = 0;
+    std::mutex idx_phi_mutex;
+
+    int count_fft_cpu = 0;
+    int count_fft_gpu = 0;
+    
+    for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
+    {
+        if (thread_id == 0 && num_fft_threads > 1 && pu == gpu)
+        {
+            #ifdef _GPU_
+            fft_threads.push_back(std::thread([num_phi__, &idx_phi, &idx_phi_mutex, &fft_gpu, kp__, &hphi__,
+                                               &effective_potential__, &pw_ekin__, &count_fft_gpu]()
+            {
+                Timer t("sirius::Band::apply_h_local_parallel|gpu");
+                
+                /* move fft index to GPU */
+                mdarray<int, 1> fft_index(kp__->fft_index_coarse(), kp__->num_gkvec());
+                fft_index.allocate_on_device();
+                fft_index.copy_to_device();
+
+                /* allocate work area array */
+                mdarray<char, 1> work_area(nullptr, fft_gpu->work_area_size());
+                work_area.allocate_on_device();
+                fft_gpu->set_work_area_ptr(work_area.at<gpu>());
+                
+                /* allocate space for plane-wave expansion coefficients */
+                mdarray<double_complex, 2> pw_buf(nullptr, kp__->num_gkvec(), fft_gpu->num_fft()); 
+                pw_buf.allocate_on_device();
+                
+                /* allocate space for FFT buffers */
+                matrix<double_complex> fft_buf(nullptr, fft_gpu->size(), fft_gpu->num_fft()); 
+                fft_buf.allocate_on_device();
+                
+                mdarray<double, 1> veff_gpu((double*)&effective_potential__[0], fft_gpu->size());
+                veff_gpu.allocate_on_device();
+                veff_gpu.copy_to_device();
+
+                mdarray<double, 1> pw_ekin_gpu(&pw_ekin__[0], kp__->num_gkvec());
+                pw_ekin_gpu.allocate_on_device();
+                pw_ekin_gpu.copy_to_device();
+
+                Timer t1("sirius::Band::apply_h_local_parallel|gpu_loop");
+                bool done = false;
+                while (!done)
+                {
+                    /* increment the band index */
+                    idx_phi_mutex.lock();
+                    int i = idx_phi;
+                    if (idx_phi + fft_gpu->num_fft() > num_phi__) 
+                    {
+                        done = true;
+                    }
+                    else
+                    {
+                        idx_phi += fft_gpu->num_fft();
+                        count_fft_gpu += fft_gpu->num_fft();
+                    }
+                    idx_phi_mutex.unlock();
+
+                    if (!done)
+                    {
+                        int size_of_panel = int(kp__->num_gkvec() * fft_gpu->num_fft() * sizeof(double_complex));
+
+                        /* copy phi to GPU */
+                        cuda_copy_to_device(pw_buf.at<gpu>(), hphi__.at<cpu>(0, i), size_of_panel);
+
+                        /* set PW coefficients into proper positions inside FFT buffer */
+                        fft_gpu->batch_load(kp__->num_gkvec(), fft_index.at<gpu>(), pw_buf.at<gpu>(), fft_buf.at<gpu>());
+
+                        /* phi(G) *= Ekin(G) */
+                        scale_matrix_rows_gpu(kp__->num_gkvec(), fft_gpu->num_fft(), pw_buf.at<gpu>(), pw_ekin_gpu.at<gpu>());
+                        /* execute batch FFT */
+                        fft_gpu->transform(1, fft_buf.at<gpu>());
+                        /* multimply by potential */
+                        scale_matrix_rows_gpu(fft_gpu->size(), fft_gpu->num_fft(), fft_buf.at<gpu>(), veff_gpu.at<gpu>());
+                        /* transform back */
+                        fft_gpu->transform(-1, fft_buf.at<gpu>());
+                        
+                        /* phi(G) += fft_buffer(G) */
+                        fft_gpu->batch_unload(kp__->num_gkvec(), fft_index.at<gpu>(), fft_buf.at<gpu>(),
+                                              pw_buf.at<gpu>(), 1.0);
+                        
+                        cuda_copy_to_host(hphi__.at<cpu>(0, i), pw_buf.at<gpu>(), size_of_panel);
+                    }
+                }
+            }));
+            #else
+            TERMINATE_NO_GPU
+            #endif
+        }
+        else
+        {
+            fft_threads.push_back(std::thread([thread_id, num_phi__, &idx_phi, &idx_phi_mutex, &fft, kp__, &hphi__,
+                                               &effective_potential__, &pw_ekin__, &count_fft_cpu]()
+            {
+                bool done = false;
+                while (!done)
+                {
+                    /* increment the band index */
+                    idx_phi_mutex.lock();
+                    int i = idx_phi;
+                    if (idx_phi + 1 > num_phi__) 
+                    {
+                        done = true;
+                    }
+                    else
+                    {
+                        idx_phi++;
+                        count_fft_cpu++;
+                    }
+                    idx_phi_mutex.unlock();
+                
+                    if (!done)
+                    {
+                        fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi__(0, i), thread_id);
+                        for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi__(igk, i) *= pw_ekin__[igk];
+
+                        fft->transform(1, thread_id);
+                        for (int ir = 0; ir < fft->size(); ir++) fft->buffer(ir, thread_id) *= effective_potential__[ir];
+                        fft->transform(-1, thread_id);
+                        fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi__(0, i), thread_id, 1.0);
+                    }
+                }
+            }));
+        }
+    }
+    for (auto& thread: fft_threads) thread.join();
+
+    //std::cout << "CPU / GPU fft count : " << count_fft_cpu << " " << count_fft_gpu << std::endl;
+}
+
 void Band::apply_h_local_parallel(K_point* kp__,
                                   std::vector<double> const& effective_potential__,
                                   std::vector<double>& pw_ekin__,
@@ -732,36 +898,51 @@ void Band::apply_h_local_parallel(K_point* kp__,
     
     int nphi = (int)sub_spl_n.local_size();
 
-    mdarray<double_complex, 2> phi_slice(kp__->num_gkvec(), nphi);
-    phi__.gather(n__, N__, phi_slice);
-    mdarray<double_complex, 2> hphi_slice(kp__->num_gkvec(), nphi);
+    memcpy(&hphi__(0, s0.local_size()), &phi__(0, s0.local_size()), 
+           kp__->num_gkvec_row() * (s1.local_size() - s0.local_size()) * sizeof(double_complex));
+    
+    hphi__.gather(n__, N__);
+    apply_h_local_slice(kp__, effective_potential__, pw_ekin__, nphi, hphi__.slice());
+    hphi__.scatter(n__, N__);
 
-    apply_h_local_slice(kp__, effective_potential__, pw_ekin__, nphi, phi_slice, hphi_slice);
 
-    //#pragma omp parallel default(shared) num_threads(num_fft_threads)
-    //{        
-    //    int thread_id = omp_get_thread_num();
-    //    std::vector<double_complex> phi_r(fft->size());
-    //    
-    //    /* loop over local fraction of wave-functions */
-    //    #pragma omp for
-    //    for (int i = 0; i < (int)sub_spl_n.local_size(); i++)
-    //    {
-    //        fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi_slice(0, i), thread_id);
-    //        fft->transform(1, thread_id);
-    //        fft->output(&phi_r[0], thread_id);
 
-    //        for (int ir = 0; ir < fft->size(); ir++) phi_r[ir] *= effective_potential__[ir];
 
-    //        fft->input(&phi_r[0], thread_id);
-    //        fft->transform(-1, thread_id);
-    //        fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi_slice(0, i), thread_id);
-    //        
-    //        for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi_slice(igk, i) += phi_slice(igk, i) * pw_ekin__[igk];
-    //    }
-    //}
 
-    hphi__.scatter(n__, N__, hphi_slice);
+    //== mdarray<double_complex, 2> phi_slice(kp__->num_gkvec(), nphi);
+    //== //phi__.gather(n__, N__, phi_slice);
+    //== mdarray<double_complex, 2> hphi_slice(kp__->num_gkvec(), nphi);
+    //== phi__.gather(n__, N__, phi_slice);
+    //== //hphi_slice >> phi_slice;
+
+    //== //phi_slice >> hphi_slice;
+    //== apply_h_local_slice(kp__, effective_potential__, pw_ekin__, nphi, phi_slice, hphi_slice);
+    //== //apply_h_local_slice(kp__, effective_potential__, pw_ekin__, nphi, hphi_slice);
+
+    //== //== //#pragma omp parallel default(shared) num_threads(num_fft_threads)
+    //== //== //{        
+    //== //== //    int thread_id = omp_get_thread_num();
+    //== //== //    std::vector<double_complex> phi_r(fft->size());
+    //== //== //    
+    //== //== //    /* loop over local fraction of wave-functions */
+    //== //== //    #pragma omp for
+    //== //== //    for (int i = 0; i < (int)sub_spl_n.local_size(); i++)
+    //== //== //    {
+    //== //== //        fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi_slice(0, i), thread_id);
+    //== //== //        fft->transform(1, thread_id);
+    //== //== //        fft->output(&phi_r[0], thread_id);
+
+    //== //== //        for (int ir = 0; ir < fft->size(); ir++) phi_r[ir] *= effective_potential__[ir];
+
+    //== //== //        fft->input(&phi_r[0], thread_id);
+    //== //== //        fft->transform(-1, thread_id);
+    //== //== //        fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi_slice(0, i), thread_id);
+    //== //== //        
+    //== //== //        for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi_slice(igk, i) += phi_slice(igk, i) * pw_ekin__[igk];
+    //== //== //    }
+    //== //== //}
+
+    //hphi__.scatter(n__, N__, hphi_slice);
     log_function_exit(__func__);
 }
 
@@ -1456,153 +1637,153 @@ void Band::uspp_residuals_cpu_parallel_simple(int N__,
     }
 }
 
-void Band::uspp_cpu_residuals_parallel_v2(int N__,
-                                          int num_bands__,
-                                          K_point* kp__,
-                                          std::vector<double>& eval__,
-                                          dmatrix<double_complex>& evec__,
-                                          dmatrix<double_complex>& hphi__,
-                                          dmatrix<double_complex>& ophi__,
-                                          dmatrix<double_complex>& hpsi__,
-                                          dmatrix<double_complex>& opsi__,
-                                          dmatrix<double_complex>& res__,
-                                          std::vector<double_complex>& h_diag__,
-                                          std::vector<double_complex>& o_diag__,
-                                          std::vector<double>& res_norm__)
-
-{
-    Timer t("sirius::Band::uspp_cpu_residuals_parallel_v2");
-
-    Timer t1("sirius::Band::uspp_cpu_residuals_parallel_v2|zgemm_eff");
-
-    splindex<block> sub_spl_gkvec(kp__->num_gkvec_row(), kp__->num_ranks_col(), kp__->rank_col());
-
-    mdarray<double_complex, 2> hphi_slice(N__, sub_spl_gkvec.local_size());
-    hphi__.shuffle_horizontal<_panel_to_slice_>(N__, hphi_slice);
-
-    mdarray<double_complex, 2> ophi_slice(N__, sub_spl_gkvec.local_size());
-    ophi__.shuffle_horizontal<_panel_to_slice_>(N__, ophi_slice);
-
-    mdarray<double_complex, 2> hpsi_slice(num_bands__, sub_spl_gkvec.local_size());
-    mdarray<double_complex, 2> opsi_slice(num_bands__, sub_spl_gkvec.local_size());
-
-    dmatrix<double_complex> evec_t(num_bands__, N__, kp__->blacs_grid());
-    dmatrix<double_complex>::tranu(num_bands__, N__, evec__, 0, 0, evec_t, 0, 0);
-
-    splindex<block_cyclic> spl_bands(num_bands__, kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
-
-    mdarray<double_complex, 2> hpsi_slice_tmp(spl_bands.local_size(0), sub_spl_gkvec.local_size());
-    mdarray<double_complex, 2> opsi_slice_tmp(spl_bands.local_size(0), sub_spl_gkvec.local_size());
-    
-    Timer t2("sirius::Band::uspp_cpu_residuals_parallel_v2|zgemm_loop");
-    for (int irow = 0; irow < kp__->num_ranks_row(); irow++)
-    {
-        mdarray<double_complex, 2> evec_tmp(spl_bands.local_size(irow), N__);
-        evec_tmp.zero();
-        if (irow == kp__->rank_row())
-        {
-            for (int j = 0; j < evec_t.num_cols_local(); j++)
-            {
-                for (int i = 0; i < (int)spl_bands.local_size(irow); i++)
-                {
-                    evec_tmp(i, evec_t.icol(j)) = evec_t(i, j);
-                }
-            }
-            kp__->comm_col().allreduce(evec_tmp.ptr(), (int)evec_tmp.size());
-        }
-        kp__->comm_row().bcast(evec_tmp.ptr(), (int)evec_tmp.size(), irow);
-
-        Timer t3("sirius::Band::uspp_cpu_residuals_parallel_v2|zgemm_loc");
-        blas<cpu>::gemm(0, 0, (int)spl_bands.local_size(irow), (int)sub_spl_gkvec.local_size(), N__, 
-                        evec_tmp.ptr(), evec_tmp.ld(), hphi_slice.ptr(), hphi_slice.ld(), 
-                        hpsi_slice_tmp.ptr(), hpsi_slice_tmp.ld());
-        
-        blas<cpu>::gemm(0, 0, (int)spl_bands.local_size(irow), (int)sub_spl_gkvec.local_size(), N__, 
-                        evec_tmp.ptr(), evec_tmp.ld(), ophi_slice.ptr(), ophi_slice.ld(), 
-                        opsi_slice_tmp.ptr(), opsi_slice_tmp.ld());
-        t3.stop();
-        for (int j = 0; j < (int)sub_spl_gkvec.local_size(); j++)
-        {
-            for (int i = 0; i < (int)spl_bands.local_size(irow); i++)
-            {
-                hpsi_slice(spl_bands.global_index(i, irow), j) = hpsi_slice_tmp(i, j);
-                opsi_slice(spl_bands.global_index(i, irow), j) = opsi_slice_tmp(i, j);
-            }
-        }
-    }
-    t2.stop();
-    
-    hpsi__.shuffle_horizontal<_slice_to_panel_>(num_bands__, hpsi_slice);
-    opsi__.shuffle_horizontal<_slice_to_panel_>(num_bands__, opsi_slice);
-        
-
-
-    /* Compute H\Psi_{i} = H\phi_{mu} * Z_{mu, i} */
-    //blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, hphi__, evec__, complex_zero, hpsi__);
-    /* Compute O\Psi_{i} = O\phi_{mu} * Z_{mu, i} */
-    //blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, ophi__, evec__, complex_zero, opsi__);
-    double tval = t1.stop();
-
-    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-    {
-        printf("effective zgemm #6&7 with M, N, K: %6i %6i %6i,                        %12.4f sec, %12.4f GFlops/node\n",
-               kp__->num_gkvec(), num_bands__, N__,
-               tval, 2 * 8e-9 * kp__->num_gkvec() * num_bands__ * N__ / tval / kp__->num_ranks());
-    }
-
-    memset(&res_norm__[0], 0, num_bands__ * sizeof(double));
-    /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm squared */
-    #pragma omp parallel for
-    for (int i = 0; i < res__.num_cols_local(); i++)
-    {
-        int ires = res__.icol(i);
-        double norm2 = 0;
-        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
-        {
-            res__(igk_row, i) = hpsi__(igk_row, i) - eval__[ires] * opsi__(igk_row, i);
-            norm2 += real(conj(res__(igk_row, i)) * res__(igk_row, i));
-        }
-        res_norm__[ires] = norm2;
-    }
-    kp__->comm().allreduce(res_norm__);
-    
-    /* compute norm */
-    for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
-    
-    /* apply preconditioner */
-    #pragma omp parallel for
-    for (int i = 0; i < res__.num_cols_local(); i++)
-    {
-        int ires = res__.icol(i);
-    
-        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-        {
-            double_complex z = h_diag__[igk_row] - eval__[ires] * o_diag__[igk_row];
-            if (std::abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
-            res__(igk_row, i) /= z;
-        }
-    }
-    
-    std::vector<double> norm2(num_bands__, 0);
-    /* Normalize new basis functions */
-    #pragma omp parallel for
-    for (int i = 0; i < res__.num_cols_local(); i++)
-    {
-        int ires = res__.icol(i);
-        double d = 0;
-        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
-            d += real(conj(res__(igk_row, i)) * res__(igk_row, i));
-        norm2[ires] = d;
-    }
-    kp__->comm().allreduce(norm2);
-    #pragma omp parallel for
-    for (int i = 0; i < res__.num_cols_local(); i++)
-    {
-        int ires = res__.icol(i);
-        double d = 1.0 / std::sqrt(norm2[ires]);
-        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) res__(igk_row, i) *= d;
-    }
-}
+//== void Band::uspp_cpu_residuals_parallel_v2(int N__,
+//==                                           int num_bands__,
+//==                                           K_point* kp__,
+//==                                           std::vector<double>& eval__,
+//==                                           dmatrix<double_complex>& evec__,
+//==                                           dmatrix<double_complex>& hphi__,
+//==                                           dmatrix<double_complex>& ophi__,
+//==                                           dmatrix<double_complex>& hpsi__,
+//==                                           dmatrix<double_complex>& opsi__,
+//==                                           dmatrix<double_complex>& res__,
+//==                                           std::vector<double_complex>& h_diag__,
+//==                                           std::vector<double_complex>& o_diag__,
+//==                                           std::vector<double>& res_norm__)
+//== 
+//== {
+//==     Timer t("sirius::Band::uspp_cpu_residuals_parallel_v2");
+//== 
+//==     Timer t1("sirius::Band::uspp_cpu_residuals_parallel_v2|zgemm_eff");
+//== 
+//==     splindex<block> sub_spl_gkvec(kp__->num_gkvec_row(), kp__->num_ranks_col(), kp__->rank_col());
+//== 
+//==     mdarray<double_complex, 2> hphi_slice(N__, sub_spl_gkvec.local_size());
+//==     hphi__.shuffle_horizontal<_panel_to_slice_>(N__, hphi_slice);
+//== 
+//==     mdarray<double_complex, 2> ophi_slice(N__, sub_spl_gkvec.local_size());
+//==     ophi__.shuffle_horizontal<_panel_to_slice_>(N__, ophi_slice);
+//== 
+//==     mdarray<double_complex, 2> hpsi_slice(num_bands__, sub_spl_gkvec.local_size());
+//==     mdarray<double_complex, 2> opsi_slice(num_bands__, sub_spl_gkvec.local_size());
+//== 
+//==     dmatrix<double_complex> evec_t(num_bands__, N__, kp__->blacs_grid());
+//==     dmatrix<double_complex>::tranu(num_bands__, N__, evec__, 0, 0, evec_t, 0, 0);
+//== 
+//==     splindex<block_cyclic> spl_bands(num_bands__, kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
+//== 
+//==     mdarray<double_complex, 2> hpsi_slice_tmp(spl_bands.local_size(0), sub_spl_gkvec.local_size());
+//==     mdarray<double_complex, 2> opsi_slice_tmp(spl_bands.local_size(0), sub_spl_gkvec.local_size());
+//==     
+//==     Timer t2("sirius::Band::uspp_cpu_residuals_parallel_v2|zgemm_loop");
+//==     for (int irow = 0; irow < kp__->num_ranks_row(); irow++)
+//==     {
+//==         mdarray<double_complex, 2> evec_tmp(spl_bands.local_size(irow), N__);
+//==         evec_tmp.zero();
+//==         if (irow == kp__->rank_row())
+//==         {
+//==             for (int j = 0; j < evec_t.num_cols_local(); j++)
+//==             {
+//==                 for (int i = 0; i < (int)spl_bands.local_size(irow); i++)
+//==                 {
+//==                     evec_tmp(i, evec_t.icol(j)) = evec_t(i, j);
+//==                 }
+//==             }
+//==             kp__->comm_col().allreduce(evec_tmp.ptr(), (int)evec_tmp.size());
+//==         }
+//==         kp__->comm_row().bcast(evec_tmp.ptr(), (int)evec_tmp.size(), irow);
+//== 
+//==         Timer t3("sirius::Band::uspp_cpu_residuals_parallel_v2|zgemm_loc");
+//==         blas<cpu>::gemm(0, 0, (int)spl_bands.local_size(irow), (int)sub_spl_gkvec.local_size(), N__, 
+//==                         evec_tmp.ptr(), evec_tmp.ld(), hphi_slice.ptr(), hphi_slice.ld(), 
+//==                         hpsi_slice_tmp.ptr(), hpsi_slice_tmp.ld());
+//==         
+//==         blas<cpu>::gemm(0, 0, (int)spl_bands.local_size(irow), (int)sub_spl_gkvec.local_size(), N__, 
+//==                         evec_tmp.ptr(), evec_tmp.ld(), ophi_slice.ptr(), ophi_slice.ld(), 
+//==                         opsi_slice_tmp.ptr(), opsi_slice_tmp.ld());
+//==         t3.stop();
+//==         for (int j = 0; j < (int)sub_spl_gkvec.local_size(); j++)
+//==         {
+//==             for (int i = 0; i < (int)spl_bands.local_size(irow); i++)
+//==             {
+//==                 hpsi_slice(spl_bands.global_index(i, irow), j) = hpsi_slice_tmp(i, j);
+//==                 opsi_slice(spl_bands.global_index(i, irow), j) = opsi_slice_tmp(i, j);
+//==             }
+//==         }
+//==     }
+//==     t2.stop();
+//==     
+//==     hpsi__.shuffle_horizontal<_slice_to_panel_>(num_bands__, hpsi_slice);
+//==     opsi__.shuffle_horizontal<_slice_to_panel_>(num_bands__, opsi_slice);
+//==         
+//== 
+//== 
+//==     /* Compute H\Psi_{i} = H\phi_{mu} * Z_{mu, i} */
+//==     //blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, hphi__, evec__, complex_zero, hpsi__);
+//==     /* Compute O\Psi_{i} = O\phi_{mu} * Z_{mu, i} */
+//==     //blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, ophi__, evec__, complex_zero, opsi__);
+//==     double tval = t1.stop();
+//== 
+//==     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+//==     {
+//==         printf("effective zgemm #6&7 with M, N, K: %6i %6i %6i,                        %12.4f sec, %12.4f GFlops/node\n",
+//==                kp__->num_gkvec(), num_bands__, N__,
+//==                tval, 2 * 8e-9 * kp__->num_gkvec() * num_bands__ * N__ / tval / kp__->num_ranks());
+//==     }
+//== 
+//==     memset(&res_norm__[0], 0, num_bands__ * sizeof(double));
+//==     /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} and norm squared */
+//==     #pragma omp parallel for
+//==     for (int i = 0; i < res__.num_cols_local(); i++)
+//==     {
+//==         int ires = res__.icol(i);
+//==         double norm2 = 0;
+//==         for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
+//==         {
+//==             res__(igk_row, i) = hpsi__(igk_row, i) - eval__[ires] * opsi__(igk_row, i);
+//==             norm2 += real(conj(res__(igk_row, i)) * res__(igk_row, i));
+//==         }
+//==         res_norm__[ires] = norm2;
+//==     }
+//==     kp__->comm().allreduce(res_norm__);
+//==     
+//==     /* compute norm */
+//==     for (int i = 0; i < num_bands__; i++) res_norm__[i] = std::sqrt(res_norm__[i]);
+//==     
+//==     /* apply preconditioner */
+//==     #pragma omp parallel for
+//==     for (int i = 0; i < res__.num_cols_local(); i++)
+//==     {
+//==         int ires = res__.icol(i);
+//==     
+//==         for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+//==         {
+//==             double_complex z = h_diag__[igk_row] - eval__[ires] * o_diag__[igk_row];
+//==             if (std::abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
+//==             res__(igk_row, i) /= z;
+//==         }
+//==     }
+//==     
+//==     std::vector<double> norm2(num_bands__, 0);
+//==     /* Normalize new basis functions */
+//==     #pragma omp parallel for
+//==     for (int i = 0; i < res__.num_cols_local(); i++)
+//==     {
+//==         int ires = res__.icol(i);
+//==         double d = 0;
+//==         for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) 
+//==             d += real(conj(res__(igk_row, i)) * res__(igk_row, i));
+//==         norm2[ires] = d;
+//==     }
+//==     kp__->comm().allreduce(norm2);
+//==     #pragma omp parallel for
+//==     for (int i = 0; i < res__.num_cols_local(); i++)
+//==     {
+//==         int ires = res__.icol(i);
+//==         double d = 1.0 / std::sqrt(norm2[ires]);
+//==         for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) res__(igk_row, i) *= d;
+//==     }
+//== }
 
 void Band::uspp_residuals_cpu_parallel_v3(int N__,
                                           int num_bands__,

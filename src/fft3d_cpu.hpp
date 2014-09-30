@@ -213,6 +213,13 @@ class FFT3D<cpu>
 
             for (int i = 0; i < n; i++) data[i] = fftw_buffer_(map[i], thread_id);
         }
+
+        inline void output(int n, int* map, double_complex* data, int thread_id, double alpha)
+        {
+            assert(thread_id < Platform::num_fft_threads());
+
+            for (int i = 0; i < n; i++) data[i] += alpha * fftw_buffer_(map[i], thread_id);
+        }
         
         inline const std::pair<int, int>& grid_limits(int idim)
         {

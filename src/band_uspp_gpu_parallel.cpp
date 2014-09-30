@@ -1038,6 +1038,8 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
 
     dmatrix<double_complex> phi(kp__->num_gkvec(), num_phi, kp__->blacs_grid());
     dmatrix<double_complex> hphi(kp__->num_gkvec(), num_phi, kp__->blacs_grid());
+    hphi.allocate_ata_buffer((int)kp__->spl_fv_states().local_size(0));
+
     dmatrix<double_complex> ophi(kp__->num_gkvec(), num_phi, kp__->blacs_grid());
 
     dmatrix<double_complex> hmlt(num_phi, num_phi, kp__->blacs_grid());
@@ -1265,7 +1267,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             /* copy new phi to CPU */
             phi.copy_cols_to_host(N, N + n);
             #else
-            res.data().copy_to_host();
+            res.panel().copy_to_host();
             for (int i = 0; i < n; i++)
             {
                 dmatrix<double_complex>::copy_col<cpu>(res, res_list[i], phi, N + i);
