@@ -1461,7 +1461,7 @@ void Band::apply_h_ncpp_parallel(K_point* kp__,
             }
         }
 
-        Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_phi", kp__->comm_row());
+        Timer t1("sirius::Band::apply_h_ncpp_parallel|beta_phi", kp__->comm_row());
         if (parameters_.processing_unit() == cpu)
         {
             /* create beta projectors */
@@ -1721,6 +1721,7 @@ void Band::diag_fv_ncpp_parallel(K_point* kp__,
     double c = (lambda1 + lambda0) / 2.0;
     
     /* compute \psi_1 = (H\psi_0 - c\psi_0) / r */
+    #pragma omp parallel for schedule(static)
     for (int iloc = 0; iloc < (int)kp__->spl_fv_states().local_size(); iloc++)
     {
         for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
@@ -1735,6 +1736,7 @@ void Band::diag_fv_ncpp_parallel(K_point* kp__,
         apply_h_ncpp_parallel(kp__, veff_it_coarse__, pw_ekin, phi[k - 1], phi[k], num_atoms_in_block, 
                               kappa, beta_pw_t, gkvec_row, packed_mtrx_offset, d_mtrx_packed);
 
+        #pragma omp parallel for schedule(static)
         for (int iloc = 0; iloc < (int)kp__->spl_fv_states().local_size(); iloc++)
         {
             for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
@@ -1750,7 +1752,14 @@ void Band::diag_fv_ncpp_parallel(K_point* kp__,
     Timer t1("sirius::Band::diag_fv_ncpp_parallel|set_h_o");
     blas<cpu>::gemm(2, 0, num_bands, num_bands, kp__->num_gkvec(), complex_one, phi[order - 1], phi[0], complex_zero, hmlt);
     blas<cpu>::gemm(2, 0, num_bands, num_bands, kp__->num_gkvec(), complex_one, phi[order - 1], phi[order - 1], complex_zero, ovlp);
-    t1.stop();
+    double tval = t1.stop();
+
+    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+    {
+        printf("2x pzgemm with M, N, K: %6i %6i %6i: %12.4f sec, %12.4f GFlops/rank\n",
+               num_bands, num_bands, kp__->num_gkvec(),
+               tval, 2 * 8e-9 * num_bands * num_bands * kp__->num_gkvec() / tval / kp__->num_ranks());
+    }
     
     Timer t2("sirius::Band::diag_fv_ncpp_parallel|gen_evp");
     gen_evp_solver()->solve(num_bands, hmlt.num_rows_local(), hmlt.num_cols_local(), num_bands, 
