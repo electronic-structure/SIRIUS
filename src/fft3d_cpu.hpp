@@ -110,6 +110,22 @@ class FFT3D<cpu>
                 grid_limits_[i].first = grid_limits_[i].second - grid_size_[i] + 1;
             }
 
+            #ifdef _FFTW_THREADED_
+            fftw_plan_with_nthreads(Platform::num_fft_threads());
+
+            fftw_buffer_ = mdarray<double_complex, 2>(size(), 1);
+
+            plan_backward_.resize(1);
+            plan_forward_.resize(1);
+
+            plan_backward_[0] = fftw_plan_dft_3d(size(2), size(1), size(0), 
+                                                 (fftw_complex*)&fftw_buffer_(0, 0), 
+                                                 (fftw_complex*)&fftw_buffer_(0, 0), 1, FFTW_MEASURE);
+            plan_forward_[0] = fftw_plan_dft_3d(size(2), size(1), size(0), 
+                                                (fftw_complex*)&fftw_buffer_(0, 0), 
+                                                (fftw_complex*)&fftw_buffer_(0, 0), -1, FFTW_MEASURE);
+            fftw_plan_with_nthreads(1);
+            #else
             fftw_buffer_ = mdarray<double_complex, 2>(size(), Platform::num_fft_threads());
 
             plan_backward_.resize(Platform::num_fft_threads());
@@ -124,18 +140,22 @@ class FFT3D<cpu>
                                                     (fftw_complex*)&fftw_buffer_(0, i), 
                                                     (fftw_complex*)&fftw_buffer_(0, i), -1, FFTW_MEASURE);
             }
-
+            #endif
             spl_fft_size_ = splindex<block>(size(), comm__.size(), comm__.rank());
         }
 
         ~FFT3D()
         {
+            #ifdef _FFTW_THREADED_
+            fftw_destroy_plan(plan_backward_[0]);
+            fftw_destroy_plan(plan_forward_[0]);
+            #else
             for (int i = 0; i < Platform::num_fft_threads(); i++)
             {
                 fftw_destroy_plan(plan_backward_[i]);
                 fftw_destroy_plan(plan_forward_[i]);
             }
-            fftw_cleanup();
+            #endif
         }
 
         /// Zero the input buffer for a given thread.

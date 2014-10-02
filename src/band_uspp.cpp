@@ -522,12 +522,20 @@ void Band::apply_h_local_slice(K_point* kp__,
     {
         case cpu:
         {
+            #ifdef _FFTW_THREADED_
+            num_fft_threads = 1;
+            #else
             num_fft_threads = Platform::num_fft_threads();
+            #endif
             break;
         }
         case gpu:
         {
+            #ifdef _FFTW_THREADED_
+            num_fft_threads = 2;
+            #else
             num_fft_threads = std::min(Platform::num_fft_threads() + 1, Platform::max_num_threads());
+            #endif
             break;
         }
     }
@@ -543,7 +551,7 @@ void Band::apply_h_local_slice(K_point* kp__,
     
     for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
     {
-        if (thread_id == 0 && num_fft_threads > 1 && pu == gpu)
+        if (thread_id == num_fft_threads - 1 && num_fft_threads > 1 && pu == gpu)
         {
             #ifdef _GPU_
             fft_threads.push_back(std::thread([num_phi__, &idx_phi, &idx_phi_mutex, &fft_gpu, kp__, &phi__, 
@@ -690,12 +698,20 @@ void Band::apply_h_local_slice(K_point* kp__,
     {
         case cpu:
         {
+            #ifdef _FFTW_THREADED_
+            num_fft_threads = 1;
+            #else
             num_fft_threads = Platform::num_fft_threads();
+            #endif
             break;
         }
         case gpu:
         {
+            #ifdef _FFTW_THREADED_
+            num_fft_threads = 2;
+            #else
             num_fft_threads = std::min(Platform::num_fft_threads() + 1, Platform::max_num_threads());
+            #endif
             break;
         }
     }
@@ -711,7 +727,7 @@ void Band::apply_h_local_slice(K_point* kp__,
     
     for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
     {
-        if (thread_id == 0 && num_fft_threads > 1 && pu == gpu)
+        if (thread_id == num_fft_threads - 1 && num_fft_threads > 1 && pu == gpu)
         {
             #ifdef _GPU_
             fft_threads.push_back(std::thread([num_phi__, &idx_phi, &idx_phi_mutex, &fft_gpu, kp__, &hphi__,

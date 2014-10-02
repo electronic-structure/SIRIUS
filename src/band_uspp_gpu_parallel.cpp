@@ -1689,8 +1689,6 @@ void Band::diag_fv_ncpp_parallel(K_point* kp__,
         gkvec_row.copy_to_device();
         beta_pw_t.allocate_on_device();
         beta_pw_t.copy_to_device();
-        /* initial phi on GPU */
-        //cuda_copy_to_device(phi.at<gpu>(), psi.at<cpu>(), kp__->num_gkvec_row() * psi.num_cols_local() * sizeof(double_complex));
         #else
         TERMINATE_NO_GPU
         #endif
@@ -1702,6 +1700,7 @@ void Band::diag_fv_ncpp_parallel(K_point* kp__,
 
     /* compute Rayleight quotients */
     std::vector<double> e0(num_bands, 0.0);
+    #pragma omp parallel for schedule(static)
     for (int iloc = 0; iloc < (int)kp__->spl_fv_states().local_size(); iloc++)
     {
         int i = kp__->spl_fv_states(iloc);
@@ -1745,12 +1744,13 @@ void Band::diag_fv_ncpp_parallel(K_point* kp__,
             }
         }
     }
-
+    
+    /* apply Hamiltonian to the "filtered" basis functions */
     apply_h_ncpp_parallel(kp__, veff_it_coarse__, pw_ekin, phi[order - 1], phi[0], num_atoms_in_block, 
                           kappa, beta_pw_t, gkvec_row, packed_mtrx_offset, d_mtrx_packed);
 
-    Timer t1("sirius::Band::diag_fv_ncpp_parallel|set_h_o");
-    blas<cpu>::gemm(2, 0, num_bands, num_bands, kp__->num_gkvec(), complex_one, phi[order - 1], phi[0], complex_zero, hmlt);
+    Timer t1("sirius::Band::diag_fv_ncpp_parallel|set_h_o", kp__->comm());
+    blas<cpu>::gemm(2, 0, num_bands, num_bands, kp__->num_gkvec(), complex_one, phi[order - 1], phi[0],         complex_zero, hmlt);
     blas<cpu>::gemm(2, 0, num_bands, num_bands, kp__->num_gkvec(), complex_one, phi[order - 1], phi[order - 1], complex_zero, ovlp);
     double tval = t1.stop();
 
