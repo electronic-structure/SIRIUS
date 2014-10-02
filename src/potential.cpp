@@ -771,6 +771,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
 
     /* compute pw coefficients of Hartree potential */
     vh->f_pw(0) = 0.0;
+    #pragma omp parallel for schedule(static)
     for (int ig = 1; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++)
         vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / pow(parameters_.reciprocal_lattice()->gvec_len(ig), 2));
     
