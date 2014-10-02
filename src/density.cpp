@@ -35,7 +35,8 @@ Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_
     rho_ = new Periodic_function<double>(parameters_, parameters_.lmmax_rho(), parameters_.reciprocal_lattice()->num_gvec(), parameters_.comm());
 
     /* core density of the pseudopotential method */
-    if (parameters_.esm_type() == ultrasoft_pseudopotential)
+    if (parameters_.esm_type() == ultrasoft_pseudopotential || 
+        parameters_.esm_type() == norm_conserving_pseudopotential)
     {
         rho_pseudo_core_ = new Periodic_function<double>(parameters_, 0, 0, parameters_.comm());
         rho_pseudo_core_->allocate(false, true);
@@ -69,6 +70,7 @@ Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_
             break;
         }
         case ultrasoft_pseudopotential:
+        case norm_conserving_pseudopotential:
         {
             break;
         }
@@ -432,7 +434,8 @@ void Density::initial_density()
         }
     }
 
-    if (parameters_.esm_type() == ultrasoft_pseudopotential)
+    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
+        parameters_.esm_type() == norm_conserving_pseudopotential) 
     {
         auto rho_radial_integrals = generate_rho_radial_integrals(1);
 
@@ -1668,6 +1671,10 @@ void Density::generate(K_set& ks)
                     error_local(__FILE__, __LINE__, "wrong processing unit");
                 }
             }
+            break;
+        }
+        case norm_conserving_pseudopotential:
+        {
             break;
         }
     }

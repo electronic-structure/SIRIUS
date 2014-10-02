@@ -38,7 +38,9 @@ def read_mesh_data(in_file, npoints):
     return out_data
 
 def parse_header(upf_dict):
-    
+
+    print "paring header"
+
     upf_dict["header"] = {}
     
     upf = open(sys.argv[1], "r")
@@ -95,6 +97,8 @@ def parse_header(upf_dict):
 # QE subroutine read_pseudo_mesh
 #
 def parse_mesh(upf_dict):
+    
+    print "paring mesh"
 
     upf = open(sys.argv[1], "r")
 
@@ -122,6 +126,8 @@ def parse_mesh(upf_dict):
 # QE subroutine read_pseudo_nlcc
 #
 def parse_nlcc(upf_dict):
+
+    print "paring nlcc"
     
     upf = open(sys.argv[1], "r")
 
@@ -139,6 +145,8 @@ def parse_nlcc(upf_dict):
 # QE subroutine read_pseudo_local
 #
 def parse_local(upf_dict):
+
+    print "paring local"
 
     upf_dict["vloc"] = []
 
@@ -161,10 +169,11 @@ def parse_local(upf_dict):
 #
 def parse_non_local(upf_dict):
 
+    print "paring non-local"
+
     upf_dict["non_local"] = {}
     upf_dict["non_local"]["beta"] = []
     upf_dict["non_local"]["D"] = []
-    upf_dict["non_local"]["Q"] = {}
         
     upf = open(sys.argv[1], "r")
 
@@ -219,107 +228,110 @@ def parse_non_local(upf_dict):
         upf_dict["non_local"]["D"].append({})
         upf_dict["non_local"]["D"][k]["ij"] = [int(s[0]) - 1, int(s[1]) - 1]
         upf_dict["non_local"]["D"][k]["d_ion"] = float(s[2]) / 2 # convert to Hartree
-
-    # =============================================    
-    # call scan_begin (iunps, "QIJ", .false.)  
-    # read (iunps, *, err = 102, end = 102) upf%nqf
-    # upf%nqlc = 2 * upf%lmax  + 1
-    # =============================================
-    read_until(upf, "<PP_QIJ>")
-    s = upf.readline().split()
-    upf_dict["non_local"]["Q"]["num_q_coefs"] = int(s[0])
-    nqlc = upf_dict["header"]["lmax"] * 2 + 1
-
-    # =======================================================================
-    # if ( upf%nqf /= 0) then
-    #    call scan_begin (iunps, "RINNER", .false.)  
-    #    read (iunps,*,err=103,end=103) ( idum, upf%rinner(i), i=1,upf%nqlc )
-    #    call scan_end (iunps, "RINNER")  
-    # end if
-    # =======================================================================
-    if upf_dict["non_local"]["Q"]["num_q_coefs"] != 0:
-        read_until(upf, "<PP_RINNER>")
-        upf_dict["non_local"]["Q"]["q_functions_inner_radii"] = []
-        for i in range(nqlc):
-            s = upf.readline().split()
-            upf_dict["non_local"]["Q"]["q_functions_inner_radii"].append(float(s[1]))
-        read_until(upf, "</PP_RINNER>")
     
-    # ================================================================================== 
-    # do nb = 1, upf%nbeta
-    #    do mb = nb, upf%nbeta
-    #       read (iunps,*,err=102,end=102) idum, idum, ldum, dummy
-    #       !"  i    j   (l)"
-    #       if (ldum /= upf%lll(mb) ) then
-    #         call errore ('read_pseudo_nl','inconsistent angular momentum for Q_ij', 1)
-    #       end if
-    #       read (iunps,*,err=104,end=104) upf%qqq(nb,mb), dummy
-    #       ! "Q_int"
-    #       upf%qqq(mb,nb) = upf%qqq(nb,mb)  
-    #       ! ijv is the combined (nb,mb) index
-    #       ijv = mb * (mb-1) / 2 + nb
-    #       IF (upf%q_with_l .or. upf%tpawp) THEN
-    #          l1=upf%lll(nb)
-    #          l2=upf%lll(mb)
-    #          DO l=abs(l1-l2),l1+l2
-    #             read (iunps, *, err=105, end=105) (upf%qfuncl(n,ijv,l), &
-    #                                                n=1,upf%mesh)
-    #          END DO
-    #       ELSE
-    #          read (iunps, *, err=105, end=105) (upf%qfunc(n,ijv), n=1,upf%mesh)
-    #       ENDIF
-    # ==================================================================================
+    if upf_dict["header"]["pp_type"] == "US":
+        upf_dict["non_local"]["Q"] = {}
 
-    nbeta = upf_dict["header"]["nbeta"]
-    qij = [[{} for x in range(nbeta)] for x in range(nbeta)] 
+        # =============================================    
+        # call scan_begin (iunps, "QIJ", .false.)  
+        # read (iunps, *, err = 102, end = 102) upf%nqf
+        # upf%nqlc = 2 * upf%lmax  + 1
+        # =============================================
+        read_until(upf, "<PP_QIJ>")
+        s = upf.readline().split()
+        upf_dict["non_local"]["Q"]["num_q_coefs"] = int(s[0])
+        nqlc = upf_dict["header"]["lmax"] * 2 + 1
 
-    for i in range(nbeta):
-        for j in range(i, nbeta):
-            
-            s = upf.readline().split()
-            if int(s[2]) != upf_dict["non_local"]["beta"][j]["lll"]:
-                print "inconsistent angular momentum"
-                sys.exit(-1)
+        # =======================================================================
+        # if ( upf%nqf /= 0) then
+        #    call scan_begin (iunps, "RINNER", .false.)  
+        #    read (iunps,*,err=103,end=103) ( idum, upf%rinner(i), i=1,upf%nqlc )
+        #    call scan_end (iunps, "RINNER")  
+        # end if
+        # =======================================================================
+        if upf_dict["non_local"]["Q"]["num_q_coefs"] != 0:
+            read_until(upf, "<PP_RINNER>")
+            upf_dict["non_local"]["Q"]["q_functions_inner_radii"] = []
+            for i in range(nqlc):
+                s = upf.readline().split()
+                upf_dict["non_local"]["Q"]["q_functions_inner_radii"].append(float(s[1]))
+            read_until(upf, "</PP_RINNER>")
+    
+        # ================================================================================== 
+        # do nb = 1, upf%nbeta
+        #    do mb = nb, upf%nbeta
+        #       read (iunps,*,err=102,end=102) idum, idum, ldum, dummy
+        #       !"  i    j   (l)"
+        #       if (ldum /= upf%lll(mb) ) then
+        #         call errore ('read_pseudo_nl','inconsistent angular momentum for Q_ij', 1)
+        #       end if
+        #       read (iunps,*,err=104,end=104) upf%qqq(nb,mb), dummy
+        #       ! "Q_int"
+        #       upf%qqq(mb,nb) = upf%qqq(nb,mb)  
+        #       ! ijv is the combined (nb,mb) index
+        #       ijv = mb * (mb-1) / 2 + nb
+        #       IF (upf%q_with_l .or. upf%tpawp) THEN
+        #          l1=upf%lll(nb)
+        #          l2=upf%lll(mb)
+        #          DO l=abs(l1-l2),l1+l2
+        #             read (iunps, *, err=105, end=105) (upf%qfuncl(n,ijv,l), &
+        #                                                n=1,upf%mesh)
+        #          END DO
+        #       ELSE
+        #          read (iunps, *, err=105, end=105) (upf%qfunc(n,ijv), n=1,upf%mesh)
+        #       ENDIF
+        # ==================================================================================
 
-            if int(s[0]) != i + 1 or int(s[1]) != j + 1: 
-                print "inconsistent ij indices"
-                sys.exit(-1)
-            
-            s = upf.readline().split()
-            qij[i][j]["qqq"] = float(s[0])
+        nbeta = upf_dict["header"]["nbeta"]
+        qij = [[{} for x in range(nbeta)] for x in range(nbeta)] 
 
-            qij[i][j]["q_radial_function"] = read_mesh_data(upf, upf_dict["header"]["nmesh"])
+        for i in range(nbeta):
+            for j in range(i, nbeta):
+                
+                s = upf.readline().split()
+                if int(s[2]) != upf_dict["non_local"]["beta"][j]["lll"]:
+                    print "inconsistent angular momentum"
+                    sys.exit(-1)
 
-            
-            # ======================================================================
-            # if ( upf%nqf > 0 ) then
-            #   call scan_begin (iunps, "QFCOEF", .false.)  
-            #   read (iunps,*,err=106,end=106) &
-            #             ( ( upf%qfcoef(i,lp,nb,mb), i=1,upf%nqf ), lp=1,upf%nqlc )
-            #   do i = 1, upf%nqf
-            #      do lp = 1, upf%nqlc
-            #         upf%qfcoef(i,lp,mb,nb) = upf%qfcoef(i,lp,nb,mb)
-            #      end do
-            #   end do
-            #   call scan_end (iunps, "QFCOEF")  
-            # end if
-            #=======================================================================
-            if upf_dict["non_local"]["Q"]["num_q_coefs"] > 0:
-                read_until(upf, "<PP_QFCOEF>")
+                if int(s[0]) != i + 1 or int(s[1]) != j + 1: 
+                    print "inconsistent ij indices"
+                    sys.exit(-1)
+                
+                s = upf.readline().split()
+                qij[i][j]["qqq"] = float(s[0])
 
-                qij[i][j]["q_coefs"] = read_mesh_data(upf, upf_dict["non_local"]["Q"]["num_q_coefs"] * nqlc)
+                qij[i][j]["q_radial_function"] = read_mesh_data(upf, upf_dict["header"]["nmesh"])
 
-                read_until(upf, "</PP_QFCOEF>")
-            
-            qij[j][i] = qij[i][j]
+                
+                # ======================================================================
+                # if ( upf%nqf > 0 ) then
+                #   call scan_begin (iunps, "QFCOEF", .false.)  
+                #   read (iunps,*,err=106,end=106) &
+                #             ( ( upf%qfcoef(i,lp,nb,mb), i=1,upf%nqf ), lp=1,upf%nqlc )
+                #   do i = 1, upf%nqf
+                #      do lp = 1, upf%nqlc
+                #         upf%qfcoef(i,lp,mb,nb) = upf%qfcoef(i,lp,nb,mb)
+                #      end do
+                #   end do
+                #   call scan_end (iunps, "QFCOEF")  
+                # end if
+                #=======================================================================
+                if upf_dict["non_local"]["Q"]["num_q_coefs"] > 0:
+                    read_until(upf, "<PP_QFCOEF>")
 
-    qij_list = []
-    for j in range(upf_dict["header"]["nbeta"]):
-        for i in range(0, j + 1):
-            qij_list.append(qij[i][j])
-            qij_list[-1]["ij"] = [i, j]
+                    qij[i][j]["q_coefs"] = read_mesh_data(upf, upf_dict["non_local"]["Q"]["num_q_coefs"] * nqlc)
 
-    upf_dict["non_local"]["Q"]["qij"] = qij_list
+                    read_until(upf, "</PP_QFCOEF>")
+                
+                qij[j][i] = qij[i][j]
+
+        qij_list = []
+        for j in range(upf_dict["header"]["nbeta"]):
+            for i in range(0, j + 1):
+                qij_list.append(qij[i][j])
+                qij_list[-1]["ij"] = [i, j]
+
+        upf_dict["non_local"]["Q"]["qij"] = qij_list
 
     upf.close()
 
@@ -329,6 +341,8 @@ def parse_non_local(upf_dict):
 #
 def parse_pswfc(upf_dict):
     
+    print "paring wfc"
+
     upf_dict["pswfc"] = []
 
     upf = open(sys.argv[1], "r")
@@ -352,6 +366,8 @@ def parse_pswfc(upf_dict):
 # QE subroutine read_pseudo_rhoatom
 #
 def parse_rhoatom(upf_dict):
+
+    print "paring rhoatm"
 
     upf = open(sys.argv[1], "r")
 

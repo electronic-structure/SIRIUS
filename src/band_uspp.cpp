@@ -29,133 +29,88 @@
 
 namespace sirius {
 
-void Band::get_h_o_diag(K_point* kp__,
-                        double v0__,
-                        std::vector<double>& pw_ekin__,
-                        std::vector<double_complex>& h_diag__,
-                        std::vector<double_complex>& o_diag__)
-{
-    Timer t("sirius::Band::get_h_o_diag");
-
-    h_diag__.resize(kp__->num_gkvec_row());
-    o_diag__.resize(kp__->num_gkvec_row());
-
-    auto uc = parameters_.unit_cell();
-    
-    /* local H contribution */
-    for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-    {
-        int igk = kp__->gklo_basis_descriptor_row(igk_row).igk;
-        h_diag__[igk_row] = pw_ekin__[igk] + v0__;
-        o_diag__[igk_row] = 1.0;
-    }
-
-    /* non-local H contribution */
-    auto& beta_pw_t = kp__->beta_pw_t();
-    mdarray<double_complex, 2> beta_pw_tmp(uc->max_mt_basis_size(), kp__->num_gkvec_row());
-
-    for (int iat = 0; iat < uc->num_atom_types(); iat++)
-    {
-        auto atom_type = uc->atom_type(iat);
-        int nbf = atom_type->mt_basis_size();
-        mdarray<double_complex, 2> d_sum(nbf, nbf);
-        mdarray<double_complex, 2> q_sum(nbf, nbf);
-        d_sum.zero();
-        q_sum.zero();
-
-        for (int i = 0; i < atom_type->num_atoms(); i++)
-        {
-            int ia = atom_type->atom_id(i);
-        
-            for (int xi2 = 0; xi2 < nbf; xi2++)
-            {
-                for (int xi1 = 0; xi1 < nbf; xi1++)
-                {
-                    d_sum(xi1, xi2) += uc->atom(ia)->d_mtrx(xi1, xi2);
-                    q_sum(xi1, xi2) += uc->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
-                }
-            }
-        }
-
-        int ofs = uc->atom_type(iat)->offset_lo();
-        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-        {
-            for (int xi = 0; xi < nbf; xi++) beta_pw_tmp(xi, igk_row) = beta_pw_t(igk_row, ofs + xi);
-        }
-
-        std::vector< std::pair<int, int> > idx(nbf * nbf);
-        for (int xi2 = 0, n = 0; xi2 < nbf; xi2++)
-        {
-            for (int xi1 = 0; xi1 < nbf; xi1++) idx[n++] = std::pair<int, int>(xi1, xi2);
-        }
-
-        #pragma omp parallel for
-        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-        {
-            for (auto& it: idx)
-            {
-                int xi1 = it.first;
-                int xi2 = it.second;
-                double_complex z = beta_pw_tmp(xi1, igk_row) * conj(beta_pw_tmp(xi2, igk_row));
-
-                h_diag__[igk_row] += z * d_sum(xi1, xi2);
-                o_diag__[igk_row] += z * q_sum(xi1, xi2);
-            }
-        }
-    }
-}
-
-//== // memory-conservative implementation
-//== void Band::apply_h_o(K_point* kp, Periodic_function<double>* effective_potential, std::vector<double>& pw_ekin, int n,
-//==                      double_complex* phi__, double_complex* hphi__, double_complex* ophi__)
+//== template <bool need_o_diag>
+//== void Band::get_h_o_diag(K_point* kp__,
+//==                         double v0__,
+//==                         std::vector<double>& pw_ekin__,
+//==                         std::vector<double_complex>& h_diag__,
+//==                         std::vector<double_complex>& o_diag__)
 //== {
-//==     Timer t("sirius::Band::apply_h_o");
+//==     Timer t("sirius::Band::get_h_o_diag");
 //== 
-//==     mdarray<double_complex, 2> phi(phi__, kp->num_gkvec(), n);
-//==     mdarray<double_complex, 2> hphi(hphi__, kp->num_gkvec(), n);
-//==     mdarray<double_complex, 2> ophi(ophi__, kp->num_gkvec(), n);
+//==     h_diag__.resize(kp__->num_gkvec_row());
+//==     if (need_o_diag) o_diag__.resize(kp__->num_gkvec_row());
+//== 
+//==     auto uc = parameters_.unit_cell();
 //==     
-//==     // apply local part of Hamiltonian
-//==     apply_h_local(kp, effective_potential, pw_ekin, n, phi__, hphi__);
-//==    
-//==     // set intial ophi
-//==     memcpy(ophi__, phi__, kp->num_gkvec() * n * sizeof(double_complex));
+//==     /* local H contribution */
+//==     for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+//==     {
+//==         int igk = kp__->gklo_basis_descriptor_row(igk_row).igk;
+//==         h_diag__[igk_row] = pw_ekin__[igk] + v0__;
+//==         if (need_o_diag) o_diag__[igk_row] = 1.0;
+//==     }
 //== 
-//==     mdarray<double_complex, 2> beta_pw(kp->num_gkvec(), parameters_.unit_cell()->max_mt_basis_size());
-//==     mdarray<double_complex, 2> beta_phi(parameters_.unit_cell()->max_mt_basis_size(), n);
-//==     mdarray<double_complex, 2> d_beta_phi(parameters_.unit_cell()->max_mt_basis_size(), n);
-//==     mdarray<double_complex, 2> q_beta_phi(parameters_.unit_cell()->max_mt_basis_size(), n);
+//==     /* non-local H contribution */
+//==     auto& beta_pw_t = kp__->beta_pw_t();
+//==     mdarray<double_complex, 2> beta_pw_tmp(uc->max_mt_basis_size(), kp__->num_gkvec_row());
 //== 
-//==     for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-//==     {   
-//==         // number of beta functions for a given atom
-//==         int nbf = parameters_.unit_cell()->atom(ia)->type()->mt_basis_size();
+//==     for (int iat = 0; iat < uc->num_atom_types(); iat++)
+//==     {
+//==         auto atom_type = uc->atom_type(iat);
+//==         int nbf = atom_type->mt_basis_size();
+//==         matrix<double_complex> d_sum(nbf, nbf);
+//==         d_sum.zero();
 //== 
-//==         kp->generate_beta_pw(&beta_pw(0, 0), ia);
+//==         matrix<double_complex> q_sum;
+//==         if (need_o_diag)
+//==         {
+//==             q_sum = matrix<double_complex>(nbf, nbf);
+//==             q_sum.zero();
+//==         }
 //== 
-//==         // compute <beta|phi>
-//==         blas<cpu>::gemm(2, 0, nbf, n, kp->num_gkvec(), &beta_pw(0, 0), beta_pw.ld(), &phi(0, 0), phi.ld(), 
-//==                         &beta_phi(0, 0), beta_phi.ld());
-//== 
-//==         // compute D*<beta|phi>
-//==         blas<cpu>::gemm(0, 0, nbf, n, nbf, &parameters_.unit_cell()->atom(ia)->d_mtrx(0, 0), nbf, 
-//==                         &beta_phi(0, 0), beta_phi.ld(), &d_beta_phi(0, 0), d_beta_phi.ld());
+//==         for (int i = 0; i < atom_type->num_atoms(); i++)
+//==         {
+//==             int ia = atom_type->atom_id(i);
 //==         
-//==         // multiply by <G+k|beta> and add to hphi
-//==         blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, nbf, double_complex(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
-//==                         &d_beta_phi(0, 0), d_beta_phi.ld(), double_complex(1, 0), &hphi(0, 0), hphi.ld());
-//==         
-//==         // compute Q*<beta|phi>
-//==         blas<cpu>::gemm(0, 0, nbf, n, nbf, &parameters_.unit_cell()->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
-//==                         &beta_phi(0, 0), beta_phi.ld(), &q_beta_phi(0, 0), q_beta_phi.ld());
-//==         
-//==         // multiply by <G+k|beta> and add to ophi
-//==         blas<cpu>::gemm(0, 0, kp->num_gkvec(), n, nbf, double_complex(1, 0), &beta_pw(0, 0), beta_pw.ld(), 
-//==                         &q_beta_phi(0, 0), q_beta_phi.ld(), double_complex(1, 0), &ophi(0, 0), ophi.ld());
+//==             for (int xi2 = 0; xi2 < nbf; xi2++)
+//==             {
+//==                 for (int xi1 = 0; xi1 < nbf; xi1++)
+//==                 {
+//==                     d_sum(xi1, xi2) += uc->atom(ia)->d_mtrx(xi1, xi2);
+//==                     if (need_o_diag) q_sum(xi1, xi2) += uc->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
+//==                 }
+//==             }
+//==         }
+//== 
+//==         int ofs = uc->atom_type(iat)->offset_lo();
+//==         for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+//==         {
+//==             for (int xi = 0; xi < nbf; xi++) beta_pw_tmp(xi, igk_row) = beta_pw_t(igk_row, ofs + xi);
+//==         }
+//== 
+//==         std::vector< std::pair<int, int> > idx(nbf * nbf);
+//==         for (int xi2 = 0, n = 0; xi2 < nbf; xi2++)
+//==         {
+//==             for (int xi1 = 0; xi1 < nbf; xi1++) idx[n++] = std::pair<int, int>(xi1, xi2);
+//==         }
+//== 
+//==         #pragma omp parallel for
+//==         for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+//==         {
+//==             for (auto& it: idx)
+//==             {
+//==                 int xi1 = it.first;
+//==                 int xi2 = it.second;
+//==                 double_complex z = beta_pw_tmp(xi1, igk_row) * conj(beta_pw_tmp(xi2, igk_row));
+//== 
+//==                 h_diag__[igk_row] += z * d_sum(xi1, xi2);
+//==                 if (need_o_diag) o_diag__[igk_row] += z * q_sum(xi1, xi2);
+//==             }
+//==         }
 //==     }
 //== }
-
-// memory-greedy implementation
+//== 
 void Band::apply_h_o_uspp_cpu(K_point* kp__, 
                               std::vector<double>& effective_potential__, 
                               std::vector<double>& pw_ekin__, 
@@ -545,7 +500,7 @@ void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potent
 
 void Band::apply_h_local_slice(K_point* kp__,
                                std::vector<double> const& effective_potential__,
-                               std::vector<double>& pw_ekin__,
+                               std::vector<double> const& pw_ekin__,
                                int num_phi__,
                                matrix<double_complex> const& phi__,
                                matrix<double_complex>& hphi__)
@@ -618,7 +573,7 @@ void Band::apply_h_local_slice(K_point* kp__,
                 veff_gpu.allocate_on_device();
                 veff_gpu.copy_to_device();
 
-                mdarray<double, 1> pw_ekin_gpu(&pw_ekin__[0], kp__->num_gkvec());
+                mdarray<double, 1> pw_ekin_gpu((double*)&pw_ekin__[0], kp__->num_gkvec());
                 pw_ekin_gpu.allocate_on_device();
                 pw_ekin_gpu.copy_to_device();
 
@@ -714,7 +669,7 @@ void Band::apply_h_local_slice(K_point* kp__,
 
 void Band::apply_h_local_slice(K_point* kp__,
                                std::vector<double> const& effective_potential__,
-                               std::vector<double>& pw_ekin__,
+                               std::vector<double> const& pw_ekin__,
                                int num_phi__,
                                matrix<double_complex>& hphi__)
 {
@@ -786,7 +741,7 @@ void Band::apply_h_local_slice(K_point* kp__,
                 veff_gpu.allocate_on_device();
                 veff_gpu.copy_to_device();
 
-                mdarray<double, 1> pw_ekin_gpu(&pw_ekin__[0], kp__->num_gkvec());
+                mdarray<double, 1> pw_ekin_gpu((double*)&pw_ekin__[0], kp__->num_gkvec());
                 pw_ekin_gpu.allocate_on_device();
                 pw_ekin_gpu.copy_to_device();
 
@@ -882,7 +837,7 @@ void Band::apply_h_local_slice(K_point* kp__,
 
 void Band::apply_h_local_parallel(K_point* kp__,
                                   std::vector<double> const& effective_potential__,
-                                  std::vector<double>& pw_ekin__,
+                                  std::vector<double> const& pw_ekin__,
                                   int N__,
                                   int n__,
                                   dmatrix<double_complex>& phi__,

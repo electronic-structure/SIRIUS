@@ -245,16 +245,16 @@ class DFT_ground_state
                     return (energy_kin() + energy_exc() + 0.5 * energy_vha() + energy_enuc());
                 }
                 case ultrasoft_pseudopotential:
+                case norm_conserving_pseudopotential:
                 {
                     return (kset_->valence_eval_sum() - (energy_vxc() + energy_vha()) + 0.5 * energy_vha() + 
                             energy_exc() + ewald_energy_);
                 }
                 default:
                 {
-                    STOP();
+                    return 0; // make compiler happy
                 }
             }
-            return 0; // make compiler happy
         }
 };
 

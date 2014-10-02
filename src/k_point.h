@@ -357,16 +357,13 @@ class K_point
                     break;
                 }
                 case ultrasoft_pseudopotential:
+                case norm_conserving_pseudopotential:
                 {
                     return num_gkvec();
                     break;
                 }
-                default:
-                {
-                    terminate(__FILE__, __LINE__, "wrong esm_type");
-                    return -1; //make compiler happy
-                }
             }
+            return -1; // make compiler happy
         }
 
         inline int wf_pw_offset()
@@ -380,6 +377,7 @@ class K_point
                     break;
                 }
                 case ultrasoft_pseudopotential:
+                case norm_conserving_pseudopotential:
                 {
                     return 0;
                     break;

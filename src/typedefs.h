@@ -93,7 +93,10 @@ enum electronic_structure_method_t
     full_potential_pwlo, 
 
     /// ultrasoft pseudopotential with plane wave basis (experimental)
-    ultrasoft_pseudopotential
+    ultrasoft_pseudopotential,
+
+    /// norm-conserving pseudopotential with plane wave basis (experimental)
+    norm_conserving_pseudopotential
 };
 
 enum index_domain_t {global, local};

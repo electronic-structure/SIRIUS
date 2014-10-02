@@ -56,7 +56,7 @@ Reciprocal_lattice::Reciprocal_lattice(Unit_cell* unit_cell__,
     fft_gpu_ = new FFT3D<gpu>(fft_->grid_size(), 2);
     #endif
     
-    if (esm_type_ == ultrasoft_pseudopotential)
+    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
     {
         vector3d<int> max_frac_coord_coarse = Utils::find_translation_limits(gk_cutoff__ * 2, 
                                                                              reciprocal_lattice_vectors_);
@@ -182,7 +182,7 @@ void Reciprocal_lattice::init(int lmax)
 
         fix_q_radial_functions(q_radial_functions);
 
-        // TODO: in principle, this can be sistributed over G-shells (each mpi rank holds radial integrals only for
+        // TODO: in principle, this can be distributed over G-shells (each mpi rank holds radial integrals only for
         //       G-shells of local fraction of G-vectors
         mdarray<double, 4> q_radial_integrals(nbeta * (nbeta + 1) / 2, lmax + 1, unit_cell_->num_atom_types(), 
                                               num_gvec_shells_inner());
@@ -190,7 +190,10 @@ void Reciprocal_lattice::init(int lmax)
         generate_q_radial_integrals(lmax, q_radial_functions, q_radial_integrals);
 
         generate_q_pw(lmax, q_radial_integrals);
-        
+    }
+
+    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
+    {
         // get the number of G-vectors within the cutoff in the coarse grid
         num_gvec_coarse_ = 0;
         fft_index_coarse_.clear();

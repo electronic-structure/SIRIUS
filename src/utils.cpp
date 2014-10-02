@@ -106,6 +106,37 @@ void Utils::write_matrix(const std::string& fname, bool write_all, mdarray<doubl
     fclose(fout);
 }
 
+void Utils::write_matrix(std::string const& fname, bool write_all, matrix<double_complex> const& mtrx)
+{
+    static int icount = 0;
+
+    icount++;
+    std::stringstream s;
+    s << icount;
+    std::string full_name = s.str() + "_" + fname;
+
+    FILE* fout = fopen(full_name.c_str(), "w");
+
+    for (int icol = 0; icol < (int)mtrx.size(1); icol++)
+    {
+        fprintf(fout, "column : %4i\n", icol);
+        for (int i = 0; i < 80; i++) fprintf(fout, "-");
+        fprintf(fout, "\n");
+        fprintf(fout, " row\n");
+        for (int i = 0; i < 80; i++) fprintf(fout, "-");
+        fprintf(fout, "\n");
+        
+        int max_row = (write_all) ? ((int)mtrx.size(0) - 1) : std::min(icol, (int)mtrx.size(0) - 1);
+        for (int j = 0; j <= max_row; j++)
+        {
+            fprintf(fout, "%4i  %18.12f %18.12f\n", j, real(mtrx(j, icol)), imag(mtrx(j, icol)));
+        }
+        fprintf(fout,"\n");
+    }
+
+    fclose(fout);
+}
+
 void Utils::check_hermitian(const std::string& name, mdarray<double_complex, 2>& mtrx)
 {
     assert(mtrx.size(0) == mtrx.size(1));

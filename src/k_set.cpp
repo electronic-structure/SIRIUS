@@ -70,7 +70,8 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
         parameters_.unit_cell()->generate_radial_functions();
         parameters_.unit_cell()->generate_radial_integrals();
     }
-    if (precompute && parameters_.esm_type() == ultrasoft_pseudopotential)
+    if (precompute && (parameters_.esm_type() == ultrasoft_pseudopotential ||
+                       parameters_.esm_type() == norm_conserving_pseudopotential))
     {   
         switch (parameters_.processing_unit())
         {

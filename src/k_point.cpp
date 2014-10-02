@@ -64,13 +64,19 @@ void K_point::update()
     switch (parameters_.esm_type())
     {
         case ultrasoft_pseudopotential:
+        case norm_conserving_pseudopotential:
         {
             gk_cutoff = parameters_.gk_cutoff();
             break;
         }
-        default:
+        case full_potential_lapwlo:
         {
             gk_cutoff = parameters_.aw_cutoff() / parameters_.unit_cell()->min_mt_radius();
+            break;
+        }
+        default:
+        {
+            STOP();
         }
     }
 
@@ -123,7 +129,8 @@ void K_point::update()
     }
 
     /* compute |beta> projectors for atom types */
-    if (parameters_.esm_type() == ultrasoft_pseudopotential)
+    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
+        parameters_.esm_type() == norm_conserving_pseudopotential)
     {
         Timer t1("sirius::K_point::update|beta_pw");
         
@@ -239,7 +246,8 @@ void K_point::update()
 
         fv_states_ = mdarray<double_complex, 2>(wf_size(), sub_spl_fv_states_.local_size());
 
-        if (parameters_.esm_type() == ultrasoft_pseudopotential)
+        if (parameters_.esm_type() == ultrasoft_pseudopotential ||
+            parameters_.esm_type() == norm_conserving_pseudopotential)
         {
             fv_states_panel_.zero();
             for (int i = 0; i < parameters_.num_fv_states(); i++) fv_states_panel_.set(i, i, complex_one);
@@ -579,7 +587,8 @@ void K_point::generate_gkvec(double gk_cutoff)
     fft_index_.resize(num_gkvec());
     for (int igk = 0; igk < num_gkvec(); igk++) fft_index_[igk] = parameters_.reciprocal_lattice()->fft_index(gvec_index_[igk]);
 
-    if (parameters_.esm_type() == ultrasoft_pseudopotential)
+    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
+        parameters_.esm_type() == norm_conserving_pseudopotential)
     {
         fft_index_coarse_.resize(num_gkvec());
         for (int igk = 0; igk < num_gkvec(); igk++)
@@ -650,6 +659,7 @@ void K_point::init_gkvec()
             break;
         }
         case ultrasoft_pseudopotential:
+        case norm_conserving_pseudopotential:
         {
             lmax = parameters_.lmax_beta();
             break;
@@ -659,7 +669,8 @@ void K_point::init_gkvec()
     // Fortran codes need this
     init_gkvec_phase_factors();
 
-    if (parameters_.esm_type() == ultrasoft_pseudopotential)
+    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
+        parameters_.esm_type() == norm_conserving_pseudopotential)
     {
         if (num_gkvec() != wf_size()) error_local(__FILE__, __LINE__, "wrong size of wave-functions");
         init_gkvec_ylm_and_len(lmax);

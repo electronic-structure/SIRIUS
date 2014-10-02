@@ -163,6 +163,8 @@ class Utils
         
         static void write_matrix(const std::string& fname, bool write_all, mdarray<double, 2>& matrix);
 
+        static void write_matrix(std::string const& fname, bool write_all, matrix<double_complex> const& mtrx);
+
         static void check_hermitian(const std::string& name, mdarray<double_complex, 2>& mtrx);
 
         static double confined_polynomial(double r, double R, int p1, int p2, int dm);

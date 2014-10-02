@@ -151,6 +151,7 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
                 break;
             }
             case ultrasoft_pseudopotential:
+            case norm_conserving_pseudopotential:
             {
                 potential_->generate_effective_potential(density_->rho(), density_->rho_pseudo_core(), density_->magnetization());
                 break;

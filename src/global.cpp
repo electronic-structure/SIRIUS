@@ -123,6 +123,10 @@ void Global::read_input()
             else if (str == "ultrasoft_pseudopotential")
             {
                 esm_type_ = ultrasoft_pseudopotential;
+            } 
+            else if (str == "norm_conserving_pseudopotential")
+            {
+                esm_type_ = norm_conserving_pseudopotential;
             }
             else
             {
@@ -187,6 +191,7 @@ void Global::initialize()
             break;
         }
         case ultrasoft_pseudopotential:
+        case norm_conserving_pseudopotential:
         {
             lmax_apw_ = lmax_rho_ = lmax_pot_ = -1;
             break;
@@ -210,6 +215,7 @@ void Global::initialize()
             STOP();
         }
         case ultrasoft_pseudopotential:
+        case norm_conserving_pseudopotential:
         {
             lmax = 2 * unit_cell_->lmax_beta();
             break;

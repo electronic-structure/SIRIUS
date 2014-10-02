@@ -73,7 +73,8 @@ void Atom::init(int lmax_pot__, int num_mag_dims__, int offset_aw__, int offset_
         uj_correction_matrix_ = mdarray<double_complex, 4>(16, 16, 2, 2);
     }
 
-    if (type()->esm_type() == ultrasoft_pseudopotential)
+    if (type()->esm_type() == ultrasoft_pseudopotential ||
+        type()->esm_type() == norm_conserving_pseudopotential)
     {
         d_mtrx_ = mdarray<double_complex, 2>(type()->mt_lo_basis_size(), type()->mt_lo_basis_size());
     }

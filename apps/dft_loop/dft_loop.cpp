@@ -162,13 +162,10 @@ void dft_loop(cmd_args args)
                 break;
             }
             case ultrasoft_pseudopotential:
+            case norm_conserving_pseudopotential:
             {
                 potential->generate_effective_potential(density->rho(), density->rho_pseudo_core(), density->magnetization());
                 break;
-            }
-            default:
-            {
-                STOP();
             }
         }
 

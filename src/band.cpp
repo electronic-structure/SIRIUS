@@ -1699,6 +1699,7 @@ void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potentia
             break;
         }
         case ultrasoft_pseudopotential:
+        case norm_conserving_pseudopotential:
         {
             switch (parameters_.processing_unit())
             {

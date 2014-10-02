@@ -618,7 +618,7 @@ void Atom_type::read_input(const std::string& fname)
 {
     JSON_tree parser(fname);
 
-    if (esm_type_ == ultrasoft_pseudopotential)
+    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
     {
         parser["uspp"]["header"]["element"] >> symbol_;
 
@@ -657,49 +657,52 @@ void Atom_type::read_input(const std::string& fname)
         parser["uspp"]["header"]["lmax"] >> uspp_.lmax;
         parser["uspp"]["header"]["nbeta"] >> uspp_.num_beta_radial_functions;
 
-        parser["uspp"]["non_local"]["Q"]["num_q_coefs"] >> uspp_.num_q_coefs;
-
-        parser["uspp"]["non_local"]["Q"]["q_functions_inner_radii"] >> uspp_.q_functions_inner_radii;
-
-        uspp_.q_coefs = mdarray<double, 4>(uspp_.num_q_coefs, 2 * uspp_.lmax + 1, 
-                                           uspp_.num_beta_radial_functions,  uspp_.num_beta_radial_functions); 
-
-        uspp_.q_radial_functions = mdarray<double, 2>(num_mt_points_, uspp_.num_beta_radial_functions * (uspp_.num_beta_radial_functions + 1) / 2);
-
-        for (int j = 0; j < uspp_.num_beta_radial_functions; j++)
+        if (parser["uspp"]["non_local"].exist("Q"))
         {
-            for (int i = 0; i <= j; i++)
+            parser["uspp"]["non_local"]["Q"]["num_q_coefs"] >> uspp_.num_q_coefs;
+
+            parser["uspp"]["non_local"]["Q"]["q_functions_inner_radii"] >> uspp_.q_functions_inner_radii;
+
+            uspp_.q_coefs = mdarray<double, 4>(uspp_.num_q_coefs, 2 * uspp_.lmax + 1, 
+                                               uspp_.num_beta_radial_functions,  uspp_.num_beta_radial_functions); 
+
+            uspp_.q_radial_functions = mdarray<double, 2>(num_mt_points_, uspp_.num_beta_radial_functions * (uspp_.num_beta_radial_functions + 1) / 2);
+
+            for (int j = 0; j < uspp_.num_beta_radial_functions; j++)
             {
-                int idx = j * (j + 1) / 2 + i;
-
-                std::vector<int> ij;
-                parser["uspp"]["non_local"]["Q"]["qij"][idx]["ij"] >> ij;
-                if (ij[0] != i || ij[1] != j) 
+                for (int i = 0; i <= j; i++)
                 {
-                    std::stringstream s;
-                    s << "wrong ij indices" << std::endl
-                      << "i = " << i << " j = " << j << " idx = " << idx << std::endl
-                      << "ij = " << ij[0] << " " << ij[1];
-                    error_local(__FILE__, __LINE__, s);
-                }
+                    int idx = j * (j + 1) / 2 + i;
 
-                std::vector<double> qfcoef;
-                parser["uspp"]["non_local"]["Q"]["qij"][idx]["q_coefs"] >> qfcoef;
-
-                int k = 0;
-                for (int l = 0; l <= 2 * uspp_.lmax; l++)
-                {
-                    for (int n = 0; n < uspp_.num_q_coefs; n++) 
+                    std::vector<int> ij;
+                    parser["uspp"]["non_local"]["Q"]["qij"][idx]["ij"] >> ij;
+                    if (ij[0] != i || ij[1] != j) 
                     {
-                        if (k >= (int)qfcoef.size()) error_local(__FILE__, __LINE__, "wrong size of qfcoef");
-                        uspp_.q_coefs(n, l, i, j) = uspp_.q_coefs(n, l, j, i) = qfcoef[k++];
+                        std::stringstream s;
+                        s << "wrong ij indices" << std::endl
+                          << "i = " << i << " j = " << j << " idx = " << idx << std::endl
+                          << "ij = " << ij[0] << " " << ij[1];
+                        error_local(__FILE__, __LINE__, s);
                     }
-                }
 
-                std::vector<double> qfunc;
-                parser["uspp"]["non_local"]["Q"]["qij"][idx]["q_radial_function"] >> qfunc;
-                if ((int)qfunc.size() != num_mt_points_) error_local(__FILE__, __LINE__, "wrong size of qfunc");
-                memcpy(&uspp_.q_radial_functions(0, idx), &qfunc[0], num_mt_points_ * sizeof(double)); 
+                    std::vector<double> qfcoef;
+                    parser["uspp"]["non_local"]["Q"]["qij"][idx]["q_coefs"] >> qfcoef;
+
+                    int k = 0;
+                    for (int l = 0; l <= 2 * uspp_.lmax; l++)
+                    {
+                        for (int n = 0; n < uspp_.num_q_coefs; n++) 
+                        {
+                            if (k >= (int)qfcoef.size()) error_local(__FILE__, __LINE__, "wrong size of qfcoef");
+                            uspp_.q_coefs(n, l, i, j) = uspp_.q_coefs(n, l, j, i) = qfcoef[k++];
+                        }
+                    }
+
+                    std::vector<double> qfunc;
+                    parser["uspp"]["non_local"]["Q"]["qij"][idx]["q_radial_function"] >> qfunc;
+                    if ((int)qfunc.size() != num_mt_points_) error_local(__FILE__, __LINE__, "wrong size of qfunc");
+                    memcpy(&uspp_.q_radial_functions(0, idx), &qfunc[0], num_mt_points_ * sizeof(double)); 
+                }
             }
         }
 
