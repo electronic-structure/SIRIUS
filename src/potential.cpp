@@ -1856,43 +1856,25 @@ void Potential::generate_d_mtrx()
             }
         }
         t1.stop();
-    }
-    else
-    {
-        #pragma omp parallel for
+
         for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
         {
+            parameters_.comm().allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().ptr(),
+                                         (int)parameters_.unit_cell()->atom(ia)->d_mtrx().size());
+
             auto atom_type = parameters_.unit_cell()->atom(ia)->type();
             int nbf = atom_type->mt_basis_size();
-            
+
             for (int xi2 = 0; xi2 < nbf; xi2++)
             {
-                for (int xi1 = 0; xi1 <= xi2; xi1++)
+                int lm2 = atom_type->indexb(xi2).lm;
+                int idxrf2 = atom_type->indexb(xi2).idxrf;
+                for (int xi1 = 0; xi1 < nbf; xi1++)
                 {
-                    parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) = 0.0;
-                    parameters_.unit_cell()->atom(ia)->d_mtrx(xi2, xi1) = 0.0;
+                    int lm1 = atom_type->indexb(xi1).lm;
+                    int idxrf1 = atom_type->indexb(xi1).idxrf;
+                    if (lm1 == lm2) parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
                 }
-            }
-        }
-    }
-
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
-    {
-        parameters_.comm().allreduce(parameters_.unit_cell()->atom(ia)->d_mtrx().ptr(),
-                                     (int)parameters_.unit_cell()->atom(ia)->d_mtrx().size());
-
-        auto atom_type = parameters_.unit_cell()->atom(ia)->type();
-        int nbf = atom_type->mt_basis_size();
-
-        for (int xi2 = 0; xi2 < nbf; xi2++)
-        {
-            int lm2 = atom_type->indexb(xi2).lm;
-            int idxrf2 = atom_type->indexb(xi2).idxrf;
-            for (int xi1 = 0; xi1 < nbf; xi1++)
-            {
-                int lm1 = atom_type->indexb(xi1).lm;
-                int idxrf1 = atom_type->indexb(xi1).idxrf;
-                if (lm1 == lm2) parameters_.unit_cell()->atom(ia)->d_mtrx(xi1, xi2) += atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
             }
         }
     }
@@ -1909,17 +1891,6 @@ extern "C" void mul_veff_with_phase_factors_gpu(int num_gvec_loc,
                                                 cuDoubleComplex* vtmp,
                                                 int stream_id);
 
-extern "C" void compute_d_mtrx_valence_gpu(int num_gvec_loc,
-                                           int num_elements,
-                                           double_complex const* veff, 
-                                           int const* gvec, 
-                                           double ax,
-                                           double ay,
-                                           double az,
-                                           double_complex* vtmp,
-                                           double_complex const* q_pw_t,
-                                           double_complex* d_mtrx,
-                                           int stream_id);
 void Potential::generate_d_mtrx_gpu()
 {   
     Timer t("sirius::Potential::generate_d_mtrx_gpu");
@@ -1985,18 +1956,6 @@ void Potential::generate_d_mtrx_gpu()
             blas<gpu>::gemv(2, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, &alpha, 
                             atom_type->uspp().q_pw.at<gpu>(), (int)rl->spl_num_gvec().local_size(),  
                             vtmp.at<gpu>(0, thread_id), 1, &beta, d_mtrx.at<gpu>(0, ia), 1, thread_id);
-
-            //compute_d_mtrx_valence_gpu((int)rl->spl_num_gvec().local_size(), 
-            //                           nbf * (nbf + 1) / 2, 
-            //                           veff_gpu.at<gpu>(), 
-            //                           gvec.at<gpu>(), 
-            //                           apos[0], 
-            //                           apos[1], 
-            //                           apos[2], 
-            //                           vtmp.at<gpu>(0, thread_id),
-            //                           atom_type->uspp().q_pw.at<gpu>(0, 0),
-            //                           d_mtrx.at<gpu>(0, ia), 
-            //                           thread_id);
         }
         cuda_device_synchronize();
         d_mtrx.copy_to_host();
@@ -2031,31 +1990,6 @@ void Potential::generate_d_mtrx_gpu()
              auto type = uc->atom_type(iat);
              type->uspp().q_pw.deallocate_on_device();
         }
-    }
-    else
-    {
-        #pragma omp parallel for
-        for (int ia = 0; ia < uc->num_atoms(); ia++)
-        {
-            auto atom_type = uc->atom(ia)->type();
-            int nbf = atom_type->mt_basis_size();
-            for (int xi2 = 0; xi2 < nbf; xi2++)
-            {
-                int lm2 = atom_type->indexb(xi2).lm;
-                int idxrf2 = atom_type->indexb(xi2).idxrf;
-                for (int xi1 = 0; xi1 <= xi2; xi1++)
-                {
-                    int lm1 = atom_type->indexb(xi1).lm;
-                    int idxrf1 = atom_type->indexb(xi1).idxrf;
-
-                    uc->atom(ia)->d_mtrx(xi1, xi2) = 0.0;
-                    if (lm1 == lm2) uc->atom(ia)->d_mtrx(xi1, xi2) = atom_type->uspp().d_mtrx_ion(idxrf1, idxrf2);
-                    uc->atom(ia)->d_mtrx(xi2, xi1) = conj(uc->atom(ia)->d_mtrx(xi1, xi2));
-                }
-            }
-        }
-
-
     }
 }
 #endif
