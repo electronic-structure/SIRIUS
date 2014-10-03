@@ -373,6 +373,13 @@ class Band
                                       dmatrix<double_complex>& o__,
                                       mdarray<double_complex, 2>& kappa__);
 
+        void generate_fv_states_pp(K_point* kp__,
+                                   int num_phi__,
+                                   dmatrix<double_complex>& evec__,
+                                   dmatrix<double_complex>& phi__,
+                                   dmatrix<double_complex>& psi__,
+                                   matrix<double_complex>& kappa__);
+        
         void diag_fv_ncpp_parallel(K_point* kp__,
                                    double v0__,
                                    std::vector<double>& veff_it_coarse__);
