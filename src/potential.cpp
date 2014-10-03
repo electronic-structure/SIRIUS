@@ -1773,54 +1773,117 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
                                              Periodic_function<double>* magnetization[3])
 {
     Timer t("sirius::Potential::generate_effective_potential");
-    
-    /* zero effective potential and magnetic field */
-    zero();
 
-    /* solve Poisson equation with valence density */
-    poisson(rho, hartree_potential_);
+    if (parameters_.esm_type() == ultrasoft_pseudopotential)
+    {
+        /* zero effective potential and magnetic field */
+        zero();
 
-    /* add Hartree potential to the effective potential */
-    effective_potential_->add(hartree_potential_);
+        /* solve Poisson equation with valence density */
+        poisson(rho, hartree_potential_);
 
-    /* create temporary function for rho + rho_core */
-    Periodic_function<double>* rhovc = new Periodic_function<double>(parameters_, 0, 0, parameters_.comm());
-    rhovc->allocate(false, true);
-    rhovc->zero();
-    rhovc->add(rho);
-    rhovc->add(rho_core);
-    rhovc->sync(false, true);
+        /* add Hartree potential to the effective potential */
+        effective_potential_->add(hartree_potential_);
 
-    /* construct XC potentials from rho + rho_core */
-    xc(rhovc, magnetization, xc_potential_, effective_magnetic_field_, xc_energy_density_);
-    
-    /* destroy temporary function */
-    delete rhovc;
-    
-    // add XC potential to the effective potential
-    effective_potential_->add(xc_potential_);
-    
-    // add local ionic potential to the effective potential
-    effective_potential_->add(local_potential_);
+        /* create temporary function for rho + rho_core */
+        Periodic_function<double>* rhovc = new Periodic_function<double>(parameters_, 0, 0, parameters_.comm());
+        rhovc->allocate(false, true);
+        rhovc->zero();
+        rhovc->add(rho);
+        rhovc->add(rho_core);
+        rhovc->sync(false, true);
 
-    // synchronize effective potential
-    effective_potential_->sync(false, true);
-    for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->sync(false, true);
+        /* construct XC potentials from rho + rho_core */
+        xc(rhovc, magnetization, xc_potential_, effective_magnetic_field_, xc_energy_density_);
+        
+        /* destroy temporary function */
+        delete rhovc;
+        
+        // add XC potential to the effective potential
+        effective_potential_->add(xc_potential_);
+        
+        // add local ionic potential to the effective potential
+        effective_potential_->add(local_potential_);
+
+        // synchronize effective potential
+        effective_potential_->sync(false, true);
+        for (int j = 0; j < parameters_.num_mag_dims(); j++) effective_magnetic_field_[j]->sync(false, true);
+    }
+
+    if (parameters_.esm_type() == norm_conserving_pseudopotential)
+    {
+        zero();
+
+        auto rl = parameters_.reciprocal_lattice();
+
+        /* create temporary function for rho + rho_core */
+        Periodic_function<double>* rhovc = new Periodic_function<double>(parameters_, 0, 0, parameters_.comm());
+        rhovc->allocate(false, true);
+        rhovc->zero();
+        rhovc->add(rho);
+        rhovc->add(rho_core);
+        //rhovc->sync(false, true);
+
+        /* construct XC potentials from rho + rho_core */
+        xc(rhovc, magnetization, xc_potential_, effective_magnetic_field_, xc_energy_density_);
+        
+        /* destroy temporary function */
+        delete rhovc;
+
+        // add XC potential to the effective potential
+        effective_potential_->add(xc_potential_);
+        
+        // add local ionic potential to the effective potential
+        effective_potential_->add(local_potential_);
+        effective_potential_->sync(false, true);
+
+        fft_->input(&effective_potential_->f_it<global>(0));
+        fft_->transform(-1);
+        fft_->output(rl->num_gvec(), rl->fft_index(), &effective_potential_->f_pw(0));
+
+        /* get plane-wave coefficients of the charge density */
+        fft_->input(&rho->f_it<global>(0));
+        fft_->transform(-1);
+        fft_->output(rl->num_gvec(), rl->fft_index(), &rho->f_pw(0));
+
+        std::vector<double_complex> vtmp(rl->spl_num_gvec().local_size());
+        
+        energy_vha_ = 0.0;
+        for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
+        {
+            int ig = rl->spl_num_gvec(igloc);
+            vtmp[igloc] = (ig == 0) ? 0.0 : rho->f_pw(ig) * fourpi / pow(parameters_.reciprocal_lattice()->gvec_len(ig), 2);
+            energy_vha_ += real(conj(rho->f_pw(ig)) * vtmp[igloc]);
+            vtmp[igloc] += effective_potential_->f_pw(ig);
+        }
+        parameters_.comm().allreduce(&energy_vha_, 1);
+        energy_vha_ *= parameters_.unit_cell()->omega();
+
+        auto offsets = rl->spl_num_gvec().offsets();
+        auto counts = rl->spl_num_gvec().counts();
+        //parameters_.comm().allgather(&vtmp[0], rl->spl_num_gvec().local_size(), &hartree_potential_->f_pw(0), &counts[0], &offsets[0]);
+        parameters_.comm().allgather(&vtmp[0], (int)rl->spl_num_gvec().local_size(), &effective_potential_->f_pw(0), &counts[0], &offsets[0]);
+
+        //for (int ig = 0; ig < rl->num_gvec(); ig++)
+        //    effective_potential_->f_pw(ig) += hartree_potential_->f_pw(ig);
+
+
+    }
 }
 
 void Potential::generate_d_mtrx()
 {   
     Timer t("sirius::Potential::generate_d_mtrx");
 
-    auto rl = parameters_.reciprocal_lattice();
-
-    /* get plane-wave coefficients of effective potential */
-    fft_->input(&effective_potential_->f_it<global>(0));
-    fft_->transform(-1);
-    fft_->output(rl->num_gvec(), rl->fft_index(), &effective_potential_->f_pw(0));
-    
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
+        auto rl = parameters_.reciprocal_lattice();
+
+        /* get plane-wave coefficients of effective potential */
+        fft_->input(&effective_potential_->f_it<global>(0));
+        fft_->transform(-1);
+        fft_->output(rl->num_gvec(), rl->fft_index(), &effective_potential_->f_pw(0));
+    
         Timer t1("sirius::Potential::generate_d_mtrx|kernel");
         #pragma omp parallel
         {
@@ -1896,16 +1959,16 @@ void Potential::generate_d_mtrx_gpu()
 {   
     Timer t("sirius::Potential::generate_d_mtrx_gpu");
 
-    auto rl = parameters_.reciprocal_lattice();
-    auto uc = parameters_.unit_cell();
-
-    /* get plane-wave coefficients of effective potential */
-    fft_->input(&effective_potential_->f_it<global>(0));
-    fft_->transform(-1);
-    fft_->output(rl->num_gvec(), rl->fft_index(), &effective_potential_->f_pw(0));
-
     if (parameters_.esm_type() == ultrasoft_pseudopotential)
     {
+        auto rl = parameters_.reciprocal_lattice();
+        auto uc = parameters_.unit_cell();
+
+        /* get plane-wave coefficients of effective potential */
+        fft_->input(&effective_potential_->f_it<global>(0));
+        fft_->transform(-1);
+        fft_->output(rl->num_gvec(), rl->fft_index(), &effective_potential_->f_pw(0));
+
         mdarray<double_complex, 1> veff_gpu(&effective_potential_->f_pw(static_cast<int>(rl->spl_num_gvec().global_offset())), 
                                             static_cast<int>(rl->spl_num_gvec().local_size()));
         veff_gpu.allocate_on_device();

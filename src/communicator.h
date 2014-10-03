@@ -218,6 +218,13 @@ class Communicator
         }
 
         template <typename T>
+        void allgather(T* const sendbuf__, int sendcount__, T* recvbuf__, int const* recvcounts__, int const* displs__) const
+        {
+            CALL_MPI(MPI_Allgatherv, (sendbuf__, sendcount__, type_wrapper<T>::mpi_type_id(), 
+                                      recvbuf__, recvcounts__, displs__, type_wrapper<T>::mpi_type_id(), mpi_comm_));
+        }
+
+        template <typename T>
         void isend(T const* buffer__, int count__, int dest__, int tag__) const
         {
             MPI_Request request;
