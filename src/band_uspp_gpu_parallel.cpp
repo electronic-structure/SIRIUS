@@ -1744,7 +1744,6 @@ void Band::set_fv_h_o_ncpp_parallel(K_point* kp__,
                 while (!lock_o[icol % 2].load());
                 kp__->comm_row().allreduce(&o_tmp(0, 0, icol % 2), num_phi * n);
     
-                t2.start();
                 for (int j = 0; j < n; j++)
                 {
                     int idx_glob = (int)spl_bands_col.global_index(j, icol);
@@ -1757,7 +1756,6 @@ void Band::set_fv_h_o_ncpp_parallel(K_point* kp__,
                         }
                     }
                 }
-                t2.stop();
                 /* remove lock from o buffer */
                 lock_o[icol % 2].store(false);
             }
