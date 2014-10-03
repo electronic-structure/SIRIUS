@@ -1836,7 +1836,8 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
         // add local ionic potential to the effective potential
         effective_potential_->add(local_potential_);
         effective_potential_->sync(false, true);
-
+        
+        Timer t1("sirius::Potential::generate_effective_potential|fft");
         fft_->input(&effective_potential_->f_it<global>(0));
         fft_->transform(-1);
         fft_->output(rl->num_gvec(), rl->fft_index(), &effective_potential_->f_pw(0));
@@ -1845,6 +1846,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
         fft_->input(&rho->f_it<global>(0));
         fft_->transform(-1);
         fft_->output(rl->num_gvec(), rl->fft_index(), &rho->f_pw(0));
+        t1.stop();
 
         std::vector<double_complex> vtmp(rl->spl_num_gvec().local_size());
         
