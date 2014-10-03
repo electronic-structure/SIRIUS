@@ -16,9 +16,9 @@ void test_gemm(int M, int N, int K, int transa)
         imax = K;
         jmax = M;
     }
-    a.set_dimensions(imax, jmax);
-    b.set_dimensions(K, N);
-    c.set_dimensions(M, N);
+    a = matrix<double_complex>(nullptr, imax, jmax);
+    b = matrix<double_complex>(nullptr, K, N);
+    c = matrix<double_complex>(nullptr, M, N);
     a.allocate(alloc_mode);
     b.allocate(alloc_mode);
     c.allocate(alloc_mode);
@@ -60,22 +60,19 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
     //== pout.printf("rank : %3i, free GPU memory (Mb) : %10.2f\n", Platform::mpi_rank(), cuda_get_free_mem() / double(1 << 20));
     //== pout.flush(0);
     //== #endif
-
-    int blacs_handler = linalg<scalapack>::create_blacs_handler(MPI_COMM_WORLD);
-    int context = blacs_handler;
-    Cblacs_gridinit(&context, "C", nrow, ncol);
+    BLACS_grid blacs_grid(MPI_COMM_WORLD, nrow, ncol);
 
     dmatrix<gemm_type> a, b, c;
     if (transa == 0)
     {
-        a.set_dimensions(M, K, context);
+        a = dmatrix<gemm_type>(nullptr, M, K, blacs_grid);
     }
     else
     {
-        a.set_dimensions(K, M, context);
+        a = dmatrix<gemm_type>(nullptr, K, M, blacs_grid);
     }
-    b.set_dimensions(K, N, context);
-    c.set_dimensions(M, N - n, context);
+    b = dmatrix<gemm_type>(nullptr, K, N, blacs_grid);
+    c = dmatrix<gemm_type>(nullptr, M, N - n, blacs_grid);
     a.allocate(alloc_mode);
     b.allocate(alloc_mode);
     c.allocate(alloc_mode);
@@ -92,12 +89,12 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
 
     c.zero();
 
-    if (Platform::mpi_rank() == 0)
+    if (Platform::comm_world().rank() == 0)
     {
         printf("testing parallel zgemm with M, N, K = %i, %i, %i, opA = %i\n", M, N - n, K, transa);
         printf("nrow, ncol = %i, %i, bs = %i\n", nrow, ncol, linalg<scalapack>::cyclic_block_size());
     }
-    Platform::barrier();
+    Platform::comm_world().barrier();
     sirius::Timer t1("gemm_only"); 
     gemm_type one = 1;
     gemm_type zero = 0;
@@ -105,16 +102,14 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
     //== #ifdef _GPU_
     //== cuda_device_synchronize();
     //== #endif
-    Platform::barrier();
+    Platform::comm_world().barrier();
     double tval = t1.stop();
     double perf = 8e-9 * M * (N - n) * K / tval / nrow / ncol;
-    if (Platform::mpi_rank() == 0)
+    if (Platform::comm_world().rank() == 0)
     {
         printf("execution time : %12.6f seconds\n", tval);
         printf("performance    : %12.6f GFlops / node\n", perf);
     }
-    Cblacs_gridexit(context);
-    linalg<scalapack>::free_blacs_handler(blacs_handler);
 
     return perf;
 }
@@ -167,7 +162,7 @@ int main(int argn, char **argv)
         linalg<scalapack>::set_cyclic_block_size(bs);
         double perf = 0;
         for (int i = 0; i < repeat; i++) perf += test_pgemm(M, N, K, nrow, ncol, transa, n);
-        if (Platform::mpi_rank() == 0)
+        if (Platform::comm_world().rank() == 0)
         {
             printf("\n");
             printf("average performance    : %12.6f GFlops / node\n", perf / repeat);
