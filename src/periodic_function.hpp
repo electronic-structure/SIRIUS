@@ -165,6 +165,7 @@ inline void Periodic_function<T>::copy_to_global_ptr(T* f_mt__, T* f_it__)
 template <typename T>
 inline void Periodic_function<T>::add(Periodic_function<T>* g)
 {
+    Timer t("sirius::Periodic_function::add");
     for (int irloc = 0; irloc < fft_->local_size(); irloc++)
         f_it_local_(irloc) += g->f_it<local>(irloc);
     
