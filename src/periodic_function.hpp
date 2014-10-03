@@ -121,7 +121,9 @@ inline void Periodic_function<T>::sync(bool sync_mt, bool sync_it)
 
     if (f_it_.ptr() != NULL && sync_it)
     {
-        comm_.allgather(&f_it_(0), fft_->global_offset(), fft_->local_size());
+        auto offsets = fft_->spl_fft_size().offsets();
+        auto counts = fft_->spl_fft_size().counts();
+        comm_.allgather(&f_it_(0), &counts[0], &offsets[0]);
     }
     
     if (f_mt_.ptr() != NULL && sync_mt)

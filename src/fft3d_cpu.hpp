@@ -294,4 +294,9 @@ class FFT3D<cpu>
         {
             return vector3d<int>(grid_size_);
         }
+
+        inline splindex<block>& spl_fft_size()
+        {
+            return spl_fft_size_;
+        }
 };

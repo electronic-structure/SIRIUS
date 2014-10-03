@@ -202,6 +202,13 @@ class Communicator
                      type_wrapper<T>::mpi_type_id(), mpi_comm_));
         }
 
+        template<typename T>
+        void allgather(T* buffer__, int const* recvcounts__, int const* displs__) const
+        {
+            CALL_MPI(MPI_Allgatherv, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, buffer__, &recvcounts__[0], &displs__[0],
+                     type_wrapper<T>::mpi_type_id(), mpi_comm_));
+        }
+
         template <typename T>
         void allgather(T const* sendbuf__, T* recvbuf__, int offset__, int count__) const
         {
