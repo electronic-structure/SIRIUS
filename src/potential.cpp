@@ -1850,6 +1850,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
 
         std::vector<double_complex> vtmp(rl->spl_num_gvec().local_size());
         
+        Timer t2("sirius::Potential::generate_effective_potential|G");
         energy_vha_ = 0.0;
         for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
         {
@@ -1858,6 +1859,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
             energy_vha_ += real(conj(rho->f_pw(ig)) * vtmp[igloc]);
             vtmp[igloc] += effective_potential_->f_pw(ig);
         }
+        t2.stop();
         parameters_.comm().allreduce(&energy_vha_, 1);
         energy_vha_ *= parameters_.unit_cell()->omega();
 
