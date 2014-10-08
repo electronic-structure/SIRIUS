@@ -79,6 +79,16 @@
   #endif
 #endif
 
+/// Type of the main processing unit
+enum processing_unit_t 
+{
+    /// use CPU
+    CPU = 0, 
+
+    /// use GPU (with CUDA programming model)
+    GPU = 1
+};
+
 /// Index descriptor of mdarray.
 class mdarray_index_descriptor
 {
@@ -302,12 +312,12 @@ class mdarray_base
         {
             switch (pu)
             {
-                case cpu:
+                case CPU:
                 {
                     my_assert(ptr_ != nullptr);
                     return &ptr_[idx__];
                 }
-                case gpu:
+                case GPU:
                 {
                     #ifdef _GPU_
                     my_assert(ptr_device_ != nullptr);
@@ -326,12 +336,12 @@ class mdarray_base
         {
             switch (pu)
             {
-                case cpu:
+                case CPU:
                 {
                     my_assert(ptr_ != nullptr);
                     return &ptr_[idx__];
                 }
-                case gpu:
+                case GPU:
                 {
                     #ifdef _GPU_
                     my_assert(ptr_device_ != nullptr);

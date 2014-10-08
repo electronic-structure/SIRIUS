@@ -61,7 +61,7 @@ Spline<T>& Spline<T>::interpolate()
     diag_lower[np - 2] = -(h3 * (1 + h3 / h2) + diag_main[np - 2]); 
 
     /* solve tridiagonal system */
-    int info = linalg<lapack>::gtsv(np, 1, &diag_lower[0], &diag_main[0], &diag_upper[0], &m[0], np);
+    int info = lin_alg<lapack>::gtsv(np, 1, &diag_lower[0], &diag_main[0], &diag_upper[0], &m[0], np);
 
     if (info)
     {

@@ -67,7 +67,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
             }
         }
         // compute bwf = B_z*|wf_j>
-        blas<cpu>::hemm(0, 0, mt_basis_size, nfv, complex_one, &zm(0, 0, 0), zm.ld(), 
+        blas<CPU>::hemm(0, 0, mt_basis_size, nfv, complex_one, &zm(0, 0, 0), zm.ld(), 
                         &fv_states(offset, 0), fv_states.ld(), complex_zero, &hpsi(offset, 0, 0), hpsi.ld());
         
         // compute bwf = (B_x - iB_y)|wf_j>
@@ -82,7 +82,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
                 for (int j1 = j2 + 1; j1 < mt_basis_size; j1++) zm(j1, j2, 0) = conj(zm(j2, j1, 1)) - complex_i * conj(zm(j2, j1, 2));
             }
               
-            blas<cpu>::gemm(0, 0, mt_basis_size, nfv, mt_basis_size, &zm(0, 0, 0), zm.ld(), 
+            blas<CPU>::gemm(0, 0, mt_basis_size, nfv, mt_basis_size, &zm(0, 0, 0), zm.ld(), 
                             &fv_states(offset, 0), fv_states.ld(), &hpsi(offset, 0, 2), hpsi.ld());
         }
         
@@ -97,7 +97,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
                 for (int j1 = j2 + 1; j1 < mt_basis_size; j1++) zm(j1, j2, 0) = conj(zm(j2, j1, 1)) + complex_i * conj(zm(j2, j1, 2));
             }
               
-            blas<cpu>::gemm(0, 0, mt_basis_size, nfv, mt_basis_size, &zm(0, 0, 0), zm.ld(), 
+            blas<CPU>::gemm(0, 0, mt_basis_size, nfv, mt_basis_size, &zm(0, 0, 0), zm.ld(), 
                             &fv_states(offset, 0), fv_states.ld(), &hpsi(offset, 0, 3), hpsi.ld());
         }
     }
@@ -245,12 +245,12 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
 //**         }
 //**     }
 //**     
-//**     set_fv_h_o_pw_lo<cpu>(effective_potential, num_ranks, h, o);
+//**     set_fv_h_o_pw_lo<CPU>(effective_potential, num_ranks, h, o);
 //** 
 //**     set_fv_h_o_lo_lo(h, o);
 //** }
 //**
-//** template<> void K_point::set_fv_h_o_pw_lo<cpu>(Periodic_function<double>* effective_potential, int num_ranks, 
+//** template<> void K_point::set_fv_h_o_pw_lo<CPU>(Periodic_function<double>* effective_potential, int num_ranks, 
 //**                                               mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 //** {
 //**     Timer t("sirius::K_point::set_fv_h_o_pw_lo");
@@ -530,7 +530,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
 //**         }
 //**     }
 //**     
-//**     set_fv_h_o_pw_lo<cpu>(effective_potential, num_ranks, h, o);
+//**     set_fv_h_o_pw_lo<CPU>(effective_potential, num_ranks, h, o);
 //** 
 //**     set_fv_h_o_lo_lo(h, o);
 //** }
@@ -566,13 +566,13 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
 //**         }
 //**     }
 //**     
-//**     set_fv_h_o_pw_lo<gpu>(effective_potential, num_ranks, h, o);
+//**     set_fv_h_o_pw_lo<GPU>(effective_potential, num_ranks, h, o);
 //** 
 //**     set_fv_h_o_lo_lo(h, o);
 //** }
 //** #endif
 //** 
-//** template<> void K_point::set_fv_h_o_pw_lo<gpu>(Periodic_function<double>* effective_potential, int num_ranks, 
+//** template<> void K_point::set_fv_h_o_pw_lo<GPU>(Periodic_function<double>* effective_potential, int num_ranks, 
 //**                                               mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o)
 //** {
 //**     Timer t("sirius::K_point::set_fv_h_o_pw_lo");
@@ -943,10 +943,10 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
 //==      * because it gives the best performance
 //==      */
 //==     Timer t1("sirius::Band::set_fv_h_o|zgemm", _global_timer_);
-//==     blas<cpu>::gemm(0, 0, kp->num_gkvec(), kp->num_gkvec(), naw, complex_one, alm_panel_n, halm_panel_t, 
+//==     blas<CPU>::gemm(0, 0, kp->num_gkvec(), kp->num_gkvec(), naw, complex_one, alm_panel_n, halm_panel_t, 
 //==                     complex_zero, h); 
 //==     
-//==     blas<cpu>::gemm(0, 0, kp->num_gkvec(), kp->num_gkvec(), naw, complex_one, alm_panel_n, alm_panel_t, 
+//==     blas<CPU>::gemm(0, 0, kp->num_gkvec(), kp->num_gkvec(), naw, complex_one, alm_panel_n, alm_panel_t, 
 //==                     complex_zero, o); 
 //==     t1.stop();
 //== 
@@ -981,7 +981,7 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
 //== }
 
 template<> 
-void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp__,
+void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
                                                   Periodic_function<double>* effective_potential__,
                                                   dmatrix<double_complex>& h__,
                                                   dmatrix<double_complex>& o__)
@@ -1009,12 +1009,12 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp__,
 
         kp__->alm_coeffs_col()->generate(ia, alm_col);
 
-        blas<cpu>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
+        blas<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
                         alm_row.ptr(), alm_row.ld(), alm_col.ptr(), alm_col.ld(), complex_one, o__.ptr(), o__.ld()); 
 
         apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col, halm_col);
 
-        blas<cpu>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
+        blas<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
                         alm_row.ptr(), alm_row.ld(), halm_col.ptr(), halm_col.ld(), complex_one, h__.ptr(), h__.ld());
 
         /* setup apw-lo and lo-apw blocks */
@@ -1033,7 +1033,7 @@ void Band::set_fv_h_o<cpu, full_potential_lapwlo>(K_point* kp__,
 //=====================================================================================================================
 #ifdef _GPU_
 template<> 
-void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp__,
+void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
                                                   Periodic_function<double>* effective_potential__,
                                                   dmatrix<double_complex>& h__,
                                                   dmatrix<double_complex>& o__)
@@ -1078,25 +1078,25 @@ void Band::set_fv_h_o<gpu, full_potential_lapwlo>(K_point* kp__,
         kp__->alm_coeffs_col()->generate(ia, alm_col);
         alm_col.copy_to_device();
 
-        blas<gpu>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
-                        alm_row.at<cpu>(0, 0), alm_row.ld(), alm_col.at<gpu>(0, 0), alm_col.ld(), &zone, 
-                        o__.at<gpu>(0, 0), o__.ld()); 
+        blas<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
+                        alm_row.at<CPU>(0, 0), alm_row.ld(), alm_col.at<GPU>(0, 0), alm_col.ld(), &zone, 
+                        o__.at<GPU>(0, 0), o__.ld()); 
 
         apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col, halm_col);
         halm_col.copy_to_device();
 
-        blas<gpu>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
-                        alm_row.at<gpu>(0, 0), alm_row.ld(), halm_col.at<gpu>(0, 0), halm_col.ld(), &zone,
-                        h__.at<gpu>(0, 0), h__.ld());
+        blas<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
+                        alm_row.at<GPU>(0, 0), alm_row.ld(), halm_col.at<GPU>(0, 0), halm_col.ld(), &zone,
+                        h__.at<GPU>(0, 0), h__.ld());
 
         /* setup apw-lo and lo-apw blocks */
         set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h__.panel(), o__.panel());
     }
 
-    cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), h__.at<gpu>(0, 0), h__.ld(), 
+    cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), h__.at<GPU>(0, 0), h__.ld(), 
                       h__.ptr(), h__.ld());
     
-    cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), o__.at<gpu>(0, 0), o__.ld(), 
+    cublas_get_matrix(kp__->num_gkvec_row(), kp__->num_gkvec_col(), sizeof(double_complex), o__.at<GPU>(0, 0), o__.ld(), 
                       o__.ptr(), o__.ld());
     
     /* add interstitial contributon */
@@ -1288,10 +1288,10 @@ void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<
 //== 
 //==     mdarray<double_complex, 2> h_tmp(apwlo_basis_size(), apwlo_basis_size());
 //==     // compute h_tmp = Z^{h.c.} * H
-//==     blas<cpu>::gemm(2, 0, apwlo_basis_size(), apwlo_basis_size(), apwlo_basis_size(), o_evec.get_ptr(), 
+//==     blas<CPU>::gemm(2, 0, apwlo_basis_size(), apwlo_basis_size(), apwlo_basis_size(), o_evec.get_ptr(), 
 //==                     o_evec.ld(), h.get_ptr(), h.ld(), h_tmp.get_ptr(), h_tmp.ld());
 //==     // compute \tilda H = Z^{h.c.} * H * Z = h_tmp * Z
-//==     blas<cpu>::gemm(0, 0, apwlo_basis_size(), apwlo_basis_size(), apwlo_basis_size(), h_tmp.get_ptr(), 
+//==     blas<CPU>::gemm(0, 0, apwlo_basis_size(), apwlo_basis_size(), apwlo_basis_size(), h_tmp.get_ptr(), 
 //==                     h_tmp.ld(), o_evec.get_ptr(), o_evec.ld(), h.get_ptr(), h.ld());
 //== 
 //==     int reduced_apwlo_basis_size = apwlo_basis_size() - num_dependent_apwlo;
@@ -1316,7 +1316,7 @@ void Band::set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<
 //== 
 //==     for (int i = 0; i < parameters_.num_fv_states(); i++) fv_eigen_values_[i] = h_eval[i];
 //== 
-//==     blas<cpu>::gemm(0, 0, apwlo_basis_size(), parameters_.num_fv_states(), reduced_apwlo_basis_size, 
+//==     blas<CPU>::gemm(0, 0, apwlo_basis_size(), parameters_.num_fv_states(), reduced_apwlo_basis_size, 
 //==                     &o_evec(0, num_dependent_apwlo), o_evec.ld(), h_tmp.get_ptr(), h_tmp.ld(), 
 //==                     fv_eigen_vectors_.get_ptr(), fv_eigen_vectors_.ld());
 //== }
@@ -1339,15 +1339,15 @@ void Band::diag_fv_full_potential(K_point* kp, Periodic_function<double>* effect
     /* setup Hamiltonian and overlap */
     switch (parameters_.processing_unit())
     {
-        case cpu:
+        case CPU:
         {
-            set_fv_h_o<cpu, full_potential_lapwlo>(kp, effective_potential, h, o);
+            set_fv_h_o<CPU, full_potential_lapwlo>(kp, effective_potential, h, o);
             break;
         }
         #ifdef _GPU_
-        case gpu:
+        case GPU:
         {
-            set_fv_h_o<gpu, full_potential_lapwlo>(kp, effective_potential, h, o);
+            set_fv_h_o<GPU, full_potential_lapwlo>(kp, effective_potential, h, o);
             
             //== dmatrix<double_complex> h1(kp->gklo_basis_size_row(), kp->gklo_basis_size_col(), parameters_.blacs_context());
             //== dmatrix<double_complex> o1(kp->gklo_basis_size_row(), kp->gklo_basis_size_col(), parameters_.blacs_context());
@@ -1672,7 +1672,7 @@ void Band::set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o)
 //==         kp->generate_matching_coefficients<true>(kp->num_gkvec_loc(), ia, alm);
 //==         
 //==         // generate <apw|apw> block; |ket> is conjugated, so it is "unconjugated" back
-//==         blas<cpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), zone, 
+//==         blas<CPU>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), zone, 
 //==                         &alm(0, 0), alm.ld(), &alm(apw_offset_col, 0), alm.ld(), zone, &o(0, 0), o.ld()); 
 //==             
 //==         // setup apw-lo blocks
@@ -1703,12 +1703,12 @@ void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potentia
         {
             switch (parameters_.processing_unit())
             {
-                case cpu:
+                case CPU:
                 {
                     diag_fv_uspp_gpu(kp__, effective_potential__);
                     break;
                 }
-                case gpu:
+                case GPU:
                 {
                     #ifdef _GPU_
                     diag_fv_uspp_gpu(kp__, effective_potential__);
@@ -1785,7 +1785,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
         {
             // compute <wf_i | (h * wf_j)> for up-up or dn-dn block
-            blas<cpu>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, complex_one, 
+            blas<CPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, complex_one, 
                             kp->fv_states_panel(), *hpsi_panel[ispn], complex_zero, h);
             
             for (int i = 0; i < parameters_.num_fv_states(); i++) h.add(i, i, kp->fv_eigen_value(i));
@@ -1807,7 +1807,7 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     //==     for (int ispn = 0; ispn < 2; ispn++)
     //==     {
     //==         // compute <wf_i | (h * wf_j)> for up-up or dn-dn block
-    //==         blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), 
+    //==         blas<CPU>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), 
     //==                         &hpsi(0, 0, ispn), hpsi.ld(), &h(0, 0), h.ld());
 
     //==         for (int icol = 0; icol < ncol; icol++)
@@ -1832,21 +1832,21 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
     //==     h.zero();
 
     //==     // compute <fv_i | (h * fv_j)> for up-up block
-    //==     blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 0), hpsi.ld(), 
+    //==     blas<CPU>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 0), hpsi.ld(), 
     //==                     &h(0, 0), h.ld());
 
     //==     // compute <fv_i | (h * fv_j)> for up-dn block
-    //==     blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 2), hpsi.ld(), 
+    //==     blas<CPU>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 2), hpsi.ld(), 
     //==                     &h(0, ncol), h.ld());
     //==    
     //==     // compute <fv_i | (h * fv_j)> for dn-dn block
-    //==     blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 1), hpsi.ld(), 
+    //==     blas<CPU>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 1), hpsi.ld(), 
     //==                     &h(nrow, ncol), h.ld());
 
     //==     if (parameters_.std_evp_solver()->parallel())
     //==     {
     //==         // compute <fv_i | (h * fv_j)> for dn-up block
-    //==         blas<cpu>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 3), hpsi.ld(), 
+    //==         blas<CPU>::gemm(2, 0, nrow, ncol, fvsz, &fv_states_row(0, 0), fv_states_row.ld(), &hpsi(0, 0, 3), hpsi.ld(), 
     //==                         &h(nrow, 0), h.ld());
     //==     }
     //==   

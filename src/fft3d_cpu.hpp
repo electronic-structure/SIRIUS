@@ -40,7 +40,7 @@
  *  of using threaded implementation for each transform. 
 */
 template<> 
-class FFT3D<cpu>
+class FFT3D<CPU>
 {
     private:
 
@@ -101,7 +101,7 @@ class FFT3D<cpu>
 
         FFT3D(vector3d<int> dims, Communicator const& comm__)
         {
-            Timer t("sirius::FFT3D<cpu>::FFT3D");
+            Timer t("sirius::FFT3D<CPU>::FFT3D");
             for (int i = 0; i < 3; i++)
             {
                 grid_size_[i] = find_grid_size(dims[i]);

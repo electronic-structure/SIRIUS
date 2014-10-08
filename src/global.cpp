@@ -94,13 +94,13 @@ void Global::read_input()
         {
             std::string pu;
             parser["processing_unit"] >> pu;
-            if (pu == "cpu")
+            if (pu == "cpu" || pu == "CPU")
             {
-                processing_unit_ = cpu;
+                processing_unit_ = CPU;
             }
-            else if (pu == "gpu")
+            else if (pu == "gpu" || pu == "GPU")
             {
-                processing_unit_ = gpu;
+                processing_unit_ = GPU;
             }
             else
             {
@@ -404,12 +404,12 @@ void Global::print_info()
     printf("processing unit : ");
     switch (processing_unit())
     {
-        case cpu:
+        case CPU:
         {
             printf("CPU\n");
             break;
         }
-        case gpu:
+        case GPU:
         {
             printf("GPU\n");
             break;

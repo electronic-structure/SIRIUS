@@ -115,7 +115,7 @@ void Band::apply_hmt_to_apw(int num_gkvec__,
             hmt(j1, j2) = atom->hb_radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
         }
     }
-    blas<cpu>::gemm(0, 1, num_gkvec__, type->mt_aw_basis_size(), type->mt_aw_basis_size(), alm__.ptr(), alm__.ld(), 
+    blas<CPU>::gemm(0, 1, num_gkvec__, type->mt_aw_basis_size(), type->mt_aw_basis_size(), alm__.ptr(), alm__.ld(), 
                     hmt.ptr(), hmt.ld(), halm__.ptr(), halm__.ld());
 }
 
@@ -339,7 +339,7 @@ void Band::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h)
 //==         apply_hmt_to_apw<sblock>(kp->num_gkvec_row(), ia, alm, halm);
 //==         
 //==         // generate <apw|H|apw> block; |ket> is conjugated, so it is "unconjugated" back
-//==         blas<cpu>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
+//==         blas<CPU>::gemm(0, 2, kp->num_gkvec_row(), kp->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
 //==                         &halm(0, 0), halm.ld(), &alm(apw_offset_col, 0), alm.ld(), complex_one, &h(0, 0), h.ld());
 //==        
 //==         // setup apw-lo blocks

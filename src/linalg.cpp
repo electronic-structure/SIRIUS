@@ -17,7 +17,7 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file linalg.cpp
+/** \file lin_alg.cpp
  *
  *  \brief Contains full specializations of linear algebra interface classes.
  */
@@ -29,7 +29,7 @@
 #endif
 
 template<> 
-void blas<cpu>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32_t k, double alpha, 
+void blas<CPU>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32_t k, double alpha, 
                              double* a, int32_t lda, double* b, int32_t ldb, double beta, double* c, 
                              int32_t ldc)
 {
@@ -40,14 +40,14 @@ void blas<cpu>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32
 }
 
 template<> 
-void blas<cpu>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32_t k, double* a, int32_t lda, 
+void blas<CPU>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32_t k, double* a, int32_t lda, 
                              double* b, int32_t ldb, double* c, int32_t ldc)
 {
     gemm(transa, transb, m, n, k, 1.0, a, lda, b, ldb, 0.0, c, ldc);
 }
 
 template<> 
-void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+void blas<CPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                                      double_complex alpha, double_complex* a, int32_t lda, double_complex* b, 
                                      int32_t ldb, double_complex beta, double_complex* c, int32_t ldc)
 {
@@ -58,7 +58,7 @@ void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 }
 
 template<> 
-void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+void blas<CPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                                      double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
                                      double_complex* c, int32_t ldc)
 {
@@ -66,7 +66,7 @@ void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 }
 
 template<> 
-void blas<cpu>::hemm<double_complex>(int side, int uplo, int32_t m, int32_t n, double_complex alpha, 
+void blas<CPU>::hemm<double_complex>(int side, int uplo, int32_t m, int32_t n, double_complex alpha, 
                                      double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
                                      double_complex beta, double_complex* c, int32_t ldc)
 {
@@ -77,7 +77,7 @@ void blas<cpu>::hemm<double_complex>(int side, int uplo, int32_t m, int32_t n, d
 }
 
 template<>
-void blas<cpu>::gemv<double_complex>(int trans, int32_t m, int32_t n, double_complex alpha, double_complex* a, 
+void blas<CPU>::gemv<double_complex>(int trans, int32_t m, int32_t n, double_complex alpha, double_complex* a, 
                                      int32_t lda, double_complex* x, int32_t incx, double_complex beta, 
                                      double_complex* y, int32_t incy)
 {
@@ -87,10 +87,10 @@ void blas<cpu>::gemv<double_complex>(int trans, int32_t m, int32_t n, double_com
 }
 
 #ifdef _SCALAPACK_
-int linalg<scalapack>::cyclic_block_size_ = -1;
+int lin_alg<scalapack>::cyclic_block_size_ = -1;
 
 template<> 
-void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
+void blas<CPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
                                      dmatrix<double_complex>& a, int32_t ia, int32_t ja,
                                      dmatrix<double_complex>& b, int32_t ib, int32_t jb, double_complex beta, 
                                      dmatrix<double_complex>& c, int32_t ic, int32_t jc)
@@ -105,7 +105,7 @@ void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 }
 
 template<> 
-void blas<cpu>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32_t k, double alpha, 
+void blas<CPU>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32_t k, double alpha, 
                              dmatrix<double>& a, int32_t ia, int32_t ja,
                              dmatrix<double>& b, int32_t ib, int32_t jb, double beta, 
                              dmatrix<double>& c, int32_t ic, int32_t jc)
@@ -120,7 +120,7 @@ void blas<cpu>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32
 }
 
 template<> 
-void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
+void blas<CPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
                                      dmatrix<double_complex>& a, dmatrix<double_complex>& b, double_complex beta, 
                                      dmatrix<double_complex>& c)
 {
@@ -128,7 +128,7 @@ void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 }
 
 template<> 
-void blas<cpu>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32_t k, double alpha, 
+void blas<CPU>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32_t k, double alpha, 
                              dmatrix<double>& a, dmatrix<double>& b, double beta, 
                              dmatrix<double>& c)
 {
@@ -136,7 +136,7 @@ void blas<cpu>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32
 }
 #else
 template<> 
-void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
+void blas<CPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
                                      dmatrix<double_complex>& a, int32_t ia, int32_t ja,
                                      dmatrix<double_complex>& b, int32_t ib, int32_t jb, double_complex beta, 
                                      dmatrix<double_complex>& c, int32_t ic, int32_t jc)
@@ -145,7 +145,7 @@ void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 }
 
 template<> 
-void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
+void blas<CPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
                                      dmatrix<double_complex>& a, dmatrix<double_complex>& b, double_complex beta, 
                                      dmatrix<double_complex>& c)
 {
@@ -155,11 +155,11 @@ void blas<cpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 
 
 #ifdef _GPU_
-double_complex blas<gpu>::zone = double_complex(1, 0);
-double_complex blas<gpu>::zzero = double_complex(0, 0);
+double_complex blas<GPU>::zone = double_complex(1, 0);
+double_complex blas<GPU>::zzero = double_complex(0, 0);
 
 template<>
-void blas<gpu>::gemv<double_complex>(int trans, int32_t m, int32_t n, double_complex* alpha, double_complex* a, int32_t lda,
+void blas<GPU>::gemv<double_complex>(int trans, int32_t m, int32_t n, double_complex* alpha, double_complex* a, int32_t lda,
                                      double_complex* x, int32_t incx, double_complex* beta, double_complex* y, int32_t incy, 
                                      int stream_id)
 {
@@ -167,7 +167,7 @@ void blas<gpu>::gemv<double_complex>(int trans, int32_t m, int32_t n, double_com
 }
 
 template<> 
-void blas<gpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                                      double_complex* alpha, double_complex* a, int32_t lda, double_complex* b, 
                                      int32_t ldb, double_complex* beta, double_complex* c, int32_t ldc)
 {
@@ -175,7 +175,7 @@ void blas<gpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 }
 
 template<> 
-void blas<gpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                                      double_complex* alpha, double_complex* a, int32_t lda, double_complex* b, 
                                      int32_t ldb, double_complex* beta, double_complex* c, int32_t ldc, int stream_id)
 {
@@ -183,7 +183,7 @@ void blas<gpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 }
 
 template<> 
-void blas<gpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                                      double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
                                      double_complex* c, int32_t ldc)
 {
@@ -191,7 +191,7 @@ void blas<gpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 }
 
 template<> 
-void blas<gpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
                                      double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
                                      double_complex* c, int32_t ldc, int stream_id)
 {
@@ -201,7 +201,7 @@ void blas<gpu>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 
 
 template<> 
-int linalg<lapack>::gesv<double>(int32_t n, int32_t nrhs, double* a, int32_t lda, double* b, int32_t ldb)
+int lin_alg<lapack>::gesv<double>(int32_t n, int32_t nrhs, double* a, int32_t lda, double* b, int32_t ldb)
 {
     int32_t info;
     std::vector<int32_t> ipiv(n);
@@ -210,7 +210,7 @@ int linalg<lapack>::gesv<double>(int32_t n, int32_t nrhs, double* a, int32_t lda
 }
 
 template<> 
-int linalg<lapack>::gesv<double_complex>(int32_t n, int32_t nrhs, double_complex* a, int32_t lda, 
+int lin_alg<lapack>::gesv<double_complex>(int32_t n, int32_t nrhs, double_complex* a, int32_t lda, 
                                          double_complex* b, int32_t ldb)
 {
     int32_t info;
@@ -220,7 +220,7 @@ int linalg<lapack>::gesv<double_complex>(int32_t n, int32_t nrhs, double_complex
 }
 
 template<> 
-int linalg<lapack>::gtsv<double>(int32_t n, int32_t nrhs, double* dl, double* d, double* du, double* b, int32_t ldb)
+int lin_alg<lapack>::gtsv<double>(int32_t n, int32_t nrhs, double* dl, double* d, double* du, double* b, int32_t ldb)
 {
     int info;
     FORTRAN(dgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
@@ -228,7 +228,7 @@ int linalg<lapack>::gtsv<double>(int32_t n, int32_t nrhs, double* dl, double* d,
 }
 
 template<> 
-int linalg<lapack>::gtsv<double_complex>(int32_t n, int32_t nrhs, double_complex* dl, double_complex* d, double_complex* du, 
+int lin_alg<lapack>::gtsv<double_complex>(int32_t n, int32_t nrhs, double_complex* dl, double_complex* d, double_complex* du, 
                                          double_complex* b, int32_t ldb)
 {
     int32_t info;                   
@@ -237,7 +237,7 @@ int linalg<lapack>::gtsv<double_complex>(int32_t n, int32_t nrhs, double_complex
 }
 
 template<> 
-int linalg<lapack>::getrf<double>(int32_t m, int32_t n, double* a, int32_t lda, int32_t* ipiv)
+int lin_alg<lapack>::getrf<double>(int32_t m, int32_t n, double* a, int32_t lda, int32_t* ipiv)
 {
     int32_t info;
     FORTRAN(dgetrf)(&m, &n, a, &lda, ipiv, &info);
@@ -245,7 +245,7 @@ int linalg<lapack>::getrf<double>(int32_t m, int32_t n, double* a, int32_t lda, 
 }
     
 template<> 
-int linalg<lapack>::getrf<double_complex>(int32_t m, int32_t n, double_complex* a, int32_t lda, int32_t* ipiv)
+int lin_alg<lapack>::getrf<double_complex>(int32_t m, int32_t n, double_complex* a, int32_t lda, int32_t* ipiv)
 {
     int32_t info;
     FORTRAN(zgetrf)(&m, &n, a, &lda, ipiv, &info);
@@ -253,7 +253,7 @@ int linalg<lapack>::getrf<double_complex>(int32_t m, int32_t n, double_complex* 
 }
 
 template<> 
-int linalg<lapack>::getri<double>(int32_t n, double* a, int32_t lda, int32_t* ipiv, double* work, int32_t lwork)
+int lin_alg<lapack>::getri<double>(int32_t n, double* a, int32_t lda, int32_t* ipiv, double* work, int32_t lwork)
 {
     int32_t info;
     FORTRAN(dgetri)(&n, a, &lda, ipiv, work, &lwork, &info);
@@ -261,7 +261,7 @@ int linalg<lapack>::getri<double>(int32_t n, double* a, int32_t lda, int32_t* ip
 }
 
 template<> 
-int linalg<lapack>::getri<double_complex>(int32_t n, double_complex* a, int32_t lda, int32_t* ipiv, double_complex* work, 
+int lin_alg<lapack>::getri<double_complex>(int32_t n, double_complex* a, int32_t lda, int32_t* ipiv, double_complex* work, 
                                           int32_t lwork)
 {
     int32_t info;

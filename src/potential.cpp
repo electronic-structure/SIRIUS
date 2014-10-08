@@ -310,7 +310,7 @@ void Potential::poisson_sum_G(int lmmax__,
             }
         }
 
-        blas<cpu>::gemm(2, 0, 2 * l + 1, parameters_.unit_cell()->num_atoms(), ngv_loc, 
+        blas<CPU>::gemm(2, 0, 2 * l + 1, parameters_.unit_cell()->num_atoms(), ngv_loc, 
                         &zm1(0, Utils::lm_by_l_m(l, -l)), zm1.ld(), &zm2(0, 0), zm2.ld(), 
                         &flm__(Utils::lm_by_l_m(l, -l), 0), flm__.ld());
     }
@@ -333,7 +333,7 @@ void Potential::poisson_sum_G(int lmmax__,
     //==                                 fl__(l, iat, parameters_.reciprocal_lattice()->gvec_shell(ig));
     //==             }
     //==         }
-    //==         blas<cpu>::gemv(0, lmmax__, ngv_loc, complex_one, zm.ptr(), zm.ld(), 
+    //==         blas<CPU>::gemv(0, lmmax__, ngv_loc, complex_one, zm.ptr(), zm.ld(), 
     //==                         &fpw__[parameters_.reciprocal_lattice()->spl_num_gvec().global_offset()], 1, complex_zero, 
     //==                         &flm__(0, ia), 1);
     //==     }
@@ -413,7 +413,7 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<d
     for (int ig = 0; ig < parameters_.reciprocal_lattice()->num_gvec(); ig++) rho_pw[ig] += pseudo_pw[ig];
 }
 
-template<> void Potential::add_mt_contribution_to_pw<cpu>()
+template<> void Potential::add_mt_contribution_to_pw<CPU>()
 {
     Timer t("sirius::Potential::add_mt_contribution_to_pw");
 
@@ -490,7 +490,7 @@ template<> void Potential::add_mt_contribution_to_pw<cpu>()
 }
 
 //== #ifdef _GPU_
-//== template <> void Potential::add_mt_contribution_to_pw<gpu>()
+//== template <> void Potential::add_mt_contribution_to_pw<GPU>()
 //== {
 //==     // TODO: couple of things to consider: 1) global array jvlm with G-vector shells may be large; 
 //==     //                                     2) MPI reduction over thousands of shell may be slow
@@ -668,15 +668,15 @@ void Potential::generate_pw_coefs()
     {
         switch (parameters_.processing_unit())
         {
-            case cpu:
+            case CPU:
             {
-                add_mt_contribution_to_pw<cpu>();
+                add_mt_contribution_to_pw<CPU>();
                 break;
             }
             #ifdef _GPU_
-            //== case gpu:
+            //== case GPU:
             //== {
-            //==     add_mt_contribution_to_pw<gpu>();
+            //==     add_mt_contribution_to_pw<GPU>();
             //==     break;
             //== }
             #endif
@@ -1905,7 +1905,7 @@ void Potential::generate_d_mtrx()
                     veff_tmp(igloc) = effective_potential_->f_pw(ig) * rl->gvec_phase_factor<local>(igloc, ia);
                 }
 
-                blas<cpu>::gemv(2, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, complex_one, 
+                blas<CPU>::gemv(2, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, complex_one, 
                                 &atom_type->uspp().q_pw(0, 0), (int)rl->spl_num_gvec().local_size(),  
                                 &veff_tmp(0), 1, complex_zero, &dm_packed(0), 1);
 
@@ -2011,23 +2011,23 @@ void Potential::generate_d_mtrx_gpu()
             vector3d<double> apos = uc->atom(ia)->position();
             
             mul_veff_with_phase_factors_gpu((int)rl->spl_num_gvec().local_size(),
-                                            veff_gpu.at<gpu>(),
-                                            gvec.at<gpu>(),
+                                            veff_gpu.at<GPU>(),
+                                            gvec.at<GPU>(),
                                             apos[0],
                                             apos[1],
                                             apos[2],
-                                            vtmp.at<gpu>(0, thread_id),
+                                            vtmp.at<GPU>(0, thread_id),
                                             thread_id);
 
-            blas<gpu>::gemv(2, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, &alpha, 
-                            atom_type->uspp().q_pw.at<gpu>(), (int)rl->spl_num_gvec().local_size(),  
-                            vtmp.at<gpu>(0, thread_id), 1, &beta, d_mtrx.at<gpu>(0, ia), 1, thread_id);
+            blas<GPU>::gemv(2, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, &alpha, 
+                            atom_type->uspp().q_pw.at<GPU>(), (int)rl->spl_num_gvec().local_size(),  
+                            vtmp.at<GPU>(0, thread_id), 1, &beta, d_mtrx.at<GPU>(0, ia), 1, thread_id);
         }
         cuda_device_synchronize();
         d_mtrx.copy_to_host();
         t1.stop();
 
-        parameters_.comm().allreduce(d_mtrx.at<cpu>(), (int)d_mtrx.size());
+        parameters_.comm().allreduce(d_mtrx.at<CPU>(), (int)d_mtrx.size());
 
         #pragma omp parallel for
         for (int ia = 0; ia < uc->num_atoms(); ia++)

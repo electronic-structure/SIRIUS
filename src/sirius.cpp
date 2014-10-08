@@ -496,7 +496,7 @@ void FORTRAN(sirius_get_gvec_len)(double* gvec_len)
 void FORTRAN(sirius_get_index_by_gvec)(int32_t* index_by_gvec__)
 {
     log_function_enter(__func__);
-    sirius::FFT3D<cpu>* fft = global_parameters->reciprocal_lattice()->fft();
+    sirius::FFT3D<CPU>* fft = global_parameters->reciprocal_lattice()->fft();
     std::pair<int, int> d0 = fft->grid_limits(0);
     std::pair<int, int> d1 = fft->grid_limits(1);
     std::pair<int, int> d2 = fft->grid_limits(2);
@@ -1388,7 +1388,7 @@ void FORTRAN(sirius_get_fv_h_o)(int32_t* kset_id__, int32_t* ik__, int32_t* size
 
         dmatrix<double_complex> h(h__, kp->gklo_basis_size(), kp->gklo_basis_size(), *blacs_grid);
         dmatrix<double_complex> o(o__, kp->gklo_basis_size(), kp->gklo_basis_size(), *blacs_grid);
-        kset_list[*kset_id__]->band()->set_fv_h_o<cpu, full_potential_lapwlo>(kp, potential->effective_potential(), h, o);  
+        kset_list[*kset_id__]->band()->set_fv_h_o<CPU, full_potential_lapwlo>(kp, potential->effective_potential(), h, o);  
     }
 }
 

@@ -75,7 +75,7 @@ class dmatrix
         void init()
         {
             #ifdef _SCALAPACK_
-            bs_ = linalg<scalapack>::cyclic_block_size();
+            bs_ = lin_alg<scalapack>::cyclic_block_size();
             #endif
 
             spl_row_ = splindex<block_cyclic>(num_rows_, num_ranks_row_, rank_row_, bs_);
@@ -84,7 +84,7 @@ class dmatrix
             matrix_local_ = matrix<T>(nullptr, spl_row_.local_size(), spl_col_.local_size());
 
             #ifdef _SCALAPACK_
-            linalg<scalapack>::descinit(descriptor_, num_rows_, num_cols_, bs_, bs_, 0, 0, blacs_grid_->context(), matrix_local_.ld());
+            lin_alg<scalapack>::descinit(descriptor_, num_rows_, num_cols_, bs_, bs_, 0, 0, blacs_grid_->context(), matrix_local_.ld());
             #endif
         }
 
@@ -260,7 +260,7 @@ class dmatrix
             int nloc = static_cast<int>(s1.local_size() - s0.local_size());
             if (nloc)
             {
-                cuda_copy_to_device(at<gpu>(0, s0.local_size()), at<cpu>(0, s0.local_size()),
+                cuda_copy_to_device(at<GPU>(0, s0.local_size()), at<CPU>(0, s0.local_size()),
                                     num_rows_local() * nloc * sizeof(double_complex));
             }
         }
@@ -272,7 +272,7 @@ class dmatrix
             int nloc = static_cast<int>(s1.local_size() - s0.local_size());
             if (nloc)
             {
-                cuda_copy_to_host(at<cpu>(0, s0.local_size()), at<gpu>(0, s0.local_size()),
+                cuda_copy_to_host(at<CPU>(0, s0.local_size()), at<GPU>(0, s0.local_size()),
                                     num_rows_local() * nloc * sizeof(double_complex));
             }
         }
@@ -711,7 +711,7 @@ class dmatrix
             ia++; ja++;
             ic++; jc++;
 
-            linalg<scalapack>::pztranc(m, n, double_complex(1, 0), a.ptr(), ia, ja, a.descriptor(), double_complex(0, 0), 
+            lin_alg<scalapack>::pztranc(m, n, double_complex(1, 0), a.ptr(), ia, ja, a.descriptor(), double_complex(0, 0), 
                                        c.ptr(), ic, jc, c.descriptor());
         }
 
@@ -720,7 +720,7 @@ class dmatrix
             ia++; ja++;
             ic++; jc++;
 
-            linalg<scalapack>::pztranu(m, n, double_complex(1, 0), a.ptr(), ia, ja, a.descriptor(), double_complex(0, 0), 
+            lin_alg<scalapack>::pztranu(m, n, double_complex(1, 0), a.ptr(), ia, ja, a.descriptor(), double_complex(0, 0), 
                                        c.ptr(), ic, jc, c.descriptor());
         }
 };

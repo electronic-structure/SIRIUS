@@ -74,7 +74,7 @@ class Periodic_function
         Step_function* step_function_;
 
         /// alias for FFT driver
-        FFT3D<cpu>* fft_;
+        FFT3D<CPU>* fft_;
 
         electronic_structure_method_t esm_type_;
 

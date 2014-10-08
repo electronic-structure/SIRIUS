@@ -325,7 +325,7 @@ void Atom_type::init_free_atom(bool smooth)
         b(0) = free_atom_density_[irmt];
         b(1) = free_atom_density_.deriv(1, irmt);
 
-        linalg<lapack>::gesv<double>(2, 1, A.ptr(), 2, b.ptr(), 2);
+        lin_alg<lapack>::gesv<double>(2, 1, A.ptr(), 2, b.ptr(), 2);
        
         //== /* write initial density */
         //== std::stringstream sstr;

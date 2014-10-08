@@ -50,20 +50,20 @@ Reciprocal_lattice::Reciprocal_lattice(Unit_cell* unit_cell__,
     }
 
     vector3d<int> max_frac_coord = Utils::find_translation_limits(pw_cutoff_, reciprocal_lattice_vectors_);
-    fft_ = new FFT3D<cpu>(max_frac_coord, comm__);
+    fft_ = new FFT3D<CPU>(max_frac_coord, comm__);
 
     #ifdef _GPU_
-    fft_gpu_ = new FFT3D<gpu>(fft_->grid_size(), 2);
+    fft_gpu_ = new FFT3D<GPU>(fft_->grid_size(), 2);
     #endif
     
     if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
     {
         vector3d<int> max_frac_coord_coarse = Utils::find_translation_limits(gk_cutoff__ * 2, 
                                                                              reciprocal_lattice_vectors_);
-        fft_coarse_ = new FFT3D<cpu>(max_frac_coord_coarse, comm__);
+        fft_coarse_ = new FFT3D<CPU>(max_frac_coord_coarse, comm__);
         
         #ifdef _GPU_
-        fft_gpu_coarse_ = new FFT3D<gpu>(fft_coarse_->grid_size(), 2);
+        fft_gpu_coarse_ = new FFT3D<GPU>(fft_coarse_->grid_size(), 2);
         #endif
     }
 
@@ -251,7 +251,7 @@ void Reciprocal_lattice::print_info()
                                                         fft_->grid_limits(1).first, fft_->grid_limits(1).second,
                                                         fft_->grid_limits(2).first, fft_->grid_limits(2).second);
     
-    if (esm_type_ == ultrasoft_pseudopotential)
+    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
     {
         printf("number of G-vectors on the coarse grid within the cutoff : %i\n", num_gvec_coarse());
         printf("FFT coarse grid size : %i %i %i   total : %i\n", fft_coarse_->size(0), fft_coarse_->size(1), fft_coarse_->size(2), fft_coarse_->size());

@@ -35,15 +35,15 @@ typedef std::complex<double> double_complex;
 
 enum spin_block_t {nm, uu, ud, dd, du};
 
-/// Type of the main processing unit
-enum processing_unit_t 
-{
-    /// use CPU
-    cpu, 
-
-    /// use GPU (with CUDA programming model)
-    gpu
-};
+//== /// Type of the main processing unit
+//== enum processing_unit_t 
+//== {
+//==     /// use CPU
+//==     CPU = 0, 
+//== 
+//==     /// use GPU (with CUDA programming model)
+//==     GPU = 1
+//== };
 
 enum lattice_t {direct, reciprocal};
 

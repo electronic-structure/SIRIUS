@@ -26,10 +26,10 @@
 #define __LAPACK_H__
 
 template<linalg_t> 
-class linalg;
+class lin_alg;
 
 template<> 
-class linalg<lapack>
+class lin_alg<lapack>
 {
     public:
 
@@ -79,7 +79,7 @@ class linalg<lapack>
 
 #ifdef _SCALAPACK_
 template<> 
-class linalg<scalapack>
+class lin_alg<scalapack>
 {
     private:
 

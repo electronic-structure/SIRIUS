@@ -41,13 +41,13 @@ class Band
 {
     private:
 
-        /// global set of parameters
+        /// Global set of parameters
         Global& parameters_;
 
         BLACS_grid const& blacs_grid_;
 
-        /// alias for FFT driver
-        FFT3D<cpu>* fft_;
+        /// Alias for FFT driver
+        FFT3D<CPU>* fft_;
         
         /// Non-zero Gaunt coefficients
         Gaunt_coefficients<double_complex>* gaunt_coefs_;

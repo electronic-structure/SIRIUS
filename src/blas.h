@@ -30,7 +30,7 @@ class blas;
 
 // CPU
 template<> 
-class blas<cpu>
+class blas<CPU>
 {
     public:
 
@@ -64,7 +64,7 @@ class blas<cpu>
 
 #ifdef _GPU_
 template<> 
-class blas<gpu>
+class blas<GPU>
 {
     private:
         static double_complex zone;

@@ -142,7 +142,7 @@ class Global
               cyclic_block_size_(64), 
               std_evp_solver_type_(ev_lapack),
               gen_evp_solver_type_(ev_lapack),
-              processing_unit_(cpu),
+              processing_unit_(CPU),
               smearing_width_(0.001), 
               esm_type_(full_potential_lapwlo),
               step_function_(nullptr),
@@ -159,8 +159,8 @@ class Global
             unit_cell_ = new Unit_cell(esm_type_, comm_);
 
             #ifdef _SCALAPACK_
-            if (linalg<scalapack>::cyclic_block_size() <= 0) // TODO: get rid of this
-                linalg<scalapack>::set_cyclic_block_size(cyclic_block_size_);
+            if (lin_alg<scalapack>::cyclic_block_size() <= 0) // TODO: get rid of this
+                lin_alg<scalapack>::set_cyclic_block_size(cyclic_block_size_);
             #endif
         }
             

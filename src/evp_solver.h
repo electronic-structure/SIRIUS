@@ -160,8 +160,8 @@ class standard_evp_scalapack: public standard_evp
             
             int32_t nn = std::max(matrix_size, std::max(nb, 2));
             
-            int32_t np0 = linalg<scalapack>::numroc(nn, nb, 0, 0, nprow);
-            int32_t mq0 = linalg<scalapack>::numroc(nn, nb, 0, 0, npcol);
+            int32_t np0 = lin_alg<scalapack>::numroc(nn, nb, 0, 0, nprow);
+            int32_t mq0 = lin_alg<scalapack>::numroc(nn, nb, 0, 0, npcol);
         
             work_sizes[0] = matrix_size + (np0 + mq0 + nb) * nb;
         
@@ -182,7 +182,7 @@ class standard_evp_scalapack: public standard_evp
               blacs_context_(blacs_grid__.context())
         {
             #ifdef _SCALAPACK_
-            block_size_ = linalg<scalapack>::cyclic_block_size();
+            block_size_ = lin_alg<scalapack>::cyclic_block_size();
             #endif
         }
 
@@ -191,11 +191,11 @@ class standard_evp_scalapack: public standard_evp
         {
 
             int desca[9];
-            linalg<scalapack>::descinit(desca, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+            lin_alg<scalapack>::descinit(desca, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, lda);
             
             int descz[9];
-            linalg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+            lin_alg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, ldz);
             
             std::vector<int32_t> work_sizes = get_work_sizes(matrix_size, block_size_, num_ranks_row_, num_ranks_col_, 
@@ -271,7 +271,7 @@ class generalized_evp_lapack: public generalized_evp
         {
             assert(nevec <= matrix_size);
 
-            int nb = linalg<lapack>::ilaenv(1, "ZHETRD", "U", matrix_size, 0, 0, 0);
+            int nb = lin_alg<lapack>::ilaenv(1, "ZHETRD", "U", matrix_size, 0, 0, 0);
             int lwork = (nb + 1) * matrix_size;
             int lrwork = 7 * matrix_size;
             int liwork = 5 * matrix_size;
@@ -340,20 +340,20 @@ class generalized_evp_scalapack: public generalized_evp
             int32_t np = nprow * npcol;
 
             // due to the mess in the documentation, take the maximum of np0, nq0, mq0
-            int32_t nmpq0 = std::max(linalg<scalapack>::numroc(nn, nb, 0, 0, nprow), 
-                                  std::max(linalg<scalapack>::numroc(nn, nb, 0, 0, npcol),
-                                           linalg<scalapack>::numroc(nmax3, nb, 0, 0, npcol))); 
+            int32_t nmpq0 = std::max(lin_alg<scalapack>::numroc(nn, nb, 0, 0, nprow), 
+                                  std::max(lin_alg<scalapack>::numroc(nn, nb, 0, 0, npcol),
+                                           lin_alg<scalapack>::numroc(nmax3, nb, 0, 0, npcol))); 
 
-            int32_t anb = linalg<scalapack>::pjlaenv(blacs_context, 3, "PZHETTRD", "L", 0, 0, 0, 0);
+            int32_t anb = lin_alg<scalapack>::pjlaenv(blacs_context, 3, "PZHETTRD", "L", 0, 0, 0, 0);
             int32_t sqnpc = (int32_t)pow(double(np), 0.5);
-            int32_t nps = std::max(linalg<scalapack>::numroc(nn, 1, 0, 0, sqnpc), 2 * anb);
+            int32_t nps = std::max(lin_alg<scalapack>::numroc(nn, 1, 0, 0, sqnpc), 2 * anb);
 
             work_sizes[0] = matrix_size + (2 * nmpq0 + nb) * nb;
             work_sizes[0] = std::max(work_sizes[0], matrix_size + 2 * (anb + 1) * (4 * nps + 2) + (nps + 1) * nps);
             work_sizes[0] = std::max(work_sizes[0], 3 * nmpq0 * nb + nb * nb);
 
             work_sizes[1] = 4 * matrix_size + std::max(5 * matrix_size, nmpq0 * nmpq0) + 
-                            linalg<scalapack>::iceil(neig, np) * nn + neig * matrix_size;
+                            lin_alg<scalapack>::iceil(neig, np) * nn + neig * matrix_size;
 
             int32_t nnp = std::max(matrix_size, std::max(np + 1, 4));
             work_sizes[2] = 6 * nnp;
@@ -371,7 +371,7 @@ class generalized_evp_scalapack: public generalized_evp
               abstol_(abstol__)
         {
             #ifdef _SCALAPACK_
-            block_size_ = linalg<scalapack>::cyclic_block_size();
+            block_size_ = lin_alg<scalapack>::cyclic_block_size();
             #endif
         }
 
@@ -383,15 +383,15 @@ class generalized_evp_scalapack: public generalized_evp
             assert(nevec <= matrix_size);
             
             int32_t desca[9];
-            linalg<scalapack>::descinit(desca, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+            lin_alg<scalapack>::descinit(desca, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, lda);
 
             int32_t descb[9];
-            linalg<scalapack>::descinit(descb, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+            lin_alg<scalapack>::descinit(descb, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, ldb); 
 
             int32_t descz[9];
-            linalg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+            lin_alg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, ldz); 
 
             std::vector<int32_t> work_sizes = get_work_sizes(matrix_size, block_size_, num_ranks_row_, num_ranks_col_, 
@@ -496,7 +496,7 @@ class generalized_evp_rs_gpu: public generalized_evp
               blacs_context_(blacs_grid__.context())
         {
             #ifdef _SCALAPACK_
-            block_size_ = linalg<scalapack>::cyclic_block_size();
+            block_size_ = lin_alg<scalapack>::cyclic_block_size();
             #endif
         }
 
@@ -509,17 +509,17 @@ class generalized_evp_rs_gpu: public generalized_evp
             assert(nevec <= matrix_size);
             
             int32_t desca[9];
-            linalg<scalapack>::descinit(desca, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+            lin_alg<scalapack>::descinit(desca, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, lda);
 
             int32_t descb[9];
-            linalg<scalapack>::descinit(descb, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+            lin_alg<scalapack>::descinit(descb, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, ldb); 
 
             mdarray<double_complex, 2> ztmp(nullptr, num_rows_loc, num_cols_loc);
             ztmp.allocate(1);
             int32_t descz[9];
-            linalg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+            lin_alg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, num_rows_loc); 
             
             std::vector<double> eval_tmp(matrix_size);
@@ -533,7 +533,7 @@ class generalized_evp_rs_gpu: public generalized_evp
                 error_local(__FILE__, __LINE__, s);
             }
 
-            for (int i = 0; i < linalg<scalapack>::numroc(nevec, block_size_, rank_col_, 0, num_ranks_col_); i++)
+            for (int i = 0; i < lin_alg<scalapack>::numroc(nevec, block_size_, rank_col_, 0, num_ranks_col_); i++)
                 memcpy(&z[ldz * i], &ztmp(0, i), num_rows_loc * sizeof(double_complex));
 
             memcpy(eval, &eval_tmp[0], nevec * sizeof(double));
@@ -572,7 +572,7 @@ class generalized_evp_rs_cpu: public generalized_evp
               blacs_context_(blacs_grid__.context())
         {
             #ifdef _SCALAPACK_
-            block_size_ = linalg<scalapack>::cyclic_block_size();
+            block_size_ = lin_alg<scalapack>::cyclic_block_size();
             #endif
         }
 
@@ -585,16 +585,16 @@ class generalized_evp_rs_cpu: public generalized_evp
             assert(nevec <= matrix_size);
             
             int32_t desca[9];
-            linalg<scalapack>::descinit(desca, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+            lin_alg<scalapack>::descinit(desca, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, lda);
 
             int32_t descb[9];
-            linalg<scalapack>::descinit(descb, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+            lin_alg<scalapack>::descinit(descb, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, ldb); 
 
             mdarray<double_complex, 2> ztmp(num_rows_loc, num_cols_loc);
             int32_t descz[9];
-            linalg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+            lin_alg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, num_rows_loc); 
             
             std::vector<double> eval_tmp(matrix_size);
@@ -608,7 +608,7 @@ class generalized_evp_rs_cpu: public generalized_evp
                 error_local(__FILE__, __LINE__, s);
             }
 
-            for (int i = 0; i < linalg<scalapack>::numroc(nevec, block_size_, rank_col_, 0, num_ranks_col_); i++)
+            for (int i = 0; i < lin_alg<scalapack>::numroc(nevec, block_size_, rank_col_, 0, num_ranks_col_); i++)
                 memcpy(&z[ldz * i], &ztmp(0, i), num_rows_loc * sizeof(double_complex));
 
             memcpy(eval, &eval_tmp[0], nevec * sizeof(double));
@@ -652,7 +652,7 @@ class generalized_evp_elpa1: public generalized_evp
               comm_col_(blacs_grid__.comm_col())
         {
             #ifdef _SCALAPACK_
-            block_size_ = linalg<scalapack>::cyclic_block_size();
+            block_size_ = lin_alg<scalapack>::cyclic_block_size();
             #endif
         }
         
@@ -681,23 +681,23 @@ class generalized_evp_elpa1: public generalized_evp
                                             (int32_t)1);
 
             int32_t descc[9];
-            linalg<scalapack>::descinit(descc, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+            lin_alg<scalapack>::descinit(descc, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, lda);
 
-            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, tmp1.ptr(), 1, 1, descc, 
+            lin_alg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, tmp1.ptr(), 1, 1, descc, 
                                        complex_zero, tmp2.ptr(), 1, 1, descc);
 
             FORTRAN(elpa_mult_ah_b_complex)("U", "U", &matrix_size, &matrix_size, b, &ldb, tmp2.ptr(), &num_rows_loc, 
                                             &block_size_, &mpi_comm_rows, &mpi_comm_cols, a, &lda, (int32_t)1, 
                                             (int32_t)1);
 
-            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, a, 1, 1, descc, complex_zero, 
+            lin_alg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, a, 1, 1, descc, complex_zero, 
                                        tmp1.ptr(), 1, 1, descc);
 
             for (int i = 0; i < num_cols_loc; i++)
             {
-                int32_t n_col = linalg<scalapack>::indxl2g(i + 1, block_size_, rank_col_, 0, num_ranks_col_);
-                int32_t n_row = linalg<scalapack>::numroc(n_col, block_size_, rank_row_, 0, num_ranks_row_);
+                int32_t n_col = lin_alg<scalapack>::indxl2g(i + 1, block_size_, rank_col_, 0, num_ranks_col_);
+                int32_t n_row = lin_alg<scalapack>::numroc(n_col, block_size_, rank_row_, 0, num_ranks_row_);
                 for (int j = n_row; j < num_rows_loc; j++) 
                 {
                     assert(j < num_rows_loc);
@@ -714,7 +714,7 @@ class generalized_evp_elpa1: public generalized_evp
             delete t;
 
             t = new sirius::Timer("elpa::bt");
-            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, b, 1, 1, descc, complex_zero, 
+            lin_alg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, b, 1, 1, descc, complex_zero, 
                                        tmp2.ptr(), 1, 1, descc);
 
             FORTRAN(elpa_mult_ah_b_complex)("L", "N", &matrix_size, &nevec, tmp2.ptr(), &num_rows_loc, tmp1.ptr(), 
@@ -765,7 +765,7 @@ class generalized_evp_elpa2: public generalized_evp
               comm_all_(blacs_grid__.comm())
         {
             #ifdef _SCALAPACK_
-            block_size_ = linalg<scalapack>::cyclic_block_size();
+            block_size_ = lin_alg<scalapack>::cyclic_block_size();
             #endif
         }
         
@@ -795,23 +795,23 @@ class generalized_evp_elpa2: public generalized_evp
                                             (int32_t)1);
 
             int32_t descc[9];
-            linalg<scalapack>::descinit(descc, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+            lin_alg<scalapack>::descinit(descc, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
                                         blacs_context_, lda);
 
-            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, tmp1.ptr(), 1, 1, descc, 
+            lin_alg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, tmp1.ptr(), 1, 1, descc, 
                                        complex_zero, tmp2.ptr(), 1, 1, descc);
 
             FORTRAN(elpa_mult_ah_b_complex)("U", "U", &matrix_size, &matrix_size, b, &ldb, tmp2.ptr(), &num_rows_loc, 
                                             &block_size_, &mpi_comm_rows, &mpi_comm_cols, a, &lda, (int32_t)1, 
                                             (int32_t)1);
 
-            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, a, 1, 1, descc, complex_zero, 
+            lin_alg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, a, 1, 1, descc, complex_zero, 
                                        tmp1.ptr(), 1, 1, descc);
 
             for (int i = 0; i < num_cols_loc; i++)
             {
-                int32_t n_col = linalg<scalapack>::indxl2g(i + 1, block_size_, rank_col_, 0, num_ranks_col_);
-                int32_t n_row = linalg<scalapack>::numroc(n_col, block_size_, rank_row_, 0, num_ranks_row_);
+                int32_t n_col = lin_alg<scalapack>::indxl2g(i + 1, block_size_, rank_col_, 0, num_ranks_col_);
+                int32_t n_row = lin_alg<scalapack>::numroc(n_col, block_size_, rank_row_, 0, num_ranks_row_);
                 for (int j = n_row; j < num_rows_loc; j++) 
                 {
                     assert(j < num_rows_loc);
@@ -828,7 +828,7 @@ class generalized_evp_elpa2: public generalized_evp
             delete t;
 
             t = new sirius::Timer("elpa::bt");
-            linalg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, b, 1, 1, descc, complex_zero, 
+            lin_alg<scalapack>::pztranc(matrix_size, matrix_size, complex_one, b, 1, 1, descc, complex_zero, 
                                        tmp2.ptr(), 1, 1, descc);
 
             FORTRAN(elpa_mult_ah_b_complex)("L", "N", &matrix_size, &nevec, tmp2.ptr(), &num_rows_loc, tmp1.ptr(), 

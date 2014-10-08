@@ -43,7 +43,7 @@ class BLACS_grid
             rank_row_ = mpi_grid_.coordinate(1);
 
             /* create handler first */
-            blacs_handler_ = linalg<scalapack>::create_blacs_handler(comm_.mpi_comm());
+            blacs_handler_ = lin_alg<scalapack>::create_blacs_handler(comm_.mpi_comm());
 
             mdarray<int, 2> map_ranks(num_ranks_row__, num_ranks_col__);
             for (int i = 0; i < num_ranks_row__; i++)
@@ -58,11 +58,11 @@ class BLACS_grid
 
             /* create context */
             blacs_context_ = blacs_handler_;
-            linalg<scalapack>::gridmap(&blacs_context_, map_ranks.ptr(), map_ranks.ld(), num_ranks_row__, num_ranks_col__);
+            lin_alg<scalapack>::gridmap(&blacs_context_, map_ranks.ptr(), map_ranks.ld(), num_ranks_row__, num_ranks_col__);
 
             /* check the grid */
             int nrow1, ncol1, irow1, icol1;
-            linalg<scalapack>::gridinfo(blacs_context_, &nrow1, &ncol1, &irow1, &icol1);
+            lin_alg<scalapack>::gridinfo(blacs_context_, &nrow1, &ncol1, &irow1, &icol1);
 
             if (rank_row_ != irow1 || rank_col_ != icol1 || num_ranks_row__ != nrow1 || num_ranks_col__ != ncol1) 
             {
@@ -77,8 +77,8 @@ class BLACS_grid
 
         ~BLACS_grid()
         {
-            linalg<scalapack>::gridexit(blacs_context_);
-            linalg<scalapack>::free_blacs_handler(blacs_handler_);
+            lin_alg<scalapack>::gridexit(blacs_context_);
+            lin_alg<scalapack>::free_blacs_handler(blacs_handler_);
         }
 
         inline int context() const

@@ -75,12 +75,12 @@ void K_set::find_eigen_states(Potential* potential, bool precompute)
     {   
         switch (parameters_.processing_unit())
         {
-            case cpu:
+            case CPU:
             {
                 potential->generate_d_mtrx();
                 break;
             }
-            case gpu:
+            case GPU:
             {
                 #ifdef _GPU_
                 potential->generate_d_mtrx_gpu();

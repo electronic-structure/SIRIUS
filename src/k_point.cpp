@@ -295,7 +295,7 @@ void K_point::update()
 //==     }
 //== 
 //==     mdarray<double_complex, 2> z2(sht->num_points(), num_gkvec_loc);
-//==     blas<cpu>::gemm(0, 2, sht->num_points(), num_gkvec_loc, type->mt_aw_basis_size(), z1.ptr(), z1.ld(),
+//==     blas<CPU>::gemm(0, 2, sht->num_points(), num_gkvec_loc, type->mt_aw_basis_size(), z1.ptr(), z1.ld(),
 //==                     alm.ptr(), alm.ld(), z2.ptr(), z2.ld());
 //== 
 //==     vector3d<double> vc = parameters_.unit_cell()->get_cartesian_coordinates(parameters_.unit_cell()->atom(ia)->position());
@@ -345,7 +345,7 @@ void K_point::update()
 //==         generate_matching_coefficients<true>(num_gkvec_row(), ia, alm);
 //==         alm.copy_to_device(); // TODO: copy only necessary fraction of the data
 //== 
-//==         blas<gpu>::gemm(2, 0, type->mt_aw_basis_size(), num_fv_loc, num_gkvec_row(), 
+//==         blas<GPU>::gemm(2, 0, type->mt_aw_basis_size(), num_fv_loc, num_gkvec_row(), 
 //==                         alm.ptr_device(), alm.ld(), 
 //==                         fv_eigen_vectors_gpu_.ptr_device(), fv_eigen_vectors_gpu_.ld(), 
 //==                         fv_states_col_gpu_.ptr_device(atom->offset_wf(), 0), fv_states_col_gpu_.ld());
@@ -380,7 +380,7 @@ void K_point::generate_fv_states()
 
         dmatrix<double_complex> aw_coefs_panel(naw, parameters_.num_fv_states(), blacs_grid_);
         /* gnerate aw expansion coefficients */
-        blas<cpu>::gemm(1, 0, naw, parameters_.num_fv_states(), num_gkvec(), complex_one, alm_panel, 
+        blas<CPU>::gemm(1, 0, naw, parameters_.num_fv_states(), num_gkvec(), complex_one, alm_panel, 
                         fv_eigen_vectors_panel_, complex_zero, aw_coefs_panel); 
         alm_panel.deallocate(); // we don't need alm any more
 
@@ -450,14 +450,14 @@ void K_point::generate_spinor_wave_functions()
                 if (parameters_.num_mag_dims() != 3)
                 {
                     /* multiply up block for first half of the bands, dn block for second half of the bands */
-                    blas<cpu>::gemm(0, 0, wf_size(), nfv, nfv, fv_states_.ptr(), fv_states_.ld(), 
+                    blas<CPU>::gemm(0, 0, wf_size(), nfv, nfv, fv_states_.ptr(), fv_states_.ld(), 
                                     &sv_eigen_vectors_[ispn](0, 0), sv_eigen_vectors_[ispn].ld(), 
                                     &spinor_wave_functions_(0, ispn * nfv, ispn), spinor_wave_functions_.ld());
                 }
                 else
                 {
                     /* multiply up block and then dn block for all bands */
-                    blas<cpu>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states_.ptr(), fv_states_.ld(), 
+                    blas<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states_.ptr(), fv_states_.ld(), 
                                     &sv_eigen_vectors_[0](ispn * nfv, 0), sv_eigen_vectors_[0].ld(), 
                                     &spinor_wave_functions_(0, 0, ispn), spinor_wave_functions_.ld());
                 }
@@ -476,14 +476,14 @@ void K_point::generate_spinor_wave_functions()
                 if (parameters_.num_mag_dims() != 3)
                 {
                     /* multiply up block for first half of the bands, dn block for second half of the bands */
-                    blas<cpu>::gemm(0, 0, wf_size(), nfv, nfv, complex_one, fv_states_panel_, 0, 0, 
+                    blas<CPU>::gemm(0, 0, wf_size(), nfv, nfv, complex_one, fv_states_panel_, 0, 0, 
                                     sv_eigen_vectors_[ispn], 0, 0, complex_zero, spin_component_panel_, 0, ispn * nfv);
                     
                 }
                 else
                 {
                     /* multiply up block and then dn block for all bands */
-                    blas<cpu>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, complex_one, fv_states_panel_, 0, 0, 
+                    blas<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, complex_one, fv_states_panel_, 0, 0, 
                                     sv_eigen_vectors_[0], ispn * nfv, 0, complex_zero, spin_component_panel_, 0, 0);
 
                 }
@@ -509,7 +509,7 @@ void K_point::generate_spinor_wave_functions()
     //==             /** \todo generate unconjugated coefficients for better readability */
     //==             generate_matching_coefficients<true>(num_gkvec_row(), ia, alm);
 
-    //==             blas<cpu>::gemm(2, 0, type->mt_aw_basis_size(), ncol, num_gkvec_row(), &alm(0, 0), alm.ld(), 
+    //==             blas<CPU>::gemm(2, 0, type->mt_aw_basis_size(), ncol, num_gkvec_row(), &alm(0, 0), alm.ld(), 
     //==                             &fd_eigen_vectors_(0, ispn * ncol), fd_eigen_vectors_.ld(), 
     //==                             &spinor_wave_functions_(atom->offset_wf(), ispn, ispn * ncol), wfld); 
     //==         }
@@ -759,12 +759,12 @@ void K_point::distribute_block_cyclic()
         gklo_basis_descriptors_col_[i] = gklo_basis_descriptors_[spl_col[i]];
     
     #ifdef _SCALAPACK_
-    int bs = linalg<scalapack>::cyclic_block_size();
-    int nr = linalg<scalapack>::numroc(gklo_basis_size(), bs, rank_row(), 0, num_ranks_row());
+    int bs = lin_alg<scalapack>::cyclic_block_size();
+    int nr = lin_alg<scalapack>::numroc(gklo_basis_size(), bs, rank_row(), 0, num_ranks_row());
     
     if (nr != gklo_basis_size_row()) error_local(__FILE__, __LINE__, "numroc returned a different local row size");
 
-    int nc = linalg<scalapack>::numroc(gklo_basis_size(), bs, rank_col(), 0, num_ranks_col());
+    int nc = lin_alg<scalapack>::numroc(gklo_basis_size(), bs, rank_col(), 0, num_ranks_col());
     
     if (nc != gklo_basis_size_col()) error_local(__FILE__, __LINE__, "numroc returned a different local column size");
     #endif
@@ -902,7 +902,7 @@ void K_point::distribute_block_cyclic()
 //==     //                for (int ir = 0; ir < parameters_.atom(ia)->num_mt_points(); ir++)
 //==     //                    zm(ir, igkloc) = z2 * (*sbessel_[igkloc])(ir, l, iat);
 //==     //            }
-//==     //            blas<cpu>::gemm(0, 2, parameters_.atom(ia)->num_mt_points(), (2 * l + 1), num_gkvec_row(),
+//==     //            blas<CPU>::gemm(0, 2, parameters_.atom(ia)->num_mt_points(), (2 * l + 1), num_gkvec_row(),
 //==     //                            &zm(0, 0), zm.ld(), &gkvec_ylm_(Utils::lm_by_l_m(l, -l), 0), gkvec_ylm_.ld(), 
 //==     //                            &fylm(0, Utils::lm_by_l_m(l, -l), ia), fylm.ld());
 //==     //        }

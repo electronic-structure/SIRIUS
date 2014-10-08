@@ -24,7 +24,7 @@
 
 /// GPU specialization of FFT3D class.
 template<> 
-class FFT3D<gpu>
+class FFT3D<GPU>
 {
     private:
         
@@ -42,7 +42,7 @@ class FFT3D<gpu>
             : grid_size_(grid_size__),
               num_fft_(num_fft__)
         {
-            Timer t("sirius::FFT3D<gpu>::FFT3D");
+            Timer t("sirius::FFT3D<GPU>::FFT3D");
             cufft_create_plan_handle(&plan_);
             cufft_create_batch_plan(plan_, grid_size_[0], grid_size_[1], grid_size_[2], num_fft_);
             work_size_ = cufft_get_size(grid_size_[0], grid_size_[1], grid_size_[2], num_fft_);

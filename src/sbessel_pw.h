@@ -197,7 +197,7 @@ class sbessel_approx
                             }
                         }
                     }
-                    linalg<lapack>::gesv(n, (int)q__.size(), A.ptr(), A.ld(), &coeffs_(0, 0, l, iat), coeffs_.ld());
+                    lin_alg<lapack>::gesv(n, (int)q__.size(), A.ptr(), A.ld(), &coeffs_(0, 0, l, iat), coeffs_.ld());
                 }
             }
         }

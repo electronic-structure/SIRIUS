@@ -54,12 +54,12 @@ class Reciprocal_lattice
         double gk_cutoff_;
         
         /// FFT wrapper
-        FFT3D<cpu>* fft_;
-        FFT3D<cpu>* fft_coarse_;
+        FFT3D<CPU>* fft_;
+        FFT3D<CPU>* fft_coarse_;
 
         #ifdef _GPU_
-        FFT3D<gpu>* fft_gpu_;
-        FFT3D<gpu>* fft_gpu_coarse_;
+        FFT3D<GPU>* fft_gpu_;
+        FFT3D<GPU>* fft_gpu_coarse_;
         #endif
 
         /// list of G-vector fractional coordinates
@@ -182,23 +182,23 @@ class Reciprocal_lattice
             return gvec_shell_[ig];
         }
 
-        inline FFT3D<cpu>* fft()
+        inline FFT3D<CPU>* fft()
         {
             return fft_;
         }
 
-        inline FFT3D<cpu>* fft_coarse()
+        inline FFT3D<CPU>* fft_coarse()
         {
             return fft_coarse_;
         }
 
         #ifdef _GPU_
-        inline FFT3D<gpu>* fft_gpu()
+        inline FFT3D<GPU>* fft_gpu()
         {
             return fft_gpu_;
         }
 
-        inline FFT3D<gpu>* fft_gpu_coarse()
+        inline FFT3D<GPU>* fft_gpu_coarse()
         {
             return fft_gpu_coarse_;
         }

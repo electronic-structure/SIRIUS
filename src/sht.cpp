@@ -32,7 +32,7 @@ void SHT::backward_transform<double>(int ld, double* flm, int nr, int lmmax, dou
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    blas<cpu>::gemm(1, 0, num_points_, nr, lmmax, &rlm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
+    blas<CPU>::gemm(1, 0, num_points_, nr, lmmax, &rlm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
 }
 
 template <>
@@ -40,7 +40,7 @@ void SHT::backward_transform<double_complex>(int ld, double_complex* flm, int nr
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    blas<cpu>::gemm(1, 0, num_points_, nr, lmmax, &ylm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
+    blas<CPU>::gemm(1, 0, num_points_, nr, lmmax, &ylm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
 }
 
 template <>
@@ -48,7 +48,7 @@ void SHT::forward_transform<double>(double* ftp, int nr, int lmmax, int ld, doub
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    blas<cpu>::gemm(1, 0, lmmax, nr, num_points_, &rlm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
+    blas<CPU>::gemm(1, 0, lmmax, nr, num_points_, &rlm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
 }
 
 template <>
@@ -56,7 +56,7 @@ void SHT::forward_transform<double_complex>(double_complex* ftp, int nr, int lmm
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    blas<cpu>::gemm(1, 0, lmmax, nr, num_points_, &ylm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
+    blas<CPU>::gemm(1, 0, lmmax, nr, num_points_, &ylm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
 }
 
 /** Specialization for real Gaunt coefficients between three complex spherical harmonics
@@ -172,8 +172,8 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
 
     if (mesh_type_ == 1)
     {
-        linalg<lapack>::invert_ge(&ylm_forward_(0, 0), lmmax_);
-        linalg<lapack>::invert_ge(&rlm_forward_(0, 0), lmmax_);
+        lin_alg<lapack>::invert_ge(&ylm_forward_(0, 0), lmmax_);
+        lin_alg<lapack>::invert_ge(&rlm_forward_(0, 0), lmmax_);
     }
     
     if (debug_level > 0)

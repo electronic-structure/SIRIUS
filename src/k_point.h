@@ -45,7 +45,7 @@ class K_point
         BLACS_grid const& blacs_grid_;
 
         /// Alias for FFT driver.
-        FFT3D<cpu>* fft_;
+        FFT3D<CPU>* fft_;
 
         /// Weight of k-point.
         double weight_;

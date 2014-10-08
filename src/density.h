@@ -117,7 +117,7 @@ class Density
         Global& parameters_;
 
         /// alias for FFT driver
-        FFT3D<cpu>* fft_;
+        FFT3D<CPU>* fft_;
         
         /// pointer to charge density
         /** In the case of full-potential calculation this is the full (valence + core) electron charge density.

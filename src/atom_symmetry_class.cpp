@@ -180,7 +180,7 @@ void Atom_symmetry_class::generate_lo_radial_functions()
                 double b[] = {0.0, 0.0, 0.0, 0.0};
                 b[num_rs - 1] = 1.0;
 
-                int info = linalg<lapack>::gesv(num_rs, 1, &a[0][0], 4, b, 4);
+                int info = lin_alg<lapack>::gesv(num_rs, 1, &a[0][0], 4, b, 4);
 
                 if (info) 
                 {
