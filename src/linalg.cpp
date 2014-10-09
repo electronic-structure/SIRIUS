@@ -276,3 +276,227 @@ extern "C" int pilaenv_(int* ctxt, char* prec)
 }
 #endif
 
+
+
+
+
+
+
+
+
+
+
+// C = alpha * op(A) * op(B) + beta * op(C), double
+template<> 
+void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, ftn_double alpha,
+                                   ftn_double* A, ftn_int lda, ftn_double* B, ftn_int ldb, ftn_double beta,
+                                   ftn_double* C, ftn_int ldc)
+{
+    const char *trans[] = {"N", "T", "C"};
+
+    FORTRAN(dgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, A, &lda, B, &ldb, &beta, C, &ldc,
+                   (ftn_len)1, (ftn_len)1);
+}
+
+// C = alpha * op(A) * op(B) + beta * op(C), double_complex
+template<> 
+void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+                                           ftn_double_complex alpha, ftn_double_complex* A, ftn_int lda,
+                                           ftn_double_complex* B, ftn_int ldb, ftn_double_complex beta,
+                                           ftn_double_complex* C, ftn_int ldc)
+{
+    const char *trans[] = {"N", "T", "C"};
+
+    FORTRAN(zgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, A, &lda, B, &ldb, &beta, C, &ldc,
+                   (ftn_len)1, (ftn_len)1);
+}
+
+// C = op(A) * op(B), double
+template<> 
+void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, ftn_double* A, ftn_int lda, 
+                                   ftn_double* B, ftn_int ldb, ftn_double* C, ftn_int ldc)
+{
+    gemm(transa, transb, m, n, k, 1.0, A, lda, B, ldb, 0.0, C, ldc);
+}
+
+// C = op(A) * op(B), double_complex
+template<> 
+void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+                                           ftn_double_complex* A, ftn_int lda, ftn_double_complex* B, ftn_int ldb,
+                                           ftn_double_complex* C, ftn_int ldc)
+{
+    gemm(transa, transb, m, n, k, ftn_double_complex(1, 0), A, lda, B, ldb, ftn_double_complex(0, 0), C, ldc);
+}
+
+// C = alpha * op(A) * op(B) + beta * op(C), double
+template<> 
+void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, ftn_double alpha,
+                                   matrix<ftn_double>& A, matrix<ftn_double>& B, ftn_double beta, matrix<ftn_double>& C)
+{
+    gemm(transa, transb, m, n, k, alpha, A.at<CPU>(), A.ld(), B.at<CPU>(), B.ld(), beta, C.at<CPU>(), C.ld());
+}
+
+// C = alpha * op(A) * op(B) + beta * op(C), double_complex
+template<> 
+void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+                                           ftn_double_complex alpha, matrix<ftn_double_complex>& A,
+                                           matrix<ftn_double_complex>& B, ftn_double_complex beta,
+                                           matrix<ftn_double_complex>& C)
+{
+    gemm(transa, transb, m, n, k, alpha, A.at<CPU>(), A.ld(), B.at<CPU>(), B.ld(), beta, C.at<CPU>(), C.ld());
+}
+
+// C = op(A) * op(B), double
+template<> 
+void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, matrix<ftn_double>& A, 
+                                   matrix<ftn_double>& B, matrix<ftn_double>& C)
+{
+    gemm(transa, transb, m, n, k, 1.0, A, B, 0.0, C);
+}
+
+// C = op(A) * op(B), double_complex
+template<> 
+void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+                                           matrix<ftn_double_complex>& A, matrix<ftn_double_complex>& B,
+                                           matrix<ftn_double_complex>& C)
+{
+    gemm(transa, transb, m, n, k, ftn_double_complex(1, 0), A, B, ftn_double_complex(0, 0), C);
+}
+
+// LU factorization, double
+template<> 
+ftn_int linalg<CPU>::getrf<ftn_double>(ftn_int m, ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv)
+{
+    ftn_int info;
+    FORTRAN(dgetrf)(&m, &n, A, &lda, ipiv, &info);
+    return info;
+}
+
+// LU factorization, double_complex
+template<> 
+ftn_int linalg<CPU>::getrf<ftn_double_complex>(ftn_int m, ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv)
+{
+    ftn_int info;
+    FORTRAN(zgetrf)(&m, &n, A, &lda, ipiv, &info);
+    return info;
+}
+
+// Inversion of LU factorized matrix, double
+template<> 
+ftn_int linalg<CPU>::getri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv)
+{
+    ftn_int nb = ilaenv(1, "dgetri", "U", n, -1, -1, -1);
+    ftn_int lwork = n * nb;
+    std::vector<ftn_double> work(lwork);
+
+    int32_t info;
+    FORTRAN(dgetri)(&n, A, &lda, ipiv, &work[0], &lwork, &info);
+    return info;
+}
+
+// Inversion of LU factorized matrix, double_complex
+template<> 
+ftn_int linalg<CPU>::getri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv)
+{
+    ftn_int nb = ilaenv(1, "zgetri", "U", n, -1, -1, -1);
+    ftn_int lwork = n * nb;
+    std::vector<ftn_double_complex> work(lwork);
+
+    int32_t info;
+    FORTRAN(zgetri)(&n, A, &lda, ipiv, &work[0], &lwork, &info);
+    return info;
+}
+
+// Inversion of general matrix, double
+template <>
+void linalg<CPU>::geinv<ftn_double>(ftn_int n, matrix<ftn_double>& A)
+{
+    std::vector<int> ipiv(n);
+    int info = getrf(n, n, A.at<CPU>(), A.ld(), &ipiv[0]);
+    if (info)
+    {
+        printf("getrf returned %i\n", info);
+        exit(-1);
+    }
+
+    info = getri(n, A.at<CPU>(), A.ld(), &ipiv[0]);
+    if (info)
+    {
+        printf("getri returned %i\n", info);
+        exit(-1);
+    }
+}
+
+// Inversion of general matrix, double_complex
+template <>
+void linalg<CPU>::geinv<ftn_double_complex>(ftn_int n, matrix<ftn_double_complex>& A)
+{
+    std::vector<int> ipiv(n);
+    int info = getrf(n, n, A.at<CPU>(), A.ld(), &ipiv[0]);
+    if (info)
+    {
+        printf("getrf returned %i\n", info);
+        exit(-1);
+    }
+
+    info = getri(n, A.at<CPU>(), A.ld(), &ipiv[0]);
+    if (info)
+    {
+        printf("getri returned %i\n", info);
+        exit(-1);
+    }
+}
+
+template<>
+ftn_int linalg<CPU>::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A,
+                                                      ftn_int ia, ftn_int ja, ftn_int* ipiv)
+{
+    ftn_int info;
+    ia++;
+    ja++;
+    FORTRAN(pzgetrf)(&m, &n, A.at<CPU>(), &ia, &ja, A.descriptor(), ipiv, &info);
+    return info;
+}
+
+template<>
+ftn_int linalg<CPU>::getri<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
+                                               ftn_int* ipiv)
+{
+    ftn_int info;
+    ia++;
+    ja++;
+
+    ftn_int lwork = numroc(n + (ia - 1) % A.bs(), A.bs(), A.rank_row(), 0, A.num_ranks_row()) * A.bs();
+    std::vector<ftn_double_complex> work(lwork);
+
+    ftn_int liwork, i;
+    i = -1;
+
+    FORTRAN(pzgetri)(&n, A.at<CPU>(), &ia, &ja, A.descriptor(), &ipiv[0], &work[0], &i, &liwork, &i, &info);
+    std::cout << lwork << " " << work[0] << std::endl;
+    std::vector<ftn_int> iwork(liwork);
+
+    FORTRAN(pzgetri)(&n, A.at<CPU>(), &ia, &ja, A.descriptor(), &ipiv[0], &work[0], &lwork, &iwork[0], &liwork, &info);
+
+    return info;
+}
+
+template<>
+void linalg<CPU>::geinv<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A)
+{
+    std::vector<ftn_int> ipiv(A.num_rows_local() + A.bs());
+    ftn_int info = getrf(n, n, A, 0, 0, &ipiv[0]);
+    if (info)
+    {
+        printf("getrf returned %i\n", info);
+        exit(-1);
+    }
+
+    info = getri(n, A, 0, 0, &ipiv[0]);
+    if (info)
+    {
+        printf("getri returned %i\n", info);
+        exit(-1);
+    }
+}
+

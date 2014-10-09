@@ -479,6 +479,12 @@ class mdarray_base
         }
 
         template <processing_unit_t pu>
+        inline T const* at() const
+        {
+            return at_idx<pu>(0);
+        }
+
+        template <processing_unit_t pu>
         inline T* at(int64_t const i0)
         {
             return at_idx<pu>(idx(i0));

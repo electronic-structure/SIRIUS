@@ -25,6 +25,8 @@
 #ifndef __LAPACK_H__
 #define __LAPACK_H__
 
+#include <vector>
+
 template<linalg_t> 
 class lin_alg;
 

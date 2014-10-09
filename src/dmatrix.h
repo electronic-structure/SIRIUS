@@ -70,7 +70,7 @@ class dmatrix
         mdarray<T, 1> ata_buffer_;
 
         /// Matrix descriptor.
-        int descriptor_[9];
+        ftn_int descriptor_[9];
 
         void init()
         {
@@ -671,9 +671,24 @@ class dmatrix
             return spl_col_;
         }
 
+        inline int rank_row() const
+        {
+            return rank_row_;
+        }
+
+        inline int num_ranks_row() const
+        {
+            return num_ranks_row_;
+        }
+
         inline int rank_col() const
         {
             return rank_col_;
+        }
+
+        inline int num_ranks_col() const
+        {
+            return num_ranks_col_;
         }
         
         template <processing_unit_t pu>
@@ -723,6 +738,12 @@ class dmatrix
             lin_alg<scalapack>::pztranu(m, n, double_complex(1, 0), a.ptr(), ia, ja, a.descriptor(), double_complex(0, 0), 
                                        c.ptr(), ic, jc, c.descriptor());
         }
+
+        inline int bs() const
+        {
+            return bs_;
+        }
+
 };
 
 #endif // __DMATRIX_H__
