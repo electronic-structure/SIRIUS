@@ -326,7 +326,7 @@ class dmatrix
             matrix_local_.zero();
         }
 
-        inline matrix<double_complex>& panel()
+        inline matrix<T>& panel()
         {
             return matrix_local_;
         }

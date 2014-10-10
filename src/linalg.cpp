@@ -278,13 +278,28 @@ extern "C" int pilaenv_(int* ctxt, char* prec)
 
 
 
+ftn_double_complex linalg_base::zone = double_complex(1, 0);
+ftn_double_complex linalg_base::zzero = double_complex(0, 0);
 
 
+template<> 
+void linalg<CPU>::hemm<ftn_double_complex>(int side, int uplo, ftn_int m, ftn_int n, ftn_double_complex alpha, 
+                                           ftn_double_complex* A, ftn_int lda, ftn_double_complex* B, ftn_int ldb, 
+                                           ftn_double_complex beta, ftn_double_complex* C, ftn_int ldc)
+{
+    const char *sidestr[] = {"L", "R"};
+    const char *uplostr[] = {"U", "L"};
+    FORTRAN(zhemm)(sidestr[side], uplostr[uplo], &m, &n, &alpha, A, &lda, B, &ldb, &beta, C, &ldc, (ftn_len)1, 
+                   (ftn_len)1);
+}
 
-
-
-
-
+template<> 
+void linalg<CPU>::hemm<ftn_double_complex>(int side, int uplo, ftn_int m, ftn_int n, ftn_double_complex alpha, 
+                                           matrix<ftn_double_complex>& A, matrix<ftn_double_complex>& B,
+                                           ftn_double_complex beta, matrix<ftn_double_complex>& C)
+{
+    hemm(side, uplo, m, n, alpha, A.at<CPU>(), A.ld(), B.at<CPU>(), B.ld(), beta, C.at<CPU>(), C.ld());
+}
 
 // C = alpha * op(A) * op(B) + beta * op(C), double
 template<> 
@@ -447,9 +462,50 @@ void linalg<CPU>::geinv<ftn_double_complex>(ftn_int n, matrix<ftn_double_complex
     }
 }
 
+template<> 
+ftn_int linalg<CPU>::hetrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv)
+{
+    ftn_int nb = ilaenv(1, "zhetrf", "U", n, -1, -1, -1);
+    ftn_int lwork = n * nb;
+    std::vector<ftn_double_complex> work(lwork);
+
+    ftn_int info;
+    FORTRAN(zhetrf)("U", &n, A, &lda, ipiv, &work[0], &lwork, &info, (ftn_len)1);
+    return info;
+}
+
+template<> 
+ftn_int linalg<CPU>::hetri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv)
+{
+    std::vector<ftn_double_complex> work(n);
+    ftn_int info;
+    FORTRAN(zhetri)("U", &n, A, &lda, ipiv, &work[0], &info, (ftn_len)1);
+    return info;
+}
+
+// Inversion of hermitian matrix, double_complex
+template <>
+void linalg<CPU>::heinv<ftn_double_complex>(ftn_int n, matrix<ftn_double_complex>& A)
+{
+    std::vector<int> ipiv(n);
+    int info = hetrf(n, A.at<CPU>(), A.ld(), &ipiv[0]);
+    if (info)
+    {
+        printf("hetrf returned %i\n", info);
+        exit(-1);
+    }
+
+    info = hetri(n, A.at<CPU>(), A.ld(), &ipiv[0]);
+    if (info)
+    {
+        printf("hetri returned %i\n", info);
+        exit(-1);
+    }
+}
+
 template<>
 ftn_int linalg<CPU>::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A,
-                                                      ftn_int ia, ftn_int ja, ftn_int* ipiv)
+                                               ftn_int ia, ftn_int ja, ftn_int* ipiv)
 {
     ftn_int info;
     ia++;
@@ -466,14 +522,15 @@ ftn_int linalg<CPU>::getri<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_com
     ia++;
     ja++;
 
-    ftn_int lwork = numroc(n + (ia - 1) % A.bs(), A.bs(), A.rank_row(), 0, A.num_ranks_row()) * A.bs();
-    std::vector<ftn_double_complex> work(lwork);
 
-    ftn_int liwork, i;
+    ftn_int lwork, liwork, i;
+    ftn_double_complex z;
     i = -1;
+    /* query work sizes */
+    FORTRAN(pzgetri)(&n, A.at<CPU>(), &ia, &ja, A.descriptor(), &ipiv[0], &z, &i, &liwork, &i, &info);
 
-    FORTRAN(pzgetri)(&n, A.at<CPU>(), &ia, &ja, A.descriptor(), &ipiv[0], &work[0], &i, &liwork, &i, &info);
-    std::cout << lwork << " " << work[0] << std::endl;
+    lwork = (int)real(z) + 1;
+    std::vector<ftn_double_complex> work(lwork);
     std::vector<ftn_int> iwork(liwork);
 
     FORTRAN(pzgetri)(&n, A.at<CPU>(), &ia, &ja, A.descriptor(), &ipiv[0], &work[0], &lwork, &iwork[0], &liwork, &info);
@@ -500,3 +557,112 @@ void linalg<CPU>::geinv<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_comple
     }
 }
 
+#ifdef _SCALAPACK_
+template<> 
+void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+                                   ftn_double alpha, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja,
+                                   dmatrix<ftn_double>& B, ftn_int ib, ftn_int jb, ftn_double beta, 
+                                   dmatrix<ftn_double>& C, ftn_int ic, ftn_int jc)
+{
+    const char *trans[] = {"N", "T", "C"};
+
+    ia++; ja++;
+    ib++; jb++;
+    ic++; jc++;
+    FORTRAN(pdgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, A.at<CPU>(), &ia, &ja, A.descriptor(), 
+                    B.at<CPU>(), &ib, &jb, B.descriptor(), &beta, C.at<CPU>(), &ic, &jc, C.descriptor(),
+                    (ftn_len)1, (ftn_len)1);
+}
+
+template<> 
+void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, ftn_double alpha, 
+                                   dmatrix<ftn_double>& A, dmatrix<ftn_double>& B, ftn_double beta,
+                                   dmatrix<ftn_double>& C)
+{
+    gemm(transa, transb, m, n, k, alpha, A, 0, 0, B, 0, 0, beta, C, 0, 0);
+}
+
+template<> 
+void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+                                           ftn_double_complex alpha, 
+                                           dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
+                                           dmatrix<ftn_double_complex>& B, ftn_int ib, ftn_int jb,
+                                           ftn_double_complex beta, 
+                                           dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc)
+{
+    const char *trans[] = {"N", "T", "C"};
+
+    ia++; ja++;
+    ib++; jb++;
+    ic++; jc++;
+    FORTRAN(pzgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, A.at<CPU>(), &ia, &ja, A.descriptor(), 
+                    B.at<CPU>(), &ib, &jb, B.descriptor(), &beta, C.at<CPU>(), &ic, &jc, C.descriptor(),
+                    (ftn_len)1, (ftn_len)1);
+}
+
+template<> 
+void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+                                           ftn_double_complex alpha, 
+                                           dmatrix<ftn_double_complex>& A, dmatrix<ftn_double_complex>& B,
+                                           ftn_double_complex beta, dmatrix<ftn_double_complex>& C)
+{
+    gemm(transa, transb, m, n, k, alpha, A, 0, 0, B, 0, 0, beta, C, 0, 0);
+}
+#else
+template<> 
+void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+                                           ftn_double_complex alpha, 
+                                           dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
+                                           dmatrix<ftn_double_complex>& B, ftn_int ib, ftn_int jb,
+                                           ftn_double_complex beta, 
+                                           dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc)
+{
+    gemm(transa, transb, m, n, k, alpha, A.at<CPU>(ia, ja), A.ld(), B.at<CPU>(ib, jb), B.ld(), beta, C.at<CPU>(ic, jc), C.ld());
+}
+#endif
+
+#ifdef _GPU_
+
+template<> 
+void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
+                                           ftn_double_complex* alpha, ftn_double_complex* A, ftn_int lda,
+                                           ftn_double_complex* B, ftn_int ldb, ftn_double_complex* beta, 
+                                           ftn_double_complex* C, ftn_in ldc, int stream_id)
+{
+    cublas_zgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, stream_id);
+}
+
+template<> 
+void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
+                                           ftn_double_complex* alpha, ftn_double_complex* A, ftn_int lda,
+                                           ftn_double_complex* B, ftn_int ldb, ftn_double_complex* beta, 
+                                           ftn_double_complex* C, ftn_in ldc)
+{
+    gemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, -1);
+}
+
+
+//template<> 
+//void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+//                                     double_complex* alpha, double_complex* a, int32_t lda, double_complex* b, 
+//                                     int32_t ldb, double_complex* beta, double_complex* c, int32_t ldc, int stream_id)
+//{
+//    cublas_zgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, stream_id);
+//}
+//
+//template<> 
+//void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+//                                     double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
+//                                     double_complex* c, int32_t ldc)
+//{
+//    cublas_zgemm(transa, transb, m, n, k, &zone, a, lda, b, ldb, &zzero, c, ldc, -1);
+//}
+//
+//template<> 
+//void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+//                                     double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
+//                                     double_complex* c, int32_t ldc, int stream_id)
+//{
+//    cublas_zgemm(transa, transb, m, n, k, &zone, a, lda, b, ldb, &zzero, c, ldc, stream_id);
+//}
+#endif

@@ -48,6 +48,9 @@ typedef char const* ftn_char;
 
 extern "C" {
 
+ftn_int FORTRAN(ilaenv)(ftn_int* ispec, ftn_char name, ftn_char opts, ftn_int* n1, ftn_int* n2, ftn_int* n3, 
+                        ftn_int* n4, ftn_len name_len, ftn_len opts_len);
+
 /*
  *  matrix-vector operations
  */
@@ -59,46 +62,95 @@ void FORTRAN(zgemv)(ftn_char trans, ftn_int* m, ftn_int* n, ftn_double_complex* 
 /*
  *  matrix-matrix operations
  */
+void FORTRAN(zhemm)(ftn_char side, ftn_char uplo, ftn_int* m, ftn_int* n, 
+                    ftn_double_complex* alpha, ftn_double_complex* A, ftn_int* lda, ftn_double_complex* B,
+                    ftn_int* ldb, ftn_double_complex* beta, ftn_double_complex* C, ftn_int* ldc,
+                    ftn_len side_len, ftn_len uplo_len);
 
 void FORTRAN(dgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, 
                     ftn_double* alpha, ftn_double* A, ftn_int* lda, ftn_double* B, ftn_int* ldb, 
                     ftn_double* beta, ftn_double* C, ftn_int* ldc, ftn_len transa_len, ftn_len transb_len);
 
 void FORTRAN(zgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, 
-                    ftn_double_complex* alpha, ftn_double_complex* A, ftn_int* lda, ftn_double_complex* B, ftn_int* ldb, 
-                    ftn_double_complex* beta, ftn_double_complex* C, ftn_int* ldc, ftn_len transa_len, ftn_len transb_len);
+                    ftn_double_complex* alpha, ftn_double_complex* A, ftn_int* lda, ftn_double_complex* B,
+                    ftn_int* ldb, ftn_double_complex* beta, ftn_double_complex* C, ftn_int* ldc, ftn_len transa_len,
+                    ftn_len transb_len);
 
 void FORTRAN(dgetrf)(ftn_int* m, ftn_int* n, ftn_double* A, ftn_int* lda, ftn_int* ipiv, ftn_int* info);
 
-void FORTRAN(dgetri)(ftn_int* n, ftn_double* A, ftn_int* lda, ftn_int* ipiv, ftn_double* work, ftn_int* lwork, ftn_int* info);
+void FORTRAN(dgetri)(ftn_int* n, ftn_double* A, ftn_int* lda, ftn_int* ipiv, ftn_double* work, ftn_int* lwork,
+                     ftn_int* info);
+
+void FORTRAN(zhetrf)(ftn_char uplo, ftn_int* n, ftn_double_complex* A, ftn_int* lda, ftn_int* ipiv,
+                     ftn_double_complex* work, ftn_int* lwork, ftn_int* info, ftn_len uplo_len);
 
 void FORTRAN(zgetrf)(ftn_int* m, ftn_int* n, ftn_double_complex* A, ftn_int* lda, ftn_int* ipiv, ftn_int* info);
 
-void FORTRAN(zgetri)(ftn_int* n, ftn_double_complex* A, ftn_int* lda, ftn_int* ipiv, ftn_double_complex* work, ftn_int* lwork,
-                     ftn_int* info);
+void FORTRAN(zhetri)(ftn_char uplo, ftn_int* n, ftn_double_complex* A, ftn_int* lda, ftn_int* ipiv,
+                     ftn_double_complex* work, ftn_int* info, ftn_len uplo_len);
+
+void FORTRAN(zgetri)(ftn_int* n, ftn_double_complex* A, ftn_int* lda, ftn_int* ipiv, ftn_double_complex* work,
+                     ftn_int* lwork, ftn_int* info);
 #ifdef _SCALAPACK_
+int Csys2blacs_handle(MPI_Comm SysCtxt);
+
+MPI_Comm Cblacs2sys_handle(int BlacsCtxt);
+
+void Cblacs_gridinit(int* ConTxt, const char* order, int nprow, int npcol);
+
+void Cblacs_gridmap(int* ConTxt, int* usermap, int ldup, int nprow0, int npcol0);
+
+void Cblacs_gridinfo(int ConTxt, int* nprow, int* npcol, int* myrow, int* mycol);
+
+void Cfree_blacs_system_handle(int ISysCtxt);
+
+void Cblacs_barrier(int ConTxt, const char* scope);
+
+void Cblacs_gridexit(int ConTxt);
+
+void FORTRAN(pdgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_double* aplha,
+                     ftn_double* A, ftn_int* ia, ftn_int* ja, ftn_int* desca, 
+                     ftn_double* B, ftn_int* ib, ftn_int* jb, ftn_int* descb,
+                     ftn_double* beta,
+                     ftn_double* C, ftn_int* ic, ftn_int* jc, ftn_int* descc,
+                     ftn_len transa_len, ftn_len transb_len);
+
 void FORTRAN(pzgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_double_complex* aplha,
                      ftn_double_complex* A, ftn_int* ia, ftn_int* ja, ftn_int* desca, 
                      ftn_double_complex* B, ftn_int* ib, ftn_int* jb, ftn_int* descb, ftn_double_complex* beta,
                      ftn_double_complex* C, ftn_int* ic, ftn_int* jc, ftn_int* descc,
                      ftn_len transa_len, ftn_len transb_len);
 
-void FORTRAN(pzgetrf)(ftn_int* m, ftn_int* n, ftn_double_complex* A, ftn_int* ia, ftn_int* ja, ftn_int* desca, ftn_int* ipiv,
-                      ftn_int* info);
+void FORTRAN(pzgetrf)(ftn_int* m, ftn_int* n, ftn_double_complex* A, ftn_int* ia, ftn_int* ja, ftn_int* desca,
+                      ftn_int* ipiv, ftn_int* info);
 
 void FORTRAN(pzgetri)(ftn_int* n, ftn_double_complex* A, ftn_int* ia, ftn_int* ja, ftn_int* desca, ftn_int* ipiv,
                       ftn_double_complex* work, ftn_int* lwork, ftn_int* iwork, ftn_int* liwork, ftn_int* info);
 #endif
 
+#ifdef _ELPA_
+void FORTRAN(elpa_cholesky_complex)(ftn_int* na, ftn_double_complex* a, ftn_int* lda, ftn_int* nblk,
+                                    ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
+
+void FORTRAN(elpa_invert_trm_complex)(ftn_int* na, ftn_double_complex* a, ftn_int* lda, ftn_int* nblk,
+                                      ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols);
+
+void FORTRAN(elpa_mult_ah_b_complex)(ftn_char uplo_a, ftn_char uplo_c, ftn_int* na, ftn_int* ncb, 
+                                     ftn_double_complex* a, ftn_int* lda, ftn_double_complex* b, ftn_int* ldb,
+                                     ftn_int* nblk, ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols,
+                                     ftn_double_complex* c, ftn_int* ldc, ftn_len uplo_a_len, ftn_len uplo_c_len);
+
+void FORTRAN(elpa_solve_evp_complex)(ftn_int* na, ftn_int* nev, ftn_double_complex* a, ftn_int* lda, ftn_double* ev, 
+                                     ftn_double_complex* q, ftn_int* ldq, ftn_int* nblk, ftn_int* mpi_comm_rows, 
+                                     ftn_int* mpi_comm_cols);
+
+void FORTRAN(elpa_solve_evp_complex_2stage)(ftn_int* na, ftn_int* nev, ftn_double_complex* a, ftn_int* lda,
+                                            ftn_double* ev, ftn_double_complex* q, ftn_int* ldq, ftn_int* nblk,
+                                            ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols, ftn_int* mpi_comm_all);
+#endif
+
 }
 
-
-
-
-extern "C" void FORTRAN(zhemm)(const char *side, const char* uplo, ftn_int* m, ftn_int* n, 
-                               ftn_double_complex* alpha, ftn_double_complex* a, ftn_int* lda, ftn_double_complex* b,
-                               ftn_int* ldb, ftn_double_complex* beta, ftn_double_complex* c, ftn_int* ldc,
-                               int32_t sidelen, int32_t uplolen);
 
 /*
  *  eigen-value problem
@@ -109,8 +161,6 @@ extern "C" void FORTRAN(zhegvx)(ftn_int* itype, const char* jobz, const char* ra
                                 ftn_int* ldz, ftn_double_complex* work, ftn_int* lwork, ftn_double* rwork, ftn_int* iwork, ftn_int* ifail, 
                                 ftn_int* info, int32_t jobzlen, int32_t rangelen, int32_t uplolen);
 
-extern "C" int32_t FORTRAN(ilaenv)(ftn_int* ispec, const char* name, const char* opts, ftn_int* n1, ftn_int* n2, ftn_int* n3, 
-                                ftn_int* n4, int32_t namelen, int32_t optslen);
 
 extern "C" void FORTRAN(zheev)(const char* jobz, const char* uplo, ftn_int* n, ftn_double_complex* a,
                                ftn_int* lda, ftn_double* w, ftn_double_complex* work, ftn_int* lwork, ftn_double* rwork,
@@ -141,14 +191,6 @@ extern "C" void FORTRAN(zgesv)(ftn_int* n, ftn_int* nrhs, ftn_double_complex* a,
  *  BLACS and ScaLAPACK related functions
  */
 #ifdef _SCALAPACK_
-extern "C" int Csys2blacs_handle(MPI_Comm SysCtxt);
-extern "C" MPI_Comm Cblacs2sys_handle(int BlacsCtxt);
-extern "C" void Cblacs_gridinit(int* ConTxt, const char* order, int nprow, int npcol);
-extern "C" void Cblacs_gridmap(int* ConTxt, int* usermap, int ldup, int nprow0, int npcol0);
-extern "C" void Cblacs_gridinfo(int ConTxt, int* nprow, int* npcol, int* myrow, int* mycol);
-extern "C" void Cfree_blacs_system_handle(int ISysCtxt);
-extern "C" void Cblacs_barrier(int ConTxt, const char* scope);
-extern "C" void Cblacs_gridexit(int ConTxt);
 
 extern "C" void FORTRAN(descinit)(ftn_int* desc, ftn_int* m, ftn_int* n, ftn_int* mb, ftn_int* nb, ftn_int* irsrc, ftn_int* icsrc, 
                                   ftn_int* ictxt, ftn_int* lld, ftn_int* info);
@@ -181,14 +223,6 @@ extern "C" void FORTRAN(pzheevd)(const char* jobz, const char* uplo, ftn_int* n,
                                  ftn_int* liwork, ftn_int* info, int32_t jobz_len, int32_t uplo_len);
 
 
-extern "C" void FORTRAN(pdgemm)(const char* transa, const char* transb, 
-                                ftn_int* m, ftn_int* n, ftn_int* k, 
-                                ftn_double* aplha,
-                                ftn_double* a, ftn_int* ia, ftn_int* ja, ftn_int* desca, 
-                                ftn_double* b, ftn_int* ib, ftn_int* jb, ftn_int* descb,
-                                ftn_double* beta,
-                                ftn_double* c, ftn_int* ic, ftn_int* jc, ftn_int* descc,
-                                int32_t transa_len, int32_t transb_len);
 
 extern "C" int32_t FORTRAN(numroc)(ftn_int* n, ftn_int* nb, ftn_int* iproc, ftn_int* isrcproc, ftn_int* nprocs);
 
@@ -200,26 +234,6 @@ extern "C" int32_t FORTRAN(pjlaenv)(ftn_int* ictxt, ftn_int* ispec, const char* 
 extern "C" int32_t FORTRAN(iceil)(ftn_int* inum, ftn_int* idenom);
 #endif
 
-#ifdef _ELPA_
-extern "C" void FORTRAN(elpa_cholesky_complex)(ftn_int* na, ftn_double_complex* a, ftn_int* lda, ftn_int* nblk, ftn_int* mpi_comm_rows, 
-                                               ftn_int* mpi_comm_cols);
-
-extern "C" void FORTRAN(elpa_invert_trm_complex)(ftn_int* na, ftn_double_complex* a, ftn_int* lda, ftn_int* nblk, ftn_int* mpi_comm_rows, 
-                                                 ftn_int* mpi_comm_cols);
-
-extern "C" void FORTRAN(elpa_mult_ah_b_complex)(const char* uplo_a, const char* uplo_c, ftn_int* na, ftn_int* ncb, 
-                                                ftn_double_complex* a, ftn_int* lda, ftn_double_complex* b, ftn_int* ldb, ftn_int* nblk, 
-                                                ftn_int* mpi_comm_rows, ftn_int* mpi_comm_cols, ftn_double_complex* c, ftn_int* ldc,
-                                                int32_t uplo_a_len, int32_t uplo_c_len);
-
-extern "C" void FORTRAN(elpa_solve_evp_complex)(ftn_int* na, ftn_int* nev, ftn_double_complex* a, ftn_int* lda, ftn_double* ev, 
-                                                ftn_double_complex* q, ftn_int* ldq, ftn_int* nblk, ftn_int* mpi_comm_rows, 
-                                                ftn_int* mpi_comm_cols);
-
-extern "C" void FORTRAN(elpa_solve_evp_complex_2stage)(ftn_int* na, ftn_int* nev, ftn_double_complex* a, ftn_int* lda, ftn_double* ev, 
-                                                       ftn_double_complex* q, ftn_int* ldq, ftn_int* nblk, ftn_int* mpi_comm_rows, 
-                                                       ftn_int* mpi_comm_cols, ftn_int* mpi_comm_all);
-#endif
 
 #include "lapack.h"
 #include "dmatrix.h"
@@ -228,6 +242,12 @@ extern "C" void FORTRAN(elpa_solve_evp_complex_2stage)(ftn_int* na, ftn_int* nev
 
 class linalg_base
 {
+    private:
+
+        static ftn_double_complex zone;
+
+        static ftn_double_complex zzero;
+
     public:
         
         static ftn_int ilaenv(ftn_int ispec, std::string const& name, std::string const& opts, ftn_int n1, ftn_int n2, 
@@ -242,6 +262,90 @@ class linalg_base
         {
             return FORTRAN(numroc)(&n, &nb, &iproc, &isrcproc, &nprocs); 
         }
+
+        /// Create BLACS handler.
+        static int create_blacs_handler(MPI_Comm comm)
+        {
+            return Csys2blacs_handle(comm);
+        }
+        
+        /// Free BLACS handler.
+        static void free_blacs_handler(int blacs_handler)
+        {
+            Cfree_blacs_system_handle(blacs_handler);
+        }
+
+        /// Create BLACS context for the grid of MPI ranks
+        static void gridmap(int* blacs_context, int* map, int ld, int nrow, int ncol)
+        {
+            Cblacs_gridmap(blacs_context, map, ld, nrow, ncol);
+        }
+        
+        /// Destroy BLACS context.
+        static void gridexit(int blacs_context)
+        {
+            Cblacs_gridexit(blacs_context);
+        }
+
+        static void gridinfo(int blacs_context, int* nrow, int* ncol, int* irow, int* icol)
+        {
+            Cblacs_gridinfo(blacs_context, nrow, ncol, irow, icol);
+        }
+
+        static void descinit(ftn_int* desc, ftn_int m, ftn_int n, ftn_int mb, ftn_int nb, ftn_int irsrc, ftn_int icsrc,
+                             ftn_int ictxt, ftn_int lld)
+        {
+            int32_t info;
+        
+            FORTRAN(descinit)(desc, &m, &n, &mb, &nb, &irsrc, &icsrc, &ictxt, &lld, &info);
+        
+            if (info)
+            {
+                printf("error in descinit()\n");
+                exit(-1);
+                //== std::stringstream s;
+                //== s << "error in descinit()" << std::endl
+                //==   << "m = " << m << std::endl
+                //==   << "n = " << n << std::endl
+                //==   << "mb = " << mb << std::endl
+                //==   << "nb = " << nb << std::endl
+                //==   << "irsrc = " << irsrc << std::endl
+                //==   << "icsrc = " << icsrc << std::endl
+                //==   << "ictxt = " << ictxt << std::endl
+                //==   << "lld = " << lld;
+
+                //== error_local(__FILE__, __LINE__, s);
+            }
+        }
+
+        static int pjlaenv(int32_t ictxt, int32_t ispec, const std::string& name, const std::string& opts, int32_t n1, int32_t n2, 
+                           int32_t n3, int32_t n4)
+        {
+            return FORTRAN(pjlaenv)(&ictxt, &ispec, name.c_str(), opts.c_str(), &n1, &n2, &n3, &n4, (int32_t)name.length(),
+                                    (int32_t)opts.length());
+        }
+
+        static int32_t indxl2g(int32_t indxloc, int32_t nb, int32_t iproc, int32_t isrcproc, int32_t nprocs)
+        {
+            return FORTRAN(indxl2g)(&indxloc, &nb, &iproc, &isrcproc, &nprocs);
+        }
+
+        static int32_t iceil(int32_t inum, int32_t idenom)
+        {
+            return FORTRAN(iceil)(&inum, &idenom);
+        }
+
+        //== static void pztranc(int32_t m, int32_t n, double_complex alpha, double_complex* a, int32_t ia, int32_t ja, int32_t* desca, 
+        //==                     double_complex beta, double_complex* c, int32_t ic, int32_t jc, int32_t* descc)
+        //== {
+        //==     FORTRAN(pztranc)(&m, &n, &alpha, a, &ia, &ja, desca, &beta, c, &ic, &jc, descc);
+        //== }
+        //== 
+        //== static void pztranu(int32_t m, int32_t n, double_complex alpha, double_complex* a, int32_t ia, int32_t ja, int32_t* desca, 
+        //==                     double_complex beta, double_complex* c, int32_t ic, int32_t jc, int32_t* descc)
+        //== {
+        //==     FORTRAN(pztranu)(&m, &n, &alpha, a, &ia, &ja, desca, &beta, c, &ic, &jc, descc);
+        //== }
         #endif
 };
 
@@ -253,6 +357,18 @@ template<>
 class linalg<CPU>: public linalg_base
 {
     public:
+        
+        /** Compute C = alpha * A * B + beta * C if side = 0 \n
+            Compute C = alpha * B * A + beta * C if side = 1 \n
+            A is a hermitian matrix with upper of lower triangle defined.
+          */
+        template<typename T>
+        static void hemm(int side, int uplo, ftn_int m, ftn_int n, T alpha, T* A, ftn_len lda, 
+                         T* B, ftn_len ldb, T beta, T* C, ftn_len ldc);
+        
+        template<typename T>
+        static void hemm(int side, int uplo, ftn_int m, ftn_int n, T alpha, matrix<T>& A, 
+                         matrix<T>& B, T beta, matrix<T>& C);
         
         /// Compute C = alpha * op(A) * op(B) + beta * op(C) with raw pointers.
         template <typename T>
@@ -275,35 +391,41 @@ class linalg<CPU>: public linalg_base
                          matrix<T>& C);
                          
         ///template<typename T>
-        ///static void hemm(int side, int uplo, int32_t m, int32_t n, T alpha, T* a, int32_t lda, 
-        ///                 T* b, int32_t ldb, T beta, T* c, int32_t ldc);
-
-        ///template<typename T>
         ///static void gemv(int trans, int32_t m, int32_t n, T alpha, T* a, int32_t lda, T* x, int32_t incx, 
         ///                 T beta, T* y, int32_t incy);
 
-        ////// generic interface to p?gemm
-        ///template <typename T>
-        ///static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T alpha, 
-        ///                 dmatrix<T>& a, int32_t ia, int32_t ja, dmatrix<T>& b, int32_t ib, int32_t jb, T beta, 
-        ///                 dmatrix<T>& c, int32_t ic, int32_t jc);
+        /// Compute C = alpha * op(A) * op(B) + beta * op(C), generic interface
+        template <typename T>
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T alpha, 
+                         dmatrix<T>& A, ftn_int ia, ftn_int ja, dmatrix<T>& B, ftn_int ib, ftn_int jb, T beta, 
+                         dmatrix<T>& C, ftn_int ic, ftn_int jc);
 
-        ////// simple interface to p?gemm: all matrices start form (0, 0) corner
-        ///template <typename T>
-        ///static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-        ///                 T alpha, dmatrix<T>& a, dmatrix<T>& b, T beta, dmatrix<T>& c);
+        /// Compute C = alpha * op(A) * op(B) + beta * op(C), simple interface - matrices start from (0, 0) corner.
+        template <typename T>
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
+                         T alpha, dmatrix<T>& A, dmatrix<T>& B, T beta, dmatrix<T>& C);
 
-
-
+        /// LU factorization
         template <typename T>
         static ftn_int getrf(ftn_int m, ftn_int n, T* A, ftn_int lda, ftn_int* ipiv);
+        
+        /// U*D*U^H factorization of hermitian matrix
+        template <typename T>
+        static ftn_int hetrf(ftn_int n, T* A, ftn_int lda, ftn_int* ipiv);
         
         template <typename T>
         static ftn_int getri(ftn_int n, T* A, ftn_int lda, ftn_int* ipiv);
         
+        template <typename T>
+        static ftn_int hetri(ftn_int n, T* A, ftn_int lda, ftn_int* ipiv);
+        
         /// Invert a general matrix.
         template <typename T>
-        void geinv(ftn_int n, matrix<T>& A);
+        static void geinv(ftn_int n, matrix<T>& A);
+
+        /// Invert a hermitian matrix.
+        template <typename T>
+        static void heinv(ftn_int n, matrix<T>& A);
 
         template <typename T>
         static ftn_int getrf(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, ftn_int* ipiv);
@@ -313,14 +435,24 @@ class linalg<CPU>: public linalg_base
 
         /// Invert a general distributed matrix.
         template <typename T>
-        void geinv(ftn_int n, dmatrix<T>& A);
+        static void geinv(ftn_int n, dmatrix<T>& A);
 };
 
+#ifdef _GPU_
+template<> 
+class linalg<GPU>: public linalg_base
+{
+    public:
+        
+        template <typename T>
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T alpha, T* A, ftn_int lda,
+                         T* B, ftn_int ldb, T beta, T* C, ftn_int ldc, int stream_id);
 
-
-
-
-
+        template <typename T>
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T alpha, T* A, ftn_int lda,
+                         T* B, ftn_int ldb, T beta, T* C, ftn_int ldc);
+};
+#endif
 
 #endif // __LINALG_H__
 

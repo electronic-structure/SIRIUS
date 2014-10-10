@@ -83,6 +83,9 @@ test_gpudirect: test_gpudirect.cpp
 test_allreduce: test_allreduce.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) test_allreduce.cpp $(LIB_SIRIUS) $(LIBS) -o test_allreduce
 
+test_linalg: test_linalg.cpp $(LIB_SIRIUS)
+	$(CXX) $(CXX_OPT) $(INCLUDE) test_linalg.cpp $(LIB_SIRIUS) $(LIBS) -o test_linalg
+
 clean:
 	rm -f *.o *.h5 *.txt *.dat *.pdf timers.json out.json splindex hdf5 hydrogen read_atom \
 	fft fft1k spline allgather cuda_zgemm mt_function mt_kinetic spline_gpu fft_t test_mdarray \
