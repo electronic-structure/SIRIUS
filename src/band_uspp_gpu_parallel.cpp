@@ -180,10 +180,10 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                 }
             }
             /* compute <beta|phi> */
-            blas<CPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-                            kappa__.at<CPU>(), kappa__.ld(), 
-                            phi__.at<CPU>(0, s0.local_size()), phi__.ld(), 
-                            beta_phi.at<CPU>(), beta_phi.ld());
+            linalg<CPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
+                              kappa__.at<CPU>(), kappa__.ld(), 
+                              phi__.at<CPU>(0, s0.local_size()), phi__.ld(), 
+                              beta_phi.at<CPU>(), beta_phi.ld());
             kp__->comm_row().allreduce(beta_phi.at<CPU>(), (int)beta_phi.size());
         }
         #ifdef _GPU_
@@ -237,15 +237,15 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                 int nbf = beta_pw_desc(0, i);
 
                 /* compute D*<beta|phi> */
-                blas<CPU>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf, 
-                                beta_phi.at<CPU>(ofs, 0), beta_phi.ld(), tmp.at<CPU>(ofs, 0), tmp.ld());
+                linalg<CPU>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf, 
+                                  beta_phi.at<CPU>(ofs, 0), beta_phi.ld(), tmp.at<CPU>(ofs, 0), tmp.ld());
 
             }
             
             /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
-            blas<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
-                            kappa__.at<CPU>(), kappa__.ld(), tmp.at<CPU>(), tmp.ld(), complex_one,
-                            hphi__.at<CPU>(0, s0.local_size()), hphi__.ld());
+            linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
+                              kappa__.at<CPU>(), kappa__.ld(), tmp.at<CPU>(), tmp.ld(), complex_one,
+                              hphi__.at<CPU>(0, s0.local_size()), hphi__.ld());
             
             if (with_overlap)
             {
@@ -259,14 +259,14 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                     int nbf = beta_pw_desc(0, i);
 
                     /* compute Q*<beta|phi> */
-                    blas<CPU>::gemm(0, 0, nbf, nloc, nbf, q_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
-                                    beta_phi.at<CPU>(ofs, 0), beta_phi.ld(), tmp.at<CPU>(ofs, 0), tmp.ld());
+                    linalg<CPU>::gemm(0, 0, nbf, nloc, nbf, q_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
+                                      beta_phi.at<CPU>(ofs, 0), beta_phi.ld(), tmp.at<CPU>(ofs, 0), tmp.ld());
                 }
 
                 /* compute <G+k|beta> * Q*<beta|phi> and add to ophi */
-                blas<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
-                                kappa__.at<CPU>(), kappa__.ld(), tmp.at<CPU>(), tmp.ld(), complex_one,
-                                ophi__.at<CPU>(0, s0.local_size()), ophi__.ld());
+                linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
+                                  kappa__.at<CPU>(), kappa__.ld(), tmp.at<CPU>(), tmp.ld(), complex_one,
+                                  ophi__.at<CPU>(0, s0.local_size()), ophi__.ld());
             }
         }
 
@@ -596,8 +596,8 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
             }
             if (pu == CPU)
             {
-                blas<CPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.at<CPU>(), phi__.ld(),
-                                hphi_tmp.at<CPU>(0, 0, icol % 2), hphi_tmp.ld(), h_tmp.at<CPU>(0, 0, icol % 2), h_tmp.ld());
+                linalg<CPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.at<CPU>(), phi__.ld(),
+                                  hphi_tmp.at<CPU>(0, 0, icol % 2), hphi_tmp.ld(), h_tmp.at<CPU>(0, 0, icol % 2), h_tmp.ld());
             }
             lock_h[icol % 2].store(true);
             lock_hphi[icol % 2].store(false);
@@ -620,8 +620,8 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
             }
             if (pu == CPU)
             {
-                blas<CPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.at<CPU>(), phi__.ld(),
-                                ophi_tmp.at<CPU>(0, 0, icol % 2), ophi_tmp.ld(), o_tmp.at<CPU>(0, 0, icol % 2), o_tmp.ld());
+                linalg<CPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.at<CPU>(), phi__.ld(),
+                                  ophi_tmp.at<CPU>(0, 0, icol % 2), ophi_tmp.ld(), o_tmp.at<CPU>(0, 0, icol % 2), o_tmp.ld());
             }
             lock_o[icol % 2].store(true);
             lock_ophi[icol % 2].store(false);
@@ -875,9 +875,9 @@ void Band::uspp_residuals_gpu_parallel(int N__,
         {
             case CPU:
             {
-                blas<CPU>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
-                                hphi__.at<CPU>(), hphi__.ld(), evec_tmp.at<CPU>(0, 0, rank_col % 2), evec_tmp.ld(), 
-                                hpsi_tmp.at<CPU>(), hpsi_tmp.ld());
+                linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
+                                  hphi__.at<CPU>(), hphi__.ld(), evec_tmp.at<CPU>(0, 0, rank_col % 2), evec_tmp.ld(), 
+                                  hpsi_tmp.at<CPU>(), hpsi_tmp.ld());
                 break;
             }
             case GPU:
@@ -898,9 +898,9 @@ void Band::uspp_residuals_gpu_parallel(int N__,
         {
             case CPU:
             {
-                blas<CPU>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
-                                ophi__.at<CPU>(), ophi__.ld(), evec_tmp.at<CPU>(0, 0, rank_col % 2), evec_tmp.ld(), 
-                                opsi_tmp.at<CPU>(), opsi_tmp.ld());
+                linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
+                                  ophi__.at<CPU>(), ophi__.ld(), evec_tmp.at<CPU>(0, 0, rank_col % 2), evec_tmp.ld(), 
+                                  opsi_tmp.at<CPU>(), opsi_tmp.ld());
                 break;
             }
             case GPU:
@@ -1481,10 +1481,10 @@ void Band::apply_h_ncpp_parallel(K_point* kp__,
                 }
             }
             /* compute <beta|phi> */
-            blas<CPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-                            kappa__.at<CPU>(), kappa__.ld(), 
-                            phi__.at<CPU>(), phi__.ld(), 
-                            beta_phi.at<CPU>(), beta_phi.ld());
+            linalg<CPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
+                              kappa__.at<CPU>(), kappa__.ld(), 
+                              phi__.at<CPU>(), phi__.ld(), 
+                              beta_phi.at<CPU>(), beta_phi.ld());
             kp__->comm_row().allreduce(beta_phi.at<CPU>(), (int)beta_phi.size());
         }
         #ifdef _GPU_
@@ -1538,8 +1538,8 @@ void Band::apply_h_ncpp_parallel(K_point* kp__,
                 int nbf = beta_pw_desc(0, i);
 
                 /* compute D*<beta|phi> */
-                blas<CPU>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf, 
-                                beta_phi.at<CPU>(ofs, 0), beta_phi.ld(), tmp.at<CPU>(ofs, 0), tmp.ld());
+                linalg<CPU>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf, 
+                                  beta_phi.at<CPU>(ofs, 0), beta_phi.ld(), tmp.at<CPU>(ofs, 0), tmp.ld());
 
             }
             
@@ -2029,10 +2029,10 @@ void Band::set_fv_h_o_ncpp_parallel(K_point* kp__,
             }
             if (pu == CPU)
             {
-                blas<CPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(),
-                                hphi__.at<CPU>(), hphi__.ld(),
-                                phi_tmp.at<CPU>(0, 0, icol % 2), phi_tmp.ld(),
-                                h_tmp.at<CPU>(0, 0, icol % 2), h_tmp.ld());
+                linalg<CPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(),
+                                  hphi__.at<CPU>(), hphi__.ld(),
+                                  phi_tmp.at<CPU>(0, 0, icol % 2), phi_tmp.ld(),
+                                  h_tmp.at<CPU>(0, 0, icol % 2), h_tmp.ld());
             }
             lock_h[icol % 2].store(true);
             
@@ -2052,10 +2052,10 @@ void Band::set_fv_h_o_ncpp_parallel(K_point* kp__,
             }
             if (pu == CPU)
             {
-                blas<CPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(),
-                                phi__.at<CPU>(), phi__.ld(),
-                                phi_tmp.at<CPU>(0, 0, icol % 2), phi_tmp.ld(),
-                                o_tmp.at<CPU>(0, 0, icol % 2), o_tmp.ld());
+                linalg<CPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(),
+                                  phi__.at<CPU>(), phi__.ld(),
+                                  phi_tmp.at<CPU>(0, 0, icol % 2), phi_tmp.ld(),
+                                  o_tmp.at<CPU>(0, 0, icol % 2), o_tmp.ld());
             }
             lock_o[icol % 2].store(true);
         }
@@ -2241,9 +2241,9 @@ void Band::generate_fv_states_pp(K_point* kp__,
         {
             case CPU:
             {
-                blas<CPU>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
-                                phi__.at<CPU>(), phi__.ld(), evec_tmp.at<CPU>(0, 0, rank_col % 2), evec_tmp.ld(), 
-                                psi_tmp.at<CPU>(), psi_tmp.ld());
+                linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
+                                  phi__.at<CPU>(), phi__.ld(), evec_tmp.at<CPU>(0, 0, rank_col % 2), evec_tmp.ld(), 
+                                  psi_tmp.at<CPU>(), psi_tmp.ld());
                 break;
             }
             case GPU:

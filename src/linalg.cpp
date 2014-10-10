@@ -39,12 +39,12 @@ void blas<CPU>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32
                    (int32_t)1);
 }
 
-template<> 
-void blas<CPU>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32_t k, double* a, int32_t lda, 
-                             double* b, int32_t ldb, double* c, int32_t ldc)
-{
-    gemm(transa, transb, m, n, k, 1.0, a, lda, b, ldb, 0.0, c, ldc);
-}
+//== template<> 
+//== void blas<CPU>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32_t k, double* a, int32_t lda, 
+//==                              double* b, int32_t ldb, double* c, int32_t ldc)
+//== {
+//==     gemm(transa, transb, m, n, k, 1.0, a, lda, b, ldb, 0.0, c, ldc);
+//== }
 
 template<> 
 void blas<CPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
@@ -57,13 +57,13 @@ void blas<CPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
                    (int32_t)1);
 }
 
-template<> 
-void blas<CPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                                     double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
-                                     double_complex* c, int32_t ldc)
-{
-    gemm(transa, transb, m, n, k, complex_one, a, lda, b, ldb, complex_zero, c, ldc);
-}
+//== template<> 
+//== void blas<CPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+//==                                      double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
+//==                                      double_complex* c, int32_t ldc)
+//== {
+//==     gemm(transa, transb, m, n, k, complex_one, a, lda, b, ldb, complex_zero, c, ldc);
+//== }
 
 //template<> 
 //void blas<CPU>::hemm<double_complex>(int side, int uplo, int32_t m, int32_t n, double_complex alpha, 
@@ -357,7 +357,7 @@ void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ft
                                            ftn_double_complex* A, ftn_int lda, ftn_double_complex* B, ftn_int ldb,
                                            ftn_double_complex* C, ftn_int ldc)
 {
-    gemm(transa, transb, m, n, k, ftn_double_complex(1, 0), A, lda, B, ldb, ftn_double_complex(0, 0), C, ldc);
+    gemm(transa, transb, m, n, k, zone, A, lda, B, ldb, zzero, C, ldc);
 }
 
 // C = alpha * op(A) * op(B) + beta * op(C), double

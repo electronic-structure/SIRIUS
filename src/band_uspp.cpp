@@ -142,9 +142,8 @@ void Band::apply_h_o_uspp_cpu(K_point* kp__,
     Timer t1("sirius::Band::apply_h_o|beta_phi");
 
     /* compute <beta|phi> */
-    blas<CPU>::gemm(2, 0, uc->mt_lo_basis_size(), n__, kp__->num_gkvec(), 
-                    kp__->beta_pw_panel().panel().ptr(), kp__->num_gkvec(), 
-                    &phi(0, 0), phi.ld(), &beta_phi(0, 0), beta_phi.ld());
+    linalg<CPU>::gemm(2, 0, uc->mt_lo_basis_size(), n__, kp__->num_gkvec(), 
+                      kp__->beta_pw_panel().panel(), phi, beta_phi);
     t1.stop();
     
     /* compute D*<beta|phi> */
@@ -153,8 +152,8 @@ void Band::apply_h_o_uspp_cpu(K_point* kp__,
         int ofs = uc->atom(ia)->offset_lo();
         /* number of beta functions for a given atom */
         int nbf = uc->atom(ia)->type()->mt_lo_basis_size();
-        blas<CPU>::gemm(0, 0, nbf, n__, nbf, &uc->atom(ia)->d_mtrx(0, 0), nbf, 
-                        &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
+        linalg<CPU>::gemm(0, 0, nbf, n__, nbf, &uc->atom(ia)->d_mtrx(0, 0), nbf, 
+                          &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
     }
 
     Timer t3("sirius::Band::apply_h_o|beta_D_beta_phi");
@@ -170,8 +169,8 @@ void Band::apply_h_o_uspp_cpu(K_point* kp__,
         int ofs = uc->atom(ia)->offset_lo();
         /* number of beta functions for a given atom */
         int nbf = uc->atom(ia)->type()->mt_basis_size();
-        blas<CPU>::gemm(0, 0, nbf, n__, nbf, &uc->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
-                        &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
+        linalg<CPU>::gemm(0, 0, nbf, n__, nbf, &uc->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
+                          &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
     }
 
     Timer t5("sirius::Band::apply_h_o|beta_Q_beta_phi");
@@ -980,8 +979,8 @@ void Band::apply_h_o_uspp_cpu_parallel_simple(K_point* kp__,
             int ofs = uc->atom(ia)->offset_lo();
             /* number of beta functions for a given atom */
             int nbf = uc->atom(ia)->mt_basis_size();
-            blas<CPU>::gemm(0, 0, nbf, (int)sub_spl_col.local_size(), nbf, &uc->atom(ia)->d_mtrx(0, 0), nbf, 
-                            &beta_phi_slice(ofs, 0), beta_phi_slice.ld(), &tmp_slice(ofs, 0), tmp_slice.ld());
+            linalg<CPU>::gemm(0, 0, nbf, (int)sub_spl_col.local_size(), nbf, &uc->atom(ia)->d_mtrx(0, 0), nbf, 
+                              &beta_phi_slice(ofs, 0), beta_phi_slice.ld(), &tmp_slice(ofs, 0), tmp_slice.ld());
         }
     }
     tmp.scatter(tmp_slice);
@@ -1000,8 +999,8 @@ void Band::apply_h_o_uspp_cpu_parallel_simple(K_point* kp__,
             int ofs = uc->atom(ia)->offset_lo();
             /* number of beta functions for a given atom */
             int nbf = uc->atom(ia)->mt_basis_size();
-            blas<CPU>::gemm(0, 0, nbf, (int)sub_spl_col.local_size(), nbf, &uc->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
-                            &beta_phi_slice(ofs, 0), beta_phi_slice.ld(), &tmp_slice(ofs, 0), tmp_slice.ld());
+            linalg<CPU>::gemm(0, 0, nbf, (int)sub_spl_col.local_size(), nbf, &uc->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
+                              &beta_phi_slice(ofs, 0), beta_phi_slice.ld(), &tmp_slice(ofs, 0), tmp_slice.ld());
         }
     }
     tmp.scatter(tmp_slice);
@@ -1100,10 +1099,10 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
         mdarray<double_complex, 2> beta_phi(&beta_phi_tmp[0], nbf_in_block, nloc);
         Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_phi", kp__->comm_row());
         /* compute <beta|phi> */
-        blas<CPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-                        beta_pw__.ptr(), beta_pw__.ld(),
-                        &phi__(0, s0.local_size()), phi__.ld(),
-                        beta_phi.ptr(), beta_phi.ld());
+        linalg<CPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
+                          beta_pw__.ptr(), beta_pw__.ld(),
+                          &phi__(0, s0.local_size()), phi__.ld(),
+                          beta_phi.ptr(), beta_phi.ld());
         kp__->comm_row().allreduce(beta_phi.ptr(), (int)beta_phi.size());
         double tval = t1.stop();
 
@@ -1125,8 +1124,8 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
             int nbf = uc->atom(ia)->mt_basis_size();
 
             /* compute D*<beta|phi> */
-            blas<CPU>::gemm(0, 0, nbf, nloc, nbf, &uc->atom(ia)->d_mtrx(0, 0), nbf, 
-                            &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
+            linalg<CPU>::gemm(0, 0, nbf, nloc, nbf, &uc->atom(ia)->d_mtrx(0, 0), nbf, 
+                              &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
         }
         t2.stop();
 
@@ -1148,8 +1147,8 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
             int nbf = uc->atom(ia)->mt_basis_size();
 
             /* compute Q*<beta|phi> */
-            blas<CPU>::gemm(0, 0, nbf, nloc, nbf, &uc->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
-                            &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
+            linalg<CPU>::gemm(0, 0, nbf, nloc, nbf, &uc->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
+                              &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
         }
         t4.stop();
 
@@ -1482,8 +1481,8 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
         {
             //printf("#5 zgemm for column %i\n", icol);
             Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel_v3|zgemm_loc", _global_timer_);
-            blas<CPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), &phi__(0, 0), phi__.ld(),
-                            &hphi_tmp(0, 0, icol % 2), hphi_tmp.ld(), &h_tmp(0, 0, icol % 2), h_tmp.ld());
+            linalg<CPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), &phi__(0, 0), phi__.ld(),
+                              &hphi_tmp(0, 0, icol % 2), hphi_tmp.ld(), &h_tmp(0, 0, icol % 2), h_tmp.ld());
             lock_h[icol % 2].store(true);
             lock_hphi[icol % 2].store(false);
         }
@@ -1494,8 +1493,8 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
         {
             Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel_v3|zgemm_loc", _global_timer_);
             //printf("#6 zgemm for column %i\n", icol);
-            blas<CPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), &phi__(0, 0), phi__.ld(),
-                            &ophi_tmp(0, 0, icol % 2), ophi_tmp.ld(), &o_tmp(0, 0, icol % 2), o_tmp.ld());
+            linalg<CPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), &phi__(0, 0), phi__.ld(),
+                              &ophi_tmp(0, 0, icol % 2), ophi_tmp.ld(), &o_tmp(0, 0, icol % 2), o_tmp.ld());
             lock_o[icol % 2].store(true);
             lock_ophi[icol % 2].store(false);
         }
@@ -1858,13 +1857,15 @@ void Band::uspp_residuals_cpu_parallel_v3(int N__,
         while (!lock_evec_tmp[rank_col % 2].load());
         
         while (lock_hpsi_tmp.load());
-        blas<CPU>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
-                        &hphi__(0, 0), hphi__.ld(), &evec_tmp(0, 0, rank_col % 2), evec_tmp.ld(), &hpsi_tmp(0, 0), hpsi_tmp.ld());
+        linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
+                          &hphi__(0, 0), hphi__.ld(), &evec_tmp(0, 0, rank_col % 2), evec_tmp.ld(),
+                          &hpsi_tmp(0, 0), hpsi_tmp.ld());
         lock_hpsi_tmp.store(true);
        
         while (lock_opsi_tmp.load());
-        blas<CPU>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
-                        &ophi__(0, 0), ophi__.ld(), &evec_tmp(0, 0, rank_col % 2), evec_tmp.ld(), &opsi_tmp(0, 0), opsi_tmp.ld());
+        linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
+                          &ophi__(0, 0), ophi__.ld(), &evec_tmp(0, 0, rank_col % 2), evec_tmp.ld(),
+                          &opsi_tmp(0, 0), opsi_tmp.ld());
         lock_opsi_tmp.store(true);
 
         lock_evec_tmp[rank_col % 2].store(false);
@@ -2210,10 +2211,10 @@ void Band::diag_fv_uspp_cpu_serial_v1(K_point* kp__,
             apply_h_o_uspp_cpu(kp__, veff_it_coarse__, pw_ekin, n, &phi(0, N), &hphi(0, N), &ophi(0, N));
             
             // <{phi,res}|H|res>
-            blas<CPU>::gemm(2, 0, N + n, n, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, N), hphi.ld(), &hmlt(0, N), hmlt.ld());
+            linalg<CPU>::gemm(2, 0, N + n, n, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, N), hphi.ld(), &hmlt(0, N), hmlt.ld());
             
             // <{phi,res}|O|res>
-            blas<CPU>::gemm(2, 0, N + n, n, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &ophi(0, N), ophi.ld(), &ovlp(0, N), ovlp.ld());
+            linalg<CPU>::gemm(2, 0, N + n, n, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &ophi(0, N), ophi.ld(), &ovlp(0, N), ovlp.ld());
             
             // increase the size of the variation space
             N += n;
@@ -2234,13 +2235,13 @@ void Band::diag_fv_uspp_cpu_serial_v1(K_point* kp__,
         
         {
             Timer t3("sirius::Band::diag_fv_uspp_cpu|residuals");
-            /* compute H\Psi_{i} = H\phi_{mu} * Z_{mu, i} */
-            blas<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &hphi(0, 0), hphi.ld(), &evec(0, 0), evec.ld(), 
-                            &hpsi(0, 0), hpsi.ld());
+            /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} */
+            linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &hphi(0, 0), hphi.ld(), &evec(0, 0), evec.ld(), 
+                              &hpsi(0, 0), hpsi.ld());
 
-            /* compute O\Psi_{i} = O\phi_{mu} * Z_{mu, i} */
-            blas<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), &evec(0, 0), evec.ld(), 
-                            &opsi(0, 0), opsi.ld());
+            /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
+            linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), &evec(0, 0), evec.ld(), 
+                              &opsi(0, 0), opsi.ld());
 
             /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
             for (int i = 0; i < num_bands; i++)
@@ -2286,9 +2287,9 @@ void Band::diag_fv_uspp_cpu_serial_v1(K_point* kp__,
         if (N + n > num_phi || n == 0 || k == (itso.num_steps_ - 1))
         {   
             Timer t3("sirius::Band::diag_fv_uspp_cpu|update_phi");
-            /* \Psi_{i} = \phi_{mu} * Z_{mu, i} */
-            blas<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), 
-                            &psi(0, 0), psi.ld());
+            /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
+            linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), 
+                              &psi(0, 0), psi.ld());
 
             if (n == 0 || k == (itso.num_steps_ - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
             {
@@ -2385,10 +2386,10 @@ void Band::diag_fv_uspp_cpu_serial_v2(K_point* kp__,
             apply_h_o_uspp_cpu(kp__, veff_it_coarse__, pw_ekin, n, &phi(0, N), &hphi(0, N), &ophi(0, N));
             
             // <{phi,res}|H|res>
-            blas<CPU>::gemm(2, 0, N + n, n, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, N), hphi.ld(), &hmlt(0, N), hmlt.ld());
+            linalg<CPU>::gemm(2, 0, N + n, n, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, N), hphi.ld(), &hmlt(0, N), hmlt.ld());
             
             // <{phi,res}|O|res>
-            blas<CPU>::gemm(2, 0, N + n, n, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &ophi(0, N), ophi.ld(), &ovlp(0, N), ovlp.ld());
+            linalg<CPU>::gemm(2, 0, N + n, n, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &ophi(0, N), ophi.ld(), &ovlp(0, N), ovlp.ld());
             
             // increase the size of the variation space
             N += n;
@@ -2402,11 +2403,11 @@ void Band::diag_fv_uspp_cpu_serial_v2(K_point* kp__,
 
         Timer t3("sirius::Band::diag_fv_uspp_cpu|residuals");
 
-        blas<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &hphi(0, 0), hphi.ld(), &evec(0, 0), evec.ld(), 
-                        &hpsi(0, 0), hpsi.ld());
+        linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &hphi(0, 0), hphi.ld(), &evec(0, 0), evec.ld(), 
+                          &hpsi(0, 0), hpsi.ld());
 
-        blas<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), &evec(0, 0), evec.ld(), 
-                        &opsi(0, 0), opsi.ld());
+        linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), &evec(0, 0), evec.ld(), 
+                          &opsi(0, 0), opsi.ld());
 
         for (int i = 0; i < num_bands; i++)
         {
@@ -2446,8 +2447,8 @@ void Band::diag_fv_uspp_cpu_serial_v2(K_point* kp__,
         //for (int i = 0; i < std::min(10, num_bands); i++) std::cout << "eval["<<i<<"] = " << eval[i] << std::endl;
 
         /* recompute wave-functions: \Psi_{i} = \phi_{mu} * Z_{mu, i} */
-        blas<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), 
-                        &psi(0, 0), psi.ld());
+        linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), 
+                          &psi(0, 0), psi.ld());
             
         /* exit loop if the eigen-vectors are converged or this is the last iteration */
         if (n == 0 || k == itso.num_steps_ - 1)
@@ -2617,9 +2618,9 @@ void Band::diag_fv_uspp_cpu_serial_v3(K_point* kp__,
 
         Timer t2("sirius::Band::diag_fv_uspp_cpu_serial_v3:gevp");
 
-        blas<CPU>::gemm(2, 0, N, N, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
+        linalg<CPU>::gemm(2, 0, N, N, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
           
-        blas<CPU>::gemm(2, 0, N, N, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &ophi(0, 0), ophi.ld(), &ovlp(0, 0), ovlp.ld());
+        linalg<CPU>::gemm(2, 0, N, N, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &ophi(0, 0), ophi.ld(), &ovlp(0, 0), ovlp.ld());
 
         //== {
         //==     mdarray<double_complex, 2> o1(3 * num_bands, 3 * num_bands);
@@ -2638,11 +2639,11 @@ void Band::diag_fv_uspp_cpu_serial_v3(K_point* kp__,
 
         
         Timer t3("sirius::Band::diag_fv_uspp_cpu_serial_v3:update");
-        blas<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), 
-                        &evec(0, 0), evec.ld(), &psi(0, 0), psi.ld());
+        linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), 
+                          &evec(0, 0), evec.ld(), &psi(0, 0), psi.ld());
 
-        blas<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, n, &phi(0, num_bands), phi.ld(), 
-                        &evec(num_bands, 0), evec.ld(), &phi(0, 0), phi.ld());
+        linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, n, &phi(0, num_bands), phi.ld(), 
+                          &evec(num_bands, 0), evec.ld(), &phi(0, 0), phi.ld());
         t3.stop();
         for (int j = 0; j < num_bands; j++)
         {
@@ -2756,9 +2757,9 @@ void Band::diag_fv_uspp_cpu_serial_v4(K_point* kp__,
 
         Timer t2("sirius::Band::diag_fv_uspp_cpu_serial_v3:gevp");
 
-        blas<CPU>::gemm(2, 0, N, N, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
+        linalg<CPU>::gemm(2, 0, N, N, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, 0), hphi.ld(), &hmlt(0, 0), hmlt.ld());
           
-        blas<CPU>::gemm(2, 0, N, N, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &ophi(0, 0), ophi.ld(), &ovlp(0, 0), ovlp.ld());
+        linalg<CPU>::gemm(2, 0, N, N, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &ophi(0, 0), ophi.ld(), &ovlp(0, 0), ovlp.ld());
 
         //== {
         //==     mdarray<double_complex, 2> o1(3 * num_bands, 3 * num_bands);
@@ -2778,22 +2779,22 @@ void Band::diag_fv_uspp_cpu_serial_v4(K_point* kp__,
         
         Timer t3("sirius::Band::diag_fv_uspp_cpu_serial_v3:update");
         
-        blas<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &hphi(0, 0), hphi.ld(), 
-                        &evec(0, 0), evec.ld(), &psi(0, 0), psi.ld());
+        linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &hphi(0, 0), hphi.ld(), 
+                          &evec(0, 0), evec.ld(), &psi(0, 0), psi.ld());
         for (int j = 0; j < num_bands; j++)
         {
             memcpy(&hphi(0, j), &psi(0, j), kp__->num_gkvec() * sizeof(double_complex));
         }
 
-        blas<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), 
-                        &evec(0, 0), evec.ld(), &psi(0, 0), psi.ld());
+        linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), 
+                          &evec(0, 0), evec.ld(), &psi(0, 0), psi.ld());
         for (int j = 0; j < num_bands; j++)
         {
             memcpy(&ophi(0, j), &psi(0, j), kp__->num_gkvec() * sizeof(double_complex));
         }
 
-        blas<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), 
-                        &evec(0, 0), evec.ld(), &psi(0, 0), psi.ld());
+        linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), 
+                          &evec(0, 0), evec.ld(), &psi(0, 0), psi.ld());
         for (int j = 0; j < num_bands; j++)
         {
             memcpy(&phi(0, j), &psi(0, j), kp__->num_gkvec() * sizeof(double_complex));

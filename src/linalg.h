@@ -243,20 +243,20 @@ extern "C" int32_t FORTRAN(iceil)(ftn_int* inum, ftn_int* idenom);
 /// Base class for linear algebra interface.
 class linalg_base
 {
-    private:
+    protected:
 
         static ftn_double_complex zone;
 
         static ftn_double_complex zzero;
 
-    public:
-        
         static ftn_int ilaenv(ftn_int ispec, std::string const& name, std::string const& opts, ftn_int n1, ftn_int n2, 
                               ftn_int n3, ftn_int n4)
         {
             return FORTRAN(ilaenv)(&ispec, name.c_str(), opts.c_str(), &n1, &n2, &n3, &n4, (ftn_len)name.length(), 
                                    (ftn_len)opts.length());
         }
+
+    public:
         
         #ifdef _SCALAPACK_
         static ftn_int numroc(ftn_int n, ftn_int nb, ftn_int iproc, ftn_int isrcproc, ftn_int nprocs)

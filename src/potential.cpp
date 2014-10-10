@@ -310,9 +310,9 @@ void Potential::poisson_sum_G(int lmmax__,
             }
         }
 
-        blas<CPU>::gemm(2, 0, 2 * l + 1, parameters_.unit_cell()->num_atoms(), ngv_loc, 
-                        &zm1(0, Utils::lm_by_l_m(l, -l)), zm1.ld(), &zm2(0, 0), zm2.ld(), 
-                        &flm__(Utils::lm_by_l_m(l, -l), 0), flm__.ld());
+        linalg<CPU>::gemm(2, 0, 2 * l + 1, parameters_.unit_cell()->num_atoms(), ngv_loc, 
+                          &zm1(0, Utils::lm_by_l_m(l, -l)), zm1.ld(), &zm2(0, 0), zm2.ld(), 
+                          &flm__(Utils::lm_by_l_m(l, -l), 0), flm__.ld());
     }
 
     //== #pragma omp parallel

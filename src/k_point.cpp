@@ -450,16 +450,16 @@ void K_point::generate_spinor_wave_functions()
                 if (parameters_.num_mag_dims() != 3)
                 {
                     /* multiply up block for first half of the bands, dn block for second half of the bands */
-                    blas<CPU>::gemm(0, 0, wf_size(), nfv, nfv, fv_states_.ptr(), fv_states_.ld(), 
-                                    &sv_eigen_vectors_[ispn](0, 0), sv_eigen_vectors_[ispn].ld(), 
-                                    &spinor_wave_functions_(0, ispn * nfv, ispn), spinor_wave_functions_.ld());
+                    linalg<CPU>::gemm(0, 0, wf_size(), nfv, nfv, fv_states_.ptr(), fv_states_.ld(), 
+                                      &sv_eigen_vectors_[ispn](0, 0), sv_eigen_vectors_[ispn].ld(), 
+                                      &spinor_wave_functions_(0, ispn * nfv, ispn), spinor_wave_functions_.ld());
                 }
                 else
                 {
                     /* multiply up block and then dn block for all bands */
-                    blas<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states_.ptr(), fv_states_.ld(), 
-                                    &sv_eigen_vectors_[0](ispn * nfv, 0), sv_eigen_vectors_[0].ld(), 
-                                    &spinor_wave_functions_(0, 0, ispn), spinor_wave_functions_.ld());
+                    linalg<CPU>::gemm(0, 0, wf_size(), parameters_.num_bands(), nfv, fv_states_.ptr(), fv_states_.ld(), 
+                                      &sv_eigen_vectors_[0](ispn * nfv, 0), sv_eigen_vectors_[0].ld(), 
+                                      &spinor_wave_functions_(0, 0, ispn), spinor_wave_functions_.ld());
                 }
             }
         }

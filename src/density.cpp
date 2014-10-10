@@ -1176,9 +1176,9 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                 phase_factors(igloc, i) = conj(rl->gvec_phase_factor<local>(igloc, ia));
 
         }
-        blas<CPU>::gemm(0, 0, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, atom_type->num_atoms(),
-                        &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0), d_mtrx_packed.ld(), 
-                        &d_mtrx_pw(0, 0), d_mtrx_pw.ld());
+        linalg<CPU>::gemm(0, 0, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, atom_type->num_atoms(),
+                          &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0), d_mtrx_packed.ld(), 
+                          &d_mtrx_pw(0, 0), d_mtrx_pw.ld());
         
         #pragma omp parallel
         for (int xi2 = 0; xi2 < nbf; xi2++)
@@ -1499,9 +1499,9 @@ void Density::generate_valence_density_mt(K_set& ks)
         }
         for (int j = 0; j < parameters_.num_mag_dims() + 1; j++)
         {
-            blas<CPU>::gemm(0, 1, parameters_.lmmax_rho(), nmtp, num_rf_pairs, 
-                            &mt_density_matrix(0, 0, j), mt_density_matrix.ld(), 
-                            &rf_pairs(0, 0), rf_pairs.ld(), &dlm(0, 0, j), dlm.ld());
+            linalg<CPU>::gemm(0, 1, parameters_.lmmax_rho(), nmtp, num_rf_pairs, 
+                              &mt_density_matrix(0, 0, j), mt_density_matrix.ld(), 
+                              &rf_pairs(0, 0), rf_pairs.ld(), &dlm(0, 0, j), dlm.ld());
         }
 
         int sz = parameters_.lmmax_rho() * nmtp * (int)sizeof(double);

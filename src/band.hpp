@@ -115,8 +115,7 @@ void Band::apply_hmt_to_apw(int num_gkvec__,
             hmt(j1, j2) = atom->hb_radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
         }
     }
-    blas<CPU>::gemm(0, 1, num_gkvec__, type->mt_aw_basis_size(), type->mt_aw_basis_size(), alm__.ptr(), alm__.ld(), 
-                    hmt.ptr(), hmt.ld(), halm__.ptr(), halm__.ld());
+    linalg<CPU>::gemm(0, 1, num_gkvec__, type->mt_aw_basis_size(), type->mt_aw_basis_size(), alm__, hmt, halm__);
 }
 
 template <spin_block_t sblock>
