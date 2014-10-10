@@ -1009,13 +1009,13 @@ void Band::set_fv_h_o<CPU, full_potential_lapwlo>(K_point* kp__,
 
         kp__->alm_coeffs_col()->generate(ia, alm_col);
 
-        blas<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
-                        alm_row.ptr(), alm_row.ld(), alm_col.ptr(), alm_col.ld(), complex_one, o__.ptr(), o__.ld()); 
+        linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
+                          alm_row.ptr(), alm_row.ld(), alm_col.ptr(), alm_col.ld(), complex_one, o__.ptr(), o__.ld()); 
 
         apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col, halm_col);
 
-        blas<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
-                        alm_row.ptr(), alm_row.ld(), halm_col.ptr(), halm_col.ld(), complex_one, h__.ptr(), h__.ld());
+        linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), complex_one, 
+                          alm_row.ptr(), alm_row.ld(), halm_col.ptr(), halm_col.ld(), complex_one, h__.ptr(), h__.ld());
 
         /* setup apw-lo and lo-apw blocks */
         set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h__.panel(), o__.panel());

@@ -34,9 +34,9 @@ class blas<CPU>
 {
     public:
 
-        template <typename T>
-        static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T alpha, T* a, int32_t lda, 
-                         T* b, int32_t ldb, T beta, T* c, int32_t ldc);
+        //template <typename T>
+        //static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T alpha, T* a, int32_t lda, 
+        //                 T* b, int32_t ldb, T beta, T* c, int32_t ldc);
         
         //== template <typename T>
         //== static void gemm(int transa, int transb, int32_t m, int32_t n, int32_t k, T* a, int32_t lda, 

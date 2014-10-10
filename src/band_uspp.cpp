@@ -158,9 +158,9 @@ void Band::apply_h_o_uspp_cpu(K_point* kp__,
 
     Timer t3("sirius::Band::apply_h_o|beta_D_beta_phi");
     /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
-    blas<CPU>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_lo_basis_size(), complex_one, 
-                    kp__->beta_pw_panel().panel().ptr(), kp__->num_gkvec(), 
-                    &tmp(0, 0), tmp.ld(), complex_one, &hphi(0, 0), hphi.ld());
+    linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_lo_basis_size(), complex_one, 
+                      kp__->beta_pw_panel().panel().ptr(), kp__->num_gkvec(), 
+                      &tmp(0, 0), tmp.ld(), complex_one, &hphi(0, 0), hphi.ld());
     t3.stop();
 
     /* compute Q*<beta|phi> */
@@ -175,9 +175,9 @@ void Band::apply_h_o_uspp_cpu(K_point* kp__,
 
     Timer t5("sirius::Band::apply_h_o|beta_Q_beta_phi");
     /* computr <G+k|beta> * Q*<beta|phi> and add to ophi */
-    blas<CPU>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_lo_basis_size(), complex_one, 
-                    kp__->beta_pw_panel().panel().ptr(), kp__->num_gkvec(), 
-                    &tmp(0, 0), tmp.ld(), complex_one, &ophi(0, 0), ophi.ld());
+    linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_lo_basis_size(), complex_one, 
+                      kp__->beta_pw_panel().panel().ptr(), kp__->num_gkvec(), 
+                      &tmp(0, 0), tmp.ld(), complex_one, &ophi(0, 0), ophi.ld());
     t5.stop();
 }
 
@@ -1131,9 +1131,9 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
 
         Timer t3("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_D_beta_phi", kp__->comm_row());
         /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
-        blas<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
-                        beta_pw__.ptr(), beta_pw__.ld(), tmp.ptr(), tmp.ld(), complex_one,
-                        &hphi__(0, s0.local_size()), hphi__.ld());
+        linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
+                          beta_pw__.ptr(), beta_pw__.ld(), tmp.ptr(), tmp.ld(), complex_one,
+                          &hphi__(0, s0.local_size()), hphi__.ld());
         t3.stop();
         
         Timer t4("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|Q_beta_phi", kp__->comm_row());
@@ -1154,9 +1154,9 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
 
         Timer t5("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_Q_beta_phi", kp__->comm_row());
         /* compute <G+k|beta> * Q*<beta|phi> and add to ophi */
-        blas<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
-                        beta_pw__.ptr(), beta_pw__.ld(), tmp.ptr(), tmp.ld(), complex_one,
-                        &ophi__(0, s0.local_size()), ophi__.ld());
+        linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
+                          beta_pw__.ptr(), beta_pw__.ld(), tmp.ptr(), tmp.ld(), complex_one,
+                          &ophi__(0, s0.local_size()), ophi__.ld());
         t5.stop();
     }
 }

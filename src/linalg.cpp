@@ -28,16 +28,16 @@
 #include "gpu_interface.h"
 #endif
 
-template<> 
-void blas<CPU>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32_t k, double alpha, 
-                             double* a, int32_t lda, double* b, int32_t ldb, double beta, double* c, 
-                             int32_t ldc)
-{
-    const char *trans[] = {"N", "T", "C"};
-
-    FORTRAN(dgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int32_t)1, 
-                   (int32_t)1);
-}
+//== template<> 
+//== void blas<CPU>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32_t k, double alpha, 
+//==                              double* a, int32_t lda, double* b, int32_t ldb, double beta, double* c, 
+//==                              int32_t ldc)
+//== {
+//==     const char *trans[] = {"N", "T", "C"};
+//== 
+//==     FORTRAN(dgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int32_t)1, 
+//==                    (int32_t)1);
+//== }
 
 //== template<> 
 //== void blas<CPU>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32_t k, double* a, int32_t lda, 
@@ -46,16 +46,16 @@ void blas<CPU>::gemm<double>(int transa, int transb, int32_t m, int32_t n, int32
 //==     gemm(transa, transb, m, n, k, 1.0, a, lda, b, ldb, 0.0, c, ldc);
 //== }
 
-template<> 
-void blas<CPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                                     double_complex alpha, double_complex* a, int32_t lda, double_complex* b, 
-                                     int32_t ldb, double_complex beta, double_complex* c, int32_t ldc)
-{
-    const char *trans[] = {"N", "T", "C"};
-
-    FORTRAN(zgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int32_t)1, 
-                   (int32_t)1);
-}
+//== template<> 
+//== void blas<CPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+//==                                      double_complex alpha, double_complex* a, int32_t lda, double_complex* b, 
+//==                                      int32_t ldb, double_complex beta, double_complex* c, int32_t ldc)
+//== {
+//==     const char *trans[] = {"N", "T", "C"};
+//== 
+//==     FORTRAN(zgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, (int32_t)1, 
+//==                    (int32_t)1);
+//== }
 
 //== template<> 
 //== void blas<CPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 

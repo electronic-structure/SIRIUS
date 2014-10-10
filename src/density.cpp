@@ -516,10 +516,10 @@ void Density::add_kpoint_contribution_mt(K_point* kp, std::vector< std::pair<int
 
         for (int j = 0; j < (int)mt_complex_density_matrix.size(2); j++)
         {
-            blas<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, (int)occupied_bands.size(), complex_one, 
-                            &wf1(0, 0, dmat_spins_[j].first), wf1.ld(), 
-                            &wf2(0, 0, dmat_spins_[j].second), wf2.ld(), complex_one, 
-                            &mt_complex_density_matrix(0, 0, j, ia), mt_complex_density_matrix.ld());
+            linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, (int)occupied_bands.size(), complex_one, 
+                              &wf1(0, 0, dmat_spins_[j].first), wf1.ld(), 
+                              &wf2(0, 0, dmat_spins_[j].second), wf2.ld(), complex_one, 
+                              &mt_complex_density_matrix(0, 0, j, ia), mt_complex_density_matrix.ld());
         }
     }
 }
@@ -629,9 +629,9 @@ void Density::add_kpoint_contribution_pp(K_point* kp__,
                 }
             }
 
-            blas<CPU>::gemm(0, 1, nbf, nbf, (int)sub_spl_col.local_size(), complex_one, &bp1(0, 0), bp1.ld(),
-                            &bp2(0, 0), bp2.ld(), complex_one, &pp_complex_density_matrix__(0, 0, 0, ia), 
-                            pp_complex_density_matrix__.ld());
+            linalg<CPU>::gemm(0, 1, nbf, nbf, (int)sub_spl_col.local_size(), complex_one, &bp1(0, 0), bp1.ld(),
+                              &bp2(0, 0), bp2.ld(), complex_one, &pp_complex_density_matrix__(0, 0, 0, ia), 
+                              pp_complex_density_matrix__.ld());
         }
     }
 }

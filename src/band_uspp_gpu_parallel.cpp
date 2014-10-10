@@ -1544,9 +1544,9 @@ void Band::apply_h_ncpp_parallel(K_point* kp__,
             }
             
             /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
-            blas<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
-                            kappa__.at<CPU>(), kappa__.ld(), tmp.at<CPU>(), tmp.ld(), complex_one,
-                            hphi__.at<CPU>(), hphi__.ld());
+            linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
+                              kappa__.at<CPU>(), kappa__.ld(), tmp.at<CPU>(), tmp.ld(), complex_one,
+                              hphi__.at<CPU>(), hphi__.ld());
         }
 
         #ifdef _GPU_
