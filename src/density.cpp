@@ -782,10 +782,10 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp__,
                               beta_pw.at<GPU>());
 
         /* compute <beta|psi> */
-        blas<GPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-                        beta_pw.at<GPU>(), beta_pw.ld(), 
-                        psi_occ.at<GPU>(), psi_occ.ld(), 
-                        beta_psi.at<GPU>(), beta_psi.ld());
+        linalg<GPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
+                          beta_pw.at<GPU>(), beta_pw.ld(), 
+                          psi_occ.at<GPU>(), psi_occ.ld(), 
+                          beta_psi.at<GPU>(), beta_psi.ld());
         
         if (gpu_direct)
         {
@@ -833,9 +833,9 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp__,
                               tmp.ld(),
                               thread_id);
             
-            blas<GPU>::gemm(0, 1, nbf, nbf, nloc, &alpha, beta_psi.at<GPU>(ofs, 0), beta_psi.ld(),
-                            tmp.at<GPU>(0, 0, thread_id), tmp.ld(), &alpha, 
-                            pp_complex_density_matrix__.at<GPU>(0, 0, 0, ia), pp_complex_density_matrix__.ld(), thread_id);
+            linalg<GPU>::gemm(0, 1, nbf, nbf, nloc, &alpha, beta_psi.at<GPU>(ofs, 0), beta_psi.ld(),
+                              tmp.at<GPU>(0, 0, thread_id), tmp.ld(), &alpha, 
+                              pp_complex_density_matrix__.at<GPU>(0, 0, 0, ia), pp_complex_density_matrix__.ld(), thread_id);
         }
         cuda_device_synchronize();
     }

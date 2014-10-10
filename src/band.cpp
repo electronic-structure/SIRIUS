@@ -1078,16 +1078,16 @@ void Band::set_fv_h_o<GPU, full_potential_lapwlo>(K_point* kp__,
         kp__->alm_coeffs_col()->generate(ia, alm_col);
         alm_col.copy_to_device();
 
-        blas<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
-                        alm_row.at<CPU>(0, 0), alm_row.ld(), alm_col.at<GPU>(0, 0), alm_col.ld(), &zone, 
-                        o__.at<GPU>(0, 0), o__.ld()); 
+        linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
+                          alm_row.at<CPU>(0, 0), alm_row.ld(), alm_col.at<GPU>(0, 0), alm_col.ld(), &zone, 
+                          o__.at<GPU>(0, 0), o__.ld()); 
 
         apply_hmt_to_apw<nm>(kp__->num_gkvec_col(), ia, alm_col, halm_col);
         halm_col.copy_to_device();
 
-        blas<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
-                        alm_row.at<GPU>(0, 0), alm_row.ld(), halm_col.at<GPU>(0, 0), halm_col.ld(), &zone,
-                        h__.at<GPU>(0, 0), h__.ld());
+        linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type->mt_aw_basis_size(), &zone, 
+                          alm_row.at<GPU>(0, 0), alm_row.ld(), halm_col.at<GPU>(0, 0), halm_col.ld(), &zone,
+                          h__.at<GPU>(0, 0), h__.ld());
 
         /* setup apw-lo and lo-apw blocks */
         set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h__.panel(), o__.panel());

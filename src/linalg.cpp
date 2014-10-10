@@ -155,48 +155,48 @@ void blas<CPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 
 
 #ifdef _GPU_
-double_complex blas<GPU>::zone = double_complex(1, 0);
-double_complex blas<GPU>::zzero = double_complex(0, 0);
+//double_complex blas<GPU>::zone = double_complex(1, 0);
+//double_complex blas<GPU>::zzero = double_complex(0, 0);
 
-template<>
-void blas<GPU>::gemv<double_complex>(int trans, int32_t m, int32_t n, double_complex* alpha, double_complex* a, int32_t lda,
-                                     double_complex* x, int32_t incx, double_complex* beta, double_complex* y, int32_t incy, 
-                                     int stream_id)
-{
-    cublas_zgemv(trans, m, n, alpha, a, lda, x, incx, beta, y, incy, stream_id);
-}
+//template<>
+//void blas<GPU>::gemv<double_complex>(int trans, int32_t m, int32_t n, double_complex* alpha, double_complex* a, int32_t lda,
+//                                     double_complex* x, int32_t incx, double_complex* beta, double_complex* y, int32_t incy, 
+//                                     int stream_id)
+//{
+//    cublas_zgemv(trans, m, n, alpha, a, lda, x, incx, beta, y, incy, stream_id);
+//}
 
-template<> 
-void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                                     double_complex* alpha, double_complex* a, int32_t lda, double_complex* b, 
-                                     int32_t ldb, double_complex* beta, double_complex* c, int32_t ldc)
-{
-    cublas_zgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, -1);
-}
-
-template<> 
-void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                                     double_complex* alpha, double_complex* a, int32_t lda, double_complex* b, 
-                                     int32_t ldb, double_complex* beta, double_complex* c, int32_t ldc, int stream_id)
-{
-    cublas_zgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, stream_id);
-}
-
-template<> 
-void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                                     double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
-                                     double_complex* c, int32_t ldc)
-{
-    cublas_zgemm(transa, transb, m, n, k, &zone, a, lda, b, ldb, &zzero, c, ldc, -1);
-}
-
-template<> 
-void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                                     double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
-                                     double_complex* c, int32_t ldc, int stream_id)
-{
-    cublas_zgemm(transa, transb, m, n, k, &zone, a, lda, b, ldb, &zzero, c, ldc, stream_id);
-}
+//== template<> 
+//== void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+//==                                      double_complex* alpha, double_complex* a, int32_t lda, double_complex* b, 
+//==                                      int32_t ldb, double_complex* beta, double_complex* c, int32_t ldc)
+//== {
+//==     cublas_zgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, -1);
+//== }
+//== 
+//== template<> 
+//== void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+//==                                      double_complex* alpha, double_complex* a, int32_t lda, double_complex* b, 
+//==                                      int32_t ldb, double_complex* beta, double_complex* c, int32_t ldc, int stream_id)
+//== {
+//==     cublas_zgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, stream_id);
+//== }
+//== 
+//== template<> 
+//== void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+//==                                      double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
+//==                                      double_complex* c, int32_t ldc)
+//== {
+//==     cublas_zgemm(transa, transb, m, n, k, &zone, a, lda, b, ldb, &zzero, c, ldc, -1);
+//== }
+//== 
+//== template<> 
+//== void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+//==                                      double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
+//==                                      double_complex* c, int32_t ldc, int stream_id)
+//== {
+//==     cublas_zgemm(transa, transb, m, n, k, &zone, a, lda, b, ldb, &zzero, c, ldc, stream_id);
+//== }
 #endif
 
 
@@ -639,47 +639,49 @@ void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ft
 #endif
 
 #ifdef _GPU_
-
-template<> 
-void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
-                                           ftn_double_complex* alpha, ftn_double_complex* A, ftn_int lda,
-                                           ftn_double_complex* B, ftn_int ldb, ftn_double_complex* beta, 
-                                           ftn_double_complex* C, ftn_in ldc, int stream_id)
+template<>
+void linalg<GPU>::gemv<ftn_double_complex>(int trans, ftn_int m, ftn_int n, ftn_double_complex* alpha,
+                                           ftn_double_complex* A, ftn_int lda, ftn_double_complex* x, ftn_int incx,
+                                           ftn_double_complex* beta, ftn_double_complex* y, ftn_int incy, 
+                                           int stream_id)
 {
-    cublas_zgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, stream_id);
+    cublas_zgemv(trans, m, n, alpha, A, lda, x, incx, beta, y, incy, stream_id);
 }
 
 template<> 
 void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
                                            ftn_double_complex* alpha, ftn_double_complex* A, ftn_int lda,
                                            ftn_double_complex* B, ftn_int ldb, ftn_double_complex* beta, 
-                                           ftn_double_complex* C, ftn_in ldc)
+                                           ftn_double_complex* C, ftn_int ldc, int stream_id)
+{
+    cublas_zgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
+}
+
+template<> 
+void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
+                                           ftn_double_complex* alpha, ftn_double_complex* A, ftn_int lda,
+                                           ftn_double_complex* B, ftn_int ldb, ftn_double_complex* beta, 
+                                           ftn_double_complex* C, ftn_int ldc)
 {
     gemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, -1);
 }
 
+template<> 
+void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
+                                           ftn_double_complex* A, ftn_int lda,
+                                           ftn_double_complex* B, ftn_int ldb, 
+                                           ftn_double_complex* C, ftn_int ldc, int stream_id)
+{
+    cublas_zgemm(transa, transb, m, n, k, &zone, A, lda, B, ldb, &zzero, C, ldc, stream_id);
+}
 
-//template<> 
-//void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-//                                     double_complex* alpha, double_complex* a, int32_t lda, double_complex* b, 
-//                                     int32_t ldb, double_complex* beta, double_complex* c, int32_t ldc, int stream_id)
-//{
-//    cublas_zgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, stream_id);
-//}
-//
-//template<> 
-//void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-//                                     double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
-//                                     double_complex* c, int32_t ldc)
-//{
-//    cublas_zgemm(transa, transb, m, n, k, &zone, a, lda, b, ldb, &zzero, c, ldc, -1);
-//}
-//
-//template<> 
-//void blas<GPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-//                                     double_complex* a, int32_t lda, double_complex* b, int32_t ldb, 
-//                                     double_complex* c, int32_t ldc, int stream_id)
-//{
-//    cublas_zgemm(transa, transb, m, n, k, &zone, a, lda, b, ldb, &zzero, c, ldc, stream_id);
-//}
+template<> 
+void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
+                                           ftn_double_complex* A, ftn_int lda,
+                                           ftn_double_complex* B, ftn_int ldb,
+                                           ftn_double_complex* C, ftn_int ldc)
+{
+    gemm(transa, transb, m, n, k, A, lda, B, ldb, C, ldc, -1);
+}
+
 #endif

@@ -199,10 +199,10 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                                   kappa__.at<GPU>());
 
             /* compute <beta|phi> */
-            blas<GPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-                            kappa__.at<GPU>(), kappa__.ld(), 
-                            phi__.at<GPU>(0, s0.local_size()), phi__.ld(), 
-                            beta_phi.at<GPU>(), beta_phi.ld());
+            linalg<GPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
+                              kappa__.at<GPU>(), kappa__.ld(), 
+                              phi__.at<GPU>(0, s0.local_size()), phi__.ld(), 
+                              beta_phi.at<GPU>(), beta_phi.ld());
             
             if (gpu_direct)
             {
@@ -283,18 +283,18 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                 int nbf = beta_pw_desc(0, i);
 
                 /* compute D*<beta|phi> */
-                blas<GPU>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed__.at<GPU>(packed_mtrx_offset__(ia)), nbf, 
-                                beta_phi.at<GPU>(ofs, 0), beta_phi.ld(), tmp.at<GPU>(ofs, 0), tmp.ld(), 
-                                Platform::thread_id());
+                linalg<GPU>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed__.at<GPU>(packed_mtrx_offset__(ia)), nbf, 
+                                  beta_phi.at<GPU>(ofs, 0), beta_phi.ld(), tmp.at<GPU>(ofs, 0), tmp.ld(), 
+                                  Platform::thread_id());
 
             }
             cuda_device_synchronize();
             
             double_complex alpha = complex_one;
             /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
-            blas<GPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,
-                            kappa__.at<GPU>(), kappa__.ld(), tmp.at<GPU>(), tmp.ld(), &alpha, 
-                            hphi__.at<GPU>(0, s0.local_size()), hphi__.ld());
+            linalg<GPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,
+                              kappa__.at<GPU>(), kappa__.ld(), tmp.at<GPU>(), tmp.ld(), &alpha, 
+                              hphi__.at<GPU>(0, s0.local_size()), hphi__.ld());
             
             if (with_overlap)
             {
@@ -308,16 +308,16 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                     int nbf = beta_pw_desc(0, i);
 
                     /* compute Q*<beta|phi> */
-                    blas<GPU>::gemm(0, 0, nbf, nloc, nbf, q_mtrx_packed__.at<GPU>(packed_mtrx_offset__(ia)), nbf,
-                                    beta_phi.at<GPU>(ofs, 0), beta_phi.ld(), tmp.at<GPU>(ofs, 0), tmp.ld(), 
-                                    Platform::thread_id());
+                    linalg<GPU>::gemm(0, 0, nbf, nloc, nbf, q_mtrx_packed__.at<GPU>(packed_mtrx_offset__(ia)), nbf,
+                                      beta_phi.at<GPU>(ofs, 0), beta_phi.ld(), tmp.at<GPU>(ofs, 0), tmp.ld(), 
+                                      Platform::thread_id());
                 }
                 cuda_device_synchronize();
 
                 /* compute <G+k|beta> * Q*<beta|phi> and add to ophi */
-                blas<GPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,
-                                kappa__.at<GPU>(), kappa__.ld(), tmp.at<GPU>(), tmp.ld(), &alpha,
-                                ophi__.at<GPU>(0, s0.local_size()), ophi__.ld());
+                linalg<GPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,
+                                  kappa__.at<GPU>(), kappa__.ld(), tmp.at<GPU>(), tmp.ld(), &alpha,
+                                  ophi__.at<GPU>(0, s0.local_size()), ophi__.ld());
             }
         }
         #endif
@@ -587,8 +587,8 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
             if (pu == GPU)
             {
                 #ifdef _GPU_
-                blas<GPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.at<GPU>(), phi__.ld(),
-                                hphi_tmp.at<GPU>(0, 0, icol % 2), hphi_tmp.ld(), h_tmp.at<GPU>(0, 0, icol % 2), h_tmp.ld());
+                linalg<GPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.at<GPU>(), phi__.ld(),
+                                  hphi_tmp.at<GPU>(0, 0, icol % 2), hphi_tmp.ld(), h_tmp.at<GPU>(0, 0, icol % 2), h_tmp.ld());
                 cuda_copy_to_host(h_tmp.at<CPU>(0, 0, icol % 2), h_tmp.at<GPU>(0, 0, icol % 2), num_phi * n * sizeof(double_complex));
                 #else
                 TERMINATE_NO_GPU
@@ -611,8 +611,8 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
             if (pu == GPU)
             {
                 #ifdef _GPU_
-                blas<GPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.at<GPU>(), phi__.ld(),
-                                ophi_tmp.at<GPU>(0, 0, icol % 2), ophi_tmp.ld(), o_tmp.at<GPU>(0, 0, icol % 2), o_tmp.ld());
+                linalg<GPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), phi__.at<GPU>(), phi__.ld(),
+                                  ophi_tmp.at<GPU>(0, 0, icol % 2), ophi_tmp.ld(), o_tmp.at<GPU>(0, 0, icol % 2), o_tmp.ld());
                 cuda_copy_to_host(o_tmp.at<CPU>(0, 0, icol % 2), o_tmp.at<GPU>(0, 0, icol % 2), num_phi * n * sizeof(double_complex));
                 #else
                 TERMINATE_NO_GPU
@@ -883,9 +883,9 @@ void Band::uspp_residuals_gpu_parallel(int N__,
             case GPU:
             {
                 #ifdef _GPU_
-                blas<GPU>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
-                                hphi__.at<GPU>(), hphi__.ld(), evec_tmp.at<GPU>(0, 0, rank_col % 2), evec_tmp.ld(), 
-                                hpsi_tmp.at<GPU>(), hpsi_tmp.ld());
+                linalg<GPU>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
+                                  hphi__.at<GPU>(), hphi__.ld(), evec_tmp.at<GPU>(0, 0, rank_col % 2), evec_tmp.ld(), 
+                                  hpsi_tmp.at<GPU>(), hpsi_tmp.ld());
                 cuda_device_synchronize();
                 break;
                 #endif
@@ -906,9 +906,9 @@ void Band::uspp_residuals_gpu_parallel(int N__,
             case GPU:
             {
                 #ifdef _GPU_
-                blas<GPU>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
-                                ophi__.at<GPU>(), ophi__.ld(), evec_tmp.at<GPU>(0, 0, rank_col % 2), evec_tmp.ld(), 
-                                opsi_tmp.at<GPU>(), opsi_tmp.ld());
+                linalg<GPU>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
+                                  ophi__.at<GPU>(), ophi__.ld(), evec_tmp.at<GPU>(0, 0, rank_col % 2), evec_tmp.ld(), 
+                                  opsi_tmp.at<GPU>(), opsi_tmp.ld());
                 cuda_device_synchronize();
                 break;
                 #endif
@@ -1500,10 +1500,10 @@ void Band::apply_h_ncpp_parallel(K_point* kp__,
                                   kappa__.at<GPU>());
 
             /* compute <beta|phi> */
-            blas<GPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-                            kappa__.at<GPU>(), kappa__.ld(), 
-                            phi__.at<GPU>(), phi__.ld(), 
-                            beta_phi.at<GPU>(), beta_phi.ld());
+            linalg<GPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
+                              kappa__.at<GPU>(), kappa__.ld(), 
+                              phi__.at<GPU>(), phi__.ld(), 
+                              beta_phi.at<GPU>(), beta_phi.ld());
             
             if (gpu_direct)
             {
@@ -1562,18 +1562,18 @@ void Band::apply_h_ncpp_parallel(K_point* kp__,
                 int nbf = beta_pw_desc(0, i);
 
                 /* compute D*<beta|phi> */
-                blas<GPU>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed__.at<GPU>(packed_mtrx_offset__(ia)), nbf, 
-                                beta_phi.at<GPU>(ofs, 0), beta_phi.ld(), tmp.at<GPU>(ofs, 0), tmp.ld(), 
-                                Platform::thread_id());
+                linalg<GPU>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed__.at<GPU>(packed_mtrx_offset__(ia)), nbf, 
+                                  beta_phi.at<GPU>(ofs, 0), beta_phi.ld(), tmp.at<GPU>(ofs, 0), tmp.ld(), 
+                                  Platform::thread_id());
 
             }
             cuda_device_synchronize();
             
             double_complex alpha = complex_one;
             /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
-            blas<GPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,
-                            kappa__.at<GPU>(), kappa__.ld(), tmp.at<GPU>(), tmp.ld(), &alpha, 
-                            hphi__.at<GPU>(), hphi__.ld());
+            linalg<GPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,
+                              kappa__.at<GPU>(), kappa__.ld(), tmp.at<GPU>(), tmp.ld(), &alpha, 
+                              hphi__.at<GPU>(), hphi__.ld());
         }
         #endif
     }
@@ -2016,10 +2016,10 @@ void Band::set_fv_h_o_ncpp_parallel(K_point* kp__,
             if (pu == GPU)
             {
                 #ifdef _GPU_
-                blas<GPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), 
-                                hphi__.at<GPU>(), hphi__.ld(), 
-                                phi_tmp.at<GPU>(0, 0, icol % 2), phi_tmp.ld(),
-                                h_tmp.at<GPU>(0, 0, icol % 2), h_tmp.ld());
+                linalg<GPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(), 
+                                  hphi__.at<GPU>(), hphi__.ld(), 
+                                  phi_tmp.at<GPU>(0, 0, icol % 2), phi_tmp.ld(),
+                                  h_tmp.at<GPU>(0, 0, icol % 2), h_tmp.ld());
 
                 cuda_copy_to_host(h_tmp.at<CPU>(0, 0, icol % 2), h_tmp.at<GPU>(0, 0, icol % 2), 
                                   num_phi * n * sizeof(double_complex));
@@ -2041,10 +2041,10 @@ void Band::set_fv_h_o_ncpp_parallel(K_point* kp__,
             if (pu == GPU)
             {
                 #ifdef _GPU_
-                blas<GPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(),
-                                phi__.at<GPU>(), phi__.ld(),
-                                phi_tmp.at<GPU>(0, 0, icol % 2), phi_tmp.ld(), 
-                                o_tmp.at<GPU>(0, 0, icol % 2), o_tmp.ld());
+                linalg<GPU>::gemm(2, 0, num_phi, n, kp__->num_gkvec_row(),
+                                  phi__.at<GPU>(), phi__.ld(),
+                                  phi_tmp.at<GPU>(0, 0, icol % 2), phi_tmp.ld(), 
+                                  o_tmp.at<GPU>(0, 0, icol % 2), o_tmp.ld());
                 cuda_copy_to_host(o_tmp.at<CPU>(0, 0, icol % 2), o_tmp.at<GPU>(0, 0, icol % 2), n * num_phi * sizeof(double_complex));
                 #else
                 TERMINATE_NO_GPU
@@ -2249,9 +2249,9 @@ void Band::generate_fv_states_pp(K_point* kp__,
             case GPU:
             {
                 #ifdef _GPU_
-                blas<GPU>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
-                                phi__.at<GPU>(), phi__.ld(), evec_tmp.at<GPU>(0, 0, rank_col % 2), evec_tmp.ld(), 
-                                psi_tmp.at<GPU>(), psi_tmp.ld());
+                linalg<GPU>::gemm(0, 0, kp__->num_gkvec_row(), num_bands_of_rank, num_phi_loc, 
+                                  phi__.at<GPU>(), phi__.ld(), evec_tmp.at<GPU>(0, 0, rank_col % 2), evec_tmp.ld(), 
+                                  psi_tmp.at<GPU>(), psi_tmp.ld());
                 cuda_device_synchronize();
                 break;
                 #endif

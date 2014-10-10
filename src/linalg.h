@@ -444,14 +444,26 @@ template<>
 class linalg<GPU>: public linalg_base
 {
     public:
-        
-        template <typename T>
-        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T alpha, T* A, ftn_int lda,
-                         T* B, ftn_int ldb, T beta, T* C, ftn_int ldc, int stream_id);
+
+        template<typename T>
+        static void gemv(int trans, ftn_int m, ftn_int n, T* alpha, T* A, ftn_int lda, T* x, ftn_int incx, 
+                         T* beta, T* y, ftn_int incy, int stream_id);
 
         template <typename T>
-        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T alpha, T* A, ftn_int lda,
-                         T* B, ftn_int ldb, T beta, T* C, ftn_int ldc);
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T* alpha, T* A, ftn_int lda,
+                         T* B, ftn_int ldb, T* beta, T* C, ftn_int ldc, int stream_id);
+
+        template <typename T>
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T* alpha, T* A, ftn_int lda,
+                         T* B, ftn_int ldb, T* beta, T* C, ftn_int ldc);
+        
+        template <typename T>
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T* A, ftn_int lda,
+                         T* B, ftn_int ldb, T* C, ftn_int ldc, int stream_id);
+
+        template <typename T>
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T* A, ftn_int lda,
+                         T* B, ftn_int ldb, T* C, ftn_int ldc);
 };
 #endif
 

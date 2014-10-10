@@ -2019,9 +2019,9 @@ void Potential::generate_d_mtrx_gpu()
                                             vtmp.at<GPU>(0, thread_id),
                                             thread_id);
 
-            blas<GPU>::gemv(2, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, &alpha, 
-                            atom_type->uspp().q_pw.at<GPU>(), (int)rl->spl_num_gvec().local_size(),  
-                            vtmp.at<GPU>(0, thread_id), 1, &beta, d_mtrx.at<GPU>(0, ia), 1, thread_id);
+            linalg<GPU>::gemv(2, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, &alpha, 
+                              atom_type->uspp().q_pw.at<GPU>(), (int)rl->spl_num_gvec().local_size(),  
+                              vtmp.at<GPU>(0, thread_id), 1, &beta, d_mtrx.at<GPU>(0, ia), 1, thread_id);
         }
         cuda_device_synchronize();
         d_mtrx.copy_to_host();
