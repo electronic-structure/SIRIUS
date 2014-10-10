@@ -1265,7 +1265,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             #endif
 
             /* recompute wave-functions: \Psi_{i} = \phi_{mu} * Z_{mu, i} */
-            if (with_overlap) blas<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, complex_one, phi, evec, complex_zero, psi); 
+            if (with_overlap) linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, complex_one, phi, evec, complex_zero, psi); 
             
             /* exit loop if the eigen-vectors are converged or this is the last iteration */
             if (n == 0 || k == (itso.num_steps_ - 1))

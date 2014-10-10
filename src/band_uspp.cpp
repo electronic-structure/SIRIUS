@@ -547,7 +547,9 @@ void Band::apply_h_local_slice(K_point* kp__,
     std::mutex idx_phi_mutex;
 
     int count_fft_cpu = 0;
+    #ifdef _GPU_
     int count_fft_gpu = 0;
+    #endif
     
     for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
     {
@@ -723,7 +725,9 @@ void Band::apply_h_local_slice(K_point* kp__,
     std::mutex idx_phi_mutex;
 
     int count_fft_cpu = 0;
+    #ifdef _GPU_
     int count_fft_gpu = 0;
+    #endif
     
     for (int thread_id = 0; thread_id < num_fft_threads; thread_id++)
     {
@@ -950,8 +954,8 @@ void Band::apply_h_o_uspp_cpu_parallel_simple(K_point* kp__,
 
     Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel_simple|beta_phi", _global_timer_);
     /* compute <beta|phi> */
-    blas<CPU>::gemm(2, 0, uc->mt_basis_size(), n__, kp__->num_gkvec(), complex_one, 
-                    kp__->beta_pw_panel(), 0, 0, phi__, 0, N__, complex_zero, beta_phi, 0, 0);
+    linalg<CPU>::gemm(2, 0, uc->mt_basis_size(), n__, kp__->num_gkvec(), complex_one, 
+                      kp__->beta_pw_panel(), 0, 0, phi__, 0, N__, complex_zero, beta_phi, 0, 0);
     double tval = t1.stop();
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
@@ -984,8 +988,8 @@ void Band::apply_h_o_uspp_cpu_parallel_simple(K_point* kp__,
 
     Timer t3("sirius::Band::apply_h_o_uspp_cpu_parallel_simple|beta_D_beta_phi", _global_timer_);
     /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
-    blas<CPU>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_basis_size(), complex_one,
-                    kp__->beta_pw_panel(), 0, 0, tmp, 0, 0, complex_one, hphi__, 0, N__);
+    linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_basis_size(), complex_one,
+                      kp__->beta_pw_panel(), 0, 0, tmp, 0, 0, complex_one, hphi__, 0, N__);
     tval = t3.stop();
      
     if (sub_spl_col.local_size() != 0)
@@ -1004,8 +1008,8 @@ void Band::apply_h_o_uspp_cpu_parallel_simple(K_point* kp__,
 
     Timer t5("sirius::Band::apply_h_o_uspp_cpu_parallel_simple|beta_Q_beta_phi", _global_timer_);
     /* computr <G+k|beta> * Q*<beta|phi> and add to ophi */
-    blas<CPU>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_basis_size(), complex_one, 
-                    kp__->beta_pw_panel(), 0, 0, tmp, 0, 0, complex_one, ophi__, 0, N__);
+    linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_basis_size(), complex_one, 
+                      kp__->beta_pw_panel(), 0, 0, tmp, 0, 0, complex_one, ophi__, 0, N__);
     tval += t5.stop();
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
@@ -1191,9 +1195,9 @@ void Band::set_fv_h_o_uspp_cpu_parallel_simple(int N__,
     
     Timer t2("sirius::Band::set_fv_h_o_uspp_cpu_parallel_simple|zgemm", _global_timer_);
     /* <{phi,res}|H|res> */
-    blas<CPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), complex_one, phi__, 0, 0, hphi__, 0, N__, complex_zero, h__, 0, N__);
+    linalg<CPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), complex_one, phi__, 0, 0, hphi__, 0, N__, complex_zero, h__, 0, N__);
     /* <{phi,res}|O|res> */
-    blas<CPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), complex_one, phi__, 0, 0, ophi__, 0, N__, complex_zero, o__, 0, N__);
+    linalg<CPU>::gemm(2, 0, N__ + n__, n__, kp__->num_gkvec(), complex_one, phi__, 0, 0, ophi__, 0, N__, complex_zero, o__, 0, N__);
     double tval = t2.stop();
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
@@ -1541,10 +1545,10 @@ void Band::uspp_residuals_cpu_parallel_simple(int N__,
     Timer t("sirius::Band::uspp_residuals_cpu_parallel_simple");
     
     Timer t2("sirius::Band::uspp_residuals_cpu_parallel_simple|zgemm");
-    /* Compute H\Psi_{i} = H\phi_{mu} * Z_{mu, i} */
-    blas<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, hphi__, evec__, complex_zero, hpsi__);
-    /* Compute O\Psi_{i} = O\phi_{mu} * Z_{mu, i} */
-    blas<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, ophi__, evec__, complex_zero, opsi__);
+    /* compute H\Psi_{i} = H\phi_{mu} * Z_{mu, i} */
+    linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, hphi__, evec__, complex_zero, hpsi__);
+    /* compute O\Psi_{i} = O\phi_{mu} * Z_{mu, i} */
+    linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, complex_one, ophi__, evec__, complex_zero, opsi__);
     double tval = t2.stop();
 
     if (verbosity_level >= 6 && kp__->comm().rank() == 0)
@@ -2058,7 +2062,7 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
             Timer t3("sirius::Band::diag_fv_uspp_cpu_parallel|update_phi", kp__->comm());
 
             /* recompute wave-functions: \Psi_{i} = \phi_{mu} * Z_{mu, i} */
-            blas<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, complex_one, phi, evec, complex_zero, psi); 
+            linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, complex_one, phi, evec, complex_zero, psi); 
             
             /* exit loop if the eigen-vectors are converged or this is the last iteration */
             if (n == 0 || k == (itso.num_steps_ - 1))

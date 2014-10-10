@@ -56,8 +56,8 @@ void Force::compute_dmat(Global& parameters__,
                         ev1(i, j) = conj(ev(i, j)) * kp__->band_occupancy(jb + ispn * parameters__.num_fv_states());
                 }
 
-                blas<CPU>::gemm(0, 1, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_fv_states(),
-                                complex_one, ev1, ev, complex_one, dm__);
+                linalg<CPU>::gemm(0, 1, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_fv_states(),
+                                  complex_one, ev1, ev, complex_one, dm__);
             }
         }
         else
@@ -75,8 +75,8 @@ void Force::compute_dmat(Global& parameters__,
             {
                 int offs = ispn * parameters__.num_fv_states();
 
-                blas<CPU>::gemm(0, 1, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_bands(),
-                                complex_one, ev1, offs, 0, ev, offs, 0, complex_one, dm__, 0, 0);
+                linalg<CPU>::gemm(0, 1, parameters__.num_fv_states(), parameters__.num_fv_states(), parameters__.num_bands(),
+                                  complex_one, ev1, offs, 0, ev, offs, 0, complex_one, dm__, 0, 0);
             }
         }
     }
@@ -200,16 +200,16 @@ void Force::ibs_force(Global& parameters__,
             }
 
             /* zm1 = H * V */
-            blas<CPU>::gemm(0, 0, kp__->gklo_basis_size(), parameters__.num_fv_states(), kp__->gklo_basis_size(), 
-                            complex_one, h1, fv_evec, complex_zero, zm1);
+            linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), parameters__.num_fv_states(), kp__->gklo_basis_size(), 
+                              complex_one, h1, fv_evec, complex_zero, zm1);
 
             /* F = V^{+} * zm1 = V^{+} * H * V */
-            blas<CPU>::gemm(2, 0, parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->gklo_basis_size(),
-                            complex_one, fv_evec, zm1, complex_zero, zf);
+            linalg<CPU>::gemm(2, 0, parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->gklo_basis_size(),
+                              complex_one, fv_evec, zm1, complex_zero, zf);
 
             /* zm1 = O * V */
-            blas<CPU>::gemm(0, 0, kp__->gklo_basis_size(), parameters__.num_fv_states(), kp__->gklo_basis_size(), 
-                            complex_one, o1, fv_evec, complex_zero, zm1);
+            linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), parameters__.num_fv_states(), kp__->gklo_basis_size(), 
+                              complex_one, o1, fv_evec, complex_zero, zm1);
 
             /* multiply by energy */
             for (int i = 0; i < (int)kp__->spl_fv_states().local_size(); i++)
@@ -219,8 +219,8 @@ void Force::ibs_force(Global& parameters__,
             }
 
             /* F = F - V^{+} * zm1 = F - V^{+} * O * (E*V) */
-            blas<CPU>::gemm(2, 0, parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->gklo_basis_size(),
-                            double_complex(-1, 0), fv_evec, zm1, double_complex(1, 0), zf);
+            linalg<CPU>::gemm(2, 0, parameters__.num_fv_states(), parameters__.num_fv_states(), kp__->gklo_basis_size(),
+                              double_complex(-1, 0), fv_evec, zm1, double_complex(1, 0), zf);
 
             for (int i = 0; i < dm.num_cols_local(); i++)
             {

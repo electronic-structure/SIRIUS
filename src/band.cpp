@@ -66,9 +66,9 @@ void Band::apply_magnetic_field(mdarray<double_complex, 2>& fv_states, int num_g
                 }
             }
         }
-        // compute bwf = B_z*|wf_j>
-        blas<CPU>::hemm(0, 0, mt_basis_size, nfv, complex_one, &zm(0, 0, 0), zm.ld(), 
-                        &fv_states(offset, 0), fv_states.ld(), complex_zero, &hpsi(offset, 0, 0), hpsi.ld());
+        /* compute bwf = B_z*|wf_j> */
+        linalg<CPU>::hemm(0, 0, mt_basis_size, nfv, complex_one, &zm(0, 0, 0), zm.ld(), 
+                          &fv_states(offset, 0), fv_states.ld(), complex_zero, &hpsi(offset, 0, 0), hpsi.ld());
         
         // compute bwf = (B_x - iB_y)|wf_j>
         if (hpsi.size(2) >= 3)
@@ -1785,8 +1785,8 @@ void Band::solve_sv(K_point* kp, Periodic_function<double>* effective_magnetic_f
         for (int ispn = 0; ispn < parameters_.num_spins(); ispn++)
         {
             // compute <wf_i | (h * wf_j)> for up-up or dn-dn block
-            blas<CPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, complex_one, 
-                            kp->fv_states_panel(), *hpsi_panel[ispn], complex_zero, h);
+            linalg<CPU>::gemm(2, 0, parameters_.num_fv_states(), parameters_.num_fv_states(), fvsz, complex_one, 
+                              kp->fv_states_panel(), *hpsi_panel[ispn], complex_zero, h);
             
             for (int i = 0; i < parameters_.num_fv_states(); i++) h.add(i, i, kp->fv_eigen_value(i));
         

@@ -1905,9 +1905,9 @@ void Potential::generate_d_mtrx()
                     veff_tmp(igloc) = effective_potential_->f_pw(ig) * rl->gvec_phase_factor<local>(igloc, ia);
                 }
 
-                blas<CPU>::gemv(2, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, complex_one, 
-                                &atom_type->uspp().q_pw(0, 0), (int)rl->spl_num_gvec().local_size(),  
-                                &veff_tmp(0), 1, complex_zero, &dm_packed(0), 1);
+                linalg<CPU>::gemv(2, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, complex_one, 
+                                  &atom_type->uspp().q_pw(0, 0), (int)rl->spl_num_gvec().local_size(),  
+                                  &veff_tmp(0), 1, complex_zero, &dm_packed(0), 1);
 
                 for (int xi2 = 0; xi2 < nbf; xi2++)
                 {

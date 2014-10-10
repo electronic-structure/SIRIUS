@@ -599,8 +599,8 @@ void Density::add_kpoint_contribution_pp(K_point* kp__,
 
     /* compute <beta|Psi> */
     Timer t1("sirius::Density::add_kpoint_contribution_pp|beta_psi");
-    blas<CPU>::gemm(2, 0, uc->mt_basis_size(), nbnd, kp__->num_gkvec(), complex_one, 
-                    kp__->beta_pw_panel(), kp__->fv_states_panel(), complex_zero, beta_psi);
+    linalg<CPU>::gemm(2, 0, uc->mt_basis_size(), nbnd, kp__->num_gkvec(), complex_one, 
+                      kp__->beta_pw_panel(), kp__->fv_states_panel(), complex_zero, beta_psi);
     t1.stop();
 
     splindex<block> sub_spl_col(beta_psi.num_cols_local(), kp__->num_ranks_row(), kp__->rank_row());

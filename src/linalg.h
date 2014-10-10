@@ -240,6 +240,7 @@ extern "C" int32_t FORTRAN(iceil)(ftn_int* inum, ftn_int* idenom);
 #include "blas.h"
 #include "evp_solver.h"
 
+/// Base class for linear algebra interface.
 class linalg_base
 {
     private:
@@ -349,7 +350,7 @@ class linalg_base
         #endif
 };
 
-
+/// Linear algebra interface class.
 template <processing_unit_t pu>
 class linalg;
 
@@ -357,6 +358,10 @@ template<>
 class linalg<CPU>: public linalg_base
 {
     public:
+
+        template<typename T>
+        static void gemv(int trans, ftn_int m, ftn_int n, T alpha, T* A, ftn_int lda, T* x, ftn_int incx, 
+                         T beta, T* y, ftn_int incy);
         
         /** Compute C = alpha * A * B + beta * C if side = 0 \n
             Compute C = alpha * B * A + beta * C if side = 1 \n
@@ -390,10 +395,6 @@ class linalg<CPU>: public linalg_base
         static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, matrix<T>& A, matrix<T>& B,
                          matrix<T>& C);
                          
-        ///template<typename T>
-        ///static void gemv(int trans, int32_t m, int32_t n, T alpha, T* a, int32_t lda, T* x, int32_t incx, 
-        ///                 T beta, T* y, int32_t incy);
-
         /// Compute C = alpha * op(A) * op(B) + beta * op(C), generic interface
         template <typename T>
         static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T alpha, 
