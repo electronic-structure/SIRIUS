@@ -42,11 +42,11 @@ class lin_alg<lapack>
                                    (int32_t)opts.length());
         }
         
-        template <typename T> 
-        static int gesv(int32_t n, int32_t nrhs, T* a, int32_t lda, T* b, int32_t ldb);
+        //template <typename T> 
+        //static int gesv(int32_t n, int32_t nrhs, T* a, int32_t lda, T* b, int32_t ldb);
 
-        template <typename T> 
-        static int gtsv(int32_t n, int32_t nrhs, T* dl, T* d, T* du, T* b, int32_t ldb);
+        //template <typename T> 
+        //static int gtsv(int32_t n, int32_t nrhs, T* dl, T* d, T* du, T* b, int32_t ldb);
 
         template <typename T>
         static int getrf(int32_t m, int32_t n, T* a, int32_t lda, int32_t* ipiv);

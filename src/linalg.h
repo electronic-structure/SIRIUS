@@ -91,6 +91,19 @@ void FORTRAN(zhetri)(ftn_char uplo, ftn_int* n, ftn_double_complex* A, ftn_int* 
 
 void FORTRAN(zgetri)(ftn_int* n, ftn_double_complex* A, ftn_int* lda, ftn_int* ipiv, ftn_double_complex* work,
                      ftn_int* lwork, ftn_int* info);
+
+void FORTRAN(dgtsv)(ftn_int* n, ftn_int* nrhs, ftn_double* dl, ftn_double* d, ftn_double* du, ftn_double* b, 
+                    ftn_int* ldb, ftn_int* info);
+
+void FORTRAN(zgtsv)(ftn_int* n, ftn_int* nrhs, ftn_double_complex* dl, ftn_double_complex* d, ftn_double_complex* du,
+                    ftn_double_complex* b, ftn_int* ldb, ftn_int* info);
+
+void FORTRAN(dgesv)(ftn_int* n, ftn_int* nrhs, ftn_double* A, ftn_int* lda, ftn_int* ipiv, ftn_double* B, ftn_int* ldb,
+                    ftn_int* info);
+
+void FORTRAN(zgesv)(ftn_int* n, ftn_int* nrhs, ftn_double_complex* A, ftn_int* lda, ftn_int* ipiv, ftn_double_complex* B,
+                    ftn_int* ldb, ftn_int* info);
+
 #ifdef _SCALAPACK_
 int Csys2blacs_handle(MPI_Comm SysCtxt);
 
@@ -174,16 +187,6 @@ extern "C" void FORTRAN(zheevd)(const char* jobz, const char* uplo, ftn_int* n, 
 
 
 extern "C" void FORTRAN(dptsv)(int32_t *n, int32_t *nrhs, ftn_double* d, ftn_double* *e, ftn_double* b, int32_t *ldb, int32_t *info);
-
-extern "C" void FORTRAN(dgtsv)(int32_t *n, int32_t *nrhs, double *dl, double *d, double *du, double *b, 
-                               int32_t *ldb, int32_t *info);
-
-extern "C" void FORTRAN(zgtsv)(int32_t *n, int32_t *nrhs, ftn_double_complex* dl, ftn_double_complex* d, ftn_double_complex* du, ftn_double_complex* b, 
-                               int32_t *ldb, int32_t *info);
-
-extern "C" void FORTRAN(dgesv)(ftn_int* n, ftn_int* nrhs, ftn_double* a, ftn_int* lda, ftn_int* ipiv, ftn_double* b, ftn_int* ldb, ftn_int* info);
-
-extern "C" void FORTRAN(zgesv)(ftn_int* n, ftn_int* nrhs, ftn_double_complex* a, ftn_int* lda, ftn_int* ipiv, ftn_double_complex* b, ftn_int* ldb, ftn_int* info);
 
 
 
@@ -406,6 +409,14 @@ class linalg<CPU>: public linalg_base
         static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, 
                          T alpha, dmatrix<T>& A, dmatrix<T>& B, T beta, dmatrix<T>& C);
 
+        /// Compute the solution to system of linear equations A * X = B for GT matrices.
+        template <typename T> 
+        static ftn_int gtsv(ftn_int n, ftn_int nrhs, T* dl, T* d, T* du, T* b, ftn_int ldb);
+        
+        /// Compute the solution to system of linear equations A * X = B for GE matrices.
+        template <typename T> 
+        static ftn_int gesv(ftn_int n, ftn_int nrhs, T* A, ftn_int lda, T* B, ftn_int ldb);
+
         /// LU factorization
         template <typename T>
         static ftn_int getrf(ftn_int m, ftn_int n, T* A, ftn_int lda, ftn_int* ipiv);
@@ -424,6 +435,10 @@ class linalg<CPU>: public linalg_base
         template <typename T>
         static void geinv(ftn_int n, matrix<T>& A);
 
+        /// Invert a general distributed matrix.
+        template <typename T>
+        static void geinv(ftn_int n, dmatrix<T>& A);
+
         /// Invert a hermitian matrix.
         template <typename T>
         static void heinv(ftn_int n, matrix<T>& A);
@@ -432,11 +447,7 @@ class linalg<CPU>: public linalg_base
         static ftn_int getrf(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, ftn_int* ipiv);
 
         template <typename T>
-        static int getri(ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, ftn_int* ipiv);
-
-        /// Invert a general distributed matrix.
-        template <typename T>
-        static void geinv(ftn_int n, dmatrix<T>& A);
+        static ftn_int getri(ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, ftn_int* ipiv);
 };
 
 #ifdef _GPU_

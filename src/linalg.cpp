@@ -200,41 +200,41 @@ void blas<CPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 #endif
 
 
-template<> 
-int lin_alg<lapack>::gesv<double>(int32_t n, int32_t nrhs, double* a, int32_t lda, double* b, int32_t ldb)
-{
-    int32_t info;
-    std::vector<int32_t> ipiv(n);
-    FORTRAN(dgesv)(&n, &nrhs, a, &lda, &ipiv[0], b, &ldb, &info);
-    return info;
-}
-
-template<> 
-int lin_alg<lapack>::gesv<double_complex>(int32_t n, int32_t nrhs, double_complex* a, int32_t lda, 
-                                         double_complex* b, int32_t ldb)
-{
-    int32_t info;
-    std::vector<int32_t> ipiv(n);
-    FORTRAN(zgesv)(&n, &nrhs, a, &lda, &ipiv[0], b, &ldb, &info);
-    return info;
-}
-
-template<> 
-int lin_alg<lapack>::gtsv<double>(int32_t n, int32_t nrhs, double* dl, double* d, double* du, double* b, int32_t ldb)
-{
-    int info;
-    FORTRAN(dgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
-    return info;
-}
-
-template<> 
-int lin_alg<lapack>::gtsv<double_complex>(int32_t n, int32_t nrhs, double_complex* dl, double_complex* d, double_complex* du, 
-                                         double_complex* b, int32_t ldb)
-{
-    int32_t info;                   
-    FORTRAN(zgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
-    return info;               
-}
+//= template<> 
+//= int lin_alg<lapack>::gesv<double>(int32_t n, int32_t nrhs, double* a, int32_t lda, double* b, int32_t ldb)
+//= {
+//=     int32_t info;
+//=     std::vector<int32_t> ipiv(n);
+//=     FORTRAN(dgesv)(&n, &nrhs, a, &lda, &ipiv[0], b, &ldb, &info);
+//=     return info;
+//= }
+//= 
+//= template<> 
+//= int lin_alg<lapack>::gesv<double_complex>(int32_t n, int32_t nrhs, double_complex* a, int32_t lda, 
+//=                                          double_complex* b, int32_t ldb)
+//= {
+//=     int32_t info;
+//=     std::vector<int32_t> ipiv(n);
+//=     FORTRAN(zgesv)(&n, &nrhs, a, &lda, &ipiv[0], b, &ldb, &info);
+//=     return info;
+//= }
+//= 
+//= template<> 
+//= int lin_alg<lapack>::gtsv<double>(int32_t n, int32_t nrhs, double* dl, double* d, double* du, double* b, int32_t ldb)
+//= {
+//=     int info;
+//=     FORTRAN(dgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
+//=     return info;
+//= }
+//= 
+//= template<> 
+//= int lin_alg<lapack>::gtsv<double_complex>(int32_t n, int32_t nrhs, double_complex* dl, double_complex* d, double_complex* du, 
+//=                                          double_complex* b, int32_t ldb)
+//= {
+//=     int32_t info;                   
+//=     FORTRAN(zgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
+//=     return info;               
+//= }
 
 template<> 
 int lin_alg<lapack>::getrf<double>(int32_t m, int32_t n, double* a, int32_t lda, int32_t* ipiv)
@@ -683,5 +683,43 @@ void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ft
 {
     gemm(transa, transb, m, n, k, A, lda, B, ldb, C, ldc, -1);
 }
+
+template<> 
+ftn_int linalg<CPU>::gesv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* A, ftn_int lda, ftn_double* B, ftn_int ldb)
+{
+    ftn_int info;
+    std::vector<ftn_int> ipiv(n);
+    FORTRAN(dgesv)(&n, &nrhs, A, &lda, &ipiv[0], B, &ldb, &info);
+    return info;
+}
+
+template<> 
+ftn_int linalg<CPU>::gesv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_complex* A, ftn_int lda,
+                                              ftn_double_complex* B, ftn_int ldb)
+{
+    ftn_int info;
+    std::vector<ftn_int> ipiv(n);
+    FORTRAN(zgesv)(&n, &nrhs, A, &lda, &ipiv[0], B, &ldb, &info);
+    return info;
+}
+
+template<> 
+ftn_int linalg<CPU>::gtsv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* dl, ftn_double* d, ftn_double* du,
+                                      ftn_double* b, ftn_int ldb)
+{
+    ftn_int info;
+    FORTRAN(dgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
+    return info;
+}
+
+template<> 
+ftn_int linalg<CPU>::gtsv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_complex* dl, ftn_double_complex* d,
+                                              ftn_double_complex* du, ftn_double_complex* b, ftn_int ldb)
+{
+    ftn_int info;
+    FORTRAN(zgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
+    return info;
+}
+
 
 #endif

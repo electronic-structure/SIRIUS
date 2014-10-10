@@ -197,7 +197,7 @@ class sbessel_approx
                             }
                         }
                     }
-                    lin_alg<lapack>::gesv(n, (int)q__.size(), A.ptr(), A.ld(), &coeffs_(0, 0, l, iat), coeffs_.ld());
+                    linalg<CPU>::gesv(n, (int)q__.size(), A.ptr(), A.ld(), &coeffs_(0, 0, l, iat), coeffs_.ld());
                 }
             }
         }
@@ -222,7 +222,7 @@ class sbessel_approx
             return coeffs_(iq, j, l, iat);
         }
         
-        // \int_0^{R} j(nu1*r) * j(nu2 * r) * r^2 dr
+        // \int_0^{R} j(nu1 * r) * j(nu2 * r) * r^2 dr
         // this integral can be computed analytically
         static double overlap(double nu1, double nu2, int l, double R)
         {
