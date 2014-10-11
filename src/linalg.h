@@ -26,10 +26,7 @@
 #define __LINALG_H__
 
 #include <stdint.h>
-#include <complex>
-#include <mpi.h>
 #include "typedefs.h"
-#include "error_handling.h"
 #include "linalg_base.h"
 #include "mdarray.h"
 #include "dmatrix.h"

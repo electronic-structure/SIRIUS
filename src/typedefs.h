@@ -35,24 +35,11 @@ typedef std::complex<double> double_complex;
 
 enum spin_block_t {nm, uu, ud, dd, du};
 
-//== /// Type of the main processing unit
-//== enum processing_unit_t 
-//== {
-//==     /// use CPU
-//==     CPU = 0, 
-//== 
-//==     /// use GPU (with CUDA programming model)
-//==     GPU = 1
-//== };
-
 enum lattice_t {direct, reciprocal};
 
 enum coordinates_t {cartesian, fractional};
 
 enum mpi_op_t {op_sum, op_max};
-
-/// Type of the linear algebra package
-//enum linalg_t {lapack, scalapack};
 
 /// Type of the solver to use for the standard or generalized eigen-value problem
 enum ev_solver_t 

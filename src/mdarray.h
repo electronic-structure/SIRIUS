@@ -41,10 +41,10 @@
 #include "typedefs.h"
 
 #ifdef NDEBUG
-  #define my_assert(condition__)
+  #define mdarray_assert(condition__)
 #else
   #ifdef __GLIBC__
-    #define my_assert(condition__)                                              \
+    #define mdarray_assert(condition__)                                         \
     {                                                                           \
         if (!(condition__))                                                     \
         {                                                                       \
@@ -64,7 +64,7 @@
         }                                                                       \
     }
   #else
-    #define my_assert(condition__)                                              \
+    #define mdarray_assert(condition__)                                         \
     {                                                                           \
         if (!(condition__))                                                     \
         {                                                                       \
@@ -314,13 +314,13 @@ class mdarray_base
             {
                 case CPU:
                 {
-                    my_assert(ptr_ != nullptr);
+                    mdarray_assert(ptr_ != nullptr);
                     return &ptr_[idx__];
                 }
                 case GPU:
                 {
                     #ifdef _GPU_
-                    my_assert(ptr_device_ != nullptr);
+                    mdarray_assert(ptr_device_ != nullptr);
                     return &ptr_device_[idx__];
                     #else
                     printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
@@ -338,13 +338,13 @@ class mdarray_base
             {
                 case CPU:
                 {
-                    my_assert(ptr_ != nullptr);
+                    mdarray_assert(ptr_ != nullptr);
                     return &ptr_[idx__];
                 }
                 case GPU:
                 {
                     #ifdef _GPU_
-                    my_assert(ptr_device_ != nullptr);
+                    mdarray_assert(ptr_device_ != nullptr);
                     return &ptr_device_[idx__];
                     #else
                     printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
@@ -438,13 +438,13 @@ class mdarray_base
 
         inline T& operator()(int64_t const i0, int64_t const i1) 
         {
-            my_assert(ptr_ != nullptr);
+            mdarray_assert(ptr_ != nullptr);
             return ptr_[idx(i0, i1)];
         }
 
         inline T const& operator()(int64_t const i0, int64_t const i1) const
         {
-            my_assert(ptr_ != nullptr);
+            mdarray_assert(ptr_ != nullptr);
             return ptr_[idx(i0, i1)];
         }
 
