@@ -52,7 +52,7 @@ enum coordinates_t {cartesian, fractional};
 enum mpi_op_t {op_sum, op_max};
 
 /// Type of the linear algebra package
-enum linalg_t {lapack, scalapack};
+//enum linalg_t {lapack, scalapack};
 
 /// Type of the solver to use for the standard or generalized eigen-value problem
 enum ev_solver_t 

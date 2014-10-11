@@ -157,11 +157,6 @@ class Global
 
             /* create new empty unit cell */
             unit_cell_ = new Unit_cell(esm_type_, comm_);
-
-            #ifdef _SCALAPACK_
-            if (lin_alg<scalapack>::cyclic_block_size() <= 0) // TODO: get rid of this
-                lin_alg<scalapack>::set_cyclic_block_size(cyclic_block_size_);
-            #endif
         }
             
         ~Global()

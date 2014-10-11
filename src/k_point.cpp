@@ -759,12 +759,12 @@ void K_point::distribute_block_cyclic()
         gklo_basis_descriptors_col_[i] = gklo_basis_descriptors_[spl_col[i]];
     
     #ifdef _SCALAPACK_
-    int bs = lin_alg<scalapack>::cyclic_block_size();
-    int nr = lin_alg<scalapack>::numroc(gklo_basis_size(), bs, rank_row(), 0, num_ranks_row());
+    int bs = blacs_grid_.cyclic_block_size();
+    int nr = linalg_base::numroc(gklo_basis_size(), bs, rank_row(), 0, num_ranks_row());
     
     if (nr != gklo_basis_size_row()) error_local(__FILE__, __LINE__, "numroc returned a different local row size");
 
-    int nc = lin_alg<scalapack>::numroc(gklo_basis_size(), bs, rank_col(), 0, num_ranks_col());
+    int nc = linalg_base::numroc(gklo_basis_size(), bs, rank_col(), 0, num_ranks_col());
     
     if (nc != gklo_basis_size_col()) error_local(__FILE__, __LINE__, "numroc returned a different local column size");
     #endif

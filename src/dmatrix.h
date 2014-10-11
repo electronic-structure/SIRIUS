@@ -75,7 +75,7 @@ class dmatrix
         void init()
         {
             #ifdef _SCALAPACK_
-            bs_ = lin_alg<scalapack>::cyclic_block_size();
+            bs_ = blacs_grid_->cyclic_block_size();
             #endif
 
             spl_row_ = splindex<block_cyclic>(num_rows_, num_ranks_row_, rank_row_, bs_);
@@ -84,7 +84,7 @@ class dmatrix
             matrix_local_ = matrix<T>(nullptr, spl_row_.local_size(), spl_col_.local_size());
 
             #ifdef _SCALAPACK_
-            lin_alg<scalapack>::descinit(descriptor_, num_rows_, num_cols_, bs_, bs_, 0, 0, blacs_grid_->context(), matrix_local_.ld());
+            linalg_base::descinit(descriptor_, num_rows_, num_cols_, bs_, bs_, 0, 0, blacs_grid_->context(), matrix_local_.ld());
             #endif
         }
 
@@ -717,27 +717,27 @@ class dmatrix
             }
         }
 
-        /// Conjugate transponse of the sub-matrix.
-        /** \param [in] m Number of rows of the target sub-matrix.
-         *  \param [in] n Number of columns of the target sub-matrix.
-         */
-        static void tranc(int32_t m, int32_t n, dmatrix<double_complex>& a, int ia, int ja, dmatrix<double_complex>& c, int ic, int jc)
-        {
-            ia++; ja++;
-            ic++; jc++;
+        //== /// Conjugate transponse of the sub-matrix.
+        //== /** \param [in] m Number of rows of the target sub-matrix.
+        //==  *  \param [in] n Number of columns of the target sub-matrix.
+        //==  */
+        //== static void tranc(int32_t m, int32_t n, dmatrix<double_complex>& a, int ia, int ja, dmatrix<double_complex>& c, int ic, int jc)
+        //== {
+        //==     ia++; ja++;
+        //==     ic++; jc++;
 
-            lin_alg<scalapack>::pztranc(m, n, double_complex(1, 0), a.ptr(), ia, ja, a.descriptor(), double_complex(0, 0), 
-                                       c.ptr(), ic, jc, c.descriptor());
-        }
+        //==     lin_alg<scalapack>::pztranc(m, n, double_complex(1, 0), a.ptr(), ia, ja, a.descriptor(), double_complex(0, 0), 
+        //==                                c.ptr(), ic, jc, c.descriptor());
+        //== }
 
-        static void tranu(int32_t m, int32_t n, dmatrix<double_complex>& a, int ia, int ja, dmatrix<double_complex>& c, int ic, int jc)
-        {
-            ia++; ja++;
-            ic++; jc++;
+        //== static void tranu(int32_t m, int32_t n, dmatrix<double_complex>& a, int ia, int ja, dmatrix<double_complex>& c, int ic, int jc)
+        //== {
+        //==     ia++; ja++;
+        //==     ic++; jc++;
 
-            lin_alg<scalapack>::pztranu(m, n, double_complex(1, 0), a.ptr(), ia, ja, a.descriptor(), double_complex(0, 0), 
-                                       c.ptr(), ic, jc, c.descriptor());
-        }
+        //==     lin_alg<scalapack>::pztranu(m, n, double_complex(1, 0), a.ptr(), ia, ja, a.descriptor(), double_complex(0, 0), 
+        //==                                c.ptr(), ic, jc, c.descriptor());
+        //== }
 
         inline int bs() const
         {

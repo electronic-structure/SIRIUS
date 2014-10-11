@@ -334,7 +334,8 @@ void FORTRAN(sirius_global_initialize)(int32_t* lmax_apw, int32_t* lmax_rho, int
     global_parameters->initialize();
     blacs_grid = new BLACS_grid(global_parameters->mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_),
                                 global_parameters->mpi_grid().dimension_size(_dim_row_),
-                                global_parameters->mpi_grid().dimension_size(_dim_col_));
+                                global_parameters->mpi_grid().dimension_size(_dim_col_),
+                                global_parameters->cyclic_block_size());
     log_function_exit(__func__);
 }
 

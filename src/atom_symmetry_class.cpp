@@ -23,6 +23,7 @@
  */
 
 #include "atom_symmetry_class.h"
+#include "evp_solver.h"
 
 namespace sirius {
 

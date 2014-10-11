@@ -26,6 +26,7 @@
 #define __SBESSEL_PW_H__
 
 #include <gsl/gsl_sf_bessel.h>
+#include "evp_solver.h"
 
 namespace sirius
 {

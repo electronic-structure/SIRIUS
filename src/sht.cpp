@@ -172,8 +172,8 @@ SHT::SHT(int lmax__) : lmax_(lmax__), mesh_type_(0)
 
     if (mesh_type_ == 1)
     {
-        lin_alg<lapack>::invert_ge(&ylm_forward_(0, 0), lmmax_);
-        lin_alg<lapack>::invert_ge(&rlm_forward_(0, 0), lmmax_);
+        linalg<CPU>::geinv(lmmax_, ylm_forward_);
+        linalg<CPU>::geinv(lmmax_, rlm_forward_);
     }
     
     if (debug_level > 0)

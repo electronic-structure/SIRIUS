@@ -87,7 +87,7 @@
 //}
 
 #ifdef _SCALAPACK_
-int lin_alg<scalapack>::cyclic_block_size_ = -1;
+//int lin_alg<scalapack>::cyclic_block_size_ = -1;
 
 //== template<> 
 //== void blas<CPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t n, int32_t k, double_complex alpha, 
@@ -236,38 +236,38 @@ void blas<CPU>::gemm<double_complex>(int transa, int transb, int32_t m, int32_t 
 //=     return info;               
 //= }
 
-template<> 
-int lin_alg<lapack>::getrf<double>(int32_t m, int32_t n, double* a, int32_t lda, int32_t* ipiv)
-{
-    int32_t info;
-    FORTRAN(dgetrf)(&m, &n, a, &lda, ipiv, &info);
-    return info;
-}
-    
-template<> 
-int lin_alg<lapack>::getrf<double_complex>(int32_t m, int32_t n, double_complex* a, int32_t lda, int32_t* ipiv)
-{
-    int32_t info;
-    FORTRAN(zgetrf)(&m, &n, a, &lda, ipiv, &info);
-    return info;
-}
-
-template<> 
-int lin_alg<lapack>::getri<double>(int32_t n, double* a, int32_t lda, int32_t* ipiv, double* work, int32_t lwork)
-{
-    int32_t info;
-    FORTRAN(dgetri)(&n, a, &lda, ipiv, work, &lwork, &info);
-    return info;
-}
-
-template<> 
-int lin_alg<lapack>::getri<double_complex>(int32_t n, double_complex* a, int32_t lda, int32_t* ipiv, double_complex* work, 
-                                          int32_t lwork)
-{
-    int32_t info;
-    FORTRAN(zgetri)(&n, a, &lda, ipiv, work, &lwork, &info);
-    return info;
-}
+//== template<> 
+//== int lin_alg<lapack>::getrf<double>(int32_t m, int32_t n, double* a, int32_t lda, int32_t* ipiv)
+//== {
+//==     int32_t info;
+//==     FORTRAN(dgetrf)(&m, &n, a, &lda, ipiv, &info);
+//==     return info;
+//== }
+//==     
+//== template<> 
+//== int lin_alg<lapack>::getrf<double_complex>(int32_t m, int32_t n, double_complex* a, int32_t lda, int32_t* ipiv)
+//== {
+//==     int32_t info;
+//==     FORTRAN(zgetrf)(&m, &n, a, &lda, ipiv, &info);
+//==     return info;
+//== }
+//== 
+//== template<> 
+//== int lin_alg<lapack>::getri<double>(int32_t n, double* a, int32_t lda, int32_t* ipiv, double* work, int32_t lwork)
+//== {
+//==     int32_t info;
+//==     FORTRAN(dgetri)(&n, a, &lda, ipiv, work, &lwork, &info);
+//==     return info;
+//== }
+//== 
+//== template<> 
+//== int lin_alg<lapack>::getri<double_complex>(int32_t n, double_complex* a, int32_t lda, int32_t* ipiv, double_complex* work, 
+//==                                           int32_t lwork)
+//== {
+//==     int32_t info;
+//==     FORTRAN(zgetri)(&n, a, &lda, ipiv, work, &lwork, &info);
+//==     return info;
+//== }
 
 #if defined(_SCALAPACK_) && defined(_PILAENV_BLOCKSIZE_)
 extern "C" int pilaenv_(int* ctxt, char* prec) 
@@ -575,6 +575,26 @@ void linalg<CPU>::geinv<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_comple
 }
 
 #ifdef _SCALAPACK_
+template <>
+void linalg<CPU>::tranc<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
+                                            dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc)
+{
+    ia++; ja++;
+    ic++; jc++;
+
+    pztranc(m, n, zone, A.at<CPU>(), ia, ja, A.descriptor(), zzero, C.at<CPU>(), ic, jc, C.descriptor());
+}
+
+template <>
+void linalg<CPU>::tranu<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
+                                            dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc)
+{
+    ia++; ja++;
+    ic++; jc++;
+
+    pztranu(m, n, zone, A.at<CPU>(), ia, ja, A.descriptor(), zzero, C.at<CPU>(), ic, jc, C.descriptor());
+}
+
 template<> 
 void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
                                    ftn_double alpha, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja,

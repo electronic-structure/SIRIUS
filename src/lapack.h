@@ -35,48 +35,48 @@ class lin_alg<lapack>
 {
     public:
 
-        static int32_t ilaenv(int32_t ispec, const std::string& name, const std::string& opts, int32_t n1, int32_t n2, 
-                              int32_t n3, int32_t n4)
-        {
-            return FORTRAN(ilaenv)(&ispec, name.c_str(), opts.c_str(), &n1, &n2, &n3, &n4, (int32_t)name.length(), 
-                                   (int32_t)opts.length());
-        }
-        
-        //template <typename T> 
-        //static int gesv(int32_t n, int32_t nrhs, T* a, int32_t lda, T* b, int32_t ldb);
+        //== static int32_t ilaenv(int32_t ispec, const std::string& name, const std::string& opts, int32_t n1, int32_t n2, 
+        //==                       int32_t n3, int32_t n4)
+        //== {
+        //==     return FORTRAN(ilaenv)(&ispec, name.c_str(), opts.c_str(), &n1, &n2, &n3, &n4, (int32_t)name.length(), 
+        //==                            (int32_t)opts.length());
+        //== }
+        //== 
+        //== //template <typename T> 
+        //== //static int gesv(int32_t n, int32_t nrhs, T* a, int32_t lda, T* b, int32_t ldb);
 
-        //template <typename T> 
-        //static int gtsv(int32_t n, int32_t nrhs, T* dl, T* d, T* du, T* b, int32_t ldb);
+        //== //template <typename T> 
+        //== //static int gtsv(int32_t n, int32_t nrhs, T* dl, T* d, T* du, T* b, int32_t ldb);
 
-        template <typename T>
-        static int getrf(int32_t m, int32_t n, T* a, int32_t lda, int32_t* ipiv);
-        
-        template <typename T>
-        static int getri(int32_t n, T* a, int32_t lda, int32_t* ipiv, T* work, int32_t lwork);
+        //== template <typename T>
+        //== static int getrf(int32_t m, int32_t n, T* a, int32_t lda, int32_t* ipiv);
+        //== 
+        //== template <typename T>
+        //== static int getri(int32_t n, T* a, int32_t lda, int32_t* ipiv, T* work, int32_t lwork);
 
-        template <typename T>
-        static void invert_ge(T* mtrx, int size)
-        {
-            int32_t nb = std::max(ilaenv(1, "dgetri", "U", size, -1, -1, -1), ilaenv(1, "zgetri", "U", size, -1, -1, -1));
-            int32_t lwork = size * nb;
-            std::vector<T> work(lwork);
-            std::vector<int> ipiv(size);
-            int info = getrf(size, size, mtrx, size, &ipiv[0]);
-            if (info != 0)
-            {
-                std::stringstream s;
-                s << "getrf returned : " << info;
-                error_local(__FILE__, __LINE__, s);
-            }
+        //== template <typename T>
+        //== static void invert_ge(T* mtrx, int size)
+        //== {
+        //==     int32_t nb = std::max(ilaenv(1, "dgetri", "U", size, -1, -1, -1), ilaenv(1, "zgetri", "U", size, -1, -1, -1));
+        //==     int32_t lwork = size * nb;
+        //==     std::vector<T> work(lwork);
+        //==     std::vector<int> ipiv(size);
+        //==     int info = getrf(size, size, mtrx, size, &ipiv[0]);
+        //==     if (info != 0)
+        //==     {
+        //==         std::stringstream s;
+        //==         s << "getrf returned : " << info;
+        //==         error_local(__FILE__, __LINE__, s);
+        //==     }
 
-            info = getri(size, mtrx, size, &ipiv[0], &work[0], lwork);
-            if (info != 0)
-            {
-                std::stringstream s;
-                s << "getri returned : " << info;
-                error_local(__FILE__, __LINE__, s);
-            }
-        }
+        //==     info = getri(size, mtrx, size, &ipiv[0], &work[0], lwork);
+        //==     if (info != 0)
+        //==     {
+        //==         std::stringstream s;
+        //==         s << "getri returned : " << info;
+        //==         error_local(__FILE__, __LINE__, s);
+        //==     }
+        //== }
 };
 
 #ifdef _SCALAPACK_

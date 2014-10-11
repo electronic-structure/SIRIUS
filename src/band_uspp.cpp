@@ -1209,8 +1209,8 @@ void Band::set_fv_h_o_uspp_cpu_parallel_simple(int N__,
     /* restore the bottom block of the matrix */
     if (N__ != 0)
     {
-        dmatrix<double_complex>::tranc(n__, N__, h__, 0, N__, h__, N__, 0);
-        dmatrix<double_complex>::tranc(n__, N__, o__, 0, N__, o__, N__, 0);
+        linalg<CPU>::tranc(n__, N__, h__, 0, N__, h__, N__, 0);
+        linalg<CPU>::tranc(n__, N__, o__, 0, N__, o__, N__, 0);
     }
 
     /* save Hamiltonian and overlap */
@@ -1514,8 +1514,8 @@ void Band::set_fv_h_o_uspp_cpu_parallel_v3(int N__,
     /* restore right block of the matrix */
     if (N__ != 0)
     {
-        dmatrix<double_complex>::tranc(N__, n__, h__, N__, 0, h__, 0, N__);
-        dmatrix<double_complex>::tranc(N__, n__, o__, N__, 0, o__, 0, N__);
+        linalg<CPU>::tranc(N__, n__, h__, N__, 0, h__, 0, N__);
+        linalg<CPU>::tranc(N__, n__, o__, N__, 0, o__, 0, N__);
     }
 
     /* save Hamiltonian and overlap */
@@ -1785,7 +1785,7 @@ void Band::uspp_residuals_cpu_parallel_v3(int N__,
     
     /* transpose matrix of eigen-vectors */
     dmatrix<double_complex> evec_t(num_bands__, N__, kp__->blacs_grid());
-    dmatrix<double_complex>::tranu(num_bands__, N__, evec__, 0, 0, evec_t, 0, 0);
+    linalg<CPU>::tranu(num_bands__, N__, evec__, 0, 0, evec_t, 0, 0);
     
     /* local number of basis function |phi> */
     int num_phi_loc = evec_t.num_cols_local();
