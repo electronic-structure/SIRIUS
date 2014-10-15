@@ -353,3 +353,85 @@ void Band::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h)
 //==     halm.deallocate();
 //== }
 
+template <bool need_o_diag>
+void Band::get_h_o_diag(K_point const* kp__,
+                  double v0__,
+                  std::vector<double> const& pw_ekin__,
+                  std::vector<double_complex>& h_diag__,
+                  std::vector<double_complex>& o_diag__)
+{
+    Timer t("sirius::Band::get_h_o_diag");
+
+    h_diag__.resize(kp__->num_gkvec_row());
+    o_diag__.resize(kp__->num_gkvec_row());
+
+    auto uc = parameters_.unit_cell();
+    
+    /* local H contribution */
+    for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+    {
+        int igk = kp__->gklo_basis_descriptor_row(igk_row).igk;
+        h_diag__[igk_row] = pw_ekin__[igk] + v0__;
+        o_diag__[igk_row] = 1.0;
+    }
+
+    /* non-local H contribution */
+    auto const& beta_pw_t = kp__->beta_pw_t();
+    mdarray<double_complex, 2> beta_pw_tmp(uc->max_mt_basis_size(), kp__->num_gkvec_row());
+
+    for (int iat = 0; iat < uc->num_atom_types(); iat++)
+    {
+        auto atom_type = uc->atom_type(iat);
+        int nbf = atom_type->mt_basis_size();
+        matrix<double_complex> d_sum(nbf, nbf);
+        d_sum.zero();
+
+        matrix<double_complex> q_sum;
+        if (need_o_diag)
+        {
+            q_sum = matrix<double_complex>(nbf, nbf);
+            q_sum.zero();
+        }
+
+        for (int i = 0; i < atom_type->num_atoms(); i++)
+        {
+            int ia = atom_type->atom_id(i);
+        
+            for (int xi2 = 0; xi2 < nbf; xi2++)
+            {
+                for (int xi1 = 0; xi1 < nbf; xi1++)
+                {
+                    d_sum(xi1, xi2) += uc->atom(ia)->d_mtrx(xi1, xi2);
+                    if (need_o_diag) q_sum(xi1, xi2) += uc->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
+                }
+            }
+        }
+
+        int ofs = uc->atom_type(iat)->offset_lo();
+        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+        {
+            for (int xi = 0; xi < nbf; xi++) beta_pw_tmp(xi, igk_row) = beta_pw_t(igk_row, ofs + xi);
+        }
+
+        std::vector< std::pair<int, int> > idx(nbf * nbf);
+        for (int xi2 = 0, n = 0; xi2 < nbf; xi2++)
+        {
+            for (int xi1 = 0; xi1 < nbf; xi1++) idx[n++] = std::pair<int, int>(xi1, xi2);
+        }
+
+        #pragma omp parallel for
+        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+        {
+            for (auto& it: idx)
+            {
+                int xi1 = it.first;
+                int xi2 = it.second;
+                double_complex z = beta_pw_tmp(xi1, igk_row) * conj(beta_pw_tmp(xi2, igk_row));
+
+                h_diag__[igk_row] += z * d_sum(xi1, xi2);
+                if (need_o_diag) o_diag__[igk_row] += z * q_sum(xi1, xi2);
+            }
+        }
+    }
+}
+

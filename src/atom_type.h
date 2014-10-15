@@ -335,6 +335,10 @@ class Atom_type
 
         uspp_descriptor uspp_;
 
+        /// Inverse of (Q_{\xi \xi'j}^{-1} + beta_pw^{H}_{\xi} * beta_pw_{xi'})
+        /** Used in Chebyshev iterative solver as a block-diagonal preconditioner */
+        matrix<double_complex> p_mtrx_;
+
         std::vector<int> atom_id_;
 
         /// type of electronic structure method used

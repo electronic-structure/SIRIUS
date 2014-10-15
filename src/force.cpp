@@ -183,7 +183,7 @@ void Force::ibs_force(Global& parameters__,
             {
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
                 {
-                    vector3d<double>& vgk = kp__->gklo_basis_descriptor_row(igk_row).gkvec_cart;
+                    vector3d<double> const& vgk = kp__->gklo_basis_descriptor_row(igk_row).gkvec_cart;
                     h1(igk_row, icol) = double_complex(0.0, vgk[x]) * h(igk_row, icol);
                     o1(igk_row, icol) = double_complex(0.0, vgk[x]) * o(igk_row, icol);
                 }
@@ -193,7 +193,7 @@ void Force::ibs_force(Global& parameters__,
             {
                 for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++)
                 {
-                    vector3d<double>& vgk = kp__->gklo_basis_descriptor_col(igk_col).gkvec_cart;
+                    vector3d<double> const& vgk = kp__->gklo_basis_descriptor_col(igk_col).gkvec_cart;
                     h1(irow, igk_col) = double_complex(0.0, -vgk[x]) * h(irow, igk_col);
                     o1(irow, igk_col) = double_complex(0.0, -vgk[x]) * o(irow, igk_col);
                 }

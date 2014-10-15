@@ -1701,23 +1701,8 @@ void Band::solve_fv(K_point* kp__, Periodic_function<double>* effective_potentia
         case ultrasoft_pseudopotential:
         case norm_conserving_pseudopotential:
         {
-            switch (parameters_.processing_unit())
-            {
-                case CPU:
-                {
-                    diag_fv_uspp_gpu(kp__, effective_potential__);
-                    break;
-                }
-                case GPU:
-                {
-                    #ifdef _GPU_
-                    diag_fv_uspp_gpu(kp__, effective_potential__);
-                    #else
-                    TERMINATE_NO_GPU
-                    #endif
-                    break;
-                }
-            }
+            diag_fv_pseudo_potential(kp__, effective_potential__);
+            break;
         }
     }
 }

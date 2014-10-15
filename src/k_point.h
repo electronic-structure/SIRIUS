@@ -164,6 +164,8 @@ class K_point
         /// Plane-wave coefficients of |beta> functions for atoms.
         dmatrix<double_complex> beta_pw_panel_;
 
+        mdarray<double_complex, 3> p_mtrx_;
+
         Communicator comm_;
 
         /// Communicator between(!!) rows.
@@ -228,10 +230,10 @@ class K_point
             fft_ = parameters_.reciprocal_lattice()->fft();
 
             /* distribue first-variational states along columns */
-            spl_fv_states_ = splindex<block_cyclic>(parameters_.num_fv_states(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());
+            spl_fv_states_ = splindex<block_cyclic>(parameters_.num_fv_states(), num_ranks_col_, rank_col_, blacs_grid_.cyclic_block_size());
 
             /* distribue spinor wave-functions along columns */
-            spl_spinor_wf_ = splindex<block_cyclic>(parameters_.num_bands(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());
+            spl_spinor_wf_ = splindex<block_cyclic>(parameters_.num_bands(), num_ranks_col_, rank_col_, blacs_grid_.cyclic_block_size());
             
             /* additionally split along rows */
             sub_spl_fv_states_ = splindex<block>(spl_fv_states_.local_size(), num_ranks_row_, rank_row_);
@@ -318,7 +320,7 @@ class K_point
         //== }
                 
         /// Total number of G+k vectors within the cutoff distance
-        inline int num_gkvec()
+        inline int num_gkvec() const
         {
             assert(gkvec_.size(1) == gvec_index_.size());
             return (int)gkvec_.size(1);
@@ -477,99 +479,99 @@ class K_point
          *  of local orbitals. In case of plane-wave pseudopotential method this is just the 
          *  number of G+k vectors. 
          */
-        inline int gklo_basis_size()
+        inline int gklo_basis_size() const
         {
             return (int)gklo_basis_descriptors_.size();
         }
         
         /// Local number of basis functions for each MPI rank in the row of the 2D MPI grid.
-        inline int gklo_basis_size_row()
+        inline int gklo_basis_size_row() const
         {
             return (int)gklo_basis_descriptors_row_.size();
         }
         
         /// Local number of G+k vectors for each MPI rank in the row of the 2D MPI grid.
-        inline int num_gkvec_row()
+        inline int num_gkvec_row() const
         {
             return num_gkvec_row_;
         }
 
         /// Local number of local orbitals for each MPI rank in the row of the 2D MPI grid.
-        inline int num_lo_row()
+        inline int num_lo_row() const
         {
             return (int)gklo_basis_descriptors_row_.size() - num_gkvec_row_;
         }
 
         /// Local number of basis functions for each MPI rank in the column of the 2D MPI grid.
-        inline int gklo_basis_size_col()
+        inline int gklo_basis_size_col() const
         {
             return (int)gklo_basis_descriptors_col_.size();
         }
         
         /// Local number of G+k vectors for each MPI rank in the column of the 2D MPI grid.
-        inline int num_gkvec_col()
+        inline int num_gkvec_col() const
         {
             return num_gkvec_col_;
         }
         
         /// Local number of local orbitals for each MPI rank in the column of the 2D MPI grid.
-        inline int num_lo_col()
+        inline int num_lo_col() const
         {
             return (int)gklo_basis_descriptors_col_.size() - num_gkvec_col_;
         }
 
-        inline gklo_basis_descriptor& gklo_basis_descriptor_col(int idx)
+        inline gklo_basis_descriptor const& gklo_basis_descriptor_col(int idx) const
         {
             assert(idx >=0 && idx < (int)gklo_basis_descriptors_col_.size());
             return gklo_basis_descriptors_col_[idx];
         }
         
-        inline gklo_basis_descriptor& gklo_basis_descriptor_row(int idx)
+        inline gklo_basis_descriptor const& gklo_basis_descriptor_row(int idx) const
         {
             assert(idx >= 0 && idx < (int)gklo_basis_descriptors_row_.size());
             return gklo_basis_descriptors_row_[idx];
         }
         
-        inline int num_ranks_row()
+        inline int num_ranks_row() const
         {
             return num_ranks_row_;
         }
         
-        inline int rank_row()
+        inline int rank_row() const
         {
             return rank_row_;
         }
         
-        inline int num_ranks_col()
+        inline int num_ranks_col() const
         {
             return num_ranks_col_;
         }
         
-        inline int rank_col()
+        inline int rank_col() const
         {
             return rank_col_;
         }
        
         /// Number of MPI ranks for a given k-point
-        inline int num_ranks()
+        inline int num_ranks() const
         {
             return num_ranks_;
         }
 
         /// Return number of lo columns for a given atom
-        inline int num_atom_lo_cols(int ia)
+        inline int num_atom_lo_cols(int ia) const
         {
             return (int)atom_lo_cols_[ia].size();
         }
 
         /// Return local index (for the current MPI rank) of a column for a given atom and column index within an atom
-        inline int lo_col(int ia, int i)
+        inline int lo_col(int ia, int i) const
         {
             return atom_lo_cols_[ia][i];
         }
         
         /// Return number of lo rows for a given atom
-        inline int num_atom_lo_rows(int ia)
+        inline int num_atom_lo_rows(int ia) const
         {
             return (int)atom_lo_rows_[ia].size();
         }
@@ -629,7 +631,7 @@ class K_point
             return gkvec_;
         }
 
-        inline mdarray<double_complex, 2>& beta_pw_t()
+        inline mdarray<double_complex, 2> const& beta_pw_t() const
         {
             return beta_pw_t_;
         }
@@ -714,6 +716,11 @@ class K_point
             return static_cast<int>(spl_spinor_wf_[sub_spl_spinor_wf_[sub_index]]);
         }
 
+        inline double_complex p_mtrx(int xi1, int xi2, int iat) const
+        {
+            return p_mtrx_(xi1, xi2, iat);
+        }
+
         //== 
         //== inline int sub_spl_fv_states(int idx)
         //== {
@@ -725,6 +732,93 @@ class K_point
         //== {
         //==     return static_cast<int>(sub_spl_spinor_wf_[sub_index]);
         //== }
+
+        void generate_beta_phi(splindex<block>& atom_blocks__,
+                               int iab__,
+                               int nbf_in_block__,
+                               matrix<double_complex>& phi__,
+                               int nphi__,
+                               int offs__,
+                               matrix<double_complex>& beta_pw__,
+                               mdarray<int, 2>& beta_pw_desc__,
+                               matrix<double_complex>& beta_phi__)
+        {
+            Timer t("sirius::K_point::generate_beta_phi", comm_row());
+
+            #ifdef _GPU_
+            #ifdef _GPU_DIRECT_
+            // allrecue with gpu-direct is broken at the moment
+            bool gpu_direct = false;
+            #else
+            bool gpu_direct = false;
+            #endif
+            #endif
+
+            if (parameters_.processing_unit() == CPU)
+            {
+                /* create beta projectors */
+                #pragma omp parallel
+                for (int i = 0; i < (int)atom_blocks__.local_size(iab__); i++)
+                {
+                    int ia = (int)atom_blocks__.global_index(i, iab__);
+                    auto type = parameters_.unit_cell()->atom(ia)->type();
+                    #pragma omp for
+                    for (int xi = 0; xi < type->mt_basis_size(); xi++)
+                    {
+                        for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
+                        {
+                            beta_pw__(igk_row, beta_pw_desc__(1, i) + xi) = 
+                                beta_pw_t_(igk_row, beta_pw_desc__(2, i) + xi) * conj(gkvec_phase_factor(igk_row, ia));
+                        }
+                    }
+                }
+                /* compute <beta|phi> */
+                linalg<CPU>::gemm(2, 0, nbf_in_block__, nphi__, num_gkvec_row(), 
+                                  beta_pw__.at<CPU>(), beta_pw__.ld(), 
+                                  phi__.at<CPU>(0, offs__), phi__.ld(), 
+                                  beta_phi__.at<CPU>(), beta_phi__.ld());
+                comm_row().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
+            }
+            if (parameters_.processing_unit() == GPU)
+            {
+                #ifdef _GPU_
+                /* create beta projectors directly on GPU */
+                create_beta_pw_gpu_v2((int)atom_blocks.local_size(iab),
+                                      kp__->num_gkvec_row(),
+                                      beta_pw_desc.at<GPU>(),
+                                      beta_pw_t__.at<GPU>(),
+                                      gkvec_row__.at<GPU>(),
+                                      atom_pos.at<GPU>(),
+                                      kappa__.at<GPU>());
+
+                /* compute <beta|phi> */
+                linalg<GPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
+                                  kappa__.at<GPU>(), kappa__.ld(), 
+                                  phi__.at<GPU>(0, s0.local_size()), phi__.ld(), 
+                                  beta_phi.at<GPU>(), beta_phi.ld());
+                
+                if (gpu_direct)
+                {
+                    kp__->comm_row().allreduce(beta_phi.at<GPU>(), (int)beta_phi.size());
+                }
+                else
+                {
+                    beta_phi.copy_to_host();
+                    kp__->comm_row().allreduce(beta_phi.at<CPU>(), (int)beta_phi.size());
+                    beta_phi.copy_to_device();
+                }
+                #else
+                TERMINATE_NO_GPU
+                #endif
+            }
+
+            //== if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+            //== {
+            //==     printf("<beta|phi> effective zgemm with M, N, K: %6i %6i %6i, %12.4f sec, %12.4f GFlops/node\n",
+            //==            nbf_in_block, nloc, kp__->num_gkvec(),
+            //==            tval, 8e-9 * nbf_in_block * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
+            //== }
+        }
 };
 
 }

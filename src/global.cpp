@@ -26,143 +26,115 @@
 
 namespace sirius {
 
-void Global::read_input()
+void Global::parse_input()
 {
-    std::string fname("sirius.json");
+    mpi_grid_dims_ = ifds_.common_input_section_.mpi_grid_dims_;
+    num_fv_states_ = ifds_.common_input_section_.num_fv_states_;
+    smearing_width_ = ifds_.common_input_section_.smearing_width_;
     
-    int num_fft_threads = Platform::num_fft_threads();
-    if (num_fft_threads == -1) num_fft_threads = Platform::max_num_threads();
+    std::string evsn[] = {ifds_.common_input_section_.std_evp_solver_type_, ifds_.common_input_section_.gen_evp_solver_type_};
+    ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
 
-    if (Utils::file_exists(fname))
+    for (int i = 0; i < 2; i++)
     {
-        JSON_tree parser(fname);
-        mpi_grid_dims_ = parser["mpi_grid_dims"].get(mpi_grid_dims_); 
-        cyclic_block_size_ = parser["cyclic_block_size"].get(cyclic_block_size_);
-        num_fft_threads = parser["num_fft_threads"].get(num_fft_threads);
-        num_fv_states_ = parser["num_fv_states"].get(num_fv_states_);
-        smearing_width_ = parser["smearing_width"].get(smearing_width_);
-
-        std::string evsn[] = {"std_evp_solver_type", "gen_evp_solver_type"};
-        ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
-
-        for (int i = 0; i < 2; i++)
+        std::string name = evsn[i];
+        if (name == "lapack") 
         {
-            if (parser.exist(evsn[i]))
-            {
-                std::string name;
-                parser[evsn[i]] >> name;
-                if (name == "lapack") 
-                {
-                    *evst[i] = ev_lapack;
-                }
-                else if (name == "scalapack") 
-                {
-                    *evst[i] = ev_scalapack;
-                }
-                else if (name == "elpa1") 
-                {
-                    *evst[i] = ev_elpa1;
-                }
-                else if (name == "elpa2") 
-                {
-                    *evst[i] = ev_elpa2;
-                }
-                else if (name == "magma") 
-                {
-                    *evst[i] = ev_magma;
-                }
-                else if (name == "plasma")
-                {
-                    *evst[i] = ev_plasma;
-                }
-                else if (name == "rs_gpu")
-                {
-                    *evst[i] = ev_rs_gpu;
-                }
-                else if (name == "rs_cpu")
-                {
-                    *evst[i] = ev_rs_cpu;
-                }
-                else
-                {
-                    TERMINATE("wrong eigen value solver");
-                }
-            }
+            *evst[i] = ev_lapack;
         }
-
-        if (parser.exist("processing_unit"))
+        else if (name == "scalapack") 
         {
-            std::string pu;
-            parser["processing_unit"] >> pu;
-            if (pu == "cpu" || pu == "CPU")
-            {
-                processing_unit_ = CPU;
-            }
-            else if (pu == "gpu" || pu == "GPU")
-            {
-                processing_unit_ = GPU;
-            }
-            else
-            {
-                TERMINATE("wrong processing unit");
-            }
+            *evst[i] = ev_scalapack;
         }
-
-        if (parser.exist("electronic_structure_method"))
+        else if (name == "elpa1") 
         {
-            std::string str;
-            parser["electronic_structure_method"] >> str;
-            if (str == "full_potential_lapwlo")
-            {
-                esm_type_ = full_potential_lapwlo;
-            }
-            else if (str == "full_potential_pwlo")
-            {
-                esm_type_ = full_potential_pwlo;
-            }
-            else if (str == "ultrasoft_pseudopotential")
-            {
-                esm_type_ = ultrasoft_pseudopotential;
-            } 
-            else if (str == "norm_conserving_pseudopotential")
-            {
-                esm_type_ = norm_conserving_pseudopotential;
-            }
-            else
-            {
-                error_local(__FILE__, __LINE__, "wrong type of electronic structure method");
-            }
+            *evst[i] = ev_elpa1;
         }
-
-        mixer_input_section_.read(parser);
-        xc_functionals_input_section_.read(parser);
-        iterative_solver_input_section_.read(parser);
+        else if (name == "elpa2") 
+        {
+            *evst[i] = ev_elpa2;
+        }
+        else if (name == "magma") 
+        {
+            *evst[i] = ev_magma;
+        }
+        else if (name == "plasma")
+        {
+            *evst[i] = ev_plasma;
+        }
+        else if (name == "rs_gpu")
+        {
+            *evst[i] = ev_rs_gpu;
+        }
+        else if (name == "rs_cpu")
+        {
+            *evst[i] = ev_rs_cpu;
+        }
+        else
+        {
+            TERMINATE("wrong eigen value solver");
+        }
     }
 
+    std::string pu = ifds_.common_input_section_.processing_unit_;
+    if (pu == "cpu" || pu == "CPU")
+    {
+        processing_unit_ = CPU;
+    }
+    else if (pu == "gpu" || pu == "GPU")
+    {
+        processing_unit_ = GPU;
+    }
+    else
+    {
+        TERMINATE("wrong processing unit");
+    }
+
+    std::string esm = ifds_.common_input_section_.electronic_structure_method_;
+    if (esm == "full_potential_lapwlo")
+    {
+        esm_type_ = full_potential_lapwlo;
+    }
+    else if (esm == "full_potential_pwlo")
+    {
+        esm_type_ = full_potential_pwlo;
+    }
+    else if (esm == "ultrasoft_pseudopotential")
+    {
+        esm_type_ = ultrasoft_pseudopotential;
+    } 
+    else if (esm == "norm_conserving_pseudopotential")
+    {
+        esm_type_ = norm_conserving_pseudopotential;
+    }
+    else
+    {
+        TERMINATE("wrong type of electronic structure method");
+    }
+
+    int num_fft_threads = ifds_.common_input_section_.num_fft_threads_;
     Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::max_num_threads()));
 }
 
 void Global::read_unit_cell_input()
 {
-    std::string fname("sirius.json");
-    JSON_tree parser(fname);
-    unit_cell_input_section_.read(parser);
-        
-    for (int iat = 0; iat < (int)unit_cell_input_section_.labels_.size(); iat++)
+    auto unit_cell_input_section = ifds_.unit_cell_input_section_;
+
+    for (int iat = 0; iat < (int)unit_cell_input_section.labels_.size(); iat++)
     {
-        std::string label = unit_cell_input_section_.labels_[iat];
-        std::string fname = unit_cell_input_section_.atom_files_[label];
+        std::string label = unit_cell_input_section.labels_[iat];
+        std::string fname = unit_cell_input_section.atom_files_[label];
         unit_cell()->add_atom_type(label, fname, esm_type());
-        for (int ia = 0; ia < (int)unit_cell_input_section_.coordinates_[iat].size(); ia++)
+        for (int ia = 0; ia < (int)unit_cell_input_section.coordinates_[iat].size(); ia++)
         {
-            std::vector<double> v = unit_cell_input_section_.coordinates_[iat][ia];
+            std::vector<double> v = unit_cell_input_section.coordinates_[iat][ia];
             unit_cell()->add_atom(label, &v[0], &v[3]);
         }
     }
 
-    unit_cell()->set_lattice_vectors(unit_cell_input_section_.lattice_vectors_[0], 
-                                     unit_cell_input_section_.lattice_vectors_[1], 
-                                     unit_cell_input_section_.lattice_vectors_[2]);
+    unit_cell()->set_lattice_vectors(unit_cell_input_section.lattice_vectors_[0], 
+                                     unit_cell_input_section.lattice_vectors_[1], 
+                                     unit_cell_input_section.lattice_vectors_[2]);
 }
 
 std::string Global::start_time(const char* fmt)
@@ -418,9 +390,9 @@ void Global::print_info()
     
     printf("\n");
     printf("XC functionals : \n");
-    for (int i = 0; i < (int)xc_functionals_input_section_.xc_functional_names_.size(); i++)
+    for (int i = 0; i < (int)ifds_.xc_functionals_input_section_.xc_functional_names_.size(); i++)
     {
-        std::string xc_label = xc_functionals_input_section_.xc_functional_names_[i];
+        std::string xc_label = ifds_.xc_functionals_input_section_.xc_functional_names_[i];
         XC_functional xc(xc_label, num_spins());
         printf("\n");
         printf("%s\n", xc_label.c_str());
@@ -442,7 +414,7 @@ void Global::write_json_output()
         jw.single("num_ranks", comm_.size());
         jw.single("max_num_threads", Platform::max_num_threads());
         jw.single("num_fft_threads", Platform::num_fft_threads());
-        jw.single("cyclic_block_size", cyclic_block_size_);
+        jw.single("cyclic_block_size", ifds_.common_input_section_.cyclic_block_size_);
         jw.single("mpi_grid", mpi_grid_dims_);
         std::vector<int> fftgrid(3);
         for (int i = 0; i < 3; i++) fftgrid[i] = reciprocal_lattice_->fft()->size(i);

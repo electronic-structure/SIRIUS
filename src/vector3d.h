@@ -70,6 +70,12 @@ class vector3d
             return vec_[i];
         }
 
+        inline T const& operator[](const int i) const
+        {
+            assert(i >= 0 && i <= 2);
+            return vec_[i];
+        }
+
         /// Return vector length
         inline double length()
         {

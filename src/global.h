@@ -32,6 +32,7 @@
 #include "splindex.h"
 #include "step_function.h"
 #include "error_handling.h"
+#include "input.h"
 
 /// SIRIUS namespace.
 namespace sirius {
@@ -91,9 +92,6 @@ class Global
         /// MPI grid
         MPI_grid mpi_grid_;
 
-        /// block size for block-cyclic data distribution  
-        int cyclic_block_size_;
-        
         /// starting time of the program
         timeval start_time_;
 
@@ -115,13 +113,21 @@ class Global
         Reciprocal_lattice* reciprocal_lattice_;
 
         Unit_cell* unit_cell_;
-
+        
+        /// Base communicator.
         Communicator comm_;
-
-        /// Read from the input file if it exists.
-        void read_input();
+        
+        /// Data set obtained from the input file.
+        input_file_data_set ifds_;
+        
+        /// Parse input data-structures.
+        void parse_input();
 
     public:
+
+        input_file_data_set::iterative_solver_input_section iterative_solver_input_section_;
+        input_file_data_set::xc_functionals_input_section xc_functionals_input_section_;
+        input_file_data_set::mixer_input_section mixer_input_section_;
     
         Global(Communicator const& comm__,
                std::vector<int> const mpi_grid_dims__ = std::vector<int>())
@@ -139,7 +145,6 @@ class Global
               so_correction_(false), 
               uj_correction_(false),
               mpi_grid_dims_(mpi_grid_dims__),
-              cyclic_block_size_(64), 
               std_evp_solver_type_(ev_lapack),
               gen_evp_solver_type_(ev_lapack),
               processing_unit_(CPU),
@@ -153,7 +158,11 @@ class Global
             gettimeofday(&start_time_, NULL);
 
             /* read initial data from sirius.json */
-            read_input();
+            ifds_ = input_file_data_set("sirius.json");
+            iterative_solver_input_section_ = ifds_.iterative_solver_input_section_;
+            xc_functionals_input_section_ = ifds_.xc_functionals_input_section_;
+            mixer_input_section_ = ifds_.mixer_input_section_;
+            parse_input();
 
             /* create new empty unit cell */
             unit_cell_ = new Unit_cell(esm_type_, comm_);
@@ -342,11 +351,6 @@ class Global
             return false;
         }
         
-        inline int cyclic_block_size()
-        {
-            return cyclic_block_size_;
-        }
-
         inline std::vector<int>& mpi_grid_dims()
         {
             return mpi_grid_dims_;
@@ -398,191 +402,191 @@ class Global
             return comm_;
         }
 
-        struct xc_functionals_input_section
-        {
-            std::vector<std::string> xc_functional_names_;
+        //== struct xc_functionals_input_section
+        //== {
+        //==     std::vector<std::string> xc_functional_names_;
 
-            xc_functionals_input_section()
-            {
-                xc_functional_names_.push_back("XC_LDA_X");
-                xc_functional_names_.push_back("XC_LDA_C_VWN");
-            }
+        //==     xc_functionals_input_section()
+        //==     {
+        //==         xc_functional_names_.push_back("XC_LDA_X");
+        //==         xc_functional_names_.push_back("XC_LDA_C_VWN");
+        //==     }
 
-            void read(JSON_tree parser)
-            {
-                if (parser.exist("xc_functionals"))
-                {
-                    xc_functional_names_.clear();
-                    for (int i = 0; i < parser["xc_functionals"].size(); i++)
-                    {
-                        std::string s;
-                        parser["xc_functionals"][i] >> s;
-                        xc_functional_names_.push_back(s);
-                    }
-                }
-            }
-        } xc_functionals_input_section_;
-        
-        struct mixer_input_section
-        {
-            double beta_;
-            double gamma_;
-            std::string type_;
-            int max_history_;
+        //==     void read(JSON_tree parser)
+        //==     {
+        //==         if (parser.exist("xc_functionals"))
+        //==         {
+        //==             xc_functional_names_.clear();
+        //==             for (int i = 0; i < parser["xc_functionals"].size(); i++)
+        //==             {
+        //==                 std::string s;
+        //==                 parser["xc_functionals"][i] >> s;
+        //==                 xc_functional_names_.push_back(s);
+        //==             }
+        //==         }
+        //==     }
+        //== } xc_functionals_input_section_;
+        //== 
+        //== struct mixer_input_section
+        //== {
+        //==     double beta_;
+        //==     double gamma_;
+        //==     std::string type_;
+        //==     int max_history_;
 
-            mixer_input_section() : beta_(0.9), gamma_(1.0), type_("broyden"), max_history_(5)
-            {
-            }
+        //==     mixer_input_section() : beta_(0.9), gamma_(1.0), type_("broyden"), max_history_(5)
+        //==     {
+        //==     }
 
-            void read(JSON_tree parser)
-            {
-                if (parser.exist("mixer"))
-                {
-                    JSON_tree section = parser["mixer"];
-                    beta_ = section["beta"].get(beta_);
-                    gamma_ = section["gamma"].get(gamma_);
-                    max_history_ = section["max_history"].get(max_history_);
-                    type_ = section["type"].get(type_);
-                }
-            }
-        } mixer_input_section_;
-        
-        /// Parse unit cell input section.
-        /** The following part of the input file is parsed:
-         *  \code{.json}
-         *      "unit_cell" : {
-         *          "lattice_vectors" : [
-         *              [a1_x, a1_y, a1_z],
-         *              [a2_x, a2_y, a2_z],
-         *              [a3_x, a3_y, a3_z]
-         *          ],
-         *
-         *          "lattice_vectors_scale" : scale,
-         *
-         *          "atom_types" : [label_A, label_B, ...],
-         *
-         *          "atom_files" : {
-         *              label_A : file_A, 
-         *              label_B : file_B,
-         *              ...
-         *          },
-         *
-         *          "atoms" : {
-         *              label_A: [
-         *                  coordinates_A_1, 
-         *                  coordinates_A_2,
-         *                  ...
-         *              ],
-         *              label_B : [
-         *                  coordinates_B_1,
-         *                  coordinates_B_2,
-         *                  ...
-         *              ]
-         *          }
-         *      }
-         *  \endcode
-         */
-        struct unit_cell_input_section
-        {
-            double lattice_vectors_[3][3];
+        //==     void read(JSON_tree parser)
+        //==     {
+        //==         if (parser.exist("mixer"))
+        //==         {
+        //==             JSON_tree section = parser["mixer"];
+        //==             beta_ = section["beta"].get(beta_);
+        //==             gamma_ = section["gamma"].get(gamma_);
+        //==             max_history_ = section["max_history"].get(max_history_);
+        //==             type_ = section["type"].get(type_);
+        //==         }
+        //==     }
+        //== } mixer_input_section_;
+        //== 
+        //== /// Parse unit cell input section.
+        //== /** The following part of the input file is parsed:
+        //==  *  \code{.json}
+        //==  *      "unit_cell" : {
+        //==  *          "lattice_vectors" : [
+        //==  *              [a1_x, a1_y, a1_z],
+        //==  *              [a2_x, a2_y, a2_z],
+        //==  *              [a3_x, a3_y, a3_z]
+        //==  *          ],
+        //==  *
+        //==  *          "lattice_vectors_scale" : scale,
+        //==  *
+        //==  *          "atom_types" : [label_A, label_B, ...],
+        //==  *
+        //==  *          "atom_files" : {
+        //==  *              label_A : file_A, 
+        //==  *              label_B : file_B,
+        //==  *              ...
+        //==  *          },
+        //==  *
+        //==  *          "atoms" : {
+        //==  *              label_A: [
+        //==  *                  coordinates_A_1, 
+        //==  *                  coordinates_A_2,
+        //==  *                  ...
+        //==  *              ],
+        //==  *              label_B : [
+        //==  *                  coordinates_B_1,
+        //==  *                  coordinates_B_2,
+        //==  *                  ...
+        //==  *              ]
+        //==  *          }
+        //==  *      }
+        //==  *  \endcode
+        //==  */
+        //== struct unit_cell_input_section
+        //== {
+        //==     double lattice_vectors_[3][3];
 
-            std::vector<std::string> labels_;
-            std::map<std::string, std::string> atom_files_;
-            std::vector< std::vector< std::vector<double> > > coordinates_;
+        //==     std::vector<std::string> labels_;
+        //==     std::map<std::string, std::string> atom_files_;
+        //==     std::vector< std::vector< std::vector<double> > > coordinates_;
 
-            void read(JSON_tree parser)
-            {
-                std::vector<double> a0, a1, a2;
-                parser["unit_cell"]["lattice_vectors"][0] >> a0;
-                parser["unit_cell"]["lattice_vectors"][1] >> a1;
-                parser["unit_cell"]["lattice_vectors"][2] >> a2;
+        //==     void read(JSON_tree parser)
+        //==     {
+        //==         std::vector<double> a0, a1, a2;
+        //==         parser["unit_cell"]["lattice_vectors"][0] >> a0;
+        //==         parser["unit_cell"]["lattice_vectors"][1] >> a1;
+        //==         parser["unit_cell"]["lattice_vectors"][2] >> a2;
 
-                double scale = parser["unit_cell"]["lattice_vectors_scale"].get(1.0);
+        //==         double scale = parser["unit_cell"]["lattice_vectors_scale"].get(1.0);
 
-                for (int x = 0; x < 3; x++)
-                {
-                    lattice_vectors_[0][x] = a0[x] * scale;
-                    lattice_vectors_[1][x] = a1[x] * scale;
-                    lattice_vectors_[2][x] = a2[x] * scale;
-                }
+        //==         for (int x = 0; x < 3; x++)
+        //==         {
+        //==             lattice_vectors_[0][x] = a0[x] * scale;
+        //==             lattice_vectors_[1][x] = a1[x] * scale;
+        //==             lattice_vectors_[2][x] = a2[x] * scale;
+        //==         }
 
-                labels_.clear();
-                coordinates_.clear();
-                
-                for (int iat = 0; iat < (int)parser["unit_cell"]["atom_types"].size(); iat++)
-                {
-                    std::string label;
-                    parser["unit_cell"]["atom_types"][iat] >> label;
-                    for (int i = 0; i < (int)labels_.size(); i++)
-                    {
-                        if (labels_[i] == label) 
-                            error_global(__FILE__, __LINE__, "atom type with such label is already in list");
-                    }
-                    labels_.push_back(label);
-                }
-                
-                if (parser["unit_cell"].exist("atom_files"))
-                {
-                    for (int iat = 0; iat < (int)labels_.size(); iat++)
-                    {
-                        if (parser["unit_cell"]["atom_files"].exist(labels_[iat]))
-                        {
-                            std::string fname;
-                            parser["unit_cell"]["atom_files"][labels_[iat]] >> fname;
-                            atom_files_[labels_[iat]] = fname;
-                        }
-                        else
-                        {
-                            atom_files_[labels_[iat]] = "";
-                        }
-                    }
-                }
-                
-                for (int iat = 0; iat < (int)labels_.size(); iat++)
-                {
-                    coordinates_.push_back(std::vector< std::vector<double> >());
-                    for (int ia = 0; ia < parser["unit_cell"]["atoms"][labels_[iat]].size(); ia++)
-                    {
-                        std::vector<double> v;
-                        parser["unit_cell"]["atoms"][labels_[iat]][ia] >> v;
+        //==         labels_.clear();
+        //==         coordinates_.clear();
+        //==         
+        //==         for (int iat = 0; iat < (int)parser["unit_cell"]["atom_types"].size(); iat++)
+        //==         {
+        //==             std::string label;
+        //==             parser["unit_cell"]["atom_types"][iat] >> label;
+        //==             for (int i = 0; i < (int)labels_.size(); i++)
+        //==             {
+        //==                 if (labels_[i] == label) 
+        //==                     error_global(__FILE__, __LINE__, "atom type with such label is already in list");
+        //==             }
+        //==             labels_.push_back(label);
+        //==         }
+        //==         
+        //==         if (parser["unit_cell"].exist("atom_files"))
+        //==         {
+        //==             for (int iat = 0; iat < (int)labels_.size(); iat++)
+        //==             {
+        //==                 if (parser["unit_cell"]["atom_files"].exist(labels_[iat]))
+        //==                 {
+        //==                     std::string fname;
+        //==                     parser["unit_cell"]["atom_files"][labels_[iat]] >> fname;
+        //==                     atom_files_[labels_[iat]] = fname;
+        //==                 }
+        //==                 else
+        //==                 {
+        //==                     atom_files_[labels_[iat]] = "";
+        //==                 }
+        //==             }
+        //==         }
+        //==         
+        //==         for (int iat = 0; iat < (int)labels_.size(); iat++)
+        //==         {
+        //==             coordinates_.push_back(std::vector< std::vector<double> >());
+        //==             for (int ia = 0; ia < parser["unit_cell"]["atoms"][labels_[iat]].size(); ia++)
+        //==             {
+        //==                 std::vector<double> v;
+        //==                 parser["unit_cell"]["atoms"][labels_[iat]][ia] >> v;
 
-                        if (!(v.size() == 3 || v.size() == 6)) error_global(__FILE__, __LINE__, "wrong coordinates size");
-                        if (v.size() == 3) v.resize(6, 0.0);
+        //==                 if (!(v.size() == 3 || v.size() == 6)) error_global(__FILE__, __LINE__, "wrong coordinates size");
+        //==                 if (v.size() == 3) v.resize(6, 0.0);
 
-                        coordinates_[iat].push_back(v);
-                    }
-                }
-            }
+        //==                 coordinates_[iat].push_back(v);
+        //==             }
+        //==         }
+        //==     }
 
-        } unit_cell_input_section_;
+        //== } unit_cell_input_section_;
 
-        struct iterative_solver_input_section
-        {
-            int num_steps_;
-            int subspace_size_;
-            double tolerance_;
-            double extra_tolerance_;
-            int version_;
+        //== struct iterative_solver_input_section
+        //== {
+        //==     int num_steps_;
+        //==     int subspace_size_;
+        //==     double tolerance_;
+        //==     double extra_tolerance_;
+        //==     int version_;
 
-            iterative_solver_input_section() 
-                : num_steps_(10),
-                  subspace_size_(4),
-                  tolerance_(1e-4),
-                  extra_tolerance_(1e-4),
-                  version_(1)
-            {
-            }
+        //==     iterative_solver_input_section() 
+        //==         : num_steps_(10),
+        //==           subspace_size_(4),
+        //==           tolerance_(1e-4),
+        //==           extra_tolerance_(1e-4),
+        //==           version_(1)
+        //==     {
+        //==     }
 
-            void read(JSON_tree parser)
-            {
-                num_steps_ = parser["iterative_solver"]["num_steps"].get(num_steps_);
-                subspace_size_ = parser["iterative_solver"]["subspace_size"].get(subspace_size_);
-                tolerance_ = parser["iterative_solver"]["tolerance"].get(tolerance_);
-                extra_tolerance_ = parser["iterative_solver"]["extra_tolerance"].get(extra_tolerance_);
-                version_ = parser["iterative_solver"]["version"].get(version_);
-            }
+        //==     void read(JSON_tree parser)
+        //==     {
+        //==         num_steps_ = parser["iterative_solver"]["num_steps"].get(num_steps_);
+        //==         subspace_size_ = parser["iterative_solver"]["subspace_size"].get(subspace_size_);
+        //==         tolerance_ = parser["iterative_solver"]["tolerance"].get(tolerance_);
+        //==         extra_tolerance_ = parser["iterative_solver"]["extra_tolerance"].get(extra_tolerance_);
+        //==         version_ = parser["iterative_solver"]["version"].get(version_);
+        //==     }
 
-        } iterative_solver_input_section_;
+        //== } iterative_solver_input_section_;
 
         void read_unit_cell_input();
 

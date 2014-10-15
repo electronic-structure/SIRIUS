@@ -37,7 +37,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                                           dmatrix<double_complex>& ophi__,
                                           int num_atoms_in_block__,
                                           matrix<double_complex>& kappa__,
-                                          matrix<double_complex>& beta_pw_t__,
+                                          matrix<double_complex> const& beta_pw_t__,
                                           matrix<double>& gkvec_row__,
                                           mdarray<int, 1>& packed_mtrx_offset__,
                                           mdarray<double_complex, 1>& d_mtrx_packed__,
@@ -48,8 +48,8 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
 
     bool with_overlap = (parameters_.esm_type() == ultrasoft_pseudopotential);
 
-    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
-    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
 
     /* local number of states to which Hamiltonian has to be applied */
     int nloc = static_cast<int>(s1.local_size() - s0.local_size());
@@ -328,6 +328,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
     log_function_exit(__func__);
 }
 
+#ifdef _SCALAPACK_
 void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                                            int n__,
                                            K_point* kp__,
@@ -342,7 +343,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                                            dmatrix<double_complex>& o_old__,
                                            int num_atoms_in_block__,
                                            mdarray<double_complex, 2>& kappa__,
-                                           matrix<double_complex>& beta_pw_t__,
+                                           matrix<double_complex> const& beta_pw_t__,
                                            matrix<double>& gkvec_row__,
                                            mdarray<int, 1>& packed_mtrx_offset__,
                                            mdarray<double_complex, 1>& d_mtrx_packed__,
@@ -353,10 +354,10 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
     
     bool with_overlap = (parameters_.esm_type() == ultrasoft_pseudopotential);
 
-    splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
-    splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
-    splindex<block_cyclic> s0_row(N__,       kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
-    splindex<block_cyclic> s1_row(N__ + n__, kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> s0_col(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s1_col(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s0_row(N__,       kp__->num_ranks_row(), kp__->rank_row(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> s1_row(N__ + n__, kp__->num_ranks_row(), kp__->rank_row(), blacs_grid_.cyclic_block_size());
 
     /* copy old Hamiltonian and overlap */
     for (int i = 0; i < (int)s0_col.local_size(); i++)
@@ -652,9 +653,10 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
         memcpy(&h_old__(0, i), &h__(0, i), s1_row.local_size() * sizeof(double_complex));
         memcpy(&o_old__(0, i), &o__(0, i), s1_row.local_size() * sizeof(double_complex));
     }
-
+    
     log_function_exit(__func__);
 }
+#endif
 
 #ifdef _GPU_
 extern "C" void compute_residuals_gpu(int num_gkvec_row,
@@ -682,6 +684,7 @@ extern "C" void normalize_residuals_gpu(int num_gkvec_row,
                                         double_complex* res);
 #endif
 
+#ifdef _SCALAPACK_
 void Band::uspp_residuals_gpu_parallel(int N__,
                                        int num_bands__,
                                        K_point* kp__,
@@ -705,9 +708,9 @@ void Band::uspp_residuals_gpu_parallel(int N__,
     auto pu = parameters_.processing_unit();
 
     splindex<block_cyclic> spl_num_bands_col(num_bands__, kp__->num_ranks_col(), kp__->rank_col(),
-                                             parameters_.cyclic_block_size());
+                                             blacs_grid_.cyclic_block_size());
     splindex<block_cyclic> spl_num_bands_row(num_bands__, kp__->num_ranks_row(), kp__->rank_row(),
-                                             parameters_.cyclic_block_size());
+                                             blacs_grid_.cyclic_block_size());
     
     /* transpose matrix of eigen-vectors */
     dmatrix<double_complex> evec_t(num_bands__, N__, kp__->blacs_grid());
@@ -1041,14 +1044,16 @@ void Band::uspp_residuals_gpu_parallel(int N__,
 
     log_function_exit(__func__);
 }
+#endif
 
+#ifdef _SCALAPACK_
 void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
                                      double v0__,
                                      std::vector<double>& veff_it_coarse__)
 {
     log_function_enter(__func__);
     Timer t("sirius::Band::diag_fv_uspp_gpu_parallel", kp__->comm());
-
+    
     if (parameters_.esm_type() == norm_conserving_pseudopotential)
     {
         diag_fv_ncpp_parallel(kp__, v0__, veff_it_coarse__);
@@ -1204,6 +1209,11 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
                                         packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed);
         /* increase size of the variation space */
         N += n;
+    
+        if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+        {
+            printf("checking hermitian matrix\n");
+        }
 
         if (verbosity_level >= 6 && kp__->comm().rank() == 0)
         {
@@ -1284,6 +1294,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
             }
 
             STOP();
+            // something has to be copied to GPU/CPU here
             for (int i = 0; i < psi.num_cols_local(); i++) 
             {
                 /* update \phi */
@@ -1349,6 +1360,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
     kp__->set_fv_eigen_values(&eval[0]);
     log_function_exit(__func__);
 }
+#endif
 
 void Band::apply_h_ncpp_parallel(K_point* kp__,
                                  std::vector<double> const& effective_potential__,
@@ -1357,7 +1369,7 @@ void Band::apply_h_ncpp_parallel(K_point* kp__,
                                  dmatrix<double_complex>& hphi__,
                                  int num_atoms_in_block__,
                                  matrix<double_complex>& kappa__,
-                                 matrix<double_complex>& beta_pw_t__,
+                                 matrix<double_complex> const& beta_pw_t__,
                                  matrix<double>& gkvec_row__,
                                  mdarray<int, 1>& packed_mtrx_offset__,
                                  mdarray<double_complex, 1>& d_mtrx_packed__)
@@ -1601,8 +1613,8 @@ void Band::apply_h_ncpp_parallel(K_point* kp__,
 //==     log_function_enter(__func__);
 //==     Timer t("sirius::Band::set_fv_h_o_ncpp_parallel", kp__->comm());
 //==     
-//==     splindex<block_cyclic> spl_bands_col(parameters_.num_fv_states(), kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
-//==     splindex<block_cyclic> spl_bands_row(parameters_.num_fv_states(), kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
+//==     splindex<block_cyclic> spl_bands_col(parameters_.num_fv_states(), kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+//==     splindex<block_cyclic> spl_bands_row(parameters_.num_fv_states(), kp__->num_ranks_row(), kp__->rank_row(), blacs_grid_.cyclic_block_size());
 //== 
 //==     /* local number of basis functions for the communication grid column */
 //==     int num_phi = (int)spl_bands_col.local_size();
@@ -1849,8 +1861,8 @@ void Band::set_fv_h_o_ncpp_parallel(K_point* kp__,
     log_function_enter(__func__);
     Timer t("sirius::Band::set_fv_h_o_ncpp_parallel", kp__->comm());
     
-    splindex<block_cyclic> spl_bands_col(parameters_.num_fv_states(), kp__->num_ranks_col(), kp__->rank_col(), parameters_.cyclic_block_size());
-    splindex<block_cyclic> spl_bands_row(parameters_.num_fv_states(), kp__->num_ranks_row(), kp__->rank_row(), parameters_.cyclic_block_size());
+    splindex<block_cyclic> spl_bands_col(parameters_.num_fv_states(), kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    splindex<block_cyclic> spl_bands_row(parameters_.num_fv_states(), kp__->num_ranks_row(), kp__->rank_row(), blacs_grid_.cyclic_block_size());
 
     /* local number of basis functions for the communication grid column */
     int num_phi = (int)spl_bands_col.local_size();
@@ -2089,6 +2101,7 @@ void Band::set_fv_h_o_ncpp_parallel(K_point* kp__,
     log_function_exit(__func__);
 }
 
+#ifdef _SCALAPACK_
 void Band::generate_fv_states_pp(K_point* kp__,
                                  int num_phi__,
                                  dmatrix<double_complex>& evec__,
@@ -2102,9 +2115,9 @@ void Band::generate_fv_states_pp(K_point* kp__,
     auto pu = parameters_.processing_unit();
 
     splindex<block_cyclic> spl_num_bands_col(parameters_.num_fv_states(), kp__->num_ranks_col(), kp__->rank_col(),
-                                             parameters_.cyclic_block_size());
+                                             blacs_grid_.cyclic_block_size());
     splindex<block_cyclic> spl_num_bands_row(parameters_.num_fv_states(), kp__->num_ranks_row(), kp__->rank_row(),
-                                             parameters_.cyclic_block_size());
+                                             blacs_grid_.cyclic_block_size());
     
 
     int num_bands = parameters_.num_fv_states();
@@ -2276,7 +2289,9 @@ void Band::generate_fv_states_pp(K_point* kp__,
 
     log_function_exit(__func__);
 }
+#endif
 
+#ifdef _SCALAPACK_
 void Band::diag_fv_ncpp_parallel(K_point* kp__,
                                  double v0__,
                                  std::vector<double>& veff_it_coarse__)
@@ -2481,6 +2496,6 @@ void Band::diag_fv_ncpp_parallel(K_point* kp__,
     kp__->set_fv_eigen_values(&eval[0]);
     log_function_exit(__func__);
 }
-
+#endif
 
 }

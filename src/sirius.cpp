@@ -326,6 +326,10 @@ void FORTRAN(sirius_global_initialize)(int32_t* lmax_apw, int32_t* lmax_rho, int
 {
     log_function_enter(__func__);
     int num_spins = (*num_mag_dims == 0) ? 1 : 2;
+    
+    JSON_tree parser("sirius.json");
+    int bs = parser["cyclic_block_size"].get(64);
+
     global_parameters->set_lmax_apw(*lmax_apw);
     global_parameters->set_lmax_rho(*lmax_rho);
     global_parameters->set_lmax_pot(*lmax_pot);
@@ -334,8 +338,7 @@ void FORTRAN(sirius_global_initialize)(int32_t* lmax_apw, int32_t* lmax_rho, int
     global_parameters->initialize();
     blacs_grid = new BLACS_grid(global_parameters->mpi_grid().communicator(1 << _dim_row_ | 1 << _dim_col_),
                                 global_parameters->mpi_grid().dimension_size(_dim_row_),
-                                global_parameters->mpi_grid().dimension_size(_dim_col_),
-                                global_parameters->cyclic_block_size());
+                                global_parameters->mpi_grid().dimension_size(_dim_col_), bs);
     log_function_exit(__func__);
 }
 

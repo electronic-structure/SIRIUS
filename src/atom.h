@@ -92,7 +92,7 @@ class Atom
 
         /// D_{ij} matrix of the pseudo-potential method.
         mdarray<double_complex, 2> d_mtrx_;
-    
+
     public:
     
         /// Constructor.

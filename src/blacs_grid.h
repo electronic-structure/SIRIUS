@@ -35,6 +35,8 @@ class BLACS_grid
             : comm_(comm__),
               num_ranks_row_(num_ranks_row__),
               num_ranks_col_(num_ranks_col__),
+              blacs_handler_(-1),
+              blacs_context_(-1),
               cyclic_block_size_(cyclic_block_size__)
         {
             std::vector<int> xy(2);
@@ -45,7 +47,8 @@ class BLACS_grid
 
             rank_col_ = mpi_grid_.coordinate(0);
             rank_row_ = mpi_grid_.coordinate(1);
-
+            
+            #ifdef _SCALAPACK_
             /* create handler first */
             blacs_handler_ = linalg_base::create_blacs_handler(comm_.mpi_comm());
 
@@ -77,12 +80,15 @@ class BLACS_grid
                   << " blacs    " << irow1 << " " << icol1 << " " << nrow1 << " " << ncol1;
                 error_local(__FILE__, __LINE__, s);
             }
+            #endif
         }
 
         ~BLACS_grid()
         {
+            #ifdef _SCALAPACK_
             linalg_base::gridexit(blacs_context_);
             linalg_base::free_blacs_handler(blacs_handler_);
+            #endif
         }
 
         inline int context() const

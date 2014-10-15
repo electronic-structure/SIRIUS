@@ -229,6 +229,36 @@ void K_point::update()
                 beta_pw_panel_(igk, i) = beta_pw_t_(igk, atom_type->offset_lo() + xi) * conj(gkvec_phase_factors_(igk, ia));
             }
         }
+
+        p_mtrx_ = mdarray<double_complex, 3>(uc->max_mt_basis_size(), uc->max_mt_basis_size(), uc->num_atom_types());
+        p_mtrx_.zero();
+
+        for (int iat = 0; iat < uc->num_atom_types(); iat++)
+        {
+            auto atom_type = uc->atom_type(iat);
+            int nbf = atom_type->mt_basis_size();
+            int ofs = atom_type->offset_lo();
+
+            matrix<double_complex> qinv(nbf, nbf);
+            atom_type->uspp().q_mtrx >> qinv;
+            linalg<CPU>::geinv(nbf, qinv);
+            
+            /* compute P^{H}*P */
+            linalg<CPU>::gemm(2, 0, nbf, nbf, num_gkvec_row(), &beta_pw_t_(0, ofs), beta_pw_t_.ld(), 
+                              &beta_pw_t_(0, ofs), beta_pw_t_.ld(), &p_mtrx_(0, 0, iat), p_mtrx_.ld());
+            comm_row().allreduce(&p_mtrx_(0, 0, iat), uc->max_mt_basis_size() * uc->max_mt_basis_size());
+
+            for (int xi1 = 0; xi1 < nbf; xi1++)
+            {
+                for (int xi2 = 0; xi2 < nbf; xi2++) qinv(xi2, xi1) += p_mtrx_(xi2, xi1, iat);
+            }
+            /* compute (Q^{-1} + P^{+}*P)^{-1} */
+            linalg<CPU>::geinv(nbf, qinv);
+            for (int xi1 = 0; xi1 < nbf; xi1++)
+            {
+                for (int xi2 = 0; xi2 < nbf; xi2++) p_mtrx_(xi2, xi1, iat) = qinv(xi2, xi1);
+            }
+        }
     }
 
     spinor_wave_functions_ = mdarray<double_complex, 3>(nullptr, wf_size(), sub_spl_spinor_wf_.local_size(), parameters_.num_spins());
@@ -747,13 +777,13 @@ void K_point::build_apwlo_basis_descriptors()
 void K_point::distribute_block_cyclic()
 {
     /* distribute Gk+lo basis between rows */
-    splindex<block_cyclic> spl_row(gklo_basis_size(), num_ranks_row_, rank_row_, parameters_.cyclic_block_size());
+    splindex<block_cyclic> spl_row(gklo_basis_size(), num_ranks_row_, rank_row_, blacs_grid_.cyclic_block_size());
     gklo_basis_descriptors_row_.resize(spl_row.local_size());
     for (int i = 0; i < (int)spl_row.local_size(); i++)
         gklo_basis_descriptors_row_[i] = gklo_basis_descriptors_[spl_row[i]];
 
     /* distribute Gk+lo basis between columns */
-    splindex<block_cyclic> spl_col(gklo_basis_size(), num_ranks_col_, rank_col_, parameters_.cyclic_block_size());
+    splindex<block_cyclic> spl_col(gklo_basis_size(), num_ranks_col_, rank_col_, blacs_grid_.cyclic_block_size());
     gklo_basis_descriptors_col_.resize(spl_col.local_size());
     for (int i = 0; i < (int)spl_col.local_size(); i++)
         gklo_basis_descriptors_col_[i] = gklo_basis_descriptors_[spl_col[i]];

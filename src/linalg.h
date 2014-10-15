@@ -40,14 +40,22 @@ class linalg<CPU>: public linalg_base
 {
     public:
 
+        /// General matrix times a vector.
+        /** Perform one of the matrix-vector operations \n
+         *  y = alpha * A * x + beta * y (trans = 0) \n
+         *  y = alpha * A^{T} * x + beta * y (trans = 1) \n
+         *  y = alpha * A^{+} * x + beta * y (trans = 2)
+         */
         template<typename T>
         static void gemv(int trans, ftn_int m, ftn_int n, T alpha, T* A, ftn_int lda, T* x, ftn_int incx, 
                          T beta, T* y, ftn_int incy);
         
-        /** Compute C = alpha * A * B + beta * C if side = 0 \n
-            Compute C = alpha * B * A + beta * C if side = 1 \n
-            A is a hermitian matrix with upper of lower triangle defined.
-          */
+        /// Hermitian matrix times a general matrix or vice versa.
+        /** Perform one of the matrix-matrix operations \n
+         *  C = alpha * A * B + beta * C (side = 0) \n
+         *  C = alpha * B * A + beta * C (side = 1), \n
+         *  where A is a hermitian matrix with upper (uplo = 0) of lower (uplo = 1) triangular part defined.
+         */
         template<typename T>
         static void hemm(int side, int uplo, ftn_int m, ftn_int n, T alpha, T* A, ftn_len lda, 
                          T* B, ftn_len ldb, T beta, T* C, ftn_len ldc);

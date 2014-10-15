@@ -290,6 +290,12 @@ class dmatrix
         }
 
         template <processing_unit_t pu>
+        inline T const* at() const
+        {
+            return matrix_local_.at<pu>();
+        }
+
+        template <processing_unit_t pu>
         inline T* at(int64_t const irow_loc, int64_t const icol_loc) 
         {
             return matrix_local_.at<pu>(irow_loc, icol_loc);
@@ -716,28 +722,6 @@ class dmatrix
                                                    src_location.second, tag);
             }
         }
-
-        //== /// Conjugate transponse of the sub-matrix.
-        //== /** \param [in] m Number of rows of the target sub-matrix.
-        //==  *  \param [in] n Number of columns of the target sub-matrix.
-        //==  */
-        //== static void tranc(int32_t m, int32_t n, dmatrix<double_complex>& a, int ia, int ja, dmatrix<double_complex>& c, int ic, int jc)
-        //== {
-        //==     ia++; ja++;
-        //==     ic++; jc++;
-
-        //==     lin_alg<scalapack>::pztranc(m, n, double_complex(1, 0), a.ptr(), ia, ja, a.descriptor(), double_complex(0, 0), 
-        //==                                c.ptr(), ic, jc, c.descriptor());
-        //== }
-
-        //== static void tranu(int32_t m, int32_t n, dmatrix<double_complex>& a, int ia, int ja, dmatrix<double_complex>& c, int ic, int jc)
-        //== {
-        //==     ia++; ja++;
-        //==     ic++; jc++;
-
-        //==     lin_alg<scalapack>::pztranu(m, n, double_complex(1, 0), a.ptr(), ia, ja, a.descriptor(), double_complex(0, 0), 
-        //==                                c.ptr(), ic, jc, c.descriptor());
-        //== }
 
         inline int bs() const
         {

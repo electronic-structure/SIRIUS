@@ -97,7 +97,68 @@ class Band
         void set_h(K_point* kp, Periodic_function<double>* effective_potential, 
                    Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h);
        
-        void diag_fv_full_potential(K_point* kp, Periodic_function<double>* effective_potential);
+        /// Diagonalize a full-potential Hamiltonian
+        void diag_fv_full_potential(K_point* kp__,
+                                    Periodic_function<double>* effective_potential__);
+
+        /// Diagonalize a pseudo-potential Hamiltonian
+        void diag_fv_pseudo_potential(K_point* kp__,
+                                      Periodic_function<double>* effective_potential__);
+
+        #ifdef _SCALAPACK_
+        void apply_op_non_local_parallel(K_point* kp__,
+                                         dmatrix<double_complex>& chi__, 
+                                         int num_atoms_in_block__,
+                                         matrix<double_complex>& kappa__,
+                                         matrix<double_complex> const& beta_pw_t__,
+                                         matrix<double> const& gkvec_row__,
+                                         mdarray<int, 1> const& packed_mtrx_offset__,
+                                         mdarray<double_complex, 1> const& op_mtrx_packed__,
+                                         double_complex alpha);
+        void apply_oinv_parallel(K_point* kp__,
+                                 dmatrix<double_complex>& chi__,
+                                 dmatrix<double_complex>& S__);
+
+        void apply_h_local_parallel(K_point* kp__,
+                                    std::vector<double> const& effective_potential__,
+                                    std::vector<double> const& pw_ekin__,
+                                    int N__,
+                                    int n__,
+                                    dmatrix<double_complex>& phi__,
+                                    dmatrix<double_complex>& hphi__);
+
+        void apply_h_parallel(K_point* kp__,
+                              std::vector<double> const& effective_potential__,
+                              std::vector<double> const& pw_ekin__,
+                              dmatrix<double_complex>& phi__,
+                              dmatrix<double_complex>& hphi__,
+                              int num_atoms_in_block__,
+                              matrix<double_complex>& kappa__,
+                              matrix<double_complex> const& beta_pw_t__,
+                              matrix<double> const& gkvec_row__,
+                              mdarray<int, 1> const& packed_mtrx_offset__,
+                              mdarray<double_complex, 1> const& d_mtrx_packed__);
+
+        void apply_h_o_parallel(K_point* kp__,
+                                std::vector<double> const& effective_potential__,
+                                std::vector<double> const& pw_ekin__,
+                                int N__,
+                                int n__,
+                                dmatrix<double_complex>& phi__,
+                                dmatrix<double_complex>& hphi__,
+                                dmatrix<double_complex>& ophi__,
+                                int num_atoms_in_block__,
+                                matrix<double_complex>& kappa__,
+                                matrix<double_complex> const& beta_pw_t__,
+                                matrix<double>& gkvec_row__,
+                                mdarray<int, 1>& packed_mtrx_offset__,
+                                mdarray<double_complex, 1>& d_mtrx_packed__,
+                                mdarray<double_complex, 1>& q_mtrx_packed__);
+
+        void diag_fv_pseudo_potential_parallel(K_point* kp__,
+                                               double v0__,
+                                               std::vector<double>& veff_it_coarse__);
+        #endif
 
         void apply_h_local_slice(K_point* kp__,
                                  std::vector<double> const& effective_potential__,
@@ -106,14 +167,15 @@ class Band
                                  matrix<double_complex> const& phi__,
                                  matrix<double_complex>& hphi__);
         
-        void apply_h_local_slice(K_point* kp__,
-                                 std::vector<double> const& effective_potential__,
-                                 std::vector<double> const& pw_ekin__,
-                                 int num_phi__,
-                                 matrix<double_complex>& hphi__);
+        //void apply_h_local_slice(K_point* kp__,
+        //                         std::vector<double> const& effective_potential__,
+        //                         std::vector<double> const& pw_ekin__,
+        //                         int num_phi__,
+        //                         matrix<double_complex>& hphi__);
 
         void apply_h_local(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
                            int n, double_complex* phi__, double_complex* hphi__);
+
 
         void diag_fv_uspp_cpu(K_point* kp__,
                               Periodic_function<double>* effective_potential__);
@@ -145,87 +207,13 @@ class Band
                                      double v0__,
                                      std::vector<double>& veff_it_coarse__);
         
+        /// Get diagonal elements of Hamiltonian and (if needed) overlap.
         template <bool need_o_diag = true>
-        void get_h_o_diag(K_point* kp__,
+        void get_h_o_diag(K_point const* kp__,
                           double v0__,
-                          std::vector<double>& pw_ekin__,
+                          std::vector<double> const& pw_ekin__,
                           std::vector<double_complex>& h_diag__,
-                          std::vector<double_complex>& o_diag__)
-        {
-            Timer t("sirius::Band::get_h_o_diag");
-        
-            h_diag__.resize(kp__->num_gkvec_row());
-            o_diag__.resize(kp__->num_gkvec_row());
-        
-            auto uc = parameters_.unit_cell();
-            
-            /* local H contribution */
-            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-            {
-                int igk = kp__->gklo_basis_descriptor_row(igk_row).igk;
-                h_diag__[igk_row] = pw_ekin__[igk] + v0__;
-                o_diag__[igk_row] = 1.0;
-            }
-        
-            /* non-local H contribution */
-            auto& beta_pw_t = kp__->beta_pw_t();
-            mdarray<double_complex, 2> beta_pw_tmp(uc->max_mt_basis_size(), kp__->num_gkvec_row());
-        
-            for (int iat = 0; iat < uc->num_atom_types(); iat++)
-            {
-                auto atom_type = uc->atom_type(iat);
-                int nbf = atom_type->mt_basis_size();
-                matrix<double_complex> d_sum(nbf, nbf);
-                d_sum.zero();
-        
-                matrix<double_complex> q_sum;
-                if (need_o_diag)
-                {
-                    q_sum = matrix<double_complex>(nbf, nbf);
-                    q_sum.zero();
-                }
-        
-                for (int i = 0; i < atom_type->num_atoms(); i++)
-                {
-                    int ia = atom_type->atom_id(i);
-                
-                    for (int xi2 = 0; xi2 < nbf; xi2++)
-                    {
-                        for (int xi1 = 0; xi1 < nbf; xi1++)
-                        {
-                            d_sum(xi1, xi2) += uc->atom(ia)->d_mtrx(xi1, xi2);
-                            if (need_o_diag) q_sum(xi1, xi2) += uc->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
-                        }
-                    }
-                }
-        
-                int ofs = uc->atom_type(iat)->offset_lo();
-                for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-                {
-                    for (int xi = 0; xi < nbf; xi++) beta_pw_tmp(xi, igk_row) = beta_pw_t(igk_row, ofs + xi);
-                }
-        
-                std::vector< std::pair<int, int> > idx(nbf * nbf);
-                for (int xi2 = 0, n = 0; xi2 < nbf; xi2++)
-                {
-                    for (int xi1 = 0; xi1 < nbf; xi1++) idx[n++] = std::pair<int, int>(xi1, xi2);
-                }
-        
-                #pragma omp parallel for
-                for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-                {
-                    for (auto& it: idx)
-                    {
-                        int xi1 = it.first;
-                        int xi2 = it.second;
-                        double_complex z = beta_pw_tmp(xi1, igk_row) * conj(beta_pw_tmp(xi2, igk_row));
-        
-                        h_diag__[igk_row] += z * d_sum(xi1, xi2);
-                        if (need_o_diag) o_diag__[igk_row] += z * q_sum(xi1, xi2);
-                    }
-                }
-            }
-        }
+                          std::vector<double_complex>& o_diag__);
 
         void apply_h_o_uspp_cpu(K_point* kp__, 
                                 std::vector<double>& effective_potential__,
@@ -235,13 +223,6 @@ class Band
                                 double_complex* hphi__, 
                                 double_complex* ophi__);
 
-        void apply_h_local_parallel(K_point* kp__,
-                                    std::vector<double> const& effective_potential__,
-                                    std::vector<double> const& pw_ekin__,
-                                    int N__,
-                                    int n__,
-                                    dmatrix<double_complex>& phi__,
-                                    dmatrix<double_complex>& hphi__);
 
         void set_fv_h_o_uspp_cpu_parallel_simple(int N__,
                                                  int n__,
@@ -361,7 +342,7 @@ class Band
                                    dmatrix<double_complex>& hphi__,
                                    int num_atoms_in_block__,
                                    matrix<double_complex>& kappa__,
-                                   matrix<double_complex>& beta_pw_t__,
+                                   matrix<double_complex> const& beta_pw_t__,
                                    matrix<double>& gkvec_row__,
                                    mdarray<int, 1>& packed_mtrx_offset__,
                                    mdarray<double_complex, 1>& d_mtrx_packed__);
@@ -394,7 +375,7 @@ class Band
                                             dmatrix<double_complex>& ophi__,
                                             int num_atoms_in_block__,
                                             matrix<double_complex>& kappa__,
-                                            matrix<double_complex>& beta_pw_t__,
+                                            matrix<double_complex> const& beta_pw_t__,
                                             matrix<double>& gkvec_row__,
                                             mdarray<int, 1>& packed_mtrx_offset__,
                                             mdarray<double_complex, 1>& d_mtrx_packed__,
@@ -414,7 +395,7 @@ class Band
                                              dmatrix<double_complex>& o_old__,
                                              int num_atoms_in_block__,
                                              mdarray<double_complex, 2>& kappa__,
-                                             matrix<double_complex>& beta_pw_t__,
+                                             matrix<double_complex> const& beta_pw_t__,
                                              matrix<double>& gkvec_row__,
                                              mdarray<int, 1>& packed_mtrx_offset__,
                                              mdarray<double_complex, 1>& d_mtrx_packed__,
@@ -444,6 +425,9 @@ class Band
 
         #endif
 
+        void diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
+                                                         std::vector<double> const& veff_it_coarse__);
+    
     public:
         
         /// Constructor
@@ -567,7 +551,8 @@ class Band
         template <spin_block_t sblock>
         void set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 
                           mdarray<double_complex, 2>& h);
-
+        
+        /// Set APW-lo and lo-APW blocks of the overlap matrix.
         void set_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm, 
                           mdarray<double_complex, 2>& o);
 
@@ -620,7 +605,7 @@ class Band
         void set_fv_h_o(K_point* kp, Periodic_function<double>* effective_potential, dmatrix<double_complex>& h, 
                         dmatrix<double_complex>& o);
 
-        /// Solve first-variational problem
+        /// Solve first-variational (non-magnetic) problem
         void solve_fv(K_point* kp__, Periodic_function<double>* effective_potential__);
 
         /// Solve second-variational problem

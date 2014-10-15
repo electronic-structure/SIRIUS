@@ -137,7 +137,7 @@ void Utils::write_matrix(std::string const& fname, bool write_all, matrix<double
     fclose(fout);
 }
 
-void Utils::check_hermitian(const std::string& name, mdarray<double_complex, 2>& mtrx)
+void Utils::check_hermitian(const std::string& name, mdarray<double_complex, 2>& mtrx, int n)
 {
     assert(mtrx.size(0) == mtrx.size(1));
 
@@ -145,9 +145,11 @@ void Utils::check_hermitian(const std::string& name, mdarray<double_complex, 2>&
     int i0 = -1;
     int j0 = -1;
 
-    for (int i = 0; i < (int)mtrx.size(0); i++)
+    if (n == -1) n = (int)mtrx.size(0);
+
+    for (int i = 0; i < n; i++)
     {
-        for (int j = 0; j < (int)mtrx.size(1); j++)
+        for (int j = 0; j < n; j++)
         {
             double diff = abs(mtrx(i, j) - conj(mtrx(j, i)));
             if (diff > maxdiff)
