@@ -830,8 +830,8 @@ class K_point
                                         mdarray<double_complex, 1>& o_mtrx_packed__,
                                         mdarray<int, 1> const& packed_mtrx_offset__,
                                         matrix<double_complex>& beta_phi__,
-                                        matrix<double_complex>& chi__,
-                                        int nchi__,
+                                        matrix<double_complex>& phi__,
+                                        int nphi__,
                                         int offs__,
                                         double_complex alpha,
                                         matrix<double_complex>& work__)
@@ -847,16 +847,16 @@ class K_point
                     int ia = beta_desc__(3, i);
 
                     /* compute O * <beta|phi> */
-                    linalg<CPU>::gemm(0, 0, nbf, nchi__, nbf,
+                    linalg<CPU>::gemm(0, 0, nbf, nphi__, nbf,
                                       o_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
                                       beta_phi__.at<CPU>(ofs, 0), beta_phi__.ld(),
                                       work__.at<CPU>(ofs, 0), work__.ld());
                 }
                 
-                /* compute <G+k|beta> * O * <beta|chi> and add to chi */
-                linalg<CPU>::gemm(0, 0, num_gkvec_row(), nchi__, num_beta__, alpha,
+                /* compute <G+k|beta> * O * <beta|phi> and add to phi */
+                linalg<CPU>::gemm(0, 0, num_gkvec_row(), nphi__, num_beta__, alpha,
                                   beta_gk__.at<CPU>(), beta_gk__.ld(), work__.at<CPU>(), work__.ld(), complex_one,
-                                  chi__.at<CPU>(0, offs__), chi__.ld());
+                                  phi__.at<CPU>(0, offs__), phi__.ld());
             }
 
             if (parameters_.processing_unit() == GPU)

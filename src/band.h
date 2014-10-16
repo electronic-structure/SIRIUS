@@ -106,13 +106,14 @@ class Band
                                       Periodic_function<double>* effective_potential__);
         
         #ifdef _SCALAPACK_
-        void apply_op_non_local_parallel(K_point* kp__,
-                                         dmatrix<double_complex>& chi__, 
-                                         matrix<double_complex>& kappa__,
-                                         matrix<double> const& gkvec_row__,
-                                         mdarray<int, 1> const& packed_mtrx_offset__,
-                                         mdarray<double_complex, 1>& op_mtrx_packed__,
-                                         double_complex alpha);
+        void add_non_local_contribution_parallel(K_point* kp__,
+                                                 dmatrix<double_complex>& phi__, 
+                                                 dmatrix<double_complex>& op_phi__, 
+                                                 matrix<double_complex>& kappa__,
+                                                 matrix<double> const& gkvec_row__,
+                                                 mdarray<int, 1> const& packed_mtrx_offset__,
+                                                 mdarray<double_complex, 1>& op_mtrx_packed__,
+                                                 double_complex alpha);
 
         void apply_oinv_parallel(K_point* kp__,
                                  dmatrix<double_complex>& chi__,
@@ -326,9 +327,9 @@ class Band
         void diag_fv_uspp_gpu(K_point* kp__,
                               Periodic_function<double>* effective_potential__);
 
-        void diag_fv_uspp_gpu_parallel(K_point* kp__,
-                                       double v0__,
-                                       std::vector<double>& veff_it_coarse__);
+        void diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
+                                                        double v0__,
+                                                        std::vector<double>& veff_it_coarse__);
 
         void apply_h_ncpp_parallel(K_point* kp__,
                                    std::vector<double> const& effective_potential__,
