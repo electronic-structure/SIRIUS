@@ -408,6 +408,42 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
     assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
 
     update();
+
+    if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
+    {
+        int num_atoms_in_chunk = std::min(num_atoms(), 256);
+        int num_beta_chunks = num_atoms() / num_atoms_in_chunk + std::min(1, num_atoms() % num_atoms_in_chunk);
+        splindex<block> spl_beta_chunks(num_atoms(), num_beta_chunks, 0);
+        beta_chunks_.resize(num_beta_chunks);
+        
+        for (int ib = 0; ib < num_beta_chunks; ib++)
+        {
+            int na = (int)spl_beta_chunks.local_size(ib);
+            beta_chunks_[ib].num_atoms_ = na;
+            beta_chunks_[ib].desc_ = mdarray<int, 2>(4, na);
+            beta_chunks_[ib].atom_pos_ = mdarray<double, 2>(3, na);
+
+            int num_beta = 0;
+    
+            for (int i = 0; i < na; i++)
+            {
+                int ia = (int)spl_beta_chunks.global_index(i, ib);
+                auto type = atom(ia)->type();
+                /* atom fractional coordinates */
+                for (int x = 0; x < 3; x++) beta_chunks_[ib].atom_pos_(x, i) = atom(ia)->position(x);
+                /* number of beta functions for atom */
+                beta_chunks_[ib].desc_(0, i) = type->mt_basis_size();
+                /* offset in beta_gk*/
+                beta_chunks_[ib].desc_(1, i) = num_beta;
+                /* offset in beta_gk_t */
+                beta_chunks_[ib].desc_(2, i) = type->offset_lo();
+                beta_chunks_[ib].desc_(3, i) = ia;
+    
+                num_beta += type->mt_basis_size();
+            }
+            beta_chunks_[ib].num_beta_ = num_beta;
+        }
+    }
             
     //== if (esm_type_ == ultrasoft_pseudopotential)
     //== {

@@ -159,7 +159,7 @@ class K_point
         int num_ranks_;
 
         /// Phase-factor independent plane-wave coefficients of |beta> functions for atom types.
-        mdarray<double_complex, 2> beta_pw_t_;
+        mdarray<double_complex, 2> beta_gk_t_;
 
         /// Plane-wave coefficients of |beta> functions for atoms.
         dmatrix<double_complex> beta_pw_panel_;
@@ -631,9 +631,9 @@ class K_point
             return gkvec_;
         }
 
-        inline mdarray<double_complex, 2> const& beta_pw_t() const
+        inline mdarray<double_complex, 2> const& beta_gk_t() const
         {
-            return beta_pw_t_;
+            return beta_gk_t_;
         }
 
         //== inline double_complex& beta_pw_t(int igk, int idx)
@@ -733,18 +733,53 @@ class K_point
         //==     return static_cast<int>(sub_spl_spinor_wf_[sub_index]);
         //== }
 
-        void generate_beta_phi(splindex<block>& atom_blocks__,
-                               int iab__,
-                               int nbf_in_block__,
+        /// Generate beta-proectors for a block of atoms.
+        void generate_beta_gk(int num_atoms__,
+                              mdarray<int, 2> const& beta_desc__,
+                              matrix<double_complex>& beta_gk__)
+        {
+            if (parameters_.processing_unit() == CPU)
+            {
+                /* create beta projectors */
+                #pragma omp parallel
+                for (int i = 0; i < num_atoms__; i++)
+                {
+                    int ia = beta_desc__(3, i);
+                    #pragma omp for
+                    for (int xi = 0; xi < beta_desc__(0, i); xi++)
+                    {
+                        for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
+                        {
+                            beta_gk__(igk_row, beta_desc__(1, i) + xi) = 
+                                beta_gk_t_(igk_row, beta_desc__(2, i) + xi) * conj(gkvec_phase_factor(igk_row, ia));
+                        }
+                    }
+                }
+            }
+            if (parameters_.processing_unit() == GPU)
+            {
+                #ifdef _GPU_
+                /* create beta projectors directly on GPU */
+                create_beta_gk_gpu((int)atom_blocks.local_size(iab),
+                                   kp__->num_gkvec_row(),
+                                   beta_pw_desc.at<GPU>(),
+                                   beta_pw_t__.at<GPU>(),
+                                   gkvec_row__.at<GPU>(),
+                                   atom_pos.at<GPU>(),
+                                   kappa__.at<GPU>());
+                #else
+                TERMINATE_NO_GPU
+                #endif
+            }
+        }
+
+        void generate_beta_phi(int nbeta__,
                                matrix<double_complex>& phi__,
                                int nphi__,
                                int offs__,
-                               matrix<double_complex>& beta_pw__,
-                               mdarray<int, 2>& beta_pw_desc__,
+                               matrix<double_complex>& beta_gk__,
                                matrix<double_complex>& beta_phi__)
         {
-            Timer t("sirius::K_point::generate_beta_phi", comm_row());
-
             #ifdef _GPU_
             #ifdef _GPU_DIRECT_
             // allrecue with gpu-direct is broken at the moment
@@ -756,25 +791,9 @@ class K_point
 
             if (parameters_.processing_unit() == CPU)
             {
-                /* create beta projectors */
-                #pragma omp parallel
-                for (int i = 0; i < (int)atom_blocks__.local_size(iab__); i++)
-                {
-                    int ia = (int)atom_blocks__.global_index(i, iab__);
-                    auto type = parameters_.unit_cell()->atom(ia)->type();
-                    #pragma omp for
-                    for (int xi = 0; xi < type->mt_basis_size(); xi++)
-                    {
-                        for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
-                        {
-                            beta_pw__(igk_row, beta_pw_desc__(1, i) + xi) = 
-                                beta_pw_t_(igk_row, beta_pw_desc__(2, i) + xi) * conj(gkvec_phase_factor(igk_row, ia));
-                        }
-                    }
-                }
                 /* compute <beta|phi> */
-                linalg<CPU>::gemm(2, 0, nbf_in_block__, nphi__, num_gkvec_row(), 
-                                  beta_pw__.at<CPU>(), beta_pw__.ld(), 
+                linalg<CPU>::gemm(2, 0, nbeta__, nphi__, num_gkvec_row(), 
+                                  beta_gk__.at<CPU>(), beta_gk__.ld(), 
                                   phi__.at<CPU>(0, offs__), phi__.ld(), 
                                   beta_phi__.at<CPU>(), beta_phi__.ld());
                 comm_row().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
@@ -782,17 +801,8 @@ class K_point
             if (parameters_.processing_unit() == GPU)
             {
                 #ifdef _GPU_
-                /* create beta projectors directly on GPU */
-                create_beta_pw_gpu_v2((int)atom_blocks.local_size(iab),
-                                      kp__->num_gkvec_row(),
-                                      beta_pw_desc.at<GPU>(),
-                                      beta_pw_t__.at<GPU>(),
-                                      gkvec_row__.at<GPU>(),
-                                      atom_pos.at<GPU>(),
-                                      kappa__.at<GPU>());
-
                 /* compute <beta|phi> */
-                linalg<GPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
+                linalg<GPU>::gemm(2, 0, num_beta__, nphi__, num_gkvec_row(), 
                                   kappa__.at<GPU>(), kappa__.ld(), 
                                   phi__.at<GPU>(0, s0.local_size()), phi__.ld(), 
                                   beta_phi.at<GPU>(), beta_phi.ld());
@@ -811,13 +821,73 @@ class K_point
                 TERMINATE_NO_GPU
                 #endif
             }
+        }
 
-            //== if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-            //== {
-            //==     printf("<beta|phi> effective zgemm with M, N, K: %6i %6i %6i, %12.4f sec, %12.4f GFlops/node\n",
-            //==            nbf_in_block, nloc, kp__->num_gkvec(),
-            //==            tval, 8e-9 * nbf_in_block * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
-            //== }
+        void add_non_local_contribution(int num_atoms__,
+                                        int num_beta__,
+                                        mdarray<int, 2> const& beta_desc__,
+                                        matrix<double_complex>& beta_gk__,
+                                        mdarray<double_complex, 1>& o_mtrx_packed__,
+                                        mdarray<int, 1> const& packed_mtrx_offset__,
+                                        matrix<double_complex>& beta_phi__,
+                                        matrix<double_complex>& chi__,
+                                        int nchi__,
+                                        int offs__,
+                                        double_complex alpha,
+                                        matrix<double_complex>& work__)
+        {
+            if (parameters_.processing_unit() == CPU)
+            {
+                #pragma omp parallel for
+                for (int i = 0; i < num_atoms__; i++)
+                {
+                    /* number of beta functions for a given atom */
+                    int nbf = beta_desc__(0, i);
+                    int ofs = beta_desc__(1, i);
+                    int ia = beta_desc__(3, i);
+
+                    /* compute O * <beta|phi> */
+                    linalg<CPU>::gemm(0, 0, nbf, nchi__, nbf,
+                                      o_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
+                                      beta_phi__.at<CPU>(ofs, 0), beta_phi__.ld(),
+                                      work__.at<CPU>(ofs, 0), work__.ld());
+                }
+                
+                /* compute <G+k|beta> * O * <beta|chi> and add to chi */
+                linalg<CPU>::gemm(0, 0, num_gkvec_row(), nchi__, num_beta__, alpha,
+                                  beta_gk__.at<CPU>(), beta_gk__.ld(), work__.at<CPU>(), work__.ld(), complex_one,
+                                  chi__.at<CPU>(0, offs__), chi__.ld());
+            }
+
+            if (parameters_.processing_unit() == GPU)
+            {
+                #ifdef _GPU_
+                #pragma omp parallel for
+                for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
+                {
+                    int ia = (int)atom_blocks.global_index(i, iab);
+                    int ofs = beta_pw_desc(1, i);
+                    
+                    /* number of beta functions for a given atom */
+                    int nbf = beta_pw_desc(0, i);
+
+                    /* compute D*<beta|phi> */
+                    linalg<GPU>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed__.at<GPU>(packed_mtrx_offset__(ia)), nbf, 
+                                      beta_phi.at<GPU>(ofs, 0), beta_phi.ld(), tmp.at<GPU>(ofs, 0), tmp.ld(), 
+                                      Platform::thread_id());
+
+                }
+                cuda_device_synchronize();
+                
+                double_complex alpha = complex_one;
+                /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
+                linalg<GPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,
+                                  kappa__.at<GPU>(), kappa__.ld(), tmp.at<GPU>(), tmp.ld(), &alpha, 
+                                  hphi__.at<GPU>(0, s0.local_size()), hphi__.ld());
+                #else
+                TERMINATE_NO_GPU
+                #endif
+            }
         }
 };
 

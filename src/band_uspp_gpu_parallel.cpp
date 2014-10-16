@@ -21,7 +21,7 @@ T check_sum(matrix<T> const& mtrx, int irow0, int icol0, int nrow, int ncol)
 extern "C" void create_beta_pw_gpu_v2(int num_atoms,
                                       int num_gkvec, 
                                       int* beta_pw_desc,
-                                      double_complex* beta_pw_type,
+                                      double_complex* beta_gk_type,
                                       double* gkvec,
                                       double* atom_pos,
                                       double_complex* beta_pw);
@@ -37,7 +37,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                                           dmatrix<double_complex>& ophi__,
                                           int num_atoms_in_block__,
                                           matrix<double_complex>& kappa__,
-                                          matrix<double_complex> const& beta_pw_t__,
+                                          matrix<double_complex> const& beta_gk_t__,
                                           matrix<double>& gkvec_row__,
                                           mdarray<int, 1>& packed_mtrx_offset__,
                                           mdarray<double_complex, 1>& d_mtrx_packed__,
@@ -130,7 +130,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
             beta_pw_desc(0, i) = type->mt_basis_size();
             /* offset in beta_pw */
             beta_pw_desc(1, i) = nbf_in_block;
-            /* offset in beta_pw_t */
+            /* offset in beta_gk_t */
             beta_pw_desc(2, i) = type->offset_lo();
 
             nbf_in_block += uc->atom(ia)->mt_basis_size();
@@ -174,7 +174,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
                 {
                     for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
                     {
-                        kappa__(igk_row, beta_pw_desc(1, i) + xi) = beta_pw_t__(igk_row, beta_pw_desc(2, i) + xi) * 
+                        kappa__(igk_row, beta_pw_desc(1, i) + xi) = beta_gk_t__(igk_row, beta_pw_desc(2, i) + xi) * 
                                                                     conj(kp__->gkvec_phase_factor(igk_row, ia));
                     }
                 }
@@ -193,7 +193,7 @@ void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
             create_beta_pw_gpu_v2((int)atom_blocks.local_size(iab),
                                   kp__->num_gkvec_row(),
                                   beta_pw_desc.at<GPU>(),
-                                  beta_pw_t__.at<GPU>(),
+                                  beta_gk_t__.at<GPU>(),
                                   gkvec_row__.at<GPU>(),
                                   atom_pos.at<GPU>(),
                                   kappa__.at<GPU>());
@@ -343,7 +343,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                                            dmatrix<double_complex>& o_old__,
                                            int num_atoms_in_block__,
                                            mdarray<double_complex, 2>& kappa__,
-                                           matrix<double_complex> const& beta_pw_t__,
+                                           matrix<double_complex> const& beta_gk_t__,
                                            matrix<double>& gkvec_row__,
                                            mdarray<int, 1>& packed_mtrx_offset__,
                                            mdarray<double_complex, 1>& d_mtrx_packed__,
@@ -367,9 +367,12 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
     }
 
     /* apply Hamiltonian and overlap operators to the new basis functions */
-    apply_h_o_uspp_gpu_parallel_v2(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__,
-                                   num_atoms_in_block__, kappa__, beta_pw_t__, gkvec_row__, packed_mtrx_offset__,
-                                   d_mtrx_packed__, q_mtrx_packed__);
+    //apply_h_o_uspp_gpu_parallel_v2(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__,
+    //                               num_atoms_in_block__, kappa__, beta_gk_t__, gkvec_row__, packed_mtrx_offset__,
+    //                               d_mtrx_packed__, q_mtrx_packed__);
+    
+    apply_h_o_parallel(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__,
+                       kappa__, gkvec_row__, packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__);
     
     #if defined(_GPU_) && !defined(_GPU_DIRECT_)
     if (parameters_.processing_unit() == GPU)
@@ -1163,7 +1166,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
         for (int x = 0; x < 3; x++) gkvec_row(x, igk_row) = kp__->gklo_basis_descriptor_row(igk_row).gkvec[x];
     }
 
-    auto& beta_pw_t = kp__->beta_pw_t();
+    auto& beta_gk_t = kp__->beta_gk_t();
 
     if (parameters_.processing_unit() == GPU)
     {
@@ -1185,8 +1188,8 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
         }
         gkvec_row.allocate_on_device();
         gkvec_row.copy_to_device();
-        beta_pw_t.allocate_on_device();
-        beta_pw_t.copy_to_device();
+        beta_gk_t.allocate_on_device();
+        beta_gk_t.copy_to_device();
         /* initial phi on GPU */
         cuda_copy_to_device(phi.at<GPU>(), psi.at<CPU>(), kp__->num_gkvec_row() * psi.num_cols_local() * sizeof(double_complex));
         #else
@@ -1205,7 +1208,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
     {
         /* set H and O for the variational subspace */
         set_fv_h_o_uspp_gpu_parallel_v3(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, 
-                                        hmlt_old, ovlp_old, num_atoms_in_block, kappa, beta_pw_t, gkvec_row,
+                                        hmlt_old, ovlp_old, num_atoms_in_block, kappa, beta_gk_t, gkvec_row,
                                         packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed);
         /* increase size of the variation space */
         N += n;
@@ -1352,7 +1355,7 @@ void Band::diag_fv_uspp_gpu_parallel(K_point* kp__,
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU)
     {
-        beta_pw_t.deallocate_on_device();
+        beta_gk_t.deallocate_on_device();
         if (!with_overlap) psi.deallocate_on_device();
     }
     #endif
@@ -1369,7 +1372,7 @@ void Band::apply_h_ncpp_parallel(K_point* kp__,
                                  dmatrix<double_complex>& hphi__,
                                  int num_atoms_in_block__,
                                  matrix<double_complex>& kappa__,
-                                 matrix<double_complex> const& beta_pw_t__,
+                                 matrix<double_complex> const& beta_gk_t__,
                                  matrix<double>& gkvec_row__,
                                  mdarray<int, 1>& packed_mtrx_offset__,
                                  mdarray<double_complex, 1>& d_mtrx_packed__)
@@ -1443,7 +1446,7 @@ void Band::apply_h_ncpp_parallel(K_point* kp__,
             beta_pw_desc(0, i) = type->mt_basis_size();
             /* offset in beta_pw */
             beta_pw_desc(1, i) = nbf_in_block;
-            /* offset in beta_pw_t */
+            /* offset in beta_gk_t */
             beta_pw_desc(2, i) = type->offset_lo();
 
             nbf_in_block += uc->atom(ia)->mt_basis_size();
@@ -1487,7 +1490,7 @@ void Band::apply_h_ncpp_parallel(K_point* kp__,
                 {
                     for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
                     {
-                        kappa__(igk_row, beta_pw_desc(1, i) + xi) = beta_pw_t__(igk_row, beta_pw_desc(2, i) + xi) * 
+                        kappa__(igk_row, beta_pw_desc(1, i) + xi) = beta_gk_t__(igk_row, beta_pw_desc(2, i) + xi) * 
                                                                     conj(kp__->gkvec_phase_factor(igk_row, ia));
                     }
                 }
@@ -1506,7 +1509,7 @@ void Band::apply_h_ncpp_parallel(K_point* kp__,
             create_beta_pw_gpu_v2((int)atom_blocks.local_size(iab),
                                   kp__->num_gkvec_row(),
                                   beta_pw_desc.at<GPU>(),
-                                  beta_pw_t__.at<GPU>(),
+                                  beta_gk_t__.at<GPU>(),
                                   gkvec_row__.at<GPU>(),
                                   atom_pos.at<GPU>(),
                                   kappa__.at<GPU>());
@@ -2377,7 +2380,7 @@ void Band::diag_fv_ncpp_parallel(K_point* kp__,
         for (int x = 0; x < 3; x++) gkvec_row(x, igk_row) = kp__->gklo_basis_descriptor_row(igk_row).gkvec[x];
     }
 
-    auto& beta_pw_t = kp__->beta_pw_t();
+    auto& beta_gk_t = kp__->beta_gk_t();
 
     if (parameters_.processing_unit() == GPU)
     {
@@ -2389,8 +2392,8 @@ void Band::diag_fv_ncpp_parallel(K_point* kp__,
         d_mtrx_packed.copy_to_device();
         gkvec_row.allocate_on_device();
         gkvec_row.copy_to_device();
-        beta_pw_t.allocate_on_device();
-        beta_pw_t.copy_to_device();
+        beta_gk_t.allocate_on_device();
+        beta_gk_t.copy_to_device();
         #else
         TERMINATE_NO_GPU
         #endif
@@ -2398,7 +2401,7 @@ void Band::diag_fv_ncpp_parallel(K_point* kp__,
 
     /* apply Hamiltonian to the basis functions */
     apply_h_ncpp_parallel(kp__, veff_it_coarse__, pw_ekin, phi[0], phi[1], num_atoms_in_block, 
-                          kappa, beta_pw_t, gkvec_row, packed_mtrx_offset, d_mtrx_packed);
+                          kappa, beta_gk_t, gkvec_row, packed_mtrx_offset, d_mtrx_packed);
 
     /* compute Rayleight quotients */
     std::vector<double> e0(num_bands, 0.0);
@@ -2435,7 +2438,7 @@ void Band::diag_fv_ncpp_parallel(K_point* kp__,
     for (int k = 2; k < order; k++)
     {
         apply_h_ncpp_parallel(kp__, veff_it_coarse__, pw_ekin, phi[k - 1], phi[k], num_atoms_in_block, 
-                              kappa, beta_pw_t, gkvec_row, packed_mtrx_offset, d_mtrx_packed);
+                              kappa, beta_gk_t, gkvec_row, packed_mtrx_offset, d_mtrx_packed);
 
         #pragma omp parallel for schedule(static)
         for (int iloc = 0; iloc < (int)kp__->spl_fv_states().local_size(); iloc++)
@@ -2449,7 +2452,7 @@ void Band::diag_fv_ncpp_parallel(K_point* kp__,
     
     /* apply Hamiltonian to the "filtered" basis functions */
     apply_h_ncpp_parallel(kp__, veff_it_coarse__, pw_ekin, phi[order - 1], phi[0], num_atoms_in_block, 
-                          kappa, beta_pw_t, gkvec_row, packed_mtrx_offset, d_mtrx_packed);
+                          kappa, beta_gk_t, gkvec_row, packed_mtrx_offset, d_mtrx_packed);
     
     set_fv_h_o_ncpp_parallel(kp__, phi[order - 1], phi[0], hmlt, ovlp, kappa);
 
@@ -2488,7 +2491,7 @@ void Band::diag_fv_ncpp_parallel(K_point* kp__,
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU)
     {
-        beta_pw_t.deallocate_on_device();
+        beta_gk_t.deallocate_on_device();
         psi.deallocate_on_device();
     }
     #endif

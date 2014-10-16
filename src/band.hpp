@@ -376,8 +376,8 @@ void Band::get_h_o_diag(K_point const* kp__,
     }
 
     /* non-local H contribution */
-    auto const& beta_pw_t = kp__->beta_pw_t();
-    mdarray<double_complex, 2> beta_pw_tmp(uc->max_mt_basis_size(), kp__->num_gkvec_row());
+    auto const& beta_gk_t = kp__->beta_gk_t();
+    mdarray<double_complex, 2> beta_gk_tmp(uc->max_mt_basis_size(), kp__->num_gkvec_row());
 
     for (int iat = 0; iat < uc->num_atom_types(); iat++)
     {
@@ -410,7 +410,7 @@ void Band::get_h_o_diag(K_point const* kp__,
         int ofs = uc->atom_type(iat)->offset_lo();
         for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
         {
-            for (int xi = 0; xi < nbf; xi++) beta_pw_tmp(xi, igk_row) = beta_pw_t(igk_row, ofs + xi);
+            for (int xi = 0; xi < nbf; xi++) beta_gk_tmp(xi, igk_row) = beta_gk_t(igk_row, ofs + xi);
         }
 
         std::vector< std::pair<int, int> > idx(nbf * nbf);
@@ -426,7 +426,7 @@ void Band::get_h_o_diag(K_point const* kp__,
             {
                 int xi1 = it.first;
                 int xi2 = it.second;
-                double_complex z = beta_pw_tmp(xi1, igk_row) * conj(beta_pw_tmp(xi2, igk_row));
+                double_complex z = beta_gk_tmp(xi1, igk_row) * conj(beta_gk_tmp(xi2, igk_row));
 
                 h_diag__[igk_row] += z * d_sum(xi1, xi2);
                 if (need_o_diag) o_diag__[igk_row] += z * q_sum(xi1, xi2);

@@ -781,7 +781,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
 
     splindex<block> atom_blocks(parameters_.unit_cell()->num_atoms(), num_atom_blocks, 0);
     
-    auto& beta_pw_t = kp__->beta_pw_t();
+    auto& beta_gk_t = kp__->beta_gk_t();
 
     int nbf_max = uc->max_mt_basis_size() * num_atoms_in_block__;
     std::vector<double_complex> beta_phi_tmp(nbf_max * nloc);
@@ -811,7 +811,7 @@ void Band::apply_h_o_uspp_cpu_parallel_v2(K_point* kp__,
             {
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
                 {
-                    beta_pw__(igk_row, bf_offset_in_block[i] + xi) = beta_pw_t(igk_row, type->offset_lo() + xi) * 
+                    beta_pw__(igk_row, bf_offset_in_block[i] + xi) = beta_gk_t(igk_row, type->offset_lo() + xi) * 
                                                                      conj(kp__->gkvec_phase_factor(igk_row, ia));
                 }
             }
@@ -3039,42 +3039,6 @@ void Band::diag_fv_uspp_gpu(K_point* kp__,
 
 
 
-void Band::diag_fv_pseudo_potential(K_point* kp__, 
-                                    Periodic_function<double>* effective_potential__)
-{
-    Timer t("sirius::Band::diag_fv_pseudo_potential");
-
-    auto rl = parameters_.reciprocal_lattice();
-
-    /* map effective potential to a corase grid */
-    std::vector<double> veff_it_coarse(rl->fft_coarse()->size());
-    std::vector<double_complex> veff_pw_coarse(rl->num_gvec_coarse());
-
-    /* take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi */
-    for (int igc = 0; igc < rl->num_gvec_coarse(); igc++)
-    {
-        int ig = rl->gvec_index(igc);
-        veff_pw_coarse[igc] = effective_potential__->f_pw(ig);
-    }
-    rl->fft_coarse()->input(rl->num_gvec_coarse(), rl->fft_index_coarse(), &veff_pw_coarse[0]);
-    rl->fft_coarse()->transform(1);
-    rl->fft_coarse()->output(&veff_it_coarse[0]);
-
-    double v0 = real(effective_potential__->f_pw(0));
-
-    if (gen_evp_solver()->parallel())
-    {
-        #ifdef _SCALAPACK_
-        diag_fv_pseudo_potential_parallel(kp__, v0, veff_it_coarse);
-        #else
-        TERMINATE_NO_SCALAPACK
-        #endif
-    }
-    else
-    {
-        STOP();
-    }
-}
 
 #ifdef _SCALAPACK_
 // TODO: add lower and upper limits of bands, to which the H is applied
@@ -3083,12 +3047,10 @@ void Band::apply_h_parallel(K_point* kp__,
                             std::vector<double> const& pw_ekin__,
                             dmatrix<double_complex>& phi__,
                             dmatrix<double_complex>& hphi__,
-                            int num_atoms_in_block__,
-                            matrix<double_complex>& kappa__,
-                            matrix<double_complex> const& beta_pw_t__,
+                            matrix<double_complex>& beta_gk__,
                             matrix<double> const& gkvec_row__,
                             mdarray<int, 1> const& packed_mtrx_offset__,
-                            mdarray<double_complex, 1> const& d_mtrx_packed__)
+                            mdarray<double_complex, 1>& d_mtrx_packed__)
 {
     log_function_enter(__func__);
     Timer t("sirius::Band::apply_h_parallel", kp__->comm());
@@ -3098,33 +3060,20 @@ void Band::apply_h_parallel(K_point* kp__,
 
     if (!nloc) return;
 
-    auto uc = parameters_.unit_cell();
-
     /* apply local part of Hamiltonian */
     apply_h_local_parallel(kp__, effective_potential__, pw_ekin__, 0, parameters_.num_bands(), phi__, hphi__);
 
-    #ifdef _GPU_
-    if (parameters_.processing_unit() == GPU)
-    {
-        cuda_copy_to_device(phi__.at<GPU>(), phi__.at<CPU>(), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
-        /* copy hphi do device */
-        cuda_copy_to_device(hphi__.at<GPU>(), hphi__.at<CPU>(), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
-    }
-    #endif
+    //apply_op_non_local_parallel(kp__, hphi__, beta_gk__, gkvec_row__, packed_mtrx_offset__, d_mtrx_packed__,
+    //                            double_complex(1, 0));
 
-    int num_atom_blocks = uc->num_atoms() / num_atoms_in_block__ + std::min(1, uc->num_atoms() % num_atoms_in_block__);
+    auto uc = parameters_.unit_cell();
 
-    splindex<block> atom_blocks(uc->num_atoms(), num_atom_blocks, 0);
-    
     /* allocate space for <beta|phi> array */
-    int nbf_max = uc->max_mt_basis_size() * num_atoms_in_block__;
-    mdarray<double_complex, 1> beta_phi_tmp(nbf_max * nloc);
+    int nbf_max = uc->max_mt_basis_size() * uc->beta_chunk(0).num_atoms_;
+    mdarray<double_complex, 1> beta_chi_tmp(nbf_max * nloc);
 
-    /* result of D multiplied by <beta|phi> */
+    /* result of atom-block-diagonal operator multiplied by <beta|chi> */
     matrix<double_complex> tmp(nbf_max, nloc);
-
-    mdarray<int, 2> beta_pw_desc(3, atom_blocks.local_size(0));
-    mdarray<double, 2> atom_pos(3, atom_blocks.local_size(0));
 
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU)
@@ -3136,34 +3085,11 @@ void Band::apply_h_parallel(K_point* kp__,
     }
     #endif
 
-    #ifdef _GPU_
-    #ifdef _GPU_DIRECT_
-    // allrecue with gpu-direct is broken at the moment
-    bool gpu_direct = false;
-    #else
-    bool gpu_direct = false;
-    #endif
-    #endif
-
-    for (int iab = 0; iab < num_atom_blocks; iab++)
+    for (int ib = 0; ib < uc->num_beta_chunks(); ib++)
     {
-        int nbf_in_block = 0;
-
-        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-        {
-            int ia = (int)atom_blocks.global_index(i, iab);
-            auto type = uc->atom(ia)->type();
-            /* atom fractional coordinates */
-            for (int x = 0; x < 3; x++) atom_pos(x, i) = uc->atom(ia)->position(x);
-            /* number of beta functions for atom */
-            beta_pw_desc(0, i) = type->mt_basis_size();
-            /* offset in beta_pw */
-            beta_pw_desc(1, i) = nbf_in_block;
-            /* offset in beta_pw_t */
-            beta_pw_desc(2, i) = type->offset_lo();
-
-            nbf_in_block += uc->atom(ia)->mt_basis_size();
-        }
+        /* number of beta-projectors in the current chunk */
+        int nbeta =  uc->beta_chunk(ib).num_beta_;
+        int natoms = uc->beta_chunk(ib).num_atoms_;
 
         #ifdef _GPU_
         if (parameters_.processing_unit() == GPU)
@@ -3173,161 +3099,57 @@ void Band::apply_h_parallel(K_point* kp__,
         }
         #endif
 
-        /* wrapper for <beta|phi> with required dimensions */
-        matrix<double_complex> beta_phi;
+        /* wrapper for <beta|chi> with required dimensions */
+        matrix<double_complex> beta_chi;
         switch (parameters_.processing_unit())
         {
             case CPU:
             {
-                beta_phi = matrix<double_complex>(beta_phi_tmp.at<CPU>(), nbf_in_block, nloc);
+                beta_chi = matrix<double_complex>(beta_chi_tmp.at<CPU>(), nbeta, nloc);
                 break;
             }
             case GPU:
             {
-                beta_phi = matrix<double_complex>(beta_phi_tmp.at<CPU>(), beta_phi_tmp.at<GPU>(), nbf_in_block, nloc);
+                beta_chi = matrix<double_complex>(beta_chi_tmp.at<CPU>(), beta_chi_tmp.at<GPU>(), nbeta, nloc);
                 break;
             }
         }
 
-        Timer t1("sirius::Band::apply_h_ncpp_parallel|beta_phi", kp__->comm_row());
-        if (parameters_.processing_unit() == CPU)
-        {
-            /* create beta projectors */
-            #pragma omp parallel
-            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-            {
-                int ia = (int)atom_blocks.global_index(i, iab);
-                auto type = parameters_.unit_cell()->atom(ia)->type();
-                #pragma omp for
-                for (int xi = 0; xi < type->mt_basis_size(); xi++)
-                {
-                    for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-                    {
-                        kappa__(igk_row, beta_pw_desc(1, i) + xi) = beta_pw_t__(igk_row, beta_pw_desc(2, i) + xi) * 
-                                                                    conj(kp__->gkvec_phase_factor(igk_row, ia));
-                    }
-                }
-            }
-            /* compute <beta|phi> */
-            linalg<CPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-                              kappa__.at<CPU>(), kappa__.ld(), 
-                              phi__.at<CPU>(), phi__.ld(), 
-                              beta_phi.at<CPU>(), beta_phi.ld());
-            kp__->comm_row().allreduce(beta_phi.at<CPU>(), (int)beta_phi.size());
-        }
-        #ifdef _GPU_
-        if (parameters_.processing_unit() == GPU)
-        {
-            /* create beta projectors directly on GPU */
-            create_beta_pw_gpu_v2((int)atom_blocks.local_size(iab),
-                                  kp__->num_gkvec_row(),
-                                  beta_pw_desc.at<GPU>(),
-                                  beta_pw_t__.at<GPU>(),
-                                  gkvec_row__.at<GPU>(),
-                                  atom_pos.at<GPU>(),
-                                  kappa__.at<GPU>());
-
-            /* compute <beta|phi> */
-            linalg<GPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-                              kappa__.at<GPU>(), kappa__.ld(), 
-                              phi__.at<GPU>(), phi__.ld(), 
-                              beta_phi.at<GPU>(), beta_phi.ld());
-            
-            if (gpu_direct)
-            {
-                kp__->comm_row().allreduce(beta_phi.at<GPU>(), (int)beta_phi.size());
-            }
-            else
-            {
-                beta_phi.copy_to_host();
-                kp__->comm_row().allreduce(beta_phi.at<CPU>(), (int)beta_phi.size());
-                beta_phi.copy_to_device();
-            }
-        }
-        #endif
+        Timer t1("sirius::Band::apply_op_non_local_parallel|beta_phi", kp__->comm_row());
+        kp__->generate_beta_gk(natoms, uc->beta_chunk(ib).desc_, beta_gk__);
+        kp__->generate_beta_phi(nbeta, phi__.panel(), nloc, 0, beta_gk__, beta_chi);
         double tval = t1.stop();
 
         if (verbosity_level >= 6 && kp__->comm().rank() == 0)
         {
             printf("<beta|phi> effective zgemm with M, N, K: %6i %6i %6i, %12.4f sec, %12.4f GFlops/node\n",
-                   nbf_in_block, nloc, kp__->num_gkvec(),
-                   tval, 8e-9 * nbf_in_block * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
+                   nbeta, nloc, kp__->num_gkvec(),
+                   tval, 8e-9 * nbeta * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
         }
 
-        if (parameters_.processing_unit() == CPU)
-        {
-            #pragma omp parallel for
-            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-            {
-                int ia = (int)atom_blocks.global_index(i, iab);
-                int ofs = beta_pw_desc(1, i);
-                
-                /* number of beta functions for a given atom */
-                int nbf = beta_pw_desc(0, i);
-
-                /* compute D*<beta|phi> */
-                linalg<CPU>::gemm(0, 0, nbf, nloc, nbf, (double_complex*)d_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf, 
-                                  beta_phi.at<CPU>(ofs, 0), beta_phi.ld(), tmp.at<CPU>(ofs, 0), tmp.ld());
-
-            }
-            
-            /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
-            linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
-                              kappa__.at<CPU>(), kappa__.ld(), tmp.at<CPU>(), tmp.ld(), complex_one,
-                              hphi__.at<CPU>(), hphi__.ld());
-        }
-
-        #ifdef _GPU_
-        if (parameters_.processing_unit() == GPU)
-        {
-            #pragma omp parallel for
-            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-            {
-                int ia = (int)atom_blocks.global_index(i, iab);
-                int ofs = beta_pw_desc(1, i);
-                
-                /* number of beta functions for a given atom */
-                int nbf = beta_pw_desc(0, i);
-
-                /* compute D*<beta|phi> */
-                linalg<GPU>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed__.at<GPU>(packed_mtrx_offset__(ia)), nbf, 
-                                  beta_phi.at<GPU>(ofs, 0), beta_phi.ld(), tmp.at<GPU>(ofs, 0), tmp.ld(), 
-                                  Platform::thread_id());
-
-            }
-            cuda_device_synchronize();
-            
-            double_complex alpha = complex_one;
-            /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
-            linalg<GPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,
-                              kappa__.at<GPU>(), kappa__.ld(), tmp.at<GPU>(), tmp.ld(), &alpha, 
-                              hphi__.at<GPU>(), hphi__.ld());
-        }
-        #endif
+        kp__->add_non_local_contribution(natoms, nbeta, uc->beta_chunk(ib).desc_, beta_gk__, d_mtrx_packed__,
+                                         packed_mtrx_offset__, beta_chi, hphi__.panel(), nloc, 0, double_complex(1, 0), tmp);
     }
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
     #endif
 
-    #if defined(_GPU_)
+    #ifdef _GPU_
     if (parameters_.processing_unit() == GPU)
     {
-        cuda_copy_to_host(hphi__.at<CPU>(), hphi__.at<GPU>(), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
+        cuda_copy_to_host(chi__.at<CPU>(), chi__.at<GPU>(), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
     }
     #endif
 
     log_function_exit(__func__);
 }
 
-// TODO: this can be combibed with apply_h_parallel
 void Band::apply_op_non_local_parallel(K_point* kp__,
                                        dmatrix<double_complex>& chi__, 
-                                       int num_atoms_in_block__,
-                                       matrix<double_complex>& kappa__,
-                                       matrix<double_complex> const& beta_pw_t__,
+                                       matrix<double_complex>& beta_gk__,
                                        matrix<double> const& gkvec_row__,
                                        mdarray<int, 1> const& packed_mtrx_offset__,
-                                       mdarray<double_complex, 1> const& op_mtrx_packed__,
+                                       mdarray<double_complex, 1>& op_mtrx_packed__,
                                        double_complex alpha)
 {
     log_function_enter(__func__);
@@ -3340,19 +3162,12 @@ void Band::apply_op_non_local_parallel(K_point* kp__,
 
     auto uc = parameters_.unit_cell();
 
-    int num_atom_blocks = uc->num_atoms() / num_atoms_in_block__ + std::min(1, uc->num_atoms() % num_atoms_in_block__);
-
-    splindex<block> atom_blocks(uc->num_atoms(), num_atom_blocks, 0);
-    
     /* allocate space for <beta|phi> array */
-    int nbf_max = uc->max_mt_basis_size() * num_atoms_in_block__;
-    mdarray<double_complex, 1> beta_phi_tmp(nbf_max * nloc);
+    int nbf_max = uc->max_mt_basis_size() * uc->beta_chunk(0).num_atoms_;
+    mdarray<double_complex, 1> beta_chi_tmp(nbf_max * nloc);
 
-    /* result of atom-block-diagonal multiplied by <beta|phi> */
+    /* result of atom-block-diagonal operator multiplied by <beta|chi> */
     matrix<double_complex> tmp(nbf_max, nloc);
-
-    mdarray<int, 2> beta_pw_desc(3, atom_blocks.local_size(0));
-    mdarray<double, 2> atom_pos(3, atom_blocks.local_size(0));
 
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU)
@@ -3364,34 +3179,11 @@ void Band::apply_op_non_local_parallel(K_point* kp__,
     }
     #endif
 
-    #ifdef _GPU_
-    #ifdef _GPU_DIRECT_
-    // allrecue with gpu-direct is broken at the moment
-    bool gpu_direct = false;
-    #else
-    bool gpu_direct = false;
-    #endif
-    #endif
-
-    for (int iab = 0; iab < num_atom_blocks; iab++)
+    for (int ib = 0; ib < uc->num_beta_chunks(); ib++)
     {
-        int nbf_in_block = 0;
-
-        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-        {
-            int ia = (int)atom_blocks.global_index(i, iab);
-            auto type = uc->atom(ia)->type();
-            /* atom fractional coordinates */
-            for (int x = 0; x < 3; x++) atom_pos(x, i) = uc->atom(ia)->position(x);
-            /* number of beta functions for atom */
-            beta_pw_desc(0, i) = type->mt_basis_size();
-            /* offset in beta_pw */
-            beta_pw_desc(1, i) = nbf_in_block;
-            /* offset in beta_pw_t */
-            beta_pw_desc(2, i) = type->offset_lo();
-
-            nbf_in_block += uc->atom(ia)->mt_basis_size();
-        }
+        /* number of beta-projectors in the current chunk */
+        int nbeta =  uc->beta_chunk(ib).num_beta_;
+        int natoms = uc->beta_chunk(ib).num_atoms_;
 
         #ifdef _GPU_
         if (parameters_.processing_unit() == GPU)
@@ -3401,143 +3193,42 @@ void Band::apply_op_non_local_parallel(K_point* kp__,
         }
         #endif
 
-        /* wrapper for <beta|phi> with required dimensions */
-        matrix<double_complex> beta_phi;
+        /* wrapper for <beta|chi> with required dimensions */
+        matrix<double_complex> beta_chi;
         switch (parameters_.processing_unit())
         {
             case CPU:
             {
-                beta_phi = matrix<double_complex>(beta_phi_tmp.at<CPU>(), nbf_in_block, nloc);
+                beta_chi = matrix<double_complex>(beta_chi_tmp.at<CPU>(), nbeta, nloc);
                 break;
             }
             case GPU:
             {
-                beta_phi = matrix<double_complex>(beta_phi_tmp.at<CPU>(), beta_phi_tmp.at<GPU>(), nbf_in_block, nloc);
+                beta_chi = matrix<double_complex>(beta_chi_tmp.at<CPU>(), beta_chi_tmp.at<GPU>(), nbeta, nloc);
                 break;
             }
         }
 
         Timer t1("sirius::Band::apply_op_non_local_parallel|beta_phi", kp__->comm_row());
-        if (parameters_.processing_unit() == CPU)
-        {
-            /* create beta projectors */
-            #pragma omp parallel
-            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-            {
-                int ia = (int)atom_blocks.global_index(i, iab);
-                auto type = parameters_.unit_cell()->atom(ia)->type();
-                #pragma omp for
-                for (int xi = 0; xi < type->mt_basis_size(); xi++)
-                {
-                    for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-                    {
-                        kappa__(igk_row, beta_pw_desc(1, i) + xi) = beta_pw_t__(igk_row, beta_pw_desc(2, i) + xi) * 
-                                                                    conj(kp__->gkvec_phase_factor(igk_row, ia));
-                    }
-                }
-            }
-            /* compute <beta|phi> */
-            linalg<CPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-                              kappa__.at<CPU>(), kappa__.ld(), 
-                              chi__.at<CPU>(), chi__.ld(), 
-                              beta_phi.at<CPU>(), beta_phi.ld());
-            kp__->comm_row().allreduce(beta_phi.at<CPU>(), (int)beta_phi.size());
-        }
-        #ifdef _GPU_
-        if (parameters_.processing_unit() == GPU)
-        {
-            /* create beta projectors directly on GPU */
-            create_beta_pw_gpu_v2((int)atom_blocks.local_size(iab),
-                                  kp__->num_gkvec_row(),
-                                  beta_pw_desc.at<GPU>(),
-                                  beta_pw_t__.at<GPU>(),
-                                  gkvec_row__.at<GPU>(),
-                                  atom_pos.at<GPU>(),
-                                  kappa__.at<GPU>());
-
-            /* compute <beta|phi> */
-            linalg<GPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-                              kappa__.at<GPU>(), kappa__.ld(), 
-                              phi__.at<GPU>(), phi__.ld(), 
-                              beta_phi.at<GPU>(), beta_phi.ld());
-            
-            if (gpu_direct)
-            {
-                kp__->comm_row().allreduce(beta_phi.at<GPU>(), (int)beta_phi.size());
-            }
-            else
-            {
-                beta_phi.copy_to_host();
-                kp__->comm_row().allreduce(beta_phi.at<CPU>(), (int)beta_phi.size());
-                beta_phi.copy_to_device();
-            }
-        }
-        #endif
+        kp__->generate_beta_gk(natoms, uc->beta_chunk(ib).desc_, beta_gk__);
+        kp__->generate_beta_phi(nbeta, chi__.panel(), nloc, 0, beta_gk__, beta_chi);
         double tval = t1.stop();
 
         if (verbosity_level >= 6 && kp__->comm().rank() == 0)
         {
             printf("<beta|phi> effective zgemm with M, N, K: %6i %6i %6i, %12.4f sec, %12.4f GFlops/node\n",
-                   nbf_in_block, nloc, kp__->num_gkvec(),
-                   tval, 8e-9 * nbf_in_block * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
+                   nbeta, nloc, kp__->num_gkvec(),
+                   tval, 8e-9 * nbeta * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
         }
 
-        if (parameters_.processing_unit() == CPU)
-        {
-            #pragma omp parallel for
-            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-            {
-                int ia = (int)atom_blocks.global_index(i, iab);
-                int ofs = beta_pw_desc(1, i);
-                
-                /* number of beta functions for a given atom */
-                int nbf = beta_pw_desc(0, i);
-
-                /* compute M*<beta|phi> */
-                linalg<CPU>::gemm(0, 0, nbf, nloc, nbf, (double_complex*)op_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf, 
-                                  beta_phi.at<CPU>(ofs, 0), beta_phi.ld(), tmp.at<CPU>(ofs, 0), tmp.ld());
-
-            }
-            
-            /* compute <G+k|beta> * M*<beta|phi> and add to hphi */
-            linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, alpha,
-                              kappa__.at<CPU>(), kappa__.ld(), tmp.at<CPU>(), tmp.ld(), complex_one,
-                              chi__.at<CPU>(), chi__.ld());
-        }
-
-        #ifdef _GPU_
-        if (parameters_.processing_unit() == GPU)
-        {
-            #pragma omp parallel for
-            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-            {
-                int ia = (int)atom_blocks.global_index(i, iab);
-                int ofs = beta_pw_desc(1, i);
-                
-                /* number of beta functions for a given atom */
-                int nbf = beta_pw_desc(0, i);
-
-                /* compute M*<beta|phi> */
-                linalg<GPU>::gemm(0, 0, nbf, nloc, nbf, (double_complex*)op_mtrx_packed__.at<GPU>(packed_mtrx_offset__(ia)), nbf, 
-                                  beta_phi.at<GPU>(ofs, 0), beta_phi.ld(), tmp.at<GPU>(ofs, 0), tmp.ld(), 
-                                  Platform::thread_id());
-
-            }
-            cuda_device_synchronize();
-            
-            double_complex beta = complex_one;
-            /* compute <G+k|beta> * M*<beta|phi> and add to hphi */
-            linalg<GPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,
-                              kappa__.at<GPU>(), kappa__.ld(), tmp.at<GPU>(), tmp.ld(), &beta, 
-                              chi__.at<GPU>(), chi__.ld());
-        }
-        #endif
+        kp__->add_non_local_contribution(natoms, nbeta, uc->beta_chunk(ib).desc_, beta_gk__, op_mtrx_packed__,
+                                         packed_mtrx_offset__, beta_chi, chi__.panel(), nloc, 0, alpha, tmp);
     }
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
     #endif
 
-    #if defined(_GPU_)
+    #ifdef _GPU_
     if (parameters_.processing_unit() == GPU)
     {
         cuda_copy_to_host(chi__.at<CPU>(), chi__.at<GPU>(), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
@@ -3576,9 +3267,7 @@ void Band::apply_h_o_parallel(K_point* kp__,
                               dmatrix<double_complex>& phi__,
                               dmatrix<double_complex>& hphi__,
                               dmatrix<double_complex>& ophi__,
-                              int num_atoms_in_block__,
-                              matrix<double_complex>& kappa__,
-                              matrix<double_complex> const& beta_pw_t__,
+                              matrix<double_complex>& beta_gk__,
                               matrix<double>& gkvec_row__,
                               mdarray<int, 1>& packed_mtrx_offset__,
                               mdarray<double_complex, 1>& d_mtrx_packed__,
@@ -3587,7 +3276,9 @@ void Band::apply_h_o_parallel(K_point* kp__,
     log_function_enter(__func__);
     Timer t("sirius::Band::apply_h_o_parallel", kp__->comm());
 
+    /* beginning of the band index */
     splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    /* end of the band index */
     splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
 
     /* local number of states to which Hamiltonian has to be applied */
@@ -3619,19 +3310,12 @@ void Band::apply_h_o_parallel(K_point* kp__,
     }
     #endif
 
-    int num_atom_blocks = uc->num_atoms() / num_atoms_in_block__ + std::min(1, uc->num_atoms() % num_atoms_in_block__);
-
-    splindex<block> atom_blocks(uc->num_atoms(), num_atom_blocks, 0);
-    
     /* allocate space for <beta|phi> array */
-    int nbf_max = uc->max_mt_basis_size() * num_atoms_in_block__;
+    int nbf_max = uc->max_mt_basis_size() * uc->beta_chunk(0).num_atoms_;
     mdarray<double_complex, 1> beta_phi_tmp(nbf_max * nloc);
 
     /* result of Q or D multiplied by <beta|phi> */
     matrix<double_complex> tmp(nbf_max, nloc);
-
-    mdarray<int, 2> beta_pw_desc(3, atom_blocks.local_size(0));
-    mdarray<double, 2> atom_pos(3, atom_blocks.local_size(0));
 
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU)
@@ -3643,34 +3327,11 @@ void Band::apply_h_o_parallel(K_point* kp__,
     }
     #endif
 
-    #ifdef _GPU_
-    #ifdef _GPU_DIRECT_
-    // allrecue with gpu-direct is broken at the moment
-    bool gpu_direct = false;
-    #else
-    bool gpu_direct = false;
-    #endif
-    #endif
-
-    for (int iab = 0; iab < num_atom_blocks; iab++)
+    for (int ib = 0; ib < uc->num_beta_chunks(); ib++)
     {
-        int nbf_in_block = 0;
-
-        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-        {
-            int ia = (int)atom_blocks.global_index(i, iab);
-            auto type = uc->atom(ia)->type();
-            /* atom fractional coordinates */
-            for (int x = 0; x < 3; x++) atom_pos(x, i) = uc->atom(ia)->position(x);
-            /* number of beta functions for atom */
-            beta_pw_desc(0, i) = type->mt_basis_size();
-            /* offset in beta_pw */
-            beta_pw_desc(1, i) = nbf_in_block;
-            /* offset in beta_pw_t */
-            beta_pw_desc(2, i) = type->offset_lo();
-
-            nbf_in_block += uc->atom(ia)->mt_basis_size();
-        }
+        /* number of beta-projectors in the current chunk */
+        int nbeta =  uc->beta_chunk(ib).num_beta_;
+        int natoms = uc->beta_chunk(ib).num_atoms_;
 
         #ifdef _GPU_
         if (parameters_.processing_unit() == GPU)
@@ -3686,175 +3347,37 @@ void Band::apply_h_o_parallel(K_point* kp__,
         {
             case CPU:
             {
-                beta_phi = matrix<double_complex>(beta_phi_tmp.at<CPU>(), nbf_in_block, nloc);
+                beta_phi = matrix<double_complex>(beta_phi_tmp.at<CPU>(), nbeta, nloc);
                 break;
             }
             case GPU:
             {
-                beta_phi = matrix<double_complex>(beta_phi_tmp.at<CPU>(), beta_phi_tmp.at<GPU>(), nbf_in_block, nloc);
+                beta_phi = matrix<double_complex>(beta_phi_tmp.at<CPU>(), beta_phi_tmp.at<GPU>(), nbeta, nloc);
                 break;
             }
         }
 
-        Timer t1("sirius::Band::apply_h_o_uspp_cpu_parallel_v2|beta_phi", kp__->comm_row());
-        kp__->generate_beta_phi(atom_blocks, iab, nbf_in_block, phi__.panel(), nloc, (int)s0.local_size(),
-                                kappa__, beta_pw_desc, beta_phi);
-
-        //if (parameters_.processing_unit() == CPU)
-        //{
-        //    /* create beta projectors */
-        //    #pragma omp parallel
-        //    for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-        //    {
-        //        int ia = (int)atom_blocks.global_index(i, iab);
-        //        auto type = parameters_.unit_cell()->atom(ia)->type();
-        //        #pragma omp for
-        //        for (int xi = 0; xi < type->mt_basis_size(); xi++)
-        //        {
-        //            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-        //            {
-        //                kappa__(igk_row, beta_pw_desc(1, i) + xi) = beta_pw_t__(igk_row, beta_pw_desc(2, i) + xi) * 
-        //                                                            conj(kp__->gkvec_phase_factor(igk_row, ia));
-        //            }
-        //        }
-        //    }
-        //    /* compute <beta|phi> */
-        //    linalg<CPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-        //                      kappa__.at<CPU>(), kappa__.ld(), 
-        //                      phi__.at<CPU>(0, s0.local_size()), phi__.ld(), 
-        //                      beta_phi.at<CPU>(), beta_phi.ld());
-        //    kp__->comm_row().allreduce(beta_phi.at<CPU>(), (int)beta_phi.size());
-        //}
-        //#ifdef _GPU_
-        //if (parameters_.processing_unit() == GPU)
-        //{
-        //    /* create beta projectors directly on GPU */
-        //    create_beta_pw_gpu_v2((int)atom_blocks.local_size(iab),
-        //                          kp__->num_gkvec_row(),
-        //                          beta_pw_desc.at<GPU>(),
-        //                          beta_pw_t__.at<GPU>(),
-        //                          gkvec_row__.at<GPU>(),
-        //                          atom_pos.at<GPU>(),
-        //                          kappa__.at<GPU>());
-
-        //    /* compute <beta|phi> */
-        //    linalg<GPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-        //                      kappa__.at<GPU>(), kappa__.ld(), 
-        //                      phi__.at<GPU>(0, s0.local_size()), phi__.ld(), 
-        //                      beta_phi.at<GPU>(), beta_phi.ld());
-        //    
-        //    if (gpu_direct)
-        //    {
-        //        kp__->comm_row().allreduce(beta_phi.at<GPU>(), (int)beta_phi.size());
-        //    }
-        //    else
-        //    {
-        //        beta_phi.copy_to_host();
-        //        kp__->comm_row().allreduce(beta_phi.at<CPU>(), (int)beta_phi.size());
-        //        beta_phi.copy_to_device();
-        //    }
-        //}
-        //#endif
+        Timer t1("sirius::Band::apply_h_o_parallel|beta_phi", kp__->comm_row());
+        kp__->generate_beta_gk(natoms, uc->beta_chunk(ib).desc_, beta_gk__);
+        kp__->generate_beta_phi(nbeta, phi__.panel(), nloc, (int)s0.local_size(), beta_gk__, beta_phi);
         double tval = t1.stop();
 
         if (verbosity_level >= 6 && kp__->comm().rank() == 0)
         {
             printf("<beta|phi> effective zgemm with M, N, K: %6i %6i %6i, %12.4f sec, %12.4f GFlops/node\n",
-                   nbf_in_block, nloc, kp__->num_gkvec(),
-                   tval, 8e-9 * nbf_in_block * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
+                   nbeta, nloc, kp__->num_gkvec(),
+                   tval, 8e-9 * nbeta * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
         }
 
-        if (parameters_.processing_unit() == CPU)
-        {
-            #pragma omp parallel for
-            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-            {
-                int ia = (int)atom_blocks.global_index(i, iab);
-                int ofs = beta_pw_desc(1, i);
-                
-                /* number of beta functions for a given atom */
-                int nbf = beta_pw_desc(0, i);
-
-                /* compute D*<beta|phi> */
-                linalg<CPU>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf, 
-                                  beta_phi.at<CPU>(ofs, 0), beta_phi.ld(), tmp.at<CPU>(ofs, 0), tmp.ld());
-
-            }
-            
-            /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
-            linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
-                              kappa__.at<CPU>(), kappa__.ld(), tmp.at<CPU>(), tmp.ld(), complex_one,
-                              hphi__.at<CPU>(0, s0.local_size()), hphi__.ld());
-            
-            #pragma omp parallel for
-            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-            {
-                int ia = (int)atom_blocks.global_index(i, iab);
-                int ofs = beta_pw_desc(1, i);
-                
-                /* number of beta functions for a given atom */
-                int nbf = beta_pw_desc(0, i);
-
-                /* compute Q*<beta|phi> */
-                linalg<CPU>::gemm(0, 0, nbf, nloc, nbf, q_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
-                                  beta_phi.at<CPU>(ofs, 0), beta_phi.ld(), tmp.at<CPU>(ofs, 0), tmp.ld());
-            }
-
-            /* compute <G+k|beta> * Q*<beta|phi> and add to ophi */
-            linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, complex_one,
-                              kappa__.at<CPU>(), kappa__.ld(), tmp.at<CPU>(), tmp.ld(), complex_one,
-                              ophi__.at<CPU>(0, s0.local_size()), ophi__.ld());
-        }
-
-        #ifdef _GPU_
-        if (parameters_.processing_unit() == GPU)
-        {
-            #pragma omp parallel for
-            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-            {
-                int ia = (int)atom_blocks.global_index(i, iab);
-                int ofs = beta_pw_desc(1, i);
-                
-                /* number of beta functions for a given atom */
-                int nbf = beta_pw_desc(0, i);
-
-                /* compute D*<beta|phi> */
-                linalg<GPU>::gemm(0, 0, nbf, nloc, nbf, d_mtrx_packed__.at<GPU>(packed_mtrx_offset__(ia)), nbf, 
-                                  beta_phi.at<GPU>(ofs, 0), beta_phi.ld(), tmp.at<GPU>(ofs, 0), tmp.ld(), 
-                                  Platform::thread_id());
-
-            }
-            cuda_device_synchronize();
-            
-            double_complex alpha = complex_one;
-            /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
-            linalg<GPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,
-                              kappa__.at<GPU>(), kappa__.ld(), tmp.at<GPU>(), tmp.ld(), &alpha, 
-                              hphi__.at<GPU>(0, s0.local_size()), hphi__.ld());
-            
-            #pragma omp parallel for
-            for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-            {
-                int ia = (int)atom_blocks.global_index(i, iab);
-                int ofs = beta_pw_desc(1, i);
-                
-                /* number of beta functions for a given atom */
-                int nbf = beta_pw_desc(0, i);
-
-                /* compute Q*<beta|phi> */
-                linalg<GPU>::gemm(0, 0, nbf, nloc, nbf, q_mtrx_packed__.at<GPU>(packed_mtrx_offset__(ia)), nbf,
-                                  beta_phi.at<GPU>(ofs, 0), beta_phi.ld(), tmp.at<GPU>(ofs, 0), tmp.ld(), 
-                                  Platform::thread_id());
-            }
-            cuda_device_synchronize();
-
-            /* compute <G+k|beta> * Q*<beta|phi> and add to ophi */
-            linalg<GPU>::gemm(0, 0, kp__->num_gkvec_row(), nloc, nbf_in_block, &alpha,
-                              kappa__.at<GPU>(), kappa__.ld(), tmp.at<GPU>(), tmp.ld(), &alpha,
-                              ophi__.at<GPU>(0, s0.local_size()), ophi__.ld());
-        }
-        #endif
+        kp__->add_non_local_contribution(natoms, nbeta, uc->beta_chunk(ib).desc_, beta_gk__, d_mtrx_packed__,
+                                         packed_mtrx_offset__, beta_phi, hphi__.panel(), nloc, (int)s0.local_size(),
+                                         complex_one, tmp);
+        
+        kp__->add_non_local_contribution(natoms, nbeta, uc->beta_chunk(ib).desc_, beta_gk__, q_mtrx_packed__,
+                                         packed_mtrx_offset__, beta_phi, ophi__.panel(), nloc, (int)s0.local_size(),
+                                         complex_one, tmp);
     }
+
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
     #endif
@@ -3877,25 +3400,24 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
 
     auto uc = parameters_.unit_cell();
 
-
-    auto& beta_pw_panel = kp__->beta_pw_panel();
-    dmatrix<double_complex> S(uc->mt_basis_size(), uc->mt_basis_size(), kp__->blacs_grid());
-    linalg<CPU>::gemm(2, 0, uc->mt_basis_size(), uc->mt_basis_size(), kp__->num_gkvec(), complex_one,
-                      beta_pw_panel, beta_pw_panel, complex_zero, S);
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
-    {
-        auto type = uc->atom(ia)->type();
-        int nbf = type->mt_basis_size();
-        int ofs = uc->atom(ia)->offset_lo();
-        matrix<double_complex> qinv(nbf, nbf);
-        type->uspp().q_mtrx >> qinv;
-        linalg<CPU>::geinv(nbf, qinv);
-        for (int i = 0; i < nbf; i++)
-        {
-            for (int j = 0; j < nbf; j++) S.add(ofs + j, ofs + i, qinv(j, i));
-        }
-    }
-    linalg<CPU>::geinv(uc->mt_basis_size(), S);
+    //auto& beta_pw_panel = kp__->beta_pw_panel();
+    //dmatrix<double_complex> S(uc->mt_basis_size(), uc->mt_basis_size(), kp__->blacs_grid());
+    //linalg<CPU>::gemm(2, 0, uc->mt_basis_size(), uc->mt_basis_size(), kp__->num_gkvec(), complex_one,
+    //                  beta_pw_panel, beta_pw_panel, complex_zero, S);
+    //for (int ia = 0; ia < uc->num_atoms(); ia++)
+    //{
+    //    auto type = uc->atom(ia)->type();
+    //    int nbf = type->mt_basis_size();
+    //    int ofs = uc->atom(ia)->offset_lo();
+    //    matrix<double_complex> qinv(nbf, nbf);
+    //    type->uspp().q_mtrx >> qinv;
+    //    linalg<CPU>::geinv(nbf, qinv);
+    //    for (int i = 0; i < nbf; i++)
+    //    {
+    //        for (int j = 0; j < nbf; j++) S.add(ofs + j, ofs + i, qinv(j, i));
+    //    }
+    //}
+    //linalg<CPU>::geinv(uc->mt_basis_size(), S);
 
     auto& itso = parameters_.iterative_solver_input_section_;
 
@@ -3903,6 +3425,7 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
     int order = itso.num_steps_ + 2;
 
     std::vector< dmatrix<double_complex> > phi(order);
+    // TODO: it is sufficient to have one buffer for all Hamiltonians
     for (int i = 0; i < order; i++)
     {
         phi[i] = dmatrix<double_complex>(kp__->num_gkvec(), num_bands, kp__->blacs_grid());
@@ -3912,9 +3435,9 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
     /* trial basis functions */
     psi.panel() >> phi[0].panel();
 
-    int num_atoms_in_block = std::min(uc->num_atoms(), 256);
+    //int num_atoms_in_block = std::min(uc->num_atoms(), 256);
     int num_bands_local = (int)kp__->spl_fv_states().local_size(0);
-    int kappa_size = std::max(uc->max_mt_basis_size() * num_atoms_in_block, 4 * num_bands_local);
+    int kappa_size = std::max(uc->max_mt_basis_size() * uc->beta_chunk(0).num_atoms_, 4 * num_bands_local);
     /* temporary array for <G+k|beta> */
     matrix<double_complex> kappa(kp__->num_gkvec_row(), kappa_size);
     if (kp__->comm().rank() == 0)
@@ -3959,7 +3482,7 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
         for (int x = 0; x < 3; x++) gkvec_row(x, igk_row) = kp__->gklo_basis_descriptor_row(igk_row).gkvec[x];
     }
 
-    auto& beta_pw_t = kp__->beta_pw_t();
+    //auto& beta_gk_t = kp__->beta_gk_t();
 
     //if (parameters_.processing_unit() == GPU)
     //{
@@ -3979,8 +3502,7 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
     //}
 
     /* apply Hamiltonian to the basis functions */
-    apply_h_parallel(kp__, veff_it_coarse__, pw_ekin, phi[0], phi[1], num_atoms_in_block, 
-                     kappa, beta_pw_t, gkvec_row, packed_mtrx_offset, d_mtrx_packed);
+    apply_h_parallel(kp__, veff_it_coarse__, pw_ekin, phi[0], phi[1], kappa, gkvec_row, packed_mtrx_offset, d_mtrx_packed);
 
     /* compute Rayleight quotients */
     std::vector<double> e0(num_bands, 0.0);
@@ -4003,9 +3525,9 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
     double r = (lambda1 - lambda0) / 2.0;
     double c = (lambda1 + lambda0) / 2.0;
 
-    //apply_oinv_parallel(kp__, hphi, phi[1], S);
-    apply_op_non_local_parallel(kp__, phi[1], num_atoms_in_block, kappa, beta_pw_t, gkvec_row, 
-                                packed_mtrx_offset, p_mtrx_packed, double_complex(-1, 0));
+    //apply_oinv_parallel(kp__, phi[1], S);
+    apply_op_non_local_parallel(kp__, phi[1], kappa, gkvec_row, packed_mtrx_offset, p_mtrx_packed,
+                                double_complex(-1, 0));
 
     /* compute \psi_1 = (S^{-1}H\psi_0 - c\psi_0) / r */
     #pragma omp parallel for schedule(static)
@@ -4020,12 +3542,11 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
     /* compute higher polinomial orders */
     for (int k = 2; k < order; k++)
     {
-        apply_h_parallel(kp__, veff_it_coarse__, pw_ekin, phi[k - 1], phi[k], num_atoms_in_block, 
-                         kappa, beta_pw_t, gkvec_row, packed_mtrx_offset, d_mtrx_packed);
+        apply_h_parallel(kp__, veff_it_coarse__, pw_ekin, phi[k - 1], phi[k], kappa, gkvec_row, packed_mtrx_offset, d_mtrx_packed);
         
-        //apply_oinv_parallel(kp__, hphi, phi[k], S);
-        apply_op_non_local_parallel(kp__, phi[k], num_atoms_in_block, kappa, beta_pw_t, gkvec_row, 
-                                    packed_mtrx_offset, p_mtrx_packed, double_complex(-1, 0));
+        //apply_oinv_parallel(kp__, phi[k], S);
+        apply_op_non_local_parallel(kp__, phi[k], kappa, gkvec_row, packed_mtrx_offset, p_mtrx_packed,
+                                    double_complex(-1, 0));
 
         #pragma omp parallel for schedule(static)
         for (int iloc = 0; iloc < (int)kp__->spl_fv_states().local_size(); iloc++)
@@ -4038,8 +3559,8 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
     }
 
     /* apply Hamiltonian and overlap to the "filtered" basis functions */
-    apply_h_o_parallel(kp__, veff_it_coarse__, pw_ekin, 0, num_bands, phi[order - 1], phi[0], phi[1], num_atoms_in_block, 
-                       kappa, beta_pw_t, gkvec_row, packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed);
+    apply_h_o_parallel(kp__, veff_it_coarse__, pw_ekin, 0, num_bands, phi[order - 1], phi[0], phi[1],
+                       kappa, gkvec_row, packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed);
 
 
     //set_fv_h_o_ncpp_parallel(kp__, phi[order - 1], phi[0], hmlt, ovlp, kappa);
@@ -4119,5 +3640,41 @@ void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,
 }
 #endif // _SCALAPACK_
 
+void Band::diag_fv_pseudo_potential(K_point* kp__, 
+                                    Periodic_function<double>* effective_potential__)
+{
+    Timer t("sirius::Band::diag_fv_pseudo_potential");
+
+    auto rl = parameters_.reciprocal_lattice();
+
+    /* map effective potential to a corase grid */
+    std::vector<double> veff_it_coarse(rl->fft_coarse()->size());
+    std::vector<double_complex> veff_pw_coarse(rl->num_gvec_coarse());
+
+    /* take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi */
+    for (int igc = 0; igc < rl->num_gvec_coarse(); igc++)
+    {
+        int ig = rl->gvec_index(igc);
+        veff_pw_coarse[igc] = effective_potential__->f_pw(ig);
+    }
+    rl->fft_coarse()->input(rl->num_gvec_coarse(), rl->fft_index_coarse(), &veff_pw_coarse[0]);
+    rl->fft_coarse()->transform(1);
+    rl->fft_coarse()->output(&veff_it_coarse[0]);
+
+    double v0 = real(effective_potential__->f_pw(0));
+
+    if (gen_evp_solver()->parallel())
+    {
+        #ifdef _SCALAPACK_
+        diag_fv_pseudo_potential_parallel(kp__, v0, veff_it_coarse);
+        #else
+        TERMINATE_NO_SCALAPACK
+        #endif
+    }
+    else
+    {
+        STOP();
+    }
+}
 
 }

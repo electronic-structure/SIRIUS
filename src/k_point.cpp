@@ -151,7 +151,7 @@ void K_point::update()
         int num_beta_t = 0;
         for (int iat = 0; iat < uc->num_atom_types(); iat++) num_beta_t += uc->atom_type(iat)->mt_lo_basis_size();
 
-        beta_pw_t_ = mdarray<double_complex, 2>(num_gkvec_row(), num_beta_t); 
+        beta_gk_t_ = mdarray<double_complex, 2>(num_gkvec_row(), num_beta_t); 
 
         mdarray<Spline<double>*, 2> beta_rf(uc->max_mt_radial_basis_size(), uc->num_atom_types());
         for (int iat = 0; iat < uc->num_atom_types(); iat++)
@@ -196,7 +196,7 @@ void K_point::update()
                             int idxrf = atom_type->indexb(xi).idxrf;
 
                             double_complex z = pow(double_complex(0, -1), l) * fourpi / sqrt(parameters_.unit_cell()->omega());
-                            beta_pw_t_(igk_row, atom_type->offset_lo() + xi) = z * gkvec_ylm_(lm, igk_row) * beta_radial_integrals_[idxrf];
+                            beta_gk_t_(igk_row, atom_type->offset_lo() + xi) = z * gkvec_ylm_(lm, igk_row) * beta_radial_integrals_[idxrf];
                         }
                     }
                 }
@@ -226,7 +226,7 @@ void K_point::update()
 
             for (int igk = 0; igk < num_gkvec_row(); igk++)
             {
-                beta_pw_panel_(igk, i) = beta_pw_t_(igk, atom_type->offset_lo() + xi) * conj(gkvec_phase_factors_(igk, ia));
+                beta_pw_panel_(igk, i) = beta_gk_t_(igk, atom_type->offset_lo() + xi) * conj(gkvec_phase_factors_(igk, ia));
             }
         }
 
@@ -244,8 +244,8 @@ void K_point::update()
             linalg<CPU>::geinv(nbf, qinv);
             
             /* compute P^{H}*P */
-            linalg<CPU>::gemm(2, 0, nbf, nbf, num_gkvec_row(), &beta_pw_t_(0, ofs), beta_pw_t_.ld(), 
-                              &beta_pw_t_(0, ofs), beta_pw_t_.ld(), &p_mtrx_(0, 0, iat), p_mtrx_.ld());
+            linalg<CPU>::gemm(2, 0, nbf, nbf, num_gkvec_row(), &beta_gk_t_(0, ofs), beta_gk_t_.ld(), 
+                              &beta_gk_t_(0, ofs), beta_gk_t_.ld(), &p_mtrx_(0, 0, iat), p_mtrx_.ld());
             comm_row().allreduce(&p_mtrx_(0, 0, iat), uc->max_mt_basis_size() * uc->max_mt_basis_size());
 
             for (int xi1 = 0; xi1 < nbf; xi1++)

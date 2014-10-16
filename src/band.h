@@ -104,17 +104,16 @@ class Band
         /// Diagonalize a pseudo-potential Hamiltonian
         void diag_fv_pseudo_potential(K_point* kp__,
                                       Periodic_function<double>* effective_potential__);
-
+        
         #ifdef _SCALAPACK_
         void apply_op_non_local_parallel(K_point* kp__,
                                          dmatrix<double_complex>& chi__, 
-                                         int num_atoms_in_block__,
                                          matrix<double_complex>& kappa__,
-                                         matrix<double_complex> const& beta_pw_t__,
                                          matrix<double> const& gkvec_row__,
                                          mdarray<int, 1> const& packed_mtrx_offset__,
-                                         mdarray<double_complex, 1> const& op_mtrx_packed__,
+                                         mdarray<double_complex, 1>& op_mtrx_packed__,
                                          double_complex alpha);
+
         void apply_oinv_parallel(K_point* kp__,
                                  dmatrix<double_complex>& chi__,
                                  dmatrix<double_complex>& S__);
@@ -132,12 +131,10 @@ class Band
                               std::vector<double> const& pw_ekin__,
                               dmatrix<double_complex>& phi__,
                               dmatrix<double_complex>& hphi__,
-                              int num_atoms_in_block__,
                               matrix<double_complex>& kappa__,
-                              matrix<double_complex> const& beta_pw_t__,
                               matrix<double> const& gkvec_row__,
                               mdarray<int, 1> const& packed_mtrx_offset__,
-                              mdarray<double_complex, 1> const& d_mtrx_packed__);
+                              mdarray<double_complex, 1>& d_mtrx_packed__);
 
         void apply_h_o_parallel(K_point* kp__,
                                 std::vector<double> const& effective_potential__,
@@ -147,9 +144,7 @@ class Band
                                 dmatrix<double_complex>& phi__,
                                 dmatrix<double_complex>& hphi__,
                                 dmatrix<double_complex>& ophi__,
-                                int num_atoms_in_block__,
                                 matrix<double_complex>& kappa__,
-                                matrix<double_complex> const& beta_pw_t__,
                                 matrix<double>& gkvec_row__,
                                 mdarray<int, 1>& packed_mtrx_offset__,
                                 mdarray<double_complex, 1>& d_mtrx_packed__,
