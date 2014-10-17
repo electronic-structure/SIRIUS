@@ -112,7 +112,6 @@ class Band
                                                  dmatrix<double_complex>& phi__, 
                                                  dmatrix<double_complex>& op_phi__, 
                                                  matrix<double_complex>& kappa__,
-                                                 matrix<double> const& gkvec_row__,
                                                  mdarray<int, 1> const& packed_mtrx_offset__,
                                                  mdarray<double_complex, 1>& op_mtrx_packed__,
                                                  double_complex alpha);
@@ -137,7 +136,6 @@ class Band
                               dmatrix<double_complex>& phi__,
                               dmatrix<double_complex>& hphi__,
                               matrix<double_complex>& kappa__,
-                              matrix<double> const& gkvec_row__,
                               mdarray<int, 1> const& packed_mtrx_offset__,
                               mdarray<double_complex, 1>& d_mtrx_packed__);
 
@@ -150,7 +148,6 @@ class Band
                                 dmatrix<double_complex>& hphi__,
                                 dmatrix<double_complex>& ophi__,
                                 matrix<double_complex>& kappa__,
-                                matrix<double>& gkvec_row__,
                                 mdarray<int, 1>& packed_mtrx_offset__,
                                 mdarray<double_complex, 1>& d_mtrx_packed__,
                                 mdarray<double_complex, 1>& q_mtrx_packed__);
@@ -393,10 +390,7 @@ class Band
                                              dmatrix<double_complex>& o__,
                                              dmatrix<double_complex>& h_old__,
                                              dmatrix<double_complex>& o_old__,
-                                             int num_atoms_in_block__,
                                              mdarray<double_complex, 2>& kappa__,
-                                             matrix<double_complex> const& beta_pw_t__,
-                                             matrix<double>& gkvec_row__,
                                              mdarray<int, 1>& packed_mtrx_offset__,
                                              mdarray<double_complex, 1>& d_mtrx_packed__,
                                              mdarray<double_complex, 1>& q_mtrx_packed__);

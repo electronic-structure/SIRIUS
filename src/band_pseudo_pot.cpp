@@ -207,7 +207,6 @@ void Band::add_non_local_contribution_parallel(K_point* kp__,
                                                dmatrix<double_complex>& phi__,
                                                dmatrix<double_complex>& op_phi__, 
                                                matrix<double_complex>& beta_gk__,
-                                               matrix<double> const& gkvec_row__,
                                                mdarray<int, 1> const& packed_mtrx_offset__,
                                                mdarray<double_complex, 1>& op_mtrx_packed__,
                                                double_complex alpha)
@@ -239,8 +238,6 @@ void Band::add_non_local_contribution_parallel(K_point* kp__,
     {
         beta_phi_tmp.allocate_on_device();
         tmp.allocate_on_device();
-        //beta_pw_desc.allocate_on_device();
-        //atom_pos.allocate_on_device();
     }
     #endif
 
@@ -249,14 +246,6 @@ void Band::add_non_local_contribution_parallel(K_point* kp__,
         /* number of beta-projectors in the current chunk */
         int nbeta =  uc->beta_chunk(ib).num_beta_;
         int natoms = uc->beta_chunk(ib).num_atoms_;
-
-        #ifdef _GPU_
-        if (parameters_.processing_unit() == GPU)
-        {
-            //beta_pw_desc.copy_to_device();
-            //atom_pos.copy_to_device();
-        }
-        #endif
 
         /* wrapper for <beta|phi> with required dimensions */
         matrix<double_complex> beta_phi;
@@ -343,7 +332,6 @@ void Band::apply_h_parallel(K_point* kp__,
                             dmatrix<double_complex>& phi__,
                             dmatrix<double_complex>& hphi__,
                             matrix<double_complex>& beta_gk__,
-                            matrix<double> const& gkvec_row__,
                             mdarray<int, 1> const& packed_mtrx_offset__,
                             mdarray<double_complex, 1>& d_mtrx_packed__)
 {
@@ -363,7 +351,7 @@ void Band::apply_h_parallel(K_point* kp__,
     /* apply local part of Hamiltonian */
     apply_h_local_parallel(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__);
 
-    add_non_local_contribution_parallel(kp__, N__, n__, phi__, hphi__, beta_gk__, gkvec_row__, packed_mtrx_offset__,
+    add_non_local_contribution_parallel(kp__, N__, n__, phi__, hphi__, beta_gk__, packed_mtrx_offset__,
                                         d_mtrx_packed__, double_complex(1, 0));
     log_function_exit(__func__);
 }
@@ -380,7 +368,6 @@ void Band::apply_h_o_parallel(K_point* kp__,
                               dmatrix<double_complex>& hphi__,
                               dmatrix<double_complex>& ophi__,
                               matrix<double_complex>& beta_gk__,
-                              matrix<double>& gkvec_row__,
                               mdarray<int, 1>& packed_mtrx_offset__,
                               mdarray<double_complex, 1>& d_mtrx_packed__,
                               mdarray<double_complex, 1>& q_mtrx_packed__)

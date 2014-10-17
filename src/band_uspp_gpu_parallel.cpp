@@ -341,10 +341,7 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
                                            dmatrix<double_complex>& o__,
                                            dmatrix<double_complex>& h_old__,
                                            dmatrix<double_complex>& o_old__,
-                                           int num_atoms_in_block__,
                                            mdarray<double_complex, 2>& kappa__,
-                                           matrix<double_complex> const& beta_gk_t__,
-                                           matrix<double>& gkvec_row__,
                                            mdarray<int, 1>& packed_mtrx_offset__,
                                            mdarray<double_complex, 1>& d_mtrx_packed__,
                                            mdarray<double_complex, 1>& q_mtrx_packed__)
@@ -374,11 +371,11 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
     if (with_overlap)
     {
         apply_h_o_parallel(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__,
-                           kappa__, gkvec_row__, packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__);
+                           kappa__, packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__);
     }
     else
     {
-        apply_h_parallel(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, kappa__, gkvec_row__,
+        apply_h_parallel(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, kappa__,
                          packed_mtrx_offset__, d_mtrx_packed__);
     }
     
