@@ -107,6 +107,8 @@ class Band
         
         #ifdef _SCALAPACK_
         void add_non_local_contribution_parallel(K_point* kp__,
+                                                 int N__,
+                                                 int n__,
                                                  dmatrix<double_complex>& phi__, 
                                                  dmatrix<double_complex>& op_phi__, 
                                                  matrix<double_complex>& kappa__,
@@ -130,6 +132,8 @@ class Band
         void apply_h_parallel(K_point* kp__,
                               std::vector<double> const& effective_potential__,
                               std::vector<double> const& pw_ekin__,
+                              int N__,
+                              int n__,
                               dmatrix<double_complex>& phi__,
                               dmatrix<double_complex>& hphi__,
                               matrix<double_complex>& kappa__,

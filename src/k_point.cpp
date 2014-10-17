@@ -259,6 +259,23 @@ void K_point::update()
                 for (int xi2 = 0; xi2 < nbf; xi2++) p_mtrx_(xi2, xi1, iat) = qinv(xi2, xi1);
             }
         }
+        
+        if (parameters_.processing_unit() == GPU)
+        {
+            #ifdef _GPU_
+            gkvec_row_ = mdarray<double, 2>(3, num_gkvec_row());
+            /* copy G+k vectors */
+            for (int igk_row = 0; igk_row < num_gkvec_row(); igk_row++)
+            {
+                for (int x = 0; x < 3; x++) gkvec_row_(x, igk_row) = gklo_basis_descriptor_row(igk_row).gkvec[x];
+            }
+            gkvec_row_.allocate_on_device();
+            gkvec_row_.copy_to_device();
+
+            beta_gk_t_.allocate_on_device();
+            beta_gk_t_.copy_to_device();
+            #endif
+        }
     }
 
     spinor_wave_functions_ = mdarray<double_complex, 3>(nullptr, wf_size(), sub_spl_spinor_wf_.local_size(), parameters_.num_spins());

@@ -201,6 +201,112 @@ void Band::apply_h_local_slice(K_point* kp__,
 }
 
 #ifdef _SCALAPACK_
+void Band::add_non_local_contribution_parallel(K_point* kp__,
+                                               int N__,
+                                               int n__,
+                                               dmatrix<double_complex>& phi__,
+                                               dmatrix<double_complex>& op_phi__, 
+                                               matrix<double_complex>& beta_gk__,
+                                               matrix<double> const& gkvec_row__,
+                                               mdarray<int, 1> const& packed_mtrx_offset__,
+                                               mdarray<double_complex, 1>& op_mtrx_packed__,
+                                               double_complex alpha)
+{
+    log_function_enter(__func__);
+    Timer t("sirius::Band::add_non_local_contribution_parallel", kp__->comm());
+
+    /* beginning of the band index */
+    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    /* end of the band index */
+    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+
+    /* local number of states to which Hamiltonian has to be applied */
+    int nloc = static_cast<int>(s1.local_size() - s0.local_size());
+
+    if (!nloc) return;
+
+    auto uc = parameters_.unit_cell();
+
+    /* allocate space for <beta|phi> array */
+    int nbf_max = uc->max_mt_basis_size() * uc->beta_chunk(0).num_atoms_;
+    mdarray<double_complex, 1> beta_phi_tmp(nbf_max * nloc);
+
+    /* result of atom-block-diagonal operator multiplied by <beta|phi> */
+    matrix<double_complex> tmp(nbf_max, nloc);
+
+    #ifdef _GPU_
+    if (parameters_.processing_unit() == GPU)
+    {
+        beta_phi_tmp.allocate_on_device();
+        tmp.allocate_on_device();
+        //beta_pw_desc.allocate_on_device();
+        //atom_pos.allocate_on_device();
+    }
+    #endif
+
+    for (int ib = 0; ib < uc->num_beta_chunks(); ib++)
+    {
+        /* number of beta-projectors in the current chunk */
+        int nbeta =  uc->beta_chunk(ib).num_beta_;
+        int natoms = uc->beta_chunk(ib).num_atoms_;
+
+        #ifdef _GPU_
+        if (parameters_.processing_unit() == GPU)
+        {
+            //beta_pw_desc.copy_to_device();
+            //atom_pos.copy_to_device();
+        }
+        #endif
+
+        /* wrapper for <beta|phi> with required dimensions */
+        matrix<double_complex> beta_phi;
+        switch (parameters_.processing_unit())
+        {
+            case CPU:
+            {
+                beta_phi = matrix<double_complex>(beta_phi_tmp.at<CPU>(), nbeta, nloc);
+                break;
+            }
+            case GPU:
+            {
+                beta_phi = matrix<double_complex>(beta_phi_tmp.at<CPU>(), beta_phi_tmp.at<GPU>(), nbeta, nloc);
+                break;
+            }
+        }
+
+        Timer t1("sirius::Band::add_non_local_contribution_parallel|beta_phi", kp__->comm_row());
+        kp__->generate_beta_gk(natoms, uc->beta_chunk(ib).atom_pos_, uc->beta_chunk(ib).desc_, beta_gk__);
+        kp__->generate_beta_phi(nbeta, phi__.panel(), nloc, (int)s0.local_size(), beta_gk__, beta_phi);
+        double tval = t1.stop();
+
+        if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+        {
+            printf("<beta|phi> effective zgemm with M, N, K: %6i %6i %6i, %12.4f sec, %12.4f GFlops/node\n",
+                   nbeta, nloc, kp__->num_gkvec(),
+                   tval, 8e-9 * nbeta * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
+        }
+
+        kp__->add_non_local_contribution(natoms, nbeta, uc->beta_chunk(ib).desc_, beta_gk__, op_mtrx_packed__,
+                                         packed_mtrx_offset__, beta_phi, op_phi__.panel(), nloc, (int)s0.local_size(),
+                                         alpha, tmp);
+    }
+    #ifdef _GPU_
+    if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
+    #endif
+
+    #ifdef _GPU_
+    if (parameters_.processing_unit() == GPU)
+    {
+        cuda_copy_to_host(phi__.at<CPU>(), phi__.at<GPU>(), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
+    }
+    #endif
+
+    log_function_exit(__func__);
+}
+
+/** On input phi is expected to be in the host memory. \n
+ *  On output hphi is stored in the host memory.
+ */
 void Band::apply_h_local_parallel(K_point* kp__,
                                   std::vector<double> const& effective_potential__,
                                   std::vector<double> const& pw_ekin__,
@@ -229,6 +335,42 @@ void Band::apply_h_local_parallel(K_point* kp__,
     log_function_exit(__func__);
 }
 
+void Band::apply_h_parallel(K_point* kp__,
+                            std::vector<double> const& effective_potential__,
+                            std::vector<double> const& pw_ekin__,
+                            int N__,
+                            int n__,
+                            dmatrix<double_complex>& phi__,
+                            dmatrix<double_complex>& hphi__,
+                            matrix<double_complex>& beta_gk__,
+                            matrix<double> const& gkvec_row__,
+                            mdarray<int, 1> const& packed_mtrx_offset__,
+                            mdarray<double_complex, 1>& d_mtrx_packed__)
+{
+    log_function_enter(__func__);
+    Timer t("sirius::Band::apply_h_parallel", kp__->comm());
+
+    /* beginning of the band index */
+    splindex<block_cyclic> s0(N__,       kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+    /* end of the band index */
+    splindex<block_cyclic> s1(N__ + n__, kp__->num_ranks_col(), kp__->rank_col(), blacs_grid_.cyclic_block_size());
+
+    /* local number of states to which Hamiltonian has to be applied */
+    int nloc = static_cast<int>(s1.local_size() - s0.local_size());
+
+    if (!nloc) return;
+
+    /* apply local part of Hamiltonian */
+    apply_h_local_parallel(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__);
+
+    add_non_local_contribution_parallel(kp__, N__, n__, phi__, hphi__, beta_gk__, gkvec_row__, packed_mtrx_offset__,
+                                        d_mtrx_packed__, double_complex(1, 0));
+    log_function_exit(__func__);
+}
+
+/** On input phi is both in host and device memory.
+ *  On output hphi and ophi are in host or device memory depending on processing unit.
+ */
 void Band::apply_h_o_parallel(K_point* kp__,
                               std::vector<double> const& effective_potential__,
                               std::vector<double> const& pw_ekin__,
@@ -284,16 +426,14 @@ void Band::apply_h_o_parallel(K_point* kp__,
     int nbf_max = uc->max_mt_basis_size() * uc->beta_chunk(0).num_atoms_;
     mdarray<double_complex, 1> beta_phi_tmp(nbf_max * nloc);
 
-    /* result of Q or D multiplied by <beta|phi> */
-    matrix<double_complex> tmp(nbf_max, nloc);
+    /* work space (result of Q or D multiplied by <beta|phi>) */
+    matrix<double_complex> work(nbf_max, nloc);
 
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU)
     {
         beta_phi_tmp.allocate_on_device();
-        tmp.allocate_on_device();
-        beta_pw_desc.allocate_on_device();
-        atom_pos.allocate_on_device();
+        work.allocate_on_device();
     }
     #endif
 
@@ -302,14 +442,6 @@ void Band::apply_h_o_parallel(K_point* kp__,
         /* number of beta-projectors in the current chunk */
         int nbeta =  uc->beta_chunk(ib).num_beta_;
         int natoms = uc->beta_chunk(ib).num_atoms_;
-
-        #ifdef _GPU_
-        if (parameters_.processing_unit() == GPU)
-        {
-            beta_pw_desc.copy_to_device();
-            atom_pos.copy_to_device();
-        }
-        #endif
 
         /* wrapper for <beta|phi> with required dimensions */
         matrix<double_complex> beta_phi;
@@ -327,25 +459,17 @@ void Band::apply_h_o_parallel(K_point* kp__,
             }
         }
 
-        Timer t1("sirius::Band::apply_h_o_parallel|beta_phi", kp__->comm_row());
-        kp__->generate_beta_gk(natoms, uc->beta_chunk(ib).desc_, beta_gk__);
+        kp__->generate_beta_gk(natoms, uc->beta_chunk(ib).atom_pos_, uc->beta_chunk(ib).desc_, beta_gk__);
+        
         kp__->generate_beta_phi(nbeta, phi__.panel(), nloc, (int)s0.local_size(), beta_gk__, beta_phi);
-        double tval = t1.stop();
-
-        if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-        {
-            printf("<beta|phi> effective zgemm with M, N, K: %6i %6i %6i, %12.4f sec, %12.4f GFlops/node\n",
-                   nbeta, nloc, kp__->num_gkvec(),
-                   tval, 8e-9 * nbeta * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
-        }
 
         kp__->add_non_local_contribution(natoms, nbeta, uc->beta_chunk(ib).desc_, beta_gk__, d_mtrx_packed__,
                                          packed_mtrx_offset__, beta_phi, hphi__.panel(), nloc, (int)s0.local_size(),
-                                         complex_one, tmp);
+                                         complex_one, work);
         
         kp__->add_non_local_contribution(natoms, nbeta, uc->beta_chunk(ib).desc_, beta_gk__, q_mtrx_packed__,
                                          packed_mtrx_offset__, beta_phi, ophi__.panel(), nloc, (int)s0.local_size(),
-                                         complex_one, tmp);
+                                         complex_one, work);
     }
 
     #ifdef _GPU_

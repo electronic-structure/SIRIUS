@@ -123,7 +123,8 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
     //}
 
     /* apply Hamiltonian to the basis functions */
-    apply_h_parallel(kp__, veff_it_coarse__, pw_ekin, phi[0], hphi, kappa, gkvec_row, packed_mtrx_offset, d_mtrx_packed);
+    apply_h_parallel(kp__, veff_it_coarse__, pw_ekin, 0, num_bands, phi[0], hphi, kappa, gkvec_row, packed_mtrx_offset,
+                     d_mtrx_packed);
 
     /* compute Rayleight quotients */
     std::vector<double> e0(num_bands, 0.0);
@@ -148,8 +149,8 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
 
     //apply_oinv_parallel(kp__, phi[1], S);
     hphi.panel() >> phi[1].panel();
-    add_non_local_contribution_parallel(kp__, hphi, phi[1], kappa, gkvec_row, packed_mtrx_offset, p_mtrx_packed,
-                                        double_complex(-1, 0));
+    add_non_local_contribution_parallel(kp__, 0, num_bands, hphi, phi[1], kappa, gkvec_row, packed_mtrx_offset,
+                                        p_mtrx_packed, double_complex(-1, 0));
 
     /* compute \psi_1 = (S^{-1}H\psi_0 - c\psi_0) / r */
     #pragma omp parallel for schedule(static)
@@ -164,19 +165,21 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
     /* compute higher polinomial orders */
     for (int k = 2; k < order; k++)
     {
-        apply_h_parallel(kp__, veff_it_coarse__, pw_ekin, phi[k - 1], hphi, kappa, gkvec_row, packed_mtrx_offset, d_mtrx_packed);
+        apply_h_parallel(kp__, veff_it_coarse__, pw_ekin, 0, num_bands, phi[k - 1], hphi, kappa, gkvec_row,
+                         packed_mtrx_offset, d_mtrx_packed);
         
         //apply_oinv_parallel(kp__, phi[k], S);
         hphi.panel() >> phi[k].panel();
-        add_non_local_contribution_parallel(kp__, hphi, phi[k], kappa, gkvec_row, packed_mtrx_offset, p_mtrx_packed,
-                                            double_complex(-1, 0));
+        add_non_local_contribution_parallel(kp__, 0, num_bands, hphi, phi[k], kappa, gkvec_row, packed_mtrx_offset,
+                                            p_mtrx_packed, double_complex(-1, 0));
 
         #pragma omp parallel for schedule(static)
         for (int iloc = 0; iloc < (int)kp__->spl_fv_states().local_size(); iloc++)
         {
             for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
             {
-                phi[k](igk_row, iloc) = (phi[k](igk_row, iloc) - c * phi[k - 1](igk_row, iloc)) * 2.0 / r - phi[k - 2](igk_row, iloc);
+                phi[k](igk_row, iloc) = (phi[k](igk_row, iloc) - c * phi[k - 1](igk_row, iloc)) * 2.0 / r -
+                                        phi[k - 2](igk_row, iloc);
             }
         }
     }
@@ -373,8 +376,8 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
         }
         gkvec_row.allocate_on_device();
         gkvec_row.copy_to_device();
-        beta_gk_t.allocate_on_device();
-        beta_gk_t.copy_to_device();
+        //beta_gk_t.allocate_on_device();
+        //beta_gk_t.copy_to_device();
         /* initial phi on GPU */
         cuda_copy_to_device(phi.at<GPU>(), psi.at<CPU>(), kp__->num_gkvec_row() * psi.num_cols_local() * sizeof(double_complex));
         #else
@@ -540,7 +543,7 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU)
     {
-        beta_gk_t.deallocate_on_device();
+        //beta_gk_t.deallocate_on_device();
         if (!with_overlap) psi.deallocate_on_device();
     }
     #endif

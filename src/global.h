@@ -165,7 +165,7 @@ class Global
             parse_input();
 
             /* create new empty unit cell */
-            unit_cell_ = new Unit_cell(esm_type_, comm_);
+            unit_cell_ = new Unit_cell(esm_type_, comm_, processing_unit_);
         }
             
         ~Global()

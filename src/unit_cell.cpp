@@ -442,7 +442,19 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
                 num_beta += type->mt_basis_size();
             }
             beta_chunks_[ib].num_beta_ = num_beta;
+
+            if (pu_ == GPU)
+            {
+                #ifdef _GPU_
+                beta_chunks_[ib].desc_.allocate_on_device();
+                beta_chunks_[ib].desc_.copy_to_device();
+
+                beta_chunks_[ib].atom_pos_.allocate_on_device();
+                beta_chunks_[ib].atom_pos_.copy_to_device();
+                #endif
+            }
         }
+
     }
             
     //== if (esm_type_ == ultrasoft_pseudopotential)

@@ -640,7 +640,7 @@ void Density::add_kpoint_contribution_pp(K_point* kp__,
 extern "C" void create_beta_pw_gpu_v2(int num_atoms,
                                       int num_gkvec, 
                                       int* beta_pw_desc,
-                                      double_complex* beta_pw_type,
+                                      double_complex const* beta_pw_type,
                                       double* gkvec,
                                       double* atom_pos,
                                       double_complex* beta_pw);
@@ -705,9 +705,9 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp__,
     matrix<double_complex> beta_pw(nullptr, kp__->num_gkvec_row(), nbf_max);
     beta_pw.allocate_on_device();
 
-    auto& beta_pw_t = kp__->beta_pw_t();
-    beta_pw_t.allocate_on_device();
-    beta_pw_t.copy_to_device();
+    auto& beta_pw_t = kp__->beta_gk_t();
+    //beta_pw_t.allocate_on_device();
+    //beta_pw_t.copy_to_device();
 
     matrix<double_complex> psi_occ(&psi(0, 0), kp__->num_gkvec_row(), nloc);
     psi_occ.allocate_on_device();
@@ -841,7 +841,7 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp__,
     }
 
     tmp.deallocate_on_device();
-    beta_pw_t.deallocate_on_device();
+    //beta_pw_t.deallocate_on_device();
     psi_occ.deallocate_on_device();
 }
 #endif
