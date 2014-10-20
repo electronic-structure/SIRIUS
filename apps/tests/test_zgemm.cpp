@@ -41,9 +41,9 @@ void test_gemm(int M, int N, int K, int transa)
     printf("c.ld() = %i\n", c.ld());
     sirius::Timer t1("gemm_only"); 
     blas<cpu>::gemm(transa, 0, M, N, K, a.ptr(), a.ld(), b.ptr(), b.ld(), c.ptr(), c.ld());
-    t1.stop();
-    printf("execution time (sec) : %12.6f\n", t1.value());
-    printf("performance (GFlops) : %12.6f\n", 8e-9 * M * N * K / t1.value());
+    double tval = t1.stop();
+    printf("execution time (sec) : %12.6f\n", tval);
+    printf("performance (GFlops) : %12.6f\n", 8e-9 * M * N * K / tval);
 }
 
 #ifdef _TEST_REAL_
@@ -108,7 +108,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n)
     if (Platform::comm_world().rank() == 0)
     {
         printf("execution time : %12.6f seconds\n", tval);
-        printf("performance    : %12.6f GFlops / node\n", perf);
+        printf("performance    : %12.6f GFlops / rank\n", perf);
     }
 
     return perf;
@@ -153,7 +153,7 @@ int main(int argn, char **argv)
 
     if (nrow * ncol == 1)
     {
-        test_gemm(M, N, K, transa);
+        for (int i = 0; i < repeat; i++) test_gemm(M, N, K, transa);
     }
     else
     {
@@ -165,7 +165,7 @@ int main(int argn, char **argv)
         if (Platform::comm_world().rank() == 0)
         {
             printf("\n");
-            printf("average performance    : %12.6f GFlops / node\n", perf / repeat);
+            printf("average performance    : %12.6f GFlops / rank\n", perf / repeat);
         }
         #else
         terminate(__FILE__, __LINE__, "not compiled with ScaLAPACK support");
