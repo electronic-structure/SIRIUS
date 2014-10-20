@@ -2,6 +2,22 @@
 
 namespace sirius {
 
+#ifdef _GPU_
+extern "C" void compute_inner_product_gpu(int num_gkvec_row,
+                                          int n,
+                                          cuDoubleComplex const* f1,
+                                          cuDoubleComplex const* f2,
+                                          double* prod);
+
+extern "C" void compute_chebyshev_polinomial_gpu(int num_gkvec,
+                                                 int n,
+                                                 double c,
+                                                 double r,
+                                                 cuDoubleComplex* phi0,
+                                                 cuDoubleComplex* phi1,
+                                                 cuDoubleComplex* phi2);
+#endif
+
 #ifdef _SCALAPACK_
 void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
                                                        std::vector<double> const& veff_it_coarse__)
@@ -47,7 +63,6 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
     for (int i = 0; i < order; i++)
     {
         phi[i] = dmatrix<double_complex>(kp__->num_gkvec(), num_bands, kp__->blacs_grid());
-        //phi[i].allocate_ata_buffer((int)kp__->spl_fv_states().local_size(0));
     }
 
     dmatrix<double_complex> hphi(kp__->num_gkvec(), num_bands, kp__->blacs_grid());
@@ -95,32 +110,25 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
             }
         }
     }
-    
-    /* copy G+k vectors */
-    matrix<double> gkvec_row(3, kp__->num_gkvec_row());
-    for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+
+    if (parameters_.processing_unit() == GPU)
     {
-        for (int x = 0; x < 3; x++) gkvec_row(x, igk_row) = kp__->gklo_basis_descriptor_row(igk_row).gkvec[x];
+        #ifdef _GPU_
+        for (int i = 0; i < order; i++) phi[i].allocate_on_device();
+        hphi.allocate_on_device();
+        kappa.allocate_on_device();
+        d_mtrx_packed.allocate_on_device();
+        d_mtrx_packed.copy_to_device();
+        q_mtrx_packed.allocate_on_device();
+        q_mtrx_packed.copy_to_device();
+        p_mtrx_packed.allocate_on_device();
+        p_mtrx_packed.copy_to_device();
+        /* initial phi on GPU */
+        phi[0].panel().copy_to_device();
+        #else
+        TERMINATE_NO_GPU
+        #endif
     }
-
-    //auto& beta_gk_t = kp__->beta_gk_t();
-
-    //if (parameters_.processing_unit() == GPU)
-    //{
-    //    #ifdef _GPU_
-    //    psi.allocate_on_device();
-    //    for (int i = 0; i < order; i++) phi[i].allocate_on_device();
-    //    kappa.allocate_on_device();
-    //    d_mtrx_packed.allocate_on_device();
-    //    d_mtrx_packed.copy_to_device();
-    //    gkvec_row.allocate_on_device();
-    //    gkvec_row.copy_to_device();
-    //    beta_pw_t.allocate_on_device();
-    //    beta_pw_t.copy_to_device();
-    //    #else
-    //    TERMINATE_NO_GPU
-    //    #endif
-    //}
 
     /* apply Hamiltonian to the basis functions */
     apply_h_parallel(kp__, veff_it_coarse__, pw_ekin, 0, num_bands, phi[0], hphi, kappa, packed_mtrx_offset,
@@ -128,15 +136,39 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
 
     /* compute Rayleight quotients */
     std::vector<double> e0(num_bands, 0.0);
-    #pragma omp parallel for schedule(static)
-    for (int iloc = 0; iloc < (int)kp__->spl_fv_states().local_size(); iloc++)
+    if (parameters_.processing_unit() == CPU)
     {
-        int i = kp__->spl_fv_states(iloc);
-        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+        #pragma omp parallel for schedule(static)
+        for (int iloc = 0; iloc < (int)kp__->spl_fv_states().local_size(); iloc++)
         {
-            e0[i] += real(conj(phi[0](igk_row, iloc)) * hphi(igk_row, iloc));
+            int i = kp__->spl_fv_states(iloc);
+            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+            {
+                e0[i] += real(conj(phi[0](igk_row, iloc)) * hphi(igk_row, iloc));
+            }
         }
     }
+    if (parameters_.processing_unit() == GPU)
+    {
+        #ifdef _GPU_
+        mdarray<double, 1> e0_loc(kp__->spl_fv_states().local_size());
+        e0_loc.allocate_on_device();
+        e0_loc.zero_on_device();
+
+        compute_inner_product_gpu(kp__->num_gkvec_row(),
+                                  (int)kp__->spl_fv_states().local_size(),
+                                  phi[0].at<GPU>(),
+                                  hphi.at<GPU>(),
+                                  e0_loc.at<GPU>());
+        e0_loc.copy_to_host();
+        for (int iloc = 0; iloc < (int)kp__->spl_fv_states().local_size(); iloc++)
+        {
+            int i = kp__->spl_fv_states(iloc);
+            e0[i] = e0_loc(iloc);
+        }
+        #endif
+    }
+    
     kp__->comm().allreduce(e0);
     
     /* estimate low and upper bounds of the Chebyshev filter */
@@ -147,40 +179,90 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
     double r = (lambda1 - lambda0) / 2.0;
     double c = (lambda1 + lambda0) / 2.0;
 
-    //apply_oinv_parallel(kp__, phi[1], S);
-    hphi.panel() >> phi[1].panel();
-    add_non_local_contribution_parallel(kp__, 0, num_bands, hphi, phi[1], kappa, packed_mtrx_offset,
-                                        p_mtrx_packed, double_complex(-1, 0));
-
-    /* compute \psi_1 = (S^{-1}H\psi_0 - c\psi_0) / r */
-    #pragma omp parallel for schedule(static)
-    for (int iloc = 0; iloc < (int)kp__->spl_fv_states().local_size(); iloc++)
+    switch (parameters_.processing_unit())
     {
-        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+        case CPU:
         {
-            phi[1](igk_row, iloc) = (phi[1](igk_row, iloc) - phi[0](igk_row, iloc) * c) / r;
+            hphi.panel() >> phi[1].panel();
+            break;
+        }
+        case GPU:
+        {
+            #ifdef _GPU_
+            cuda_copy_device_to_device(phi[1].at<GPU>(), hphi.at<GPU>(), hphi.panel().size() * sizeof(double_complex));
+            #endif
+            break;
         }
     }
+    //== apply_oinv_parallel(kp__, phi[1], S);
+    add_non_local_contribution_parallel(kp__, 0, num_bands, hphi, phi[1], kappa, packed_mtrx_offset,
+                                        p_mtrx_packed, double_complex(-1, 0));
     
+    /* compute \psi_1 = (S^{-1}H\psi_0 - c\psi_0) / r */
+    if (parameters_.processing_unit() == CPU)
+    {
+        #pragma omp parallel for schedule(static)
+        for (int iloc = 0; iloc < (int)kp__->spl_fv_states().local_size(); iloc++)
+        {
+            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+            {
+                phi[1](igk_row, iloc) = (phi[1](igk_row, iloc) - phi[0](igk_row, iloc) * c) / r;
+            }
+        }
+    }
+    if (parameters_.processing_unit() == GPU)
+    {
+        #ifdef _GPU_
+        compute_chebyshev_polinomial_gpu(kp__->num_gkvec_row(), (int)kp__->spl_fv_states().local_size(), c, r,
+                                         phi[0].at<GPU>(), phi[1].at<GPU>(), NULL);
+        phi[1].panel().copy_to_host();
+        #endif
+    }
+
     /* compute higher polinomial orders */
     for (int k = 2; k < order; k++)
     {
         apply_h_parallel(kp__, veff_it_coarse__, pw_ekin, 0, num_bands, phi[k - 1], hphi, kappa, packed_mtrx_offset,
                          d_mtrx_packed);
         
-        //apply_oinv_parallel(kp__, phi[k], S);
-        hphi.panel() >> phi[k].panel();
+        switch (parameters_.processing_unit())
+        {
+            case CPU:
+            {
+                hphi.panel() >> phi[k].panel();
+                break;
+            }
+            case GPU:
+            {
+                #ifdef _GPU_
+                cuda_copy_device_to_device(phi[k].at<GPU>(), hphi.at<GPU>(), hphi.panel().size() * sizeof(double_complex));
+                #endif
+                break;
+            }
+        }
+        //== apply_oinv_parallel(kp__, phi[k], S);
         add_non_local_contribution_parallel(kp__, 0, num_bands, hphi, phi[k], kappa, packed_mtrx_offset,
                                             p_mtrx_packed, double_complex(-1, 0));
-
-        #pragma omp parallel for schedule(static)
-        for (int iloc = 0; iloc < (int)kp__->spl_fv_states().local_size(); iloc++)
+        
+        if (parameters_.processing_unit() == CPU)
         {
-            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+            #pragma omp parallel for schedule(static)
+            for (int iloc = 0; iloc < (int)kp__->spl_fv_states().local_size(); iloc++)
             {
-                phi[k](igk_row, iloc) = (phi[k](igk_row, iloc) - c * phi[k - 1](igk_row, iloc)) * 2.0 / r -
-                                        phi[k - 2](igk_row, iloc);
+                for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
+                {
+                    phi[k](igk_row, iloc) = (phi[k](igk_row, iloc) - c * phi[k - 1](igk_row, iloc)) * 2.0 / r -
+                                            phi[k - 2](igk_row, iloc);
+                }
             }
+        }
+        if (parameters_.processing_unit() == GPU)
+        {
+            #ifdef _GPU_
+            compute_chebyshev_polinomial_gpu(kp__->num_gkvec_row(), (int)kp__->spl_fv_states().local_size(), c, r,
+                                             phi[k - 2].at<GPU>(), phi[k - 1].at<GPU>(), phi[k].at<GPU>());
+            phi[k].panel().copy_to_host();
+            #endif
         }
     }
 
@@ -188,13 +270,21 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
     apply_h_o_parallel(kp__, veff_it_coarse__, pw_ekin, 0, num_bands, phi[order - 1], hphi, phi[0],
                        kappa, packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed);
 
+    if (parameters_.processing_unit() == GPU)
+    {
+        #ifdef _GPU_
+        hphi.panel().copy_to_host();
+        phi[0].panel().copy_to_host();
+        #endif
+    }
+
     dmatrix<double_complex> hmlt(num_bands, num_bands, kp__->blacs_grid());
     dmatrix<double_complex> ovlp(num_bands, num_bands, kp__->blacs_grid());
 
     dmatrix<double_complex> evec(num_bands, num_bands, kp__->blacs_grid());
     std::vector<double> eval(num_bands);
 
-    Timer t1("sirius::Band::diag_fv_pseudo_potential_parallel_chebyshev|set_h_o", kp__->comm());
+    Timer t1("sirius::Band::diag_fv_pseudo_potential|set_h_o", kp__->comm());
     linalg<CPU>::gemm(2, 0, num_bands, num_bands, kp__->num_gkvec(), complex_one, phi[order - 1], hphi, complex_zero, hmlt);
     linalg<CPU>::gemm(2, 0, num_bands, num_bands, kp__->num_gkvec(), complex_one, phi[order - 1], phi[0], complex_zero, ovlp);
     double tval = t1.stop();
@@ -206,7 +296,7 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
                tval, 2 * 8e-9 * num_bands * num_bands * kp__->num_gkvec() / tval / kp__->num_ranks());
     }
     
-    Timer t2("sirius::Band::diag_fv_pseudo_potential_parallel_chebyshev|gen_evp");
+    Timer t2("sirius::Band::diag_fv_pseudo_potential|gen_evp");
     gen_evp_solver()->solve(num_bands, hmlt.num_rows_local(), hmlt.num_cols_local(), num_bands, 
                             hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
                             &eval[0], evec.ptr(), evec.ld());
@@ -221,18 +311,10 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
 
     //generate_fv_states_pp(kp__, num_bands, evec, phi[order - 1], psi, kappa);
     //
-    Timer t3("sirius::Band::diag_fv_pseudo_potential_parallel_chebyshev|psi");
+    Timer t3("sirius::Band::diag_fv_pseudo_potential|psi");
     /* recompute wave-functions: \Psi_{i} = \phi_{mu} * Z_{mu, i} */
     linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, num_bands, complex_one, phi[order - 1], evec, complex_zero, psi); 
     t3.stop();
-    //
-    //#ifdef _GPU_
-    //if (parameters_.processing_unit() == GPU)
-    //{
-    //    beta_pw_t.deallocate_on_device();
-    //    psi.deallocate_on_device();
-    //}
-    //#endif
 
     kp__->set_fv_eigen_values(&eval[0]);
     log_function_exit(__func__);
@@ -243,7 +325,6 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
                                                       std::vector<double>& veff_it_coarse__)
 {
     log_function_enter(__func__);
-    Timer t("sirius::Band::diag_fv_uspp_gpu_parallel", kp__->comm());
     
     if (parameters_.esm_type() == norm_conserving_pseudopotential)
     {

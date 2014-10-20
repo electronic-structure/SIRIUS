@@ -637,14 +637,6 @@ void Density::add_kpoint_contribution_pp(K_point* kp__,
 }
 
 #ifdef _GPU_
-extern "C" void create_beta_pw_gpu_v2(int num_atoms,
-                                      int num_gkvec, 
-                                      int* beta_pw_desc,
-                                      double_complex const* beta_pw_type,
-                                      double* gkvec,
-                                      double* atom_pos,
-                                      double_complex* beta_pw);
-
 extern "C" void copy_beta_psi_gpu(int nbf,
                                   int nloc,
                                   double_complex const* beta_psi,
@@ -676,154 +668,41 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp__,
     wo.copy_to_device();
 
     auto uc = parameters_.unit_cell();
-
-    int num_atoms_in_block = std::min(uc->num_atoms(), 256);
-    int num_atom_blocks = uc->num_atoms() / num_atoms_in_block + std::min(1, uc->num_atoms() % num_atoms_in_block);
-
-    splindex<block> atom_blocks(uc->num_atoms(), num_atom_blocks, 0);
     
     /* allocate space for <beta|psi> array */
-    int nbf_max = uc->max_mt_basis_size() * num_atoms_in_block;
+    int nbf_max = uc->max_mt_basis_size() * uc->beta_chunk(0).num_atoms_;
     mdarray<double_complex, 1> beta_psi_tmp(nbf_max * nloc);
     beta_psi_tmp.allocate_on_device();
 
-    /* copy G+k vectors to device */
-    matrix<double> gkvec_row(3, kp__->num_gkvec_row());
-    for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-    {
-        for (int x = 0; x < 3; x++) gkvec_row(x, igk_row) = kp__->gklo_basis_descriptor_row(igk_row).gkvec[x];
-    }
-    gkvec_row.allocate_on_device();
-    gkvec_row.copy_to_device();
-
-    mdarray<int, 2> beta_pw_desc(3, atom_blocks.local_size(0));
-    beta_pw_desc.allocate_on_device();
-
-    mdarray<double, 2> atom_pos(3, atom_blocks.local_size(0));
-    atom_pos.allocate_on_device();
-
-    matrix<double_complex> beta_pw(nullptr, kp__->num_gkvec_row(), nbf_max);
-    beta_pw.allocate_on_device();
-
-    auto& beta_pw_t = kp__->beta_gk_t();
-    //beta_pw_t.allocate_on_device();
-    //beta_pw_t.copy_to_device();
+    matrix<double_complex> beta_gk(nullptr, kp__->num_gkvec_row(), nbf_max);
+    beta_gk.allocate_on_device();
 
     matrix<double_complex> psi_occ(&psi(0, 0), kp__->num_gkvec_row(), nloc);
     psi_occ.allocate_on_device();
     psi_occ.copy_to_device();
 
-    #ifdef _GPU_DIRECT_
-    // allrecue with gpu-direct is broken at the moment
-    bool gpu_direct = false;
-    #else
-    bool gpu_direct = false;
-    #endif
-
     mdarray<double_complex, 3> tmp(nullptr, uc->max_mt_basis_size(), nloc, Platform::max_num_threads());
     tmp.allocate_on_device();
 
-    for (int iab = 0; iab < num_atom_blocks; iab++)
+    for (int ib = 0; ib < uc->num_beta_chunks(); ib++)
     {
-        int nbf_in_block = 0;
-
-        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-        {
-            int ia = (int)atom_blocks.global_index(i, iab);
-            auto type = uc->atom(ia)->type();
-            /* atom fractional coordinates */
-            for (int x = 0; x < 3; x++) atom_pos(x, i) = uc->atom(ia)->position(x);
-            /* number of beta functions for atom */
-            beta_pw_desc(0, i) = type->mt_basis_size();
-            /* offset in beta_pw */
-            beta_pw_desc(1, i) = nbf_in_block;
-            /* offset in beta_pw_t */
-            beta_pw_desc(2, i) = type->offset_lo();
-
-            nbf_in_block += uc->atom(ia)->mt_basis_size();
-        }
-
-        beta_pw_desc.copy_to_device();
-        atom_pos.copy_to_device();
-
         /* wrapper for <beta|psi> with required dimensions */
-        matrix<double_complex> beta_psi(beta_psi_tmp.at<CPU>(), beta_psi_tmp.at<GPU>(), nbf_in_block, nloc);
+        matrix<double_complex> beta_psi(beta_psi_tmp.at<CPU>(), beta_psi_tmp.at<GPU>(), uc->beta_chunk(ib).num_beta_, nloc);
 
-        //== /* create beta projectors */
-        //== #pragma omp parallel
-        //== for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
-        //== {
-        //==     int ia = (int)atom_blocks.global_index(i, iab);
-        //==     auto type = parameters_.unit_cell()->atom(ia)->type();
-        //==     #pragma omp for
-        //==     for (int xi = 0; xi < type->mt_basis_size(); xi++)
-        //==     {
-        //==         for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++)
-        //==         {
-        //==             beta_pw(igk_row, beta_pw_desc(1, i) + xi) = beta_pw_t(igk_row, beta_pw_desc(2, i) + xi) * 
-        //==                                                         conj(kp__->gkvec_phase_factor(igk_row, ia));
-        //==         }
-        //==     }
-        //== }
-        //== /* compute <beta|phi> */
-        //== blas<CPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-        //==                 beta_pw.at<CPU>(), beta_pw.ld(), 
-        //==                 psi_occ.at<CPU>(), psi_occ.ld(), 
-        //==                 beta_psi.at<CPU>(), beta_psi.ld());
-        //== kp__->comm_row().allreduce(beta_psi.at<CPU>(), (int)beta_psi.size());
-
-        /* create beta projectors directly on GPU */
-        create_beta_pw_gpu_v2((int)atom_blocks.local_size(iab),
-                              kp__->num_gkvec_row(),
-                              beta_pw_desc.at<GPU>(),
-                              beta_pw_t.at<GPU>(),
-                              gkvec_row.at<GPU>(),
-                              atom_pos.at<GPU>(),
-                              beta_pw.at<GPU>());
-
-        /* compute <beta|psi> */
-        linalg<GPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
-                          beta_pw.at<GPU>(), beta_pw.ld(), 
-                          psi_occ.at<GPU>(), psi_occ.ld(), 
-                          beta_psi.at<GPU>(), beta_psi.ld());
-        
-        if (gpu_direct)
-        {
-            kp__->comm_row().allreduce(beta_psi.at<GPU>(), (int)beta_psi.size());
-        }
-        else
-        {
-            beta_psi.copy_to_host();
-            kp__->comm_row().allreduce(beta_psi.at<CPU>(), (int)beta_psi.size());
-            beta_psi.copy_to_device();
-        }
+        kp__->generate_beta_gk(uc->beta_chunk(ib).num_atoms_, uc->beta_chunk(ib).atom_pos_, uc->beta_chunk(ib).desc_, beta_gk);
+        kp__->generate_beta_phi(uc->beta_chunk(ib).num_beta_, psi_occ, nloc, 0, beta_gk, beta_psi);
 
         double_complex alpha(1, 0);
 
         #pragma omp parallel for
-        for (int i = 0; i < (int)atom_blocks.local_size(iab); i++)
+        for (int i = 0; i < uc->beta_chunk(ib).num_atoms_; i++)
         {
-            int ia = (int)atom_blocks.global_index(i, iab);
-            int ofs = beta_pw_desc(1, i);
+            /* number of beta functions for a given atom */
+            int nbf = uc->beta_chunk(ib).desc_(0, i);
+            int ofs = uc->beta_chunk(ib).desc_(1, i);
+            int ia = uc->beta_chunk(ib).desc_(3, i);
             int thread_id = Platform::thread_id();
             
-            /* number of beta functions for a given atom */
-            int nbf = beta_pw_desc(0, i);
-
-            //for (int j = 0; j < nloc; j++)
-            //{
-            //    for (int xi = 0; xi < nbf; xi++)
-            //    {
-            //        tmp(xi, j, 0) = conj(beta_psi(ofs + xi, j)) * wo(j);
-            //    }
-            //}
-            //
-            //blas<CPU>::gemm(0, 1, nbf, nbf, nloc, alpha, &beta_psi(ofs, 0), beta_psi.ld(),
-            //                &tmp(0, 0, 0), tmp.ld(), alpha, &pp_complex_density_matrix__(0, 0, 0, ia), 
-            //                pp_complex_density_matrix__.ld());
-            //
-            //std::cout << "pp_complex_density_matrix__(0, 0, 0, ia) = " << pp_complex_density_matrix__(0, 0, 0, ia) << std::endl;
-
             copy_beta_psi_gpu(nbf,
                               nloc,
                               beta_psi.at<GPU>(ofs, 0),
@@ -841,7 +720,6 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp__,
     }
 
     tmp.deallocate_on_device();
-    //beta_pw_t.deallocate_on_device();
     psi_occ.deallocate_on_device();
 }
 #endif

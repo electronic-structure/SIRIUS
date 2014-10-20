@@ -201,6 +201,9 @@ void Band::apply_h_local_slice(K_point* kp__,
 }
 
 #ifdef _SCALAPACK_
+/** \param [in] phi Input wave-functions [storage: CPU || GPU].
+ *  \param [out] op_phi Result of application of operator to the wave-functions [storage: CPU || GPU] 
+ */
 void Band::add_non_local_contribution_parallel(K_point* kp__,
                                                int N__,
                                                int n__,
@@ -283,18 +286,18 @@ void Band::add_non_local_contribution_parallel(K_point* kp__,
     if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
     #endif
 
-    #ifdef _GPU_
-    if (parameters_.processing_unit() == GPU)
-    {
-        cuda_copy_to_host(phi__.at<CPU>(), phi__.at<GPU>(), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
-    }
-    #endif
+    //#ifdef _GPU_
+    //if (parameters_.processing_unit() == GPU)
+    //{
+    //    cuda_copy_to_host(phi__.at<CPU>(), phi__.at<GPU>(), kp__->num_gkvec_row() * nloc * sizeof(double_complex));
+    //}
+    //#endif
 
     log_function_exit(__func__);
 }
 
-/** On input phi is expected to be in the host memory. \n
- *  On output hphi is stored in the host memory.
+/** \param [in] phi Input wave-function [storage: CPU].
+ *  \param [out] hphi Wave-function multiplied by local Hamiltonian [storage: CPU] 
  */
 void Band::apply_h_local_parallel(K_point* kp__,
                                   std::vector<double> const& effective_potential__,
@@ -324,6 +327,9 @@ void Band::apply_h_local_parallel(K_point* kp__,
     log_function_exit(__func__);
 }
 
+/** \param [in] phi Input wave-function [storage: CPU && GPU].
+ *  \param [out] hphi Wave-function multiplied by local Hamiltonian [storage: CPU || GPU] 
+ */
 void Band::apply_h_parallel(K_point* kp__,
                             std::vector<double> const& effective_potential__,
                             std::vector<double> const& pw_ekin__,
@@ -350,6 +356,13 @@ void Band::apply_h_parallel(K_point* kp__,
 
     /* apply local part of Hamiltonian */
     apply_h_local_parallel(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__);
+
+    if (parameters_.processing_unit() == GPU)
+    {
+        #ifdef _GPU_
+        hphi__.copy_cols_to_device(N__, N__ + n__);
+        #endif
+    }
 
     add_non_local_contribution_parallel(kp__, N__, n__, phi__, hphi__, beta_gk__, packed_mtrx_offset__,
                                         d_mtrx_packed__, double_complex(1, 0));

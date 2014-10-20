@@ -17,15 +17,15 @@ T check_sum(matrix<T> const& mtrx, int irow0, int icol0, int nrow, int ncol)
     return sum;
 }
 
-#ifdef _GPU_
-extern "C" void create_beta_pw_gpu_v2(int num_atoms,
-                                      int num_gkvec, 
-                                      int* beta_pw_desc,
-                                      double_complex const* beta_gk_type,
-                                      double* gkvec,
-                                      double* atom_pos,
-                                      double_complex* beta_pw);
-#endif
+//#ifdef _GPU_
+//extern "C" void create_beta_pw_gpu_v2(int num_atoms,
+//                                      int num_gkvec, 
+//                                      int* beta_pw_desc,
+//                                      double_complex const* beta_gk_type,
+//                                      double* gkvec,
+//                                      double* atom_pos,
+//                                      double_complex* beta_pw);
+//#endif
 
 //== void Band::apply_h_o_uspp_gpu_parallel_v2(K_point* kp__,
 //==                                           std::vector<double> const& effective_potential__,
@@ -364,10 +364,6 @@ void Band::set_fv_h_o_uspp_gpu_parallel_v3(int N__,
     }
 
     /* apply Hamiltonian and overlap operators to the new basis functions */
-    //apply_h_o_uspp_gpu_parallel_v2(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__,
-    //                               num_atoms_in_block__, kappa__, beta_gk_t__, gkvec_row__, packed_mtrx_offset__,
-    //                               d_mtrx_packed__, q_mtrx_packed__);
-    
     if (with_overlap)
     {
         apply_h_o_parallel(kp__, veff_it_coarse__, pw_ekin__, N__, n__, phi__, hphi__, ophi__,
@@ -1194,14 +1190,15 @@ void Band::apply_h_ncpp_parallel(K_point* kp__,
         #ifdef _GPU_
         if (parameters_.processing_unit() == GPU)
         {
-            /* create beta projectors directly on GPU */
-            create_beta_pw_gpu_v2((int)atom_blocks.local_size(iab),
-                                  kp__->num_gkvec_row(),
-                                  beta_pw_desc.at<GPU>(),
-                                  beta_gk_t__.at<GPU>(),
-                                  gkvec_row__.at<GPU>(),
-                                  atom_pos.at<GPU>(),
-                                  kappa__.at<GPU>());
+            ///* create beta projectors directly on GPU */
+            //create_beta_pw_gpu_v2((int)atom_blocks.local_size(iab),
+            //                      kp__->num_gkvec_row(),
+            //                      beta_pw_desc.at<GPU>(),
+            //                      beta_gk_t__.at<GPU>(),
+            //                      gkvec_row__.at<GPU>(),
+            //                      atom_pos.at<GPU>(),
+            //                      kappa__.at<GPU>());
+            STOP(); // and fix
 
             /* compute <beta|phi> */
             linalg<GPU>::gemm(2, 0, nbf_in_block, nloc, kp__->num_gkvec_row(), 
