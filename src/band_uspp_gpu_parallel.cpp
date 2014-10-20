@@ -2463,12 +2463,12 @@ void Band::diag_fv_ncpp_parallel(K_point* kp__,
         printf("\n");
     }
 
-    generate_fv_states_pp(kp__, num_bands, evec, phi[order - 1], psi, kappa);
+    //generate_fv_states_pp(kp__, num_bands, evec, phi[order - 1], psi, kappa);
     
-    //Timer t3("sirius::Band::diag_fv_ncpp_parallel|psi");
-    ///* recompute wave-functions: \Psi_{i} = \phi_{mu} * Z_{mu, i} */
-    //blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, num_bands, complex_one, phi[order - 1], evec, complex_zero, psi); 
-    //t3.stop();
+    Timer t3("sirius::Band::diag_fv_ncpp_parallel|psi");
+    /* recompute wave-functions: \Psi_{i} = \phi_{mu} * Z_{mu, i} */
+    blas<cpu>::gemm(0, 0, kp__->num_gkvec(), num_bands, num_bands, complex_one, phi[order - 1], evec, complex_zero, psi); 
+    t3.stop();
     
     #ifdef _GPU_
     if (parameters_.processing_unit() == gpu)

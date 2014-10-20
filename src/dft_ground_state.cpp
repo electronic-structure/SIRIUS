@@ -23,6 +23,9 @@
  */
 
 #include "dft_ground_state.h"
+#ifdef _PM_COUNTERS_
+#include "power.hpp"
+#endif
 
 namespace sirius {
 
@@ -137,6 +140,11 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     double eold = 0.0;
     double rms = 1.0;
 
+    #ifdef _PM_COUNTERS_
+    double device_energy = -power::device_energy();
+    double node_energy = -power::energy();
+    #endif
+
     for (int iter = 0; iter < num_dft_iter; iter++)
     {
         Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
@@ -233,6 +241,22 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
 
         eold = etot;
     }
+
+    #ifdef _PM_COUNTERS_
+    device_energy += power::device_energy();
+    node_energy += power::energy();
+
+    Platform::comm_world().allreduce(&device_energy, 1);
+    Platform::comm_world().allreduce(&node_energy, 1);
+
+    if (Platform::comm_world().rank() == 0)
+    {
+        printf("\n");
+        printf("Total energy consumption (adjust manually in case of multiple ranks per node):\n");
+        printf("device_energy : %18.6f Joules (%18.6f kWh) \n", device_energy, device_energy / 3600000.0);
+        printf("  node_energy : %18.6f Joules (%18.6f kWh) \n", node_energy,   node_energy / 3600000.0);
+    }
+    #endif
     
     parameters_.create_storage_file();
     potential_->save();
