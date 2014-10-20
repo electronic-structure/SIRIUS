@@ -243,7 +243,7 @@ void K_point::update()
             atom_type->uspp().q_mtrx >> qinv;
             linalg<CPU>::geinv(nbf, qinv);
             
-            /* compute P^{H}*P */
+            /* compute P^{+}*P */
             linalg<CPU>::gemm(2, 0, nbf, nbf, num_gkvec_row(), &beta_gk_t_(0, ofs), beta_gk_t_.ld(), 
                               &beta_gk_t_(0, ofs), beta_gk_t_.ld(), &p_mtrx_(0, 0, iat), p_mtrx_.ld());
             comm_row().allreduce(&p_mtrx_(0, 0, iat), uc->max_mt_basis_size() * uc->max_mt_basis_size());

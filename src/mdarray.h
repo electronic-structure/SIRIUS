@@ -34,11 +34,63 @@
 #include <atomic>
 #include <vector>
 #include <cstring>
+#include <fstream>
 #include <initializer_list>
 #ifdef _GPU_
 #include "gpu_interface.h"
 #endif
 #include "typedefs.h"
+
+namespace proc_status {
+        static void get_proc_status(size_t* VmHWM, size_t* VmRSS)
+        {
+            *VmHWM = 0;
+            *VmRSS = 0;
+
+            std::stringstream fname;
+            fname << "/proc/self/status";
+            
+            std::ifstream ifs(fname.str().c_str());
+            if (ifs.is_open())
+            {
+                size_t tmp;
+                std::string str; 
+                std::string units;
+                while (std::getline(ifs, str))
+                {
+                    auto p = str.find("VmHWM:");
+                    if (p != std::string::npos)
+                    {
+                        std::stringstream s(str.substr(p + 7));
+                        s >> tmp;
+                        s >> units;
+        
+                        if (units != "kB")
+                        {
+                            printf("Platform::get_proc_status(): wrong units");
+                            abort();
+                        }
+                        *VmHWM = tmp * 1024;
+                    }
+        
+                    p = str.find("VmRSS:");
+                    if (p != std::string::npos)
+                    {
+                        std::stringstream s(str.substr(p + 7));
+                        s >> tmp;
+                        s >> units;
+        
+                        if (units != "kB")
+                        {
+                            printf("Platform::get_proc_status(): wrong units");
+                            abort();
+                        }
+                        *VmRSS = tmp * 1024;
+                    }
+                } 
+            }
+        }
+};
 
 #ifdef NDEBUG
   #define mdarray_assert(condition__)
@@ -557,7 +609,24 @@ class mdarray_base
 
             if (mode__ == 0)
             {
-                unique_ptr_ = std::unique_ptr< T[], mdarray_mem_mgr<T> >(new T[sz], mdarray_mem_mgr<T>(sz, 0));
+                try 
+                {
+                    unique_ptr_ = std::unique_ptr< T[], mdarray_mem_mgr<T> >(new T[sz], mdarray_mem_mgr<T>(sz, 0));
+                }
+                catch (...)
+                {
+                    std::cout << "Error allocating memory for mdarray with dimensions:";
+                    for (int i = 0; i < N; i++) std::cout << " " << dims_[i].size();
+                    std::cout << std::endl;
+                    std::cout << "Total array size: " << (sz >> 20) << " MB" << std::endl;
+                    std::cout << "Total allocated memory: " <<  (mdarray_mem_count::allocated() >> 20) << " MB" << std::endl;
+                    
+                    size_t VmHWM, VmRSS;
+                    proc_status::get_proc_status(&VmHWM, &VmRSS);
+                    std::cout << "VmHWM: " << (VmHWM >> 20) << " MB" << " VmRSS: " << (VmRSS >> 20) << " MB" << std::endl;
+                    raise(SIGTERM);
+                    exit(-1);
+                }
                 ptr_ = unique_ptr_.get();
             }
 

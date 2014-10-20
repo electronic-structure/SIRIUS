@@ -101,7 +101,7 @@ class Platform
             *VmRSS = 0;
 
             std::stringstream fname;
-            fname << "/proc/" << getpid() << "/status";
+            fname << "/proc/self/status";
             
             std::ifstream ifs(fname.str().c_str());
             if (ifs.is_open())
