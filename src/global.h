@@ -114,23 +114,22 @@ class Global
 
         Unit_cell* unit_cell_;
         
+        /// Initiail input parameters from the input file and command line.
+        initial_input_parameters iip_;
+
         /// Base communicator.
         Communicator comm_;
-        
-        /// Data set obtained from the input file.
-        input_file_data_set ifds_;
         
         /// Parse input data-structures.
         void parse_input();
 
     public:
 
-        input_file_data_set::iterative_solver_input_section iterative_solver_input_section_;
-        input_file_data_set::xc_functionals_input_section xc_functionals_input_section_;
-        input_file_data_set::mixer_input_section mixer_input_section_;
+        initial_input_parameters::iterative_solver_input_section iterative_solver_input_section_;
+        initial_input_parameters::xc_functionals_input_section xc_functionals_input_section_;
+        initial_input_parameters::mixer_input_section mixer_input_section_;
     
-        Global(Communicator const& comm__,
-               std::vector<int> const mpi_grid_dims__ = std::vector<int>())
+        Global(initial_input_parameters iip__, Communicator const& comm__)
             : initialized_(false), 
               lmax_apw_(lmax_apw_default), 
               lmax_pw_(-1), 
@@ -144,7 +143,6 @@ class Global
               num_mag_dims_(0), 
               so_correction_(false), 
               uj_correction_(false),
-              mpi_grid_dims_(mpi_grid_dims__),
               std_evp_solver_type_(ev_lapack),
               gen_evp_solver_type_(ev_lapack),
               processing_unit_(CPU),
@@ -152,16 +150,15 @@ class Global
               esm_type_(full_potential_lapwlo),
               step_function_(nullptr),
               reciprocal_lattice_(nullptr),
+              iip_(iip__),
               comm_(comm__)
         {
             /* get the starting time */
             gettimeofday(&start_time_, NULL);
 
-            /* read initial data from sirius.json */
-            ifds_ = input_file_data_set("sirius.json");
-            iterative_solver_input_section_ = ifds_.iterative_solver_input_section_;
-            xc_functionals_input_section_ = ifds_.xc_functionals_input_section_;
-            mixer_input_section_ = ifds_.mixer_input_section_;
+            iterative_solver_input_section_ = iip_.iterative_solver_input_section_;
+            xc_functionals_input_section_ = iip_.xc_functionals_input_section_;
+            mixer_input_section_ = iip_.mixer_input_section_;
             parse_input();
 
             /* create new empty unit cell */

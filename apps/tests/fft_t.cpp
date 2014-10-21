@@ -7,7 +7,7 @@ void test1()
     double a1[] = {24, 0, 0};
     double a2[] = {0, 24, 0};
     double a3[] = {0, 0, 24};
-    Global global(Platform::comm_world());
+    Global global(initial_input_parameters(), Platform::comm_world());
     
     global.unit_cell()->set_lattice_vectors(a1, a2, a3);
     global.set_pw_cutoff(17.0);
@@ -42,7 +42,7 @@ void test2()
     double a1[] = {20, 0, 0};
     double a2[] = {0, 22, 0};
     double a3[] = {0, 0, 24};
-    Global global(Platform::comm_world());
+    Global global(initial_input_parameters(), Platform::comm_world());
     
     global.unit_cell()->set_lattice_vectors(a1, a2, a3);
     global.set_pw_cutoff(12.0);
@@ -51,7 +51,7 @@ void test2()
     auto fft = global.reciprocal_lattice()->fft();
 
     int nfft_max = 4;
-    FFT3D<gpu> fft_gpu(fft->grid_size(), nfft_max);
+    FFT3D<GPU> fft_gpu(fft->grid_size(), nfft_max);
 
     /* allocate work area array */
     mdarray<char, 1> work_area(nullptr, fft_gpu.work_area_size());
@@ -83,7 +83,7 @@ void test2()
                     buff(fft->index(i0, i1, i2), k) = double_complex(1.0, 0.0);
                 }
                 buff.copy_to_device();
-                fft_gpu.transform(1, buff.at<gpu>());
+                fft_gpu.transform(1, buff.at<GPU>());
                 buff.copy_to_host();
                 
                 double diff = 0.0;

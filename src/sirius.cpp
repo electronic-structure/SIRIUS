@@ -65,7 +65,8 @@ void FORTRAN(sirius_platform_initialize)(int32_t* call_mpi_init_)
 {
     bool call_mpi_init = (*call_mpi_init_ != 0) ? true : false; 
     Platform::initialize(call_mpi_init);
-    global_parameters = new sirius::Global(MPI_COMM_WORLD);
+    sirius::initial_input_parameters iip("sirius.json");
+    global_parameters = new sirius::Global(iip, MPI_COMM_WORLD);
 }
 
 /// Set lattice vectors.

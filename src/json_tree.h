@@ -27,6 +27,7 @@
 
 #include <sys/stat.h>
 #include <libjson.h>
+#include "utils.h"
 
 /// Auxiliary class for parsing JSONNode of the libjson
 class JSON_value_parser 

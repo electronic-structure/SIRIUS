@@ -28,11 +28,11 @@ namespace sirius {
 
 void Global::parse_input()
 {
-    mpi_grid_dims_ = ifds_.common_input_section_.mpi_grid_dims_;
-    num_fv_states_ = ifds_.common_input_section_.num_fv_states_;
-    smearing_width_ = ifds_.common_input_section_.smearing_width_;
+    mpi_grid_dims_ = iip_.common_input_section_.mpi_grid_dims_;
+    num_fv_states_ = iip_.common_input_section_.num_fv_states_;
+    smearing_width_ = iip_.common_input_section_.smearing_width_;
     
-    std::string evsn[] = {ifds_.common_input_section_.std_evp_solver_type_, ifds_.common_input_section_.gen_evp_solver_type_};
+    std::string evsn[] = {iip_.common_input_section_.std_evp_solver_type_, iip_.common_input_section_.gen_evp_solver_type_};
     ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
 
     for (int i = 0; i < 2; i++)
@@ -76,7 +76,7 @@ void Global::parse_input()
         }
     }
 
-    std::string pu = ifds_.common_input_section_.processing_unit_;
+    std::string pu = iip_.common_input_section_.processing_unit_;
     if (pu == "cpu" || pu == "CPU")
     {
         processing_unit_ = CPU;
@@ -90,7 +90,7 @@ void Global::parse_input()
         TERMINATE("wrong processing unit");
     }
 
-    std::string esm = ifds_.common_input_section_.electronic_structure_method_;
+    std::string esm = iip_.common_input_section_.electronic_structure_method_;
     if (esm == "full_potential_lapwlo")
     {
         esm_type_ = full_potential_lapwlo;
@@ -112,13 +112,13 @@ void Global::parse_input()
         TERMINATE("wrong type of electronic structure method");
     }
 
-    int num_fft_threads = ifds_.common_input_section_.num_fft_threads_;
+    int num_fft_threads = iip_.common_input_section_.num_fft_threads_;
     Platform::set_num_fft_threads(std::min(num_fft_threads, Platform::max_num_threads()));
 }
 
 void Global::read_unit_cell_input()
 {
-    auto unit_cell_input_section = ifds_.unit_cell_input_section_;
+    auto unit_cell_input_section = iip_.unit_cell_input_section_;
 
     for (int iat = 0; iat < (int)unit_cell_input_section.labels_.size(); iat++)
     {
@@ -390,9 +390,9 @@ void Global::print_info()
     
     printf("\n");
     printf("XC functionals : \n");
-    for (int i = 0; i < (int)ifds_.xc_functionals_input_section_.xc_functional_names_.size(); i++)
+    for (int i = 0; i < (int)iip_.xc_functionals_input_section_.xc_functional_names_.size(); i++)
     {
-        std::string xc_label = ifds_.xc_functionals_input_section_.xc_functional_names_[i];
+        std::string xc_label = iip_.xc_functionals_input_section_.xc_functional_names_[i];
         XC_functional xc(xc_label, num_spins());
         printf("\n");
         printf("%s\n", xc_label.c_str());
@@ -414,7 +414,7 @@ void Global::write_json_output()
         jw.single("num_ranks", comm_.size());
         jw.single("max_num_threads", Platform::max_num_threads());
         jw.single("num_fft_threads", Platform::num_fft_threads());
-        jw.single("cyclic_block_size", ifds_.common_input_section_.cyclic_block_size_);
+        jw.single("cyclic_block_size", iip_.common_input_section_.cyclic_block_size_);
         jw.single("mpi_grid", mpi_grid_dims_);
         std::vector<int> fftgrid(3);
         for (int i = 0; i < 3; i++) fftgrid[i] = reciprocal_lattice_->fft()->size(i);

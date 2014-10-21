@@ -1,16 +1,19 @@
+#ifndef __INPUT_H__
+#define __INPUT_H__
+
 #include "json_tree.h"
 
 namespace sirius {
 
-class input_file_data_set
+class initial_input_parameters
 {
     public:
 
-        input_file_data_set()
+        initial_input_parameters()
         {
         }
 
-        input_file_data_set(std::string const& fname__)
+        initial_input_parameters(std::string const& fname__)
         {
             JSON_tree parser(fname__);
 
@@ -253,3 +256,6 @@ class input_file_data_set
 };
 
 };
+
+#endif // __INPUT_H__
+

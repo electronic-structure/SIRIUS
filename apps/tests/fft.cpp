@@ -7,7 +7,7 @@ void test1()
 {
     printf("\ntest1: backward and forward transform of a random array\n");
     
-    Global global(Platform::comm_world());
+    Global global(initial_input_parameters(), Platform::comm_world());
 
     double a1[] = {10, 10, 0};
     double a2[] = {0, 8, 3};
@@ -62,7 +62,7 @@ void test2()
     double a2[] = {0, 10, 20};
     double a3[] = {-9, -11, 10};
 
-    Global global(Platform::comm_world());
+    Global global(initial_input_parameters(), Platform::comm_world());
 
     global.unit_cell()->set_lattice_vectors(a1, a2, a3);
     global.set_pw_cutoff(10.0);
@@ -134,7 +134,7 @@ void test3()
     double a1[] = {60, 0, 0};
     double a2[] = {0, 60, 0};
     double a3[] = {0, 0, 60};
-    Global global(Platform::comm_world());
+    Global global(initial_input_parameters(), Platform::comm_world());
     
     global.unit_cell()->set_lattice_vectors(a1, a2, a3);
     global.set_pw_cutoff(9.0);

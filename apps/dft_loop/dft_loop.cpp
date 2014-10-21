@@ -77,7 +77,6 @@ void write_json_output(Global* p, DFT_ground_state* gs)
         
         jw.single("timers", ts);
     }
-
 }
 
 void dft_loop(cmd_args args)
@@ -87,9 +86,10 @@ void dft_loop(cmd_args args)
     if (!(task_name == "gs_new" || task_name == "gs_restart" || task_name == "gs_relax" || task_name == "test_init"))
         error_global(__FILE__, __LINE__, "wrong task name");
     
+    initial_input_parameters iip("sirius.json");
     std::vector<int> mpi_grid_dims;
-    mpi_grid_dims = args.value< std::vector<int> >("mpi_grid", mpi_grid_dims);
-    Global parameters(MPI_COMM_WORLD, mpi_grid_dims);
+    iip.common_input_section_.mpi_grid_dims_ = args.value< std::vector<int> >("mpi_grid", mpi_grid_dims);
+    Global parameters(iip, MPI_COMM_WORLD);
 
     JSON_tree parser("sirius.json");
 
