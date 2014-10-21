@@ -563,11 +563,11 @@ class mdarray_base
                 }
                 catch (...)
                 {
-                    std::cout << "Error allocating memory for mdarray with dimensions:";
-                    for (int i = 0; i < N; i++) std::cout << " " << dims_[i].size();
-                    std::cout << std::endl;
-                    std::cout << "Total array size: " << (sz >> 20) << " MB" << std::endl;
-                    std::cout << "Total allocated memory: " <<  (mdarray_mem_count::allocated() >> 20) << " MB" << std::endl;
+                    printf("Error allocating memory for mdarray with dimensions:");
+                    for (int i = 0; i < N; i++) printf(" %i", (int)dims_[i].size());
+                    printf("\n");
+                    printf("Total array size: %i MB\n", int(sz >> 20));
+                    printf("Total allocated memory: %i MB\n", int(mdarray_mem_count::allocated() >> 20));
                     raise(SIGTERM);
                     exit(-1);
                 }
