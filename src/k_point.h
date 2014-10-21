@@ -835,6 +835,7 @@ class K_point
                     comm_row().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
                     beta_phi__.copy_to_device();
                 }
+                cuda_device_synchronize();
                 #else
                 TERMINATE_NO_GPU
                 #endif
@@ -910,6 +911,8 @@ class K_point
                 linalg<GPU>::gemm(0, 0, num_gkvec_row(), nphi__, num_beta__, &alpha,
                                   beta_gk__.at<GPU>(), beta_gk__.ld(), work__.at<GPU>(), work__.ld(), &beta, 
                                   phi__.at<GPU>(0, offs__), phi__.ld());
+                
+                cuda_device_synchronize();
                 #else
                 TERMINATE_NO_GPU
                 #endif
