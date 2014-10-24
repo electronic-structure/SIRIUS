@@ -9,7 +9,7 @@ extern "C" void compute_inner_product_gpu(int num_gkvec_row,
                                           cuDoubleComplex const* f2,
                                           double* prod);
 
-extern "C" void compute_chebyshev_polinomial_gpu(int num_gkvec,
+extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
                                                  int n,
                                                  double c,
                                                  double r,
@@ -213,13 +213,13 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
     if (parameters_.processing_unit() == GPU)
     {
         #ifdef _GPU_
-        compute_chebyshev_polinomial_gpu(kp__->num_gkvec_row(), (int)kp__->spl_fv_states().local_size(), c, r,
+        compute_chebyshev_polynomial_gpu(kp__->num_gkvec_row(), (int)kp__->spl_fv_states().local_size(), c, r,
                                          phi[0].at<GPU>(), phi[1].at<GPU>(), NULL);
         phi[1].panel().copy_to_host();
         #endif
     }
 
-    /* compute higher polinomial orders */
+    /* compute higher polynomial orders */
     for (int k = 2; k < order; k++)
     {
         apply_h_parallel(kp__, veff_it_coarse__, pw_ekin, 0, num_bands, phi[k - 1], hphi, kappa, packed_mtrx_offset,
@@ -259,7 +259,7 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
         if (parameters_.processing_unit() == GPU)
         {
             #ifdef _GPU_
-            compute_chebyshev_polinomial_gpu(kp__->num_gkvec_row(), (int)kp__->spl_fv_states().local_size(), c, r,
+            compute_chebyshev_polynomial_gpu(kp__->num_gkvec_row(), (int)kp__->spl_fv_states().local_size(), c, r,
                                              phi[k - 2].at<GPU>(), phi[k - 1].at<GPU>(), phi[k].at<GPU>());
             phi[k].panel().copy_to_host();
             #endif

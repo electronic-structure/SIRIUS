@@ -107,6 +107,13 @@ void FORTRAN(sirius_set_pw_cutoff)(double* pw_cutoff)
     log_function_exit(__func__);
 }
 
+void FORTRAN(sirius_set_gk_cutoff)(double* gk_cutoff)
+{
+    log_function_enter(__func__);
+    global_parameters->set_gk_cutoff(*gk_cutoff);
+    log_function_exit(__func__);
+}
+
 /// Turn on or off the automatic scaling of muffin-tin spheres.
 /** \param [in] auto_rmt .true. if muffin-tin spheres must be resized to the maximally allowed radii
 
@@ -173,9 +180,14 @@ void FORTRAN(sirius_add_atom_type)(char* label, char* fname, int32_t label_len, 
     enddo
     \endcode
  */ 
-void FORTRAN(sirius_set_atom_type_properties)(char* label, char* symbol, int32_t* zn, double* mass, 
-                                              double* mt_radius, int32_t* num_mt_points, double* radial_grid_origin, 
-                                              double* radial_grid_infinity, int32_t label_len, int32_t symbol_len)
+void FORTRAN(sirius_set_atom_type_properties)(char* label,
+                                              char* symbol,
+                                              int32_t* zn,
+                                              double* mass,
+                                              double* mt_radius,
+                                              int32_t* num_mt_points,
+                                              int32_t label_len,
+                                              int32_t symbol_len)
 {
     log_function_enter(__func__);
     sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label, label_len));
@@ -183,8 +195,6 @@ void FORTRAN(sirius_set_atom_type_properties)(char* label, char* symbol, int32_t
     type->set_zn(*zn);
     type->set_mass(*mass);
     type->set_num_mt_points(*num_mt_points);
-    //type->set_radial_grid_origin(*radial_grid_origin);
-    //type->set_radial_grid_infinity(*radial_grid_infinity);
     type->set_mt_radius(*mt_radius);
     log_function_exit(__func__);
 }
@@ -1897,6 +1907,70 @@ void FORTRAN(sirius_mix_potential)(void)
         mixer_pot->mix();
         potential->unpack(mixer_pot->output_buffer());
     }
+}
+
+void FORTRAN(sirius_set_atom_type_dion)(char* label, int32_t* num_beta, double* dion__, int32_t label_len)
+{
+    log_function_enter(__func__);
+    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label, label_len));
+    matrix<double> d_mtrx_ion(dion__, *num_beta, *num_beta);
+    type->set_d_mtrx_ion(d_mtrx_ion);
+    log_function_exit(__func__);
+}
+    
+void FORTRAN(sirius_set_atom_type_beta_rf)(char* label, int32_t* num_beta, int32_t* beta_l, int32_t* num_mesh_points,
+                                           double* beta_rf__, int32_t* ld, int32_t label_len)
+{
+    log_function_enter(__func__);
+    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label, label_len));
+
+    mdarray<double, 2> beta_rf(beta_rf__, *ld, *num_beta);
+    type->uspp().num_beta_radial_functions = *num_beta;
+    type->uspp().beta_l = std::vector<int>(*num_beta);
+    type->uspp().num_beta_radial_points = std::vector<int>(*num_beta);
+    for (int i = 0; i < *num_beta; i++)
+    {
+        type->uspp().beta_l[i] = beta_l[i];
+        type->uspp().num_beta_radial_points[i] = num_mesh_points[i];
+    }
+    type->uspp().beta_radial_functions = mdarray<double, 2>(type->num_mt_points(), *num_beta);
+    beta_rf >> type->uspp().beta_radial_functions;
+    log_function_exit(__func__);
+}
+    
+void FORTRAN(sirius_set_atom_type_q_rf)(char* label, int32_t* num_q_coefs, int32_t* lmax_q, double* q_coefs__,
+                                        double* rinner, double* q_rf__, int32_t label_len)
+{
+    log_function_enter(__func__);
+    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label, label_len));
+    
+    type->uspp().num_q_coefs = *num_q_coefs;
+    int nbeta = type->uspp().num_beta_radial_functions;
+    
+    mdarray<double, 4> q_coefs(q_coefs__, *num_q_coefs, *lmax_q + 1, nbeta, nbeta);
+    type->uspp().q_coefs = mdarray<double, 4>(*num_q_coefs, *lmax_q + 1, nbeta, nbeta);
+    q_coefs >> type->uspp().q_coefs;
+    
+    type->uspp().q_functions_inner_radii = std::vector<double>(*lmax_q + 1);
+    for (int l = 0; l <= *lmax_q; l++) type->uspp().q_functions_inner_radii[l] = rinner[l];
+    
+    mdarray<double, 2> q_rf(q_rf__, type->num_mt_points(), nbeta * (nbeta + 1) / 2);
+    type->uspp().q_radial_functions = mdarray<double, 2>(type->num_mt_points(), nbeta * (nbeta + 1) / 2);
+    for (int j = 0; j < nbeta; j++)
+    {
+        for (int i = 0; i <= j; i++)
+        {
+            /* combined index in sirius convention */
+            int idx = j * (j + 1) / 2 + i;
+
+            int nb = j;
+            int mb = (nbeta - 1) - i;
+            int ijv = mb * (mb + 1) / 2 + nb;
+            memcpy(&type->uspp().q_radial_functions(0, idx), &q_rf(0, ijv), type->num_mt_points() * sizeof(double));
+        }
+    }
+
+    log_function_exit(__func__);
 }
     
 

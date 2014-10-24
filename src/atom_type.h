@@ -702,6 +702,12 @@ class Atom_type
         {
             return esm_type_;
         }
+
+        inline void set_d_mtrx_ion(matrix<double>& d_mtrx_ion__)
+        {
+            uspp().d_mtrx_ion = matrix<double>(d_mtrx_ion__.size(0), d_mtrx_ion__.size(1));
+            d_mtrx_ion__ >> uspp().d_mtrx_ion;
+        }
 };
 
 };

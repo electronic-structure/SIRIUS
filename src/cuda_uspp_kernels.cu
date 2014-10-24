@@ -116,7 +116,7 @@ __global__ void compute_chebyshev_orderk_gpu_kernel
     }
 }
 
-extern "C" void compute_chebyshev_polinomial_gpu(int num_gkvec,
+extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
                                                  int n,
                                                  double c,
                                                  double r,

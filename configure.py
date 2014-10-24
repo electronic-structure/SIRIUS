@@ -7,7 +7,7 @@ import json
 
 packages = {
     "fftw" : ["http://www.fftw.org/fftw-3.3.4.tar.gz", 
-              ["--disable-fortran", "--disable-mpi", "--disable-openmp", "--disable-threads"]
+              ["--enable-fortran", "--disable-mpi", "--enable-openmp", "--enable-threads"]
              ],
     "gsl"  : ["ftp://ftp.gnu.org/gnu/gsl/gsl-1.16.tar.gz", 
               ["--disable-shared"]
@@ -59,6 +59,7 @@ def configure_package(package_name, platform):
     new_env["CC"] = platform["CC"]
     new_env["CXX"] = platform["CXX"]
     new_env["FC"] = platform["FC"]
+    new_env["F77"] = platform["FC"]
     new_env["FCCPP"] = platform["FCCPP"]
 
     p = subprocess.Popen(["./configure"] + package[1], cwd = "./libs/" + package_dir, env = new_env)

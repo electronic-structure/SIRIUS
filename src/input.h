@@ -159,64 +159,67 @@ class initial_input_parameters
 
             void read(JSON_tree const& parser)
             {
-                std::vector<double> a0, a1, a2;
-                parser["unit_cell"]["lattice_vectors"][0] >> a0;
-                parser["unit_cell"]["lattice_vectors"][1] >> a1;
-                parser["unit_cell"]["lattice_vectors"][2] >> a2;
-
-                double scale = parser["unit_cell"]["lattice_vectors_scale"].get(1.0);
-
-                for (int x = 0; x < 3; x++)
+                if (parser.exist("unit_cell"))
                 {
-                    lattice_vectors_[0][x] = a0[x] * scale;
-                    lattice_vectors_[1][x] = a1[x] * scale;
-                    lattice_vectors_[2][x] = a2[x] * scale;
-                }
+                    std::vector<double> a0, a1, a2;
+                    parser["unit_cell"]["lattice_vectors"][0] >> a0;
+                    parser["unit_cell"]["lattice_vectors"][1] >> a1;
+                    parser["unit_cell"]["lattice_vectors"][2] >> a2;
 
-                labels_.clear();
-                coordinates_.clear();
-                
-                for (int iat = 0; iat < (int)parser["unit_cell"]["atom_types"].size(); iat++)
-                {
-                    std::string label;
-                    parser["unit_cell"]["atom_types"][iat] >> label;
-                    for (int i = 0; i < (int)labels_.size(); i++)
+                    double scale = parser["unit_cell"]["lattice_vectors_scale"].get(1.0);
+
+                    for (int x = 0; x < 3; x++)
                     {
-                        if (labels_[i] == label) 
-                            error_global(__FILE__, __LINE__, "atom type with such label is already in list");
+                        lattice_vectors_[0][x] = a0[x] * scale;
+                        lattice_vectors_[1][x] = a1[x] * scale;
+                        lattice_vectors_[2][x] = a2[x] * scale;
                     }
-                    labels_.push_back(label);
-                }
-                
-                if (parser["unit_cell"].exist("atom_files"))
-                {
+
+                    labels_.clear();
+                    coordinates_.clear();
+                    
+                    for (int iat = 0; iat < (int)parser["unit_cell"]["atom_types"].size(); iat++)
+                    {
+                        std::string label;
+                        parser["unit_cell"]["atom_types"][iat] >> label;
+                        for (int i = 0; i < (int)labels_.size(); i++)
+                        {
+                            if (labels_[i] == label) 
+                                error_global(__FILE__, __LINE__, "atom type with such label is already in list");
+                        }
+                        labels_.push_back(label);
+                    }
+                    
+                    if (parser["unit_cell"].exist("atom_files"))
+                    {
+                        for (int iat = 0; iat < (int)labels_.size(); iat++)
+                        {
+                            if (parser["unit_cell"]["atom_files"].exist(labels_[iat]))
+                            {
+                                std::string fname;
+                                parser["unit_cell"]["atom_files"][labels_[iat]] >> fname;
+                                atom_files_[labels_[iat]] = fname;
+                            }
+                            else
+                            {
+                                atom_files_[labels_[iat]] = "";
+                            }
+                        }
+                    }
+                    
                     for (int iat = 0; iat < (int)labels_.size(); iat++)
                     {
-                        if (parser["unit_cell"]["atom_files"].exist(labels_[iat]))
+                        coordinates_.push_back(std::vector< std::vector<double> >());
+                        for (int ia = 0; ia < parser["unit_cell"]["atoms"][labels_[iat]].size(); ia++)
                         {
-                            std::string fname;
-                            parser["unit_cell"]["atom_files"][labels_[iat]] >> fname;
-                            atom_files_[labels_[iat]] = fname;
-                        }
-                        else
-                        {
-                            atom_files_[labels_[iat]] = "";
-                        }
-                    }
-                }
-                
-                for (int iat = 0; iat < (int)labels_.size(); iat++)
-                {
-                    coordinates_.push_back(std::vector< std::vector<double> >());
-                    for (int ia = 0; ia < parser["unit_cell"]["atoms"][labels_[iat]].size(); ia++)
-                    {
-                        std::vector<double> v;
-                        parser["unit_cell"]["atoms"][labels_[iat]][ia] >> v;
+                            std::vector<double> v;
+                            parser["unit_cell"]["atoms"][labels_[iat]][ia] >> v;
 
-                        if (!(v.size() == 3 || v.size() == 6)) error_global(__FILE__, __LINE__, "wrong coordinates size");
-                        if (v.size() == 3) v.resize(6, 0.0);
+                            if (!(v.size() == 3 || v.size() == 6)) error_global(__FILE__, __LINE__, "wrong coordinates size");
+                            if (v.size() == 3) v.resize(6, 0.0);
 
-                        coordinates_[iat].push_back(v);
+                            coordinates_[iat].push_back(v);
+                        }
                     }
                 }
             }
