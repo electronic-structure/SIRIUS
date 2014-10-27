@@ -1,6 +1,6 @@
 include ../make.inc
 
-.SUFFIXES: .cpp .cu
+.SUFFIXES: .cpp .cu .f90
 
 SRC =  LebedevLaikov.cpp linalg.cpp utils.cpp error_handling.cpp timer.cpp platform.cpp radial_grid.cpp \
        radial_solver.cpp sht.cpp atom_type.cpp atom_symmetry_class.cpp atom.cpp unit_cell.cpp \
@@ -29,9 +29,12 @@ endif
 .cu.o:
 	$(NVCC) -DADD_ $(NVCC_OPT) -c $<
 
-all: log $(OBJ) sirius_api.o
+.f90.o:
+	$(MPI_FC) $(MPI_FC_OPT) -c $<
+
+all: log $(OBJ) sirius_api.o sirius.o
 	ar -r libsirius.a $(OBJ)
-	ar -r libsirius_f.a $(OBJ) sirius_api.o
+	ar -r libsirius_f.a $(OBJ) sirius_api.o sirius.o
 
 # TODO: platform-independent python script
 log:
@@ -42,7 +45,7 @@ log:
 	@echo "#endif" >> version.h
 
 clean:
-	rm -f $(OBJ) *.o *.a
+	rm -f $(OBJ) *.o *.a *.mod
 
 depend: $(SRC) sirius_api.cpp
 	rm -f ./.depend

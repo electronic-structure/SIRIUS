@@ -153,11 +153,10 @@ void FORTRAN(sirius_set_auto_rmt)(int32_t* auto_rmt)
     enddo
     \endcode
  */
-void FORTRAN(sirius_add_atom_type)(char* label, char* fname, int32_t label_len, int32_t fname_len)
+void sirius_add_atom_type(char* label__, char* fname__)
 {
     log_function_enter(__func__);
-    global_parameters->unit_cell()->add_atom_type(std::string(label, label_len), std::string(fname, fname_len), 
-                                                  global_parameters->esm_type());
+    global_parameters->unit_cell()->add_atom_type(std::string(label__), std::string(fname__), global_parameters->esm_type());
     log_function_exit(__func__);
 }
 
@@ -180,22 +179,20 @@ void FORTRAN(sirius_add_atom_type)(char* label, char* fname, int32_t label_len, 
     enddo
     \endcode
  */ 
-void FORTRAN(sirius_set_atom_type_properties)(char* label,
-                                              char* symbol,
-                                              int32_t* zn,
-                                              double* mass,
-                                              double* mt_radius,
-                                              int32_t* num_mt_points,
-                                              int32_t label_len,
-                                              int32_t symbol_len)
+void sirius_set_atom_type_properties(char* label__,
+                                     char* symbol__,
+                                     int32_t* zn__,
+                                     double* mass__,
+                                     double* mt_radius__,
+                                     int32_t* num_mt_points__)
 {
     log_function_enter(__func__);
-    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label, label_len));
-    type->set_symbol(std::string(symbol, symbol_len));
-    type->set_zn(*zn);
-    type->set_mass(*mass);
-    type->set_num_mt_points(*num_mt_points);
-    type->set_mt_radius(*mt_radius);
+    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label__));
+    type->set_symbol(std::string(symbol__));
+    type->set_zn(*zn__);
+    type->set_mass(*mass__);
+    type->set_num_mt_points(*num_mt_points__);
+    type->set_mt_radius(*mt_radius__);
     log_function_exit(__func__);
 }
 
@@ -359,23 +356,22 @@ void FORTRAN(sirius_global_initialize)(int32_t* lmax_apw, int32_t* lmax_rho, int
  *  \param [in] magmt pointer to the muffin-tin part of the magnetization
  *  \param [in] magit pointer to the interstitial part of the magnetization
  */
-void FORTRAN(sirius_density_initialize)(double* rhomt, double* rhoit, double* magmt, double* magit)
-{
-    log_function_enter(__func__);
-    density = new sirius::Density(*global_parameters);
-    density->set_charge_density_ptr(rhomt, rhoit);
-    density->set_magnetization_ptr(magmt, magit);
-    log_function_exit(__func__);
-}
+//= void FORTRAN(sirius_density_initialize)(double* rhomt, double* rhoit, double* magmt, double* magit)
+//= {
+//=     log_function_enter(__func__);
+//=     density = new sirius::Density(*global_parameters);
+//=     density->set_charge_density_ptr(rhomt, rhoit);
+//=     density->set_magnetization_ptr(magmt, magit);
+//=     log_function_exit(__func__);
+//= }
 
-void sirius_density_initialize_v2(double* rhoit__, double* rhomt__)
+void sirius_density_initialize(double* rhoit__, double* rhomt__, double* magit__, double* magmt__)
 {
     log_function_enter(__func__);
+    std::cout << rhoit__ << " " << rhomt__ << " " << magit__ << " " << magmt__ << std::endl;
     density = new sirius::Density(*global_parameters);
-    if (rhomt__ == NULL) std::cout << "Correct NULL value recieved" << std::endl;
-    std::cout << "rhomt=" << rhomt__ << std::endl;
     density->set_charge_density_ptr(rhomt__, rhoit__);
-    exit(-11);
+    density->set_magnetization_ptr(magmt__, magit__);
     log_function_exit(__func__);
 }
 
@@ -1992,11 +1988,10 @@ void FORTRAN(sirius_set_atom_type_q_rf)(char* label, int32_t* num_q_coefs, int32
     log_function_exit(__func__);
 }
     
-
-void FORTRAN(sirius_set_atom_type_rho_core)(char* label__, int32_t* num_points__, double* rho_core__, int32_t label_len__)
+void sirius_set_atom_type_rho_core(char const* label__, int32_t* num_points__, double* rho_core__)
 {
-    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label__, label_len__));
-    type->uspp().core_charge_density = std::vector<double>(* num_points__);
+    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label__));
+    type->uspp().core_charge_density = std::vector<double>(*num_points__);
     for (int i = 0; i < *num_points__; i++) type->uspp().core_charge_density[i] = rho_core__[i];
 }
 
