@@ -106,6 +106,7 @@ class uspp_descriptor
         /// Number of radial grid points for each beta radial function.
         std::vector<int> num_beta_radial_points;
 
+        /// Radial functions of beta-projectors.
         mdarray<double, 2> beta_radial_functions;
         
         /// Number of Q coefficients
@@ -114,9 +115,10 @@ class uspp_descriptor
         /// Q coefficients
         mdarray<double, 4> q_coefs;
         
-        /// Inner radius where Q-radial functions are interpolated by polynomials
+        /// Inner radius where Q-radial functions are interpolated by polynomials.
         std::vector<double> q_functions_inner_radii;
-
+        
+        /// Radial functions of Q-operator.
         mdarray<double, 2> q_radial_functions;
 
         std::vector<double> core_charge_density;

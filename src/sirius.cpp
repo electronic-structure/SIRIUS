@@ -368,6 +368,17 @@ void FORTRAN(sirius_density_initialize)(double* rhomt, double* rhoit, double* ma
     log_function_exit(__func__);
 }
 
+void sirius_density_initialize_v2(double* rhoit__, double* rhomt__)
+{
+    log_function_enter(__func__);
+    density = new sirius::Density(*global_parameters);
+    if (rhomt__ == NULL) std::cout << "Correct NULL value recieved" << std::endl;
+    std::cout << "rhomt=" << rhomt__ << std::endl;
+    density->set_charge_density_ptr(rhomt__, rhoit__);
+    exit(-11);
+    log_function_exit(__func__);
+}
+
 /// Initialize the Potential object.
 /** \param [in] veffmt pointer to the muffin-tin part of the effective potential
  *  \param [in] veffit pointer to the interstitial part of the effective potential
@@ -1780,6 +1791,13 @@ void FORTRAN(sirius_get_num_fv_states)(int32_t* num_fv_states__)
     log_function_exit(__func__);
 }
 
+void FORTRAN(sirius_set_num_fv_states)(int32_t* num_fv_states__)
+{
+    log_function_enter(__func__);
+    global_parameters->set_num_fv_states(*num_fv_states__);
+    log_function_exit(__func__);
+}
+
 void FORTRAN(sirius_ground_state_initialize)(int32_t* kset_id)
 {
     log_function_enter(__func__);
@@ -1963,6 +1981,7 @@ void FORTRAN(sirius_set_atom_type_q_rf)(char* label, int32_t* num_q_coefs, int32
             /* combined index in sirius convention */
             int idx = j * (j + 1) / 2 + i;
 
+            /* combined index in QE convention */
             int nb = j;
             int mb = (nbeta - 1) - i;
             int ijv = mb * (mb + 1) / 2 + nb;
@@ -1973,5 +1992,12 @@ void FORTRAN(sirius_set_atom_type_q_rf)(char* label, int32_t* num_q_coefs, int32
     log_function_exit(__func__);
 }
     
+
+void FORTRAN(sirius_set_atom_type_rho_core)(char* label__, int32_t* num_points__, double* rho_core__, int32_t label_len__)
+{
+    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label__, label_len__));
+    type->uspp().core_charge_density = std::vector<double>(* num_points__);
+    for (int i = 0; i < *num_points__; i++) type->uspp().core_charge_density[i] = rho_core__[i];
+}
 
 } // extern "C"

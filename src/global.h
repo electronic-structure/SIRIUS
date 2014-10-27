@@ -278,6 +278,11 @@ class Global
             return num_fv_states_;
         }
 
+        inline void set_num_fv_states(int num_fv_states__)
+        {
+            num_fv_states_ = num_fv_states__;
+        }
+
         inline int num_bands()
         {
             return num_bands_;
