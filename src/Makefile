@@ -29,9 +29,9 @@ endif
 .cu.o:
 	$(NVCC) -DADD_ $(NVCC_OPT) -c $<
 
-all: log $(OBJ) sirius.o
+all: log $(OBJ) sirius_api.o
 	ar -r libsirius.a $(OBJ)
-	ar -r libsirius_f.a $(OBJ) sirius.o
+	ar -r libsirius_f.a $(OBJ) sirius_api.o
 
 # TODO: platform-independent python script
 log:
@@ -44,7 +44,7 @@ log:
 clean:
 	rm -f $(OBJ) *.o *.a
 
-depend: $(SRC) sirius.cpp
+depend: $(SRC) sirius_api.cpp
 	rm -f ./.depend
 	$(CXX) $(CXX_OPT) -MM $^ >> ./.depend
 
