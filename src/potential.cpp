@@ -2062,7 +2062,8 @@ void Potential::generate_d_mtrx_gpu()
 
 void Potential::set_effective_potential_ptr(double* veffmt, double* veffit)
 {
-    effective_potential_->set_mt_ptr(veffmt);
+    if (parameters_.esm_type() == full_potential_lapwlo || parameters_.esm_type() == full_potential_pwlo)
+        effective_potential_->set_mt_ptr(veffmt);
     effective_potential_->set_it_ptr(veffit);
 }
 

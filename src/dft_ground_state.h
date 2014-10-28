@@ -256,6 +256,25 @@ class DFT_ground_state
                 }
             }
         }
+
+        void generate_effective_potential()
+        {
+            switch(parameters_.esm_type())
+            {
+                case full_potential_lapwlo:
+                case full_potential_pwlo:
+                {
+                    potential_->generate_effective_potential(density_->rho(), density_->magnetization());
+                    break;
+                }
+                case ultrasoft_pseudopotential:
+                case norm_conserving_pseudopotential:
+                {
+                    potential_->generate_effective_potential(density_->rho(), density_->rho_pseudo_core(), density_->magnetization());
+                    break;
+                }
+            }
+        }
 };
 
 };

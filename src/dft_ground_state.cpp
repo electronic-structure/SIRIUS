@@ -140,27 +140,9 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
     for (int iter = 0; iter < num_dft_iter; iter++)
     {
         Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
-        
+
         /* compute new potential */
-        switch(parameters_.esm_type())
-        {
-            case full_potential_lapwlo:
-            case full_potential_pwlo:
-            {
-                potential_->generate_effective_potential(density_->rho(), density_->magnetization());
-                break;
-            }
-            case ultrasoft_pseudopotential:
-            case norm_conserving_pseudopotential:
-            {
-                potential_->generate_effective_potential(density_->rho(), density_->rho_pseudo_core(), density_->magnetization());
-                break;
-            }
-            default:
-            {
-                STOP();
-            }
-        }
+        generate_effective_potential();
         
         /* if potential is also mixed */
         if (mx_pot)

@@ -25,10 +25,10 @@
 #include "sirius.h"
 
 /// Pointer to Density class, implicitly used by Fortran side.
-sirius::Density* density = NULL;
+sirius::Density* density = nullptr;
 
 /// Pointer to Potential class, implicitly used by Fortran side.
-sirius::Potential* potential = NULL;
+sirius::Potential* potential = nullptr;
 
 /// Set of global parameters
 sirius::Global* global_parameters = nullptr;
@@ -37,13 +37,13 @@ sirius::Global* global_parameters = nullptr;
 std::vector<sirius::K_set*> kset_list;
 
 /// DFT ground state wrapper
-sirius::DFT_ground_state* dft_ground_state = NULL;
+sirius::DFT_ground_state* dft_ground_state = nullptr;
 
 /// Charge density and magnetization mixer
-sirius::Mixer* mixer_rho = NULL;
+sirius::Mixer* mixer_rho = nullptr;
 
 /// Potential and magnetic field mixer
-sirius::Mixer* mixer_pot = NULL;
+sirius::Mixer* mixer_pot = nullptr;
 
 BLACS_grid* blacs_grid = nullptr;
 
@@ -208,12 +208,13 @@ void sirius_set_atom_type_properties(char* label__,
     enddo
     \endcode
  */
-void FORTRAN(sirius_set_atom_type_radial_grid)(char* label, int32_t* num_radial_points, 
-                                               double* radial_points, int32_t label_len)
+void sirius_set_atom_type_radial_grid(char* label__,
+                                      int32_t* num_radial_points__, 
+                                      double* radial_points__)
 {
-    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label, label_len));
-    type->set_radial_grid(type->num_mt_points(), radial_points);
-    type->set_free_atom_radial_grid(*num_radial_points, radial_points);
+    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label__));
+    type->set_radial_grid(type->num_mt_points(), radial_points__);
+    type->set_free_atom_radial_grid(*num_radial_points__, radial_points__);
 }
 
 void FORTRAN(sirius_set_free_atom_potential)(char* label__, int32_t* num_points__, double* vs__, int32_t label_len__)
@@ -267,10 +268,12 @@ void FORTRAN(sirius_set_atom_type_configuration)(char* label, int32_t* n, int32_
     enddo
     \endcode
  */
-void FORTRAN(sirius_add_atom)(char* label, double* position, double* vector_field, int32_t label_len)
+void sirius_add_atom(char* label__,
+                     double* position__,
+                     double* vector_field__)
 {
     log_function_enter(__func__);
-    global_parameters->unit_cell()->add_atom(std::string(label, label_len), position, vector_field);
+    global_parameters->unit_cell()->add_atom(std::string(label__), position__, vector_field__);
     log_function_exit(__func__);
 }
 
@@ -365,10 +368,12 @@ void FORTRAN(sirius_global_initialize)(int32_t* lmax_apw, int32_t* lmax_rho, int
 //=     log_function_exit(__func__);
 //= }
 
-void sirius_density_initialize(double* rhoit__, double* rhomt__, double* magit__, double* magmt__)
+void sirius_density_initialize(double* rhoit__,
+                               double* rhomt__,
+                               double* magit__,
+                               double* magmt__)
 {
     log_function_enter(__func__);
-    std::cout << rhoit__ << " " << rhomt__ << " " << magit__ << " " << magmt__ << std::endl;
     density = new sirius::Density(*global_parameters);
     density->set_charge_density_ptr(rhomt__, rhoit__);
     density->set_magnetization_ptr(magmt__, magit__);
@@ -381,12 +386,15 @@ void sirius_density_initialize(double* rhoit__, double* rhomt__, double* magit__
  *  \param [in] beffmt pointer to the muffin-tin part of effective magnetic field
  *  \param [in] beffit pointer to the interstitial part of the effective magnetic field
  */
-void FORTRAN(sirius_potential_initialize)(double* veffmt, double* veffit, double* beffmt, double* beffit)
+void sirius_potential_initialize(double* veffit__,
+                                 double* veffmt__,
+                                 double* beffit__,
+                                 double* beffmt__)
 {
     log_function_enter(__func__);
     potential = new sirius::Potential(*global_parameters);
-    potential->set_effective_potential_ptr(veffmt, veffit);
-    potential->set_effective_magnetic_field_ptr(beffmt, beffit);
+    potential->set_effective_potential_ptr(veffmt__, veffit__);
+    potential->set_effective_magnetic_field_ptr(beffmt__, beffit__);
     log_function_exit(__func__);
 }
 
@@ -608,20 +616,20 @@ void FORTRAN(sirius_clear)(void)
     
     global_parameters->clear();
 
-    if (density) 
+    if (density != nullptr) 
     {
         delete density;
-        density = NULL;
+        density = nullptr;
     }
-    if (potential)
+    if (potential != nullptr)
     {
         delete potential;
-        potential = NULL;
+        potential = nullptr;
     }
-    if (dft_ground_state)
+    if (dft_ground_state != nullptr)
     {
         delete dft_ground_state;
-        dft_ground_state = NULL;
+        dft_ground_state = nullptr;
     }
     if (blacs_grid != nullptr)
     {
@@ -630,10 +638,10 @@ void FORTRAN(sirius_clear)(void)
     }
     for (int i = 0; i < (int)kset_list.size(); i++)
     {
-        if (kset_list[i] != NULL) 
+        if (kset_list[i] != nullptr) 
         {
             delete kset_list[i];
-            kset_list[i] = NULL;
+            kset_list[i] = nullptr;
         }
     }
     kset_list.clear();
@@ -647,14 +655,14 @@ void FORTRAN(sirius_initial_density)(void)
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_generate_effective_potential)(void)
+void sirius_generate_effective_potential(void)
 {
     log_function_enter(__func__);
-    potential->generate_effective_potential(density->rho(), density->magnetization());
+    dft_ground_state->generate_effective_potential();
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_generate_density)(int32_t* kset_id__)
+void sirius_generate_density(int32_t* kset_id__)
 {
     log_function_enter(__func__);
     density->generate(*kset_list[*kset_id__]);
@@ -683,7 +691,8 @@ void FORTRAN(sirius_generate_density)(int32_t* kset_id__)
           call sirius_find_eigen_states(kset_id, 1) 
     \endcode
 */
-void FORTRAN(sirius_find_eigen_states)(int32_t* kset_id__, int32_t* precompute__)
+void sirius_find_eigen_states(int32_t* kset_id__,
+                              int32_t* precompute__)
 {
     log_function_enter(__func__);
     bool precompute = (*precompute__) ? true : false;
@@ -691,7 +700,7 @@ void FORTRAN(sirius_find_eigen_states)(int32_t* kset_id__, int32_t* precompute__
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_find_band_occupancies)(int32_t* kset_id__)
+void sirius_find_band_occupancies(int32_t* kset_id__)
 {
     log_function_enter(__func__);
     kset_list[*kset_id__]->find_band_occupancies();
@@ -1153,7 +1162,7 @@ void FORTRAN(sirius_create_kset)(int32_t* num_kpoints, double* kpoints__, double
     
     for (int i = 0; i < (int)kset_list.size(); i++)
     {
-        if (kset_list[i] == NULL) 
+        if (kset_list[i] == nullptr) 
         {
             kset_list[i] = new_kset;
             *kset_id = i;
@@ -1170,7 +1179,7 @@ void FORTRAN(sirius_delete_kset)(int32_t* kset_id)
 {
     log_function_enter(__func__);
     delete kset_list[*kset_id];
-    kset_list[*kset_id] = NULL;
+    kset_list[*kset_id] = nullptr;
     log_function_exit(__func__);
 }
 
@@ -1794,12 +1803,12 @@ void FORTRAN(sirius_set_num_fv_states)(int32_t* num_fv_states__)
     log_function_exit(__func__);
 }
 
-void FORTRAN(sirius_ground_state_initialize)(int32_t* kset_id)
+void sirius_ground_state_initialize(int32_t* kset_id__)
 {
     log_function_enter(__func__);
-    if (dft_ground_state) error_local(__FILE__, __LINE__, "dft_ground_state object is already allocate");
+    if (dft_ground_state != nullptr) error_local(__FILE__, __LINE__, "dft_ground_state object is already allocate");
 
-    dft_ground_state = new sirius::DFT_ground_state(*global_parameters, potential, density, kset_list[*kset_id]);
+    dft_ground_state = new sirius::DFT_ground_state(*global_parameters, potential, density, kset_list[*kset_id__]);
     log_function_exit(__func__);
 }
 
@@ -1807,7 +1816,7 @@ void FORTRAN(sirius_ground_state_clear)()
 {
     log_function_enter(__func__);
     delete dft_ground_state;
-    dft_ground_state = NULL;
+    dft_ground_state = nullptr;
     log_function_exit(__func__);
 }
 
@@ -1923,65 +1932,72 @@ void FORTRAN(sirius_mix_potential)(void)
     }
 }
 
-void FORTRAN(sirius_set_atom_type_dion)(char* label, int32_t* num_beta, double* dion__, int32_t label_len)
+void sirius_set_atom_type_dion(char* label__,
+                               int32_t* num_beta__,
+                               double* dion__)
 {
     log_function_enter(__func__);
-    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label, label_len));
-    matrix<double> d_mtrx_ion(dion__, *num_beta, *num_beta);
+    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label__));
+    matrix<double> d_mtrx_ion(dion__, *num_beta__, *num_beta__);
     type->set_d_mtrx_ion(d_mtrx_ion);
     log_function_exit(__func__);
 }
     
-void FORTRAN(sirius_set_atom_type_beta_rf)(char* label, int32_t* num_beta, int32_t* beta_l, int32_t* num_mesh_points,
-                                           double* beta_rf__, int32_t* ld, int32_t label_len)
+void sirius_set_atom_type_beta_rf(char* label__,
+                                  int32_t* num_beta__,
+                                  int32_t* beta_l__,
+                                  int32_t* num_mesh_points__,
+                                  double* beta_rf__,
+                                  int32_t* ld__)
 {
     log_function_enter(__func__);
-    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label, label_len));
+    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label__));
 
-    mdarray<double, 2> beta_rf(beta_rf__, *ld, *num_beta);
-    type->uspp().num_beta_radial_functions = *num_beta;
-    type->uspp().beta_l = std::vector<int>(*num_beta);
-    type->uspp().num_beta_radial_points = std::vector<int>(*num_beta);
-    for (int i = 0; i < *num_beta; i++)
+    mdarray<double, 2> beta_rf(beta_rf__, *ld__, *num_beta__);
+    type->uspp().num_beta_radial_functions = *num_beta__;
+    type->uspp().beta_l = std::vector<int>(*num_beta__);
+    type->uspp().num_beta_radial_points = std::vector<int>(*num_beta__);
+    for (int i = 0; i < *num_beta__; i++)
     {
-        type->uspp().beta_l[i] = beta_l[i];
-        type->uspp().num_beta_radial_points[i] = num_mesh_points[i];
+        type->uspp().beta_l[i] = beta_l__[i];
+        type->uspp().num_beta_radial_points[i] = num_mesh_points__[i];
     }
-    type->uspp().beta_radial_functions = mdarray<double, 2>(type->num_mt_points(), *num_beta);
+    type->uspp().beta_radial_functions = mdarray<double, 2>(type->num_mt_points(), *num_beta__);
     beta_rf >> type->uspp().beta_radial_functions;
     log_function_exit(__func__);
 }
     
-void FORTRAN(sirius_set_atom_type_q_rf)(char* label, int32_t* num_q_coefs, int32_t* lmax_q, double* q_coefs__,
-                                        double* rinner, double* q_rf__, int32_t label_len)
+void sirius_set_atom_type_q_rf(char* label__,
+                               int32_t* num_q_coefs__,
+                               int32_t* lmax_q__,
+                               double* q_coefs__,
+                               double* rinner__,
+                               double* q_rf__)
 {
     log_function_enter(__func__);
-    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label, label_len));
+    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label__));
     
-    type->uspp().num_q_coefs = *num_q_coefs;
+    type->uspp().num_q_coefs = *num_q_coefs__;
     int nbeta = type->uspp().num_beta_radial_functions;
     
-    mdarray<double, 4> q_coefs(q_coefs__, *num_q_coefs, *lmax_q + 1, nbeta, nbeta);
-    type->uspp().q_coefs = mdarray<double, 4>(*num_q_coefs, *lmax_q + 1, nbeta, nbeta);
+    mdarray<double, 4> q_coefs(q_coefs__, *num_q_coefs__, *lmax_q__ + 1, nbeta, nbeta);
+    type->uspp().q_coefs = mdarray<double, 4>(*num_q_coefs__, *lmax_q__ + 1, nbeta, nbeta);
     q_coefs >> type->uspp().q_coefs;
     
-    type->uspp().q_functions_inner_radii = std::vector<double>(*lmax_q + 1);
-    for (int l = 0; l <= *lmax_q; l++) type->uspp().q_functions_inner_radii[l] = rinner[l];
+    type->uspp().q_functions_inner_radii = std::vector<double>(*lmax_q__ + 1);
+    for (int l = 0; l <= *lmax_q__; l++) type->uspp().q_functions_inner_radii[l] = rinner__[l];
     
     mdarray<double, 2> q_rf(q_rf__, type->num_mt_points(), nbeta * (nbeta + 1) / 2);
     type->uspp().q_radial_functions = mdarray<double, 2>(type->num_mt_points(), nbeta * (nbeta + 1) / 2);
-    for (int j = 0; j < nbeta; j++)
-    {
-        for (int i = 0; i <= j; i++)
-        {
-            /* combined index in sirius convention */
-            int idx = j * (j + 1) / 2 + i;
 
-            /* combined index in QE convention */
-            int nb = j;
-            int mb = (nbeta - 1) - i;
-            int ijv = mb * (mb + 1) / 2 + nb;
-            memcpy(&type->uspp().q_radial_functions(0, idx), &q_rf(0, ijv), type->num_mt_points() * sizeof(double));
+    for (int nb = 0; nb < nbeta; nb++)
+    {
+        for (int mb = nb; mb < nbeta; mb++)
+        {
+            /* combined index */
+            int ijv = (mb + 1) * mb / 2 + nb;
+
+            memcpy(&type->uspp().q_radial_functions(0, ijv), &q_rf(0, ijv), type->num_mt_points() * sizeof(double));
         }
     }
 
@@ -1993,6 +2009,20 @@ void sirius_set_atom_type_rho_core(char const* label__, int32_t* num_points__, d
     sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label__));
     type->uspp().core_charge_density = std::vector<double>(*num_points__);
     for (int i = 0; i < *num_points__; i++) type->uspp().core_charge_density[i] = rho_core__[i];
+}
+
+void sirius_set_atom_type_rho_tot(char const* label__, int32_t* num_points__, double* rho_tot__)
+{
+    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label__));
+    type->uspp().total_charge_density = std::vector<double>(*num_points__);
+    for (int i = 0; i < *num_points__; i++) type->uspp().total_charge_density[i] = rho_tot__[i];
+}
+
+void sirius_set_atom_type_vloc(char const* label__, int32_t* num_points__, double* vloc__)
+{
+    sirius::Atom_type* type = global_parameters->unit_cell()->atom_type(std::string(label__));
+    type->uspp().vloc = std::vector<double>(*num_points__);
+    for (int i = 0; i < *num_points__; i++) type->uspp().vloc[i] = vloc__[i];
 }
 
 } // extern "C"
