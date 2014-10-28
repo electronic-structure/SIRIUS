@@ -145,6 +145,8 @@ void dft_loop(cmd_args args)
     MEMORY_USAGE_INFO();
     #endif
     
+    DFT_ground_state dft(parameters, potential, density, &ks);
+
     if (task_name == "gs_restart")
     {
         if (!Utils::file_exists(storage_file_name)) error_global(__FILE__, __LINE__, "storage file is not found");
@@ -154,26 +156,9 @@ void dft_loop(cmd_args args)
     else
     {
         density->initial_density();
-
-        switch(parameters.esm_type())
-        {
-            case full_potential_lapwlo:
-            case full_potential_pwlo:
-            {
-                potential->generate_effective_potential(density->rho(), density->magnetization());
-                break;
-            }
-            case ultrasoft_pseudopotential:
-            case norm_conserving_pseudopotential:
-            {
-                potential->generate_effective_potential(density->rho(), density->rho_pseudo_core(), density->magnetization());
-                break;
-            }
-        }
-
+        dft.generate_effective_potential();
     }
     
-    DFT_ground_state dft(parameters, potential, density, &ks);
     double potential_tol = parser["potential_tol"].get(1e-4);
     double energy_tol = parser["energy_tol"].get(1e-4);
 
