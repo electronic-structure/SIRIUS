@@ -1477,16 +1477,16 @@ void Density::generate_pseudo_core_charge_density()
     fft_->output(&rho_pseudo_core_->f_it<global>(0));
 }
 
-void Density::generate(K_set& ks)
+void Density::generate_valence(K_set& ks__)
 {
-    Timer t("sirius::Density::generate");
+    Timer t("sirius::Density::generate_valence");
     
     double wt = 0.0;
     double ot = 0.0;
-    for (int ik = 0; ik < ks.num_kpoints(); ik++)
+    for (int ik = 0; ik < ks__.num_kpoints(); ik++)
     {
-        wt += ks[ik]->weight();
-        for (int j = 0; j < parameters_.num_bands(); j++) ot += ks[ik]->weight() * ks[ik]->band_occupancy(j);
+        wt += ks__[ik]->weight();
+        for (int j = 0; j < parameters_.num_bands(); j++) ot += ks__[ik]->weight() * ks__[ik]->band_occupancy(j);
     }
 
     if (fabs(wt - 1.0) > 1e-12) error_local(__FILE__, __LINE__, "K_point weights don't sum to one");
@@ -1505,14 +1505,97 @@ void Density::generate(K_set& ks)
     zero();
 
     /* interstitial part is independent of basis type */
-    generate_valence_density_it(ks);
+    generate_valence_density_it(ks__);
 
     /* for muffin-tin part */
     switch (parameters_.esm_type())
     {
         case full_potential_lapwlo:
         {
-            generate_valence_density_mt(ks);
+            generate_valence_density_mt(ks__);
+            break;
+        }
+        case full_potential_pwlo:
+        {
+            STOP();
+        }
+        default:
+        {
+            break;
+        }
+    }
+}
+
+void Density::augment(K_set& ks__)
+{
+    switch (parameters_.esm_type())
+    {
+        case ultrasoft_pseudopotential:
+        {
+            switch (parameters_.processing_unit())
+            {
+                case CPU:
+                {
+                    add_q_contribution_to_valence_density(ks__);
+                    break;
+                }
+                #ifdef _GPU_
+                case GPU:
+                {
+                    add_q_contribution_to_valence_density_gpu(ks__);
+                    break;
+                }
+                #endif
+                default:
+                {
+                    error_local(__FILE__, __LINE__, "wrong processing unit");
+                }
+            }
+            break;
+        }
+        default:
+        {
+            break;
+        }
+    }
+}
+
+void Density::generate(K_set& ks__)
+{
+    Timer t("sirius::Density::generate");
+    
+    double wt = 0.0;
+    double ot = 0.0;
+    for (int ik = 0; ik < ks__.num_kpoints(); ik++)
+    {
+        wt += ks__[ik]->weight();
+        for (int j = 0; j < parameters_.num_bands(); j++) ot += ks__[ik]->weight() * ks__[ik]->band_occupancy(j);
+    }
+
+    if (fabs(wt - 1.0) > 1e-12) error_local(__FILE__, __LINE__, "K_point weights don't sum to one");
+
+    if (fabs(ot - parameters_.unit_cell()->num_valence_electrons()) > 1e-8)
+    {
+        std::stringstream s;
+        s << "wrong occupancies" << std::endl
+          << "  computed : " << ot << std::endl
+          << "  required : " << parameters_.unit_cell()->num_valence_electrons() << std::endl
+          << "  difference : " << fabs(ot - parameters_.unit_cell()->num_valence_electrons());
+        warning_local(__FILE__, __LINE__, s);
+    }
+
+    /* zero density and magnetization */
+    zero();
+
+    /* interstitial part is independent of basis type */
+    generate_valence_density_it(ks__);
+
+    switch (parameters_.esm_type())
+    {
+        case full_potential_lapwlo:
+        {
+            /* muffin-tin part */
+            generate_valence_density_mt(ks__);
             break;
         }
         case full_potential_pwlo:
@@ -1543,13 +1626,13 @@ void Density::generate(K_set& ks)
             {
                 case CPU:
                 {
-                    add_q_contribution_to_valence_density(ks);
+                    add_q_contribution_to_valence_density(ks__);
                     break;
                 }
                 #ifdef _GPU_
                 case GPU:
                 {
-                    add_q_contribution_to_valence_density_gpu(ks);
+                    add_q_contribution_to_valence_density_gpu(ks__);
                     break;
                 }
                 #endif

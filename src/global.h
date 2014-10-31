@@ -114,9 +114,6 @@ class Global
 
         Unit_cell* unit_cell_;
         
-        /// Initiail input parameters from the input file and command line.
-        initial_input_parameters iip_;
-
         /// Base communicator.
         Communicator comm_;
         
@@ -124,6 +121,9 @@ class Global
         void parse_input();
 
     public:
+
+        /// Initiail input parameters from the input file and command line.
+        initial_input_parameters iip_;
 
         initial_input_parameters::iterative_solver_input_section iterative_solver_input_section_;
         initial_input_parameters::xc_functionals_input_section xc_functionals_input_section_;
@@ -150,8 +150,8 @@ class Global
               esm_type_(full_potential_lapwlo),
               step_function_(nullptr),
               reciprocal_lattice_(nullptr),
-              iip_(iip__),
-              comm_(comm__)
+              comm_(comm__),
+              iip_(iip__)
         {
             /* get the starting time */
             gettimeofday(&start_time_, NULL);

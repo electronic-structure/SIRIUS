@@ -283,7 +283,12 @@ class Density
         double core_leakage(int ic);
 
         /// Generate charge density and magnetization from the wave functions
-        void generate(K_set& ks);
+        void generate(K_set& ks__);
+
+        void generate_valence(K_set& ks__);
+        
+        /// Add augmentation charge Q(r)
+        void augment(K_set& ks__);
         
         /// Integrtae charge density to get total and partial charges
         //** void integrate();
