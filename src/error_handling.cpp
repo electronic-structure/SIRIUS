@@ -29,7 +29,7 @@ void terminate(const char* file_name, int line_number, const std::string& messag
     printf("\n=== Fatal error at line %i of file %s ===\n", line_number, file_name);
     printf("%s\n", message.c_str());
     raise(SIGTERM);
-    exit(-1);
+    throw std::runtime_error("terminating...");
 }
 
 void terminate(const char* file_name, int line_number, const std::stringstream& message)
@@ -40,7 +40,7 @@ void terminate(const char* file_name, int line_number, const std::stringstream& 
 /// General error report
 void error_message(const char* file_name, int line_number, const std::string& message, int flags)
 {
-    bool verbose = (flags & _global_message_) ? (Platform::comm_world().rank() == 0) : true;
+    bool verbose = (flags & _global_message_) ? (Platform::rank() == 0) : true;
     if (verbosity_level >= 10) verbose = true;
 
     std::vector<char> buffer(message.size() + 1000);
@@ -56,7 +56,7 @@ void error_message(const char* file_name, int line_number, const std::string& me
     }
     int n1 = n - 1;
 
-    if (!(flags & _global_message_)) n += sprintf(&buffer[n], "\n=== MPI rank: %i ===", Platform::comm_world().rank());
+    if (!(flags & _global_message_)) n += sprintf(&buffer[n], "\n=== MPI rank: %i ===", Platform::rank());
     
     if (verbose) 
     {
@@ -133,11 +133,11 @@ void warning_local(const char* file_name, int line_number, const std::stringstre
 
 void log_function_enter(const char* func_name)
 {
-    if (verbosity_level >= 10) printf("rank%i => %s\n", Platform::comm_world().rank(), func_name);
+    if (verbosity_level >= 10) printf("rank%i => %s\n", Platform::rank(), func_name);
 }
 
 void log_function_exit(const char* func_name)
 {
-    if (verbosity_level >= 10) printf("rank%i <= %s\n", Platform::comm_world().rank(), func_name);
+    if (verbosity_level >= 10) printf("rank%i <= %s\n", Platform::rank(), func_name);
 }
 

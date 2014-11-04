@@ -52,16 +52,23 @@ class Platform
 
         static void abort();
 
-        static Communicator const& comm_world()
+        //== static Communicator const& comm_world()
+        //== {
+        //==     static bool initialized = false;
+        //==     static Communicator comm;
+        //==     if (!initialized)
+        //==     {
+        //==         comm = Communicator(MPI_COMM_WORLD);
+        //==         initialized = true;
+        //==     }
+        //==     return comm;
+        //== }
+
+        static int rank()
         {
-            static bool initialized = false;
-            static Communicator comm;
-            if (!initialized)
-            {
-                comm = Communicator(MPI_COMM_WORLD);
-                initialized = true;
-            }
-            return comm;
+            int r;
+            CALL_MPI(MPI_Comm_rank, (MPI_COMM_WORLD, &r));
+            return r;
         }
 
         /// Returm maximum number of OMP threads.

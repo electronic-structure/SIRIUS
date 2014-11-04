@@ -2815,9 +2815,11 @@ void Band::diag_fv_uspp_gpu(K_point* kp__,
 
 #ifdef _SCALAPACK_
 
-void Band::apply_oinv_parallel(K_point* kp__,
-                               dmatrix<double_complex>& chi__,
-                               dmatrix<double_complex>& S__)
+void Band::add_non_local_contribution_parallel(K_point* kp__,
+                                               dmatrix<double_complex>& phi__,
+                                               dmatrix<double_complex>& op_phi__,
+                                               dmatrix<double_complex>& op__,
+                                               double_complex alpha)
 {
     auto uc = parameters_.unit_cell();
     int num_bands = parameters_.num_fv_states();
@@ -2826,14 +2828,14 @@ void Band::apply_oinv_parallel(K_point* kp__,
     dmatrix<double_complex> beta_phi(uc->mt_basis_size(), num_bands, kp__->blacs_grid());
     /* compute <beta|phi> */
     linalg<CPU>::gemm(2, 0, uc->mt_basis_size(), num_bands, kp__->num_gkvec(), complex_one, 
-                      kp__->beta_pw_panel(), chi__, complex_zero, beta_phi);
+                      kp__->beta_pw_panel(), phi__, complex_zero, beta_phi);
 
     dmatrix<double_complex> tmp(uc->mt_basis_size(), num_bands, kp__->blacs_grid());
     linalg<CPU>::gemm(0, 0, uc->mt_basis_size(), num_bands, uc->mt_basis_size(), complex_one,
-                      S__, beta_phi, complex_zero, tmp);
+                      op__, beta_phi, complex_zero, tmp);
 
-    linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, uc->mt_basis_size(), -complex_one,
-                      kp__->beta_pw_panel(), tmp, complex_one, chi__);
+    linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, uc->mt_basis_size(), alpha,
+                      kp__->beta_pw_panel(), tmp, complex_one, op_phi__);
 }
 
 void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,

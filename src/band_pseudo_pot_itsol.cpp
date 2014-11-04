@@ -76,7 +76,7 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
     int kappa_size = std::max(uc->max_mt_basis_size() * uc->beta_chunk(0).num_atoms_, 4 * num_bands_local);
     /* temporary array for <G+k|beta> */
     matrix<double_complex> kappa(kp__->num_gkvec_row(), kappa_size);
-    if (kp__->comm().rank() == 0)
+    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
         printf("size of kappa array: %f GB\n", 16 * double(kappa.size()) / 1073741824);
     }
@@ -174,6 +174,7 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
     /* estimate low and upper bounds of the Chebyshev filter */
     double lambda0 = -1e10;
     for (int i = 0; i < num_bands; i++) lambda0 = std::max(lambda0, e0[i]);
+    lambda0 -= 0.1;
     double lambda1 = 0.5 * std::pow(parameters_.gk_cutoff(), 2);
 
     double r = (lambda1 - lambda0) / 2.0;
@@ -194,7 +195,8 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
             break;
         }
     }
-    //== apply_oinv_parallel(kp__, phi[1], S);
+
+    //add_non_local_contribution_parallel(kp__, hphi, phi[1], S, double_complex(-1, 0));
     add_non_local_contribution_parallel(kp__, 0, num_bands, hphi, phi[1], kappa, packed_mtrx_offset,
                                         p_mtrx_packed, double_complex(-1, 0));
     
@@ -240,7 +242,7 @@ void Band::diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,
                 break;
             }
         }
-        //== apply_oinv_parallel(kp__, phi[k], S);
+        //add_non_local_contribution_parallel(kp__, hphi, phi[k], S, double_complex(-1, 0));
         add_non_local_contribution_parallel(kp__, 0, num_bands, hphi, phi[k], kappa, packed_mtrx_offset,
                                             p_mtrx_packed, double_complex(-1, 0));
         
@@ -394,7 +396,7 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
     int kappa_size = std::max(uc->max_mt_basis_size() * uc->beta_chunk(0).num_atoms_, 4 * num_bands_local);
     /* large temporary array for <G+k|beta>, hphi_tmp, ophi_tmp, hpsi_tmp, opsi_tmp */
     matrix<double_complex> kappa(kp__->num_gkvec_row(), kappa_size);
-    if (kp__->comm().rank() == 0)
+    if (verbosity_level >= 6 && kp__->comm().rank() == 0)
     {
         printf("size of kappa array: %f GB\n", 16 * double(kappa.size()) / 1073741824);
     }
@@ -485,7 +487,7 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
                                 hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
                                 &eval[0], evec.ptr(), evec.ld());
         
-        if (kp__->comm().rank() == 0)
+        if (verbosity_level >= 6 && kp__->comm().rank() == 0)
         {
             printf("subspace size : %i, eigen-values:\n", N);
             for (int i = 0; i < std::min(num_bands, 10); i++) printf("%18.12f ", eval[i]);

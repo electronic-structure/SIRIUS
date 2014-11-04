@@ -271,12 +271,12 @@ void Band::add_non_local_contribution_parallel(K_point* kp__,
         kp__->generate_beta_phi(nbeta, phi__.panel(), nloc, (int)s0.local_size(), beta_gk__, beta_phi);
         double tval = t1.stop();
 
-        if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-        {
-            printf("<beta|phi> effective zgemm with M, N, K: %6i %6i %6i, %12.4f sec, %12.4f GFlops/node\n",
-                   nbeta, nloc, kp__->num_gkvec(),
-                   tval, 8e-9 * nbeta * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
-        }
+        //if (verbosity_level >= 6 && kp__->comm().rank() == 0)
+        //{
+        //    printf("<beta|phi> effective zgemm with M, N, K: %6i %6i %6i, %12.4f sec, %12.4f GFlops/node\n",
+        //           nbeta, nloc, kp__->num_gkvec(),
+        //           tval, 8e-9 * nbeta * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
+        //}
 
         kp__->add_non_local_contribution(natoms, nbeta, uc->beta_chunk(ib).desc_, beta_gk__, op_mtrx_packed__,
                                          packed_mtrx_offset__, beta_phi, op_phi__.panel(), nloc, (int)s0.local_size(),

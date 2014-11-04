@@ -116,9 +116,11 @@ class Band
                                                  mdarray<double_complex, 1>& op_mtrx_packed__,
                                                  double_complex alpha);
 
-        void apply_oinv_parallel(K_point* kp__,
-                                 dmatrix<double_complex>& chi__,
-                                 dmatrix<double_complex>& S__);
+        void add_non_local_contribution_parallel(K_point* kp__,
+                                                 dmatrix<double_complex>& phi__,
+                                                 dmatrix<double_complex>& op_phi__,
+                                                 dmatrix<double_complex>& op__,
+                                                 double_complex alpha);
 
         void apply_h_local_parallel(K_point* kp__,
                                     std::vector<double> const& effective_potential__,

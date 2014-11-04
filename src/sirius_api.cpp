@@ -1926,7 +1926,7 @@ void FORTRAN(sirius_generate_gq_matrix_elements)(int32_t* kset_id, double* vq)
      kset_list[*kset_id]->generate_Gq_matrix_elements(vq);
 }
 
-void FORTRAN(sirius_density_mixer_initialize)(void)
+void sirius_density_mixer_initialize(void)
 {
     if (global_parameters->mixer_input_section_.type_ == "broyden")
     {
@@ -1959,7 +1959,7 @@ void FORTRAN(sirius_potential_mixer_initialize)(void)
     }
 }
 
-void FORTRAN(sirius_mix_density)(double* rms)
+void sirius_mix_density(double* rms)
 {
     density->pack(mixer_rho);
     *rms = mixer_rho->mix();

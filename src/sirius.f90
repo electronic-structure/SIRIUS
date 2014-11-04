@@ -148,6 +148,15 @@ interface
        &bind(C, name="sirius_augment_density")
     end subroutine
 
+    subroutine sirius_density_mixer_initialize()&
+       &bind(C, name="sirius_density_mixer_initialize")
+    end subroutine
+
+    subroutine sirius_mix_density(rms)&
+       &bind(C, name="sirius_mix_density")
+        real(8),                 intent(out) :: rms
+    end subroutine
+
     subroutine sirius_generate_initial_density()&
        &bind(C, name="sirius_generate_initial_density")
     end subroutine
