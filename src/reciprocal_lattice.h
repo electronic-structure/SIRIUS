@@ -209,6 +209,11 @@ class Reciprocal_lattice
             return index_by_gvec_(i0, i1, i2);
         }
 
+        inline mdarray<int, 3>& index_by_gvec()
+        {
+            return index_by_gvec_;
+        }
+
         /// FFT index for a given  G-vector index
         inline int fft_index(int ig)
         {
@@ -231,7 +236,12 @@ class Reciprocal_lattice
         {
             return vector3d<int>(gvec_(0, ig), gvec_(1, ig), gvec_(2, ig));
         }
-        
+
+        inline mdarray<int, 2>& gvec()
+        {
+            return gvec_;
+        }
+
         inline double gvec_shell_len(int igs)
         {
             assert(igs >=0 && igs < (int)gvec_shell_len_.size());

@@ -266,10 +266,10 @@ void Band::add_non_local_contribution_parallel(K_point* kp__,
             }
         }
 
-        Timer t1("sirius::Band::add_non_local_contribution_parallel|beta_phi", kp__->comm_row());
+        //Timer t1("sirius::Band::add_non_local_contribution_parallel|beta_phi", kp__->comm_row());
         kp__->generate_beta_gk(natoms, uc->beta_chunk(ib).atom_pos_, uc->beta_chunk(ib).desc_, beta_gk__);
         kp__->generate_beta_phi(nbeta, phi__.panel(), nloc, (int)s0.local_size(), beta_gk__, beta_phi);
-        double tval = t1.stop();
+        //double tval = t1.stop();
 
         //if (verbosity_level >= 6 && kp__->comm().rank() == 0)
         //{

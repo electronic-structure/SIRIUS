@@ -65,7 +65,7 @@ class Symmetry
         matrix3d<double> rot_mtrx_cart(int isym__);
 
         /// Rotation matrix in fractional coordinates.
-        matrix3d<double> rot_mtrx(int isym__);
+        matrix3d<int> rot_mtrx(int isym__);
         
         /// Generate rotation matrix from three Euler angles
         /** Euler angles \f$ \alpha, \beta, \gamma \f$ define the general rotation as three consecutive rotations:
@@ -102,7 +102,59 @@ class Symmetry
         /** 
 
         */
-        vector3d<double> euler_angles(int isym);
+        vector3d<double> euler_angles(int isym__);
+
+        vector3d<double> fractional_translation(int isym__)
+        {
+            vector3d<double> t;
+            for (int x = 0; x < 3; x++) t[x] =  spg_dataset_->translations[isym__][x];
+            return t;
+        }
+
+        void symmetrize_function(double_complex* f_pw__,
+                                 int num_gvec__,
+                                 mdarray<int, 2> const& gvec__,
+                                 mdarray<int, 3> const& index_by_gvec__,
+                                 std::pair<int, int> const& l0,
+                                 std::pair<int, int> const& l1,
+                                 std::pair<int, int> const& l2)
+        {
+            std::array<std::pair<int, int>, 3> limits;
+            limits[0] = l0;
+            limits[1] = l1;
+            limits[2] = l2;
+
+            mdarray<double_complex, 1> sym_f_pw(num_gvec__);
+            sym_f_pw.zero();
+
+            for (int isym = 0; isym < num_sym_op(); isym++)
+            {
+                auto sm = rot_mtrx(isym);
+                auto sv = fractional_translation(isym);
+
+                for (int ig = 0; ig < num_gvec__; ig++)
+                {
+                    /* apply symmetry operation to the G-vector */
+                    vector3d<int> gv_rot;
+                    for (int x = 0; x < 3; x++)
+                    {
+                        for (int i = 0; i < 3; i++) gv_rot[x] += sm(i, x) * gvec__(i, ig);
+                        /* check boundaries */
+                        if (gv_rot[x] < limits[x].first) gv_rot[x] = limits[x].second + (gv_rot[x] - limits[x].first) + 1;
+                        if (gv_rot[x] > limits[x].second) gv_rot[x] = limits[x].first + (gv_rot[x] - limits[x].second) - 1;
+                    }
+
+                    /* index of a rotated G-vector */
+                    int ig_rot = index_by_gvec__(gv_rot[0], gv_rot[1], gv_rot[2]);
+
+                    assert(ig_rot >= 0 && ig_rot < num_gvec);
+
+                    sym_f_pw(ig_rot) += f_pw__[ig] * std::exp(double_complex(0, -twopi * (gv_rot[0] * sv[0] + gv_rot[1] * sv[1] + gv_rot[2] * sv[2])));
+                }
+            }
+
+            for (int ig = 0; ig < num_gvec__; ig++) f_pw__[ig] = sym_f_pw(ig) / double(num_sym_op());
+        }
 };
 
 }

@@ -2076,4 +2076,9 @@ void sirius_set_atom_type_vloc(char const* label__,
     for (int i = 0; i < *num_points__; i++) type->uspp().vloc[i] = vloc__[i];
 }
 
+void sirius_symmetrize_density()
+{
+    dft_ground_state->symmetrize_density();
+}
+
 } // extern "C"

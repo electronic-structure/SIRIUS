@@ -161,6 +161,10 @@ interface
        &bind(C, name="sirius_generate_initial_density")
     end subroutine
 
+    subroutine sirius_symmetrize_density()&
+       &bind(C, name="sirius_symmetrize_density")
+    end subroutine
+
     subroutine sirius_create_kset(num_kpoints, kpoints, kpoint_weights, init_kset, kset_id)&
        &bind(C, name="sirius_create_kset")
         integer,                 intent(in) :: num_kpoints

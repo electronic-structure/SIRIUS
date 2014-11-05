@@ -36,16 +36,9 @@ Symmetry::Symmetry(double lattice_vectors__[3][3], SpglibDataset* spg_dataset__)
     inverse_lattice_vectors_ = inverse(lattice_vectors_);
 }
 
-matrix3d<double> Symmetry::rot_mtrx(int isym__)
+matrix3d<int> Symmetry::rot_mtrx(int isym__)
 {
-    matrix3d<double> rot_mtrx_lat;
-
-    for (int i = 0; i < 3; i++)
-    {
-        for (int j = 0; j < 3; j++) rot_mtrx_lat(i, j) = spg_dataset_->rotations[isym__][i][j];
-    }
-    
-    return rot_mtrx_lat;
+    return matrix3d<int>(spg_dataset_->rotations[isym__]);
 }
 
 matrix3d<double> Symmetry::rot_mtrx_cart(int isym__)
