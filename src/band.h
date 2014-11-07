@@ -105,6 +105,11 @@ class Band
         void diag_fv_pseudo_potential(K_point* kp__,
                                       Periodic_function<double>* effective_potential__);
         
+        /// Serial implementation of diagonalziation.
+        void diag_fv_pseudo_potential_serial(K_point* kp__,
+                                             double v0__,
+                                             std::vector<double>& veff_it_coarse__);
+
         #ifdef _SCALAPACK_
         void add_non_local_contribution_parallel(K_point* kp__,
                                                  int N__,
@@ -183,8 +188,9 @@ class Band
                                      double v0__,
                                      std::vector<double>& veff_it_coarse__);
 
-        void diag_fv_uspp_cpu_serial_v0(K_point* kp__,
-                                        std::vector<double>& veff_it_coarse__);
+        /// Exact (not iterative) diagonalization of the Hamiltonian.
+        void diag_fv_pseudo_potential_serial_exact(K_point* kp__,
+                                                   std::vector<double>& veff_it_coarse__);
 
         void diag_fv_uspp_cpu_serial_v1(K_point* kp__,
                                         double v0__,
@@ -214,14 +220,13 @@ class Band
                           std::vector<double_complex>& h_diag__,
                           std::vector<double_complex>& o_diag__);
 
-        void apply_h_o_uspp_cpu(K_point* kp__, 
-                                std::vector<double>& effective_potential__,
-                                std::vector<double>& pw_ekin__,
-                                int n__,
-                                double_complex* phi__, 
-                                double_complex* hphi__, 
-                                double_complex* ophi__);
-
+        void apply_h_o_serial(K_point* kp__, 
+                              std::vector<double> const& effective_potential__,
+                              std::vector<double> const& pw_ekin__,
+                              int n__,
+                              double_complex* phi__, 
+                              double_complex* hphi__, 
+                              double_complex* ophi__);
 
         void set_fv_h_o_uspp_cpu_parallel_simple(int N__,
                                                  int n__,

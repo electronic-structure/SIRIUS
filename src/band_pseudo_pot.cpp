@@ -480,5 +480,75 @@ void Band::apply_h_o_parallel(K_point* kp__,
 
 #endif // _SCALAPACK_
 
+void Band::apply_h_o_serial(K_point* kp__, 
+                            std::vector<double> const& effective_potential__, 
+                            std::vector<double> const& pw_ekin__, 
+                            int n__,
+                            double_complex* phi__, 
+                            double_complex* hphi__, 
+                            double_complex* ophi__)
+{
+    Timer t("sirius::Band::apply_h_o", _global_timer_);
+
+    auto uc = parameters_.unit_cell();
+
+    mdarray<double_complex, 2> phi(phi__, kp__->num_gkvec(), n__);
+    mdarray<double_complex, 2> hphi(hphi__, kp__->num_gkvec(), n__);
+    mdarray<double_complex, 2> ophi(ophi__, kp__->num_gkvec(), n__);
+    
+    /* apply local part of Hamiltonian */
+    apply_h_local_slice(kp__, effective_potential__, pw_ekin__, n__, phi, hphi);
+   
+    /* set intial ophi */
+    memcpy(ophi__, phi__, kp__->num_gkvec() * n__ * sizeof(double_complex));
+
+    /* <\beta_{\xi}^{\alpha}|\phi_j> */
+    mdarray<double_complex, 2> beta_phi(uc->mt_lo_basis_size(), n__);
+    
+    /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
+    mdarray<double_complex, 2> tmp(uc->mt_lo_basis_size(), n__);
+
+    Timer t1("sirius::Band::apply_h_o|beta_phi");
+
+    /* compute <beta|phi> */
+    linalg<CPU>::gemm(2, 0, uc->mt_lo_basis_size(), n__, kp__->num_gkvec(), 
+                      kp__->beta_pw_panel().panel(), phi, beta_phi);
+    t1.stop();
+    
+    /* compute D*<beta|phi> */
+    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    {   
+        int ofs = uc->atom(ia)->offset_lo();
+        /* number of beta functions for a given atom */
+        int nbf = uc->atom(ia)->type()->mt_lo_basis_size();
+        linalg<CPU>::gemm(0, 0, nbf, n__, nbf, &uc->atom(ia)->d_mtrx(0, 0), nbf, 
+                          &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
+    }
+
+    Timer t3("sirius::Band::apply_h_o|beta_D_beta_phi");
+    /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
+    linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_lo_basis_size(), complex_one, 
+                      kp__->beta_pw_panel().panel().ptr(), kp__->num_gkvec(), 
+                      &tmp(0, 0), tmp.ld(), complex_one, &hphi(0, 0), hphi.ld());
+    t3.stop();
+
+    /* compute Q*<beta|phi> */
+    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    {   
+        int ofs = uc->atom(ia)->offset_lo();
+        /* number of beta functions for a given atom */
+        int nbf = uc->atom(ia)->type()->mt_basis_size();
+        linalg<CPU>::gemm(0, 0, nbf, n__, nbf, &uc->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
+                          &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
+    }
+
+    Timer t5("sirius::Band::apply_h_o|beta_Q_beta_phi");
+    /* computr <G+k|beta> * Q*<beta|phi> and add to ophi */
+    linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_lo_basis_size(), complex_one, 
+                      kp__->beta_pw_panel().panel().ptr(), kp__->num_gkvec(), 
+                      &tmp(0, 0), tmp.ld(), complex_one, &ophi(0, 0), ophi.ld());
+    t5.stop();
+}
+
 
 };

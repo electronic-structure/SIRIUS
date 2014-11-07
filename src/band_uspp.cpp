@@ -29,78 +29,7 @@
 
 namespace sirius {
 
-void Band::apply_h_o_uspp_cpu(K_point* kp__, 
-                              std::vector<double>& effective_potential__, 
-                              std::vector<double>& pw_ekin__, 
-                              int n__,
-                              double_complex* phi__, 
-                              double_complex* hphi__, 
-                              double_complex* ophi__)
-{
-    Timer t("sirius::Band::apply_h_o", _global_timer_);
-
-    auto uc = parameters_.unit_cell();
-
-    mdarray<double_complex, 2> phi(phi__, kp__->num_gkvec(), n__);
-    mdarray<double_complex, 2> hphi(hphi__, kp__->num_gkvec(), n__);
-    mdarray<double_complex, 2> ophi(ophi__, kp__->num_gkvec(), n__);
-    
-    /* apply local part of Hamiltonian */
-    apply_h_local_slice(kp__, effective_potential__, pw_ekin__, n__, phi, hphi);
-   
-    /* set intial ophi */
-    memcpy(ophi__, phi__, kp__->num_gkvec() * n__ * sizeof(double_complex));
-
-    /* <\beta_{\xi}^{\alpha}|\phi_j> */
-    mdarray<double_complex, 2> beta_phi(uc->mt_lo_basis_size(), n__);
-    
-    /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
-    mdarray<double_complex, 2> tmp(uc->mt_lo_basis_size(), n__);
-
-    Timer t1("sirius::Band::apply_h_o|beta_phi");
-
-    /* compute <beta|phi> */
-    linalg<CPU>::gemm(2, 0, uc->mt_lo_basis_size(), n__, kp__->num_gkvec(), 
-                      kp__->beta_pw_panel().panel(), phi, beta_phi);
-    t1.stop();
-    
-    /* compute D*<beta|phi> */
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
-    {   
-        int ofs = uc->atom(ia)->offset_lo();
-        /* number of beta functions for a given atom */
-        int nbf = uc->atom(ia)->type()->mt_lo_basis_size();
-        linalg<CPU>::gemm(0, 0, nbf, n__, nbf, &uc->atom(ia)->d_mtrx(0, 0), nbf, 
-                          &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
-    }
-
-    Timer t3("sirius::Band::apply_h_o|beta_D_beta_phi");
-    /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
-    linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_lo_basis_size(), complex_one, 
-                      kp__->beta_pw_panel().panel().ptr(), kp__->num_gkvec(), 
-                      &tmp(0, 0), tmp.ld(), complex_one, &hphi(0, 0), hphi.ld());
-    t3.stop();
-
-    /* compute Q*<beta|phi> */
-    for (int ia = 0; ia < uc->num_atoms(); ia++)
-    {   
-        int ofs = uc->atom(ia)->offset_lo();
-        /* number of beta functions for a given atom */
-        int nbf = uc->atom(ia)->type()->mt_basis_size();
-        linalg<CPU>::gemm(0, 0, nbf, n__, nbf, &uc->atom(ia)->type()->uspp().q_mtrx(0, 0), nbf, 
-                          &beta_phi(ofs, 0), beta_phi.ld(), &tmp(ofs, 0), tmp.ld());
-    }
-
-    Timer t5("sirius::Band::apply_h_o|beta_Q_beta_phi");
-    /* computr <G+k|beta> * Q*<beta|phi> and add to ophi */
-    linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), n__, uc->mt_lo_basis_size(), complex_one, 
-                      kp__->beta_pw_panel().panel().ptr(), kp__->num_gkvec(), 
-                      &tmp(0, 0), tmp.ld(), complex_one, &ophi(0, 0), ophi.ld());
-    t5.stop();
-}
-
 #ifdef _GPU_
-
 // memory-greedy implementation
 void Band::apply_h_o_uspp_gpu(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, int n,
                               mdarray<double_complex, 2>& gamma, mdarray<double_complex, 2>& kappa, 
@@ -1617,8 +1546,8 @@ void Band::diag_fv_uspp_cpu_parallel(K_point* kp__,
 }
 #endif
 
-void Band::diag_fv_uspp_cpu_serial_v0(K_point* kp__,
-                                      std::vector<double>& veff_it_coarse__)
+void Band::diag_fv_pseudo_potential_serial_exact(K_point* kp__,
+                                                 std::vector<double>& veff_it_coarse__)
 {
     /* cache kinetic energy */
     std::vector<double> pw_ekin = kp__->get_pw_ekin();
@@ -1640,7 +1569,7 @@ void Band::diag_fv_uspp_cpu_serial_v0(K_point* kp__,
     phi.zero();
     for (int i = 0; i < ngk; i++) phi(i, i) = complex_one;
     
-    apply_h_o_uspp_cpu(kp__, veff_it_coarse__, pw_ekin, ngk, &phi(0, 0), &hphi(0, 0), &ophi(0, 0));
+    apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, ngk, &phi(0, 0), &hphi(0, 0), &ophi(0, 0));
         
     gen_evp_solver()->solve(ngk, num_bands, num_bands, num_bands, hphi.ptr(), hphi.ld(), ophi.ptr(), ophi.ld(), 
                             &eval[0], psi.ptr(), psi.ld());
@@ -1711,7 +1640,7 @@ void Band::diag_fv_uspp_cpu_serial_v1(K_point* kp__,
             }
 
             // apply Hamiltonian and overlap operators to the new basis functions
-            apply_h_o_uspp_cpu(kp__, veff_it_coarse__, pw_ekin, n, &phi(0, N), &hphi(0, N), &ophi(0, N));
+            apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, n, &phi(0, N), &hphi(0, N), &ophi(0, N));
             
             // <{phi,res}|H|res>
             linalg<CPU>::gemm(2, 0, N + n, n, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, N), hphi.ld(), &hmlt(0, N), hmlt.ld());
@@ -1886,7 +1815,7 @@ void Band::diag_fv_uspp_cpu_serial_v2(K_point* kp__,
             }
 
             // apply Hamiltonian and overlap operators to the new basis functions
-            apply_h_o_uspp_cpu(kp__, veff_it_coarse__, pw_ekin, n, &phi(0, N), &hphi(0, N), &ophi(0, N));
+            apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, n, &phi(0, N), &hphi(0, N), &ophi(0, N));
             
             // <{phi,res}|H|res>
             linalg<CPU>::gemm(2, 0, N + n, n, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, N), hphi.ld(), &hmlt(0, N), hmlt.ld());
@@ -2030,7 +1959,7 @@ void Band::diag_fv_uspp_cpu_serial_v3(K_point* kp__,
     for (int k = 0; k < itso.num_steps_; k++)
     {
         // apply Hamiltonian and overlap operators to the new basis functions
-        apply_h_o_uspp_cpu(kp__, veff_it_coarse__, pw_ekin, num_bands, &phi(0, 0), &hphi(0, 0), &ophi(0, 0));
+        apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, num_bands, &phi(0, 0), &hphi(0, 0), &ophi(0, 0));
 
 
         for (int i = 0; i < num_bands; i++)
@@ -2060,7 +1989,7 @@ void Band::diag_fv_uspp_cpu_serial_v3(K_point* kp__,
 
         int m = (k == 0) ? num_bands : 2 * num_bands;
         
-        apply_h_o_uspp_cpu(kp__, veff_it_coarse__, pw_ekin, m, &phi(0, num_bands), &hphi(0, num_bands), &ophi(0, num_bands));
+        apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, m, &phi(0, num_bands), &hphi(0, num_bands), &ophi(0, num_bands));
 
         
 //        mdarray<double_complex, 2> zm(num_bands, m);
@@ -2203,8 +2132,7 @@ void Band::diag_fv_uspp_cpu_serial_v4(K_point* kp__,
     for (int k = 0; k < itso.num_steps_; k++)
     {
         // apply Hamiltonian and overlap operators to the new basis functions
-        if (k == 0) apply_h_o_uspp_cpu(kp__, veff_it_coarse__, pw_ekin, num_bands, &phi(0, 0), &hphi(0, 0), &ophi(0, 0));
-
+        if (k == 0) apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, num_bands, &phi(0, 0), &hphi(0, 0), &ophi(0, 0));
 
         for (int i = 0; i < num_bands; i++)
         {
@@ -2250,7 +2178,7 @@ void Band::diag_fv_uspp_cpu_serial_v4(K_point* kp__,
             break;
         }
 
-        apply_h_o_uspp_cpu(kp__, veff_it_coarse__, pw_ekin, n, &phi(0, num_bands), &hphi(0, num_bands), &ophi(0, num_bands));
+        apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, n, &phi(0, num_bands), &hphi(0, num_bands), &ophi(0, num_bands));
 
         int N = num_bands + n;
 
@@ -2346,7 +2274,7 @@ void Band::diag_fv_uspp_cpu(K_point* kp__,
         {
             case 0:
             {
-                diag_fv_uspp_cpu_serial_v0(kp__, veff_it_coarse);
+                diag_fv_pseudo_potential_serial_exact(kp__, veff_it_coarse);
                 break;
             }
             case 1:
@@ -2863,6 +2791,30 @@ void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,
 }
 #endif // _SCALAPACK_
 
+void Band::diag_fv_pseudo_potential_serial(K_point* kp__,
+                                           double v0__,
+                                           std::vector<double>& veff_it_coarse__)
+{
+    log_function_enter(__func__);
+    Timer t("sirius::Band::diag_fv_pseudo_potential_serial");
+    
+    auto& itso = parameters_.iterative_solver_input_section_;
+    if (itso.type_ == "exact")
+    {
+        diag_fv_pseudo_potential_serial_exact(kp__, veff_it_coarse__);
+    }
+    //else if (itso.type_ == "chebyshev")
+    //{
+    //    diag_fv_pseudo_potential_parallel_chebyshev(kp__, veff_it_coarse__);
+    //}
+    else
+    {
+        TERMINATE("unknown iterative solver type");
+    }
+
+    log_function_exit(__func__);
+}
+
 void Band::diag_fv_pseudo_potential(K_point* kp__, 
                                     Periodic_function<double>* effective_potential__)
 {
@@ -2896,7 +2848,7 @@ void Band::diag_fv_pseudo_potential(K_point* kp__,
     }
     else
     {
-        STOP();
+        diag_fv_pseudo_potential_serial(kp__, v0, veff_it_coarse);
     }
 }
 
