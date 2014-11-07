@@ -52,18 +52,19 @@ class Mixer
         /// Temporary storage for the input data.
         mdarray<double, 1> input_buffer_;
         
-        /// history of previous vectors
+        /// History of previous vectors.
         mdarray<double, 2> vectors_;
 
-        /// output buffer for the whole vector
+        /// Output buffer for the whole vector.
         mdarray<double, 1> output_buffer_;
-
+        
+        /// Base communicator.
         Communicator comm_;
 
-        /// Return position in the list of vectors for the given mixing step.
-        inline int offset(int step)
+        /// Return position in the list of mixed vectors for the given mixing step.
+        inline int offset(int step__)
         {
-            return step % max_history_;
+            return step__ % max_history_;
         }
         
         /// Compute RMS deviation between current vector and input vector.
@@ -72,8 +73,7 @@ class Mixer
             double rms = 0.0;
             for (int i = 0; i < (int)spl_size_.local_size(); i++)
             {
-                //rms += pow(vectors_(i, offset(count_)) - vectors_(i, offset(count_ - 1)), 2);
-                rms += pow(vectors_(i, offset(count_)) - input_buffer_(i), 2);
+                rms += std::pow(vectors_(i, offset(count_)) - input_buffer_(i), 2);
             }
             comm_.allreduce(&rms, 1);
             rms = sqrt(rms / double(size_));
@@ -142,9 +142,6 @@ class Linear_mixer: public Mixer
 {
     private:
         
-        /// previous root mean square
-        double rms_prev_;
-
         double beta0_;
 
     public:
@@ -152,43 +149,23 @@ class Linear_mixer: public Mixer
         /// Constructor
         Linear_mixer(size_t size__, double beta0__, Communicator const& comm__) 
             : Mixer(size__, 2, beta0__, comm__),
-              rms_prev_(0),
               beta0_(beta0__)
         {
         }
 
         double mix()
         {
+            return mix(beta_);
+        }
+
+        double mix(double beta__)
+        {
             double rms = rms_deviation();
 
             count_++;
 
             mix_linear(beta_);
-            
 
-            //if (rms < rms_prev_) 
-            //{
-            //    beta_ *= 1.1;
-            //}
-            //else 
-            //{
-            //    beta_ = beta0_;
-            //}
-            //beta_ = std::min(beta_, 0.9);
-
-            rms_prev_ = rms;
-            
-            return rms;
-        }
-
-        double mix(double beta__)
-        {
-            mix_linear(beta__);
-            
-            double rms = rms_deviation();
-
-            rms_prev_ = rms;
-            
             return rms;
         }
 
@@ -232,11 +209,10 @@ class Broyden_mixer: public Mixer
             int N = std::min(count_, max_history_);
 
             if (N > 1)
-            //if (count_ > max_history_)
             {
                 mdarray<long double, 2> S(N, N);
                 S.zero();
-                // S = F^T * F, where F is the matrix of residual vectors
+                /* S = F^T * F, where F is the matrix of residual vectors */
                 for (int j1 = 0; j1 < N; j1++)
                 { 
                     for (int j2 = 0; j2 <= j1; j2++)
@@ -265,9 +241,9 @@ class Broyden_mixer: public Mixer
                 /* update gamma_k by recursion */
                 for (int k = 0; k < N - 1; k++)
                 {
-                    // denominator df_k^{T} S df_k
+                    /* denominator df_k^{T} S df_k */
                     long double d = S(k, k) + S(k + 1, k + 1) - S(k, k + 1) - S(k + 1, k);
-                    // nominator
+                    /* nominator */
                     memset(&v1[0], 0, N * sizeof(long double));
                     for (int j = 0; j < N; j++) v1[j] = S(k + 1, j) - S(k, j);
 
