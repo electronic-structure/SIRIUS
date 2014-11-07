@@ -1928,23 +1928,24 @@ void FORTRAN(sirius_generate_gq_matrix_elements)(int32_t* kset_id, double* vq)
 
 void sirius_density_mixer_initialize(void)
 {
-    if (global_parameters->mixer_input_section_.type_ == "broyden")
-    {
-        mixer_rho = new sirius::Broyden_mixer(density->size(), global_parameters->mixer_input_section_.max_history_, 
-                                              global_parameters->mixer_input_section_.beta_, global_parameters->comm());
-    }
-    else if (global_parameters->mixer_input_section_.type_ == "linear")
-    {
-        mixer_rho = new sirius::Linear_mixer(density->size(), global_parameters->mixer_input_section_.beta_, global_parameters->comm());
-    }
-    else
-    {
-        error_global(__FILE__, __LINE__, "Wrong mixer type");
-    }
-    
-    /* initialize density mixer with starting density */
-    density->pack(mixer_rho);
-    mixer_rho->initialize();
+    //if (global_parameters->mixer_input_section_.type_ == "broyden")
+    //{
+    //    mixer_rho = new sirius::Broyden_mixer(density->size(), global_parameters->mixer_input_section_.max_history_, 
+    //                                          global_parameters->mixer_input_section_.beta_, global_parameters->comm());
+    //}
+    //else if (global_parameters->mixer_input_section_.type_ == "linear")
+    //{
+    //    mixer_rho = new sirius::Linear_mixer(density->size(), global_parameters->mixer_input_section_.beta_, global_parameters->comm());
+    //}
+    //else
+    //{
+    //    error_global(__FILE__, __LINE__, "Wrong mixer type");
+    //}
+    //
+    ///* initialize density mixer with starting density */
+    //density->pack(mixer_rho);
+    //mixer_rho->initialize();
+    density->mixer_init();
 }
 
 void FORTRAN(sirius_potential_mixer_initialize)(void)
@@ -1961,9 +1962,10 @@ void FORTRAN(sirius_potential_mixer_initialize)(void)
 
 void sirius_mix_density(double* rms)
 {
-    density->pack(mixer_rho);
-    *rms = mixer_rho->mix();
-    density->unpack(mixer_rho->output_buffer());
+    //density->pack(mixer_rho);
+    //*rms = mixer_rho->mix();
+    //density->unpack(mixer_rho->output_buffer());
+    *rms = density->mix();
     global_parameters->comm().bcast(rms, 1, 0);
 }
 
@@ -2079,6 +2081,22 @@ void sirius_set_atom_type_vloc(char const* label__,
 void sirius_symmetrize_density()
 {
     dft_ground_state->symmetrize_density();
+}
+
+void sirius_get_rho_pw(double_complex* rho_pw__)
+{
+    int num_gvec = global_parameters->reciprocal_lattice()->num_gvec();
+    memcpy(rho_pw__, &density->rho()->f_pw(0), num_gvec * sizeof(double_complex));
+}
+
+void sirius_set_rho_pw(double_complex* rho_pw__)
+{
+    auto rl = global_parameters->reciprocal_lattice();
+    auto fft = rl->fft();
+    memcpy(&density->rho()->f_pw(0), rho_pw__, rl->num_gvec() * sizeof(double_complex));
+    fft->input(rl->num_gvec(), rl->fft_index(), &density->rho()->f_pw(0));
+    fft->transform(1);
+    fft->output(&density->rho()->f_it<global>(0));
 }
 
 } // extern "C"
