@@ -39,6 +39,7 @@ class Reciprocal_lattice
         /// Pointer to the corresponding Unit_cell class instance.
         Unit_cell* unit_cell_;
 
+        /// Type of electronic structure method.
         electronic_structure_method_t esm_type_;
         
         /// three direct lattice vectors
@@ -47,14 +48,17 @@ class Reciprocal_lattice
         /// three reciprocal lattice vectors
         double reciprocal_lattice_vectors_[3][3];
         
-        /// plane wave cutoff radius (in inverse a.u. of length)
+        /// Plane wave cutoff radius (in inverse a.u. of length).
         /** Plane-wave cutoff controls the size of the FFT grid used in the interstitial region. */
         double pw_cutoff_;
 
+        /// Cutoff for G+k plane-waves (in inverse a.u. of length).
         double gk_cutoff_;
         
-        /// FFT wrapper
+        /// FFT wrapper for dense grid.
         FFT3D<CPU>* fft_;
+
+        /// FFT wrapper for coarse grid.
         FFT3D<CPU>* fft_coarse_;
 
         #ifdef _GPU_
@@ -62,12 +66,13 @@ class Reciprocal_lattice
         FFT3D<GPU>* fft_gpu_coarse_;
         #endif
 
-        /// list of G-vector fractional coordinates
+        /// List of G-vector fractional coordinates.
         mdarray<int, 2> gvec_;
 
-        /// number of G-vectors within plane wave cutoff
+        /// Number of G-vectors within plane wave cutoff.
         int num_gvec_;
 
+        /// Number of G-vectors within 2 * |G+k|_{max} cutoff.
         int num_gvec_coarse_;
 
         /// mapping between index of a G-shell and a list of G-vectors belonging to the shell 
@@ -80,7 +85,7 @@ class Reciprocal_lattice
         mdarray<int, 3> index_by_gvec_;
 
         /// mapping betwee linear G-vector index and position in FFT buffer
-        std::vector<int> fft_index_; // TODO: move to FFT? what to do with sorting of G-vectors?
+        std::vector<int> fft_index_;
 
         std::vector<int> fft_index_coarse_;
 
