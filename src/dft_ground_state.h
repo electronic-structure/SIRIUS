@@ -282,9 +282,9 @@ class DFT_ground_state
             auto rl = parameters_.reciprocal_lattice();
             auto fft = rl->fft();
             
-            fft->input(&density_->rho()->f_it<global>(0));
-            fft->transform(-1);
-            fft->output(rl->num_gvec(), rl->fft_index(), &density_->rho()->f_pw(0));
+            //fft->input(&density_->rho()->f_it<global>(0));
+            //fft->transform(-1);
+            //fft->output(rl->num_gvec(), rl->fft_index(), &density_->rho()->f_pw(0));
 
             parameters_.unit_cell()->symmetry().symmetrize_function(&density_->rho()->f_pw(0),
                                                                     rl->num_gvec(),
@@ -294,9 +294,9 @@ class DFT_ground_state
                                                                     fft->grid_limits(1),
                                                                     fft->grid_limits(2));
 
-            fft->input(rl->num_gvec(), rl->fft_index(), &density_->rho()->f_pw(0));
-            fft->transform(1);
-            fft->output(&density_->rho()->f_it<global>(0));
+            //fft->input(rl->num_gvec(), rl->fft_index(), &density_->rho()->f_pw(0));
+            //fft->transform(1);
+            //fft->output(&density_->rho()->f_it<global>(0));
         }
 };
 
