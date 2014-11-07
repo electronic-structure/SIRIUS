@@ -77,14 +77,29 @@ Density::Density(Global& parameters__) : parameters_(parameters__), gaunt_coefs_
     }
 
     l_by_lm_ = Utils::l_by_lm(parameters_.lmax_rho());
+
+    linear_mixer_ = new Linear_mixer(2 * (parameters_.reciprocal_lattice()->num_gvec() - parameters_.reciprocal_lattice()->num_gvec_coarse()),
+                                     parameters_.iip_.mixer_input_section_.gamma_,
+                                     parameters_.comm());
+
+    broyden_mixer_ = new Broyden_mixer(2 * parameters_.reciprocal_lattice()->num_gvec(),
+                                       parameters_.iip_.mixer_input_section_.max_history_,
+                                       parameters_.iip_.mixer_input_section_.beta_,
+                                       parameters_.comm());
 }
 
 Density::~Density()
 {
     delete rho_;
     for (int j = 0; j < parameters_.num_mag_dims(); j++) delete magnetization_[j];
-    if (parameters_.esm_type() == ultrasoft_pseudopotential) delete rho_pseudo_core_;
+
+    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
+        parameters_.esm_type() == norm_conserving_pseudopotential) delete rho_pseudo_core_;
+    
     if (gaunt_coefs_) delete gaunt_coefs_;
+    
+    delete linear_mixer_;
+    delete broyden_mixer_;
 }
 
 void Density::set_charge_density_ptr(double* rhomt, double* rhoir)
@@ -457,7 +472,7 @@ void Density::initial_density()
         fft_->transform(1);
         fft_->output(&rho_->f_it<global>(0));
         
-        // remove possible negative noise
+        /* remove possible negative noise */
         for (int ir = 0; ir < fft_->size(); ir++)
         {
             if (rho_->f_it<global>(ir) < 0) rho_->f_it<global>(ir) = 0;
@@ -1089,9 +1104,11 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
     
     parameters_.comm().allgather(&f_pw[0], (int)rl->spl_num_gvec().global_offset(), (int)rl->spl_num_gvec().local_size());
 
-    fft_->input(rl->num_gvec(), rl->fft_index(), &f_pw[0]);
-    fft_->transform(1);
-    for (int ir = 0; ir < fft_->size(); ir++) rho_->f_it<global>(ir) += real(fft_->buffer(ir));
+    //fft_->input(rl->num_gvec(), rl->fft_index(), &f_pw[0]);
+    //fft_->transform(1);
+    //for (int ir = 0; ir < fft_->size(); ir++) rho_->f_it<global>(ir) += real(fft_->buffer(ir));
+
+    for (int ig = 0; ig < rl->num_gvec(); ig++) rho_->f_pw(ig) += f_pw[ig];
 }
 
 #ifdef _GPU_
@@ -1213,12 +1230,13 @@ void Density::add_q_contribution_to_valence_density_gpu(K_set& ks)
 
     parameters_.comm().allgather(&rho_pw[0], (int)rl->spl_num_gvec().global_offset(), (int)rl->spl_num_gvec().local_size());
     
-    fft_->input(rl->num_gvec(), rl->fft_index(), &rho_pw[0]);
-    fft_->transform(1);
-    for (int ir = 0; ir < fft_->size(); ir++) rho_->f_it<global>(ir) += real(fft_->buffer(ir));
+    for (int ig = 0; ig < rl->num_gvec(); ig++) rho_->f_pw(ig) += rho_pw[ig];
     
-    for (int iat = 0; iat < uc->num_atom_types(); iat++)
-         uc->atom_type(iat)->uspp().q_pw.deallocate_on_device();
+    //fft_->input(rl->num_gvec(), rl->fft_index(), &rho_pw[0]);
+    //fft_->transform(1);
+    //for (int ir = 0; ir < fft_->size(); ir++) rho_->f_it<global>(ir) += real(fft_->buffer(ir));
+    
+    for (int iat = 0; iat < uc->num_atom_types(); iat++) uc->atom_type(iat)->uspp().q_pw.deallocate_on_device();
 }
 #endif
 
@@ -1226,10 +1244,8 @@ void Density::generate_valence_density_mt(K_set& ks)
 {
     Timer t("sirius::Density::generate_valence_density_mt");
 
-    //========================================================================================
-    // if we have ud and du spin blocks, don't compute one of them (du in this implementation)
-    // because density matrix is symmetric
-    //========================================================================================
+    /* if we have ud and du spin blocks, don't compute one of them (du in this implementation)
+       because density matrix is symmetric */
     int num_zdmat = (parameters_.num_mag_dims() == 3) ? 3 : (parameters_.num_mag_dims() + 1);
 
     // complex density matrix
@@ -1238,9 +1254,7 @@ void Density::generate_valence_density_mt(K_set& ks)
                                                     num_zdmat, parameters_.unit_cell()->num_atoms());
     mt_complex_density_matrix.zero();
     
-    //=========================
-    // add k-point contribution
-    //=========================
+    /* add k-point contribution */
     for (int ikloc = 0; ikloc < (int)ks.spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = ks.spl_num_kpoints(ikloc);
@@ -1524,6 +1538,16 @@ void Density::generate_valence(K_set& ks__)
             break;
         }
     }
+
+    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
+        parameters_.esm_type() == norm_conserving_pseudopotential)
+    {
+        fft_->input(&rho_->f_it<global>(0));
+        fft_->transform(-1);
+        fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &rho_->f_pw(0));
+        augment(ks__);
+    }
+
 }
 
 void Density::augment(K_set& ks__)
