@@ -111,14 +111,14 @@ void Reciprocal_lattice::init(int lmax)
     }
 
     Timer t1("sirius::Reciprocal_lattice::init|sort_G");
-    // sort G-vectors by length
+    /* sort G-vectors by length */
     std::sort(gvec_tmp_length.begin(), gvec_tmp_length.end());
     t1.stop();
 
-    // create sorted list of G-vectors
+    /* create sorted list of G-vectors */
     gvec_ = mdarray<int, 2>(3, fft_->size());
 
-    // find number of G-vectors within the cutoff
+    /* find number of G-vectors within the cutoff */
     num_gvec_ = 0;
     for (int i = 0; i < fft_->size(); i++)
     {
@@ -143,24 +143,24 @@ void Reciprocal_lattice::init(int lmax)
         int i1 = gvec_(1, ig);
         int i2 = gvec_(2, ig);
 
-        // mapping from G-vector to it's index
+        /* mapping from G-vector to it's index */
         index_by_gvec_(i0, i1, i2) = ig;
 
-        // mapping of FFT buffer linear index
+        /* mapping of FFT buffer linear index */
         fft_index_[ig] = fft_->index(i0, i1, i2);
 
-        // find G-shells
+        /* find G-shells */
         double t = gvec_tmp_length[ig].first;
         if (gvec_shell_len_.empty() || fabs(t - gvec_shell_len_.back()) > 1e-10) gvec_shell_len_.push_back(t);
         gvec_shell_[ig] = (int)gvec_shell_len_.size() - 1;
     }
 
-    // create split index
+    /* create split index */
     spl_num_gvec_ = splindex<block>(num_gvec(), comm_.size(), comm_.rank());
     
     if (lmax >= 0)
     {
-        // precompute spherical harmonics of G-vectors 
+        /* precompute spherical harmonics of G-vectors */
         gvec_ylm_ = mdarray<double_complex, 2>(Utils::lmmax(lmax), spl_num_gvec_.local_size());
         
         Timer t2("sirius::Reciprocal_lattice::init|ylm_G");
@@ -194,7 +194,7 @@ void Reciprocal_lattice::init(int lmax)
 
     if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
     {
-        // get the number of G-vectors within the cutoff in the coarse grid
+        /* get the number of G-vectors within the cutoff in the coarse grid */
         num_gvec_coarse_ = 0;
         fft_index_coarse_.clear();
         gvec_index_.clear();
@@ -208,10 +208,10 @@ void Reciprocal_lattice::init(int lmax)
 
                     if (vc.length() <= 2 * gk_cutoff_) 
                     {
-                        // linear index inside coarse FFT buffer
+                        /* linear index inside coarse FFT buffer */
                         fft_index_coarse_.push_back(fft_coarse_->index(i0, i1, i2));
                         
-                        // corresponding G-vector index in the fine mesh
+                        /* corresponding G-vector index in the fine mesh */
                         gvec_index_.push_back(index_by_gvec(i0, i1, i2));
 
                         num_gvec_coarse_++;
