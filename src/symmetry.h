@@ -147,7 +147,7 @@ class Symmetry
                     /* index of a rotated G-vector */
                     int ig_rot = index_by_gvec__(gv_rot[0], gv_rot[1], gv_rot[2]);
 
-                    assert(ig_rot >= 0 && ig_rot < num_gvec);
+                    assert(ig_rot >= 0 && ig_rot < num_gvec__);
 
                     sym_f_pw(ig_rot) += f_pw__[ig] * std::exp(double_complex(0, -twopi * (gv_rot[0] * sv[0] + gv_rot[1] * sv[1] + gv_rot[2] * sv[2])));
                 }
