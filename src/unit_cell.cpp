@@ -411,7 +411,7 @@ void Unit_cell::initialize(int lmax_apw__, int lmax_pot__, int num_mag_dims__)
 
     if (esm_type_ == ultrasoft_pseudopotential || esm_type_ == norm_conserving_pseudopotential)
     {
-        int num_atoms_in_chunk = std::min(num_atoms(), 256);
+        int num_atoms_in_chunk = (comm_.size() == 1) ? num_atoms() : std::min(num_atoms(), 256);
         int num_beta_chunks = num_atoms() / num_atoms_in_chunk + std::min(1, num_atoms() % num_atoms_in_chunk);
         splindex<block> spl_beta_chunks(num_atoms(), num_beta_chunks, 0);
         beta_chunks_.resize(num_beta_chunks);

@@ -464,21 +464,12 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
     for (int k = 0; k < itso.num_steps_; k++)
     {
         /* set H and O for the variational subspace */
-        set_fv_h_o_uspp_gpu_parallel_v3(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, 
-                                        hmlt_old, ovlp_old, kappa, packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed);
+        set_fv_h_o_parallel(N, n, kp__, veff_it_coarse__, pw_ekin, phi, hphi, ophi, hmlt, ovlp, 
+                            hmlt_old, ovlp_old, kappa, packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed);
+
         /* increase size of the variation space */
         N += n;
     
-        if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-        {
-            printf("checking hermitian matrix\n");
-        }
-
-        if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-        {
-            printf("iteration : %i, subspace size : %i\n", k, N);
-        }
-
         {
         Timer t2("sirius::Band::diag_fv_uspp_cpu_parallel|solve_gevp");
         eval_old = eval;
@@ -620,5 +611,281 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
     log_function_exit(__func__);
 }
 #endif
+
+void Band::diag_fv_pseudo_potential_serial_exact(K_point* kp__,
+                                                 std::vector<double>& veff_it_coarse__)
+{
+    /* cache kinetic energy */
+    std::vector<double> pw_ekin = kp__->get_pw_ekin();
+
+    /* short notation for target wave-functions */
+    mdarray<double_complex, 2>& psi = kp__->fv_states();
+
+    /* short notation for number of target wave-functions */
+    int num_bands = parameters_.num_fv_states();     
+
+    int ngk = kp__->num_gkvec();
+
+    mdarray<double_complex, 2> phi(ngk, ngk);
+    mdarray<double_complex, 2> hphi(ngk, ngk);
+    mdarray<double_complex, 2> ophi(ngk, ngk);
+    
+    std::vector<double> eval(ngk);
+
+    phi.zero();
+    for (int i = 0; i < ngk; i++) phi(i, i) = complex_one;
+    
+    STOP(); // and crete packed matrices
+    //apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, ngk, &phi(0, 0), &hphi(0, 0), &ophi(0, 0));
+        
+    gen_evp_solver()->solve(ngk, num_bands, num_bands, num_bands, hphi.ptr(), hphi.ld(), ophi.ptr(), ophi.ld(), 
+                            &eval[0], psi.ptr(), psi.ld());
+
+    kp__->set_fv_eigen_values(&eval[0]);
+    kp__->fv_states_panel().scatter(psi);
+}
+
+void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
+                                                    double v0__,
+                                                    std::vector<double>& veff_it_coarse__)
+{
+    Timer t("sirius::Band::diag_fv_pseudo_potential_serial_davidson");
+
+    /* cache kinetic energy */
+    std::vector<double> pw_ekin = kp__->get_pw_ekin();
+
+    /* short notation for target wave-functions */
+    mdarray<double_complex, 2>& psi = kp__->fv_states();
+
+    /* short notation for number of target wave-functions */
+    int num_bands = parameters_.num_fv_states();     
+
+    /* we need to apply overlap operator in case of ultrasoft pseudopotential */
+    bool with_overlap = (parameters_.esm_type() == ultrasoft_pseudopotential);
+
+    /* get diagonal elements for preconditioning */
+    std::vector<double_complex> h_diag;
+    std::vector<double_complex> o_diag;
+    if (with_overlap) 
+    {
+        get_h_o_diag<true>(kp__, v0__, pw_ekin, h_diag, o_diag);
+    } 
+    else 
+    {
+        get_h_o_diag<false>(kp__, v0__, pw_ekin, h_diag, o_diag);
+    }
+
+    auto& itso = parameters_.iterative_solver_input_section_;
+    
+    int num_phi = std::min(itso.subspace_size_ * num_bands, kp__->num_gkvec());
+
+    mdarray<double_complex, 2> phi(kp__->num_gkvec(), num_phi);
+    mdarray<double_complex, 2> hphi(kp__->num_gkvec(), num_phi);
+    mdarray<double_complex, 2> ophi(kp__->num_gkvec(), num_phi);
+    mdarray<double_complex, 2> hpsi(kp__->num_gkvec(), num_bands);
+    mdarray<double_complex, 2> opsi(kp__->num_gkvec(), num_bands);
+
+    mdarray<double_complex, 2> hmlt(num_phi, num_phi);
+    mdarray<double_complex, 2> ovlp(num_phi, num_phi);
+    mdarray<double_complex, 2> hmlt_old(num_phi, num_phi);
+    mdarray<double_complex, 2> ovlp_old(num_phi, num_phi);
+    mdarray<double_complex, 2> evec(num_phi, num_bands);
+
+    std::vector<double> eval(num_bands);
+    
+    /* residuals */
+    mdarray<double_complex, 2> res(kp__->num_gkvec(), num_bands);
+
+    /* norm of residuals */
+    std::vector<double> res_norm(num_bands);
+
+    auto uc = parameters_.unit_cell();
+
+    /* offset in the packed array of on-site matrices */
+    mdarray<int, 1> packed_mtrx_offset(uc->num_atoms());
+    int packed_mtrx_size = 0;
+    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    {   
+        int nbf = uc->atom(ia)->mt_basis_size();
+        packed_mtrx_offset(ia) = packed_mtrx_size;
+        packed_mtrx_size += nbf * nbf;
+    }
+    
+    /* pack Q and D matrices */
+    mdarray<double_complex, 1> d_mtrx_packed(packed_mtrx_size);
+    mdarray<double_complex, 1> q_mtrx_packed;
+    if (with_overlap) q_mtrx_packed = mdarray<double_complex, 1>(packed_mtrx_size);
+
+    for (int ia = 0; ia < uc->num_atoms(); ia++)
+    {
+        int nbf = uc->atom(ia)->mt_basis_size();
+        for (int xi2 = 0; xi2 < nbf; xi2++)
+        {
+            for (int xi1 = 0; xi1 < nbf; xi1++)
+            {
+                d_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->d_mtrx(xi1, xi2);
+                if (with_overlap) q_mtrx_packed(packed_mtrx_offset(ia) + xi2 * nbf + xi1) = uc->atom(ia)->type()->uspp().q_mtrx(xi1, xi2);
+            }
+        }
+    }
+    
+    if (parameters_.processing_unit() == GPU)
+    {
+        #ifdef _GPU_
+        phi.allocate_on_device();
+        if (!with_overlap) psi.allocate_on_device();
+        res.allocate_on_device();
+        hphi.allocate_on_device();
+        hpsi.allocate_on_device();
+        //kappa.allocate_on_device();
+        d_mtrx_packed.allocate_on_device();
+        d_mtrx_packed.copy_to_device();
+        if (with_overlap)
+        {
+            ophi.allocate_on_device();
+            opsi.allocate_on_device();
+            q_mtrx_packed.allocate_on_device();
+            q_mtrx_packed.copy_to_device();
+        }
+        /* initial phi on GPU */
+        //cuda_copy_to_device(phi.at<GPU>(), psi.at<CPU>(), kp__->num_gkvec_row() * psi.num_cols_local() * sizeof(double_complex));
+        #else
+        TERMINATE_NO_GPU
+        #endif
+    }
+
+    int N = 0; // current eigen-value problem size
+    int n = num_bands; // number of added residuals
+
+    /* trial basis functions */
+    assert(phi.size(0) == psi.size(0));
+    memcpy(&phi(0, 0), &psi(0, 0), kp__->num_gkvec() * num_bands * sizeof(double_complex));
+
+    /* start iterative diagonalization */
+    for (int k = 0; k < itso.num_steps_; k++)
+    {
+        {
+            Timer t1("sirius::Band::diag_fv_pseudo_potential|set_gevp");
+
+            /* copy old Hamiltonian and overlap */
+            for (int i = 0; i < N; i++)
+            {
+                memcpy(&hmlt(0, i), &hmlt_old(0, i), N * sizeof(double_complex));
+                memcpy(&ovlp(0, i), &ovlp_old(0, i), N * sizeof(double_complex));
+            }
+
+            /* apply Hamiltonian and overlap operators to the new basis functions */
+            apply_h_o_serial(kp__, veff_it_coarse__, pw_ekin, N, n, phi, hphi, ophi, packed_mtrx_offset, d_mtrx_packed, q_mtrx_packed);
+            
+            /* <{phi,res}|H|res> */
+            linalg<CPU>::gemm(2, 0, N + n, n, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &hphi(0, N), hphi.ld(), &hmlt(0, N), hmlt.ld());
+            
+            /* <{phi,res}|O|res> */
+            linalg<CPU>::gemm(2, 0, N + n, n, kp__->num_gkvec(), &phi(0, 0), phi.ld(), &ophi(0, N), ophi.ld(), &ovlp(0, N), ovlp.ld());
+            
+            /* increase size of the variation space */
+            N += n;
+            
+            /* save Hamiltonian and overlap */
+            for (int i = 0; i < N; i++)
+            {
+                memcpy(&hmlt_old(0, i), &hmlt(0, i), N * sizeof(double_complex));
+                memcpy(&ovlp_old(0, i), &ovlp(0, i), N * sizeof(double_complex));
+            }
+        }
+        
+        {
+            Timer t1("sirius::Band::diag_fv_pseudo_potential|solve_gevp");
+            gen_evp_solver()->solve(N, num_bands, num_bands, num_bands, hmlt.ptr(), hmlt.ld(), ovlp.ptr(), ovlp.ld(), 
+                                    &eval[0], evec.ptr(), evec.ld());
+        }
+        
+        {
+            Timer t3("sirius::Band::diag_fv_pseudo_potential|residuals");
+            /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} */
+            linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &hphi(0, 0), hphi.ld(), &evec(0, 0), evec.ld(), 
+                              &hpsi(0, 0), hpsi.ld());
+
+            /* compute O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
+            linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &ophi(0, 0), ophi.ld(), &evec(0, 0), evec.ld(), 
+                              &opsi(0, 0), opsi.ld());
+
+            /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
+            for (int i = 0; i < num_bands; i++)
+            {
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++) res(igk, i) = hpsi(igk, i) - eval[i] * opsi(igk, i);
+            }
+
+            /* compute norm and apply preconditioner */
+            #pragma omp parallel for
+            for (int i = 0; i < num_bands; i++)
+            {
+                double r = 0;
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++) r += real(conj(res(igk, i)) * res(igk, i));
+                res_norm[i] = std::sqrt(r);
+                
+                /* apply preconditioner */
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++)
+                {
+                    double_complex z = h_diag[igk] - eval[i] * o_diag[igk];
+                    if (std::abs(z) < 1e-12) error_local(__FILE__, __LINE__, "problematic division");
+                    res(igk, i) /= z;
+                }
+            }
+
+            n = 0;
+            for (int i = 0; i < num_bands; i++)
+            {
+                /* take the residual if it's norm is above the threshold */
+                if (kp__->band_occupancy(i) > 1e-12 &&
+                    (res_norm[i] > itso.tolerance_ || (res_norm[i] > itso.extra_tolerance_ && n != 0)))
+                {
+                    /* shift unconverged residuals to the beginning of array */
+                    if (n != i) memcpy(&res(0, n), &res(0, i), kp__->num_gkvec() * sizeof(double_complex));
+                    n++;
+                }
+            }
+
+            //std::cout << "Iteration: " << k << ", number of residuals : " << n << std::endl;
+            //for (int i = 0; i < std::min(10, num_bands); i++) std::cout << "eval["<<i<<"] = " << eval[i] << std::endl;
+        }
+
+        /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
+        if (N + n > num_phi || n == 0 || k == (itso.num_steps_ - 1))
+        {   
+            Timer t1("sirius::Band::diag_fv_pseudo_potential|update_phi");
+            /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
+            linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), 
+                              &psi(0, 0), psi.ld());
+
+            if (n == 0 || k == (itso.num_steps_ - 1)) // exit the loop if the eigen-vectors are converged or it's a last iteration
+            {
+                std::cout << "converged in " << k << " iterations" << std::endl;
+                break;
+            }
+            else // otherwise set Psi as a new trial basis
+            {
+                hmlt_old.zero();
+                ovlp_old.zero();
+                for (int i = 0; i < num_bands; i++)
+                {
+                    hmlt_old(i, i) = eval[i];
+                    ovlp_old(i, i) = complex_one;
+                }
+ 
+                /* set new basis functions */
+                memcpy(hphi.ptr(), hpsi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
+                memcpy(ophi.ptr(), opsi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
+                memcpy(phi.ptr(), psi.ptr(), num_bands * kp__->num_gkvec() * sizeof(double_complex));
+                N = num_bands;
+            }
+        }
+        /* expand variational subspace with new basis vectors obtatined from residuals */
+        memcpy(&phi(0, N), &res(0, 0), n * kp__->num_gkvec() * sizeof(double_complex));
+    }
+
+    kp__->set_fv_eigen_values(&eval[0]);
+    kp__->fv_states_panel().scatter(psi);
+}
 
 };

@@ -649,11 +649,6 @@ class K_point
             return beta_gk_t_;
         }
 
-        //== inline double_complex& beta_pw_t(int igk, int idx)
-        //== {
-        //==     return beta_pw_t_(igk, idx);
-        //== }
-
         inline dmatrix<double_complex>& beta_pw_panel()
         {
             return beta_pw_panel_;
@@ -699,21 +694,6 @@ class K_point
             return static_cast<int>(spl_fv_states_[icol_loc]);
         }
 
-        //== inline splindex<block_cyclic>& spl_spinor_wf()
-        //== {
-        //==     return spl_spinor_wf_;
-        //== }
-
-        //== inline splindex<block>& sub_spl_spinor_wf()
-        //== {
-        //==     return sub_spl_spinor_wf_;
-        //== }
-        //== 
-        //== inline int spl_spinor_wf(int jloc)
-        //== {
-        //==     return static_cast<int>(spl_spinor_wf_[jloc]);
-        //== }
-        //== 
         inline splindex<block>& sub_spl_fv_states()
         {
             return sub_spl_fv_states_;
@@ -733,18 +713,6 @@ class K_point
         {
             return p_mtrx_(xi1, xi2, iat);
         }
-
-        //== 
-        //== inline int sub_spl_fv_states(int idx)
-        //== {
-        //==     return static_cast<int>(sub_spl_fv_states_[idx]);
-        //== }
-
-        //== 
-        //== inline int idxbandloc(int sub_index)
-        //== {
-        //==     return static_cast<int>(sub_spl_spinor_wf_[sub_index]);
-        //== }
 
         /// Generate beta-proectors for a block of atoms.
         void generate_beta_gk(int num_atoms__,
@@ -840,13 +808,6 @@ class K_point
                 TERMINATE_NO_GPU
                 #endif
             }
-
-            //if (verbosity_level >= 6 && kp__->comm().rank() == 0)
-            //{
-            //    printf("<beta|phi> effective zgemm with M, N, K: %6i %6i %6i, %12.4f sec, %12.4f GFlops/node\n",
-            //           nbeta, nloc, kp__->num_gkvec(),
-            //           tval, 8e-9 * nbeta * nloc * kp__->num_gkvec() / tval / kp__->num_ranks_row());
-            //}
         }
 
         void add_non_local_contribution(int num_atoms__,

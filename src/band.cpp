@@ -1915,5 +1915,92 @@ void Band::solve_fd(K_point* kp, Periodic_function<double>* effective_potential,
     //== kp->set_band_energies(&eval[0]);
 }
 
+#ifdef _SCALAPACK_
+void Band::diag_fv_pseudo_potential_parallel(K_point* kp__,
+                                             double v0__,
+                                             std::vector<double>& veff_it_coarse__)
+{
+    log_function_enter(__func__);
+    Timer t("sirius::Band::diag_fv_pseudo_potential_parallel", kp__->comm());
+    
+    auto& itso = parameters_.iterative_solver_input_section_;
+    if (itso.type_ == "davidson")
+    {
+        diag_fv_pseudo_potential_parallel_davidson(kp__, v0__, veff_it_coarse__);
+    }
+    else if (itso.type_ == "chebyshev")
+    {
+        diag_fv_pseudo_potential_parallel_chebyshev(kp__, veff_it_coarse__);
+    }
+    else
+    {
+        TERMINATE("unknown iterative solver type");
+    }
+
+    log_function_exit(__func__);
+}
+#endif // _SCALAPACK_
+
+void Band::diag_fv_pseudo_potential_serial(K_point* kp__,
+                                           double v0__,
+                                           std::vector<double>& veff_it_coarse__)
+{
+    log_function_enter(__func__);
+    Timer t("sirius::Band::diag_fv_pseudo_potential_serial");
+    
+    auto& itso = parameters_.iterative_solver_input_section_;
+    if (itso.type_ == "exact")
+    {
+        diag_fv_pseudo_potential_serial_exact(kp__, veff_it_coarse__);
+    }
+    else if (itso.type_ == "davidson")
+    {
+        diag_fv_pseudo_potential_serial_davidson(kp__, v0__, veff_it_coarse__);
+    }
+    else
+    {
+        TERMINATE("unknown iterative solver type");
+    }
+
+    log_function_exit(__func__);
+}
+
+void Band::diag_fv_pseudo_potential(K_point* kp__, 
+                                    Periodic_function<double>* effective_potential__)
+{
+    Timer t("sirius::Band::diag_fv_pseudo_potential");
+
+    auto rl = parameters_.reciprocal_lattice();
+
+    /* map effective potential to a corase grid */
+    std::vector<double> veff_it_coarse(rl->fft_coarse()->size());
+    std::vector<double_complex> veff_pw_coarse(rl->num_gvec_coarse());
+
+    /* take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi */
+    for (int igc = 0; igc < rl->num_gvec_coarse(); igc++)
+    {
+        int ig = rl->gvec_index(igc);
+        veff_pw_coarse[igc] = effective_potential__->f_pw(ig);
+    }
+    rl->fft_coarse()->input(rl->num_gvec_coarse(), rl->fft_index_coarse(), &veff_pw_coarse[0]);
+    rl->fft_coarse()->transform(1);
+    rl->fft_coarse()->output(&veff_it_coarse[0]);
+
+    double v0 = real(effective_potential__->f_pw(0));
+
+    if (gen_evp_solver()->parallel())
+    {
+        #ifdef _SCALAPACK_
+        diag_fv_pseudo_potential_parallel(kp__, v0, veff_it_coarse);
+        #else
+        TERMINATE_NO_SCALAPACK
+        #endif
+    }
+    else
+    {
+        diag_fv_pseudo_potential_serial(kp__, v0, veff_it_coarse);
+    }
+}
+
 }
 
