@@ -781,7 +781,8 @@ class K_point
                                   beta_gk__.at<CPU>(), beta_gk__.ld(), 
                                   phi__.at<CPU>(0, offs__), phi__.ld(), 
                                   beta_phi__.at<CPU>(), beta_phi__.ld());
-                comm_row().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
+
+                if (comm_row().size() > 1) comm_row().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
             }
 
             if (parameters_.processing_unit() == GPU)
@@ -793,16 +794,20 @@ class K_point
                                   phi__.at<GPU>(0, offs__), phi__.ld(), 
                                   beta_phi__.at<GPU>(), beta_phi__.ld());
                 
-                if (gpu_direct)
+                if (comm_row().size() > 1)
                 {
-                    comm_row().allreduce(beta_phi__.at<GPU>(), (int)beta_phi__.size());
+                    if (gpu_direct)
+                    {
+                        comm_row().allreduce(beta_phi__.at<GPU>(), (int)beta_phi__.size());
+                    }
+                    else
+                    {
+                        beta_phi__.copy_to_host();
+                        comm_row().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
+                        beta_phi__.copy_to_device();
+                    }
                 }
-                else
-                {
-                    beta_phi__.copy_to_host();
-                    comm_row().allreduce(beta_phi__.at<CPU>(), (int)beta_phi__.size());
-                    beta_phi__.copy_to_device();
-                }
+
                 cuda_device_synchronize();
                 #else
                 TERMINATE_NO_GPU

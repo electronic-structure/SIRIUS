@@ -785,7 +785,7 @@ void FORTRAN(sirius_get_band_occupancies)(int32_t* kset_id, int32_t* ik_, double
 //==     log_function_exit(__func__);
 //== }
 
-void FORTRAN(sirius_print_timers)(void)
+void sirius_print_timers(void)
 {
     log_function_enter(__func__);
     sirius::Timer::print();

@@ -44,6 +44,7 @@ class Band
         /// Global set of parameters
         Global& parameters_;
 
+        /// BLACS grid for distributed linear algebra operations.
         BLACS_grid const& blacs_grid_;
 
         /// Alias for FFT driver
@@ -51,9 +52,11 @@ class Band
         
         /// Non-zero Gaunt coefficients
         Gaunt_coefficients<double_complex>* gaunt_coefs_;
-
+        
+        /// Interface to a standard eigen-value solver.
         standard_evp* std_evp_solver_; 
 
+        /// Interface to a generalized eigen-value solver.
         generalized_evp* gen_evp_solver_;
 
         /// Apply effective magentic field to the first-variational state.
@@ -63,10 +66,10 @@ class Band
 
         /// Apply SO correction to the first-variational states.
         /** Raising and lowering operators:
-            \f[
-                L_{\pm} Y_{\ell m}= (L_x \pm i L_y) Y_{\ell m}  = \sqrt{\ell(\ell+1) - m(m \pm 1)} Y_{\ell m \pm 1}
-            \f]
-        */
+         *  \f[
+         *      L_{\pm} Y_{\ell m}= (L_x \pm i L_y) Y_{\ell m}  = \sqrt{\ell(\ell+1) - m(m \pm 1)} Y_{\ell m \pm 1}
+         *  \f]
+         */
         void apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi);
         
         /// Apply UJ correction to scalar wave functions
@@ -127,7 +130,8 @@ class Band
                                                  dmatrix<double_complex>& op_phi__,
                                                  dmatrix<double_complex>& op__,
                                                  double_complex alpha);
-
+        
+        /// Apply local part of Hamiltonian (parallel version).
         void apply_h_local_parallel(K_point* kp__,
                                     std::vector<double> const& effective_potential__,
                                     std::vector<double> const& pw_ekin__,
@@ -223,7 +227,8 @@ class Band
                                                double v0__,
                                                std::vector<double>& veff_it_coarse__);
         #endif
-
+        
+        /// Apply local part of Hamiltonian to a slice of wave-functions.
         void apply_h_local_slice(K_point* kp__,
                                  std::vector<double> const& effective_potential__,
                                  std::vector<double> const& pw_ekin__,
@@ -231,9 +236,6 @@ class Band
                                  matrix<double_complex> const& phi__,
                                  matrix<double_complex>& hphi__);
         
-        //void apply_h_local(K_point* kp, std::vector<double>& effective_potential, std::vector<double>& pw_ekin, 
-        //                   int n, double_complex* phi__, double_complex* hphi__);
-
         /// Exact (not iterative) diagonalization of the Hamiltonian.
         void diag_fv_pseudo_potential_serial_exact(K_point* kp__,
                                                    std::vector<double>& veff_it_coarse__);
@@ -292,31 +294,28 @@ class Band
                               std::vector<double_complex>& o_diag__,
                               std::vector<double>& res_norm__);
 
-        //void diag_fv_uspp_gpu(K_point* kp__,
-        //                      Periodic_function<double>* effective_potential__);
-
         void diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
                                                         double v0__,
                                                         std::vector<double>& veff_it_coarse__);
 
-        void apply_h_ncpp_parallel(K_point* kp__,
-                                   std::vector<double> const& effective_potential__,
-                                   std::vector<double> const& pw_ekin__,
-                                   dmatrix<double_complex>& phi__,
-                                   dmatrix<double_complex>& hphi__,
-                                   int num_atoms_in_block__,
-                                   matrix<double_complex>& kappa__,
-                                   matrix<double_complex> const& beta_pw_t__,
-                                   matrix<double>& gkvec_row__,
-                                   mdarray<int, 1>& packed_mtrx_offset__,
-                                   mdarray<double_complex, 1>& d_mtrx_packed__);
+        //void apply_h_ncpp_parallel(K_point* kp__,
+        //                           std::vector<double> const& effective_potential__,
+        //                           std::vector<double> const& pw_ekin__,
+        //                           dmatrix<double_complex>& phi__,
+        //                           dmatrix<double_complex>& hphi__,
+        //                           int num_atoms_in_block__,
+        //                           matrix<double_complex>& kappa__,
+        //                           matrix<double_complex> const& beta_pw_t__,
+        //                           matrix<double>& gkvec_row__,
+        //                           mdarray<int, 1>& packed_mtrx_offset__,
+        //                           mdarray<double_complex, 1>& d_mtrx_packed__);
         
-        void set_fv_h_o_ncpp_parallel(K_point* kp__,
-                                      dmatrix<double_complex>& phi__,
-                                      dmatrix<double_complex>& hphi__,
-                                      dmatrix<double_complex>& h__,
-                                      dmatrix<double_complex>& o__,
-                                      mdarray<double_complex, 2>& kappa__);
+        //void set_fv_h_o_ncpp_parallel(K_point* kp__,
+        //                              dmatrix<double_complex>& phi__,
+        //                              dmatrix<double_complex>& hphi__,
+        //                              dmatrix<double_complex>& h__,
+        //                              dmatrix<double_complex>& o__,
+        //                              mdarray<double_complex, 2>& kappa__);
 
         void generate_fv_states_pp(K_point* kp__,
                                    int num_phi__,
@@ -325,9 +324,9 @@ class Band
                                    dmatrix<double_complex>& psi__,
                                    matrix<double_complex>& kappa__);
         
-        void diag_fv_ncpp_parallel(K_point* kp__,
-                                   double v0__,
-                                   std::vector<double>& veff_it_coarse__);
+        //void diag_fv_ncpp_parallel(K_point* kp__,
+        //                           double v0__,
+        //                           std::vector<double>& veff_it_coarse__);
 
 
         void diag_fv_pseudo_potential_parallel_chebyshev(K_point* kp__,

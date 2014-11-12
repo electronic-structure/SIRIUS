@@ -330,12 +330,6 @@ void Band::diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
 
     log_function_enter(__func__);
     
-    if (parameters_.esm_type() == norm_conserving_pseudopotential)
-    {
-        diag_fv_ncpp_parallel(kp__, v0__, veff_it_coarse__);
-        return;
-    }
-    
     /* cache kinetic energy */
     std::vector<double> pw_ekin = kp__->get_pw_ekin();
     
@@ -739,7 +733,7 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
     {
         #ifdef _GPU_
         phi.allocate_on_device();
-        if (!with_overlap) psi.allocate_on_device();
+        psi.allocate_on_device();
         res.allocate_on_device();
         hphi.allocate_on_device();
         hpsi.allocate_on_device();
@@ -782,6 +776,11 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                                 &eval[0], evec.ptr(), evec.ld());
         }
 
+        #ifdef _GPU_
+        if (parameters_.processing_unit() == GPU)
+            cublas_set_matrix(N, num_bands, sizeof(double_complex), evec.at<CPU>(), evec.ld(), evec.at<GPU>(), evec.ld());
+        #endif
+
         residuals_serial(kp__, N, num_bands, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag, res_norm);
 
         if (parameters_.processing_unit() == GPU)
@@ -791,17 +790,39 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
             #endif
         }
         
+        {
+        Timer t1("sirius::Band::diag_fv_pseudo_potential|sort_res");
         n = 0;
         for (int i = 0; i < num_bands; i++)
         {
             /* take the residual if it's norm is above the threshold */
             if (kp__->band_occupancy(i) > 1e-12 &&
-                (res_norm[i] > itso.tolerance_ || (res_norm[i] > itso.extra_tolerance_ && n != 0)))
+                (res_norm[i] > itso.tolerance_ || (n != 0 && res_norm[i] > itso.extra_tolerance_)))
             {
                 /* shift unconverged residuals to the beginning of array */
-                if (n != i) memcpy(&res(0, n), &res(0, i), kp__->num_gkvec() * sizeof(double_complex));
+                if (n != i)
+                {
+                    switch (parameters_.processing_unit())
+                    {
+                        case CPU:
+                        {
+                            memcpy(&res(0, n), &res(0, i), kp__->num_gkvec() * sizeof(double_complex));
+                            break;
+                        }
+                        case GPU:
+                        {
+                            #ifdef _GPU_
+                            cuda_copy_device_to_device(res.at<GPU>(0, n), res.at<GPU>(0, i), kp__->num_gkvec() * sizeof(double_complex));
+                            #else
+                            TERMINATE_NO_GPU
+                            #endif
+                            break;
+                        }
+                    }
+                }
                 n++;
             }
+        }
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
@@ -809,8 +830,26 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
         {   
             Timer t1("sirius::Band::diag_fv_pseudo_potential|update_phi");
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), 
-                              &psi(0, 0), psi.ld());
+            switch (parameters_.processing_unit())
+            {
+                case CPU:
+                {
+                    linalg<CPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, &phi(0, 0), phi.ld(), &evec(0, 0), evec.ld(), 
+                                      &psi(0, 0), psi.ld());
+                    break;
+                }
+                case GPU:
+                {
+                    #ifdef _GPU_
+                    linalg<GPU>::gemm(0, 0, kp__->num_gkvec(), num_bands, N, phi.at<GPU>(), phi.ld(), evec.at<GPU>(), evec.ld(), 
+                                      psi.at<GPU>(), psi.ld());
+                    psi.copy_to_host();
+                    #else
+                    TERMINATE_NO_GPU
+                    #endif
+                    break;
+                }
+            }
 
             /* exit the loop if the eigen-vectors are converged or it's a last iteration */
             if (n == 0 || k == (itso.num_steps_ - 1))
@@ -819,6 +858,7 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
             }
             else /* otherwise set Psi as a new trial basis */
             {
+                STOP(); // something needs to be moved to GPU
                 hmlt_old.zero();
                 ovlp_old.zero();
                 for (int i = 0; i < num_bands; i++)
@@ -835,12 +875,23 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
             }
         }
         /* expand variational subspace with new basis vectors obtatined from residuals */
-        memcpy(&phi(0, N), &res(0, 0), n * kp__->num_gkvec() * sizeof(double_complex));
-        if (parameters_.processing_unit() == GPU)
+        switch (parameters_.processing_unit())
         {
-            #ifdef _GPU_
-            cublas_set_matrix(kp__->num_gkvec(), n, sizeof(double_complex), phi.at<CPU>(0, N), phi.ld(), phi.at<GPU>(0, N), phi.ld());
-            #endif
+            case CPU:
+            {
+                memcpy(&phi(0, N), &res(0, 0), n * kp__->num_gkvec() * sizeof(double_complex));
+                break;
+            }
+            case GPU:
+            {
+                #ifdef _GPU_
+                cuda_copy_device_to_device(phi.at<GPU>(0, N), res.at<GPU>(), n * kp__->num_gkvec() * sizeof(double_complex));
+                cuda_copy_to_host(phi.at<CPU>(0, N), phi.at<GPU>(0, N), n * kp__->num_gkvec() * sizeof(double_complex));
+                #else
+                TERMINATE_NO_GPU
+                #endif
+                break;
+            }
         }
     }
 
@@ -848,7 +899,7 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
     {
         #ifdef _GPU_
         kp__->beta_pw_panel().panel().deallocate_on_device();
-        if (!with_overlap) psi.deallocate_on_device();
+        psi.deallocate_on_device();
         #endif
     }
 

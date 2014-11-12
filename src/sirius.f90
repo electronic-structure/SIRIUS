@@ -198,6 +198,10 @@ interface
         complex(8),              intent(out) :: rho_pw
     end subroutine
 
+    subroutine sirius_print_timers()&
+       &bind(C, name="sirius_print_timers")
+    end subroutine
+
     subroutine sirius_density_initialize_aux(rhoit, rhomt, magit, magmt)&
        &bind(C, name="sirius_density_initialize")
         use, intrinsic :: ISO_C_BINDING

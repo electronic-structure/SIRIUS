@@ -1509,8 +1509,8 @@ void Band::set_fv_h_o_serial(K_point* kp__,
         #endif
     }
         
-    /* save Hamiltonian and overlap */ // TODO: copy less here (only [N__, N__ + n__])
-    for (int i = 0; i < N__ + n__; i++)
+    /* save Hamiltonian and overlap */
+    for (int i = N__; i < N__ + n__; i++)
     {
         memcpy(&h_old__(0, i), &h__(0, i), (N__ + n__) * sizeof(double_complex));
         memcpy(&o_old__(0, i), &o__(0, i), (N__ + n__) * sizeof(double_complex));
@@ -1549,8 +1549,6 @@ void Band::residuals_serial(K_point* kp__,
     if (pu == GPU)
     {
         #ifdef _GPU_
-        cublas_set_matrix(N__, num_bands__, sizeof(double_complex), evec__.at<CPU>(), evec__.ld(), evec__.at<GPU>(), evec__.ld());
-
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} */
         linalg<GPU>::gemm(0, 0, kp__->num_gkvec(), num_bands__, N__, hphi__.at<GPU>(), hphi__.ld(), evec__.at<GPU>(), evec__.ld(), 
                           hpsi__.at<GPU>(), hpsi__.ld());
