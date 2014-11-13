@@ -134,6 +134,8 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         mx_pot->initialize();
     }
 
+    density_->mixer_init();
+
     double eold = 0.0;
     double rms = 1.0;
 
@@ -159,12 +161,6 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         /* generate new density from the occupied wave-functions */
         density_->generate(*kset_);
         
-        /* compute new total energy for a new density */
-        double etot = total_energy();
-        
-        /* write some information */
-        print_info();
-
         //== density_->pack(mx);
         //== mx->inc();
         //== 
@@ -188,17 +184,22 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         //== }
         //== std::cout << "optimal beta=" << bopt << std::endl;
        
-        /* mix density */
-        density_->pack(mx);
-        rms = mx->mix();
-        density_->unpack(mx->output_buffer());
+        ///* mix density */
+        //density_->pack(mx);
+        //rms = mx->mix();
+        //density_->unpack(mx->output_buffer());
+        rms = density_->mix();
         parameters_.comm().bcast(&rms, 1, 0);
+
+        /* compute new total energy for a new density */
+        double etot = total_energy();
+        
+        /* write some information */
+        print_info();
 
         if (parameters_.comm().rank() == 0)
         {
-            printf("iteration : %3i, density RMS %12.6f, energy difference : %12.6f", 
-                    iter, rms, etot - eold);
-            printf("\n");
+            printf("iteration : %3i, density RMS %12.6f, energy difference : %12.6f\n", iter, rms, etot - eold);
         }
         
         if (fabs(eold - etot) < energy_tol && rms < potential_tol) break;

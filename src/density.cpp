@@ -1538,16 +1538,17 @@ void Density::generate_valence(K_set& ks__)
             break;
         }
     }
+    
+    /* get rho(G) */
+    fft_->input(&rho_->f_it<global>(0));
+    fft_->transform(-1);
+    fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &rho_->f_pw(0));
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential ||
         parameters_.esm_type() == norm_conserving_pseudopotential)
     {
-        fft_->input(&rho_->f_it<global>(0));
-        fft_->transform(-1);
-        fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &rho_->f_pw(0));
         augment(ks__);
     }
-
 }
 
 void Density::augment(K_set& ks__)
@@ -1588,90 +1589,92 @@ void Density::generate(K_set& ks__)
 {
     Timer t("sirius::Density::generate");
     
-    double wt = 0.0;
-    double ot = 0.0;
-    for (int ik = 0; ik < ks__.num_kpoints(); ik++)
-    {
-        wt += ks__[ik]->weight();
-        for (int j = 0; j < parameters_.num_bands(); j++) ot += ks__[ik]->weight() * ks__[ik]->band_occupancy(j);
-    }
+    //== double wt = 0.0;
+    //== double ot = 0.0;
+    //== for (int ik = 0; ik < ks__.num_kpoints(); ik++)
+    //== {
+    //==     wt += ks__[ik]->weight();
+    //==     for (int j = 0; j < parameters_.num_bands(); j++) ot += ks__[ik]->weight() * ks__[ik]->band_occupancy(j);
+    //== }
 
-    if (fabs(wt - 1.0) > 1e-12) error_local(__FILE__, __LINE__, "K_point weights don't sum to one");
+    //== if (fabs(wt - 1.0) > 1e-12) error_local(__FILE__, __LINE__, "K_point weights don't sum to one");
 
-    if (fabs(ot - parameters_.unit_cell()->num_valence_electrons()) > 1e-8)
-    {
-        std::stringstream s;
-        s << "wrong occupancies" << std::endl
-          << "  computed : " << ot << std::endl
-          << "  required : " << parameters_.unit_cell()->num_valence_electrons() << std::endl
-          << "  difference : " << fabs(ot - parameters_.unit_cell()->num_valence_electrons());
-        warning_local(__FILE__, __LINE__, s);
-    }
+    //== if (fabs(ot - parameters_.unit_cell()->num_valence_electrons()) > 1e-8)
+    //== {
+    //==     std::stringstream s;
+    //==     s << "wrong occupancies" << std::endl
+    //==       << "  computed : " << ot << std::endl
+    //==       << "  required : " << parameters_.unit_cell()->num_valence_electrons() << std::endl
+    //==       << "  difference : " << fabs(ot - parameters_.unit_cell()->num_valence_electrons());
+    //==     warning_local(__FILE__, __LINE__, s);
+    //== }
 
-    /* zero density and magnetization */
-    zero();
+    //== /* zero density and magnetization */
+    //== zero();
 
-    /* interstitial part is independent of basis type */
-    generate_valence_density_it(ks__);
+    //== /* interstitial part is independent of basis type */
+    //== generate_valence_density_it(ks__);
 
-    switch (parameters_.esm_type())
-    {
-        case full_potential_lapwlo:
-        {
-            /* muffin-tin part */
-            generate_valence_density_mt(ks__);
-            break;
-        }
-        case full_potential_pwlo:
-        {
-            switch (parameters_.processing_unit())
-            {
-                STOP();
-                case CPU:
-                {
-                    break;
-                }
-                #ifdef _GPU_
-                case GPU:
-                {
-                    break;
-                }
-                #endif
-                default:
-                {
-                    error_local(__FILE__, __LINE__, "wrong processing unit");
-                }
-            }
-            break;
-        }
-        case ultrasoft_pseudopotential:
-        {
-            switch (parameters_.processing_unit())
-            {
-                case CPU:
-                {
-                    add_q_contribution_to_valence_density(ks__);
-                    break;
-                }
-                #ifdef _GPU_
-                case GPU:
-                {
-                    add_q_contribution_to_valence_density_gpu(ks__);
-                    break;
-                }
-                #endif
-                default:
-                {
-                    error_local(__FILE__, __LINE__, "wrong processing unit");
-                }
-            }
-            break;
-        }
-        case norm_conserving_pseudopotential:
-        {
-            break;
-        }
-    }
+    //== switch (parameters_.esm_type())
+    //== {
+    //==     case full_potential_lapwlo:
+    //==     {
+    //==         /* muffin-tin part */
+    //==         generate_valence_density_mt(ks__);
+    //==         break;
+    //==     }
+    //==     case full_potential_pwlo:
+    //==     {
+    //==         switch (parameters_.processing_unit())
+    //==         {
+    //==             STOP();
+    //==             case CPU:
+    //==             {
+    //==                 break;
+    //==             }
+    //==             #ifdef _GPU_
+    //==             case GPU:
+    //==             {
+    //==                 break;
+    //==             }
+    //==             #endif
+    //==             default:
+    //==             {
+    //==                 error_local(__FILE__, __LINE__, "wrong processing unit");
+    //==             }
+    //==         }
+    //==         break;
+    //==     }
+    //==     case ultrasoft_pseudopotential:
+    //==     {
+    //==         switch (parameters_.processing_unit())
+    //==         {
+    //==             case CPU:
+    //==             {
+    //==                 add_q_contribution_to_valence_density(ks__);
+    //==                 break;
+    //==             }
+    //==             #ifdef _GPU_
+    //==             case GPU:
+    //==             {
+    //==                 add_q_contribution_to_valence_density_gpu(ks__);
+    //==                 break;
+    //==             }
+    //==             #endif
+    //==             default:
+    //==             {
+    //==                 error_local(__FILE__, __LINE__, "wrong processing unit");
+    //==             }
+    //==         }
+    //==         break;
+    //==     }
+    //==     case norm_conserving_pseudopotential:
+    //==     {
+    //==         break;
+    //==     }
+    //== }
+
+    generate_valence(ks__);
 
     if (parameters_.unit_cell()->full_potential())
     {
@@ -1689,22 +1692,21 @@ void Density::generate(K_set& ks__)
         rho_->sync(true, false);
         for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync(true, false);
     }
+    
+    double nel = 0;
+    if (parameters_.esm_type() == full_potential_lapwlo ||
+        parameters_.esm_type() == full_potential_pwlo)
+    {
+        std::vector<double> nel_mt;
+        double nel_it;
+        nel = rho_->integrate(nel_mt, nel_it);
+    }
+    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
+         parameters_.esm_type() == norm_conserving_pseudopotential)
+    {
+        nel = real(rho_->f_pw(0)) * parameters_.unit_cell()->omega();
+    }
 
-    std::vector<double> nel_mt;
-    double nel_it;
-    double nel = rho_->integrate(nel_mt, nel_it);
-    
-    //if (Platform::mpi_rank() == 0)
-    //{
-    //    printf("\n");
-    //    printf("Charges before symmetrization\n");
-    //    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-    //    {
-    //        printf("ia : %i  q : %f\n", ia, nel_mt[ia]);
-    //    }
-    //    printf("interstitial : %f\n", nel_it);
-    //}
-    
     if (fabs(nel - parameters_.unit_cell()->num_electrons()) > 1e-5)
     {
         std::stringstream s;
