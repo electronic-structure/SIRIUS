@@ -33,6 +33,7 @@
 #include "step_function.h"
 #include "error_handling.h"
 #include "input.h"
+#include "real_space_prj.h"
 
 /// SIRIUS namespace.
 namespace sirius {
@@ -113,7 +114,7 @@ class Global
         Reciprocal_lattice* reciprocal_lattice_;
 
         Unit_cell* unit_cell_;
-        
+
         /// Base communicator.
         Communicator comm_;
         
@@ -121,6 +122,8 @@ class Global
         void parse_input();
 
     public:
+
+        Real_space_prj* real_space_prj_;
 
         /// Initiail input parameters from the input file and command line.
         initial_input_parameters iip_;

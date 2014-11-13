@@ -36,7 +36,6 @@ Step_function::Step_function(Reciprocal_lattice* reciprocal_lattice__,
 
 mdarray<double, 2> Step_function::get_step_function_form_factors(int num_gsh)
 {
-    
     auto uc = reciprocal_lattice_->unit_cell();
     mdarray<double, 2> ffac(uc->num_atom_types(), num_gsh);
     

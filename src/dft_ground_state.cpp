@@ -134,6 +134,8 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         mx_pot->initialize();
     }
 
+    density_->mixer_init();
+
     double eold = 0.0;
     double rms = 1.0;
 
@@ -188,10 +190,12 @@ void DFT_ground_state::scf_loop(double potential_tol, double energy_tol, int num
         //== }
         //== std::cout << "optimal beta=" << bopt << std::endl;
        
-        /* mix density */
-        density_->pack(mx);
-        rms = mx->mix();
-        density_->unpack(mx->output_buffer());
+        ///* mix density */
+        //density_->pack(mx);
+        //rms = mx->mix();
+        //density_->unpack(mx->output_buffer());
+        rms = density_->mix();
+
         parameters_.comm().bcast(&rms, 1, 0);
 
         if (parameters_.comm().rank() == 0)

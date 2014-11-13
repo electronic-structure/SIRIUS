@@ -1404,11 +1404,8 @@ void Band::apply_h_o_serial(K_point* kp__,
     /* apply local part of Hamiltonian */
     apply_h_local_slice(kp__, effective_potential__, pw_ekin__, n__, phi, hphi);
     
-    if (parameters_.processing_unit() == CPU)
-    {
-        /* set intial ophi */
-        phi >> ophi;
-    }
+    /* set intial ophi */
+    if (parameters_.processing_unit() == CPU) phi >> ophi;
 
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU)
@@ -1436,6 +1433,20 @@ void Band::apply_h_o_serial(K_point* kp__,
     #endif
 
     kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_pw_panel().panel(), beta_phi);
+    std::cout << "reciprocal space beta_phi" << std::endl;
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++) std::cout << beta_phi(i, j) << " ";
+        std::cout << std::endl;
+    }
+
+    kp__->generate_beta_phi_real_space(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_pw_panel().panel(), beta_phi);
+    std::cout << "real space beta_phi" << std::endl;
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++) std::cout << beta_phi(i, j) << " ";
+        std::cout << std::endl;
+    }
 
     kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
                                      kp__->beta_pw_panel().panel(), d_mtrx_packed__, packed_mtrx_offset__, beta_phi,

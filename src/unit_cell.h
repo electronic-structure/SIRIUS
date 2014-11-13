@@ -517,20 +517,10 @@ class Unit_cell
             return nearest_neighbours_[ia][i];
         }
 
-        //== inline int num_beta_t()
-        //== {
-        //==     return num_beta_t_;
-        //== }
-
         inline mdarray<double, 2>& atom_pos()
         {
             return atom_pos_;
         }
-
-        //inline mdarray<int, 2>& beta_t_idx()
-        //{
-        //    return beta_t_idx_;
-        //}
 
         inline mt_basis_descriptor& mt_aw_basis_descriptor(int idx)
         {

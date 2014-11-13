@@ -815,6 +815,42 @@ class K_point
             }
         }
 
+        void generate_beta_phi_real_space(int nbeta__,
+                                          matrix<double_complex>& phi__,
+                                          int nphi__,
+                                          int offs__,
+                                          matrix<double_complex>& beta_gk__,
+                                          matrix<double_complex>& beta_phi__)
+        {
+            Timer t("sirius::K_point::generate_beta_phi_real_space");
+            beta_phi__.zero();
+            auto fft = parameters_.reciprocal_lattice()->fft_coarse();
+            double domega = parameters_.unit_cell()->omega() / fft->size();
+
+            for (int i = 0; i < nphi__; i++)
+            {
+                fft->input(num_gkvec(), fft_index_coarse(), &phi__(0, i));
+                fft->transform(1);
+
+                for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+                {
+                    auto type = parameters_.unit_cell()->atom(ia)->type();
+                    int nbf = type->mt_basis_size();
+                    int ofs = parameters_.unit_cell()->atom(ia)->offset_lo();
+                    for (int xi = 0; xi < nbf; xi++)
+                    {
+                        int lm = type->indexb(xi).lm;
+                        int idxrf = type->indexb(xi).idxrf;
+                        for (int j = 0; j < (int)parameters_.real_space_prj_->beta_grid_points_[ia].size(); j++)
+                        {
+                            auto& desc = parameters_.real_space_prj_->beta_grid_points_[ia][j];
+                            beta_phi__(ofs + xi, i) += conj(desc.beta_rf[idxrf] * desc.ylm[lm]) * fft->buffer(desc.ir) * domega;
+                        }
+                    }
+                }
+            }
+        }
+
         void add_non_local_contribution(int num_atoms__,
                                         int num_beta__,
                                         mdarray<int, 2> const& beta_desc__,
