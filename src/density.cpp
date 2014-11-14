@@ -1039,22 +1039,19 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 
     std::vector<double_complex> f_pw(rl->num_gvec(), complex_zero);
 
-    int max_num_atoms = 0;
-    for (int iat = 0; iat < uc->num_atom_types(); iat++)
-        max_num_atoms = std::max(max_num_atoms, uc->atom_type(iat)->num_atoms());
+    //== int max_num_atoms = 0;
+    //== for (int iat = 0; iat < uc->num_atom_types(); iat++)
+    //==     max_num_atoms = std::max(max_num_atoms, uc->atom_type(iat)->num_atoms());
 
-    mdarray<double_complex, 2> phase_factors(rl->spl_num_gvec().local_size(), max_num_atoms);
+    /* split local fraction of G-vectors between threads */
+    splindex<block> spl_ngv_loc(rl->spl_num_gvec().local_size(), Platform::max_num_threads(), 0);
 
-    mdarray<double_complex, 2> d_mtrx_pw(rl->spl_num_gvec().local_size(), 
-                                         uc->max_mt_basis_size() * (uc->max_mt_basis_size() + 1) / 2);
-    
     for (int iat = 0; iat < uc->num_atom_types(); iat++)
     {
         auto atom_type = uc->atom_type(iat);
         int nbf = atom_type->mt_basis_size();
 
         mdarray<double_complex, 2> d_mtrx_packed(atom_type->num_atoms(), nbf * (nbf + 1) / 2);
-        #pragma omp parallel for
         for (int i = 0; i < atom_type->num_atoms(); i++)
         {
             int ia = atom_type->atom_id(i);
@@ -1066,37 +1063,53 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                     d_mtrx_packed(i, xi2 * (xi2 + 1) / 2 + xi1) = pp_complex_density_matrix(xi2, xi1, 0, ia);
                 }
             }
-            for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
-                phase_factors(igloc, i) = conj(rl->gvec_phase_factor<local>(igloc, ia));
-
         }
-        linalg<CPU>::gemm(0, 0, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, atom_type->num_atoms(),
-                          &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0), d_mtrx_packed.ld(), 
-                          &d_mtrx_pw(0, 0), d_mtrx_pw.ld());
-        
         #pragma omp parallel
-        for (int xi2 = 0; xi2 < nbf; xi2++)
         {
-            int idx12 = xi2 * (xi2 + 1) / 2;
+            mdarray<double_complex, 2> phase_factors(spl_ngv_loc.local_size(), atom_type->num_atoms());
 
-            /* add diagonal term */
-            #pragma omp for
-            for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
-            {
-                /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
-                f_pw[rl->spl_num_gvec(igloc)] += d_mtrx_pw(igloc, idx12 + xi2) * 
-                                                 atom_type->uspp().q_pw(igloc, idx12 + xi2);
+            mdarray<double_complex, 2> d_mtrx_pw(spl_ngv_loc.local_size(), nbf * (nbf + 1) / 2);
+    
+            int thread_id = Platform::thread_id();
 
-            }
-            /* add non-diagonal terms */
-            for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
+            for (int i = 0; i < atom_type->num_atoms(); i++)
             {
-                #pragma omp for
-                for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
+                int ia = atom_type->atom_id(i);
+
+                for (int igloc_t = 0; igloc_t < (int)spl_ngv_loc.local_size(thread_id); igloc_t++)
                 {
-                    /* D_{xi2,xi1} * Q(G)_{xi1, xi2} */
-                    f_pw[rl->spl_num_gvec(igloc)] += 2 * real(d_mtrx_pw(igloc, idx12) * 
-                                                              atom_type->uspp().q_pw(igloc, idx12));
+                    int igloc = (int)spl_ngv_loc.global_index(igloc_t, thread_id);
+                    phase_factors(igloc_t, i) = conj(rl->gvec_phase_factor<local>(igloc, ia));
+                }
+            }
+
+            linalg<CPU>::gemm(0, 0, (int)spl_ngv_loc.local_size(thread_id), nbf * (nbf + 1) / 2, atom_type->num_atoms(),
+                              &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0), d_mtrx_packed.ld(), 
+                              &d_mtrx_pw(0, 0), d_mtrx_pw.ld());
+
+            for (int xi2 = 0; xi2 < nbf; xi2++)
+            {
+                int idx12 = xi2 * (xi2 + 1) / 2;
+
+                /* add diagonal term */
+                for (int igloc_t = 0; igloc_t < (int)spl_ngv_loc.local_size(thread_id); igloc_t++)
+                {
+                    int igloc = (int)spl_ngv_loc.global_index(igloc_t, thread_id);
+                    /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
+                    f_pw[rl->spl_num_gvec(igloc)] += d_mtrx_pw(igloc_t, idx12 + xi2) * 
+                                                     atom_type->uspp().q_pw(igloc, idx12 + xi2);
+
+                }
+                /* add non-diagonal terms */
+                for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
+                {
+                    for (int igloc_t = 0; igloc_t < (int)spl_ngv_loc.local_size(thread_id); igloc_t++)
+                    {
+                        int igloc = (int)spl_ngv_loc.global_index(igloc_t, thread_id);
+                        /* D_{xi2,xi1} * Q(G)_{xi1, xi2} */
+                        f_pw[rl->spl_num_gvec(igloc)] += 2 * real(d_mtrx_pw(igloc_t, idx12) * 
+                                                                  atom_type->uspp().q_pw(igloc, idx12));
+                    }
                 }
             }
         }
