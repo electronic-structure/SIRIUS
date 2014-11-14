@@ -1039,22 +1039,19 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
 
     std::vector<double_complex> f_pw(rl->num_gvec(), complex_zero);
 
-    int max_num_atoms = 0;
-    for (int iat = 0; iat < uc->num_atom_types(); iat++)
-        max_num_atoms = std::max(max_num_atoms, uc->atom_type(iat)->num_atoms());
+    //== int max_num_atoms = 0;
+    //== for (int iat = 0; iat < uc->num_atom_types(); iat++)
+    //==     max_num_atoms = std::max(max_num_atoms, uc->atom_type(iat)->num_atoms());
 
-    mdarray<double_complex, 2> phase_factors(rl->spl_num_gvec().local_size(), max_num_atoms);
+    /* split local fraction of G-vectors between threads */
+    splindex<block> spl_ngv_loc(rl->spl_num_gvec().local_size(), Platform::max_num_threads(), 0);
 
-    mdarray<double_complex, 2> d_mtrx_pw(rl->spl_num_gvec().local_size(), 
-                                         uc->max_mt_basis_size() * (uc->max_mt_basis_size() + 1) / 2);
-    
     for (int iat = 0; iat < uc->num_atom_types(); iat++)
     {
         auto atom_type = uc->atom_type(iat);
         int nbf = atom_type->mt_basis_size();
 
         mdarray<double_complex, 2> d_mtrx_packed(atom_type->num_atoms(), nbf * (nbf + 1) / 2);
-        #pragma omp parallel for
         for (int i = 0; i < atom_type->num_atoms(); i++)
         {
             int ia = atom_type->atom_id(i);
@@ -1066,37 +1063,53 @@ void Density::add_q_contribution_to_valence_density(K_set& ks)
                     d_mtrx_packed(i, xi2 * (xi2 + 1) / 2 + xi1) = pp_complex_density_matrix(xi2, xi1, 0, ia);
                 }
             }
-            for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
-                phase_factors(igloc, i) = conj(rl->gvec_phase_factor<local>(igloc, ia));
-
         }
-        linalg<CPU>::gemm(0, 0, (int)rl->spl_num_gvec().local_size(), nbf * (nbf + 1) / 2, atom_type->num_atoms(),
-                          &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0), d_mtrx_packed.ld(), 
-                          &d_mtrx_pw(0, 0), d_mtrx_pw.ld());
-        
         #pragma omp parallel
-        for (int xi2 = 0; xi2 < nbf; xi2++)
         {
-            int idx12 = xi2 * (xi2 + 1) / 2;
+            mdarray<double_complex, 2> phase_factors(spl_ngv_loc.local_size(), atom_type->num_atoms());
 
-            /* add diagonal term */
-            #pragma omp for
-            for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
-            {
-                /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
-                f_pw[rl->spl_num_gvec(igloc)] += d_mtrx_pw(igloc, idx12 + xi2) * 
-                                                 atom_type->uspp().q_pw(igloc, idx12 + xi2);
+            mdarray<double_complex, 2> d_mtrx_pw(spl_ngv_loc.local_size(), nbf * (nbf + 1) / 2);
+    
+            int thread_id = Platform::thread_id();
 
-            }
-            /* add non-diagonal terms */
-            for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
+            for (int i = 0; i < atom_type->num_atoms(); i++)
             {
-                #pragma omp for
-                for (int igloc = 0; igloc < (int)rl->spl_num_gvec().local_size(); igloc++)
+                int ia = atom_type->atom_id(i);
+
+                for (int igloc_t = 0; igloc_t < (int)spl_ngv_loc.local_size(thread_id); igloc_t++)
                 {
-                    /* D_{xi2,xi1} * Q(G)_{xi1, xi2} */
-                    f_pw[rl->spl_num_gvec(igloc)] += 2 * real(d_mtrx_pw(igloc, idx12) * 
-                                                              atom_type->uspp().q_pw(igloc, idx12));
+                    int igloc = (int)spl_ngv_loc.global_index(igloc_t, thread_id);
+                    phase_factors(igloc_t, i) = conj(rl->gvec_phase_factor<local>(igloc, ia));
+                }
+            }
+
+            linalg<CPU>::gemm(0, 0, (int)spl_ngv_loc.local_size(thread_id), nbf * (nbf + 1) / 2, atom_type->num_atoms(),
+                              &phase_factors(0, 0), phase_factors.ld(), &d_mtrx_packed(0, 0), d_mtrx_packed.ld(), 
+                              &d_mtrx_pw(0, 0), d_mtrx_pw.ld());
+
+            for (int xi2 = 0; xi2 < nbf; xi2++)
+            {
+                int idx12 = xi2 * (xi2 + 1) / 2;
+
+                /* add diagonal term */
+                for (int igloc_t = 0; igloc_t < (int)spl_ngv_loc.local_size(thread_id); igloc_t++)
+                {
+                    int igloc = (int)spl_ngv_loc.global_index(igloc_t, thread_id);
+                    /* D_{xi2,xi2} * Q(G)_{xi2, xi2} */
+                    f_pw[rl->spl_num_gvec(igloc)] += d_mtrx_pw(igloc_t, idx12 + xi2) * 
+                                                     atom_type->uspp().q_pw(igloc, idx12 + xi2);
+
+                }
+                /* add non-diagonal terms */
+                for (int xi1 = 0; xi1 < xi2; xi1++, idx12++)
+                {
+                    for (int igloc_t = 0; igloc_t < (int)spl_ngv_loc.local_size(thread_id); igloc_t++)
+                    {
+                        int igloc = (int)spl_ngv_loc.global_index(igloc_t, thread_id);
+                        /* D_{xi2,xi1} * Q(G)_{xi1, xi2} */
+                        f_pw[rl->spl_num_gvec(igloc)] += 2 * real(d_mtrx_pw(igloc_t, idx12) * 
+                                                                  atom_type->uspp().q_pw(igloc, idx12));
+                    }
                 }
             }
         }
@@ -1538,16 +1551,17 @@ void Density::generate_valence(K_set& ks__)
             break;
         }
     }
+    
+    /* get rho(G) */
+    fft_->input(&rho_->f_it<global>(0));
+    fft_->transform(-1);
+    fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &rho_->f_pw(0));
 
     if (parameters_.esm_type() == ultrasoft_pseudopotential ||
         parameters_.esm_type() == norm_conserving_pseudopotential)
     {
-        fft_->input(&rho_->f_it<global>(0));
-        fft_->transform(-1);
-        fft_->output(parameters_.reciprocal_lattice()->num_gvec(), parameters_.reciprocal_lattice()->fft_index(), &rho_->f_pw(0));
         augment(ks__);
     }
-
 }
 
 void Density::augment(K_set& ks__)
@@ -1588,90 +1602,92 @@ void Density::generate(K_set& ks__)
 {
     Timer t("sirius::Density::generate");
     
-    double wt = 0.0;
-    double ot = 0.0;
-    for (int ik = 0; ik < ks__.num_kpoints(); ik++)
-    {
-        wt += ks__[ik]->weight();
-        for (int j = 0; j < parameters_.num_bands(); j++) ot += ks__[ik]->weight() * ks__[ik]->band_occupancy(j);
-    }
+    //== double wt = 0.0;
+    //== double ot = 0.0;
+    //== for (int ik = 0; ik < ks__.num_kpoints(); ik++)
+    //== {
+    //==     wt += ks__[ik]->weight();
+    //==     for (int j = 0; j < parameters_.num_bands(); j++) ot += ks__[ik]->weight() * ks__[ik]->band_occupancy(j);
+    //== }
 
-    if (fabs(wt - 1.0) > 1e-12) error_local(__FILE__, __LINE__, "K_point weights don't sum to one");
+    //== if (fabs(wt - 1.0) > 1e-12) error_local(__FILE__, __LINE__, "K_point weights don't sum to one");
 
-    if (fabs(ot - parameters_.unit_cell()->num_valence_electrons()) > 1e-8)
-    {
-        std::stringstream s;
-        s << "wrong occupancies" << std::endl
-          << "  computed : " << ot << std::endl
-          << "  required : " << parameters_.unit_cell()->num_valence_electrons() << std::endl
-          << "  difference : " << fabs(ot - parameters_.unit_cell()->num_valence_electrons());
-        warning_local(__FILE__, __LINE__, s);
-    }
+    //== if (fabs(ot - parameters_.unit_cell()->num_valence_electrons()) > 1e-8)
+    //== {
+    //==     std::stringstream s;
+    //==     s << "wrong occupancies" << std::endl
+    //==       << "  computed : " << ot << std::endl
+    //==       << "  required : " << parameters_.unit_cell()->num_valence_electrons() << std::endl
+    //==       << "  difference : " << fabs(ot - parameters_.unit_cell()->num_valence_electrons());
+    //==     warning_local(__FILE__, __LINE__, s);
+    //== }
 
-    /* zero density and magnetization */
-    zero();
+    //== /* zero density and magnetization */
+    //== zero();
 
-    /* interstitial part is independent of basis type */
-    generate_valence_density_it(ks__);
+    //== /* interstitial part is independent of basis type */
+    //== generate_valence_density_it(ks__);
 
-    switch (parameters_.esm_type())
-    {
-        case full_potential_lapwlo:
-        {
-            /* muffin-tin part */
-            generate_valence_density_mt(ks__);
-            break;
-        }
-        case full_potential_pwlo:
-        {
-            switch (parameters_.processing_unit())
-            {
-                STOP();
-                case CPU:
-                {
-                    break;
-                }
-                #ifdef _GPU_
-                case GPU:
-                {
-                    break;
-                }
-                #endif
-                default:
-                {
-                    error_local(__FILE__, __LINE__, "wrong processing unit");
-                }
-            }
-            break;
-        }
-        case ultrasoft_pseudopotential:
-        {
-            switch (parameters_.processing_unit())
-            {
-                case CPU:
-                {
-                    add_q_contribution_to_valence_density(ks__);
-                    break;
-                }
-                #ifdef _GPU_
-                case GPU:
-                {
-                    add_q_contribution_to_valence_density_gpu(ks__);
-                    break;
-                }
-                #endif
-                default:
-                {
-                    error_local(__FILE__, __LINE__, "wrong processing unit");
-                }
-            }
-            break;
-        }
-        case norm_conserving_pseudopotential:
-        {
-            break;
-        }
-    }
+    //== switch (parameters_.esm_type())
+    //== {
+    //==     case full_potential_lapwlo:
+    //==     {
+    //==         /* muffin-tin part */
+    //==         generate_valence_density_mt(ks__);
+    //==         break;
+    //==     }
+    //==     case full_potential_pwlo:
+    //==     {
+    //==         switch (parameters_.processing_unit())
+    //==         {
+    //==             STOP();
+    //==             case CPU:
+    //==             {
+    //==                 break;
+    //==             }
+    //==             #ifdef _GPU_
+    //==             case GPU:
+    //==             {
+    //==                 break;
+    //==             }
+    //==             #endif
+    //==             default:
+    //==             {
+    //==                 error_local(__FILE__, __LINE__, "wrong processing unit");
+    //==             }
+    //==         }
+    //==         break;
+    //==     }
+    //==     case ultrasoft_pseudopotential:
+    //==     {
+    //==         switch (parameters_.processing_unit())
+    //==         {
+    //==             case CPU:
+    //==             {
+    //==                 add_q_contribution_to_valence_density(ks__);
+    //==                 break;
+    //==             }
+    //==             #ifdef _GPU_
+    //==             case GPU:
+    //==             {
+    //==                 add_q_contribution_to_valence_density_gpu(ks__);
+    //==                 break;
+    //==             }
+    //==             #endif
+    //==             default:
+    //==             {
+    //==                 error_local(__FILE__, __LINE__, "wrong processing unit");
+    //==             }
+    //==         }
+    //==         break;
+    //==     }
+    //==     case norm_conserving_pseudopotential:
+    //==     {
+    //==         break;
+    //==     }
+    //== }
+
+    generate_valence(ks__);
 
     if (parameters_.unit_cell()->full_potential())
     {
@@ -1689,22 +1705,21 @@ void Density::generate(K_set& ks__)
         rho_->sync(true, false);
         for (int j = 0; j < parameters_.num_mag_dims(); j++) magnetization_[j]->sync(true, false);
     }
+    
+    double nel = 0;
+    if (parameters_.esm_type() == full_potential_lapwlo ||
+        parameters_.esm_type() == full_potential_pwlo)
+    {
+        std::vector<double> nel_mt;
+        double nel_it;
+        nel = rho_->integrate(nel_mt, nel_it);
+    }
+    if (parameters_.esm_type() == ultrasoft_pseudopotential ||
+         parameters_.esm_type() == norm_conserving_pseudopotential)
+    {
+        nel = real(rho_->f_pw(0)) * parameters_.unit_cell()->omega();
+    }
 
-    std::vector<double> nel_mt;
-    double nel_it;
-    double nel = rho_->integrate(nel_mt, nel_it);
-    
-    //if (Platform::mpi_rank() == 0)
-    //{
-    //    printf("\n");
-    //    printf("Charges before symmetrization\n");
-    //    for (int ia = 0; ia < parameters_.num_atoms(); ia++)
-    //    {
-    //        printf("ia : %i  q : %f\n", ia, nel_mt[ia]);
-    //    }
-    //    printf("interstitial : %f\n", nel_it);
-    //}
-    
     if (fabs(nel - parameters_.unit_cell()->num_electrons()) > 1e-5)
     {
         std::stringstream s;

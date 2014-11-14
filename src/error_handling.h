@@ -41,6 +41,7 @@
 #include <sys/time.h>
 #include <sstream>
 #include <string>
+#include <stdexcept>
 #include "config.h"
 #include "platform.h"
 
