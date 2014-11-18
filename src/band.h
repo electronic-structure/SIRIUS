@@ -264,6 +264,18 @@ class Band
                               mdarray<double_complex, 1>& d_mtrx_packed__,
                               mdarray<double_complex, 1>& q_mtrx_packed__);
 
+        void apply_h_o_real_space_serial(K_point* kp__, 
+                                         std::vector<double> const& effective_potential__, 
+                                         std::vector<double> const& pw_ekin__, 
+                                         int N__,
+                                         int n__,
+                                         matrix<double_complex>& phi__,
+                                         matrix<double_complex>& hphi__,
+                                         matrix<double_complex>& ophi__,
+                                         mdarray<int, 1>& packed_mtrx_offset__,
+                                         mdarray<double_complex, 1>& d_mtrx_packed__,
+                                         mdarray<double_complex, 1>& q_mtrx_packed__);
+
         void set_fv_h_o_serial(K_point* kp__,
                                std::vector<double> const& effective_potential__,
                                std::vector<double> const& pw_ekin__,

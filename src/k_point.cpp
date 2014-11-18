@@ -148,10 +148,7 @@ void K_point::update()
 
         auto uc = parameters_.unit_cell();
 
-        int num_beta_t = 0;
-        for (int iat = 0; iat < uc->num_atom_types(); iat++) num_beta_t += uc->atom_type(iat)->mt_lo_basis_size();
-
-        beta_gk_t_ = mdarray<double_complex, 2>(num_gkvec_row(), num_beta_t); 
+        beta_gk_t_ = mdarray<double_complex, 2>(num_gkvec_row(), uc->num_beta_t()); 
 
         mdarray<Spline<double>*, 2> beta_rf(uc->max_mt_radial_basis_size(), uc->num_atom_types());
         for (int iat = 0; iat < uc->num_atom_types(); iat++)
@@ -172,7 +169,7 @@ void K_point::update()
             std::vector<double> beta_radial_integrals_(uc->max_mt_radial_basis_size());
             sbessel_pw<double> jl(uc, parameters_.lmax_beta());
             #pragma omp for
-            for (int ish = 0; ish < (int)gkvec_shells_.size(); ish++)
+            for (int ish = 0; ish < (int)gkvec_shells_.size(); ish++) // TODO: check the order of indeces. seems that radial integrals are comupted more than needed
             {
                 jl.interpolate(gkvec_shells_[ish].first);
                 for (int i = 0; i < (int)gkvec_shells_[ish].second.size(); i++)

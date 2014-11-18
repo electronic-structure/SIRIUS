@@ -198,7 +198,7 @@ void Global::initialize()
 
     if (unit_cell_->full_potential()) step_function_ = new Step_function(reciprocal_lattice_, comm_);
 
-    if (true) real_space_prj_ = new Real_space_prj(reciprocal_lattice_, comm_);
+    if (true) real_space_prj_ = new Real_space_prj(reciprocal_lattice_, gk_cutoff(), comm_);
 
     /* check MPI grid dimensions and set a default grid if needed */
     if (!mpi_grid_dims_.size()) 

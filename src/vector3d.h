@@ -26,6 +26,7 @@
 #define __VECTOR3D_H__
 
 #include <assert.h>
+#include <cmath>
 
 /// Simple implementation of 3d vector.
 template <typename T> 
@@ -79,7 +80,7 @@ class vector3d
         /// Return vector length
         inline double length()
         {
-            return sqrt(vec_[0] * vec_[0] + vec_[1] * vec_[1] + vec_[2] * vec_[2]);
+            return std::sqrt(vec_[0] * vec_[0] + vec_[1] * vec_[1] + vec_[2] * vec_[2]);
         }
 
         inline vector3d<T> operator+(const vector3d<T>& b)

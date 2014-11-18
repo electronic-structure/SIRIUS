@@ -79,6 +79,16 @@ class matrix3d
             return c;
         }
 
+        inline vector3d<T> operator*(vector3d<T> b)
+        {
+            vector3d<T> c;
+            for (int i = 0; i < 3; i++)
+            {
+                for (int j = 0; j < 3; j++) c[i] += (*this)(i, j) * b[j];
+            }
+            return c;
+        }
+
         /// Multiply matrix by an integer number.
         inline matrix3d<T> operator*(int p)
         {

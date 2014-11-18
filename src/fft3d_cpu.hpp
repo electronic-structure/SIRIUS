@@ -34,14 +34,10 @@
  *          \frac{1}{N} \sum_{{\bf r}_j} e^{-i{\bf G}{\bf r}_j} f({\bf r}_j)
  *  \f]
  *  is a \em forward transformation from a function to a set of coefficients. 
- *
- *  FFTW performs an "out of place" transformation, which means that we need to allocate both input and output buffers.
- *  To get the most performance out of multithreading we are going to put whole FFTs into different threads instead
- *  of using threaded implementation for each transform. 
 */
 template<> 
-class FFT3D<CPU>
-{
+class FFT3D<CPU> // TODO: G-vector indices (which are currently in Reciprocal_lattice) should be moved here.
+{                //       FFT class should take care about G-vector sphere, G-shells, etc.
     private:
 
         /// Size of each dimension.
@@ -61,6 +57,17 @@ class FFT3D<CPU>
         
         /// Split index of FFT buffer.
         splindex<block> spl_fft_size_;
+
+        int num_gvec_;
+
+        mdarray<int, 2> gvec_;
+        std::vector< vector3d<double> > gvec_cart_;
+
+        mdarray<int, 3> index_by_gvec_;
+
+        std::vector<int> index_map_;
+        std::vector<int> gvec_shell_;
+        std::vector<double> gvec_shell_len_;
 
         /// Execute backward transformation.
         inline void backward(int thread_id = 0)
@@ -99,7 +106,7 @@ class FFT3D<CPU>
         
     public:
 
-        FFT3D(vector3d<int> dims, Communicator const& comm__)
+        FFT3D(vector3d<int> dims, Communicator const& comm__) // TODO: remove comm from here. 
         {
             Timer t("sirius::FFT3D<CPU>::FFT3D");
             for (int i = 0; i < 3; i++)
@@ -298,5 +305,124 @@ class FFT3D<CPU>
         inline splindex<block>& spl_fft_size()
         {
             return spl_fft_size_;
+        }
+
+        void init_gvec(double Gmax__, matrix3d<double>& M__)
+        {
+            mdarray<int, 2> gvec_tmp(3, size());
+            std::vector< std::pair<double, int> > gvec_tmp_length;
+            
+            for (int i0 = grid_limits(0).first; i0 <= grid_limits(0).second; i0++)
+            {
+                for (int i1 = grid_limits(1).first; i1 <= grid_limits(1).second; i1++)
+                {
+                    for (int i2 = grid_limits(2).first; i2 <= grid_limits(2).second; i2++)
+                    {
+                        int ig = (int)gvec_tmp_length.size();
+
+                        gvec_tmp(0, ig) = i0;
+                        gvec_tmp(1, ig) = i1;
+                        gvec_tmp(2, ig) = i2;
+                        
+                        auto vc = M__ * vector3d<double>(i0, i1, i2);
+
+                        gvec_tmp_length.push_back(std::pair<double, int>(vc.length(), ig));
+                    }
+                }
+            }
+
+            /* sort G-vectors by length */
+            std::sort(gvec_tmp_length.begin(), gvec_tmp_length.end());
+
+            /* create sorted list of G-vectors */
+            gvec_ = mdarray<int, 2>(3, size());
+            gvec_cart_ = std::vector< vector3d<double> >(size());
+
+            /* find number of G-vectors within the cutoff */
+            num_gvec_ = 0;
+            for (int i = 0; i < size(); i++)
+            {
+                for (int x = 0; x < 3; x++) gvec_(x, i) = gvec_tmp(x, gvec_tmp_length[i].second);
+
+                gvec_cart_[i] = M__ * vector3d<double>(gvec_(0, i), gvec_(1, i), gvec_(2, i));
+                
+                if (gvec_tmp_length[i].first <= Gmax__) num_gvec_++;
+            }
+            
+            index_by_gvec_ = mdarray<int, 3>(mdarray_index_descriptor(grid_limits(0).first, grid_limits(0).second),
+                                             mdarray_index_descriptor(grid_limits(1).first, grid_limits(1).second),
+                                             mdarray_index_descriptor(grid_limits(2).first, grid_limits(2).second));
+            index_map_.resize(size());
+            
+            gvec_shell_.resize(size());
+            gvec_shell_len_.clear();
+            
+            for (int ig = 0; ig < size(); ig++)
+            {
+                int i0 = gvec_(0, ig);
+                int i1 = gvec_(1, ig);
+                int i2 = gvec_(2, ig);
+
+                /* mapping from G-vector to it's index */
+                index_by_gvec_(i0, i1, i2) = ig;
+
+                /* mapping of FFT buffer linear index */
+                index_map_[ig] = index(i0, i1, i2);
+
+                /* find G-shells */
+                double t = gvec_tmp_length[ig].first;
+                if (gvec_shell_len_.empty() || fabs(t - gvec_shell_len_.back()) > 1e-10) gvec_shell_len_.push_back(t);
+                gvec_shell_[ig] = (int)gvec_shell_len_.size() - 1;
+            }
+
+            //== if (lmax >= 0)
+            //== {
+            //==     /* precompute spherical harmonics of G-vectors */
+            //==     gvec_ylm_ = mdarray<double_complex, 2>(Utils::lmmax(lmax), spl_num_gvec_.local_size());
+            //==     
+            //==     Timer t2("sirius::Reciprocal_lattice::init|ylm_G");
+            //==     for (int igloc = 0; igloc < (int)spl_num_gvec_.local_size(); igloc++)
+            //==     {
+            //==         int ig = (int)spl_num_gvec_[igloc];
+            //==         auto rtp = SHT::spherical_coordinates(gvec_cart(ig));
+            //==         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm_(0, igloc));
+            //==     }
+            //==     t2.stop();
+            //== }
+        }
+
+        inline int num_gvec()
+        {
+            return num_gvec_;
+        }
+
+        inline int num_gvec_shells_inner()
+        {
+            return gvec_shell_[num_gvec_];
+        }
+
+        inline double gvec_shell_len(int igsh__)
+        {
+            return gvec_shell_len_[igsh__];
+        }
+
+        inline int gvec_shell(int ig__)
+        {
+            return gvec_shell_[ig__];
+        }
+
+        inline vector3d<double>gvec_cart(int ig__)
+        {
+            return gvec_cart_[ig__];
+        }
+
+        inline vector3d<int> gvec(int ig__)
+        {
+            return vector3d<int>(gvec_(0, ig__), gvec_(1, ig__), gvec_(2, ig__));
+        }
+
+        inline int* map()
+        {
+            return &index_map_[0];
         }
 };

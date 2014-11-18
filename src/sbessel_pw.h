@@ -69,7 +69,7 @@ class sbessel_pw
 
         void load(double q)
         {
-            std::vector<double> jl(lmax_+ 1);
+            std::vector<double> jl(lmax_ + 1);
             for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++)
             {
                 for (int ir = 0; ir < unit_cell_->atom_type(iat)->num_mt_points(); ir++)

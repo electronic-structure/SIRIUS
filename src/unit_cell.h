@@ -39,7 +39,7 @@ extern "C" {
 
 namespace sirius {
 
-class Unit_cell
+class Unit_cell // TODO: clear arragement of lattice vectors
 {
     private:
         
@@ -148,9 +148,7 @@ class Unit_cell
         
         splindex<block> spl_atoms_;
 
-        mdarray<int, 2> beta_t_idx_;
-        
-        /// total number of beta-projectors among atom types
+        /// Total number of beta-projectors among atom types.
         int num_beta_t_;
 
         mdarray<double, 2> atom_pos_;
@@ -545,6 +543,11 @@ class Unit_cell
         inline beta_chunk& beta_chunk(int idx)
         {
             return beta_chunks_[idx];
+        }
+
+        inline int num_beta_t()
+        {
+            return num_beta_t_;
         }
 };
     

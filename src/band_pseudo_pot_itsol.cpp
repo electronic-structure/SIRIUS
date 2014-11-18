@@ -776,6 +776,10 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
                                 &eval[0], evec.ptr(), evec.ld());
         }
 
+        std::cout << "Eigen-energies : ";
+        for (int i = 0; i < std::min(10, num_bands); i++) std::cout << eval[i] << " ";
+        std::cout << std::endl;
+
         #ifdef _GPU_
         if (parameters_.processing_unit() == GPU)
             cublas_set_matrix(N, num_bands, sizeof(double_complex), evec.at<CPU>(), evec.ld(), evec.at<GPU>(), evec.ld());

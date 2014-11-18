@@ -67,7 +67,7 @@ class Utils
         }
 
         template <typename U, typename V>
-        static inline double scalar_product(vector3d<U> a, vector3d<V> b)
+        static inline auto scalar_product(vector3d<U> a, vector3d<V> b) -> decltype(a[0] * b[0])
         {
             return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
         }

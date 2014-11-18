@@ -95,6 +95,32 @@ T Spline<T>::integrate(Spline<T>* f, Spline<U>* g, int m, int num_points)
 
     switch (m)
     {
+        case 0:
+        {
+            for (int i = 0; i < num_points - 1; i++)
+            {
+                double dx = f->radial_grid_.dx(i);
+                
+                T faga = f->a[i] * g->a[i];
+                T fdgd = f->d[i] * g->d[i];
+
+                T k1 = f->a[i] * g->b[i] + f->b[i] * g->a[i];
+                T k2 = f->c[i] * g->a[i] + f->b[i] * g->b[i] + f->a[i] * g->c[i];
+                T k3 = f->a[i] * g->d[i] + f->b[i] * g->c[i] + f->c[i] * g->b[i] + f->d[i] * g->a[i];
+                T k4 = f->b[i] * g->d[i] + f->c[i] * g->c[i] + f->d[i] * g->b[i];
+                T k5 = f->c[i] * g->d[i] + f->d[i] * g->c[i];
+
+                result += dx * (faga + 
+                          dx * (k1 / 2.0 + 
+                          dx * (k2 / 3.0 + 
+                          dx * (k3 / 4.0 + 
+                          dx * (k4 / 5.0 + 
+                          dx * (k5 / 6.0 + 
+                          dx * fdgd / 7.0))))));
+            }
+            break;
+
+        }
         case 1:
         {
             for (int i = 0; i < num_points - 1; i++)

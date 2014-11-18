@@ -86,9 +86,11 @@ class Reciprocal_lattice
 
         /// mapping betwee linear G-vector index and position in FFT buffer
         std::vector<int> fft_index_;
-
+        
+        /// Mapping between coarse G-vector index and a position in linear FFT buffer of the coarse grid.
         std::vector<int> fft_index_coarse_;
-
+        
+        /// Mapping between coarse G-vector index and G-vector index of the fine grid. // TODO: better name
         std::vector<int> gvec_index_;
 
         /// split index of G-vectors

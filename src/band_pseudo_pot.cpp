@@ -1420,7 +1420,7 @@ void Band::apply_h_o_serial(K_point* kp__,
 
     /* <\beta_{\xi}^{\alpha}|\phi_j> */
     matrix<double_complex> beta_phi(uc->mt_lo_basis_size(), n__);
-    
+
     /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
     matrix<double_complex> work(uc->mt_lo_basis_size(), n__);
 
@@ -1433,20 +1433,6 @@ void Band::apply_h_o_serial(K_point* kp__,
     #endif
 
     kp__->generate_beta_phi(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_pw_panel().panel(), beta_phi);
-    std::cout << "reciprocal space beta_phi" << std::endl;
-    for (int i = 0; i < 4; i++)
-    {
-        for (int j = 0; j < 4; j++) std::cout << beta_phi(i, j) << " ";
-        std::cout << std::endl;
-    }
-
-    kp__->generate_beta_phi_real_space(uc->mt_lo_basis_size(), phi, n__, 0, kp__->beta_pw_panel().panel(), beta_phi);
-    std::cout << "real space beta_phi" << std::endl;
-    for (int i = 0; i < 4; i++)
-    {
-        for (int j = 0; j < 4; j++) std::cout << beta_phi(i, j) << " ";
-        std::cout << std::endl;
-    }
 
     kp__->add_non_local_contribution(uc->num_atoms(), uc->mt_lo_basis_size(), uc->beta_chunk(0).desc_,
                                      kp__->beta_pw_panel().panel(), d_mtrx_packed__, packed_mtrx_offset__, beta_phi,
@@ -1458,6 +1444,181 @@ void Band::apply_h_o_serial(K_point* kp__,
     #ifdef _GPU_
     if (parameters_.processing_unit() == GPU) cuda_device_synchronize();
     #endif
+}
+
+void Band::apply_h_o_real_space_serial(K_point* kp__, 
+                                       std::vector<double> const& effective_potential__, 
+                                       std::vector<double> const& pw_ekin__, 
+                                       int N__,
+                                       int n__,
+                                       matrix<double_complex>& phi__,
+                                       matrix<double_complex>& hphi__,
+                                       matrix<double_complex>& ophi__,
+                                       mdarray<int, 1>& packed_mtrx_offset__,
+                                       mdarray<double_complex, 1>& d_mtrx_packed__,
+                                       mdarray<double_complex, 1>& q_mtrx_packed__)
+{
+    Timer t("sirius::Band::apply_h_o_real_space_serial", kp__->comm());
+
+    auto uc = parameters_.unit_cell();
+
+    matrix<double_complex> phi, hphi, ophi;
+
+    switch (parameters_.processing_unit())
+    {
+        case CPU:
+        {
+            phi =  matrix<double_complex>( phi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
+            hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
+            ophi = matrix<double_complex>(ophi__.at<CPU>(0, N__), kp__->num_gkvec(), n__);
+            break;
+        }
+        case GPU:
+        {
+            phi =  matrix<double_complex>( phi__.at<CPU>(0, N__),  phi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
+            hphi = matrix<double_complex>(hphi__.at<CPU>(0, N__), hphi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
+            ophi = matrix<double_complex>(ophi__.at<CPU>(0, N__), ophi__.at<GPU>(0, N__), kp__->num_gkvec(), n__);
+            break;
+        }
+    }
+
+    auto fft = parameters_.reciprocal_lattice()->fft_coarse();
+
+    mdarray<double_complex, 2>  phi_r(fft->size(), n__);
+    mdarray<double_complex, 2> hphi_r(fft->size(), n__);
+    mdarray<double_complex, 2> ophi_r(fft->size(), n__);
+
+    Timer t0("sirius::Band::apply_h_o_real_space|fft", kp__->comm());
+    for (int i = 0; i < n__; i++)
+    {
+        fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi(0, i));
+        /* phi(G) -> phi(r) */
+        fft->transform(1);
+        fft->output(&phi_r(0, i));
+
+        for (int ir = 0; ir < fft->size(); ir++)
+        {
+            /* multiply phi by effective potential */
+            hphi_r(ir, i) = phi_r(ir, i) * effective_potential__[ir];
+            /* set intial ophi */
+            ophi_r(ir, i) = phi_r(ir, i);
+        }
+    }
+    t0.stop();
+
+    /* <\beta_{\xi}^{\alpha}|\phi_j> */
+    matrix<double_complex> beta_phi(uc->mt_lo_basis_size(), n__);
+    beta_phi.zero();
+
+    mdarray<double_complex, 2> phi_tmp(parameters_.real_space_prj_->max_num_points_, n__);
+    mdarray<double_complex, 2> beta_tmp(parameters_.real_space_prj_->max_num_points_, uc->max_mt_basis_size());
+    mdarray<double_complex, 2> hphi_tmp(parameters_.real_space_prj_->max_num_points_, n__);
+    mdarray<double_complex, 2> ophi_tmp(parameters_.real_space_prj_->max_num_points_, n__);
+    
+    Timer t1("sirius::Band::apply_h_o_real_space|beta_phi", kp__->comm());
+    double w = std::sqrt(parameters_.unit_cell()->omega()) / fft->size();
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {
+        auto type = parameters_.unit_cell()->atom(ia)->type();
+        int nbf = type->mt_basis_size();
+        int ofs = parameters_.unit_cell()->atom(ia)->offset_lo();
+        for (int i = 0; i < n__; i++)
+        {
+            for (int j = 0; j < parameters_.real_space_prj_->beta_projectors_[ia].num_points_; j++)
+            {
+                int ir = parameters_.real_space_prj_->beta_projectors_[ia].ir_[j];
+                auto T = parameters_.real_space_prj_->beta_projectors_[ia].T_[j];
+                auto r = parameters_.real_space_prj_->beta_projectors_[ia].r_[j];
+
+                phi_tmp(j, i) = phi_r(ir, i) * w * 
+                        std::exp(double_complex(0.0, -twopi * Utils::scalar_product(kp__->vk(), T))) *
+                        std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), r)));
+            }
+        }
+        linalg<CPU>::gemm(2, 0, nbf, n__, parameters_.real_space_prj_->beta_projectors_[ia].num_points_,
+                          parameters_.real_space_prj_->beta_projectors_[ia].beta_.at<CPU>(),
+                          parameters_.real_space_prj_->beta_projectors_[ia].beta_.ld(),
+                          phi_tmp.at<CPU>(), phi_tmp.ld(), beta_phi.at<CPU>(ofs, 0), beta_phi.ld());
+    }
+    t1.stop();
+   
+    /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
+    matrix<double_complex> d_beta_phi(uc->mt_lo_basis_size(), n__);
+    matrix<double_complex> q_beta_phi(uc->mt_lo_basis_size(), n__);
+                
+    #pragma omp parallel for
+    for (int i = 0; i < uc->num_atoms(); i++)
+    {
+        /* number of beta functions for a given atom */
+        int nbf = uc->beta_chunk(0).desc_(0, i);
+        int ofs = uc->beta_chunk(0).desc_(1, i);
+        int ia = uc->beta_chunk(0).desc_(3, i);
+
+        /* compute D * <beta|phi> */
+        linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
+                          d_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
+                          beta_phi.at<CPU>(ofs, 0), beta_phi.ld(),
+                          d_beta_phi.at<CPU>(ofs, 0), d_beta_phi.ld());
+        
+        /* compute Q * <beta|phi> */
+        linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
+                          q_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
+                          beta_phi.at<CPU>(ofs, 0), beta_phi.ld(),
+                          q_beta_phi.at<CPU>(ofs, 0), q_beta_phi.ld());
+    }
+    
+    Timer t2("sirius::Band::apply_h_o_real_space|non_loc", kp__->comm());
+    w = std::sqrt(parameters_.unit_cell()->omega());
+    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    {
+        auto type = parameters_.unit_cell()->atom(ia)->type();
+        int nbf = type->mt_basis_size();
+        int ofs = parameters_.unit_cell()->atom(ia)->offset_lo();
+    
+        for (int xi = 0; xi < nbf; xi++)
+        {
+            for (int j = 0; j < parameters_.real_space_prj_->beta_projectors_[ia].num_points_; j++)
+            {
+                auto T = parameters_.real_space_prj_->beta_projectors_[ia].T_[j];
+                auto r = parameters_.real_space_prj_->beta_projectors_[ia].r_[j];
+                beta_tmp(j, xi) = parameters_.real_space_prj_->beta_projectors_[ia].beta_(j, xi) * w * 
+                                  std::exp(double_complex(0.0, -twopi * Utils::scalar_product(kp__->vk(), r))) *
+                                  std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), T)));
+            }
+        }
+        linalg<CPU>::gemm(0, 0, parameters_.real_space_prj_->beta_projectors_[ia].num_points_, n__, nbf,
+                          beta_tmp.at<CPU>(), beta_tmp.ld(), d_beta_phi.at<CPU>(ofs, 0), d_beta_phi.ld(),
+                          hphi_tmp.at<CPU>(), hphi_tmp.ld());
+
+        linalg<CPU>::gemm(0, 0, parameters_.real_space_prj_->beta_projectors_[ia].num_points_, n__, nbf,
+                          beta_tmp.at<CPU>(), beta_tmp.ld(), q_beta_phi.at<CPU>(ofs, 0), q_beta_phi.ld(),
+                          ophi_tmp.at<CPU>(), ophi_tmp.ld());
+        
+        for (int i = 0; i < n__; i++)
+        {
+            for (int j = 0; j < parameters_.real_space_prj_->beta_projectors_[ia].num_points_; j++)
+            {
+                int ir = parameters_.real_space_prj_->beta_projectors_[ia].ir_[j];
+                hphi_r(ir, i) += hphi_tmp(j, i);
+                ophi_r(ir, i) += ophi_tmp(j, i);
+            }
+        }
+    }
+    t2.stop();
+    
+    t0.start();
+    for (int i = 0; i < n__; i++)
+    {
+        fft->input(&hphi_r(0, i));
+        fft->transform(-1);
+        fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi(0, i));
+        for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi(igk, i) += phi(igk, i) * pw_ekin__[igk];
+
+        fft->input(&ophi_r(0, i));
+        fft->transform(-1);
+        fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &ophi(0, i));
+    }
+    t0.stop();
 }
 
 /** \param [in] phi Input wave-functions [storage: CPU && GPU].
@@ -1490,8 +1651,10 @@ void Band::set_fv_h_o_serial(K_point* kp__,
     }
 
     /* apply Hamiltonian and overlap operators to the new basis functions */
-    apply_h_o_serial(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__, ophi__, packed_mtrx_offset__,
-                     d_mtrx_packed__, q_mtrx_packed__);
+    //apply_h_o_serial(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__, ophi__, packed_mtrx_offset__,
+    //                 d_mtrx_packed__, q_mtrx_packed__);
+    apply_h_o_real_space_serial(kp__, effective_potential__, pw_ekin__, N__, n__, phi__, hphi__, ophi__, packed_mtrx_offset__,
+                                d_mtrx_packed__, q_mtrx_packed__);
     
     if (parameters_.processing_unit() == CPU)
     {
