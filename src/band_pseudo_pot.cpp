@@ -1,7 +1,6 @@
 #include <thread>
 #include <mutex>
 #include "band.h"
-#include "procstat.hpp"
 
 namespace sirius {
 
@@ -1484,7 +1483,8 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
     }
 
     auto fft = parameters_.reciprocal_lattice()->fft_coarse();
-
+    
+    Timer t4("sirius::Band::apply_h_o_real_space_serial|phase_fac");
     std::vector<double_complex> k_phase_fac(fft->size());
     /* loop over 3D array (real space) */
     for (int j0 = 0; j0 < fft->size(0); j0++)
@@ -1515,6 +1515,7 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
             }
         }
     }
+    t4.stop();
 
     int max_num_bands_per_block = std::min(100, n__);
     int num_band_blocks = n__ / max_num_bands_per_block + std::min(1, n__ % max_num_bands_per_block);
@@ -1527,6 +1528,18 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
     
     mdarray<double, 2> timers(4, Platform::max_num_threads());
     timers.zero();
+
+    mdarray<double_complex, 3> hphi_tmp(parameters_.real_space_prj_->max_num_points_, max_num_bands_per_block, uc->num_atoms());
+    mdarray<double_complex, 3> ophi_tmp(parameters_.real_space_prj_->max_num_points_, max_num_bands_per_block, uc->num_atoms());
+
+    mdarray<double_complex, 3> phi_tmp(parameters_.real_space_prj_->max_num_points_, max_num_bands_per_block, Platform::max_num_threads());
+    /* <\beta_{\xi}^{\alpha}|\phi_j> */
+    mdarray<double_complex, 3> beta_phi(uc->max_mt_basis_size(), max_num_bands_per_block, Platform::max_num_threads());
+    /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
+    mdarray<double_complex, 3> d_beta_phi(uc->max_mt_basis_size(), max_num_bands_per_block, Platform::max_num_threads());
+    mdarray<double_complex, 3> q_beta_phi(uc->max_mt_basis_size(), max_num_bands_per_block, Platform::max_num_threads());
+    
+    mdarray<double_complex, 3> beta_tmp(parameters_.real_space_prj_->max_num_points_, uc->max_mt_basis_size(), Platform::max_num_threads());
 
     for (int iblk = 0; iblk < num_band_blocks; iblk++)
     {
@@ -1556,23 +1569,10 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
         }
         t0.stop();
 
-        mdarray<double_complex, 3> hphi_tmp(parameters_.real_space_prj_->max_num_points_, nbnd, uc->num_atoms());
-        mdarray<double_complex, 3> ophi_tmp(parameters_.real_space_prj_->max_num_points_, nbnd, uc->num_atoms());
-
         Timer t2("sirius::Band::apply_h_o_real_space|nonloc", kp__->comm());
         #pragma omp parallel
         {
             int thread_id = Platform::thread_id();
-            if (thread_id == 0 && kp__->comm().rank() == 0) std::cout << "number of active threads : " << procstat::get_num_threads() << std::endl;
-
-            mdarray<double_complex, 2> phi_tmp(parameters_.real_space_prj_->max_num_points_, nbnd);
-            /* <\beta_{\xi}^{\alpha}|\phi_j> */
-            matrix<double_complex> beta_phi(uc->max_mt_basis_size(), nbnd);
-            /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
-            matrix<double_complex> d_beta_phi(uc->max_mt_basis_size(), nbnd);
-            matrix<double_complex> q_beta_phi(uc->max_mt_basis_size(), nbnd);
-            
-            mdarray<double_complex, 2> beta_tmp(parameters_.real_space_prj_->max_num_points_, uc->max_mt_basis_size());
 
             double w1 = std::sqrt(uc->omega()) / fft->size();
             double w2 = std::sqrt(uc->omega());
@@ -1590,7 +1590,7 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
                     {
                         int ir = beta_prj.ir_[j];
                         auto T = beta_prj.T_[j];
-                        phi_tmp(j, i) = phi_r(ir, i) * w1 * conj(T_phase_fac(T[0], T[1], T[2])) * k_phase_fac[ir];
+                        phi_tmp(j, i, thread_id) = phi_r(ir, i) * w1 * conj(T_phase_fac(T[0], T[1], T[2])) * k_phase_fac[ir];
                     }
                 }
                 timers(0, thread_id) += (omp_get_wtime() - t0);
@@ -1599,20 +1599,20 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
                 /* compute <beta|phi> */
                 linalg<CPU>::gemm(2, 0, nbf, nbnd, npt,
                                   beta_prj.beta_.at<CPU>(), beta_prj.beta_.ld(),
-                                  phi_tmp.at<CPU>(), phi_tmp.ld(), 
-                                  beta_phi.at<CPU>(), beta_phi.ld());
+                                  phi_tmp.at<CPU>(0, 0, thread_id), phi_tmp.ld(), 
+                                  beta_phi.at<CPU>(0, 0, thread_id), beta_phi.ld());
                     
                 /* compute D * <beta|phi> */
                 linalg<CPU>::gemm(0, 0, nbf, nbnd, nbf,
                                   d_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
-                                  beta_phi.at<CPU>(), beta_phi.ld(),
-                                  d_beta_phi.at<CPU>(), d_beta_phi.ld());
+                                  beta_phi.at<CPU>(0, 0, thread_id), beta_phi.ld(),
+                                  d_beta_phi.at<CPU>(0, 0, thread_id), d_beta_phi.ld());
                 
                 /* compute Q * <beta|phi> */
                 linalg<CPU>::gemm(0, 0, nbf, nbnd, nbf,
                                   q_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
-                                  beta_phi.at<CPU>(), beta_phi.ld(),
-                                  q_beta_phi.at<CPU>(), q_beta_phi.ld());
+                                  beta_phi.at<CPU>(0, 0, thread_id), beta_phi.ld(),
+                                  q_beta_phi.at<CPU>(0, 0, thread_id), q_beta_phi.ld());
                 timers(1, thread_id) += (omp_get_wtime() - t0);
                 
                 t0 = omp_get_wtime();
@@ -1622,18 +1622,20 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
                     {
                         int ir = beta_prj.ir_[j];
                         auto T = beta_prj.T_[j];
-                        beta_tmp(j, xi) = beta_prj.beta_(j, xi) * w2 * conj(k_phase_fac[ir]) * T_phase_fac(T[0], T[1], T[2]);
+                        beta_tmp(j, xi, thread_id) = beta_prj.beta_(j, xi) * w2 * conj(k_phase_fac[ir]) * T_phase_fac(T[0], T[1], T[2]);
                     }
                 }
                 timers(2, thread_id) += (omp_get_wtime() - t0);
                 
                 t0 = omp_get_wtime();
                 linalg<CPU>::gemm(0, 0, npt, nbnd, nbf,
-                                  beta_tmp.at<CPU>(), beta_tmp.ld(), d_beta_phi.at<CPU>(), d_beta_phi.ld(),
+                                  beta_tmp.at<CPU>(0, 0, thread_id), beta_tmp.ld(),
+                                  d_beta_phi.at<CPU>(0, 0, thread_id), d_beta_phi.ld(),
                                   hphi_tmp.at<CPU>(0, 0, ia), hphi_tmp.ld());
 
                 linalg<CPU>::gemm(0, 0, npt, nbnd, nbf,
-                                  beta_tmp.at<CPU>(), beta_tmp.ld(), q_beta_phi.at<CPU>(), q_beta_phi.ld(),
+                                  beta_tmp.at<CPU>(0, 0, thread_id), beta_tmp.ld(),
+                                  q_beta_phi.at<CPU>(0, 0, thread_id), q_beta_phi.ld(),
                                   ophi_tmp.at<CPU>(0, 0, ia), ophi_tmp.ld());
                 timers(3, thread_id) += (omp_get_wtime() - t0);
             }
