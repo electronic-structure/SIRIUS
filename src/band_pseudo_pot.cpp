@@ -1574,7 +1574,7 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
 
             double w1 = std::sqrt(uc->omega()) / fft->size();
             double w2 = std::sqrt(uc->omega());
-            #pragma omp for
+            #pragma omp for schedule(static, 1)
             for (int ia = 0; ia < uc->num_atoms(); ia++)
             {
                 auto& beta_prj = parameters_.real_space_prj_->beta_projectors_[ia];
