@@ -1523,6 +1523,9 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
     mdarray<double_complex, 2>  phi_r(fft->size(), max_num_bands_per_block);
     mdarray<double_complex, 2> hphi_r(fft->size(), max_num_bands_per_block);
     mdarray<double_complex, 2> ophi_r(fft->size(), max_num_bands_per_block);
+    
+    mdarray<double, 2> timers(4, Platform::max_num_threads());
+    timers.zero();
 
     for (int iblk = 0; iblk < num_band_blocks; iblk++)
     {
@@ -1554,9 +1557,12 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
 
         mdarray<double_complex, 3> hphi_tmp(parameters_.real_space_prj_->max_num_points_, nbnd, uc->num_atoms());
         mdarray<double_complex, 3> ophi_tmp(parameters_.real_space_prj_->max_num_points_, nbnd, uc->num_atoms());
-        
+
+        Timer t2("sirius::Band::apply_h_o_real_space|nonloc", kp__->comm());
         #pragma omp parallel
         {
+            int thread_id = Platform::thread_id();
+
             mdarray<double_complex, 2> phi_tmp(parameters_.real_space_prj_->max_num_points_, nbnd);
             /* <\beta_{\xi}^{\alpha}|\phi_j> */
             matrix<double_complex> beta_phi(uc->max_mt_basis_size(), nbnd);
@@ -1575,21 +1581,19 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
                 int npt = beta_prj.num_points_;
                 auto type = parameters_.unit_cell()->atom(ia)->type();
                 int nbf = type->mt_basis_size();
+                double t0 = omp_get_wtime();
                 for (int i = 0; i < nbnd; i++)
                 {
                     for (int j = 0; j < npt; j++)
                     {
                         int ir = beta_prj.ir_[j];
                         auto T = beta_prj.T_[j];
-                        //auto r = beta_prj.r_[j];
-
-                        //phi_tmp(j, i) = phi_r(ir, i) * w1 * 
-                        //        std::exp(double_complex(0.0, -twopi * Utils::scalar_product(kp__->vk(), T))) *
-                        //        std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), r)));
                         phi_tmp(j, i) = phi_r(ir, i) * w1 * conj(T_phase_fac(T[0], T[1], T[2])) * k_phase_fac[ir];
                     }
                 }
-
+                timers(0, thread_id) += (omp_get_wtime() - t0);
+                
+                t0 = omp_get_wtime();
                 /* compute <beta|phi> */
                 linalg<CPU>::gemm(2, 0, nbf, nbnd, npt,
                                   beta_prj.beta_.at<CPU>(), beta_prj.beta_.ld(),
@@ -1607,21 +1611,21 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
                                   q_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
                                   beta_phi.at<CPU>(), beta_phi.ld(),
                                   q_beta_phi.at<CPU>(), q_beta_phi.ld());
-        
+                timers(1, thread_id) += (omp_get_wtime() - t0);
+                
+                t0 = omp_get_wtime();
                 for (int xi = 0; xi < nbf; xi++)
                 {
                     for (int j = 0; j < npt; j++)
                     {
                         int ir = beta_prj.ir_[j];
                         auto T = beta_prj.T_[j];
-                        //auto r = beta_prj.r_[j];
-                        //beta_tmp(j, xi) = beta_prj.beta_(j, xi) * w2 * 
-                        //                  std::exp(double_complex(0.0, -twopi * Utils::scalar_product(kp__->vk(), r))) *
-                        //                  std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), T)));
                         beta_tmp(j, xi) = beta_prj.beta_(j, xi) * w2 * conj(k_phase_fac[ir]) * T_phase_fac(T[0], T[1], T[2]);
                     }
                 }
-
+                timers(2, thread_id) += (omp_get_wtime() - t0);
+                
+                t0 = omp_get_wtime();
                 linalg<CPU>::gemm(0, 0, npt, nbnd, nbf,
                                   beta_tmp.at<CPU>(), beta_tmp.ld(), d_beta_phi.at<CPU>(), d_beta_phi.ld(),
                                   hphi_tmp.at<CPU>(0, 0, ia), hphi_tmp.ld());
@@ -1629,9 +1633,12 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
                 linalg<CPU>::gemm(0, 0, npt, nbnd, nbf,
                                   beta_tmp.at<CPU>(), beta_tmp.ld(), q_beta_phi.at<CPU>(), q_beta_phi.ld(),
                                   ophi_tmp.at<CPU>(0, 0, ia), ophi_tmp.ld());
+                timers(3, thread_id) += (omp_get_wtime() - t0);
             }
         }
+        t2.stop();
         
+        Timer t1("sirius::Band::apply_h_o_real_space|add_nonloc", kp__->comm());
         #pragma omp parallel for
         for (int ib = 0; ib < nbnd; ib++)
         {
@@ -1645,6 +1652,7 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
                 }
             }
         }
+        t1.stop();
         
         t0.start();
         #pragma omp parallel
@@ -1666,6 +1674,19 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
             }
         }
         t0.stop();
+    }
+
+    if (kp__->comm().rank() == 0)
+    {
+        std::cout << "in-thread timers : " << std::endl;
+        for (int i = 0; i < Platform::max_num_threads(); i++)
+        {
+            std::cout << "-------------------- thread : " << i << std::endl;
+            std::cout << "load phi   : " << timers(0, i) << std::endl;
+            std::cout << "1st zgemms : " << timers(1, i) << std::endl;
+            std::cout << "load beta  : " << timers(2, i) << std::endl;
+            std::cout << "2nd zgemms : " << timers(4, i) << std::endl;
+        }
     }
 }
 
