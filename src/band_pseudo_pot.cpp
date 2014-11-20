@@ -1484,142 +1484,155 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
 
     auto fft = parameters_.reciprocal_lattice()->fft_coarse();
 
-    mdarray<double_complex, 2>  phi_r(fft->size(), n__);
-    mdarray<double_complex, 2> hphi_r(fft->size(), n__);
-    mdarray<double_complex, 2> ophi_r(fft->size(), n__);
+    int max_num_bands_per_block = std::min(100, n__);
+    int num_band_blocks = n__ / max_num_bands_per_block + std::min(1, n__ % max_num_bands_per_block);
+    
+    splindex<block> spl_bands(n__, num_band_blocks, 0);
 
-    Timer t0("sirius::Band::apply_h_o_real_space|fft", kp__->comm());
-    #pragma omp parallel
+    mdarray<double_complex, 2>  phi_r(fft->size(), max_num_bands_per_block);
+    mdarray<double_complex, 2> hphi_r(fft->size(), max_num_bands_per_block);
+    mdarray<double_complex, 2> ophi_r(fft->size(), max_num_bands_per_block);
+
+    for (int iblk = 0; iblk < num_band_blocks; iblk++)
     {
-        int thread_id = Platform::thread_id();
-        #pragma omp for
-        for (int i = 0; i < n__; i++)
-        {
-            fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi(0, i), thread_id);
-            /* phi(G) -> phi(r) */
-            fft->transform(1, thread_id);
-            fft->output(&phi_r(0, i), thread_id);
+        int nbnd = (int)spl_bands.local_size(iblk);
 
-            for (int ir = 0; ir < fft->size(); ir++)
+        Timer t0("sirius::Band::apply_h_o_real_space|fft", kp__->comm());
+        #pragma omp parallel
+        {
+            int thread_id = Platform::thread_id();
+            #pragma omp for
+            for (int ib = 0; ib < nbnd; ib++)
             {
-                /* multiply phi by effective potential */
-                hphi_r(ir, i) = phi_r(ir, i) * effective_potential__[ir];
-                /* set intial ophi */
-                ophi_r(ir, i) = phi_r(ir, i);
+                int i = (int)spl_bands.global_index(ib, iblk);
+                fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi(0, i), thread_id);
+                /* phi(G) -> phi(r) */
+                fft->transform(1, thread_id);
+                fft->output(&phi_r(0, ib), thread_id);
+
+                for (int ir = 0; ir < fft->size(); ir++)
+                {
+                    /* multiply phi by effective potential */
+                    hphi_r(ir, ib) = phi_r(ir, ib) * effective_potential__[ir];
+                    /* set intial ophi */
+                    ophi_r(ir, ib) = phi_r(ir, ib);
+                }
             }
         }
-    }
-    t0.stop();
+        t0.stop();
 
-    mdarray<double_complex, 3> hphi_tmp(parameters_.real_space_prj_->max_num_points_, n__, uc->num_atoms());
-    mdarray<double_complex, 3> ophi_tmp(parameters_.real_space_prj_->max_num_points_, n__, uc->num_atoms());
-    
-    #pragma omp parallel
-    {
-        mdarray<double_complex, 2> phi_tmp(parameters_.real_space_prj_->max_num_points_, n__);
-        /* <\beta_{\xi}^{\alpha}|\phi_j> */
-        matrix<double_complex> beta_phi(uc->max_mt_basis_size(), n__);
-        /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
-        matrix<double_complex> d_beta_phi(uc->max_mt_basis_size(), n__);
-        matrix<double_complex> q_beta_phi(uc->max_mt_basis_size(), n__);
+        mdarray<double_complex, 3> hphi_tmp(parameters_.real_space_prj_->max_num_points_, nbnd, uc->num_atoms());
+        mdarray<double_complex, 3> ophi_tmp(parameters_.real_space_prj_->max_num_points_, nbnd, uc->num_atoms());
         
-        mdarray<double_complex, 2> beta_tmp(parameters_.real_space_prj_->max_num_points_, uc->max_mt_basis_size());
-
-        double w1 = std::sqrt(uc->omega()) / fft->size();
-        double w2 = std::sqrt(uc->omega());
-        #pragma omp for
-        for (int ia = 0; ia < uc->num_atoms(); ia++)
+        #pragma omp parallel
         {
-            auto& beta_prj = parameters_.real_space_prj_->beta_projectors_[ia];
-            int npt = beta_prj.num_points_;
-            auto type = parameters_.unit_cell()->atom(ia)->type();
-            int nbf = type->mt_basis_size();
-            for (int i = 0; i < n__; i++)
-            {
-                for (int j = 0; j < npt; j++)
-                {
-                    int ir = beta_prj.ir_[j];
-                    auto T = beta_prj.T_[j];
-                    auto r = beta_prj.r_[j];
-
-                    phi_tmp(j, i) = phi_r(ir, i) * w1 * 
-                            std::exp(double_complex(0.0, -twopi * Utils::scalar_product(kp__->vk(), T))) *
-                            std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), r)));
-                }
-            }
-
-            /* compute <beta|phi> */
-            linalg<CPU>::gemm(2, 0, nbf, n__, npt,
-                              beta_prj.beta_.at<CPU>(), beta_prj.beta_.ld(),
-                              phi_tmp.at<CPU>(), phi_tmp.ld(), 
-                              beta_phi.at<CPU>(), beta_phi.ld());
-                
-            /* compute D * <beta|phi> */
-            linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
-                              d_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
-                              beta_phi.at<CPU>(), beta_phi.ld(),
-                              d_beta_phi.at<CPU>(), d_beta_phi.ld());
+            mdarray<double_complex, 2> phi_tmp(parameters_.real_space_prj_->max_num_points_, nbnd);
+            /* <\beta_{\xi}^{\alpha}|\phi_j> */
+            matrix<double_complex> beta_phi(uc->max_mt_basis_size(), nbnd);
+            /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
+            matrix<double_complex> d_beta_phi(uc->max_mt_basis_size(), nbnd);
+            matrix<double_complex> q_beta_phi(uc->max_mt_basis_size(), nbnd);
             
-            /* compute Q * <beta|phi> */
-            linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
-                              q_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
-                              beta_phi.at<CPU>(), beta_phi.ld(),
-                              q_beta_phi.at<CPU>(), q_beta_phi.ld());
-    
-            for (int xi = 0; xi < nbf; xi++)
+            mdarray<double_complex, 2> beta_tmp(parameters_.real_space_prj_->max_num_points_, uc->max_mt_basis_size());
+
+            double w1 = std::sqrt(uc->omega()) / fft->size();
+            double w2 = std::sqrt(uc->omega());
+            #pragma omp for
+            for (int ia = 0; ia < uc->num_atoms(); ia++)
             {
-                for (int j = 0; j < npt; j++)
+                auto& beta_prj = parameters_.real_space_prj_->beta_projectors_[ia];
+                int npt = beta_prj.num_points_;
+                auto type = parameters_.unit_cell()->atom(ia)->type();
+                int nbf = type->mt_basis_size();
+                for (int i = 0; i < nbnd; i++)
                 {
-                    auto T = beta_prj.T_[j];
-                    auto r = beta_prj.r_[j];
-                    beta_tmp(j, xi) = beta_prj.beta_(j, xi) * w2 * 
-                                      std::exp(double_complex(0.0, -twopi * Utils::scalar_product(kp__->vk(), r))) *
-                                      std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), T)));
+                    for (int j = 0; j < npt; j++)
+                    {
+                        int ir = beta_prj.ir_[j];
+                        auto T = beta_prj.T_[j];
+                        auto r = beta_prj.r_[j];
+
+                        phi_tmp(j, i) = phi_r(ir, i) * w1 * 
+                                std::exp(double_complex(0.0, -twopi * Utils::scalar_product(kp__->vk(), T))) *
+                                std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), r)));
+                    }
+                }
+
+                /* compute <beta|phi> */
+                linalg<CPU>::gemm(2, 0, nbf, nbnd, npt,
+                                  beta_prj.beta_.at<CPU>(), beta_prj.beta_.ld(),
+                                  phi_tmp.at<CPU>(), phi_tmp.ld(), 
+                                  beta_phi.at<CPU>(), beta_phi.ld());
+                    
+                /* compute D * <beta|phi> */
+                linalg<CPU>::gemm(0, 0, nbf, nbnd, nbf,
+                                  d_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
+                                  beta_phi.at<CPU>(), beta_phi.ld(),
+                                  d_beta_phi.at<CPU>(), d_beta_phi.ld());
+                
+                /* compute Q * <beta|phi> */
+                linalg<CPU>::gemm(0, 0, nbf, nbnd, nbf,
+                                  q_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
+                                  beta_phi.at<CPU>(), beta_phi.ld(),
+                                  q_beta_phi.at<CPU>(), q_beta_phi.ld());
+        
+                for (int xi = 0; xi < nbf; xi++)
+                {
+                    for (int j = 0; j < npt; j++)
+                    {
+                        auto T = beta_prj.T_[j];
+                        auto r = beta_prj.r_[j];
+                        beta_tmp(j, xi) = beta_prj.beta_(j, xi) * w2 * 
+                                          std::exp(double_complex(0.0, -twopi * Utils::scalar_product(kp__->vk(), r))) *
+                                          std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), T)));
+                    }
+                }
+
+                linalg<CPU>::gemm(0, 0, npt, nbnd, nbf,
+                                  beta_tmp.at<CPU>(), beta_tmp.ld(), d_beta_phi.at<CPU>(), d_beta_phi.ld(),
+                                  hphi_tmp.at<CPU>(0, 0, ia), hphi_tmp.ld());
+
+                linalg<CPU>::gemm(0, 0, npt, nbnd, nbf,
+                                  beta_tmp.at<CPU>(), beta_tmp.ld(), q_beta_phi.at<CPU>(), q_beta_phi.ld(),
+                                  ophi_tmp.at<CPU>(0, 0, ia), ophi_tmp.ld());
+            }
+        }
+        
+        #pragma omp parallel for
+        for (int ib = 0; ib < nbnd; ib++)
+        {
+            for (int ia = 0; ia < uc->num_atoms(); ia++)
+            {
+                for (int j = 0; j < parameters_.real_space_prj_->beta_projectors_[ia].num_points_; j++)
+                {
+                    int ir = parameters_.real_space_prj_->beta_projectors_[ia].ir_[j];
+                    hphi_r(ir, ib) += hphi_tmp(j, ib, ia);
+                    ophi_r(ir, ib) += ophi_tmp(j, ib, ia);
                 }
             }
-
-            linalg<CPU>::gemm(0, 0, npt, n__, nbf,
-                              beta_tmp.at<CPU>(), beta_tmp.ld(), d_beta_phi.at<CPU>(), d_beta_phi.ld(),
-                              hphi_tmp.at<CPU>(0, 0, ia), hphi_tmp.ld());
-
-            linalg<CPU>::gemm(0, 0, npt, n__, nbf,
-                              beta_tmp.at<CPU>(), beta_tmp.ld(), q_beta_phi.at<CPU>(), q_beta_phi.ld(),
-                              ophi_tmp.at<CPU>(0, 0, ia), ophi_tmp.ld());
         }
-    }
-    
-    #pragma omp parallel for
-    for (int i = 0; i < n__; i++)
-    {
-        for (int ia = 0; ia < uc->num_atoms(); ia++)
+        
+        t0.start();
+        #pragma omp parallel
         {
-            for (int j = 0; j < parameters_.real_space_prj_->beta_projectors_[ia].num_points_; j++)
+            int thread_id = Platform::thread_id();
+            #pragma omp for
+            for (int ib = 0; ib < nbnd; ib++)
             {
-                int ir = parameters_.real_space_prj_->beta_projectors_[ia].ir_[j];
-                hphi_r(ir, i) += hphi_tmp(j, i, ia);
-                ophi_r(ir, i) += ophi_tmp(j, i, ia);
+                int i = (int)spl_bands.global_index(ib, iblk);
+
+                fft->input(&hphi_r(0, ib), thread_id);
+                fft->transform(-1, thread_id);
+                fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi(0, i), thread_id);
+                for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi(igk, i) += phi(igk, i) * pw_ekin__[igk];
+
+                fft->input(&ophi_r(0, ib), thread_id);
+                fft->transform(-1, thread_id);
+                fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &ophi(0, i), thread_id);
             }
         }
+        t0.stop();
     }
-    
-    t0.start();
-    #pragma omp parallel
-    {
-        int thread_id = Platform::thread_id();
-        #pragma omp for
-        for (int i = 0; i < n__; i++)
-        {
-            fft->input(&hphi_r(0, i), thread_id);
-            fft->transform(-1, thread_id);
-            fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi(0, i), thread_id);
-            for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi(igk, i) += phi(igk, i) * pw_ekin__[igk];
-
-            fft->input(&ophi_r(0, i), thread_id);
-            fft->transform(-1, thread_id);
-            fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &ophi(0, i), thread_id);
-        }
-    }
-    t0.stop();
 }
 
 /** \param [in] phi Input wave-functions [storage: CPU && GPU].
