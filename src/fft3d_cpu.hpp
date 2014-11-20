@@ -62,7 +62,7 @@ class FFT3D<CPU> // TODO: G-vector indices (which are currently in Reciprocal_la
         int num_gvec_;
 
         mdarray<int, 2> gvec_;
-        std::vector< vector3d<double> > gvec_cart_;
+        std::vector< vector3d<double> > gvec_cart_; // TODO: check if we really need to store it, or create "on the fly"
 
         mdarray<int, 3> index_by_gvec_;
 

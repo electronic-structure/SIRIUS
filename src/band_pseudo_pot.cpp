@@ -1489,29 +1489,33 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
     mdarray<double_complex, 2> ophi_r(fft->size(), n__);
 
     Timer t0("sirius::Band::apply_h_o_real_space|fft", kp__->comm());
-    for (int i = 0; i < n__; i++)
+    #pragma omp parallel
     {
-        fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi(0, i));
-        /* phi(G) -> phi(r) */
-        fft->transform(1);
-        fft->output(&phi_r(0, i));
-
-        for (int ir = 0; ir < fft->size(); ir++)
+        int thread_id = Platform::thread_id();
+        #pragma omp for
+        for (int i = 0; i < n__; i++)
         {
-            /* multiply phi by effective potential */
-            hphi_r(ir, i) = phi_r(ir, i) * effective_potential__[ir];
-            /* set intial ophi */
-            ophi_r(ir, i) = phi_r(ir, i);
+            fft->input(kp__->num_gkvec(), kp__->fft_index_coarse(), &phi(0, i), thread_id);
+            /* phi(G) -> phi(r) */
+            fft->transform(1, thread_id);
+            fft->output(&phi_r(0, i), thread_id);
+
+            for (int ir = 0; ir < fft->size(); ir++)
+            {
+                /* multiply phi by effective potential */
+                hphi_r(ir, i) = phi_r(ir, i) * effective_potential__[ir];
+                /* set intial ophi */
+                ophi_r(ir, i) = phi_r(ir, i);
+            }
         }
     }
     t0.stop();
 
-    mdarray<double_complex, 2> hphi_tmp(parameters_.real_space_prj_->max_num_points_, n__, uc->num_atoms());
-    mdarray<double_complex, 2> ophi_tmp(parameters_.real_space_prj_->max_num_points_, n__, uc->num_atoms());
-
+    mdarray<double_complex, 3> hphi_tmp(parameters_.real_space_prj_->max_num_points_, n__, uc->num_atoms());
+    mdarray<double_complex, 3> ophi_tmp(parameters_.real_space_prj_->max_num_points_, n__, uc->num_atoms());
+    
     #pragma omp parallel
     {
-        //int thread_id = Platform::thread_id();
         mdarray<double_complex, 2> phi_tmp(parameters_.real_space_prj_->max_num_points_, n__);
         /* <\beta_{\xi}^{\alpha}|\phi_j> */
         matrix<double_complex> beta_phi(uc->max_mt_basis_size(), n__);
@@ -1521,10 +1525,10 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
         
         mdarray<double_complex, 2> beta_tmp(parameters_.real_space_prj_->max_num_points_, uc->max_mt_basis_size());
 
-        double w1 = std::sqrt(parameters_.unit_cell()->omega()) / fft->size();
-        double w2 = std::sqrt(parameters_.unit_cell()->omega());
+        double w1 = std::sqrt(uc->omega()) / fft->size();
+        double w2 = std::sqrt(uc->omega());
         #pragma omp for
-        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        for (int ia = 0; ia < uc->num_atoms(); ia++)
         {
             auto& beta_prj = parameters_.real_space_prj_->beta_projectors_[ia];
             int npt = beta_prj.num_points_;
@@ -1543,6 +1547,7 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
                             std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), r)));
                 }
             }
+
             /* compute <beta|phi> */
             linalg<CPU>::gemm(2, 0, nbf, n__, npt,
                               beta_prj.beta_.at<CPU>(), beta_prj.beta_.ld(),
@@ -1572,6 +1577,7 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
                                       std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), T)));
                 }
             }
+
             linalg<CPU>::gemm(0, 0, npt, n__, nbf,
                               beta_tmp.at<CPU>(), beta_tmp.ld(), d_beta_phi.at<CPU>(), d_beta_phi.ld(),
                               hphi_tmp.at<CPU>(0, 0, ia), hphi_tmp.ld());
@@ -1597,16 +1603,21 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
     }
     
     t0.start();
-    for (int i = 0; i < n__; i++)
+    #pragma omp parallel
     {
-        fft->input(&hphi_r(0, i));
-        fft->transform(-1);
-        fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi(0, i));
-        for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi(igk, i) += phi(igk, i) * pw_ekin__[igk];
+        int thread_id = Platform::thread_id();
+        #pragma omp for
+        for (int i = 0; i < n__; i++)
+        {
+            fft->input(&hphi_r(0, i), thread_id);
+            fft->transform(-1, thread_id);
+            fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &hphi(0, i), thread_id);
+            for (int igk = 0; igk < kp__->num_gkvec(); igk++) hphi(igk, i) += phi(igk, i) * pw_ekin__[igk];
 
-        fft->input(&ophi_r(0, i));
-        fft->transform(-1);
-        fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &ophi(0, i));
+            fft->input(&ophi_r(0, i), thread_id);
+            fft->transform(-1, thread_id);
+            fft->output(kp__->num_gkvec(), kp__->fft_index_coarse(), &ophi(0, i), thread_id);
+        }
     }
     t0.stop();
 }
