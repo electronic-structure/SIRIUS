@@ -1484,6 +1484,37 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
 
     auto fft = parameters_.reciprocal_lattice()->fft_coarse();
 
+    std::vector<double_complex> k_phase_fac(fft->size());
+    /* loop over 3D array (real space) */
+    for (int j0 = 0; j0 < fft->size(0); j0++)
+    {
+        for (int j1 = 0; j1 < fft->size(1); j1++)
+        {
+            for (int j2 = 0; j2 < fft->size(2); j2++)
+            {
+                /* get real space fractional coordinate */
+                vector3d<double> v0(double(j0) / fft->size(0), double(j1) / fft->size(1), double(j2) / fft->size(2));
+                int ir = static_cast<int>(j0 + j1 * fft->size(0) + j2 * fft->size(0) * fft->size(1));
+                k_phase_fac[ir] = std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), v0)));
+            }
+        }
+    }
+
+    mdarray<double_complex, 3> T_phase_fac(mdarray_index_descriptor(-1, 1),
+                                           mdarray_index_descriptor(-1, 1),
+                                           mdarray_index_descriptor(-1, 1));
+    for (int t0 = -1; t0 <= 1; t0++)
+    {
+        for (int t1 = -1; t1 <= 1; t1++)
+        {
+            for (int t2 = -1; t2 <= 1; t2++)
+            {
+                vector3d<int> T(t0, t1, t2);
+                T_phase_fac(t0, t1, t2) = std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), T)));
+            }
+        }
+    }
+
     int max_num_bands_per_block = std::min(100, n__);
     int num_band_blocks = n__ / max_num_bands_per_block + std::min(1, n__ % max_num_bands_per_block);
     
@@ -1550,11 +1581,12 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
                     {
                         int ir = beta_prj.ir_[j];
                         auto T = beta_prj.T_[j];
-                        auto r = beta_prj.r_[j];
+                        //auto r = beta_prj.r_[j];
 
-                        phi_tmp(j, i) = phi_r(ir, i) * w1 * 
-                                std::exp(double_complex(0.0, -twopi * Utils::scalar_product(kp__->vk(), T))) *
-                                std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), r)));
+                        //phi_tmp(j, i) = phi_r(ir, i) * w1 * 
+                        //        std::exp(double_complex(0.0, -twopi * Utils::scalar_product(kp__->vk(), T))) *
+                        //        std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), r)));
+                        phi_tmp(j, i) = phi_r(ir, i) * w1 * conj(T_phase_fac(T[0], T[1], T[2])) * k_phase_fac[ir];
                     }
                 }
 
@@ -1580,11 +1612,13 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
                 {
                     for (int j = 0; j < npt; j++)
                     {
+                        int ir = beta_prj.ir_[j];
                         auto T = beta_prj.T_[j];
-                        auto r = beta_prj.r_[j];
-                        beta_tmp(j, xi) = beta_prj.beta_(j, xi) * w2 * 
-                                          std::exp(double_complex(0.0, -twopi * Utils::scalar_product(kp__->vk(), r))) *
-                                          std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), T)));
+                        //auto r = beta_prj.r_[j];
+                        //beta_tmp(j, xi) = beta_prj.beta_(j, xi) * w2 * 
+                        //                  std::exp(double_complex(0.0, -twopi * Utils::scalar_product(kp__->vk(), r))) *
+                        //                  std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), T)));
+                        beta_tmp(j, xi) = beta_prj.beta_(j, xi) * w2 * conj(k_phase_fac[ir]) * T_phase_fac(T[0], T[1], T[2]);
                     }
                 }
 
