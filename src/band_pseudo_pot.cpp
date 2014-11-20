@@ -1,6 +1,7 @@
 #include <thread>
 #include <mutex>
 #include "band.h"
+#include "procstat.hpp"
 
 namespace sirius {
 
@@ -1562,6 +1563,7 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
         #pragma omp parallel
         {
             int thread_id = Platform::thread_id();
+            if (thread_id == 0 && kp__->comm().rank() == 0) std::cout << "number of active threads : " << procstat::get_num_threads() << std::endl;
 
             mdarray<double_complex, 2> phi_tmp(parameters_.real_space_prj_->max_num_points_, nbnd);
             /* <\beta_{\xi}^{\alpha}|\phi_j> */
