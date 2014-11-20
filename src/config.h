@@ -91,13 +91,4 @@ const radial_grid_t default_radial_grid_t = scaled_pow_grid;
 
 const bool use_second_variation = true;
 
-#define MEMORY_USAGE_INFO()                                                                \
-{                                                                                          \
-    size_t VmRSS, VmHWM;                                                                   \
-    Platform::get_proc_status(&VmHWM, &VmRSS);                                             \
-    printf("[rank %i at line %i of file %s] VmHWM: %i Mb, VmRSS: %i Mb, mdarray: %i Mb\n", \
-           Platform::rank(), __LINE__, __FILE__, int(VmHWM >> 20), int(VmRSS >> 20),       \
-           int(mdarray_mem_count >> 20));                                                  \
-}
-
 #endif // __CONFIG_H__

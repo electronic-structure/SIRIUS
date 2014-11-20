@@ -47,7 +47,7 @@ Real_space_prj::Real_space_prj(Reciprocal_lattice* reciprocal_lattice__,
     {
         int iat = uc->atom(ia)->type_id();
         //auto atom_type = uc->atom_type(iat);
-        double Rmask = R_beta[iat] * 1.5;
+        double Rmask = R_beta[iat] * 1.2;
 
         /* loop over 3D array (real space) */
         for (int j0 = 0; j0 < fft_->size(0); j0++)
@@ -91,7 +91,7 @@ Real_space_prj::Real_space_prj(Reciprocal_lattice* reciprocal_lattice__,
     {
         int iat = uc->atom(ia)->type_id();
         auto atom_type = uc->atom_type(iat);
-        double Rmask = R_beta[iat] * 1.5;
+        double Rmask = R_beta[iat] * 1.2;
         
         beta_projectors_[ia].beta_ = mdarray<double_complex, 2>(beta_projectors_[ia].num_points_, atom_type->mt_basis_size());
 

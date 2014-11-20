@@ -1,4 +1,5 @@
 #include "band.h"
+#include "debug.hpp"
 
 namespace sirius {
 
@@ -647,6 +648,8 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
 {
     Timer t("sirius::Band::diag_fv_pseudo_potential_serial_davidson");
 
+    MEMORY_USAGE_INFO();
+
     /* cache kinetic energy */
     std::vector<double> pw_ekin = kp__->get_pw_ekin();
 
@@ -724,6 +727,8 @@ void Band::diag_fv_pseudo_potential_serial_davidson(K_point* kp__,
             }
         }
     }
+
+    MEMORY_USAGE_INFO();
 
     /* trial basis functions */
     assert(phi.size(0) == psi.size(0));

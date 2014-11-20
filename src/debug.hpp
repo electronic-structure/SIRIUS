@@ -1,6 +1,7 @@
 #include <fstream>
 
-namespace procstat {
+namespace debug
+{
 
 static void get_proc_status(size_t* VmHWM, size_t* VmRSS)
 {
@@ -77,5 +78,13 @@ static int get_num_threads()
     return num_threds;
 }
 
-};
+#define MEMORY_USAGE_INFO()                                                                \
+{                                                                                          \
+    size_t VmRSS, VmHWM;                                                                   \
+    debug::get_proc_status(&VmHWM, &VmRSS);                                                \
+    printf("[rank %i at line %i of file %s] VmHWM: %i Mb, VmRSS: %i Mb, mdarray: %i Mb\n", \
+           Platform::rank(), __LINE__, __FILE__, int(VmHWM >> 20), int(VmRSS >> 20),       \
+           int(mdarray_mem_count::allocated() >> 20));                                     \
+}
 
+};

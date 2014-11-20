@@ -1,6 +1,7 @@
 #include <thread>
 #include <mutex>
 #include "band.h"
+#include "debug.hpp"
 
 namespace sirius {
 
@@ -1540,6 +1541,8 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
     mdarray<double_complex, 3> q_beta_phi(uc->max_mt_basis_size(), max_num_bands_per_block, Platform::max_num_threads());
     
     mdarray<double_complex, 3> beta_tmp(parameters_.real_space_prj_->max_num_points_, uc->max_mt_basis_size(), Platform::max_num_threads());
+
+    MEMORY_USAGE_INFO();
 
     for (int iblk = 0; iblk < num_band_blocks; iblk++)
     {
