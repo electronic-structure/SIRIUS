@@ -1506,105 +1506,95 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
     }
     t0.stop();
 
-    /* <\beta_{\xi}^{\alpha}|\phi_j> */
-    matrix<double_complex> beta_phi(uc->mt_lo_basis_size(), n__);
-    beta_phi.zero();
+    mdarray<double_complex, 2> hphi_tmp(parameters_.real_space_prj_->max_num_points_, n__, uc->num_atoms());
+    mdarray<double_complex, 2> ophi_tmp(parameters_.real_space_prj_->max_num_points_, n__, uc->num_atoms());
 
-    mdarray<double_complex, 2> phi_tmp(parameters_.real_space_prj_->max_num_points_, n__);
-    mdarray<double_complex, 2> beta_tmp(parameters_.real_space_prj_->max_num_points_, uc->max_mt_basis_size());
-    mdarray<double_complex, 2> hphi_tmp(parameters_.real_space_prj_->max_num_points_, n__);
-    mdarray<double_complex, 2> ophi_tmp(parameters_.real_space_prj_->max_num_points_, n__);
-    
-    Timer t1("sirius::Band::apply_h_o_real_space|beta_phi", kp__->comm());
-    double w = std::sqrt(parameters_.unit_cell()->omega()) / fft->size();
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    #pragma omp parallel
     {
-        auto type = parameters_.unit_cell()->atom(ia)->type();
-        int nbf = type->mt_basis_size();
-        int ofs = parameters_.unit_cell()->atom(ia)->offset_lo();
-        for (int i = 0; i < n__; i++)
-        {
-            for (int j = 0; j < parameters_.real_space_prj_->beta_projectors_[ia].num_points_; j++)
-            {
-                int ir = parameters_.real_space_prj_->beta_projectors_[ia].ir_[j];
-                auto T = parameters_.real_space_prj_->beta_projectors_[ia].T_[j];
-                auto r = parameters_.real_space_prj_->beta_projectors_[ia].r_[j];
+        //int thread_id = Platform::thread_id();
+        mdarray<double_complex, 2> phi_tmp(parameters_.real_space_prj_->max_num_points_, n__);
+        /* <\beta_{\xi}^{\alpha}|\phi_j> */
+        matrix<double_complex> beta_phi(uc->max_mt_basis_size(), n__);
+        /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
+        matrix<double_complex> d_beta_phi(uc->max_mt_basis_size(), n__);
+        matrix<double_complex> q_beta_phi(uc->max_mt_basis_size(), n__);
+        
+        mdarray<double_complex, 2> beta_tmp(parameters_.real_space_prj_->max_num_points_, uc->max_mt_basis_size());
 
-                phi_tmp(j, i) = phi_r(ir, i) * w * 
-                        std::exp(double_complex(0.0, -twopi * Utils::scalar_product(kp__->vk(), T))) *
-                        std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), r)));
+        double w1 = std::sqrt(parameters_.unit_cell()->omega()) / fft->size();
+        double w2 = std::sqrt(parameters_.unit_cell()->omega());
+        #pragma omp for
+        for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+        {
+            auto& beta_prj = parameters_.real_space_prj_->beta_projectors_[ia];
+            int npt = beta_prj.num_points_;
+            auto type = parameters_.unit_cell()->atom(ia)->type();
+            int nbf = type->mt_basis_size();
+            for (int i = 0; i < n__; i++)
+            {
+                for (int j = 0; j < npt; j++)
+                {
+                    int ir = beta_prj.ir_[j];
+                    auto T = beta_prj.T_[j];
+                    auto r = beta_prj.r_[j];
+
+                    phi_tmp(j, i) = phi_r(ir, i) * w1 * 
+                            std::exp(double_complex(0.0, -twopi * Utils::scalar_product(kp__->vk(), T))) *
+                            std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), r)));
+                }
             }
-        }
-        linalg<CPU>::gemm(2, 0, nbf, n__, parameters_.real_space_prj_->beta_projectors_[ia].num_points_,
-                          parameters_.real_space_prj_->beta_projectors_[ia].beta_.at<CPU>(),
-                          parameters_.real_space_prj_->beta_projectors_[ia].beta_.ld(),
-                          phi_tmp.at<CPU>(), phi_tmp.ld(), beta_phi.at<CPU>(ofs, 0), beta_phi.ld());
-    }
-    t1.stop();
-   
-    /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
-    matrix<double_complex> d_beta_phi(uc->mt_lo_basis_size(), n__);
-    matrix<double_complex> q_beta_phi(uc->mt_lo_basis_size(), n__);
+            /* compute <beta|phi> */
+            linalg<CPU>::gemm(2, 0, nbf, n__, npt,
+                              beta_prj.beta_.at<CPU>(), beta_prj.beta_.ld(),
+                              phi_tmp.at<CPU>(), phi_tmp.ld(), 
+                              beta_phi.at<CPU>(), beta_phi.ld());
                 
-    #pragma omp parallel for
-    for (int i = 0; i < uc->num_atoms(); i++)
-    {
-        /* number of beta functions for a given atom */
-        int nbf = uc->beta_chunk(0).desc_(0, i);
-        int ofs = uc->beta_chunk(0).desc_(1, i);
-        int ia = uc->beta_chunk(0).desc_(3, i);
+            /* compute D * <beta|phi> */
+            linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
+                              d_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
+                              beta_phi.at<CPU>(), beta_phi.ld(),
+                              d_beta_phi.at<CPU>(), d_beta_phi.ld());
+            
+            /* compute Q * <beta|phi> */
+            linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
+                              q_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
+                              beta_phi.at<CPU>(), beta_phi.ld(),
+                              q_beta_phi.at<CPU>(), q_beta_phi.ld());
+    
+            for (int xi = 0; xi < nbf; xi++)
+            {
+                for (int j = 0; j < npt; j++)
+                {
+                    auto T = beta_prj.T_[j];
+                    auto r = beta_prj.r_[j];
+                    beta_tmp(j, xi) = beta_prj.beta_(j, xi) * w2 * 
+                                      std::exp(double_complex(0.0, -twopi * Utils::scalar_product(kp__->vk(), r))) *
+                                      std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), T)));
+                }
+            }
+            linalg<CPU>::gemm(0, 0, npt, n__, nbf,
+                              beta_tmp.at<CPU>(), beta_tmp.ld(), d_beta_phi.at<CPU>(), d_beta_phi.ld(),
+                              hphi_tmp.at<CPU>(0, 0, ia), hphi_tmp.ld());
 
-        /* compute D * <beta|phi> */
-        linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
-                          d_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
-                          beta_phi.at<CPU>(ofs, 0), beta_phi.ld(),
-                          d_beta_phi.at<CPU>(ofs, 0), d_beta_phi.ld());
-        
-        /* compute Q * <beta|phi> */
-        linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
-                          q_mtrx_packed__.at<CPU>(packed_mtrx_offset__(ia)), nbf,
-                          beta_phi.at<CPU>(ofs, 0), beta_phi.ld(),
-                          q_beta_phi.at<CPU>(ofs, 0), q_beta_phi.ld());
+            linalg<CPU>::gemm(0, 0, npt, n__, nbf,
+                              beta_tmp.at<CPU>(), beta_tmp.ld(), q_beta_phi.at<CPU>(), q_beta_phi.ld(),
+                              ophi_tmp.at<CPU>(0, 0, ia), ophi_tmp.ld());
+        }
     }
     
-    Timer t2("sirius::Band::apply_h_o_real_space|non_loc", kp__->comm());
-    w = std::sqrt(parameters_.unit_cell()->omega());
-    for (int ia = 0; ia < parameters_.unit_cell()->num_atoms(); ia++)
+    #pragma omp parallel for
+    for (int i = 0; i < n__; i++)
     {
-        auto type = parameters_.unit_cell()->atom(ia)->type();
-        int nbf = type->mt_basis_size();
-        int ofs = parameters_.unit_cell()->atom(ia)->offset_lo();
-    
-        for (int xi = 0; xi < nbf; xi++)
-        {
-            for (int j = 0; j < parameters_.real_space_prj_->beta_projectors_[ia].num_points_; j++)
-            {
-                auto T = parameters_.real_space_prj_->beta_projectors_[ia].T_[j];
-                auto r = parameters_.real_space_prj_->beta_projectors_[ia].r_[j];
-                beta_tmp(j, xi) = parameters_.real_space_prj_->beta_projectors_[ia].beta_(j, xi) * w * 
-                                  std::exp(double_complex(0.0, -twopi * Utils::scalar_product(kp__->vk(), r))) *
-                                  std::exp(double_complex(0.0, twopi * Utils::scalar_product(kp__->vk(), T)));
-            }
-        }
-        linalg<CPU>::gemm(0, 0, parameters_.real_space_prj_->beta_projectors_[ia].num_points_, n__, nbf,
-                          beta_tmp.at<CPU>(), beta_tmp.ld(), d_beta_phi.at<CPU>(ofs, 0), d_beta_phi.ld(),
-                          hphi_tmp.at<CPU>(), hphi_tmp.ld());
-
-        linalg<CPU>::gemm(0, 0, parameters_.real_space_prj_->beta_projectors_[ia].num_points_, n__, nbf,
-                          beta_tmp.at<CPU>(), beta_tmp.ld(), q_beta_phi.at<CPU>(ofs, 0), q_beta_phi.ld(),
-                          ophi_tmp.at<CPU>(), ophi_tmp.ld());
-        
-        for (int i = 0; i < n__; i++)
+        for (int ia = 0; ia < uc->num_atoms(); ia++)
         {
             for (int j = 0; j < parameters_.real_space_prj_->beta_projectors_[ia].num_points_; j++)
             {
                 int ir = parameters_.real_space_prj_->beta_projectors_[ia].ir_[j];
-                hphi_r(ir, i) += hphi_tmp(j, i);
-                ophi_r(ir, i) += ophi_tmp(j, i);
+                hphi_r(ir, i) += hphi_tmp(j, i, ia);
+                ophi_r(ir, i) += ophi_tmp(j, i, ia);
             }
         }
     }
-    t2.stop();
     
     t0.start();
     for (int i = 0; i < n__; i++)

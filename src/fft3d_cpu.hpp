@@ -38,6 +38,7 @@
 template<> 
 class FFT3D<CPU> // TODO: G-vector indices (which are currently in Reciprocal_lattice) should be moved here.
 {                //       FFT class should take care about G-vector sphere, G-shells, etc.
+                 // TODO: normal threaded implementation (fft threads + threaded fft)
     private:
 
         /// Size of each dimension.
