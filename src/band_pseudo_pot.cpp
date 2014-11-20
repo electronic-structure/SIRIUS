@@ -1685,7 +1685,7 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
             std::cout << "load phi   : " << timers(0, i) << std::endl;
             std::cout << "1st zgemms : " << timers(1, i) << std::endl;
             std::cout << "load beta  : " << timers(2, i) << std::endl;
-            std::cout << "2nd zgemms : " << timers(4, i) << std::endl;
+            std::cout << "2nd zgemms : " << timers(3, i) << std::endl;
         }
     }
 }
