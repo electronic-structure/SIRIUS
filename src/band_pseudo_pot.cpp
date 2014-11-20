@@ -1678,15 +1678,14 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
 
     if (kp__->comm().rank() == 0)
     {
-        std::cout << "in-thread timers : " << std::endl;
+        std::cout << "------------------------------------------------------------" << std::endl;
+        std::cout << "thread_id  | load phi  | 1st zgemms | load beta | 2nd zgemms" << std::endl;
+        std::cout << "------------------------------------------------------------" << std::endl;
         for (int i = 0; i < Platform::max_num_threads(); i++)
         {
-            std::cout << "-------------------- thread : " << i << std::endl;
-            std::cout << "load phi   : " << timers(0, i) << std::endl;
-            std::cout << "1st zgemms : " << timers(1, i) << std::endl;
-            std::cout << "load beta  : " << timers(2, i) << std::endl;
-            std::cout << "2nd zgemms : " << timers(3, i) << std::endl;
+            printf("   %2i      | %8.4f  | %8.4f   | %8.4f  | %8.4f\n", i, timers(0, i), timers(1, i), timers(2, i), timers(3, i));
         }
+        std::cout << "------------------------------------------------------------" << std::endl;
     }
 }
 
