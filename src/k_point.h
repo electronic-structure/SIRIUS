@@ -873,7 +873,7 @@ class K_point
                 cuda_device_synchronize();
                 
                 double_complex beta = complex_one;
-                /* compute <G+k|beta> * D*<beta|phi> and add to hphi */
+                /* compute <G+k|beta> * D*<beta|phi> and add to phi */
                 linalg<GPU>::gemm(0, 0, num_gkvec_row(), nphi__, num_beta__, &alpha,
                                   beta_gk__.at<GPU>(), beta_gk__.ld(), work__.at<GPU>(), work__.ld(), &beta, 
                                   phi__.at<GPU>(0, offs__), phi__.ld());

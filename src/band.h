@@ -260,6 +260,7 @@ class Band
                               matrix<double_complex>& phi__,
                               matrix<double_complex>& hphi__,
                               matrix<double_complex>& ophi__,
+                              matrix<double_complex>& kappa__,
                               mdarray<int, 1>& packed_mtrx_offset__,
                               mdarray<double_complex, 1>& d_mtrx_packed__,
                               mdarray<double_complex, 1>& q_mtrx_packed__);
@@ -276,6 +277,7 @@ class Band
                                matrix<double_complex>& o__,
                                matrix<double_complex>& h_old__,
                                matrix<double_complex>& o_old__,
+                               matrix<double_complex>& kappa__,
                                mdarray<int, 1>& packed_mtrx_offset__,
                                mdarray<double_complex, 1>& d_mtrx_packed__,
                                mdarray<double_complex, 1>& q_mtrx_packed__);
@@ -292,7 +294,8 @@ class Band
                               matrix<double_complex>& res__,
                               std::vector<double_complex>& h_diag__,
                               std::vector<double_complex>& o_diag__,
-                              std::vector<double>& res_norm__);
+                              std::vector<double>& res_norm__,
+                              matrix<double_complex>& kappa__);
 
         void diag_fv_pseudo_potential_parallel_davidson(K_point* kp__,
                                                         double v0__,
