@@ -974,32 +974,6 @@ void Band::residuals_parallel_simple(int N__,
     }
 }
 
-#ifdef _GPU_
-extern "C" void compute_residuals_gpu(int num_gkvec_row,
-                                      int num_res_local,
-                                      int* res_idx,
-                                      double* eval,
-                                      double_complex const* hpsi,
-                                      double_complex const* opsi,
-                                      double_complex* res,
-                                      double* res_norm);
-
-extern "C" void apply_preconditioner_gpu(int num_gkvec_row,
-                                         int num_res_local,
-                                         int* res_idx,
-                                         double* eval,
-                                         double_complex const* h_diag,
-                                         double_complex const* o_diag,
-                                         double_complex* res,
-                                         double* res_norm);
-
-extern "C" void normalize_residuals_gpu(int num_gkvec_row,
-                                        int num_res_local,
-                                        int* res_idx,
-                                        double* norm2,
-                                        double_complex* res);
-#endif
-
 void Band::residuals_parallel(int N__,
                               int num_bands__,
                               K_point* kp__,
@@ -1516,6 +1490,32 @@ void Band::set_fv_h_o_serial(K_point* kp__,
         memcpy(&o_old__(0, i), &o__(0, i), (N__ + n__) * sizeof(double_complex));
     }
 }
+
+#ifdef _GPU_
+extern "C" void compute_residuals_gpu(int num_gkvec_row,
+                                      int num_res_local,
+                                      int* res_idx,
+                                      double* eval,
+                                      double_complex const* hpsi,
+                                      double_complex const* opsi,
+                                      double_complex* res,
+                                      double* res_norm);
+
+extern "C" void apply_preconditioner_gpu(int num_gkvec_row,
+                                         int num_res_local,
+                                         int* res_idx,
+                                         double* eval,
+                                         double_complex const* h_diag,
+                                         double_complex const* o_diag,
+                                         double_complex* res,
+                                         double* res_norm);
+
+extern "C" void normalize_residuals_gpu(int num_gkvec_row,
+                                        int num_res_local,
+                                        int* res_idx,
+                                        double* norm2,
+                                        double_complex* res);
+#endif
 
 void Band::residuals_serial(K_point* kp__,
                             int N__,
