@@ -3,7 +3,7 @@
 namespace debug
 {
 
-static void get_proc_status(size_t* VmHWM, size_t* VmRSS)
+inline void get_proc_status(size_t* VmHWM, size_t* VmRSS)
 {
     *VmHWM = 0;
     *VmRSS = 0;
@@ -52,7 +52,7 @@ static void get_proc_status(size_t* VmHWM, size_t* VmRSS)
     }
 }
 
-static int get_num_threads()
+inline int get_num_threads()
 {
     std::stringstream fname;
     fname << "/proc/self/status";

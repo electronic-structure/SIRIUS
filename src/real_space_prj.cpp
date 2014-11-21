@@ -43,11 +43,13 @@ Real_space_prj::Real_space_prj(Reciprocal_lattice* reciprocal_lattice__,
 
     beta_projectors_ = std::vector<beta_real_space_prj_descriptor>(uc->num_atoms());
     max_num_points_ = 0;
+    num_points_ = 0;
     for (int ia = 0; ia < uc->num_atoms(); ia++)
     {
         int iat = uc->atom(ia)->type_id();
-        //auto atom_type = uc->atom_type(iat);
         double Rmask = R_beta[iat] * 1.2;
+
+        beta_projectors_[ia].offset_ = num_points_;
 
         /* loop over 3D array (real space) */
         for (int j0 = 0; j0 < fft_->size(0); j0++)
@@ -83,7 +85,17 @@ Real_space_prj::Real_space_prj(Reciprocal_lattice* reciprocal_lattice__,
                 }
             }
         }
+        num_points_ += beta_projectors_[ia].num_points_;
         max_num_points_ = std::max(max_num_points_, beta_projectors_[ia].num_points_);
+    }
+    if (comm_.rank() == 0)
+    {
+        for (int ia = 0; ia < uc->num_atoms(); ia++)
+        {
+            int iat = uc->atom(ia)->type_id();
+            printf("atom: %3i,  R_beta: %8.4f, num_points: %5i\n", ia, R_beta[iat], beta_projectors_[ia].num_points_);
+        }
+        printf("sum(num_points): %i\n", num_points_);
     }
 
     std::vector<double_complex> beta_pw(fft_->num_gvec());

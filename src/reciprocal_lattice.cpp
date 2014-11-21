@@ -110,10 +110,8 @@ void Reciprocal_lattice::init(int lmax)
         }
     }
 
-    Timer t1("sirius::Reciprocal_lattice::init|sort_G");
     /* sort G-vectors by length */
     std::sort(gvec_tmp_length.begin(), gvec_tmp_length.end());
-    t1.stop();
 
     /* create sorted list of G-vectors */
     gvec_ = mdarray<int, 2>(3, fft_->size());

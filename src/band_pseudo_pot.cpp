@@ -1523,22 +1523,22 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
     
     splindex<block> spl_bands(n__, num_band_blocks, 0);
 
-    mdarray<double_complex, 2>  phi_r(fft->size(), max_num_bands_per_block);
-    mdarray<double_complex, 2> hphi_r(fft->size(), max_num_bands_per_block);
-    mdarray<double_complex, 2> ophi_r(fft->size(), max_num_bands_per_block);
+    mdarray<double_complex, 2>  phi_r(fft->size(), spl_bands.local_size(0));
+    mdarray<double_complex, 2> hphi_r(fft->size(), spl_bands.local_size(0));
+    mdarray<double_complex, 2> ophi_r(fft->size(), spl_bands.local_size(0));
     
     mdarray<double, 2> timers(4, Platform::max_num_threads());
     timers.zero();
 
-    mdarray<double_complex, 3> hphi_tmp(parameters_.real_space_prj_->max_num_points_, max_num_bands_per_block, uc->num_atoms());
-    mdarray<double_complex, 3> ophi_tmp(parameters_.real_space_prj_->max_num_points_, max_num_bands_per_block, uc->num_atoms());
+    mdarray<double_complex, 2> hphi_tmp(parameters_.real_space_prj_->num_points_, spl_bands.local_size(0));
+    mdarray<double_complex, 2> ophi_tmp(parameters_.real_space_prj_->num_points_, spl_bands.local_size(0));
 
-    mdarray<double_complex, 3> phi_tmp(parameters_.real_space_prj_->max_num_points_, max_num_bands_per_block, Platform::max_num_threads());
+    mdarray<double_complex, 3> phi_tmp(parameters_.real_space_prj_->max_num_points_, spl_bands.local_size(0), Platform::max_num_threads());
     /* <\beta_{\xi}^{\alpha}|\phi_j> */
-    mdarray<double_complex, 3> beta_phi(uc->max_mt_basis_size(), max_num_bands_per_block, Platform::max_num_threads());
+    mdarray<double_complex, 3> beta_phi(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
     /* Q or D multiplied by <\beta_{\xi}^{\alpha}|\phi_j> */
-    mdarray<double_complex, 3> d_beta_phi(uc->max_mt_basis_size(), max_num_bands_per_block, Platform::max_num_threads());
-    mdarray<double_complex, 3> q_beta_phi(uc->max_mt_basis_size(), max_num_bands_per_block, Platform::max_num_threads());
+    mdarray<double_complex, 3> d_beta_phi(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
+    mdarray<double_complex, 3> q_beta_phi(uc->max_mt_basis_size(), spl_bands.local_size(0), Platform::max_num_threads());
     
     mdarray<double_complex, 3> beta_tmp(parameters_.real_space_prj_->max_num_points_, uc->max_mt_basis_size(), Platform::max_num_threads());
 
@@ -1583,6 +1583,7 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
             for (int ia = 0; ia < uc->num_atoms(); ia++)
             {
                 auto& beta_prj = parameters_.real_space_prj_->beta_projectors_[ia];
+                int ofs = beta_prj.offset_;
                 int npt = beta_prj.num_points_;
                 auto type = parameters_.unit_cell()->atom(ia)->type();
                 int nbf = type->mt_basis_size();
@@ -1634,12 +1635,12 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
                 linalg<CPU>::gemm(0, 0, npt, nbnd, nbf,
                                   beta_tmp.at<CPU>(0, 0, thread_id), beta_tmp.ld(),
                                   d_beta_phi.at<CPU>(0, 0, thread_id), d_beta_phi.ld(),
-                                  hphi_tmp.at<CPU>(0, 0, ia), hphi_tmp.ld());
+                                  hphi_tmp.at<CPU>(ofs, 0), hphi_tmp.ld());
 
                 linalg<CPU>::gemm(0, 0, npt, nbnd, nbf,
                                   beta_tmp.at<CPU>(0, 0, thread_id), beta_tmp.ld(),
                                   q_beta_phi.at<CPU>(0, 0, thread_id), q_beta_phi.ld(),
-                                  ophi_tmp.at<CPU>(0, 0, ia), ophi_tmp.ld());
+                                  ophi_tmp.at<CPU>(ofs, 0), ophi_tmp.ld());
                 timers(3, thread_id) += (omp_get_wtime() - t0);
             }
         }
@@ -1651,11 +1652,12 @@ void Band::apply_h_o_real_space_serial(K_point* kp__,
         {
             for (int ia = 0; ia < uc->num_atoms(); ia++)
             {
+                int ofs = parameters_.real_space_prj_->beta_projectors_[ia].offset_;
                 for (int j = 0; j < parameters_.real_space_prj_->beta_projectors_[ia].num_points_; j++)
                 {
                     int ir = parameters_.real_space_prj_->beta_projectors_[ia].ir_[j];
-                    hphi_r(ir, ib) += hphi_tmp(j, ib, ia);
-                    ophi_r(ir, ib) += ophi_tmp(j, ib, ia);
+                    hphi_r(ir, ib) += hphi_tmp(ofs + j, ib);
+                    ophi_r(ir, ib) += ophi_tmp(ofs + j, ib);
                 }
             }
         }

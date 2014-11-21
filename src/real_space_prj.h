@@ -11,6 +11,8 @@ struct beta_real_space_prj_descriptor
 {
     int num_points_;
 
+    int offset_;
+
     /* list of real-space point indices */
     std::vector<int> ir_;
 
@@ -56,6 +58,8 @@ class Real_space_prj
         std::vector<beta_real_space_prj_descriptor> beta_projectors_;
 
         int max_num_points_;
+
+        int num_points_;
 
         Real_space_prj(Reciprocal_lattice* reciprocal_lattice__, double gk_cutoff__, Communicator const& comm__);
 };
