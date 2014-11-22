@@ -686,7 +686,10 @@ void Density::add_kpoint_contribution_pp_gpu(K_point* kp__,
     auto uc = parameters_.unit_cell();
     
     /* allocate space for <beta|psi> array */
-    int nbf_max = uc->max_mt_basis_size() * uc->beta_chunk(0).num_atoms_;
+    int nbf_max = 0;
+    for (int ib = 0; ib < uc->num_beta_chunks(); ib++)
+        nbf_max  = std::max(nbf_max, uc->beta_chunk(ib).num_beta_);
+
     mdarray<double_complex, 1> beta_psi_tmp(nbf_max * nloc);
     beta_psi_tmp.allocate_on_device();
 
